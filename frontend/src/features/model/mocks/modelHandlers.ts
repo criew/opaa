@@ -1,12 +1,17 @@
 import { http, HttpResponse } from 'msw'
 import {
+  mockEmbeddingChangeIndex,
+  mockEmbeddingIndex,
   mockEmbeddingInfo,
+  mockEmbeddingModelProbe,
   mockLlmModels,
   mockOllamaDiscoveredModels,
   mockOpenAiDiscoveredModels,
   resetMockLlmModels,
 } from './modelFixtures'
 import type {
+  EmbeddingModelDraft,
+  EmbeddingModelProbeResponse,
   LlmModelDiscoveryFailure,
   LlmModelDiscoveryRequest,
   LlmModelDiscoveryResponse,
@@ -185,5 +190,32 @@ export const modelHandlers = [
 
   http.get('/api/v1/admin/models/embedding-info', () => {
     return HttpResponse.json(mockEmbeddingInfo)
+  }),
+
+  // The same model name is the installed model at another endpoint; any other is a model change.
+  http.post('/api/v1/admin/models/embedding/probe', async ({ request }) => {
+    const draft = (await request.json()) as EmbeddingModelDraft
+    if (draft.model === mockEmbeddingInfo.model) {
+      return HttpResponse.json({
+        succeeded: true,
+        message: 'Probeeinbettung erfolgreich: Das Modell liefert Vektoren mit 1536 Dimensionen.',
+        dimensions: 1536,
+        kind: 'ENDPOINT_CHANGE',
+        similarity: 0.9999,
+      } satisfies EmbeddingModelProbeResponse)
+    }
+    return HttpResponse.json(mockEmbeddingModelProbe)
+  }),
+
+  http.post('/api/v1/admin/models/embedding/change', () => {
+    return HttpResponse.json(mockEmbeddingChangeIndex)
+  }),
+
+  http.delete('/api/v1/admin/models/embedding/change', () => {
+    return HttpResponse.json(mockEmbeddingIndex)
+  }),
+
+  http.put('/api/v1/admin/models/embedding/endpoint', () => {
+    return HttpResponse.json(mockEmbeddingIndex)
   }),
 ]

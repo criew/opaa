@@ -2,7 +2,7 @@
 // against the Compose variant with two backend instances (docker-compose.multi.yml). Two phases,
 // each from an empty database:
 //
-//   fresh    the current version cold-started; scenarios 01-04 and 06
+//   fresh    the current version cold-started; scenarios 01-04, 06 and 07
 //   rolling  the previous version (scripts/previous-version.mjs), updated to the current one by
 //            scenario 05 in the order of the handbook
 //
@@ -18,7 +18,7 @@ import { previousVersionRef } from './previous-version.mjs'
 
 const isWindows = process.platform === 'win32'
 
-const FRESH_SPECS = ['01-', '02-', '03-', '04-', '06-']
+const FRESH_SPECS = ['01-', '02-', '03-', '04-', '06-', '07-']
 const ROLLING_SPECS = ['05-']
 
 export async function runMultiInstance({ repoRoot, e2eDir, extraTestArgs }) {

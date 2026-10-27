@@ -8,11 +8,13 @@ import org.springframework.stereotype.Component;
 
 /**
  * Whether the vector index matches the configured embedding model, held in the process (ADR-0053).
- * While it does not ({@link #isStale()}), the vector search is suspended and every chunk write puts
- * its vector into {@link #TARGET_COLUMN} instead of {@link #EMBEDDING_COLUMN}.
+ * While it does not ({@link #isStale()}), the vector search is suspended. Which column a vector
+ * goes to is not decided here but by the generation of its model against the database ({@link
+ * EmbeddingIndexStore#lockGenerations}, ADR-0061, Entscheidung 6); this state is the early answer
+ * of the search and the page.
  *
  * <p>Writers run under {@link #whileWriting}, the switch from target to embedding column under
- * {@link #exclusively}: a writer never names a column the switch has just removed.
+ * {@link #exclusively}: a writer never names a column the switch of this instance has just removed.
  */
 @Component
 public class EmbeddingIndexState {
@@ -50,17 +52,27 @@ public class EmbeddingIndexState {
     return !isStale();
   }
 
+  /**
+   * Whether a query embedded under {@code generation} may search the embedding column as this
+   * instance knows it; the search checks the same against the database. Before the startup
+   * reconciliation this instance knows nothing and leaves the answer to the database.
+   */
+  public boolean isVectorSearchAvailableFor(long generation) {
+    Snapshot current = snapshot;
+    return current == null || (!current.stale() && current.current().generation() == generation);
+  }
+
   /** Called by the reconciliation and by the switch, inside {@link #exclusively}. */
   public void replace(Snapshot replacement) {
     this.snapshot = replacement;
   }
 
   /**
-   * Runs {@code write} with the column every new vector currently goes to. Concurrent writers do
+   * Runs {@code write} while the columns cannot be switched by this instance. Concurrent writers do
    * not exclude each other.
    */
-  <T> T whileWriting(Function<String, T> write) {
-    return withStableColumns(current -> write.apply(isStale() ? TARGET_COLUMN : EMBEDDING_COLUMN));
+  <T> T whileWriting(Supplier<T> write) {
+    return withStableColumns(current -> write.get());
   }
 
   /**

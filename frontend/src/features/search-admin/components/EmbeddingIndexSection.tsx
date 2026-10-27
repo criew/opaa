@@ -40,9 +40,10 @@ function formatTimestamp(value?: string | null): string | null {
 }
 
 /**
- * The vector index against the configured embedding model. The model itself is in the
- * configuration; here the re-embedding is only started, tracked and cancelled. While a
- * run is working, the section polls the progress regularly.
+ * The vector index against the installed embedding model and its runs: the re-embedding after a
+ * model change and the refill after a discard. The model itself changes under Modelle →
+ * Einbettung; here a run is tracked, stopped and resumed. While a run is working, the section
+ * polls the progress regularly.
  */
 export default function EmbeddingIndexSection() {
   const [status, setStatus] = useState<EmbeddingReindexStatusResponse | null>(null)
@@ -99,11 +100,17 @@ export default function EmbeddingIndexSection() {
     status.totalChunks > 0 ? Math.floor((status.embeddedChunks / status.totalChunks) * 100) : 100
   const lastRun = status.lastRun
   const resumable = status.stale && status.embeddedChunks > 0
+  const refill = lastRun?.kind === 'REFILL'
+  const refillPending =
+    !status.stale &&
+    refill &&
+    lastRun.status !== 'COMPLETED' &&
+    (status.withoutCurrentVector ?? 0) > 0
 
   return (
     <PageSection
       title="Vektorindex"
-      description="Das Embedding-Modell legt die Konfiguration fest. Nach einem Wechsel werden die vorhandenen Abschnitte hier neu eingebettet, ohne die Quellen erneut zu lesen."
+      description="Das Embedding-Modell wechselt unter Modelle → Einbettung. Nach einem Wechsel werden die vorhandenen Abschnitte neu eingebettet, ohne die Quellen erneut zu lesen; hier lässt sich der Lauf verfolgen, anhalten und fortsetzen."
     >
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -149,7 +156,10 @@ export default function EmbeddingIndexSection() {
         <KeyValueList
           sx={{ mb: 2 }}
           entries={[
-            { label: 'Letzter Lauf', value: RUN_STATUS_LABELS[lastRun.status] },
+            {
+              label: refill ? 'Letztes Nachfüllen' : 'Letzter Lauf',
+              value: RUN_STATUS_LABELS[lastRun.status],
+            },
             {
               label: 'Gestartet',
               value: formatTimestamp(lastRun.startedAt),
@@ -163,6 +173,30 @@ export default function EmbeddingIndexSection() {
             { label: 'Hinweis', value: lastRun.message, hidden: !lastRun.message },
           ]}
         />
+      )}
+
+      {refillPending && !running && (
+        <Stack direction="row" spacing={1.5} sx={{ mb: 2 }}>
+          <Button
+            variant="contained"
+            disabled={busy}
+            onClick={() => void act(startEmbeddingReindex)}
+          >
+            Nachfüllen fortsetzen
+          </Button>
+        </Stack>
+      )}
+
+      {refill && running && !status.stale && (
+        <Stack direction="row" spacing={1.5} sx={{ mb: 2 }}>
+          <Button
+            variant="outlined"
+            disabled={busy}
+            onClick={() => void act(cancelEmbeddingReindex)}
+          >
+            Nachfüllen abbrechen
+          </Button>
+        </Stack>
       )}
 
       {status.stale && (

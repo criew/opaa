@@ -22,6 +22,8 @@ class EmbeddingIndexRecordPort implements RecordedEmbeddingIndex {
             record ->
                 new Recorded(
                     record.current().model(),
-                    record.target() == null ? null : record.target().model()));
+                    record.target() == null ? null : record.target().model(),
+                    record.current().generation(),
+                    record.target() == null ? null : record.target().generation()));
   }
 }

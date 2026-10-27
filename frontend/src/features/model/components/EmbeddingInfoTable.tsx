@@ -13,16 +13,11 @@ interface EmbeddingInfoTableProps {
 }
 
 /**
- * The embedding model in the same table form as the chat models — **without any
- * action**: no action column, no row menu, no control.
+ * The installed embedding model in the same table form as the chat models, without a row menu:
+ * a change goes through the guided change below the table, never through an edit in place.
  *
- * A table for a single row is typographically the weaker choice; here recognition weighs
- * more. Whoever switches between the tabs sees the same kind of thing — a
- * model with its details — and that the difference lies not in the matter but in
- * the fact that nothing can be changed on this one.
- *
- * There are no more than these three details: `EmbeddingInfoResponse` carries neither an endpoint
- * nor a key status.
+ * A table for a single row is typographically the weaker choice; here recognition weighs more.
+ * Whoever switches between the tabs sees the same kind of thing — a model with its details.
  */
 export default function EmbeddingInfoTable({ info }: EmbeddingInfoTableProps) {
   return (
@@ -31,12 +26,14 @@ export default function EmbeddingInfoTable({ info }: EmbeddingInfoTableProps) {
       role="region"
       aria-label="Tabelle Einbettungsmodell, horizontal scrollbar"
     >
-      <Table size="small" aria-label="Einbettungsmodell" sx={{ minWidth: 420, ...MODEL_TABLE_SX }}>
+      <Table size="small" aria-label="Einbettungsmodell" sx={{ minWidth: 640, ...MODEL_TABLE_SX }}>
         <TableHead>
           <TableRow>
             <TableCell>Modell</TableCell>
-            <TableCell sx={{ width: '28%' }}>Anbieter</TableCell>
-            <TableCell sx={{ width: '22%' }}>Dimensionen</TableCell>
+            <TableCell>Endpunkt</TableCell>
+            <TableCell sx={{ width: '14%' }}>Dimensionen</TableCell>
+            <TableCell sx={{ width: '16%' }}>Eingabegrenze</TableCell>
+            <TableCell sx={{ width: '14%' }}>Schlüssel</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -46,12 +43,22 @@ export default function EmbeddingInfoTable({ info }: EmbeddingInfoTableProps) {
                 {info.model}
               </Box>
             </TableCell>
-            <TableCell>{info.provider}</TableCell>
+            <TableCell>
+              <Box component="span" sx={MACHINE_VALUE_SX}>
+                {info.baseUrl ?? '—'}
+              </Box>
+            </TableCell>
             <TableCell>
               <Box component="span" sx={MACHINE_VALUE_SX}>
                 {info.dimensions}
               </Box>
             </TableCell>
+            <TableCell>
+              <Box component="span" sx={MACHINE_VALUE_SX}>
+                {info.maxInputTokens ?? '—'}
+              </Box>
+            </TableCell>
+            <TableCell>{info.apiKeySet ? 'gesetzt' : 'keiner'}</TableCell>
           </TableRow>
         </TableBody>
       </Table>

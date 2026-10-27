@@ -1,9 +1,9 @@
 # Wechsel des Embedding-Modells
 
-> **Status: Zielbild, nicht gebaut.** Konzept zu Issue #3214. Gebaut ist die Neueinbettung selbst
-> (Zielspalte, Lauf mit Besitz, Abbruch, Fortsetzen, Übernahme, Umschalten); neu sind der geführte
-> Wechsel in der Oberfläche, die Generation, die Vorschau, das Verwerfen mit Nachfüllen und der
-> Endpunktwechsel. Entscheidungen: [ADR-0061](../decisions/0061-wechsel-des-embedding-modells.md),
+> **Status: umgesetzt (#3214).** Gebaut sind der geführte Wechsel in der Oberfläche, die
+> Generation, die Vorschau, das Verwerfen mit Nachfüllen und der Endpunktwechsel, auf der schon
+> vorhandenen Neueinbettung (Zielspalte, Lauf mit Besitz, Abbruch, Fortsetzen, Übernahme,
+> Umschalten). Wo die Umsetzung vom Konzept abweicht, beschreibt der Text den gebauten Stand. Entscheidungen: [ADR-0061](../decisions/0061-wechsel-des-embedding-modells.md),
 > ergänzt [ADR-0060](../decisions/0060-schlanke-konfiguration-und-einrichtungsassistent.md),
 > Entscheidung 10.
 
@@ -213,8 +213,9 @@ Vektoren anzufassen. Er gelingt nur, wenn
   kleinste Kosinus-Ähnlichkeit der drei Probetexte, sie muss mindestens 0,99 betragen (fest im
   Code).
 
-**Referenzanker.** Er entsteht mit der Probeeinbettung der Installation oder eines Modellwechsels
-und bleibt über alle Endpunktwechsel derselbe; ein Endpunktwechsel überschreibt ihn nicht, sonst
+**Referenzanker.** Er entsteht mit der Probeeinbettung eines Modellwechsels und, weil der
+Installationsschritt nur die Dimension speichert, unmittelbar nach dem Abschluss der Installation
+mit dem gerade eingerichteten Endpunkt. Er bleibt über alle Endpunktwechsel derselbe; ein Endpunktwechsel überschreibt ihn nicht, sonst
 könnte eine Kette knapp bestandener Wechsel schrittweise abdriften. Fehlt er, etwa bei einer
 Installation von vor dieser Funktion, erhebt ihn die erste Instanz, deren Modell-Client danach
 erfolgreich einbettet oder deren Statusprobe gelingt, mit einer bedingten Schreibanweisung: nur
@@ -232,7 +233,8 @@ nur der Modellwechsel.
 
 **Ersatz-Endpunkt.** Ist der Lauf eines Modellwechsels angehalten oder fehlgeschlagen, etwa weil der
 neue Endpunkt ausfiel, darf ein Ersatz-Endpunkt für das Zielmodell eingetragen werden, geprüft gegen
-dessen Referenzanker aus der Bestätigung. Der Dialog bietet an, den Lauf danach gleich fortzusetzen.
+dessen Referenzanker aus der Bestätigung. Danach setzt die Systemverwaltung den Lauf im Indexstatus
+fort; die Seite nennt den Weg dorthin.
 Während ein Lauf läuft, ist der Endpunktwechsel gesperrt.
 
 Gespeichert wird in einer Transaktion, die auch die Adresse im Index-Datensatz nachzieht; die
@@ -283,23 +285,38 @@ eines davon ab, ist der Index veraltet.
   `409` abgelehnt.
 - **Gleiche Version.** Bestätigung, Verwerfen und Endpunktwechsel verlangen, dass alle lebenden
   Instanzen dieselbe Version melden, sonst `409` mit dem Hinweis, das Rolling Update abzuschließen.
+  Geprüft wird vor der Probe und noch einmal unter dem Schemalock.
   Verglichen wird wie im Instanzregister ohne Build-Metadaten; zwei Builds von `main` mit derselben
   Version gelten als gleich. Ein Release-Rollback ist während eines Wechsels nicht vorgesehen, erst
   nach Umschalten oder Verwerfen; das Handbuch sagt das. Eine ältere Instanz kennt die Generation
   nicht, ihr Startabgleich verglich nur den Modellnamen und könnte einen Wechsel unter gleichem
-  Namen verwerfen.
+  Namen verwerfen. Schaltet sie um, bleibt die Zielgeneration ohne Zielmodell stehen; sie zählt
+  nicht als Zielspalte. Sobald der Bus die Änderung meldet, spätestens beim Start, übernimmt der
+  Abgleich der neuen Version sie als Generation der Vektorspalte, wenn Modell und Dimension passen
+  und der Lauf abgeschlossen ist, ohne neue Neueinbettung. Hat der Abgleich einer älteren Instanz
+  die Zielspalte verworfen, etwa nach einem Rollback, endet kein Lauf abgeschlossen; der Index
+  bleibt dann veraltet.
+- **Entscheidung gegen die Zeile unter dem Lock.** Bestätigung und Endpunktwechsel prüfen und
+  vergleichen vor der Transaktion, weil die Probe auf das Netz wartet. Unter dem Schemalock muss
+  die Modellzeile noch die sein, gegen die geprüft wurde (Generation, Modell, Adresse, Schlüssel,
+  Eingabegrenze, Dimension); sonst antworten sie `409`, und die Probe ist zu wiederholen.
 - **Lauf, Besitz, Übernahme** nach Art des Laufs, siehe „Zwei Arten von Läufen".
-- **Schreiben.** Ein Schreiber bettet ein, wählt dann unter der Spaltensperre seine Spalte und prüft
-  dort, ob die Generation seiner Einbettung die der Spalte ist. Passt sie nicht, verwirft er die
-  Einbettung, lässt die Sperre los und bettet mit dem neuen Client erneut ein, höchstens dreimal,
+- **Schreiben.** Ein Schreiber bettet mit einem angehefteten Client ein und schreibt unter der
+  Spaltensperre in die Spalte, die die Datenbank für die Generation seiner Einbettung nennt: die
+  Vektorspalte oder die Zielspalte. Nennt sie keine, verwirft er die Einbettung, lässt die Sperre los
+  und bettet mit dem neuen Client erneut ein, höchstens dreimal,
   sonst scheitert das Dokument. Ein gescheitertes Dokument einer Quelle versucht deren nächster Lauf
   erneut; ein Upload bleibt gescheitert, bis jemand ihn „erneut verarbeiten" lässt. Eine fehlende
   Zielspalte nach einem Verwerfen behandelt der Schreiber wie eine fremde Generation.
-- **Prüfung in der Datenbank.** Die Prüfung gegen den Stand der Instanz fängt den üblichen Fall;
-  bindend ist die Schreibanweisung selbst. Sie schreibt nur, wenn die Generation im Index-Datensatz
-  zur Einbettung passt, für die Zielspalte gegen deren Generation, für die Vektorspalte gegen die
-  der Vektorspalte (`… AND (SELECT target_generation FROM embedding_index) = ?`). Schreibt sie
-  nichts, gilt das als fremde Generation. Eine Instanz, die Busereignisse verpasst hat, schreibt so
+- **Prüfung in der Datenbank.** Die Schreibtransaktion nimmt den Schemalock der Vektortabelle
+  geteilt, liest dann die Generationen beider Spalten und hält den Lock bis zum Commit.
+  Bestätigung, Verwerfen, Umschalten und Startabgleich nehmen ihn exklusiv, bevor sie Datensatz
+  oder Tabelle ändern, und warten deshalb auf laufende Schreiber; ein Schreiber schreibt nur in die
+  Spalte, die zu seiner Generation gehört. Die Warteschlange ist fair: Ein Schreiber, der nach einem
+  wartenden Wechsel kommt, wartet hinter ihm, sodass ein steter Strom von Schreibern den Wechsel
+  nicht aushungert. Die Wartegrenze gilt je Warteschritt; ist sie in einem Schritt erreicht,
+  antwortet der Wechsel `409`. Passt keine, rollt die ganze
+  Transaktion zurück, die Zeile des Volltexts eingeschlossen. Eine Instanz, die Busereignisse verpasst hat, schreibt so
   auch über ein Verwerfen und eine erneute Bestätigung hinweg keinen Vektor in die Spalte einer
   anderen Generation. Das Umschalten wartet mit seiner Tabellensperre auf laufende Schreiber; was
   vorher geprüft und geschrieben wurde, wird mit der Spalte umgeschaltet.

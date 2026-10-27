@@ -32,9 +32,13 @@ Ein Update **gefährdet den Index nicht** und verlangt **keine Neuindizierung**.
 - Ändert sich die Verarbeitung eines Formats, bleiben alte Chunks durchsuchbar;
   „Suche & Indexierung“ zeigt „Nachzug ausstehend“, und ein
   [Nachzug](../arbeitsmittel/wissensbibliotheken/README.md#72-pipeline-versionen-und-nachzug) bringt sie auf den neuen Stand.
-- Ändert ein Update die Vorgaben des Embedding-Modells, verlangt OPAA eine Neueinbettung
-  ([Modell wechseln](modelle.md#modell-wechseln)). Wer das bisherige Modell behält, setzt es
-  ausdrücklich ([Welches Embedding-Modell](modelle.md#welches-embedding-modell)).
+- Ein Update wechselt das Embedding-Modell nie; das Modell steht in der Datenbank und wechselt nur
+  in der Modellverwaltung ([Modell wechseln](modelle.md#modell-wechseln)).
+- **Kein Rollback während eines Wechsels des Embedding-Modells.** Läuft eine Neueinbettung nach
+  einem Modellwechsel, erst umschalten lassen oder den Wechsel verwerfen und danach auf das frühere
+  Release zurückgehen. Eine ältere Version kennt die Generation des Modells nicht und könnte einen
+  Wechsel unter gleichem Modellnamen beim Start für erledigt halten. Solange Instanzen verschiedener
+  Versionen laufen, lehnt OPAA Wechsel, Verwerfen und Endpunktwechsel ab.
 
 Eine vollständige Neuindizierung brauchen nur: eine verworfene Datenbank und der Austausch einer
 fehlerhaften Ollama-Fassung bei langen Eingaben ([Modelle](modelle.md#embedding)).

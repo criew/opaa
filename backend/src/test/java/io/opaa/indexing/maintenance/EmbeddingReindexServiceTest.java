@@ -2,12 +2,14 @@ package io.opaa.indexing.maintenance;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.indexing.chunk.EmbeddingIndexRecord;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.indexing.chunk.EmbeddingIndexStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
@@ -19,6 +21,7 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.VectorTable;
+import io.opaa.llm.EmbeddingModelAdministration;
 import io.opaa.permission.PersonThreshold;
 import java.time.Clock;
 import java.util.HashSet;
@@ -37,6 +40,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
  */
 class EmbeddingReindexServiceTest {
 
+  private static final EmbeddingReindexService.Work WORK =
+      new EmbeddingReindexService.Work(EmbeddingIndexRecord.RunKind.REEMBED, 2L);
+
   private final ContextPrefixRerunService rerunService = mock(ContextPrefixRerunService.class);
   private final DocumentRepository documentRepository = mock(DocumentRepository.class);
   private final EmbeddingIndexStore store = mock(EmbeddingIndexStore.class);
@@ -53,6 +59,7 @@ class EmbeddingReindexServiceTest {
           mock(JdbcTemplate.class),
           mock(KnowledgeLibraryRepository.class),
           mock(PersonThreshold.class),
+          mock(EmbeddingModelAdministration.class),
           new VectorTable("public", "vector_store"),
           Clock.systemUTC(),
           currentInstance,
@@ -64,7 +71,7 @@ class EmbeddingReindexServiceTest {
     UUID self = UUID.randomUUID();
     when(currentInstance.id()).thenReturn(self);
     when(currentInstance.heartbeatCurrent()).thenReturn(true);
-    when(store.ownsRunningRun(self)).thenReturn(true);
+    when(store.ownsRunningRun(eq(self), any(), any())).thenReturn(true);
   }
 
   @Test
@@ -77,7 +84,7 @@ class EmbeddingReindexServiceTest {
 
     for (int i = 0; i < EmbeddingReindexService.MAX_CONSECUTIVE_FAILURES + 1; i++) {
       UUID documentId = document();
-      assertThat(service.reembed(documentId, failed, consecutiveFailures))
+      assertThat(service.reembed(WORK, documentId, failed, consecutiveFailures))
           .as("a held row says nothing about the embedding endpoint")
           .isEqualTo(Step.FAILED);
       assertThat(failed).as("not picked again in this run").contains(documentId);
@@ -95,7 +102,7 @@ class EmbeddingReindexServiceTest {
 
     Step last = null;
     for (int i = 0; i < EmbeddingReindexService.MAX_CONSECUTIVE_FAILURES; i++) {
-      last = service.reembed(document(), failed, consecutiveFailures);
+      last = service.reembed(WORK, document(), failed, consecutiveFailures);
     }
 
     assertThat(consecutiveFailures[0]).isEqualTo(EmbeddingReindexService.MAX_CONSECUTIVE_FAILURES);
@@ -112,9 +119,10 @@ class EmbeddingReindexServiceTest {
 
   @Test
   void aRunCancelledOrTakenOverElsewhereStopsBeforeTheNextDocument() {
-    when(store.ownsRunningRun(currentInstance.id())).thenReturn(false);
+    when(store.ownsRunningRun(eq(currentInstance.id()), any(), any())).thenReturn(false);
 
-    assertThat(service.reembed(document(), new HashSet<>(), new int[] {0})).isEqualTo(Step.STOPPED);
+    assertThat(service.reembed(WORK, document(), new HashSet<>(), new int[] {0}))
+        .isEqualTo(Step.STOPPED);
     verifyNoInteractions(rerunService);
   }
 }

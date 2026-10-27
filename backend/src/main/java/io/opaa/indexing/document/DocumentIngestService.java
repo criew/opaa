@@ -17,6 +17,7 @@ import io.opaa.indexing.attachment.AttachmentAccess;
 import io.opaa.indexing.attachment.AttachmentLimits;
 import io.opaa.indexing.attachment.AttachmentSource;
 import io.opaa.indexing.chunk.ChunkNotEmbeddableException;
+import io.opaa.indexing.chunk.EmbeddingGenerationChangedException;
 import io.opaa.indexing.chunk.EmbeddingInputCheck;
 import io.opaa.indexing.chunk.SourceChunkMetadataKeys;
 import io.opaa.indexing.chunk.VectorChunkStore;
@@ -86,6 +87,9 @@ public class DocumentIngestService {
    * fails: eight halvings take the 8,000-character ceiling below 32 characters.
    */
   static final int MAX_SPLIT_ROUNDS = 8;
+
+  /** How often the input check starts over because the embedding model changed under it. */
+  static final int MAX_GENERATION_CHANGES = 3;
 
   private final DocumentFormatRegistry pipelineRegistry;
   private final DocumentRepository documentRepository;
@@ -1066,11 +1070,24 @@ public class DocumentIngestService {
     List<org.springframework.ai.document.Document> pieces = chunks;
     List<org.springframework.ai.document.Document> enriched = enrichment.apply(pieces);
     Map<String, float[]> verified = new HashMap<>();
+    Long verifiedGeneration = null;
+    int generationChanges = 0;
     for (int round = 0; ; round++) {
       // The single calls share the sub-batches' pool and its bound, as their embedding would.
       EmbeddingInputCheck check =
           vectorChunkStore.checkInputs(
               enriched, verified, embeddingConcurrency > 1 ? embeddingExecutor : Runnable::run);
+      if (verifiedGeneration != null && check.generation() != verifiedGeneration) {
+        // Checked vectors of two models never mix: the check starts over under the new one.
+        if (++generationChanges >= MAX_GENERATION_CHANGES) {
+          throw new EmbeddingGenerationChangedException(check.generation());
+        }
+        verified.clear();
+        verifiedGeneration = null;
+        round--;
+        continue;
+      }
+      verifiedGeneration = check.generation();
       verified.putAll(check.vectors());
       if (!check.unverified().isEmpty()) {
         metrics.recordEmbeddingInputsUnverified(check.unverified().size());
@@ -1094,7 +1111,7 @@ public class DocumentIngestService {
       enriched = enrichment.apply(pieces);
     }
 
-    addToVectorStore(enriched, verified);
+    addToVectorStore(enriched, verified, verifiedGeneration);
     // Recorded only after the chunks exist: the stamp says "these chunks carry this prefix", which
     // is exactly what the Nachlauf selects against.
     // Records the ingest's own title, not the effective one: with it,
@@ -1296,12 +1313,14 @@ public class DocumentIngestService {
    * calling thread at {@code embeddingConcurrency == 1}, otherwise contiguous sub-batches on the
    * shared {@code embeddingTaskExecutor}, all awaited before returning. The order sub-batches reach
    * the store is not fixed, which is why the evaluation harnesses pin the concurrency to 1. Inputs
-   * in {@code verified} are not embedded again.
+   * in {@code verified}, embedded under {@code verifiedGeneration}, are not embedded again.
    */
   private void addToVectorStore(
-      List<org.springframework.ai.document.Document> enriched, Map<String, float[]> verified) {
+      List<org.springframework.ai.document.Document> enriched,
+      Map<String, float[]> verified,
+      long verifiedGeneration) {
     if (embeddingConcurrency <= 1) {
-      vectorChunkStore.addChunks(enriched, verified);
+      vectorChunkStore.addChunks(enriched, verified, verifiedGeneration);
       return;
     }
 
@@ -1311,7 +1330,7 @@ public class DocumentIngestService {
       subBatches.add(enriched.subList(i, Math.min(i + subBatchSize, enriched.size())));
     }
     if (subBatches.size() <= 1) {
-      vectorChunkStore.addChunks(enriched, verified);
+      vectorChunkStore.addChunks(enriched, verified, verifiedGeneration);
       return;
     }
     // Sub-batches commit independently; an oversized chunk must fail the document before any of
@@ -1323,7 +1342,8 @@ public class DocumentIngestService {
             .map(
                 subBatch ->
                     CompletableFuture.runAsync(
-                        () -> vectorChunkStore.addChunks(subBatch, verified), embeddingExecutor))
+                        () -> vectorChunkStore.addChunks(subBatch, verified, verifiedGeneration),
+                        embeddingExecutor))
             .toList();
     try {
       CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();

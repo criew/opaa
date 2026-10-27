@@ -3,6 +3,7 @@ package io.opaa.indexing.chunk;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -11,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.format.ChunkFormatMetadata;
 import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.llm.EmbeddingClients;
 import io.opaa.metadata.EmbeddingRateEstimator;
 import java.util.List;
 import java.util.Map;
@@ -118,7 +120,8 @@ class VectorChunkStoreInputLimitTest {
     assertThat(endpoint.requests()).containsExactly(List.of(nearLimit), List.of("kurz"));
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<float[]>> vectors = ArgumentCaptor.forClass(List.class);
-    verify(writer).writeEmbeddedChunks(org.mockito.ArgumentMatchers.eq(chunks), vectors.capture());
+    verify(writer)
+        .writeEmbeddedChunks(org.mockito.ArgumentMatchers.eq(chunks), vectors.capture(), anyLong());
     assertThat(vectors.getValue()).hasSize(2);
     assertThat(vectors.getValue().get(1)[0]).isEqualTo(LIMIT - 1);
   }
@@ -129,7 +132,10 @@ class VectorChunkStoreInputLimitTest {
     VectorChunkStore store = storeOn(endpoint, LIMIT);
     String nearLimit = "y".repeat(LIMIT - 1);
 
-    store.addChunks(List.of(chunk(nearLimit, "S. 2", 0)), Map.of(nearLimit, new float[] {7f}));
+    store.addChunks(
+        List.of(chunk(nearLimit, "S. 2", 0)),
+        Map.of(nearLimit, new float[] {7f}),
+        EmbeddingClients.INITIAL_GENERATION);
 
     assertThat(endpoint.requests()).isEmpty();
   }
@@ -145,7 +151,7 @@ class VectorChunkStoreInputLimitTest {
 
     assertThat(check.overlong()).isEmpty();
     assertThat(check.unverified()).containsExactly(0);
-    verify(writer).writeEmbeddedChunks(org.mockito.ArgumentMatchers.eq(chunks), any());
+    verify(writer).writeEmbeddedChunks(org.mockito.ArgumentMatchers.eq(chunks), any(), anyLong());
   }
 
   @Test
@@ -182,7 +188,7 @@ class VectorChunkStoreInputLimitTest {
     List<Document> chunks =
         List.of(chunkOf(documentId, "kurz", 0), chunkOf(documentId, "x".repeat(150), 1));
 
-    when(writer.rewriteEmbeddedChunks(any(), any())).thenReturn(2);
+    when(writer.rewriteEmbeddedChunks(any(), any(), anyLong())).thenReturn(2);
 
     VectorChunkStore.Reembedded outcome = store.reembedChunks(chunks);
 
@@ -190,7 +196,8 @@ class VectorChunkStoreInputLimitTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<float[]>> vectors = ArgumentCaptor.forClass(List.class);
     verify(writer)
-        .rewriteEmbeddedChunks(org.mockito.ArgumentMatchers.eq(chunks), vectors.capture());
+        .rewriteEmbeddedChunks(
+            org.mockito.ArgumentMatchers.eq(chunks), vectors.capture(), anyLong());
     assertThat(vectors.getValue().get(1)[0]).isEqualTo(LIMIT);
     verify(writer)
         .updateDocumentMetadata(

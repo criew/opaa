@@ -20,14 +20,21 @@ dataFlows:
   - id: embedding-model
     group: MODEL
     viaOutboundProxy: true
-    target: Der Einbettungs-Endpunkt (OpenAI-kompatibel), den die Installation festlegt
+    target: >-
+      Der Einbettungs-Endpunkt (OpenAI-kompatibel), den die Installation festlegt und die
+      Systemverwaltung später wechseln kann
     data: >-
-      Textabschnitte der indizierten Dokumente, Suchanfragen, Prüftexte der Statusanzeige und die
-      Probeeinbettung der Installation
+      Textabschnitte der indizierten Dokumente, Suchanfragen, Prüftexte der Statusanzeige, feste
+      Probetexte der Probeeinbettung und des Referenzankers und künstliche Texte der
+      Durchsatzprobe; ein Entwurf eines neuen Modells bekommt vor der Bestätigung nur Probetexte
+      und künstliche Texte
     trigger: >-
-      Indizierung und Neueinbettung, jede Suche und jede Chat-Anfrage, Statusprüfung,
-      Probeeinbettung bei der Installation
-    switchOff: Nicht abschaltbar, die Suche braucht Einbettungen; das Ziel legt die Installation fest
+      Indizierung, Neueinbettung nach einem Modellwechsel und Nachfüllen nach einem Verwerfen,
+      jede Suche und jede Chat-Anfrage, Statusprüfung, Probeeinbettung bei der Installation, bei
+      Modell- und Endpunktwechsel, Erhebung eines fehlenden Referenzankers
+    switchOff: >-
+      Nicht abschaltbar, die Suche braucht Einbettungen; das Ziel legt die Installation fest,
+      wechseln kann es die Systemverwaltung (Modell- oder Endpunktwechsel)
     settings: [embedding_model.base_url, embedding_model.model_identifier]
   - id: rerank-model
     group: MODEL

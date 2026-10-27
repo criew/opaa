@@ -237,14 +237,15 @@ paths:
     post:
       operationId: startEmbeddingReindex
       tags: [indexing]
-      summary: Start or resume the re-embedding of the stale vector index (system admin only)
+      summary: Resume the re-embedding of the stale vector index, or an unfinished refill (system admin only)
       description: >
         Re-embeds every chunk under the configured embedding model in the background: chunks,
         their ids and their text stay, no source is read again, only the vectors are replaced.
         Chunks embedded by an earlier, interrupted run are not embedded again. When every chunk
         carries a new vector the index switches over - adapting the vector size where it changed -
-        and the vector search resumes. Nothing starts this automatically. The call is recorded in
-        the audit log, and so is the end of the run.
+        and the vector search resumes. A confirmed model change starts the run itself; this call
+        resumes it, or a refill left unfinished after a discard. The call is recorded in the audit
+        log, and so is the end of a re-embedding.
       responses:
         "200":
           description: The run was started
@@ -526,6 +527,12 @@ components:
         dimensions:
           type: integer
           description: Vector size.
+        generation:
+          type: integer
+          format: int64
+          nullable: true
+          description: >
+            The generation of the model; vectors are comparable only under the same one.
 
     EmbeddingReindexRunStatus:
       type: string
@@ -535,12 +542,21 @@ components:
         failure; message says which. COMPLETED - switched over to the new vectors.
       enum: [RUNNING, CANCELLED, FAILED, COMPLETED]
 
+    EmbeddingReindexRunKind:
+      type: string
+      description: >
+        REEMBED - fills the target column with the new model, then switches. REFILL - after a
+        discard, fills the chunks without a vector of the previous model; never switches.
+      enum: [REEMBED, REFILL]
+
     EmbeddingReindexRunResponse:
       type: object
       required: [status]
       properties:
         status:
           $ref: "#/components/schemas/EmbeddingReindexRunStatus"
+        kind:
+          $ref: "#/components/schemas/EmbeddingReindexRunKind"
         startedAt:
           type: string
           format: date-time
@@ -587,6 +603,19 @@ components:
             Entscheidung 6); otherwise no number tells whether anyone keeps one.
         lastRun:
           $ref: "#/components/schemas/EmbeddingReindexRunResponse"
+        previous:
+          $ref: "#/components/schemas/EmbeddingIndexIdentity"
+        switching:
+          type: boolean
+          description: >
+            Whether a live run builds the index of the target column; a discard waits until it
+            switched.
+        withoutCurrentVector:
+          type: integer
+          format: int64
+          description: >
+            Of the counted chunks, those without a vector of the model the search runs on - the
+            chunks a discard leaves to the refill.
 
     IndexingStatusResponse:
       type: object

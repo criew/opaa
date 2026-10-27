@@ -236,6 +236,11 @@ data:
           - run_message
           - updated_at
           - run_owner_instance_id
+          - generation
+          - target_generation
+          - run_kind
+          - run_generation
+          - index_build_started_at
         person:
           columns: [run_started_by]
     storage: Anwendungsdatenbank
@@ -324,6 +329,18 @@ nonPersonalTables:
     - max_input_tokens
     - dimensions
     - installed_at
+    - generation
+    - reference_vectors
+  embedding_model_previous:
+    - id
+    - base_url
+    - model_identifier
+    - api_key_ciphertext
+    - max_input_tokens
+    - dimensions
+    - installed_at
+    - generation
+    - reference_vectors
   rerank_model: [id, enabled, base_url, model_identifier, api_key_ciphertext, updated_at]
   transcription_model:
     [id, enabled, base_url, model_identifier, api_key_ciphertext, language, updated_at]

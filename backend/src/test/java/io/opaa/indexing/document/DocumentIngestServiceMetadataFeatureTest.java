@@ -197,7 +197,7 @@ class DocumentIngestServiceMetadataFeatureTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<org.springframework.ai.document.Document>> captor =
         ArgumentCaptor.forClass(List.class);
-    verify(vectorStoreWriter).writeEmbeddedChunks(captor.capture(), any());
+    verify(vectorStoreWriter).writeEmbeddedChunks(captor.capture(), any(), anyLong());
     return captor.getValue();
   }
 }

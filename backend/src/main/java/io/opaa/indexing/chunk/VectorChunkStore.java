@@ -3,7 +3,8 @@ package io.opaa.indexing.chunk;
 import io.opaa.compliance.DataFlow;
 import io.opaa.format.ChunkFormatMetadata;
 import io.opaa.format.chunk.ChunkMetadataKeys;
-import io.opaa.llm.InstalledEmbeddingModel;
+import io.opaa.llm.EmbeddingClients;
+import io.opaa.llm.EmbeddingClients.Pinned;
 import io.opaa.metadata.ChunkMetadataStore;
 import io.opaa.metadata.EmbeddingRateEstimator;
 import java.nio.charset.StandardCharsets;
@@ -19,7 +20,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
-import java.util.function.IntSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.metadata.Usage;
@@ -47,6 +47,12 @@ import org.springframework.stereotype.Component;
  * reach the input limit of the installed embedding model is embedded alone and kept only when the
  * endpoint's token count stays below the limit, see {@link #checkInputs}.
  *
+ * <p>Each write embeds with one client pinned for it ({@link EmbeddingClients#pin}) and hands its
+ * generation to {@link VectorStoreWriter}, which writes only into the column of that generation. A
+ * model change, a discard or a switch in between fails the write before anything is stored; it is
+ * then embedded again with the current client, at most {@value #GENERATION_ATTEMPTS} times
+ * (ADR-0061, Entscheidung 6).
+ *
  * <p>The delete methods deliberately do not share a transaction across the two stores: a caller
  * deleting from {@code afterCommit} cannot reliably start a fresh one, and each delete is a single
  * atomic statement, idempotent if only one of the two ever runs.
@@ -70,35 +76,34 @@ public class VectorChunkStore implements ChunkMetadataStore {
 
   private static final EmbeddingOptions OPTIONS = EmbeddingOptions.builder().build();
 
+  /** How often a write embeds again after the generation changed under it. */
+  static final int GENERATION_ATTEMPTS = 3;
+
   private final VectorStore vectorStore;
-  private final EmbeddingModel embeddingModel;
+  private final EmbeddingClients clients;
   private final BatchingStrategy batchingStrategy;
   private final VectorStoreWriter vectorStoreWriter;
   private final FullTextChunkStore fullTextChunkStore;
   private final EmbeddingRateEstimator embeddingRateEstimator;
-  private final IntSupplier maxInputTokens;
 
-  /** With the input limit of the installed embedding model ({@code embedding_model}). */
+  /** With the client and input limit of the installed embedding model ({@code embedding_model}). */
   @Autowired
   public VectorChunkStore(
       VectorStore vectorStore,
-      EmbeddingModel embeddingModel,
+      EmbeddingClients clients,
       BatchingStrategy batchingStrategy,
       VectorStoreWriter vectorStoreWriter,
       FullTextChunkStore fullTextChunkStore,
-      EmbeddingRateEstimator embeddingRateEstimator,
-      InstalledEmbeddingModel installedModel) {
-    this(
-        vectorStore,
-        embeddingModel,
-        batchingStrategy,
-        vectorStoreWriter,
-        fullTextChunkStore,
-        embeddingRateEstimator,
-        (IntSupplier) installedModel::maxInputTokens);
+      EmbeddingRateEstimator embeddingRateEstimator) {
+    this.vectorStore = vectorStore;
+    this.clients = clients;
+    this.batchingStrategy = batchingStrategy;
+    this.vectorStoreWriter = vectorStoreWriter;
+    this.fullTextChunkStore = fullTextChunkStore;
+    this.embeddingRateEstimator = embeddingRateEstimator;
   }
 
-  /** With a fixed input limit. */
+  /** With a fixed client and input limit, under the initial generation. */
   public VectorChunkStore(
       VectorStore vectorStore,
       EmbeddingModel embeddingModel,
@@ -109,41 +114,23 @@ public class VectorChunkStore implements ChunkMetadataStore {
       int maxInputTokens) {
     this(
         vectorStore,
-        embeddingModel,
+        EmbeddingClients.fixed(embeddingModel, positive(maxInputTokens)),
         batchingStrategy,
         vectorStoreWriter,
         fullTextChunkStore,
-        embeddingRateEstimator,
-        positive(maxInputTokens));
-  }
-
-  private VectorChunkStore(
-      VectorStore vectorStore,
-      EmbeddingModel embeddingModel,
-      BatchingStrategy batchingStrategy,
-      VectorStoreWriter vectorStoreWriter,
-      FullTextChunkStore fullTextChunkStore,
-      EmbeddingRateEstimator embeddingRateEstimator,
-      IntSupplier maxInputTokens) {
-    this.vectorStore = vectorStore;
-    this.embeddingModel = embeddingModel;
-    this.batchingStrategy = batchingStrategy;
-    this.vectorStoreWriter = vectorStoreWriter;
-    this.fullTextChunkStore = fullTextChunkStore;
-    this.embeddingRateEstimator = embeddingRateEstimator;
-    this.maxInputTokens = maxInputTokens;
+        embeddingRateEstimator);
   }
 
   /** The input limit of the embedding endpoint, in tokens. */
   public int maxInputTokens() {
-    return maxInputTokens.getAsInt();
+    return clients.pin().maxInputTokens();
   }
 
-  private static IntSupplier positive(int maxInputTokens) {
+  private static int positive(int maxInputTokens) {
     if (maxInputTokens <= 0) {
       throw new IllegalArgumentException("maxInputTokens must be positive, got " + maxInputTokens);
     }
-    return () -> maxInputTokens;
+    return maxInputTokens;
   }
 
   /**
@@ -157,25 +144,40 @@ public class VectorChunkStore implements ChunkMetadataStore {
    *     budget or the endpoint proves it too long; nothing is written then
    */
   public void addChunks(List<Document> chunks) {
-    addChunks(chunks, Map.of());
+    addChunks(chunks, Map.of(), 0);
   }
 
   /**
    * {@link #addChunks(List)}, reusing {@code known} vectors (keyed by embedding input, as {@link
-   * EmbeddingInputCheck#vectors} holds them) instead of embedding those inputs again.
+   * EmbeddingInputCheck#vectors} holds them) instead of embedding those inputs again - but only
+   * while {@code knownGeneration} is the generation of the client this write pins; vectors of
+   * another model are never written.
    */
-  public void addChunks(List<Document> chunks, Map<String, float[]> known) {
+  public void addChunks(List<Document> chunks, Map<String, float[]> known, long knownGeneration) {
     if (chunks.isEmpty()) {
       return;
     }
     requireEmbeddable(chunks);
-    EmbeddingInputCheck check = checkInputs(chunks, known, Runnable::run);
-    if (!check.overlong().isEmpty()) {
-      EmbeddingInputCheck.Overlong first = check.overlong().getFirst();
-      throw notEmbeddable(chunks.get(first.position()), null);
+    for (int attempt = 1; ; attempt++) {
+      Pinned pinned = clients.pin();
+      Map<String, float[]> reusable = pinned.generation() == knownGeneration ? known : Map.of();
+      EmbeddingInputCheck check = checkInputs(pinned, chunks, reusable, Runnable::run);
+      if (!check.overlong().isEmpty()) {
+        EmbeddingInputCheck.Overlong first = check.overlong().getFirst();
+        throw notEmbeddable(chunks.get(first.position()), null);
+      }
+      warnUnverified(pinned, chunks, check);
+      try {
+        vectorStoreWriter.writeEmbeddedChunks(
+            chunks, vectorsFor(pinned, chunks, reusable, check.vectors()), pinned.generation());
+        return;
+      } catch (EmbeddingGenerationChangedException e) {
+        if (attempt >= GENERATION_ATTEMPTS) {
+          throw e;
+        }
+        log.info("The embedding generation changed during a write; embedding again");
+      }
     }
-    warnUnverified(chunks, check);
-    write(chunks, known, check.vectors());
   }
 
   /**
@@ -194,7 +196,20 @@ public class VectorChunkStore implements ChunkMetadataStore {
       return new Reembedded(0, 0, 0);
     }
     requireEmbeddable(chunks);
-    EmbeddingInputCheck check = checkInputs(chunks, Map.of(), Runnable::run);
+    for (int attempt = 1; ; attempt++) {
+      try {
+        return reembedOnce(clients.pin(), chunks);
+      } catch (EmbeddingGenerationChangedException e) {
+        if (attempt >= GENERATION_ATTEMPTS) {
+          throw e;
+        }
+        log.info("The embedding generation changed during a re-embedding; embedding again");
+      }
+    }
+  }
+
+  private Reembedded reembedOnce(Pinned pinned, List<Document> chunks) {
+    EmbeddingInputCheck check = checkInputs(pinned, chunks, Map.of(), Runnable::run);
     Map<String, float[]> vectors = new HashMap<>(check.vectors());
     for (EmbeddingInputCheck.Overlong overlong : check.overlong()) {
       float[] cut = check.cutVectors().get(inputOf(chunks.get(overlong.position())));
@@ -203,9 +218,10 @@ public class VectorChunkStore implements ChunkMetadataStore {
       }
       vectors.put(inputOf(chunks.get(overlong.position())), cut);
     }
-    warnUnverified(chunks, check);
+    warnUnverified(pinned, chunks, check);
     int rewritten =
-        vectorStoreWriter.rewriteEmbeddedChunks(chunks, vectorsFor(chunks, Map.of(), vectors));
+        vectorStoreWriter.rewriteEmbeddedChunks(
+            chunks, vectorsFor(pinned, chunks, Map.of(), vectors), pinned.generation());
     // Chunks a concurrent ingest replaced came from a fresh cut that already split; only a
     // document whose chunks were all rewritten here still carries a cut vector.
     if (!check.overlong().isEmpty() && rewritten == chunks.size()) {
@@ -230,33 +246,30 @@ public class VectorChunkStore implements ChunkMetadataStore {
    */
   public record Reembedded(int rewritten, int cut, int unverified) {}
 
-  private void warnUnverified(List<Document> chunks, EmbeddingInputCheck check) {
+  private void warnUnverified(Pinned pinned, List<Document> chunks, EmbeddingInputCheck check) {
     if (!check.unverified().isEmpty()) {
       log.warn(
           "{} chunk(s) of document {} could reach the embedding input limit of {} tokens, but the"
               + " endpoint reported no token count; a silent cut cannot be ruled out",
           check.unverified().size(),
           chunks.getFirst().getMetadata().get(DOCUMENT_ID_METADATA_KEY),
-          maxInputTokens());
+          pinned.maxInputTokens());
     }
-  }
-
-  /** Writes {@code chunks}, embedding in batches every input neither map already holds. */
-  private void write(
-      List<Document> chunks, Map<String, float[]> known, Map<String, float[]> checked) {
-    vectorStoreWriter.writeEmbeddedChunks(chunks, vectorsFor(chunks, known, checked));
   }
 
   /** The vector of every chunk in order, embedding in batches every input neither map holds. */
   private List<float[]> vectorsFor(
-      List<Document> chunks, Map<String, float[]> known, Map<String, float[]> checked) {
+      Pinned pinned,
+      List<Document> chunks,
+      Map<String, float[]> known,
+      Map<String, float[]> checked) {
     Map<String, float[]> precomputed = new HashMap<>(known);
     precomputed.putAll(checked);
     List<Document> remaining =
         precomputed.isEmpty()
             ? chunks
             : chunks.stream().filter(chunk -> !precomputed.containsKey(inputOf(chunk))).toList();
-    List<float[]> embedded = remaining.isEmpty() ? List.of() : embedBatch(remaining);
+    List<float[]> embedded = remaining.isEmpty() ? List.of() : embedBatch(pinned, remaining);
     if (precomputed.isEmpty()) {
       return embedded;
     }
@@ -275,6 +288,15 @@ public class VectorChunkStore implements ChunkMetadataStore {
   }
 
   /**
+   * {@link #checkInputs(Pinned, List, Map, Executor)} with a client pinned for this check; the
+   * result names its generation, and {@code known} must be of the current one.
+   */
+  public EmbeddingInputCheck checkInputs(
+      List<Document> chunks, Map<String, float[]> known, Executor executor) {
+    return checkInputs(clients.pin(), chunks, known, executor);
+  }
+
+  /**
    * Embeds alone every chunk whose input could reach the input limit and is not in {@code known},
    * each call on {@code executor}. A chunk counts as too long when the endpoint refuses it as such
    * or reports a token count at the limit: a silently cutting endpoint (Ollama's OpenAI-compatible
@@ -282,13 +304,13 @@ public class VectorChunkStore implements ChunkMetadataStore {
    *
    * @throws RuntimeException the endpoint's own failure when it is not a refusal for length
    */
-  public EmbeddingInputCheck checkInputs(
-      List<Document> chunks, Map<String, float[]> known, Executor executor) {
+  private EmbeddingInputCheck checkInputs(
+      Pinned pinned, List<Document> chunks, Map<String, float[]> known, Executor executor) {
     Map<String, CompletableFuture<Single>> calls = new LinkedHashMap<>();
     for (Document chunk : chunks) {
       String input = inputOf(chunk);
-      if (mayReachLimit(input) && !known.containsKey(input) && !calls.containsKey(input)) {
-        calls.put(input, CompletableFuture.supplyAsync(() -> embedAlone(input), executor));
+      if (mayReachLimit(pinned, input) && !known.containsKey(input) && !calls.containsKey(input)) {
+        calls.put(input, CompletableFuture.supplyAsync(() -> embedAlone(pinned, input), executor));
       }
     }
     Map<String, Single> results = new HashMap<>();
@@ -324,12 +346,12 @@ public class VectorChunkStore implements ChunkMetadataStore {
         unverified.add(position);
       }
     }
-    return new EmbeddingInputCheck(vectors, overlong, unverified, cutVectors);
+    return new EmbeddingInputCheck(vectors, overlong, unverified, cutVectors, pinned.generation());
   }
 
-  private boolean mayReachLimit(String input) {
+  private static boolean mayReachLimit(Pinned pinned, String input) {
     return input.getBytes(StandardCharsets.UTF_8).length + SPECIAL_TOKEN_RESERVE
-        >= maxInputTokens();
+        >= pinned.maxInputTokens();
   }
 
   /** The text the embedding model receives for {@code chunk}, Kontextpräfix included. */
@@ -344,12 +366,12 @@ public class VectorChunkStore implements ChunkMetadataStore {
    */
   private record Single(float[] vector, Integer reportedTokens, boolean tooLong) {}
 
-  private Single embedAlone(String input) {
+  private Single embedAlone(Pinned pinned, String input) {
     long measurementToken = embeddingRateEstimator.started();
     long startedAt = System.nanoTime();
     EmbeddingResponse response;
     try {
-      response = embeddingModel.call(new EmbeddingRequest(List.of(input), OPTIONS));
+      response = pinned.client().call(new EmbeddingRequest(List.of(input), OPTIONS));
     } catch (RuntimeException e) {
       if (EmbeddingInputRejection.isInputTooLong(e)) {
         return new Single(null, null, true);
@@ -360,7 +382,9 @@ public class VectorChunkStore implements ChunkMetadataStore {
     }
     Integer tokens = promptTokens(response);
     return new Single(
-        response.getResult().getOutput(), tokens, tokens != null && tokens >= maxInputTokens());
+        response.getResult().getOutput(),
+        tokens,
+        tokens != null && tokens >= pinned.maxInputTokens());
   }
 
   /** The endpoint's token count for the request, or {@code null} when it reported none. */
@@ -374,13 +398,13 @@ public class VectorChunkStore implements ChunkMetadataStore {
    * Embeds {@code chunks} in batches. An endpoint refusing the batch for length names the chunk:
    * each is then embedded alone, and the first one refused is reported.
    */
-  private List<float[]> embedBatch(List<Document> chunks) {
+  private List<float[]> embedBatch(Pinned pinned, List<Document> chunks) {
     // Measured around the embedding round trip only, never the write: the Folgekosten estimate
     // names the cost of embedding calls, and a slow disk must not make a reindex look expensive.
     long measurementToken = embeddingRateEstimator.started();
     long startedAt = System.nanoTime();
     try {
-      return embeddingModel.embed(chunks, OPTIONS, batchingStrategy);
+      return pinned.client().embed(chunks, OPTIONS, batchingStrategy);
     } catch (IllegalArgumentException e) {
       throw oversizedChunkOr(chunks, e);
     } catch (RuntimeException e) {
@@ -388,7 +412,7 @@ public class VectorChunkStore implements ChunkMetadataStore {
         throw e;
       }
       for (Document chunk : chunks) {
-        if (embedAlone(inputOf(chunk)).tooLong()) {
+        if (embedAlone(pinned, inputOf(chunk)).tooLong()) {
           throw notEmbeddable(chunk, e);
         }
       }

@@ -29,9 +29,12 @@ settings:
     bearings: [DATA_FLOW]
     notes:
       - >-
-        Wird bei der Installation festgelegt; eine ältere Installation übernimmt beim ersten Start
-        einmalig ihre bisherige Konfiguration. Nicht über die Oberfläche änderbar
-      - Bei der Installation gegen die Adressprüfung der Modelle geprüft (OPAA_MODEL_TARGET_VALIDATION_*)
+        Wird bei der Installation festgelegt; die Systemverwaltung ändert sie unter Modelle →
+        Einbettung, bei gleichem Modell als Endpunktwechsel ohne Neueinbettung
+      - >-
+        Bei Installation, Modell- und Endpunktwechsel gegen die Adressprüfung der Modelle geprüft
+        (OPAA_MODEL_TARGET_VALIDATION_*); ein gespeicherter Zugangsschlüssel geht nie an eine
+        andere Adresse mit
   - key: embedding_model.model_identifier
     source: DATABASE
     defaultValue: keine, Angabe der Installation
@@ -40,7 +43,8 @@ settings:
     notes:
       - >-
         Wird bei der Installation mit einer Probeeinbettung festgelegt, die die Vektordimension
-        bestimmt. Nicht über die Oberfläche änderbar
+        bestimmt. Die Systemverwaltung wechselt das Modell unter Modelle → Einbettung; bis zum
+        Abschluss der Neueinbettung ist die Vektorsuche ausgesetzt
   - key: rerank_model.enabled
     source: DATABASE
     defaultValue: "false"

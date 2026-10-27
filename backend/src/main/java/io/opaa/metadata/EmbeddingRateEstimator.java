@@ -128,6 +128,14 @@ public class EmbeddingRateEstimator {
     return 1.0 / configuredChunksPerSecond;
   }
 
+  /**
+   * Seconds per chunk at the configured estimate, for a model nothing was measured with yet, such
+   * as the target of a model change.
+   */
+  public double configuredSecondsPerChunk() {
+    return 1.0 / configuredChunksPerSecond;
+  }
+
   /** Adds this process's measurements to the shared sum before it stops. */
   @PreDestroy
   void flushPending() {

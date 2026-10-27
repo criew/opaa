@@ -115,8 +115,8 @@ class HybridFusionTest {
    */
   @Test
   void aStaleVectorIndexLeavesTheSelectionToTheFullTextPathWithoutAskingTheVectorSearch() {
-    EmbeddingIdentity built = new EmbeddingIdentity("nomic-embed-text", null, 768);
-    EmbeddingIdentity configured = new EmbeddingIdentity("bge-m3", null, 1024);
+    EmbeddingIdentity built = new EmbeddingIdentity("nomic-embed-text", null, 768, 1);
+    EmbeddingIdentity configured = new EmbeddingIdentity("bge-m3", null, 1024, 1);
     indexState.replace(new EmbeddingIndexState.Snapshot(built, configured, configured));
     when(fullTextChunkSearch.search(anyString(), any(), any(), any(), anyInt()))
         .thenReturn(hits(chunk("literal-a", 0.09), chunk("literal-b", 0.05)));

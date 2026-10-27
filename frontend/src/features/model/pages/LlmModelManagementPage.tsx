@@ -12,6 +12,7 @@ import { notify } from '@/shared/stores/notificationStore'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import AreaTabs from '@/shared/ui/AreaTabs'
+import EmbeddingChangeSection from '../components/EmbeddingChangeSection'
 import EmbeddingInfoTable from '../components/EmbeddingInfoTable'
 import LlmModelFormDialog from '../components/LlmModelFormDialog'
 import ModelList from '../components/ModelList'
@@ -112,13 +113,23 @@ function ChatModelsSection() {
   )
 }
 
+/** How often the tab reads the model and the index again while a change or a refill runs. */
+export const EMBEDDING_POLL_INTERVAL_MS = 5000
+
 function EmbeddingInfoSection() {
   const embeddingInfo = useLlmModelStore((s) => s.embeddingInfo)
   const loadEmbeddingInfo = useLlmModelStore((s) => s.loadEmbeddingInfo)
+  const watching = Boolean(embeddingInfo?.index?.stale || embeddingInfo?.index?.running)
 
   useEffect(() => {
     void loadEmbeddingInfo()
   }, [loadEmbeddingInfo])
+
+  useEffect(() => {
+    if (!watching) return
+    const timer = setInterval(() => void loadEmbeddingInfo(), EMBEDDING_POLL_INTERVAL_MS)
+    return () => clearInterval(timer)
+  }, [watching, loadEmbeddingInfo])
 
   return (
     <>
@@ -126,12 +137,20 @@ function EmbeddingInfoSection() {
          below it would be the same statement a second time. The area is named via the tab
          its panel points to. */}
       <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2.5, maxWidth: '80ch' }}>
-        Anders als das Chat-Modell lässt sich das Einbettungsmodell hier nicht ändern: Ein Wechsel
-        macht bestehende Vektoren unvergleichbar und würde eine vollständige Neuindizierung aller
-        Wissensbibliotheken erfordern.
+        Ein Wechsel des Einbettungsmodells macht die bestehenden Vektoren unvergleichbar: OPAA
+        bettet dann alle Abschnitte neu ein, und bis zum Abschluss sucht OPAA nur über die
+        Volltextsuche. Ein anderer Endpunkt desselben Modells geht ohne Neueinbettung.
       </Typography>
       {embeddingInfo ? (
-        <EmbeddingInfoTable info={embeddingInfo} />
+        <>
+          <EmbeddingInfoTable info={embeddingInfo} />
+          <Box sx={{ mt: 3 }}>
+            <EmbeddingChangeSection
+              info={embeddingInfo}
+              onChanged={() => void loadEmbeddingInfo()}
+            />
+          </Box>
+        </>
       ) : (
         <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
           Einbettungskonfiguration wird geladen …

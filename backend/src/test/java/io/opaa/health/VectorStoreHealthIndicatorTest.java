@@ -56,8 +56,8 @@ class VectorStoreHealthIndicatorTest {
   void reportsTheVectorSearchSuspendedWithoutProbingWhileTheIndexIsStale() {
     VectorStore vectorStore = mock(VectorStore.class);
     EmbeddingIndexState state = new EmbeddingIndexState();
-    EmbeddingIdentity built = new EmbeddingIdentity("nomic-embed-text", null, 768);
-    EmbeddingIdentity configured = new EmbeddingIdentity("bge-m3", null, 1024);
+    EmbeddingIdentity built = new EmbeddingIdentity("nomic-embed-text", null, 768, 1);
+    EmbeddingIdentity configured = new EmbeddingIdentity("bge-m3", null, 1024, 1);
     state.replace(new EmbeddingIndexState.Snapshot(built, configured, configured));
     VectorStoreHealthIndicator indicator =
         new VectorStoreHealthIndicator(vectorStore, state, embeddingInfo, models);
