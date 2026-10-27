@@ -831,26 +831,26 @@ Produktionsvorgabe (10 Anmeldungen je Minute) wäre nach Szenario 4 erschöpft. 
 bleibt bei ihren Produktionswerten: Sie ist Prüfgegenstand.
 
 Die Szenarien liegen unter `local-auth/tests/` und sind **nach Dateinamen geordnet**, weil sie eine
-Installation nacheinander weiterbauen (Szenario 1 schaltet ein, was die folgenden brauchen). Jedes
+Installation nacheinander weiterbauen (Szenario 1 richtet ein, was die folgenden brauchen). Jedes
 stellt seinen Ausgangszustand in der eigenen Vorbereitung über dieselben idempotenten Helfer her
 (`fixtures/localAuth.ts`), läuft also auch einzeln (`--grep`).
 
 | Datei | Prüft |
 | --- | --- |
-| `01-erststart.spec.ts` | Anmeldung auf `/login/system`, gleiche Antwort bei falschem Passwort, SMTP-Einrichtung mit belegter Testmail, Einschalten der lokalen Verwaltung und die Weiterleitung von `/login/system` danach |
+| `01-erststart.spec.ts` | Anmeldung auf `/login` nach der Installation, gleiche Antwort bei falschem Passwort, SMTP-Einrichtung mit belegter Testmail, eingeschaltete lokale Verwaltung und die Weiterleitung von `/login/system` |
 | `02-einladung.spec.ts` | Einladung, Link aus der Mail, Passwort setzen, Einmaligkeit des Links, erste Anmeldung, persönlicher Space, Anlagegrund in den eigenen Einstellungen — dazu der erzwungene Wechsel nach einem erzeugten Anfangspasswort |
 | `03-passwort-vergessen.spec.ts` | Gleiche Antwort für unbekannte Adressen und keine Mail, Rücksetzen über den Link, Ende der laufenden Sitzung mit Grund |
 | `04-sperre.spec.ts` | Sperre nach fünf Fehlversuchen, unveränderte Antwort auch bei richtigem Passwort, Entsperren durch die Verwaltung, offener Rücksetzweg trotz Sperre |
-| `05-abschalten.spec.ts` | Abschalten der Verwaltung: Nutzer-Sitzung endet, Verwalter-Sitzung bleibt, `/login/system` weiter erreichbar; Zustand wird am Ende wiederhergestellt |
+| `05-abschalten.spec.ts` | Abschalten der Verwaltung: Nutzer-Sitzung endet, Verwalter-Sitzung bleibt, `/login/system` weiter erreichbar und mit axe geprüft; Zustand wird am Ende wiederhergestellt |
 | `06-selbstregistrierung.spec.ts` | Einschalten nur mit Domänenliste, Registrierung innerhalb und außerhalb der Liste, Bestätigung der Adresse, erste Anmeldung |
 | `07-barrierefreiheit.spec.ts` | axe über die Zustände, die nur dieses Ziel erreicht (Anmeldemaske eingeschaltet, Fehlermeldung, erzwungener Wechsel, die beiden Einmal-Dialoge, Kontenliste) |
 | `08-csp.spec.ts` | Keine CSP-Verstöße: der lokale Aussteller braucht keine zusätzliche Herkunft, anders als der OIDC-Weg |
 | `09-selbstauskunft.spec.ts` | Selbstauskunft nach erneuter Bestätigung der Anmeldung: Abbrechen und falsches Passwort führen zu keinem Download, das richtige zu einem ZIP mit Konto und eigenem Chat; die Seite wird nach der Anmeldung neu geladen, weil erst das über das Refresh-Cookie erneuerte Token kein `auth_time` trägt |
 | `10-neuladen-waehrend-refresh.spec.ts` | Neuladen mitten in der Erneuerung: Zweimal verwirft der Browser Antwort und Cookie der committeten Rotation, die Sitzung bleibt trotzdem bestehen (Gnadenfrist, ADR-0033 Entscheidung 7), und die zweite Sitzung des Kontos bleibt unberührt |
 
-`/login/system` wird in Szenario 1 auf Barrierefreiheit geprüft und nicht in Szenario 7: Die Route
-leitet weiter, sobald die lokale Verwaltung eingeschaltet ist, und Szenario 1 ist das einzige, das
-davor läuft.
+`/login/system` wird in Szenario 5 auf Barrierefreiheit geprüft und nicht in Szenario 7: Die Route
+leitet weiter, solange die lokale Verwaltung eingeschaltet ist, und Szenario 5 ist das einzige, das
+sie abschaltet. Der Abschluss der Installation schaltet sie ein (ADR-0060, Entscheidung 9).
 
 `.github/workflows/local-auth-e2e.yml` fährt den Lauf nächtlich und auf Zuruf
 (`workflow_dispatch`), dazu an einem Pull Request über das Label `local-auth-suite` — kein Required
@@ -868,7 +868,8 @@ Betriebsmodus `oidc` auf einer leeren Datenbank, **ohne** Antwortdatei und mit v
 `OPAA_INSTALLATION_TOKEN` aus `installation.env`; der Stapel bleibt im Installationsmodus. Gegen ihn
 läuft `tests/installation-assistant.spec.ts` mit `E2E_INSTALLATION_TOKEN`, über die Konfiguration
 `installation-assistant/playwright.config.ts` ohne Wiederholung, weil der Abschluss den
-Installationsmodus für immer beendet. In `pnpm test` (Modus `dev`, schon eingerichtet) überspringt
+Installationsmodus für immer beendet. Es endet mit der Anmeldung des ersten Kontos auf der
+regulären Anmeldeseite. In `pnpm test` (Modus `dev`, schon eingerichtet) überspringt
 sich das Szenario ohne Token. Fehlt das Szenario auf einem Branch, endet der Lauf ohne Test grün
 (`--pass-with-no-tests`). Eigene Ports und ein eigenes Subnetz (`172.27.0.0/16`); in
 `local-auth-e2e.yml` teilt das Ziel Compose-Projekt und Images mit `local-auth`.

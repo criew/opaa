@@ -1,10 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { expectNoSeriousA11yViolations } from "../../fixtures/a11y";
 import {
   acceptConfirmDialogs,
   bootstrapAdmin,
   configureSmtp,
-  enableLocalAccounts,
+  openLocalAuthSettings,
   signIn,
   signInSuccessfully,
   smtp,
@@ -15,9 +14,11 @@ import { clearMailbox, waitForMail } from "../../fixtures/mailpit";
  * Scenario 1 of #1543: the first start.
  *
  * The installation this runs against has no OIDC provider at all and exactly one account - the
- * bootstrap administrator of the answer file (ADR-0033, Entscheidung 5; ADR-0060). The journey is the
- * one the handbook chapter describes: sign in on the administrators' own route, set up the mail
- * server, prove it works with a test mail, then switch the local account management on.
+ * bootstrap administrator of the answer file (ADR-0033, Entscheidung 5; ADR-0060). Completing it
+ * with "LOCAL_ONLY" switched the local account management on (ADR-0060, Entscheidung 9), so the
+ * journey starts on the regular sign-in page: sign in, set up the mail server, prove it works with
+ * a test mail. The administrators' own route, which only renders while the management is off, is
+ * checked in 05-abschalten.spec.ts.
  *
  * It runs first by file name on purpose: every later scenario needs a reachable mail server and the
  * management switched on, and calls the same idempotent helpers in its own setup so it stays
@@ -28,56 +29,31 @@ test.describe("Erststart: Systemverwalter, SMTP, Schalter", () => {
     await acceptConfirmDialogs(page);
   });
 
-  test("der Systemverwalter meldet sich auf /login/system an", async ({ page }) => {
-    // While the local account management is off, /login is the OIDC page - and there is no provider,
-    // so it offers nothing at all. The quiet link to the administrators' route is the only way in.
-    await page.goto("/login");
+  test("der Systemverwalter meldet sich nach der Installation auf /login an", async ({ page }) => {
+    // The installation left the management on: /login carries the password form, and the
+    // administrators' route sends the visitor there.
+    await page.goto("/login/system");
+    await expect(page).toHaveURL(/\/login(?:$|[?#])/);
+    await expect(page.getByRole("form", { name: "Konto dieser Installation" })).toBeVisible();
     await expect(
       page.getByRole("link", { name: "Anmeldung für die Systemverwaltung" }),
-    ).toBeVisible();
-
-    await page.goto("/login/system");
-    await expect(
-      page.getByRole("form", { name: "Anmeldung für die Systemverwaltung" }),
-    ).toBeVisible();
-    await expect(
-      page.getByText(
-        "Nur für lokale Systemverwalter-Konten. Alle anderen Konten melden sich über die reguläre Anmeldung an.",
-      ),
-    ).toBeVisible();
-
-    // The only scenario that can check this route: it redirects to /login as soon as the management
-    // is on, which the last test of this file switches. The scheme is set before loading, never
-    // switched on a rendered page - see the first scenario of 07-barrierefreiheit.spec.ts for why.
-    for (const scheme of ["light", "dark"] as const) {
-      await page.emulateMedia({ colorScheme: scheme });
-      await page.goto("/login/system");
-      await expect(page.getByLabel("E-Mail-Adresse")).toBeVisible();
-      await expectNoSeriousA11yViolations(page, `Anmeldung für die Systemverwaltung (${scheme})`);
-    }
-    await page.emulateMedia({ colorScheme: "light" });
+    ).toHaveCount(0);
 
     // A wrong password answers the same way every rejected local sign-in does (ADR-0033,
     // Entscheidung 9) - it never says whether the address exists.
-    await signIn(page, bootstrapAdmin.email, "völlig-falsches-passwort", {
-      route: "/login/system",
-    });
+    await signIn(page, bootstrapAdmin.email, "völlig-falsches-passwort");
     await expect(
       page.getByText("Anmeldung nicht möglich. Prüfen Sie E-Mail-Adresse und Passwort."),
     ).toBeVisible();
 
     // The answer file sets the password, so the installation forces no change and the session
     // starts right away.
-    await signInSuccessfully(page, bootstrapAdmin.email, bootstrapAdmin.password, {
-      route: "/login/system",
-    });
+    await signInSuccessfully(page, bootstrapAdmin.email, bootstrapAdmin.password);
     await expect(page).toHaveURL(/\/chat/);
   });
 
   test("SMTP wird eingerichtet und mit einer Testmail belegt", async ({ page }) => {
-    await signInSuccessfully(page, bootstrapAdmin.email, bootstrapAdmin.password, {
-      route: "/login/system",
-    });
+    await signInSuccessfully(page, bootstrapAdmin.email, bootstrapAdmin.password);
     await clearMailbox();
     await configureSmtp(page);
 
@@ -99,11 +75,13 @@ test.describe("Erststart: Systemverwalter, SMTP, Schalter", () => {
     );
   });
 
-  test("die lokale Benutzerverwaltung wird eingeschaltet", async ({ page, browser }) => {
-    await signInSuccessfully(page, bootstrapAdmin.email, bootstrapAdmin.password, {
-      route: "/login/system",
-    });
-    await enableLocalAccounts(page);
+  test("die lokale Benutzerverwaltung ist nach der Installation eingeschaltet", async ({
+    page,
+    browser,
+  }) => {
+    await signInSuccessfully(page, bootstrapAdmin.email, bootstrapAdmin.password);
+    await openLocalAuthSettings(page);
+    await expect(page.getByRole("switch", { name: "Lokale Anmeldung aktiv" })).toBeChecked();
 
     // The switch is the `enabled` of the LOCAL provider row (Entscheidung 4), and the public
     // configuration endpoint is what the sign-in page reads.
@@ -111,7 +89,7 @@ test.describe("Erststart: Systemverwalter, SMTP, Schalter", () => {
     expect(config.ok()).toBeTruthy();
     expect(await config.json()).toMatchObject({ localAccounts: { enabled: true } });
 
-    // From here on /login carries the password form, and /login/system redirects to it - asserted
+    // /login carries the password form, and /login/system redirects to it - asserted
     // from a context without a session, because a signed-in browser is sent into the app instead.
     const visitorContext = await browser.newContext();
     const visitor = await visitorContext.newPage();
