@@ -203,6 +203,21 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
     expect(discoveries).toHaveLength(0)
   })
 
+  // regression guard: a typed key never goes to a template on its own
+  it('does not send a typed key to a template chosen afterwards', async () => {
+    const discoveries = recordRequests('/api/v1/admin/models/discover')
+    const user = userEvent.setup()
+    const { dialog } = renderCreate()
+
+    await user.type(dialog.getByLabelText('API-Schlüssel (optional)'), 'sk-fuer-openai')
+    await chooseTemplate(user, dialog, /^Anthropic/)
+
+    expect(dialog.getByRole('combobox', { name: /Basis-Adresse/ })).toHaveValue(
+      'https://api.anthropic.com/v1',
+    )
+    expect(discoveries).toHaveLength(0)
+  })
+
   it('names a missing key and still allows typing the identifier by hand', async () => {
     const user = userEvent.setup()
     const { dialog, onSaved } = renderCreate()

@@ -434,6 +434,9 @@ describe('InstallationPage', () => {
 
       await user.click(screen.getByRole('radio', { name: /Ollama/ }))
       expect(field('Basis-Adresse')).toHaveValue('http://ollama:11434/v1')
+      // Choosing a provider fetches nothing; leaving the address does.
+      expect(mockDiscoveryRequests()).toHaveLength(0)
+      await user.click(field('Basis-Adresse'))
       await user.tab()
 
       expect(await screen.findByText(/4 Modelle gefunden\./)).toBeInTheDocument()
@@ -483,6 +486,102 @@ describe('InstallationPage', () => {
         'Die Kennung lässt sich trotzdem von Hand eintragen.',
       )
       expect(modelField()).toBeEnabled()
+    })
+
+    // regression guard: a typed key never follows the address to another provider
+    it('never sends a typed key to the provider chosen next', async () => {
+      const user = userEvent.setup()
+      await openChatModelStep(user)
+
+      await user.click(screen.getByRole('radio', { name: /^OpenAI/ }))
+      const key = screen.getByLabelText(/API-Schlüssel/, { selector: 'input' })
+      await user.type(key, 'sk-fuer-openai')
+      await user.click(screen.getByRole('radio', { name: /Anthropic/ }))
+      await user.keyboard('{ArrowLeft}')
+
+      expect(field('Basis-Adresse')).toHaveValue('https://api.openai.com/v1')
+      expect(key).toHaveValue('')
+      const leaked = mockDiscoveryRequests().filter(
+        (request) =>
+          request.apiKey === 'sk-fuer-openai' && !request.baseUrl.includes('api.openai.com'),
+      )
+      expect(leaked).toEqual([])
+    })
+
+    it('lets the arrow keys move through the providers without fetching or leaving', async () => {
+      const user = userEvent.setup()
+      await openChatModelStep(user)
+      const ollama = screen.getByRole('radio', { name: /Ollama/ })
+      ollama.focus()
+
+      await user.keyboard('{ArrowRight}')
+      await user.keyboard('{ArrowLeft}')
+      await new Promise((resolve) => setTimeout(resolve, 20))
+
+      expect(ollama).toHaveFocus()
+      expect(ollama).toHaveAttribute('aria-checked', 'true')
+      expect(field('Basis-Adresse')).toHaveValue('http://ollama:11434/v1')
+      expect(mockDiscoveryRequests()).toHaveLength(0)
+    })
+
+    it('selects the Ollama host for overwriting once the address field has the focus', async () => {
+      const user = userEvent.setup()
+      await openChatModelStep(user)
+
+      await user.click(screen.getByRole('radio', { name: /Ollama/ }))
+      const address = field('Basis-Adresse') as HTMLInputElement
+      address.focus()
+
+      await waitFor(() => {
+        expect(address.value.slice(address.selectionStart!, address.selectionEnd!)).toBe('ollama')
+      })
+    })
+
+    it('forgets the provider once the address is cleared', async () => {
+      const user = userEvent.setup()
+      await openChatModelStep(user)
+
+      await user.click(screen.getByRole('radio', { name: /Ollama/ }))
+      await user.clear(field('Basis-Adresse'))
+
+      for (const radio of screen.getAllByRole('radio')) {
+        expect(radio).toHaveAttribute('aria-checked', 'false')
+      }
+      expect(field('Basis-Adresse')).toHaveAccessibleDescription(/So, wie das Backend/)
+    })
+
+    it('names the limit of discoveries and keeps the input by hand', async () => {
+      server.use(
+        http.post('/api/v1/installation/steps/:step/discover', () =>
+          HttpResponse.json(
+            { error: 'Zu viele Anfragen', status: 429, timestamp: new Date().toISOString() },
+            { status: 429, headers: { 'Retry-After': '120' } },
+          ),
+        ),
+      )
+      const user = userEvent.setup()
+      await openChatModelStep(user)
+
+      await user.type(field('Basis-Adresse'), 'http://vllm:8000/v1')
+      await user.tab()
+
+      expect(await screen.findByText(/Zu viele Modellabrufe/)).toHaveTextContent(
+        /2 Minuten.*von Hand/,
+      )
+    })
+
+    it('announces the outcome in one lasting status region', async () => {
+      const user = userEvent.setup()
+      await openChatModelStep(user)
+      const region = screen
+        .getByText(/Anbieter wählen oder Basis-Adresse eintragen/)
+        .closest('[role="status"]')
+
+      await user.type(field('Basis-Adresse'), 'http://kaputt:11434/v1')
+      await user.tab()
+
+      await waitFor(() => expect(region).toHaveTextContent(/Host konnte nicht gefunden/))
+      expect(region).toBeInTheDocument()
     })
 
     it('uses the stored key only for its own address', async () => {
@@ -573,6 +672,7 @@ describe('InstallationPage', () => {
       const providers = screen.getByRole('radiogroup', { name: 'Anbieter' })
       expect(within(providers).queryByRole('radio', { name: /Anthropic/ })).not.toBeInTheDocument()
       await user.click(within(providers).getByRole('radio', { name: /Ollama/ }))
+      await user.click(field('Basis-Adresse'))
       await user.tab()
       await screen.findByText(/Modelle gefunden\./)
       await user.click(screen.getByRole('combobox', { name: 'Modell-Kennung' }))
