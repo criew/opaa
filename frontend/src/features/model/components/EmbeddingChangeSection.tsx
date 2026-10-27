@@ -53,6 +53,12 @@ function fieldErrorsOf(err: unknown): Record<string, string> {
   return result
 }
 
+/** Whether the server refused the call for its rate limit. */
+function isRateLimited(err: unknown): boolean {
+  const cause = err instanceof Error ? err.cause : undefined
+  return cause instanceof AxiosError && cause.response?.status === 429
+}
+
 function messageOf(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback
 }
@@ -243,6 +249,10 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
   const [probing, setProbing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [result, setResult] = useState<EmbeddingModelProbeResponse | null>(null)
+  // Exhausted probes do not lock out the endpoint change: it has its own limit and probes itself.
+  const [probesExhausted, setProbesExhausted] = useState(false)
+  const offerEndpointChange =
+    probesExhausted || (result?.succeeded === true && result.kind === 'ENDPOINT_CHANGE')
   const keepAllowed = Boolean(info.apiKeySet) && sameEndpoint(storedBaseUrl, baseUrl)
   const effectiveChoice: KeyChoice = keyChoice === 'keep' && !keepAllowed ? 'new' : keyChoice
   const prefix = `embedding-${mode}`
@@ -270,7 +280,9 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
     setResult(null)
     try {
       setResult(await probeEmbeddingModelChange(draft()))
+      setProbesExhausted(false)
     } catch (err) {
+      setProbesExhausted(isRateLimited(err))
       setErrors(fieldErrorsOf(err))
       setError(messageOf(err, 'Probeeinbettung fehlgeschlagen'))
     } finally {
@@ -428,6 +440,12 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
           slotProps={{ htmlInput: { inputMode: 'numeric' } }}
         />
         {error && <Alert severity="error">{error}</Alert>}
+        {probesExhausted && (
+          <Alert severity="info">
+            Ohne Probeeinbettung lässt sich nur der Endpunkt ändern; OPAA prüft dabei selbst, ob er
+            wie {mode === 'change' ? 'das aktive' : 'das neue'} Modell einbettet.
+          </Alert>
+        )}
         {result && !result.succeeded && <Alert severity="error">{result.message}</Alert>}
         {result?.succeeded && result.kind === 'ENDPOINT_CHANGE' && (
           <Alert severity="info">
@@ -457,7 +475,7 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
           >
             Probeeinbettung
           </BusyButton>
-          {result?.succeeded && result.kind === 'ENDPOINT_CHANGE' && (
+          {offerEndpointChange && (
             <BusyButton
               variant="contained"
               busy={saving}

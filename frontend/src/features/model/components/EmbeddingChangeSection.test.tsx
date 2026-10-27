@@ -99,6 +99,32 @@ describe('EmbeddingChangeSection', () => {
     expect(moved[0]).toMatchObject({ baseUrl: 'http://ersatz:11434/v1', model: 'nomic-embed-text' })
   })
 
+  // regression guard: the endpoint change has a limit of its own and is still offered once the
+  // probes are exhausted
+  it('offers the endpoint change when the probes are exhausted', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.post('/api/v1/admin/models/embedding/probe', () =>
+        HttpResponse.json(
+          { message: 'Zu viele Probeeinbettungen; bitte später erneut versuchen.' },
+          { status: 429 },
+        ),
+      ),
+    )
+    const moved = capture('put', '/api/v1/admin/models/embedding/endpoint', mockEmbeddingInfo.index)
+    renderSection()
+    const address = screen.getByLabelText(/Basis-Adresse/)
+    await user.clear(address)
+    await user.type(address, 'http://ersatz:11434/v1')
+    await user.click(screen.getByRole('button', { name: 'Probeeinbettung' }))
+
+    await user.click(await screen.findByRole('button', { name: 'Endpunkt ändern' }))
+
+    await waitFor(() => expect(moved).toHaveLength(1))
+    expect(moved[0]).toMatchObject({ baseUrl: 'http://ersatz:11434/v1', model: 'nomic-embed-text' })
+    expect(screen.queryByRole('button', { name: 'Wechsel starten' })).not.toBeInTheDocument()
+  })
+
   it('keeps a stored key only for the same endpoint', async () => {
     const user = userEvent.setup()
     const probed = capture('post', '/api/v1/admin/models/embedding/probe', mockEmbeddingModelProbe)
