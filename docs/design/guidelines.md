@@ -299,9 +299,14 @@ Gruppen deutlich getrennt (24–48).
 ### 4.4 Fokus
 
 Sichtbarer Fokusring für jedes interaktive Element: eine **deckende Linie von 2 px in `accent`
-mit 2 px Abstand** zum Element (`outline: 2px solid` plus `outline-offset: 2px`), zusätzlich zum
-Rahmen, in beiden Schemata gleich. Einzige Abweichung: Ein Formularfeld mit Fehler trägt Rahmen
-und Ring in `danger` (5.2). Fokus wird nie unterdrückt, nur gestaltet.
+mit 2 px Abstand** zum Element (`outline: 2px solid` plus `outline-offset: 2px`), in beiden
+Schemata gleich. Fokus wird nie unterdrückt, nur gestaltet.
+
+**Ausnahme: umrandete Eingaben.** Formularfelder, Auswahllisten, Autocomplete und der Eingaberahmen
+des Chats zeigen den Fokus nur über ihren eigenen Rahmen: 2 px in `accent`, mit Fehler 2 px in
+`danger` (5.2), ohne Ring. Ein Ring um das Feld liefe durch das Label, das auf der oberen Kante
+sitzt. Der Rahmen erreicht als `accent` bzw. `danger` 4,5:1 gegen `bg-1` bis `bg-3` und wechselt
+gegenüber der Ruhe Farbe und Breite.
 
 Warum so:
 
@@ -312,8 +317,10 @@ Warum so:
   Fläche an und blieb mit 32 % Deckung bei etwa 1,6:1.
 - **Mit Abstand, weil Akzentflächen den Ring sonst schlucken.** Auf einer primären Schaltfläche
   träfe `accent` auf `accent-surface`, also auf sich selbst. Der Abstand zeigt den Grund, auf dem
-  das Element steht, und der Ring grenzt innen wie außen an diesen Grund. Gefüllte Hinweise und
-  Popup-Benachrichtigungen legen für Elemente in ihnen einen Saum in `bg-1` um den Ring.
+  das Element steht, und der Ring grenzt innen wie außen an diesen Grund. In gefüllten Hinweisen
+  und Popup-Benachrichtigungen legt MUI unter Abstand und Ring einen 4 px breiten Schatten in
+  `bg-1`: Der Abstand und die Innenkante des Rings liegen auf `bg-1`, die Außenkante grenzt an die
+  Füllfarbe des Hinweises. Diesen Fall deckt der Kontrasttest nicht ab.
 - **Kein weicher Außenring.** Ein Schleier außen an der Linie senkt deren Kontrast genau an der
   Kante, an der er gemessen wird; in `danger` fiel er dort unter 3:1.
 - **Nach innen, wo ein Behälter abschneidet.** Menüeinträge, Listeneinträge, Reiter, Optionen
@@ -321,8 +328,9 @@ Warum so:
   Fläche (negativer Abstand); er grenzt dann an deren eigene Füllung, auch getönt bei Auswahl oder
   Hover, und hält dort ebenfalls 3:1. Ein Behälter, der Text kürzt, lässt um seinen Inhalt
   4 px Raum für den Ring.
-- **Ohne Layoutversatz.** `outline` nimmt keinen Platz ein; Rahmen ändern ihre Breite nur dort,
-  wo das Feld sie absolut positioniert (5.2).
+- **Ohne Layoutversatz.** `outline` nimmt keinen Platz ein. Der Rahmen eines Felds ist absolut
+  positioniert und wird ohne Versatz breiter; der Eingaberahmen des Chats legt das zweite Pixel
+  als inneren Schatten an (`focusFrameStyle`).
 
 Umsetzung: `focusVisible` im MUI-Theme und `*:focus-visible` für alle übrigen Elemente
 (`frontend/src/shared/theme/theme.ts`), Werte in `tokens.ts`; Nachweis gegen alle Flächenrollen in
@@ -365,11 +373,12 @@ schwebendes Label im Feld). Das Feld liegt auf `bg-1` mit `border-strong`, Radiu
 Haarlinien-Schatten und Höhe 40 px — keine gefüllte Grau-Fläche; im Dunkel-Schema hebt sich
 das Feld stattdessen eine Flächenstufe ab (`bg-2`, ohne Schatten). Suchfelder tragen keine
 sichtbare Beschriftung, sondern Platzhalter plus `aria-label` (Muster: Mockup-Suchfelder).
-Hilfetext unterhalb in `fg-3`. Fokus: Rahmen in `accent` plus Fokusring aus 4.4. Fehler:
+Hilfetext unterhalb in `fg-3`. Fokus: Rahmen 2 px in `accent`, ohne Fokusring (Ausnahme aus 4.4).
+Fehler:
 Rahmen und Meldungstext in Gefahr, Meldung programmatisch dem Feld zugeordnet
 (Details: [Barrierefreiheits-Richtlinie](./accessibility.md), 2.7). Der Fehlerrahmen bleibt
 auch bei Hover und Fokus in `danger`; den Fokus zeigt dann ein 2 px breiter Rahmen in `danger`
-plus der deckende Fokusring aus 4.4 in `danger`, für Textfelder, Auswahllisten und Autocomplete
+ohne Fokusring, für Textfelder, Auswahllisten und Autocomplete
 gleichermaßen (`frontend/src/shared/theme/fieldErrorFocus.test.tsx`). Ein deaktiviertes Feld
 behält auch mit Fehler den grauen Rahmen des deaktivierten Zustands.
 Pflichtfelder werden nicht mit Sternchen markiert — optionale Felder tragen „(optional)".

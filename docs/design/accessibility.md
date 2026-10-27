@@ -93,8 +93,9 @@ Formularregeln in einem PR ohne Formular) entfallen ersatzlos — alles andere w
 - [ ] UI-Komponenten und grafische Kennzeichen (Rahmen von Eingabefeldern, Icons,
       Fokusring, Diagramme) ≥ 3:1. Der Fokusring ist deckend und hält 3:1 gegen jede Fläche, an
       die er grenzt: Grund, erhöhte und gedämpfte Fläche, getönte Auswahl- und Hinweisflächen;
-      an Akzentflächen über den Abstand zum Element ([Guidelines 4.4](./guidelines.md)). Eigene
-      Fokusstile mit Transparenz sind ausgeschlossen.
+      an Akzentflächen über den Abstand zum Element ([Guidelines 4.4](./guidelines.md)).
+      Umrandete Eingaben zeigen den Fokus stattdessen über ihren 2 px breiten Rahmen in `accent`
+      bzw. `danger` (≥ 4,5:1). Eigene Fokusstile mit Transparenz sind ausgeschlossen.
 - [ ] Beide Farbschemata geprüft. Die Rollen-Kombinationen aus
       [Guidelines 2.2](./guidelines.md) gelten als nachgewiesen; jede andere Kombination
       wird im PR belegt.
