@@ -291,8 +291,11 @@ eines davon ab, ist der Index veraltet.
   nach Umschalten oder Verwerfen; das Handbuch sagt das. Eine ältere Instanz kennt die Generation
   nicht, ihr Startabgleich verglich nur den Modellnamen und könnte einen Wechsel unter gleichem
   Namen verwerfen. Schaltet sie um, bleibt die Zielgeneration ohne Zielmodell stehen; sie zählt
-  nicht als Zielspalte, und der nächste Startabgleich übernimmt sie als Generation der
-  Vektorspalte, wenn Modell und Dimension passen, ohne neue Neueinbettung.
+  nicht als Zielspalte. Sobald der Bus die Änderung meldet, spätestens beim Start, übernimmt der
+  Abgleich der neuen Version sie als Generation der Vektorspalte, wenn Modell und Dimension passen
+  und der Lauf abgeschlossen ist, ohne neue Neueinbettung. Hat der Abgleich einer älteren Instanz
+  die Zielspalte verworfen, etwa nach einem Rollback, endet kein Lauf abgeschlossen; der Index
+  bleibt dann veraltet.
 - **Entscheidung gegen die Zeile unter dem Lock.** Bestätigung und Endpunktwechsel prüfen und
   vergleichen vor der Transaktion, weil die Probe auf das Netz wartet. Unter dem Schemalock muss
   die Modellzeile noch die sein, gegen die geprüft wurde (Generation, Modell, Adresse, Schlüssel,
@@ -311,7 +314,8 @@ eines davon ab, ist der Index veraltet.
   oder Tabelle ändern, und warten deshalb auf laufende Schreiber; ein Schreiber schreibt nur in die
   Spalte, die zu seiner Generation gehört. Die Warteschlange ist fair: Ein Schreiber, der nach einem
   wartenden Wechsel kommt, wartet hinter ihm, sodass ein steter Strom von Schreibern den Wechsel
-  nicht aushungert. Nach der Wartegrenze antwortet der Wechsel `409`. Passt keine, rollt die ganze
+  nicht aushungert. Die Wartegrenze gilt je Warteschritt; ist sie in einem Schritt erreicht,
+  antwortet der Wechsel `409`. Passt keine, rollt die ganze
   Transaktion zurück, die Zeile des Volltexts eingeschlossen. Eine Instanz, die Busereignisse verpasst hat, schreibt so
   auch über ein Verwerfen und eine erneute Bestätigung hinweg keinen Vektor in die Spalte einer
   anderen Generation. Das Umschalten wartet mit seiner Tabellensperre auf laufende Schreiber; was

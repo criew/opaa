@@ -96,25 +96,15 @@ erhobener Anker friert den dann aktiven Endpunkt ein, auch wenn der schon eine a
 
 ### 6. Mehrinstanzbetrieb: gleiche Version, Generation beim Schreiben und Lesen
 
-Bestätigung, Verwerfen und Endpunktwechsel gelingen nur, wenn alle lebenden Instanzen dieselbe
-Version melden, verglichen ohne Build-Metadaten. Ein Release-Rollback ist während eines Wechsels
-nicht vorgesehen, erst nach Umschalten oder Verwerfen. Modellzeile und Spaltenstand erfahren die
-Instanzen über den Invalidierungsbus (ADR-0053, Entscheidung 5); bindend ist aber die Datenbank:
-Schreibanweisung und Vektorabfrage wirken nur, wenn die Generation ihrer Einbettung im
-Index-Datensatz die der gewählten Spalte ist. Sonst bettet der Schreiber neu ein, und die
-Vektorsuche liefert nichts. Ein Schreiber hält dafür den Schemalock der Vektortabelle geteilt bis
-zum Commit; Bestätigung, Verwerfen, Umschalten und Startabgleich nehmen ihn exklusiv, bevor sie
-Datensatz oder Tabelle anfassen. Die Warteschlange der Datenbank ist fair: Wer nach einem wartenden
-Wechsel kommt, wartet hinter ihm. Die Versionsprüfung wiederholt sich unter dem Lock. Schaltet eine
-ältere Instanz während eines Rolling Updates um, bleibt die Zielgeneration ohne Zielmodell stehen;
-sie zählt nicht als Zielspalte, und der nächste Startabgleich übernimmt sie als Generation der
-Vektorspalte, wenn Modell und Dimension passen. Nachläufe (Kontextpräfix, Nachzug, Änderung eines
-Metadatenschemas) bleiben während eines Wechsels erlaubt. Begründung: Eine Instanz, die
-Busereignisse verpasst, darf auch über Verwerfen und erneute Bestätigung hinweg keinen Vektor in die
-Spalte einer anderen Generation schreiben; eine ältere Instanz kennt die Generation nicht. Eine
-Sperre der Indexzeile mit `FOR SHARE` reichte nicht: Neue Leser bekommen sie neben einem wartenden
-Schreiber sofort, ein steter Strom von Schreibern hungert den Wechsel aus, und Startabgleich und
-Schreiber nehmen Zeile und Tabelle in verschiedener Reihenfolge.
+Bestätigung, Verwerfen und Endpunktwechsel verlangen dieselbe Version aller lebenden Instanzen,
+ohne Build-Metadaten, geprüft auch unter dem Lock; ein Release-Rollback erst nach Umschalten oder
+Verwerfen. Bindend ist die Datenbank, nicht der Bus: Schreiben und Vektorabfrage wirken nur, wenn
+die Generation ihrer Einbettung im Index-Datensatz die der gewählten Spalte ist. Schreiber halten
+den Schemalock der Vektortabelle geteilt bis zum Commit, Wechsel, Umschalten und Startabgleich
+exklusiv; die Warteschlange ist fair. Eine Zielgeneration ohne Zielmodell nach dem abgeschlossenen
+Umschalten einer älteren Instanz übernimmt der Abgleich, sobald der Bus sie meldet. Nachläufe
+bleiben während eines Wechsels erlaubt. Begründung: Eine Instanz, die Busereignisse verpasst, darf
+keinen Vektor in die Spalte einer anderen Generation schreiben; eine ältere kennt keine Generation.
 
 ### 7. Vorschau ohne Inhalte und ohne Preis, mit festen Grenzen
 
@@ -154,6 +144,8 @@ Ausfall dürfen verbrauchte Proben weder Endpunktwechsel noch Verwerfen aussperr
 - Verwerfen ohne Nachfüllen — ließe die seit der Bestätigung geschriebenen Chunks bis zur nächsten
   Indexierung ihres Dokuments ohne Vektor.
 - Indexbau beim Verwerfen abbrechen — braucht das Beenden einer fremden Datenbanksitzung.
+- Indexzeile `FOR SHARE` statt geteiltem Schemalock — neue Share-Anforderer überholen den wartenden
+  Wechsel und hungern ihn aus, und Startabgleich und Schreiber sperren in anderer Reihenfolge.
 - Anker bei jedem Endpunktwechsel neu setzen — ließe eine schrittweise Drift zu (Entscheidung 5).
 - Sperre der Nachläufe während eines Wechsels — sie schreiben bereits in die Zielspalte, die Sperre
   schützte nichts.
