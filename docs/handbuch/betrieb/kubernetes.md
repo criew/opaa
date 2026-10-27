@@ -150,7 +150,7 @@ an; alle Pods erreicht `-l app.kubernetes.io/component=backend`, für Protokolle
 | Originalablage | ein vorher angelegter Bucket in einem S3-kompatiblen Objektspeicher mit Zugangs- und Geheimschlüssel, oder eine StorageClass für ein Volume mit `ReadWriteOnce` |
 | Modelle | ein OpenAI-kompatibler Endpunkt für die Einbettung und einer für den Chat, wahlweise im Cluster; optional ein Rerank-Endpunkt (siehe [LLM-Anbieter](modelle.md#llm-anbieter)) |
 | Identitätsanbieter | optional ein OIDC-Anbieter mit einem öffentlichen Client; ohne ihn melden sich Personen mit lokalen Konten an |
-| Mailserver | optional; wird nach der Installation in der Oberfläche eingerichtet |
+| Mailserver | optional; im Einrichtungs-Assistenten (ein Server im Cluster-Netz braucht dann `installationMailTargetAllowlist`) oder nach der Installation in der Oberfläche |
 | Postfach | eine zustellbare Adresse für das erste Systemverwalter-Konto, am besten ein Funktionspostfach der IT |
 
 Für eine Erprobung ohne eigene Datenbank bringt der Chart eine Erprobungsdatenbank mit (siehe
@@ -431,7 +431,8 @@ startet auch ohne die Dateien.
 
 ### 8. Nach der Ersteinrichtung
 
-- **In der Oberfläche einrichten:** Mailserver ([E-Mail-Versand](e-mail.md)),
+- **In der Oberfläche einrichten:** Mailserver ([E-Mail-Versand](e-mail.md)), sofern nicht schon im
+  Assistenten eingetragen,
   weitere Identitätsanbieter, weitere Chat-Modelle, Verzeichnisabgleich und der Zugriff externer KI-Werkzeuge.
 - **Client-Adresse richtigstellen:** `trustedProxyCidrs` und die Eingangs-Policy des Frontends setzen
   (siehe [Proxy-Kette und Client-Adresse](#proxy-kette-und-client-adresse)). Bis dahin teilen sich

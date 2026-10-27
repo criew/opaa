@@ -128,13 +128,18 @@ Moment noch umlenken. Einen festen Endpunkt im eigenen Netz trifft das nicht.
 **Adressprüfung der Mailserver.** Aus demselben Grund prüft die Installation den Mailserver des
 Schritts E-Mail-Versand beim Speichern und unmittelbar vor der Prüfung: Ein Server, der in einen
 internen, Loopback- oder Link-Local-Bereich auflöst, wird abgelehnt, ohne dass eine Verbindung
-entsteht. Ein Mailserver im eigenen Netz, der Regelfall, braucht dafür Host oder Host und Port in
-`OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST`, im Compose-Stapel etwa `mailpit:1025`. Wer ihn nicht
-freigeben will, überspringt den Schritt und trägt den Server nach der Installation unter
-„Administration → E-Mail“ ein; dort findet keine Adressprüfung statt. Die Prüfung wartet höchstens so
-lange, wie `OPAA_MAIL_CONNECT_TIMEOUT`, `OPAA_MAIL_READ_TIMEOUT` und `OPAA_MAIL_WRITE_TIMEOUT`
-erlauben ([E-Mail-Versand](e-mail.md)), und Testnachrichten sind je Instanz begrenzt (siehe
-[Konfiguration](#konfiguration)).
+entsteht. Ein Mailserver im eigenen Netz, der Regelfall, braucht dafür einen Eintrag in
+`OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST`, am besten als `host:port`, damit kein anderer Port des
+Hosts erreichbar wird. Ohne Eintrag nimmt der Assistent nur die üblichen SMTP-Ports an (siehe
+[Konfiguration](#konfiguration)); ein anderer Port, etwa `mailpit:1025` im Compose-Stapel, braucht
+einen Eintrag mit genau diesem Host und Port. Wer den Server nicht freigeben will, überspringt den
+Schritt und trägt ihn nach der Installation unter „Administration → E-Mail“ ein; dort findet keine
+Adressprüfung statt. Eine gescheiterte Prüfung nennt nur, ob der Server nicht erreichbar ist, die
+Verschlüsselung scheiterte, die Anmeldung abgelehnt wurde oder er nicht wie ein Mailserver antwortet;
+die genaue Ursache steht im Log (WARN „Installation mail check failed“), ohne Passwort. Die Prüfung
+wartet höchstens so lange, wie `OPAA_MAIL_CONNECT_TIMEOUT`, `OPAA_MAIL_READ_TIMEOUT` und
+`OPAA_MAIL_WRITE_TIMEOUT` erlauben ([E-Mail-Versand](e-mail.md)); Prüfungen und Testnachrichten
+sind je Instanz begrenzt.
 
 **Der Abschluss** gelingt, wenn jeder Pflichtschritt und jeder gespeicherte optionale Schritt
 erfolgreich geprüft ist, und genau einmal, auch wenn zwei Instanzen ihn zugleich versuchen. Er legt das erste Konto als
@@ -289,12 +294,18 @@ Prüfungen, alles oder nichts.
 | `401` „Das Installations-Token fehlt oder ist ungültig." | Token fehlt oder falsch | Token aus dem Log oder `OPAA_INSTALLATION_TOKEN` nehmen |
 | `400` am Feld Basis-Adresse „Die Basis-Adresse ist nicht zugelassen oder nicht erreichbar.“ mit Hinweis auf `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`; im Assistenten dieselbe Meldung beim Modellabruf | die Modelladresse liegt in einem gesperrten Bereich, oder ihr Name lässt sich nicht auflösen; welches von beidem, nennt die WARN-Zeile „Model address … refused“ im Log (`TargetAddressBlockedException` oder `UnknownTargetHostException`) | erst die Schreibweise des Hosts prüfen, dann Host und Port in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` freigeben |
 | `400` am Feld Zugangsschlüssel „Die Basis-Adresse hat sich geändert …" | der gespeicherte Schlüssel folgt keiner geänderten Adresse | Schlüssel neu eingeben oder Feld leeren |
-| `400` am Feld Server „Der Mailserver ist nicht zugelassen oder nicht erreichbar …“ | der Mailserver liegt in einem gesperrten Bereich, oder sein Name lässt sich nicht auflösen; welches von beidem, nennt die WARN-Zeile „Mail server … refused“ im Log | Schreibweise prüfen, dann Host und Port in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` freigeben, oder den Schritt überspringen und den Server später in der Verwaltung eintragen |
+| `400` am Feld Server „Der Mailserver ist nicht zugelassen oder nicht erreichbar …“ | der Mailserver liegt in einem gesperrten Bereich, oder sein Name lässt sich nicht auflösen; welches von beidem, nennt die WARN-Zeile „Mail server … refused“ im Log | Schreibweise prüfen, dann `host:port` in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` freigeben, oder den Schritt überspringen und den Server später in der Verwaltung eintragen |
+| `400` am Feld Port „Im Assistenten sind die Ports 25, 465, 587 und 2525 zugelassen …“ | ein anderer Port ohne Eintrag mit genau diesem `host:port` | Port prüfen, oder `host:port` in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` eintragen |
+| `400` am Feld Server, Absenderadresse, Passwort oder Testnachricht | Leer- oder Steuerzeichen im Server; mehr als ein Postfach in einer Adresse (`,` `;` `<` `>` `"`); `***` als Passwort, das in der Verwaltung „unverändert“ bedeutet | Eingabe korrigieren |
 | `400` am Feld Passwort „Server, Port, Zugangsname oder Verschlüsselung ändern sich …“ | das gespeicherte Passwort des Mailservers folgt keinem neuen Ziel | Passwort neu eingeben oder löschen |
-| Prüfung des E-Mail-Versands „Die Verbindung zum Mailserver ist fehlgeschlagen …“ | Server nicht erreichbar, falscher Port, STARTTLS nicht angeboten oder Anmeldung abgelehnt; der Grund folgt in der Meldung | Angaben korrigieren und erneut prüfen, oder den Schritt überspringen ([Fehlerbilder des E-Mail-Versands](e-mail.md#fehlerbilder)) |
+| Prüfung des E-Mail-Versands „Der Mailserver ist nicht erreichbar …“ | falscher Server oder Port, Name nicht auflösbar, Verbindung abgelehnt oder Timeout beim Verbindungsaufbau | Server und Port prüfen, im Compose-Stapel den Servicenamen verwenden |
+| Prüfung „Die verschlüsselte Verbindung zum Mailserver ist fehlgeschlagen …“ | STARTTLS nicht angeboten oder TLS-Handshake gescheitert | Verschlüsselung passend zum Port wählen ([Fehlerbilder des E-Mail-Versands](e-mail.md#fehlerbilder)) |
+| Prüfung „Der Mailserver hat die Anmeldung abgelehnt …“ | Benutzername oder Passwort falsch | Zugangsdaten neu eintragen |
+| Prüfung „Der Server antwortet nicht wie ein Mailserver …“ | unter Server und Port läuft kein SMTP-Dienst, oder er antwortet nicht in der Wartezeit | Port und Verschlüsselung prüfen; die Ursache nennt die WARN-Zeile „Installation mail check failed“ |
+| Prüfung „… Der Mailserver hat die Testnachricht nicht angenommen.“ | die Verbindung gelang, der Server lehnte die Nachricht ab, etwa den Absender oder den Empfänger | Absenderadresse und Empfänger prüfen; die Ursache nennt die WARN-Zeile „Installation test message refused“ |
 | `403` „Die Installation ist aus diesem Netz nicht zugelassen." | Client-Adresse außerhalb von `OPAA_INSTALLATION_ALLOWED_CIDRS` | aus dem erlaubten Netz aufrufen, vertraute Proxys prüfen |
 | `400` „Die Anfrage ist zu groß." | Anfrage über 64 KiB | Antworten prüfen |
-| `429` | zu viele Aufrufe oder abgelehnte Tokens von dieser Adresse; im Assistenten „Zu viele Modellabrufe“: das Budget der Modellabrufe ist erschöpft; mit dem Code `MAIL_TEST_LIMIT` „Zu viele Testnachrichten“: das Budget der Testnachrichten ist erschöpft (die übrigen Fälle zeigen „Zu viele Anfragen oder Fehlversuche von dieser Adresse“) | `Retry-After` abwarten, die Modell-Kennung lässt sich so lange von Hand eintragen, der Mailserver ohne Testnachricht prüfen; hinter einem Proxy `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` setzen |
+| `429` | zu viele Aufrufe oder abgelehnte Tokens von dieser Adresse; im Assistenten „Zu viele Modellabrufe“: das Budget der Modellabrufe ist erschöpft; mit dem Code `MAIL_TEST_LIMIT` „Zu viele Testnachrichten“: das Budget der Testnachrichten ist erschöpft; mit dem Code `MAIL_CHECK_LIMIT` „Zu viele Prüfungen des Mailservers“: das Budget der Prüfungen ist erschöpft (die übrigen Fälle zeigen „Zu viele Anfragen oder Fehlversuche von dieser Adresse“) | `Retry-After` abwarten, die Modell-Kennung lässt sich so lange von Hand eintragen, der Mailserver ohne Testnachricht prüfen; hinter einem Proxy `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` setzen |
 | `409` beim Abschluss | ein Pflichtschritt ist nicht gespeichert oder nicht erfolgreich geprüft, oder ein gespeicherter optionaler Schritt ist nicht erfolgreich geprüft | offene Schritte prüfen oder den optionalen überspringen; die Meldung nennt sie |
 | `400` beim Überspringen | der Schritt ist Pflicht | — |
 | Prüfung des Embedding-Modells „Die Probeeinbettung ist fehlgeschlagen …" | Endpunkt nicht erreichbar, Modell nicht geladen oder Schlüssel falsch | Endpunkt und Modell prüfen, Schritt erneut prüfen |
@@ -319,8 +330,9 @@ einer Warnung); startet eine mit anderem Wert, gilt das zuletzt gestartete.
 
 Fest im Code: je Netzadresse und Instanz 300 Aufrufe und 10 abgelehnte Tokens in 15 Minuten; je
 Instanz 30 Modellabrufe des Assistenten in 10 Minuten, für alle Clients zusammen; höchstens 500
-Modelle je Abruf; je Instanz 10 Testnachrichten des Schritts E-Mail-Versand in 10 Minuten, für alle
-Clients zusammen.
+Modelle je Abruf; im Schritt E-Mail-Versand je Instanz 30 Prüfungen und 10 Testnachrichten in
+10 Minuten, für alle Clients zusammen (die Antwortdatei beim Start zählt nicht), und ohne Eintrag in
+`OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` nur die Ports 25, 465, 587 und 2525.
 
 ## Weiterführende Kapitel
 
