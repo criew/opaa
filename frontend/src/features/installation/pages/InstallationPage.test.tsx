@@ -237,7 +237,8 @@ describe('InstallationPage', () => {
 
     expect(await stepHeading('Installation abgeschlossen')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Zur Anmeldung' })).toHaveAttribute('href', '/login')
-  })
+    // Every step of the assistant in one test, the optional one included: above the default limit.
+  }, 15_000)
 
   it('refuses the completion while a mandatory step is open and names it', async () => {
     const user = userEvent.setup()
