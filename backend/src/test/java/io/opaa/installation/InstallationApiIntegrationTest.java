@@ -13,6 +13,7 @@ import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaLocalAuthMockMvcTest;
 import java.util.List;
@@ -46,10 +47,12 @@ class InstallationApiIntegrationTest {
   @Autowired private LocalCredentialsRepository credentials;
 
   private InstallationFixture fixture;
+  private LocalAccountFixtures accounts;
 
   @BeforeEach
   void setUp() throws Exception {
-    fixture = new InstallationFixture(jdbc, installation, status, accountsFactory.create());
+    accounts = accountsFactory.create();
+    fixture = new InstallationFixture(jdbc, installation, status, accounts);
   }
 
   @AfterEach
@@ -357,6 +360,46 @@ class InstallationApiIntegrationTest {
             jdbc.queryForObject(
                 "SELECT completion_source FROM installation_state WHERE id = 1", String.class))
         .isEqualTo("ANSWER_FILE_API");
+  }
+
+  // regression guard: the sign-in page offers the local sign-in once the installation completed
+  @Test
+  void aCompletionWithLocalAccountsOnlySwitchesTheLocalAccountsOn() throws Exception {
+    mockMvc
+        .perform(
+            authorized(post(BASE + "/answer-file"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"firstAdmin\":"
+                        + firstAdminJson()
+                        + ",\"signIn\":{\"mode\":\"LOCAL_ONLY\"},"
+                        + "\"chatModel\":{\"baseUrl\":\""
+                        + fixture.chatBaseUrl()
+                        + "\",\"model\":\"qwen2.5:7b\"},"
+                        + embeddingModelPart()
+                        + "}"))
+        .andExpect(status().isOk());
+
+    mockMvc
+        .perform(get("/api/v1/auth/config"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.providers").isEmpty())
+        .andExpect(jsonPath("$.localAccounts.enabled").value(true));
+    assertThat(auditTypes()).contains("LOCAL_ACCOUNTS_ENABLED");
+    // a regular local account passes the switch only while it is on
+    String email = "erstes-regulaeres-konto@installation.test.example";
+    accounts.activeUser(email);
+    mockMvc
+        .perform(
+            post("/api/v1/auth/local/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"email\":\""
+                        + email
+                        + "\",\"password\":\""
+                        + LocalAccountFixtures.PASSWORD
+                        + "\"}"))
+        .andExpect(status().isOk());
   }
 
   private ResultActions saveFirstAdmin() throws Exception {
