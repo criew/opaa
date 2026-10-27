@@ -549,7 +549,6 @@ export default function LibraryRunList({
                 sx={{
                   ...rowSx,
                   '&:hover': { bgcolor: 'action.hover' },
-                  '&.Mui-focusVisible': { outline: 2, outlineColor: 'primary.main' },
                 }}
               >
                 {cells}

@@ -15,7 +15,7 @@ import Typography from '@mui/material/Typography'
 import AllInclusiveIcon from '@mui/icons-material/AllInclusive'
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import SendIcon from '@mui/icons-material/Send'
-import { CHAT_MAX_WIDTH } from '@/shared/theme/theme'
+import { CHAT_MAX_WIDTH, focusFrameStyle } from '@/shared/theme/theme'
 import { useAuthStore } from '@/shared/session/authStore'
 import { QUESTION_MAX_LENGTH, useChatStore } from '../stores/chatStore'
 import { SpaceKnowledgeNotice } from '@/features/space'
@@ -354,7 +354,7 @@ export default function ChatInput({
 
       <Box
         ref={setInputBoxEl}
-        sx={{
+        sx={(theme) => ({
           display: 'flex',
           alignItems: 'flex-end',
           gap: 1,
@@ -364,13 +364,14 @@ export default function ChatInput({
           border: 1,
           // Mockup 1a draws the input row with the crisper gray-300 line and a hairline
           // shadow.
-          borderColor: (theme) =>
-            theme.palette.mode === 'dark' ? darkRoles.borderStrong : gray[300],
+          borderColor: theme.palette.mode === 'dark' ? darkRoles.borderStrong : gray[300],
           borderRadius: '10px',
           boxShadow: shadow.hairline,
           px: 1.75,
           py: 1.25,
-        }}
+          // The message field itself is borderless; the row's frame carries its focus.
+          '&:focus-within': focusFrameStyle(theme.palette.primary.main),
+        })}
       >
         <TextField
           fullWidth

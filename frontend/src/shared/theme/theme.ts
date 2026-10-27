@@ -31,6 +31,21 @@ export const CHAT_MAX_WIDTH = '896px'
 const CONTROL_HEIGHT = 34
 const CONTROL_HEIGHT_COMPACT = 28
 
+/** Guidelines 4.4/5.2: a framed input shows focus as its own outline at this width. */
+const FIELD_FOCUS_OUTLINE_PX = 2
+
+/**
+ * Focus of a framed input area that is not an outlined field (the chat's message row): its 1px
+ * border turns `color` and an inset shadow adds the second pixel, so the frame reaches the 2px of
+ * a focused field without moving its content (guidelines 4.4).
+ */
+export function focusFrameStyle(color: string) {
+  return {
+    borderColor: color,
+    boxShadow: `inset 0 0 0 ${FIELD_FOCUS_OUTLINE_PX - 1}px ${color}`,
+  }
+}
+
 /**
  * Resolves the effective accent states. Without branding, the exact sampled mockup values
  * apply; a configured brand color derives hover (-8%), press (-16%) and the focus ring from
@@ -353,15 +368,15 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
               '&:hover .MuiOutlinedInput-notchedOutline': {
                 borderColor: roles.fg3,
               },
+              // Focus shows as the field's own outline, 2px in accent, never as a ring around the
+              // field: a ring would run through the floating label on its top edge. The outline
+              // is absolutely positioned, so widening it moves nothing.
               '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                 borderColor: accent,
-                borderWidth: 1,
+                borderWidth: FIELD_FOCUS_OUTLINE_PX,
               },
-              // The ring stands outside the field like on every other element; the field's own
-              // outline turns accent as well.
-              '&.Mui-focused': focusRingStyle(accent),
-              // An error outranks hover and focus: the outline stays danger, and focus shows as a
-              // 2px danger outline plus a danger ring. The extra class (and `:not`) gives these
+              // An error outranks hover and focus: the outline stays danger, also in its 2px
+              // focused width. The extra class (and `:not`) gives these
               // rules a higher specificity than the hover/focus rules above, independent of order.
               // A disabled field keeps MUI's grey disabled outline, even in error.
               '&.Mui-error:not(.Mui-disabled) .MuiOutlinedInput-notchedOutline': {
@@ -369,9 +384,8 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
               },
               '&.Mui-error.Mui-focused .MuiOutlinedInput-notchedOutline': {
                 borderColor: roles.danger,
-                borderWidth: 2,
+                borderWidth: FIELD_FOCUS_OUTLINE_PX,
               },
-              '&.Mui-error.Mui-focused': focusRingStyle(roles.danger),
             },
           },
         },

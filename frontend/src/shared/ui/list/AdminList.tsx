@@ -200,7 +200,6 @@ export function InfoHint({ label, reason }: { label: string; reason: string }) {
           color: 'text.secondary',
           borderRadius: '50%',
           cursor: 'help',
-          '&:focus-visible': { outline: 2, outlineColor: 'primary.main', outlineOffset: 1 },
         }}
       >
         <InfoOutlinedIcon aria-hidden sx={{ fontSize: 15 }} />
