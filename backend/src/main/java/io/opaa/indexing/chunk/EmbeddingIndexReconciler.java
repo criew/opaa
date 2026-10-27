@@ -40,8 +40,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * refill as well. An empty table is resized in place. An index without a recorded identity takes
  * the configuration's when its size matches. Going back to the model of the index drops the target
  * column and ends a re-embedding; a refill keeps running. A target generation left without a target
- * model by a switch of a version that does not know generations is taken over as the generation of
- * the embedding column when the model and the size match.
+ * model by the completed switch of a version that does not know generations is taken over as the
+ * generation of the embedding column when the model and the size match, at the start and as soon as
+ * the bus reports the record changed.
  *
  * <p>Without an installed embedding model there is no vector table and nothing to compare. It runs
  * one phase after the start-up of the installation, which installs the model of the {@code dev}
@@ -103,6 +104,18 @@ public class EmbeddingIndexReconciler implements SmartLifecycle {
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   void onEmbeddingModelInstalled(EmbeddingModelInstalledEvent event) {
     if (running) {
+      reconcile();
+    }
+  }
+
+  /**
+   * Reconciles at once when a switch of a version that does not know generations left its target
+   * generation behind, so writers and the vector search of this version need no restart. Called
+   * after the index record changed, outside any transaction and outside the column exclusion.
+   */
+  public void adoptSwitchedTargetGeneration() {
+    if (running && store.switchedTargetGeneration().isPresent()) {
+      log.info("A switch of a previous version left its target generation behind; reconciling");
       reconcile();
     }
   }
@@ -188,7 +201,7 @@ public class EmbeddingIndexReconciler implements SmartLifecycle {
                 ? configured
                 : new EmbeddingIdentity(null, null, indexDimensions, configured.generation());
     Optional<Long> orphaned =
-        recorded.isPresent() ? store.orphanedTargetGeneration() : Optional.empty();
+        recorded.isPresent() ? store.switchedTargetGeneration() : Optional.empty();
     if (orphaned.isPresent()
         && orphaned.get() == configured.generation()
         && Objects.equals(built.model(), configured.model())

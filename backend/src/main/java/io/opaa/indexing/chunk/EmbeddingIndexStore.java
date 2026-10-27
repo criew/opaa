@@ -91,14 +91,16 @@ public class EmbeddingIndexStore {
   }
 
   /**
-   * The target generation the row carries without a target model: what a switch by a version that
-   * does not know generations leaves behind. Empty otherwise.
+   * The target generation the row carries without a target model after a completed run: what a
+   * switch by a version that does not know generations leaves behind. Empty otherwise, also after a
+   * reconciliation of such a version dropped the target column, which ends no run as completed.
    */
-  public Optional<Long> orphanedTargetGeneration() {
+  public Optional<Long> switchedTargetGeneration() {
     return jdbcTemplate
         .query(
             "SELECT target_generation FROM embedding_index WHERE id = 1"
-                + " AND target_model IS NULL AND target_generation IS NOT NULL",
+                + " AND target_model IS NULL AND target_generation IS NOT NULL"
+                + " AND run_status = 'COMPLETED'",
             (rs, row) -> rs.getLong(1))
         .stream()
         .findFirst();

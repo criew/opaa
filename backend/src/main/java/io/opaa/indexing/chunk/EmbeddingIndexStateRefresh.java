@@ -14,7 +14,8 @@ import org.springframework.stereotype.Component;
  * another instance changes the model row or the index record - a model change, a discard, a switch,
  * an endpoint change - this instance re-reads both, under the same exclusion as a local switch. The
  * configured identity is the one of the model row, never the one this instance started with. While
- * the bus does not listen, both are re-read at every check of the bus.
+ * the bus does not listen, both are re-read at every check of the bus. A target generation a switch
+ * of the previous version left behind is adopted right after, by a reconciliation.
  */
 @Component
 class EmbeddingIndexStateRefresh implements InvalidationSubscriber {
@@ -25,14 +26,17 @@ class EmbeddingIndexStateRefresh implements InvalidationSubscriber {
   private final EmbeddingIndexState state;
   private final EmbeddingIndexStore store;
   private final EmbeddingInfoService embeddingInfoService;
+  private final EmbeddingIndexReconciler reconciler;
 
   EmbeddingIndexStateRefresh(
       EmbeddingIndexState state,
       EmbeddingIndexStore store,
-      EmbeddingInfoService embeddingInfoService) {
+      EmbeddingInfoService embeddingInfoService,
+      EmbeddingIndexReconciler reconciler) {
     this.state = state;
     this.store = store;
     this.embeddingInfoService = embeddingInfoService;
+    this.reconciler = reconciler;
   }
 
   @Override
@@ -57,6 +61,7 @@ class EmbeddingIndexStateRefresh implements InvalidationSubscriber {
                               record.target())));
           return null;
         });
+    reconciler.adoptSwitchedTargetGeneration();
   }
 
   private static EmbeddingIdentity configuredOf(EmbeddingInfo info) {

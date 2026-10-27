@@ -871,25 +871,46 @@ class EmbeddingModelChangeIntegrationTest {
     assertThat(previousRows()).isZero();
   }
 
-  // regression guard for ADR-0061, Entscheidung 2: a switch by the previous version leaves the
-  // target generation behind without a target model; the index is taken as current, not re-embedded
+  // regression guard for ADR-0061, Entscheidung 6: a switch by the previous version leaves the
+  // target generation behind without a target model; it is adopted at runtime, without a restart
   @Test
-  void aSwitchByThePreviousVersionNeedsNoFurtherReembedding() throws IOException {
+  void aSwitchByThePreviousVersionIsAdoptedAtRuntimeWithoutAReembedding() throws IOException {
     Document document = indexed("Bewohnerparken", "Zone A");
-    long current = store.load().orElseThrow().current().generation();
-    long switched = current + 7;
-    jdbcTemplate.update("UPDATE embedding_model SET generation = ?", switched);
-    jdbcTemplate.update(
-        "UPDATE embedding_index SET target_model = NULL, target_dimensions = NULL,"
-            + " target_generation = ?",
-        switched);
+    long switched = leaveATargetGenerationBehind("COMPLETED");
 
-    reconciler.reconcile();
+    await().atMost(Duration.ofSeconds(20)).until(() -> !state.isStale());
 
-    assertThat(state.isStale()).isFalse();
     assertThat(store.load().orElseThrow().current().generation()).isEqualTo(switched);
     writer.writeEmbeddedChunks(List.of(chunkOf(document)), List.of(constant(0.5f)), switched);
     assertThat(vectorOf(chunkOf(document), "embedding")).isEqualTo(literal(0.5f));
+  }
+
+  // regression guard for ADR-0061, Entscheidung 6: a reconciliation of the previous version, as
+  // after a rollback, drops the target column without completing a run; its vectors stay stale
+  @Test
+  void aTargetGenerationLeftByARollbackIsNotTakenAsCurrent() throws IOException {
+    indexed("Bewohnerparken", "Zone A");
+    leaveATargetGenerationBehind("CANCELLED");
+
+    reconciler.reconcile();
+
+    assertThat(state.isStale()).isTrue();
+  }
+
+  /**
+   * The record as the previous version leaves it after it ended a change: the model row and the
+   * target generation carry a new generation, the target model is gone, the run ended with {@code
+   * runStatus}. Answers the generation.
+   */
+  private long leaveATargetGenerationBehind(String runStatus) {
+    long switched = store.load().orElseThrow().current().generation() + 7;
+    jdbcTemplate.update("UPDATE embedding_model SET generation = ?", switched);
+    jdbcTemplate.update(
+        "UPDATE embedding_index SET target_model = NULL, target_dimensions = NULL,"
+            + " target_generation = ?, run_status = ?, run_finished_at = now()",
+        switched,
+        runStatus);
+    return switched;
   }
 
   @Test
