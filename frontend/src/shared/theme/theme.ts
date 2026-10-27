@@ -364,10 +364,12 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
                 boxShadow: `0 0 0 ${focusRingWidthPx}px ${focusRing}`,
               },
               // An error outranks hover and focus: the outline stays danger, and focus shows as a
-              // 2px danger outline plus a danger ring. The doubled class lifts these rules above
-              // the hover/focus rules above, which otherwise repaint the outline in the accent.
-              '&.Mui-error .MuiOutlinedInput-notchedOutline, &.Mui-error:hover .MuiOutlinedInput-notchedOutline':
-                { borderColor: roles.danger },
+              // 2px danger outline plus a danger ring. The extra class (and `:not`) gives these
+              // rules a higher specificity than the hover/focus rules above, independent of order.
+              // A disabled field keeps MUI's grey disabled outline, even in error.
+              '&.Mui-error:not(.Mui-disabled) .MuiOutlinedInput-notchedOutline': {
+                borderColor: roles.danger,
+              },
               '&.Mui-error.Mui-focused .MuiOutlinedInput-notchedOutline': {
                 borderColor: roles.danger,
                 borderWidth: 2,
