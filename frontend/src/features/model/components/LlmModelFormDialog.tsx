@@ -321,7 +321,8 @@ export default function LlmModelFormDialog({
               <BusyButton
                 variant="outlined"
                 busy={discovery.state.status === 'loading'}
-                busyAnnouncement="Modelle werden abgerufen"
+                // DiscoveryStatus announces the loading; the button stays silent.
+                busyAnnouncement=""
                 disabled={draft.baseUrl.trim() === ''}
                 onClick={() => runDiscovery()}
                 sx={{ flexShrink: 0, height: 40, whiteSpace: 'nowrap' }}

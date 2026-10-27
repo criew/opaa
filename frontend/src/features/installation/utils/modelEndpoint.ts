@@ -37,6 +37,15 @@ function endpointKey(baseUrl: string): string {
   return `${url.protocol}//${url.host}${url.pathname.replace(/\/+$/, '')}`
 }
 
+/** Scheme, host and port of an address, or `null` for no valid address. */
+export function originOf(baseUrl: string): string | null {
+  try {
+    return new URL(baseUrl.trim()).origin
+  } catch {
+    return null
+  }
+}
+
 /** Whether a stored key may serve `next`: scheme, host, port and path as stored, as the backend. */
 export function sameEndpoint(stored: string, next: string): boolean {
   try {
@@ -51,6 +60,8 @@ export interface EndpointEntries {
   provider: ProviderKey | null
   /** The key as typed in this visit; empty when nothing was typed. */
   apiKey: string
+  /** The origin the address had when the key was typed; `null` when there was none. */
+  keyOrigin?: string | null
   /** The stored key is to be removed with the next save. */
   removeKey: boolean
   /** The step's stored endpoint and whether a key is stored with it. */
@@ -72,6 +83,8 @@ const ENTER_KEY = 'Zugangsschlüssel eintragen; dann ruft der Assistent die ange
 const KEY_LEFT_BEHIND =
   'Die Basis-Adresse weicht von der gespeicherten ab, der gespeicherte Schlüssel gilt nur für sie. Den Schlüssel neu eintragen oder entfernen, dann „Modelle abrufen“.'
 const READY = '„Modelle abrufen“ zeigt, welche Modelle der Endpunkt anbietet.'
+const KEY_FOR_OTHER_ADDRESS =
+  'Der eingetragene Schlüssel wurde für eine andere Adresse eingegeben. „Modelle abrufen“ sendet ihn an diese Adresse.'
 
 /**
  * When and with which key the endpoint's models are fetched. The stored key is sent only for the
@@ -85,7 +98,13 @@ export function discoveryPlan(entries: EndpointEntries): DiscoveryPlan {
   const typedKey = entries.apiKey.trim()
   const storedKey = Boolean(entries.stored?.apiKeySet) && !entries.removeKey
   if (typedKey !== '') {
-    return { request: { baseUrl, apiKey: typedKey }, automatic: true, hint: READY }
+    // A typed key goes out on its own only to the origin it was typed for.
+    const ownOrigin = !entries.keyOrigin || entries.keyOrigin === originOf(baseUrl)
+    return {
+      request: { baseUrl, apiKey: typedKey },
+      automatic: ownOrigin,
+      hint: ownOrigin ? READY : KEY_FOR_OTHER_ADDRESS,
+    }
   }
   if (entries.removeKey) {
     return { request: { baseUrl, apiKey: '' }, automatic: true, hint: READY }

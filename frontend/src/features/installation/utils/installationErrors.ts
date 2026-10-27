@@ -53,3 +53,24 @@ export function installationFailure(err: unknown, fallback: string): Installatio
   }
   return { kind: 'other', message: backendMessage(err) ?? fallback, fieldErrors }
 }
+
+const SECONDS_PER_MINUTE = 60
+
+/**
+ * The sentence for a model discovery past the installation's budget, with the wait the server's
+ * `Retry-After` names; the identifier can always be typed by hand. `null` for any other failure.
+ */
+export function discoveryLimitMessage(err: unknown): string | null {
+  if (apiErrorStatus(err) !== 429) return null
+  const header = err instanceof AxiosError ? err.response?.headers?.['retry-after'] : undefined
+  const seconds = Number(header)
+  const minutes =
+    Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds / SECONDS_PER_MINUTE) : null
+  const wait =
+    minutes === null
+      ? 'in einigen Minuten'
+      : minutes === 1
+        ? 'in etwa 1 Minute'
+        : `in etwa ${minutes} Minuten`
+  return `Zu viele Modellabrufe. Bitte ${wait} erneut versuchen; die Kennung lässt sich von Hand eintragen.`
+}

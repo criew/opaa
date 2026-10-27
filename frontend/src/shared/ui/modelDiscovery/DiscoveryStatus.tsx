@@ -15,52 +15,52 @@ interface DiscoveryStatusProps {
 const HAND_ENTRY = 'Die Kennung lässt sich trotzdem von Hand eintragen.'
 const PULL_EXAMPLE: Record<DiscoveryPurpose, string> = { chat: 'qwen3:8b', embedding: 'bge-m3' }
 
+function lineFor(state: DiscoveryState, idleHint: string | null, purpose: DiscoveryPurpose) {
+  if (state.status === 'loading') return 'Modelle werden abgerufen …'
+  if (state.status !== 'done') return idleHint
+  if (state.response.models.length === 0) {
+    return state.response.ollama
+      ? `${state.response.message} Bei Ollama zuerst ein Modell laden, etwa mit „ollama pull ${PULL_EXAMPLE[purpose]}“.`
+      : `${state.response.message} Tragen Sie die Modell-Kennung von Hand ein.`
+  }
+  return `${state.response.message} Die Auswahl steht unter „Modell-Kennung“ bereit.`
+}
+
 /**
- * The outcome of „Modelle abrufen“ right under the address it belongs to: a quiet status line while
- * idle, loading or successful, an alert scoped to this spot when the endpoint could not be read.
- * A failure is a warning, not an error - the form stays fully usable by hand, so even the alert
- * is announced politely as a status.
+ * The outcome of „Modelle abrufen“ under the address it belongs to, in one live region that stays
+ * in place, so every change - loading, result, failure - is announced from the same spot. A
+ * failure is a warning inside it, not an alert of its own: the form stays usable by hand.
  */
 export default function DiscoveryStatus({
   state,
   idleHint,
   purpose = 'chat',
 }: DiscoveryStatusProps) {
+  let content = null
   if (state.status === 'rejected') {
-    return (
-      <Alert severity="error" role="status" sx={{ mt: 1.5 }}>
+    content = (
+      <Alert severity="error" role="presentation" sx={{ mt: 1.5 }}>
         {state.message}
       </Alert>
     )
-  }
-  if (state.status === 'done' && !state.response.success) {
-    const failure = state.response.failure
-    return (
-      <Alert severity="warning" role="status" sx={{ mt: 1.5 }}>
+  } else if (state.status === 'done' && !state.response.success) {
+    content = (
+      <Alert severity="warning" role="presentation" sx={{ mt: 1.5 }}>
         <Box>{state.response.message}</Box>
-        {failure !== 'NO_MODEL_LIST' && <Box sx={{ mt: 0.5 }}>{HAND_ENTRY}</Box>}
+        {state.response.failure !== 'NO_MODEL_LIST' && <Box sx={{ mt: 0.5 }}>{HAND_ENTRY}</Box>}
       </Alert>
     )
-  }
-
-  if (state.status === 'idle' && idleHint === null) return null
-  let text = idleHint
-  if (state.status === 'loading') {
-    text = 'Modelle werden abgerufen …'
-  } else if (state.status === 'done' && state.response.models.length === 0) {
-    text = state.response.ollama
-      ? `${state.response.message} Bei Ollama zuerst ein Modell laden, etwa mit „ollama pull ${PULL_EXAMPLE[purpose]}“.`
-      : `${state.response.message} Tragen Sie die Modell-Kennung von Hand ein.`
-  } else if (state.status === 'done') {
-    text = `${state.response.message} Die Auswahl steht unter „Modell-Kennung“ bereit.`
+  } else {
+    const line = lineFor(state, idleHint, purpose)
+    if (line !== null) {
+      content = (
+        <Typography sx={{ mt: 1, fontSize: 12.5, color: 'text.secondary' }}>{line}</Typography>
+      )
+    }
   }
   return (
-    <Typography
-      role="status"
-      aria-live="polite"
-      sx={{ mt: 1, fontSize: 12.5, color: 'text.secondary' }}
-    >
-      {text}
-    </Typography>
+    <Box role="status" aria-live="polite">
+      {content}
+    </Box>
   )
 }

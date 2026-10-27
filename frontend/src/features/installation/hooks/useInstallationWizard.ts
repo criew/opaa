@@ -14,7 +14,11 @@ import type {
   ModelStepId,
   StepInput,
 } from '../api/types'
-import { installationFailure, type InstallationFailure } from '../utils/installationErrors'
+import {
+  discoveryLimitMessage,
+  installationFailure,
+  type InstallationFailure,
+} from '../utils/installationErrors'
 import { nextView, resumeView, type WizardView } from '../utils/steps'
 
 export type WizardPhase = 'token' | 'steps' | 'completed' | 'installed'
@@ -159,7 +163,7 @@ export function useInstallationWizard() {
       } catch (err) {
         const failure = installationFailure(err, DISCOVERY_FAILED)
         leaveOn(failure)
-        throw new Error(failure.message, { cause: err })
+        throw new Error(discoveryLimitMessage(err) ?? failure.message, { cause: err })
       }
     },
     [state.token, leaveOn],

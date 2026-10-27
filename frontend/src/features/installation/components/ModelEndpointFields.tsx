@@ -16,6 +16,7 @@ import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import type { InstallationModelDiscoveryRequest } from '../api/types'
 import {
   discoveryPlan,
+  originOf,
   providerOf,
   providerPresets,
   type DiscoveryPlan,
@@ -102,13 +103,20 @@ export default function ModelEndpointFields({
   const addressId = `${id}-base-url`
   const keyId = `${id}-api-key`
   const providerLabelId = `${id}-provider`
-  const addressRef = useRef<HTMLInputElement>(null)
   const [provider, setProvider] = useState<ProviderKey | null>(() =>
     providerOf(stored?.baseUrl ?? '', purpose),
   )
+  const [keyOrigin, setKeyOrigin] = useState<string | null>(null)
   const discovery = useModelDiscovery(discover)
   const lastRequest = useRef<string | null>(null)
-  const plan = discoveryPlan({ baseUrl, provider, apiKey, removeKey, stored })
+  const plan = discoveryPlan({
+    baseUrl,
+    provider,
+    apiKey,
+    keyOrigin,
+    removeKey,
+    stored,
+  })
   const presets = providerPresets(purpose)
   const tiles: ChoiceTile<ProviderKey>[] = [
     ...presets.map((preset) => ({
@@ -147,31 +155,36 @@ export default function ModelEndpointFields({
     changeAddress(next)
     const derived = providerOf(next, purpose)
     // An edited Ollama host stays Ollama; a cleared field forgets the provider.
-    setProvider((current) =>
-      derived === 'custom' && current === 'ollama' ? 'ollama' : (derived ?? current),
-    )
+    setProvider((current) => (derived === 'custom' && current === 'ollama' ? 'ollama' : derived))
   }
 
+  function typeKey(next: string) {
+    onApiKeyChange(next)
+    setKeyOrigin(originOf(baseUrl))
+  }
+
+  /**
+   * Arrow keys choose as well, so a choice only fills the address: nothing is fetched and the focus
+   * stays in the group. A key typed for another origin is cleared, so it never follows along.
+   */
   function chooseProvider(key: ProviderKey) {
     setProvider(key)
     const preset = presets.find((candidate) => candidate.key === key)
-    if (!preset) {
-      addressRef.current?.focus()
-      return
-    }
+    if (!preset) return
+    if (apiKey !== '' && originOf(preset.baseUrl) !== originOf(baseUrl)) onApiKeyChange('')
     changeAddress(preset.baseUrl)
-    fetchModels(
-      discoveryPlan({ baseUrl: preset.baseUrl, provider: key, apiKey, removeKey, stored }),
-      false,
-    )
-    const host = preset.placeholderHost
-    if (host === null) return
-    // After React has written the address into the field: the host is selected for overwriting.
+  }
+
+  /** Entering the address of a preset with a host to confirm selects that host for overwriting. */
+  function handleFocus(event: FocusEvent<HTMLElement>) {
+    if (event.target.id !== addressId) return
+    const preset = presets.find((candidate) => candidate.key === provider)
+    const host = preset?.placeholderHost
+    if (!preset || !host || baseUrl.trim() !== preset.baseUrl) return
+    const input = event.target as HTMLInputElement
+    // After the browser has placed the caret of the click or the tab.
     setTimeout(() => {
-      const input = addressRef.current
-      if (!input) return
       const start = preset.baseUrl.indexOf(host)
-      input.focus()
       input.setSelectionRange(start, start + host.length)
     }, 0)
   }
@@ -185,7 +198,12 @@ export default function ModelEndpointFields({
 
   return (
     <>
-      <Box component="section" aria-labelledby={`${id}-endpoint`} onBlur={handleBlur}>
+      <Box
+        component="section"
+        aria-labelledby={`${id}-endpoint`}
+        onBlur={handleBlur}
+        onFocus={handleFocus}
+      >
         <SectionHead component="h3" id={`${id}-endpoint`}>
           Endpunkt
         </SectionHead>
@@ -204,7 +222,6 @@ export default function ModelEndpointFields({
             id={addressId}
             label="Basis-Adresse"
             inputMode="url"
-            inputRef={addressRef}
             value={baseUrl}
             onChange={typeAddress}
             error={errors.baseUrl}
@@ -214,7 +231,7 @@ export default function ModelEndpointFields({
             id={keyId}
             keyStored={Boolean(stored?.apiKeySet)}
             value={apiKey}
-            onChange={onApiKeyChange}
+            onChange={typeKey}
             remove={removeKey}
             onRemoveChange={onRemoveKeyChange}
             error={errors.apiKey}
@@ -222,13 +239,14 @@ export default function ModelEndpointFields({
           />
           {/* The outcome of the discovery and its quiet action on the left field edge; the
               status's own top margin belongs to the admin dialog, the step's rhythm spaces it. */}
-          <Box sx={{ '&& > :first-of-type': { mt: 0 } }}>
+          <Box sx={{ '&& [role="status"] > *': { mt: 0 } }}>
             <DiscoveryStatus state={discovery.state} idleHint={plan.hint} purpose={purpose} />
             <BusyButton
               size="small"
               variant="text"
               busy={loading}
-              busyAnnouncement="Modelle werden abgerufen"
+              // The status region above announces the loading; the button stays silent.
+              busyAnnouncement=""
               unavailable={!plan.request}
               onClick={() => fetchModels(plan, true)}
               sx={{ ...EDGE_ALIGNED_TEXT_BUTTON_SX, mt: STEP_RHYTHM.fieldToOwnAction }}

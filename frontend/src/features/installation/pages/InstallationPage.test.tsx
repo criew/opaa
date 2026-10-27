@@ -514,6 +514,8 @@ describe('InstallationPage', () => {
       const ollama = screen.getByRole('radio', { name: /Ollama/ })
       ollama.focus()
 
+      // Nothing is chosen yet: the first arrow chooses the first tile, Ollama.
+      await user.keyboard('{ArrowRight}')
       await user.keyboard('{ArrowRight}')
       await user.keyboard('{ArrowLeft}')
       await new Promise((resolve) => setTimeout(resolve, 20))
