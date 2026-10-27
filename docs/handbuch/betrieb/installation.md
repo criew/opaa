@@ -88,13 +88,6 @@ Anmeldeverfahren; Chat-Modell, Embedding-Modell und E-Mail-Versand sind optional
 | Embedding-Modell (`EMBEDDING_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Eingabegrenze | Probeeinbettung; ihr Ergebnis legt die Zahl der Dimensionen fest | Modelle, Reiter „Einbettung": erstes Modell festlegen ([Erstes Modell festlegen](modelle.md#erstes-modell-festlegen)), später mit Neueinbettung wechseln ([Modell wechseln](modelle.md#modell-wechseln)) |
 | E-Mail-Versand (`MAIL`) | nein | Server, Port, Verschlüsselung, Benutzername, Passwort, Absenderadresse, Absendername | Adressprüfung der Mailserver; Verbindung zum Server, mit Anmeldung, wenn ein Benutzername gesetzt ist, ohne eine Nachricht zu senden; auf Wunsch eine Testnachricht an eine angegebene Adresse | E-Mail ([E-Mail-Versand](e-mail.md)) |
 
-**Optionale Schritte** lassen sich überspringen, etwa wenn der Modellendpunkt noch nicht
-freigeschaltet ist. `POST /api/v1/installation/steps/<Schritt>/skip` überspringt einen optionalen
-Schritt und verwirft dabei gespeicherte Angaben samt Prüfung. Ist ein optionaler Schritt
-gespeichert, muss seine Prüfung gelungen sein, sonst lässt sich die Installation nicht abschließen.
-Was ohne Chat- oder Embedding-Modell geht und was nicht, steht unter
-[Ohne Modelle installiert](#ohne-modelle-installiert).
-
 ```bash
 TOKEN=...   # aus dem Log oder OPAA_INSTALLATION_TOKEN
 curl -H "Authorization: Bearer $TOKEN" https://opaa.example.org/api/v1/installation
@@ -108,12 +101,14 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 curl -X POST -H "Authorization: Bearer $TOKEN" https://opaa.example.org/api/v1/installation/complete
 ```
 
-**Optionale Schritte.** Ein optionaler Schritt lässt sich überspringen (`POST …/steps/MAIL/skip`):
-OPAA verwirft dann, was für ihn gespeichert war, und der Abschluss lässt ihn aus. Ein übersprungener
-oder nie geöffneter optionaler Schritt hält den Abschluss nicht auf; ein gespeicherter dagegen schon,
-bis seine Prüfung gelingt oder er übersprungen wird. Die Testnachricht des E-Mail-Versands verlangt
-die Prüfung mit der Adresse im Rumpf (`{"testRecipient": "it-betrieb@stadt.example"}`); die Adresse
-wird weder gespeichert noch protokolliert.
+**Optionale Schritte** lassen sich überspringen, etwa wenn der Modellendpunkt noch nicht
+freigeschaltet ist: `POST /api/v1/installation/steps/<Schritt>/skip` verwirft, was für den Schritt
+gespeichert war, samt Prüfung, und der Abschluss lässt ihn aus. Ein übersprungener oder nie
+geöffneter optionaler Schritt hält den Abschluss nicht auf; ein gespeicherter dagegen schon, bis
+seine Prüfung gelingt oder er übersprungen wird. Die Testnachricht des E-Mail-Versands verlangt die
+Prüfung mit der Adresse im Rumpf (`{"testRecipient": "it-betrieb@stadt.example"}`); die Adresse wird
+weder gespeichert noch protokolliert. Was ohne Chat- oder Embedding-Modell geht und was nicht, steht
+unter [Ohne Modelle installiert](#ohne-modelle-installiert).
 
 Das Passwort des ersten Kontos speichert OPAA nur als Hash, Zugangsschlüssel und Passwort des
 Mailservers verschlüsselt mit `OPAA_SETTINGS_ENCRYPTION_KEY`; zurückgegeben wird nur, **ob** sie
@@ -292,7 +287,7 @@ Prüfungen, alles oder nichts.
   Dateipfade nimmt die API nicht an: Sie ließen den Inhaber des Tokens Dateien des Backends lesen.
 - **Optionale Teile:** `chatModel`, `embeddingModel` und `mail` sind optional. Fehlt ein Teil,
   gilt sein Schritt als übersprungen; was der Assistent vorher dafür gespeichert hatte, wird
-  verworfen. Dateien mit beiden Modellteilen wirken wie bisher.
+  verworfen.
 - **E-Mail-Versand:** Ohne den Abschnitt `mail` bleibt der Versand aus. Mit ihm prüft OPAA Adresse
   und Verbindung wie im Assistenten, ohne Testnachricht, und der Abschluss schaltet den Versand ein.
   Das Passwort steht als `passwordFile`; ohne es meldet sich OPAA nicht an.
