@@ -6,6 +6,7 @@ import { renderWithProviders } from '@/test/test-utils'
 import { server } from '@/test/server'
 import {
   MOCK_INSTALLATION_TOKEN,
+  mockDiscoveryRequests,
   mockInstallationState,
   setMockInstallationPending,
   updateMockStep,
@@ -393,6 +394,137 @@ describe('InstallationPage', () => {
     )
   })
 
+  describe('choosing the chat model from the endpoint', () => {
+    beforeEach(() => {
+      for (const step of ['FIRST_ADMIN', 'SIGN_IN'] as const) {
+        updateMockStep(step, { saved: true, checked: true })
+      }
+    })
+
+    async function openChatModelStep(user: UserEvent) {
+      renderPage()
+      await stepHeading('Installations-Token')
+      await enterToken(user)
+      await stepHeading('Chat-Modell')
+    }
+
+    function modelField() {
+      return screen.getByRole('combobox', { name: 'Modell-Kennung' })
+    }
+
+    it('asks for provider, address and key before the choice of the model', async () => {
+      await openChatModelStep(userEvent.setup())
+
+      const order = [
+        screen.getByRole('radiogroup', { name: 'Anbieter' }),
+        field('Basis-Adresse'),
+        screen.getByLabelText(/API-Schlüssel/, { selector: 'input' }),
+        modelField(),
+      ]
+      for (let i = 1; i < order.length; i++) {
+        expect(
+          order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy()
+      }
+    })
+
+    it('fetches the models of the chosen endpoint and offers them for selection', async () => {
+      const user = userEvent.setup()
+      await openChatModelStep(user)
+
+      await user.click(screen.getByRole('radio', { name: /Ollama/ }))
+      expect(field('Basis-Adresse')).toHaveValue('http://ollama:11434/v1')
+      await user.tab()
+
+      expect(await screen.findByText(/4 Modelle gefunden\./)).toBeInTheDocument()
+      await user.click(modelField())
+      const listbox = await screen.findByRole('listbox')
+      expect(within(listbox).getByRole('option', { name: /nomic-embed-text/ })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+      await user.click(within(listbox).getByRole('option', { name: /qwen3:8b/ }))
+      expect(modelField()).toHaveValue('qwen3:8b')
+      await submitStep(user)
+
+      expect(await stepHeading('Abschluss')).toBeInTheDocument()
+      const chatModel = mockInstallationState().steps.find((s) => s.step === 'CHAT_MODEL')
+      expect(chatModel?.chatModel).toMatchObject({
+        baseUrl: 'http://ollama:11434/v1',
+        model: 'qwen3:8b',
+      })
+    })
+
+    it('keeps the input by hand when the endpoint offers no list and says why', async () => {
+      const user = userEvent.setup()
+      await openChatModelStep(user)
+
+      await user.type(field('Basis-Adresse'), 'http://ohne-liste:8000/v1')
+      await user.tab()
+
+      expect(await screen.findByText(/bietet keine Modellliste an/)).toBeInTheDocument()
+      await user.type(modelField(), 'mein-modell')
+      await submitStep(user)
+
+      expect(await stepHeading('Abschluss')).toBeInTheDocument()
+      const chatModel = mockInstallationState().steps.find((s) => s.step === 'CHAT_MODEL')
+      expect(chatModel?.chatModel?.model).toBe('mein-modell')
+    })
+
+    it('names an unreachable endpoint and leaves the identifier to be typed', async () => {
+      const user = userEvent.setup()
+      await openChatModelStep(user)
+
+      await user.type(field('Basis-Adresse'), 'http://kaputt:11434/v1')
+      await user.tab()
+
+      const status = await screen.findByText(/Host konnte nicht gefunden werden/)
+      expect(status.closest('[role="status"]')).toHaveTextContent(
+        'Die Kennung lässt sich trotzdem von Hand eintragen.',
+      )
+      expect(modelField()).toBeEnabled()
+    })
+
+    it('uses the stored key only for its own address', async () => {
+      updateMockStep('CHAT_MODEL', {
+        saved: true,
+        checked: false,
+        chatModel: {
+          baseUrl: 'https://api.openai.com/v1',
+          model: 'gpt-4o',
+          apiKeySet: true,
+          maxTokens: 8000,
+        },
+      })
+      const user = userEvent.setup()
+      await openChatModelStep(user)
+
+      // Reopened with its stored endpoint, the step fetches the list with the stored key.
+      expect(await screen.findByText(/Modelle gefunden\./)).toBeInTheDocument()
+      expect(mockDiscoveryRequests().at(-1)).toMatchObject({
+        step: 'CHAT_MODEL',
+        baseUrl: 'https://api.openai.com/v1',
+        apiKey: undefined,
+      })
+
+      const baseUrl = field('Basis-Adresse')
+      await user.clear(baseUrl)
+      await user.type(baseUrl, 'http://ollama:11434/v1')
+      await user.tab()
+      const requests = mockDiscoveryRequests().length
+      expect(screen.getByText(/weicht von der gespeicherten ab/)).toBeInTheDocument()
+      expect(mockDiscoveryRequests()).toHaveLength(requests)
+
+      await user.click(screen.getByRole('button', { name: 'Gespeicherten Schlüssel entfernen' }))
+      await user.click(screen.getByRole('button', { name: 'Modelle abrufen' }))
+      expect(await screen.findByText(/4 Modelle gefunden\./)).toBeInTheDocument()
+      expect(mockDiscoveryRequests().at(-1)).toMatchObject({
+        baseUrl: 'http://ollama:11434/v1',
+        apiKey: '',
+      })
+    })
+  })
+
   describe('with the embedding model step', () => {
     beforeEach(() => {
       withMockEmbeddingStep()
@@ -429,6 +561,26 @@ describe('InstallationPage', () => {
       await user.click(screen.getByRole('button', { name: 'Zurück' }))
       expect(await stepHeading('Embedding-Modell')).toBeInTheDocument()
       expect(screen.getByText('Geprüft: 1024 Dimensionen')).toBeInTheDocument()
+    })
+
+    it('offers the embedding models of the endpoint first', async () => {
+      const user = userEvent.setup()
+      renderPage()
+      await stepHeading('Installations-Token')
+      await enterToken(user)
+      await stepHeading('Embedding-Modell')
+
+      const providers = screen.getByRole('radiogroup', { name: 'Anbieter' })
+      expect(within(providers).queryByRole('radio', { name: /Anthropic/ })).not.toBeInTheDocument()
+      await user.click(within(providers).getByRole('radio', { name: /Ollama/ }))
+      await user.tab()
+      await screen.findByText(/Modelle gefunden\./)
+      await user.click(screen.getByRole('combobox', { name: 'Modell-Kennung' }))
+
+      const listbox = await screen.findByRole('listbox')
+      const suitable = within(listbox).getByRole('group', { name: 'Für die Einbettung geeignet' })
+      expect(within(suitable).getByRole('option', { name: /nomic-embed-text/ })).toBeInTheDocument()
+      expect(mockDiscoveryRequests().at(-1)).toMatchObject({ step: 'EMBEDDING_MODEL' })
     })
   })
 })

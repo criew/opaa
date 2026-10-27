@@ -107,8 +107,30 @@ export function completeMockInstallation() {
   }
 }
 
+/** One model discovery the mock answered, as the assistant sent it. */
+export interface MockDiscoveryRequest {
+  step: string
+  baseUrl: string
+  apiKey: string | null | undefined
+}
+
+let discoveryRequests: MockDiscoveryRequest[] = []
+
+/** Addresses containing this word answer without a model list. */
+export const MOCK_NO_MODEL_LIST_MARKER = 'ohne-liste'
+
+export function recordMockDiscovery(request: MockDiscoveryRequest) {
+  discoveryRequests = [...discoveryRequests, request]
+}
+
+/** The model discoveries since the last reset, oldest first. */
+export function mockDiscoveryRequests(): readonly MockDiscoveryRequest[] {
+  return discoveryRequests
+}
+
 export function resetMockInstallation() {
   pendingOverride = null
+  discoveryRequests = []
   mockSteps = initialSteps()
   try {
     window.sessionStorage.removeItem(STEPS_STORAGE_KEY)

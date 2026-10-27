@@ -1,18 +1,27 @@
 import { http, HttpResponse } from 'msw'
+import type { LlmModelDiscoveryResponse } from '@/shared/api/types'
+import { discoveryFailure } from '@/features/model/mocks/modelHandlers'
+import {
+  mockOllamaDiscoveredModels,
+  mockOpenAiDiscoveredModels,
+} from '@/features/model/mocks/modelFixtures'
 import {
   STEP_REQUEST_KEY,
   type InstallationChatModel,
   type InstallationEmbeddingModel,
   type InstallationFirstAdmin,
+  type InstallationModelDiscoveryRequest,
   type InstallationStepState,
 } from '../api/types'
 import {
   MOCK_EMBEDDING_DIMENSIONS,
   MOCK_INSTALLATION_TOKEN,
+  MOCK_NO_MODEL_LIST_MARKER,
   MOCK_UNREACHABLE_MARKER,
   completeMockInstallation,
   isMockInstallationPending,
   mockInstallationState,
+  recordMockDiscovery,
   updateMockStep,
 } from './installationFixtures'
 
@@ -98,6 +107,56 @@ function checkMessageOf(step: InstallationStepState): string | null {
     : 'Das Modell antwortet nicht: Verbindung abgelehnt. Prüfen Sie Basis-Adresse und Modell-Kennung.'
 }
 
+/**
+ * The model list of a step's endpoint, as the admin mock answers it: Ollama's list for an Ollama
+ * address, OpenAI's otherwise. The stored key serves only the stored address (400 otherwise).
+ */
+function discoveryAnswer(step: InstallationStepState, body: InstallationModelDiscoveryRequest) {
+  const address = body.baseUrl ?? ''
+  const stored = step.chatModel ?? step.embeddingModel ?? null
+  const usesStoredKey = body.apiKey === undefined || body.apiKey === null
+  if (usesStoredKey && stored?.apiKeySet && stored.baseUrl !== address) {
+    return error(
+      400,
+      'Die Basis-Adresse weicht von der gespeicherten ab. Der gespeicherte Zugangsschlüssel gilt nur für sie.',
+    )
+  }
+  if (address.includes(MOCK_UNREACHABLE_MARKER)) {
+    return HttpResponse.json(
+      discoveryFailure(
+        'UNREACHABLE',
+        'Der Host konnte nicht gefunden werden (DNS-Auflösung fehlgeschlagen).',
+      ),
+    )
+  }
+  if (address.includes(MOCK_NO_MODEL_LIST_MARKER)) {
+    return HttpResponse.json(
+      discoveryFailure(
+        'NO_MODEL_LIST',
+        'Der Endpunkt bietet keine Modellliste an. Tragen Sie die Modell-Kennung von Hand ein.',
+      ),
+    )
+  }
+  const hasKey = Boolean(body.apiKey?.trim()) || (usesStoredKey && Boolean(stored?.apiKeySet))
+  if (address.includes('api.openai.com') && !hasKey) {
+    return HttpResponse.json(
+      discoveryFailure(
+        'UNAUTHENTICATED',
+        'Der Endpunkt verlangt einen Zugangsschlüssel (HTTP 401). Tragen Sie ihn ein und rufen Sie die Modelle erneut ab.',
+      ),
+    )
+  }
+  const ollama = address.includes(':11434') || address.includes('ollama')
+  const models = ollama ? mockOllamaDiscoveredModels : mockOpenAiDiscoveredModels
+  return HttpResponse.json({
+    success: true,
+    failure: null,
+    message: `${models.length} Modelle gefunden.`,
+    ollama,
+    models,
+  } satisfies LlmModelDiscoveryResponse)
+}
+
 export const installationHandlers = [
   http.get(BASE, ({ request }) => refusal(request) ?? HttpResponse.json(mockInstallationState())),
 
@@ -141,6 +200,18 @@ export const installationHandlers = [
         : {}),
     })
     return HttpResponse.json(findStep(step.step))
+  }),
+
+  http.post(`${BASE}/steps/:step/discover`, async ({ request, params }) => {
+    const refused = refusal(request)
+    if (refused) return refused
+    const step = findStep(String(params.step))
+    if (step?.step !== 'CHAT_MODEL' && step?.step !== 'EMBEDDING_MODEL') {
+      return error(400, 'Modelle lassen sich nur in den Modellschritten abrufen.')
+    }
+    const body = (await request.json()) as InstallationModelDiscoveryRequest
+    recordMockDiscovery({ step: step.step, baseUrl: body.baseUrl, apiKey: body.apiKey })
+    return discoveryAnswer(step, body)
   }),
 
   http.post(`${BASE}/complete`, ({ request }) => {
