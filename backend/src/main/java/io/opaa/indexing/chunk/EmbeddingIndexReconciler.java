@@ -11,6 +11,7 @@ import io.opaa.llm.EmbeddingModelAdministration;
 import io.opaa.llm.EmbeddingModelInstalledEvent;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,9 +36,12 @@ import org.springframework.transaction.support.TransactionTemplate;
  * <p>Vectors are comparable under the same model, size and generation (ADR-0061, Entscheidung 2). A
  * model row matching the target column keeps a running change; one matching neither column was
  * changed outside the guided way: it gets a new generation, the index turns stale and gets an empty
- * target column of that generation, so the two columns never share one. An empty table is resized
- * in place. An index without a recorded identity takes the configuration's when its size matches.
- * Going back to the model of the index drops the target column. A refill run is never ended here.
+ * target column of that generation, so the two columns never share one, and any running run ends, a
+ * refill as well. An empty table is resized in place. An index without a recorded identity takes
+ * the configuration's when its size matches. Going back to the model of the index drops the target
+ * column and ends a re-embedding; a refill keeps running. A target generation left without a target
+ * model by a switch of a version that does not know generations is taken over as the generation of
+ * the embedding column when the model and the size match.
  *
  * <p>Without an installed embedding model there is no vector table and nothing to compare. It runs
  * one phase after the start-up of the installation, which installs the model of the {@code dev}
@@ -154,7 +158,7 @@ public class EmbeddingIndexReconciler implements SmartLifecycle {
   }
 
   private Snapshot reconcile(EmbeddingIdentity configured) {
-    Optional<EmbeddingIndexRecord> recorded = store.load();
+    Optional<EmbeddingIndexRecord> recorded = store.loadForUpdate();
     EmbeddingIndexRecord stored =
         recorded.orElse(new EmbeddingIndexRecord(configured, null, Run.NONE));
     Integer columnDimensions = schema.columnDimensions(EmbeddingIndexState.EMBEDDING_COLUMN);
@@ -183,6 +187,14 @@ public class EmbeddingIndexReconciler implements SmartLifecycle {
             : indexDimensions == configured.dimensions()
                 ? configured
                 : new EmbeddingIdentity(null, null, indexDimensions, configured.generation());
+    Optional<Long> orphaned =
+        recorded.isPresent() ? store.orphanedTargetGeneration() : Optional.empty();
+    if (orphaned.isPresent()
+        && orphaned.get() == configured.generation()
+        && Objects.equals(built.model(), configured.model())
+        && built.dimensions() == configured.dimensions()) {
+      built = built.withGeneration(configured.generation());
+    }
 
     if (built.sameModelAs(configured)) {
       if (schema.columnDimensions(EmbeddingIndexState.TARGET_COLUMN) != null) {

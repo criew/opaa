@@ -36,8 +36,11 @@ namespaces:
       - java/io/opaa/account/LocalAdminResetRecordRepository.java
       - java/io/opaa/installation/InstallationStateRepository.java
   - number: 213
-    purpose: creating, reconciling and switching the vector table schema, one instance at a time
+    purpose: >-
+      creating, reconciling and switching the vector table schema, one instance at a time;
+      writers of vectors hold it shared
     owners:
+      - java/io/opaa/indexing/chunk/EmbeddingIndexStore.java
       - java/io/opaa/indexing/chunk/VectorIndexSchema.java
       - java/io/opaa/knowledge/VectorTableCreator.java
   - number: 230

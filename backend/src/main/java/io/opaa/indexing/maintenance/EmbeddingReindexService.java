@@ -282,11 +282,13 @@ public class EmbeddingReindexService {
     TransactionCallbacks.afterCommitOrNow(() -> submit(work));
   }
 
-  /** What a start resumes: the re-embedding of a stale index or an unfinished refill. */
+  /**
+   * What a start resumes, as the record describes it: the re-embedding of a stale index or an
+   * unfinished refill. The generation is the record's, never this instance's state.
+   */
   private Work resumable(EmbeddingIndexRecord record) {
-    Snapshot snapshot = state.snapshot();
-    if (snapshot != null && snapshot.stale()) {
-      return new Work(RunKind.REEMBED, snapshot.target().generation());
+    if (record.target() != null) {
+      return new Work(RunKind.REEMBED, record.target().generation());
     }
     if (record.run().kindOrReembed() == RunKind.REFILL
         && record.run().status() != RunStatus.COMPLETED

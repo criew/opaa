@@ -16,7 +16,9 @@ import io.opaa.indexing.chunk.EmbeddingIndexRecord;
 import io.opaa.indexing.chunk.EmbeddingIndexRecord.RunKind;
 import io.opaa.indexing.chunk.EmbeddingIndexRecord.RunStatus;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
+import io.opaa.indexing.chunk.EmbeddingIndexState.Snapshot;
 import io.opaa.indexing.chunk.EmbeddingIndexStore;
+import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorIndexSchema;
 import io.opaa.indexing.chunk.VectorStoreWriter;
 import io.opaa.indexing.document.DocumentIngest;
@@ -27,6 +29,8 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.knowledge.VectorTable;
+import io.opaa.knowledge.VectorTableCreator;
 import io.opaa.llm.EmbeddingAnchorRecorder;
 import io.opaa.llm.EmbeddingModelAdministration.Draft;
 import io.opaa.llm.EmbeddingModelAdministration.Kind;
@@ -67,6 +71,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * The guided change of the embedding model end to end against pgvector with the Flyway schema
@@ -103,9 +110,15 @@ class EmbeddingModelChangeIntegrationTest {
   @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private DataSource dataSource;
+  @Autowired private PlatformTransactionManager transactionManager;
+  @Autowired private FullTextChunkStore fullTextChunkStore;
+  @Autowired private ObjectMapper objectMapper;
+  @Autowired private VectorTable vectorTable;
+  @Autowired private VectorTableCreator vectorTableCreator;
   @Autowired private SettingsEncryptor settingsEncryptor;
 
   private final List<CountDownLatch> heldRuns = new ArrayList<>();
+  private final List<CompletableFuture<?>> pending = new ArrayList<>();
   private Map<String, Object> originalModel;
   private java.sql.Timestamp testStart;
   private KnowledgeLibrary library;
@@ -148,6 +161,8 @@ class EmbeddingModelChangeIntegrationTest {
   void removeOwnFixtures() {
     heldRuns.forEach(CountDownLatch::countDown);
     heldRuns.clear();
+    pending.forEach(future -> future.handle((result, failure) -> null).join());
+    pending.clear();
     fakeModel().reset();
     await().atMost(RUN_TIMEOUT).until(() -> !reindexService.progress().running());
     if (schema.columnDimensions(EmbeddingIndexState.EMBEDDING_COLUMN) == null) {
@@ -679,6 +694,295 @@ class EmbeddingModelChangeIntegrationTest {
     assertThat(output.getAll()).doesNotContain(key);
   }
 
+  // --- locks between writers and changes, races ---
+
+  // regression guard for ADR-0061, Entscheidung 6: a writer waiting behind a queued change must
+  // not overtake it, or a stream of writers starves the change
+  @Test
+  void aConfirmationQueuedBehindAWriterHoldsBackTheWritersArrivingAfterIt() throws Exception {
+    Document first = indexed("Bewohnerparken", "Zone A");
+    Document second = indexed("Anwohnerparkausweis", "Zone B");
+    long generation = store.load().orElseThrow().current().generation();
+    CountDownLatch firstHolds = new CountDownLatch(1);
+    CountDownLatch releaseFirst = new CountDownLatch(1);
+    heldRuns.add(releaseFirst);
+    CompletableFuture<Void> firstWriter =
+        CompletableFuture.runAsync(
+            () ->
+                writeInOneTransaction(
+                    chunkOf(first),
+                    generation,
+                    () -> {
+                      firstHolds.countDown();
+                      awaitQuietly(releaseFirst);
+                    }));
+    pending.add(firstWriter);
+    assertThat(firstHolds.await(30, TimeUnit.SECONDS)).isTrue();
+    CompletableFuture<Void> confirmation =
+        CompletableFuture.runAsync(
+            () ->
+                changes.confirm(
+                    draft(NEW_MODEL),
+                    FakeEmbeddingModel.DIMENSIONS,
+                    adminId,
+                    Organization.DEFAULT_ID));
+    pending.add(confirmation);
+    await().atMost(Duration.ofSeconds(9)).until(() -> lockWaiters() >= 1);
+
+    CompletableFuture<Void> secondWriter =
+        CompletableFuture.runAsync(
+            () -> writeInOneTransaction(chunkOf(second), generation, () -> {}));
+    pending.add(secondWriter);
+
+    assertThatThrownBy(() -> secondWriter.get(2, TimeUnit.SECONDS))
+        .as("a writer arriving after the queued change waits for it")
+        .isInstanceOf(java.util.concurrent.TimeoutException.class);
+    releaseFirst.countDown();
+    firstWriter.get(30, TimeUnit.SECONDS);
+    confirmation.get(30, TimeUnit.SECONDS);
+    secondWriter.get(30, TimeUnit.SECONDS);
+    assertThat(modelName()).isEqualTo(NEW_MODEL);
+  }
+
+  @Test
+  void aConfirmationBehindAWriterBeyondTheWaitIsAConflictThatChangesNothing() throws Exception {
+    Document document = indexed("Bewohnerparken", "Zone A");
+    long generation = store.load().orElseThrow().current().generation();
+    CountDownLatch holds = new CountDownLatch(1);
+    CountDownLatch release = new CountDownLatch(1);
+    heldRuns.add(release);
+    CompletableFuture<Void> writer =
+        CompletableFuture.runAsync(
+            () ->
+                writeInOneTransaction(
+                    chunkOf(document),
+                    generation,
+                    () -> {
+                      holds.countDown();
+                      awaitQuietly(release);
+                    }));
+    pending.add(writer);
+    assertThat(holds.await(30, TimeUnit.SECONDS)).isTrue();
+
+    assertThatThrownBy(
+            () ->
+                changes.confirm(
+                    draft(NEW_MODEL),
+                    FakeEmbeddingModel.DIMENSIONS,
+                    adminId,
+                    Organization.DEFAULT_ID))
+        .isInstanceOf(ConflictException.class)
+        .hasMessageContaining("belegt");
+    release.countDown();
+    writer.get(30, TimeUnit.SECONDS);
+    assertThat(modelName()).isNotEqualTo(NEW_MODEL);
+    assertThat(previousRows()).isZero();
+  }
+
+  // regression guard for ADR-0061, Entscheidung 6: the startup reconciliation and a writer take
+  // the index row and the vector table in the same order and never deadlock
+  @Test
+  void theStartupReconciliationAndAWriterOfAnotherInstanceDoNotDeadlock() throws Exception {
+    Document document = indexed("Bewohnerparken", "Zone A");
+    long generation = store.load().orElseThrow().current().generation();
+    org.springframework.ai.document.Document chunk = chunkOf(document);
+    try (Connection holder = dataSource.getConnection()) {
+      holder.setAutoCommit(false);
+      try (Statement statement = holder.createStatement()) {
+        statement.execute(
+            "SELECT pg_advisory_xact_lock("
+                + VectorStoreWriter.DOCUMENT_CHUNK_LOCK_NAMESPACE
+                + ", hashtext('"
+                + document.getId()
+                + "'))");
+      }
+      CompletableFuture<Integer> writer =
+          CompletableFuture.supplyAsync(
+              () ->
+                  new TransactionTemplate(transactionManager)
+                      .execute(
+                          status ->
+                              otherInstanceWriter()
+                                  .rewriteEmbeddedChunks(
+                                      List.of(chunk), List.of(fakeVector()), generation)));
+      pending.add(writer);
+      await().atMost(Duration.ofSeconds(20)).until(() -> lockWaiters() >= 1);
+      jdbcTemplate.update("UPDATE embedding_model SET model_identifier = 'von-hand-geaendert'");
+      CompletableFuture<Void> reconciliation = CompletableFuture.runAsync(reconciler::reconcile);
+      pending.add(reconciliation);
+      await().atMost(Duration.ofSeconds(20)).until(() -> lockWaiters() >= 2);
+      holder.rollback();
+
+      assertThat(writer.get(60, TimeUnit.SECONDS)).isOne();
+      reconciliation.get(60, TimeUnit.SECONDS);
+    }
+    assertThat(state.isStale()).isTrue();
+  }
+
+  // regression guard for ADR-0061, Entscheidung 5: an endpoint change checked against one model
+  // never lands in the row of another that a change put there meanwhile
+  @Test
+  void anEndpointChangeOvertakenByAModelChangeIsRefused() {
+    jdbcTemplate.update("UPDATE embedding_model SET reference_vectors = NULL");
+    String stored = modelBaseUrl();
+    probe.answerWith(
+        (endpoint, texts) -> {
+          if (endpoint.baseUrl().equals(stored)) {
+            jdbcTemplate.update(
+                "UPDATE embedding_model SET model_identifier = 'zwischendurch-gewechselt',"
+                    + " generation = generation + 100");
+          }
+          return FakeEmbeddingModel.probeOutcome(texts);
+        });
+
+    assertThatThrownBy(
+            () ->
+                changes.changeEndpoint(
+                    new Draft(OTHER_ENDPOINT, modelName(), "", null),
+                    adminId,
+                    Organization.DEFAULT_ID))
+        .isInstanceOf(ConflictException.class);
+    assertThat(modelBaseUrl()).isEqualTo(stored);
+  }
+
+  @Test
+  void aConfirmationOvertakenByAnotherChangeIsRefused() throws IOException {
+    indexed("Bewohnerparken", "Zone A");
+    long[] calls = {0};
+    probe.answerWith(
+        (endpoint, texts) -> {
+          if (texts.size() == io.opaa.llm.EmbeddingAnchor.TEXTS.size() && calls[0]++ == 0) {
+            jdbcTemplate.update("UPDATE embedding_model SET generation = generation + 100");
+          }
+          return FakeEmbeddingModel.probeOutcome(texts);
+        });
+    long generation = modelGeneration() + 100;
+
+    assertThatThrownBy(
+            () ->
+                changes.confirm(
+                    draft(NEW_MODEL),
+                    FakeEmbeddingModel.DIMENSIONS,
+                    adminId,
+                    Organization.DEFAULT_ID))
+        .isInstanceOf(ConflictException.class);
+    assertThat(modelName()).isNotEqualTo(NEW_MODEL);
+    assertThat(modelGeneration()).isEqualTo(generation);
+    assertThat(previousRows()).isZero();
+  }
+
+  // regression guard for ADR-0061, Entscheidung 2: a switch by the previous version leaves the
+  // target generation behind without a target model; the index is taken as current, not re-embedded
+  @Test
+  void aSwitchByThePreviousVersionNeedsNoFurtherReembedding() throws IOException {
+    Document document = indexed("Bewohnerparken", "Zone A");
+    long current = store.load().orElseThrow().current().generation();
+    long switched = current + 7;
+    jdbcTemplate.update("UPDATE embedding_model SET generation = ?", switched);
+    jdbcTemplate.update(
+        "UPDATE embedding_index SET target_model = NULL, target_dimensions = NULL,"
+            + " target_generation = ?",
+        switched);
+
+    reconciler.reconcile();
+
+    assertThat(state.isStale()).isFalse();
+    assertThat(store.load().orElseThrow().current().generation()).isEqualTo(switched);
+    writer.writeEmbeddedChunks(List.of(chunkOf(document)), List.of(constant(0.5f)), switched);
+    assertThat(vectorOf(chunkOf(document), "embedding")).isEqualTo(literal(0.5f));
+  }
+
+  @Test
+  void aResumedReembeddingRunsForTheTargetGenerationOfTheRecord() throws Exception {
+    indexed("Bewohnerparken", "SCHRANKE-NEUN");
+    CountDownLatch held = holdTheRunAt("SCHRANKE-NEUN");
+    changes.confirm(
+        draft(NEW_MODEL), FakeEmbeddingModel.DIMENSIONS, adminId, Organization.DEFAULT_ID);
+    awaitHeld(held);
+    reindexService.cancel();
+    releaseTheRuns();
+    awaitTheRun();
+    long target = store.load().orElseThrow().target().generation();
+    Snapshot snapshot = state.snapshot();
+    state.exclusively(
+        () -> {
+          state.replace(
+              new Snapshot(
+                  snapshot.current(),
+                  snapshot.configured(),
+                  snapshot.target().withGeneration(9999)));
+          return null;
+        });
+
+    reindexService.start(adminId, Organization.DEFAULT_ID);
+
+    assertThat(store.load().orElseThrow().run().generation()).isEqualTo(target);
+    awaitTheRun();
+  }
+
+  @Test
+  void aModelBeyondTheSizeTheVectorIndexTakesFailsAtTheProbe() {
+    int size = vectorTableCreator.maxDimensions() + 1;
+    probe.answerWith(
+        (endpoint, texts) -> {
+          List<float[]> vectors = new ArrayList<>();
+          for (int i = 0; i < texts.size(); i++) {
+            vectors.add(constant(0.5f, size));
+          }
+          return ProbeOutcome.succeeded(vectors, 1_000_000L);
+        });
+
+    EmbeddingModelChangeService.ProbeResult result = changes.probe(draft(NEW_MODEL));
+
+    assertThat(result.succeeded()).isFalse();
+    assertThat(result.message()).contains(Integer.toString(size)).contains("höchstens");
+    assertThatThrownBy(
+            () -> changes.confirm(draft(NEW_MODEL), size, adminId, Organization.DEFAULT_ID))
+        .isInstanceOf(FieldValidationException.class);
+    assertThat(previousRows()).isZero();
+  }
+
+  /** A writer of another instance: its own column state, nothing of this instance's in between. */
+  private VectorStoreWriter otherInstanceWriter() {
+    return new VectorStoreWriter(
+        jdbcTemplate,
+        fullTextChunkStore,
+        new EmbeddingIndexState(),
+        store,
+        objectMapper,
+        vectorTable);
+  }
+
+  /** Writes {@code chunk} in a transaction of its own and runs {@code beforeCommit} inside it. */
+  private void writeInOneTransaction(
+      org.springframework.ai.document.Document chunk, long generation, Runnable beforeCommit) {
+    new TransactionTemplate(transactionManager)
+        .executeWithoutResult(
+            status -> {
+              otherInstanceWriter()
+                  .writeEmbeddedChunks(List.of(chunk), List.of(fakeVector()), generation);
+              beforeCommit.run();
+            });
+  }
+
+  private static void awaitQuietly(CountDownLatch latch) {
+    try {
+      latch.await(RUN_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+  }
+
+  /** Sessions of this database waiting for a lock. */
+  private long lockWaiters() {
+    Long count =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database()"
+                + " AND wait_event_type = 'Lock'",
+            Long.class);
+    return count == null ? 0 : count;
+  }
+
   // --- helpers ---
 
   /** A draft at the stored endpoint, whose stored key it keeps. */
@@ -829,7 +1133,11 @@ class EmbeddingModelChangeIntegrationTest {
   }
 
   private static float[] constant(float value) {
-    float[] vector = new float[FakeEmbeddingModel.DIMENSIONS];
+    return constant(value, FakeEmbeddingModel.DIMENSIONS);
+  }
+
+  private static float[] constant(float value, int size) {
+    float[] vector = new float[size];
     java.util.Arrays.fill(vector, value);
     return vector;
   }

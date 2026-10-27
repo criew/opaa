@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-26 · ergänzt ADR-0060 (Entscheidung 10) und ADR-0053 (Entscheidung 8)
+Akzeptiert · zuletzt geändert 2026-10-27 · ergänzt ADR-0060 (Entscheidung 10) und ADR-0053 (Entscheidung 8)
 
 ## Kontext
 
@@ -88,7 +88,8 @@ mindestens 0,99 sein. Der Anker entsteht mit Installation oder Modellwechsel und
 Endpunktwechsel erhalten; fehlt er, erhebt ihn die erste gelungene Einbettung des Modells. Ein
 gespeicherter Schlüssel bleibt nur bei derselben Adresse (Schema, Host, Port, Pfad), wie in der
 Modellverwaltung. Bei angehaltenem Lauf eines Wechsels gilt dasselbe für das Zielmodell, als
-Ersatz-Endpunkt. Begründung: Derselbe Name kann hinter einem anderen Server eine andere Fassung
+Ersatz-Endpunkt. Geschrieben wird nur, wenn die Modellzeile unter dem Schemalock noch die ist, gegen
+die geprüft und verglichen wurde; sonst `409`. Dasselbe gilt für die Bestätigung. Begründung: Derselbe Name kann hinter einem anderen Server eine andere Fassung
 bedeuten; ein fester Anker lässt keine Drift über viele Wechsel zu. Der Schutz zielt auf Versehen:
 Ein Endpunkt, der die öffentlichen Probetexte gezielt vortäuscht, besteht ihn, und ein nachträglich
 erhobener Anker friert den dann aktiven Endpunkt ein, auch wenn der schon eine andere Fassung war.
@@ -101,10 +102,19 @@ nicht vorgesehen, erst nach Umschalten oder Verwerfen. Modellzeile und Spaltenst
 Instanzen über den Invalidierungsbus (ADR-0053, Entscheidung 5); bindend ist aber die Datenbank:
 Schreibanweisung und Vektorabfrage wirken nur, wenn die Generation ihrer Einbettung im
 Index-Datensatz die der gewählten Spalte ist. Sonst bettet der Schreiber neu ein, und die
-Vektorsuche liefert nichts. Nachläufe (Kontextpräfix, Nachzug, Änderung eines Metadatenschemas)
-bleiben während eines Wechsels erlaubt. Begründung: Eine Instanz, die Busereignisse verpasst, darf
-auch über Verwerfen und erneute Bestätigung hinweg keinen Vektor in die Spalte einer anderen
-Generation schreiben; eine ältere Instanz kennt die Generation nicht.
+Vektorsuche liefert nichts. Ein Schreiber hält dafür den Schemalock der Vektortabelle geteilt bis
+zum Commit; Bestätigung, Verwerfen, Umschalten und Startabgleich nehmen ihn exklusiv, bevor sie
+Datensatz oder Tabelle anfassen. Die Warteschlange der Datenbank ist fair: Wer nach einem wartenden
+Wechsel kommt, wartet hinter ihm. Die Versionsprüfung wiederholt sich unter dem Lock. Schaltet eine
+ältere Instanz während eines Rolling Updates um, bleibt die Zielgeneration ohne Zielmodell stehen;
+sie zählt nicht als Zielspalte, und der nächste Startabgleich übernimmt sie als Generation der
+Vektorspalte, wenn Modell und Dimension passen. Nachläufe (Kontextpräfix, Nachzug, Änderung eines
+Metadatenschemas) bleiben während eines Wechsels erlaubt. Begründung: Eine Instanz, die
+Busereignisse verpasst, darf auch über Verwerfen und erneute Bestätigung hinweg keinen Vektor in die
+Spalte einer anderen Generation schreiben; eine ältere Instanz kennt die Generation nicht. Eine
+Sperre der Indexzeile mit `FOR SHARE` reichte nicht: Neue Leser bekommen sie neben einem wartenden
+Schreiber sofort, ein steter Strom von Schreibern hungert den Wechsel aus, und Startabgleich und
+Schreiber nehmen Zeile und Tabelle in verschiedener Reihenfolge.
 
 ### 7. Vorschau ohne Inhalte und ohne Preis, mit festen Grenzen
 

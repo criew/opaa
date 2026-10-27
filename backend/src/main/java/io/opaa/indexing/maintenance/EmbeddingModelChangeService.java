@@ -245,7 +245,8 @@ public class EmbeddingModelChangeService {
               + expectedDimensions
               + " Dimensionen. Bitte die Probeeinbettung wiederholen.");
     }
-    if (models.compare(resolved.endpoint(), probed).kind() == Kind.ENDPOINT_CHANGE) {
+    Comparison comparison = models.compare(resolved.endpoint(), probed);
+    if (comparison.kind() == Kind.ENDPOINT_CHANGE) {
       throw new ConflictException(
           "Das Modell gleicht dem aktiven; dafür genügt ein Wechsel des Endpunkts ohne"
               + " Neueinbettung.");
@@ -254,6 +255,7 @@ public class EmbeddingModelChangeService {
     long generation = models.nextGeneration();
     return locked(
         () -> {
+          models.requireUnchanged(resolved, comparison);
           EmbeddingIndexRecord record = requireRecordForUpdate();
           if (record.target() != null) {
             throw new ConflictException(
@@ -383,6 +385,7 @@ public class EmbeddingModelChangeService {
     }
     return locked(
         () -> {
+          models.requireUnchanged(resolved, comparison);
           EmbeddingIndexRecord record = requireRecordForUpdate();
           if (record.run().running() && ownerAlive()) {
             throw new ConflictException(
@@ -426,7 +429,8 @@ public class EmbeddingModelChangeService {
   /**
    * Runs {@code change} under this instance's column exclusion and in one transaction under the
    * schema lock with a limited wait for table locks, replaces this instance's state with the
-   * snapshot it returns after the commit, and answers the progress.
+   * snapshot it returns after the commit, and answers the progress. The versions of the instances
+   * are checked again under the lock, so no instance of another version joins unnoticed.
    */
   private EmbeddingReindexProgress locked(Supplier<Snapshot> change) {
     try {
@@ -437,6 +441,7 @@ public class EmbeddingModelChangeService {
                     status -> {
                       schema.limitLockWait();
                       schema.lockSchemaChanges();
+                      requireSameVersions();
                       return change.get();
                     });
             state.replace(snapshot);

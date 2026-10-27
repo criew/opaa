@@ -4,7 +4,11 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.HexFormat;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -153,5 +157,28 @@ public class EmbeddingModelSettings {
 
   public boolean hasReferenceAnchor() {
     return referenceVectors != null;
+  }
+
+  /**
+   * A digest of everything a client is built from - generation, address, model, key ciphertext,
+   * input limit and size: equal digests mean the same client. Never reveals the key.
+   */
+  public String fingerprint() {
+    String text =
+        String.join(
+            "\u0000",
+            Long.toString(generation),
+            String.valueOf(baseUrl),
+            String.valueOf(modelIdentifier),
+            String.valueOf(apiKeyCiphertext),
+            Integer.toString(maxInputTokens),
+            Integer.toString(dimensions));
+    try {
+      return HexFormat.of()
+          .formatHex(
+              MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8)));
+    } catch (NoSuchAlgorithmException e) {
+      throw new IllegalStateException("SHA-256 is not available", e);
+    }
   }
 }

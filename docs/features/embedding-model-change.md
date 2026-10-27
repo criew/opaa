@@ -285,11 +285,18 @@ eines davon ab, ist der Index veraltet.
   `409` abgelehnt.
 - **Gleiche Version.** Bestätigung, Verwerfen und Endpunktwechsel verlangen, dass alle lebenden
   Instanzen dieselbe Version melden, sonst `409` mit dem Hinweis, das Rolling Update abzuschließen.
+  Geprüft wird vor der Probe und noch einmal unter dem Schemalock.
   Verglichen wird wie im Instanzregister ohne Build-Metadaten; zwei Builds von `main` mit derselben
   Version gelten als gleich. Ein Release-Rollback ist während eines Wechsels nicht vorgesehen, erst
   nach Umschalten oder Verwerfen; das Handbuch sagt das. Eine ältere Instanz kennt die Generation
   nicht, ihr Startabgleich verglich nur den Modellnamen und könnte einen Wechsel unter gleichem
-  Namen verwerfen.
+  Namen verwerfen. Schaltet sie um, bleibt die Zielgeneration ohne Zielmodell stehen; sie zählt
+  nicht als Zielspalte, und der nächste Startabgleich übernimmt sie als Generation der
+  Vektorspalte, wenn Modell und Dimension passen, ohne neue Neueinbettung.
+- **Entscheidung gegen die Zeile unter dem Lock.** Bestätigung und Endpunktwechsel prüfen und
+  vergleichen vor der Transaktion, weil die Probe auf das Netz wartet. Unter dem Schemalock muss
+  die Modellzeile noch die sein, gegen die geprüft wurde (Generation, Modell, Adresse, Schlüssel,
+  Eingabegrenze, Dimension); sonst antworten sie `409`, und die Probe ist zu wiederholen.
 - **Lauf, Besitz, Übernahme** nach Art des Laufs, siehe „Zwei Arten von Läufen".
 - **Schreiben.** Ein Schreiber bettet mit einem angehefteten Client ein und schreibt unter der
   Spaltensperre in die Spalte, die die Datenbank für die Generation seiner Einbettung nennt: die
@@ -298,10 +305,13 @@ eines davon ab, ist der Index veraltet.
   sonst scheitert das Dokument. Ein gescheitertes Dokument einer Quelle versucht deren nächster Lauf
   erneut; ein Upload bleibt gescheitert, bis jemand ihn „erneut verarbeiten" lässt. Eine fehlende
   Zielspalte nach einem Verwerfen behandelt der Schreiber wie eine fremde Generation.
-- **Prüfung in der Datenbank.** Die Schreibtransaktion liest die Generationen beider Spalten mit
-  einer Share-Sperre des Index-Datensatzes und hält sie bis zum Commit. Bestätigung, Verwerfen und
-  Umschalten ändern den Datensatz und warten deshalb auf laufende Schreiber, und ein Schreiber
-  schreibt nur in die Spalte, die zu seiner Generation gehört. Passt keine, rollt die ganze
+- **Prüfung in der Datenbank.** Die Schreibtransaktion nimmt den Schemalock der Vektortabelle
+  geteilt, liest dann die Generationen beider Spalten und hält den Lock bis zum Commit.
+  Bestätigung, Verwerfen, Umschalten und Startabgleich nehmen ihn exklusiv, bevor sie Datensatz
+  oder Tabelle ändern, und warten deshalb auf laufende Schreiber; ein Schreiber schreibt nur in die
+  Spalte, die zu seiner Generation gehört. Die Warteschlange ist fair: Ein Schreiber, der nach einem
+  wartenden Wechsel kommt, wartet hinter ihm, sodass ein steter Strom von Schreibern den Wechsel
+  nicht aushungert. Nach der Wartegrenze antwortet der Wechsel `409`. Passt keine, rollt die ganze
   Transaktion zurück, die Zeile des Volltexts eingeschlossen. Eine Instanz, die Busereignisse verpasst hat, schreibt so
   auch über ein Verwerfen und eine erneute Bestätigung hinweg keinen Vektor in die Spalte einer
   anderen Generation. Das Umschalten wartet mit seiner Tabellensperre auf laufende Schreiber; was

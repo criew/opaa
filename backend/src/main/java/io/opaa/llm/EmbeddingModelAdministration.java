@@ -1,5 +1,6 @@
 package io.opaa.llm;
 
+import io.opaa.common.ConflictException;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.FieldValidationException.FieldError;
 import io.opaa.common.TransactionCallbacks;
@@ -38,6 +39,9 @@ public class EmbeddingModelAdministration {
 
   static final int THROUGHPUT_TEXTS = 16;
 
+  static final String CHANGED_MEANWHILE =
+      "Das Embedding-Modell wurde zwischendurch geändert. Bitte die Probeeinbettung wiederholen.";
+
   private static final String FILLER =
       "Die Stadtverwaltung veröffentlicht Bekanntmachungen, Satzungen und Beschlüsse des Rates. ";
 
@@ -47,14 +51,30 @@ public class EmbeddingModelAdministration {
    * @param apiKey {@code null} keeps the stored key, only for the same endpoint; blank sends none
    * @param maxInputTokens {@code null} for the default input limit
    */
-  public record Draft(String baseUrl, String model, String apiKey, Integer maxInputTokens) {}
+  public record Draft(String baseUrl, String model, String apiKey, Integer maxInputTokens) {
+
+    /** Never names the key, only whether one was entered. */
+    @Override
+    public String toString() {
+      return "Draft[baseUrl="
+          + ModelEndpointUri.withoutSecrets(baseUrl)
+          + ", model="
+          + model
+          + ", apiKeySet="
+          + (apiKey != null && !apiKey.isBlank())
+          + ", maxInputTokens="
+          + maxInputTokens
+          + "]";
+    }
+  }
 
   /**
    * A validated draft: the endpoint with the key to send, the ciphertext to store and how the key
    * changes against the stored row ({@code SET}, {@code CHANGED}, {@code REMOVED}, or {@code null}
    * for unchanged).
    */
-  public record Resolved(EmbeddingEndpoint endpoint, String ciphertext, String apiKeyChange) {}
+  public record Resolved(
+      EmbeddingEndpoint endpoint, String ciphertext, String apiKeyChange, String basis) {}
 
   /** What a probed draft is to the installed model. */
   public enum Kind {
@@ -65,8 +85,10 @@ public class EmbeddingModelAdministration {
   /**
    * @param similarity the smallest similarity to the anchor; {@code null} when the draft names
    *     another model or size, or when no anchor could be had
+   * @param generation the generation of the row compared with
+   * @param modelIdentifier the model of the row compared with
    */
-  public record Comparison(Kind kind, Double similarity) {}
+  public record Comparison(Kind kind, Double similarity, long generation, String modelIdentifier) {}
 
   /** The audit state of the row before and after a write, never with the key. */
   public record Change(Map<String, Object> before, Map<String, Object> after) {}
@@ -179,19 +201,24 @@ public class EmbeddingModelAdministration {
                 + " eingeben oder „ohne Schlüssel“ wählen.");
       }
       return new Resolved(
-          new EmbeddingEndpoint(baseUrl, model, decrypt(stored), maxInputTokens), stored, null);
+          new EmbeddingEndpoint(baseUrl, model, decrypt(stored), maxInputTokens),
+          stored,
+          null,
+          row.fingerprint());
     }
     if (apiKey.isBlank()) {
       return new Resolved(
           new EmbeddingEndpoint(baseUrl, model, null, maxInputTokens),
           null,
-          stored == null ? null : "REMOVED");
+          stored == null ? null : "REMOVED",
+          row.fingerprint());
     }
     String key = apiKey.strip();
     return new Resolved(
         new EmbeddingEndpoint(baseUrl, model, key, maxInputTokens),
         encrypt(key),
-        stored == null ? "SET" : "CHANGED");
+        stored == null ? "SET" : "CHANGED",
+        row.fingerprint());
   }
 
   /** The probe embedding of {@link EmbeddingModelService#probe}, the anchor texts included. */
@@ -212,7 +239,7 @@ public class EmbeddingModelAdministration {
         || !row.getModelIdentifier().equals(endpoint.modelIdentifier())
         || probed.dimensions() == null
         || probed.dimensions() != row.getDimensions()) {
-      return new Comparison(Kind.MODEL_CHANGE, null);
+      return new Comparison(Kind.MODEL_CHANGE, null, row.getGeneration(), row.getModelIdentifier());
     }
     float[] anchor = row.getReferenceVectors();
     if (anchor == null) {
@@ -225,17 +252,20 @@ public class EmbeddingModelAdministration {
                   row.getMaxInputTokens()),
               EmbeddingAnchor.TEXTS);
       if (!current.succeeded() || current.vectors().size() != EmbeddingAnchor.TEXTS.size()) {
-        return new Comparison(Kind.MODEL_CHANGE, null);
+        return new Comparison(
+            Kind.MODEL_CHANGE, null, row.getGeneration(), row.getModelIdentifier());
       }
       anchor = EmbeddingAnchor.flatten(current.vectors());
     }
     double similarity = EmbeddingAnchor.smallestSimilarity(anchor, probed.vectors());
     if (Double.isNaN(similarity)) {
-      return new Comparison(Kind.MODEL_CHANGE, null);
+      return new Comparison(Kind.MODEL_CHANGE, null, row.getGeneration(), row.getModelIdentifier());
     }
     return new Comparison(
         similarity >= EmbeddingAnchor.MIN_SIMILARITY ? Kind.ENDPOINT_CHANGE : Kind.MODEL_CHANGE,
-        similarity);
+        similarity,
+        row.getGeneration(),
+        row.getModelIdentifier());
   }
 
   /**
@@ -324,6 +354,23 @@ public class EmbeddingModelAdministration {
     rows.saveAndFlush(row);
     dropClientAfterCommit();
     return generation;
+  }
+
+  /**
+   * Refuses a write decided on a row that changed since: the row must still be the one {@code
+   * resolved} was validated against and {@code comparison} compared with. Called under the schema
+   * lock, which every writer of the row holds.
+   *
+   * @throws ConflictException when the row changed meanwhile
+   */
+  @Transactional(propagation = Propagation.MANDATORY)
+  public void requireUnchanged(Resolved resolved, Comparison comparison) {
+    EmbeddingModelSettings row = requireInstalled();
+    if (!row.fingerprint().equals(resolved.basis())
+        || row.getGeneration() != comparison.generation()
+        || !row.getModelIdentifier().equals(comparison.modelIdentifier())) {
+      throw new ConflictException(CHANGED_MEANWHILE);
+    }
   }
 
   /** A generation drawn for a model change before its transaction. */

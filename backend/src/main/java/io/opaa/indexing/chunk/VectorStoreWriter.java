@@ -30,10 +30,10 @@ import tools.jackson.databind.ObjectMapper;
  * path.
  *
  * <p>The vector goes to the column of the generation it was embedded under, as the database names
- * it under a share lock held until commit ({@link EmbeddingIndexStore#lockGenerations}): the
- * embedding column, or the target column of a running model change. A generation no column carries
- * fails the write with {@link EmbeddingGenerationChangedException} before anything is written, the
- * full-text row included (ADR-0061, Entscheidung 6).
+ * it under the schema lock held shared until commit ({@link EmbeddingIndexStore#lockGenerations}):
+ * the embedding column, or the target column of a running model change. A generation no column
+ * carries fails the write with {@link EmbeddingGenerationChangedException} before anything is
+ * written, the full-text row included (ADR-0061, Entscheidung 6).
  *
  * <p>Schema and table name come from the same {@code spring.ai.vectorstore.pgvector.*} properties
  * {@code PgVectorStore} binds; {@code id-type} is assumed {@code UUID}, as elsewhere.
@@ -239,7 +239,8 @@ public class VectorStoreWriter {
 
   /**
    * The column of {@code generation} and whether the other column exists, decided by the database
-   * under a share lock; without a row (before the first reconciliation) the embedding column.
+   * under the shared schema lock; without a row (before the first reconciliation) the embedding
+   * column.
    */
   private ColumnChoice columnFor(long generation) {
     Optional<EmbeddingIndexStore.Generations> generations = indexStore.lockGenerations();

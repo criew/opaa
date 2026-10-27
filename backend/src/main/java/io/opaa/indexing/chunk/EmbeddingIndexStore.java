@@ -36,6 +36,9 @@ public class EmbeddingIndexStore {
     }
   }
 
+  /** The namespace of {@link VectorIndexSchema#lockSchemaChanges}, here taken shared. */
+  static final int SCHEMA_LOCK_NAMESPACE = 213;
+
   private static final String RUN_MATCHES =
       " AND run_status = 'RUNNING' AND run_owner_instance_id = ?"
           + " AND coalesce(run_kind, 'REEMBED') = ?"
@@ -65,18 +68,38 @@ public class EmbeddingIndexStore {
   }
 
   /**
-   * The generations of both columns, read with a share lock held until the caller's transaction
-   * ends: a model change, a discard or a switch, which all update the row, waits for the caller,
-   * and the caller writes into the column as it was decided. Empty without a row. Called inside a
-   * transaction only.
+   * The generations of both columns, read under the schema lock in shared mode until the caller's
+   * transaction ends. A model change, a discard, a switch and the startup reconciliation take that
+   * lock exclusively before they touch the row or the vector table, so the caller writes into the
+   * column as it was decided. The lock queues fairly: a writer arriving behind a waiting change
+   * waits for it. A target generation without a target model counts as none. Empty without a row.
+   * Called inside a transaction only.
    */
   public Optional<Generations> lockGenerations() {
+    jdbcTemplate.query(
+        "SELECT pg_advisory_xact_lock_shared(?, 0)", rs -> null, SCHEMA_LOCK_NAMESPACE);
     return jdbcTemplate
         .query(
-            "SELECT generation, target_generation FROM embedding_index WHERE id = 1 FOR SHARE",
+            "SELECT generation, CASE WHEN target_model IS NULL THEN NULL"
+                + " ELSE target_generation END AS target_generation"
+                + " FROM embedding_index WHERE id = 1",
             (rs, row) ->
                 new Generations(
                     rs.getLong("generation"), rs.getObject("target_generation", Long.class)))
+        .stream()
+        .findFirst();
+  }
+
+  /**
+   * The target generation the row carries without a target model: what a switch by a version that
+   * does not know generations leaves behind. Empty otherwise.
+   */
+  public Optional<Long> orphanedTargetGeneration() {
+    return jdbcTemplate
+        .query(
+            "SELECT target_generation FROM embedding_index WHERE id = 1"
+                + " AND target_model IS NULL AND target_generation IS NOT NULL",
+            (rs, row) -> rs.getLong(1))
         .stream()
         .findFirst();
   }

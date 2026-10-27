@@ -816,6 +816,7 @@ und im Protokoll des Backends.
 | Die Probeeinbettung meldet, der Endpunkt bette anders ein, mit einer Ähnlichkeit unter 0,99 | Hinter derselben Modell-Kennung läuft eine andere Fassung oder Quantisierung; ein Endpunktwechsel taugt nicht, der Weg ist ein Modellwechsel ([Endpunkt wechseln](#endpunkt-wechseln)) |
 | „Nicht alle laufenden Instanzen haben dieselbe Version" | Ein Rolling Update läuft noch; es abschließen und den Schritt wiederholen |
 | „Die Vektortabelle ist gerade belegt" | Eine andere Sitzung hält eine Sperre auf der Vektortabelle, etwa ein Indexbau; in einigen Minuten wiederholen |
+| „Das Embedding-Modell wurde zwischendurch geändert" | Während der Probe hat ein anderer Schritt das Modell geändert, etwa ein Endpunktwechsel aus einer zweiten Sitzung; die Seite neu laden und die Probeeinbettung wiederholen |
 | „Das Umschalten auf das neue Modell läuft bereits" beim Verwerfen | Der Vektorindex für das neue Modell wird schon gebaut; den Abschluss abwarten |
 | HTTP `429` bei Probeeinbettung oder Wechsel | Die Grenze von 30 Aufrufen je Stunde ist erreicht ([Modell wechseln](#modell-wechseln), „Grenzen") |
 | Neueinbettung endet „fehlgeschlagen" | Endpunkt nicht erreichbar oder Timeout zu kurz; Log prüfen, beheben und fortsetzen. Lehnt der Endpunkt einzelne Chunks als zu lang ab, statt sie zu kürzen, scheitern deren Dokumente bei jedem Versuch. Dann die Bibliothek neu aufbauen ([Falle bei einer Neuindizierung](aktualisierung.md#was-ein-update-mit-dem-index-macht)) |
