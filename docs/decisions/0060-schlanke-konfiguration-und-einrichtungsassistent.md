@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-26 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md)
+Akzeptiert · zuletzt geändert 2026-10-27 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md)
 
 ## Kontext
 
@@ -75,8 +75,14 @@ Begründung: Ohne Token übernähme die Installation, wer die Adresse zuerst auf
 Die Installations-API speichert jeden Schritt einzeln; ein Abbruch setzt an derselben Stelle fort.
 Pflichtschritte sind erstes Systemverwaltungskonto, Anmeldeverfahren, Chat-Modell und
 Embedding-Modell, jeweils mit erfolgreicher Prüfung (Verbindungstest, Probeeinbettung). Alle übrigen
-Schritte sind optional und später in der Verwaltung erreichbar. Der Abschluss ist eine Transaktion
-unter einem Advisory-Lock und gelingt nur, wenn jeder Pflichtschritt geprüft ist. Danach antwortet
+Schritte sind optional und später in der Verwaltung erreichbar, heute der E-Mail-Versand. Ein
+optionaler Schritt wird übersprungen, indem die API seinen Zwischenstand verwirft; das ist ein
+Revisionsereignis. Ein übersprungener optionaler Schritt hält den Abschluss nicht auf, ein
+gespeicherter erst, wenn seine Prüfung gelungen ist: Der Abschluss übernimmt nie ungeprüfte Werte.
+Der Abschluss ist eine Transaktion unter einem Advisory-Lock und gelingt nur, wenn jeder
+Pflichtschritt und jeder gespeicherte optionale Schritt geprüft ist. Ein geprüfter E-Mail-Versand geht
+mit den Regeln der Mail-Verwaltung in deren Einstellungen über und schaltet den Versand ein; ohne ihn
+bleibt der Versand aus. Danach antwortet
 jede Operation der Installations-API `404`, auf jeder Instanz. Begründung für `404`: Der Endpunkt
 verrät nach dem Abschluss nicht, dass es ihn gibt, wie der MCP-Endpunkt bei geschlossenem Kanal.
 
@@ -149,6 +155,18 @@ Aufrufe zur Laufzeit prüft sie nicht, damit eine enger gezogene Liste kein lauf
 abschaltet; nennt nur die Liste der Quellen den Host eines gespeicherten Modells, warnt der Start.
 Begründung: Wer Bibliotheken anbinden darf, soll den internen Modellserver nicht als Quelle lesen
 können, nur weil der Betrieb ihn für die Modelle freigegeben hat.
+
+Den Mailserver des E-Mail-Versands prüft die Installation beim Speichern und vor jeder Prüfung gegen
+eine eigene Allowlist (`OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST`, Einträge `host` oder `host:port`),
+eine Grenze des Betriebs nach Entscheidung 2. Die Prüfung baut eine Verbindung auf und meldet sich
+an, sendet aber nichts; eine Testnachricht geht nur an eine Adresse, die im Schritt angegeben wird,
+und ist je Instanz begrenzt. Die Mail-Verwaltung prüft Mailserver-Adressen weiterhin nicht.
+Begründung: In der Verwaltung trägt nur die Systemverwaltung den Mailserver ein, und ein interner
+Server ist der Regelfall. In der Installation ist das Token die einzige Hürde; ohne Prüfung reichte
+der Verbindungsaufbau weiter ins interne Netz als der Modellabruf, und eine Testnachricht an eine
+frei wählbare Adresse machte ein internes Relais von außen nutzbar. Ein interner Mailserver braucht
+deshalb dieselbe Freigabe des Betriebs wie ein internes Modell, oder er wird nach der Installation in
+der Verwaltung eingetragen.
 
 ### 11. Jede Änderung einer Einstellung ist nachweisbar
 
@@ -243,6 +261,10 @@ eingestellt hatte, und doch bleibt die Datenbank die einzige Quelle des Werts.
   abpassen; die Datei beim Start ist deklarativ.
 - Grenzen des Betriebs in die Oberfläche holen — hebt die Trennung zwischen Betrieb und
   Systemverwaltung auf (Entscheidung 2).
+- Mailserver im Assistenten nur über ein Budget begrenzen, ohne Adressprüfung — jede Adresse und jeder
+  Port im internen Netz bliebe mit dem Token erreichbar, nur langsamer (Entscheidung 10).
+- Mailserver gegen die Allowlist der Modelle prüfen — machte jeden freigegebenen Modellserver zum
+  erlaubten Mailserver und umgekehrt (Entscheidung 10).
 - Modelladressen gegen die Allowlist der Quellen prüfen — macht jeden freigegebenen Modellserver zum
   erlaubten Ziel der Konnektoren (Entscheidung 10).
 - Übergang, in dem die Allowlist der Quellen Modelle eine Zeit lang weiter freigibt — keine
