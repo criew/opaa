@@ -8,6 +8,7 @@ import io.opaa.api.dto.EmbeddingReindexStatusResponse;
 import io.opaa.indexing.chunk.EmbeddingIdentity;
 import io.opaa.indexing.chunk.EmbeddingIndexRecord;
 import io.opaa.indexing.maintenance.EmbeddingReindexProgress;
+import io.opaa.llm.ModelEndpointUri;
 
 /** Maps the state of the vector index and its re-embedding onto the API response. */
 final class EmbeddingReindexResponseMapper {
@@ -40,13 +41,14 @@ final class EmbeddingReindexResponseMapper {
     return response;
   }
 
+  /** The stored address stays whole; it leaves without query, fragment and credentials. */
   private static EmbeddingIndexIdentity toIdentity(EmbeddingIdentity identity) {
     if (identity == null) {
       return null;
     }
     return new EmbeddingIndexIdentity(identity.dimensions())
         .model(identity.model())
-        .baseUrl(identity.baseUrl())
+        .baseUrl(ModelEndpointUri.withoutSecrets(identity.baseUrl()))
         .generation(identity.generation());
   }
 }
