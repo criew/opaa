@@ -84,7 +84,7 @@ function StepView({
   discover,
   onBack,
 }: StepViewProps) {
-  const nav = { onBack, onSkip: step.mandatory ? undefined : () => void skip(step.step) }
+  const nav = { onBack, onSkip: step.mandatory ? undefined : () => skip(step.step) }
   const discoverChat = useCallback(
     (request: InstallationModelDiscoveryRequest) => discover('CHAT_MODEL', request),
     [discover],

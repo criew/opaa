@@ -126,6 +126,66 @@ describe('InstallationPage', () => {
     expect(mockInstallationState().steps.find((s) => s.step === 'SIGN_IN')?.saved).toBe(false)
   })
 
+  describe('skipping an optional step', () => {
+    async function openOptionalSignIn(user: UserEvent) {
+      updateMockStep('SIGN_IN', { mandatory: false })
+      renderPage()
+      await stepHeading('Installations-Token')
+      await enterToken(user)
+      await stepHeading('Erstes Konto')
+      const optional = screen.getByRole('list', { name: 'Optionale Schritte' })
+      await user.click(within(optional).getByRole('button', { name: /Anmeldeverfahren/ }))
+      await stepHeading('Anmeldeverfahren')
+    }
+
+    it('names a refused skip at the step and keeps it open', async () => {
+      server.use(
+        http.post('/api/v1/installation/steps/:step/skip', () =>
+          HttpResponse.json(
+            { error: 'Zu viele Anfragen', status: 429, timestamp: new Date().toISOString() },
+            { status: 429 },
+          ),
+        ),
+      )
+      const user = userEvent.setup()
+      await openOptionalSignIn(user)
+
+      await user.click(screen.getByRole('button', { name: 'Überspringen' }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Zu viele Anfragen oder Fehlversuche von dieser Adresse',
+      )
+      expect(screen.getByRole('heading', { level: 2, name: 'Anmeldeverfahren' })).toBeVisible()
+    })
+
+    it('sends one skip although the button is pressed twice', async () => {
+      let skips = 0
+      let release: () => void = () => {}
+      server.use(
+        http.post('/api/v1/installation/steps/:step/skip', async () => {
+          skips += 1
+          await new Promise<void>((resolve) => {
+            release = resolve
+          })
+          updateMockStep('SIGN_IN', { saved: false, checked: false })
+          return HttpResponse.json(mockInstallationState().steps.find((s) => s.step === 'SIGN_IN'))
+        }),
+      )
+      const user = userEvent.setup()
+      await openOptionalSignIn(user)
+
+      const skip = screen.getByRole('button', { name: 'Überspringen' })
+      await user.click(skip)
+      await waitFor(() => expect(skips).toBe(1))
+      expect(skip).toHaveAttribute('aria-busy', 'true')
+      await user.click(skip)
+      release()
+
+      expect(await stepHeading('Chat-Modell')).toBeInTheDocument()
+      expect(skips).toBe(1)
+    })
+  })
+
   it('shows no optional group while the API lists only mandatory steps', async () => {
     withoutMockStep('MAIL')
     const user = userEvent.setup()

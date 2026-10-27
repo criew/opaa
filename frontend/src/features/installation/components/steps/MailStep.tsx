@@ -168,7 +168,7 @@ export default function MailStep({
       busyAnnouncement="Verbindung zum Mailserver wird geprüft"
       onSubmit={handleSubmit}
       onBack={onBack}
-      onSkip={() => void form.submit({}, MAIL_FIELDS, skip)}
+      onSkip={skip}
     >
       {!publicBaseUrlConfigured && <PublicBaseUrlMissingAlert />}
       <FormField
