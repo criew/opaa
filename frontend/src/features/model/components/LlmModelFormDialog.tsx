@@ -181,8 +181,9 @@ export default function LlmModelFormDialog({
   }
 
   /**
-   * Fills in the preset's address. A host still to be confirmed (Ollama) is selected for
-   * overwriting and nothing is fetched yet; a keyed preset fetches at once if a key is typed.
+   * Fills in the preset's address; a host still to be confirmed (Ollama) is selected for
+   * overwriting. Nothing is fetched: a typed key may belong to another endpoint and is sent only
+   * on „Modelle abrufen“ or Enter.
    */
   function choosePreset(chosen: EndpointPreset) {
     changeBaseUrl(chosen.baseUrl)
@@ -196,9 +197,7 @@ export default function LlmModelFormDialog({
         input.focus()
         input.setSelectionRange(start, start + host.length)
       }, 0)
-      return
     }
-    if (chosen.needsKey && typedKey) runDiscovery(chosen.baseUrl)
   }
 
   function selectModel(selected: DiscoveredLlmModel) {
