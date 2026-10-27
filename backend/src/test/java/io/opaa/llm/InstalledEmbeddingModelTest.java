@@ -8,6 +8,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.micrometer.observation.ObservationRegistry;
 import io.opaa.FakeEmbeddingModel;
 import io.opaa.indexing.chunk.ScriptedEmbeddingEndpoint;
 import io.opaa.security.SettingsEncryptionProperties;
@@ -118,11 +119,13 @@ class InstalledEmbeddingModelTest {
 
   @Test
   void theClientOfTheFactoryEmbedsTheFormattedContent() {
+    @SuppressWarnings("unchecked")
+    ObjectProvider<ObservationRegistry> observationRegistry = mock(ObjectProvider.class);
     when(repository.findInstalled()).thenReturn(Optional.of(settings()));
     when(factory.create(any()))
         .thenAnswer(
             invocation ->
-                new OpenAiEmbeddingClientFactory(Duration.ofSeconds(1), mock(ObjectProvider.class))
+                new OpenAiEmbeddingClientFactory(Duration.ofSeconds(1), observationRegistry)
                     .create(invocation.getArgument(0)));
     Document chunk = new Document("Antragsfrist drei Monate");
     chunk.setContentFormatter((document, mode) -> "Satzung > §4\n\n" + document.getText());
