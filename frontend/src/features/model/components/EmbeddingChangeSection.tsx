@@ -386,7 +386,7 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
         {mode === 'change'
           ? 'Die Probeeinbettung prüft den Endpunkt mit festen Probetexten. Gleicht er dem aktiven Modell, genügt ein Wechsel des Endpunkts ohne Neueinbettung; sonst zeigt OPAA, was die Neueinbettung kostet.'
           : mode === 'initial'
-            ? 'Die Probeeinbettung prüft den Endpunkt und ermittelt die Zahl der Dimensionen; mit ihr legt OPAA die Vektorablage an. Es gibt noch keine Abschnitte, nichts wird neu eingebettet.'
+            ? 'Die Probeeinbettung prüft den Endpunkt und ermittelt die Zahl der Dimensionen; mit ihr legt OPAA die Vektorablage an. Vor dem ersten Modell nimmt OPAA keine Inhalte an, deshalb wird nichts neu eingebettet.'
             : 'Ein Ersatz-Endpunkt muss das neue Modell so einbetten wie bei der Bestätigung; danach den Lauf unter Indexstatus fortsetzen.'}
       </Typography>
       <Stack spacing={2}>

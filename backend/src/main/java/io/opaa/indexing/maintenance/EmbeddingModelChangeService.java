@@ -102,6 +102,19 @@ public class EmbeddingModelChangeService {
       "Nicht alle laufenden Instanzen haben dieselbe Version. Bitte zuerst das Rolling Update"
           + " abschließen.";
 
+  /**
+   * The vector table holds chunks although no model row exists - a restored or damaged database. A
+   * first model would take them over unnoticed, so it is refused (ADR-0061, Entscheidung 8).
+   */
+  static final String CHUNKS_WITHOUT_MODEL =
+      "Die Vektortabelle enthält bereits Abschnitte, aber es ist kein Embedding-Modell"
+          + " eingerichtet. Ein erstes Modell würde sie ungeprüft übernehmen; die Abhilfe nennt das"
+          + " Handbuch unter Modelle, Fehlerbilder.";
+
+  static final String INDEX_OF_ANOTHER_MODEL =
+      "Der Vektorindex nennt ein anderes Embedding-Modell, aber es ist keines eingerichtet. Die"
+          + " Abhilfe nennt das Handbuch unter Modelle, Fehlerbilder.";
+
   static final String LOCK_NOT_GRANTED =
       "Die Vektortabelle ist gerade belegt, etwa durch den Aufbau des Vektorindex. Bitte in"
           + " einigen Minuten erneut versuchen.";
@@ -203,6 +216,9 @@ public class EmbeddingModelChangeService {
       return new ProbeResult(false, probed.message(), null, null, null, null);
     }
     Comparison comparison = models.compare(resolved.endpoint(), probed);
+    if (comparison.kind() == Kind.INITIAL && schema.hasChunks()) {
+      return new ProbeResult(false, CHUNKS_WITHOUT_MODEL, null, null, null, null);
+    }
     Preview preview =
         comparison.kind() == Kind.MODEL_CHANGE
             ? preview(
@@ -318,7 +334,8 @@ public class EmbeddingModelChangeService {
    * Sets the first embedding model of an installation without one: the vector table of {@code
    * dimensions}, the model row under {@code generation} with its anchor, and the index record of
    * that model, all in one transaction; there are no chunks, so no run starts. Refused when a model
-   * was installed meanwhile.
+   * was installed meanwhile, when the table already holds chunks, and when an index record names
+   * another model: such chunks belong to a model nobody knows, and taking them over is no choice.
    */
   private EmbeddingReindexProgress installFirst(
       Resolved resolved,
@@ -331,6 +348,14 @@ public class EmbeddingModelChangeService {
     return locked(
         () -> {
           models.requireUnchanged(resolved, comparison);
+          if (schema.hasChunks()) {
+            throw new ConflictException(CHUNKS_WITHOUT_MODEL);
+          }
+          Optional<EmbeddingIndexRecord> recorded = store.loadForUpdate();
+          if (recorded.isPresent()
+              && !resolved.endpoint().modelIdentifier().equals(recorded.get().current().model())) {
+            throw new ConflictException(INDEX_OF_ANOTHER_MODEL);
+          }
           Change change = models.installFirst(resolved, dimensions, anchor, generation);
           EmbeddingIdentity first =
               new EmbeddingIdentity(
@@ -338,7 +363,7 @@ public class EmbeddingModelChangeService {
                   resolved.endpoint().baseUrl(),
                   dimensions,
                   generation);
-          Run run = store.loadForUpdate().map(EmbeddingIndexRecord::run).orElse(Run.NONE);
+          Run run = recorded.map(EmbeddingIndexRecord::run).orElse(Run.NONE);
           store.save(new EmbeddingIndexRecord(first, null, run));
           Map<String, Object> after = new LinkedHashMap<>(change.after());
           after.put("initial", true);

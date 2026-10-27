@@ -272,11 +272,14 @@ Fehler im Log; Anmeldung, Konten, Spaces, Bibliotheken und die Verwaltung arbeit
 | Fehlt | Wirkung | Abhilfe |
 |---|---|---|
 | Chat-Modell | Fragen im Chat bekommen keine Antwort; der Chat zeigt „Noch kein Chat-Modell eingerichtet“, für die Systemverwaltung mit „Chat-Modell einrichten“ | unter Modelle → Chat-Modelle ein Modell anlegen und aktivieren, ohne Neustart ([Chat-Modelle in der Oberfläche anlegen](modelle.md#chat-modelle-in-der-oberfläche-anlegen)) |
-| Embedding-Modell | keine Vektorablage: Indexierung, Upload und Suche antworten mit dem Hinweis, dass noch kein Embedding-Modell eingerichtet ist; geplante Läufe ruhen, gemeldete Änderungen warten. Fragen, die in Bibliotheken suchen, bekommen denselben Hinweis; der Chat zeigt „Noch kein Embedding-Modell eingerichtet“ | unter Modelle → Einbettung das erste Modell festlegen, ohne Neustart ([Erstes Modell festlegen](modelle.md#erstes-modell-festlegen)) |
+| Embedding-Modell | keine Vektorablage: Indexierung, Upload und Suche antworten mit dem Hinweis, dass noch kein Embedding-Modell eingerichtet ist; geplante Läufe ruhen, von einer Quelle gemeldete Änderungen verfallen nach kurzer Zeit (der nächste Lauf nach dem Festlegen deckt sie ab). Fragen, die in Bibliotheken suchen, bekommen denselben Hinweis; der Chat zeigt „Noch kein Embedding-Modell eingerichtet“ | unter Modelle → Einbettung das erste Modell festlegen, ohne Neustart ([Erstes Modell festlegen](modelle.md#erstes-modell-festlegen)) |
 
 Readiness und `/actuator/health` bleiben `UP`; die Health Groups `chat-model`, `embedding-model`
-und `vector-store` melden `UNKNOWN` mit dem Detail `NOT_CONFIGURED`
-([Fehlerbilder der Modelle](modelle.md#fehlerbilder)).
+und `vector-store` melden `UNKNOWN` mit dem Detail `NOT_CONFIGURED`. Wer Modelle überwacht, wertet
+dieses Detail aus (Health Groups mit Zugangstoken) oder mit einer angemeldeten Sitzung
+`GET /api/v1/search/availability` (`chatModelConfigured`, `embeddingModelConfigured`); eine Überwachung nur auf `DOWN` bemerkt ein nie
+eingerichtetes Modell nicht. Eine Vektortabelle mit Abschnitten, aber ohne Embedding-Modell bleibt
+ein Fehler (`DOWN`, [Fehlerbilder der Modelle](modelle.md#fehlerbilder)).
 
 ## Konfiguration
 

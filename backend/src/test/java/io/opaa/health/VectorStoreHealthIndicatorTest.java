@@ -10,6 +10,7 @@ import io.opaa.indexing.chunk.EmbeddingIdentity;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.llm.EmbeddingInfo;
 import io.opaa.llm.EmbeddingInfoService;
+import io.opaa.llm.EmbeddingModelService;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.vectorstore.SearchRequest;
@@ -19,6 +20,8 @@ import org.springframework.boot.health.contributor.Status;
 
 class VectorStoreHealthIndicatorTest {
 
+  private final EmbeddingModelService models = mock(EmbeddingModelService.class);
+
   private final EmbeddingInfoService embeddingInfo = installed();
 
   @Test
@@ -26,7 +29,8 @@ class VectorStoreHealthIndicatorTest {
     VectorStore vectorStore = mock(VectorStore.class);
     when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     VectorStoreHealthIndicator indicator =
-        new VectorStoreHealthIndicator(vectorStore, new EmbeddingIndexState(), embeddingInfo);
+        new VectorStoreHealthIndicator(
+            vectorStore, new EmbeddingIndexState(), embeddingInfo, models);
 
     Health health = indicator.health();
 
@@ -40,7 +44,8 @@ class VectorStoreHealthIndicatorTest {
     when(vectorStore.similaritySearch(any(SearchRequest.class)))
         .thenThrow(new RuntimeException("Connection refused"));
     VectorStoreHealthIndicator indicator =
-        new VectorStoreHealthIndicator(vectorStore, new EmbeddingIndexState(), embeddingInfo);
+        new VectorStoreHealthIndicator(
+            vectorStore, new EmbeddingIndexState(), embeddingInfo, models);
 
     Health health = indicator.health();
 
@@ -56,7 +61,7 @@ class VectorStoreHealthIndicatorTest {
     EmbeddingIdentity configured = new EmbeddingIdentity("bge-m3", null, 1024, 1);
     state.replace(new EmbeddingIndexState.Snapshot(built, configured, configured));
     VectorStoreHealthIndicator indicator =
-        new VectorStoreHealthIndicator(vectorStore, state, embeddingInfo);
+        new VectorStoreHealthIndicator(vectorStore, state, embeddingInfo, models);
 
     Health health = indicator.health();
 
@@ -71,7 +76,8 @@ class VectorStoreHealthIndicatorTest {
     EmbeddingInfoService notInstalled = mock(EmbeddingInfoService.class);
     when(notInstalled.getEmbeddingInfo()).thenReturn(EmbeddingInfo.NOT_INSTALLED);
     VectorStoreHealthIndicator indicator =
-        new VectorStoreHealthIndicator(vectorStore, new EmbeddingIndexState(), notInstalled);
+        new VectorStoreHealthIndicator(
+            vectorStore, new EmbeddingIndexState(), notInstalled, models);
 
     Health health = indicator.health();
 
@@ -87,7 +93,7 @@ class VectorStoreHealthIndicatorTest {
 
     assertThat(
             new VectorStoreHealthIndicator(
-                    mock(VectorStore.class), new EmbeddingIndexState(), notInstalled)
+                    mock(VectorStore.class), new EmbeddingIndexState(), notInstalled, models)
                 .health()
                 .getStatus())
         .isEqualTo(Status.UNKNOWN);

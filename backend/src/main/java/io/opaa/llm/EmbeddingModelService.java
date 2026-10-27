@@ -120,6 +120,15 @@ public class EmbeddingModelService {
   }
 
   /**
+   * Whether the vector table holds chunks although no embedding model is installed: a restored or
+   * damaged database, an error the start and the health report - unlike a missing or empty table,
+   * the regular state before the first model.
+   */
+  public boolean chunksWithoutModel() {
+    return installed().isEmpty() && vectorTable.exists() && vectorTable.hasRows();
+  }
+
+  /**
    * Refuses a use of the embedding model before one is installed, before anything is written: an
    * indexing run, an upload or a search.
    *

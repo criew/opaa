@@ -157,13 +157,20 @@ Eine Installation ohne Chat- oder Embedding-Modell ist ein regulärer Zustand, k
 Start schreibt keinen Fehler ins Log, nur einen Hinweis. Ohne Chat-Modell antworten Fragen, ohne
 Embedding-Modell Indexierung, Upload und Suche mit `503` und dem Code `CHAT_MODEL_NOT_CONFIGURED`
 bzw. `EMBEDDING_MODEL_NOT_CONFIGURED`, ohne Eintrag als Serverfehler im Log; ein Lauf, der nicht
-einbetten könnte, startet nicht und schreibt nichts, ein geplanter Lauf wird nicht gebucht, ein
-gemeldeter Push wartet. Vor dem ersten Embedding-Modell gibt es deshalb keine Inhalte, die später
-eingebettet werden müssten. Die Health Groups `chat-model`, `embedding-model` und `vector-store`
-melden `UNKNOWN` mit dem Detail `NOT_CONFIGURED`, die Readiness und die Gesamtgesundheit bleiben
-`UP`; eine eigene Metrik gibt es nicht, weil der Zustand von der Verwaltung, nicht vom Betrieb
-behoben wird. Den Hinweis zeigen Chat und Modellverwaltung, für die Systemverwaltung mit dem Weg zum
-fehlenden Modell; die Verfügbarkeit liest die Oberfläche aus `GET /api/v1/search/availability`.
+einbetten könnte, startet nicht und schreibt nichts, ein geplanter Lauf wird nicht gebucht, eine
+von einer Quelle gemeldete Änderung wird wie hinter einem laufenden Lauf zurückgestellt und verfällt
+nach deren Grenze; nach dem Festlegen deckt der nächste Lauf sie ab. Vor dem ersten Embedding-Modell
+gibt es deshalb keine Inhalte, die später eingebettet werden müssten; wer ohne Vektortabelle Abschnitte
+liest oder löscht, findet keine. Die Health Groups `chat-model`, `embedding-model` und
+`vector-store` melden `UNKNOWN` mit dem Detail `NOT_CONFIGURED`, die Readiness und die
+Gesamtgesundheit bleiben `UP`; eine eigene Metrik gibt es nicht, weil der Zustand von der Verwaltung,
+nicht vom Betrieb behoben wird. Wer überwacht, wertet dieses Detail und
+`GET /api/v1/search/availability` aus. Den Hinweis zeigen Chat und Modellverwaltung, für die
+Systemverwaltung mit dem Weg zum fehlenden Modell. Ein Fehler bleibt dagegen eine Vektortabelle mit
+Abschnitten ohne Modellzeile, etwa nach einer unvollständigen Rücksicherung: Der Start schreibt einen
+Fehler, `embedding-model` und `vector-store` melden `DOWN` mit `MISSING_WITH_CHUNKS`, und das erste
+Festlegen eines Modells wird abgelehnt ([ADR-0061](0061-wechsel-des-embedding-modells.md),
+Entscheidung 8).
 
 Jede Modelladresse, die Installation oder Modellverwaltung speichern, testen oder nach Modellen
 abfragen, prüft eine eigene Adressprüfung der Modelle mit eigenem Schalter und eigener Allowlist
