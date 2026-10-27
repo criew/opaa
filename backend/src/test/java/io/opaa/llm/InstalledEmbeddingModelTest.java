@@ -9,12 +9,19 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.FakeEmbeddingModel;
+import io.opaa.indexing.chunk.ScriptedEmbeddingEndpoint;
 import io.opaa.security.SettingsEncryptionProperties;
 import io.opaa.security.SettingsEncryptor;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
+import org.springframework.ai.document.Document;
+import org.springframework.ai.document.MetadataMode;
+import org.springframework.ai.embedding.EmbeddingOptions;
+import org.springframework.beans.factory.ObjectProvider;
 
 /**
  * The application's embedding model: refused before one is installed, the client built once and
@@ -90,6 +97,38 @@ class InstalledEmbeddingModelTest {
     model.invalidateAll();
     model.embed("drei");
     verify(factory, times(2)).create(any());
+  }
+
+  // regression guard for #3226: the batch path must embed the formatted content (Kontextpräfix
+  // included) the installed client yields, not the bare chunk text of the interface default
+  @Test
+  void aBatchEmbedsTheFormattedContentOfTheInstalledClient() {
+    ScriptedEmbeddingEndpoint client = ScriptedEmbeddingEndpoint.silentlyCutting(4096);
+    when(repository.findInstalled()).thenReturn(Optional.of(settings()));
+    when(factory.create(any())).thenReturn(client);
+    Document chunk = new Document("Antragsfrist drei Monate");
+    chunk.setContentFormatter((document, mode) -> "Satzung > §4\n\n" + document.getText());
+
+    model.embed(List.of(chunk), EmbeddingOptions.builder().build(), List::of);
+
+    assertThat(client.requests())
+        .containsExactly(List.of("Satzung > §4\n\nAntragsfrist drei Monate"));
+  }
+
+  @Test
+  void theClientOfTheFactoryEmbedsTheFormattedContent() {
+    when(repository.findInstalled()).thenReturn(Optional.of(settings()));
+    when(factory.create(any()))
+        .thenAnswer(
+            invocation ->
+                new OpenAiEmbeddingClientFactory(Duration.ofSeconds(1), mock(ObjectProvider.class))
+                    .create(invocation.getArgument(0)));
+    Document chunk = new Document("Antragsfrist drei Monate");
+    chunk.setContentFormatter((document, mode) -> "Satzung > §4\n\n" + document.getText());
+
+    assertThat(model.getEmbeddingContent(chunk))
+        .isEqualTo(chunk.getFormattedContent(MetadataMode.EMBED))
+        .isEqualTo("Satzung > §4\n\nAntragsfrist drei Monate");
   }
 
   private static EmbeddingModelSettings settings() {

@@ -90,6 +90,16 @@ public class InstalledEmbeddingModel implements EmbeddingModel, InvalidationSubs
     return installed().client().embed(document);
   }
 
+  /**
+   * The text the installed client embeds for {@code document}: its formatted content, Kontextpräfix
+   * included, not the bare {@link Document#getText()} the interface default returns. Batches go
+   * through the default {@code embed(List, EmbeddingOptions, BatchingStrategy)}, which reads this.
+   */
+  @Override
+  public String getEmbeddingContent(Document document) {
+    return installed().client().getEmbeddingContent(document);
+  }
+
   /** The size the vector table was created with; asks no endpoint. */
   @Override
   public int dimensions() {
