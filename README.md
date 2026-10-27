@@ -1,3 +1,3 @@
 # Screenshots zu #3242
 
-Vorher- und Nachher-Aufnahmen des Fokusrings. Dieser Branch wird nicht gemergt.
+Fokusring: vorher (main), pr-stand-1 (erste PR-Fassung mit Ring um Felder) und nachher. Dieser Branch wird nicht gemergt.
