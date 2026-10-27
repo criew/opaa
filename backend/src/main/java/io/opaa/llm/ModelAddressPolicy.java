@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The address check of every model endpoint the installation or the model administration stores,
@@ -18,6 +20,10 @@ public class ModelAddressPolicy {
   public static final String ALLOWLIST_HINT =
       "Interne Adressen von Modellen gibt der Betrieb über OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST"
           + " frei.";
+
+  static final String REFUSED = "Die Basis-Adresse ist nicht zugelassen oder nicht erreichbar.";
+
+  private static final Logger log = LoggerFactory.getLogger(ModelAddressPolicy.class);
 
   private final TargetAddressValidator validator;
 
@@ -42,8 +48,9 @@ public class ModelAddressPolicy {
   }
 
   /**
-   * Why the check refuses {@code baseUrl}, or {@code null}; the German rejection names the setting
-   * that releases an internal host ({@link #ALLOWLIST_HINT}).
+   * Why the check refuses {@code baseUrl}, or {@code null}. A blocked range and a name that does
+   * not resolve get the same German sentence, so the answer does not tell whether an internal name
+   * exists; the cause goes to the log only, with the address shortened to scheme, host and path.
    */
   public String blockedReason(String baseUrl) {
     try {
@@ -52,7 +59,11 @@ public class ModelAddressPolicy {
     } catch (URISyntaxException e) {
       return "Die Basis-Adresse ist keine gültige URL.";
     } catch (IOException e) {
-      return e.getMessage() + " " + ALLOWLIST_HINT;
+      log.warn(
+          "Model address {} refused: {}",
+          ModelEndpointUri.withoutSecrets(baseUrl),
+          e.getClass().getSimpleName());
+      return REFUSED + " " + ALLOWLIST_HINT;
     }
   }
 

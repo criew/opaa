@@ -72,6 +72,9 @@ public class LlmModelDiscoverer {
   /** An identifier this long or longer is left out; a detail this long is dropped. */
   static final int MAX_TEXT_LENGTH = 200;
 
+  /** Capabilities and families of one model beyond this many are left out. */
+  static final int MAX_CAPABILITIES = 32;
+
   /** Models beyond this many keep their list entry but get no {@code /api/show} details. */
   private static final int MAX_DETAILED_MODELS = 100;
 
@@ -231,9 +234,12 @@ public class LlmModelDiscoverer {
     }
     Map<String, Integer> listed = new LinkedHashMap<>();
     for (JsonNode entry : root.path("data")) {
-      JsonNode id = entry.path("id");
-      if (id.isString() && !id.asString().isBlank()) {
-        listed.putIfAbsent(id.asString(), contextLengthOf(entry));
+      if (listed.size() >= MAX_MODELS) {
+        break;
+      }
+      String id = text(entry.path("id"));
+      if (id != null) {
+        listed.putIfAbsent(id, contextLengthOf(entry));
       }
     }
     return listed;
@@ -513,18 +519,25 @@ public class LlmModelDiscoverer {
     }
   }
 
+  /** A non-blank text of at most {@link #MAX_TEXT_LENGTH} characters, else {@code null}. */
   private static String text(JsonNode node) {
-    return node.isString() && !node.asString().isBlank() ? node.asString() : null;
+    if (!node.isString()) {
+      return null;
+    }
+    String value = node.asString();
+    return value.isBlank() || value.length() > MAX_TEXT_LENGTH ? null : value;
   }
 
+  /** At most {@link #MAX_CAPABILITIES} texts that {@link #text} accepts. */
   private static List<String> strings(JsonNode node) {
     if (!node.isArray()) {
       return List.of();
     }
     List<String> values = new ArrayList<>();
     for (JsonNode element : node) {
-      if (element.isString() && !element.asString().isBlank()) {
-        values.add(element.asString());
+      String value = text(element);
+      if (value != null && values.size() < MAX_CAPABILITIES) {
+        values.add(value);
       }
     }
     return List.copyOf(values);

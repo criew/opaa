@@ -10,12 +10,9 @@ import io.opaa.security.SettingsEncryptor;
 import org.springframework.stereotype.Service;
 
 /**
- * The model list of a model step's endpoint, so the assistant offers the models for selection
- * (ADR-0060). It is the discovery of the model administration ({@link LlmModelDiscoverer}): the
- * address check of models, no redirects, bounded time and size. The key saved with the step serves
- * only an address that names the same endpoint ({@link StepRules#sameEndpoint}); nothing is saved.
- * The budget is per instance (ADR-0053, "je Instanz"), on top of the per-address budget of the
- * installation API.
+ * The model list of a model step's endpoint through {@link LlmModelDiscoverer} (ADR-0060); nothing
+ * is saved. The key saved with the step serves only its own endpoint ({@link
+ * StepRules#sameEndpoint}). The budget is per instance (ADR-0053), on top of the API's own.
  */
 @Service
 public class InstallationModelDiscovery {
