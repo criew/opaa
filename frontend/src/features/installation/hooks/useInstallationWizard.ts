@@ -6,10 +6,12 @@ import {
   discoverInstallationModels,
   getInstallation,
   saveInstallationStep,
+  skipInstallationStep,
 } from '../api/installationApi'
 import type {
   InstallationModelDiscoveryRequest,
   InstallationStatusResponse,
+  InstallationStepCheckRequest,
   InstallationStepId,
   ModelStepId,
   StepInput,
@@ -49,6 +51,7 @@ const CHECK_FAILED = 'Die Prüfung ist fehlgeschlagen.'
 const COMPLETE_FAILED = 'Die Installation konnte nicht abgeschlossen werden.'
 const LOAD_FAILED = 'Der Stand der Einrichtung konnte nicht geladen werden.'
 const DISCOVERY_FAILED = 'Die Modelle konnten nicht abgerufen werden.'
+const SKIP_FAILED = 'Der Schritt konnte nicht übersprungen werden.'
 
 function failed(message: string): WizardResult {
   return { ok: false, failure: { kind: 'other', message, fieldErrors: [] } }
@@ -107,20 +110,22 @@ export function useInstallationWizard() {
   )
 
   /**
-   * Saves the step (unless `values` is `null`: nothing changed, only check again) and checks it.
-   * A failed check keeps the step open and returns the backend's sentence about it.
+   * Saves the step (unless `values` is `null`: nothing changed, only check again) and checks it,
+   * with `checkOptions` such as the test recipient of the mail step. A failed check keeps the
+   * step open and returns the backend's sentence about it.
    */
   const submitStep = useCallback(
     async <S extends InstallationStepId>(
       step: S,
       values: StepInput[S] | null,
+      checkOptions?: InstallationStepCheckRequest,
     ): Promise<WizardResult> => {
       const token = state.token
       if (!token) return { ok: false, failure: { kind: 'token', message: '', fieldErrors: [] } }
       let result: WizardResult = { ok: true }
       try {
         if (values) await saveInstallationStep(token, step, values)
-        const checked = await checkInstallationStep(token, step)
+        const checked = await checkInstallationStep(token, step, checkOptions)
         if (!checked.checked) result = failed(checked.checkMessage ?? CHECK_FAILED)
       } catch (err) {
         const failure = installationFailure(err, values ? SAVE_FAILED : CHECK_FAILED)
@@ -129,6 +134,27 @@ export function useInstallationWizard() {
       }
       await refresh(token, (installation) => (result.ok ? nextView(installation, step) : step))
       return result
+    },
+    [state.token, leaveOn, refresh],
+  )
+
+  /**
+   * Skips an optional step: the backend discards what was saved for it and records the skip, and
+   * the assistant moves on. A failure keeps the step open with its sentence.
+   */
+  const skipStep = useCallback(
+    async (step: InstallationStepId): Promise<WizardResult> => {
+      const token = state.token
+      if (!token) return { ok: false, failure: { kind: 'token', message: '', fieldErrors: [] } }
+      try {
+        await skipInstallationStep(token, step)
+      } catch (err) {
+        const failure = installationFailure(err, SKIP_FAILED)
+        if (!leaveOn(failure)) await refresh(token, () => step)
+        return { ok: false, failure }
+      }
+      await refresh(token, (installation) => nextView(installation, step))
+      return { ok: true }
     },
     [state.token, leaveOn, refresh],
   )
@@ -173,5 +199,5 @@ export function useInstallationWizard() {
     setState((current) => ({ ...current, view }))
   }, [])
 
-  return { ...state, submitToken, submitStep, discoverModels, complete, goTo }
+  return { ...state, submitToken, submitStep, skipStep, discoverModels, complete, goTo }
 }

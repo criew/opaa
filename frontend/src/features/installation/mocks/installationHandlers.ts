@@ -10,7 +10,9 @@ import {
   type InstallationChatModel,
   type InstallationEmbeddingModel,
   type InstallationFirstAdmin,
+  type InstallationMail,
   type InstallationModelDiscoveryRequest,
+  type InstallationStepCheckRequest,
   type InstallationStepState,
 } from '../api/types'
 import {
@@ -22,6 +24,8 @@ import {
   isMockInstallationPending,
   mockInstallationState,
   recordMockDiscovery,
+  recordMockSkip,
+  recordMockTestRecipient,
   updateMockStep,
 } from './installationFixtures'
 
@@ -33,7 +37,8 @@ import {
  *   `fieldErrors`) and discards the step's check,
  * - a check answers 200 either way; for addresses containing {@link MOCK_UNREACHABLE_MARKER} it
  *   reports `checked: false` with a `checkMessage`,
- * - completing refuses (409) while a mandatory step is unchecked.
+ * - a check of the mail step takes a test recipient; skipping an optional step discards it,
+ * - completing refuses (409) while a mandatory step or a saved optional step is unchecked.
  */
 const BASE = '/api/v1/installation'
 const MIN_PASSWORD_LENGTH = 12
@@ -89,6 +94,16 @@ function storedView(step: InstallationStepState, part: unknown): Partial<Install
     const keySet = apiKey === undefined ? Boolean(step.chatModel?.apiKeySet) : Boolean(apiKey)
     return { chatModel: { ...rest, maxTokens: maxTokens ?? 8000, apiKeySet: keySet } }
   }
+  if (step.step === 'MAIL') {
+    const { password, ...rest } = part as InstallationMail
+    const passwordSet =
+      password === undefined || password === null
+        ? Boolean(step.mail?.passwordSet)
+        : password !== ''
+    return {
+      mail: { ...rest, encryption: rest.encryption ?? 'STARTTLS', passwordSet },
+    }
+  }
   if (step.step === 'EMBEDDING_MODEL') {
     const { apiKey, maxInputTokens, ...rest } = part as InstallationEmbeddingModel
     const keySet = apiKey === undefined ? Boolean(step.embeddingModel?.apiKeySet) : Boolean(apiKey)
@@ -100,8 +115,13 @@ function storedView(step: InstallationStepState, part: unknown): Partial<Install
 }
 
 function checkMessageOf(step: InstallationStepState): string | null {
-  const values = JSON.stringify(step.chatModel ?? step.embeddingModel ?? step.signIn ?? {})
+  const values = JSON.stringify(
+    step.chatModel ?? step.embeddingModel ?? step.signIn ?? step.mail ?? {},
+  )
   if (!values.includes(MOCK_UNREACHABLE_MARKER)) return null
+  if (step.step === 'MAIL') {
+    return 'Die Verbindung zum Mailserver ist fehlgeschlagen: ConnectException: Connection refused'
+  }
   return step.step === 'SIGN_IN'
     ? 'Die Discovery-Adresse des Anbieters ist nicht erreichbar. Prüfen Sie die Issuer-URI.'
     : 'Das Modell antwortet nicht: Verbindung abgelehnt. Prüfen Sie Basis-Adresse und Modell-Kennung.'
@@ -180,16 +200,31 @@ export const installationHandlers = [
     return HttpResponse.json(findStep(step.step))
   }),
 
-  http.post(`${BASE}/steps/:step/check`, ({ request, params }) => {
+  http.post(`${BASE}/steps/:step/check`, async ({ request, params }) => {
     const refused = refusal(request)
     if (refused) return refused
     const step = findStep(String(params.step))
     if (!step) return error(400, 'Unbekannter Schritt')
+    const text = await request.text()
+    const options = (text ? JSON.parse(text) : {}) as InstallationStepCheckRequest
+    const recipient = options.testRecipient?.trim()
+    if (recipient && step.step !== 'MAIL') {
+      return error(400, 'Eine Testnachricht gibt es nur im Schritt MAIL.')
+    }
     if (!step.saved) return error(409, 'Der Schritt ist noch nicht gespeichert.')
     const failure = checkMessageOf(step)
+    if (recipient && failure === null) recordMockTestRecipient(recipient)
+    const success =
+      step.step === 'MAIL'
+        ? `Verbindung und Anmeldung beim Mailserver sind gelungen. ${
+            recipient
+              ? 'Die Testnachricht wurde dem Mailserver übergeben.'
+              : 'Es wurde keine Nachricht versendet.'
+          }`
+        : 'Prüfung erfolgreich.'
     updateMockStep(step.step, {
       checked: failure === null,
-      checkMessage: failure ?? 'Prüfung erfolgreich.',
+      checkMessage: failure ?? success,
       ...(step.step === 'EMBEDDING_MODEL' && step.embeddingModel
         ? {
             embeddingModel: {
@@ -198,6 +233,22 @@ export const installationHandlers = [
             },
           }
         : {}),
+    })
+    return HttpResponse.json(findStep(step.step))
+  }),
+
+  http.post(`${BASE}/steps/:step/skip`, ({ request, params }) => {
+    const refused = refusal(request)
+    if (refused) return refused
+    const step = findStep(String(params.step))
+    if (!step) return error(400, 'Unbekannter Schritt')
+    if (step.mandatory) return error(400, 'Ein Pflichtschritt lässt sich nicht überspringen.')
+    recordMockSkip(step.step)
+    updateMockStep(step.step, {
+      saved: false,
+      checked: false,
+      checkMessage: null,
+      mail: undefined,
     })
     return HttpResponse.json(findStep(step.step))
   }),
