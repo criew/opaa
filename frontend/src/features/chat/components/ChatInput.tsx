@@ -369,8 +369,9 @@ export default function ChatInput({
           boxShadow: shadow.hairline,
           px: 1.75,
           py: 1.25,
-          // The message field itself is borderless; the row's frame carries its focus.
-          '&:focus-within': focusFrameStyle(theme.palette.primary.main),
+          // The message field itself is borderless; the row's frame carries its focus - only
+          // the field's, a focused button of the row shows its own ring instead.
+          '&:has(textarea:focus)': focusFrameStyle(theme.palette.primary.main),
         })}
       >
         <TextField
