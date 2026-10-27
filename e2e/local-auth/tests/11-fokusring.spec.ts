@@ -18,7 +18,11 @@ import {
  */
 
 const UI_CONTRAST_MINIMUM = 3;
+/** The outline of a field is the ring's stand-in and holds the text threshold (guidelines 4.4). */
+const FIELD_OUTLINE_CONTRAST_MINIMUM = 4.5;
 const MIN_RING_WIDTH_PX = 2;
+const MIN_RING_OFFSET_PX = 2;
+const FIELD_OUTLINE_WIDTH_PX = 2;
 const MAX_TAB_PRESSES = 30;
 
 type Rgba = [number, number, number, number];
@@ -65,6 +69,7 @@ interface Indicator {
   outlineStyle: string;
   outlineWidth: number;
   outlineColor: string;
+  outlineOffset: number;
   ground: string;
 }
 
@@ -81,6 +86,7 @@ async function indicatorOf(focused: Locator, ringHost: Locator): Promise<Indicat
         outlineStyle: string;
         outlineWidth: string;
         outlineColor: string;
+        outlineOffset: string;
         backgroundColor: string;
       };
     };
@@ -98,6 +104,7 @@ async function indicatorOf(focused: Locator, ringHost: Locator): Promise<Indicat
       outlineStyle: style.outlineStyle,
       outlineWidth: Number.parseFloat(style.outlineWidth),
       outlineColor: style.outlineColor,
+      outlineOffset: Number.parseFloat(style.outlineOffset),
       ground,
     };
   });
@@ -117,6 +124,72 @@ function expectVisibleRing(indicator: Indicator, what: string): void {
     ratio,
     `${what}: ring ${indicator.outlineColor} against ${indicator.ground}`,
   ).toBeGreaterThanOrEqual(UI_CONTRAST_MINIMUM);
+}
+
+interface FieldFrame {
+  focusVisible: boolean;
+  rootOutlineStyle: string;
+  frameWidth: number;
+  frameColor: string;
+  fieldSurface: string;
+  ground: string;
+}
+
+/**
+ * Reads how an outlined field shows its focus: the ring the root would draw (none expected, it
+ * would cross the floating label), and the width and colour of the field's own outline.
+ */
+async function fieldFrameOf(input: Locator): Promise<FieldFrame> {
+  const focusVisible = await input.evaluate((el) => el.matches(":focus-visible"));
+  const frame = await input.evaluate((el) => {
+    // The suite compiles without the DOM library; this runs in the browser.
+    const browser = globalThis as unknown as {
+      getComputedStyle(node: unknown): {
+        outlineStyle: string;
+        borderTopWidth: string;
+        borderTopColor: string;
+        backgroundColor: string;
+      };
+    };
+    const root = el.closest(".MuiOutlinedInput-root");
+    const outline = root?.querySelector(".MuiOutlinedInput-notchedOutline");
+    if (!root || !outline) throw new Error("not an outlined field");
+    const rootStyle = browser.getComputedStyle(root);
+    const outlineStyle = browser.getComputedStyle(outline);
+    let ground = "rgb(255, 255, 255)";
+    for (let node = root.parentElement; node; node = node.parentElement) {
+      const background = browser.getComputedStyle(node).backgroundColor;
+      const alphaMatch = /rgba\([^)]*,\s*([\d.]+)\)/.exec(background);
+      if (background !== "transparent" && (!alphaMatch || Number(alphaMatch[1]) === 1)) {
+        ground = background;
+        break;
+      }
+    }
+    return {
+      rootOutlineStyle: rootStyle.outlineStyle,
+      frameWidth: Number.parseFloat(outlineStyle.borderTopWidth),
+      frameColor: outlineStyle.borderTopColor,
+      fieldSurface: rootStyle.backgroundColor,
+      ground,
+    };
+  });
+  return { focusVisible, ...frame };
+}
+
+function expectFieldFrame(frame: FieldFrame, what: string): void {
+  expect.soft(frame.focusVisible, `${what}: :focus-visible`).toBe(true);
+  expect.soft(frame.rootOutlineStyle, `${what}: ring around the field`).toBe("none");
+  expect.soft(frame.frameWidth, `${what}: outline width`).toBe(FIELD_OUTLINE_WIDTH_PX);
+  const color = parseColor(frame.frameColor);
+  expect.soft(color[3], `${what}: outline colour ${frame.frameColor} is opaque`).toBe(1);
+  for (const surface of [frame.fieldSurface, frame.ground]) {
+    expect
+      .soft(
+        contrastOver(color, parseColor(surface)),
+        `${what}: outline ${frame.frameColor} against ${surface}`,
+      )
+      .toBeGreaterThanOrEqual(FIELD_OUTLINE_CONTRAST_MINIMUM);
+  }
 }
 
 test.describe("Fokusring nach Tastaturnavigation", () => {
@@ -144,16 +217,34 @@ test.describe("Fokusring nach Tastaturnavigation", () => {
       await expect(email).toBeVisible();
 
       await tabTo(page, email);
-      const field = email.locator("xpath=ancestor::*[contains(@class,'MuiOutlinedInput-root')][1]");
-      expectVisibleRing(await indicatorOf(email, field), "Eingabefeld");
+      expectFieldFrame(await fieldFrameOf(email), "Eingabefeld");
 
       const button = page.getByRole("button", { name: "Anmelden" });
       await tabTo(page, button);
-      expectVisibleRing(await indicatorOf(button, button), "Schaltfläche");
+      const buttonRing = await indicatorOf(button, button);
+      expectVisibleRing(buttonRing, "Schaltfläche");
+      // The gap keeps the accent ring off the accent surface of the primary button.
+      expect
+        .soft(buttonRing.outlineOffset, "Schaltfläche: outline offset")
+        .toBeGreaterThanOrEqual(MIN_RING_OFFSET_PX);
 
       const link = page.getByRole("link", { name: "Passwort vergessen?" });
       await tabTo(page, link);
       expectVisibleRing(await indicatorOf(link, link), "Link");
+    });
+
+    test(`Feld mit schwebendem Label in der Verwaltung (${scheme})`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: scheme });
+      await signInSuccessfully(page, bootstrapAdmin.email, bootstrapAdmin.password);
+      await page.goto("/admin/branding");
+      const name = page.getByLabel("Produktname", { exact: true });
+      await expect(name).toBeVisible({ timeout: 20_000 });
+
+      await tabTo(page, name);
+      const label = page.locator("label", { hasText: "Produktname" });
+      // The label floats on the field's top edge: a ring around the field would cross it.
+      await expect(label).toHaveAttribute("data-shrink", "true");
+      expectFieldFrame(await fieldFrameOf(name), "Feld mit schwebendem Label");
     });
   }
 });

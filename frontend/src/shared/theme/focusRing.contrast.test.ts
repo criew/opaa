@@ -4,7 +4,7 @@ import { alpha, darken, decomposeColor, getContrastRatio, lighten } from '@mui/m
 import { createAppTheme, createRailTheme } from './theme'
 import { blue, darkRoles, lightRoles, railRoles } from './tokens'
 import type { SchemeRoles } from './tokens'
-import { UI_CONTRAST_MINIMUM } from '../utils/contrast'
+import { TEXT_CONTRAST_MINIMUM, UI_CONTRAST_MINIMUM } from '../utils/contrast'
 
 /**
  * The focus indicator is a graphical object (WCAG 1.4.11, accessibility.md 2.4): it needs 3:1
@@ -15,6 +15,7 @@ import { UI_CONTRAST_MINIMUM } from '../utils/contrast'
 /** Guidelines 4.4: the ring is at least 2px wide and stands 2px off accent surfaces. */
 const MIN_RING_WIDTH_PX = 2
 const MIN_RING_OFFSET_PX = 2
+const FIELD_OUTLINE_WIDTH_PX = 2
 
 interface Ring {
   width: number
@@ -105,6 +106,12 @@ const SETS: Array<[string, () => Theme, SchemeRoles, boolean]> = [
     darkRoles,
     true,
   ],
+  [
+    'rail (light app), house colour',
+    () => createRailTheme('light', { primaryColor: '#1153EE' }),
+    railRoles,
+    false,
+  ],
 ]
 
 describe.each(SETS)('focus ring (%s)', (_label, build, roles, appSurfaces) => {
@@ -142,29 +149,36 @@ describe.each(SETS)('focus ring (%s)', (_label, build, roles, appSurfaces) => {
     expect(muiRing.outlineWidth).toBe(ring.width)
     expect(muiRing.outlineStyle).toBe('solid')
   })
+
+  it('keeps the gap where MUI components draw the ring', () => {
+    // MUI multiplies the offset by a private sign variable to inset the ring in clipping
+    // containers; outside them the factor is 1, so the authored px value is the gap.
+    const offset = String((build().focusVisible as Record<string, unknown>).outlineOffset)
+    const match = /\*\s*(-?\d+(?:\.\d+)?)px\)$/.exec(offset)
+    expect(match, `outlineOffset "${offset}"`).not.toBeNull()
+    expect(Number(match?.[1])).toBeGreaterThanOrEqual(MIN_RING_OFFSET_PX)
+  })
 })
 
 describe.each([
   ['light', 'light', lightRoles],
   ['dark', 'dark', darkRoles],
 ] as const)('focused outlined field (%s)', (_label, mode, roles) => {
-  it('carries the opaque ring on top of the accent outline', () => {
+  // A ring around the field would run through its floating label; the field's own outline,
+  // widened to 2px, is the focus indicator instead (guidelines 4.4 and 5.2).
+  it.each([
+    ['without an error', '&.Mui-focused', roles.accent],
+    ['in error', '&.Mui-error.Mui-focused', roles.danger],
+  ])('shows focus %s as a 2px outline at 4.5:1, without a ring', (_case, state, colour) => {
     const theme = createAppTheme(mode)
-    const focused = outlinedInputRule(theme, '&.Mui-focused')
-    const ring = parseOutline(focused.outline)
-    expect(ring.color).toBe(globalRing(theme).color)
-    expect(ring.width).toBeGreaterThanOrEqual(MIN_RING_WIDTH_PX)
-  })
-
-  it('draws the error ring in danger at 3:1 against every ground', () => {
-    const theme = createAppTheme(mode)
-    const ring = parseOutline(outlinedInputRule(theme, '&.Mui-error.Mui-focused').outline)
-    expect(ring.color).toBe(roles.danger)
+    expect(outlinedInputRule(theme, state).outline, 'ring around the field').toBeUndefined()
+    const outline = outlinedInputRule(theme, `${state} .MuiOutlinedInput-notchedOutline`)
+    expect(outline.borderColor).toBe(colour)
+    expect(outline.borderWidth).toBe(FIELD_OUTLINE_WIDTH_PX)
     for (const ground of [roles.bg1, roles.bg2, roles.bg3]) {
-      expect(
-        getContrastRatio(ring.color, ground),
-        `danger ring on ${ground}`,
-      ).toBeGreaterThanOrEqual(UI_CONTRAST_MINIMUM)
+      expect(getContrastRatio(colour, ground), `outline on ${ground}`).toBeGreaterThanOrEqual(
+        TEXT_CONTRAST_MINIMUM,
+      )
     }
   })
 })
