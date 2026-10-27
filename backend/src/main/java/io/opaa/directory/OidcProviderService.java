@@ -646,6 +646,7 @@ public class OidcProviderService implements LocalAccountsSwitch {
    */
   @Transactional(propagation = Propagation.MANDATORY)
   public OidcProvider enableLocalAccountsForInstallation(UUID organizationId, String actorRef) {
+    credentials.lockLocalAccountsInIdOrder();
     OidcProvider local =
         repository
             .findLocalRow()

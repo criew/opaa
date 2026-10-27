@@ -627,6 +627,7 @@ class OidcProviderServiceTest {
     OidcProvider on = service.enableLocalAccountsForInstallation(ORGANIZATION_ID, "installation");
 
     assertThat(on.isEnabled()).isTrue();
+    verify(credentials).lockLocalAccountsInIdOrder();
     verify(repository).save(local);
     ArgumentCaptor<AuditEvent> audit = ArgumentCaptor.forClass(AuditEvent.class);
     verify(auditEventRecorder).recordSystemProcessAction(audit.capture());
