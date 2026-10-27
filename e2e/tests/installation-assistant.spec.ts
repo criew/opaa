@@ -30,6 +30,17 @@ async function submitStep(page: Page) {
   await page.getByRole('button', { name: 'Prüfen und weiter' }).click()
 }
 
+/**
+ * Skips the open optional step and waits until the assistant shows the next one: skipping goes
+ * through the API, so the view changes only after its answer.
+ */
+async function skipStep(page: Page) {
+  const progress = page.getByText(/^Schritt \d+ von \d+$/)
+  const before = (await progress.textContent()) ?? ''
+  await page.getByRole('button', { name: 'Überspringen' }).click()
+  await expect(progress).not.toHaveText(before)
+}
+
 function stepHeading(page: Page, name: string) {
   return page.getByRole('heading', { level: 2, name })
 }
@@ -111,16 +122,15 @@ test.describe('Einrichtungs-Assistent', () => {
     // Both model steps are optional: an installation whose model endpoint is not released yet
     // skips them, and the entered address is discarded unsaved.
     await expect(page.getByText('Optional · später unter Modelle')).toBeVisible()
-    const skip = page.getByRole('button', { name: 'Überspringen' })
-    await skip.click()
+    await skipStep(page)
     await expect(stepHeading(page, 'Embedding-Modell')).toBeVisible()
     await expectStepEdgesFlush(page)
-    await skip.click()
+    await skipStep(page)
 
     // The remaining steps are those the backend lists; optional ones are skipped.
     while (!(await stepHeading(page, 'Abschluss').isVisible())) {
       await expectStepEdgesFlush(page)
-      await skip.click()
+      await skipStep(page)
     }
     const summary = page.getByRole('list', { name: 'Stand der Schritte' })
     await expect(summary.getByText('Nicht eingerichtet')).not.toHaveCount(0)
