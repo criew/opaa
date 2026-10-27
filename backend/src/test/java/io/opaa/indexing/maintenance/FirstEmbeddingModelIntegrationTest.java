@@ -13,10 +13,12 @@ import io.opaa.indexing.chunk.EmbeddingIndexStore;
 import io.opaa.indexing.chunk.VectorIndexSchema;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.JobTriggerSource;
+import io.opaa.llm.EmbeddingModelAdministration;
 import io.opaa.llm.EmbeddingModelAdministration.Draft;
 import io.opaa.llm.EmbeddingModelAdministration.Kind;
 import io.opaa.llm.EmbeddingModelNotInstalledException;
 import io.opaa.llm.EmbeddingModelService;
+import io.opaa.llm.EmbeddingModelService.ProbeOutcome;
 import io.opaa.llm.InstalledEmbeddingModel;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaPropertyVariantIntegrationTest;
@@ -33,6 +35,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The first embedding model of an installation that skipped it (ADR-0061): before it, every run is
@@ -57,6 +61,8 @@ class FirstEmbeddingModelIntegrationTest {
   @Autowired private InstalledEmbeddingModel installedModel;
   @Autowired private EmbeddingModelService embeddingModels;
   @Autowired private JdbcTemplate jdbc;
+  @Autowired private EmbeddingModelAdministration administration;
+  @Autowired private PlatformTransactionManager transactionManager;
 
   private Map<String, Object> originalModel;
   private java.sql.Timestamp testStart;
@@ -162,8 +168,81 @@ class FirstEmbeddingModelIntegrationTest {
     assertThat(auditAfter("EMBEDDING_MODEL_CHANGED", "initial")).isEqualTo("true");
   }
 
+  // regression guard: chunks without a model row were taken over by the first model unnoticed
   @Test
-  void twoFirstConfirmationsAtOnceInstallExactlyOneModel() throws Exception {
+  void aTableWithChunksButNoModelRowRefusesTheFirstModel() {
+    jdbc.execute(
+        "CREATE TABLE vector_store (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), content text,"
+            + " metadata json, embedding vector("
+            + FakeEmbeddingModel.DIMENSIONS
+            + "))");
+    jdbc.update("INSERT INTO vector_store (content, metadata) VALUES ('Altbestand', '{}')");
+
+    assertThatThrownBy(
+            () ->
+                changes.confirm(
+                    firstDraft(FIRST_MODEL),
+                    FakeEmbeddingModel.DIMENSIONS,
+                    adminId,
+                    Organization.DEFAULT_ID))
+        .isInstanceOf(ConflictException.class)
+        .hasMessageContaining("Abschnitte");
+    assertThat(jdbc.queryForObject("SELECT count(*) FROM embedding_model", Long.class)).isZero();
+    assertThat(store.load()).isEmpty();
+    assertThat(changes.probe(firstDraft(FIRST_MODEL)).succeeded()).isFalse();
+  }
+
+  /**
+   * Two instances fixing the first model at once: without the exclusion of this instance, only the
+   * schema lock in the database orders them, and the second finds the row of the first.
+   */
+  @Test
+  void theSchemaLockLetsOnlyOneOfTwoTransactionsInstallTheFirstModel() throws Exception {
+    Draft draft = firstDraft(FIRST_MODEL);
+    EmbeddingModelAdministration.Resolved resolved = administration.resolve(draft);
+    ProbeOutcome probed = administration.probe(resolved.endpoint());
+    EmbeddingModelAdministration.Comparison comparison =
+        administration.compare(resolved.endpoint(), probed);
+    CountDownLatch firstHoldsTheLock = new CountDownLatch(1);
+    CountDownLatch releaseTheFirst = new CountDownLatch(1);
+    TransactionTemplate transactions = new TransactionTemplate(transactionManager);
+    CompletableFuture<Void> first =
+        CompletableFuture.runAsync(
+            () ->
+                transactions.executeWithoutResult(
+                    status -> {
+                      schema.lockSchemaChanges();
+                      administration.requireUnchanged(resolved, comparison);
+                      administration.installFirst(
+                          resolved,
+                          probed.dimensions(),
+                          EmbeddingModelAdministration.anchorOf(probed),
+                          administration.nextGeneration());
+                      firstHoldsTheLock.countDown();
+                      awaitQuietly(releaseTheFirst);
+                    }));
+    assertThat(firstHoldsTheLock.await(30, TimeUnit.SECONDS)).isTrue();
+    CompletableFuture<Void> second =
+        CompletableFuture.runAsync(
+            () ->
+                transactions.executeWithoutResult(
+                    status -> {
+                      schema.lockSchemaChanges();
+                      administration.requireUnchanged(resolved, comparison);
+                    }));
+    org.awaitility.Awaitility.await()
+        .atMost(java.time.Duration.ofSeconds(30))
+        .until(() -> advisoryLockWaiters() > 0);
+    releaseTheFirst.countDown();
+    first.get(30, TimeUnit.SECONDS);
+
+    assertThatThrownBy(() -> second.get(30, TimeUnit.SECONDS))
+        .hasCauseInstanceOf(ConflictException.class);
+    assertThat(jdbc.queryForObject("SELECT count(*) FROM embedding_model", Long.class)).isOne();
+  }
+
+  @Test
+  void twoFirstConfirmationsOfOneInstanceInstallExactlyOneModel() throws Exception {
     List<Throwable> failures = Collections.synchronizedList(new ArrayList<>());
     CountDownLatch go = new CountDownLatch(1);
     List<CompletableFuture<Void>> confirmations = new ArrayList<>();
@@ -198,6 +277,22 @@ class FirstEmbeddingModelIntegrationTest {
                 Long.class,
                 testStart))
         .isOne();
+  }
+
+  private long advisoryLockWaiters() {
+    Long waiting =
+        jdbc.queryForObject(
+            "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND NOT granted",
+            Long.class);
+    return waiting == null ? 0 : waiting;
+  }
+
+  private static void awaitQuietly(CountDownLatch latch) {
+    try {
+      latch.await(30, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
   }
 
   private static Draft firstDraft(String model) {

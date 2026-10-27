@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.indexing.chunk.EmbeddingIndexReconciler;
+import io.opaa.knowledge.VectorTable;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaLocalAuthMockMvcTest;
 import java.util.List;
@@ -40,6 +41,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 class InstallationWithoutModelsIntegrationTest {
 
   private static final String BASE = "/api/v1/installation";
+  private static final String KEPT_TABLE = "vector_store_kept_without_models";
 
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbc;
@@ -50,6 +52,7 @@ class InstallationWithoutModelsIntegrationTest {
   @Autowired private InstallationStartup startup;
   @Autowired private EmbeddingIndexReconciler reconciler;
   @Autowired private HealthEndpoint healthEndpoint;
+  @Autowired private VectorTable vectorTable;
 
   private InstallationFixture fixture;
 
@@ -138,22 +141,78 @@ class InstallationWithoutModelsIntegrationTest {
   // store DOWN, although the installation may skip its embedding model
   @Test
   void aStartWithoutAnEmbeddingModelIsARegularState(CapturedOutput output) throws Exception {
-    // a completed installation without an embedding model, however it got there
+    completedWithoutEmbeddingModel();
+    withoutVectorTable(
+        () -> {
+          int before = output.getAll().length();
+
+          startup.run();
+          reconciler.start();
+
+          String startLog = output.getAll().substring(before);
+          assertThat(startLog.lines().filter(line -> line.contains(" ERROR ")).toList()).isEmpty();
+          assertThat(startLog).contains("No embedding model is set up yet");
+          assertThat(healthEndpoint.healthForPath("vector-store").getStatus())
+              .isEqualTo(Status.UNKNOWN);
+          mockMvc.perform(get("/actuator/health/readiness")).andExpect(status().isOk());
+        });
+  }
+
+  @Test
+  void chunksWithoutAModelRowAreAnErrorAtTheStart(CapturedOutput output) throws Exception {
+    completedWithoutEmbeddingModel();
+    withoutVectorTable(
+        () -> {
+          jdbc.execute(
+              "CREATE TABLE "
+                  + vectorTable.qualifiedName()
+                  + " (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), content text, metadata json,"
+                  + " embedding vector(3))");
+          jdbc.update(
+              "INSERT INTO "
+                  + vectorTable.qualifiedName()
+                  + " (content, metadata) VALUES ('Altbestand', '{}')");
+          int before = output.getAll().length();
+
+          startup.run();
+
+          String startLog = output.getAll().substring(before);
+          assertThat(startLog.lines().filter(line -> line.contains(" ERROR ")))
+              .anyMatch(line -> line.contains("holds chunks"));
+          assertThat(healthEndpoint.healthForPath("vector-store").getStatus())
+              .isEqualTo(Status.DOWN);
+        });
+  }
+
+  /** A completed installation without an embedding model, however it got there. */
+  private void completedWithoutEmbeddingModel() {
     jdbc.update(
         "UPDATE installation_state SET status = 'COMPLETED', completion_source = 'INSTALLATION_API',"
             + " completed_at = clock_timestamp(), token_hash = NULL, token_source = NULL"
             + " WHERE id = 1");
     status.reload();
-    int before = output.getAll().length();
+  }
 
-    startup.run();
-    reconciler.start();
+  /** Runs {@code check} while the vector table of the context is moved aside, then puts it back. */
+  private void withoutVectorTable(Check check) throws Exception {
+    jdbc.execute("ALTER TABLE " + vectorTable.qualifiedName() + " RENAME TO " + KEPT_TABLE);
+    try {
+      check.run();
+    } finally {
+      jdbc.execute("DROP TABLE IF EXISTS " + vectorTable.qualifiedName());
+      jdbc.execute(
+          "ALTER TABLE "
+              + vectorTable.schema()
+              + "."
+              + KEPT_TABLE
+              + " RENAME TO "
+              + vectorTable.tableName());
+    }
+  }
 
-    String startLog = output.getAll().substring(before);
-    assertThat(startLog.lines().filter(line -> line.contains(" ERROR ")).toList()).isEmpty();
-    assertThat(startLog).contains("No embedding model is set up yet");
-    assertThat(healthEndpoint.healthForPath("vector-store").getStatus()).isEqualTo(Status.UNKNOWN);
-    mockMvc.perform(get("/actuator/health/readiness")).andExpect(status().isOk());
+  @FunctionalInterface
+  private interface Check {
+    void run() throws Exception;
   }
 
   private void saveAndCheckTheMandatorySteps() throws Exception {
