@@ -167,12 +167,8 @@ test.describe('Einrichtungs-Assistent', () => {
       await expectStepEdgesFlushAlsoNarrow(page)
       await page.getByRole('button', { name: 'Überspringen' }).click()
 
-      // Any further optional step the backend lists is skipped as well.
-      const skip = page.getByRole('button', { name: 'Überspringen' })
-      while (!(await stepHeading(page, 'Abschluss').isVisible())) {
-        await expectStepEdgesFlush(page)
-        await skip.click()
-      }
+      // The skip goes through the API; the summary follows once it is recorded.
+      await expect(stepHeading(page, 'Abschluss')).toBeVisible()
       await expect(page.getByText(/Der E-Mail-Versand bleibt aus/)).toBeVisible()
       await expectNoSeriousA11yViolations(page, 'Einrichtung: Abschluss')
       // At 320 px the forward action wraps below the back button and keeps the right edge.
