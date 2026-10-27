@@ -89,13 +89,15 @@ paths:
         Runs the check of a saved step: the rules of the first account, the connection test of the
         identity provider (discovery and JWK set) or of the chat model, the probe embedding of the
         embedding model, which also determines its vector size, or for MAIL a connection to the
-        mail server with sign-in when a user name is set, without sending anything. For MAIL only,
-        testRecipient additionally sends the test message to that address; per instance and for
-        all clients together at most 10 test messages in 10 minutes, then 429 with code
-        MAIL_TEST_LIMIT. Every wait on the mail server is bounded by OPAA_MAIL_CONNECT_TIMEOUT,
-        OPAA_MAIL_READ_TIMEOUT and OPAA_MAIL_WRITE_TIMEOUT. The outcome is stored with the step and
-        returned; a failed check is no error of the call. Same token and network rules as
-        getInstallation.
+        mail server with sign-in when a user name is set, without sending anything. A failed MAIL
+        check names one of four fixed reasons (not reachable, TLS failed, sign-in refused, no mail
+        server), the cause goes to the log only. For MAIL only, testRecipient additionally sends
+        the test message to that address. Per instance and for all clients together at most 30
+        MAIL checks in 10 minutes (429 with code MAIL_CHECK_LIMIT) and at most 10 test messages in
+        10 minutes (429 with code MAIL_TEST_LIMIT). Every wait on the mail server is bounded by
+        OPAA_MAIL_CONNECT_TIMEOUT, OPAA_MAIL_READ_TIMEOUT and OPAA_MAIL_WRITE_TIMEOUT. The outcome
+        is stored with the step and returned; a failed check is no error of the call. Same token
+        and network rules as getInstallation.
       requestBody:
         required: false
         content:
@@ -227,7 +229,8 @@ paths:
         completes the installation, all or nothing - the same checks as the file read at start-up
         from OPAA_INSTALLATION_ANSWER_FILE, which names its secrets as files instead. An optional
         part left out counts as skipped and discards what the assistant saved for it; the check of
-        mail sends no test message. Same token and network rules as getInstallation.
+        mail sends no test message and counts against the budget of MAIL checks (429 with code
+        MAIL_CHECK_LIMIT). Same token and network rules as getInstallation.
       requestBody:
         required: true
         content:
@@ -603,7 +606,9 @@ components:
         The mail server OPAA sends through (ADR-0033, Entscheidung 10), with the rules of the mail
         settings of the administration. Unlike there, the host must pass the target address check
         of the installation: an internal mail server needs its host or host:port on
-        OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST.
+        OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST, and a port other than 25, 465, 587 and 2525 an
+        entry naming exactly that host:port. The host takes no whitespace or control character,
+        the sender address one mailbox only, and the password not the mask "***".
       required: [host, port, fromAddress]
       properties:
         host:

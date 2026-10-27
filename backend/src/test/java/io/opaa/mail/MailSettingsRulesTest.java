@@ -48,6 +48,18 @@ class MailSettingsRulesTest {
     assertThat(MailSettingsRules.isMailAddress(null)).isFalse();
   }
 
+  // regression guard: an address field takes one mailbox, never a list or a display name
+  @Test
+  void anAddressIsOneMailboxWithoutListOrDisplayName() {
+    for (String address :
+        new String[] {
+          "a@b.c,d@e.f", "a@b.c,d.e.f", "a@b.c;d@e.f", "OPAA <a@b.c>", "\"a\"@b.c", "a@b.c>"
+        }) {
+      assertThat(MailSettingsRules.isMailAddress(address)).as(address).isFalse();
+      assertThat(MailSettingsRules.fromAddressProblem(address)).as(address).isPresent();
+    }
+  }
+
   @Test
   void aStoredPasswordFollowsOnlyTheSameServerPortAccountAndEncryption() {
     assertThat(same("smtp", 587, "u", MailEncryption.STARTTLS)).isTrue();

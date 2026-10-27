@@ -57,14 +57,53 @@ class MailConnectionTesterIntegrationTest {
   }
 
   @Test
-  void aWrongPasswordFailsWithTheReasonOfTheServer() {
-    MailConnectionTester.Outcome outcome = tester.test(settings(SMTP_USER, "falsch"), null);
+  void aWrongPasswordIsARefusedSignInWithoutThePassword() {
+    MailConnectionTester.Outcome outcome =
+        tester.test(settings(SMTP_USER, "falsches-Passwort"), null);
 
     assertThat(outcome.succeeded()).isFalse();
     assertThat(outcome.message())
-        .startsWith("Die Verbindung zum Mailserver ist fehlgeschlagen")
-        .doesNotContain("falsch");
+        .isEqualTo(MailConnectionTester.Failure.SIGN_IN_REFUSED.message)
+        .doesNotContain("falsches-Passwort");
     assertThat(storedSendStatus()).isEqualTo(statusBefore);
+  }
+
+  // regression guard: a service that is no mail server shows only the fixed sentence
+  @Test
+  void aServiceThatIsNoMailServerAnswersWithTheFixedSentence() throws Exception {
+    try (ServerSocket other = new ServerSocket(0, 1, java.net.InetAddress.getLoopbackAddress())) {
+      Thread greeter =
+          Thread.ofVirtual()
+              .start(
+                  () -> {
+                    try (java.net.Socket client = other.accept()) {
+                      client
+                          .getOutputStream()
+                          .write("-ERR wrong number of arguments\r\n".getBytes());
+                      client.getOutputStream().flush();
+                    } catch (IOException ignored) {
+                      // the check closes the connection itself
+                    }
+                  });
+      MailSettingsSnapshot notSmtp =
+          new MailSettingsSnapshot(
+              true,
+              "127.0.0.1",
+              other.getLocalPort(),
+              null,
+              null,
+              MailEncryption.NONE,
+              "opaa@intern.example",
+              null);
+
+      MailConnectionTester.Outcome outcome = tester.test(notSmtp, null);
+
+      assertThat(outcome.succeeded()).isFalse();
+      assertThat(outcome.message())
+          .isEqualTo(MailConnectionTester.Failure.NOT_A_MAIL_SERVER.message)
+          .doesNotContain("ERR");
+      greeter.join(5_000);
+    }
   }
 
   @Test
@@ -100,6 +139,7 @@ class MailConnectionTesterIntegrationTest {
     MailConnectionTester.Outcome outcome = tester.test(closedPort, RECIPIENT);
 
     assertThat(outcome.succeeded()).isFalse();
+    assertThat(outcome.message()).isEqualTo(MailConnectionTester.Failure.UNREACHABLE.message);
     assertThat(greenMail.getReceivedMessages()).isEmpty();
   }
 

@@ -14,8 +14,7 @@ import io.opaa.mail.MailTestSupport;
 import io.opaa.security.SettingsEncryptor;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaLocalAuthLinkTest;
-import java.io.IOException;
-import java.net.ServerSocket;
+import io.opaa.test.OpaaLocalAuthMockMvcTest;
 import java.util.List;
 import java.util.Map;
 import org.hamcrest.Matchers;
@@ -63,7 +62,12 @@ class InstallationMailStepIntegrationTest {
             "SELECT enabled, host, port, username, password_ciphertext, encryption, from_address,"
                 + " from_name FROM mail_settings WHERE id = 1");
     fixture = new InstallationFixture(jdbc, installation, status, accountsFactory.create());
-    greenMail = new GreenMail(new ServerSetup(freePort(), "127.0.0.1", ServerSetup.PROTOCOL_SMTP));
+    greenMail =
+        new GreenMail(
+            new ServerSetup(
+                OpaaLocalAuthMockMvcTest.INSTALLATION_MAIL_PORT,
+                "127.0.0.1",
+                ServerSetup.PROTOCOL_SMTP));
     greenMail.setUser("opaa@stadt.example", SMTP_USER, SMTP_PASSWORD);
     greenMail.start();
   }
@@ -167,8 +171,14 @@ class InstallationMailStepIntegrationTest {
   @Test
   void aSavedButFailingMailStepHoldsUpTheCompletionUntilItIsSkipped() throws Exception {
     completeMandatorySteps();
-    saveMail("falsch").andExpect(status().isOk());
-    check("MAIL", null).andExpect(jsonPath("$.checked").value(false));
+    saveMail("falsches-Passwort").andExpect(status().isOk());
+    check("MAIL", null)
+        .andExpect(jsonPath("$.checked").value(false))
+        .andExpect(
+            jsonPath("$.checkMessage")
+                .value(
+                    "Der Mailserver hat die Anmeldung abgelehnt. Bitte Benutzername und"
+                        + " Passwort prüfen."));
 
     mockMvc.perform(authorized(get(BASE))).andExpect(jsonPath("$.completable").value(false));
     mockMvc
@@ -370,11 +380,5 @@ class InstallationMailStepIntegrationTest {
             + " WHERE actor_ref = ?",
         String.class,
         InstallationService.SYSTEM_ACTOR);
-  }
-
-  private static int freePort() throws IOException {
-    try (ServerSocket socket = new ServerSocket(0)) {
-      return socket.getLocalPort();
-    }
   }
 }

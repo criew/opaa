@@ -1,10 +1,12 @@
 package io.opaa.installation;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -12,6 +14,7 @@ import io.opaa.account.InitialAdministrator;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
+import io.opaa.common.TooManyRequestsException;
 import io.opaa.directory.OidcProviderService;
 import io.opaa.installation.InstallationState.CompletionSource;
 import io.opaa.llm.EmbeddingModelService;
@@ -81,6 +84,27 @@ class InstallationServiceCheckTest {
         .isInstanceOf(ConflictException.class)
         .hasMessageContaining("während der Prüfung neu gespeichert");
     verify(steps, never()).save(any());
+  }
+
+  // regression guard: connections to mail servers from the installation are bounded per instance
+  @Test
+  void checksOfTheMailStepHaveABudgetAlsoWithoutTestMessage() {
+    InstallationStepRecord mail = record(InstallationStep.MAIL, "{\"host\":\"smtp\"}");
+    when(steps.findById(InstallationStep.MAIL)).thenReturn(Optional.of(mail));
+    when(steps.findForUpdate(InstallationStep.MAIL)).thenReturn(Optional.of(mail));
+    when(checks.check(eq(InstallationStep.MAIL), any(), any(), any()))
+        .thenReturn(new StepChecks.Outcome(false, "nicht erreichbar"));
+
+    for (int i = 0; i < InstallationService.MAX_MAIL_CHECKS; i++) {
+      service.check(InstallationStep.MAIL);
+    }
+
+    assertThatThrownBy(() -> service.check(InstallationStep.MAIL))
+        .isInstanceOfSatisfying(
+            TooManyRequestsException.class,
+            e -> assertThat(e.getCode()).isEqualTo(InstallationService.MAIL_CHECK_LIMIT_CODE));
+    verify(checks, times(InstallationService.MAX_MAIL_CHECKS))
+        .check(eq(InstallationStep.MAIL), any(), any(), any());
   }
 
   @Test

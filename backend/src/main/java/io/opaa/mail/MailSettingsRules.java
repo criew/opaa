@@ -39,8 +39,12 @@ public final class MailSettingsRules {
   static final int MIN_PORT = 1;
   static final int MAX_PORT = 65535;
 
-  /** Deliberately permissive - the mail server is the authority on what it accepts. */
-  private static final Pattern MAIL_ADDRESS = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
+  /**
+   * Deliberately permissive - the mail server is the authority on what it accepts - but one mailbox
+   * only: no list separator ({@code , ;}), no display-name syntax ({@code < > "}).
+   */
+  private static final Pattern MAIL_ADDRESS =
+      Pattern.compile("^[^\\s@,;<>\"]+@[^\\s@,;<>\"]+\\.[^\\s@,;<>\"]+$");
 
   private MailSettingsRules() {}
 

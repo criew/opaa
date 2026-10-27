@@ -12,12 +12,14 @@ import io.opaa.llm.EmbeddingEndpoint;
 import io.opaa.llm.ModelAddressPolicy;
 import io.opaa.llm.ModelEndpointRules;
 import io.opaa.mail.MailSettingsRules;
+import io.opaa.mail.MailSettingsService;
 import io.opaa.mail.MailSettingsSnapshot;
 import io.opaa.mail.MailSettingsUpdate;
 import io.opaa.security.SettingsEncryptor;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.json.JsonMapper;
@@ -40,6 +42,10 @@ class StepRules {
   static final BigDecimal MAX_TEMPERATURE = new BigDecimal("2");
 
   private static final String INVALID = "INVALID";
+
+  /** A host name or address: no whitespace and no control character, so no forged log line. */
+  private static final Pattern MAIL_HOST = Pattern.compile("[^\\s\\p{Cntrl}]+");
+
   private static final String REQUIRED = "REQUIRED";
   private static final String TOO_LONG = "TOO_LONG";
   static final int MAX_ADDRESS = ModelEndpointRules.MAX_ADDRESS;
@@ -385,6 +391,23 @@ class StepRules {
         input.encryption() == null ? MailSettingsRules.DEFAULT_ENCRYPTION : input.encryption();
     if (host == null) {
       errors.add(error("mail.host", REQUIRED, MailSettingsRules.HOST_MISSING));
+    } else if (!MAIL_HOST.matcher(host).matches()) {
+      errors.add(
+          error(
+              "mail.host",
+              INVALID,
+              "Der SMTP-Server ist ein Rechnername oder eine Adresse, ohne Leer- und"
+                  + " Steuerzeichen."));
+    }
+    if (MailSettingsService.PASSWORD_MASK.equals(input.password())) {
+      errors.add(
+          error(
+              "mail.password",
+              INVALID,
+              "„"
+                  + MailSettingsService.PASSWORD_MASK
+                  + "“ steht in der Verwaltung für ein unverändertes Passwort und lässt sich nicht"
+                  + " als Passwort setzen."));
     }
     if (port == null) {
       errors.add(error("mail.port", REQUIRED, MailSettingsRules.PORT_MISSING));
@@ -401,7 +424,9 @@ class StepRules {
     if (errors.isEmpty()) {
       String blocked = mailTargets.blockedReason(host, port);
       if (blocked != null) {
-        errors.add(error("mail.host", "BLOCKED", blocked));
+        String field =
+            InstallationMailTargets.PORT_REFUSED.equals(blocked) ? "mail.port" : "mail.host";
+        errors.add(error(field, "BLOCKED", blocked));
       }
     }
     requireNoErrors(errors);

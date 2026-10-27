@@ -156,7 +156,8 @@ public class MailService {
   /**
    * {@link #send} through {@code transport} instead of the stored settings, for settings still
    * being entered. The outcome is not written to the stored settings, whose send status it does not
-   * describe. Never throws.
+   * describe, and nothing here logs: the caller decides what of a failure reaches a log line. A
+   * {@link SendResult.Failed} carries the cause without any address. Never throws.
    */
   public SendResult sendThrough(
       MailSenderProvider.Transport transport,
@@ -165,18 +166,20 @@ public class MailService {
       String recipient,
       Map<String, Object> variables) {
     if (!StringUtils.hasText(recipient)) {
-      return abort(key, recipient, "Keine Empfängeradresse vorhanden");
+      return new SendResult.Failed("Keine Empfängeradresse vorhanden");
     }
     RenderedMail mail;
     try {
       mail = templates.render(key, MailTemplateService.localeTag(locale), variables);
     } catch (RuntimeException e) {
-      return abort(key, recipient, "Die Vorlage konnte nicht gefüllt werden: " + e.getMessage());
+      return new SendResult.Failed(
+          MailRecipients.maskAddresses(
+              "Die Vorlage konnte nicht gefüllt werden: " + e.getMessage()));
     }
     try {
       transport.sender().send(compose(transport.sender(), transport.settings(), recipient, mail));
     } catch (Exception e) {
-      return abort(key, recipient, causeOf(e));
+      return new SendResult.Failed(maskedCauseOf(e));
     }
     return new SendResult.Sent(recipient);
   }

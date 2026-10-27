@@ -51,8 +51,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * The installation of a fresh instance (ADR-0060). Every write takes the row lock of {@code
  * installation_state}, then the start-up lock {@code 211}, in that order everywhere, so steps,
  * checks, completion and the emergency reset of all instances run one after another. The completion
- * succeeds once; every later call answers {@link NotFoundException}. Test messages of the mail step
- * have a budget per instance (ADR-0053), for all clients together.
+ * succeeds once; every later call answers {@link NotFoundException}. Checks of the mail step and
+ * its test messages have budgets per instance (ADR-0053), for all clients together; the answer file
+ * read at start-up is not counted.
  */
 @Service
 public class InstallationService {
@@ -87,6 +88,16 @@ public class InstallationService {
       "Zu viele Testnachrichten. Bitte später erneut versuchen; die Prüfung ohne Testnachricht"
           + " ist weiter möglich.";
   private static final String TEST_MAIL_BUDGET_KEY = "installation-test-mail";
+
+  static final int MAX_MAIL_CHECKS = 30;
+  static final int MAIL_CHECK_WINDOW_SECONDS = 600;
+
+  /** The code of a refusal by the budget of mail checks, with or without test message. */
+  static final String MAIL_CHECK_LIMIT_CODE = "MAIL_CHECK_LIMIT";
+
+  private static final String MAIL_CHECK_LIMIT_MESSAGE =
+      "Zu viele Prüfungen des Mailservers. Bitte später erneut versuchen.";
+  private static final String MAIL_CHECK_BUDGET_KEY = "installation-mail-check";
   private static final String TEST_RECIPIENT = "testRecipient";
 
   private static final Logger log = LoggerFactory.getLogger(InstallationService.class);
@@ -108,6 +119,8 @@ public class InstallationService {
   private final TransactionTemplate transactions;
   private final RateLimitService testMailBudget =
       new RateLimitService(MAX_TEST_MAILS, TEST_MAIL_WINDOW_SECONDS);
+  private final RateLimitService mailCheckBudget =
+      new RateLimitService(MAX_MAIL_CHECKS, MAIL_CHECK_WINDOW_SECONDS);
 
   InstallationService(
       InstallationStateRepository states,
@@ -196,6 +209,9 @@ public class InstallationService {
                   .map(record -> new Saved(record.getPayload(), record.getSecret()))
                   .orElseThrow(() -> notSaved(step));
             });
+    if (step == InstallationStep.MAIL) {
+      acquireMailCheck();
+    }
     if (recipient != null) {
       RateLimitService.Decision decision = testMailBudget.tryAcquire(TEST_MAIL_BUDGET_KEY);
       if (!decision.allowed()) {
@@ -253,6 +269,9 @@ public class InstallationService {
    * @throws ConflictException naming the step whose check failed; nothing is saved then
    */
   public InstallationOverview applyAnswers(List<StepInput> inputs, CompletionSource source) {
+    if (inputs.stream().anyMatch(input -> input.step() == InstallationStep.MAIL)) {
+      acquireMailCheck();
+    }
     List<Checked> checked = checkAnswers(inputs);
     return transactions.execute(
         status -> {
@@ -350,6 +369,19 @@ public class InstallationService {
               + " it-betrieb@stadt.example.");
     }
     return recipient;
+  }
+
+  /**
+   * Takes one connection to a mail server from the budget of this instance, for all clients.
+   *
+   * @throws TooManyRequestsException past the budget
+   */
+  private void acquireMailCheck() {
+    RateLimitService.Decision decision = mailCheckBudget.tryAcquire(MAIL_CHECK_BUDGET_KEY);
+    if (!decision.allowed()) {
+      throw new TooManyRequestsException(
+          MAIL_CHECK_LIMIT_MESSAGE, decision.retryAfterSeconds(), MAIL_CHECK_LIMIT_CODE);
+    }
   }
 
   /** One answer, validated as it will be stored, with the outcome of its check. */

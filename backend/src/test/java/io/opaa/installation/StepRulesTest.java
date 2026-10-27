@@ -435,6 +435,67 @@ class StepRulesTest {
         .isNull();
   }
 
+  // regression guard: the assistant reaches only SMTP ports unless an entry names host and port
+  @Test
+  void aMailServerOnAnotherPortNeedsAnEntryNamingExactlyThatPort() {
+    StepInput.Mail unusualPort =
+        new StepInput.Mail(
+            "127.0.0.1", 6379, MailEncryption.NONE, null, null, "opaa@stadt.example", null);
+
+    assertThatThrownBy(() -> rules.toStored(unusualPort, null, null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(
+                        FieldValidationException.FieldError::field,
+                        FieldValidationException.FieldError::message)
+                    .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple(
+                            "mail.port", InstallationMailTargets.PORT_REFUSED)));
+
+    StepRules released =
+        new StepRules(
+            new PasswordPolicy(() -> 12),
+            encoder,
+            encryptor,
+            addressPolicy,
+            JsonMapper.builder().build(),
+            ModelAddressPolicy.allowing(List.of()),
+            new InstallationMailTargets(
+                new InstallationProperties(null, List.of(), null, List.of("127.0.0.1:6379"))));
+    assertThat(released.toStored(unusualPort, null, null).payload()).contains("6379");
+  }
+
+  // regression guard: the mask of the administration must never be stored as a password
+  @Test
+  void theMaskOfTheAdministrationIsNoPassword() {
+    assertThatThrownBy(() -> rules.toStored(mail("127.0.0.1", "kennung", "***"), null, null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactly("mail.password"));
+  }
+
+  @Test
+  void aServerWithControlCharactersAndASenderListAreRefused() {
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.Mail(
+                        "smtp\r\nX-Evil", 25, MailEncryption.NONE, null, null, "a@b.c,d@e.f", null),
+                    null,
+                    null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactly("mail.host", "mail.fromAddress"));
+  }
+
   private static StepInput.Mail mail(String host, String username, String password) {
     return new StepInput.Mail(
         host, 2525, MailEncryption.NONE, username, password, " opaa@stadt.example ", "OPAA");
