@@ -1013,6 +1013,8 @@ components:
           maxLength: 200
         apiKey:
           type: string
+          format: password
+          writeOnly: true
           nullable: true
           maxLength: 2000
           description: >

@@ -164,7 +164,7 @@ public class InstalledEmbeddingModel
 
   private synchronized Installed build(EmbeddingModelSettings settings, long seen) {
     Installed cached = cache.get();
-    if (cached != null && cached.generation() == settings.getGeneration()) {
+    if (cached != null && cached.fingerprint().equals(settings.fingerprint())) {
       return cached;
     }
     EmbeddingEndpoint endpoint =
@@ -179,6 +179,7 @@ public class InstalledEmbeddingModel
             settings.getDimensions(),
             settings.getMaxInputTokens(),
             settings.getGeneration(),
+            settings.fingerprint(),
             new AtomicBoolean(!settings.hasReferenceAnchor()));
     if (invalidations.get() == seen) {
       cache.set(built);
@@ -218,5 +219,6 @@ public class InstalledEmbeddingModel
       int dimensions,
       int maxInputTokens,
       long generation,
+      String fingerprint,
       AtomicBoolean anchorMissing) {}
 }

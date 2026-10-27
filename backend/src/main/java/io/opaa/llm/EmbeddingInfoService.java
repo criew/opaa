@@ -18,7 +18,10 @@ public class EmbeddingInfoService {
     this.embeddingModels = embeddingModels;
   }
 
-  /** The installed model, or {@link EmbeddingInfo#NOT_INSTALLED}. */
+  /**
+   * The installed model, or {@link EmbeddingInfo#NOT_INSTALLED}. The address leaves without query
+   * and fragment, which may carry a key; an address with credentials does not leave at all.
+   */
   public EmbeddingInfo getEmbeddingInfo() {
     return embeddingModels
         .installed()
@@ -30,7 +33,7 @@ public class EmbeddingInfoService {
                     settings.getDimensions(),
                     ModelEndpointUri.containsCredentials(settings.getBaseUrl())
                         ? null
-                        : settings.getBaseUrl(),
+                        : ModelEndpointUri.withoutSecrets(settings.getBaseUrl()),
                     settings.getGeneration()))
         .orElse(EmbeddingInfo.NOT_INSTALLED);
   }

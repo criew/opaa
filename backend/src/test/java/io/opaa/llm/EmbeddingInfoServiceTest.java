@@ -41,6 +41,14 @@ class EmbeddingInfoServiceTest {
   }
 
   @Test
+  void reportsTheBaseUrlWithoutQueryAndFragment() {
+    when(models.installed())
+        .thenReturn(Optional.of(installed("https://llm.example.invalid/v1?api-key=geheim#teil")));
+
+    assertThat(service.getEmbeddingInfo().baseUrl()).isEqualTo("https://llm.example.invalid/v1");
+  }
+
+  @Test
   void reportsNoModelBeforeOneIsInstalled() {
     when(models.installed()).thenReturn(Optional.empty());
 
