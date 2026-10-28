@@ -194,10 +194,11 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     authenticatedPage: page,
   }) => {
     await page.goto("/spaces");
-    // The heading reads "Spaces" while the list loads and names the count once it is in.
+    // The entry count beside the heading appears once the list is in.
     await expect(
-      page.getByRole("heading", { level: 1, name: /^\d+ Spaces?$/ }),
+      page.getByRole("heading", { level: 1, name: "Spaces", exact: true }),
     ).toBeVisible();
+    await expect(page.getByText(/^\d+ Eintr(ag|äge)$/)).toBeVisible();
 
     await page.emulateMedia({ colorScheme: "light" });
     await expectNoSeriousA11yViolations(page, "Spaces-Übersicht (helles Farbschema)");
