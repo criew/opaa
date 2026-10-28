@@ -18,9 +18,10 @@ import tools.jackson.databind.json.JsonMapper;
  * The answer file read at start-up from {@code OPAA_INSTALLATION_ANSWER_FILE} (ADR-0060,
  * Entscheidung 7). Its secrets are never plain text: the passwords and the model keys are files,
  * typically mounted from a secret, read when the file is applied. {@code chatModel}, {@code
- * embeddingModel}, {@code mail} and {@code branding} are optional: a file without one skips its
- * step, without {@code mail} sending stays off, without {@code branding} the OPAA default stays.
- * Parts of later steps are ignored.
+ * embeddingModel}, {@code transcriptionModel}, {@code mail} and {@code branding} are optional: a
+ * file without one skips its step, without {@code mail} sending stays off, without {@code branding}
+ * the OPAA default stays. Parts of later steps are ignored, and so is {@code transcriptionModel}
+ * while speech input is switched off ({@link InstallationService}).
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 record AnswerFile(
@@ -28,6 +29,7 @@ record AnswerFile(
     SignIn signIn,
     ChatModel chatModel,
     EmbeddingModel embeddingModel,
+    TranscriptionModel transcriptionModel,
     Mail mail,
     Branding branding) {
 
@@ -64,6 +66,11 @@ record AnswerFile(
   @JsonIgnoreProperties(ignoreUnknown = true)
   record EmbeddingModel(
       String baseUrl, String model, String apiKeyFile, String apiKey, Integer maxInputTokens) {}
+
+  /** {@code language} absent means {@code de}, empty lets the model detect it. */
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  record TranscriptionModel(
+      String baseUrl, String model, String apiKeyFile, String apiKey, String language) {}
 
   /** The mail server; without {@code passwordFile} it connects without a password. */
   @JsonIgnoreProperties(ignoreUnknown = true)
@@ -109,6 +116,7 @@ record AnswerFile(
     if (firstAdmin.password() != null
         || (chatModel != null && chatModel.apiKey() != null)
         || (embeddingModel != null && embeddingModel.apiKey() != null)
+        || (transcriptionModel != null && transcriptionModel.apiKey() != null)
         || (mail != null && mail.password() != null)) {
       throw new ValidationException(
           "Geheimnisse stehen nicht im Klartext in der Antwortdatei: passwordFile und apiKeyFile"
@@ -150,6 +158,14 @@ record AnswerFile(
               embeddingModel.model(),
               keyOf(embeddingModel.apiKeyFile(), "embeddingModel.apiKeyFile"),
               embeddingModel.maxInputTokens()));
+    }
+    if (transcriptionModel != null) {
+      steps.add(
+          new StepInput.TranscriptionModel(
+              transcriptionModel.baseUrl(),
+              transcriptionModel.model(),
+              keyOf(transcriptionModel.apiKeyFile(), "transcriptionModel.apiKeyFile"),
+              transcriptionModel.language()));
     }
     if (mail != null) {
       steps.add(

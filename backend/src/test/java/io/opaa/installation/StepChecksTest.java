@@ -16,6 +16,7 @@ import io.opaa.llm.EmbeddingEndpoint;
 import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelConnectionTester;
 import io.opaa.llm.ModelAddressPolicy;
+import io.opaa.llm.ModelRoleAdministration;
 import io.opaa.mail.MailConnectionTester;
 import io.opaa.mail.MailSettingsSnapshot;
 import io.opaa.security.PasswordEncoderConfiguration;
@@ -50,6 +51,7 @@ class StepChecksTest {
   private final LlmModelConnectionTester chatTester = mock(LlmModelConnectionTester.class);
   private final EmbeddingModelService embeddingModels = mock(EmbeddingModelService.class);
   private final MailConnectionTester mailTester = mock(MailConnectionTester.class);
+  private final ModelRoleAdministration modelRoles = mock(ModelRoleAdministration.class);
   private final StepChecks checks =
       new StepChecks(
           rules,
@@ -58,7 +60,8 @@ class StepChecksTest {
           encryptor,
           strict,
           embeddingModels,
-          mailTester);
+          mailTester,
+          modelRoles);
 
   // regression guard: no probe of the installation reaches a blocked address
   @Test
@@ -137,7 +140,8 @@ class StepChecksTest {
             encryptor,
             ModelAddressPolicy.disabled(),
             embeddingModels,
-            mailTester);
+            mailTester,
+            modelRoles);
     when(embeddingModels.probe(any(EmbeddingEndpoint.class)))
         .thenReturn(
             new EmbeddingModelService.ProbeOutcome(true, "Probeeinbettung erfolgreich", 768));
@@ -165,5 +169,48 @@ class StepChecksTest {
     assertThat(refused.succeeded()).isFalse();
     assertThat(refused.message()).contains("Hex-Wert");
     verifyNoInteractions(chatTester, embeddingModels, mailTester);
+  }
+
+  @Test
+  void aBlockedTranscriptionAddressFailsTheCheckWithoutAnyRequest() {
+    String payload =
+        json.writeValueAsString(
+            new StepRules.TranscriptionModelPayload("http://169.254.169.254/v1", "whisper", "de"));
+
+    StepChecks.Outcome outcome =
+        checks.check(InstallationStep.TRANSCRIPTION_MODEL, payload, null, null);
+
+    assertThat(outcome.succeeded()).isFalse();
+    verifyNoInteractions(modelRoles);
+  }
+
+  @Test
+  void theTranscriptionModelIsCheckedWithTheProbeOfTheAdministrationAndItsOwnKey() {
+    StepChecks open =
+        new StepChecks(
+            rules,
+            mock(OidcProviderConnectionTester.class),
+            chatTester,
+            encryptor,
+            ModelAddressPolicy.disabled(),
+            embeddingModels,
+            mailTester,
+            modelRoles);
+    when(modelRoles.probeTranscription("http://speaches:8000/v1", "whisper", "sk-stt"))
+        .thenReturn(
+            new ModelRoleAdministration.TestOutcome(
+                true, "Verbindung erfolgreich, der Endpunkt hat geantwortet."));
+    String payload =
+        json.writeValueAsString(
+            new StepRules.TranscriptionModelPayload("http://speaches:8000/v1", "whisper", "de"));
+
+    StepChecks.Outcome outcome =
+        open.check(
+            InstallationStep.TRANSCRIPTION_MODEL, payload, encryptor.encrypt("sk-stt"), null);
+
+    assertThat(outcome.succeeded()).isTrue();
+    assertThat(outcome.message())
+        .isEqualTo("Verbindung erfolgreich, der Endpunkt hat geantwortet.");
+    assertThat(outcome.dimensions()).isNull();
   }
 }

@@ -69,6 +69,33 @@ public sealed interface StepInput {
   }
 
   /**
+   * The transcription model of speech input. {@code apiKey}: {@code null} keeps a key saved before,
+   * an empty value removes it; {@code language} {@code null} means the default {@code de}, empty
+   * lets the model detect it.
+   */
+  record TranscriptionModel(String baseUrl, String model, String apiKey, String language)
+      implements StepInput {
+    @Override
+    public InstallationStep step() {
+      return InstallationStep.TRANSCRIPTION_MODEL;
+    }
+
+    /** Without the key, which must reach no log line. */
+    @Override
+    public String toString() {
+      return "TranscriptionModel[baseUrl="
+          + baseUrl
+          + ", model="
+          + model
+          + ", apiKey="
+          + (apiKey == null ? "null" : "***")
+          + ", language="
+          + language
+          + "]";
+    }
+  }
+
+  /**
    * The mail server. {@code password}: {@code null} keeps a password saved before, but only for the
    * same host, port, user name and encryption; an empty value removes it.
    */

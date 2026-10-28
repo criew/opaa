@@ -36,6 +36,10 @@ public record InstallationOverview(boolean pending, boolean completable, List<St
       String baseUrl, String model, boolean apiKeySet, BigDecimal temperature, int maxTokens)
       implements SavedValues {}
 
+  /** The transcription model; {@code language} empty lets the model detect it. */
+  public record TranscriptionModel(String baseUrl, String model, boolean apiKeySet, String language)
+      implements SavedValues {}
+
   /** The mail server; {@code passwordSet} says whether a password is saved, never which. */
   public record Mail(
       String host,

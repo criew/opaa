@@ -141,7 +141,8 @@ class ModelRoleAdministrationTest {
         administration.probeTranscription("http://8.8.8.8/v1", "whisper", "sk-stt");
 
     assertThat(outcome.success()).isTrue();
-    assertThat(outcome.message()).isEqualTo("Verbindung erfolgreich, der Endpunkt hat geantwortet.");
+    assertThat(outcome.message())
+        .isEqualTo("Verbindung erfolgreich, der Endpunkt hat geantwortet.");
     assertThat(endpoint.getValue().apiKey()).isEqualTo("sk-stt");
     assertThat(endpoint.getValue().model()).isEqualTo("whisper");
   }

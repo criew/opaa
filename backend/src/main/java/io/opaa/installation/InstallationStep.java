@@ -1,5 +1,8 @@
 package io.opaa.installation;
 
+import io.opaa.common.Feature;
+import io.opaa.common.FeatureFlags;
+
 /**
  * The steps of the installation this version knows (ADR-0060, Entscheidung 6). The installation
  * completes only when every mandatory step is saved and successfully checked, and every optional
@@ -19,6 +22,12 @@ public enum InstallationStep {
    */
   EMBEDDING_MODEL(false),
   /**
+   * The transcription model of speech input, optional: the completion switches the role on through
+   * the write path of the model administration; skipped, speech input stays off. Offered only while
+   * the feature speech-input is on (ADR-0060, Entscheidung 16).
+   */
+  TRANSCRIPTION_MODEL(false, Feature.SPEECH_INPUT),
+  /**
    * The mail server, optional: the completion stores it and switches sending on; skipped, sending
    * stays off (ADR-0033, Entscheidung 10).
    */
@@ -31,12 +40,26 @@ public enum InstallationStep {
   BRANDING(false);
 
   private final boolean mandatory;
+  private final Feature feature;
 
   InstallationStep(boolean mandatory) {
+    this(mandatory, null);
+  }
+
+  InstallationStep(boolean mandatory, Feature feature) {
     this.mandatory = mandatory;
+    this.feature = feature;
   }
 
   public boolean isMandatory() {
     return mandatory;
+  }
+
+  /**
+   * Whether this installation offers the step: a step of a switched-off feature is neither listed
+   * nor saved, checked or completed, and its part of an answer is ignored.
+   */
+  public boolean isOfferedWith(FeatureFlags features) {
+    return feature == null || features.isEnabled(feature);
   }
 }

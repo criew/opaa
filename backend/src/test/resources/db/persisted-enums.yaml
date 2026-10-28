@@ -393,7 +393,7 @@ io.opaa.installation.InstallationState$TokenSource:
 io.opaa.installation.InstallationStep:
   attributes: [InstallationStepRecord.step]
   assessment: STATE
-  readable: [BRANDING, CHAT_MODEL, EMBEDDING_MODEL, FIRST_ADMIN, MAIL, SIGN_IN]
+  readable: [BRANDING, CHAT_MODEL, EMBEDDING_MODEL, FIRST_ADMIN, MAIL, SIGN_IN, TRANSCRIPTION_MODEL]
   pending: []
 io.opaa.knowledge.ErasureCause:
   attributes: [KnowledgeLibrary.erasureCause]

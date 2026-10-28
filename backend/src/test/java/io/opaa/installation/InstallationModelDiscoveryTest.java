@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.account.PasswordPolicy;
 import io.opaa.auth.OidcAddressPolicy;
+import io.opaa.common.FeatureFlags;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.common.ValidationException;
@@ -31,6 +32,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.env.MockEnvironment;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -87,7 +89,9 @@ class InstallationModelDiscoveryTest {
     LlmModelDiscoverer discoverer =
         new LlmModelDiscoverer(
             mock(LlmModelRepository.class), encryptor, JsonMapper.builder().build(), policy);
-    discovery = new InstallationModelDiscovery(states, steps, rules, encryptor, discoverer);
+    discovery =
+        new InstallationModelDiscovery(
+            states, steps, rules, encryptor, discoverer, new FeatureFlags(new MockEnvironment()));
     when(states.isCompleted()).thenReturn(false);
     when(steps.findById(InstallationStep.CHAT_MODEL)).thenReturn(Optional.empty());
     when(steps.findById(InstallationStep.EMBEDDING_MODEL)).thenReturn(Optional.empty());
@@ -212,5 +216,36 @@ class InstallationModelDiscoveryTest {
         encryptor.encrypt(key),
         Instant.now());
     when(steps.findById(InstallationStep.CHAT_MODEL)).thenReturn(Optional.of(record));
+  }
+
+  @Test
+  void theTranscriptionStepListsTheModelsOfItsEndpoint() {
+    when(steps.findById(InstallationStep.TRANSCRIPTION_MODEL)).thenReturn(Optional.empty());
+
+    ModelDiscovery result =
+        discovery.discover(InstallationStep.TRANSCRIPTION_MODEL, baseUrl, "sk-stt");
+
+    assertThat(result.success()).isTrue();
+    assertThat(authorization.get()).isEqualTo("Bearer sk-stt");
+  }
+
+  @Test
+  void theTranscriptionStepListsNothingWhileSpeechInputIsOff() {
+    InstallationModelDiscovery withoutSpeechInput =
+        new InstallationModelDiscovery(
+            states,
+            steps,
+            rules,
+            encryptor,
+            new LlmModelDiscoverer(
+                mock(LlmModelRepository.class), encryptor, JsonMapper.builder().build(), policy),
+            new FeatureFlags(
+                new MockEnvironment().withProperty("opaa.features.speech-input.enabled", "false")));
+
+    assertThatThrownBy(
+            () -> withoutSpeechInput.discover(InstallationStep.TRANSCRIPTION_MODEL, baseUrl, null))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("OPAA_FEATURES_SPEECH_INPUT_ENABLED");
+    assertThat(requests.get()).isZero();
   }
 }

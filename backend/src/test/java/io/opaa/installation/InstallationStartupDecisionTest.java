@@ -15,10 +15,12 @@ import io.opaa.account.InitialAdministrator;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.UserRepository;
 import io.opaa.branding.BrandingSettingsService;
+import io.opaa.common.FeatureFlags;
 import io.opaa.directory.OidcProviderService;
 import io.opaa.installation.InstallationState.CompletionSource;
 import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelService;
+import io.opaa.llm.ModelRoleAdministration;
 import io.opaa.mail.MailSettingsService;
 import io.opaa.organization.Organization;
 import java.time.Clock;
@@ -60,6 +62,8 @@ class InstallationStartupDecisionTest {
             mock(EmbeddingModelService.class),
             mock(MailSettingsService.class),
             mock(BrandingSettingsService.class),
+            mock(ModelRoleAdministration.class),
+            new FeatureFlags(new MockEnvironment()),
             mock(AuditEventRecorder.class),
             users,
             mock(DatabaseInstallationStatus.class),

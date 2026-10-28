@@ -1,5 +1,6 @@
 package io.opaa.installation;
 
+import io.opaa.common.FeatureFlags;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.common.ValidationException;
@@ -34,6 +35,7 @@ public class InstallationModelDiscovery {
   private final StepRules rules;
   private final SettingsEncryptor settingsEncryptor;
   private final LlmModelDiscoverer discoverer;
+  private final FeatureFlags features;
   private final RateLimitService budget = new RateLimitService(MAX_DISCOVERIES, WINDOW_SECONDS);
 
   InstallationModelDiscovery(
@@ -41,27 +43,35 @@ public class InstallationModelDiscovery {
       InstallationStepRepository steps,
       StepRules rules,
       SettingsEncryptor settingsEncryptor,
-      LlmModelDiscoverer discoverer) {
+      LlmModelDiscoverer discoverer,
+      FeatureFlags features) {
     this.states = states;
     this.steps = steps;
     this.rules = rules;
     this.settingsEncryptor = settingsEncryptor;
     this.discoverer = discoverer;
+    this.features = features;
   }
 
   /**
    * Lists the models at {@code baseUrl}. {@code apiKey} {@code null} uses the key saved with the
    * step for the same endpoint, an empty one sends none.
    *
-   * @throws ValidationException 400 for a step without model, an address with credentials, or a
-   *     saved key that would have to leave its endpoint
+   * @throws ValidationException 400 for a step without model or not offered, an address with
+   *     credentials, or a saved key that would have to leave its endpoint
    * @throws NotFoundException once the installation is completed
    * @throws TooManyRequestsException past the budget
    */
   public ModelDiscovery discover(InstallationStep step, String baseUrl, String apiKey) {
-    if (step != InstallationStep.CHAT_MODEL && step != InstallationStep.EMBEDDING_MODEL) {
+    if (step != InstallationStep.CHAT_MODEL
+        && step != InstallationStep.EMBEDDING_MODEL
+        && step != InstallationStep.TRANSCRIPTION_MODEL) {
       throw new ValidationException(
-          "Modelle lassen sich nur in den Schritten Chat-Modell und Embedding-Modell abrufen.");
+          "Modelle lassen sich nur in den Schritten Chat-Modell, Embedding-Modell und"
+              + " Transkriptionsmodell abrufen.");
+    }
+    if (!step.isOfferedWith(features)) {
+      throw new ValidationException(InstallationService.notOffered(step));
     }
     if (states.isCompleted()) {
       throw new NotFoundException("Die angeforderte Ressource wurde nicht gefunden");
@@ -99,8 +109,10 @@ public class InstallationModelDiscovery {
   }
 
   private String savedBaseUrl(InstallationStep step, String payload) {
-    return step == InstallationStep.CHAT_MODEL
-        ? rules.chatModelPayload(payload).baseUrl()
-        : rules.embeddingModelPayload(payload).baseUrl();
+    return switch (step) {
+      case CHAT_MODEL -> rules.chatModelPayload(payload).baseUrl();
+      case TRANSCRIPTION_MODEL -> rules.transcriptionModelPayload(payload).baseUrl();
+      default -> rules.embeddingModelPayload(payload).baseUrl();
+    };
   }
 }

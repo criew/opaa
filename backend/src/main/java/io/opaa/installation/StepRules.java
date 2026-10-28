@@ -14,6 +14,7 @@ import io.opaa.common.ValidationException;
 import io.opaa.llm.EmbeddingEndpoint;
 import io.opaa.llm.ModelAddressPolicy;
 import io.opaa.llm.ModelEndpointRules;
+import io.opaa.llm.TranscriptionEndpoint;
 import io.opaa.mail.MailSettingsRules;
 import io.opaa.mail.MailSettingsService;
 import io.opaa.mail.MailSettingsSnapshot;
@@ -46,6 +47,7 @@ class StepRules {
 
   private static final String INVALID = "INVALID";
   private static final String BRANDING_PREFIX = "branding.";
+  private static final String TRANSCRIPTION_PREFIX = "transcriptionModel";
 
   /** A host name or address: no whitespace and no control character, so no forged log line. */
   private static final Pattern MAIL_HOST = Pattern.compile("[^\\s\\p{Cntrl}]+");
@@ -80,6 +82,9 @@ class StepRules {
       return new EmbeddingModelPayload(baseUrl, model, maxInputTokens, probed);
     }
   }
+
+  /** The transcription model; {@code language} is never {@code null}, empty for detection. */
+  record TranscriptionModelPayload(String baseUrl, String model, String language) {}
 
   /** The mail server without its password; {@code encryption} is never {@code null}. */
   record MailPayload(
@@ -137,6 +142,8 @@ class StepRules {
       case StepInput.SignIn signIn -> signIn(signIn);
       case StepInput.ChatModel model -> chatModel(model, previousPayload, previousSecret);
       case StepInput.EmbeddingModel model -> embeddingModel(model, previousPayload, previousSecret);
+      case StepInput.TranscriptionModel model ->
+          transcriptionModel(model, previousPayload, previousSecret);
       case StepInput.Mail mail -> mail(mail, previousPayload, previousSecret);
       case StepInput.Branding branding -> branding(branding);
     };
@@ -166,6 +173,11 @@ class StepRules {
             secret != null,
             maxInputTokens(model),
             model.dimensions());
+      }
+      case TRANSCRIPTION_MODEL -> {
+        TranscriptionModelPayload model = transcriptionModelPayload(payload);
+        yield new InstallationOverview.TranscriptionModel(
+            model.baseUrl(), model.model(), secret != null, model.language());
       }
       case MAIL -> {
         MailPayload mail = mailPayload(payload);
@@ -281,6 +293,10 @@ class StepRules {
   EmbeddingEndpoint embeddingEndpoint(EmbeddingModelPayload model, String secret) {
     return new EmbeddingEndpoint(
         model.baseUrl(), model.model(), settingsEncryptor.decrypt(secret), maxInputTokens(model));
+  }
+
+  TranscriptionModelPayload transcriptionModelPayload(String payload) {
+    return json.readValue(payload, TranscriptionModelPayload.class);
   }
 
   private Stored firstAdmin(StepInput.FirstAdmin input) {
@@ -405,6 +421,40 @@ class StepRules {
     return new Stored(
         json.writeValueAsString(
             new EmbeddingModelPayload(baseUrl, model, input.maxInputTokens(), null)),
+        secret);
+  }
+
+  /**
+   * The rules of the transcription model administration (endpoint and {@link
+   * TranscriptionEndpoint#isValidLanguage language}), with the address check of the installation
+   * for every address. The language is stored as the role passes it on, {@code de} when absent.
+   */
+  private Stored transcriptionModel(
+      StepInput.TranscriptionModel input, String previousPayload, String previousSecret) {
+    List<FieldError> errors = new ArrayList<>();
+    String baseUrl = trimmed(input.baseUrl());
+    String model = trimmed(input.model());
+    String language = TranscriptionEndpoint.normalisedLanguage(input.language());
+    endpointErrors(TRANSCRIPTION_PREFIX, baseUrl, model, input.apiKey(), errors);
+    if (!TranscriptionEndpoint.isValidLanguage(language)) {
+      errors.add(
+          error(TRANSCRIPTION_PREFIX + ".language", INVALID, TranscriptionEndpoint.LANGUAGE_RULE));
+    }
+    blockedAddressError(TRANSCRIPTION_PREFIX, baseUrl, errors);
+    requireNoErrors(errors);
+    String secret =
+        secretOf(
+            TRANSCRIPTION_PREFIX,
+            input.apiKey(),
+            previousSecret == null ? null : transcriptionModelPayload(previousPayload).baseUrl(),
+            baseUrl,
+            previousSecret);
+    return new Stored(
+        json.writeValueAsString(
+            new TranscriptionModelPayload(
+                baseUrl,
+                model,
+                language == null ? TranscriptionEndpoint.DEFAULT_LANGUAGE : language)),
         secret);
   }
 
