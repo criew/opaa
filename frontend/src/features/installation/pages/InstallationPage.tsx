@@ -18,6 +18,7 @@ import StepList from '../components/StepList'
 import { STEP_RHYTHM, STEP_TITLE_SX } from '../components/stepLayout'
 import SummaryStep from '../components/SummaryStep'
 import TokenStep from '../components/TokenStep'
+import BrandingStep from '../components/steps/BrandingStep'
 import ChatModelStep from '../components/steps/ChatModelStep'
 import EmbeddingModelStep from '../components/steps/EmbeddingModelStep'
 import FirstAdminStep from '../components/steps/FirstAdminStep'
@@ -126,6 +127,8 @@ function StepView({
           onBack={onBack}
         />
       )
+    case 'BRANDING':
+      return <BrandingStep step={step} submit={(v) => submit('BRANDING', v)} {...nav} />
   }
 }
 

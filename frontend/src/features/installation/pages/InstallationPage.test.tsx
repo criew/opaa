@@ -1,7 +1,9 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent, { type UserEvent } from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { OPAA_BRANDING } from '@/shared/branding/brandingStore'
+import { BRANDING_TEXTS } from '@/shared/ui/branding/brandingSettings'
 import { renderWithProviders } from '@/test/test-utils'
 import { server } from '@/test/server'
 import {
@@ -13,6 +15,7 @@ import {
   mockTestRecipients,
   setMockPublicBaseUrlConfigured,
   updateMockStep,
+  withMockBrandingStep,
   withMockEmbeddingStep,
   withoutMockStep,
 } from '../mocks/installationFixtures'
@@ -327,12 +330,17 @@ describe('InstallationPage', () => {
     await user.click(screen.getByRole('button', { name: 'Überspringen' }))
     expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Überspringen' }))
+    expect(await stepHeading('Branding')).toBeInTheDocument()
+    expect(screen.getByText('Optional · später unter Branding')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Überspringen' }))
 
     expect(await stepHeading('Abschluss')).toBeInTheDocument()
     const summary = screen.getByRole('list', { name: 'Stand der Schritte' })
-    expect(within(summary).getAllByText('Nicht eingerichtet')).toHaveLength(3)
+    expect(within(summary).getAllByText('Nicht eingerichtet')).toHaveLength(4)
     expect(screen.getByText(/Übersprungen: Chat-Modell, Embedding-Modell\./)).toBeInTheDocument()
     expect(screen.getByText(/Der E-Mail-Versand bleibt aus/)).toBeInTheDocument()
+    expect(screen.getByText(/Es gilt das Standard-Branding von OPAA/)).toBeInTheDocument()
+    expect(mockSkippedSteps()).toEqual(['CHAT_MODEL', 'EMBEDDING_MODEL', 'MAIL', 'BRANDING'])
     await user.click(screen.getByRole('button', { name: 'Installation abschließen' }))
 
     expect(await stepHeading('Installation abgeschlossen')).toBeInTheDocument()
@@ -1074,6 +1082,137 @@ describe('InstallationPage', () => {
       await openMailStep(user)
 
       expect(screen.getByText('Öffentliche Adresse fehlt')).toBeInTheDocument()
+    })
+  })
+
+  describe('with the optional branding step', () => {
+    beforeEach(() => {
+      withMockBrandingStep()
+      for (const step of ['FIRST_ADMIN', 'SIGN_IN', 'CHAT_MODEL'] as const) {
+        updateMockStep(step, { saved: true, checked: true })
+      }
+    })
+
+    async function openBrandingStep(user: UserEvent) {
+      const rendered = renderPage()
+      await stepHeading('Installations-Token')
+      await enterToken(user)
+      await stepHeading('Abschluss')
+      await openFromStepList(user, 'Branding')
+      return rendered
+    }
+
+    function brandingOf() {
+      return mockInstallationState().steps.find((s) => s.step === 'BRANDING')
+    }
+
+    it('offers the fields and hints of the administration and keeps the standard when left alone', async () => {
+      const user = userEvent.setup()
+      await openBrandingStep(user)
+
+      expect(screen.getByText('Optional · später unter Branding')).toBeInTheDocument()
+      expect(screen.getByText(/der Assistent nimmt keine Bilder an/)).toBeInTheDocument()
+      expect(field('Produktname (optional)')).toHaveAccessibleDescription(
+        BRANDING_TEXTS.productNameHint,
+      )
+      expect(screen.getByLabelText('Hinweis zur KI-Nutzung')).toHaveValue(
+        OPAA_BRANDING.aiNoticeDefault,
+      )
+      expect(screen.getByRole('radio', { name: 'System' })).toBeChecked()
+      await submitStep(user)
+
+      expect(await stepHeading('Abschluss')).toBeInTheDocument()
+      expect(brandingOf()).toMatchObject({
+        checked: true,
+        branding: {
+          productName: null,
+          claim: null,
+          aiNotice: null,
+          primaryColor: null,
+        },
+      })
+      expect(brandingOf()?.branding?.defaultColorScheme).toBeUndefined()
+      expect(screen.getByText(/Das Branding wird übernommen/)).toBeInTheDocument()
+    })
+
+    it('refuses a colour that is no hex value before sending it', async () => {
+      const user = userEvent.setup()
+      await openBrandingStep(user)
+
+      await user.type(field('Primärfarbe (optional)'), 'blau')
+      await submitStep(user)
+
+      expect(field('Primärfarbe (optional)')).toHaveAccessibleDescription(
+        BRANDING_TEXTS.primaryColorInvalid,
+      )
+      expect(brandingOf()?.saved).toBe(false)
+    })
+
+    it('warns about the contrast without blocking, previews both schemes and is taken over', async () => {
+      const user = userEvent.setup()
+      const { container } = await openBrandingStep(user)
+
+      await user.type(field('Produktname (optional)'), 'Landesamt-Assistent')
+      await user.type(field('Primärfarbe (optional)'), '#FFEB3B')
+      await user.click(screen.getByRole('radio', { name: 'Dunkel' }))
+
+      expect(screen.getByText('Kontrast unterschritten')).toBeInTheDocument()
+      const previews = container.querySelectorAll('figure[aria-hidden="true"]')
+      expect(previews).toHaveLength(2)
+      for (const preview of previews) {
+        expect(preview).toHaveTextContent('Landesamt-Assistent')
+      }
+      await submitStep(user)
+
+      expect(await stepHeading('Abschluss')).toBeInTheDocument()
+      expect(brandingOf()?.branding).toMatchObject({
+        productName: 'Landesamt-Assistent',
+        primaryColor: '#FFEB3B',
+        defaultColorScheme: 'DARK',
+      })
+    })
+
+    it('takes the colour of the picker into the field', async () => {
+      const user = userEvent.setup()
+      await openBrandingStep(user)
+
+      fireEvent.change(screen.getByLabelText('Primärfarbe auswählen'), {
+        target: { value: '#7a3e9d' },
+      })
+
+      expect(field('Primärfarbe (optional)')).toHaveValue('#7A3E9D')
+    })
+
+    it('shows a backend field error of the step under its field', async () => {
+      server.use(
+        http.put('/api/v1/installation/steps/BRANDING', () =>
+          HttpResponse.json(
+            {
+              error: 'Die Angaben des Schritts sind unvollständig.',
+              status: 400,
+              fieldErrors: [
+                {
+                  field: 'branding.productName',
+                  code: 'INVALID',
+                  message: 'Der Produktname darf keine Steuerzeichen enthalten',
+                },
+              ],
+            },
+            { status: 400 },
+          ),
+        ),
+      )
+      const user = userEvent.setup()
+      await openBrandingStep(user)
+
+      await user.type(field('Produktname (optional)'), 'Amt')
+      await submitStep(user)
+
+      await waitFor(() =>
+        expect(field('Produktname (optional)')).toHaveAccessibleDescription(
+          'Der Produktname darf keine Steuerzeichen enthalten',
+        ),
+      )
     })
   })
 })

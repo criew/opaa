@@ -17,6 +17,9 @@ export type InstallationEmbeddingModelView = Schemas['InstallationEmbeddingModel
 export type InstallationMail = Schemas['InstallationMail']
 export type InstallationMailView = Schemas['InstallationMailView']
 
+/** The branding without images; sent and returned alike, `null` meaning the OPAA default. */
+export type InstallationBranding = Schemas['InstallationBranding']
+
 /** Options of a check; only the mail step reads one. */
 export type InstallationStepCheckRequest = Schemas['InstallationStepCheckRequest']
 
@@ -39,6 +42,7 @@ export interface StepInput {
   CHAT_MODEL: InstallationChatModel
   EMBEDDING_MODEL: InstallationEmbeddingModel
   MAIL: InstallationMail
+  BRANDING: InstallationBranding
 }
 
 /** The part of `InstallationStepRequest` that carries a step's values. */
@@ -48,4 +52,5 @@ export const STEP_REQUEST_KEY = {
   CHAT_MODEL: 'chatModel',
   EMBEDDING_MODEL: 'embeddingModel',
   MAIL: 'mail',
+  BRANDING: 'branding',
 } as const satisfies Record<InstallationStepId, keyof Schemas['InstallationStepRequest']>

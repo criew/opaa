@@ -7,6 +7,7 @@ import {
 } from '@/features/model/mocks/modelFixtures'
 import {
   STEP_REQUEST_KEY,
+  type InstallationBranding,
   type InstallationChatModel,
   type InstallationEmbeddingModel,
   type InstallationFirstAdmin,
@@ -37,6 +38,8 @@ import {
  *   `fieldErrors`) and discards the step's check,
  * - a check answers 200 either way; for addresses containing {@link MOCK_UNREACHABLE_MARKER} it
  *   reports `checked: false` with a `checkMessage`,
+ * - the branding step refuses a colour that is no `#RRGGBB` value (400) and stores blank as the
+ *   default; its check always succeeds,
  * - a check of the mail step takes a test recipient; skipping an optional step discards it and a
  *   mandatory one is refused (400),
  * - completing refuses (409) while a mandatory step or a saved optional step is unchecked.
@@ -84,6 +87,26 @@ function firstAdminErrors(values: InstallationFirstAdmin) {
   return errors
 }
 
+/** The rules of the branding administration that the assistant does not check itself. */
+function brandingErrors(values: InstallationBranding) {
+  const color = values.primaryColor?.trim() ?? ''
+  return color === '' || /^#[0-9a-fA-F]{6}$/.test(color)
+    ? []
+    : [
+        fieldError(
+          'branding.primaryColor',
+          'INVALID',
+          "Die Primärfarbe muss ein sechsstelliger Hex-Wert mit führendem '#' sein, zum Beispiel #1292EE",
+        ),
+      ]
+}
+
+/** Blank is the OPAA default, stored as `null` like the backend does. */
+function orDefault(value: string | null | undefined): string | null {
+  const trimmed = value?.trim() ?? ''
+  return trimmed === '' ? null : trimmed
+}
+
 /** The step's view after a save: secrets only as „gesetzt", never echoed. */
 function storedView(step: InstallationStepState, part: unknown): Partial<InstallationStepState> {
   if (step.step === 'FIRST_ADMIN') {
@@ -103,6 +126,18 @@ function storedView(step: InstallationStepState, part: unknown): Partial<Install
         : password !== ''
     return {
       mail: { ...rest, encryption: rest.encryption ?? 'STARTTLS', passwordSet },
+    }
+  }
+  if (step.step === 'BRANDING') {
+    const values = part as InstallationBranding
+    return {
+      branding: {
+        productName: orDefault(values.productName),
+        claim: orDefault(values.claim),
+        aiNotice: orDefault(values.aiNotice),
+        primaryColor: orDefault(values.primaryColor),
+        defaultColorScheme: values.defaultColorScheme,
+      },
     }
   }
   if (step.step === 'EMBEDDING_MODEL') {
@@ -190,7 +225,11 @@ export const installationHandlers = [
     const part = body[STEP_REQUEST_KEY[step.step]]
     if (!part) return error(400, 'Die Angaben des Schritts fehlen.')
     const errors =
-      step.step === 'FIRST_ADMIN' ? firstAdminErrors(part as InstallationFirstAdmin) : []
+      step.step === 'FIRST_ADMIN'
+        ? firstAdminErrors(part as InstallationFirstAdmin)
+        : step.step === 'BRANDING'
+          ? brandingErrors(part as InstallationBranding)
+          : []
     if (errors.length > 0) return error(400, 'Die Angaben sind unvollständig.', errors)
     updateMockStep(step.step, {
       saved: true,
@@ -222,7 +261,9 @@ export const installationHandlers = [
               ? 'Die Testnachricht wurde dem Mailserver übergeben.'
               : 'Es wurde keine Nachricht versendet.'
           }`
-        : 'Prüfung erfolgreich.'
+        : step.step === 'BRANDING'
+          ? 'Das Branding erfüllt die Regeln der Verwaltung.'
+          : 'Prüfung erfolgreich.'
     updateMockStep(step.step, {
       checked: failure === null,
       checkMessage: failure ?? success,
@@ -252,6 +293,7 @@ export const installationHandlers = [
       chatModel: undefined,
       embeddingModel: undefined,
       mail: undefined,
+      branding: undefined,
     })
     return HttpResponse.json(findStep(step.step))
   }),

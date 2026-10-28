@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
-import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Divider from '@mui/material/Divider'
@@ -19,22 +18,26 @@ import type { BrandingImageKind } from '@/shared/branding/brandingStore'
 import { BRANDING_IMAGES, useBrandingStore, OPAA_BRANDING } from '@/shared/branding/brandingStore'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
-import BrandingPreview from '../components/BrandingPreview'
-import { checkAccentContrast, formatContrastRatio, parseHexColor } from '@/shared/utils/contrast'
+import AccentContrastWarning from '@/shared/ui/branding/AccentContrastWarning'
+import BrandingPreviews from '@/shared/ui/branding/BrandingPreviews'
+import {
+  BRANDING_COLOR_SCHEME_OPTIONS,
+  BRANDING_LABELS,
+  BRANDING_LIMITS,
+  BRANDING_TEXTS,
+  isInvalidPrimaryColor,
+  singleLineNotice,
+} from '@/shared/ui/branding/brandingSettings'
 import { contentWidth } from '@/shared/theme/tokens'
 
 /** Mirrors `BrandingImageValidator` in the backend - rejected there too, just less pleasantly. */
 const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg']
 
-const MAX_PRODUCT_NAME_LENGTH = 60
-const MAX_CLAIM_LENGTH = 120
-const MAX_AI_NOTICE_LENGTH = 500
-
-const colorSchemeOptions: Array<{ value: ColorScheme; label: string; icon: React.ReactNode }> = [
-  { value: 'LIGHT', label: 'Hell', icon: <LightModeIcon fontSize="small" /> },
-  { value: 'SYSTEM', label: 'System', icon: <SettingsBrightnessIcon fontSize="small" /> },
-  { value: 'DARK', label: 'Dunkel', icon: <DarkModeIcon fontSize="small" /> },
-]
+const COLOR_SCHEME_ICONS: Record<ColorScheme, React.ReactNode> = {
+  LIGHT: <LightModeIcon fontSize="small" />,
+  SYSTEM: <SettingsBrightnessIcon fontSize="small" />,
+  DARK: <DarkModeIcon fontSize="small" />,
+}
 
 /**
  * The branding form - where an operator makes the interface their house's own without a
@@ -96,12 +99,8 @@ export default function BrandingSettingsPage() {
     [logoPreviewUrl],
   )
 
-  const isColorValid = parseHexColor(primaryColor) !== null
-  const contrastChecks = useMemo(
-    () => (isColorValid ? checkAccentContrast(primaryColor) : []),
-    [isColorValid, primaryColor],
-  )
-  const failingChecks = contrastChecks.filter((check) => !check.passes)
+  const colorInvalid = isInvalidPrimaryColor(primaryColor)
+  const isColorValid = primaryColor.trim() !== '' && !colorInvalid
 
   const effectivePreview = {
     productName: productName.trim() || OPAA_BRANDING.productName,
@@ -244,41 +243,36 @@ export default function BrandingSettingsPage() {
 
         <Stack spacing={3}>
           <TextField
-            label="Produktname"
+            label={BRANDING_LABELS.productName}
             value={productName}
             onChange={(e) => setProductName(e.target.value)}
-            slotProps={{ htmlInput: { maxLength: MAX_PRODUCT_NAME_LENGTH } }}
-            helperText={`Erscheint in Seitenleiste, Anmeldeseite und Fenstertitel. Leer lassen für „${OPAA_BRANDING.productName}“.`}
+            slotProps={{ htmlInput: { maxLength: BRANDING_LIMITS.productName } }}
+            helperText={BRANDING_TEXTS.productNameHint}
             fullWidth
           />
 
           <TextField
-            label="Claim"
+            label={BRANDING_LABELS.claim}
             value={claim}
             onChange={(e) => setClaim(e.target.value)}
-            slotProps={{ htmlInput: { maxLength: MAX_CLAIM_LENGTH } }}
-            helperText={`Kurzer Satz unter dem Produktnamen. Leer lassen für „${OPAA_BRANDING.claim}“.`}
+            slotProps={{ htmlInput: { maxLength: BRANDING_LIMITS.claim } }}
+            helperText={BRANDING_TEXTS.claimHint}
             fullWidth
           />
 
           <Box>
             <TextField
-              label="Hinweis zur KI-Nutzung"
+              label={BRANDING_LABELS.aiNotice}
               value={aiNotice}
-              onChange={(e) => setAiNotice(e.target.value.replace(/[\r\n\u2028\u2029]+/g, ' '))}
+              onChange={(e) => setAiNotice(singleLineNotice(e.target.value))}
               inputRef={aiNoticeRef}
               onKeyDown={(e) => {
                 // Enter would insert a break the server rejects; swallowing it here keeps the
                 // cursor where it is, the replace in onChange only has to deal with pasted text.
                 if (e.key === 'Enter') e.preventDefault()
               }}
-              slotProps={{ htmlInput: { maxLength: MAX_AI_NOTICE_LENGTH } }}
-              helperText={
-                'Erscheint im Chat vor der ersten Frage und unter dem Eingabefeld sowie als Vermerk ' +
-                'beim Kopieren einer Antwort. Der Hinweis ' +
-                'lässt sich ändern, aber nicht abschalten: Ein leeres Feld stellt den ' +
-                'Standardtext wieder her. Zeilenumbrüche werden durch Leerzeichen ersetzt.'
-              }
+              slotProps={{ htmlInput: { maxLength: BRANDING_LIMITS.aiNotice } }}
+              helperText={BRANDING_TEXTS.aiNoticeHint}
               multiline
               minRows={2}
               fullWidth
@@ -294,27 +288,27 @@ export default function BrandingSettingsPage() {
               }}
               disabled={isSaving || aiNotice === branding.aiNoticeDefault}
             >
-              Hinweis auf Standard zurücksetzen
+              {BRANDING_TEXTS.aiNoticeReset}
             </Button>
           </Box>
 
           <Box>
             <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
               <TextField
-                label="Primärfarbe"
+                label={BRANDING_LABELS.primaryColor}
                 value={primaryColor}
                 onChange={(e) => setPrimaryColor(e.target.value)}
-                error={primaryColor.trim() !== '' && !isColorValid}
+                error={colorInvalid}
                 helperText={
-                  primaryColor.trim() !== '' && !isColorValid
-                    ? 'Bitte einen sechsstelligen Hex-Wert mit führendem „#“ angeben, zum Beispiel #1292EE.'
-                    : 'Akzentfarbe für Schaltflächen, Verweise und Fokusrahmen.'
+                  colorInvalid
+                    ? BRANDING_TEXTS.primaryColorInvalid
+                    : BRANDING_TEXTS.primaryColorHint
                 }
                 sx={{ flexGrow: 1 }}
               />
               <TextField
                 type="color"
-                label="Auswählen"
+                label={BRANDING_LABELS.colorPicker}
                 value={isColorValid ? primaryColor : OPAA_BRANDING.primaryColor}
                 onChange={(e) => setPrimaryColor(e.target.value.toUpperCase())}
                 sx={{ width: 96 }}
@@ -322,31 +316,16 @@ export default function BrandingSettingsPage() {
             </Stack>
           </Box>
 
-          {failingChecks.length > 0 && (
-            <Alert severity="warning">
-              <AlertTitle>Kontrast unterschritten</AlertTitle>
-              Die gewählte Farbe erreicht den empfohlenen Kontrast nicht überall. Sie können
-              trotzdem speichern — die Entscheidung liegt bei Ihrem Haus.
-              <Box component="ul" sx={{ pl: 2.5, mb: 0, mt: 1 }}>
-                {failingChecks.map((check) => (
-                  <li key={check.label}>
-                    {check.label}: {formatContrastRatio(check.ratio)} statt mindestens{' '}
-                    {formatContrastRatio(check.required)}
-                  </li>
-                ))}
-              </Box>
-            </Alert>
-          )}
+          <AccentContrastWarning primaryColor={primaryColor} />
 
           <Box>
             {/* Level 2 (also below): these section headings follow the page's h1 directly;
                 the subtitle2 look is only visual. */}
             <Typography variant="subtitle2" component="h2" gutterBottom>
-              Farbschema-Vorgabe
+              {BRANDING_LABELS.colorScheme}
             </Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
-              Gilt für alle, die in ihren eigenen Einstellungen noch nichts gewählt haben. Eine
-              persönliche Wahl bleibt unberührt.
+              {BRANDING_TEXTS.colorSchemeHint}
             </Typography>
             <ToggleButtonGroup
               value={colorScheme}
@@ -354,12 +333,12 @@ export default function BrandingSettingsPage() {
               onChange={(_e, value: ColorScheme | null) => {
                 if (value !== null) setColorScheme(value)
               }}
-              aria-label="Farbschema-Vorgabe"
+              aria-label={BRANDING_LABELS.colorScheme}
             >
-              {colorSchemeOptions.map((option) => (
+              {BRANDING_COLOR_SCHEME_OPTIONS.map((option) => (
                 <ToggleButton key={option.value} value={option.value}>
                   <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    {option.icon}
+                    {COLOR_SCHEME_ICONS[option.value]}
                     {option.label}
                   </Box>
                 </ToggleButton>
@@ -422,27 +401,19 @@ export default function BrandingSettingsPage() {
 
           <Box>
             <Typography variant="subtitle2" component="h2" gutterBottom>
-              Vorschau
+              {BRANDING_LABELS.preview}
             </Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
-              So wirkt die Einstellung in beiden Farbschemata — beide sind gleichermaßen
-              verbindlich.
+              {BRANDING_TEXTS.previewHint}
             </Typography>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <Box sx={{ flex: 1 }}>
-                <BrandingPreview mode="light" {...effectivePreview} />
-              </Box>
-              <Box sx={{ flex: 1 }}>
-                <BrandingPreview mode="dark" {...effectivePreview} />
-              </Box>
-            </Stack>
+            <BrandingPreviews {...effectivePreview} />
           </Box>
 
           <Stack direction="row" spacing={2}>
             <Button
               variant="contained"
               onClick={() => void handleSave()}
-              disabled={isSaving || (primaryColor.trim() !== '' && !isColorValid)}
+              disabled={isSaving || colorInvalid}
             >
               Speichern
             </Button>

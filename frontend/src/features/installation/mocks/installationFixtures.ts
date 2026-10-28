@@ -24,6 +24,14 @@ const MAIL_STEP: InstallationStepState = {
   checked: false,
 }
 
+const BRANDING_STEP: InstallationStepState = {
+  step: 'BRANDING',
+  mandatory: false,
+  saved: false,
+  checked: false,
+}
+
+/** The API's steps; without `withEmbedding` the older list without embedding and branding. */
 function initialSteps(withEmbedding = false): InstallationStepState[] {
   const steps: InstallationStepState[] = [
     { step: 'FIRST_ADMIN', mandatory: true, saved: false, checked: false },
@@ -35,6 +43,7 @@ function initialSteps(withEmbedding = false): InstallationStepState[] {
         ...steps,
         { step: 'EMBEDDING_MODEL', mandatory: false, saved: false, checked: false },
         MAIL_STEP,
+        BRANDING_STEP,
       ]
     : [...steps, MAIL_STEP]
 }
@@ -73,6 +82,13 @@ export function mockSkippedSteps(): readonly string[] {
 export function withMockEmbeddingStep() {
   pendingOverride = true
   mockSteps = initialSteps(true)
+  remember(mockSteps)
+}
+
+/** Adds the branding step after the mail step, as the API lists it. */
+export function withMockBrandingStep() {
+  pendingOverride = true
+  if (!mockSteps.some((s) => s.step === 'BRANDING')) mockSteps = [...mockSteps, BRANDING_STEP]
   remember(mockSteps)
 }
 
