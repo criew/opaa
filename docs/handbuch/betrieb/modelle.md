@@ -648,8 +648,8 @@ Technisch funktioniert auch ein Cloud-Anbieter mit derselben Schnittstelle, etwa
 (`https://api.openai.com/v1`) oder OpenRouter (`https://openrouter.ai/api/v1`); es ändert sich nur
 die Angaben unter Modelle → Spracheingabe. **Die Stimme verlässt dann das Haus.** Gesprochene Sprache ist ein biometrienahes
 Datum und enthält oft Namen und Vorgänge Dritter; eine solche Anbindung braucht eine eigene
-datenschutzrechtliche Prüfung und einen Auftragsverarbeitungsvertrag. Die Oberfläche weist nicht
-darauf hin, wohin die Aufnahme geht.
+datenschutzrechtliche Prüfung und einen Auftragsverarbeitungsvertrag. Die Modellverwaltung weist nicht
+darauf hin, wohin die Aufnahme geht; der Installationsassistent nennt es an der Kachel OpenAI.
 
 ### Spracheingabe und Mitbestimmung
 

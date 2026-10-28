@@ -153,8 +153,9 @@ erreichbar wird.
 
 Chat-, Embedding-, Rerank- und Transkriptionsmodell sind Einträge der Modellverwaltung; ihre Adressen,
 Schlüssel und Modellnamen kommen nicht mehr aus der Konfiguration, ihre Timeouts und Lastgrenzen
-schon. Chat-, Embedding- und Rerank-Modell lassen sich schon in der Installation festlegen
-(Entscheidung 6), das Transkriptionsmodell nur in der Modellverwaltung. `vector_store` entsteht nicht in der Migration, sondern mit dem Embedding-Modell: beim
+schon. Chat-, Embedding-, Rerank- und Transkriptionsmodell lassen sich schon in der Installation
+festlegen (Entscheidung 6; das Transkriptionsmodell nur bei eingeschalteter Spracheingabe,
+Entscheidung 16). `vector_store` entsteht nicht in der Migration, sondern mit dem Embedding-Modell: beim
 Abschluss der Installation, unter dem Advisory-Lock aus Entscheidung 6 und mit der Dimension, die
 die Probeeinbettung des gewählten Modells liefert, oder, wenn die Installation den Schritt
 übersprungen hat, beim Festlegen des ersten Modells in der Modellverwaltung
@@ -349,7 +350,8 @@ auszublenden.
 - Wer das Installations-Token aus dem Log liest, kann die Installation abschließen; Log-Zugriff ist
   damit so schutzwürdig wie heute beim Einmalpasswort.
 - Rerank- und Transkriptionsmodell pflegt die Systemverwaltung in eigenen Reitern der Modellverwaltung;
-  das Rerank-Modell kann schon die Installation festlegen.
+  beide kann schon die Installation festlegen, das Transkriptionsmodell nur bei eingeschalteter
+  Spracheingabe (Entscheidung 16).
   Ihre früheren Variablen übernimmt eine Installation von davor nicht (Entscheidung 1); der Start und
   der Reiter der Rolle nennen sie, solange sie gesetzt sind.
 
