@@ -87,7 +87,7 @@ describe('ChatPage', () => {
     renderWithProviders(<ChatPage />, { withRouter: true })
     await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))
 
-    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
     fireEvent.change(input, { target: { value: 'What is the architecture?' } })
     fireEvent.click(screen.getByLabelText('Senden'))
 
@@ -168,7 +168,7 @@ describe('ChatPage', () => {
     await waitFor(() => expect(useChatStore.getState().chatId).toBe('chat-personal-1'))
     await waitFor(() => expect(useChatStore.getState().isLoadingChat).toBe(false))
 
-    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
     await user.click(input)
     await user.keyboard('Erste Frage{Enter}')
     await waitFor(() => expect(useChatStore.getState().isLoading).toBe(true))
@@ -208,7 +208,7 @@ describe('ChatPage', () => {
     await waitFor(() => expect(useChatStore.getState().chatId).toBe('chat-personal-1'))
     await waitFor(() => expect(useChatStore.getState().isLoadingChat).toBe(false))
 
-    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
     await user.click(input)
     await user.keyboard('Erste Frage{Enter}')
     await waitFor(() => expect(useChatStore.getState().isLoading).toBe(true))
@@ -233,7 +233,7 @@ describe('ChatPage', () => {
     renderWithProviders(<ChatPage />, { withRouter: true })
     await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))
 
-    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
     fireEvent.change(input, { target: { value: 'Erste Zeile\nzweite Zeile' } })
     fireEvent.click(screen.getByLabelText('Senden'))
 
@@ -265,7 +265,7 @@ describe('ChatPage', () => {
     await waitFor(() => expect(useChatStore.getState().chatId).toBe('chat-personal-1'))
     await waitFor(() => expect(useChatStore.getState().isLoadingChat).toBe(false))
 
-    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
     fireEvent.change(input, { target: { value: 'Frage im alten Chat' } })
     fireEvent.click(screen.getByLabelText('Senden'))
     await act(async () => {
@@ -273,14 +273,14 @@ describe('ChatPage', () => {
     })
     release()
     await waitFor(() => expect(useChatStore.getState().isLoading).toBe(false))
-    expect(screen.getByPlaceholderText('Nachricht eingeben …')).toHaveValue('')
+    expect(screen.getByPlaceholderText(/^Nachricht eingeben …/)).toHaveValue('')
 
     await act(async () => {
       await useChatStore.getState().loadChat('chat-personal-1')
     })
 
     await waitFor(() =>
-      expect(screen.getByPlaceholderText('Nachricht eingeben …')).toHaveValue(
+      expect(screen.getByPlaceholderText(/^Nachricht eingeben …/)).toHaveValue(
         'Frage im alten Chat',
       ),
     )
@@ -300,7 +300,7 @@ describe('ChatPage', () => {
       })
     })
 
-    expect(screen.getByPlaceholderText('Nachricht eingeben …')).toHaveValue('')
+    expect(screen.getByPlaceholderText(/^Nachricht eingeben …/)).toHaveValue('')
   })
 
   it('shows error alert when present', async () => {
@@ -494,7 +494,7 @@ describe('ChatPage', () => {
       renderWithProviders(<ChatPage />, { withRouter: true })
       expect(await screen.findByText('Archiviert')).toBeInTheDocument()
 
-      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
       fireEvent.change(input, { target: { value: 'Und wie geht es weiter?' } })
       fireEvent.click(screen.getByLabelText('Senden'))
 
@@ -537,7 +537,7 @@ describe('ChatPage', () => {
       expect(await screen.findByText('Wie ist das Projekt aufgebaut?')).toBeInTheDocument()
       await act(() => useChatListStore.getState().loadChats('space-personal'))
 
-      fireEvent.change(screen.getByPlaceholderText('Nachricht eingeben …'), {
+      fireEvent.change(screen.getByPlaceholderText(/^Nachricht eingeben …/), {
         target: { value: 'Und wie geht es weiter?' },
       })
       fireEvent.click(screen.getByLabelText('Senden'))
