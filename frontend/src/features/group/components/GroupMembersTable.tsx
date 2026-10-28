@@ -94,7 +94,11 @@ export default function GroupMembersTable({ members, onRemove }: GroupMembersTab
           size="small"
           stickyHeader
           aria-label="Mitglieder"
-          sx={{ ...adminTableSx, minWidth: onRemove ? 400 : 290 }}
+          sx={{
+            ...adminTableSx,
+            minWidth: onRemove ? 400 : 330,
+            '& th': { ...adminTableSx['& th'], whiteSpace: 'nowrap' },
+          }}
         >
           <TableHead>
             <TableRow>
