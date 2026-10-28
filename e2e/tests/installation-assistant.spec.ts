@@ -289,7 +289,7 @@ test.describe('Einrichtungs-Assistent', () => {
   )
 
   test(
-    'richtet den E-Mail-Versand mit Prüfung und Testnachricht und das Branding ein',
+    'richtet das Transkriptionsmodell, den E-Mail-Versand mit Prüfung und Testnachricht und das Branding ein',
     {
       tag: '@mail-filled',
     },
