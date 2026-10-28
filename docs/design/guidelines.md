@@ -416,6 +416,15 @@ Fehlern (n)" fehlt, wenn alle oder keiner der Einträge Fehler haben.
 Karten heben sich im Hover über `border-strong` und `bg-2` ab, nicht über Schatten oder
 Skalierung.
 
+**Kopf einer Übersicht.** Jede Übersicht aus Kacheln (Katalog, Spaces) trägt denselben Kopf
+(`OverviewPage`): den Seitennamen als Überschrift, daneben still in `fg-2` die Zahl der Einträge
+(„1 Eintrag", „11 Einträge"), rechts die Schaltfläche zum Anlegen. Einen Untertitel gibt es nicht;
+die Zahl gehört nicht in die Überschrift.
+
+**Space-Kachel.** Name, Beschreibung (auf zwei Zeilen gekürzt) und die Zahl der Chats, dazu nur
+Zustände wie „Archiviert" oder „Nachfolge offen". Eigene Rolle und Mitglieder stehen nicht auf der
+Kachel, sondern in den Einstellungen des Space.
+
 **Asset-Kachel.** Eine Kachel für jedes Asset, im Katalog wie in jeder Auswahl (`AssetTile`, #2131).
 Kompakt. Kopfzeile: links die Asset-Art (Icon und Wort), direkt daneben das Welt-Symbol (nur bei
 Freigabe an alle, 5.5), rechts der Favoriten-Stern. Darunter Name, Beschreibung (auf zwei Zeilen
