@@ -503,10 +503,15 @@ erscheint nie.
   nach 5.11 gesperrt: ausgegraut, `aria-disabled`, aber weiter eine Tab-Position, damit der Grund
   hörbar bleibt; Klick und Leertaste wählen nicht. Unter dem Zustand steht der Grund „Lässt sich
   nicht neu zuordnen, solange die Nachfolge offen ist." in `warning`, nicht ausgegraut, außerhalb des
-  Umschalters und als `aria-describedby` angebunden. Eine gewählte Kachel bleibt lösbar und nennt
-  denselben Grund vorab; nach dem Lösen ist sie gesperrt. Wo das Lösen sofort wirkt (Reiter
-  „Inhalte"), bietet die Meldung kein „Rückgängig" an, sondern sagt, dass die Zuordnung bis zum
-  Abschluss der Nachfolge nicht wiederherzustellen ist.
+  Umschalters und als `aria-describedby` angebunden. Die Beschreibung des Umschalters folgt der
+  sichtbaren Reihenfolge, Zustandszeilen eingeschlossen. Eine gewählte Kachel ist eine bestehende
+  Zuordnung: Sie bleibt lösbar und nennt denselben Grund vorab; nach dem Lösen ist sie gesperrt. Wo
+  das Lösen sofort wirkt (Reiter „Inhalte"), bietet die Meldung kein „Rückgängig" an, sondern sagt,
+  dass die Zuordnung bis zum Abschluss der Nachfolge nicht wiederherzustellen ist. Im
+  Space-Assistenten ist jede Wahl neu: Eine Vorauswahl aus „In Space verwenden" mit offener
+  Nachfolge übernimmt er nicht, sagt das im Schritt „Inhalte" als Warnung und legt den Space erst an,
+  wenn der Zustand der Vorauswahl bekannt ist. Im Dialog „In Space verwenden" selbst sind dann alle
+  Space-Einträge und „Neuen Space damit anlegen" ebenso gesperrt, mit dem Grund über der Liste.
 
 ### 5.5 Chips und Etiketten
 
