@@ -12,7 +12,7 @@ import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import PersonOutlineIcon from '@mui/icons-material/PersonOutlined'
 import { useLocation, useNavigate } from 'react-router'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
-import { AssetTilePicker } from '@/features/asset'
+import { AssetTilePicker, assetPickKey, useAssetCatalogEntry } from '@/features/asset'
 import type { AssetPick, SpaceCreateLocationState } from '@/features/asset'
 import { assetTypeDefinition } from '../../../shared/assetTypes'
 import { SubjectFormRow } from '@/features/principal'
@@ -115,6 +115,22 @@ export default function SpaceCreatePage() {
   const mayNotCreate = isMissing('CREATE_SPACE')
   // Only what the creator may read is offered; the backend re-checks the same rule on creation.
   const [selectedAssets, setSelectedAssets] = useState<AssetPick[]>(preselect ? [preselect] : [])
+  // Every choice here is a new association, which an open succession refuses (ADR-0036/6): a
+  // handed-over asset with a frozen reach is let go, and the step "Inhalte" says why. Until its
+  // catalog entry is in, the space is not created.
+  const preselectEntry = useAssetCatalogEntry(
+    preselect?.assetType ?? 'KNOWLEDGE_LIBRARY',
+    preselect?.assetId ?? '',
+  ).entry
+  const preselectPending = Boolean(preselect) && preselectEntry === undefined
+  const preselectFrozen = Boolean(preselect && preselectEntry?.succession)
+  const [preselectDropped, setPreselectDropped] = useState(false)
+  if (preselect && preselectFrozen && !preselectDropped) {
+    setPreselectDropped(true)
+    setSelectedAssets((current) =>
+      current.filter((pick) => assetPickKey(pick) !== assetPickKey(preselect)),
+    )
+  }
 
   // The operator sets the periods; without an answer the switch names no numbers.
   useEffect(() => {
@@ -347,6 +363,12 @@ export default function SpaceCreatePage() {
               selbst lesen dürfen. Die Zuordnung gewährt niemandem zusätzlichen Zugriff und lässt
               sich später in den Einstellungen des Space ändern — dieser Schritt ist optional.
             </Typography>
+            {preselect && preselectDropped && (
+              <Alert severity="warning">
+                „{preselect.name}“ ist nicht vorgewählt: Solange die Nachfolge offen ist, lässt es
+                sich nicht neu zuordnen.
+              </Alert>
+            )}
             <AssetTilePicker
               value={selectedAssets}
               onChange={setSelectedAssets}
@@ -474,7 +496,7 @@ export default function SpaceCreatePage() {
             <Button
               variant="contained"
               onClick={() => void handleCreate()}
-              disabled={submitting || mayNotCreate || name.trim() === ''}
+              disabled={submitting || mayNotCreate || preselectPending || name.trim() === ''}
               aria-describedby={mayNotCreate ? 'space-create-capability-hint' : undefined}
             >
               {submitting ? 'Wird angelegt …' : 'Space anlegen'}

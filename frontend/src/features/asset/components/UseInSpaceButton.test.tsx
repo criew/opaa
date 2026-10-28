@@ -150,7 +150,8 @@ describe('UseInSpaceButton', () => {
     const dialog = await screen.findByRole('dialog')
     const phoenix = await within(dialog).findByRole('button', { name: /^Phoenix/ })
     const newSpace = within(dialog).getByRole('button', { name: 'Neuen Space damit anlegen' })
-    const reason = /Solange die Nachfolge offen ist, lässt sich „Dienstanweisungen“ nicht neu zuordnen/
+    const reason =
+      /Solange die Nachfolge offen ist, lässt sich „Dienstanweisungen“ nicht neu zuordnen/
 
     expect(within(dialog).getByText(reason)).toBeVisible()
     for (const entry of [phoenix, newSpace]) {

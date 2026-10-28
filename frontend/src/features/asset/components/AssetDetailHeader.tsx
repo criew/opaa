@@ -54,6 +54,8 @@ export interface AssetDetailHeaderProps {
   onFavoriteChange?: (favorite: boolean) => Promise<void>
   /** Offers „In Space verwenden" in „⋯". */
   mayUseInSpace: boolean
+  /** An open succession freezes the reach: „In Space verwenden" offers nothing to choose. */
+  reachFrozen?: boolean
   onAssociated?: () => void
   /** Offers „Löschen" in „⋯"; absent without the right to delete. */
   onDelete?: () => void
@@ -135,6 +137,7 @@ function MoreActions({
   assetId,
   name,
   mayUseInSpace,
+  reachFrozen,
   onAssociated,
   onDelete,
   deleteLabel = 'Löschen',
@@ -147,6 +150,7 @@ function MoreActions({
   | 'assetId'
   | 'name'
   | 'mayUseInSpace'
+  | 'reachFrozen'
   | 'onAssociated'
   | 'onDelete'
   | 'deleteLabel'
@@ -224,6 +228,7 @@ function MoreActions({
           assetType={assetType}
           assetId={assetId}
           name={name}
+          reachFrozen={reachFrozen}
           open={useInSpace}
           onClose={() => setUseInSpace(false)}
           onAssociated={onAssociated}
@@ -259,6 +264,7 @@ export default function AssetDetailHeader({
   favorite,
   onFavoriteChange,
   mayUseInSpace,
+  reachFrozen,
   onAssociated,
   onDelete,
   deleteLabel,
@@ -335,6 +341,7 @@ export default function AssetDetailHeader({
             assetId={assetId}
             name={name}
             mayUseInSpace={mayUseInSpace}
+            reachFrozen={reachFrozen}
             onAssociated={onAssociated}
             onDelete={onDelete}
             deleteLabel={deleteLabel}

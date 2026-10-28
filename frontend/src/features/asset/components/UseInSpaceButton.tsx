@@ -24,6 +24,11 @@ interface UseInSpaceTarget {
   assetType: AssetType
   assetId: string
   name: string
+  /**
+   * The reach is frozen by an open succession (ADR-0036/6): every new association is refused, so
+   * every entry is locked and the dialog names why.
+   */
+  reachFrozen?: boolean
   /** Called after an association was created, e.g. to reload counts and lists. */
   onAssociated?: () => void
 }
@@ -52,6 +57,7 @@ export function UseInSpaceDialog({
   assetType,
   assetId,
   name,
+  reachFrozen = false,
   open,
   onClose,
   onAssociated,
@@ -114,6 +120,15 @@ export function UseInSpaceDialog({
   }
 
   const titleId = `use-in-space-${assetId}`
+  const reasonId = `${titleId}-reason`
+  // Locked entries stay focusable, so the reason they are described by can be heard (5.11).
+  const lockedProps = reachFrozen
+    ? {
+        'aria-disabled': true,
+        'aria-describedby': reasonId,
+        sx: { cursor: 'not-allowed', '& > *': { opacity: 0.6 } },
+      }
+    : {}
   return (
     <Dialog open={open} onClose={close} aria-labelledby={titleId} fullWidth>
       <DialogTitle id={titleId}>„{name}“ in Space verwenden</DialogTitle>
@@ -127,6 +142,12 @@ export function UseInSpaceDialog({
           <Typography sx={{ color: 'text.secondary' }}>Spaces werden geladen …</Typography>
         ) : (
           <>
+            {/* Outside the locked entries and never dimmed: it holds the text contrast (2.4). */}
+            {reachFrozen && (
+              <Typography id={reasonId} sx={{ color: 'warning.main', fontSize: 13.5, mb: 1 }}>
+                Solange die Nachfolge offen ist, lässt sich „{name}“ nicht neu zuordnen.
+              </Typography>
+            )}
             {spaces.length === 0 && (
               <Typography sx={{ color: 'text.secondary', mb: 1 }}>
                 Sie kuratieren noch keinen Space. Legen Sie einen neuen an.
@@ -139,7 +160,10 @@ export function UseInSpaceDialog({
                   <ListItem key={space.id} disablePadding>
                     <ListItemButton
                       disabled={busy || already}
-                      onClick={() => void associate(space)}
+                      {...(already ? {} : lockedProps)}
+                      onClick={() => {
+                        if (!reachFrozen) void associate(space)
+                      }}
                     >
                       <ListItemText
                         primary={space.name}
@@ -150,7 +174,13 @@ export function UseInSpaceDialog({
                 )
               })}
               <ListItem disablePadding>
-                <ListItemButton disabled={busy} onClick={startNewSpace}>
+                <ListItemButton
+                  disabled={busy}
+                  {...lockedProps}
+                  onClick={() => {
+                    if (!reachFrozen) startNewSpace()
+                  }}
+                >
                   <AddIcon aria-hidden sx={{ mr: 1.5, color: 'text.secondary' }} />
                   <ListItemText primary="Neuen Space damit anlegen" />
                 </ListItemButton>
@@ -172,6 +202,7 @@ export default function UseInSpaceButton({
   assetId,
   name,
   size = 'medium',
+  reachFrozen,
   onAssociated,
 }: UseInSpaceButtonProps) {
   const [open, setOpen] = useState(false)
@@ -190,6 +221,7 @@ export default function UseInSpaceButton({
         assetType={assetType}
         assetId={assetId}
         name={name}
+        reachFrozen={reachFrozen}
         open={open}
         onClose={() => setOpen(false)}
         onAssociated={onAssociated}

@@ -65,9 +65,10 @@ const STATUS_DOT: Record<AssetTileStatus, string> = {
 }
 
 /** A state that needs attention, in words behind a coloured dot - the colour never in the text. */
-function StateDotLine({ status }: { status: AssetTileStatus }) {
+function StateDotLine({ id, status }: { id?: string; status: AssetTileStatus }) {
   return (
     <Box
+      id={id}
       component="span"
       sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, fontSize: 11.5 }}
     >
@@ -121,14 +122,19 @@ export default function AssetTile({ tile, mode, onFavoriteChange, actions }: Ass
   const figuresId = `${idBase}-figures`
   // A choice asks only what an asset is and how large: no spread, responsibility, date or globe.
   const figures = selecting ? tile.extent : tile.figures
+  const statusId = `${idBase}-status`
+  const successionId = `${idBase}-succession`
   const noteId = `${idBase}-note`
   const reasonId = `${idBase}-reason`
-  // The checkbox is named by the title alone; the rest of the tile is its description.
+  // The checkbox is named by the title alone; the rest of the tile is its description, in the
+  // order shown.
   const describedBy = [
     tile.description && descriptionId,
     figures && figuresId,
-    tile.note && noteId,
+    tile.status && statusId,
+    tile.successionOpen && successionId,
     blockedReason && reasonId,
+    tile.note && noteId,
   ]
     .filter(Boolean)
     .join(' ')
@@ -245,12 +251,12 @@ export default function AssetTile({ tile, mode, onFavoriteChange, actions }: Ass
       {figures && <MetaLine id={figuresId}>{figures}</MetaLine>}
       {tile.responsible && !selecting && <ResponsibleLine responsible={tile.responsible} />}
       {tile.status ? (
-        <StateDotLine status={tile.status} />
+        <StateDotLine id={statusId} status={tile.status} />
       ) : (
         tile.updatedAt &&
         !selecting && <MetaLine>Aktualisiert am {formatDate(tile.updatedAt)}</MetaLine>
       )}
-      {tile.successionOpen && <StateDotLine status="SUCCESSION_OPEN" />}
+      {tile.successionOpen && <StateDotLine id={successionId} status="SUCCESSION_OPEN" />}
       {/* Outside the checkbox and never dimmed, so it holds the text contrast (guidelines 5.11). */}
       {blockedReason && (
         <Typography

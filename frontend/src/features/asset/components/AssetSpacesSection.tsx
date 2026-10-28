@@ -14,6 +14,7 @@ export default function AssetSpacesSection({
   name,
   canManage,
   mayUseInSpace,
+  reachFrozen,
   refreshToken = 0,
   onChanged,
 }: {
@@ -22,6 +23,8 @@ export default function AssetSpacesSection({
   name: string
   canManage: boolean
   mayUseInSpace: boolean
+  /** An open succession freezes the reach: „In Space verwenden" offers nothing to choose. */
+  reachFrozen?: boolean
   /** Changes when an association was made elsewhere on the page, e.g. from the head's „⋯". */
   refreshToken?: number
   /** Called after an association was created or detached here. */
@@ -44,6 +47,7 @@ export default function AssetSpacesSection({
           assetType={assetType}
           assetId={assetId}
           name={name}
+          reachFrozen={reachFrozen}
           open={dialogOpen}
           onClose={() => setDialogOpen(false)}
           onAssociated={() => {
