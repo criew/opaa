@@ -54,6 +54,10 @@ describe('SuccessionPage', () => {
     expect(row).toHaveTextContent('Zuständig: die Systemverwaltung')
     expect(row).toHaveTextContent(/offen seit \d+ Tagen/)
     expect(row).toHaveTextContent('lange offen')
+    // „lange offen" is a state (guidelines 5.5): a decorative dot before its word, not a label.
+    const dot = within(row).getByText('lange offen').previousElementSibling
+    expect(dot).toHaveAttribute('aria-hidden', 'true')
+    expect(dot).toHaveStyle({ borderRadius: '50%' })
     expect(row).toHaveTextContent('Anhaltspunkt für die Nachfolge: war Mitglied von Referat 50')
     expect(within(row).getByRole('button', { name: 'Nachfolge bestimmen' })).toBeInTheDocument()
   })
