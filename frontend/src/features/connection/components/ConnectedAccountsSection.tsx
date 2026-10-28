@@ -383,7 +383,7 @@ export default function ConnectedAccountsSection() {
     <>
       <PageSection
         title="Verbundene Konten"
-        description="Mit einem verbundenen Konto hinterlegen Sie Ihre eigenen Zugangsdaten für einen Zugang, etwa ein App-Passwort. OPAA nutzt sie nur für Ihre eigenen privaten Bibliotheken; sie zeigen Inhalte, die Sie beim Anbieter selbst sehen dürfen. Ob Sie ein Konto verbinden, entscheiden Sie selbst."
+        description="Ihre eigenen Zugangsdaten für einen Zugang, etwa ein App-Passwort. OPAA nutzt sie nur für Ihre privaten Bibliotheken; ob Sie ein Konto verbinden, entscheiden Sie selbst."
       >
         {error && (
           <Alert

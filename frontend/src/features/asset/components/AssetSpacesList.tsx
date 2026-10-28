@@ -220,7 +220,7 @@ export default function AssetSpacesList({
                   </Box>
                   {mayDetach(association.spaceId) && (
                     <RowMenu
-                      label={`Aktionen für Space „${association.spaceName}“`}
+                      name={association.spaceName}
                       items={[
                         {
                           label: 'Aus Space lösen',

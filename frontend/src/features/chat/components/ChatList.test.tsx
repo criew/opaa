@@ -62,8 +62,8 @@ describe('ChatList', () => {
     renderWithProviders(<ChatList spaceId="space-personal" />)
     await screen.findByText('Architektur des Projekts')
 
-    await user.click(screen.getByLabelText('Aktionen für Chat „Architektur des Projekts“'))
-    await user.click(screen.getByLabelText('Chat „Architektur des Projekts“ umbenennen'))
+    await user.click(screen.getByLabelText('Weitere Aktionen für „Architektur des Projekts“'))
+    await user.click(screen.getByRole('menuitem', { name: 'Umbenennen' }))
     const field = screen.getByLabelText('Chat-Titel')
     await user.clear(field)
     await user.type(field, 'Neuer Titel{Enter}')
@@ -76,8 +76,8 @@ describe('ChatList', () => {
     renderWithProviders(<ChatList spaceId="space-personal" />)
     await screen.findByText('Architektur des Projekts')
 
-    await user.click(screen.getByLabelText('Aktionen für Chat „Architektur des Projekts“'))
-    await user.click(screen.getByLabelText('Chat „Architektur des Projekts“ löschen'))
+    await user.click(screen.getByLabelText('Weitere Aktionen für „Architektur des Projekts“'))
+    await user.click(screen.getByRole('menuitem', { name: 'Löschen' }))
     await answerConfirm(user, '„Architektur des Projekts“ wirklich löschen?', 'Löschen')
 
     await waitFor(() => {
@@ -90,8 +90,8 @@ describe('ChatList', () => {
     renderWithProviders(<ChatList spaceId="space-personal" />)
     await screen.findByText('Architektur des Projekts')
 
-    await user.click(screen.getByLabelText('Aktionen für Chat „Architektur des Projekts“'))
-    await user.click(screen.getByLabelText('Chat „Architektur des Projekts“ löschen'))
+    await user.click(screen.getByLabelText('Weitere Aktionen für „Architektur des Projekts“'))
+    await user.click(screen.getByRole('menuitem', { name: 'Löschen' }))
     await answerConfirm(user, '„Architektur des Projekts“ wirklich löschen?', 'Abbrechen')
 
     expect(screen.getByText('Architektur des Projekts')).toBeInTheDocument()
@@ -108,8 +108,8 @@ describe('ChatList', () => {
     renderWithProviders(<ChatList spaceId="space-personal" />)
     await screen.findByText('Architektur des Projekts')
 
-    await user.click(screen.getByLabelText('Aktionen für Chat „Architektur des Projekts“'))
-    await user.click(screen.getByLabelText('Chat „Architektur des Projekts“ löschen'))
+    await user.click(screen.getByLabelText('Weitere Aktionen für „Architektur des Projekts“'))
+    await user.click(screen.getByRole('menuitem', { name: 'Löschen' }))
     await answerConfirm(user, '„Architektur des Projekts“ wirklich löschen?', 'Löschen')
 
     expect(await screen.findByText('Löschen fehlgeschlagen')).toBeInTheDocument()
@@ -127,8 +127,8 @@ describe('ChatList', () => {
     renderWithProviders(<ChatList spaceId="space-personal" />)
     await screen.findByText('Architektur des Projekts')
 
-    await user.click(screen.getByLabelText('Aktionen für Chat „Architektur des Projekts“'))
-    await user.click(screen.getByLabelText('Chat „Architektur des Projekts“ umbenennen'))
+    await user.click(screen.getByLabelText('Weitere Aktionen für „Architektur des Projekts“'))
+    await user.click(screen.getByRole('menuitem', { name: 'Umbenennen' }))
     const field = screen.getByLabelText('Chat-Titel')
     await user.clear(field)
     await user.type(field, 'Neuer Titel{Enter}')
@@ -144,11 +144,11 @@ describe('ChatList', () => {
     renderWithProviders(<ChatList spaceId="space-personal" />)
     await screen.findByText('Architektur des Projekts')
 
-    await user.click(screen.getByLabelText('Aktionen für Chat „Architektur des Projekts“'))
-    await user.click(screen.getByLabelText('Chat „Architektur des Projekts“ umbenennen'))
+    await user.click(screen.getByLabelText('Weitere Aktionen für „Architektur des Projekts“'))
+    await user.click(screen.getByRole('menuitem', { name: 'Umbenennen' }))
     await user.keyboard('{Escape}')
 
-    const actions = await screen.findByLabelText('Aktionen für Chat „Architektur des Projekts“')
+    const actions = await screen.findByLabelText('Weitere Aktionen für „Architektur des Projekts“')
     await waitFor(() => expect(actions).toHaveFocus())
   })
 
@@ -159,13 +159,13 @@ describe('ChatList', () => {
     renderWithProviders(<ChatList spaceId="space-personal" />)
     await screen.findByText('Architektur des Projekts')
 
-    await user.click(screen.getByLabelText('Aktionen für Chat „Architektur des Projekts“'))
-    await user.click(screen.getByLabelText('Chat „Architektur des Projekts“ umbenennen'))
+    await user.click(screen.getByLabelText('Weitere Aktionen für „Architektur des Projekts“'))
+    await user.click(screen.getByRole('menuitem', { name: 'Umbenennen' }))
     const field = screen.getByLabelText('Chat-Titel')
     await user.clear(field)
     await user.type(field, 'Neuer Titel{Enter}')
 
-    const actions = await screen.findByLabelText('Aktionen für Chat „Neuer Titel“')
+    const actions = await screen.findByLabelText('Weitere Aktionen für „Neuer Titel“')
     await waitFor(() => expect(actions).toHaveFocus())
   })
 
@@ -176,15 +176,15 @@ describe('ChatList', () => {
     renderWithProviders(<ChatList spaceId="space-personal" />)
     await screen.findByText('Architektur des Projekts')
 
-    await user.click(screen.getByLabelText('Aktionen für Chat „Architektur des Projekts“'))
-    await user.click(screen.getByLabelText('Chat „Architektur des Projekts“ umbenennen'))
+    await user.click(screen.getByLabelText('Weitere Aktionen für „Architektur des Projekts“'))
+    await user.click(screen.getByRole('menuitem', { name: 'Umbenennen' }))
     const field = screen.getByLabelText('Chat-Titel')
     await user.clear(field)
     await user.type(field, 'Neuer Titel')
     await user.click(screen.getByRole('button', { name: 'Neuer Chat' }))
 
     expect(await screen.findByText('Neuer Titel')).toBeInTheDocument()
-    await screen.findByLabelText('Aktionen für Chat „Neuer Titel“')
+    await screen.findByLabelText('Weitere Aktionen für „Neuer Titel“')
     expect(screen.getByRole('button', { name: 'Neuer Chat' })).toHaveFocus()
   })
 })
@@ -275,14 +275,14 @@ describe('ChatList ordering', () => {
     const user = userEvent.setup()
     renderWithProviders(<ChatList spaceId="space-personal" />)
 
-    await user.click(screen.getByLabelText('Aktionen für Chat „Erlass vom März“'))
-    await user.click(screen.getByRole('menuitem', { name: 'Chat „Erlass vom März“ anheften' }))
+    await user.click(screen.getByLabelText('Weitere Aktionen für „Erlass vom März“'))
+    await user.click(screen.getByRole('menuitem', { name: 'Anheften' }))
 
     expect(groupTitles('Angeheftet')).toEqual(['Erlass vom März', 'Fristen Übersicht'])
     expect(groupTitles('Zuletzt verwendet')).toEqual(['Rückfrage Kämmerei'])
     await waitFor(() => expect(pinned).toBe('chat-1'))
     await waitFor(() =>
-      expect(screen.getByLabelText('Aktionen für Chat „Erlass vom März“')).toHaveFocus(),
+      expect(screen.getByLabelText('Weitere Aktionen für „Erlass vom März“')).toHaveFocus(),
     )
     await waitFor(() =>
       expect(
@@ -304,8 +304,8 @@ describe('ChatList ordering', () => {
     const user = userEvent.setup()
     renderWithProviders(<ChatList spaceId="space-personal" />)
 
-    await user.click(screen.getByLabelText('Aktionen für Chat „Fristen Übersicht“'))
-    await user.click(screen.getByRole('menuitem', { name: 'Chat „Fristen Übersicht“ lösen' }))
+    await user.click(screen.getByLabelText('Weitere Aktionen für „Fristen Übersicht“'))
+    await user.click(screen.getByRole('menuitem', { name: 'Lösen' }))
 
     expect(screen.queryByRole('list', { name: 'Angeheftet' })).not.toBeInTheDocument()
     expect(groupTitles('Zuletzt verwendet')).toEqual([
@@ -325,8 +325,8 @@ describe('ChatList ordering', () => {
     const user = userEvent.setup()
     renderWithProviders(<ChatList spaceId="space-personal" />)
 
-    await user.click(screen.getByLabelText('Aktionen für Chat „Erlass vom März“'))
-    await user.click(screen.getByRole('menuitem', { name: 'Chat „Erlass vom März“ anheften' }))
+    await user.click(screen.getByLabelText('Weitere Aktionen für „Erlass vom März“'))
+    await user.click(screen.getByRole('menuitem', { name: 'Anheften' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Chat nicht gefunden')
     expect(groupTitles('Zuletzt verwendet')).toEqual(['Erlass vom März', 'Rückfrage Kämmerei'])
@@ -345,16 +345,16 @@ describe('ChatList ordering', () => {
     const user = userEvent.setup()
     renderWithProviders(<ChatList spaceId="space-personal" />)
 
-    await user.click(screen.getByLabelText('Aktionen für Chat „Erlass vom März“'))
-    await user.click(screen.getByRole('menuitem', { name: 'Chat „Erlass vom März“ anheften' }))
+    await user.click(screen.getByLabelText('Weitere Aktionen für „Erlass vom März“'))
+    await user.click(screen.getByRole('menuitem', { name: 'Anheften' }))
     await waitFor(() =>
-      expect(screen.getByLabelText('Aktionen für Chat „Erlass vom März“')).toHaveFocus(),
+      expect(screen.getByLabelText('Weitere Aktionen für „Erlass vom März“')).toHaveFocus(),
     )
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Chat nicht gefunden')
     expect(groupTitles('Zuletzt verwendet')).toEqual(['Erlass vom März', 'Rückfrage Kämmerei'])
     await waitFor(() =>
-      expect(screen.getByLabelText('Aktionen für Chat „Erlass vom März“')).toHaveFocus(),
+      expect(screen.getByLabelText('Weitere Aktionen für „Erlass vom März“')).toHaveFocus(),
     )
   })
 
@@ -372,14 +372,14 @@ describe('ChatList ordering', () => {
     const user = userEvent.setup()
     renderWithProviders(<ChatList spaceId="space-personal" />)
 
-    await user.click(screen.getByLabelText('Aktionen für Chat „Erlass vom März“'))
-    await user.click(screen.getByRole('menuitem', { name: 'Chat „Erlass vom März“ archivieren' }))
+    await user.click(screen.getByLabelText('Weitere Aktionen für „Erlass vom März“'))
+    await user.click(screen.getByRole('menuitem', { name: 'Archivieren' }))
 
     await waitFor(() => expect(screen.queryByText('Erlass vom März')).not.toBeInTheDocument())
     expect(archived).toBe('chat-1')
     expect(await screen.findByText('Chat „Erlass vom März“ archiviert')).toBeInTheDocument()
     await waitFor(() =>
-      expect(screen.getByLabelText('Aktionen für Chat „Rückfrage Kämmerei“')).toHaveFocus(),
+      expect(screen.getByLabelText('Weitere Aktionen für „Rückfrage Kämmerei“')).toHaveFocus(),
     )
   })
 
@@ -392,8 +392,8 @@ describe('ChatList ordering', () => {
     const user = userEvent.setup()
     renderWithProviders(<ChatList spaceId="space-personal" />)
 
-    await user.click(screen.getByLabelText('Aktionen für Chat „Erlass vom März“'))
-    await user.click(screen.getByRole('menuitem', { name: 'Chat „Erlass vom März“ archivieren' }))
+    await user.click(screen.getByLabelText('Weitere Aktionen für „Erlass vom März“'))
+    await user.click(screen.getByRole('menuitem', { name: 'Archivieren' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Chat nicht gefunden')
     expect(groupTitles('Zuletzt verwendet')).toEqual(['Erlass vom März', 'Rückfrage Kämmerei'])
@@ -702,8 +702,8 @@ describe('ChatList head and groups of the space column (guidelines 5.13)', () =>
   // A row pinned into (or unpinned out to) a folded group would not be rendered there, and its
   // focus would fall to the body; the target group opens instead.
   it.each([
-    ['pins', 'chats.pinned', 'Chat 3', 'anheften'],
-    ['unpins', 'chats.recent', 'Chat 1', 'lösen'],
+    ['pins', 'chats.pinned', 'Chat 3', 'Anheften'],
+    ['unpins', 'chats.recent', 'Chat 1', 'Lösen'],
   ])(
     '%s a chat into a folded group, opens that group and keeps focus on the row',
     async (_verb, folded, title, action) => {
@@ -717,11 +717,11 @@ describe('ChatList head and groups of the space column (guidelines 5.13)', () =>
       const user = userEvent.setup()
       renderWithProviders(<ChatList spaceId="space-personal" collapsibleGroups />)
 
-      await user.click(screen.getByLabelText(`Aktionen für Chat „${title}“`))
-      await user.click(screen.getByRole('menuitem', { name: `Chat „${title}“ ${action}` }))
+      await user.click(screen.getByLabelText(`Weitere Aktionen für „${title}“`))
+      await user.click(screen.getByRole('menuitem', { name: action }))
 
       await waitFor(() =>
-        expect(screen.getByLabelText(`Aktionen für Chat „${title}“`)).toHaveFocus(),
+        expect(screen.getByLabelText(`Weitere Aktionen für „${title}“`)).toHaveFocus(),
       )
       expect(useUiStore.getState().collapsedSidebarSections).toEqual([])
     },

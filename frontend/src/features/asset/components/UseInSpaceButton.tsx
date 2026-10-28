@@ -12,7 +12,6 @@ import ListItemButton from '@mui/material/ListItemButton'
 import ListItemText from '@mui/material/ListItemText'
 import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
-import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
 import type { AssetType, SpaceListResponse } from '@/shared/api/types'
 import { associateSpaceAsset, getAssetSpaceAssociations } from '../api/assetApi'
 import { notify } from '@/shared/stores/notificationStore'
@@ -31,10 +30,6 @@ interface UseInSpaceTarget {
   reachFrozen?: boolean
   /** Called after an association was created, e.g. to reload counts and lists. */
   onAssociated?: () => void
-}
-
-interface UseInSpaceButtonProps extends UseInSpaceTarget {
-  size?: 'small' | 'medium'
 }
 
 interface UseInSpaceDialogProps extends UseInSpaceTarget {
@@ -193,39 +188,5 @@ export function UseInSpaceDialog({
         <Button onClick={close}>Abbrechen</Button>
       </DialogActions>
     </Dialog>
-  )
-}
-
-/** "In Space verwenden" as a button of its own, opening {@link UseInSpaceDialog}. */
-export default function UseInSpaceButton({
-  assetType,
-  assetId,
-  name,
-  size = 'medium',
-  reachFrozen,
-  onAssociated,
-}: UseInSpaceButtonProps) {
-  const [open, setOpen] = useState(false)
-  return (
-    <>
-      <Button
-        variant="outlined"
-        size={size}
-        startIcon={<WorkspacesOutlinedIcon />}
-        onClick={() => setOpen(true)}
-        aria-label={`„${name}“ in Space verwenden`}
-      >
-        In Space verwenden
-      </Button>
-      <UseInSpaceDialog
-        assetType={assetType}
-        assetId={assetId}
-        name={name}
-        reachFrozen={reachFrozen}
-        open={open}
-        onClose={() => setOpen(false)}
-        onAssociated={onAssociated}
-      />
-    </>
   )
 }

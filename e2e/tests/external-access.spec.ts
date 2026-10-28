@@ -452,7 +452,7 @@ test.describe.serial('Externe KI-Werkzeuge', () => {
     await gotoLibraryDetail(adminPage, LIBRARY_C)
     await adminPage.getByRole('tab', { name: 'Freigaben' }).click()
     await adminPage
-      .getByRole('button', { name: `Aktionen für die Freigabe an ${PERSON_DISPLAY_NAME}` })
+      .getByRole('button', { name: `Weitere Aktionen für „${PERSON_DISPLAY_NAME}“` })
       .click()
     await adminPage.getByRole('menuitem', { name: 'Entziehen' }).click()
     const confirmRevoke = adminPage
@@ -513,7 +513,7 @@ test.describe.serial('Externe KI-Werkzeuge', () => {
     await adminPage.goto('/admin/connections/external-tools#tokens')
     await adminPage
       .getByRole('button', {
-        name: `Aktionen für das Token „${TOKEN_WIDE}“ von ${PERSON_DISPLAY_NAME}`,
+        name: `Weitere Aktionen für „${TOKEN_WIDE}“ von ${PERSON_DISPLAY_NAME}`,
       })
       .click()
     await adminPage.getByRole('menuitem', { name: 'Token sperren' }).click()

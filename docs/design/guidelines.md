@@ -408,8 +408,32 @@ sekundär. Eine eigene Überschrift „Mitglied hinzufügen" trägt die Zeile nu
 Router-Link). Was auf der Seite etwas auslöst (Dialog öffnen, speichern, starten, abbrechen), ist
 eine Schaltfläche, auch wenn sie wie ein Link aussieht (`component="button"`). Link-Optik für eine
 Schaltfläche steht für die Hinzufügen-Aktion im Abschnittskopf, für „Ändern" in einer Wertzeile
-(5.12) und zum Auf- und Zuklappen („alle anzeigen") und kommt aus `TextAction`
-(`frontend/src/shared/ui/DetailSection.tsx`), nicht aus einem Nachbau je Thema.
+(5.12), zum Auf- und Zuklappen („alle anzeigen", „Mitglieder ausblenden") und für kleine Schritte
+in einer Liste oder einem Auswahldialog, die nichts speichern („Auswahl ansehen", „Suche
+zurücksetzen", „Erneut laden"). Sie kommt aus `TextAction`
+(`frontend/src/shared/ui/DetailSection.tsx`), nicht aus einem Nachbau je Thema. Was einen Lauf
+startet oder Daten ändert, ist eine sichtbare Schaltfläche, auch im Abschnittskopf: „Vollabgleich
+starten" steht wie „Jetzt indizieren" als kompakte Sekundär-Schaltfläche. Ein Umschalter in einer
+Wertzeile („Sperren"/„Entsperren") bleibt Textaktion. „Abbrechen" ist in Assistenten, Formularen
+und Dialogen überall ein stiller Text-Knopf (Still-Variante, `Button variant="text"`), auch im
+Bibliotheksassistenten und in den Zeilen des Reiters „Quelle", nie ein Textlink.
+
+**Verweise im Inhalt sehen aus wie ein Link.** Ein frei stehender Verweis im Inhalt einer Seite,
+eines Panels oder einer Zeile, der an einen anderen Ort führt, ist ein Textlink aus `TextLink`
+(ebenfalls `DetailSection.tsx`): Schrift, Gewicht und Mindestgröße wie `TextAction`, unterstrichen
+beim Zeigen („Zugang ansehen", „Passwort ändern", „Zur Gruppenverwaltung"). Ein Link im Fließtext
+übernimmt dessen Schrift und bleibt unterstrichen, damit er nicht allein an der Farbe zu erkennen
+ist. Wie eine Schaltfläche sieht ein solcher Verweis nur aus, wenn er die eine Handlung eines
+Hinweises oder Leerzustands ist (5.7): als Aktion eines `Alert` still in dessen Farbe („Wissen
+zuordnen"), in einem Hinweisfenster als Sekundär-Schaltfläche („Zum Verzeichnisabgleich").
+Anlege-Knöpfe (auch das Plus in 5.13) und der Schritt am Ende eines Ablaufs („Zur Anmeldung")
+sind Handlungen und bleiben Schaltflächen. Reiter, globale Leiste, Zeilen der Seitenleiste und von
+Listen, Menüeinträge und Kacheln haben ihre eigene Form.
+
+**Linktexte** nennen das Ziel oder was dort zu tun ist, ohne Pfeil am Ende („Verbindung ändern",
+nicht „Verbindung ändern ›"). Ausgenommen sind die Kennzahlen im Detailkopf („eine Gruppe ›"):
+Dort zeigt ein „›" (`aria-hidden`), dass die Zahl zu ihrer Liste führt. Ein Ort in OPAA wird als
+Pfad mit „→" geschrieben („Einstellungen → Zugangstokens", „Suche & Indexierung → Indexstatus").
 
 ### 5.2 Formularfelder
 
@@ -486,8 +510,8 @@ gestreckten Fläche (`position: relative`, `z-index`), sonst fängt sie den Zeig
 erscheint nie.
 
 - **Im Katalog** ist der Name ein Link zur Detailseite. Nur hier steht neben dem Stern „⋯" für
-  weitere Aktionen („In Space verwenden"); es heißt „Weitere Aktionen für ‚<Name>'" und öffnet ein
-  Menü.
+  weitere Aktionen („In Space verwenden"); es heißt nach 5.6 „Weitere Aktionen für „<Name>"" und
+  öffnet ein Menü.
 - **In einer Auswahl** zählt nur, was ein Asset ist, wie groß es ist und ob es gewählt ist (#3262):
   Die Kachel zeigt Name, Beschreibung und Umfang ohne Zahl der Spaces („12 Dokumente"), dazu Art,
   Stern, „Privat"/„Wird gelöscht", einen Zustand mit Punkt (auch „Nachfolge offen", dazu der
@@ -576,10 +600,29 @@ Gefahr-Text (`danger`) erreicht im hellen Schema 5,21:1 gegen `bg-1`, 4,90:1 geg
 Vollständige Tastaturbedienung (Pfeile, Enter, Escape) ist Teil der Komponente, nicht der Kür.
 
 **Weitere Aktionen hinter „⋯".** Seltenere Aktionen einer Zeile, Kachel oder Detailseite öffnet
-ein Nur-Icon-Knopf mit den waagrechten drei Punkten (`MoreHoriz`), nie den senkrechten. Er trägt
-nach 5.1 den Tooltip „Weitere Aktionen" und ein `aria-label`, das das Objekt nennt; den
-Wortlaut legt #3284 fest. Für Listenzeilen gibt es den Baustein `RowMenu` in `frontend/src/shared/ui/`;
-geprüft in `frontend/src/shared/ui/moreActionsTrigger.test.ts`.
+ein Nur-Icon-Knopf mit den waagrechten drei Punkten (`MoreHoriz`), nie den senkrechten. Jedes
+„⋯"-Menü rendert der Baustein `RowMenu` (`frontend/src/shared/ui/RowMenu.tsx`); kein Thema baut
+Auslöser oder Menü nach. Der Baustein legt fest:
+
+- **Zugänglicher Name:** „Weitere Aktionen für „<Name>"" – der Name des Objekts, wie Zeile, Kachel
+  oder Seitenkopf ihn zeigen, ohne Objektart („Weitere Aktionen für „bescheid.pdf"", nicht
+  „Aktionen für Dokument bescheid.pdf"). Unterscheidet der Name allein die Zeilen einer Seite
+  nicht, folgt ein kurzer Zusatz nach dem Anführungszeichen („Weitere Aktionen für „Claude Code"
+  von Maria Musterfrau"). Das Menü trägt denselben Namen; ein Eintrag heißt wie sein sichtbarer
+  Text, ohne das Objekt zu wiederholen.
+- **Auslöser:** Tooltip „Weitere Aktionen" (5.1), `aria-haspopup="menu"`, `aria-expanded` und,
+  solange das Menü offen ist, `aria-controls`. Während eine Aktion der Zeile läuft, ist er
+  deaktiviert. Das Icon misst 20 px in Listen, Kacheln und Detailköpfen, 16 px nur in der dichten
+  Chat-Liste der Seitenleiste.
+- **Aufbau:** Zerstörende Einträge – die, deren Bestätigung den Ton `danger` trägt (5.10) – stehen
+  am Ende, durch eine Trennlinie abgesetzt, in Gefahr-Text; kein anderer Eintrag ist rot. Ein
+  dauerhaft gesperrter Eintrag (wegen Rolle oder Zustand des Objekts) nennt seinen Grund als Text
+  im Menü und liest ihn mit vor (`aria-describedby`); ein Eintrag, der nur gesperrt ist, solange
+  eine Aktion läuft, braucht keinen. Einträge ohne Icons: Einen zerstörenden Eintrag erkennt man
+  an Trennlinie und Gefahr-Text. Was an einen anderen Ort führt, ist ein Link-Eintrag (5.1).
+- **Tastatur:** Pfeile, Enter, Escape; beim Schließen kehrt der Fokus auf den Auslöser zurück.
+
+Geprüft in `frontend/src/shared/ui/RowMenu.test.tsx` und `frontend/src/shared/ui/moreActionsTrigger.test.ts`.
 
 **Jeder Dialog hat eine sichtbare Schließen- oder Abbruchstelle.** Dialoge ohne eigene
 Abbruch-Schaltfläche (Ansichten, Vorschauen, Ereignislisten) tragen rechts im Titel ein ✕ mit
@@ -809,7 +852,7 @@ es nichts weiter zu gliedern gibt.
 
 **Einzelwerte als Wertzeile.** Ein einzelner Wert mit höchstens einer Handlung steht als Zeile
 „Titel · Wert · Textaktion" (etwa „Zuständig · Referat 21 · Ändern"), nicht als Abschnitt mit
-eigener Überschrift. Die Textaktion steht als Textlink an der rechten Kante (Prüfliste P45, P48).
+eigener Überschrift. Die Textaktion steht als `TextAction` an der rechten Kante (Prüfliste P45, P48).
 
 ### 5.13 Seitenleiste des Space
 

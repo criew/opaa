@@ -95,7 +95,7 @@ describe('AssetSpacesList (#1939, #2208)', () => {
     expect(screen.getByText(/^zugeordnet am 02\.10\.2026 von Thomas Klein/)).toBeInTheDocument()
     expect(screen.getByText('nicht für alle Mitglieder lesbar')).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'Aktionen für Space „Disziplinarverfahren 2026“' }),
+      screen.getByRole('button', { name: 'Weitere Aktionen für „Disziplinarverfahren 2026“' }),
     ).toBeInTheDocument()
   })
 
@@ -124,11 +124,11 @@ describe('AssetSpacesList (#1939, #2208)', () => {
     const user = userEvent.setup()
 
     const rowMenu = await screen.findByRole('button', {
-      name: 'Aktionen für Space „Infotheke Bürgerbüro“',
+      name: 'Weitere Aktionen für „Infotheke Bürgerbüro“',
     })
     expect(mockGetSpaces).toHaveBeenCalledTimes(1)
     expect(
-      screen.queryByRole('button', { name: 'Aktionen für Space „Dienstbesprechung Bürgerbüro“' }),
+      screen.queryByRole('button', { name: 'Weitere Aktionen für „Dienstbesprechung Bürgerbüro“' }),
     ).not.toBeInTheDocument()
 
     await user.click(rowMenu)

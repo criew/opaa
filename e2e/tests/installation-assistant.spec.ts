@@ -274,9 +274,9 @@ test.describe('Einrichtungs-Assistent', () => {
       await dialog.getByRole('button', { name: 'Anlegen' }).click()
       await expect(dialog).toBeHidden()
       const row = page.getByRole('row', { name: new RegExp(FIRST_CHAT_MODEL) })
-      await row.getByRole('button', { name: `Aktionen für „${FIRST_CHAT_MODEL}“` }).click()
+      await row.getByRole('button', { name: `Weitere Aktionen für „${FIRST_CHAT_MODEL}“` }).click()
       await page
-        .getByRole('menu', { name: `Aktionen für „${FIRST_CHAT_MODEL}“` })
+        .getByRole('menu', { name: `Weitere Aktionen für „${FIRST_CHAT_MODEL}“` })
         .getByRole('menuitem', { name: 'Aktiv setzen' })
         .click()
       await expect(row.getByText('Aktiv', { exact: true })).toBeVisible()

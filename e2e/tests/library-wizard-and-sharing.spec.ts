@@ -69,7 +69,7 @@ async function walkThroughSharingTab(page: Page): Promise<void> {
   // The row's action menu, not its subject name: the name also sits in the recipient picker of
   // the form, which can still be open at the moment of the assertion - an ambiguity Playwright
   // rejects outright instead of waiting it out.
-  await expect(grants.getByRole('button', { name: 'Aktionen für die Freigabe an Dev User' })).toBeVisible()
+  await expect(grants.getByRole('button', { name: 'Weitere Aktionen für „Dev User“' })).toBeVisible()
 
   // 3. "Alle Konten" is a recipient like any other - with a confirmation in front of it
   //    that spells out the reach (ADR-0037).
@@ -82,7 +82,7 @@ async function walkThroughSharingTab(page: Page): Promise<void> {
   await confirm.locator('#confirm-accept').click()
   await expect(confirm).toHaveCount(0)
   await expect(
-    grants.getByRole('button', { name: 'Aktionen für die Freigabe an Alle Konten' }),
+    grants.getByRole('button', { name: 'Weitere Aktionen für „Alle Konten“' }),
   ).toBeVisible()
 }
 
@@ -121,7 +121,7 @@ test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
     // The header: name, description, and the source type exactly once, as a badge.
     await expect(page.getByRole('heading', { level: 1, name: UPLOAD_LIBRARY })).toBeVisible()
     await expect(page.getByText('Handakte des Assistenten-Durchlaufs')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Weitere Aktionen' })).toBeVisible()
+    await expect(page.getByRole('button', { name: `Weitere Aktionen für „${UPLOAD_LIBRARY}“` })).toBeVisible()
     await expectTabs(page, false)
 
     await walkThroughSharingTab(page)

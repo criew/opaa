@@ -40,13 +40,9 @@ export default function IndexStatusSection() {
         <SectionHead>Indexstatus je Bibliothek</SectionHead>
         {metadataEnabled && (
           <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-            „Kernfelder" zeigt, wie viele Dokumente die aktuelle Extraktion der Kernfelder tragen,
-            wie gut jedes Feld befüllt ist und wie viele Dokumente je Feld noch ohne Wert sind —
-            derselbe Pflege-Anker, den die Einstellungen der Bibliothek zeigen; von Hand als „kein
-            Wert ermittelbar" gekennzeichnete Felder zählen nicht mit. Beide Läufe dieser Ansicht —
-            das Nachrüsten der Kernfelder und der Kontextpräfix-Nachlauf — lesen die Originaldateien
-            in Chargen erneut; die Suche bleibt währenddessen verfügbar, ein angehaltener Lauf setzt
-            beim nächsten unverarbeiteten Dokument fort.
+            „Kernfelder" zeigt, wie viele Dokumente die aktuelle Extraktion tragen und wie viele je
+            Feld noch ohne Wert sind. Beide Läufe lesen die Originaldateien in Chargen neu; die
+            Suche bleibt verfügbar, ein angehaltener Lauf setzt später fort.
           </Typography>
         )}
         <LibraryStatusTable

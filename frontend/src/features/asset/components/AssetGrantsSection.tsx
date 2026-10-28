@@ -576,8 +576,10 @@ export default function AssetGrantsSection({
                   ))}
                 </Select>
                 <RowMenu
-                  label={`Aktionen für die Freigabe an ${subjectName}`}
-                  items={[{ label: 'Entziehen', onClick: () => void handleRevoke(grant) }]}
+                  name={subjectName}
+                  items={[
+                    { label: 'Entziehen', onClick: () => void handleRevoke(grant), danger: true },
+                  ]}
                 />
               </Box>
             )

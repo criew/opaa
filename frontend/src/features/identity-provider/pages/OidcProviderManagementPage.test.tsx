@@ -61,7 +61,9 @@ function rowOf(name: string) {
 
 async function openRowMenu(user: UserEvent, name: string) {
   await findProviderTable()
-  await user.click(within(rowOf(name)).getByRole('button', { name: `Aktionen für „${name}“` }))
+  await user.click(
+    within(rowOf(name)).getByRole('button', { name: `Weitere Aktionen für „${name}“` }),
+  )
   return screen.findByRole('menu')
 }
 
@@ -559,7 +561,9 @@ describe('OidcProviderManagementPage', () => {
     await findProviderTable()
     expect(providerRows()).toHaveLength(3)
     expect(screen.queryByText('Lokale Konten')).not.toBeInTheDocument()
-    expect(screen.getByText(/unter\s+Administration → Benutzer geführt/)).toBeInTheDocument()
+    expect(
+      screen.getByText(/Lokale Konten stehen unter\s+Administration → Benutzer/),
+    ).toBeInTheDocument()
   })
 
   it('names the consequence of disabling the last enabled provider and sends the acknowledgement', async () => {

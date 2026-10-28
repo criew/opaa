@@ -347,7 +347,7 @@ describe('SpaceMemberList', () => {
     await screen.findByText('Anna Bauer')
     await user.click(
       screen.getByRole('button', {
-        name: 'Mitglieder der Gruppe „Bürgerbüro Rheinfurt“ ausblenden',
+        name: 'Mitglieder ausblenden (Gruppe „Bürgerbüro Rheinfurt“)',
       }),
     )
 

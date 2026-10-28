@@ -1,7 +1,5 @@
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Link from '@mui/material/Link'
-import { TEXT_LINK } from './setup/rowStyles'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import Typography from '@mui/material/Typography'
 
@@ -52,16 +50,9 @@ export default function LibraryCreateFooter({
         borderColor: 'divider',
       }}
     >
-      <Link
-        component="button"
-        type="button"
-        underline="hover"
-        onClick={onCancel}
-        disabled={submitting}
-        sx={TEXT_LINK}
-      >
+      <Button variant="text" onClick={onCancel} disabled={submitting}>
         Abbrechen
-      </Link>
+      </Button>
       <Box sx={{ flex: 1 }} />
       {pendingGrantCount > 0 && (
         <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>

@@ -26,6 +26,13 @@ describe('„⋯" trigger of further actions', () => {
     expect(vertical).toEqual([])
   })
 
+  it('renders every trigger through RowMenu, never a rebuilt menu', () => {
+    const rebuilt = PRODUCTION.filter(
+      ([path, text]) => /MoreHoriz/.test(text) && !path.endsWith('/RowMenu.tsx'),
+    ).map(([path]) => path)
+    expect(rebuilt).toEqual([])
+  })
+
   it('carries the tooltip „Weitere Aktionen" at every trigger', () => {
     const withoutTooltip = PRODUCTION.filter(
       ([, text]) => count(text, /<MoreHorizIcon\b/g) > count(text, /title="Weitere Aktionen"/g),

@@ -81,7 +81,7 @@ export default function ChatAutoCleanupRetentionSection() {
   return (
     <PageSection
       title="Bereinigung der Chats in Spaces"
-      description="Schaltet ein Space die automatische Bereinigung ein, archiviert OPAA nicht angeheftete Chats nach so vielen Tagen ohne Aktivität und löscht archivierte Chats nach so vielen Tagen im Archiv. Die Fristen gelten für alle Spaces gleich."
+      description="Fristen für alle Spaces mit automatischer Bereinigung: Archivieren nicht angehefteter Chats nach Tagen ohne Aktivität, Löschen nach Tagen im Archiv."
     >
       {current === null ? (
         <RetentionLoadState loadError={loadError} onRetry={reload} />

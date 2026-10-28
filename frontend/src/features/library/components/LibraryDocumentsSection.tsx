@@ -4,9 +4,6 @@ import Box from '@mui/material/Box'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Typography from '@mui/material/Typography'
-import IconButton from '@mui/material/IconButton'
-import Tooltip from '@mui/material/Tooltip'
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import RowMenu from '@/shared/ui/RowMenu'
 import type { DocumentStatus, SourceTypeKey, LibraryDocumentResponse } from '@/shared/api/types'
 import { TextAction } from '@/shared/ui/DetailSection'
@@ -103,8 +100,13 @@ export default function LibraryDocumentsSection({
     navigateToFolder,
   } = useDocumentsUrlState(libraryId, leaveList)
   const folderActions = useLibraryFolderActions(libraryId, folderIdParam, onDocumentsChanged)
-  const { newFolderDialogOpen, setNewFolderDialogOpen, renameFolderTarget, setFolderMenu } =
-    folderActions
+  const {
+    newFolderDialogOpen,
+    setNewFolderDialogOpen,
+    renameFolderTarget,
+    setRenameFolderTarget,
+    handleDeleteFolder,
+  } = folderActions
 
   // ADR-0022, Entscheidung 5: per-parent expansion of the attachment group. An absent key
   // falls back to the search default - during a search every group starts expanded so an
@@ -446,16 +448,17 @@ export default function LibraryDocumentsSection({
         renderFolderActions={
           canManageFolders
             ? (folder) => (
-                <Tooltip title="Weitere Aktionen">
-                  <IconButton
-                    edge="end"
-                    aria-label={`Optionen für Ordner ${folder.name}`}
-                    size="small"
-                    onClick={(e) => setFolderMenu({ anchorEl: e.currentTarget, folder })}
-                  >
-                    <MoreHorizIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
+                <RowMenu
+                  name={folder.name}
+                  items={[
+                    { label: 'Umbenennen', onClick: () => setRenameFolderTarget(folder) },
+                    {
+                      label: 'Löschen',
+                      onClick: () => void handleDeleteFolder(folder),
+                      danger: true,
+                    },
+                  ]}
+                />
               )
             : undefined
         }
@@ -463,8 +466,10 @@ export default function LibraryDocumentsSection({
           canDelete
             ? (document) => (
                 <RowMenu
-                  label={`Aktionen für Dokument ${document.fileName}`}
-                  items={[{ label: 'Löschen', onClick: () => void handleDelete(document) }]}
+                  name={document.fileName}
+                  items={[
+                    { label: 'Löschen', onClick: () => void handleDelete(document), danger: true },
+                  ]}
                 />
               )
             : undefined

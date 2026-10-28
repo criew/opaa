@@ -15,7 +15,7 @@ import type {
   SourceBlock,
 } from '@/shared/api/types'
 import { formatCalendarDay } from '@/shared/utils/labels'
-import DetailSection, { TextAction } from '@/shared/ui/DetailSection'
+import DetailSection from '@/shared/ui/DetailSection'
 import LibraryRunList, { type RunningProgress } from './LibraryRunList'
 import LibraryLiveUpdateRow from './LibraryLiveUpdateRow'
 import { formatDay, runWord } from './libraryState'
@@ -363,9 +363,14 @@ export default function LibrarySourceSection({
           action={
             // a status that could not be fetched is retried at the head's state word
             onFullSync && !erasing && runs.length > 0 && !statusUnknown ? (
-              <TextAction onClick={onFullSync} disabled={running !== null}>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={onFullSync}
+                disabled={running !== null}
+              >
                 Vollabgleich starten
-              </TextAction>
+              </Button>
             ) : undefined
           }
         >

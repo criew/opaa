@@ -1,9 +1,8 @@
 import Box from '@mui/material/Box'
-import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
-import visuallyHidden from '@mui/utils/visuallyHidden'
+import { TextAction } from '@/shared/ui/DetailSection'
 import { SummaryValue } from './setup/SummaryRow'
-import { ROW_GRID, TEXT_LINK } from './setup/rowStyles'
+import { ROW_GRID } from './setup/rowStyles'
 import type { RowSummary } from './setup/setupTypes'
 
 export interface ReviewEntry {
@@ -33,23 +32,13 @@ export default function LibraryReviewStep({ entries }: { entries: ReviewEntry[] 
             <SummaryValue summary={entry.value || null} />
           </Box>
           {entry.onChange && (
-            <Link
-              component="button"
-              type="button"
-              underline="hover"
+            <TextAction
               onClick={entry.onChange}
-              sx={{
-                ...TEXT_LINK,
-                gridColumn: { xs: '2', sm: '3' },
-                gridRow: '1',
-                justifySelf: 'end',
-              }}
+              context={entry.label}
+              sx={{ gridColumn: { xs: '2', sm: '3' }, gridRow: '1', justifySelf: 'end' }}
             >
               Ändern
-              <Box component="span" sx={visuallyHidden}>
-                {` ${entry.label}`}
-              </Box>
-            </Link>
+            </TextAction>
           )}
         </Box>
       ))}

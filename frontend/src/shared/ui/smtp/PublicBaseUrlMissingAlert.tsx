@@ -10,10 +10,8 @@ export default function PublicBaseUrlMissingAlert({ sx }: { sx?: SxProps<Theme> 
   return (
     <Alert severity="warning" sx={sx}>
       <AlertTitle>Öffentliche Adresse fehlt</AlertTitle>
-      OPAA_PUBLIC_BASE_URL ist nicht gesetzt. Einladungen, Rücksetzlinks und Bestätigungen enthalten
-      dann keinen brauchbaren Link — die betroffenen Wege bleiben abgeschaltet. Tragen Sie die
-      Adresse, unter der diese Installation erreichbar ist, in der Umgebung der Bereitstellung ein;
-      im Browser ist sie bewusst nicht änderbar.
+      OPAA_PUBLIC_BASE_URL ist nicht gesetzt, deshalb bleiben Einladungen, Rücksetzlinks und
+      Bestätigungen abgeschaltet. Die Adresse wird in der Umgebung der Bereitstellung eingetragen.
     </Alert>
   )
 }

@@ -15,7 +15,7 @@ interface ModelInstructionFieldProps {
 
 /**
  * The instruction of a space to the model, part of every answer in the space. Every member sees it;
- * the helper text names what belongs in it and that it cannot lift the citations.
+ * the helper text says so and asks for no personal data.
  */
 export default function ModelInstructionField({
   id,
@@ -24,10 +24,8 @@ export default function ModelInstructionField({
   canChange,
 }: ModelInstructionFieldProps) {
   const hint =
-    'Wirkt bei jeder Antwort in diesem Space und ist für alle Mitglieder sichtbar – etwa Rolle und ' +
-    'fachlicher Rahmen, Antwortsprache oder Form der Antwort. Bitte keine personenbezogenen ' +
-    'Angaben. Zitate und Quellenangaben bleiben erhalten, auch wenn die Anweisung etwas anderes ' +
-    'verlangt.'
+    'Gilt für jede Antwort in diesem Space und ist für alle Mitglieder sichtbar. Bitte keine ' +
+    'personenbezogenen Angaben.'
   return (
     <Box>
       <FieldLabel htmlFor={id}>Anweisung an das Modell</FieldLabel>
