@@ -497,8 +497,12 @@ k weitere geprüft" in `fg-2`, mit dem Knopf per `aria-describedby` verbunden. D
 Fließtext, auch in langen Gesprächen. Alle Fundstellen stehen im **Belegfenster** rechts. Sein Kopf
 trägt nur „Belege dieser Antwort", darunter das Suchfeld „In Belegen suchen". Es öffnet mit den
 zitierten Belegen in Zitatreihenfolge; die geprüften, nicht zitierten blendet der Link
-**„Nicht zitierte anzeigen"** unter der Liste ein und wieder aus („Nicht zitierte ausblenden",
-Zustand per `aria-expanded`). Je Dokument stehen Ziffern + Titel (Gewicht 500) + Fundort und die
+**„Nicht zitierte anzeigen"** unter der Liste ein und wieder aus. Er folgt dem Disclosure-Muster:
+Die Beschriftung bleibt, nur `aria-expanded` und ein Chevron wechseln; eine höfliche Statusmeldung
+(„3 nicht zitierte Belege eingeblendet") sagt die neuen Zeilen an, die oberhalb des Links
+erscheinen. Eine Suche durchsucht immer alle Belege; solange sie läuft, tritt der Link zurück.
+Nicht zitierte Zeilen treten über die Farbrolle zurück (Titel in `fg-2`), nie über Deckkraft, die
+den Kontrast unter 4,5:1 drückte. Je Dokument stehen Ziffern + Titel (Gewicht 500) + Fundort und die
 Aktion „Dokument öffnen"; Rang, Indexierungsdatum, Metadatenzeile und Quelladresse zeigt das
 Belegfenster nicht — sie sind Fehlersuche, nicht Nachschlagen. Ein Klick auf eine Fußnote öffnet das
 Belegfenster an ihrer Fundstelle und markiert sie dort (Fläche `accent` 7 %, Akzentkante links) —

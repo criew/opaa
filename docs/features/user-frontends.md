@@ -113,10 +113,12 @@ beim Schließen abbaut. Seit #1449 entfällt der Fundstellenblock unter der Antw
 noch „Belege anzeigen" mit einer Zählzeile, alle Fundstellen stehen im Belegfenster
 (`SourceEvidenceDrawer.tsx`), und ein Klick auf eine Fußnote öffnet es an der zugehörigen
 Fundstelle und markiert sie dort. Seit #3259 öffnet das Belegfenster mit den zitierten Belegen; die
-geprüften, nicht zitierten blendet der Link „Nicht zitierte anzeigen" (`aria-expanded`) unter der
+geprüften, nicht zitierten blendet der Link „Nicht zitierte anzeigen" (Disclosure-Muster mit fester
+Beschriftung, `aria-expanded` und Statusmeldung) unter der
 Liste ein, der Filterknopf „Nur zitierte" und die Erklärzeile im Kopf entfallen. Eine Belegzeile
 nennt nur Ziffern, Titel, Fundort und die Aktion, die seitdem „Dokument öffnen" heißt; Rang,
-Indexierungsdatum, Metadatenzeile und „Quelle"-Link entfallen, der Rang bleibt im Erklärprotokoll.
+Indexierungsdatum, Metadatenzeile und „Quelle"-Link entfallen, den Rang zeigt nur die Diagnose. Die Suche im Belegfenster umfasst Titel und Fundort aller Belege,
+auch der ausgeblendeten.
 Hinweise wie „Stand vom …", „Private Quelle", „Beleg nicht bestätigt" und unter aktivem Filter
 „ohne Angabe" bleiben. Backendseitig
 schlüsselt die Zusammenführung mehrfach zitierter

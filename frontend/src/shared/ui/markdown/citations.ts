@@ -94,11 +94,6 @@ export interface CitationDoc {
    *  entry with no matching retrieved document, same as {@link SourceReference.documentId}
    *  it is carried straight through from. */
   documentId: string | null | undefined
-  /** This row's position in the backend's `sources` array - the order the retrieval
-   *  pipeline settled on, which the Belegfenster sorts and numbers by. `Number.MAX_SAFE_INTEGER`
-   *  when no
-   *  source matched (a persisted legacy message whose snapshot lists none). */
-  sourceIndex: number
   /** The distinct Fundorte of this row's footnotes, in footnote order - "S. 2–4",
    *  "Abschn. 4.2 Fristsetzung" - resolved from the marker's chunk index via
    *  {@link SourceReference.chunkLocations}. Empty when the pipeline knew none. */
@@ -115,10 +110,6 @@ export interface CitationIndex {
   /** Checked but uncited sources - listed after the cited ones in the Belegfenster. A filter over
    *  `sources`, so this arrives in the backend's order. */
   uncited: SourceReference[]
-  /** Position in the backend's `sources` array per source, for the rows that carry the
-   *  {@link SourceReference} itself rather than a resolved {@link CitationDoc} - the Belegfenster
-   *  labels every row with that position ("Rang n"). */
-  sourceIndexByReference: Map<SourceReference, number>
   /** Distinct cited passages ("n Stellen"). */
   markerCount: number
   /** Fundort per footnote number, for the numbers the backend could locate. */
@@ -151,17 +142,6 @@ export function buildCitationIndex(
     (sources ?? []).filter((s) => s.documentId != null).map((s) => [s.documentId as string, s]),
   )
   const sourceByFileName = new Map((sources ?? []).map((s) => [s.fileName, s]))
-  const indexBySource = new Map((sources ?? []).map((s, i) => [s, i]))
-
-  function sourceIndexOf(source: SourceReference | undefined): number {
-    // Both branches sort an unresolvable row last, never first: a row without a source has no
-    // pipeline position, and neither has one whose source is not part of this message's list.
-    if (source === undefined) {
-      return Number.MAX_SAFE_INTEGER
-    }
-    return indexBySource.get(source) ?? Number.MAX_SAFE_INTEGER
-  }
-
   function resolveSource(
     documentId: string | undefined,
     fileName: string,
@@ -208,7 +188,6 @@ export function buildCitationIndex(
           numbers: [],
           source,
           documentId: source?.documentId,
-          sourceIndex: sourceIndexOf(source),
           locations: [],
         })
       }
@@ -233,7 +212,6 @@ export function buildCitationIndex(
         numbers: [],
         source,
         documentId: source.documentId,
-        sourceIndex: sourceIndexOf(source),
         locations: [],
       })
     }
@@ -246,7 +224,6 @@ export function buildCitationIndex(
     uncited: (sources ?? []).filter(
       (s) => !s.cited && !docIndexByRowKey.has(rowKey(s, s.fileName)),
     ),
-    sourceIndexByReference: indexBySource,
     markerCount: numberByKey.size,
     locationByNumber,
   }

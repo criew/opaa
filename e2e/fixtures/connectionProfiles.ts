@@ -300,6 +300,6 @@ export async function openEvidenceRow(page: Page, fileName: string): Promise<Loc
   await showEvidence.click()
   const drawer = page.getByRole('dialog', { name: 'Belege dieser Antwort' })
   await expect(drawer).toBeVisible()
-  await showUncitedEvidence(drawer)
+  await showUncitedEvidence(page, drawer)
   return drawer.getByTestId('evidence-doc').filter({ hasText: fileName })
 }

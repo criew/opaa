@@ -117,17 +117,72 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
 
     await user.click(toggle)
 
-    const collapse = within(drawer).getByRole('button', { name: 'Nicht zitierte ausblenden' })
-    expect(collapse).toHaveAttribute('aria-expanded', 'true')
+    // Disclosure pattern: the name stays, only the state changes - and the new rows are announced.
+    expect(toggle).toHaveAccessibleName('Nicht zitierte anzeigen')
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
     expect(within(drawer).getByText('geprüft, nicht zitiert')).toBeVisible()
+    expect(within(drawer).getByRole('status')).toHaveTextContent(
+      '1 nicht zitierter Beleg eingeblendet',
+    )
 
-    await user.click(collapse)
+    await user.click(toggle)
 
     expect(fileNames(drawer)).toEqual(['zweiter.md', 'erster.md', 'dritter.md'])
-    expect(within(drawer).getByRole('button', { name: 'Nicht zitierte anzeigen' })).toHaveAttribute(
-      'aria-expanded',
-      'false',
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(within(drawer).getByRole('status')).toHaveTextContent(
+      'Nicht zitierte Belege ausgeblendet',
     )
+  })
+
+  it('searches the folded uncited Belege too and steps the disclosure aside meanwhile', async () => {
+    const { user, drawer } = await openDrawer()
+
+    await user.type(within(drawer).getByPlaceholderText('In Belegen suchen …'), 'ungenutzt')
+
+    expect(fileNames(drawer)).toEqual(['ungenutzt.md'])
+    expect(
+      within(drawer).queryByRole('button', { name: 'Nicht zitierte anzeigen' }),
+    ).not.toBeInTheDocument()
+
+    await user.clear(within(drawer).getByPlaceholderText('In Belegen suchen …'))
+
+    expect(fileNames(drawer)).toEqual(['zweiter.md', 'erster.md', 'dritter.md'])
+  })
+
+  it('finds a Beleg by its Fundort', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <MessageBubble
+        message={{
+          id: 'ev-fundort',
+          role: 'assistant',
+          content: 'Erstens【source: a#2 | a.md】, zweitens【source: b#0 | b.md】.',
+          sources: [
+            source('a.md', true, 1, true, {
+              documentId: 'a',
+              chunkLocations: [{ chunkIndex: 2, location: 'S. 2–4 · Abschn. Fristsetzung' }],
+            }),
+            source('b.md', true, 0.5, true, { documentId: 'b' }),
+          ],
+          timestamp: new Date('2026-08-22T09:00:00'),
+        }}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Belege anzeigen' }))
+    const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
+
+    await user.type(within(drawer).getByPlaceholderText('In Belegen suchen …'), 'fristsetzung')
+
+    expect(fileNames(drawer)).toEqual(['a.md'])
+  })
+
+  it('steps an uncited row back by colour, not by opacity', async () => {
+    const { user, drawer } = await openDrawer()
+    await user.click(within(drawer).getByRole('button', { name: 'Nicht zitierte anzeigen' }))
+
+    for (const row of within(drawer).getAllByTestId('evidence-doc')) {
+      expect(getComputedStyle(row).opacity).not.toBe('0.65')
+    }
   })
 
   it('offers no link when every source is cited', async () => {
@@ -341,8 +396,8 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
 
   it('reopens unfiltered and folded, so a clicked footnote never lands on a hidden Beleg', async () => {
     const { user, drawer } = await openDrawer()
-    await user.type(within(drawer).getByPlaceholderText('In Belegen suchen …'), 'zweiter')
     await user.click(within(drawer).getByRole('button', { name: 'Nicht zitierte anzeigen' }))
+    await user.type(within(drawer).getByPlaceholderText('In Belegen suchen …'), 'zweiter')
     await user.keyboard('{Escape}')
     await waitForDialogClosed()
 

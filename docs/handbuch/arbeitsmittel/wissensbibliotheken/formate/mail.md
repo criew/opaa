@@ -93,7 +93,7 @@ Suchbereich vorkommenden Adressen an; ein Dokument ohne Absender bleibt gefunden
 und damit in der Volltextsuche.
 
 **Dokumenteigenschaften:** Betreff als Titel, der `Date`-Kopf als Dokumentdatum mit höchstem
-Rang für das Metadatenschema. Weil der Betreff zugleich der Titel ist, zeigt die Belegzeile ihn
+Rang für das Metadatenschema. Weil der Betreff zugleich der Titel ist, führt die Fundstelle ihn
 nur einmal.
 
 **Altbestand.** Eine mit einer Pipeline-Version unter 5 indizierte Mail trägt die Kopfdaten noch

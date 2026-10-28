@@ -10,7 +10,9 @@ import { alpha } from '@mui/material/styles'
 import CloseIcon from '@mui/icons-material/Close'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import SearchIcon from '@mui/icons-material/Search'
+import visuallyHidden from '@mui/utils/visuallyHidden'
 import type { CitationIndex } from '@/shared/ui/markdown/citations'
 import {
   citationRowId,
@@ -105,10 +107,10 @@ function freezeNotice(freeze: SourceFreeze): string {
 }
 
 /**
- * The Belegfenster: the side panel with the sources of one answer, searchable. It opens with the
- * cited documents in citation-number order; "Nicht zitierte anzeigen" below them appends the
- * checked but uncited ones in the order the retrieval pipeline selected them. A row names the
- * document and its Fundort only - rank and index date stay in the search log (guidelines 5.8).
+ * The Belegfenster: the side panel with the sources of one answer. It opens with the cited
+ * documents in citation-number order; the disclosure "Nicht zitierte anzeigen" below them appends
+ * the checked but uncited ones in pipeline order, and a search always covers both groups. A row
+ * names the document and its Fundort only (guidelines 5.8).
  */
 export default function SourceEvidenceDrawer({
   open,
@@ -121,6 +123,9 @@ export default function SourceEvidenceDrawer({
 }: SourceEvidenceDrawerProps) {
   const [query, setQuery] = useState('')
   const [showUncited, setShowUncited] = useState(false)
+  // Polite status line: the unfolded rows appear above the disclosure, out of a screen reader's
+  // reading position, so their arrival is announced instead.
+  const [announcement, setAnnouncement] = useState('')
 
   // Every opening starts with an empty search and the uncited sources folded away, so a
   // footnote's Beleg - always a cited one - is never hidden behind a search left over from the
@@ -131,6 +136,7 @@ export default function SourceEvidenceDrawer({
     if (open) {
       setQuery('')
       setShowUncited(false)
+      setAnnouncement('')
     }
   }
 
@@ -208,10 +214,11 @@ export default function SourceEvidenceDrawer({
 
   const hasCited = citations.docs.length > 0
   const hasUncited = citations.uncited.length > 0
+  const searching = query.trim().length > 0
   const visibleDocs = useMemo(() => {
     const needle = query.trim().toLowerCase()
     return docs
-      .filter((doc) => showUncited || doc.cited)
+      .filter((doc) => showUncited || doc.cited || needle.length > 0)
       .filter(
         (doc) =>
           needle.length === 0 ||
@@ -220,6 +227,19 @@ export default function SourceEvidenceDrawer({
       )
   }, [showUncited, docs, query])
   const listId = `belege-${messageId}`
+
+  function toggleUncited() {
+    const next = !showUncited
+    const count = citations.uncited.length
+    setShowUncited(next)
+    setAnnouncement(
+      next
+        ? count === 1
+          ? '1 nicht zitierter Beleg eingeblendet'
+          : `${count} nicht zitierte Belege eingeblendet`
+        : 'Nicht zitierte Belege ausgeblendet',
+    )
+  }
 
   return (
     <Drawer
@@ -277,7 +297,7 @@ export default function SourceEvidenceDrawer({
       <Box id={listId} sx={{ flex: 1, overflowY: 'auto', px: 2.5, pb: 2 }}>
         {visibleDocs.length === 0 ? (
           <Typography sx={{ fontSize: 12.5, color: 'text.secondary', py: 2 }}>
-            {query.trim().length > 0 || hasCited
+            {searching || hasCited
               ? 'Kein Beleg passt zur Suche.'
               : 'Diese Antwort zitiert keinen Beleg.'}
           </Typography>
@@ -304,7 +324,6 @@ export default function SourceEvidenceDrawer({
                   py: 1.25,
                   borderBottom: 1,
                   borderColor: 'divider',
-                  opacity: doc.cited ? 1 : 0.65,
                   scrollMarginBlock: theme.spacing(2),
                   ...(focused && {
                     bgcolor: alpha(
@@ -332,7 +351,17 @@ export default function SourceEvidenceDrawer({
                       {doc.numbers.join('·')}
                     </Typography>
                   )}
-                  <Typography component="span" noWrap sx={{ fontSize: 13, fontWeight: 500 }}>
+                  {/* An uncited row steps back by colour role, not opacity, so every text keeps
+                    its contrast (guidelines 2.3). */}
+                  <Typography
+                    component="span"
+                    noWrap
+                    sx={{
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: doc.cited ? 'text.primary' : 'text.secondary',
+                    }}
+                  >
                     {doc.fileName}
                   </Typography>
                   {!doc.cited && (
@@ -427,19 +456,40 @@ export default function SourceEvidenceDrawer({
             )
           })
         )}
-        {hasUncited && (
+        {/* Disclosure pattern: a fixed name, only aria-expanded (and the chevron) change. A search
+          already covers the uncited rows, so the disclosure steps aside while one is active. */}
+        {hasUncited && !searching && (
           <Link
             component="button"
             type="button"
             underline="hover"
             aria-expanded={showUncited}
             aria-controls={listId}
-            onClick={() => setShowUncited((v) => !v)}
-            sx={{ display: 'block', mt: 1.5, fontSize: 12.5 }}
+            onClick={toggleUncited}
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 0.25,
+              mt: 1.5,
+              fontSize: 12.5,
+            }}
           >
-            {showUncited ? 'Nicht zitierte ausblenden' : 'Nicht zitierte anzeigen'}
+            Nicht zitierte anzeigen
+            <ExpandMoreIcon
+              aria-hidden
+              sx={{
+                fontSize: 16,
+                transform: showUncited ? 'rotate(180deg)' : 'none',
+                '@media (prefers-reduced-motion: no-preference)': {
+                  transition: 'transform 120ms',
+                },
+              }}
+            />
           </Link>
         )}
+        <Box component="span" role="status" aria-live="polite" sx={visuallyHidden}>
+          {announcement}
+        </Box>
       </Box>
 
       <Box sx={{ px: 2.5, py: 1.5, borderTop: 1, borderColor: 'divider' }}>
