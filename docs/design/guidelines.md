@@ -370,10 +370,10 @@ Sehende, die das Symbol nicht kennen, noch für Screenreader.
 ein neues Objekt anlegt — tragen das Plus-Icon (`Add`) als `startIcon` vor der Beschriftung, und
 die Beschriftung nennt das Objekt: „Konto anlegen", „Gruppe anlegen", „Neuer Space", „Neues
 Modell", „Neuer Katalogeintrag". Ein bloßes „Neu" oder „Anlegen" genügt nicht; das Icon ist Zierde
-und ersetzt die Beschriftung nicht. Folgt eine Typwahl, nennt die Beschriftung den Oberbegriff. Je Objekt gibt es eine Beschriftung:
-Seitenkopf, Leerzustand und Menüeinträge wie der Space-Wechsler der Seitenleiste tragen denselben
-Text („Neuer Space", „Gruppe anlegen", „Neuer Anbieter").
-Ausgenommen ist die kompakte Aktion „Neu" im Abschnittskopf „Chats" der Seitenleiste; ihr
+und ersetzt die Beschriftung nicht. Folgt eine Typwahl, nennt die Beschriftung den Oberbegriff.
+Je Objekt gibt es eine Beschriftung: Seitenkopf, Leerzustand und Menüeinträge wie der
+Space-Wechsler der Seitenleiste tragen denselben Text („Neuer Space", „Gruppe anlegen", „Neuer
+Anbieter"). Ausgenommen ist die kompakte Aktion „Neu" im Abschnittskopf „Chats" der Seitenleiste; ihr
 zugänglicher Name nennt das Objekt („Neu: Chat beginnen").
 
 **Hinzufügen in einem Abschnitt.** Fügt eine Aktion einem bestehenden Objekt etwas hinzu

@@ -420,20 +420,34 @@ export default function SpaceCreatePage() {
         <Box
           sx={{
             display: 'flex',
+            flexWrap: 'wrap',
             alignItems: 'center',
-            gap: 1.5,
+            gap: { xs: 1, sm: 1.5 },
             mt: 4,
             pt: 2,
             borderTop: 1,
             borderColor: 'divider',
           }}
         >
-          <Button variant="text" onClick={() => void handleCancel()} disabled={submitting}>
+          <Button
+            variant="text"
+            onClick={() => void handleCancel()}
+            disabled={submitting}
+            sx={{ mr: 'auto' }}
+          >
             Abbrechen
           </Button>
-          <Box sx={{ flex: 1 }} />
           {activeStep === 1 && (
-            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+            // below 600 px the counter takes a line of its own above the buttons
+            <Typography
+              sx={{
+                fontSize: 12,
+                color: 'text.secondary',
+                order: { xs: -1, sm: 0 },
+                flexBasis: { xs: '100%', sm: 'auto' },
+                textAlign: 'right',
+              }}
+            >
               {pendingMembers.length === 1
                 ? '1 Mitglied vorgemerkt'
                 : `${pendingMembers.length} Mitglieder vorgemerkt`}

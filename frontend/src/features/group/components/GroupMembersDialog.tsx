@@ -84,7 +84,19 @@ function GroupMembersDialogContent({
   }
 
   return (
-    <Dialog open fullWidth maxWidth="md" onClose={onClose} aria-labelledby="group-members-title">
+    <Dialog
+      open
+      fullWidth
+      maxWidth="md"
+      onClose={onClose}
+      aria-labelledby="group-members-title"
+      // a narrow screen keeps a 16 px gutter instead of the default 32 px
+      slotProps={{
+        paper: {
+          sx: { mx: { xs: 2, sm: 4 }, width: { xs: 'calc(100% - 32px)', sm: 'calc(100% - 64px)' } },
+        },
+      }}
+    >
       <DialogTitle id="group-members-title">
         Mitglieder von „{group.name}“{' '}
         <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400 }}>

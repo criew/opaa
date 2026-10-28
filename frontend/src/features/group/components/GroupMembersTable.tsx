@@ -89,7 +89,13 @@ export default function GroupMembersTable({ members, onRemove }: GroupMembersTab
         tabIndex={0}
         aria-label="Mitglieder, scrollbar"
       >
-        <Table size="small" stickyHeader aria-label="Mitglieder" sx={adminTableSx}>
+        {/* Below this width the frame scrolls sideways instead of squeezing the name column. */}
+        <Table
+          size="small"
+          stickyHeader
+          aria-label="Mitglieder"
+          sx={{ ...adminTableSx, minWidth: onRemove ? 400 : 290 }}
+        >
           <TableHead>
             <TableRow>
               <TableCell>Name</TableCell>

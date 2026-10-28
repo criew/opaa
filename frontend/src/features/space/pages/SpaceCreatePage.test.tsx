@@ -149,7 +149,8 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     // options would stay green even if the picker regressed to calling GET /v1/admin/users
     // instead of GET /v1/users. This override makes that admin-only endpoint fail exactly as the
     // real backend's SYSTEM_ADMIN-gated AdminController#listUsers would for this caller, so the
-    // guard is meaningful: reverting getUserSummaries() back to getUsers() empties the picker and
+    // guard is meaningful: switching getUserSummaries() back to the admin account list
+    // (GET /v1/admin/users) empties the picker and
     // fails this test, instead of passing vacuously against an MSW mock that never enforced the
     // admin-only boundary of GET /admin/users.
     server.use(
