@@ -245,20 +245,22 @@ export default function SpaceMemberList({
                   <MetaBadge>{spaceRoleLabel(member.role)}</MetaBadge>
                 )}
                 {hasMenu ? (
-                  <IconButton
-                    size="small"
-                    aria-label={`Weitere Aktionen für „${label}“`}
-                    aria-haspopup="menu"
-                    ref={(element: HTMLButtonElement | null) => {
-                      if (element) menuButtons.current.set(member.id, element)
-                      else menuButtons.current.delete(member.id)
-                    }}
-                    onClick={(event) =>
-                      setMenu({ anchor: event.currentTarget, memberId: member.id })
-                    }
-                  >
-                    <MoreHorizIcon fontSize="small" />
-                  </IconButton>
+                  <Tooltip title="Weitere Aktionen">
+                    <IconButton
+                      size="small"
+                      aria-label={`Weitere Aktionen für „${label}“`}
+                      aria-haspopup="menu"
+                      ref={(element: HTMLButtonElement | null) => {
+                        if (element) menuButtons.current.set(member.id, element)
+                        else menuButtons.current.delete(member.id)
+                      }}
+                      onClick={(event) =>
+                        setMenu({ anchor: event.currentTarget, memberId: member.id })
+                      }
+                    >
+                      <MoreHorizIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
                 ) : (
                   // Keeps the role column aligned with the rows that do carry a menu.
                   <Box sx={{ width: 34, flexShrink: 0 }} />

@@ -504,9 +504,10 @@ Fünf Punkte dazu:
 - **Ein Anlegerecht öffnet nie einen Inhalt.** Es erlaubt das Anlegen und sonst nichts; an der Menge
   der lesbaren Bibliotheken ändert es nichts, und in der Herleitung eines Zugriffs (Abschnitt 11)
   taucht es deshalb nicht auf.
-- **Ein Entzug wirkt sofort**, ohne dass sich die betroffene Person neu anmelden muss. Unter „Neu"
-  im Katalog erscheinen nur die Arten, für die die Person ein Anlegerecht hat; ohne jedes fehlt
-  „Neu" ganz (Abschnitt 4, „Anlegen über ‚Neu'"). Wer einen Assistenten direkt aufruft, liest das
+- **Ein Entzug wirkt sofort**, ohne dass sich die betroffene Person neu anmelden muss. Unter
+  „Neuer Katalogeintrag" im Katalog erscheinen nur die Arten, für die die Person ein Anlegerecht
+  hat; ohne jedes fehlt der Knopf ganz ([Katalog](../arbeitsmittel/katalog.md), „Ein Arbeitsmittel
+  anlegen"). Wer einen Assistenten direkt aufruft, liest das
   fehlende Recht beim Namen und erfährt, an wen man sich wendet. Im Wissens-Assistenten erscheint
   eine Quellart, deren Recht fehlt, gar nicht; darf die Person keine anlegen, sagt der Schritt
   „Quellart“ das und verweist an die Systemverwaltung.

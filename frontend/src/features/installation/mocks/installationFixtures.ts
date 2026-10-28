@@ -25,12 +25,25 @@ const MAIL_STEP: InstallationStepState = {
   checked: false,
 }
 
+const RERANK_STEP: InstallationStepState = {
+  step: 'RERANK_MODEL',
+  mandatory: false,
+  saved: false,
+  checked: false,
+}
+
 const TRANSCRIPTION_STEP: InstallationStepState = {
   step: 'TRANSCRIPTION_MODEL',
   mandatory: false,
   saved: false,
   checked: false,
 }
+
+/** What a rerank endpoint with a model list offers; the reranker first, a stray model after. */
+export const mockRerankDiscoveredModels: DiscoveredLlmModel[] = [
+  { identifier: 'BAAI/bge-reranker-v2-m3', capabilities: [], chatSuitable: false },
+  { identifier: 'BAAI/bge-m3', capabilities: [], chatSuitable: false },
+]
 
 /** What a transcription endpoint lists in the mock: two speech models and a chat model. */
 export const mockTranscriptionDiscoveredModels: DiscoveredLlmModel[] = [
@@ -47,10 +60,11 @@ const BRANDING_STEP: InstallationStepState = {
 }
 
 /**
- * The mock's steps. With `withEmbedding` the full list of the API, embedding model, transcription
- * model and branding included, as `?mockInstallation=embedding` and {@link withMockEmbeddingStep}
- * set it up; without, the shorter list most tests are written against, to which {@link
- * withMockBrandingStep} and {@link withMockTranscriptionStep} add their steps.
+ * The mock's steps. With `withEmbedding` the full list of the API, embedding, rerank and
+ * transcription model and branding included, as `?mockInstallation=embedding` and {@link
+ * withMockEmbeddingStep} set it up; without, the shorter list most tests are written against, to
+ * which {@link withMockBrandingStep}, {@link withMockRerankStep} and {@link
+ * withMockTranscriptionStep} add their steps.
  */
 function initialSteps(withEmbedding = false): InstallationStepState[] {
   const steps: InstallationStepState[] = [
@@ -62,6 +76,7 @@ function initialSteps(withEmbedding = false): InstallationStepState[] {
     ? [
         ...steps,
         { step: 'EMBEDDING_MODEL', mandatory: false, saved: false, checked: false },
+        RERANK_STEP,
         TRANSCRIPTION_STEP,
         MAIL_STEP,
         BRANDING_STEP,
@@ -103,6 +118,16 @@ export function mockSkippedSteps(): readonly string[] {
 export function withMockEmbeddingStep() {
   pendingOverride = true
   mockSteps = initialSteps(true)
+  remember(mockSteps)
+}
+
+/** Adds the rerank step before the mail step, as the API lists it after the model steps. */
+export function withMockRerankStep() {
+  pendingOverride = true
+  if (!mockSteps.some((s) => s.step === 'RERANK_MODEL')) {
+    const mail = mockSteps.findIndex((s) => s.step === 'MAIL')
+    mockSteps = [...mockSteps.slice(0, mail), RERANK_STEP, ...mockSteps.slice(mail)]
+  }
   remember(mockSteps)
 }
 

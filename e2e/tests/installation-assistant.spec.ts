@@ -10,16 +10,21 @@ import { clearMailbox, mailCount, waitForMail } from '../fixtures/mailpit'
  * OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST, mailpit:1025 on OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST.
  * Every scenario of this file needs a fresh database, as completing ends the installation mode for
  * good: the runner starts one stack per tag (@mail-skipped, @mail-filled). The @mail-skipped scenario
- * also skips the optional model steps, the transcription model and the branding, signs in with the
- * first account under the OPAA standard, meets the notices of the chat and sets the first chat and
- * embedding model in the model administration (ADR-0061, Entscheidung 8); the @mail-filled one checks
- * both models and the transcription model (ai-stub below /transcription) in the assistant and fills
+ * also skips the optional model steps, the rerank and the transcription model included, and the
+ * branding, signs in with the first account under the OPAA standard, meets the notices of the chat
+ * and sets the first chat and embedding model in the model administration (ADR-0061, Entscheidung
+ * 8); the @mail-filled one checks chat and embedding model in the assistant, chooses the rerank
+ * model from the list of ai-stub's rerank endpoint (RERANK_URL) and the transcription model from
+ * the list below TRANSCRIPTION_URL, finds both switched on in the model administration and fills
  * the branding, whose product name and accent colour then show on the sign-in page and in the
- * interface, and finds speech input switched on in the model administration.
+ * interface.
  */
 const INSTALLATION_TOKEN = process.env.E2E_INSTALLATION_TOKEN ?? ''
 const CHAT_MODEL_URL = 'http://ai-stub:8089'
-/** The stub lists its speech model only below this path, the chat and embedding steps none. */
+/** ai-stub's rerank endpoint; with the transcription prefix the only addresses that list a model. */
+const RERANK_URL = 'http://ai-stub:8089/reranker'
+const RERANK_MODEL = 'stub-reranker'
+/** The stub lists its speech model only below this path. */
 const TRANSCRIPTION_URL = 'http://ai-stub:8089/transcription'
 const TRANSCRIPTION_MODEL = 'ai-stub-whisper'
 const ADMIN_EMAIL = 'it-betrieb@stadt.example'
@@ -102,10 +107,10 @@ async function expectStepEdgesFlushAlsoNarrow(page: Page) {
 }
 
 /**
- * Both mandatory steps with local accounts only and both model steps checked, up to the
- * transcription model step.
+ * Both mandatory steps with local accounts only and chat and embedding model checked, up to the
+ * rerank step.
  */
-async function completeStepsUpToTranscription(page: Page) {
+async function completeStepsUpToRerank(page: Page) {
   await page.goto('/installation')
   await enterToken(page, INSTALLATION_TOKEN)
   await expect(stepHeading(page, 'Erstes Konto')).toBeVisible()
@@ -125,6 +130,7 @@ async function completeStepsUpToTranscription(page: Page) {
   await page.getByLabel('Basis-Adresse').fill(CHAT_MODEL_URL)
   await page.getByLabel('Modell-Kennung').fill('ai-stub-embedding')
   await submitStep(page)
+  await expect(stepHeading(page, 'Rerank-Modell')).toBeVisible()
 }
 
 test.describe('Einrichtungs-Assistent', () => {
@@ -187,6 +193,14 @@ test.describe('Einrichtungs-Assistent', () => {
       await expectStepEdgesFlush(page)
       await skipStep(page)
 
+      // The rerank step offers no provider and starts at the address; skipped, reranking stays off.
+      await expect(stepHeading(page, 'Rerank-Modell')).toBeVisible()
+      await expect(page.getByText('Optional · später unter Modelle')).toBeVisible()
+      await expect(page.getByRole('radiogroup', { name: 'Anbieter' })).toHaveCount(0)
+      await expectNoSeriousA11yViolations(page, 'Einrichtung: Rerank-Modell')
+      await expectStepEdgesFlushAlsoNarrow(page)
+      await skipStep(page)
+
       // Speech input is on in this stack, so the transcription model step is offered and skipped;
       // speech input stays off.
       await expect(stepHeading(page, 'Transkriptionsmodell')).toBeVisible()
@@ -217,9 +231,10 @@ test.describe('Einrichtungs-Assistent', () => {
       await expect(stepHeading(page, 'Abschluss')).toBeVisible()
       await expect(page.getByText(/Der E-Mail-Versand bleibt aus/)).toBeVisible()
       await expect(page.getByText(/Es gilt das Standard-Branding von OPAA/)).toBeVisible()
+      await expect(page.getByText(/Das Reranking bleibt aus/)).toBeVisible()
       await expect(page.getByText(/Die Spracheingabe bleibt aus/)).toBeVisible()
       const summary = page.getByRole('list', { name: 'Stand der Schritte' })
-      await expect(summary.getByText('Nicht eingerichtet')).toHaveCount(5)
+      await expect(summary.getByText('Nicht eingerichtet')).toHaveCount(6)
       await expect(page.getByText(/Übersprungen: Chat-Modell, Embedding-Modell\./)).toBeVisible()
       await expectNoSeriousA11yViolations(page, 'Einrichtung: Abschluss')
       // At 320 px the forward action wraps below the back button and keeps the right edge.
@@ -289,13 +304,31 @@ test.describe('Einrichtungs-Assistent', () => {
   )
 
   test(
-    'richtet das Transkriptionsmodell, den E-Mail-Versand mit Prüfung und Testnachricht und das Branding ein',
+    'richtet Rerank- und Transkriptionsmodell, E-Mail-Versand mit Prüfung und Testnachricht und das Branding ein',
     {
       tag: '@mail-filled',
     },
     async ({ page }) => {
       await clearMailbox()
-      await completeStepsUpToTranscription(page)
+      await completeStepsUpToRerank(page)
+
+      // The rerank model from the list of its endpoint, checked with the probe of the
+      // administration; the empty step names its fields first.
+      await expectStepEdgesFlushAlsoNarrow(page)
+      await submitStep(page)
+      await expect(page.getByLabel('Basis-Adresse')).toHaveAttribute('aria-invalid', 'true')
+      await page.getByLabel('Basis-Adresse').fill(RERANK_URL)
+      await page.getByLabel('Basis-Adresse').press('Tab')
+      await expect(page.getByText('1 Modell gefunden.', { exact: false })).toBeVisible()
+      await page.getByRole('combobox', { name: 'Modell-Kennung' }).click()
+      await page
+        .getByRole('group', { name: 'Für das Reranking geeignet' })
+        .getByRole('option', { name: new RegExp(RERANK_MODEL) })
+        .click()
+      await expect(page.getByRole('combobox', { name: 'Modell-Kennung' })).toHaveValue(RERANK_MODEL)
+      await expectNoSeriousA11yViolations(page, 'Einrichtung: Rerank-Modell ausgefüllt')
+      await expectStepEdgesFlushAlsoNarrow(page)
+      await submitStep(page)
 
       // The transcription model, chosen from the list the endpoint offers and checked with the
       // probe of the model administration.
@@ -382,6 +415,9 @@ test.describe('Einrichtungs-Assistent', () => {
       ).toBeVisible()
       await expect(page.getByText(/Das Branding wird übernommen/)).toBeVisible()
       await expect(
+        page.getByText(/Das Reranking wird mit dem geprüften Rerank-Modell eingeschaltet/),
+      ).toBeVisible()
+      await expect(
         page.getByText(
           /Die Spracheingabe wird mit dem geprüften Transkriptionsmodell eingeschaltet/,
         ),
@@ -407,6 +443,12 @@ test.describe('Einrichtungs-Assistent', () => {
         'background-color',
         ACCENT_RGB,
       )
+
+      // The rerank model of the assistant stands switched on in the model administration.
+      await page.goto('/admin/models/rerank')
+      await expect(page.getByRole('switch', { name: 'Reranking einschalten' })).toBeChecked()
+      await expect(page.getByLabel('Basis-Adresse')).toHaveValue(RERANK_URL)
+      await expect(page.getByLabel('Modell-Kennung')).toHaveValue(RERANK_MODEL)
 
       // The completion switched speech input on with the model of the assistant.
       await page.goto('/admin/models/transcription')

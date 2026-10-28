@@ -17,6 +17,7 @@ import {
   updateMockStep,
   withMockBrandingStep,
   withMockEmbeddingStep,
+  withMockRerankStep,
   withMockTranscriptionStep,
   withoutMockStep,
 } from '../mocks/installationFixtures'
@@ -329,6 +330,8 @@ describe('InstallationPage', () => {
     expect(await stepHeading('Embedding-Modell')).toBeInTheDocument()
     expect(screen.getByText('Optional · später unter Modelle')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Überspringen' }))
+    expect(await stepHeading('Rerank-Modell')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Überspringen' }))
     expect(await stepHeading('Transkriptionsmodell')).toBeInTheDocument()
     expect(screen.getByText('Optional · später unter Modelle')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Überspringen' }))
@@ -340,14 +343,16 @@ describe('InstallationPage', () => {
 
     expect(await stepHeading('Abschluss')).toBeInTheDocument()
     const summary = screen.getByRole('list', { name: 'Stand der Schritte' })
-    expect(within(summary).getAllByText('Nicht eingerichtet')).toHaveLength(5)
+    expect(within(summary).getAllByText('Nicht eingerichtet')).toHaveLength(6)
     expect(screen.getByText(/Übersprungen: Chat-Modell, Embedding-Modell\./)).toBeInTheDocument()
+    expect(screen.getByText(/Das Reranking bleibt aus/)).toBeInTheDocument()
     expect(screen.getByText(/Die Spracheingabe bleibt aus/)).toBeInTheDocument()
     expect(screen.getByText(/Der E-Mail-Versand bleibt aus/)).toBeInTheDocument()
     expect(screen.getByText(/Es gilt das Standard-Branding von OPAA/)).toBeInTheDocument()
     expect(mockSkippedSteps()).toEqual([
       'CHAT_MODEL',
       'EMBEDDING_MODEL',
+      'RERANK_MODEL',
       'TRANSCRIPTION_MODEL',
       'MAIL',
       'BRANDING',
@@ -864,7 +869,7 @@ describe('InstallationPage', () => {
       await user.type(field('Eingabegrenze (Token) (optional)'), '8192')
       await submitStep(user)
 
-      expect(await stepHeading('Transkriptionsmodell')).toBeInTheDocument()
+      expect(await stepHeading('Rerank-Modell')).toBeInTheDocument()
       const embedding = mockInstallationState().steps.find((s) => s.step === 'EMBEDDING_MODEL')
       expect(embedding?.embeddingModel).toMatchObject({ maxInputTokens: 8192, dimensions: 1024 })
 
@@ -1286,6 +1291,113 @@ describe('InstallationPage', () => {
       await openMailStep(user)
 
       expect(screen.getByText('Öffentliche Adresse fehlt')).toBeInTheDocument()
+    })
+  })
+
+  describe('with the optional rerank step', () => {
+    beforeEach(() => {
+      withMockRerankStep()
+      for (const step of ['FIRST_ADMIN', 'SIGN_IN', 'CHAT_MODEL'] as const) {
+        updateMockStep(step, { saved: true, checked: true })
+      }
+    })
+
+    async function openRerankStep(user: UserEvent) {
+      renderPage()
+      await stepHeading('Installations-Token')
+      await enterToken(user)
+      await stepHeading('Abschluss')
+      await openFromStepList(user, 'Rerank-Modell')
+    }
+
+    function rerankOf() {
+      return mockInstallationState().steps.find((s) => s.step === 'RERANK_MODEL')
+    }
+
+    it('starts at the address, offers the rerankers of the endpoint first and is taken over', async () => {
+      const user = userEvent.setup()
+      await openRerankStep(user)
+
+      expect(screen.getByText('Optional · später unter Modelle')).toBeInTheDocument()
+      // No preset serves a rerank endpoint: the step asks for the address alone.
+      expect(screen.queryByRole('radiogroup', { name: 'Anbieter' })).not.toBeInTheDocument()
+      expect(field('Basis-Adresse')).toHaveAccessibleDescription(
+        'So, wie das Backend den Dienst erreicht. Ohne den Pfad /rerank, etwa http://reranker:80.',
+      )
+      await user.type(field('Basis-Adresse'), 'http://reranker:80')
+      await user.tab()
+      expect(await screen.findByText(/2 Modelle gefunden\./)).toBeInTheDocument()
+      expect(mockDiscoveryRequests().at(-1)).toMatchObject({
+        step: 'RERANK_MODEL',
+        baseUrl: 'http://reranker:80',
+      })
+
+      await user.click(screen.getByRole('combobox', { name: 'Modell-Kennung' }))
+      const listbox = await screen.findByRole('listbox')
+      const suitable = within(listbox).getByRole('group', { name: 'Für das Reranking geeignet' })
+      await user.click(within(suitable).getByRole('option', { name: /bge-reranker-v2-m3/ }))
+      await submitStep(user)
+
+      expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
+      expect(rerankOf()).toMatchObject({
+        checked: true,
+        rerankModel: {
+          baseUrl: 'http://reranker:80',
+          model: 'BAAI/bge-reranker-v2-m3',
+          apiKeySet: false,
+        },
+      })
+      await openFromStepList(user, 'Abschluss')
+      expect(
+        screen.getByText(/Das Reranking wird mit dem geprüften Rerank-Modell eingeschaltet/),
+      ).toBeInTheDocument()
+    })
+
+    it('takes the identifier by hand where the endpoint offers no list', async () => {
+      const user = userEvent.setup()
+      await openRerankStep(user)
+
+      await user.type(field('Basis-Adresse'), 'http://reranker-ohne-liste:80')
+      await user.tab()
+      expect(await screen.findByText(/bietet keine Modellliste an/)).toBeInTheDocument()
+      await user.type(screen.getByRole('combobox', { name: 'Modell-Kennung' }), 'jina-reranker')
+      await submitStep(user)
+
+      expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
+      expect(rerankOf()?.rerankModel?.model).toBe('jina-reranker')
+    })
+
+    it('names a failed probe at the step, and skipping it leaves reranking off', async () => {
+      const user = userEvent.setup()
+      await openRerankStep(user)
+
+      await user.type(field('Basis-Adresse'), 'http://kaputt:80')
+      await user.type(screen.getByRole('combobox', { name: 'Modell-Kennung' }), 'bge-reranker')
+      await submitStep(user)
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Das Modell antwortet nicht')
+      expect(mockInstallationState().completable).toBe(false)
+      await user.click(screen.getByRole('button', { name: 'Überspringen' }))
+
+      expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
+      expect(mockSkippedSteps()).toEqual(['RERANK_MODEL'])
+      expect(rerankOf()).toMatchObject({ saved: false, checked: false })
+      await openFromStepList(user, 'Abschluss')
+      expect(screen.getByText(/Das Reranking bleibt aus/)).toBeInTheDocument()
+    })
+
+    it('asks for the address before sending anything', async () => {
+      const user = userEvent.setup()
+      await openRerankStep(user)
+
+      expect(
+        screen.getByText(/^Basis-Adresse eintragen; dann ruft der Assistent die Modelle ab/),
+      ).toBeInTheDocument()
+      await submitStep(user)
+
+      expect(field('Basis-Adresse')).toHaveAttribute('aria-invalid', 'true')
+      expect(rerankOf()?.saved).toBe(false)
+      expect(mockDiscoveryRequests()).toHaveLength(0)
     })
   })
 

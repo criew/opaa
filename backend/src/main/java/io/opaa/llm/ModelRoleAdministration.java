@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.function.BiConsumer;
+import java.util.function.Function;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -33,13 +33,13 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * What the system administration does with the rerank and transcription model roles (ADR-0060,
- * Entscheidung 10): read, change and test them. A change is validated like every model endpoint
- * ({@link ModelEndpointRules}, {@link ModelAddressPolicy} for an address other than the stored
- * one), stored with the key encrypted, and recorded with the values before and after (Entscheidung
- * 11); a change to the same values writes nothing. The speech-input feature is the operation's
- * limit: the transcription role cannot be switched on while it is off (Entscheidung 2). The
- * installation switches the transcription role on through the same write path ({@link
- * #installTranscription}, Entscheidung 16) and checks its step with {@link #probeTranscription}.
+ * Entscheidung 10): read, change and test them; the installation stores a checked rerank or
+ * transcription step through the same write path (Entscheidung 16 for transcription). A change is
+ * validated like every model endpoint ({@link ModelEndpointRules}, {@link ModelAddressPolicy} for
+ * an address other than the stored one), stored with the key encrypted, and recorded with the
+ * values before and after (Entscheidung 11); a change to the same values writes nothing. The
+ * speech-input feature is the operation's limit: the transcription role cannot be switched on while
+ * it is off (Entscheidung 2).
  *
  * <p>The change reaches every instance through the triggers on the two tables; this instance drops
  * its cache and probes the new endpoint right after the commit, so the state on the page follows
@@ -172,22 +172,74 @@ public class ModelRoleAdministration {
     blockedAddressError(RERANK, address, storedRerankAddress(), errors);
     requireNoErrors(errors);
     return transactions.execute(
-        status -> storeRerank(organizationId, actorUserId, enabled, address, identifier, apiKey));
+        status ->
+            storeRerank(
+                organizationId,
+                AuditActor.user(actorUserId),
+                enabled,
+                address,
+                identifier,
+                row ->
+                    secretOf(
+                        RERANK, apiKey, row.getBaseUrl(), address, row.getApiKeyCiphertext())));
   }
 
+  /**
+   * Switches the rerank role on with the checked rerank step of the installation, in the caller's
+   * transaction and audited under {@code systemActor}. {@code apiKeyCiphertext} is encrypted by the
+   * same {@link SettingsEncryptor}; the installation has run the address check before. A change to
+   * the same values writes nothing, as in {@link #changeRerank}.
+   *
+   * @throws FieldValidationException for an endpoint the rules of the role refuse
+   */
+  public RerankModelView installRerank(
+      UUID organizationId,
+      String systemActor,
+      String baseUrl,
+      String model,
+      String apiKeyCiphertext) {
+    String address = trimmed(baseUrl);
+    String identifier = trimmed(model);
+    List<FieldError> errors = new ArrayList<>();
+    ModelEndpointRules.endpointErrors(RERANK, address, identifier, null, true, errors);
+    requireNoErrors(errors);
+    return transactions.execute(
+        status ->
+            storeRerank(
+                organizationId,
+                AuditActor.systemProcess(systemActor),
+                true,
+                address,
+                identifier,
+                row -> apiKeyCiphertext));
+  }
+
+  /** Who a change of a role is recorded under: a person, or a system process. */
+  private record AuditActor(UUID userId, String systemProcess) {
+
+    static AuditActor user(UUID userId) {
+      return new AuditActor(userId, null);
+    }
+
+    static AuditActor systemProcess(String name) {
+      return new AuditActor(null, name);
+    }
+  }
+
+  /** {@code ciphertextOf} derives the key to store from the stored row, under the table lock. */
   private RerankModelView storeRerank(
       UUID organizationId,
-      UUID actorUserId,
+      AuditActor actor,
       boolean enabled,
       String address,
       String identifier,
-      String apiKey) {
+      Function<RerankModelSettings, String> ciphertextOf) {
     jdbc.execute("LOCK TABLE rerank_model IN SHARE ROW EXCLUSIVE MODE");
     RerankModelSettings existing = rerankRows.findStored().orElse(null);
     RerankModelSettings row =
         existing == null ? new RerankModelSettings(clock.instant()) : existing;
     String previousCiphertext = row.getApiKeyCiphertext();
-    String ciphertext = secretOf(RERANK, apiKey, row.getBaseUrl(), address, previousCiphertext);
+    String ciphertext = ciphertextOf.apply(row);
     boolean unchanged =
         row.isEnabled() == enabled
             && Objects.equals(row.getBaseUrl(), emptyToNull(address))
@@ -204,7 +256,7 @@ public class ModelRoleAdministration {
     AuditSecretChange.put(after, "apiKey", previousCiphertext, ciphertext);
     record(
         organizationId,
-        actorUserId,
+        actor,
         AuditEventType.RERANK_MODEL_CHANGED,
         "rerank_model",
         "Rerank-Modell",
@@ -237,27 +289,28 @@ public class ModelRoleAdministration {
     return transactions.execute(
         status ->
             storeTranscription(
+                organizationId,
+                AuditActor.user(actorUserId),
                 enabled,
                 address,
                 identifier,
-                (previousBaseUrl, previousCiphertext) ->
-                    secretOf(TRANSCRIPTION, apiKey, previousBaseUrl, address, previousCiphertext),
                 lang,
-                (before, after) ->
-                    auditEventRecorder.recordUserAction(
-                        transcriptionEvent(organizationId, before, after)
-                            .actor(actorUserId)
-                            .build())));
+                row ->
+                    secretOf(
+                        TRANSCRIPTION,
+                        apiKey,
+                        row.getBaseUrl(),
+                        address,
+                        row.getApiKeyCiphertext())));
   }
 
   /**
-   * The transcription model of an installation (ADR-0060, Entscheidung 16): switched on with the
-   * rules, the operation's limit and the no-op rule of {@link #changeTranscription}, recorded under
-   * the system process {@code systemActor}. {@code apiKeyCiphertext} is already encrypted with
-   * {@link SettingsEncryptor}, {@code null} without a key; the installation checked the address.
-   * Joins the caller's transaction.
+   * Switches the transcription role on with the checked transcription step of the installation, as
+   * {@link #installRerank} (ADR-0060, Entscheidung 16). The operation's limit applies as in {@link
+   * #changeTranscription}: with speech input switched off this refuses, so the installation calls
+   * it only while it offers the step.
    *
-   * @throws FieldValidationException naming every violated field under {@code transcription.}
+   * @throws FieldValidationException for an endpoint or language the rules of the role refuse
    */
   public TranscriptionModelView installTranscription(
       UUID organizationId,
@@ -273,16 +326,13 @@ public class ModelRoleAdministration {
     return transactions.execute(
         status ->
             storeTranscription(
+                organizationId,
+                AuditActor.systemProcess(systemActor),
                 true,
                 address,
                 identifier,
-                (previousBaseUrl, previousCiphertext) -> apiKeyCiphertext,
                 lang,
-                (before, after) ->
-                    auditEventRecorder.recordSystemProcessAction(
-                        transcriptionEvent(organizationId, before, after)
-                            .actorRef(systemActor)
-                            .build())));
+                row -> apiKeyCiphertext));
   }
 
   /** The rules of a transcription endpoint and its language, as field errors. */
@@ -300,19 +350,15 @@ public class ModelRoleAdministration {
     return errors;
   }
 
-  /** The ciphertext to store, from the previous address and ciphertext of the row. */
-  @FunctionalInterface
-  private interface CiphertextChoice {
-    String choose(String previousBaseUrl, String previousCiphertext);
-  }
-
+  /** {@code ciphertextOf} derives the key to store from the stored row, under the table lock. */
   private TranscriptionModelView storeTranscription(
+      UUID organizationId,
+      AuditActor actor,
       boolean enabled,
       String address,
       String identifier,
-      CiphertextChoice key,
       String requestedLanguage,
-      BiConsumer<Map<String, Object>, Map<String, Object>> recorder) {
+      Function<TranscriptionModelSettings, String> ciphertextOf) {
     jdbc.execute("LOCK TABLE transcription_model IN SHARE ROW EXCLUSIVE MODE");
     TranscriptionModelSettings existing = transcriptionRows.findStored().orElse(null);
     boolean stored = existing != null;
@@ -324,7 +370,7 @@ public class ModelRoleAdministration {
     String storedLanguage = stored ? row.getLanguage() : TranscriptionEndpoint.DEFAULT_LANGUAGE;
     String language = requestedLanguage == null ? storedLanguage : emptyToNull(requestedLanguage);
     String previousCiphertext = row.getApiKeyCiphertext();
-    String ciphertext = key.choose(row.getBaseUrl(), previousCiphertext);
+    String ciphertext = ciphertextOf.apply(row);
     boolean unchanged =
         row.isEnabled() == enabled
             && Objects.equals(row.getBaseUrl(), emptyToNull(address))
@@ -345,7 +391,14 @@ public class ModelRoleAdministration {
     transcriptionRows.save(row);
     Map<String, Object> after = transcriptionPayload(row);
     AuditSecretChange.put(after, "apiKey", previousCiphertext, ciphertext);
-    recorder.accept(before, after);
+    record(
+        organizationId,
+        actor,
+        AuditEventType.TRANSCRIPTION_MODEL_CHANGED,
+        "transcription_model",
+        "Transkriptionsmodell",
+        before,
+        after);
     afterCommit(ModelRoleSettingsChangedEvent.Role.TRANSCRIPTION);
     return transcriptionView(row);
   }
@@ -365,8 +418,18 @@ public class ModelRoleAdministration {
             apiKey,
             storedRerankAddress(),
             rerankRows.findStored().map(RerankModelSettings::getApiKeyCiphertext).orElse(null));
+    return probeRerank(address, identifier, key);
+  }
+
+  /**
+   * The probe of {@link #testRerank}, without an address check of its own. Precondition: the caller
+   * has passed {@code baseUrl} through {@link ModelAddressPolicy} and {@link ModelEndpointRules}
+   * right before; a caller that cannot vouch for the address must use {@link #testRerank}. {@code
+   * apiKey} is plain text, {@code null} or blank for none. Call outside any transaction.
+   */
+  public TestOutcome probeRerank(String baseUrl, String model, String apiKey) {
     RerankClient.ProbeFailure failure =
-        rerankClient.probe(new RerankEndpoint(true, address, identifier, key), TEST_TIMEOUT);
+        rerankClient.probe(new RerankEndpoint(true, baseUrl, model, apiKey), TEST_TIMEOUT);
     return failure == null
         ? new TestOutcome(true, "Verbindung erfolgreich, der Endpunkt hat die Probe bewertet.")
         : new TestOutcome(false, german(failure.message(), failure.timedOut()));
@@ -391,15 +454,14 @@ public class ModelRoleAdministration {
   }
 
   /**
-   * Asks the endpoint for its models with exactly {@code apiKey}, {@code null} or blank for none,
-   * as {@link #testTranscription} does once it resolved the key; sends no audio. The caller checked
-   * the address. Call outside any transaction.
+   * The probe of {@link #testTranscription}, without an address check of its own; the same
+   * precondition as {@link #probeRerank}. Asks for the models, sends no audio. Call outside any
+   * transaction.
    */
   public TestOutcome probeTranscription(String baseUrl, String model, String apiKey) {
     TranscriptionClient.ProbeFailure failure =
         transcriptionClient.probe(
-            new TranscriptionEndpoint(true, trimmed(baseUrl), trimmed(model), apiKey, ""),
-            TEST_TIMEOUT);
+            new TranscriptionEndpoint(true, baseUrl, model, apiKey, ""), TEST_TIMEOUT);
     return failure == null
         ? new TestOutcome(true, "Verbindung erfolgreich, der Endpunkt hat geantwortet.")
         : new TestOutcome(false, german(failure.message(), failure.timedOut()));
@@ -533,51 +595,39 @@ public class ModelRoleAdministration {
 
   private void record(
       UUID organizationId,
-      UUID actorUserId,
+      AuditActor actor,
       AuditEventType type,
       String table,
       String label,
       Map<String, Object> before,
       Map<String, Object> after) {
-    auditEventRecorder.recordUserAction(
-        event(organizationId, type, table, label, before, after).actor(actorUserId).build());
+    AuditEvent.Builder event =
+        AuditEvent.builder()
+            .organizationId(organizationId)
+            .type(type)
+            .object(
+                AuditObjectType.SYSTEM_SETTING,
+                UUID.nameUUIDFromBytes(table.getBytes(StandardCharsets.UTF_8)),
+                label)
+            .before(before)
+            .after(after)
+            .outcome(AuditOutcome.SUCCESS);
+    if (actor.systemProcess() != null) {
+      auditEventRecorder.recordSystemProcessAction(event.actorRef(actor.systemProcess()).build());
+    } else {
+      auditEventRecorder.recordUserAction(event.actor(actor.userId()).build());
+    }
   }
 
-  private static AuditEvent.Builder transcriptionEvent(
-      UUID organizationId, Map<String, Object> before, Map<String, Object> after) {
-    return event(
-        organizationId,
-        AuditEventType.TRANSCRIPTION_MODEL_CHANGED,
-        "transcription_model",
-        "Transkriptionsmodell",
-        before,
-        after);
-  }
-
-  private static AuditEvent.Builder event(
-      UUID organizationId,
-      AuditEventType type,
-      String table,
-      String label,
-      Map<String, Object> before,
-      Map<String, Object> after) {
-    return AuditEvent.builder()
-        .organizationId(organizationId)
-        .type(type)
-        .object(
-            AuditObjectType.SYSTEM_SETTING,
-            UUID.nameUUIDFromBytes(table.getBytes(StandardCharsets.UTF_8)),
-            label)
-        .before(before)
-        .after(after)
-        .outcome(AuditOutcome.SUCCESS);
-  }
-
-  /** The audit state of a row, the factory default for {@code null}; never the key itself. */
+  /**
+   * The audit state of a row, the factory default for {@code null}; never the key itself, and the
+   * address without userinfo, query and fragment, where a token could stand.
+   */
   private static Map<String, Object> rerankPayload(RerankModelSettings row) {
     Map<String, Object> state = new LinkedHashMap<>();
     state.put("enabled", row != null && row.isEnabled());
-    putIfPresent(state, "baseUrl", row == null ? null : row.getBaseUrl());
+    putIfPresent(
+        state, "baseUrl", row == null ? null : ModelEndpointUri.withoutSecrets(row.getBaseUrl()));
     putIfPresent(state, "model", row == null ? null : row.getModelIdentifier());
     state.put("apiKeySet", row != null && row.getApiKeyCiphertext() != null);
     return state;
@@ -586,7 +636,8 @@ public class ModelRoleAdministration {
   private static Map<String, Object> transcriptionPayload(TranscriptionModelSettings row) {
     Map<String, Object> state = new LinkedHashMap<>();
     state.put("enabled", row != null && row.isEnabled());
-    putIfPresent(state, "baseUrl", row == null ? null : row.getBaseUrl());
+    putIfPresent(
+        state, "baseUrl", row == null ? null : ModelEndpointUri.withoutSecrets(row.getBaseUrl()));
     putIfPresent(state, "model", row == null ? null : row.getModelIdentifier());
     state.put("apiKeySet", row != null && row.getApiKeyCiphertext() != null);
     String language = row == null ? TranscriptionEndpoint.DEFAULT_LANGUAGE : row.getLanguage();

@@ -82,7 +82,7 @@ mail-eigenen Chunk-Schlüssel — dieselbe Mechanik wie bei den Kernfeldern, mit
 | Feld | Inhalt | Filterbar |
 |---|---|---|
 | **Absender** | die reine Adresse des `From`-Kopfs, kleingeschrieben (`Max Mustermann <Max.Mueller@Stadt.de>` → `max.mueller@stadt.de`) | ja, als Genau-Treffer |
-| **An** | alle Empfänger, mit `; ` getrennt, auf 200 Zeichen gekürzt; im Belegfenster in eigener Zeile, nicht in der Metadatenzeile | nein |
+| **An** | alle Empfänger, mit `; ` getrennt, auf 200 Zeichen gekürzt | nein |
 | **Betreff** | Betreff der Nachricht | nein |
 | **Datum/Stand** | Kalendertag aus dem `Date`-Kopf (Kernfeld) | ja, als Zeitraum |
 
@@ -93,7 +93,7 @@ Suchbereich vorkommenden Adressen an; ein Dokument ohne Absender bleibt gefunden
 und damit in der Volltextsuche.
 
 **Dokumenteigenschaften:** Betreff als Titel, der `Date`-Kopf als Dokumentdatum mit höchstem
-Rang für das Metadatenschema. Weil der Betreff zugleich der Titel ist, zeigt die Belegzeile ihn
+Rang für das Metadatenschema. Weil der Betreff zugleich der Titel ist, führt die Fundstelle ihn
 nur einmal.
 
 **Altbestand.** Eine mit einer Pipeline-Version unter 5 indizierte Mail trägt die Kopfdaten noch

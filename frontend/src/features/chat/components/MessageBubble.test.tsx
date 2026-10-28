@@ -253,11 +253,13 @@ describe('MessageBubble', () => {
     expect(screen.queryByRole('button', { name: 'Belege anzeigen' })).not.toBeInTheDocument()
   })
 
-  it('opens every Beleg, cited and uncited, without a mark via "Belege anzeigen"', async () => {
+  it('opens the cited Belege without a mark via "Belege anzeigen", the uncited on request', async () => {
     const user = userEvent.setup()
     render(<MessageBubble message={twoCitedMessage()} />)
 
     await user.click(screen.getByRole('button', { name: 'Belege anzeigen' }))
+    expect(screen.queryByText('dritte.md')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Nicht zitierte anzeigen' }))
 
     expect(evidenceRow('erste.md')).not.toHaveAttribute('data-focused')
     expect(evidenceRow('zweite.md')).not.toHaveAttribute('data-focused')
@@ -272,7 +274,7 @@ describe('MessageBubble', () => {
 
     expect(evidenceRow('erste.md')).toHaveAttribute('data-focused', 'true')
     expect(evidenceRow('zweite.md')).toHaveAttribute('data-focused', 'true')
-    expect(evidenceRow('dritte.md')).not.toHaveAttribute('data-focused')
+    expect(screen.queryByText('dritte.md')).not.toBeInTheDocument()
   })
 
   it('marks only the Beleg of a single footnote and scrolls it into view', async () => {

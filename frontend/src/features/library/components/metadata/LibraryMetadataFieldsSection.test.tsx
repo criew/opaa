@@ -140,7 +140,7 @@ describe('LibraryMetadataFieldsSection', () => {
     renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
 
     const row = (await screen.findByText('Fassung')).closest('li')!
-    expect(row).toHaveTextContent(/Auswahl · 2 Werte.* · Filter, Beleg 1/)
+    expect(row).toHaveTextContent(/Auswahl · 2 Werte.* · Filter, Zitierposition 1/)
     await openValues(user)
     expect(within(row).getByText('Fassung 2026')).toBeInTheDocument()
     expect(within(row).getByText('Fassung 2027')).toBeInTheDocument()

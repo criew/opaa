@@ -11,6 +11,7 @@ import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined'
 import PublicIcon from '@mui/icons-material/Public'
 import StarIcon from '@mui/icons-material/Star'
 import StarBorderIcon from '@mui/icons-material/StarBorder'
+import { badgeShape } from '@/shared/theme/tokens'
 import type { AssetTypeDefinition } from '../../../shared/assetTypes'
 
 /** The responsible party behind a person or group symbol. */
@@ -38,7 +39,11 @@ export function ResponsibleLine({
   )
 }
 
-/** Only an asset released to all accounts carries the globe; a restricted one carries nothing. */
+/**
+ * Only an asset released to all accounts carries the globe; a restricted one carries nothing.
+ * Raised like the star: on a tile the stretched title link would otherwise cover it and swallow
+ * the pointer its tooltip waits for.
+ */
 export function PublicMark() {
   const label = 'Für alle Konten freigegeben'
   return (
@@ -46,7 +51,7 @@ export function PublicMark() {
       <PublicIcon
         titleAccess={label}
         aria-label={label}
-        sx={{ fontSize: 16, color: 'text.secondary' }}
+        sx={{ position: 'relative', zIndex: 1, fontSize: 16, color: 'text.secondary' }}
       />
     </Tooltip>
   )
@@ -68,7 +73,7 @@ export function PrivateMark() {
         color: 'text.secondary',
         border: 1,
         borderColor: 'divider',
-        borderRadius: '4px',
+        ...badgeShape,
         px: 0.75,
         py: 0.25,
         whiteSpace: 'nowrap',
@@ -96,7 +101,7 @@ export function ErasingMark() {
         color: 'text.primary',
         border: 1,
         borderColor: 'error.main',
-        borderRadius: '4px',
+        ...badgeShape,
         px: 0.75,
         py: 0.25,
         whiteSpace: 'nowrap',
@@ -123,7 +128,7 @@ export function TypeBadge({ definition }: { definition: AssetTypeDefinition }) {
         color: 'text.secondary',
         border: 1,
         borderColor: 'divider',
-        borderRadius: '4px',
+        ...badgeShape,
         px: 0.75,
         py: 0.25,
         whiteSpace: 'nowrap',

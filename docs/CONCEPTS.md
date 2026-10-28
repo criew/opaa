@@ -343,7 +343,7 @@ Skills und Agenten. Er zeigt alles, was die Person lesen darf, **und nichts sons
 Kacheln: Asset-Art mit Icon, Welt-Symbol bei öffentlicher Sichtbarkeit, Name, Beschreibung,
 zuständige Stelle, Aktualisierungsdatum und die Zahl der Spaces, in denen das Asset zugeordnet ist.
 Gesucht und gefiltert wird in einer Zeile nach Art und [Favoriten](#favorit); die Favoriten stehen
-oben, danach geht es nach Name. „Neu" beginnt mit der Wahl der Art, „In Space verwenden" im Menü
+oben, danach geht es nach Name. „Neuer Katalogeintrag" beginnt mit der Wahl der Art, „In Space verwenden" im Menü
 „⋯" der Kachel führt in die [Zuordnung](#zuordnung).
 
 Der Katalog ist die sichtbare Einlösung der [Verteilbarkeit](#verteilbarkeit): Was ein Referat an alle

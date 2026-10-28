@@ -10,6 +10,7 @@ import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import {
   describeModel,
   embeddingSuitable,
+  rerankSuitable,
   transcriptionSuitable,
   type DiscoveryPurpose,
 } from './modelDiscovery'
@@ -41,6 +42,14 @@ const ROLES: Record<
     otherGroup: 'Weitere Modelle',
     othersSelectable: true,
     example: 'bge-m3',
+  },
+  // As for the embedding: the name only suggests a reranker, the probe decides.
+  rerank: {
+    suits: rerankSuitable,
+    suitableGroup: 'Für das Reranking geeignet',
+    otherGroup: 'Weitere Modelle',
+    othersSelectable: true,
+    example: 'BAAI/bge-reranker-v2-m3',
   },
   // The name only suggests a speech-to-text model; the check of the endpoint decides.
   transcription: {

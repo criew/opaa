@@ -341,7 +341,7 @@ test.describe('Demo-Smoke (#232)', () => {
     // Mirrors ChatInput.tsx's findActiveMention: the fragment after '@' must not contain
     // whitespace, so the first word narrows the suggestions and the option is picked by its
     // full name (see space-chats.spec.ts's referenceLibrary for the single-word variant).
-    const input = page.getByPlaceholder('Nachricht eingeben …')
+    const input = page.getByRole('combobox', { name: 'Nachricht eingeben' })
     await input.fill('@Ratsinformationen')
     await page.getByRole('option', { name: S3_LIBRARY_NAME }).click()
     await expect(page.getByLabel(`Bibliotheksreferenz ${S3_LIBRARY_NAME} entfernen`)).toBeVisible()

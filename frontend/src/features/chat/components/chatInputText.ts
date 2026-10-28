@@ -21,19 +21,53 @@ export interface SpaceLibrary {
 
 export type MentionSuggestion = { kind: 'all' } | { kind: 'library'; library: SpaceLibrary }
 
+/** The input's accessible name; the placeholder only adds the prefix hint to it. */
+export const INPUT_LABEL = 'Nachricht eingeben'
+const INPUT_PROMPT = `${INPUT_LABEL} …`
+
 /**
- * The neutral hint under the input: the input triggers more than a question - prompts,
- * later agents and skills - so the line names the prefixes instead of counting libraries. '/' is
- * named only while some action source is active. What the next question searches is stated by
- * the chip bar above it.
+ * The neutral prefix hint: the input triggers more than a question - prompts, later agents and
+ * skills - so it names the prefixes instead of counting libraries. '/' is named only while some
+ * action source is active. What the next question searches is stated by the chip bar.
  */
 const INPUT_HINT = '@ für Quellen'
 const ACTIONS_HINT = '/ für Aktionen'
+const SHORT_INPUT_HINT = '@ Quellen'
+const SHORT_ACTIONS_HINT = '/ Aktionen'
 
-/** The hint while an answer is pending: '@' changes the search scope and stays closed until then. */
+/**
+ * The hint as the field's description; while an answer is pending '@' changes the search scope
+ * and stays closed, so only '/' is named.
+ */
 export function inputHint(answerPending: boolean, actions: boolean): string {
   if (answerPending) return actions ? ACTIONS_HINT : ''
   return actions ? `${INPUT_HINT}, ${ACTIONS_HINT}` : INPUT_HINT
+}
+
+/** Below this width of the input field (in px) the placeholder takes the short form. */
+export const COMPACT_PLACEHOLDER_WIDTH = 400
+
+/** Keeps a hint group such as "/ für Aktionen" on one line when the placeholder wraps. */
+const nonBreaking = (group: string) => group.replaceAll(' ', '\u00a0')
+
+/**
+ * The placeholder carries the same hint after the prompt. `compact` (a field narrower than
+ * {@link COMPACT_PLACEHOLDER_WIDTH}) leaves out the prompt and the "für" so it fits in one line.
+ */
+export function inputPlaceholder(
+  answerPending: boolean,
+  actions: boolean,
+  compact: boolean,
+): string {
+  const groups = compact
+    ? [answerPending ? null : SHORT_INPUT_HINT, actions ? SHORT_ACTIONS_HINT : null]
+    : [answerPending ? null : INPUT_HINT, actions ? ACTIONS_HINT : null]
+  const hint = groups
+    .filter((group) => group !== null)
+    .map(nonBreaking)
+    .join(', ')
+  if (!hint) return INPUT_PROMPT
+  return compact ? hint : `${INPUT_PROMPT} ${hint}`
 }
 
 /** A refused question goes back before whatever the person has typed since. */

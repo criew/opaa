@@ -12,6 +12,7 @@ import ChoiceTileGroup, { type ChoiceTile } from '@/shared/ui/choice/ChoiceTileG
 import DiscoveryStatus from '@/shared/ui/modelDiscovery/DiscoveryStatus'
 import ModelIdentifierField from '@/shared/ui/modelDiscovery/ModelIdentifierField'
 import type { DiscoveryPurpose } from '@/shared/ui/modelDiscovery/modelDiscovery'
+import { MODEL_ROLE_TEXTS } from '@/shared/ui/modelDiscovery/modelRoleTexts'
 import { useModelDiscovery } from '@/shared/ui/modelDiscovery/useModelDiscovery'
 import { TRANSCRIPTION_TEXTS } from '@/shared/ui/transcription/transcriptionSettings'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
@@ -48,12 +49,19 @@ const TILE_TEXT: Record<ProviderKey, { description: string; icon: ReactNode }> =
   },
 }
 
-const ADDRESS_HINTS: Record<ProviderKey, string> = {
+const ADDRESS_HINTS: Record<Exclude<ProviderKey, 'custom'>, string> = {
   ollama:
     'Den Host anpassen: „ollama“ (Compose), „host.docker.internal“ (Ollama auf dem Docker-Host) oder der Dienstname im Kubernetes-Cluster.',
   openai: 'Die Adresse des Anbieters; nur hinter einem eigenen Proxy anpassen.',
   anthropic: 'Die Adresse des Anbieters; nur hinter einem eigenen Proxy anpassen.',
-  custom: 'So, wie das Backend den Dienst erreicht, etwa http://vllm:8000/v1.',
+}
+
+/** An address of one's own, per role: rerank and transcription name their path, as their administration. */
+const OWN_ADDRESS_HINT: Record<DiscoveryPurpose, string> = {
+  chat: 'So, wie das Backend den Dienst erreicht, etwa http://vllm:8000/v1.',
+  embedding: 'So, wie das Backend den Dienst erreicht, etwa http://vllm:8000/v1.',
+  rerank: `So, wie das Backend den Dienst erreicht. ${MODEL_ROLE_TEXTS.rerank.addressHint}`,
+  transcription: `So, wie das Backend den Dienst erreicht. ${MODEL_ROLE_TEXTS.transcription.addressHint}`,
 }
 
 /**
@@ -89,7 +97,8 @@ interface ModelEndpointFieldsProps {
 
 /**
  * Endpoint and model of a model step, in the order of the set-up: provider, address and key,
- * then the model from the endpoint's list. The list is fetched once address and, where the
+ * then the model from the endpoint's list. A role without presets (the rerank model) starts at the
+ * address. The list is fetched once address and, where the
  * provider needs one, key are in - on choosing a provider, on leaving address or key, and when
  * the step opens with a stored endpoint; „Modelle abrufen“ fetches again. Without a list the
  * identifier stays free text.
@@ -120,6 +129,7 @@ export default function ModelEndpointFields({
   const [keyOrigin, setKeyOrigin] = useState<string | null>(null)
   const discovery = useModelDiscovery(discover)
   const lastRequest = useRef<string | null>(null)
+  const presets = providerPresets(purpose)
   const plan = discoveryPlan({
     baseUrl,
     provider,
@@ -127,8 +137,8 @@ export default function ModelEndpointFields({
     keyOrigin,
     removeKey,
     stored,
+    offersProviders: presets.length > 0,
   })
-  const presets = providerPresets(purpose)
   const tiles: ChoiceTile<ProviderKey>[] = [
     ...presets.map((preset) => ({
       value: preset.key,
@@ -145,10 +155,6 @@ export default function ModelEndpointFields({
       ...(purpose === 'transcription' ? { description: TRANSCRIPTION_TILES.custom } : {}),
     },
   ]
-  const addressHint =
-    purpose === 'transcription' && (provider ?? 'custom') === 'custom'
-      ? TRANSCRIPTION_TEXTS.addressHint
-      : ADDRESS_HINTS[provider ?? 'custom']
 
   function fetchModels(next: DiscoveryPlan, asked: boolean) {
     if (!next.request || (!asked && !next.automatic)) return
@@ -231,21 +237,23 @@ export default function ModelEndpointFields({
           Endpunkt
         </SectionHead>
         <Stack spacing={STEP_RHYTHM.betweenGroups}>
-          <Box>
-            <FieldLabel id={providerLabelId}>Anbieter</FieldLabel>
-            <ChoiceTileGroup<ProviderKey>
-              aria-labelledby={providerLabelId}
-              tiles={tiles}
-              value={provider}
-              onChange={chooseProvider}
-              columns={2}
-            />
-            {purpose === 'transcription' && provider === 'openai' && (
-              <Alert severity="warning" sx={{ mt: STEP_RHYTHM.fieldToOwnAction }}>
-                {TRANSCRIPTION_TEXTS.externalService}
-              </Alert>
-            )}
-          </Box>
+          {presets.length > 0 && (
+            <Box>
+              <FieldLabel id={providerLabelId}>Anbieter</FieldLabel>
+              <ChoiceTileGroup<ProviderKey>
+                aria-labelledby={providerLabelId}
+                tiles={tiles}
+                value={provider}
+                onChange={chooseProvider}
+                columns={2}
+              />
+              {purpose === 'transcription' && provider === 'openai' && (
+                <Alert severity="warning" sx={{ mt: STEP_RHYTHM.fieldToOwnAction }}>
+                  {TRANSCRIPTION_TEXTS.externalService}
+                </Alert>
+              )}
+            </Box>
+          )}
           <FormField
             id={addressId}
             label="Basis-Adresse"
@@ -253,7 +261,11 @@ export default function ModelEndpointFields({
             value={baseUrl}
             onChange={typeAddress}
             error={errors.baseUrl}
-            hint={addressHint}
+            hint={
+              provider && provider !== 'custom'
+                ? ADDRESS_HINTS[provider]
+                : OWN_ADDRESS_HINT[purpose]
+            }
           />
           <ApiKeyField
             id={keyId}

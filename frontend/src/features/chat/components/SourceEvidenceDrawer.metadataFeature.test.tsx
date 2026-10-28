@@ -62,7 +62,8 @@ async function openDrawer() {
   return within(drawer).getByTestId('evidence-doc')
 }
 
-/** ADR-0044: with metadata switched off a Beleg keeps its title and shows nothing else of it. */
+/** ADR-0044: with metadata switched off a Beleg carries no filter mark; the row never shows
+ *  metadata values, with or without the switch (guidelines 5.8). */
 describe('SourceEvidenceDrawer without metadata', () => {
   beforeEach(() => {
     useAuthStore.setState({ features: { metadata: false } })
@@ -72,24 +73,21 @@ describe('SourceEvidenceDrawer without metadata', () => {
     useAuthStore.setState({ features: {} })
   })
 
-  it('shows the title only, without further values, details or the filter mark', async () => {
+  it('shows the file name only, without metadata values or the filter mark', async () => {
     const doc = await openDrawer()
 
-    expect(within(doc).getByTestId('source-metadata')).toHaveTextContent(
-      /^Dienstanweisung IT-Nutzung$/,
-    )
-    expect(within(doc).queryByTestId('source-metadata-details')).not.toBeInTheDocument()
+    expect(within(doc).getByText('2026-03-12_da.pdf')).toBeVisible()
+    expect(within(doc).queryByText(/Dienstanweisung/)).not.toBeInTheDocument()
+    expect(within(doc).queryByText(/poststelle@example\.org/)).not.toBeInTheDocument()
     expect(within(doc).queryByTestId('source-filter-match')).not.toBeInTheDocument()
   })
 
-  it('shows every value again once metadata is on', async () => {
+  it('shows the filter mark again once metadata is on, still without metadata values', async () => {
     useAuthStore.setState({ features: { metadata: true } })
     const doc = await openDrawer()
 
-    expect(within(doc).getByTestId('source-metadata')).toHaveTextContent(
-      'Dienstanweisung IT-Nutzung · Dienstanweisung',
-    )
-    expect(within(doc).getByTestId('source-metadata-details')).toBeInTheDocument()
-    expect(within(doc).getByTestId('source-filter-match')).toBeInTheDocument()
+    expect(within(doc).getByTestId('source-filter-match')).toHaveTextContent('ohne Angabe')
+    expect(within(doc).queryByText(/Dienstanweisung/)).not.toBeInTheDocument()
+    expect(within(doc).queryByText(/poststelle@example\.org/)).not.toBeInTheDocument()
   })
 })

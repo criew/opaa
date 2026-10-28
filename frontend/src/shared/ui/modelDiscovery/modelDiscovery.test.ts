@@ -5,6 +5,7 @@ import {
   displayNameFor,
   embeddingSuitable,
   ENDPOINT_PRESETS,
+  rerankSuitable,
   presetOf,
   suggestedMaxTokens,
 } from './modelDiscovery'
@@ -103,5 +104,13 @@ describe('embeddingSuitable', () => {
     expect(embeddingSuitable(model({ identifier: 'bge-m3' }))).toBe(true)
     expect(embeddingSuitable(model({ identifier: 'custom', family: 'nomic-bert' }))).toBe(true)
     expect(embeddingSuitable(model({ identifier: 'gpt-4o' }))).toBe(false)
+  })
+})
+
+describe('rerankSuitable', () => {
+  it('names a reranker by its identifier or family, since no endpoint reports the capability', () => {
+    expect(rerankSuitable(model({ identifier: 'BAAI/bge-reranker-v2-m3' }))).toBe(true)
+    expect(rerankSuitable(model({ identifier: 'custom', family: 'jina-reranker' }))).toBe(true)
+    expect(rerankSuitable(model({ identifier: 'bge-m3' }))).toBe(false)
   })
 })

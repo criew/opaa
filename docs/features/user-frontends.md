@@ -57,7 +57,7 @@ der alle Fähigkeiten vollständig sichtbar sind, und der Maßstab für alles We
 | **Suchfilter** | den Suchbereich eines Gesprächs ausschließlich über die Chip-Leiste am Eingabefeld steuern (Spezial-Chip @Space-Wissen, konkrete @-Referenzen auf zugeordnete Bibliotheken, oder eine geleerte Leiste), nicht über eine Space-Auswahl oder einen separaten Schalter; nie über das hinaus, was dem Arbeitsraum zugeordnet ist | ✅ — die Space-Auswahl ist entfernt; Chip-Leiste mit „@Space-Wissen", @-Autocomplete aus den zugeordneten, lesbaren Bibliotheken und sticky Chips sind gebaut und werden am persistierten Gespräch gespeichert (siehe unten); ein Arbeitsraum ohne Wissen zeigt den Hinweis mit Direktlink zur Zuordnung |
 | **Arbeitsräume** | Chats und Artefakte eines Themas, Entwurf und Ablage getrennt (siehe [spaces-and-assets.md](./spaces-and-assets.md)) | teilweise — Übersicht, Mitglieder, Rollen, Eigentumsübergabe und die Gesprächsliste je Arbeitsraum (anlegen, umbenennen, löschen) sind vorhanden |
 | **Wissen** | Dokumente einer Wissensbibliothek einsehen, hochladen, Indizierungsstand erkennen | ja — Bibliotheksdetailseite mit Bestandsdarstellung, Upload/Löschen für Upload-Bibliotheken und Indizierungsstand für Konnektor-Bibliotheken |
-| **Katalog** | **ein** Einstieg der Hauptnavigation für alle Asset-Typen (Wissen, Prompts, später Skills und Agenten): finden, anlegen, öffnen, freigeben, als Favorit markieren und „In Space verwenden" — nur Kacheln, nur Lesbares, eine Filterzeile aus Suche, Typ und Favoriten, feste Reihenfolge (Favoriten zuerst, dann Name); „Neu" beginnt mit der Typwahl als Kacheln mit Icon ([spaces-and-assets.md](./spaces-and-assets.md#der-katalog), [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)) | teilweise — gebaut ist der eine Einstieg „Katalog" (`/catalog`) nur mit kompakten Kacheln (Typ, Welt-Symbol bei Freigabe an alle, Umfang, Spaces, zuständige Stelle mit Symbol, „Aktualisiert am" oder Zustand; die eigene Rolle nur auf der Detailseite), der Filterzeile Suche → Typ → Favoriten und fester Reihenfolge (#2129), dazu die Typ-Registry und „Neu" mit Typwahl als Kachelauswahl (#2093, #2094); `/libraries` und `/prompts` leiten auf den Katalog mit Typfilter weiter, und der Katalog zeigt nur lesbare Einträge (#2092). Favoriten sind gebaut: Stern an der Kachel als eigenes Bedienelement neben dem gestreckten Link, Filter „Favoriten“, eigene Favoriten zuerst (#2095). Die Detailseiten tragen denselben Freigabeabschnitt (#1902). Prompts werden in einem Editor mit Variablentabelle, Prüfung und Vorschau gepflegt und im Chat per `/befehl` mit Variablenformular eingesetzt (#1903). „In Space verwenden" steht im Menü „⋯" jeder Kachel und auf den Detailseiten. Beide Detailseiten haben denselben Kopf mit Stern und „⋯" und den Reiter „Zuordnungen"; die Prompt-Bibliothek hat kein „Zurück" und keinen Reiter „Verwaltung" mehr (#2208). Agenten sind Zielbild |
+| **Katalog** | **ein** Einstieg der Hauptnavigation für alle Asset-Typen (Wissen, Prompts, später Skills und Agenten): finden, anlegen, öffnen, freigeben, als Favorit markieren und „In Space verwenden" — nur Kacheln, nur Lesbares, eine Filterzeile aus Suche, Typ und Favoriten, feste Reihenfolge (Favoriten zuerst, dann Name); „Neuer Katalogeintrag" beginnt mit der Typwahl als Kacheln mit Icon ([spaces-and-assets.md](./spaces-and-assets.md#der-katalog), [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)) | teilweise — gebaut ist der eine Einstieg „Katalog" (`/catalog`) nur mit kompakten Kacheln (Typ, Welt-Symbol bei Freigabe an alle, Umfang, Spaces, zuständige Stelle mit Symbol, „Aktualisiert am" oder Zustand; die eigene Rolle nur auf der Detailseite), der Filterzeile Suche → Typ → Favoriten und fester Reihenfolge (#2129), dazu die Typ-Registry und „Neuer Katalogeintrag" mit Typwahl als Kachelauswahl (#2093, #2094); `/libraries` und `/prompts` leiten auf den Katalog mit Typfilter weiter, und der Katalog zeigt nur lesbare Einträge (#2092). Favoriten sind gebaut: Stern an der Kachel als eigenes Bedienelement neben dem gestreckten Link, Filter „Favoriten“, eigene Favoriten zuerst (#2095). Die Detailseiten tragen denselben Freigabeabschnitt (#1902). Prompts werden in einem Editor mit Variablentabelle, Prüfung und Vorschau gepflegt und im Chat per `/befehl` mit Variablenformular eingesetzt (#1903). „In Space verwenden" steht im Menü „⋯" jeder Kachel und auf den Detailseiten. Beide Detailseiten haben denselben Kopf mit Stern und „⋯" und den Reiter „Zuordnungen"; die Prompt-Bibliothek hat kein „Zurück" und keinen Reiter „Verwaltung" mehr (#2208). Agenten sind Zielbild |
 | **Rückmeldung** | Antworten und Treffer bewerten; die Rückmeldung fließt in die Suchqualität ein (siehe [search-quality-evaluation.md](./search-quality-evaluation.md)) | nein — Zielbild (siehe unten) |
 | **Systemverwaltung** | Gruppen und Verzeichnisabgleich, Rollen, Auslösen und Stand der Indizierung | teilweise — Gruppen, Verzeichnisabgleich, Rollen und Indizierung sind vorhanden; Modellvorgaben und Protokolleinsicht sind Zielbild (siehe [access-control.md](./access-control.md) und [llm-integration.md](./llm-integration.md)) |
 | **Persönliche Einstellungen** | Darstellung, später eigene Zugänge zur Schnittstelle | teilweise — nur die Darstellung; eine Verwaltung eigener API-Zugänge gibt es nicht |
@@ -87,8 +87,8 @@ serverseitig von der beim Indizieren gespeicherten Quell-URL durch, statt den Cl
 weiterzuleiten — auf der Demo-Instanz sind die Quellhosts (`http://demo-corpus/...`) nur im
 Docker-Netz erreichbar, ein direkter Browserlink lief zuvor ins Leere. `sourceEntryUrl`/`sourceUrl`
 (HTTP_DIRECTORY/RSS_FEED) bleiben als sekundäre Information neben der Aktion sichtbar — auf der
-Dokumentenübersicht als eigene Zeile („Herkunft:"/„Quelle:"), in den Fundstellen und im Belegfenster
-als kleiner „Quelle"-Link mit der rohen URL als `title`-Tooltip.
+Dokumentenübersicht als eigene Zeile („Herkunft:"/„Quelle:"); das Belegfenster zeigt sie seit #3259
+nicht mehr.
 
 `LibraryDocumentResponse.sourceUrl` ist bewusst für jede VIEWER-Berechtigung sichtbar — anders als
 `LibraryResponse.sourceUrl`, das #507 unterhalb von MANAGER maskiert. Maskiert bleibt dort die
@@ -100,7 +100,7 @@ Maintainer-Entscheidung auf PR #743 (Epic #740).
 Seit #739 gilt derselbe Deeplink auch für die Fundstellen unter einer Antwort und für das
 Belegfenster („Belege dieser Antwort"): `SourceReference` (OpenAPI) trägt jetzt `documentId` und
 `sourceType`, dazu ein eigenes `sourceUrl` mit derselben Bedeutung wie auf
-`LibraryDocumentResponse`. Ein Klick auf „Im Dokument öffnen" lädt seit #747 für **jeden**
+`LibraryDocumentResponse`. Ein Klick auf „Im Dokument öffnen" (seit #3259 „Dokument öffnen") lädt seit #747 für **jeden**
 Quellentyp das Original über `GET /api/v1/documents/{documentId}/content` (dasselbe Hilfsmodul
 `documentContent.ts`) — vor #747 öffnete diese Aktion für HTTP_DIRECTORY/RSS_FEED stattdessen
 `sourceEntryUrl`/`sourceUrl` direkt in einem neuen Tab, was bei einer nur intern erreichbaren Quelle
@@ -112,7 +112,15 @@ Dialog und Snackbar hängen dadurch nicht am Lebenszyklus des Belegfensters, das
 beim Schließen abbaut. Seit #1449 entfällt der Fundstellenblock unter der Antwort: Dort steht nur
 noch „Belege anzeigen" mit einer Zählzeile, alle Fundstellen stehen im Belegfenster
 (`SourceEvidenceDrawer.tsx`), und ein Klick auf eine Fußnote öffnet es an der zugehörigen
-Fundstelle und markiert sie dort. Backendseitig
+Fundstelle und markiert sie dort. Seit #3259 öffnet das Belegfenster mit den zitierten Belegen; die
+geprüften, nicht zitierten blendet der Link „Nicht zitierte anzeigen" (Disclosure-Muster mit fester
+Beschriftung, `aria-expanded` und Statusmeldung) unter der
+Liste ein, der Filterknopf „Nur zitierte" und die Erklärzeile im Kopf entfallen. Eine Belegzeile
+nennt nur Ziffern, Titel, Fundort und die Aktion, die seitdem „Dokument öffnen" heißt; Rang,
+Indexierungsdatum, Metadatenzeile und „Quelle"-Link entfallen, den Rang zeigt nur die Diagnose. Die Suche im Belegfenster umfasst Titel und Fundort aller Belege,
+auch der ausgeblendeten.
+Hinweise wie „Stand vom …", „Private Quelle", „Beleg nicht bestätigt" und unter aktivem Filter
+„ohne Angabe" bleiben. Backendseitig
 schlüsselt die Zusammenführung mehrfach zitierter
 Fundstellen (`QueryService#mergeSourceReferences`) auf `documentId` statt auf den Dateinamen: zwei
 unterschiedliche Dokumente mit identischem Dateinamen (etwa zwei RSS-Anlagen) erscheinen dadurch als

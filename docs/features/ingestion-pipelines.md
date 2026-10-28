@@ -1385,7 +1385,7 @@ bereits den synthetischen `file_path` dieser weitergeleiteten Mail selbst.
 
 **Das Original eines Anhangs wird beim Öffnen nachextrahiert, nicht beim Indizieren abgelegt**
 (#1239): Die Anhangsbytes existieren während der Indizierung nur als temporäre Datei. Fragt jemand
-über „Im Dokument öffnen" (`GET /documents/{id}/content`, `LibraryDocumentService#loadContent`) das
+über „Dokument öffnen" (`GET /documents/{id}/content`, `LibraryDocumentService#loadContent`) das
 Original eines Anhangsdokuments an, lädt OPAA das Original des Wurzel-Elterndokuments über den ganz
 normalen Weg seines Quelltyps (UPLOAD/FILESYSTEM von der Platte, HTTP_DIRECTORY/RSS_FEED über den
 Proxy-Abruf), lässt dieselbe Pipeline es erneut parsen und streamt den Anhang an dem im `file_path`

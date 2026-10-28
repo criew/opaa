@@ -1,4 +1,5 @@
 import { expect, type APIRequestContext, type Locator, type Page } from '@playwright/test'
+import { showUncitedEvidence } from './chat'
 import { apiAs } from './externalAccess'
 
 /**
@@ -284,14 +285,14 @@ export async function triggerIndexingInUi(page: Page, libraryId: string): Promis
  * ein.
  */
 export async function referenceLibrary(page: Page, libraryName: string): Promise<void> {
-  await page.getByPlaceholder('Nachricht eingeben …').fill(`@${libraryName}`)
+  await page.getByRole('combobox', { name: 'Nachricht eingeben' }).fill(`@${libraryName}`)
   await page.getByRole('option', { name: libraryName }).click()
   await expect(page.getByLabel(`Bibliotheksreferenz ${libraryName} entfernen`)).toBeVisible()
 }
 
 /**
- * Öffnet das Belegfenster der letzten Antwort und liefert die Belegzeile von `fileName`; der
- * Aufrufer schließt es mit Escape.
+ * Öffnet das Belegfenster der letzten Antwort, blendet die nicht zitierten Belege ein und liefert
+ * die Belegzeile von `fileName`; der Aufrufer schließt es mit Escape.
  */
 export async function openEvidenceRow(page: Page, fileName: string): Promise<Locator> {
   const showEvidence = page.getByRole('button', { name: 'Belege anzeigen' }).last()
@@ -299,5 +300,6 @@ export async function openEvidenceRow(page: Page, fileName: string): Promise<Loc
   await showEvidence.click()
   const drawer = page.getByRole('dialog', { name: 'Belege dieser Antwort' })
   await expect(drawer).toBeVisible()
+  await showUncitedEvidence(page, drawer)
   return drawer.getByTestId('evidence-doc').filter({ hasText: fileName })
 }

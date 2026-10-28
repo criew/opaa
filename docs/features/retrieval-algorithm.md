@@ -576,13 +576,11 @@ Kosinus-Ähnlichkeit (grob 0,3–0,9); die beiden Skalen sind nicht vergleichbar
 sortierte Belegliste hätte eine rein lexikalisch gefundene Fundstelle selbst dann ans Ende gestellt,
 wenn die Fusion sie auf Rang 1 gesetzt hat. Der Rang dagegen bedeutet für jede Fundstelle dasselbe,
 unabhängig vom Pfad. Eine synthetische Quellenangabe zu einem erfundenen Beleg (#386) hat gar keinen
-Rang und trägt weiterhin 0. Das Belegfenster (`SourceEvidenceDrawer`) sortiert entsprechend nach der
-Reihenfolge des `sources`-Arrays — also nach der Auswahlreihenfolge der Pipeline, nicht nach einem
-Zahlenwert — und beschriftet die Zeile mit „Rang n" statt mit einem Prozentgewicht. Auch die
-Beschriftung leitet sich allein aus der Position in `sources` ab, nicht aus dem Zahlenwert und nicht
-aus der Zeilenposition im Belegfenster: Die Liste stellt zitierte Quellen vor unzitierte, während
-„Rang n" dieselbe Position meint, deren Kehrwert `relevanceScore` trägt. So bleibt die Beschriftung
-auch für vor #1102 gespeicherte Nachrichten richtig, deren `sources`-JSON noch Rohwerte trägt.
+Rang und trägt weiterhin 0. Das Belegfenster (`SourceEvidenceDrawer`) ordnet nie nach
+`relevanceScore`: zitierte Quellen in Zitatreihenfolge, nicht zitierte in der Reihenfolge des
+`sources`-Arrays, also der Auswahlreihenfolge der Pipeline. So bleibt die Reihenfolge auch für vor
+#1102 gespeicherte Nachrichten richtig, deren `sources`-JSON noch Rohwerte trägt. Eine Beschriftung
+„Rang n“ trägt die Zeile seit #3259 nicht mehr; den Rang zeigt die Diagnose.
 
 ### Zusammenfassung als Ablauf
 

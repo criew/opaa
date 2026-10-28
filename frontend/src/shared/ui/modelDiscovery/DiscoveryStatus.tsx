@@ -13,7 +13,7 @@ interface DiscoveryStatusProps {
 }
 
 const HAND_ENTRY = 'Die Kennung lässt sich trotzdem von Hand eintragen.'
-/** What to pull into an empty Ollama; Ollama serves no transcription, so that role has none. */
+/** A model to pull into an empty Ollama, for the roles Ollama serves. */
 const PULL_EXAMPLE: Partial<Record<DiscoveryPurpose, string>> = {
   chat: 'qwen3:8b',
   embedding: 'bge-m3',

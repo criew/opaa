@@ -31,7 +31,7 @@ describe('App', () => {
   it('redirects to an empty chat in the default space by default', async () => {
     render(<App />)
     expect(
-      await screen.findByPlaceholderText('Nachricht eingeben …', {}, PAGE_LOAD),
+      await screen.findByPlaceholderText(/^Nachricht eingeben …/, {}, PAGE_LOAD),
     ).toBeInTheDocument()
     // Not merely "a chat page rendered": the route must be the not-yet-persisted draft, and the
     // draft's empty state must be what the user sees - no messages of an earlier conversation.

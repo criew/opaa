@@ -14,12 +14,13 @@ import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
+import Tooltip from '@mui/material/Tooltip'
 import TableContainer from '@mui/material/TableContainer'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
-import MoreVertIcon from '@mui/icons-material/MoreVert'
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import type {
   AdminExternalAccessTokenResponse,
   ExternalAccessTokenStatus,
@@ -91,13 +92,15 @@ function RowMenu({
 
   return (
     <>
-      <IconButton
-        size="small"
-        aria-label={`Aktionen für das Token „${token.name}“ von ${token.ownerDisplayName}`}
-        onClick={(event) => setAnchor(event.currentTarget)}
-      >
-        <MoreVertIcon fontSize="small" />
-      </IconButton>
+      <Tooltip title="Weitere Aktionen">
+        <IconButton
+          size="small"
+          aria-label={`Aktionen für das Token „${token.name}“ von ${token.ownerDisplayName}`}
+          onClick={(event) => setAnchor(event.currentTarget)}
+        >
+          <MoreHorizIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
       <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}>
         {token.status === 'ACTIVE' && (
           <MenuItem onClick={() => run(() => onBlock(token))}>Token sperren</MenuItem>

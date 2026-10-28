@@ -69,6 +69,17 @@ public sealed interface StepInput {
   }
 
   /**
+   * The rerank model. {@code apiKey}: {@code null} keeps a key saved before, but only for the same
+   * endpoint; an empty value removes it.
+   */
+  record RerankModel(String baseUrl, String model, String apiKey) implements StepInput {
+    @Override
+    public InstallationStep step() {
+      return InstallationStep.RERANK_MODEL;
+    }
+  }
+
+  /**
    * The transcription model of speech input. {@code apiKey}: {@code null} keeps a key saved before,
    * an empty value removes it; {@code language} {@code null} means the default {@code de}, empty
    * lets the model detect it.

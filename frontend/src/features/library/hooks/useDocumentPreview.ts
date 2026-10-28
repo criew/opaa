@@ -7,7 +7,7 @@ import type { SourceTypeKey } from '@/shared/api/types'
 import { sourceRegistration } from '../components/sources/registry'
 
 /**
- * Everything "Original öffnen"/"Im Dokument öffnen" needs to decide HOW to open a document -
+ * Everything "Original öffnen"/"Dokument öffnen" needs to decide HOW to open a document -
  * a Confluence document opens at its source URL, every other type through the content endpoint.
  */
 export interface OpenableDocument {
@@ -19,7 +19,7 @@ export interface OpenableDocument {
 }
 
 /**
- * The shared "Im Dokument öffnen"/"Original öffnen" click handling behind
+ * The shared "Dokument öffnen"/"Original öffnen" click handling behind
  * {@link ../components/DocumentTextPreviewDialog} - LibraryDetailPage and the chat's
  * source views share the outcome handling (open a preview dialog, notify about a
  * download, surface a fetch failure) here rather than duplicating it per caller. Download

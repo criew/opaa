@@ -106,9 +106,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
 
   test("Chat in beiden Farbschemata", async ({ authenticatedPage: page }) => {
     await startFreshChat(page);
-    const input = page.getByPlaceholder(
-      "Nachricht eingeben …",
-    );
+    const input = page.getByRole("combobox", { name: "Nachricht eingeben" });
     await expect(input).toBeVisible();
 
     // The theme preference defaults to "system" (uiStore.themeMode), so emulating the media
@@ -187,17 +185,17 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Seite Chats, Reiter Archiv (helles Farbschema)");
   });
 
-  // Die Rollen-Chips („Administrator", „Eigentümer") fielen im Abschluss-Audit nur
-  // im Dunkelschema durch color-contrast — beide Seiten deshalb in beiden Schemata, nach dem
-  // Muster des Chat-Szenarios oben.
+  // The overview in both colour schemes: the quiet entry count (fg-2) and the state chips must
+  // keep 4.5:1 in light and dark.
   test("Spaces-Übersicht in beiden Farbschemata", async ({
     authenticatedPage: page,
   }) => {
     await page.goto("/spaces");
-    // The heading reads "Spaces" while the list loads and names the count once it is in.
+    // The entry count beside the heading appears once the list is in.
     await expect(
-      page.getByRole("heading", { level: 1, name: /^\d+ Spaces?$/ }),
+      page.getByRole("heading", { level: 1, name: "Spaces", exact: true }),
     ).toBeVisible();
+    await expect(page.getByText(/^\d+ Eintr(ag|äge)$/)).toBeVisible();
 
     await page.emulateMedia({ colorScheme: "light" });
     await expectNoSeriousA11yViolations(page, "Spaces-Übersicht (helles Farbschema)");
@@ -257,8 +255,9 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
   });
 
   // Die Kachelauswahl mit Icon (Gestaltungsleitlinien 5.11) an ihren beiden Stellen: Typwahl unter
-  // „Neu" und Quellart-Wahl im Wissens-Assistenten - Auswahlgruppe und Häkchen; der Assistent zeigt
-  // nur nutzbare Quellarten, eine gesperrte Kachel prüft der Test im Dialog „Zugang anlegen".
+  // „Neuer Katalogeintrag" und Quellart-Wahl im Wissens-Assistenten - Auswahlgruppe und Häkchen;
+  // der Assistent zeigt nur nutzbare Quellarten, eine gesperrte Kachel prüft der Test im Dialog
+  // „Zugang anlegen".
   test("Kachelauswahl: Typwahl und Quellart in beiden Farbschemata", async ({
     authenticatedPage: page,
   }) => {

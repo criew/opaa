@@ -354,6 +354,14 @@ describe('LlmModelManagementPage', () => {
     expect(await screen.findByText(/noch kein Chat-Modell aktiv/)).toBeInTheDocument()
   })
 
+  it('marks "Neues Modell" with the plus icon', () => {
+    signInAs('SYSTEM_ADMIN')
+    renderChat()
+
+    const create = screen.getByRole('button', { name: 'Neues Modell' })
+    expect(within(create).getByTestId('AddIcon')).toBeInTheDocument()
+  })
+
   it('creates a model without an API key without a validation error', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()

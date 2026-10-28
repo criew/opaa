@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '../../../test/test-utils'
 import OverviewPage, { OverviewCard } from './OverviewPage'
@@ -19,7 +19,6 @@ function renderOverview(props: Partial<React.ComponentProps<typeof OverviewPage<
   return renderWithProviders(
     <OverviewPage<Item>
       title="Beispiele"
-      heading={(count) => `${count} Beispiele`}
       createLabel="Neues Beispiel"
       onCreate={() => {}}
       items={items}
@@ -37,11 +36,20 @@ describe('OverviewPage (#1913)', () => {
     const onCreate = vi.fn()
     renderOverview({ onCreate })
 
-    expect(screen.getByRole('heading', { level: 1, name: '2 Beispiele' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Beispiele' })).toBeInTheDocument()
+    expect(screen.getByText('2 Einträge')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Neues Beispiel' })).toBeInTheDocument()
 
     screen.getByRole('button', { name: 'Neues Beispiel' }).click()
     expect(onCreate).toHaveBeenCalled()
+  })
+
+  // Every create button carries the plus icon before its label (guidelines 5.1).
+  it('marks the create button with the plus icon', () => {
+    renderOverview()
+
+    const button = screen.getByRole('button', { name: 'Neues Beispiel' })
+    expect(within(button).getByTestId('AddIcon')).toBeInTheDocument()
   })
 
   it('filters client-side over the supplied search text and updates the count', async () => {
@@ -53,25 +61,25 @@ describe('OverviewPage (#1913)', () => {
 
     expect(screen.getByRole('link', { name: 'Bauamt' })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Widerspruchsstelle' })).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 1, name: '1 Beispiele' })).toBeInTheDocument()
+    expect(screen.getByText('1 Eintrag')).toBeInTheDocument()
   })
 
-  it('offers a count beside a fixed heading where the heading must stay the page name', async () => {
-    const user = userEvent.setup()
-    renderOverview({ heading: undefined, countLabel: (count) => `${count} Einträge` })
+  // Every overview heads its page alike - the page name as heading, the count quiet
+  // beside it, no sentence underneath.
+  it('keeps the page name as heading and sets the count beside it, without a subtitle', () => {
+    renderOverview()
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Beispiele' })).toBeInTheDocument()
-    expect(screen.getByText('2 Einträge')).toBeInTheDocument()
-
-    await user.type(screen.getByRole('textbox', { name: 'Suchen' }), 'Bauamt')
-    expect(screen.getByText('1 Einträge')).toBeInTheDocument()
+    const heading = screen.getByRole('heading', { level: 1, name: 'Beispiele' })
+    expect(heading).not.toHaveTextContent('2')
+    expect(heading.parentElement).toHaveTextContent(/^Beispiele2 EinträgeNeues Beispiel$/)
+    expect(heading.parentElement?.nextElementSibling?.tagName).not.toBe('P')
   })
 
   it('leaves out the create button where an overview offers no creation', () => {
     renderOverview({ createLabel: undefined, onCreate: undefined })
 
     expect(screen.queryByRole('button', { name: 'Neues Beispiel' })).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 1, name: '2 Beispiele' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Beispiele' })).toBeInTheDocument()
   })
 
   it('names the query when nothing matches', async () => {
@@ -121,6 +129,7 @@ describe('OverviewPage (#1913)', () => {
     renderOverview({ items: [], isLoading: true })
 
     expect(screen.getByRole('heading', { level: 1, name: 'Beispiele' })).toBeInTheDocument()
+    expect(screen.queryByText(/Einträge/)).not.toBeInTheDocument()
     expect(screen.getByLabelText('Liste wird geladen')).toBeInTheDocument()
   })
 
@@ -130,8 +139,6 @@ describe('OverviewPage (#1913)', () => {
     renderOverview({
       searchText: undefined,
       search: { value: 'bau', onChange },
-      heading: undefined,
-      countLabel: (count) => `${count} Einträge`,
       total: 57,
     })
 

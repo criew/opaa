@@ -1,5 +1,6 @@
 import { useId, useState } from 'react'
 import type { LlmModelDiscoveryResponse } from '@/shared/api/types'
+import { MODEL_ROLE_TEXTS } from '@/shared/ui/modelDiscovery/modelRoleTexts'
 import {
   TRANSCRIPTION_TEXTS,
   transcriptionLanguageError,
@@ -70,7 +71,7 @@ export default function TranscriptionModelStep({
       title={STEP_INFO.TRANSCRIPTION_MODEL.label}
       mandatory={step.mandatory}
       laterUnder={STEP_INFO.TRANSCRIPTION_MODEL.laterUnder}
-      description={`${TRANSCRIPTION_TEXTS.intro} Die Prüfung fragt den Endpunkt nach seinen Modellen und sendet keine Aufnahme. Ohne Transkriptionsmodell bleibt die Spracheingabe aus, bis die Systemverwaltung eines unter Modelle → Spracheingabe einträgt.`}
+      description={`${MODEL_ROLE_TEXTS.transcription.purpose} Die Prüfung fragt den Endpunkt nach seinen Modellen und sendet keine Aufnahme. Ohne Transkriptionsmodell bleibt die Spracheingabe aus, bis die Systemverwaltung eines unter Modelle → Spracheingabe einträgt.`}
       failure={form.failure}
       busy={form.busy}
       busyAnnouncement="Endpunkt wird geprüft"

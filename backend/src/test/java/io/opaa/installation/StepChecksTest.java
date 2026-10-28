@@ -156,6 +156,70 @@ class StepChecksTest {
     assertThat(outcome.dimensions()).isEqualTo(768);
   }
 
+  // regression guard: the rerank check reaches no address the installation refuses
+  @Test
+  void aBlockedRerankAddressFailsTheCheckWithoutAProbe() {
+    String payload =
+        json.writeValueAsString(
+            new StepRules.RerankModelPayload("http://169.254.169.254", "bge-reranker"));
+
+    StepChecks.Outcome outcome = checks.check(InstallationStep.RERANK_MODEL, payload, null, null);
+
+    assertThat(outcome.succeeded()).isFalse();
+    assertThat(outcome.message()).contains("OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST");
+    verifyNoInteractions(modelRoles);
+  }
+
+  @Test
+  void theRerankCheckIsTheProbeOfTheAdministrationWithTheDecryptedKey() {
+    StepChecks permissive =
+        new StepChecks(
+            rules,
+            mock(OidcProviderConnectionTester.class),
+            chatTester,
+            encryptor,
+            ModelAddressPolicy.disabled(),
+            embeddingModels,
+            mailTester,
+            modelRoles);
+    when(modelRoles.probeRerank("http://reranker:80", "bge-reranker", "geheim"))
+        .thenReturn(new ModelRoleAdministration.TestOutcome(false, "HTTP 401"));
+    String payload =
+        json.writeValueAsString(
+            new StepRules.RerankModelPayload("http://reranker:80", "bge-reranker"));
+
+    StepChecks.Outcome outcome =
+        permissive.check(InstallationStep.RERANK_MODEL, payload, encryptor.encrypt("geheim"), null);
+
+    assertThat(outcome.succeeded()).isFalse();
+    assertThat(outcome.message()).isEqualTo("HTTP 401");
+    assertThat(outcome.dimensions()).isNull();
+  }
+
+  @Test
+  void anUnreadableRerankKeyFailsTheCheckWithoutAProbe() {
+    StepChecks permissive =
+        new StepChecks(
+            rules,
+            mock(OidcProviderConnectionTester.class),
+            chatTester,
+            encryptor,
+            ModelAddressPolicy.disabled(),
+            embeddingModels,
+            mailTester,
+            modelRoles);
+    String payload =
+        json.writeValueAsString(
+            new StepRules.RerankModelPayload("http://reranker:80", "bge-reranker"));
+
+    StepChecks.Outcome outcome =
+        permissive.check(InstallationStep.RERANK_MODEL, payload, "kein-chiffrat", null);
+
+    assertThat(outcome.succeeded()).isFalse();
+    assertThat(outcome.message()).contains("nicht lesbar");
+    verifyNoInteractions(modelRoles);
+  }
+
   @Test
   void theBrandingCheckAppliesTheRulesAgainWithoutAnyConnection() {
     String passing =

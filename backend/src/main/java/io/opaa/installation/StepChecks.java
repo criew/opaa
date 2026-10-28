@@ -15,12 +15,13 @@ import org.springframework.stereotype.Component;
 /**
  * The check of each saved step (ADR-0060, Entscheidung 6): the same connection tests the
  * administration runs for an identity provider and a chat model, a probe embedding for the
- * embedding model, which also yields its vector size (Entscheidung 10), the probe of the model
- * administration for the transcription model (Entscheidung 16), and a connection to the mail server
- * that sends nothing unless a test recipient is named, and the rules of the branding administration
- * once more for the branding, without any connection. A model address and a mail server are checked
- * against the address check of the installation again right before the connection. The outcome is
- * German and user-facing; a failed check is a result, never an exception.
+ * embedding model, which also yields its vector size (Entscheidung 10), the probes of the model
+ * administration for the rerank and the transcription model (Entscheidung 16 for transcription), a
+ * connection to the mail server that sends nothing unless a test recipient is named, and the rules
+ * of the branding administration once more for the branding, without any connection. A model
+ * address and a mail server are checked against the address check of the installation again right
+ * before the connection. The outcome is German and user-facing; a failed check is a result, never
+ * an exception.
  */
 @Component
 class StepChecks {
@@ -82,6 +83,7 @@ class StepChecks {
       case SIGN_IN -> signIn(rules.signInPayload(payload));
       case CHAT_MODEL -> chatModel(rules.chatModelPayload(payload), secret);
       case EMBEDDING_MODEL -> embeddingModel(rules.embeddingModelPayload(payload), secret);
+      case RERANK_MODEL -> rerankModel(rules.rerankModelPayload(payload), secret);
       case TRANSCRIPTION_MODEL ->
           transcriptionModel(rules.transcriptionModelPayload(payload), secret);
       case MAIL -> mail(rules.mailPayload(payload), secret, testRecipient);
@@ -133,6 +135,22 @@ class StepChecks {
       return new Outcome(false, UNREADABLE_KEY);
     }
     return new Outcome(outcome.succeeded(), outcome.message(), outcome.dimensions());
+  }
+
+  private Outcome rerankModel(StepRules.RerankModelPayload model, String secret) {
+    String blocked = StepRules.blockedModelAddress(modelAddresses, model.baseUrl());
+    if (blocked != null) {
+      return new Outcome(false, blocked);
+    }
+    String apiKey;
+    try {
+      apiKey = settingsEncryptor.decrypt(secret);
+    } catch (IllegalStateException e) {
+      return new Outcome(false, UNREADABLE_KEY);
+    }
+    ModelRoleAdministration.TestOutcome outcome =
+        modelRoles.probeRerank(model.baseUrl(), model.model(), apiKey);
+    return new Outcome(outcome.success(), outcome.message());
   }
 
   private Outcome transcriptionModel(StepRules.TranscriptionModelPayload model, String secret) {

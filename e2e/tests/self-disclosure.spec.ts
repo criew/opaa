@@ -173,7 +173,7 @@ async function askAndWait(page: Page, question: string): Promise<string> {
 
 async function openSpaceChat(page: Page): Promise<void> {
   await page.goto(`/spaces/${spaceId}/chats/new`)
-  await expect(page.getByPlaceholder('Nachricht eingeben …')).toBeVisible()
+  await expect(page.getByRole('combobox', { name: 'Nachricht eingeben' })).toBeVisible()
 }
 
 test.describe('Selbstauskunft aus den Einstellungen', () => {

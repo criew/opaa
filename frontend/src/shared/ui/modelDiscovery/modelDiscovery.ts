@@ -112,9 +112,10 @@ export function describeModel(model: DiscoveredLlmModel): string[] {
 }
 
 /** The role a discovered model is chosen for. */
-export type DiscoveryPurpose = 'chat' | 'embedding' | 'transcription'
+export type DiscoveryPurpose = 'chat' | 'embedding' | 'rerank' | 'transcription'
 
 const EMBEDDING_NAME = /embed|bge|bert|minilm|mpnet/i
+const RERANK_NAME = /rerank/i
 
 /**
  * Whether a model can serve as the embedding model: reported capabilities decide when there are
@@ -123,6 +124,14 @@ const EMBEDDING_NAME = /embed|bge|bert|minilm|mpnet/i
 export function embeddingSuitable(model: DiscoveredLlmModel): boolean {
   if (model.capabilities.length > 0) return model.capabilities.includes('embedding')
   return EMBEDDING_NAME.test(`${model.identifier} ${model.family ?? ''}`)
+}
+
+/**
+ * Whether a model's identifier or family names a reranker; no endpoint reports a rerank
+ * capability, so the name is all there is - the probe decides.
+ */
+export function rerankSuitable(model: DiscoveredLlmModel): boolean {
+  return RERANK_NAME.test(`${model.identifier} ${model.family ?? ''}`)
 }
 
 const TRANSCRIPTION_NAME = /whisper|transcri|speech|stt|asr|parakeet/i

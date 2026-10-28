@@ -106,7 +106,7 @@ describe('ChatPage routing (real router)', () => {
     renderChatPageAt('/spaces/space-personal/chats/new')
     await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))
 
-    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
     fireEvent.change(input, { target: { value: 'Wie ist das Projekt aufgebaut?' } })
     fireEvent.click(screen.getByLabelText('Senden'))
 
@@ -175,7 +175,7 @@ describe('ChatPage routing (real router)', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Neuer Chat' }))
     await waitFor(() => expect(useChatStore.getState().chatId).toBeNull())
 
-    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
     fireEvent.change(input, { target: { value: 'Eine neue Frage' } })
     fireEvent.click(screen.getByLabelText('Senden'))
 

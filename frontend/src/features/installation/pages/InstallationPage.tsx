@@ -1,17 +1,18 @@
-import { useCallback } from 'react'
+import { useMemo } from 'react'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import { LOGIN_ROUTE } from '@/shared/routes'
 import type { LlmModelDiscoveryResponse } from '@/shared/api/types'
-import type {
-  InstallationModelDiscoveryRequest,
-  InstallationStatusResponse,
-  InstallationStepCheckRequest,
-  InstallationStepId,
-  InstallationStepState,
-  ModelStepId,
-  StepInput,
+import {
+  MODEL_STEPS,
+  type InstallationModelDiscoveryRequest,
+  type InstallationStatusResponse,
+  type InstallationStepCheckRequest,
+  type InstallationStepId,
+  type InstallationStepState,
+  type ModelStepId,
+  type StepInput,
 } from '../api/types'
 import InstallationLayout from '../components/InstallationLayout'
 import StepList from '../components/StepList'
@@ -23,6 +24,7 @@ import ChatModelStep from '../components/steps/ChatModelStep'
 import EmbeddingModelStep from '../components/steps/EmbeddingModelStep'
 import FirstAdminStep from '../components/steps/FirstAdminStep'
 import MailStep from '../components/steps/MailStep'
+import RerankModelStep from '../components/steps/RerankModelStep'
 import SignInStep from '../components/steps/SignInStep'
 import TranscriptionModelStep from '../components/steps/TranscriptionModelStep'
 import { useInstallationWizard, type WizardResult } from '../hooks/useInstallationWizard'
@@ -68,6 +70,10 @@ type Discover = (
   request: InstallationModelDiscoveryRequest,
 ) => Promise<LlmModelDiscoveryResponse>
 
+type StepDiscover = (
+  request: InstallationModelDiscoveryRequest,
+) => Promise<LlmModelDiscoveryResponse>
+
 interface StepViewProps {
   step: InstallationStepState
   publicBaseUrlConfigured: boolean
@@ -87,16 +93,15 @@ function StepView({
   onBack,
 }: StepViewProps) {
   const nav = { onBack, onSkip: step.mandatory ? undefined : () => skip(step.step) }
-  const discoverChat = useCallback(
-    (request: InstallationModelDiscoveryRequest) => discover('CHAT_MODEL', request),
-    [discover],
-  )
-  const discoverEmbedding = useCallback(
-    (request: InstallationModelDiscoveryRequest) => discover('EMBEDDING_MODEL', request),
-    [discover],
-  )
-  const discoverTranscription = useCallback(
-    (request: InstallationModelDiscoveryRequest) => discover('TRANSCRIPTION_MODEL', request),
+  // One stable discovery per model step, so a step's fields fetch only when their entries change.
+  const discoverFor = useMemo(
+    () =>
+      Object.fromEntries(
+        MODEL_STEPS.map((model) => [
+          model,
+          (request: InstallationModelDiscoveryRequest) => discover(model, request),
+        ]),
+      ) as Record<ModelStepId, StepDiscover>,
     [discover],
   )
   switch (step.step) {
@@ -109,7 +114,7 @@ function StepView({
         <ChatModelStep
           step={step}
           submit={(v) => submit('CHAT_MODEL', v)}
-          discover={discoverChat}
+          discover={discoverFor.CHAT_MODEL}
           {...nav}
         />
       )
@@ -118,7 +123,16 @@ function StepView({
         <EmbeddingModelStep
           step={step}
           submit={(v) => submit('EMBEDDING_MODEL', v)}
-          discover={discoverEmbedding}
+          discover={discoverFor.EMBEDDING_MODEL}
+          {...nav}
+        />
+      )
+    case 'RERANK_MODEL':
+      return (
+        <RerankModelStep
+          step={step}
+          submit={(v) => submit('RERANK_MODEL', v)}
+          discover={discoverFor.RERANK_MODEL}
           {...nav}
         />
       )
@@ -127,7 +141,7 @@ function StepView({
         <TranscriptionModelStep
           step={step}
           submit={(v) => submit('TRANSCRIPTION_MODEL', v)}
-          discover={discoverTranscription}
+          discover={discoverFor.TRANSCRIPTION_MODEL}
           {...nav}
         />
       )

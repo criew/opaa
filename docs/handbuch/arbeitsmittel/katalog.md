@@ -32,7 +32,8 @@ Die Einträge kommen seitenweise; „Weitere laden" hängt die nächste Seite an
 Jedes Arbeitsmittel steht als Kachel im Katalog. Sie nennt:
 
 - die **Art** als Etikett, etwa „Wissen" oder „Prompts", und ein **Welt-Symbol**, wenn das
-  Arbeitsmittel an „Alle Konten" freigegeben ist,
+  Arbeitsmittel an „Alle Konten" freigegeben ist; beim Überfahren nennt es „Für alle Konten
+  freigegeben",
 - **Name** und **Beschreibung**,
 - den **Umfang**, etwa die Zahl der Dokumente oder Prompts, und in wie vielen Spaces es bereitsteht,
 - die **zuständige Stelle**, eine Person oder eine Gruppe,
@@ -58,9 +59,9 @@ persönliche Ordnung:
 
 ## 4. Ein Arbeitsmittel anlegen
 
-**„Neu"** im Katalog fragt zuerst „Was möchten Sie anlegen?" und bietet jede Art als Kachel an —
-**nur die Arten, für die die Person ein Anlegerecht hat** ([Berechtigungen](../konten-und-rechte/berechtigungen.md),
-Abschnitt 9). Hat sie keines, fehlt „Neu". „Weiter" führt in den Assistenten der gewählten Art,
+**„Neuer Katalogeintrag"** oben rechts im Katalog fragt zuerst „Was möchten Sie anlegen?" und
+bietet jede Art als Kachel an — **nur die Arten, für die die Person ein Anlegerecht hat** ([Berechtigungen](../konten-und-rechte/berechtigungen.md),
+Abschnitt 9). Hat sie keines, fehlt der Knopf. „Weiter" führt in den Assistenten der gewählten Art,
 den ihr Kapitel beschreibt; „Abbrechen" führt zurück in den Katalog.
 
 Jeder Assistent endet mit Eigentümer und ersten Freigaben an Personen und Gruppen. Eine Freigabe an

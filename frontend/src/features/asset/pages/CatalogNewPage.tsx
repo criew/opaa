@@ -14,7 +14,7 @@ import type { AssetType } from '@/shared/api/types'
 const QUESTION = 'Was möchten Sie anlegen?'
 
 /**
- * "Neu" in the catalog (ADR-0039, Entscheidung 1): the type choice as tiles, offering only the
+ * "Neuer Katalogeintrag" in the catalog (ADR-0039, Entscheidung 1): the type choice as tiles, offering only the
  * types the person may create; "Weiter" hands over to the type's own wizard.
  */
 export default function CatalogNewPage() {
@@ -29,7 +29,9 @@ export default function CatalogNewPage() {
   return (
     <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2.5, md: 5 } }}>
       <Box sx={{ maxWidth: 720 }}>
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 0.5 }}>Neu</Typography>
+        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 0.5 }}>
+          Neuer Katalogeintrag
+        </Typography>
         <PageHeading title={QUESTION} sx={{ fontSize: 26, fontWeight: 600, mb: 3 }} />
 
         {offered.length === 0 ? (

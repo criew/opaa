@@ -3,9 +3,10 @@
 > **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
 
 Eine OPAA-Instanz mit leerer Datenbank ist erst nutzbar, wenn sie eingerichtet ist: erstes Konto
-der Systemverwaltung und Anmeldeverfahren, dazu nach Wahl Chat-Modell, Embedding-Modell, das
-Transkriptionsmodell der [Spracheingabe](modelle.md#spracheingabe-einschalten), der Mailserver für den
-[E-Mail-Versand](e-mail.md) und das [Branding](branding.md). Bis dahin steht sie im **Installationsmodus** und
+der Systemverwaltung und Anmeldeverfahren, dazu nach Wahl Chat-Modell, Embedding-Modell,
+Rerank-Modell, das Transkriptionsmodell der [Spracheingabe](modelle.md#spracheingabe-einschalten), der
+Mailserver für den [E-Mail-Versand](e-mail.md) und das [Branding](branding.md). Bis dahin steht sie im
+**Installationsmodus** und
 bietet nur die Installation an. Eingerichtet wird im Browser mit dem
 [Einrichtungs-Assistenten](#einrichtungs-assistent-im-browser), über die Installations-API Schritt
 für Schritt oder in einem Zug mit einer **Antwortdatei**, etwa aus Helm oder einer CI. Den Betriebsweg
@@ -79,8 +80,8 @@ lehnt es ab.
 Jeder Aufruf trägt das Token als `Authorization: Bearer <Token>`. Jeder Schritt wird einzeln
 gespeichert und geprüft; ein Abbruch setzt beim gespeicherten Stand fort. Neu gespeicherte Angaben
 verwerfen die Prüfung des Schritts. Pflicht sind die ersten zwei Schritte, erstes Konto und
-Anmeldeverfahren; Chat-Modell, Embedding-Modell, Transkriptionsmodell, E-Mail-Versand und Branding
-sind optional. Das Transkriptionsmodell gibt es nur, solange `OPAA_FEATURES_SPEECH_INPUT_ENABLED`
+Anmeldeverfahren; Chat-Modell, Embedding-Modell, Rerank-Modell, Transkriptionsmodell, E-Mail-Versand
+und Branding sind optional. Das Transkriptionsmodell gibt es nur, solange `OPAA_FEATURES_SPEECH_INPUT_ENABLED`
 nicht `false` ist: Sonst fehlt der Schritt in Assistent und API, und die Antwortdatei übergeht seinen
 Teil. Den Wert der Variable tragen alle Instanzen gleich: Schließt eine Instanz mit
 abgeschalteter Spracheingabe die Installation ab, verwirft sie einen gespeicherten Schritt
@@ -92,6 +93,7 @@ Transkriptionsmodell.
 | Anmeldeverfahren (`SIGN_IN`) | ja | nur lokale Konten, oder zusätzlich ein OIDC-Anbieter: Issuer, Client-ID, JWK-Set-Adresse | Zielprüfung, Discovery und JWK-Set erreichbar | Anbieterverwaltung |
 | Chat-Modell (`CHAT_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Temperatur, Antwortlänge | Verbindungstest wie in der Modellverwaltung | Modelle ([Chat-Modelle in der Oberfläche anlegen](modelle.md#chat-modelle-in-der-oberfläche-anlegen)) |
 | Embedding-Modell (`EMBEDDING_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Eingabegrenze | Probeeinbettung; ihr Ergebnis legt die Zahl der Dimensionen fest | Modelle, Reiter „Einbettung": erstes Modell festlegen ([Erstes Modell festlegen](modelle.md#erstes-modell-festlegen)), später mit Neueinbettung wechseln ([Modell wechseln](modelle.md#modell-wechseln)) |
+| Rerank-Modell (`RERANK_MODEL`) | nein | Adresse ohne den Pfad `/rerank`, Modellname, Zugangsschlüssel | Adressprüfung der Modelle; dieselbe Probe wie „Verbindung testen“ in der Modellverwaltung, eine Rerank-Anfrage mit einem Prüftext | Modelle, Reiter „Reranking“ ([Rerank-Modell und Transkriptionsmodell in der Oberfläche](modelle.md#rerank-modell-und-transkriptionsmodell-in-der-oberfläche)) |
 | Transkriptionsmodell (`TRANSCRIPTION_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Sprache | Probe wie „Verbindung testen“ unter Modelle → Spracheingabe, ohne Aufnahme | Modelle, Reiter „Spracheingabe“ ([Spracheingabe einschalten](modelle.md#spracheingabe-einschalten)) |
 | E-Mail-Versand (`MAIL`) | nein | Server, Port, Verschlüsselung, Benutzername, Passwort, Absenderadresse, Absendername | Adressprüfung der Mailserver; Verbindung zum Server, mit Anmeldung, wenn ein Benutzername gesetzt ist, ohne eine Nachricht zu senden; auf Wunsch eine Testnachricht an eine angegebene Adresse | E-Mail ([E-Mail-Versand](e-mail.md)) |
 | Branding (`BRANDING`) | nein | Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe, Farbschema-Vorgabe; keine Bilder | Regeln der Branding-Verwaltung, ohne Verbindung | Branding ([Branding](branding.md)) |
@@ -126,7 +128,7 @@ ihn. Ebenso geht ein gespeichertes Passwort des Mailservers nicht an einen ander
 Benutzernamen oder eine andere Verschlüsselung.
 
 **Adressprüfung der Modelle.** Weil die Installation vor jedem Konto läuft, prüft OPAA die
-Adressen von Chat-, Embedding- und Transkriptionsmodell beim Speichern und unmittelbar vor
+Adressen von Chat-, Embedding-, Rerank- und Transkriptionsmodell beim Speichern und unmittelbar vor
 Verbindungstest, Probeeinbettung und Probe, auch eine Adresse, die die Modellverwaltung schon
 gespeichert hat: Adressen in internen, Loopback- oder Link-Local-Bereichen werden abgelehnt, ohne
 dass eine Anfrage hinausgeht. Ein Modell im eigenen Netz, etwa Ollama im Compose-Stapel, gibt der
@@ -161,12 +163,13 @@ Anmeldeverfahren ein: Er schaltet in beiden Verfahren die
 [lokale Benutzerverwaltung](authentifizierung.md#lokale-benutzerverwaltung) ein, und ein OIDC-Anbieter
 wird Standardanbieter. Er aktiviert das Chat-Modell, legt das
 Embedding-Modell fest samt der Vektorablage mit der Zahl der Dimensionen aus der Probeeinbettung,
+übernimmt ein geprüftes Rerank-Modell in die Modellverwaltung und schaltet das Reranking ein,
 schaltet mit einem geprüften Transkriptionsmodell die Spracheingabe ein wie die Modellverwaltung,
 übernimmt einen geprüften Mailserver in die Einstellungen des E-Mail-Versands und schaltet den
 Versand ein, übernimmt ein geprüftes Branding wie die Branding-Verwaltung und verwirft Token und
-Zwischenstand. Ein übersprungener Modellschritt legt kein Modell an, ohne Transkriptionsmodell
-bleibt die Spracheingabe aus; ist der E-Mail-Versand
-übersprungen, bleibt er aus; ist das Branding übersprungen oder in jedem Feld leer, gilt der
+Zwischenstand. Ein übersprungener Modellschritt legt kein Modell an, ohne Rerank-Modell bleibt das
+Reranking aus, ohne Transkriptionsmodell die Spracheingabe; ist der E-Mail-Versand übersprungen,
+bleibt er aus; ist das Branding übersprungen oder in jedem Feld leer, gilt der
 OPAA-Standard, und der Abschluss schreibt dafür nichts. Vor dem Embedding-Modell gibt es keine
 Vektorablage; ein späterer Wechsel des Embedding-Modells läuft in der Modellverwaltung, mit
 Neueinbettung ([Modelle](modelle.md#modell-wechseln)). Danach
@@ -176,8 +179,8 @@ vergessen“ an, sobald `OPAA_PUBLIC_BASE_URL` und der [E-Mail-Versand](e-mail.m
 auch für das erste Konto über dessen Postfach. Für dieses Konto deshalb ein Funktionspostfach der IT
 wählen; wer den Rücksetzweg nicht will, schaltet ihn in der
 [Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md) ab. Jeder Schritt, jede Prüfung,
-jedes Überspringen, das Einschalten der lokalen Konten und der Abschluss stehen im
-Revisionsprotokoll, ohne Passwörter und ohne die Adresse einer Testnachricht.
+jedes Überspringen, das Einschalten der lokalen Konten, die Übernahme des Rerank-Modells
+(„Rerank-Modell“) und der Abschluss stehen im Revisionsprotokoll, ohne Passwörter und ohne die Adresse einer Testnachricht.
 
 ## Einrichtungs-Assistent im Browser
 
@@ -190,7 +193,8 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
   (der Grund steht über dem Formular, auch nach erneutem Öffnen), „Gespeichert, Prüfung offen“ oder
   „Offen“, ein optionaler Schritt ohne Angaben als „Nicht eingerichtet“. Pflichtschritte und
   optionale Schritte stehen in getrennten Gruppen; über dem Titel eines optionalen Schritts steht
-  „Optional · später unter …“ (bei Chat-, Embedding- und Transkriptionsmodell „Modelle“, beim E-Mail-Versand
+  „Optional · später unter …“ (bei Chat-, Embedding-, Rerank- und Transkriptionsmodell „Modelle“,
+  beim E-Mail-Versand
   „E-Mail“, beim Branding „Branding“), und „Überspringen“ lässt ihn aus. Pflicht sind erstes Konto und Anmeldeverfahren.
   „Überspringen“ in einem schon gespeicherten Schritt verwirft dessen Angaben, auch nach einer
   fehlgeschlagenen Prüfung.
@@ -199,7 +203,9 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
   `https://`; alles Weitere prüft OPAA wie oben beschrieben.
 - **Modelle auswählen.** In den Modellschritten wählt man zuerst den Anbieter (Ollama, OpenAI, beim
   Chat auch Anthropic, beim Transkriptionsmodell nur OpenAI, oder „Eigene Adresse“); die Vorlage trägt
-  die Basis-Adresse ein. Verlässt man Adresse oder API-Schlüssel und steht beides, wo nötig, ruft
+  die Basis-Adresse ein. Der Schritt Rerank-Modell hat keine Vorlage, weil keiner dieser Anbieter
+  einen Rerank-Endpunkt bietet; er beginnt bei der Basis-Adresse, ohne den Pfad `/rerank`. Verlässt
+  man Adresse oder API-Schlüssel und steht beides, wo nötig, ruft
   der Assistent die Modelle ab, die der Endpunkt anbietet, und bietet sie unter „Modell-Kennung“
   zur Auswahl an, bei Ollama mit Größe und Kontextlänge; ebenso beim Öffnen eines gespeicherten
   Modellschritts. „Modelle abrufen“ wiederholt den Abruf. Es ist derselbe Abruf wie in der
@@ -214,6 +220,12 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
 - **Embedding-Modell.** Nach erfolgreicher Probeeinbettung zeigt der Schritt die ermittelte Zahl
   der Dimensionen; mit ihr legt der Abschluss die Vektorablage an. Wer Adresse oder Modell danach
   ändert, prüft erneut.
+- **Rerank-Modell.** Die Prüfung ist dieselbe Probe wie „Verbindung testen“ unter „Modelle →
+  Reranking“; nach dem Abschluss steht das Modell dort, eingeschaltet. Nicht jeder Rerank-Dienst
+  bietet eine Modellliste an; dann wird die Kennung von Hand eingetragen. Der Schritt hängt nicht von
+  Chat- und Embedding-Modell ab und lässt sich auch prüfen und übernehmen, wenn beide übersprungen
+  sind. Ohne Embedding-Modell gibt es keine Suche; das Reranking wirkt dann erst, wenn die
+  Systemverwaltung eines festlegt.
 - **Transkriptionsmodell.** Der Schritt hat die Texte und die Sprachregel von „Modelle →
   Spracheingabe“; die Sprache steht auf `de`, leer erkennt das Modell sie selbst. „Prüfen und
   weiter“ fragt den Endpunkt nach seinen Modellen und sendet keine Aufnahme. Unter den Anbietern
@@ -235,7 +247,7 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
   „Verbindung und Anmeldung beim Mailserver sind gelungen. Es wurde keine Testnachricht
   gesendet.“ (ohne Benutzername „Die Verbindung zum Mailserver ist gelungen. …“) oder „… Die
   Testnachricht wurde dem Mailserver übergeben.“, ohne die Adresse. Der
-  Abschluss nennt außerdem, ob er den Versand einschaltet.
+  Abschluss nennt außerdem, ob er den Versand und das Reranking einschaltet.
 - **Branding.** Der Schritt hat die Felder, Hinweise und Regeln von „Administration → Branding“,
   dazu dessen Kontrastwarnung der Akzentfarbe, die warnt, aber nicht sperrt, und die Vorschau von
   Produktname, Claim und Akzentfarbe im hellen und im dunklen Farbschema. Ein leeres Feld zeigt den
@@ -291,6 +303,11 @@ Prüfungen, alles oder nichts.
     "apiKeyFile": null,
     "maxInputTokens": 8192
   },
+  "rerankModel": {
+    "baseUrl": "http://reranker:80",
+    "model": "BAAI/bge-reranker-v2-m3",
+    "apiKeyFile": null
+  },
   "transcriptionModel": {
     "baseUrl": "http://speaches:8000/v1",
     "model": "Systran/faster-whisper-large-v3",
@@ -332,9 +349,13 @@ Prüfungen, alles oder nichts.
   Passwort und Schlüssel dann als `password` und `apiKey` im Rumpf, wie in den einzelnen Schritten;
   das so gesetzte Passwort gilt wie im Assistenten ohne erzwungenen Wechsel.
   Dateipfade nimmt die API nicht an: Sie ließen den Inhaber des Tokens Dateien des Backends lesen.
-- **Optionale Teile:** `chatModel`, `embeddingModel`, `transcriptionModel`, `mail` und `branding` sind optional. Fehlt ein Teil,
+- **Optionale Teile:** `chatModel`, `embeddingModel`, `rerankModel`, `transcriptionModel`, `mail` und
+  `branding` sind optional. Fehlt ein Teil,
   gilt sein Schritt als übersprungen; was der Assistent vorher dafür gespeichert hatte, wird
   verworfen.
+- **Rerank-Modell:** Ohne den Abschnitt `rerankModel` bleibt das Reranking aus. Mit ihm prüft OPAA
+  Adresse und Endpunkt wie im Assistenten, und der Abschluss schaltet das Reranking ein. Der
+  Schlüssel steht als `apiKeyFile`; ohne ihn sendet OPAA keinen.
 - **E-Mail-Versand:** Ohne den Abschnitt `mail` bleibt der Versand aus. Mit ihm prüft OPAA Adresse
   und Verbindung wie im Assistenten, ohne Testnachricht, und der Abschluss schaltet den Versand ein.
   Das Passwort steht als `passwordFile`; ohne es meldet sich OPAA nicht an.
@@ -374,6 +395,7 @@ Prüfungen, alles oder nichts.
 | `429` | zu viele Aufrufe oder abgelehnte Tokens von dieser Adresse; im Assistenten „Zu viele Modellabrufe“: das Budget der Modellabrufe ist erschöpft; mit dem Code `MAIL_TEST_LIMIT` „Zu viele Testnachrichten“: das Budget der Testnachrichten ist erschöpft; mit dem Code `MAIL_CHECK_LIMIT` „Zu viele Prüfungen des Mailservers“: das Budget der Prüfungen ist erschöpft (die übrigen Fälle zeigen „Zu viele Anfragen oder Fehlversuche von dieser Adresse“) | `Retry-After` abwarten, die Modell-Kennung lässt sich so lange von Hand eintragen, der Mailserver ohne Testnachricht prüfen; hinter einem Proxy `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` setzen |
 | `409` beim Abschluss | ein Pflichtschritt ist nicht gespeichert oder nicht erfolgreich geprüft, oder ein gespeicherter optionaler Schritt ist nicht erfolgreich geprüft | offene Schritte prüfen oder optionale überspringen; die Meldung nennt sie |
 | `400` beim Überspringen | der Schritt ist Pflicht | Schritt ausfüllen und prüfen |
+| Prüfung des Rerank-Modells „Endpunkt oder Modell wurde nicht gefunden (HTTP 404) …“ | die Basis-Adresse enthält den Pfad `/rerank` schon, oder der Dienst kennt die Modell-Kennung nicht | Basis-Adresse ohne `/rerank` eintragen, Kennung prüfen, oder den Schritt überspringen und das Modell später unter „Modelle → Reranking“ eintragen |
 | `400` „Den Schritt TRANSCRIPTION_MODEL gibt es in dieser Installation nicht …“ | die Spracheingabe ist mit `OPAA_FEATURES_SPEECH_INPUT_ENABLED=false` abgeschaltet | Schritt auslassen, oder die Variable entfernen und neu starten |
 | `400` am Feld Sprache „Die Sprache ist ein Kürzel aus zwei Buchstaben …“ | die Sprache des Transkriptionsmodells ist kein Kürzel nach ISO 639-1 | Kürzel wie `de` eintragen oder das Feld leeren |
 | Prüfung des Transkriptionsmodells „Endpunkt oder Modell wurde nicht gefunden (HTTP 404) …“ oder „Die Verbindung wurde vom Server abgelehnt.“ | der Dienst bietet `GET {Basis-Adresse}/models` nicht an, oder die Adresse enthält den Pfad `/audio/transcriptions` | Basis-Adresse ohne den Pfad eintragen, Dienst prüfen |

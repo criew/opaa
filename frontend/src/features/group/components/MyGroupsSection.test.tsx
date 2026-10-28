@@ -300,7 +300,9 @@ describe('MyGroupsSection', () => {
     renderWithProviders(<MyGroupsSection />, { withRouter: true })
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('button', { name: 'Neue Gruppe' }))
+    const create = await screen.findByRole('button', { name: 'Neue Gruppe' })
+    expect(within(create).getByTestId('AddIcon')).toBeInTheDocument()
+    await user.click(create)
     const dialog = await screen.findByRole('dialog', { name: 'Gruppe anlegen' })
 
     expect(

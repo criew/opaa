@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest'
 import ChatInput from './ChatInput'
 import type { SendOutcome } from './ChatInput'
 import { useChatStore } from '../stores/chatStore'
@@ -82,6 +82,25 @@ const dienstanweisungen: LibraryListResponse = {
   updatedAt: '2026-03-01T10:00:00Z',
 }
 
+/**
+ * The prefix hint is the end of the placeholder and the field's accessible description - the only
+ * element carrying its text is the one the field's aria-describedby points to, so no visible line
+ * repeats it; the field's name stays "Nachricht eingeben".
+ */
+async function expectPrefixHint(hint: string) {
+  const input = screen.getByRole('combobox')
+  await waitFor(() =>
+    expect(input.getAttribute('placeholder')?.replaceAll('\u00a0', ' ')).toBe(
+      `Nachricht eingeben … ${hint}`,
+    ),
+  )
+  expect(input).toHaveAccessibleName('Nachricht eingeben')
+  expect(input).toHaveAccessibleDescription(hint)
+  const carriers = screen.getAllByText(hint)
+  expect(carriers).toHaveLength(1)
+  expect(input.getAttribute('aria-describedby')?.split(' ')).toContain(carriers[0].id)
+}
+
 describe('ChatInput', () => {
   beforeEach(() => {
     useChatStore.setState({
@@ -110,14 +129,62 @@ describe('ChatInput', () => {
     })
   })
 
-  // The line below the input no longer names a document count. An empty search scope appears
-  // as a hint above the chip bar - no knowledge associated, or none of it readable -, still
-  // unknown associations of the current space in the line.
-  describe('the line under the input (#1920)', () => {
-    it('shows the neutral hint instead of a library count', async () => {
+  // The prefix hint lives in the placeholder and, for assistive technology, in the field's
+  // description - there is no separate line for it under the input. An empty search
+  // scope appears as a hint above the chip bar - no knowledge associated, or none of it
+  // readable -, still unknown associations of the current space in the line under the input.
+  // The short form follows the measured width of the field, not the window: a wide sidebar
+  // narrows the field as much as a small screen. The description keeps the long form.
+  describe('the placeholder in a narrow field', () => {
+    function stubFieldWidth(width: number) {
+      vi.stubGlobal(
+        'ResizeObserver',
+        class {
+          private readonly callback: ResizeObserverCallback
+          constructor(callback: ResizeObserverCallback) {
+            this.callback = callback
+          }
+          observe() {
+            this.callback(
+              [{ contentRect: { width } } as ResizeObserverEntry],
+              this as unknown as ResizeObserver,
+            )
+          }
+          unobserve() {}
+          disconnect() {}
+        },
+      )
+    }
+
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    it('takes the short form below the threshold and keeps the long description', async () => {
+      stubFieldWidth(300)
       render(<ChatInput onSend={vi.fn()} />)
 
-      expect(await screen.findByText('@ für Quellen, / für Aktionen')).toBeInTheDocument()
+      const input = screen.getByRole('combobox')
+      await waitFor(() =>
+        expect(input).toHaveAttribute('placeholder', '@\u00a0Quellen, /\u00a0Aktionen'),
+      )
+      expect(input).toHaveAccessibleName('Nachricht eingeben')
+      expect(input).toHaveAccessibleDescription('@ für Quellen, / für Aktionen')
+    })
+
+    it('keeps the long form in a field wide enough for it', async () => {
+      stubFieldWidth(600)
+      render(<ChatInput onSend={vi.fn()} />)
+
+      await expectPrefixHint('@ für Quellen, / für Aktionen')
+    })
+  })
+
+  describe('the prefix hint (#1920, #3267)', () => {
+    it('names both prefixes in the placeholder and as the description, not in a line', async () => {
+      render(<ChatInput onSend={vi.fn()} />)
+
+      await expectPrefixHint('@ für Quellen, / für Aktionen')
       expect(screen.queryByText(/Durchsucht/)).not.toBeInTheDocument()
       expect(screen.queryByText(/Bestände/)).not.toBeInTheDocument()
     })
@@ -129,7 +196,7 @@ describe('ChatInput', () => {
       })
       render(<ChatInput onSend={vi.fn()} />)
 
-      expect(await screen.findByText('@ für Quellen, / für Aktionen')).toBeInTheDocument()
+      await expectPrefixHint('@ für Quellen, / für Aktionen')
       expect(screen.queryByText(/gewählte Bestände/)).not.toBeInTheDocument()
     })
 
@@ -220,7 +287,7 @@ describe('ChatInput', () => {
 
       renderWithRouter(<ChatInput onSend={vi.fn()} />)
 
-      expect(await screen.findByText('@ für Quellen, / für Aktionen')).toBeInTheDocument()
+      await expectPrefixHint('@ für Quellen, / für Aktionen')
       await waitFor(() =>
         expect(useSpaceStore.getState().assetAssociationsSpaceId).toBe('space-gewerbeamt'),
       )
@@ -266,7 +333,8 @@ describe('ChatInput', () => {
       render(<ChatInput onSend={vi.fn()} />)
 
       expect(await screen.findByText('Suchbereich wird ermittelt …')).toBeInTheDocument()
-      expect(screen.queryByText('@ für Quellen, / für Aktionen')).not.toBeInTheDocument()
+      // The notice takes the line; the prefix hint stays in the placeholder and description.
+      await expectPrefixHint('@ für Quellen, / für Aktionen')
     })
   })
 
@@ -353,7 +421,7 @@ describe('ChatInput', () => {
     })
     render(<ChatInput onSend={vi.fn()} />)
 
-    await user.type(screen.getByPlaceholderText('Nachricht eingeben …'), '@Bau')
+    await user.type(screen.getByPlaceholderText(/^Nachricht eingeben …/), '@Bau')
 
     expect(await screen.findByText('Keine passende Bibliothek in diesem Space')).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: /Bauakten/ })).not.toBeInTheDocument()
@@ -362,14 +430,14 @@ describe('ChatInput', () => {
   it('labels library suggestions with the type badge (#591, mockup 1h)', async () => {
     const user = userEvent.setup()
     render(<ChatInput onSend={vi.fn()} />)
-    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
     await user.type(input, '@Rechts')
     expect(await screen.findByText('Bibliothek · verengt die Suche')).toBeInTheDocument()
   })
 
   it('renders input field, send button and the @Space-Wissen chip by default', () => {
     render(<ChatInput onSend={vi.fn()} />)
-    expect(screen.getByPlaceholderText('Nachricht eingeben …')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/^Nachricht eingeben …/)).toBeInTheDocument()
     expect(screen.getByLabelText('Senden')).toBeInTheDocument()
     expect(screen.getByText('@Space-Wissen')).toBeInTheDocument()
   })
@@ -378,7 +446,7 @@ describe('ChatInput', () => {
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} />)
 
-    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
     fireEvent.change(input, { target: { value: 'Hello world' } })
     fireEvent.click(screen.getByLabelText('Senden'))
 
@@ -389,7 +457,7 @@ describe('ChatInput', () => {
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} />)
 
-    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
     fireEvent.change(input, { target: { value: 'Test' } })
     fireEvent.keyDown(input, { key: 'Enter', shiftKey: false })
 
@@ -400,7 +468,7 @@ describe('ChatInput', () => {
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} />)
 
-    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
     fireEvent.change(input, { target: { value: 'Test' } })
     fireEvent.keyDown(input, { key: 'Enter', shiftKey: true })
 
@@ -411,7 +479,7 @@ describe('ChatInput', () => {
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} />)
 
-    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
     fireEvent.change(input, { target: { value: '   ' } })
     fireEvent.keyDown(input, { key: 'Enter', shiftKey: false })
 
@@ -422,7 +490,7 @@ describe('ChatInput', () => {
     const onSend = vi.fn()
     render(<ChatInput onSend={onSend} />)
 
-    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
     fireEvent.change(input, { target: { value: 'Erste Zeile\nzweite Zeile\n' } })
     fireEvent.keyDown(input, { key: 'Enter', shiftKey: false })
 
@@ -433,7 +501,7 @@ describe('ChatInput', () => {
     it('shows no counter for a short question', () => {
       render(<ChatInput onSend={vi.fn()} />)
 
-      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
       fireEvent.change(input, { target: { value: 'Kurze Frage' } })
 
       expect(screen.queryByText(/von 2000 Zeichen/)).not.toBeInTheDocument()
@@ -443,7 +511,7 @@ describe('ChatInput', () => {
       const onSend = vi.fn()
       render(<ChatInput onSend={onSend} />)
 
-      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
       fireEvent.change(input, { target: { value: 'a'.repeat(1800) } })
 
       expect(screen.getByText('1800 von 2000 Zeichen')).toBeInTheDocument()
@@ -456,7 +524,7 @@ describe('ChatInput', () => {
       const onSend = vi.fn()
       render(<ChatInput onSend={onSend} />)
 
-      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
       fireEvent.change(input, { target: { value: 'a'.repeat(2150) } })
 
       expect(
@@ -474,7 +542,7 @@ describe('ChatInput', () => {
     it('announces only the crossing of a threshold, not every keystroke', () => {
       const { container } = render(<ChatInput onSend={vi.fn()} />)
       const liveRegion = container.querySelector('[aria-live="polite"]')
-      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
 
       expect(liveRegion).toBeInTheDocument()
       expect(liveRegion).toHaveTextContent('')
@@ -501,7 +569,7 @@ describe('ChatInput', () => {
       const onSend = vi.fn()
       render(<ChatInput onSend={onSend} />)
 
-      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
       fireEvent.change(input, { target: { value: `  ${'a'.repeat(2000)}\n\n` } })
 
       expect(screen.getByText('2000 von 2000 Zeichen')).toBeInTheDocument()
@@ -516,7 +584,7 @@ describe('ChatInput', () => {
       const onSend = vi.fn().mockResolvedValue({ restoreDraft: 'Erste Zeile', onRestored })
       render(<ChatInput onSend={onSend} />)
 
-      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
       fireEvent.change(input, { target: { value: 'Erste Zeile' } })
       fireEvent.click(screen.getByLabelText('Senden'))
 
@@ -536,7 +604,7 @@ describe('ChatInput', () => {
       )
 
       await waitFor(() =>
-        expect(screen.getByPlaceholderText('Nachricht eingeben …')).toHaveValue('Zurückgegeben'),
+        expect(screen.getByPlaceholderText(/^Nachricht eingeben …/)).toHaveValue('Zurückgegeben'),
       )
       expect(onRestored).toHaveBeenCalledTimes(1)
       expect(onHandled).toHaveBeenCalledTimes(1)
@@ -546,7 +614,7 @@ describe('ChatInput', () => {
       const onRestored = vi.fn()
       const onHandled = vi.fn()
       const { rerender } = render(<ChatInput onSend={vi.fn()} />)
-      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
       fireEvent.change(input, { target: { value: 'Eigene Frage' } })
 
       rerender(
@@ -567,7 +635,7 @@ describe('ChatInput', () => {
       const refused = deferredOutcome()
       render(<ChatInput onSend={() => refused.promise} />)
 
-      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
       fireEvent.change(input, { target: { value: 'Alte Frage' } })
       fireEvent.click(screen.getByLabelText('Senden'))
       fireEvent.change(input, { target: { value: 'Neue Frage' } })
@@ -581,7 +649,7 @@ describe('ChatInput', () => {
 
   it('disables input when disabled prop is true', () => {
     render(<ChatInput onSend={vi.fn()} disabled />)
-    expect(screen.getByPlaceholderText('Nachricht eingeben …')).toBeDisabled()
+    expect(screen.getByPlaceholderText(/^Nachricht eingeben …/)).toBeDisabled()
   })
 
   // regression guard for #2135: a running answer locks sending, never typing.
@@ -591,7 +659,7 @@ describe('ChatInput', () => {
       const onSend = vi.fn()
       const { rerender } = render(<ChatInput onSend={onSend} answerPending />)
 
-      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
       expect(input).toBeEnabled()
       await user.click(input)
       await user.keyboard('Nächste Frage{Enter}')
@@ -612,7 +680,7 @@ describe('ChatInput', () => {
       const user = userEvent.setup()
       render(<ChatInput onSend={vi.fn()} />)
 
-      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
       await user.click(input)
       await user.keyboard('Frage')
       await user.click(screen.getByLabelText('Senden'))
@@ -620,10 +688,10 @@ describe('ChatInput', () => {
       expect(input).toHaveFocus()
     })
 
-    it('names only the / prefix under the input', () => {
+    it('names only the / prefix in the placeholder and description', async () => {
       render(<ChatInput onSend={vi.fn()} answerPending />)
 
-      expect(screen.getByText('/ für Aktionen')).toBeInTheDocument()
+      await expectPrefixHint('/ für Aktionen')
       expect(screen.queryByText(/@ für Quellen/)).not.toBeInTheDocument()
     })
 
@@ -634,7 +702,7 @@ describe('ChatInput', () => {
       expect(
         screen.queryByRole('button', { name: 'Referenz Space-Wissen entfernen' }),
       ).not.toBeInTheDocument()
-      await user.click(screen.getByPlaceholderText('Nachricht eingeben …'))
+      await user.click(screen.getByPlaceholderText(/^Nachricht eingeben …/))
       await user.keyboard('@')
 
       expect(screen.queryByRole('listbox', { name: 'Suchbereich' })).not.toBeInTheDocument()
@@ -729,7 +797,7 @@ describe('ChatInput', () => {
     it('replaces @Space-Wissen with the first concrete chip selected via @', async () => {
       const user = userEvent.setup()
       render(<ChatInput onSend={vi.fn()} />)
-      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
 
       await user.type(input, 'Bitte @Rechts')
       await user.click(await screen.findByRole('option', { name: /Rechtsquellen Soziales/ }))
@@ -743,7 +811,7 @@ describe('ChatInput', () => {
       const user = userEvent.setup()
       useChatStore.setState({ scope: 'libraries', referencedLibraryIds: ['library-referat-50'] })
       render(<ChatInput onSend={vi.fn()} />)
-      const input = screen.getByPlaceholderText('Nachricht eingeben …')
+      const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
 
       await user.type(input, '@Space')
       await user.click(await screen.findByRole('option', { name: /@Space-Wissen/ }))
@@ -756,7 +824,7 @@ describe('ChatInput', () => {
   it('opens library suggestions on "@", with @Space-Wissen always listed first, and filters by further typing', async () => {
     const user = userEvent.setup()
     render(<ChatInput onSend={vi.fn()} />)
-    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
 
     await user.type(input, '@')
     const listbox = await screen.findByRole('listbox', { name: 'Suchbereich' })
@@ -777,7 +845,7 @@ describe('ChatInput', () => {
   it('selects a suggestion by click, adds a chip and removes the @-fragment from the text', async () => {
     const user = userEvent.setup()
     render(<ChatInput onSend={vi.fn()} />)
-    const input = screen.getByPlaceholderText('Nachricht eingeben …') as HTMLTextAreaElement
+    const input = screen.getByPlaceholderText(/^Nachricht eingeben …/) as HTMLTextAreaElement
 
     await user.type(input, 'Bitte @Rechts')
     await user.click(await screen.findByRole('option', { name: /Rechtsquellen Soziales/ }))
@@ -789,7 +857,7 @@ describe('ChatInput', () => {
   it('selects the highlighted suggestion via keyboard (arrow + Enter)', async () => {
     const user = userEvent.setup()
     render(<ChatInput onSend={vi.fn()} />)
-    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
 
     await user.type(input, '@')
     await screen.findByRole('option', { name: /Rechtsquellen Soziales/ })
@@ -803,7 +871,7 @@ describe('ChatInput', () => {
   it('selects the hovered suggestion on click without prior keyboard navigation', async () => {
     const user = userEvent.setup()
     render(<ChatInput onSend={vi.fn()} />)
-    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
 
     await user.type(input, '@')
     const option = await screen.findByRole('option', { name: /Dienstanweisungen/ })
@@ -817,7 +885,7 @@ describe('ChatInput', () => {
     const onSend = vi.fn()
     const user = userEvent.setup()
     render(<ChatInput onSend={onSend} />)
-    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
 
     await user.type(input, 'Bitte @Rechts')
     await screen.findByRole('option', { name: /Rechtsquellen Soziales/ })
@@ -831,7 +899,7 @@ describe('ChatInput', () => {
     const onSend = vi.fn()
     const user = userEvent.setup()
     render(<ChatInput onSend={onSend} />)
-    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
 
     await user.type(input, '@Rechts')
     await screen.findByRole('option', { name: /Rechtsquellen Soziales/ })
@@ -844,7 +912,7 @@ describe('ChatInput', () => {
   it('does not reopen the suggestion list while typing further inside a dismissed mention', async () => {
     const user = userEvent.setup()
     render(<ChatInput onSend={vi.fn()} />)
-    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
 
     await user.type(input, '@Rechts')
     await screen.findByRole('option', { name: /Rechtsquellen Soziales/ })
@@ -868,7 +936,7 @@ describe('ChatInput', () => {
         <button type="button">Außerhalb</button>
       </div>,
     )
-    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
 
     await user.type(input, '@Rechts')
     await screen.findByRole('option', { name: /Rechtsquellen Soziales/ })

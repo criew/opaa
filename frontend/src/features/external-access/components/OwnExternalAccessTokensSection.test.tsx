@@ -22,6 +22,7 @@ function render() {
  */
 async function openCreateDialog(user: UserEvent) {
   const button = await screen.findByRole('button', { name: 'Token erzeugen' })
+  expect(within(button).getByTestId('AddIcon')).toBeInTheDocument()
   await waitFor(() => expect(button).toBeEnabled())
   await user.click(button)
   return screen.findByRole('dialog', { name: 'Token erzeugen' })

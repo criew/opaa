@@ -113,9 +113,9 @@ public class InstallationService {
   private final OidcProviderService oidcProviders;
   private final LlmModelService llmModels;
   private final EmbeddingModelService embeddingModels;
+  private final ModelRoleAdministration modelRoles;
   private final MailSettingsService mailSettings;
   private final BrandingSettingsService brandingSettings;
-  private final ModelRoleAdministration modelRoles;
   private final FeatureFlags features;
   private final AuditEventRecorder audit;
   private final UserRepository users;
@@ -137,9 +137,9 @@ public class InstallationService {
       OidcProviderService oidcProviders,
       LlmModelService llmModels,
       EmbeddingModelService embeddingModels,
+      ModelRoleAdministration modelRoles,
       MailSettingsService mailSettings,
       BrandingSettingsService brandingSettings,
-      ModelRoleAdministration modelRoles,
       FeatureFlags features,
       AuditEventRecorder audit,
       UserRepository users,
@@ -155,9 +155,9 @@ public class InstallationService {
     this.oidcProviders = oidcProviders;
     this.llmModels = llmModels;
     this.embeddingModels = embeddingModels;
+    this.modelRoles = modelRoles;
     this.mailSettings = mailSettings;
     this.brandingSettings = brandingSettings;
-    this.modelRoles = modelRoles;
     this.features = features;
     this.audit = audit;
     this.users = users;
@@ -268,7 +268,8 @@ public class InstallationService {
 
   /**
    * Completes the installation from its checked steps; a skipped optional step leaves its model
-   * out. A step saved while its feature was on and offered no longer is left out as well.
+   * out, a skipped rerank step leaves reranking off, a skipped transcription step speech input. A
+   * step saved while its feature was on and offered no longer is left out as well.
    *
    * @throws ConflictException when a mandatory step is not saved or not successfully checked, or an
    *     optional step is saved but not successfully checked
@@ -635,6 +636,10 @@ public class InstallationService {
     if (embeddingStep != null) {
       installEmbeddingModel(embeddingStep);
     }
+    InstallationStepRecord rerankStep = saved.get(InstallationStep.RERANK_MODEL);
+    if (rerankStep != null) {
+      installRerankModel(rerankStep);
+    }
     InstallationStepRecord transcriptionStep = saved.get(InstallationStep.TRANSCRIPTION_MODEL);
     if (transcriptionStep != null && InstallationStep.TRANSCRIPTION_MODEL.isOfferedWith(features)) {
       installTranscriptionModel(transcriptionStep);
@@ -708,6 +713,16 @@ public class InstallationService {
     }
     embeddingModels.install(
         rules.embeddingEndpoint(embedding, step.getSecret()), embedding.dimensions());
+  }
+
+  /**
+   * The rerank model of the step through the write path of the rerank model administration, audited
+   * under the installation, with reranking switched on.
+   */
+  private void installRerankModel(InstallationStepRecord step) {
+    StepRules.RerankModelPayload model = rules.rerankModelPayload(step.getPayload());
+    modelRoles.installRerank(
+        Organization.DEFAULT_ID, SYSTEM_ACTOR, model.baseUrl(), model.model(), step.getSecret());
   }
 
   /**
@@ -833,6 +848,11 @@ public class InstallationService {
         summary.put("apiKeySet", model.apiKeySet());
       }
       case InstallationOverview.EmbeddingModel model -> {
+        summary.put("baseUrl", ModelEndpointUri.withoutSecrets(model.baseUrl()));
+        summary.put("model", model.model());
+        summary.put("apiKeySet", model.apiKeySet());
+      }
+      case InstallationOverview.RerankModel model -> {
         summary.put("baseUrl", ModelEndpointUri.withoutSecrets(model.baseUrl()));
         summary.put("model", model.model());
         summary.put("apiKeySet", model.apiKeySet());

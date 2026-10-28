@@ -22,6 +22,11 @@ public enum InstallationStep {
    */
   EMBEDDING_MODEL(false),
   /**
+   * The rerank model, optional: its check is the probe of the rerank model administration, and the
+   * completion stores it there and switches reranking on; skipped, reranking stays off.
+   */
+  RERANK_MODEL(false),
+  /**
    * The transcription model of speech input, optional: the completion switches the role on through
    * the write path of the model administration; skipped, speech input stays off. Offered only while
    * the feature speech-input is on (ADR-0060, Entscheidung 16).

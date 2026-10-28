@@ -18,10 +18,12 @@ import tools.jackson.databind.json.JsonMapper;
  * The answer file read at start-up from {@code OPAA_INSTALLATION_ANSWER_FILE} (ADR-0060,
  * Entscheidung 7). Its secrets are never plain text: the passwords and the model keys are files,
  * typically mounted from a secret, read when the file is applied. {@code chatModel}, {@code
- * embeddingModel}, {@code transcriptionModel}, {@code mail} and {@code branding} are optional: a
- * file without one skips its step, without {@code mail} sending stays off, without {@code branding}
- * the OPAA default stays. Parts of later steps are ignored, and so is {@code transcriptionModel}
- * while speech input is switched off ({@link InstallationService}).
+ * embeddingModel}, {@code rerankModel}, {@code transcriptionModel}, {@code mail} and {@code
+ * branding} are optional: a file without one skips its step, without {@code rerankModel} reranking
+ * stays off, without {@code transcriptionModel} speech input stays off, without {@code mail}
+ * sending stays off, without {@code branding} the OPAA default stays. Parts of later steps are
+ * ignored, and so is {@code transcriptionModel} while speech input is switched off ({@link
+ * InstallationService}).
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 record AnswerFile(
@@ -29,6 +31,7 @@ record AnswerFile(
     SignIn signIn,
     ChatModel chatModel,
     EmbeddingModel embeddingModel,
+    RerankModel rerankModel,
     TranscriptionModel transcriptionModel,
     Mail mail,
     Branding branding) {
@@ -66,6 +69,10 @@ record AnswerFile(
   @JsonIgnoreProperties(ignoreUnknown = true)
   record EmbeddingModel(
       String baseUrl, String model, String apiKeyFile, String apiKey, Integer maxInputTokens) {}
+
+  /** The rerank model; without {@code apiKeyFile} it is called without a key. */
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  record RerankModel(String baseUrl, String model, String apiKeyFile, String apiKey) {}
 
   /** {@code language} absent means {@code de}, empty lets the model detect it. */
   @JsonIgnoreProperties(ignoreUnknown = true)
@@ -116,6 +123,7 @@ record AnswerFile(
     if (firstAdmin.password() != null
         || (chatModel != null && chatModel.apiKey() != null)
         || (embeddingModel != null && embeddingModel.apiKey() != null)
+        || (rerankModel != null && rerankModel.apiKey() != null)
         || (transcriptionModel != null && transcriptionModel.apiKey() != null)
         || (mail != null && mail.password() != null)) {
       throw new ValidationException(
@@ -158,6 +166,13 @@ record AnswerFile(
               embeddingModel.model(),
               keyOf(embeddingModel.apiKeyFile(), "embeddingModel.apiKeyFile"),
               embeddingModel.maxInputTokens()));
+    }
+    if (rerankModel != null) {
+      steps.add(
+          new StepInput.RerankModel(
+              rerankModel.baseUrl(),
+              rerankModel.model(),
+              keyOf(rerankModel.apiKeyFile(), "rerankModel.apiKeyFile")));
     }
     if (transcriptionModel != null) {
       steps.add(

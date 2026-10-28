@@ -10,6 +10,7 @@ import InputAdornment from '@mui/material/InputAdornment'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
+import AddIcon from '@mui/icons-material/Add'
 import CloseIcon from '@mui/icons-material/Close'
 import SearchIcon from '@mui/icons-material/Search'
 import PageHeading from '../a11y/PageHeading'
@@ -28,15 +29,12 @@ export interface ControlledSearch {
 }
 
 export interface OverviewPageProps<T> {
-  /** Document title, and the heading unless `heading` names one. */
+  /** Heading and document title; the entry count stands quietly beside it. */
   title: string
-  /** Puts the figure into the heading itself, e.g. `(n) => '3 Spaces'`. */
-  heading?: (count: number) => string
-  /** The quiet figure beside a fixed heading; use instead of `heading`. */
-  countLabel?: (count: number) => string
-  /** One sentence under the heading, saying what the overview holds. */
-  subtitle?: string
-  /** Both omitted where an overview offers no creation at all. */
+  /**
+   * Names the object, e.g. "Neuer Space"; the button carries the plus icon (guidelines 5.1).
+   * Both omitted where an overview offers no creation at all.
+   */
   createLabel?: string
   onCreate?: () => void
   items: T[]
@@ -66,6 +64,10 @@ export interface OverviewPageProps<T> {
   listFooter?: ReactNode
 }
 
+function entryCountLabel(count: number): string {
+  return count === 1 ? '1 Eintrag' : `${count} Einträge`
+}
+
 function searchResultMessage(count: number, query: string): string {
   if (!query) {
     if (count === 0) return 'Kein Eintrag passt zu den Filtern.'
@@ -87,16 +89,14 @@ function matches(text: string, query: string): boolean {
 }
 
 /**
- * The shared frame of every overview: heading with count, "Neu" button, search and a grid
+ * The shared frame of every overview: the page name as heading with the quiet entry count beside
+ * it and no subtitle, so every overview heads its page alike; create button, search and a grid
  * of cards - only cards, there is no table view (ADR-0039, Entscheidung 1). What an item looks like
  * stays with the caller - `renderCard` fills the grid, and `searchText` decides what the search
  * sees.
  */
 export default function OverviewPage<T>({
   title,
-  heading,
-  countLabel,
-  subtitle,
   createLabel,
   onCreate,
   items,
@@ -142,28 +142,27 @@ export default function OverviewPage<T>({
           display: 'flex',
           alignItems: 'baseline',
           gap: 2,
-          mb: subtitle ? 0.5 : 2.5,
+          mb: 2.5,
           flexWrap: 'wrap',
         }}
       >
-        <PageHeading title={firstLoad || !heading ? title : heading(count)} documentTitle={title} />
-        {countLabel && !firstLoad && (
+        <PageHeading title={title} />
+        {!firstLoad && (
           <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary' }}>
-            {countLabel(count)}
+            {entryCountLabel(count)}
           </Typography>
         )}
         {createLabel && onCreate && (
-          <Button variant="contained" onClick={onCreate} sx={{ ml: 'auto', flex: 'none' }}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={onCreate}
+            sx={{ ml: 'auto', flex: 'none' }}
+          >
             {createLabel}
           </Button>
         )}
       </Box>
-      {subtitle && (
-        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 2.5 }}>
-          {subtitle}
-        </Typography>
-      )}
-
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}

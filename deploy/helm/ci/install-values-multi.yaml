@@ -29,9 +29,6 @@ uploads:
 targetValidation:
   indexingAllowlist:
     - objectstore.multi-test.svc.cluster.local
-    # For the previous image of the rolling-update scenario, which still checks model addresses
-    # against the sources' list.
-    - ai-stub.multi-test.svc.cluster.local
   # The chart adds host and port of the answer file's models itself; named here as well, since the
   # suite's ai-stub is the one model endpoint of the run.
   modelAllowlist:

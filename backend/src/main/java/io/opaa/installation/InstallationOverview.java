@@ -36,6 +36,10 @@ public record InstallationOverview(boolean pending, boolean completable, List<St
       String baseUrl, String model, boolean apiKeySet, BigDecimal temperature, int maxTokens)
       implements SavedValues {}
 
+  /** The rerank model; {@code apiKeySet} says whether a key is saved, never which. */
+  public record RerankModel(String baseUrl, String model, boolean apiKeySet)
+      implements SavedValues {}
+
   /** The transcription model; {@code language} empty lets the model detect it. */
   public record TranscriptionModel(String baseUrl, String model, boolean apiKeySet, String language)
       implements SavedValues {}

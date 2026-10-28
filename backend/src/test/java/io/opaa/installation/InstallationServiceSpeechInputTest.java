@@ -211,9 +211,9 @@ class InstallationServiceSpeechInputTest {
         mock(OidcProviderService.class),
         mock(LlmModelService.class),
         mock(EmbeddingModelService.class),
+        modelRoles,
         mock(MailSettingsService.class),
         mock(BrandingSettingsService.class),
-        modelRoles,
         new FeatureFlags(
             new MockEnvironment()
                 .withProperty("opaa.features.speech-input.enabled", "" + speechInput)),
