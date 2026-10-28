@@ -461,8 +461,8 @@ gestreckten Fläche (`position: relative`, `z-index`), sonst fängt sie den Zeig
 erscheint nie.
 
 - **Im Katalog** ist der Name ein Link zur Detailseite. Nur hier steht neben dem Stern „⋯" für
-  weitere Aktionen („In Space verwenden"); es heißt „Weitere Aktionen für ‚<Name>'" und öffnet ein
-  Menü.
+  weitere Aktionen („In Space verwenden"); es heißt nach 5.6 „Weitere Aktionen für „<Name>"" und
+  öffnet ein Menü.
 - **In einer Auswahl** zählt nur, was ein Asset ist, wie groß es ist und ob es gewählt ist (#3262):
   Die Kachel zeigt Name, Beschreibung und Umfang ohne Zahl der Spaces („12 Dokumente"), dazu Art,
   Stern, „Privat"/„Wird gelöscht", einen Zustand mit Punkt (auch „Nachfolge offen": dann scheitert
@@ -512,10 +512,28 @@ Gefahr-Text (`danger`) erreicht im hellen Schema 5,21:1 gegen `bg-1`, 4,90:1 geg
 Vollständige Tastaturbedienung (Pfeile, Enter, Escape) ist Teil der Komponente, nicht der Kür.
 
 **Weitere Aktionen hinter „⋯".** Seltenere Aktionen einer Zeile, Kachel oder Detailseite öffnet
-ein Nur-Icon-Knopf mit den waagrechten drei Punkten (`MoreHoriz`), nie den senkrechten. Er trägt
-nach 5.1 den Tooltip „Weitere Aktionen" und ein `aria-label`, das das Objekt nennt; den
-Wortlaut legt #3284 fest. Für Listenzeilen gibt es den Baustein `RowMenu` in `frontend/src/shared/ui/`;
-geprüft in `frontend/src/shared/ui/moreActionsTrigger.test.ts`.
+ein Nur-Icon-Knopf mit den waagrechten drei Punkten (`MoreHoriz`), nie den senkrechten. Jedes
+„⋯"-Menü rendert der Baustein `RowMenu` (`frontend/src/shared/ui/RowMenu.tsx`); kein Thema baut
+Auslöser oder Menü nach. Der Baustein legt fest:
+
+- **Zugänglicher Name:** „Weitere Aktionen für „<Name>"" – der Name des Objekts, wie Zeile, Kachel
+  oder Seitenkopf ihn zeigen, ohne Objektart („Weitere Aktionen für „bescheid.pdf"", nicht
+  „Aktionen für Dokument bescheid.pdf"). Unterscheidet der Name allein die Zeilen einer Seite
+  nicht, folgt ein kurzer Zusatz nach dem Anführungszeichen („Weitere Aktionen für „Claude Code"
+  von Maria Musterfrau"). Das Menü trägt denselben Namen; ein Eintrag heißt wie sein sichtbarer
+  Text, ohne das Objekt zu wiederholen.
+- **Auslöser:** Tooltip „Weitere Aktionen" (5.1), `aria-haspopup="menu"`, `aria-expanded` und,
+  solange das Menü offen ist, `aria-controls`. Während eine Aktion der Zeile läuft, ist er
+  deaktiviert. Das Icon misst 20 px in Listen, Kacheln und Detailköpfen, 16 px nur in der dichten
+  Chat-Liste der Seitenleiste.
+- **Aufbau:** Zerstörende Einträge – die, deren Bestätigung den Ton `danger` trägt (5.10) – stehen
+  am Ende, durch eine Trennlinie abgesetzt, in Gefahr-Text; kein anderer Eintrag ist rot. Ein
+  deaktivierter Eintrag nennt seinen Grund als Text im Menü und liest ihn mit vor
+  (`aria-describedby`). Icons vor den Einträgen tragen alle Einträge eines Menüs oder keiner. Was
+  an einen anderen Ort führt, ist ein Link-Eintrag (5.1).
+- **Tastatur:** Pfeile, Enter, Escape; beim Schließen kehrt der Fokus auf den Auslöser zurück.
+
+Geprüft in `frontend/src/shared/ui/RowMenu.test.tsx` und `frontend/src/shared/ui/moreActionsTrigger.test.ts`.
 
 **Jeder Dialog hat eine sichtbare Schließen- oder Abbruchstelle.** Dialoge ohne eigene
 Abbruch-Schaltfläche (Ansichten, Vorschauen, Ereignislisten) tragen rechts im Titel ein ✕ mit
