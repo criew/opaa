@@ -528,8 +528,9 @@ Auslöser oder Menü nach. Der Baustein legt fest:
   Chat-Liste der Seitenleiste.
 - **Aufbau:** Zerstörende Einträge – die, deren Bestätigung den Ton `danger` trägt (5.10) – stehen
   am Ende, durch eine Trennlinie abgesetzt, in Gefahr-Text; kein anderer Eintrag ist rot. Ein
-  deaktivierter Eintrag nennt seinen Grund als Text im Menü und liest ihn mit vor
-  (`aria-describedby`). Icons vor den Einträgen tragen alle Einträge eines Menüs oder keiner. Was
+  dauerhaft gesperrter Eintrag (wegen Rolle oder Zustand des Objekts) nennt seinen Grund als Text
+  im Menü und liest ihn mit vor (`aria-describedby`); ein Eintrag, der nur gesperrt ist, solange
+  eine Aktion läuft, braucht keinen. Icons vor den Einträgen tragen alle Einträge eines Menüs oder keiner. Was
   an einen anderen Ort führt, ist ein Link-Eintrag (5.1).
 - **Tastatur:** Pfeile, Enter, Escape; beim Schließen kehrt der Fokus auf den Auslöser zurück.
 

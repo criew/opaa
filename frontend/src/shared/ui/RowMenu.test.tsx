@@ -28,6 +28,14 @@ describe('RowMenu', () => {
     expect(trigger).toHaveAttribute('aria-controls', menu.id)
   })
 
+  it('leaves the name to the button, not to the tooltip wrapper', () => {
+    renderWithProviders(
+      <RowMenu name="Bauamt" items={[{ label: 'Umbenennen', onClick: vi.fn() }]} />,
+    )
+    const trigger = screen.getByRole('button', { name: NAME })
+    expect(trigger.parentElement).not.toHaveAttribute('aria-label')
+  })
+
   it('appends a distinguishing detail after the name', () => {
     renderWithProviders(
       <RowMenu

@@ -318,7 +318,7 @@ Suite. Ein `data-testid` ist die Ausnahme und braucht einen Grund: `evidence-doc
 geeignete feste Beschriftung, weil sie einen zur Laufzeit ermittelten Dateinamen zeigt). Die
 Modellverwaltung kommt umgekehrt seit #1621 ohne einen aus: Die Chat-Modelle stehen in einer
 Tabelle, deren Zeilen über ihren Anzeigenamen (`getByRole('row', { name: … })`) und deren
-Zeilenmenüs über `Aktionen für „<Anzeigename>“` eindeutig zu treffen sind. Wer für eine künftige
+Zeilenmenüs über `Weitere Aktionen für „<Anzeigename>“` eindeutig zu treffen sind. Wer für eine künftige
 Assertion eines braucht, das sich nicht über Rolle/Label ausdrücken lässt, ergänzt das nötige
 `data-testid` im selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen zu
 lassen.

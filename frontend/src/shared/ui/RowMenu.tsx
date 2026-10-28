@@ -23,7 +23,7 @@ export interface RowMenuItem {
   /** Irreversible (confirmation tone `danger`): danger text, last, set apart by a divider. */
   danger?: boolean
   disabled?: boolean
-  /** Why a disabled entry is unavailable: shown once in the menu and read out with the entry. */
+  /** Why an entry is unavailable for good (role, state): shown once in the menu, read out with it. */
   disabledReason?: string
 }
 
@@ -102,8 +102,9 @@ export default function RowMenu({
 
   return (
     <>
-      <Tooltip title="Weitere Aktionen">
-        {/* the span keeps the tooltip on a disabled trigger */}
+      {/* the span keeps the tooltip on a disabled trigger; describeChild leaves the name to the
+          button instead of labelling the generic span */}
+      <Tooltip title="Weitere Aktionen" describeChild>
         <Box component="span" sx={{ display: 'inline-flex' }}>
           <IconButton
             id={buttonId}
@@ -129,8 +130,9 @@ export default function RowMenu({
         anchorEl={anchor}
         open={open}
         onClose={() => setOpen(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        // the dense sidebar list opens to the right, so the menu never covers the app rail beside it
+        anchorOrigin={{ vertical: 'bottom', horizontal: dense ? 'left' : 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: dense ? 'left' : 'right' }}
         slotProps={{ list: { id: menuId, 'aria-labelledby': buttonId } }}
       >
         {ordered.flatMap((item, index) => {
