@@ -184,7 +184,7 @@ export default function SettingsPage() {
                         <TextLink
                           to={PASSWORD_ROUTE}
                           state={{ from: SETTINGS_ROUTE }}
-                          sx={{ display: 'inline-block', mt: 1 }}
+                          sx={{ mt: 1 }}
                         >
                           Passwort ändern
                         </TextLink>

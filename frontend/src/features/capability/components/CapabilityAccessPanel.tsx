@@ -214,7 +214,7 @@ export default function CapabilityAccessPanel({
           {entry && scopeKind(entry) === 'PROFILE' && entry.scope && (
             <TextLink
               to={connectionProfileRoute(entry.scope.slice('PROFILE:'.length))}
-              sx={{ display: 'inline-block', mt: 0.5 }}
+              sx={{ mt: 0.5 }}
             >
               Zugang ansehen
             </TextLink>

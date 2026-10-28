@@ -10,7 +10,7 @@ const PAGE_SIZE = 50
 
 interface GroupMembersDisclosureProps {
   /**
-   * How the group is named in the aria-labels. The caller chooses it so that it does not
+   * How the group is named in the accessible names, after the visible words. The caller chooses it so that it does not
    * read out the raw identifier for a nameless row.
    */
   groupLabel: string
@@ -77,7 +77,7 @@ export default function GroupMembersDisclosure({
     return (
       <TextAction
         sx={{ alignSelf: 'flex-start' }}
-        aria-label={`Mitglieder der Gruppe „${groupLabel}“ anzeigen`}
+        aria-label={`Mitglieder anzeigen (Gruppe „${groupLabel}“)`}
         onClick={() => void loadPage(0)}
       >
         Mitglieder anzeigen
@@ -121,7 +121,7 @@ export default function GroupMembersDisclosure({
             {hasMore && (
               <TextAction
                 sx={{ alignSelf: 'flex-start' }}
-                aria-label={`Weitere Mitglieder der Gruppe „${groupLabel}“ anzeigen`}
+                aria-label={`${isLoading ? 'Wird geladen …' : 'Weitere anzeigen'} (Gruppe „${groupLabel}“)`}
                 onClick={() => void loadPage(shown)}
               >
                 {isLoading ? 'Wird geladen …' : 'Weitere anzeigen'}
@@ -133,7 +133,7 @@ export default function GroupMembersDisclosure({
       {(disclosure || error) && (
         <TextAction
           sx={{ alignSelf: 'flex-start' }}
-          aria-label={`Mitglieder der Gruppe „${groupLabel}“ ausblenden`}
+          aria-label={`Mitglieder ausblenden (Gruppe „${groupLabel}“)`}
           onClick={() => {
             setDisclosure(null)
             setError(null)

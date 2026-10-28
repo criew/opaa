@@ -411,19 +411,27 @@ in einer Liste oder einem Auswahldialog, die nichts speichern („Auswahl ansehe
 zurücksetzen", „Erneut laden"). Sie kommt aus `TextAction`
 (`frontend/src/shared/ui/DetailSection.tsx`), nicht aus einem Nachbau je Thema. Was einen Lauf
 startet oder Daten ändert, ist eine sichtbare Schaltfläche, auch im Abschnittskopf: „Vollabgleich
-starten" steht wie „Jetzt indizieren" als kompakte Sekundär-Schaltfläche.
+starten" steht wie „Jetzt indizieren" als kompakte Sekundär-Schaltfläche. Ein Umschalter in einer
+Wertzeile („Sperren"/„Entsperren") bleibt Textaktion. „Abbrechen" ist in Assistenten, Formularen
+und Dialogen überall ein stiller Text-Knopf (Still-Variante, `Button variant="text"`), auch im
+Bibliotheksassistenten und in den Zeilen des Reiters „Quelle", nie ein Textlink.
 
-**Navigation sieht aus wie ein Link.** Ein frei stehender Verweis an einen anderen Ort ist ein
-Textlink aus `TextLink` (ebenfalls `DetailSection.tsx`): Schrift und Gewicht wie `TextAction`,
-unterstrichen beim Zeigen („Zugang ansehen", „Passwort ändern", „Zur Gruppenverwaltung"). Ein Link
-im Fließtext übernimmt dessen Schrift und bleibt unterstrichen, damit er nicht allein an der Farbe
-zu erkennen ist. Wie eine Schaltfläche sieht ein Link nur aus, wenn er die eine Handlung eines
+**Verweise im Inhalt sehen aus wie ein Link.** Ein frei stehender Verweis im Inhalt einer Seite,
+eines Panels oder einer Zeile, der an einen anderen Ort führt, ist ein Textlink aus `TextLink`
+(ebenfalls `DetailSection.tsx`): Schrift, Gewicht und Mindestgröße wie `TextAction`, unterstrichen
+beim Zeigen („Zugang ansehen", „Passwort ändern", „Zur Gruppenverwaltung"). Ein Link im Fließtext
+übernimmt dessen Schrift und bleibt unterstrichen, damit er nicht allein an der Farbe zu erkennen
+ist. Wie eine Schaltfläche sieht ein solcher Verweis nur aus, wenn er die eine Handlung eines
 Hinweises oder Leerzustands ist (5.7): als Aktion eines `Alert` still in dessen Farbe („Wissen
 zuordnen"), in einem Hinweisfenster als Sekundär-Schaltfläche („Zum Verzeichnisabgleich").
+Anlege-Knöpfe (auch das Plus in 5.13) und der Schritt am Ende eines Ablaufs („Zur Anmeldung")
+sind Handlungen und bleiben Schaltflächen. Reiter, globale Leiste, Zeilen der Seitenleiste und von
+Listen, Menüeinträge und Kacheln haben ihre eigene Form.
 
 **Linktexte** nennen das Ziel oder was dort zu tun ist, ohne Pfeil am Ende („Verbindung ändern",
-nicht „Verbindung ändern ›"). Ein Ort in OPAA wird als Pfad mit „→" geschrieben („Einstellungen →
-Zugangstokens", „Suche & Indexierung → Indexstatus").
+nicht „Verbindung ändern ›"). Ausgenommen sind die Kennzahlen im Detailkopf („eine Gruppe ›"):
+Dort zeigt ein „›" (`aria-hidden`), dass die Zahl zu ihrer Liste führt. Ein Ort in OPAA wird als
+Pfad mit „→" geschrieben („Einstellungen → Zugangstokens", „Suche & Indexierung → Indexstatus").
 
 ### 5.2 Formularfelder
 
@@ -806,7 +814,7 @@ es nichts weiter zu gliedern gibt.
 
 **Einzelwerte als Wertzeile.** Ein einzelner Wert mit höchstens einer Handlung steht als Zeile
 „Titel · Wert · Textaktion" (etwa „Zuständig · Referat 21 · Ändern"), nicht als Abschnitt mit
-eigener Überschrift. Die Textaktion steht als Textlink an der rechten Kante (Prüfliste P45, P48).
+eigener Überschrift. Die Textaktion steht als `TextAction` an der rechten Kante (Prüfliste P45, P48).
 
 ### 5.13 Seitenleiste des Space
 

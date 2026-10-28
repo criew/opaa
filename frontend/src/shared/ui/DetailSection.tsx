@@ -138,7 +138,7 @@ export function TextLink({
   state?: unknown
   replace?: boolean
   children: ReactNode
-  /** Placement only (margin, display); the type stays that of every text link. */
+  /** Placement only (margin, alignment); the type stays that of every text link. */
   sx?: SxProps<Theme>
 }) {
   return (
@@ -148,7 +148,7 @@ export function TextLink({
       state={state}
       replace={replace}
       underline="hover"
-      sx={withSx(sx, TEXT_ACTION_SX)}
+      sx={withSx(sx, { ...TEXT_ACTION_SX, display: 'inline-block' })}
     >
       {children}
     </Link>
