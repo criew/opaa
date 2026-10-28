@@ -24,6 +24,8 @@ interface SummaryStepProps extends Pick<StepNavigationProps, 'onBack'> {
  * Every step with its state, and the completion. Whether it can complete is the API's verdict
  * (`completable`). The action stays visible but refuses until then, and the sentence above it
  * names the open steps - a hidden or merely greyed-out button would leave the reason to guesswork.
+ * A checked mail step also shows the backend's sentence about its check, which says whether a test
+ * message went out.
  */
 export default function SummaryStep({ installation, complete, onBack }: SummaryStepProps) {
   const hintId = useId()
@@ -103,12 +105,19 @@ export default function SummaryStep({ installation, complete, onBack }: SummaryS
                 '&:last-of-type': { borderBottom: 0 },
               }}
             >
-              <Typography sx={{ fontSize: 14 }}>
-                {STEP_INFO[s.step].label}
-                <Typography component="span" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-                  {s.mandatory ? ' · Pflicht' : ' · optional'}
+              <Box>
+                <Typography sx={{ fontSize: 14 }}>
+                  {STEP_INFO[s.step].label}
+                  <Typography component="span" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                    {s.mandatory ? ' · Pflicht' : ' · optional'}
+                  </Typography>
                 </Typography>
-              </Typography>
+                {s.step === 'MAIL' && s.checked && s.checkMessage && (
+                  <Typography sx={{ fontSize: 13, color: 'text.secondary', mt: 0.5 }}>
+                    {s.checkMessage}
+                  </Typography>
+                )}
+              </Box>
               <StateDot tone={STEP_STATUS_TONE[status]} label={STEP_STATUS_LABEL[status]} />
             </Box>
           )

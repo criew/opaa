@@ -1,4 +1,5 @@
 import { useId, useState } from 'react'
+import InfoOutlined from '@mui/icons-material/InfoOutlined'
 import Box from '@mui/material/Box'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Radio from '@mui/material/Radio'
@@ -65,8 +66,9 @@ interface MailStepProps {
 
 /**
  * The optional mail server, with the fields and rules of „Administration → E-Mail". Its check
- * connects and signs in without sending; a test message goes out only to an address typed here.
- * Skipping discards what was saved, and sending stays off until the administration sets it up.
+ * connects and signs in without sending; a test message goes out only to an address typed here,
+ * which the sentence at the check action names before the check runs. Skipping discards what was
+ * saved, and sending stays off until the administration sets it up.
  */
 export default function MailStep({
   step,
@@ -90,6 +92,7 @@ export default function MailStep({
   const [testRecipient, setTestRecipient] = useState('')
   const form = useStepForm(step.checked ? null : step.checkMessage)
   const encryptionLabelId = `${id}-encryption`
+  const checkHintId = `${id}-check-hint`
 
   const portNumber = parseSmtpPort(port)
   const passwordStored = Boolean(stored?.passwordSet)
@@ -145,6 +148,17 @@ export default function MailStep({
     )
   }
 
+  /** What the check will do, matching the backend's outcome: sign-in only with a user name. */
+  function checkHint(): string {
+    if (isBlank(testRecipient)) {
+      const checked = isBlank(username) ? 'die Verbindung' : 'Verbindung und Anmeldung'
+      return `Ohne Adresse unter „Testnachricht an“ prüft der Schritt nur ${checked} und sendet keine Nachricht.`
+    }
+    return isMailAddress(testRecipient)
+      ? `Die Prüfung sendet eine Testnachricht an ${testRecipient.trim()}.`
+      : 'Die Testnachricht braucht eine gültige Adresse.'
+  }
+
   function passwordHint(): string {
     if (passwordNeeded) return SMTP_TEXTS.passwordFollowsTarget
     return passwordStored ? SMTP_TEXTS.passwordStored : SMTP_TEXTS.passwordNone
@@ -160,12 +174,14 @@ export default function MailStep({
           Der Mailserver, über den OPAA Einladungen, Rücksetzlinks und Hinweise versendet. Der
           Schritt ist optional: Übersprungen versendet OPAA nichts, und der Server lässt sich später
           unter „Administration → E-Mail“ eintragen. Die Prüfung baut eine Verbindung auf und meldet
-          sich bei Bedarf an, ohne eine Nachricht zu senden.
+          sich bei Bedarf an; eine Testnachricht sendet sie nur an eine Adresse unter „Testnachricht
+          an“.
         </>
       }
       failure={form.failure}
       busy={form.busy}
       busyAnnouncement="Verbindung zum Mailserver wird geprüft"
+      describedBy={checkHintId}
       onSubmit={handleSubmit}
       onBack={onBack}
       onSkip={skip}
@@ -267,8 +283,14 @@ export default function MailStep({
         value={testRecipient}
         onChange={setTestRecipient}
         error={form.errors.testRecipient}
-        hint="Mit einer Adresse sendet die Prüfung die Testnachricht dorthin; leer sendet sie nichts. Die Adresse wird nicht gespeichert."
+        hint="Nur für diese Prüfung; die Adresse wird nicht gespeichert."
       />
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+        <InfoOutlined aria-hidden sx={{ fontSize: 18, color: 'text.secondary', mt: '1px' }} />
+        <Typography id={checkHintId} sx={{ fontSize: 14 }}>
+          {checkHint()}
+        </Typography>
+      </Box>
     </StepFrame>
   )
 }

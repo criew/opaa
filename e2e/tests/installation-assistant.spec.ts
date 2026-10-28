@@ -56,6 +56,11 @@ function stepHeading(page: Page, name: string) {
   return page.getByRole('heading', { level: 2, name })
 }
 
+/** The list of the steps and their states on the summary. */
+function stepStates(page: Page) {
+  return page.getByRole('list', { name: 'Stand der Schritte' })
+}
+
 /** The danger role per scheme (frontend/src/shared/theme/tokens.ts) as computed by the browser. */
 const DANGER = { light: 'rgb(206, 44, 49)', dark: 'rgb(255, 99, 105)' } as const
 
@@ -294,16 +299,30 @@ test.describe('Einrichtungs-Assistent', () => {
       await expectNoSeriousA11yViolations(page, 'Einrichtung: E-Mail-Versand ausgefüllt')
       await expectStepEdgesFlushAlsoNarrow(page)
 
-      // The check alone sends nothing.
+      // The check alone sends nothing, says so before it runs and in its outcome.
+      const check = page.getByRole('button', { name: 'Prüfen und weiter' })
+      await expect(check).toHaveAccessibleDescription(
+        'Ohne Adresse unter „Testnachricht an“ prüft der Schritt nur die Verbindung und sendet keine Nachricht.',
+      )
       await submitStep(page)
       await expect(stepHeading(page, 'Branding')).toBeVisible()
       expect(await mailCount()).toBe(0)
+      // The outcome of the check stands in the summary, reached over the step list.
+      const steps = page.getByRole('navigation', { name: 'Schritte der Einrichtung' })
+      await steps.getByRole('button', { name: /Abschluss/ }).click()
+      await expect(stepHeading(page, 'Abschluss')).toBeVisible()
+      await expect(stepStates(page)).toContainText(
+        'Die Verbindung zum Mailserver ist gelungen. Es wurde keine Testnachricht gesendet.',
+      )
 
       // Checked again with an address, the test message goes there and nowhere else.
-      const steps = page.getByRole('navigation', { name: 'Schritte der Einrichtung' })
       await steps.getByRole('button', { name: /E-Mail-Versand/ }).click()
       await expect(stepHeading(page, 'E-Mail-Versand')).toBeVisible()
       await page.getByLabel('Testnachricht an (optional)').fill(TEST_RECIPIENT)
+      await expect(check).toHaveAccessibleDescription(
+        `Die Prüfung sendet eine Testnachricht an ${TEST_RECIPIENT}.`,
+      )
+      await expectStepEdgesFlushAlsoNarrow(page)
       await submitStep(page)
       const mail = await waitForMail(TEST_RECIPIENT)
       expect(mail.recipients).toEqual([TEST_RECIPIENT])
@@ -323,6 +342,10 @@ test.describe('Einrichtungs-Assistent', () => {
       await submitStep(page)
 
       await expect(stepHeading(page, 'Abschluss')).toBeVisible()
+      await expect(stepStates(page)).toContainText(
+        'Die Verbindung zum Mailserver ist gelungen. Die Testnachricht wurde dem Mailserver übergeben.',
+      )
+      await expect(stepStates(page)).not.toContainText(TEST_RECIPIENT)
       await expect(
         page.getByText(/E-Mail-Versand wird mit dem geprüften Mailserver eingeschaltet/),
       ).toBeVisible()

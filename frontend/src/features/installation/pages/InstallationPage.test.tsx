@@ -951,6 +951,67 @@ describe('InstallationPage', () => {
       expect(
         screen.getByText(/E-Mail-Versand wird mit dem geprüften Mailserver eingeschaltet/),
       ).toBeInTheDocument()
+      expect(
+        within(screen.getByRole('list', { name: 'Stand der Schritte' })).getByText(
+          'Verbindung und Anmeldung beim Mailserver sind gelungen. Die Testnachricht wurde dem Mailserver übergeben.',
+        ),
+      ).toBeInTheDocument()
+    })
+
+    it('says at the check that it sends nothing without an address, and where it sends with one', async () => {
+      const user = userEvent.setup()
+      await openMailStep(user)
+      const check = screen.getByRole('button', { name: 'Prüfen und weiter' })
+      await user.type(field('Benutzername (optional)'), 'opaa')
+
+      expect(check).toHaveAccessibleDescription(
+        'Ohne Adresse unter „Testnachricht an“ prüft der Schritt nur Verbindung und Anmeldung und sendet keine Nachricht.',
+      )
+      await user.type(field('Testnachricht an (optional)'), 'it-betrieb@stadt.example')
+
+      expect(check).toHaveAccessibleDescription(
+        'Die Prüfung sendet eine Testnachricht an it-betrieb@stadt.example.',
+      )
+    })
+
+    it('names only the connection at the check while no user name is set', async () => {
+      const user = userEvent.setup()
+      await openMailStep(user)
+
+      expect(screen.getByRole('button', { name: 'Prüfen und weiter' })).toHaveAccessibleDescription(
+        'Ohne Adresse unter „Testnachricht an“ prüft der Schritt nur die Verbindung und sendet keine Nachricht.',
+      )
+    })
+
+    it('announces no recipient at the check while the address is not valid', async () => {
+      const user = userEvent.setup()
+      await openMailStep(user)
+
+      await user.type(field('Testnachricht an (optional)'), 'it-betrieb')
+
+      expect(screen.getByRole('button', { name: 'Prüfen und weiter' })).toHaveAccessibleDescription(
+        'Die Testnachricht braucht eine gültige Adresse.',
+      )
+    })
+
+    it('says after a check without an address that no test message was sent', async () => {
+      const user = userEvent.setup()
+      await openMailStep(user)
+
+      await user.type(field('Server'), 'smtp.stadt.example')
+      await user.type(field('Port'), '587')
+      await user.type(field('Benutzername (optional)'), 'opaa')
+      await user.type(field('Passwort (optional)'), 'Mail-Passwort')
+      await user.type(field('Absenderadresse'), 'opaa@stadt.example')
+      await submitStep(user)
+
+      expect(await stepHeading('Abschluss')).toBeInTheDocument()
+      expect(mockTestRecipients()).toEqual([])
+      expect(
+        within(screen.getByRole('list', { name: 'Stand der Schritte' })).getByText(
+          'Verbindung und Anmeldung beim Mailserver sind gelungen. Es wurde keine Testnachricht gesendet.',
+        ),
+      ).toBeInTheDocument()
     })
 
     it('holds up the completion after a failed check until the step is skipped', async () => {
