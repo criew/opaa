@@ -35,9 +35,9 @@ describe('ChatList export actions', () => {
     renderWithProviders(<ChatList spaceId="space-personal" />)
     await screen.findByText('Architektur des Projekts')
 
-    await user.click(screen.getByLabelText('Aktionen für Chat „Architektur des Projekts“'))
+    await user.click(screen.getByLabelText('Weitere Aktionen für „Architektur des Projekts“'))
     const item = screen.getByRole('menuitem', {
-      name: `Exportieren als ${label}: Chat „Architektur des Projekts“`,
+      name: `Exportieren als ${label}`,
     })
     expect(item).toHaveTextContent(`Exportieren als ${label}`)
     await user.click(item)
@@ -56,7 +56,7 @@ describe('ChatList export actions', () => {
     renderWithProviders(<ChatList spaceId="space-personal" />)
     await screen.findByText('Architektur des Projekts')
 
-    await user.click(screen.getByLabelText('Aktionen für Chat „Architektur des Projekts“'))
+    await user.click(screen.getByLabelText('Weitere Aktionen für „Architektur des Projekts“'))
     const items = screen.getAllByRole('menuitem')
 
     expect(items).toHaveLength(6)

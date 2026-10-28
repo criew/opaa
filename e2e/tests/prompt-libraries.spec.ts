@@ -147,7 +147,7 @@ test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', ()
     await owner.getByRole('option', { name: /Dev Admin/ }).click()
     await owner.getByRole('button', { name: 'Freigeben' }).last().click()
     await expect(
-      grantsSection(owner).getByRole('button', { name: 'Aktionen für die Freigabe an Dev Admin' }),
+      grantsSection(owner).getByRole('button', { name: 'Weitere Aktionen für „Dev Admin“' }),
     ).toBeVisible()
 
     await expectInPromptList(admin, LIBRARY_NAME)
@@ -170,7 +170,7 @@ test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', ()
     await owner.getByRole('option', { name: GROUP_NAME }).click()
     await owner.getByRole('button', { name: 'Freigeben' }).last().click()
     await expect(
-      grantsSection(owner).getByRole('button', { name: `Aktionen für die Freigabe an ${GROUP_NAME}` }),
+      grantsSection(owner).getByRole('button', { name: `Weitere Aktionen für „${GROUP_NAME}“` }),
     ).toBeVisible()
 
     await expectInPromptList(member, LIBRARY_NAME)
@@ -212,7 +212,7 @@ test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', ()
     await confirmAllAccounts.locator('#confirm-accept').click()
     await expect(confirmAllAccounts).toHaveCount(0)
     await expect(
-      grantsSection(owner).getByRole('button', { name: 'Aktionen für die Freigabe an Alle Konten' }),
+      grantsSection(owner).getByRole('button', { name: 'Weitere Aktionen für „Alle Konten“' }),
     ).toBeVisible()
 
     await expectInPromptList(outsider, LIBRARY_NAME)

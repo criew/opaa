@@ -4,10 +4,6 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
-import Divider from '@mui/material/Divider'
-import ListItemIcon from '@mui/material/ListItemIcon'
-import Menu from '@mui/material/Menu'
-import MenuItem from '@mui/material/MenuItem'
 import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
 import ListItemButton from '@mui/material/ListItemButton'
@@ -16,16 +12,9 @@ import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
-import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined'
-import DeleteIcon from '@mui/icons-material/Delete'
-import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
-import EditIcon from '@mui/icons-material/Edit'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
-import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined'
 import PushPinIcon from '@mui/icons-material/PushPin'
-import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
 import SearchIcon from '@mui/icons-material/Search'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import { useLocation, useNavigate } from 'react-router'
@@ -39,6 +28,7 @@ import CollapsibleSectionHead from '@/shared/ui/CollapsibleSectionHead'
 import { useSectionCollapsed, useUiStore } from '@/shared/stores/uiStore'
 import { chatTitle, RECENT_PAGE_SIZE, splitChats } from './chatListSections'
 import { exportChat } from './exportChat'
+import RowMenu from '@/shared/ui/RowMenu'
 
 /** The paging buttons under "Zuletzt verwendet": quiet, small, never wrapping their label. */
 const PAGING_BUTTON_SX = {
@@ -110,7 +100,8 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
 
   const [renamingChatId, setRenamingChatId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
-  const [menuAnchor, setMenuAnchor] = useState<{ chatId: string; el: HTMLElement } | null>(null)
+  // the open menu keeps its row's trigger visible, which otherwise shows on hover or focus only
+  const [menuChatId, setMenuChatId] = useState<string | null>(null)
   // How many "Zuletzt verwendet" rows are revealed - held in the store so a remount (layout
   // switch between desktop and mobile drawer) keeps them; another space starts at one page.
   const revealedRecent = useChatListStore((s) => s.revealedRecent)
@@ -324,7 +315,7 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
         // keyboard focus. They stay in the tab order either way.
         sx={{
           '& .MuiListItemSecondaryAction-root': {
-            opacity: menuAnchor?.chatId === chat.id ? 1 : 0,
+            opacity: menuChatId === chat.id ? 1 : 0,
             transition: 'opacity 120ms',
           },
           '&:hover .MuiListItemSecondaryAction-root, &:focus-within .MuiListItemSecondaryAction-root':
@@ -334,22 +325,39 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
           !isRenaming && (
             // Mockup 1a: one quiet three-dot trigger per row, the actions live in a
             // light dropdown.
-            <Tooltip title="Weitere Aktionen">
-              <IconButton
-                size="small"
-                ref={(el) => {
-                  if (el) getActionButtonRefs().set(chat.id, el)
-                  else getActionButtonRefs().delete(chat.id)
-                }}
-                aria-label={`Aktionen für Chat „${chatTitle(chat)}“`}
-                aria-haspopup="menu"
-                aria-expanded={menuAnchor?.chatId === chat.id ? 'true' : undefined}
-                onClick={(event) => setMenuAnchor({ chatId: chat.id, el: event.currentTarget })}
-                sx={{ p: 0.5, borderRadius: '4px' }}
-              >
-                <MoreHorizIcon sx={{ fontSize: 16 }} />
-              </IconButton>
-            </Tooltip>
+            <RowMenu
+              name={chatTitle(chat)}
+              dense
+              triggerRef={(el) => {
+                if (el) getActionButtonRefs().set(chat.id, el)
+                else getActionButtonRefs().delete(chat.id)
+              }}
+              onOpenChange={(open) => setMenuChatId(open ? chat.id : null)}
+              items={[
+                { label: 'Umbenennen', onClick: () => startRename(chat) },
+                {
+                  label: chat.pinnedAt ? 'Lösen' : 'Anheften',
+                  onClick: () => handlePin(chat, !chat.pinnedAt),
+                },
+                {
+                  label: 'Archivieren',
+                  onClick: () => void handleArchive(chat),
+                },
+                {
+                  label: 'Exportieren als Markdown',
+                  onClick: () => void exportChat(chat, 'markdown'),
+                },
+                {
+                  label: 'Exportieren als PDF',
+                  onClick: () => void exportChat(chat, 'pdf'),
+                },
+                {
+                  label: 'Löschen',
+                  onClick: () => void handleDelete(chat),
+                  danger: true,
+                },
+              ]}
+            />
           )
         }
       >
@@ -588,106 +596,6 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
       ) : (
         renderChats(chats)
       )}
-
-      {(() => {
-        const menuChat = chats?.find((chat) => chat.id === menuAnchor?.chatId)
-        const pinned = Boolean(menuChat?.pinnedAt)
-        return (
-          <Menu
-            anchorEl={menuAnchor?.el ?? null}
-            open={Boolean(menuAnchor && menuChat)}
-            onClose={() => setMenuAnchor(null)}
-            slotProps={{ paper: { sx: { width: 250 } }, list: { 'aria-label': 'Chat-Aktionen' } }}
-          >
-            <MenuItem
-              aria-label={menuChat ? `Chat „${chatTitle(menuChat)}“ umbenennen` : undefined}
-              onClick={() => {
-                setMenuAnchor(null)
-                if (menuChat) startRename(menuChat)
-              }}
-            >
-              <ListItemIcon>
-                <EditIcon sx={{ fontSize: 15 }} />
-              </ListItemIcon>
-              Umbenennen
-            </MenuItem>
-            <MenuItem
-              aria-label={
-                menuChat
-                  ? `Chat „${chatTitle(menuChat)}“ ${pinned ? 'lösen' : 'anheften'}`
-                  : undefined
-              }
-              onClick={() => {
-                setMenuAnchor(null)
-                if (menuChat) handlePin(menuChat, !pinned)
-              }}
-            >
-              <ListItemIcon>
-                {pinned ? (
-                  <PushPinOutlinedIcon sx={{ fontSize: 15 }} />
-                ) : (
-                  <PushPinIcon sx={{ fontSize: 15 }} />
-                )}
-              </ListItemIcon>
-              {pinned ? 'Lösen' : 'Anheften'}
-            </MenuItem>
-            <MenuItem
-              aria-label={menuChat ? `Chat „${chatTitle(menuChat)}“ archivieren` : undefined}
-              onClick={() => {
-                setMenuAnchor(null)
-                if (menuChat) void handleArchive(menuChat)
-              }}
-            >
-              <ListItemIcon>
-                <ArchiveOutlinedIcon sx={{ fontSize: 15 }} />
-              </ListItemIcon>
-              Archivieren
-            </MenuItem>
-            <MenuItem
-              aria-label={
-                menuChat ? `Exportieren als Markdown: Chat „${chatTitle(menuChat)}“` : undefined
-              }
-              onClick={() => {
-                setMenuAnchor(null)
-                if (menuChat) void exportChat(menuChat, 'markdown')
-              }}
-            >
-              <ListItemIcon>
-                <DescriptionOutlinedIcon sx={{ fontSize: 15 }} />
-              </ListItemIcon>
-              Exportieren als Markdown
-            </MenuItem>
-            <MenuItem
-              aria-label={
-                menuChat ? `Exportieren als PDF: Chat „${chatTitle(menuChat)}“` : undefined
-              }
-              onClick={() => {
-                setMenuAnchor(null)
-                if (menuChat) void exportChat(menuChat, 'pdf')
-              }}
-            >
-              <ListItemIcon>
-                <PictureAsPdfOutlinedIcon sx={{ fontSize: 15 }} />
-              </ListItemIcon>
-              Exportieren als PDF
-            </MenuItem>
-            <Divider sx={{ my: 0.5 }} />
-            <MenuItem
-              aria-label={menuChat ? `Chat „${chatTitle(menuChat)}“ löschen` : undefined}
-              onClick={() => {
-                setMenuAnchor(null)
-                if (menuChat) void handleDelete(menuChat)
-              }}
-              sx={{ color: 'error.main' }}
-            >
-              <ListItemIcon>
-                <DeleteIcon sx={{ fontSize: 15, color: 'error.main' }} />
-              </ListItemIcon>
-              Löschen
-            </MenuItem>
-          </Menu>
-        )
-      })()}
     </Box>
   )
 }

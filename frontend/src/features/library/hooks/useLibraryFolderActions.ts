@@ -5,7 +5,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { useDocumentStore } from '../stores/documentStore'
 
 /**
- * Folder management of an UPLOAD library: which folder dialog or menu is open, and creating,
+ * Folder management of an UPLOAD library: which folder dialog is open, and creating,
  * renaming and deleting a folder. A failed create or rename rejects, so the open dialog can show
  * the conflict; a failed delete surfaces via documentStore.folderError.
  */
@@ -20,10 +20,6 @@ export function useLibraryFolderActions(
 
   const [newFolderDialogOpen, setNewFolderDialogOpen] = useState(false)
   const [renameFolderTarget, setRenameFolderTarget] = useState<LibraryFolderListItem | null>(null)
-  const [folderMenu, setFolderMenu] = useState<{
-    anchorEl: HTMLElement
-    folder: LibraryFolderListItem
-  } | null>(null)
 
   async function handleCreateFolder(name: string) {
     // Derives the parent explicitly from the URL's own folder param, so a
@@ -71,8 +67,6 @@ export function useLibraryFolderActions(
     setNewFolderDialogOpen,
     renameFolderTarget,
     setRenameFolderTarget,
-    folderMenu,
-    setFolderMenu,
     handleCreateFolder,
     handleRenameFolder,
     handleDeleteFolder,

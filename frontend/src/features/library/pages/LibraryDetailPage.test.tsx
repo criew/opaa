@@ -1229,7 +1229,7 @@ describe('LibraryDetailPage', () => {
 
     await screen.findByText('dienstanweisung-2024.pdf')
     await user.click(
-      screen.getByRole('button', { name: 'Aktionen für Dokument dienstanweisung-2024.pdf' }),
+      screen.getByRole('button', { name: 'Weitere Aktionen für „dienstanweisung-2024.pdf“' }),
     )
     await user.click(await screen.findByRole('menuitem', { name: 'Löschen' }))
     await answerConfirm(user, 'Dokument "dienstanweisung-2024.pdf" löschen?', 'Löschen')
@@ -1423,7 +1423,9 @@ describe('LibraryDetailPage', () => {
     await screen.findByRole('region', { name: 'Läufe' })
     await screen.findByRole('list', { name: 'Läufe' })
     expect(screen.queryByRole('button', { name: 'Vollabgleich starten' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Weitere Aktionen' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Weitere Aktionen für „Rechtsquellen Soziales“' }),
+    )
     expect(screen.queryByRole('menuitem', { name: 'Vollabgleich starten' })).toBeNull()
   }, 15000)
 
@@ -1442,7 +1444,9 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('button', { name: 'Weitere Aktionen' }))
+    await user.click(
+      await screen.findByRole('button', { name: 'Weitere Aktionen für „Rechtsquellen Soziales“' }),
+    )
     await user.click(await screen.findByRole('menuitem', { name: 'Vollabgleich starten' }))
     expect(mockTrigger).toHaveBeenCalledWith(editorLibrary.id, 'CONFLUENCE', 'FULL')
     await user.click(screen.getByRole('tab', { name: 'Quelle' }))
@@ -2629,7 +2633,7 @@ describe('LibraryDetailPage', () => {
     expect(screen.queryByLabelText('Dateien auswählen')).not.toBeInTheDocument()
     // a connector document leaves only with its source: no row menu, no bulk „Löschen“
     expect(
-      screen.queryByRole('button', { name: 'Aktionen für Dokument rundschreiben.pdf' }),
+      screen.queryByRole('button', { name: 'Weitere Aktionen für „rundschreiben.pdf“' }),
     ).not.toBeInTheDocument()
     await userEvent
       .setup()
@@ -3580,7 +3584,7 @@ describe('LibraryDetailPage', () => {
       const user = userEvent.setup()
 
       await user.click(
-        await screen.findByRole('button', { name: /optionen für ordner protokolle/i }),
+        await screen.findByRole('button', { name: 'Weitere Aktionen für „Protokolle“' }),
       )
       await user.click(await screen.findByRole('menuitem', { name: /umbenennen/i }))
       const nameField = await screen.findByLabelText(/ordnername/i)
@@ -3629,7 +3633,7 @@ describe('LibraryDetailPage', () => {
       const user = userEvent.setup()
 
       await user.click(
-        await screen.findByRole('button', { name: /optionen für ordner protokolle/i }),
+        await screen.findByRole('button', { name: 'Weitere Aktionen für „Protokolle“' }),
       )
       await user.click(await screen.findByRole('menuitem', { name: /löschen/i }))
 
@@ -3661,7 +3665,7 @@ describe('LibraryDetailPage', () => {
       const user = userEvent.setup()
 
       await user.click(
-        await screen.findByRole('button', { name: /optionen für ordner protokolle/i }),
+        await screen.findByRole('button', { name: 'Weitere Aktionen für „Protokolle“' }),
       )
       await user.click(await screen.findByRole('menuitem', { name: /löschen/i }))
 
@@ -4569,7 +4573,7 @@ describe('LibraryDetailPage', () => {
       expect(within(toolbar).getByRole('button', { name: 'Feld setzen' })).toBeInTheDocument()
       expect(within(toolbar).queryByRole('button', { name: 'Löschen' })).not.toBeInTheDocument()
       expect(
-        screen.queryByRole('button', { name: 'Aktionen für Dokument a.pdf' }),
+        screen.queryByRole('button', { name: 'Weitere Aktionen für „a.pdf“' }),
       ).not.toBeInTheDocument()
     })
   })

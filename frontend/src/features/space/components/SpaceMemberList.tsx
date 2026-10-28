@@ -1,10 +1,6 @@
 import { useId, useMemo, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
-import Divider from '@mui/material/Divider'
-import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
-import ListItemIcon from '@mui/material/ListItemIcon'
-import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
@@ -12,10 +8,8 @@ import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import PersonOutlineIcon from '@mui/icons-material/PersonOutlined'
 import type { SpaceMemberResponse, SpaceRole } from '@/shared/api/types'
 import { getSpaceAccessDerivation, getSpaceGroupMembers } from '../api/spaceApi'
@@ -25,6 +19,7 @@ import { spaceRoleLabel } from '@/shared/utils/labels'
 import { AccessDerivation } from '@/features/asset'
 import { GroupMembersDisclosure } from '@/features/principal'
 import MetaBadge from '@/shared/ui/MetaBadge'
+import RowMenu from '@/shared/ui/RowMenu'
 import { memberLabelOf } from './memberLabel'
 
 const editableRoles: SpaceRole[] = ['MEMBER', 'CURATOR', 'ADMIN']
@@ -98,7 +93,6 @@ export default function SpaceMemberList({
   const [filter, setFilter] = useState('')
   const ownerHintId = `space-owner-hint-${useId()}`
   const [expansion, setExpansion] = useState<Expansion>(null)
-  const [menu, setMenu] = useState<{ anchor: HTMLElement; memberId: string } | null>(null)
   /** The "⋯" button of every row, so hiding an expansion can hand the focus back to its row. */
   const menuButtons = useRef(new Map<string, HTMLButtonElement>())
 
@@ -144,10 +138,6 @@ export default function SpaceMemberList({
     })
     if (confirmed) await onMakeOwner(member)
   }
-
-  const menuMember = menu ? members.find((member) => member.id === menu.memberId) : undefined
-  const menuEntries = menuMember ? menuEntriesOf(menuMember) : null
-  const closeMenu = () => setMenu(null)
 
   return (
     <Stack spacing={1}>
@@ -245,22 +235,32 @@ export default function SpaceMemberList({
                   <MetaBadge>{spaceRoleLabel(member.role)}</MetaBadge>
                 )}
                 {hasMenu ? (
-                  <Tooltip title="Weitere Aktionen">
-                    <IconButton
-                      size="small"
-                      aria-label={`Weitere Aktionen für „${label}“`}
-                      aria-haspopup="menu"
-                      ref={(element: HTMLButtonElement | null) => {
-                        if (element) menuButtons.current.set(member.id, element)
-                        else menuButtons.current.delete(member.id)
-                      }}
-                      onClick={(event) =>
-                        setMenu({ anchor: event.currentTarget, memberId: member.id })
-                      }
-                    >
-                      <MoreHorizIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
+                  <RowMenu
+                    name={label}
+                    triggerRef={(element: HTMLButtonElement | null) => {
+                      if (element) menuButtons.current.set(member.id, element)
+                      else menuButtons.current.delete(member.id)
+                    }}
+                    items={[
+                      entries.derivation && {
+                        label: `Warum hat ${label} Zugriff?`,
+                        onClick: () => setExpansion({ memberId: member.id, kind: 'derivation' }),
+                      },
+                      entries.groupMembers && {
+                        label: 'Mitglieder der Gruppe anzeigen',
+                        onClick: () => setExpansion({ memberId: member.id, kind: 'groupMembers' }),
+                      },
+                      entries.makeOwner && {
+                        label: 'Zum Eigentümer machen',
+                        onClick: () => void makeOwner(member),
+                      },
+                      entries.remove && {
+                        label: 'Aus Space entfernen',
+                        onClick: () => void remove(member),
+                        danger: true,
+                      },
+                    ]}
+                  />
                 ) : (
                   // Keeps the role column aligned with the rows that do carry a menu.
                   <Box sx={{ width: 34, flexShrink: 0 }} />
@@ -303,67 +303,6 @@ export default function SpaceMemberList({
           )
         })}
       </Stack>
-      <Menu
-        anchorEl={menu?.anchor ?? null}
-        open={menu !== null && menuMember !== undefined}
-        onClose={closeMenu}
-        slotProps={{
-          list: {
-            'aria-label': menuMember
-              ? `Weitere Aktionen für „${memberLabelOf(menuMember)}“`
-              : undefined,
-          },
-        }}
-      >
-        {menuMember && menuEntries?.derivation && (
-          <MenuItem
-            onClick={() => {
-              closeMenu()
-              setExpansion({ memberId: menuMember.id, kind: 'derivation' })
-            }}
-          >
-            Warum hat {memberLabelOf(menuMember)} Zugriff?
-          </MenuItem>
-        )}
-        {menuMember && menuEntries?.groupMembers && (
-          <MenuItem
-            onClick={() => {
-              closeMenu()
-              setExpansion({ memberId: menuMember.id, kind: 'groupMembers' })
-            }}
-          >
-            Mitglieder der Gruppe anzeigen
-          </MenuItem>
-        )}
-        {menuMember && menuEntries?.makeOwner && (
-          <MenuItem
-            onClick={() => {
-              closeMenu()
-              void makeOwner(menuMember)
-            }}
-          >
-            Zum Eigentümer machen
-          </MenuItem>
-        )}
-        {menuMember &&
-          menuEntries?.remove &&
-          (menuEntries.derivation || menuEntries.groupMembers || menuEntries.makeOwner) && (
-            <Divider />
-          )}
-        {menuMember && menuEntries?.remove && (
-          <MenuItem
-            onClick={() => {
-              closeMenu()
-              void remove(menuMember)
-            }}
-          >
-            <ListItemIcon>
-              <DeleteOutlineIcon fontSize="small" color="error" />
-            </ListItemIcon>
-            Aus Space entfernen
-          </MenuItem>
-        )}
-      </Menu>
     </Stack>
   )
 }

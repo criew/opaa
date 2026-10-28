@@ -186,8 +186,8 @@ function renderPage() {
 }
 
 async function openRowMenu(user: ReturnType<typeof userEvent.setup>, name: string) {
-  await user.click(await screen.findByRole('button', { name: `Aktionen für „${name}“` }))
-  return screen.findByRole('menu', { name: `Aktionen für „${name}“` })
+  await user.click(await screen.findByRole('button', { name: `Weitere Aktionen für „${name}“` }))
+  return screen.findByRole('menu', { name: `Weitere Aktionen für „${name}“` })
 }
 
 describe('GroupManagementPage', () => {

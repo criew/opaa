@@ -99,9 +99,14 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       }),
     );
     await page.goto("/login");
-    await expect(page.getByRole("button", { name: "Anmelden bei Partnerportal" })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Anmelden bei Partnerportal" }),
+    ).toBeVisible();
     await expect(page.getByText("Zuletzt verwendet")).toBeVisible();
-    await expectNoSeriousA11yViolations(page, "Anmeldeseite mit zwei Anbietern");
+    await expectNoSeriousA11yViolations(
+      page,
+      "Anmeldeseite mit zwei Anbietern",
+    );
   });
 
   test("Chat in beiden Farbschemata", async ({ authenticatedPage: page }) => {
@@ -130,7 +135,10 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expect(page).toHaveURL(/\/spaces\/[^/]+\/chats\/(?!new$)[^/]+$/);
 
     const menuTrigger = chatSidebarEntries(page).first();
-    const deleteEntry = page.getByRole("menuitem", { name: /löschen$/ });
+    const deleteEntry = page.getByRole("menuitem", {
+      name: "Löschen",
+      exact: true,
+    });
     for (const scheme of ["light", "dark"] as const) {
       await page.emulateMedia({ colorScheme: scheme });
       await menuTrigger.click();
@@ -167,22 +175,36 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     expect(spaceId, "Space-ID aus der Chat-URL").toBeTruthy();
 
     await page.goto(`/spaces/${spaceId}/chats`);
-    await expect(page.getByRole("heading", { level: 1, name: /^Chats/ })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: /^Chats/ }),
+    ).toBeVisible();
     await expect(page.getByRole("tab", { name: /^Aktiv \(/ })).toBeVisible();
 
     await page.emulateMedia({ colorScheme: "light" });
-    await expectNoSeriousA11yViolations(page, "Seite Chats, Reiter Aktiv (helles Farbschema)");
+    await expectNoSeriousA11yViolations(
+      page,
+      "Seite Chats, Reiter Aktiv (helles Farbschema)",
+    );
     await page.emulateMedia({ colorScheme: "dark" });
-    await expectNoSeriousA11yViolations(page, "Seite Chats, Reiter Aktiv (dunkles Farbschema)");
+    await expectNoSeriousA11yViolations(
+      page,
+      "Seite Chats, Reiter Aktiv (dunkles Farbschema)",
+    );
 
     await page.getByRole("tab", { name: /^Archiv \(/ }).click();
     await expect(page.getByRole("tab", { name: /^Archiv \(/ })).toHaveAttribute(
       "aria-selected",
       "true",
     );
-    await expectNoSeriousA11yViolations(page, "Seite Chats, Reiter Archiv (dunkles Farbschema)");
+    await expectNoSeriousA11yViolations(
+      page,
+      "Seite Chats, Reiter Archiv (dunkles Farbschema)",
+    );
     await page.emulateMedia({ colorScheme: "light" });
-    await expectNoSeriousA11yViolations(page, "Seite Chats, Reiter Archiv (helles Farbschema)");
+    await expectNoSeriousA11yViolations(
+      page,
+      "Seite Chats, Reiter Archiv (helles Farbschema)",
+    );
   });
 
   // The overview in both colour schemes: the quiet entry count (fg-2) and the state chips must
@@ -207,10 +229,16 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     ).toBeVisible();
 
     await page.emulateMedia({ colorScheme: "light" });
-    await expectNoSeriousA11yViolations(page, "Spaces-Übersicht (helles Farbschema)");
+    await expectNoSeriousA11yViolations(
+      page,
+      "Spaces-Übersicht (helles Farbschema)",
+    );
 
     await page.emulateMedia({ colorScheme: "dark" });
-    await expectNoSeriousA11yViolations(page, "Spaces-Übersicht (dunkles Farbschema)");
+    await expectNoSeriousA11yViolations(
+      page,
+      "Spaces-Übersicht (dunkles Farbschema)",
+    );
   });
 
   // Die Mitgliederliste der Space-Einstellungen mit Personen-/Gruppensymbol, Rollenauswahl
@@ -237,20 +265,36 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       expect(added.status(), await added.text()).toBe(201);
 
       await page.goto(`/spaces/${spaceId}/settings/members`);
-      const menuButton = page.getByRole("button", { name: /^Weitere Aktionen für „/ });
+      const menuButton = page
+        .getByRole("main")
+        .getByRole("button", { name: /^Weitere Aktionen für „/ });
       await expect(menuButton).toHaveCount(1);
 
       await page.emulateMedia({ colorScheme: "light" });
-      await expectNoSeriousA11yViolations(page, "Space-Mitglieder (helles Farbschema)");
+      await expectNoSeriousA11yViolations(
+        page,
+        "Space-Mitglieder (helles Farbschema)",
+      );
       await page.emulateMedia({ colorScheme: "dark" });
-      await expectNoSeriousA11yViolations(page, "Space-Mitglieder (dunkles Farbschema)");
+      await expectNoSeriousA11yViolations(
+        page,
+        "Space-Mitglieder (dunkles Farbschema)",
+      );
 
       await menuButton.focus();
       await page.keyboard.press("Enter");
-      await expect(page.getByRole("menuitem", { name: /^Warum hat .* Zugriff\?$/ })).toBeFocused();
-      await expectNoSeriousA11yViolations(page, "Space-Mitglieder, Zeilenmenü (dunkles Farbschema)");
+      await expect(
+        page.getByRole("menuitem", { name: /^Warum hat .* Zugriff\?$/ }),
+      ).toBeFocused();
+      await expectNoSeriousA11yViolations(
+        page,
+        "Space-Mitglieder, Zeilenmenü (dunkles Farbschema)",
+      );
       await page.emulateMedia({ colorScheme: "light" });
-      await expectNoSeriousA11yViolations(page, "Space-Mitglieder, Zeilenmenü (helles Farbschema)");
+      await expectNoSeriousA11yViolations(
+        page,
+        "Space-Mitglieder, Zeilenmenü (helles Farbschema)",
+      );
       await page.keyboard.press("Escape");
       await expect(page.getByRole("menu")).toHaveCount(0);
     } finally {
@@ -298,7 +342,10 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     authenticatedPage: page,
   }) => {
     const profileName = `A11y Zugang ${Date.now()}`;
-    const profileId = await createRssProfileViaApi(profileName, "http://rss-feed");
+    const profileId = await createRssProfileViaApi(
+      profileName,
+      "http://rss-feed",
+    );
     try {
       await openNewLibraryWizard(page);
       await page.getByRole("radio", { name: /RSS-Feed/ }).click();
@@ -331,7 +378,9 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await page.getByRole("button", { name: "Neuer Zugang" }).click();
     const form = page.getByRole("dialog", { name: "Zugang anlegen" });
     await form.getByRole("combobox", { name: /Quellart/ }).click();
-    const locked = page.locator('[role="option"][aria-disabled="true"]').first();
+    const locked = page
+      .locator('[role="option"][aria-disabled="true"]')
+      .first();
     await expect(locked).toContainText(/keine Zugänge möglich/);
 
     for (const scheme of ["light", "dark"] as const) {
@@ -346,7 +395,9 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
   // Der Katalog: Typfilter als Umschaltgruppe, Kacheln mit Typ-Etikett, ein gesetzter
   // Favoriten-Stern und der aktive Filter „Favoriten". #957: Etiketten fielen einmal nur im
   // Dunkelschema durch, deshalb beide Schemata.
-  test("Katalog in beiden Farbschemata", async ({ authenticatedPage: page }) => {
+  test("Katalog in beiden Farbschemata", async ({
+    authenticatedPage: page,
+  }) => {
     const name = `A11y Favorit ${Date.now()}`;
     const libraryId = await createPromptLibraryViaApi("dev-admin", { name });
     try {
@@ -363,15 +414,20 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       ).toBeVisible();
       await expect(page.getByRole("group", { name: "Typ" })).toBeVisible();
 
-      await page.getByRole("button", { name: `„${name}“ als Favorit markieren` }).click();
+      await page
+        .getByRole("button", { name: `„${name}“ als Favorit markieren` })
+        .click();
       await expect(
-        page.getByRole("button", { name: `„${name}“ aus den Favoriten entfernen` }),
+        page.getByRole("button", {
+          name: `„${name}“ aus den Favoriten entfernen`,
+        }),
       ).toBeVisible();
-      await page.getByRole("button", { name: "Favoriten", exact: true }).click();
-      await expect(page.getByRole("button", { name: "Favoriten", exact: true })).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      );
+      await page
+        .getByRole("button", { name: "Favoriten", exact: true })
+        .click();
+      await expect(
+        page.getByRole("button", { name: "Favoriten", exact: true }),
+      ).toHaveAttribute("aria-pressed", "true");
       await expect(page.getByRole("link", { name })).toBeVisible();
 
       await page.emulateMedia({ colorScheme: "light" });
@@ -381,14 +437,26 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
 
       // „⋯" neben dem Stern: das geöffnete Menü, dann „In Space verwenden" mit der Auswahl der
       // kuratierten Spaces im Dialog.
-      await page.getByRole("button", { name: `Weitere Aktionen für ‚${name}‘` }).click();
-      await expect(page.getByRole("menuitem", { name: "In Space verwenden" })).toBeVisible();
-      await expectNoSeriousA11yViolations(page, "Katalog, Menü Weitere Aktionen");
+      await page
+        .getByRole("button", { name: `Weitere Aktionen für „${name}“` })
+        .click();
+      await expect(
+        page.getByRole("menuitem", { name: "In Space verwenden" }),
+      ).toBeVisible();
+      await expectNoSeriousA11yViolations(
+        page,
+        "Katalog, Menü Weitere Aktionen",
+      );
       await page.getByRole("menuitem", { name: "In Space verwenden" }).click();
       await expect(
-        page.getByRole("dialog").getByRole("button", { name: "Neuen Space damit anlegen" }),
+        page
+          .getByRole("dialog")
+          .getByRole("button", { name: "Neuen Space damit anlegen" }),
       ).toBeVisible();
-      await expectNoSeriousA11yViolations(page, "In Space verwenden (dunkles Farbschema)");
+      await expectNoSeriousA11yViolations(
+        page,
+        "In Space verwenden (dunkles Farbschema)",
+      );
     } finally {
       const api = await apiAs("dev-admin");
       try {
@@ -412,22 +480,42 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       await expect(
         page.getByRole("button", { name: `„${name}“ als Favorit markieren` }),
       ).toBeVisible();
-      await expectNoSeriousA11yViolations(page, "Prompt-Bibliothek, Reiter Prompts");
+      await expectNoSeriousA11yViolations(
+        page,
+        "Prompt-Bibliothek, Reiter Prompts",
+      );
 
-      await page.getByRole("button", { name: "Weitere Aktionen" }).click();
-      await expect(page.getByRole("menuitem", { name: "Löschen" })).toBeVisible();
-      await expectNoSeriousA11yViolations(page, "Prompt-Bibliothek, Menü Weitere Aktionen");
+      await page
+        .getByRole("button", { name: `Weitere Aktionen für „${name}“` })
+        .click();
+      await expect(
+        page.getByRole("menuitem", { name: "Löschen" }),
+      ).toBeVisible();
+      await expectNoSeriousA11yViolations(
+        page,
+        "Prompt-Bibliothek, Menü Weitere Aktionen",
+      );
       await page.keyboard.press("Escape");
 
       await page.getByRole("tab", { name: "Freigaben" }).click();
-      await expect(page.getByRole("region", { name: "Berechtigungen" })).toBeVisible();
-      await expectNoSeriousA11yViolations(page, "Prompt-Bibliothek, Reiter Freigaben");
+      await expect(
+        page.getByRole("region", { name: "Berechtigungen" }),
+      ).toBeVisible();
+      await expectNoSeriousA11yViolations(
+        page,
+        "Prompt-Bibliothek, Reiter Freigaben",
+      );
 
       await page.getByRole("tab", { name: "Zuordnungen" }).click();
       await expect(
-        page.getByRole("region", { name: "Spaces" }).getByRole("button", { name: "In Space verwenden" }),
+        page
+          .getByRole("region", { name: "Spaces" })
+          .getByRole("button", { name: "In Space verwenden" }),
       ).toBeVisible();
-      await expectNoSeriousA11yViolations(page, "Prompt-Bibliothek, Reiter Zuordnungen");
+      await expectNoSeriousA11yViolations(
+        page,
+        "Prompt-Bibliothek, Reiter Zuordnungen",
+      );
     } finally {
       const api = await apiAs("dev-admin");
       try {
@@ -453,9 +541,15 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     ).toBeVisible();
 
     await page.emulateMedia({ colorScheme: "light" });
-    await expectNoSeriousA11yViolations(page, "Space-Inhalte (helles Farbschema)");
+    await expectNoSeriousA11yViolations(
+      page,
+      "Space-Inhalte (helles Farbschema)",
+    );
     await page.emulateMedia({ colorScheme: "dark" });
-    await expectNoSeriousA11yViolations(page, "Space-Inhalte (dunkles Farbschema)");
+    await expectNoSeriousA11yViolations(
+      page,
+      "Space-Inhalte (dunkles Farbschema)",
+    );
   });
 
   // Die Benutzerverwaltung führt die dichteste Kombination des Bereichs — eine
@@ -478,11 +572,17 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expect(list.first()).toBeVisible();
 
     await page.emulateMedia({ colorScheme: "light" });
-    await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (Konten, helles Farbschema)");
+    await expectNoSeriousA11yViolations(
+      page,
+      "Verwaltungsbereich (Konten, helles Farbschema)",
+    );
 
     await page.emulateMedia({ colorScheme: "dark" });
     await expect(list.first()).toBeVisible();
-    await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (Konten, dunkles Farbschema)");
+    await expectNoSeriousA11yViolations(
+      page,
+      "Verwaltungsbereich (Konten, dunkles Farbschema)",
+    );
 
     // Das Schema vor dem Laden setzen, nicht auf der gerenderten Seite: Ein
     // Wechsel danach erzeugt auf den Anmeldeseiten CI-eigene Kontrastbefunde.
@@ -559,8 +659,13 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
 
     await page.getByRole("tab", { name: "Diagnose" }).click();
     await page.waitForURL("**/admin/search/diagnosis");
-    await expect(page.getByRole("textbox", { name: /Testfrage/ })).toBeVisible();
-    await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (Suche & Indexierung, Diagnose)");
+    await expect(
+      page.getByRole("textbox", { name: /Testfrage/ }),
+    ).toBeVisible();
+    await expectNoSeriousA11yViolations(
+      page,
+      "Verwaltungsbereich (Suche & Indexierung, Diagnose)",
+    );
   });
 
   // Die E-Mail-Seite bringt zwei eigene Muster mit, die sonst nirgends vorkommen — die
@@ -586,18 +691,31 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       page.getByRole("heading", { level: 1, name: "E-Mail" }),
     ).toBeVisible();
     // Wait for the settings call to have landed: the status tile only renders once it has.
-    await expect(page.getByRole("region", { name: "Versandstatus" })).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "Versandstatus" }),
+    ).toBeVisible();
 
     await page.emulateMedia({ colorScheme: "light" });
-    await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (E-Mail, SMTP-Zugang, helles Farbschema)");
+    await expectNoSeriousA11yViolations(
+      page,
+      "Verwaltungsbereich (E-Mail, SMTP-Zugang, helles Farbschema)",
+    );
 
     await page.emulateMedia({ colorScheme: "dark" });
-    await expect(page.getByRole("region", { name: "Versandstatus" })).toBeVisible();
-    await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (E-Mail, SMTP-Zugang, dunkles Farbschema)");
+    await expect(
+      page.getByRole("region", { name: "Versandstatus" }),
+    ).toBeVisible();
+    await expectNoSeriousA11yViolations(
+      page,
+      "Verwaltungsbereich (E-Mail, SMTP-Zugang, dunkles Farbschema)",
+    );
 
     await page.getByRole("tab", { name: "Vorlagen" }).click();
     await page.waitForURL("**/admin/mail/templates");
-    await page.getByRole("navigation", { name: "Vorlagen" }).getByText("Testnachricht").click();
+    await page
+      .getByRole("navigation", { name: "Vorlagen" })
+      .getByText("Testnachricht")
+      .click();
     // The debounced preview iframe is the last thing to appear; analysing before it is there
     // would skip exactly the pattern this block exists for.
     await expect(page.getByTitle("Vorschau der HTML-Fassung")).toBeVisible();
@@ -623,8 +741,16 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
   }) => {
     const tabs = [
       ["access", "Zugänge", page.getByRole("button", { name: "Neuer Zugang" })],
-      ["source-types", "Quellarten", page.getByRole("table", { name: "Quellarten" })],
-      ["settings", "Einstellungen", page.getByRole("region", { name: "Verbindungsprotokoll" })],
+      [
+        "source-types",
+        "Quellarten",
+        page.getByRole("table", { name: "Quellarten" }),
+      ],
+      [
+        "settings",
+        "Einstellungen",
+        page.getByRole("region", { name: "Verbindungsprotokoll" }),
+      ],
       [
         "external-tools",
         "Externe KI-Werkzeuge",
@@ -633,7 +759,9 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     ] as const;
     for (const [tab, label, ready] of tabs) {
       await page.goto(`/admin/connections/${tab}`);
-      await expect(page.getByRole("heading", { level: 1, name: "Anbindungen" })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { level: 1, name: "Anbindungen" }),
+      ).toBeVisible();
       await expect(ready).toBeVisible();
       for (const scheme of ["light", "dark"] as const) {
         await page.emulateMedia({ colorScheme: scheme });
@@ -648,7 +776,9 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await page.goto("/admin/connections/source-types");
     await page.getByRole("button", { name: "Details: RSS-Feed" }).click();
     const typePanel = page.getByRole("dialog", { name: "RSS-Feed" });
-    await expect(typePanel.getByRole("switch", { name: "Nur über Zugänge für RSS-Feed" })).toBeVisible();
+    await expect(
+      typePanel.getByRole("switch", { name: "Nur über Zugänge für RSS-Feed" }),
+    ).toBeVisible();
     for (const scheme of ["light", "dark"] as const) {
       await page.emulateMedia({ colorScheme: scheme });
       await expectNoSeriousA11yViolations(
@@ -658,10 +788,18 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     }
 
     await page.goto("/admin/connections/external-tools");
-    await expect(page.getByRole("region", { name: "Zustand des Zugriffswegs" })).toBeVisible();
-    await page.getByRole("button", { name: "Einstellungen", exact: true }).click();
-    const panel = page.getByRole("dialog", { name: "Einstellungen für externe KI-Werkzeuge" });
-    await expect(panel.getByRole("switch", { name: "Externe KI-Werkzeuge zulassen" })).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "Zustand des Zugriffswegs" }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Einstellungen", exact: true })
+      .click();
+    const panel = page.getByRole("dialog", {
+      name: "Einstellungen für externe KI-Werkzeuge",
+    });
+    await expect(
+      panel.getByRole("switch", { name: "Externe KI-Werkzeuge zulassen" }),
+    ).toBeVisible();
     for (const scheme of ["light", "dark"] as const) {
       await page.emulateMedia({ colorScheme: scheme });
       await expectNoSeriousA11yViolations(
@@ -715,7 +853,9 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
    * abgeleitet wird, pruefen diese Seiten wieder ungekuerzt.
    */
 
-  test("Selbstbedienung: Passwort festlegen in beiden Farbschemata", async ({ page }) => {
+  test("Selbstbedienung: Passwort festlegen in beiden Farbschemata", async ({
+    page,
+  }) => {
     await page.route("**/api/v1/auth/config", (route) =>
       route.fulfill({ json: LOCAL_ACCOUNTS_CONFIG }),
     );
@@ -727,13 +867,20 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       ).toBeVisible();
       // Die Stärkeanzeige und der Generator gehören zur Seite, die geprüft wird - ohne Eingabe wäre
       // genau der Teil mit eigenen Farbrollen nicht im Baum.
-      await page.getByRole("button", { name: "Sicheres Passwort erzeugen" }).click();
+      await page
+        .getByRole("button", { name: "Sicheres Passwort erzeugen" })
+        .click();
       await expect(page.getByTestId("password-strength")).toBeVisible();
-      await expectNoSeriousA11yViolations(page, `Passwort festlegen (${scheme})`);
+      await expectNoSeriousA11yViolations(
+        page,
+        `Passwort festlegen (${scheme})`,
+      );
     }
   });
 
-  test("Selbstbedienung: Passwort vergessen mit Ergebnisansicht", async ({ page }) => {
+  test("Selbstbedienung: Passwort vergessen mit Ergebnisansicht", async ({
+    page,
+  }) => {
     await page.route("**/api/v1/auth/config", (route) =>
       route.fulfill({ json: LOCAL_ACCOUNTS_CONFIG }),
     );
@@ -741,13 +888,18 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       route.fulfill({ status: 204 }),
     );
     await page.goto("/forgot-password");
-    await expect(page.getByRole("heading", { level: 1, name: "Passwort vergessen" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Passwort vergessen" }),
+    ).toBeVisible();
     await expectNoSeriousA11yViolations(page, "Passwort vergessen (Formular)");
 
     await page.getByLabel("E-Mail-Adresse").fill("erika.muster@stadt.example");
     await page.getByRole("button", { name: "Link anfordern" }).click();
     await expect(page.getByRole("alert")).toBeVisible();
-    await expectNoSeriousA11yViolations(page, "Passwort vergessen (Ergebnisansicht)");
+    await expectNoSeriousA11yViolations(
+      page,
+      "Passwort vergessen (Ergebnisansicht)",
+    );
   });
 
   /**
@@ -756,7 +908,9 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
    * `color-contrast` fehlschlägt. Ohne diesen Test fiele ein Wegfall der Wartezeile auf
    * den sporadischen Fehlschlag zurück, den `retries: 1` zusätzlich verdeckt.
    */
-  test("Selbstbedienung: gedehnte Einblendung bleibt messbar", async ({ page }) => {
+  test("Selbstbedienung: gedehnte Einblendung bleibt messbar", async ({
+    page,
+  }) => {
     await page.route("**/api/v1/auth/config", (route) =>
       route.fulfill({ json: LOCAL_ACCOUNTS_CONFIG }),
     );
@@ -764,9 +918,14 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await page.addStyleTag({
       content: "*, *::before, *::after { animation-duration: 3s !important }",
     });
-    await expect(page.getByRole("heading", { level: 1, name: "Passwort vergessen" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Passwort vergessen" }),
+    ).toBeVisible();
 
-    await expectNoSeriousA11yViolations(page, "Passwort vergessen (gedehnte Einblendung)");
+    await expectNoSeriousA11yViolations(
+      page,
+      "Passwort vergessen (gedehnte Einblendung)",
+    );
   });
 
   test("Selbstbedienung: Registrierung", async ({ page }) => {
@@ -774,7 +933,9 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       route.fulfill({ json: LOCAL_ACCOUNTS_CONFIG }),
     );
     await page.goto("/register");
-    await expect(page.getByRole("heading", { level: 1, name: "Konto registrieren" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Konto registrieren" }),
+    ).toBeVisible();
 
     await expectNoSeriousA11yViolations(page, "Registrierung");
   });
@@ -787,7 +948,9 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       route.fulfill({ status: 204 }),
     );
     await page.goto("/verify-email?token=e2e-token");
-    await expect(page.getByRole("alert")).toContainText("E-Mail-Adresse bestätigt");
+    await expect(page.getByRole("alert")).toContainText(
+      "E-Mail-Adresse bestätigt",
+    );
 
     await expectNoSeriousA11yViolations(page, "E-Mail-Bestätigung");
   });

@@ -87,7 +87,7 @@ test.describe("Fehlversuche sperren, Verwalter entsperrt", () => {
       table.getByRole("img", { name: "Sperrgrund: Nach mehreren falschen Passwörtern gesperrt" }),
     ).toBeVisible();
 
-    await admin.getByRole("button", { name: `Aktionen für „${displayName}“` }).click();
+    await admin.getByRole("button", { name: `Weitere Aktionen für „${displayName}“` }).click();
     await admin.getByRole("menuitem", { name: "Entsperren" }).click();
     await expect(admin.getByText(`„${displayName}“ wurde entsperrt.`)).toBeVisible();
     await expect(table).toContainText("Aktiv");

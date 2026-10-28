@@ -1,21 +1,15 @@
 import { useState, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import type { SxProps, Theme } from '@mui/material/styles'
-import Divider from '@mui/material/Divider'
 import Link from '@mui/material/Link'
 import IconButton from '@mui/material/IconButton'
-import Menu from '@mui/material/Menu'
-import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
-import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
-import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
 import { Link as RouterLink } from 'react-router'
 import type { AssetType } from '@/shared/api/types'
 import MetaBadge from '@/shared/ui/MetaBadge'
+import RowMenu from '@/shared/ui/RowMenu'
 import { focusRingOffsetPx, focusRingWidthPx } from '@/shared/theme/tokens'
 import AssetHeadlineEditor, { type AssetHeadlineEditorProps } from './AssetHeadlineEditor'
 import { FavoriteToggle, PublicMark, TypeBadge } from './assetMarks'
@@ -129,7 +123,7 @@ const FIGURE_SEPARATOR = {
   color: 'text.disabled',
 } as const
 
-/** „⋯": „In Space verwenden" for whoever may use it, „Löschen" apart and only with the right. */
+/** „⋯": „In Space verwenden" for whoever may use it, „Löschen" last and only with the right. */
 function MoreActions({
   assetType,
   assetId,
@@ -152,73 +146,23 @@ function MoreActions({
   | 'deleteLabel'
   | 'deleteDisabled'
 >) {
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const [useInSpace, setUseInSpace] = useState(false)
   if (!mayUseInSpace && !onDelete && !menuItems?.length) return null
-  const buttonId = `asset-detail-actions-${assetId}`
-  const menuId = `${buttonId}-menu`
   return (
     <>
-      <Tooltip title="Weitere Aktionen">
-        <IconButton
-          id={buttonId}
-          aria-label="Weitere Aktionen"
-          aria-haspopup="menu"
-          aria-controls={anchor ? menuId : undefined}
-          aria-expanded={anchor ? true : undefined}
-          onClick={(event) => setAnchor(event.currentTarget)}
-        >
-          <MoreHorizIcon />
-        </IconButton>
-      </Tooltip>
-      <Menu
-        id={menuId}
-        anchorEl={anchor}
-        open={anchor !== null}
-        onClose={() => setAnchor(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        slotProps={{ list: { 'aria-labelledby': buttonId } }}
-      >
-        {menuItems?.map((item) => (
-          <MenuItem
-            key={item.label}
-            disabled={item.disabled}
-            onClick={() => {
-              setAnchor(null)
-              item.onClick()
-            }}
-          >
-            {item.label}
-          </MenuItem>
-        ))}
-        {(menuItems?.length ?? 0) > 0 && (mayUseInSpace || onDelete) && <Divider />}
-        {mayUseInSpace && (
-          <MenuItem
-            onClick={() => {
-              setAnchor(null)
-              setUseInSpace(true)
-            }}
-          >
-            <WorkspacesOutlinedIcon aria-hidden sx={{ fontSize: 18, mr: 1.5 }} />
-            In Space verwenden
-          </MenuItem>
-        )}
-        {mayUseInSpace && onDelete && <Divider />}
-        {onDelete && (
-          <MenuItem
-            onClick={() => {
-              setAnchor(null)
-              onDelete()
-            }}
-            disabled={deleteDisabled}
-            sx={{ color: 'error.main' }}
-          >
-            <DeleteOutlinedIcon aria-hidden sx={{ fontSize: 18, mr: 1.5 }} />
-            {deleteLabel}
-          </MenuItem>
-        )}
-      </Menu>
+      <RowMenu
+        name={name}
+        items={[
+          ...(menuItems ?? []),
+          mayUseInSpace && { label: 'In Space verwenden', onClick: () => setUseInSpace(true) },
+          onDelete && {
+            label: deleteLabel,
+            onClick: onDelete,
+            danger: true,
+            disabled: deleteDisabled,
+          },
+        ]}
+      />
       {mayUseInSpace && (
         <UseInSpaceDialog
           assetType={assetType}
