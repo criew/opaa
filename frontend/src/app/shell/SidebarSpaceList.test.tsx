@@ -6,7 +6,11 @@ import { useUiStore } from '@/shared/stores/uiStore'
 import type { SpaceListResponse } from '@/shared/api/types'
 import SidebarSpaceList from './SidebarSpaceList'
 
-function space(id: string, name: string, extra: Partial<SpaceListResponse> = {}): SpaceListResponse {
+function space(
+  id: string,
+  name: string,
+  extra: Partial<SpaceListResponse> = {},
+): SpaceListResponse {
   return {
     id,
     name,
@@ -106,10 +110,9 @@ describe('SidebarSpaceList', () => {
     const create = screen.getByRole('link', { name: 'Neuer Space' })
     expect(create).toHaveAttribute('href', '/spaces/new')
     expect(create).not.toHaveTextContent(/Neu/)
-    expect(screen.getByRole('link', { name: 'Alle Spaces anzeigen und durchsuchen' })).toHaveAttribute(
-      'href',
-      '/spaces',
-    )
+    expect(
+      screen.getByRole('link', { name: 'Alle Spaces anzeigen und durchsuchen' }),
+    ).toHaveAttribute('href', '/spaces')
 
     await user.hover(create)
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Neuer Space')

@@ -7,7 +7,7 @@ import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import Typography from '@mui/material/Typography'
 import { ThemeProvider, useTheme } from '@mui/material/styles'
-import GridViewOutlinedIcon from '@mui/icons-material/GridViewOutlined'
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutlineOutlined'
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import LogoutIcon from '@mui/icons-material/Logout'
@@ -35,13 +35,13 @@ interface RailDestination {
   to: string
   /** Route prefixes on which this entry counts as the active scope. */
   activePrefixes: string[]
-  icon: typeof GridViewOutlinedIcon
+  icon: typeof ChatBubbleOutlineIcon
 }
 
 /**
  * The global rail (mockup 2a): the always-visible first navigation level left of the
  * space column, one shade darker so global and space scope read apart at a glance. It carries
- * the brand emblem, the global destinations - Spaces, the catalog, administration -
+ * the brand emblem, the global destinations - Chat, the catalog, administration -
  * and the user's avatar with the account menu; the navy column next to it stays purely
  * space-scoped.
  */
@@ -65,12 +65,13 @@ export default function GlobalRail() {
   const roles = appMode === 'light' ? railRoles : darkRoles
 
   const destinations: RailDestination[] = [
-    // "/chat" lands in a space chat, so the Spaces scope owns it ("/" redirects there).
+    // Guidelines 5.13: the entry to the space column. "/chat" opens a new chat in the space last
+    // used ("/" redirects there); the overview of all spaces is reached from that column.
     {
-      label: 'Spaces',
-      to: '/spaces',
+      label: 'Chat',
+      to: '/chat',
       activePrefixes: ['/spaces', '/chat'],
-      icon: GridViewOutlinedIcon,
+      icon: ChatBubbleOutlineIcon,
     },
     // One entry for every asset type (ADR-0039, Entscheidung 1); an asset's own pages count as
     // the catalog's scope.

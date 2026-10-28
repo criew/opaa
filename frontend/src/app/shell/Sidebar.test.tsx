@@ -232,7 +232,8 @@ describe('Sidebar', () => {
 
     const user = userEvent.setup()
     renderSidebarAtRoute('/chat')
-    await user.click(screen.getByRole('button', { name: /Space 0/ }))
+    // Without a :spaceId in the route the switcher shows the space last active.
+    await user.click(screen.getByRole('button', { name: /Space 6/ }))
 
     const names = screen
       .getAllByRole('menuitem')
@@ -512,8 +513,9 @@ describe('Sidebar', () => {
       const chats = screen.getByRole('navigation', { name: 'Chats' })
       expect(within(chats).getByRole('button', { name: 'Neuer Chat' })).toBeInTheDocument()
       expect(within(chats).getByRole('button', { name: 'Chats durchsuchen' })).toBeInTheDocument()
-      expect(await within(chats).findByRole('button', { name: /^Zuletzt verwendet \d+$/ }))
-        .toBeInTheDocument()
+      expect(
+        await within(chats).findByRole('button', { name: /^Zuletzt verwendet \d+$/ }),
+      ).toBeInTheDocument()
     })
   })
 

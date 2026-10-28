@@ -10,7 +10,12 @@ describe('CollapsibleSectionHead', () => {
 
   it('folds its group as a disclosure and remembers that under its key', async () => {
     renderWithProviders(
-      <CollapsibleSectionHead sectionKey="chats.pinned" label="Angeheftet" count={8} controls="r" />,
+      <CollapsibleSectionHead
+        sectionKey="chats.pinned"
+        label="Angeheftet"
+        count={8}
+        controls="r"
+      />,
     )
     // The count is visible text, so the accessible name equals what is shown (no aria-label).
     const toggle = screen.getByRole('button', { name: 'Angeheftet 8' })

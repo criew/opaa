@@ -63,7 +63,7 @@ describe('GlobalRail', () => {
     const chat = screen.getByRole('link', { name: 'Chat' })
     expect(chat).toHaveAttribute('href', '/chat')
     expect(chat).toHaveAttribute('aria-current', 'page')
-    expect(chat.querySelector('svg[data-testid="ChatBubbleOutlineIcon"]')).not.toBeNull()
+    expect(chat.querySelector('svg[data-testid="ChatBubbleOutlineOutlinedIcon"]')).not.toBeNull()
     expect(screen.queryByRole('link', { name: 'Spaces' })).not.toBeInTheDocument()
     unmount()
 
