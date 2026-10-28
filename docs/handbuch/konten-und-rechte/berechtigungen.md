@@ -132,8 +132,9 @@ Gruppen im selben Suchfeld „Person oder Gruppe suchen" wie der Abschnitt „Be
 bestehenden Arbeitsmittel — mit denselben Regeln für geschützte Gruppen
 (Abschnitt 8) und derselben Rückfrage vor einer Freigabe an die Gruppe eines externen Anbieters.
 Die Treffer stehen gemischt, die passendsten zuerst; eine Gruppe trägt „Gruppe" im Namen der
-Zeile. Suche, Rolle und „Vormerken" stehen in einer Zeile. Den Empfänger **„Alle Konten"**
-bietet der Assistent nicht an: Ein Bestand, den es noch nicht gibt, hat keine Reichweite zu weiten,
+Zeile. Suche, Rolle und „Vormerken" stehen in einer Zeile; „Vormerken" heißt die Schaltfläche, weil
+erst das Anlegen die Freigaben speichert. Ohne Auswahl nennt sie die fehlende Auswahl am Suchfeld.
+Den Empfänger **„Alle Konten"** bietet der Assistent nicht an: Ein Bestand, den es noch nicht gibt, hat keine Reichweite zu weiten,
 und die Obergrenze, die über eine solche Freigabe entscheidet, gehört dem angelegten Arbeitsmittel.
 
 ### Reichweite: „Alle Konten"
@@ -298,7 +299,10 @@ Systemverwaltung gepflegt, sondern von benannten **Verantwortlichen**.
 **Wer sie anlegt, ist verantwortlich.** Das Anlegen verlangt das Anlegerecht „Interne Gruppen
 anlegen" (Abschnitt 9); die anlegende Person wird im selben Schritt verantwortliche Person.
 Verantwortliche sind immer Personen, nie Gruppen, und sie sind nicht automatisch Mitglied. Angelegt
-und gepflegt wird unter **Einstellungen → Meine Gruppen**.
+(„Gruppe anlegen") und gepflegt wird unter **Einstellungen → Meine Gruppen**. Mitglieder und
+Verantwortliche kommen dort über dieselbe Zeile hinzu wie die Mitglieder eines Space: Suchfeld
+„Person suchen" und daneben „Hinzufügen" bzw. „Als verantwortlich benennen". Ohne Auswahl nennt die
+Schaltfläche die fehlende Auswahl am Suchfeld.
 
 Der Dialog **„Gruppe anlegen“** ist aufgebaut wie „Bearbeiten“: Name, Beschreibung, der Schalter
 „Zur Verwendung freigegeben“ und darunter die Verantwortlichen, die sich gleich mitbenennen lassen —
@@ -336,9 +340,9 @@ einer Gruppe stehen im Zeilenmenü: **Bearbeiten**, **Mitglieder**, **Rechte üb
 interne Gruppe. **Mitglieder** zeigt die Mitglieder als
 alphabetische Tabelle mit dem Datum der Aufnahme und ihre Zahl im Titel, mit einem Filterfeld
 über der Tabelle; die Liste
-lädt beim Öffnen des Dialogs. Bei einer internen Gruppe lassen sich dort Personen aufnehmen und
-entfernen. Jeder Abruf durch die Systemverwaltung steht im Nachweisprotokoll, und der Dialog sagt
-das.
+lädt beim Öffnen des Dialogs. Bei einer internen Gruppe lassen sich dort Personen über dieselbe Zeile
+wie in „Meine Gruppen" hinzufügen und entfernen. Jeder Abruf durch die Systemverwaltung steht im
+Nachweisprotokoll, und der Dialog sagt das.
 
 **Verantwortung wird abgegeben, nicht abgelegt.** Die letzte verantwortliche Person kann sich nicht
 selbst entfernen: erst die Nachfolge benennen, dann zurücktreten. Wer die Aufgabe wechselt, gibt die

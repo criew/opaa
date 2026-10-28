@@ -370,7 +370,9 @@ Sehende, die das Symbol nicht kennen, noch für Screenreader.
 ein neues Objekt anlegt — tragen das Plus-Icon (`Add`) als `startIcon` vor der Beschriftung, und
 die Beschriftung nennt das Objekt: „Konto anlegen", „Gruppe anlegen", „Neuer Space", „Neues
 Modell", „Neuer Katalogeintrag". Ein bloßes „Neu" oder „Anlegen" genügt nicht; das Icon ist Zierde
-und ersetzt die Beschriftung nicht. Folgt eine Typwahl, nennt die Beschriftung den Oberbegriff.
+und ersetzt die Beschriftung nicht. Folgt eine Typwahl, nennt die Beschriftung den Oberbegriff. Je Objekt gibt es eine Beschriftung:
+Seitenkopf, Leerzustand und Menüeinträge wie der Space-Wechsler der Seitenleiste tragen denselben
+Text („Neuer Space", „Gruppe anlegen", „Neuer Anbieter").
 Ausgenommen ist die kompakte Aktion „Neu" im Abschnittskopf „Chats" der Seitenleiste; ihr
 zugänglicher Name nennt das Objekt („Neu: Chat beginnen").
 
@@ -378,7 +380,27 @@ zugänglicher Name nennt das Objekt („Neu: Chat beginnen").
 (Freigabe, Zuordnung, Feld, Ordner), steht sie als Textaktion rechts im Abschnittskopf der
 Detailseite (`DetailSection` mit `TextAction`): ohne Plus-Icon, als Verb mit Objekt, wo das Verb
 allein nicht eindeutig ist („Freigeben", „In Space verwenden", „Feld anlegen"). Je Abschnitt gibt es
-höchstens eine.
+höchstens eine. Ergänzt die Aktion eine Liste innerhalb einer Zeile („Wert ergänzen"), ist sie
+ebenfalls eine `TextAction`. Eine Aktion, die den Zustand eines Hinweises behebt („Zugang
+zuordnen"), bleibt die Aktion dieses Hinweises.
+
+**Personen und Gruppen hinzufügen.** Die Schaltfläche der Formularzeile aus 5.2 heißt
+„Hinzufügen" — in den Space-Mitgliedern, in „Meine Gruppen" und im Mitgliederdialog der
+Gruppenverwaltung. Fachlich begründet sind drei andere Verben:
+
+- „Vormerken" im Assistenten (Space, Wissens- und Prompt-Bibliothek): Gespeichert wird erst mit dem
+  Anlegen.
+- „Freigeben" an einem bestehenden Arbeitsmittel: Die Handlung erteilt eine Berechtigung mit Rolle
+  und Befristung, keine Mitgliedschaft.
+- „Als verantwortlich benennen" bei internen Gruppen: Verantwortliche werden nicht Mitglied.
+
+Die Schaltfläche bleibt ohne Auswahl aktiv (Prüfliste P28). Fehlt die Auswahl, steht „Bitte eine
+Person oder Gruppe auswählen." (bzw. „Bitte eine Person auswählen.") am Suchfeld, und der Fokus geht
+hinein. Primär ist sie nur, wo sie die einzige Handlung der Fläche ist (Space-Mitglieder,
+Mitgliederdialog); im Assistenten, bei den Verantwortlichen und neben „Speichern" ist sie
+sekundär. Eine eigene Überschrift „Mitglied hinzufügen" trägt die Zeile nur, wo sonst keine
+Überschrift sie gliedert (Reiter „Mitglieder", 5.12); unter einer Liste mit eigener Überschrift
+(„Mitglieder" in „Meine Gruppen") gehört sie zu dieser.
 
 **Link oder Schaltfläche.** Was an einen anderen Ort führt, ist im Code ein Link (`href` oder
 Router-Link). Was auf der Seite etwas auslöst (Dialog öffnen, speichern, starten, abbrechen), ist
@@ -414,7 +436,8 @@ die Gruppe eines externen Anbieters trägt ein eigenes Warnsymbol. „Alle Konte
 es diesen Empfänger gibt (Freigaben an einem bestehenden Asset), als eigener Eintrag mit
 Welt-Symbol. Das Formular dazu steht in einer Zeile: Suche (breit), Rolle (schmal), Schaltfläche in
 normaler Breite (`SubjectFormRow`); unter 600 px steht die Suche allein oben, Rolle und
-Schaltfläche darunter.
+Schaltfläche darunter. Dieselbe Zeile gilt, wo nur Personen in Frage kommen (`UserPicker`,
+Platzhalter „Person suchen …") und die Rolle entfällt: Mitglieder und Verantwortliche einer Gruppe.
 
 ### 5.3 Tabellen
 

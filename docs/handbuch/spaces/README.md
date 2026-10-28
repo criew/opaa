@@ -98,7 +98,7 @@ Die Seite hat drei Reiter, und keine Überschrift im Reiter wiederholt seinen Na
 | Reiter | Inhalt |
 |---|---|
 | **Stammdaten** | Name, Beschreibung, der Schalter der automatischen Chat-Bereinigung mit den Fristen der Installation (Abschnitt 7), die **Anweisung an das Modell** ([Suche](suche.md), Abschnitt 6) — und am Ende der abgesetzte **Gefahrenbereich** mit „Space archivieren" und „Space löschen" |
-| **Mitglieder** | Die Mitgliederliste und das Aufnehmen von Personen und Gruppen. Die Liste beginnt mit dem Eigentümer, danach folgen Administratoren, Kuratoren und Mitglieder, je Rolle nach Name, Personen und Gruppen gemischt; eine lange Liste bekommt darüber ein Suchfeld. Jede Zeile trägt nur die Rolle — für Administratoren als Auswahl, beim Eigentümer als schreibgeschützte Auswahl „Eigentümer" mit Schloss statt Pfeil und dem Hinweis, dass der Eigentümer über „Zum Eigentümer machen" bei einem anderen Mitglied wechselt — und ein Menü „⋯" mit „Warum hat … Zugriff?", „Mitglieder der Gruppe anzeigen", „Zum Eigentümer machen" und „Aus Space entfernen", soweit der Eintrag für Zeile und eigene Rolle gilt. Darunter steht „Mitglied hinzufügen" mit einem Suchfeld für Personen und Gruppen, der Rolle und „Hinzufügen" in einer Zeile |
+| **Mitglieder** | Die Mitgliederliste und das Aufnehmen von Personen und Gruppen. Die Liste beginnt mit dem Eigentümer, danach folgen Administratoren, Kuratoren und Mitglieder, je Rolle nach Name, Personen und Gruppen gemischt; eine lange Liste bekommt darüber ein Suchfeld. Jede Zeile trägt nur die Rolle — für Administratoren als Auswahl, beim Eigentümer als schreibgeschützte Auswahl „Eigentümer" mit Schloss statt Pfeil und dem Hinweis, dass der Eigentümer über „Zum Eigentümer machen" bei einem anderen Mitglied wechselt — und ein Menü „⋯" mit „Warum hat … Zugriff?", „Mitglieder der Gruppe anzeigen", „Zum Eigentümer machen" und „Aus Space entfernen", soweit der Eintrag für Zeile und eigene Rolle gilt. Darunter steht „Mitglied hinzufügen" mit einem Suchfeld für Personen und Gruppen, der Rolle und „Hinzufügen" in einer Zeile; ohne Auswahl nennt „Hinzufügen" die fehlende Auswahl am Suchfeld |
 | **Inhalte** | Eine Kachelliste aller Arbeitsmittel — Wissensbibliotheken und [Prompt-Bibliotheken](../arbeitsmittel/prompt-bibliotheken.md), solange Prompt-Bibliotheken eingeschaltet sind. Ein Häkchen heißt „dem Space zugeordnet"; anhaken und abhaken dürfen Kuratoren, Administratoren und der Eigentümer des Space |
 
 **Im Reiter „Mitglieder" meldet sich jede Änderung kurz.** Hinzufügen, Entfernen, Rollenwechsel und
@@ -190,9 +190,9 @@ zugänglich, weil er archiviert wurde, die Mitgliedschaft entzogen ist oder der 
 jemand anderem benutzt wurde, führt der Einstieg in den persönlichen Space.
 
 Das Space-Menü am Kopf der Seitenleiste führt aus demselben Grund **höchstens fünf Spaces**, den
-zuletzt genutzten zuoberst; darunter stehen unverändert „Alle Spaces anzeigen" und „Neuen Space
-anlegen". Wer in vielen Spaces Mitglied ist, findet den vollständigen Bestand samt Suchfeld in der
-Übersicht — das Menü ist der schnelle Weg zurück, nicht das Verzeichnis.
+zuletzt genutzten zuoberst; darunter stehen unverändert „Alle Spaces anzeigen" und „Neuer Space".
+Wer in vielen Spaces Mitglied ist, findet den vollständigen Bestand samt Suchfeld in der Übersicht —
+das Menü ist der schnelle Weg zurück, nicht das Verzeichnis.
 
 Die Nutzungsreihenfolge merkt sich der Browser, nicht der Server: Sie gilt je Gerät und je Browser
 und wandert nicht mit. Gemerkt werden nur Space-Kennungen, und die Liste wird bei jedem Öffnen gegen
