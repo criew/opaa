@@ -28,6 +28,7 @@ import SidebarSpaceList from './SidebarSpaceList'
 import {
   lastUsedSpace,
   rememberSpaceUse,
+  SPACE_SEARCH_HANDOVER,
   spacesByRecentUse,
   useRecentSpaceIds,
 } from '@/features/space'
@@ -270,7 +271,7 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
             <MenuItem
               onClick={() => {
                 closeSpaceMenu()
-                navigate('/spaces')
+                navigate('/spaces', { state: SPACE_SEARCH_HANDOVER })
               }}
               sx={{ fontSize: 12.5, color: 'text.secondary' }}
             >

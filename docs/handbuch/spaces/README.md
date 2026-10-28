@@ -192,15 +192,15 @@ persönliche Space zuerst, danach nach Name, damit eine angeklickte Zeile nicht 
 Space ist immer dabei und hervorgehoben; ein archivierter erscheint nur, wenn Sie ihn zuletzt
 genutzt haben, mit dem Hinweis „archiviert". Die Zahl hinter „Spaces" nennt alle Ihre nicht
 archivierten Spaces. Rechts im Kopf legt das Plus „Neuer Space" einen Space an, die Lupe öffnet die
-Übersicht mit ihrem Suchfeld; die Seitenleiste bleibt dabei stehen und markiert den zuletzt
+Übersicht mit dem Cursor im Suchfeld; die Seitenleiste bleibt dabei stehen und markiert den zuletzt
 aktiven Space. Wer in vielen Spaces Mitglied ist, findet dort den vollständigen Bestand — die
 Zeilen sind der schnelle Weg zurück, nicht das Verzeichnis. Der Bereich lässt sich zuklappen; die
 Zeile des aktiven Space bleibt dann sichtbar.
 
 Auf schmalen Bildschirmen, wo sich die Seitenleiste als Überlagerung öffnet, ist für fünf Zeilen
 kein Platz. Dort steht stattdessen das **Space-Menü** am Kopf der Seitenleiste mit denselben
-höchstens fünf Spaces, den zuletzt genutzten zuoberst, und darunter „Alle Spaces anzeigen" und
-„Neuer Space". Es nennt unter jedem Namen die Mitglieder, wie die Reichweite eines
+höchstens fünf Spaces, den zuletzt genutzten zuoberst, und darunter „Alle Spaces anzeigen" (wie die
+Lupe) und „Neuer Space". Es nennt unter jedem Namen die Mitglieder, wie die Reichweite eines
 Arbeitsmittels formuliert: „2 Gruppen, 3 Personen", oder „nur Sie", wenn Ihr eigenes Konto das
 einzige Mitglied ist — gleich, ob es der Standard-Space ist oder nicht. Eine Gruppe zählt als eine
 Mitgliedschaft, wie viele Personen sie auch umfasst; ihre Größe wird dort nicht genannt.

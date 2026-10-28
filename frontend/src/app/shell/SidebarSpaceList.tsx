@@ -16,7 +16,7 @@ import type { SpaceListResponse } from '@/shared/api/types'
 import CollapsibleSectionHead from '@/shared/ui/CollapsibleSectionHead'
 import { useSectionCollapsed } from '@/shared/stores/uiStore'
 import { darkRoles, lightRoles } from '@/shared/theme/tokens'
-import { spacesByRecentUse, useRecentSpaceIds } from '@/features/space'
+import { SPACE_SEARCH_HANDOVER, spacesByRecentUse, useRecentSpaceIds } from '@/features/space'
 
 /** How many spaces the column shows as rows; the rest are behind the search button. */
 export const SPACE_ROW_COUNT = 5
@@ -37,7 +37,7 @@ function spaceTarget(space: SpaceListResponse): string {
  * picked by recent use and filled up in list order, shown personal space first and then by name;
  * the active space is always among them and stays visible while the group is folded. The head
  * counts the person's spaces that are not archived; plus creates a space, the search button opens
- * the overview with its search field.
+ * the overview with the cursor in its search field.
  */
 export default function SidebarSpaceList({
   spaces,
@@ -160,6 +160,7 @@ export default function SidebarSpaceList({
               <IconButton
                 component={RouterLink}
                 to="/spaces"
+                state={SPACE_SEARCH_HANDOVER}
                 size="small"
                 aria-label="Alle Spaces anzeigen und durchsuchen"
                 sx={{ p: 0.5, borderRadius: '4px' }}

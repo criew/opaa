@@ -5,6 +5,13 @@ import { renderWithProviders } from '@/test/test-utils'
 import { useUiStore } from '@/shared/stores/uiStore'
 import type { SpaceListResponse } from '@/shared/api/types'
 import SidebarSpaceList from './SidebarSpaceList'
+import { Route, Routes, useLocation } from 'react-router'
+import { SPACE_SEARCH_HANDOVER } from '@/features/space'
+
+function LocationProbe() {
+  const { pathname, state } = useLocation()
+  return <output data-testid="location">{JSON.stringify({ pathname, state })}</output>
+}
 
 function space(
   id: string,
@@ -116,6 +123,30 @@ describe('SidebarSpaceList', () => {
 
     await user.hover(create)
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Neuer Space')
+  })
+
+  it('opens the space search with the cursor handover, like the chat search', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <Routes>
+        <Route
+          path="*"
+          element={
+            <>
+              <SidebarSpaceList spaces={SPACES} activeSpaceId="space-personal" isLoading={false} />
+              <LocationProbe />
+            </>
+          }
+        />
+      </Routes>,
+      { withRouter: true },
+    )
+
+    await user.click(screen.getByRole('link', { name: 'Alle Spaces anzeigen und durchsuchen' }))
+
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      JSON.stringify({ pathname: '/spaces', state: SPACE_SEARCH_HANDOVER }),
+    )
   })
 
   it('keeps the row of the active space visible while the spaces are folded', async () => {

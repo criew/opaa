@@ -12,3 +12,4 @@ export {
   useRecentSpaceIds,
   lastUsedSpace,
 } from './utils/recentSpaces'
+export { SPACE_SEARCH_HANDOVER } from './utils/spaceSearchHandover'

@@ -10,7 +10,7 @@ import Sidebar from './Sidebar'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useChatStore } from '@/features/chat'
 import { useChatListStore } from '@/features/chat'
-import { useSpaceStore } from '@/features/space'
+import { SPACE_SEARCH_HANDOVER, useSpaceStore } from '@/features/space'
 import {
   SIDEBAR_DEFAULT_WIDTH,
   SIDEBAR_MAX_WIDTH,
@@ -339,7 +339,8 @@ describe('Sidebar', () => {
     await user.click(screen.getByRole('button', { name: /Privater Bereich/ }))
     await user.click(screen.getByRole('menuitem', { name: 'Alle Spaces anzeigen' }))
 
-    expect(mockNavigate).toHaveBeenCalledWith('/spaces')
+    // Opens the space search with the cursor in its field (guidelines 5.13).
+    expect(mockNavigate).toHaveBeenCalledWith('/spaces', { state: SPACE_SEARCH_HANDOVER })
   })
 
   it('navigates to the create wizard via the switcher', async () => {

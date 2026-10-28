@@ -1,12 +1,13 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Route, Routes } from 'react-router'
+import { MemoryRouter, Route, Routes } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/server'
 import { renderWithProviders } from '@/test/test-utils'
 import SpacesOverviewPage from './SpacesOverviewPage'
 import { useSpaceStore } from '../stores/spaceStore'
+import { SPACE_SEARCH_HANDOVER } from '../utils/spaceSearchHandover'
 
 const personal = {
   id: 'space-personal',
@@ -58,6 +59,26 @@ describe('SpacesOverviewPage (#593, Mockup 1c)', () => {
     const personalCard = screen.getByRole('link', { name: /Mein Space/ })
     expect(personalCard).toHaveTextContent('1 Chat')
     await waitFor(() => expect(personalCard).toHaveTextContent('2 Chats'))
+  })
+
+  // Guidelines 5.13: the sidebar's search button opens the overview as the space search, with the
+  // cursor in its field - like the chat search.
+  it('puts the cursor into the search field when opened as the space search', async () => {
+    renderWithProviders(
+      <MemoryRouter initialEntries={[{ pathname: '/spaces', state: SPACE_SEARCH_HANDOVER }]}>
+        <Routes>
+          <Route path="/spaces" element={<SpacesOverviewPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Suchen' })).toHaveFocus())
+  })
+
+  it('leaves the focus alone when opened without the handover', () => {
+    renderWithProviders(<SpacesOverviewPage />, { withRouter: true, initialRoute: '/spaces' })
+
+    expect(screen.getByRole('textbox', { name: 'Suchen' })).not.toHaveFocus()
   })
 
   it('heads the overview like the catalog: "Spaces" with the quiet entry count (#3263)', () => {
