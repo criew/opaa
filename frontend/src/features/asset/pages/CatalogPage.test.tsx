@@ -92,13 +92,12 @@ describe('CatalogPage (ADR-0039)', () => {
     expect(within(cardOf(prompts)).queryByText(/zuständig:/)).not.toBeInTheDocument()
   })
 
-  it('says under the heading what the catalog holds, without a footnote', async () => {
+  it('heads the catalog like every overview: name and count, no subtitle and no footnote (#3263)', async () => {
     renderCatalog()
     await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
 
-    expect(
-      screen.getByText('Alles, was Sie nutzen dürfen. Ihre Favoriten stehen oben.'),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Katalog' })).toBeInTheDocument()
+    expect(screen.queryByText(/Alles, was Sie nutzen dürfen/)).not.toBeInTheDocument()
     expect(
       screen.queryByText(/Der Katalog zeigt nur, was Sie lesen dürfen/),
     ).not.toBeInTheDocument()
