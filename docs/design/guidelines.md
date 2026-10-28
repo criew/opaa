@@ -513,8 +513,8 @@ Vollständige Tastaturbedienung (Pfeile, Enter, Escape) ist Teil der Komponente,
 
 **Weitere Aktionen hinter „⋯".** Seltenere Aktionen einer Zeile, Kachel oder Detailseite öffnet
 ein Nur-Icon-Knopf mit den waagrechten drei Punkten (`MoreHoriz`), nie den senkrechten. Er trägt
-nach 5.1 den Tooltip „Weitere Aktionen" und ein `aria-label` mit dem Objekt („Aktionen für
-‚Referat 50'"). Für Listenzeilen gibt es den Baustein `RowMenu` in `frontend/src/shared/ui/`;
+nach 5.1 den Tooltip „Weitere Aktionen" und ein `aria-label`, das das Objekt nennt; den
+Wortlaut legt #3284 fest. Für Listenzeilen gibt es den Baustein `RowMenu` in `frontend/src/shared/ui/`;
 geprüft in `frontend/src/shared/ui/moreActionsTrigger.test.ts`.
 
 **Jeder Dialog hat eine sichtbare Schließen- oder Abbruchstelle.** Dialoge ohne eigene

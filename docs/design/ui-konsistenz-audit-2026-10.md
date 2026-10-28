@@ -36,7 +36,7 @@ Wissensbibliotheken (UI-Lab, #3084).
 | Kategorie | Befunde | In diesem PR behoben | Folge-Issue |
 |---|---|---|---|
 | K-1 Hinzufügen-Aktionen | 6 | – (Regel in Leitlinie 5.1) | #3285 |
-| K-2 Drei-Punkte-Menüs | 5 | Icon und Tooltip an 12 Auslösern | #3284 |
+| K-2 Drei-Punkte-Menüs | 5 | Icon und Tooltip in 13 Komponenten (11 Dateien geändert) | #3284 |
 | K-3 Link oder Knopf | 6 | – (Regel in Leitlinie 5.1) | #3287 |
 | K-4 Badges und Chips | 7 | Pill und Gewicht 500 an 7 Etikett-Bauten | #3283 |
 | K-5 Erklärtexte | 4 | – (Regel in Leitlinie 6) | #3286 |
@@ -55,7 +55,7 @@ Beschriftung, oben rechts). Die Befunde betreffen das Hinzufügen innerhalb von 
 | K1-3 | `space/components/SpaceMembersSection.tsx:228`, `group/components/MyGroupsSection.tsx:254`, `group/components/GroupMembersDialog.tsx:171` | Absenden ohne Auswahl deaktiviert | P28 |
 | K1-4 | `group/pages/GroupManagementPage.tsx:72` ↔ `group/components/MyGroupsSection.tsx:318`; `identity-provider/pages/OidcProviderManagementPage.tsx:73` ↔ `:135`; `space/pages/SpacesOverviewPage.tsx:79` ↔ `app/shell/Sidebar.tsx:246` | Ein Objekt, zwei Anlege-Beschriftungen: „Gruppe anlegen"/„Neue Gruppe", „Neuer Anbieter"/„Anbieter anlegen" (Kopf und Leerzustand derselben Seite), „Neuer Space"/„Neuen Space anlegen" | 5.1 Anlege-Knöpfe |
 | K1-5 | `space/components/SpaceMembersSection.tsx:196` | „Mitglied hinzufügen" als Eyebrow-Überschrift (Mono, Versalien) über der Formularzeile; „Meine Gruppen" ohne Überschrift | 5.12, 3 |
-| K1-6 | `library/components/metadata/AddValueButton.tsx:42`, `library/components/LibrarySourceSection.tsx:121` | Hinzufügen im Abschnitt als Textknopf bzw. Knopf statt `TextAction` (sonst: „Freigeben" `AssetGrantsSection.tsx:424`, „In Space verwenden" `AssetSpacesSection.tsx:38`, „Neuer Ordner" `LibraryDocumentsSection.tsx:339`, „Feld anlegen" `LibraryMetadataFieldsSection.tsx:244`) | Lücke → 5.1 ergänzt |
+| K1-6 | `library/components/metadata/AddValueButton.tsx:42`, `library/components/LibrarySourceSection.tsx:121` | Hinzufügen im Abschnitt als Textknopf bzw. Knopf statt `TextAction` (sonst: „Freigeben" `AssetGrantsSection.tsx:424`, „In Space verwenden" `AssetSpacesSection.tsx:38`, „Neuer Ordner" `LibraryDocumentsSection.tsx:339`, „Feld anlegen" `library/components/metadata/LibraryMetadataFieldsSection.tsx:244`) | Lücke → 5.1 ergänzt |
 
 ### K-2 · Drei-Punkte-Menüs
 
