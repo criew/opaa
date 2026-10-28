@@ -1,6 +1,7 @@
 package io.opaa.installation;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import io.opaa.api.types.ColorScheme;
 import io.opaa.api.types.MailEncryption;
 import io.opaa.common.ValidationException;
 import java.io.IOException;
@@ -17,8 +18,9 @@ import tools.jackson.databind.json.JsonMapper;
  * The answer file read at start-up from {@code OPAA_INSTALLATION_ANSWER_FILE} (ADR-0060,
  * Entscheidung 7). Its secrets are never plain text: the passwords and the model keys are files,
  * typically mounted from a secret, read when the file is applied. {@code chatModel}, {@code
- * embeddingModel} and {@code mail} are optional: a file without one skips its step, without {@code
- * mail} sending stays off. Parts of later steps are ignored.
+ * embeddingModel}, {@code mail} and {@code branding} are optional: a file without one skips its
+ * step, without {@code mail} sending stays off, without {@code branding} the OPAA default stays.
+ * Parts of later steps are ignored.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 record AnswerFile(
@@ -26,7 +28,8 @@ record AnswerFile(
     SignIn signIn,
     ChatModel chatModel,
     EmbeddingModel embeddingModel,
-    Mail mail) {
+    Mail mail,
+    Branding branding) {
 
   /** Upper bound of a secret file; a password or a key is far shorter. */
   static final long MAX_SECRET_BYTES = 8 * 1024;
@@ -73,6 +76,15 @@ record AnswerFile(
       String password,
       String fromAddress,
       String fromName) {}
+
+  /** The branding without its images; no secret, so it stands in the file as it is. */
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  record Branding(
+      String productName,
+      String claim,
+      String aiNotice,
+      String primaryColor,
+      ColorScheme defaultColorScheme) {}
 
   /** Reads and parses the file; the message of a failure names the file, never its content. */
   static AnswerFile read(Path file, JsonMapper json) {
@@ -149,6 +161,15 @@ record AnswerFile(
               keyOf(mail.passwordFile(), "mail.passwordFile"),
               mail.fromAddress(),
               mail.fromName()));
+    }
+    if (branding != null) {
+      steps.add(
+          new StepInput.Branding(
+              branding.productName(),
+              branding.claim(),
+              branding.aiNotice(),
+              branding.primaryColor(),
+              branding.defaultColorScheme()));
     }
     return List.copyOf(steps);
   }

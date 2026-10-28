@@ -246,7 +246,8 @@ class InstallationMailStepIntegrationTest {
 
     assertThat(jdbc.queryForObject("SELECT enabled FROM mail_settings WHERE id = 1", Boolean.class))
         .isEqualTo(mailSettingsBefore.get("enabled"));
-    assertThat(auditAfter("INSTALLATION_STEP_SKIPPED")).contains("\"discarded\":true");
+    assertThat(auditAfters("INSTALLATION_STEP_SKIPPED"))
+        .anyMatch(after -> after.contains("\"MAIL\"") && after.contains("\"discarded\":true"));
   }
 
   @Test
@@ -369,6 +370,15 @@ class InstallationMailStepIntegrationTest {
     return jdbc.queryForObject(
         "SELECT after::text FROM audit_log WHERE actor_ref = ? AND event_type = ?"
             + " ORDER BY recorded_at DESC LIMIT 1",
+        String.class,
+        InstallationService.SYSTEM_ACTOR,
+        type);
+  }
+
+  /** Every {@code after} of {@code type}: the answers skip each optional step they leave out. */
+  private List<String> auditAfters(String type) {
+    return jdbc.queryForList(
+        "SELECT after::text FROM audit_log WHERE actor_ref = ? AND event_type = ?",
         String.class,
         InstallationService.SYSTEM_ACTOR,
         type);

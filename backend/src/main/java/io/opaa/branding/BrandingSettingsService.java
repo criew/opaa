@@ -20,7 +20,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.regex.Pattern;
+import java.util.function.BiConsumer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,7 +38,8 @@ import org.springframework.transaction.annotation.Transactional;
  * <p><b>Writing is validated here, before the database sees it</b> ("Validierung an der
  * Systemgrenze"), with German-language messages: the database's own {@code chk_branding_settings_*}
  * constraints of the baseline are the backstop that catches a future direct write, not the primary
- * defense that a caller is expected to hit. The images' own rules live in {@link
+ * defense that a caller is expected to hit. The rules of the text fields live in {@link
+ * BrandingSettingsRules}, which the installation shares, the images' own in {@link
  * BrandingImageValidator}.
  *
  * <p>Every change records an {@link AuditEventType#BRANDING_SETTINGS_CHANGED} event ("Audit-
@@ -51,14 +52,6 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class BrandingSettingsService implements AuditPayloadKeys {
-
-  /**
-   * Six-digit hex triplet with a leading '#'. Deliberately no three-digit short form and no named
-   * colours: the frontend derives hover/press/focus states from this value by darkening it, and one
-   * canonical input form keeps that derivation - and the contrast check - from having to parse
-   * variants.
-   */
-  private static final Pattern HEX_COLOR = Pattern.compile("^#[0-9A-Fa-f]{6}$");
 
   /**
    * The {@code object_id} every branding audit entry carries. The branding settings are a singleton
@@ -133,34 +126,69 @@ public class BrandingSettingsService implements AuditPayloadKeys {
       String aiNotice,
       String primaryColor,
       ColorScheme defaultColorScheme) {
-    String validatedProductName =
-        validatedText(productName, BrandingDefaults.MAX_PRODUCT_NAME_LENGTH, "Der Produktname");
-    String validatedClaim = validatedText(claim, BrandingDefaults.MAX_CLAIM_LENGTH, "Der Claim");
-    String validatedAiNotice =
-        validatedNotice(
-            aiNotice, BrandingDefaults.MAX_AI_NOTICE_LENGTH, "Der Hinweis zur KI-Nutzung");
-    String validatedColor = validatedColor(primaryColor);
+    return replace(
+        validated(productName, claim, aiNotice, primaryColor, defaultColorScheme),
+        (before, after) -> recordChange(organizationId, actorUserId, before, after));
+  }
 
+  /**
+   * {@link #updateBranding} for the completion of the installation, which has no account yet: the
+   * same rules and the same no-op rule, audited under the system process {@code systemActor}.
+   */
+  @Transactional
+  public EffectiveBranding installBranding(
+      UUID organizationId,
+      String systemActor,
+      String productName,
+      String claim,
+      String aiNotice,
+      String primaryColor,
+      ColorScheme defaultColorScheme) {
+    return replace(
+        validated(productName, claim, aiNotice, primaryColor, defaultColorScheme),
+        (before, after) ->
+            auditEventRecorder.recordSystemProcessAction(
+                changeEvent(organizationId, before, after).actorRef(systemActor).build()));
+  }
+
+  private static BrandingSettingsRules.Values validated(
+      String productName,
+      String claim,
+      String aiNotice,
+      String primaryColor,
+      ColorScheme defaultColorScheme) {
+    BrandingSettingsRules.Checked checked =
+        BrandingSettingsRules.check(
+            "", productName, claim, aiNotice, primaryColor, defaultColorScheme);
+    if (!checked.errors().isEmpty()) {
+      throw new ValidationException(checked.errors().getFirst().message());
+    }
+    return checked.values();
+  }
+
+  private EffectiveBranding replace(
+      BrandingSettingsRules.Values values,
+      BiConsumer<Map<String, Object>, Map<String, Object>> recorder) {
     BrandingSettings settings =
         repository.findSingleton().orElseThrow(BrandingSettingsService::missingRow);
-    if (Objects.equals(settings.getProductName(), validatedProductName)
-        && Objects.equals(settings.getClaim(), validatedClaim)
-        && Objects.equals(settings.getAiNotice(), validatedAiNotice)
-        && Objects.equals(settings.getPrimaryColor(), validatedColor)
-        && settings.getDefaultColorScheme() == defaultColorScheme) {
+    if (Objects.equals(settings.getProductName(), values.productName())
+        && Objects.equals(settings.getClaim(), values.claim())
+        && Objects.equals(settings.getAiNotice(), values.aiNotice())
+        && Objects.equals(settings.getPrimaryColor(), values.primaryColor())
+        && settings.getDefaultColorScheme() == values.defaultColorScheme()) {
       return resolve(settings);
     }
     Map<String, Object> before = auditState(resolve(settings));
     settings.replaceSettings(
-        validatedProductName,
-        validatedClaim,
-        validatedAiNotice,
-        validatedColor,
-        defaultColorScheme);
+        values.productName(),
+        values.claim(),
+        values.aiNotice(),
+        values.primaryColor(),
+        values.defaultColorScheme());
     repository.save(settings);
 
     EffectiveBranding after = resolve(settings);
-    recordChange(organizationId, actorUserId, before, auditState(after));
+    recorder.accept(before, auditState(after));
     return after;
   }
 
@@ -255,158 +283,27 @@ public class BrandingSettingsService implements AuditPayloadKeys {
         images);
   }
 
-  /**
-   * Trims, turns blank into {@code null} ("back to the default") and rejects anything too long or
-   * carrying a control character - a line break in a product name is a layout defect on every page
-   * that renders it, not a customisation.
-   */
-  private String validatedText(String value, int maxLength, String fieldLabel) {
-    if (value == null) {
-      return null;
-    }
-    String trimmed = value.trim();
-    if (trimmed.isEmpty()) {
-      return null;
-    }
-    if (trimmed.length() > maxLength) {
-      throw new ValidationException(
-          fieldLabel + " darf höchstens " + maxLength + " Zeichen lang sein");
-    }
-    if (trimmed.chars().anyMatch(Character::isISOControl)) {
-      throw new ValidationException(fieldLabel + " darf keine Steuerzeichen enthalten");
-    }
-    return trimmed;
-  }
-
-  /**
-   * Like {@link #validatedText}, but a value without a single visible character - blanks, no-break
-   * and ideographic spaces, zero-width and other format characters - counts as empty ("back to the
-   * default"): the notice must not be switched off by a value that merely looks empty. Characters
-   * that render empty are cut from the ends, except combining marks and tag characters that belong
-   * to a visible one before them (an emoji's variation selector). Control characters, line and
-   * paragraph separators and bidirectional controls are rejected, and a text equal to the standard
-   * is stored as "not set" so it keeps following the standard.
-   */
-  private String validatedNotice(String value, int maxLength, String fieldLabel) {
-    if (value == null || value.codePoints().noneMatch(BrandingSettingsService::isVisible)) {
-      return null;
-    }
-    String trimmed = withoutInvisibleEdges(value);
-    if (trimmed.length() > maxLength) {
-      throw new ValidationException(
-          fieldLabel + " darf höchstens " + maxLength + " Zeichen lang sein");
-    }
-    if (trimmed.codePoints().anyMatch(BrandingSettingsService::isControlOrLineBreak)) {
-      throw new ValidationException(
-          fieldLabel + " darf keine Steuerzeichen und keinen Zeilenumbruch enthalten");
-    }
-    return trimmed.equals(BrandingDefaults.AI_NOTICE) ? null : trimmed;
-  }
-
-  private static boolean isVisible(int codePoint) {
-    return !Character.isWhitespace(codePoint)
-        && !Character.isSpaceChar(codePoint)
-        && !Character.isISOControl(codePoint)
-        && Character.getType(codePoint) != Character.FORMAT
-        && !isStandaloneBlank(codePoint)
-        && !isCombiningBlank(codePoint);
-  }
-
-  /** Characters that render empty on their own although they are neither space nor format. */
-  private static boolean isStandaloneBlank(int codePoint) {
-    return codePoint == 0x115F
-        || codePoint == 0x1160
-        || codePoint == 0x3164
-        || codePoint == 0xFFA0
-        || codePoint == 0x2800;
-  }
-
-  /** Combining marks that render nothing by themselves (variation selectors and the like). */
-  private static boolean isCombiningBlank(int codePoint) {
-    return codePoint == 0x034F
-        || codePoint == 0x17B4
-        || codePoint == 0x17B5
-        || (codePoint >= 0x180B && codePoint <= 0x180F)
-        || (codePoint >= 0xFE00 && codePoint <= 0xFE0F)
-        || (codePoint >= 0xE0100 && codePoint <= 0xE01EF);
-  }
-
-  private static boolean isTagCharacter(int codePoint) {
-    return codePoint >= 0xE0020 && codePoint <= 0xE007F;
-  }
-
-  /**
-   * Bidirectional embeddings, overrides and isolates would reorder text appended after the notice.
-   */
-  private static boolean isBidiControl(int codePoint) {
-    return (codePoint >= 0x202A && codePoint <= 0x202E)
-        || (codePoint >= 0x2066 && codePoint <= 0x2069);
-  }
-
-  private static boolean isControlOrLineBreak(int codePoint) {
-    int type = Character.getType(codePoint);
-    return Character.isISOControl(codePoint)
-        || isBidiControl(codePoint)
-        || type == Character.LINE_SEPARATOR
-        || type == Character.PARAGRAPH_SEPARATOR;
-  }
-
-  /** What may be cut from the end: invisible on its own, not part of the visible char before it. */
-  private static boolean isTrailingNoise(int codePoint) {
-    return Character.isWhitespace(codePoint)
-        || Character.isSpaceChar(codePoint)
-        || Character.isISOControl(codePoint)
-        || isStandaloneBlank(codePoint)
-        || (Character.getType(codePoint) == Character.FORMAT && !isTagCharacter(codePoint));
-  }
-
-  private static String withoutInvisibleEdges(String value) {
-    int[] points = value.codePoints().toArray();
-    int from = 0;
-    int to = points.length;
-    while (from < to && !isVisible(points[from])) {
-      from++;
-    }
-    while (to > from && isTrailingNoise(points[to - 1])) {
-      to--;
-    }
-    return new String(points, from, to - from);
-  }
-
-  private String validatedColor(String value) {
-    if (value == null) {
-      return null;
-    }
-    String trimmed = value.trim();
-    if (trimmed.isEmpty()) {
-      return null;
-    }
-    if (!HEX_COLOR.matcher(trimmed).matches()) {
-      throw new ValidationException(
-          "Die Primärfarbe muss ein sechsstelliger Hex-Wert mit führendem '#' sein, zum Beispiel"
-              + " #1292EE");
-    }
-    return trimmed;
-  }
-
   private void recordChange(
       UUID organizationId,
       UUID actorUserId,
       Map<String, Object> before,
       Map<String, Object> after) {
     auditEventRecorder.recordUserAction(
-        AuditEvent.builder()
-            .organizationId(organizationId)
-            .actor(actorUserId)
-            .type(AuditEventType.BRANDING_SETTINGS_CHANGED)
-            .object(
-                AuditObjectType.SYSTEM_SETTING,
-                UUID.nameUUIDFromBytes(CONFIGURATION_OBJECT_ID.getBytes(StandardCharsets.UTF_8)),
-                OBJECT_LABEL)
-            .before(before)
-            .after(after)
-            .outcome(AuditOutcome.SUCCESS)
-            .build());
+        changeEvent(organizationId, before, after).actor(actorUserId).build());
+  }
+
+  private static AuditEvent.Builder changeEvent(
+      UUID organizationId, Map<String, Object> before, Map<String, Object> after) {
+    return AuditEvent.builder()
+        .organizationId(organizationId)
+        .type(AuditEventType.BRANDING_SETTINGS_CHANGED)
+        .object(
+            AuditObjectType.SYSTEM_SETTING,
+            UUID.nameUUIDFromBytes(CONFIGURATION_OBJECT_ID.getBytes(StandardCharsets.UTF_8)),
+            OBJECT_LABEL)
+        .before(before)
+        .after(after)
+        .outcome(AuditOutcome.SUCCESS);
   }
 
   /** Never an image's bytes - only that there is one, of what type, and in which version. */

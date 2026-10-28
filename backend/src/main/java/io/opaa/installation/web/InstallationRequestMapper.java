@@ -1,6 +1,7 @@
 package io.opaa.installation.web;
 
 import io.opaa.api.dto.InstallationAnswers;
+import io.opaa.api.dto.InstallationBranding;
 import io.opaa.api.dto.InstallationChatModel;
 import io.opaa.api.dto.InstallationEmbeddingModel;
 import io.opaa.api.dto.InstallationFirstAdmin;
@@ -16,7 +17,7 @@ import java.util.List;
 
 /**
  * The requests of the installation API as {@link StepInput}s; a missing part is a field error,
- * except the optional model parts of the answers, whose absence skips their step.
+ * except the optional parts of the answers, whose absence skips their step.
  */
 final class InstallationRequestMapper {
 
@@ -32,6 +33,7 @@ final class InstallationRequestMapper {
       case CHAT_MODEL -> chatModel(request.getChatModel());
       case EMBEDDING_MODEL -> embeddingModel(request.getEmbeddingModel());
       case MAIL -> mail(request.getMail());
+      case BRANDING -> branding(request.getBranding());
     };
   }
 
@@ -52,6 +54,9 @@ final class InstallationRequestMapper {
       InstallationMail mail = body.getMail();
       // An answer names its password or none; there is no saved one to keep.
       inputs.add(mailInput(mail, mail.getPassword() == null ? "" : mail.getPassword()));
+    }
+    if (body.getBranding() != null) {
+      inputs.add(branding(body.getBranding()));
     }
     return List.copyOf(inputs);
   }
@@ -117,6 +122,18 @@ final class InstallationRequestMapper {
         password,
         mail.getFromAddress(),
         mail.getFromName());
+  }
+
+  private static StepInput branding(InstallationBranding branding) {
+    if (branding == null) {
+      throw missing("branding");
+    }
+    return new StepInput.Branding(
+        branding.getProductName(),
+        branding.getClaim(),
+        branding.getAiNotice(),
+        branding.getPrimaryColor(),
+        branding.getDefaultColorScheme());
   }
 
   private static FieldValidationException missing(String field) {

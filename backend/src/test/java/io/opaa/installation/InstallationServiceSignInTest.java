@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.account.InitialAdministrator;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.UserRepository;
+import io.opaa.branding.BrandingSettingsService;
 import io.opaa.directory.OidcProviderDraft;
 import io.opaa.directory.OidcProviderService;
 import io.opaa.installation.InstallationState.CompletionSource;
@@ -69,6 +70,7 @@ class InstallationServiceSignInTest {
             mock(LlmModelService.class),
             mock(EmbeddingModelService.class),
             mock(MailSettingsService.class),
+            mock(BrandingSettingsService.class),
             mock(AuditEventRecorder.class),
             mock(UserRepository.class),
             mock(DatabaseInstallationStatus.class),

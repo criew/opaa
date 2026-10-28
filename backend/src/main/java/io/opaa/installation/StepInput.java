@@ -1,5 +1,6 @@
 package io.opaa.installation;
 
+import io.opaa.api.types.ColorScheme;
 import io.opaa.api.types.MailEncryption;
 import java.math.BigDecimal;
 
@@ -99,6 +100,23 @@ public sealed interface StepInput {
           + ", password="
           + (password == null ? "null" : "***")
           + "]";
+    }
+  }
+
+  /**
+   * The branding without its images; every field {@code null} or blank means the OPAA default, as
+   * in the branding administration.
+   */
+  record Branding(
+      String productName,
+      String claim,
+      String aiNotice,
+      String primaryColor,
+      ColorScheme defaultColorScheme)
+      implements StepInput {
+    @Override
+    public InstallationStep step() {
+      return InstallationStep.BRANDING;
     }
   }
 

@@ -91,7 +91,8 @@ paths:
         embedding model, which also determines its vector size, or for MAIL a connection to the
         mail server with sign-in when a user name is set, without sending anything. A failed MAIL
         check names one of four fixed reasons (not reachable, TLS failed, sign-in refused, no mail
-        server), the cause goes to the log only. For MAIL only, testRecipient additionally sends
+        server), the cause goes to the log only. BRANDING is checked against the rules of the
+        branding administration again, without any connection. For MAIL only, testRecipient additionally sends
         the test message to that address. Per instance and for all clients together at most 30
         MAIL checks in 10 minutes (429 with code MAIL_CHECK_LIMIT) and at most 10 test messages in
         10 minutes (429 with code MAIL_TEST_LIMIT). Every wait on the mail server is bounded by
@@ -142,7 +143,8 @@ paths:
       summary: >
         Skips an optional step (400 for a mandatory one): discards its saved values and their
         check, so the completion leaves what the step would set as it is - for CHAT_MODEL and
-        EMBEDDING_MODEL, no model is set up, for MAIL, sending stays off. A skipped step does not
+        EMBEDDING_MODEL, no model is set up, for MAIL, sending stays off, for BRANDING, the OPAA
+        default stays. A skipped step does not
         hold up the completion; a saved optional step does until its check succeeded or it is
         skipped. Recorded in the audit log, also when nothing was saved. Same token and network
         rules as getInstallation.
@@ -229,8 +231,8 @@ paths:
         Installs without a browser: saves every step of the answers, checks each of them and
         completes the installation, all or nothing - the same checks as the file read at start-up
         from OPAA_INSTALLATION_ANSWER_FILE, which names its secrets as files instead. chatModel,
-        embeddingModel and mail are optional; an optional part left out counts as skipped and
-        discards what the assistant saved for it. The check of mail sends no test message and
+        embeddingModel, mail and branding are optional; an optional part left out counts as
+        skipped and discards what the assistant saved for it. The check of mail sends no test message and
         counts against the budget of MAIL checks (429 with code MAIL_CHECK_LIMIT). Same token and
         network rules as getInstallation.
       requestBody:
@@ -277,7 +279,8 @@ paths:
         instances: creates the first system administration account, the sign-in method, the chat
         model and the embedding model with the vector table of its probed size from the checked
         steps, takes a checked MAIL step over into the mail settings and switches sending on,
-        discards the token and the saved steps and switches every instance to normal operation. A
+        takes a checked BRANDING step over into the branding settings with the rules of the
+        branding administration, discards the token and the saved steps and switches every instance to normal operation. A
         skipped optional step leaves what it would set out: without the embedding model there is
         no vector table until the model administration sets the first one. Same token and network
         rules as getInstallation.
@@ -332,8 +335,9 @@ components:
         A step of the installation. FIRST_ADMIN is the first system administration account (the
         local emergency account of ADR-0033) and SIGN_IN the sign-in method are mandatory;
         CHAT_MODEL the chat model, EMBEDDING_MODEL the embedding model (ADR-0060, Entscheidung 10)
-        and MAIL, the mail server for sending (ADR-0033, Entscheidung 10), are optional.
-      enum: [FIRST_ADMIN, SIGN_IN, CHAT_MODEL, EMBEDDING_MODEL, MAIL]
+        MAIL, the mail server for sending (ADR-0033, Entscheidung 10), and BRANDING, the texts,
+        accent colour and colour scheme of the branding without its images, are optional.
+      enum: [FIRST_ADMIN, SIGN_IN, CHAT_MODEL, EMBEDDING_MODEL, MAIL, BRANDING]
 
     InstallationSignInMode:
       type: string
@@ -394,6 +398,8 @@ components:
           $ref: "#/components/schemas/InstallationEmbeddingModelView"
         mail:
           $ref: "#/components/schemas/InstallationMailView"
+        branding:
+          $ref: "#/components/schemas/InstallationBranding"
 
     InstallationStepRequest:
       type: object
@@ -409,6 +415,8 @@ components:
           $ref: "#/components/schemas/InstallationEmbeddingModel"
         mail:
           $ref: "#/components/schemas/InstallationMail"
+        branding:
+          $ref: "#/components/schemas/InstallationBranding"
 
     InstallationStepCheckRequest:
       type: object
@@ -592,9 +600,10 @@ components:
         All values of the answer file in one request (docs/features/installation-and-settings.md).
         Over this API the secrets travel in the body, as in the single steps; a reference to a file
         on the backend (passwordFile, apiKeyFile) is accepted only in the file read at start-up, so
-        that the API cannot read files of the backend. chatModel, embeddingModel and mail are
-        optional; without one its step is skipped, without mail sending stays off. Parts of later
-        steps (outboundProxy, branding) are not evaluated by this version.
+        that the API cannot read files of the backend. chatModel, embeddingModel, mail and
+        branding are optional; without one its step is skipped, without mail sending stays off,
+        without branding the OPAA default stays. Parts of later steps (outboundProxy) are not
+        evaluated by this version.
       required: [firstAdmin, signIn]
       properties:
         firstAdmin:
@@ -607,6 +616,8 @@ components:
           $ref: "#/components/schemas/InstallationEmbeddingModel"
         mail:
           $ref: "#/components/schemas/InstallationMail"
+        branding:
+          $ref: "#/components/schemas/InstallationBranding"
 
     InstallationMail:
       type: object
@@ -672,3 +683,40 @@ components:
         fromName:
           type: string
           nullable: true
+
+    InstallationBranding:
+      type: object
+      description: >
+        The texts, accent colour and colour scheme of the branding, with the rules of
+        updateBranding: every field is optional, and an omitted, null or empty one means the OPAA
+        default applies; the AI notice can be replaced but never switched off. The same object is
+        returned as the saved values, null for the default. The images are uploaded in the
+        branding administration after the installation; this step takes none.
+      properties:
+        productName:
+          type: string
+          nullable: true
+          maxLength: 60
+          example: Landesamt-Assistent
+        claim:
+          type: string
+          nullable: true
+          maxLength: 120
+          example: Fragen. Belegen. Entscheiden.
+        aiNotice:
+          type: string
+          nullable: true
+          maxLength: 500
+          description: >
+            Empty, absent or without a visible character means the standard text; longer than 500
+            characters or containing a control character or line break is a field error.
+        primaryColor:
+          type: string
+          nullable: true
+          description: >
+            Six-digit hex triplet with a leading '#'; empty or absent means the OPAA default,
+            anything else is a field error.
+          pattern: "^$|^#[0-9A-Fa-f]{6}$"
+          example: "#1292EE"
+        defaultColorScheme:
+          $ref: "#/components/schemas/ColorScheme"

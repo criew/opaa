@@ -2,9 +2,11 @@ package io.opaa.installation;
 
 import io.opaa.account.InitialAdministrator;
 import io.opaa.account.PasswordPolicy;
+import io.opaa.api.types.ColorScheme;
 import io.opaa.api.types.MailEncryption;
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.auth.OidcIssuerUris;
+import io.opaa.branding.BrandingSettingsRules;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.FieldValidationException.FieldError;
 import io.opaa.common.ValidationException;
@@ -42,6 +44,7 @@ class StepRules {
   static final BigDecimal MAX_TEMPERATURE = new BigDecimal("2");
 
   private static final String INVALID = "INVALID";
+  private static final String BRANDING_PREFIX = "branding.";
 
   /** A host name or address: no whitespace and no control character, so no forged log line. */
   private static final Pattern MAIL_HOST = Pattern.compile("[^\\s\\p{Cntrl}]+");
@@ -86,6 +89,14 @@ class StepRules {
       String fromAddress,
       String fromName) {}
 
+  /** The branding as the administration stores it; {@code null} in a field means the default. */
+  record BrandingPayload(
+      String productName,
+      String claim,
+      String aiNotice,
+      String primaryColor,
+      ColorScheme defaultColorScheme) {}
+
   private final PasswordPolicy passwordPolicy;
   private final PasswordEncoder passwordEncoder;
   private final SettingsEncryptor settingsEncryptor;
@@ -126,6 +137,7 @@ class StepRules {
       case StepInput.ChatModel model -> chatModel(model, previousPayload, previousSecret);
       case StepInput.EmbeddingModel model -> embeddingModel(model, previousPayload, previousSecret);
       case StepInput.Mail mail -> mail(mail, previousPayload, previousSecret);
+      case StepInput.Branding branding -> branding(branding);
     };
   }
 
@@ -165,7 +177,35 @@ class StepRules {
             mail.fromAddress(),
             mail.fromName());
       }
+      case BRANDING -> {
+        BrandingPayload branding = brandingPayload(payload);
+        yield new InstallationOverview.Branding(
+            branding.productName(),
+            branding.claim(),
+            branding.aiNotice(),
+            branding.primaryColor(),
+            branding.defaultColorScheme());
+      }
     };
+  }
+
+  BrandingPayload brandingPayload(String payload) {
+    return json.readValue(payload, BrandingPayload.class);
+  }
+
+  /**
+   * The problems the rules of the branding administration find in a saved branding step now, empty
+   * when it passes; the payload is stored normalised, so a passing step stores unchanged.
+   */
+  List<FieldError> brandingErrors(BrandingPayload branding) {
+    return BrandingSettingsRules.check(
+            BRANDING_PREFIX,
+            branding.productName(),
+            branding.claim(),
+            branding.aiNotice(),
+            branding.primaryColor(),
+            branding.defaultColorScheme())
+        .errors();
   }
 
   MailPayload mailPayload(String payload) {
@@ -434,6 +474,32 @@ class StepRules {
     return new Stored(
         json.writeValueAsString(payload),
         mailSecret(input.password(), previousPayload, previousSecret, payload));
+  }
+
+  /**
+   * The rules of the branding administration ({@link BrandingSettingsRules}), each problem named
+   * under {@code branding.}; stored normalised, a field {@code null} for the OPAA default.
+   */
+  private Stored branding(StepInput.Branding input) {
+    BrandingSettingsRules.Checked checked =
+        BrandingSettingsRules.check(
+            BRANDING_PREFIX,
+            input.productName(),
+            input.claim(),
+            input.aiNotice(),
+            input.primaryColor(),
+            input.defaultColorScheme());
+    requireNoErrors(checked.errors());
+    BrandingSettingsRules.Values values = checked.values();
+    return new Stored(
+        json.writeValueAsString(
+            new BrandingPayload(
+                values.productName(),
+                values.claim(),
+                values.aiNotice(),
+                values.primaryColor(),
+                values.defaultColorScheme())),
+        null);
   }
 
   /**

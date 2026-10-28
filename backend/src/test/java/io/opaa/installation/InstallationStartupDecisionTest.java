@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.account.InitialAdministrator;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.UserRepository;
+import io.opaa.branding.BrandingSettingsService;
 import io.opaa.directory.OidcProviderService;
 import io.opaa.installation.InstallationState.CompletionSource;
 import io.opaa.llm.EmbeddingModelService;
@@ -58,6 +59,7 @@ class InstallationStartupDecisionTest {
             llmModels,
             mock(EmbeddingModelService.class),
             mock(MailSettingsService.class),
+            mock(BrandingSettingsService.class),
             mock(AuditEventRecorder.class),
             users,
             mock(DatabaseInstallationStatus.class),

@@ -7,6 +7,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 
 import io.opaa.account.PasswordPolicy;
+import io.opaa.api.types.ColorScheme;
 import io.opaa.api.types.MailEncryption;
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.common.FieldValidationException;
@@ -516,5 +517,35 @@ class StepRulesTest {
                 assertThat(e.fieldErrors())
                     .extracting(FieldValidationException.FieldError::field)
                     .contains("embeddingModel.apiKey"));
+  }
+
+  @Test
+  void theBrandingIsStoredWithTheRulesOfTheAdministrationAndBlankMeansTheDefault() {
+    StepRules.Stored stored =
+        rules.toStored(
+            new StepInput.Branding(" Landesamt-Assistent ", "", " ", " #7A3E9D ", ColorScheme.DARK),
+            null,
+            null);
+
+    assertThat(stored.secret()).isNull();
+    assertThat(rules.view(InstallationStep.BRANDING, stored.payload(), null))
+        .isEqualTo(
+            new InstallationOverview.Branding(
+                "Landesamt-Assistent", null, null, "#7A3E9D", ColorScheme.DARK));
+    assertThat(rules.brandingErrors(rules.brandingPayload(stored.payload()))).isEmpty();
+  }
+
+  @Test
+  void aBrandingProblemIsAFieldErrorUnderTheStep() {
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.Branding("x".repeat(61), null, null, "#12345", null), null, null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactly("branding.productName", "branding.primaryColor"));
   }
 }

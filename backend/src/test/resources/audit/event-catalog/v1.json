@@ -78,7 +78,7 @@
   "INDEXING_PIPELINE_REINDEX_TRIGGERED": ["batchSize", "belowVersion", "markedForNextRun", "pipelineId", "reindexedDocuments", "removedOrphanChunkSets", "skippedDocuments"],
   "INSTALLATION_COMPLETED": ["mailEnabled", "signInMode", "skippedSteps", "source"],
   "INSTALLATION_STEP_CHECKED": ["step", "succeeded", "testMail"],
-  "INSTALLATION_STEP_SAVED": ["apiKeySet", "baseUrl", "encryption", "fromAddress", "host", "issuerUri", "model", "passwordSet", "port", "signInMode", "step", "username"],
+  "INSTALLATION_STEP_SAVED": ["aiNoticeSet", "apiKeySet", "baseUrl", "claim", "defaultColorScheme", "encryption", "fromAddress", "host", "issuerUri", "model", "passwordSet", "port", "primaryColor", "productName", "signInMode", "step", "username"],
   "INSTALLATION_STEP_SKIPPED": ["discarded", "step"],
   "LIBRARY_CHANGED": ["changedFields"],
   "LIBRARY_CREATED": ["name", "sourceType"],
