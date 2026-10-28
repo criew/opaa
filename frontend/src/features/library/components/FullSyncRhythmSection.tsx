@@ -210,7 +210,7 @@ export default function FullSyncRhythmSection() {
   return (
     <PageSection
       title="Vollabgleich-Rhythmus"
-      description="Nach wie vielen Tagen eine Bibliothek ohne eigenen Rhythmus ihre Quelle wieder vollständig abgleicht; erst dann entfällt, was dort gelöscht wurde."
+      description="Nach wie vielen Tagen eine Bibliothek ohne eigenen Rhythmus ihre Quelle wieder vollständig abgleicht; erst dann entfällt, was die Quelle nicht einzeln als gelöscht meldet."
     >
       {loadError ? (
         <Alert
