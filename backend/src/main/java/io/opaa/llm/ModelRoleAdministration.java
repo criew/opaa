@@ -373,8 +373,10 @@ public class ModelRoleAdministration {
   }
 
   /**
-   * The probe of {@link #testRerank} against an endpoint whose address the caller has checked and
-   * whose key it hands in plain text, {@code null} or blank for none. Call outside any transaction.
+   * The probe of {@link #testRerank}, without an address check of its own. Precondition: the caller
+   * has passed {@code baseUrl} through {@link ModelAddressPolicy} and {@link ModelEndpointRules}
+   * right before; a caller that cannot vouch for the address must use {@link #testRerank}. {@code
+   * apiKey} is plain text, {@code null} or blank for none. Call outside any transaction.
    */
   public TestOutcome probeRerank(String baseUrl, String model, String apiKey) {
     RerankClient.ProbeFailure failure =
@@ -559,11 +561,15 @@ public class ModelRoleAdministration {
     }
   }
 
-  /** The audit state of a row, the factory default for {@code null}; never the key itself. */
+  /**
+   * The audit state of a row, the factory default for {@code null}; never the key itself, and the
+   * address without userinfo, query and fragment, where a token could stand.
+   */
   private static Map<String, Object> rerankPayload(RerankModelSettings row) {
     Map<String, Object> state = new LinkedHashMap<>();
     state.put("enabled", row != null && row.isEnabled());
-    putIfPresent(state, "baseUrl", row == null ? null : row.getBaseUrl());
+    putIfPresent(
+        state, "baseUrl", row == null ? null : ModelEndpointUri.withoutSecrets(row.getBaseUrl()));
     putIfPresent(state, "model", row == null ? null : row.getModelIdentifier());
     state.put("apiKeySet", row != null && row.getApiKeyCiphertext() != null);
     return state;
@@ -572,7 +578,8 @@ public class ModelRoleAdministration {
   private static Map<String, Object> transcriptionPayload(TranscriptionModelSettings row) {
     Map<String, Object> state = new LinkedHashMap<>();
     state.put("enabled", row != null && row.isEnabled());
-    putIfPresent(state, "baseUrl", row == null ? null : row.getBaseUrl());
+    putIfPresent(
+        state, "baseUrl", row == null ? null : ModelEndpointUri.withoutSecrets(row.getBaseUrl()));
     putIfPresent(state, "model", row == null ? null : row.getModelIdentifier());
     state.put("apiKeySet", row != null && row.getApiKeyCiphertext() != null);
     String language = row == null ? TranscriptionEndpoint.DEFAULT_LANGUAGE : row.getLanguage();

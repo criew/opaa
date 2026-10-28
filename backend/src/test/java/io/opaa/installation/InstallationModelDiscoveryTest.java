@@ -192,6 +192,23 @@ class InstallationModelDiscoveryTest {
     assertThat(requests).hasValue(1);
   }
 
+  // regression guard: every discoverable step knows where its saved key may go, and only those
+  @Test
+  void everyModelStepHasASavedBaseUrlAndNoOtherStepDoes() {
+    String payload = "{\"baseUrl\":\"http://127.0.0.1:1/v1\"}";
+    for (InstallationStep step : InstallationStep.values()) {
+      if (InstallationModelDiscovery.MODEL_STEPS.contains(step)) {
+        assertThat(rules.savedModelBaseUrl(step, payload))
+            .as(step.name())
+            .isEqualTo("http://127.0.0.1:1/v1");
+      } else {
+        assertThatThrownBy(() -> rules.savedModelBaseUrl(step, payload))
+            .as(step.name())
+            .isInstanceOf(IllegalArgumentException.class);
+      }
+    }
+  }
+
   @Test
   void onlyTheModelStepsDiscover() {
     for (InstallationStep other :

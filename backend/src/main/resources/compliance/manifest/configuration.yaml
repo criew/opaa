@@ -52,6 +52,9 @@ settings:
     bearings: [DATA_FLOW]
     notes:
       - Werkseinstellung im Code; die Systemverwaltung schaltet unter Modelle → Reranking
+      - >-
+        Auch der Abschluss der Installation schaltet ein, wenn der Schritt Rerank-Modell geprüft
+        und nicht übersprungen ist
   - key: rerank_model.base_url
     source: DATABASE
     defaultValue: ""
@@ -59,11 +62,18 @@ settings:
     bearings: [DATA_FLOW]
     notes:
       - Geprüft gegen die Adressprüfung der Modelle (OPAA_MODEL_TARGET_VALIDATION_*)
+      - >-
+        Auch der Abschluss der Installation legt sie fest, wenn der Schritt Rerank-Modell geprüft
+        ist; die Systemverwaltung ändert sie unter Modelle → Reranking
   - key: rerank_model.model_identifier
     source: DATABASE
     defaultValue: ""
     effect: Rerank-Modell; ohne Angabe ist die Rolle nicht gebunden
     bearings: [DATA_FLOW]
+    notes:
+      - >-
+        Auch der Abschluss der Installation legt es fest, wenn der Schritt Rerank-Modell geprüft
+        ist; die Systemverwaltung ändert es unter Modelle → Reranking
   - key: opaa.malware-scan.enabled
     defaultValue: "false"
     effect: Ob jede Datei vor der Aufnahme in eine Bibliothek an den Virenscanner geht

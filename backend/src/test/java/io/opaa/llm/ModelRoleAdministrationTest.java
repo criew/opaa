@@ -126,6 +126,33 @@ class ModelRoleAdministrationTest {
     verify(audit, never()).recordUserAction(any());
   }
 
+  // regression guard: a token in the query of a model address never reaches the audit log
+  @Test
+  void theAuditNamesTheAddressWithoutQueryOrFragment() {
+    ModelRoleAdministration administration = administration(false, new MockEnvironment());
+
+    administration.installRerank(
+        UUID.randomUUID(), "installation", "http://reranker:80/v1?token=geheim", "bge", null);
+    administration.changeTranscription(
+        UUID.randomUUID(),
+        UUID.randomUUID(),
+        false,
+        "http://speaches:8000/v1#token=geheim",
+        "whisper",
+        null,
+        "de");
+
+    ArgumentCaptor<AuditEvent> rerank = ArgumentCaptor.forClass(AuditEvent.class);
+    verify(audit).recordSystemProcessAction(rerank.capture());
+    assertThat(rerank.getValue().after()).containsEntry("baseUrl", "http://reranker:80/v1");
+    ArgumentCaptor<AuditEvent> transcription = ArgumentCaptor.forClass(AuditEvent.class);
+    verify(audit).recordUserAction(transcription.capture());
+    assertThat(transcription.getValue().after())
+        .containsEntry("baseUrl", "http://speaches:8000/v1");
+    assertThat(rerank.getValue().after().toString() + transcription.getValue().after())
+        .doesNotContain("geheim");
+  }
+
   @Test
   void theInstallationCannotSwitchOnARerankRoleWithoutModel() {
     ModelRoleAdministration administration = administration(false, new MockEnvironment());

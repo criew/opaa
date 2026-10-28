@@ -111,8 +111,10 @@ class InstallationRerankStepIntegrationTest {
         .doesNotContain(KEY);
 
     mockMvc.perform(authorized(post(BASE + "/complete"))).andExpect(status().isOk());
-    endpoints.invalidateAll();
 
+    // No manual invalidation: the completion itself drops this instance's role cache.
+    assertThat(endpoints.rerank().enabled()).isTrue();
+    assertThat(endpoints.rerank().model()).isEqualTo("bge-reranker-v2-m3");
     ModelRoleAdministration.RerankModelView view = modelRoles.rerank();
     assertThat(view.enabled()).isTrue();
     assertThat(view.baseUrl()).isEqualTo(fixture.chatBaseUrl());
