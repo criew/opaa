@@ -136,6 +136,16 @@ function evidenceRow(drawer: Locator, fileName: string): Locator {
   return drawer.getByTestId('evidence-doc').filter({ hasText: fileName })
 }
 
+/**
+ * Unfolds the checked but uncited sources, which the Belegfenster keeps behind "Nicht zitierte
+ * anzeigen". Call it once the drawer has rendered its rows; without uncited sources there is no
+ * link and nothing happens.
+ */
+export async function showUncitedEvidence(drawer: Locator): Promise<void> {
+  const toggle = drawer.getByRole('button', { name: 'Nicht zitierte anzeigen' })
+  if ((await toggle.count()) > 0) await toggle.click()
+}
+
 /** Waits for the answer to carry Belege and asserts fileName among them, cited. */
 export async function expectCitedSource(page: Page, fileName: string): Promise<void> {
   await withLatestEvidence(page, async (drawer) => {
@@ -171,6 +181,8 @@ export async function expectCitedExclusively(
 ): Promise<void> {
   await withLatestEvidence(page, async (drawer) => {
     await expect(evidenceRow(drawer, citedFileName)).toHaveAttribute('data-cited', 'true')
+    // Absent among the uncited sources too, not only folded away.
+    await showUncitedEvidence(drawer)
     await expect(evidenceRow(drawer, excludedFileName)).toHaveCount(0)
   })
 }

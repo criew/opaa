@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
 import InputAdornment from '@mui/material/InputAdornment'
@@ -15,10 +14,6 @@ import SearchIcon from '@mui/icons-material/Search'
 import type { CitationIndex } from '@/shared/ui/markdown/citations'
 import {
   citationRowId,
-  describeCitedPassages,
-  describeMetadata,
-  formatMetadataDetails,
-  formatMetadataLine,
   metadataFilterMatchLabel,
   withTitleMetadataOnly,
 } from '@/shared/ui/markdown/citations'
@@ -31,7 +26,6 @@ import type {
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import type { OpenableDocument } from '@/features/library'
 import { focusRingWidthPx, fontFamily } from '@/shared/theme/tokens'
-import { safeExternalHref } from '@/shared/utils/safeExternalHref'
 
 interface SourceEvidenceDrawerProps {
   open: boolean
@@ -61,18 +55,6 @@ interface EvidenceDoc {
   /** False when the backend's deterministic check found at least one citation naming this
    *  source that does not match the chunks actually retrieved for this answer. */
   citationValid: boolean
-  relevanceScore?: number
-  /** This row's position in the backend's `sources` array - the order the retrieval pipeline
-   *  settled on, which the cited rows are sorted by and every row is numbered by.
-   *  `Number.MAX_SAFE_INTEGER` when this message's source list does not contain the row's source. */
-  sourceIndex: number
-  /** The rank shown in the row, derived from {@link sourceIndex} and never from
-   *  `relevanceScore` - a legacy persisted message still carries a raw path-dependent score
-   *  in its snapshot. Undefined for a synthetic entry, which backs no retrieved passage and
-   *  therefore holds no rank; such a row does not consume a rank either, so the numbering stays
-   *  gap-free. */
-  rank?: number
-  indexedAt?: string | null
   /** Present when the source's library was not updated when the answer was given. */
   freeze?: SourceFreeze | null
   /** The source came from one of the caller's private libraries. */
@@ -84,15 +66,8 @@ interface EvidenceDoc {
   documentId?: string | null
   sourceType?: SourceTypeKey | null
   /** The remote source URL for sourceType HTTP_DIRECTORY/RSS_FEED, mirroring
-   *  LibraryDocumentResponse.sourceUrl - shown as secondary information alongside the
-   *  documentId deep link above, not itself the primary way to open the original. */
+   *  LibraryDocumentResponse.sourceUrl - handed to the opener, not shown in the row. */
   sourceUrl?: string | null
-  /** The schema metadata line, undefined when the document carries no value. */
-  metadataLine?: string
-  /** "Label: Wert, …" - the accessible name of {@link metadataLine}. */
-  metadataDescription?: string
-  /** The values only the detail view shows ("An: …"), undefined when there are none. */
-  metadataDetails?: string
   /** "ohne Angabe" for a hit the Leerwert rule kept under an active filter. */
   filterMatchLabel?: string
 }
@@ -130,11 +105,10 @@ function freezeNotice(freeze: SourceFreeze): string {
 }
 
 /**
- * Mockup 1i's Belegfenster: the side panel with every source of one answer - searchable,
- * filterable to cited ones, cited documents first in citation-number order, then the checked but
- * uncited ones in the order the retrieval pipeline selected the chunks. The
- * per-passage verbatim quotes and locations the mockup shows wait on the backend's chunk metadata;
- * until then each document row carries what the API can already vouch for.
+ * The Belegfenster: the side panel with the sources of one answer, searchable. It opens with the
+ * cited documents in citation-number order; "Nicht zitierte anzeigen" below them appends the
+ * checked but uncited ones in the order the retrieval pipeline selected them. A row names the
+ * document and its Fundort only - rank and index date stay in the search log (guidelines 5.8).
  */
 export default function SourceEvidenceDrawer({
   open,
@@ -146,16 +120,17 @@ export default function SourceEvidenceDrawer({
   openDocument,
 }: SourceEvidenceDrawerProps) {
   const [query, setQuery] = useState('')
-  const [citedOnly, setCitedOnly] = useState(false)
+  const [showUncited, setShowUncited] = useState(false)
 
-  // Every opening starts unfiltered, so a footnote's Beleg is never hidden behind a search or
-  // "Nur zitierte" left over from the last visit. State adjustment during render, not an effect.
+  // Every opening starts with an empty search and the uncited sources folded away, so a
+  // footnote's Beleg - always a cited one - is never hidden behind a search left over from the
+  // last visit. State adjustment during render, not an effect.
   const [wasOpen, setWasOpen] = useState(open)
   if (open !== wasOpen) {
     setWasOpen(open)
     if (open) {
       setQuery('')
-      setCitedOnly(false)
+      setShowUncited(false)
     }
   }
 
@@ -176,7 +151,6 @@ export default function SourceEvidenceDrawer({
   // endpoint (a plain <a href> cannot carry the token, ADR-0005), which proxies
   // HTTP_DIRECTORY/RSS_FEED server-side; a CONFLUENCE document opens at its own source URL
   // instead (useDocumentPreview, ADR-0023 - the endpoint deliberately has no original there).
-  // sourceEntryUrl/sourceUrl stay visible as secondary information alongside the button.
   async function handleOpenLocalOriginal(doc: EvidenceDoc) {
     if (!doc.documentId) return
     await openDocument({
@@ -188,7 +162,7 @@ export default function SourceEvidenceDrawer({
     })
   }
 
-  // Without metadata (ADR-0044) a Beleg keeps its title and nothing else.
+  // Without metadata (ADR-0044) a Beleg carries no filter mark.
   const metadataEnabled = useFeatureEnabled('metadata')
   const shown = useCallback(
     (source: SourceReference | undefined) =>
@@ -204,18 +178,12 @@ export default function SourceEvidenceDrawer({
       docIndex,
       locations: doc.locations,
       citationValid: doc.source?.citationValid !== false,
-      relevanceScore: doc.source?.relevanceScore,
-      sourceIndex: doc.sourceIndex,
-      indexedAt: doc.source?.indexedAt,
       freeze: doc.source?.freeze ?? null,
       privateSource: doc.source?.privateSource === true,
       sourceEntryUrl: doc.source?.sourceEntryUrl,
       documentId: doc.source?.documentId,
       sourceType: doc.source?.sourceType,
       sourceUrl: doc.source?.sourceUrl,
-      metadataLine: formatMetadataLine(shown(doc.source)),
-      metadataDescription: describeMetadata(shown(doc.source)),
-      metadataDetails: formatMetadataDetails(shown(doc.source)),
       filterMatchLabel: metadataFilterMatchLabel(shown(doc.source)),
     }))
     const uncited: EvidenceDoc[] = citations.uncited.map((source) => ({
@@ -224,60 +192,34 @@ export default function SourceEvidenceDrawer({
       cited: false,
       locations: [],
       citationValid: source.citationValid !== false,
-      relevanceScore: source.relevanceScore,
-      sourceIndex: citations.sourceIndexByReference.get(source) ?? Number.MAX_SAFE_INTEGER,
-      indexedAt: source.indexedAt,
       freeze: source.freeze ?? null,
       privateSource: source.privateSource === true,
       sourceEntryUrl: source.sourceEntryUrl,
       documentId: source.documentId,
       sourceType: source.sourceType,
       sourceUrl: source.sourceUrl,
-      metadataLine: formatMetadataLine(shown(source)),
-      metadataDescription: describeMetadata(shown(source)),
-      metadataDetails: formatMetadataDetails(shown(source)),
       filterMatchLabel: metadataFilterMatchLabel(shown(source)),
     }))
-    // Never order by relevanceScore - a persisted message's snapshot may still carry a legacy
-    // path-dependent raw score, and sorting by that would drop a lexical-only source to
-    // the bottom.
-    //
-    // The cited rows stay in `cited`'s existing order (`citations.docs`), which is
-    // ascending by citation number - a doc's row is created on its first marker, so the doc list
-    // is already sorted by first-appearance number; a doc cited but never referenced in the text
-    // (empty `numbers`) is appended afterwards in `sources` order, i.e. by pipeline position. Only
-    // the uncited group is explicitly ordered by pipeline position, since `citations.uncited`
-    // already arrives in that order.
-    const byPipelineOrder = (a: EvidenceDoc, b: EvidenceDoc) => a.sourceIndex - b.sourceIndex
-    const rows = [...cited, ...uncited]
-    // The rank is the row's position in `sources`, never `1 / relevanceScore` and never its
-    // position in `rows`: the score in a legacy persisted message is still a raw,
-    // path-dependent one that would label a lexical-only source "Rang 11", while `rows` groups the
-    // cited rows before the uncited ones and would renumber as soon as an uncited source sits
-    // between two cited ones. A synthetic entry backs no retrieved passage, holds no rank
-    // and consumes none. Numbering happens before `visibleDocs` filters, so it stays stable under
-    // search and "nur zitierte".
-    const rankByDoc = new Map<EvidenceDoc, number>()
-    let nextRank = 1
-    for (const doc of [...rows].sort(byPipelineOrder)) {
-      if (doc.relevanceScore !== undefined && doc.relevanceScore !== 0) {
-        rankByDoc.set(doc, nextRank++)
-      }
-    }
-    return rows.map((doc) => ({ ...doc, rank: rankByDoc.get(doc) }))
+    // Cited rows keep `citations.docs` order, ascending by citation number; uncited ones keep
+    // `citations.uncited` order, the pipeline's. Never reordered by relevanceScore - a persisted
+    // message may still carry a legacy path-dependent raw score.
+    return [...cited, ...uncited]
   }, [citations, shown])
 
+  const hasCited = citations.docs.length > 0
+  const hasUncited = citations.uncited.length > 0
   const visibleDocs = useMemo(() => {
     const needle = query.trim().toLowerCase()
     return docs
-      .filter((doc) => !citedOnly || doc.cited)
+      .filter((doc) => showUncited || doc.cited)
       .filter(
         (doc) =>
           needle.length === 0 ||
           doc.fileName.toLowerCase().includes(needle) ||
-          (doc.metadataLine?.toLowerCase().includes(needle) ?? false),
+          doc.locations.some((location) => location.toLowerCase().includes(needle)),
       )
-  }, [citedOnly, docs, query])
+  }, [showUncited, docs, query])
+  const listId = `belege-${messageId}`
 
   return (
     <Drawer
@@ -304,19 +246,15 @@ export default function SourceEvidenceDrawer({
           borderColor: 'divider',
         }}
       >
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={{ fontSize: 16, fontWeight: 600 }}>Belege dieser Antwort</Typography>
-          <Typography sx={{ fontSize: 11, color: 'text.secondary', mt: 0.25 }}>
-            {describeCitedPassages(citations)} · zitierte nach Zitatnummer, übrige nach Relevanzrang
-            sortiert
-          </Typography>
-        </Box>
+        <Typography sx={{ flex: 1, minWidth: 0, fontSize: 16, fontWeight: 600 }}>
+          Belege dieser Antwort
+        </Typography>
         <IconButton size="small" onClick={onClose} aria-label="Belegfenster schließen">
           <CloseIcon sx={{ fontSize: 18 }} />
         </IconButton>
       </Box>
 
-      <Box sx={{ display: 'flex', gap: 1, px: 2.5, py: 1.5 }}>
+      <Box sx={{ px: 2.5, py: 1.5 }}>
         <TextField
           fullWidth
           size="small"
@@ -334,27 +272,18 @@ export default function SourceEvidenceDrawer({
             htmlInput: { 'aria-label': 'In Belegen suchen' },
           }}
         />
-        <Button
-          variant={citedOnly ? 'contained' : 'outlined'}
-          size="small"
-          onClick={() => setCitedOnly((v) => !v)}
-          aria-pressed={citedOnly}
-          sx={{ flex: 'none' }}
-        >
-          Nur zitierte
-        </Button>
       </Box>
 
-      <Box sx={{ flex: 1, overflowY: 'auto', px: 2.5, pb: 2 }}>
+      <Box id={listId} sx={{ flex: 1, overflowY: 'auto', px: 2.5, pb: 2 }}>
         {visibleDocs.length === 0 ? (
           <Typography sx={{ fontSize: 12.5, color: 'text.secondary', py: 2 }}>
-            Kein Beleg passt zur Suche.
+            {query.trim().length > 0 || hasCited
+              ? 'Kein Beleg passt zur Suche.'
+              : 'Diese Antwort zitiert keinen Beleg.'}
           </Typography>
         ) : (
           visibleDocs.map((doc) => {
             const focused = doc.docIndex !== undefined && focusedDocIndexes.includes(doc.docIndex)
-            const sourceAddress = doc.sourceEntryUrl ?? doc.sourceUrl
-            const sourceHref = safeExternalHref(sourceAddress)
             return (
               <Box
                 // Two distinct documents may share a file name and each get their own row,
@@ -451,29 +380,6 @@ export default function SourceEvidenceDrawer({
                     {doc.locations.join(' · ')}
                   </Typography>
                 )}
-                {/* The schema metadata line, rendered from the generic list without field
-                  knowledge - only for a document that actually carries a value. */}
-                {doc.metadataLine && (
-                  <Typography
-                    component="span"
-                    data-testid="source-metadata"
-                    aria-label={doc.metadataDescription}
-                    sx={{ display: 'block', fontSize: 11.5, color: 'text.secondary', mt: 0.25 }}
-                  >
-                    {doc.metadataLine}
-                  </Typography>
-                )}
-                {/* Values that belong into the detail view but not into the one-line Beleg -
-                  a mail's recipient list identifies no passage and would crowd out what does. */}
-                {doc.metadataDetails && (
-                  <Typography
-                    component="span"
-                    data-testid="source-metadata-details"
-                    sx={{ display: 'block', fontSize: 11.5, color: 'text.secondary', mt: 0.25 }}
-                  >
-                    {doc.metadataDetails}
-                  </Typography>
-                )}
                 {/* The Leerwert mark of a hit kept under an active filter. */}
                 {doc.filterMatchLabel && (
                   <Typography
@@ -503,24 +409,8 @@ export default function SourceEvidenceDrawer({
                       {freezeNotice(doc.freeze)}
                     </Typography>
                   )}
-                  <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
-                    {[
-                      doc.rank !== undefined ? `Rang ${doc.rank}` : null,
-                      doc.indexedAt
-                        ? `indiziert ${new Date(doc.indexedAt).toLocaleDateString('de-DE', { dateStyle: 'medium' })}`
-                        : null,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </Typography>
                   {/* Every sourceType with a documentId opens via the content endpoint
-                    (LibraryDetailPage#handleOpenOriginal); sourceEntryUrl/sourceUrl is
-                    shown alongside it as secondary information (a small "Quelle" link carrying
-                    the raw URL as its title tooltip and aria-label - a plain
-                    title alone is generally not announced by a screen reader once the element
-                    already has visible text), since that address may only be reachable from
-                    OPAA's own network, not the caller's browser. An address without an http(s)
-                    scheme gets no link at all. */}
+                    (LibraryDetailPage#handleOpenOriginal); a synthetic entry has none. */}
                   {doc.documentId && (
                     <Link
                       component="button"
@@ -529,26 +419,26 @@ export default function SourceEvidenceDrawer({
                       onClick={() => void handleOpenLocalOriginal(doc)}
                       sx={{ fontSize: 11.5 }}
                     >
-                      Im Dokument öffnen
-                    </Link>
-                  )}
-                  {sourceHref && (
-                    <Link
-                      href={sourceHref}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      underline="hover"
-                      title={sourceAddress ?? undefined}
-                      aria-label={`Quelle: ${sourceAddress ?? ''}`}
-                      sx={{ fontSize: 11.5, color: 'text.disabled' }}
-                    >
-                      Quelle
+                      Dokument öffnen
                     </Link>
                   )}
                 </Box>
               </Box>
             )
           })
+        )}
+        {hasUncited && (
+          <Link
+            component="button"
+            type="button"
+            underline="hover"
+            aria-expanded={showUncited}
+            aria-controls={listId}
+            onClick={() => setShowUncited((v) => !v)}
+            sx={{ display: 'block', mt: 1.5, fontSize: 12.5 }}
+          >
+            {showUncited ? 'Nicht zitierte ausblenden' : 'Nicht zitierte anzeigen'}
+          </Link>
         )}
       </Box>
 

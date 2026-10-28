@@ -7,7 +7,7 @@ import type { ChatMessage } from '../types/chat'
 import type { SourceReference } from '@/shared/api/types'
 import type { OpenDocumentContentResult } from '@/features/library'
 
-// The "Im Dokument öffnen" action delegates to this shared module (see its own tests for the
+// The "Dokument öffnen" action delegates to this shared module (see its own tests for the
 // Blob-fetch/preview-vs-download behaviour; LibraryDetailPage.test.tsx uses the same mock pattern).
 const { mockOpenDocumentContent } = vi.hoisted(() => ({
   mockOpenDocumentContent: vi.fn<() => Promise<OpenDocumentContentResult>>(async () => ({
@@ -66,33 +66,111 @@ async function openDrawer() {
   return { user, drawer: await screen.findByRole('dialog', { name: 'Belege dieser Antwort' }) }
 }
 
+function fileNames(drawer: HTMLElement) {
+  return within(drawer)
+    .getAllByTestId('evidence-doc')
+    .map((el) => el.getAttribute('data-file'))
+}
+
 describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('opens from "Belege anzeigen" with header, count line and answer timestamp', async () => {
+  it('opens from "Belege anzeigen" with the bare header and the answer timestamp (#3259)', async () => {
     const { drawer } = await openDrawer()
 
     expect(within(drawer).getByText('Belege dieser Antwort')).toBeInTheDocument()
-    expect(
-      within(drawer).getByText(
-        '3 Stellen in 3 Dokumenten · zitierte nach Zitatnummer, übrige nach Relevanzrang sortiert',
-      ),
-    ).toBeInTheDocument()
+    expect(within(drawer).queryByText(/Zitatnummer|Relevanz|Stellen in/)).not.toBeInTheDocument()
+    expect(within(drawer).getByRole('textbox', { name: 'In Belegen suchen' })).toBeVisible()
     expect(within(drawer).getByText(/Stand der Antwort: 20\.08\.2026, 14:12/)).toBeInTheDocument()
   })
 
   // `message()` deliberately cites in a different order than the pipeline's `sources`
   // array (zweiter.md is footnote 1 despite sitting second in `sources`) - the cited group must
-  // follow the footnote numbers, not the pipeline order, with the uncited source trailing by rank.
-  it('lists cited documents by citation number, uncited ones after them by rank', async () => {
-    const { drawer } = await openDrawer()
+  // follow the footnote numbers, not the pipeline order, with the uncited source trailing.
+  it('lists cited documents by citation number, uncited ones after them once shown', async () => {
+    const { user, drawer } = await openDrawer()
 
-    const names = within(drawer)
-      .getAllByTestId('evidence-doc')
-      .map((el) => el.getAttribute('data-file'))
-    expect(names).toEqual(['zweiter.md', 'erster.md', 'dritter.md', 'ungenutzt.md'])
+    expect(fileNames(drawer)).toEqual(['zweiter.md', 'erster.md', 'dritter.md'])
+
+    await user.click(within(drawer).getByRole('button', { name: 'Nicht zitierte anzeigen' }))
+
+    expect(fileNames(drawer)).toEqual(['zweiter.md', 'erster.md', 'dritter.md', 'ungenutzt.md'])
+  })
+
+  it('opens with the cited Belege only and unfolds the uncited ones behind a link (#3259)', async () => {
+    const { user, drawer } = await openDrawer()
+
+    expect(within(drawer).queryByRole('button', { name: 'Nur zitierte' })).not.toBeInTheDocument()
+    const toggle = within(drawer).getByRole('button', { name: 'Nicht zitierte anzeigen' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(toggle).toHaveAttribute('aria-controls', 'belege-ev-1')
+    expect(document.getElementById('belege-ev-1')).toContainElement(
+      within(drawer).getAllByTestId('evidence-doc')[0],
+    )
+    expect(
+      within(drawer)
+        .getAllByTestId('evidence-doc')
+        .every((el) => el.getAttribute('data-cited') === 'true'),
+    ).toBe(true)
+
+    await user.click(toggle)
+
+    const collapse = within(drawer).getByRole('button', { name: 'Nicht zitierte ausblenden' })
+    expect(collapse).toHaveAttribute('aria-expanded', 'true')
+    expect(within(drawer).getByText('geprüft, nicht zitiert')).toBeVisible()
+
+    await user.click(collapse)
+
+    expect(fileNames(drawer)).toEqual(['zweiter.md', 'erster.md', 'dritter.md'])
+    expect(within(drawer).getByRole('button', { name: 'Nicht zitierte anzeigen' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+  })
+
+  it('offers no link when every source is cited', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <MessageBubble
+        message={{
+          id: 'ev-all-cited',
+          role: 'assistant',
+          content: 'Beleg【source: a#0 | a.md】.',
+          sources: [source('a.md', true, 1)],
+          timestamp: new Date('2026-08-22T09:00:00'),
+        }}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Belege anzeigen' }))
+    const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
+
+    expect(within(drawer).queryByRole('button', { name: /Nicht zitierte/ })).not.toBeInTheDocument()
+  })
+
+  it('says so when an answer cites nothing, and still unfolds the checked sources', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <MessageBubble
+        message={{
+          id: 'ev-none-cited',
+          role: 'assistant',
+          content: 'Dazu steht nichts in den Unterlagen.',
+          sources: [source('geprueft.md', false, 1)],
+          timestamp: new Date('2026-08-22T09:00:00'),
+        }}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Belege anzeigen' }))
+    const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
+
+    expect(within(drawer).getByText('Diese Antwort zitiert keinen Beleg.')).toBeVisible()
+    expect(within(drawer).queryByTestId('evidence-doc')).not.toBeInTheDocument()
+
+    await user.click(within(drawer).getByRole('button', { name: 'Nicht zitierte anzeigen' }))
+
+    expect(fileNames(drawer)).toEqual(['geprueft.md'])
   })
 
   // Regression guard for the reported demo behaviour - footnote 2 points at the lowest-rank
@@ -129,9 +207,6 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     expect(within(rows[0]).getByText('1')).toBeInTheDocument()
     expect(within(rows[1]).getByText('2')).toBeInTheDocument()
     expect(within(rows[2]).getByText('3')).toBeInTheDocument()
-    expect(within(rows[0]).getByText(/Rang 1$/)).toBeInTheDocument()
-    expect(within(rows[1]).getByText(/Rang 3$/)).toBeInTheDocument()
-    expect(within(rows[2]).getByText(/Rang 2$/)).toBeInTheDocument()
   })
 
   // relevanceScore is the reciprocal of the fused rank, so it is only ever a label - a
@@ -208,6 +283,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     renderWithProviders(<MessageBubble message={withPrivate} />)
     await user.click(screen.getByRole('button', { name: 'Belege anzeigen' }))
     const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
+    await user.click(within(drawer).getByRole('button', { name: 'Nicht zitierte anzeigen' }))
 
     const marks = within(drawer).getAllByTestId('source-private')
     expect(marks).toHaveLength(1)
@@ -218,58 +294,23 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     expect(row).toContainElement(marks[0])
   })
 
-  it('labels a source with its rank in the answer, not a percentage weight (#1102)', async () => {
-    const { drawer } = await openDrawer()
-
-    // The rows themselves are in citation-number order (zweiter.md, erster.md, dritter.md)
-    // - their ranks stay tied to pipeline position (`sources` index 1, 0, 2), not to row position.
-    const rows = within(drawer).getAllByTestId('evidence-doc')
-    expect(within(rows[0]).getByText(/Rang 2/)).toBeInTheDocument()
-    expect(within(rows[1]).getByText(/Rang 1/)).toBeInTheDocument()
-    expect(within(rows[2]).getByText(/Rang 3/)).toBeInTheDocument()
-    expect(within(drawer).queryByText(/Gewicht/)).not.toBeInTheDocument()
-  })
-
-  // The rank is the row's position in the drawer's own, unfiltered list - a message
-  // persisted with legacy scores carries raw path-dependent ones in its snapshot, and labelling
-  // from 1 / relevanceScore would call the pipeline's first source "Rang 11".
-  it('labels a legacy message by row position, not by 1 / relevanceScore', async () => {
+  // Rank and index date are technical details for the search log, not for the Beleg.
+  it('shows neither rank nor index date nor a source link in a row', async () => {
     const user = userEvent.setup()
     renderWithProviders(
       <MessageBubble
         message={{
-          id: 'ev-legacy-rank',
+          id: 'ev-plain',
           role: 'assistant',
-          content: 'Beleg【source: a#0 | lexikalisch.md】 und【source: b#0 | vektor.md】.',
-          sources: [source('lexikalisch.md', true, 0.09), source('vektor.md', true, 0.8)],
-          timestamp: new Date('2026-08-22T09:00:00'),
-        }}
-      />,
-    )
-    await user.click(screen.getByRole('button', { name: 'Belege anzeigen' }))
-    const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
-
-    const rows = within(drawer).getAllByTestId('evidence-doc')
-    expect(within(rows[0]).getByText(/Rang 1/)).toBeInTheDocument()
-    expect(within(rows[1]).getByText(/Rang 2/)).toBeInTheDocument()
-  })
-
-  // "Rang n" is the source's position in the backend's `sources` array - the same position
-  // `relevanceScore` is the reciprocal of - not the row's position in this list. The list groups
-  // the cited rows before the uncited ones, so a row position would renumber as soon as an uncited
-  // source sits between two cited ones (the normal case: the model does not cite every hit).
-  it('numbers by the position in `sources` when an uncited source sits between two cited ones', async () => {
-    const user = userEvent.setup()
-    renderWithProviders(
-      <MessageBubble
-        message={{
-          id: 'ev-interleaved',
-          role: 'assistant',
-          content: 'Erstens【source: a#0 | a.md】, drittens【source: c#0 | c.md】.',
+          content: 'Beleg【source: a#0 | a.md】.',
           sources: [
-            source('a.md', true, 1),
-            source('b.md', false, 0.5),
-            source('c.md', true, 1 / 3),
+            source('a.md', true, 1, true, {
+              indexedAt: '2026-03-12T10:00:00Z',
+              documentId: 'doc-a',
+              sourceType: 'RSS_FEED',
+              sourceEntryUrl: 'https://example.gov/feed/eintrag-7',
+            }),
+            source('b.md', false, 0.5, true, { indexedAt: '2026-03-12T10:00:00Z' }),
           ],
           timestamp: new Date('2026-08-22T09:00:00'),
         }}
@@ -277,57 +318,14 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Belege anzeigen' }))
     const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
+    await user.click(within(drawer).getByRole('button', { name: 'Nicht zitierte anzeigen' }))
 
-    const rows = within(drawer).getAllByTestId('evidence-doc')
-    expect(rows.map((el) => el.getAttribute('data-file'))).toEqual(['a.md', 'c.md', 'b.md'])
-    expect(within(rows[0]).getByText(/Rang 1$/)).toBeInTheDocument()
-    expect(within(rows[1]).getByText(/Rang 3$/)).toBeInTheDocument()
-    expect(within(rows[2]).getByText(/Rang 2$/)).toBeInTheDocument()
-  })
-
-  it('keeps a row rank when the list is filtered', async () => {
-    const { user, drawer } = await openDrawer()
-
-    await user.type(within(drawer).getByPlaceholderText('In Belegen suchen …'), 'dritter')
-
-    const rows = within(drawer).getAllByTestId('evidence-doc')
-    expect(rows).toHaveLength(1)
-    expect(within(rows[0]).getByText(/Rang 3/)).toBeInTheDocument()
-  })
-
-  // A synthetic entry backs no retrieved passage (relevanceScore 0), so it holds no rank -
-  // and consumes none either, leaving the numbering of the real rows gap-free.
-  it('gives a synthetic entry no rank and lets it consume none', async () => {
-    const user = userEvent.setup()
-    renderWithProviders(
-      <MessageBubble
-        message={{
-          id: 'ev-synthetic',
-          role: 'assistant',
-          content:
-            'Echt【source: a#0 | echt.md】, erfunden【source: x#0 | erfunden.md】, ' +
-            'ungenutzt bleibt übrig.',
-          sources: [
-            source('echt.md', true, 1),
-            source('erfunden.md', true, 0, false),
-            source('ungenutzt.md', false, 0.5),
-          ],
-          timestamp: new Date('2026-08-22T09:00:00'),
-        }}
-      />,
-    )
-    await user.click(screen.getByRole('button', { name: 'Belege anzeigen' }))
-    const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
-
-    const rows = within(drawer).getAllByTestId('evidence-doc')
-    expect(rows.map((el) => el.getAttribute('data-file'))).toEqual([
-      'echt.md',
-      'erfunden.md',
-      'ungenutzt.md',
-    ])
-    expect(within(rows[0]).getByText(/Rang 1/)).toBeInTheDocument()
-    expect(within(rows[1]).queryByText(/Rang/)).not.toBeInTheDocument()
-    expect(within(rows[2]).getByText(/Rang 2/)).toBeInTheDocument()
+    expect(within(drawer).getAllByTestId('evidence-doc')).toHaveLength(2)
+    expect(within(drawer).queryByText(/Rang/)).not.toBeInTheDocument()
+    expect(within(drawer).queryByText(/indiziert/)).not.toBeInTheDocument()
+    expect(within(drawer).queryByText(/12\.03\.2026/)).not.toBeInTheDocument()
+    expect(within(drawer).queryByRole('link')).not.toBeInTheDocument()
+    expect(within(drawer).queryByText('Quelle')).not.toBeInTheDocument()
   })
 
   it('filters by the search field', async () => {
@@ -341,10 +339,10 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     expect(names).toEqual(['zweiter.md'])
   })
 
-  it('reopens unfiltered, so a clicked footnote never lands on a hidden Beleg', async () => {
+  it('reopens unfiltered and folded, so a clicked footnote never lands on a hidden Beleg', async () => {
     const { user, drawer } = await openDrawer()
     await user.type(within(drawer).getByPlaceholderText('In Belegen suchen …'), 'zweiter')
-    await user.click(within(drawer).getByRole('button', { name: 'Nur zitierte' }))
+    await user.click(within(drawer).getByRole('button', { name: 'Nicht zitierte anzeigen' }))
     await user.keyboard('{Escape}')
     await waitForDialogClosed()
 
@@ -352,27 +350,15 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
 
     const reopened = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
     expect(within(reopened).getByPlaceholderText('In Belegen suchen …')).toHaveValue('')
-    expect(within(reopened).getByRole('button', { name: 'Nur zitierte' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    )
-    expect(within(reopened).getAllByTestId('evidence-doc')).toHaveLength(4)
+    expect(
+      within(reopened).getByRole('button', { name: 'Nicht zitierte anzeigen' }),
+    ).toHaveAttribute('aria-expanded', 'false')
+    expect(within(reopened).getAllByTestId('evidence-doc')).toHaveLength(3)
     expect(
       within(reopened)
         .getAllByTestId('evidence-doc')
         .find((el) => el.getAttribute('data-focused') === 'true'),
     ).toHaveAttribute('data-file', 'dritter.md')
-  })
-
-  it('hides checked-but-uncited sources behind the "Nur zitierte" filter', async () => {
-    const { user, drawer } = await openDrawer()
-
-    await user.click(within(drawer).getByRole('button', { name: 'Nur zitierte' }))
-
-    const names = within(drawer)
-      .getAllByTestId('evidence-doc')
-      .map((el) => el.getAttribute('data-file'))
-    expect(names).toEqual(['zweiter.md', 'erster.md', 'dritter.md'])
   })
 
   it('flags a source with an invalid citation as "Beleg nicht bestätigt" (#386)', async () => {
@@ -406,8 +392,8 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     expect(within(drawer).queryByText('Beleg nicht bestätigt')).not.toBeInTheDocument()
   })
 
-  // The Belegfenster row carries the document's generic metadata line.
-  it('shows the metadata line of a source, rendered from the generic list', async () => {
+  // A Beleg names title and Fundort only, never the metadata line.
+  it('shows no metadata line, even for a source that carries metadata', async () => {
     const user = userEvent.setup()
     renderWithProviders(
       <MessageBubble
@@ -426,15 +412,6 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
                   origin: 'DETERMINISTIC',
                   detailOnly: false,
                 },
-                {
-                  fieldKey: 'document_date',
-                  label: 'Datum/Stand',
-                  value: '2026-03-01',
-                  displayValue: '03/2026',
-                  origin: 'MANUAL',
-                  datePrecision: 'MONTH',
-                  detailOnly: false,
-                },
               ],
             }),
           ],
@@ -447,15 +424,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
 
     const doc = within(drawer).getByTestId('evidence-doc')
     expect(within(doc).getByText('2026-03-12_da.pdf')).toBeVisible()
-    expect(within(doc).getByTestId('source-metadata')).toHaveTextContent(
-      'Dienstanweisung · 03/2026',
-    )
-  })
-
-  it('shows no metadata line for a source without metadata', async () => {
-    const { drawer } = await openDrawer()
-
-    expect(within(drawer).queryByTestId('source-metadata')).not.toBeInTheDocument()
+    expect(within(doc).queryByText('Dienstanweisung')).not.toBeInTheDocument()
   })
 
   it('closes on Escape and returns focus to the trigger', async () => {
@@ -468,7 +437,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     expect(screen.getByRole('button', { name: 'Belege anzeigen' })).toHaveFocus()
   })
 
-  describe('"Im Dokument öffnen" (#739)', () => {
+  describe('"Dokument öffnen" (#739)', () => {
     async function openDrawerWith(source: SourceReference) {
       const user = userEvent.setup()
       renderWithProviders(
@@ -495,12 +464,12 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
         }),
       )
 
-      await user.click(within(drawer).getByRole('button', { name: 'Im Dokument öffnen' }))
+      await user.click(within(drawer).getByRole('button', { name: 'Dokument öffnen' }))
 
       expect(mockOpenDocumentContent).toHaveBeenCalledWith('doc-1', 'doc.pdf')
     })
 
-    it('opens an HTTP_DIRECTORY document through the content endpoint too, keeping sourceUrl as a secondary "Quelle" link (#747)', async () => {
+    it('opens an HTTP_DIRECTORY document through the content endpoint too, without a source link', async () => {
       const { user, drawer } = await openDrawerWith(
         source('doc.pdf', true, 0.9, true, {
           documentId: 'doc-1',
@@ -509,60 +478,18 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
         }),
       )
 
-      await user.click(within(drawer).getByRole('button', { name: 'Im Dokument öffnen' }))
+      await user.click(within(drawer).getByRole('button', { name: 'Dokument öffnen' }))
 
       expect(mockOpenDocumentContent).toHaveBeenCalledWith('doc-1', 'doc.pdf')
-
-      const sourceLink = within(drawer).getByRole('link', {
-        name: 'Quelle: https://example.gov/verzeichnis/doc.pdf',
-      })
-      expect(sourceLink).toHaveAttribute('href', 'https://example.gov/verzeichnis/doc.pdf')
-      expect(sourceLink).toHaveAttribute('target', '_blank')
-      expect(sourceLink).toHaveAttribute('rel', expect.stringContaining('noopener'))
-    })
-
-    // regression guard for #2912: a source address from third-party metadata only becomes a
-    // link target with an http(s) scheme.
-    it.each([
-      ['sourceUrl', 'data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=='],
-      ['sourceUrl', 'javascript:alert(1)'],
-      ['sourceEntryUrl', ' JaVaScRiPt:alert(1)'],
-      ['sourceEntryUrl', 'data:text/html,<script>alert(1)</script>'],
-    ] as const)('renders no "Quelle" link for a %s with the address %j', async (field, url) => {
-      const { drawer } = await openDrawerWith(
-        source('doc.pdf', true, 0.9, true, {
-          documentId: 'doc-1',
-          sourceType: 'HTTP_DIRECTORY',
-          [field]: url,
-        }),
-      )
-
-      expect(within(drawer).getByRole('button', { name: 'Im Dokument öffnen' })).toBeVisible()
-      expect(within(drawer).queryByRole('link', { name: /^Quelle/ })).not.toBeInTheDocument()
-      expect(within(drawer).queryByText('Quelle')).not.toBeInTheDocument()
-    })
-
-    it('keeps the "Quelle" link for an https sourceEntryUrl', async () => {
-      const { drawer } = await openDrawerWith(
-        source('anhang.pdf', true, 0.9, true, {
-          documentId: 'doc-1',
-          sourceType: 'RSS_FEED',
-          sourceEntryUrl: 'https://example.gov/feed/eintrag-7',
-        }),
-      )
-
-      expect(
-        within(drawer).getByRole('link', { name: 'Quelle: https://example.gov/feed/eintrag-7' }),
-      ).toHaveAttribute('href', 'https://example.gov/feed/eintrag-7')
+      expect(within(drawer).queryByRole('link')).not.toBeInTheDocument()
     })
 
     it('hides the action for a synthetic entry with no documentId at all', async () => {
       const { drawer } = await openDrawerWith(source('doc.pdf', true, 0.9))
 
       expect(
-        within(drawer).queryByRole('button', { name: 'Im Dokument öffnen' }),
+        within(drawer).queryByRole('button', { name: 'Dokument öffnen' }),
       ).not.toBeInTheDocument()
-      expect(within(drawer).queryByRole('link', { name: 'Quelle' })).not.toBeInTheDocument()
     })
 
     it('shows a German error message when opening the original fails (e.g. 404)', async () => {
@@ -576,7 +503,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
         }),
       )
 
-      await user.click(within(drawer).getByRole('button', { name: 'Im Dokument öffnen' }))
+      await user.click(within(drawer).getByRole('button', { name: 'Dokument öffnen' }))
 
       // Guidelines 5.9: the failure surfaces as a global popup notification (NotificationHost,
       // mounted by renderWithProviders), not as an inline alert inside the Belegfenster.
@@ -600,7 +527,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
         }),
       )
 
-      await user.click(within(drawer).getByRole('button', { name: 'Im Dokument öffnen' }))
+      await user.click(within(drawer).getByRole('button', { name: 'Dokument öffnen' }))
 
       // The preview dialog portals to document.body, outside the Belegfenster drawer, so it is
       // queried at the document level rather than scoped to `drawer`.
@@ -624,7 +551,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
         }),
       )
 
-      await user.click(within(drawer).getByRole('button', { name: 'Im Dokument öffnen' }))
+      await user.click(within(drawer).getByRole('button', { name: 'Dokument öffnen' }))
 
       expect(await screen.findByText('bescheid.docx wird heruntergeladen')).toBeInTheDocument()
     })
