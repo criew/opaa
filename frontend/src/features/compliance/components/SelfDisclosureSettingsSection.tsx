@@ -103,7 +103,7 @@ export default function SelfDisclosureSettingsSection() {
   return (
     <PageSection
       title="Selbstauskunft"
-      description="Jede angemeldete Person kann die zu ihr gespeicherten Daten in ihren Einstellungen unter „Meine Daten“ selbst herunterladen, nach erneuter Anmeldung. Abschalten lässt sich das nur für die ganze Installation, etwa bei einer Störung; das Recht auf Auskunft bei der Behörde bleibt davon unberührt."
+      description="Jede Person lädt ihre gespeicherten Daten unter „Meine Daten“ selbst herunter. Abschalten lässt sich das nur für die ganze Installation; das Recht auf Auskunft bei der Behörde bleibt unberührt."
     >
       {loadError ? (
         <Alert

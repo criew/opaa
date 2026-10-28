@@ -62,7 +62,7 @@ export default function SearchIndexingAdminPage() {
         <AreaPageHeader
           icon={ManageSearchOutlinedIcon}
           title="Suche & Indexierung"
-          description="Diese Seite zeigt die aktive Konfiguration an und ändert sie nicht. Sie beantwortet, warum ein Dokument in einer Antwort steht oder fehlt. Die einzigen Eingriffe sind die beiden Chargenläufe unter „Indexstatus“ — bewusste Starts, kein Automatismus."
+          description="Zeigt die aktive Konfiguration und warum ein Dokument in einer Antwort steht oder fehlt; eingreifen lässt sich nur über die Chargenläufe unter „Indexstatus“."
         />
 
         <AreaTabs

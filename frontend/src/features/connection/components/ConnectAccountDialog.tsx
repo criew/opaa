@@ -102,10 +102,9 @@ export default function ConnectAccountDialog({
               es sie verschlüsselt speichert.
             </Typography>
             <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
-              Wer was sieht: Ihren Kontonamen beim Anbieter und die Inhalte Ihrer privaten
-              Bibliotheken sehen nur Sie. Die Systemverwaltung sieht nur gerundete Anzahlen
-              verbundener Konten. Wann ein Konto verbunden, neu verbunden oder getrennt wurde, steht
-              unter einem Pseudonym statt Ihres Namens im Verbindungsprotokoll der Revision.
+              Wer was sieht: Kontonamen und Inhalte Ihrer privaten Bibliotheken sehen nur Sie. Die
+              Systemverwaltung sieht nur gerundete Anzahlen; Verbinden und Trennen stehen unter
+              einem Pseudonym im Verbindungsprotokoll der Revision.
             </Typography>
             {error && (
               <Alert severity="error" role="alert" tabIndex={-1} ref={errorRef}>

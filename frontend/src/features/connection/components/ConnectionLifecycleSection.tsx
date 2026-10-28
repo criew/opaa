@@ -270,7 +270,7 @@ export default function ConnectionLifecycleSection() {
   return (
     <PageSection
       title="Schwellen und Fristen der Verbindungen"
-      description="Wann die verbundenen Konten einer abwesenden Person ruhen, wie lange die privaten Bibliotheken einer deaktivierten Person bleiben und ab wann die Übersicht der Zugänge vor abgelaufenen Konten warnt. Ohne eigenen Wert gilt die Werkseinstellung."
+      description="Wann verbundene Konten abwesender Personen ruhen, wie lange private Bibliotheken deaktivierter Personen bleiben und ab wann die Übersicht vor abgelaufenen Konten warnt."
     >
       {loadError ? (
         <Alert

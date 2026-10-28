@@ -359,12 +359,8 @@ function PanelContent({
           />
           {persons && (
             <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
-              Verbundene Konten zählen die Konten von Personen auf diesem Zugang, verbundene und
-              abgelaufene. Kleine Zahlen erscheinen nur als „weniger als …“, damit keine Zahl auf
-              einzelne Personen schließen lässt; „nicht ausgewiesen“ steht dort, wo schon die Zahl
-              der abgelaufenen Konten das täte. „Viele Konten abgelaufen“ erscheint als
-              Handlungsbedarf, sobald die ausgewiesenen Zahlen den eingestellten Schwellenwert
-              erreichen.
+              Kleine Zahlen erscheinen nur als „weniger als …“ oder „nicht ausgewiesen“, damit keine
+              Zahl auf einzelne Personen schließen lässt.
             </Typography>
           )}
         </PanelSection>

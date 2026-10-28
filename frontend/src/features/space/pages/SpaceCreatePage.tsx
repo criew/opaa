@@ -343,9 +343,8 @@ export default function SpaceCreatePage() {
         {activeStep === 2 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
             <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
-              Ein Chat in diesem Space nutzt nur, was Sie hier zuordnen. Zur Auswahl steht, was Sie
-              selbst lesen dürfen. Die Zuordnung gewährt niemandem zusätzlichen Zugriff und lässt
-              sich später in den Einstellungen des Space ändern — dieser Schritt ist optional.
+              Ein Chat in diesem Space nutzt nur, was Sie hier zuordnen; die Zuordnung gewährt
+              keinen zusätzlichen Zugriff. Dieser Schritt ist optional.
             </Typography>
             <AssetTilePicker
               value={selectedAssets}

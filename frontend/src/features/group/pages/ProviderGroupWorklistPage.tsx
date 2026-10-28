@@ -80,7 +80,7 @@ export default function ProviderGroupWorklistPage() {
           meta={
             reaching.length === 1 ? '1 verwendete Gruppe' : `${reaching.length} verwendete Gruppen`
           }
-          description="Solange eine Gruppe dieses Anbieters noch verwendet wird, lässt sich der Anbieter nicht löschen. Für jede dieser Gruppen gibt es zwei Wege: ihre Rechte an eine andere Gruppe übertragen oder sie dort entfernen, wo sie vergeben sind – an der Bibliothek oder im Space. Nicht verwendete Gruppen werden mit dem Anbieter gelöscht. Abgelaufene Berechtigungen zählen hier mit — sie halten das Löschen auf; die Vorschau der Übertragung lässt sie aus und kann deshalb kleinere Zahlen nennen."
+          description="Der Anbieter lässt sich erst löschen, wenn keine dieser Gruppen mehr verwendet wird: Übertragen Sie ihre Rechte an eine andere Gruppe oder entfernen Sie sie an der Bibliothek oder im Space."
         />
 
         <TextLink to="/admin/identity-providers">Zurück zur Anbieterverwaltung</TextLink>

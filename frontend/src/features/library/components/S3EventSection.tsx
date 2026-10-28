@@ -112,10 +112,8 @@ export default function S3EventSection({ libraryId, tokenSet, scopes }: S3EventS
           : 'nicht eingerichtet'}
       </Typography>
       <Typography variant="caption" component="p" sx={{ color: 'text.secondary', mt: 0.5 }}>
-        Der Objektspeicher kann OPAA über erzeugte und gelöschte Objekte benachrichtigen; die
-        gemeldeten Schlüssel werden dann wenige Sekunden später einzeln geprüft. Ein Löschereignis
-        entfernt das Dokument erst, wenn der Speicher das Fehlen des Objekts bestätigt. Der Zeitplan
-        bleibt als Sicherheitsnetz für verlorene Ereignisse. Das Token wird nur einmal angezeigt.
+        Der Objektspeicher meldet erzeugte und gelöschte Objekte; der Zeitplan fängt verlorene
+        Meldungen auf. Das Token wird nur einmal angezeigt.
       </Typography>
       <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap' }} useFlexGap>
         <Button

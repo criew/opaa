@@ -284,9 +284,8 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
             <Divider sx={{ mb: 2 }} />
             {!libraryHintDismissed && (
               <Alert severity="info" sx={{ mb: 2 }} onClose={dismissLibraryHint}>
-                Diese Liste zeigt nur die Bibliotheken, auf die Sie selbst Zugriff haben. Eine
-                Zuordnung gewährt keinen zusätzlichen Zugriff — andere Mitglieder können deshalb
-                eine andere Liste sehen als Sie.
+                Hier stehen nur Bibliotheken, die Sie lesen dürfen. Eine Zuordnung gewährt keinen
+                zusätzlichen Zugriff.
               </Alert>
             )}
             {isLoadingAssetAssociations ? (

@@ -191,6 +191,8 @@ Fehlerstatus, gesperrte Adresse), bleibt ein Fehler.
   verwendet wird, und überträgt ihre Rechte auf eine andere Gruppe
   ([Berechtigungen](../konten-und-rechte/berechtigungen.md#132-rechte-einer-gruppe-auf-eine-andere-übertragen)), oder die
   Rechte werden dort entfernt, wo sie vergeben sind. Nicht verwendete Gruppen gehen mit dem Anbieter.
+  Abgelaufene Berechtigungen zählen in der Arbeitsliste mit und halten das Löschen auf; die Vorschau
+  einer Übertragung lässt sie aus und kann deshalb kleinere Zahlen nennen.
 - **Die Zeile „Lokale Konten"** steht in derselben Verwaltung, erscheint aber nicht in der
   Anbieterliste: nicht löschbar, nie Standard, nur der Anzeigename änderbar. Ihr Ein- und Ausschalten
   ist der Schalter der lokalen Benutzerverwaltung (Karte „Lokale Anmeldung" unter Administration →

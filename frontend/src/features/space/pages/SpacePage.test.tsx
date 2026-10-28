@@ -159,7 +159,9 @@ describe('SpacePage', () => {
     renderWithProviders(<SpacePage renderChats={noChats} />, { withRouter: true })
 
     expect(await screen.findByText('Rechtsquellen Soziales')).toBeInTheDocument()
-    expect(screen.getByText(/andere Mitglieder können deshalb/)).toBeInTheDocument()
+    expect(
+      screen.getByText(/Eine Zuordnung gewährt keinen zusätzlichen Zugriff/),
+    ).toBeInTheDocument()
   })
 
   it('names the type of every data source, a prompt library included', async () => {
