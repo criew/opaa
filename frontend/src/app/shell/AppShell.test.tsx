@@ -1,5 +1,6 @@
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useEffect, useRef } from 'react'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router'
 import { renderWithProviders } from '@/test/test-utils'
@@ -8,6 +9,7 @@ import { useAuthStore } from '@/shared/session/authStore'
 import { useUiStore } from '@/shared/stores/uiStore'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { KEEP_FOCUS_STATE } from '@/shared/ui/a11y/routeFocus'
+import { SPACE_SEARCH_HANDOVER } from '@/features/space'
 import GlobalAreaLayout from './GlobalAreaLayout'
 import { useSpaceListLoader } from '@/features/asset'
 import { loadSpaceList } from '../themeSeams'
@@ -200,6 +202,87 @@ describe('AppShell', () => {
     } finally {
       window.matchMedia = desktopMatchMedia
     }
+  })
+
+  describe('focus when the mobile drawer closes', () => {
+    beforeAll(() => {
+      window.matchMedia = mobileMatchMedia
+    })
+
+    afterAll(() => {
+      window.matchMedia = desktopMatchMedia
+    })
+
+    // The drawer keeps the page aria-hidden until its exit transition has finished.
+    async function waitForDrawerClosed() {
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(useUiStore.getState().sidebarOpen).toBe(false)
+    }
+
+    async function openDrawer(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(screen.getByRole('button', { name: 'Menü öffnen' }))
+      return screen.findByRole('dialog', { name: 'Navigation' })
+    }
+
+    // regression guard for #3300: a destination in the drawer takes the focus to the new page,
+    // not back to the drawer's trigger.
+    it('moves the focus to the destination after navigating from the drawer', async () => {
+      const user = userEvent.setup()
+      renderShell()
+
+      const drawer = await openDrawer(user)
+      await user.click(within(drawer).getByRole('link', { name: 'Katalog' }))
+
+      await waitForDrawerClosed()
+      // The catalog stand-in has no heading, so the focus parks on main.
+      expect(screen.getByRole('main')).toHaveFocus()
+      expect(screen.getByRole('button', { name: 'Menü öffnen' })).not.toHaveFocus()
+    })
+
+    it('lets a handover from the drawer keep the focus the new page placed', async () => {
+      let navigateTo: ReturnType<typeof useNavigate> = () => undefined
+      function NavigateHandle() {
+        navigateTo = useNavigate()
+        return null
+      }
+      function SearchPage() {
+        const field = useRef<HTMLInputElement>(null)
+        useEffect(() => field.current?.focus(), [])
+        return <input ref={field} aria-label="Spaces durchsuchen" />
+      }
+      const user = userEvent.setup()
+      renderWithProviders(
+        <>
+          <NavigateHandle />
+          <Routes>
+            <Route element={<AppShell />}>
+              <Route path="/chat" element={<div>Chat-Inhalt</div>} />
+              <Route path="/spaces" element={<SearchPage />} />
+            </Route>
+          </Routes>
+        </>,
+        { withRouter: true, initialRoute: '/chat' },
+      )
+
+      await openDrawer(user)
+      act(() => {
+        void navigateTo('/spaces', { state: SPACE_SEARCH_HANDOVER })
+      })
+
+      await waitForDrawerClosed()
+      expect(screen.getByRole('textbox', { name: 'Spaces durchsuchen' })).toHaveFocus()
+    })
+
+    it('hands the focus back to "Menü öffnen" when the drawer is dismissed with Escape', async () => {
+      const user = userEvent.setup()
+      renderShell()
+
+      await openDrawer(user)
+      await user.keyboard('{Escape}')
+
+      await waitForDrawerClosed()
+      expect(screen.getByRole('button', { name: 'Menü öffnen' })).toHaveFocus()
+    })
   })
 
   // regression guard for #2135: a new chat receiving its id stays the same view - the person keeps

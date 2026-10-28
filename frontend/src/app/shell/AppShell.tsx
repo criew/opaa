@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import Drawer from '@mui/material/Drawer'
 import useMediaQuery from '@mui/material/useMediaQuery'
@@ -45,6 +45,13 @@ export default function AppShell() {
     ;(heading ?? main)?.focus()
   }, [pathname, keepFocus])
 
+  // A route change closes the drawer in the very render that shows the new page. The drawer's
+  // focus restore (to "Menü öffnen") thus runs before the new page places its focus, so the focus
+  // follows the destination; Escape and the backdrop still hand it back to "Menü öffnen".
+  const [drawerPathname, setDrawerPathname] = useState(pathname)
+  if ((!sidebarOpen || isDesktop) && drawerPathname !== pathname) setDrawerPathname(pathname)
+  const drawerOpen = sidebarOpen && drawerPathname === pathname
+
   // Navigating from inside the drawer must also dismiss it - otherwise it stays on top of the
   // page just navigated to; the rail puts far more destinations into the drawer.
   useEffect(() => {
@@ -61,7 +68,7 @@ export default function AppShell() {
         </>
       ) : (
         <Drawer
-          open={sidebarOpen}
+          open={drawerOpen}
           onClose={() => setSidebarOpen(false)}
           ModalProps={{ keepMounted: true }}
           // Rail and space column together; on very narrow screens the column gives way
