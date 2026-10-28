@@ -667,7 +667,7 @@ verwechselt werden:
 | Rechtefilter (Stufe 1) | Bibliothek des Chunks | entscheidet, ob ein Chunk überhaupt in einer Abfrage vorkommt | nein, immer |
 | Metadatenfilter (Stufe 2) | Kernfelder Dokumentart und Datum/Stand, Bibliotheks- und Formatfelder | schränkt beide Suchpfade vor dem Ranking ein; Leerwerte bleiben drin und werden als „ohne Angabe" markiert | ja, die Person setzt den Filter im Chat; aus der Frage wird kein Filter abgeleitet |
 | Kontextpräfix (Stufen 4 und 5) | Titel des Dokuments, ausgewählte Kernfelder und Bibliotheksfelder, Gliederungspfad des Chunks | steht dem Chunk-Text in Einbettung **und** Volltextindex voran, sodass ein Detail-Chunk trägt, wovon sein Dokument handelt; wirkt auf Ähnlichkeit und Wortsuche, ohne dass jemand filtert | nein, wirkt bei jeder Frage; welche Felder das tun, entscheidet die Bibliothek |
-| Fundstelle (Abschnitt 7) | Titel, Dokumentart, Datum/Stand, Ortsangabe, Bibliotheksfelder mit Zitierposition | ordnet die Fundstelle in der Ausgabe für externe KI-Werkzeuge ein: welche Fassung, welche Seite; das Belegfenster zeigt nur Titel und Ortsangabe | nein |
+| Fundstelle (Abschnitt 7) | Titel, Dokumentart, Datum/Stand, Ortsangabe, gesetzte Bibliotheksfelder | ordnet die Fundstelle in der Ausgabe für externe KI-Werkzeuge ein: welche Fassung, welche Seite; das Belegfenster zeigt nur Titel und Ortsangabe | nein |
 
 Der Filter wird nur angeboten, wenn das Feld im Suchbereich der Person ausreichend gefüllt ist:
 eine konfigurierte Schwelle je Kernfeld, für die Dokumentart höher als für das Datum; für
@@ -886,7 +886,7 @@ des ersten Auftretens im Antwortkontext:
 | zitiert / „geprüft, nicht zitiert" | ob das Modell das Dokument in der Antwort belegt hat; nicht zitierte Dokumente waren im Antwortkontext, wurden aber nicht verwendet |
 | Trefferzahl | wie viele Chunks des Dokuments im Antwortkontext standen; Nachbar-Chunks zählen mit, auch wenn die Suche sie selbst nicht gefunden hat |
 | Ortsangaben | je Chunk die Stelle im Dokument („S. 3 · Abschn. Fristen"), über die eine Fußnote im Text aufgelöst wird |
-| Titel · Dokumentart · Datum/Stand | die Kernfelder des Dokuments, dazu die Bibliotheksfelder mit Zitierposition; ein abgeleiteter Wert ist als „(abgeleitet)" gekennzeichnet |
+| Titel · Dokumentart · Datum/Stand | die Kernfelder des Dokuments, dazu jedes gesetzte Bibliotheksfeld in der Reihenfolge der Felder; ein abgeleiteter Wert ist als „(abgeleitet)" gekennzeichnet |
 | „ohne Angabe" | unter aktivem Filter: das Dokument wurde nur durch die Leerwert-Regel gefunden |
 | Quelle | Quellentyp und Link zum Dokument bzw. zur Seite in der Quelle, Indexierungszeitpunkt |
 | „Stand vom …" | die Bibliothek des Dokuments wurde beim Antworten nicht aktualisiert: gesperrt, Verbindung getrennt oder Zugang entfernt. Das Datum ist ihr letzter erfolgreicher Lauf, nicht der Indexierungszeitpunkt des Dokuments; dazu stehen der Grund und die zuständige Stelle (Systemverwaltung bei einer Sperre, sonst die Verwaltenden der Bibliothek). Siehe Kapitel [Zugänge](../arbeitsmittel/zugaenge.md) |

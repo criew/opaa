@@ -220,7 +220,6 @@ class ContextPrefixRerunIntegrationTest {
             null,
             true,
             false,
-            null,
             List.of(new LibraryMetadataFieldInput.LibraryFieldValueInput("P1", "Projekt 1"))),
         owner);
     assertThat(rerunService.pendingDocuments(library.getId()))
@@ -232,7 +231,7 @@ class ContextPrefixRerunIntegrationTest {
     MetadataChangeImpact impact =
         fieldService.changeImpact(
             library.getId(), "projekt", MetadataChangeKind.CONTEXT_PREFIX_ENABLED, owner);
-    fieldService.updateField(library.getId(), "projekt", "Projekt", true, true, null, owner);
+    fieldService.updateField(library.getId(), "projekt", "Projekt", true, true, owner);
 
     assertThat(impact.affectedDocuments()).isZero();
     assertThat(impact.reembeddingRequired()).isFalse();
@@ -254,7 +253,7 @@ class ContextPrefixRerunIntegrationTest {
     MetadataChangeImpact impact =
         fieldService.changeImpact(
             library.getId(), "fassung", MetadataChangeKind.CONTEXT_PREFIX_DISABLED, owner);
-    fieldService.updateField(library.getId(), "fassung", "Fassung", true, false, null, owner);
+    fieldService.updateField(library.getId(), "fassung", "Fassung", true, false, owner);
 
     assertThat(impact.affectedDocuments()).isEqualTo(1);
     assertThat(rerunService.pendingDocuments(library.getId()))
@@ -402,7 +401,6 @@ class ContextPrefixRerunIntegrationTest {
                 null,
                 true,
                 false,
-                null,
                 List.of(new LibraryMetadataFieldInput.LibraryFieldValueInput("P1", "Projekt 1"))),
             owner);
     Document document = indexed("filterfeld.md");
@@ -654,7 +652,6 @@ class ContextPrefixRerunIntegrationTest {
                 null,
                 false,
                 true,
-                null,
                 List.of(
                     new LibraryMetadataFieldInput.LibraryFieldValueInput("F2026", "Fassung 2026"))),
             owner)

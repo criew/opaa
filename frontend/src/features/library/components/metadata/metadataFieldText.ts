@@ -16,7 +16,6 @@ export function effectChips(field: LibraryMetadataFieldResponse) {
   const chips: string[] = []
   if (field.filter) chips.push('Filter')
   if (field.contextPrefix) chips.push('Kontextpräfix')
-  if (field.citationPosition != null) chips.push(`Zitierposition ${field.citationPosition}`)
   return chips
 }
 

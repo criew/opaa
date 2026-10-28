@@ -80,10 +80,9 @@ der Bibliothek im Reiter **„Metadaten"**, Abschnitt **„Felder"** („Feld an
 Vier Regeln, die die Konfiguration eng führen:
 
 - **Aufnahmeregel.** Ein Feld wird nur angenommen, wenn es **filtert** oder **im Kontextpräfix
-  wirkt**. „Nur Zitierposition" wird abgewiesen — ein Feld, das nichts findbar macht, erzeugt
-  Pflegearbeit ohne Gegenwert. Die **Zitierposition** ist eine Zugabe: höchstens zwei Felder je
-  Bibliothek tragen eine (1 oder 2). Sie wirkt nur in der Ausgabe für externe KI-Werkzeuge
-  (Suchschnittstelle, MCP); das Belegfenster im Chat zeigt keine Metadaten.
+  wirkt**. Ein Feld, das nichts findbar macht, erzeugt Pflegearbeit ohne Gegenwert und wird
+  abgewiesen. Eine eigene Einstellung für den Beleg gibt es nicht: Die Ausgabe für externe
+  KI-Werkzeuge enthält jedes gesetzte Feld (Abschnitt 10).
 - **Die Feldidentität ist Bibliothek plus Schlüssel.** Zwei Bibliotheken dürfen beide `fassung`
   führen, mit verschiedenen Wertelisten; ein Filter benennt deshalb immer beides. Ein Dokument einer
   anderen Bibliothek wird nie gegen eine fremde Werteliste geprüft.
@@ -513,15 +512,15 @@ Dokumente kostet keinen Einbettungsaufruf.
 
 Eine manuelle Korrektur eines präfixwirksamen Wertes bettet **nicht sofort** neu ein: Sie stellt das
 eine Dokument in den Nachlauf, dessen Start eine ausdrückliche Freigabe bleibt. Ein Feld, das nur
-filtert oder nur im Beleg steht, lässt den Abdruck unberührt.
+filtert, lässt den Abdruck unberührt.
 
 ## 10. Beleg-Anzeige
 
 Das Belegfenster einer Antwort zeigt je Dokument nur Titel und Fundort, keine Metadatenwerte:
 Dokumentart, Datum/Stand und Formatfelder helfen beim Nachschlagen nicht und stehen dort nicht.
 Im Belegfenster erscheint von den Metadaten nur die Kennzeichnung „ohne Angabe" unter aktivem
-Filter (Abschnitt 8). Die Metadaten jeder Fundstelle — Kernfelder, Formatfelder und die
-Bibliotheksfelder mit Zitierposition in deren Reihenfolge — gibt nur der Zugriffsweg für externe
+Filter (Abschnitt 8). Die Metadaten jeder Fundstelle — Kernfelder, Formatfelder und jedes
+gesetzte Bibliotheksfeld in der Reihenfolge der Felder — gibt nur der Zugriffsweg für externe
 KI-Werkzeuge aus (Suchschnittstelle, MCP; Kapitel [Suche](../../spaces/suche.md)). Ein abgeleiteter
 Wert ist dort als „(abgeleitet)" gekennzeichnet; ein leeres Feld fehlt.
 

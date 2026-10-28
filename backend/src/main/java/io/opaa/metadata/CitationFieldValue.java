@@ -5,9 +5,9 @@ import io.opaa.api.types.MetadataOrigin;
 
 /**
  * One non-core field value that belongs into a Beleg (metadata-schema.md Wirkstelle 3):
- * self-describing, so the Beleg renders it exactly like a core field. A library field produces one
- * only with a citation position, at most two per library, and never for an empty field - "kein
- * Projekt — ohne Angabe" is a gap that gets read with every answer and orders nothing.
+ * self-describing, so the Beleg renders it exactly like a core field. Every library field produces
+ * one, but never for an empty field - "kein Projekt — ohne Angabe" is a gap that gets read with
+ * every answer and orders nothing.
  *
  * @param detailOnly whether the value belongs into the Beleg detail view but not into the one-line
  *     Fundstellenzeile

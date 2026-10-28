@@ -58,7 +58,6 @@ const fassung = {
   valuePattern: null,
   filter: true,
   contextPrefix: false,
-  citationPosition: 1,
   sortOrder: 10,
   deletionPending: false,
   values: [
@@ -140,7 +139,7 @@ describe('LibraryMetadataFieldsSection', () => {
     renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
 
     const row = (await screen.findByText('Fassung')).closest('li')!
-    expect(row).toHaveTextContent(/Auswahl · 2 Werte.* · Filter, Zitierposition 1/)
+    expect(row).toHaveTextContent(/Auswahl · 2 Werte.* · Filter/)
     await openValues(user)
     expect(within(row).getByText('Fassung 2026')).toBeInTheDocument()
     expect(within(row).getByText('Fassung 2027')).toBeInTheDocument()
@@ -157,7 +156,9 @@ describe('LibraryMetadataFieldsSection', () => {
     const dialog = await screen.findByRole('dialog')
     await user.click(within(dialog).getByRole('checkbox', { name: 'Wirkt im Filter' }))
 
-    expect(within(dialog).getByText(/genügt nicht/)).toBeInTheDocument()
+    expect(
+      within(dialog).getByText(/mindestens im Filter oder im Kontextpräfix wirken/),
+    ).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Anlegen' })).toBeDisabled()
     expect(mockCreate).not.toHaveBeenCalled()
   })
@@ -310,7 +311,7 @@ describe('LibraryMetadataFieldsSection', () => {
     expect(screen.queryByRole('button', { name: 'Wert ergänzen' })).not.toBeInTheDocument()
   })
 
-  it('changes label, Wirkstellen and citation position of an existing field', async () => {
+  it('changes label and Wirkstellen of an existing field', async () => {
     const user = userEvent.setup()
     renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
 
@@ -325,7 +326,6 @@ describe('LibraryMetadataFieldsSection', () => {
       label: 'Fassung/Stand',
       filter: true,
       contextPrefix: true,
-      citationPosition: 1,
     })
   })
 

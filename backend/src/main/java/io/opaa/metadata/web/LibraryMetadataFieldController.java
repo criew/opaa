@@ -123,7 +123,6 @@ public class LibraryMetadataFieldController {
             request.getLabel(),
             Boolean.TRUE.equals(request.getFilter()),
             Boolean.TRUE.equals(request.getContextPrefix()),
-            request.getCitationPosition(),
             caller));
   }
 

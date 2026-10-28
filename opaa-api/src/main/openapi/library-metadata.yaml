@@ -371,11 +371,11 @@ paths:
         Defines a new library field. Requires the management right at the library (MANAGER
         or above) - the same bar as changing the library's other settings, and deliberately higher
         than the EDITOR right that sets a value on a document. Two rules are enforced here:
-        a field must serve the filter or the Kontextpräfix ("nur Beleg-Anzeige" is rejected with
+        a field must serve the filter or the Kontextpräfix (a field with neither is rejected with
         400), and a library carries at most five own fields (a sixth is 409). A duplicate field key
-        and an already taken citationPosition are 409 as well; at most two fields of a library
-        carry a citation position, which is what keeps the Belegzeile readable. The Kontextpräfix
-        flag is stored here and becomes effective with the following work package.
+        is 409 as well. Every set value of a field travels with a Beleg to external AI tools, in
+        sortOrder. The Kontextpräfix flag is stored here and becomes effective with the following
+        work package.
       requestBody:
         required: true
         content:
@@ -419,7 +419,7 @@ paths:
       operationId: updateLibraryMetadataField
       tags: [library-metadata]
       summary: >
-        Changes label, Wirkstellen and citation position of a field. Type, key and value
+        Changes label and Wirkstellen of a field. Type, key and value
         list stay: the type is what every stored value was checked against, and the value list has
         its own operations with the confirmed mapping. Same rules and same right as creating a
         field. Switching the filter Wirkstelle on or off rewrites the field's chunk keys on the
@@ -1471,16 +1471,11 @@ components:
             into embedding and full-text index alike. Switching it hands exactly the
             documents that carry a value to the Nachlauf - see GET
             /api/v1/libraries/{libraryId}/metadata-fields/change-impact.
-        citationPosition:
-          type: integer
-          nullable: true
-          description: >-
-            1 or 2 when the field appears in the Belegzeile, null otherwise. At most two fields of
-            a library carry a position - a Beleg stays a readable line.
-          example: 1
         sortOrder:
           type: integer
-          description: Display order within the library.
+          description: >-
+            Display order within the library, and the order in which the field's value appears in
+            a Beleg for external AI tools (search interface, MCP).
         values:
           type: array
           description: The configured value list; empty for a DATE or PATTERN field.
@@ -1748,8 +1743,7 @@ components:
       required: [fieldKey, label, type]
       description: >-
         A new library field. filter and contextPrefix are the two retrieval effects, at least one
-        of which must be true; citationPosition is the optional Beleg-Anzeige and never a field's
-        only effect.
+        of which must be true.
       properties:
         fieldKey:
           type: string
@@ -1775,11 +1769,6 @@ components:
         contextPrefix:
           type: boolean
           default: false
-        citationPosition:
-          type: integer
-          nullable: true
-          minimum: 1
-          maximum: 2
         values:
           type: array
           description: >-
@@ -1802,11 +1791,6 @@ components:
         contextPrefix:
           type: boolean
           default: false
-        citationPosition:
-          type: integer
-          nullable: true
-          minimum: 1
-          maximum: 2
 
     MetadataFieldUsageResponse:
       type: object

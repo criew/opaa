@@ -282,8 +282,6 @@ nonPersonalTables:
     - value_pattern
     - filter_enabled
     - context_prefix_enabled
-    - citation_enabled
-    - citation_position
     - sort_order
     - created_at
     - updated_at

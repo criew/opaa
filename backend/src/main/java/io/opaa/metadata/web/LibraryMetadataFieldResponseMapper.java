@@ -74,8 +74,7 @@ final class LibraryMetadataFieldResponseMapper {
             field.getSortOrder(),
             definition.values().stream().map(value -> toValueResponse(definition, value)).toList(),
             definition.deletionPending())
-        .valuePattern(field.getValuePattern())
-        .citationPosition(field.getCitationPosition());
+        .valuePattern(field.getValuePattern());
   }
 
   /**
@@ -135,7 +134,6 @@ final class LibraryMetadataFieldResponseMapper {
         request.getValuePattern(),
         Boolean.TRUE.equals(request.getFilter()),
         Boolean.TRUE.equals(request.getContextPrefix()),
-        request.getCitationPosition(),
         request.getValues() == null
             ? List.of()
             : request.getValues().stream()

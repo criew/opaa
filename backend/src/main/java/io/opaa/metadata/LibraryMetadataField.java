@@ -14,9 +14,8 @@ import java.util.UUID;
  * One field a library defines beside the built-in core fields (metadata-schema.md Teil II (b)): its
  * stable key, German label, type and the Wirkstellen it serves. The Aufnahmeregel is an invariant
  * of this entity and of the table beneath it - a field that serves neither the filter nor the
- * Kontextpräfix does not exist; "nur Beleg-Anzeige" is not a storable state. At most two fields of
- * a library carry a {@link #getCitationPosition()} (1 or 2), which is what keeps the Belegzeile
- * readable.
+ * Kontextpräfix does not exist. Every set value of a field travels with a Beleg to external AI
+ * tools, in {@link #getSortOrder()} order ({@link CitationMetadataReader}).
  */
 @Entity
 @Table(name = "library_metadata_fields")
@@ -45,12 +44,6 @@ public class LibraryMetadataField {
 
   @Column(name = "context_prefix_enabled", nullable = false)
   private boolean contextPrefixEnabled;
-
-  @Column(name = "citation_enabled", nullable = false)
-  private boolean citationEnabled;
-
-  @Column(name = "citation_position")
-  private Integer citationPosition;
 
   @Column(name = "sort_order", nullable = false)
   private int sortOrder;
@@ -84,13 +77,10 @@ public class LibraryMetadataField {
    * effect is named ({@link LibraryMetadataFieldService}) - the database check is the second guard,
    * not the first message.
    */
-  void apply(
-      String label, boolean filterEnabled, boolean contextPrefixEnabled, Integer citationPosition) {
+  void apply(String label, boolean filterEnabled, boolean contextPrefixEnabled) {
     this.label = label;
     this.filterEnabled = filterEnabled;
     this.contextPrefixEnabled = contextPrefixEnabled;
-    this.citationPosition = citationPosition;
-    this.citationEnabled = citationPosition != null;
     this.updatedAt = Instant.now();
   }
 
@@ -134,14 +124,6 @@ public class LibraryMetadataField {
 
   public boolean isContextPrefixEnabled() {
     return contextPrefixEnabled;
-  }
-
-  public boolean isCitationEnabled() {
-    return citationEnabled;
-  }
-
-  public Integer getCitationPosition() {
-    return citationPosition;
   }
 
   public int getSortOrder() {

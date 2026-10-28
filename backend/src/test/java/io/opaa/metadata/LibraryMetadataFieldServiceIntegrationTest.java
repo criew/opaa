@@ -103,22 +103,20 @@ class LibraryMetadataFieldServiceIntegrationTest {
             () ->
                 fieldService.createField(
                     library.getId(),
-                    input("nur_beleg", LibraryMetadataFieldType.SELECT, false, false, 1),
+                    input("ohne_wirkung", LibraryMetadataFieldType.SELECT, false, false),
                     owner))
         .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("Beleg-Anzeige");
+        .hasMessageContaining("Kontextpräfix");
 
     for (int i = 0; i < LibraryMetadataFieldService.MAX_FIELDS; i++) {
       fieldService.createField(
-          library.getId(),
-          input("feld_" + i, LibraryMetadataFieldType.SELECT, true, false, null),
-          owner);
+          library.getId(), input("feld_" + i, LibraryMetadataFieldType.SELECT, true, false), owner);
     }
     assertThatThrownBy(
             () ->
                 fieldService.createField(
                     library.getId(),
-                    input("feld_zuviel", LibraryMetadataFieldType.SELECT, true, false, null),
+                    input("feld_zuviel", LibraryMetadataFieldType.SELECT, true, false),
                     owner))
         .isInstanceOf(ConflictException.class)
         .hasMessageContaining("höchstens");
@@ -130,14 +128,12 @@ class LibraryMetadataFieldServiceIntegrationTest {
             () ->
                 fieldService.createField(
                     library.getId(),
-                    input("fassung", LibraryMetadataFieldType.SELECT, true, false, null),
+                    input("fassung", LibraryMetadataFieldType.SELECT, true, false),
                     editor))
         .as("editing documents is not managing the schema")
         .isInstanceOf(AccessDeniedException.class);
     fieldService.createField(
-        library.getId(),
-        input("fassung", LibraryMetadataFieldType.SELECT, true, false, null),
-        owner);
+        library.getId(), input("fassung", LibraryMetadataFieldType.SELECT, true, false), owner);
 
     assertThat(fieldService.fieldsOf(library.getId(), viewer))
         .singleElement()
@@ -151,9 +147,7 @@ class LibraryMetadataFieldServiceIntegrationTest {
   @Test
   void aValueOutsideTheConfiguredListIsNotStorable() throws IOException {
     fieldService.createField(
-        library.getId(),
-        input("fassung", LibraryMetadataFieldType.SELECT, true, false, null),
-        owner);
+        library.getId(), input("fassung", LibraryMetadataFieldType.SELECT, true, false), owner);
     Document document = indexed("satzung.pdf");
 
     assertThatThrownBy(
@@ -189,9 +183,7 @@ class LibraryMetadataFieldServiceIntegrationTest {
   void theMappingKnowsItsFolgekostenRewritesEveryDocumentAndRemovesTheValueOnlyAfterwards()
       throws IOException {
     fieldService.createField(
-        library.getId(),
-        input("fassung", LibraryMetadataFieldType.SELECT, true, false, null),
-        owner);
+        library.getId(), input("fassung", LibraryMetadataFieldType.SELECT, true, false), owner);
     Document first = indexed("satzung.pdf");
     Document second = indexed("gebuehren.pdf");
     setLibraryValue(first, "A");
@@ -222,9 +214,7 @@ class LibraryMetadataFieldServiceIntegrationTest {
   @Test
   void mappingOntoLeerEmptiesTheValueAndPutsTheDocumentBackIntoTheAnchor() throws IOException {
     fieldService.createField(
-        library.getId(),
-        input("fassung", LibraryMetadataFieldType.SELECT, true, false, null),
-        owner);
+        library.getId(), input("fassung", LibraryMetadataFieldType.SELECT, true, false), owner);
     Document document = indexed("satzung.pdf");
     setLibraryValue(document, "A");
     assertThat(anchorOf("lib:fassung").documentsWithoutValue()).isZero();
@@ -243,9 +233,7 @@ class LibraryMetadataFieldServiceIntegrationTest {
   @Test
   void deletingAFieldRemovesItsValuesAndItsChunkKeys() throws IOException {
     fieldService.createField(
-        library.getId(),
-        input("fassung", LibraryMetadataFieldType.SELECT, true, false, null),
-        owner);
+        library.getId(), input("fassung", LibraryMetadataFieldType.SELECT, true, false), owner);
     Document document = indexed("satzung.pdf");
     setLibraryValue(document, "A");
 
@@ -272,9 +260,7 @@ class LibraryMetadataFieldServiceIntegrationTest {
   @Test
   void deletingAFieldAuditsEveryRemovedValueWithItsOldValue() throws IOException {
     fieldService.createField(
-        library.getId(),
-        input("fassung", LibraryMetadataFieldType.SELECT, true, false, null),
-        owner);
+        library.getId(), input("fassung", LibraryMetadataFieldType.SELECT, true, false), owner);
     Document first = indexed("satzung.pdf");
     Document second = indexed("gebuehren.pdf");
     setLibraryValue(first, "A");
@@ -302,33 +288,67 @@ class LibraryMetadataFieldServiceIntegrationTest {
         .containsExactlyInAnyOrder("A", "B");
   }
 
+  /**
+   * A field created after another was deleted goes behind every existing field: its sortOrder
+   * follows the highest one, so it never shares a position with an older field and the Beleg order
+   * stays the order of creation even when its key sorts first.
+   */
   @Test
-  void atMostTwoLibraryFieldsReachTheBelegAndAnEmptyOneNeverDoes() throws IOException {
+  void aFieldCreatedAfterADeletionGoesBehindEveryExistingField() throws IOException {
     fieldService.createField(
-        library.getId(), input("fassung", LibraryMetadataFieldType.SELECT, true, false, 2), owner);
+        library.getId(), input("zulassung", LibraryMetadataFieldType.SELECT, true, false), owner);
     fieldService.createField(
-        library.getId(), input("gremium", LibraryMetadataFieldType.SELECT, true, false, 1), owner);
+        library.getId(), input("projekt", LibraryMetadataFieldType.SELECT, true, false), owner);
     fieldService.createField(
-        library.getId(),
-        input("projekt", LibraryMetadataFieldType.SELECT, true, false, null),
-        owner);
+        library.getId(), input("fassung", LibraryMetadataFieldType.SELECT, true, false), owner);
+    fieldService.deleteField(library.getId(), "projekt", owner);
+    fieldService.createField(
+        library.getId(), input("akte", LibraryMetadataFieldType.SELECT, true, false), owner);
+
+    assertThat(fieldService.fieldsOf(library.getId(), viewer))
+        .extracting(
+            definition ->
+                definition.field().getFieldKey() + "=" + definition.field().getSortOrder())
+        .containsExactly("zulassung=10", "fassung=30", "akte=40");
+
     Document document = indexed("satzung.pdf");
+    setLibraryValue(document, "zulassung", "A");
+    setLibraryValue(document, "fassung", "A");
+    setLibraryValue(document, "akte", "A");
+    assertThat(citationReader.forDocuments(List.of(document)).get(document.getId()))
+        .extracting(CitationFieldValue::fieldKey)
+        .containsExactly("lib:zulassung", "lib:fassung", "lib:akte");
+  }
+
+  /**
+   * Every set library field reaches the Beleg for external AI tools, in the library's sortOrder
+   * rather than by key, and an empty one never does.
+   */
+  @Test
+  void everySetLibraryFieldReachesTheBelegInSortOrderAndAnEmptyOneNeverDoes() throws IOException {
+    fieldService.createField(
+        library.getId(), input("projekt", LibraryMetadataFieldType.SELECT, true, false), owner);
+    fieldService.createField(
+        library.getId(), input("fassung", LibraryMetadataFieldType.SELECT, true, false), owner);
+    fieldService.createField(
+        library.getId(), input("gremium", LibraryMetadataFieldType.SELECT, false, true), owner);
+    Document document = indexed("satzung.pdf");
+    setLibraryValue(document, "projekt", "A");
     setLibraryValue(document, "fassung", "A");
     setLibraryValue(document, "gremium", "A");
-    setLibraryValue(document, "projekt", "A");
 
     List<CitationFieldValue> entries =
         citationReader.forDocuments(List.of(document)).get(document.getId());
 
     assertThat(entries)
         .extracting(CitationFieldValue::fieldKey)
-        .as("only the two fields with a citation position, in that order")
-        .containsExactly("lib:gremium", "lib:fassung");
+        .as("all three fields, in the order they were defined (sortOrder), not by key")
+        .containsExactly("lib:projekt", "lib:fassung", "lib:gremium");
 
-    correctionService.deleteValue(library.getId(), document.getId(), "lib:gremium", editor);
+    correctionService.deleteValue(library.getId(), document.getId(), "lib:fassung", editor);
     assertThat(citationReader.forDocuments(List.of(document)).get(document.getId()))
         .extracting(CitationFieldValue::fieldKey)
-        .containsExactly("lib:fassung");
+        .containsExactly("lib:projekt", "lib:gremium");
   }
 
   /**
@@ -341,15 +361,13 @@ class LibraryMetadataFieldServiceIntegrationTest {
   void aFieldThatStopsFilteringLosesItsChunkKeysAndANewFieldOfTheSameKeyStartsClean()
       throws IOException {
     fieldService.createField(
-        library.getId(),
-        input("fassung", LibraryMetadataFieldType.SELECT, true, false, null),
-        owner);
+        library.getId(), input("fassung", LibraryMetadataFieldType.SELECT, true, false), owner);
     Document document = indexed("satzung.pdf");
     setLibraryValue(document, "A");
     assertThat(chunkMetadata(document.getId()))
         .allSatisfy(metadata -> assertThat(metadata).containsKey("lfs_fassung"));
 
-    fieldService.updateField(library.getId(), "fassung", "Fassung", false, true, null, owner);
+    fieldService.updateField(library.getId(), "fassung", "Fassung", false, true, owner);
     assertThat(chunkMetadata(document.getId()))
         .as("a field that no longer filters leaves no key on the chunks")
         .allSatisfy(
@@ -360,9 +378,7 @@ class LibraryMetadataFieldServiceIntegrationTest {
 
     fieldService.deleteField(library.getId(), "fassung", owner);
     fieldService.createField(
-        library.getId(),
-        input("fassung", LibraryMetadataFieldType.SELECT, true, false, null),
-        owner);
+        library.getId(), input("fassung", LibraryMetadataFieldType.SELECT, true, false), owner);
 
     assertThat(chunkMetadata(document.getId()))
         .as("the document carries no value for the new field and no leftover marker either")
@@ -392,7 +408,6 @@ class LibraryMetadataFieldServiceIntegrationTest {
                         "(.*a){20}b",
                         true,
                         false,
-                        null,
                         List.of()),
                     owner))
         .isInstanceOf(ValidationException.class)
@@ -410,7 +425,6 @@ class LibraryMetadataFieldServiceIntegrationTest {
                         "^AZ-[0-9]{1,6}$",
                         true,
                         false,
-                        null,
                         List.of()),
                     owner)
                 .field()
@@ -433,9 +447,7 @@ class LibraryMetadataFieldServiceIntegrationTest {
         .isEmpty();
 
     fieldService.createField(
-        library.getId(),
-        input("fassung", LibraryMetadataFieldType.SELECT, true, false, null),
-        owner);
+        library.getId(), input("fassung", LibraryMetadataFieldType.SELECT, true, false), owner);
     setLibraryValue(document, "A");
 
     assertThat(
@@ -471,9 +483,7 @@ class LibraryMetadataFieldServiceIntegrationTest {
   void theFolgekostenOfAPrefixEffectiveChangeNameDocumentsChunksCallsAndRuntime()
       throws IOException {
     fieldService.createField(
-        library.getId(),
-        input("fassung", LibraryMetadataFieldType.SELECT, false, true, null),
-        owner);
+        library.getId(), input("fassung", LibraryMetadataFieldType.SELECT, false, true), owner);
     Document first = indexed("satzung.pdf");
     Document second = indexed("gebuehren.pdf");
     correctionService.setValue(
@@ -500,9 +510,7 @@ class LibraryMetadataFieldServiceIntegrationTest {
   @Test
   void extendingAValueListCostsNothingAndAFilterOnlyFieldCostsNoEmbeddingCall() throws IOException {
     fieldService.createField(
-        library.getId(),
-        input("projekt", LibraryMetadataFieldType.SELECT, true, false, null),
-        owner);
+        library.getId(), input("projekt", LibraryMetadataFieldType.SELECT, true, false), owner);
     Document document = indexed("projekt.pdf");
     correctionService.setValue(
         library.getId(), document.getId(), "lib:projekt", MetadataValueInput.text("A"), editor);
@@ -531,9 +539,7 @@ class LibraryMetadataFieldServiceIntegrationTest {
   @Test
   void theFolgekostenOfRemovingOneValueCountOnlyTheDocumentsThatCarryIt() throws IOException {
     fieldService.createField(
-        library.getId(),
-        input("fassung", LibraryMetadataFieldType.SELECT, false, true, null),
-        owner);
+        library.getId(), input("fassung", LibraryMetadataFieldType.SELECT, false, true), owner);
     Document first = indexed("satzung.pdf");
     Document second = indexed("gebuehren.pdf");
     correctionService.setValue(
@@ -553,9 +559,7 @@ class LibraryMetadataFieldServiceIntegrationTest {
   @Test
   void askingForTheFolgekostenNeedsTheManagementRightAndChangesNothing() throws IOException {
     fieldService.createField(
-        library.getId(),
-        input("fassung", LibraryMetadataFieldType.SELECT, false, true, null),
-        owner);
+        library.getId(), input("fassung", LibraryMetadataFieldType.SELECT, false, true), owner);
     indexed("satzung.pdf");
 
     assertThatThrownBy(
@@ -581,11 +585,7 @@ class LibraryMetadataFieldServiceIntegrationTest {
   }
 
   private LibraryMetadataFieldInput input(
-      String key,
-      LibraryMetadataFieldType type,
-      boolean filter,
-      boolean contextPrefix,
-      Integer citationPosition) {
+      String key, LibraryMetadataFieldType type, boolean filter, boolean contextPrefix) {
     return new LibraryMetadataFieldInput(
         key,
         key,
@@ -593,7 +593,6 @@ class LibraryMetadataFieldServiceIntegrationTest {
         null,
         filter,
         contextPrefix,
-        citationPosition,
         List.of(
             new LibraryMetadataFieldInput.LibraryFieldValueInput("A", "Wert A"),
             new LibraryMetadataFieldInput.LibraryFieldValueInput("B", "Wert B")));

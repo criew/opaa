@@ -6,12 +6,7 @@ import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
-import FormControl from '@mui/material/FormControl'
-import FormHelperText from '@mui/material/FormHelperText'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import InputLabel from '@mui/material/InputLabel'
-import MenuItem from '@mui/material/MenuItem'
-import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import { updateLibraryMetadataField } from '../../api/libraryMetadataApi'
@@ -19,7 +14,7 @@ import type { LibraryMetadataFieldResponse } from '@/shared/api/types'
 import ChangeImpactNotice from './ChangeImpactNotice'
 
 /**
- * Label, Wirkstellen and citation position of an existing field. Type, key and value list stay -
+ * Label and Wirkstellen of an existing field. Type, key and value list stay -
  * the type is what every stored value was checked against, and the value list has its own
  * operations with the confirmed mapping.
  */
@@ -44,9 +39,6 @@ export default function EditFieldDialog({
   const [label, setLabel] = useState(field.label)
   const [filter, setFilter] = useState(field.filter)
   const [contextPrefix, setContextPrefix] = useState(field.contextPrefix)
-  const [citationPosition, setCitationPosition] = useState(
-    field.citationPosition == null ? '' : String(field.citationPosition),
-  )
 
   const noEffect = !filter && !contextPrefix
 
@@ -56,7 +48,6 @@ export default function EditFieldDialog({
         label,
         filter,
         contextPrefix,
-        citationPosition: citationPosition === '' ? null : Number(citationPosition),
       })
       onSaved()
     } catch (err) {
@@ -88,28 +79,9 @@ export default function EditFieldDialog({
             }
             label="Wirkt im Kontextpräfix"
           />
-          <FormControl fullWidth size="small">
-            <InputLabel id="edit-citation-position-label">Zitierposition</InputLabel>
-            <Select
-              labelId="edit-citation-position-label"
-              label="Zitierposition"
-              aria-describedby="edit-citation-position-help"
-              value={citationPosition}
-              onChange={(e) => setCitationPosition(e.target.value)}
-            >
-              <MenuItem value="">keine</MenuItem>
-              <MenuItem value="1">1</MenuItem>
-              <MenuItem value="2">2</MenuItem>
-            </Select>
-            <FormHelperText id="edit-citation-position-help">
-              Wirkt nur in der Ausgabe für externe KI-Werkzeuge (Suchschnittstelle, MCP); das
-              Belegfenster im Chat zeigt keine Metadaten.
-            </FormHelperText>
-          </FormControl>
           {noEffect && (
             <Alert severity="warning">
-              Jedes Feld muss mindestens im Filter oder im Kontextpräfix wirken; „nur
-              Zitierposition“ genügt nicht.
+              Jedes Feld muss mindestens im Filter oder im Kontextpräfix wirken.
             </Alert>
           )}
           {contextPrefix !== field.contextPrefix && (

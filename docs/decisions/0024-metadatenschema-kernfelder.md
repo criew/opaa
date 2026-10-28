@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt durch ADR-0026 (Kontextpräfix, modellgestützte Extraktion)
+Akzeptiert · zuletzt geändert 2026-10-28 · ergänzt durch ADR-0026 (Kontextpräfix, modellgestützte Extraktion)
 
 ## Kontext
 
@@ -81,10 +81,14 @@ Format-Version.
 
 `SourceReference.metadata` ist eine Liste selbstbeschreibender Einträge (`SourceMetadataEntry`:
 `fieldKey`, deutsches `label`, `value`, `displayValue`, `origin`, optional `datePrecision`),
-schemagetrieben gerendert — das Frontend kennt kein Feld. Kernfelder sind die ersten Einträge,
-Bibliotheksfelder (Entscheidung 8) und Formatfelder (`fmt:<key>`, #1242, Absender/An/Betreff einer
-Mail) hängen an derselben Liste; ein leeres Feld ist nicht in der Liste. Die Anzeigeform entsteht im Backend, damit jeder Client dieselbe
-Darstellung zeigt; es gibt keine formatspezifischen Felder mehr am `SourceReference`.
+schemagetrieben gerendert — ein Client kennt kein Feld. Kernfelder sind die ersten Einträge, dann
+Formatfelder (`fmt:<key>`, #1242, Absender/An/Betreff einer Mail), dann **jedes gesetzte
+Bibliotheksfeld** (Entscheidung 8) in der Feldreihenfolge der Bibliothek (`sort_order`); ein leeres
+Feld und ein Wert, der nur einen vorigen Eintrag wiederholt, sind nicht in der Liste. Eine
+Auswahl je Feld oder eine Obergrenze gibt es nicht. Die Liste dient externen KI-Werkzeugen
+(Suchschnittstelle, MCP); das Belegfenster des eigenen Chats zeigt sie nicht. Die Anzeigeform
+entsteht im Backend, damit jeder Client dieselbe Darstellung zeigt; es gibt keine
+formatspezifischen Felder am `SourceReference`.
 
 ### 8. Bibliotheksfelder hängen an derselben Werte-Tabelle, mit Fremdschlüssel auf ihre Werteliste
 
@@ -121,6 +125,7 @@ Darstellung zeigt; es gibt keine formatspezifischen Felder mehr am `SourceRefere
 - Chunk-Schlüssel über `passthroughMetadataKeys()` der Formate — kein Format kennt die Werte am Dokument.
 - Global eindeutige Schlüssel für Bibliotheksfelder — machte das Anlegen eines Feldes von fremden Bibliotheken abhängig.
 - Zweite Werte-Tabelle für Bibliotheksfelder — jede Mechanik ein zweites Mal.
+- Auswahl einzelner Bibliotheksfelder für den Beleg (höchstens zwei, je Feld mit Position) — eine Einstellung, die nur noch die Ausgabe an externe KI-Werkzeuge verändert, dort aber keine Zeile lesbar halten muss.
 
 ## Offen
 
