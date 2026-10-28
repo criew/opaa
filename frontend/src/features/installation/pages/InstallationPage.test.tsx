@@ -954,6 +954,7 @@ describe('InstallationPage', () => {
       const user = userEvent.setup()
       await openMailStep(user)
       const check = screen.getByRole('button', { name: 'Prüfen und weiter' })
+      await user.type(field('Benutzername (optional)'), 'opaa')
 
       expect(check).toHaveAccessibleDescription(
         'Ohne Adresse unter „Testnachricht an“ prüft der Schritt nur Verbindung und Anmeldung und sendet keine Nachricht.',
@@ -962,6 +963,26 @@ describe('InstallationPage', () => {
 
       expect(check).toHaveAccessibleDescription(
         'Die Prüfung sendet eine Testnachricht an it-betrieb@stadt.example.',
+      )
+    })
+
+    it('names only the connection at the check while no user name is set', async () => {
+      const user = userEvent.setup()
+      await openMailStep(user)
+
+      expect(screen.getByRole('button', { name: 'Prüfen und weiter' })).toHaveAccessibleDescription(
+        'Ohne Adresse unter „Testnachricht an“ prüft der Schritt nur die Verbindung und sendet keine Nachricht.',
+      )
+    })
+
+    it('announces no recipient at the check while the address is not valid', async () => {
+      const user = userEvent.setup()
+      await openMailStep(user)
+
+      await user.type(field('Testnachricht an (optional)'), 'it-betrieb')
+
+      expect(screen.getByRole('button', { name: 'Prüfen und weiter' })).toHaveAccessibleDescription(
+        'Die Testnachricht braucht eine gültige Adresse.',
       )
     })
 

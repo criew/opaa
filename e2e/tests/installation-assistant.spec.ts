@@ -283,7 +283,7 @@ test.describe('Einrichtungs-Assistent', () => {
       // The check alone sends nothing, says so before it runs and in its outcome.
       const check = page.getByRole('button', { name: 'Prüfen und weiter' })
       await expect(check).toHaveAccessibleDescription(
-        'Ohne Adresse unter „Testnachricht an“ prüft der Schritt nur Verbindung und Anmeldung und sendet keine Nachricht.',
+        'Ohne Adresse unter „Testnachricht an“ prüft der Schritt nur die Verbindung und sendet keine Nachricht.',
       )
       await submitStep(page)
       await expect(stepHeading(page, 'Abschluss')).toBeVisible()

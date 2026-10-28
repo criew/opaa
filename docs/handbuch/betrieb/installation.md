@@ -204,14 +204,15 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
 - **E-Mail-Versand.** Der Schritt hat die Felder, Hinweise und Regeln von „Administration →
   E-Mail → SMTP-Zugang“. „Prüfen und weiter“ baut die Verbindung auf und meldet sich an, ohne zu
   senden; steht unter „Testnachricht an“ eine Adresse, geht die Testnachricht dorthin. Ein Satz
-  über der Schaltfläche sagt vor der Prüfung, welcher der beiden Fälle gilt: ohne Adresse, dass
-  nur Verbindung und Anmeldung geprüft werden, mit Adresse, wohin die Testnachricht geht. Die
-  Adresse wird nicht gespeichert. Fehlt `OPAA_PUBLIC_BASE_URL`, weist der Schritt wie die
+  über der Schaltfläche sagt vor der Prüfung, was geschieht: ohne Adresse, dass nur die
+  Verbindung geprüft wird, mit Benutzername auch die Anmeldung; mit gültiger Adresse, wohin die
+  Testnachricht geht. Die Adresse wird nicht gespeichert. Fehlt `OPAA_PUBLIC_BASE_URL`, weist der Schritt wie die
   Verwaltung darauf hin, dass Links in E-Mails unbrauchbar bleiben. Scheitert die Prüfung, lässt
   sich der Schritt korrigieren oder überspringen; „Überspringen“ verwirft die Angaben. Nach
   erfolgreicher Prüfung steht beim Abschluss unter „E-Mail-Versand“ das Ergebnis, etwa
   „Verbindung und Anmeldung beim Mailserver sind gelungen. Es wurde keine Testnachricht
-  gesendet.“ oder „… Die Testnachricht wurde dem Mailserver übergeben.“, ohne die Adresse. Der
+  gesendet.“ (ohne Benutzername „Die Verbindung zum Mailserver ist gelungen. …“) oder „… Die
+  Testnachricht wurde dem Mailserver übergeben.“, ohne die Adresse. Der
   Abschluss nennt außerdem, ob er den Versand einschaltet.
 - **Geheimnisse** zeigt der Assistent nie wieder an, nur als „Gesetzt“ mit „Ersetzen“; einen
   gespeicherten API-Schlüssel entfernt „Gespeicherten Schlüssel entfernen“, ein gespeichertes

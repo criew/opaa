@@ -148,6 +148,17 @@ export default function MailStep({
     )
   }
 
+  /** What the check will do, matching the backend's outcome: sign-in only with a user name. */
+  function checkHint(): string {
+    if (isBlank(testRecipient)) {
+      const checked = isBlank(username) ? 'die Verbindung' : 'Verbindung und Anmeldung'
+      return `Ohne Adresse unter „Testnachricht an“ prüft der Schritt nur ${checked} und sendet keine Nachricht.`
+    }
+    return isMailAddress(testRecipient)
+      ? `Die Prüfung sendet eine Testnachricht an ${testRecipient.trim()}.`
+      : 'Die Testnachricht braucht eine gültige Adresse.'
+  }
+
   function passwordHint(): string {
     if (passwordNeeded) return SMTP_TEXTS.passwordFollowsTarget
     return passwordStored ? SMTP_TEXTS.passwordStored : SMTP_TEXTS.passwordNone
@@ -277,9 +288,7 @@ export default function MailStep({
       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
         <InfoOutlined aria-hidden sx={{ fontSize: 18, color: 'text.secondary', mt: '1px' }} />
         <Typography id={checkHintId} sx={{ fontSize: 14 }}>
-          {isBlank(testRecipient)
-            ? 'Ohne Adresse unter „Testnachricht an“ prüft der Schritt nur Verbindung und Anmeldung und sendet keine Nachricht.'
-            : `Die Prüfung sendet eine Testnachricht an ${testRecipient.trim()}.`}
+          {checkHint()}
         </Typography>
       </Box>
     </StepFrame>
