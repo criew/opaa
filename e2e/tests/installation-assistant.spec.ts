@@ -10,9 +10,11 @@ import { clearMailbox, mailCount, waitForMail } from '../fixtures/mailpit'
  * OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST, mailpit:1025 on OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST.
  * Every scenario of this file needs a fresh database, as completing ends the installation mode for
  * good: the runner starts one stack per tag (@mail-skipped, @mail-filled). The @mail-skipped scenario
- * also skips both optional model steps, signs in with the first account, meets the notices of the
- * chat and sets the first chat and embedding model in the model administration (ADR-0061,
- * Entscheidung 8); the @mail-filled one checks both models in the assistant.
+ * also skips both optional model steps and the branding, signs in with the first account under the
+ * OPAA standard, meets the notices of the chat and sets the first chat and embedding model in the
+ * model administration (ADR-0061, Entscheidung 8); the @mail-filled one checks both models in the
+ * assistant and fills the branding, whose product name and accent colour then show on the sign-in
+ * page and in the interface.
  */
 const INSTALLATION_TOKEN = process.env.E2E_INSTALLATION_TOKEN ?? ''
 const CHAT_MODEL_URL = 'http://ai-stub:8089'
@@ -20,6 +22,11 @@ const ADMIN_EMAIL = 'it-betrieb@stadt.example'
 const ADMIN_PASSWORD = 'E2e-Installation-Passwort-2026'
 const TEST_RECIPIENT = 'it-betrieb@stadt.example'
 const FIRST_CHAT_MODEL = 'Chat-Modell nach der Installation'
+const OPAA_PRODUCT_NAME = 'OPAA'
+const PRODUCT_NAME = 'Landesamt-Assistent'
+/** White text reaches 4.5:1 on it, so filled actions carry the colour unchanged. */
+const ACCENT = '#7A3E9D'
+const ACCENT_RGB = 'rgb(122, 62, 157)'
 
 if (INSTALLATION_TOKEN === '') {
   throw new Error('E2E_INSTALLATION_TOKEN is not set: run the target "installation" of run-e2e.mjs')
@@ -115,7 +122,7 @@ async function completeStepsUpToMail(page: Page) {
 
 test.describe('Einrichtungs-Assistent', () => {
   test(
-    'führt vom Token bis zum Abschluss, setzt nach Neuladen fort, überspringt Modelle und E-Mail-Versand und legt die Modelle danach fest',
+    'führt vom Token bis zum Abschluss, setzt nach Neuladen fort, überspringt Modelle, E-Mail-Versand und Branding und legt die Modelle danach fest',
     {
       tag: '@mail-skipped',
     },
@@ -181,13 +188,22 @@ test.describe('Einrichtungs-Assistent', () => {
       )
       await expectNoSeriousA11yViolations(page, 'Einrichtung: E-Mail-Versand')
       await expectStepEdgesFlushAlsoNarrow(page)
+      await skipStep(page)
+
+      // The optional branding step is skipped as well: the OPAA standard stays.
+      await expect(stepHeading(page, 'Branding')).toBeVisible()
+      await expect(page.getByText('Optional · später unter Branding')).toBeVisible()
+      await expect(page.getByText(/der Assistent nimmt keine Bilder an/)).toBeVisible()
+      await expectNoSeriousA11yViolations(page, 'Einrichtung: Branding')
+      await expectStepEdgesFlushAlsoNarrow(page)
       await page.getByRole('button', { name: 'Überspringen' }).click()
 
       // The skip goes through the API; the summary follows once it is recorded.
       await expect(stepHeading(page, 'Abschluss')).toBeVisible()
       await expect(page.getByText(/Der E-Mail-Versand bleibt aus/)).toBeVisible()
+      await expect(page.getByText(/Es gilt das Standard-Branding von OPAA/)).toBeVisible()
       const summary = page.getByRole('list', { name: 'Stand der Schritte' })
-      await expect(summary.getByText('Nicht eingerichtet')).toHaveCount(3)
+      await expect(summary.getByText('Nicht eingerichtet')).toHaveCount(4)
       await expect(page.getByText(/Übersprungen: Chat-Modell, Embedding-Modell\./)).toBeVisible()
       await expectNoSeriousA11yViolations(page, 'Einrichtung: Abschluss')
       // At 320 px the forward action wraps below the back button and keeps the right edge.
@@ -202,10 +218,13 @@ test.describe('Einrichtungs-Assistent', () => {
       // the password form, and the first account signs in there.
       const signIn = page.getByRole('form', { name: 'Konto dieser Installation' })
       await expect(signIn).toBeVisible()
+      // The skipped branding leaves the OPAA standard on the sign-in page and in the interface.
+      await expect(page.getByText(OPAA_PRODUCT_NAME, { exact: true }).first()).toBeVisible()
       await signIn.getByLabel('E-Mail-Adresse').fill(ADMIN_EMAIL)
       await signIn.getByLabel('Passwort', { exact: true }).fill(ADMIN_PASSWORD)
       await signIn.getByRole('button', { name: 'Anmelden' }).click()
       await expect(page).toHaveURL(/\/chats\/new/, { timeout: 20_000 })
+      await expect(page).toHaveTitle(new RegExp(`${OPAA_PRODUCT_NAME}$`))
 
       // Without models the chat says so, and leads the system administration to them.
       await expect(page.getByText(/Noch kein Chat-Modell eingerichtet/)).toBeVisible()
@@ -254,7 +273,7 @@ test.describe('Einrichtungs-Assistent', () => {
   )
 
   test(
-    'richtet den E-Mail-Versand mit Prüfung und Testnachricht ein',
+    'richtet den E-Mail-Versand mit Prüfung und Testnachricht und das Branding ein',
     {
       tag: '@mail-filled',
     },
@@ -286,17 +305,18 @@ test.describe('Einrichtungs-Assistent', () => {
         'Ohne Adresse unter „Testnachricht an“ prüft der Schritt nur die Verbindung und sendet keine Nachricht.',
       )
       await submitStep(page)
+      await expect(stepHeading(page, 'Branding')).toBeVisible()
+      expect(await mailCount()).toBe(0)
+      // The outcome of the check stands in the summary, reached over the step list.
+      const steps = page.getByRole('navigation', { name: 'Schritte der Einrichtung' })
+      await steps.getByRole('button', { name: /Abschluss/ }).click()
       await expect(stepHeading(page, 'Abschluss')).toBeVisible()
       await expect(stepStates(page)).toContainText(
         'Die Verbindung zum Mailserver ist gelungen. Es wurde keine Testnachricht gesendet.',
       )
-      expect(await mailCount()).toBe(0)
 
       // Checked again with an address, the test message goes there and nowhere else.
-      await page
-        .getByRole('navigation', { name: 'Schritte der Einrichtung' })
-        .getByRole('button', { name: /E-Mail-Versand/ })
-        .click()
+      await steps.getByRole('button', { name: /E-Mail-Versand/ }).click()
       await expect(stepHeading(page, 'E-Mail-Versand')).toBeVisible()
       await page.getByLabel('Testnachricht an (optional)').fill(TEST_RECIPIENT)
       await expect(check).toHaveAccessibleDescription(
@@ -308,6 +328,19 @@ test.describe('Einrichtungs-Assistent', () => {
       expect(mail.recipients).toEqual([TEST_RECIPIENT])
       expect(await mailCount()).toBe(1)
 
+      // The branding of the house, with the fields and the preview of the administration.
+      await expect(stepHeading(page, 'Branding')).toBeVisible()
+      await expectStepEdgesFlushAlsoNarrow(page)
+      await page.getByLabel('Produktname (optional)').fill(PRODUCT_NAME)
+      await page.getByLabel('Primärfarbe (optional)').fill(ACCENT)
+      const previews = page.locator('main figure')
+      await expect(previews).toHaveCount(2)
+      await expect(previews.nth(0)).toContainText(PRODUCT_NAME)
+      await expect(previews.nth(1)).toContainText(PRODUCT_NAME)
+      await expectNoSeriousA11yViolations(page, 'Einrichtung: Branding ausgefüllt')
+      await expectStepEdgesFlushAlsoNarrow(page)
+      await submitStep(page)
+
       await expect(stepHeading(page, 'Abschluss')).toBeVisible()
       await expect(stepStates(page)).toContainText(
         'Die Verbindung zum Mailserver ist gelungen. Die Testnachricht wurde dem Mailserver übergeben.',
@@ -316,8 +349,28 @@ test.describe('Einrichtungs-Assistent', () => {
       await expect(
         page.getByText(/E-Mail-Versand wird mit dem geprüften Mailserver eingeschaltet/),
       ).toBeVisible()
+      await expect(page.getByText(/Das Branding wird übernommen/)).toBeVisible()
       await page.getByRole('button', { name: 'Installation abschließen' }).click()
       await expect(stepHeading(page, 'Installation abgeschlossen')).toBeVisible()
+
+      // Product name and accent colour on the sign-in page and in the interface.
+      await page.getByRole('link', { name: 'Zur Anmeldung' }).click()
+      await expect(page).toHaveURL(/\/login/)
+      const signIn = page.getByRole('form', { name: 'Konto dieser Installation' })
+      await expect(page.getByText(PRODUCT_NAME, { exact: true }).first()).toBeVisible()
+      const signInButton = signIn.getByRole('button', { name: 'Anmelden' })
+      await expect(signInButton).toHaveCSS('background-color', ACCENT_RGB)
+      await signIn.getByLabel('E-Mail-Adresse').fill(ADMIN_EMAIL)
+      await signIn.getByLabel('Passwort', { exact: true }).fill(ADMIN_PASSWORD)
+      await signInButton.click()
+      await expect(page).toHaveURL(/\/chats\/new/, { timeout: 20_000 })
+      await expect(page).toHaveTitle(new RegExp(`${PRODUCT_NAME}$`))
+      await page.goto('/admin/branding')
+      await expect(page.getByLabel('Produktname')).toHaveValue(PRODUCT_NAME)
+      await expect(page.getByRole('button', { name: 'Speichern' })).toHaveCSS(
+        'background-color',
+        ACCENT_RGB,
+      )
     },
   )
 })

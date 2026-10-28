@@ -1,5 +1,6 @@
 package io.opaa.installation.web;
 
+import io.opaa.api.dto.InstallationBranding;
 import io.opaa.api.dto.InstallationChatModelView;
 import io.opaa.api.dto.InstallationEmbeddingModelView;
 import io.opaa.api.dto.InstallationFirstAdminView;
@@ -71,6 +72,15 @@ final class InstallationResponseMapper {
         view.setUsername(mail.username());
         view.setFromName(mail.fromName());
         response.setMail(view);
+      }
+      case InstallationOverview.Branding branding -> {
+        InstallationBranding view = new InstallationBranding();
+        view.setProductName(branding.productName());
+        view.setClaim(branding.claim());
+        view.setAiNotice(branding.aiNotice());
+        view.setPrimaryColor(branding.primaryColor());
+        view.setDefaultColorScheme(branding.defaultColorScheme());
+        response.setBranding(view);
       }
     }
     return response;

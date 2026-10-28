@@ -3,8 +3,8 @@
 > **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
 
 Eine OPAA-Instanz mit leerer Datenbank ist erst nutzbar, wenn sie eingerichtet ist: erstes Konto
-der Systemverwaltung und Anmeldeverfahren, dazu nach Wahl Chat-Modell, Embedding-Modell und der
-Mailserver für den [E-Mail-Versand](e-mail.md). Bis dahin steht sie im **Installationsmodus** und
+der Systemverwaltung und Anmeldeverfahren, dazu nach Wahl Chat-Modell, Embedding-Modell, der
+Mailserver für den [E-Mail-Versand](e-mail.md) und das [Branding](branding.md). Bis dahin steht sie im **Installationsmodus** und
 bietet nur die Installation an. Eingerichtet wird im Browser mit dem
 [Einrichtungs-Assistenten](#einrichtungs-assistent-im-browser), über die Installations-API Schritt
 für Schritt oder in einem Zug mit einer **Antwortdatei**, etwa aus Helm oder einer CI. Den Betriebsweg
@@ -78,7 +78,7 @@ lehnt es ab.
 Jeder Aufruf trägt das Token als `Authorization: Bearer <Token>`. Jeder Schritt wird einzeln
 gespeichert und geprüft; ein Abbruch setzt beim gespeicherten Stand fort. Neu gespeicherte Angaben
 verwerfen die Prüfung des Schritts. Pflicht sind die ersten zwei Schritte, erstes Konto und
-Anmeldeverfahren; Chat-Modell, Embedding-Modell und E-Mail-Versand sind optional.
+Anmeldeverfahren; Chat-Modell, Embedding-Modell, E-Mail-Versand und Branding sind optional.
 
 | Schritt | Pflicht | Angaben | Prüfung | Später änderbar |
 |---|---|---|---|---|
@@ -87,6 +87,7 @@ Anmeldeverfahren; Chat-Modell, Embedding-Modell und E-Mail-Versand sind optional
 | Chat-Modell (`CHAT_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Temperatur, Antwortlänge | Verbindungstest wie in der Modellverwaltung | Modelle ([Chat-Modelle in der Oberfläche anlegen](modelle.md#chat-modelle-in-der-oberfläche-anlegen)) |
 | Embedding-Modell (`EMBEDDING_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Eingabegrenze | Probeeinbettung; ihr Ergebnis legt die Zahl der Dimensionen fest | Modelle, Reiter „Einbettung": erstes Modell festlegen ([Erstes Modell festlegen](modelle.md#erstes-modell-festlegen)), später mit Neueinbettung wechseln ([Modell wechseln](modelle.md#modell-wechseln)) |
 | E-Mail-Versand (`MAIL`) | nein | Server, Port, Verschlüsselung, Benutzername, Passwort, Absenderadresse, Absendername | Adressprüfung der Mailserver; Verbindung zum Server, mit Anmeldung, wenn ein Benutzername gesetzt ist, ohne eine Nachricht zu senden; auf Wunsch eine Testnachricht an eine angegebene Adresse | E-Mail ([E-Mail-Versand](e-mail.md)) |
+| Branding (`BRANDING`) | nein | Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe, Farbschema-Vorgabe; keine Bilder | Regeln der Branding-Verwaltung, ohne Verbindung | Branding ([Branding](branding.md)) |
 
 ```bash
 TOKEN=...   # aus dem Log oder OPAA_INSTALLATION_TOKEN
@@ -153,8 +154,10 @@ Anmeldeverfahren ein: Er schaltet in beiden Verfahren die
 wird Standardanbieter. Er aktiviert das Chat-Modell, legt das
 Embedding-Modell fest samt der Vektorablage mit der Zahl der Dimensionen aus der Probeeinbettung,
 übernimmt einen geprüften Mailserver in die Einstellungen des E-Mail-Versands und schaltet den
-Versand ein und verwirft Token und Zwischenstand. Ein übersprungener Modellschritt legt kein Modell
-an; ist der E-Mail-Versand übersprungen, bleibt er aus. Vor dem Embedding-Modell gibt es keine
+Versand ein, übernimmt ein geprüftes Branding wie die Branding-Verwaltung und verwirft Token und
+Zwischenstand. Ein übersprungener Modellschritt legt kein Modell an; ist der E-Mail-Versand
+übersprungen, bleibt er aus; ist das Branding übersprungen oder in jedem Feld leer, gilt der
+OPAA-Standard, und der Abschluss schreibt dafür nichts. Vor dem Embedding-Modell gibt es keine
 Vektorablage; ein späterer Wechsel des Embedding-Modells läuft in der Modellverwaltung, mit
 Neueinbettung ([Modelle](modelle.md#modell-wechseln)). Danach
 meldet sich die Person mit dem ersten Konto auf der regulären Anmeldeseite an, mit E-Mail-Adresse
@@ -178,7 +181,7 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
   „Offen“, ein optionaler Schritt ohne Angaben als „Nicht eingerichtet“. Pflichtschritte und
   optionale Schritte stehen in getrennten Gruppen; über dem Titel eines optionalen Schritts steht
   „Optional · später unter …“ (bei Chat- und Embedding-Modell „Modelle“, beim E-Mail-Versand
-  „E-Mail“), und „Überspringen“ lässt ihn aus. Pflicht sind erstes Konto und Anmeldeverfahren.
+  „E-Mail“, beim Branding „Branding“), und „Überspringen“ lässt ihn aus. Pflicht sind erstes Konto und Anmeldeverfahren.
   „Überspringen“ in einem schon gespeicherten Schritt verwirft dessen Angaben, auch nach einer
   fehlgeschlagenen Prüfung.
 - **Prüfen und weiter** speichert die Angaben eines Schritts und prüft sie sofort. Die Oberfläche
@@ -214,6 +217,13 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
   gesendet.“ (ohne Benutzername „Die Verbindung zum Mailserver ist gelungen. …“) oder „… Die
   Testnachricht wurde dem Mailserver übergeben.“, ohne die Adresse. Der
   Abschluss nennt außerdem, ob er den Versand einschaltet.
+- **Branding.** Der Schritt hat die Felder, Hinweise und Regeln von „Administration → Branding“,
+  dazu dessen Kontrastwarnung der Akzentfarbe, die warnt, aber nicht sperrt, und die Vorschau von
+  Produktname, Claim und Akzentfarbe im hellen und im dunklen Farbschema. Ein leeres Feld zeigt den
+  OPAA-Standard, „Hinweis auf Standard zurücksetzen“ stellt den Standardtext des Hinweises zur
+  KI-Nutzung wieder her, abschalten lässt er sich nicht. Logo, Logo der Anmeldeseite und
+  Hintergrundbild nimmt der Assistent nicht an; sie lädt die Systemverwaltung nach der Installation
+  unter „Administration → Branding“ hoch, bis dahin gelten die Bilder von OPAA.
 - **Geheimnisse** zeigt der Assistent nie wieder an, nur als „Gesetzt“ mit „Ersetzen“; einen
   gespeicherten API-Schlüssel entfernt „Gespeicherten Schlüssel entfernen“, ein gespeichertes
   Passwort des Mailservers „Gespeichertes Passwort löschen“. Wer das erste Konto
@@ -270,6 +280,11 @@ Prüfungen, alles oder nichts.
     "passwordFile": "/run/secrets/opaa-mail-password",
     "fromAddress": "opaa@stadt.example",
     "fromName": "OPAA"
+  },
+  "branding": {
+    "productName": "Landesamt-Assistent",
+    "primaryColor": "#7A3E9D",
+    "defaultColorScheme": "SYSTEM"
   }
 }
 ```
@@ -292,13 +307,17 @@ Prüfungen, alles oder nichts.
   Passwort und Schlüssel dann als `password` und `apiKey` im Rumpf, wie in den einzelnen Schritten;
   das so gesetzte Passwort gilt wie im Assistenten ohne erzwungenen Wechsel.
   Dateipfade nimmt die API nicht an: Sie ließen den Inhaber des Tokens Dateien des Backends lesen.
-- **Optionale Teile:** `chatModel`, `embeddingModel` und `mail` sind optional. Fehlt ein Teil,
+- **Optionale Teile:** `chatModel`, `embeddingModel`, `mail` und `branding` sind optional. Fehlt ein Teil,
   gilt sein Schritt als übersprungen; was der Assistent vorher dafür gespeichert hatte, wird
   verworfen.
 - **E-Mail-Versand:** Ohne den Abschnitt `mail` bleibt der Versand aus. Mit ihm prüft OPAA Adresse
   und Verbindung wie im Assistenten, ohne Testnachricht, und der Abschluss schaltet den Versand ein.
   Das Passwort steht als `passwordFile`; ohne es meldet sich OPAA nicht an.
-- Angaben späterer Schritte (`outboundProxy`, `branding`) wertet diese Version nicht aus.
+- **Branding:** Ohne den Abschnitt `branding` gilt der OPAA-Standard. Mit ihm prüft OPAA die Angaben
+  wie die Branding-Verwaltung; jedes Feld ist optional (`productName`, `claim`, `aiNotice`,
+  `primaryColor`, `defaultColorScheme`), ein fehlendes oder leeres gilt als Standard. Bilder nimmt
+  die Antwortdatei nicht an.
+- Angaben späterer Schritte (`outboundProxy`) wertet diese Version nicht aus.
 - Ohne `maxInputTokens` gilt eine Eingabegrenze von 2.048 Tokens
   ([Eingabegrenze des Embedding-Modells](modelle.md#eingabegrenze-des-embedding-modells)).
 
@@ -313,6 +332,7 @@ Prüfungen, alles oder nichts.
 | `400` am Feld Server „Der Mailserver ist nicht zugelassen oder nicht erreichbar …“ | der Mailserver liegt in einem gesperrten Bereich, oder sein Name lässt sich nicht auflösen; welches von beidem, nennt die WARN-Zeile „Mail server … refused“ im Log | Schreibweise prüfen, dann `host:port` in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` freigeben, oder den Schritt überspringen und den Server später in der Verwaltung eintragen |
 | `400` am Feld Port „Im Assistenten sind die Ports 25, 465, 587 und 2525 zugelassen …“ | ein anderer Port ohne Eintrag mit genau diesem `host:port` | Port prüfen, oder `host:port` in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` eintragen |
 | `400` am Feld Server, Absenderadresse, Passwort oder Testnachricht | Leer- oder Steuerzeichen im Server; mehr als ein Postfach in einer Adresse (`,` `;` `<` `>` `"`); `***` als Passwort, das in der Verwaltung „unverändert“ bedeutet | Eingabe korrigieren |
+| `400` am Feld Produktname, Claim, Hinweis zur KI-Nutzung oder Primärfarbe | zu lang, Steuerzeichen oder Zeilenumbruch, oder eine Farbe, die kein sechsstelliger Hex-Wert mit `#` ist; dieselben Regeln wie unter „Administration → Branding“ | Eingabe korrigieren, das Feld leeren für den OPAA-Standard oder den Schritt überspringen |
 | `400` am Feld Passwort „Server, Port, Zugangsname oder Verschlüsselung ändern sich …“ | das gespeicherte Passwort des Mailservers folgt keinem neuen Ziel | Passwort neu eingeben oder löschen |
 | Prüfung des E-Mail-Versands „Der Mailserver ist nicht erreichbar …“ | falscher Server oder Port, Name nicht auflösbar, Verbindung abgelehnt oder Timeout beim Verbindungsaufbau | Server und Port prüfen, im Compose-Stapel den Servicenamen verwenden |
 | Prüfung „Die verschlüsselte Verbindung zum Mailserver ist fehlgeschlagen …“ | STARTTLS nicht angeboten oder TLS-Handshake gescheitert | Verschlüsselung passend zum Port wählen ([Fehlerbilder des E-Mail-Versands](e-mail.md#fehlerbilder)) |
@@ -370,4 +390,4 @@ Modelle je Abruf; im Schritt E-Mail-Versand je Instanz 30 Prüfungen und 10 Test
 ## Weiterführende Kapitel
 
 - [Konfiguration](konfiguration.md), [Authentifizierung](authentifizierung.md), [Modelle](modelle.md),
-  [E-Mail-Versand](e-mail.md)
+  [E-Mail-Versand](e-mail.md), [Branding](branding.md)

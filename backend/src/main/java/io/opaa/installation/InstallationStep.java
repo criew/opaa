@@ -22,7 +22,13 @@ public enum InstallationStep {
    * The mail server, optional: the completion stores it and switches sending on; skipped, sending
    * stays off (ADR-0033, Entscheidung 10).
    */
-  MAIL(false);
+  MAIL(false),
+  /**
+   * The texts, accent colour and colour scheme of the branding, optional: the completion stores
+   * them with the rules of the branding administration; skipped, the OPAA default stays. Images are
+   * uploaded in the administration only (ADR-0060, Entscheidung 15).
+   */
+  BRANDING(false);
 
   private final boolean mandatory;
 

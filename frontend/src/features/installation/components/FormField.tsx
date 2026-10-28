@@ -16,6 +16,13 @@ interface FormFieldProps {
   inputMode?: 'text' | 'url' | 'email' | 'numeric' | 'decimal'
   disabled?: boolean
   inputRef?: React.Ref<HTMLInputElement>
+  maxLength?: number
+  /** A text area growing from `minRows`; Enter still submits unless `onKeyDown` prevents it. */
+  multiline?: boolean
+  minRows?: number
+  onKeyDown?: React.KeyboardEventHandler<HTMLDivElement>
+  /** Shown inside the field's right edge, e.g. a colour picker beside a hex value. */
+  endAdornment?: React.ReactNode
 }
 
 /**
@@ -36,6 +43,11 @@ export default function FormField({
   inputMode,
   disabled,
   inputRef,
+  maxLength,
+  multiline = false,
+  minRows,
+  onKeyDown,
+  endAdornment,
 }: FormFieldProps) {
   return (
     <Box>
@@ -49,14 +61,18 @@ export default function FormField({
         type={type}
         size="small"
         fullWidth
+        multiline={multiline}
+        minRows={minRows}
         autoComplete={autoComplete}
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        onKeyDown={onKeyDown}
         error={Boolean(error)}
         helperText={error ?? hint}
         disabled={disabled}
         slotProps={{
-          htmlInput: { inputMode, spellCheck: false },
+          htmlInput: { inputMode, spellCheck: false, maxLength },
+          input: endAdornment ? { endAdornment } : undefined,
           // Hint and error start on the left edge of label and field.
           formHelperText: { sx: { mx: 0 } },
         }}

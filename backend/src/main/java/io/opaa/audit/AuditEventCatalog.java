@@ -449,8 +449,11 @@ public final class AuditEventCatalog {
     put(
         keys,
         Set.of(
+            "aiNoticeSet",
             "apiKeySet",
             "baseUrl",
+            "claim",
+            "defaultColorScheme",
             "encryption",
             "fromAddress",
             "host",
@@ -458,6 +461,8 @@ public final class AuditEventCatalog {
             "model",
             "passwordSet",
             "port",
+            "primaryColor",
+            "productName",
             "signInMode",
             "step",
             "username"),

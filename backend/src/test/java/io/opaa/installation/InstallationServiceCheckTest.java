@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.account.InitialAdministrator;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.UserRepository;
+import io.opaa.branding.BrandingSettingsService;
 import io.opaa.common.ConflictException;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.directory.OidcProviderService;
@@ -60,6 +61,7 @@ class InstallationServiceCheckTest {
             mock(LlmModelService.class),
             embeddingModels,
             mock(MailSettingsService.class),
+            mock(BrandingSettingsService.class),
             mock(AuditEventRecorder.class),
             mock(UserRepository.class),
             mock(DatabaseInstallationStatus.class),

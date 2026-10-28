@@ -46,6 +46,12 @@ export default function SummaryStep({ installation, complete, onBack }: SummaryS
     : mail.checked
       ? ' Der E-Mail-Versand wird mit dem geprüften Mailserver eingeschaltet.'
       : ' Der E-Mail-Versand bleibt aus; er lässt sich später unter „Administration → E-Mail“ einrichten.'
+  const branding = findStep(installation, 'BRANDING')
+  const brandingSentence = !branding
+    ? ''
+    : branding.checked
+      ? ' Das Branding wird übernommen.'
+      : ' Es gilt das Standard-Branding von OPAA; es lässt sich später unter „Administration → Branding“ ändern.'
 
   async function handleSubmit() {
     if (blocked) return
@@ -68,7 +74,7 @@ export default function SummaryStep({ installation, complete, onBack }: SummaryS
             {open.length > 0 && ` Offen: ${open.map((s) => STEP_INFO[s.step].label).join(', ')}.`}
           </span>
         ) : (
-          `Alle Pflichtschritte sind geprüft. Der Abschluss legt Konto und Anmeldeverfahren an, dazu, was die geprüften optionalen Schritte festlegen, und beendet die Einrichtung; danach melden Sie sich mit dem ersten Konto an. Das Token verliert seine Gültigkeit.${modelSentence}${mailSentence}`
+          `Alle Pflichtschritte sind geprüft. Der Abschluss legt Konto und Anmeldeverfahren an, dazu, was die geprüften optionalen Schritte festlegen, und beendet die Einrichtung; danach melden Sie sich mit dem ersten Konto an. Das Token verliert seine Gültigkeit.${modelSentence}${mailSentence}${brandingSentence}`
         )
       }
       failure={failure}

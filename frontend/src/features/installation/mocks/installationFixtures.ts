@@ -24,6 +24,19 @@ const MAIL_STEP: InstallationStepState = {
   checked: false,
 }
 
+const BRANDING_STEP: InstallationStepState = {
+  step: 'BRANDING',
+  mandatory: false,
+  saved: false,
+  checked: false,
+}
+
+/**
+ * The mock's steps. With `withEmbedding` the full list of the API, embedding model and branding
+ * included, as `?mockInstallation=embedding` and {@link withMockEmbeddingStep} set it up; without,
+ * the shorter list most tests are written against, to which {@link withMockBrandingStep} adds the
+ * branding step.
+ */
 function initialSteps(withEmbedding = false): InstallationStepState[] {
   const steps: InstallationStepState[] = [
     { step: 'FIRST_ADMIN', mandatory: true, saved: false, checked: false },
@@ -35,6 +48,7 @@ function initialSteps(withEmbedding = false): InstallationStepState[] {
         ...steps,
         { step: 'EMBEDDING_MODEL', mandatory: false, saved: false, checked: false },
         MAIL_STEP,
+        BRANDING_STEP,
       ]
     : [...steps, MAIL_STEP]
 }
@@ -69,10 +83,17 @@ export function mockSkippedSteps(): readonly string[] {
   return skippedSteps
 }
 
-/** Adds the embedding model step, as an API that lists it does (`?mockInstallation=embedding`). */
+/** The full list of the API, embedding model and branding step included (`?mockInstallation=embedding`). */
 export function withMockEmbeddingStep() {
   pendingOverride = true
   mockSteps = initialSteps(true)
+  remember(mockSteps)
+}
+
+/** Adds the branding step after the mail step, as the API lists it. */
+export function withMockBrandingStep() {
+  pendingOverride = true
+  if (!mockSteps.some((s) => s.step === 'BRANDING')) mockSteps = [...mockSteps, BRANDING_STEP]
   remember(mockSteps)
 }
 

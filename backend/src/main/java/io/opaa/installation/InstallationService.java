@@ -8,6 +8,7 @@ import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.OidcClaimMapping;
 import io.opaa.auth.UserRepository;
+import io.opaa.branding.BrandingSettingsService;
 import io.opaa.common.ConflictException;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.NotFoundException;
@@ -111,6 +112,7 @@ public class InstallationService {
   private final LlmModelService llmModels;
   private final EmbeddingModelService embeddingModels;
   private final MailSettingsService mailSettings;
+  private final BrandingSettingsService brandingSettings;
   private final AuditEventRecorder audit;
   private final UserRepository users;
   private final DatabaseInstallationStatus status;
@@ -132,6 +134,7 @@ public class InstallationService {
       LlmModelService llmModels,
       EmbeddingModelService embeddingModels,
       MailSettingsService mailSettings,
+      BrandingSettingsService brandingSettings,
       AuditEventRecorder audit,
       UserRepository users,
       DatabaseInstallationStatus status,
@@ -147,6 +150,7 @@ public class InstallationService {
     this.llmModels = llmModels;
     this.embeddingModels = embeddingModels;
     this.mailSettings = mailSettings;
+    this.brandingSettings = brandingSettings;
     this.audit = audit;
     this.users = users;
     this.status = status;
@@ -587,6 +591,10 @@ public class InstallationService {
           SYSTEM_ACTOR,
           rules.mailSettingsUpdate(rules.mailPayload(mailStep.getPayload()), mailStep.getSecret()));
     }
+    InstallationStepRecord brandingStep = saved.get(InstallationStep.BRANDING);
+    if (brandingStep != null) {
+      installBranding(rules.brandingPayload(brandingStep.getPayload()));
+    }
     steps.deleteAllInBatch();
     List<String> skipped =
         Arrays.stream(InstallationStep.values())
@@ -645,6 +653,22 @@ public class InstallationService {
     }
     embeddingModels.install(
         rules.embeddingEndpoint(embedding, step.getSecret()), embedding.dimensions());
+  }
+
+  /**
+   * The branding of the step through the write path of the administration, audited under the
+   * installation; values equal to the stored ones write and record nothing, so a step stored at
+   * every default ({@code null} in each field) leaves the OPAA default untouched.
+   */
+  private void installBranding(StepRules.BrandingPayload branding) {
+    brandingSettings.installBranding(
+        Organization.DEFAULT_ID,
+        SYSTEM_ACTOR,
+        branding.productName(),
+        branding.claim(),
+        branding.aiNotice(),
+        branding.primaryColor(),
+        branding.defaultColorScheme());
   }
 
   private void markCompleted(
@@ -751,8 +775,22 @@ public class InstallationService {
         summary.put("passwordSet", mail.passwordSet());
         summary.put("fromAddress", mail.fromAddress());
       }
+      case InstallationOverview.Branding branding -> {
+        summary.put("productName", orDash(branding.productName()));
+        summary.put("claim", orDash(branding.claim()));
+        summary.put("aiNoticeSet", branding.aiNotice() != null);
+        summary.put("primaryColor", orDash(branding.primaryColor()));
+        summary.put(
+            "defaultColorScheme",
+            branding.defaultColorScheme() == null ? "-" : branding.defaultColorScheme().name());
+      }
     }
     return summary;
+  }
+
+  /** A value of a step summary; {@code "-"} for none, which for the branding means the default. */
+  private static String orDash(String value) {
+    return value == null ? "-" : value;
   }
 
   private void record(AuditEventType type, Map<String, Object> before, Map<String, Object> after) {

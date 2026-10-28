@@ -14,6 +14,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import io.opaa.account.LocalAdminReset;
+import io.opaa.api.types.ColorScheme;
 import io.opaa.auth.AuthProperties;
 import io.opaa.auth.OidcProviderRegistry;
 import io.opaa.common.ConflictException;
@@ -157,6 +158,39 @@ class InstallationStartupTest {
                     new StepInput.ChatModel("http://ollama:11434/v1", "qwen", "", null, null),
                     new StepInput.EmbeddingModel(null, "bge-m3", "", null))));
     verify(installation, never()).ensureToken(any());
+  }
+
+  @Test
+  void anAnswerFileWithBrandingHandsItOnAsTheLastStep() throws Exception {
+    Path password = Files.writeString(directory.resolve("password"), "Kennwort-aus-Secret-2026\n");
+    Path answers =
+        Files.writeString(
+            directory.resolve("installation.json"),
+            "{\"firstAdmin\":{\"email\":\"it@stadt.example\",\"displayName\":\"IT\","
+                + "\"passwordFile\":\""
+                + password
+                + "\"},\"signIn\":{\"mode\":\"LOCAL_ONLY\"},"
+                + "\"branding\":{\"productName\":\"Landesamt-Assistent\","
+                + "\"primaryColor\":\"#7A3E9D\",\"defaultColorScheme\":\"DARK\","
+                + "\"loginBackgroundFile\":\"/etc/passwd\"}}");
+    InstallationStartup startup = startup("oidc", null, answers.toString());
+
+    startup.decide();
+
+    verify(installation)
+        .applyAnswersAtStartup(
+            argThat(
+                inputs ->
+                    inputs.size() == 3
+                        && inputs
+                            .getLast()
+                            .equals(
+                                new StepInput.Branding(
+                                    "Landesamt-Assistent",
+                                    null,
+                                    null,
+                                    "#7A3E9D",
+                                    ColorScheme.DARK))));
   }
 
   @Test

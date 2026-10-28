@@ -1,19 +1,22 @@
 package io.opaa.installation;
 
 import io.opaa.auth.OidcProviderConnectionTester;
+import io.opaa.common.FieldValidationException;
 import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelConnectionTester;
 import io.opaa.llm.ModelAddressPolicy;
 import io.opaa.mail.MailConnectionTester;
 import io.opaa.mail.MailSettingsSnapshot;
 import io.opaa.security.SettingsEncryptor;
+import java.util.List;
 import org.springframework.stereotype.Component;
 
 /**
  * The check of each saved step (ADR-0060, Entscheidung 6): the same connection tests the
  * administration runs for an identity provider and a chat model, a probe embedding for the
  * embedding model, which also yields its vector size (Entscheidung 10), and a connection to the
- * mail server that sends nothing unless a test recipient is named. A model address and a mail
+ * mail server that sends nothing unless a test recipient is named, and the rules of the branding
+ * administration once more for the branding, without any connection. A model address and a mail
  * server are checked against the address check of the installation again right before the
  * connection. The outcome is German and user-facing; a failed check is a result, never an
  * exception.
@@ -76,7 +79,15 @@ class StepChecks {
       case CHAT_MODEL -> chatModel(rules.chatModelPayload(payload), secret);
       case EMBEDDING_MODEL -> embeddingModel(rules.embeddingModelPayload(payload), secret);
       case MAIL -> mail(rules.mailPayload(payload), secret, testRecipient);
+      case BRANDING -> branding(rules.brandingPayload(payload));
     };
+  }
+
+  private Outcome branding(StepRules.BrandingPayload branding) {
+    List<FieldValidationException.FieldError> errors = rules.brandingErrors(branding);
+    return errors.isEmpty()
+        ? new Outcome(true, "Das Branding erfüllt die Regeln der Verwaltung.")
+        : new Outcome(false, errors.getFirst().message());
   }
 
   private Outcome signIn(StepRules.SignInPayload signIn) {
