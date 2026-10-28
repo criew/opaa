@@ -42,6 +42,37 @@ describe('ModelIdentifierField', () => {
     expect(onSelect).toHaveBeenCalledWith(MODELS[0])
   })
 
+  it('offers speech models first for the transcription role, although the backend marks them unfit for the chat', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    // LlmModelDiscoverer marks whisper and transcribe models chatSuitable: false.
+    const whisper: DiscoveredLlmModel = {
+      identifier: 'Systran/faster-whisper-large-v3',
+      capabilities: [],
+      chatSuitable: false,
+    }
+    renderWithProviders(
+      <ModelIdentifierField
+        purpose="transcription"
+        value=""
+        models={[MODELS[0], whisper]}
+        loading={false}
+        onInputChange={() => {}}
+        onSelect={onSelect}
+      />,
+    )
+
+    await user.click(screen.getByRole('combobox', { name: /Modell-Kennung/ }))
+
+    const listbox = await screen.findByRole('listbox')
+    const suitable = within(listbox).getByRole('group', { name: 'Für die Transkription geeignet' })
+    const option = within(suitable).getByRole('option', { name: /faster-whisper/ })
+    expect(option).not.toHaveAttribute('aria-disabled', 'true')
+    expect(option).not.toHaveTextContent('nicht für den Chat geeignet')
+    await user.click(option)
+    expect(onSelect).toHaveBeenCalledWith(whisper)
+  })
+
   it('stands with its label above the field and names its error', () => {
     renderWithProviders(
       <ModelIdentifierField

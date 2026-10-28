@@ -458,6 +458,7 @@ public final class AuditEventCatalog {
             "fromAddress",
             "host",
             "issuerUri",
+            "language",
             "model",
             "passwordSet",
             "port",

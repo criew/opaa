@@ -630,4 +630,90 @@ class StepRulesTest {
             first.secret());
     assertThat(removed.secret()).isNull();
   }
+
+  @Test
+  void theTranscriptionModelIsStoredWithItsKeyEncryptedAndItsLanguageAsTheRolePassesIt() {
+    StepRules.Stored stored =
+        rules.toStored(
+            new StepInput.TranscriptionModel(
+                " http://ollama:8000/v1 ", " whisper ", "sk-stt", " EN "),
+            null,
+            null);
+
+    assertThat(stored.payload()).doesNotContain("sk-stt");
+    assertThat(encryptor.decrypt(stored.secret())).isEqualTo("sk-stt");
+    assertThat(rules.transcriptionModelPayload(stored.payload()))
+        .isEqualTo(
+            new StepRules.TranscriptionModelPayload("http://ollama:8000/v1", "whisper", "en"));
+
+    StepRules.Stored withoutLanguage =
+        rules.toStored(
+            new StepInput.TranscriptionModel("http://ollama:8000/v1", "whisper", null, null),
+            stored.payload(),
+            stored.secret());
+    assertThat(rules.transcriptionModelPayload(withoutLanguage.payload()).language())
+        .isEqualTo("de");
+    assertThat(withoutLanguage.secret()).isEqualTo(stored.secret());
+
+    StepRules.Stored detected =
+        rules.toStored(
+            new StepInput.TranscriptionModel("http://ollama:8000/v1", "whisper", "", ""),
+            stored.payload(),
+            stored.secret());
+    assertThat(rules.transcriptionModelPayload(detected.payload()).language()).isEmpty();
+    assertThat(detected.secret()).isNull();
+  }
+
+  @Test
+  void theTranscriptionModelFollowsTheRulesOfTheAdministrationAndTheAddressCheck() {
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.TranscriptionModel("", "", null, "deutsch"), null, null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactly(
+                        "transcriptionModel.baseUrl",
+                        "transcriptionModel.model",
+                        "transcriptionModel.language"));
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.TranscriptionModel(
+                        "http://10.0.0.5:8000/v1", "whisper", null, "de"),
+                    null,
+                    null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::code)
+                    .containsExactly("BLOCKED"));
+  }
+
+  @Test
+  void aSavedTranscriptionKeyDoesNotFollowAChangedAddress() {
+    StepRules.Stored first =
+        rules.toStored(
+            new StepInput.TranscriptionModel("http://ollama:8000/v1", "whisper", "sk-stt", "de"),
+            null,
+            null);
+
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.TranscriptionModel(
+                        "http://ollama.example.org:8000/v1", "whisper", null, "de"),
+                    first.payload(),
+                    first.secret()))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactly("transcriptionModel.apiKey"));
+  }
 }

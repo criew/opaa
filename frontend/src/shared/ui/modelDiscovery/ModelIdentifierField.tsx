@@ -11,6 +11,7 @@ import {
   describeModel,
   embeddingSuitable,
   rerankSuitable,
+  transcriptionSuitable,
   type DiscoveryPurpose,
 } from './modelDiscovery'
 
@@ -49,6 +50,14 @@ const ROLES: Record<
     otherGroup: 'Weitere Modelle',
     othersSelectable: true,
     example: 'BAAI/bge-reranker-v2-m3',
+  },
+  // The name only suggests a speech-to-text model; the check of the endpoint decides.
+  transcription: {
+    suits: transcriptionSuitable,
+    suitableGroup: 'Für die Transkription geeignet',
+    otherGroup: 'Weitere Modelle',
+    othersSelectable: true,
+    example: 'Systran/faster-whisper-large-v3',
   },
 }
 

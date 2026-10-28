@@ -18,6 +18,7 @@ import {
   withMockBrandingStep,
   withMockEmbeddingStep,
   withMockRerankStep,
+  withMockTranscriptionStep,
   withoutMockStep,
 } from '../mocks/installationFixtures'
 import InstallationPage from './InstallationPage'
@@ -330,6 +331,8 @@ describe('InstallationPage', () => {
     expect(screen.getByText('Optional · später unter Modelle')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Überspringen' }))
     expect(await stepHeading('Rerank-Modell')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Überspringen' }))
+    expect(await stepHeading('Transkriptionsmodell')).toBeInTheDocument()
     expect(screen.getByText('Optional · später unter Modelle')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Überspringen' }))
     expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
@@ -340,15 +343,17 @@ describe('InstallationPage', () => {
 
     expect(await stepHeading('Abschluss')).toBeInTheDocument()
     const summary = screen.getByRole('list', { name: 'Stand der Schritte' })
-    expect(within(summary).getAllByText('Nicht eingerichtet')).toHaveLength(5)
+    expect(within(summary).getAllByText('Nicht eingerichtet')).toHaveLength(6)
     expect(screen.getByText(/Übersprungen: Chat-Modell, Embedding-Modell\./)).toBeInTheDocument()
     expect(screen.getByText(/Das Reranking bleibt aus/)).toBeInTheDocument()
+    expect(screen.getByText(/Die Spracheingabe bleibt aus/)).toBeInTheDocument()
     expect(screen.getByText(/Der E-Mail-Versand bleibt aus/)).toBeInTheDocument()
     expect(screen.getByText(/Es gilt das Standard-Branding von OPAA/)).toBeInTheDocument()
     expect(mockSkippedSteps()).toEqual([
       'CHAT_MODEL',
       'EMBEDDING_MODEL',
       'RERANK_MODEL',
+      'TRANSCRIPTION_MODEL',
       'MAIL',
       'BRANDING',
     ])
@@ -893,6 +898,138 @@ describe('InstallationPage', () => {
       const suitable = within(listbox).getByRole('group', { name: 'Für die Einbettung geeignet' })
       expect(within(suitable).getByRole('option', { name: /nomic-embed-text/ })).toBeInTheDocument()
       expect(mockDiscoveryRequests().at(-1)).toMatchObject({ step: 'EMBEDDING_MODEL' })
+    })
+  })
+
+  describe('with the transcription model step', () => {
+    beforeEach(() => {
+      withMockTranscriptionStep()
+      for (const step of ['FIRST_ADMIN', 'SIGN_IN', 'CHAT_MODEL'] as const) {
+        updateMockStep(step, { saved: true, checked: true })
+      }
+    })
+
+    async function openTranscriptionStep(user: UserEvent) {
+      renderPage()
+      await stepHeading('Installations-Token')
+      await enterToken(user)
+      await stepHeading('Abschluss')
+      await openFromStepList(user, 'Transkriptionsmodell')
+    }
+
+    it('is missing while the API does not list it, as with speech input switched off', async () => {
+      withoutMockStep('TRANSCRIPTION_MODEL')
+      const user = userEvent.setup()
+      renderPage()
+      await stepHeading('Installations-Token')
+      await enterToken(user)
+
+      await stepHeading('Abschluss')
+      const optional = screen.getByRole('list', { name: 'Optionale Schritte' })
+      expect(within(optional).queryByText('Transkriptionsmodell')).not.toBeInTheDocument()
+      expect(screen.queryByText(/Spracheingabe/)).not.toBeInTheDocument()
+    })
+
+    it('offers the providers that transcribe and the speech models of the endpoint first', async () => {
+      const user = userEvent.setup()
+      await openTranscriptionStep(user)
+
+      expect(screen.getByText('Optional · später unter Modelle')).toBeInTheDocument()
+      const providers = screen.getByRole('radiogroup', { name: 'Anbieter' })
+      expect(
+        within(providers)
+          .getAllByRole('radio')
+          .map((tile) => tile.textContent),
+      ).toEqual([expect.stringMatching(/^OpenAI/), expect.stringMatching(/^Eigene Adresse/)])
+      await user.click(within(providers).getByRole('radio', { name: /Eigene Adresse/ }))
+      expect(screen.getByText(/Ohne den Pfad \/audio\/transcriptions/)).toBeInTheDocument()
+      await user.type(field('Basis-Adresse'), 'http://speaches:8000/v1')
+      await user.tab()
+      await screen.findByText(/Modelle gefunden\./)
+      await user.click(screen.getByRole('combobox', { name: 'Modell-Kennung' }))
+
+      const listbox = await screen.findByRole('listbox')
+      const suitable = within(listbox).getByRole('group', {
+        name: 'Für die Transkription geeignet',
+      })
+      expect(within(suitable).getByRole('option', { name: /whisper-1/ })).toBeInTheDocument()
+      expect(mockDiscoveryRequests().at(-1)).toMatchObject({
+        step: 'TRANSCRIPTION_MODEL',
+        baseUrl: 'http://speaches:8000/v1',
+      })
+    })
+
+    it('says at the OpenAI tile that recordings leave the house', async () => {
+      const user = userEvent.setup()
+      await openTranscriptionStep(user)
+      const providers = screen.getByRole('radiogroup', { name: 'Anbieter' })
+      const openai = within(providers).getByRole('radio', { name: /^OpenAI/ })
+      expect(openai).toHaveTextContent('Aufnahmen verlassen das Haus.')
+      expect(screen.queryByText(/an einen externen Dienst außerhalb des Hauses/)).toBeNull()
+
+      await user.click(openai)
+
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Aufnahmen gehen an einen externen Dienst außerhalb des Hauses.',
+      )
+      await user.click(within(providers).getByRole('radio', { name: /Eigene Adresse/ }))
+      expect(screen.queryByText(/an einen externen Dienst außerhalb des Hauses/)).toBeNull()
+    })
+
+    it('checks the endpoint with its language and is switched on at the completion', async () => {
+      const user = userEvent.setup()
+      await openTranscriptionStep(user)
+
+      await user.type(field('Basis-Adresse'), 'http://kaputt:8000/v1')
+      await user.type(field('Modell-Kennung'), 'whisper-1')
+      expect(field('Sprache (optional)')).toHaveValue('de')
+      await submitStep(user)
+      expect(await screen.findByRole('alert')).toHaveTextContent('Das Modell antwortet nicht')
+
+      const baseUrl = field('Basis-Adresse')
+      await user.clear(baseUrl)
+      await user.type(baseUrl, 'http://speaches:8000/v1')
+      await user.type(screen.getByLabelText(/API-Schlüssel/, { selector: 'input' }), 'sk-stt')
+      await submitStep(user)
+
+      expect(await stepHeading('E-Mail-Versand')).toBeInTheDocument()
+      const transcription = mockInstallationState().steps.find(
+        (s) => s.step === 'TRANSCRIPTION_MODEL',
+      )
+      expect(transcription).toMatchObject({
+        checked: true,
+        transcriptionModel: {
+          baseUrl: 'http://speaches:8000/v1',
+          model: 'whisper-1',
+          language: 'de',
+          apiKeySet: true,
+        },
+      })
+      await openFromStepList(user, 'Abschluss')
+      expect(
+        screen.getByText(
+          /Die Spracheingabe wird mit dem geprüften Transkriptionsmodell eingeschaltet/,
+        ),
+      ).toBeInTheDocument()
+    })
+
+    it('refuses a language that is no two-letter code before sending it', async () => {
+      const user = userEvent.setup()
+      await openTranscriptionStep(user)
+      await user.type(field('Basis-Adresse'), 'http://speaches:8000/v1')
+      await user.type(field('Modell-Kennung'), 'whisper-1')
+      const language = field('Sprache (optional)')
+      await user.clear(language)
+      await user.type(language, 'deutsch')
+
+      await submitStep(user)
+
+      expect(field('Sprache (optional)')).toHaveAccessibleDescription(
+        'Die Sprache ist ein Kürzel aus zwei Buchstaben nach ISO 639-1, etwa de oder en; leer erkennt das Modell die Sprache selbst.',
+      )
+      expect(
+        mockInstallationState().steps.find((s) => s.step === 'TRANSCRIPTION_MODEL')?.saved,
+      ).toBe(false)
     })
   })
 

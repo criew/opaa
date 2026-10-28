@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type FocusEvent, type ReactNode } from 'react'
+import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
 import CloudOutlinedIcon from '@mui/icons-material/CloudOutlined'
@@ -13,6 +14,7 @@ import ModelIdentifierField from '@/shared/ui/modelDiscovery/ModelIdentifierFiel
 import type { DiscoveryPurpose } from '@/shared/ui/modelDiscovery/modelDiscovery'
 import { MODEL_ROLE_TEXTS } from '@/shared/ui/modelDiscovery/modelRoleTexts'
 import { useModelDiscovery } from '@/shared/ui/modelDiscovery/useModelDiscovery'
+import { TRANSCRIPTION_TEXTS } from '@/shared/ui/transcription/transcriptionSettings'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import type { InstallationModelDiscoveryRequest } from '../api/types'
 import {
@@ -54,11 +56,21 @@ const ADDRESS_HINTS: Record<Exclude<ProviderKey, 'custom'>, string> = {
   anthropic: 'Die Adresse des Anbieters; nur hinter einem eigenen Proxy anpassen.',
 }
 
-/** An address of one's own, per role: the rerank role names its path, as its administration. */
+/** An address of one's own, per role: rerank and transcription name their path, as their administration. */
 const OWN_ADDRESS_HINT: Record<DiscoveryPurpose, string> = {
   chat: 'So, wie das Backend den Dienst erreicht, etwa http://vllm:8000/v1.',
   embedding: 'So, wie das Backend den Dienst erreicht, etwa http://vllm:8000/v1.',
   rerank: `So, wie das Backend den Dienst erreicht. ${MODEL_ROLE_TEXTS.rerank.addressHint}`,
+  transcription: `So, wie das Backend den Dienst erreicht. ${MODEL_ROLE_TEXTS.transcription.addressHint}`,
+}
+
+/**
+ * What differs for the transcription model: services of their own, the path left out, and a cloud
+ * provider named as the place the recordings go.
+ */
+const TRANSCRIPTION_TILES = {
+  custom: 'Jeder OpenAI-kompatible Transkriptionsdienst, etwa speaches oder vLLM.',
+  openai: 'Cloud-Dienst, braucht einen Zugangsschlüssel. Aufnahmen verlassen das Haus.',
 }
 
 const KEY_HINT_NEEDED = 'Der Anbieter verlangt einen Schlüssel; OPAA speichert ihn verschlüsselt.'
@@ -132,8 +144,16 @@ export default function ModelEndpointFields({
       value: preset.key,
       label: preset.label,
       ...TILE_TEXT[preset.key],
+      ...(purpose === 'transcription' && preset.key === 'openai'
+        ? { description: TRANSCRIPTION_TILES.openai }
+        : {}),
     })),
-    { value: 'custom', label: 'Eigene Adresse', ...TILE_TEXT.custom },
+    {
+      value: 'custom',
+      label: 'Eigene Adresse',
+      ...TILE_TEXT.custom,
+      ...(purpose === 'transcription' ? { description: TRANSCRIPTION_TILES.custom } : {}),
+    },
   ]
 
   function fetchModels(next: DiscoveryPlan, asked: boolean) {
@@ -227,6 +247,11 @@ export default function ModelEndpointFields({
                 onChange={chooseProvider}
                 columns={2}
               />
+              {purpose === 'transcription' && provider === 'openai' && (
+                <Alert severity="warning" sx={{ mt: STEP_RHYTHM.fieldToOwnAction }}>
+                  {TRANSCRIPTION_TEXTS.externalService}
+                </Alert>
+              )}
             </Box>
           )}
           <FormField

@@ -52,6 +52,12 @@ export default function SummaryStep({ installation, complete, onBack }: SummaryS
     : rerank.checked
       ? ' Das Reranking wird mit dem geprüften Rerank-Modell eingeschaltet.'
       : ' Das Reranking bleibt aus; es lässt sich später unter Modelle einschalten.'
+  const transcription = findStep(installation, 'TRANSCRIPTION_MODEL')
+  const transcriptionSentence = !transcription
+    ? ''
+    : transcription.checked
+      ? ' Die Spracheingabe wird mit dem geprüften Transkriptionsmodell eingeschaltet.'
+      : ' Die Spracheingabe bleibt aus; sie lässt sich später unter „Modelle → Spracheingabe“ einrichten.'
   const branding = findStep(installation, 'BRANDING')
   const brandingSentence = !branding
     ? ''
@@ -80,7 +86,7 @@ export default function SummaryStep({ installation, complete, onBack }: SummaryS
             {open.length > 0 && ` Offen: ${open.map((s) => STEP_INFO[s.step].label).join(', ')}.`}
           </span>
         ) : (
-          `Alle Pflichtschritte sind geprüft. Der Abschluss legt Konto und Anmeldeverfahren an, dazu, was die geprüften optionalen Schritte festlegen, und beendet die Einrichtung; danach melden Sie sich mit dem ersten Konto an. Das Token verliert seine Gültigkeit.${modelSentence}${rerankSentence}${mailSentence}${brandingSentence}`
+          `Alle Pflichtschritte sind geprüft. Der Abschluss legt Konto und Anmeldeverfahren an, dazu, was die geprüften optionalen Schritte festlegen, und beendet die Einrichtung; danach melden Sie sich mit dem ersten Konto an. Das Token verliert seine Gültigkeit.${modelSentence}${rerankSentence}${transcriptionSentence}${mailSentence}${brandingSentence}`
         )
       }
       failure={failure}

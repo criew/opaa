@@ -800,7 +800,7 @@ auditEvents:
   - id: TRANSCRIPTION_MODEL_CHANGED
     trigger: >-
       Schalter, Adresse, Modell, Sprache oder Zugangsschlüssel des Transkriptionsmodells werden
-      geändert
+      geändert, durch die Systemverwaltung oder beim Abschluss der Installation
     details: >-
       Vorher und nachher; der Zugangsschlüssel nur als „gesetzt ja/nein“ und, wenn er sich ändert,
       als „gesetzt“, „geändert“ oder „entfernt“ (apiKeyChange), nie mit dem Wert
@@ -887,10 +887,11 @@ auditEvents:
       Schritt und Werte vorher und nachher, ohne die Adresse des ersten Kontos und ohne Passwort
       oder Schlüssel, nur ob eines gesetzt ist; beim Mailserver Server, Port, Verschlüsselung,
       Benutzername des Mailservers und Absenderadresse; beim Branding Produktname, Claim,
-      Akzentfarbe und Farbschema-Vorgabe, vom Hinweis zur KI-Nutzung nur, ob ein eigener gesetzt ist
+      Akzentfarbe und Farbschema-Vorgabe, vom Hinweis zur KI-Nutzung nur, ob ein eigener gesetzt ist;
+      beim Transkriptionsmodell Adresse, Modell und Sprache
     payloadKeys: [aiNoticeSet, apiKeySet, baseUrl, claim, defaultColorScheme, encryption,
-      fromAddress, host, issuerUri, model, passwordSet, port, primaryColor, productName, signInMode,
-      step, username]
+      fromAddress, host, issuerUri, language, model, passwordSet, port, primaryColor, productName,
+      signInMode, step, username]
   - id: INSTALLATION_STEP_CHECKED
     trigger: Die Prüfung eines Schritts der Erstinstallation läuft
     details: >-

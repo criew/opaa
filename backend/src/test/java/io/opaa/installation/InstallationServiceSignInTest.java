@@ -12,6 +12,7 @@ import io.opaa.account.InitialAdministrator;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.UserRepository;
 import io.opaa.branding.BrandingSettingsService;
+import io.opaa.common.FeatureFlags;
 import io.opaa.directory.OidcProviderDraft;
 import io.opaa.directory.OidcProviderService;
 import io.opaa.installation.InstallationState.CompletionSource;
@@ -29,6 +30,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.core.env.Environment;
+import org.springframework.mock.env.MockEnvironment;
 import org.springframework.transaction.PlatformTransactionManager;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -73,6 +75,7 @@ class InstallationServiceSignInTest {
             mock(ModelRoleAdministration.class),
             mock(MailSettingsService.class),
             mock(BrandingSettingsService.class),
+            new FeatureFlags(new MockEnvironment()),
             mock(AuditEventRecorder.class),
             mock(UserRepository.class),
             mock(DatabaseInstallationStatus.class),
