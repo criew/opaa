@@ -1,13 +1,15 @@
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { MemoryRouter, Route, Routes, useNavigate } from 'react-router'
+import { useEffect, useRef } from 'react'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router'
 import { renderWithProviders } from '@/test/test-utils'
 import AppShell from './AppShell'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useUiStore } from '@/shared/stores/uiStore'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { KEEP_FOCUS_STATE } from '@/shared/ui/a11y/routeFocus'
+import { SPACE_SEARCH_HANDOVER } from '@/features/space'
 import GlobalAreaLayout from './GlobalAreaLayout'
 import { useSpaceListLoader } from '@/features/asset'
 import { loadSpaceList } from '../themeSeams'
@@ -200,6 +202,169 @@ describe('AppShell', () => {
     } finally {
       window.matchMedia = desktopMatchMedia
     }
+  })
+
+  describe('focus when the mobile drawer closes', () => {
+    beforeAll(() => {
+      window.matchMedia = mobileMatchMedia
+    })
+
+    afterAll(() => {
+      window.matchMedia = desktopMatchMedia
+    })
+
+    // The store outlives a test; a drawer left open would carry over into the next one.
+    beforeEach(() => {
+      useUiStore.setState({ sidebarOpen: false })
+    })
+
+    // The drawer keeps the page aria-hidden until its exit transition has finished.
+    async function waitForDrawerClosed() {
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(useUiStore.getState().sidebarOpen).toBe(false)
+    }
+
+    async function openDrawer(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(screen.getByRole('button', { name: 'Menü öffnen' }))
+      return screen.findByRole('dialog', { name: 'Navigation' })
+    }
+
+    // regression guard for #3300: a destination in the drawer takes the focus to the new page,
+    // not back to the drawer's trigger.
+    it('moves the focus to the destination after navigating from the drawer', async () => {
+      const user = userEvent.setup()
+      renderShell()
+
+      const drawer = await openDrawer(user)
+      await user.click(within(drawer).getByRole('link', { name: 'Katalog' }))
+
+      await waitForDrawerClosed()
+      // The catalog stand-in has no heading, so the focus parks on main.
+      expect(screen.getByRole('main')).toHaveFocus()
+      expect(screen.getByRole('button', { name: 'Menü öffnen' })).not.toHaveFocus()
+    })
+
+    // Stand-in for a page that takes a handover: it focuses its search field on every visit that
+    // carries one, also a repeated visit to the same path.
+    function renderHandoverShell() {
+      const handle: { navigate: ReturnType<typeof useNavigate> } = { navigate: () => undefined }
+      function NavigateHandle() {
+        handle.navigate = useNavigate()
+        return null
+      }
+      function SearchPage() {
+        const { key, state } = useLocation()
+        const field = useRef<HTMLInputElement>(null)
+        useEffect(() => {
+          if (state) field.current?.focus()
+        }, [key, state])
+        return <input ref={field} aria-label="Durchsuchen" />
+      }
+      renderWithProviders(
+        <>
+          <NavigateHandle />
+          <Routes>
+            <Route element={<AppShell />}>
+              <Route path="/chat" element={<div>Chat-Inhalt</div>} />
+              <Route path="/spaces" element={<SearchPage />} />
+            </Route>
+          </Routes>
+        </>,
+        { withRouter: true, initialRoute: '/chat' },
+      )
+      return (to: string) =>
+        act(() => {
+          void handle.navigate(to, { state: SPACE_SEARCH_HANDOVER })
+        })
+    }
+
+    it('lets a handover from the drawer keep the focus the new page placed', async () => {
+      const user = userEvent.setup()
+      const navigateWithHandover = renderHandoverShell()
+
+      await openDrawer(user)
+      navigateWithHandover('/spaces')
+
+      await waitForDrawerClosed()
+      expect(screen.getByRole('textbox', { name: 'Durchsuchen' })).toHaveFocus()
+    })
+
+    it('closes the drawer on a navigation to the path already shown', async () => {
+      const user = userEvent.setup()
+      const navigateWithHandover = renderHandoverShell()
+      navigateWithHandover('/spaces')
+
+      await openDrawer(user)
+      navigateWithHandover('/spaces')
+
+      await waitForDrawerClosed()
+      expect(screen.getByRole('textbox', { name: 'Durchsuchen' })).toHaveFocus()
+    })
+
+    it('hands the focus back to "Menü öffnen" when the drawer is dismissed with Escape', async () => {
+      const user = userEvent.setup()
+      renderShell()
+
+      await openDrawer(user)
+      await user.keyboard('{Escape}')
+
+      await waitForDrawerClosed()
+      expect(screen.getByRole('button', { name: 'Menü öffnen' })).toHaveFocus()
+    })
+
+    it('hands the focus back to "Menü öffnen" when the backdrop is clicked', async () => {
+      const user = userEvent.setup()
+      renderShell()
+
+      const drawer = await openDrawer(user)
+      const backdrop = drawer.parentElement?.querySelector<HTMLElement>('.MuiBackdrop-root')
+      expect(backdrop).toBeTruthy()
+      await user.click(backdrop!)
+
+      await waitForDrawerClosed()
+      expect(screen.getByRole('button', { name: 'Menü öffnen' })).toHaveFocus()
+    })
+
+    it('does not reopen the drawer after passing through the desktop width', async () => {
+      let desktop = false
+      const listeners = new Set<EventListenerOrEventListenerObject>()
+      window.matchMedia = (query: string) => ({
+        ...mobileMatchMedia(query),
+        // useMediaQuery keeps the list and reads `matches` again on each change.
+        get matches() {
+          return desktop && query.includes('min-width')
+        },
+        addEventListener: (_type: string, listener: EventListenerOrEventListenerObject) => {
+          listeners.add(listener)
+        },
+        removeEventListener: (_type: string, listener: EventListenerOrEventListenerObject) => {
+          listeners.delete(listener)
+        },
+      })
+      function resizeTo(toDesktop: boolean) {
+        desktop = toDesktop
+        const change = new Event('change')
+        act(() =>
+          listeners.forEach((listener) =>
+            typeof listener === 'function' ? listener(change) : listener.handleEvent(change),
+          ),
+        )
+      }
+      try {
+        const user = userEvent.setup()
+        renderShell()
+
+        await openDrawer(user)
+        resizeTo(true)
+        await user.click(screen.getByRole('link', { name: 'Katalog' }))
+        resizeTo(false)
+
+        await waitForDrawerClosed()
+        expect(screen.getByRole('main')).toBeVisible()
+      } finally {
+        window.matchMedia = mobileMatchMedia
+      }
+    })
   })
 
   // regression guard for #2135: a new chat receiving its id stays the same view - the person keeps
