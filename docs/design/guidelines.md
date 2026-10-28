@@ -374,6 +374,19 @@ und ersetzt die Beschriftung nicht. Folgt eine Typwahl, nennt die Beschriftung d
 Ausgenommen ist die kompakte Aktion „Neu" im Abschnittskopf „Chats" der Seitenleiste; ihr
 zugänglicher Name nennt das Objekt („Neu: Chat beginnen").
 
+**Hinzufügen in einem Abschnitt.** Fügt eine Aktion einem bestehenden Objekt etwas hinzu
+(Freigabe, Zuordnung, Feld, Ordner), steht sie als Textaktion rechts im Abschnittskopf der
+Detailseite (`DetailSection` mit `TextAction`): ohne Plus-Icon, als Verb mit Objekt, wo das Verb
+allein nicht eindeutig ist („Freigeben", „In Space verwenden", „Feld anlegen"). Je Abschnitt gibt es
+höchstens eine.
+
+**Link oder Schaltfläche.** Was an einen anderen Ort führt, ist im Code ein Link (`href` oder
+Router-Link). Was auf der Seite etwas auslöst (Dialog öffnen, speichern, starten, abbrechen), ist
+eine Schaltfläche, auch wenn sie wie ein Link aussieht (`component="button"`). Link-Optik für eine
+Schaltfläche steht für die Hinzufügen-Aktion im Abschnittskopf, für „Ändern" in einer Wertzeile
+(5.12) und zum Auf- und Zuklappen („alle anzeigen") und kommt aus `TextAction`
+(`frontend/src/shared/ui/DetailSection.tsx`), nicht aus einem Nachbau je Thema.
+
 ### 5.2 Formularfelder
 
 Beschriftung oberhalb als eigenständiges Label (12 px, `fg-2`, 5 px Abstand — kein
@@ -484,6 +497,12 @@ Tintfläche (`bg-3`), **keine Signalfarben**. Feste Wortlisten:
 Ein laufender Vorgang („Lauf läuft · 62 %") ist Text mit Fortschrittsangabe in `fg-2`, kein
 farbiger Chip.
 
+**Ein Etikett, eine Form.** Die Regel gilt für jedes Etikett, ob MUI-`Chip` oder selbst gebaut
+(Rolle in Tabelle und Kopf, Asset-Art auf der Kachel, „Privat", „Global", Hinweis-Etiketten in
+Listen und Vorschlagslisten). Ein eckiges oder fettes Etikett ist ein Fehler. Selbst gebaute
+Etiketten nehmen Radius und Gewicht aus `badgeShape` (`frontend/src/shared/theme/tokens.ts`), für
+ein reines Textetikett gibt es `MetaBadge`; geprüft in `frontend/src/shared/ui/badgeShape.test.tsx`.
+
 ### 5.6 Menüs und Overlays
 
 `bg-1`, `border`, Radius md, Schatten der Ebene 2/3, Einträge 14 px mit 8–12 px Innenabstand,
@@ -491,6 +510,12 @@ Hover `bg-2`, zerstörende Einträge in Gefahr-Text am Ende, durch Trennlinie ab
 Gefahr-Text (`danger`) erreicht im hellen Schema 5,21:1 gegen `bg-1`, 4,90:1 gegen `bg-2` und
 4,64:1 gegen `bg-3`, im dunklen Schema 6,86:1 / 6,18:1 / 5,68:1 (#2150).
 Vollständige Tastaturbedienung (Pfeile, Enter, Escape) ist Teil der Komponente, nicht der Kür.
+
+**Weitere Aktionen hinter „⋯".** Seltenere Aktionen einer Zeile, Kachel oder Detailseite öffnet
+ein Nur-Icon-Knopf mit den waagrechten drei Punkten (`MoreHoriz`), nie den senkrechten. Er trägt
+nach 5.1 den Tooltip „Weitere Aktionen" und ein `aria-label` mit dem Objekt („Aktionen für
+‚Referat 50'"). Für Listenzeilen gibt es den Baustein `RowMenu` in `frontend/src/shared/ui/`;
+geprüft in `frontend/src/shared/ui/moreActionsTrigger.test.ts`.
 
 **Jeder Dialog hat eine sichtbare Schließen- oder Abbruchstelle.** Dialoge ohne eigene
 Abbruch-Schaltfläche (Ansichten, Vorschauen, Ereignislisten) tragen rechts im Titel ein ✕ mit
@@ -729,6 +754,12 @@ UI-Sprache ist Deutsch, Anrede „Sie", `aria-label` deutsch.
   unter genau diesem Wort.
 - **Keine Doppel-Labels** in Klammern („Token (Kennwort)") und kein künstlich allgemeines
   „Kennwort" für ein Token.
+
+**Erklärtexte knapp.** Die Beschreibung unter einem Seiten- oder Abschnittstitel sagt in einem Satz,
+wofür die Seite da ist, höchstens zwei Zeilen bei 1280 px. Ein Hilfetext am Feld hat eine Zeile
+und sagt nur, was einen wahrscheinlichen Fehler verhindert oder wo man einen Wert findet
+([UI-Prüfliste](./ui-pruefliste.md), P13). Hintergrund, Ausnahmen und Folgen stehen im
+[Produkthandbuch](../handbuch/README.md), nicht in der Oberfläche.
 
 Verbindliche Begriffe:
 
