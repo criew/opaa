@@ -19,10 +19,10 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.BiConsumer;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -228,33 +228,89 @@ public class ModelRoleAdministration {
       String language) {
     String address = trimmed(baseUrl);
     String identifier = trimmed(model);
-    String lang = language == null ? null : language.strip().toLowerCase(Locale.ROOT);
-    List<FieldError> errors = new ArrayList<>();
-    ModelEndpointRules.endpointErrors(TRANSCRIPTION, address, identifier, apiKey, enabled, errors);
-    if (lang != null && !lang.isEmpty() && !lang.matches("[a-z]{2}")) {
-      errors.add(
-          new FieldError(
-              TRANSCRIPTION + ".language",
-              ModelEndpointRules.INVALID,
-              "Die Sprache ist ein Kürzel aus zwei Buchstaben nach ISO 639-1, etwa de oder en;"
-                  + " leer erkennt das Modell die Sprache selbst."));
-    }
+    String lang = TranscriptionEndpoint.normalisedLanguage(language);
+    List<FieldError> errors = transcriptionErrors(enabled, address, identifier, apiKey, lang);
     blockedAddressError(TRANSCRIPTION, address, storedTranscriptionAddress(), errors);
     requireNoErrors(errors);
     return transactions.execute(
         status ->
             storeTranscription(
-                organizationId, actorUserId, enabled, address, identifier, apiKey, lang));
+                enabled,
+                address,
+                identifier,
+                (previousBaseUrl, previousCiphertext) ->
+                    secretOf(TRANSCRIPTION, apiKey, previousBaseUrl, address, previousCiphertext),
+                lang,
+                (before, after) ->
+                    auditEventRecorder.recordUserAction(
+                        transcriptionEvent(organizationId, before, after)
+                            .actor(actorUserId)
+                            .build())));
+  }
+
+  /**
+   * The transcription model of an installation (ADR-0060, Entscheidung 16): switched on with the
+   * rules, the operation's limit and the no-op rule of {@link #changeTranscription}, recorded under
+   * the system process {@code systemActor}. {@code apiKeyCiphertext} is already encrypted with
+   * {@link SettingsEncryptor}, {@code null} without a key; the installation checked the address.
+   * Joins the caller's transaction.
+   *
+   * @throws FieldValidationException naming every violated field under {@code transcription.}
+   */
+  public TranscriptionModelView installTranscription(
+      UUID organizationId,
+      String systemActor,
+      String baseUrl,
+      String model,
+      String apiKeyCiphertext,
+      String language) {
+    String address = trimmed(baseUrl);
+    String identifier = trimmed(model);
+    String lang = TranscriptionEndpoint.normalisedLanguage(language);
+    requireNoErrors(transcriptionErrors(true, address, identifier, null, lang));
+    return transactions.execute(
+        status ->
+            storeTranscription(
+                true,
+                address,
+                identifier,
+                (previousBaseUrl, previousCiphertext) -> apiKeyCiphertext,
+                lang,
+                (before, after) ->
+                    auditEventRecorder.recordSystemProcessAction(
+                        transcriptionEvent(organizationId, before, after)
+                            .actorRef(systemActor)
+                            .build())));
+  }
+
+  /** The rules of a transcription endpoint and its language, as field errors. */
+  private static List<FieldError> transcriptionErrors(
+      boolean enabled, String address, String identifier, String apiKey, String language) {
+    List<FieldError> errors = new ArrayList<>();
+    ModelEndpointRules.endpointErrors(TRANSCRIPTION, address, identifier, apiKey, enabled, errors);
+    if (!TranscriptionEndpoint.isValidLanguage(language)) {
+      errors.add(
+          new FieldError(
+              TRANSCRIPTION + ".language",
+              ModelEndpointRules.INVALID,
+              TranscriptionEndpoint.LANGUAGE_RULE));
+    }
+    return errors;
+  }
+
+  /** The ciphertext to store, from the previous address and ciphertext of the row. */
+  @FunctionalInterface
+  private interface CiphertextChoice {
+    String choose(String previousBaseUrl, String previousCiphertext);
   }
 
   private TranscriptionModelView storeTranscription(
-      UUID organizationId,
-      UUID actorUserId,
       boolean enabled,
       String address,
       String identifier,
-      String apiKey,
-      String requestedLanguage) {
+      CiphertextChoice key,
+      String requestedLanguage,
+      BiConsumer<Map<String, Object>, Map<String, Object>> recorder) {
     jdbc.execute("LOCK TABLE transcription_model IN SHARE ROW EXCLUSIVE MODE");
     TranscriptionModelSettings existing = transcriptionRows.findStored().orElse(null);
     boolean stored = existing != null;
@@ -266,8 +322,7 @@ public class ModelRoleAdministration {
     String storedLanguage = stored ? row.getLanguage() : TranscriptionEndpoint.DEFAULT_LANGUAGE;
     String language = requestedLanguage == null ? storedLanguage : emptyToNull(requestedLanguage);
     String previousCiphertext = row.getApiKeyCiphertext();
-    String ciphertext =
-        secretOf(TRANSCRIPTION, apiKey, row.getBaseUrl(), address, previousCiphertext);
+    String ciphertext = key.choose(row.getBaseUrl(), previousCiphertext);
     boolean unchanged =
         row.isEnabled() == enabled
             && Objects.equals(row.getBaseUrl(), emptyToNull(address))
@@ -288,14 +343,7 @@ public class ModelRoleAdministration {
     transcriptionRows.save(row);
     Map<String, Object> after = transcriptionPayload(row);
     AuditSecretChange.put(after, "apiKey", previousCiphertext, ciphertext);
-    record(
-        organizationId,
-        actorUserId,
-        AuditEventType.TRANSCRIPTION_MODEL_CHANGED,
-        "transcription_model",
-        "Transkriptionsmodell",
-        before,
-        after);
+    recorder.accept(before, after);
     afterCommit(ModelRoleSettingsChangedEvent.Role.TRANSCRIPTION);
     return transcriptionView(row);
   }
@@ -337,9 +385,19 @@ public class ModelRoleAdministration {
                 .findStored()
                 .map(TranscriptionModelSettings::getApiKeyCiphertext)
                 .orElse(null));
+    return probeTranscription(address, identifier, key);
+  }
+
+  /**
+   * Asks the endpoint for its models with exactly {@code apiKey}, {@code null} or blank for none,
+   * as {@link #testTranscription} does once it resolved the key; sends no audio. The caller checked
+   * the address. Call outside any transaction.
+   */
+  public TestOutcome probeTranscription(String baseUrl, String model, String apiKey) {
     TranscriptionClient.ProbeFailure failure =
         transcriptionClient.probe(
-            new TranscriptionEndpoint(true, address, identifier, key, ""), TEST_TIMEOUT);
+            new TranscriptionEndpoint(true, trimmed(baseUrl), trimmed(model), apiKey, ""),
+            TEST_TIMEOUT);
     return failure == null
         ? new TestOutcome(true, "Verbindung erfolgreich, der Endpunkt hat geantwortet.")
         : new TestOutcome(false, german(failure.message(), failure.timedOut()));
@@ -480,18 +538,37 @@ public class ModelRoleAdministration {
       Map<String, Object> before,
       Map<String, Object> after) {
     auditEventRecorder.recordUserAction(
-        AuditEvent.builder()
-            .organizationId(organizationId)
-            .actor(actorUserId)
-            .type(type)
-            .object(
-                AuditObjectType.SYSTEM_SETTING,
-                UUID.nameUUIDFromBytes(table.getBytes(StandardCharsets.UTF_8)),
-                label)
-            .before(before)
-            .after(after)
-            .outcome(AuditOutcome.SUCCESS)
-            .build());
+        event(organizationId, type, table, label, before, after).actor(actorUserId).build());
+  }
+
+  private static AuditEvent.Builder transcriptionEvent(
+      UUID organizationId, Map<String, Object> before, Map<String, Object> after) {
+    return event(
+        organizationId,
+        AuditEventType.TRANSCRIPTION_MODEL_CHANGED,
+        "transcription_model",
+        "Transkriptionsmodell",
+        before,
+        after);
+  }
+
+  private static AuditEvent.Builder event(
+      UUID organizationId,
+      AuditEventType type,
+      String table,
+      String label,
+      Map<String, Object> before,
+      Map<String, Object> after) {
+    return AuditEvent.builder()
+        .organizationId(organizationId)
+        .type(type)
+        .object(
+            AuditObjectType.SYSTEM_SETTING,
+            UUID.nameUUIDFromBytes(table.getBytes(StandardCharsets.UTF_8)),
+            label)
+        .before(before)
+        .after(after)
+        .outcome(AuditOutcome.SUCCESS);
   }
 
   /** The audit state of a row, the factory default for {@code null}; never the key itself. */
