@@ -126,7 +126,7 @@ describe('ChatInput', () => {
   })
 
   // The prefix hint lives in the placeholder and, for assistive technology, in the field's
-  // description - there is no separate line for it under the input (#3267). An empty search
+  // description - there is no separate line for it under the input. An empty search
   // scope appears as a hint above the chip bar - no knowledge associated, or none of it
   // readable -, still unknown associations of the current space in the line under the input.
   describe('the prefix hint (#1920, #3267)', () => {

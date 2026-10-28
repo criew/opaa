@@ -17,7 +17,7 @@ import { promptActionSource } from './promptActionSource'
  * active action sources contribute. Prompt libraries are one source; switched off, they contribute
  * nothing, and without any source '/' opens nothing and the hint does not offer it.
  */
-/** The hint ends the placeholder and is the field's accessible description (#3267). */
+/** The hint ends the placeholder and is the field's accessible description. */
 async function expectPrefixHint(hint: string) {
   const input = screen.getByRole('combobox')
   await waitFor(() => expect(input).toHaveAttribute('placeholder', `Nachricht eingeben … ${hint}`))

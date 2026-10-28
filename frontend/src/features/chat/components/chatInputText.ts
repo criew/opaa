@@ -21,19 +21,45 @@ export interface SpaceLibrary {
 
 export type MentionSuggestion = { kind: 'all' } | { kind: 'library'; library: SpaceLibrary }
 
+/** The input's accessible name; the placeholder only adds the prefix hint to it. */
+export const INPUT_LABEL = 'Nachricht eingeben'
+const INPUT_PROMPT = `${INPUT_LABEL} …`
+
 /**
- * The neutral hint under the input: the input triggers more than a question - prompts,
- * later agents and skills - so the line names the prefixes instead of counting libraries. '/' is
- * named only while some action source is active. What the next question searches is stated by
- * the chip bar above it.
+ * The neutral prefix hint: the input triggers more than a question - prompts, later agents and
+ * skills - so it names the prefixes instead of counting libraries. '/' is named only while some
+ * action source is active. What the next question searches is stated by the chip bar.
  */
 const INPUT_HINT = '@ für Quellen'
 const ACTIONS_HINT = '/ für Aktionen'
+const SHORT_INPUT_HINT = '@ Quellen'
+const SHORT_ACTIONS_HINT = '/ Aktionen'
 
-/** The hint while an answer is pending: '@' changes the search scope and stays closed until then. */
+/**
+ * The hint as the field's description; while an answer is pending '@' changes the search scope
+ * and stays closed, so only '/' is named.
+ */
 export function inputHint(answerPending: boolean, actions: boolean): string {
   if (answerPending) return actions ? ACTIONS_HINT : ''
   return actions ? `${INPUT_HINT}, ${ACTIONS_HINT}` : INPUT_HINT
+}
+
+/**
+ * The placeholder carries the same hint after the prompt. `compact` (narrow screens, down to
+ * 320 px) leaves out the prompt and the "für" so it fits the field in one line.
+ */
+export function inputPlaceholder(
+  answerPending: boolean,
+  actions: boolean,
+  compact: boolean,
+): string {
+  if (!compact) {
+    const hint = inputHint(answerPending, actions)
+    return hint ? `${INPUT_PROMPT} ${hint}` : INPUT_PROMPT
+  }
+  const parts = [answerPending ? null : SHORT_INPUT_HINT, actions ? SHORT_ACTIONS_HINT : null]
+  const hint = parts.filter((part) => part !== null).join(', ')
+  return hint || INPUT_PROMPT
 }
 
 /** A refused question goes back before whatever the person has typed since. */

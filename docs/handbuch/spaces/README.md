@@ -262,16 +262,19 @@ stellt die Standardbreite wieder her. Die gewählte Breite merkt sich der Browse
 Gerät und nicht je Konto. Auf schmalen Bildschirmen öffnet sich die Seitenleiste als
 Überlagerung in fester Breite.
 
-Das **Eingabefeld** sendet mit dem Senden-Knopf oder mit Enter. Darunter steht „@ für Quellen, /
-für Aktionen"; hat die Installation Prompt-Bibliotheken abgeschaltet, nur „@ für Quellen"
-([Prompt-Bibliotheken](../arbeitsmittel/prompt-bibliotheken.md#9-abschalten)). Solange der Suchbereich des Space noch ermittelt wird, steht dort stattdessen
-„Suchbereich wird ermittelt …".
+Das **Eingabefeld** sendet mit dem Senden-Knopf oder mit Enter. Sein Platzhalter lautet
+„Nachricht eingeben … @ für Quellen, / für Aktionen"; hat die Installation Prompt-Bibliotheken
+abgeschaltet, fehlt „/ für Aktionen"
+([Prompt-Bibliotheken](../arbeitsmittel/prompt-bibliotheken.md#9-abschalten)). Auf schmalen
+Bildschirmen steht dort nur die Kurzform „@ Quellen, / Aktionen". Der Platzhalter verschwindet
+beim Tippen; Screenreader lesen den Hinweis weiterhin als Beschreibung des Felds vor. Solange der
+Suchbereich des Space noch ermittelt wird, steht unter dem Feld „Suchbereich wird ermittelt …".
 
 Während eine Antwort entsteht, bleibt das Eingabefeld bedienbar: Die nächste Frage lässt sich schon
 schreiben, auch ein Prompt per `/` lässt sich einsetzen. Senden geht erst, wenn die Antwort da ist.
 Bis dahin lassen sich Suchbereich und Filter nicht ändern, und `@` öffnet keine Auswahl; der
-Hinweis unter dem Feld nennt deshalb nur „/ für Aktionen" (ohne Prompt-Bibliotheken bleibt er
-leer). Die laufende Antwort behält den
+Platzhalter nennt deshalb nur „/ für Aktionen" (ohne Prompt-Bibliotheken nur „Nachricht
+eingeben …"). Die laufende Antwort behält den
 Suchbereich, mit dem die Frage gestellt wurde. Lehnt OPAA die laufende Frage ab, steht sie wieder
 im Eingabefeld, vor dem schon geschriebenen Text.
 
