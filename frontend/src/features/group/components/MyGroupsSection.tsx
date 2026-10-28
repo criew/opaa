@@ -11,6 +11,7 @@ import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import AddIcon from '@mui/icons-material/Add'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import CreateGroupDialog from './CreateGroupDialog'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
@@ -310,6 +311,7 @@ export default function MyGroupsSection() {
           </Button>
           <Button
             variant="contained"
+            startIcon={<AddIcon />}
             disabled={missingCapability}
             onClick={() => setCreateDialogOpen(true)}
           >
