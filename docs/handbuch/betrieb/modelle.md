@@ -16,7 +16,7 @@ Modelle in die Suche eingreifen, steht im Kapitel [Suche](../spaces/suche.md).
 |---|---|---|---|
 | **Chat** | Antwort, Zerlegung in Teilfragen, Chat-Titel, Gesprächsnotiz, Metadaten-Extraktion | Installation oder Modellverwaltung in der Oberfläche | jederzeit, ohne Neustart; berührt den Index nicht |
 | **Embedding** | Vektoren der Chunks und der Suchanfragen | Installation oder, wenn sie den Schritt übersprungen hat, Modellverwaltung, jeweils mit Probeeinbettung ([Embedding](#embedding)) | Modellverwaltung, Reiter „Einbettung": ein anderes Modell mit Neueinbettung ([Modell wechseln](#modell-wechseln)), ein anderer Endpunkt desselben Modells ohne ([Endpunkt wechseln](#endpunkt-wechseln)) |
-| **Reranking** | ordnet die Kandidaten der Suche neu, optional | Modellverwaltung, Reiter „Reranking" | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Reranking einschalten](#reranking-einschalten)) |
+| **Reranking** | ordnet die Kandidaten der Suche neu, optional | Installation oder Modellverwaltung, Reiter „Reranking" | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Reranking einschalten](#reranking-einschalten)) |
 | **Transkription** | wandelt eine im Chat diktierte Frage in Text um, optional | Modellverwaltung, Reiter „Spracheingabe"; begrenzt durch `OPAA_FEATURES_SPEECH_INPUT_ENABLED` | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Spracheingabe einschalten](#spracheingabe-einschalten)) |
 
 Keine Rolle folgt einem Redirect, weder im Betrieb noch im Verbindungstest: Antwortet ein Modellserver
@@ -470,7 +470,9 @@ arbeitet, nimmt OPAA keinen Endpunktwechsel an.
 
 Reranking ist ab Werk **aus**. Die Rolle braucht einen eigenen Endpunkt; die Systemverwaltung trägt
 ihn unter **Modelle → Reranking** ein ([Rerank- und Transkriptionsmodell in der
-Oberfläche](#rerank-modell-und-transkriptionsmodell-in-der-oberfläche)). **Empfohlen ist sie überall, wo ein schneller Endpunkt zur Verfügung steht:** Sie holt
+Oberfläche](#rerank-modell-und-transkriptionsmodell-in-der-oberfläche)), oder schon die
+[Installation](installation.md#schritte) übernimmt ihn aus ihrem optionalen Schritt Rerank-Modell
+und schaltet das Reranking ein. **Empfohlen ist sie überall, wo ein schneller Endpunkt zur Verfügung steht:** Sie holt
 Fundstellen, die im Kandidatenfenster liegen, aber nicht weit genug oben, nach vorn. Was die Stufe in
 der Suche tut, steht unter [Suche](../spaces/suche.md#stufe-8-reranking).
 
@@ -519,7 +521,8 @@ Beide optionalen Rollen pflegt die Systemverwaltung unter **Modelle**, je in ein
 Spracheingabe die Sprache. Ohne Eintrag gilt die Werkseinstellung: aus. Eine Änderung wirkt ohne
 Neustart auf allen Instanzen und steht mit Vorher und Nachher im Revisionsprotokoll
 („Rerank-Modell", „Transkriptionsmodell"); der Schlüssel erscheint dort nur als gesetzt, geändert oder
-entfernt.
+entfernt. Übernimmt die Installation das Rerank-Modell, steht der Eintrag unter ihrem Systemprozess
+„installation“.
 
 - **Zugangsschlüssel:** Er wird verschlüsselt gespeichert und nie wieder angezeigt. Ein leeres Feld
   lässt ihn unverändert, „Gespeicherten Schlüssel entfernen" löscht ihn. Ändert sich die

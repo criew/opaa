@@ -5,9 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.AuditEventType;
+import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.common.FeatureFlags;
 import io.opaa.common.FieldValidationException;
@@ -17,6 +20,7 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.env.MockEnvironment;
@@ -25,7 +29,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 /**
  * The limits of the operation around the model roles (ADR-0060, Entscheidung 2): speech input
  * switched off by the operation keeps the transcription role from being switched on, and a variable
- * of the former configuration is named on the role's page, never taken over.
+ * of the former configuration is named on the role's page, never taken over. The installation
+ * switches the rerank role on through the same write path, recorded under its system process, and
+ * checks it with the same probe.
  */
 class ModelRoleAdministrationTest {
 
@@ -34,6 +40,7 @@ class ModelRoleAdministrationTest {
   private final TranscriptionModelSettingsRepository transcriptionRows =
       mock(TranscriptionModelSettingsRepository.class);
   private final AuditEventRecorder audit = mock(AuditEventRecorder.class);
+  private final RerankClient rerankClient = mock(RerankClient.class);
 
   @Test
   void theTranscriptionRoleCannotBeSwitchedOnWhileTheOperationSwitchedOffSpeechInput() {
@@ -94,6 +101,92 @@ class ModelRoleAdministrationTest {
   }
 
   @Test
+  void theInstallationSwitchesRerankingOnUnderItsSystemProcess() {
+    ModelRoleAdministration administration = administration(false, new MockEnvironment());
+
+    ModelRoleAdministration.RerankModelView view =
+        administration.installRerank(
+            UUID.randomUUID(), "installation", " http://reranker:80 ", " bge ", "v1:chiffrat");
+
+    assertThat(view.enabled()).isTrue();
+    assertThat(view.baseUrl()).isEqualTo("http://reranker:80");
+    assertThat(view.model()).isEqualTo("bge");
+    assertThat(view.apiKeySet()).isTrue();
+    ArgumentCaptor<RerankModelSettings> row = ArgumentCaptor.forClass(RerankModelSettings.class);
+    verify(rerankRows).save(row.capture());
+    assertThat(row.getValue().getApiKeyCiphertext()).isEqualTo("v1:chiffrat");
+    ArgumentCaptor<AuditEvent> event = ArgumentCaptor.forClass(AuditEvent.class);
+    verify(audit).recordSystemProcessAction(event.capture());
+    assertThat(event.getValue().actorRef()).isEqualTo("installation");
+    assertThat(event.getValue().eventType()).isEqualTo(AuditEventType.RERANK_MODEL_CHANGED);
+    assertThat(event.getValue().after())
+        .containsEntry("enabled", true)
+        .containsEntry("apiKeySet", true)
+        .doesNotContainValue("v1:chiffrat");
+    verify(audit, never()).recordUserAction(any());
+  }
+
+  // regression guard: a token in the query of a model address never reaches the audit log
+  @Test
+  void theAuditNamesTheAddressWithoutQueryOrFragment() {
+    ModelRoleAdministration administration = administration(false, new MockEnvironment());
+
+    administration.installRerank(
+        UUID.randomUUID(), "installation", "http://reranker:80/v1?token=geheim", "bge", null);
+    administration.changeTranscription(
+        UUID.randomUUID(),
+        UUID.randomUUID(),
+        false,
+        "http://speaches:8000/v1#token=geheim",
+        "whisper",
+        null,
+        "de");
+
+    ArgumentCaptor<AuditEvent> rerank = ArgumentCaptor.forClass(AuditEvent.class);
+    verify(audit).recordSystemProcessAction(rerank.capture());
+    assertThat(rerank.getValue().after()).containsEntry("baseUrl", "http://reranker:80/v1");
+    ArgumentCaptor<AuditEvent> transcription = ArgumentCaptor.forClass(AuditEvent.class);
+    verify(audit).recordUserAction(transcription.capture());
+    assertThat(transcription.getValue().after())
+        .containsEntry("baseUrl", "http://speaches:8000/v1");
+    assertThat(rerank.getValue().after().toString() + transcription.getValue().after())
+        .doesNotContain("geheim");
+  }
+
+  @Test
+  void theInstallationCannotSwitchOnARerankRoleWithoutModel() {
+    ModelRoleAdministration administration = administration(false, new MockEnvironment());
+
+    assertThatThrownBy(
+            () ->
+                administration.installRerank(
+                    UUID.randomUUID(), "installation", "http://reranker:80", " ", null))
+        .isInstanceOf(FieldValidationException.class);
+    verify(rerankRows, never()).save(any());
+  }
+
+  @Test
+  void theProbeOfTheInstallationIsTheProbeOfTheTestInGerman() {
+    ModelRoleAdministration administration = administration(false, new MockEnvironment());
+    when(rerankClient.probe(any(), any()))
+        .thenReturn(null)
+        .thenReturn(new RerankClient.ProbeFailure("HTTP 401: unauthorized", false));
+
+    ModelRoleAdministration.TestOutcome passed =
+        administration.probeRerank("http://reranker:80", "bge", "sk");
+    ModelRoleAdministration.TestOutcome failed =
+        administration.probeRerank("http://reranker:80", "bge", null);
+
+    assertThat(passed.success()).isTrue();
+    assertThat(failed.success()).isFalse();
+    assertThat(failed.message()).contains("Zugangsschlüssel");
+    ArgumentCaptor<RerankEndpoint> endpoint = ArgumentCaptor.forClass(RerankEndpoint.class);
+    verify(rerankClient, times(2)).probe(endpoint.capture(), any(Duration.class));
+    assertThat(endpoint.getAllValues().get(0).apiKey()).isEqualTo("sk");
+    assertThat(endpoint.getAllValues().get(1).apiKey()).isEmpty();
+  }
+
+  @Test
   void aClientFailureIsShownInGerman() {
     assertThat(ModelRoleAdministration.german("HTTP 401: authentication failed", false))
         .contains("Zugangsschlüssel");
@@ -131,7 +224,7 @@ class ModelRoleAdministrationTest {
         rerankRole,
         transcriptionRole,
         features,
-        mock(RerankClient.class),
+        rerankClient,
         mock(TranscriptionClient.class),
         mock(SettingsEncryptor.class),
         ModelAddressPolicy.disabled(),

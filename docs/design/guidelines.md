@@ -372,9 +372,10 @@ die Beschriftung nennt das Objekt: „Konto anlegen", „Gruppe anlegen", „Neu
 Modell", „Neuer Katalogeintrag". Ein bloßes „Neu" oder „Anlegen" genügt nicht; das Icon ist Zierde
 und ersetzt die Beschriftung nicht. Folgt eine Typwahl, nennt die Beschriftung den Oberbegriff.
 Je Objekt gibt es eine Beschriftung: Seitenkopf, Leerzustand und Menüeinträge wie der
-Space-Wechsler der Seitenleiste tragen denselben Text („Neuer Space", „Gruppe anlegen", „Neuer
-Anbieter"). Ausgenommen ist die kompakte Aktion „Neu" im Abschnittskopf „Chats" der Seitenleiste; ihr
-zugänglicher Name nennt das Objekt („Neu: Chat beginnen").
+Space-Umschalter der Seitenleiste tragen denselben Text („Neuer Space", „Gruppe anlegen", „Neuer
+Anbieter"). Ausgenommen sind die Köpfe „Spaces" und „Chats" der Seitenleiste des Space: Dort steht
+das Plus als Nur-Icon-Knopf, dessen zugänglicher Name das Objekt nennt („Neuer Space", „Neuer
+Chat"; 5.13).
 
 **Hinzufügen in einem Abschnitt.** Fügt eine Aktion einem bestehenden Objekt etwas hinzu
 (Freigabe, Zuordnung, Feld, Ordner), steht sie als Textaktion rechts im Abschnittskopf der
@@ -769,6 +770,62 @@ es nichts weiter zu gliedern gibt.
 **Einzelwerte als Wertzeile.** Ein einzelner Wert mit höchstens einer Handlung steht als Zeile
 „Titel · Wert · Textaktion" (etwa „Zuständig · Referat 21 · Ändern"), nicht als Abschnitt mit
 eigener Überschrift. Die Textaktion steht als Textlink an der rechten Kante (Prüfliste P45, P48).
+
+### 5.13 Seitenleiste des Space
+
+Entschieden in #3266 (Prototyp #3280, Variante B). Ab dem Breakpoint `md` (900 px, `AppShell`)
+steht die Seitenleiste fest als Spalte, darunter öffnet sie als Schublade.
+
+**Space-Liste nur in der festen Spalte.** Spaces-Bereich und Space-Zeilen gelten nur, solange die
+Seitenleiste fest steht. In der Schublade bleibt der Space-Wechsel das Space-Menü
+(Space-Umschalter, Menü-Knopf nach 5.6): Dort ist die Höhe knapp, fünf Space-Zeilen nähmen den
+Chats zu viel weg. Für die Schublade gilt außerdem:
+
+- Plus und Lupe im Kopf „Chats" wie in der Spalte;
+- Zähler in den Köpfen „Angeheftet" und „Zuletzt verwendet";
+- die Suche öffnet im Inhaltsbereich, auch „Alle Spaces anzeigen" aus dem Space-Menü.
+
+**Zwei Bereiche, die Chats scrollen.** Oben steht der Bereich **Spaces**, darunter, durch eine
+Trennlinie abgesetzt, der Bereich **Chats**. Der Spaces-Bereich nimmt höchstens knapp die Hälfte
+der Spaltenhöhe ein und scrollt nur in sich, wenn diese Höhe für seine Zeilen nicht reicht; die
+Chats sind die einzige Fläche, die im Normalfall scrollt. So bleibt der Space-Kontext sichtbar,
+wie weit man in den Chats auch scrollt.
+
+**Spaces als Zeilen statt Menü.** Der Spaces-Bereich zeigt bis zu fünf Spaces als Zeilen
+(Kürzelkästchen und Name). Ausgewählt werden die zuletzt genutzten, aufgefüllt in Listenreihenfolge;
+angezeigt werden sie in fester Reihenfolge, privater Bereich zuerst, dann nach Name, damit eine
+angeklickte Zeile nicht unter dem Zeiger springt. Der aktive Space ist immer dabei, trägt
+`aria-current` und ist der Aktiveintrag nach 2.3 (`bg-1`, `border-strong`). Ein archivierter Space
+erscheint nur, wenn er zuletzt genutzt wurde, mit dem Hinweis „archiviert". Alle weiteren Spaces
+erreicht man über die Lupe im Kopf. Eine Zeile führt in einen neuen Chat des Space, bei einem
+archivierten Space auf seine Übersicht.
+
+**Gleichrangige, zuklappbare Gruppenköpfe mit Zählern.** Die Köpfe „Spaces", „Angeheftet" und
+„Zuletzt verwendet" sind Disclosure-Köpfe mit Chevron, `aria-expanded` und `aria-controls`. Der
+Klappzustand bleibt im Browser gespeichert, wie die Spaltenbreite. Ist „Spaces" zugeklappt, bleibt
+die Zeile des aktiven Space sichtbar. Jeder dieser Köpfe trägt einen Zähler als Text hinter der
+Beschriftung („Angeheftet 8"), kein abweichendes `aria-label`, damit sichtbarer und zugänglicher
+Name übereinstimmen. Der Zähler nennt die ganze Gruppe: bei „Spaces" die nicht archivierten Spaces
+der Person, bei „Zuletzt verwendet" auch die Chats, die erst „… weitere" aufdeckt.
+
+**Ein Aktionsmuster für beide Bereiche.** Die Köpfe „Spaces" und „Chats" tragen rechts dasselbe
+Paar aus Nur-Icon-Knöpfen nach 5.1 (`aria-label` und Tooltip): Plus („Neuer Space", „Neuer Chat")
+und Lupe („Alle Spaces anzeigen und durchsuchen", „Chats durchsuchen"). Das Plus ist die in 5.1
+genannte Ausnahme von den Anlege-Knöpfen; sein Name ist derselbe wie überall sonst für das Objekt.
+Kein Text „Neu", keine umrandete Schaltfläche „Neuer Chat". In einem archivierten Space ist das
+Plus der Chats gesperrt, der Tooltip nennt den Grund.
+
+**Die Suche öffnet im Inhaltsbereich.** Beide Lupen öffnen ihre Suche im Inhaltsbereich; die
+Seitenleiste mit Spaces und Chats bleibt dabei stehen. Die Space-Suche ersetzt die Seitenleiste
+nicht durch die Spalte eines globalen Bereichs.
+
+**Der Rail-Eintrag heißt „Chat".** Der Eintrag der globalen Leiste, der zu dieser Seitenleiste
+führt, heißt „Chat" (Singular) und trägt ein Sprechblasen-Icon; die Leiste lautet damit
+Chat · Katalog · Admin (für Prüfende „Revision" statt „Admin"). Er ist für `/spaces` und `/chat`
+aktiv und führt auf `/chat`, nicht auf die Space-Übersicht: Das öffnet einen neuen Chat im zuletzt
+genutzten nicht archivierten Space, ohne einen solchen im privaten Bereich. Die Übersicht erreicht
+man in der Spalte über die Lupe im Kopf „Spaces", in der Schublade über „Alle Spaces anzeigen" im
+Space-Menü.
 
 ---
 
