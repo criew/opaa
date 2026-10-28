@@ -695,7 +695,7 @@ Ein Space trägt optional eine **Anweisung an das Modell** (`spaces.model_instru
 - **Nur die Antwortstufe.** Die Teilfragen-Zerlegung bekommt sie nie.
 - **Rang im Prompt:** feste Regeln → Anweisung des Space → [Gesprächsnotiz](conversation-memory.md#wie-die-notiz-ins-modell-kommt) → Kontextdokumente. Die Kopfzeile des Blocks verweigert ihm den Rang einer Quelle, stellt die Zitierregeln über ihn (Zitierpflicht, Zitatformat, Verbot erfundener Quellen) und lässt ihm die Sprache: Eine Sprachvorgabe darin geht der festen Vorgabe „Deutsch" vor. Ein abweichender Wunsch der fragenden Person aus dem Gespräch geht der Anweisung vor.
 - **Nachweis:** Jede Änderung ist ein `SPACE_CHANGED`-Eintrag, der in `changedFields` nur `modelInstruction` nennt — der Text selbst gelangt nicht ins Protokoll.
-- **Hilfetext im Feld:** was hineingehört (Rolle, fachlicher Rahmen, Sprache, Form) und was nicht (keine personenbezogenen Angaben; Zitate und Quellenangaben bleiben in jedem Fall erhalten).
+- **Hilfetext im Feld:** eine Zeile nach Leitlinie 6 — wirkt bei jeder Antwort, für alle Mitglieder sichtbar, keine personenbezogenen Angaben. Was hineingehört und dass die Zitierregeln bleiben, steht im Handbuch (Suche, Anweisung an das Modell); ein Beispiel zeigt der Platzhalter.
 
 ### Assets in einen Space assoziieren
 

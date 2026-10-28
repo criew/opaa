@@ -195,8 +195,8 @@ export default function SpaceGeneralSection({
                 sx={{ justifyContent: 'space-between', alignItems: { md: 'center' } }}
               >
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  Den Space archivieren: Er nimmt danach keinen neuen Inhalt mehr an und wird aus
-                  den regulären Listen ausgeblendet. Umkehrbar durch die Systemverwaltung.
+                  Archivieren: keine neuen Inhalte mehr, aus den Listen ausgeblendet. Umkehrbar
+                  durch die Systemverwaltung.
                 </Typography>
                 <Button
                   variant="outlined"
@@ -223,8 +223,7 @@ export default function SpaceGeneralSection({
               sx={{ justifyContent: 'space-between', alignItems: { md: 'center' } }}
             >
               <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                Den Space löschen: Chats, Mitgliedschaften und Zuordnungen dieses Space gehen
-                verloren. Nicht umkehrbar.
+                Löschen: Chats, Mitgliedschaften und Zuordnungen gehen verloren. Nicht umkehrbar.
               </Typography>
               <Button
                 color="error"

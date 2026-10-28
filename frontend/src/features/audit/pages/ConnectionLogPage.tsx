@@ -129,7 +129,7 @@ export default function ConnectionLogPage() {
         <AreaPageHeader
           icon={CableOutlinedIcon}
           title="Verbindungsprotokoll"
-          description="Wann ein Konto mit einem Zugang verbunden, neu verbunden oder getrennt wurde und wann eine Verbindung ablief oder abgeschaltet wurde. Personen erscheinen nur als Pseudonym, kein Eintrag enthält Zugangsdaten. Zeitraum (höchstens 92 Tage) und Anlass sind Pflicht; jeder Abruf wird protokolliert."
+          description="Wann Konten mit einem Zugang verbunden oder getrennt wurden und Verbindungen endeten. Personen erscheinen nur als Pseudonym, Zugangsdaten nie; Zeitraum höchstens 92 Tage, jeder Abruf wird protokolliert."
         />
 
         <Stack spacing={2} sx={{ mb: 3 }}>

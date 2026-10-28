@@ -101,7 +101,7 @@ export default function SuccessionPage() {
         <AreaPageHeader
           icon={AssignmentLateOutlinedIcon}
           title="Ohne Zuständigkeit"
-          description="Hier steht, um was sich niemand mehr kümmern kann – etwa weil die verantwortliche Person ausgeschieden ist oder eine Gruppe keine Mitglieder mehr hat. Die Inhalte bleiben nutzbar, und nichts wird gelöscht; neue Freigaben sind aber gesperrt, bis wieder jemand zuständig ist. Die Liste erinnert nicht und verschickt nichts."
+          description="Was niemand mehr verantworten kann, etwa nach dem Ausscheiden einer Person. Die Inhalte bleiben nutzbar; neue Freigaben sind gesperrt, bis wieder jemand zuständig ist."
         />
 
         <SuccessionContent key={listRevision} activeTab={activeTab} />

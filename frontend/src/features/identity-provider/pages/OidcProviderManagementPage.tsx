@@ -67,7 +67,7 @@ export default function OidcProviderManagementPage() {
           icon={FingerprintOutlinedIcon}
           title="Identitätsanbieter"
           meta={providers.length === 1 ? '1 Anbieter' : `${providers.length} Anbieter`}
-          description="Gilt für die gesamte Anwendung. Die Reihenfolge ist die der Anmeldeseite; Änderungen wirken ohne Neustart. Lokale Konten sind kein Anbieter dieser Liste – sie werden unter Administration → Benutzer geführt."
+          description="Anbieter in der Reihenfolge der Anmeldeseite; Änderungen wirken ohne Neustart. Lokale Konten stehen unter Administration → Benutzer."
           action={
             <Button variant="contained" startIcon={<AddIcon />} onClick={openCreateDialog}>
               Neuer Anbieter
@@ -90,11 +90,10 @@ export default function OidcProviderManagementPage() {
 
         {!isLoading && providers.length > 0 && !providers.some((p) => p.isDefault) && (
           <Alert severity="warning" sx={{ mb: 2 }}>
-            Kein Anbieter ist Standardanbieter – der Anmeldevorschlag und der Löschschutz des
-            Standardanbieters greifen nicht. Machen Sie einen aktivierten, erreichbaren Anbieter zum
-            Standard. Kann sich niemand mehr anmelden, stellt der Betrieb mit
-            OPAA_LOCAL_ADMIN_RESET=force das Notanker-Konto wieder her (Notfallprozedur im
-            Handbuch). Der Verzeichnisabgleich hängt nicht daran: Er wird je Anbieter eingeschaltet.
+            Kein Anbieter ist Standardanbieter: Anmeldevorschlag und Löschschutz greifen nicht.
+            Machen Sie einen aktivierten, erreichbaren Anbieter zum Standard. Kann sich niemand mehr
+            anmelden, hilft OPAA_LOCAL_ADMIN_RESET=force (Notfallprozedur im Handbuch). Der
+            Verzeichnisabgleich hängt nicht daran.
           </Alert>
         )}
 

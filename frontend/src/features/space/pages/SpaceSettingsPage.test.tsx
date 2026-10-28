@@ -879,7 +879,7 @@ describe('SpaceSettingsPage', () => {
       expect(field).not.toHaveAttribute('readonly')
       expect(field).toHaveAttribute('maxlength', '1000')
       expect(screen.getByText(/keine personenbezogenen Angaben/i)).toBeInTheDocument()
-      expect(screen.getByText(/Zitate und Quellenangaben bleiben/i)).toBeInTheDocument()
+      expect(screen.getByText(/für alle Mitglieder sichtbar/i)).toBeInTheDocument()
 
       await user.click(field)
       await user.paste(instruction)

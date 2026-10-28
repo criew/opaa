@@ -559,7 +559,9 @@ describe('OidcProviderManagementPage', () => {
     await findProviderTable()
     expect(providerRows()).toHaveLength(3)
     expect(screen.queryByText('Lokale Konten')).not.toBeInTheDocument()
-    expect(screen.getByText(/unter\s+Administration → Benutzer geführt/)).toBeInTheDocument()
+    expect(
+      screen.getByText(/Lokale Konten stehen unter\s+Administration → Benutzer/),
+    ).toBeInTheDocument()
   })
 
   it('names the consequence of disabling the last enabled provider and sends the acknowledgement', async () => {
