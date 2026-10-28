@@ -96,7 +96,9 @@ describe('Prompt-Bibliothek anlegen, füllen und freigeben', () => {
     })
 
     // First prompt with a mandatory variable of type date
-    await user.click(await screen.findByRole('button', { name: 'Neuer Prompt' }))
+    const newPrompt = await screen.findByRole('button', { name: 'Neuer Prompt' })
+    expect(within(newPrompt).getByTestId('AddIcon')).toBeInTheDocument()
+    await user.click(newPrompt)
     let dialog = await screen.findByRole('dialog', { name: 'Neuer Prompt' })
     await user.type(within(dialog).getByLabelText('Titel'), 'Anhörung')
     await user.click(within(dialog).getByLabelText('Text'))

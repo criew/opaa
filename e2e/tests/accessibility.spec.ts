@@ -257,8 +257,9 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
   });
 
   // Die Kachelauswahl mit Icon (Gestaltungsleitlinien 5.11) an ihren beiden Stellen: Typwahl unter
-  // „Neu" und Quellart-Wahl im Wissens-Assistenten - Auswahlgruppe und Häkchen; der Assistent zeigt
-  // nur nutzbare Quellarten, eine gesperrte Kachel prüft der Test im Dialog „Zugang anlegen".
+  // „Neuer Katalogeintrag" und Quellart-Wahl im Wissens-Assistenten - Auswahlgruppe und Häkchen;
+  // der Assistent zeigt nur nutzbare Quellarten, eine gesperrte Kachel prüft der Test im Dialog
+  // „Zugang anlegen".
   test("Kachelauswahl: Typwahl und Quellart in beiden Farbschemata", async ({
     authenticatedPage: page,
   }) => {

@@ -11,6 +11,7 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
+import AddIcon from '@mui/icons-material/Add'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import type {
   CreatedExternalAccessTokenResponse,
@@ -147,6 +148,7 @@ export default function OwnExternalAccessTokensSection() {
               <Button
                 variant="contained"
                 size="small"
+                startIcon={<AddIcon />}
                 onClick={() => setIsCreating(true)}
                 disabled={maxLifetimeDays === null || channelEnabled !== true}
               >

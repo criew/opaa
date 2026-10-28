@@ -143,7 +143,7 @@ export default function CatalogPage() {
   return (
     <OverviewPage<CatalogEntryResponse>
       title="Katalog"
-      createLabel={canCreate ? 'Neu' : undefined}
+      createLabel={canCreate ? 'Neuer Katalogeintrag' : undefined}
       onCreate={canCreate ? () => navigate(CATALOG_NEW_ROUTE) : undefined}
       items={entries}
       itemKey={(entry) => `${entry.assetType}:${entry.assetId}`}
