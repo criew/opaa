@@ -4,6 +4,7 @@ import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import Snackbar from '@mui/material/Snackbar'
 import CloseIcon from '@mui/icons-material/Close'
+import type { Theme } from '@mui/material/styles'
 import { useNotificationStore, type AppNotification } from '../../stores/notificationStore'
 
 /**
@@ -20,6 +21,32 @@ export default function NotificationHost() {
   if (current == null) return null
   // a fresh popup per notification, so a pause never carries over to the next one
   return <NotificationPopup key={current.id} current={current} dismiss={dismiss} />
+}
+
+/**
+ * Below md the sticky MobileHeader (a Toolbar of `theme.mixins.toolbar` height plus a 1 px
+ * border) holds the menu and the bell; the popup starts 8 px below it in every toolbar breakpoint,
+ * landscape included, so it never covers them. From md on there is no header and MUI's 24 px apply.
+ */
+function popupTop(theme: Theme) {
+  // mirrors the (nested) media queries of the toolbar mixin, minHeight turned into top
+  const below = (styles: Record<string, unknown>): Record<string, unknown> =>
+    Object.fromEntries(
+      Object.entries(styles).flatMap(([key, value]): [string, unknown][] => {
+        if (key === 'minHeight') {
+          const height = typeof value === 'number' ? `${value}px` : String(value)
+          return [['top', `calc(${height} + 9px)`]]
+        }
+        if (key.startsWith('@media') && typeof value === 'object' && value != null) {
+          return [[key, below(value as Record<string, unknown>)]]
+        }
+        return []
+      }),
+    )
+  return {
+    ...below(theme.mixins.toolbar as Record<string, unknown>),
+    [theme.breakpoints.up('md')]: { top: theme.spacing(3) },
+  }
 }
 
 function NotificationPopup({
@@ -46,9 +73,7 @@ function NotificationPopup({
         if (reason !== 'clickaway') dismiss(current.id)
       }}
       anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      // Below md the sticky MobileHeader (56/64 px toolbar plus 1 px border) holds the menu and
-      // the bell; the popup starts 8 px below it so it never covers them.
-      sx={{ top: { xs: 65, sm: 73, md: 24 } }}
+      sx={popupTop}
     >
       <Alert
         severity={current.severity}

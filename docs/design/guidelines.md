@@ -508,8 +508,9 @@ abgeschlossener Hintergrundschritt — erscheinen als **Popup-Benachrichtigung**
 (Ebene 2: Rahmen plus Schatten auf `bg-1`), dort, wo der Blick ohnehin liegt. Auf schmalen
 Bildschirmen beginnt sie unter der mobilen Kopfzeile und verdeckt weder Menü noch Glocke. Mehrere
 Meldungen erscheinen nacheinander an derselben Stelle. Eine Meldung wird nach sechs Sekunden
-automatisch ausgeblendet und ist jederzeit per Schließen-Knopf verwerfbar. **Der Timer steht still, solange der Mauszeiger oder der
-Tastaturfokus auf der Meldung liegt**, und läuft erst nach dem Verlassen weiter (WCAG 2.2.1). Sie laufen über den globalen Mechanismus
+automatisch ausgeblendet und ist jederzeit per Schließen-Knopf verwerfbar.
+**Der Timer steht still, solange der Mauszeiger oder der Tastaturfokus auf der Meldung liegt**, und
+läuft erst nach dem Verlassen weiter (WCAG 2.2.1). Sie laufen über den globalen Mechanismus
 (`frontend/src/shared/stores/notificationStore.ts` → `notify(message, severity)`, gerendert genau
 einmal durch `NotificationHost` in der AppShell) — nie über eine komponenteneigene Snackbar und
 **nie als Inline-Alert, der über einer Tabelle oder Liste eingeschoben wird** und dabei fremden
