@@ -17,7 +17,7 @@ deshalb **keine Suchbegriffe, sondern Bedingungen an das Ergebnis**: „nur Dien
 |---|---|
 | **Filter** | Ein gesetzter Filter schränkt beide Suchpfade (Vektor und Volltext) ein, bevor gerankt wird |
 | **Kontextpräfix** | Ausgewählte Werte stehen dem eingebetteten und volltextindizierten Text voran, auch ohne gesetzten Filter (Abschnitt 9) |
-| **Beleg** | Die Fundstelle einer Antwort zeigt Titel, Dokumentart und Datum/Stand des zitierten Dokuments |
+| **Beleg** | Die Fundstelle einer Antwort trägt Titel, Dokumentart und Datum/Stand des zitierten Dokuments; das Belegfenster im Chat zeigt sie nicht (Abschnitt 10) |
 | **Pflege** | Die Bibliothek zeigt, für wie viele Dokumente ein Feld leer ist, damit sich der Bestand nachpflegen lässt |
 
 Die eine Regel, die alles Weitere prägt: **lieber leer als geraten.** Ein geratener Wert, der als
@@ -516,13 +516,11 @@ filtert oder nur im Beleg steht, lässt den Abdruck unberührt.
 
 ## 10. Beleg-Anzeige
 
-Das Belegfenster einer Antwort zeigt je Dokument Titel, Dokumentart und Datum/Stand
-des zitierten Dokuments, mit „ · " verbunden; ein leeres Feld erscheint gar nicht, ein abgeleiteter
-Wert ist als „(abgeleitet)" gekennzeichnet. Die Ortsangabe im Dokument bleibt daneben bestehen. Die
-Formatfelder eines Dokuments stehen als weitere Einträge derselben Liste dahinter; ein Wert, den der
-Titel bereits wörtlich zeigt — bei einer Mail der Betreff —, wird nicht zweimal aufgeführt. Der
-Empfänger einer Mail steht in einer eigenen Zeile darunter, nicht in der Metadatenzeile: Eine
-Verteilerliste ist lang und ordnet die Fundstelle nicht ein.
+Das Belegfenster einer Antwort zeigt je Dokument nur Titel und Fundort, keine Metadatenwerte:
+Dokumentart, Datum/Stand und Formatfelder helfen beim Nachschlagen nicht und stehen dort nicht.
+Im Beleg erscheint von den Metadaten nur die Kennzeichnung „ohne Angabe" unter aktivem Filter
+(Abschnitt 8). Der Zugriffsweg für externe KI-Werkzeuge gibt die Metadaten je Fundstelle weiterhin
+aus (Kapitel [Suche](../../spaces/suche.md)).
 
 ## 11. Rechte und Sichtbarkeit
 

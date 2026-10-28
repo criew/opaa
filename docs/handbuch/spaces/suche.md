@@ -894,8 +894,16 @@ des ersten Auftretens im Antwortkontext:
 Die Fundstellen stehen im Belegfenster; unter der Antwort steht nur „Belege anzeigen" mit der
 Zahl der zitierten Stellen und der weiteren geprüften, nicht zitierten Dokumente. Fährt man mit der Maus über eine
 Fußnote im Antworttext, nennt ein Tooltip Dokument und Fundort; ein Klick öffnet das Belegfenster
-an der zugehörigen Fundstelle und markiert sie dort. Das
-Belegfenster stellt zitierte vor nicht zitierte und zeigt den Auszug jedes Chunks.
+an der zugehörigen Fundstelle und markiert sie dort.
+
+Das Belegfenster heißt „Belege dieser Antwort" und hat oben nur das Suchfeld „In Belegen suchen".
+Es öffnet mit den zitierten Dokumenten in der Reihenfolge ihrer Fußnoten; der Link **„Nicht
+zitierte anzeigen"** unter der Liste blendet die geprüften, nicht zitierten darunter ein,
+„Nicht zitierte ausblenden" wieder aus. Bei jedem Öffnen sind sie wieder ausgeblendet. Je Dokument
+stehen die Fußnotenziffern, der Titel, der Fundort und die Aktion **„Dokument öffnen"**; dazu, wo
+sie zutreffen, „geprüft, nicht zitiert", „Private Quelle", „Beleg nicht bestätigt", „ohne Angabe"
+und „Stand vom …". Rang, Metadaten, Indexierungszeitpunkt und die Adresse in der Quelle zeigt das
+Belegfenster nicht; den Rang nennt das Erklärprotokoll.
 
 **Kopieren.** Rechts unter jeder Antwort steht „Kopieren". Ein Klick legt die Antwort als Markdown in
 die Zwischenablage, ohne Fußnotenmarken und ohne Quellenliste. Der Pfeil daneben bietet zwei

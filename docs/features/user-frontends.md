@@ -87,8 +87,8 @@ serverseitig von der beim Indizieren gespeicherten Quell-URL durch, statt den Cl
 weiterzuleiten — auf der Demo-Instanz sind die Quellhosts (`http://demo-corpus/...`) nur im
 Docker-Netz erreichbar, ein direkter Browserlink lief zuvor ins Leere. `sourceEntryUrl`/`sourceUrl`
 (HTTP_DIRECTORY/RSS_FEED) bleiben als sekundäre Information neben der Aktion sichtbar — auf der
-Dokumentenübersicht als eigene Zeile („Herkunft:"/„Quelle:"), in den Fundstellen und im Belegfenster
-als kleiner „Quelle"-Link mit der rohen URL als `title`-Tooltip.
+Dokumentenübersicht als eigene Zeile („Herkunft:"/„Quelle:"); das Belegfenster zeigt sie seit #3259
+nicht mehr.
 
 `LibraryDocumentResponse.sourceUrl` ist bewusst für jede VIEWER-Berechtigung sichtbar — anders als
 `LibraryResponse.sourceUrl`, das #507 unterhalb von MANAGER maskiert. Maskiert bleibt dort die
@@ -100,7 +100,7 @@ Maintainer-Entscheidung auf PR #743 (Epic #740).
 Seit #739 gilt derselbe Deeplink auch für die Fundstellen unter einer Antwort und für das
 Belegfenster („Belege dieser Antwort"): `SourceReference` (OpenAPI) trägt jetzt `documentId` und
 `sourceType`, dazu ein eigenes `sourceUrl` mit derselben Bedeutung wie auf
-`LibraryDocumentResponse`. Ein Klick auf „Im Dokument öffnen" lädt seit #747 für **jeden**
+`LibraryDocumentResponse`. Ein Klick auf „Im Dokument öffnen" (seit #3259 „Dokument öffnen") lädt seit #747 für **jeden**
 Quellentyp das Original über `GET /api/v1/documents/{documentId}/content` (dasselbe Hilfsmodul
 `documentContent.ts`) — vor #747 öffnete diese Aktion für HTTP_DIRECTORY/RSS_FEED stattdessen
 `sourceEntryUrl`/`sourceUrl` direkt in einem neuen Tab, was bei einer nur intern erreichbaren Quelle
@@ -112,7 +112,13 @@ Dialog und Snackbar hängen dadurch nicht am Lebenszyklus des Belegfensters, das
 beim Schließen abbaut. Seit #1449 entfällt der Fundstellenblock unter der Antwort: Dort steht nur
 noch „Belege anzeigen" mit einer Zählzeile, alle Fundstellen stehen im Belegfenster
 (`SourceEvidenceDrawer.tsx`), und ein Klick auf eine Fußnote öffnet es an der zugehörigen
-Fundstelle und markiert sie dort. Backendseitig
+Fundstelle und markiert sie dort. Seit #3259 öffnet das Belegfenster mit den zitierten Belegen; die
+geprüften, nicht zitierten blendet der Link „Nicht zitierte anzeigen" (`aria-expanded`) unter der
+Liste ein, der Filterknopf „Nur zitierte" und die Erklärzeile im Kopf entfallen. Eine Belegzeile
+nennt nur Ziffern, Titel, Fundort und die Aktion, die seitdem „Dokument öffnen" heißt; Rang,
+Indexierungsdatum, Metadatenzeile und „Quelle"-Link entfallen, der Rang bleibt im Erklärprotokoll.
+Hinweise wie „Stand vom …", „Private Quelle", „Beleg nicht bestätigt" und unter aktivem Filter
+„ohne Angabe" bleiben. Backendseitig
 schlüsselt die Zusammenführung mehrfach zitierter
 Fundstellen (`QueryService#mergeSourceReferences`) auf `documentId` statt auf den Dateinamen: zwei
 unterschiedliche Dokumente mit identischem Dateinamen (etwa zwei RSS-Anlagen) erscheinen dadurch als
