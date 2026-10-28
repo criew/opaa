@@ -31,6 +31,35 @@ describe('NotificationHost', () => {
     expect(await screen.findByText('bescheid.docx wird heruntergeladen')).toBeVisible()
   })
 
+  it('anchors every popup at the top center, queued ones included', async () => {
+    render(<NotificationHost />)
+    const user = userEvent.setup()
+
+    act(() => {
+      notify('Leistung zugeordnet.', 'success')
+      notify('Rolle geändert.')
+    })
+
+    const first = await screen.findByRole('alert')
+    expect(first.closest('.MuiSnackbar-root')).toHaveClass('MuiSnackbar-anchorOriginTopCenter')
+
+    await user.click(within(first).getByRole('button', { name: /schließen|close/i }))
+
+    const second = await screen.findByText('Rolle geändert.')
+    expect(second.closest('.MuiSnackbar-root')).toHaveClass('MuiSnackbar-anchorOriginTopCenter')
+  })
+
+  it('starts the popup below the mobile header rather than over it', async () => {
+    render(<NotificationHost />)
+    act(() => {
+      notify('Leistung zugeordnet.', 'success')
+    })
+
+    const root = (await screen.findByRole('alert')).closest('.MuiSnackbar-root') as HTMLElement
+    // jsdom applies no media queries: the xs value is the toolbar's 56 px + 1 px border + 8 px
+    expect(getComputedStyle(root).top).toBe('65px')
+  })
+
   it('runs the action of a notification and dismisses it', async () => {
     render(<NotificationHost />)
     const user = userEvent.setup()

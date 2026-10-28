@@ -7,6 +7,10 @@ import BrandMark from '@/shared/ui/BrandMark'
 import { NotificationBell } from '@/features/notification'
 import { useUiStore } from '@/shared/stores/uiStore'
 
+/**
+ * Shown below md; its height is the Toolbar's `theme.mixins.toolbar` plus a 1 px bottom border.
+ * NotificationHost places popups below exactly that height - keep both in step.
+ */
 export default function MobileHeader() {
   const toggleSidebar = useUiStore((s) => s.toggleSidebar)
 
