@@ -149,7 +149,8 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     // options would stay green even if the picker regressed to calling GET /v1/admin/users
     // instead of GET /v1/users. This override makes that admin-only endpoint fail exactly as the
     // real backend's SYSTEM_ADMIN-gated AdminController#listUsers would for this caller, so the
-    // guard is meaningful: reverting getUserSummaries() back to getUsers() empties the picker and
+    // guard is meaningful: switching getUserSummaries() back to the admin account list
+    // (GET /v1/admin/users) empties the picker and
     // fails this test, instead of passing vacuously against an MSW mock that never enforced the
     // admin-only boundary of GET /admin/users.
     server.use(
@@ -265,6 +266,26 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     expect(mockCreateNewSpace).toHaveBeenCalledWith('Widerspruchsstelle', '', [], false, [
       { subjectType: 'GROUP', subjectId: 'group-phoenix', role: 'CURATOR' },
     ])
+  }, 15000)
+
+  // P28: „Vormerken“ stays active; a missing choice is named at the search field.
+  it('keeps „Vormerken“ active without a choice and names the missing choice at the field', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+    await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    const note = screen.getByRole('button', { name: 'Vormerken' })
+    expect(note).toBeEnabled()
+    await user.click(note)
+
+    const search = screen.getByRole('combobox', { name: 'Person oder Gruppe suchen' })
+    expect(search).toHaveAccessibleDescription('Bitte eine Person oder Gruppe auswählen.')
+    expect(search).toHaveFocus()
+
+    await user.type(search, 'al')
+    await user.click(await screen.findByRole('option', { name: /Alice/ }))
+    expect(search).not.toHaveAttribute('aria-invalid', 'true')
   }, 15000)
 
   async function noteAlice(user: ReturnType<typeof userEvent.setup>) {

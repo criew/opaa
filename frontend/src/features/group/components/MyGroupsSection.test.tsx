@@ -126,7 +126,39 @@ describe('MyGroupsSection', () => {
     renderWithProviders(<MyGroupsSection />, { withRouter: true })
 
     expect(await screen.findByText(/Ihnen fehlt das Anlegerecht/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /neue gruppe/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Gruppe anlegen' })).toBeDisabled()
+  })
+
+  // One verb and one form row for adding a person (guideline 5.1, 5.2); P28: no disabled submit.
+  it('fügt Mitglieder mit „Hinzufügen“ hinzu und meldet eine fehlende Auswahl am Suchfeld', async () => {
+    withGroups([group], ['CREATE_INTERNAL_GROUP'])
+    renderWithProviders(<MyGroupsSection />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByText('Projektbeteiligte Phoenix'))
+    const add = await screen.findByRole('button', { name: 'Hinzufügen' })
+    expect(add).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Mitglied hinzufügen' })).not.toBeInTheDocument()
+    await user.click(add)
+
+    const search = screen.getByRole('combobox', { name: 'Person suchen' })
+    expect(search).toHaveAccessibleDescription('Bitte eine Person auswählen.')
+    expect(search).toHaveFocus()
+  })
+
+  it('lässt „Als verantwortlich benennen“ ohne Auswahl aktiv und meldet sie am Suchfeld', async () => {
+    withGroups([group], ['CREATE_INTERNAL_GROUP'])
+    renderWithProviders(<MyGroupsSection />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByText('Projektbeteiligte Phoenix'))
+    const appoint = await screen.findByRole('button', { name: 'Als verantwortlich benennen' })
+    expect(appoint).toBeEnabled()
+    await user.click(appoint)
+
+    const search = screen.getByRole('combobox', { name: 'Verantwortliche Person' })
+    expect(search).toHaveAccessibleDescription('Bitte eine Person auswählen.')
+    expect(mockAppointGroupSteward).not.toHaveBeenCalled()
   })
 
   it('gibt die Gruppe zur Verwendung frei', async () => {
@@ -300,7 +332,7 @@ describe('MyGroupsSection', () => {
     renderWithProviders(<MyGroupsSection />, { withRouter: true })
     const user = userEvent.setup()
 
-    const create = await screen.findByRole('button', { name: 'Neue Gruppe' })
+    const create = await screen.findByRole('button', { name: 'Gruppe anlegen' })
     expect(within(create).getByTestId('AddIcon')).toBeInTheDocument()
     await user.click(create)
     const dialog = await screen.findByRole('dialog', { name: 'Gruppe anlegen' })
