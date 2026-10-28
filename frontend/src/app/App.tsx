@@ -225,12 +225,11 @@ export default function App() {
                 <Route path="spaces/:spaceId/manage" element={<SpaceSettingsRedirect />} />
                 <Route path="spaces/:spaceId/settings" element={<SpaceSettingsRedirect />} />
                 <Route path="spaces/:spaceId/settings/:tab" element={<SpaceSettingsPage />} />
-                {/* No space selected yet: overview and create wizard render in the
-                  bare global frame; the navy column appears only inside a chosen space. */}
-                <Route element={<GlobalAreaLayout />}>
-                  <Route path="spaces" element={<SpacesOverviewPage />} />
-                  <Route path="spaces/new" element={<SpaceCreatePage />} />
-                </Route>
+                {/* Guidelines 5.13: overview (the space search) and create wizard open in the
+                  content area; the space column stays beside them, marking the space last
+                  active. */}
+                <Route path="spaces" element={<SpacesOverviewPage />} />
+                <Route path="spaces/new" element={<SpaceCreatePage />} />
                 {/* Every asset type's pages are a global area too (Schlussnotiz von
                   Mockup-Abschnitt 2): bare global frame, no secondary column. The catalog is
                   their one overview (ADR-0039); the former type overviews lead into it. */}

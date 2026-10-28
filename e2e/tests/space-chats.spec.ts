@@ -396,16 +396,14 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     // very question until title generation replaces it.
     await expect(page.getByRole('main').getByText(question)).toHaveCount(0)
 
-    // Picking a space in the sidebar's space switcher lands on an empty chat in that space, not on
-    // its overview page. Deliberately the space created above and not the one currently open (the
-    // default space, which /chat just resolved to), so this really exercises a switch. The
-    // switcher itself is named after the space it shows, hence the scope to the sidebar landmark
-    // plus its "Space" overline instead of a fixed name.
-    await page
-      .getByRole('complementary', { name: 'Space-Bereich' })
-      .getByRole('button', { name: /^Space/ })
-      .click()
-    await page.getByRole('menuitem', { name: new RegExp(spaceName) }).click()
+    // Picking a space in the sidebar's space list lands on an empty chat in that space, not on its
+    // overview page. /chat resolved to the space created above (the one last used), so the
+    // personal space comes first - only then is the pick of the created space a real switch.
+    // Creating it made it a recently used one, so it is among the rows (guidelines 5.13).
+    const spaceRows = page.getByRole('navigation', { name: 'Spaces' })
+    await spaceRows.getByRole('link', { name: 'Privater Bereich', exact: true }).click()
+    await expect(page).toHaveURL(new RegExp(`/spaces/(?!${targetSpaceId}/)[^/]+/chats/new$`))
+    await spaceRows.getByRole('link', { name: spaceName, exact: true }).click()
     await expect(page).toHaveURL(new RegExp(`/spaces/${targetSpaceId}/chats/new$`))
     await expect(
       page.getByRole('heading', { name: 'Womit kann ich Ihnen heute helfen?' }),

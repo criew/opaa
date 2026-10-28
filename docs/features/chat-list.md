@@ -28,7 +28,8 @@ verraten, den die Person nicht sehen darf.
 ## Überblick
 
 1. **Seitenleiste für den schnellen Griff.** Eine Gruppe „Angeheftet" ganz oben, darunter „Zuletzt
-   verwendet" mit Nachladen; ein Suchknopf neben „Neu" führt in die Chatsuche.
+   verwendet" mit Nachladen, beide zuklappbar und mit Zähler; die Lupe neben dem Plus „Neuer Chat"
+   führt in die Chatsuche.
 2. **Eine Seite „Chats" je Space zum Verwalten.** Reiter „Aktiv" und „Archiv", Mehrfachauswahl,
    Inhaltssuche mit Trefferauszug. Die Seitenleiste ist für Auszüge und Auswahlkästchen zu schmal.
 3. **Archivieren ist eine persönliche Ablage.** Der Chat verschwindet aus der Liste, bleibt lesbar und
@@ -62,26 +63,34 @@ missverständlich, weil der ganze Assistent „sucht".
 ## Die Seitenleiste
 
 ```
-┌──────────────────────┐
-│ SPACE ▾ Widerspruch  │
-├──────────────────────┤
-│ CHATS      + Neu  🔍 │
-│ ANGEHEFTET        ▾  │
-│ ▪ Fristen Übersicht  │
-│ ▪ Az. 12/4-2026      │
-│ ZULETZT VERWENDET    │
-│ · Erlass vom März    │
-│ · Rückfrage Kämmerei │
-│ · …                  │
-│ 15 weitere ⌄         │
-└──────────────────────┘
+┌──────────────────────────┐
+│ ˅ SPACES 8         +  🔍 │
+│ [P] Privater Bereich     │
+│ [W] Widerspruch     ◀    │
+│ …                        │
+├──────────────────────────┤
+│   CHATS            +  🔍 │
+│ ˅ ANGEHEFTET 2           │
+│ ▪ Fristen Übersicht      │
+│ ▪ Az. 12/4-2026          │
+│ ˅ ZULETZT VERWENDET 31   │
+│ · Erlass vom März        │
+│ · Rückfrage Kämmerei     │
+│ · …                      │
+│ 15 weitere ⌄             │
+└──────────────────────────┘
 ```
+
+Aufbau, Space-Zeilen und Aktionsmuster der Seitenleiste regeln die
+[Gestaltungsleitlinien, Abschnitt 5.13](../design/guidelines.md#513-seitenleiste-des-space) (#3292).
+In der Schublade unter 900 px Breite steht statt der Space-Zeilen der Space-Umschalter; die Chats
+sehen dort genauso aus.
 
 ### Suchknopf statt Filterfeld
 
 Ein Titelfilter beantwortet nur die halbe Frage — wer einen Chat sucht, erinnert sich oft an ein Wort
-aus dem Gespräch, nicht an dessen Titel. Statt eines Filterfelds steht deshalb ein Suchknopf neben
-„Neu" (#1918, Epic #1441):
+aus dem Gespräch, nicht an dessen Titel. Statt eines Filterfelds steht deshalb ein Suchknopf (Lupe)
+neben dem Plus „Neuer Chat" (#1918, Epic #1441; Nur-Icon-Knöpfe seit #3292):
 
 - Er öffnet die [Chatsuche](#chatsuche) auf der Seite „Chats" mit leerem Suchbegriff. Leer listet sie
   alle Chats, Archiv eingeschlossen; ab drei Zeichen treten die Treffer an deren Stelle.
@@ -94,8 +103,13 @@ aus dem Gespräch, nicht an dessen Titel. Statt eines Filterfelds steht deshalb 
 
 | Abschnitt | Enthält |
 |---|---|
-| **Angeheftet** | alle angehefteten Chats, zuletzt angeheftet oben; immer offen |
+| **Angeheftet** | alle angehefteten Chats, zuletzt angeheftet oben |
 | **Zuletzt verwendet** | alle übrigen Chats nach letzter Aktivität, die jüngsten 15 sichtbar |
+
+- Beide Köpfe sind zuklappbar und tragen einen Zähler als sichtbaren Text („Angeheftet 8"); er
+  nennt die ganze Gruppe, bei „Zuletzt verwendet" auch die Chats, die erst „15 weitere" aufdeckt.
+  Der Klappzustand bleibt im Browser gespeichert. „Angeheftet" war bis #3292 immer offen (#1970);
+  bei vielen angehefteten Chats blieb so kein Weg, die Gruppe aus dem Blick zu nehmen.
 
 - „15 weitere" blendet die nächste Seite ein — die letzte nennt ihre tatsächliche Zahl;
   „Weniger" klappt auf die ersten 15 zurück. Ein Spacewechsel beginnt wieder bei 15. Beide Knöpfe
@@ -130,7 +144,7 @@ aus dem Gespräch, nicht an dessen Titel. Statt eines Filterfelds steht deshalb 
 
 ## Die Seite „Chats" je Space
 
-Erreichbar über den Suchknopf neben „Neu" in der Chatliste. Sie ist die Verwaltungsfläche der eigenen
+Erreichbar über die Lupe neben dem Plus „Neuer Chat" in der Chatliste. Sie ist die Verwaltungsfläche der eigenen
 Chats eines Space, keine zweite Chatoberfläche: Ein Klick auf einen Eintrag öffnet den Chat.
 
 ```

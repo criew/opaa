@@ -9,22 +9,12 @@ import { catalogScopePrefixes } from '../assetTypes'
  */
 const OTHER_GLOBAL_AREA_PREFIXES = ['/admin', '/settings', '/revision']
 
-/**
- * Views where no space is selected yet: the overview of all spaces and the create
- * wizard. Exact paths on purpose - /spaces/:spaceId and everything below stays space-scoped
- * with the navy column.
- */
-const GLOBAL_AREA_EXACT_PATHS = ['/spaces', '/spaces/new']
-
 export function isGlobalAreaPath(pathname: string): boolean {
-  // React Router matches routes tolerant of trailing slashes ("/spaces/" renders the
-  // overview), so the comparison must be equally tolerant - otherwise a typed "/spaces/"
-  // brings the navy column back next to the overview.
+  // React Router matches routes tolerant of trailing slashes ("/catalog/" renders the
+  // catalog), so the comparison must be equally tolerant - otherwise a typed "/catalog/"
+  // brings the space column back next to it.
   const path = pathname.replace(/\/+$/, '') || '/'
-  return (
-    GLOBAL_AREA_EXACT_PATHS.includes(path) ||
-    [...OTHER_GLOBAL_AREA_PREFIXES, ...catalogScopePrefixes()].some(
-      (prefix) => path === prefix || path.startsWith(`${prefix}/`),
-    )
+  return [...OTHER_GLOBAL_AREA_PREFIXES, ...catalogScopePrefixes()].some(
+    (prefix) => path === prefix || path.startsWith(`${prefix}/`),
   )
 }

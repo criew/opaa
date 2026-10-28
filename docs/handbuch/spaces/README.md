@@ -179,20 +179,31 @@ Eine Kachel zeigt Name, Beschreibung und die Anzahl der Chats. Ihre eigene Rolle
 stehen in den Einstellungen des Space. Ein archivierter Space ist als solcher
 gekennzeichnet und führt auf seine Übersicht statt in einen neuen Chat.
 
-Das Space-Menü der Seitenleiste nennt unter jedem Namen die Mitglieder, wie die Reichweite eines
-Arbeitsmittels formuliert: „2 Gruppen, 3 Personen", oder „nur Sie", wenn Ihr eigenes Konto das
-einzige Mitglied ist — gleich, ob es der Standard-Space ist oder nicht. Eine Gruppe zählt als eine
-Mitgliedschaft, wie viele Personen sie auch umfasst; ihre Größe wird dort nicht genannt.
-
 Nach der Anmeldung öffnet OPAA einen **leeren Chat im zuletzt genutzten Space** — nicht den letzten
 Chat, und nicht mehr grundsätzlich den persönlichen Space. Ist der gemerkte Space nicht mehr
 zugänglich, weil er archiviert wurde, die Mitgliedschaft entzogen ist oder der Rechner zuletzt von
-jemand anderem benutzt wurde, führt der Einstieg in den persönlichen Space.
+jemand anderem benutzt wurde, führt der Einstieg in den persönlichen Space. Denselben Weg nimmt der
+Eintrag **„Chat"** ganz links in der globalen Leiste; er bleibt hervorgehoben, solange Sie in einem
+Space, in der Übersicht oder im Assistenten für einen neuen Space sind.
 
-Das Space-Menü am Kopf der Seitenleiste führt aus demselben Grund **höchstens fünf Spaces**, den
-zuletzt genutzten zuoberst; darunter stehen unverändert „Alle Spaces anzeigen" und „Neuer Space".
-Wer in vielen Spaces Mitglied ist, findet den vollständigen Bestand samt Suchfeld in der Übersicht —
-das Menü ist der schnelle Weg zurück, nicht das Verzeichnis.
+Gewechselt wird in der **Seitenleiste**. Auf dem Desktop steht oben der Bereich „Spaces" mit
+**höchstens fünf Spaces** als Zeilen: ausgewählt werden die zuletzt genutzten, angezeigt der
+persönliche Space zuerst, danach nach Name, damit eine angeklickte Zeile nicht springt. Der aktive
+Space ist immer dabei und hervorgehoben; ein archivierter erscheint nur, wenn Sie ihn zuletzt
+genutzt haben, mit dem Hinweis „archiviert". Die Zahl hinter „Spaces" nennt alle Ihre nicht
+archivierten Spaces. Rechts im Kopf legt das Plus „Neuer Space" einen Space an, die Lupe öffnet die
+Übersicht mit dem Cursor im Suchfeld; die Seitenleiste bleibt dabei stehen und markiert den zuletzt
+aktiven Space. Wer in vielen Spaces Mitglied ist, findet dort den vollständigen Bestand — die
+Zeilen sind der schnelle Weg zurück, nicht das Verzeichnis. Der Bereich lässt sich zuklappen; die
+Zeile des aktiven Space bleibt dann sichtbar.
+
+Auf schmalen Bildschirmen, wo sich die Seitenleiste als Überlagerung öffnet, ist für fünf Zeilen
+kein Platz. Dort steht stattdessen das **Space-Menü** am Kopf der Seitenleiste mit denselben
+höchstens fünf Spaces, den zuletzt genutzten zuoberst, und darunter „Alle Spaces anzeigen" (wie die
+Lupe) und „Neuer Space". Es nennt unter jedem Namen die Mitglieder, wie die Reichweite eines
+Arbeitsmittels formuliert: „2 Gruppen, 3 Personen", oder „nur Sie", wenn Ihr eigenes Konto das
+einzige Mitglied ist — gleich, ob es der Standard-Space ist oder nicht. Eine Gruppe zählt als eine
+Mitgliedschaft, wie viele Personen sie auch umfasst; ihre Größe wird dort nicht genannt.
 
 Die Nutzungsreihenfolge merkt sich der Browser, nicht der Server: Sie gilt je Gerät und je Browser
 und wandert nicht mit. Gemerkt werden nur Space-Kennungen, und die Liste wird bei jedem Öffnen gegen
@@ -257,8 +268,12 @@ nichts. Was dabei gilt, steht im Kapitel [Benutzerverwaltung](../konten-und-rech
 
 Die **Chatliste** in der Seitenleiste zeigt zuerst die angehefteten Chats, darunter „Zuletzt
 verwendet" mit den 15 zuletzt genutzten. „15 weitere" blendet die nächsten ein, „Weniger" klappt
-wieder auf die ersten 15 zurück. Ein Filterfeld gibt es nicht; der Suchknopf neben
-„Neu" öffnet die Chatsuche ([Suche](suche.md), Abschnitt 7.2), die auch archivierte Chats findet. Jeder Eintrag hat ein
+wieder auf die ersten 15 zurück. Beide Gruppen lassen sich zuklappen; die Zahl hinter dem Namen
+nennt die ganze Gruppe, bei „Zuletzt verwendet" auch die noch nicht eingeblendeten Chats. Welche
+Gruppen zugeklappt sind, merkt sich der Browser, wie die Breite der Seitenleiste. Im Kopf „Chats"
+beginnt das Plus „Neuer Chat" einen Chat, in einem archivierten Space ist es gesperrt. Ein
+Filterfeld gibt es nicht; die Lupe daneben öffnet die Chatsuche ([Suche](suche.md), Abschnitt 7.2),
+die auch archivierte Chats findet. Jeder Eintrag hat ein
 Menü mit Umbenennen, Anheften, Archivieren, den beiden Exporten als Markdown und PDF
 ([Suche](suche.md#7-belege-prüfen-und-fundstellen-bilden), Abschnitt „Belege prüfen und Fundstellen bilden", Absatz „Exportieren") und Löschen; der Titel des offenen Chats lässt sich
 zusätzlich direkt in der Kopfzeile bearbeiten (Enter speichert, Escape verwirft).

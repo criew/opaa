@@ -31,11 +31,10 @@ type GlobalAreaLayoutProps =
  * an area has several pages, and the routed page as the main surface. Reused without sections
  * by the user settings and the library catalog.
  *
- * Every route rendered inside this layout must also be covered by globalArea.ts - either in
- * GLOBAL_AREA_PREFIXES or, where a prefix would overreach, in GLOBAL_AREA_EXACT_PATHS
- * ("/spaces" must never become a prefix: every space and chat below it would lose its
- * column). The lists are what remove the space column in AppShell; this layout only adds
- * the frame. Keeping routes and lists in sync is manual.
+ * Every route rendered inside this layout must also be covered by the prefixes in
+ * globalArea.ts ("/spaces" must never become one: the overview, every space and chat below it
+ * keep the space column, guidelines 5.13). The list is what removes the space column in
+ * AppShell; this layout only adds the frame. Keeping routes and list in sync is manual.
  */
 export default function GlobalAreaLayout({ title, sections }: GlobalAreaLayoutProps) {
   const location = useLocation()

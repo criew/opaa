@@ -1,12 +1,14 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest'
 import { answerConfirm, renderWithProviders } from '@/test/test-utils'
 import { server } from '@/test/server'
 import ChatList from './ChatList'
 import type { ChatSummary } from '@/shared/api/types'
 import { useChatListStore } from '../stores/chatListStore'
+import { useSpaceStore } from '@/features/space'
+import { useUiStore } from '@/shared/stores/uiStore'
 
 const mockNavigate = vi.fn()
 let currentPathname = '/spaces/space-personal'
@@ -48,7 +50,7 @@ describe('ChatList', () => {
     renderWithProviders(<ChatList spaceId="space-personal" />)
     await screen.findByText('Architektur des Projekts')
 
-    await user.click(screen.getByRole('button', { name: 'Neu: Chat beginnen' }))
+    await user.click(screen.getByRole('button', { name: 'Neuer Chat' }))
 
     expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-personal/chats/new')
     // The existing chats are untouched - nothing was created.
@@ -179,11 +181,11 @@ describe('ChatList', () => {
     const field = screen.getByLabelText('Chat-Titel')
     await user.clear(field)
     await user.type(field, 'Neuer Titel')
-    await user.click(screen.getByRole('button', { name: 'Neu: Chat beginnen' }))
+    await user.click(screen.getByRole('button', { name: 'Neuer Chat' }))
 
     expect(await screen.findByText('Neuer Titel')).toBeInTheDocument()
     await screen.findByLabelText('Weitere Aktionen für „Neuer Titel“')
-    expect(screen.getByRole('button', { name: 'Neu: Chat beginnen' })).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'Neuer Chat' })).toHaveFocus()
   })
 })
 
@@ -585,5 +587,156 @@ describe('ChatList "Zuletzt verwendet"', () => {
 
     await user.click(screen.getByRole('button', { name: 'Weniger anzeigen' }))
     expect(screen.getByRole('status')).toHaveTextContent('Wieder 15 Chats angezeigt')
+  })
+})
+
+describe('ChatList head and groups of the space column (guidelines 5.13)', () => {
+  function summary(index: number, pinnedAt: string | null = null): ChatSummary {
+    const updatedAt = new Date(Date.now() - index * 60 * 1000).toISOString()
+    return {
+      id: `chat-${index}`,
+      spaceId: 'space-personal',
+      authorId: 'mock-user-id',
+      title: `Chat ${index}`,
+      useKnowledge: true,
+      referencedLibraryIds: [],
+      status: 'PRIVATE',
+      createdAt: updatedAt,
+      updatedAt,
+      pinnedAt,
+    }
+  }
+
+  beforeEach(() => {
+    mockNavigate.mockReset()
+    currentPathname = '/spaces/space-personal'
+    useChatListStore.getState().reset()
+    useChatListStore.setState({
+      chatsBySpaceId: {
+        'space-personal': [
+          summary(1, '2026-09-01T08:00:00Z'),
+          summary(2, '2026-09-02T08:00:00Z'),
+          ...Array.from({ length: 20 }, (_, index) => summary(index + 3)),
+        ],
+      },
+      isLoading: false,
+      error: null,
+    })
+  })
+
+  afterEach(() => {
+    useUiStore.setState({ collapsedSidebarSections: [] })
+    useSpaceStore.setState({ spaces: [] })
+  })
+
+  it('offers "Neuer Chat" as a plus icon button with a tooltip, no "Neu" text', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ChatList spaceId="space-personal" />)
+
+    const create = screen.getByRole('button', { name: 'Neuer Chat' })
+    expect(create).not.toHaveTextContent(/Neu/)
+    expect(create.querySelector('svg[data-testid="AddIcon"]')).not.toBeNull()
+
+    await user.hover(create)
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Neuer Chat')
+  })
+
+  it('locks the plus in an archived space and names the reason in its tooltip', async () => {
+    useSpaceStore.setState({
+      spaces: [
+        {
+          id: 'space-personal',
+          name: 'Privater Bereich',
+          description: null,
+          isDefault: true,
+          archived: true,
+          memberCount: 1,
+          memberships: { groupCount: 0, userCount: 1 },
+          userRole: 'ADMIN',
+          createdAt: '2026-03-01T10:00:00Z',
+          updatedAt: '2026-03-01T10:00:00Z',
+        },
+      ],
+    })
+    const user = userEvent.setup()
+    renderWithProviders(<ChatList spaceId="space-personal" />)
+
+    const create = screen.getByRole('button', { name: 'Neuer Chat' })
+    expect(create).toBeDisabled()
+    await user.hover(create.parentElement as HTMLElement)
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'Dieser Space ist archiviert und nimmt keine neuen Chats mehr an',
+    )
+  })
+
+  it('counts each group in its head, "Zuletzt verwendet" including the chats not yet revealed', () => {
+    renderWithProviders(<ChatList spaceId="space-personal" collapsibleGroups />)
+
+    expect(screen.getByRole('button', { name: 'Angeheftet 2' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+    // 15 rows are shown, the head counts all 20.
+    expect(screen.getByRole('button', { name: 'Zuletzt verwendet 20' })).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('list', { name: 'Zuletzt verwendet 20' })).getAllByRole('listitem'),
+    ).toHaveLength(15)
+  })
+
+  it('folds "Angeheftet" like the other groups and remembers it', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ChatList spaceId="space-personal" collapsibleGroups />)
+
+    const pinned = screen.getByRole('button', { name: 'Angeheftet 2' })
+    const region = document.getElementById(pinned.getAttribute('aria-controls') ?? '')
+    expect(region).not.toBeNull()
+
+    await user.click(pinned)
+
+    expect(pinned).toHaveAttribute('aria-expanded', 'false')
+    expect(region).not.toBeVisible()
+    expect(screen.queryByRole('list', { name: 'Angeheftet 2' })).not.toBeInTheDocument()
+    expect(useUiStore.getState().collapsedSidebarSections).toEqual(['chats.pinned'])
+  })
+
+  // A row pinned into (or unpinned out to) a folded group would not be rendered there, and its
+  // focus would fall to the body; the target group opens instead.
+  it.each([
+    ['pins', 'chats.pinned', 'Chat 3', 'Anheften'],
+    ['unpins', 'chats.recent', 'Chat 1', 'Lösen'],
+  ])(
+    '%s a chat into a folded group, opens that group and keeps focus on the row',
+    async (_verb, folded, title, action) => {
+      server.use(
+        http.put('/api/v1/chats/:chatId/pin', () =>
+          HttpResponse.json({ ...summary(3), pinnedAt: '2026-09-18T09:00:00Z' }),
+        ),
+        http.delete('/api/v1/chats/:chatId/pin', () => new HttpResponse(null, { status: 204 })),
+      )
+      useUiStore.setState({ collapsedSidebarSections: [folded] })
+      const user = userEvent.setup()
+      renderWithProviders(<ChatList spaceId="space-personal" collapsibleGroups />)
+
+      await user.click(screen.getByLabelText(`Weitere Aktionen für „${title}“`))
+      await user.click(screen.getByRole('menuitem', { name: action }))
+
+      await waitFor(() =>
+        expect(screen.getByLabelText(`Weitere Aktionen für „${title}“`)).toHaveFocus(),
+      )
+      expect(useUiStore.getState().collapsedSidebarSections).toEqual([])
+    },
+  )
+
+  it('folds "Zuletzt verwendet" together with its paging buttons', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ChatList spaceId="space-personal" collapsibleGroups />)
+    expect(screen.getByRole('button', { name: '5 weitere Chats anzeigen' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Zuletzt verwendet 20' }))
+
+    expect(screen.queryByRole('list', { name: 'Zuletzt verwendet 20' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: '5 weitere Chats anzeigen' }),
+    ).not.toBeInTheDocument()
   })
 })

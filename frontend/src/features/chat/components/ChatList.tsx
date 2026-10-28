@@ -24,6 +24,8 @@ import { useChatListStore } from '../stores/chatListStore'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { useSpaceStore } from '@/features/space'
+import CollapsibleSectionHead from '@/shared/ui/CollapsibleSectionHead'
+import { useSectionCollapsed, useUiStore } from '@/shared/stores/uiStore'
 import { chatTitle, RECENT_PAGE_SIZE, splitChats } from './chatListSections'
 import { exportChat } from './exportChat'
 import RowMenu from '@/shared/ui/RowMenu'
@@ -65,8 +67,13 @@ function revealMoreLabel(count: number): ReactNode {
 
 interface ChatListProps {
   spaceId: string
-  /** Rendered left of the "+ Neu" action, in the same row (mockup 1a's section head). */
+  /** Rendered left of the plus and search buttons, in the same row (mockup 1a's section head). */
   header?: ReactNode
+  /**
+   * The space column's groups (guidelines 5.13): "Angeheftet" and "Zuletzt verwendet" fold,
+   * remembered in the browser, and each head counts its whole group.
+   */
+  collapsibleGroups?: boolean
 }
 
 /**
@@ -75,7 +82,7 @@ interface ChatListProps {
  * search over every chat - archived ones included - sits behind the search button in the head
  * row; the list itself never filters.
  */
-export default function ChatList({ spaceId, header }: ChatListProps) {
+export default function ChatList({ spaceId, header, collapsibleGroups = false }: ChatListProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const chats = useChatListStore((s) => s.chatsBySpaceId[spaceId])
@@ -86,7 +93,7 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
   const deleteChatFromList = useChatListStore((s) => s.deleteChatFromList)
   const setChatPinned = useChatListStore((s) => s.setChatPinned)
   const setChatArchived = useChatListStore((s) => s.setChatArchived)
-  // An archived space accepts no new chats - the "Neu" button is
+  // An archived space accepts no new chats - the plus button is
   // disabled rather than hidden, so it stays a stable click target and the reason is explained via
   // its tooltip instead of the button silently vanishing.
   const isArchived = useSpaceStore((s) => s.spaces.find((space) => space.id === spaceId)?.archived)
@@ -108,6 +115,9 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
   // Set whenever the open chat changes or the list mounts; consumed once its row is rendered.
   const scrollToActiveRef = useRef(true)
   const groupIdPrefix = useId()
+  const pinnedCollapsed = useSectionCollapsed('chats.pinned') && collapsibleGroups
+  const recentCollapsed = useSectionCollapsed('chats.recent') && collapsibleGroups
+  const toggleSidebarSection = useUiStore((s) => s.toggleSidebarSection)
   // Pinning moves a row into another group, which remounts it; focus follows it there.
   const refocusMovedChatIdRef = useRef<string | null>(null)
   // While its pin request is in flight, a row the rollback moves back takes lost focus along.
@@ -214,6 +224,11 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
   }
 
   function handlePin(chat: ChatSummary, pinned: boolean) {
+    // A folded target group would not render the moved row, and its focus would fall to the body;
+    // it opens instead, so focus and sight follow the row.
+    if (pinned ? pinnedCollapsed : recentCollapsed) {
+      toggleSidebarSection(pinned ? 'chats.pinned' : 'chats.recent')
+    }
     refocusMovedChatIdRef.current = chat.id
     pinFocusChatIdRef.current = chat.id
     void setChatPinned(spaceId, chat.id, pinned).finally(() => {
@@ -408,8 +423,36 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
     )
   }
 
-  function renderSection(key: string, label: string, rows: ChatSummary[]) {
+  function renderSection(
+    key: 'pinned' | 'recent',
+    label: string,
+    rows: ChatSummary[],
+    total: number,
+    footer?: ReactNode,
+  ) {
     const headingId = `${groupIdPrefix}-${key}`
+    if (collapsibleGroups) {
+      const collapsed = key === 'pinned' ? pinnedCollapsed : recentCollapsed
+      return (
+        <Box key={key} sx={{ mt: 0.75 }}>
+          <CollapsibleSectionHead
+            sectionKey={`chats.${key}`}
+            label={label}
+            count={total}
+            controls={`${headingId}-region`}
+            id={headingId}
+          />
+          <Box id={`${headingId}-region`} hidden={collapsed}>
+            {!collapsed && rows.length > 0 && (
+              <List id={`${headingId}-list`} aria-labelledby={headingId} sx={{ px: 0, py: 0 }}>
+                {rows.map((chat) => renderChatRow(chat))}
+              </List>
+            )}
+            {!collapsed && footer}
+          </Box>
+        </Box>
+      )
+    }
     return (
       <Box key={key} sx={{ mt: 0.75 }}>
         <Typography
@@ -433,50 +476,59 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
     const { pinned, recent } = splitChats(allChats)
     const shown = Math.max(recentShown, RECENT_PAGE_SIZE)
     const remaining = recent.length - shown
+    const paging = (remaining > 0 || shown > RECENT_PAGE_SIZE) && (
+      // Short visible labels on one line each; the arrow carries "anzeigen", the hidden rest
+      // completes the accessible name, which still starts with the visible text.
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'space-between',
+          columnGap: 1,
+          px: 0.25,
+          mt: 0.5,
+        }}
+      >
+        {remaining > 0 && (
+          <Button
+            variant="text"
+            size="small"
+            onClick={revealMore}
+            endIcon={<ExpandMoreIcon aria-hidden />}
+            sx={PAGING_BUTTON_SX}
+          >
+            {revealMoreLabel(Math.min(remaining, RECENT_PAGE_SIZE))}
+          </Button>
+        )}
+        {shown > RECENT_PAGE_SIZE && (
+          <Button
+            variant="text"
+            size="small"
+            onClick={showFewer}
+            endIcon={<ExpandLessIcon aria-hidden />}
+            sx={{ ...PAGING_BUTTON_SX, ml: 'auto' }}
+          >
+            {labelWithHiddenRest('Weniger', 'anzeigen')}
+          </Button>
+        )}
+      </Box>
+    )
     return (
       <>
-        {pinned.length > 0 && renderSection('pinned', 'Angeheftet', pinned)}
-        {recent.length > 0 && renderSection('recent', 'Zuletzt verwendet', recent.slice(0, shown))}
+        {pinned.length > 0 && renderSection('pinned', 'Angeheftet', pinned, pinned.length)}
+        {recent.length > 0 &&
+          renderSection(
+            'recent',
+            'Zuletzt verwendet',
+            recent.slice(0, shown),
+            recent.length,
+            // Folded with its group, so the paging buttons never stand under a closed head.
+            collapsibleGroups ? paging : undefined,
+          )}
         <Box role="status" sx={visuallyHidden}>
           {revealStatus}
         </Box>
-        {(remaining > 0 || shown > RECENT_PAGE_SIZE) && (
-          // Short visible labels on one line each; the arrow carries "anzeigen", the hidden rest
-          // completes the accessible name, which still starts with the visible text.
-          <Box
-            sx={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              justifyContent: 'space-between',
-              columnGap: 1,
-              px: 0.25,
-              mt: 0.5,
-            }}
-          >
-            {remaining > 0 && (
-              <Button
-                variant="text"
-                size="small"
-                onClick={revealMore}
-                endIcon={<ExpandMoreIcon aria-hidden />}
-                sx={PAGING_BUTTON_SX}
-              >
-                {revealMoreLabel(Math.min(remaining, RECENT_PAGE_SIZE))}
-              </Button>
-            )}
-            {shown > RECENT_PAGE_SIZE && (
-              <Button
-                variant="text"
-                size="small"
-                onClick={showFewer}
-                endIcon={<ExpandLessIcon aria-hidden />}
-                sx={{ ...PAGING_BUTTON_SX, ml: 'auto' }}
-              >
-                {labelWithHiddenRest('Weniger', 'anzeigen')}
-              </Button>
-            )}
-          </Box>
-        )}
+        {!collapsibleGroups && paging}
       </>
     )
   }
@@ -487,25 +539,24 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 0.5 }}>
         {header ?? <span />}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+          {/* Guidelines 5.13: the same plus and search pair as the head "Spaces". */}
           <Tooltip
             title={
-              isArchived ? 'Dieser Space ist archiviert und nimmt keine neuen Chats mehr an' : ''
+              isArchived
+                ? 'Dieser Space ist archiviert und nimmt keine neuen Chats mehr an'
+                : 'Neuer Chat'
             }
           >
             <span>
-              <Button
-                variant="text"
+              <IconButton
                 size="small"
-                // Starts with the visible "Neu" (WCAG 2.5.3), so a voice command can say it.
-                aria-label="Neu: Chat beginnen"
-                startIcon={<AddIcon sx={{ fontSize: 13 }} />}
+                aria-label="Neuer Chat"
                 onClick={handleNewChat}
                 disabled={Boolean(isArchived)}
-                // Mockup 1a: a quiet small link, not a boxed button.
-                sx={{ minHeight: 0, px: 0.75, py: 0.25, fontSize: 11.5 }}
+                sx={{ p: 0.5, borderRadius: '4px' }}
               >
-                Neu
-              </Button>
+                <AddIcon sx={{ fontSize: 16 }} />
+              </IconButton>
             </span>
           </Tooltip>
           {/* The chat search covers titles and message texts of every chat, the archived ones

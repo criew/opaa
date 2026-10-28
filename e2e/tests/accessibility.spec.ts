@@ -208,7 +208,8 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
   });
 
   // The overview in both colour schemes: the quiet entry count (fg-2) and the state chips must
-  // keep 4.5:1 in light and dark.
+  // keep 4.5:1 in light and dark. The space column stays beside it (guidelines 5.13), so its
+  // space rows, counted group heads and icon buttons are checked along.
   test("Spaces-Übersicht in beiden Farbschemata", async ({
     authenticatedPage: page,
   }) => {
@@ -218,6 +219,14 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       page.getByRole("heading", { level: 1, name: "Spaces", exact: true }),
     ).toBeVisible();
     await expect(page.getByText(/^\d+ Eintr(ag|äge)$/)).toBeVisible();
+    await expect(
+      page
+        .getByRole("navigation", { name: "Globale Navigation" })
+        .getByRole("link", { name: "Chat", exact: true }),
+    ).toHaveAttribute("aria-current", "true");
+    await expect(
+      page.getByRole("navigation", { name: "Spaces" }).getByRole("link", { name: "Neuer Space" }),
+    ).toBeVisible();
 
     await page.emulateMedia({ colorScheme: "light" });
     await expectNoSeriousA11yViolations(

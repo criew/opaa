@@ -11,16 +11,24 @@ import {
   toChatSummary,
   resetMockChats,
 } from './chatFixtures'
+import { ensureScenarioChats, resetScenarioChats } from './chatScenarioFixtures'
+import { currentMockScenario, scenarioLatency } from '@/shared/mocks/mockScenario'
 import type { ChatCreateRequest, ChatSearchRequest, ChatUpdateRequest } from '@/shared/api/types'
 
 export function resetChatMockState() {
   resetMockChats()
+  resetScenarioChats()
 }
 
 export const chatHandlers = [
   // Mirrors ChatController/ChatService: chats are author-exclusive, listed per space and
   // sorted by last use - mockChatsForSpace already returns them sorted by updatedAt desc.
-  http.get('/api/v1/spaces/:spaceId/chats', ({ params }) => {
+  http.get('/api/v1/spaces/:spaceId/chats', async ({ params }) => {
+    ensureScenarioChats()
+    await scenarioLatency()
+    if (currentMockScenario() === 'failed') {
+      return HttpResponse.json({ error: 'Chats konnten nicht geladen werden' }, { status: 502 })
+    }
     const spaceId = String(params.spaceId)
     if (!mockSpaceDetails[spaceId]) {
       return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
@@ -54,6 +62,7 @@ export const chatHandlers = [
   }),
 
   http.get('/api/v1/chats/:chatId', ({ params }) => {
+    ensureScenarioChats()
     const chatId = String(params.chatId)
     const chat = mockChatDetails[chatId]
     if (!chat) {
@@ -150,6 +159,7 @@ export const chatHandlers = [
   }),
 
   http.get('/api/v1/spaces/:spaceId/chats/archived', ({ params, request }) => {
+    ensureScenarioChats()
     const spaceId = String(params.spaceId)
     if (!mockSpaceDetails[spaceId]) {
       return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
@@ -168,6 +178,7 @@ export const chatHandlers = [
 
   // Mirrors ChatController#searchSpaceChats: the term travels in the body, 3 to 200 characters.
   http.post('/api/v1/spaces/:spaceId/chats/search', async ({ params, request }) => {
+    ensureScenarioChats()
     const spaceId = String(params.spaceId)
     if (!mockSpaceDetails[spaceId]) {
       return HttpResponse.json({ error: 'Space nicht gefunden' }, { status: 404 })
