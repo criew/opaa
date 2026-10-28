@@ -472,6 +472,59 @@ describe('SpaceContentSection', () => {
     await waitFor(() => expect(restored).toHaveAttribute('aria-checked', 'true'))
   })
 
+  // An open succession refuses every new association, so an undo would fail for certain.
+  it('detaches an asset whose succession is open without offering an undo', async () => {
+    const { deletes, posts } = serveAssociations([
+      association('KNOWLEDGE_LIBRARY', 'library-referat-50'),
+    ])
+    server.use(
+      http.get('/api/v1/catalog', () =>
+        HttpResponse.json({
+          entries: [
+            {
+              assetType: 'KNOWLEDGE_LIBRARY',
+              assetId: 'library-referat-50',
+              name: 'Rechtsquellen Soziales',
+              description: null,
+              ownerType: 'USER',
+              origin: 'LOCAL',
+              status: 'SUCCESSION_OPEN',
+              itemCount: 3,
+              spaceCount: 1,
+              favorite: false,
+              succession: {
+                addressee: 'SYSTEM_ADMINISTRATION',
+                addresseeLabel: 'die Systemverwaltung',
+              },
+            },
+          ],
+          page: 0,
+          size: 50,
+          totalElements: 1,
+          totalPages: 1,
+        }),
+      ),
+    )
+    renderSection()
+    const user = userEvent.setup()
+
+    const associated = await tile('Rechtsquellen Soziales')
+    await waitFor(() =>
+      expect(associated).toHaveAccessibleDescription(/Lässt sich nicht neu zuordnen/),
+    )
+    await user.click(associated)
+
+    const notice = await screen.findByRole('alert')
+    expect(notice).toHaveTextContent(/Rechtsquellen Soziales.*gelöst/)
+    expect(notice).toHaveTextContent(/Nachfolge/)
+    expect(within(notice).queryByRole('button', { name: 'Rückgängig' })).not.toBeInTheDocument()
+    expect(deletes).toEqual(['library-referat-50'])
+    const detached = await tile('Rechtsquellen Soziales')
+    await waitFor(() => expect(detached).toHaveAttribute('aria-disabled', 'true'))
+    await user.click(detached)
+    expect(posts).toEqual([])
+  })
+
   it('names the error and leaves the check mark off when the undo fails', async () => {
     const { deletes, posts } = serveAssociations(
       [association('KNOWLEDGE_LIBRARY', 'library-referat-50')],

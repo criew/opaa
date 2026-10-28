@@ -294,4 +294,110 @@ describe('AssetTilePicker', () => {
     expect(retry).toBeEnabled()
     releaseStale()
   })
+
+  describe('an asset whose succession is open (#3276)', () => {
+    const REASON = /Lässt sich nicht neu zuordnen, solange die Nachfolge offen ist/
+    const frozen = {
+      ...entry('verwaist', 'Verwaiste Bibliothek'),
+      status: 'SUCCESSION_OPEN',
+      succession: { addressee: 'SYSTEM_ADMINISTRATION', addresseeLabel: 'die Systemverwaltung' },
+    } as unknown as CatalogEntryResponse
+    const frozenPick: AssetPick = {
+      assetType: 'KNOWLEDGE_LIBRARY',
+      assetId: 'verwaist',
+      name: 'Verwaiste Bibliothek',
+    }
+
+    function serveFrozen() {
+      server.use(
+        http.get('/api/v1/catalog', () =>
+          HttpResponse.json({
+            entries: [frozen, entry('frei', 'Freie Bibliothek')],
+            page: 0,
+            size: 50,
+            totalElements: 2,
+            totalPages: 1,
+          }),
+        ),
+      )
+    }
+
+    function ChosenHarness({
+      initial,
+      onToggled,
+    }: {
+      initial: AssetPick[]
+      onToggled?: (toggled: { pick: AssetPick; reachFrozen: boolean }) => void
+    }) {
+      const [value, setValue] = useState<AssetPick[]>(initial)
+      return (
+        <AssetTilePicker
+          value={value}
+          onChange={(next, toggled) => {
+            onToggled?.(toggled)
+            setValue(next)
+          }}
+          aria-label="Inhalte"
+        />
+      )
+    }
+
+    it('locks its unchosen tile and names why, while other tiles stay choosable', async () => {
+      serveFrozen()
+      const user = userEvent.setup()
+      renderWithProviders(<ChosenHarness initial={[]} />)
+
+      const locked = await screen.findByRole('checkbox', { name: 'Verwaiste Bibliothek' })
+      expect(locked).toHaveAttribute('aria-disabled', 'true')
+      expect(locked).toHaveAccessibleDescription(REASON)
+
+      await user.click(locked)
+
+      expect(locked).toHaveAttribute('aria-checked', 'false')
+      expect(screen.getByText('Nichts ausgewählt.')).toBeInTheDocument()
+
+      const free = screen.getByRole('checkbox', { name: 'Freie Bibliothek' })
+      expect(free).not.toHaveAttribute('aria-disabled')
+      expect(free).not.toHaveAccessibleDescription(REASON)
+      await user.click(free)
+      expect(free).toHaveAttribute('aria-checked', 'true')
+    })
+
+    it('lets its chosen tile be unchosen, says so, and locks it afterwards', async () => {
+      serveFrozen()
+      const toggles: Array<{ pick: AssetPick; reachFrozen: boolean }> = []
+      const user = userEvent.setup()
+      renderWithProviders(
+        <ChosenHarness initial={[frozenPick]} onToggled={(t) => toggles.push(t)} />,
+      )
+
+      const tile = await screen.findByRole('checkbox', { name: 'Verwaiste Bibliothek' })
+      expect(tile).toHaveAttribute('aria-checked', 'true')
+      expect(tile).not.toHaveAttribute('aria-disabled')
+      expect(tile).toHaveAccessibleDescription(REASON)
+
+      await user.click(tile)
+
+      expect(tile).toHaveAttribute('aria-checked', 'false')
+      expect(tile).toHaveAttribute('aria-disabled', 'true')
+      expect(toggles).toEqual([{ pick: expect.objectContaining(frozenPick), reachFrozen: true }])
+
+      await user.click(tile)
+      expect(tile).toHaveAttribute('aria-checked', 'false')
+      expect(toggles).toHaveLength(1)
+    })
+
+    it('reports a reach that is not frozen as such', async () => {
+      serveFrozen()
+      const toggles: Array<{ pick: AssetPick; reachFrozen: boolean }> = []
+      const user = userEvent.setup()
+      renderWithProviders(<ChosenHarness initial={[]} onToggled={(t) => toggles.push(t)} />)
+
+      await user.click(await screen.findByRole('checkbox', { name: 'Freie Bibliothek' }))
+
+      expect(toggles).toEqual([
+        { pick: expect.objectContaining({ assetId: 'frei' }), reachFrozen: false },
+      ])
+    })
+  })
 })
