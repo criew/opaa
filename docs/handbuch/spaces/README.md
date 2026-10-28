@@ -170,16 +170,19 @@ allem Gewählten und einen Knopf „Zuordnen" gibt es dort nicht.
 
 ## 6. Übersicht und Wechsel
 
-Die Übersicht führt alle Spaces auf, in denen Sie Mitglied sind. Die Überschrift nennt ihre Anzahl, oben rechts steht „Neuer Space". Ein Suchfeld filtert
-über Name und Beschreibung. Die Spaces stehen als Kacheln; eine Tabellenansicht gibt es nicht.
+Die Übersicht führt alle Spaces auf, in denen Sie Mitglied sind. Ihr Kopf ist wie im
+[Katalog](../arbeitsmittel/katalog.md) aufgebaut: die Überschrift „Spaces", daneben die Zahl der
+Einträge, oben rechts „Neuer Space". Ein Suchfeld filtert über Name und Beschreibung. Die Spaces
+stehen als Kacheln; eine Tabellenansicht gibt es nicht.
 
-Eine Kachel zeigt Name, Beschreibung und die Anzahl der Chats, darunter Ihre eigene Rolle und die
-Mitglieder als Badges. Die Mitgliederangabe ist wie die Reichweite eines Arbeitsmittels formuliert:
-„2 Gruppen, 3 Personen", oder „nur Sie", wenn Ihr eigenes Konto das einzige Mitglied ist — gleich,
-ob es der Standard-Space ist oder nicht. Eine Gruppe zählt als eine Mitgliedschaft, wie viele Personen
-sie auch umfasst; ihre Größe wird hier nicht genannt. Ein archivierter Space ist als solcher
-gekennzeichnet und führt auf seine Übersicht statt in einen neuen Chat. Das Space-Menü der
-Seitenleiste nennt unter jedem Namen dieselbe Mitgliederangabe.
+Eine Kachel zeigt Name, Beschreibung und die Anzahl der Chats. Ihre eigene Rolle und die Mitglieder
+stehen in den Einstellungen des Space. Ein archivierter Space ist als solcher
+gekennzeichnet und führt auf seine Übersicht statt in einen neuen Chat.
+
+Das Space-Menü der Seitenleiste nennt unter jedem Namen die Mitglieder, wie die Reichweite eines
+Arbeitsmittels formuliert: „2 Gruppen, 3 Personen", oder „nur Sie", wenn Ihr eigenes Konto das
+einzige Mitglied ist — gleich, ob es der Standard-Space ist oder nicht. Eine Gruppe zählt als eine
+Mitgliedschaft, wie viele Personen sie auch umfasst; ihre Größe wird dort nicht genannt.
 
 Nach der Anmeldung öffnet OPAA einen **leeren Chat im zuletzt genutzten Space** — nicht den letzten
 Chat, und nicht mehr grundsätzlich den persönlichen Space. Ist der gemerkte Space nicht mehr

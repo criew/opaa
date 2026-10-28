@@ -143,8 +143,6 @@ export default function CatalogPage() {
   return (
     <OverviewPage<CatalogEntryResponse>
       title="Katalog"
-      countLabel={(count) => (count === 1 ? '1 Eintrag' : `${count} Einträge`)}
-      subtitle="Alles, was Sie nutzen dürfen. Ihre Favoriten stehen oben."
       createLabel={canCreate ? 'Neuer Katalogeintrag' : undefined}
       onCreate={canCreate ? () => navigate(CATALOG_NEW_ROUTE) : undefined}
       items={entries}
