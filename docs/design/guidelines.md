@@ -523,12 +523,21 @@ Pille (Rahmen `border`, Radius `pill`). Er trägt links die Fußnotenmarken der 
 Text, ab der vierten als „+n" —, rechts einen Pfeil in `accent`. Beim Hover fächern die Marken leicht auf und der Pfeil
 rückt 2 px nach (120 ms, nur `transform`). Daneben die Zählzeile „n Stellen in m Dokumenten ·
 k weitere geprüft" in `fg-2`, mit dem Knopf per `aria-describedby` verbunden. Die Antwort bleibt
-Fließtext, auch in langen Gesprächen. Alle Fundstellen stehen im **Belegfenster** rechts, je Dokument Ziffern +
-Titel (Gewicht 500) + Fundort, Metadaten und Stand. Ein Klick auf eine Fußnote öffnet das
+Fließtext, auch in langen Gesprächen. Alle Fundstellen stehen im **Belegfenster** rechts. Sein Kopf
+trägt nur „Belege dieser Antwort", darunter das Suchfeld „In Belegen suchen". Es öffnet mit den
+zitierten Belegen in Zitatreihenfolge; die geprüften, nicht zitierten blendet der Link
+**„Nicht zitierte anzeigen"** unter der Liste ein und wieder aus. Er folgt dem Disclosure-Muster:
+Die Beschriftung bleibt, nur `aria-expanded` und ein Chevron wechseln; eine höfliche Statusmeldung
+(„3 nicht zitierte Belege eingeblendet") sagt die neuen Zeilen an, die oberhalb des Links
+erscheinen. Eine Suche durchsucht immer alle Belege; solange sie läuft, tritt der Link zurück.
+Nicht zitierte Zeilen treten über die Farbrolle zurück (Titel in `fg-2`), nie über Deckkraft, die
+den Kontrast unter 4,5:1 drückte. Je Dokument stehen Ziffern + Titel (Gewicht 500) + Fundort und die
+Aktion „Dokument öffnen"; Rang, Indexierungsdatum, Metadatenzeile und Quelladresse zeigt das
+Belegfenster nicht — sie sind Fehlersuche, nicht Nachschlagen. Ein Klick auf eine Fußnote öffnet das
 Belegfenster an ihrer Fundstelle und markiert sie dort (Fläche `accent` 7 %, Akzentkante links) —
 markiert wird der Beleg, nicht der Antworttext. Ein Beleg, den die Belegvalidierung nicht
 bestätigt, trägt einen dezenten Hinweis in normaler Beleg-Typografie — kein Banner, keine
-Signalfarbe (Ausgestaltung: Issues #590/#592/#1449, Mockups 1a/1i).
+Signalfarbe (Ausgestaltung: Issues #590/#592/#1449/#3259, Mockups 1a/1i).
 
 ### 5.9 Popup-Benachrichtigungen
 

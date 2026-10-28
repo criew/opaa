@@ -21,7 +21,7 @@ interface DocumentTextPreviewDialogProps {
 const TITLE_ID = 'document-preview-title'
 
 /**
- * The client-side preview for Markdown/plain text originals ("Im Dokument öffnen" on a `.md`/
+ * The client-side preview for Markdown/plain text originals ("Dokument öffnen" on a `.md`/
  * `.txt` Fundstelle) - a `text/markdown` or `text/plain` blob would otherwise render as raw,
  * unformatted text or trigger a silent download depending on the browser, neither of which is the
  * "Beleg bis ins Original prüfen" moment the ticket asks for.

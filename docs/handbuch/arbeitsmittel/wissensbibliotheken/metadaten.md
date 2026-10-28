@@ -17,7 +17,7 @@ deshalb **keine Suchbegriffe, sondern Bedingungen an das Ergebnis**: „nur Dien
 |---|---|
 | **Filter** | Ein gesetzter Filter schränkt beide Suchpfade (Vektor und Volltext) ein, bevor gerankt wird |
 | **Kontextpräfix** | Ausgewählte Werte stehen dem eingebetteten und volltextindizierten Text voran, auch ohne gesetzten Filter (Abschnitt 9) |
-| **Beleg** | Die Fundstelle einer Antwort zeigt Titel, Dokumentart und Datum/Stand des zitierten Dokuments |
+| **Beleg** | Die Fundstelle einer Antwort trägt Titel, Dokumentart und Datum/Stand des zitierten Dokuments; ausgegeben werden sie an externe KI-Werkzeuge (Suchschnittstelle, MCP), das Belegfenster im Chat zeigt sie nicht (Abschnitt 10) |
 | **Pflege** | Die Bibliothek zeigt, für wie viele Dokumente ein Feld leer ist, damit sich der Bestand nachpflegen lässt |
 
 Die eine Regel, die alles Weitere prägt: **lieber leer als geraten.** Ein geratener Wert, der als
@@ -59,8 +59,8 @@ Ein Formatfeld hängt wie ein Kernfeld am Dokument; der filterbare Absender wird
 seine Chunks vererbt, damit beide Suchpfade dieselbe Bedingung tragen. Ein Dokument eines anderen
 Formats hat schlicht keinen Wert und wird von einem Filter darauf nie ausgeschlossen — und auch
 nicht als „ohne Angabe" gekennzeichnet, weil die Frage nach seinem Absender nie gestellt war. Der Absender wird auf die reine Adresse reduziert und kleingeschrieben, damit
-„genau diese Adresse" prüfbar bleibt. Betreff und An sind **Anzeigefelder**: Sie stehen im Beleg,
-filtern aber nie — ein Teilstring-Filter würde aus einem prüfbaren Feld wieder eine Textsuche
+„genau diese Adresse" prüfbar bleibt. Betreff und An sind **Anzeigefelder**: Sie stehen in der Fundstelle, die externe KI-Werkzeuge
+erhalten, filtern aber nie — ein Teilstring-Filter würde aus einem prüfbaren Feld wieder eine Textsuche
 machen, und die leistet die Volltextsuche über den Kopfblock im Chunk-Text ohnehin.
 
 ### 2b. Bibliotheksfelder
@@ -80,9 +80,10 @@ der Bibliothek im Reiter **„Metadaten"**, Abschnitt **„Felder"** („Feld an
 Vier Regeln, die die Konfiguration eng führen:
 
 - **Aufnahmeregel.** Ein Feld wird nur angenommen, wenn es **filtert** oder **im Kontextpräfix
-  wirkt**. „Nur im Beleg anzeigen" wird abgewiesen — ein Feld, das nichts findbar macht, erzeugt
-  Pflegearbeit ohne Gegenwert. Die Beleg-Anzeige ist eine Zugabe: höchstens zwei Felder je
-  Bibliothek tragen eine Belegposition (1 oder 2).
+  wirkt**. „Nur Zitierposition" wird abgewiesen — ein Feld, das nichts findbar macht, erzeugt
+  Pflegearbeit ohne Gegenwert. Die **Zitierposition** ist eine Zugabe: höchstens zwei Felder je
+  Bibliothek tragen eine (1 oder 2). Sie wirkt nur in der Ausgabe für externe KI-Werkzeuge
+  (Suchschnittstelle, MCP); das Belegfenster im Chat zeigt keine Metadaten.
 - **Die Feldidentität ist Bibliothek plus Schlüssel.** Zwei Bibliotheken dürfen beide `fassung`
   führen, mit verschiedenen Wertelisten; ein Filter benennt deshalb immer beides. Ein Dokument einer
   anderen Bibliothek wird nie gegen eine fremde Werteliste geprüft.
@@ -516,13 +517,13 @@ filtert oder nur im Beleg steht, lässt den Abdruck unberührt.
 
 ## 10. Beleg-Anzeige
 
-Das Belegfenster einer Antwort zeigt je Dokument Titel, Dokumentart und Datum/Stand
-des zitierten Dokuments, mit „ · " verbunden; ein leeres Feld erscheint gar nicht, ein abgeleiteter
-Wert ist als „(abgeleitet)" gekennzeichnet. Die Ortsangabe im Dokument bleibt daneben bestehen. Die
-Formatfelder eines Dokuments stehen als weitere Einträge derselben Liste dahinter; ein Wert, den der
-Titel bereits wörtlich zeigt — bei einer Mail der Betreff —, wird nicht zweimal aufgeführt. Der
-Empfänger einer Mail steht in einer eigenen Zeile darunter, nicht in der Metadatenzeile: Eine
-Verteilerliste ist lang und ordnet die Fundstelle nicht ein.
+Das Belegfenster einer Antwort zeigt je Dokument nur Titel und Fundort, keine Metadatenwerte:
+Dokumentart, Datum/Stand und Formatfelder helfen beim Nachschlagen nicht und stehen dort nicht.
+Im Belegfenster erscheint von den Metadaten nur die Kennzeichnung „ohne Angabe" unter aktivem
+Filter (Abschnitt 8). Die Metadaten jeder Fundstelle — Kernfelder, Formatfelder und die
+Bibliotheksfelder mit Zitierposition in deren Reihenfolge — gibt nur der Zugriffsweg für externe
+KI-Werkzeuge aus (Suchschnittstelle, MCP; Kapitel [Suche](../../spaces/suche.md)). Ein abgeleiteter
+Wert ist dort als „(abgeleitet)" gekennzeichnet; ein leeres Feld fehlt.
 
 ## 11. Rechte und Sichtbarkeit
 
@@ -594,14 +595,14 @@ abschalten (`OPAA_FEATURES_METADATA_ENABLED=false`, wirkt nach einem Neustart; a
   Suchverwaltung entfallen. Bestandslauf, Kontextpräfix-Nachlauf und Schemaänderungen laufen nicht;
   ihre Schnittstellen antworten wie eine unbekannte Adresse.
 - **Nichts wird gelöscht.** Vorhandene Werte, Felder, Schlagworte und gespeicherte Filter bleiben
-  unverändert liegen und werden nur nicht beachtet. Ein Beleg zeigt von ihnen nur den Titel.
+  unverändert liegen und werden nur nicht beachtet. Eine Fundstelle trägt von ihnen nur den Titel.
   Bereits eingebettete Abschnitte behalten ihren bisherigen Kontextpräfix.
 - **Wieder eingeschaltet, gilt der frühere Stand erst nach dem Bestandslauf vollständig.**
   Dokumente, die während der Abschaltung nicht neu aufgenommen wurden, wirken sofort wieder mit
-  ihren Werten in Filter, Kontextpräfix und Beleg. Ein Dokument, das in dieser Zeit neu oder erneut
+  ihren Werten in Filter, Kontextpräfix und Fundstelle. Ein Dokument, das in dieser Zeit neu oder erneut
   aufgenommen wurde, trägt an seinen Abschnitten keine filterbaren Werte: Der Filter behandelt es als
-  „ohne Angabe", während der Beleg noch die gespeicherten Werte von vor der Abschaltung zeigen
-  kann, und sein Kontextpräfix enthält nur den Titel. Diese Dokumente zählt der Bestandslauf
+  „ohne Angabe", während seine Fundstelle noch die gespeicherten Werte von vor der Abschaltung
+  tragen kann, und sein Kontextpräfix enthält nur den Titel. Diese Dokumente zählt der Bestandslauf
   (Abschnitt 6) als ausstehend. Er startet nicht von selbst: Ein Systemadministrator startet ihn
   nach dem Wiedereinschalten je Bibliothek über „Kernfelder nachrüsten" und danach, wo der
   Indexstatus Dokumente mit veraltetem Kontextpräfix meldet, den Kontextpräfix-Nachlauf.

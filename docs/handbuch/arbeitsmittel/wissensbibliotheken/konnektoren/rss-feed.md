@@ -24,8 +24,8 @@ flowchart LR
   ignoriert. Ein Eintrag ohne Link entfällt, von mehreren Links zählt der erste; ein nicht lesbares
   `pubDate` gilt als fehlend.
 - **Dokument:** Der Eintrag ist ein Dokument, jede Anlage ein eigenes mit dem Eintrag als
-  Elterndokument. Im Chat trägt jede Fundstelle daraus neben „Im Dokument öffnen" einen Link „Quelle"
-  auf die Adresse des Eintrags.
+  Elterndokument. Im Chat öffnet „Dokument öffnen" an einer Fundstelle daraus das Dokument durch
+  OPAA; die Adresse des Eintrags zeigt das Belegfenster nicht.
 - **Rechte** der Website übernimmt OPAA nicht.
 
 ## 2. Einrichtung

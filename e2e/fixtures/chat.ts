@@ -136,6 +136,20 @@ function evidenceRow(drawer: Locator, fileName: string): Locator {
   return drawer.getByTestId('evidence-doc').filter({ hasText: fileName })
 }
 
+/**
+ * Unfolds the checked but uncited sources, which the Belegfenster keeps behind the disclosure
+ * "Nicht zitierte anzeigen". Whether the answer has any comes from the count line next to
+ * "Belege anzeigen" ("k weitere geprüft" / "k geprüft, keine zitiert"), so a renamed or missing
+ * disclosure fails here instead of silently leaving the uncited rows folded away.
+ */
+export async function showUncitedEvidence(page: Page, drawer: Locator): Promise<void> {
+  const summary = await page.getByTestId('evidence-summary').last().textContent()
+  if (!summary?.includes('geprüft')) return
+  const toggle = drawer.getByRole('button', { name: 'Nicht zitierte anzeigen' })
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+}
+
 /** Waits for the answer to carry Belege and asserts fileName among them, cited. */
 export async function expectCitedSource(page: Page, fileName: string): Promise<void> {
   await withLatestEvidence(page, async (drawer) => {
@@ -171,6 +185,8 @@ export async function expectCitedExclusively(
 ): Promise<void> {
   await withLatestEvidence(page, async (drawer) => {
     await expect(evidenceRow(drawer, citedFileName)).toHaveAttribute('data-cited', 'true')
+    // Absent among the uncited sources too, not only folded away.
+    await showUncitedEvidence(page, drawer)
     await expect(evidenceRow(drawer, excludedFileName)).toHaveCount(0)
   })
 }
