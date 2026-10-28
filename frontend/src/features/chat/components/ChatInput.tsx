@@ -17,6 +17,7 @@ import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import SendIcon from '@mui/icons-material/Send'
 import { CHAT_MAX_WIDTH, focusFrameStyle } from '@/shared/theme/theme'
 import { useAuthStore } from '@/shared/session/authStore'
+import MetaBadge from '@/shared/ui/MetaBadge'
 import { QUESTION_MAX_LENGTH, useChatStore } from '../stores/chatStore'
 import { SpaceKnowledgeNotice } from '@/features/space'
 import { AiNotice } from './AiNotice'
@@ -531,21 +532,9 @@ export default function ChatInput({
                           name
                         )}
                       </Typography>
-                      <Typography
-                        component="span"
-                        sx={{
-                          flex: 'none',
-                          fontSize: 10.5,
-                          color: 'text.secondary',
-                          border: 1,
-                          borderColor: 'divider',
-                          borderRadius: '4px',
-                          px: 1,
-                          py: 0.25,
-                        }}
-                      >
-                        {badge}
-                      </Typography>
+                      <Box component="span" sx={{ flex: 'none', display: 'inline-flex' }}>
+                        <MetaBadge>{badge}</MetaBadge>
+                      </Box>
                     </ListItemButton>
                   )
                 })}

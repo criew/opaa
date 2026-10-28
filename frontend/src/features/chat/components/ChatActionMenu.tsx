@@ -8,6 +8,7 @@ import Popper from '@mui/material/Popper'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import { fontFamily } from '@/shared/theme/tokens'
+import MetaBadge from '@/shared/ui/MetaBadge'
 import { actionOptionId } from './chatActions'
 import type { ChatActionTexts } from './chatActions'
 import type { SourcedChatAction } from './useChatActions'
@@ -167,21 +168,9 @@ export default function ChatActionMenu({
                               )}
                             </Box>
                             {action.badge && (
-                              <Typography
-                                component="span"
-                                sx={{
-                                  flex: 'none',
-                                  fontSize: 10.5,
-                                  color: 'text.secondary',
-                                  border: 1,
-                                  borderColor: 'divider',
-                                  borderRadius: '4px',
-                                  px: 1,
-                                  py: 0.25,
-                                }}
-                              >
-                                {action.badge}
-                              </Typography>
+                              <Box component="span" sx={{ flex: 'none', display: 'inline-flex' }}>
+                                <MetaBadge>{action.badge}</MetaBadge>
+                              </Box>
                             )}
                           </ListItemButton>
                         )

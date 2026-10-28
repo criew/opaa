@@ -10,7 +10,7 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import CorporateFareOutlinedIcon from '@mui/icons-material/CorporateFareOutlined'
 import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined'
-import MoreVertIcon from '@mui/icons-material/MoreVert'
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import type { AccountResponse } from '@/shared/api/types'
 import { providerLifecycleHint, roleManagedByProviderText } from './accountLabels'
 
@@ -45,7 +45,7 @@ export default function ProviderAccountRowMenu({
             aria-haspopup="true"
             onClick={(e) => setAnchor(e.currentTarget)}
           >
-            <MoreVertIcon fontSize="small" />
+            <MoreHorizIcon fontSize="small" />
           </IconButton>
         </span>
       </Tooltip>

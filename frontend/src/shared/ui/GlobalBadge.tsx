@@ -1,6 +1,6 @@
 import Box from '@mui/material/Box'
 import { alpha } from '@mui/material/styles'
-import { fontFamily } from '../theme/tokens'
+import { badgeShape, fontFamily } from '../theme/tokens'
 
 /**
  * Marks a surface as application-wide (mockups 2b/2c): a quiet mono chip reading
@@ -22,7 +22,7 @@ export default function GlobalBadge() {
         bgcolor: (t) => alpha(t.palette.primary.main, 0.1),
         border: 1,
         borderColor: (t) => alpha(t.palette.primary.main, 0.4),
-        borderRadius: '4px',
+        ...badgeShape,
         px: '6px',
         py: '3px',
         flex: 'none',

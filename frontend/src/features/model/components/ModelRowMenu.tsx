@@ -6,10 +6,11 @@ import ListItemIcon from '@mui/material/ListItemIcon'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import Typography from '@mui/material/Typography'
+import Tooltip from '@mui/material/Tooltip'
 import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import MoreVertIcon from '@mui/icons-material/MoreVert'
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import WifiTetheringOutlinedIcon from '@mui/icons-material/WifiTetheringOutlined'
 import type { LlmModelResponse } from '@/shared/api/types'
 import { testLlmModel } from '../api/modelApi'
@@ -92,15 +93,19 @@ export default function ModelRowMenu({ model, onEdit }: ModelRowMenuProps) {
 
   return (
     <>
-      <IconButton
-        size="small"
-        onClick={(e) => setAnchor(e.currentTarget)}
-        disabled={busy}
-        aria-haspopup="true"
-        aria-label={`Aktionen für „${model.displayName}“`}
-      >
-        <MoreVertIcon fontSize="small" />
-      </IconButton>
+      <Tooltip title="Weitere Aktionen">
+        <span>
+          <IconButton
+            size="small"
+            onClick={(e) => setAnchor(e.currentTarget)}
+            disabled={busy}
+            aria-haspopup="true"
+            aria-label={`Aktionen für „${model.displayName}“`}
+          >
+            <MoreHorizIcon fontSize="small" />
+          </IconButton>
+        </span>
+      </Tooltip>
       <Menu
         anchorEl={anchor}
         open={anchor !== null}

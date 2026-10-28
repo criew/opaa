@@ -9,7 +9,7 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import MoreVertIcon from '@mui/icons-material/MoreVert'
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import PauseCircleOutlineIcon from '@mui/icons-material/PauseCircleOutlined'
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutlined'
 import PeopleOutlineIcon from '@mui/icons-material/PeopleOutlined'
@@ -111,7 +111,7 @@ export default function GroupRowMenu({
             disabled={busy}
             onClick={(e) => setAnchor(e.currentTarget)}
           >
-            <MoreVertIcon fontSize="small" />
+            <MoreHorizIcon fontSize="small" />
           </IconButton>
         </span>
       </Tooltip>

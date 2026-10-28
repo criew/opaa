@@ -11,6 +11,7 @@ import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined'
 import PublicIcon from '@mui/icons-material/Public'
 import StarIcon from '@mui/icons-material/Star'
 import StarBorderIcon from '@mui/icons-material/StarBorder'
+import { badgeShape } from '@/shared/theme/tokens'
 import type { AssetTypeDefinition } from '../../../shared/assetTypes'
 
 /** The responsible party behind a person or group symbol. */
@@ -72,7 +73,7 @@ export function PrivateMark() {
         color: 'text.secondary',
         border: 1,
         borderColor: 'divider',
-        borderRadius: '4px',
+        ...badgeShape,
         px: 0.75,
         py: 0.25,
         whiteSpace: 'nowrap',
@@ -100,7 +101,7 @@ export function ErasingMark() {
         color: 'text.primary',
         border: 1,
         borderColor: 'error.main',
-        borderRadius: '4px',
+        ...badgeShape,
         px: 0.75,
         py: 0.25,
         whiteSpace: 'nowrap',
@@ -127,7 +128,7 @@ export function TypeBadge({ definition }: { definition: AssetTypeDefinition }) {
         color: 'text.secondary',
         border: 1,
         borderColor: 'divider',
-        borderRadius: '4px',
+        ...badgeShape,
         px: 0.75,
         py: 0.25,
         whiteSpace: 'nowrap',

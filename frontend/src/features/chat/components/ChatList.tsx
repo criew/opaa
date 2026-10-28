@@ -22,7 +22,7 @@ import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import EditIcon from '@mui/icons-material/Edit'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import MoreVertIcon from '@mui/icons-material/MoreVert'
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined'
 import PushPinIcon from '@mui/icons-material/PushPin'
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
@@ -319,20 +319,22 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
           !isRenaming && (
             // Mockup 1a: one quiet three-dot trigger per row, the actions live in a
             // light dropdown.
-            <IconButton
-              size="small"
-              ref={(el) => {
-                if (el) getActionButtonRefs().set(chat.id, el)
-                else getActionButtonRefs().delete(chat.id)
-              }}
-              aria-label={`Aktionen für Chat „${chatTitle(chat)}“`}
-              aria-haspopup="menu"
-              aria-expanded={menuAnchor?.chatId === chat.id ? 'true' : undefined}
-              onClick={(event) => setMenuAnchor({ chatId: chat.id, el: event.currentTarget })}
-              sx={{ p: 0.5, borderRadius: '4px' }}
-            >
-              <MoreVertIcon sx={{ fontSize: 16 }} />
-            </IconButton>
+            <Tooltip title="Weitere Aktionen">
+              <IconButton
+                size="small"
+                ref={(el) => {
+                  if (el) getActionButtonRefs().set(chat.id, el)
+                  else getActionButtonRefs().delete(chat.id)
+                }}
+                aria-label={`Aktionen für Chat „${chatTitle(chat)}“`}
+                aria-haspopup="menu"
+                aria-expanded={menuAnchor?.chatId === chat.id ? 'true' : undefined}
+                onClick={(event) => setMenuAnchor({ chatId: chat.id, el: event.currentTarget })}
+                sx={{ p: 0.5, borderRadius: '4px' }}
+              >
+                <MoreHorizIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
           )
         }
       >

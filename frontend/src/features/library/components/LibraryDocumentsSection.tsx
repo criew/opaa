@@ -5,6 +5,7 @@ import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Typography from '@mui/material/Typography'
 import IconButton from '@mui/material/IconButton'
+import Tooltip from '@mui/material/Tooltip'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import RowMenu from '@/shared/ui/RowMenu'
 import type { DocumentStatus, SourceTypeKey, LibraryDocumentResponse } from '@/shared/api/types'
@@ -445,14 +446,16 @@ export default function LibraryDocumentsSection({
         renderFolderActions={
           canManageFolders
             ? (folder) => (
-                <IconButton
-                  edge="end"
-                  aria-label={`Optionen für Ordner ${folder.name}`}
-                  size="small"
-                  onClick={(e) => setFolderMenu({ anchorEl: e.currentTarget, folder })}
-                >
-                  <MoreHorizIcon fontSize="small" />
-                </IconButton>
+                <Tooltip title="Weitere Aktionen">
+                  <IconButton
+                    edge="end"
+                    aria-label={`Optionen für Ordner ${folder.name}`}
+                    size="small"
+                    onClick={(e) => setFolderMenu({ anchorEl: e.currentTarget, folder })}
+                  >
+                    <MoreHorizIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
               )
             : undefined
         }

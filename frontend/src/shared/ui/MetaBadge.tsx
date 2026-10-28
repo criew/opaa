@@ -1,5 +1,6 @@
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
+import { badgeShape } from '../theme/tokens'
 
 interface MetaBadgeProps {
   children: string
@@ -22,7 +23,7 @@ export default function MetaBadge({ children, accent = false }: MetaBadgeProps) 
         color: accent ? 'primary.main' : 'text.secondary',
         border: 1,
         borderColor: accent ? (t) => alpha(t.palette.primary.main, 0.4) : 'divider',
-        borderRadius: '4px',
+        ...badgeShape,
         px: 1,
         py: 0.25,
         whiteSpace: 'nowrap',
