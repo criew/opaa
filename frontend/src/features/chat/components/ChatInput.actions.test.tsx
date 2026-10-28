@@ -20,7 +20,11 @@ import { promptActionSource } from './promptActionSource'
 /** The hint ends the placeholder and is the field's accessible description. */
 async function expectPrefixHint(hint: string) {
   const input = screen.getByRole('combobox')
-  await waitFor(() => expect(input).toHaveAttribute('placeholder', `Nachricht eingeben … ${hint}`))
+  await waitFor(() =>
+    expect(input.getAttribute('placeholder')?.replaceAll('\u00a0', ' ')).toBe(
+      `Nachricht eingeben … ${hint}`,
+    ),
+  )
   expect(input).toHaveAccessibleDescription(hint)
 }
 

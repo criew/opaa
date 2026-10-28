@@ -265,8 +265,9 @@ Gerät und nicht je Konto. Auf schmalen Bildschirmen öffnet sich die Seitenleis
 Das **Eingabefeld** sendet mit dem Senden-Knopf oder mit Enter. Sein Platzhalter lautet
 „Nachricht eingeben … @ für Quellen, / für Aktionen"; hat die Installation Prompt-Bibliotheken
 abgeschaltet, fehlt „/ für Aktionen"
-([Prompt-Bibliotheken](../arbeitsmittel/prompt-bibliotheken.md#9-abschalten)). Auf schmalen
-Bildschirmen steht dort nur die Kurzform „@ Quellen, / Aktionen". Der Platzhalter verschwindet
+([Prompt-Bibliotheken](../arbeitsmittel/prompt-bibliotheken.md#9-abschalten)). Ist das Feld
+schmal, auf kleinen Bildschirmen oder bei breit gezogener Seitenleiste, steht dort nur die Kurzform
+„@ Quellen, / Aktionen". Der Platzhalter verschwindet
 beim Tippen; Screenreader lesen den Hinweis weiterhin als Beschreibung des Felds vor. Solange der
 Suchbereich des Space noch ermittelt wird, steht unter dem Feld „Suchbereich wird ermittelt …".
 

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest'
 import ChatInput from './ChatInput'
 import type { SendOutcome } from './ChatInput'
 import { useChatStore } from '../stores/chatStore'
@@ -89,7 +89,11 @@ const dienstanweisungen: LibraryListResponse = {
  */
 async function expectPrefixHint(hint: string) {
   const input = screen.getByRole('combobox')
-  await waitFor(() => expect(input).toHaveAttribute('placeholder', `Nachricht eingeben … ${hint}`))
+  await waitFor(() =>
+    expect(input.getAttribute('placeholder')?.replaceAll('\u00a0', ' ')).toBe(
+      `Nachricht eingeben … ${hint}`,
+    ),
+  )
   expect(input).toHaveAccessibleName('Nachricht eingeben')
   expect(input).toHaveAccessibleDescription(hint)
   const carriers = screen.getAllByText(hint)
@@ -129,6 +133,53 @@ describe('ChatInput', () => {
   // description - there is no separate line for it under the input. An empty search
   // scope appears as a hint above the chip bar - no knowledge associated, or none of it
   // readable -, still unknown associations of the current space in the line under the input.
+  // The short form follows the measured width of the field, not the window: a wide sidebar
+  // narrows the field as much as a small screen. The description keeps the long form.
+  describe('the placeholder in a narrow field', () => {
+    function stubFieldWidth(width: number) {
+      vi.stubGlobal(
+        'ResizeObserver',
+        class {
+          private readonly callback: ResizeObserverCallback
+          constructor(callback: ResizeObserverCallback) {
+            this.callback = callback
+          }
+          observe() {
+            this.callback(
+              [{ contentRect: { width } } as ResizeObserverEntry],
+              this as unknown as ResizeObserver,
+            )
+          }
+          unobserve() {}
+          disconnect() {}
+        },
+      )
+    }
+
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    it('takes the short form below the threshold and keeps the long description', async () => {
+      stubFieldWidth(300)
+      render(<ChatInput onSend={vi.fn()} />)
+
+      const input = screen.getByRole('combobox')
+      await waitFor(() =>
+        expect(input).toHaveAttribute('placeholder', '@\u00a0Quellen, /\u00a0Aktionen'),
+      )
+      expect(input).toHaveAccessibleName('Nachricht eingeben')
+      expect(input).toHaveAccessibleDescription('@ für Quellen, / für Aktionen')
+    })
+
+    it('keeps the long form in a field wide enough for it', async () => {
+      stubFieldWidth(600)
+      render(<ChatInput onSend={vi.fn()} />)
+
+      await expectPrefixHint('@ für Quellen, / für Aktionen')
+    })
+  })
+
   describe('the prefix hint (#1920, #3267)', () => {
     it('names both prefixes in the placeholder and as the description, not in a line', async () => {
       render(<ChatInput onSend={vi.fn()} />)

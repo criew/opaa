@@ -7,7 +7,7 @@ test.describe('Rauchtest', () => {
     // placeholder is a stable, user-visible marker that the app shell rendered
     // successfully.
     await expect(
-      authenticatedPage.getByPlaceholder('Nachricht eingeben …'),
+      authenticatedPage.getByRole('combobox', { name: 'Nachricht eingeben' }),
     ).toBeVisible()
   })
 

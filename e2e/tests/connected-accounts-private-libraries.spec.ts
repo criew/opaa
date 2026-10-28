@@ -100,7 +100,7 @@ async function openSourceTab(page: Page): Promise<void> {
 /** Fragt im Chat des geteilten Space mit @-Referenz auf die private Bibliothek. */
 async function askInSharedSpace(page: Page, withReference = true): Promise<void> {
   await page.goto(`/spaces/${spaceId}/chats/new`)
-  await expect(page.getByPlaceholder('Nachricht eingeben …')).toBeVisible()
+  await expect(page.getByRole('combobox', { name: 'Nachricht eingeben' })).toBeVisible()
   if (withReference) await referenceLibrary(page, LIBRARY_NAME)
   await askQuestion(page, `Was steht im Aktenvermerk ${runId} zur Fristverlängerung?`)
 }

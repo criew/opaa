@@ -44,22 +44,30 @@ export function inputHint(answerPending: boolean, actions: boolean): string {
   return actions ? `${INPUT_HINT}, ${ACTIONS_HINT}` : INPUT_HINT
 }
 
+/** Below this width of the input field (in px) the placeholder takes the short form. */
+export const COMPACT_PLACEHOLDER_WIDTH = 400
+
+/** Keeps a hint group such as "/ für Aktionen" on one line when the placeholder wraps. */
+const nonBreaking = (group: string) => group.replaceAll(' ', '\u00a0')
+
 /**
- * The placeholder carries the same hint after the prompt. `compact` (narrow screens, down to
- * 320 px) leaves out the prompt and the "für" so it fits the field in one line.
+ * The placeholder carries the same hint after the prompt. `compact` (a field narrower than
+ * {@link COMPACT_PLACEHOLDER_WIDTH}) leaves out the prompt and the "für" so it fits in one line.
  */
 export function inputPlaceholder(
   answerPending: boolean,
   actions: boolean,
   compact: boolean,
 ): string {
-  if (!compact) {
-    const hint = inputHint(answerPending, actions)
-    return hint ? `${INPUT_PROMPT} ${hint}` : INPUT_PROMPT
-  }
-  const parts = [answerPending ? null : SHORT_INPUT_HINT, actions ? SHORT_ACTIONS_HINT : null]
-  const hint = parts.filter((part) => part !== null).join(', ')
-  return hint || INPUT_PROMPT
+  const groups = compact
+    ? [answerPending ? null : SHORT_INPUT_HINT, actions ? SHORT_ACTIONS_HINT : null]
+    : [answerPending ? null : INPUT_HINT, actions ? ACTIONS_HINT : null]
+  const hint = groups
+    .filter((group) => group !== null)
+    .map(nonBreaking)
+    .join(', ')
+  if (!hint) return INPUT_PROMPT
+  return compact ? hint : `${INPUT_PROMPT} ${hint}`
 }
 
 /** A refused question goes back before whatever the person has typed since. */

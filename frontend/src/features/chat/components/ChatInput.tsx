@@ -6,8 +6,7 @@ import ListItemButton from '@mui/material/ListItemButton'
 import ClickAwayListener from '@mui/material/ClickAwayListener'
 import Paper from '@mui/material/Paper'
 import Popper from '@mui/material/Popper'
-import { alpha, useTheme } from '@mui/material/styles'
-import useMediaQuery from '@mui/material/useMediaQuery'
+import { alpha } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import { darkRoles, fontFamily, gray, shadow } from '@/shared/theme/tokens'
 import IconButton from '@mui/material/IconButton'
@@ -31,8 +30,10 @@ import { CHAT_ACTION_SOURCES } from './chatActionSources'
 import { useChatActions } from './useChatActions'
 import { useChatMetadataFilterChips } from './useChatMetadataFilterChips'
 import { useMentionSuggestions } from './useMentionSuggestions'
+import { useNarrowField } from './useNarrowField'
 import { useSpaceLibraryScope } from './useSpaceLibraryScope'
 import {
+  COMPACT_PLACEHOLDER_WIDTH,
   INPUT_LABEL,
   inputHint,
   inputPlaceholder,
@@ -90,8 +91,8 @@ export default function ChatInput({
   const actionListboxId = useId()
   const lengthCounterId = useId()
   const hintId = useId()
-  const muiTheme = useTheme()
-  const compactPlaceholder = useMediaQuery(muiTheme.breakpoints.down('sm'))
+  const [fieldEl, setFieldEl] = useState<HTMLDivElement | null>(null)
+  const compactPlaceholder = useNarrowField(fieldEl, COMPACT_PLACEHOLDER_WIDTH)
   const questionLength = value.trim().length
   const questionTooLong = questionLength > QUESTION_MAX_LENGTH
   const lengthCounter = lengthCounterText(questionLength)
@@ -382,6 +383,7 @@ export default function ChatInput({
         })}
       >
         <TextField
+          ref={setFieldEl}
           fullWidth
           multiline
           maxRows={6}
