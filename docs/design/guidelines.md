@@ -366,6 +366,14 @@ rote Primärfläche als Standardaktion.
 der Maus erklärt („Original öffnen"). Ein Icon allein ist keine Beschriftung — weder für
 Sehende, die das Symbol nicht kennen, noch für Screenreader.
 
+**Anlege-Knöpfe** — die Schaltfläche oben rechts über einer Übersicht oder Verwaltungsliste, die
+ein neues Objekt anlegt — tragen das Plus-Icon (`Add`) als `startIcon` vor der Beschriftung, und
+die Beschriftung nennt das Objekt: „Konto anlegen", „Gruppe anlegen", „Neuer Space", „Neues
+Modell", „Neuer Katalogeintrag". Ein bloßes „Neu" oder „Anlegen" genügt nicht; das Icon ist Zierde
+und ersetzt die Beschriftung nicht. Folgt eine Typwahl, nennt die Beschriftung den Oberbegriff.
+Ausgenommen ist die kompakte Aktion „Neu" im Abschnittskopf „Chats" der Seitenleiste; ihr
+zugänglicher Name nennt das Objekt („Neu: Chat beginnen").
+
 ### 5.2 Formularfelder
 
 Beschriftung oberhalb als eigenständiges Label (12 px, `fg-2`, 5 px Abstand — kein
@@ -591,7 +599,7 @@ Die Wahlen im Einzelnen:
 
 | Wahl | Mengenart | Auswahl | Wo |
 | --- | --- | --- | --- |
-| **Asset-Art** beim Anlegen | Arten | einfach | erster Schritt von „Neu" im Katalog; nur Arten mit Anlegerecht |
+| **Asset-Art** beim Anlegen | Arten | einfach | erster Schritt von „Neuer Katalogeintrag" im Katalog; nur Arten mit Anlegerecht |
 | **Quellart** einer Wissensbibliothek | Arten | einfach | Assistent „Neue Wissensbibliothek" |
 | **Zuordnung** von Assets zu einem Space | Assets | mehrfach | Space-Assistent, Space-Einstellungen, „In Space verwenden" |
 | **Bibliotheken eines Zugangstokens** | Assets | mehrfach | Ausstellung eines Zugangstokens für externe KI-Werkzeuge |

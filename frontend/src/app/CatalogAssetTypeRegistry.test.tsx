@@ -47,7 +47,7 @@ const skillEntry = {
 } as unknown as CatalogEntryResponse
 
 // A new asset type needs nothing but a registry entry to appear
-// in the catalog, in its type filter and under "Neu".
+// in the catalog, in its type filter and under "Neuer Katalogeintrag".
 describe('a new asset type through the registry alone', () => {
   beforeEach(() => {
     setMockAuthState()
@@ -93,7 +93,7 @@ describe('a new asset type through the registry alone', () => {
     expect(await screen.findByRole('link', { name: /Aktenvermerk schreiben/ })).toBeInTheDocument()
   })
 
-  it('is offered under "Neu" and leads to its own wizard', async () => {
+  it('is offered under "Neuer Katalogeintrag" and leads to its own wizard', async () => {
     const user = userEvent.setup()
     renderWithProviders(
       <Routes>

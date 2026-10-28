@@ -27,7 +27,7 @@ function renderPage() {
 
 const QUESTION = 'Was möchten Sie anlegen?'
 
-describe('CatalogNewPage (ADR-0039, "Neu")', () => {
+describe('CatalogNewPage (ADR-0039, "Neuer Katalogeintrag")', () => {
   it('offers every type as a tile in one named radio group', async () => {
     renderPage()
 
@@ -68,7 +68,7 @@ describe('CatalogNewPage (ADR-0039, "Neu")', () => {
     expect(await screen.findByText('Assistent Prompts')).toBeInTheDocument()
   })
 
-  // A switched-off type is no option under "Neu", whatever rights the person holds.
+  // A switched-off type is no option under "Neuer Katalogeintrag", whatever rights the person holds.
   describe('with prompt libraries switched off', () => {
     afterEach(() => {
       useAuthStore.setState({ features: {} })

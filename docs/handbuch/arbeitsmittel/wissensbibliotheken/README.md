@@ -160,7 +160,7 @@ weglässt. Bei Quellen mit Vollabgleich steht dort auch „Vollabgleich starten"
 
 ### 3.3 Eine Wissensbibliothek anlegen
 
-Angelegt wird über **„Neu"** im Katalog mit der Art „Wissen". Ein Assistent führt durch fünf
+Angelegt wird über **„Neuer Katalogeintrag"** im Katalog mit der Art „Wissen". Ein Assistent führt durch fünf
 Schritte:
 
 | Schritt | Inhalt |
