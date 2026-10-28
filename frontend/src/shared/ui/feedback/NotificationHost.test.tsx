@@ -31,6 +31,24 @@ describe('NotificationHost', () => {
     expect(await screen.findByText('bescheid.docx wird heruntergeladen')).toBeVisible()
   })
 
+  it('anchors every popup at the top center, queued ones included', async () => {
+    render(<NotificationHost />)
+    const user = userEvent.setup()
+
+    act(() => {
+      notify('Leistung zugeordnet.', 'success')
+      notify('Rolle geändert.')
+    })
+
+    const first = await screen.findByRole('alert')
+    expect(first.closest('.MuiSnackbar-root')).toHaveClass('MuiSnackbar-anchorOriginTopCenter')
+
+    await user.click(within(first).getByRole('button', { name: /schließen|close/i }))
+
+    const second = await screen.findByText('Rolle geändert.')
+    expect(second.closest('.MuiSnackbar-root')).toHaveClass('MuiSnackbar-anchorOriginTopCenter')
+  })
+
   it('runs the action of a notification and dismisses it', async () => {
     render(<NotificationHost />)
     const user = userEvent.setup()
