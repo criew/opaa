@@ -8,7 +8,7 @@ import { useNotificationStore, type AppNotification } from '../../stores/notific
 
 /**
  * The single render site of the global notification queue (guidelines 5.9): one popup at a time,
- * bottom-center, auto-dismissed after six seconds or via its close button - the next queued
+ * top-center, auto-dismissed after six seconds or via its close button - the next queued
  * notification follows. The timer stands still while the pointer or the focus is on the popup
  * (WCAG 2.2.1) and starts afresh once both have left. An action such as "Rückgängig" stands before the close button. Mounted
  * once in AppShell; components never render their own transient feedback inline.
@@ -45,7 +45,10 @@ function NotificationPopup({
       onClose={(_, reason) => {
         if (reason !== 'clickaway') dismiss(current.id)
       }}
-      anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      // Below md the sticky MobileHeader (56/64 px toolbar plus 1 px border) holds the menu and
+      // the bell; the popup starts 8 px below it so it never covers them.
+      sx={{ top: { xs: 65, sm: 73, md: 24 } }}
     >
       <Alert
         severity={current.severity}
@@ -76,7 +79,11 @@ function NotificationPopup({
             </>
           ) : undefined
         }
-        sx={{ bgcolor: 'background.paper' }}
+        sx={{
+          bgcolor: 'background.paper',
+          minWidth: 0,
+          '& .MuiAlert-message': { minWidth: 0, overflowWrap: 'anywhere' },
+        }}
       >
         {current.message}
       </Alert>

@@ -504,9 +504,11 @@ Signalfarbe (Ausgestaltung: Issues #590/#592/#1449, Mockups 1a/1i).
 ### 5.9 Popup-Benachrichtigungen
 
 Rückmeldungen auf einmalige Aktionen — ein fehlgeschlagener oder gestarteter Download, ein
-abgeschlossener Hintergrundschritt — erscheinen als **Popup-Benachrichtigung** unten mittig
-(Ebene 2: Rahmen plus Schatten auf `bg-1`), nach sechs Sekunden automatisch ausgeblendet und
-jederzeit per Schließen-Knopf verwerfbar. **Der Timer steht still, solange der Mauszeiger oder der
+abgeschlossener Hintergrundschritt — erscheinen als **Popup-Benachrichtigung** oben mittig
+(Ebene 2: Rahmen plus Schatten auf `bg-1`), dort, wo der Blick ohnehin liegt. Auf schmalen
+Bildschirmen beginnt sie unter der mobilen Kopfzeile und verdeckt weder Menü noch Glocke. Mehrere
+Meldungen erscheinen nacheinander an derselben Stelle. Eine Meldung wird nach sechs Sekunden
+automatisch ausgeblendet und ist jederzeit per Schließen-Knopf verwerfbar. **Der Timer steht still, solange der Mauszeiger oder der
 Tastaturfokus auf der Meldung liegt**, und läuft erst nach dem Verlassen weiter (WCAG 2.2.1). Sie laufen über den globalen Mechanismus
 (`frontend/src/shared/stores/notificationStore.ts` → `notify(message, severity)`, gerendert genau
 einmal durch `NotificationHost` in der AppShell) — nie über eine komponenteneigene Snackbar und
