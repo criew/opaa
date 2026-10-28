@@ -9,10 +9,12 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import { SubjectFormRow } from '@/features/principal'
 import { SubjectPicker } from '@/features/principal'
 import {
+  SUBJECT_CHOICE_MISSING,
   confirmExternalSubject,
   emptySubjectSelection,
   groupLabel,
   selectedSubjectId,
+  useRequiredChoice,
   type SubjectSelection,
 } from '@/features/principal'
 import type { AssetRole } from '@/shared/api/types'
@@ -38,6 +40,7 @@ export default function AssetRightsFields({
   onPendingGrantsChange,
 }: AssetRightsFieldsProps) {
   const [grantSubject, setGrantSubject] = useState<SubjectSelection>(emptySubjectSelection)
+  const choice = useRequiredChoice(SUBJECT_CHOICE_MISSING)
   const [grantRole, setGrantRole] = useState<AssetRole>('VIEWER')
 
   const pendingUserIds = useMemo(
@@ -51,6 +54,7 @@ export default function AssetRightsFields({
 
   const handleAddGrant = async () => {
     const subjectId = selectedSubjectId(grantSubject)
+    if (!choice.check(Boolean(subjectId))) return
     if (!subjectId || grantSubject.type === 'ALL_ACCOUNTS') return
     const subjectType = grantSubject.type
     if (!(await confirmExternalSubject(grantSubject))) return
@@ -74,7 +78,12 @@ export default function AssetRightsFields({
         picker={
           <SubjectPicker
             value={grantSubject}
-            onChange={setGrantSubject}
+            onChange={(next) => {
+              choice.clear()
+              setGrantSubject(next)
+            }}
+            errorText={choice.errorText}
+            inputRef={choice.inputRef}
             excludedUserIds={pendingUserIds}
             excludedGroupIds={pendingGroupIds}
           />
@@ -95,11 +104,7 @@ export default function AssetRightsFields({
           </Select>
         }
         action={
-          <Button
-            variant="outlined"
-            disabled={!selectedSubjectId(grantSubject)}
-            onClick={() => void handleAddGrant()}
-          >
+          <Button variant="outlined" onClick={() => void handleAddGrant()}>
             Vormerken
           </Button>
         }

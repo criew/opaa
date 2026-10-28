@@ -245,7 +245,7 @@ describe('Sidebar', () => {
 
     // The two actions are always in the menu regardless.
     expect(screen.getByRole('menuitem', { name: 'Alle Spaces anzeigen' })).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: /Neuen Space anlegen/ })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Neuer Space' })).toBeInTheDocument()
   })
 
   /**
@@ -347,7 +347,7 @@ describe('Sidebar', () => {
     renderSidebarAtRoute('/chat')
 
     await user.click(screen.getByRole('button', { name: /Privater Bereich/ }))
-    await user.click(screen.getByRole('menuitem', { name: 'Neuen Space anlegen' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Neuer Space' }))
 
     expect(mockNavigate).toHaveBeenCalledWith('/spaces/new')
   })

@@ -1,19 +1,8 @@
-import type { UserInfo, UserSummary } from '@/shared/api/types'
+import type { UserSummary } from '@/shared/api/types'
 import { apiClient as client, normalizeError } from '@/shared/api/api'
 
-export async function getUsers(): Promise<UserInfo[]> {
-  try {
-    const { data } = await client.get<UserInfo[]>('/v1/admin/users')
-    return data
-  } catch (err) {
-    normalizeError(err)
-  }
-}
-
-// unlike getUsers() above (GET /v1/admin/users, SYSTEM_ADMIN only), this is reachable for
-// any authenticated organization member - the member/grant pickers (UserPicker, SubjectPicker,
-// SpaceCreatePage) need to search for a user to add,
-// and the caller reaching those pages is not necessarily a system admin.
+// Reachable for any authenticated organization member, unlike the administration's account list
+// (GET /v1/admin/users): the member/grant pickers (UserPicker, SubjectPicker) search here.
 //
 // The backend requires `query` (min. 2 characters) and caps the result at 20 rows - it does not
 // answer an unqualified "list everyone" call. A missing/blank query is

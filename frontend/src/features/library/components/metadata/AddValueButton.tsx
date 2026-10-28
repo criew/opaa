@@ -6,6 +6,7 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
+import { TextAction } from '@/shared/ui/DetailSection'
 import { addLibraryMetadataFieldValue } from '../../api/libraryMetadataApi'
 
 /** „Wert ergänzen": adds one value to the list of a SELECT field. */
@@ -38,9 +39,7 @@ export default function AddValueButton({
 
   return (
     <>
-      <Button size="small" onClick={() => setOpen(true)}>
-        Wert ergänzen
-      </Button>
+      <TextAction onClick={() => setOpen(true)}>Wert ergänzen</TextAction>
       <Dialog open={open} onClose={() => setOpen(false)}>
         <DialogTitle>Wert ergänzen</DialogTitle>
         <DialogContent>

@@ -67,7 +67,7 @@ vi.mock('@/features/principal/api/userApi', async () => {
   )
   return {
     ...actual,
-    getUsers: vi.fn(async () => []),
+    getUserSummaries: vi.fn(async () => []),
   }
 })
 
@@ -391,6 +391,30 @@ describe('GroupManagementPage', () => {
     expect(dialog).toHaveAccessibleName('Mitglieder von „Projektbeteiligte Phoenix“ · 1 Mitglied')
     await user.click(within(table).getByRole('button', { name: 'Alice entfernen' }))
     await waitFor(() => expect(mockRemoveGroupMember).toHaveBeenCalledWith('group-phoenix', 'u1'))
+  })
+
+  // The dialog adds with the same person search, verb and form row as „Meine Gruppen“.
+  it('adds members of an internal group with „Hinzufügen“ and names a missing choice at the field', async () => {
+    serve([adHocGroup])
+    mockFetchedDetails['group-phoenix'] = adHocDetails
+    renderPage()
+    const user = userEvent.setup()
+
+    const menu = await openRowMenu(user, 'Projektbeteiligte Phoenix')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Mitglieder' }))
+    const dialog = await screen.findByRole('dialog', {
+      name: /^Mitglieder von „Projektbeteiligte Phoenix“/,
+    })
+    await within(dialog).findByRole('table', { name: 'Mitglieder' })
+
+    expect(within(dialog).queryByRole('button', { name: 'Aufnehmen' })).not.toBeInTheDocument()
+    const add = within(dialog).getByRole('button', { name: 'Hinzufügen' })
+    expect(add).toBeEnabled()
+    await user.click(add)
+
+    const search = within(dialog).getByRole('combobox', { name: 'Person suchen' })
+    expect(search).toHaveAccessibleDescription('Bitte eine Person auswählen.')
+    expect(search).toHaveFocus()
   })
 
   // For a group of an identity provider, opening the dialog is the explicit request:

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type Ref } from 'react'
 import Autocomplete from '@mui/material/Autocomplete'
 import TextField from '@mui/material/TextField'
 import type { UserSummary } from '@/shared/api/types'
@@ -14,8 +14,12 @@ interface UserPickerProps {
   excludedUserIds: string[]
   /** Identifier of the input field, so that an own label (`htmlFor`) has a target. */
   inputId?: string
-  /** Fills the row, so that a button next to it ends flush with the fields above. */
+  /** Fills the row or grid cell, so that a button next to it ends flush with the fields above. */
   grow?: boolean
+  /** A validation message of the form, shown at the field (e.g. a missing choice). */
+  errorText?: string | null
+  /** The input element, so that the form can move the focus to a field in error. */
+  inputRef?: Ref<HTMLInputElement>
 }
 
 function optionLabel(user: UserSummary): string {
@@ -36,6 +40,8 @@ export default function UserPicker({
   excludedUserIds,
   inputId,
   grow = false,
+  errorText = null,
+  inputRef,
 }: UserPickerProps) {
   const { query, setQuery, users, isLoading, error } = useUserSearch()
   // What the field shows is not always what is searched for: after a choice it shows the chosen
@@ -68,7 +74,10 @@ export default function UserPicker({
         <TextField
           {...params}
           id={inputId ?? params.id}
+          inputRef={inputRef}
           placeholder={placeholder}
+          error={Boolean(errorText)}
+          helperText={errorText ?? undefined}
           slotProps={{
             ...params.slotProps,
             htmlInput: { ...params.slotProps.htmlInput, 'aria-label': ariaLabel },
@@ -76,7 +85,8 @@ export default function UserPicker({
         />
       )}
       size="small"
-      sx={{ minWidth: 280, ...(grow ? { flexGrow: 1 } : {}) }}
+      fullWidth={grow}
+      sx={grow ? { flexGrow: 1, minWidth: 0 } : { minWidth: 280 }}
     />
   )
 }
