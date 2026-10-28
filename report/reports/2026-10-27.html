@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-10-27</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Dienstag, 27. Oktober 2026</h1>
+<nav class="blaettern"><a href="2026-10-26.html" rel="prev" title="Montag, 26. Oktober 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/40597362899" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">66</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+11</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">9</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">8</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/3245">#3245</a></span>Optionaler E-Mail-Versand-Schritt im Installationsassistenten umgesetzt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/3244">#3244</a></span>Lokale Konten nach Installation mit nur lokalen Konten aktivierbar</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/3242">#3242</a></span>Fokusring erfüllt Barrierefreiheits-Richtlinie mit 3:1 Kontrast</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/3237">#3237</a></span>Modelle im Installationsassistenten abrufbar und zur Auswahl angeboten</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/3248">#3248</a></span>feat(installation): Optionaler Schritt für den E-Mail-Versand im Assistenten (+3905/−530, 88 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3247">#3247</a></span>fix(installation): Lokale Konten nach Abschluss der Installation einschalten (+394/−82, 19 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3243">#3243</a></span>fix(frontend): Deckender Fokusring mit mindestens 3:1 Kontrast (+699/−86, 19 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3241">#3241</a></span>fix(frontend): Fehlerrahmen eines Felds auch im Fokus zeigen (+150/−3, 4 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3238">#3238</a></span>feat(installation): Modelle im Installationsassistenten abrufen und zur Auswahl anbieten (+2194/−276, 45 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3236">#3236</a></span>fix(installation): Ausrichtung und Gestaltung aller Schritte des Installationsassistenten (+188/−45, 11 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3233">#3233</a></span>fix(llm): InstalledEmbeddingModel bettet Dokumente mit Kontextpräfix ein (+52/−0, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/3232">#3232</a></span>feat(knowledge): Geführter Wechsel des Embedding-Modells mit Neueinbettung (+7085/−636, 120 Dateien)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-10-28 um 07:01 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-10-27T00:00:00 bis 2026-10-27T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>
