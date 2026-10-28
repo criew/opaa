@@ -401,7 +401,8 @@ gilt hier nicht.
 
 **Beleg-Anzeige.** Die generische Feld-Wert-Liste am `SourceReference` (#1066) trägt hinter den
 Kernfeldern die Bibliotheksfelder mit Zitierposition — höchstens zwei, in der Reihenfolge der
-Position, leere Felder gar nicht.
+Position, leere Felder gar nicht. Seit #3259 zeigt das Belegfenster des eigenen Chats keine Metadaten mehr; die Liste geht nur noch an externe KI-Werkzeuge (Suchschnittstelle, MCP), siehe [Wirkstelle 3](#wirkstelle-3-beleg-anzeige). Der Feld-Dialog sagt das am Feld
+„Zitierposition“ als Hilfetext.
 
 **Kontextpräfix.** Die Wirkstelle wird gespeichert und ist in der Verwaltungsansicht sichtbar; der
 Präfix selbst und der Nachlauf, den eine Änderung daran kostet, kamen mit **#1072** (siehe
@@ -463,11 +464,11 @@ Mail ist, hat schlicht keinen Wert. Im Filter-Popover erscheint „Absender" mit
 ein Füllstandsanteil am gemischten Bestand misst dort die Formatverteilung, nicht die
 Metadatenqualität. Im Beleg stehen die Formatfelder hinter den Kernfeldern und vor den
 Bibliotheksfeldern; ein Wert, den der Titel bereits wörtlich zeigt (bei einer Mail der Betreff, der
-zugleich Titelquelle ist), erscheint nicht zweimal. **Der Empfänger steht nur im Belegfenster, nicht
-in der Fundstellenzeile**: Eine Verteilerliste ist unbegrenzt lang und benennt niemanden, der die
+zugleich Titelquelle ist), erscheint nicht zweimal. **Der Empfänger ist ein Detailwert (`detailOnly`), kein
+Eintrag der einzeiligen Fundstelle**: Eine Verteilerliste ist unbegrenzt lang und benennt niemanden, der die
 Fundstelle einordnet — sie würde genau die Angaben aus der einen Zeile verdrängen, die es tun. Die
 Obergrenze von zwei Nicht-Kernfeldern der Belegzeile zählt die Formatfelder mit; knapp ist die
-Zeile, nicht die Feldart. **Kein Formatfeld steht im Kontextpräfix** (#1072): Die Wirkstelle
+Zeile, nicht die Feldart. Seit #3259 zeigt das Belegfenster des eigenen Chats keine Metadaten mehr; die Liste geht nur noch an externe KI-Werkzeuge (Suchschnittstelle, MCP), siehe [Wirkstelle 3](#wirkstelle-3-beleg-anzeige). **Kein Formatfeld steht im Kontextpräfix** (#1072): Die Wirkstelle
 „Kontextpräfix" ist je Feld eine bewusste Entscheidung — bei einem Bibliotheksfeld beim Anlegen, bei
 Dokumentart und Datum/Stand je Bibliothek —, und ein Formatfeld legt niemand an, also hat sie auch
 niemand getroffen. Sie stillschweigend zu setzen hieße, jedem Bestand mit Mails einen Nachlauf
@@ -584,8 +585,9 @@ Feld-Wert-Liste** (`SourceMetadataEntry`: `fieldKey`, deutsches `label`, maschin
 `displayValue`, `origin`, bei Datumswerten `datePrecision`) — Maintainer-Beschluss vom 04.09.2026 am
 Epic #1065: keine formatspezifischen Felder mehr am `SourceReference`. Die Kernfelder sind die ersten
 Einträge (Titel, Dokumentart mit deutschem Label, Datum/Stand als „12.03.2026"/„03/2026"/„2024"),
-Bibliotheksfelder (#1071) hängen sich an dieselbe Liste. Fundstellenzeile und Belegfenster rendern die
-Liste ohne Feldwissen (Anzeigewerte mit „ · " verbunden, Label als barrierefreie Beschreibung) — ein
+Bibliotheksfelder (#1071) hängen sich an dieselbe Liste. Fundstellenzeile und Belegfenster renderten die
+Liste ohne Feldwissen (seit #3259 rendert sie der eigene Client nicht mehr, siehe
+[Wirkstelle 3](#wirkstelle-3-beleg-anzeige)) (Anzeigewerte mit „ · " verbunden, Label als barrierefreie Beschreibung) — ein
 leeres Feld ist nicht in der Liste und erscheint gar nicht, ein `DERIVED`-Wert ist mit „(abgeleitet)"
 gekennzeichnet; `location` bleibt die Fundstelle. Die vier Mail-Sonderfelder
 `mailFrom`/`mailTo`/`mailSubject`/`mailDate` blieben in diesem Schnitt unverändert; **mit #1242 sind
@@ -1669,6 +1671,13 @@ Kernfelder; kein Präfix im gespeicherten Chunk-Text.
 
 ## Wirkstelle 3: Beleg-Anzeige
 
+> **Stand seit #3259:** Das Belegfenster des Chats zeigt je Beleg nur Titel und Fundort, keine
+> Metadaten; von dieser Wirkstelle bleibt dort allein die Kennzeichnung „ohne Angabe“ unter
+> aktivem Filter. Die Feld-Wert-Liste mit Kernfeldern, Formatfeldern und den Bibliotheksfeldern mit
+> Zitierposition geht weiterhin an externe KI-Werkzeuge (Suchschnittstelle und MCP über
+> `ChatSourceMetadataEntry`); nur dort wirken Zitierposition und die Regeln unten. Ob Wirkstelle 3
+> und `citationPosition` bleiben oder entfallen, entscheidet #3279.
+
 Ein Beleg ist heute Dokument plus Fundstelle. Mit Metadaten wird er einordbar:
 
 ```
@@ -1754,7 +1763,7 @@ Der dritte Zustand wird ausschließlich von Hand gesetzt, trägt die Herkunft `m
 erzeugt ein Audit-Ereignis wie jede andere manuelle Setzung; keine automatische Extraktion vergibt
 ihn, und keine setzt ihn zurück. Für Filter und Beleg verhält er sich wie ein Leerwert — das Dokument
 wird nicht ausgeschlossen (siehe [Leerwerte schließen nicht aus](#leerwerte-schließen-nicht-aus)) und
-die Belegzeile zeigt nichts an.
+die Feld-Wert-Liste der Fundstelle enthält keinen Eintrag.
 
 **Damit wird N zu einer abarbeitbaren Restliste statt zu einer Bodenzahl.** Das ist der eigentliche
 Zweck: Eine Bibliothek kann den Zustand „vollständig gepflegt" tatsächlich erreichen, und eine Zahl,

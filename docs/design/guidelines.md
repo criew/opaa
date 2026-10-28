@@ -366,6 +366,14 @@ rote Primärfläche als Standardaktion.
 der Maus erklärt („Original öffnen"). Ein Icon allein ist keine Beschriftung — weder für
 Sehende, die das Symbol nicht kennen, noch für Screenreader.
 
+**Anlege-Knöpfe** — die Schaltfläche oben rechts über einer Übersicht oder Verwaltungsliste, die
+ein neues Objekt anlegt — tragen das Plus-Icon (`Add`) als `startIcon` vor der Beschriftung, und
+die Beschriftung nennt das Objekt: „Konto anlegen", „Gruppe anlegen", „Neuer Space", „Neues
+Modell", „Neuer Katalogeintrag". Ein bloßes „Neu" oder „Anlegen" genügt nicht; das Icon ist Zierde
+und ersetzt die Beschriftung nicht. Folgt eine Typwahl, nennt die Beschriftung den Oberbegriff.
+Ausgenommen ist die kompakte Aktion „Neu" im Abschnittskopf „Chats" der Seitenleiste; ihr
+zugänglicher Name nennt das Objekt („Neu: Chat beginnen").
+
 ### 5.2 Formularfelder
 
 Beschriftung oberhalb als eigenständiges Label (12 px, `fg-2`, 5 px Abstand — kein
@@ -416,8 +424,18 @@ Fehlern (n)" fehlt, wenn alle oder keiner der Einträge Fehler haben.
 Karten heben sich im Hover über `border-strong` und `bg-2` ab, nicht über Schatten oder
 Skalierung.
 
+**Kopf einer Übersicht.** Jede Übersicht aus Kacheln (Katalog, Spaces) trägt denselben Kopf
+(`OverviewPage`): den Seitennamen als Überschrift, daneben still in `fg-2` die Zahl der Einträge
+(„1 Eintrag", „11 Einträge"), rechts die Schaltfläche zum Anlegen. Einen Untertitel gibt es nicht;
+die Zahl gehört nicht in die Überschrift.
+
+**Space-Kachel.** Name, Beschreibung (auf zwei Zeilen gekürzt) und die Zahl der Chats, dazu nur
+Zustände wie „Archiviert" oder „Nachfolge offen". Eigene Rolle und Mitglieder stehen nicht auf der
+Kachel, sondern in den Einstellungen des Space.
+
 **Asset-Kachel.** Eine Kachel für jedes Asset, im Katalog wie in jeder Auswahl (`AssetTile`, #2131).
-Kompakt. Kopfzeile: links die Asset-Art (Icon und Wort), direkt daneben das Welt-Symbol (nur bei
+Kompakt. Die volle Kachel ist die des Katalogs; die Auswahl zeigt eine schlanke Variante (unten).
+Kopfzeile: links die Asset-Art (Icon und Wort), direkt daneben das Welt-Symbol (nur bei
 Freigabe an alle, 5.5), rechts der Favoriten-Stern. Darunter Name, Beschreibung (auf zwei Zeilen
 gekürzt, ohne die Art noch einmal zu nennen), Umfang samt Zahl der Spaces, die zuständige Stelle mit
 Personen- oder Gruppensymbol statt eines Präfixes und eine Zeile „Aktualisiert am" oder Status. Was
@@ -425,14 +443,23 @@ eine Quelle nicht kennt (die Token-Auswahl kennt etwa keine Zahlen), lässt die 
 Rolle steht nicht auf der Kachel, nur auf der Detailseite. Weil die Kachel eigene Bedienelemente
 trägt, ist sie **kein umschließendes Bedienelement**: Ihr Hauptelement ist der Name, seine
 Klickfläche wird über die Kachel gestreckt, und der Stern liegt darüber als eigene Tab-Position.
+Alles, was beim Überfahren etwas zeigt (Welt-Symbol mit Tooltip), liegt ebenfalls über der
+gestreckten Fläche (`position: relative`, `z-index`), sonst fängt sie den Zeiger ab und der Tooltip
+erscheint nie.
 
 - **Im Katalog** ist der Name ein Link zur Detailseite. Nur hier steht neben dem Stern „⋯" für
   weitere Aktionen („In Space verwenden"); es heißt „Weitere Aktionen für ‚<Name>'" und öffnet ein
   Menü.
-- **In einer Auswahl** ist der Name ein Umschalter (`role="checkbox"`), dessen Beschreibung der Rest
-  der Kachel ist. Links oben steht ein Häkchen (gewählt) oder ein leerer Kreis, und eine gewählte
-  Kachel trägt einen Rahmen in `accent` (5.11). Ein Klick auf die Kachel wählt, ein Klick auf den
-  Stern setzt nur den Favoriten.
+- **In einer Auswahl** zählt nur, was ein Asset ist, wie groß es ist und ob es gewählt ist (#3262):
+  Die Kachel zeigt Name, Beschreibung und Umfang ohne Zahl der Spaces („12 Dokumente"), dazu Art,
+  Stern, „Privat"/„Wird gelöscht", einen Zustand mit Punkt (auch „Nachfolge offen": dann scheitert
+  eine neue Zuordnung, ADR-0036) und eine Zeile, die die Quelle beisteuert (etwa das Ende einer
+  Freigabe). Zuständige Stelle, „Aktualisiert am", Zahl der Spaces und das Welt-Symbol entfallen. Der Name ist ein Umschalter (`role="checkbox"`,
+  `aria-checked`), dessen Beschreibung der Rest der Kachel ist. Gewählt zeigt allein das Zeichen
+  links oben: gefülltes Häkchen in `accent` statt leerem Kreis in `fg-2` — ein Unterschied der Form,
+  nicht nur der Farbe, beide mit mindestens 3:1 gegen die Fläche (2.4). Rahmen und Fläche bleiben
+  die einer ungewählten Kachel, **kein `accent`-Rahmen**. Ein Klick auf die Kachel wählt, ein Klick
+  auf den Stern setzt nur den Favoriten.
 
 ### 5.5 Chips und Etiketten
 
@@ -441,8 +468,10 @@ Tintfläche (`bg-3`), **keine Signalfarben**. Feste Wortlisten:
 
 - **Rollen:** Leser · Bearbeiter · Verwalter · Eigentümer
 - **Sichtbarkeit:** kein Textetikett. Ein öffentliches Asset (Spezifikation: öffentlich, an alle
-  Konten freigegeben) trägt auf der Kachel ein Welt-Symbol mit Tooltip und `aria-label` „Für alle
-  Konten freigegeben"; ein geschlossenes trägt nichts, insbesondere kein Schloss. Abgeleitet aus den
+  Konten freigegeben) trägt auf der Katalogkachel und im Kopf der Detailseite ein Welt-Symbol mit
+  Tooltip und `aria-label` „Für alle Konten freigegeben"; ein geschlossenes trägt nichts,
+  insbesondere kein Schloss. Auf der Kachel liegt das Symbol über dem gestreckten Titel-Link (5.4),
+  damit der Tooltip beim Überfahren erscheint. In einer Auswahl entfällt es. Abgeleitet aus den
   Freigaben, nie eingestellt
 - **Stand:** „Aktualisiert am TT.MM.JJJJ" ohne Punkt, wenn bereit; ein farbiger Punkt nur vor
   „Wird aktualisiert", „Aktualisierung fehlgeschlagen", „Noch kein Inhalt" und „Nachfolge offen".
@@ -494,20 +523,32 @@ Pille (Rahmen `border`, Radius `pill`). Er trägt links die Fußnotenmarken der 
 Text, ab der vierten als „+n" —, rechts einen Pfeil in `accent`. Beim Hover fächern die Marken leicht auf und der Pfeil
 rückt 2 px nach (120 ms, nur `transform`). Daneben die Zählzeile „n Stellen in m Dokumenten ·
 k weitere geprüft" in `fg-2`, mit dem Knopf per `aria-describedby` verbunden. Die Antwort bleibt
-Fließtext, auch in langen Gesprächen. Alle Fundstellen stehen im **Belegfenster** rechts, je Dokument Ziffern +
-Titel (Gewicht 500) + Fundort, Metadaten und Stand. Ein Klick auf eine Fußnote öffnet das
+Fließtext, auch in langen Gesprächen. Alle Fundstellen stehen im **Belegfenster** rechts. Sein Kopf
+trägt nur „Belege dieser Antwort", darunter das Suchfeld „In Belegen suchen". Es öffnet mit den
+zitierten Belegen in Zitatreihenfolge; die geprüften, nicht zitierten blendet der Link
+**„Nicht zitierte anzeigen"** unter der Liste ein und wieder aus. Er folgt dem Disclosure-Muster:
+Die Beschriftung bleibt, nur `aria-expanded` und ein Chevron wechseln; eine höfliche Statusmeldung
+(„3 nicht zitierte Belege eingeblendet") sagt die neuen Zeilen an, die oberhalb des Links
+erscheinen. Eine Suche durchsucht immer alle Belege; solange sie läuft, tritt der Link zurück.
+Nicht zitierte Zeilen treten über die Farbrolle zurück (Titel in `fg-2`), nie über Deckkraft, die
+den Kontrast unter 4,5:1 drückte. Je Dokument stehen Ziffern + Titel (Gewicht 500) + Fundort und die
+Aktion „Dokument öffnen"; Rang, Indexierungsdatum, Metadatenzeile und Quelladresse zeigt das
+Belegfenster nicht — sie sind Fehlersuche, nicht Nachschlagen. Ein Klick auf eine Fußnote öffnet das
 Belegfenster an ihrer Fundstelle und markiert sie dort (Fläche `accent` 7 %, Akzentkante links) —
 markiert wird der Beleg, nicht der Antworttext. Ein Beleg, den die Belegvalidierung nicht
 bestätigt, trägt einen dezenten Hinweis in normaler Beleg-Typografie — kein Banner, keine
-Signalfarbe (Ausgestaltung: Issues #590/#592/#1449, Mockups 1a/1i).
+Signalfarbe (Ausgestaltung: Issues #590/#592/#1449/#3259, Mockups 1a/1i).
 
 ### 5.9 Popup-Benachrichtigungen
 
 Rückmeldungen auf einmalige Aktionen — ein fehlgeschlagener oder gestarteter Download, ein
-abgeschlossener Hintergrundschritt — erscheinen als **Popup-Benachrichtigung** unten mittig
-(Ebene 2: Rahmen plus Schatten auf `bg-1`), nach sechs Sekunden automatisch ausgeblendet und
-jederzeit per Schließen-Knopf verwerfbar. **Der Timer steht still, solange der Mauszeiger oder der
-Tastaturfokus auf der Meldung liegt**, und läuft erst nach dem Verlassen weiter (WCAG 2.2.1). Sie laufen über den globalen Mechanismus
+abgeschlossener Hintergrundschritt — erscheinen als **Popup-Benachrichtigung** oben mittig
+(Ebene 2: Rahmen plus Schatten auf `bg-1`), dort, wo der Blick ohnehin liegt. Auf schmalen
+Bildschirmen beginnt sie unter der mobilen Kopfzeile und verdeckt weder Menü noch Glocke. Mehrere
+Meldungen erscheinen nacheinander an derselben Stelle. Eine Meldung wird nach sechs Sekunden
+automatisch ausgeblendet und ist jederzeit per Schließen-Knopf verwerfbar.
+**Der Timer steht still, solange der Mauszeiger oder der Tastaturfokus auf der Meldung liegt**, und
+läuft erst nach dem Verlassen weiter (WCAG 2.2.1). Sie laufen über den globalen Mechanismus
 (`frontend/src/shared/stores/notificationStore.ts` → `notify(message, severity)`, gerendert genau
 einmal durch `NotificationHost` in der AppShell) — nie über eine komponenteneigene Snackbar und
 **nie als Inline-Alert, der über einer Tabelle oder Liste eingeschoben wird** und dabei fremden
@@ -591,7 +632,7 @@ Die Wahlen im Einzelnen:
 
 | Wahl | Mengenart | Auswahl | Wo |
 | --- | --- | --- | --- |
-| **Asset-Art** beim Anlegen | Arten | einfach | erster Schritt von „Neu" im Katalog; nur Arten mit Anlegerecht |
+| **Asset-Art** beim Anlegen | Arten | einfach | erster Schritt von „Neuer Katalogeintrag" im Katalog; nur Arten mit Anlegerecht |
 | **Quellart** einer Wissensbibliothek | Arten | einfach | Assistent „Neue Wissensbibliothek" |
 | **Zuordnung** von Assets zu einem Space | Assets | mehrfach | Space-Assistent, Space-Einstellungen, „In Space verwenden" |
 | **Bibliotheken eines Zugangstokens** | Assets | mehrfach | Ausstellung eines Zugangstokens für externe KI-Werkzeuge |
@@ -629,8 +670,9 @@ Benennung bestimmt das fremde System, nicht OPAA. Die Schwelle:
 
 **Aufbau der Kacheln.** Jede Kachel trägt ein Icon (dekorativ, `aria-hidden`), ein Wort als Namen
 und einen kurzen Satz darunter in `fg-2`; bei Assets die Asset-Art (5.5).
-Die Kachel hat Kartenform (5.4). **Gewählt** zeigt sich an Rahmen in `accent` **und** einem
-Häkchen-Symbol — nie allein über Farbe. Eine **gesperrte** Kachel (fehlendes Recht, nicht
+Die Kachel hat Kartenform (5.4). **Gewählt** zeigt sich bei Artenkacheln an Rahmen in `accent`
+**und** einem Häkchen-Symbol — nie allein über Farbe. Asset-Kacheln zeigen gewählt allein am
+gefüllten Häkchen statt leerem Kreis, ohne Rahmen (5.4) — ein Unterschied der Form, nicht der Farbe. Eine **gesperrte** Kachel (fehlendes Recht, nicht
 verfügbare Quellart) bleibt sichtbar, ausgegraut, mit dem Grund im Satz darunter, wenn ihr Fehlen
 sonst Fragen aufwirft; Arten ohne Anlegerecht werden dagegen gar nicht angeboten. Der Grund steht
 in `warning`, nicht ausgegraut und außerhalb des gesperrten Bedienelements, das ihn als

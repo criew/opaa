@@ -30,7 +30,7 @@ export interface AssetTypeDefinition {
   detailRoute: (assetId: string) => string
   /** Where the type's own creation wizard starts. */
   createRoute: string
-  /** Holding any one of them is enough to be offered the type under "Neu". */
+  /** Holding any one of them is enough to be offered the type under "Neuer Katalogeintrag". */
   createCapabilities: Capability[]
   /** What the asset holds, in the words of the type ("12 Prompts"). */
   extentLabel: (count: number) => string
@@ -38,7 +38,7 @@ export interface AssetTypeDefinition {
 
 /**
  * The asset types in the order of the catalog's filter and the type choice. A new type needs one
- * entry here to appear in the catalog, its type filter and under "Neu", and for its pages to
+ * entry here to appear in the catalog, its type filter and under "Neuer Katalogeintrag", and for its pages to
  * render in the global frame under the rail's "Katalog" - no rail entry, no overview page of its
  * own. Its routes themselves still need registering in App.tsx. Every list the interface shows
  * reads the active types ({@link activeAssetTypes}, {@link useActiveAssetTypes}), never this one.
@@ -77,7 +77,7 @@ export const ASSET_TYPES: AssetTypeDefinition[] = [
 
 /**
  * The types whose installation-wide feature (ADR-0044, `ASSET_TYPE_FEATURES`) is on; a type behind
- * a switched-off feature is offered nowhere - no filter, tile, "Neu" option, picker or page.
+ * a switched-off feature is offered nowhere - no filter, tile, "Neuer Katalogeintrag" option, picker or page.
  */
 function activeIn(features: FeatureFlags): AssetTypeDefinition[] {
   return ASSET_TYPES.filter((definition) => isAssetTypeOffered(definition.type, features))
@@ -112,7 +112,7 @@ export function assetTypeTitle(assetType: AssetType | string | null | undefined)
 }
 
 /**
- * The types offered under "Neu": those for which the person is not known to lack every creation
+ * The types offered under "Neuer Katalogeintrag": those for which the person is not known to lack every creation
  * right. While the rights are still loading, every type counts as offered.
  */
 export function creatableAssetTypes(

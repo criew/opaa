@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import AddIcon from '@mui/icons-material/Add'
 import type {
   CapabilityOverviewResponse,
   ConnectionProfileImpactResponse,
@@ -277,6 +278,7 @@ export default function ConnectionProfilesTab() {
         </Box>
         <Button
           variant="contained"
+          startIcon={<AddIcon />}
           disabled={!anyTypeAdmitsProfiles}
           onClick={() => setForm({ open: true, profile: null })}
           sx={{ flex: 'none' }}

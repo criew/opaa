@@ -8,6 +8,7 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
+import AddIcon from '@mui/icons-material/Add'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import type { AssetRole, PromptLibraryResponse, PromptResponse } from '@/shared/api/types'
 import { usePromptLibraryStore } from '../stores/promptLibraryStore'
@@ -117,7 +118,12 @@ function PromptsArea({
           Prompt im Chat aufgerufen wird.
         </Typography>
         {mayCreate && (
-          <Button variant="contained" size="small" onClick={() => setEditing(null)}>
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<AddIcon />}
+            onClick={() => setEditing(null)}
+          >
             Neuer Prompt
           </Button>
         )}

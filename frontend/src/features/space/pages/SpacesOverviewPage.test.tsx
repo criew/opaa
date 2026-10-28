@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest'
-import { screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router'
 import { http, HttpResponse } from 'msw'
@@ -60,30 +60,37 @@ describe('SpacesOverviewPage (#593, Mockup 1c)', () => {
     await waitFor(() => expect(personalCard).toHaveTextContent('2 Chats'))
   })
 
-  it('heads the overview with the space count (#1914)', () => {
+  it('heads the overview like the catalog: "Spaces" with the quiet entry count (#3263)', () => {
     renderWithProviders(<SpacesOverviewPage />, { withRouter: true })
 
-    expect(screen.getByRole('heading', { level: 1, name: '2 Spaces' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Spaces' })).toBeInTheDocument()
+    expect(screen.getByText('2 Einträge')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Neuer Space' })).toBeInTheDocument()
   })
 
-  it('renders one linked card per space with figures, role and member badge (#1914, #1970)', () => {
+  it('renders one linked card per space with name, description and chat count (#3263)', () => {
     renderWithProviders(<SpacesOverviewPage />, { withRouter: true })
 
     const personalCard = screen.getByRole('link', { name: /Mein Space/ })
     expect(personalCard).toHaveAttribute('href', '/spaces/space-personal/chats/new')
-    expect(personalCard).toHaveTextContent('Eigener Denkraum ohne Mitleser.')
-    expect(personalCard).toHaveTextContent('12 Chats')
-    expect(within(personalCard).getByText('nur Sie')).toBeInTheDocument()
-    expect(personalCard).toHaveTextContent('Administrator')
+    expect(personalCard).toHaveTextContent(/^Mein SpaceEigener Denkraum ohne Mitleser\.12 Chats$/)
 
     const teamCard = screen.getByRole('link', { name: /Widerspruchsstelle/ })
     // An archived space rejects new chats server-side (ChatService), so its card leads to the
     // space overview rather than to a draft whose first message would fail.
     expect(teamCard).toHaveAttribute('href', '/spaces/space-team')
     expect(teamCard).toHaveTextContent('1 Chat')
-    expect(within(teamCard).getByText('2 Gruppen, 7 Personen')).toBeInTheDocument()
     expect(teamCard).toHaveTextContent('Archiviert')
+  })
+
+  // Role and members belong to the space settings, not to the card.
+  it('shows neither the own role nor the members on the card (#3263)', () => {
+    renderWithProviders(<SpacesOverviewPage />, { withRouter: true })
+
+    for (const card of screen.getAllByRole('link')) {
+      expect(card).not.toHaveTextContent(/Administrator|Kurator|Mitglied/)
+      expect(card).not.toHaveTextContent(/nur Sie|Gruppe|Person/)
+    }
   })
 
   it('drops the type marking and the source figure from the card (#1914)', () => {
@@ -94,42 +101,13 @@ describe('SpacesOverviewPage (#593, Mockup 1c)', () => {
     expect(screen.queryByText(/Quelle/)).not.toBeInTheDocument()
   })
 
-  it('reads "nur Sie" in a non-default space whose only member is the caller (#1970)', () => {
-    const alone = {
-      ...team,
-      archived: false,
-      memberCount: 1,
-      memberships: { groupCount: 0, userCount: 1 },
-    }
-    useSpaceStore.setState({ spaces: [alone], isLoadingList: false, error: null })
-    renderWithProviders(<SpacesOverviewPage />, { withRouter: true })
-
-    const card = screen.getByRole('link', { name: /Widerspruchsstelle/ })
-    expect(within(card).getByText('nur Sie')).toBeInTheDocument()
-  })
-
-  it('names a single group membership as a group, never as "nur Sie" (#1815)', () => {
-    const groupOnly = {
-      ...team,
-      archived: false,
-      memberCount: 1,
-      memberships: { groupCount: 1, userCount: 0 },
-    }
-    useSpaceStore.setState({ spaces: [groupOnly], isLoadingList: false, error: null })
-    renderWithProviders(<SpacesOverviewPage />, { withRouter: true })
-
-    const card = screen.getByRole('link', { name: /Widerspruchsstelle/ })
-    expect(within(card).getByText('1 Gruppe')).toBeInTheDocument()
-    expect(card).not.toHaveTextContent('nur Sie')
-  })
-
   it('leaves the chat figure out when the list API carries none (#682)', () => {
     const withoutFigures = { ...team, chatCount: undefined }
     useSpaceStore.setState({ spaces: [withoutFigures], isLoadingList: false, error: null })
     renderWithProviders(<SpacesOverviewPage />, { withRouter: true })
 
     const teamCard = screen.getByRole('link', { name: /Widerspruchsstelle/ })
-    expect(within(teamCard).getByText('2 Gruppen, 7 Personen')).toBeInTheDocument()
+    expect(teamCard).toHaveTextContent('Bearbeitung laufender Widersprüche.')
     expect(teamCard).not.toHaveTextContent('Chat')
   })
 

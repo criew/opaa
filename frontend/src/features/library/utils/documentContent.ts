@@ -1,7 +1,7 @@
 import { getDocumentContent } from '../api/libraryApi'
 
 // Shared between the library document list's "Original öffnen" action, the
-// citation deep link and the Belegfenster's "Im Dokument öffnen" action - all three need to
+// citation deep link and the Belegfenster's "Dokument öffnen" action - all three need to
 // turn a documentId into a rendered/downloaded/previewed file, and neither can use a plain
 // <a href> since the endpoint is Bearer-authenticated (ADR-0005).
 

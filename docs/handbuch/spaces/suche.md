@@ -667,7 +667,7 @@ verwechselt werden:
 | Rechtefilter (Stufe 1) | Bibliothek des Chunks | entscheidet, ob ein Chunk überhaupt in einer Abfrage vorkommt | nein, immer |
 | Metadatenfilter (Stufe 2) | Kernfelder Dokumentart und Datum/Stand, Bibliotheks- und Formatfelder | schränkt beide Suchpfade vor dem Ranking ein; Leerwerte bleiben drin und werden als „ohne Angabe" markiert | ja, die Person setzt den Filter im Chat; aus der Frage wird kein Filter abgeleitet |
 | Kontextpräfix (Stufen 4 und 5) | Titel des Dokuments, ausgewählte Kernfelder und Bibliotheksfelder, Gliederungspfad des Chunks | steht dem Chunk-Text in Einbettung **und** Volltextindex voran, sodass ein Detail-Chunk trägt, wovon sein Dokument handelt; wirkt auf Ähnlichkeit und Wortsuche, ohne dass jemand filtert | nein, wirkt bei jeder Frage; welche Felder das tun, entscheidet die Bibliothek |
-| Fundstelle (Abschnitt 7) | Titel, Dokumentart, Datum/Stand, Ortsangabe, Belegfelder der Bibliothek | ordnet den Beleg ein: welche Fassung, welche Seite | nein |
+| Fundstelle (Abschnitt 7) | Titel, Dokumentart, Datum/Stand, Ortsangabe, Bibliotheksfelder mit Zitierposition | ordnet die Fundstelle in der Ausgabe für externe KI-Werkzeuge ein: welche Fassung, welche Seite; das Belegfenster zeigt nur Titel und Ortsangabe | nein |
 
 Der Filter wird nur angeboten, wenn das Feld im Suchbereich der Person ausreichend gefüllt ist:
 eine konfigurierte Schwelle je Kernfeld, für die Dokumentart höher als für das Datum; für
@@ -882,11 +882,11 @@ des ersten Auftretens im Antwortkontext:
 
 | Angabe | Bedeutung |
 |---|---|
-| Rang n | Position in der Fundstellenliste; lückenlos, gleichbedeutend über beide Suchpfade. Es ist keine Ähnlichkeit und kein Prozentwert |
+| Rang | Position in der Fundstellenliste; lückenlos, gleichbedeutend über beide Suchpfade. Es ist keine Ähnlichkeit und kein Prozentwert; das Belegfenster zeigt ihn nicht |
 | zitiert / „geprüft, nicht zitiert" | ob das Modell das Dokument in der Antwort belegt hat; nicht zitierte Dokumente waren im Antwortkontext, wurden aber nicht verwendet |
 | Trefferzahl | wie viele Chunks des Dokuments im Antwortkontext standen; Nachbar-Chunks zählen mit, auch wenn die Suche sie selbst nicht gefunden hat |
 | Ortsangaben | je Chunk die Stelle im Dokument („S. 3 · Abschn. Fristen"), über die eine Fußnote im Text aufgelöst wird |
-| Titel · Dokumentart · Datum/Stand | die Kernfelder des Dokuments, dazu die Belegfelder der Bibliothek; ein abgeleiteter Wert ist als „(abgeleitet)" gekennzeichnet |
+| Titel · Dokumentart · Datum/Stand | die Kernfelder des Dokuments, dazu die Bibliotheksfelder mit Zitierposition; ein abgeleiteter Wert ist als „(abgeleitet)" gekennzeichnet |
 | „ohne Angabe" | unter aktivem Filter: das Dokument wurde nur durch die Leerwert-Regel gefunden |
 | Quelle | Quellentyp und Link zum Dokument bzw. zur Seite in der Quelle, Indexierungszeitpunkt |
 | „Stand vom …" | die Bibliothek des Dokuments wurde beim Antworten nicht aktualisiert: gesperrt, Verbindung getrennt oder Zugang entfernt. Das Datum ist ihr letzter erfolgreicher Lauf, nicht der Indexierungszeitpunkt des Dokuments; dazu stehen der Grund und die zuständige Stelle (Systemverwaltung bei einer Sperre, sonst die Verwaltenden der Bibliothek). Siehe Kapitel [Zugänge](../arbeitsmittel/zugaenge.md) |
@@ -894,8 +894,18 @@ des ersten Auftretens im Antwortkontext:
 Die Fundstellen stehen im Belegfenster; unter der Antwort steht nur „Belege anzeigen" mit der
 Zahl der zitierten Stellen und der weiteren geprüften, nicht zitierten Dokumente. Fährt man mit der Maus über eine
 Fußnote im Antworttext, nennt ein Tooltip Dokument und Fundort; ein Klick öffnet das Belegfenster
-an der zugehörigen Fundstelle und markiert sie dort. Das
-Belegfenster stellt zitierte vor nicht zitierte und zeigt den Auszug jedes Chunks.
+an der zugehörigen Fundstelle und markiert sie dort.
+
+Das Belegfenster heißt „Belege dieser Antwort" und hat oben nur das Suchfeld „In Belegen suchen".
+Es öffnet mit den zitierten Dokumenten in der Reihenfolge ihrer Fußnoten; der Link **„Nicht
+zitierte anzeigen"** unter der Liste blendet die geprüften, nicht zitierten darunter ein, ein
+zweiter Klick wieder aus. Bei jedem Öffnen sind sie wieder ausgeblendet. Die Suche durchsucht Titel
+und Fundort aller Belege, auch der ausgeblendeten. Je Dokument
+stehen die Fußnotenziffern, der Titel, der Fundort und die Aktion **„Dokument öffnen"**; dazu, wo
+sie zutreffen, „geprüft, nicht zitiert", „Private Quelle", „Beleg nicht bestätigt", „ohne Angabe"
+und „Stand vom …". Rang, Metadaten, Indexierungszeitpunkt und die Adresse in der Quelle zeigt das
+Belegfenster nicht. Den Rang eines Dokuments zeigt nur die Diagnose der Systemadministration
+(Abschnitt [„Das Diagnosewerkzeug"](#82-das-diagnosewerkzeug)), die eine Frage erneut durch die Suche schickt.
 
 **Kopieren.** Rechts unter jeder Antwort steht „Kopieren". Ein Klick legt die Antwort als Markdown in
 die Zwischenablage, ohne Fußnotenmarken und ohne Quellenliste. Der Pfeil daneben bietet zwei

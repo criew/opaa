@@ -7,6 +7,7 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import FormControl from '@mui/material/FormControl'
+import FormHelperText from '@mui/material/FormHelperText'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
@@ -92,18 +93,23 @@ export default function EditFieldDialog({
             <Select
               labelId="edit-citation-position-label"
               label="Zitierposition"
+              aria-describedby="edit-citation-position-help"
               value={citationPosition}
               onChange={(e) => setCitationPosition(e.target.value)}
             >
-              <MenuItem value="">nicht in der Belegzeile</MenuItem>
+              <MenuItem value="">keine</MenuItem>
               <MenuItem value="1">1</MenuItem>
               <MenuItem value="2">2</MenuItem>
             </Select>
+            <FormHelperText id="edit-citation-position-help">
+              Wirkt nur in der Ausgabe für externe KI-Werkzeuge (Suchschnittstelle, MCP); das
+              Belegfenster im Chat zeigt keine Metadaten.
+            </FormHelperText>
           </FormControl>
           {noEffect && (
             <Alert severity="warning">
-              Jedes Feld muss mindestens im Filter oder im Kontextpräfix wirken; „nur Beleg-Anzeige“
-              genügt nicht.
+              Jedes Feld muss mindestens im Filter oder im Kontextpräfix wirken; „nur
+              Zitierposition“ genügt nicht.
             </Alert>
           )}
           {contextPrefix !== field.contextPrefix && (
