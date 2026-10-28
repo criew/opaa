@@ -20,9 +20,11 @@ import org.springframework.util.StringUtils;
  * connection to the server, signed in when a user name is set, without sending anything, and on
  * request the test message to a given address through the same transport. Every wait is bounded by
  * the {@link SmtpProperties} timeouts; nothing is written to the stored settings or their send
- * status. A failure answers with one of a few fixed German sentences ({@link Failure}), so the
- * answer tells a probe nothing about the far end; the cause goes to the log only, without address
- * and without the password. A failed check is a result, never an exception.
+ * status. A success says whether a test message went out, never to which address, as the
+ * installation stores the sentence. A failure answers with one of a few fixed German sentences
+ * ({@link Failure}), so the answer tells a probe nothing about the far end; the cause goes to the
+ * log only, without address and without the password. A failed check is a result, never an
+ * exception.
  */
 @DataFlow("mail")
 @Component
@@ -52,7 +54,7 @@ public class MailConnectionTester {
 
   static final String CONNECTED = "Die Verbindung zum Mailserver ist gelungen.";
   static final String SIGNED_IN = "Verbindung und Anmeldung beim Mailserver sind gelungen.";
-  static final String NOTHING_SENT = "Es wurde keine Nachricht versendet.";
+  static final String NOTHING_SENT = "Es wurde keine Testnachricht gesendet.";
   static final String TEST_SENT = "Die Testnachricht wurde dem Mailserver übergeben.";
   static final String TEST_REFUSED = "Der Mailserver hat die Testnachricht nicht angenommen.";
 

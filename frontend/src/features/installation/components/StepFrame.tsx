@@ -33,8 +33,9 @@ interface StepFrameProps extends StepNavigationProps {
   /** Label of the primary action; the steps with a check say what happens. */
   submitLabel?: string
   busyAnnouncement?: string
-  /** The primary action refuses for now; `describedBy` names the element that says why. */
+  /** The primary action refuses for now. */
   unavailable?: boolean
+  /** The element that describes the primary action, e.g. why it refuses or what it will do. */
   describedBy?: string
   /** Moves the focus to the heading when the step opens; off for the page's first view. */
   focusHeading?: boolean

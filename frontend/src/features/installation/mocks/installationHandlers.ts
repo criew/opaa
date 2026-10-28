@@ -217,10 +217,14 @@ export const installationHandlers = [
     if (recipient && failure === null) recordMockTestRecipient(recipient)
     const success =
       step.step === 'MAIL'
-        ? `Verbindung und Anmeldung beim Mailserver sind gelungen. ${
+        ? `${
+            step.mail?.username
+              ? 'Verbindung und Anmeldung beim Mailserver sind gelungen.'
+              : 'Die Verbindung zum Mailserver ist gelungen.'
+          } ${
             recipient
               ? 'Die Testnachricht wurde dem Mailserver übergeben.'
-              : 'Es wurde keine Nachricht versendet.'
+              : 'Es wurde keine Testnachricht gesendet.'
           }`
         : 'Prüfung erfolgreich.'
     updateMockStep(step.step, {
