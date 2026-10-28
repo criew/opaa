@@ -29,6 +29,8 @@ export interface AssetTileData {
   favorite?: boolean
   /** The figures line, e.g. "12 Dokumente · in 2 Spaces". */
   figures?: string | null
+  /** The extent alone, e.g. "12 Dokumente" - what a tile in a choice shows instead of the figures. */
+  extent?: string | null
   /** Who to turn to, with whether that is a group. */
   responsible?: { label: string; group: boolean } | null
   /** Shown as "Aktualisiert am …" while nothing needs attention. */
@@ -133,6 +135,7 @@ export function tileFromCatalogEntry(entry: CatalogEntryResponse): AssetTileData
     figures: definition
       ? `${definition.extentLabel(entry.itemCount)} · ${spreadLabel(entry.spaceCount)}`
       : null,
+    extent: definition ? definition.extentLabel(entry.itemCount) : null,
     responsible: responsibleParty(entry),
     // An upload library has no runs, so no lastIndexedAt; its date is then its last change.
     updatedAt: entry.knowledgeLibrary?.lastIndexedAt ?? entry.updatedAt ?? null,

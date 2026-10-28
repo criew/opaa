@@ -13,6 +13,7 @@ const tile: AssetTileData = {
   isPublic: true,
   favorite: false,
   figures: '12 Dokumente · in 2 Spaces',
+  extent: '12 Dokumente',
   responsible: { label: 'Bürgerbüro Rheinfurt', group: true },
   updatedAt: '2026-09-30T08:00:00Z',
 }
@@ -50,10 +51,80 @@ describe('AssetTile (#2131)', () => {
 
     const checkbox = screen.getByRole('checkbox', { name: 'Satzungen & Gebührenordnungen' })
     expect(checkbox).toHaveAttribute('aria-checked', 'true')
-    expect(checkbox).toHaveAccessibleDescription(
-      'Alle geltenden Satzungen der Stadt. 12 Dokumente · in 2 Spaces',
-    )
+    expect(checkbox).toHaveAccessibleDescription('Alle geltenden Satzungen der Stadt. 12 Dokumente')
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
+
+  // In a choice only what it is and how large it is counts.
+  it('shows only title, description and extent in the selection mode', () => {
+    renderWithProviders(
+      <AssetTile tile={tile} mode={{ kind: 'select', selected: false, onToggle: vi.fn() }} />,
+    )
+
+    expect(screen.getByText('Satzungen & Gebührenordnungen')).toBeInTheDocument()
+    expect(screen.getByText('Alle geltenden Satzungen der Stadt.')).toBeInTheDocument()
+    expect(screen.getByText('12 Dokumente')).toBeInTheDocument()
+    expect(screen.queryByText(/in 2 Spaces/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: 'Für alle Konten freigegeben' })).toBeNull()
+    expect(screen.queryByText('Bürgerbüro Rheinfurt')).not.toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: 'Zuständige Gruppe' })).toBeNull()
+    expect(screen.queryByText(/Aktualisiert am/)).not.toBeInTheDocument()
+  })
+
+  // An open succession blocks a new association, so a choice keeps naming it.
+  it('keeps the open succession in the selection mode', () => {
+    renderWithProviders(
+      <AssetTile
+        tile={{ ...tile, successionOpen: true }}
+        mode={{ kind: 'select', selected: false, onToggle: vi.fn() }}
+      />,
+    )
+
+    expect(screen.getByText('Nachfolge offen')).toBeInTheDocument()
+  })
+
+  // Chosen shows as the check mark alone; the frame stays that of an unchosen tile.
+  it('marks a chosen tile by the check mark, not by an accent frame', () => {
+    const { unmount } = renderWithProviders(
+      <AssetTile tile={tile} mode={{ kind: 'select', selected: false, onToggle: vi.fn() }} />,
+    )
+    const unchosen = getComputedStyle(screen.getByRole('checkbox').parentElement!)
+    const frame = {
+      borderWidth: unchosen.borderTopWidth,
+      borderColor: unchosen.borderTopColor,
+      background: unchosen.backgroundColor,
+    }
+    expect(screen.getByTestId('RadioButtonUncheckedIcon')).toBeInTheDocument()
+    unmount()
+
+    renderWithProviders(
+      <AssetTile tile={tile} mode={{ kind: 'select', selected: true, onToggle: vi.fn() }} />,
+    )
+    const chosen = getComputedStyle(screen.getByRole('checkbox').parentElement!)
+    expect(screen.getByTestId('CheckCircleIcon')).toBeInTheDocument()
+    expect({
+      borderWidth: chosen.borderTopWidth,
+      borderColor: chosen.borderTopColor,
+      background: chosen.backgroundColor,
+    }).toEqual(frame)
+  })
+
+  // The stretched title link covers every unraised spot of the tile, so the globe must lie
+  // above it to receive the pointer and show its tooltip. jsdom does no hit testing - hover opens
+  // the tooltip even when covered - so only the position and z-index check guards the regression.
+  it('raises the globe above the stretched title link and names it in a tooltip', async () => {
+    renderWithProviders(
+      <AssetTile tile={tile} mode={{ kind: 'link', to: '/libraries/library-satzungen' }} />,
+      { withRouter: true },
+    )
+    const user = userEvent.setup()
+
+    const globe = screen.getByRole('img', { name: 'Für alle Konten freigegeben' })
+    expect(getComputedStyle(globe).position).toBe('relative')
+    expect(Number(getComputedStyle(globe).zIndex)).toBeGreaterThanOrEqual(1)
+
+    await user.hover(globe)
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Für alle Konten freigegeben')
   })
 
   it('toggles the choice on a click and on the keyboard', async () => {

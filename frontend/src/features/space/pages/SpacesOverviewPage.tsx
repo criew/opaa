@@ -3,12 +3,9 @@ import Box from '@mui/material/Box'
 import Chip from '@mui/material/Chip'
 import Typography from '@mui/material/Typography'
 import { useNavigate } from 'react-router'
-import MetaBadge from '@/shared/ui/MetaBadge'
 import OverviewPage, { OverviewCard } from '@/shared/ui/overview/OverviewPage'
 import { SuccessionStateNote } from '@/features/succession'
 import { useSpaceStore } from '../stores/spaceStore'
-import { spaceMembershipLabel } from '@/features/asset'
-import { spaceRoleLabel } from '@/shared/utils/labels'
 import type { SpaceListResponse } from '@/shared/api/types'
 
 function plural(count: number, singular: string, pluralForm: string): string {
@@ -53,10 +50,6 @@ function SpaceCard({ space }: { space: SpaceListResponse }) {
       {/* ADR-0036, Entscheidung 6 requires the marking in overview *and* detail view -
          state and addressee, without date, owner or reason. */}
       <SuccessionStateNote succession={space.succession} variant="badge" />
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-        <MetaBadge accent>{spaceRoleLabel(space.userRole)}</MetaBadge>
-        <MetaBadge>{spaceMembershipLabel(space.memberships)}</MetaBadge>
-      </Box>
     </OverviewCard>
   )
 }
@@ -69,7 +62,7 @@ export default function SpacesOverviewPage() {
   const error = useSpaceStore((s) => s.error)
   const loadSpaces = useSpaceStore((s) => s.loadSpaces)
 
-  // Re-read on every visit: the figures (chats, members) change through actions on other pages,
+  // Re-read on every visit: the chat figure changes through actions on other pages,
   // and the cached cards stay visible while the fresh list loads.
   useEffect(() => {
     void loadSpaces()
@@ -83,7 +76,6 @@ export default function SpacesOverviewPage() {
   return (
     <OverviewPage<SpaceListResponse>
       title="Spaces"
-      heading={(count) => (count === 1 ? '1 Space' : `${count} Spaces`)}
       createLabel="Neuer Space"
       onCreate={() => navigate('/spaces/new')}
       items={spaces}

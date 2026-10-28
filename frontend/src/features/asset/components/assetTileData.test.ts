@@ -69,4 +69,11 @@ describe('tileFromCatalogEntry', () => {
       'Konto deaktiviert – Inhalt wird ab dem 03.11.2026 gelöscht (zuständig: Systemverwaltung)',
     )
   })
+
+  // A choice shows the extent without the spread.
+  it('carries the extent apart from the figures line', () => {
+    const tile = tileFromCatalogEntry({ ...libraryEntry(null), itemCount: 3, spaceCount: 2 })
+    expect(tile.extent).toBe('3 Dokumente')
+    expect(tile.figures).toBe('3 Dokumente · in 2 Spaces')
+  })
 })

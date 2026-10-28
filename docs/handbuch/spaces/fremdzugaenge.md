@@ -196,9 +196,10 @@ dafür nicht gebraucht.
 - **Bibliotheken** — eine konkrete Liste, mindestens eine. Auswählbar ist nur, was die Person selbst
   lesen darf **und** was freigegeben ist. Eine Option „alle, auch künftige" gibt es nicht, und die
   Auswahl ist nach der Ausstellung **unveränderlich**: Eine Änderung ist ein neues Token.
-  Gewählt wird über dieselben Kacheln wie im Katalog: Jede wählbare Bibliothek ist eine Kachel mit
-  Art, Stern, Name, Beschreibung und dem Ende ihrer Freigabe; ein Klick, die Leertaste oder Enter
-  wählt sie aus und wieder ab, eine gewählte Kachel trägt Rahmen und Häkchen links oben. Der Stern
+  Gewählt wird über dieselben Kacheln wie bei der Zuordnung zu einem Space: Jede wählbare Bibliothek
+  ist eine Kachel mit Art, Stern, Name, Beschreibung und dem Ende ihrer Freigabe; ein Klick, die
+  Leertaste oder Enter wählt sie aus und wieder ab, eine gewählte Kachel trägt links oben ein
+  Häkchen statt eines leeren Kreises. Der Stern
   setzt nur den eigenen Favoriten und ändert die Auswahl nicht. Über den Kacheln steht dieselbe Filterzeile wie im
   Katalog: eine Suche nach Name und Beschreibung, **Favoriten** (die eigenen, wie im Katalog) und
   **Nur ausgewählte** (die Auswahl beim Einschalten; eine danach abgewählte Kachel bleibt stehen,

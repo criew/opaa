@@ -2,7 +2,6 @@ import { useId, type ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import { alpha } from '@mui/material/styles'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked'
 import { blue } from '@/shared/theme/tokens'
@@ -111,13 +110,11 @@ export default function AssetTile({ tile, mode, onFavoriteChange, actions }: Ass
   const idBase = useId()
   const descriptionId = `${idBase}-description`
   const figuresId = `${idBase}-figures`
+  // A choice asks only what an asset is and how large: no spread, responsibility, date or globe.
+  const figures = selecting ? tile.extent : tile.figures
   const noteId = `${idBase}-note`
   // The checkbox is named by the title alone; the rest of the tile is its description.
-  const describedBy = [
-    tile.description && descriptionId,
-    tile.figures && figuresId,
-    tile.note && noteId,
-  ]
+  const describedBy = [tile.description && descriptionId, figures && figuresId, tile.note && noteId]
     .filter(Boolean)
     .join(' ')
 
@@ -136,36 +133,30 @@ export default function AssetTile({ tile, mode, onFavoriteChange, actions }: Ass
         textAlign: 'left',
         gap: 1,
         p: 2.5,
-        border: selected ? 2 : 1,
-        // Keeps the content in place when the border thickens.
-        m: selected ? '-1px' : 0,
-        borderColor: selected ? 'primary.main' : 'divider',
+        border: 1,
+        borderColor: 'divider',
         borderRadius: '16px',
-        bgcolor: selected
-          ? (theme) =>
-              theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.16) : blue[50]
-          : 'background.paper',
+        bgcolor: 'background.paper',
         cursor: readOnly ? 'default' : 'pointer',
         // Only the main control marks the tile: pointing at or pressing the star or "⋯" marks
         // just that control. The stretched main control covers every other spot of the tile.
-        [`&:has(> ${MAIN_CONTROL}:hover)`]: readOnly
-          ? {}
-          : { borderColor: selected ? 'primary.main' : blue[300] },
-        [`&:has(> ${MAIN_CONTROL}:focus)`]: { borderColor: selected ? 'primary.main' : blue[300] },
+        [`&:has(> ${MAIN_CONTROL}:hover)`]: readOnly ? {} : { borderColor: blue[300] },
+        [`&:has(> ${MAIN_CONTROL}:focus)`]: { borderColor: blue[300] },
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-        {/* Chosen shows as check mark and border, never by colour alone (guidelines 5.11). */}
+        {/* Chosen shows as the filled check mark against the empty circle - a difference of shape,
+            never of colour alone (guidelines 5.11); the tile's frame stays the same. */}
         {selecting &&
           (selected ? (
-            <CheckCircleIcon aria-hidden sx={{ fontSize: 18, color: 'primary.main' }} />
+            <CheckCircleIcon aria-hidden sx={{ fontSize: 20, color: 'primary.main' }} />
           ) : (
-            <RadioButtonUncheckedIcon aria-hidden sx={{ fontSize: 18, color: 'text.disabled' }} />
+            <RadioButtonUncheckedIcon aria-hidden sx={{ fontSize: 20, color: 'text.secondary' }} />
           ))}
         {definition && <TypeBadge definition={definition} />}
         {tile.privateLibrary && <PrivateMark />}
         {tile.erasing && <ErasingMark />}
-        {tile.isPublic && <PublicMark />}
+        {tile.isPublic && !selecting && <PublicMark />}
         {onFavoriteChange && tile.favorite !== undefined ? (
           <FavoriteToggle
             name={tile.name}
@@ -234,12 +225,13 @@ export default function AssetTile({ tile, mode, onFavoriteChange, actions }: Ass
       )}
       {/* Pushes the figures to the tile's foot; the negative margin takes back the gap. */}
       <Box aria-hidden sx={{ mt: 'auto', mb: -1 }} />
-      {tile.figures && <MetaLine id={figuresId}>{tile.figures}</MetaLine>}
-      {tile.responsible && <ResponsibleLine responsible={tile.responsible} />}
+      {figures && <MetaLine id={figuresId}>{figures}</MetaLine>}
+      {tile.responsible && !selecting && <ResponsibleLine responsible={tile.responsible} />}
       {tile.status ? (
         <StateDotLine status={tile.status} />
       ) : (
-        tile.updatedAt && <MetaLine>Aktualisiert am {formatDate(tile.updatedAt)}</MetaLine>
+        tile.updatedAt &&
+        !selecting && <MetaLine>Aktualisiert am {formatDate(tile.updatedAt)}</MetaLine>
       )}
       {tile.successionOpen && <StateDotLine status="SUCCESSION_OPEN" />}
       {tile.note && <MetaLine id={noteId}>{tile.note}</MetaLine>}

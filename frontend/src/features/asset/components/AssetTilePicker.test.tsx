@@ -195,13 +195,11 @@ describe('AssetTilePicker', () => {
     )
 
     const group = await screen.findByRole('group', { name: 'Inhalte' })
-    await waitFor(() =>
-      expect(within(group).getByText('12 Dokumente · in 2 Spaces')).toBeInTheDocument(),
-    )
+    await waitFor(() => expect(within(group).getByText('12 Dokumente')).toBeInTheDocument())
     expect(
       within(group).getByRole('button', { name: '„Erste Bibliothek“ aus den Favoriten entfernen' }),
     ).toBeInTheDocument()
-    expect(within(group).getByText('Bürgerbüro')).toBeInTheDocument()
+    expect(within(group).queryByText('Bürgerbüro')).toBeNull()
     expect(within(group).queryByRole('checkbox', { name: 'Fremde Bibliothek' })).toBeNull()
     expect(requested).toContainEqual(expect.arrayContaining(['erste', 'fremde']))
   })
