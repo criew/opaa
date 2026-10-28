@@ -7,6 +7,8 @@ import io.opaa.llm.LlmModelDiscoverer;
 import io.opaa.llm.ModelDiscovery;
 import io.opaa.ratelimit.RateLimitService;
 import io.opaa.security.SettingsEncryptor;
+import java.util.EnumSet;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 
 /**
@@ -28,6 +30,14 @@ public class InstallationModelDiscovery {
           + " eintragen.";
 
   private static final String BUDGET_KEY = "installation";
+
+  /** The steps with a model endpoint, whose models can be listed. */
+  static final Set<InstallationStep> MODEL_STEPS =
+      Set.copyOf(
+          EnumSet.of(
+              InstallationStep.CHAT_MODEL,
+              InstallationStep.EMBEDDING_MODEL,
+              InstallationStep.RERANK_MODEL));
 
   private final InstallationStateRepository states;
   private final InstallationStepRepository steps;
@@ -59,9 +69,10 @@ public class InstallationModelDiscovery {
    * @throws TooManyRequestsException past the budget
    */
   public ModelDiscovery discover(InstallationStep step, String baseUrl, String apiKey) {
-    if (step != InstallationStep.CHAT_MODEL && step != InstallationStep.EMBEDDING_MODEL) {
+    if (!MODEL_STEPS.contains(step)) {
       throw new ValidationException(
-          "Modelle lassen sich nur in den Schritten Chat-Modell und Embedding-Modell abrufen.");
+          "Modelle lassen sich nur in den Schritten Chat-Modell, Embedding-Modell und"
+              + " Rerank-Modell abrufen.");
     }
     if (states.isCompleted()) {
       throw new NotFoundException("Die angeforderte Ressource wurde nicht gefunden");
@@ -83,7 +94,7 @@ public class InstallationModelDiscovery {
     if (saved == null || saved.getSecret() == null) {
       return null;
     }
-    if (!StepRules.sameEndpoint(savedBaseUrl(step, saved.getPayload()), baseUrl)) {
+    if (!StepRules.sameEndpoint(rules.savedModelBaseUrl(step, saved.getPayload()), baseUrl)) {
       throw new ValidationException(
           "Die Basis-Adresse weicht von der gespeicherten ab. Der gespeicherte Zugangsschlüssel"
               + " gilt nur für sie: Bitte den Schlüssel erneut eingeben oder die gespeicherte"
@@ -96,11 +107,5 @@ public class InstallationModelDiscovery {
           "Der gespeicherte Zugangsschlüssel ist nicht lesbar; bitte den Schlüssel erneut"
               + " eingeben.");
     }
-  }
-
-  private String savedBaseUrl(InstallationStep step, String payload) {
-    return step == InstallationStep.CHAT_MODEL
-        ? rules.chatModelPayload(payload).baseUrl()
-        : rules.embeddingModelPayload(payload).baseUrl();
   }
 }

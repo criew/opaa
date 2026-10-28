@@ -39,15 +39,21 @@ dataFlows:
   - id: rerank-model
     group: MODEL
     viaOutboundProxy: true
-    target: Der Rerank-Endpunkt, den die Systemverwaltung in der Modellverwaltung hinterlegt
+    target: >-
+      Der Rerank-Endpunkt, den die Systemverwaltung in der Modellverwaltung hinterlegt, und im
+      Installationsassistenten der Endpunkt, den die einrichtende Person angibt
     data: >-
-      Suchanfrage und die Kandidaten-Textstellen; beim Verbindungstest der Verwaltung eine
-      feste Probe ohne Inhalte
+      Suchanfrage und die Kandidaten-Textstellen; beim Verbindungstest der Verwaltung und bei der
+      Prüfung im Assistenten eine feste Probe ohne Inhalte
     trigger: >-
       Jede Suche und Chat-Anfrage bei eingeschaltetem Reranking, Statusprüfung, Verbindungstest in
-      der Modellverwaltung
-    switchOff: Abschaltbar in der Modellverwaltung, Voreinstellung aus
-    settings: [rerank_model.enabled, rerank_model.base_url]
+      der Modellverwaltung; im Installationsassistenten die Prüfung des Schritts Rerank-Modell, nur
+      mit dem Installations-Token und vor dem Abschluss
+    switchOff: >-
+      Abschaltbar in der Modellverwaltung, Voreinstellung aus; der Abschluss der Installation
+      schaltet das Reranking nur ein, wenn der Schritt Rerank-Modell geprüft und nicht übersprungen
+      ist
+    settings: [rerank_model.enabled, rerank_model.base_url, installation_steps.payload]
   - id: transcription-model
     group: MODEL
     viaOutboundProxy: true
@@ -66,15 +72,15 @@ dataFlows:
     viaOutboundProxy: true
     target: >-
       Die Adresse eines Chat-Modells, die die Systemverwaltung im Formular angibt, und im
-      Installationsassistenten die Adresse von Chat- oder Embedding-Modell, die die einrichtende
-      Person angibt
+      Installationsassistenten die Adresse von Chat-, Embedding- oder Rerank-Modell, die die
+      einrichtende Person angibt
     data: >-
       Abruf der angebotenen Modelle, eine Testanfrage von einem Token; der hinterlegte API-Schlüssel
       nur an die Herkunft des eigenen Modells, ein im Assistenten gespeicherter nur an dieselbe
       Adresse. Keine personenbezogenen Daten
     trigger: >-
       Modellauswahl und Verbindungstest in der Verwaltung der Chat-Modelle; im
-      Installationsassistenten der Modellabruf in den Schritten Chat- und Embedding-Modell (beim
+      Installationsassistenten der Modellabruf in den Schritten Chat-, Embedding- und Rerank-Modell (beim
       Verlassen von Adresse oder Schlüssel, auf „Modelle abrufen“ und beim Öffnen eines
       gespeicherten Modellschritts) und die Prüfung des Chat-Modells, nur mit dem
       Installations-Token und vor dem Abschluss

@@ -6,6 +6,7 @@ import io.opaa.api.dto.InstallationEmbeddingModelView;
 import io.opaa.api.dto.InstallationFirstAdminView;
 import io.opaa.api.dto.InstallationMailView;
 import io.opaa.api.dto.InstallationOidcProvider;
+import io.opaa.api.dto.InstallationRerankModelView;
 import io.opaa.api.dto.InstallationSignIn;
 import io.opaa.api.dto.InstallationSignInMode;
 import io.opaa.api.dto.InstallationStatusResponse;
@@ -61,6 +62,9 @@ final class InstallationResponseMapper {
         view.setDimensions(model.dimensions());
         response.setEmbeddingModel(view);
       }
+      case InstallationOverview.RerankModel model ->
+          response.setRerankModel(
+              new InstallationRerankModelView(model.baseUrl(), model.model(), model.apiKeySet()));
       case InstallationOverview.Mail mail -> {
         InstallationMailView view =
             new InstallationMailView(

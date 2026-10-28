@@ -19,6 +19,11 @@ public enum InstallationStep {
    */
   EMBEDDING_MODEL(false),
   /**
+   * The rerank model, optional: its check is the probe of the rerank model administration, and the
+   * completion stores it there and switches reranking on; skipped, reranking stays off.
+   */
+  RERANK_MODEL(false),
+  /**
    * The mail server, optional: the completion stores it and switches sending on; skipped, sending
    * stays off (ADR-0033, Entscheidung 10).
    */

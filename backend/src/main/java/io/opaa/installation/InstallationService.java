@@ -22,6 +22,7 @@ import io.opaa.installation.InstallationState.TokenSource;
 import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelService;
 import io.opaa.llm.ModelEndpointUri;
+import io.opaa.llm.ModelRoleAdministration;
 import io.opaa.mail.MailSettingsRules;
 import io.opaa.mail.MailSettingsService;
 import io.opaa.organization.Organization;
@@ -111,6 +112,7 @@ public class InstallationService {
   private final OidcProviderService oidcProviders;
   private final LlmModelService llmModels;
   private final EmbeddingModelService embeddingModels;
+  private final ModelRoleAdministration modelRoles;
   private final MailSettingsService mailSettings;
   private final BrandingSettingsService brandingSettings;
   private final AuditEventRecorder audit;
@@ -133,6 +135,7 @@ public class InstallationService {
       OidcProviderService oidcProviders,
       LlmModelService llmModels,
       EmbeddingModelService embeddingModels,
+      ModelRoleAdministration modelRoles,
       MailSettingsService mailSettings,
       BrandingSettingsService brandingSettings,
       AuditEventRecorder audit,
@@ -149,6 +152,7 @@ public class InstallationService {
     this.oidcProviders = oidcProviders;
     this.llmModels = llmModels;
     this.embeddingModels = embeddingModels;
+    this.modelRoles = modelRoles;
     this.mailSettings = mailSettings;
     this.brandingSettings = brandingSettings;
     this.audit = audit;
@@ -257,7 +261,7 @@ public class InstallationService {
 
   /**
    * Completes the installation from its checked steps; a skipped optional step leaves its model
-   * out.
+   * out, a skipped rerank step leaves reranking off.
    *
    * @throws ConflictException when a mandatory step is not saved or not successfully checked, or an
    *     optional step is saved but not successfully checked
@@ -584,6 +588,10 @@ public class InstallationService {
     if (embeddingStep != null) {
       installEmbeddingModel(embeddingStep);
     }
+    InstallationStepRecord rerankStep = saved.get(InstallationStep.RERANK_MODEL);
+    if (rerankStep != null) {
+      installRerankModel(rerankStep);
+    }
     InstallationStepRecord mailStep = saved.get(InstallationStep.MAIL);
     if (mailStep != null) {
       mailSettings.installSettings(
@@ -653,6 +661,16 @@ public class InstallationService {
     }
     embeddingModels.install(
         rules.embeddingEndpoint(embedding, step.getSecret()), embedding.dimensions());
+  }
+
+  /**
+   * The rerank model of the step through the write path of the rerank model administration, audited
+   * under the installation, with reranking switched on.
+   */
+  private void installRerankModel(InstallationStepRecord step) {
+    StepRules.RerankModelPayload model = rules.rerankModelPayload(step.getPayload());
+    modelRoles.installRerank(
+        Organization.DEFAULT_ID, SYSTEM_ACTOR, model.baseUrl(), model.model(), step.getSecret());
   }
 
   /**
@@ -763,6 +781,11 @@ public class InstallationService {
         summary.put("apiKeySet", model.apiKeySet());
       }
       case InstallationOverview.EmbeddingModel model -> {
+        summary.put("baseUrl", ModelEndpointUri.withoutSecrets(model.baseUrl()));
+        summary.put("model", model.model());
+        summary.put("apiKeySet", model.apiKeySet());
+      }
+      case InstallationOverview.RerankModel model -> {
         summary.put("baseUrl", ModelEndpointUri.withoutSecrets(model.baseUrl()));
         summary.put("model", model.model());
         summary.put("apiKeySet", model.apiKeySet());

@@ -5,6 +5,7 @@ import io.opaa.common.FieldValidationException;
 import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelConnectionTester;
 import io.opaa.llm.ModelAddressPolicy;
+import io.opaa.llm.ModelRoleAdministration;
 import io.opaa.mail.MailConnectionTester;
 import io.opaa.mail.MailSettingsSnapshot;
 import io.opaa.security.SettingsEncryptor;
@@ -14,12 +15,12 @@ import org.springframework.stereotype.Component;
 /**
  * The check of each saved step (ADR-0060, Entscheidung 6): the same connection tests the
  * administration runs for an identity provider and a chat model, a probe embedding for the
- * embedding model, which also yields its vector size (Entscheidung 10), and a connection to the
- * mail server that sends nothing unless a test recipient is named, and the rules of the branding
- * administration once more for the branding, without any connection. A model address and a mail
- * server are checked against the address check of the installation again right before the
- * connection. The outcome is German and user-facing; a failed check is a result, never an
- * exception.
+ * embedding model, which also yields its vector size (Entscheidung 10), the probe of the rerank
+ * model administration for the rerank model, a connection to the mail server that sends nothing
+ * unless a test recipient is named, and the rules of the branding administration once more for the
+ * branding, without any connection. A model address and a mail server are checked against the
+ * address check of the installation again right before the connection. The outcome is German and
+ * user-facing; a failed check is a result, never an exception.
  */
 @Component
 class StepChecks {
@@ -47,6 +48,7 @@ class StepChecks {
   private final ModelAddressPolicy modelAddresses;
   private final EmbeddingModelService embeddingModels;
   private final MailConnectionTester mailTester;
+  private final ModelRoleAdministration modelRoles;
 
   StepChecks(
       StepRules rules,
@@ -55,7 +57,8 @@ class StepChecks {
       SettingsEncryptor settingsEncryptor,
       ModelAddressPolicy modelAddresses,
       EmbeddingModelService embeddingModels,
-      MailConnectionTester mailTester) {
+      MailConnectionTester mailTester,
+      ModelRoleAdministration modelRoles) {
     this.rules = rules;
     this.oidcTester = oidcTester;
     this.chatTester = chatTester;
@@ -63,6 +66,7 @@ class StepChecks {
     this.modelAddresses = modelAddresses;
     this.embeddingModels = embeddingModels;
     this.mailTester = mailTester;
+    this.modelRoles = modelRoles;
   }
 
   /**
@@ -78,6 +82,7 @@ class StepChecks {
       case SIGN_IN -> signIn(rules.signInPayload(payload));
       case CHAT_MODEL -> chatModel(rules.chatModelPayload(payload), secret);
       case EMBEDDING_MODEL -> embeddingModel(rules.embeddingModelPayload(payload), secret);
+      case RERANK_MODEL -> rerankModel(rules.rerankModelPayload(payload), secret);
       case MAIL -> mail(rules.mailPayload(payload), secret, testRecipient);
       case BRANDING -> branding(rules.brandingPayload(payload));
     };
@@ -127,6 +132,22 @@ class StepChecks {
       return new Outcome(false, UNREADABLE_KEY);
     }
     return new Outcome(outcome.succeeded(), outcome.message(), outcome.dimensions());
+  }
+
+  private Outcome rerankModel(StepRules.RerankModelPayload model, String secret) {
+    String blocked = StepRules.blockedModelAddress(modelAddresses, model.baseUrl());
+    if (blocked != null) {
+      return new Outcome(false, blocked);
+    }
+    String apiKey;
+    try {
+      apiKey = settingsEncryptor.decrypt(secret);
+    } catch (IllegalStateException e) {
+      return new Outcome(false, UNREADABLE_KEY);
+    }
+    ModelRoleAdministration.TestOutcome outcome =
+        modelRoles.probeRerank(model.baseUrl(), model.model(), apiKey);
+    return new Outcome(outcome.success(), outcome.message());
   }
 
   private Outcome mail(StepRules.MailPayload mail, String secret, String testRecipient) {
