@@ -191,6 +191,8 @@ describe('AppShell', () => {
       const rail = await screen.findByRole('navigation', { name: 'Globale Navigation' })
       expect(rail).toBeVisible()
       expect(screen.getByRole('complementary', { name: 'Space-Bereich' })).toBeVisible()
+      // The open drawer is a dialog and needs a name (axe aria-dialog-name).
+      expect(screen.getByRole('dialog', { name: 'Navigation' })).toContainElement(rail)
 
       await user.click(within(rail).getByText('Katalog'))
 

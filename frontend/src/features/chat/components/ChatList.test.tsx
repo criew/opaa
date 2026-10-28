@@ -699,6 +699,34 @@ describe('ChatList head and groups of the space column (guidelines 5.13)', () =>
     expect(useUiStore.getState().collapsedSidebarSections).toEqual(['chats.pinned'])
   })
 
+  // A row pinned into (or unpinned out to) a folded group would not be rendered there, and its
+  // focus would fall to the body; the target group opens instead.
+  it.each([
+    ['pins', 'chats.pinned', 'Chat 3', 'anheften'],
+    ['unpins', 'chats.recent', 'Chat 1', 'lösen'],
+  ])(
+    '%s a chat into a folded group, opens that group and keeps focus on the row',
+    async (_verb, folded, title, action) => {
+      server.use(
+        http.put('/api/v1/chats/:chatId/pin', () =>
+          HttpResponse.json({ ...summary(3), pinnedAt: '2026-09-18T09:00:00Z' }),
+        ),
+        http.delete('/api/v1/chats/:chatId/pin', () => new HttpResponse(null, { status: 204 })),
+      )
+      useUiStore.setState({ collapsedSidebarSections: [folded] })
+      const user = userEvent.setup()
+      renderWithProviders(<ChatList spaceId="space-personal" collapsibleGroups />)
+
+      await user.click(screen.getByLabelText(`Aktionen für Chat „${title}“`))
+      await user.click(screen.getByRole('menuitem', { name: `Chat „${title}“ ${action}` }))
+
+      await waitFor(() =>
+        expect(screen.getByLabelText(`Aktionen für Chat „${title}“`)).toHaveFocus(),
+      )
+      expect(useUiStore.getState().collapsedSidebarSections).toEqual([])
+    },
+  )
+
   it('folds "Zuletzt verwendet" together with its paging buttons', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ChatList spaceId="space-personal" collapsibleGroups />)

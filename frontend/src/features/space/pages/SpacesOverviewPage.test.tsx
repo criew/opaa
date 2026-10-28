@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes } from 'react-router'
+import { MemoryRouter, Route, Routes, useNavigate } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/server'
 import { renderWithProviders } from '@/test/test-utils'
@@ -73,6 +73,33 @@ describe('SpacesOverviewPage (#593, Mockup 1c)', () => {
     )
 
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'Suchen' })).toHaveFocus())
+  })
+
+  // Already on the overview, the search button changes no path - only the history entry.
+  it('puts the cursor into the field again when the search opens on the overview itself', async () => {
+    function OpenSearch() {
+      const navigate = useNavigate()
+      return (
+        <button type="button" onClick={() => navigate('/spaces', { state: SPACE_SEARCH_HANDOVER })}>
+          Space-Suche öffnen
+        </button>
+      )
+    }
+    const user = userEvent.setup()
+    renderWithProviders(
+      <MemoryRouter initialEntries={['/spaces']}>
+        <OpenSearch />
+        <Routes>
+          <Route path="/spaces" element={<SpacesOverviewPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    const field = screen.getByRole('textbox', { name: 'Suchen' })
+    expect(field).not.toHaveFocus()
+
+    await user.click(screen.getByRole('button', { name: 'Space-Suche öffnen' }))
+
+    await waitFor(() => expect(field).toHaveFocus())
   })
 
   it('leaves the focus alone when opened without the handover', () => {

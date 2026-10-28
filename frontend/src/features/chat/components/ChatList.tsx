@@ -36,7 +36,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { useSpaceStore } from '@/features/space'
 import CollapsibleSectionHead from '@/shared/ui/CollapsibleSectionHead'
-import { useSectionCollapsed } from '@/shared/stores/uiStore'
+import { useSectionCollapsed, useUiStore } from '@/shared/stores/uiStore'
 import { chatTitle, RECENT_PAGE_SIZE, splitChats } from './chatListSections'
 import { exportChat } from './exportChat'
 
@@ -126,6 +126,7 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
   const groupIdPrefix = useId()
   const pinnedCollapsed = useSectionCollapsed('chats.pinned') && collapsibleGroups
   const recentCollapsed = useSectionCollapsed('chats.recent') && collapsibleGroups
+  const toggleSidebarSection = useUiStore((s) => s.toggleSidebarSection)
   // Pinning moves a row into another group, which remounts it; focus follows it there.
   const refocusMovedChatIdRef = useRef<string | null>(null)
   // While its pin request is in flight, a row the rollback moves back takes lost focus along.
@@ -232,6 +233,11 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
   }
 
   function handlePin(chat: ChatSummary, pinned: boolean) {
+    // A folded target group would not render the moved row, and its focus would fall to the body;
+    // it opens instead, so focus and sight follow the row.
+    if (pinned ? pinnedCollapsed : recentCollapsed) {
+      toggleSidebarSection(pinned ? 'chats.pinned' : 'chats.recent')
+    }
     refocusMovedChatIdRef.current = chat.id
     pinFocusChatIdRef.current = chat.id
     void setChatPinned(spaceId, chat.id, pinned).finally(() => {

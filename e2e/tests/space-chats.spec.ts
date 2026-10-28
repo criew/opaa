@@ -397,12 +397,13 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     await expect(page.getByRole('main').getByText(question)).toHaveCount(0)
 
     // Picking a space in the sidebar's space list lands on an empty chat in that space, not on its
-    // overview page. Deliberately the space created above: creating it made it a recently used
-    // one, so it is among the rows (guidelines 5.13).
-    await page
-      .getByRole('navigation', { name: 'Spaces' })
-      .getByRole('link', { name: spaceName, exact: true })
-      .click()
+    // overview page. /chat resolved to the space created above (the one last used), so the
+    // personal space comes first - only then is the pick of the created space a real switch.
+    // Creating it made it a recently used one, so it is among the rows (guidelines 5.13).
+    const spaceRows = page.getByRole('navigation', { name: 'Spaces' })
+    await spaceRows.getByRole('link', { name: 'Privater Bereich', exact: true }).click()
+    await expect(page).toHaveURL(new RegExp(`/spaces/(?!${targetSpaceId}/)[^/]+/chats/new$`))
+    await spaceRows.getByRole('link', { name: spaceName, exact: true }).click()
     await expect(page).toHaveURL(new RegExp(`/spaces/${targetSpaceId}/chats/new$`))
     await expect(
       page.getByRole('heading', { name: 'Womit kann ich Ihnen heute helfen?' }),
