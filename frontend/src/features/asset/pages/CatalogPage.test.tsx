@@ -401,7 +401,7 @@ describe('CatalogPage (ADR-0039)', () => {
       within(card).queryByRole('button', { name: /in Space verwenden/ }),
     ).not.toBeInTheDocument()
     const more = within(card).getByRole('button', {
-      name: 'Weitere Aktionen für ‚Formulierungshilfen Referat 50‘',
+      name: 'Weitere Aktionen für „Formulierungshilfen Referat 50“',
     })
     expect(within(link).queryByRole('button')).not.toBeInTheDocument()
     expect(more).toHaveAttribute('aria-haspopup', 'menu')

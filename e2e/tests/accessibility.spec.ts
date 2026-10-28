@@ -372,7 +372,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
 
       // „⋯" neben dem Stern: das geöffnete Menü, dann „In Space verwenden" mit der Auswahl der
       // kuratierten Spaces im Dialog.
-      await page.getByRole("button", { name: `Weitere Aktionen für ‚${name}‘` }).click();
+      await page.getByRole("button", { name: `Weitere Aktionen für „${name}“` }).click();
       await expect(page.getByRole("menuitem", { name: "In Space verwenden" })).toBeVisible();
       await expectNoSeriousA11yViolations(page, "Katalog, Menü Weitere Aktionen");
       await page.getByRole("menuitem", { name: "In Space verwenden" }).click();
@@ -405,7 +405,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       ).toBeVisible();
       await expectNoSeriousA11yViolations(page, "Prompt-Bibliothek, Reiter Prompts");
 
-      await page.getByRole("button", { name: "Weitere Aktionen" }).click();
+      await page.getByRole("button", { name: `Weitere Aktionen für „${name}“` }).click();
       await expect(page.getByRole("menuitem", { name: "Löschen" })).toBeVisible();
       await expectNoSeriousA11yViolations(page, "Prompt-Bibliothek, Menü Weitere Aktionen");
       await page.keyboard.press("Escape");

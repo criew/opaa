@@ -1,20 +1,11 @@
-import { useId, useState } from 'react'
-import { useNavigate } from 'react-router'
-import Box from '@mui/material/Box'
-import Divider from '@mui/material/Divider'
-import IconButton from '@mui/material/IconButton'
-import ListItemIcon from '@mui/material/ListItemIcon'
-import Menu from '@mui/material/Menu'
-import MenuItem from '@mui/material/MenuItem'
-import Typography from '@mui/material/Typography'
-import Tooltip from '@mui/material/Tooltip'
+import { useState } from 'react'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import PowerSettingsNewOutlinedIcon from '@mui/icons-material/PowerSettingsNewOutlined'
 import StarOutlineRoundedIcon from '@mui/icons-material/StarOutlineRounded'
 import ChecklistOutlinedIcon from '@mui/icons-material/ChecklistOutlined'
 import type { OidcProviderResponse } from '@/shared/api/types'
+import RowMenu from '@/shared/ui/RowMenu'
 import { apiErrorMessage } from '@/shared/api/apiErrorDetails'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
@@ -62,14 +53,8 @@ export default function ProviderRowMenu({
 }: ProviderRowMenuProps) {
   const setProviderEnabled = useOidcProviderStore((s) => s.setProviderEnabled)
   const makeProviderDefault = useOidcProviderStore((s) => s.makeProviderDefault)
-  const navigate = useNavigate()
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const [busy, setBusy] = useState(false)
   const [shutdown, setShutdown] = useState<ProviderShutdownAction | null>(null)
-  const reasonId = useId()
-
-  const close = () => setAnchor(null)
-  const gesperrt = !canDisable || !canDelete
 
   async function run(action: () => Promise<unknown>, erfolg: string, fallback: string) {
     setBusy(true)
@@ -84,7 +69,6 @@ export default function ProviderRowMenu({
   }
 
   async function toggleEnabled() {
-    close()
     if (provider.enabled) {
       setShutdown('disable')
       return
@@ -98,7 +82,6 @@ export default function ProviderRowMenu({
   }
 
   async function makeDefault() {
-    close()
     if (
       !(await confirmAction({
         question: `„${provider.displayName}“ zum Standardanbieter machen?`,
@@ -117,100 +100,44 @@ export default function ProviderRowMenu({
   }
 
   function remove() {
-    close()
     setShutdown('delete')
   }
 
   return (
     <>
-      <Tooltip title="Weitere Aktionen">
-        <span>
-          <IconButton
-            size="small"
-            onClick={(e) => setAnchor(e.currentTarget)}
-            disabled={busy}
-            aria-haspopup="true"
-            aria-label={`Aktionen für „${provider.displayName}“`}
-          >
-            <MoreHorizIcon fontSize="small" />
-          </IconButton>
-        </span>
-      </Tooltip>
-      <Menu
-        anchorEl={anchor}
-        open={anchor !== null}
-        onClose={close}
-        slotProps={{ list: { 'aria-label': `Aktionen für „${provider.displayName}“` } }}
-      >
-        <MenuItem
-          onClick={() => {
-            close()
-            onEdit(provider)
-          }}
-        >
-          <ListItemIcon>
-            <EditOutlinedIcon fontSize="small" />
-          </ListItemIcon>
-          Bearbeiten
-        </MenuItem>
-        <MenuItem
-          onClick={() => void toggleEnabled()}
-          disabled={!canDisable}
-          aria-describedby={!canDisable ? reasonId : undefined}
-        >
-          <ListItemIcon>
-            <PowerSettingsNewOutlinedIcon fontSize="small" />
-          </ListItemIcon>
-          {provider.enabled ? 'Deaktivieren' : 'Aktivieren'}
-        </MenuItem>
-        {!provider.isDefault && provider.enabled && (
-          <MenuItem onClick={() => void makeDefault()}>
-            <ListItemIcon>
-              <StarOutlineRoundedIcon fontSize="small" />
-            </ListItemIcon>
-            Zum Standard machen
-          </MenuItem>
-        )}
-        <MenuItem
-          onClick={() => {
-            close()
-            void navigate(`/admin/identity-providers/${provider.id}/groups`)
-          }}
-        >
-          <ListItemIcon>
-            <ChecklistOutlinedIcon fontSize="small" />
-          </ListItemIcon>
-          Arbeitsliste der Gruppen
-        </MenuItem>
-        <Divider />
-        <MenuItem
-          onClick={remove}
-          disabled={!canDelete}
-          aria-describedby={!canDelete ? reasonId : undefined}
-        >
-          <ListItemIcon>
-            <DeleteOutlineIcon fontSize="small" color={canDelete ? 'error' : undefined} />
-          </ListItemIcon>
-          <Typography sx={{ fontSize: 14, color: canDelete ? 'error.main' : undefined }}>
-            Löschen
-          </Typography>
-        </MenuItem>
-        {gesperrt && (
-          // An `<li role="presentation">` instead of a paragraph: a `<p>` under `role="menu"`
-          // violates `aria-required-children`. The disabled entries refer here via
-          // `aria-describedby`, so that the reason is read out as well.
-          <Box
-            component="li"
-            role="presentation"
-            id={reasonId}
-            sx={{ px: 2, py: 1, maxWidth: 340 }}
-          >
-            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-              {DEFAULT_PROVIDER_HINT}
-            </Typography>
-          </Box>
-        )}
-      </Menu>
+      <RowMenu
+        name={provider.displayName}
+        disabled={busy}
+        items={[
+          { label: 'Bearbeiten', icon: EditOutlinedIcon, onClick: () => onEdit(provider) },
+          {
+            label: provider.enabled ? 'Deaktivieren' : 'Aktivieren',
+            icon: PowerSettingsNewOutlinedIcon,
+            onClick: () => void toggleEnabled(),
+            disabled: !canDisable,
+            disabledReason: DEFAULT_PROVIDER_HINT,
+          },
+          !provider.isDefault &&
+            provider.enabled && {
+              label: 'Zum Standard machen',
+              icon: StarOutlineRoundedIcon,
+              onClick: () => void makeDefault(),
+            },
+          {
+            label: 'Arbeitsliste der Gruppen',
+            icon: ChecklistOutlinedIcon,
+            to: `/admin/identity-providers/${provider.id}/groups`,
+          },
+          {
+            label: 'Löschen',
+            icon: DeleteOutlineIcon,
+            onClick: remove,
+            danger: true,
+            disabled: !canDelete,
+            disabledReason: DEFAULT_PROVIDER_HINT,
+          },
+        ]}
+      />
       {shutdown && (
         <ProviderShutdownDialog
           provider={provider}

@@ -499,7 +499,7 @@ describe('AssetGrantsSection', () => {
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(
-      await screen.findByRole('button', { name: 'Aktionen für die Freigabe an Alice' }),
+      await screen.findByRole('button', { name: 'Weitere Aktionen für „Alice“' }),
     )
     await userEventInstance.click(await screen.findByRole('menuitem', { name: 'Entziehen' }))
     await answerConfirm(userEventInstance, 'Freigabe für "Alice" entziehen?', 'Entziehen')
@@ -747,7 +747,7 @@ describe('AssetGrantsSection', () => {
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(
-      await screen.findByRole('button', { name: 'Aktionen für die Freigabe an Manager' }),
+      await screen.findByRole('button', { name: 'Weitere Aktionen für „Manager“' }),
     )
     await userEventInstance.click(await screen.findByRole('menuitem', { name: 'Entziehen' }))
 
@@ -919,7 +919,7 @@ describe('AssetGrantsSection', () => {
     expect(screen.queryByText('group-personalrat')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Mitglied/ })).not.toBeInTheDocument()
     await userEvent.click(
-      screen.getByRole('button', { name: 'Aktionen für die Freigabe an Geschützte Gruppe' }),
+      screen.getByRole('button', { name: 'Weitere Aktionen für „Geschützte Gruppe“' }),
     )
     expect(await screen.findByRole('menuitem', { name: 'Entziehen' })).toBeInTheDocument()
   })

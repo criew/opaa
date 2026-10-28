@@ -63,7 +63,9 @@ function rowOf(name: string) {
 }
 
 async function openRowMenu(user: UserEvent, name: string) {
-  await user.click(within(rowOf(name)).getByRole('button', { name: `Aktionen für „${name}“` }))
+  await user.click(
+    within(rowOf(name)).getByRole('button', { name: `Weitere Aktionen für „${name}“` }),
+  )
   return screen.findByRole('menu')
 }
 

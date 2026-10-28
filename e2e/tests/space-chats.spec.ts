@@ -420,7 +420,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     const title = `E2E-Anheften-${id}`
     const question = `Frage zum Anheften (${id})`
     const chatList = page.getByRole('navigation', { name: 'Chats' })
-    const actionsName = `Aktionen für Chat „${title}“`
+    const actionsName = `Weitere Aktionen für „${title}“`
     const actionsOfChat = chatList.getByRole('button', { name: actionsName })
     const inGroup = (group: string) =>
       chatList.getByRole('list', { name: group }).getByRole('button', { name: actionsName })
@@ -444,7 +444,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
 
     // Pin via the context menu; the chat moves into "Angeheftet" and stays there after a reload.
     await actionsOfChat.click()
-    await page.getByRole('menuitem', { name: `Chat „${title}“ anheften` }).click()
+    await page.getByRole('menuitem', { name: 'Anheften' }).click()
     await expect(inGroup('Angeheftet')).toHaveCount(1)
 
     await page.reload()
@@ -453,7 +453,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
 
     // Unpinning puts it back into "Zuletzt verwendet" - and leaves no pin behind for later runs.
     await actionsOfChat.click()
-    await page.getByRole('menuitem', { name: `Chat „${title}“ lösen` }).click()
+    await page.getByRole('menuitem', { name: 'Lösen' }).click()
     await expect(inGroup('Zuletzt verwendet')).toHaveCount(1)
     await page.reload()
     await expect(inGroup('Zuletzt verwendet')).toHaveCount(1)
@@ -470,7 +470,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     const chatList = page.getByRole('navigation', { name: 'Chats' })
     const main = page.getByTestId('message-list')
     const actionsOf = (title: string) =>
-      chatList.getByRole('button', { name: `Aktionen für Chat „${title}“` })
+      chatList.getByRole('button', { name: `Weitere Aktionen für „${title}“` })
     const archivedHint = page.getByRole('main').getByText('Archiviert', { exact: true })
     const archiveTable = page.getByRole('table', { name: 'Chat-Archiv' })
 
@@ -483,10 +483,10 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
       await expect(main.getByText(question)).toBeVisible()
       await chatList
         .getByRole('list', { name: 'Zuletzt verwendet' })
-        .getByRole('button', { name: /^Aktionen für Chat/ })
+        .getByRole('button', { name: /^Weitere Aktionen für/ })
         .first()
         .click()
-      await page.getByRole('menuitem', { name: /umbenennen$/ }).click()
+      await page.getByRole('menuitem', { name: 'Umbenennen' }).click()
       const titleField = chatList.getByLabel('Chat-Titel')
       await titleField.fill(title)
       await titleField.press('Enter')
@@ -499,7 +499,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
 
     // Archive A from the sidebar: it leaves the list.
     await actionsOf(titleA).click()
-    await page.getByRole('menuitem', { name: `Chat „${titleA}“ archivieren` }).click()
+    await page.getByRole('menuitem', { name: 'Archivieren' }).click()
     await expect(actionsOf(titleA)).toHaveCount(0)
     await expect(page.getByText(`Chat „${titleA}“ archiviert`)).toBeVisible()
 
@@ -572,10 +572,10 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     // Into the chat archive: the search includes it, and the hit must open there as well.
     await chatList
       .getByRole('list', { name: 'Zuletzt verwendet' })
-      .getByRole('button', { name: /^Aktionen für Chat/ })
+      .getByRole('button', { name: /^Weitere Aktionen für/ })
       .first()
       .click()
-    await page.getByRole('menuitem', { name: /archivieren$/ }).click()
+    await page.getByRole('menuitem', { name: 'Archivieren' }).click()
     await expect(page.getByText(/^Chat „.*“ archiviert$/)).toBeVisible()
 
     // The search button of the chat list opens the chat search; the term is typed there and is
@@ -627,7 +627,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
 
     await page.goto('/catalog')
     await page.getByLabel('Suchen', { exact: true }).fill(libraryName)
-    await page.getByRole('button', { name: `Weitere Aktionen für ‚${libraryName}‘` }).click()
+    await page.getByRole('button', { name: `Weitere Aktionen für „${libraryName}“` }).click()
     await page.getByRole('menuitem', { name: 'In Space verwenden' }).click()
     await page.getByRole('dialog').getByRole('button', { name: spaceName }).click()
     await expect(page.getByText(`ist jetzt im Space „${spaceName}“ zugeordnet`)).toBeVisible()

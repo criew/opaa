@@ -108,8 +108,8 @@ function manyChats(count: number): ChatSummary[] {
 }
 
 async function openRowMenu(user: ReturnType<typeof userEvent.setup>, title: string) {
-  await user.click(await screen.findByRole('button', { name: `Aktionen für „${title}“` }))
-  return screen.findByRole('menu', { name: `Aktionen für „${title}“` })
+  await user.click(await screen.findByRole('button', { name: `Weitere Aktionen für „${title}“` }))
+  return screen.findByRole('menu', { name: `Weitere Aktionen für „${title}“` })
 }
 
 function rowTitles(): string[] {
@@ -714,7 +714,7 @@ describe('ChatsPage below tablet width', () => {
       within(entry).getByRole('checkbox', { name: '„Deployment-Fragen“ auswählen' }),
     ).toBeInTheDocument()
     expect(
-      within(entry).getByRole('button', { name: 'Aktionen für „Deployment-Fragen“' }),
+      within(entry).getByRole('button', { name: 'Weitere Aktionen für „Deployment-Fragen“' }),
     ).toBeInTheDocument()
   })
 })

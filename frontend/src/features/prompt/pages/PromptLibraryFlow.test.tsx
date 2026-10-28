@@ -332,7 +332,9 @@ describe('Detailseite einer Prompt-Bibliothek (#2208)', () => {
     expect(await screen.findByRole('button', { name: 'In Space verwenden' })).toBeInTheDocument()
     expect(await screen.findByText('Engineering')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Weitere Aktionen' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Weitere Aktionen für „Formulierungshilfen Referat 50“' }),
+    )
     const menu = await screen.findByRole('menu')
     expect(
       within(menu)
@@ -345,7 +347,9 @@ describe('Detailseite einer Prompt-Bibliothek (#2208)', () => {
     const user = userEvent.setup()
     renderDetail('/prompts/prompt-library-verwaltet')
 
-    await user.click(await screen.findByRole('button', { name: 'Weitere Aktionen' }))
+    await user.click(
+      await screen.findByRole('button', { name: 'Weitere Aktionen für „Vorlagen Personalrat“' }),
+    )
     await user.click(await screen.findByRole('menuitem', { name: 'Löschen' }))
     await answerConfirm(user, 'Prompt-Bibliothek „Vorlagen Personalrat“ löschen?', 'Löschen')
 

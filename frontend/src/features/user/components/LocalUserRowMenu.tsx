@@ -1,21 +1,13 @@
 import { useState } from 'react'
-import Box from '@mui/material/Box'
-import Divider from '@mui/material/Divider'
-import IconButton from '@mui/material/IconButton'
-import ListItemIcon from '@mui/material/ListItemIcon'
-import Menu from '@mui/material/Menu'
-import MenuItem from '@mui/material/MenuItem'
-import Tooltip from '@mui/material/Tooltip'
-import Typography from '@mui/material/Typography'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import KeyOutlinedIcon from '@mui/icons-material/KeyOutlined'
 import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import MailOutlinedIcon from '@mui/icons-material/MailOutlined'
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import SwapHorizOutlinedIcon from '@mui/icons-material/SwapHorizOutlined'
 import type { LocalUserResponse } from '@/shared/api/types'
+import RowMenu from '@/shared/ui/RowMenu'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { useUserAdminStore } from '../stores/userAdminStore'
@@ -96,13 +88,9 @@ export default function LocalUserRowMenu({
   const deleteUser = useUserAdminStore((s) => s.deleteUser)
   const resetUserPassword = useUserAdminStore((s) => s.resetUserPassword)
   const generateUserPassword = useUserAdminStore((s) => s.generateUserPassword)
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const [busy, setBusy] = useState(false)
 
-  const close = () => setAnchor(null)
-
   async function run(action: () => Promise<string>, fallback: string) {
-    close()
     setBusy(true)
     try {
       notify(await action(), 'success')
@@ -114,7 +102,6 @@ export default function LocalUserRowMenu({
   }
 
   async function lock() {
-    close()
     if (
       !(await confirmAction({
         question: `„${user.displayName}“ sperren?`,
@@ -139,7 +126,6 @@ export default function LocalUserRowMenu({
   }
 
   async function resetPassword() {
-    close()
     if (
       !(await confirmAction({
         question: `Passwort von „${user.displayName}“ zurücksetzen?`,
@@ -166,7 +152,6 @@ export default function LocalUserRowMenu({
   }
 
   async function generatePassword() {
-    close()
     if (
       !(await confirmAction({
         question: `Passwort für „${user.displayName}“ erzeugen?`,
@@ -185,7 +170,6 @@ export default function LocalUserRowMenu({
   }
 
   async function remove() {
-    close()
     if (
       !(await confirmAction({
         question: `„${user.displayName}“ löschen?`,
@@ -210,156 +194,55 @@ export default function LocalUserRowMenu({
   const passwordDisabled = user.bootstrap
   const deleteDisabled = isSelf || user.bootstrap
   const disabledReason = isSelf ? SELF_ACTION_TOOLTIP : BOOTSTRAP_LOCK_DELETE_TOOLTIP
-  const reasonId = `local-user-${user.id}-menu-reason`
-  const handoverReasonId = `local-user-${user.id}-handover-reason`
-  const passwordReasonId = `local-user-${user.id}-password-reason`
 
   return (
-    <>
-      <Tooltip title="Weitere Aktionen">
-        <span>
-          <IconButton
-            size="small"
-            aria-label={`Aktionen für „${user.displayName}“`}
-            aria-haspopup="true"
-            disabled={busy}
-            onClick={(e) => setAnchor(e.currentTarget)}
-          >
-            <MoreHorizIcon fontSize="small" />
-          </IconButton>
-        </span>
-      </Tooltip>
-      <Menu
-        anchorEl={anchor}
-        open={anchor !== null}
-        onClose={close}
-        slotProps={{ list: { 'aria-label': `Aktionen für „${user.displayName}“` } }}
-      >
-        <MenuItem
-          onClick={() => {
-            close()
-            onEdit(user)
-          }}
-        >
-          <ListItemIcon>
-            <EditOutlinedIcon fontSize="small" />
-          </ListItemIcon>
-          Bearbeiten
-        </MenuItem>
-        {user.status === 'LOCKED' && (
-          <MenuItem onClick={unlock}>
-            <ListItemIcon>
-              <LockOpenOutlinedIcon fontSize="small" />
-            </ListItemIcon>
-            Entsperren
-          </MenuItem>
-        )}
-        {lockedByAdministration ? null : (
-          <MenuItem
-            onClick={() => void lock()}
-            disabled={lockDisabled}
-            // No <span> around the entry: an intermediate element in the `menu` violates
-            // `aria-required-children`. The reason is therefore attached as
-            // `title` to the entry itself and additionally shown as text below it.
-            title={lockDisabled ? disabledReason : undefined}
-            aria-describedby={lockDisabled ? reasonId : undefined}
-          >
-            <ListItemIcon>
-              <LockOutlinedIcon fontSize="small" />
-            </ListItemIcon>
-            Sperren
-          </MenuItem>
-        )}
-        <MenuItem
-          onClick={() => void resetPassword()}
-          disabled={passwordDisabled}
-          title={passwordDisabled ? BOOTSTRAP_PASSWORD_TOOLTIP : undefined}
-          aria-describedby={passwordDisabled ? passwordReasonId : undefined}
-        >
-          <ListItemIcon>
-            <MailOutlinedIcon fontSize="small" />
-          </ListItemIcon>
-          Rücksetz-Link per E-Mail
-        </MenuItem>
-        <MenuItem
-          onClick={() => void generatePassword()}
-          disabled={passwordDisabled}
-          title={passwordDisabled ? BOOTSTRAP_PASSWORD_TOOLTIP : undefined}
-          aria-describedby={passwordDisabled ? passwordReasonId : undefined}
-        >
-          <ListItemIcon>
-            <KeyOutlinedIcon fontSize="small" />
-          </ListItemIcon>
-          Passwort erzeugen
-        </MenuItem>
-        {passwordDisabled && (
-          <Box
-            component="li"
-            role="presentation"
-            id={passwordReasonId}
-            sx={{ px: 2, py: 1, maxWidth: 320 }}
-          >
-            <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
-              {BOOTSTRAP_PASSWORD_TOOLTIP}
-            </Typography>
-          </Box>
-        )}
-        <MenuItem
-          onClick={() => {
-            close()
-            onHandover(user)
-          }}
-          disabled={handoverDisabled}
-          title={handoverDisabled ? BOOTSTRAP_HANDOVER_TOOLTIP : undefined}
-          aria-describedby={handoverDisabled ? handoverReasonId : undefined}
-        >
-          <ListItemIcon>
-            <SwapHorizOutlinedIcon fontSize="small" />
-          </ListItemIcon>
-          An Identitätsanbieter übergeben
-        </MenuItem>
-        {handoverDisabled && (
-          <Box
-            component="li"
-            role="presentation"
-            id={handoverReasonId}
-            sx={{ px: 2, py: 1, maxWidth: 320 }}
-          >
-            <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
-              {BOOTSTRAP_HANDOVER_TOOLTIP}
-            </Typography>
-          </Box>
-        )}
-        <Divider />
-        <MenuItem
-          onClick={() => void remove()}
-          disabled={deleteDisabled}
-          title={deleteDisabled ? disabledReason : undefined}
-          aria-describedby={deleteDisabled ? reasonId : undefined}
-        >
-          <ListItemIcon>
-            <DeleteOutlineIcon fontSize="small" color={deleteDisabled ? undefined : 'error'} />
-          </ListItemIcon>
-          <Typography sx={{ fontSize: 14, color: deleteDisabled ? undefined : 'error.main' }}>
-            Löschen
-          </Typography>
-        </MenuItem>
-        {(lockDisabled || deleteDisabled) && (
-          // An `<li role="presentation">` instead of a paragraph: a `<p>` under `role="menu"`
-          // violates `aria-required-children` (re-check N3). The disabled entry refers here
-          // via `aria-describedby`, so that the reason is read out as well.
-          <Box
-            component="li"
-            role="presentation"
-            id={reasonId}
-            sx={{ px: 2, py: 1, maxWidth: 320 }}
-          >
-            <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
-              {disabledReason}
-            </Typography>
-          </Box>
-        )}
-      </Menu>
-    </>
+    <RowMenu
+      name={user.displayName}
+      disabled={busy}
+      items={[
+        { label: 'Bearbeiten', icon: EditOutlinedIcon, onClick: () => onEdit(user) },
+        user.status === 'LOCKED' && {
+          label: 'Entsperren',
+          icon: LockOpenOutlinedIcon,
+          onClick: unlock,
+        },
+        !lockedByAdministration && {
+          label: 'Sperren',
+          icon: LockOutlinedIcon,
+          onClick: () => void lock(),
+          disabled: lockDisabled,
+          disabledReason: disabledReason,
+        },
+        {
+          label: 'Rücksetz-Link per E-Mail',
+          icon: MailOutlinedIcon,
+          onClick: () => void resetPassword(),
+          disabled: passwordDisabled,
+          disabledReason: BOOTSTRAP_PASSWORD_TOOLTIP,
+        },
+        {
+          label: 'Passwort erzeugen',
+          icon: KeyOutlinedIcon,
+          onClick: () => void generatePassword(),
+          disabled: passwordDisabled,
+          disabledReason: BOOTSTRAP_PASSWORD_TOOLTIP,
+        },
+        {
+          label: 'An Identitätsanbieter übergeben',
+          icon: SwapHorizOutlinedIcon,
+          onClick: () => onHandover(user),
+          disabled: handoverDisabled,
+          disabledReason: BOOTSTRAP_HANDOVER_TOOLTIP,
+        },
+        {
+          label: 'Löschen',
+          icon: DeleteOutlineIcon,
+          onClick: () => void remove(),
+          danger: true,
+          disabled: deleteDisabled,
+          disabledReason: disabledReason,
+        },
+      ]}
+    />
   )
 }
