@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState, type ReactNode } from 'react'
+import { Fragment, useMemo, useState, type ReactNode, type Ref } from 'react'
 import { Link as RouterLink } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -55,6 +55,8 @@ export interface OverviewPageProps<T> {
   /** The size of the whole result where `items` hold only a part of it, e.g. one page. */
   total?: number
   searchPlaceholder?: string
+  /** The search field's input, e.g. to put the cursor into it when the page opens as a search. */
+  searchInputRef?: Ref<HTMLInputElement>
   isLoading?: boolean
   error?: string | null
   /** Shown instead of the list when the overview holds no items at all. */
@@ -108,6 +110,7 @@ export default function OverviewPage<T>({
   filtered = false,
   total,
   searchPlaceholder = 'Name oder Beschreibung …',
+  searchInputRef,
   isLoading = false,
   error = null,
   emptyState,
@@ -186,6 +189,7 @@ export default function OverviewPage<T>({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={searchPlaceholder}
+            inputRef={searchInputRef}
             sx={{ flex: '1 1 260px', maxWidth: 420 }}
             slotProps={{
               input: {

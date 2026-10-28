@@ -13,6 +13,7 @@ import type { SuccessionEntryResponse, SuccessionKind } from '@/shared/api/types
 import { radius } from '@/shared/theme/tokens'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import { TextLink } from '@/shared/ui/DetailSection'
+import StateDot from '@/shared/ui/StateDot'
 import PermissionTransferDialog from './PermissionTransferDialog'
 import { assetTypeDefinition, assetTypeLabel } from '../../../shared/assetTypes'
 import { addresseeOf, nextStepOf, problemOf, sinceLabel } from './successionPresentation'
@@ -125,7 +126,7 @@ export default function SuccessionRow({
           <Typography component="span" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
             {sinceLabel(entry)}
           </Typography>
-          {entry.highlighted && <MetaBadge>lange offen</MetaBadge>}
+          {entry.highlighted && <StateDot tone="warning" label="lange offen" />}
           {entry.highlighted && (
             <Box component="span" sx={visuallyHidden}>
               – länger offen als die eingestellte Zeit

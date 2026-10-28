@@ -30,12 +30,12 @@ export async function startFreshChat(page: Page): Promise<void> {
 }
 
 /**
- * Starts a further empty chat in the space currently open, via the sidebar's "Neu" button -
+ * Starts a further empty chat in the space currently open, via the sidebar's plus "Neuer Chat" -
  * the in-app path out of an existing chat, as opposed to {@link startFreshChat}'s entry via
  * `/chat`. Waits for the draft's URL and its ready input, same as startFreshChat.
  */
 export async function startAnotherChatViaSidebar(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Neu: Chat beginnen' }).click()
+  await page.getByRole('button', { name: 'Neuer Chat', exact: true }).click()
   await page.waitForURL(/\/spaces\/[^/]+\/chats\/new$/)
   await expect(page.getByRole('combobox', { name: 'Nachricht eingeben' })).toBeVisible()
 }

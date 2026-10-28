@@ -144,7 +144,9 @@ andere Rolle.
   Schaltflächen-Definitionen.
 - **Untermenüleisten sind hell und überall gleich** (#1922). Die Seitenleiste des Space und die
   Sekundärspalte der globalen Bereiche tragen dieselben Rollen des Anwendungsschemas: Fläche
-  `bg-2`, Kante `border-strong`, angehobene Karte (Space-Umschalter, Aktiveintrag) auf `bg-1`.
+  `bg-2`, Kante `border-strong`, angehobene Karte auf `bg-1`: der Aktiveintrag, in der festen
+  Spalte des Space also die Zeile des aktiven Space (5.13); der Space-Umschalter gilt als
+  angehobene Karte nur noch in der Schublade.
   Text läuft über `text.secondary` (= `fg-2`), nicht über hart codierte Weißtöne. Bis #1922 war
   die Seitenleiste im hellen Schema ein Navy-Block mit eigenem Rollenset (`navyRoles`) und zwei
   hart codierten Alpha-Weißtönen; beides ist ersatzlos entfallen — ein Navy-Block neben einer
@@ -529,9 +531,12 @@ Tintfläche (`bg-3`), **keine Signalfarben und kein Akzent**: weder `danger`/`er
 Etiketten ebenso („Standard", die eigene Rolle, „Archiviert", „extern", „Sicherheitsrelevant",
 „Global", „Alle Konten"): Die Bedeutung trägt das Wort. Akzentfarbene Chips bleiben
 Bedienelementen vorbehalten (Filter-Chips, Bereichs-Chips der Chat-Eingabe). Ein **Zustand**
-(verbunden, abgelaufen, gesperrt, Index unvollständig, Stufe übersprungen) ist kein Etikett,
-sondern ein Punkt vor dem Wort (`StateDot`, 2.3); ein Symbol im Etikett darf die Signalfarbe
-tragen, Rahmen und Text nicht („Wird gelöscht"). Feste Wortlisten:
+(verbunden, abgelaufen, gesperrt, Index unvollständig, Stufe übersprungen, „lange offen") ist kein
+Etikett, sondern ein Punkt vor dem Wort (`StateDot`, 2.3); ein Symbol im Etikett darf die
+Signalfarbe tragen, Rahmen und Text nicht („Wird gelöscht"). „lange offen" trägt den Ton
+`warning`, weil es einen Zustand markiert, der Aufmerksamkeit verdient, ohne etwas auszulösen
+(keine Frist, keine Erinnerung); die Farbe trägt diese Bedeutung, keine Stimmung (2.3). Feste
+Wortlisten:
 
 - **Rollen:** Leser · Bearbeiter · Verwalter · Eigentümer
 - **Sichtbarkeit:** kein Textetikett. Ein öffentliches Asset (Spezifikation: öffentlich, an alle

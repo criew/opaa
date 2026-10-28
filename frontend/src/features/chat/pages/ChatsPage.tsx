@@ -381,7 +381,7 @@ export default function ChatsPage() {
                 ) : (
                   <ListEmptyState
                     title="Keine aktiven Chats in diesem Space."
-                    hint="Einen neuen Chat beginnen Sie über „Neu“ in der Seitenleiste."
+                    hint="Einen neuen Chat beginnen Sie über „Neuer Chat“ in der Seitenleiste."
                   />
                 )
               ) : (
