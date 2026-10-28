@@ -168,6 +168,8 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
  *   grid (guidelines 5.4), no content block of a page; the outlined type is a label (5.5).
  * - `assetMarks`: the type label that tile and detail page header share — a
  *   label like a chip (5.5), no block.
+ * - `AccessBadge`: the state of a right as a label - outlined like every label (5.5), solid or
+ *   dashed by state, no block.
  * - `HandoverScopeSummary`: the four key figure tiles of the account handover (ADR-0033) — cards
  *   in the grid like `AssetTile`, on a login page outside the administration, no content block.
  * - `ExternalAccessTokenValueDialog`: the token value shown once and the setup snippets
@@ -191,6 +193,7 @@ const AUSNAHMEN = [
   'PromptPreview.tsx',
   'AssetTile.tsx',
   'assetMarks.tsx',
+  'AccessBadge.tsx',
   'HandoverScopeSummary.tsx',
   'ExternalAccessTokenValueDialog.tsx',
 ]

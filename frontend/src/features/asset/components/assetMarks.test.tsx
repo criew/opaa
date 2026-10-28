@@ -14,7 +14,10 @@ describe('asset marks', () => {
     const roles = scheme === 'light' ? lightRoles : darkRoles
     render(
       <ThemeProvider theme={createAppTheme(scheme)}>
-        <Box component="span" sx={{ border: 1, borderColor: roles.borderStrong }}>
+        <Box
+          component="span"
+          sx={{ borderStyle: 'solid', borderWidth: 1, borderColor: roles.borderStrong }}
+        >
           Bezug
         </Box>
         <TypeBadge definition={definition} />
