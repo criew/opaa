@@ -142,6 +142,13 @@ describe('ConnectedAccountsSection', () => {
     expect(
       within(locked).getByRole('button', { name: 'Verbindung trennen: Zugang Archiv' }),
     ).toBeInTheDocument()
+
+    // Guidelines 5.5: no label in a signal colour - a state is a dot before its word.
+    expect(
+      document.querySelectorAll(
+        '.MuiChip-colorSuccess, .MuiChip-colorWarning, .MuiChip-colorError, .MuiChip-colorPrimary',
+      ),
+    ).toHaveLength(0)
   })
 
   it('explains connected accounts neutrally when there is none, and answers "Warum fehlt mein Zugang?"', async () => {
