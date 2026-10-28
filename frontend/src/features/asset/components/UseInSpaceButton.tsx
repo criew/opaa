@@ -145,7 +145,10 @@ export function UseInSpaceDialog({
             )}
             {spaces.length === 0 && (
               <Typography sx={{ color: 'text.secondary', mb: 1 }}>
-                Sie kuratieren noch keinen Space. Legen Sie einen neuen an.
+                {/* A new space is locked as well while the reach is frozen; no pointer to it. */}
+                {reachFrozen
+                  ? 'Sie kuratieren noch keinen Space.'
+                  : 'Sie kuratieren noch keinen Space. Legen Sie einen neuen an.'}
               </Typography>
             )}
             <List aria-label="Spaces, die Sie kuratieren" sx={{ py: 0 }}>
