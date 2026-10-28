@@ -62,7 +62,7 @@ export default function ChatPage() {
   // render that brings it back. A commit via blur leaves focus where the user put it.
   const refocusTitleRef = useRef(false)
   // An archived space accepts no change to an existing chat - the points stay visible, the
-  // remove buttons do not. Same lookup as ChatList's "Neu" guard.
+  // remove buttons do not. Same lookup as ChatList's plus guard.
   const isArchivedSpace = useSpaceStore(
     (s) => s.spaces.find((space) => space.id === spaceId)?.archived ?? false,
   )

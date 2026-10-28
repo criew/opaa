@@ -44,4 +44,24 @@ describe('uiStore', () => {
       expect(useUiStore.getState().themeMode).toBe('light')
     })
   })
+
+  describe('folded groups of the space column (#3292)', () => {
+    beforeEach(() => useUiStore.setState({ collapsedSidebarSections: [] }))
+
+    it('folds and unfolds a group under its key', () => {
+      useUiStore.getState().toggleSidebarSection('chats.pinned')
+      expect(useUiStore.getState().collapsedSidebarSections).toEqual(['chats.pinned'])
+      useUiStore.getState().toggleSidebarSection('chats.pinned')
+      expect(useUiStore.getState().collapsedSidebarSections).toEqual([])
+    })
+
+    it('restores the folded groups on load and drops malformed entries', async () => {
+      window.localStorage.setItem(
+        'opaa-ui-preferences',
+        JSON.stringify({ state: { collapsedSidebarSections: ['spaces', 7] }, version: 0 }),
+      )
+      await useUiStore.persist.rehydrate()
+      expect(useUiStore.getState().collapsedSidebarSections).toEqual(['spaces'])
+    })
+  })
 })

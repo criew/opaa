@@ -104,13 +104,11 @@ describe('isGlobalAreaPath', () => {
     expect(isGlobalAreaPath('/admin/groups')).toBe(true)
     expect(isGlobalAreaPath('/admin')).toBe(true)
     expect(isGlobalAreaPath('/administrator')).toBe(false)
-    // Overview and create wizard are global views; a chosen space is not.
-    expect(isGlobalAreaPath('/spaces')).toBe(true)
-    expect(isGlobalAreaPath('/spaces/new')).toBe(true)
-    // React Router renders "/spaces/" as the overview as well - the comparison must
-    // tolerate trailing slashes just the same.
-    expect(isGlobalAreaPath('/spaces/')).toBe(true)
-    expect(isGlobalAreaPath('/spaces/new/')).toBe(true)
+    // Overview and create wizard keep the space column (guidelines 5.13), like a chosen space.
+    expect(isGlobalAreaPath('/spaces')).toBe(false)
+    expect(isGlobalAreaPath('/spaces/new')).toBe(false)
+    expect(isGlobalAreaPath('/spaces/')).toBe(false)
+    // React Router matches trailing slashes - the comparison must tolerate them just the same.
     expect(isGlobalAreaPath('/libraries/')).toBe(true)
     expect(isGlobalAreaPath('/spaces/space-1')).toBe(false)
     expect(isGlobalAreaPath('/spaces/space-1/chats/chat-1')).toBe(false)

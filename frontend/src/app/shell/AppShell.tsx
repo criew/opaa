@@ -69,6 +69,8 @@ export default function AppShell() {
           // areas only the rail remains, so the drawer narrows to it.
           slotProps={{
             paper: {
+              // The paper is the drawer's dialog; without a name axe reports aria-dialog-name.
+              'aria-label': 'Navigation',
               sx: {
                 width: isGlobalArea ? RAIL_WIDTH : RAIL_WIDTH + SIDEBAR_WIDTH,
                 maxWidth: '92vw',

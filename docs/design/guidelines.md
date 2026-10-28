@@ -144,7 +144,9 @@ andere Rolle.
   Schaltflächen-Definitionen.
 - **Untermenüleisten sind hell und überall gleich** (#1922). Die Seitenleiste des Space und die
   Sekundärspalte der globalen Bereiche tragen dieselben Rollen des Anwendungsschemas: Fläche
-  `bg-2`, Kante `border-strong`, angehobene Karte (Space-Umschalter, Aktiveintrag) auf `bg-1`.
+  `bg-2`, Kante `border-strong`, angehobene Karte auf `bg-1`: der Aktiveintrag, in der festen
+  Spalte des Space also die Zeile des aktiven Space (5.13); der Space-Umschalter gilt als
+  angehobene Karte nur noch in der Schublade.
   Text läuft über `text.secondary` (= `fg-2`), nicht über hart codierte Weißtöne. Bis #1922 war
   die Seitenleiste im hellen Schema ein Navy-Block mit eigenem Rollenset (`navyRoles`) und zwei
   hart codierten Alpha-Weißtönen; beides ist ersatzlos entfallen — ein Navy-Block neben einer

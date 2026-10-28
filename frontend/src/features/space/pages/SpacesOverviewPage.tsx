@@ -1,12 +1,13 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import { useNavigate } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import OverviewPage, { OverviewCard } from '@/shared/ui/overview/OverviewPage'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import { SuccessionStateNote } from '@/features/succession'
 import { useSpaceStore } from '../stores/spaceStore'
 import type { SpaceListResponse } from '@/shared/api/types'
+import { handsOverSpaceSearch } from '../utils/spaceSearchHandover'
 
 function plural(count: number, singular: string, pluralForm: string): string {
   return `${count} ${count === 1 ? singular : pluralForm}`
@@ -22,7 +23,12 @@ function SpaceCard({ space }: { space: SpaceListResponse }) {
   return (
     <OverviewCard to={spaceHref(space)}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Typography component="span" sx={{ fontSize: 16.5, fontWeight: 600, flex: 1 }}>
+        {/* Beside the space column the cards are narrow; a long compound word breaks instead of
+            running out of its card. */}
+        <Typography
+          component="span"
+          sx={{ fontSize: 16.5, fontWeight: 600, flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}
+        >
           {space.name}
         </Typography>
         {space.archived && <MetaBadge>Archiviert</MetaBadge>}
@@ -61,12 +67,31 @@ export default function SpacesOverviewPage() {
   const isLoading = useSpaceStore((s) => s.isLoadingList)
   const error = useSpaceStore((s) => s.error)
   const loadSpaces = useSpaceStore((s) => s.loadSpaces)
+  const location = useLocation()
+  // Opened as the space search, the cursor goes into the field - at once if it is rendered,
+  // otherwise as soon as the list brings it; the handover is then dropped from the history entry.
+  const searchInput = useRef<HTMLInputElement | null>(null)
+  const focusPending = useRef(false)
+  const searchInputRef = useCallback((input: HTMLInputElement | null) => {
+    searchInput.current = input
+    if (input && focusPending.current) {
+      focusPending.current = false
+      input.focus()
+    }
+  }, [])
 
   // Re-read on every visit: the chat figure changes through actions on other pages,
   // and the cached cards stay visible while the fresh list loads.
   useEffect(() => {
     void loadSpaces()
   }, [loadSpaces])
+
+  useEffect(() => {
+    if (!handsOverSpaceSearch(location.state)) return
+    if (searchInput.current) searchInput.current.focus()
+    else focusPending.current = true
+    navigate(location.pathname, { replace: true, state: null })
+  }, [location.key, location.state, location.pathname, navigate])
 
   const searchText = useCallback(
     (space: SpaceListResponse) => `${space.name} ${space.description ?? ''}`,
@@ -81,6 +106,7 @@ export default function SpacesOverviewPage() {
       items={spaces}
       itemKey={(space) => space.id}
       searchText={searchText}
+      searchInputRef={searchInputRef}
       isLoading={isLoading}
       error={error}
       renderCard={(space) => <SpaceCard space={space} />}

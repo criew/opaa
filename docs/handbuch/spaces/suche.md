@@ -1007,7 +1007,7 @@ Die **Chatsuche** findet eigene Gespräche wieder, die Wissenssuche findet Dokum
 nichts außer der deutschen Sprachkonfiguration: Die Chatsuche ist eine reine Volltextsuche ohne
 Teilfragen, Vektoren, Fusion oder Reranking, und sie berührt keinen Chunk einer Bibliothek.
 
-Erreichbar ist sie über den Suchknopf neben „Neu" in der Chatliste. Er öffnet die Seite „Chats" des
+Erreichbar ist sie über die Lupe neben dem Plus „Neuer Chat" im Kopf der Chatliste. Sie öffnet die Seite „Chats" des
 Space mit leerem Suchbegriff: Solange nichts eingegeben ist, listet die Seite alle Chats in den
 Reitern „Aktiv" und „Archiv"; ab drei Zeichen treten die Treffer an deren Stelle.
 
