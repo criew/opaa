@@ -75,14 +75,18 @@ Begründung: Ohne Token übernähme die Installation, wer die Adresse zuerst auf
 Die Installations-API speichert jeden Schritt einzeln; ein Abbruch setzt an derselben Stelle fort.
 Pflichtschritte sind erstes Systemverwaltungskonto und Anmeldeverfahren, jeweils mit erfolgreicher
 Prüfung. Alle übrigen Schritte sind optional und später in der Verwaltung erreichbar: Chat-Modell,
-Embedding-Modell, E-Mail-Versand und Branding (Entscheidung 15). Ein optionaler Schritt wird übersprungen, indem die API seinen
+Embedding-Modell, Rerank-Modell, E-Mail-Versand und Branding (Entscheidung 15). Ein optionaler Schritt wird übersprungen, indem die API seinen
 Zwischenstand samt Prüfung verwirft (`POST …/skip`); das ist ein Revisionsereignis. Ein
 übersprungener optionaler Schritt hält den Abschluss nicht auf, ein gespeicherter erst, wenn seine
-Prüfung gelungen ist (Verbindungstest, Probeeinbettung, Verbindung zum Mailserver): Der Abschluss
+Prüfung gelungen ist (Verbindungstest, Probeeinbettung, Rerank-Probe, Verbindung zum Mailserver): Der Abschluss
 übernimmt nie ungeprüfte Werte; das Branding prüft ohne Verbindung die Regeln der
 Branding-Verwaltung erneut. Der Abschluss ist eine Transaktion unter einem Advisory-Lock und
 gelingt nur, wenn jeder Pflichtschritt und jeder gespeicherte optionale Schritt geprüft ist. Ein
-übersprungener Modellschritt legt kein Modell an. Ein geprüfter E-Mail-Versand geht mit den Regeln
+übersprungener Modellschritt legt kein Modell an. Ein geprüftes Rerank-Modell geht über den
+Schreibweg der Modellverwaltung (`ModelRoleAdministration`) in deren Rolle über und schaltet das
+Reranking ein, protokolliert als `RERANK_MODEL_CHANGED` unter dem Systemprozess der Installation;
+seine Prüfung ist dieselbe Probe wie der Verbindungstest der Verwaltung, und der Schritt hängt nicht
+von Chat- oder Embedding-Modell ab. Ohne ihn bleibt das Reranking aus. Ein geprüfter E-Mail-Versand geht mit den Regeln
 der Mail-Verwaltung in deren Einstellungen über und schaltet den Versand ein; ohne ihn bleibt der
 Versand aus. Ein geprüftes Branding geht ebenso mit den Regeln der Branding-Verwaltung in deren
 Einstellungen über; übersprungen oder in jedem Feld leer, bleibt der OPAA-Standard und der Abschluss
@@ -95,7 +99,7 @@ der MCP-Endpunkt bei geschlossenem Kanal.
 ### 7. Antwortdatei: Installation ohne Browser
 
 Eine Antwortdatei (JSON) enthält dieselben Angaben wie die Schritte des Assistenten; fehlt ein
-optionaler Teil (`chatModel`, `embeddingModel`, `mail`, `branding`), ist sein Schritt übersprungen. Sie wird auf
+optionaler Teil (`chatModel`, `embeddingModel`, `rerankModel`, `mail`, `branding`), ist sein Schritt übersprungen. Sie wird auf
 zwei Wegen angenommen, mit derselben Prüfung: über die Installations-API mit dem Token, oder beim
 Start aus der Datei unter `OPAA_INSTALLATION_ANSWER_FILE`, wenn die Installation noch nicht
 abgeschlossen ist. In der Datei stehen Geheimnisse (Passwort des ersten Kontos, Modellschlüssel,
@@ -146,7 +150,8 @@ erreichbar wird.
 
 Chat-, Embedding-, Rerank- und Transkriptionsmodell sind Einträge der Modellverwaltung; ihre Adressen,
 Schlüssel und Modellnamen kommen nicht mehr aus der Konfiguration, ihre Timeouts und Lastgrenzen
-schon. `vector_store` entsteht nicht in der Migration, sondern mit dem Embedding-Modell: beim
+schon. Chat-, Embedding- und Rerank-Modell lassen sich schon in der Installation festlegen
+(Entscheidung 6), das Transkriptionsmodell nur in der Modellverwaltung. `vector_store` entsteht nicht in der Migration, sondern mit dem Embedding-Modell: beim
 Abschluss der Installation, unter dem Advisory-Lock aus Entscheidung 6 und mit der Dimension, die
 die Probeeinbettung des gewählten Modells liefert, oder, wenn die Installation den Schritt
 übersprungen hat, beim Festlegen des ersten Modells in der Modellverwaltung
@@ -303,7 +308,8 @@ Geheimnis und mit denselben Regeln prüfbar.
   brauchen die Antwortdatei.
 - Wer das Installations-Token aus dem Log liest, kann die Installation abschließen; Log-Zugriff ist
   damit so schutzwürdig wie heute beim Einmalpasswort.
-- Rerank- und Transkriptionsmodell pflegt die Systemverwaltung in eigenen Reitern der Modellverwaltung.
+- Rerank- und Transkriptionsmodell pflegt die Systemverwaltung in eigenen Reitern der Modellverwaltung;
+  das Rerank-Modell kann schon die Installation festlegen.
   Ihre früheren Variablen übernimmt eine Installation von davor nicht (Entscheidung 1); der Start und
   der Reiter der Rolle nennen sie, solange sie gesetzt sind.
 

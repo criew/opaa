@@ -15,6 +15,7 @@ import type {
 } from '@/shared/api/types'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import { notify } from '@/shared/stores/notificationStore'
+import { MODEL_ROLE_TEXTS, type ModelRoleKind } from '@/shared/ui/modelDiscovery/modelRoleTexts'
 import {
   getRerankModelSettings,
   getTranscriptionModelSettings,
@@ -24,7 +25,7 @@ import {
   updateTranscriptionModelSettings,
 } from '../api/modelApi'
 
-export type ModelRoleKind = 'rerank' | 'transcription'
+export type { ModelRoleKind }
 
 /** How long after a save the state is read again; the probe runs on the server meanwhile. */
 const RECHECK_DELAY_MS = 3000
@@ -47,15 +48,13 @@ interface RoleTexts {
 const TEXTS: Record<ModelRoleKind, RoleTexts> = {
   rerank: {
     switchLabel: 'Reranking einschalten',
-    intro:
-      'Das Rerank-Modell ordnet die Kandidaten jeder Suche neu, bevor die Antwort entsteht. Ab Werk ist es aus; ohne Rerank-Modell sucht OPAA ohne diese Stufe weiter.',
-    addressHint: 'Ohne den Pfad /rerank, etwa http://reranker:80.',
+    intro: `${MODEL_ROLE_TEXTS.rerank.purpose} Ab Werk ist es aus; ohne Rerank-Modell sucht OPAA ohne diese Stufe weiter.`,
+    addressHint: MODEL_ROLE_TEXTS.rerank.addressHint,
   },
   transcription: {
     switchLabel: 'Spracheingabe einschalten',
-    intro:
-      'Das Transkriptionsmodell wandelt diktierte Fragen im Chat in Text. Ab Werk ist es aus; das Mikrofon erscheint erst, wenn das Modell antwortet.',
-    addressHint: 'Ohne den Pfad /audio/transcriptions, etwa http://speaches:8000/v1.',
+    intro: `${MODEL_ROLE_TEXTS.transcription.purpose} Ab Werk ist es aus; das Mikrofon erscheint erst, wenn das Modell antwortet.`,
+    addressHint: MODEL_ROLE_TEXTS.transcription.addressHint,
   },
 }
 

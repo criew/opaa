@@ -99,9 +99,9 @@ class InstallationMailStepIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.completable").value(true))
         .andExpect(jsonPath("$.publicBaseUrlConfigured").value(true))
-        .andExpect(jsonPath("$.steps[4].step").value("MAIL"))
-        .andExpect(jsonPath("$.steps[4].mandatory").value(false))
-        .andExpect(jsonPath("$.steps[4].saved").value(false));
+        .andExpect(jsonPath("$.steps[5].step").value("MAIL"))
+        .andExpect(jsonPath("$.steps[5].mandatory").value(false))
+        .andExpect(jsonPath("$.steps[5].saved").value(false));
 
     mockMvc
         .perform(authorized(post(BASE + "/steps/MAIL/skip")))

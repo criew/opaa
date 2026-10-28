@@ -36,6 +36,10 @@ public record InstallationOverview(boolean pending, boolean completable, List<St
       String baseUrl, String model, boolean apiKeySet, BigDecimal temperature, int maxTokens)
       implements SavedValues {}
 
+  /** The rerank model; {@code apiKeySet} says whether a key is saved, never which. */
+  public record RerankModel(String baseUrl, String model, boolean apiKeySet)
+      implements SavedValues {}
+
   /** The mail server; {@code passwordSet} says whether a password is saved, never which. */
   public record Mail(
       String host,

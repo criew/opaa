@@ -1,3 +1,4 @@
+import type { DiscoveredLlmModel } from '@/shared/api/types'
 import type { InstallationStatusResponse, InstallationStepState } from '../api/types'
 
 /**
@@ -24,6 +25,19 @@ const MAIL_STEP: InstallationStepState = {
   checked: false,
 }
 
+const RERANK_STEP: InstallationStepState = {
+  step: 'RERANK_MODEL',
+  mandatory: false,
+  saved: false,
+  checked: false,
+}
+
+/** What a rerank endpoint with a model list offers; the reranker first, a stray model after. */
+export const mockRerankDiscoveredModels: DiscoveredLlmModel[] = [
+  { identifier: 'BAAI/bge-reranker-v2-m3', capabilities: [], chatSuitable: false },
+  { identifier: 'BAAI/bge-m3', capabilities: [], chatSuitable: false },
+]
+
 const BRANDING_STEP: InstallationStepState = {
   step: 'BRANDING',
   mandatory: false,
@@ -32,10 +46,10 @@ const BRANDING_STEP: InstallationStepState = {
 }
 
 /**
- * The mock's steps. With `withEmbedding` the full list of the API, embedding model and branding
- * included, as `?mockInstallation=embedding` and {@link withMockEmbeddingStep} set it up; without,
- * the shorter list most tests are written against, to which {@link withMockBrandingStep} adds the
- * branding step.
+ * The mock's steps. With `withEmbedding` the full list of the API, embedding model, rerank model
+ * and branding included, as `?mockInstallation=embedding` and {@link withMockEmbeddingStep} set it
+ * up; without, the shorter list most tests are written against, to which {@link
+ * withMockBrandingStep} adds the branding step and {@link withMockRerankStep} the rerank step.
  */
 function initialSteps(withEmbedding = false): InstallationStepState[] {
   const steps: InstallationStepState[] = [
@@ -47,6 +61,7 @@ function initialSteps(withEmbedding = false): InstallationStepState[] {
     ? [
         ...steps,
         { step: 'EMBEDDING_MODEL', mandatory: false, saved: false, checked: false },
+        RERANK_STEP,
         MAIL_STEP,
         BRANDING_STEP,
       ]
@@ -87,6 +102,16 @@ export function mockSkippedSteps(): readonly string[] {
 export function withMockEmbeddingStep() {
   pendingOverride = true
   mockSteps = initialSteps(true)
+  remember(mockSteps)
+}
+
+/** Adds the rerank step before the mail step, as the API lists it after the model steps. */
+export function withMockRerankStep() {
+  pendingOverride = true
+  if (!mockSteps.some((s) => s.step === 'RERANK_MODEL')) {
+    const mail = mockSteps.findIndex((s) => s.step === 'MAIL')
+    mockSteps = [...mockSteps.slice(0, mail), RERANK_STEP, ...mockSteps.slice(mail)]
+  }
   remember(mockSteps)
 }
 

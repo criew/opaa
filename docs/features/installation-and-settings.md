@@ -100,6 +100,7 @@ OPAA_INSTALLATION_ANSWER_FILE=/run/opaa/installation.json               # option
 │  ● Anmeldeverfahren           Pflicht                                │
 │  ○ Chat-Modell                optional · später unter Modelle        │
 │  ○ Embedding-Modell           optional · später unter Modelle        │
+│  ○ Rerank-Modell              optional · später unter Modelle        │
 │  ○ Ausgangsproxy              optional · später unter Anbindungen     │
 │  ○ E-Mail-Versand             optional · später unter E-Mail          │
 │  ○ Branding                   optional · später unter Branding        │
@@ -115,6 +116,7 @@ OPAA_INSTALLATION_ANSWER_FILE=/run/opaa/installation.json               # option
 | Anmeldeverfahren | ja | nur lokale Konten, oder zusätzlich ein OIDC-Anbieter: Issuer, Client-ID, JWK-Set-Adresse | Discovery und JWK-Set erreichbar, Adressprüfung | Identitätsanbieter |
 | Chat-Modell | optional | Adresse, Modellname, Schlüssel, Temperatur, Antwortlänge | Verbindungstest wie in der Modellverwaltung | Modelle |
 | Embedding-Modell | optional | Adresse, Modellname, Schlüssel, Eingabegrenze | Probeeinbettung; legt die Vektordimension fest | Modelle → Embedding: Modellwechsel mit Neueinbettung, Endpunktwechsel ohne ([Wechsel des Embedding-Modells](./embedding-model-change.md)) |
+| Rerank-Modell | optional | Adresse ohne `/rerank`, Modellname, Schlüssel (Regeln der Modellverwaltung) | Adressprüfung; dieselbe Rerank-Probe wie „Verbindung testen“ der Modellverwaltung; der Abschluss schaltet das Reranking ein | Modelle → Reranking |
 | Ausgangsproxy | optional; Pflicht, wenn ohne ihn kein Modell erreichbar ist | Proxy-Adresse, Ausnahmeliste | Verbindungstest der Modelle über den Proxy | Anbindungen → Einstellungen |
 | E-Mail-Versand | optional | Server, Port, Verschlüsselung, Zugangsdaten, Absender (Regeln der Mail-Verwaltung) | Adressprüfung der Installation; Verbindung und Anmeldung ohne Versand, auf Wunsch Testnachricht an eine angegebene Adresse | E-Mail |
 | Branding | optional | Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe, Farbschema-Vorgabe (Regeln der Branding-Verwaltung); keine Bilder (ADR-0060, Entscheidung 15) | Regeln der Branding-Verwaltung erneut, ohne Verbindung | Branding |
@@ -144,7 +146,7 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
 | `GET /api/v1/installation` | Zustand: welche Schritte gespeichert und geprüft sind, welche Pflicht |
 | `PUT /api/v1/installation/steps/{step}` | Angaben eines Schritts speichern (`FIRST_ADMIN`, `SIGN_IN`, `CHAT_MODEL`) |
 | `POST /api/v1/installation/steps/{step}/check` | Prüfung eines Schritts ausführen |
-| `POST /api/v1/installation/steps/{step}/discover` | Modelle eines Endpunkts zur Auswahl abrufen (`CHAT_MODEL`, `EMBEDDING_MODEL`), ohne zu speichern |
+| `POST /api/v1/installation/steps/{step}/discover` | Modelle eines Endpunkts zur Auswahl abrufen (`CHAT_MODEL`, `EMBEDDING_MODEL`, `RERANK_MODEL`), ohne zu speichern |
 | `POST /api/v1/installation/answer-file` | Antworten annehmen: alle Schritte speichern, prüfen und abschließen, alles oder nichts |
 | `POST /api/v1/installation/complete` | Abschließen |
 
@@ -155,7 +157,7 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
   Adressprüfung der Modelle (`OPAA_MODEL_TARGET_VALIDATION_*`, getrennt von der Zielprüfung der
   Quellen); ein gespeicherter Schlüssel bleibt nur
   bei unveränderter Adresse (Schema, Host, Port, Pfad).
-- Der Modellabruf der Schritte Chat- und Embedding-Modell ist derselbe wie in der Modellverwaltung
+- Der Modellabruf der Schritte Chat-, Embedding- und Rerank-Modell ist derselbe wie in der Modellverwaltung
   (Adressprüfung der Modelle, keine Weiterleitung, Grenzen für Zeit und Antwortgröße, bei Ollama
   mit Details). Ohne Schlüssel in der Anfrage nutzt er den im Schritt gespeicherten, nur für
   dieselbe Adresse; ein leerer Schlüssel sendet keinen. Je Instanz gelten 30 Abrufe in 10 Minuten,
@@ -192,6 +194,7 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
     "baseUrl": "http://ollama:11434/v1",
     "model": "bge-m3"
   },
+  "rerankModel": null,
   "outboundProxy": null,
   "mail": null,
   "branding": null
@@ -203,8 +206,9 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
   `POST /api/v1/installation/answer-file` kommen dieselben Angaben mit `password` und `apiKey` im
   Rumpf, wie in den einzelnen Schritten: Ein Dateiverweis über die API ließe den Inhaber des Tokens
   Dateien des Backends lesen (ADR-0060, Entscheidung 7).
-- `chatModel`, `embeddingModel`, `mail` und `branding` sind optional; ein fehlender Teil
-  überspringt seinen Schritt, ohne `mail` bleibt der Versand aus, ohne `branding` gilt der
+- `chatModel`, `embeddingModel`, `rerankModel`, `mail` und `branding` sind optional; ein fehlender
+  Teil überspringt seinen Schritt, ohne `rerankModel` bleibt das Reranking aus, ohne `mail` der
+  Versand, ohne `branding` gilt der
   OPAA-Standard. Angaben späterer Schritte (`outboundProxy`) wertet diese Version noch nicht aus.
 - Beim Start mit `OPAA_INSTALLATION_ANSWER_FILE` und nicht abgeschlossener Installation liest die
   Anwendung die Datei unter dem Advisory-Lock der Startaktionen, prüft wie der Assistent und schließt

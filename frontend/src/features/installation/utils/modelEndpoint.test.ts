@@ -30,6 +30,12 @@ describe('providerOf', () => {
     expect(providerPresets('embedding').map((preset) => preset.key)).not.toContain('anthropic')
     expect(providerOf('https://api.anthropic.com/v1', 'embedding')).toBe('custom')
   })
+
+  it('offers no preset for the rerank model, so even the Ollama port is an address of its own', () => {
+    expect(providerPresets('rerank')).toEqual([])
+    expect(providerOf('http://gpu-server:11434/v1', 'rerank')).toBe('custom')
+    expect(providerOf('http://reranker:80', 'rerank')).toBe('custom')
+  })
 })
 
 describe('sameEndpoint', () => {
@@ -44,6 +50,13 @@ describe('sameEndpoint', () => {
 describe('discoveryPlan', () => {
   it('waits for an address', () => {
     expect(discoveryPlan(entries({ baseUrl: '' })).request).toBeNull()
+  })
+
+  it('asks only for the address where the role offers no providers', () => {
+    expect(discoveryPlan(entries({ baseUrl: '', offersProviders: false })).hint).toMatch(
+      /^Basis-Adresse eintragen/,
+    )
+    expect(discoveryPlan(entries({ baseUrl: '' })).hint).toMatch(/^Anbieter wählen/)
   })
 
   it('fetches a keyless endpoint at once and sends a typed key', () => {

@@ -81,9 +81,9 @@ class InstallationBrandingStepIntegrationTest {
     completeMandatorySteps();
     mockMvc
         .perform(authorized(get(BASE)))
-        .andExpect(jsonPath("$.steps[5].step").value("BRANDING"))
-        .andExpect(jsonPath("$.steps[5].mandatory").value(false))
-        .andExpect(jsonPath("$.steps[5].saved").value(false));
+        .andExpect(jsonPath("$.steps[6].step").value("BRANDING"))
+        .andExpect(jsonPath("$.steps[6].mandatory").value(false))
+        .andExpect(jsonPath("$.steps[6].saved").value(false));
     saveBranding(BRANDING).andExpect(status().isOk());
 
     mockMvc

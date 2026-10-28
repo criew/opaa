@@ -14,6 +14,9 @@ export type InstallationChatModelView = Schemas['InstallationChatModelView']
 export type InstallationEmbeddingModel = Schemas['InstallationEmbeddingModel']
 export type InstallationEmbeddingModelView = Schemas['InstallationEmbeddingModelView']
 
+export type InstallationRerankModel = Schemas['InstallationRerankModel']
+export type InstallationRerankModelView = Schemas['InstallationRerankModelView']
+
 export type InstallationMail = Schemas['InstallationMail']
 export type InstallationMailView = Schemas['InstallationMailView']
 
@@ -33,7 +36,13 @@ export type InstallationStatusResponse = Schemas['InstallationStatusResponse']
 export type InstallationModelDiscoveryRequest = Schemas['InstallationModelDiscoveryRequest']
 
 /** The steps whose endpoint lists its models. */
-export type ModelStepId = Extract<InstallationStepId, 'CHAT_MODEL' | 'EMBEDDING_MODEL'>
+export type ModelStepId = Extract<
+  InstallationStepId,
+  'CHAT_MODEL' | 'EMBEDDING_MODEL' | 'RERANK_MODEL'
+>
+
+/** The model steps in the order of the API. */
+export const MODEL_STEPS: readonly ModelStepId[] = ['CHAT_MODEL', 'EMBEDDING_MODEL', 'RERANK_MODEL']
 
 /** The values a step's save sends, by step. */
 export interface StepInput {
@@ -41,6 +50,7 @@ export interface StepInput {
   SIGN_IN: InstallationSignIn
   CHAT_MODEL: InstallationChatModel
   EMBEDDING_MODEL: InstallationEmbeddingModel
+  RERANK_MODEL: InstallationRerankModel
   MAIL: InstallationMail
   BRANDING: InstallationBranding
 }
@@ -51,6 +61,7 @@ export const STEP_REQUEST_KEY = {
   SIGN_IN: 'signIn',
   CHAT_MODEL: 'chatModel',
   EMBEDDING_MODEL: 'embeddingModel',
+  RERANK_MODEL: 'rerankModel',
   MAIL: 'mail',
   BRANDING: 'branding',
 } as const satisfies Record<InstallationStepId, keyof Schemas['InstallationStepRequest']>
