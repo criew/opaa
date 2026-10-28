@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
@@ -25,6 +26,8 @@ import { useChatStore } from '@/features/chat'
 import { useSpaceStore } from '@/features/space'
 import { SIDEBAR_DEFAULT_WIDTH, useUiStore } from '@/shared/stores/uiStore'
 import SidebarResizeHandle from './SidebarResizeHandle'
+import SidebarSpaceList from './SidebarSpaceList'
+import { currentUiLabVariant } from '@/shared/uiLabVariant'
 import { rememberSpaceUse, spacesByRecentUse, useRecentSpaceIds } from '@/features/space'
 import { darkRoles, fontFamily, lightRoles, shadow } from '@/shared/theme/tokens'
 import { spaceMembershipLabel } from '@/features/asset'
@@ -104,6 +107,95 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
 
   const closeSpaceMenu = () => setSpaceMenuAnchor(null)
 
+  // UI lab: the desktop column only; the mobile drawer keeps today's switcher.
+  const labVariant = resizable ? currentUiLabVariant() : null
+
+  const chatSection = (
+    options: { collapsible?: boolean; counts?: boolean; toolbar?: boolean } = {},
+  ) =>
+    activeChatSpaceId ? (
+      <ChatList
+        spaceId={activeChatSpaceId}
+        collapsibleSections={options.collapsible}
+        showCounts={options.counts}
+        headLayout={options.toolbar ? 'toolbar' : 'row'}
+        header={
+          options.toolbar ? undefined : (
+            // Starts where the folding heads' labels start, after their chevron.
+            <Typography component="h2" variant="overline" sx={{ color: 'text.secondary', pl: 3 }}>
+              Chats
+            </Typography>
+          )
+        }
+      />
+    ) : (
+      <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
+        Kein Space verfügbar.
+      </Typography>
+    )
+
+  const spaceSection = (options: { keepActive?: boolean; count?: boolean; rows?: number } = {}) => (
+    <Box component="nav" aria-label="Spaces">
+      <SidebarSpaceList
+        spaces={spaces}
+        activeSpaceId={activeChatSpaceId}
+        isLoading={isLoadingSpaces}
+        keepActive={options.keepActive}
+        showCount={options.count}
+        rowCount={options.rows}
+      />
+    </Box>
+  )
+
+  let labBody: ReactNode = null
+  if (labVariant === 'a' || labVariant === 'c') {
+    labBody = (
+      <Box
+        sx={{
+          px: 1.5,
+          pt: 1.5,
+          pb: 1,
+          flexGrow: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          position: 'relative',
+        }}
+      >
+        {spaceSection({ count: labVariant === 'c' })}
+        <Divider sx={{ my: 1.5 }} />
+        <Box component="nav" aria-label="Chats">
+          {labVariant === 'a'
+            ? chatSection({ collapsible: true })
+            : chatSection({ collapsible: true, counts: true, toolbar: true })}
+        </Box>
+      </Box>
+    )
+  } else if (labVariant === 'b') {
+    labBody = (
+      <>
+        <Box sx={{ px: 1.5, pt: 1.5, pb: 1, flexShrink: 0, maxHeight: '45%', overflowY: 'auto' }}>
+          {spaceSection({ keepActive: true, rows: 3 })}
+        </Box>
+        <Divider />
+        <Box
+          component="nav"
+          aria-label="Chats"
+          sx={{
+            px: 1.5,
+            pt: 1,
+            pb: 1,
+            flexGrow: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            position: 'relative',
+          }}
+        >
+          {chatSection({ collapsible: true, counts: true })}
+        </Box>
+      </>
+    )
+  }
+
   return (
     <Box
       component="aside"
@@ -128,157 +220,162 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
         borderColor: roles.borderStrong,
       }}
     >
-      <Box sx={{ px: 2, pt: 2, pb: 1.5 }}>
-        <Button
-          fullWidth
-          onClick={(event) => setSpaceMenuAnchor(event.currentTarget)}
-          aria-haspopup="menu"
-          aria-expanded={spaceMenuAnchor ? 'true' : undefined}
-          sx={{
-            justifyContent: 'space-between',
-            textAlign: 'left',
-            px: 1.5,
-            py: 1.25,
-            borderRadius: '10px',
-            border: 1,
-            // The switcher is the raised card on the muted column - page ground, framed one
-            // step stronger, exactly like the active entry of a global area's column.
-            borderColor: roles.borderStrong,
-            bgcolor: roles.bg1,
-            color: 'text.primary',
-          }}
-          endIcon={<ExpandMoreIcon sx={{ opacity: 0.8 }} />}
-        >
-          <Box sx={{ minWidth: 0 }}>
-            <Typography
-              variant="overline"
-              component="span"
-              sx={{ display: 'block', lineHeight: 1.4, color: 'text.disabled' }}
-            >
-              Space
-            </Typography>
-            <Typography
-              component="span"
-              noWrap
-              sx={{ display: 'block', fontSize: 14, fontWeight: 500 }}
-            >
-              {activeSpace?.name ?? (isLoadingSpaces ? 'Wird geladen …' : 'Kein Space verfügbar')}
-            </Typography>
-          </Box>
-        </Button>
-        <Menu
-          anchorEl={spaceMenuAnchor}
-          open={Boolean(spaceMenuAnchor)}
-          onClose={closeSpaceMenu}
-          slotProps={{
-            paper: { sx: { width: columnWidth - 32, boxShadow: shadow.overlay } },
-            list: { sx: { py: 0.5 } },
-          }}
-        >
-          <ListSubheader
+      {labBody}
+      {!labBody && (
+        <Box sx={{ px: 2, pt: 2, pb: 1.5 }}>
+          <Button
+            fullWidth
+            onClick={(event) => setSpaceMenuAnchor(event.currentTarget)}
+            aria-haspopup="menu"
+            aria-expanded={spaceMenuAnchor ? 'true' : undefined}
             sx={{
-              bgcolor: 'transparent',
-              lineHeight: 2.6,
-              borderBottom: 1,
-              borderColor: 'divider',
-              mb: 0.5,
-              fontFamily: fontFamily.mono,
-              fontSize: 9.5,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
+              justifyContent: 'space-between',
+              textAlign: 'left',
+              px: 1.5,
+              py: 1.25,
+              borderRadius: '10px',
+              border: 1,
+              // The switcher is the raised card on the muted column - page ground, framed one
+              // step stronger, exactly like the active entry of a global area's column.
+              borderColor: roles.borderStrong,
+              bgcolor: roles.bg1,
+              color: 'text.primary',
+            }}
+            endIcon={<ExpandMoreIcon sx={{ opacity: 0.8 }} />}
+          >
+            <Box sx={{ minWidth: 0 }}>
+              <Typography
+                variant="overline"
+                component="span"
+                sx={{ display: 'block', lineHeight: 1.4, color: 'text.disabled' }}
+              >
+                Space
+              </Typography>
+              <Typography
+                component="span"
+                noWrap
+                sx={{ display: 'block', fontSize: 14, fontWeight: 500 }}
+              >
+                {activeSpace?.name ?? (isLoadingSpaces ? 'Wird geladen …' : 'Kein Space verfügbar')}
+              </Typography>
+            </Box>
+          </Button>
+          <Menu
+            anchorEl={spaceMenuAnchor}
+            open={Boolean(spaceMenuAnchor)}
+            onClose={closeSpaceMenu}
+            slotProps={{
+              paper: { sx: { width: columnWidth - 32, boxShadow: shadow.overlay } },
+              list: { sx: { py: 0.5 } },
             }}
           >
-            Zuletzt genutzt
-          </ListSubheader>
-          {isLoadingSpaces && spaces.length === 0 && (
-            <Box sx={{ py: 1.5, display: 'flex', justifyContent: 'center' }}>
-              <CircularProgress size={20} aria-label="Spaces werden geladen" />
-            </Box>
-          )}
-          {menuSpaces.map((space) => (
-            <MenuItem
-              key={space.id}
-              selected={space.id === activeChatSpaceId}
-              onClick={() => {
-                closeSpaceMenu()
-                // Picking a space lands on an empty chat in it, not on its overview page -
-                // the overview stays reachable from the spaces list. An archived space accepts
-                // no new chats (ChatService rejects the create), so it keeps landing on its
-                // overview.
-                navigate(space.archived ? `/spaces/${space.id}` : `/spaces/${space.id}/chats/new`)
+            <ListSubheader
+              sx={{
+                bgcolor: 'transparent',
+                lineHeight: 2.6,
+                borderBottom: 1,
+                borderColor: 'divider',
+                mb: 0.5,
+                fontFamily: fontFamily.mono,
+                fontSize: 9.5,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
               }}
             >
-              <ListItemText
-                primary={space.name}
-                secondary={spaceMembershipLabel(space.memberships)}
-                slotProps={{
-                  primary: {
-                    noWrap: true,
-                    sx: { fontWeight: space.id === activeChatSpaceId ? 500 : 400 },
-                  },
+              Zuletzt genutzt
+            </ListSubheader>
+            {isLoadingSpaces && spaces.length === 0 && (
+              <Box sx={{ py: 1.5, display: 'flex', justifyContent: 'center' }}>
+                <CircularProgress size={20} aria-label="Spaces werden geladen" />
+              </Box>
+            )}
+            {menuSpaces.map((space) => (
+              <MenuItem
+                key={space.id}
+                selected={space.id === activeChatSpaceId}
+                onClick={() => {
+                  closeSpaceMenu()
+                  // Picking a space lands on an empty chat in it, not on its overview page -
+                  // the overview stays reachable from the spaces list. An archived space accepts
+                  // no new chats (ChatService rejects the create), so it keeps landing on its
+                  // overview.
+                  navigate(space.archived ? `/spaces/${space.id}` : `/spaces/${space.id}/chats/new`)
                 }}
-              />
-              {space.archived && <Chip label="Archiviert" size="small" sx={{ ml: 1 }} />}
-              {space.id === activeChatSpaceId && (
-                <CheckIcon sx={{ ml: 1, fontSize: 15, color: 'primary.main' }} />
-              )}
+              >
+                <ListItemText
+                  primary={space.name}
+                  secondary={spaceMembershipLabel(space.memberships)}
+                  slotProps={{
+                    primary: {
+                      noWrap: true,
+                      sx: { fontWeight: space.id === activeChatSpaceId ? 500 : 400 },
+                    },
+                  }}
+                />
+                {space.archived && <Chip label="Archiviert" size="small" sx={{ ml: 1 }} />}
+                {space.id === activeChatSpaceId && (
+                  <CheckIcon sx={{ ml: 1, fontSize: 15, color: 'primary.main' }} />
+                )}
+              </MenuItem>
+            ))}
+            <Divider sx={{ my: 0.5 }} />
+            <MenuItem
+              onClick={() => {
+                closeSpaceMenu()
+                navigate('/spaces')
+              }}
+              sx={{ fontSize: 12.5, color: 'text.secondary' }}
+            >
+              Alle Spaces anzeigen
             </MenuItem>
-          ))}
-          <Divider sx={{ my: 0.5 }} />
-          <MenuItem
-            onClick={() => {
-              closeSpaceMenu()
-              navigate('/spaces')
-            }}
-            sx={{ fontSize: 12.5, color: 'text.secondary' }}
-          >
-            Alle Spaces anzeigen
-          </MenuItem>
-          <Divider sx={{ my: 0.5 }} />
-          <MenuItem
-            onClick={() => {
-              closeSpaceMenu()
-              navigate('/spaces/new')
-            }}
-            sx={{ fontWeight: 500, color: 'primary.main' }}
-          >
-            <AddIcon sx={{ fontSize: 15, mr: 1 }} />
-            Neuen Space anlegen
-          </MenuItem>
-        </Menu>
-      </Box>
+            <Divider sx={{ my: 0.5 }} />
+            <MenuItem
+              onClick={() => {
+                closeSpaceMenu()
+                navigate('/spaces/new')
+              }}
+              sx={{ fontWeight: 500, color: 'primary.main' }}
+            >
+              <AddIcon sx={{ fontSize: 15, mr: 1 }} />
+              Neuen Space anlegen
+            </MenuItem>
+          </Menu>
+        </Box>
+      )}
 
       {/* position: 'relative' makes this scroll container the containing block of ChatList's
           visually hidden live region (position: absolute). Otherwise that region sits at its
           static position below an expanded list, escapes the clip and stretches the page past
           the viewport - the browser then scrolls the whole shell. */}
-      <Box
-        component="nav"
-        aria-label="Chats"
-        sx={{ px: 2, pb: 1, flexGrow: 1, minHeight: 0, overflowY: 'auto', position: 'relative' }}
-      >
-        {activeChatSpaceId ? (
-          <Box sx={{ mt: 0.5 }}>
-            <ChatList
-              spaceId={activeChatSpaceId}
-              header={
-                <Typography component="h2" variant="overline" sx={{ color: 'text.secondary' }}>
-                  Chats
-                </Typography>
-              }
-            />
-          </Box>
-        ) : (
-          <>
-            <Typography component="h2" variant="overline" sx={{ color: 'text.secondary' }}>
-              Chats
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
-              Kein Space verfügbar.
-            </Typography>
-          </>
-        )}
-      </Box>
+      {!labBody && (
+        <Box
+          component="nav"
+          aria-label="Chats"
+          sx={{ px: 2, pb: 1, flexGrow: 1, minHeight: 0, overflowY: 'auto', position: 'relative' }}
+        >
+          {activeChatSpaceId ? (
+            <Box sx={{ mt: 0.5 }}>
+              <ChatList
+                spaceId={activeChatSpaceId}
+                header={
+                  <Typography component="h2" variant="overline" sx={{ color: 'text.secondary' }}>
+                    Chats
+                  </Typography>
+                }
+              />
+            </Box>
+          ) : (
+            <>
+              <Typography component="h2" variant="overline" sx={{ color: 'text.secondary' }}>
+                Chats
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
+                Kein Space verfügbar.
+              </Typography>
+            </>
+          )}
+        </Box>
+      )}
 
       {activeChatSpaceId && mayOpenSettings && (
         <>

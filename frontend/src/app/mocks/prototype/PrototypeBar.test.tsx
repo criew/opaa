@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import PrototypeBar from './PrototypeBar'
+import { UI_LAB_VARIANTS } from '@/shared/uiLabVariant'
 
 describe('PrototypeBar', () => {
   afterEach(() => window.sessionStorage.clear())
@@ -20,7 +21,12 @@ describe('PrototypeBar', () => {
     render(<PrototypeBar navigate={vi.fn()} />)
 
     expect(screen.getByLabelText('Szenario')).toHaveValue('scale')
-    expect(screen.queryByLabelText('Variante')).not.toBeInTheDocument()
+    // A lab branch registers its variants; then the field is there by design.
+    if (UI_LAB_VARIANTS.length === 0) {
+      expect(screen.queryByLabelText('Variante')).not.toBeInTheDocument()
+    } else {
+      expect(screen.getByLabelText('Variante')).toBeInTheDocument()
+    }
   })
 
   it('collapses to its toggle and remembers that', async () => {

@@ -288,6 +288,11 @@ export function mockSearchChats(spaceId: string, request: ChatSearchRequest): Ch
   }
 }
 
+/** Replaces every chat fixture, for a scenario that starts from a different set. */
+export function replaceMockChats(details: Record<string, ChatDetail>) {
+  mockChatDetails = details
+}
+
 export function resetMockChats() {
   mockChatDetails = structuredClone(INITIAL_CHAT_DETAILS)
   mockChatPins = {}

@@ -32,6 +32,9 @@ interface UiState {
   setThemeMode: (mode: ThemeMode) => void
   /** Back to the operator's configured default - the only way out of an own choice. */
   clearThemeMode: () => void
+  /** Keys of the space column's sections the person folded, kept across reloads. */
+  collapsedSidebarSections: string[]
+  toggleSidebarSection: (key: string) => void
 }
 
 export const useUiStore = create<UiState>()(
@@ -45,16 +48,32 @@ export const useUiStore = create<UiState>()(
       themeMode: null,
       setThemeMode: (mode: ThemeMode) => set({ themeMode: mode }),
       clearThemeMode: () => set({ themeMode: null }),
+      collapsedSidebarSections: [],
+      toggleSidebarSection: (key: string) => {
+        const current = get().collapsedSidebarSections
+        set({
+          collapsedSidebarSections: current.includes(key)
+            ? current.filter((entry) => entry !== key)
+            : [...current, key],
+        })
+      },
     }),
     {
       name: 'opaa-ui-preferences',
-      partialize: (state) => ({ themeMode: state.themeMode, sidebarWidth: state.sidebarWidth }),
+      partialize: (state) => ({
+        themeMode: state.themeMode,
+        sidebarWidth: state.sidebarWidth,
+        collapsedSidebarSections: state.collapsedSidebarSections,
+      }),
       // A stored width from an older bound set must not escape the current range.
       merge: (persisted, current) => {
         const stored = (persisted ?? {}) as Partial<UiState>
         return {
           ...current,
           ...stored,
+          collapsedSidebarSections: Array.isArray(stored.collapsedSidebarSections)
+            ? stored.collapsedSidebarSections.filter((key) => typeof key === 'string')
+            : current.collapsedSidebarSections,
           sidebarWidth:
             typeof stored.sidebarWidth === 'number'
               ? clampSidebarWidth(stored.sidebarWidth)
@@ -64,3 +83,8 @@ export const useUiStore = create<UiState>()(
     },
   ),
 )
+
+/** Whether the person folded the space column's section `key`. */
+export function useSectionCollapsed(key: string): boolean {
+  return useUiStore((s) => s.collapsedSidebarSections.includes(key))
+}

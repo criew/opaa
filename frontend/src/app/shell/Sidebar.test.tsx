@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { render } from '@testing-library/react'
 import { ThemeProvider } from '@mui/material/styles'
@@ -485,6 +485,44 @@ describe('Sidebar', () => {
 
       await user.dblClick(handle)
       expect(useUiStore.getState().sidebarWidth).toBe(SIDEBAR_DEFAULT_WIDTH)
+    })
+  })
+  describe('UI lab variants', () => {
+    afterEach(() => {
+      window.sessionStorage.clear()
+      useUiStore.setState({ collapsedSidebarSections: [] })
+    })
+
+    it('lists the spaces as rows on the desktop column and keeps the switcher in the drawer', () => {
+      window.sessionStorage.setItem('opaa.uiLabVariant', 'a')
+      const { unmount } = renderSidebarAtRoute('/spaces/space-engineering', <Sidebar resizable />)
+      const spaces = screen.getByRole('navigation', { name: 'Spaces' })
+      expect(within(spaces).getByRole('link', { name: /Engineering/ })).toHaveAttribute(
+        'aria-current',
+        'true',
+      )
+      expect(within(spaces).getByRole('link', { name: 'Neuen Space anlegen' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /Engineering/ })).not.toBeInTheDocument()
+      unmount()
+
+      renderSidebarAtRoute('/spaces/space-engineering')
+      expect(screen.queryByRole('navigation', { name: 'Spaces' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Engineering/ })).toBeInTheDocument()
+    })
+
+    it('keeps the active space visible when variant B folds the spaces', async () => {
+      window.sessionStorage.setItem('opaa.uiLabVariant', 'b')
+      const user = userEvent.setup()
+      renderSidebarAtRoute('/spaces/space-engineering', <Sidebar resizable />)
+
+      await user.click(screen.getByRole('button', { name: 'Spaces' }))
+
+      expect(screen.getByRole('button', { name: 'Spaces' })).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      )
+      const spaces = screen.getByRole('navigation', { name: 'Spaces' })
+      expect(within(spaces).getAllByRole('link', { name: /Engineering|Privater/ })).toHaveLength(1)
     })
   })
 })

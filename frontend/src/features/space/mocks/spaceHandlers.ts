@@ -6,6 +6,7 @@ import {
   mockSpaceDetails,
   mockSpaceMembers,
 } from './spaceFixtures'
+import { ensureScenarioSpaces, spacesForScenario } from './spaceScenarioFixtures'
 import { mockGroups } from '../../group/mocks/groupFixtures'
 
 function recalculateRoleCounts(spaceId: string) {
@@ -69,7 +70,7 @@ export const spaceHandlers = [
   }),
 
   http.get('/api/v1/spaces', () => {
-    return HttpResponse.json(mockSpaces)
+    return HttpResponse.json(spacesForScenario())
   }),
 
   // Registered before ':spaceId', which would otherwise take the literal segment for an id.
@@ -81,6 +82,7 @@ export const spaceHandlers = [
   }),
 
   http.get('/api/v1/spaces/:spaceId', ({ params }) => {
+    ensureScenarioSpaces()
     const spaceId = String(params.spaceId)
     const space = mockSpaceDetails[spaceId]
     if (!space) {

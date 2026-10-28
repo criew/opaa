@@ -37,6 +37,8 @@ import { notify } from '@/shared/stores/notificationStore'
 import { useSpaceStore } from '@/features/space'
 import { chatTitle, RECENT_PAGE_SIZE, splitChats } from './chatListSections'
 import { exportChat } from './exportChat'
+import CollapsibleSectionHead from '@/shared/ui/CollapsibleSectionHead'
+import { useSectionCollapsed } from '@/shared/stores/uiStore'
 
 /** The paging buttons under "Zuletzt verwendet": quiet, small, never wrapping their label. */
 const PAGING_BUTTON_SX = {
@@ -77,6 +79,15 @@ interface ChatListProps {
   spaceId: string
   /** Rendered left of the "+ Neu" action, in the same row (mockup 1a's section head). */
   header?: ReactNode
+  /** UI lab: "Angeheftet" and "Zuletzt verwendet" fold, remembered per person. */
+  collapsibleSections?: boolean
+  /** UI lab: the number of chats next to each group head. */
+  showCounts?: boolean
+  /**
+   * UI lab: `toolbar` replaces the head row by a labelled "Neuer Chat" button and the
+   * search button, for a column whose groups carry their own heads.
+   */
+  headLayout?: 'row' | 'toolbar'
 }
 
 /**
@@ -85,7 +96,13 @@ interface ChatListProps {
  * search over every chat - archived ones included - sits behind the search button in the head
  * row; the list itself never filters.
  */
-export default function ChatList({ spaceId, header }: ChatListProps) {
+export default function ChatList({
+  spaceId,
+  header,
+  collapsibleSections = false,
+  showCounts = false,
+  headLayout = 'row',
+}: ChatListProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const chats = useChatListStore((s) => s.chatsBySpaceId[spaceId])
@@ -117,6 +134,8 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
   // Set whenever the open chat changes or the list mounts; consumed once its row is rendered.
   const scrollToActiveRef = useRef(true)
   const groupIdPrefix = useId()
+  const pinnedCollapsed = useSectionCollapsed('chats.pinned') && collapsibleSections
+  const recentCollapsed = useSectionCollapsed('chats.recent') && collapsibleSections
   // Pinning moves a row into another group, which remounts it; focus follows it there.
   const refocusMovedChatIdRef = useRef<string | null>(null)
   // While its pin request is in flight, a row the rollback moves back takes lost focus along.
@@ -398,8 +417,37 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
     )
   }
 
-  function renderSection(key: string, label: string, rows: ChatSummary[]) {
+  function renderSection(
+    key: string,
+    label: string,
+    rows: ChatSummary[],
+    total: number,
+    footer?: ReactNode,
+  ) {
     const headingId = `${groupIdPrefix}-${key}`
+    if (collapsibleSections) {
+      const collapsed = key === 'pinned' ? pinnedCollapsed : recentCollapsed
+      return (
+        <Box key={key} sx={{ mt: 0.75 }}>
+          <CollapsibleSectionHead
+            sectionKey={`chats.${key}`}
+            label={label}
+            count={showCounts ? total : undefined}
+            controls={`${headingId}-region`}
+            id={headingId}
+            component={headLayout === 'toolbar' ? 'h2' : 'h3'}
+          />
+          <Box id={`${headingId}-region`} hidden={collapsed}>
+            {!collapsed && rows.length > 0 && (
+              <List id={`${headingId}-list`} aria-labelledby={headingId} sx={{ px: 0, py: 0 }}>
+                {rows.map((chat) => renderChatRow(chat))}
+              </List>
+            )}
+            {!collapsed && footer}
+          </Box>
+        </Box>
+      )
+    }
     return (
       <Box key={key} sx={{ mt: 0.75 }}>
         <Typography
@@ -423,100 +471,148 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
     const { pinned, recent } = splitChats(allChats)
     const shown = Math.max(recentShown, RECENT_PAGE_SIZE)
     const remaining = recent.length - shown
+    const paging = (remaining > 0 || shown > RECENT_PAGE_SIZE) && (
+      // Short visible labels on one line each; the arrow carries "anzeigen", the hidden rest
+      // completes the accessible name, which still starts with the visible text.
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'space-between',
+          columnGap: 1,
+          px: 0.25,
+          mt: 0.5,
+        }}
+      >
+        {remaining > 0 && (
+          <Button
+            variant="text"
+            size="small"
+            onClick={revealMore}
+            endIcon={<ExpandMoreIcon aria-hidden />}
+            sx={PAGING_BUTTON_SX}
+          >
+            {revealMoreLabel(Math.min(remaining, RECENT_PAGE_SIZE))}
+          </Button>
+        )}
+        {shown > RECENT_PAGE_SIZE && (
+          <Button
+            variant="text"
+            size="small"
+            onClick={showFewer}
+            endIcon={<ExpandLessIcon aria-hidden />}
+            sx={{ ...PAGING_BUTTON_SX, ml: 'auto' }}
+          >
+            {labelWithHiddenRest('Weniger', 'anzeigen')}
+          </Button>
+        )}
+      </Box>
+    )
     return (
       <>
-        {pinned.length > 0 && renderSection('pinned', 'Angeheftet', pinned)}
-        {recent.length > 0 && renderSection('recent', 'Zuletzt verwendet', recent.slice(0, shown))}
+        {pinned.length > 0 && renderSection('pinned', 'Angeheftet', pinned, pinned.length)}
+        {recent.length > 0 &&
+          renderSection(
+            'recent',
+            'Zuletzt verwendet',
+            recent.slice(0, shown),
+            recent.length,
+            collapsibleSections ? paging : undefined,
+          )}
         <Box role="status" sx={visuallyHidden}>
           {revealStatus}
         </Box>
-        {(remaining > 0 || shown > RECENT_PAGE_SIZE) && (
-          // Short visible labels on one line each; the arrow carries "anzeigen", the hidden rest
-          // completes the accessible name, which still starts with the visible text.
-          <Box
-            sx={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              justifyContent: 'space-between',
-              columnGap: 1,
-              px: 0.25,
-              mt: 0.5,
-            }}
-          >
-            {remaining > 0 && (
-              <Button
-                variant="text"
-                size="small"
-                onClick={revealMore}
-                endIcon={<ExpandMoreIcon aria-hidden />}
-                sx={PAGING_BUTTON_SX}
-              >
-                {revealMoreLabel(Math.min(remaining, RECENT_PAGE_SIZE))}
-              </Button>
-            )}
-            {shown > RECENT_PAGE_SIZE && (
-              <Button
-                variant="text"
-                size="small"
-                onClick={showFewer}
-                endIcon={<ExpandLessIcon aria-hidden />}
-                sx={{ ...PAGING_BUTTON_SX, ml: 'auto' }}
-              >
-                {labelWithHiddenRest('Weniger', 'anzeigen')}
-              </Button>
-            )}
-          </Box>
-        )}
+        {!collapsibleSections && paging}
       </>
     )
   }
 
   return (
     <Box>
-      {/* Mockup 1a: section head and the actions share one baseline row. */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 0.5 }}>
-        {header ?? <span />}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+      {headLayout === 'toolbar' ? (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, pb: 0.5 }}>
+          {header}
           <Tooltip
             title={
               isArchived ? 'Dieser Space ist archiviert und nimmt keine neuen Chats mehr an' : ''
             }
           >
-            <span>
+            <Box component="span" sx={{ flexGrow: 1, display: 'flex' }}>
               <Button
-                variant="text"
+                variant="outlined"
                 size="small"
-                // Starts with the visible "Neu" (WCAG 2.5.3), so a voice command can say it.
-                aria-label="Neu: Chat beginnen"
-                startIcon={<AddIcon sx={{ fontSize: 13 }} />}
+                fullWidth
+                startIcon={<AddIcon />}
                 onClick={handleNewChat}
                 disabled={Boolean(isArchived)}
-                // Mockup 1a: a quiet small link, not a boxed button.
-                sx={{ minHeight: 0, px: 0.75, py: 0.25, fontSize: 11.5 }}
+                sx={{ justifyContent: 'flex-start' }}
               >
-                Neu
+                Neuer Chat
               </Button>
-            </span>
+            </Box>
           </Tooltip>
-          {/* The chat search covers titles and message texts of every chat, the archived ones
-              included - the empty term it opens with lists them all, so this is also the way to
-              "alle Chats". The empty handover puts the cursor into the page's search field. */}
           <Tooltip title="Chats durchsuchen">
             <IconButton
               ref={searchButtonRef}
-              size="small"
               aria-label="Chats durchsuchen"
               onClick={() => {
                 const handover: ChatSearchHandover = { chatSearchTerm: '' }
                 navigate(`/spaces/${spaceId}/chats`, { state: handover })
               }}
-              sx={{ p: 0.5, borderRadius: '4px' }}
+              sx={{ borderRadius: '6px', border: 1, borderColor: 'divider', p: 0.75 }}
             >
-              <SearchIcon sx={{ fontSize: 16 }} />
+              <SearchIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
         </Box>
-      </Box>
+      ) : (
+        /* Mockup 1a: section head and the actions share one baseline row. */
+        <Box
+          sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 0.5 }}
+        >
+          {header ?? <span />}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+            <Tooltip
+              title={
+                isArchived ? 'Dieser Space ist archiviert und nimmt keine neuen Chats mehr an' : ''
+              }
+            >
+              <span>
+                <Button
+                  variant="text"
+                  size="small"
+                  // Starts with the visible "Neu" (WCAG 2.5.3), so a voice command can say it.
+                  aria-label="Neu: Chat beginnen"
+                  startIcon={<AddIcon sx={{ fontSize: 13 }} />}
+                  onClick={handleNewChat}
+                  disabled={Boolean(isArchived)}
+                  // Mockup 1a: a quiet small link, not a boxed button.
+                  sx={{ minHeight: 0, px: 0.75, py: 0.25, fontSize: 11.5 }}
+                >
+                  Neu
+                </Button>
+              </span>
+            </Tooltip>
+            {/* The chat search covers titles and message texts of every chat, the archived ones
+              included - the empty term it opens with lists them all, so this is also the way to
+              "alle Chats". The empty handover puts the cursor into the page's search field. */}
+            <Tooltip title="Chats durchsuchen">
+              <IconButton
+                ref={searchButtonRef}
+                size="small"
+                aria-label="Chats durchsuchen"
+                onClick={() => {
+                  const handover: ChatSearchHandover = { chatSearchTerm: '' }
+                  navigate(`/spaces/${spaceId}/chats`, { state: handover })
+                }}
+                sx={{ p: 0.5, borderRadius: '4px' }}
+              >
+                <SearchIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        </Box>
+      )}
 
       {error && (
         <Typography role="alert" variant="body2" sx={{ color: 'error.main', mb: 1 }}>
