@@ -111,7 +111,7 @@ export default function OutboundProxySection() {
   return (
     <PageSection
       title="Ausgangsproxy"
-      description="Über diesen Proxy baut OPAA alle ausgehenden HTTP(S)-Verbindungen auf - nicht nur zu Quellen, sondern auch zu Sprachmodellen und zur Anmeldung bei Anbietern und Identitätsanbietern. Ziele auf der Ausnahmeliste erreicht OPAA direkt."
+      description="Alle ausgehenden HTTP(S)-Verbindungen laufen über diesen Proxy, auch zu Sprachmodellen und Identitätsanbietern; Ziele der Ausnahmeliste erreicht OPAA direkt."
     >
       {loadError ? (
         <Alert

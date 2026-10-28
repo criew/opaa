@@ -60,7 +60,7 @@ export async function askQuestion(page: Page, question: string): Promise<void> {
 }
 
 /**
- * The sidebar's chat list entries, as their three-dot "Aktionen für Chat „…"" menu triggers
+ * The sidebar's chat list entries, as their three-dot "Weitere Aktionen für „…"" menu triggers
  * (ChatList.tsx, #658) - each present exactly once per chat regardless of what that chat is
  * currently titled. They fade in on hover/focus, but only via opacity, which Playwright's
  * visibility model (and getAttribute) deliberately ignores. A Locator, not a
@@ -77,7 +77,7 @@ export async function askQuestion(page: Page, question: string): Promise<void> {
  * (expectTopSidebarChatToBeNamed below) replace what used to be exact title-text assertions.
  */
 export function chatSidebarEntries(page: Page): Locator {
-  return page.getByRole('navigation').getByRole('button', { name: /^Aktionen für Chat/ })
+  return page.getByRole('navigation').getByRole('button', { name: /^Weitere Aktionen für/ })
 }
 
 /**
@@ -103,7 +103,7 @@ export async function expectTopSidebarChatToBeNamed(page: Page): Promise<void> {
   const ariaLabel = await page
     .getByRole('navigation', { name: 'Chats' })
     .getByRole('list', { name: 'Zuletzt verwendet' })
-    .getByRole('button', { name: /^Aktionen für Chat/ })
+    .getByRole('button', { name: /^Weitere Aktionen für/ })
     .first()
     .getAttribute('aria-label')
   expect(ariaLabel).toBeTruthy()

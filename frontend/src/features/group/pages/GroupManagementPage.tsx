@@ -49,7 +49,7 @@ export default function GroupManagementPage() {
         <AreaPageHeader
           icon={GroupsOutlinedIcon}
           title="Gruppen"
-          description="Alle Gruppen der Organisation. Interne Gruppen legen Sie hier an und pflegen sie. Gruppen eines Identitätsanbieters oder Verzeichnisses pflegt ihre Quelle – bei ihnen entscheiden Sie hier nur über den Schutz."
+          description="Alle Gruppen der Organisation. Interne Gruppen pflegen Sie hier, bei Gruppen eines Identitätsanbieters oder Verzeichnisses nur den Schutz."
         />
 
         {error && (

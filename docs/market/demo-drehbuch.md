@@ -454,9 +454,9 @@ Drei Fragen, die sich nur aus einem Nicht-Text-Format beantworten lassen (#2028)
      fünf Chats, darunter die übrigen aktiven Chats, zuletzt verwendete zuerst.
   2. Einen Chat öffnen, etwa „Auskunftssperre bei häuslicher Gewalt": Die Antworten tragen Fußnoten,
      „Belege anzeigen" öffnet die zitierten Dokumente mit Dateiname und Bibliothek.
-  3. Über „Aktionen für Chat …" einen nicht angehefteten Chat, etwa „Trauung im Standesamt“,
+  3. Über „⋯" („Weitere Aktionen für „…"") einen nicht angehefteten Chat, etwa „Trauung im Standesamt“,
      anheften: Er erscheint unter „Angeheftet“. Über dasselbe Menü wieder „Lösen“.
-  4. Über „Aktionen für Chat …" denselben Chat „Archivieren“: Er verschwindet aus der Seitenleiste.
+  4. Über „⋯" denselben Chat „Archivieren“: Er verschwindet aus der Seitenleiste.
      Auf der Seite „Chats durchsuchen“ (siehe unten) im Reiter „Archiv“ steht er jetzt als zwölfter
      Eintrag.
 - **Klickweg, Suche und Archiv:**

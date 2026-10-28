@@ -227,7 +227,7 @@ export default function BrandingSettingsPage() {
         <AreaPageHeader
           icon={PaletteOutlinedIcon}
           title="Branding"
-          description="Gilt für die gesamte Anwendung: Produktname, Claim, Logo, Akzentfarbe und Farbschema-Vorgabe Ihres Hauses. Änderungen sind ohne Neuinstallation für alle Nutzenden wirksam. Ein leeres Feld bedeutet: der OPAA-Standard gilt wieder."
+          description="Produktname, Claim, Logo, Akzentfarbe und Farbschema Ihres Hauses, sofort für alle wirksam. Ein leeres Feld stellt den OPAA-Standard wieder her."
         />
 
         {storeError && (

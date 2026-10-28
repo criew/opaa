@@ -116,9 +116,9 @@ function modelRow(page: Page, displayName: string): Locator {
  */
 async function openRowMenu(page: Page, displayName: string): Promise<Locator> {
   await modelRow(page, displayName)
-    .getByRole('button', { name: `Aktionen für „${displayName}“` })
+    .getByRole('button', { name: `Weitere Aktionen für „${displayName}“` })
     .click()
-  const menu = page.getByRole('menu', { name: `Aktionen für „${displayName}“` })
+  const menu = page.getByRole('menu', { name: `Weitere Aktionen für „${displayName}“` })
   await expect(menu).toBeVisible()
   return menu
 }

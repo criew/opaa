@@ -22,6 +22,7 @@ import { notify } from '@/shared/stores/notificationStore'
 import { connectionProfileRoute } from '@/shared/routes'
 import SectionHead from '@/shared/ui/SectionHead'
 import StatusLine from '@/shared/ui/StatusLine'
+import { TextLink } from '@/shared/ui/DetailSection'
 import { AccessBadge } from '@/features/capability'
 import {
   accessBadgeLabel,
@@ -277,9 +278,7 @@ function PanelContent({
             <Typography sx={{ fontSize: 13, mt: 1 }}>
               {resultSentence(ownAccess, objectPhrase(ownAddressEntry))}
             </Typography>
-            <Link component={RouterLink} to="/admin/capabilities" sx={{ fontSize: 13.5 }}>
-              Unter Anlegerechte ändern
-            </Link>
+            <TextLink to="/admin/capabilities">Unter Anlegerechte ändern</TextLink>
           </PanelSection>
         )}
         {state.profileSupport !== 'FORBIDDEN' && own?.length === 0 && state.profileRequired && (

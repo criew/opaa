@@ -1,18 +1,6 @@
-import { useId, useState } from 'react'
-import Box from '@mui/material/Box'
-import Divider from '@mui/material/Divider'
-import IconButton from '@mui/material/IconButton'
-import ListItemIcon from '@mui/material/ListItemIcon'
-import Menu from '@mui/material/Menu'
-import MenuItem from '@mui/material/MenuItem'
-import Typography from '@mui/material/Typography'
-import Tooltip from '@mui/material/Tooltip'
-import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined'
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
-import WifiTetheringOutlinedIcon from '@mui/icons-material/WifiTetheringOutlined'
+import { useState } from 'react'
 import type { LlmModelResponse } from '@/shared/api/types'
+import RowMenu from '@/shared/ui/RowMenu'
 import { testLlmModel } from '../api/modelApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
@@ -36,14 +24,9 @@ interface ModelRowMenuProps {
 export default function ModelRowMenu({ model, onEdit }: ModelRowMenuProps) {
   const activateExistingModel = useLlmModelStore((s) => s.activateExistingModel)
   const deleteExistingModel = useLlmModelStore((s) => s.deleteExistingModel)
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const [busy, setBusy] = useState(false)
-  const reasonId = useId()
-
-  const close = () => setAnchor(null)
 
   async function run(action: () => Promise<string>, fallback: string) {
-    close()
     setBusy(true)
     try {
       notify(await action(), 'success')
@@ -55,7 +38,6 @@ export default function ModelRowMenu({ model, onEdit }: ModelRowMenuProps) {
   }
 
   async function test() {
-    close()
     setBusy(true)
     try {
       // Without `apiKey`, but with `modelId`: the test thus falls back to this model's **stored**
@@ -74,7 +56,6 @@ export default function ModelRowMenu({ model, onEdit }: ModelRowMenuProps) {
   }
 
   async function remove() {
-    close()
     if (
       !(await confirmAction({
         question: `Modell „${model.displayName}“ löschen?`,
@@ -92,88 +73,28 @@ export default function ModelRowMenu({ model, onEdit }: ModelRowMenuProps) {
   }
 
   return (
-    <>
-      <Tooltip title="Weitere Aktionen">
-        <span>
-          <IconButton
-            size="small"
-            onClick={(e) => setAnchor(e.currentTarget)}
-            disabled={busy}
-            aria-haspopup="true"
-            aria-label={`Aktionen für „${model.displayName}“`}
-          >
-            <MoreHorizIcon fontSize="small" />
-          </IconButton>
-        </span>
-      </Tooltip>
-      <Menu
-        anchorEl={anchor}
-        open={anchor !== null}
-        onClose={close}
-        slotProps={{ list: { 'aria-label': `Aktionen für „${model.displayName}“` } }}
-      >
-        <MenuItem
-          onClick={() => {
-            close()
-            onEdit(model)
-          }}
-        >
-          <ListItemIcon>
-            <EditOutlinedIcon fontSize="small" />
-          </ListItemIcon>
-          Bearbeiten
-        </MenuItem>
-        <MenuItem onClick={() => void test()}>
-          <ListItemIcon>
-            <WifiTetheringOutlinedIcon fontSize="small" />
-          </ListItemIcon>
-          Verbindung testen
-        </MenuItem>
-        {!model.active && (
-          <MenuItem
-            onClick={() =>
-              void run(async () => {
-                await activateExistingModel(model.id)
-                return `„${model.displayName}“ ist jetzt das aktive Modell.`
-              }, 'Aktivierung fehlgeschlagen')
-            }
-          >
-            <ListItemIcon>
-              <BoltOutlinedIcon fontSize="small" />
-            </ListItemIcon>
-            Aktiv setzen
-          </MenuItem>
-        )}
-        <Divider />
-        <MenuItem
-          onClick={() => void remove()}
-          disabled={model.active}
-          aria-describedby={model.active ? reasonId : undefined}
-        >
-          <ListItemIcon>
-            <DeleteOutlineIcon fontSize="small" color={model.active ? undefined : 'error'} />
-          </ListItemIcon>
-          <Typography sx={{ fontSize: 14, color: model.active ? undefined : 'error.main' }}>
-            Löschen
-          </Typography>
-        </MenuItem>
-        {model.active && (
-          // An `<li role="presentation">` instead of a paragraph: a `<p>` under `role="menu"`
-          // violates `aria-required-children`. The disabled entry refers here via
-          // `aria-describedby`, so that the reason is read out as well - a tooltip
-          // would only be found by a mouse.
-          <Box
-            component="li"
-            role="presentation"
-            id={reasonId}
-            sx={{ px: 2, py: 1, maxWidth: 320 }}
-          >
-            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-              {ACTIVE_DELETE_HINT}
-            </Typography>
-          </Box>
-        )}
-      </Menu>
-    </>
+    <RowMenu
+      name={model.displayName}
+      disabled={busy}
+      items={[
+        { label: 'Bearbeiten', onClick: () => onEdit(model) },
+        { label: 'Verbindung testen', onClick: () => void test() },
+        !model.active && {
+          label: 'Aktiv setzen',
+          onClick: () =>
+            void run(async () => {
+              await activateExistingModel(model.id)
+              return `„${model.displayName}“ ist jetzt das aktive Modell.`
+            }, 'Aktivierung fehlgeschlagen'),
+        },
+        {
+          label: 'Löschen',
+          onClick: () => void remove(),
+          danger: true,
+          disabled: model.active,
+          disabledReason: ACTIVE_DELETE_HINT,
+        },
+      ]}
+    />
   )
 }

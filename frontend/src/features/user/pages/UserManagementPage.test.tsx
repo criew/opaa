@@ -77,7 +77,7 @@ async function openRowMenu(
   rowPattern = name,
 ) {
   await user.click(
-    within(rowOf(rowPattern)).getByRole('button', { name: `Aktionen für „${name}“` }),
+    within(rowOf(rowPattern)).getByRole('button', { name: `Weitere Aktionen für „${name}“` }),
   )
   return screen.findByRole('menu')
 }

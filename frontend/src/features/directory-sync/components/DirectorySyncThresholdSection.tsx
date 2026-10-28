@@ -46,7 +46,7 @@ export default function DirectorySyncThresholdSection() {
   return (
     <PageSection
       title="Plausibilitätsschwelle"
-      description="Würde ein Lauf mehr als diesen Anteil der betroffenen Mitgliedschaften, Gruppen oder Konten entfernen, einfrieren oder sperren, schreibt er nichts und legt seinen Plan zur Bestätigung vor. Die Schwelle gilt für alle Anbieter und schützt vor einem fehlkonfigurierten Verzeichnis, das scheinbar fast alles löscht."
+      description="Würde ein Lauf mehr als diesen Anteil der Mitgliedschaften, Gruppen oder Konten entfernen, einfrieren oder sperren, legt er seinen Plan zur Bestätigung vor, statt zu schreiben. Gilt für alle Anbieter."
     >
       {loadError ? (
         <Alert

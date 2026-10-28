@@ -164,7 +164,7 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     await gotoLibraries(adminPage)
     await gotoLibraryDetail(adminPage, LIBRARY_NAME)
     await adminPage.getByRole('tab', { name: 'Freigaben' }).click()
-    await adminPage.getByRole('button', { name: 'Aktionen für die Freigabe an Dev User' }).click()
+    await adminPage.getByRole('button', { name: 'Weitere Aktionen für „Dev User“' }).click()
     await adminPage.getByRole('menuitem', { name: 'Entziehen' }).click()
     // The confirmation is the app's own overlay. Addressed through the id every
     // confirmation carries rather than through role="dialog" alone: its own button says

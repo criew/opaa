@@ -29,7 +29,7 @@ describe('ChatRowMenu', () => {
       <ChatRowMenu chat={chat} archived={archived} onAction={vi.fn()} onPin={vi.fn()} />,
     )
 
-    await user.click(screen.getByRole('button', { name: `Aktionen für „${chat.title}“` }))
+    await user.click(screen.getByRole('button', { name: `Weitere Aktionen für „${chat.title}“` }))
     await user.click(screen.getByRole('menuitem', { name: `Exportieren als ${label}` }))
 
     expect(exportChat).toHaveBeenCalledWith(chat, format)

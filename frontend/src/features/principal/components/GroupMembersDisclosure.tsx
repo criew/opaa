@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { GroupMemberDisclosureResponse } from '@/shared/api/types'
+import { TextAction } from '@/shared/ui/DetailSection'
 
 /** How many names a page brings — the same default as in the service. */
 const PAGE_SIZE = 50
 
 interface GroupMembersDisclosureProps {
   /**
-   * How the group is named in the aria-labels. The caller chooses it so that it does not
+   * How the group is named in the accessible names, after the visible words. The caller chooses it so that it does not
    * read out the raw identifier for a nameless row.
    */
   groupLabel: string
@@ -75,15 +75,13 @@ export default function GroupMembersDisclosure({
 
   if (!requested && !disclosure && !isLoading && !error) {
     return (
-      <Link
-        component="button"
-        type="button"
-        sx={{ alignSelf: 'flex-start', fontSize: 12 }}
-        aria-label={`Mitglieder der Gruppe „${groupLabel}“ anzeigen`}
+      <TextAction
+        sx={{ alignSelf: 'flex-start' }}
+        aria-label={`Mitglieder anzeigen (Gruppe „${groupLabel}“)`}
         onClick={() => void loadPage(0)}
       >
         Mitglieder anzeigen
-      </Link>
+      </TextAction>
     )
   }
 
@@ -121,25 +119,21 @@ export default function GroupMembersDisclosure({
               ))}
             </Stack>
             {hasMore && (
-              <Link
-                component="button"
-                type="button"
-                sx={{ alignSelf: 'flex-start', fontSize: 12 }}
-                aria-label={`Weitere Mitglieder der Gruppe „${groupLabel}“ anzeigen`}
+              <TextAction
+                sx={{ alignSelf: 'flex-start' }}
+                aria-label={`${isLoading ? 'Wird geladen …' : 'Weitere anzeigen'} (Gruppe „${groupLabel}“)`}
                 onClick={() => void loadPage(shown)}
               >
                 {isLoading ? 'Wird geladen …' : 'Weitere anzeigen'}
-              </Link>
+              </TextAction>
             )}
           </>
         )
       )}
       {(disclosure || error) && (
-        <Link
-          component="button"
-          type="button"
-          sx={{ alignSelf: 'flex-start', fontSize: 12 }}
-          aria-label={`Mitglieder der Gruppe „${groupLabel}“ ausblenden`}
+        <TextAction
+          sx={{ alignSelf: 'flex-start' }}
+          aria-label={`Mitglieder ausblenden (Gruppe „${groupLabel}“)`}
           onClick={() => {
             setDisclosure(null)
             setError(null)
@@ -148,7 +142,7 @@ export default function GroupMembersDisclosure({
           }}
         >
           Mitglieder ausblenden
-        </Link>
+        </TextAction>
       )}
     </Stack>
   )

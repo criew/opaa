@@ -2,8 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import IconButton from '@mui/material/IconButton'
-import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
@@ -14,13 +12,11 @@ import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
-import Tooltip from '@mui/material/Tooltip'
 import TableContainer from '@mui/material/TableContainer'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import type {
   AdminExternalAccessTokenResponse,
   ExternalAccessTokenStatus,
@@ -33,6 +29,7 @@ import {
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import PageSection from '@/shared/ui/PageSection'
+import RowMenu from '@/shared/ui/RowMenu'
 import OwnTokensLink from './OwnTokensLink'
 import StateDot from '@/shared/ui/StateDot'
 import type { StatusTone } from '@/shared/ui/StatusLine'
@@ -72,7 +69,8 @@ const STATUS_OPTIONS: Array<{ value: ExternalAccessTokenStatus | 'ALL'; label: s
   { value: 'BLOCKED', label: TOKEN_STATUS_LABEL.BLOCKED },
 ]
 
-function RowMenu({
+/** Both entries block for good (confirmation tone `danger`). */
+function TokenMenu({
   token,
   onBlock,
   onBlockAllOfOwner,
@@ -81,35 +79,23 @@ function RowMenu({
   onBlock: (token: AdminExternalAccessTokenResponse) => void
   onBlockAllOfOwner: (token: AdminExternalAccessTokenResponse) => void
 }) {
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
-
-  // The menu closes before the confirmation opens: two layers with their own focus trap could
-  // be left neither with the keyboard nor with a screen reader.
-  function run(action: () => void) {
-    setAnchor(null)
-    action()
-  }
-
   return (
-    <>
-      <Tooltip title="Weitere Aktionen">
-        <IconButton
-          size="small"
-          aria-label={`Aktionen für das Token „${token.name}“ von ${token.ownerDisplayName}`}
-          onClick={(event) => setAnchor(event.currentTarget)}
-        >
-          <MoreHorizIcon fontSize="small" />
-        </IconButton>
-      </Tooltip>
-      <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}>
-        {token.status === 'ACTIVE' && (
-          <MenuItem onClick={() => run(() => onBlock(token))}>Token sperren</MenuItem>
-        )}
-        <MenuItem onClick={() => run(() => onBlockAllOfOwner(token))}>
-          Alle Tokens dieser Person sperren
-        </MenuItem>
-      </Menu>
-    </>
+    <RowMenu
+      name={token.name}
+      detail={`von ${token.ownerDisplayName}`}
+      items={[
+        token.status === 'ACTIVE' && {
+          label: 'Token sperren',
+          onClick: () => onBlock(token),
+          danger: true,
+        },
+        {
+          label: 'Alle Tokens dieser Person sperren',
+          onClick: () => onBlockAllOfOwner(token),
+          danger: true,
+        },
+      ]}
+    />
   )
 }
 
@@ -284,7 +270,7 @@ export default function ExternalAccessTokenAdminSection({
                     <TokenState status={token.status} />
                   </TableCell>
                   <TableCell align="right" sx={{ py: 0.5 }}>
-                    <RowMenu
+                    <TokenMenu
                       token={token}
                       onBlock={(row) => void handleBlock(row)}
                       onBlockAllOfOwner={(row) => void handleBlockAllOfOwner(row)}
@@ -312,7 +298,7 @@ export default function ExternalAccessTokenAdminSection({
                     {token.ownerDisplayName}
                   </Typography>
                 </Box>
-                <RowMenu
+                <TokenMenu
                   token={token}
                   onBlock={(row) => void handleBlock(row)}
                   onBlockAllOfOwner={(row) => void handleBlockAllOfOwner(row)}

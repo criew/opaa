@@ -5,11 +5,10 @@ import DialogTitleWithClose from '@/shared/ui/DialogTitleWithClose'
 import TextField from '@mui/material/TextField'
 import { TextAction } from '@/shared/ui/DetailSection'
 import Box from '@mui/material/Box'
-import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
 import StateDot from '@/shared/ui/StateDot'
 import PathLabel from './PathLabel'
-import { ROW_GRID, TEXT_LINK } from './rowStyles'
+import { ROW_GRID } from './rowStyles'
 import type { RowStatus, RowSummary } from './setupTypes'
 
 /** Entries a list summary names before „und n weitere“. */
@@ -328,24 +327,16 @@ export default function SummaryRow({
           </Box>
         )}
         {onOpen && !open && (
-          <Link
-            component="button"
-            type="button"
-            underline="hover"
+          <TextAction
             onClick={onOpen}
+            context={title}
             aria-expanded={false}
             aria-controls={bodyId}
             aria-describedby={issues.length > 0 ? issuesId : undefined}
-            aria-label={`${actionLabel} ${title}`}
-            sx={{
-              ...TEXT_LINK,
-              gridColumn: { xs: '2', sm: '3' },
-              gridRow: '1',
-              justifySelf: 'end',
-            }}
+            sx={{ gridColumn: { xs: '2', sm: '3' }, gridRow: '1', justifySelf: 'end' }}
           >
             {actionLabel}
-          </Link>
+          </TextAction>
         )}
         {open && (
           <Box

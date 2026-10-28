@@ -143,7 +143,7 @@ export default function DirectorySyncPage() {
           icon={SyncOutlinedIcon}
           title="Verzeichnisabgleich"
           meta={entries.length === 1 ? '1 Anbieter' : `${entries.length} Anbieter`}
-          description="OPAA liest Gruppen, Mitgliedschaften und Kontostatus regelmäßig aus dem Verzeichnis eines Identitätsanbieters – nur lesend, OPAA schreibt nie ins Verzeichnis. Je Anbieter kommen die Gruppen entweder aus diesem Abgleich oder aus dem Token bei der Anmeldung."
+          description="OPAA liest Gruppen, Mitgliedschaften und Kontostatus regelmäßig aus dem Verzeichnis eines Identitätsanbieters, nur lesend."
         />
 
         {error && (

@@ -4,15 +4,13 @@ import ButtonBase from '@mui/material/ButtonBase'
 import Dialog from '@mui/material/Dialog'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitleWithClose from '@/shared/ui/DialogTitleWithClose'
-import Link from '@mui/material/Link'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
-import { Link as RouterLink } from 'react-router'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import type { IndexingRunResponse } from '@/shared/api/types'
 import StateDot from '@/shared/ui/StateDot'
-import { TextAction } from '@/shared/ui/DetailSection'
+import { TextAction, TextLink } from '@/shared/ui/DetailSection'
 import { formatFileSize } from '@/shared/utils/labels'
 import {
   indexingRunEventCategoryLabel,
@@ -270,15 +268,9 @@ function RunDetail({
     <Box sx={{ pl: { xs: 0, sm: 2.25 }, pt: 1, pb: 2 }}>
       {connectionFailed && (
         <Box sx={{ mb: 1 }}>
-          <Link
-            component={RouterLink}
-            to={stateTargetHref({ tab: 'quelle', anchor: 'verbindung' })}
-            replace
-            underline="hover"
-            sx={{ fontSize: 13.5, fontWeight: 500 }}
-          >
-            Verbindung ändern ›
-          </Link>
+          <TextLink to={stateTargetHref({ tab: 'quelle', anchor: 'verbindung' })} replace>
+            Verbindung ändern
+          </TextLink>
         </Box>
       )}
       {reason && <Typography sx={{ ...LINE, mb: 1 }}>{reason}</Typography>}

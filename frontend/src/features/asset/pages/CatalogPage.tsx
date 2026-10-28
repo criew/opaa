@@ -2,13 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import IconButton from '@mui/material/IconButton'
-import Menu from '@mui/material/Menu'
-import MenuItem from '@mui/material/MenuItem'
-import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
-import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
 import type { CatalogEntryResponse } from '@/shared/api/types'
 import { CATALOG_QUERY_MAX_LENGTH, useCatalogStore } from '../stores/catalogStore'
 import { useMyCapabilities } from '@/shared/session/useMyCapabilities'
@@ -18,6 +12,7 @@ import {
   useActiveAssetTypes,
 } from '../../../shared/assetTypes'
 import OverviewPage from '@/shared/ui/overview/OverviewPage'
+import RowMenu from '@/shared/ui/RowMenu'
 import AssetTile from '../components/AssetTile'
 import { tileFromCatalogEntry } from '../components/assetTileData'
 import { UseInSpaceDialog } from '../components/UseInSpaceButton'
@@ -32,45 +27,14 @@ const SEARCH_DELAY_MS = 300
  * the card's stretched link, never inside it.
  */
 function MoreActions({ entry }: { entry: CatalogEntryResponse }) {
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const [useInSpace, setUseInSpace] = useState(false)
-  const buttonId = `catalog-actions-${entry.assetType}-${entry.assetId}`
-  const menuId = `${buttonId}-menu`
   return (
     <>
-      <Tooltip title="Weitere Aktionen">
-        <IconButton
-          id={buttonId}
-          size="small"
-          aria-label={`Weitere Aktionen für ‚${entry.name}‘`}
-          aria-haspopup="menu"
-          aria-controls={anchor ? menuId : undefined}
-          aria-expanded={anchor ? true : undefined}
-          onClick={(event) => setAnchor(event.currentTarget)}
-          sx={{ position: 'relative', zIndex: 1, m: -0.75, ml: 0.25 }}
-        >
-          <MoreHorizIcon sx={{ fontSize: 20 }} />
-        </IconButton>
-      </Tooltip>
-      <Menu
-        id={menuId}
-        anchorEl={anchor}
-        open={anchor !== null}
-        onClose={() => setAnchor(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        slotProps={{ list: { 'aria-labelledby': buttonId } }}
-      >
-        <MenuItem
-          onClick={() => {
-            setAnchor(null)
-            setUseInSpace(true)
-          }}
-        >
-          <WorkspacesOutlinedIcon aria-hidden sx={{ fontSize: 18, mr: 1.5 }} />
-          In Space verwenden
-        </MenuItem>
-      </Menu>
+      <RowMenu
+        name={entry.name}
+        triggerSx={{ position: 'relative', zIndex: 1, m: -0.75, ml: 0.25 }}
+        items={[{ label: 'In Space verwenden', onClick: () => setUseInSpace(true) }]}
+      />
       <UseInSpaceDialog
         assetType={entry.assetType}
         assetId={entry.assetId}

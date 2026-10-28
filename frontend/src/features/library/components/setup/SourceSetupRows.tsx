@@ -1,6 +1,6 @@
 import { useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react'
 import Box from '@mui/material/Box'
-import Link from '@mui/material/Link'
+import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
@@ -23,7 +23,6 @@ import ErrorSummary, { type SummaryEntry } from './ErrorSummary'
 import { scheduleSummary } from './scheduleSummary'
 import type { RowStatus, RowSummary, SetupRowId, SourceSetupSpec } from './setupTypes'
 import SummaryRow from './SummaryRow'
-import { TEXT_LINK } from './rowStyles'
 
 const ROW_TITLES: Record<SetupRowId, string> = {
   connection: 'Verbindung',
@@ -363,16 +362,9 @@ export default function SourceSetupRows<V>({
           spacing={2}
           sx={{ justifyContent: 'flex-end', alignItems: 'center' }}
         >
-          <Link
-            component="button"
-            type="button"
-            underline="hover"
-            onClick={() => void cancelRow(row)}
-            disabled={saving}
-            sx={TEXT_LINK}
-          >
+          <Button variant="text" onClick={() => void cancelRow(row)} disabled={saving}>
             Abbrechen
-          </Link>
+          </Button>
           <BusyButton
             variant="contained"
             busy={saving}

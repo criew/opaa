@@ -12,6 +12,7 @@ import { Link as RouterLink } from 'react-router'
 import type { SuccessionEntryResponse, SuccessionKind } from '@/shared/api/types'
 import { radius } from '@/shared/theme/tokens'
 import MetaBadge from '@/shared/ui/MetaBadge'
+import { TextLink } from '@/shared/ui/DetailSection'
 import StateDot from '@/shared/ui/StateDot'
 import PermissionTransferDialog from './PermissionTransferDialog'
 import { assetTypeDefinition, assetTypeLabel } from '../../../shared/assetTypes'
@@ -159,11 +160,7 @@ export default function SuccessionRow({
             Rechte übergeben
           </Button>
         )}
-        {step === 'GROUP_ADMIN' && (
-          <Button size="small" variant="outlined" component={RouterLink} to="/admin/groups">
-            Zur Gruppenverwaltung
-          </Button>
-        )}
+        {step === 'GROUP_ADMIN' && <TextLink to="/admin/groups">Zur Gruppenverwaltung</TextLink>}
       </Stack>
 
       {transferOpen && (

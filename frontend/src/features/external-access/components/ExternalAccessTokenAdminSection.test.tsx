@@ -67,7 +67,7 @@ describe('ExternalAccessTokenAdminSection', () => {
     await screen.findByText('Claude Code (Dienst-PC)')
     await user.click(
       screen.getByRole('button', {
-        name: 'Aktionen für das Token „Claude Code (Dienst-PC)“ von Maria Musterfrau',
+        name: 'Weitere Aktionen für „Claude Code (Dienst-PC)“ von Maria Musterfrau',
       }),
     )
     await user.click(await screen.findByRole('menuitem', { name: 'Token sperren' }))
@@ -87,7 +87,7 @@ describe('ExternalAccessTokenAdminSection', () => {
     await screen.findByText('Claude Code (Dienst-PC)')
     await user.click(
       screen.getByRole('button', {
-        name: 'Aktionen für das Token „Claude Code (Dienst-PC)“ von Maria Musterfrau',
+        name: 'Weitere Aktionen für „Claude Code (Dienst-PC)“ von Maria Musterfrau',
       }),
     )
     const item = await screen.findByRole('menuitem', { name: 'Alle Tokens dieser Person sperren' })

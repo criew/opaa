@@ -1,11 +1,9 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
-import { Link as RouterLink } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
-import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import CloseIcon from '@mui/icons-material/Close'
@@ -28,6 +26,7 @@ import { notify } from '@/shared/stores/notificationStore'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import SectionHead from '@/shared/ui/SectionHead'
 import StatusLine from '@/shared/ui/StatusLine'
+import { TextLink } from '@/shared/ui/DetailSection'
 import DirectoryConnectorSection from './DirectoryConnectorSection'
 import DirectorySyncReportView from './DirectorySyncReportView'
 import DirectorySyncScheduleSection from './DirectorySyncScheduleSection'
@@ -358,13 +357,12 @@ export default function DirectorySyncPanel({
           <DirectoryConnectorSection provider={provider} onChanged={onChanged} />
         </PanelSection>
 
-        <Link
-          component={RouterLink}
+        <TextLink
           to={`/admin/identity-providers/${provider.id}/groups`}
-          sx={{ fontSize: 13.5, alignSelf: 'flex-start' }}
+          sx={{ alignSelf: 'flex-start' }}
         >
           Arbeitsliste der Gruppen dieses Anbieters
-        </Link>
+        </TextLink>
       </Stack>
     </Drawer>
   )

@@ -122,7 +122,9 @@ describe('AssetDetailHeader (#2208)', () => {
     renderHeader({ mayUseInSpace: true, onDelete })
     const user = userEvent.setup()
 
-    await user.click(screen.getByRole('button', { name: 'Weitere Aktionen' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Weitere Aktionen für „Textbausteine Bürgerbüro“' }),
+    )
     const menu = await screen.findByRole('menu')
     const items = within(menu).getAllByRole('menuitem')
     expect(items.map((item) => item.textContent)).toEqual(['In Space verwenden', 'Löschen'])
@@ -136,7 +138,9 @@ describe('AssetDetailHeader (#2208)', () => {
     renderHeader({ mayUseInSpace: true })
     const user = userEvent.setup()
 
-    await user.click(screen.getByRole('button', { name: 'Weitere Aktionen' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Weitere Aktionen für „Textbausteine Bürgerbüro“' }),
+    )
     await user.click(await screen.findByRole('menuitem', { name: 'In Space verwenden' }))
 
     expect(
@@ -148,7 +152,9 @@ describe('AssetDetailHeader (#2208)', () => {
     renderHeader({ mayUseInSpace: true })
     const user = userEvent.setup()
 
-    await user.click(screen.getByRole('button', { name: 'Weitere Aktionen' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Weitere Aktionen für „Textbausteine Bürgerbüro“' }),
+    )
     const menu = await screen.findByRole('menu')
     expect(
       within(menu)
@@ -160,7 +166,9 @@ describe('AssetDetailHeader (#2208)', () => {
   it('shows no „⋯" when it would stay empty', () => {
     renderHeader({ mayUseInSpace: false })
 
-    expect(screen.queryByRole('button', { name: 'Weitere Aktionen' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Weitere Aktionen für „Textbausteine Bürgerbüro“' }),
+    ).not.toBeInTheDocument()
   })
 
   it('has no big „In Space verwenden" button in the head', () => {

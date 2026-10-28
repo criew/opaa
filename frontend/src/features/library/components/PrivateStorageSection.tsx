@@ -290,10 +290,9 @@ function Summary({ summary }: { summary: PrivateStorageSummaryResponse }) {
       )}
 
       <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-        Jede Zahl ruht auf Personen. Kleine Zahlen erscheinen nur als „weniger als …“; „nicht
-        ausgewiesen“ steht dort, wo sich eine Zahl mit einer anderen dieser Übersicht auf einzelne
-        Personen zurückrechnen ließe. Den Verbrauch einer einzelnen Person zeigt OPAA der Verwaltung
-        nicht.
+        Kleine Zahlen erscheinen nur als „weniger als …“ oder „nicht ausgewiesen“, damit keine Zahl
+        auf einzelne Personen schließen lässt. Den Verbrauch einer einzelnen Person zeigt OPAA der
+        Verwaltung nicht.
       </Typography>
     </Box>
   )
@@ -333,7 +332,7 @@ export default function PrivateStorageSection() {
   return (
     <PageSection
       title="Speicher privater Bibliotheken"
-      description="Alle privaten Bibliotheken einer Person teilen sich ein Speicherkontingent. Hier legen Sie die hausweite Grenze fest und sehen, wie viel private Bibliotheken insgesamt belegen."
+      description="Die hausweite Grenze, die sich alle privaten Bibliotheken einer Person teilen, und wie viel sie insgesamt belegen."
     >
       {loadError ? (
         <Alert

@@ -3,7 +3,6 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
 import Dialog from '@mui/material/Dialog'
-import Link from '@mui/material/Link'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
@@ -21,7 +20,7 @@ import { fontFamily } from '@/shared/theme/tokens'
 import { incompleteNote } from './incompleteNote'
 import { plainMessage } from './plainMessage'
 import PathLabel from '../setup/PathLabel'
-import { TEXT_LINK } from '../setup/rowStyles'
+import { TextAction } from '@/shared/ui/DetailSection'
 import {
   isBelow,
   noun,
@@ -334,15 +333,9 @@ function SelectionDialogBody({
           <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.5 }}>
             {plainMessage(current.error)}
           </Typography>
-          <Link
-            component="button"
-            type="button"
-            underline="hover"
-            sx={{ ...TEXT_LINK, mt: 0.5 }}
-            onClick={() => setAttempt((n) => n + 1)}
-          >
+          <TextAction onClick={() => setAttempt((n) => n + 1)} sx={{ mt: 0.5 }}>
             Erneut laden
-          </Link>
+          </TextAction>
         </Box>
       )}
       {current?.result && levelSize === 0 && !filtered && (
@@ -359,15 +352,9 @@ function SelectionDialogBody({
           <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
             Keine Treffer für „{search.trim()}“.
           </Typography>
-          <Link
-            component="button"
-            type="button"
-            underline="hover"
-            sx={{ ...TEXT_LINK, mt: 0.5 }}
-            onClick={() => setSearch('')}
-          >
+          <TextAction onClick={() => setSearch('')} sx={{ mt: 0.5 }}>
             Suche zurücksetzen
-          </Link>
+          </TextAction>
         </Box>
       )}
       {someBlocked && !coveringParent && (
@@ -532,15 +519,7 @@ function SelectionDialogBody({
               <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
                 {shown} von {entries.length} angezeigt
               </Typography>
-              <Link
-                component="button"
-                type="button"
-                underline="hover"
-                sx={TEXT_LINK}
-                onClick={() => setShown((n) => n + PAGE)}
-              >
-                Weitere anzeigen
-              </Link>
+              <TextAction onClick={() => setShown((n) => n + PAGE)}>Weitere anzeigen</TextAction>
             </Box>
           )}
         </Box>
@@ -548,15 +527,7 @@ function SelectionDialogBody({
       {source.manual && (source.manual.kind === 'add' || level.length === 0) && (
         <Box sx={{ mt: 2 }}>
           {!manualOpen ? (
-            <Link
-              component="button"
-              type="button"
-              underline="hover"
-              sx={TEXT_LINK}
-              onClick={() => setManualOpen(true)}
-            >
-              Von Hand eintragen …
-            </Link>
+            <TextAction onClick={() => setManualOpen(true)}>Von Hand eintragen …</TextAction>
           ) : (
             <Box>
               <Typography
@@ -701,15 +672,9 @@ function SelectionDialogBody({
               : `${draft.length} ausgewählt`}
           </Typography>
           {(draft.length > 0 || reviewing) && (
-            <Link
-              component="button"
-              type="button"
-              underline="hover"
-              sx={TEXT_LINK}
-              onClick={() => setReviewing((r) => !r)}
-            >
+            <TextAction onClick={() => setReviewing((r) => !r)}>
               {reviewing ? 'Zur Liste' : 'Auswahl ansehen'}
-            </Link>
+            </TextAction>
           )}
         </Box>
         <Box sx={{ display: 'flex', gap: 1, ml: 'auto' }}>

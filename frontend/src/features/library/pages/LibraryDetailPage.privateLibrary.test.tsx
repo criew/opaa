@@ -86,7 +86,9 @@ function storage(usedBytes: number, quotaBytes: number) {
 }
 
 async function openDeleteAction(user: ReturnType<typeof userEvent.setup>, name: string | RegExp) {
-  await user.click(await screen.findByRole('button', { name: 'Weitere Aktionen' }))
+  await user.click(
+    await screen.findByRole('button', { name: 'Weitere Aktionen für „Meine Ablage“' }),
+  )
   await user.click(await screen.findByRole('menuitem', { name }))
 }
 
@@ -224,7 +226,7 @@ describe('LibraryDetailPage – private Bibliothek: Sofort löschen (#2165)', ()
     await waitForDialogClosed()
     await waitFor(() => expect(requests).toBe(1))
 
-    await user.click(screen.getByRole('button', { name: 'Weitere Aktionen' }))
+    await user.click(screen.getByRole('button', { name: 'Weitere Aktionen für „Meine Ablage“' }))
     const entry = await screen.findByRole('menuitem', { name: 'Sofort löschen' })
     expect(entry).toHaveAttribute('aria-disabled', 'true')
 
@@ -245,7 +247,9 @@ describe('LibraryDetailPage – private Bibliothek: Sofort löschen (#2165)', ()
     )
     expect(screen.getByLabelText('Wird gelöscht')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Jetzt indizieren/ })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Weitere Aktionen' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Weitere Aktionen für „Meine Ablage“' }),
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'Name und Beschreibung bearbeiten' }),
     ).not.toBeInTheDocument()
@@ -257,7 +261,9 @@ describe('LibraryDetailPage – private Bibliothek: Sofort löschen (#2165)', ()
     const user = userEvent.setup()
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-    await user.click(await screen.findByRole('button', { name: 'Weitere Aktionen' }))
+    await user.click(
+      await screen.findByRole('button', { name: 'Weitere Aktionen für „Projektablage“' }),
+    )
     expect(await screen.findByRole('menuitem', { name: 'Löschen' })).toBeInTheDocument()
     expect(screen.queryByRole('menuitem', { name: 'Sofort löschen' })).not.toBeInTheDocument()
   })

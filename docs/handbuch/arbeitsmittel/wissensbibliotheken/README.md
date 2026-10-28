@@ -154,7 +154,7 @@ für alle Leseberechtigten der Bibliothek sichtbar ist.
 Darunter stehen für die Verwaltenden die **Läufe** als Tabelle mit Zustand, Beginn, Dauer, Auslöser
 und Ergebnis. Eine Zeile klappt auf und zeigt die Fundorte je Kategorie des Laufprotokolls
 (Abschnitt 6.2), „alle n anzeigen" öffnet die vollständige Liste, „Technische Angaben" die
-Kennzahlen. Ein an der Verbindung gescheiterter Lauf führt mit „Verbindung ändern ›" zur Zeile
+Kennzahlen. Ein an der Verbindung gescheiterter Lauf führt mit „Verbindung ändern" zur Zeile
 „Verbindung". Ab fünf Läufen grenzt „Alle · Nur mit Fehlern (n)" die Tabelle ein, sofern das etwas
 weglässt. Bei Quellen mit Vollabgleich steht dort auch „Vollabgleich starten".
 
