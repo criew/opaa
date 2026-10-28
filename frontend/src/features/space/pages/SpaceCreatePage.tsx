@@ -18,10 +18,12 @@ import { assetTypeDefinition } from '../../../shared/assetTypes'
 import { SubjectFormRow } from '@/features/principal'
 import { SubjectPicker } from '@/features/principal'
 import {
+  SUBJECT_CHOICE_MISSING,
   confirmExternalSubject,
   emptySubjectSelection,
   groupLabel,
   selectedSubjectId,
+  useRequiredChoice,
   type SubjectSelection,
 } from '@/features/principal'
 import ChatAutoCleanupField from '../components/ChatAutoCleanupField'
@@ -103,6 +105,7 @@ export default function SpaceCreatePage() {
   const [cleanupPeriods, setCleanupPeriods] = useState<ChatAutoCleanupPeriods | null>(null)
   const [pendingMembers, setPendingMembers] = useState<PendingMember[]>([])
   const [subject, setSubject] = useState<SubjectSelection>(emptySubjectSelection)
+  const choice = useRequiredChoice(SUBJECT_CHOICE_MISSING)
   const [selectedRole, setSelectedRole] = useState<SpaceRole>('MEMBER')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -137,6 +140,7 @@ export default function SpaceCreatePage() {
 
   const handleNoteMember = async () => {
     const subjectId = selectedSubjectId(subject)
+    if (!choice.check(Boolean(subjectId))) return
     if (!subjectId || subject.type === 'ALL_ACCOUNTS') return
     if (!(await confirmExternalSubject(subject))) return
     const label =
@@ -261,7 +265,12 @@ export default function SpaceCreatePage() {
               picker={
                 <SubjectPicker
                   value={subject}
-                  onChange={setSubject}
+                  onChange={(next) => {
+                    choice.clear()
+                    setSubject(next)
+                  }}
+                  errorText={choice.errorText}
+                  inputRef={choice.inputRef}
                   excludedUserIds={excludedUserIds}
                   excludedGroupIds={excludedGroupIds}
                 />
@@ -282,11 +291,7 @@ export default function SpaceCreatePage() {
                 </Select>
               }
               action={
-                <Button
-                  variant="outlined"
-                  disabled={!selectedSubjectId(subject)}
-                  onClick={() => void handleNoteMember()}
-                >
+                <Button variant="outlined" onClick={() => void handleNoteMember()}>
                   Vormerken
                 </Button>
               }

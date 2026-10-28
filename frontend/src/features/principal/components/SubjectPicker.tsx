@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type HTMLAttributes } from 'react'
+import { createContext, useContext, useState, type HTMLAttributes, type Ref } from 'react'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
@@ -31,6 +31,10 @@ interface SubjectPickerProps {
   excludedGroupIds?: string[]
   /** Offers "Alle Konten" as an entry of its own; memberships and ownership do not know it. */
   allowAllAccounts?: boolean
+  /** A validation message of the form, shown at the field (e.g. a missing choice). */
+  errorText?: string | null
+  /** The input element, so that the form can move the focus to a field in error. */
+  inputRef?: Ref<HTMLInputElement>
 }
 
 type SubjectOption =
@@ -199,6 +203,8 @@ export default function SubjectPicker({
   excludedUserIds = [],
   excludedGroupIds = [],
   allowAllAccounts = false,
+  errorText = null,
+  inputRef,
 }: SubjectPickerProps) {
   const userSearch = useUserSearch()
   const groupSearch = useGroupSearch()
@@ -238,6 +244,7 @@ export default function SubjectPicker({
     shown.query,
   )
   const error = userSearch.error ?? groupSearch.error
+  const fieldError = error ?? errorText
   const tooShort = query.trim().length < 2
   const searching = userSearch.isLoading || groupSearch.isLoading
 
@@ -292,9 +299,10 @@ export default function SubjectPicker({
           <TextField
             {...params}
             placeholder="Person oder Gruppe suchen …"
+            inputRef={inputRef}
             // A failed half of the search stays visible even when the other half found something.
-            error={Boolean(error)}
-            helperText={error ?? undefined}
+            error={Boolean(fieldError)}
+            helperText={fieldError ?? undefined}
             slotProps={{
               ...params.slotProps,
               htmlInput: { ...params.slotProps.htmlInput, 'aria-label': ariaLabel },

@@ -67,7 +67,7 @@ vi.mock('@/features/principal/api/userApi', async () => {
   )
   return {
     ...actual,
-    getUsers: vi.fn(async () => []),
+    getUserSummaries: vi.fn(async () => []),
   }
 })
 

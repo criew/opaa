@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -9,10 +8,14 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import type { GroupListResponse, UserInfo } from '@/shared/api/types'
-import { getUsers } from '@/features/principal'
+import type { GroupListResponse, UserSummary } from '@/shared/api/types'
+import {
+  SubjectFormRow,
+  USER_CHOICE_MISSING,
+  UserPicker,
+  useRequiredChoice,
+} from '@/features/principal'
 import { selectGroupMembers, useGroupStore } from '../stores/groupStore'
 import GroupMembersTable from './GroupMembersTable'
 
@@ -55,8 +58,8 @@ function GroupMembersDialogContent({
   const removeMember = useGroupStore((s) => s.removeMember)
   const isInternal = group.kind === 'AD_HOC'
 
-  const [allUsers, setAllUsers] = useState<UserInfo[]>([])
-  const [selectedUser, setSelectedUser] = useState<UserInfo | null>(null)
+  const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null)
+  const choice = useRequiredChoice(USER_CHOICE_MISSING)
   const [error, setError] = useState<string | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
@@ -67,18 +70,9 @@ function GroupMembersDialogContent({
         err instanceof Error ? err.message : 'Die Mitgliederliste konnte nicht geladen werden.',
       ),
     )
-    if (isInternal) {
-      void getUsers()
-        .then(setAllUsers)
-        .catch(() => setAllUsers([]))
-    }
-  }, [group.id, isInternal, loadGroupMembers, attempt])
+  }, [group.id, loadGroupMembers, attempt])
 
   const members = knownMembers
-  const availableUsers = useMemo(() => {
-    const memberIds = new Set(members?.map((member) => member.userId) ?? [])
-    return allUsers.filter((user) => !memberIds.has(user.id))
-  }, [allUsers, members])
 
   async function run(action: () => Promise<void>, fallback: string) {
     setError(null)
@@ -140,46 +134,39 @@ function GroupMembersDialogContent({
               }
             />
             {isInternal ? (
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ pt: 1 }}>
-                <Autocomplete
-                  options={availableUsers}
-                  getOptionLabel={(option) =>
-                    option.displayName
-                      ? `${option.displayName} (${option.email ?? option.id})`
-                      : (option.email ?? option.id)
-                  }
-                  noOptionsText="Keine Treffer"
-                  value={selectedUser}
-                  onChange={(_event, value) => setSelectedUser(value)}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
+              <Box sx={{ pt: 1 }}>
+                <SubjectFormRow
+                  picker={
+                    <UserPicker
+                      ariaLabel="Person suchen"
                       placeholder="Person suchen …"
-                      slotProps={{
-                        ...params.slotProps,
-                        htmlInput: { ...params.slotProps.htmlInput, 'aria-label': 'Person' },
+                      value={selectedUser}
+                      onChange={(next) => {
+                        choice.clear()
+                        setSelectedUser(next)
                       }}
+                      errorText={choice.errorText}
+                      inputRef={choice.inputRef}
+                      grow
+                      excludedUserIds={members.map((member) => member.userId)}
                     />
-                  )}
-                  isOptionEqualToValue={(option, value) => option.id === value.id}
-                  size="small"
-                  sx={{ flexGrow: 1 }}
-                />
-                <Button
-                  variant="contained"
-                  size="small"
-                  disabled={!selectedUser}
-                  onClick={() =>
-                    void run(async () => {
-                      if (!selectedUser) return
-                      await addMember(group.id, selectedUser.id)
-                      setSelectedUser(null)
-                    }, 'Mitglied konnte nicht hinzugefügt werden')
                   }
-                >
-                  Aufnehmen
-                </Button>
-              </Stack>
+                  action={
+                    <Button
+                      variant="contained"
+                      onClick={() => {
+                        if (!choice.check(Boolean(selectedUser)) || !selectedUser) return
+                        void run(async () => {
+                          await addMember(group.id, selectedUser.id)
+                          setSelectedUser(null)
+                        }, 'Mitglied konnte nicht hinzugefügt werden')
+                      }}
+                    >
+                      Hinzufügen
+                    </Button>
+                  }
+                />
+              </Box>
             ) : null}
             <Typography sx={{ fontSize: 12.5, color: 'text.secondary', pt: 1 }}>
               {isInternal ? AUDIT_NOTICE : PROVIDER_AUDIT_NOTICE}
