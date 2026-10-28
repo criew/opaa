@@ -456,7 +456,9 @@ describe('ConnectionProfilesTab', () => {
     const user = userEvent.setup()
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
-    await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
+    const create = await screen.findByRole('button', { name: 'Neuer Zugang' })
+    expect(within(create).getByTestId('AddIcon')).toBeInTheDocument()
+    await user.click(create)
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
     expect(within(dialog).getByRole('combobox', { name: /Quellart/ })).toHaveTextContent(
       /^Nextcloud$/,
