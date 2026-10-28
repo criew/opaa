@@ -51,7 +51,10 @@ class MailConnectionTesterIntegrationTest {
     MailConnectionTester.Outcome outcome = tester.test(settings(SMTP_USER, SMTP_PASSWORD), null);
 
     assertThat(outcome.succeeded()).isTrue();
-    assertThat(outcome.message()).contains(MailConnectionTester.SIGNED_IN);
+    assertThat(outcome.message())
+        .isEqualTo(
+            "Verbindung und Anmeldung beim Mailserver sind gelungen."
+                + " Es wurde keine Testnachricht gesendet.");
     assertThat(greenMail.getReceivedMessages()).isEmpty();
     assertThat(storedSendStatus()).isEqualTo(statusBefore);
   }
@@ -113,7 +116,9 @@ class MailConnectionTesterIntegrationTest {
 
     assertThat(outcome.succeeded()).isTrue();
     assertThat(outcome.message())
-        .contains(MailConnectionTester.TEST_SENT)
+        .isEqualTo(
+            "Verbindung und Anmeldung beim Mailserver sind gelungen."
+                + " Die Testnachricht wurde dem Mailserver übergeben.")
         .doesNotContain(RECIPIENT);
     assertThat(greenMail.waitForIncomingEmail(10_000, 1)).isTrue();
     MimeMessage[] received = greenMail.getReceivedMessages();
