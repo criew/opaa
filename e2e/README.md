@@ -44,7 +44,7 @@ e2e/
   installation-assistant/        Konfiguration des Ziels "installation": das Szenario des
     playwright.config.ts         Einrichtungs-Assistenten aus tests/ gegen einen Stack im Installationsmodus
   installation.env           Environment des Installationsmodus (oidc, ohne Antwortdatei, Token gesetzt)
-  docker-compose.installation.yml  Compose-Overlay: ai-stub als Chat-Modell des Assistenten
+  docker-compose.installation.yml  Compose-Overlay: ai-stub als Modellendpunkt des Assistenten
   multi-instance/                Zwei-Instanzen-Szenarien (ADR-0053, siehe unten) - eigene
     playwright.config.ts         Konfiguration, ohne Browser
     tests/*.spec.ts
@@ -870,8 +870,11 @@ läuft `tests/installation-assistant.spec.ts` mit `E2E_INSTALLATION_TOKEN`, übe
 `installation-assistant/playwright.config.ts` ohne Wiederholung, weil der Abschluss den
 Installationsmodus für immer beendet. Aus demselben Grund läuft das Ziel in zwei Varianten, je auf
 einem frischen Stapel und über ihr Tag ausgewählt: `@mail-skipped` überspringt die optionalen Schritte
-E-Mail-Versand und Branding und endet mit der Anmeldung des ersten Kontos auf der regulären
-Anmeldeseite unter dem OPAA-Standard, `@mail-filled` richtet den E-Mail-Versand gegen den Mailpit des
+Chat-, Embedding- und Rerank-Modell, E-Mail-Versand und Branding und endet mit der Anmeldung des
+ersten Kontos auf der regulären Anmeldeseite unter dem OPAA-Standard, `@mail-filled` wählt das
+Rerank-Modell aus der Liste des Rerank-Endpunkts von ai-stub (`http://ai-stub:8089/reranker`, das
+einzige Präfix des Stubs mit Modellliste; `POST …/rerank` bewertet jede Probe), findet es danach
+eingeschaltet unter „Modelle → Reranking“, richtet den E-Mail-Versand gegen den Mailpit des
 Stapels ein (Profil `mail`, `mailpit:1025` in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST`), liest die
 Testnachricht über `E2E_MAILPIT_BASE_URL` zurück, füllt das Branding aus und findet Produktname und
 Akzentfarbe danach auf Anmeldeseite und Oberfläche. Traces, HTML- und JSON-Bericht liegen je Variante getrennt (`test-results/installation-<variante>`,
