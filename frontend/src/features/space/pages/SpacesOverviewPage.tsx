@@ -22,7 +22,12 @@ function SpaceCard({ space }: { space: SpaceListResponse }) {
   return (
     <OverviewCard to={spaceHref(space)}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Typography component="span" sx={{ fontSize: 16.5, fontWeight: 600, flex: 1 }}>
+        {/* Beside the space column the cards are narrow; a long compound word breaks instead of
+            running out of its card. */}
+        <Typography
+          component="span"
+          sx={{ fontSize: 16.5, fontWeight: 600, flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}
+        >
           {space.name}
         </Typography>
         {space.archived && <MetaBadge>Archiviert</MetaBadge>}
