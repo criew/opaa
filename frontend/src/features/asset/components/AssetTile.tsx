@@ -32,6 +32,11 @@ interface SelectMode {
   busy?: boolean
   /** Shows the choice without letting it change. */
   readOnly?: boolean
+  /**
+   * Why the asset cannot be chosen anew. An unchosen tile is locked by it: greyed out, announced as
+   * unavailable, yet focusable. A chosen one can still be unchosen and names the reason beforehand.
+   */
+  blockedReason?: string | null
 }
 
 interface AssetTileProps {
@@ -60,9 +65,10 @@ const STATUS_DOT: Record<AssetTileStatus, string> = {
 }
 
 /** A state that needs attention, in words behind a coloured dot - the colour never in the text. */
-function StateDotLine({ status }: { status: AssetTileStatus }) {
+function StateDotLine({ id, status }: { id?: string; status: AssetTileStatus }) {
   return (
     <Box
+      id={id}
       component="span"
       sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, fontSize: 11.5 }}
     >
@@ -95,6 +101,8 @@ const stretchedSx = {
 
 /** Marks the tile's main control - the title link or the choice checkbox. */
 const MAIN_CONTROL = '[data-tile-main]'
+/** Marks the reason a tile cannot be chosen anew. */
+const REASON = '[data-tile-reason]'
 
 /**
  * The one tile of an asset - in the catalog and in every choice of assets. The type badge,
@@ -107,14 +115,27 @@ export default function AssetTile({ tile, mode, onFavoriteChange, actions }: Ass
   const selecting = mode.kind === 'select'
   const selected = selecting && mode.selected
   const readOnly = selecting && Boolean(mode.readOnly)
+  const blockedReason = selecting && !readOnly ? mode.blockedReason : null
+  const locked = Boolean(blockedReason) && !selected
   const idBase = useId()
   const descriptionId = `${idBase}-description`
   const figuresId = `${idBase}-figures`
   // A choice asks only what an asset is and how large: no spread, responsibility, date or globe.
   const figures = selecting ? tile.extent : tile.figures
+  const statusId = `${idBase}-status`
+  const successionId = `${idBase}-succession`
   const noteId = `${idBase}-note`
-  // The checkbox is named by the title alone; the rest of the tile is its description.
-  const describedBy = [tile.description && descriptionId, figures && figuresId, tile.note && noteId]
+  const reasonId = `${idBase}-reason`
+  // The checkbox is named by the title alone; the rest of the tile is its description, in the
+  // order shown.
+  const describedBy = [
+    tile.description && descriptionId,
+    figures && figuresId,
+    tile.status && statusId,
+    tile.successionOpen && successionId,
+    blockedReason && reasonId,
+    tile.note && noteId,
+  ]
     .filter(Boolean)
     .join(' ')
 
@@ -137,11 +158,13 @@ export default function AssetTile({ tile, mode, onFavoriteChange, actions }: Ass
         borderColor: 'divider',
         borderRadius: '16px',
         bgcolor: 'background.paper',
-        cursor: readOnly ? 'default' : 'pointer',
+        cursor: locked ? 'not-allowed' : readOnly ? 'default' : 'pointer',
         // Only the main control marks the tile: pointing at or pressing the star or "⋯" marks
         // just that control. The stretched main control covers every other spot of the tile.
-        [`&:has(> ${MAIN_CONTROL}:hover)`]: readOnly ? {} : { borderColor: blue[300] },
+        [`&:has(> ${MAIN_CONTROL}:hover)`]: readOnly || locked ? {} : { borderColor: blue[300] },
         [`&:has(> ${MAIN_CONTROL}:focus)`]: { borderColor: blue[300] },
+        // Locked, everything but the reason is greyed out; the reason keeps its text contrast.
+        ...(locked ? { [`& > :not(${REASON})`]: { opacity: 0.6 } } : {}),
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
@@ -187,10 +210,10 @@ export default function AssetTile({ tile, mode, onFavoriteChange, actions }: Ass
           data-asset-tile={`${tile.assetType}:${tile.assetId}`}
           aria-checked={selected}
           aria-describedby={describedBy || undefined}
-          aria-disabled={mode.busy || undefined}
+          aria-disabled={locked || mode.busy || undefined}
           aria-readonly={readOnly || undefined}
           onClick={() => {
-            if (!readOnly) mode.onToggle()
+            if (!readOnly && !locked) mode.onToggle()
           }}
           sx={{
             p: 0,
@@ -228,12 +251,23 @@ export default function AssetTile({ tile, mode, onFavoriteChange, actions }: Ass
       {figures && <MetaLine id={figuresId}>{figures}</MetaLine>}
       {tile.responsible && !selecting && <ResponsibleLine responsible={tile.responsible} />}
       {tile.status ? (
-        <StateDotLine status={tile.status} />
+        <StateDotLine id={statusId} status={tile.status} />
       ) : (
         tile.updatedAt &&
         !selecting && <MetaLine>Aktualisiert am {formatDate(tile.updatedAt)}</MetaLine>
       )}
-      {tile.successionOpen && <StateDotLine status="SUCCESSION_OPEN" />}
+      {tile.successionOpen && <StateDotLine id={successionId} status="SUCCESSION_OPEN" />}
+      {/* Outside the checkbox and never dimmed, so it holds the text contrast (guidelines 5.11). */}
+      {blockedReason && (
+        <Typography
+          id={reasonId}
+          component="span"
+          data-tile-reason=""
+          sx={{ fontSize: 11.5, color: 'warning.main' }}
+        >
+          {blockedReason}
+        </Typography>
+      )}
       {tile.note && <MetaLine id={noteId}>{tile.note}</MetaLine>}
     </Box>
   )

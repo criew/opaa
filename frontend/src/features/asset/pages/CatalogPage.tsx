@@ -39,6 +39,7 @@ function MoreActions({ entry }: { entry: CatalogEntryResponse }) {
         assetType={entry.assetType}
         assetId={entry.assetId}
         name={entry.name}
+        reachFrozen={Boolean(entry.succession)}
         open={useInSpace}
         onClose={() => setUseInSpace(false)}
       />

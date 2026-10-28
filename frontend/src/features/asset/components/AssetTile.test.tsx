@@ -186,4 +186,83 @@ describe('AssetTile (#2131)', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
     expect(within(document.body).getByText('Prompts')).toBeInTheDocument()
   })
+
+  describe('an asset that takes no new association (#3276)', () => {
+    const REASON = 'Lässt sich nicht neu zuordnen, solange die Nachfolge offen ist.'
+
+    it('locks an unchosen tile and names the reason outside the checkbox', async () => {
+      const onToggle = vi.fn()
+      renderWithProviders(
+        <AssetTile
+          tile={{ ...tile, successionOpen: true }}
+          mode={{ kind: 'select', selected: false, onToggle, blockedReason: REASON }}
+        />,
+      )
+      const user = userEvent.setup()
+      const checkbox = screen.getByRole('checkbox', { name: 'Satzungen & Gebührenordnungen' })
+
+      expect(checkbox).toHaveAttribute('aria-disabled', 'true')
+      expect(checkbox).toHaveAccessibleDescription(expect.stringContaining(REASON))
+      expect(checkbox).not.toContainElement(screen.getByText(REASON))
+
+      await user.click(checkbox)
+      await user.keyboard(' ')
+
+      expect(onToggle).not.toHaveBeenCalled()
+      expect(checkbox).toHaveAttribute('aria-checked', 'false')
+    })
+
+    it('keeps a locked tile in the tab order, so its reason can be heard', async () => {
+      renderWithProviders(
+        <AssetTile
+          tile={{ ...tile, successionOpen: true }}
+          mode={{ kind: 'select', selected: false, onToggle: vi.fn(), blockedReason: REASON }}
+        />,
+      )
+      const user = userEvent.setup()
+
+      await user.tab()
+
+      expect(screen.getByRole('checkbox')).not.toBeDisabled()
+      expect(screen.getByRole('checkbox')).toHaveFocus()
+    })
+
+    // A screen reader hears the tile's lines in the order they are shown, states included.
+    it('describes the checkbox by every line below the title, in the order shown', () => {
+      renderWithProviders(
+        <AssetTile
+          tile={{
+            ...tile,
+            status: 'UPDATE_FAILED',
+            successionOpen: true,
+            note: 'Freigabe endet am 31.12.2026',
+          }}
+          mode={{ kind: 'select', selected: false, onToggle: vi.fn(), blockedReason: REASON }}
+        />,
+      )
+
+      expect(screen.getByRole('checkbox')).toHaveAccessibleDescription(
+        `Alle geltenden Satzungen der Stadt. 12 Dokumente Aktualisierung fehlgeschlagen Nachfolge offen ${REASON} Freigabe endet am 31.12.2026`,
+      )
+    })
+
+    it('lets a chosen tile be unchosen and names the reason before it is', async () => {
+      const onToggle = vi.fn()
+      renderWithProviders(
+        <AssetTile
+          tile={{ ...tile, successionOpen: true }}
+          mode={{ kind: 'select', selected: true, onToggle, blockedReason: REASON }}
+        />,
+      )
+      const user = userEvent.setup()
+      const checkbox = screen.getByRole('checkbox')
+
+      expect(checkbox).not.toHaveAttribute('aria-disabled')
+      expect(checkbox).toHaveAccessibleDescription(expect.stringContaining(REASON))
+
+      await user.click(checkbox)
+
+      expect(onToggle).toHaveBeenCalledTimes(1)
+    })
+  })
 })

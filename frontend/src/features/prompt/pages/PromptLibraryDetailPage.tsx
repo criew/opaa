@@ -358,6 +358,7 @@ export default function PromptLibraryDetailPage() {
           favorite={catalog.entry?.favorite}
           onFavoriteChange={catalog.setFavorite}
           mayUseInSpace={mayUseInSpace}
+          reachFrozen={Boolean(library.succession)}
           onAssociated={associationsChanged}
           onDelete={canDelete ? () => void handleDelete() : undefined}
           // ADR-0036, Entscheidung 6: state and addressee for every reader - no date, no former
@@ -405,6 +406,7 @@ export default function PromptLibraryDetailPage() {
                   name={library.name}
                   canManage={canManage}
                   mayUseInSpace={mayUseInSpace}
+                  reachFrozen={Boolean(library.succession)}
                   refreshToken={associationsVersion}
                   onChanged={() => catalog.reload()}
                 />

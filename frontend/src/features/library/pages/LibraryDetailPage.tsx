@@ -440,6 +440,7 @@ export default function LibraryDetailPage() {
           favorite={catalog.entry?.favorite}
           onFavoriteChange={catalog.setFavorite}
           mayUseInSpace={mayUseInSpace}
+          reachFrozen={Boolean(details?.succession ?? library.succession)}
           onAssociated={associationsChanged}
           onDelete={
             !canDelete || erasing
@@ -654,6 +655,7 @@ export default function LibraryDetailPage() {
               name={library.name}
               canManage={mayChange}
               mayUseInSpace={mayUseInSpace}
+              reachFrozen={Boolean(details?.succession ?? library.succession)}
               refreshToken={associationsVersion}
               onChanged={() => catalog.reload()}
             />

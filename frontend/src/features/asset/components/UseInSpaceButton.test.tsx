@@ -17,7 +17,7 @@ vi.mock('react-router', async () => {
 })
 
 /** The dialog behind „In Space verwenden“, as the detail page, its head and the catalog open it. */
-function UseInSpaceHarness() {
+function UseInSpaceHarness({ reachFrozen = false }: { reachFrozen?: boolean }) {
   const [open, setOpen] = useState(false)
   return (
     <>
@@ -28,6 +28,7 @@ function UseInSpaceHarness() {
         assetType="KNOWLEDGE_LIBRARY"
         assetId="library-dienstanweisungen"
         name="Dienstanweisungen"
+        reachFrozen={reachFrozen}
         open={open}
         onClose={() => setOpen(false)}
       />
@@ -137,6 +138,58 @@ describe('UseInSpaceDialog', () => {
     expect(within(list).queryByRole('button', { name: 'Archiviert' })).not.toBeInTheDocument()
     // A list holds list items only (axe "list"): every entry is an <li> around its button.
     expect(Array.from(list.children).map((child) => child.tagName)).toEqual(['LI', 'LI', 'LI'])
+  })
+
+  // An open succession refuses every new association (ADR-0036/6): nothing on offer may succeed.
+  it('locks every way to a new association while the succession is open, naming why', async () => {
+    const requests: string[] = []
+    server.use(
+      http.post('/api/v1/spaces/:spaceId/assets', ({ params }) => {
+        requests.push(String(params.spaceId))
+        return HttpResponse.json({}, { status: 201 })
+      }),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<UseInSpaceHarness reachFrozen />, { withRouter: true })
+
+    await user.click(screen.getByRole('button', { name: 'In Space verwenden' }))
+    const dialog = await screen.findByRole('dialog')
+    const phoenix = await within(dialog).findByRole('button', { name: /^Phoenix/ })
+    const newSpace = within(dialog).getByRole('button', { name: 'Neuen Space damit anlegen' })
+    const reason =
+      /Solange die Nachfolge offen ist, lässt sich „Dienstanweisungen“ nicht neu zuordnen/
+
+    expect(within(dialog).getByText(reason)).toBeVisible()
+    for (const entry of [phoenix, newSpace]) {
+      expect(entry).toHaveAttribute('aria-disabled', 'true')
+      expect(entry).toHaveAccessibleDescription(reason)
+    }
+
+    await user.click(phoenix)
+    await user.click(newSpace)
+    phoenix.focus()
+    expect(phoenix).toHaveFocus()
+    await user.keyboard('{Enter}')
+
+    expect(requests).toEqual([])
+    expect(mockNavigate).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  // With the new space locked as well, "Legen Sie einen neuen an" would point to a dead end.
+  it('does not suggest a new space without curated spaces while the succession is open', async () => {
+    server.use(http.get('/api/v1/spaces', () => HttpResponse.json([])))
+    const user = userEvent.setup()
+    renderWithProviders(<UseInSpaceHarness reachFrozen />, { withRouter: true })
+
+    await user.click(screen.getByRole('button', { name: 'In Space verwenden' }))
+    const dialog = await screen.findByRole('dialog')
+
+    expect(await within(dialog).findByText('Sie kuratieren noch keinen Space.')).toBeVisible()
+    expect(within(dialog).queryByText(/Legen Sie einen neuen an/)).not.toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('button', { name: 'Neuen Space damit anlegen' }),
+    ).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('offers the spaces of the space list the application frame provides', async () => {

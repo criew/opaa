@@ -462,5 +462,63 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
         await screen.findByRole('checkbox', { name: /^Formulierungshilfen Referat 50/ }),
       ).toBeChecked()
     })
+
+    // In the wizard every choice is a new association, which an open succession refuses
+    // (ADR-0036/6): the handed-over asset is not taken over, and the space can still be created.
+    it('does not take over a handed-over asset whose succession is open and says why', async () => {
+      server.use(
+        http.get('/api/v1/catalog', () =>
+          HttpResponse.json({
+            entries: [
+              {
+                assetType: 'KNOWLEDGE_LIBRARY',
+                assetId: 'verwaist',
+                name: 'Verwaiste Bibliothek',
+                description: null,
+                ownerType: 'USER',
+                origin: 'LOCAL',
+                status: 'SUCCESSION_OPEN',
+                itemCount: 3,
+                spaceCount: 0,
+                favorite: false,
+                succession: {
+                  addressee: 'SYSTEM_ADMINISTRATION',
+                  addresseeLabel: 'die Systemverwaltung',
+                },
+              },
+            ],
+            page: 0,
+            size: 50,
+            totalElements: 1,
+            totalPages: 1,
+          }),
+        ),
+      )
+      mockLocationState = {
+        preselect: {
+          assetType: 'KNOWLEDGE_LIBRARY',
+          assetId: 'verwaist',
+          name: 'Verwaiste Bibliothek',
+        },
+      }
+      const user = userEvent.setup()
+      renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+      await toContentStep(user)
+
+      expect(
+        await screen.findByText(
+          /„Verwaiste Bibliothek“ ist nicht vorgewählt: Solange die Nachfolge offen ist, lässt es sich nicht neu zuordnen/,
+        ),
+      ).toBeVisible()
+      const tile = await screen.findByRole('checkbox', { name: /^Verwaiste Bibliothek/ })
+      expect(tile).not.toBeChecked()
+      expect(tile).toHaveAttribute('aria-disabled', 'true')
+
+      await user.click(screen.getByRole('button', { name: 'Weiter' }))
+      await user.click(screen.getByRole('button', { name: 'Space anlegen' }))
+
+      expect(mockCreateNewSpace).toHaveBeenCalledWith('Widerspruchsstelle', '', [], false, [])
+    })
   })
 })

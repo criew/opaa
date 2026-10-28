@@ -100,7 +100,9 @@ Ein Space enthält genau die Arbeitsmittel, die ihm zugeordnet sind
 Menü „⋯" einer Kachel, im Menü der Detailansicht und im Reiter „Zuordnungen" steht **„In Space
 verwenden"**. Es zeigt die Spaces, in denen die Person Kurator oder Administrator ist; ein Klick
 ordnet zu. „Neuen Space damit anlegen" öffnet den Space-Assistenten mit dem Arbeitsmittel als
-bereits gewähltem Inhalt.
+bereits gewähltem Inhalt. Solange die Nachfolge eines Arbeitsmittels offen ist, lässt es sich nicht
+neu zuordnen: Dann sind alle Einträge ausgegraut und nicht wählbar, und über der Liste steht der
+Grund.
 
 Im Reiter „Zuordnungen" sehen alle Leseberechtigten, wo das Arbeitsmittel bereitsteht, aber nur so
 weit, wie der Space selbst für sie sichtbar ist. Private Spaces, zu denen eine Person nicht gehört,
