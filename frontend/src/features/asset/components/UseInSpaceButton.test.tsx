@@ -176,6 +176,22 @@ describe('UseInSpaceDialog', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
+  // With the new space locked as well, "Legen Sie einen neuen an" would point to a dead end.
+  it('does not suggest a new space without curated spaces while the succession is open', async () => {
+    server.use(http.get('/api/v1/spaces', () => HttpResponse.json([])))
+    const user = userEvent.setup()
+    renderWithProviders(<UseInSpaceHarness reachFrozen />, { withRouter: true })
+
+    await user.click(screen.getByRole('button', { name: 'In Space verwenden' }))
+    const dialog = await screen.findByRole('dialog')
+
+    expect(await within(dialog).findByText('Sie kuratieren noch keinen Space.')).toBeVisible()
+    expect(within(dialog).queryByText(/Legen Sie einen neuen an/)).not.toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('button', { name: 'Neuen Space damit anlegen' }),
+    ).toHaveAttribute('aria-disabled', 'true')
+  })
+
   it('offers the spaces of the space list the application frame provides', async () => {
     const loadSpaces = vi.fn(async (): Promise<SpaceListResponse[]> => [
       { ...mockSpaces[0], id: 'space-provided', name: 'Bereitgestellt', userRole: 'CURATOR' },
