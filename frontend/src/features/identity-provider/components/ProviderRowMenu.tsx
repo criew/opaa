@@ -1,9 +1,4 @@
 import { useState } from 'react'
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import PowerSettingsNewOutlinedIcon from '@mui/icons-material/PowerSettingsNewOutlined'
-import StarOutlineRoundedIcon from '@mui/icons-material/StarOutlineRounded'
-import ChecklistOutlinedIcon from '@mui/icons-material/ChecklistOutlined'
 import type { OidcProviderResponse } from '@/shared/api/types'
 import RowMenu from '@/shared/ui/RowMenu'
 import { apiErrorMessage } from '@/shared/api/apiErrorDetails'
@@ -109,10 +104,9 @@ export default function ProviderRowMenu({
         name={provider.displayName}
         disabled={busy}
         items={[
-          { label: 'Bearbeiten', icon: EditOutlinedIcon, onClick: () => onEdit(provider) },
+          { label: 'Bearbeiten', onClick: () => onEdit(provider) },
           {
             label: provider.enabled ? 'Deaktivieren' : 'Aktivieren',
-            icon: PowerSettingsNewOutlinedIcon,
             onClick: () => void toggleEnabled(),
             disabled: !canDisable,
             disabledReason: DEFAULT_PROVIDER_HINT,
@@ -120,17 +114,14 @@ export default function ProviderRowMenu({
           !provider.isDefault &&
             provider.enabled && {
               label: 'Zum Standard machen',
-              icon: StarOutlineRoundedIcon,
               onClick: () => void makeDefault(),
             },
           {
             label: 'Arbeitsliste der Gruppen',
-            icon: ChecklistOutlinedIcon,
             to: `/admin/identity-providers/${provider.id}/groups`,
           },
           {
             label: 'Löschen',
-            icon: DeleteOutlineIcon,
             onClick: remove,
             danger: true,
             disabled: !canDelete,

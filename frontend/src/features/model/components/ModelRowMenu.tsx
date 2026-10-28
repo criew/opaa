@@ -1,8 +1,4 @@
 import { useState } from 'react'
-import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined'
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import WifiTetheringOutlinedIcon from '@mui/icons-material/WifiTetheringOutlined'
 import type { LlmModelResponse } from '@/shared/api/types'
 import RowMenu from '@/shared/ui/RowMenu'
 import { testLlmModel } from '../api/modelApi'
@@ -81,11 +77,10 @@ export default function ModelRowMenu({ model, onEdit }: ModelRowMenuProps) {
       name={model.displayName}
       disabled={busy}
       items={[
-        { label: 'Bearbeiten', icon: EditOutlinedIcon, onClick: () => onEdit(model) },
-        { label: 'Verbindung testen', icon: WifiTetheringOutlinedIcon, onClick: () => void test() },
+        { label: 'Bearbeiten', onClick: () => onEdit(model) },
+        { label: 'Verbindung testen', onClick: () => void test() },
         !model.active && {
           label: 'Aktiv setzen',
-          icon: BoltOutlinedIcon,
           onClick: () =>
             void run(async () => {
               await activateExistingModel(model.id)
@@ -94,7 +89,6 @@ export default function ModelRowMenu({ model, onEdit }: ModelRowMenuProps) {
         },
         {
           label: 'Löschen',
-          icon: DeleteOutlineIcon,
           onClick: () => void remove(),
           danger: true,
           disabled: model.active,

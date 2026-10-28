@@ -575,8 +575,8 @@ Auslöser oder Menü nach. Der Baustein legt fest:
   am Ende, durch eine Trennlinie abgesetzt, in Gefahr-Text; kein anderer Eintrag ist rot. Ein
   dauerhaft gesperrter Eintrag (wegen Rolle oder Zustand des Objekts) nennt seinen Grund als Text
   im Menü und liest ihn mit vor (`aria-describedby`); ein Eintrag, der nur gesperrt ist, solange
-  eine Aktion läuft, braucht keinen. Icons vor den Einträgen tragen alle Einträge eines Menüs oder keiner. Was
-  an einen anderen Ort führt, ist ein Link-Eintrag (5.1).
+  eine Aktion läuft, braucht keinen. Einträge ohne Icons: Einen zerstörenden Eintrag erkennt man
+  an Trennlinie und Gefahr-Text. Was an einen anderen Ort führt, ist ein Link-Eintrag (5.1).
 - **Tastatur:** Pfeile, Enter, Escape; beim Schließen kehrt der Fokus auf den Auslöser zurück.
 
 Geprüft in `frontend/src/shared/ui/RowMenu.test.tsx` und `frontend/src/shared/ui/moreActionsTrigger.test.ts`.

@@ -1,9 +1,3 @@
-import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined'
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
-import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
-import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined'
-import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
-import UnarchiveOutlinedIcon from '@mui/icons-material/UnarchiveOutlined'
 import type { ChatBulkAction, ChatSummary } from '@/shared/api/types'
 import RowMenu from '@/shared/ui/RowMenu'
 import { chatTitle } from './chatListSections'
@@ -40,32 +34,26 @@ export default function ChatRowMenu({
       items={[
         archived && {
           label: 'Zurückholen',
-          icon: UnarchiveOutlinedIcon,
           onClick: () => onAction('UNARCHIVE', [chat]),
         },
         !archived && {
           label: chat.pinnedAt ? 'Lösen' : 'Anheften',
-          icon: PushPinOutlinedIcon,
           onClick: () => onPin(chat, !chat.pinnedAt),
         },
         !archived && {
           label: 'Archivieren',
-          icon: ArchiveOutlinedIcon,
           onClick: () => onAction('ARCHIVE', [chat]),
         },
         {
           label: 'Exportieren als Markdown',
-          icon: DescriptionOutlinedIcon,
           onClick: () => void exportChat(chat, 'markdown'),
         },
         {
           label: 'Exportieren als PDF',
-          icon: PictureAsPdfOutlinedIcon,
           onClick: () => void exportChat(chat, 'pdf'),
         },
         {
           label: 'Löschen',
-          icon: DeleteOutlineIcon,
           onClick: () => onAction('DELETE', [chat]),
           danger: true,
         },

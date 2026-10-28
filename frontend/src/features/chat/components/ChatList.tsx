@@ -12,15 +12,9 @@ import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import AddIcon from '@mui/icons-material/Add'
-import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined'
-import DeleteIcon from '@mui/icons-material/Delete'
-import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
-import EditIcon from '@mui/icons-material/Edit'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined'
 import PushPinIcon from '@mui/icons-material/PushPin'
-import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined'
 import SearchIcon from '@mui/icons-material/Search'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import { useLocation, useNavigate } from 'react-router'
@@ -325,30 +319,25 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
               }}
               onOpenChange={(open) => setMenuChatId(open ? chat.id : null)}
               items={[
-                { label: 'Umbenennen', icon: EditIcon, onClick: () => startRename(chat) },
+                { label: 'Umbenennen', onClick: () => startRename(chat) },
                 {
                   label: chat.pinnedAt ? 'Lösen' : 'Anheften',
-                  icon: chat.pinnedAt ? PushPinOutlinedIcon : PushPinIcon,
                   onClick: () => handlePin(chat, !chat.pinnedAt),
                 },
                 {
                   label: 'Archivieren',
-                  icon: ArchiveOutlinedIcon,
                   onClick: () => void handleArchive(chat),
                 },
                 {
                   label: 'Exportieren als Markdown',
-                  icon: DescriptionOutlinedIcon,
                   onClick: () => void exportChat(chat, 'markdown'),
                 },
                 {
                   label: 'Exportieren als PDF',
-                  icon: PictureAsPdfOutlinedIcon,
                   onClick: () => void exportChat(chat, 'pdf'),
                 },
                 {
                   label: 'Löschen',
-                  icon: DeleteIcon,
                   onClick: () => void handleDelete(chat),
                   danger: true,
                 },

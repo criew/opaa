@@ -1,14 +1,12 @@
-import { useId, useState, type ComponentType, type Ref } from 'react'
+import { useId, useState, type Ref } from 'react'
 import { Link as RouterLink } from 'react-router'
 import Box from '@mui/material/Box'
 import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
-import ListItemIcon from '@mui/material/ListItemIcon'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import type { SvgIconProps } from '@mui/material/SvgIcon'
 import type { SxProps, Theme } from '@mui/material/styles'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 
@@ -18,8 +16,6 @@ export interface RowMenuItem {
   onClick?: () => void
   /** Leads elsewhere instead: the entry is a router link. */
   to?: string
-  /** All entries of one menu carry an icon, or none does (guidelines 5.6). */
-  icon?: ComponentType<SvgIconProps>
   /** Irreversible (confirmation tone `danger`): danger text, last, set apart by a divider. */
   danger?: boolean
   disabled?: boolean
@@ -38,7 +34,8 @@ const HINT_TEXT_SX = { fontSize: 12, color: 'text.secondary' } as const
 /**
  * „⋯": the further actions of a row, tile or detail page, the same everywhere. Trigger, names
  * and keyboard operation (arrows, Enter, Escape, focus back on the trigger) live here; callers
- * only list their entries. Destructive entries move to the end behind a divider.
+ * only list their entries, as text without icons. Destructive entries move to the end behind a
+ * divider.
  */
 export default function RowMenu({
   name,
@@ -79,7 +76,6 @@ export default function RowMenu({
     ...present.filter((item) => !item.danger),
     ...present.filter((item) => item.danger),
   ]
-  const withIcons = ordered.some((item) => item.icon)
   const reasons = [
     ...new Set(
       ordered.flatMap((item) =>
@@ -136,7 +132,6 @@ export default function RowMenu({
         slotProps={{ list: { id: menuId, 'aria-labelledby': buttonId } }}
       >
         {ordered.flatMap((item, index) => {
-          const Icon = item.icon
           const reason = item.disabled ? item.disabledReason : undefined
           const danger = item.danger && !item.disabled
           const startsDanger = item.danger && index > 0 && !ordered[index - 1].danger
@@ -159,11 +154,6 @@ export default function RowMenu({
               }}
               sx={{ fontSize: 14, ...(danger && { color: 'error.main' }) }}
             >
-              {withIcons && (
-                <ListItemIcon sx={danger ? { color: 'error.main' } : undefined}>
-                  {Icon && <Icon fontSize="small" />}
-                </ListItemIcon>
-              )}
               {item.label}
             </MenuItem>,
             reason && lastWithReason.get(reason) === index && (

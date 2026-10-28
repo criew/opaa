@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { renderWithProviders } from '@/test/test-utils'
 import RowMenu from './RowMenu'
 
@@ -191,17 +190,20 @@ describe('RowMenu', () => {
     )
   })
 
-  it('aligns the entries when they carry icons', async () => {
+  it('shows its entries as text without icons', async () => {
     const user = userEvent.setup()
     renderWithProviders(
       <RowMenu
         name="Bauamt"
-        items={[{ label: 'Bearbeiten', onClick: vi.fn(), icon: EditOutlinedIcon }]}
+        items={[
+          { label: 'Bearbeiten', onClick: vi.fn() },
+          { label: 'Löschen', onClick: vi.fn(), danger: true },
+        ]}
       />,
     )
     await user.click(screen.getByRole('button', { name: NAME }))
-    const entry = await screen.findByRole('menuitem', { name: 'Bearbeiten' })
-    expect(entry.querySelector('svg')).not.toBeNull()
+    const menu = await screen.findByRole('menu', { name: NAME })
+    expect(menu.querySelector('svg')).toBeNull()
   })
 
   it('keeps the trigger disabled while an action of the row runs', () => {

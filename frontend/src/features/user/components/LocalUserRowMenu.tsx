@@ -1,11 +1,4 @@
 import { useState } from 'react'
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import KeyOutlinedIcon from '@mui/icons-material/KeyOutlined'
-import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined'
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
-import MailOutlinedIcon from '@mui/icons-material/MailOutlined'
-import SwapHorizOutlinedIcon from '@mui/icons-material/SwapHorizOutlined'
 import type { LocalUserResponse } from '@/shared/api/types'
 import RowMenu from '@/shared/ui/RowMenu'
 import { confirmAction } from '@/shared/stores/confirmStore'
@@ -200,43 +193,37 @@ export default function LocalUserRowMenu({
       name={user.displayName}
       disabled={busy}
       items={[
-        { label: 'Bearbeiten', icon: EditOutlinedIcon, onClick: () => onEdit(user) },
+        { label: 'Bearbeiten', onClick: () => onEdit(user) },
         user.status === 'LOCKED' && {
           label: 'Entsperren',
-          icon: LockOpenOutlinedIcon,
           onClick: unlock,
         },
         !lockedByAdministration && {
           label: 'Sperren',
-          icon: LockOutlinedIcon,
           onClick: () => void lock(),
           disabled: lockDisabled,
           disabledReason: disabledReason,
         },
         {
           label: 'Rücksetz-Link per E-Mail',
-          icon: MailOutlinedIcon,
           onClick: () => void resetPassword(),
           disabled: passwordDisabled,
           disabledReason: BOOTSTRAP_PASSWORD_TOOLTIP,
         },
         {
           label: 'Passwort erzeugen',
-          icon: KeyOutlinedIcon,
           onClick: () => void generatePassword(),
           disabled: passwordDisabled,
           disabledReason: BOOTSTRAP_PASSWORD_TOOLTIP,
         },
         {
           label: 'An Identitätsanbieter übergeben',
-          icon: SwapHorizOutlinedIcon,
           onClick: () => onHandover(user),
           disabled: handoverDisabled,
           disabledReason: BOOTSTRAP_HANDOVER_TOOLTIP,
         },
         {
           label: 'Löschen',
-          icon: DeleteOutlineIcon,
           onClick: () => void remove(),
           danger: true,
           disabled: deleteDisabled,

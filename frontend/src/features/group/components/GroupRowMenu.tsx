@@ -1,10 +1,4 @@
 import { useState } from 'react'
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import PauseCircleOutlineIcon from '@mui/icons-material/PauseCircleOutlined'
-import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutlined'
-import PeopleOutlineIcon from '@mui/icons-material/PeopleOutlined'
-import SwapHorizOutlinedIcon from '@mui/icons-material/SwapHorizOutlined'
 import type { GroupListResponse } from '@/shared/api/types'
 import RowMenu from '@/shared/ui/RowMenu'
 import { setGroupDeactivation } from '../api/groupApi'
@@ -87,21 +81,18 @@ export default function GroupRowMenu({
       name={group.name}
       disabled={busy}
       items={[
-        { label: 'Bearbeiten', icon: EditOutlinedIcon, onClick: () => onEdit(group) },
-        { label: 'Mitglieder', icon: PeopleOutlineIcon, onClick: () => onMembers(group) },
+        { label: 'Bearbeiten', onClick: () => onEdit(group) },
+        { label: 'Mitglieder', onClick: () => onMembers(group) },
         {
           label: 'Rechte übertragen',
-          icon: SwapHorizOutlinedIcon,
           onClick: () => onTransfer(group),
         },
         group.kind === 'AD_HOC' && {
           label: group.deactivated ? 'Reaktivieren' : 'Deaktivieren',
-          icon: group.deactivated ? PlayCircleOutlineIcon : PauseCircleOutlineIcon,
           onClick: () => void toggleDeactivation(),
         },
         {
           label: 'Löschen',
-          icon: DeleteOutlineIcon,
           onClick: () => void remove(),
           danger: true,
           disabled: deleteDisabled,

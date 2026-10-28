@@ -1,5 +1,3 @@
-import CorporateFareOutlinedIcon from '@mui/icons-material/CorporateFareOutlined'
-import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined'
 import type { AccountResponse } from '@/shared/api/types'
 import RowMenu from '@/shared/ui/RowMenu'
 import { providerLifecycleHint, roleManagedByProviderText } from './accountLabels'
@@ -26,14 +24,12 @@ export default function ProviderAccountRowMenu({
       items={[
         {
           label: 'Rolle ändern …',
-          icon: ManageAccountsOutlinedIcon,
           onClick: () => onChangeRole(account),
           disabled: account.roleManagedByProvider,
           disabledReason: roleManagedByProviderText(account),
         },
         {
           label: 'Anbieter verwalten',
-          icon: CorporateFareOutlinedIcon,
           to: '/admin/identity-providers',
         },
       ]}
