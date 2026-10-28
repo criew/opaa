@@ -15,6 +15,8 @@ import { adminTableSx } from '@/shared/ui/list/adminListStyles'
 /** Fixed row geometry, so the frame height follows from the member count alone. */
 const HEAD_HEIGHT = 37
 const ROW_HEIGHT = 41
+/** A row with the „Entfernen“ button: the button and the cell padding make it taller. */
+const REMOVABLE_ROW_HEIGHT = 52
 const VISIBLE_ROWS = 8
 const FRAME_BORDER = 2
 
@@ -22,9 +24,9 @@ const FRAME_BORDER = 2
  * The height of the scroll frame: as many rows as the group has, at most {@link VISIBLE_ROWS}.
  * It depends on the whole list, never on the filtered one - filtering must not resize the dialog.
  */
-function frameHeight(memberCount: number): number {
+function frameHeight(memberCount: number, rowHeight: number): number {
   const rows = Math.min(Math.max(memberCount, 1), VISIBLE_ROWS)
-  return HEAD_HEIGHT + rows * ROW_HEIGHT + FRAME_BORDER
+  return HEAD_HEIGHT + rows * rowHeight + FRAME_BORDER
 }
 
 const collator = new Intl.Collator('de-DE', { sensitivity: 'base' })
@@ -51,6 +53,7 @@ interface GroupMembersTableProps {
  */
 export default function GroupMembersTable({ members, onRemove }: GroupMembersTableProps) {
   const [filter, setFilter] = useState('')
+  const rowHeight = onRemove ? REMOVABLE_ROW_HEIGHT : ROW_HEIGHT
   const sorted = useMemo(
     () => [...members].sort((a, b) => collator.compare(nameOf(a), nameOf(b))),
     [members],
@@ -76,14 +79,14 @@ export default function GroupMembersTable({ members, onRemove }: GroupMembersTab
       )}
       <TableContainer
         sx={{
-          height: frameHeight(members.length),
+          height: frameHeight(members.length, rowHeight),
           // Rules above and below mark the scroll region; a full frame is reserved for empty
           // states in this design system.
           borderTop: 1,
           borderBottom: 1,
           borderColor: 'divider',
           '& thead tr': { height: HEAD_HEIGHT },
-          '& tbody tr': { height: ROW_HEIGHT },
+          '& tbody tr': { height: rowHeight },
         }}
         role="region"
         tabIndex={0}
@@ -144,7 +147,17 @@ export default function GroupMembersTable({ members, onRemove }: GroupMembersTab
           </TableBody>
         </Table>
         {shown.length === 0 && (
-          <Typography sx={{ fontSize: 13, color: 'text.secondary', px: 2, py: 1.5 }}>
+          // exactly one row high, so the empty frame does not scroll
+          <Typography
+            sx={{
+              fontSize: 13,
+              color: 'text.secondary',
+              px: 2,
+              height: rowHeight,
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
             {members.length === 0
               ? 'Diese Gruppe hat keine Mitglieder.'
               : 'Kein Mitglied entspricht dem Filter.'}
