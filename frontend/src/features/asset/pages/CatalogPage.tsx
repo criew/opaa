@@ -5,6 +5,7 @@ import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
@@ -37,18 +38,20 @@ function MoreActions({ entry }: { entry: CatalogEntryResponse }) {
   const menuId = `${buttonId}-menu`
   return (
     <>
-      <IconButton
-        id={buttonId}
-        size="small"
-        aria-label={`Weitere Aktionen für ‚${entry.name}‘`}
-        aria-haspopup="menu"
-        aria-controls={anchor ? menuId : undefined}
-        aria-expanded={anchor ? true : undefined}
-        onClick={(event) => setAnchor(event.currentTarget)}
-        sx={{ position: 'relative', zIndex: 1, m: -0.75, ml: 0.25 }}
-      >
-        <MoreHorizIcon sx={{ fontSize: 20 }} />
-      </IconButton>
+      <Tooltip title="Weitere Aktionen">
+        <IconButton
+          id={buttonId}
+          size="small"
+          aria-label={`Weitere Aktionen für ‚${entry.name}‘`}
+          aria-haspopup="menu"
+          aria-controls={anchor ? menuId : undefined}
+          aria-expanded={anchor ? true : undefined}
+          onClick={(event) => setAnchor(event.currentTarget)}
+          sx={{ position: 'relative', zIndex: 1, m: -0.75, ml: 0.25 }}
+        >
+          <MoreHorizIcon sx={{ fontSize: 20 }} />
+        </IconButton>
+      </Tooltip>
       <Menu
         id={menuId}
         anchorEl={anchor}

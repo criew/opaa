@@ -13,7 +13,7 @@ import KeyOutlinedIcon from '@mui/icons-material/KeyOutlined'
 import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import MailOutlinedIcon from '@mui/icons-material/MailOutlined'
-import MoreVertIcon from '@mui/icons-material/MoreVert'
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import SwapHorizOutlinedIcon from '@mui/icons-material/SwapHorizOutlined'
 import type { LocalUserResponse } from '@/shared/api/types'
 import { confirmAction } from '@/shared/stores/confirmStore'
@@ -225,7 +225,7 @@ export default function LocalUserRowMenu({
             disabled={busy}
             onClick={(e) => setAnchor(e.currentTarget)}
           >
-            <MoreVertIcon fontSize="small" />
+            <MoreHorizIcon fontSize="small" />
           </IconButton>
         </span>
       </Tooltip>

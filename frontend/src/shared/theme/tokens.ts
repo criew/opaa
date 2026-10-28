@@ -334,6 +334,15 @@ export const radius = {
 } as const
 
 /**
+ * Shape of every hand-built badge that is no MUI `Chip` (guidelines 5.5): pill radius and weight
+ * 500, the same as the theme's `MuiChip`, so a badge never reads square or bold beside a chip.
+ */
+export const badgeShape = {
+  borderRadius: `${radius.pill}px`,
+  fontWeight: fontWeight.medium,
+} as const
+
+/**
  * Shadows are reserved for floating layers (guidelines 4.3) - resting cards separate through
  * borders and surface steps, never through shadows.
  */
