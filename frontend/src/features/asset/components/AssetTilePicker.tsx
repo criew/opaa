@@ -10,7 +10,7 @@ import { markAssetFavorite, unmarkAssetFavorite } from '../api/assetApi'
 import AssetTile from './AssetTile'
 import { tileFromCatalogEntry, type AssetTileData } from './assetTileData'
 import { useActiveAssetTypes } from '../../../shared/assetTypes'
-import { assetPickKey, type AssetPick } from './assetPick'
+import { assetPickKey, type AssetPick, type AssetPickToggle } from './assetPick'
 import { type AssetFilters } from './AssetFilterChips'
 import AssetFilterBar from './AssetFilterBar'
 
@@ -46,12 +46,15 @@ const PAGE_SIZE = 50
 const IDS_PER_REQUEST = 50
 const SEARCH_DELAY_MS = 300
 const LOAD_ERROR = 'Die Auswahl konnte nicht geladen werden.'
+/** The backend refuses every new association while the succession is open (ADR-0036/6). */
+const FROZEN_REASON = 'Lässt sich nicht neu zuordnen, solange die Nachfolge offen ist.'
 
 interface AssetTilePickerProps {
   /** The types on offer; more than one shows a type filter. */
   types?: AssetType[]
   value: AssetPick[]
-  onChange: (value: AssetPick[]) => void
+  /** The new choice, with the one tile that changed it. */
+  onChange: (value: AssetPick[], toggled: AssetPickToggle) => void
   /** Offers a chip of this name that narrows the tiles to the chosen ones; it starts switched on. */
   chosenOnlyLabel?: string
   /** Shows the chosen tiles only, without letting the choice change. */
@@ -306,21 +309,25 @@ export default function AssetTilePicker({
     return favorites.has(key) ? { ...source, favorite: favorites.get(key) } : source
   })
 
+  /** A chosen asset with a frozen reach can be unchosen; an unchosen one cannot be chosen. */
   function toggle(tile: AssetTileData) {
     const key = assetPickKey(tile)
+    const reachFrozen = Boolean(tile.successionOpen)
+    const pick: AssetPick = {
+      assetType: tile.assetType,
+      assetId: tile.assetId,
+      name: tile.name,
+      description: tile.description ?? null,
+    }
     if (chosenKeys.has(key)) {
-      onChange(value.filter((pick) => assetPickKey(pick) !== key))
+      onChange(
+        value.filter((chosen) => assetPickKey(chosen) !== key),
+        { pick: valueByKey.get(key) ?? pick, reachFrozen },
+      )
       return
     }
-    onChange([
-      ...value,
-      {
-        assetType: tile.assetType,
-        assetId: tile.assetId,
-        name: tile.name,
-        description: tile.description ?? null,
-      },
-    ])
+    if (reachFrozen) return
+    onChange([...value, pick], { pick, reachFrozen })
   }
 
   async function setFavorite(tile: AssetTileData, favorite: boolean) {
@@ -400,6 +407,7 @@ export default function AssetTilePicker({
                 onToggle: () => toggle(tile),
                 busy: busyKeys?.has(assetPickKey(tile)),
                 readOnly,
+                blockedReason: tile.successionOpen ? FROZEN_REASON : null,
               }}
               onFavoriteChange={(favorite) => setFavorite(tile, favorite)}
             />

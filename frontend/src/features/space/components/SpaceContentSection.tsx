@@ -8,7 +8,7 @@ import {
   type NotificationSeverity,
 } from '@/shared/stores/notificationStore'
 import { AssetTilePicker } from '@/features/asset'
-import { assetPickKey, type AssetPick } from '@/features/asset'
+import { assetPickKey, type AssetPick, type AssetPickToggle } from '@/features/asset'
 import { successionAwareMessage } from '@/features/succession'
 
 /** The one disclosure about unreadable associations: no number, no name (ADR-0039). */
@@ -90,7 +90,8 @@ export default function SpaceContentSection({ spaceId, canManage }: SpaceContent
     })
   }
 
-  async function setAssociated(pick: AssetPick, associated: boolean) {
+  /** With a frozen reach a detaching is final: no undo is offered, the notice says why. */
+  async function setAssociated(pick: AssetPick, associated: boolean, reachFrozen = false) {
     const key = assetPickKey(pick)
     if (pending.current.has(key)) return
     pending.current.add(key)
@@ -116,13 +117,18 @@ export default function SpaceContentSection({ spaceId, canManage }: SpaceContent
       ? notify(failure, severity)
       : associated
         ? notify(`„${pick.name}“ zugeordnet.`, severity)
-        : notify(`„${pick.name}“ gelöst.`, severity, {
-            label: 'Rückgängig',
-            onClick: () => {
-              focusTile(key)
-              void setAssociated(pick, true)
-            },
-          })
+        : reachFrozen
+          ? notify(
+              `„${pick.name}“ gelöst. Solange die Nachfolge offen ist, lässt es sich nicht wieder zuordnen.`,
+              severity,
+            )
+          : notify(`„${pick.name}“ gelöst.`, severity, {
+              label: 'Rückgängig',
+              onClick: () => {
+                focusTile(key)
+                void setAssociated(pick, true)
+              },
+            })
     lastNotice.current = { id, severity }
   }
 
@@ -133,15 +139,17 @@ export default function SpaceContentSection({ spaceId, canManage }: SpaceContent
       ?.focus()
   }
 
-  function handleChange(next: AssetPick[]) {
+  function handleChange(next: AssetPick[], toggled: AssetPickToggle) {
     const nextKeys = new Set(next.map(assetPickKey))
     const currentKeys = new Set(value.map(assetPickKey))
+    const frozen = (pick: AssetPick) =>
+      toggled.reachFrozen && assetPickKey(pick) === assetPickKey(toggled.pick)
     next
       .filter((pick) => !currentKeys.has(assetPickKey(pick)))
       .forEach((pick) => void setAssociated(pick, true))
     value
       .filter((pick) => !nextKeys.has(assetPickKey(pick)))
-      .forEach((pick) => void setAssociated(pick, false))
+      .forEach((pick) => void setAssociated(pick, false, frozen(pick)))
   }
 
   const loaded = loadedSpaceId === spaceId && !isLoading
