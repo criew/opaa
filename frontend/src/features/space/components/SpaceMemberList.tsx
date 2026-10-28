@@ -1,6 +1,5 @@
 import { useId, useMemo, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
-import Link from '@mui/material/Link'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
@@ -18,6 +17,7 @@ import { groupMemberCountLabel } from '@/features/asset'
 import { spaceRoleLabel } from '@/shared/utils/labels'
 import { AccessDerivation } from '@/features/asset'
 import { GroupMembersDisclosure } from '@/features/principal'
+import { TextAction } from '@/shared/ui/DetailSection'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import RowMenu from '@/shared/ui/RowMenu'
 import { memberLabelOf } from './memberLabel'
@@ -273,14 +273,12 @@ export default function SpaceMemberList({
                     load={getSpaceAccessDerivation}
                     subjectName={label}
                   />
-                  <Link
-                    component="button"
-                    type="button"
-                    sx={{ alignSelf: 'flex-end', fontSize: 12 }}
+                  <TextAction
+                    sx={{ alignSelf: 'flex-end' }}
                     onClick={() => hideExpansion(member.id)}
                   >
                     Schließen
-                  </Link>
+                  </TextAction>
                 </Stack>
               )}
               {expanded === 'groupMembers' && (
