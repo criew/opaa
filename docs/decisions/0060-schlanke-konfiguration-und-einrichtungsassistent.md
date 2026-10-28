@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-27 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md)
+Akzeptiert · zuletzt geändert 2026-10-28 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md)
 
 ## Kontext
 
@@ -75,15 +75,18 @@ Begründung: Ohne Token übernähme die Installation, wer die Adresse zuerst auf
 Die Installations-API speichert jeden Schritt einzeln; ein Abbruch setzt an derselben Stelle fort.
 Pflichtschritte sind erstes Systemverwaltungskonto und Anmeldeverfahren, jeweils mit erfolgreicher
 Prüfung. Alle übrigen Schritte sind optional und später in der Verwaltung erreichbar: Chat-Modell,
-Embedding-Modell und E-Mail-Versand. Ein optionaler Schritt wird übersprungen, indem die API seinen
+Embedding-Modell, E-Mail-Versand und Branding (Entscheidung 15). Ein optionaler Schritt wird übersprungen, indem die API seinen
 Zwischenstand samt Prüfung verwirft (`POST …/skip`); das ist ein Revisionsereignis. Ein
 übersprungener optionaler Schritt hält den Abschluss nicht auf, ein gespeicherter erst, wenn seine
 Prüfung gelungen ist (Verbindungstest, Probeeinbettung, Verbindung zum Mailserver): Der Abschluss
-übernimmt nie ungeprüfte Werte. Der Abschluss ist eine Transaktion unter einem Advisory-Lock und
+übernimmt nie ungeprüfte Werte; das Branding prüft ohne Verbindung die Regeln der
+Branding-Verwaltung erneut. Der Abschluss ist eine Transaktion unter einem Advisory-Lock und
 gelingt nur, wenn jeder Pflichtschritt und jeder gespeicherte optionale Schritt geprüft ist. Ein
 übersprungener Modellschritt legt kein Modell an. Ein geprüfter E-Mail-Versand geht mit den Regeln
 der Mail-Verwaltung in deren Einstellungen über und schaltet den Versand ein; ohne ihn bleibt der
-Versand aus. Danach antwortet jede Operation der Installations-API `404`, auf jeder Instanz.
+Versand aus. Ein geprüftes Branding geht ebenso mit den Regeln der Branding-Verwaltung in deren
+Einstellungen über; übersprungen oder in jedem Feld leer, bleibt der OPAA-Standard und der Abschluss
+schreibt nichts. Danach antwortet jede Operation der Installations-API `404`, auf jeder Instanz.
 Begründung für die optionalen Modellschritte: Oft steht der Modellendpunkt bei der Installation noch
 nicht bereit, etwa weil der Betrieb ihn erst freischaltet; Konten, Anmeldung und Verwaltung brauchen
 ihn nicht. Begründung für `404`: Der Endpunkt verrät nach dem Abschluss nicht, dass es ihn gibt, wie
@@ -92,7 +95,7 @@ der MCP-Endpunkt bei geschlossenem Kanal.
 ### 7. Antwortdatei: Installation ohne Browser
 
 Eine Antwortdatei (JSON) enthält dieselben Angaben wie die Schritte des Assistenten; fehlt ein
-optionaler Teil (`chatModel`, `embeddingModel`, `mail`), ist sein Schritt übersprungen. Sie wird auf
+optionaler Teil (`chatModel`, `embeddingModel`, `mail`, `branding`), ist sein Schritt übersprungen. Sie wird auf
 zwei Wegen angenommen, mit derselben Prüfung: über die Installations-API mit dem Token, oder beim
 Start aus der Datei unter `OPAA_INSTALLATION_ANSWER_FILE`, wenn die Installation noch nicht
 abgeschlossen ist. In der Datei stehen Geheimnisse (Passwort des ersten Kontos, Modellschlüssel,
@@ -274,6 +277,22 @@ Dienstkennung, und eine Testnachricht an eine frei wählbare Adresse machte ein 
 außen nutzbar. Ein interner Mailserver braucht deshalb dieselbe Freigabe des Betriebs wie ein internes
 Modell, oder er wird nach der Installation in der Verwaltung eingetragen.
 
+### 15. Branding im Assistenten: Texte und Farben, keine Bilder
+
+Der optionale Schritt Branding nimmt Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe und
+Farbschema-Vorgabe, mit den Regeln, Texten und der Kontrastwarnung der Branding-Verwaltung
+(`BrandingSettingsRules`, `shared/ui/branding`); ein leeres Feld heißt je Feld OPAA-Standard, der
+Hinweis lässt sich nicht abschalten. Logo, Logo der Anmeldeseite und Hintergrundbild nimmt er nicht
+an; sie lädt die Systemverwaltung nach dem Abschluss unter „Administration → Branding“ hoch, und der
+Schritt sagt das. Der Abschluss schreibt über den Schreibweg der Verwaltung, protokolliert unter dem
+Systemprozess der Installation. Begründung: Bilder im Installationsmodus hätten nur das Token als
+Hürde und bräuchten eigene Größen- und Mengengrenzen, eine Ablage größerer Binärdaten im
+Zwischenstand der Schritte, ihr Löschen beim Überspringen und Verwerfen und einen Upload-Weg neben
+dem JSON der Schritte und der Antwortdatei, deren Anfragen auf 64 KiB begrenzt sind. Das Erscheinungsbild
+ist bis zum ersten Upload vollständig, weil jedes fehlende Bild auf das OPAA-Bild zurückfällt; der
+Aufwand stünde in keinem Verhältnis zum Gewinn. Texte und Farben dagegen sind klein, ohne
+Geheimnis und mit denselben Regeln prüfbar.
+
 ## Konsequenzen
 
 - Die Konfiguration schrumpft auf Start, Infrastruktur, Schlüssel, Grenzen, Lastgrenzen und
@@ -312,6 +331,8 @@ Modell, oder er wird nach der Installation in der Verwaltung eingetragen.
   veröffentlichte Version prüfte Modelle gegen sie, und eine gespeicherte Adresse bleibt ohnehin
   nutzbar; Startwarnung und Upgrade-Notiz genügen.
 - `410 Gone` nach dem Abschluss — bestätigt die Existenz des Endpunkts ohne Nutzen für den Betrieb.
+- Bilder des Brandings im Assistenten, im Zwischenstand abgelegt — ein Upload-Weg nur mit dem Token
+  als Hürde, für Bilder, die bis zum ersten Upload auf das OPAA-Bild zurückfallen (Entscheidung 15).
 
 ## Offen
 

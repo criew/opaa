@@ -102,7 +102,7 @@ OPAA_INSTALLATION_ANSWER_FILE=/run/opaa/installation.json               # option
 │  ○ Embedding-Modell           optional · später unter Modelle        │
 │  ○ Ausgangsproxy              optional · später unter Anbindungen     │
 │  ○ E-Mail-Versand             optional · später unter E-Mail          │
-│  ○ Branding                   optional · später unter Allgemein       │
+│  ○ Branding                   optional · später unter Branding        │
 │  ○ Abschluss                                                        │
 │                                         [Zurück]  [Prüfen und weiter] │
 └──────────────────────────────────────────────────────────────────────┘
@@ -117,7 +117,7 @@ OPAA_INSTALLATION_ANSWER_FILE=/run/opaa/installation.json               # option
 | Embedding-Modell | optional | Adresse, Modellname, Schlüssel, Eingabegrenze | Probeeinbettung; legt die Vektordimension fest | Modelle → Embedding: Modellwechsel mit Neueinbettung, Endpunktwechsel ohne ([Wechsel des Embedding-Modells](./embedding-model-change.md)) |
 | Ausgangsproxy | optional; Pflicht, wenn ohne ihn kein Modell erreichbar ist | Proxy-Adresse, Ausnahmeliste | Verbindungstest der Modelle über den Proxy | Anbindungen → Einstellungen |
 | E-Mail-Versand | optional | Server, Port, Verschlüsselung, Zugangsdaten, Absender (Regeln der Mail-Verwaltung) | Adressprüfung der Installation; Verbindung und Anmeldung ohne Versand, auf Wunsch Testnachricht an eine angegebene Adresse | E-Mail |
-| Branding | optional | Produktname, Farbe | — | Allgemein & Branding |
+| Branding | optional | Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe, Farbschema-Vorgabe (Regeln der Branding-Verwaltung); keine Bilder (ADR-0060, Entscheidung 15) | Regeln der Branding-Verwaltung erneut, ohne Verbindung | Allgemein & Branding |
 | Abschluss | ja | Zusammenfassung | alle Pflichtschritte und gespeicherten optionalen Schritte geprüft | — |
 
 - Jeder Schritt wird beim „Prüfen und weiter“ gespeichert. Ein neu geöffneter Assistent setzt beim
@@ -203,9 +203,9 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
   `POST /api/v1/installation/answer-file` kommen dieselben Angaben mit `password` und `apiKey` im
   Rumpf, wie in den einzelnen Schritten: Ein Dateiverweis über die API ließe den Inhaber des Tokens
   Dateien des Backends lesen (ADR-0060, Entscheidung 7).
-- `chatModel`, `embeddingModel` und `mail` sind optional; ein fehlender Teil überspringt seinen
-  Schritt, ohne `mail` bleibt der Versand aus. Angaben späterer Schritte
-  (`outboundProxy`, `branding`) wertet diese Version noch nicht aus.
+- `chatModel`, `embeddingModel`, `mail` und `branding` sind optional; ein fehlender Teil
+  überspringt seinen Schritt, ohne `mail` bleibt der Versand aus, ohne `branding` gilt der
+  OPAA-Standard. Angaben späterer Schritte (`outboundProxy`) wertet diese Version noch nicht aus.
 - Beim Start mit `OPAA_INSTALLATION_ANSWER_FILE` und nicht abgeschlossener Installation liest die
   Anwendung die Datei unter dem Advisory-Lock der Startaktionen, prüft wie der Assistent und schließt
   ab. Scheitert eine Prüfung, bleibt der Installationsmodus, und das Log nennt Schritt und Grund.

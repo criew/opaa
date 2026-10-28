@@ -5,7 +5,10 @@ der Installation, nicht dem Programm. Gepflegt werden sie unter **Administration
 einem Systemverwalter; gespeichert wird in der Datenbank, nicht im Dateisystem. Jede Änderung ist
 sofort für alle wirksam — ohne Neustart, ohne neues Image — und steht im Nachweisprotokoll. Ein leer
 gelassenes Feld bedeutet nicht „leer", sondern „der OPAA-Standard gilt wieder", und zwar je Feld:
-Wer nur ein Logo hinterlegt, behält den Produktnamen „OPAA". Welche Anmeldewege die Anmeldeseite
+Wer nur ein Logo hinterlegt, behält den Produktnamen „OPAA". Texte, Akzentfarbe und
+Farbschema-Vorgabe lassen sich schon bei der Einrichtung im optionalen Schritt Branding des
+[Einrichtungs-Assistenten](installation.md#einrichtungs-assistent-im-browser) festlegen, mit
+denselben Regeln; die Bilder nur hier. Welche Anmeldewege die Anmeldeseite
 zeigt und in welcher Reihenfolge, steht unter
 [Authentifizierung](authentifizierung.md#anmeldewege-im-betriebsmodus-oidc).
 
