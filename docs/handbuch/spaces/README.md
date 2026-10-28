@@ -149,10 +149,12 @@ wie im Katalog, in derselben Reihenfolge. Mehrere Kacheln lassen sich zugleich w
 steht dieselbe Filterzeile wie im Katalog: Suche über Name und Beschreibung, Art („Alle", „Wissen",
 „Prompts") und „Favoriten". Über „Weitere laden" steht, wie viele von wie vielen angezeigt sind. Eine Wahl bleibt bestehen,
 wenn Filter oder Suche ihre Kachel ausblenden; die Zeile unter den Kacheln nennt alles Gewählte.
-Die Kacheln zeigen nur, was für die Wahl zählt: Art, Stern, Name, Beschreibung und Umfang, also die
-Zahl der Dokumente oder Prompts, dazu ein Zustand, der Aufmerksamkeit braucht, etwa „Aktualisierung
-fehlgeschlagen". Zuständige Stelle, „Aktualisiert am", die Zahl der Spaces und das Welt-Symbol
-stehen nur im Katalog. Links oben steht ein Häkchen, wenn die Kachel gewählt ist, sonst ein leerer
+Die Kacheln zeigen, was für die Wahl zählt: Art, Stern, Name, Beschreibung und Umfang, also die
+Zahl der Dokumente oder Prompts. Dazu kommen „Privat" oder „Wird gelöscht", der Hinweis auf eine
+gesperrte Quelle und ein Zustand, der Aufmerksamkeit braucht, etwa „Aktualisierung fehlgeschlagen"
+oder „Nachfolge offen" — solange die Nachfolge offen ist, lässt sich das Arbeitsmittel nicht neu
+zuordnen. Zuständige Stelle, „Aktualisiert am", die Zahl der Spaces und das Welt-Symbol stehen im
+Katalog und auf der Detailseite. Links oben steht ein Häkchen, wenn die Kachel gewählt ist, sonst ein leerer
 Kreis; der Rahmen bleibt gleich. Ein Klick auf die Kachel wählt sie oder hebt die Wahl auf; ein
 Klick auf den Stern setzt nur den eigenen Favoriten und ändert die Wahl nicht.
 

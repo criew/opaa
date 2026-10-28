@@ -435,9 +435,9 @@ erscheint nie.
   Menü.
 - **In einer Auswahl** zählt nur, was ein Asset ist, wie groß es ist und ob es gewählt ist (#3262):
   Die Kachel zeigt Name, Beschreibung und Umfang ohne Zahl der Spaces („12 Dokumente"), dazu Art,
-  Stern, „Privat"/„Wird gelöscht", einen Zustand mit Punkt und eine Zeile, die die Quelle beisteuert
-  (etwa das Ende einer Freigabe). Zuständige Stelle, „Aktualisiert am", Zahl der Spaces, „Nachfolge
-  offen" und das Welt-Symbol entfallen. Der Name ist ein Umschalter (`role="checkbox"`,
+  Stern, „Privat"/„Wird gelöscht", einen Zustand mit Punkt (auch „Nachfolge offen": dann scheitert
+  eine neue Zuordnung, ADR-0036) und eine Zeile, die die Quelle beisteuert (etwa das Ende einer
+  Freigabe). Zuständige Stelle, „Aktualisiert am", Zahl der Spaces und das Welt-Symbol entfallen. Der Name ist ein Umschalter (`role="checkbox"`,
   `aria-checked`), dessen Beschreibung der Rest der Kachel ist. Gewählt zeigt allein das Zeichen
   links oben: gefülltes Häkchen in `accent` statt leerem Kreis in `fg-2` — ein Unterschied der Form,
   nicht nur der Farbe, beide mit mindestens 3:1 gegen die Fläche (2.4). Rahmen und Fläche bleiben
@@ -641,8 +641,9 @@ Benennung bestimmt das fremde System, nicht OPAA. Die Schwelle:
 
 **Aufbau der Kacheln.** Jede Kachel trägt ein Icon (dekorativ, `aria-hidden`), ein Wort als Namen
 und einen kurzen Satz darunter in `fg-2`; bei Assets die Asset-Art (5.5).
-Die Kachel hat Kartenform (5.4). **Gewählt** zeigt sich an Rahmen in `accent` **und** einem
-Häkchen-Symbol — nie allein über Farbe. Eine **gesperrte** Kachel (fehlendes Recht, nicht
+Die Kachel hat Kartenform (5.4). **Gewählt** zeigt sich bei Artenkacheln an Rahmen in `accent`
+**und** einem Häkchen-Symbol — nie allein über Farbe. Asset-Kacheln zeigen gewählt allein am
+gefüllten Häkchen statt leerem Kreis, ohne Rahmen (5.4) — ein Unterschied der Form, nicht der Farbe. Eine **gesperrte** Kachel (fehlendes Recht, nicht
 verfügbare Quellart) bleibt sichtbar, ausgegraut, mit dem Grund im Satz darunter, wenn ihr Fehlen
 sonst Fragen aufwirft; Arten ohne Anlegerecht werden dagegen gar nicht angeboten. Der Grund steht
 in `warning`, nicht ausgegraut und außerhalb des gesperrten Bedienelements, das ihn als

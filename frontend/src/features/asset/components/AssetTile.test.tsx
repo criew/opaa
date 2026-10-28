@@ -71,6 +71,18 @@ describe('AssetTile (#2131)', () => {
     expect(screen.queryByText(/Aktualisiert am/)).not.toBeInTheDocument()
   })
 
+  // An open succession blocks a new association, so a choice keeps naming it.
+  it('keeps the open succession in the selection mode', () => {
+    renderWithProviders(
+      <AssetTile
+        tile={{ ...tile, successionOpen: true }}
+        mode={{ kind: 'select', selected: false, onToggle: vi.fn() }}
+      />,
+    )
+
+    expect(screen.getByText('Nachfolge offen')).toBeInTheDocument()
+  })
+
   // Chosen shows as the check mark alone; the frame stays that of an unchosen tile.
   it('marks a chosen tile by the check mark, not by an accent frame', () => {
     const { unmount } = renderWithProviders(
@@ -98,7 +110,8 @@ describe('AssetTile (#2131)', () => {
   })
 
   // The stretched title link covers every unraised spot of the tile, so the globe must lie
-  // above it to receive the pointer and show its tooltip.
+  // above it to receive the pointer and show its tooltip. jsdom does no hit testing - hover opens
+  // the tooltip even when covered - so only the position and z-index check guards the regression.
   it('raises the globe above the stretched title link and names it in a tooltip', async () => {
     renderWithProviders(
       <AssetTile tile={tile} mode={{ kind: 'link', to: '/libraries/library-satzungen' }} />,

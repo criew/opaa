@@ -233,7 +233,7 @@ export default function AssetTile({ tile, mode, onFavoriteChange, actions }: Ass
         tile.updatedAt &&
         !selecting && <MetaLine>Aktualisiert am {formatDate(tile.updatedAt)}</MetaLine>
       )}
-      {tile.successionOpen && !selecting && <StateDotLine status="SUCCESSION_OPEN" />}
+      {tile.successionOpen && <StateDotLine status="SUCCESSION_OPEN" />}
       {tile.note && <MetaLine id={noteId}>{tile.note}</MetaLine>}
     </Box>
   )
