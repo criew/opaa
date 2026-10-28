@@ -22,6 +22,7 @@ import GlobalBadge from '@/shared/ui/GlobalBadge'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import { userInitial } from '@/shared/utils/userInitial'
 import SectionHead from '@/shared/ui/SectionHead'
+import { TextLink } from '@/shared/ui/DetailSection'
 import { contentWidth } from '@/shared/theme/tokens'
 import AreaTabs from '@/shared/ui/AreaTabs'
 import { OwnExternalAccessTokensSection } from '@/features/external-access'
@@ -180,16 +181,13 @@ export default function SettingsPage() {
                         </Typography>
                         {/* The password page returns to where it was opened from; without the target a
                     voluntary change would end on the chat page (see redirectTargetOf). */}
-                        <Button
-                          component={RouterLink}
+                        <TextLink
                           to={PASSWORD_ROUTE}
                           state={{ from: SETTINGS_ROUTE }}
-                          size="small"
-                          variant="outlined"
-                          sx={{ mt: 1.5 }}
+                          sx={{ mt: 1 }}
                         >
                           Passwort ändern
-                        </Button>
+                        </TextLink>
                       </Box>
                     ) : (
                       sessionKind === 'oidc' && (

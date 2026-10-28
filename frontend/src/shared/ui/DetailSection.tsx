@@ -1,6 +1,8 @@
 import { useId, type ReactNode } from 'react'
+import { Link as RouterLink } from 'react-router'
 import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
+import type { SxProps, Theme } from '@mui/material/styles'
 import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 
@@ -59,15 +61,31 @@ export default function DetailSection({
   )
 }
 
+/** The type of a text action and a free-standing text link: one look for both (Leitlinie 5.1). */
+const TEXT_ACTION_SX = {
+  fontSize: 13.5,
+  fontWeight: 500,
+  textAlign: 'left',
+  minHeight: 24,
+  minWidth: 24,
+  verticalAlign: 'baseline',
+} as const
+
+function withSx(sx: SxProps<Theme> | undefined, own: SxProps<Theme>): SxProps<Theme> {
+  return [own, ...(Array.isArray(sx) ? sx : [sx])] as SxProps<Theme>
+}
+
 /**
  * The text button of a section head, of a list row or of a run: no padding, no frame, at the right
- * edge like „Ändern“ in the rows of the Reiter „Quelle“.
+ * edge like „Ändern“ in the rows of the Reiter „Quelle“. It acts on the page; what leads elsewhere
+ * is a {@link TextLink}.
  */
 export function TextAction({
   children,
   context,
   onClick,
   disabled,
+  sx,
   ...aria
 }: {
   children: ReactNode
@@ -75,8 +93,12 @@ export function TextAction({
   context?: string
   onClick: () => void
   disabled?: boolean
+  /** Placement only (grid cell, margin, alignment); the type stays that of every text action. */
+  sx?: SxProps<Theme>
   'aria-expanded'?: boolean
   'aria-controls'?: string
+  'aria-describedby'?: string
+  'aria-label'?: string
 }) {
   return (
     <Link
@@ -86,13 +108,10 @@ export function TextAction({
       onClick={onClick}
       disabled={disabled}
       {...aria}
-      sx={{
-        fontSize: 13.5,
-        fontWeight: 500,
-        minHeight: 24,
-        verticalAlign: 'baseline',
+      sx={withSx(sx, {
+        ...TEXT_ACTION_SX,
         '&:disabled': { color: 'text.disabled', cursor: 'default', textDecoration: 'none' },
-      }}
+      })}
     >
       {children}
       {context && (
@@ -100,6 +119,38 @@ export function TextAction({
           {` ${context}`}
         </Box>
       )}
+    </Link>
+  )
+}
+
+/**
+ * A free-standing link to another place, in the type of {@link TextAction}. A link inside a
+ * sentence is a plain `Link` in the sentence's type instead, underlined throughout.
+ */
+export function TextLink({
+  to,
+  state,
+  replace,
+  children,
+  sx,
+}: {
+  to: string
+  state?: unknown
+  replace?: boolean
+  children: ReactNode
+  /** Placement only (margin, alignment); the type stays that of every text link. */
+  sx?: SxProps<Theme>
+}) {
+  return (
+    <Link
+      component={RouterLink}
+      to={to}
+      state={state}
+      replace={replace}
+      underline="hover"
+      sx={withSx(sx, { ...TEXT_ACTION_SX, display: 'inline-block' })}
+    >
+      {children}
     </Link>
   )
 }

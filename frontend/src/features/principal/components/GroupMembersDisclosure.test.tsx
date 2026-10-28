@@ -30,7 +30,7 @@ describe('GroupMembersDisclosure', () => {
 
     expect(load).not.toHaveBeenCalled()
     expect(
-      screen.getByRole('button', { name: 'Mitglieder der Gruppe „Referat 50“ anzeigen' }),
+      screen.getByRole('button', { name: 'Mitglieder anzeigen (Gruppe „Referat 50“)' }),
     ).toBeVisible()
   })
 
@@ -39,7 +39,7 @@ describe('GroupMembersDisclosure', () => {
     renderWithProviders(<GroupMembersDisclosure groupLabel="Referat 50" load={load} />)
 
     await userEvent.click(
-      screen.getByRole('button', { name: 'Mitglieder der Gruppe „Referat 50“ anzeigen' }),
+      screen.getByRole('button', { name: 'Mitglieder anzeigen (Gruppe „Referat 50“)' }),
     )
 
     await waitFor(() => expect(screen.getByText('Anna Bauer')).toBeVisible())
@@ -59,19 +59,19 @@ describe('GroupMembersDisclosure', () => {
     )
     renderWithProviders(<GroupMembersDisclosure groupLabel="Referat 50" load={load} />)
     await userEvent.click(
-      screen.getByRole('button', { name: 'Mitglieder der Gruppe „Referat 50“ anzeigen' }),
+      screen.getByRole('button', { name: 'Mitglieder anzeigen (Gruppe „Referat 50“)' }),
     )
     await waitFor(() => expect(screen.getByText('Anna Bauer')).toBeVisible())
 
     await userEvent.click(
-      screen.getByRole('button', { name: 'Weitere Mitglieder der Gruppe „Referat 50“ anzeigen' }),
+      screen.getByRole('button', { name: 'Weitere anzeigen (Gruppe „Referat 50“)' }),
     )
 
     await waitFor(() => expect(screen.getByText('Clara Dorn')).toBeVisible())
     expect(load).toHaveBeenLastCalledWith(2, 50)
     expect(screen.getByText('3 von 3 aktiven Konten')).toBeVisible()
     expect(
-      screen.queryByRole('button', { name: 'Weitere Mitglieder der Gruppe „Referat 50“ anzeigen' }),
+      screen.queryByRole('button', { name: 'Weitere anzeigen (Gruppe „Referat 50“)' }),
     ).toBeNull()
   })
 
@@ -88,7 +88,7 @@ describe('GroupMembersDisclosure', () => {
     renderWithProviders(<GroupMembersDisclosure groupLabel="Geschützte Gruppe" load={load} />)
 
     await userEvent.click(
-      screen.getByRole('button', { name: 'Mitglieder der Gruppe „Geschützte Gruppe“ anzeigen' }),
+      screen.getByRole('button', { name: 'Mitglieder anzeigen (Gruppe „Geschützte Gruppe“)' }),
     )
 
     await waitFor(() => expect(screen.getByText(/Verantwortlich: Andrea Vogt/)).toBeVisible())
@@ -102,7 +102,7 @@ describe('GroupMembersDisclosure', () => {
     renderWithProviders(<GroupMembersDisclosure groupLabel="Referat 50" load={load} />)
 
     await userEvent.click(
-      screen.getByRole('button', { name: 'Mitglieder der Gruppe „Referat 50“ anzeigen' }),
+      screen.getByRole('button', { name: 'Mitglieder anzeigen (Gruppe „Referat 50“)' }),
     )
 
     await waitFor(() => expect(screen.getByText('Gruppe nicht gefunden')).toBeVisible())
@@ -124,7 +124,7 @@ describe('GroupMembersDisclosure', () => {
     renderWithProviders(<GroupMembersDisclosure groupLabel="Kleine Runde" load={load} />)
 
     await userEvent.click(
-      screen.getByRole('button', { name: 'Mitglieder der Gruppe „Kleine Runde“ anzeigen' }),
+      screen.getByRole('button', { name: 'Mitglieder anzeigen (Gruppe „Kleine Runde“)' }),
     )
 
     await waitFor(() => expect(screen.getByText('Bert Conrad')).toBeVisible())
@@ -142,20 +142,20 @@ describe('GroupMembersDisclosure', () => {
     )
     renderWithProviders(<GroupMembersDisclosure groupLabel="Referat 50" load={load} />)
     await userEvent.click(
-      screen.getByRole('button', { name: 'Mitglieder der Gruppe „Referat 50“ anzeigen' }),
+      screen.getByRole('button', { name: 'Mitglieder anzeigen (Gruppe „Referat 50“)' }),
     )
     await waitFor(() => expect(screen.getByText('Anna Bauer')).toBeVisible())
 
     await userEvent.click(
       screen.getByRole('button', {
-        name: 'Weitere Mitglieder der Gruppe „Referat 50“ anzeigen',
+        name: 'Weitere anzeigen (Gruppe „Referat 50“)',
       }),
     )
 
     await waitFor(() =>
       expect(
         screen.queryByRole('button', {
-          name: 'Weitere Mitglieder der Gruppe „Referat 50“ anzeigen',
+          name: 'Weitere anzeigen (Gruppe „Referat 50“)',
         }),
       ).toBeNull(),
     )

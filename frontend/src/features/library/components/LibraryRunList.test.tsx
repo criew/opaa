@@ -93,7 +93,7 @@ describe('LibraryRunList', () => {
     })
   })
 
-  describe('„Verbindung ändern ›“', () => {
+  describe('„Verbindung ändern“', () => {
     it.each([
       ['CREDENTIALS_REJECTED', 'Anmeldung abgelehnt'],
       ['EXPIRED', 'Zustimmung abgelaufen'],
@@ -104,7 +104,7 @@ describe('LibraryRunList', () => {
         renderList([run('r1', { status: 'FAILED', failureCategory })])
 
         const detail = await openRun(user, word)
-        const link = within(detail).getByRole('link', { name: 'Verbindung ändern ›' })
+        const link = within(detail).getByRole('link', { name: 'Verbindung ändern' })
         const href = new URL(link.getAttribute('href') ?? '', 'http://localhost')
         expect(href.searchParams.get('tab')).toBe('quelle')
         expect(href.hash).toBe('#verbindung')
@@ -116,7 +116,7 @@ describe('LibraryRunList', () => {
       renderList([failed('r1')], { signsIn: false })
 
       const detail = await openRun(user, 'Nicht erreichbar')
-      expect(within(detail).getByRole('link', { name: 'Verbindung ändern ›' })).toBeInTheDocument()
+      expect(within(detail).getByRole('link', { name: 'Verbindung ändern' })).toBeInTheDocument()
     })
 
     it('offers no change of connection for a run that failed for another reason', async () => {
@@ -124,7 +124,7 @@ describe('LibraryRunList', () => {
       renderList([failed('r1')])
 
       const detail = await openRun(user, 'Fehlgeschlagen')
-      expect(within(detail).queryByRole('link', { name: 'Verbindung ändern ›' })).toBeNull()
+      expect(within(detail).queryByRole('link', { name: 'Verbindung ändern' })).toBeNull()
       expect(detail).toHaveTextContent('Quelle nicht erreichbar')
     })
   })

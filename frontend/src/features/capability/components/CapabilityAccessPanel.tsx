@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link as RouterLink } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
 import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
-import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
@@ -15,6 +13,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import type { CapabilityOverviewResponse } from '@/shared/api/types'
 import { connectionProfileRoute } from '@/shared/routes'
 import { notify } from '@/shared/stores/notificationStore'
+import { TextLink } from '@/shared/ui/DetailSection'
 import AccessBadge from './AccessBadge'
 import AccessEditor from './AccessEditor'
 import { applyAccess, confirmAccess } from './capabilityAccessChange'
@@ -213,13 +212,12 @@ export default function CapabilityAccessPanel({
             {heading}
           </Typography>
           {entry && scopeKind(entry) === 'PROFILE' && entry.scope && (
-            <Link
-              component={RouterLink}
+            <TextLink
               to={connectionProfileRoute(entry.scope.slice('PROFILE:'.length))}
-              sx={{ display: 'inline-block', fontSize: 13.5, mt: 0.5 }}
+              sx={{ mt: 0.5 }}
             >
               Zugang ansehen
-            </Link>
+            </TextLink>
           )}
           {scoped && !entry && (
             <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.5 }}>

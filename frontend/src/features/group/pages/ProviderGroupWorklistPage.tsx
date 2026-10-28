@@ -2,10 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import { Link as RouterLink, useParams } from 'react-router'
+import { useParams } from 'react-router'
+import { TextLink } from '@/shared/ui/DetailSection'
 import ChecklistOutlinedIcon from '@mui/icons-material/ChecklistOutlined'
 import type { GroupEffectsResponse } from '@/shared/api/types'
 import { getGroupEffects } from '@/features/succession'
@@ -83,9 +83,7 @@ export default function ProviderGroupWorklistPage() {
           description="Solange eine Gruppe dieses Anbieters noch verwendet wird, lässt sich der Anbieter nicht löschen. Für jede dieser Gruppen gibt es zwei Wege: ihre Rechte an eine andere Gruppe übertragen oder sie dort entfernen, wo sie vergeben sind – an der Bibliothek oder im Space. Nicht verwendete Gruppen werden mit dem Anbieter gelöscht. Abgelaufene Berechtigungen zählen hier mit — sie halten das Löschen auf; die Vorschau der Übertragung lässt sie aus und kann deshalb kleinere Zahlen nennen."
         />
 
-        <Link component={RouterLink} to="/admin/identity-providers" sx={{ fontSize: 13 }}>
-          Zurück zur Anbieterverwaltung
-        </Link>
+        <TextLink to="/admin/identity-providers">Zurück zur Anbieterverwaltung</TextLink>
 
         {error && (
           <Alert severity="error" sx={{ my: 2 }}>
