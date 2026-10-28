@@ -80,7 +80,9 @@ Zugeordnet wird im Reiter „Inhalte" der Einstellungen (Abschnitt 4) oder direk
 [Katalog](../arbeitsmittel/katalog.md) über „In Space verwenden".
 
 **Im Reiter „Inhalte" wirkt ein Häkchen sofort.** Anhaken ordnet zu und bestätigt das kurz; Abhaken
-löst die Zuordnung, und die Meldung dazu bietet „Rückgängig" an. Schlägt die Änderung fehl, springt
+löst die Zuordnung, und die Meldung dazu bietet „Rückgängig" an. Ausgenommen ist ein Arbeitsmittel
+mit offener Nachfolge: Es lässt sich lösen, aber bis zum Abschluss der Nachfolge nicht wieder
+zuordnen; die Meldung sagt das, statt „Rückgängig" anzubieten. Schlägt die Änderung fehl, springt
 das Häkchen zurück, und eine Fehlermeldung nennt den Grund. Beim Öffnen ist der Filter „Nur
 zugeordnete" eingeschaltet; ausgeschaltet zeigt die Liste alles, was man lesen darf und deshalb
 zuordnen könnte. In beiden Ansichten stehen die schlanken Kacheln der Auswahl (siehe „Einen Space
@@ -152,8 +154,10 @@ wenn Filter oder Suche ihre Kachel ausblenden; die Zeile unter den Kacheln nennt
 Die Kacheln zeigen, was für die Wahl zählt: Art, Stern, Name, Beschreibung und Umfang, also die
 Zahl der Dokumente oder Prompts. Dazu kommen „Privat" oder „Wird gelöscht", der Hinweis auf eine
 gesperrte Quelle und ein Zustand, der Aufmerksamkeit braucht, etwa „Aktualisierung fehlgeschlagen"
-oder „Nachfolge offen" — solange die Nachfolge offen ist, lässt sich das Arbeitsmittel nicht neu
-zuordnen. Zuständige Stelle, „Aktualisiert am", die Zahl der Spaces und das Welt-Symbol stehen im
+oder „Nachfolge offen". Solange die Nachfolge offen ist, lässt sich das Arbeitsmittel nicht neu
+zuordnen: Seine Kachel ist ausgegraut, lässt sich nicht wählen und nennt den Grund „Lässt sich
+nicht neu zuordnen, solange die Nachfolge offen ist." Eine schon gewählte Kachel lässt sich
+abwählen und nennt denselben Grund; danach ist auch sie gesperrt. Zuständige Stelle, „Aktualisiert am", die Zahl der Spaces und das Welt-Symbol stehen im
 Katalog und auf der Detailseite. Links oben steht ein Häkchen, wenn die Kachel gewählt ist, sonst ein leerer
 Kreis; der Rahmen bleibt gleich. Ein Klick auf die Kachel wählt sie oder hebt die Wahl auf; ein
 Klick auf den Stern setzt nur den eigenen Favoriten und ändert die Wahl nicht.
