@@ -141,10 +141,11 @@ paths:
       security: []
       summary: >
         Skips an optional step (400 for a mandatory one): discards its saved values and their
-        check, so the completion leaves what the step would set as it is - for MAIL, sending stays
-        off. A skipped step does not hold up the completion; a saved optional step does until its
-        check succeeded or it is skipped. Recorded in the audit log, also when nothing was saved.
-        Same token and network rules as getInstallation.
+        check, so the completion leaves what the step would set as it is - for CHAT_MODEL and
+        EMBEDDING_MODEL, no model is set up, for MAIL, sending stays off. A skipped step does not
+        hold up the completion; a saved optional step does until its check succeeded or it is
+        skipped. Recorded in the audit log, also when nothing was saved. Same token and network
+        rules as getInstallation.
       responses:
         "200":
           description: Step skipped; its state is unsaved
@@ -227,10 +228,11 @@ paths:
       summary: >
         Installs without a browser: saves every step of the answers, checks each of them and
         completes the installation, all or nothing - the same checks as the file read at start-up
-        from OPAA_INSTALLATION_ANSWER_FILE, which names its secrets as files instead. An optional
-        part left out counts as skipped and discards what the assistant saved for it; the check of
-        mail sends no test message and counts against the budget of MAIL checks (429 with code
-        MAIL_CHECK_LIMIT). Same token and network rules as getInstallation.
+        from OPAA_INSTALLATION_ANSWER_FILE, which names its secrets as files instead. chatModel,
+        embeddingModel and mail are optional; an optional part left out counts as skipped and
+        discards what the assistant saved for it. The check of mail sends no test message and
+        counts against the budget of MAIL checks (429 with code MAIL_CHECK_LIMIT). Same token and
+        network rules as getInstallation.
       requestBody:
         required: true
         content:
@@ -275,8 +277,10 @@ paths:
         instances: creates the first system administration account, the sign-in method, the chat
         model and the embedding model with the vector table of its probed size from the checked
         steps, takes a checked MAIL step over into the mail settings and switches sending on,
-        discards the token and the saved steps and switches every instance to normal operation.
-        Same token and network rules as getInstallation.
+        discards the token and the saved steps and switches every instance to normal operation. A
+        skipped optional step leaves what it would set out: without the embedding model there is
+        no vector table until the model administration sets the first one. Same token and network
+        rules as getInstallation.
       responses:
         "200":
           description: Installation completed
@@ -326,9 +330,9 @@ components:
       type: string
       description: >
         A step of the installation. FIRST_ADMIN is the first system administration account (the
-        local emergency account of ADR-0033), SIGN_IN the sign-in method, CHAT_MODEL the chat
-        model, EMBEDDING_MODEL the embedding model (ADR-0060, Entscheidung 10); these four are
-        mandatory. MAIL, the mail server for sending (ADR-0033, Entscheidung 10), is optional.
+        local emergency account of ADR-0033) and SIGN_IN the sign-in method are mandatory;
+        CHAT_MODEL the chat model, EMBEDDING_MODEL the embedding model (ADR-0060, Entscheidung 10)
+        and MAIL, the mail server for sending (ADR-0033, Entscheidung 10), are optional.
       enum: [FIRST_ADMIN, SIGN_IN, CHAT_MODEL, EMBEDDING_MODEL, MAIL]
 
     InstallationSignInMode:
@@ -368,6 +372,9 @@ components:
           $ref: "#/components/schemas/InstallationStep"
         mandatory:
           type: boolean
+          description: >
+            False for an optional step, which can be skipped; once saved it must be checked like a
+            mandatory one.
         saved:
           type: boolean
         checked:
@@ -585,9 +592,10 @@ components:
         All values of the answer file in one request (docs/features/installation-and-settings.md).
         Over this API the secrets travel in the body, as in the single steps; a reference to a file
         on the backend (passwordFile, apiKeyFile) is accepted only in the file read at start-up, so
-        that the API cannot read files of the backend. mail is optional; without it sending stays
-        off. Parts of later steps (outboundProxy, branding) are not evaluated by this version.
-      required: [firstAdmin, signIn, chatModel, embeddingModel]
+        that the API cannot read files of the backend. chatModel, embeddingModel and mail are
+        optional; without one its step is skipped, without mail sending stays off. Parts of later
+        steps (outboundProxy, branding) are not evaluated by this version.
+      required: [firstAdmin, signIn]
       properties:
         firstAdmin:
           $ref: "#/components/schemas/InstallationFirstAdmin"

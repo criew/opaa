@@ -72,10 +72,17 @@ interface EmbeddingChangeSectionProps {
 /**
  * The guided change of the embedding model: a draft with probe embedding and preview, the
  * confirmation that starts the re-embedding, and while a change waits for its switch the discard
- * and the replacement endpoint. The key is write-only: „beibehalten" only for the same endpoint,
+ * and the replacement endpoint. Without an installed model the same probe sets the first one. The key is write-only: „beibehalten" only for the same endpoint,
  * so a key never follows an address to another provider.
  */
 export default function EmbeddingChangeSection({ info, onChanged }: EmbeddingChangeSectionProps) {
+  if (!info.model) {
+    return (
+      <Box sx={{ maxWidth: '72ch' }}>
+        <EmbeddingDraftForm info={info} mode="initial" onDone={onChanged} />
+      </Box>
+    )
+  }
   const index = info.index ?? null
   if (index?.stale) {
     return <ChangeUnderWay info={info} index={index} onChanged={onChanged} />
@@ -216,7 +223,7 @@ function ChangeUnderWay({ info, index, onChanged }: ChangeUnderWayProps) {
         <EmbeddingDraftForm
           info={info}
           mode="replacement"
-          fixedModel={target.model ?? info.model}
+          fixedModel={target.model ?? info.model ?? undefined}
           onDone={() => {
             setReplacing(false)
             onChanged()
@@ -229,8 +236,11 @@ function ChangeUnderWay({ info, index, onChanged }: ChangeUnderWayProps) {
 
 interface EmbeddingDraftFormProps {
   info: EmbeddingInfoResponse
-  /** A model change of the installed model, or a replacement endpoint of the target model. */
-  mode: 'change' | 'replacement'
+  /**
+   * A model change of the installed model, a replacement endpoint of the target model, or the
+   * first model of an installation without one.
+   */
+  mode: 'change' | 'replacement' | 'initial'
   fixedModel?: string
   onDone: () => void
 }
@@ -238,7 +248,7 @@ interface EmbeddingDraftFormProps {
 function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFormProps) {
   const storedBaseUrl = info.baseUrl ?? ''
   const [baseUrl, setBaseUrl] = useState(storedBaseUrl)
-  const [model, setModel] = useState(fixedModel ?? info.model)
+  const [model, setModel] = useState(fixedModel ?? info.model ?? '')
   const [maxInputTokens, setMaxInputTokens] = useState(
     info.maxInputTokens ? String(info.maxInputTokens) : '',
   )
@@ -305,6 +315,34 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
     }
   }
 
+  async function handleInstall(probed: EmbeddingModelProbeResponse) {
+    const confirmed = await confirmAction({
+      question: `„${model.trim()}“ als Embedding-Modell festlegen?`,
+      consequence: (
+        <>
+          OPAA legt die Vektorablage mit {probed.dimensions} Dimensionen an; danach stehen
+          Indexierung, Upload und Suche bereit. Ein späterer Wechsel des Modells bettet alle
+          Abschnitte neu ein.
+        </>
+      ),
+      confirmLabel: 'Festlegen',
+      tone: 'caution',
+    })
+    if (!confirmed || probed.dimensions == null) return
+    setSaving(true)
+    setError(null)
+    try {
+      await startEmbeddingModelChange({ ...draft(), expectedDimensions: probed.dimensions })
+      notify('Das Embedding-Modell ist festgelegt; Indexierung und Suche stehen bereit.', 'success')
+      onDone()
+    } catch (err) {
+      setErrors(fieldErrorsOf(err))
+      setError(messageOf(err, 'Festlegen fehlgeschlagen'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function handleStart(probed: EmbeddingModelProbeResponse) {
     const preview = probed.preview
     const confirmed = await confirmAction({
@@ -338,12 +376,18 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
   return (
     <Box>
       <Typography component="h3" sx={{ fontSize: 14, fontWeight: 600, mb: 1 }}>
-        {mode === 'change' ? 'Modell wechseln oder Endpunkt ändern' : 'Ersatz-Endpunkt'}
+        {mode === 'change'
+          ? 'Modell wechseln oder Endpunkt ändern'
+          : mode === 'initial'
+            ? 'Embedding-Modell festlegen'
+            : 'Ersatz-Endpunkt'}
       </Typography>
       <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>
         {mode === 'change'
           ? 'Die Probeeinbettung prüft den Endpunkt mit festen Probetexten. Gleicht er dem aktiven Modell, genügt ein Wechsel des Endpunkts ohne Neueinbettung; sonst zeigt OPAA, was die Neueinbettung kostet.'
-          : 'Ein Ersatz-Endpunkt muss das neue Modell so einbetten wie bei der Bestätigung; danach den Lauf unter Indexstatus fortsetzen.'}
+          : mode === 'initial'
+            ? 'Die Probeeinbettung prüft den Endpunkt und ermittelt die Zahl der Dimensionen; mit ihr legt OPAA die Vektorablage an. Vor dem ersten Modell nimmt OPAA keine Inhalte an, deshalb wird nichts neu eingebettet.'
+            : 'Ein Ersatz-Endpunkt muss das neue Modell so einbetten wie bei der Bestätigung; danach den Lauf unter Indexstatus fortsetzen.'}
       </Typography>
       <Stack spacing={2}>
         <TextField
@@ -465,6 +509,9 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
         {result?.succeeded && result.kind === 'MODEL_CHANGE' && mode === 'change' && (
           <ChangePreview result={result} />
         )}
+        {result?.succeeded && result.kind === 'INITIAL' && (
+          <Alert severity="success">{result.message}</Alert>
+        )}
         <Stack direction="row" spacing={1}>
           <BusyButton
             variant="outlined"
@@ -483,6 +530,16 @@ function EmbeddingDraftForm({ info, mode, fixedModel, onDone }: EmbeddingDraftFo
               onClick={() => void handleEndpointChange()}
             >
               {mode === 'change' ? 'Endpunkt ändern' : 'Ersatz-Endpunkt speichern'}
+            </BusyButton>
+          )}
+          {result?.succeeded && result.kind === 'INITIAL' && (
+            <BusyButton
+              variant="contained"
+              busy={saving}
+              busyAnnouncement="Embedding-Modell wird festgelegt"
+              onClick={() => void handleInstall(result)}
+            >
+              Embedding-Modell festlegen
             </BusyButton>
           )}
           {result?.succeeded && result.kind === 'MODEL_CHANGE' && mode === 'change' && (

@@ -16,6 +16,8 @@ import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
+import io.opaa.llm.EmbeddingModelService;
+import io.opaa.llm.LlmModelService;
 import io.opaa.search.PassageFetchService;
 import io.opaa.search.SearchOutcome;
 import io.opaa.search.SearchService;
@@ -47,6 +49,8 @@ class SearchControllerTest {
   @MockitoBean private SearchService searchService;
   @MockitoBean private PassageFetchService passageFetchService;
   @MockitoBean private EmbeddingIndexState embeddingIndexState;
+  @MockitoBean private LlmModelService chatModels;
+  @MockitoBean private EmbeddingModelService embeddingModels;
   @MockitoBean private UserService userService;
 
   @BeforeEach
@@ -111,5 +115,18 @@ class SearchControllerTest {
         .perform(get("/api/v1/search/availability").with(asTestUser()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.vectorSearch").value("AVAILABLE"));
+  }
+
+  @Test
+  void theAvailabilityNamesMissingModels() throws Exception {
+    when(embeddingIndexState.isVectorSearchAvailable()).thenReturn(true);
+    when(chatModels.hasActiveModel()).thenReturn(false);
+    when(embeddingModels.installed()).thenReturn(java.util.Optional.empty());
+
+    mockMvc
+        .perform(get("/api/v1/search/availability").with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.chatModelConfigured").value(false))
+        .andExpect(jsonPath("$.embeddingModelConfigured").value(false));
   }
 }

@@ -17,7 +17,7 @@ export const STEP_INFO: Record<InstallationStepId, StepInfo> = {
   FIRST_ADMIN: { label: 'Erstes Konto', laterUnder: 'Benutzer' },
   SIGN_IN: { label: 'Anmeldeverfahren', laterUnder: 'Identitätsanbieter' },
   CHAT_MODEL: { label: 'Chat-Modell', laterUnder: 'Modelle' },
-  EMBEDDING_MODEL: { label: 'Embedding-Modell', laterUnder: null },
+  EMBEDDING_MODEL: { label: 'Embedding-Modell', laterUnder: 'Modelle' },
   MAIL: { label: 'E-Mail-Versand', laterUnder: 'E-Mail' },
 }
 
@@ -30,12 +30,12 @@ export function viewOrder(state: InstallationStatusResponse): WizardView[] {
 }
 
 /**
- * Where a reopened assistant continues: the first mandatory step whose check is still owed,
- * otherwise the summary. Optional steps are not revisited on their own - skipping one is not
- * stored, and they stay reachable from the step list.
+ * Where a reopened assistant continues: the first step whose check is still owed - a mandatory one,
+ * or an optional one with saved values -, otherwise the summary. An optional step never saved is
+ * not revisited on its own - skipping one is not stored, and it stays reachable from the step list.
  */
 export function resumeView(state: InstallationStatusResponse): WizardView {
-  return state.steps.find((s) => s.mandatory && !s.checked)?.step ?? 'SUMMARY'
+  return openSteps(state)[0]?.step ?? 'SUMMARY'
 }
 
 /** The view after `current`; the summary is the last one. */

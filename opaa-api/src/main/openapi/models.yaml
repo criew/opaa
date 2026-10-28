@@ -239,7 +239,8 @@ paths:
       summary: Probe a draft of the embedding model and preview its change (system admin only)
       description: >
         Embeds fixed probe texts with the draft and compares the vectors with the reference anchor
-        of the installed model. kind ENDPOINT_CHANGE means the same model at another endpoint,
+        of the installed model. kind INITIAL means no model is installed yet, the draft becomes the
+        first one without a preview. kind ENDPOINT_CHANGE means the same model at another endpoint,
         changeable without a re-embedding; MODEL_CHANGE comes with a preview - chunks, estimated
         tokens, duration from a throughput probe with artificial texts, and storage. No content of
         a library reaches the draft's endpoint, nothing is stored and nothing is audited. apiKey
@@ -279,8 +280,10 @@ paths:
         re-embedding in one transaction. The vector search is suspended from now until the switch;
         after the switch the previous vectors are gone. Refused while another change waits for its
         switch, while the instances run different versions, or when the vector table stays locked
-        (409, can be repeated). A running refill ends. Recorded in the audit log as
-        EMBEDDING_MODEL_CHANGED.
+        (409, can be repeated). A running refill ends. Without an installed model the draft becomes
+        the first one: the vector table of its size, the model and the index record are created in
+        one transaction under the same lock and version check, nothing is re-embedded, and a model
+        installed meanwhile answers 409. Recorded in the audit log as EMBEDDING_MODEL_CHANGED.
       requestBody:
         required: true
         content:
@@ -969,7 +972,8 @@ components:
       type: object
       description: >
         The installed embedding model, never with its key - see
-        docs/features/embedding-model-change.md for how it changes.
+        docs/features/embedding-model-change.md for how it changes. Without an installed model
+        model is null and dimensions 0; the first one is set through probe and change.
       required: [provider, model, dimensions]
       properties:
         provider:
@@ -978,10 +982,12 @@ components:
           example: ollama
         model:
           type: string
+          nullable: true
+          description: The model identifier; null while no embedding model is installed.
           example: nomic-embed-text
         dimensions:
           type: integer
-          description: Vector dimensionality of the configured pgvector store.
+          description: Vector dimensionality of the configured pgvector store; 0 without a model.
           example: 1536
         baseUrl:
           type: string
@@ -1052,7 +1058,9 @@ components:
       description: >
         MODEL_CHANGE - another model, size or version; changing it re-embeds every chunk.
         ENDPOINT_CHANGE - the installed model at another endpoint; it changes without a re-embedding.
-      enum: [MODEL_CHANGE, ENDPOINT_CHANGE]
+        INITIAL - no embedding model is installed yet; confirming sets this one as the first and
+        creates the vector table, with nothing to re-embed.
+      enum: [MODEL_CHANGE, ENDPOINT_CHANGE, INITIAL]
 
     EmbeddingModelProbeResponse:
       type: object

@@ -3,14 +3,18 @@ package io.opaa.llm;
 import io.opaa.common.ServiceUnavailableException;
 
 /**
- * Thrown by every use of the embedding model before one is installed, so indexing, search and chat
- * are refused with {@code 503} instead of reaching a vector table that does not exist yet. The
- * message tells a pending installation from a completed one without a model.
+ * Thrown by every use of the embedding model before one is installed, so indexing, upload and
+ * search are refused with {@code 503} and {@link #CODE} instead of reaching a vector table that
+ * does not exist yet. A regular state, not an outage: an installation may skip its embedding model
+ * and set it later in the model administration. The message tells a pending installation from that.
  */
 public class EmbeddingModelNotInstalledException extends ServiceUnavailableException {
 
+  /** The {@code code} of the response; the chat and the library pages show their notice for it. */
+  public static final String CODE = "EMBEDDING_MODEL_NOT_CONFIGURED";
+
   private EmbeddingModelNotInstalledException(String message) {
-    super(message);
+    super(message, CODE);
   }
 
   /** The installation is still pending; its step chooses the model. */
@@ -20,10 +24,10 @@ public class EmbeddingModelNotInstalledException extends ServiceUnavailableExcep
             + " Installation ab.");
   }
 
-  /** The installation is completed but has no model; the start-up log names the remedy. */
+  /** The installation is completed without an embedding model; the administration sets one. */
   static EmbeddingModelNotInstalledException afterInstallation() {
     return new EmbeddingModelNotInstalledException(
-        "Diese Installation hat kein Embedding-Modell; Indexierung und Suche sind deshalb"
-            + " gesperrt. Ursache und Abhilfe nennt das Protokoll des Starts.");
+        "Es ist noch kein Embedding-Modell eingerichtet; Indexierung, Upload und Suche stehen erst"
+            + " danach bereit. Die Systemverwaltung legt es unter Modelle → Einbettung fest.");
   }
 }

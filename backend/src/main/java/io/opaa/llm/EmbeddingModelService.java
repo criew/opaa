@@ -120,6 +120,34 @@ public class EmbeddingModelService {
   }
 
   /**
+   * Whether the vector table holds chunks although no embedding model is installed: a restored or
+   * damaged database, an error the start and the health report - unlike a missing or empty table,
+   * the regular state before the first model.
+   */
+  public boolean chunksWithoutModel() {
+    return installed().isEmpty() && vectorTable.exists() && vectorTable.hasRows();
+  }
+
+  /**
+   * Refuses a use of the embedding model before one is installed, before anything is written: an
+   * indexing run, an upload or a search.
+   *
+   * @throws EmbeddingModelNotInstalledException while no embedding model is installed
+   */
+  public void requireInstalled() {
+    if (installed().isEmpty()) {
+      throw notInstalled();
+    }
+  }
+
+  /** The refusal of a use before an embedding model is installed, as the installation stands. */
+  EmbeddingModelNotInstalledException notInstalled() {
+    return installationStatus.isPending()
+        ? EmbeddingModelNotInstalledException.pending()
+        : EmbeddingModelNotInstalledException.afterInstallation();
+  }
+
+  /**
    * Embeds the texts of {@link EmbeddingAnchor#TEXTS} with {@code endpoint} and reports the vector
    * size and the vectors it returned. A failure is a result, never an exception; the message names
    * what to check. Call it outside any transaction: it waits for the network.
@@ -163,6 +191,19 @@ public class EmbeddingModelService {
    */
   @Transactional
   public EmbeddingModelSettings install(EmbeddingEndpoint endpoint, int dimensions) {
+    return install(endpoint, dimensions, generations.next(), null);
+  }
+
+  /**
+   * {@link #install(EmbeddingEndpoint, int)} under {@code generation} and with the reference anchor
+   * of its probe, or {@code null} for the anchor to be taken from the first embedding.
+   *
+   * @throws ConflictException when an embedding model is installed already, or when a vector table
+   *     of another size holds chunks
+   */
+  @Transactional
+  public EmbeddingModelSettings install(
+      EmbeddingEndpoint endpoint, int dimensions, long generation, float[] anchor) {
     vectorTable.lockSchemaChanges();
     if (repository.findInstalled().isPresent()) {
       throw new ConflictException("Das Embedding-Modell ist bereits eingerichtet.");
@@ -180,7 +221,7 @@ public class EmbeddingModelService {
       vectorTable.dropEmpty();
     }
     vectorTable.createIfAbsent(dimensions);
-    return store(endpoint, dimensions, generations.next());
+    return store(endpoint, dimensions, generation, anchor);
   }
 
   /**
@@ -242,7 +283,7 @@ public class EmbeddingModelService {
     if (dimensions == null) {
       return false;
     }
-    store(endpoint, dimensions, generation);
+    store(endpoint, dimensions, generation, null);
     log.info(
         "Installed the embedding model '{}' of the dev mode at {} ({} dimensions) into"
             + " embedding_model",
@@ -317,11 +358,11 @@ public class EmbeddingModelService {
   }
 
   /**
-   * Stores the model without a reference anchor; the anchor is taken from the installed endpoint
-   * right after ({@link EmbeddingAnchorRecorder}), since the installation step keeps only the size.
+   * Stores the model; without {@code anchor} the anchor is taken from the installed endpoint right
+   * after ({@link EmbeddingAnchorRecorder}), since the installation step keeps only the size.
    */
   private EmbeddingModelSettings store(
-      EmbeddingEndpoint endpoint, int dimensions, long generation) {
+      EmbeddingEndpoint endpoint, int dimensions, long generation, float[] anchor) {
     EmbeddingModelSettings settings =
         repository.save(
             new EmbeddingModelSettings(
@@ -332,7 +373,7 @@ public class EmbeddingModelService {
                 dimensions,
                 clock.instant(),
                 generation,
-                null));
+                anchor));
     events.publishEvent(new EmbeddingModelInstalledEvent(endpoint.modelIdentifier(), dimensions));
     return settings;
   }

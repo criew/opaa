@@ -10,13 +10,14 @@ public enum InstallationStep {
   FIRST_ADMIN(true),
   /** Local accounts only, or additionally an OIDC identity provider as the default provider. */
   SIGN_IN(true),
-  /** The active chat model. */
-  CHAT_MODEL(true),
+  /** The active chat model; optional, the model administration sets it later. */
+  CHAT_MODEL(false),
   /**
    * The embedding model; its check is a probe embedding, whose vector size the completion creates
-   * the vector table with (ADR-0060, Entscheidung 10).
+   * the vector table with (ADR-0060, Entscheidung 10). Optional: without it there is no vector
+   * table until the model administration sets the first model (ADR-0061).
    */
-  EMBEDDING_MODEL(true),
+  EMBEDDING_MODEL(false),
   /**
    * The mail server, optional: the completion stores it and switches sending on; skipped, sending
    * stays off (ADR-0033, Entscheidung 10).

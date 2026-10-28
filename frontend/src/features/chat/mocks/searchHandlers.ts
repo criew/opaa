@@ -8,5 +8,11 @@ export const searchHandlers = [
   http.get('/api/v1/search/metadata-filter-options', () =>
     HttpResponse.json(mockMetadataFilterOptions),
   ),
-  http.get('/api/v1/search/availability', () => HttpResponse.json({ vectorSearch: 'AVAILABLE' })),
+  http.get('/api/v1/search/availability', () =>
+    HttpResponse.json({
+      vectorSearch: 'AVAILABLE',
+      chatModelConfigured: true,
+      embeddingModelConfigured: true,
+    }),
+  ),
 ]

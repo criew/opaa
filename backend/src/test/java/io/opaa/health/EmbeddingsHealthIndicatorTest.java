@@ -41,15 +41,28 @@ class EmbeddingsHealthIndicatorTest {
   }
 
   @Test
-  void aMissingModelIsUnknownWhilePendingAndDownOnceInstalled() {
+  void aMissingModelIsUnknownAndNotConfiguredAlsoAfterTheInstallation() {
     EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
     when(embeddingModel.embed(anyString()))
         .thenThrow(mock(EmbeddingModelNotInstalledException.class));
     EmbeddingsHealthIndicator indicator = new EmbeddingsHealthIndicator(embeddingModel, models);
 
-    when(models.missingAfterInstallation()).thenReturn(false);
-    assertThat(indicator.health().getStatus()).isEqualTo(Status.UNKNOWN);
-    when(models.missingAfterInstallation()).thenReturn(true);
-    assertThat(indicator.health().getStatus()).isEqualTo(Status.DOWN);
+    Health health = indicator.health();
+
+    assertThat(health.getStatus()).isEqualTo(Status.UNKNOWN);
+    assertThat(health.getDetails()).containsEntry("embeddingModel", "NOT_CONFIGURED");
+  }
+
+  @Test
+  void chunksWithoutAModelRowAreDown() {
+    EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
+    when(embeddingModel.embed(anyString()))
+        .thenThrow(mock(EmbeddingModelNotInstalledException.class));
+    when(models.chunksWithoutModel()).thenReturn(true);
+
+    Health health = new EmbeddingsHealthIndicator(embeddingModel, models).health();
+
+    assertThat(health.getStatus()).isEqualTo(Status.DOWN);
+    assertThat(health.getDetails()).containsEntry("embeddingModel", "MISSING_WITH_CHUNKS");
   }
 }

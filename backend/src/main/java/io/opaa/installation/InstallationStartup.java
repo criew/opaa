@@ -23,7 +23,8 @@ import tools.jackson.databind.json.JsonMapper;
  * to the register and before the web server starts, it completes a due installation, applies the
  * answer file or stores the token, printing a generated one once. The {@code dev} mode installs
  * itself, its embedding model included, before the index reconciliation of the next phase. Only a
- * completed installation runs {@code OPAA_LOCAL_ADMIN_RESET}.
+ * completed installation runs {@code OPAA_LOCAL_ADMIN_RESET}. A completed installation without a
+ * chat or embedding model is a regular state; the model administration sets them later.
  */
 @Component
 class InstallationStartup implements SmartLifecycle {
@@ -95,12 +96,17 @@ class InstallationStartup implements SmartLifecycle {
       if (!embeddingModels.adoptIfMissing()
           && !DEV_MODE.equals(authProperties.mode())
           && embeddingModels.missingAfterInstallation()) {
-        log.error(
-            "The installation is completed but has no embedding model, so indexing and search are"
-                + " refused. No embedding model is taken over from the environment: set the"
-                + " database up anew and install, or, for a database of a development state from"
-                + " before the embedding model was stored, start once with a state that took it"
-                + " over (docs/handbuch/betrieb/modelle.md, \"Fehlerbilder\")");
+        if (embeddingModels.chunksWithoutModel()) {
+          log.error(
+              "The vector table holds chunks but no embedding model is installed: they belong to"
+                  + " a model nobody knows, and the model administration refuses a first model"
+                  + " over them. Restore the model row from the backup the chunks come from, or"
+                  + " set the database up anew (docs/handbuch/betrieb/modelle.md, \"Fehlerbilder\")");
+        } else {
+          log.info(
+              "No embedding model is set up yet: indexing, upload and search answer with a notice"
+                  + " until a SYSTEM_ADMIN sets one in the model administration (tab Einbettung)");
+        }
       }
     }
     providerRegistry.refresh();

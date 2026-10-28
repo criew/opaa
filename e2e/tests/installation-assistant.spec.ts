@@ -9,13 +9,17 @@ import { clearMailbox, mailCount, waitForMail } from '../fixtures/mailpit'
  * OPAA_INSTALLATION_TOKEN and passed here as E2E_INSTALLATION_TOKEN, ai-stub:8089 on
  * OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST, mailpit:1025 on OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST.
  * Every scenario of this file needs a fresh database, as completing ends the installation mode for
- * good: the runner starts one stack per tag (@mail-skipped, @mail-filled).
+ * good: the runner starts one stack per tag (@mail-skipped, @mail-filled). The @mail-skipped scenario
+ * also skips both optional model steps, signs in with the first account, meets the notices of the
+ * chat and sets the first chat and embedding model in the model administration (ADR-0061,
+ * Entscheidung 8); the @mail-filled one checks both models in the assistant.
  */
 const INSTALLATION_TOKEN = process.env.E2E_INSTALLATION_TOKEN ?? ''
 const CHAT_MODEL_URL = 'http://ai-stub:8089'
 const ADMIN_EMAIL = 'it-betrieb@stadt.example'
 const ADMIN_PASSWORD = 'E2e-Installation-Passwort-2026'
 const TEST_RECIPIENT = 'it-betrieb@stadt.example'
+const FIRST_CHAT_MODEL = 'Chat-Modell nach der Installation'
 
 if (INSTALLATION_TOKEN === '') {
   throw new Error('E2E_INSTALLATION_TOKEN is not set: run the target "installation" of run-e2e.mjs')
@@ -28,6 +32,17 @@ async function enterToken(page: Page, token: string) {
 
 async function submitStep(page: Page) {
   await page.getByRole('button', { name: 'Prüfen und weiter' }).click()
+}
+
+/**
+ * Skips the open optional step and waits until the assistant shows the next one: skipping goes
+ * through the API, so the view changes only after its answer.
+ */
+async function skipStep(page: Page) {
+  const progress = page.getByText(/^Schritt \d+ von \d+$/)
+  const before = (await progress.textContent()) ?? ''
+  await page.getByRole('button', { name: 'Überspringen' }).click()
+  await expect(progress).not.toHaveText(before)
 }
 
 function stepHeading(page: Page, name: string) {
@@ -70,8 +85,8 @@ async function expectStepEdgesFlushAlsoNarrow(page: Page) {
   if (viewport) await page.setViewportSize(viewport)
 }
 
-/** The four mandatory steps with local accounts only, the shortest way to the optional ones. */
-async function completeMandatorySteps(page: Page) {
+/** Both mandatory steps with local accounts only and both model steps checked, up to the mail step. */
+async function completeStepsUpToMail(page: Page) {
   await page.goto('/installation')
   await enterToken(page, INSTALLATION_TOKEN)
   await expect(stepHeading(page, 'Erstes Konto')).toBeVisible()
@@ -95,7 +110,7 @@ async function completeMandatorySteps(page: Page) {
 
 test.describe('Einrichtungs-Assistent', () => {
   test(
-    'führt vom Token bis zum Abschluss, setzt nach Neuladen fort und überspringt den E-Mail-Versand',
+    'führt vom Token bis zum Abschluss, setzt nach Neuladen fort, überspringt Modelle und E-Mail-Versand und legt die Modelle danach fest',
     {
       tag: '@mail-skipped',
     },
@@ -145,17 +160,13 @@ test.describe('Einrichtungs-Assistent', () => {
       await expect(page.getByText(/bietet keine Modellliste an/)).toBeVisible()
       await expectNoSeriousA11yViolations(page, 'Einrichtung: Chat-Modell ohne Modellliste')
       await expectStepEdgesFlush(page)
-      await page.getByLabel('Modell-Kennung').fill('ai-stub')
-      await submitStep(page)
-      await expect(stepHeading(page, 'Chat-Modell')).toBeHidden()
-
-      // The probe embedding against the stub decides the vector size the completion creates.
+      // Both model steps are optional: an installation whose model endpoint is not released yet
+      // skips them, and the entered address is discarded unsaved.
+      await expect(page.getByText('Optional · später unter Modelle')).toBeVisible()
+      await skipStep(page)
       await expect(stepHeading(page, 'Embedding-Modell')).toBeVisible()
       await expectStepEdgesFlush(page)
-      await page.getByLabel('Basis-Adresse').fill(CHAT_MODEL_URL)
-      await page.getByLabel('Modell-Kennung').fill('ai-stub-embedding')
-      await submitStep(page)
-      await expect(stepHeading(page, 'Embedding-Modell')).toBeHidden()
+      await skipStep(page)
 
       // The optional mail step says so and is skipped; sending stays off.
       await expect(stepHeading(page, 'E-Mail-Versand')).toBeVisible()
@@ -170,6 +181,9 @@ test.describe('Einrichtungs-Assistent', () => {
       // The skip goes through the API; the summary follows once it is recorded.
       await expect(stepHeading(page, 'Abschluss')).toBeVisible()
       await expect(page.getByText(/Der E-Mail-Versand bleibt aus/)).toBeVisible()
+      const summary = page.getByRole('list', { name: 'Stand der Schritte' })
+      await expect(summary.getByText('Nicht eingerichtet')).toHaveCount(3)
+      await expect(page.getByText(/Übersprungen: Chat-Modell, Embedding-Modell\./)).toBeVisible()
       await expectNoSeriousA11yViolations(page, 'Einrichtung: Abschluss')
       // At 320 px the forward action wraps below the back button and keeps the right edge.
       await expectStepEdgesFlushAlsoNarrow(page)
@@ -186,7 +200,51 @@ test.describe('Einrichtungs-Assistent', () => {
       await signIn.getByLabel('E-Mail-Adresse').fill(ADMIN_EMAIL)
       await signIn.getByLabel('Passwort', { exact: true }).fill(ADMIN_PASSWORD)
       await signIn.getByRole('button', { name: 'Anmelden' }).click()
-      await expect(page).toHaveURL(/\/chat/, { timeout: 20_000 })
+      await expect(page).toHaveURL(/\/chats\/new/, { timeout: 20_000 })
+
+      // Without models the chat says so, and leads the system administration to them.
+      await expect(page.getByText(/Noch kein Chat-Modell eingerichtet/)).toBeVisible()
+      await expect(page.getByText(/Noch kein Embedding-Modell eingerichtet/)).toBeVisible()
+      await expectNoSeriousA11yViolations(page, 'Chat ohne Modelle')
+      await page.getByRole('link', { name: 'Chat-Modell einrichten' }).click()
+      await expect(page).toHaveURL(/\/admin\/models\/chat$/)
+      await expect(page.getByText(/noch kein Chat-Modell aktiv/)).toBeVisible()
+
+      // The first chat model, created and activated without a restart.
+      await page.getByRole('button', { name: 'Neues Modell' }).click()
+      const dialog = page.getByRole('dialog')
+      await dialog.getByLabel('Anzeigename', { exact: false }).fill(FIRST_CHAT_MODEL)
+      await dialog.getByLabel('Basis-Adresse', { exact: false }).fill(CHAT_MODEL_URL)
+      await dialog.getByLabel('Modell-Kennung', { exact: false }).fill('ai-stub')
+      await dialog.getByRole('button', { name: 'Anlegen' }).click()
+      await expect(dialog).toBeHidden()
+      const row = page.getByRole('row', { name: new RegExp(FIRST_CHAT_MODEL) })
+      await row.getByRole('button', { name: `Aktionen für „${FIRST_CHAT_MODEL}“` }).click()
+      await page
+        .getByRole('menu', { name: `Aktionen für „${FIRST_CHAT_MODEL}“` })
+        .getByRole('menuitem', { name: 'Aktiv setzen' })
+        .click()
+      await expect(row.getByText('Aktiv', { exact: true })).toBeVisible()
+
+      // The first embedding model: probe, then the vector table of its size, no re-embedding.
+      await page.goto('/admin/models/embedding')
+      await expect(page.getByText(/noch kein Embedding-Modell eingerichtet/)).toBeVisible()
+      await page.getByLabel('Basis-Adresse', { exact: false }).fill(CHAT_MODEL_URL)
+      await page.getByLabel('Modell-Kennung', { exact: false }).fill('ai-stub-embedding')
+      await page.getByRole('button', { name: 'Probeeinbettung' }).click()
+      await page.getByRole('button', { name: 'Embedding-Modell festlegen' }).click()
+      await page.getByRole('dialog').getByRole('button', { name: 'Festlegen' }).click()
+      await expect(page.getByRole('table', { name: 'Einbettungsmodell' })).toContainText(
+        'ai-stub-embedding',
+      )
+
+      // Both models set, the chat shows no notice any more once it has read the availability.
+      await Promise.all([
+        page.waitForResponse((response) => response.url().endsWith('/api/v1/search/availability')),
+        page.goto('/chat'),
+      ])
+      await expect(page.getByRole('heading', { level: 1, name: 'Neuer Chat' })).toBeVisible()
+      await expect(page.getByText(/Noch kein (Chat|Embedding)-Modell eingerichtet/)).toHaveCount(0)
     },
   )
 
@@ -197,7 +255,7 @@ test.describe('Einrichtungs-Assistent', () => {
     },
     async ({ page }) => {
       await clearMailbox()
-      await completeMandatorySteps(page)
+      await completeStepsUpToMail(page)
 
       await expect(stepHeading(page, 'E-Mail-Versand')).toBeVisible()
       await expectStepEdgesFlushAlsoNarrow(page)

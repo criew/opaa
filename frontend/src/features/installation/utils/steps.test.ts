@@ -53,6 +53,15 @@ describe('installation steps', () => {
       step('SIGN_IN', false),
     ])
     expect(openSteps(installation).map((s) => s.step)).toEqual(['CHAT_MODEL'])
+  })
+
+  it('names a saved optional step whose check is owed, but not a skipped one', () => {
+    const installation = state([
+      step('FIRST_ADMIN', true, true, true),
+      step('CHAT_MODEL', false, true, false, 'Verbindung abgelehnt'),
+      step('EMBEDDING_MODEL', false),
+    ])
+    expect(openSteps(installation).map((s) => s.step)).toEqual(['CHAT_MODEL'])
     const failedMail = state([
       step('FIRST_ADMIN', true, true, true),
       step('MAIL', false, true, false, 'Verbindung abgelehnt'),

@@ -37,7 +37,8 @@ import {
  *   `fieldErrors`) and discards the step's check,
  * - a check answers 200 either way; for addresses containing {@link MOCK_UNREACHABLE_MARKER} it
  *   reports `checked: false` with a `checkMessage`,
- * - a check of the mail step takes a test recipient; skipping an optional step discards it,
+ * - a check of the mail step takes a test recipient; skipping an optional step discards it and a
+ *   mandatory one is refused (400),
  * - completing refuses (409) while a mandatory step or a saved optional step is unchecked.
  */
 const BASE = '/api/v1/installation'
@@ -248,6 +249,8 @@ export const installationHandlers = [
       saved: false,
       checked: false,
       checkMessage: null,
+      chatModel: undefined,
+      embeddingModel: undefined,
       mail: undefined,
     })
     return HttpResponse.json(findStep(step.step))
@@ -269,7 +272,12 @@ export const installationHandlers = [
     const refused = refusal(request)
     if (refused) return refused
     const state = mockInstallationState()
-    if (!state.completable) return error(409, 'Es sind noch nicht alle Pflichtschritte geprüft.')
+    if (!state.completable) {
+      return error(
+        409,
+        'Es sind noch nicht alle Pflichtschritte und ausgefüllten Schritte geprüft.',
+      )
+    }
     completeMockInstallation()
     return HttpResponse.json({ ...state, pending: false })
   }),

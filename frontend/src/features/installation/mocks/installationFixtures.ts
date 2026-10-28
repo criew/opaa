@@ -28,12 +28,12 @@ function initialSteps(withEmbedding = false): InstallationStepState[] {
   const steps: InstallationStepState[] = [
     { step: 'FIRST_ADMIN', mandatory: true, saved: false, checked: false },
     { step: 'SIGN_IN', mandatory: true, saved: false, checked: false },
-    { step: 'CHAT_MODEL', mandatory: true, saved: false, checked: false },
+    { step: 'CHAT_MODEL', mandatory: false, saved: false, checked: false },
   ]
   return withEmbedding
     ? [
         ...steps,
-        { step: 'EMBEDDING_MODEL', mandatory: true, saved: false, checked: false },
+        { step: 'EMBEDDING_MODEL', mandatory: false, saved: false, checked: false },
         MAIL_STEP,
       ]
     : [...steps, MAIL_STEP]

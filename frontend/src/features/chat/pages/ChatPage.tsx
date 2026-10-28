@@ -11,7 +11,7 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import MessageList from '../components/MessageList'
 import ChatInput from '../components/ChatInput'
-import LimitedSearchNotice from '../components/LimitedSearchNotice'
+import SearchAvailabilityNotice from '../components/SearchAvailabilityNotice'
 import ConversationNote from '../components/ConversationNote'
 import SpaceInstruction from '../components/SpaceInstruction'
 import { isConversationNoteVisible } from '../components/conversationNoteVisibility'
@@ -361,7 +361,7 @@ export default function ChatPage() {
         isLoading={isLoading}
         targetMessageId={targetMessageId}
       />
-      <LimitedSearchNotice />
+      <SearchAvailabilityNotice />
       <ChatInput
         onSend={(message, usedPrompt) => sendMessage(message, usedPrompt)}
         answerPending={isLoading}

@@ -28,10 +28,16 @@ public class FullTextIndexFillStateService {
 
   private final JdbcTemplate jdbcTemplate;
   private final String vectorStoreTable;
+  private final VectorTable vectorTable;
 
+  /**
+   * Without a vector table - before the first embedding model - there is no chunk on either side,
+   * since both stores are written together; every library then has the zero state.
+   */
   public FullTextIndexFillStateService(JdbcTemplate jdbcTemplate, VectorTable vectorTable) {
     this.jdbcTemplate = jdbcTemplate;
     this.vectorStoreTable = vectorTable.qualifiedName();
+    this.vectorTable = vectorTable;
   }
 
   /**
@@ -41,6 +47,9 @@ public class FullTextIndexFillStateService {
    * is filtered by {@code metadata->>'library_id'}, backed by its own expression index.
    */
   public FullTextIndexFillState fillStateForLibrary(UUID libraryId) {
+    if (!vectorTable.existsIn(jdbcTemplate)) {
+      return new FullTextIndexFillState(libraryId, 0, 0, 0);
+    }
     String chunkStillPresent = chunkStillPresent(vectorStoreTable);
     String sql =
         "SELECT "
@@ -76,7 +85,7 @@ public class FullTextIndexFillStateService {
    */
   public List<FullTextIndexFillState> fillStateForLibraries(Collection<UUID> libraryIds) {
     Set<UUID> distinct = new LinkedHashSet<>(libraryIds);
-    if (distinct.isEmpty()) {
+    if (distinct.isEmpty() || !vectorTable.existsIn(jdbcTemplate)) {
       return List.of();
     }
     String chunkStillPresent = chunkStillPresent(vectorStoreTable);

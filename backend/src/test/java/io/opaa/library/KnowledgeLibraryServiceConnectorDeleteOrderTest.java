@@ -117,12 +117,14 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
         mock(AssetVisibilityHistoryService.class);
     AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
     vectorStore = mock(VectorStore.class);
+    VectorStoreWriter vectorStoreWriter = mock(VectorStoreWriter.class);
+    when(vectorStoreWriter.tableExists()).thenReturn(true);
     VectorChunkStore vectorChunkStore =
         new VectorChunkStore(
             vectorStore,
             mock(org.springframework.ai.embedding.EmbeddingModel.class),
             mock(org.springframework.ai.embedding.BatchingStrategy.class),
-            mock(VectorStoreWriter.class),
+            vectorStoreWriter,
             mock(FullTextChunkStore.class),
             new EmbeddingRateEstimator(4.0),
             2048);

@@ -93,7 +93,7 @@ export default function ChatModelStep({
       title={STEP_INFO.CHAT_MODEL.label}
       mandatory={step.mandatory}
       laterUnder={STEP_INFO.CHAT_MODEL.laterUnder}
-      description="Das Modell, das im Chat antwortet. OPAA spricht es über eine OpenAI-kompatible Schnittstelle an, etwa Ollama, vLLM oder einen Cloud-Anbieter. Die Prüfung ist ein Verbindungstest."
+      description="Das Modell, das im Chat antwortet. OPAA spricht es über eine OpenAI-kompatible Schnittstelle an, etwa Ollama, vLLM oder einen Cloud-Anbieter. Die Prüfung ist ein Verbindungstest. Ohne Chat-Modell beantwortet der Chat keine Fragen, bis die Systemverwaltung eines unter Modelle anlegt."
       failure={form.failure}
       busy={form.busy}
       busyAnnouncement="Verbindung zum Modell wird geprüft"

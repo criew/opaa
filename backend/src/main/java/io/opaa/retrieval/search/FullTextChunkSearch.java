@@ -105,6 +105,10 @@ public class FullTextChunkSearch {
     if (libraryIds.isEmpty() || limit <= 0) {
       return FullTextSearchResult.empty();
     }
+    // before the first embedding model there is no vector table and therefore no chunk
+    if (!vectorTable.existsIn(jdbcTemplate)) {
+      return FullTextSearchResult.empty();
+    }
     List<String> wordTokens = wordTokens(question);
     FullTextIdentifiers.Lexemes lexemes = FullTextIdentifiers.analyze(question);
     if (wordTokens.isEmpty() && lexemes.all().isEmpty()) {

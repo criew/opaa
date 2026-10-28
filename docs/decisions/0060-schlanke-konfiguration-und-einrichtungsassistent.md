@@ -73,22 +73,26 @@ Begründung: Ohne Token übernähme die Installation, wer die Adresse zuerst auf
 ### 6. Installations-API: Schritte, Pflicht und optional, Abschluss unter Sperre
 
 Die Installations-API speichert jeden Schritt einzeln; ein Abbruch setzt an derselben Stelle fort.
-Pflichtschritte sind erstes Systemverwaltungskonto, Anmeldeverfahren, Chat-Modell und
-Embedding-Modell, jeweils mit erfolgreicher Prüfung (Verbindungstest, Probeeinbettung). Alle übrigen
-Schritte sind optional und später in der Verwaltung erreichbar, heute der E-Mail-Versand. Ein
-optionaler Schritt wird übersprungen, indem die API seinen Zwischenstand verwirft; das ist ein
-Revisionsereignis. Ein übersprungener optionaler Schritt hält den Abschluss nicht auf, ein
-gespeicherter erst, wenn seine Prüfung gelungen ist: Der Abschluss übernimmt nie ungeprüfte Werte.
-Der Abschluss ist eine Transaktion unter einem Advisory-Lock und gelingt nur, wenn jeder
-Pflichtschritt und jeder gespeicherte optionale Schritt geprüft ist. Ein geprüfter E-Mail-Versand geht
-mit den Regeln der Mail-Verwaltung in deren Einstellungen über und schaltet den Versand ein; ohne ihn
-bleibt der Versand aus. Danach antwortet
-jede Operation der Installations-API `404`, auf jeder Instanz. Begründung für `404`: Der Endpunkt
-verrät nach dem Abschluss nicht, dass es ihn gibt, wie der MCP-Endpunkt bei geschlossenem Kanal.
+Pflichtschritte sind erstes Systemverwaltungskonto und Anmeldeverfahren, jeweils mit erfolgreicher
+Prüfung. Alle übrigen Schritte sind optional und später in der Verwaltung erreichbar: Chat-Modell,
+Embedding-Modell und E-Mail-Versand. Ein optionaler Schritt wird übersprungen, indem die API seinen
+Zwischenstand samt Prüfung verwirft (`POST …/skip`); das ist ein Revisionsereignis. Ein
+übersprungener optionaler Schritt hält den Abschluss nicht auf, ein gespeicherter erst, wenn seine
+Prüfung gelungen ist (Verbindungstest, Probeeinbettung, Verbindung zum Mailserver): Der Abschluss
+übernimmt nie ungeprüfte Werte. Der Abschluss ist eine Transaktion unter einem Advisory-Lock und
+gelingt nur, wenn jeder Pflichtschritt und jeder gespeicherte optionale Schritt geprüft ist. Ein
+übersprungener Modellschritt legt kein Modell an. Ein geprüfter E-Mail-Versand geht mit den Regeln
+der Mail-Verwaltung in deren Einstellungen über und schaltet den Versand ein; ohne ihn bleibt der
+Versand aus. Danach antwortet jede Operation der Installations-API `404`, auf jeder Instanz.
+Begründung für die optionalen Modellschritte: Oft steht der Modellendpunkt bei der Installation noch
+nicht bereit, etwa weil der Betrieb ihn erst freischaltet; Konten, Anmeldung und Verwaltung brauchen
+ihn nicht. Begründung für `404`: Der Endpunkt verrät nach dem Abschluss nicht, dass es ihn gibt, wie
+der MCP-Endpunkt bei geschlossenem Kanal.
 
 ### 7. Antwortdatei: Installation ohne Browser
 
-Eine Antwortdatei (JSON) enthält dieselben Angaben wie die Schritte des Assistenten. Sie wird auf
+Eine Antwortdatei (JSON) enthält dieselben Angaben wie die Schritte des Assistenten; fehlt ein
+optionaler Teil (`chatModel`, `embeddingModel`, `mail`), ist sein Schritt übersprungen. Sie wird auf
 zwei Wegen angenommen, mit derselben Prüfung: über die Installations-API mit dem Token, oder beim
 Start aus der Datei unter `OPAA_INSTALLATION_ANSWER_FILE`, wenn die Installation noch nicht
 abgeschlossen ist. In der Datei stehen Geheimnisse (Passwort des ersten Kontos, Modellschlüssel,
@@ -139,9 +143,11 @@ erreichbar wird.
 
 Chat-, Embedding-, Rerank- und Transkriptionsmodell sind Einträge der Modellverwaltung; ihre Adressen,
 Schlüssel und Modellnamen kommen nicht mehr aus der Konfiguration, ihre Timeouts und Lastgrenzen
-schon. `vector_store` entsteht nicht in der Migration, sondern beim Abschluss der Installation,
-unter dem Advisory-Lock aus Entscheidung 6 und mit der Dimension, die die Probeeinbettung des
-gewählten Modells liefert. `OPAA_PGVECTOR_DIMENSIONS` entfällt. Die knowledge-Baseline legt
+schon. `vector_store` entsteht nicht in der Migration, sondern mit dem Embedding-Modell: beim
+Abschluss der Installation, unter dem Advisory-Lock aus Entscheidung 6 und mit der Dimension, die
+die Probeeinbettung des gewählten Modells liefert, oder, wenn die Installation den Schritt
+übersprungen hat, beim Festlegen des ersten Modells in der Modellverwaltung
+([ADR-0061](0061-wechsel-des-embedding-modells.md), Entscheidung 8). `OPAA_PGVECTOR_DIMENSIONS` entfällt. Die knowledge-Baseline legt
 `vector_store` weiterhin an, weil ein ausgeführtes Skript unverändert bleibt; eine spätere Migration
 entfernt die leere Tabelle auf einer Datenbank, auf der noch keine Instanz gestartet ist. Eine
 Übernahme des Embedding-Modells aus der Umgebung gibt es nicht: Das Update von `v0.1.0-rc.4` setzt die
@@ -150,6 +156,25 @@ Nur das Profil `dev` richtet sein Embedding-Modell selbst ein (Entscheidung 7). 
 wechselt die Systemverwaltung das Embedding-Modell in der Oberfläche, mit Probeeinbettung, Vorschau
 und Neueinbettung; einen Endpunkt desselben Modells ändert sie ohne Neueinbettung
 ([ADR-0061](0061-wechsel-des-embedding-modells.md)).
+
+Eine Installation ohne Chat- oder Embedding-Modell ist ein regulärer Zustand, kein Fehler: Der
+Start schreibt keinen Fehler ins Log, nur einen Hinweis. Ohne Chat-Modell antworten Fragen, ohne
+Embedding-Modell Indexierung, Upload und Suche mit `503` und dem Code `CHAT_MODEL_NOT_CONFIGURED`
+bzw. `EMBEDDING_MODEL_NOT_CONFIGURED`, ohne Eintrag als Serverfehler im Log; ein Lauf, der nicht
+einbetten könnte, startet nicht und schreibt nichts, ein geplanter Lauf wird nicht gebucht, eine
+von einer Quelle gemeldete Änderung wird wie hinter einem laufenden Lauf zurückgestellt und verfällt
+nach deren Grenze; nach dem Festlegen deckt der nächste Lauf sie ab. Vor dem ersten Embedding-Modell
+gibt es deshalb keine Inhalte, die später eingebettet werden müssten; wer ohne Vektortabelle Abschnitte
+liest oder löscht, findet keine. Die Health Groups `chat-model`, `embedding-model` und
+`vector-store` melden `UNKNOWN` mit dem Detail `NOT_CONFIGURED`, die Readiness und die
+Gesamtgesundheit bleiben `UP`; eine eigene Metrik gibt es nicht, weil der Zustand von der Verwaltung,
+nicht vom Betrieb behoben wird. Wer überwacht, wertet dieses Detail und
+`GET /api/v1/search/availability` aus. Den Hinweis zeigen Chat und Modellverwaltung, für die
+Systemverwaltung mit dem Weg zum fehlenden Modell. Ein Fehler bleibt dagegen eine Vektortabelle mit
+Abschnitten ohne Modellzeile, etwa nach einer unvollständigen Rücksicherung: Der Start schreibt einen
+Fehler, `embedding-model` und `vector-store` melden `DOWN` mit `MISSING_WITH_CHUNKS`, und das erste
+Festlegen eines Modells wird abgelehnt ([ADR-0061](0061-wechsel-des-embedding-modells.md),
+Entscheidung 8).
 
 Jede Modelladresse, die Installation oder Modellverwaltung speichern, testen oder nach Modellen
 abfragen, prüft eine eigene Adressprüfung der Modelle mit eigenem Schalter und eigener Allowlist

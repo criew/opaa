@@ -60,6 +60,7 @@ public class PipelineReindexService {
   private final VectorChunkStore vectorChunkStore;
   private final StoredDocumentSourceAccess sourceAccess;
   private final String vectorStoreTable;
+  private final VectorTable vectorTable;
 
   public PipelineReindexService(
       JdbcTemplate jdbcTemplate,
@@ -78,6 +79,7 @@ public class PipelineReindexService {
     this.vectorChunkStore = vectorChunkStore;
     this.sourceAccess = sourceAccess;
     this.vectorStoreTable = vectorTable.qualifiedName();
+    this.vectorTable = vectorTable;
   }
 
   /**
@@ -122,8 +124,14 @@ public class PipelineReindexService {
         (long) privateLibraries.size(), null, sums[0], sums[1], sums[2]);
   }
 
-  /** Total, current and stale chunks of every library holding one, with one grouped query. */
+  /**
+   * Total, current and stale chunks of every library holding one, with one grouped query; none
+   * before the vector table exists.
+   */
   private Map<UUID, long[]> countsByLibrary(UUID organizationId) {
+    if (!vectorTable.existsIn(jdbcTemplate)) {
+      return Map.of();
+    }
     Map<String, Short> currentVersions = currentVersionsById();
     Map<String, DocumentFormat> formats = formatsById();
     String sql =
@@ -459,6 +467,9 @@ public class PipelineReindexService {
    */
   private void markPrivateRemoteChainsForNextRun(
       UUID organizationId, String pipelineId, int belowVersion) {
+    if (!vectorTable.existsIn(jdbcTemplate)) {
+      return;
+    }
     StalePredicate stale = stalePredicate(organizationId, pipelineId, belowVersion, true);
     jdbcTemplate.update(
         "WITH RECURSIVE chain(id, parent_id) AS ("
@@ -486,6 +497,9 @@ public class PipelineReindexService {
       boolean privateLibraries,
       int batchSize,
       int offset) {
+    if (!vectorTable.existsIn(jdbcTemplate)) {
+      return List.of();
+    }
     StalePredicate stale =
         stalePredicate(organizationId, pipelineId, belowVersion, privateLibraries);
     String sql =

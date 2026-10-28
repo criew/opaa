@@ -20,8 +20,9 @@ import org.springframework.boot.health.contributor.Status;
 
 class VectorStoreHealthIndicatorTest {
 
-  private final EmbeddingInfoService embeddingInfo = installed();
   private final EmbeddingModelService models = mock(EmbeddingModelService.class);
+
+  private final EmbeddingInfoService embeddingInfo = installed();
 
   @Test
   void reportsUpWhenVectorStoreIsAccessible() {
@@ -81,22 +82,21 @@ class VectorStoreHealthIndicatorTest {
     Health health = indicator.health();
 
     assertThat(health.getStatus()).isEqualTo(Status.UNKNOWN);
-    assertThat(health.getDetails()).containsEntry("embeddingModel", "NOT_INSTALLED");
+    assertThat(health.getDetails()).containsEntry("embeddingModel", "NOT_CONFIGURED");
     verifyNoInteractions(vectorStore);
   }
 
   @Test
-  void reportsDownWhenTheCompletedInstallationHasNoEmbeddingModel() {
+  void reportsUnknownAlsoWhenTheCompletedInstallationHasNoEmbeddingModel() {
     EmbeddingInfoService notInstalled = mock(EmbeddingInfoService.class);
     when(notInstalled.getEmbeddingInfo()).thenReturn(EmbeddingInfo.NOT_INSTALLED);
-    when(models.missingAfterInstallation()).thenReturn(true);
 
     assertThat(
             new VectorStoreHealthIndicator(
                     mock(VectorStore.class), new EmbeddingIndexState(), notInstalled, models)
                 .health()
                 .getStatus())
-        .isEqualTo(Status.DOWN);
+        .isEqualTo(Status.UNKNOWN);
   }
 
   private static EmbeddingInfoService installed() {

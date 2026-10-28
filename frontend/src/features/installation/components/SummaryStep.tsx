@@ -30,6 +30,13 @@ export default function SummaryStep({ installation, complete, onBack }: SummaryS
   const [failure, setFailure] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const open = openSteps(installation)
+  const skippedModels = installation.steps.filter(
+    (s) => !s.mandatory && !s.saved && (s.step === 'CHAT_MODEL' || s.step === 'EMBEDDING_MODEL'),
+  )
+  const modelSentence =
+    skippedModels.length === 0
+      ? ''
+      : ` Übersprungen: ${skippedModels.map((s) => STEP_INFO[s.step].label).join(', ')}. Ohne Chat-Modell beantwortet der Chat keine Fragen, ohne Embedding-Modell gibt es keinen Suchindex; beides legt die Systemverwaltung später unter Modelle fest.`
   const blocked = !installation.completable
   const mail = findStep(installation, 'MAIL')
   const mailSentence = !mail
@@ -59,7 +66,7 @@ export default function SummaryStep({ installation, complete, onBack }: SummaryS
             {open.length > 0 && ` Offen: ${open.map((s) => STEP_INFO[s.step].label).join(', ')}.`}
           </span>
         ) : (
-          `Alle Pflichtschritte sind geprüft. Der Abschluss legt Konto, Anmeldeverfahren und Modell an und beendet die Einrichtung; danach melden Sie sich mit dem ersten Konto an. Das Token verliert seine Gültigkeit.${mailSentence}`
+          `Alle Pflichtschritte sind geprüft. Der Abschluss legt Konto und Anmeldeverfahren an, dazu, was die geprüften optionalen Schritte festlegen, und beendet die Einrichtung; danach melden Sie sich mit dem ersten Konto an. Das Token verliert seine Gültigkeit.${modelSentence}${mailSentence}`
         )
       }
       failure={failure}

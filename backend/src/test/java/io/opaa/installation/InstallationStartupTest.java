@@ -85,7 +85,7 @@ class InstallationStartupTest {
   }
 
   @Test
-  void aCompletedInstallationWithoutAnEmbeddingModelOutsideTheDevModeNamesTheRemedy() {
+  void aCompletedInstallationWithoutAnEmbeddingModelIsARegularStateWithoutAnError() {
     when(installation.completeAtStartupIfDue(false))
         .thenReturn(new InstallationService.StartupDecision(true, null));
     when(embeddingModels.missingAfterInstallation()).thenReturn(true);
@@ -95,8 +95,11 @@ class InstallationStartupTest {
 
     assertThat(logs.list)
         .filteredOn(event -> event.getLevel() == ch.qos.logback.classic.Level.ERROR)
+        .isEmpty();
+    assertThat(logs.list)
+        .filteredOn(event -> event.getLevel() == ch.qos.logback.classic.Level.INFO)
         .extracting(ILoggingEvent::getFormattedMessage)
-        .anyMatch(message -> message.contains("has no embedding model"));
+        .anyMatch(message -> message.contains("model administration"));
   }
 
   @Test
@@ -190,7 +193,7 @@ class InstallationStartupTest {
 
     verify(installation).ensureToken(null);
     assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
-        .anyMatch(message -> message.contains("firstAdmin, signIn, chatModel und"));
+        .anyMatch(message -> message.contains("braucht die Angaben firstAdmin und signIn"));
   }
 
   @Test

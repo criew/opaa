@@ -48,6 +48,7 @@ import io.opaa.knowledge.MalwareScanService;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.knowledge.UploadedOriginalStore;
 import io.opaa.knowledge.VectorTable;
+import io.opaa.llm.EmbeddingModelService;
 import io.opaa.metadata.DocumentMetadataService;
 import io.opaa.metadata.ModelMetadataExtractor;
 import io.opaa.observability.IndexingMetrics;
@@ -90,14 +91,16 @@ public class IndexingConfiguration {
       Clock clock,
       DatabaseClock databaseClock,
       CurrentInstance currentInstance,
-      InstanceRegistry instanceRegistry) {
+      InstanceRegistry instanceRegistry,
+      EmbeddingModelService embeddingModels) {
     return new IndexingJobService(
         indexingJobRepository,
         assetRepository,
         clock,
         databaseClock,
         currentInstance,
-        instanceRegistry);
+        instanceRegistry,
+        embeddingModels);
   }
 
   @Bean

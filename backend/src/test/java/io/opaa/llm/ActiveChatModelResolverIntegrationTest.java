@@ -314,7 +314,9 @@ class ActiveChatModelResolverIntegrationTest {
   void resolvingWithoutAnActiveModelFailsWithAGermanServiceUnavailableMessage() {
     assertThatThrownBy(() -> resolver.resolveChatClient())
         .isInstanceOf(ServiceUnavailableException.class)
-        .hasMessageContaining("kein aktives Chat-Modell");
+        .hasMessageContaining("noch kein Chat-Modell eingerichtet")
+        .extracting(e -> ((ServiceUnavailableException) e).getCode())
+        .isEqualTo(NoActiveChatModelException.CODE);
   }
 
   @Test

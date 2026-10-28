@@ -10,6 +10,7 @@ import io.opaa.indexing.spi.PushNotification;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.SourceType;
+import io.opaa.llm.EmbeddingModelNotInstalledException;
 import jakarta.annotation.PreDestroy;
 import java.time.Duration;
 import java.util.Map;
@@ -47,6 +48,10 @@ public class SourceEventIntake {
 
   /** Longer than one drain takes - a few lookups and handing the run to the executor. */
   static final Duration LEASE = Duration.ofMinutes(2);
+
+  private static final String IN_PROGRESS = "a run is still in progress";
+  private static final String NO_EMBEDDING_MODEL = "no embedding model is set up";
+  private static final String NOT_CHECKED = "the library could not be checked";
 
   private static final Logger log = LoggerFactory.getLogger(SourceEventIntake.class);
 
@@ -152,6 +157,7 @@ public class SourceEventIntake {
     SourceEventTarget target = targets.get(batch.sourceType());
     KnowledgeLibrary library;
     boolean running;
+    boolean withoutEmbeddingModel;
     try {
       Optional<KnowledgeLibrary> loaded =
           libraryRepository
@@ -184,6 +190,8 @@ public class SourceEventIntake {
         return;
       }
       running = indexingJobService.isJobRunning(library.getId(), library.getOrganizationId());
+      // without an embedding model no run starts; the batch is put back and expires at the bound
+      withoutEmbeddingModel = indexingJobService.isEmbeddingModelMissing();
     } catch (RuntimeException e) {
       // a lookup that fails (database briefly away) must not lose the batch - it goes back as one
       // more deferral, so a lasting outage still ends at the bound; failing that, its lease ends
@@ -192,12 +200,16 @@ public class SourceEventIntake {
           target.sourceType(),
           libraryId,
           e.getMessage());
-      defer(target, batch);
+      defer(target, batch, NOT_CHECKED);
       return;
     }
     // outside the try: a deferral must never be caught and repeated for the same batch
+    if (withoutEmbeddingModel) {
+      defer(target, batch, NO_EMBEDDING_MODEL);
+      return;
+    }
     if (running) {
-      defer(target, batch);
+      defer(target, batch, IN_PROGRESS);
       return;
     }
     start(target, batch, library);
@@ -220,7 +232,10 @@ public class SourceEventIntake {
           indexingJobService.startJob(
               library.getId(), library.getOrganizationId(), JobTriggerSource.WEBHOOK, runMode);
     } catch (ConflictException e) {
-      defer(target, batch);
+      defer(target, batch, IN_PROGRESS);
+      return;
+    } catch (EmbeddingModelNotInstalledException e) {
+      defer(target, batch, NO_EMBEDDING_MODEL);
       return;
     }
     try {
@@ -240,14 +255,19 @@ public class SourceEventIntake {
     batches.remove(batch.id());
   }
 
-  private void defer(SourceEventTarget target, SourceEventBatches.Claimed batch) {
+  /**
+   * Puts the batch back, or drops it once it was deferred {@code maxDeferrals} times; {@code
+   * reason} says in the log why no run took it, and the next run covers its keys either way.
+   */
+  private void defer(SourceEventTarget target, SourceEventBatches.Claimed batch, String reason) {
     if (batch.deferrals() >= properties.maxDeferrals()) {
       log.info(
-          "Dropping {} event batch for library {} after {} deferrals: a run is still in progress,"
-              + " the next run covers the reported keys",
+          "Dropping {} event batch for library {} after {} deferrals: {}, the next run covers the"
+              + " reported keys",
           target.sourceType(),
           batch.libraryId(),
-          batch.deferrals());
+          batch.deferrals(),
+          reason);
       batches.remove(batch.id());
       return;
     }

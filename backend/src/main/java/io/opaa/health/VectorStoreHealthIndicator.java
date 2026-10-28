@@ -14,9 +14,10 @@ import org.springframework.stereotype.Component;
 /**
  * Probes the vector store with one search. While the index is stale the probe is skipped and the
  * store reported up with the vector search {@code SUSPENDED}: a query vector of the new model does
- * not fit the old column, and a planned re-embedding is no outage. Before an embedding model is
- * installed there is no vector table yet: {@code UNKNOWN} while the installation is pending, {@code
- * DOWN} once it is completed.
+ * not fit the old column, and a planned re-embedding is no outage. Without an installed embedding
+ * model there is no vector table: {@code UNKNOWN} with {@code embeddingModel: NOT_CONFIGURED}, a
+ * regular state of an installation that has not set its model yet; {@code DOWN} when the table
+ * holds chunks without a model row.
  */
 @DataFlow("embedding-model")
 @Component
@@ -43,12 +44,8 @@ public class VectorStoreHealthIndicator implements HealthIndicator {
   public Health health() {
     String provider = vectorStore.getClass().getSimpleName();
     if (!embeddingInfo.getEmbeddingInfo().installed()) {
-      Health.Builder health =
-          embeddingModels.missingAfterInstallation() ? Health.down() : Health.unknown();
-      return health
-          .withDetail("provider", provider)
-          .withDetail("embeddingModel", "NOT_INSTALLED")
-          .build();
+      return EmbeddingsHealthIndicator.withoutModel(
+          embeddingModels, Health.unknown().withDetail("provider", provider));
     }
     if (!indexState.isVectorSearchAvailable()) {
       return Health.up()

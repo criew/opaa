@@ -6,6 +6,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.DatabaseClock;
 import io.opaa.instance.CurrentInstance;
 import io.opaa.instance.InstanceRegistry;
+import io.opaa.llm.EmbeddingModelService;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -49,12 +50,14 @@ public class IndexingJobService {
   private final DatabaseClock databaseClock;
   private final CurrentInstance currentInstance;
   private final InstanceRegistry instanceRegistry;
+  private final EmbeddingModelService embeddingModels;
 
   /**
    * {@code databaseClock} stamps the progress heartbeat {@code lastProgressAt} and judges it stale:
    * another instance may read and compare it (ADR-0053, Entscheidung 9). A job belongs to the
    * {@code currentInstance} that started it; {@code instanceRegistry} tells whether its owner lives
-   * (Entscheidung 8).
+   * (Entscheidung 8). A run embeds: without an installed embedding model {@code embeddingModels}
+   * refuses every start.
    */
   public IndexingJobService(
       IndexingJobRepository indexingJobRepository,
@@ -62,13 +65,23 @@ public class IndexingJobService {
       Clock clock,
       DatabaseClock databaseClock,
       CurrentInstance currentInstance,
-      InstanceRegistry instanceRegistry) {
+      InstanceRegistry instanceRegistry,
+      EmbeddingModelService embeddingModels) {
     this.indexingJobRepository = indexingJobRepository;
     this.assetRepository = assetRepository;
     this.clock = clock;
     this.databaseClock = databaseClock;
     this.currentInstance = currentInstance;
     this.instanceRegistry = instanceRegistry;
+    this.embeddingModels = embeddingModels;
+  }
+
+  /**
+   * Whether no embedding model is installed yet, so no run may start: the scheduler then books no
+   * run, and a pushed batch waits for the model.
+   */
+  public boolean isEmbeddingModelMissing() {
+    return embeddingModels.installed().isEmpty();
   }
 
   /**
@@ -76,6 +89,9 @@ public class IndexingJobService {
    * Entscheidung 4) - there is no default mode, the caller resolves it from the executor's own
    * declaration. Only one running job is allowed per library ({@code
    * uk_indexing_jobs_library_running}): a concurrent second start fails with a 409 here.
+   *
+   * @throws io.opaa.llm.EmbeddingModelNotInstalledException before an embedding model is installed;
+   *     nothing is written then
    */
   @Transactional
   public IndexingJob startJob(
@@ -92,6 +108,7 @@ public class IndexingJobService {
    */
   private IndexingJob doStartJob(
       UUID libraryId, UUID organizationId, JobTriggerSource triggeredBy, IndexingRunMode runMode) {
+    embeddingModels.requireInstalled();
     var job = new IndexingJob(JobStatus.RUNNING);
     job.setLibraryId(libraryId);
     job.setOrganizationId(organizationId);

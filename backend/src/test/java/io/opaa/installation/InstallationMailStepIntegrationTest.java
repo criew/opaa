@@ -197,9 +197,9 @@ class InstallationMailStepIntegrationTest {
   }
 
   @Test
-  void onlyTheMailStepIsSkippedAndOnlyItSendsATestMessage() throws Exception {
+  void aMandatoryStepIsNotSkippedAndOnlyTheMailStepSendsATestMessage() throws Exception {
     mockMvc
-        .perform(authorized(post(BASE + "/steps/CHAT_MODEL/skip")))
+        .perform(authorized(post(BASE + "/steps/SIGN_IN/skip")))
         .andExpect(status().isBadRequest());
     saveFirstAdmin();
     mockMvc

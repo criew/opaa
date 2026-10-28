@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
@@ -37,6 +38,14 @@ class VectorStoreWriterTest {
       "pg_advisory_xact_lock(" + VectorStoreWriter.DOCUMENT_CHUNK_LOCK_NAMESPACE + ", hashtext(";
 
   private final JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+
+  @BeforeEach
+  void theVectorTableExists() {
+    when(jdbcTemplate.queryForObject(
+            eq("SELECT to_regclass(?) IS NOT NULL"), eq(Boolean.class), any()))
+        .thenReturn(true);
+  }
+
   private final FullTextChunkStore fullTextChunkStore = mock(FullTextChunkStore.class);
   private final EmbeddingIndexStore indexStore = indexStoreAtGeneration();
   private final VectorStoreWriter writer =

@@ -143,6 +143,19 @@ class GlobalExceptionHandlerTest {
   }
 
   @Test
+  void aServiceUnavailableRefusalWithACodeCarriesItInTheBody() {
+    var response =
+        handler.handleServiceUnavailableException(
+            new io.opaa.common.ServiceUnavailableException(
+                "Es ist noch kein Chat-Modell eingerichtet.", "CHAT_MODEL_NOT_CONFIGURED"));
+    assertEquals(503, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals("CHAT_MODEL_NOT_CONFIGURED", body.getCode());
+    assertEquals("Es ist noch kein Chat-Modell eingerichtet.", body.getError());
+  }
+
+  @Test
   void handleNonTransientAiExceptionReturnsBadGateway() {
     var response =
         handler.handleNonTransientAiException(new NonTransientAiException("Invalid model"));

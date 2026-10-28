@@ -252,9 +252,11 @@ public class InstallationService {
   }
 
   /**
-   * Completes the installation from its checked steps.
+   * Completes the installation from its checked steps; a skipped optional step leaves its model
+   * out.
    *
-   * @throws ConflictException when a mandatory step is not saved or not successfully checked
+   * @throws ConflictException when a mandatory step is not saved or not successfully checked, or an
+   *     optional step is saved but not successfully checked
    */
   @Transactional
   public InstallationOverview complete(CompletionSource source) {
@@ -571,17 +573,13 @@ public class InstallationService {
               OidcClaimMapping.keycloakDefaults()));
     }
     InstallationStepRecord modelStep = saved.get(InstallationStep.CHAT_MODEL);
-    StepRules.ChatModelPayload model = rules.chatModelPayload(modelStep.getPayload());
-    llmModels.installActiveModel(
-        Organization.DEFAULT_ID,
-        SYSTEM_ACTOR,
-        CHAT_MODEL_DISPLAY_NAME,
-        model.baseUrl(),
-        model.model(),
-        model.temperature(),
-        StepRules.maxTokens(model),
-        modelStep.getSecret());
-    installEmbeddingModel(saved.get(InstallationStep.EMBEDDING_MODEL));
+    if (modelStep != null) {
+      installChatModel(modelStep);
+    }
+    InstallationStepRecord embeddingStep = saved.get(InstallationStep.EMBEDDING_MODEL);
+    if (embeddingStep != null) {
+      installEmbeddingModel(embeddingStep);
+    }
     InstallationStepRecord mailStep = saved.get(InstallationStep.MAIL);
     if (mailStep != null) {
       mailSettings.installSettings(
@@ -590,6 +588,11 @@ public class InstallationService {
           rules.mailSettingsUpdate(rules.mailPayload(mailStep.getPayload()), mailStep.getSecret()));
     }
     steps.deleteAllInBatch();
+    List<String> skipped =
+        Arrays.stream(InstallationStep.values())
+            .filter(step -> !step.isMandatory() && !saved.containsKey(step))
+            .map(Enum::name)
+            .toList();
     markCompleted(
         state,
         source,
@@ -598,6 +601,8 @@ public class InstallationService {
             source.name(),
             "signInMode",
             signIn.mode().name(),
+            "skippedSteps",
+            skipped,
             "mailEnabled",
             mailStep != null));
     return new InstallationOverview(false, true, List.of());
@@ -612,6 +617,20 @@ public class InstallationService {
       return saved == null || !saved.isCheckSucceeded();
     }
     return saved != null && !saved.isCheckSucceeded();
+  }
+
+  /** The chat model of the step, created active in the completion's transaction. */
+  private void installChatModel(InstallationStepRecord step) {
+    StepRules.ChatModelPayload model = rules.chatModelPayload(step.getPayload());
+    llmModels.installActiveModel(
+        Organization.DEFAULT_ID,
+        SYSTEM_ACTOR,
+        CHAT_MODEL_DISPLAY_NAME,
+        model.baseUrl(),
+        model.model(),
+        model.temperature(),
+        StepRules.maxTokens(model),
+        step.getSecret());
   }
 
   /**

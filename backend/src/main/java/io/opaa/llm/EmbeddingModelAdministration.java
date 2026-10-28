@@ -21,9 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
  * The embedding model row as the administration changes it (ADR-0061): a draft validated like every
  * model endpoint ({@link ModelEndpointRules}, {@link ModelAddressPolicy} for an address other than
  * the stored one), the key kept only for the same endpoint, the probe compared with the reference
- * anchor, and the writes of a model change, a discard and an endpoint change. The writes join the
- * caller's transaction, which also changes the vector index; they flush at once, so the caller's
- * own statements see them.
+ * anchor, and the writes of a first model, a model change, a discard and an endpoint change. The
+ * writes join the caller's transaction, which also changes the vector index; they flush at once, so
+ * the caller's own statements see them.
  */
 @DataFlow("embedding-model")
 @Service
@@ -79,14 +79,17 @@ public class EmbeddingModelAdministration {
   /** What a probed draft is to the installed model. */
   public enum Kind {
     MODEL_CHANGE,
-    ENDPOINT_CHANGE
+    ENDPOINT_CHANGE,
+    /** No model is installed yet: the draft becomes the first one, nothing is re-embedded. */
+    INITIAL
   }
 
   /**
    * @param similarity the smallest similarity to the anchor; {@code null} when the draft names
    *     another model or size, or when no anchor could be had
-   * @param generation the generation of the row compared with
-   * @param modelIdentifier the model of the row compared with
+   * @param generation the generation of the row compared with, {@code 0} for {@link Kind#INITIAL}
+   * @param modelIdentifier the model of the row compared with, {@code null} for {@link
+   *     Kind#INITIAL}
    */
   public record Comparison(Kind kind, Double similarity, long generation, String modelIdentifier) {}
 
@@ -158,38 +161,22 @@ public class EmbeddingModelAdministration {
   }
 
   /**
-   * Validates {@code draft} against the installed row and resolves its key.
+   * Validates {@code draft} against the installed row and resolves its key; before an embedding
+   * model is installed against no row, so there is no key to keep and the address check applies to
+   * every address.
    *
    * @throws FieldValidationException naming every violated rule, fields under {@value #PREFIX}
-   * @throws EmbeddingModelNotInstalledException before an embedding model is installed
    */
   @Transactional(readOnly = true)
   public Resolved resolve(Draft draft) {
-    EmbeddingModelSettings row = requireInstalled();
+    Optional<EmbeddingModelSettings> installed = rows.findInstalled();
+    if (installed.isEmpty()) {
+      return resolveFirst(draft);
+    }
+    EmbeddingModelSettings row = installed.get();
     String baseUrl = draft.baseUrl() == null ? "" : draft.baseUrl().strip();
     String model = draft.model() == null ? "" : draft.model().strip();
-    List<FieldError> errors = new ArrayList<>();
-    ModelEndpointRules.endpointErrors(PREFIX, baseUrl, model, draft.apiKey(), true, errors);
-    int maxInputTokens =
-        draft.maxInputTokens() == null
-            ? EmbeddingEndpoint.DEFAULT_MAX_INPUT_TOKENS
-            : draft.maxInputTokens();
-    if (maxInputTokens < 1 || maxInputTokens > MAX_INPUT_TOKENS) {
-      errors.add(
-          new FieldError(
-              PREFIX + ".maxInputTokens",
-              ModelEndpointRules.INVALID,
-              "Die Eingabegrenze muss zwischen 1 und " + MAX_INPUT_TOKENS + " Tokens liegen."));
-    }
-    if (errors.isEmpty()) {
-      String blocked = modelAddresses.blockedReason(baseUrl, row.getBaseUrl());
-      if (blocked != null) {
-        errors.add(new FieldError(PREFIX + ".baseUrl", ModelEndpointRules.BLOCKED, blocked));
-      }
-    }
-    if (!errors.isEmpty()) {
-      throw new FieldValidationException("Die Angaben zum Embedding-Modell sind ungültig.", errors);
-    }
+    int maxInputTokens = validated(draft, baseUrl, model, row.getBaseUrl());
     String apiKey = draft.apiKey();
     String stored = row.getApiKeyCiphertext();
     if (apiKey == null) {
@@ -221,6 +208,55 @@ public class EmbeddingModelAdministration {
         row.fingerprint());
   }
 
+  /**
+   * The input limit of a valid draft; the address check skips an address naming {@code
+   * storedBaseUrl}'s endpoint.
+   *
+   * @throws FieldValidationException naming every violated rule
+   */
+  private int validated(Draft draft, String baseUrl, String model, String storedBaseUrl) {
+    List<FieldError> errors = new ArrayList<>();
+    ModelEndpointRules.endpointErrors(PREFIX, baseUrl, model, draft.apiKey(), true, errors);
+    int maxInputTokens =
+        draft.maxInputTokens() == null
+            ? EmbeddingEndpoint.DEFAULT_MAX_INPUT_TOKENS
+            : draft.maxInputTokens();
+    if (maxInputTokens < 1 || maxInputTokens > MAX_INPUT_TOKENS) {
+      errors.add(
+          new FieldError(
+              PREFIX + ".maxInputTokens",
+              ModelEndpointRules.INVALID,
+              "Die Eingabegrenze muss zwischen 1 und " + MAX_INPUT_TOKENS + " Tokens liegen."));
+    }
+    if (errors.isEmpty()) {
+      String blocked = modelAddresses.blockedReason(baseUrl, storedBaseUrl);
+      if (blocked != null) {
+        errors.add(new FieldError(PREFIX + ".baseUrl", ModelEndpointRules.BLOCKED, blocked));
+      }
+    }
+    if (!errors.isEmpty()) {
+      throw new FieldValidationException("Die Angaben zum Embedding-Modell sind ungültig.", errors);
+    }
+    return maxInputTokens;
+  }
+
+  /** {@link #resolve} without an installed row: every address is checked, no key is kept. */
+  private Resolved resolveFirst(Draft draft) {
+    String baseUrl = draft.baseUrl() == null ? "" : draft.baseUrl().strip();
+    String model = draft.model() == null ? "" : draft.model().strip();
+    int maxInputTokens = validated(draft, baseUrl, model, null);
+    String apiKey = draft.apiKey() == null ? "" : draft.apiKey().strip();
+    if (apiKey.isEmpty()) {
+      return new Resolved(
+          new EmbeddingEndpoint(baseUrl, model, null, maxInputTokens), null, null, null);
+    }
+    return new Resolved(
+        new EmbeddingEndpoint(baseUrl, model, apiKey, maxInputTokens),
+        encrypt(apiKey),
+        "SET",
+        null);
+  }
+
   /** The probe embedding of {@link EmbeddingModelService#probe}, the anchor texts included. */
   public EmbeddingModelService.ProbeOutcome probe(EmbeddingEndpoint endpoint) {
     return embeddingModels.probe(endpoint);
@@ -230,11 +266,16 @@ public class EmbeddingModelAdministration {
    * Whether the probed endpoint is the installed model at another address: the same model name and
    * size, and the probe vectors at least {@link EmbeddingAnchor#MIN_SIMILARITY} similar to the
    * anchor. Without an anchor the stored endpoint is probed for one; when it does not answer
-   * either, no comparison is possible and the draft counts as a model change. Call it outside any
-   * transaction: it may wait for the network.
+   * either, no comparison is possible and the draft counts as a model change. Without an installed
+   * model the draft is {@link Kind#INITIAL}. Call it outside any transaction: it may wait for the
+   * network.
    */
   public Comparison compare(EmbeddingEndpoint endpoint, EmbeddingModelService.ProbeOutcome probed) {
-    EmbeddingModelSettings row = requireInstalled();
+    Optional<EmbeddingModelSettings> installed = rows.findInstalled();
+    if (installed.isEmpty()) {
+      return new Comparison(Kind.INITIAL, null, 0, null);
+    }
+    EmbeddingModelSettings row = installed.get();
     if (!probed.succeeded()
         || !row.getModelIdentifier().equals(endpoint.modelIdentifier())
         || probed.dimensions() == null
@@ -309,6 +350,20 @@ public class EmbeddingModelAdministration {
     return new Change(before, withKeyChange(state(row), resolved.apiKeyChange()));
   }
 
+  /**
+   * Installs the resolved model as the first one under {@code generation}, with its anchor, and
+   * creates the vector table of {@code dimensions} ({@link EmbeddingModelService#install}); there
+   * is no previous model to keep. Called under the schema lock after {@link #requireUnchanged}.
+   */
+  @Transactional(propagation = Propagation.MANDATORY)
+  public Change installFirst(Resolved resolved, int dimensions, float[] anchor, long generation) {
+    EmbeddingModelSettings row =
+        embeddingModels.install(resolved.endpoint(), dimensions, generation, anchor);
+    rows.flush();
+    dropClientAfterCommit();
+    return new Change(null, withKeyChange(state(row), resolved.apiKeyChange()));
+  }
+
   /** Puts the previous model back and deletes it; empty when there is none to restore. */
   @Transactional(propagation = Propagation.MANDATORY)
   public Optional<Change> restorePrevious() {
@@ -358,14 +413,23 @@ public class EmbeddingModelAdministration {
 
   /**
    * Refuses a write decided on a row that changed since: the row must still be the one {@code
-   * resolved} was validated against and {@code comparison} compared with. Called under the schema
-   * lock, which every writer of the row holds.
+   * resolved} was validated against and {@code comparison} compared with, and for {@link
+   * Kind#INITIAL} there must still be none. Called under the schema lock, which every writer of the
+   * row holds.
    *
    * @throws ConflictException when the row changed meanwhile
    */
   @Transactional(propagation = Propagation.MANDATORY)
   public void requireUnchanged(Resolved resolved, Comparison comparison) {
-    EmbeddingModelSettings row = requireInstalled();
+    Optional<EmbeddingModelSettings> installed = rows.findInstalled();
+    if (comparison.kind() == Kind.INITIAL) {
+      if (installed.isPresent()) {
+        throw new ConflictException(CHANGED_MEANWHILE);
+      }
+      return;
+    }
+    EmbeddingModelSettings row =
+        installed.orElseThrow(() -> new ConflictException(CHANGED_MEANWHILE));
     if (!row.fingerprint().equals(resolved.basis())
         || row.getGeneration() != comparison.generation()
         || !row.getModelIdentifier().equals(comparison.modelIdentifier())) {

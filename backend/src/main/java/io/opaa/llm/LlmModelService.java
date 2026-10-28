@@ -75,6 +75,12 @@ public class LlmModelService {
     return repository.count() > 0;
   }
 
+  /** Whether a chat model is active, so questions can be answered; reads the table, no endpoint. */
+  @Transactional(readOnly = true)
+  public boolean hasActiveModel() {
+    return !repository.findAllByActiveTrue().isEmpty();
+  }
+
   @Transactional(readOnly = true)
   public List<LlmModel> listModels() {
     return repository.findAllByOrderByDisplayNameAsc();

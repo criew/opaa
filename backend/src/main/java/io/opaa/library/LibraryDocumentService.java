@@ -45,6 +45,7 @@ import io.opaa.knowledge.ServedContentTypes;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.knowledge.UploadedOriginalRef;
 import io.opaa.knowledge.UploadedOriginalStore;
+import io.opaa.llm.EmbeddingModelService;
 import io.opaa.sourceaccess.BoundedStreams;
 import java.io.IOException;
 import java.io.InputStream;
@@ -117,6 +118,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   private final SourceSyncStateRepository syncStateRepository;
   private final CurrentInstance currentInstance;
   private final MalwareScanService malwareScanService;
+  private final EmbeddingModelService embeddingModels;
 
   /** One transaction per document for {@link #deleteDocuments} - see its contract. */
   private final TransactionTemplate transactionTemplate;
@@ -146,6 +148,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       SourceSyncStateRepository syncStateRepository,
       CurrentInstance currentInstance,
       MalwareScanService malwareScanService,
+      EmbeddingModelService embeddingModels,
       Clock clock) {
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
@@ -169,6 +172,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     this.syncStateRepository = syncStateRepository;
     this.currentInstance = currentInstance;
     this.malwareScanService = malwareScanService;
+    this.embeddingModels = embeddingModels;
     this.clock = clock;
   }
 
@@ -184,7 +188,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   /**
    * {@code folderPath} is an optional path below {@code folderId} (or the root), e.g. {@code
    * "Protokolle/2026"}; its folders are created idempotently, so a dropped directory tree uploaded
-   * file by file ends up under one shared folder chain.
+   * file by file ends up under one shared folder chain. Without an embedding model the upload is
+   * refused before anything is written ({@code EmbeddingModelNotInstalledException}).
    */
   public LibraryDocumentEntry uploadDocument(
       UUID libraryId, MultipartFile file, UUID folderId, String folderPath, CurrentUser caller) {
@@ -193,6 +198,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
         libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     requireEditable(library, currentUserId, caller.isSystemAdmin());
     requireUploadLibrary(library);
+    embeddingModels.requireInstalled();
 
     // Validated before any byte is written to disk, mirroring every other "reject this request
     // outright" check below - a folderId that does not exist (or belongs to another library,

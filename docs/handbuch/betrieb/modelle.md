@@ -14,8 +14,8 @@ Modelle in die Suche eingreifen, steht im Kapitel [Suche](../spaces/suche.md).
 
 | Rolle | Wofür | Festgelegt über | Wechsel |
 |---|---|---|---|
-| **Chat** | Antwort, Zerlegung in Teilfragen, Chat-Titel, Gesprächsnotiz, Metadaten-Extraktion | Modellverwaltung in der Oberfläche; die Umgebung nur beim allerersten Start | jederzeit, ohne Neustart; berührt den Index nicht |
-| **Embedding** | Vektoren der Chunks und der Suchanfragen | Installation, mit Probeeinbettung ([Embedding](#embedding)) | Modellverwaltung, Reiter „Einbettung": ein anderes Modell mit Neueinbettung ([Modell wechseln](#modell-wechseln)), ein anderer Endpunkt desselben Modells ohne ([Endpunkt wechseln](#endpunkt-wechseln)) |
+| **Chat** | Antwort, Zerlegung in Teilfragen, Chat-Titel, Gesprächsnotiz, Metadaten-Extraktion | Installation oder Modellverwaltung in der Oberfläche | jederzeit, ohne Neustart; berührt den Index nicht |
+| **Embedding** | Vektoren der Chunks und der Suchanfragen | Installation oder, wenn sie den Schritt übersprungen hat, Modellverwaltung, jeweils mit Probeeinbettung ([Embedding](#embedding)) | Modellverwaltung, Reiter „Einbettung": ein anderes Modell mit Neueinbettung ([Modell wechseln](#modell-wechseln)), ein anderer Endpunkt desselben Modells ohne ([Endpunkt wechseln](#endpunkt-wechseln)) |
 | **Reranking** | ordnet die Kandidaten der Suche neu, optional | Modellverwaltung, Reiter „Reranking" | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Reranking einschalten](#reranking-einschalten)) |
 | **Transkription** | wandelt eine im Chat diktierte Frage in Text um, optional | Modellverwaltung, Reiter „Spracheingabe"; begrenzt durch `OPAA_FEATURES_SPEECH_INPUT_ENABLED` | jederzeit, ohne Neustart; aus ist die Werkseinstellung ([Spracheingabe einschalten](#spracheingabe-einschalten)) |
 
@@ -91,9 +91,13 @@ Das Chat-Modell ist ein **verwaltetes** Modell: Unter **Administration → Model
 ein Systemverwalter Modelle an, bearbeitet, testet und aktiviert sie. Genau eines ist aktiv; eine
 Aktivierung oder Änderung wirkt ohne Neustart, das aktive Modell lässt sich nicht löschen.
 
-**Das erste Chat-Modell kommt aus der Installation.** Der Schritt „Chat-Modell“ des Assistenten
-oder der Antwortdatei legt es mit Adresse, Modellname und Zugangsschlüssel an, prüft es mit dem
-Verbindungstest und aktiviert es beim Abschluss ([Installation](installation.md)). Den Schlüssel
+**Das erste Chat-Modell kommt aus der Installation oder aus der Modellverwaltung.** Der Schritt
+„Chat-Modell“ des Assistenten oder der Antwortdatei legt es mit Adresse, Modellname und
+Zugangsschlüssel an, prüft es mit dem Verbindungstest und aktiviert es beim Abschluss
+([Installation](installation.md)). Hat die Installation den Schritt übersprungen, ist kein Modell
+aktiv: Der Reiter sagt „Es ist noch kein Chat-Modell aktiv“, der Chat zeigt jedem einen Hinweis
+und beantwortet keine Frage. Dann hier mit „Neues Modell“ das erste anlegen und im Zeilenmenü
+aktivieren; das wirkt sofort auf allen Instanzen, ohne Neustart. Den Schlüssel
 verschlüsselt OPAA mit `OPAA_SETTINGS_ENCRYPTION_KEY`
 ([Verschlüsselung](#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)).
 
@@ -188,11 +192,12 @@ dafür zu kurz ist.
 ## Embedding
 
 Das Embedding-Modell legt die Installation fest, mit Adresse, Modellname, Zugangsschlüssel und
-Eingabegrenze ([Installation](installation.md)). Ihre Prüfung ist eine Probeeinbettung: Sie zeigt,
-dass der Endpunkt das Modell bedient, und ergibt die Zahl der Dimensionen, mit der das Modell
-einbettet. Mit dieser Zahl legt der Abschluss der Installation die Vektorablage an; einstellen muss
-sie niemand. Vor dem Abschluss gibt es keine Vektorablage, und Indexierung und Suche antworten mit
-dem Hinweis, dass das Embedding-Modell noch nicht eingerichtet ist. Danach zeigt die
+Eingabegrenze ([Installation](installation.md)); überspringt sie den Schritt, legt es später die
+Systemverwaltung fest ([Erstes Modell festlegen](#erstes-modell-festlegen)). Die Prüfung ist eine
+Probeeinbettung: Sie zeigt, dass der Endpunkt das Modell bedient, und ergibt die Zahl der
+Dimensionen, mit der das Modell einbettet. Mit dieser Zahl legt OPAA die Vektorablage an; einstellen
+muss sie niemand. Ohne Embedding-Modell gibt es keine Vektorablage, und Indexierung, Upload und
+Suche antworten mit dem Hinweis, dass noch kein Embedding-Modell eingerichtet ist. Danach zeigt die
 Modellverwaltung im Reiter „Einbettung" Modell, Endpunkt, Dimensionen, Eingabegrenze und ob ein
 Zugangsschlüssel gespeichert ist; dort läuft auch jeder Wechsel.
 
@@ -303,6 +308,29 @@ Der Name bleibt `bge-m3`. Erst danach bei der Installation `8192` als Eingabegre
 die Vorgabe passt zu jedem unverändert gezogenen Modell. Ein späteres `ollama pull bge-m3` stellt
 die alten Werte wieder her; danach das Anlegen wiederholen. Der Arbeitsspeicher wächst mit der Länge der tatsächlichen Eingabe,
 nicht mit der eingestellten Grenze.
+
+### Erstes Modell festlegen
+
+> **Beispiel.** Ein Haus installiert OPAA, bevor der Modellserver freigeschaltet ist, und
+> überspringt den Schritt „Embedding-Modell“. Zwei Wochen später trägt die Systemverwaltung
+> `bge-m3` im Reiter „Einbettung“ ein; ab dann lassen sich Bibliotheken indexieren.
+
+Ohne Embedding-Modell zeigt der Reiter „Einbettung" den Hinweis „Es ist noch kein Embedding-Modell
+eingerichtet“ und das Formular „Embedding-Modell festlegen“: Basis-Adresse, Modell-Kennung,
+Zugangsschlüssel und Eingabegrenze, mit derselben [Adressprüfung](#adressprüfung-der-modelle) wie in
+der Installation. „Probeeinbettung“ prüft den Endpunkt und nennt die Zahl der Dimensionen;
+„Embedding-Modell festlegen“ fragt nach und legt dann Modell und Vektorablage an. Weil vor dem
+ersten Modell keine Inhalte angenommen werden, wird nichts neu eingebettet, und die Vektorsuche läuft
+sofort. Enthält die Vektorablage trotzdem Abschnitte, etwa nach einer unvollständigen Rücksicherung,
+lehnt OPAA schon die Probe ab (siehe [Fehlerbilder](#fehlerbilder)). Das wirkt auf allen
+Instanzen ohne Neustart; legen zwei Sitzungen zugleich ein Modell fest, gilt das erste, die zweite
+bekommt „Das Embedding-Modell wurde zwischendurch geändert". Wie beim Wechsel müssen alle laufenden
+Instanzen dieselbe Version haben, und die Grenzen der Probeeinbettung gelten
+([Modell wechseln](#modell-wechseln)).
+
+Vor dem ersten Modell nimmt OPAA keine Inhalte an: Uploads und Indexierungsläufe werden abgelehnt,
+geplante Läufe ruhen, von einer Quelle gemeldete Änderungen verfallen nach kurzer Zeit. Danach läuft der nächste
+geplante Lauf wie gewohnt; eine Bibliothek ohne Zeitplan startet man von Hand auf ihrer Seite.
 
 ### Modell wechseln
 
@@ -790,7 +818,11 @@ Fragen und an der Fehlerquote.
 Der Zustand der Modelle steht an drei Stellen: in der Statusanzeige der Seite „Suche & Indexierung"
 (Modellrollen mit Endpunkt, Kennung und Erreichbarkeit), in den Health Groups
 `GET /actuator/health/chat-model`, `…/embedding-model` und `…/transcription-model` ([Readiness](images-und-laufzeit.md#readiness-und-liveness))
-und im Protokoll des Backends.
+und im Protokoll des Backends. Ist ein Modell nicht eingerichtet, melden `chat-model`,
+`embedding-model` und `vector-store` `UNKNOWN` mit dem Detail `NOT_CONFIGURED`; das ist kein
+Ausfall, die Readiness bleibt `UP`. Eine Überwachung, die nur auf `DOWN` achtet, bemerkt ein nie
+eingerichtetes Modell deshalb nicht; sie wertet das Detail `NOT_CONFIGURED` aus oder
+`GET /api/v1/search/availability` (`chatModelConfigured`, `embeddingModelConfigured`).
 
 **Meldungen des Verbindungstests:**
 
@@ -812,8 +844,10 @@ und im Protokoll des Backends.
 | Der Start bricht ab und nennt `OPAA_OPENAI_BASE_URL` | Die Variable ist leer gesetzt; die Zeile entfernen oder eine Adresse eintragen |
 | Jede Chat-Anfrage scheitert mit HTTP 400 | Meist eine Temperatur, die das Modell nicht annimmt |
 | Antworten brechen mitten im Satz ab oder fehlen, mit Hinweis unter der Antwort | Die maximale Antwortlänge ist zu knapp, oft bei Modellen mit Reasoning |
-| Indexierung und Suche antworten „Das Embedding-Modell ist noch nicht eingerichtet" | Die Installation ist nicht abgeschlossen; sie wählt das Embedding-Modell ([Installation](installation.md)) |
-| Indexierung und Suche antworten „Diese Installation hat kein Embedding-Modell", der Start schreibt einen Fehler | Die Installation ist abgeschlossen, hat aber kein Embedding-Modell, etwa eine Datenbank eines Entwicklungsstands von `main` vor dem Embedding-Modell in der Datenbank. Aus der Umgebung übernimmt OPAA keines ([Embedding](#embedding)). Abhilfe: Datenbank neu aufsetzen und installieren, oder einmal mit einem Stand starten, der das Modell noch übernahm (ein Stand von `main` mit dem Embedding-Modell als Installationsschritt und noch mit der Übernahme aus `OPAA_OPENAI_EMBEDDING_*`), und danach aktualisieren. Im Modus `dev` war das Modell beim Start nicht erreichbar; das Log nennt die Adresse |
+| Indexierung und Suche antworten „Das Embedding-Modell ist noch nicht eingerichtet" | Die Installation ist nicht abgeschlossen; sie wählt das Embedding-Modell oder überspringt es ([Installation](installation.md)) |
+| Indexierung, Upload und Suche antworten „Es ist noch kein Embedding-Modell eingerichtet“, der Chat zeigt „Noch kein Embedding-Modell eingerichtet“ | Die Installation hat das Embedding-Modell übersprungen; ein regulärer Zustand, kein Fehler. Abhilfe: im Reiter „Einbettung" das erste Modell festlegen ([Erstes Modell festlegen](#erstes-modell-festlegen)). Im Modus `dev` war das Modell beim Start nicht erreichbar; das Log nennt die Adresse, und OPAA versucht es erneut |
+| Der Start schreibt „The vector table holds chunks but no embedding model is installed“, `embedding-model` und `vector-store` melden `DOWN` mit `MISSING_WITH_CHUNKS`, „Probeeinbettung“ im Reiter „Einbettung" meldet, die Vektortabelle enthalte bereits Abschnitte | Die Vektorablage hat Abschnitte, aber es gibt kein Embedding-Modell, etwa nach einer Rücksicherung, die nur einen Teil der Datenbank zurückgespielt hat. Die Abschnitte gehören zu einem Modell, das OPAA nicht mehr kennt; ein erstes Modell darüber lehnt OPAA ab. Abhilfe: die Datenbank vollständig aus derselben Sicherung zurückspielen, die auch das Embedding-Modell enthält ([Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md)), oder die Datenbank neu aufsetzen und installieren |
+| Der Chat zeigt „Noch kein Chat-Modell eingerichtet“, Fragen bekommen keine Antwort | Kein Chat-Modell ist aktiv, etwa weil die Installation den Schritt übersprungen hat; unter Modelle → Chat-Modelle eines anlegen und aktivieren ([Chat-Modelle in der Oberfläche anlegen](#chat-modelle-in-der-oberfläche-anlegen)) |
 | „Index veraltet", Chat meldet „Eingeschränkte Suche" | Ein Wechsel des Embedding-Modells läuft, oder nach einer Rücksicherung passt das gespeicherte Modell nicht zum Index; den Fortschritt im Indexstatus verfolgen oder dort die Neueinbettung starten ([Modell wechseln](#modell-wechseln)) |
 | Die Probeeinbettung meldet, der Endpunkt bette anders ein, mit einer Ähnlichkeit unter 0,99 | Hinter derselben Modell-Kennung läuft eine andere Fassung oder Quantisierung; ein Endpunktwechsel taugt nicht, der Weg ist ein Modellwechsel ([Endpunkt wechseln](#endpunkt-wechseln)) |
 | „Nicht alle laufenden Instanzen haben dieselbe Version" | Ein Rolling Update läuft noch; es abschließen und den Schritt wiederholen |

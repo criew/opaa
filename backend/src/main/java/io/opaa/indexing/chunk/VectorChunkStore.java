@@ -498,9 +498,14 @@ public class VectorChunkStore implements ChunkMetadataStore {
     fullTextChunkStore.deleteByDocumentId(documentId);
   }
 
-  /** Deletes every chunk (vector and full-text) carrying the given {@code library_id} metadata. */
+  /**
+   * Deletes every chunk (vector and full-text) carrying the given {@code library_id} metadata;
+   * without a vector table there is none.
+   */
   public void deleteByLibraryId(UUID libraryId) {
-    vectorStore.delete(equalsFilter(LIBRARY_ID_METADATA_KEY, libraryId));
+    if (vectorStoreWriter.tableExists()) {
+      vectorStore.delete(equalsFilter(LIBRARY_ID_METADATA_KEY, libraryId));
+    }
     fullTextChunkStore.deleteByLibraryId(libraryId);
   }
 

@@ -81,7 +81,8 @@ public class LibraryIndexingScheduler {
    * Runs at the top of every minute, the finest grain any intervalstufe needs; the cron of a
    * library is read in the zone of the {@link Clock}, which every instance shares. The evaluation
    * runs inside the per-library {@code try/catch}, so one undecodable expression cannot abort the
-   * tick and leave every other due library untouched.
+   * tick and leave every other due library untouched. Without an embedding model the tick books
+   * nothing: a run could not embed, and the next due time after the model is set runs as usual.
    */
   @Scheduled(cron = "0 * * * * *")
   @SchedulerLock(
@@ -89,6 +90,9 @@ public class LibraryIndexingScheduler {
       lockAtLeastFor = ScheduledRunLocks.AT_LEAST_FOR_MINUTE,
       lockAtMostFor = ScheduledRunLocks.AT_MOST_FOR_SHORT)
   public void triggerDueLibraries() {
+    if (indexingJobService.isEmbeddingModelMissing()) {
+      return;
+    }
     List<KnowledgeLibrary> scheduled = libraryRepository.findByScheduleEnabledTrue();
     Instant now = databaseClock.now();
     for (KnowledgeLibrary library : scheduled) {

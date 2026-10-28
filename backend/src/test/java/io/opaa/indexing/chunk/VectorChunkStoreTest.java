@@ -228,6 +228,7 @@ class VectorChunkStoreTest {
   @Test
   void deleteByLibraryIdBuildsAnEqualsFilterOnLibraryIdAndCascadesToFullText() {
     UUID libraryId = UUID.randomUUID();
+    when(vectorStoreWriter.tableExists()).thenReturn(true);
 
     vectorChunkStore.deleteByLibraryId(libraryId);
 

@@ -272,6 +272,7 @@ public final class AuditEventCatalog {
             "baseUrl",
             "dimensions",
             "generation",
+            "initial",
             "maxInputTokens",
             "model",
             "privateLibrariesCounted",
@@ -463,7 +464,10 @@ public final class AuditEventCatalog {
         INSTALLATION_STEP_SAVED);
     put(keys, Set.of("step", "succeeded", "testMail"), INSTALLATION_STEP_CHECKED);
     put(keys, Set.of("discarded", "step"), INSTALLATION_STEP_SKIPPED);
-    put(keys, Set.of("mailEnabled", "signInMode", "source"), INSTALLATION_COMPLETED);
+    put(
+        keys,
+        Set.of("mailEnabled", "signInMode", "skippedSteps", "source"),
+        INSTALLATION_COMPLETED);
     put(keys, Set.of("passwordSource", "state"), LOCAL_ADMIN_SEEDED);
     put(keys, Set.of("passwordSource", "recreated"), LOCAL_ADMIN_RESET);
     put(keys, Set.of("enabled"), LOCAL_ACCOUNTS_ENABLED);

@@ -3,9 +3,9 @@
 > **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
 
 Eine OPAA-Instanz mit leerer Datenbank ist erst nutzbar, wenn sie eingerichtet ist: erstes Konto
-der Systemverwaltung, Anmeldeverfahren, Chat-Modell, Embedding-Modell, auf Wunsch der Mailserver für
-den [E-Mail-Versand](e-mail.md). Bis dahin steht sie im
-**Installationsmodus** und bietet nur die Installation an. Eingerichtet wird im Browser mit dem
+der Systemverwaltung und Anmeldeverfahren, dazu nach Wahl Chat-Modell, Embedding-Modell und der
+Mailserver für den [E-Mail-Versand](e-mail.md). Bis dahin steht sie im **Installationsmodus** und
+bietet nur die Installation an. Eingerichtet wird im Browser mit dem
 [Einrichtungs-Assistenten](#einrichtungs-assistent-im-browser), über die Installations-API Schritt
 für Schritt oder in einem Zug mit einer **Antwortdatei**, etwa aus Helm oder einer CI. Den Betriebsweg
 selbst beschreiben [Docker Compose](docker-compose.md) und [Kubernetes](kubernetes.md).
@@ -77,16 +77,16 @@ lehnt es ab.
 
 Jeder Aufruf trägt das Token als `Authorization: Bearer <Token>`. Jeder Schritt wird einzeln
 gespeichert und geprüft; ein Abbruch setzt beim gespeicherten Stand fort. Neu gespeicherte Angaben
-verwerfen die Prüfung des Schritts. Die ersten vier Schritte sind Pflicht, der E-Mail-Versand ist
-optional.
+verwerfen die Prüfung des Schritts. Pflicht sind die ersten zwei Schritte, erstes Konto und
+Anmeldeverfahren; Chat-Modell, Embedding-Modell und E-Mail-Versand sind optional.
 
-| Schritt | Angaben | Prüfung | Später änderbar |
-|---|---|---|---|
-| Erstes Konto (`FIRST_ADMIN`) | E-Mail-Adresse, Anzeigename, Passwort | zustellbar geformte Adresse, nicht `admin@opaa.local`; Passwortrichtlinie | Benutzerverwaltung |
-| Anmeldeverfahren (`SIGN_IN`) | nur lokale Konten, oder zusätzlich ein OIDC-Anbieter: Issuer, Client-ID, JWK-Set-Adresse | Zielprüfung, Discovery und JWK-Set erreichbar | Anbieterverwaltung |
-| Chat-Modell (`CHAT_MODEL`) | Adresse, Modellname, Zugangsschlüssel, Temperatur, Antwortlänge | Verbindungstest wie in der Modellverwaltung | Modelle |
-| Embedding-Modell (`EMBEDDING_MODEL`) | Adresse, Modellname, Zugangsschlüssel, Eingabegrenze | Probeeinbettung; ihr Ergebnis legt die Zahl der Dimensionen fest | Modelle, Reiter „Einbettung", mit Neueinbettung ([Modell wechseln](modelle.md#modell-wechseln)) |
-| E-Mail-Versand (`MAIL`), optional | Server, Port, Verschlüsselung, Benutzername, Passwort, Absenderadresse, Absendername | Adressprüfung der Mailserver; Verbindung zum Server, mit Anmeldung, wenn ein Benutzername gesetzt ist, ohne eine Nachricht zu senden; auf Wunsch eine Testnachricht an eine angegebene Adresse | E-Mail ([E-Mail-Versand](e-mail.md)) |
+| Schritt | Pflicht | Angaben | Prüfung | Später änderbar |
+|---|---|---|---|---|
+| Erstes Konto (`FIRST_ADMIN`) | ja | E-Mail-Adresse, Anzeigename, Passwort | zustellbar geformte Adresse, nicht `admin@opaa.local`; Passwortrichtlinie | Benutzerverwaltung |
+| Anmeldeverfahren (`SIGN_IN`) | ja | nur lokale Konten, oder zusätzlich ein OIDC-Anbieter: Issuer, Client-ID, JWK-Set-Adresse | Zielprüfung, Discovery und JWK-Set erreichbar | Anbieterverwaltung |
+| Chat-Modell (`CHAT_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Temperatur, Antwortlänge | Verbindungstest wie in der Modellverwaltung | Modelle ([Chat-Modelle in der Oberfläche anlegen](modelle.md#chat-modelle-in-der-oberfläche-anlegen)) |
+| Embedding-Modell (`EMBEDDING_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Eingabegrenze | Probeeinbettung; ihr Ergebnis legt die Zahl der Dimensionen fest | Modelle, Reiter „Einbettung": erstes Modell festlegen ([Erstes Modell festlegen](modelle.md#erstes-modell-festlegen)), später mit Neueinbettung wechseln ([Modell wechseln](modelle.md#modell-wechseln)) |
+| E-Mail-Versand (`MAIL`) | nein | Server, Port, Verschlüsselung, Benutzername, Passwort, Absenderadresse, Absendername | Adressprüfung der Mailserver; Verbindung zum Server, mit Anmeldung, wenn ein Benutzername gesetzt ist, ohne eine Nachricht zu senden; auf Wunsch eine Testnachricht an eine angegebene Adresse | E-Mail ([E-Mail-Versand](e-mail.md)) |
 
 ```bash
 TOKEN=...   # aus dem Log oder OPAA_INSTALLATION_TOKEN
@@ -101,12 +101,14 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 curl -X POST -H "Authorization: Bearer $TOKEN" https://opaa.example.org/api/v1/installation/complete
 ```
 
-**Optionale Schritte.** Ein optionaler Schritt lässt sich überspringen (`POST …/steps/MAIL/skip`):
-OPAA verwirft dann, was für ihn gespeichert war, und der Abschluss lässt ihn aus. Ein übersprungener
-oder nie geöffneter optionaler Schritt hält den Abschluss nicht auf; ein gespeicherter dagegen schon,
-bis seine Prüfung gelingt oder er übersprungen wird. Die Testnachricht des E-Mail-Versands verlangt
-die Prüfung mit der Adresse im Rumpf (`{"testRecipient": "it-betrieb@stadt.example"}`); die Adresse
-wird weder gespeichert noch protokolliert.
+**Optionale Schritte** lassen sich überspringen, etwa wenn der Modellendpunkt noch nicht
+freigeschaltet ist: `POST /api/v1/installation/steps/<Schritt>/skip` verwirft, was für den Schritt
+gespeichert war, samt Prüfung, und der Abschluss lässt ihn aus. Ein übersprungener oder nie
+geöffneter optionaler Schritt hält den Abschluss nicht auf; ein gespeicherter dagegen schon, bis
+seine Prüfung gelingt oder er übersprungen wird. Die Testnachricht des E-Mail-Versands verlangt die
+Prüfung mit der Adresse im Rumpf (`{"testRecipient": "it-betrieb@stadt.example"}`); die Adresse wird
+weder gespeichert noch protokolliert. Was ohne Chat- oder Embedding-Modell geht und was nicht, steht
+unter [Ohne Modelle installiert](#ohne-modelle-installiert).
 
 Das Passwort des ersten Kontos speichert OPAA nur als Hash, Zugangsschlüssel und Passwort des
 Mailservers verschlüsselt mit `OPAA_SETTINGS_ENCRYPTION_KEY`; zurückgegeben wird nur, **ob** sie
@@ -151,9 +153,10 @@ Anmeldeverfahren ein: Er schaltet in beiden Verfahren die
 wird Standardanbieter. Er aktiviert das Chat-Modell, legt das
 Embedding-Modell fest samt der Vektorablage mit der Zahl der Dimensionen aus der Probeeinbettung,
 übernimmt einen geprüften Mailserver in die Einstellungen des E-Mail-Versands und schaltet den
-Versand ein und verwirft Token und Zwischenstand. Ist der E-Mail-Versand übersprungen, bleibt er aus.
-Vor dem Abschluss gibt es keine Vektorablage; ein späterer Wechsel
-des Embedding-Modells läuft in der Modellverwaltung, mit Neueinbettung ([Modelle](modelle.md#modell-wechseln)). Danach
+Versand ein und verwirft Token und Zwischenstand. Ein übersprungener Modellschritt legt kein Modell
+an; ist der E-Mail-Versand übersprungen, bleibt er aus. Vor dem Embedding-Modell gibt es keine
+Vektorablage; ein späterer Wechsel des Embedding-Modells läuft in der Modellverwaltung, mit
+Neueinbettung ([Modelle](modelle.md#modell-wechseln)). Danach
 meldet sich die Person mit dem ersten Konto auf der regulären Anmeldeseite an, mit E-Mail-Adresse
 und Passwort; alle Instanzen übernehmen das ohne Neustart. Mit den lokalen Konten steht „Passwort
 vergessen“ an, sobald `OPAA_PUBLIC_BASE_URL` und der [E-Mail-Versand](e-mail.md) eingerichtet sind,
@@ -174,7 +177,10 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
   (der Grund steht über dem Formular, auch nach erneutem Öffnen), „Gespeichert, Prüfung offen“ oder
   „Offen“, ein optionaler Schritt ohne Angaben als „Nicht eingerichtet“. Pflichtschritte und
   optionale Schritte stehen in getrennten Gruppen; über dem Titel eines optionalen Schritts steht
-  „Optional · später unter …“, und „Überspringen“ lässt ihn aus.
+  „Optional · später unter …“ (bei Chat- und Embedding-Modell „Modelle“, beim E-Mail-Versand
+  „E-Mail“), und „Überspringen“ lässt ihn aus. Pflicht sind erstes Konto und Anmeldeverfahren.
+  „Überspringen“ in einem schon gespeicherten Schritt verwirft dessen Angaben, auch nach einer
+  fehlgeschlagenen Prüfung.
 - **Prüfen und weiter** speichert die Angaben eines Schritts und prüft sie sofort. Die Oberfläche
   prüft vorab nur die Form, etwa einer E-Mail-Adresse oder einer Adresse mit `http://` oder
   `https://`; alles Weitere prüft OPAA wie oben beschrieben.
@@ -207,10 +213,12 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
   nachträglich ändert, gibt das Passwort erneut ein; unverändert wird es nur noch einmal geprüft.
 - **Unterbrechen und fortsetzen.** Der Browser behält das Token nur, solange die Seite offen ist.
   Nach Neuladen oder an einem anderen Rechner gibt man es erneut ein und landet beim ersten
-  Pflichtschritt, der noch nicht geprüft ist, sonst beim Abschluss.
+  Schritt, dessen Prüfung aussteht (ein Pflichtschritt oder ein gespeicherter optionaler), sonst beim
+  Abschluss.
 - **Abschluss.** „Installation abschließen“ ist erst möglich, wenn alle Pflichtschritte geprüft
-  sind und ein ausgefüllter optionaler Schritt geprüft oder übersprungen ist; bis dahin nennt die
-  Seite die offenen. Danach führt „Zur Anmeldung“ zur Anmeldeseite. Hat
+  sind und jeder ausgefüllte optionale Schritt geprüft oder übersprungen ist; bis dahin nennt die
+  Seite die offenen. Übersprungene Schritte stehen dort als „Nicht eingerichtet“. Danach führt „Zur
+  Anmeldung“ zur Anmeldeseite. Hat
   inzwischen jemand anders abgeschlossen, etwa über eine Antwortdatei, zeigt der Assistent
   „Bereits eingerichtet“.
 
@@ -277,11 +285,12 @@ Prüfungen, alles oder nichts.
   Passwort und Schlüssel dann als `password` und `apiKey` im Rumpf, wie in den einzelnen Schritten;
   das so gesetzte Passwort gilt wie im Assistenten ohne erzwungenen Wechsel.
   Dateipfade nimmt die API nicht an: Sie ließen den Inhaber des Tokens Dateien des Backends lesen.
-- **E-Mail-Versand:** Der Abschnitt `mail` ist optional. Fehlt er, gilt der Schritt als
-  übersprungen und der Versand bleibt aus; was der Assistent vorher dafür gespeichert hatte, wird
-  verworfen. Mit ihm prüft OPAA Adresse und Verbindung wie im Assistenten, ohne Testnachricht, und
-  der Abschluss schaltet den Versand ein. Das Passwort steht als `passwordFile`; ohne es meldet sich
-  OPAA nicht an.
+- **Optionale Teile:** `chatModel`, `embeddingModel` und `mail` sind optional. Fehlt ein Teil,
+  gilt sein Schritt als übersprungen; was der Assistent vorher dafür gespeichert hatte, wird
+  verworfen.
+- **E-Mail-Versand:** Ohne den Abschnitt `mail` bleibt der Versand aus. Mit ihm prüft OPAA Adresse
+  und Verbindung wie im Assistenten, ohne Testnachricht, und der Abschluss schaltet den Versand ein.
+  Das Passwort steht als `passwordFile`; ohne es meldet sich OPAA nicht an.
 - Angaben späterer Schritte (`outboundProxy`, `branding`) wertet diese Version nicht aus.
 - Ohne `maxInputTokens` gilt eine Eingabegrenze von 2.048 Tokens
   ([Eingabegrenze des Embedding-Modells](modelle.md#eingabegrenze-des-embedding-modells)).
@@ -306,12 +315,29 @@ Prüfungen, alles oder nichts.
 | `403` „Die Installation ist aus diesem Netz nicht zugelassen." | Client-Adresse außerhalb von `OPAA_INSTALLATION_ALLOWED_CIDRS` | aus dem erlaubten Netz aufrufen, vertraute Proxys prüfen |
 | `400` „Die Anfrage ist zu groß." | Anfrage über 64 KiB | Antworten prüfen |
 | `429` | zu viele Aufrufe oder abgelehnte Tokens von dieser Adresse; im Assistenten „Zu viele Modellabrufe“: das Budget der Modellabrufe ist erschöpft; mit dem Code `MAIL_TEST_LIMIT` „Zu viele Testnachrichten“: das Budget der Testnachrichten ist erschöpft; mit dem Code `MAIL_CHECK_LIMIT` „Zu viele Prüfungen des Mailservers“: das Budget der Prüfungen ist erschöpft (die übrigen Fälle zeigen „Zu viele Anfragen oder Fehlversuche von dieser Adresse“) | `Retry-After` abwarten, die Modell-Kennung lässt sich so lange von Hand eintragen, der Mailserver ohne Testnachricht prüfen; hinter einem Proxy `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` setzen |
-| `409` beim Abschluss | ein Pflichtschritt ist nicht gespeichert oder nicht erfolgreich geprüft, oder ein gespeicherter optionaler Schritt ist nicht erfolgreich geprüft | offene Schritte prüfen oder den optionalen überspringen; die Meldung nennt sie |
-| `400` beim Überspringen | der Schritt ist Pflicht | — |
+| `409` beim Abschluss | ein Pflichtschritt ist nicht gespeichert oder nicht erfolgreich geprüft, oder ein gespeicherter optionaler Schritt ist nicht erfolgreich geprüft | offene Schritte prüfen oder optionale überspringen; die Meldung nennt sie |
+| `400` beim Überspringen | der Schritt ist Pflicht | Schritt ausfüllen und prüfen |
 | Prüfung des Embedding-Modells „Die Probeeinbettung ist fehlgeschlagen …" | Endpunkt nicht erreichbar, Modell nicht geladen oder Schlüssel falsch | Endpunkt und Modell prüfen, Schritt erneut prüfen |
 | Prüfung des Embedding-Modells „… der Vektorindex nimmt höchstens 2000 auf" | das Modell liefert mehr Dimensionen, als der Vektorindex aufnimmt | ein anderes Embedding-Modell wählen |
 | `404` | die Installation ist abgeschlossen | anmelden mit dem ersten Konto |
 | Log „The answer file … was not applied" | eine Angabe oder Prüfung der Antwortdatei scheiterte | Datei korrigieren, neu starten |
+
+## Ohne Modelle installiert
+
+Eine Installation ohne Chat- oder Embedding-Modell ist ein regulärer Zustand. OPAA startet ohne
+Fehler im Log; Anmeldung, Konten, Spaces, Bibliotheken und die Verwaltung arbeiten wie sonst.
+
+| Fehlt | Wirkung | Abhilfe |
+|---|---|---|
+| Chat-Modell | Fragen im Chat bekommen keine Antwort; der Chat zeigt „Noch kein Chat-Modell eingerichtet“, für die Systemverwaltung mit „Chat-Modell einrichten“ | unter Modelle → Chat-Modelle ein Modell anlegen und aktivieren, ohne Neustart ([Chat-Modelle in der Oberfläche anlegen](modelle.md#chat-modelle-in-der-oberfläche-anlegen)) |
+| Embedding-Modell | keine Vektorablage: Indexierung, Upload und Suche antworten mit dem Hinweis, dass noch kein Embedding-Modell eingerichtet ist; geplante Läufe ruhen, von einer Quelle gemeldete Änderungen verfallen nach kurzer Zeit (der nächste Lauf nach dem Festlegen deckt sie ab). Fragen, die in Bibliotheken suchen, bekommen denselben Hinweis; der Chat zeigt „Noch kein Embedding-Modell eingerichtet“ | unter Modelle → Einbettung das erste Modell festlegen, ohne Neustart ([Erstes Modell festlegen](modelle.md#erstes-modell-festlegen)) |
+
+Readiness und `/actuator/health` bleiben `UP`; die Health Groups `chat-model`, `embedding-model`
+und `vector-store` melden `UNKNOWN` mit dem Detail `NOT_CONFIGURED`. Wer Modelle überwacht, wertet
+dieses Detail aus (Health Groups mit Zugangstoken) oder mit einer angemeldeten Sitzung
+`GET /api/v1/search/availability` (`chatModelConfigured`, `embeddingModelConfigured`); eine Überwachung nur auf `DOWN` bemerkt ein nie
+eingerichtetes Modell nicht. Eine Vektortabelle mit Abschnitten, aber ohne Embedding-Modell bleibt
+ein Fehler (`DOWN`, [Fehlerbilder der Modelle](modelle.md#fehlerbilder)).
 
 ## Konfiguration
 

@@ -47,6 +47,7 @@ public class ChunkInspectionService {
   private final LibraryAccessService libraryAccessService;
   private final ObjectMapper objectMapper;
   private final String selectSql;
+  private final VectorTable vectorTable;
 
   public ChunkInspectionService(
       JdbcTemplate jdbcTemplate,
@@ -61,6 +62,12 @@ public class ChunkInspectionService {
     this.libraryAccessService = libraryAccessService;
     this.objectMapper = objectMapper;
     this.selectSql = "SELECT id, content, metadata FROM " + vectorTable.qualifiedName();
+    this.vectorTable = vectorTable;
+  }
+
+  /** Whether chunks can exist: before the first embedding model there is no vector table. */
+  private boolean chunksStored() {
+    return vectorTable.existsIn(jdbcTemplate);
   }
 
   /**
@@ -126,6 +133,9 @@ public class ChunkInspectionService {
     } catch (IllegalArgumentException e) {
       return Optional.empty();
     }
+    if (!chunksStored()) {
+      return Optional.empty();
+    }
     List<StoredChunk> rows =
         jdbcTemplate.query(selectSql + " WHERE id = ?", this::toStoredChunk, id);
     if (rows.isEmpty()) {
@@ -148,19 +158,21 @@ public class ChunkInspectionService {
     Document document = requireDocument(organizationId, documentId);
     String libraryName = libraryName(document);
     List<ChunkInspection> chunks =
-        jdbcTemplate
-            .query(
-                selectSql
-                    + " WHERE metadata->>'"
-                    + DOCUMENT_ID_KEY
-                    + "' = ? ORDER BY (metadata->>'"
-                    + CHUNK_INDEX_KEY
-                    + "')::integer NULLS LAST, id",
-                this::toStoredChunk,
-                documentId.toString())
-            .stream()
-            .map(chunk -> describe(chunk, document, libraryName))
-            .toList();
+        !chunksStored()
+            ? List.of()
+            : jdbcTemplate
+                .query(
+                    selectSql
+                        + " WHERE metadata->>'"
+                        + DOCUMENT_ID_KEY
+                        + "' = ? ORDER BY (metadata->>'"
+                        + CHUNK_INDEX_KEY
+                        + "')::integer NULLS LAST, id",
+                    this::toStoredChunk,
+                    documentId.toString())
+                .stream()
+                .map(chunk -> describe(chunk, document, libraryName))
+                .toList();
     return new DocumentChunks(
         document.getId(),
         document.getFileName(),
@@ -179,6 +191,9 @@ public class ChunkInspectionService {
   public List<ChunkInspection> listChunkWindow(
       UUID organizationId, UUID documentId, int fromIndex, int toIndex) {
     Document document = requireDocument(organizationId, documentId);
+    if (!chunksStored()) {
+      return List.of();
+    }
     String libraryName = libraryName(document);
     return jdbcTemplate
         .query(
@@ -208,6 +223,9 @@ public class ChunkInspectionService {
   public List<ChunkInspection> listChunkPage(
       UUID organizationId, UUID documentId, Integer afterIndex, int limit) {
     Document document = requireDocument(organizationId, documentId);
+    if (!chunksStored()) {
+      return List.of();
+    }
     String libraryName = libraryName(document);
     return jdbcTemplate
         .query(
