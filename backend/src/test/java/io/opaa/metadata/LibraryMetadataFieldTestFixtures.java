@@ -22,18 +22,9 @@ public final class LibraryMetadataFieldTestFixtures {
       String valuePattern,
       boolean filter,
       boolean contextPrefix,
-      Integer citationPosition,
       List<String> codes) {
     return definition(
-        UUID.randomUUID(),
-        fieldKey,
-        label,
-        type,
-        valuePattern,
-        filter,
-        contextPrefix,
-        citationPosition,
-        codes);
+        UUID.randomUUID(), fieldKey, label, type, valuePattern, filter, contextPrefix, codes);
   }
 
   public static LibraryMetadataFieldDefinition definition(
@@ -44,11 +35,10 @@ public final class LibraryMetadataFieldTestFixtures {
       String valuePattern,
       boolean filter,
       boolean contextPrefix,
-      Integer citationPosition,
       List<String> codes) {
     LibraryMetadataField field =
         new LibraryMetadataField(libraryId, fieldKey, type, valuePattern, 10);
-    field.apply(label, filter, contextPrefix, citationPosition);
+    field.apply(label, filter, contextPrefix);
     List<LibraryMetadataFieldValue> values = new ArrayList<>();
     int sortOrder = 0;
     for (String code : codes) {

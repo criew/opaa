@@ -142,13 +142,11 @@ class ChatSourceMetadataEntryTest {
   }
 
   /**
-   * regression guard for #1242: the Belegzeile carries at most two non-core entries, and a value
-   * dropped as a duplicate of the Titel must not cost the place a library field could have had -
-   * deduplication runs first, the cap second. A detail-only entry is not on the line and does not
-   * count either.
+   * A value that only repeats the Titel is left out; every other format and library field stays, in
+   * the order it arrives - there is no cap on the number of fields.
    */
   @Test
-  void deduplicatesBeforeCappingTheLineAndDoesNotCountDetailOnlyEntries() {
+  void dropsOnlyADuplicateOfAPrecedingEntryAndKeepsEveryOtherField() {
     CoreMetadata core =
         new CoreMetadata(
             "Bebauungsplan Nord", MetadataOrigin.DETERMINISTIC, null, null, null, null, null, null);
@@ -164,7 +162,7 @@ class ChatSourceMetadataEntryTest {
 
     assertThat(entries)
         .extracting(ChatSourceMetadataEntry::label)
-        .containsExactly("Titel", "An", "Absender", "Fassung");
+        .containsExactly("Titel", "An", "Absender", "Fassung", "Projekt");
   }
 
   private static CitationFieldValue citation(

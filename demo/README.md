@@ -661,8 +661,8 @@ darf, und jede Fundstellenmarke im Antworttext auf einen Beleg derselben Runde m
 Dateinamen – sonst lehnt das Backend den Chat mit `400` ab. Dateiname, Quellentyp und Metadaten
 eines Belegs liest das Backend aus dem Dokument selbst, der Seed liefert nur die Dokument-ID; ein
 eingespielter Beleg zeigt dieselben Felder wie ein frisch erzeugter, also neben Titel, Dokumentart
-und Datum auch die Formatfelder (etwa Betreff einer Mail) und die Bibliotheksfelder mit
-Zitierposition. Anheften und Archivieren laufen über die regulären Endpunkte.
+und Datum auch die Formatfelder (etwa Betreff einer Mail) und die gesetzten Bibliotheksfelder.
+Anheften und Archivieren laufen über die regulären Endpunkte.
 Eine Gesprächsnotiz haben die eingespielten Chats nicht; sie entsteht erst mit der nächsten
 gestellten Frage.
 

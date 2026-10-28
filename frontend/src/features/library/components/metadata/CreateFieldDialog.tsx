@@ -7,7 +7,6 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import FormControl from '@mui/material/FormControl'
-import FormHelperText from '@mui/material/FormHelperText'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
@@ -19,7 +18,7 @@ import type { LibraryMetadataFieldType } from '@/shared/api/types'
 import ChangeImpactNotice from './ChangeImpactNotice'
 import { TYPE_LABELS } from './metadataFieldText'
 
-/** „Feld anlegen": key, name, type, value list or pattern, Wirkstellen and citation position. */
+/** „Feld anlegen": key, name, type, value list or pattern and Wirkstellen. */
 export default function CreateFieldDialog({
   open,
   libraryId,
@@ -39,7 +38,6 @@ export default function CreateFieldDialog({
   const [valuePattern, setValuePattern] = useState('')
   const [filter, setFilter] = useState(true)
   const [contextPrefix, setContextPrefix] = useState(false)
-  const [citationPosition, setCitationPosition] = useState('')
   const [values, setValues] = useState('')
 
   const noEffect = !filter && !contextPrefix
@@ -53,7 +51,6 @@ export default function CreateFieldDialog({
         valuePattern: type === 'PATTERN' ? valuePattern : null,
         filter,
         contextPrefix,
-        citationPosition: citationPosition === '' ? null : Number(citationPosition),
         values:
           type === 'SELECT'
             ? values
@@ -138,28 +135,9 @@ export default function CreateFieldDialog({
             }
             label="Wirkt im Kontextpräfix"
           />
-          <FormControl fullWidth size="small">
-            <InputLabel id="citation-position-label">Zitierposition</InputLabel>
-            <Select
-              labelId="citation-position-label"
-              label="Zitierposition"
-              aria-describedby="citation-position-help"
-              value={citationPosition}
-              onChange={(e) => setCitationPosition(e.target.value)}
-            >
-              <MenuItem value="">keine</MenuItem>
-              <MenuItem value="1">1</MenuItem>
-              <MenuItem value="2">2</MenuItem>
-            </Select>
-            <FormHelperText id="citation-position-help">
-              Wirkt nur in der Ausgabe für externe KI-Werkzeuge (Suchschnittstelle, MCP); das
-              Belegfenster im Chat zeigt keine Metadaten.
-            </FormHelperText>
-          </FormControl>
           {noEffect && (
             <Alert severity="warning">
-              Jedes Feld muss mindestens im Filter oder im Kontextpräfix wirken; „nur
-              Zitierposition“ genügt nicht.
+              Jedes Feld muss mindestens im Filter oder im Kontextpräfix wirken.
             </Alert>
           )}
           {contextPrefix && (

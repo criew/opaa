@@ -33,8 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <ul>
  *   <li><b>Aufnahmeregel</b> - a field is only accepted when it serves the filter or the
- *       Kontextpräfix; "nur Beleg-Anzeige" is rejected, and at most {@link #MAX_FIELDS} fields
- *       exist per library.
+ *       Kontextpräfix, and at most {@link #MAX_FIELDS} fields exist per library.
  *   <li><b>Abbildungsregel</b> - a value of a controlled list can only be removed or replaced
  *       together with a confirmed mapping onto another value or onto "leer", and the number of
  *       affected documents is known before the confirmation. The database enforces the same rule
@@ -163,8 +162,8 @@ public class LibraryMetadataFieldService {
   }
 
   /**
-   * Defines a new field. Rejects a field without a retrieval effect (400), a sixth field (409), a
-   * duplicate key (409) and a citation position already taken (409).
+   * Defines a new field. Rejects a field without a retrieval effect (400), a sixth field (409) and
+   * a duplicate key (409).
    */
   @Transactional
   public LibraryMetadataFieldDefinition createField(
@@ -184,13 +183,10 @@ public class LibraryMetadataFieldService {
     if (fieldRepository.findByLibraryIdAndFieldKey(library.getId(), key).isPresent()) {
       throw new ConflictException("Das Feld „" + key + "“ gibt es in dieser Bibliothek bereits");
     }
-    Integer citationPosition =
-        validatedCitationPosition(library.getId(), null, input.citationPosition());
-
     int sortOrder = (int) fieldRepository.countByLibraryId(library.getId()) * 10 + 10;
     LibraryMetadataField field =
         new LibraryMetadataField(library.getId(), key, input.type(), pattern, sortOrder);
-    field.apply(label, input.filter(), input.contextPrefix(), citationPosition);
+    field.apply(label, input.filter(), input.contextPrefix());
     fieldRepository.save(field);
 
     List<LibraryMetadataFieldValue> values = new ArrayList<>();
@@ -236,7 +232,6 @@ public class LibraryMetadataFieldService {
       String label,
       boolean filter,
       boolean contextPrefix,
-      Integer citationPosition,
       CurrentUser caller) {
     KnowledgeLibrary library = requireLibrary(libraryId, caller, AssetRole.MANAGER);
     LibraryMetadataField field = requireField(library, fieldKey);
@@ -244,11 +239,7 @@ public class LibraryMetadataFieldService {
     requireRetrievalEffect(filter, contextPrefix);
     boolean wasFilterable = field.isFilterEnabled();
     boolean wasPrefixEffective = field.isContextPrefixEnabled();
-    field.apply(
-        requireLabel(label, "Der Feldname"),
-        filter,
-        contextPrefix,
-        validatedCitationPosition(library.getId(), field.getId(), citationPosition));
+    field.apply(requireLabel(label, "Der Feldname"), filter, contextPrefix);
     fieldRepository.save(field);
     if (wasFilterable != filter) {
       // The chunk keys are what both search paths read; a field that stopped filtering must lose
@@ -716,31 +707,8 @@ public class LibraryMetadataFieldService {
   private static void requireRetrievalEffect(boolean filter, boolean contextPrefix) {
     if (!filter && !contextPrefix) {
       throw new ValidationException(
-          "Jedes Feld muss mindestens im Filter oder im Kontextpräfix wirken;"
-              + " „nur Beleg-Anzeige“ genügt nicht");
+          "Jedes Feld muss mindestens im Filter oder im Kontextpräfix wirken");
     }
-  }
-
-  /**
-   * A citation position is 1 or 2 and belongs to at most one field per library - the "höchstens
-   * zwei Bibliotheksfelder in der Belegzeile" of the specification. Taking a position another field
-   * already holds is a conflict, not a silent swap.
-   */
-  private Integer validatedCitationPosition(UUID libraryId, UUID ownFieldId, Integer position) {
-    if (position == null) {
-      return null;
-    }
-    if (position != 1 && position != 2) {
-      throw new ValidationException("Die Zitierposition ist 1 oder 2");
-    }
-    for (LibraryMetadataField other :
-        fieldRepository.findByLibraryIdOrderBySortOrderAscFieldKeyAsc(libraryId)) {
-      if (!other.getId().equals(ownFieldId) && position.equals(other.getCitationPosition())) {
-        throw new ConflictException(
-            "Die Zitierposition " + position + " hat bereits das Feld " + other.getLabel());
-      }
-    }
-    return position;
   }
 
   private static String requireFieldKey(String fieldKey) {

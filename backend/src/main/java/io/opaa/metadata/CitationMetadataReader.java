@@ -6,7 +6,6 @@ import io.opaa.format.FormatMetadataField;
 import io.opaa.knowledge.Document;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -19,17 +18,16 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The non-core half of a Beleg (metadata-schema.md Wirkstelle 3): per document, its format field
- * values (a mail's Absender, An, Betreff) followed by the values of its library's fields that carry
- * a citation position, in that position's order. An empty field produces no entry at all. The cap
- * that keeps the Belegzeile readable is applied where the line is assembled ({@code
- * ChatSourceMetadataEntry#from}) - only there is a duplicate of a core field already known, and a
- * dropped duplicate must not cost a place.
+ * values (a mail's Absender, An, Betreff) followed by the values of every field of its library, in
+ * the library's field order ({@code sort_order}, then field key). An empty field produces no entry
+ * at all. The Beleg goes only to external AI tools (search interface, MCP); the own chat shows no
+ * metadata in it.
  *
  * <p>With the metadata feature off (ADR-0044) no document has an entry: the stored values stay, but
  * no Beleg shows them.
  *
- * <p>Two queries for a whole answer's sources, not one per document: the citation fields of the
- * involved libraries and the values of the involved documents.
+ * <p>Two queries for a whole answer's sources, not one per document: the fields of the involved
+ * libraries and the values of the involved documents.
  */
 @Component
 public class CitationMetadataReader {
@@ -71,14 +69,8 @@ public class CitationMetadataReader {
     Map<UUID, List<LibraryMetadataField>> citationFields = new HashMap<>();
     for (LibraryMetadataField field :
         fieldRepository.findByLibraryIdInOrderBySortOrderAscFieldKeyAsc(libraryIds)) {
-      if (field.getCitationPosition() != null) {
-        citationFields.computeIfAbsent(field.getLibraryId(), id -> new ArrayList<>()).add(field);
-      }
+      citationFields.computeIfAbsent(field.getLibraryId(), id -> new ArrayList<>()).add(field);
     }
-    citationFields
-        .values()
-        .forEach(
-            fields -> fields.sort(Comparator.comparing(LibraryMetadataField::getCitationPosition)));
 
     Map<String, String> valueLabels = valueLabels(citationFields);
     Map<UUID, Map<String, DocumentMetadataValue>> rowsByDocument = new HashMap<>();

@@ -283,7 +283,6 @@ export const libraryMetadataHandlers = [
       valuePattern: body.valuePattern ?? null,
       filter: body.filter ?? false,
       contextPrefix: body.contextPrefix ?? false,
-      citationPosition: body.citationPosition ?? null,
       sortOrder: (fields.length + 1) * 10,
       deletionPending: false,
       values: (body.values ?? []).map((value) => ({
@@ -303,7 +302,6 @@ export const libraryMetadataHandlers = [
         label: string
         filter?: boolean
         contextPrefix?: boolean
-        citationPosition?: number | null
       }
       const field = (mockLibraryMetadataFields[String(params.libraryId)] ?? []).find(
         (candidate) => candidate.fieldKey === String(params.fieldKey),
@@ -320,7 +318,6 @@ export const libraryMetadataHandlers = [
       field.label = body.label
       field.filter = body.filter ?? false
       field.contextPrefix = body.contextPrefix ?? false
-      field.citationPosition = body.citationPosition ?? null
       return HttpResponse.json(field)
     },
   ),

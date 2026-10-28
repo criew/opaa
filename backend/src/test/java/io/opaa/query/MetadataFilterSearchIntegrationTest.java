@@ -333,7 +333,6 @@ class MetadataFilterSearchIntegrationTest {
             valuePattern,
             true,
             false,
-            null,
             type == LibraryMetadataFieldType.SELECT
                 ? List.of(new LibraryMetadataFieldInput.LibraryFieldValueInput("A", "Wert A"))
                 : List.of()),

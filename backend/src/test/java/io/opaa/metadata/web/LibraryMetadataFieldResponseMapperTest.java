@@ -39,7 +39,6 @@ class LibraryMetadataFieldResponseMapperTest {
             null,
             true,
             true,
-            2,
             List.of("A", "B"));
 
     LibraryMetadataFieldResponse response =
@@ -52,7 +51,6 @@ class LibraryMetadataFieldResponseMapperTest {
     assertThat(response.getValuePattern()).isNull();
     assertThat(response.getFilter()).isTrue();
     assertThat(response.getContextPrefix()).isTrue();
-    assertThat(response.getCitationPosition()).isEqualTo(2);
     assertThat(response.getSortOrder()).isEqualTo(10);
     assertThat(response.getValues())
         .extracting(value -> value.getCode() + "=" + value.getLabel())
@@ -73,7 +71,6 @@ class LibraryMetadataFieldResponseMapperTest {
                     null,
                     true,
                     false,
-                    null,
                     List.of("A", "B"))
                 .field(),
             LibraryMetadataFieldTestFixtures.definition(
@@ -83,7 +80,6 @@ class LibraryMetadataFieldResponseMapperTest {
                     null,
                     true,
                     false,
-                    null,
                     List.of("A", "B"))
                 .values(),
             List.of(
@@ -156,11 +152,9 @@ class LibraryMetadataFieldResponseMapperTest {
                 "^§ ?[0-9]+$",
                 true,
                 false,
-                null,
                 List.of()));
 
     assertThat(response.getValuePattern()).isEqualTo("^§ ?[0-9]+$");
-    assertThat(response.getCitationPosition()).isNull();
     assertThat(response.getValues()).isEmpty();
   }
 
@@ -171,7 +165,6 @@ class LibraryMetadataFieldResponseMapperTest {
             .valuePattern(null)
             .filter(true)
             .contextPrefix(false)
-            .citationPosition(1)
             .values(List.of(new LibraryMetadataFieldValueRequest("A", "Wert A")));
 
     LibraryMetadataFieldInput input = LibraryMetadataFieldResponseMapper.toInput(request);
@@ -181,7 +174,6 @@ class LibraryMetadataFieldResponseMapperTest {
     assertThat(input.type()).isEqualTo(LibraryMetadataFieldType.SELECT);
     assertThat(input.filter()).isTrue();
     assertThat(input.contextPrefix()).isFalse();
-    assertThat(input.citationPosition()).isEqualTo(1);
     assertThat(input.values())
         .containsExactly(new LibraryMetadataFieldInput.LibraryFieldValueInput("A", "Wert A"));
   }
@@ -216,7 +208,6 @@ class LibraryMetadataFieldResponseMapperTest {
                         null,
                         false,
                         true,
-                        null,
                         List.of("A"))),
                 new CoreContextPrefixSettings(true, false, true),
                 12,

@@ -363,25 +363,10 @@ class KnowledgeBaselineTest extends AbstractBaselineTest {
     UUID library = insertLibrary();
 
     assertRejected(
-        libraryFieldSql(UUID.randomUUID(), library, "ohne_wirkung", false, false, null),
+        libraryFieldSql(UUID.randomUUID(), library, "ohne_wirkung", false, false),
         "chk_library_metadata_fields_retrieval_effect");
-    insertLibraryField(library, "fassung", true, false, null);
-    insertLibraryField(library, "gremium", false, true, null);
-  }
-
-  @Test
-  void atMostTwoLibraryFieldsCarryACitationPositionPerLibrary() throws SQLException {
-    UUID library = insertLibrary();
-    insertLibraryField(library, "fassung", true, false, 1);
-    insertLibraryField(library, "gremium", true, false, 2);
-
-    assertRejected(
-        libraryFieldSql(UUID.randomUUID(), library, "projekt", true, false, 1),
-        "uk_library_metadata_fields_citation_position");
-    assertRejected(
-        libraryFieldSql(UUID.randomUUID(), library, "phase", true, false, 3),
-        "chk_library_metadata_fields_citation_position");
-    insertLibraryField(insertLibrary(), "fassung", true, false, 1);
+    insertLibraryField(library, "fassung", true, false);
+    insertLibraryField(library, "gremium", false, true);
   }
 
   /**
@@ -391,7 +376,7 @@ class KnowledgeBaselineTest extends AbstractBaselineTest {
   @Test
   void aLibraryValueStillCarriedByADocumentIsNotRemovable() throws SQLException {
     UUID library = insertLibrary();
-    UUID field = insertLibraryField(library, "fassung", true, false, null);
+    UUID field = insertLibraryField(library, "fassung", true, false);
     UUID value = insertLibraryFieldValue(field, "FASSUNG_2026");
     UUID document = insertDocument(library, "/uploads/a.pdf");
 
@@ -412,7 +397,7 @@ class KnowledgeBaselineTest extends AbstractBaselineTest {
    */
   @Test
   void aSchemaChangeRunsOncePerSubjectAndItsKindDecidesWhatItNames() throws SQLException {
-    UUID field = insertLibraryField(insertLibrary(), "fassung", true, false, null);
+    UUID field = insertLibraryField(insertLibrary(), "fassung", true, false);
     UUID value = insertLibraryFieldValue(field, "ALT");
     UUID target = insertLibraryFieldValue(field, "NEU");
     execute(schemaChangeSql(field, value, target, "VALUE_REMAP"));
@@ -694,23 +679,16 @@ class KnowledgeBaselineTest extends AbstractBaselineTest {
   }
 
   private UUID insertLibraryField(
-      UUID library, String fieldKey, boolean filter, boolean contextPrefix, Integer citation)
-      throws SQLException {
+      UUID library, String fieldKey, boolean filter, boolean contextPrefix) throws SQLException {
     UUID id = UUID.randomUUID();
-    execute(libraryFieldSql(id, library, fieldKey, filter, contextPrefix, citation));
+    execute(libraryFieldSql(id, library, fieldKey, filter, contextPrefix));
     return id;
   }
 
   private static String libraryFieldSql(
-      UUID id,
-      UUID library,
-      String fieldKey,
-      boolean filter,
-      boolean contextPrefix,
-      Integer citation) {
+      UUID id, UUID library, String fieldKey, boolean filter, boolean contextPrefix) {
     return "INSERT INTO library_metadata_fields (id, library_id, field_key, label, field_type,"
-        + " filter_enabled, context_prefix_enabled, citation_enabled, citation_position,"
-        + " sort_order, created_at, updated_at) VALUES ('"
+        + " filter_enabled, context_prefix_enabled, sort_order, created_at, updated_at) VALUES ('"
         + id
         + "', '"
         + library
@@ -720,10 +698,6 @@ class KnowledgeBaselineTest extends AbstractBaselineTest {
         + filter
         + ", "
         + contextPrefix
-        + ", "
-        + (citation != null)
-        + ", "
-        + (citation == null ? "NULL" : citation)
         + ", 10, now(), now())";
   }
 

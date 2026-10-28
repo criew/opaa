@@ -273,9 +273,9 @@ public class ChatSourceAssembler {
   }
 
   /**
-   * The library fields a Beleg shows for every resolved source document - at most two per library,
-   * in their configured order. A lookup failure is logged and yields no library fields rather than
-   * failing the answer, exactly like the core-field lookup.
+   * The format and library fields a Beleg carries for every resolved source document, library
+   * fields in their configured order. A lookup failure is logged and yields no library fields
+   * rather than failing the answer, exactly like the core-field lookup.
    */
   private Map<UUID, List<CitationFieldValue>> lookupCitationFields(
       Map<String, io.opaa.knowledge.Document> sourceDocumentsByDocId) {

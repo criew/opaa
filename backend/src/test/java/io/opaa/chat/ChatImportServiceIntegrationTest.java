@@ -525,9 +525,8 @@ class ChatImportServiceIntegrationTest {
     UUID id = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO library_metadata_fields (id, library_id, field_key, label, field_type,"
-            + " value_pattern, filter_enabled, citation_enabled, citation_position, sort_order,"
-            + " created_at, updated_at) VALUES (?, ?, ?, ?, 'PATTERN', '.*', true, true, 1, 10,"
-            + " now(), now())",
+            + " value_pattern, filter_enabled, sort_order, created_at, updated_at)"
+            + " VALUES (?, ?, ?, ?, 'PATTERN', '.*', true, 10, now(), now())",
         id,
         library,
         fieldKey,

@@ -455,7 +455,6 @@ class LibraryMetadataSchemaChangeIntegrationTest {
             null,
             true,
             false,
-            null,
             List.of(
                 new LibraryMetadataFieldInput.LibraryFieldValueInput("A", "Wert A"),
                 new LibraryMetadataFieldInput.LibraryFieldValueInput("B", "Wert B"))),

@@ -194,7 +194,7 @@ nur von der Pipeline eines bestimmten Formats befüllt.
 | **Typisiert** | ja | ja, mit kontrolliertem Vokabular | nein |
 | **Filterbar** | **ja** | **ja** | **nie** |
 | **Im Kontextpräfix** | ja | ja | ja |
-| **In der Beleg-Anzeige** | ja | je Feld entscheidbar | nein |
+| **In der Beleg-Anzeige** | ja | ja, jedes gesetzte Feld | nein |
 | **Voreinstellung** | immer aktiv | leer — eine Bibliothek ohne eigene Felder ist der Normalfall | **aus** |
 
 Die letzte Zeile ist wichtiger, als sie aussieht. **Eine Bibliothek ohne Bibliotheksfelder und ohne
@@ -246,15 +246,15 @@ Beispiele, die die Bandbreite zeigen:
 
 ### Die Aufnahmeregel
 
-> **Ein Feld wird nur aufgenommen, wenn beim Anlegen benannt wird, an welcher der drei Wirkstellen es
-> wirkt — Filter, Kontextpräfix oder Beleg-Anzeige.** Wer keine benennen kann, hat kein Feld gefunden,
-> sondern eine Ordnungsidee.
+> **Ein Feld wird nur aufgenommen, wenn beim Anlegen benannt wird, an welcher der beiden
+> retrievalwirksamen Wirkstellen es wirkt — Filter oder Kontextpräfix.** Wer keine benennen kann, hat
+> kein Feld gefunden, sondern eine Ordnungsidee.
 
-**„Beleg-Anzeige" allein genügt nicht.** Jedes Bibliotheksfeld MUSS mindestens eine der beiden
-retrievalwirksamen Stellen bedienen — Filter oder Kontextpräfix; die Beleg-Anzeige ist eine zulässige
-Zugabe, nie die einzige Wirkung. Der Grund ist der, gegen den die Regel überhaupt gebaut ist: „steht
-im Beleg" ist die Wirkstelle, die sich für jedes denkbare Feld behaupten lässt, und damit die
-Hintertür, durch die das Ordnungsbedürfnis doch wieder fünfzehn Felder anlegt. Ein Feld, das eine
+**Im Beleg zu stehen ist keine Wirkung.** Jedes gesetzte Bibliotheksfeld steht ohnehin im Beleg für
+externe KI-Werkzeuge ([Wirkstelle 3](#wirkstelle-3-beleg-anzeige)); als Begründung für ein Feld
+zählt das nicht. Der Grund ist der, gegen den die Regel überhaupt gebaut ist: „steht im Beleg" lässt
+sich für jedes denkbare Feld behaupten und wäre damit die Hintertür, durch die das
+Ordnungsbedürfnis doch wieder fünfzehn Felder anlegt. Ein Feld, das eine
 Suche nicht verbessert, sondern nur die Trefferzeile schmückt, ist kein Retrieval-Feld.
 
 Die Regel ist nicht als Formalie gemeint, sondern als das Gegenmittel gegen die absehbare
@@ -302,8 +302,8 @@ Pflege-Anker.
 
 **Datenmodell.** `library_metadata_fields` (Migration 025) führt je Bibliothek bis zu **fünf**
 Felder: stabiler `field_key` (kleingeschrieben, je Bibliothek eindeutig), deutsches Label, Typ
-`SELECT`/`DATE`/`PATTERN`, das Muster eines `PATTERN`-Feldes, die Wirkstellen als Flags und die
-Zitierposition. `library_metadata_field_values` ist die Werteliste eines `SELECT`-Feldes mit
+`SELECT`/`DATE`/`PATTERN`, das Muster eines `PATTERN`-Feldes, die Wirkstellen Filter und
+Kontextpräfix als Flags und die Reihenfolge (`sort_order`). `library_metadata_field_values` ist die Werteliste eines `SELECT`-Feldes mit
 stabilen Codes. Die Werte der Dokumente liegen weiter in `document_metadata_values` (#1066) — unter
 dem Schlüssel `lib:<key>`, mit `library_field_id` auf das Feld und, bei `SELECT`, `library_value_id`
 als **echtem Fremdschlüssel** auf den Listeneintrag. Damit hängt die ganze vorhandene Mechanik
@@ -313,10 +313,9 @@ demselben Schlüssel führen zwei verschiedene Felder**, jedes mit eigener Werte
 
 **Die Aufnahmeregel steht in der Datenbank.** `chk_library_metadata_fields_retrieval_effect` lässt
 ein Feld ohne Filter- und ohne Kontextpräfix-Wirkung gar nicht erst speichern; die API weist es
-zusätzlich mit 400 und einer deutschen Meldung ab. „Nur Beleg-Anzeige" ist damit kein erreichbarer
-Zustand, sondern ein nicht darstellbarer. Die Obergrenze von fünf Feldern setzt der Dienst (409 beim
-sechsten); die Zitierposition ist 1 oder 2 und je Bibliothek einmal vergeben
-(`uk_library_metadata_fields_citation_position`).
+zusätzlich mit 400 und einer deutschen Meldung ab. Ein Feld, das nichts findbar macht, ist damit
+kein erreichbarer Zustand, sondern ein nicht darstellbarer. Die Obergrenze von fünf Feldern setzt der
+Dienst (409 beim sechsten). Eine eigene Einstellung für den Beleg hat ein Feld nicht (#3279).
 
 **Die Abbildungsregel steht ebenfalls in der Datenbank.** Es gibt **keine** Operation, die einen
 Listenwert ohne Abbildung entfernt: `POST …/values/{code}/remap` nimmt `targetCode` (ein anderer Wert
@@ -400,9 +399,10 @@ Dokumentart-Schranke von 0,90 rechtfertigt sich aus einem deterministisch erreic
 gilt hier nicht.
 
 **Beleg-Anzeige.** Die generische Feld-Wert-Liste am `SourceReference` (#1066) trägt hinter den
-Kernfeldern die Bibliotheksfelder mit Zitierposition — höchstens zwei, in der Reihenfolge der
-Position, leere Felder gar nicht. Seit #3259 zeigt das Belegfenster des eigenen Chats keine Metadaten mehr; die Liste geht nur noch an externe KI-Werkzeuge (Suchschnittstelle, MCP), siehe [Wirkstelle 3](#wirkstelle-3-beleg-anzeige). Der Feld-Dialog sagt das am Feld
-„Zitierposition“ als Hilfetext.
+Kernfeldern und Formatfeldern jedes gesetzte Bibliotheksfeld, in der Reihenfolge der Felder der
+Bibliothek (`sortOrder`), leere Felder gar nicht. Das Belegfenster des eigenen Chats zeigt keine
+Metadaten; die Liste geht an externe KI-Werkzeuge (Suchschnittstelle, MCP), siehe
+[Wirkstelle 3](#wirkstelle-3-beleg-anzeige).
 
 **Kontextpräfix.** Die Wirkstelle wird gespeichert und ist in der Verwaltungsansicht sichtbar; der
 Präfix selbst und der Nachlauf, den eine Änderung daran kostet, kamen mit **#1072** (siehe
@@ -410,7 +410,7 @@ Präfix selbst und der Nachlauf, den eine Änderung daran kostet, kamen mit **#1
 
 **Oberfläche.** In den Bibliothekseinstellungen steht der Abschnitt „Metadatenfelder": die Liste mit
 Typ, Wirkstellen und Werteliste, das Anlegen (mit der Pflicht, Filter oder Kontextpräfix zu wählen),
-das Bearbeiten von Feldname, Wirkstellen und Zitierposition, das Löschen mit Folgekostenanzeige, das
+das Bearbeiten von Feldname und Wirkstellen, das Löschen mit Folgekostenanzeige, das
 Pflegen der Werteliste samt Korrektur einer Bezeichnung und der Abbildungsdialog
 („N Dokumente tragen ‚X' → auf … / leer abbilden"). Der Hinweis auf schutzbedürftige Bezeichnungen
 steht dort, wo die Werteliste gepflegt wird. Metadatenansicht und Sammelzuweisung (#1068) sowie der
@@ -466,9 +466,10 @@ Metadatenqualität. Im Beleg stehen die Formatfelder hinter den Kernfeldern und 
 Bibliotheksfeldern; ein Wert, den der Titel bereits wörtlich zeigt (bei einer Mail der Betreff, der
 zugleich Titelquelle ist), erscheint nicht zweimal. **Der Empfänger ist ein Detailwert (`detailOnly`), kein
 Eintrag der einzeiligen Fundstelle**: Eine Verteilerliste ist unbegrenzt lang und benennt niemanden, der die
-Fundstelle einordnet — sie würde genau die Angaben aus der einen Zeile verdrängen, die es tun. Die
-Obergrenze von zwei Nicht-Kernfeldern der Belegzeile zählt die Formatfelder mit; knapp ist die
-Zeile, nicht die Feldart. Seit #3259 zeigt das Belegfenster des eigenen Chats keine Metadaten mehr; die Liste geht nur noch an externe KI-Werkzeuge (Suchschnittstelle, MCP), siehe [Wirkstelle 3](#wirkstelle-3-beleg-anzeige). **Kein Formatfeld steht im Kontextpräfix** (#1072): Die Wirkstelle
+Fundstelle einordnet — sie würde genau die Angaben aus der einen Zeile verdrängen, die es tun. Eine
+Obergrenze für die Zahl der Felder im Beleg gibt es nicht. Das Belegfenster des eigenen Chats zeigt
+keine Metadaten; die Liste geht an externe KI-Werkzeuge (Suchschnittstelle, MCP), siehe
+[Wirkstelle 3](#wirkstelle-3-beleg-anzeige). **Kein Formatfeld steht im Kontextpräfix** (#1072): Die Wirkstelle
 „Kontextpräfix" ist je Feld eine bewusste Entscheidung — bei einem Bibliotheksfeld beim Anlegen, bei
 Dokumentart und Datum/Stand je Bibliothek —, und ein Formatfeld legt niemand an, also hat sie auch
 niemand getroffen. Sie stillschweigend zu setzen hieße, jedem Bestand mit Mails einen Nachlauf
@@ -1657,7 +1658,7 @@ Objekt fehlt.
 **Eine manuelle Korrektur eines präfixwirksamen Wertes bettet nicht sofort neu ein** (#1068): Sie leert
 den Abdruck dieses einen Dokuments und gibt es damit an den Nachlauf, dessen Start eine ausdrückliche
 Freigabe bleibt. Die Korrektur selbst bleibt, was sie war — ein JSON-Update der Chunk-Schlüssel ohne
-Modellaufruf. Ein Feld, das nur filtert oder nur im Beleg steht, lässt den Abdruck unangetastet.
+Modellaufruf. Ein Feld, das nur filtert, lässt den Abdruck unangetastet.
 
 **Der Bestand vor #1072 trägt keinen Abdruck** und gilt damit unmittelbar nach dem Upgrade als
 ausstehend, ohne dass jemand etwas geändert hätte. Das ist der ehrliche Zustand — die Kernfeld-Titel
@@ -1671,12 +1672,12 @@ Kernfelder; kein Präfix im gespeicherten Chunk-Text.
 
 ## Wirkstelle 3: Beleg-Anzeige
 
-> **Stand seit #3259:** Das Belegfenster des Chats zeigt je Beleg nur Titel und Fundort, keine
-> Metadaten; von dieser Wirkstelle bleibt dort allein die Kennzeichnung „ohne Angabe“ unter
-> aktivem Filter. Die Feld-Wert-Liste mit Kernfeldern, Formatfeldern und den Bibliotheksfeldern mit
-> Zitierposition geht weiterhin an externe KI-Werkzeuge (Suchschnittstelle und MCP über
-> `ChatSourceMetadataEntry`); nur dort wirken Zitierposition und die Regeln unten. Ob Wirkstelle 3
-> und `citationPosition` bleiben oder entfallen, entscheidet #3279.
+> **Stand:** Das Belegfenster des Chats zeigt je Beleg nur Titel und Fundort, keine Metadaten
+> (#3259); von dieser Wirkstelle bleibt dort allein die Kennzeichnung „ohne Angabe“ unter aktivem
+> Filter. Die Feld-Wert-Liste mit Kernfeldern, Formatfeldern und **jedem gesetzten Bibliotheksfeld
+> in `sortOrder`** geht an externe KI-Werkzeuge (Suchschnittstelle und MCP über
+> `ChatSourceMetadataEntry`); nur dort wirken die Regeln unten. Eine Auswahl je Feld
+> gibt es nicht (#3279).
 
 Ein Beleg ist heute Dokument plus Fundstelle. Mit Metadaten wird er einordbar:
 
@@ -1687,12 +1688,12 @@ nachher:  § 3 Verwaltungsgebührensatzung, Fassung 2026 — Seite 4
 
 Drei Regeln:
 
-- **Der Beleg zeigt nur, was das Produkt verantworten kann.** Kernfelder, Formatfelder und
-  Bibliotheksfelder mit der Wirkstelle „Beleg-Anzeige"; keine Schlagworte.
-- **Die Belegzeile bleibt lesbar: höchstens zwei Bibliotheksfelder** neben den Kernfeldern und der
-  Fundstelle. Ein Beleg ist eine Zeile, die im Lesefluss der Antwort steht; trägt sie fünf Angaben,
-  liest sie niemand mehr, und die eine Angabe, auf die es ankommt — die Fassung — geht in der
-  Aufzählung unter. Welche zwei es sind, gehört zur Feldkonfiguration.
+- **Der Beleg zeigt nur, was das Produkt verantworten kann.** Kernfelder, Formatfelder und die
+  Bibliotheksfelder; keine Schlagworte.
+- **Jedes gesetzte Bibliotheksfeld steht im Beleg, in der Reihenfolge der Felder der Bibliothek.**
+  Der Empfänger ist ein externes KI-Werkzeug, keine Zeile im Lesefluss einer Antwort; eine Auswahl
+  je Feld wäre eine Einstellung ohne sichtbare Wirkung im eigenen Produkt. Die Reihenfolge ist die
+  des Anlegens.
 - **Ein leeres Feld erscheint in der Belegzeile gar nicht.** Kein „Projekt — ohne Angabe". Die
   Kennzeichnung „ohne Angabe" gehört an die Stelle, an der sie eine Aussage trägt: in die
   Trefferliste eines gesetzten Filters (siehe [Leerwerte schließen nicht aus](#leerwerte-schließen-nicht-aus))
