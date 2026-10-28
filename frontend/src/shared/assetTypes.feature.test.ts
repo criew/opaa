@@ -27,7 +27,7 @@ describe('assetTypeRegistry with prompt libraries switched off', () => {
     expect(catalogScopePrefixes()).toContain('/prompts')
   })
 
-  it('leaves the prompt library out of every list, "Neu" and the rail scope', () => {
+  it('leaves the prompt library out of every list, "Neuer Katalogeintrag" and the rail scope', () => {
     useAuthStore.setState({ features: { promptLibraries: false } })
 
     expect(activeAssetTypes().map((definition) => definition.type)).toEqual(['KNOWLEDGE_LIBRARY'])

@@ -354,11 +354,13 @@ describe('CatalogPage (ADR-0039)', () => {
     await waitFor(() => expect(requestedUrls.at(-1)?.searchParams.get('favorites')).toBe('true'))
   })
 
-  it('leads "Neu" to the type choice', async () => {
+  it('leads "Neuer Katalogeintrag" to the type choice', async () => {
     const user = userEvent.setup()
     renderCatalog()
 
-    await user.click(await screen.findByRole('button', { name: 'Neu' }))
+    const create = await screen.findByRole('button', { name: 'Neuer Katalogeintrag' })
+    expect(within(create).getByTestId('AddIcon')).toBeInTheDocument()
+    await user.click(create)
 
     expect(await screen.findByText('Typwahl')).toBeInTheDocument()
     expect(screen.getByTestId('location')).toHaveTextContent('/catalog/new')
@@ -378,13 +380,15 @@ describe('CatalogPage (ADR-0039)', () => {
     expect(requestedUrls.every((url) => url.searchParams.get('type') === null)).toBe(true)
   })
 
-  it('offers no "Neu" to a person without any creation right', async () => {
+  it('offers no "Neuer Katalogeintrag" to a person without any creation right', async () => {
     server.use(http.get('/api/v1/me/capabilities', () => HttpResponse.json({ capabilities: [] })))
     renderCatalog()
     await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
 
     await waitFor(() =>
-      expect(screen.queryByRole('button', { name: 'Neu' })).not.toBeInTheDocument(),
+      expect(
+        screen.queryByRole('button', { name: 'Neuer Katalogeintrag' }),
+      ).not.toBeInTheDocument(),
     )
   })
 

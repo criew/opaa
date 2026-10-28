@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '../../../test/test-utils'
 import OverviewPage, { OverviewCard } from './OverviewPage'
@@ -42,6 +42,14 @@ describe('OverviewPage (#1913)', () => {
 
     screen.getByRole('button', { name: 'Neues Beispiel' }).click()
     expect(onCreate).toHaveBeenCalled()
+  })
+
+  // Every create button carries the plus icon before its label (guidelines 5.1).
+  it('marks the create button with the plus icon', () => {
+    renderOverview()
+
+    const button = screen.getByRole('button', { name: 'Neues Beispiel' })
+    expect(within(button).getByTestId('AddIcon')).toBeInTheDocument()
   })
 
   it('filters client-side over the supplied search text and updates the count', async () => {

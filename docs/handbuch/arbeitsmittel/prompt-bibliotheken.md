@@ -77,7 +77,7 @@ der Zugriff fehlt.
 
 ### Anlegen
 
-Angelegt wird über **„Neu"** im Katalog: Nach der Wahl der Art „Prompts" öffnet „Weiter" einen
+Angelegt wird über **„Neuer Katalogeintrag"** im Katalog: Nach der Wahl der Art „Prompts" öffnet „Weiter" einen
 Assistenten mit drei Schritten ([Katalog](katalog.md), Abschnitt 4). Er verwendet dieselben
 Formularbausteine wie der Assistent einer Wissensbibliothek, schneidet sie aber anders zu: Es gibt
 keine Schritte „Quellart" und „Quelle einrichten" — eine Prompt-Bibliothek bindet kein Wissen und
@@ -96,7 +96,7 @@ einem Schritt „Freigaben":
 
 Anlegen darf, wer das Anlegerecht **„Prompt-Bibliotheken anlegen"** hat; ausgeliefert ist es an
 „Alle Konten" ([Berechtigungen](../konten-und-rechte/berechtigungen.md), Abschnitt 9).
-Fehlt es, bietet „Neu" im Katalog die Art „Prompts" nicht an; wer den Assistenten direkt
+Fehlt es, bietet „Neuer Katalogeintrag" im Katalog die Art „Prompts" nicht an; wer den Assistenten direkt
 aufruft, liest das fehlende Recht beim Namen. Kann eine
 vorgemerkte Rolle nicht erteilt werden, ist die Bibliothek trotzdem angelegt: Der Assistent führt
 auf ihre Detailseite, nennt in einem Hinweis die betroffenen Personen oder Gruppen, und die Rolle
@@ -260,7 +260,7 @@ Eine Installation kann Prompt-Bibliotheken ganz abschalten, etwa für eine Demo,
 Antworten zeigen soll (`OPAA_FEATURES_PROMPT_LIBRARIES_ENABLED=false`, siehe
 [Konfiguration](../betrieb/konfiguration.md#funktionen-abschalten)). Danach erwähnt die Oberfläche sie im Arbeitsalltag nicht mehr:
 
-- Der Katalog zeigt keine Prompt-Bibliothek und keinen Typfilter „Prompts", „Neu" bietet nur noch
+- Der Katalog zeigt keine Prompt-Bibliothek und keinen Typfilter „Prompts", „Neuer Katalogeintrag" bietet nur noch
   Wissen an, und das Anlegerecht „Prompt-Bibliotheken anlegen" fehlt in der Übersicht der
   Anlegerechte.
 - Space-Inhalte, Zählungen und die Auswahl beim Anlegen und Zuordnen enthalten keine

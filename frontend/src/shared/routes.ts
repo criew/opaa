@@ -51,7 +51,7 @@ export const CONNECTION_LOG_ROUTE = '/revision/verbindungsprotokoll'
 export const RIGHTS_HISTORY_ROUTE = '/revision/rechtehistorie'
 /** The one entry for every asset type (ADR-0039, Entscheidung 1). */
 export const CATALOG_ROUTE = '/catalog'
-/** "Neu" in the catalog: the type choice before the type's own wizard. */
+/** "Neuer Katalogeintrag" in the catalog: the type choice before the type's own wizard. */
 export const CATALOG_NEW_ROUTE = '/catalog/new'
 /**
  * The tabs of the space settings, in the order of the tab bar; the first is where a link without

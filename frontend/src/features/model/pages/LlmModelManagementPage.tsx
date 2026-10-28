@@ -4,6 +4,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
+import AddIcon from '@mui/icons-material/Add'
 import PsychologyOutlinedIcon from '@mui/icons-material/PsychologyOutlined'
 import type { LlmModelResponse } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
@@ -71,7 +72,11 @@ function ChatModelsSection() {
         <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
           {models.length === 1 ? '1 Chat-Modell' : `${models.length} Chat-Modelle`}
         </Typography>
-        <Button variant="contained" onClick={() => setForm({ open: true, model: null })}>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setForm({ open: true, model: null })}
+        >
           Neues Modell
         </Button>
       </Box>
