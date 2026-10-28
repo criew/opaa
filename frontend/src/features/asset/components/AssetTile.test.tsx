@@ -227,6 +227,25 @@ describe('AssetTile (#2131)', () => {
       expect(screen.getByRole('checkbox')).toHaveFocus()
     })
 
+    // A screen reader hears the tile's lines in the order they are shown, states included.
+    it('describes the checkbox by every line below the title, in the order shown', () => {
+      renderWithProviders(
+        <AssetTile
+          tile={{
+            ...tile,
+            status: 'UPDATE_FAILED',
+            successionOpen: true,
+            note: 'Freigabe endet am 31.12.2026',
+          }}
+          mode={{ kind: 'select', selected: false, onToggle: vi.fn(), blockedReason: REASON }}
+        />,
+      )
+
+      expect(screen.getByRole('checkbox')).toHaveAccessibleDescription(
+        `Alle geltenden Satzungen der Stadt. 12 Dokumente Aktualisierung fehlgeschlagen Nachfolge offen ${REASON} Freigabe endet am 31.12.2026`,
+      )
+    })
+
     it('lets a chosen tile be unchosen and names the reason before it is', async () => {
       const onToggle = vi.fn()
       renderWithProviders(

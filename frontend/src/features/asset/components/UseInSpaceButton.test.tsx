@@ -126,6 +126,49 @@ describe('UseInSpaceButton', () => {
     expect(Array.from(list.children).map((child) => child.tagName)).toEqual(['LI', 'LI', 'LI'])
   })
 
+  // An open succession refuses every new association (ADR-0036/6): nothing on offer may succeed.
+  it('locks every way to a new association while the succession is open, naming why', async () => {
+    const requests: string[] = []
+    server.use(
+      http.post('/api/v1/spaces/:spaceId/assets', ({ params }) => {
+        requests.push(String(params.spaceId))
+        return HttpResponse.json({}, { status: 201 })
+      }),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(
+      <UseInSpaceButton
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId="library-dienstanweisungen"
+        name="Dienstanweisungen"
+        reachFrozen
+      />,
+      { withRouter: true },
+    )
+
+    await user.click(screen.getByRole('button', { name: '„Dienstanweisungen“ in Space verwenden' }))
+    const dialog = await screen.findByRole('dialog')
+    const phoenix = await within(dialog).findByRole('button', { name: /^Phoenix/ })
+    const newSpace = within(dialog).getByRole('button', { name: 'Neuen Space damit anlegen' })
+    const reason = /Solange die Nachfolge offen ist, lässt sich „Dienstanweisungen“ nicht neu zuordnen/
+
+    expect(within(dialog).getByText(reason)).toBeVisible()
+    for (const entry of [phoenix, newSpace]) {
+      expect(entry).toHaveAttribute('aria-disabled', 'true')
+      expect(entry).toHaveAccessibleDescription(reason)
+    }
+
+    await user.click(phoenix)
+    await user.click(newSpace)
+    phoenix.focus()
+    expect(phoenix).toHaveFocus()
+    await user.keyboard('{Enter}')
+
+    expect(requests).toEqual([])
+    expect(mockNavigate).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
   it('offers the spaces of the space list the application frame provides', async () => {
     const loadSpaces = vi.fn(async (): Promise<SpaceListResponse[]> => [
       { ...mockSpaces[0], id: 'space-provided', name: 'Bereitgestellt', userRole: 'CURATOR' },
