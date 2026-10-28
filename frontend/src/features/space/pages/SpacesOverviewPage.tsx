@@ -1,9 +1,9 @@
 import { useCallback, useEffect } from 'react'
 import Box from '@mui/material/Box'
-import Chip from '@mui/material/Chip'
 import Typography from '@mui/material/Typography'
 import { useNavigate } from 'react-router'
 import OverviewPage, { OverviewCard } from '@/shared/ui/overview/OverviewPage'
+import MetaBadge from '@/shared/ui/MetaBadge'
 import { SuccessionStateNote } from '@/features/succession'
 import { useSpaceStore } from '../stores/spaceStore'
 import type { SpaceListResponse } from '@/shared/api/types'
@@ -25,7 +25,7 @@ function SpaceCard({ space }: { space: SpaceListResponse }) {
         <Typography component="span" sx={{ fontSize: 16.5, fontWeight: 600, flex: 1 }}>
           {space.name}
         </Typography>
-        {space.archived && <Chip label="Archiviert" size="small" variant="outlined" />}
+        {space.archived && <MetaBadge>Archiviert</MetaBadge>}
       </Box>
       <Typography
         component="p"

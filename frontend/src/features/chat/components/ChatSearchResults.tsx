@@ -2,7 +2,6 @@ import { useEffect, useId, useRef } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
@@ -12,6 +11,7 @@ import type { ChatSearch } from '../hooks/useChatSearch'
 import type { ChatSearchHit } from '@/shared/api/types'
 import { chatTitle } from './chatListSections'
 import HighlightedExcerpt from './HighlightedExcerpt'
+import MetaBadge from '@/shared/ui/MetaBadge'
 
 const dateTimeFormat = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
 
@@ -118,7 +118,7 @@ export default function ChatSearchResults({ spaceId, search, onOpen }: ChatSearc
                   </Link>
                   {hit.archivedAt && (
                     // The person's chat archive, not an archived space.
-                    <Chip size="small" variant="outlined" label="Archiviert" />
+                    <MetaBadge>Archiviert</MetaBadge>
                   )}
                 </Stack>
                 <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.25 }}>

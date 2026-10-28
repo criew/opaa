@@ -134,7 +134,6 @@ export default function ChatScopeChipBar({
               label="Nicht verfügbare Bibliothek"
               size="small"
               variant="outlined"
-              color="warning"
               onDelete={scopeLocked ? undefined : () => onRemoveLibrary(chip.libraryId)}
               aria-label="Nicht verfügbare Bibliotheksreferenz entfernen"
             />

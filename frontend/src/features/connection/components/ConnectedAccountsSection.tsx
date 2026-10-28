@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Chip from '@mui/material/Chip'
 import Link from '@mui/material/Link'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
@@ -25,7 +24,9 @@ import { useSourceTypes } from './useSourceTypes'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
+import MetaBadge from '@/shared/ui/MetaBadge'
 import PageSection from '@/shared/ui/PageSection'
+import StateDot from '@/shared/ui/StateDot'
 import { AUTH_METHOD_LABELS } from './connectionProfileLabels'
 import ConnectAccountDialog, { type ConnectTarget } from './ConnectAccountDialog'
 import { accountStateLabel, secretFormLabel } from './connectedAccountLabels'
@@ -109,19 +110,11 @@ function AccountItem({
         <Typography component="h3" sx={{ fontSize: 14.5, fontWeight: 600 }}>
           {account.profileName}
         </Typography>
-        <Chip size="small" color={state.color} label={state.label} />
-        {!account.released && (
-          <Chip size="small" variant="outlined" label="Nicht mehr freigegeben" />
-        )}
-        {!account.reconnectable && (
-          <Chip size="small" color="error" variant="outlined" label="Zugang gesperrt" />
-        )}
+        <StateDot tone={state.tone} label={state.label} />
+        {!account.released && <MetaBadge>Nicht mehr freigegeben</MetaBadge>}
+        {!account.reconnectable && <StateDot tone="error" label="Zugang gesperrt" />}
         {account.expiresAt && endsSoon(account.expiresAt) && (
-          <Chip
-            size="small"
-            color="warning"
-            label={`Zustimmung endet am ${formatDate(account.expiresAt)}`}
-          />
+          <StateDot tone="warning" label={`Zustimmung endet am ${formatDate(account.expiresAt)}`} />
         )}
       </Stack>
       <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>

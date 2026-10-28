@@ -1,17 +1,18 @@
 import type { ConnectedAccountState, PersonalSecretForm } from '@/shared/api/types'
+import type { StatusTone } from '@/shared/ui/StatusLine'
 
-/** The German label of a connection state and the chip colour that goes with it. */
+/** The German label of a connection state and the tone of the dot before it. */
 export function accountStateLabel(state: ConnectedAccountState): {
   label: string
-  color: 'success' | 'warning' | 'default'
+  tone: StatusTone
 } {
   switch (state) {
     case 'CONNECTED':
-      return { label: 'Verbunden', color: 'success' }
+      return { label: 'Verbunden', tone: 'success' }
     case 'EXPIRED':
-      return { label: 'Abgelaufen', color: 'warning' }
+      return { label: 'Abgelaufen', tone: 'warning' }
     case 'DISCONNECTED':
-      return { label: 'Getrennt', color: 'default' }
+      return { label: 'Getrennt', tone: 'neutral' }
     default: {
       const unknown: never = state
       throw new Error(`Unknown connected account state ${String(unknown)}`)

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
-import Chip from '@mui/material/Chip'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
@@ -22,6 +21,7 @@ import { notify } from '@/shared/stores/notificationStore'
 import { useSpaceStore } from '@/features/space'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { KEEP_FOCUS_STATE } from '@/shared/ui/a11y/routeFocus'
+import MetaBadge from '@/shared/ui/MetaBadge'
 
 export default function ChatPage() {
   const { spaceId, chatId: routeChatId } = useParams<{ spaceId: string; chatId: string }>()
@@ -321,7 +321,7 @@ export default function ChatPage() {
           {isArchivedChat && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               {/* The chat archive of the person, not an archived space. */}
-              <Chip size="small" variant="outlined" label="Archiviert" />
+              <MetaBadge>Archiviert</MetaBadge>
               {deletionDueAt && (
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                   {deletionDueLabel(deletionDueAt)}

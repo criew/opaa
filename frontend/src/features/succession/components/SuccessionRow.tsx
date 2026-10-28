@@ -124,7 +124,7 @@ export default function SuccessionRow({
           <Typography component="span" sx={{ fontSize: 12.5, color: 'text.secondary' }}>
             {sinceLabel(entry)}
           </Typography>
-          {entry.highlighted && <MetaBadge accent>lange offen</MetaBadge>}
+          {entry.highlighted && <MetaBadge>lange offen</MetaBadge>}
           {entry.highlighted && (
             <Box component="span" sx={visuallyHidden}>
               – länger offen als die eingestellte Zeit

@@ -334,11 +334,13 @@ export const radius = {
 } as const
 
 /**
- * Shape of every hand-built badge that is no MUI `Chip` (guidelines 5.5): pill radius and weight
- * 500, the same as the theme's `MuiChip`, so a badge never reads square or bold beside a chip.
+ * Shape of every hand-built badge that is no MUI `Chip` (guidelines 5.5): pill radius, 12 px and
+ * weight 500, the same as the theme's `MuiChip`, so a badge never reads square, small or bold
+ * beside a chip.
  */
 export const badgeShape = {
   borderRadius: `${radius.pill}px`,
+  fontSize: fontSize.xs,
   fontWeight: fontWeight.medium,
 } as const
 
