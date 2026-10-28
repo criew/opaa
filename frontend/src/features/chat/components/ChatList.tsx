@@ -552,17 +552,20 @@ export default function ChatList({
             </Box>
           </Tooltip>
           <Tooltip title="Chats durchsuchen">
-            <IconButton
+            {/* The same outlined button as "Neuer Chat", so both actions of the row match. */}
+            <Button
               ref={searchButtonRef}
+              variant="outlined"
+              size="small"
               aria-label="Chats durchsuchen"
               onClick={() => {
                 const handover: ChatSearchHandover = { chatSearchTerm: '' }
                 navigate(`/spaces/${spaceId}/chats`, { state: handover })
               }}
-              sx={{ borderRadius: '6px', border: 1, borderColor: 'divider', p: 0.75 }}
+              sx={{ minWidth: 0, px: 1 }}
             >
               <SearchIcon sx={{ fontSize: 18 }} />
-            </IconButton>
+            </Button>
           </Tooltip>
         </Box>
       ) : (
