@@ -267,6 +267,26 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     ])
   }, 15000)
 
+  // P28: „Vormerken“ stays active; a missing choice is named at the search field.
+  it('keeps „Vormerken“ active without a choice and names the missing choice at the field', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<SpaceCreatePage />, { withRouter: true })
+
+    await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    const note = screen.getByRole('button', { name: 'Vormerken' })
+    expect(note).toBeEnabled()
+    await user.click(note)
+
+    const search = screen.getByRole('combobox', { name: 'Person oder Gruppe suchen' })
+    expect(search).toHaveAccessibleDescription('Bitte eine Person oder Gruppe auswählen.')
+    expect(search).toHaveFocus()
+
+    await user.type(search, 'al')
+    await user.click(await screen.findByRole('option', { name: /Alice/ }))
+    expect(search).not.toHaveAttribute('aria-invalid', 'true')
+  }, 15000)
+
   async function noteAlice(user: ReturnType<typeof userEvent.setup>) {
     await user.type(screen.getByLabelText(/Name/), 'Widerspruchsstelle')
     await user.click(screen.getByRole('button', { name: 'Weiter' }))

@@ -39,6 +39,29 @@ describe('InitialStewardsSection', () => {
     ])
   })
 
+  // P28: the button stays active; a missing choice is named at the field.
+  it('names a missing choice at the field instead of disabling the button', async () => {
+    const onChange = vi.fn()
+    renderWithProviders(
+      <InitialStewardsSection
+        stewards={[self]}
+        onChange={onChange}
+        currentUserId="u1"
+        canRemoveSelf
+      />,
+    )
+    const user = userEvent.setup()
+
+    const appoint = screen.getByRole('button', { name: 'Als verantwortlich benennen' })
+    expect(appoint).toBeEnabled()
+    await user.click(appoint)
+
+    const search = screen.getByRole('combobox', { name: 'Verantwortliche Person' })
+    expect(search).toHaveAccessibleDescription('Bitte eine Person auswählen.')
+    expect(search).toHaveFocus()
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
   it('lets the administration leave itself out', async () => {
     const onChange = vi.fn()
     renderWithProviders(

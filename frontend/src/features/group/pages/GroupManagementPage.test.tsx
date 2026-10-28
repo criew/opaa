@@ -393,6 +393,30 @@ describe('GroupManagementPage', () => {
     await waitFor(() => expect(mockRemoveGroupMember).toHaveBeenCalledWith('group-phoenix', 'u1'))
   })
 
+  // The dialog adds with the same person search, verb and form row as „Meine Gruppen“.
+  it('adds members of an internal group with „Hinzufügen“ and names a missing choice at the field', async () => {
+    serve([adHocGroup])
+    mockFetchedDetails['group-phoenix'] = adHocDetails
+    renderPage()
+    const user = userEvent.setup()
+
+    const menu = await openRowMenu(user, 'Projektbeteiligte Phoenix')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Mitglieder' }))
+    const dialog = await screen.findByRole('dialog', {
+      name: /^Mitglieder von „Projektbeteiligte Phoenix“/,
+    })
+    await within(dialog).findByRole('table', { name: 'Mitglieder' })
+
+    expect(within(dialog).queryByRole('button', { name: 'Aufnehmen' })).not.toBeInTheDocument()
+    const add = within(dialog).getByRole('button', { name: 'Hinzufügen' })
+    expect(add).toBeEnabled()
+    await user.click(add)
+
+    const search = within(dialog).getByRole('combobox', { name: 'Person suchen' })
+    expect(search).toHaveAccessibleDescription('Bitte eine Person auswählen.')
+    expect(search).toHaveFocus()
+  })
+
   // For a group of an identity provider, opening the dialog is the explicit request:
   // the list loads at once, the retrieval stays logged.
   it('loads the members of a provider group on opening and keeps them read-only', async () => {

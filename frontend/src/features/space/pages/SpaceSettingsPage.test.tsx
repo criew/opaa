@@ -522,6 +522,23 @@ describe('SpaceSettingsPage', () => {
     expect(mockGetSpaceGroupMembers).toHaveBeenCalledWith('space-team', 'g1', 0, 50)
   })
 
+  // P28: the submit stays active; a missing choice is named at the search field.
+  it('keeps „Hinzufügen“ active without a choice and names the missing choice at the field', async () => {
+    setSpaceState(teamSpace)
+    renderTab('members')
+    const user = userEvent.setup()
+
+    const add = await screen.findByRole('button', { name: 'Hinzufügen' })
+    expect(add).toBeEnabled()
+    await user.click(add)
+
+    const search = screen.getByRole('combobox', { name: 'Person oder Gruppe suchen' })
+    expect(search).toHaveAccessibleDescription('Bitte eine Person oder Gruppe auswählen.')
+    expect(search).toHaveAttribute('aria-invalid', 'true')
+    expect(search).toHaveFocus()
+    expect(mockAddSpaceMember).not.toHaveBeenCalled()
+  })
+
   it('adds a group as a member through the group search', async () => {
     setSpaceState(teamSpace)
     renderTab('members')
