@@ -386,7 +386,9 @@ describe('CatalogPage (ADR-0039)', () => {
     await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })
 
     await waitFor(() =>
-      expect(screen.queryByRole('button', { name: 'Neuer Katalogeintrag' })).not.toBeInTheDocument(),
+      expect(
+        screen.queryByRole('button', { name: 'Neuer Katalogeintrag' }),
+      ).not.toBeInTheDocument(),
     )
   })
 

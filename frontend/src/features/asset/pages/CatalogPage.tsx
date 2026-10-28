@@ -145,7 +145,7 @@ export default function CatalogPage() {
       title="Katalog"
       countLabel={(count) => (count === 1 ? '1 Eintrag' : `${count} Einträge`)}
       subtitle="Alles, was Sie nutzen dürfen. Ihre Favoriten stehen oben."
-      createLabel={canCreate ? 'Neu' : undefined}
+      createLabel={canCreate ? 'Neuer Katalogeintrag' : undefined}
       onCreate={canCreate ? () => navigate(CATALOG_NEW_ROUTE) : undefined}
       items={entries}
       itemKey={(entry) => `${entry.assetType}:${entry.assetId}`}

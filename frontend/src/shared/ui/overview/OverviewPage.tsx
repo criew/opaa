@@ -10,6 +10,7 @@ import InputAdornment from '@mui/material/InputAdornment'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
+import AddIcon from '@mui/icons-material/Add'
 import CloseIcon from '@mui/icons-material/Close'
 import SearchIcon from '@mui/icons-material/Search'
 import PageHeading from '../a11y/PageHeading'
@@ -36,7 +37,10 @@ export interface OverviewPageProps<T> {
   countLabel?: (count: number) => string
   /** One sentence under the heading, saying what the overview holds. */
   subtitle?: string
-  /** Both omitted where an overview offers no creation at all. */
+  /**
+   * Names the object, e.g. "Neuer Space"; the button carries the plus icon (guidelines 5.1).
+   * Both omitted where an overview offers no creation at all.
+   */
   createLabel?: string
   onCreate?: () => void
   items: T[]
@@ -87,7 +91,7 @@ function matches(text: string, query: string): boolean {
 }
 
 /**
- * The shared frame of every overview: heading with count, "Neu" button, search and a grid
+ * The shared frame of every overview: heading with count, create button, search and a grid
  * of cards - only cards, there is no table view (ADR-0039, Entscheidung 1). What an item looks like
  * stays with the caller - `renderCard` fills the grid, and `searchText` decides what the search
  * sees.
@@ -153,7 +157,12 @@ export default function OverviewPage<T>({
           </Typography>
         )}
         {createLabel && onCreate && (
-          <Button variant="contained" onClick={onCreate} sx={{ ml: 'auto', flex: 'none' }}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={onCreate}
+            sx={{ ml: 'auto', flex: 'none' }}
+          >
             {createLabel}
           </Button>
         )}
