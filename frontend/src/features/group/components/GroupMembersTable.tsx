@@ -12,7 +12,10 @@ import { visuallyHidden } from '@mui/utils'
 import type { GroupMemberResponse } from '@/shared/api/types'
 import { adminTableSx } from '@/shared/ui/list/adminListStyles'
 
-/** Fixed row geometry, so the frame height follows from the member count alone. */
+/**
+ * Fixed row geometry, so the frame height follows from the member count alone. The values hold
+ * for the default font size; with a larger font the frame scrolls, which is intended.
+ */
 const HEAD_HEIGHT = 37
 const ROW_HEIGHT = 41
 /** A row with the „Entfernen“ button: the button and the cell padding make it taller. */
@@ -99,7 +102,7 @@ export default function GroupMembersTable({ members, onRemove }: GroupMembersTab
           aria-label="Mitglieder"
           sx={{
             ...adminTableSx,
-            minWidth: onRemove ? 400 : 330,
+            minWidth: onRemove ? 400 : 344,
             '& th': { ...adminTableSx['& th'], whiteSpace: 'nowrap' },
           }}
         >
