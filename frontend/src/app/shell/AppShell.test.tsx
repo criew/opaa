@@ -19,13 +19,14 @@ function renderShell(initialRoute = '/chat') {
     <Routes>
       <Route element={<AppShell />}>
         <Route path="/chat" element={<div>Chat-Inhalt</div>} />
+        {/* Mirrors App.tsx - overview and create wizard render beside the space column. */}
+        <Route path="/spaces" element={<div>Spaces-Karten</div>} />
+        <Route path="/spaces/new" element={<div>Space-Assistent</div>} />
         <Route element={<GlobalAreaLayout />}>
           {/* Mirrors App.tsx - /settings renders inside the sectionless global frame,
               the harness had drifted from the route table. */}
           <Route path="/settings" element={<PageHeading title="Einstellungen" />} />
           <Route path="/catalog" element={<div>Ohne Überschrift</div>} />
-          <Route path="/spaces" element={<div>Spaces-Karten</div>} />
-          <Route path="/spaces/new" element={<div>Space-Assistent</div>} />
         </Route>
         <Route element={<GlobalAreaLayout title="Administration" sections={ADMIN_SECTIONS} />}>
           <Route path="/admin/groups" element={<div>Gruppen-Inhalt</div>} />
@@ -80,7 +81,7 @@ describe('AppShell', () => {
   it('renders the rail destinations and the space column side by side (#786)', () => {
     renderShell()
     expect(screen.getByText('Chats')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Spaces' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Chat' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Katalog' })).toBeInTheDocument()
   })
 
@@ -143,27 +144,17 @@ describe('AppShell', () => {
     expect(screen.queryByRole('complementary', { name: 'Space-Bereich' })).not.toBeInTheDocument()
   })
 
-  it('drops the space column on the spaces overview - it appears only inside a space (#809)', () => {
-    renderShell('/spaces')
+  // Guidelines 5.13: the space search opens in the content area, the column with spaces and
+  // chats stays - the overview no longer swaps it for the frame of a global area.
+  it.each([
+    ['/spaces', 'Spaces-Karten'],
+    ['/spaces/', 'Spaces-Karten'],
+    ['/spaces/new', 'Space-Assistent'],
+  ])('keeps the space column beside %s', (route, content) => {
+    renderShell(route)
 
-    expect(screen.getByText('Spaces-Karten')).toBeInTheDocument()
-    expect(screen.queryByRole('complementary', { name: 'Space-Bereich' })).not.toBeInTheDocument()
-  })
-
-  it('treats a trailing slash like the route matcher does (#814)', () => {
-    // React Router renders "/spaces/" as the overview; the shell must not bring the
-    // column back there.
-    renderShell('/spaces/')
-
-    expect(screen.getByText('Spaces-Karten')).toBeInTheDocument()
-    expect(screen.queryByRole('complementary', { name: 'Space-Bereich' })).not.toBeInTheDocument()
-  })
-
-  it('drops the space column in the create wizard as well (#809)', () => {
-    renderShell('/spaces/new')
-
-    expect(screen.getByText('Space-Assistent')).toBeInTheDocument()
-    expect(screen.queryByRole('complementary', { name: 'Space-Bereich' })).not.toBeInTheDocument()
+    expect(screen.getByText(content)).toBeInTheDocument()
+    expect(screen.getByRole('complementary', { name: 'Space-Bereich' })).toBeInTheDocument()
   })
 
   it('drops the space column in the catalog as well (#789)', () => {

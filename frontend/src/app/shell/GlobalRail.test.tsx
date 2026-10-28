@@ -52,16 +52,31 @@ describe('GlobalRail', () => {
 
     const rail = screen.getByRole('navigation', { name: 'Globale Navigation' })
     expect(rail).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Spaces' })).toHaveAttribute('href', '/spaces')
+    expect(screen.getByRole('link', { name: 'Chat' })).toHaveAttribute('href', '/chat')
     expect(screen.getByRole('link', { name: 'Katalog' })).toHaveAttribute('href', '/catalog')
   })
 
+  // Guidelines 5.13: the entry to the space column is "Chat" with a speech bubble; it leads into
+  // a new chat (/chat) instead of the spaces overview, and stays active on both scopes.
+  it('names the entry to the space column "Chat" and leads it to a new chat', () => {
+    const { unmount } = renderRailAt('/chat')
+    const chat = screen.getByRole('link', { name: 'Chat' })
+    expect(chat).toHaveAttribute('href', '/chat')
+    expect(chat).toHaveAttribute('aria-current', 'page')
+    expect(chat.querySelector('svg[data-testid="ChatBubbleOutlineIcon"]')).not.toBeNull()
+    expect(screen.queryByRole('link', { name: 'Spaces' })).not.toBeInTheDocument()
+    unmount()
+
+    renderRailAt('/spaces')
+    expect(screen.getByRole('link', { name: 'Chat' })).toHaveAttribute('aria-current', 'true')
+  })
+
   // ADR-0039, Entscheidung 1: one entry for every asset type, no entry per type.
-  it('has exactly one entry for assets, the catalog, right after Spaces', () => {
+  it('has exactly one entry for assets, the catalog, right after Chat', () => {
     renderRailAt('/catalog')
 
     const labels = screen.getAllByRole('link').map((link) => link.textContent)
-    expect(labels).toEqual(['Spaces', 'Katalog'])
+    expect(labels).toEqual(['Chat', 'Katalog'])
     expect(screen.getByRole('link', { name: 'Katalog' })).toHaveAttribute('aria-current', 'page')
   })
 
@@ -75,7 +90,7 @@ describe('GlobalRail', () => {
     renderRailAt('/catalog')
 
     expect(screen.getByRole('link', { name: 'Katalog' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: 'Spaces' })).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('link', { name: 'Chat' })).not.toHaveAttribute('aria-current')
   })
 
   it.each(['/libraries/lib-1', '/libraries/new', '/prompts/prompt-library-1/settings'])(
@@ -88,10 +103,10 @@ describe('GlobalRail', () => {
     },
   )
 
-  it('counts an open chat as the Spaces scope', () => {
+  it('counts an open chat as the Chat scope', () => {
     renderRailAt('/spaces/space-1/chats/chat-1')
 
-    expect(screen.getByRole('link', { name: 'Spaces' })).toHaveAttribute('aria-current', 'true')
+    expect(screen.getByRole('link', { name: 'Chat' })).toHaveAttribute('aria-current', 'true')
   })
 
   /** The point-in-time report depends on the AUDITOR role and needs its own entry point. */
@@ -171,7 +186,7 @@ describe('GlobalRail', () => {
     render(
       <ThemeProvider theme={createAppTheme('light')}>
         <CssBaseline />
-        <MemoryRouter initialEntries={['/spaces']}>
+        <MemoryRouter initialEntries={['/chat']}>
           <GlobalRail />
         </MemoryRouter>
       </ThemeProvider>,
@@ -179,7 +194,7 @@ describe('GlobalRail', () => {
 
     const rail = screen.getByRole('navigation', { name: 'Globale Navigation' })
     expect(rail).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Spaces' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Chat' })).toHaveAttribute('aria-current', 'page')
   })
 
   it('shows the user initial in the avatar', () => {

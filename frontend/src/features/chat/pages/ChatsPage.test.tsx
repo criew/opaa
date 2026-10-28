@@ -256,6 +256,10 @@ describe('ChatsPage', () => {
     expect(await screen.findByRole('tab', { name: 'Aktiv (0)' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Archiv (2)' })).toBeInTheDocument()
     expect(screen.getByText('Keine aktiven Chats in diesem Space.')).toBeInTheDocument()
+    // The hint names the plus of the sidebar by its name (guidelines 5.13), not a "Neu" text.
+    expect(
+      screen.getByText('Einen neuen Chat beginnen Sie über „Neuer Chat“ in der Seitenleiste.'),
+    ).toBeInTheDocument()
     expect(Object.keys(mockChatArchive).sort()).toEqual(['chat-personal-1', 'chat-personal-2'])
     // Nothing left to select on this tab: focus lands on the tab rather than on the page body.
     expect(screen.getByRole('tab', { name: 'Aktiv (0)' })).toHaveFocus()

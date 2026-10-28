@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { render } from '@testing-library/react'
 import { ThemeProvider } from '@mui/material/styles'
@@ -162,7 +162,7 @@ describe('Sidebar', () => {
   it('renders New Chat button for the default space', async () => {
     renderSidebarAtRoute('/chat')
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Neu: Chat beginnen' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Neuer Chat' })).toBeInTheDocument()
     })
   })
 
@@ -170,7 +170,7 @@ describe('Sidebar', () => {
     const user = userEvent.setup()
     renderSidebarAtRoute('/chat')
 
-    await user.click(await screen.findByRole('button', { name: 'Neu: Chat beginnen' }))
+    await user.click(await screen.findByRole('button', { name: 'Neuer Chat' }))
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith(
@@ -439,6 +439,82 @@ describe('Sidebar', () => {
     })
     renderSidebarAtRoute('/spaces/space-engineering')
     expect(screen.getByRole('link', { name: 'Einstellungen' })).toBeInTheDocument()
+  })
+
+  describe('fixed column on the desktop (guidelines 5.13)', () => {
+    afterEach(() => useUiStore.setState({ collapsedSidebarSections: [] }))
+
+    it('lists the spaces as rows instead of the switcher, the active space marked', () => {
+      renderSidebarAtRoute('/spaces/space-engineering', <Sidebar resizable />)
+
+      const spaces = screen.getByRole('navigation', { name: 'Spaces' })
+      expect(within(spaces).getByRole('link', { name: 'Engineering' })).toHaveAttribute(
+        'aria-current',
+        'true',
+      )
+      expect(within(spaces).getByRole('link', { name: 'Neuer Space' })).toHaveAttribute(
+        'href',
+        '/spaces/new',
+      )
+      expect(
+        within(spaces).getByRole('link', { name: 'Alle Spaces anzeigen und durchsuchen' }),
+      ).toHaveAttribute('href', '/spaces')
+      // No switcher (menu button) on the fixed column.
+      expect(screen.queryByRole('button', { name: /Engineering/ })).not.toBeInTheDocument()
+    })
+
+    it('keeps the spaces fixed on top and lets only the chats scroll', () => {
+      renderSidebarAtRoute('/spaces/space-engineering', <Sidebar resizable />)
+
+      const spaces = screen.getByRole('navigation', { name: 'Spaces' })
+      expect(getComputedStyle(spaces).flexShrink).toBe('0')
+      expect(getComputedStyle(spaces).maxHeight).toBe('45%')
+      const chats = screen.getByRole('navigation', { name: 'Chats' })
+      expect(getComputedStyle(chats).overflowY).toBe('auto')
+      expect(getComputedStyle(chats).position).toBe('relative')
+    })
+
+    it('heads the chats with plus and search as icon buttons, the groups counted', async () => {
+      renderSidebarAtRoute('/spaces/space-personal', <Sidebar resizable />)
+
+      const chats = screen.getByRole('navigation', { name: 'Chats' })
+      expect(within(chats).getByRole('heading', { level: 2, name: 'Chats' })).toBeInTheDocument()
+      expect(within(chats).getByRole('button', { name: 'Neuer Chat' })).toBeInTheDocument()
+      expect(within(chats).getByRole('button', { name: 'Chats durchsuchen' })).toBeInTheDocument()
+      expect(
+        await within(chats).findByRole('button', { name: 'Zuletzt verwendet 2' }),
+      ).toHaveAttribute('aria-expanded', 'true')
+    })
+
+    it('marks the last active space on the overview, where the route names none', () => {
+      window.localStorage.setItem('opaa.spaces.recent', JSON.stringify(['space-engineering']))
+      useChatStore.setState({ spaceId: 'space-personal' })
+
+      renderSidebarAtRoute('/spaces', <Sidebar resizable />)
+
+      const spaces = screen.getByRole('navigation', { name: 'Spaces' })
+      expect(within(spaces).getByRole('link', { name: 'Engineering' })).toHaveAttribute(
+        'aria-current',
+        'true',
+      )
+    })
+  })
+
+  describe('drawer below md (guidelines 5.13)', () => {
+    it('keeps the space switcher and gives the chats the head of the fixed column', async () => {
+      renderSidebarAtRoute('/spaces/space-engineering')
+
+      expect(screen.queryByRole('navigation', { name: 'Spaces' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Engineering/ })).toHaveAttribute(
+        'aria-haspopup',
+        'menu',
+      )
+      const chats = screen.getByRole('navigation', { name: 'Chats' })
+      expect(within(chats).getByRole('button', { name: 'Neuer Chat' })).toBeInTheDocument()
+      expect(within(chats).getByRole('button', { name: 'Chats durchsuchen' })).toBeInTheDocument()
+      expect(await within(chats).findByRole('button', { name: /^Zuletzt verwendet \d+$/ }))
+        .toBeInTheDocument()
+    })
   })
 
   describe('resizable column (#2085)', () => {
