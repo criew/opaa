@@ -70,7 +70,7 @@ describe('tileFromCatalogEntry', () => {
     )
   })
 
-  // #3262: a choice shows the extent without the spread.
+  // A choice shows the extent without the spread.
   it('carries the extent apart from the figures line', () => {
     const tile = tileFromCatalogEntry({ ...libraryEntry(null), itemCount: 3, spaceCount: 2 })
     expect(tile.extent).toBe('3 Dokumente')

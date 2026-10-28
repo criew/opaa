@@ -55,7 +55,7 @@ describe('AssetTile (#2131)', () => {
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
 
-  // #3262: in a choice only what it is and how large it is counts.
+  // In a choice only what it is and how large it is counts.
   it('shows only title, description and extent in the selection mode', () => {
     renderWithProviders(
       <AssetTile tile={tile} mode={{ kind: 'select', selected: false, onToggle: vi.fn() }} />,
@@ -71,7 +71,7 @@ describe('AssetTile (#2131)', () => {
     expect(screen.queryByText(/Aktualisiert am/)).not.toBeInTheDocument()
   })
 
-  // #3262: chosen shows as the check mark alone; the frame stays that of an unchosen tile.
+  // Chosen shows as the check mark alone; the frame stays that of an unchosen tile.
   it('marks a chosen tile by the check mark, not by an accent frame', () => {
     const { unmount } = renderWithProviders(
       <AssetTile tile={tile} mode={{ kind: 'select', selected: false, onToggle: vi.fn() }} />,
@@ -97,7 +97,7 @@ describe('AssetTile (#2131)', () => {
     }).toEqual(frame)
   })
 
-  // #3262: the stretched title link covers every unraised spot of the tile, so the globe must lie
+  // The stretched title link covers every unraised spot of the tile, so the globe must lie
   // above it to receive the pointer and show its tooltip.
   it('raises the globe above the stretched title link and names it in a tooltip', async () => {
     renderWithProviders(

@@ -32,7 +32,8 @@ Die Einträge kommen seitenweise; „Weitere laden" hängt die nächste Seite an
 Jedes Arbeitsmittel steht als Kachel im Katalog. Sie nennt:
 
 - die **Art** als Etikett, etwa „Wissen" oder „Prompts", und ein **Welt-Symbol**, wenn das
-  Arbeitsmittel an „Alle Konten" freigegeben ist,
+  Arbeitsmittel an „Alle Konten" freigegeben ist; beim Überfahren nennt es „Für alle Konten
+  freigegeben",
 - **Name** und **Beschreibung**,
 - den **Umfang**, etwa die Zahl der Dokumente oder Prompts, und in wie vielen Spaces es bereitsteht,
 - die **zuständige Stelle**, eine Person oder eine Gruppe,
