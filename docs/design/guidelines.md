@@ -749,8 +749,15 @@ eigener Überschrift. Die Textaktion steht als Textlink an der rechten Kante (Pr
 
 ### 5.13 Seitenleiste des Space
 
-Entschieden in #3266 (Prototyp #3280, Variante B). Die Regeln gelten für die Desktop-Spalte; die
-Schublade auf schmalen Bildschirmen behält den Space-Umschalter.
+Entschieden in #3266 (Prototyp #3280, Variante B). Ab dem Breakpoint `md` (900 px, `AppShell`)
+steht die Seitenleiste fest als Spalte, darunter öffnet sie als Schublade.
+
+**Space-Liste nur in der festen Spalte.** Spaces-Bereich und Space-Zeilen gelten nur, solange die
+Seitenleiste fest steht. In der Schublade bleibt der Space-Wechsel die Combobox (Space-Umschalter):
+Dort ist die Höhe knapp, fünf Space-Zeilen nähmen den Chats zu viel weg. Alle übrigen Regeln dieses
+Abschnitts gelten auch in der Schublade: Plus und Lupe im Kopf „Chats", Zähler in den Köpfen
+„Angeheftet" und „Zuletzt verwendet", Suche im Inhaltsbereich, auch für „Alle Spaces anzeigen" aus
+der Combobox.
 
 **Zwei Bereiche, nur die Chats scrollen.** Oben steht der Bereich **Spaces**, darunter, durch eine
 Trennlinie abgesetzt, der Bereich **Chats**. Der Spaces-Bereich bleibt fest stehen und nimmt
