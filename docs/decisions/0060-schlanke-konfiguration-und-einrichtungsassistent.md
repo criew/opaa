@@ -310,7 +310,16 @@ Ist sie aus, listet die API den Schritt nicht, lehnt Speichern, Prüfen, Übersp
 mit `400` ab und übergeht `transcriptionModel` in Antwortdatei und Antworten, ohne sie abzulehnen;
 ein vorher gespeicherter Schritt hält den Abschluss nicht auf und wird mit dem Zwischenstand
 verworfen. Begründung: Eine Antwortdatei soll in allen Umgebungen gelten, auch dort, wo der Betrieb
-die Spracheingabe abschaltet; abschalten heißt hier wie sonst verbergen, nicht scheitern.
+die Spracheingabe abschaltet; abschalten heißt hier wie sonst verbergen, nicht scheitern. Der Schalter
+wird wie jeder Funktionsschalter nur beim Start gelesen und muss auf allen Instanzen gleich stehen;
+schließt eine Instanz mit abgeschalteter Spracheingabe ab, verwirft sie einen gespeicherten Schritt.
+
+Wer das Installations-Token hat, legt bei eingeschalteter Spracheingabe fest, wohin die Aufnahmen
+der Beschäftigten gehen. Das ist dasselbe Bedrohungsmodell wie beim Chat-Modell, das alle Fragen
+empfängt: Das Token ist die Hürde, die Adressprüfung der Modelle begrenzt interne Ziele, und der
+Abschluss steht im Revisionsprotokoll. Weil die Verwaltung keinen Cloud-Anbieter für die
+Transkription vorschlägt, der Assistent aber OpenAI als Kachel anbietet, sagen Kachel und Schritt,
+dass Aufnahmen dann an einen externen Dienst außerhalb des Hauses gehen.
 
 Eine Bestätigung der Mitbestimmung, etwa „mit der Personalvertretung geklärt“, verlangt der Schritt
 nicht, und er zeigt keinen eigenen Hinweis darauf; die Modellverwaltung tut es ebenso wenig.

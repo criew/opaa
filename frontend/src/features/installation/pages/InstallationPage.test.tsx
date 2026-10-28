@@ -954,6 +954,23 @@ describe('InstallationPage', () => {
       })
     })
 
+    it('says at the OpenAI tile that recordings leave the house', async () => {
+      const user = userEvent.setup()
+      await openTranscriptionStep(user)
+      const providers = screen.getByRole('radiogroup', { name: 'Anbieter' })
+      const openai = within(providers).getByRole('radio', { name: /^OpenAI/ })
+      expect(openai).toHaveTextContent('Aufnahmen verlassen das Haus.')
+      expect(screen.queryByText(/an einen externen Dienst außerhalb des Hauses/)).toBeNull()
+
+      await user.click(openai)
+
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Aufnahmen gehen an einen externen Dienst außerhalb des Hauses.',
+      )
+      await user.click(within(providers).getByRole('radio', { name: /Eigene Adresse/ }))
+      expect(screen.queryByText(/an einen externen Dienst außerhalb des Hauses/)).toBeNull()
+    })
+
     it('checks the endpoint with its language and is switched on at the completion', async () => {
       const user = userEvent.setup()
       await openTranscriptionStep(user)

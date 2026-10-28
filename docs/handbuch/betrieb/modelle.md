@@ -664,8 +664,11 @@ darauf hin, wohin die Aufnahme geht.
 - *In OPAA:* Weder die Modellverwaltung noch der Installationsassistent fragt vor dem Einschalten
   nach einer Absprache mit der Personalvertretung. Den Weg gibt der Betrieb frei: Ist die Frage bei
   der Installation noch offen, startet er mit `OPAA_FEATURES_SPEECH_INPUT_ENABLED=false`; dann
-  bietet der Assistent das Transkriptionsmodell nicht an, und die Systemverwaltung trägt es nach der
-  Klärung unter Modelle → Spracheingabe ein.
+  bietet der Assistent das Transkriptionsmodell nicht an. Nach der Klärung entfernt der Betrieb die
+  Variable und startet neu, weil OPAA Funktionsschalter nur beim Start liest; dann trägt die
+  Systemverwaltung das Modell unter Modelle → Spracheingabe ein und schaltet es ein. Bei mehreren
+  Instanzen tragen alle denselben Wert: Eine Instanz mit abgeschalteter Spracheingabe verwirft beim
+  Abschluss der Installation einen gespeicherten Schritt Transkriptionsmodell.
 
 ## vLLM / OpenAI-kompatible Server
 

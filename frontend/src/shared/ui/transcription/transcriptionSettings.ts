@@ -7,6 +7,8 @@ export const TRANSCRIPTION_TEXTS = {
   intro:
     'Das Transkriptionsmodell wandelt diktierte Fragen im Chat in Text. Ab Werk ist es aus; das Mikrofon erscheint erst, wenn das Modell antwortet.',
   addressHint: 'Ohne den Pfad /audio/transcriptions, etwa http://speaches:8000/v1.',
+  externalService:
+    'Aufnahmen gehen an einen externen Dienst außerhalb des Hauses. Das braucht eine eigene datenschutzrechtliche Prüfung.',
   languageLabel: 'Sprache',
   languageHint: 'Kürzel aus zwei Buchstaben, etwa de; leer erkennt das Modell die Sprache selbst.',
   languageRule:

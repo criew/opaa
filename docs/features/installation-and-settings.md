@@ -157,7 +157,7 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
   Adressprüfung der Modelle (`OPAA_MODEL_TARGET_VALIDATION_*`, getrennt von der Zielprüfung der
   Quellen); ein gespeicherter Schlüssel bleibt nur
   bei unveränderter Adresse (Schema, Host, Port, Pfad).
-- Der Modellabruf der Schritte Chat- und Embedding-Modell ist derselbe wie in der Modellverwaltung
+- Der Modellabruf der Schritte Chat-, Embedding- und Transkriptionsmodell ist derselbe wie in der Modellverwaltung
   (Adressprüfung der Modelle, keine Weiterleitung, Grenzen für Zeit und Antwortgröße, bei Ollama
   mit Details). Ohne Schlüssel in der Anfrage nutzt er den im Schritt gespeicherten, nur für
   dieselbe Adresse; ein leerer Schlüssel sendet keinen. Je Instanz gelten 30 Abrufe in 10 Minuten,

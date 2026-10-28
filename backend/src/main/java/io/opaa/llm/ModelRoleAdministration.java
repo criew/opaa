@@ -37,7 +37,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * ({@link ModelEndpointRules}, {@link ModelAddressPolicy} for an address other than the stored
  * one), stored with the key encrypted, and recorded with the values before and after (Entscheidung
  * 11); a change to the same values writes nothing. The speech-input feature is the operation's
- * limit: the transcription role cannot be switched on while it is off (Entscheidung 2).
+ * limit: the transcription role cannot be switched on while it is off (Entscheidung 2). The
+ * installation switches the transcription role on through the same write path ({@link
+ * #installTranscription}, Entscheidung 16) and checks its step with {@link #probeTranscription}.
  *
  * <p>The change reaches every instance through the triggers on the two tables; this instance drops
  * its cache and probes the new endpoint right after the commit, so the state on the page follows

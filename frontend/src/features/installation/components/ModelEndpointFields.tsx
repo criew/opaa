@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type FocusEvent, type ReactNode } from 'react'
+import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
 import CloudOutlinedIcon from '@mui/icons-material/CloudOutlined'
@@ -55,10 +56,13 @@ const ADDRESS_HINTS: Record<ProviderKey, string> = {
   custom: 'So, wie das Backend den Dienst erreicht, etwa http://vllm:8000/v1.',
 }
 
-/** What differs for the transcription model: services of their own, and the path left out. */
-const TRANSCRIPTION_CUSTOM = {
-  description: 'Jeder OpenAI-kompatible Transkriptionsdienst, etwa speaches oder vLLM.',
-  hint: TRANSCRIPTION_TEXTS.addressHint,
+/**
+ * What differs for the transcription model: services of their own, the path left out, and a cloud
+ * provider named as the place the recordings go.
+ */
+const TRANSCRIPTION_TILES = {
+  custom: 'Jeder OpenAI-kompatible Transkriptionsdienst, etwa speaches oder vLLM.',
+  openai: 'Cloud-Dienst, braucht einen Zugangsschlüssel. Aufnahmen verlassen das Haus.',
 }
 
 const KEY_HINT_NEEDED = 'Der Anbieter verlangt einen Schlüssel; OPAA speichert ihn verschlüsselt.'
@@ -130,17 +134,20 @@ export default function ModelEndpointFields({
       value: preset.key,
       label: preset.label,
       ...TILE_TEXT[preset.key],
+      ...(purpose === 'transcription' && preset.key === 'openai'
+        ? { description: TRANSCRIPTION_TILES.openai }
+        : {}),
     })),
     {
       value: 'custom',
       label: 'Eigene Adresse',
       ...TILE_TEXT.custom,
-      ...(purpose === 'transcription' ? { description: TRANSCRIPTION_CUSTOM.description } : {}),
+      ...(purpose === 'transcription' ? { description: TRANSCRIPTION_TILES.custom } : {}),
     },
   ]
   const addressHint =
     purpose === 'transcription' && (provider ?? 'custom') === 'custom'
-      ? TRANSCRIPTION_CUSTOM.hint
+      ? TRANSCRIPTION_TEXTS.addressHint
       : ADDRESS_HINTS[provider ?? 'custom']
 
   function fetchModels(next: DiscoveryPlan, asked: boolean) {
@@ -233,6 +240,11 @@ export default function ModelEndpointFields({
               onChange={chooseProvider}
               columns={2}
             />
+            {purpose === 'transcription' && provider === 'openai' && (
+              <Alert severity="warning" sx={{ mt: STEP_RHYTHM.fieldToOwnAction }}>
+                {TRANSCRIPTION_TEXTS.externalService}
+              </Alert>
+            )}
           </Box>
           <FormField
             id={addressId}

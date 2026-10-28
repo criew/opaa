@@ -51,32 +51,41 @@ dataFlows:
   - id: transcription-model
     group: MODEL
     viaOutboundProxy: true
-    target: Der Transkriptions-Endpunkt, den die Systemverwaltung in der Modellverwaltung hinterlegt
+    target: >-
+      Der Transkriptions-Endpunkt, den die Systemverwaltung in der Modellverwaltung hinterlegt, und
+      im Installationsassistenten der Endpunkt, den die einrichtende Person angibt
     data: >-
-      Die Sprachaufnahme einer Person; Statusprüfung und Verbindungstest fragen nur die Modellliste
-      ab
-    trigger: Spracheingabe im Chat, Statusprüfung, Verbindungstest in der Modellverwaltung
+      Die Sprachaufnahme einer Person; Statusprüfung, Verbindungstest und die Prüfung im Assistenten
+      fragen nur die Modellliste ab
+    trigger: >-
+      Spracheingabe im Chat, Statusprüfung, Verbindungstest in der Modellverwaltung; im
+      Installationsassistenten die Prüfung des Schritts Transkriptionsmodell, nur mit dem
+      Installations-Token und vor dem Abschluss
     switchOff: >-
       Abschaltbar in der Modellverwaltung, Voreinstellung aus; zusätzlich über das Feature-Flag der
-      Spracheingabe
+      Spracheingabe, das auch den Schritt im Assistenten ausblendet. Der Abschluss der Installation
+      schaltet die Spracheingabe nur ein, wenn die Person mit dem Installations-Token den Schritt
+      Transkriptionsmodell geprüft und nicht übersprungen hat; sie legt damit das Ziel der Aufnahmen
+      fest
     settings:
-      [transcription_model.enabled, transcription_model.base_url, opaa.features.speech-input.enabled]
+      [transcription_model.enabled, transcription_model.base_url, opaa.features.speech-input.enabled,
+      installation_steps.payload]
   - id: model-endpoint
     group: MODEL
     viaOutboundProxy: true
     target: >-
       Die Adresse eines Chat-Modells, die die Systemverwaltung im Formular angibt, und im
-      Installationsassistenten die Adresse von Chat- oder Embedding-Modell, die die einrichtende
-      Person angibt
+      Installationsassistenten die Adresse von Chat-, Embedding- oder Transkriptionsmodell, die die
+      einrichtende Person angibt
     data: >-
       Abruf der angebotenen Modelle, eine Testanfrage von einem Token; der hinterlegte API-Schlüssel
       nur an die Herkunft des eigenen Modells, ein im Assistenten gespeicherter nur an dieselbe
       Adresse. Keine personenbezogenen Daten
     trigger: >-
       Modellauswahl und Verbindungstest in der Verwaltung der Chat-Modelle; im
-      Installationsassistenten der Modellabruf in den Schritten Chat- und Embedding-Modell (beim
-      Verlassen von Adresse oder Schlüssel, auf „Modelle abrufen“ und beim Öffnen eines
-      gespeicherten Modellschritts) und die Prüfung des Chat-Modells, nur mit dem
+      Installationsassistenten der Modellabruf in den Schritten Chat-, Embedding- und
+      Transkriptionsmodell (beim Verlassen von Adresse oder Schlüssel, auf „Modelle abrufen“ und
+      beim Öffnen eines gespeicherten Modellschritts) und die Prüfung des Chat-Modells, nur mit dem
       Installations-Token und vor dem Abschluss
     switchOff: >-
       Findet nur auf Handlung der Systemverwaltung oder der Person mit dem Installations-Token

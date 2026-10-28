@@ -82,7 +82,9 @@ verwerfen die Prüfung des Schritts. Pflicht sind die ersten zwei Schritte, erst
 Anmeldeverfahren; Chat-Modell, Embedding-Modell, Transkriptionsmodell, E-Mail-Versand und Branding
 sind optional. Das Transkriptionsmodell gibt es nur, solange `OPAA_FEATURES_SPEECH_INPUT_ENABLED`
 nicht `false` ist: Sonst fehlt der Schritt in Assistent und API, und die Antwortdatei übergeht seinen
-Teil.
+Teil. Den Wert der Variable tragen alle Instanzen gleich: Schließt eine Instanz mit
+abgeschalteter Spracheingabe die Installation ab, verwirft sie einen gespeicherten Schritt
+Transkriptionsmodell.
 
 | Schritt | Pflicht | Angaben | Prüfung | Später änderbar |
 |---|---|---|---|---|
@@ -214,7 +216,10 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
   ändert, prüft erneut.
 - **Transkriptionsmodell.** Der Schritt hat die Texte und die Sprachregel von „Modelle →
   Spracheingabe“; die Sprache steht auf `de`, leer erkennt das Modell sie selbst. „Prüfen und
-  weiter“ fragt den Endpunkt nach seinen Modellen und sendet keine Aufnahme. Eine Bestätigung zur
+  weiter“ fragt den Endpunkt nach seinen Modellen und sendet keine Aufnahme. Unter den Anbietern
+  steht nur OpenAI als Cloud-Dienst; die Kachel und nach ihrer Wahl ein Hinweis sagen, dass
+  Aufnahmen dann an einen externen Dienst außerhalb des Hauses gehen
+  ([Externer Anbieter](modelle.md#externer-anbieter)). Eine Bestätigung zur
   Mitbestimmung verlangt der Schritt nicht ([Spracheingabe und
   Mitbestimmung](modelle.md#spracheingabe-und-mitbestimmung)). Der Abschluss nennt, ob er die
   Spracheingabe einschaltet.

@@ -85,7 +85,8 @@ settings:
     bearings: [DATA_FLOW]
     notes:
       - >-
-        Werkseinstellung im Code; die Systemverwaltung schaltet unter Modelle → Spracheingabe,
+        Werkseinstellung im Code; die Systemverwaltung schaltet unter Modelle → Spracheingabe, oder
+        der Abschluss der Installation mit einem geprüften Schritt Transkriptionsmodell, beides
         begrenzt durch opaa.features.speech-input.enabled
   - key: transcription_model.base_url
     source: DATABASE
