@@ -790,7 +790,9 @@ auditEvents:
     trigger: Ein Chatmodell ist nicht mehr aktiv, weil ein anderes aktiviert wurde
     payloadKeys: [active]
   - id: RERANK_MODEL_CHANGED
-    trigger: Schalter, Adresse, Modell oder Zugangsschlüssel des Rerank-Modells werden geändert
+    trigger: >-
+      Schalter, Adresse, Modell oder Zugangsschlüssel des Rerank-Modells werden geändert, durch die
+      Systemverwaltung oder beim Abschluss der Installation
     details: >-
       Vorher und nachher; der Zugangsschlüssel nur als „gesetzt ja/nein“ und, wenn er sich ändert,
       als „gesetzt“, „geändert“ oder „entfernt“ (apiKeyChange), nie mit dem Wert

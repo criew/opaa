@@ -23,6 +23,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -33,11 +34,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * What the system administration does with the rerank and transcription model roles (ADR-0060,
- * Entscheidung 10): read, change and test them. A change is validated like every model endpoint
- * ({@link ModelEndpointRules}, {@link ModelAddressPolicy} for an address other than the stored
- * one), stored with the key encrypted, and recorded with the values before and after (Entscheidung
- * 11); a change to the same values writes nothing. The speech-input feature is the operation's
- * limit: the transcription role cannot be switched on while it is off (Entscheidung 2).
+ * Entscheidung 10): read, change and test them; the installation stores a checked rerank step
+ * through the same write path. A change is validated like every model endpoint ({@link
+ * ModelEndpointRules}, {@link ModelAddressPolicy} for an address other than the stored one), stored
+ * with the key encrypted, and recorded with the values before and after (Entscheidung 11); a change
+ * to the same values writes nothing. The speech-input feature is the operation's limit: the
+ * transcription role cannot be switched on while it is off (Entscheidung 2).
  *
  * <p>The change reaches every instance through the triggers on the two tables; this instance drops
  * its cache and probes the new endpoint right after the commit, so the state on the page follows
@@ -170,22 +172,74 @@ public class ModelRoleAdministration {
     blockedAddressError(RERANK, address, storedRerankAddress(), errors);
     requireNoErrors(errors);
     return transactions.execute(
-        status -> storeRerank(organizationId, actorUserId, enabled, address, identifier, apiKey));
+        status ->
+            storeRerank(
+                organizationId,
+                AuditActor.user(actorUserId),
+                enabled,
+                address,
+                identifier,
+                row ->
+                    secretOf(
+                        RERANK, apiKey, row.getBaseUrl(), address, row.getApiKeyCiphertext())));
   }
 
+  /**
+   * Switches the rerank role on with the checked rerank step of the installation, in the caller's
+   * transaction and audited under {@code systemActor}. {@code apiKeyCiphertext} is encrypted by the
+   * same {@link SettingsEncryptor}; the installation has run the address check before. A change to
+   * the same values writes nothing, as in {@link #changeRerank}.
+   *
+   * @throws FieldValidationException for an endpoint the rules of the role refuse
+   */
+  public RerankModelView installRerank(
+      UUID organizationId,
+      String systemActor,
+      String baseUrl,
+      String model,
+      String apiKeyCiphertext) {
+    String address = trimmed(baseUrl);
+    String identifier = trimmed(model);
+    List<FieldError> errors = new ArrayList<>();
+    ModelEndpointRules.endpointErrors(RERANK, address, identifier, null, true, errors);
+    requireNoErrors(errors);
+    return transactions.execute(
+        status ->
+            storeRerank(
+                organizationId,
+                AuditActor.systemProcess(systemActor),
+                true,
+                address,
+                identifier,
+                row -> apiKeyCiphertext));
+  }
+
+  /** Who a change of a role is recorded under: a person, or a system process. */
+  private record AuditActor(UUID userId, String systemProcess) {
+
+    static AuditActor user(UUID userId) {
+      return new AuditActor(userId, null);
+    }
+
+    static AuditActor systemProcess(String name) {
+      return new AuditActor(null, name);
+    }
+  }
+
+  /** {@code ciphertextOf} derives the key to store from the stored row, under the table lock. */
   private RerankModelView storeRerank(
       UUID organizationId,
-      UUID actorUserId,
+      AuditActor actor,
       boolean enabled,
       String address,
       String identifier,
-      String apiKey) {
+      Function<RerankModelSettings, String> ciphertextOf) {
     jdbc.execute("LOCK TABLE rerank_model IN SHARE ROW EXCLUSIVE MODE");
     RerankModelSettings existing = rerankRows.findStored().orElse(null);
     RerankModelSettings row =
         existing == null ? new RerankModelSettings(clock.instant()) : existing;
     String previousCiphertext = row.getApiKeyCiphertext();
-    String ciphertext = secretOf(RERANK, apiKey, row.getBaseUrl(), address, previousCiphertext);
+    String ciphertext = ciphertextOf.apply(row);
     boolean unchanged =
         row.isEnabled() == enabled
             && Objects.equals(row.getBaseUrl(), emptyToNull(address))
@@ -202,7 +256,7 @@ public class ModelRoleAdministration {
     AuditSecretChange.put(after, "apiKey", previousCiphertext, ciphertext);
     record(
         organizationId,
-        actorUserId,
+        actor,
         AuditEventType.RERANK_MODEL_CHANGED,
         "rerank_model",
         "Rerank-Modell",
@@ -290,7 +344,7 @@ public class ModelRoleAdministration {
     AuditSecretChange.put(after, "apiKey", previousCiphertext, ciphertext);
     record(
         organizationId,
-        actorUserId,
+        AuditActor.user(actorUserId),
         AuditEventType.TRANSCRIPTION_MODEL_CHANGED,
         "transcription_model",
         "Transkriptionsmodell",
@@ -315,8 +369,18 @@ public class ModelRoleAdministration {
             apiKey,
             storedRerankAddress(),
             rerankRows.findStored().map(RerankModelSettings::getApiKeyCiphertext).orElse(null));
+    return probeRerank(address, identifier, key);
+  }
+
+  /**
+   * The probe of {@link #testRerank}, without an address check of its own. Precondition: the caller
+   * has passed {@code baseUrl} through {@link ModelAddressPolicy} and {@link ModelEndpointRules}
+   * right before; a caller that cannot vouch for the address must use {@link #testRerank}. {@code
+   * apiKey} is plain text, {@code null} or blank for none. Call outside any transaction.
+   */
+  public TestOutcome probeRerank(String baseUrl, String model, String apiKey) {
     RerankClient.ProbeFailure failure =
-        rerankClient.probe(new RerankEndpoint(true, address, identifier, key), TEST_TIMEOUT);
+        rerankClient.probe(new RerankEndpoint(true, baseUrl, model, apiKey), TEST_TIMEOUT);
     return failure == null
         ? new TestOutcome(true, "Verbindung erfolgreich, der Endpunkt hat die Probe bewertet.")
         : new TestOutcome(false, german(failure.message(), failure.timedOut()));
@@ -473,16 +537,15 @@ public class ModelRoleAdministration {
 
   private void record(
       UUID organizationId,
-      UUID actorUserId,
+      AuditActor actor,
       AuditEventType type,
       String table,
       String label,
       Map<String, Object> before,
       Map<String, Object> after) {
-    auditEventRecorder.recordUserAction(
+    AuditEvent.Builder event =
         AuditEvent.builder()
             .organizationId(organizationId)
-            .actor(actorUserId)
             .type(type)
             .object(
                 AuditObjectType.SYSTEM_SETTING,
@@ -490,15 +553,23 @@ public class ModelRoleAdministration {
                 label)
             .before(before)
             .after(after)
-            .outcome(AuditOutcome.SUCCESS)
-            .build());
+            .outcome(AuditOutcome.SUCCESS);
+    if (actor.systemProcess() != null) {
+      auditEventRecorder.recordSystemProcessAction(event.actorRef(actor.systemProcess()).build());
+    } else {
+      auditEventRecorder.recordUserAction(event.actor(actor.userId()).build());
+    }
   }
 
-  /** The audit state of a row, the factory default for {@code null}; never the key itself. */
+  /**
+   * The audit state of a row, the factory default for {@code null}; never the key itself, and the
+   * address without userinfo, query and fragment, where a token could stand.
+   */
   private static Map<String, Object> rerankPayload(RerankModelSettings row) {
     Map<String, Object> state = new LinkedHashMap<>();
     state.put("enabled", row != null && row.isEnabled());
-    putIfPresent(state, "baseUrl", row == null ? null : row.getBaseUrl());
+    putIfPresent(
+        state, "baseUrl", row == null ? null : ModelEndpointUri.withoutSecrets(row.getBaseUrl()));
     putIfPresent(state, "model", row == null ? null : row.getModelIdentifier());
     state.put("apiKeySet", row != null && row.getApiKeyCiphertext() != null);
     return state;
@@ -507,7 +578,8 @@ public class ModelRoleAdministration {
   private static Map<String, Object> transcriptionPayload(TranscriptionModelSettings row) {
     Map<String, Object> state = new LinkedHashMap<>();
     state.put("enabled", row != null && row.isEnabled());
-    putIfPresent(state, "baseUrl", row == null ? null : row.getBaseUrl());
+    putIfPresent(
+        state, "baseUrl", row == null ? null : ModelEndpointUri.withoutSecrets(row.getBaseUrl()));
     putIfPresent(state, "model", row == null ? null : row.getModelIdentifier());
     state.put("apiKeySet", row != null && row.getApiKeyCiphertext() != null);
     String language = row == null ? TranscriptionEndpoint.DEFAULT_LANGUAGE : row.getLanguage();

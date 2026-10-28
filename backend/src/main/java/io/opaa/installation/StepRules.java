@@ -46,6 +46,7 @@ class StepRules {
 
   private static final String INVALID = "INVALID";
   private static final String BRANDING_PREFIX = "branding.";
+  private static final String RERANK_PREFIX = "rerankModel";
 
   /** A host name or address: no whitespace and no control character, so no forged log line. */
   private static final Pattern MAIL_HOST = Pattern.compile("[^\\s\\p{Cntrl}]+");
@@ -80,6 +81,9 @@ class StepRules {
       return new EmbeddingModelPayload(baseUrl, model, maxInputTokens, probed);
     }
   }
+
+  /** The rerank model without its key. */
+  record RerankModelPayload(String baseUrl, String model) {}
 
   /** The mail server without its password; {@code encryption} is never {@code null}. */
   record MailPayload(
@@ -137,6 +141,7 @@ class StepRules {
       case StepInput.SignIn signIn -> signIn(signIn);
       case StepInput.ChatModel model -> chatModel(model, previousPayload, previousSecret);
       case StepInput.EmbeddingModel model -> embeddingModel(model, previousPayload, previousSecret);
+      case StepInput.RerankModel model -> rerankModel(model, previousPayload, previousSecret);
       case StepInput.Mail mail -> mail(mail, previousPayload, previousSecret);
       case StepInput.Branding branding -> branding(branding);
     };
@@ -166,6 +171,10 @@ class StepRules {
             secret != null,
             maxInputTokens(model),
             model.dimensions());
+      }
+      case RERANK_MODEL -> {
+        RerankModelPayload model = rerankModelPayload(payload);
+        yield new InstallationOverview.RerankModel(model.baseUrl(), model.model(), secret != null);
       }
       case MAIL -> {
         MailPayload mail = mailPayload(payload);
@@ -266,6 +275,24 @@ class StepRules {
 
   EmbeddingModelPayload embeddingModelPayload(String payload) {
     return json.readValue(payload, EmbeddingModelPayload.class);
+  }
+
+  RerankModelPayload rerankModelPayload(String payload) {
+    return json.readValue(payload, RerankModelPayload.class);
+  }
+
+  /**
+   * The base address saved with a model step, the only one its saved key may be sent to.
+   *
+   * @throws IllegalArgumentException for a step without a model endpoint
+   */
+  String savedModelBaseUrl(InstallationStep step, String payload) {
+    return switch (step) {
+      case CHAT_MODEL -> chatModelPayload(payload).baseUrl();
+      case EMBEDDING_MODEL -> embeddingModelPayload(payload).baseUrl();
+      case RERANK_MODEL -> rerankModelPayload(payload).baseUrl();
+      default -> throw new IllegalArgumentException("No model step: " + step);
+    };
   }
 
   /** {@code payload} with the vector size of a successful probe embedding. */
@@ -406,6 +433,28 @@ class StepRules {
         json.writeValueAsString(
             new EmbeddingModelPayload(baseUrl, model, input.maxInputTokens(), null)),
         secret);
+  }
+
+  /**
+   * The rules of the rerank model administration for a switched-on role ({@link
+   * ModelEndpointRules}), with the address check of the installation for every address.
+   */
+  private Stored rerankModel(
+      StepInput.RerankModel input, String previousPayload, String previousSecret) {
+    List<FieldError> errors = new ArrayList<>();
+    String baseUrl = trimmed(input.baseUrl());
+    String model = trimmed(input.model());
+    endpointErrors(RERANK_PREFIX, baseUrl, model, input.apiKey(), errors);
+    blockedAddressError(RERANK_PREFIX, baseUrl, errors);
+    requireNoErrors(errors);
+    String secret =
+        secretOf(
+            RERANK_PREFIX,
+            input.apiKey(),
+            previousSecret == null ? null : rerankModelPayload(previousPayload).baseUrl(),
+            baseUrl,
+            previousSecret);
+    return new Stored(json.writeValueAsString(new RerankModelPayload(baseUrl, model)), secret);
   }
 
   /**

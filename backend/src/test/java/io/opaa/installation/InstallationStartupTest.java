@@ -194,6 +194,61 @@ class InstallationStartupTest {
   }
 
   @Test
+  void anAnswerFileWithARerankModelReadsItsKeyFromAFile() throws Exception {
+    Path password = Files.writeString(directory.resolve("password"), "Kennwort-aus-Secret-2026\n");
+    Path key = Files.writeString(directory.resolve("rerank-key"), "sk-rerank-aus-secret\n");
+    Path answers =
+        Files.writeString(
+            directory.resolve("installation.json"),
+            "{\"firstAdmin\":{\"email\":\"it@stadt.example\",\"displayName\":\"IT\","
+                + "\"passwordFile\":\""
+                + password
+                + "\"},\"signIn\":{\"mode\":\"LOCAL_ONLY\"},"
+                + "\"rerankModel\":{\"baseUrl\":\"http://reranker:80\",\"model\":\"bge-reranker\","
+                + "\"apiKeyFile\":\""
+                + key
+                + "\"}}");
+    InstallationStartup startup = startup("oidc", null, answers.toString());
+
+    startup.decide();
+
+    verify(installation)
+        .applyAnswersAtStartup(
+            argThat(
+                inputs ->
+                    inputs.size() == 3
+                        && inputs
+                            .getLast()
+                            .equals(
+                                new StepInput.RerankModel(
+                                    "http://reranker:80",
+                                    "bge-reranker",
+                                    "sk-rerank-aus-secret"))));
+  }
+
+  @Test
+  void anAnswerFileWithAPlainRerankKeyIsRefused() throws Exception {
+    Path password = Files.writeString(directory.resolve("password"), "Kennwort-aus-Secret-2026\n");
+    Path answers =
+        Files.writeString(
+            directory.resolve("installation.json"),
+            "{\"firstAdmin\":{\"email\":\"it@stadt.example\",\"displayName\":\"IT\","
+                + "\"passwordFile\":\""
+                + password
+                + "\"},\"signIn\":{\"mode\":\"LOCAL_ONLY\"},"
+                + "\"rerankModel\":{\"baseUrl\":\"http://reranker:80\",\"model\":\"bge\","
+                + "\"apiKey\":\"sk-im-klartext\"}}");
+    InstallationStartup startup = startup("oidc", null, answers.toString());
+
+    assertThat(startup.decide()).isFalse();
+
+    verify(installation, never()).applyAnswersAtStartup(any());
+    assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
+        .anyMatch(message -> message.contains("nicht im Klartext"))
+        .noneMatch(message -> message.contains("sk-im-klartext"));
+  }
+
+  @Test
   void anAnswerFileKeepsThePasswordOnlyWhenItSaysSo() throws Exception {
     Path password = Files.writeString(directory.resolve("password"), "Kennwort-aus-Secret-2026\n");
     Path answers =

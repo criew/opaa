@@ -20,6 +20,7 @@ import io.opaa.directory.OidcProviderService;
 import io.opaa.installation.InstallationState.CompletionSource;
 import io.opaa.llm.EmbeddingModelService;
 import io.opaa.llm.LlmModelService;
+import io.opaa.llm.ModelRoleAdministration;
 import io.opaa.mail.MailSettingsService;
 import java.time.Clock;
 import java.time.Instant;
@@ -60,6 +61,7 @@ class InstallationServiceCheckTest {
             mock(OidcProviderService.class),
             mock(LlmModelService.class),
             embeddingModels,
+            mock(ModelRoleAdministration.class),
             mock(MailSettingsService.class),
             mock(BrandingSettingsService.class),
             mock(AuditEventRecorder.class),
