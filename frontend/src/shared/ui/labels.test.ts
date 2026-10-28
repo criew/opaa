@@ -78,4 +78,12 @@ describe('labels', () => {
     const word = /label=(?:"|\{[^}]*')(?:Standard|Archiviert)["']/
     expect(offending((tag) => word.test(tag))).toEqual([])
   })
+
+  it('shows „lange offen" as a state with its dot, never as a label', () => {
+    const asLabel = /<MetaBadge[^>]*>\s*lange offen\s*<\/MetaBadge>|<Chip[^>]*label="lange offen"/i
+    expect(PRODUCTION.filter(([, text]) => asLabel.test(text)).map(([path]) => path)).toEqual([])
+    expect(
+      PRODUCTION.some(([, text]) => /<StateDot\s+tone="warning"\s+label="lange offen"/.test(text)),
+    ).toBe(true)
+  })
 })
