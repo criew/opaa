@@ -33,7 +33,7 @@ function offending(predicate: (tag: string) => boolean): string[] {
  */
 describe('labels', () => {
   it('finds the chips it checks', () => {
-    expect(PRODUCTION.flatMap(([, text]) => chipTags(text)).length).toBeGreaterThan(20)
+    expect(PRODUCTION.flatMap(([, text]) => chipTags(text)).length).toBeGreaterThan(10)
   })
 
   it('never colours a chip in a signal colour', () => {

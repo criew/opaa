@@ -58,7 +58,10 @@ describe('badge shape', () => {
       const roles = scheme === 'light' ? lightRoles : darkRoles
       render(
         <ThemeProvider theme={createAppTheme(scheme)}>
-          <Box component="span" sx={{ color: roles.fg2, border: 1, borderColor: roles.borderStrong }}>
+          <Box
+            component="span"
+            sx={{ color: roles.fg2, border: 1, borderColor: roles.borderStrong }}
+          >
             Bezug
           </Box>
           <MetaBadge>Verwalter</MetaBadge>
@@ -70,7 +73,7 @@ describe('badge shape', () => {
         const style = getComputedStyle(screen.getByText(text))
         expect(style.color).toBe(reference.color)
         expect(style.borderTopColor).toBe(reference.borderTopColor)
-        expect(style.backgroundColor).toBe('')
+        expect(style.backgroundColor).toBe('rgba(0, 0, 0, 0)')
       }
     },
   )
