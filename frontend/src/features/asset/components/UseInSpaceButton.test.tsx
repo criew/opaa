@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { describe, expect, it, beforeEach, vi } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -6,7 +7,7 @@ import { renderWithProviders } from '@/test/test-utils'
 import { server } from '@/test/server'
 import { mockSpaces } from '@/features/space/mocks/spaceFixtures'
 import type { SpaceListResponse } from '@/shared/api/types'
-import UseInSpaceButton from './UseInSpaceButton'
+import { UseInSpaceDialog } from './UseInSpaceButton'
 
 const mockNavigate = vi.fn()
 
@@ -15,18 +16,30 @@ vi.mock('react-router', async () => {
   return { ...actual, useNavigate: () => mockNavigate }
 })
 
-function renderButton() {
-  renderWithProviders(
-    <UseInSpaceButton
-      assetType="KNOWLEDGE_LIBRARY"
-      assetId="library-dienstanweisungen"
-      name="Dienstanweisungen"
-    />,
-    { withRouter: true },
+/** The dialog behind „In Space verwenden“, as the detail page, its head and the catalog open it. */
+function UseInSpaceHarness() {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        In Space verwenden
+      </button>
+      <UseInSpaceDialog
+        assetType="KNOWLEDGE_LIBRARY"
+        assetId="library-dienstanweisungen"
+        name="Dienstanweisungen"
+        open={open}
+        onClose={() => setOpen(false)}
+      />
+    </>
   )
 }
 
-describe('UseInSpaceButton', () => {
+function renderButton() {
+  renderWithProviders(<UseInSpaceHarness />, { withRouter: true })
+}
+
+describe('UseInSpaceDialog', () => {
   beforeEach(() => {
     mockNavigate.mockReset()
   })
@@ -42,7 +55,7 @@ describe('UseInSpaceButton', () => {
     const user = userEvent.setup()
     renderButton()
 
-    await user.click(screen.getByRole('button', { name: '„Dienstanweisungen“ in Space verwenden' }))
+    await user.click(screen.getByRole('button', { name: 'In Space verwenden' }))
     const dialog = await screen.findByRole('dialog')
     await user.click(await within(dialog).findByRole('button', { name: /^Phoenix/ }))
 
@@ -61,7 +74,7 @@ describe('UseInSpaceButton', () => {
     const user = userEvent.setup()
     renderButton()
 
-    await user.click(screen.getByRole('button', { name: '„Dienstanweisungen“ in Space verwenden' }))
+    await user.click(screen.getByRole('button', { name: 'In Space verwenden' }))
     const engineering = await within(await screen.findByRole('dialog')).findByRole('button', {
       name: /^Engineering/,
     })
@@ -74,7 +87,7 @@ describe('UseInSpaceButton', () => {
     const user = userEvent.setup()
     renderButton()
 
-    await user.click(screen.getByRole('button', { name: '„Dienstanweisungen“ in Space verwenden' }))
+    await user.click(screen.getByRole('button', { name: 'In Space verwenden' }))
     await user.click(
       await within(await screen.findByRole('dialog')).findByRole('button', {
         name: 'Neuen Space damit anlegen',
@@ -113,7 +126,7 @@ describe('UseInSpaceButton', () => {
     const user = userEvent.setup()
     renderButton()
 
-    await user.click(screen.getByRole('button', { name: '„Dienstanweisungen“ in Space verwenden' }))
+    await user.click(screen.getByRole('button', { name: 'In Space verwenden' }))
     const list = await within(await screen.findByRole('dialog')).findByRole('list', {
       name: 'Spaces, die Sie kuratieren',
     })
@@ -131,16 +144,9 @@ describe('UseInSpaceButton', () => {
       { ...mockSpaces[0], id: 'space-provided', name: 'Bereitgestellt', userRole: 'CURATOR' },
     ])
     const user = userEvent.setup()
-    renderWithProviders(
-      <UseInSpaceButton
-        assetType="KNOWLEDGE_LIBRARY"
-        assetId="library-dienstanweisungen"
-        name="Dienstanweisungen"
-      />,
-      { withRouter: true, spaceList: loadSpaces },
-    )
+    renderWithProviders(<UseInSpaceHarness />, { withRouter: true, spaceList: loadSpaces })
 
-    await user.click(screen.getByRole('button', { name: '„Dienstanweisungen“ in Space verwenden' }))
+    await user.click(screen.getByRole('button', { name: 'In Space verwenden' }))
     const list = await within(await screen.findByRole('dialog')).findByRole('list', {
       name: 'Spaces, die Sie kuratieren',
     })

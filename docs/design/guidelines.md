@@ -383,8 +383,24 @@ höchstens eine.
 Router-Link). Was auf der Seite etwas auslöst (Dialog öffnen, speichern, starten, abbrechen), ist
 eine Schaltfläche, auch wenn sie wie ein Link aussieht (`component="button"`). Link-Optik für eine
 Schaltfläche steht für die Hinzufügen-Aktion im Abschnittskopf, für „Ändern" in einer Wertzeile
-(5.12) und zum Auf- und Zuklappen („alle anzeigen") und kommt aus `TextAction`
-(`frontend/src/shared/ui/DetailSection.tsx`), nicht aus einem Nachbau je Thema.
+(5.12), zum Auf- und Zuklappen („alle anzeigen", „Mitglieder ausblenden") und für kleine Schritte
+in einer Liste oder einem Auswahldialog, die nichts speichern („Auswahl ansehen", „Suche
+zurücksetzen", „Erneut laden"). Sie kommt aus `TextAction`
+(`frontend/src/shared/ui/DetailSection.tsx`), nicht aus einem Nachbau je Thema. Was einen Lauf
+startet oder Daten ändert, ist eine sichtbare Schaltfläche, auch im Abschnittskopf: „Vollabgleich
+starten" steht wie „Jetzt indizieren" als kompakte Sekundär-Schaltfläche.
+
+**Navigation sieht aus wie ein Link.** Ein frei stehender Verweis an einen anderen Ort ist ein
+Textlink aus `TextLink` (ebenfalls `DetailSection.tsx`): Schrift und Gewicht wie `TextAction`,
+unterstrichen beim Zeigen („Zugang ansehen", „Passwort ändern", „Zur Gruppenverwaltung"). Ein Link
+im Fließtext übernimmt dessen Schrift und bleibt unterstrichen, damit er nicht allein an der Farbe
+zu erkennen ist. Wie eine Schaltfläche sieht ein Link nur aus, wenn er die eine Handlung eines
+Hinweises oder Leerzustands ist (5.7): als Aktion eines `Alert` still in dessen Farbe („Wissen
+zuordnen"), in einem Hinweisfenster als Sekundär-Schaltfläche („Zum Verzeichnisabgleich").
+
+**Linktexte** nennen das Ziel oder was dort zu tun ist, ohne Pfeil am Ende („Verbindung ändern",
+nicht „Verbindung ändern ›"). Ein Ort in OPAA wird als Pfad mit „→" geschrieben („Einstellungen →
+Zugangstokens", „Suche & Indexierung → Indexstatus").
 
 ### 5.2 Formularfelder
 

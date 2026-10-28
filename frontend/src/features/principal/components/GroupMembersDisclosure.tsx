@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
-import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { GroupMemberDisclosureResponse } from '@/shared/api/types'
+import { TextAction } from '@/shared/ui/DetailSection'
 
 /** How many names a page brings — the same default as in the service. */
 const PAGE_SIZE = 50
@@ -75,15 +75,13 @@ export default function GroupMembersDisclosure({
 
   if (!requested && !disclosure && !isLoading && !error) {
     return (
-      <Link
-        component="button"
-        type="button"
-        sx={{ alignSelf: 'flex-start', fontSize: 12 }}
+      <TextAction
+        sx={{ alignSelf: 'flex-start' }}
         aria-label={`Mitglieder der Gruppe „${groupLabel}“ anzeigen`}
         onClick={() => void loadPage(0)}
       >
         Mitglieder anzeigen
-      </Link>
+      </TextAction>
     )
   }
 
@@ -121,24 +119,20 @@ export default function GroupMembersDisclosure({
               ))}
             </Stack>
             {hasMore && (
-              <Link
-                component="button"
-                type="button"
-                sx={{ alignSelf: 'flex-start', fontSize: 12 }}
+              <TextAction
+                sx={{ alignSelf: 'flex-start' }}
                 aria-label={`Weitere Mitglieder der Gruppe „${groupLabel}“ anzeigen`}
                 onClick={() => void loadPage(shown)}
               >
                 {isLoading ? 'Wird geladen …' : 'Weitere anzeigen'}
-              </Link>
+              </TextAction>
             )}
           </>
         )
       )}
       {(disclosure || error) && (
-        <Link
-          component="button"
-          type="button"
-          sx={{ alignSelf: 'flex-start', fontSize: 12 }}
+        <TextAction
+          sx={{ alignSelf: 'flex-start' }}
           aria-label={`Mitglieder der Gruppe „${groupLabel}“ ausblenden`}
           onClick={() => {
             setDisclosure(null)
@@ -148,7 +142,7 @@ export default function GroupMembersDisclosure({
           }}
         >
           Mitglieder ausblenden
-        </Link>
+        </TextAction>
       )}
     </Stack>
   )
