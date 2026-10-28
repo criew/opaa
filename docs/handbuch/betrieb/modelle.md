@@ -548,9 +548,11 @@ beendet die Aufnahme, und der erkannte Text landet im Eingabefeld (Bedienung unt
 [Suche](../spaces/suche.md#frage-diktieren)). Dafür braucht OPAA eine eigene Modellrolle **Transkription**, die
 Sprache in Text umwandelt. Sie ist ab Werk **aus**; ohne sie zeigt der Chat kein Mikrofon. Eingetragen wird sie unter
 **Modelle → Spracheingabe** ([Rerank- und Transkriptionsmodell in der
-Oberfläche](#rerank-modell-und-transkriptionsmodell-in-der-oberfläche)). Hat der Betrieb die Funktion mit
-`OPAA_FEATURES_SPEECH_INPUT_ENABLED=false` abgeschaltet, lässt sich die Rolle dort nur vorbereiten,
-nicht einschalten.
+Oberfläche](#rerank-modell-und-transkriptionsmodell-in-der-oberfläche)) oder schon bei der
+Installation im optionalen Schritt Transkriptionsmodell ([Installation](installation.md#schritte)).
+Hat der Betrieb die Funktion mit `OPAA_FEATURES_SPEECH_INPUT_ENABLED=false` abgeschaltet, lässt sich
+die Rolle unter Modelle nur vorbereiten, nicht einschalten, und die Installation bietet den Schritt
+nicht an.
 
 > **Ollama kann kein Audio.** Der Modellserver für Chat und Einbettung transkribiert nicht. Die
 > Spracheingabe braucht immer einen zweiten Dienst.
@@ -659,6 +661,11 @@ darauf hin, wohin die Aufnahme geht.
   Transkripte weder abgelegt noch protokolliert werden? Ist die Nutzung freiwillig geregelt? OPAA
   kennt keine Einstellung, die das Diktieren vorschreibt; abschalten lässt es sich mit
   `OPAA_FEATURES_SPEECH_INPUT_ENABLED=false`.
+- *In OPAA:* Weder die Modellverwaltung noch der Installationsassistent fragt vor dem Einschalten
+  nach einer Absprache mit der Personalvertretung. Den Weg gibt der Betrieb frei: Ist die Frage bei
+  der Installation noch offen, startet er mit `OPAA_FEATURES_SPEECH_INPUT_ENABLED=false`; dann
+  bietet der Assistent das Transkriptionsmodell nicht an, und die Systemverwaltung trägt es nach der
+  Klärung unter Modelle → Spracheingabe ein.
 
 ## vLLM / OpenAI-kompatible Server
 

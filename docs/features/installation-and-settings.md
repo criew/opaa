@@ -93,13 +93,14 @@ OPAA_INSTALLATION_ANSWER_FILE=/run/opaa/installation.json               # option
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│  OPAA einrichten                                     Schritt 3 von 9  │
+│  OPAA einrichten                                    Schritt 3 von 10  │
 │  ──────────────────────────────────────────────────────────────────  │
 │  ✓ Installations-Token        Pflicht                                │
 │  ✓ Erstes Konto               Pflicht                                │
 │  ● Anmeldeverfahren           Pflicht                                │
 │  ○ Chat-Modell                optional · später unter Modelle        │
 │  ○ Embedding-Modell           optional · später unter Modelle        │
+│  ○ Transkriptionsmodell       optional · später unter Modelle        │
 │  ○ Ausgangsproxy              optional · später unter Anbindungen     │
 │  ○ E-Mail-Versand             optional · später unter E-Mail          │
 │  ○ Branding                   optional · später unter Branding        │
@@ -115,6 +116,7 @@ OPAA_INSTALLATION_ANSWER_FILE=/run/opaa/installation.json               # option
 | Anmeldeverfahren | ja | nur lokale Konten, oder zusätzlich ein OIDC-Anbieter: Issuer, Client-ID, JWK-Set-Adresse | Discovery und JWK-Set erreichbar, Adressprüfung | Identitätsanbieter |
 | Chat-Modell | optional | Adresse, Modellname, Schlüssel, Temperatur, Antwortlänge | Verbindungstest wie in der Modellverwaltung | Modelle |
 | Embedding-Modell | optional | Adresse, Modellname, Schlüssel, Eingabegrenze | Probeeinbettung; legt die Vektordimension fest | Modelle → Embedding: Modellwechsel mit Neueinbettung, Endpunktwechsel ohne ([Wechsel des Embedding-Modells](./embedding-model-change.md)) |
+| Transkriptionsmodell (nur mit `OPAA_FEATURES_SPEECH_INPUT_ENABLED`) | optional | Adresse, Modellname, Schlüssel, Sprache (Regeln der Modellverwaltung) | Probe der Modellverwaltung (`GET {Basis-Adresse}/models`, keine Aufnahme), Adressprüfung der Modelle; ohne Bestätigung der Mitbestimmung (ADR-0060, Entscheidung 16) | Modelle → Spracheingabe |
 | Ausgangsproxy | optional; Pflicht, wenn ohne ihn kein Modell erreichbar ist | Proxy-Adresse, Ausnahmeliste | Verbindungstest der Modelle über den Proxy | Anbindungen → Einstellungen |
 | E-Mail-Versand | optional | Server, Port, Verschlüsselung, Zugangsdaten, Absender (Regeln der Mail-Verwaltung) | Adressprüfung der Installation; Verbindung und Anmeldung ohne Versand, auf Wunsch Testnachricht an eine angegebene Adresse | E-Mail |
 | Branding | optional | Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe, Farbschema-Vorgabe (Regeln der Branding-Verwaltung); keine Bilder (ADR-0060, Entscheidung 15) | Regeln der Branding-Verwaltung erneut, ohne Verbindung | Branding |
@@ -192,6 +194,7 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
     "baseUrl": "http://ollama:11434/v1",
     "model": "bge-m3"
   },
+  "transcriptionModel": null,
   "outboundProxy": null,
   "mail": null,
   "branding": null
@@ -203,9 +206,10 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
   `POST /api/v1/installation/answer-file` kommen dieselben Angaben mit `password` und `apiKey` im
   Rumpf, wie in den einzelnen Schritten: Ein Dateiverweis über die API ließe den Inhaber des Tokens
   Dateien des Backends lesen (ADR-0060, Entscheidung 7).
-- `chatModel`, `embeddingModel`, `mail` und `branding` sind optional; ein fehlender Teil
-  überspringt seinen Schritt, ohne `mail` bleibt der Versand aus, ohne `branding` gilt der
-  OPAA-Standard. Angaben späterer Schritte (`outboundProxy`) wertet diese Version noch nicht aus.
+- `chatModel`, `embeddingModel`, `transcriptionModel`, `mail` und `branding` sind optional; ein
+  fehlender Teil überspringt seinen Schritt, ohne `transcriptionModel` bleibt die Spracheingabe aus,
+  ohne `mail` bleibt der Versand aus, ohne `branding` gilt der OPAA-Standard. Bei abgeschalteter
+  Spracheingabe wird `transcriptionModel` übergangen, nicht abgelehnt. Angaben späterer Schritte (`outboundProxy`) wertet diese Version noch nicht aus.
 - Beim Start mit `OPAA_INSTALLATION_ANSWER_FILE` und nicht abgeschlossener Installation liest die
   Anwendung die Datei unter dem Advisory-Lock der Startaktionen, prüft wie der Assistent und schließt
   ab. Scheitert eine Prüfung, bleibt der Installationsmodus, und das Log nennt Schritt und Grund.
