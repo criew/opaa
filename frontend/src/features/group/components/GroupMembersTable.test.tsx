@@ -45,6 +45,14 @@ describe('GroupMembersTable', () => {
     expect(screen.getByText('1 von 8 Mitgliedern')).toBeInTheDocument()
   })
 
+  // A row with „Entfernen“ is taller; the frame counts it at that height, so two members fit.
+  it('sizes the frame by the taller rows of a group with „Entfernen“', () => {
+    renderWithProviders(<GroupMembersTable members={many.slice(0, 2)} onRemove={vi.fn()} />)
+
+    const frame = screen.getByRole('region', { name: 'Mitglieder, scrollbar' })
+    expect(getComputedStyle(frame).height).toBe('143px')
+  })
+
   // Filtering must not change the dialog's size: the frame follows the whole
   // list, not the filter result.
   it('keeps the frame height while filtering', async () => {

@@ -14,9 +14,11 @@ import { spaceRoleLabel } from '@/shared/utils/labels'
 import { SubjectFormRow } from '@/features/principal'
 import { SubjectPicker } from '@/features/principal'
 import {
+  SUBJECT_CHOICE_MISSING,
   confirmExternalSubject,
   emptySubjectSelection,
   selectedSubjectId,
+  useRequiredChoice,
   type SubjectSelection,
 } from '@/features/principal'
 import { successionAwareMessage } from '@/features/succession'
@@ -85,6 +87,7 @@ export default function SpaceMembersSection({
   const transferOwnership = useSpaceStore((s) => s.transferOwnership)
   const [subject, setSubject] = useState<SubjectSelection>(emptySubjectSelection)
   const [newMemberRole, setNewMemberRole] = useState<SpaceRole>('MEMBER')
+  const choice = useRequiredChoice(SUBJECT_CHOICE_MISSING)
   // A failure stays until it is closed or the next action starts; a success is a popup only.
   const [localError, setLocalError] = useState<string | null>(null)
   const navigate = useNavigate()
@@ -198,7 +201,12 @@ export default function SpaceMembersSection({
                 picker={
                   <SubjectPicker
                     value={subject}
-                    onChange={setSubject}
+                    onChange={(next) => {
+                      choice.clear()
+                      setSubject(next)
+                    }}
+                    errorText={choice.errorText}
+                    inputRef={choice.inputRef}
                     excludedUserIds={members
                       .filter((member) => member.subjectType === 'USER')
                       .map((member) => member.subjectId)}
@@ -225,9 +233,9 @@ export default function SpaceMembersSection({
                 action={
                   <Button
                     variant="contained"
-                    disabled={!selectedSubjectId(subject)}
                     onClick={async () => {
                       const subjectId = selectedSubjectId(subject)
+                      if (!choice.check(Boolean(subjectId))) return
                       // A space membership knows no subject „Alle“ (ADR-0037,
                       // Entscheidung 3); the selection does not offer it here.
                       if (!subjectId || subject.type === 'ALL_ACCOUNTS') return

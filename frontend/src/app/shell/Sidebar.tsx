@@ -87,7 +87,7 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
   const recentSpaceIds = useRecentSpaceIds()
 
   // The menu stays short - the most recently used spaces, so that „Alle Spaces anzeigen" and
-  // „Neuen Space anlegen" below stay visible even when someone is a member of thirty spaces.
+  // „Neuer Space" below stay visible even when someone is a member of thirty spaces.
   // The whole set is in the overview. The order comes in as state, not
   // as a read: otherwise this value would be computed before the effect above, and a space opened
   // via „Alle Spaces" would only appear in the menu after a reload.
@@ -247,7 +247,7 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
             sx={{ fontWeight: 500, color: 'primary.main' }}
           >
             <AddIcon sx={{ fontSize: 15, mr: 1 }} />
-            Neuen Space anlegen
+            Neuer Space
           </MenuItem>
         </Menu>
       </Box>

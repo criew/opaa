@@ -5,7 +5,12 @@ import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import SectionHead from '@/shared/ui/SectionHead'
-import { UserPicker } from '@/features/principal'
+import {
+  SubjectFormRow,
+  USER_CHOICE_MISSING,
+  UserPicker,
+  useRequiredChoice,
+} from '@/features/principal'
 import type { GroupStewardResponse, UserSummary } from '@/shared/api/types'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { useAuthStore } from '@/shared/session/authStore'
@@ -37,6 +42,7 @@ export default function GroupStewardsSection({
   const dismissSteward = useGroupStore((s) => s.dismissSteward)
 
   const [selected, setSelected] = useState<UserSummary | null>(null)
+  const choice = useRequiredChoice(USER_CHOICE_MISSING)
   const [error, setError] = useState<string | null>(null)
 
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
@@ -46,7 +52,7 @@ export default function GroupStewardsSection({
   const dismissalBlocked = isOnlySteward && !isSystemAdmin
 
   async function handleAppoint() {
-    if (!selected) return
+    if (!choice.check(Boolean(selected)) || !selected) return
     setError(null)
     try {
       await appointSteward(groupId, selected.id)
@@ -131,29 +137,30 @@ export default function GroupStewardsSection({
             Verantwortliche da, bis eine neue benannt wird.
           </Typography>
         )}
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          spacing={1}
-          sx={{ pt: 1, alignItems: { md: 'center' } }}
-        >
-          <UserPicker
-            ariaLabel="Verantwortliche Person"
-            placeholder="Person suchen …"
-            value={selected}
-            onChange={setSelected}
-            grow
-            excludedUserIds={stewards.map((steward) => steward.userId)}
+        <Box sx={{ pt: 1 }}>
+          <SubjectFormRow
+            picker={
+              <UserPicker
+                ariaLabel="Verantwortliche Person"
+                placeholder="Person suchen …"
+                value={selected}
+                onChange={(next) => {
+                  choice.clear()
+                  setSelected(next)
+                }}
+                errorText={choice.errorText}
+                inputRef={choice.inputRef}
+                grow
+                excludedUserIds={stewards.map((steward) => steward.userId)}
+              />
+            }
+            action={
+              <Button variant="outlined" onClick={() => void handleAppoint()}>
+                Als verantwortlich benennen
+              </Button>
+            }
           />
-          <Button
-            sx={{ flexShrink: 0 }}
-            variant="outlined"
-            size="small"
-            disabled={!selected}
-            onClick={() => void handleAppoint()}
-          >
-            Als verantwortlich benennen
-          </Button>
-        </Stack>
+        </Box>
       </Stack>
     </Box>
   )
