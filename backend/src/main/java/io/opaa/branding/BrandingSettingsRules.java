@@ -40,17 +40,7 @@ public final class BrandingSettingsRules {
       String claim,
       String aiNotice,
       String primaryColor,
-      ColorScheme defaultColorScheme) {
-
-    /** Whether every field follows the OPAA default. */
-    public boolean allDefault() {
-      return productName == null
-          && claim == null
-          && aiNotice == null
-          && primaryColor == null
-          && defaultColorScheme == null;
-    }
-  }
+      ColorScheme defaultColorScheme) {}
 
   /** The normalised values and every problem found, in the order of the fields. */
   public record Checked(Values values, List<FieldError> errors) {

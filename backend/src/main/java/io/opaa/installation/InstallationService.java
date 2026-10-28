@@ -657,7 +657,8 @@ public class InstallationService {
 
   /**
    * The branding of the step through the write path of the administration, audited under the
-   * installation; a step left at every default writes and records nothing.
+   * installation; values equal to the stored ones write and record nothing, so a step stored at
+   * every default ({@code null} in each field) leaves the OPAA default untouched.
    */
   private void installBranding(StepRules.BrandingPayload branding) {
     brandingSettings.installBranding(

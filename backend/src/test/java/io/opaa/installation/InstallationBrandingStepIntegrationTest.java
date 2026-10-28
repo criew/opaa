@@ -149,6 +149,22 @@ class InstallationBrandingStepIntegrationTest {
   }
 
   @Test
+  void onlyTheSystemColorSchemeWritesAndRecordsNothing() throws Exception {
+    completeMandatorySteps();
+    saveBranding("{\"defaultColorScheme\":\"SYSTEM\"}")
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.branding.defaultColorScheme").doesNotExist());
+    mockMvc
+        .perform(authorized(post(BASE + "/steps/BRANDING/check")))
+        .andExpect(jsonPath("$.checked").value(true));
+
+    mockMvc.perform(authorized(post(BASE + "/complete"))).andExpect(status().isOk());
+
+    assertThat(storedBranding()).containsOnlyNulls();
+    assertThat(auditTypes()).doesNotContain("BRANDING_SETTINGS_CHANGED");
+  }
+
+  @Test
   void aBrandingProblemIsAFieldErrorAndASavedButUncheckedStepHoldsUpTheCompletion()
       throws Exception {
     completeMandatorySteps();

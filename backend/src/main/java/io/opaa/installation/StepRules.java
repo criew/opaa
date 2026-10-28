@@ -6,6 +6,7 @@ import io.opaa.api.types.ColorScheme;
 import io.opaa.api.types.MailEncryption;
 import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.auth.OidcIssuerUris;
+import io.opaa.branding.BrandingDefaults;
 import io.opaa.branding.BrandingSettingsRules;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.FieldValidationException.FieldError;
@@ -478,7 +479,8 @@ class StepRules {
 
   /**
    * The rules of the branding administration ({@link BrandingSettingsRules}), each problem named
-   * under {@code branding.}; stored normalised, a field {@code null} for the OPAA default.
+   * under {@code branding.}; stored normalised, a field {@code null} for the OPAA default. The
+   * default colour scheme is stored as "not set" too, so a step that only names it writes nothing.
    */
   private Stored branding(StepInput.Branding input) {
     BrandingSettingsRules.Checked checked =
@@ -498,7 +500,9 @@ class StepRules {
                 values.claim(),
                 values.aiNotice(),
                 values.primaryColor(),
-                values.defaultColorScheme())),
+                values.defaultColorScheme() == BrandingDefaults.COLOR_SCHEME
+                    ? null
+                    : values.defaultColorScheme())),
         null);
   }
 

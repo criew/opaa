@@ -31,7 +31,12 @@ const BRANDING_STEP: InstallationStepState = {
   checked: false,
 }
 
-/** The API's steps; without `withEmbedding` the older list without embedding and branding. */
+/**
+ * The mock's steps. With `withEmbedding` the full list of the API, embedding model and branding
+ * included, as `?mockInstallation=embedding` and {@link withMockEmbeddingStep} set it up; without,
+ * the shorter list most tests are written against, to which {@link withMockBrandingStep} adds the
+ * branding step.
+ */
 function initialSteps(withEmbedding = false): InstallationStepState[] {
   const steps: InstallationStepState[] = [
     { step: 'FIRST_ADMIN', mandatory: true, saved: false, checked: false },
@@ -78,7 +83,7 @@ export function mockSkippedSteps(): readonly string[] {
   return skippedSteps
 }
 
-/** Adds the embedding model step, as an API that lists it does (`?mockInstallation=embedding`). */
+/** The full list of the API, embedding model and branding step included (`?mockInstallation=embedding`). */
 export function withMockEmbeddingStep() {
   pendingOverride = true
   mockSteps = initialSteps(true)

@@ -21,7 +21,8 @@ class BrandingSettingsRulesTest {
             "branding.", "  ", "", " " + BrandingDefaults.AI_NOTICE + "\u200B", " ", null);
 
     assertThat(checked.errors()).isEmpty();
-    assertThat(checked.values().allDefault()).isTrue();
+    assertThat(checked.values())
+        .isEqualTo(new BrandingSettingsRules.Values(null, null, null, null, null));
   }
 
   @Test
@@ -40,7 +41,6 @@ class BrandingSettingsRulesTest {
         .isEqualTo(
             new BrandingSettingsRules.Values(
                 "Landesamt-Assistent", "Fragen.", "Eigener Hinweis.", "#7A3E9D", ColorScheme.DARK));
-    assertThat(checked.values().allDefault()).isFalse();
   }
 
   @Test

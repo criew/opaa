@@ -117,7 +117,7 @@ OPAA_INSTALLATION_ANSWER_FILE=/run/opaa/installation.json               # option
 | Embedding-Modell | optional | Adresse, Modellname, Schlüssel, Eingabegrenze | Probeeinbettung; legt die Vektordimension fest | Modelle → Embedding: Modellwechsel mit Neueinbettung, Endpunktwechsel ohne ([Wechsel des Embedding-Modells](./embedding-model-change.md)) |
 | Ausgangsproxy | optional; Pflicht, wenn ohne ihn kein Modell erreichbar ist | Proxy-Adresse, Ausnahmeliste | Verbindungstest der Modelle über den Proxy | Anbindungen → Einstellungen |
 | E-Mail-Versand | optional | Server, Port, Verschlüsselung, Zugangsdaten, Absender (Regeln der Mail-Verwaltung) | Adressprüfung der Installation; Verbindung und Anmeldung ohne Versand, auf Wunsch Testnachricht an eine angegebene Adresse | E-Mail |
-| Branding | optional | Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe, Farbschema-Vorgabe (Regeln der Branding-Verwaltung); keine Bilder (ADR-0060, Entscheidung 15) | Regeln der Branding-Verwaltung erneut, ohne Verbindung | Allgemein & Branding |
+| Branding | optional | Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe, Farbschema-Vorgabe (Regeln der Branding-Verwaltung); keine Bilder (ADR-0060, Entscheidung 15) | Regeln der Branding-Verwaltung erneut, ohne Verbindung | Branding |
 | Abschluss | ja | Zusammenfassung | alle Pflichtschritte und gespeicherten optionalen Schritte geprüft | — |
 
 - Jeder Schritt wird beim „Prüfen und weiter“ gespeichert. Ein neu geöffneter Assistent setzt beim
