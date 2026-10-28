@@ -234,4 +234,47 @@ class StepChecksTest {
     assertThat(refused.message()).contains("Hex-Wert");
     verifyNoInteractions(chatTester, embeddingModels, mailTester);
   }
+
+  @Test
+  void aBlockedTranscriptionAddressFailsTheCheckWithoutAnyRequest() {
+    String payload =
+        json.writeValueAsString(
+            new StepRules.TranscriptionModelPayload("http://169.254.169.254/v1", "whisper", "de"));
+
+    StepChecks.Outcome outcome =
+        checks.check(InstallationStep.TRANSCRIPTION_MODEL, payload, null, null);
+
+    assertThat(outcome.succeeded()).isFalse();
+    verifyNoInteractions(modelRoles);
+  }
+
+  @Test
+  void theTranscriptionModelIsCheckedWithTheProbeOfTheAdministrationAndItsOwnKey() {
+    StepChecks open =
+        new StepChecks(
+            rules,
+            mock(OidcProviderConnectionTester.class),
+            chatTester,
+            encryptor,
+            ModelAddressPolicy.disabled(),
+            embeddingModels,
+            mailTester,
+            modelRoles);
+    when(modelRoles.probeTranscription("http://speaches:8000/v1", "whisper", "sk-stt"))
+        .thenReturn(
+            new ModelRoleAdministration.TestOutcome(
+                true, "Verbindung erfolgreich, der Endpunkt hat geantwortet."));
+    String payload =
+        json.writeValueAsString(
+            new StepRules.TranscriptionModelPayload("http://speaches:8000/v1", "whisper", "de"));
+
+    StepChecks.Outcome outcome =
+        open.check(
+            InstallationStep.TRANSCRIPTION_MODEL, payload, encryptor.encrypt("sk-stt"), null);
+
+    assertThat(outcome.succeeded()).isTrue();
+    assertThat(outcome.message())
+        .isEqualTo("Verbindung erfolgreich, der Endpunkt hat geantwortet.");
+    assertThat(outcome.dimensions()).isNull();
+  }
 }

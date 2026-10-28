@@ -13,13 +13,15 @@ export type ProviderKey = EndpointPresetKey | 'custom'
 const OLLAMA_ADDRESS = /:11434\/v1$/i
 
 /**
- * The presets a role offers: Anthropic serves no embeddings, and none of the presets serves a
- * rerank endpoint, so that role is entered by its address alone.
+ * The presets a role offers: Anthropic serves no embeddings, of the three only OpenAI transcribes,
+ * and none serves a rerank endpoint, so that role is entered by its address alone.
  */
 export function providerPresets(purpose: DiscoveryPurpose): readonly EndpointPreset[] {
   if (purpose === 'chat') return ENDPOINT_PRESETS
   if (purpose === 'embedding')
     return ENDPOINT_PRESETS.filter((preset) => preset.key !== 'anthropic')
+  if (purpose === 'transcription')
+    return ENDPOINT_PRESETS.filter((preset) => preset.key === 'openai')
   return []
 }
 

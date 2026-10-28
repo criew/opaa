@@ -14,6 +14,7 @@ import type {
   TranscriptionModelSettingsResponse,
 } from '@/shared/api/types'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
+import { TRANSCRIPTION_TEXTS } from '@/shared/ui/transcription/transcriptionSettings'
 import { notify } from '@/shared/stores/notificationStore'
 import { MODEL_ROLE_TEXTS, type ModelRoleKind } from '@/shared/ui/modelDiscovery/modelRoleTexts'
 import {
@@ -314,14 +315,11 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
         {kind === 'transcription' && (
           <TextField
             id={`${prefix}-language`}
-            label="Sprache"
+            label={TRANSCRIPTION_TEXTS.languageLabel}
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
             error={Boolean(errors.language)}
-            helperText={
-              errors.language ??
-              'Kürzel aus zwei Buchstaben, etwa de; leer erkennt das Modell die Sprache selbst.'
-            }
+            helperText={errors.language ?? TRANSCRIPTION_TEXTS.languageHint}
             size="small"
             sx={{ maxWidth: 240 }}
           />

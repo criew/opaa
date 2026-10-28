@@ -10,6 +10,7 @@ import io.opaa.api.dto.InstallationOidcProvider;
 import io.opaa.api.dto.InstallationRerankModel;
 import io.opaa.api.dto.InstallationSignIn;
 import io.opaa.api.dto.InstallationStepRequest;
+import io.opaa.api.dto.InstallationTranscriptionModel;
 import io.opaa.common.FieldValidationException;
 import io.opaa.installation.InstallationStep;
 import io.opaa.installation.StepInput;
@@ -34,6 +35,7 @@ final class InstallationRequestMapper {
       case CHAT_MODEL -> chatModel(request.getChatModel());
       case EMBEDDING_MODEL -> embeddingModel(request.getEmbeddingModel());
       case RERANK_MODEL -> rerankModel(request.getRerankModel());
+      case TRANSCRIPTION_MODEL -> transcriptionModel(request.getTranscriptionModel());
       case MAIL -> mail(request.getMail());
       case BRANDING -> branding(request.getBranding());
     };
@@ -54,6 +56,9 @@ final class InstallationRequestMapper {
     }
     if (body.getRerankModel() != null) {
       inputs.add(rerankModel(body.getRerankModel()));
+    }
+    if (body.getTranscriptionModel() != null) {
+      inputs.add(transcriptionModel(body.getTranscriptionModel()));
     }
     if (body.getMail() != null) {
       InstallationMail mail = body.getMail();
@@ -116,6 +121,14 @@ final class InstallationRequestMapper {
       throw missing("rerankModel");
     }
     return new StepInput.RerankModel(model.getBaseUrl(), model.getModel(), model.getApiKey());
+  }
+
+  private static StepInput transcriptionModel(InstallationTranscriptionModel model) {
+    if (model == null) {
+      throw missing("transcriptionModel");
+    }
+    return new StepInput.TranscriptionModel(
+        model.getBaseUrl(), model.getModel(), model.getApiKey(), model.getLanguage());
   }
 
   private static StepInput mail(InstallationMail mail) {

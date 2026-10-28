@@ -41,6 +41,7 @@ class ModelRoleAdministrationTest {
       mock(TranscriptionModelSettingsRepository.class);
   private final AuditEventRecorder audit = mock(AuditEventRecorder.class);
   private final RerankClient rerankClient = mock(RerankClient.class);
+  private final TranscriptionClient transcriptionClient = mock(TranscriptionClient.class);
 
   @Test
   void theTranscriptionRoleCannotBeSwitchedOnWhileTheOperationSwitchedOffSpeechInput() {
@@ -78,6 +79,89 @@ class ModelRoleAdministrationTest {
     assertThat(view.language()).isEmpty();
     assertThat(view.status().state()).isEqualTo(TranscriptionRoleState.DISABLED);
     verify(transcriptionRows).save(any());
+  }
+
+  @Test
+  void theInstallationSwitchesTheRoleOnWithItsCiphertextUnderTheSystemProcess() {
+    ModelRoleAdministration administration = administration(true, new MockEnvironment());
+    ArgumentCaptor<TranscriptionModelSettings> row =
+        ArgumentCaptor.forClass(TranscriptionModelSettings.class);
+    ArgumentCaptor<AuditEvent> event = ArgumentCaptor.forClass(AuditEvent.class);
+
+    ModelRoleAdministration.TranscriptionModelView view =
+        administration.installTranscription(
+            UUID.randomUUID(),
+            "installation",
+            " http://8.8.8.8/v1 ",
+            " whisper ",
+            "chiffrat",
+            " EN ");
+
+    verify(transcriptionRows).save(row.capture());
+    assertThat(row.getValue().isEnabled()).isTrue();
+    assertThat(row.getValue().getBaseUrl()).isEqualTo("http://8.8.8.8/v1");
+    assertThat(row.getValue().getModelIdentifier()).isEqualTo("whisper");
+    assertThat(row.getValue().getApiKeyCiphertext()).isEqualTo("chiffrat");
+    assertThat(row.getValue().getLanguage()).isEqualTo("en");
+    assertThat(view.enabled()).isTrue();
+    assertThat(view.apiKeySet()).isTrue();
+    verify(audit).recordSystemProcessAction(event.capture());
+    verify(audit, never()).recordUserAction(any());
+    assertThat(event.getValue().actorRef()).isEqualTo("installation");
+    assertThat(event.getValue().eventType()).isEqualTo(AuditEventType.TRANSCRIPTION_MODEL_CHANGED);
+    assertThat(event.getValue().after())
+        .containsEntry("enabled", true)
+        .containsEntry("apiKeySet", true)
+        .containsEntry("apiKeyChange", "SET")
+        .containsEntry("language", "en")
+        .doesNotContainValue("chiffrat");
+  }
+
+  @Test
+  void theInstallationKeepsTheRulesOfTheAdministration() {
+    ModelRoleAdministration administration = administration(true, new MockEnvironment());
+
+    assertThatThrownBy(
+            () ->
+                administration.installTranscription(
+                    UUID.randomUUID(), "installation", "ftp://stt/v1", "whisper", null, "deu"))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactly("transcription.baseUrl", "transcription.language"));
+    verify(transcriptionRows, never()).save(any());
+  }
+
+  @Test
+  void theProbeOfAnEndpointSendsExactlyTheGivenKey() {
+    ModelRoleAdministration administration = administration(true, new MockEnvironment());
+    ArgumentCaptor<TranscriptionEndpoint> endpoint =
+        ArgumentCaptor.forClass(TranscriptionEndpoint.class);
+    when(transcriptionClient.probe(endpoint.capture(), any())).thenReturn(null);
+
+    ModelRoleAdministration.TestOutcome outcome =
+        administration.probeTranscription("http://8.8.8.8/v1", "whisper", "sk-stt");
+
+    assertThat(outcome.success()).isTrue();
+    assertThat(outcome.message())
+        .isEqualTo("Verbindung erfolgreich, der Endpunkt hat geantwortet.");
+    assertThat(endpoint.getValue().apiKey()).isEqualTo("sk-stt");
+    assertThat(endpoint.getValue().model()).isEqualTo("whisper");
+  }
+
+  @Test
+  void aFailedProbeIsShownInGerman() {
+    ModelRoleAdministration administration = administration(true, new MockEnvironment());
+    when(transcriptionClient.probe(any(), any()))
+        .thenReturn(new TranscriptionClient.ProbeFailure("connection refused", false));
+
+    ModelRoleAdministration.TestOutcome outcome =
+        administration.probeTranscription("http://8.8.8.8/v1", "whisper", null);
+
+    assertThat(outcome.success()).isFalse();
+    assertThat(outcome.message()).isEqualTo("Die Verbindung wurde vom Server abgelehnt.");
   }
 
   @Test
@@ -225,7 +309,7 @@ class ModelRoleAdministrationTest {
         transcriptionRole,
         features,
         rerankClient,
-        mock(TranscriptionClient.class),
+        transcriptionClient,
         mock(SettingsEncryptor.class),
         ModelAddressPolicy.disabled(),
         audit,

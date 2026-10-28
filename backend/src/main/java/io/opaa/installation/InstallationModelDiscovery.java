@@ -1,5 +1,6 @@
 package io.opaa.installation;
 
+import io.opaa.common.FeatureFlags;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.common.ValidationException;
@@ -37,13 +38,15 @@ public class InstallationModelDiscovery {
           EnumSet.of(
               InstallationStep.CHAT_MODEL,
               InstallationStep.EMBEDDING_MODEL,
-              InstallationStep.RERANK_MODEL));
+              InstallationStep.RERANK_MODEL,
+              InstallationStep.TRANSCRIPTION_MODEL));
 
   private final InstallationStateRepository states;
   private final InstallationStepRepository steps;
   private final StepRules rules;
   private final SettingsEncryptor settingsEncryptor;
   private final LlmModelDiscoverer discoverer;
+  private final FeatureFlags features;
   private final RateLimitService budget = new RateLimitService(MAX_DISCOVERIES, WINDOW_SECONDS);
 
   InstallationModelDiscovery(
@@ -51,28 +54,33 @@ public class InstallationModelDiscovery {
       InstallationStepRepository steps,
       StepRules rules,
       SettingsEncryptor settingsEncryptor,
-      LlmModelDiscoverer discoverer) {
+      LlmModelDiscoverer discoverer,
+      FeatureFlags features) {
     this.states = states;
     this.steps = steps;
     this.rules = rules;
     this.settingsEncryptor = settingsEncryptor;
     this.discoverer = discoverer;
+    this.features = features;
   }
 
   /**
    * Lists the models at {@code baseUrl}. {@code apiKey} {@code null} uses the key saved with the
    * step for the same endpoint, an empty one sends none.
    *
-   * @throws ValidationException 400 for a step without model, an address with credentials, or a
-   *     saved key that would have to leave its endpoint
+   * @throws ValidationException 400 for a step without model or not offered, an address with
+   *     credentials, or a saved key that would have to leave its endpoint
    * @throws NotFoundException once the installation is completed
    * @throws TooManyRequestsException past the budget
    */
   public ModelDiscovery discover(InstallationStep step, String baseUrl, String apiKey) {
     if (!MODEL_STEPS.contains(step)) {
       throw new ValidationException(
-          "Modelle lassen sich nur in den Schritten Chat-Modell, Embedding-Modell und"
-              + " Rerank-Modell abrufen.");
+          "Modelle lassen sich nur in den Schritten Chat-Modell, Embedding-Modell, Rerank-Modell"
+              + " und Transkriptionsmodell abrufen.");
+    }
+    if (!step.isOfferedWith(features)) {
+      throw new ValidationException(InstallationService.notOffered(step));
     }
     if (states.isCompleted()) {
       throw new NotFoundException("Die angeforderte Ressource wurde nicht gefunden");

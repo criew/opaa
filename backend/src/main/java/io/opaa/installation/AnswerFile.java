@@ -18,10 +18,12 @@ import tools.jackson.databind.json.JsonMapper;
  * The answer file read at start-up from {@code OPAA_INSTALLATION_ANSWER_FILE} (ADR-0060,
  * Entscheidung 7). Its secrets are never plain text: the passwords and the model keys are files,
  * typically mounted from a secret, read when the file is applied. {@code chatModel}, {@code
- * embeddingModel}, {@code rerankModel}, {@code mail} and {@code branding} are optional: a file
- * without one skips its step, without {@code rerankModel} reranking stays off, without {@code mail}
+ * embeddingModel}, {@code rerankModel}, {@code transcriptionModel}, {@code mail} and {@code
+ * branding} are optional: a file without one skips its step, without {@code rerankModel} reranking
+ * stays off, without {@code transcriptionModel} speech input stays off, without {@code mail}
  * sending stays off, without {@code branding} the OPAA default stays. Parts of later steps are
- * ignored.
+ * ignored, and so is {@code transcriptionModel} while speech input is switched off ({@link
+ * InstallationService}).
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 record AnswerFile(
@@ -30,6 +32,7 @@ record AnswerFile(
     ChatModel chatModel,
     EmbeddingModel embeddingModel,
     RerankModel rerankModel,
+    TranscriptionModel transcriptionModel,
     Mail mail,
     Branding branding) {
 
@@ -70,6 +73,11 @@ record AnswerFile(
   /** The rerank model; without {@code apiKeyFile} it is called without a key. */
   @JsonIgnoreProperties(ignoreUnknown = true)
   record RerankModel(String baseUrl, String model, String apiKeyFile, String apiKey) {}
+
+  /** {@code language} absent means {@code de}, empty lets the model detect it. */
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  record TranscriptionModel(
+      String baseUrl, String model, String apiKeyFile, String apiKey, String language) {}
 
   /** The mail server; without {@code passwordFile} it connects without a password. */
   @JsonIgnoreProperties(ignoreUnknown = true)
@@ -116,6 +124,7 @@ record AnswerFile(
         || (chatModel != null && chatModel.apiKey() != null)
         || (embeddingModel != null && embeddingModel.apiKey() != null)
         || (rerankModel != null && rerankModel.apiKey() != null)
+        || (transcriptionModel != null && transcriptionModel.apiKey() != null)
         || (mail != null && mail.password() != null)) {
       throw new ValidationException(
           "Geheimnisse stehen nicht im Klartext in der Antwortdatei: passwordFile und apiKeyFile"
@@ -164,6 +173,14 @@ record AnswerFile(
               rerankModel.baseUrl(),
               rerankModel.model(),
               keyOf(rerankModel.apiKeyFile(), "rerankModel.apiKeyFile")));
+    }
+    if (transcriptionModel != null) {
+      steps.add(
+          new StepInput.TranscriptionModel(
+              transcriptionModel.baseUrl(),
+              transcriptionModel.model(),
+              keyOf(transcriptionModel.apiKeyFile(), "transcriptionModel.apiKeyFile"),
+              transcriptionModel.language()));
     }
     if (mail != null) {
       steps.add(

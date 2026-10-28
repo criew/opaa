@@ -870,11 +870,13 @@ läuft `tests/installation-assistant.spec.ts` mit `E2E_INSTALLATION_TOKEN`, übe
 `installation-assistant/playwright.config.ts` ohne Wiederholung, weil der Abschluss den
 Installationsmodus für immer beendet. Aus demselben Grund läuft das Ziel in zwei Varianten, je auf
 einem frischen Stapel und über ihr Tag ausgewählt: `@mail-skipped` überspringt die optionalen Schritte
-Chat-, Embedding- und Rerank-Modell, E-Mail-Versand und Branding und endet mit der Anmeldung des
-ersten Kontos auf der regulären Anmeldeseite unter dem OPAA-Standard, `@mail-filled` wählt das
-Rerank-Modell aus der Liste des Rerank-Endpunkts von ai-stub (`http://ai-stub:8089/reranker`, das
-einzige Präfix des Stubs mit Modellliste; `POST …/rerank` bewertet jede Probe), findet es danach
-eingeschaltet unter „Modelle → Reranking“, richtet den E-Mail-Versand gegen den Mailpit des
+Chat-, Embedding-, Rerank- und Transkriptionsmodell, E-Mail-Versand und Branding und endet mit der
+Anmeldung des ersten Kontos auf der regulären Anmeldeseite unter dem OPAA-Standard, `@mail-filled`
+wählt das Rerank-Modell aus der Liste des Rerank-Endpunkts von ai-stub (`http://ai-stub:8089/reranker`;
+`POST …/rerank` bewertet jede Probe) und das Transkriptionsmodell aus der Liste unter
+`http://ai-stub:8089/transcription` (nur diese beiden Präfixe des Stubs haben eine Modellliste, Chat-
+und Embedding-Schritt finden keine), findet beide danach eingeschaltet unter „Modelle → Reranking“
+und „Modelle → Spracheingabe“, richtet den E-Mail-Versand gegen den Mailpit des
 Stapels ein (Profil `mail`, `mailpit:1025` in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST`), liest die
 Testnachricht über `E2E_MAILPIT_BASE_URL` zurück, füllt das Branding aus und findet Produktname und
 Akzentfarbe danach auf Anmeldeseite und Oberfläche. Traces, HTML- und JSON-Bericht liegen je Variante getrennt (`test-results/installation-<variante>`,

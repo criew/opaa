@@ -26,6 +26,7 @@ import FirstAdminStep from '../components/steps/FirstAdminStep'
 import MailStep from '../components/steps/MailStep'
 import RerankModelStep from '../components/steps/RerankModelStep'
 import SignInStep from '../components/steps/SignInStep'
+import TranscriptionModelStep from '../components/steps/TranscriptionModelStep'
 import { useInstallationWizard, type WizardResult } from '../hooks/useInstallationWizard'
 import { findStep, previousView, viewOrder, type WizardView } from '../utils/steps'
 
@@ -132,6 +133,15 @@ function StepView({
           step={step}
           submit={(v) => submit('RERANK_MODEL', v)}
           discover={discoverFor.RERANK_MODEL}
+          {...nav}
+        />
+      )
+    case 'TRANSCRIPTION_MODEL':
+      return (
+        <TranscriptionModelStep
+          step={step}
+          submit={(v) => submit('TRANSCRIPTION_MODEL', v)}
+          discover={discoverFor.TRANSCRIPTION_MODEL}
           {...nav}
         />
       )

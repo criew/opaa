@@ -27,12 +27,17 @@
 // again handing control back to the permission filter (which chunks reach the prompt at all)
 // rather than to any model judgement.
 //
+// Transcription model (installation target): GET <base>/transcription/models lists one speech
+// model, which is all the transcription role's probe and the set-up assistant's discovery ask for.
+// Only below /transcription - the chat and embedding steps rely on this stub listing no models.
+//
 // Gesprächsnotiz condensation (test(e2e) #1489): the same endpoint also serves
 // io.opaa.chat.ChatNoteExtractionService, whose prompt is recognised by NOTE_PROMPT_MARKER below
 // and answered with a fixed line per user message - see condensedNote().
 import { createServer } from 'node:http'
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8089
+const TRANSCRIPTION_MODEL = 'ai-stub-whisper'
 const DIMENSIONS = process.env.EMBEDDING_DIMENSIONS
   ? Number(process.env.EMBEDDING_DIMENSIONS)
   : 1536
@@ -255,6 +260,14 @@ const server = createServer(async (req, res) => {
 
     if (req.method === 'GET' && matchesEndpoint(req.url, '/control/embedding-hold')) {
       sendJson(res, 200, { marker: holdMarker, held: heldCount, waiting: releaseHeld.length })
+      return
+    }
+
+    if (req.method === 'GET' && matchesEndpoint(req.url, '/transcription/models')) {
+      sendJson(res, 200, {
+        object: 'list',
+        data: [{ id: TRANSCRIPTION_MODEL, object: 'model', owned_by: 'ai-stub' }],
+      })
       return
     }
 

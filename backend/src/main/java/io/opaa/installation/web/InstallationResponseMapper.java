@@ -12,6 +12,7 @@ import io.opaa.api.dto.InstallationSignInMode;
 import io.opaa.api.dto.InstallationStatusResponse;
 import io.opaa.api.dto.InstallationStep;
 import io.opaa.api.dto.InstallationStepState;
+import io.opaa.api.dto.InstallationTranscriptionModelView;
 import io.opaa.installation.InstallationOverview;
 import io.opaa.installation.StepInput;
 
@@ -65,6 +66,10 @@ final class InstallationResponseMapper {
       case InstallationOverview.RerankModel model ->
           response.setRerankModel(
               new InstallationRerankModelView(model.baseUrl(), model.model(), model.apiKeySet()));
+      case InstallationOverview.TranscriptionModel model ->
+          response.setTranscriptionModel(
+              new InstallationTranscriptionModelView(
+                  model.baseUrl(), model.model(), model.apiKeySet(), model.language()));
       case InstallationOverview.Mail mail -> {
         InstallationMailView view =
             new InstallationMailView(

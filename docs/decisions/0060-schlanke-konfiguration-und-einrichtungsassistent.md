@@ -75,12 +75,14 @@ Begründung: Ohne Token übernähme die Installation, wer die Adresse zuerst auf
 Die Installations-API speichert jeden Schritt einzeln; ein Abbruch setzt an derselben Stelle fort.
 Pflichtschritte sind erstes Systemverwaltungskonto und Anmeldeverfahren, jeweils mit erfolgreicher
 Prüfung. Alle übrigen Schritte sind optional und später in der Verwaltung erreichbar: Chat-Modell,
-Embedding-Modell, Rerank-Modell, E-Mail-Versand und Branding (Entscheidung 15). Ein optionaler Schritt wird übersprungen, indem die API seinen
+Embedding-Modell, Rerank-Modell, Transkriptionsmodell (Entscheidung 16), E-Mail-Versand und Branding
+(Entscheidung 15). Ein optionaler Schritt wird übersprungen, indem die API seinen
 Zwischenstand samt Prüfung verwirft (`POST …/skip`); das ist ein Revisionsereignis. Ein
 übersprungener optionaler Schritt hält den Abschluss nicht auf, ein gespeicherter erst, wenn seine
-Prüfung gelungen ist (Verbindungstest, Probeeinbettung, Rerank-Probe, Verbindung zum Mailserver): Der Abschluss
+Prüfung gelungen ist (Verbindungstest, Probeeinbettung, Rerank-Probe, Probe des Transkriptionsmodells, Verbindung zum
+Mailserver): Der Abschluss
 übernimmt nie ungeprüfte Werte; das Branding prüft ohne Verbindung die Regeln der
-Branding-Verwaltung erneut. Der Abschluss ist eine Transaktion unter einem Advisory-Lock und
+Branding-Verwaltung erneut, das Transkriptionsmodell mit der Probe der Modellverwaltung. Der Abschluss ist eine Transaktion unter einem Advisory-Lock und
 gelingt nur, wenn jeder Pflichtschritt und jeder gespeicherte optionale Schritt geprüft ist. Ein
 übersprungener Modellschritt legt kein Modell an. Ein geprüftes Rerank-Modell geht über den
 Schreibweg der Modellverwaltung (`ModelRoleAdministration`) in deren Rolle über und schaltet das
@@ -99,7 +101,8 @@ der MCP-Endpunkt bei geschlossenem Kanal.
 ### 7. Antwortdatei: Installation ohne Browser
 
 Eine Antwortdatei (JSON) enthält dieselben Angaben wie die Schritte des Assistenten; fehlt ein
-optionaler Teil (`chatModel`, `embeddingModel`, `rerankModel`, `mail`, `branding`), ist sein Schritt übersprungen. Sie wird auf
+optionaler Teil (`chatModel`, `embeddingModel`, `rerankModel`, `transcriptionModel`, `mail`,
+`branding`), ist sein Schritt übersprungen. Sie wird auf
 zwei Wegen angenommen, mit derselben Prüfung: über die Installations-API mit dem Token, oder beim
 Start aus der Datei unter `OPAA_INSTALLATION_ANSWER_FILE`, wenn die Installation noch nicht
 abgeschlossen ist. In der Datei stehen Geheimnisse (Passwort des ersten Kontos, Modellschlüssel,
@@ -150,8 +153,9 @@ erreichbar wird.
 
 Chat-, Embedding-, Rerank- und Transkriptionsmodell sind Einträge der Modellverwaltung; ihre Adressen,
 Schlüssel und Modellnamen kommen nicht mehr aus der Konfiguration, ihre Timeouts und Lastgrenzen
-schon. Chat-, Embedding- und Rerank-Modell lassen sich schon in der Installation festlegen
-(Entscheidung 6), das Transkriptionsmodell nur in der Modellverwaltung. `vector_store` entsteht nicht in der Migration, sondern mit dem Embedding-Modell: beim
+schon. Chat-, Embedding-, Rerank- und Transkriptionsmodell lassen sich schon in der Installation
+festlegen (Entscheidung 6; das Transkriptionsmodell nur bei eingeschalteter Spracheingabe,
+Entscheidung 16). `vector_store` entsteht nicht in der Migration, sondern mit dem Embedding-Modell: beim
 Abschluss der Installation, unter dem Advisory-Lock aus Entscheidung 6 und mit der Dimension, die
 die Probeeinbettung des gewählten Modells liefert, oder, wenn die Installation den Schritt
 übersprungen hat, beim Festlegen des ersten Modells in der Modellverwaltung
@@ -298,6 +302,43 @@ ist bis zum ersten Upload vollständig, weil jedes fehlende Bild auf das OPAA-Bi
 Aufwand stünde in keinem Verhältnis zum Gewinn. Texte und Farben dagegen sind klein, ohne
 Geheimnis und mit denselben Regeln prüfbar.
 
+### 16. Transkriptionsmodell im Assistenten: nur mit Spracheingabe, ohne eigene Bestätigung
+
+Der optionale Schritt Transkriptionsmodell nimmt Basis-Adresse, Modell, Zugangsschlüssel und
+Sprache mit den Regeln der Modellverwaltung (`ModelEndpointRules`, Sprachregel aus
+`TranscriptionEndpoint`); geprüft wird mit deren Probe (`GET {Basis-Adresse}/models`, ohne Aufnahme),
+die Adresse wie bei Chat- und Embedding-Modell bei jedem Speichern und vor jeder Prüfung gegen die
+Adressprüfung der Modelle (Entscheidung 10). Der Schlüssel liegt verschlüsselt im Zwischenstand und
+gilt nur für dieselbe Basis-Adresse. Der Abschluss schaltet die Rolle über den Schreibweg der
+Modellverwaltung ein (`ModelRoleAdministration#installTranscription`), protokolliert unter dem
+Systemprozess der Installation; übersprungen bleibt die Spracheingabe aus.
+
+Der Schritt hängt an der Grenze des Betriebs `OPAA_FEATURES_SPEECH_INPUT_ENABLED` (Entscheidung 2).
+Ist sie aus, listet die API den Schritt nicht, lehnt Speichern, Prüfen, Überspringen und Modellabruf
+mit `400` ab und übergeht `transcriptionModel` in Antwortdatei und Antworten, ohne sie abzulehnen;
+ein vorher gespeicherter Schritt hält den Abschluss nicht auf und wird mit dem Zwischenstand
+verworfen. Begründung: Eine Antwortdatei soll in allen Umgebungen gelten, auch dort, wo der Betrieb
+die Spracheingabe abschaltet; abschalten heißt hier wie sonst verbergen, nicht scheitern. Der Schalter
+wird wie jeder Funktionsschalter nur beim Start gelesen und muss auf allen Instanzen gleich stehen;
+schließt eine Instanz mit abgeschalteter Spracheingabe ab, verwirft sie einen gespeicherten Schritt.
+
+Wer das Installations-Token hat, legt bei eingeschalteter Spracheingabe fest, wohin die Aufnahmen
+der Beschäftigten gehen. Das ist dasselbe Bedrohungsmodell wie beim Chat-Modell, das alle Fragen
+empfängt: Das Token ist die Hürde, die Adressprüfung der Modelle begrenzt interne Ziele, und der
+Abschluss steht im Revisionsprotokoll. Weil die Verwaltung keinen Cloud-Anbieter für die
+Transkription vorschlägt, der Assistent aber OpenAI als Kachel anbietet, sagen Kachel und Schritt,
+dass Aufnahmen dann an einen externen Dienst außerhalb des Hauses gehen.
+
+Eine Bestätigung der Mitbestimmung, etwa „mit der Personalvertretung geklärt“, verlangt der Schritt
+nicht, und er zeigt keinen eigenen Hinweis darauf; die Modellverwaltung tut es ebenso wenig.
+Begründung: Ob die Spracheingabe eingeführt wird, entscheidet der Betrieb mit
+`OPAA_FEATURES_SPEECH_INPUT_ENABLED`, außerhalb der Anwendung; erst dieser Schalter lässt den Schritt
+erscheinen. Ein Häkchen im Assistenten belegte nur, dass jemand mit dem Token es gesetzt hat, nicht
+die Absprache mit der Personalvertretung, und der Assistent wiche ohne Grund von der Verwaltung ab, in
+der dieselbe Systemverwaltung die Rolle jederzeit einschaltet. Was vor der Einführung zu klären ist,
+nennt das Handbuch unter „Spracheingabe und Mitbestimmung“, mit dem Weg, den Schritt bis dahin
+auszublenden.
+
 ## Konsequenzen
 
 - Die Konfiguration schrumpft auf Start, Infrastruktur, Schlüssel, Grenzen, Lastgrenzen und
@@ -309,7 +350,8 @@ Geheimnis und mit denselben Regeln prüfbar.
 - Wer das Installations-Token aus dem Log liest, kann die Installation abschließen; Log-Zugriff ist
   damit so schutzwürdig wie heute beim Einmalpasswort.
 - Rerank- und Transkriptionsmodell pflegt die Systemverwaltung in eigenen Reitern der Modellverwaltung;
-  das Rerank-Modell kann schon die Installation festlegen.
+  beide kann schon die Installation festlegen, das Transkriptionsmodell nur bei eingeschalteter
+  Spracheingabe (Entscheidung 16).
   Ihre früheren Variablen übernimmt eine Installation von davor nicht (Entscheidung 1); der Start und
   der Reiter der Rolle nennen sie, solange sie gesetzt sind.
 
@@ -339,6 +381,11 @@ Geheimnis und mit denselben Regeln prüfbar.
 - `410 Gone` nach dem Abschluss — bestätigt die Existenz des Endpunkts ohne Nutzen für den Betrieb.
 - Bilder des Brandings im Assistenten, im Zwischenstand abgelegt — ein Upload-Weg nur mit dem Token
   als Hürde, für Bilder, die bis zum ersten Upload auf das OPAA-Bild zurückfallen (Entscheidung 15).
+- Bestätigung „mit der Personalvertretung geklärt“ vor dem Einschalten der Spracheingabe im
+  Assistenten — belegt keine Absprache und wiche von der Modellverwaltung ab (Entscheidung 16).
+- Den Schritt Transkriptionsmodell bei abgeschalteter Spracheingabe anzeigen, aber sperren, und
+  `transcriptionModel` in einer Antwortdatei dann ablehnen — eine Datei passte nicht mehr in jede
+  Umgebung, und der Assistent zeigte eine Funktion, die der Betrieb verborgen hat (Entscheidung 16).
 
 ## Offen
 

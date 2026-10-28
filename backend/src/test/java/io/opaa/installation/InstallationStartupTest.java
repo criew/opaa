@@ -373,4 +373,57 @@ class InstallationStartupTest {
         .noneMatch(
             message -> message.contains("stays pending") || message.contains("installation mode"));
   }
+
+  @Test
+  void anAnswerFileWithATranscriptionModelReadsItsKeyFromTheFile() throws Exception {
+    Path password = Files.writeString(directory.resolve("password"), "Kennwort-aus-Secret-2026\n");
+    Path key = Files.writeString(directory.resolve("stt-key"), "sk-stt\n");
+    Path answers =
+        Files.writeString(
+            directory.resolve("installation.json"),
+            "{\"firstAdmin\":{\"email\":\"it@stadt.example\",\"displayName\":\"IT\","
+                + "\"passwordFile\":\""
+                + password
+                + "\"},\"signIn\":{\"mode\":\"LOCAL_ONLY\"},"
+                + "\"transcriptionModel\":{\"baseUrl\":\"http://speaches:8000/v1\","
+                + "\"model\":\"whisper\",\"apiKeyFile\":\""
+                + key
+                + "\",\"language\":\"\"}}");
+    InstallationStartup startup = startup("oidc", null, answers.toString());
+
+    startup.decide();
+
+    verify(installation)
+        .applyAnswersAtStartup(
+            argThat(
+                inputs ->
+                    inputs.size() == 3
+                        && inputs
+                            .getLast()
+                            .equals(
+                                new StepInput.TranscriptionModel(
+                                    "http://speaches:8000/v1", "whisper", "sk-stt", ""))));
+  }
+
+  @Test
+  void aTranscriptionKeyInPlainTextRefusesTheAnswerFile() throws Exception {
+    Path password = Files.writeString(directory.resolve("password"), "Kennwort-aus-Secret-2026\n");
+    Path answers =
+        Files.writeString(
+            directory.resolve("installation.json"),
+            "{\"firstAdmin\":{\"email\":\"it@stadt.example\",\"displayName\":\"IT\","
+                + "\"passwordFile\":\""
+                + password
+                + "\"},\"signIn\":{\"mode\":\"LOCAL_ONLY\"},"
+                + "\"transcriptionModel\":{\"baseUrl\":\"http://speaches:8000/v1\","
+                + "\"model\":\"whisper\",\"apiKey\":\"sk-stt-im-klartext\"}}");
+    InstallationStartup startup = startup("oidc", null, answers.toString());
+
+    assertThat(startup.decide()).isFalse();
+
+    verify(installation, never()).applyAnswersAtStartup(any());
+    assertThat(logs.list.stream().map(ILoggingEvent::getFormattedMessage))
+        .anyMatch(message -> message.contains("nicht im Klartext"))
+        .noneMatch(message -> message.contains("sk-stt-im-klartext"));
+  }
 }

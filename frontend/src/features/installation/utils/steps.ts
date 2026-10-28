@@ -19,6 +19,7 @@ export const STEP_INFO: Record<InstallationStepId, StepInfo> = {
   CHAT_MODEL: { label: 'Chat-Modell', laterUnder: 'Modelle' },
   EMBEDDING_MODEL: { label: 'Embedding-Modell', laterUnder: 'Modelle' },
   RERANK_MODEL: { label: 'Rerank-Modell', laterUnder: 'Modelle' },
+  TRANSCRIPTION_MODEL: { label: 'Transkriptionsmodell', laterUnder: 'Modelle' },
   MAIL: { label: 'E-Mail-Versand', laterUnder: 'E-Mail' },
   BRANDING: { label: 'Branding', laterUnder: 'Branding' },
 }

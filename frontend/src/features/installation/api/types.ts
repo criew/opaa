@@ -17,6 +17,10 @@ export type InstallationEmbeddingModelView = Schemas['InstallationEmbeddingModel
 export type InstallationRerankModel = Schemas['InstallationRerankModel']
 export type InstallationRerankModelView = Schemas['InstallationRerankModelView']
 
+/** The transcription model of speech input; the API lists its step only while speech input is on. */
+export type InstallationTranscriptionModel = Schemas['InstallationTranscriptionModel']
+export type InstallationTranscriptionModelView = Schemas['InstallationTranscriptionModelView']
+
 export type InstallationMail = Schemas['InstallationMail']
 export type InstallationMailView = Schemas['InstallationMailView']
 
@@ -38,11 +42,16 @@ export type InstallationModelDiscoveryRequest = Schemas['InstallationModelDiscov
 /** The steps whose endpoint lists its models. */
 export type ModelStepId = Extract<
   InstallationStepId,
-  'CHAT_MODEL' | 'EMBEDDING_MODEL' | 'RERANK_MODEL'
+  'CHAT_MODEL' | 'EMBEDDING_MODEL' | 'RERANK_MODEL' | 'TRANSCRIPTION_MODEL'
 >
 
 /** The model steps in the order of the API. */
-export const MODEL_STEPS: readonly ModelStepId[] = ['CHAT_MODEL', 'EMBEDDING_MODEL', 'RERANK_MODEL']
+export const MODEL_STEPS: readonly ModelStepId[] = [
+  'CHAT_MODEL',
+  'EMBEDDING_MODEL',
+  'RERANK_MODEL',
+  'TRANSCRIPTION_MODEL',
+]
 
 /** The values a step's save sends, by step. */
 export interface StepInput {
@@ -51,6 +60,7 @@ export interface StepInput {
   CHAT_MODEL: InstallationChatModel
   EMBEDDING_MODEL: InstallationEmbeddingModel
   RERANK_MODEL: InstallationRerankModel
+  TRANSCRIPTION_MODEL: InstallationTranscriptionModel
   MAIL: InstallationMail
   BRANDING: InstallationBranding
 }
@@ -62,6 +72,7 @@ export const STEP_REQUEST_KEY = {
   CHAT_MODEL: 'chatModel',
   EMBEDDING_MODEL: 'embeddingModel',
   RERANK_MODEL: 'rerankModel',
+  TRANSCRIPTION_MODEL: 'transcriptionModel',
   MAIL: 'mail',
   BRANDING: 'branding',
 } as const satisfies Record<InstallationStepId, keyof Schemas['InstallationStepRequest']>
