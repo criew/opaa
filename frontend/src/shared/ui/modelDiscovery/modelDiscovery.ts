@@ -112,7 +112,7 @@ export function describeModel(model: DiscoveredLlmModel): string[] {
 }
 
 /** The role a discovered model is chosen for. */
-export type DiscoveryPurpose = 'chat' | 'embedding'
+export type DiscoveryPurpose = 'chat' | 'embedding' | 'transcription'
 
 const EMBEDDING_NAME = /embed|bge|bert|minilm|mpnet/i
 
@@ -123,6 +123,13 @@ const EMBEDDING_NAME = /embed|bge|bert|minilm|mpnet/i
 export function embeddingSuitable(model: DiscoveredLlmModel): boolean {
   if (model.capabilities.length > 0) return model.capabilities.includes('embedding')
   return EMBEDDING_NAME.test(`${model.identifier} ${model.family ?? ''}`)
+}
+
+const TRANSCRIPTION_NAME = /whisper|transcri|speech|stt|asr|parakeet/i
+
+/** Whether a model's identifier or family names a speech-to-text model; the probe decides. */
+export function transcriptionSuitable(model: DiscoveredLlmModel): boolean {
+  return TRANSCRIPTION_NAME.test(`${model.identifier} ${model.family ?? ''}`)
 }
 
 export function formatTokens(tokens: number): string {

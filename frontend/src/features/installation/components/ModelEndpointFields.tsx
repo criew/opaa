@@ -12,6 +12,7 @@ import DiscoveryStatus from '@/shared/ui/modelDiscovery/DiscoveryStatus'
 import ModelIdentifierField from '@/shared/ui/modelDiscovery/ModelIdentifierField'
 import type { DiscoveryPurpose } from '@/shared/ui/modelDiscovery/modelDiscovery'
 import { useModelDiscovery } from '@/shared/ui/modelDiscovery/useModelDiscovery'
+import { TRANSCRIPTION_TEXTS } from '@/shared/ui/transcription/transcriptionSettings'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import type { InstallationModelDiscoveryRequest } from '../api/types'
 import {
@@ -52,6 +53,12 @@ const ADDRESS_HINTS: Record<ProviderKey, string> = {
   openai: 'Die Adresse des Anbieters; nur hinter einem eigenen Proxy anpassen.',
   anthropic: 'Die Adresse des Anbieters; nur hinter einem eigenen Proxy anpassen.',
   custom: 'So, wie das Backend den Dienst erreicht, etwa http://vllm:8000/v1.',
+}
+
+/** What differs for the transcription model: services of their own, and the path left out. */
+const TRANSCRIPTION_CUSTOM = {
+  description: 'Jeder OpenAI-kompatible Transkriptionsdienst, etwa speaches oder vLLM.',
+  hint: TRANSCRIPTION_TEXTS.addressHint,
 }
 
 const KEY_HINT_NEEDED = 'Der Anbieter verlangt einen Schlüssel; OPAA speichert ihn verschlüsselt.'
@@ -124,8 +131,17 @@ export default function ModelEndpointFields({
       label: preset.label,
       ...TILE_TEXT[preset.key],
     })),
-    { value: 'custom', label: 'Eigene Adresse', ...TILE_TEXT.custom },
+    {
+      value: 'custom',
+      label: 'Eigene Adresse',
+      ...TILE_TEXT.custom,
+      ...(purpose === 'transcription' ? { description: TRANSCRIPTION_CUSTOM.description } : {}),
+    },
   ]
+  const addressHint =
+    purpose === 'transcription' && (provider ?? 'custom') === 'custom'
+      ? TRANSCRIPTION_CUSTOM.hint
+      : ADDRESS_HINTS[provider ?? 'custom']
 
   function fetchModels(next: DiscoveryPlan, asked: boolean) {
     if (!next.request || (!asked && !next.automatic)) return
@@ -225,7 +241,7 @@ export default function ModelEndpointFields({
             value={baseUrl}
             onChange={typeAddress}
             error={errors.baseUrl}
-            hint={ADDRESS_HINTS[provider ?? 'custom']}
+            hint={addressHint}
           />
           <ApiKeyField
             id={keyId}

@@ -13,14 +13,19 @@ interface DiscoveryStatusProps {
 }
 
 const HAND_ENTRY = 'Die Kennung lässt sich trotzdem von Hand eintragen.'
-const PULL_EXAMPLE: Record<DiscoveryPurpose, string> = { chat: 'qwen3:8b', embedding: 'bge-m3' }
+/** What to pull into an empty Ollama; Ollama serves no transcription, so that role has none. */
+const PULL_EXAMPLE: Partial<Record<DiscoveryPurpose, string>> = {
+  chat: 'qwen3:8b',
+  embedding: 'bge-m3',
+}
 
 function lineFor(state: DiscoveryState, idleHint: string | null, purpose: DiscoveryPurpose) {
   if (state.status === 'loading') return 'Modelle werden abgerufen …'
   if (state.status !== 'done') return idleHint
   if (state.response.models.length === 0) {
-    return state.response.ollama
-      ? `${state.response.message} Bei Ollama zuerst ein Modell laden, etwa mit „ollama pull ${PULL_EXAMPLE[purpose]}“.`
+    const pull = PULL_EXAMPLE[purpose]
+    return state.response.ollama && pull
+      ? `${state.response.message} Bei Ollama zuerst ein Modell laden, etwa mit „ollama pull ${pull}“.`
       : `${state.response.message} Tragen Sie die Modell-Kennung von Hand ein.`
   }
   return `${state.response.message} Die Auswahl steht unter „Modell-Kennung“ bereit.`

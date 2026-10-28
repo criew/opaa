@@ -15,6 +15,7 @@ import {
   type InstallationModelDiscoveryRequest,
   type InstallationStepCheckRequest,
   type InstallationStepState,
+  type InstallationTranscriptionModel,
 } from '../api/types'
 import {
   MOCK_EMBEDDING_DIMENSIONS,
@@ -24,6 +25,7 @@ import {
   completeMockInstallation,
   isMockInstallationPending,
   mockInstallationState,
+  mockTranscriptionDiscoveredModels,
   recordMockDiscovery,
   recordMockSkip,
   recordMockTestRecipient,
@@ -118,6 +120,20 @@ function storedView(step: InstallationStepState, part: unknown): Partial<Install
     const keySet = apiKey === undefined ? Boolean(step.chatModel?.apiKeySet) : Boolean(apiKey)
     return { chatModel: { ...rest, maxTokens: maxTokens ?? 8000, apiKeySet: keySet } }
   }
+  if (step.step === 'TRANSCRIPTION_MODEL') {
+    const { apiKey, language, ...rest } = part as InstallationTranscriptionModel
+    const keySet =
+      apiKey === undefined || apiKey === null
+        ? Boolean(step.transcriptionModel?.apiKeySet)
+        : apiKey !== ''
+    return {
+      transcriptionModel: {
+        ...rest,
+        language: (language ?? 'de').trim().toLowerCase(),
+        apiKeySet: keySet,
+      },
+    }
+  }
   if (step.step === 'MAIL') {
     const { password, ...rest } = part as InstallationMail
     const passwordSet =
@@ -154,7 +170,12 @@ function storedView(step: InstallationStepState, part: unknown): Partial<Install
 
 function checkMessageOf(step: InstallationStepState): string | null {
   const values = JSON.stringify(
-    step.chatModel ?? step.embeddingModel ?? step.signIn ?? step.mail ?? {},
+    step.chatModel ??
+      step.embeddingModel ??
+      step.transcriptionModel ??
+      step.signIn ??
+      step.mail ??
+      {},
   )
   if (!values.includes(MOCK_UNREACHABLE_MARKER)) return null
   if (step.step === 'MAIL') {
@@ -171,7 +192,7 @@ function checkMessageOf(step: InstallationStepState): string | null {
  */
 function discoveryAnswer(step: InstallationStepState, body: InstallationModelDiscoveryRequest) {
   const address = body.baseUrl ?? ''
-  const stored = step.chatModel ?? step.embeddingModel ?? null
+  const stored = step.chatModel ?? step.embeddingModel ?? step.transcriptionModel ?? null
   const usesStoredKey = body.apiKey === undefined || body.apiKey === null
   if (usesStoredKey && stored?.apiKeySet && stored.baseUrl !== address) {
     return error(
@@ -205,7 +226,12 @@ function discoveryAnswer(step: InstallationStepState, body: InstallationModelDis
     )
   }
   const ollama = address.includes(':11434') || address.includes('ollama')
-  const models = ollama ? mockOllamaDiscoveredModels : mockOpenAiDiscoveredModels
+  const models =
+    step.step === 'TRANSCRIPTION_MODEL'
+      ? mockTranscriptionDiscoveredModels
+      : ollama
+        ? mockOllamaDiscoveredModels
+        : mockOpenAiDiscoveredModels
   return HttpResponse.json({
     success: true,
     failure: null,
@@ -269,7 +295,9 @@ export const installationHandlers = [
           }`
         : step.step === 'BRANDING'
           ? 'Das Branding erfüllt die Regeln der Verwaltung.'
-          : 'Prüfung erfolgreich.'
+          : step.step === 'TRANSCRIPTION_MODEL'
+            ? 'Verbindung erfolgreich, der Endpunkt hat geantwortet.'
+            : 'Prüfung erfolgreich.'
     updateMockStep(step.step, {
       checked: failure === null,
       checkMessage: failure ?? success,
@@ -298,6 +326,7 @@ export const installationHandlers = [
       checkMessage: null,
       chatModel: undefined,
       embeddingModel: undefined,
+      transcriptionModel: undefined,
       mail: undefined,
       branding: undefined,
     })
@@ -308,7 +337,11 @@ export const installationHandlers = [
     const refused = refusal(request)
     if (refused) return refused
     const step = findStep(String(params.step))
-    if (step?.step !== 'CHAT_MODEL' && step?.step !== 'EMBEDDING_MODEL') {
+    if (
+      step?.step !== 'CHAT_MODEL' &&
+      step?.step !== 'EMBEDDING_MODEL' &&
+      step?.step !== 'TRANSCRIPTION_MODEL'
+    ) {
       return error(400, 'Modelle lassen sich nur in den Modellschritten abrufen.')
     }
     const body = (await request.json()) as InstallationModelDiscoveryRequest

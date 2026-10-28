@@ -30,6 +30,12 @@ describe('providerOf', () => {
     expect(providerPresets('embedding').map((preset) => preset.key)).not.toContain('anthropic')
     expect(providerOf('https://api.anthropic.com/v1', 'embedding')).toBe('custom')
   })
+
+  it('offers only OpenAI for the transcription model, Ollama serving no transcription', () => {
+    expect(providerPresets('transcription').map((preset) => preset.key)).toEqual(['openai'])
+    expect(providerOf('https://api.openai.com/v1', 'transcription')).toBe('openai')
+    expect(providerOf('http://gpu-server:11434/v1', 'transcription')).toBe('custom')
+  })
 })
 
 describe('sameEndpoint', () => {

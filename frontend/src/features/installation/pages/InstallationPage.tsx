@@ -24,6 +24,7 @@ import EmbeddingModelStep from '../components/steps/EmbeddingModelStep'
 import FirstAdminStep from '../components/steps/FirstAdminStep'
 import MailStep from '../components/steps/MailStep'
 import SignInStep from '../components/steps/SignInStep'
+import TranscriptionModelStep from '../components/steps/TranscriptionModelStep'
 import { useInstallationWizard, type WizardResult } from '../hooks/useInstallationWizard'
 import { findStep, previousView, viewOrder, type WizardView } from '../utils/steps'
 
@@ -94,6 +95,10 @@ function StepView({
     (request: InstallationModelDiscoveryRequest) => discover('EMBEDDING_MODEL', request),
     [discover],
   )
+  const discoverTranscription = useCallback(
+    (request: InstallationModelDiscoveryRequest) => discover('TRANSCRIPTION_MODEL', request),
+    [discover],
+  )
   switch (step.step) {
     case 'FIRST_ADMIN':
       return <FirstAdminStep step={step} submit={(v) => submit('FIRST_ADMIN', v)} {...nav} />
@@ -114,6 +119,15 @@ function StepView({
           step={step}
           submit={(v) => submit('EMBEDDING_MODEL', v)}
           discover={discoverEmbedding}
+          {...nav}
+        />
+      )
+    case 'TRANSCRIPTION_MODEL':
+      return (
+        <TranscriptionModelStep
+          step={step}
+          submit={(v) => submit('TRANSCRIPTION_MODEL', v)}
+          discover={discoverTranscription}
           {...nav}
         />
       )

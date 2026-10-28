@@ -14,6 +14,10 @@ export type InstallationChatModelView = Schemas['InstallationChatModelView']
 export type InstallationEmbeddingModel = Schemas['InstallationEmbeddingModel']
 export type InstallationEmbeddingModelView = Schemas['InstallationEmbeddingModelView']
 
+/** The transcription model of speech input; the API lists its step only while speech input is on. */
+export type InstallationTranscriptionModel = Schemas['InstallationTranscriptionModel']
+export type InstallationTranscriptionModelView = Schemas['InstallationTranscriptionModelView']
+
 export type InstallationMail = Schemas['InstallationMail']
 export type InstallationMailView = Schemas['InstallationMailView']
 
@@ -33,7 +37,10 @@ export type InstallationStatusResponse = Schemas['InstallationStatusResponse']
 export type InstallationModelDiscoveryRequest = Schemas['InstallationModelDiscoveryRequest']
 
 /** The steps whose endpoint lists its models. */
-export type ModelStepId = Extract<InstallationStepId, 'CHAT_MODEL' | 'EMBEDDING_MODEL'>
+export type ModelStepId = Extract<
+  InstallationStepId,
+  'CHAT_MODEL' | 'EMBEDDING_MODEL' | 'TRANSCRIPTION_MODEL'
+>
 
 /** The values a step's save sends, by step. */
 export interface StepInput {
@@ -41,6 +48,7 @@ export interface StepInput {
   SIGN_IN: InstallationSignIn
   CHAT_MODEL: InstallationChatModel
   EMBEDDING_MODEL: InstallationEmbeddingModel
+  TRANSCRIPTION_MODEL: InstallationTranscriptionModel
   MAIL: InstallationMail
   BRANDING: InstallationBranding
 }
@@ -51,6 +59,7 @@ export const STEP_REQUEST_KEY = {
   SIGN_IN: 'signIn',
   CHAT_MODEL: 'chatModel',
   EMBEDDING_MODEL: 'embeddingModel',
+  TRANSCRIPTION_MODEL: 'transcriptionModel',
   MAIL: 'mail',
   BRANDING: 'branding',
 } as const satisfies Record<InstallationStepId, keyof Schemas['InstallationStepRequest']>

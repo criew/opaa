@@ -1,3 +1,4 @@
+import type { DiscoveredLlmModel } from '@/shared/api/types'
 import type { InstallationStatusResponse, InstallationStepState } from '../api/types'
 
 /**
@@ -24,6 +25,20 @@ const MAIL_STEP: InstallationStepState = {
   checked: false,
 }
 
+const TRANSCRIPTION_STEP: InstallationStepState = {
+  step: 'TRANSCRIPTION_MODEL',
+  mandatory: false,
+  saved: false,
+  checked: false,
+}
+
+/** What a transcription endpoint lists in the mock: two speech models and a chat model. */
+export const mockTranscriptionDiscoveredModels: DiscoveredLlmModel[] = [
+  { identifier: 'whisper-1', capabilities: [], chatSuitable: false },
+  { identifier: 'gpt-4o-transcribe', capabilities: [], chatSuitable: false },
+  { identifier: 'gpt-4.1', capabilities: [], chatSuitable: true },
+]
+
 const BRANDING_STEP: InstallationStepState = {
   step: 'BRANDING',
   mandatory: false,
@@ -32,10 +47,10 @@ const BRANDING_STEP: InstallationStepState = {
 }
 
 /**
- * The mock's steps. With `withEmbedding` the full list of the API, embedding model and branding
- * included, as `?mockInstallation=embedding` and {@link withMockEmbeddingStep} set it up; without,
- * the shorter list most tests are written against, to which {@link withMockBrandingStep} adds the
- * branding step.
+ * The mock's steps. With `withEmbedding` the full list of the API, embedding model, transcription
+ * model and branding included, as `?mockInstallation=embedding` and {@link withMockEmbeddingStep}
+ * set it up; without, the shorter list most tests are written against, to which {@link
+ * withMockBrandingStep} and {@link withMockTranscriptionStep} add their steps.
  */
 function initialSteps(withEmbedding = false): InstallationStepState[] {
   const steps: InstallationStepState[] = [
@@ -47,6 +62,7 @@ function initialSteps(withEmbedding = false): InstallationStepState[] {
     ? [
         ...steps,
         { step: 'EMBEDDING_MODEL', mandatory: false, saved: false, checked: false },
+        TRANSCRIPTION_STEP,
         MAIL_STEP,
         BRANDING_STEP,
       ]
@@ -94,6 +110,16 @@ export function withMockEmbeddingStep() {
 export function withMockBrandingStep() {
   pendingOverride = true
   if (!mockSteps.some((s) => s.step === 'BRANDING')) mockSteps = [...mockSteps, BRANDING_STEP]
+  remember(mockSteps)
+}
+
+/** Adds the transcription model step before the mail step, as the API lists it with speech input on. */
+export function withMockTranscriptionStep() {
+  pendingOverride = true
+  if (!mockSteps.some((s) => s.step === 'TRANSCRIPTION_MODEL')) {
+    const mail = mockSteps.findIndex((s) => s.step === 'MAIL')
+    mockSteps = [...mockSteps.slice(0, mail), TRANSCRIPTION_STEP, ...mockSteps.slice(mail)]
+  }
   remember(mockSteps)
 }
 

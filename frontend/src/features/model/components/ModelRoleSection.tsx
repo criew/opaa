@@ -14,6 +14,7 @@ import type {
   TranscriptionModelSettingsResponse,
 } from '@/shared/api/types'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
+import { TRANSCRIPTION_TEXTS } from '@/shared/ui/transcription/transcriptionSettings'
 import { notify } from '@/shared/stores/notificationStore'
 import {
   getRerankModelSettings,
@@ -53,9 +54,8 @@ const TEXTS: Record<ModelRoleKind, RoleTexts> = {
   },
   transcription: {
     switchLabel: 'Spracheingabe einschalten',
-    intro:
-      'Das Transkriptionsmodell wandelt diktierte Fragen im Chat in Text. Ab Werk ist es aus; das Mikrofon erscheint erst, wenn das Modell antwortet.',
-    addressHint: 'Ohne den Pfad /audio/transcriptions, etwa http://speaches:8000/v1.',
+    intro: TRANSCRIPTION_TEXTS.intro,
+    addressHint: TRANSCRIPTION_TEXTS.addressHint,
   },
 }
 
@@ -315,14 +315,11 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
         {kind === 'transcription' && (
           <TextField
             id={`${prefix}-language`}
-            label="Sprache"
+            label={TRANSCRIPTION_TEXTS.languageLabel}
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
             error={Boolean(errors.language)}
-            helperText={
-              errors.language ??
-              'Kürzel aus zwei Buchstaben, etwa de; leer erkennt das Modell die Sprache selbst.'
-            }
+            helperText={errors.language ?? TRANSCRIPTION_TEXTS.languageHint}
             size="small"
             sx={{ maxWidth: 240 }}
           />

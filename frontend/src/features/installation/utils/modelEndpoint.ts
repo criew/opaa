@@ -12,11 +12,16 @@ export type ProviderKey = EndpointPresetKey | 'custom'
 
 const OLLAMA_ADDRESS = /:11434\/v1$/i
 
-/** The presets a role offers: Anthropic serves no embeddings. */
+/**
+ * The presets a role offers: Anthropic serves no embeddings, and of the three only OpenAI serves
+ * transcriptions.
+ */
 export function providerPresets(purpose: DiscoveryPurpose): readonly EndpointPreset[] {
-  return purpose === 'chat'
-    ? ENDPOINT_PRESETS
-    : ENDPOINT_PRESETS.filter((preset) => preset.key !== 'anthropic')
+  if (purpose === 'chat') return ENDPOINT_PRESETS
+  if (purpose === 'transcription') {
+    return ENDPOINT_PRESETS.filter((preset) => preset.key === 'openai')
+  }
+  return ENDPOINT_PRESETS.filter((preset) => preset.key !== 'anthropic')
 }
 
 function normalized(baseUrl: string): string {
@@ -27,9 +32,11 @@ function normalized(baseUrl: string): string {
 export function providerOf(baseUrl: string, purpose: DiscoveryPurpose): ProviderKey | null {
   const address = normalized(baseUrl)
   if (address === '') return null
-  const preset = providerPresets(purpose).find((candidate) => candidate.baseUrl === address)
+  const presets = providerPresets(purpose)
+  const preset = presets.find((candidate) => candidate.baseUrl === address)
   if (preset) return preset.key
-  return OLLAMA_ADDRESS.test(address) ? 'ollama' : 'custom'
+  const ollamaOffered = presets.some((candidate) => candidate.key === 'ollama')
+  return ollamaOffered && OLLAMA_ADDRESS.test(address) ? 'ollama' : 'custom'
 }
 
 function endpointKey(baseUrl: string): string {
