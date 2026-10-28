@@ -289,6 +289,38 @@ class LibraryMetadataFieldServiceIntegrationTest {
   }
 
   /**
+   * A field created after another was deleted goes behind every existing field: its sortOrder
+   * follows the highest one, so it never shares a position with an older field and the Beleg order
+   * stays the order of creation even when its key sorts first.
+   */
+  @Test
+  void aFieldCreatedAfterADeletionGoesBehindEveryExistingField() throws IOException {
+    fieldService.createField(
+        library.getId(), input("zulassung", LibraryMetadataFieldType.SELECT, true, false), owner);
+    fieldService.createField(
+        library.getId(), input("projekt", LibraryMetadataFieldType.SELECT, true, false), owner);
+    fieldService.createField(
+        library.getId(), input("fassung", LibraryMetadataFieldType.SELECT, true, false), owner);
+    fieldService.deleteField(library.getId(), "projekt", owner);
+    fieldService.createField(
+        library.getId(), input("akte", LibraryMetadataFieldType.SELECT, true, false), owner);
+
+    assertThat(fieldService.fieldsOf(library.getId(), viewer))
+        .extracting(
+            definition ->
+                definition.field().getFieldKey() + "=" + definition.field().getSortOrder())
+        .containsExactly("zulassung=10", "fassung=30", "akte=40");
+
+    Document document = indexed("satzung.pdf");
+    setLibraryValue(document, "zulassung", "A");
+    setLibraryValue(document, "fassung", "A");
+    setLibraryValue(document, "akte", "A");
+    assertThat(citationReader.forDocuments(List.of(document)).get(document.getId()))
+        .extracting(CitationFieldValue::fieldKey)
+        .containsExactly("lib:zulassung", "lib:fassung", "lib:akte");
+  }
+
+  /**
    * Every set library field reaches the Beleg for external AI tools, in the library's sortOrder
    * rather than by key, and an empty one never does.
    */

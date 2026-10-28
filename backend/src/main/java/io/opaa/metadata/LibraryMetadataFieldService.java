@@ -183,7 +183,15 @@ public class LibraryMetadataFieldService {
     if (fieldRepository.findByLibraryIdAndFieldKey(library.getId(), key).isPresent()) {
       throw new ConflictException("Das Feld „" + key + "“ gibt es in dieser Bibliothek bereits");
     }
-    int sortOrder = (int) fieldRepository.countByLibraryId(library.getId()) * 10 + 10;
+    // After the highest existing position, not after the count: once a field is deleted, a count
+    // would hand out a position that is already taken, and the Beleg order would no longer be
+    // the order of creation.
+    int sortOrder =
+        fieldRepository.findByLibraryIdOrderBySortOrderAscFieldKeyAsc(library.getId()).stream()
+                .mapToInt(LibraryMetadataField::getSortOrder)
+                .max()
+                .orElse(0)
+            + 10;
     LibraryMetadataField field =
         new LibraryMetadataField(library.getId(), key, input.type(), pattern, sortOrder);
     field.apply(label, input.filter(), input.contextPrefix());

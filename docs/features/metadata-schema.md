@@ -1693,7 +1693,9 @@ Drei Regeln:
 - **Jedes gesetzte Bibliotheksfeld steht im Beleg, in der Reihenfolge der Felder der Bibliothek.**
   Der Empfänger ist ein externes KI-Werkzeug, keine Zeile im Lesefluss einer Antwort; eine Auswahl
   je Feld wäre eine Einstellung ohne sichtbare Wirkung im eigenen Produkt. Die Reihenfolge ist die
-  des Anlegens.
+  der Felder der Bibliothek (`sortOrder`): Ein neues Feld bekommt die höchste vorhandene Position
+  plus 10 und steht damit hinter allen bestehenden, auch nachdem ein anderes gelöscht wurde. Eine
+  Umsortierung bietet die Verwaltung nicht an.
 - **Ein leeres Feld erscheint in der Belegzeile gar nicht.** Kein „Projekt — ohne Angabe". Die
   Kennzeichnung „ohne Angabe" gehört an die Stelle, an der sie eine Aussage trägt: in die
   Trefferliste eines gesetzten Filters (siehe [Leerwerte schließen nicht aus](#leerwerte-schließen-nicht-aus))

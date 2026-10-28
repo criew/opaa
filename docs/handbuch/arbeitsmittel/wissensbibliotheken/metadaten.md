@@ -519,8 +519,8 @@ filtert, lässt den Abdruck unberührt.
 Das Belegfenster einer Antwort zeigt je Dokument nur Titel und Fundort, keine Metadatenwerte:
 Dokumentart, Datum/Stand und Formatfelder helfen beim Nachschlagen nicht und stehen dort nicht.
 Im Belegfenster erscheint von den Metadaten nur die Kennzeichnung „ohne Angabe" unter aktivem
-Filter (Abschnitt 8). Die Metadaten jeder Fundstelle — Kernfelder, Formatfelder und die
-jedes gesetzte Bibliotheksfeld in der Reihenfolge der Felder — gibt nur der Zugriffsweg für externe
+Filter (Abschnitt 8). Die Metadaten jeder Fundstelle — Kernfelder, Formatfelder und jedes
+gesetzte Bibliotheksfeld in der Reihenfolge der Felder — gibt nur der Zugriffsweg für externe
 KI-Werkzeuge aus (Suchschnittstelle, MCP; Kapitel [Suche](../../spaces/suche.md)). Ein abgeleiteter
 Wert ist dort als „(abgeleitet)" gekennzeichnet; ein leeres Feld fehlt.
 
