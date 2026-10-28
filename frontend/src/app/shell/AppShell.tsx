@@ -24,7 +24,7 @@ export default function AppShell() {
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
   const sidebarOpen = useUiStore((s) => s.sidebarOpen)
   const setSidebarOpen = useUiStore((s) => s.setSidebarOpen)
-  const { pathname, state: locationState } = useLocation()
+  const { pathname, key: locationKey, state: locationState } = useLocation()
   // The marker stays in its history entry; back/forward to that entry is a page change again.
   const keepFocus = useNavigationType() !== NavigationType.Pop && keepsFocus(locationState)
   const previousPathname = useRef(pathname)
@@ -45,18 +45,21 @@ export default function AppShell() {
     ;(heading ?? main)?.focus()
   }, [pathname, keepFocus])
 
-  // A route change closes the drawer in the very render that shows the new page. The drawer's
-  // focus restore (to "Menü öffnen") thus runs before the new page places its focus, so the focus
-  // follows the destination; Escape and the backdrop still hand it back to "Menü öffnen".
-  const [drawerPathname, setDrawerPathname] = useState(pathname)
-  if ((!sidebarOpen || isDesktop) && drawerPathname !== pathname) setDrawerPathname(pathname)
-  const drawerOpen = sidebarOpen && drawerPathname === pathname
+  // Every navigation, also one to the same path, closes the drawer in the very render that shows
+  // its result. The drawer's focus restore (to "Menü öffnen") thus runs before the destination
+  // places its focus, so the focus follows the destination; Escape and the backdrop still hand it
+  // back to "Menü öffnen".
+  const [drawerLocationKey, setDrawerLocationKey] = useState(locationKey)
+  if ((!sidebarOpen || isDesktop) && drawerLocationKey !== locationKey) {
+    setDrawerLocationKey(locationKey)
+  }
+  const drawerOpen = sidebarOpen && drawerLocationKey === locationKey
 
-  // Navigating from inside the drawer must also dismiss it - otherwise it stays on top of the
-  // page just navigated to; the rail puts far more destinations into the drawer.
+  // The store follows: a navigation dismisses the drawer, and so does reaching the desktop width,
+  // where no drawer exists - a flag left set there would reopen it on the way back to narrow.
   useEffect(() => {
-    if (!isDesktop) setSidebarOpen(false)
-  }, [pathname, isDesktop, setSidebarOpen])
+    setSidebarOpen(false)
+  }, [locationKey, isDesktop, setSidebarOpen])
 
   return (
     <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
