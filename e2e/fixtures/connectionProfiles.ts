@@ -285,7 +285,7 @@ export async function triggerIndexingInUi(page: Page, libraryId: string): Promis
  * ein.
  */
 export async function referenceLibrary(page: Page, libraryName: string): Promise<void> {
-  await page.getByPlaceholder('Nachricht eingeben …').fill(`@${libraryName}`)
+  await page.getByRole('combobox', { name: 'Nachricht eingeben' }).fill(`@${libraryName}`)
   await page.getByRole('option', { name: libraryName }).click()
   await expect(page.getByLabel(`Bibliotheksreferenz ${libraryName} entfernen`)).toBeVisible()
 }

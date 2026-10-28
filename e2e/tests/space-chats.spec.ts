@@ -86,7 +86,7 @@ function uniqueId(testInfo: TestInfo): string {
  * this reason.
  */
 async function referenceLibrary(page: Page, libraryName: string) {
-  const input = page.getByPlaceholder('Nachricht eingeben …')
+  const input = page.getByRole('combobox', { name: 'Nachricht eingeben' })
   await input.fill(`@${libraryName}`)
   await page.getByRole('option', { name: libraryName }).click()
 }
@@ -232,7 +232,7 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     testInfo,
   ) => {
     const id = uniqueId(testInfo)
-    const input = page.getByPlaceholder('Nachricht eingeben …')
+    const input = page.getByRole('combobox', { name: 'Nachricht eingeben' })
 
     await startFreshChat(page)
     await clearSearchScope(page)
@@ -270,12 +270,12 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     // mention feature itself is broken" - only the contrast between adminPage and bPage below
     // makes the absence a real, permission-specific finding.
     await startFreshChat(adminPage)
-    const adminInput = adminPage.getByPlaceholder('Nachricht eingeben …')
+    const adminInput = adminPage.getByRole('combobox', { name: 'Nachricht eingeben' })
     await adminInput.fill(`@${privateLibraryName}`)
     await expect(adminPage.getByRole('option', { name: privateLibraryName })).toBeVisible()
 
     await startFreshChat(bPage)
-    const input = bPage.getByPlaceholder('Nachricht eingeben …')
+    const input = bPage.getByRole('combobox', { name: 'Nachricht eingeben' })
     await input.fill(`@${sharedLibraryName}`)
     await expect(bPage.getByRole('option', { name: sharedLibraryName })).toBeVisible()
 

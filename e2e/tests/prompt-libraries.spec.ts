@@ -282,7 +282,7 @@ test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', ()
     // A chat offers only the prompts of libraries assigned to its space.
     await assignToDefaultSpace('dev-outsider', 'PROMPT_LIBRARY', await promptLibraryId(LIBRARY_NAME))
     await startFreshChat(outsider)
-    const input = outsider.getByPlaceholder('Nachricht eingeben …')
+    const input = outsider.getByRole('combobox', { name: 'Nachricht eingeben' })
     await input.fill(`/${PROMPT_COMMAND}`)
     await outsider
       .getByRole('option', { name: new RegExp(escapeRegExp(`/${PROMPT_COMMAND}`)) })

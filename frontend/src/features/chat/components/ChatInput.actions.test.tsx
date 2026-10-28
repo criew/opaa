@@ -17,6 +17,17 @@ import { promptActionSource } from './promptActionSource'
  * active action sources contribute. Prompt libraries are one source; switched off, they contribute
  * nothing, and without any source '/' opens nothing and the hint does not offer it.
  */
+/** The hint ends the placeholder and is the field's accessible description. */
+async function expectPrefixHint(hint: string) {
+  const input = screen.getByRole('combobox')
+  await waitFor(() =>
+    expect(input.getAttribute('placeholder')?.replaceAll('\u00a0', ' ')).toBe(
+      `Nachricht eingeben … ${hint}`,
+    ),
+  )
+  expect(input).toHaveAccessibleDescription(hint)
+}
+
 describe('ChatInput: the "/" menu collects the active action sources', () => {
   let availableRequests = 0
   const countAvailable = ({ request }: { request: Request }) => {
@@ -83,10 +94,10 @@ describe('ChatInput: the "/" menu collects the active action sources', () => {
     markLabel: (mark) => mark.title,
   }
 
-  it('names "/" in the hint while prompt libraries are on', async () => {
+  it('names "/" in the placeholder and description while prompt libraries are on', async () => {
     render(<ChatInput onSend={vi.fn()} />)
 
-    expect(await screen.findByText('@ für Quellen, / für Aktionen')).toBeInTheDocument()
+    await expectPrefixHint('@ für Quellen, / für Aktionen')
   })
 
   it('opens no menu, loads no prompt and sends "/" text as a question while switched off', async () => {
@@ -96,7 +107,7 @@ describe('ChatInput: the "/" menu collects the active action sources', () => {
     render(<ChatInput onSend={onSend} />)
     const input = screen.getByRole('combobox')
 
-    expect(await screen.findByText('@ für Quellen')).toBeInTheDocument()
+    await expectPrefixHint('@ für Quellen')
     expect(screen.queryByText(/\/ für Aktionen/)).not.toBeInTheDocument()
 
     await user.type(input, '/zusam')
@@ -117,7 +128,7 @@ describe('ChatInput: the "/" menu collects the active action sources', () => {
     render(<ChatInput onSend={onSend} actionSources={[glossary]} />)
     const input = screen.getByRole('combobox')
 
-    expect(await screen.findByText('@ für Quellen, / für Aktionen')).toBeInTheDocument()
+    await expectPrefixHint('@ für Quellen, / für Aktionen')
     await user.type(input, '/fri')
 
     const option = await screen.findByRole('option', { name: /\/fristen/ })
@@ -178,7 +189,7 @@ describe('ChatInput: the "/" menu collects the active action sources', () => {
       <ChatInput onSend={vi.fn()} actionSources={[{ ...glossary, feature: 'promptLibraries' }]} />,
     )
 
-    expect(await screen.findByText('@ für Quellen')).toBeInTheDocument()
+    await expectPrefixHint('@ für Quellen')
     await user.type(screen.getByRole('combobox'), '/')
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })

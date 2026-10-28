@@ -30,9 +30,13 @@ import { CHAT_ACTION_SOURCES } from './chatActionSources'
 import { useChatActions } from './useChatActions'
 import { useChatMetadataFilterChips } from './useChatMetadataFilterChips'
 import { useMentionSuggestions } from './useMentionSuggestions'
+import { useNarrowField } from './useNarrowField'
 import { useSpaceLibraryScope } from './useSpaceLibraryScope'
 import {
+  COMPACT_PLACEHOLDER_WIDTH,
+  INPUT_LABEL,
   inputHint,
+  inputPlaceholder,
   lengthAnnouncement,
   lengthCounterText,
   withRestoredQuestion,
@@ -86,6 +90,9 @@ export default function ChatInput({
   const mentionListboxId = useId()
   const actionListboxId = useId()
   const lengthCounterId = useId()
+  const hintId = useId()
+  const [fieldEl, setFieldEl] = useState<HTMLDivElement | null>(null)
+  const compactPlaceholder = useNarrowField(fieldEl, COMPACT_PLACEHOLDER_WIDTH)
   const questionLength = value.trim().length
   const questionTooLong = questionLength > QUESTION_MAX_LENGTH
   const lengthCounter = lengthCounterText(questionLength)
@@ -132,6 +139,7 @@ export default function ChatInput({
     userName,
     insertText: insertActionText,
   })
+  const hint = inputHint(answerPending, actions.enabled)
 
   // Adjusted during render (not in an effect) so the input already shows the text when it paints.
   const [seenReturned, setSeenReturned] = useState<SendOutcome | null>(null)
@@ -375,10 +383,11 @@ export default function ChatInput({
         })}
       >
         <TextField
+          ref={setFieldEl}
           fullWidth
           multiline
           maxRows={6}
-          placeholder="Nachricht eingeben …"
+          placeholder={inputPlaceholder(answerPending, actions.enabled, compactPlaceholder)}
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
@@ -394,7 +403,11 @@ export default function ChatInput({
               'aria-autocomplete': 'list',
               'aria-activedescendant': activeDescendant,
               'aria-invalid': questionTooLong,
-              'aria-describedby': lengthCounter ? lengthCounterId : undefined,
+              'aria-label': INPUT_LABEL,
+              'aria-describedby':
+                [hint ? hintId : null, lengthCounter ? lengthCounterId : null]
+                  .filter((id) => id !== null)
+                  .join(' ') || undefined,
             },
           }}
           sx={{
@@ -410,6 +423,8 @@ export default function ChatInput({
               overflowY: 'auto !important',
               resize: 'none',
             },
+            // The placeholder carries the prefix hint: text.secondary at full opacity keeps 4.5:1.
+            '& textarea::placeholder': { color: 'text.secondary', opacity: 1 },
           }}
         />
         <DictationControl
@@ -562,9 +577,17 @@ export default function ChatInput({
 
       {/* Mockup 1a: the quiet, neutral line under the input. */}
       <Box sx={{ maxWidth: CHAT_MAX_WIDTH, mx: 'auto', mt: 0.875 }}>
-        <Typography component="div" sx={{ fontSize: 12, color: 'text.secondary' }}>
-          {scopeNotice ?? inputHint(answerPending, actions.enabled)}
-        </Typography>
+        {/* The placeholder vanishes while typing; the description keeps the hint reachable. */}
+        {hint && (
+          <Box component="span" id={hintId} sx={visuallyHidden}>
+            {hint}
+          </Box>
+        )}
+        {scopeNotice && (
+          <Typography component="div" sx={{ fontSize: 12, color: 'text.secondary' }}>
+            {scopeNotice}
+          </Typography>
+        )}
         <AiNotice variant="line" />
         {dictationError && (
           <Typography component="div" role="alert" sx={{ fontSize: 12, color: 'error.main' }}>

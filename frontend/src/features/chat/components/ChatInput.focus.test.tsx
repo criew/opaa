@@ -33,7 +33,7 @@ describe.each([
         </MemoryRouter>
       </ThemeProvider>,
     )
-    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
     const frame = input.closest('.MuiTextField-root')?.parentElement as HTMLElement
     expect(getComputedStyle(frame).borderColor).not.toBe(asRgb(roles.accent))
 
@@ -62,7 +62,7 @@ describe.each([
         </MemoryRouter>
       </ThemeProvider>,
     )
-    const input = screen.getByPlaceholderText('Nachricht eingeben …')
+    const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)
     const frame = input.closest('.MuiTextField-root')?.parentElement as HTMLElement
     const resting = getComputedStyle(frame).borderColor
     // Text enables the send button, the one button of the row that is always rendered.

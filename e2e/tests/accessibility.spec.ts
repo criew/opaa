@@ -106,9 +106,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
 
   test("Chat in beiden Farbschemata", async ({ authenticatedPage: page }) => {
     await startFreshChat(page);
-    const input = page.getByPlaceholder(
-      "Nachricht eingeben …",
-    );
+    const input = page.getByRole("combobox", { name: "Nachricht eingeben" });
     await expect(input).toBeVisible();
 
     // The theme preference defaults to "system" (uiStore.themeMode), so emulating the media

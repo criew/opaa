@@ -170,7 +170,7 @@ test.describe.serial('Linkregel und präparierte Dokumente in Antworten (#3051)'
     await assignLibraryToDefaultSpace('dev-admin', libraryName)
 
     await startFreshChat(page)
-    const input = page.getByPlaceholder('Nachricht eingeben …')
+    const input = page.getByRole('combobox', { name: 'Nachricht eingeben' })
     await input.fill(`@${libraryName}`)
     await page.getByRole('option', { name: libraryName }).click()
     await askQuestion(

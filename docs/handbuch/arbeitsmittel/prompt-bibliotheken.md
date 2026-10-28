@@ -265,7 +265,7 @@ Antworten zeigen soll (`OPAA_FEATURES_PROMPT_LIBRARIES_ENABLED=false`, siehe
   Anlegerechte.
 - Space-Inhalte, Zählungen und die Auswahl beim Anlegen und Zuordnen enthalten keine
   Prompt-Bibliotheken; die Liste „Ohne Zuständigkeit" nennt keine.
-- Im Chat öffnet `/` keine Auswahl, und der Hinweis unter dem Eingabefeld nennt `/` nicht. Eine
+- Im Chat öffnet `/` keine Auswahl, und der Platzhalter des Eingabefelds nennt `/` nicht. Eine
   Frage, die noch einen Prompt nennt, lehnt OPAA ab. Frühere Fragen tragen keinen Hinweis
   „`Prompt: <Titel>`" mehr.
 - Adressen von Prompt-Bibliotheken führen in den Katalog.
