@@ -83,7 +83,7 @@ describe('SpacesOverviewPage (#593, Mockup 1c)', () => {
     expect(teamCard).toHaveTextContent('Archiviert')
   })
 
-  // #3263: role and members belong to the space settings, not to the card.
+  // Role and members belong to the space settings, not to the card.
   it('shows neither the own role nor the members on the card (#3263)', () => {
     renderWithProviders(<SpacesOverviewPage />, { withRouter: true })
 

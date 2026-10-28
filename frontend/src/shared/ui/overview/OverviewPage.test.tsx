@@ -56,7 +56,7 @@ describe('OverviewPage (#1913)', () => {
     expect(screen.getByText('1 Eintrag')).toBeInTheDocument()
   })
 
-  // #3263: every overview heads its page alike - the page name as heading, the count quiet
+  // Every overview heads its page alike - the page name as heading, the count quiet
   // beside it, no sentence underneath.
   it('keeps the page name as heading and sets the count beside it, without a subtitle', () => {
     renderOverview()
