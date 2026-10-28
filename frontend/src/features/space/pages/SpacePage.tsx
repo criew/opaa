@@ -5,7 +5,6 @@ import AccordionSummary from '@mui/material/AccordionSummary'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
 import Stack from '@mui/material/Stack'
@@ -154,9 +153,7 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
             <Box>
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5 }}>
                 <PageHeading title={space.name} />
-                {space.isDefault && (
-                  <Chip label="Standard" size="small" color="primary" variant="outlined" />
-                )}
+                {space.isDefault && <MetaBadge>Standard</MetaBadge>}
               </Stack>
               <Typography sx={{ color: 'text.secondary' }}>
                 {space.description || 'Keine Beschreibung hinterlegt.'}
@@ -233,7 +230,7 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
                           ? ' · Gruppe'
                           : ''}
                       </Typography>
-                      <Chip label={spaceRoleLabel(member.role)} size="small" />
+                      <MetaBadge>{spaceRoleLabel(member.role)}</MetaBadge>
                     </Box>
                   ))}
                 </Stack>
@@ -245,7 +242,7 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
                 {Object.entries(space.roleCounts ?? {})
                   .filter(([, count]) => count > 0)
                   .map(([role, count]) => (
-                    <Chip key={role} label={`${spaceRoleLabel(role)}: ${count}`} size="small" />
+                    <MetaBadge key={role}>{`${spaceRoleLabel(role)}: ${count}`}</MetaBadge>
                   ))}
               </Stack>
             )}

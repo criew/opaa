@@ -197,9 +197,7 @@ export default function SettingsImportSection() {
                       <TableCell>
                         <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
                           <span>{change.keyLabel}</span>
-                          {change.securityRelevant && (
-                            <MetaBadge accent>Sicherheitsrelevant</MetaBadge>
-                          )}
+                          {change.securityRelevant && <MetaBadge>Sicherheitsrelevant</MetaBadge>}
                         </Stack>
                       </TableCell>
                       <TableCell sx={{ overflowWrap: 'anywhere', whiteSpace: 'pre-line' }}>

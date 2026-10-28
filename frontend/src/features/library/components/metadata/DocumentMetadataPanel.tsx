@@ -145,12 +145,7 @@ export default function DocumentMetadataPanel({
               </Typography>
               {field.origin && (
                 <Tooltip title={originTooltip(field)} describeChild>
-                  <Chip
-                    label={metadataOriginLabel(field.origin)}
-                    size="small"
-                    variant="outlined"
-                    color={field.origin === 'DERIVED' ? 'warning' : 'default'}
-                  />
+                  <Chip label={metadataOriginLabel(field.origin)} size="small" variant="outlined" />
                 </Tooltip>
               )}
               {canEdit && (

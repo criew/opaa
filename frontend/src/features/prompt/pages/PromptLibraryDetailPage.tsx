@@ -338,7 +338,7 @@ export default function PromptLibraryDetailPage() {
           name={library.name}
           description={library.description}
           isPublic={library.reach.allAccounts}
-          badges={<MetaBadge accent>{assetRoleLabel(library.myRole)}</MetaBadge>}
+          badges={<MetaBadge>{assetRoleLabel(library.myRole)}</MetaBadge>}
           administrative={administrative}
           headline={{
             idPrefix: 'prompt-library-detail',

@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import Chip from '@mui/material/Chip'
 import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
 import ListItemButton from '@mui/material/ListItemButton'
@@ -11,6 +10,7 @@ import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import { useMailStore } from '../stores/mailStore'
 import SectionHead from '@/shared/ui/SectionHead'
+import MetaBadge from '@/shared/ui/MetaBadge'
 import { radius } from '@/shared/theme/tokens'
 import MailTemplateEditor from './MailTemplateEditor'
 
@@ -103,11 +103,9 @@ export default function MailTemplatesSection() {
                     <Typography sx={{ fontSize: 13.5, fontWeight: 500 }}>
                       {summary.label}
                     </Typography>
-                    <Chip
-                      size="small"
-                      variant="outlined"
-                      label={summary.source === 'DATABASE' ? 'angepasst' : 'Standard'}
-                    />
+                    <MetaBadge>
+                      {summary.source === 'DATABASE' ? 'angepasst' : 'Standard'}
+                    </MetaBadge>
                   </Box>
                   <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
                     {templatePurposes[summary.key] ?? summary.subject}

@@ -1,5 +1,5 @@
 import Button from '@mui/material/Button'
-import Chip from '@mui/material/Chip'
+import StateDot from '@/shared/ui/StateDot'
 import Paper from '@mui/material/Paper'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
@@ -319,17 +319,15 @@ export default function LibraryStatusTable({
                   : 'noch nie'}
               </TableCell>
               <TableCell>
-                <Chip
-                  size="small"
+                <StateDot
+                  tone={library.vectorIndexState === 'INCOMPLETE' ? 'warning' : 'neutral'}
                   label={INDEX_STATE_LABELS[library.vectorIndexState]}
-                  color={library.vectorIndexState === 'INCOMPLETE' ? 'warning' : 'default'}
                 />
               </TableCell>
               <TableCell>
-                <Chip
-                  size="small"
+                <StateDot
+                  tone={library.fullTextIndexState === 'OUTDATED' ? 'warning' : 'neutral'}
                   label={INDEX_STATE_LABELS[library.fullTextIndexState]}
-                  color={library.fullTextIndexState === 'OUTDATED' ? 'warning' : 'default'}
                 />
                 {library.fullTextOutdatedChunks > 0 && (
                   <Typography variant="caption" sx={{ color: 'text.secondary' }} component="div">

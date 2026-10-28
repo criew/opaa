@@ -14,6 +14,7 @@ import { notify } from '@/shared/stores/notificationStore'
 import { useMailTemplatePreview } from '../hooks/useMailTemplatePreview'
 import { radius } from '@/shared/theme/tokens'
 import PageSection from '@/shared/ui/PageSection'
+import MetaBadge from '@/shared/ui/MetaBadge'
 import SectionHead from '@/shared/ui/SectionHead'
 import MailTemplatePreviewPane from './MailTemplatePreviewPane'
 import { mailSendResultMessage, mailSendResultSeverity } from './mailStatus'
@@ -143,11 +144,7 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
         <Typography component="h2" sx={{ fontSize: 16, fontWeight: 600 }}>
           {template.label}
         </Typography>
-        <Chip
-          size="small"
-          variant="outlined"
-          label={template.source === 'DATABASE' ? 'angepasst' : 'Standard'}
-        />
+        <MetaBadge>{template.source === 'DATABASE' ? 'angepasst' : 'Standard'}</MetaBadge>
         <Typography
           component="code"
           sx={{ fontFamily: 'monospace', fontSize: 12, color: 'text.secondary' }}

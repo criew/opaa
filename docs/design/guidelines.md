@@ -158,10 +158,9 @@ andere Rolle.
 - **Der globale Verwaltungsrahmen** (#787, Mockup 2b) nutzt ausschließlich die Rollen aus 2.2:
   Sekundärspalte auf `bg-2`, Aktivkarte auf `bg-1` mit `border-strong`-Rahmen. Auch hier liegt
   die Zustandsfläche unter 3:1 — getragen wird der Zustand wie bei der Rail über Textfarbe,
-  Schriftgewicht und `aria-current`. Das **„Global"-Badge** leitet sich mit 10 % (Fläche) und
-  40 % (Rahmen) aus dem Akzent ab und folgt damit einem
-  Branding-Override; der Geltungsbereich steht immer als sichtbarer Text im Chip, nie nur als
-  Farbe.
+  Schriftgewicht und `aria-current`. Das **„Global"-Badge** ist ein Etikett wie jedes andere
+  (5.5): Umriss in `border-strong`, Text in `fg-2`; der Geltungsbereich steht als sichtbares Wort,
+  nie als Farbe.
 - **Akzent ist austauschbar.** Die Branding-Konfiguration (Issues #582/#583) darf `accent`
   ersetzen. Deshalb darf keine Komponente sich auf „Blau" verlassen (z. B. Blau hart mit einem
   Icon mischen) — sie verlässt sich auf die Rolle.
@@ -477,7 +476,14 @@ erscheint nie.
 ### 5.5 Chips und Etiketten
 
 Pill-Radius, 12 px, Gewicht 500, dezent — Umriss (`border-strong` + `fg-2`) oder stille
-Tintfläche (`bg-3`), **keine Signalfarben**. Feste Wortlisten:
+Tintfläche (`bg-3`), **keine Signalfarben und kein Akzent**: weder `danger`/`error`, `warning` noch
+`success` und auch nicht `accent` als Fläche, Rahmen oder Text. Das gilt für hervorgehobene
+Etiketten ebenso („Standard", die eigene Rolle, „Archiviert", „extern", „Sicherheitsrelevant",
+„Global", „Alle Konten"): Die Bedeutung trägt das Wort. Akzentfarbene Chips bleiben
+Bedienelementen vorbehalten (Filter-Chips, Bereichs-Chips der Chat-Eingabe). Ein **Zustand**
+(verbunden, abgelaufen, gesperrt, Index unvollständig, Stufe übersprungen) ist kein Etikett,
+sondern ein Punkt vor dem Wort (`StateDot`, 2.3); ein Symbol im Etikett darf die Signalfarbe
+tragen, Rahmen und Text nicht („Wird gelöscht"). Feste Wortlisten:
 
 - **Rollen:** Leser · Bearbeiter · Verwalter · Eigentümer
 - **Sichtbarkeit:** kein Textetikett. Ein öffentliches Asset (Spezifikation: öffentlich, an alle
@@ -500,8 +506,18 @@ farbiger Chip.
 **Ein Etikett, eine Form.** Die Regel gilt für jedes Etikett, ob MUI-`Chip` oder selbst gebaut
 (Rolle in Tabelle und Kopf, Asset-Art auf der Kachel, „Privat", „Global", Hinweis-Etiketten in
 Listen und Vorschlagslisten). Ein eckiges oder fettes Etikett ist ein Fehler. Selbst gebaute
-Etiketten nehmen Radius und Gewicht aus `badgeShape` (`frontend/src/shared/theme/tokens.ts`), für
-ein reines Textetikett gibt es `MetaBadge`; geprüft in `frontend/src/shared/ui/badgeShape.test.tsx`.
+Etiketten nehmen Radius, Größe (12 px, `fontSize.xs`) und Gewicht aus `badgeShape`
+(`frontend/src/shared/theme/tokens.ts`), den Umriss aus `outlinedBadgeSx`
+(`frontend/src/shared/ui/badgeStyles.ts`); für ein reines Textetikett gibt es `MetaBadge`, das
+`MuiChip` des Themes hat dieselben Werte. Passt ein Etikett nicht in eine schmale Tabellenspalte,
+bricht es um (`MetaBadge wrap`), statt abgeschnitten zu werden. Geprüft in
+`frontend/src/shared/ui/badgeShape.test.tsx` und `labels.test.ts`.
+
+**Kontrast** (2.4): `fg-2` auf der Fläche des Etiketts erreicht hell 9,21:1 (`bg-1`), 8,66:1
+(`bg-2`) und 8,19:1 (`bg-3`), dunkel 7,43:1, 6,69:1 und 6,15:1; auf überfahrenen und gewählten
+Zeilen (MUI-Hover- und Auswahltönung über `bg-1`/`bg-3`) hell mindestens 7,48:1, dunkel
+mindestens 4,86:1. Der Umriss in `border-strong` ist Schmuck, kein Erkennungsmerkmal — das Wort
+macht das Etikett erkennbar, deshalb gilt für ihn keine 3:1-Anforderung.
 
 ### 5.6 Menüs und Overlays
 
