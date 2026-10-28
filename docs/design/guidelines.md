@@ -507,7 +507,10 @@ Etiketten ebenso („Standard", die eigene Rolle, „Archiviert", „extern", �
 Bedienelementen vorbehalten (Filter-Chips, Bereichs-Chips der Chat-Eingabe). Ein **Zustand**
 (verbunden, abgelaufen, gesperrt, Index unvollständig, Stufe übersprungen, „lange offen") ist kein
 Etikett, sondern ein Punkt vor dem Wort (`StateDot`, 2.3); ein Symbol im Etikett darf die
-Signalfarbe tragen, Rahmen und Text nicht („Wird gelöscht"). Feste Wortlisten:
+Signalfarbe tragen, Rahmen und Text nicht („Wird gelöscht"). „lange offen" trägt den Ton
+`warning`, weil es einen Zustand markiert, der Aufmerksamkeit verdient, ohne etwas auszulösen
+(keine Frist, keine Erinnerung); die Farbe trägt diese Bedeutung, keine Stimmung (2.3). Feste
+Wortlisten:
 
 - **Rollen:** Leser · Bearbeiter · Verwalter · Eigentümer
 - **Sichtbarkeit:** kein Textetikett. Ein öffentliches Asset (Spezifikation: öffentlich, an alle
