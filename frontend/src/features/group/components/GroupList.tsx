@@ -102,7 +102,7 @@ function GroupNameCell({ group }: { group: GroupListResponse }) {
         )}
         {group.provider?.external && (
           <Box component="span" sx={{ flex: 'none' }}>
-            <MetaBadge accent>extern</MetaBadge>
+            <MetaBadge>extern</MetaBadge>
           </Box>
         )}
       </Stack>

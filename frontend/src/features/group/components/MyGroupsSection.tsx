@@ -19,7 +19,12 @@ import MetaBadge from '@/shared/ui/MetaBadge'
 import SectionHead from '@/shared/ui/SectionHead'
 import GroupStewardsSection from './GroupStewardsSection'
 import { PermissionTransferDialog } from '@/features/succession'
-import { UserPicker } from '@/features/principal'
+import {
+  SubjectFormRow,
+  USER_CHOICE_MISSING,
+  UserPicker,
+  useRequiredChoice,
+} from '@/features/principal'
 import { confirmGroupDeactivation } from './groupDeactivation'
 import type { GroupListResponse, UserSummary } from '@/shared/api/types'
 import { confirmAction } from '@/shared/stores/confirmStore'
@@ -48,6 +53,7 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
     },
   )
   const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null)
+  const memberChoice = useRequiredChoice(USER_CHOICE_MISSING)
   const [error, setError] = useState<string | null>(null)
 
   const name = draft.groupId === group.id ? draft.name : group.name
@@ -240,30 +246,41 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
               </Button>
             </Box>
           ))}
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} sx={{ pt: 1 }}>
-            <UserPicker
-              ariaLabel="Mitglied"
-              placeholder="Person suchen …"
-              value={selectedUser}
-              onChange={setSelectedUser}
-              excludedUserIds={members.map((member) => member.userId)}
+          <Box sx={{ pt: 1 }}>
+            <SubjectFormRow
+              picker={
+                <UserPicker
+                  ariaLabel="Person suchen"
+                  placeholder="Person suchen …"
+                  value={selectedUser}
+                  onChange={(next) => {
+                    memberChoice.clear()
+                    setSelectedUser(next)
+                  }}
+                  errorText={memberChoice.errorText}
+                  inputRef={memberChoice.inputRef}
+                  grow
+                  excludedUserIds={members.map((member) => member.userId)}
+                />
+              }
+              action={
+                // „Speichern“ above is the card's primary action.
+                <Button
+                  variant="outlined"
+                  onClick={async () => {
+                    if (!memberChoice.check(Boolean(selectedUser)) || !selectedUser) return
+                    await run(
+                      () => addMember(group.id, selectedUser.id),
+                      'Mitglied konnte nicht hinzugefügt werden',
+                    )
+                    setSelectedUser(null)
+                  }}
+                >
+                  Hinzufügen
+                </Button>
+              }
             />
-            <Button
-              variant="contained"
-              size="small"
-              disabled={!selectedUser}
-              onClick={async () => {
-                if (!selectedUser) return
-                await run(
-                  () => addMember(group.id, selectedUser.id),
-                  'Mitglied konnte nicht hinzugefügt werden',
-                )
-                setSelectedUser(null)
-              }}
-            >
-              Mitglied hinzufügen
-            </Button>
-          </Stack>
+          </Box>
         </Stack>
       </AccordionDetails>
     </Accordion>
@@ -315,7 +332,7 @@ export default function MyGroupsSection() {
             disabled={missingCapability}
             onClick={() => setCreateDialogOpen(true)}
           >
-            Neue Gruppe
+            Gruppe anlegen
           </Button>
         </Stack>
       </Stack>

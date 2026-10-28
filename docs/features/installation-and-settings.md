@@ -93,7 +93,7 @@ OPAA_INSTALLATION_ANSWER_FILE=/run/opaa/installation.json               # option
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│  OPAA einrichten                                     Schritt 3 von 9  │
+│  OPAA einrichten                                    Schritt 3 von 10  │
 │  ──────────────────────────────────────────────────────────────────  │
 │  ✓ Installations-Token        Pflicht                                │
 │  ✓ Erstes Konto               Pflicht                                │
@@ -101,6 +101,7 @@ OPAA_INSTALLATION_ANSWER_FILE=/run/opaa/installation.json               # option
 │  ○ Chat-Modell                optional · später unter Modelle        │
 │  ○ Embedding-Modell           optional · später unter Modelle        │
 │  ○ Rerank-Modell              optional · später unter Modelle        │
+│  ○ Transkriptionsmodell       optional · später unter Modelle        │
 │  ○ Ausgangsproxy              optional · später unter Anbindungen     │
 │  ○ E-Mail-Versand             optional · später unter E-Mail          │
 │  ○ Branding                   optional · später unter Branding        │
@@ -117,6 +118,7 @@ OPAA_INSTALLATION_ANSWER_FILE=/run/opaa/installation.json               # option
 | Chat-Modell | optional | Adresse, Modellname, Schlüssel, Temperatur, Antwortlänge | Verbindungstest wie in der Modellverwaltung | Modelle |
 | Embedding-Modell | optional | Adresse, Modellname, Schlüssel, Eingabegrenze | Probeeinbettung; legt die Vektordimension fest | Modelle → Embedding: Modellwechsel mit Neueinbettung, Endpunktwechsel ohne ([Wechsel des Embedding-Modells](./embedding-model-change.md)) |
 | Rerank-Modell | optional | Adresse ohne `/rerank`, Modellname, Schlüssel (Regeln der Modellverwaltung) | Adressprüfung; dieselbe Rerank-Probe wie „Verbindung testen“ der Modellverwaltung; der Abschluss schaltet das Reranking ein | Modelle → Reranking |
+| Transkriptionsmodell (nur mit `OPAA_FEATURES_SPEECH_INPUT_ENABLED`) | optional | Adresse, Modellname, Schlüssel, Sprache (Regeln der Modellverwaltung) | Probe der Modellverwaltung (`GET {Basis-Adresse}/models`, keine Aufnahme), Adressprüfung der Modelle; ohne Bestätigung der Mitbestimmung (ADR-0060, Entscheidung 16) | Modelle → Spracheingabe |
 | Ausgangsproxy | optional; Pflicht, wenn ohne ihn kein Modell erreichbar ist | Proxy-Adresse, Ausnahmeliste | Verbindungstest der Modelle über den Proxy | Anbindungen → Einstellungen |
 | E-Mail-Versand | optional | Server, Port, Verschlüsselung, Zugangsdaten, Absender (Regeln der Mail-Verwaltung) | Adressprüfung der Installation; Verbindung und Anmeldung ohne Versand, auf Wunsch Testnachricht an eine angegebene Adresse | E-Mail |
 | Branding | optional | Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe, Farbschema-Vorgabe (Regeln der Branding-Verwaltung); keine Bilder (ADR-0060, Entscheidung 15) | Regeln der Branding-Verwaltung erneut, ohne Verbindung | Branding |
@@ -157,7 +159,8 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
   Adressprüfung der Modelle (`OPAA_MODEL_TARGET_VALIDATION_*`, getrennt von der Zielprüfung der
   Quellen); ein gespeicherter Schlüssel bleibt nur
   bei unveränderter Adresse (Schema, Host, Port, Pfad).
-- Der Modellabruf der Schritte Chat-, Embedding- und Rerank-Modell ist derselbe wie in der Modellverwaltung
+- Der Modellabruf der Schritte Chat-, Embedding-, Rerank- und Transkriptionsmodell ist derselbe wie in
+  der Modellverwaltung
   (Adressprüfung der Modelle, keine Weiterleitung, Grenzen für Zeit und Antwortgröße, bei Ollama
   mit Details). Ohne Schlüssel in der Anfrage nutzt er den im Schritt gespeicherten, nur für
   dieselbe Adresse; ein leerer Schlüssel sendet keinen. Je Instanz gelten 30 Abrufe in 10 Minuten,
@@ -195,6 +198,7 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
     "model": "bge-m3"
   },
   "rerankModel": null,
+  "transcriptionModel": null,
   "outboundProxy": null,
   "mail": null,
   "branding": null
@@ -206,10 +210,11 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
   `POST /api/v1/installation/answer-file` kommen dieselben Angaben mit `password` und `apiKey` im
   Rumpf, wie in den einzelnen Schritten: Ein Dateiverweis über die API ließe den Inhaber des Tokens
   Dateien des Backends lesen (ADR-0060, Entscheidung 7).
-- `chatModel`, `embeddingModel`, `rerankModel`, `mail` und `branding` sind optional; ein fehlender
-  Teil überspringt seinen Schritt, ohne `rerankModel` bleibt das Reranking aus, ohne `mail` der
-  Versand, ohne `branding` gilt der
-  OPAA-Standard. Angaben späterer Schritte (`outboundProxy`) wertet diese Version noch nicht aus.
+- `chatModel`, `embeddingModel`, `rerankModel`, `transcriptionModel`, `mail` und `branding` sind
+  optional; ein fehlender Teil überspringt seinen Schritt, ohne `rerankModel` bleibt das Reranking
+  aus, ohne `transcriptionModel` die Spracheingabe, ohne `mail` der Versand, ohne `branding` gilt der
+  OPAA-Standard. Bei abgeschalteter Spracheingabe wird `transcriptionModel` übergangen, nicht
+  abgelehnt. Angaben späterer Schritte (`outboundProxy`) wertet diese Version noch nicht aus.
 - Beim Start mit `OPAA_INSTALLATION_ANSWER_FILE` und nicht abgeschlossener Installation liest die
   Anwendung die Datei unter dem Advisory-Lock der Startaktionen, prüft wie der Assistent und schließt
   ab. Scheitert eine Prüfung, bleibt der Installationsmodus, und das Log nennt Schritt und Grund.

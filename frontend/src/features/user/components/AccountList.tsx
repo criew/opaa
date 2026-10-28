@@ -64,7 +64,7 @@ function LocalStateCell({ user }: { user: LocalUserResponse }) {
             }
           >
             <Box component="span">
-              <MetaBadge>Passwortwechsel ausstehend</MetaBadge>
+              <MetaBadge wrap>Passwortwechsel ausstehend</MetaBadge>
             </Box>
           </Tooltip>
         </Box>
@@ -206,7 +206,7 @@ function RoleCell({ account }: { account: AccountResponse }) {
       {SYSTEM_ROLE_LABEL[account.systemRole]}
       {account.roleManagedByProvider && (
         <Box sx={{ mt: 0.5 }}>
-          <MetaBadge>Vom Anbieter geführt</MetaBadge>
+          <MetaBadge wrap>Vom Anbieter geführt</MetaBadge>
         </Box>
       )}
     </Box>

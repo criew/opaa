@@ -18,10 +18,12 @@ import { assetTypeDefinition } from '../../../shared/assetTypes'
 import { SubjectFormRow } from '@/features/principal'
 import { SubjectPicker } from '@/features/principal'
 import {
+  SUBJECT_CHOICE_MISSING,
   confirmExternalSubject,
   emptySubjectSelection,
   groupLabel,
   selectedSubjectId,
+  useRequiredChoice,
   type SubjectSelection,
 } from '@/features/principal'
 import ChatAutoCleanupField from '../components/ChatAutoCleanupField'
@@ -103,6 +105,7 @@ export default function SpaceCreatePage() {
   const [cleanupPeriods, setCleanupPeriods] = useState<ChatAutoCleanupPeriods | null>(null)
   const [pendingMembers, setPendingMembers] = useState<PendingMember[]>([])
   const [subject, setSubject] = useState<SubjectSelection>(emptySubjectSelection)
+  const choice = useRequiredChoice(SUBJECT_CHOICE_MISSING)
   const [selectedRole, setSelectedRole] = useState<SpaceRole>('MEMBER')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -137,6 +140,7 @@ export default function SpaceCreatePage() {
 
   const handleNoteMember = async () => {
     const subjectId = selectedSubjectId(subject)
+    if (!choice.check(Boolean(subjectId))) return
     if (!subjectId || subject.type === 'ALL_ACCOUNTS') return
     if (!(await confirmExternalSubject(subject))) return
     const label =
@@ -261,7 +265,12 @@ export default function SpaceCreatePage() {
               picker={
                 <SubjectPicker
                   value={subject}
-                  onChange={setSubject}
+                  onChange={(next) => {
+                    choice.clear()
+                    setSubject(next)
+                  }}
+                  errorText={choice.errorText}
+                  inputRef={choice.inputRef}
                   excludedUserIds={excludedUserIds}
                   excludedGroupIds={excludedGroupIds}
                 />
@@ -282,11 +291,7 @@ export default function SpaceCreatePage() {
                 </Select>
               }
               action={
-                <Button
-                  variant="outlined"
-                  disabled={!selectedSubjectId(subject)}
-                  onClick={() => void handleNoteMember()}
-                >
+                <Button variant="outlined" onClick={() => void handleNoteMember()}>
                   Vormerken
                 </Button>
               }
@@ -415,20 +420,34 @@ export default function SpaceCreatePage() {
         <Box
           sx={{
             display: 'flex',
+            flexWrap: 'wrap',
             alignItems: 'center',
-            gap: 1.5,
+            gap: { xs: 1, sm: 1.5 },
             mt: 4,
             pt: 2,
             borderTop: 1,
             borderColor: 'divider',
           }}
         >
-          <Button variant="text" onClick={() => void handleCancel()} disabled={submitting}>
+          <Button
+            variant="text"
+            onClick={() => void handleCancel()}
+            disabled={submitting}
+            sx={{ mr: 'auto' }}
+          >
             Abbrechen
           </Button>
-          <Box sx={{ flex: 1 }} />
           {activeStep === 1 && (
-            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+            // below 600 px the counter takes a line of its own above the buttons
+            <Typography
+              sx={{
+                fontSize: 12,
+                color: 'text.secondary',
+                order: { xs: -1, sm: 0 },
+                flexBasis: { xs: '100%', sm: 'auto' },
+                textAlign: 'right',
+              }}
+            >
               {pendingMembers.length === 1
                 ? '1 Mitglied vorgemerkt'
                 : `${pendingMembers.length} Mitglieder vorgemerkt`}

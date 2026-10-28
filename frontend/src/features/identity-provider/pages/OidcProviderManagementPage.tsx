@@ -132,7 +132,7 @@ export default function OidcProviderManagementPage() {
                 onClick={openCreateDialog}
                 sx={{ mt: 2 }}
               >
-                Anbieter anlegen
+                Neuer Anbieter
               </Button>
             </Box>
           ) : (

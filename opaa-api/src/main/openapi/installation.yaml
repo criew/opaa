@@ -48,8 +48,9 @@ paths:
         Saves the values of one step; the part of the body named after the step is required, the
         other parts are ignored. Network, budget and token are checked before the body is read;
         a body above 64 KiB is unreadable (400). Saving discards an earlier check of the step. A password is stored
-        only as a hash, a model key only encrypted. Same token and network rules as
-        getInstallation.
+        only as a hash, a model key only encrypted. TRANSCRIPTION_MODEL exists only while
+        OPAA_FEATURES_SPEECH_INPUT_ENABLED is on, otherwise every operation on it answers 400.
+        Same token and network rules as getInstallation.
       requestBody:
         required: true
         content:
@@ -89,7 +90,9 @@ paths:
         Runs the check of a saved step: the rules of the first account, the connection test of the
         identity provider (discovery and JWK set) or of the chat model, the probe embedding of the
         embedding model, which also determines its vector size, for RERANK_MODEL the probe of the
-        rerank model administration (one rerank request with a test document), or for MAIL a connection to the
+        rerank model administration (one rerank request with a test document), for
+        TRANSCRIPTION_MODEL the probe of the transcription model administration (GET
+        {baseUrl}/models, no audio), or for MAIL a connection to the
         mail server with sign-in when a user name is set, without sending anything. A failed MAIL
         check names one of four fixed reasons (not reachable, TLS failed, sign-in refused, no mail
         server), the cause goes to the log only. BRANDING is checked against the rules of the
@@ -144,7 +147,8 @@ paths:
       summary: >
         Skips an optional step (400 for a mandatory one): discards its saved values and their
         check, so the completion leaves what the step would set as it is - for CHAT_MODEL and
-        EMBEDDING_MODEL, no model is set up, for RERANK_MODEL, reranking stays off, for MAIL,
+        EMBEDDING_MODEL, no model is set up, for RERANK_MODEL, reranking stays off, for
+        TRANSCRIPTION_MODEL, speech input stays off, for MAIL,
         sending stays off, for BRANDING, the OPAA
         default stays. A skipped step does not
         hold up the completion; a saved optional step does until its check succeeded or it is
@@ -184,8 +188,8 @@ paths:
       tags: [installation]
       security: []
       summary: >
-        Lists the models an endpoint offers, for the steps CHAT_MODEL, EMBEDDING_MODEL and
-        RERANK_MODEL (400 for any other step), so the assistant can offer them for selection. Same discovery as
+        Lists the models an endpoint offers, for the steps CHAT_MODEL, EMBEDDING_MODEL,
+        RERANK_MODEL and TRANSCRIPTION_MODEL (400 for any other step), so the assistant can offer them for selection. Same discovery as
         discoverLlmModels: the address check of models, no redirects, a short timeout and a bounded
         response size, details from Ollama on the same origin; a refused address answers with
         failure INVALID_ADDRESS. Nothing is saved, and the step's check stays as it is. apiKey
@@ -233,8 +237,9 @@ paths:
         Installs without a browser: saves every step of the answers, checks each of them and
         completes the installation, all or nothing - the same checks as the file read at start-up
         from OPAA_INSTALLATION_ANSWER_FILE, which names its secrets as files instead. chatModel,
-        embeddingModel, rerankModel, mail and branding are optional; an optional part left out counts as
-        skipped and discards what the assistant saved for it. The check of mail sends no test message and
+        embeddingModel, rerankModel, transcriptionModel, mail and branding are optional; an optional
+        part left out counts as skipped and discards what the assistant saved for it.
+        transcriptionModel is ignored while OPAA_FEATURES_SPEECH_INPUT_ENABLED is off. The check of mail sends no test message and
         counts against the budget of MAIL checks (429 with code MAIL_CHECK_LIMIT). Same token and
         network rules as getInstallation.
       requestBody:
@@ -281,12 +286,14 @@ paths:
         instances: creates the first system administration account, the sign-in method, the chat
         model and the embedding model with the vector table of its probed size from the checked
         steps, takes a checked RERANK_MODEL step over into the rerank model administration and
-        switches reranking on, takes a checked MAIL step over into the mail settings and switches sending on,
+        switches reranking on, switches the transcription model role on with a checked
+        TRANSCRIPTION_MODEL step through the write path of the model administration, takes a
+        checked MAIL step over into the mail settings and switches sending on,
         takes a checked BRANDING step over into the branding settings with the rules of the
         branding administration, discards the token and the saved steps and switches every instance to normal operation. A
         skipped optional step leaves what it would set out: without the embedding model there is
         no vector table until the model administration sets the first one, without the rerank model
-        reranking stays off. Same token and network
+        reranking stays off, without the transcription model speech input. Same token and network
         rules as getInstallation.
       responses:
         "200":
@@ -339,10 +346,21 @@ components:
         A step of the installation. FIRST_ADMIN is the first system administration account (the
         local emergency account of ADR-0033) and SIGN_IN the sign-in method are mandatory;
         CHAT_MODEL the chat model, EMBEDDING_MODEL the embedding model, RERANK_MODEL the rerank
-        model (ADR-0060, Entscheidung 10), MAIL, the mail server for sending (ADR-0033,
-        Entscheidung 10), and BRANDING, the texts, accent colour and colour scheme of the branding
-        without its images, are optional.
-      enum: [FIRST_ADMIN, SIGN_IN, CHAT_MODEL, EMBEDDING_MODEL, RERANK_MODEL, MAIL, BRANDING]
+        model (ADR-0060, Entscheidung 10), TRANSCRIPTION_MODEL the transcription model of speech
+        input (Entscheidung 16), MAIL, the mail server for sending (ADR-0033, Entscheidung 10), and
+        BRANDING, the texts, accent colour and colour scheme of the branding without its images, are
+        optional. TRANSCRIPTION_MODEL is listed only while OPAA_FEATURES_SPEECH_INPUT_ENABLED is on.
+      enum:
+        [
+          FIRST_ADMIN,
+          SIGN_IN,
+          CHAT_MODEL,
+          EMBEDDING_MODEL,
+          RERANK_MODEL,
+          TRANSCRIPTION_MODEL,
+          MAIL,
+          BRANDING,
+        ]
 
     InstallationSignInMode:
       type: string
@@ -403,6 +421,8 @@ components:
           $ref: "#/components/schemas/InstallationEmbeddingModelView"
         rerankModel:
           $ref: "#/components/schemas/InstallationRerankModelView"
+        transcriptionModel:
+          $ref: "#/components/schemas/InstallationTranscriptionModelView"
         mail:
           $ref: "#/components/schemas/InstallationMailView"
         branding:
@@ -422,6 +442,8 @@ components:
           $ref: "#/components/schemas/InstallationEmbeddingModel"
         rerankModel:
           $ref: "#/components/schemas/InstallationRerankModel"
+        transcriptionModel:
+          $ref: "#/components/schemas/InstallationTranscriptionModel"
         mail:
           $ref: "#/components/schemas/InstallationMail"
         branding:
@@ -616,6 +638,51 @@ components:
         apiKeySet:
           type: boolean
 
+    InstallationTranscriptionModel:
+      type: object
+      description: >
+        The transcription model of speech input, with the rules of updateTranscriptionModelSettings;
+        the completion switches the role on with it. Unlike there, the address must pass the
+        address check of models even if the model administration stored it before.
+      required: [baseUrl, model]
+      properties:
+        baseUrl:
+          type: string
+          maxLength: 500
+          description: Without the path /audio/transcriptions and without userinfo.
+          example: http://speaches:8000/v1
+        model:
+          type: string
+          maxLength: 200
+          example: Systran/faster-whisper-large-v3
+        apiKey:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: Stored encrypted; omitted keeps a key saved before, empty removes it.
+        language:
+          type: string
+          nullable: true
+          maxLength: 8
+          description: >
+            Two-letter ISO-639-1 code; an empty string lets the model detect the language, omitted
+            means de.
+          example: de
+
+    InstallationTranscriptionModelView:
+      type: object
+      required: [baseUrl, model, apiKeySet, language]
+      properties:
+        baseUrl:
+          type: string
+        model:
+          type: string
+        apiKeySet:
+          type: boolean
+        language:
+          type: string
+          description: The language passed to the model; empty lets the model detect it.
+
     InstallationModelDiscoveryRequest:
       type: object
       description: The endpoint of a model step whose models are to be listed; nothing is saved.
@@ -644,8 +711,10 @@ components:
         Over this API the secrets travel in the body, as in the single steps; a reference to a file
         on the backend (passwordFile, apiKeyFile) is accepted only in the file read at start-up, so
         that the API cannot read files of the backend. chatModel, embeddingModel, rerankModel, mail
-        and branding are optional; without one its step is skipped, without rerankModel reranking
-        stays off, without mail sending stays off,
+        and branding are optional, and so is transcriptionModel; without one its step is skipped,
+        without rerankModel reranking stays off, without transcriptionModel speech input stays off
+        (transcriptionModel is accepted but ignored while OPAA_FEATURES_SPEECH_INPUT_ENABLED is
+        off), without mail sending stays off,
         without branding the OPAA default stays. Parts of later steps (outboundProxy) are not
         evaluated by this version.
       required: [firstAdmin, signIn]
@@ -660,6 +729,8 @@ components:
           $ref: "#/components/schemas/InstallationEmbeddingModel"
         rerankModel:
           $ref: "#/components/schemas/InstallationRerankModel"
+        transcriptionModel:
+          $ref: "#/components/schemas/InstallationTranscriptionModel"
         mail:
           $ref: "#/components/schemas/InstallationMail"
         branding:

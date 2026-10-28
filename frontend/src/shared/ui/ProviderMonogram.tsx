@@ -22,8 +22,8 @@ interface ProviderMonogramProps {
 
 /**
  * Monogram tile of an identity provider - the same mark on the sign-in page and in the provider
- * management, so what an administrator configures is what a user recognises. Accent-derived like
- * GlobalBadge (10 % surface, 40 % border), so a branding override recolours it with the rest of
+ * management, so what an administrator configures is what a user recognises. Accent-derived (10 %
+ * surface, 40 % border), so a branding override recolours it with the rest of
  * the app. Decorative: the provider's name always stands right next to it.
  */
 export default function ProviderMonogram({

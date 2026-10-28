@@ -41,6 +41,21 @@ export default defineConfig([
       'max-lines': ['warn', { max: 800, skipBlankLines: false, skipComments: false }],
     },
   },
+  // Guidelines 5.5: no chip in a signal colour - a state is a dot before its word (StateDot).
+  {
+    files: ['src/**/*.tsx'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "JSXOpeningElement[name.name='Chip'] > JSXAttribute[name.name='color'] Literal[value=/^(warning|error|success)$/]",
+          message:
+            'No chip in a signal colour (guidelines 5.5): a state is a StateDot, a label stays neutral.',
+        },
+      ],
+    },
+  },
   // Theme boundaries; rules in frontend/AGENTS.md.
   themeBoundaries,
   eslintConfigPrettier,

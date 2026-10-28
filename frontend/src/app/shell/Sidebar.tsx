@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
 import List from '@mui/material/List'
@@ -28,6 +27,7 @@ import SidebarResizeHandle from './SidebarResizeHandle'
 import { rememberSpaceUse, spacesByRecentUse, useRecentSpaceIds } from '@/features/space'
 import { darkRoles, fontFamily, lightRoles, shadow } from '@/shared/theme/tokens'
 import { spaceMembershipLabel } from '@/features/asset'
+import MetaBadge from '@/shared/ui/MetaBadge'
 
 const SIDEBAR_WIDTH = SIDEBAR_DEFAULT_WIDTH
 
@@ -87,7 +87,7 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
   const recentSpaceIds = useRecentSpaceIds()
 
   // The menu stays short - the most recently used spaces, so that „Alle Spaces anzeigen" and
-  // „Neuen Space anlegen" below stay visible even when someone is a member of thirty spaces.
+  // „Neuer Space" below stay visible even when someone is a member of thirty spaces.
   // The whole set is in the overview. The order comes in as state, not
   // as a read: otherwise this value would be computed before the effect above, and a space opened
   // via „Alle Spaces" would only appear in the menu after a reload.
@@ -218,7 +218,11 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
                   },
                 }}
               />
-              {space.archived && <Chip label="Archiviert" size="small" sx={{ ml: 1 }} />}
+              {space.archived && (
+                <Box component="span" sx={{ ml: 1 }}>
+                  <MetaBadge>Archiviert</MetaBadge>
+                </Box>
+              )}
               {space.id === activeChatSpaceId && (
                 <CheckIcon sx={{ ml: 1, fontSize: 15, color: 'primary.main' }} />
               )}
@@ -243,7 +247,7 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
             sx={{ fontWeight: 500, color: 'primary.main' }}
           >
             <AddIcon sx={{ fontSize: 15, mr: 1 }} />
-            Neuen Space anlegen
+            Neuer Space
           </MenuItem>
         </Menu>
       </Box>

@@ -158,10 +158,9 @@ andere Rolle.
 - **Der globale Verwaltungsrahmen** (#787, Mockup 2b) nutzt ausschließlich die Rollen aus 2.2:
   Sekundärspalte auf `bg-2`, Aktivkarte auf `bg-1` mit `border-strong`-Rahmen. Auch hier liegt
   die Zustandsfläche unter 3:1 — getragen wird der Zustand wie bei der Rail über Textfarbe,
-  Schriftgewicht und `aria-current`. Das **„Global"-Badge** leitet sich mit 10 % (Fläche) und
-  40 % (Rahmen) aus dem Akzent ab und folgt damit einem
-  Branding-Override; der Geltungsbereich steht immer als sichtbarer Text im Chip, nie nur als
-  Farbe.
+  Schriftgewicht und `aria-current`. Das **„Global"-Badge** ist ein Etikett wie jedes andere
+  (5.5): Umriss in `border-strong`, Text in `fg-2`; der Geltungsbereich steht als sichtbares Wort,
+  nie als Farbe.
 - **Akzent ist austauschbar.** Die Branding-Konfiguration (Issues #582/#583) darf `accent`
   ersetzen. Deshalb darf keine Komponente sich auf „Blau" verlassen (z. B. Blau hart mit einem
   Icon mischen) — sie verlässt sich auf die Rolle.
@@ -371,14 +370,37 @@ ein neues Objekt anlegt — tragen das Plus-Icon (`Add`) als `startIcon` vor der
 die Beschriftung nennt das Objekt: „Konto anlegen", „Gruppe anlegen", „Neuer Space", „Neues
 Modell", „Neuer Katalogeintrag". Ein bloßes „Neu" oder „Anlegen" genügt nicht; das Icon ist Zierde
 und ersetzt die Beschriftung nicht. Folgt eine Typwahl, nennt die Beschriftung den Oberbegriff.
-Ausgenommen ist die kompakte Aktion „Neu" im Abschnittskopf „Chats" der Seitenleiste; ihr
-zugänglicher Name nennt das Objekt („Neu: Chat beginnen").
+Je Objekt gibt es eine Beschriftung: Seitenkopf, Leerzustand und Menüeinträge wie der
+Space-Umschalter der Seitenleiste tragen denselben Text („Neuer Space", „Gruppe anlegen", „Neuer
+Anbieter"). Ausgenommen sind die Köpfe „Spaces" und „Chats" der Seitenleiste des Space: Dort steht
+das Plus als Nur-Icon-Knopf, dessen zugänglicher Name das Objekt nennt („Neuer Space", „Neuer
+Chat"; 5.13).
 
 **Hinzufügen in einem Abschnitt.** Fügt eine Aktion einem bestehenden Objekt etwas hinzu
 (Freigabe, Zuordnung, Feld, Ordner), steht sie als Textaktion rechts im Abschnittskopf der
 Detailseite (`DetailSection` mit `TextAction`): ohne Plus-Icon, als Verb mit Objekt, wo das Verb
 allein nicht eindeutig ist („Freigeben", „In Space verwenden", „Feld anlegen"). Je Abschnitt gibt es
-höchstens eine.
+höchstens eine. Ergänzt die Aktion eine Liste innerhalb einer Zeile („Wert ergänzen"), ist sie
+ebenfalls eine `TextAction`. Eine Aktion, die den Zustand eines Hinweises behebt („Zugang
+zuordnen"), bleibt die Aktion dieses Hinweises.
+
+**Personen und Gruppen hinzufügen.** Die Schaltfläche der Formularzeile aus 5.2 heißt
+„Hinzufügen" — in den Space-Mitgliedern, in „Meine Gruppen" und im Mitgliederdialog der
+Gruppenverwaltung. Fachlich begründet sind drei andere Verben:
+
+- „Vormerken" im Assistenten (Space, Wissens- und Prompt-Bibliothek): Gespeichert wird erst mit dem
+  Anlegen.
+- „Freigeben" an einem bestehenden Arbeitsmittel: Die Handlung erteilt eine Berechtigung mit Rolle
+  und Befristung, keine Mitgliedschaft.
+- „Als verantwortlich benennen" bei internen Gruppen: Verantwortliche werden nicht Mitglied.
+
+Die Schaltfläche bleibt ohne Auswahl aktiv (Prüfliste P28). Fehlt die Auswahl, steht „Bitte eine
+Person oder Gruppe auswählen." (bzw. „Bitte eine Person auswählen.") am Suchfeld, und der Fokus geht
+hinein. Primär ist sie nur, wo sie die einzige Handlung der Fläche ist (Space-Mitglieder,
+Mitgliederdialog); im Assistenten, bei den Verantwortlichen und neben „Speichern" ist sie
+sekundär. Eine eigene Überschrift „Mitglied hinzufügen" trägt die Zeile nur, wo sonst keine
+Überschrift sie gliedert (Reiter „Mitglieder", 5.12); unter einer Liste mit eigener Überschrift
+(„Mitglieder" in „Meine Gruppen") gehört sie zu dieser.
 
 **Link oder Schaltfläche.** Was an einen anderen Ort führt, ist im Code ein Link (`href` oder
 Router-Link). Was auf der Seite etwas auslöst (Dialog öffnen, speichern, starten, abbrechen), ist
@@ -414,7 +436,8 @@ die Gruppe eines externen Anbieters trägt ein eigenes Warnsymbol. „Alle Konte
 es diesen Empfänger gibt (Freigaben an einem bestehenden Asset), als eigener Eintrag mit
 Welt-Symbol. Das Formular dazu steht in einer Zeile: Suche (breit), Rolle (schmal), Schaltfläche in
 normaler Breite (`SubjectFormRow`); unter 600 px steht die Suche allein oben, Rolle und
-Schaltfläche darunter.
+Schaltfläche darunter. Dieselbe Zeile gilt, wo nur Personen in Frage kommen (`UserPicker`,
+Platzhalter „Person suchen …") und die Rolle entfällt: Mitglieder und Verantwortliche einer Gruppe.
 
 ### 5.3 Tabellen
 
@@ -477,7 +500,14 @@ erscheint nie.
 ### 5.5 Chips und Etiketten
 
 Pill-Radius, 12 px, Gewicht 500, dezent — Umriss (`border-strong` + `fg-2`) oder stille
-Tintfläche (`bg-3`), **keine Signalfarben**. Feste Wortlisten:
+Tintfläche (`bg-3`), **keine Signalfarben und kein Akzent**: weder `danger`/`error`, `warning` noch
+`success` und auch nicht `accent` als Fläche, Rahmen oder Text. Das gilt für hervorgehobene
+Etiketten ebenso („Standard", die eigene Rolle, „Archiviert", „extern", „Sicherheitsrelevant",
+„Global", „Alle Konten"): Die Bedeutung trägt das Wort. Akzentfarbene Chips bleiben
+Bedienelementen vorbehalten (Filter-Chips, Bereichs-Chips der Chat-Eingabe). Ein **Zustand**
+(verbunden, abgelaufen, gesperrt, Index unvollständig, Stufe übersprungen) ist kein Etikett,
+sondern ein Punkt vor dem Wort (`StateDot`, 2.3); ein Symbol im Etikett darf die Signalfarbe
+tragen, Rahmen und Text nicht („Wird gelöscht"). Feste Wortlisten:
 
 - **Rollen:** Leser · Bearbeiter · Verwalter · Eigentümer
 - **Sichtbarkeit:** kein Textetikett. Ein öffentliches Asset (Spezifikation: öffentlich, an alle
@@ -500,8 +530,23 @@ farbiger Chip.
 **Ein Etikett, eine Form.** Die Regel gilt für jedes Etikett, ob MUI-`Chip` oder selbst gebaut
 (Rolle in Tabelle und Kopf, Asset-Art auf der Kachel, „Privat", „Global", Hinweis-Etiketten in
 Listen und Vorschlagslisten). Ein eckiges oder fettes Etikett ist ein Fehler. Selbst gebaute
-Etiketten nehmen Radius und Gewicht aus `badgeShape` (`frontend/src/shared/theme/tokens.ts`), für
-ein reines Textetikett gibt es `MetaBadge`; geprüft in `frontend/src/shared/ui/badgeShape.test.tsx`.
+Etiketten nehmen Radius, Größe (12 px, `fontSize.xs`) und Gewicht aus `badgeShape`
+(`frontend/src/shared/theme/tokens.ts`), den Umriss aus `outlinedBadgeSx`
+(`frontend/src/shared/ui/badgeStyles.ts`); für ein reines Textetikett gibt es `MetaBadge`, das
+`MuiChip` des Themes hat dieselben Werte. Passt ein Etikett nicht in eine schmale Tabellenspalte,
+bricht es um (`MetaBadge wrap`), statt abgeschnitten zu werden. Geprüft in
+`frontend/src/shared/ui/badgeShape.test.tsx` und `labels.test.ts`.
+
+**Kontrast** (2.4): `fg-2` auf der Fläche des Etiketts erreicht hell 9,21:1 (`bg-1`), 8,66:1
+(`bg-2`) und 8,19:1 (`bg-3`), dunkel 7,43:1, 6,69:1 und 6,15:1. Auf den Flächen, auf denen
+Etiketten tatsächlich stehen: überfahrene Tabellenzeile (`bg-2`) wie oben; MUI-Hovertönung über
+`bg-1` hell 8,45:1, dunkel 6,28:1, über `bg-3` hell 7,48:1, dunkel 4,86:1; Akzent-Auswahltönung
+von `ListItemButton` und `MenuItem` über `bg-1` hell 8,22:1, dunkel 6,27:1, gewählt und
+überfahren hell 7,81:1, dunkel 5,51:1. Ausgenommen ist die Auswahltönung über `bg-3` (gewählt
+und überfahren dunkel nur 4,37:1, neutrales `action.selected` 3,70:1): Dort steht kein Etikett;
+wer eins dorthin setzt, weist den Kontrast im PR nach. Der Umriss in `border-strong` ist Schmuck,
+kein Erkennungsmerkmal — das Wort macht das Etikett erkennbar, deshalb gilt für ihn keine
+3:1-Anforderung.
 
 ### 5.6 Menüs und Overlays
 
@@ -765,6 +810,62 @@ es nichts weiter zu gliedern gibt.
 **Einzelwerte als Wertzeile.** Ein einzelner Wert mit höchstens einer Handlung steht als Zeile
 „Titel · Wert · Textaktion" (etwa „Zuständig · Referat 21 · Ändern"), nicht als Abschnitt mit
 eigener Überschrift. Die Textaktion steht als Textlink an der rechten Kante (Prüfliste P45, P48).
+
+### 5.13 Seitenleiste des Space
+
+Entschieden in #3266 (Prototyp #3280, Variante B). Ab dem Breakpoint `md` (900 px, `AppShell`)
+steht die Seitenleiste fest als Spalte, darunter öffnet sie als Schublade.
+
+**Space-Liste nur in der festen Spalte.** Spaces-Bereich und Space-Zeilen gelten nur, solange die
+Seitenleiste fest steht. In der Schublade bleibt der Space-Wechsel das Space-Menü
+(Space-Umschalter, Menü-Knopf nach 5.6): Dort ist die Höhe knapp, fünf Space-Zeilen nähmen den
+Chats zu viel weg. Für die Schublade gilt außerdem:
+
+- Plus und Lupe im Kopf „Chats" wie in der Spalte;
+- Zähler in den Köpfen „Angeheftet" und „Zuletzt verwendet";
+- die Suche öffnet im Inhaltsbereich, auch „Alle Spaces anzeigen" aus dem Space-Menü.
+
+**Zwei Bereiche, die Chats scrollen.** Oben steht der Bereich **Spaces**, darunter, durch eine
+Trennlinie abgesetzt, der Bereich **Chats**. Der Spaces-Bereich nimmt höchstens knapp die Hälfte
+der Spaltenhöhe ein und scrollt nur in sich, wenn diese Höhe für seine Zeilen nicht reicht; die
+Chats sind die einzige Fläche, die im Normalfall scrollt. So bleibt der Space-Kontext sichtbar,
+wie weit man in den Chats auch scrollt.
+
+**Spaces als Zeilen statt Menü.** Der Spaces-Bereich zeigt bis zu fünf Spaces als Zeilen
+(Kürzelkästchen und Name). Ausgewählt werden die zuletzt genutzten, aufgefüllt in Listenreihenfolge;
+angezeigt werden sie in fester Reihenfolge, privater Bereich zuerst, dann nach Name, damit eine
+angeklickte Zeile nicht unter dem Zeiger springt. Der aktive Space ist immer dabei, trägt
+`aria-current` und ist der Aktiveintrag nach 2.3 (`bg-1`, `border-strong`). Ein archivierter Space
+erscheint nur, wenn er zuletzt genutzt wurde, mit dem Hinweis „archiviert". Alle weiteren Spaces
+erreicht man über die Lupe im Kopf. Eine Zeile führt in einen neuen Chat des Space, bei einem
+archivierten Space auf seine Übersicht.
+
+**Gleichrangige, zuklappbare Gruppenköpfe mit Zählern.** Die Köpfe „Spaces", „Angeheftet" und
+„Zuletzt verwendet" sind Disclosure-Köpfe mit Chevron, `aria-expanded` und `aria-controls`. Der
+Klappzustand bleibt im Browser gespeichert, wie die Spaltenbreite. Ist „Spaces" zugeklappt, bleibt
+die Zeile des aktiven Space sichtbar. Jeder dieser Köpfe trägt einen Zähler als Text hinter der
+Beschriftung („Angeheftet 8"), kein abweichendes `aria-label`, damit sichtbarer und zugänglicher
+Name übereinstimmen. Der Zähler nennt die ganze Gruppe: bei „Spaces" die nicht archivierten Spaces
+der Person, bei „Zuletzt verwendet" auch die Chats, die erst „… weitere" aufdeckt.
+
+**Ein Aktionsmuster für beide Bereiche.** Die Köpfe „Spaces" und „Chats" tragen rechts dasselbe
+Paar aus Nur-Icon-Knöpfen nach 5.1 (`aria-label` und Tooltip): Plus („Neuer Space", „Neuer Chat")
+und Lupe („Alle Spaces anzeigen und durchsuchen", „Chats durchsuchen"). Das Plus ist die in 5.1
+genannte Ausnahme von den Anlege-Knöpfen; sein Name ist derselbe wie überall sonst für das Objekt.
+Kein Text „Neu", keine umrandete Schaltfläche „Neuer Chat". In einem archivierten Space ist das
+Plus der Chats gesperrt, der Tooltip nennt den Grund.
+
+**Die Suche öffnet im Inhaltsbereich.** Beide Lupen öffnen ihre Suche im Inhaltsbereich; die
+Seitenleiste mit Spaces und Chats bleibt dabei stehen. Die Space-Suche ersetzt die Seitenleiste
+nicht durch die Spalte eines globalen Bereichs.
+
+**Der Rail-Eintrag heißt „Chat".** Der Eintrag der globalen Leiste, der zu dieser Seitenleiste
+führt, heißt „Chat" (Singular) und trägt ein Sprechblasen-Icon; die Leiste lautet damit
+Chat · Katalog · Admin (für Prüfende „Revision" statt „Admin"). Er ist für `/spaces` und `/chat`
+aktiv und führt auf `/chat`, nicht auf die Space-Übersicht: Das öffnet einen neuen Chat im zuletzt
+genutzten nicht archivierten Space, ohne einen solchen im privaten Bereich. Die Übersicht erreicht
+man in der Spalte über die Lupe im Kopf „Spaces", in der Schublade über „Alle Spaces anzeigen" im
+Space-Menü.
 
 ---
 

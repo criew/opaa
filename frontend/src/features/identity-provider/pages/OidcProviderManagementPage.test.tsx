@@ -528,6 +528,17 @@ describe('OidcProviderManagementPage', () => {
     expect(await screen.findByText(/erst im OIDC-Modus/)).toBeInTheDocument()
   })
 
+  // One create label per object: the empty state repeats the label of the page head.
+  it('offers „Neuer Anbieter“ in the empty state as in the page head', async () => {
+    signInAs('SYSTEM_ADMIN')
+    server.use(http.get('/api/v1/admin/oidc-providers', () => HttpResponse.json([])))
+    renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
+
+    expect(await screen.findByText(/Ohne Anbieter gibt es keine Anmeldeseite/)).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Neuer Anbieter' })).toHaveLength(2)
+    expect(screen.queryByRole('button', { name: 'Anbieter anlegen' })).not.toBeInTheDocument()
+  })
+
   it('shows the load error', async () => {
     signInAs('SYSTEM_ADMIN')
     server.use(

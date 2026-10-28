@@ -4,7 +4,12 @@ import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import SectionHead from '@/shared/ui/SectionHead'
-import { UserPicker } from '@/features/principal'
+import {
+  SubjectFormRow,
+  USER_CHOICE_MISSING,
+  UserPicker,
+  useRequiredChoice,
+} from '@/features/principal'
 import type { UserSummary } from '@/shared/api/types'
 
 interface InitialStewardsSectionProps {
@@ -33,9 +38,10 @@ export default function InitialStewardsSection({
   canRemoveSelf,
 }: InitialStewardsSectionProps) {
   const [selected, setSelected] = useState<UserSummary | null>(null)
+  const choice = useRequiredChoice(USER_CHOICE_MISSING)
 
   function add() {
-    if (!selected) return
+    if (!choice.check(Boolean(selected)) || !selected) return
     onChange([...stewards, selected])
     setSelected(null)
   }
@@ -79,29 +85,30 @@ export default function InitialStewardsSection({
             </Box>
           )
         })}
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          spacing={1}
-          sx={{ pt: 1, alignItems: { md: 'center' } }}
-        >
-          <UserPicker
-            ariaLabel="Verantwortliche Person"
-            placeholder="Person suchen …"
-            value={selected}
-            onChange={setSelected}
-            grow
-            excludedUserIds={stewards.map((steward) => steward.id)}
+        <Box sx={{ pt: 1 }}>
+          <SubjectFormRow
+            picker={
+              <UserPicker
+                ariaLabel="Verantwortliche Person"
+                placeholder="Person suchen …"
+                value={selected}
+                onChange={(next) => {
+                  choice.clear()
+                  setSelected(next)
+                }}
+                errorText={choice.errorText}
+                inputRef={choice.inputRef}
+                grow
+                excludedUserIds={stewards.map((steward) => steward.id)}
+              />
+            }
+            action={
+              <Button variant="outlined" onClick={add}>
+                Als verantwortlich benennen
+              </Button>
+            }
           />
-          <Button
-            sx={{ flexShrink: 0 }}
-            variant="outlined"
-            size="small"
-            disabled={!selected}
-            onClick={add}
-          >
-            Als verantwortlich benennen
-          </Button>
-        </Stack>
+        </Box>
       </Stack>
     </Box>
   )

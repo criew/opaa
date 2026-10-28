@@ -10,6 +10,7 @@ import io.opaa.auth.OidcClaimMapping;
 import io.opaa.auth.UserRepository;
 import io.opaa.branding.BrandingSettingsService;
 import io.opaa.common.ConflictException;
+import io.opaa.common.FeatureFlags;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.TooManyRequestsException;
@@ -115,6 +116,7 @@ public class InstallationService {
   private final ModelRoleAdministration modelRoles;
   private final MailSettingsService mailSettings;
   private final BrandingSettingsService brandingSettings;
+  private final FeatureFlags features;
   private final AuditEventRecorder audit;
   private final UserRepository users;
   private final DatabaseInstallationStatus status;
@@ -138,6 +140,7 @@ public class InstallationService {
       ModelRoleAdministration modelRoles,
       MailSettingsService mailSettings,
       BrandingSettingsService brandingSettings,
+      FeatureFlags features,
       AuditEventRecorder audit,
       UserRepository users,
       DatabaseInstallationStatus status,
@@ -155,6 +158,7 @@ public class InstallationService {
     this.modelRoles = modelRoles;
     this.mailSettings = mailSettings;
     this.brandingSettings = brandingSettings;
+    this.features = features;
     this.audit = audit;
     this.users = users;
     this.status = status;
@@ -187,6 +191,7 @@ public class InstallationService {
   /** Saves the values of one step and discards an earlier check of it. */
   @Transactional
   public InstallationOverview.StepState save(StepInput input) {
+    requireOffered(input.step());
     lockPending();
     return state(saveLocked(input));
   }
@@ -207,6 +212,7 @@ public class InstallationService {
    * @throws TooManyRequestsException past the budget of test messages
    */
   public InstallationOverview.StepState check(InstallationStep step, String testRecipient) {
+    requireOffered(step);
     String recipient = testRecipient(step, testRecipient);
     Saved saved =
         transactions.execute(
@@ -254,6 +260,7 @@ public class InstallationService {
     if (step.isMandatory()) {
       throw new ValidationException("Ein Pflichtschritt lässt sich nicht überspringen.");
     }
+    requireOffered(step);
     lockPending();
     discardLocked(step);
     return unsavedState(step);
@@ -261,7 +268,8 @@ public class InstallationService {
 
   /**
    * Completes the installation from its checked steps; a skipped optional step leaves its model
-   * out, a skipped rerank step leaves reranking off.
+   * out, a skipped rerank step leaves reranking off, a skipped transcription step speech input. A
+   * step saved while its feature was on and offered no longer is left out as well.
    *
    * @throws ConflictException when a mandatory step is not saved or not successfully checked, or an
    *     optional step is saved but not successfully checked
@@ -278,7 +286,8 @@ public class InstallationService {
    *
    * @throws ConflictException naming the step whose check failed; nothing is saved then
    */
-  public InstallationOverview applyAnswers(List<StepInput> inputs, CompletionSource source) {
+  public InstallationOverview applyAnswers(List<StepInput> answers, CompletionSource source) {
+    List<StepInput> inputs = offeredAnswers(answers);
     if (inputs.stream().anyMatch(input -> input.step() == InstallationStep.MAIL)) {
       acquireMailCheck();
     }
@@ -322,11 +331,11 @@ public class InstallationService {
    * {@link #applyAnswers} for the start: an installation another instance completed meanwhile is
    * success, not an error. Returns whether this call completed it.
    */
-  public boolean applyAnswersAtStartup(List<StepInput> inputs) {
+  public boolean applyAnswersAtStartup(List<StepInput> answers) {
     if (Boolean.TRUE.equals(transactions.execute(status -> states.isCompleted()))) {
       return false;
     }
-    List<Checked> checked = checkAnswers(inputs);
+    List<Checked> checked = checkAnswers(offeredAnswers(answers));
     return Boolean.TRUE.equals(
         transactions.execute(
             status -> {
@@ -338,6 +347,47 @@ public class InstallationService {
               completeLocked(state, CompletionSource.ANSWER_FILE_STARTUP);
               return true;
             }));
+  }
+
+  /**
+   * The steps this installation offers, in their order ({@link InstallationStep#isOfferedWith}).
+   */
+  private List<InstallationStep> offeredSteps() {
+    return Arrays.stream(InstallationStep.values())
+        .filter(step -> step.isOfferedWith(features))
+        .toList();
+  }
+
+  /**
+   * @throws ValidationException for a step of a switched-off feature
+   */
+  private void requireOffered(InstallationStep step) {
+    if (!step.isOfferedWith(features)) {
+      throw new ValidationException(notOffered(step));
+    }
+  }
+
+  static String notOffered(InstallationStep step) {
+    return "Den Schritt "
+        + step.name()
+        + " gibt es in dieser Installation nicht: Die Spracheingabe ist im Betrieb abgeschaltet"
+        + " (OPAA_FEATURES_SPEECH_INPUT_ENABLED).";
+  }
+
+  /** The answers without the parts of a switched-off feature, which are ignored, not refused. */
+  private List<StepInput> offeredAnswers(List<StepInput> answers) {
+    List<StepInput> offered =
+        answers.stream().filter(input -> input.step().isOfferedWith(features)).toList();
+    if (offered.size() < answers.size()) {
+      log.info(
+          "The answers name steps this installation does not offer; they are ignored: {}",
+          answers.stream()
+              .map(StepInput::step)
+              .filter(step -> !step.isOfferedWith(features))
+              .map(Enum::name)
+              .toList());
+    }
+    return offered;
   }
 
   /** The values of a saved step as a check read them. */
@@ -450,7 +500,7 @@ public class InstallationService {
       answered.add(answer.step());
       recordOutcome(storeLocked(answer.step(), answer.stored()), answer.outcome(), false);
     }
-    Arrays.stream(InstallationStep.values())
+    offeredSteps().stream()
         .filter(step -> !step.isMandatory() && !answered.contains(step))
         .forEach(this::discardLocked);
   }
@@ -545,9 +595,7 @@ public class InstallationService {
   private InstallationOverview completeLocked(InstallationState state, CompletionSource source) {
     Map<InstallationStep, InstallationStepRecord> saved = savedSteps();
     List<InstallationStep> open =
-        Arrays.stream(InstallationStep.values())
-            .filter(step -> isOpen(step, saved.get(step)))
-            .toList();
+        offeredSteps().stream().filter(step -> isOpen(step, saved.get(step))).toList();
     if (!open.isEmpty()) {
       throw new ConflictException(
           "Die Installation lässt sich erst abschließen, wenn jeder Pflichtschritt geprüft ist"
@@ -592,6 +640,10 @@ public class InstallationService {
     if (rerankStep != null) {
       installRerankModel(rerankStep);
     }
+    InstallationStepRecord transcriptionStep = saved.get(InstallationStep.TRANSCRIPTION_MODEL);
+    if (transcriptionStep != null && InstallationStep.TRANSCRIPTION_MODEL.isOfferedWith(features)) {
+      installTranscriptionModel(transcriptionStep);
+    }
     InstallationStepRecord mailStep = saved.get(InstallationStep.MAIL);
     if (mailStep != null) {
       mailSettings.installSettings(
@@ -605,7 +657,7 @@ public class InstallationService {
     }
     steps.deleteAllInBatch();
     List<String> skipped =
-        Arrays.stream(InstallationStep.values())
+        offeredSteps().stream()
             .filter(step -> !step.isMandatory() && !saved.containsKey(step))
             .map(Enum::name)
             .toList();
@@ -674,6 +726,21 @@ public class InstallationService {
   }
 
   /**
+   * The transcription model of the step through the write path of the model administration, which
+   * switches the role on and records it under the installation (ADR-0060, Entscheidung 16).
+   */
+  private void installTranscriptionModel(InstallationStepRecord step) {
+    StepRules.TranscriptionModelPayload model = rules.transcriptionModelPayload(step.getPayload());
+    modelRoles.installTranscription(
+        Organization.DEFAULT_ID,
+        SYSTEM_ACTOR,
+        model.baseUrl(),
+        model.model(),
+        step.getSecret(),
+        model.language());
+  }
+
+  /**
    * The branding of the step through the write path of the administration, audited under the
    * installation; values equal to the stored ones write and record nothing, so a step stored at
    * every default ({@code null} in each field) leaves the OPAA default untouched.
@@ -733,12 +800,12 @@ public class InstallationService {
 
   private InstallationOverview overviewOfSavedSteps() {
     Map<InstallationStep, InstallationStepRecord> saved = savedSteps();
+    List<InstallationStep> offered = offeredSteps();
     List<InstallationOverview.StepState> states =
-        Arrays.stream(InstallationStep.values())
+        offered.stream()
             .map(step -> saved.containsKey(step) ? state(saved.get(step)) : unsavedState(step))
             .toList();
-    boolean completable =
-        Arrays.stream(InstallationStep.values()).noneMatch(step -> isOpen(step, saved.get(step)));
+    boolean completable = offered.stream().noneMatch(step -> isOpen(step, saved.get(step)));
     return new InstallationOverview(true, completable, states);
   }
 
@@ -789,6 +856,12 @@ public class InstallationService {
         summary.put("baseUrl", ModelEndpointUri.withoutSecrets(model.baseUrl()));
         summary.put("model", model.model());
         summary.put("apiKeySet", model.apiKeySet());
+      }
+      case InstallationOverview.TranscriptionModel model -> {
+        summary.put("baseUrl", ModelEndpointUri.withoutSecrets(model.baseUrl()));
+        summary.put("model", model.model());
+        summary.put("apiKeySet", model.apiKeySet());
+        summary.put("language", model.language());
       }
       case InstallationOverview.Mail mail -> {
         summary.put("host", mail.host());

@@ -95,7 +95,8 @@ settings:
     bearings: [DATA_FLOW]
     notes:
       - >-
-        Werkseinstellung im Code; die Systemverwaltung schaltet unter Modelle → Spracheingabe,
+        Werkseinstellung im Code; die Systemverwaltung schaltet unter Modelle → Spracheingabe, oder
+        der Abschluss der Installation mit einem geprüften Schritt Transkriptionsmodell, beides
         begrenzt durch opaa.features.speech-input.enabled
   - key: transcription_model.base_url
     source: DATABASE
@@ -104,11 +105,18 @@ settings:
     bearings: [DATA_FLOW]
     notes:
       - Geprüft gegen die Adressprüfung der Modelle (OPAA_MODEL_TARGET_VALIDATION_*)
+      - >-
+        Auch der Abschluss der Installation legt sie fest, wenn der Schritt Transkriptionsmodell
+        geprüft ist; die Systemverwaltung ändert sie unter Modelle → Spracheingabe
   - key: transcription_model.model_identifier
     source: DATABASE
     defaultValue: ""
     effect: Transkriptionsmodell; ohne Angabe ist die Rolle nicht gebunden
     bearings: [DATA_FLOW]
+    notes:
+      - >-
+        Auch der Abschluss der Installation legt es fest, wenn der Schritt Transkriptionsmodell
+        geprüft ist; die Systemverwaltung ändert es unter Modelle → Spracheingabe
   # Funktionen
   - key: opaa.features.prompt-libraries.enabled
     defaultValue: "true"

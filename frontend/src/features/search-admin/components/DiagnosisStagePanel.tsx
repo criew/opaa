@@ -2,7 +2,7 @@ import Accordion from '@mui/material/Accordion'
 import AccordionDetails from '@mui/material/AccordionDetails'
 import AccordionSummary from '@mui/material/AccordionSummary'
 import Box from '@mui/material/Box'
-import Chip from '@mui/material/Chip'
+import StateDot from '@/shared/ui/StateDot'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
@@ -113,10 +113,9 @@ export default function StagePanel({
           <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
             {STAGE_LABELS[stage.stage]}
           </Typography>
-          <Chip
-            size="small"
+          <StateDot
+            tone={stage.status === 'EXECUTED' ? 'neutral' : 'warning'}
             label={STAGE_STATUS_LABELS[stage.status]}
-            color={stage.status === 'EXECUTED' ? 'default' : 'warning'}
           />
           <Typography sx={{ fontSize: 13, color: 'text.secondary', ml: 'auto', mr: 1 }}>
             {stage.incomingCount} → {stage.outgoingCount} Kandidaten

@@ -1,32 +1,29 @@
 import Typography from '@mui/material/Typography'
-import { alpha } from '@mui/material/styles'
-import { badgeShape } from '../theme/tokens'
+import { outlinedBadgeSx } from './badgeStyles'
 
 interface MetaBadgeProps {
   children: string
-  accent?: boolean
+  /** Breaks onto a second line where the column is narrower than the label (table cells). */
+  wrap?: boolean
+  /** A fuller name for assistive technology where the short word needs its context. */
+  ariaLabel?: string
 }
 
 /**
- * The small bordered meta label from mockup 1d's library table (kind, distribution level, role),
- * shared across the migrated pages so badges keep one voice.
+ * The quiet text label of guidelines 5.5 (role, origin, kind, notes in lists): outline in
+ * `border-strong`, text in `fg-2`, never an accent or signal colour - the word carries the
+ * meaning. It reads the same as the theme's outlined `Chip`.
  */
-export default function MetaBadge({ children, accent = false }: MetaBadgeProps) {
+export default function MetaBadge({ children, wrap = false, ariaLabel }: MetaBadgeProps) {
   return (
     <Typography
       component="span"
+      {...(ariaLabel && { role: 'img', 'aria-label': ariaLabel })}
       sx={{
-        fontSize: 10.5,
-        // Accent via primary.main, not hardcoded blue[700] - the token splits per scheme
-        // (light blue-700, dark blue-500); blue[700] only reached 3.8:1 on the dark
-        // surfaces. Border derives from the same colour (GlobalBadge pattern, 40%).
-        color: accent ? 'primary.main' : 'text.secondary',
-        border: 1,
-        borderColor: accent ? (t) => alpha(t.palette.primary.main, 0.4) : 'divider',
-        ...badgeShape,
+        ...outlinedBadgeSx,
         px: 1,
         py: 0.25,
-        whiteSpace: 'nowrap',
+        ...(wrap && { display: 'inline-block', maxWidth: '100%', whiteSpace: 'normal' }),
       }}
     >
       {children}

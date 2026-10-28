@@ -15,6 +15,7 @@ import io.opaa.account.InitialAdministrator;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.UserRepository;
 import io.opaa.branding.BrandingSettingsService;
+import io.opaa.common.FeatureFlags;
 import io.opaa.directory.OidcProviderService;
 import io.opaa.installation.InstallationState.CompletionSource;
 import io.opaa.llm.EmbeddingModelService;
@@ -62,6 +63,7 @@ class InstallationStartupDecisionTest {
             mock(ModelRoleAdministration.class),
             mock(MailSettingsService.class),
             mock(BrandingSettingsService.class),
+            new FeatureFlags(new MockEnvironment()),
             mock(AuditEventRecorder.class),
             users,
             mock(DatabaseInstallationStatus.class),

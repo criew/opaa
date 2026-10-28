@@ -11,7 +11,7 @@ import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined'
 import PublicIcon from '@mui/icons-material/Public'
 import StarIcon from '@mui/icons-material/Star'
 import StarBorderIcon from '@mui/icons-material/StarBorder'
-import { badgeShape } from '@/shared/theme/tokens'
+import { outlinedBadgeSx } from '@/shared/ui/badgeStyles'
 import type { AssetTypeDefinition } from '../../../shared/assetTypes'
 
 /** The responsible party behind a person or group symbol. */
@@ -69,14 +69,9 @@ export function PrivateMark() {
         alignItems: 'center',
         gap: 0.5,
         alignSelf: 'flex-start',
-        fontSize: 10.5,
-        color: 'text.secondary',
-        border: 1,
-        borderColor: 'divider',
-        ...badgeShape,
+        ...outlinedBadgeSx,
         px: 0.75,
         py: 0.25,
-        whiteSpace: 'nowrap',
       }}
     >
       <LockOutlinedIcon aria-hidden sx={{ fontSize: 13 }} />
@@ -85,7 +80,10 @@ export function PrivateMark() {
   )
 }
 
-/** A private library marked for erasure: icon and word, framed in the error colour. */
+/**
+ * A private library marked for erasure: icon and word in the quiet frame of every label - the
+ * signal colour marks only the symbol (guidelines 2.3, 5.5).
+ */
 export function ErasingMark() {
   return (
     <Typography
@@ -97,14 +95,9 @@ export function ErasingMark() {
         alignItems: 'center',
         gap: 0.5,
         alignSelf: 'flex-start',
-        fontSize: 10.5,
-        color: 'text.primary',
-        border: 1,
-        borderColor: 'error.main',
-        ...badgeShape,
+        ...outlinedBadgeSx,
         px: 0.75,
         py: 0.25,
-        whiteSpace: 'nowrap',
       }}
     >
       <DeleteOutlinedIcon aria-hidden sx={{ fontSize: 13, color: 'error.main' }} />
@@ -113,7 +106,7 @@ export function ErasingMark() {
   )
 }
 
-/** The type badge: icon and type name, in the accent of the role badges. */
+/** The type badge: icon and type name, quiet like the role badges. */
 export function TypeBadge({ definition }: { definition: AssetTypeDefinition }) {
   const Icon = definition.Icon
   return (
@@ -124,14 +117,9 @@ export function TypeBadge({ definition }: { definition: AssetTypeDefinition }) {
         alignItems: 'center',
         gap: 0.5,
         alignSelf: 'flex-start',
-        fontSize: 10.5,
-        color: 'text.secondary',
-        border: 1,
-        borderColor: 'divider',
-        ...badgeShape,
+        ...outlinedBadgeSx,
         px: 0.75,
         py: 0.25,
-        whiteSpace: 'nowrap',
       }}
     >
       <Icon aria-hidden sx={{ fontSize: 13 }} />

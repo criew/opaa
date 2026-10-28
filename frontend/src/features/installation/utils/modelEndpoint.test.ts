@@ -36,6 +36,12 @@ describe('providerOf', () => {
     expect(providerOf('http://gpu-server:11434/v1', 'rerank')).toBe('custom')
     expect(providerOf('http://reranker:80', 'rerank')).toBe('custom')
   })
+
+  it('offers only OpenAI for the transcription model, Ollama serving no transcription', () => {
+    expect(providerPresets('transcription').map((preset) => preset.key)).toEqual(['openai'])
+    expect(providerOf('https://api.openai.com/v1', 'transcription')).toBe('openai')
+    expect(providerOf('http://gpu-server:11434/v1', 'transcription')).toBe('custom')
+  })
 })
 
 describe('sameEndpoint', () => {

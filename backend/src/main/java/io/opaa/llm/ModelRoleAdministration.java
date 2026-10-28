@@ -19,7 +19,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -34,12 +33,13 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * What the system administration does with the rerank and transcription model roles (ADR-0060,
- * Entscheidung 10): read, change and test them; the installation stores a checked rerank step
- * through the same write path. A change is validated like every model endpoint ({@link
- * ModelEndpointRules}, {@link ModelAddressPolicy} for an address other than the stored one), stored
- * with the key encrypted, and recorded with the values before and after (Entscheidung 11); a change
- * to the same values writes nothing. The speech-input feature is the operation's limit: the
- * transcription role cannot be switched on while it is off (Entscheidung 2).
+ * Entscheidung 10): read, change and test them; the installation stores a checked rerank or
+ * transcription step through the same write path (Entscheidung 16 for transcription). A change is
+ * validated like every model endpoint ({@link ModelEndpointRules}, {@link ModelAddressPolicy} for
+ * an address other than the stored one), stored with the key encrypted, and recorded with the
+ * values before and after (Entscheidung 11); a change to the same values writes nothing. The
+ * speech-input feature is the operation's limit: the transcription role cannot be switched on while
+ * it is off (Entscheidung 2).
  *
  * <p>The change reaches every instance through the triggers on the two tables; this instance drops
  * its cache and probes the new endpoint right after the commit, so the state on the page follows
@@ -282,33 +282,83 @@ public class ModelRoleAdministration {
       String language) {
     String address = trimmed(baseUrl);
     String identifier = trimmed(model);
-    String lang = language == null ? null : language.strip().toLowerCase(Locale.ROOT);
-    List<FieldError> errors = new ArrayList<>();
-    ModelEndpointRules.endpointErrors(TRANSCRIPTION, address, identifier, apiKey, enabled, errors);
-    if (lang != null && !lang.isEmpty() && !lang.matches("[a-z]{2}")) {
-      errors.add(
-          new FieldError(
-              TRANSCRIPTION + ".language",
-              ModelEndpointRules.INVALID,
-              "Die Sprache ist ein Kürzel aus zwei Buchstaben nach ISO 639-1, etwa de oder en;"
-                  + " leer erkennt das Modell die Sprache selbst."));
-    }
+    String lang = TranscriptionEndpoint.normalisedLanguage(language);
+    List<FieldError> errors = transcriptionErrors(enabled, address, identifier, apiKey, lang);
     blockedAddressError(TRANSCRIPTION, address, storedTranscriptionAddress(), errors);
     requireNoErrors(errors);
     return transactions.execute(
         status ->
             storeTranscription(
-                organizationId, actorUserId, enabled, address, identifier, apiKey, lang));
+                organizationId,
+                AuditActor.user(actorUserId),
+                enabled,
+                address,
+                identifier,
+                lang,
+                row ->
+                    secretOf(
+                        TRANSCRIPTION,
+                        apiKey,
+                        row.getBaseUrl(),
+                        address,
+                        row.getApiKeyCiphertext())));
   }
 
+  /**
+   * Switches the transcription role on with the checked transcription step of the installation, as
+   * {@link #installRerank} (ADR-0060, Entscheidung 16). The operation's limit applies as in {@link
+   * #changeTranscription}: with speech input switched off this refuses, so the installation calls
+   * it only while it offers the step.
+   *
+   * @throws FieldValidationException for an endpoint or language the rules of the role refuse
+   */
+  public TranscriptionModelView installTranscription(
+      UUID organizationId,
+      String systemActor,
+      String baseUrl,
+      String model,
+      String apiKeyCiphertext,
+      String language) {
+    String address = trimmed(baseUrl);
+    String identifier = trimmed(model);
+    String lang = TranscriptionEndpoint.normalisedLanguage(language);
+    requireNoErrors(transcriptionErrors(true, address, identifier, null, lang));
+    return transactions.execute(
+        status ->
+            storeTranscription(
+                organizationId,
+                AuditActor.systemProcess(systemActor),
+                true,
+                address,
+                identifier,
+                lang,
+                row -> apiKeyCiphertext));
+  }
+
+  /** The rules of a transcription endpoint and its language, as field errors. */
+  private static List<FieldError> transcriptionErrors(
+      boolean enabled, String address, String identifier, String apiKey, String language) {
+    List<FieldError> errors = new ArrayList<>();
+    ModelEndpointRules.endpointErrors(TRANSCRIPTION, address, identifier, apiKey, enabled, errors);
+    if (!TranscriptionEndpoint.isValidLanguage(language)) {
+      errors.add(
+          new FieldError(
+              TRANSCRIPTION + ".language",
+              ModelEndpointRules.INVALID,
+              TranscriptionEndpoint.LANGUAGE_RULE));
+    }
+    return errors;
+  }
+
+  /** {@code ciphertextOf} derives the key to store from the stored row, under the table lock. */
   private TranscriptionModelView storeTranscription(
       UUID organizationId,
-      UUID actorUserId,
+      AuditActor actor,
       boolean enabled,
       String address,
       String identifier,
-      String apiKey,
-      String requestedLanguage) {
+      String requestedLanguage,
+      Function<TranscriptionModelSettings, String> ciphertextOf) {
     jdbc.execute("LOCK TABLE transcription_model IN SHARE ROW EXCLUSIVE MODE");
     TranscriptionModelSettings existing = transcriptionRows.findStored().orElse(null);
     boolean stored = existing != null;
@@ -320,8 +370,7 @@ public class ModelRoleAdministration {
     String storedLanguage = stored ? row.getLanguage() : TranscriptionEndpoint.DEFAULT_LANGUAGE;
     String language = requestedLanguage == null ? storedLanguage : emptyToNull(requestedLanguage);
     String previousCiphertext = row.getApiKeyCiphertext();
-    String ciphertext =
-        secretOf(TRANSCRIPTION, apiKey, row.getBaseUrl(), address, previousCiphertext);
+    String ciphertext = ciphertextOf.apply(row);
     boolean unchanged =
         row.isEnabled() == enabled
             && Objects.equals(row.getBaseUrl(), emptyToNull(address))
@@ -344,7 +393,7 @@ public class ModelRoleAdministration {
     AuditSecretChange.put(after, "apiKey", previousCiphertext, ciphertext);
     record(
         organizationId,
-        AuditActor.user(actorUserId),
+        actor,
         AuditEventType.TRANSCRIPTION_MODEL_CHANGED,
         "transcription_model",
         "Transkriptionsmodell",
@@ -401,9 +450,18 @@ public class ModelRoleAdministration {
                 .findStored()
                 .map(TranscriptionModelSettings::getApiKeyCiphertext)
                 .orElse(null));
+    return probeTranscription(address, identifier, key);
+  }
+
+  /**
+   * The probe of {@link #testTranscription}, without an address check of its own; the same
+   * precondition as {@link #probeRerank}. Asks for the models, sends no audio. Call outside any
+   * transaction.
+   */
+  public TestOutcome probeTranscription(String baseUrl, String model, String apiKey) {
     TranscriptionClient.ProbeFailure failure =
         transcriptionClient.probe(
-            new TranscriptionEndpoint(true, address, identifier, key, ""), TEST_TIMEOUT);
+            new TranscriptionEndpoint(true, baseUrl, model, apiKey, ""), TEST_TIMEOUT);
     return failure == null
         ? new TestOutcome(true, "Verbindung erfolgreich, der Endpunkt hat geantwortet.")
         : new TestOutcome(false, german(failure.message(), failure.timedOut()));

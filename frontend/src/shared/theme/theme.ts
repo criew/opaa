@@ -514,12 +514,13 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
           styleOverrides: {
             root: {
               borderRadius: radius.pill,
-              fontSize: 11,
+              fontSize: fontSize.xs,
               fontWeight: fontWeight.medium,
               variants: [
                 {
-                  // Filled primary chips (search-scope chips, "Aktiv" badge) sit on the
-                  // accent surface for the same 4.5:1 reason as contained buttons.
+                  // Filled primary chips (search-scope and filter chips - controls, never
+                  // labels) sit on the accent surface for the same 4.5:1 reason as contained
+                  // buttons.
                   props: { variant: 'filled', color: 'primary' },
                   style: {
                     backgroundColor: accentSurface,

@@ -1,5 +1,4 @@
 import Box from '@mui/material/Box'
-import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
@@ -13,7 +12,6 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
-import StarRoundedIcon from '@mui/icons-material/StarRounded'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import type { OidcProviderResponse } from '@/shared/api/types'
 import { fontFamily } from '@/shared/theme/tokens'
@@ -21,6 +19,7 @@ import { apiErrorMessage } from '@/shared/api/apiErrorDetails'
 import { notify } from '@/shared/stores/notificationStore'
 import { useOidcProviderStore } from '../stores/oidcProviderStore'
 import ProviderMonogram from '@/shared/ui/ProviderMonogram'
+import MetaBadge from '@/shared/ui/MetaBadge'
 import { PROVIDER_CONFLICT_MESSAGES } from './oidcProviderConflicts'
 import {
   PER_INSTANCE_NOTE,
@@ -167,15 +166,7 @@ function ProviderCard({
             · {PER_INSTANCE_NOTE}
           </Box>
         )}
-        {provider.isDefault && (
-          <Chip
-            label="Standard"
-            color="primary"
-            size="small"
-            icon={<StarRoundedIcon />}
-            aria-label="Standardanbieter"
-          />
-        )}
+        {provider.isDefault && <MetaBadge ariaLabel="Standardanbieter">Standard</MetaBadge>}
       </Box>
       {state === 'unreachable' && provider.registryMessage && (
         <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.25 }}>
@@ -342,14 +333,9 @@ export default function ProviderList({ providers, onEdit }: ProviderListProps) {
                     </Typography>
                   )}
                   {provider.isDefault && (
-                    <Chip
-                      label="Standard"
-                      color="primary"
-                      size="small"
-                      icon={<StarRoundedIcon />}
-                      aria-label="Standardanbieter"
-                      sx={{ mt: 0.5 }}
-                    />
+                    <Box sx={{ mt: 0.5 }}>
+                      <MetaBadge ariaLabel="Standardanbieter">Standard</MetaBadge>
+                    </Box>
                   )}
                 </TableCell>
                 <TableCell
