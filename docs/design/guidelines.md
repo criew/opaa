@@ -514,10 +514,15 @@ bricht es um (`MetaBadge wrap`), statt abgeschnitten zu werden. Geprüft in
 `frontend/src/shared/ui/badgeShape.test.tsx` und `labels.test.ts`.
 
 **Kontrast** (2.4): `fg-2` auf der Fläche des Etiketts erreicht hell 9,21:1 (`bg-1`), 8,66:1
-(`bg-2`) und 8,19:1 (`bg-3`), dunkel 7,43:1, 6,69:1 und 6,15:1; auf überfahrenen und gewählten
-Zeilen (MUI-Hover- und Auswahltönung über `bg-1`/`bg-3`) hell mindestens 7,48:1, dunkel
-mindestens 4,86:1. Der Umriss in `border-strong` ist Schmuck, kein Erkennungsmerkmal — das Wort
-macht das Etikett erkennbar, deshalb gilt für ihn keine 3:1-Anforderung.
+(`bg-2`) und 8,19:1 (`bg-3`), dunkel 7,43:1, 6,69:1 und 6,15:1. Auf den Flächen, auf denen
+Etiketten tatsächlich stehen: überfahrene Tabellenzeile (`bg-2`) wie oben; MUI-Hovertönung über
+`bg-1` hell 8,45:1, dunkel 6,28:1, über `bg-3` hell 7,48:1, dunkel 4,86:1; Akzent-Auswahltönung
+von `ListItemButton` und `MenuItem` über `bg-1` hell 8,22:1, dunkel 6,27:1, gewählt und
+überfahren hell 7,81:1, dunkel 5,51:1. Ausgenommen ist die Auswahltönung über `bg-3` (gewählt
+und überfahren dunkel nur 4,37:1, neutrales `action.selected` 3,70:1): Dort steht kein Etikett;
+wer eins dorthin setzt, weist den Kontrast im PR nach. Der Umriss in `border-strong` ist Schmuck,
+kein Erkennungsmerkmal — das Wort macht das Etikett erkennbar, deshalb gilt für ihn keine
+3:1-Anforderung.
 
 ### 5.6 Menüs und Overlays
 

@@ -14,10 +14,31 @@ const PRODUCTION = Object.entries(SOURCES).filter(
   ([path]) => !path.includes('.test.') && !path.includes('/mocks/'),
 )
 
-/** Every `<Chip … />` with its props, across line breaks, up to the first self-closing end. */
+/**
+ * Every `<Chip …>` opening tag with all its props, across line breaks. The tag ends at the first
+ * `>` outside braces, so a nested element (`icon={<StarIcon />}`) or an arrow function in a prop
+ * never cuts the props short.
+ */
 function chipTags(text: string): string[] {
-  return text.match(/<Chip\b[\s\S]*?\/>/g) ?? []
+  const tags: string[] = []
+  for (const match of text.matchAll(/<Chip(?![\w.])/g)) {
+    let depth = 0
+    for (let i = match.index; i < text.length; i++) {
+      const char = text[i]
+      if (char === '{') depth++
+      else if (char === '}') depth--
+      else if (char === '>' && depth === 0) {
+        tags.push(text.slice(match.index, i + 1))
+        break
+      }
+    }
+  }
+  return tags
 }
+
+const SIGNAL = /color=(?:"(?:warning|error|success)"|\{[^}]*'(?:warning|error|success)')/
+const COMPUTED = /color=\{[\w.]+\}/
+const coloured = (tag: string) => SIGNAL.test(tag) || COMPUTED.test(tag)
 
 function offending(predicate: (tag: string) => boolean): string[] {
   return PRODUCTION.flatMap(([path, text]) =>
@@ -36,13 +57,25 @@ describe('labels', () => {
     expect(PRODUCTION.flatMap(([, text]) => chipTags(text)).length).toBeGreaterThan(10)
   })
 
+  it('reads every prop of a chip, also behind an icon or an arrow function', () => {
+    const source = `<Chip
+      icon={<StarIcon />}
+      onDelete={() => remove(id)}
+      label="Nicht verfügbar"
+      color="warning"
+    />`
+    expect(chipTags(source)).toHaveLength(1)
+    expect(coloured(chipTags(source)[0])).toBe(true)
+    expect(coloured(chipTags('<Chip icon={<X />} color={state.color} />')[0])).toBe(true)
+    expect(coloured(chipTags('<Chip icon={<X />} variant="outlined" />')[0])).toBe(false)
+  })
+
   it('never colours a chip in a signal colour', () => {
-    const signal = /color=(?:"(?:warning|error|success)"|\{[^}]*'(?:warning|error|success)')/
-    const computed = /color=\{[\w.]+\}/
-    expect(offending((tag) => signal.test(tag) || computed.test(tag))).toEqual([])
+    expect(offending(coloured)).toEqual([])
   })
 
   it('shows „Standard" and „Archiviert" as the shared MetaBadge, never as a chip', () => {
-    expect(offending((tag) => /label="(?:Standard|Archiviert)"/.test(tag))).toEqual([])
+    const word = /label=(?:"|\{[^}]*')(?:Standard|Archiviert)["']/
+    expect(offending((tag) => word.test(tag))).toEqual([])
   })
 })
