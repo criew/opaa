@@ -548,4 +548,86 @@ class StepRulesTest {
                     .extracting(FieldValidationException.FieldError::field)
                     .containsExactly("branding.productName", "branding.primaryColor"));
   }
+
+  @Test
+  void theRerankModelIsStoredWithItsKeyEncryptedOnly() {
+    StepRules.Stored stored =
+        rules.toStored(
+            new StepInput.RerankModel(" http://ollama:8080 ", " bge-reranker ", " sk-geheim "),
+            null,
+            null);
+
+    assertThat(stored.payload()).doesNotContain("sk-geheim");
+    assertThat(encryptor.decrypt(stored.secret())).isEqualTo("sk-geheim");
+    assertThat(rules.view(InstallationStep.RERANK_MODEL, stored.payload(), stored.secret()))
+        .isEqualTo(
+            new InstallationOverview.RerankModel("http://ollama:8080", "bge-reranker", true));
+    assertThat(rules.savedModelBaseUrl(InstallationStep.RERANK_MODEL, stored.payload()))
+        .isEqualTo("http://ollama:8080");
+  }
+
+  @Test
+  void theRerankModelNeedsAddressAndModelWithTheRulesOfEveryModelEndpoint() {
+    assertThatThrownBy(
+            () -> rules.toStored(new StepInput.RerankModel("ftp://ollama", "", "a\nb"), null, null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactly(
+                        "rerankModel.baseUrl", "rerankModel.model", "rerankModel.apiKey"));
+  }
+
+  // regression guard: the rerank address of the installation passes the address check of models
+  @Test
+  void aRerankAddressInABlockedRangeIsAFieldError() {
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.RerankModel("http://10.0.0.5:80", "bge-reranker", null),
+                    null,
+                    null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactly("rerankModel.baseUrl"));
+  }
+
+  // regression guard: a saved rerank key must never follow a changed address
+  @Test
+  void aSavedRerankKeyStaysOnlyWithTheSameEndpointAndAnEmptyOneRemovesIt() {
+    StepRules.Stored first =
+        rules.toStored(
+            new StepInput.RerankModel("http://ollama:8080", "bge-reranker", "sk-geheim"),
+            null,
+            null);
+
+    StepRules.Stored kept =
+        rules.toStored(
+            new StepInput.RerankModel("http://ollama:8080/", "anderes", null),
+            first.payload(),
+            first.secret());
+    assertThat(kept.secret()).isEqualTo(first.secret());
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.RerankModel("http://ollama.example.org:8080", "x", null),
+                    first.payload(),
+                    first.secret()))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactly("rerankModel.apiKey"));
+    StepRules.Stored removed =
+        rules.toStored(
+            new StepInput.RerankModel("http://ollama:8080", "bge-reranker", ""),
+            first.payload(),
+            first.secret());
+    assertThat(removed.secret()).isNull();
+  }
 }

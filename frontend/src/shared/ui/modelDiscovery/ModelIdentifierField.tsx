@@ -7,7 +7,12 @@ import Typography from '@mui/material/Typography'
 import type { DiscoveredLlmModel } from '@/shared/api/types'
 import { fontFamily } from '@/shared/theme/tokens'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
-import { describeModel, embeddingSuitable, type DiscoveryPurpose } from './modelDiscovery'
+import {
+  describeModel,
+  embeddingSuitable,
+  rerankSuitable,
+  type DiscoveryPurpose,
+} from './modelDiscovery'
 
 const LABEL = 'Modell-Kennung'
 
@@ -36,6 +41,14 @@ const ROLES: Record<
     otherGroup: 'Weitere Modelle',
     othersSelectable: true,
     example: 'bge-m3',
+  },
+  // As for the embedding: the name only suggests a reranker, the probe decides.
+  rerank: {
+    suits: rerankSuitable,
+    suitableGroup: 'Für das Reranking geeignet',
+    otherGroup: 'Weitere Modelle',
+    othersSelectable: true,
+    example: 'BAAI/bge-reranker-v2-m3',
   },
 }
 

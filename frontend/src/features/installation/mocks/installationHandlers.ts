@@ -6,6 +6,7 @@ import {
   mockOpenAiDiscoveredModels,
 } from '@/features/model/mocks/modelFixtures'
 import {
+  MODEL_STEPS,
   STEP_REQUEST_KEY,
   type InstallationBranding,
   type InstallationChatModel,
@@ -13,6 +14,7 @@ import {
   type InstallationFirstAdmin,
   type InstallationMail,
   type InstallationModelDiscoveryRequest,
+  type InstallationRerankModel,
   type InstallationStepCheckRequest,
   type InstallationStepState,
 } from '../api/types'
@@ -23,6 +25,7 @@ import {
   MOCK_UNREACHABLE_MARKER,
   completeMockInstallation,
   isMockInstallationPending,
+  mockRerankDiscoveredModels,
   mockInstallationState,
   recordMockDiscovery,
   recordMockSkip,
@@ -40,6 +43,7 @@ import {
  *   reports `checked: false` with a `checkMessage`,
  * - the branding step refuses a colour that is no `#RRGGBB` value (400) and stores blank as the
  *   default; its check always succeeds,
+ * - the rerank step lists its own models and checks like the probe of its administration,
  * - a check of the mail step takes a test recipient; skipping an optional step discards it and a
  *   mandatory one is refused (400),
  * - completing refuses (409) while a mandatory step or a saved optional step is unchecked.
@@ -142,6 +146,11 @@ function storedView(step: InstallationStepState, part: unknown): Partial<Install
       },
     }
   }
+  if (step.step === 'RERANK_MODEL') {
+    const { apiKey, ...rest } = part as InstallationRerankModel
+    const keySet = apiKey === undefined ? Boolean(step.rerankModel?.apiKeySet) : Boolean(apiKey)
+    return { rerankModel: { ...rest, apiKeySet: keySet } }
+  }
   if (step.step === 'EMBEDDING_MODEL') {
     const { apiKey, maxInputTokens, ...rest } = part as InstallationEmbeddingModel
     const keySet = apiKey === undefined ? Boolean(step.embeddingModel?.apiKeySet) : Boolean(apiKey)
@@ -154,7 +163,7 @@ function storedView(step: InstallationStepState, part: unknown): Partial<Install
 
 function checkMessageOf(step: InstallationStepState): string | null {
   const values = JSON.stringify(
-    step.chatModel ?? step.embeddingModel ?? step.signIn ?? step.mail ?? {},
+    step.chatModel ?? step.embeddingModel ?? step.rerankModel ?? step.signIn ?? step.mail ?? {},
   )
   if (!values.includes(MOCK_UNREACHABLE_MARKER)) return null
   if (step.step === 'MAIL') {
@@ -171,7 +180,7 @@ function checkMessageOf(step: InstallationStepState): string | null {
  */
 function discoveryAnswer(step: InstallationStepState, body: InstallationModelDiscoveryRequest) {
   const address = body.baseUrl ?? ''
-  const stored = step.chatModel ?? step.embeddingModel ?? null
+  const stored = step.chatModel ?? step.embeddingModel ?? step.rerankModel ?? null
   const usesStoredKey = body.apiKey === undefined || body.apiKey === null
   if (usesStoredKey && stored?.apiKeySet && stored.baseUrl !== address) {
     return error(
@@ -205,7 +214,12 @@ function discoveryAnswer(step: InstallationStepState, body: InstallationModelDis
     )
   }
   const ollama = address.includes(':11434') || address.includes('ollama')
-  const models = ollama ? mockOllamaDiscoveredModels : mockOpenAiDiscoveredModels
+  const models =
+    step.step === 'RERANK_MODEL'
+      ? mockRerankDiscoveredModels
+      : ollama
+        ? mockOllamaDiscoveredModels
+        : mockOpenAiDiscoveredModels
   return HttpResponse.json({
     success: true,
     failure: null,
@@ -269,7 +283,9 @@ export const installationHandlers = [
           }`
         : step.step === 'BRANDING'
           ? 'Das Branding erfüllt die Regeln der Verwaltung.'
-          : 'Prüfung erfolgreich.'
+          : step.step === 'RERANK_MODEL'
+            ? 'Verbindung erfolgreich, der Endpunkt hat die Probe bewertet.'
+            : 'Prüfung erfolgreich.'
     updateMockStep(step.step, {
       checked: failure === null,
       checkMessage: failure ?? success,
@@ -298,6 +314,7 @@ export const installationHandlers = [
       checkMessage: null,
       chatModel: undefined,
       embeddingModel: undefined,
+      rerankModel: undefined,
       mail: undefined,
       branding: undefined,
     })
@@ -308,7 +325,7 @@ export const installationHandlers = [
     const refused = refusal(request)
     if (refused) return refused
     const step = findStep(String(params.step))
-    if (step?.step !== 'CHAT_MODEL' && step?.step !== 'EMBEDDING_MODEL') {
+    if (!step || !(MODEL_STEPS as readonly string[]).includes(step.step)) {
       return error(400, 'Modelle lassen sich nur in den Modellschritten abrufen.')
     }
     const body = (await request.json()) as InstallationModelDiscoveryRequest

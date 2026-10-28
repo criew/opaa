@@ -1,4 +1,4 @@
-// Minimal OpenAI-compatible stub for the E2E stack's chat/embedding calls.
+// Minimal OpenAI-compatible stub for the E2E stack's chat/embedding calls, and a rerank endpoint.
 //
 // The E2E suite must never reach a real model (cost, non-determinism, network dependency in CI -
 // see docs/decisions/0009-e2e-teststrategie.md, point 4, which deliberately left "local model
@@ -175,6 +175,20 @@ function triggeredFragments(messages) {
 // scenario assert on it directly instead of only on the answer's mere presence.
 let lastChatModel = null
 
+// --- Reranking (set-up assistant, ADR-0060) ----------------------------------------------------
+//
+// POST .../rerank scores every candidate in the order it was sent, in either request spelling
+// io.opaa.llm.RerankClient negotiates: {model, query, documents} answers with "results", {query,
+// texts} with a bare array. Under the prefix /reranker the stub also lists one model, so the
+// assistant's rerank step can offer a choice; the chat address (no prefix) keeps answering the
+// model list with 404, which the chat step relies on to show its input by hand.
+const RERANK_PREFIX = '/reranker'
+const RERANK_MODEL = 'stub-reranker'
+
+function ranking(count) {
+  return Array.from({ length: count }, (_, index) => ({ index, score: 1 / (index + 1) }))
+}
+
 function fakeEmbedding() {
   const vector = new Array(DIMENSIONS)
   for (let i = 0; i < DIMENSIONS; i++) {
@@ -262,6 +276,27 @@ const server = createServer(async (req, res) => {
         model: body.model ?? 'stub-embedding',
         usage: { prompt_tokens: 0, total_tokens: 0 },
       })
+      return
+    }
+
+    if (req.method === 'GET' && matchesEndpoint(req.url, `${RERANK_PREFIX}/models`)) {
+      sendJson(res, 200, { object: 'list', data: [{ id: RERANK_MODEL, object: 'model' }] })
+      return
+    }
+
+    if (req.method === 'POST' && matchesEndpoint(req.url, '/rerank')) {
+      const body = JSON.parse(await readBody(req))
+      if (Array.isArray(body.documents)) {
+        const results = ranking(body.documents.length).map(({ index, score }) => ({
+          index,
+          relevance_score: score,
+        }))
+        sendJson(res, 200, { model: body.model ?? RERANK_MODEL, results })
+      } else if (Array.isArray(body.texts)) {
+        sendJson(res, 200, ranking(body.texts.length))
+      } else {
+        sendJson(res, 422, { error: 'documents or texts required' })
+      }
       return
     }
 

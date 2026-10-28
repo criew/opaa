@@ -173,11 +173,54 @@ class InstallationModelDiscoveryTest {
   }
 
   @Test
+  void theRerankStepListsModelsWithItsSavedKeyOnlyForItsOwnEndpoint() {
+    InstallationStepRecord record = new InstallationStepRecord(InstallationStep.RERANK_MODEL);
+    record.replaceValues(
+        json.writeValueAsString(new StepRules.RerankModelPayload(baseUrl, "bge-reranker")),
+        encryptor.encrypt("sk-rerank"),
+        Instant.now());
+    when(steps.findById(InstallationStep.RERANK_MODEL)).thenReturn(Optional.of(record));
+
+    ModelDiscovery result = discovery.discover(InstallationStep.RERANK_MODEL, baseUrl, null);
+
+    assertThat(result.success()).isTrue();
+    assertThat(authorization.get()).isEqualTo("Bearer sk-rerank");
+    assertThatThrownBy(
+            () -> discovery.discover(InstallationStep.RERANK_MODEL, "https://api.jina.ai/v1", null))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageNotContaining("sk-rerank");
+    assertThat(requests).hasValue(1);
+  }
+
+  // regression guard: every discoverable step knows where its saved key may go, and only those
+  @Test
+  void everyModelStepHasASavedBaseUrlAndNoOtherStepDoes() {
+    String payload = "{\"baseUrl\":\"http://127.0.0.1:1/v1\"}";
+    for (InstallationStep step : InstallationStep.values()) {
+      if (InstallationModelDiscovery.MODEL_STEPS.contains(step)) {
+        assertThat(rules.savedModelBaseUrl(step, payload))
+            .as(step.name())
+            .isEqualTo("http://127.0.0.1:1/v1");
+      } else {
+        assertThatThrownBy(() -> rules.savedModelBaseUrl(step, payload))
+            .as(step.name())
+            .isInstanceOf(IllegalArgumentException.class);
+      }
+    }
+  }
+
+  @Test
   void onlyTheModelStepsDiscover() {
-    assertThatThrownBy(() -> discovery.discover(InstallationStep.FIRST_ADMIN, baseUrl, null))
-        .isInstanceOf(ValidationException.class);
-    assertThatThrownBy(() -> discovery.discover(InstallationStep.SIGN_IN, baseUrl, null))
-        .isInstanceOf(ValidationException.class);
+    for (InstallationStep other :
+        List.of(
+            InstallationStep.FIRST_ADMIN,
+            InstallationStep.SIGN_IN,
+            InstallationStep.MAIL,
+            InstallationStep.BRANDING)) {
+      assertThatThrownBy(() -> discovery.discover(other, baseUrl, null))
+          .as(other.name())
+          .isInstanceOf(ValidationException.class);
+    }
     assertThat(requests).hasValue(0);
   }
 

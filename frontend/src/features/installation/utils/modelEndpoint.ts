@@ -12,11 +12,15 @@ export type ProviderKey = EndpointPresetKey | 'custom'
 
 const OLLAMA_ADDRESS = /:11434\/v1$/i
 
-/** The presets a role offers: Anthropic serves no embeddings. */
+/**
+ * The presets a role offers: Anthropic serves no embeddings, and none of the presets serves a
+ * rerank endpoint, so that role is entered by its address alone.
+ */
 export function providerPresets(purpose: DiscoveryPurpose): readonly EndpointPreset[] {
-  return purpose === 'chat'
-    ? ENDPOINT_PRESETS
-    : ENDPOINT_PRESETS.filter((preset) => preset.key !== 'anthropic')
+  if (purpose === 'chat') return ENDPOINT_PRESETS
+  if (purpose === 'embedding')
+    return ENDPOINT_PRESETS.filter((preset) => preset.key !== 'anthropic')
+  return []
 }
 
 function normalized(baseUrl: string): string {
@@ -27,9 +31,11 @@ function normalized(baseUrl: string): string {
 export function providerOf(baseUrl: string, purpose: DiscoveryPurpose): ProviderKey | null {
   const address = normalized(baseUrl)
   if (address === '') return null
-  const preset = providerPresets(purpose).find((candidate) => candidate.baseUrl === address)
+  const presets = providerPresets(purpose)
+  const preset = presets.find((candidate) => candidate.baseUrl === address)
   if (preset) return preset.key
-  return OLLAMA_ADDRESS.test(address) ? 'ollama' : 'custom'
+  const ollamaOffered = presets.some((candidate) => candidate.key === 'ollama')
+  return ollamaOffered && OLLAMA_ADDRESS.test(address) ? 'ollama' : 'custom'
 }
 
 function endpointKey(baseUrl: string): string {
@@ -66,6 +72,8 @@ export interface EndpointEntries {
   removeKey: boolean
   /** The step's stored endpoint and whether a key is stored with it. */
   stored: { baseUrl: string; apiKeySet: boolean } | null
+  /** Whether the role offers providers to choose from; without, the address is typed. */
+  offersProviders?: boolean
 }
 
 export interface DiscoveryPlan {
@@ -79,6 +87,8 @@ export interface DiscoveryPlan {
 
 const ENTER_ADDRESS =
   'Anbieter wählen oder Basis-Adresse eintragen; dann ruft der Assistent die angebotenen Modelle ab.'
+const ENTER_ADDRESS_ONLY =
+  'Basis-Adresse eintragen; dann ruft der Assistent die Modelle ab, sofern der Endpunkt eine Liste anbietet.'
 const ENTER_KEY = 'Zugangsschlüssel eintragen; dann ruft der Assistent die angebotenen Modelle ab.'
 const KEY_LEFT_BEHIND =
   'Die Basis-Adresse weicht von der gespeicherten ab, der gespeicherte Schlüssel gilt nur für sie. Den Schlüssel neu eintragen oder entfernen, dann „Modelle abrufen“.'
@@ -93,7 +103,8 @@ const KEY_FOR_OTHER_ADDRESS =
 export function discoveryPlan(entries: EndpointEntries): DiscoveryPlan {
   const baseUrl = entries.baseUrl.trim()
   if (urlError(baseUrl, 'die Basis-Adresse') !== undefined) {
-    return { request: null, automatic: false, hint: ENTER_ADDRESS }
+    const hint = entries.offersProviders === false ? ENTER_ADDRESS_ONLY : ENTER_ADDRESS
+    return { request: null, automatic: false, hint }
   }
   const typedKey = entries.apiKey.trim()
   const storedKey = Boolean(entries.stored?.apiKeySet) && !entries.removeKey
