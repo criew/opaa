@@ -41,6 +41,7 @@ final class S3FullSync implements AutoCloseable, FileSyncWording {
   static final String DROPPED_EVENTS_SUFFIX =
       " gemeldete Objekte liegen außerhalb der Geltungsbereiche oder Muster und wurden verworfen";
 
+  private final S3SourceSettings settings;
   private final List<S3Scope> scopes;
   private final FileSync sync;
 
@@ -56,6 +57,7 @@ final class S3FullSync implements AutoCloseable, FileSyncWording {
       ScanJournal journal,
       Clock clock,
       SupportedDocumentFormats supportedFormats) {
+    this.settings = settings;
     this.scopes = settings.scopes();
     this.sync =
         new FileSync(
@@ -91,11 +93,7 @@ final class S3FullSync implements AutoCloseable, FileSyncWording {
       int slash = reference.indexOf('/');
       String bucket = slash < 0 ? reference : reference.substring(0, slash);
       String key = slash < 0 ? "" : reference.substring(slash + 1);
-      S3Scope scope =
-          scopes.stream()
-              .filter(s -> s.bucket().equals(bucket) && s.contains(key))
-              .findFirst()
-              .orElse(null);
+      S3Scope scope = settings.scopeOf(bucket, key).orElse(null);
       if (scope == null || key.isEmpty()) {
         outside++;
       } else {

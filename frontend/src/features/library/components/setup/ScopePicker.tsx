@@ -31,8 +31,19 @@ interface ScopePickerProps {
   source: SelectionSource
   value: SelectionItem[]
   onChange: (items: SelectionItem[]) => void
-  /** The radio pair „Alle … / Nur ausgewählte …“, where the source can be read whole. */
-  all?: { active: boolean; onChange: (all: boolean) => void; label?: string }
+  /**
+   * The radio pair „Alle … / Nur ausgewählte …“, where the source can be read whole: `hint` stands
+   * under „Alle“ while it is chosen, `content` below it (what „Alle“ still needs, a SharePoint
+   * site); `unavailable` disables „Alle“ and says why.
+   */
+  all?: {
+    active: boolean
+    onChange: (all: boolean) => void
+    label?: string
+    hint?: string
+    content?: React.ReactNode
+    unavailable?: string | null
+  }
   error?: string | null
   /** Changes whenever the listing would answer differently (address, credentials). */
   loadKey: string
@@ -237,7 +248,19 @@ export default function ScopePicker({
         >
           <FormControlLabel
             value="all"
-            control={<Radio size="small" />}
+            disabled={Boolean(all.unavailable) && !all.active}
+            control={
+              <Radio
+                size="small"
+                slotProps={{
+                  input: {
+                    'aria-describedby': (all.active ? all.hint : all.unavailable)
+                      ? `${id}-all-note`
+                      : undefined,
+                  },
+                }}
+              />
+            }
             label={all.label ?? `Alle ${plural}`}
           />
           <FormControlLabel
@@ -247,6 +270,15 @@ export default function ScopePicker({
           />
         </RadioGroup>
       )}
+      {all && (all.active ? all.hint : all.unavailable) && (
+        <Typography
+          id={`${id}-all-note`}
+          sx={{ fontSize: 13, color: 'text.secondary', pl: 3.5, mb: 0.5 }}
+        >
+          {all.active ? all.hint : all.unavailable}
+        </Typography>
+      )}
+      {all?.active && all.content && <Box sx={{ pl: 3.5, mt: 0.5 }}>{all.content}</Box>}
       {!all?.active && <Box sx={{ pl: all ? 3.5 : 0, mt: all ? 0.5 : 0 }}>{body}</Box>}
       {error && (
         <Typography id={errorId} sx={{ fontSize: 12, color: 'error.main', mt: 0.5 }}>

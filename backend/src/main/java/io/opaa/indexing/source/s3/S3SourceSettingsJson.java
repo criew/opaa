@@ -10,14 +10,15 @@ import java.util.Map;
  * The persisted form of {@link S3SourceSettings} in {@code knowledge_libraries.source_settings}
  * (ADR-0027, Entscheidung 1; ADR-0038): one JSON object with {@code region}, {@code pathStyle},
  * {@code scopes} (objects with {@code bucket} and {@code prefix}), {@code includePatterns} and
- * {@code excludePatterns} - the same shape the API carries, validated by the record on the way back
- * in.
+ * {@code excludePatterns}, and {@code allBuckets} only when true - the same shape the API carries,
+ * validated by the record on the way back in.
  */
 public final class S3SourceSettingsJson {
 
   /** The fields the settings consist of. */
   public static final java.util.Set<String> KEYS =
-      java.util.Set.of("region", "pathStyle", "scopes", "includePatterns", "excludePatterns");
+      java.util.Set.of(
+          "region", "pathStyle", "scopes", "includePatterns", "excludePatterns", "allBuckets");
 
   private S3SourceSettingsJson() {}
 
@@ -50,6 +51,9 @@ public final class S3SourceSettingsJson {
     json.put("scopes", scopes);
     json.put("includePatterns", settings.includePatterns());
     json.put("excludePatterns", settings.excludePatterns());
+    if (settings.allBuckets()) {
+      json.put("allBuckets", true);
+    }
     return ConnectorData.of(json);
   }
 
@@ -90,7 +94,8 @@ public final class S3SourceSettingsJson {
         Boolean.TRUE.equals(data.get("pathStyle")),
         scopes,
         strings(data.get("includePatterns")),
-        strings(data.get("excludePatterns")));
+        strings(data.get("excludePatterns")),
+        Boolean.TRUE.equals(data.get("allBuckets")));
   }
 
   private static String string(Object value) {

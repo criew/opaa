@@ -41,6 +41,19 @@ class S3SourceConnectorViewTest {
     assertThat(view.get("scopes").toString()).contains("akten");
   }
 
+  // regression guard for #3117: under "Alle Buckets" the scopes are empty, so a reader saw no scope
+  @Test
+  void aReaderSeesThatTheLibraryReadsEveryBucket() {
+    ConnectorData all =
+        ConnectorData.of(Map.of("region", "eu-central-1", "allBuckets", true, "scopes", List.of()));
+
+    ConnectorData view = connector.settingsView(library(), all, false);
+
+    assertThat(view.asMap())
+        .containsOnlyKeys("scopes", "allBuckets")
+        .containsEntry("allBuckets", true);
+  }
+
   @Test
   void aManagerSeesTheWholeRecord() {
     ConnectorData view = connector.settingsView(library(), stored, true);

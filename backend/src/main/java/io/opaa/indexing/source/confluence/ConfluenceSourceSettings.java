@@ -10,24 +10,41 @@ import java.util.Map;
 
 /**
  * The connector settings of a {@code CONFLUENCE} library (ADR-0023, ADR-0038): the edition, the
- * space selection and the library's own full-sync rhythm in days, stored as {@code {"edition",
- * "spaces": [{"key", "name"}], "fullSyncIntervalDays"}}. In a request every part may be absent
- * ({@code null}) - on a change that leaves the stored part alone; an element of {@code spaces}
- * without a key reads as {@code null} and is refused by the connector's validation.
+ * space selection or {@code allSpaces} for every space the access sees (ADR-0023, Entscheidung 1),
+ * and the library's own full-sync rhythm in days, stored as {@code {"edition", "spaces": [{"key",
+ * "name"}], "allSpaces", "fullSyncIntervalDays"}} with {@code allSpaces} only when true. In a
+ * request every part may be absent ({@code null}) - on a change that leaves the stored part alone;
+ * an element of {@code spaces} without a key reads as {@code null} and is refused by the
+ * connector's validation.
  */
 public record ConfluenceSourceSettings(
     ConfluenceEdition edition,
     List<ConfluenceSpaceSelection> spaces,
-    Integer fullSyncIntervalDays) {
+    Integer fullSyncIntervalDays,
+    Boolean allSpaces) {
 
   static final String EDITION = "edition";
   static final String SPACES = "spaces";
+  static final String ALL_SPACES = "allSpaces";
   static final String FULL_SYNC_INTERVAL_DAYS = "fullSyncIntervalDays";
   static final java.util.Set<String> KEYS =
-      java.util.Set.of(EDITION, SPACES, FULL_SYNC_INTERVAL_DAYS);
+      java.util.Set.of(EDITION, SPACES, ALL_SPACES, FULL_SYNC_INTERVAL_DAYS);
 
   private static final ConfluenceSourceSettings NONE =
       new ConfluenceSourceSettings(null, List.of(), null);
+
+  /** Settings with an explicit selection, or none given. */
+  public ConfluenceSourceSettings(
+      ConfluenceEdition edition,
+      List<ConfluenceSpaceSelection> spaces,
+      Integer fullSyncIntervalDays) {
+    this(edition, spaces, fullSyncIntervalDays, null);
+  }
+
+  /** Whether the scope is every space the access sees rather than a selection. */
+  public boolean all() {
+    return Boolean.TRUE.equals(allSpaces);
+  }
 
   /** The settings a library carries; no edition and no spaces for {@code null}. */
   public static ConfluenceSourceSettings stored(ConnectorData stored) {
@@ -46,7 +63,8 @@ public record ConfluenceSourceSettings(
     return new ConfluenceSourceSettings(
         edition(data.get(EDITION)),
         spaces(data.get(SPACES)),
-        days(data.get(FULL_SYNC_INTERVAL_DAYS)));
+        days(data.get(FULL_SYNC_INTERVAL_DAYS)),
+        all(data.get(ALL_SPACES)));
   }
 
   /** Every part that is present, the spaces in the order given. */
@@ -65,6 +83,9 @@ public record ConfluenceSourceSettings(
       }
       json.put(SPACES, entries);
     }
+    if (allSpaces != null) {
+      json.put(ALL_SPACES, allSpaces);
+    }
     if (fullSyncIntervalDays != null) {
       json.put(FULL_SYNC_INTERVAL_DAYS, fullSyncIntervalDays);
     }
@@ -80,7 +101,8 @@ public record ConfluenceSourceSettings(
             : spaces.stream()
                 .sorted(Comparator.comparing(ConfluenceSpaceSelection::getSpaceKey))
                 .toList(),
-        fullSyncIntervalDays);
+        fullSyncIntervalDays,
+        all() ? Boolean.TRUE : null);
   }
 
   /** The selection, empty when none is stored. */
@@ -118,6 +140,16 @@ public record ConfluenceSourceSettings(
       }
     }
     return spaces;
+  }
+
+  private static Boolean all(Object value) {
+    if (value == null) {
+      return null;
+    }
+    if (!(value instanceof Boolean flag)) {
+      throw new ValidationException("sourceSettings.allSpaces muss true oder false sein");
+    }
+    return flag;
   }
 
   private static Integer days(Object value) {

@@ -80,14 +80,27 @@ final class DataCenterConfluenceClient extends AbstractConfluenceClient {
 
   @Override
   public List<ConfluenceSpace> listSpaces() throws ConfluenceAccessException, InterruptedException {
+    return listSpaces("");
+  }
+
+  @Override
+  public List<ConfluenceSpace> listCurrentSpaces()
+      throws ConfluenceAccessException, InterruptedException {
+    return listSpaces("&status=current");
+  }
+
+  private List<ConfluenceSpace> listSpaces(String filter)
+      throws ConfluenceAccessException, InterruptedException {
     String resource = "die Space-Liste";
     List<ConfluenceSpace> spaces = new ArrayList<>();
     for (JsonNode node :
         listAll(
-            base() + REST + "/space?limit=" + pageSize() + "&start=0",
+            base() + REST + "/space?limit=" + pageSize() + filter + "&start=0",
             resource,
             reader(resource))) {
-      spaces.add(new ConfluenceSpace(text(node, "id"), text(node, "key"), text(node, "name")));
+      spaces.add(
+          ConfluenceSpace.of(
+              text(node, "id"), text(node, "key"), text(node, "name"), text(node, "type")));
     }
     return spaces;
   }

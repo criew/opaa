@@ -15,6 +15,7 @@ import {
 
 const complete: S3SourceValues = {
   ...EMPTY_S3_VALUES,
+  allBuckets: false,
   sourceUrl: 'https://minio.intern.example:9000',
   accessKey: 'AKIAEXAMPLE',
   secretKey: 'geheim',
@@ -24,6 +25,20 @@ const complete: S3SourceValues = {
   ],
   includePatterns: '**/*.pdf\n\n  **/*.docx  ',
 }
+
+describe('„Alle Buckets“', () => {
+  it('sends allBuckets without scopes, needs none and reads back from the settings', () => {
+    const all = { ...complete, allBuckets: true, scopes: [{ bucket: '', prefix: '' }] }
+    expect(s3SettingsOf(all)).toMatchObject({ allBuckets: true, scopes: [] })
+    expect(validateS3Values(all)).toBeNull()
+    expect(
+      s3ValuesFromSettings('https://minio.intern.example', { scopes: [], allBuckets: true }),
+    ).toMatchObject({ allBuckets: true })
+    expect(
+      s3ValuesFromSettings('https://minio.intern.example', { scopes: [{ bucket: 'akten' }] }),
+    ).toMatchObject({ allBuckets: false })
+  })
+})
 
 describe('s3ProviderTemplate / derivedS3Endpoint (ADR-0027, Entscheidung 10)', () => {
   it('prefills AWS and Hetzner from the region and MinIO with path-style', () => {

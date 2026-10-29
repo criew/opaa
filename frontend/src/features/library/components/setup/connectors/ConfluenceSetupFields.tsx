@@ -13,7 +13,7 @@ import { spaceItem, spaceOfItem, spaceSelectionSource } from '../../sourceKit/se
 import ScopePicker from '../ScopePicker'
 import SetupTextField from '../SetupTextField'
 import type { SetupFieldsProps } from '../setupTypes'
-import { addressIssue, credentialsKept } from './common'
+import { ALL_SCOPE_HINT, addressIssue, credentialsKept } from './common'
 
 /**
  * Address and credentials of a Confluence instance. The edition is detected from the address
@@ -138,6 +138,11 @@ export function ConfluenceScopeFields({
       source={source}
       value={values.spaces.map(spaceItem)}
       onChange={(items) => onChange({ spaces: items.map(spaceOfItem) })}
+      all={{
+        active: values.allSpaces,
+        onChange: (allSpaces) => onChange({ allSpaces }),
+        hint: ALL_SCOPE_HINT,
+      }}
       error={issueAt('spaces')}
       loadKey={JSON.stringify({
         url: values.sourceUrl,

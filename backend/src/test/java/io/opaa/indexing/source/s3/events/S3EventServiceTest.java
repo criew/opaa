@@ -179,6 +179,18 @@ class S3EventServiceTest {
   }
 
   @Test
+  void underAllBucketsAnyBucketIsAdmittedAndTheRunDecidesWhichItReads() {
+    library.updateSourceSettings(
+        "{\"pathStyle\": true, \"allBuckets\": true, \"scopes\": [],"
+            + " \"excludePatterns\": [\"**/entwurf-*\"]}");
+
+    assertThat(
+            acceptWithBearer(
+                records("dokumente/2025/a.pdf", "neu-angelegt/x.pdf", "satzungen/entwurf-b.pdf")))
+        .isEqualTo(new PushNotification(Set.of("dokumente/2025/a.pdf", "neu-angelegt/x.pdf"), 1));
+  }
+
+  @Test
   void theSetUpTestEventAndAnAllOutsideBatchQueueNothing() {
     assertThat(
             accept(
