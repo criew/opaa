@@ -56,7 +56,8 @@ Download-URI von `files.download` werden nie mit Token abgerufen. API-Aufrufe un
 einen anderen Host vor jeder Anfrage dorthin abgewiesen (`REDIRECT_REFUSED`, nie ein Löschbefund).
 Beim Download gilt die Datei als nicht lesbar, ihr gespeicherter Stand bleibt, Lauf und
 Änderungsstrom gehen weiter; bei einer Nachfrage im Änderungslauf (Elternordner, gemeldete
-Entfernung) gilt die Seite als vorübergehend fehlgeschlagen, der Strom wird erneut gelesen; bei
+Entfernung) gilt die Seite als vorübergehend fehlgeschlagen; da sich die Abweisung wiederholt,
+bleibt der Strom angehalten, bis der nächste Vollabgleich ihn neu aufsetzt, entfernt wird nichts; bei
 Auflistung oder Bereichsprüfung ist der Bereich nicht auflistbar, sein Bestand bleibt. Gespeicherte
 Zugangsdaten übernimmt der Kern nur bei gleichem, gegen die normalisierte Adresse verglichenem
 Ursprung (`KnowledgeLibraryService`) geprüft an einer Änderung ohne Verbindungsfeld.

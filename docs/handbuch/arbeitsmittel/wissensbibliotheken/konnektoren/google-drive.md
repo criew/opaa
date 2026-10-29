@@ -154,8 +154,8 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
     als vorübergehend fehlgeschlagen und hält den Änderungsstrom an, wie bei langen Downloads.
   - Google beantwortet Abrufe von `www.googleapis.com` selbst. Leitete Google auf eine andere
     Adresse weiter, folgt OPAA nicht, und das Zugriffstoken geht nirgendwo anders hin: Ein Download
-    erscheint als „nicht lesbar", eine Nachfrage im Änderungslauf lässt den Lauf das
-    Änderungsprotokoll erneut lesen. Entfernt wird dabei nichts.
+    erscheint als „nicht lesbar", bei einer Nachfrage im Änderungslauf bleibt der Änderungsstrom
+    angehalten, bis der nächste Vollabgleich ihn neu aufsetzt. Entfernt wird dabei nichts.
   - Der Strom des Kontos meldet auch Änderungen in nur per Ordnerfreigabe sichtbaren Ordnern
     geteilter Ablagen. Sonst sieht sie erst der nächste Vollabgleich.
   - Wie oft Ordneränderungen einen Vollabgleich auslösen, hängt an der Nutzung des Kontos, besonders
