@@ -72,7 +72,14 @@ Assistent gleich den Auswahldialog der Zeile „Umfang":
 3. **Ordner** (optional): Eine Dokumentbibliothek öffnen zeigt ihre Ordner Ebene für Ebene; ein
    angekreuzter Ordner gilt samt Unterordnern.
 4. **„Übernehmen"**; die Zeile nennt danach die gewählten Dokumentbibliotheken mit dem Namen der
-   Site. Der Verbindungstest prüft jede gewählte Dokumentbibliothek samt Ordnern.
+   Site. Der Verbindungstest prüft jede gewählte Dokumentbibliothek samt Ordnern und ob sie noch
+   zu ihrer Site gehört.
+
+OPAA merkt sich zu jeder Dokumentbibliothek die Site, in der sie gewählt wurde. Liegen alle
+gewählten Dokumentbibliotheken in derselben Site, öffnet der Dialog beim Bearbeiten gleich dort.
+Ist zu einer Dokumentbibliothek keine Site gespeichert, etwa nach einem Update, beginnt der Dialog
+bei den Sites; die Site wird gespeichert, sobald die Dokumentbibliothek einmal über ihre Site neu
+gewählt und übernommen ist.
 
 Eine ganze Site oder „alle Sites" lässt sich nicht wählen. Sites, Dokumentbibliotheken und Ordner
 einer Ebene listet der Dialog nur bis zu einer festen Grenze; ist die Liste länger, steht dort „Liste
@@ -189,6 +196,7 @@ Correlation-ID für eine Anfrage beim Microsoft-Support.
 | „Das Token der App trägt keine Berechtigung: Für die App-Registrierung wurde keine Administratorzustimmung erteilt …" | Entra stellt das Token ohne Rollen aus, weil die Anwendungsberechtigung nicht bestätigt ist; Graph weist es mit 401 oder 403 ab, auch im Verbindungstest; der Lauf endet, der Zugang gilt nicht als abgelaufen | in Entra unter „API-Berechtigungen" „Administratorzustimmung erteilen" (Abschnitt 2) |
 | „Die Anwendung darf das nicht lesen. Bei der Berechtigung Sites.Selected muss die Site für die App freigegeben sein." / „… Dokumentbibliothek ist für die Anwendung nicht sichtbar …" | Site nicht freigegeben oder Kennung falsch, bei erteilter Administratorzustimmung; der Bestand bleibt | Site freigeben (Abschnitt 2) |
 | „Microsoft Graph kennt die Site oder Bibliothek nicht …" | Adresse falsch oder Site gelöscht | Adresse prüfen |
+| „Die Dokumentbibliothek gehört nicht zur Site … bitte neu aus der Auflistung wählen." | im Verbindungstest: die gespeicherte Site führt die Dokumentbibliothek nicht (mehr) | Dokumentbibliothek im Umfang neu wählen |
 | „Die Adresse der Site ist eine https-Adresse ohne Port, Anmeldedaten, Abfrage und Anker …" | Adresse in falscher Form | Adresse aus dem Browser übernehmen |
 | „Die Site … hat keine Dokumentbibliothek, die die Anwendung lesen kann …" / „… keine SharePoint-Dokumentbibliothek …" | nur OneDrive oder andere Laufwerke | nichts; ein OneDrive liest der Konnektor [OneDrive](onedrive.md) |
 | „Die Suche nach Sites braucht die Berechtigung Sites.Read.All …" | Suche unter `Sites.Selected` | Adresse eingeben |
