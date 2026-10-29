@@ -699,11 +699,13 @@ ohne Punkt 7 nicht mehr von anderen Rechnern:
    setzt vor dem Update `OPAA_FRONTEND_BIND_ADDRESS` bzw. `OPAA_KEYCLOAK_BIND_ADDRESS` (etwa
    `0.0.0.0`) in `.env` oder der Shell-Umgebung; im Modus `dev` zusätzlich
    `OPAA_AUTH_DEV_ALLOW_REMOTE=true` ([Härtung des Compose-Stapels](#härtung-des-compose-stapels)).
-8. **Kopierte Test- oder Entwicklungsschlüssel ersetzen.** Steht in `OPAA_CREDENTIALS_ENCRYPTION_KEY`
-   oder `OPAA_SETTINGS_ENCRYPTION_KEY` ein Schlüssel des Profils `dev` oder der Wertesätze der CI,
-   bricht der Start im Modus `oidc` ab. Einen eigenen Schlüssel erzeugen (`openssl rand -base64 32`)
-   und die damit geschützten Werte danach neu eintragen: Zugangsdaten der Quellen und Zugänge,
-   Schlüssel der Chat-Modelle, das Passwort des Mailservers
+8. **Kopierte Test- oder Entwicklungswerte ersetzen.** Steht in `OPAA_CREDENTIALS_ENCRYPTION_KEY`
+   oder `OPAA_SETTINGS_ENCRYPTION_KEY` ein Schlüssel des Profils `dev`, der Wertesätze der CI oder aus
+   früheren Fassungen einer `e2e/*.env`, bricht der Start im Modus `oidc` ab, ebenso mit einem
+   `OPAA_AUTH_JWT_SECRET` aus einer solchen Datei. Einen eigenen Schlüssel erzeugen
+   (`openssl rand -base64 32`) und die damit geschützten Werte danach neu eintragen: Zugangsdaten der
+   Quellen und Zugänge, Schlüssel der Chat-Modelle, das Passwort des Mailservers; ein neues
+   Signaturgeheimnis (`openssl rand -base64 48`) beendet alle lokalen Sitzungen
    ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#schlüssel-und-geheimnisse)).
 
 Bestehende Konten, Rollen, Rechte und der Index bleiben, wie sie sind; ein Identitätsanbieter läuft

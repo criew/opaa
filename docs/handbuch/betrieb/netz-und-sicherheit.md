@@ -327,9 +327,10 @@ dem Backend den Weg zum Scanner öffnen.
   (Schlüssel).
 - Außerhalb des Repositorys ablegen (Tresor, Secret-Manager) und **getrennt von der Datenbank
   sichern**: Ohne die Schlüssel enthält eine Datenbanksicherung unlesbare Zugangsdaten.
-- Die Schlüssel des Profils `dev` und die Testwerte der Wertesätze unter `deploy/helm/opaa/ci/`
-  (`ci-only-…`, Kennzeichen `NICHT-FUER-DEN-PRODUKTIVBETRIEB`) sind öffentlich. Im Modus `oidc`
-  bricht der Start mit ihnen ab und nennt die Variable.
+- Die Schlüssel des Profils `dev`, die Testwerte der Wertesätze unter `deploy/helm/opaa/ci/`
+  (`ci-only-…`, Kennzeichen `NICHT-FUER-DEN-PRODUKTIVBETRIEB`) und die früheren Schlüssel und
+  Signaturgeheimnisse der Testläufe des Repositorys sind öffentlich. Im Modus `oidc` bricht der Start
+  mit ihnen ab und nennt die Variable. Die Testläufe erzeugen ihre Werte je Lauf.
 
 ### Zugangsdaten-Verschlüsselung
 
