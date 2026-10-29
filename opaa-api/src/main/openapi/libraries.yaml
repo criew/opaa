@@ -1386,7 +1386,9 @@ components:
             {id, name} of the site the library was chosen in, the id as the listing gives it after
             site:, the name only shown - the connection test reports a library outside its site)
             and fullSyncIntervalDays; RSS_FEED takes mainContentSelector (CSS selector in Jsoup
-            syntax, at most 200 characters, no regular expression and at most one :has) and
+            syntax, at most 200 characters: type, id, class and attribute selectors joined by
+            space, > or comma, at most 3 combinators per group and 5 groups, no pseudo-class, no
+            ~ or +, no regular expression) and
             attachmentProfile (GENERIC or GSB), both optional, absent for the factory default.
             Types without settings take none.
           nullable: true

@@ -4,6 +4,7 @@ import io.opaa.compliance.DataFlow;
 import io.opaa.format.file.html.HtmlContentRoots;
 import io.opaa.format.shared.Whitespace;
 import io.opaa.indexing.attachment.AttachmentCandidate;
+import io.opaa.indexing.attachment.AttachmentProfile;
 import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;
@@ -25,6 +26,7 @@ import java.util.Set;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.select.Evaluator;
 
 /**
  * Fetches a single RSS entry's detail page and reduces it to the HTML of its main content plus
@@ -54,6 +56,17 @@ public class DetailPageExtractor {
    * text - and the attachment candidates found in them, each once. {@code contentAreas} counts the
    * selector's top-level matches, 0 when it matched nothing and the body stood in.
    */
+  /**
+   * How a run reads its detail pages: the content selector, parsed once per run, and the attachment
+   * profile of the library.
+   */
+  public record Extraction(Evaluator contentSelector, AttachmentProfile attachmentProfile) {
+
+    static Extraction of(RssFeedSettings settings) {
+      return new Extraction(settings.compiledSelector(), settings.effectiveProfile());
+    }
+  }
+
   public record DetailPage(
       String mainHtml, List<AttachmentCandidate> attachments, int contentAreas) {
 
@@ -81,7 +94,7 @@ public class DetailPageExtractor {
       String entryUrl,
       String authHeader,
       RateLimitListener rateLimitListener,
-      RssFeedSettings extraction)
+      Extraction extraction)
       throws IOException, InterruptedException {
     HttpResponse<InputStream> response =
         sendDetailPageRequest(httpClient, entryUrl, authHeader, rateLimitListener);
@@ -127,7 +140,7 @@ public class DetailPageExtractor {
       // hardcoded StandardCharsets.UTF_8, which silently mangles e.g. ISO-8859-1 into U+FFFD.
       Document htmlDoc =
           Jsoup.parse(new ByteArrayInputStream(pageBytes), charsetNameFrom(contentType), entryUrl);
-      String selector = extraction.effectiveSelector();
+      Evaluator selector = extraction.contentSelector();
       List<Element> roots = HtmlContentRoots.select(htmlDoc, selector);
       if (roots.isEmpty()) {
         return new DetailPage("", List.of(), 0);
@@ -143,7 +156,7 @@ public class DetailPageExtractor {
       boolean hasText = false;
       for (Element root : roots) {
         attachments.addAll(
-            extraction.effectiveProfile().findAttachments(root, URI.create(entryUrl)));
+            extraction.attachmentProfile().findAttachments(root, URI.create(entryUrl)));
         hasText |= !Whitespace.normalize(root.text()).isBlank();
         html.append(root.outerHtml()).append('\n');
       }

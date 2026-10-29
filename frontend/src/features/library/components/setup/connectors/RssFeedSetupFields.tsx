@@ -7,9 +7,15 @@ import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import type { RssAttachmentProfile, RssFeedSourceValues } from '../../../utils/rssFeedSource'
 import SetupTextField from '../SetupTextField'
 import type { SetupFieldsProps } from '../setupTypes'
+import { UrlConnectionFields } from './GenericSetupFields'
+
+/** „Verbindung“ as every web source. */
+export function RssFeedConnectionFields(props: SetupFieldsProps<RssFeedSourceValues>) {
+  return <UrlConnectionFields {...props} />
+}
 
 /** What each choice of the attachment profile means, in the words of the Reiter „Quelle“. */
-export const RSS_ATTACHMENT_PROFILE_LABELS: Record<RssAttachmentProfile | '', string> = {
+const RSS_ATTACHMENT_PROFILE_LABELS: Record<RssAttachmentProfile | '', string> = {
   '': 'Werkseinstellung (Allgemein)',
   GENERIC: 'Allgemein: Links mit Dateiendung',
   GSB: 'Government Site Builder: Links mit __blob=publicationFile',
@@ -33,7 +39,7 @@ export function RssFeedScopeFields({
         value={values.mainContentSelector}
         onChange={(mainContentSelector) => onChange({ mainContentSelector })}
         error={issueAt('mainContentSelector')}
-        hint="CSS-Selektor der Inhaltsbereiche einer Detailseite. Leer gilt main, article, [role=main]."
+        hint="Inhaltsbereiche einer Detailseite: Element, #ID, .Klasse oder [Attribut], verbunden mit Leerzeichen, > oder Komma. Leer gilt main, article, [role=main]."
         placeholder="#inhalt"
         mono
       />
@@ -58,12 +64,12 @@ export function RssFeedScopeFields({
             </MenuItem>
           ))}
         </Select>
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+        <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: 'text.secondary' }}>
           Welche Links auf einer Detailseite als Anlagen gelten.
         </Typography>
       </Box>
       {context.mode === 'edit' && (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
           Eine Änderung gilt ab dem nächsten Lauf; er liest alle Einträge des Feeds neu.
         </Typography>
       )}

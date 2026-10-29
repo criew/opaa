@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import org.jsoup.select.Evaluator;
 import org.jsoup.select.QueryParser;
 import org.jsoup.select.Selector;
 
@@ -15,8 +16,10 @@ import org.jsoup.select.Selector;
  * The connector settings of one feed library ({@code source_settings}, ADR-0038): the CSS selector
  * of a detail page's content areas and the {@link AttachmentProfile}. Either may be absent; absent
  * means the factory default in code, there is no installation-wide value (ADR-0060, Entscheidung
- * 1). A selector is bounded in length and refused when it carries a regular expression or more than
- * one {@code :has}, since it runs against every element of a page the feed operator controls.
+ * 1). A selector runs against every element of a page the feed operator controls, so only type, id,
+ * class and attribute selectors joined by space, {@code >} or comma pass, bounded in length,
+ * combinators and groups: every pseudo-class and the sibling combinators can cost more than linear
+ * in the elements of a page.
  */
 record RssFeedSettings(String mainContentSelector, AttachmentProfile attachmentProfile) {
 
@@ -25,6 +28,14 @@ record RssFeedSettings(String mainContentSelector, AttachmentProfile attachmentP
   static final Set<String> KEYS = Set.of(MAIN_CONTENT_SELECTOR, ATTACHMENT_PROFILE);
 
   static final int MAX_SELECTOR_LENGTH = 200;
+
+  static final int MAX_COMBINATORS = 3;
+  static final int MAX_GROUPS = 5;
+
+  /** The effective selector, parsed once per run and reused for every detail page. */
+  Evaluator compiledSelector() {
+    return QueryParser.parse(effectiveSelector());
+  }
 
   static final AttachmentProfile DEFAULT_PROFILE = AttachmentProfile.GENERIC;
 
@@ -117,15 +128,59 @@ record RssFeedSettings(String mainContentSelector, AttachmentProfile attachmentP
       throw new ValidationException(
           field + ": reguläre Ausdrücke (:matches…, [attr~=…]) sind nicht erlaubt");
     }
-    if (lower.indexOf(":has(") != lower.lastIndexOf(":has(")) {
-      throw new ValidationException(field + " darf :has höchstens einmal enthalten");
-    }
     try {
       QueryParser.parse(value);
     } catch (Selector.SelectorParseException | IllegalArgumentException e) {
       throw new ValidationException(
           field + " ist kein gültiger CSS-Selektor (Jsoup-Syntax), etwa main, #inhalt oder .text");
     }
+    requireLinearCost(value, field);
     return value;
+  }
+
+  /**
+   * Refuses everything but type, id, class and attribute selectors joined by space, {@code >} or
+   * comma, with at most {@link #MAX_COMBINATORS} combinators per group and {@link #MAX_GROUPS}
+   * groups; quoted text and attribute brackets are skipped. Runs after the parse, so the selector
+   * is well-formed here.
+   */
+  private static void requireLinearCost(String selector, String field) {
+    StringBuilder outside = new StringBuilder();
+    char quote = 0;
+    boolean inBrackets = false;
+    for (char c : selector.toCharArray()) {
+      if (quote != 0) {
+        quote = c == quote ? 0 : quote;
+      } else if (c == '"' || c == '\'') {
+        quote = c;
+      } else if (c == '[') {
+        inBrackets = true;
+      } else if (c == ']') {
+        inBrackets = false;
+        outside.append('a');
+      } else if (!inBrackets) {
+        outside.append(c);
+      }
+    }
+    String plain = outside.toString();
+    if (plain.chars().anyMatch(c -> c == ':' || c == '~' || c == '+' || c == '(')) {
+      throw new ValidationException(
+          field
+              + " darf nur Element-, ID-, Klassen- und Attributselektoren mit Leerzeichen, > oder"
+              + " Komma verbinden; Pseudoklassen (:…) und die Kombinatoren ~ und + sind nicht"
+              + " erlaubt");
+    }
+    String[] groups = plain.split(",", -1);
+    if (groups.length > MAX_GROUPS) {
+      throw new ValidationException(
+          field + " darf höchstens " + MAX_GROUPS + " durch Komma getrennte Selektoren enthalten");
+    }
+    for (String group : groups) {
+      int combinators = group.strip().split("\\s*>\\s*|\\s+").length - 1;
+      if (combinators > MAX_COMBINATORS) {
+        throw new ValidationException(
+            field + " darf je Selektor höchstens " + MAX_COMBINATORS + " Kombinatoren enthalten");
+      }
+    }
   }
 }

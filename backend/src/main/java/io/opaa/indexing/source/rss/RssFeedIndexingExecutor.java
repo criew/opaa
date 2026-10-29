@@ -174,7 +174,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
             run.events(),
             new AtomicBoolean(loaded.get().truncated()),
             budget,
-            extraction,
+            DetailPageExtractor.Extraction.of(extraction),
             loaded.get().reprocessing());
     if (ctx.reprocessing()) {
       log.info(

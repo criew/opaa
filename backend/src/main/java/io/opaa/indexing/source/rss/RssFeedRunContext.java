@@ -36,7 +36,7 @@ public record RssFeedRunContext(
     IndexingRunEventRecorder events,
     AtomicBoolean anyEntryDeferred,
     RequestBudget requestBudget,
-    RssFeedSettings extraction,
+    DetailPageExtractor.Extraction extraction,
     boolean reprocessing)
     implements AttachmentAccess {
 
@@ -59,7 +59,7 @@ public record RssFeedRunContext(
         events,
         anyEntryDeferred,
         requestBudget,
-        RssFeedSettings.read(null),
+        DetailPageExtractor.Extraction.of(RssFeedSettings.read(null)),
         false);
   }
 

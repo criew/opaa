@@ -5,8 +5,8 @@ import {
 } from '../../../utils/rssFeedSource'
 import type { SourceSetupSpec } from '../setupTypes'
 import { urlSetup } from './genericSetups'
-import { joinSummary } from './common'
-import { RssFeedScopeFields } from './RssFeedSetupFields'
+import { hostOf, joinSummary } from './common'
+import { RssFeedConnectionFields, RssFeedScopeFields } from './RssFeedSetupFields'
 
 const SCOPE_FIELDS = ['mainContentSelector', 'attachmentProfile']
 
@@ -16,7 +16,11 @@ const SCOPE_FIELDS = ['mainContentSelector', 'attachmentProfile']
  */
 export const rssFeedSetup: SourceSetupSpec<RssFeedSourceValues> = {
   sections: [
-    ...urlSetup.sections,
+    {
+      id: 'connection',
+      summary: (values) => (values.sourceUrl.trim() ? joinSummary(hostOf(values.sourceUrl)) : null),
+      Fields: RssFeedConnectionFields,
+    },
     {
       id: 'scope',
       summary: (values) =>

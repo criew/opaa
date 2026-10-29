@@ -32,12 +32,6 @@ import java.util.UUID;
             columnNames = {"library_id", "feed_url"}))
 public class RssFeedState {
 
-  /**
-   * Settings no run used: a change before any complete run leaves this, so the next one
-   * reprocesses.
-   */
-  public static final String UNKNOWN_EXTRACTION = "";
-
   @Id private UUID id;
 
   @Column(name = "library_id", nullable = false)
@@ -54,7 +48,7 @@ public class RssFeedState {
 
   /**
    * The {@link RssFeedSettings#fingerprint()} the feed's entries were last completely processed
-   * under, {@code null} for the factory defaults; {@link #UNKNOWN_EXTRACTION} matches no settings.
+   * under, {@code null} for the factory defaults.
    */
   @Column(name = "extraction_settings", columnDefinition = "text")
   private String extractionSettings;

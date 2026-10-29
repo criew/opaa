@@ -77,7 +77,8 @@ class FeedFetcher {
    *
    * <p>A state saved under another {@code extractionFingerprint} ({@link
    * RssFeedSettings#fingerprint()}) is not sent as conditional {@code GET}: the run reads the feed
-   * in full and reprocesses its entries.
+   * in full and reprocesses its entries; so do own settings without any stored state, since no run
+   * under them is known to have been complete.
    */
   Optional<LoadedFeed> fetchAndParse(
       HttpClient httpClient,
@@ -91,7 +92,7 @@ class FeedFetcher {
     boolean reprocessing =
         storedState
             .map(state -> !Objects.equals(state.getExtractionSettings(), extractionFingerprint))
-            .orElse(false);
+            .orElse(extractionFingerprint != null);
     Optional<RssFeedState> feedState = reprocessing ? Optional.empty() : storedState;
     String sent = authHeader.get();
     HttpResponse<InputStream> feedResponse =

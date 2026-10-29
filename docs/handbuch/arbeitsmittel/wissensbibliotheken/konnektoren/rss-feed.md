@@ -158,9 +158,12 @@ keinen extrahierbaren Text, werden seine Anlagen nicht indiziert.
 - **Prüfung je Eintrag**, bevor etwas geladen wird: Ein Link mit anderem Schema als `http`/`https`
   oder kaputter Adresse wird abgewiesen.
 - **XML-Härtung:** keine DTDs, keine externen Entitäten.
-- **Inhaltsselektor:** höchstens 200 Zeichen, keine regulären Ausdrücke (`:matches…`,
-  `[attr~=…]`) und höchstens ein `:has`. Er läuft gegen jedes Element einer Seite, die der
-  Betreiber des Feeds bestimmt.
+- **Inhaltsselektor:** nur Element-, ID-, Klassen- und Attributselektoren, verbunden durch
+  Leerzeichen, `>` oder Komma; höchstens 200 Zeichen, drei Kombinatoren je Selektor und fünf durch
+  Komma getrennte Selektoren. Pseudoklassen wie `:has` oder `:contains`, die Kombinatoren `~` und
+  `+` und reguläre Ausdrücke (`[attr~=…]`) sind nicht erlaubt: Der Selektor läuft gegen jedes
+  Element einer Seite, die der Betreiber des Feeds bestimmt, und keine dieser Formen darf dort mehr
+  als linear viel Rechenzeit kosten.
 - **Inhaltstyp:** Eine Detailseite muss HTML sein; eine Anlage, die HTML liefert, gilt als
   vermutliche Bot-Schutzseite und wird verworfen.
 - **Drosselung:** Nur bei HTTP 429 wird gewartet und wiederholt; danach wird zurückgestellt.
@@ -191,7 +194,7 @@ liegt bei bis zu einer Anlagengröße je gleichzeitig verarbeiteter Anlage.
 | „Kein Inhalt extrahierbar" | Hauptinhalt nach der Reduktion leer | Inhaltsselektor der Bibliothek prüfen |
 | Verbindungstest: „Der Inhaltsselektor findet auf der Detailseite des ersten Eintrags nichts …" | ein Lauf nähme die ganze Seite samt Seitenrahmen | Selektor an der Detailseite anpassen |
 | Verbindungstest: „Die Detailseite des ersten Eintrags konnte nicht geprüft werden: …" | der Feed ist erreichbar, die Detailseite nicht | Ursache im Rest der Meldung; der Feed lässt sich trotzdem anlegen |
-| Beim Speichern: „… ist kein gültiger CSS-Selektor …", „… reguläre Ausdrücke … sind nicht erlaubt", „… darf :has höchstens einmal enthalten" | der Selektor wird nicht gespeichert | Selektor ohne diese Teile formulieren |
+| Beim Speichern: „… ist kein gültiger CSS-Selektor …", „… reguläre Ausdrücke … sind nicht erlaubt", „… Pseudoklassen (:…) und die Kombinatoren ~ und + sind nicht erlaubt", „… höchstens 3 Kombinatoren …" | der Selektor wird nicht gespeichert | Selektor ohne diese Teile formulieren |
 | „Anlage antwortete mit HTML statt einem Dokument (vermutlich Bot-Schutz)" | Anlage verworfen | nichts |
 | „Anlage überschreitet die zulässige Größe" / „Anlage nicht erreichbar" / „Anlagenformat wird nicht unterstützt" | diese Anlage entfällt | nichts |
 | „Die Quelle hat den Lauf n-mal gedrosselt …" (Ratenbegrenzung) | eine Zeile je Lauf, wenn gewartet wurde | nichts |

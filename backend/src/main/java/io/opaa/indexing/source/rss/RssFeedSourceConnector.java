@@ -160,27 +160,14 @@ public class RssFeedSourceConnector
   /**
    * The feed state row only goes away with the library itself (ON DELETE CASCADE); returning to a
    * former address must not find its stale ETag again and end the run in a false 304. Changed
-   * extraction settings leave a stored state as it is - it names the settings it was saved under -
-   * and without one leave {@link RssFeedState#UNKNOWN_EXTRACTION}, so the next run reprocesses.
+   * extraction settings need nothing here: the feed state names the ones it was saved under, and
+   * the next run compares them with the library's.
    */
   @Override
   public void onSourceChanged(
       KnowledgeLibrary library, boolean addressChanged, Set<String> changedSettings) {
     if (addressChanged) {
       feedStateRepository.deleteByLibraryId(library.getId());
-    }
-    boolean extractionChanged =
-        changedSettings.contains(RssFeedSettings.MAIN_CONTENT_SELECTOR)
-            || changedSettings.contains(RssFeedSettings.ATTACHMENT_PROFILE);
-    String feedUrl = library.getSourceUrl();
-    if (!extractionChanged || feedUrl == null) {
-      return;
-    }
-    if (addressChanged
-        || feedStateRepository.findByLibraryIdAndFeedUrl(library.getId(), feedUrl).isEmpty()) {
-      RssFeedState unknown = new RssFeedState(library.getId(), feedUrl, null, null);
-      unknown.setExtractionSettings(RssFeedState.UNKNOWN_EXTRACTION);
-      feedStateRepository.save(unknown);
     }
   }
 
@@ -292,7 +279,11 @@ public class RssFeedSourceConnector
               : null;
       page =
           detailPageExtractor.fetch(
-              httpClient, entryUrl, entryAuth, RateLimitListener.NONE, extraction);
+              httpClient,
+              entryUrl,
+              entryAuth,
+              RateLimitListener.NONE,
+              DetailPageExtractor.Extraction.of(extraction));
     } catch (DetailPageExtractor.RejectedByRemoteException e) {
       return DetailPageCheck.unchecked(e.userMessage() + ".");
     } catch (DetailPageExtractor.UnsupportedContentTypeException e) {
