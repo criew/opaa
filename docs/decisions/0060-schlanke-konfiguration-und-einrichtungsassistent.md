@@ -295,7 +295,9 @@ einzige Hürde; ohne Prüfung reichte der Verbindungsaufbau weiter ins interne N
 Modellabruf, freie Ports und genaue Fehlertexte machten die Prüfung zu einem Portscanner mit
 Dienstkennung, und eine Testnachricht an eine frei wählbare Adresse machte ein internes Relais von
 außen nutzbar. Ein interner Mailserver braucht deshalb dieselbe Freigabe des Betriebs wie ein internes
-Modell, oder er wird nach der Installation in der Verwaltung eingetragen.
+Modell, oder er wird nach der Installation in der Verwaltung eingetragen. Wie beim Anbieter der
+Antwortdatei trägt das Helm-Chart Host und Port des Mailservers aus `bootstrap.mail` in diese Allowlist
+ein.
 
 ### 15. Branding im Assistenten: Texte und Farben, keine Bilder
 

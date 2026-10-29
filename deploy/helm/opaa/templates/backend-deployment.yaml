@@ -234,6 +234,10 @@ spec:
               - key: installation-embedding-api-key
                 path: embedding-api-key
               {{- end }}
+              {{- if include "opaa.installation.mailPassword" . }}
+              - key: installation-mail-password
+                path: mail-password
+              {{- end }}
         {{- end }}
         {{- range .Values.filesystemSources }}
         - name: {{ printf "source-%s" .name }}

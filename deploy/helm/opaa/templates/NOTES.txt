@@ -51,8 +51,8 @@ INSTALLATION AUS DER ANTWORTDATEI
 {{- end }}
   Nach dem Abschluss übergeht OPAA die Antwortdatei; eine geänderte values.yaml ändert an einer
   laufenden Installation nichts. Danach secrets.initialAdminPassword (bzw. den Schlüssel
-  installation-admin-password) entfernen. Mailserver, weitere Identitätsanbieter und Modelle werden
-  in der Oberfläche eingerichtet.
+  installation-admin-password) entfernen. Weitere Identitätsanbieter und Modelle werden in der
+  Oberfläche eingerichtet{{ if not .Values.bootstrap.mail.host }}, ebenso der Mailserver{{ end }}.
 {{- else -}}
 INSTALLATIONSMODUS
   Ohne bootstrap.initialAdmin.email bietet OPAA nach dem ersten Start nur die Installation an:

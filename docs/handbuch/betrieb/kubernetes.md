@@ -150,7 +150,7 @@ an; alle Pods erreicht `-l app.kubernetes.io/component=backend`, für Protokolle
 | Originalablage | ein vorher angelegter Bucket in einem S3-kompatiblen Objektspeicher mit Zugangs- und Geheimschlüssel, oder eine StorageClass für ein Volume mit `ReadWriteOnce` |
 | Modelle | ein OpenAI-kompatibler Endpunkt für die Einbettung und einer für den Chat, wahlweise im Cluster; optional ein Rerank-Endpunkt (siehe [LLM-Anbieter](modelle.md#llm-anbieter)) |
 | Identitätsanbieter | optional ein OIDC-Anbieter mit einem öffentlichen Client; ohne ihn melden sich Personen mit lokalen Konten an |
-| Mailserver | optional; im Einrichtungs-Assistenten (ein Server im Cluster-Netz braucht dann `installationMailTargetAllowlist`) oder nach der Installation in der Oberfläche |
+| Mailserver | optional; in der Antwortdatei (`bootstrap.mail`), im Einrichtungs-Assistenten (ein Server im Cluster-Netz braucht dann `installationMailTargetAllowlist`) oder nach der Installation in der Oberfläche |
 | Postfach | eine zustellbare Adresse für das erste Systemverwalter-Konto, am besten ein Funktionspostfach der IT |
 
 Für eine Erprobung ohne eigene Datenbank bringt der Chart eine Erprobungsdatenbank mit (siehe
@@ -388,7 +388,10 @@ dabei `UP`. Zwei Wege führen hinaus:
   `targetValidation.indexingAllowlist`. Die erste Anmeldung verlangt ein neues Passwort, damit das im
   Secret danach nicht mehr gilt (`bootstrap.initialAdmin.requirePasswordChange`, Vorgabe `true`).
   Fehlt das Passwort im Secret, startet der Pod trotzdem; OPAA bleibt dann im Installationsmodus, und
-  das Protokoll nennt die fehlende Datei. Scheitert eine Prüfung, nennt das Protokoll Schritt und
+  das Protokoll nennt die fehlende Datei. Mit `bootstrap.mail.host` enthält die Antwortdatei auch den
+  Mailserver; der erste Start prüft Verbindung und Anmeldung, ohne eine Nachricht zu senden. Host und
+  Port trägt der Chart in `installationMailTargetAllowlist` ein, damit ein Server im eigenen Netz die
+  Adressprüfung der Installation passiert. Ohne `bootstrap.mail` bleibt der Schritt übersprungen. Scheitert eine Prüfung, nennt das Protokoll Schritt und
   Grund:
 
   ```bash
@@ -551,8 +554,8 @@ examples/kubernetes-trial/trial.sh down
   vorhanden sein, sonst scheitert der Verbindungstest der Installation; ein späterer Wechsel geht über
   die Modellverwaltung.
 - **Bucket vorab.** OPAA legt keinen Bucket an; im Beispiel-Setup tut das ein Job beim Aufbau.
-- **Mailserver in der Oberfläche.** Er ist kein Wert des Charts; das Beispiel-Setup trägt ihn über die
-  Schnittstelle ein, wie es die Systemverwaltung in der Oberfläche täte
+- **Mailserver in der Oberfläche.** Das Beispiel-Setup setzt `bootstrap.mail` nicht und trägt ihn
+  über die Schnittstelle ein, wie es die Systemverwaltung in der Oberfläche täte
   ([E-Mail-Versand](e-mail.md)).
 
 ## Geheimnisse
@@ -575,6 +578,7 @@ Wegen:
 | `OPAA_UPLOAD_S3_SECRET_KEY` | `s3SecretKey` | bei `uploads.store: s3` | Geheimschlüssel des Objektspeichers |
 | `installation-chat-api-key` | `chatApiKey` | mit `bootstrap.chatModel.apiKeyInSecret` | Schlüssel des Chat-Modells der Antwortdatei, als Datei eingehängt |
 | `installation-embedding-api-key` | `embeddingApiKey` | mit `embedding.apiKeyInSecret` | Schlüssel des Embedding-Modells der Antwortdatei, als Datei eingehängt |
+| `installation-mail-password` | `mailPassword` | mit `bootstrap.mail.passwordInSecret` | Passwort des Mailservers der Antwortdatei, als Datei eingehängt |
 | `installation-admin-password` | `initialAdminPassword` | für die Installation mit `bootstrap.initialAdmin.email` | Passwort des ersten Kontos der Antwortdatei, als Datei eingehängt; nach dem Abschluss entfernen. Fehlt es, startet der Pod, und die Installation wartet |
 | `OPAA_INSTALLATION_TOKEN` | `installationToken` | nein | Installations-Token, mindestens 32 Zeichen; ohne es schreibt der erste Start ein erzeugtes ins Protokoll |
 
@@ -608,7 +612,7 @@ OPAA kennt drei Arten von Konfiguration. Der Chart behandelt sie unterschiedlich
 | Art | Gelesen | Im Chart |
 |---|---|---|
 | **Bereitstellungswerte** | bei jedem Start | alle Werte außer `bootstrap`; eine Änderung wirkt mit dem nächsten `helm upgrade` |
-| **Antwortdatei** | von einem Start, solange die Installation offen ist; danach übergangen | `bootstrap` und die Schlüssel `installation-admin-password` und `installation-chat-api-key` |
+| **Antwortdatei** | von einem Start, solange die Installation offen ist; danach übergangen | `bootstrap` und die Schlüssel `installation-admin-password`, `installation-chat-api-key` und `installation-mail-password` |
 | **Verwaltungseinstellungen** | nur aus der Datenbank | keine Werte; Einrichtung in der Oberfläche |
 
 Die folgenden Tabellen nennen jeden Wert des Charts mit seiner Vorgabe und der Umgebungsvariablen, die
@@ -656,7 +660,7 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 | `rerank.timeout` | leer (Vorgabe der Anwendung) | `OPAA_RERANK_TIMEOUT` | Zeitbudget eines Rerank-Aufrufs, etwa `120s`; wer es anhebt, hebt `frontend.backendReadTimeout` mit an |
 | `rerank.probeInterval` | leer (Vorgabe der Anwendung) | `OPAA_RERANK_PROBE_INTERVAL` | Abstand der Erreichbarkeitsprüfung ohne Fragen; bei einem bezahlten Endpunkt groß wählen, etwa `24h` |
 | `transcription.maxAudioBytes`, `.timeout`, `.maxConcurrent` | leer (Vorgaben der Anwendung) | `OPAA_TRANSCRIPTION_MAX_AUDIO_BYTES`, `OPAA_TRANSCRIPTION_TIMEOUT`, `OPAA_TRANSCRIPTION_MAX_CONCURRENT` | größte Aufnahme in Byte, Zeitbudget einer Transkription, gleichzeitige Transkriptionen der Installation. Mit eingeschalteter Spracheingabe braucht der Ingress-Controller einen Puffer für den Anfrage-Body, der eine Aufnahme im Arbeitsspeicher hält, bei ingress-nginx `nginx.ingress.kubernetes.io/client-body-buffer-size: 11m`; sonst schreibt er sie in eine temporäre Datei. Endpunkt, Modell, Schlüssel und Sprache pflegt die Systemverwaltung unter Modelle → Spracheingabe, den Rerank-Endpunkt unter Modelle → Reranking |
-| `mail.connectTimeout`, `.readTimeout`, `.writeTimeout` | leer (Vorgaben der Anwendung) | `OPAA_MAIL_CONNECT_TIMEOUT`, `OPAA_MAIL_READ_TIMEOUT`, `OPAA_MAIL_WRITE_TIMEOUT` | Timeouts der SMTP-Verbindung; den Mailserver selbst richtet die Oberfläche ein |
+| `mail.connectTimeout`, `.readTimeout`, `.writeTimeout` | leer (Vorgaben der Anwendung) | `OPAA_MAIL_CONNECT_TIMEOUT`, `OPAA_MAIL_READ_TIMEOUT`, `OPAA_MAIL_WRITE_TIMEOUT` | Timeouts der SMTP-Verbindung; den Mailserver selbst setzt `bootstrap.mail` oder die Oberfläche |
 | `targetValidation.indexingAllowlist` | leer | `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` | Hosts interner Quellen, die die Zielprüfung passieren dürfen, am besten als `host:port`; Modell-Hosts gehören nicht hierher |
 | `targetValidation.modelAllowlist` | leer | `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` | Hosts interner Modell-Endpunkte als `host:port` (ohne Port: jeder Port des Hosts); Host und Port aus `bootstrap.chatModel.baseUrl` und `embedding.baseUrl` ergänzt der Chart selbst und dauerhaft, die Freigabe gilt dann für jede Modellrolle auf diesem Host und Port |
 | `targetValidation.identityProviderAllowlist` | leer | `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST` | Weitere interne Identitätsanbieter als `host:port` (ohne Port: jeder Port des Hosts); Host und Port aus `bootstrap.oidc` ergänzt der Chart selbst |
@@ -705,8 +709,13 @@ Konfiguration unter [„Funktionen abschalten"](konfiguration.md#funktionen-absc
 | `bootstrap.chatModel.baseUrl`, `.model` | leer, Pflicht mit Adresse | `chatModel.baseUrl`, `chatModel.model` | das Chat-Modell, mit Adressprüfung und Verbindungstest vor dem Abschluss; Host und Port trägt der Chart in die Liste der Modelle ein (`targetValidation.modelAllowlist`) |
 | `bootstrap.chatModel.apiKeyInSecret` | `false` | `chatModel.apiKeyFile` | liest den Schlüssel des Chat-Modells aus dem Secret (`installation-chat-api-key`); mit `secrets.chatApiKey` gilt das von selbst |
 | `bootstrap.chatModel.temperature`, `.maxTokens` | leer (Vorgaben der Modellverwaltung) | `chatModel.temperature`, `chatModel.maxTokens` | Temperatur und Antwortlänge |
+| `bootstrap.mail.host` | leer | `mail.host` | Mailserver des Schritts E-Mail-Versand, ohne Schema und Port; leer heißt: Schritt übersprungen. Host und Port ergänzt der Chart in `installationMailTargetAllowlist` |
+| `bootstrap.mail.port`, `.encryption` | `587`, `STARTTLS` | `mail.port`, `mail.encryption` | Port und Verschlüsselung (`NONE`, `STARTTLS`, `SSL`) |
+| `bootstrap.mail.username` | leer | `mail.username` | Benutzername der Anmeldung; leer heißt ohne Anmeldung |
+| `bootstrap.mail.passwordInSecret` | `false` | `mail.passwordFile` | liest das Passwort des Mailservers aus dem Secret (`installation-mail-password`); mit `secrets.mailPassword` gilt das von selbst |
+| `bootstrap.mail.fromAddress`, `.fromName` | leer, Adresse Pflicht mit Host | `mail.fromAddress`, `mail.fromName` | Absenderadresse und Absendername |
 | `installationAllowedCidrs` | leer | `OPAA_INSTALLATION_ALLOWED_CIDRS` | Netze, aus denen die Installations-API antwortet; leer heißt ohne Einschränkung |
-| `installationMailTargetAllowlist` | leer | `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` | Mailserver im eigenen Netz, die der optionale Schritt E-Mail-Versand des Assistenten erreichen darf (`host` oder `host:port`, IPv6 als `[adresse]:port`); leer heißt: einen internen Mailserver erst nach der Installation in der Verwaltung eintragen |
+| `installationMailTargetAllowlist` | leer | `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` | Mailserver im eigenen Netz, die der optionale Schritt E-Mail-Versand des Assistenten erreichen darf (`host` oder `host:port`, IPv6 als `[adresse]:port`); Host und Port aus `bootstrap.mail` ergänzt der Chart selbst. Leer und ohne `bootstrap.mail` heißt: einen internen Mailserver erst nach der Installation in der Verwaltung eintragen |
 
 ### Backend
 
