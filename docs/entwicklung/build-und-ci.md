@@ -285,3 +285,66 @@ docker build -t opaa-smoke/frontend -f frontend/Dockerfile .
 # bis zu den Grenzen kommen unverändert an. In CI im selben Job
 .github/scripts/frontend_hardening_test.sh opaa-smoke/frontend
 ```
+
+## Parser-Fuzzing
+
+Eine zeitbegrenzte Kampagne schickt erzeugte und verfälschte Dateien aller zugelassenen Formate
+über den Produktionsweg: Routing der `DocumentFormatRegistry`, `DocumentFormatRunner` mit Anhängen
+in den Grenzen von `opaa.indexing.attachments.*`, danach `readProperties` wie beim erneuten Auslesen
+der Metadaten. Die Konfiguration kommt aus `application.yml`, ohne Datenbank und ohne Modell.
+
+- **Befund** ist ein `OutOfMemoryError`, ein Lauf über die Eingabegrenze (Vorgabe eine Minute),
+  ein Throwable, das den Weg verlässt, statt als `PARSE_FAILED` gebucht zu werden, oder eine
+  zurückgelassene Temp-Datei eines Anhangs. Ein gebuchter Parserfehler ist kein Befund.
+- **Korpus:** `backend/src/test/resources/fuzz/corpus/`, höchstens 2 MiB, je zugelassenem Format
+  mindestens eine Probe (Ausnahmen mit Begründung in `FuzzCorpusTest.WITHOUT_SEED`). Die Proben
+  erzeugt `FuzzCorpusGenerator` deterministisch, darunter die bösartigen Muster der zweiten
+  Auditrunde (#3336, #3375, #3376) in kleiner Ausprägung; nach einer Änderung am Generator
+  `./gradlew writeParserFuzzCorpus` ausführen und die Dateien einchecken.
+- **Mutationen:** `Mutators` kippt Bits, setzt Grenzwerte, löscht, verdoppelt und spleißt
+  Bereiche, wiederholt Zeilen, verschachtelt Auszeichnung, verändert einzelne ZIP-Einträge und
+  verpackt eine Datei als Anhang einer Mail; jede sechzehnte Eingabe bekommt eine fremde Endung.
+  Seed der Kampagne und Nummer der Eingabe bestimmen eine Eingabe vollständig.
+- **In jedem PR** spielt `FuzzCorpusTest` (Shard `core`) jede Probe einmal unverändert über den
+  Produktionsweg ab, rund zehn Sekunden; eine aufgenommene Befund-Datei wird so zum
+  Regressionstest. Die Kampagne selbst läuft nie im PR.
+- **Nächtlich** um 1:35 UTC und auf Zuruf (`workflow_dispatch` mit Dauer und Seed) startet
+  `.github/workflows/parser-fuzzing.yml` zehn Minuten Kampagne, Seed ist die Run-ID. Befunde und
+  `summary.txt` (Läufe je Format, Ergebnisse, langsamste Eingaben) liegen im Artefakt
+  `parser-fuzzing-findings`; je Befund die Eingabe und eine `.finding`-Datei mit Seed, Mutationen
+  und Stacktrace. Kein Required Check.
+
+```bash
+# aus backend/: Kampagne, Befunde unter build/fuzz-findings/
+./gradlew parserFuzzTest -PfuzzDuration=PT2M -PfuzzSeed=3379
+# eine Befund-Datei oder ein ganzes Verzeichnis erneut abspielen
+./gradlew parserFuzzTest -PfuzzReplay=/pfad/zu/001-escaped_throwable-90.txt
+# Grenze je Eingabe ändern (Vorgabe PT1M)
+./gradlew parserFuzzTest -PfuzzInputTimeout=PT30S
+```
+
+Ein Befund wird wie jeder Fehler behoben: Test, der ihn reproduziert, und die kleinste Eingabe,
+die ihn auslöst, als Probe in den Generator. Jazzer ist bewusst nicht eingebunden: der Fuzzer
+bringt einen nativen Agenten und eine eigene JUnit-Anbindung mit, und die bekannten
+Angriffsmuster der Formate erreicht ein Mutationsfuzzer über die Proben ebenso.
+
+## Sicherheitsinvarianten als Architekturtests
+
+`io.opaa.architecture.SecurityInvariantsTest` läuft in jedem Build und prüft mit ArchUnit:
+
+- Verbindungen nach außen nur über `RedirectFollowingFetcher` und `BoundedDownloader`, die das Ziel
+  prüfen;
+- gespeicherte Geheimnisse werden nur in `ModelEndpointAccess` und `ConnectionSecrets`
+  entschlüsselt, die das Geheimnis an sein Ziel binden;
+- jeder Controller-Handler hat `@PreAuthorize` (oder `@PostAuthorize`, `@Secured`,
+  `@RolesAllowed`) oder einen Parameter für den Aufrufer (`@Caller`, `CurrentUser`, …);
+- `io.opaa.format` kompiliert kein Muster je Aufruf (`String.matches`, `replaceAll`,
+  `replaceFirst`, `split`, `Pattern.matches`, `Pattern.compile` außerhalb eines Initialisierers);
+  ein `split` an einem einzelnen Zeichen steht mit Begründung in der Ausnahmeliste.
+
+Jede Regel hat eine Ausnahmeliste mit einer Begründung je Eintrag; ein Eintrag, der die Regel nicht
+mehr bricht, lässt den Test ebenfalls scheitern. Die Handler ohne eigene Prüfung stehen unter
+`withoutHandlerCheck` in `backend/src/test/resources/security/anonymous-allowlist.yaml`, neben den
+anonym erreichbaren Pfaden. `FormatPatternBacktrackingTest` jagt jedes statische Muster in
+`io.opaa.format` mit faulem, verschachteltem oder mehr als einem unbeschränkten Quantor mit
+gepumpten Eingaben gegen eine Zeitgrenze; jedes solche Muster nennt dort seine Angriffseingaben.

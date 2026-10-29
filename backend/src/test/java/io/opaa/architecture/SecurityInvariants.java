@@ -128,6 +128,8 @@ final class SecurityInvariants {
           "java.lang.String", Set.of("matches", "replaceAll", "replaceFirst", "split"),
           "java.util.regex.Pattern", Set.of("matches"));
 
+  private static final String CONTROLLER = "org.springframework.stereotype.Controller";
+
   private static final Pattern PATH_VARIABLE_REGEX = Pattern.compile("\\{([^}:]+):[^}]*}");
 
   private SecurityInvariants() {}
@@ -172,8 +174,6 @@ final class SecurityInvariants {
     }
     return found;
   }
-
-  private static final String CONTROLLER = "org.springframework.stereotype.Controller";
 
   /**
    * Code units below {@code rootPackage} that compile a regular expression per call: {@code
