@@ -629,6 +629,10 @@ paths:
         survives it: neither the working file nor a new document row. The reason - a store that
         refuses the write for a missing permission included - is named in the application log; the
         upload-store health group only covers what its probe reaches, which is the read direction.
+
+        **429:** past the upload rate limit (per address, per account, for the installation), and
+        when the upload processing pool of the instance has no free place. Both are answered before
+        anything is stored and carry Retry-After; the same file may be sent again after it.
       requestBody:
         required: true
         content:

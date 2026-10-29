@@ -11,7 +11,6 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManagerResolver;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -101,7 +100,7 @@ public class OidcSecurityConfig {
       HttpSecurity http,
       CorsConfigurationSource corsConfigurationSource,
       Clock clock,
-      Environment environment)
+      ObjectProvider<ManagementPortMetrics> managementPortMetrics)
       throws Exception {
     http.csrf(
             csrf ->
@@ -131,7 +130,7 @@ public class OidcSecurityConfig {
                     .permitAll()
                     // Metrics name paths, libraries and load: open on a management port of their
                     // own, which a network policy opens to the scraper alone, else only signed in.
-                    .requestMatchers(ManagementPortMetrics.onManagementPort(environment))
+                    .requestMatchers(ManagementPortMetrics.onManagementPort(managementPortMetrics))
                     .permitAll()
                     .requestMatchers(ManagementPortMetrics.anyPort())
                     .authenticated()
@@ -143,6 +142,10 @@ public class OidcSecurityConfig {
                     // segments, so a single star would leave /actuator/health/<group>/<component>
                     // on anyRequest().permitAll().
                     .requestMatchers("/actuator/health/**")
+                    .authenticated()
+                    // Everything else of the actuator - its link list and any endpoint an operator
+                    // exposes on top (env, heapdump) - needs a sign-in, on every port.
+                    .requestMatchers("/actuator", "/actuator/**")
                     .authenticated()
                     .requestMatchers("/api/v1/auth/config")
                     .permitAll()

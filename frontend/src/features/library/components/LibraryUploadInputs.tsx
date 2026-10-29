@@ -1,16 +1,34 @@
+import Typography from '@mui/material/Typography'
 import { ACCEPTED_FILE_EXTENSIONS } from '../hooks/useDocumentUpload'
 import type { DocumentUpload } from '../hooks/useDocumentUpload'
 import { directoryPathFromWebkitRelativePath, filterAcceptedFiles } from '../utils/directoryEntries'
 
 /**
  * The hidden file and folder pickers of an UPLOAD library. They live once on the page; the head's
- * „Hochladen“, the empty state and drag and drop all lead to them.
+ * „Hochladen“, the empty state and drag and drop all lead to them. Next to them sits the live
+ * region that tells while an upload waits out a 429 before it goes on.
  */
 export default function LibraryUploadInputs({ upload }: { upload: DocumentUpload }) {
-  const { fileInputRef, folderInputRef, clearUploadErrors, handleFiles, reportSkippedFiles } =
-    upload
+  const {
+    fileInputRef,
+    folderInputRef,
+    clearUploadErrors,
+    handleFiles,
+    reportSkippedFiles,
+    uploadWaitSeconds,
+  } = upload
   return (
     <>
+      {/* Always rendered, so that screen readers announce the hint when it appears. */}
+      <div role="status" aria-live="polite">
+        {uploadWaitSeconds !== null && (
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Der Server nimmt gerade keine weiteren Uploads an. Der Upload geht in{' '}
+            {uploadWaitSeconds === 1 ? 'einer Sekunde' : `${uploadWaitSeconds} Sekunden`}{' '}
+            automatisch weiter.
+          </Typography>
+        )}
+      </div>
       <input
         ref={fileInputRef}
         type="file"

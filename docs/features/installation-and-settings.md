@@ -669,6 +669,10 @@ der Quellen).
 | `OPAA_RATE_LIMIT_DOCUMENT_CONTENT_GLOBAL_MAX_REQUESTS` | `opaa.rate-limit.document-content.global-max-requests` |
 | `OPAA_RATE_LIMIT_DOCUMENT_CONTENT_MAX_REQUESTS` | `opaa.rate-limit.document-content.max-requests` |
 | `OPAA_RATE_LIMIT_DOCUMENT_CONTENT_WINDOW_SECONDS` | `opaa.rate-limit.document-content.window-seconds` |
+| `OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_GLOBAL_MAX_REQUESTS` | `opaa.rate-limit.document-upload.global-max-requests` |
+| `OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_MAX_REQUESTS` | `opaa.rate-limit.document-upload.max-requests` |
+| `OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_MAX_REQUESTS_PER_ACCOUNT` | `opaa.rate-limit.document-upload.max-requests-per-account` |
+| `OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_WINDOW_SECONDS` | `opaa.rate-limit.document-upload.window-seconds` |
 | `OPAA_RATE_LIMIT_ENABLED` | `opaa.rate-limit.enabled` |
 | `OPAA_RATE_LIMIT_INDEXING_GLOBAL_MAX_REQUESTS` | `opaa.rate-limit.indexing.global-max-requests` |
 | `OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS` | `opaa.rate-limit.indexing.max-requests` |
@@ -705,6 +709,10 @@ der Quellen).
 | `OPAA_RATE_LIMIT_SOURCE_TEST_GLOBAL_MAX_REQUESTS` | `opaa.rate-limit.source-test.global-max-requests` |
 | `OPAA_RATE_LIMIT_SOURCE_TEST_MAX_REQUESTS` | `opaa.rate-limit.source-test.max-requests` |
 | `OPAA_RATE_LIMIT_SOURCE_TEST_WINDOW_SECONDS` | `opaa.rate-limit.source-test.window-seconds` |
+| `OPAA_RATE_LIMIT_TRANSCRIPTION_GLOBAL_MAX_REQUESTS` | `opaa.rate-limit.transcription.global-max-requests` |
+| `OPAA_RATE_LIMIT_TRANSCRIPTION_MAX_REQUESTS` | `opaa.rate-limit.transcription.max-requests` |
+| `OPAA_RATE_LIMIT_TRANSCRIPTION_MAX_REQUESTS_PER_ACCOUNT` | `opaa.rate-limit.transcription.max-requests-per-account` |
+| `OPAA_RATE_LIMIT_TRANSCRIPTION_WINDOW_SECONDS` | `opaa.rate-limit.transcription.window-seconds` |
 | `OPAA_RATE_LIMIT_WEBHOOK_GLOBAL_MAX_REQUESTS` | `opaa.rate-limit.webhook.global-max-requests` |
 | `OPAA_RATE_LIMIT_WEBHOOK_MAX_REQUESTS` | `opaa.rate-limit.webhook.max-requests` |
 | `OPAA_RATE_LIMIT_WEBHOOK_WINDOW_SECONDS` | `opaa.rate-limit.webhook.window-seconds` |

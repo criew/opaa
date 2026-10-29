@@ -5,10 +5,10 @@ import jakarta.annotation.PostConstruct;
 import java.time.Clock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -62,7 +62,7 @@ public class DevSecurityConfig {
       HttpSecurity http,
       CorsConfigurationSource corsConfigurationSource,
       Clock clock,
-      Environment environment)
+      ObjectProvider<ManagementPortMetrics> managementPortMetrics)
       throws Exception {
     DevAuthFilter devAuthFilter = new DevAuthFilter(authProperties.dev(), clock);
     return http.csrf(AbstractHttpConfigurer::disable)
@@ -83,7 +83,7 @@ public class DevSecurityConfig {
                     .permitAll()
                     // Metrics name paths, libraries and load: open on a management port of their
                     // own, which a network policy opens to the scraper alone, else only signed in.
-                    .requestMatchers(ManagementPortMetrics.onManagementPort(environment))
+                    .requestMatchers(ManagementPortMetrics.onManagementPort(managementPortMetrics))
                     .permitAll()
                     .requestMatchers(ManagementPortMetrics.anyPort())
                     .authenticated()
@@ -95,6 +95,10 @@ public class DevSecurityConfig {
                     // segments, so a single star would leave /actuator/health/<group>/<component>
                     // on anyRequest().permitAll().
                     .requestMatchers("/actuator/health/**")
+                    .authenticated()
+                    // Everything else of the actuator - its link list and any endpoint an operator
+                    // exposes on top (env, heapdump) - needs a sign-in, on every port.
+                    .requestMatchers("/actuator", "/actuator/**")
                     .authenticated()
                     .requestMatchers("/api/v1/auth/config")
                     .permitAll()

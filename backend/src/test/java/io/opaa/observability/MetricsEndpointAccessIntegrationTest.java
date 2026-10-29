@@ -12,8 +12,9 @@ import org.springframework.test.web.servlet.MockMvc;
 /**
  * The metric endpoints need a session where no management port of their own is configured - the API
  * port of a backend reached directly. Runs in the {@code oidc} context, the only one where
- * authentication is enforced; the open management port is covered by {@code
- * io.opaa.security.ManagementPortMetricsTest}.
+ * authentication is enforced; the open management port is covered by {@link
+ * ManagementPortMetricsIntegrationTest}. The rest of the actuator besides health and info needs a
+ * session as well, whatever an operator exposes on top.
  */
 @OpaaLocalAuthMockMvcTest
 class MetricsEndpointAccessIntegrationTest {
@@ -24,6 +25,12 @@ class MetricsEndpointAccessIntegrationTest {
   @ValueSource(
       strings = {"/actuator/prometheus", "/actuator/metrics", "/actuator/metrics/jvm.memory.used"})
   void aMetricEndpointNeedsASessionOnTheApiPort(String path) throws Exception {
+    mockMvc.perform(get(path)).andExpect(status().isUnauthorized());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"/actuator", "/actuator/env", "/actuator/heapdump", "/actuator/beans"})
+  void theRestOfTheActuatorNeedsASession(String path) throws Exception {
     mockMvc.perform(get(path)).andExpect(status().isUnauthorized());
   }
 }

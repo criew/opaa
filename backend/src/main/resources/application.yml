@@ -584,7 +584,8 @@ opaa:
         enabled: ${OPAA_UPLOAD_S3_TARGET_VALIDATION_ENABLED:true}
         allowlist: ${OPAA_UPLOAD_S3_TARGET_VALIDATION_ALLOWLIST:}
     max-file-size: ${OPAA_UPLOAD_MAX_FILE_SIZE:52428800}
-    # Own pool, deliberately not opaa.indexing.thread-pool - see UploadProperties#threadPool.
+    # Own pool, deliberately not opaa.indexing.thread-pool - see UploadProperties#threadPool. An
+    # upload takes a place (max-size plus queue-capacity) before it is stored; a full pool is a 429.
     thread-pool:
       core-size: ${OPAA_UPLOAD_THREAD_POOL_CORE_SIZE:2}
       max-size: ${OPAA_UPLOAD_THREAD_POOL_MAX_SIZE:4}
@@ -697,9 +698,9 @@ opaa:
       global-max-requests: ${OPAA_RATE_LIMIT_TRANSCRIPTION_GLOBAL_MAX_REQUESTS:100}
       max-requests-per-account: ${OPAA_RATE_LIMIT_TRANSCRIPTION_MAX_REQUESTS_PER_ACCOUNT:10}
     # POST /api/v1/libraries/{libraryId}/documents, one budget across all libraries (GET on the same
-    # path is not counted). Every upload takes a place in the upload pool of the instance
-    # (opaa.upload.thread-pool); the budget per account keeps one person from filling it. The
-    # browser waits for Retry-After and goes on with the same file.
+    # path is not counted). It bounds how fast one account sends uploads; a full upload pool
+    # (opaa.upload.thread-pool) is answered with 429 on its own, before anything is stored. Either
+    # way the browser waits for Retry-After and goes on with the same file.
     document-upload:
       max-requests: ${OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_MAX_REQUESTS:120}
       window-seconds: ${OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_WINDOW_SECONDS:60}

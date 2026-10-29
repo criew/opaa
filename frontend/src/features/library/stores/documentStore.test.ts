@@ -350,6 +350,76 @@ describe('documentStore', () => {
     }
   })
 
+  it('shows how long it waits while it waits out a 429', async () => {
+    vi.useFakeTimers()
+    try {
+      mockUploadDocument
+        .mockRejectedValueOnce(rateLimitedError('5'))
+        .mockResolvedValueOnce(pendingDocument)
+      mockGetLibraryDocuments.mockResolvedValueOnce(page([pendingDocument]))
+
+      const upload = useDocumentStore
+        .getState()
+        .uploadNewDocument('library-1', new File(['x'], 'bestand.pdf'))
+      await vi.advanceTimersByTimeAsync(0)
+      expect(useDocumentStore.getState().uploadWaitSeconds).toBe(5)
+      await vi.advanceTimersByTimeAsync(5000)
+      await upload
+
+      expect(useDocumentStore.getState().uploadWaitSeconds).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('ends the wait for a 429 without an error and without a further try once aborted', async () => {
+    vi.useFakeTimers()
+    try {
+      mockUploadDocument.mockRejectedValueOnce(rateLimitedError('30'))
+      const controller = new AbortController()
+
+      const upload = useDocumentStore
+        .getState()
+        .uploadNewDocument(
+          'library-1',
+          new File(['x'], 'bestand.pdf'),
+          undefined,
+          controller.signal,
+        )
+      await vi.advanceTimersByTimeAsync(1000)
+      controller.abort()
+      await upload
+
+      expect(mockUploadDocument).toHaveBeenCalledTimes(1)
+      expect(useDocumentStore.getState().uploadErrors).toEqual([])
+      expect(useDocumentStore.getState().isUploading).toBe(false)
+      expect(useDocumentStore.getState().uploadWaitSeconds).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('sends no further try for a 429 once the session turned over during the wait', async () => {
+    vi.useFakeTimers()
+    try {
+      mockUploadDocument.mockRejectedValueOnce(rateLimitedError('2'))
+
+      const upload = useDocumentStore
+        .getState()
+        .uploadNewDocument('library-1', new File(['x'], 'bestand.pdf'))
+      await vi.advanceTimersByTimeAsync(1000)
+      resetAllStores()
+      await vi.advanceTimersByTimeAsync(1000)
+      await upload
+
+      expect(mockUploadDocument).toHaveBeenCalledTimes(1)
+      expect(useDocumentStore.getState().uploadErrors).toEqual([])
+      expect(useDocumentStore.getState().uploadWaitSeconds).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('names the file in the upload error message, appends it to uploadErrors and rethrows', async () => {
     mockUploadDocument.mockRejectedValueOnce(new Error('Diese Datei ist bereits vorhanden'))
     const file = new File(['x'], 'doppelt.pdf')
