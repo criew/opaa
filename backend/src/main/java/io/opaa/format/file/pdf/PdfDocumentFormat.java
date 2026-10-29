@@ -10,10 +10,13 @@ import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.shared.DocumentTitleLine;
 import io.opaa.format.shared.HeadingSectionSplitter;
+import io.opaa.format.shared.ParserLimitProperties;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -50,16 +53,32 @@ import org.springframework.ai.document.Document;
  * carry an image but no text - a typed cover sheet in front of scanned pages. An empty page without
  * an image of its own does not count as scanned; text only in form fields or annotations is not
  * extracted, so such a page over an image counts as scanned.
+ *
+ * <p>The extracted text is bounded by {@link ParserLimitProperties#maxTextCharacters()} (a PDF past
+ * it fails to parse), the outline walk by {@link #MAX_OUTLINE_DEPTH} and {@link #MAX_OUTLINE_ITEMS}
+ * and by visiting every item once.
  */
 public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfContent> {
 
   static final String ID = "pdf";
   static final short VERSION = 6;
 
+  /** Outline nesting deeper than this is not walked; its entries fold into their ancestor. */
+  static final int MAX_OUTLINE_DEPTH = 64;
+
+  /** Outline items visited per document; the walk stops there and keeps what it has. */
+  static final int MAX_OUTLINE_ITEMS = 50_000;
+
   private final HeadingSectionSplitter splitter;
+  private final ParserLimitProperties limits;
 
   public PdfDocumentFormat(HeadingSectionSplitter splitter) {
+    this(splitter, ParserLimitProperties.DEFAULTS);
+  }
+
+  public PdfDocumentFormat(HeadingSectionSplitter splitter, ParserLimitProperties limits) {
     this.splitter = splitter;
+    this.limits = limits;
   }
 
   @Override
@@ -106,9 +125,10 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
   protected PdfContent read(DocumentFormatSource source) throws IOException {
     try (PDDocument doc = Loader.loadPDF(source.file().toFile())) {
       List<String> pageTexts = new ArrayList<>(doc.getNumberOfPages());
+      PdfReadBudget budget = PdfReadBudget.of(limits);
       int scannedPages = 0;
       for (int i = 0; i < doc.getNumberOfPages(); i++) {
-        String text = extractPageText(doc, i);
+        String text = PdfPageText.extract(doc, i, budget);
         pageTexts.add(text);
         if (text.isBlank() && carriesImage(ownResources(doc.getPage(i)), IMAGE_SEARCH_DEPTH)) {
           scannedPages++;
@@ -158,7 +178,9 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
   protected DocumentProperties declaredProperties(DocumentFormatSource source) throws IOException {
     try (PDDocument doc = Loader.loadPDF(source.file().toFile())) {
       List<String> firstPage =
-          doc.getNumberOfPages() == 0 ? List.of() : List.of(extractPageText(doc, 0));
+          doc.getNumberOfPages() == 0
+              ? List.of()
+              : List.of(PdfPageText.extract(doc, 0, PdfReadBudget.of(limits)));
       return properties(new PdfContent(firstPage, flattenOutline(doc), infoProperties(doc), 0));
     }
   }
@@ -181,7 +203,9 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
       return List.of();
     }
     List<OutlineEntry> entries = new ArrayList<>();
-    collectOutline(doc, outline, 1, entries);
+    Set<COSDictionary> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+    visited.add(outline.getCOSObject());
+    collectOutline(doc, outline, 1, entries, visited);
     // A pre-order walk of the catalog is not guaranteed to be monotonic in page number for every
     // pathological document; a stable sort on page index restores that order (needed by
     // HeadingSectionSplitter's section algorithm) while keeping same-page entries in their
@@ -190,15 +214,31 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
     return entries;
   }
 
+  /**
+   * Pre-order walk of the outline tree. The catalog is untrusted: {@code /First} and {@code /Next}
+   * may point back to an item already seen, so every item is visited at most once (by identity of
+   * its dictionary), at most {@link #MAX_OUTLINE_DEPTH} levels deep and at most {@link
+   * #MAX_OUTLINE_ITEMS} items in total. A cycle or a cut-off ends that branch; the entries found so
+   * far stand, so the document is still read along its outline.
+   */
   private static void collectOutline(
-      PDDocument doc, PDOutlineNode node, int level, List<OutlineEntry> out) {
-    for (PDOutlineItem item = node.getFirstChild(); item != null; item = item.getNextSibling()) {
+      PDDocument doc,
+      PDOutlineNode node,
+      int level,
+      List<OutlineEntry> out,
+      Set<COSDictionary> visited) {
+    if (level > MAX_OUTLINE_DEPTH) {
+      return;
+    }
+    for (PDOutlineItem item = node.getFirstChild();
+        item != null && visited.size() <= MAX_OUTLINE_ITEMS && visited.add(item.getCOSObject());
+        item = item.getNextSibling()) {
       Integer pageIndex = resolvePageIndex(doc, item);
       String title = item.getTitle();
       if (pageIndex != null && title != null && !title.isBlank()) {
         out.add(new OutlineEntry(level, title.strip(), pageIndex));
       }
-      collectOutline(doc, item, level + 1, out);
+      collectOutline(doc, item, level + 1, out, visited);
     }
   }
 
@@ -370,9 +410,5 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
       return "";
     }
     return String.join("", pageTexts.subList(startPageIndex, endPageIndexExclusive));
-  }
-
-  private static String extractPageText(PDDocument doc, int pageIndex) throws IOException {
-    return PdfPageText.extract(doc, pageIndex);
   }
 }

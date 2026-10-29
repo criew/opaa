@@ -1,5 +1,6 @@
 package io.opaa.format;
 
+import io.opaa.common.FatalErrors;
 import io.opaa.format.chunk.ChunkAnchor;
 import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
@@ -22,9 +23,9 @@ import org.springframework.ai.document.Document;
  * returning, so no caller can forget the cleanup a reported-but-unclaimed attachment needs. Cleanup
  * never throws, so it cannot turn a successful result into a failure.
  *
- * <p>It is also where a parse failure becomes an outcome: a {@link RuntimeException} out of {@link
- * DocumentFormat#run} is mapped to {@link DocumentFormatResult#parseFailed()} and logged here,
- * once, for every format alike.
+ * <p>It is also where a parse failure becomes an outcome: a {@link RuntimeException} or a
+ * recoverable {@link Error} out of {@link DocumentFormat#run} is mapped to {@link
+ * DocumentFormatResult#parseFailed()} and logged here, once, for every format alike.
  *
  * <p>The {@link #run(DocumentFormat, DocumentFormatSource, Consumer)} overload lets the caller
  * index an attachment's bytes first; the cleanup afterwards is unconditional and idempotent, so a
@@ -75,13 +76,16 @@ public final class DocumentFormatRunner {
    * Turns whatever a pipeline throws while parsing into {@link DocumentFormatResult#parseFailed()}
    * and logs it once, so a pipeline reports a format's own failure by throwing rather than by
    * carrying its own catch-and-map block, and no caller of a pipeline has to defend against both
-   * forms of the same answer.
+   * forms of the same answer. That includes an {@link Error} a parser library raises on one crafted
+   * document, such as a {@link StackOverflowError} from a cyclic structure; only the errors {@link
+   * FatalErrors} names (out of memory, a broken deployment) pass through.
    */
   private static DocumentFormatResult runPipeline(
       DocumentFormat pipeline, DocumentFormatSource source) {
     try {
       return pipeline.run(source);
-    } catch (RuntimeException e) {
+    } catch (RuntimeException | Error e) {
+      FatalErrors.rethrowIfFatal(e);
       log.warn(
           "Could not parse {} with pipeline {}",
           source.logName(),
@@ -93,12 +97,13 @@ public final class DocumentFormatRunner {
 
   /**
    * Chunk texts, their Fundort and the format's title properties cleaned by {@link
-   * IngestTextSanitizer} - the one place every format and every connector passes, so index, context
-   * prefix, prompt and citation check see the same text. A chunk left blank is dropped; with none
-   * left the document has no extractable text. What the cleanup found travels in {@link
-   * DocumentFormatResult#sanitizerFindings()}, as counts per class only. Each chunk's anchor takes
-   * its quotes from the cleaned text here ({@link ChunkAnchors#completed}), so they match what the
-   * citation shows.
+   * IngestTextSanitizer}, Fundort, titles and anchor names first cut to {@link
+   * IngestTextSanitizer#LABEL_MAX_LENGTH} - the one place every format and every connector passes,
+   * so index, context prefix, prompt and citation check see the same text. A chunk left blank is
+   * dropped; with none left the document has no extractable text. What the cleanup found travels in
+   * {@link DocumentFormatResult#sanitizerFindings()}, as counts per class only. Each chunk's anchor
+   * takes its quotes from the cleaned text here ({@link ChunkAnchors#completed}), so they match
+   * what the citation shows.
    */
   private static DocumentFormatResult sanitized(DocumentFormatResult result) {
     Map<IngestTextSanitizer.Finding, Integer> findings =
@@ -111,7 +116,7 @@ public final class DocumentFormatRunner {
       }
       Map<String, Object> metadata = new HashMap<>(chunk.getMetadata());
       if (metadata.get(ChunkMetadataKeys.LOCATION_METADATA_KEY) instanceof String location) {
-        metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, cleaned(location, findings));
+        metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, cleanedLabel(location, findings));
       }
       if (metadata.get(ChunkMetadataKeys.ANCHOR_LEAD_METADATA_KEY) instanceof String lead) {
         // the lead is part of the chunk text, whose findings are already counted
@@ -124,9 +129,9 @@ public final class DocumentFormatRunner {
     DocumentProperties properties = result.properties();
     properties =
         properties
-            .withTitle(cleaned(properties.title(), findings))
-            .withTitleLine(cleaned(properties.titleLine(), findings))
-            .withFirstHeading(cleaned(properties.firstHeading(), findings));
+            .withTitle(cleanedLabel(properties.title(), findings))
+            .withTitleLine(cleanedLabel(properties.titleLine(), findings))
+            .withFirstHeading(cleanedLabel(properties.firstHeading(), findings));
     if (result.outcome() == DocumentFormatResult.Outcome.CHUNKED && chunks.isEmpty()) {
       return DocumentFormatResult.noExtractableText(result.discoveredAttachments())
           .withProperties(properties);
@@ -149,13 +154,13 @@ public final class DocumentFormatRunner {
     if (anchor.path() != null) {
       List<String> path =
           anchor.path().stream()
-              .map(DocumentFormatRunner::cleaned)
+              .map(heading -> IngestTextSanitizer.sanitizeLabel(heading).text())
               .filter(heading -> heading != null && !heading.isBlank())
               .toList();
       cleaned = cleaned.withPath(path.isEmpty() ? null : path);
     }
     if (anchor.sheet() != null && anchor.rowFrom() != null && anchor.rowTo() != null) {
-      String sheet = cleaned(anchor.sheet());
+      String sheet = IngestTextSanitizer.sanitizeLabel(anchor.sheet()).text();
       cleaned =
           cleaned.withRows(
               sheet == null || sheet.isBlank() ? null : sheet, anchor.rowFrom(), anchor.rowTo());
@@ -168,7 +173,16 @@ public final class DocumentFormatRunner {
   }
 
   private static String cleaned(String text, Map<IngestTextSanitizer.Finding, Integer> findings) {
-    IngestTextSanitizer.Result cleaned = IngestTextSanitizer.sanitize(text);
+    return merged(IngestTextSanitizer.sanitize(text), findings);
+  }
+
+  private static String cleanedLabel(
+      String label, Map<IngestTextSanitizer.Finding, Integer> findings) {
+    return merged(IngestTextSanitizer.sanitizeLabel(label), findings);
+  }
+
+  private static String merged(
+      IngestTextSanitizer.Result cleaned, Map<IngestTextSanitizer.Finding, Integer> findings) {
     cleaned.findings().forEach((finding, n) -> findings.merge(finding, n, Integer::sum));
     return cleaned.text();
   }

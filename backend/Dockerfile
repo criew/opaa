@@ -89,4 +89,6 @@ COPY --from=build /app/probe/HealthProbe.class /app/probe/HealthProbe.class
 # image cannot silently bring uid 0 back.
 USER 65532:65532
 EXPOSE 8080
-ENTRYPOINT ["/opt/java/openjdk/bin/java", "-Duser.language=en", "-Duser.country=US", "-jar", "/app/app.jar"]
+# After an OutOfMemoryError no thread pool, lock or half-written state of the process can be
+# trusted; the JVM exits and Compose or Kubernetes restarts the container.
+ENTRYPOINT ["/opt/java/openjdk/bin/java", "-XX:+ExitOnOutOfMemoryError", "-Duser.language=en", "-Duser.country=US", "-jar", "/app/app.jar"]

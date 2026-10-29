@@ -133,7 +133,12 @@ Java 21 auf einem Distroless-Image, ohne Shell, Coreutils, `curl` und Paketmanag
   einen leeren Store — sonst scheitert HTTPS zu allen öffentlichen Diensten
   ([Docker Compose](docker-compose.md#eigene-interne-ca-ergänzen),
   [Kubernetes](kubernetes.md#eigene-zertifizierungsstelle)).
-- **JVM-Optionen** gehen über `JAVA_TOOL_OPTIONS`.
+- **JVM-Optionen** gehen über `JAVA_TOOL_OPTIONS`. Nur eine Option, die schon vor der Anwendung einen
+  Hostnamen auflöst, verhindert den Start: JMX-Remote (`-Dcom.sun.management.jmxremote.*`),
+  `-Djdk.net.hosts.file` und ein `-javaagent`, der beim Laden Namen auflöst. Speicheroptionen und JFR
+  sind unschädlich. OPAA muss die Namensauflösung der JVM selbst übernehmen, um geprüfte Ziele zu
+  binden ([Zielprüfung](netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)); die Meldung beim
+  Abbruch nennt diese Ursache.
 
 <a id="nur-lesbares-dateisystem"></a>
 
@@ -164,6 +169,14 @@ Große Bestände, sehr große PDF-Dateien oder viele gleichzeitige Indexierungen
 OOM-Kill zeigt sich als `OOMKilled` (Kubernetes) bzw. in
 `docker inspect --format '{{.State.OOMKilled}}' <container>`; dann das Limit anheben, nicht den
 Heap-Anteil. Exit-Code `137` allein ist nicht eindeutig.
+
+Reicht der Heap selbst nicht, beendet sich das Backend sofort (`-XX:+ExitOnOutOfMemoryError` im
+Image, Exit-Code `3`, im Log `Terminating due to java.lang.OutOfMemoryError`), statt mit
+beschädigten Warteschlangen und Sperren weiterzulaufen. Docker Compose (`restart: unless-stopped`)
+und Kubernetes starten es neu. Wiederholt sich das bei derselben Datei, liegt meist ein sehr großes
+Dokument vor; dann den Heap vergrößern oder die
+[Grenzen beim Lesen](../arbeitsmittel/wissensbibliotheken/formate/README.md#grenzen-beim-lesen)
+senken.
 
 ## Frontend-Laufzeitimage
 

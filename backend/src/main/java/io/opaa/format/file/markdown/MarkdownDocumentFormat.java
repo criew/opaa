@@ -9,6 +9,7 @@ import io.opaa.format.chunk.MarkdownHeading;
 import io.opaa.format.shared.DocumentHeadText;
 import io.opaa.format.shared.DocumentTitleLine;
 import io.opaa.format.shared.HeadingSectionSplitter;
+import io.opaa.format.shared.ParserLimitProperties;
 import io.opaa.format.shared.SetextHeading;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -53,9 +54,15 @@ public class MarkdownDocumentFormat implements DocumentFormat {
       Pattern.compile("^([A-Za-z0-9_\\-]+)[ \\t]*:[ \\t]*(\\S.*?)[ \\t]*$");
 
   private final HeadingSectionSplitter splitter;
+  private final ParserLimitProperties limits;
 
   public MarkdownDocumentFormat(HeadingSectionSplitter splitter) {
+    this(splitter, ParserLimitProperties.DEFAULTS);
+  }
+
+  public MarkdownDocumentFormat(HeadingSectionSplitter splitter, ParserLimitProperties limits) {
     this.splitter = splitter;
+    this.limits = limits;
   }
 
   @Override
@@ -100,6 +107,7 @@ public class MarkdownDocumentFormat implements DocumentFormat {
     if (chunks.isEmpty()) {
       return DocumentFormatResult.noExtractableText();
     }
+    limits.requireTextWithinLimit(chunks, "Markdown document");
     return DocumentFormatResult.chunked(chunks).withProperties(properties(raw, events));
   }
 
@@ -219,7 +227,7 @@ public class MarkdownDocumentFormat implements DocumentFormat {
         events.add(
             new HeadingSectionSplitter.Heading(
                 headingMatch.group(MarkdownHeading.LEVEL_GROUP).length(),
-                headingMatch.group(MarkdownHeading.TITLE_GROUP)));
+                MarkdownHeading.title(headingMatch)));
         continue;
       }
       if (withoutCr.isBlank()) {

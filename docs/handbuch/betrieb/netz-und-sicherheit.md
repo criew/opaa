@@ -37,10 +37,13 @@ erreichbaren Betrieb ein **TLS-terminierender Reverse-Proxy** oder Ingress. Für
 ### Sicherheits-Header und `Strict-Transport-Security`
 
 Der Frontend-Container setzt auf jede Antwort `Content-Security-Policy`, `X-Content-Type-Options`,
-`X-Frame-Options`, `Referrer-Policy` und `Permissions-Policy` (Mikrofon nur für die eigene Herkunft,
-Kamera und Standort gesperrt). Die CSP lässt keine fremden Skripte oder CDNs zu und Verbindungen nur
-zur eigenen Herkunft. Einbetten in einen Frame verbieten beide Header überall, mit einer Ausnahme: Den
-Download der Selbstauskunft darf die Anwendung selbst in einen verborgenen Frame laden
+`X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` (Mikrofon nur für die eigene Herkunft,
+Kamera und Standort gesperrt) sowie `Cross-Origin-Opener-Policy` und `Cross-Origin-Resource-Policy`
+(beide `same-origin`): Fremde Seiten erhalten keinen Zugriff auf ein geöffnetes OPAA-Fenster und
+können Antworten von OPAA nicht einbinden. Anmeldungen und Freigaben laufen als Weiterleitung im
+selben Fenster und sind davon nicht betroffen. Die CSP lässt keine fremden Skripte oder CDNs zu und
+Verbindungen nur zur eigenen Herkunft. Einbetten in einen Frame verbieten beide Header überall, mit
+einer Ausnahme: Den Download der Selbstauskunft darf die Anwendung selbst in einen verborgenen Frame laden
 (`SAMEORIGIN` bzw. `frame-ancestors 'self'`), damit eine Ablehnung die Seite nicht ersetzt. Das
 Backend sendet dieselbe Regel selbst: `SAMEORIGIN` und `frame-ancestors 'self'` für den Download,
 `X-Frame-Options: DENY` für alles andere. Der Container ersetzt die Frame-Header des Backends durch
@@ -129,14 +132,50 @@ solche, die nur aus dem Netz des Servers erreichbar sind (SSRF). Zwei Schranken 
   `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`, statt die Prüfung abzuschalten. Identitätsanbieter,
   Modell-Endpunkte und Originalablage haben eigene Schalter und Listen derselben Prüfung; ein
   Eintrag in einer Liste öffnet keine der anderen.
-- **Ein Eintrag der Listen gilt nach Name und Port,** ohne Prüfung der aufgelösten Adresse. Nur Namen
-  aus der eigenen Zone eintragen, Einträge mit Port vorziehen. Modelladressen prüft OPAA nur beim
-  Speichern, Testen und Abfragen, nicht bei jedem Aufruf; eine spätere Änderung der Namensauflösung
-  fängt allein die Beschränkung des Egress.
+- **Geprüfte Namen sind gebunden.** Bis 60 Sekunden nach einer Prüfung verbindet jede Verbindung
+  des Backends zu dem Namen genau an die geprüften Adressen. Ein Namensdienst, der der Prüfung eine
+  öffentliche und der Verbindung eine interne Adresse nennt (DNS-Rebinding), läuft so ins Leere.
+  Zertifikat und SNI prüft TLS weiter gegen den Namen, auch beim Mailserver. Zwei Arten von Prüfung:
+  - **Vor jeder Verbindung** prüfen Quellen, Zugänge und die Originalablage: jeden Redirect, jede
+    Anfrage an einen Objektspeicher, jeden Abruf eines Crawls oder Feeds. Sie binden nur für die
+    Verbindung, denn jede weitere Verbindung wird neu geprüft.
+  - **Gespeicherte Ziele**, mit denen OPAA später ohne eigene Prüfung verbindet — Modell-Endpunkte,
+    Identitätsanbieter, der Mailserver —, bleiben darüber hinaus bis zum Neustart bewacht: Jede
+    Auflösung ihres Namens verliert jede Adresse in einem gesperrten Bereich, auch Tage später.
+    Bleibt keine übrig, scheitert die Verbindung wie bei einem unbekannten Host, und das Log warnt.
+    Nach dem Start prüft jede Instanz die gespeicherten Modell-Endpunkte und den Mailserver einmal;
+    was die Prüfung ablehnt, steht als Warnung im Log und bleibt unbewacht.
+- **Ein Adresswechsel kommt an**, sobald der Name neu geprüft oder aufgelöst wird: spätestens nach
+  dem Cache der JVM (30 Sekunden) bzw. nach der Wiederverwendung einer Antwort durch die Prüfung
+  (5 Sekunden), nach einer Bindung spätestens nach ihren 60 Sekunden.
+- **Ein Eintrag der Listen gilt nach Name und Port,** ohne Prüfung der aufgelösten Adresse und ohne
+  Bewachung. Nur Namen aus der eigenen Zone eintragen, Einträge mit Port vorziehen. Modelladressen
+  prüft OPAA beim Speichern, Testen, Abfragen und nach dem Start, nicht bei jedem Aufruf; die
+  Bewachung schützt die Aufrufe danach.
+- **Wechselt ein gespeichertes Ziel ins eigene Netz,** etwa beim Umzug eines Dienstes, ist sein Name
+  bis zum Neustart nicht erreichbar. Abhilfe: den Namen ohne Port in die passende Liste eintragen
+  und das Backend neu starten; die Listen liest OPAA nur beim Start. Ohne Eintrag bleibt der Name
+  auch nach dem Neustart gesperrt.
+- **Ein Hostname mit Zeichen außerhalb von ASCII** wird abgelehnt; internationalisierte Namen in
+  Punycode-Schreibweise (`xn--…`) eintragen.
 - Nur `http` und `https`; Redirects nur auf demselben Origin, nie auf `http` herab. Zertifikate
   werden immer geprüft.
-- **Grenze:** DNS-Rebinding wird nicht erkannt. Wer das ausschließen muss, beschränkt den Egress des
-  Backends zusätzlich auf Netzebene.
+- **Grenze:** Hinter dem [Ausgangsproxy](#ausgangsproxy) löst der Proxy den Namen auf; OPAA bindet
+  und bewacht dort nichts, interne Ziele zu sperren ist Pflicht des Proxys. Die Beschränkung des
+  Egress auf Netzebene bleibt die zweite Linie.
+- **Start:** OPAA startet nur, wenn sein Resolver die Namensauflösung der JVM übernommen hat. Löst
+  eine Startoption vor der Anwendung einen Namen auf, bricht der Start mit dieser Ursache ab
+  ([Images und Laufzeit](images-und-laufzeit.md)).
+
+Fest im Code: 60 Sekunden Bindung nach einer Prüfung; 5 Sekunden, in denen eine Prüfung die letzte
+Antwort für denselben Namen wiederverwendet; höchstens 50 000 gültige Bindungen von Prüfungen vor
+einer Verbindung und höchstens 100 000 bewachte gespeicherte Ziele je Instanz. Sind alle Bindungen
+noch gültig, lehnt OPAA die Prüfung eines neuen Namens bis zu ihrem Ablauf ab und zählt
+`opaa_target_validation_refused_connection_checks_total`. Ist die
+Tabelle der bewachten Ziele voll, lehnt OPAA die Prüfung jedes neuen gespeicherten Ziels mit eigener
+Meldung ab („kann derzeit nicht geprüft werden … Höchstzahl geprüfter Hostnamen“), warnt im Log und
+zählt `opaa_target_validation_refused_checks_total`; bewachte Namen bleiben bewacht, ein Neustart
+leert die Tabelle.
 
 ## Ausgangsproxy
 
@@ -153,12 +192,14 @@ und `http.proxyHost` wertet OPAA nicht aus.
 - **Ausnahmeliste:** je Zeile ein Hostname (gilt mit Subdomänen), eine IP-Adresse oder ein
   CIDR-Bereich. Interne Ziele wie ein Modellserver im Haus gehören hierher.
 - **Ausnahmeliste ist keine Freigabe:** Ob ein internes Ziel erreicht werden darf, entscheidet die
-  [Zielprüfung](#zielprüfung-abrufe-des-servers).
+  [Zielprüfung](#zielprüfung-abrufe-des-servers). Hinter dem Proxy löst der Proxy die Adresse auf.
 - **Pflicht für den Proxy:** Die Zielprüfung sieht nur die Namensauflösung des Backends; der Proxy
-  löst den Namen selbst noch einmal auf und kann eine andere Adresse erhalten (DNS-Rebinding). Er
-  muss deshalb Verbindungen zu Loopback, Link-Local (`169.254.0.0/16` samt Metadatendienst
-  `169.254.169.254`, `fe80::/10`) und privaten Bereichen sperren, soweit sie nicht ausdrücklich
-  erreichbar sein sollen.
+  löst den Namen selbst noch einmal auf und kann eine andere Adresse erhalten (DNS-Rebinding).
+  Bindung und Bewachung geprüfter Namen erreichen ihn nicht. Er muss deshalb nach seiner eigenen
+  Auflösung Ziele in privaten Netzen (RFC 1918), Loopback, Link-Local (`169.254.0.0/16` samt
+  Metadatendienst `169.254.169.254`, `fe80::/10`), Carrier-Grade NAT (`100.64.0.0/10`) und IPv6-ULA
+  (`fc00::/7`) verwerfen, soweit sie nicht ausdrücklich erreichbar sein sollen. Ein Name, den das
+  Backend selbst nicht auflösen kann, bleibt über den Proxy erlaubt.
 - Änderungen wirken ohne Neustart und stehen im Revisionsprotokoll.
 - **Notanker:** Ein falscher Proxy kann die Anmeldung über Identitätsanbieter lahmlegen; das lokale
   Systemverwaltungskonto meldet sich ohne Anbieter an und korrigiert den Eintrag.

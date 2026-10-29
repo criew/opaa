@@ -117,7 +117,7 @@ public class MailConnectionTester {
       if (cause instanceof AuthenticationFailedException) {
         return Failure.SIGN_IN_REFUSED;
       }
-      if (cause instanceof SSLException || mentionsStartTls(cause)) {
+      if (cause instanceof SSLException || mentionsStartTls(cause) || mentionsIdentity(cause)) {
         return Failure.TLS;
       }
       if (cause instanceof ConnectException
@@ -138,6 +138,12 @@ public class MailConnectionTester {
   private static boolean mentionsStartTls(Throwable cause) {
     String message = cause.getMessage();
     return message != null && message.toUpperCase(Locale.ROOT).contains("STARTTLS");
+  }
+
+  /** JavaMail's host name check of the certificate fails with a plain I/O exception. */
+  private static boolean mentionsIdentity(Throwable cause) {
+    String message = cause.getMessage();
+    return message != null && message.contains("verify identity of server");
   }
 
   private static boolean isConnectTimeout(Throwable cause) {

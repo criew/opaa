@@ -46,7 +46,8 @@ derselben übergeordneten Überschrift zusammengelegt. Text vor der ersten Über
 ohne Pfad.
 
 - **Tabellen** werden eine Zeile je Tabellenzeile, Zellen mit „ | " getrennt; eine Tabelle in
-  einer Zelle wird in diese Zelle geglättet.
+  einer Zelle wird in diese Zelle geglättet. Steckt eine Tabelle in acht oder mehr anderen, bleibt
+  ihr Text erhalten, aber ohne Trennung in Zeilen und Zellen.
 - **Listen** werden eine Zeile je Eintrag; die Verschachtelung trägt der Marker (•, ◦, ▪ nach
   Tiefe, bei nummerierten Listen „2.1."). Der Marker bleibt auch, wenn der Text des Eintrags in
   einem Absatz-Element steht (`<li><p>…</p></li>`, wie viele CMS es schreiben); weitere Absätze
@@ -79,7 +80,8 @@ benennt andere Dokumente als sich selbst und würde sonst deren Dokumentart erbe
 
 ## 6. Grenzwerte
 
-Keine eigenen Konfigurationsschlüssel und kein Bytedeckel im Parser. Am
+Keine eigenen Konfigurationsschlüssel und kein Bytedeckel im Parser; es gilt die gemeinsame
+Textgrenze je Dokument ([Grenzen beim Lesen](README.md#grenzen-beim-lesen)). Am
 Webverzeichnis-Konnektor greift dessen Dateigrößengrenze, am Feed-Konnektor dessen
 Seitengrößengrenze.
 

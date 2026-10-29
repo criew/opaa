@@ -580,7 +580,7 @@ jobs:
           python-version: '3.15'
 
       - name: Install pytest
-        run: pip install -r .github/requirements-ci.txt
+        run: pip install --require-hashes -r .github/requirements-ci.txt
 
       - name: Install the packages of the update package
         run: |
@@ -607,7 +607,11 @@ jobs:
           python-version: '3.15'
 
       - name: Install dependencies
-        run: pip install -r .github/requirements-ci.txt -r demo/seed/requirements.txt
+        # demo/seed/requirements.txt is the range the seed itself declares, so it stays outside
+        # hash-checking mode; the CI tools come with hashes.
+        run: |
+          pip install --require-hashes -r .github/requirements-ci.txt
+          pip install -r demo/seed/requirements.txt
 
       # Der Seed-Lauf selbst wird nur vom nächtlichen Demo-Smoke ausgeübt; was ohne
       # laufenden Stack prüfbar ist, gehört deshalb in jeden PR-Lauf.

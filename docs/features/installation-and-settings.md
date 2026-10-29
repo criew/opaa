@@ -611,6 +611,13 @@ der Quellen).
 | `OPAA_INDEXING_ODF_MAX_ODT_PARAGRAPHS` | `opaa.indexing.odf.max-odt-paragraphs` |
 | `OPAA_INDEXING_ODF_MAX_SPACE_REPEAT` | `opaa.indexing.odf.max-space-repeat` |
 | `OPAA_INDEXING_ODF_MAX_TEXT_CHARACTERS` | `opaa.indexing.odf.max-text-characters` |
+| `OPAA_INDEXING_PARSER_LIMITS_MAX_OOXML_PART_BYTES` | `opaa.indexing.parser-limits.max-ooxml-part-bytes` |
+| `OPAA_INDEXING_PARSER_LIMITS_MAX_OOXML_TOTAL_BYTES` | `opaa.indexing.parser-limits.max-ooxml-total-bytes` |
+| `OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_CONTENT_BYTES` | `opaa.indexing.parser-limits.max-pdf-content-bytes` |
+| `OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_OPERATORS` | `opaa.indexing.parser-limits.max-pdf-operators` |
+| `OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_PARSE_SECONDS` | `opaa.indexing.parser-limits.max-pdf-parse-seconds` |
+| `OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_STREAM_BYTES` | `opaa.indexing.parser-limits.max-pdf-stream-bytes` |
+| `OPAA_INDEXING_PARSER_LIMITS_MAX_TEXT_CHARACTERS` | `opaa.indexing.parser-limits.max-text-characters` |
 | `OPAA_INDEXING_RSS_MAX_ATTACHMENTS_PER_ENTRY` | `opaa.indexing.rss.max-attachments-per-entry` |
 | `OPAA_INDEXING_RSS_MAX_ATTACHMENT_SIZE_BYTES` | `opaa.indexing.rss.max-attachment-size-bytes` |
 | `OPAA_INDEXING_RSS_MAX_ENTRIES` | `opaa.indexing.rss.max-entries` |

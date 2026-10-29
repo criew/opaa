@@ -92,8 +92,9 @@ Schlüssel unter `opaa.indexing.tabular.*`:
 Fest und nicht konfigurierbar, weil sie den Zuschnitt beschreiben und kein Sicherheitslimit
 sind: 50 Zeilen je Chunk. Die Zielgröße in Zeichen ist dagegen `chunk-target-characters`,
 gemeinsam für alle Formate (Kapitel [Wissensbibliotheken](../README.md),
-Abschnitt 7.5). XLSX braucht keinen eigenen Deckel, Apache POI
-schützt prozessweit gegen ZIP-Bomben. Der ODS-Leser verarbeitet keine externen XML-Entitäten.
+Abschnitt 7.5). Für XLSX und CSV gelten zusätzlich die gemeinsamen Grenzen für Text und, bei
+XLSX, für die entpackte Größe ([Grenzen beim Lesen](README.md#grenzen-beim-lesen)). Der ODS-Leser
+verarbeitet keine externen XML-Entitäten.
 
 ## 7. Nicht verarbeitet
 

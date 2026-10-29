@@ -716,6 +716,73 @@ class DocumentIngestServiceTest {
     }
 
     @Test
+    void anErrorOutOfTheParserMarksANewDocumentFailedInsteadOfLeavingItPending()
+        throws IOException {
+      Path file = fileNamed("zyklisch.txt", "content");
+      stubNewRow(file, "sha256-of-cyclic");
+      when(documentService.parseDocument(file)).thenThrow(new StackOverflowError());
+
+      DocumentIngestResult result = service.ingest(localFile(file), null);
+
+      assertThat(result).isEqualTo(DocumentIngestResult.FAILED);
+      UUID documentId = savedDocument().getId();
+      verify(documentRepository)
+          .markFailed(documentId, DocumentIngestService.PROCESSING_FAILED_MESSAGE);
+      assertThat(counter("failed")).isEqualTo(1.0);
+    }
+
+    @Test
+    void anErrorAfterParsingMarksTheDocumentFailedAndIsRethrown() throws IOException {
+      Path file = fileNamed("error-on-write.txt", "content");
+      stubNewRow(file, "sha256-of-error");
+      stubParsedInto(file, chunks("chunk1"));
+      doThrow(new AssertionError("simulated library error"))
+          .when(vectorStoreWriter)
+          .writeEmbeddedChunks(any(), any(), anyLong());
+
+      assertThatThrownBy(() -> service.ingest(localFile(file), null))
+          .isInstanceOf(AssertionError.class);
+
+      UUID documentId = savedDocument().getId();
+      verify(documentRepository)
+          .markFailedWithoutChunks(documentId, DocumentIngestService.PROCESSING_FAILED_MESSAGE);
+      assertThat(counter("failed")).isEqualTo(1.0);
+    }
+
+    @Test
+    void aLinkageErrorMarksTheDocumentFailedAndIsRethrown() throws IOException {
+      Path file = fileNamed("linkage-on-write.txt", "content");
+      stubNewRow(file, "sha256-of-linkage");
+      stubParsedInto(file, chunks("chunk1"));
+      doThrow(new NoClassDefFoundError("simulated"))
+          .when(vectorStoreWriter)
+          .writeEmbeddedChunks(any(), any(), anyLong());
+
+      assertThatThrownBy(() -> service.ingest(localFile(file), null))
+          .isInstanceOf(NoClassDefFoundError.class);
+
+      UUID documentId = savedDocument().getId();
+      verify(documentRepository)
+          .markFailedWithoutChunks(documentId, DocumentIngestService.PROCESSING_FAILED_MESSAGE);
+    }
+
+    @Test
+    void anOutOfMemoryErrorIsPassedOnWithoutBookingTheDocument() throws IOException {
+      Path file = fileNamed("oom-on-write.txt", "content");
+      stubNewRow(file, "sha256-of-oom");
+      stubParsedInto(file, chunks("chunk1"));
+      doThrow(new OutOfMemoryError("simulated"))
+          .when(vectorStoreWriter)
+          .writeEmbeddedChunks(any(), any(), anyLong());
+
+      assertThatThrownBy(() -> service.ingest(localFile(file), null))
+          .isInstanceOf(OutOfMemoryError.class);
+
+      verify(documentRepository, never()).markFailedWithoutChunks(any(), any());
+      verify(documentRepository, never()).markFailed(any(), any());
+    }
+
+    @Test
     void anExceptionAfterTheOldChunksWereDeletedRemovesTheNewlyWrittenOnes() throws IOException {
       // Past the delete there is no untouched previous state left to preserve, so the failure
       // path must clean up exactly as for a first-time document - a FAILED row never keeps

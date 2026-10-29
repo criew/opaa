@@ -468,8 +468,29 @@ val testShards = mapOf(
     ),
 )
 
+// The DNS rebinding tests (*RebindingTest, ADR-0063) run in a JVM of their own that caches no
+// resolved name: every lookup a client makes reaches io.opaa.security.ScriptedResolution, the name
+// server of the attack, so a client resolving past the target address check fails them. Every
+// other suite keeps the JDK's cache. Part of check, so CI's `build -x :test` job runs it.
+val dnsRebindingTest = tasks.register<Test>("dnsRebindingTest") {
+    description = "DNS rebinding against the target address check (*RebindingTest, ADR-0063), " +
+        "in a JVM without the JDK's name cache."
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    filter {
+        includeTestsMatching("*RebindingTest")
+    }
+    systemProperty("sun.net.inetaddr.ttl", "0")
+}
+
+tasks.named("check") {
+    dependsOn(dnsRebindingTest)
+}
+
 tasks.named<Test>("test") {
     filter {
+        excludeTestsMatching("*RebindingTest")
         excludeTestsMatching("io.opaa.integration.*")
         excludeTestsMatching("*.GoogleDriveWorkspaceIntegrationTest")
         excludeTestsMatching("*.SharePointTenantIntegrationTest")

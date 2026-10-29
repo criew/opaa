@@ -55,7 +55,8 @@ Zielgröße `chunk-target-characters`, größere Abschnitte werden ohne Textverl
 
 ## 6. Grenzwerte
 
-Keine eigenen Konfigurationsschlüssel; die Datei wird vollständig in den Speicher gelesen.
+Keine eigenen Konfigurationsschlüssel; die Datei wird vollständig in den Speicher gelesen. Es gilt
+die gemeinsame Textgrenze je Dokument ([Grenzen beim Lesen](README.md#grenzen-beim-lesen)).
 
 ## 7. Nicht verarbeitet
 

@@ -6,6 +6,9 @@
 services:
   postgres:
     image: pgvector/pgvector:pg18
+    # Every long-running service restarts unless stopped, so after a host reboot the whole stack
+    # comes back, not part of it; the one-off jobs (*-init, *-seed, *-pull) run once and stay down.
+    restart: unless-stopped
     # No fixed container_name: Compose prefixes container/network/volume
     # names with the project name (directory name, or COMPOSE_PROJECT_NAME)
     # instead, so this file can run as multiple independent stacks side by
@@ -34,6 +37,8 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     env_file: ${OPAA_ENV_FILE:-.env.docker}
+    # The image exits on an OutOfMemoryError (backend/Dockerfile); Compose starts it again.
+    restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
     # Loopback only, like postgres (ADR-0033, Entscheidung 9): a direct connection to the backend
@@ -93,6 +98,7 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
     env_file: ${OPAA_ENV_FILE:-.env.docker}
+    restart: unless-stopped
     # Loopback by default: Docker publishes ports past ufw/firewalld, and in the "dev" profile every
     # request is a system administrator. OPAA_FRONTEND_BIND_ADDRESS=0.0.0.0 opens it
     # (docs/handbuch/betrieb/docker-compose.md, "Härtung des Compose-Stapels").
@@ -123,6 +129,7 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.8
+    restart: unless-stopped
     command: start-dev --import-realm
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
@@ -165,6 +172,7 @@ services:
   # <pre>/<ul> listings too.
   demo-corpus:
     image: httpd:2.4-alpine
+    restart: unless-stopped
     volumes:
       - ./demo/corpus/leistungen-meldewesen-ausweise:/usr/local/apache2/htdocs/leistungen-meldewesen-ausweise:ro
       - ./demo/corpus/leistungen-kfz-zulassung:/usr/local/apache2/htdocs/leistungen-kfz-zulassung:ro
@@ -214,6 +222,7 @@ services:
   # autoindex config is needed here.
   demo-presse:
     image: httpd:2.4-alpine
+    restart: unless-stopped
     volumes:
       - ./demo/corpus/pressemitteilungen:/usr/local/apache2/htdocs:ro
     networks:
@@ -254,6 +263,7 @@ services:
   # to the committed corpus on every start, whatever the volume held before.
   objectstore:
     image: rustfs/rustfs:1.0.3
+    restart: unless-stopped
     environment:
       RUSTFS_ACCESS_KEY: rheinfurt-archiv
       RUSTFS_SECRET_KEY: RheinfurtDemo!2026
@@ -342,6 +352,7 @@ services:
   # environment or .env) and for the backend (.env.docker).
   upload-store:
     image: rustfs/rustfs:1.0.3
+    restart: unless-stopped
     environment:
       RUSTFS_ACCESS_KEY: ${OPAA_UPLOAD_STORE_ROOT_USER:-opaa-uploads}
       RUSTFS_SECRET_KEY: ${OPAA_UPLOAD_STORE_ROOT_PASSWORD:-OpaaUploads!2026}
@@ -398,6 +409,7 @@ services:
   # environment variable changes at all: the application defaults already point here.
   ollama:
     image: ollama/ollama:0.40.6
+    restart: unless-stopped
     volumes:
       - opaa-ollama-data:/root/.ollama
     # Not published to the host: the backend and the ollama-pull init step below reach this
@@ -457,6 +469,7 @@ services:
   # credentials. Both ports are published to 127.0.0.1 only.
   mailpit:
     image: axllent/mailpit:v1.31.6
+    restart: unless-stopped
     environment:
       MP_MAX_MESSAGES: 500
       MP_SMTP_AUTH_ACCEPT_ANY: 1

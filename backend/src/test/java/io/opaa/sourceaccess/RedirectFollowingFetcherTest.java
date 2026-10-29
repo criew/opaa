@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.security.TargetAddressValidator;
+import io.opaa.security.TargetAddressValidator.Scope;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
@@ -789,7 +790,7 @@ class RedirectFollowingFetcherTest {
     assertThat(response.statusCode()).isEqualTo(207);
     assertThat(sleeps).containsExactly(Duration.ofSeconds(2));
     assertThat(listener.attempts).isEqualTo(2);
-    verify(validator, times(2)).validate(URI.create(originUrl + "/dav"));
+    verify(validator, times(2)).validate(URI.create(originUrl + "/dav"), Scope.PER_CONNECTION);
   }
 
   private static HttpClient productionClient() {

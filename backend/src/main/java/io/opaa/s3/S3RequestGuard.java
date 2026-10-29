@@ -1,6 +1,7 @@
 package io.opaa.s3;
 
 import io.opaa.security.TargetAddressValidator;
+import io.opaa.security.TargetAddressValidator.Scope;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.io.IOException;
 import java.time.Duration;
@@ -51,7 +52,8 @@ public final class S3RequestGuard implements ExecutionInterceptor {
      */
     static TargetPolicy hostOnly(TargetAddressValidator validator, boolean throughOutboundProxy) {
       return request ->
-          validator.validateHost(request.host(), request.port(), throughOutboundProxy);
+          validator.validateHost(
+              request.host(), request.port(), throughOutboundProxy, Scope.PER_CONNECTION);
     }
   }
 

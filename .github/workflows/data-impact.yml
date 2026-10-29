@@ -55,7 +55,7 @@ jobs:
       - name: Pfadliste gegen den Code prüfen
         if: github.event_name == 'pull_request'
         run: |
-          pip install -r .github/requirements-ci.txt
+          pip install --require-hashes -r .github/requirements-ci.txt
           pytest .github/scripts/test_check_data_impact.py
 
       - name: Datenwirkung prüfen
