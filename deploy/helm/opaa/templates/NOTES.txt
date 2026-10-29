@@ -102,6 +102,10 @@ GEHEIMNISSE
   Die Schlüssel stehen in den Werten dieses Releases. Für den Betrieb secrets.existingSecret
   verwenden. Geht OPAA_CREDENTIALS_ENCRYPTION_KEY oder OPAA_SETTINGS_ENCRYPTION_KEY verloren, sind
   die damit gespeicherten Zugangsdaten unlesbar - Kopie außerhalb des Clusters aufbewahren.
+{{- if or .Values.secrets.credentialsEncryptionPreviousKeys .Values.secrets.settingsEncryptionPreviousKeys }}
+  SCHLÜSSELWECHSEL LÄUFT: secrets.*EncryptionPreviousKeys ist gesetzt. Sobald das Backend meldet,
+  dass alle lesbaren Geheimnisse unter dem neuen Schlüssel stehen, die alten Schlüssel entfernen.
+{{- end }}
 {{- $marker := "NICHT-FUER-DEN-PRODUKTIVBETRIEB" }}
 {{- /* earlier keys of the CI value sets and of v0.1.0-rc.4; the backend refuses them as well */}}
 {{- $publishedKeys := list "bjzhjv2AKbnBjZCYAR2V/Glp7TYZzqABwkqXs3lEyCY=" "CH1X+hsIYeijer8S9wq5wKRnQa4DpUPePzw4KxGMTMw=" "3J0X7GKz9q3Hq1zEo2mJ1n5Q2k8m3r9T4v6w8y0A2c4=" "Zm9yLWNpLW9ubHktc2V0dGluZ3Mta2V5LTAxMjM0NTY=" }}

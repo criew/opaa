@@ -319,8 +319,9 @@ dem Backend den Weg zum Scanner öffnen.
 | Geheimnis | Wofür | Ohne eigenen Wert | Bei Verlust oder Wechsel |
 |---|---|---|---|
 | `OPAA_AUTH_JWT_SECRET` | lokal ausgestellte Tokens und Links (Refresh, Einladung, Rücksetzen) | im Modus `oidc` bricht der Start ab | alle lokalen Sitzungen, offenen Links und Zugangstokens [externer KI-Werkzeuge](../spaces/fremdzugaenge.md) werden ungültig — gewollt nach einer [Rücksicherung](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank) |
-| `OPAA_CREDENTIALS_ENCRYPTION_KEY` | Zugangsdaten von Quellen, Zugängen und verbundenen Konten, Webhook-Geheimnisse | Speichern solcher Zugangsdaten scheitert; ein im Repository veröffentlichter Schlüssel bricht im Modus `oidc` den Start ab | gespeicherte Werte unlesbar, neu einzutragen |
-| `OPAA_SETTINGS_ENCRYPTION_KEY` | Schlüssel der Chat-Modelle, SMTP-Passwort, wartende Mails | Speichern solcher Werte scheitert; ein im Repository veröffentlichter Schlüssel bricht im Modus `oidc` den Start ab | Werte neu einzutragen ([Modelle](modelle.md#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)); wartende Mails verworfen |
+| `OPAA_CREDENTIALS_ENCRYPTION_KEY` | Zugangsdaten von Quellen, Zugängen und verbundenen Konten, Webhook-Geheimnisse | Speichern solcher Zugangsdaten scheitert; ein im Repository veröffentlichter Schlüssel bricht im Modus `oidc` den Start ab | Verlust: gespeicherte Werte unlesbar, neu einzutragen; Wechsel: [Schlüsselwechsel](#schlüsselwechsel) |
+| `OPAA_SETTINGS_ENCRYPTION_KEY` | Schlüssel der Modelle, SMTP-Passwort, wartende Mails | Speichern solcher Werte scheitert; ein im Repository veröffentlichter Schlüssel bricht im Modus `oidc` den Start ab | Verlust: Werte neu einzutragen ([Modelle](modelle.md#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)), wartende Mails verworfen; Wechsel: [Schlüsselwechsel](#schlüsselwechsel) |
+| `OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS`, `OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS` | abgelöste Schlüssel während eines [Schlüsselwechsels](#schlüsselwechsel), nur zum Entschlüsseln | leer: kein Wechsel im Gang | nach dem Wechsel entfernen, getrennt aufbewahren |
 | `OPAA_DB_USERNAME`, `OPAA_DB_PASSWORD` | Datenbankkonto | Vorgabe `opaa`/`opaa`, nur Entwicklung | vor dem ersten Start setzen |
 
 - Zufällig erzeugen: `openssl rand -base64 48` (Signaturgeheimnis), `openssl rand -base64 32`
@@ -329,7 +330,9 @@ dem Backend den Weg zum Scanner öffnen.
   sichern**: Ohne die Schlüssel enthält eine Datenbanksicherung unlesbare Zugangsdaten.
 - Die Schlüssel des Profils `dev` und die Testwerte der Wertesätze unter `deploy/helm/opaa/ci/`
   (`ci-only-…`, Kennzeichen `NICHT-FUER-DEN-PRODUKTIVBETRIEB`) sind öffentlich. Im Modus `oidc`
-  bricht der Start mit ihnen ab und nennt die Variable.
+  bricht der Start mit ihnen ab und nennt die Variable. Ein bisher genutzter öffentlicher Schlüssel
+  wird wie bei einem [Schlüsselwechsel](#schlüsselwechsel) abgelöst; als abgelöster Schlüssel ist er
+  erlaubt.
 
 ### Zugangsdaten-Verschlüsselung
 
@@ -342,7 +345,45 @@ enthält sie.
 - Ändert sich die Adresse der Quelle ohne neue Zugangsdaten, verwirft OPAA die gespeicherten
   Zugangsdaten; sie werden für die neue Adresse neu eingetragen.
 - **Bei Schlüsselverlust** sind die Werte verloren, nicht die Bibliothek: Zugangsdaten neu eintragen.
-- **Schlüsselwechsel** im Bestand ist nicht vorgesehen; wer wechselt, trägt alle Werte neu ein.
+- Jeder gespeicherte Wert trägt die Kennung seines Schlüssels und ist an seinen Datensatz gebunden.
+  Ein Geheimtext, der in der Datenbank in einen anderen Datensatz kopiert wird, ist dort unlesbar.
+
+### Schlüsselwechsel
+
+Ein Schlüssel wird gewechselt, wenn er bekannt geworden sein kann, etwa nach dem Ausscheiden einer
+Person mit Zugriff auf die Geheimnisse, oder turnusmäßig nach den Regeln des Hauses. OPAA arbeitet
+während des Wechsels weiter: Der alte Schlüssel entschlüsselt nur noch, alles Neue verschlüsselt der
+neue, und ein Hintergrundlauf stellt den Bestand um. Der Ablauf gilt für
+`OPAA_CREDENTIALS_ENCRYPTION_KEY` und `OPAA_SETTINGS_ENCRYPTION_KEY` gleichermaßen, einzeln oder
+beide zugleich.
+
+1. **Neuen Schlüssel erzeugen** (`openssl rand -base64 32`) und sichern, bevor er eingesetzt wird.
+2. **Schlüssel tauschen:** den bisherigen Schlüssel in `OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS`
+   bzw. `OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS` eintragen, den neuen in die Variable des Schlüssels.
+   Mehrere abgelöste Schlüssel stehen durch Kommas getrennt.
+3. **Alle Instanzen gemeinsam neu starten.** Die Schlüssel gehören zum
+   [Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck);
+   ein Rolling Update ist dafür nicht möglich.
+4. **Umstellung abwarten.** Zwei Minuten nach dem Start und danach alle zehn Minuten verschlüsselt
+   eine Instanz bis zu 5.000 Werte neu. Das Log meldet den Fortschritt mit „Re-encrypted … stored
+   secrets; … still stand under an old key or format“ und den Abschluss mit „… every readable secret
+   is now under the current keys“.
+5. **Abgelöste Schlüssel entfernen** und alle Instanzen erneut gemeinsam neu starten.
+
+Den alten Schlüssel aufbewahren, solange Datenbanksicherungen von vor dem Wechsel aufbewahrt werden:
+Wird eine solche Sicherung zurückgespielt, kommt er wieder als abgelöster Schlüssel in die Variable,
+bis der Hintergrundlauf den Bestand erneut umgestellt hat.
+
+Ein Wert, den weder der aktuelle noch ein abgelöster Schlüssel entschlüsselt, bleibt unverändert
+stehen. Der Lauf meldet ihn mit Tabelle, Spalte und Datensatz, nie mit dem Wert, und zählt alle
+solchen Werte in der Warnung „… stored secrets cannot be decrypted with the current or previous
+keys“. Abhilfe: den fehlenden Schlüssel als abgelösten Schlüssel ergänzen oder den Wert in der
+Oberfläche neu eintragen.
+
+Während eines Updates, solange noch eine Instanz der Vorversion läuft, schreibt OPAA neue Werte im
+bisherigen Format, das die Vorversion lesen kann, und der Hintergrundlauf wartet. Erst wenn alle
+Instanzen die neue Version fahren, stellt er den Bestand um, auch Werte im älteren Format ohne
+Schlüsselkennung, ohne dass dafür ein Schlüssel wechseln muss.
 
 ## Schutz gegen Prompt-Injection
 

@@ -2,8 +2,8 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-26 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
-ergänzt ADR-0032 Entscheidung 3 und ADR-0042 Entscheidung 2 · ergänzt durch ADR-0060 und ADR-0061
+Akzeptiert · zuletzt geändert 2026-10-29 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
+ergänzt ADR-0032 Entscheidung 3 und ADR-0042 Entscheidung 2 · ergänzt durch ADR-0060, ADR-0061 und ADR-0064
 
 ## Kontext
 
@@ -85,7 +85,8 @@ oder einen kurzen Datenbankaussetzer, ein ausgefallener Pod gibt seine Läufe na
 Der Abdruck umfasst jeden `opaa.*`-Schlüssel mit `@DataImpact`, also die maschinelle Liste aus dem
 Fakten-Manifest (ADR-0052 Entscheidung 9). Neue datenwirksame Schlüssel gehen damit von selbst ein.
 Dazu kommen die als installationsweit gekennzeichneten technischen Werte: `OPAA_AUTH_JWT_SECRET`,
-`OPAA_CREDENTIALS_ENCRYPTION_KEY`, `OPAA_SETTINGS_ENCRYPTION_KEY`, Chunking, Auth-Profil,
+`OPAA_CREDENTIALS_ENCRYPTION_KEY`, `OPAA_SETTINGS_ENCRYPTION_KEY` samt ihren abgelösten Schlüsseln
+(ADR-0064), Chunking, Auth-Profil,
 `OPAA_DB_SCHEMA`, Originalablage samt Bucket bzw. Pfad, Allowlists, Proxy-Vertrauensliste,
 `opaa.public-base-url`, die Feature-Flags und die Zeitzone der JVM. Das Embedding-Modell gehört
 nicht dazu: Es ist eine Zeile der Datenbank (ADR-0060, Entscheidung 10). Gekennzeichnet sind

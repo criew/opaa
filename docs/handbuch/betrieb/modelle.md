@@ -705,6 +705,9 @@ SMTP-Passwort. Erzeugt wird er mit `openssl rand -base64 32` und außerhalb des 
   nachgeholt.
 - **Bei Schlüsselverlust** sind die gespeicherten Zugangsschlüssel nicht wiederherstellbar; der übrige
   Modelleintrag bleibt. Abhilfe: den Zugangsschlüssel des Modells in der Oberfläche neu eintragen.
+- **Ein Schlüsselwechsel** braucht kein neues Eintragen: Der abgelöste Schlüssel entschlüsselt
+  weiter, bis OPAA alle Werte umgestellt hat
+  ([Schlüsselwechsel](netz-und-sicherheit.md#schlüsselwechsel)).
 - Für Entwicklung und Tests (nur Profil `dev`) ist ein fester, **nicht für den Betrieb gedachter**
   Schlüssel voreingestellt.
 

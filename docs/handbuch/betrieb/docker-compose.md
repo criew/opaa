@@ -702,9 +702,9 @@ ohne Punkt 7 nicht mehr von anderen Rechnern:
 8. **Kopierte Test- oder Entwicklungsschlüssel ersetzen.** Steht in `OPAA_CREDENTIALS_ENCRYPTION_KEY`
    oder `OPAA_SETTINGS_ENCRYPTION_KEY` ein Schlüssel des Profils `dev` oder der Wertesätze der CI,
    bricht der Start im Modus `oidc` ab. Einen eigenen Schlüssel erzeugen (`openssl rand -base64 32`)
-   und die damit geschützten Werte danach neu eintragen: Zugangsdaten der Quellen und Zugänge,
-   Schlüssel der Chat-Modelle, das Passwort des Mailservers
-   ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#schlüssel-und-geheimnisse)).
+   und den bisherigen in `OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS` bzw.
+   `OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS` eintragen; OPAA verschlüsselt die gespeicherten Werte
+   dann selbst neu ([Schlüsselwechsel](netz-und-sicherheit.md#schlüsselwechsel)).
 
 Bestehende Konten, Rollen, Rechte und der Index bleiben, wie sie sind; ein Identitätsanbieter läuft
 unverändert weiter, und die lokale Benutzerverwaltung bleibt aus, bis sie jemand einschaltet.

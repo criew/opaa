@@ -19,8 +19,8 @@ Ratenbegrenzung, Metriken, Quellzugriff (HTTP), Ausgangsproxy, S3, Graph-Client,
   Zugangsdaten. Seine Nutzer (S3-Konnektor, Originalablage) kennt es nicht.
 - **`io.opaa.msgraph` folgt keiner Adresse von Graph:** Folgeseiten nur als Token von Graphs eigenem Ursprung; Downloads
   auf den vorab signierten Host nur über https ohne `Authorization`, die Adresse (Kurzzeit-Token) in keinem Log.
-- **Zwei Schlüssel für Geheimnisse:** `CredentialsEncryptor` (Quell-Zugangsdaten, `OPAA_CREDENTIALS_ENCRYPTION_KEY`),
-  `SettingsEncryptor` (verwaltete Einstellungen, `OPAA_SETTINGS_ENCRYPTION_KEY`); geprüft erst beim ersten Gebrauch.
+- **Geheimnisse:** `CredentialsEncryptor`, `SettingsEncryptor` (je ein `OPAA_*_ENCRYPTION_KEY`), bei Gebrauch geprüft;
+  zeilengebunden: neue Spalte → `EncryptedColumn` + `EncryptedColumns`-Bean, sonst kein Neuverschlüsseln (ADR-0064).
 - **`LocalAuthKeyService` leitet alle Schlüssel des lokalen Ausstellers per HKDF aus `OPAA_AUTH_JWT_SECRET` ab**, je
   Zweck ein eigenes Label. Eine Rotation beendet alle lokalen Sitzungen, offenen Links und Zugangstokens zugleich.
 - **Ratenbegrenzung:** Fenster je Instanz (`RateLimitService`), Deckel in der DB, Kontogrenze hinter der Kette;
