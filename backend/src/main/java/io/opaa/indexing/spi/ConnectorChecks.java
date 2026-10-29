@@ -90,7 +90,10 @@ public final class ConnectorChecks {
     if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
       throw new ValidationException("sourceUrl muss mit http:// oder https:// beginnen");
     }
-    if (uri.getRawUserInfo() != null) {
+    // a host java.net.URI cannot parse (host_name) leaves getRawUserInfo() null, so the raw
+    // authority is checked as well
+    String authority = uri.getRawAuthority();
+    if (uri.getRawUserInfo() != null || (authority != null && authority.contains("@"))) {
       throw new ValidationException(USER_INFO_REJECTED_MESSAGE);
     }
   }

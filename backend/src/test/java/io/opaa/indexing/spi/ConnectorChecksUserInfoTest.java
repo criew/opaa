@@ -39,6 +39,17 @@ class ConnectorChecksUserInfoTest {
   }
 
   @Test
+  void credentialsBeforeAHostUriCannotParseAreRefusedToo() {
+    assertThatThrownBy(
+            () ->
+                ConnectorChecks.validateUrlBasedConfiguration(
+                    SourceTypes.RSS_FEED, null, "http://user:pass@host_name/feed"))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("darf keine Zugangsdaten enthalten")
+        .satisfies(e -> assertThat(e.getMessage()).doesNotContain("pass@"));
+  }
+
+  @Test
   void anAddressWithoutCredentialsPasses() {
     ConnectorChecks.validateUrlBasedConfiguration(
         SourceTypes.RSS_FEED, null, "https://feeds.example.org/rss.xml");

@@ -212,7 +212,9 @@ public class DirectoryConnectorService {
 
   /**
    * Whether two admin API bases name the same endpoint: scheme, host, port (an absent one as the
-   * scheme's default) and path, so a stored secret never reaches another host, port or path.
+   * scheme's default) and the decoded path without trailing slashes, so a stored secret never
+   * reaches another host, port or path. Normalised like {@code ModelEndpointRules#sameEndpoint},
+   * which this module may not use.
    */
   private static boolean sameAddress(String stored, String requested) {
     try {
@@ -225,7 +227,10 @@ public class DirectoryConnectorService {
   private static String endpointKey(URI uri) {
     String scheme = uri.getScheme().toLowerCase(Locale.ROOT);
     int port = uri.getPort() != -1 ? uri.getPort() : "https".equals(scheme) ? 443 : 80;
-    String path = uri.getRawPath() == null ? "" : uri.getRawPath();
+    String path = uri.getPath() == null ? "" : uri.getPath();
+    while (path.endsWith("/")) {
+      path = path.substring(0, path.length() - 1);
+    }
     return scheme + "://" + uri.getHost().toLowerCase(Locale.ROOT) + ":" + port + path;
   }
 

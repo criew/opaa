@@ -89,6 +89,17 @@ class DirectoryConnectorServiceProbeTest {
   }
 
   @Test
+  void thePathCountsDecodedAndWithoutTrailingSlashes() {
+    storeConnector("https://keycloak.intern/auth%2Dbereich");
+
+    probe("https://keycloak.intern/auth-bereich//", null);
+    verify(keycloak).probe(any(), eq("opaa-directory"), eq(STORED_SECRET));
+
+    assertThatThrownBy(() -> probe("https://keycloak.intern/anderer-pfad", null))
+        .isInstanceOf(ValidationException.class);
+  }
+
+  @Test
   void aChangedAddressWithItsOwnSecretIsProbed() {
     storeConnector("https://keycloak.intern:8443");
 

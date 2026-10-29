@@ -17,6 +17,7 @@ import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,8 +30,8 @@ import org.slf4j.LoggerFactory;
  *
  * <p>The stored URL is content the source operator controls (a feed entry's link), so the
  * credentials follow only a URL on the origin of the library's own {@code sourceUrl} ({@link
- * RedirectFollowingFetcher#sameOrigin}) and inside the connector's path scope; any other original
- * is fetched without them, and a redirect out of the scope drops them.
+ * RedirectFollowingFetcher#sameOrigin}); a connector with a path scope applies its crawl's rule
+ * instead. Any other original is fetched without them, and a redirect out of the scope drops them.
  *
  * <p>The body is bounded by {@link RemoteContentProperties#maxBytes()} while streaming, each hop by
  * {@link RemoteContentProperties#timeoutSeconds()} and the whole transfer by {@link
@@ -59,18 +60,32 @@ public class RemoteOriginalAccess implements OriginalAccess {
   @Override
   public Optional<DocumentContent> openOriginal(
       Document document, KnowledgeLibrary library, SourceSettings settings) {
-    return openOriginal(document, library, settings, RedirectFollowingFetcher.ANY_TARGET);
+    String sourceUrl = document.getFilePath();
+    boolean withCredentials = credentialsMayReachOrigin(settings.sourceUrl(), sourceUrl);
+    return open(document, settings, withCredentials, RedirectFollowingFetcher.ANY_TARGET);
   }
 
   /**
-   * {@link #openOriginal(Document, KnowledgeLibrary, SourceSettings)} for credentials bound to a
-   * path subtree of the source's origin: {@code credentialScope} must accept the stored URL and
-   * every redirect target for the credentials to travel.
+   * {@link #openOriginal(Document, KnowledgeLibrary, SourceSettings)} under a crawl's rule, for
+   * credentials bound to a path subtree: the stored URL must sit on a trusted origin of the
+   * library's {@code sourceUrl} (the same one or its http-to-https upgrade, {@link
+   * RedirectFollowingFetcher#isRedirectOriginTrusted}, as the crawl followed it) and inside {@code
+   * credentialScope}, which also bounds every redirect target.
    */
   public Optional<DocumentContent> openOriginal(
       Document document,
       KnowledgeLibrary library,
       SourceSettings settings,
+      Predicate<URI> credentialScope) {
+    boolean withCredentials =
+        credentialsMayReachSubtree(settings.sourceUrl(), document.getFilePath(), credentialScope);
+    return open(document, settings, withCredentials, credentialScope);
+  }
+
+  private Optional<DocumentContent> open(
+      Document document,
+      SourceSettings settings,
+      boolean withCredentials,
       Predicate<URI> credentialScope) {
     String sourceUrl = document.getFilePath();
     if (sourceUrl == null || sourceUrl.isBlank()) {
@@ -80,7 +95,7 @@ public class RemoteOriginalAccess implements OriginalAccess {
     try {
       httpClient = SourceHttpClientFactory.buildHttpClient();
       String authHeader = null;
-      if (credentialsMayReach(settings.sourceUrl(), sourceUrl, credentialScope)) {
+      if (withCredentials) {
         BasicCredentials config = BasicCredentials.parse(settings.sourceCredentials());
         authHeader = SourceHttpClientFactory.buildAuthHeader(config.username(), config.password());
       }
@@ -135,20 +150,41 @@ public class RemoteOriginalAccess implements OriginalAccess {
   }
 
   /**
-   * Whether the library's credentials may be sent to {@code target}: same origin as the library's
-   * {@code sourceUrl} and inside {@code credentialScope}. A missing or unparseable address on
-   * either side is never trusted.
+   * Whether the library's credentials may be sent to {@code target} under the strict rule: the same
+   * origin as the library's {@code sourceUrl}. A missing or unparseable address on either side is
+   * never trusted.
    */
-  static boolean credentialsMayReach(
+  static boolean credentialsMayReachOrigin(String librarySourceUrl, String target) {
+    return credentialsMayReach(
+        librarySourceUrl, target, RedirectFollowingFetcher::sameOrigin, uri -> true);
+  }
+
+  /**
+   * Whether the library's credentials may be sent to {@code target} under a crawl's rule: a trusted
+   * origin of the library's {@code sourceUrl} ({@link
+   * RedirectFollowingFetcher#isRedirectOriginTrusted}) and inside {@code credentialScope}.
+   */
+  static boolean credentialsMayReachSubtree(
       String librarySourceUrl, String target, Predicate<URI> credentialScope) {
-    if (librarySourceUrl == null || librarySourceUrl.isBlank()) {
+    return credentialsMayReach(
+        librarySourceUrl,
+        target,
+        RedirectFollowingFetcher::isRedirectOriginTrusted,
+        credentialScope);
+  }
+
+  private static boolean credentialsMayReach(
+      String librarySourceUrl,
+      String target,
+      BiPredicate<URI, URI> trustedOrigin,
+      Predicate<URI> credentialScope) {
+    if (librarySourceUrl == null || librarySourceUrl.isBlank() || target == null) {
       return false;
     }
     try {
       URI origin = URI.create(librarySourceUrl.strip());
       URI targetUri = URI.create(target.strip());
-      return RedirectFollowingFetcher.sameOrigin(origin, targetUri)
-          && credentialScope.test(targetUri);
+      return trustedOrigin.test(origin, targetUri) && credentialScope.test(targetUri);
     } catch (IllegalArgumentException e) {
       return false;
     }

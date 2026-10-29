@@ -75,6 +75,34 @@ class RemoteOriginalAccessTest {
     assertThat(received).containsExactly("<none>");
   }
 
+  @Test
+  void aCrawlsHttpToHttpsUpgradeKeepsTheCredentialsButAFeedEntryDoesNot() {
+    String source = "http://intranet.example/akten/";
+    String upgraded = "https://intranet.example/akten/bericht.pdf";
+
+    assertThat(RemoteOriginalAccess.credentialsMayReachSubtree(source, upgraded, uri -> true))
+        .isTrue();
+    assertThat(RemoteOriginalAccess.credentialsMayReachOrigin(source, upgraded)).isFalse();
+  }
+
+  @Test
+  void theCrawlsRuleRefusesADowngradeAnotherHostAndAnUnscopedPath() {
+    String source = "https://intranet.example/akten/";
+
+    assertThat(
+            RemoteOriginalAccess.credentialsMayReachSubtree(
+                source, "http://intranet.example/akten/a.pdf", uri -> true))
+        .isFalse();
+    assertThat(
+            RemoteOriginalAccess.credentialsMayReachSubtree(
+                source, "https://fremd.example/akten/a.pdf", uri -> true))
+        .isFalse();
+    assertThat(
+            RemoteOriginalAccess.credentialsMayReachSubtree(
+                source, "https://intranet.example/andere/a.pdf", uri -> false))
+        .isFalse();
+  }
+
   private void readOriginal(String sourceUrl, String documentUrl) throws IOException {
     Document document =
         new Document("eintrag.pdf", documentUrl, "application/pdf", null, SourceTypes.RSS_FEED);

@@ -386,8 +386,8 @@ Angezeigt werden nur Typ, Adresse, Realm und Client-ID. Das Geheimnis des Dienst
 jederzeit wechseln: in Keycloak neu erzeugen, in OPAA neu hinterlegen. Ein Test ohne eingetragenes
 Geheimnis nutzt das gespeicherte nur für die gespeicherte Admin-API-Adresse; für eine geänderte
 Adresse ist das Geheimnis einzutragen, sonst lehnt OPAA den Test ab, statt es dorthin zu senden.
-Ist das gespeicherte Geheimnis nicht mehr entschlüsselbar, gilt es als nicht vorhanden; jeder Lauf meldet das Verzeichnis als unerreichbar und
-entzieht nichts, bis der Zugang neu hinterlegt ist.
+Ist das gespeicherte Geheimnis nicht mehr entschlüsselbar, gilt es als nicht vorhanden; jeder Lauf
+meldet das Verzeichnis als unerreichbar und entzieht nichts, bis der Zugang neu hinterlegt ist.
 
 **Obergrenzen.** Mehr als `OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_GROUPS` Gruppen oder
 `OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_MEMBERS_PER_GROUP` direkte Mitglieder je Gruppe lassen den Lauf als
