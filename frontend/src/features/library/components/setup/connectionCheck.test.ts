@@ -86,6 +86,39 @@ describe('outcomeOf (#3152)', () => {
         'Rechte nicht geprüft',
       ])
     })
+    // regression guard for #3195: a reached source that did not verify the secret (Confluence
+    // after a detection-only test) never reads as an accepted sign-in
+    it('does not pass a reached source whose sign-in was not verified', () => {
+      const outcome = outcomeOf(
+        't',
+        {
+          reachable: true,
+          credentialsVerified: false,
+          message: 'Confluence Cloud erkannt. Bitte E-Mail-Adresse und API-Token angeben.',
+          details: { edition: 'CLOUD' },
+        },
+        true,
+        false,
+      )
+      expect(outcome.state).toBe('failed')
+      expect(stagesOf(outcome)).not.toContain('Anmeldung angenommen')
+      expect(stagesOf(outcome)).toEqual([
+        'Adresse erreichbar',
+        'Anmeldung nicht geprüft',
+        'Rechte nicht geprüft',
+      ])
+    })
+
+    it('still passes a reached source without a sign-in', () => {
+      const outcome = outcomeOf(
+        't',
+        { reachable: true, credentialsVerified: false, message: 'ok' },
+        false,
+        false,
+      )
+      expect(outcome.state).toBe('passed')
+      expect(stagesOf(outcome)).toEqual(['Adresse erreichbar', 'Anmeldung entfällt', 'Rechte lesbar'])
+    })
   })
 
   describe('a source with a fixed address', () => {
@@ -150,6 +183,17 @@ describe('outcomeOf (#3152)', () => {
       expect(outcome.state).toBe('failed')
       expect(outcome.message).toBe(message)
       expect(outcome.stages.filter((stage) => stage.state === 'failed')).toEqual([])
+      expect(stagesOf(outcome)).toEqual(['Anmeldung nicht geprüft', 'Rechte nicht geprüft'])
+    })
+
+    it('does not pass a reached source whose sign-in was not verified', () => {
+      const outcome = outcomeOf(
+        't',
+        { reachable: true, credentialsVerified: false, message: 'Bitte anmelden.' },
+        true,
+        true,
+      )
+      expect(outcome.state).toBe('failed')
       expect(stagesOf(outcome)).toEqual(['Anmeldung nicht geprüft', 'Rechte nicht geprüft'])
     })
 
