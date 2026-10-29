@@ -47,6 +47,7 @@ import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.s3.S3AccessException;
+import io.opaa.s3.S3Connection;
 import io.opaa.test.ProductionDocumentFormats;
 import io.opaa.test.SourceTypes;
 import java.io.IOException;
@@ -104,6 +105,7 @@ class S3IndexingExecutorTest {
 
   private KnowledgeLibrary library;
   private S3IndexingExecutor executor;
+  private S3ClientFactory clientFactory;
 
   @BeforeEach
   void setUp() throws Exception {
@@ -153,7 +155,7 @@ class S3IndexingExecutorTest {
   }
 
   private S3IndexingExecutor executorOver(FakeS3ObjectStore objectStore) throws S3AccessException {
-    S3ClientFactory clientFactory = mock(S3ClientFactory.class);
+    clientFactory = mock(S3ClientFactory.class);
     when(clientFactory.createForRun(any(), any(), any())).thenReturn(objectStore);
     return new S3IndexingExecutor(
         clientFactory,
@@ -989,6 +991,32 @@ class S3IndexingExecutorTest {
                     null)));
     assertThat(store.calls()).contains("probe geloescht");
     assertThat(reconciledPaths()).containsExactly("s3://dokumente/2025/protokoll.pdf");
+  }
+
+  // regression guard for #3117: without wildcard DNS a held bucket the listing no longer names has
+  // no virtual-host address left, and checking it with the listed ones failed every full sync
+  @Test
+  void aHeldBucketWithoutAnAddressThatTheListingNoLongerNamesStaysWithoutFailingTheRun()
+      throws Exception {
+    allBuckets();
+    store.put("dokumente", "2025/protokoll.pdf", "eins", PDF);
+    stored("s3://geloescht/alt.pdf", "e:alt|3");
+    doThrow(new S3AccessException.Unreachable("geloescht.minio.intern.example unbekannt"))
+        .when(clientFactory)
+        .validateTargets(
+            any(S3Connection.class),
+            argThat(scopes -> scopes.stream().anyMatch(s -> s.bucket().equals("geloescht"))));
+    UUID jobId = UUID.randomUUID();
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(indexingJobService, never()).failJob(any(), any());
+    verify(documentIngestService)
+        .ingest(
+            DocumentIngests.that().file().at("s3://dokumente/2025/protokoll.pdf").match(), any());
+    verify(documentRepository, never()).delete(storedDocuments.get(0));
+    verifyNoReconciliation();
+    assertThat(store.calls()).doesNotContain("probe geloescht");
   }
 
   static Stream<Arguments> unconfirmedAbsences() {

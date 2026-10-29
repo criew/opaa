@@ -12,6 +12,7 @@ import software.amazon.awssdk.core.exception.AbortedException;
 import software.amazon.awssdk.core.exception.ApiCallAttemptTimeoutException;
 import software.amazon.awssdk.core.exception.NonRetryableException;
 import software.amazon.awssdk.core.exception.SdkClientException;
+import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
@@ -59,6 +60,31 @@ class S3FailureTranslatorTest {
             translator.translate(S3Operation.LIST_OBJECTS, "b", null, service(403, "AccessDenied")))
         .isInstanceOf(S3AccessException.ListForbidden.class)
         .hasMessageContaining("s3:ListBucket");
+  }
+
+  @Test
+  void onlyABodyNamingNoSuchBucketConfirmsTheBucketIsGone() {
+    NoSuchBucketException named =
+        (NoSuchBucketException)
+            NoSuchBucketException.builder()
+                .statusCode(404)
+                .awsErrorDetails(AwsErrorDetails.builder().errorCode("NoSuchBucket").build())
+                .build();
+
+    assertThat(translator.translate(S3Operation.LIST_OBJECTS, "b", null, named))
+        .isInstanceOfSatisfying(
+            S3AccessException.BucketNotFound.class, e -> assertThat(e.confirmed()).isTrue());
+    assertThat(
+            translator.translate(S3Operation.LIST_OBJECTS, "b", null, service(404, "NoSuchBucket")))
+        .isInstanceOfSatisfying(
+            S3AccessException.BucketNotFound.class, e -> assertThat(e.confirmed()).isTrue());
+    assertThat(translator.translate(S3Operation.HEAD_BUCKET, "b", null, named))
+        .as("the SDK builds NoSuchBucket from the bare 404 of a HEAD itself")
+        .isInstanceOfSatisfying(
+            S3AccessException.BucketNotFound.class, e -> assertThat(e.confirmed()).isFalse());
+    assertThat(translator.translate(S3Operation.LIST_OBJECTS, "b", null, service(404, null)))
+        .isInstanceOfSatisfying(
+            S3AccessException.BucketNotFound.class, e -> assertThat(e.confirmed()).isFalse());
   }
 
   @Test

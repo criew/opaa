@@ -201,6 +201,26 @@ class S3AllBucketsTest {
   }
 
   @Test
+  void aHeldUnlistedBucketWhoseAddressIsRefusedStaysWithheldWithoutARequest() throws Exception {
+    FakeS3ObjectStore store = new FakeS3ObjectStore().bucket("dokumente");
+
+    S3AllBuckets.Resolution resolution =
+        S3AllBuckets.resolve(
+            store,
+            new S3BucketListing.Listed(List.of("dokumente")),
+            "eu-central-1",
+            Set.of("geloescht"),
+            bucket -> {
+              throw new S3AccessException.Unreachable("unbekannter Host");
+            },
+            () -> false);
+
+    assertThat(resolution.readable()).containsExactly("dokumente");
+    assertThat(resolution.withheld()).containsEntry("geloescht", S3AllBuckets.UNCONFIRMED);
+    assertThat(store.calls()).doesNotContain("probe geloescht");
+  }
+
+  @Test
   void aThrottledProbeIsTheCallersFailureNotALeftOutBucket() {
     FakeS3ObjectStore store =
         new FakeS3ObjectStore()

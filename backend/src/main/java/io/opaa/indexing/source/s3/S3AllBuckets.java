@@ -107,6 +107,28 @@ final class S3AllBuckets {
       Set<String> held,
       BooleanSupplier timeUp)
       throws S3AccessException, InterruptedException {
+    return resolve(store, listed, region, held, bucket -> {}, timeUp);
+  }
+
+  /** Checks the address of one bucket before it gets a request. */
+  @FunctionalInterface
+  interface TargetCheck {
+    void check(String bucket) throws S3AccessException;
+  }
+
+  /**
+   * {@link #resolve(S3ObjectStore, S3BucketListing.Listed, String, Set, BooleanSupplier)}, checking
+   * the address of each unlisted held bucket with {@code unlistedTarget} first; a refused address
+   * keeps the bucket withheld like any other unconfirmed answer.
+   */
+  static Resolution resolve(
+      S3ObjectStore store,
+      S3BucketListing.Listed listed,
+      String region,
+      Set<String> held,
+      TargetCheck unlistedTarget,
+      BooleanSupplier timeUp)
+      throws S3AccessException, InterruptedException {
     List<String> readable = new ArrayList<>();
     Map<String, String> withheld = new LinkedHashMap<>();
     Map<String, String> outside = new LinkedHashMap<>();
@@ -140,7 +162,7 @@ final class S3AllBuckets {
       if (!names.contains(name)) {
         if (timeUp.getAsBoolean()) {
           withheld.put(name, NOT_PROBED);
-        } else if (!confirmedGone(store, name)) {
+        } else if (!confirmedGone(store, unlistedTarget, name)) {
           withheld.put(name, UNCONFIRMED);
         }
       }
@@ -149,9 +171,10 @@ final class S3AllBuckets {
   }
 
   /** Whether the store answers the probe of {@code bucket} with the code {@code NoSuchBucket}. */
-  private static boolean confirmedGone(S3ObjectStore store, String bucket)
+  private static boolean confirmedGone(S3ObjectStore store, TargetCheck target, String bucket)
       throws InterruptedException {
     try {
+      target.check(bucket);
       store.probeListing(bucket);
       return false;
     } catch (S3AccessException.BucketNotFound e) {

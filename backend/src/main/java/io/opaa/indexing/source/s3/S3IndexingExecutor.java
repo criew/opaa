@@ -283,11 +283,20 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
             : Set.of();
     S3AllBuckets.Resolution resolution;
     try {
-      Set<String> probed = validBuckets(listed.names());
-      probed.addAll(held);
-      clientFactory.validateTargets(connection, settings.resolvedTo(List.copyOf(probed)).scopes());
+      clientFactory.validateTargets(
+          connection, settings.resolvedTo(List.copyOf(validBuckets(listed.names()))).scopes());
+      // a held bucket the listing no longer names may have no address left; that never fails the
+      // run
       resolution =
-          S3AllBuckets.resolve(store, listed, settings.effectiveRegion(), held, () -> false);
+          S3AllBuckets.resolve(
+              store,
+              listed,
+              settings.effectiveRegion(),
+              held,
+              bucket ->
+                  clientFactory.validateTargets(
+                      connection, settings.resolvedTo(List.of(bucket)).scopes()),
+              () -> false);
     } catch (S3AccessException e) {
       throw accessFailure(run, e);
     }
