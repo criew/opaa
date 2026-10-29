@@ -14,6 +14,7 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.audit.DataCollectionDisclosureService.Format;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
+import io.opaa.compliance.InstanceDisclosure.CaseCount;
 import io.opaa.compliance.InstanceDisclosure.IncidentScopeCases;
 import io.opaa.compliance.InstanceDisclosure.ReportingPeriod;
 import io.opaa.compliance.InstanceDisclosureAssembler;
@@ -48,7 +49,9 @@ class DataCollectionDisclosureServiceTest {
   @BeforeEach
   void reportNoCases() {
     when(caseReport.report(any(), any()))
-        .thenAnswer(call -> new IncidentScopeCases(call.getArgument(1), List.of(), List.of()));
+        .thenAnswer(
+            call ->
+                new IncidentScopeCases(call.getArgument(1), List.of(), CaseCount.of(0), List.of()));
   }
 
   @Test

@@ -621,6 +621,7 @@ class DataCollectionDisclosureIntegrationTest {
             "to",
             "smallCountThreshold",
             "purposes",
+            "heldChatDeletions",
             "notes",
             "purpose",
             "label",
