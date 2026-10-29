@@ -73,6 +73,19 @@ class MailSenderProviderTest {
     assertThat(props.getProperty("mail.smtp.starttls.enable")).isNull();
   }
 
+  /** The certificate is checked against the configured host name, for both TLS modes. */
+  @Test
+  void checksTheServerIdentityForSslAndStartTls() {
+    assertThat(
+            propertiesFor(snapshot(MailEncryption.SSL, "kennung"))
+                .getProperty("mail.smtp.ssl.checkserveridentity"))
+        .isEqualTo("true");
+    assertThat(
+            propertiesFor(snapshot(MailEncryption.STARTTLS, "kennung"))
+                .getProperty("mail.smtp.ssl.checkserveridentity"))
+        .isEqualTo("true");
+  }
+
   @Test
   void switchesOffBothTlsModesForAnUnencryptedRelay() {
     Properties props = propertiesFor(snapshot(MailEncryption.NONE, "kennung"));

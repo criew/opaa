@@ -5,58 +5,91 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.net.spi.InetAddressResolver;
 import java.net.spi.InetAddressResolver.LookupPolicy;
+import java.nio.ByteBuffer;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * The names the target address check admitted, each bound to the addresses it vetted (ADR-0063).
- * Every resolution in this JVM passes {@link #lookup} through {@link
- * PinnedAddressResolverProvider}: a bound name answers its vetted addresses for {@link
- * #PIN_LIFETIME} after the check, later a fresh answer that again holds no blocked address, and
- * never an address in a blocked range. A binding ends {@link #BINDING_LIFETIME} after the last
- * check of its name, or when an allowlist entry admits it. Unbound names are answered by the
- * upstream resolver unchanged. Held per instance (ADR-0053).
+ * The names the target address check admitted (ADR-0063). Every resolution in this JVM passes
+ * {@link #lookup} through {@link PinnedAddressResolverProvider}. A name a check admitted is guarded
+ * until restart: for {@link #PIN_LIFETIME} after its latest check it answers exactly the addresses
+ * that check vetted, afterwards a fresh answer with every blocked address removed, never one in a
+ * blocked range. Only an allowlist entry of the guarding policy ends a guard; a full table refuses
+ * new names instead of dropping a guard. Unguarded names pass unchanged. Held per instance
+ * (ADR-0053).
  */
 final class ResolutionPins {
 
   /** How long a client resolving a just-checked name gets exactly the vetted addresses. */
   static final Duration PIN_LIFETIME = Duration.ofSeconds(60);
 
-  /**
-   * How long after its last check a name only ever resolves to addresses outside blocked ranges.
-   */
-  static final Duration BINDING_LIFETIME = Duration.ofHours(24);
+  /** At most this many guarded names; a check of a further name is refused. */
+  static final int MAX_GUARDED_NAMES = 100_000;
 
-  /** Above this many bindings an insertion first drops the expired ones. */
-  private static final int PURGE_THRESHOLD = 4096;
-
-  /** At most this many bindings; beyond it the binding with the oldest check gives way. */
-  static final int MAX_BINDINGS = 16384;
+  private static final Duration WARNING_INTERVAL = Duration.ofMinutes(1);
 
   private static final LookupPolicy ALL_FAMILIES =
       LookupPolicy.of(LookupPolicy.IPV4 | LookupPolicy.IPV6);
 
-  private static final ResolutionPins PROCESS = new ResolutionPins(System::nanoTime);
+  private static final Logger log = LoggerFactory.getLogger(ResolutionPins.class);
 
-  /** {@code addresses} is empty when the last fresh answer for the name held a blocked address. */
-  private record Binding(List<InetAddress> addresses, long pinnedAt, long boundUntil) {}
+  private static final ResolutionPins PROCESS =
+      new ResolutionPins(System::nanoTime, MAX_GUARDED_NAMES);
+
+  private static final ConcurrentHashMap<String, Integer> POLICIES = new ConcurrentHashMap<>();
+  private static final AtomicInteger NEXT_POLICY = new AtomicInteger();
+
+  /** The first 128 bits of the SHA-256 of a normalised ASCII name: compact and fixed-size. */
+  record NameKey(long high, long low) {}
+
+  /**
+   * A guarded name: its latest vetted addresses ({@code null} once the pin expired) and the
+   * policies that guard it.
+   */
+  private record Guard(List<InetAddress> pinned, long pinnedAt, int[] policies) {}
 
   private final LongSupplier nanoTime;
-  private final ConcurrentHashMap<String, Binding> bindings = new ConcurrentHashMap<>();
+  private final int capacity;
+  private final ConcurrentHashMap<NameKey, Guard> guards = new ConcurrentHashMap<>();
+  private final AtomicLong refusals = new AtomicLong();
+  private final AtomicLong lastFullWarning = new AtomicLong(Long.MIN_VALUE);
+  private final AtomicLong lastFilterWarning = new AtomicLong(Long.MIN_VALUE);
   private volatile InetAddressResolver builtin;
   private volatile InetAddressResolver replacement;
 
-  ResolutionPins(LongSupplier nanoTime) {
+  ResolutionPins(LongSupplier nanoTime, int capacity) {
     this.nanoTime = nanoTime;
+    this.capacity = capacity;
   }
 
-  /** The bindings every resolution of this JVM consults. */
+  /** The guards every resolution of this JVM consults. */
   static ResolutionPins process() {
     return PROCESS;
+  }
+
+  /**
+   * One id per distinct allowlist, so a release of one policy never ends the guard of another.
+   * Entries are compared trimmed and case-insensitively, in any order.
+   */
+  static int policyOf(Collection<String> allowlist) {
+    String normalised =
+        allowlist.stream()
+            .map(entry -> entry.trim().toLowerCase(Locale.ROOT))
+            .sorted()
+            .reduce("", (joined, entry) -> joined + "\n" + entry);
+    return POLICIES.computeIfAbsent(normalised, ignored -> NEXT_POLICY.getAndIncrement());
   }
 
   /** Called once by the provider with the JDK's own resolver, which answers every unbound name. */
@@ -64,7 +97,7 @@ final class ResolutionPins {
     builtin = resolver;
   }
 
-  /** Whether the provider is the resolver of this JVM, so a binding reaches every client. */
+  /** Whether the provider is the resolver of this JVM, so a guard reaches every client. */
   boolean isInstalled() {
     return builtin != null;
   }
@@ -79,16 +112,18 @@ final class ResolutionPins {
     return override != null ? override : builtin;
   }
 
-  /**
-   * The addresses a check of {@code host} vets: the pinned ones while fresh, else a fresh answer of
-   * the upstream resolver with every address family. Binds nothing; {@link #pin} does, after the
-   * check.
-   */
-  List<InetAddress> resolveForCheck(String host) throws UnknownHostException {
-    Binding binding = bindings.get(key(host));
-    if (binding != null && isFresh(binding, nanoTime.getAsLong())) {
-      return binding.addresses();
-    }
+  /** How many names are guarded. */
+  int guardedNames() {
+    return guards.size();
+  }
+
+  /** How many checks of a new name a full table refused. */
+  long refusedChecks() {
+    return refusals.get();
+  }
+
+  /** What a check of {@code host} vets: always a fresh answer, every address family. */
+  List<InetAddress> resolveFresh(String host) throws UnknownHostException {
     InetAddressResolver upstream = upstream();
     if (upstream == null) {
       return List.of(InetAddress.getAllByName(host));
@@ -96,62 +131,114 @@ final class ResolutionPins {
     return upstream.lookupByName(host, ALL_FAMILIES).toList();
   }
 
-  /** Binds {@code host} to {@code vetted}, which the check found outside every blocked range. */
-  void pin(String host, List<InetAddress> vetted) {
+  /**
+   * Guards {@code host} for {@code policy} and pins it to {@code vetted}, which the check found
+   * outside every blocked range.
+   *
+   * @return {@code false}, guarding nothing, when the table is full and {@code host} is new
+   */
+  boolean admit(String host, int policy, List<InetAddress> vetted) {
+    NameKey key = key(host);
+    if (key == null) {
+      return false;
+    }
     long now = nanoTime.getAsLong();
-    if (bindings.size() > PURGE_THRESHOLD) {
-      bindings.values().removeIf(binding -> now - binding.boundUntil() > 0);
+    List<InetAddress> pinned = List.copyOf(vetted);
+    Guard admitted =
+        guards.compute(
+            key,
+            (ignored, old) -> {
+              if (old == null) {
+                return guards.size() >= capacity
+                    ? null
+                    : new Guard(pinned, now, new int[] {policy});
+              }
+              return new Guard(pinned, now, withPolicy(old.policies(), policy));
+            });
+    if (admitted == null) {
+      refusals.incrementAndGet();
+      warnAtMostOncePerInterval(
+          lastFullWarning,
+          now,
+          "Refused the target address check of a new host name: {} names are guarded against DNS"
+              + " rebinding, the most this instance holds until restart",
+          capacity);
+      return false;
     }
-    while (bindings.size() >= MAX_BINDINGS) {
-      bindings.entrySet().stream()
-          .min(Comparator.comparingLong(entry -> entry.getValue().boundUntil()))
-          .ifPresent(oldest -> bindings.remove(oldest.getKey(), oldest.getValue()));
-    }
-    bindings.put(
-        key(host), new Binding(List.copyOf(vetted), now, now + BINDING_LIFETIME.toNanos()));
+    return true;
   }
 
-  /** Ends the binding of {@code host}: an allowlist entry admits it whatever it resolves to. */
-  void release(String host) {
-    bindings.remove(key(host));
+  /** Ends the guard of {@code host} by {@code policy}; another policy's guard stays. */
+  void release(String host, int policy) {
+    NameKey key = key(host);
+    if (key == null) {
+      return;
+    }
+    guards.computeIfPresent(
+        key,
+        (ignored, old) -> {
+          int[] rest = Arrays.stream(old.policies()).filter(id -> id != policy).toArray();
+          return rest.length == 0 ? null : new Guard(old.pinned(), old.pinnedAt(), rest);
+        });
   }
 
   /**
    * The resolution of {@code host} for any client of this JVM; see the class comment.
    *
-   * @throws UnknownHostException also when a bound name now resolves into a blocked range
+   * @throws UnknownHostException also when every address of a guarded name lies in a blocked range
    */
   List<InetAddress> lookup(String host, LookupPolicy policy) throws UnknownHostException {
     InetAddressResolver upstream = upstream();
-    String key = key(host);
-    Binding binding = bindings.get(key);
-    long now = nanoTime.getAsLong();
-    if (binding != null && now - binding.boundUntil() > 0) {
-      bindings.remove(key, binding);
-      binding = null;
-    }
-    if (binding == null) {
+    NameKey key = key(host);
+    Guard guard = key == null ? null : guards.get(key);
+    if (guard == null) {
       return upstream.lookupByName(host, policy).toList();
     }
-    if (isFresh(binding, now)) {
-      List<InetAddress> pinned = ordered(binding.addresses(), policy);
-      if (!pinned.isEmpty()) {
-        return named(host, pinned);
+    long now = nanoTime.getAsLong();
+    if (guard.pinned() != null) {
+      if (now - guard.pinnedAt() < PIN_LIFETIME.toNanos()) {
+        List<InetAddress> pinned = ordered(guard.pinned(), policy);
+        if (!pinned.isEmpty()) {
+          return named(host, pinned);
+        }
+      } else {
+        guards.replace(key, guard, new Guard(null, guard.pinnedAt(), guard.policies()));
       }
     }
     List<InetAddress> fresh = upstream.lookupByName(host, policy).toList();
-    boolean blocked = fresh.stream().anyMatch(TargetAddressValidator::isBlockedAddress);
-    bindings.replace(
-        key, binding, new Binding(blocked ? List.of() : fresh, now, binding.boundUntil()));
-    if (blocked) {
-      throw new UnknownHostException(
-          host + ": resolves into a blocked address range since its target address check");
+    List<InetAddress> allowed =
+        fresh.stream()
+            .filter(address -> !TargetAddressValidator.isBlockedAddress(address))
+            .toList();
+    if (allowed.size() < fresh.size()) {
+      warnAtMostOncePerInterval(
+          lastFilterWarning,
+          now,
+          "Removed addresses in blocked ranges from the resolution of guarded host {}",
+          host);
     }
-    return fresh;
+    if (allowed.isEmpty()) {
+      throw new UnknownHostException(
+          host + ": every address lies in a blocked range since its target address check");
+    }
+    return allowed;
   }
 
-  private static boolean isFresh(Binding binding, long now) {
-    return !binding.addresses().isEmpty() && now - binding.pinnedAt() < PIN_LIFETIME.toNanos();
+  private void warnAtMostOncePerInterval(AtomicLong last, long now, String message, Object arg) {
+    long previous = last.get();
+    if ((previous == Long.MIN_VALUE || now - previous >= WARNING_INTERVAL.toNanos())
+        && last.compareAndSet(previous, now)) {
+      log.warn(message, arg);
+    }
+  }
+
+  private static int[] withPolicy(int[] policies, int policy) {
+    if (Arrays.stream(policies).anyMatch(id -> id == policy)) {
+      return policies;
+    }
+    int[] extended = Arrays.copyOf(policies, policies.length + 1);
+    extended[policies.length] = policy;
+    return extended;
   }
 
   /**
@@ -189,9 +276,25 @@ final class ResolutionPins {
     return wanted;
   }
 
-  /** One binding per name: case and a trailing root dot do not make another name. */
-  private static String key(String host) {
-    String lower = host.toLowerCase(Locale.ROOT);
-    return lower.endsWith(".") ? lower.substring(0, lower.length() - 1) : lower;
+  /**
+   * The key of {@code host}: ASCII letters folded to lower case, one trailing root dot dropped;
+   * {@code null} for a name with a character outside ASCII, which no check admits.
+   */
+  static NameKey key(String host) {
+    int length = host.endsWith(".") ? host.length() - 1 : host.length();
+    byte[] ascii = new byte[length];
+    for (int i = 0; i < length; i++) {
+      char c = host.charAt(i);
+      if (c > 0x7F) {
+        return null;
+      }
+      ascii[i] = (byte) (c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c);
+    }
+    try {
+      ByteBuffer digest = ByteBuffer.wrap(MessageDigest.getInstance("SHA-256").digest(ascii));
+      return new NameKey(digest.getLong(), digest.getLong());
+    } catch (NoSuchAlgorithmException e) {
+      throw new IllegalStateException("SHA-256 is part of every Java platform", e);
+    }
   }
 }

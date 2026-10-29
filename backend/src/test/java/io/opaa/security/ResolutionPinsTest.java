@@ -7,8 +7,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.net.spi.InetAddressResolver;
 import java.net.spi.InetAddressResolver.LookupPolicy;
-import java.util.ArrayDeque;
-import java.util.Deque;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
@@ -16,13 +15,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * {@link ResolutionPins} on its own clock and name server: what a bound name answers within and
- * after the pin, when a binding ends, and that an unbound name passes unchanged (ADR-0063).
+ * {@link ResolutionPins} on its own clock and name server (ADR-0063): the exact pin after a check,
+ * the guard that filters every later resolution until restart, the full table that refuses new
+ * names, and the release by the guarding policy only.
  */
 class ResolutionPinsTest {
 
   private static final LookupPolicy ANY = LookupPolicy.of(LookupPolicy.IPV4 | LookupPolicy.IPV6);
   private static final String HOST = "rebind.example";
+  private static final int SOURCES = 1;
+  private static final int MODELS = 2;
+  private static final int CAPACITY = 3;
 
   private final AtomicLong now = new AtomicLong(1_000_000L);
   private final Answers answers = new Answers();
@@ -30,80 +33,116 @@ class ResolutionPinsTest {
 
   @BeforeEach
   void setUp() {
-    pins = new ResolutionPins(now::get);
+    pins = new ResolutionPins(now::get, CAPACITY);
     pins.installBuiltin(answers);
   }
 
   @Test
-  void aBoundNameAnswersTheVettedAddressesWhateverTheNameServerSaysNow() throws Exception {
-    pins.pin(HOST, List.of(ip("203.0.113.7")));
+  void withinThePinAGuardedNameAnswersTheVettedAddressesWhateverTheNameServerSaysNow()
+      throws Exception {
+    check(HOST, "203.0.113.7");
     answers.next("127.0.0.1");
 
     assertThat(pins.lookup(HOST, ANY)).containsExactly(ip("203.0.113.7"));
-    assertThat(answers.asked).isZero();
   }
 
+  /** Regression guard: a check within the pin resolves afresh, so a legitimate change arrives. */
   @Test
-  void afterThePinABoundNameIsResolvedAfreshAndRefusedWhenTheAnswerIsBlocked() {
-    pins.pin(HOST, List.of(ip("203.0.113.7")));
-    later(ResolutionPins.PIN_LIFETIME.toNanos());
-    answers.next("10.0.0.5");
+  void aRepeatedCheckWithinThePinFollowsADnsChange() throws Exception {
+    check(HOST, "203.0.113.7");
+    later(Duration.ofSeconds(30));
+    answers.next("198.51.100.4");
 
+    assertThat(pins.resolveFresh(HOST)).containsExactly(ip("198.51.100.4"));
+    pins.admit(HOST, SOURCES, pins.resolveFresh(HOST));
+    assertThat(pins.lookup(HOST, ANY)).containsExactly(ip("198.51.100.4"));
+  }
+
+  /** Regression guard: the guard does not expire, a day after the check included. */
+  @Test
+  void longAfterItsCheckAGuardedNameNeverResolvesIntoABlockedRange() throws Exception {
+    check(HOST, "203.0.113.7");
+    later(Duration.ofHours(25));
+
+    answers.next("10.0.0.5");
     assertThatThrownBy(() -> pins.lookup(HOST, ANY))
         .isInstanceOf(UnknownHostException.class)
         .hasMessageContaining(HOST);
-    answers.next("192.168.1.9");
-    assertThatThrownBy(() -> pins.lookup(HOST, ANY)).isInstanceOf(UnknownHostException.class);
+    answers.next("198.51.100.4", "169.254.169.254");
+    assertThat(pins.lookup(HOST, ANY)).containsExactly(ip("198.51.100.4"));
   }
 
   @Test
-  void afterThePinAFreshPublicAnswerIsPinnedInItsPlace() throws Exception {
-    pins.pin(HOST, List.of(ip("203.0.113.7")));
-    later(ResolutionPins.PIN_LIFETIME.toNanos());
+  void afterThePinAGuardedNameFollowsAPublicChangeAtOnce() throws Exception {
+    check(HOST, "203.0.113.7");
+    later(ResolutionPins.PIN_LIFETIME);
     answers.next("198.51.100.4");
 
     assertThat(pins.lookup(HOST, ANY)).containsExactly(ip("198.51.100.4"));
-    answers.next("127.0.0.1");
-    assertThat(pins.lookup(HOST, ANY)).containsExactly(ip("198.51.100.4"));
+  }
+
+  /** Regression guard: a full table refuses the new name and keeps every existing guard. */
+  @Test
+  void aFullTableRefusesANewNameAndDropsNoGuard() throws Exception {
+    check("a.example", "203.0.113.1");
+    check("b.example", "203.0.113.2");
+    check("c.example", "203.0.113.3");
+
+    assertThat(pins.admit("d.example", SOURCES, List.of(ip("203.0.113.4")))).isFalse();
+    assertThat(pins.refusedChecks()).isOne();
+    assertThat(pins.guardedNames()).isEqualTo(CAPACITY);
+    assertThat(pins.admit("a.example", SOURCES, List.of(ip("203.0.113.9")))).isTrue();
+    later(ResolutionPins.PIN_LIFETIME);
+    answers.next("10.0.0.5");
+    for (String guarded : List.of("a.example", "b.example", "c.example")) {
+      assertThatThrownBy(() -> pins.lookup(guarded, ANY)).isInstanceOf(UnknownHostException.class);
+    }
+    assertThat(pins.lookup("d.example", ANY)).containsExactly(ip("10.0.0.5"));
   }
 
   @Test
-  void aBindingEndsAfterItsLifetimeAndTheNameIsUnboundAgain() throws Exception {
-    pins.pin(HOST, List.of(ip("203.0.113.7")));
-    later(ResolutionPins.BINDING_LIFETIME.toNanos() + 1);
+  void aReleaseEndsOnlyTheGuardOfItsOwnPolicy() throws Exception {
+    check(HOST, "203.0.113.7");
+    pins.admit(HOST, MODELS, List.of(ip("203.0.113.7")));
+    later(ResolutionPins.PIN_LIFETIME);
     answers.next("10.0.0.5");
 
+    pins.release(HOST, MODELS);
+    assertThatThrownBy(() -> pins.lookup(HOST, ANY)).isInstanceOf(UnknownHostException.class);
+    pins.release(HOST, SOURCES);
     assertThat(pins.lookup(HOST, ANY)).containsExactly(ip("10.0.0.5"));
   }
 
   @Test
-  void aReleasedNameIsUnbound() throws Exception {
-    pins.pin(HOST, List.of(ip("203.0.113.7")));
-    pins.release(HOST);
-    answers.next("10.0.0.5");
-
-    assertThat(pins.lookup(HOST, ANY)).containsExactly(ip("10.0.0.5"));
-  }
-
-  @Test
-  void anUnboundNameIsAnsweredByTheNameServerUnchanged() throws Exception {
+  void anUnguardedNameIsAnsweredByTheNameServerUnchanged() throws Exception {
     answers.next("10.0.0.5");
 
     assertThat(pins.lookup("database.internal", ANY)).containsExactly(ip("10.0.0.5"));
   }
 
   @Test
-  void caseAndATrailingRootDotNameTheSameBinding() throws Exception {
-    pins.pin("Rebind.Example.", List.of(ip("203.0.113.7")));
+  void caseAndATrailingRootDotNameTheSameGuard() throws Exception {
+    check("Rebind.Example.", "203.0.113.7");
     answers.next("127.0.0.1");
 
     assertThat(pins.lookup(HOST, ANY)).containsExactly(ip("203.0.113.7"));
     assertThat(pins.lookup("REBIND.example.", ANY)).containsExactly(ip("203.0.113.7"));
   }
 
+  /** A character outside ASCII never folds onto an ASCII name, unlike a locale lower case. */
+  @Test
+  void aNameOutsideAsciiHasNoKeyAndIsNeverGuarded() throws Exception {
+    check("key.example", "203.0.113.7");
+
+    assertThat(ResolutionPins.key("Key.example")).isNull();
+    assertThat(pins.admit("bücher.example", SOURCES, List.of(ip("203.0.113.8")))).isFalse();
+    answers.next("10.0.0.5");
+    assertThat(pins.lookup("Key.example", ANY)).containsExactly(ip("10.0.0.5"));
+  }
+
   @Test
   void thePinAnswersOnlyTheFamiliesAskedForInTheOrderAskedFor() throws Exception {
-    pins.pin(HOST, List.of(ip("2001:db8::7"), ip("203.0.113.7")));
+    pins.admit(HOST, SOURCES, List.of(ip("2001:db8::7"), ip("203.0.113.7")));
 
     assertThat(pins.lookup(HOST, LookupPolicy.of(LookupPolicy.IPV4)))
         .containsExactly(ip("203.0.113.7"));
@@ -120,31 +159,21 @@ class ResolutionPinsTest {
   }
 
   @Test
-  void aCheckReusesAFreshPinAndResolvesAfreshAfterIt() throws Exception {
-    pins.pin(HOST, List.of(ip("203.0.113.7")));
-    answers.next("198.51.100.4");
-
-    assertThat(pins.resolveForCheck(HOST)).containsExactly(ip("203.0.113.7"));
-    later(ResolutionPins.PIN_LIFETIME.toNanos());
-    assertThat(pins.resolveForCheck(HOST)).containsExactly(ip("198.51.100.4"));
+  void equalAllowlistsShareOnePolicyAndDifferentOnesDoNot() {
+    assertThat(ResolutionPins.policyOf(List.of("b.example", " A.example ")))
+        .isEqualTo(ResolutionPins.policyOf(List.of("a.example", "b.example")));
+    assertThat(ResolutionPins.policyOf(List.of("a.example")))
+        .isNotEqualTo(ResolutionPins.policyOf(List.of("a.example:443")));
   }
 
-  @Test
-  void atTheCapTheBindingWithTheOldestCheckGivesWay() throws Exception {
-    for (int i = 0; i < ResolutionPins.MAX_BINDINGS; i++) {
-      pins.pin("name" + i + ".example", List.of(ip("203.0.113.7")));
-      later(1);
-    }
-    pins.pin(HOST, List.of(ip("203.0.113.8")));
-    answers.next("10.0.0.5");
-
-    assertThat(pins.lookup("name0.example", ANY)).containsExactly(ip("10.0.0.5"));
-    assertThat(pins.lookup("name1.example", ANY)).containsExactly(ip("203.0.113.7"));
-    assertThat(pins.lookup(HOST, ANY)).containsExactly(ip("203.0.113.8"));
+  /** What the validator does: a fresh answer, then the guard with it. */
+  private void check(String host, String address) throws UnknownHostException {
+    answers.next(address);
+    assertThat(pins.admit(host, SOURCES, pins.resolveFresh(host))).isTrue();
   }
 
-  private void later(long nanos) {
-    now.addAndGet(nanos);
+  private void later(Duration duration) {
+    now.addAndGet(duration.toNanos());
   }
 
   private static InetAddress ip(String literal) {
@@ -155,25 +184,22 @@ class ResolutionPinsTest {
     }
   }
 
-  /** Answers each lookup with the next queued address, the last one repeating. */
+  /** Answers every lookup with the addresses last queued. */
   private static final class Answers implements InetAddressResolver {
 
-    private final Deque<InetAddress> queue = new ArrayDeque<>();
-    private int asked;
+    private volatile List<InetAddress> current = List.of();
 
-    void next(String literal) {
-      queue.clear();
-      queue.add(ip(literal));
+    void next(String... literals) {
+      current = Stream.of(literals).map(ResolutionPinsTest::ip).toList();
     }
 
     @Override
     public Stream<InetAddress> lookupByName(String host, LookupPolicy lookupPolicy)
         throws UnknownHostException {
-      asked++;
-      if (queue.isEmpty()) {
+      if (current.isEmpty()) {
         throw new UnknownHostException(host);
       }
-      return Stream.of(queue.peek());
+      return current.stream();
     }
 
     @Override

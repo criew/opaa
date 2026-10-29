@@ -423,4 +423,13 @@ class TargetAddressValidatorTest {
     assertThatCode(() -> TargetAddressValidator.disabled().validateHost("127.0.0.1"))
         .doesNotThrowAnyException();
   }
+
+  /** A name outside ASCII is refused before any resolution; its guard key would be ambiguous. */
+  @Test
+  void aHostNameOutsideAsciiIsRefused() {
+    assertThatThrownBy(() -> enabled().validateHost("b\u00fccher.example", 443))
+        .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class)
+        .hasMessageContaining("ASCII")
+        .hasMessageContaining("xn--");
+  }
 }

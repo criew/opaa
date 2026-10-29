@@ -38,10 +38,19 @@ public final class PinnedAddressResolverProvider extends InetAddressResolverProv
     } catch (UnknownHostException ignored) {
       // Only the side effect matters: the first lookup makes the JDK load its resolver.
     }
-    if (!ResolutionPins.process().isInstalled()) {
+    requireInstalled(ResolutionPins.process());
+  }
+
+  /** The check of {@link #requireActive} on {@code pins}. */
+  static void requireInstalled(ResolutionPins pins) {
+    if (!pins.isInstalled()) {
       throw new IllegalStateException(
-          "The pinned address resolver is not the resolver of this JVM; without it the target"
-              + " address check cannot hold a client to the addresses it vetted (ADR-0063).");
+          "The pinned address resolver is not the resolver of this JVM, so the target address"
+              + " check cannot hold clients to the addresses it vetted (ADR-0063). The JDK loads"
+              + " its resolver at the first name lookup; something resolved a name before the"
+              + " application started - typically a -javaagent (APM), JMX remote"
+              + " (-Dcom.sun.management.jmxremote.*) or -Djdk.net.hosts.file in JAVA_TOOL_OPTIONS."
+              + " Remove that option or move it past the start.");
     }
   }
 

@@ -1,6 +1,7 @@
 package io.opaa.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,18 +27,33 @@ class PinnedAddressResolverProviderTest {
     }
   }
 
+  /** Regression guard: the start-abort names what loads the JDK's resolver too early. */
+  @Test
+  void theStartAbortNamesTheUsualCausesOfAnEarlyLookup() {
+    assertThatThrownBy(
+            () ->
+                PinnedAddressResolverProvider.requireInstalled(
+                    new ResolutionPins(System::nanoTime, 1)))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("-javaagent")
+        .hasMessageContaining("jmxremote")
+        .hasMessageContaining("jdk.net.hosts.file")
+        .hasMessageContaining("JAVA_TOOL_OPTIONS");
+  }
+
   @Test
   void theJdkResolvesEveryNameThroughTheProvider() throws IOException {
     PinnedAddressResolverProvider.requireActive();
     String name = "bound.provider.opaa.test";
     InetAddress vetted = InetAddress.getByName("203.0.113.9");
-    ResolutionPins.process().pin(name, List.of(vetted));
+    int policy = ResolutionPins.policyOf(List.of());
+    ResolutionPins.process().admit(name, policy, List.of(vetted));
     try {
       assertThat(InetAddress.getAllByName(name))
           .extracting(InetAddress::getAddress)
           .containsExactly(vetted.getAddress());
     } finally {
-      ResolutionPins.process().release(name);
+      ResolutionPins.process().release(name, policy);
     }
   }
 }

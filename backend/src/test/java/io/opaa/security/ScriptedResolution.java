@@ -4,6 +4,7 @@ import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.net.spi.InetAddressResolver;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -74,7 +75,8 @@ public final class ScriptedResolution implements AutoCloseable, InetAddressResol
   public void close() {
     ResolutionPins pins = ResolutionPins.process();
     pins.replaceUpstream(null);
-    scripts.keySet().forEach(pins::release);
+    int policy = ResolutionPins.policyOf(List.of());
+    scripts.keySet().forEach(host -> pins.release(host, policy));
   }
 
   private static InetAddress literal(String address) {

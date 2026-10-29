@@ -43,12 +43,13 @@ class PinnedResolutionTlsTest {
 
   private static final String NAME = "tls.rebind.opaa.test";
   private static final String PASSWORD = "changeit";
+  private static final int POLICY = ResolutionPins.policyOf(List.of());
 
   private HttpsServer server;
 
   @AfterEach
   void tearDown() {
-    ResolutionPins.process().release(NAME);
+    ResolutionPins.process().release(NAME, POLICY);
     if (server != null) {
       server.stop(0);
     }
@@ -58,7 +59,7 @@ class PinnedResolutionTlsTest {
   void aBoundNameIsSentAsSniAndItsCertificateIsAccepted() throws Exception {
     KeyStore certificate = selfSigned("dns:" + NAME);
     AtomicReference<String> sni = start(certificate);
-    ResolutionPins.process().pin(NAME, List.of(InetAddress.getByName("127.0.0.1")));
+    ResolutionPins.process().admit(NAME, POLICY, List.of(InetAddress.getByName("127.0.0.1")));
 
     HttpResponse<Void> response = get(certificate);
 
@@ -70,7 +71,7 @@ class PinnedResolutionTlsTest {
   void aCertificateForThePinnedAddressButNotTheNameIsRefused() throws Exception {
     KeyStore certificate = selfSigned("ip:127.0.0.1,dns:other.rebind.opaa.test");
     AtomicReference<String> sni = start(certificate);
-    ResolutionPins.process().pin(NAME, List.of(InetAddress.getByName("127.0.0.1")));
+    ResolutionPins.process().admit(NAME, POLICY, List.of(InetAddress.getByName("127.0.0.1")));
 
     SSLHandshakeException failure =
         catchThrowableOfType(SSLHandshakeException.class, () -> get(certificate));

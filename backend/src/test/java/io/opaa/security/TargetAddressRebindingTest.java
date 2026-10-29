@@ -94,6 +94,21 @@ class TargetAddressRebindingTest {
     assertThat(failure).as("the connection to the vetted address %s fails", PUBLIC).isNotNull();
   }
 
+  /** Regression guard: a check within the pin resolves afresh and moves the pin along. */
+  @Test
+  void aRepeatedCheckFollowsALegitimateAddressChangeAtOnce() throws IOException {
+    String host = "moved.rebind.opaa.test";
+    dns.rebinding(host, "2001:db8::1", "2001:db8::2");
+    TargetAddressValidator validator = new TargetAddressValidator(true, List.of());
+
+    validator.validateHost(host, 443);
+    validator.validateHost(host, 443);
+
+    assertThat(InetAddress.getAllByName(host))
+        .extracting(InetAddress::getHostAddress)
+        .containsExactly(InetAddress.getByName("2001:db8::2").getHostAddress());
+  }
+
   /** Whether a connection is waiting in the internal service's backlog. */
   private boolean reachedInternalService() throws IOException {
     internal.setSoTimeout(300);

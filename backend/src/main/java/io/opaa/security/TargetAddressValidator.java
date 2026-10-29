@@ -20,10 +20,11 @@ import org.slf4j.LoggerFactory;
  * admits every port of the host, an entry {@code host:port} (IPv6 as {@code [addr]:port}) only that
  * port - of a URI, or of a bare host whose caller names the port it connects to.
  *
- * <p>A name that passes is bound to the addresses it was vetted with ({@link ResolutionPins}):
- * every client of this JVM resolving it afterwards gets those addresses, later only fresh ones
- * outside the blocked ranges, so a name server cannot answer the check and the connection
- * differently. An allowlist entry ends the binding of its name (ADR-0063).
+ * <p>A name that passes stays guarded until restart ({@link ResolutionPins}): a client of this JVM
+ * resolving it gets the addresses of the latest check for a short while, afterwards fresh ones with
+ * every blocked address removed, so a name server cannot answer the check and the connection
+ * differently. Only an allowlist entry of this validator without a port ends its guard; a name
+ * outside ASCII is refused (ADR-0063).
  *
  * <p>The target is checked, never the outbound proxy. A name that does not resolve locally passes
  * only when its connection goes through the outbound proxy, because the proxy resolves it: for
@@ -46,10 +47,12 @@ public class TargetAddressValidator {
 
   private final boolean enabled;
   private final List<String> allowedHosts;
+  private final int policy;
 
   public TargetAddressValidator(boolean enabled, List<String> allowlist) {
     this.enabled = enabled;
     this.allowedHosts = allowlist == null ? List.of() : allowlist;
+    this.policy = ResolutionPins.policyOf(this.allowedHosts);
   }
 
   /**
@@ -84,7 +87,7 @@ public class TargetAddressValidator {
       throw new TargetAddressBlockedException("Die Zieladresse enthält keinen gültigen Host.");
     }
     if (isAllowed(host, effectivePort(uri))) {
-      ResolutionPins.process().release(host);
+      releaseIfAdmittedOnEveryPort(host);
       return;
     }
     checkHost(host, OutboundProxySelector.instance().proxyFor(uri).isPresent());
@@ -124,7 +127,7 @@ public class TargetAddressValidator {
       return;
     }
     if (isAllowed(host, port < 0 ? NO_PORT : port)) {
-      ResolutionPins.process().release(host);
+      releaseIfAdmittedOnEveryPort(host);
       return;
     }
     checkHost(host, throughOutboundProxy);
@@ -165,10 +168,17 @@ public class TargetAddressValidator {
       rejectBlocked(host, List.of(InetAddress.getAllByName(host)));
       return;
     }
+    if (!host.chars().allMatch(c -> c <= 0x7F)) {
+      throw new TargetAddressBlockedException(
+          "Der Hostname "
+              + host
+              + " enthält Zeichen außerhalb von ASCII. Internationalisierte Namen bitte in"
+              + " Punycode-Schreibweise (xn--…) angeben.");
+    }
     ResolutionPins pins = ResolutionPins.process();
     List<InetAddress> addresses;
     try {
-      addresses = pins.resolveForCheck(host);
+      addresses = pins.resolveFresh(host);
     } catch (UnknownHostException e) {
       if (throughOutboundProxy) {
         // The outbound proxy resolves the name, so a missing local resolution is no rejection.
@@ -177,7 +187,13 @@ public class TargetAddressValidator {
       throw unknownHost(host);
     }
     rejectBlocked(host, addresses);
-    pins.pin(host, addresses);
+    if (!pins.admit(host, policy, addresses)) {
+      throw new GuardCapacityExceededException(
+          "Die Zieladresse "
+              + host
+              + " kann derzeit nicht geprüft werden: OPAA überwacht bereits die Höchstzahl"
+              + " geprüfter Hostnamen. Ein Neustart des Backends setzt die Überwachung zurück.");
+    }
     if (throughOutboundProxy) {
       return;
     }
@@ -185,6 +201,16 @@ public class TargetAddressValidator {
       rejectBlocked(host, List.of(InetAddress.getAllByName(host)));
     } catch (UnknownHostException e) {
       throw unknownHost(host);
+    }
+  }
+
+  /**
+   * Ends this validator's guard of {@code host} when an entry admits it on every port; an entry
+   * with a port does not, since a resolution knows no port.
+   */
+  private void releaseIfAdmittedOnEveryPort(String host) {
+    if (isAllowed(host, NO_PORT)) {
+      ResolutionPins.process().release(host, policy);
     }
   }
 
@@ -409,6 +435,16 @@ public class TargetAddressValidator {
    */
   public static class TargetAddressBlockedException extends IOException {
     TargetAddressBlockedException(String message) {
+      super(message);
+    }
+  }
+
+  /**
+   * A check of a new host name refused because this instance already guards the most names it
+   * holds; a {@link TargetAddressBlockedException} for every existing caller.
+   */
+  public static final class GuardCapacityExceededException extends TargetAddressBlockedException {
+    GuardCapacityExceededException(String message) {
       super(message);
     }
   }
