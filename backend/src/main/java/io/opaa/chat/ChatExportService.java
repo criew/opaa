@@ -67,11 +67,33 @@ public class ChatExportService {
     return cleaned.isEmpty() ? "Chat" : cleaned;
   }
 
-  /** Branding text on one line, so the note never breaks where the operator typed a newline. */
+  /**
+   * Notice and product name on one line, by the rule of the copied note in the frontend ({@code
+   * plainNoteText}): line breaks become blanks; control characters, direction controls and marks
+   * (U+202A-202E, U+2066-2069, U+200E/F, U+061C) and tag characters are dropped, so nothing
+   * reorders or hides text in the note.
+   */
   private static String oneLine(String text) {
-    return text.lines()
-        .map(String::strip)
+    return text.replaceAll("[\\u2028\\u2029]", "\n")
+        .lines()
+        .map(line -> withoutDroppedCharacters(line).strip())
         .filter(line -> !line.isEmpty())
         .collect(Collectors.joining(" "));
+  }
+
+  private static String withoutDroppedCharacters(String line) {
+    StringBuilder kept = new StringBuilder(line.length());
+    line.codePoints().filter(point -> !isDroppedFromNote(point)).forEach(kept::appendCodePoint);
+    return kept.toString();
+  }
+
+  private static boolean isDroppedFromNote(int point) {
+    return Character.isISOControl(point)
+        || point == 0x061C
+        || point == 0x200E
+        || point == 0x200F
+        || (point >= 0x202A && point <= 0x202E)
+        || (point >= 0x2066 && point <= 0x2069)
+        || (point >= 0xE0000 && point <= 0xE007F);
   }
 }

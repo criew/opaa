@@ -3,6 +3,7 @@ package io.opaa.branding;
 import io.opaa.api.types.ColorScheme;
 import io.opaa.common.FieldValidationException.FieldError;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -24,6 +25,22 @@ public final class BrandingSettingsRules {
    * variants.
    */
   private static final Pattern HEX_COLOR = Pattern.compile("^#[0-9A-Fa-f]{6}$");
+
+  /**
+   * Combining marks one base may carry. Real orthographies stay below it (Vietnamese two, Burmese
+   * and Tibetan stacks four or five); beyond it marks pile up over the line ("Zalgo text") and
+   * spill into the window title or the sign-in page.
+   */
+  static final int MAX_MARKS_PER_BASE = 5;
+
+  private static final int TAG_FIRST = 0xE0000;
+  private static final int TAG_CANCEL = 0xE007F;
+  private static final int WAVING_BLACK_FLAG = 0x1F3F4;
+
+  /** Length of the subdivision code in a flag tag sequence, "gbsct" or "usca" (UTS #51). */
+  private static final int MIN_FLAG_TAGS = 3;
+
+  private static final int MAX_FLAG_TAGS = 7;
 
   static final String COLOR_INVALID =
       "Die Primärfarbe muss ein sechsstelliger Hex-Wert mit führendem '#' sein, zum Beispiel"
@@ -78,12 +95,12 @@ public final class BrandingSettingsRules {
   }
 
   /**
-   * One text field: a value without a single visible character - blanks, no-break and ideographic
-   * spaces, zero-width and other format characters - counts as empty ("back to the default"), so no
-   * field can be blanked by a value that merely looks empty. Characters that render empty are cut
-   * from the ends, except combining marks and tag characters that belong to a visible one before
-   * them (an emoji's variation selector). Control characters and line or paragraph separators are
-   * rejected, bidirectional controls wherever they stand, even at an edge or alone.
+   * One text field. Rejected wherever they stand: bidirectional controls, unassigned code points,
+   * noncharacters, lone surrogates and tag characters outside a subdivision flag (hidden text).
+   * Blanks, control and format characters are cut from both ends, combining blanks from the start;
+   * what remains without a visible character counts as empty ("back to the default"). A combining
+   * mark at the start, more than {@value #MAX_MARKS_PER_BASE} on one base, a control character or a
+   * line break inside are rejected.
    */
   private static String text(
       List<FieldError> errors, String field, String value, int maxLength, String fieldLabel) {
@@ -91,28 +108,47 @@ public final class BrandingSettingsRules {
       return null;
     }
     if (value.codePoints().anyMatch(BrandingSettingsRules::isBidiControl)) {
-      errors.add(new FieldError(field, INVALID, invalidMessage(fieldLabel)));
+      errors.add(new FieldError(field, INVALID, controlMessage(fieldLabel)));
       return null;
     }
-    if (value.codePoints().noneMatch(BrandingSettingsRules::isVisible)) {
+    int[] points = value.codePoints().toArray();
+    if (Arrays.stream(points).anyMatch(BrandingSettingsRules::isUndisplayable)
+        || hasTagOutsideFlag(points)) {
+      errors.add(new FieldError(field, INVALID, undisplayableMessage(fieldLabel)));
       return null;
     }
-    String trimmed = withoutInvisibleEdges(value);
-    if (trimmed.length() > maxLength) {
+    int[] trimmed = withoutInvisibleEdges(points);
+    if (trimmed.length > 0 && isCombiningMark(trimmed[0]) && !isCombiningBlank(trimmed[0])) {
+      errors.add(new FieldError(field, INVALID, undisplayableMessage(fieldLabel)));
+      return null;
+    }
+    if (Arrays.stream(trimmed).noneMatch(BrandingSettingsRules::isVisible)) {
+      return null;
+    }
+    String text = new String(trimmed, 0, trimmed.length);
+    if (text.length() > maxLength) {
       errors.add(
           new FieldError(
               field, TOO_LONG, fieldLabel + " darf höchstens " + maxLength + " Zeichen lang sein"));
       return null;
     }
-    if (trimmed.codePoints().anyMatch(BrandingSettingsRules::isControlOrLineBreak)) {
-      errors.add(new FieldError(field, INVALID, invalidMessage(fieldLabel)));
+    if (Arrays.stream(trimmed).anyMatch(BrandingSettingsRules::isControlOrLineBreak)) {
+      errors.add(new FieldError(field, INVALID, controlMessage(fieldLabel)));
       return null;
     }
-    return trimmed;
+    if (hasTooManyMarksOnOneBase(trimmed)) {
+      errors.add(new FieldError(field, INVALID, undisplayableMessage(fieldLabel)));
+      return null;
+    }
+    return text;
   }
 
-  private static String invalidMessage(String fieldLabel) {
+  private static String controlMessage(String fieldLabel) {
     return fieldLabel + " darf keine Steuerzeichen und keinen Zeilenumbruch enthalten";
+  }
+
+  private static String undisplayableMessage(String fieldLabel) {
+    return fieldLabel + " darf keine unsichtbaren oder nicht darstellbaren Zeichen enthalten";
   }
 
   /**
@@ -131,18 +167,15 @@ public final class BrandingSettingsRules {
   }
 
   /**
-   * A stored text field as it may be shown: {@code null} ("the default applies") when {@link
-   * #check} would refuse or blank it today - no visible character, a control character, a line
-   * break or a bidirectional control - otherwise unchanged. A value stored before the rules were
-   * tightened thus never reaches a window title, the sign-in page, a mail or an export.
+   * A stored text field as it may be shown: {@code null} ("the default applies") when the character
+   * rules of {@link #check} would refuse or blank it, otherwise with its invisible edges cut. The
+   * length is not checked. A stored value that breaks these rules thus never reaches a window
+   * title, the sign-in page, a mail or an export.
    */
   public static String readable(String stored) {
-    if (stored == null
-        || stored.codePoints().noneMatch(BrandingSettingsRules::isVisible)
-        || stored.codePoints().anyMatch(BrandingSettingsRules::isControlOrLineBreak)) {
-      return null;
-    }
-    return stored;
+    List<FieldError> problems = new ArrayList<>();
+    String text = text(problems, "", stored, Integer.MAX_VALUE, "");
+    return problems.isEmpty() ? text : null;
   }
 
   private static String color(List<FieldError> errors, String field, String value) {
@@ -160,22 +193,51 @@ public final class BrandingSettingsRules {
     return trimmed;
   }
 
+  /**
+   * A letter, digit, punctuation mark or symbol that is not one of the fillers rendering empty.
+   * Space, marks, controls and format characters are never visible on their own.
+   */
   private static boolean isVisible(int codePoint) {
-    return !Character.isWhitespace(codePoint)
-        && !Character.isSpaceChar(codePoint)
-        && !Character.isISOControl(codePoint)
-        && Character.getType(codePoint) != Character.FORMAT
-        && !isStandaloneBlank(codePoint)
-        && !isCombiningBlank(codePoint);
+    return switch (Character.getType(codePoint)) {
+      case Character.UPPERCASE_LETTER,
+          Character.LOWERCASE_LETTER,
+          Character.TITLECASE_LETTER,
+          Character.MODIFIER_LETTER,
+          Character.OTHER_LETTER,
+          Character.DECIMAL_DIGIT_NUMBER,
+          Character.LETTER_NUMBER,
+          Character.OTHER_NUMBER,
+          Character.CONNECTOR_PUNCTUATION,
+          Character.DASH_PUNCTUATION,
+          Character.START_PUNCTUATION,
+          Character.END_PUNCTUATION,
+          Character.INITIAL_QUOTE_PUNCTUATION,
+          Character.FINAL_QUOTE_PUNCTUATION,
+          Character.OTHER_PUNCTUATION,
+          Character.MATH_SYMBOL,
+          Character.CURRENCY_SYMBOL,
+          Character.MODIFIER_SYMBOL,
+          Character.OTHER_SYMBOL ->
+          !isFiller(codePoint);
+      default -> false;
+    };
   }
 
-  /** Characters that render empty on their own although they are neither space nor format. */
-  private static boolean isStandaloneBlank(int codePoint) {
+  /** Letters and symbols that render empty although their category says otherwise. */
+  private static boolean isFiller(int codePoint) {
     return codePoint == 0x115F
         || codePoint == 0x1160
         || codePoint == 0x3164
         || codePoint == 0xFFA0
-        || codePoint == 0x2800;
+        || codePoint == 0x2800
+        || codePoint == 0x1D159;
+  }
+
+  private static boolean isCombiningMark(int codePoint) {
+    int type = Character.getType(codePoint);
+    return type == Character.NON_SPACING_MARK
+        || type == Character.COMBINING_SPACING_MARK
+        || type == Character.ENCLOSING_MARK;
   }
 
   /** Combining marks that render nothing by themselves (variation selectors and the like). */
@@ -183,13 +245,72 @@ public final class BrandingSettingsRules {
     return codePoint == 0x034F
         || codePoint == 0x17B4
         || codePoint == 0x17B5
+        || codePoint == 0x16FE4
         || (codePoint >= 0x180B && codePoint <= 0x180F)
         || (codePoint >= 0xFE00 && codePoint <= 0xFE0F)
         || (codePoint >= 0xE0100 && codePoint <= 0xE01EF);
   }
 
+  /** Unassigned code points, noncharacters and surrogates without their partner. */
+  private static boolean isUndisplayable(int codePoint) {
+    int type = Character.getType(codePoint);
+    return type == Character.UNASSIGNED || type == Character.SURROGATE;
+  }
+
   private static boolean isTagCharacter(int codePoint) {
-    return codePoint >= 0xE0020 && codePoint <= 0xE007F;
+    return codePoint >= TAG_FIRST && codePoint <= TAG_CANCEL;
+  }
+
+  /** Tag letters a-z and digits 0-9, the alphabet of a subdivision code. */
+  private static boolean isFlagTag(int codePoint) {
+    return (codePoint >= 0xE0061 && codePoint <= 0xE007A)
+        || (codePoint >= 0xE0030 && codePoint <= 0xE0039);
+  }
+
+  /**
+   * Tag characters are invisible ASCII and could carry hidden text into every copy of the branding;
+   * they pass only as a subdivision flag: the black flag, a short code, the cancel tag.
+   */
+  private static boolean hasTagOutsideFlag(int[] points) {
+    int i = 0;
+    while (i < points.length) {
+      if (points[i] == WAVING_BLACK_FLAG) {
+        int end = i + 1;
+        while (end < points.length && isFlagTag(points[end])) {
+          end++;
+        }
+        int tags = end - i - 1;
+        if (tags > 0) {
+          if (tags < MIN_FLAG_TAGS
+              || tags > MAX_FLAG_TAGS
+              || end >= points.length
+              || points[end] != TAG_CANCEL) {
+            return true;
+          }
+          i = end + 1;
+          continue;
+        }
+      } else if (isTagCharacter(points[i])) {
+        return true;
+      }
+      i++;
+    }
+    return false;
+  }
+
+  private static boolean hasTooManyMarksOnOneBase(int[] points) {
+    int marks = 0;
+    for (int point : points) {
+      if (isCombiningMark(point)) {
+        marks++;
+        if (marks > MAX_MARKS_PER_BASE) {
+          return true;
+        }
+      } else if (Character.getType(point) != Character.FORMAT) {
+        marks = 0;
+      }
+    }
+    return false;
   }
 
   /**
@@ -209,25 +330,28 @@ public final class BrandingSettingsRules {
         || type == Character.PARAGRAPH_SEPARATOR;
   }
 
-  /** What may be cut from the end: invisible on its own, not part of the visible char before it. */
-  private static boolean isTrailingNoise(int codePoint) {
+  /** What may be cut from either end: blank, control or format, never part of a flag. */
+  private static boolean isEdgeNoise(int codePoint) {
     return Character.isWhitespace(codePoint)
         || Character.isSpaceChar(codePoint)
         || Character.isISOControl(codePoint)
-        || isStandaloneBlank(codePoint)
+        || isFiller(codePoint)
         || (Character.getType(codePoint) == Character.FORMAT && !isTagCharacter(codePoint));
   }
 
-  private static String withoutInvisibleEdges(String value) {
-    int[] points = value.codePoints().toArray();
+  /**
+   * Cuts edge noise from both ends and combining blanks from the start; at the end they belong to
+   * the visible character before them (an emoji's variation selector).
+   */
+  private static int[] withoutInvisibleEdges(int[] points) {
     int from = 0;
     int to = points.length;
-    while (from < to && !isVisible(points[from])) {
+    while (from < to && (isEdgeNoise(points[from]) || isCombiningBlank(points[from]))) {
       from++;
     }
-    while (to > from && isTrailingNoise(points[to - 1])) {
+    while (to > from && isEdgeNoise(points[to - 1])) {
       to--;
     }
-    return new String(points, from, to - from);
+    return Arrays.copyOfRange(points, from, to);
   }
 }

@@ -17,18 +17,26 @@ zeigt und in welcher Reihenfolge, steht unter
 Produktname, Claim und Hinweis zur KI-Nutzung folgen derselben Regel, in der Verwaltung, im
 Einrichtungs-Assistenten, in der Antwortdatei und beim Übertragen von Einstellungen:
 
-- **Ohne sichtbares Zeichen gilt das Feld als leer.** Ein Wert nur aus Leerzeichen, geschützten
-  oder unsichtbaren Zeichen (etwa geschütztes Leerzeichen oder Leerzeichen ohne Breite) stellt den
-  OPAA-Standard wieder her, statt Fenstertitel oder Anmeldeseite ohne Namen zu lassen. Solche
-  Zeichen am Anfang und Ende eines Textes werden nicht gespeichert.
-- **Steuerzeichen zur Schreibrichtung werden abgelehnt**, an jeder Stelle, mit einer Meldung am
-  Feld. Sie würden den Fenstertitel oder den Text der Anmeldeseite umdrehen. Ebenso abgelehnt
-  werden andere Steuerzeichen und Zeilenumbrüche.
+- **Ohne sichtbares Zeichen gilt das Feld als leer.** Sichtbar sind Buchstaben, Ziffern,
+  Satzzeichen und Symbole. Ein Wert nur aus Leerzeichen, geschützten oder unsichtbaren Zeichen
+  (etwa geschütztes Leerzeichen, Leerzeichen ohne Breite, Füllzeichen) stellt den OPAA-Standard
+  wieder her, statt Fenstertitel oder Anmeldeseite ohne Namen zu lassen.
+- **Am Anfang und Ende wird still gekürzt.** Leerzeichen, unsichtbare Zeichen und Steuerzeichen wie
+  ein Zeilenumbruch an den Rändern werden ohne Meldung entfernt: Aus einem Namen mit Umbruch davor
+  und danach wird der Name allein.
+- **Abgelehnt mit einer Meldung am Feld** werden Steuerzeichen zur Schreibrichtung an jeder Stelle,
+  weil sie den Fenstertitel oder den Text der Anmeldeseite umdrehen würden, und Steuerzeichen oder
+  Zeilenumbrüche im Text. Ebenso abgelehnt werden Zeichen, die sich nicht darstellen lassen oder
+  Text verstecken: nicht belegte Zeichennummern, Tag-Zeichen außerhalb einer Regionalflagge wie der
+  schottischen, ein Akzent ohne Buchstaben davor und mehr als fünf Akzente auf einem Zeichen.
 
-Ein Wert, der vor dieser Regel gespeichert wurde und gegen sie verstößt, wird nicht gezeigt: Überall
-dort, wo der Text erscheint, auch in E-Mails, im Chat-Export und in einer Exportdatei der
-Einstellungen, gilt dann der OPAA-Standard. Gespeichert bleibt er, bis das Feld das nächste Mal
-gespeichert wird; die Verwaltung zeigt bis dahin den Standard im Feld.
+Ein gespeicherter Wert, der gegen diese Regel verstößt, wird nicht gezeigt: Überall dort, wo der
+Text erscheint, auch in E-Mails, im Chat-Export und in einer Exportdatei der Einstellungen, gilt dann
+der OPAA-Standard. Gespeichert bleibt er, bis das Feld das nächste Mal gespeichert wird; die
+Verwaltung zeigt bis dahin den Standard im Feld.
+
+Der Vermerk aus Hinweis und Produktname, den der Kopierknopf einer Antwort und der Chat-Export
+anfügen, lässt zusätzlich die unsichtbaren Richtungsmarken weg, die das Feld zulässt.
 
 ## Hinweis zur KI-Nutzung
 
