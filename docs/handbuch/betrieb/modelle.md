@@ -151,8 +151,11 @@ ihn. Er schickt die eingetragene Temperatur mit, wie später der Chat. Was seine
 steht unter [Fehlerbilder](#fehlerbilder).
 
 **Der gespeicherte Schlüssel geht nur an denselben Ursprung.** Wer beim Bearbeiten keinen neuen
-Schlüssel einträgt, nutzt den gespeicherten — aber nur für eine Adresse mit demselben Schema, Host
-und Port. Bei einer anderen Adresse lehnt OPAA ab, statt den Schlüssel dorthin zu senden. Eine
+Schlüssel einträgt, nutzt den gespeicherten — für Verbindungstest und Abruf der Modelle nur bei einer
+Adresse mit demselben Schema, Host und Port. Bei einer anderen Adresse lehnt OPAA ab, statt den
+Schlüssel dorthin zu senden. Gespeichert bleibt er nur, solange die Adresse denselben Endpunkt nennt
+(Schema, Host, Port, Pfad); bei einem anderen lehnt OPAA das Speichern ab, bis der Schlüssel neu
+eingetragen oder „Gespeicherten Schlüssel entfernen" gewählt ist. Eine
 Adresse mit Anmeldedaten (`https://benutzer:passwort@host`) wird abgelehnt. Abruf und Ollama-Details
 haben eine kurze Zeit- und Größengrenze, damit ein langsamer Endpunkt das Formular nicht aufhält.
 

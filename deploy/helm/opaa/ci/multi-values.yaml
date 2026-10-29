@@ -1,3 +1,6 @@
+# NICHT-FUER-DEN-PRODUKTIVBETRIEB: the secrets in this file are public test values. The backend
+# refuses them in the "oidc" profile (ci-only-..., AES keys that decode to this marker); a real
+# installation generates its own (docs/handbuch/betrieb/kubernetes.md).
 # Two backend pods (ADR-0053): migration job, originals in the object store, spread over nodes, with
 # the evaluation database, extraCACertificates and the egress policies, so the job runs the same
 # init containers and gets its own network policy. The secrets are throwaway test values.
@@ -18,8 +21,8 @@ secrets:
   initialAdminPassword: ci-only-Notanker-2026
   jwtSecret: ci-only-jwt-secret-0123456789abcdefghijklmnop
   databasePassword: ci-only-password
-  credentialsEncryptionKey: bjzhjv2AKbnBjZCYAR2V/Glp7TYZzqABwkqXs3lEyCY=
-  settingsEncryptionKey: CH1X+hsIYeijer8S9wq5wKRnQa4DpUPePzw4KxGMTMw=
+  credentialsEncryptionKey: TklDSFQtRlVFUi1ERU4tUFJPRFVLVElWQkVUUklFQjE=
+  settingsEncryptionKey: TklDSFQtRlVFUi1ERU4tUFJPRFVLVElWQkVUUklFQjI=
   s3AccessKey: ci-only-access-key
   s3SecretKey: ci-only-secret-key
 uploads:

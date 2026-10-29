@@ -143,13 +143,27 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
   ein eigenes Budget haben.
 - **Lange Downloads.** Eine Datei, die `download-timeout` dauerhaft reißt, gilt in jedem Lauf als
   vorübergehend fehlgeschlagen und hält den Änderungsstrom an; dann die Frist erhöhen.
-- **Noch nicht an einem echten Workspace bestätigt** und auf die Dokumentation von Google gestützt:
-  ob ein Dienstkonto Mitglied einer geteilten Ablage werden kann, wenn die Organisation externe
-  Freigaben einschränkt; ob Änderungen in einem nur per Ordnerfreigabe sichtbaren Ordner einer
-  geteilten Ablage im Strom des Kontos erscheinen (sonst sieht sie erst der Vollabgleich); das
-  Fehlerbild eines Exports über der Grenze (erwartet `exportSizeLimitExceeded`, sonst erscheint die
-  Datei als „nicht lesbar"); ob ein unveränderter Export bytegleich wiederkommt (sonst wird ein
-  Google-Format nach jeder Änderungszeit neu verarbeitet).
+- **Nicht an einem echten Workspace bestätigt**, sondern auf die Dokumentation von Google gestützt.
+  Trifft eine Annahme nicht zu, zeigt OPAA das so, ohne Dokumente fälschlich zu entfernen:
+  - Ein Dienstkonto kann Mitglied einer geteilten Ablage werden, auch wenn die Organisation externe
+    Freigaben einschränkt. Sonst meldet der Verbindungstest die Ablage als nicht sichtbar; dann einen
+    Ordner freigeben oder Delegation nutzen.
+  - Google meldet einen Export über der Grenze als `exportSizeLimitExceeded`. Kommt ein anderer
+    Ablehnungsgrund, erscheinen große Google Docs und Präsentationen als „nicht lesbar" statt als
+    Text. Antwortet Google stattdessen mit einem anderen Fehlerstatus, gilt die Datei in jedem Lauf
+    als vorübergehend fehlgeschlagen und hält den Änderungsstrom an, wie bei langen Downloads.
+  - Google beantwortet Abrufe von `www.googleapis.com` selbst. Leitete Google auf eine andere
+    Adresse weiter, folgt OPAA nicht, und das Zugriffstoken geht nirgendwo anders hin: Ein Download
+    erscheint als „nicht lesbar", bei einer Nachfrage im Änderungslauf bleibt der Änderungsstrom
+    angehalten, bis der nächste Vollabgleich ihn neu aufsetzt. Entfernt wird dabei nichts.
+  - Der Strom des Kontos meldet auch Änderungen in nur per Ordnerfreigabe sichtbaren Ordnern
+    geteilter Ablagen. Sonst sieht sie erst der nächste Vollabgleich.
+  - Wie oft Ordneränderungen einen Vollabgleich auslösen, hängt an der Nutzung des Kontos, besonders
+    mit imitiertem Konto; häufige Ordneränderungen kosten Anfragen, aber keine Dokumente.
+  - Ein unveränderter Export kommt bytegleich wieder. Sonst wird ein Google-Format nach jeder neuen
+    Änderungszeit einmal neu verarbeitet, nie in jedem Lauf. Eine Änderung, die die Änderungszeit
+    nicht verschiebt (etwa ein Kommentar), erscheint erst mit der nächsten, die es tut.
+  - „Original öffnen" führt zum passenden Editor. Sonst landet man in der Ansicht von Google Drive.
 
 ## 9. Protokoll und Fehlerbilder
 
@@ -160,6 +174,8 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 | „Das imitierte Konto … ist in der Domäne nicht bekannt" | Tippfehler oder Konto gelöscht | Konto prüfen |
 | „Geltungsbereich „…": … nicht sichtbar" | Freigabe oder Mitgliedschaft fehlt, oder die ID ist falsch; der Bestand bleibt | freigeben |
 | „Als Text exportiert …" / „Tabelle übersprungen …" | über der Exportgrenze | Datei verkleinern oder hinnehmen |
+| „Die Datei überschreitet die Exportgrenze von Google Drive …" | auch der Textexport ist zu groß; der indizierte Stand bleibt | Datei verkleinern oder aufteilen |
+| „Google Drive hat auf eine fremde Adresse weitergeleitet …" | Download nicht gesendet; der indizierte Stand bleibt | trifft es viele Dateien, als Fehler von OPAA melden: Google liefert dann anders aus als angenommen |
 | „… Verknüpfungen übersprungen" / „… Google-Dateien ohne Exportformat … übersprungen" | Sammelhinweise je Lauf | nichts |
 | „Der Download dieser Datei ist in Google Drive gesperrt" | Datei übersprungen | Download freigeben |
 | „Google Drive drosselt die Anfragen weiterhin" | nach allen Wiederholungen; der Strom wird erneut gelesen | Zeitplan entzerren |

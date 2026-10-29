@@ -1,6 +1,6 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { renderWithProviders } from '../../../test/test-utils'
 import DocumentTextPreviewDialog from './DocumentTextPreviewDialog'
 import type { TextPreviewResult } from '../utils/documentContent'
@@ -134,6 +134,129 @@ describe('DocumentTextPreviewDialog', () => {
       )
       expect(document.querySelector('img')).toBeNull()
       expect(screen.getByText(/\[Bild: Bild\]/)).toBeInTheDocument()
+    })
+  })
+
+  describe('cited passage', () => {
+    const highlights = new Map<string, unknown>()
+
+    beforeEach(() => {
+      highlights.clear()
+      vi.stubGlobal('CSS', { highlights })
+      vi.stubGlobal(
+        'Highlight',
+        class {
+          ranges: Range[]
+          constructor(...ranges: Range[]) {
+            this.ranges = ranges
+          }
+        },
+      )
+    })
+
+    afterEach(() => {
+      vi.unstubAllGlobals()
+      vi.restoreAllMocks()
+    })
+
+    it('marks the cited passage as a highlight and says so', async () => {
+      const doc = {
+        ...markdownDoc('# Fristen\n\nDie Frist beginnt mit der **Zustellung**.\n\nDanach nichts.'),
+        anchor: { quoteStart: 'Die Frist beginnt mit der **Zustellung**.' },
+      }
+      renderWithProviders(<DocumentTextPreviewDialog previewDocument={doc} onClose={vi.fn()} />)
+
+      expect(await screen.findByRole('status')).toHaveTextContent('Fundstelle markiert.')
+      const highlight = highlights.get('opaa-passage') as { ranges: Range[] }
+      expect(highlight.ranges[0].toString()).toBe('Die Frist beginnt mit der Zustellung')
+    })
+
+    it('says so when the passage is not in the document', async () => {
+      const doc = { ...plainTextDoc('Ganz anderer Inhalt.'), anchor: { quoteStart: 'Fehlt' } }
+      renderWithProviders(<DocumentTextPreviewDialog previewDocument={doc} onClose={vi.fn()} />)
+
+      expect(await screen.findByRole('status')).toHaveTextContent(
+        'Die Fundstelle wurde im Dokument nicht gefunden.',
+      )
+      expect(highlights.size).toBe(0)
+    })
+
+    it('finds the passage in rendered Markdown lists, tables and links', async () => {
+      const doc = {
+        ...markdownDoc(
+          'Vorab.\n\n1. Antrag stellen\n2. Frist abwarten\n\n| Stelle | Frist |\n|---|---|\n| Amt | 2 Wochen |\n\n' +
+            'Siehe [Handbuch](https://extern.example/h).',
+        ),
+        anchor: {
+          quoteStart: '1. Antrag stellen 2. Frist abwarten | Stelle | Frist | |---|---| | Amt',
+          quoteEnd: '| 2 Wochen | Siehe [Handbuch](https://extern.example/h).',
+        },
+      }
+      renderWithProviders(<DocumentTextPreviewDialog previewDocument={doc} onClose={vi.fn()} />)
+
+      expect(await screen.findByRole('status')).toHaveTextContent('Fundstelle markiert.')
+      const highlight = highlights.get('opaa-passage') as { ranges: Range[] }
+      expect(highlight.ranges[0].toString()).toMatch(/^Antrag stellen.*Handbuch/s)
+    })
+
+    it('scrolls the passage itself into view and focuses its block', async () => {
+      const text = `${'Zeile davor.\n'.repeat(50)}Die gesuchte Stelle.\n${'Zeile danach.\n'.repeat(50)}`
+      // jsdom lays nothing out; the passage sits 900px below the top of the view
+      Object.defineProperty(Range.prototype, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => ({ top: 900 }) as DOMRect,
+      })
+      onTestFinished(() => {
+        delete (Range.prototype as { getBoundingClientRect?: unknown }).getBoundingClientRect
+      })
+      const doc = { ...plainTextDoc(text), anchor: { quoteStart: 'Die gesuchte Stelle.' } }
+      renderWithProviders(<DocumentTextPreviewDialog previewDocument={doc} onClose={vi.fn()} />)
+
+      await screen.findByText(/Fundstelle markiert/)
+      const content = document.querySelector('pre')!.parentElement!
+      expect(content.scrollTop).toBe(900)
+      expect(document.activeElement).toBe(document.querySelector('pre'))
+    })
+
+    it('marks the passage of a document opened while the dialog is open', async () => {
+      const first = {
+        ...plainTextDoc('Alpha Satz. Beta Satz.'),
+        anchor: { quoteStart: 'Alpha Satz.' },
+      }
+      const second = {
+        ...plainTextDoc('Gamma Satz. Delta Satz.'),
+        anchor: { quoteStart: 'Delta Satz.' },
+      }
+      const { rerender } = renderWithProviders(
+        <DocumentTextPreviewDialog previewDocument={first} onClose={vi.fn()} />,
+      )
+      await screen.findByText('Fundstelle markiert.')
+
+      rerender(<DocumentTextPreviewDialog previewDocument={second} onClose={vi.fn()} />)
+
+      await screen.findByText('Gamma Satz. Delta Satz.')
+      const highlight = highlights.get('opaa-passage') as { ranges: Range[] }
+      expect(highlight.ranges[0].toString()).toBe('Delta Satz.')
+    })
+
+    it('says it only scrolled where the browser cannot highlight', async () => {
+      vi.stubGlobal('CSS', {})
+      const doc = { ...plainTextDoc('Ein Satz.'), anchor: { quoteStart: 'Ein Satz.' } }
+      renderWithProviders(<DocumentTextPreviewDialog previewDocument={doc} onClose={vi.fn()} />)
+
+      expect(await screen.findByRole('status')).toHaveTextContent('Zur Fundstelle gescrollt.')
+    })
+
+    it('removes the highlight when the dialog closes', async () => {
+      const doc = { ...plainTextDoc('Ein Satz.'), anchor: { quoteStart: 'Ein Satz.' } }
+      const { rerender } = renderWithProviders(
+        <DocumentTextPreviewDialog previewDocument={doc} onClose={vi.fn()} />,
+      )
+      expect(await screen.findByRole('status')).toHaveTextContent('Fundstelle markiert.')
+
+      rerender(<DocumentTextPreviewDialog previewDocument={null} onClose={vi.fn()} />)
+
+      expect(highlights.size).toBe(0)
     })
   })
 })

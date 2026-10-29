@@ -191,6 +191,22 @@ export default function LibraryDetailPage() {
         }
       : null
 
+  // Each step of a running run moves rows between the states, a failed one as well: the counts
+  // of the status filter follow, throttled in the store. A run first seen here has moved nothing
+  // since the documents area counted; the run's end counts anew via refreshToken.
+  const refreshStatusCountsDuringRun = useDocumentStore((s) => s.refreshStatusCountsDuringRun)
+  const stopRunCounting = useDocumentStore((s) => s.stopRunCounting)
+  const runSteps = running ? running.done + run.documentsFailed : undefined
+  const lastRunStepsRef = useRef<number | undefined>(undefined)
+  useEffect(() => {
+    const previous = lastRunStepsRef.current
+    lastRunStepsRef.current = runSteps
+    if (!libraryId || runSteps === undefined || previous === undefined) return
+    if (previous === runSteps) return
+    void refreshStatusCountsDuringRun(libraryId)
+    return () => stopRunCounting(libraryId)
+  }, [libraryId, runSteps, refreshStatusCountsDuringRun, stopRunCounting])
+
   const isUploadLibrary = details?.sourceType === 'UPLOAD'
   const uploadQuotaRejected = useDocumentStore((s) =>
     s.uploadErrors.some((message) => /kontingent/i.test(message)),

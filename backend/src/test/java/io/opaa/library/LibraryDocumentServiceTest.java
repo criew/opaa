@@ -1675,6 +1675,8 @@ class LibraryDocumentServiceTest {
     when(library.getId()).thenReturn(libraryId);
     when(library.getOrganizationId()).thenReturn(organizationId);
     when(library.getSourceCredentials()).thenReturn(sourceCredentials);
+    // the credentials only reach originals on the origin of the library's own address
+    lenient().when(library.getSourceUrl()).thenReturn(remoteBaseUrl + "/");
     return library;
   }
 

@@ -331,7 +331,8 @@ Konto und der persönliche Space bleiben.
 - **Anhalten:** „Löschung anhalten“ im selben Dialog hält die Löschung für das Konto an, etwa für ein
   Disziplinarverfahren oder einen Rechtsstreit; „Löschung fortsetzen“ hebt das auf. Beides steht im
   Nachweisprotokoll, ohne Begründung. Ist die Frist beim Fortsetzen abgelaufen, löscht die nächste
-  Nacht.
+  Nacht. Wie oft im Monat angehalten wurde, zählt OPAA ohne Person für die
+  [Auskunft über die Datenerhebung](../betrieb/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation).
 - **Anlassbezogene Klärung:** Steht das Konto in einem offenen Antrag oder einer noch nutzbaren
   Freigabe, wird nicht gelöscht; danach holt die nächste Nacht nach. Am angezeigten Datum ändert das
   nichts.

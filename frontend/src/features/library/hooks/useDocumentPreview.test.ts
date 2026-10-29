@@ -48,6 +48,23 @@ describe('useDocumentPreview', () => {
     expect(queuedMessages()).toEqual([])
   })
 
+  it('hands the anchor to the text preview', async () => {
+    mockOpenDocumentContent.mockResolvedValueOnce({
+      kind: 'text-preview',
+      fileName: 'a.md',
+      contentType: 'text/markdown',
+      content: '# Titel',
+    })
+    const anchor = { quoteStart: 'Titel' }
+    const { result } = renderHook(() => useDocumentPreview())
+
+    await act(async () => {
+      await result.current.openDocument({ id: 'doc-1', fileName: 'a.md', anchor })
+    })
+
+    expect(result.current.previewDocument?.anchor).toBe(anchor)
+  })
+
   it('closes the preview via closePreview', async () => {
     mockOpenDocumentContent.mockResolvedValueOnce({
       kind: 'text-preview',
@@ -180,6 +197,27 @@ describe('useDocumentPreview', () => {
     )
     expect(mockOpenDocumentContent).not.toHaveBeenCalled()
     expect(queuedMessages()).toEqual([])
+  })
+
+  it('opens a Confluence document at the cited passage through a text fragment', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
+    const { result } = renderHook(() => useDocumentPreview())
+
+    await act(async () => {
+      await result.current.openDocument({
+        id: 'doc-1',
+        fileName: 'Betriebshandbuch',
+        sourceType: 'CONFLUENCE',
+        sourceUrl: 'http://wiki.example/pages/viewpage.action?pageId=42',
+        anchor: { quoteStart: 'Fristen beginnen', quoteEnd: 'mit Zustellung.' },
+      })
+    })
+
+    expect(openSpy).toHaveBeenCalledWith(
+      'http://wiki.example/pages/viewpage.action?pageId=42#:~:text=Fristen%20beginnen,mit%20Zustellung.',
+      '_blank',
+      'noopener,noreferrer',
+    )
   })
 
   it('notifies with an error when a Confluence document carries no source URL at all', async () => {

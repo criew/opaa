@@ -97,6 +97,89 @@ class GoogleDriveFileStoreTest {
     assertThat(run.ingested()).contains(path("bericht"), path("notiz"));
   }
 
+  /** ADR-0040, Entscheidung 8: the text export is the last try; past it the file is unreadable. */
+  @Test
+  void overTheExportLimitEvenAsTextADocIsRejectedAndTheRunGoesOn() {
+    FakeDriveServer.Item doc =
+        server.file(
+            "doc", "Protokoll", "application/vnd.google-apps.document", "prot", "drive0", "x");
+    doc.exportTooLarge = true;
+    doc.textExportTooLarge = true;
+
+    FileSyncHarness.Run run = harness.fullSync(store());
+
+    assertThat(run.failure()).isNull();
+    assertThat(run.listingComplete()).isTrue();
+    assertThat(run.eventsOf(IndexingEventCategory.REJECTED))
+        .extracting(IndexingRunEvent::getReference)
+        .containsExactly(path("doc"));
+    assertThat(harness.stored(path("doc"))).isEmpty();
+    assertThat(run.ingested()).contains(path("bericht"), path("notiz"));
+    assertThat(server.requests().stream().filter("files/doc/export"::equals)).hasSize(2);
+  }
+
+  /**
+   * ADR-0040, Entscheidung 8: only the reason {@code exportSizeLimitExceeded} leads to the text
+   * export; any other refusal of an export makes the file unreadable.
+   */
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(strings = {"cannotExportFile", "forbidden"})
+  void anExportRefusedForAnotherReasonIsRejectedWithoutTextExport(String reason) {
+    server.file("doc", "Protokoll", "application/vnd.google-apps.document", "prot", "drive0", "x");
+    server.failNext("files/doc/export", 403, reason, 1);
+
+    FileSyncHarness.Run run = harness.fullSync(store());
+
+    assertThat(run.failure()).isNull();
+    assertThat(run.eventsOf(IndexingEventCategory.REJECTED))
+        .extracting(IndexingRunEvent::getReference)
+        .containsExactly(path("doc"));
+    assertThat(run.eventsOf(IndexingEventCategory.FORMAT_MISMATCH)).isEmpty();
+    assertThat(server.requests().stream().filter("files/doc/export"::equals)).hasSize(1);
+    assertThat(run.ingested()).contains(path("bericht"), path("notiz"));
+  }
+
+  /**
+   * ADR-0040, Entscheidung 7: a Google file keeps its marker while {@code modifiedTime} stays, so a
+   * second full sync exports nothing, whether or not Google's exports are byte-identical.
+   */
+  @Test
+  void anUnchangedGoogleDocIsNotExportedAgain() {
+    server.file("doc", "Protokoll", "application/vnd.google-apps.document", "prot", "drive0", "x");
+    harness.fullSync(store());
+    server.requests().clear();
+
+    FileSyncHarness.Run run = harness.fullSync(store());
+
+    assertThat(run.failure()).isNull();
+    assertThat(run.ingested()).doesNotContain(path("doc"));
+    assertThat(server.requests()).doesNotContain("files/doc/export");
+  }
+
+  /**
+   * ADR-0040, Entscheidung 7: a new {@code modifiedTime} exports the file again and hands it to the
+   * intake, whose checksum decides whether it is indexed anew.
+   */
+  @Test
+  void aGoogleDocWithANewModifiedTimeIsExportedAgainUnderANewMarker() {
+    FakeDriveServer.Item doc =
+        server.file(
+            "doc", "Protokoll", "application/vnd.google-apps.document", "prot", "drive0", "x");
+    harness.fullSync(store());
+    String before = harness.stored(path("doc")).orElseThrow().getLastModifiedRemote();
+    doc.modifiedTime = doc.modifiedTime.plusSeconds(60);
+    server.requests().clear();
+
+    FileSyncHarness.Run run = harness.fullSync(store());
+
+    assertThat(run.ingested()).contains(path("doc"));
+    assertThat(server.requests()).contains("files/doc/export");
+    assertThat(harness.stored(path("doc")).orElseThrow().getLastModifiedRemote())
+        .isNotEqualTo(before)
+        .startsWith("g:")
+        .endsWith("|docx");
+  }
+
   @Test
   void shortcutsAndGoogleTypesWithoutExportAreNoDocumentsAndNeverFetched() {
     server.file("kurz", "Verweis", DriveFile.SHORTCUT, "prot", "drive0", "");
@@ -291,6 +374,7 @@ class GoogleDriveFileStoreTest {
   void aDownloadRedirectedToAnotherHostIsRefusedAndHoldsNoCursor() throws Exception {
     try (FakeDriveServer foreign = new FakeDriveServer()) {
       harness.fullSync(store());
+      String stored = harness.stored(path("bericht")).orElseThrow().getLastModifiedRemote();
       FakeDriveServer.Item bericht = server.get("bericht");
       bericht.content = "Neu.".getBytes();
       bericht.modifiedTime = Instant.now();
@@ -303,11 +387,99 @@ class GoogleDriveFileStoreTest {
       assertThat(run.eventsOf(IndexingEventCategory.REJECTED))
           .extracting(IndexingRunEvent::getReference)
           .contains(path("bericht"));
+      assertThat(harness.stored(path("bericht")).orElseThrow().getLastModifiedRemote())
+          .as("the stored version stays")
+          .isEqualTo(stored);
       assertThat(foreign.requests()).as("no request, no token reaches the other host").isEmpty();
       assertThat(harness.state().changeCursors())
           .as("a refused redirect is no transient failure")
           .isNotEqualTo(before);
     }
+  }
+
+  /**
+   * ADR-0040, Entscheidung 3: on a full sync a foreign redirect costs the new version of the one
+   * file, not its stored version and not the run.
+   */
+  @Test
+  void aDownloadRedirectedToAnotherHostOnAFullSyncIsRejectedAndTheRunGoesOn() {
+    try (FakeDriveServer foreign = new FakeDriveServer()) {
+      harness.fullSync(store());
+      String stored = harness.stored(path("bericht")).orElseThrow().getLastModifiedRemote();
+      FakeDriveServer.Item bericht = server.get("bericht");
+      bericht.content = "Neu.".getBytes();
+      bericht.modifiedTime = Instant.now();
+      bericht.redirectTo =
+          "http://localhost:" + foreign.base().getPort() + "/drive/v3/files/x?alt=media";
+
+      FileSyncHarness.Run run = harness.fullSync(store());
+
+      assertThat(run.failure()).isNull();
+      assertThat(run.listingComplete()).isTrue();
+      assertThat(run.eventsOf(IndexingEventCategory.REJECTED))
+          .extracting(IndexingRunEvent::getReference)
+          .containsExactly(path("bericht"));
+      assertThat(harness.stored(path("bericht")).orElseThrow().getLastModifiedRemote())
+          .as("the stored version stays")
+          .isEqualTo(stored);
+      assertThat(harness.stored(path("notiz"))).isPresent();
+      assertThat(foreign.requests()).as("no request, no token reaches the other host").isEmpty();
+    }
+  }
+
+  /**
+   * ADR-0040, Entscheidung 3: a lookup in a change run that Drive redirects to another host is no
+   * removal finding - neither for a parent folder nor for a file reported removed; the stream is
+   * read again.
+   */
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(booleans = {true, false})
+  void aLookupRedirectedToAnotherHostInAChangeRunRemovesNothing(boolean parentFolder) {
+    try (FakeDriveServer foreign = new FakeDriveServer()) {
+      harness.fullSync(store());
+      String elsewhere = "http://localhost:" + foreign.base().getPort() + "/drive/v3/files/x";
+      if (parentFolder) {
+        server.get("bericht").modifiedTime = Instant.now();
+        server.get("prot").metadataRedirectTo = elsewhere;
+        server.changed("bericht", "drive0");
+      } else {
+        server.get("bericht").metadataRedirectTo = elsewhere;
+        server.removed("bericht", "drive0");
+      }
+      var before = harness.state().changeCursors();
+
+      FileSyncHarness.Run run = harness.changeRun(store());
+
+      assertThat(run.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
+      assertThat(harness.stored(path("bericht"))).isPresent();
+      assertThat(foreign.requests()).as("no request, no token reaches the other host").isEmpty();
+      assertThat(harness.state().changeCursors()).isEqualTo(before);
+    }
+  }
+
+  /**
+   * ADR-0040, Entscheidung 3: a redirect of {@code alt=media} within the API's origin is followed
+   * with the token, and the file is the redirect target's.
+   */
+  @Test
+  void aDownloadRedirectedWithinTheApiOriginIsFollowed() throws Exception {
+    server.file("ziel", "Ziel.txt", "text/plain", "anderswo", null, "Vom Ziel.");
+    server.get("bericht").redirectTo = server.base() + "/drive/v3/files/ziel?alt=media";
+    DriveFileStore store = store();
+    var entries =
+        store.list(new io.opaa.indexing.filesync.FileContainer("drive:drive0"), null).entries();
+    assertThat(entries).extracting(e -> e.id()).containsExactly("bericht");
+
+    var fetched = store.fetch(entries.get(0), FileSyncHarness.MAX_FILE_SIZE);
+
+    try {
+      assertThat(java.nio.file.Files.readString(fetched.file())).isEqualTo("Vom Ziel.");
+    } finally {
+      java.nio.file.Files.deleteIfExists(fetched.file());
+    }
+    assertThat(server.requests())
+        .containsSubsequence("files/bericht?alt=media", "files/ziel?alt=media");
+    assertThat(server.tokens()).last().isEqualTo(FakeDriveServer.TOKEN);
   }
 
   @Test

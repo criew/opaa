@@ -102,6 +102,16 @@ GEHEIMNISSE
   Die Schlüssel stehen in den Werten dieses Releases. Für den Betrieb secrets.existingSecret
   verwenden. Geht OPAA_CREDENTIALS_ENCRYPTION_KEY oder OPAA_SETTINGS_ENCRYPTION_KEY verloren, sind
   die damit gespeicherten Zugangsdaten unlesbar - Kopie außerhalb des Clusters aufbewahren.
+{{- $marker := "NICHT-FUER-DEN-PRODUKTIVBETRIEB" }}
+{{- /* earlier keys of the CI value sets and of v0.1.0-rc.4; the backend refuses them as well */}}
+{{- $publishedKeys := list "bjzhjv2AKbnBjZCYAR2V/Glp7TYZzqABwkqXs3lEyCY=" "CH1X+hsIYeijer8S9wq5wKRnQa4DpUPePzw4KxGMTMw=" "3J0X7GKz9q3Hq1zEo2mJ1n5Q2k8m3r9T4v6w8y0A2c4=" "Zm9yLWNpLW9ubHktc2V0dGluZ3Mta2V5LTAxMjM0NTY=" }}
+{{- $credentialsKey := .Values.secrets.credentialsEncryptionKey | default "" | trim }}
+{{- $settingsKey := .Values.secrets.settingsEncryptionKey | default "" | trim }}
+{{- if or (hasPrefix "ci-only" (lower (.Values.secrets.jwtSecret | default ""))) (contains $marker (upper (b64dec $credentialsKey))) (contains $marker (upper (b64dec $settingsKey))) (has $credentialsKey $publishedKeys) (has $settingsKey $publishedKeys) }}
+  ÖFFENTLICH BEKANNTE TESTWERTE: secrets.jwtSecret oder ein Verschlüsselungsschlüssel stammt aus
+  den Wertesätzen der CI ({{ $marker }}). Das Backend startet damit nicht. Eigene Werte
+  erzeugen: openssl rand -base64 48 (jwtSecret), openssl rand -base64 32 (Schlüssel).
+{{- end }}
 {{- end }}
 
 {{- if .Values.evaluationDatabase.enabled }}
@@ -142,6 +152,11 @@ CLIENT-ADRESSE UND NETZTRENNUNG
 {{- end }}
 {{- if not .Values.networkPolicy.backendIngress.enabled }}
   Die Eingangs-Policy des Backends ist aus: Jeder Pod im Cluster erreicht das Backend direkt.
+{{- end }}
+{{- if not .Values.networkPolicy.egress.enabled }}
+  networkPolicy.egress.enabled ist aus: Das Backend erreicht jedes Ziel, das der Cluster zulässt,
+  auch Link-Local-Adressen wie den Metadatendienst 169.254.169.254. Die Zielprüfung des Backends
+  erkennt DNS-Rebinding nicht; nach der Einrichtung die Egress-Policies einschalten.
 {{- end }}
 {{- if and (not .Values.trustedProxyCidrs) (or .Values.installationAllowedCidrs .Values.localAdminAllowedCidrs) }}
 

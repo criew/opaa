@@ -110,10 +110,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
 
   private ListingOutcome crawlDirectory(IndexingRun run) throws IOException, InterruptedException {
     UrlIndexingRequest request = toUrlIndexingRequest(run.settings(), run.credentials().value());
-    String url = request.url();
-    if (!url.endsWith("/") && !hasFileExtension(url)) {
-      url = url + "/";
-    }
+    String url = HttpDirectorySourceConnector.crawlStartUrl(request.url());
     log.info("Starting URL crawl of: {}", url);
 
     RequestBudget budget = RequestBudget.forRun(requestPolicy);

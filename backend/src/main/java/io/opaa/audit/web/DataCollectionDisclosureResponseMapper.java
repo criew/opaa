@@ -134,6 +134,7 @@ final class DataCollectionDisclosureResponseMapper {
                             .approved(caseCount(purpose.approved()))
                             .expired(caseCount(purpose.expired())))
                 .toList())
+        .heldChatDeletions(caseCount(cases.heldChatDeletions()))
         .notes(cases.notes());
   }
 

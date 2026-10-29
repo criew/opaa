@@ -136,8 +136,9 @@ Schritte erledigt, verschwindet er von selbst.
 
 Im Reiter „Dokumente" sucht „Dateiname enthält …" in der ganzen Bibliothek, der Filter „Metadaten"
 zeigt die Dokumente ohne Wert in einem Feld. Der Filter „Status" zeigt alle Dateien der Bibliothek,
-die „Fehlgeschlagen" sind oder noch „Wird verarbeitet", mit ihrer Zahl; er erscheint ab fünf Dateien
-in der Bibliothek und nur, wenn er die Liste kürzt. Beide Filter listen Anhänge als eigene Zeilen
+die „Fehlgeschlagen" sind oder noch „Wird verarbeitet", mit ihrer Zahl, die während eines Laufs
+dessen Fortschritt folgt; er erscheint ab fünf Dateien in der Bibliothek und nur, wenn er die Liste
+kürzt. Beide Filter listen Anhänge als eigene Zeilen
 und nennen dazu das Dokument, an dem sie hängen, etwa „Anhang von posteingang.eml". Die Aktionen
 einer Zeile, etwa „Löschen", stehen in ihrem Menü „⋯". Lehnt ein Upload Dateien ab, nennt eine
 Meldung sie; „Schließen" faltet sie zu „Abgelehnte Dateien anzeigen (n)", bis zum nächsten Upload.

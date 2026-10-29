@@ -13,10 +13,16 @@ import java.util.regex.Pattern;
  * One Graph drive of a library configuration - a SharePoint document library or a OneDrive -
  * optionally narrowed to folders with their subfolders. The container key is {@code
  * drive:<driveId>}; the folders are a filter within it, not containers of their own. {@code name}
- * and {@code folderNames} are only shown, never compared.
+ * and {@code folderNames} are only shown, never compared. A document library may carry the {@code
+ * site} it was chosen in ({@code null} for none, always for a OneDrive); it is not part of {@link
+ * #coverage()}.
  */
 record SharePointLibrary(
-    String driveId, List<String> folders, Map<String, String> folderNames, String name) {
+    String driveId,
+    List<String> folders,
+    Map<String, String> folderNames,
+    String name,
+    SharePointSite site) {
 
   static final String KEY_PREFIX = "drive:";
   static final int MAX_FOLDERS = 50;
@@ -32,13 +38,17 @@ record SharePointLibrary(
    * How a refusal names the settings field and the drive: {@code ofDrive} follows „Die ID“, {@code
    * perDrive} follows „höchstens 50 Ordner“, {@code eachDrive} opens the expected form.
    */
-  record Terms(String field, String ofDrive, String perDrive, String eachDrive) {
+  record Terms(String field, String ofDrive, String perDrive, String eachDrive, boolean takesSite) {
 
     static final Terms LIBRARIES =
         new Terms(
-            "sourceSettings.libraries", "einer Bibliothek", "je Bibliothek", "Jede Bibliothek");
+            "sourceSettings.libraries",
+            "einer Bibliothek",
+            "je Bibliothek",
+            "Jede Bibliothek",
+            true);
     static final Terms DRIVE =
-        new Terms("sourceSettings.drive", "des OneDrive", "im OneDrive", "Das OneDrive");
+        new Terms("sourceSettings.drive", "des OneDrive", "im OneDrive", "Das OneDrive", false);
   }
 
   SharePointLibrary {
@@ -47,9 +57,10 @@ record SharePointLibrary(
   }
 
   /**
-   * Reads {@code {"driveId": id, "folders": [id | {"id": id, "name": text}, ...], "name": text}};
-   * only the drive is required. A folder listed twice keeps its first place and the last name any
-   * of its entries gives; an entry without a name leaves an earlier name standing.
+   * Reads {@code {"driveId": id, "folders": [id | {"id": id, "name": text}, ...], "name": text,
+   * "site": {"id": id, "name": text}}}; only the drive is required, a site only where the terms
+   * take one. A folder listed twice keeps its first place and the last name any of its entries
+   * gives; an entry without a name leaves an earlier name standing.
    */
   static SharePointLibrary fromJson(Object value) {
     return fromJson(value, Terms.LIBRARIES);
@@ -60,12 +71,18 @@ record SharePointLibrary(
     if (!(value instanceof Map<?, ?> map) || !(map.get("driveId") instanceof String driveId)) {
       throw invalid(terms);
     }
+    Set<String> keys =
+        terms.takesSite()
+            ? Set.of("driveId", "folders", "name", "site")
+            : Set.of("driveId", "folders", "name");
     for (Object key : map.keySet()) {
-      if (!Set.of("driveId", "folders", "name").contains(key)) {
+      if (!keys.contains(key)) {
         throw invalid(terms);
       }
     }
     requireId(driveId, terms);
+    SharePointSite site =
+        map.get("site") == null ? null : SharePointSite.fromJson(map.get("site"), terms.field());
     String name = shownName(map.get("name"), terms);
     Object rawFolders = map.get("folders");
     List<String> folders = new ArrayList<>();
@@ -99,7 +116,7 @@ record SharePointLibrary(
         }
       }
     }
-    return new SharePointLibrary(driveId, folders, folderNames, name);
+    return new SharePointLibrary(driveId, folders, folderNames, name, site);
   }
 
   Map<String, Object> toJson() {
@@ -114,6 +131,9 @@ record SharePointLibrary(
     }
     if (name != null) {
       json.put("name", name);
+    }
+    if (site != null) {
+      json.put("site", site.toJson());
     }
     return json;
   }
@@ -173,6 +193,7 @@ record SharePointLibrary(
             + ": "
             + terms.eachDrive()
             + " ist {\"driveId\": \"<ID>\"}, optional mit \"folders\": [\"<ID>\" oder"
-            + " {\"id\": \"<ID>\", \"name\": \"…\"}, …] und \"name\"");
+            + " {\"id\": \"<ID>\", \"name\": \"…\"}, …] und \"name\""
+            + (terms.takesSite() ? " sowie \"site\": {\"id\": \"<ID>\", \"name\": \"…\"}" : ""));
   }
 }

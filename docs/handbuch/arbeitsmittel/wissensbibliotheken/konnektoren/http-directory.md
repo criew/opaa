@@ -34,7 +34,7 @@ flowchart LR
 
 | Angabe im Formular | Bedeutung |
 |---|---|
-| „Adresse (URL)" | Pflicht, `http://` oder `https://`. Fehlt der abschließende Schrägstrich und sieht der letzte Pfadteil nicht wie eine Datei aus, wird er ergänzt |
+| „Adresse (URL)" | Pflicht, `http://` oder `https://`. Fehlt der abschließende Schrägstrich und sieht der letzte Pfadteil nicht wie eine Datei aus, wird er ergänzt. Anmeldedaten in der Adresse (`https://benutzer:passwort@host`) lehnt OPAA ab: Die Adresse wird im Klartext gespeichert und protokolliert, Benutzername und Passwort gehören in das Feld darunter |
 | „Anmeldedaten (optional)", beim Bearbeiten „Neue Zugangsdaten" | `benutzer:passwort`; der erste Doppelpunkt trennt |
 
 Bleibt beim Bearbeiten das Feld für die Zugangsdaten leer und der Ursprung der Adresse (Schema, Host,
@@ -116,6 +116,8 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
   nicht ausgewertet, und der Crawl ist unvollständig. Nennt die Start-Adresse eine Datei
   (`/liste.php`), gehören sie selbst, auch mit anderer Abfrage, und alles darunter zum Unterbaum.
   Protokolle nennen vom Ziel nur Schema, Host und Port.
+- **„Original öffnen"** lädt die Datei nach derselben Regel: Zugangsdaten gehen nur mit, solange
+  ihre Adresse und jeder Redirect auf dem Ursprung und unterhalb der Start-Adresse bleiben.
 - **Drosselung.** Nur bei HTTP 429 wartet der Lauf die in `Retry-After` genannte Zeit und wiederholt;
   jeder andere Fehlschlag ist für diesen Lauf endgültig.
 

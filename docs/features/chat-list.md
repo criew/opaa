@@ -414,7 +414,9 @@ zur Selbstauskunft vor der Sperre; Verwertungsverbot für das Löschereignis.
 **Soll-Auflagen:** Die Vorschau „in den nächsten 30 Tagen fällig“ für den Betrieb steht im
 Anwendungslog jedes Laufs. Der Startlog-Hinweis auf eine verkürzte Frist entfällt: Die Frist ist eine
 Einstellung der Systemverwaltung, jede Änderung steht mit Vorher und Nachher im Revisionsprotokoll.
-Offen ist die Zahl ausgesetzter Löschungen im Jahresbericht an die Personalvertretung.
+Wie oft die Verwaltung die Löschung angehalten hat, zählt OPAA je Monat ohne Person; die Auskunft
+über die Datenerhebung nennt die Zahl für den Berichtszeitraum als „Angehaltene Chat-Löschungen“
+an die Personalvertretung, mit derselben Schwelle wie die Klärungen (#3026).
 
 ---
 

@@ -1,3 +1,6 @@
+# NICHT-FUER-DEN-PRODUKTIVBETRIEB: the secrets in this file are public test values. The backend
+# refuses them in the "oidc" profile (ci-only-..., AES keys that decode to this marker); a real
+# installation generates its own (docs/handbuch/betrieb/kubernetes.md).
 # Evaluation setup: database inside the release, originals on a volume.
 publicBaseUrl: http://localhost:8080
 evaluationDatabase:
@@ -16,8 +19,8 @@ secrets:
   initialAdminPassword: ci-only-Notanker-2026
   jwtSecret: ci-only-jwt-secret-0123456789abcdefghijklmnop
   databasePassword: ci-only-password
-  credentialsEncryptionKey: 3J0X7GKz9q3Hq1zEo2mJ1n5Q2k8m3r9T4v6w8y0A2c4=
-  settingsEncryptionKey: Zm9yLWNpLW9ubHktc2V0dGluZ3Mta2V5LTAxMjM0NTY=
+  credentialsEncryptionKey: TklDSFQtRlVFUi1ERU4tUFJPRFVLVElWQkVUUklFQjE=
+  settingsEncryptionKey: TklDSFQtRlVFUi1ERU4tUFJPRFVLVElWQkVUUklFQjI=
 uploads:
   store: persistentVolumeClaim
   persistence:

@@ -919,8 +919,16 @@ aus der die Antwort zitiert hat; „Die Fundstelle wurde im Original nicht gefun
 zitierte Text auf der Seite nicht wiederzufinden ist, etwa bei einem Scan; das Fenster zeigt dann
 die Fundseite ohne Markierung. Kann die Anwendung ein PDF nicht anzeigen, sagt das Fenster das
 und bietet „Im Browser öffnen" an. Aus der Dokumentliste einer Wissensbibliothek geöffnet, beginnt dasselbe
-Fenster auf der ersten Seite. Andere Formate verhalten sich unverändert: Bilder öffnen in einem
-neuen Tab, Office-Dateien werden heruntergeladen.
+Fenster auf der ersten Seite.
+
+**Text und Quellseiten an der Fundstelle.** Markdown- und Textdateien öffnen wie bisher in der
+Textvorschau, scrollen aber an die zitierte Stelle und heben sie farbig hervor; ist sie nicht
+wiederzufinden, sagt die Vorschau „Die Fundstelle wurde im Dokument nicht gefunden.". Eine
+Confluence-Seite öffnet weiter an der Quelle; die Adresse trägt dabei die zitierte Stelle als
+Textfragment, sodass Chrome, Edge, Safari und Firefox dorthin scrollen und sie hervorheben. Findet
+der Browser die Stelle auf der Seite nicht, etwa weil sie seit der Indexierung geändert wurde,
+öffnet die Seite wie gewohnt oben. Andere Formate verhalten sich unverändert: Bilder öffnen in
+einem neuen Tab, Office-Dateien werden heruntergeladen.
 
 **Kopieren.** Rechts unter jeder Antwort steht „Kopieren". Ein Klick legt die Antwort als Markdown in
 die Zwischenablage, ohne Fußnotenmarken und ohne Quellenliste. Der Pfeil daneben bietet zwei

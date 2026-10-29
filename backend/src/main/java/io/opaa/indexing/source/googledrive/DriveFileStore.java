@@ -636,7 +636,8 @@ final class DriveFileStore implements FileStore, ChangeFeed {
       case SCOPE_MISSING -> new FileAccessException.PermissionMissing(e.getMessage());
       case DAILY_LIMIT, BLOCKED -> new FileAccessException.RunEnding(e.getMessage());
       case TOO_LARGE -> new FileAccessException.TooLarge(e.getMessage());
-      case NOT_FOUND, FORBIDDEN, EXPORT_LIMIT -> new FileAccessException.Unreadable(e.getMessage());
+      case NOT_FOUND, FORBIDDEN, EXPORT_LIMIT, REDIRECT_REFUSED ->
+          new FileAccessException.Unreadable(e.getMessage());
       case TRANSIENT -> new FileAccessException.Transient(e.getMessage());
     };
   }

@@ -718,6 +718,8 @@ tasks.withType<Test> {
     useJUnitPlatform()
     jvmArgs("-XX:+EnableDynamicAgentLoading")
     systemProperty("file.encoding", "UTF-8")
+    // Repository root (backend/ is the Gradle root) for tests that read files beside the build.
+    systemProperty("opaa.repositoryRoot", rootProject.projectDir.parentFile.absolutePath)
 }
 
 // The "test" source set alone holds well over a dozen @SpringBootTest classes that each spin up

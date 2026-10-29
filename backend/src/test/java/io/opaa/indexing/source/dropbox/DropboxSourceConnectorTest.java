@@ -1,6 +1,7 @@
 package io.opaa.indexing.source.dropbox;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -44,7 +45,7 @@ import org.junit.jupiter.api.Test;
  * The connector's own rules: OAuth with a refresh token through a required profile, the fixed
  * address, the settings it accepts, the connection test per folder, the folder listing in the own
  * folder and the team space, the account named after a consent and the original by download or
- * export.
+ * export; under a team app the team folders of {@code team/namespaces/list}, read as the admin.
  */
 class DropboxSourceConnectorTest {
 
@@ -304,6 +305,302 @@ class DropboxSourceConnectorTest {
     connector.onSourceChanged(library, false, Set.of("dropboxTeamSpace"));
 
     verify(syncState, org.mockito.Mockito.times(2)).deleteByLibraryId(id);
+  }
+
+  // --- team app -------------------------------------------------------------------------------
+
+  @Test
+  void theTeamAppIsAProfileOnlySwitchThatAsksForTheTeamScopes() {
+    var defaults = connector.descriptor().profileDeclaration().defaults();
+
+    assertThat(defaults.key("teamApp"))
+        .hasValueSatisfying(
+            key -> {
+              assertThat(key.kind()).isEqualTo(io.opaa.api.types.ProfileDefaultKind.BOOLEAN);
+              assertThat(key.profileOnly()).isTrue();
+            });
+    assertThat(connector.settingsKeys()).contains("teamApp", "teamFolders");
+    assertThat(connector.signInScopes(ConnectorData.of(Map.of("teamApp", true))))
+        .isEqualTo(DropboxSourceConnector.TEAM_SCOPES);
+    assertThat(DropboxSourceConnector.TEAM_SCOPES.split(" "))
+        .contains(
+            "team_data.member",
+            "team_info.read",
+            "files.team_metadata.read",
+            "files.metadata.read",
+            "files.content.read")
+        .doesNotContain("files.content.write", "team_data.team_space");
+    assertThat(connector.signInScopes(ConnectorData.of(Map.of("teamApp", false)))).isNull();
+    assertThat(connector.signInScopes(null)).isNull();
+  }
+
+  @Test
+  void underATeamAppTheLibraryReadsTeamFoldersByNamespaceAndNoPaths() {
+    SourceSettings validated =
+        connector.validate(
+            request(
+                null,
+                teamApp(
+                    Map.of(
+                        "teamFolders",
+                        List.of(Map.of("id", "100", "name", " Bauamt "), Map.of("id", "200"))))));
+
+    assertThat(validated.connectorSettings().get("teamFolders"))
+        .isEqualTo(List.of(Map.of("id", "100", "name", "Bauamt"), Map.of("id", "200")));
+    assertThatThrownBy(() -> connector.validate(request(null, teamApp(folders("/Akten").asMap()))))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Team-Ordner");
+    assertThatThrownBy(
+            () ->
+                connector.validate(
+                    request(
+                        null,
+                        ConnectorData.of(
+                            Map.of("teamFolders", List.of(Map.of("id", "100", "name", "B")))))))
+        .as("team folders only through a team app")
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Team-App");
+    assertThatThrownBy(
+            () ->
+                connector.validate(
+                    request(
+                        null,
+                        teamApp(
+                            Map.of(
+                                "teamFolders", List.of(Map.of("id", "100")), "teamSpace", true)))))
+        .isInstanceOf(ValidationException.class);
+    assertThatThrownBy(
+            () ->
+                connector.validate(
+                    request(null, teamApp(Map.of("teamFolders", List.of(Map.of("id", "../x")))))))
+        .isInstanceOf(ValidationException.class);
+    assertThatThrownBy(
+            () ->
+                connector.validate(
+                    request(
+                        null,
+                        teamApp(
+                            Map.of(
+                                "teamFolders",
+                                List.of(Map.of("id", "100"), Map.of("id", "100")))))))
+        .isInstanceOf(ValidationException.class);
+    assertThatThrownBy(() -> connector.validate(request(null, teamApp(Map.of()))))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Team-Ordner");
+  }
+
+  @Test
+  void theTeamListingOffersTheTeamFoldersOfTheNamespacesAndNoMemberFolder() {
+    server.withTeamApp();
+    server.pageSizeAtMost(1);
+    server.teamFolder("100", "Bauamt");
+    server.memberFolder("300", "Andrea Vogt");
+    server.teamFolder("200", "Kämmerei");
+
+    SourceListing listing =
+        connector.browse(new SourceBrowser.Query(connected(teamApp(Map.of())), null));
+
+    assertThat(listing.complete()).isTrue();
+    assertThat(listing.entries())
+        .extracting(SourceListing.Entry::key, SourceListing.Entry::name)
+        .containsExactly(
+            org.assertj.core.groups.Tuple.tuple("100", "Bauamt"),
+            org.assertj.core.groups.Tuple.tuple("200", "Kämmerei"));
+    assertThat(server.requests()).contains("team/namespaces/list/continue");
+  }
+
+  @Test
+  void theTeamConnectionTestReadsEachTeamFolderAsTheAdmin() {
+    server.withTeamApp();
+    server.teamFolder("100", "Bauamt");
+    server.memberFolder("300", "Andrea Vogt");
+
+    SourceConnectionTestResult one =
+        connector.testConnection(
+            connected(teamFolders(Map.of("id", "100", "name", "Bauamt"))), null);
+    SourceConnectionTestResult member =
+        connector.testConnection(
+            connected(
+                teamFolders(
+                    Map.of("id", "100", "name", "Bauamt"),
+                    Map.of("id", "300", "name", "Andrea Vogt"),
+                    Map.of("id", "999", "name", "Gelöscht"))),
+            null);
+
+    assertThat(one.reachable()).isTrue();
+    assertThat(one.message()).isEqualTo("Verbindung erfolgreich; der Team-Ordner ist erreichbar.");
+    assertThat(member.reachable()).isFalse();
+    assertThat(member.credentialsVerified()).isTrue();
+    assertThat(member.message()).contains("2 von 3 Team-Ordnern");
+    assertThat(server.pathRoots())
+        .noneMatch(root -> root.contains("300"))
+        .anyMatch(root -> root.contains("\"namespace_id\":\"100\""));
+    assertThat(server.selectedAdmins()).contains(FakeDropboxServer.ADMIN_MEMBER_ID);
+  }
+
+  @Test
+  void aMemberConsentUnderATeamAppIsTheFindingOfTheTest() {
+    server.teamFolder("100", "Bauamt");
+
+    SourceConnectionTestResult result =
+        connector.testConnection(connected(teamFolders(Map.of("id", "100", "name", "B"))), null);
+
+    assertThat(result.reachable()).isFalse();
+    assertThat(result.message()).contains("Team-Administration");
+  }
+
+  @Test
+  void theConnectedAccountOfATeamAppIsTheConsentingAdmin() {
+    server.withTeamApp();
+
+    assertThat(connector.connectedAccount(connected(teamApp(Map.of()))))
+        .contains(FakeDropboxServer.ADMIN);
+  }
+
+  @Test
+  void anOriginalInATeamFolderIsDownloadedAsTheAdminOnlyFromAChosenTeamFolder() throws Exception {
+    server.withTeamApp();
+    server.teamFolder("100", "Bauamt");
+    server.teamFolder("200", "Kämmerei");
+    server.file("100", "/Akten/Plan.txt", "Bebauungsplan.".getBytes(StandardCharsets.UTF_8));
+    server.file("200", "/Akten/Plan.txt", "Haushalt.".getBytes(StandardCharsets.UTF_8));
+    KnowledgeLibrary library = mock(KnowledgeLibrary.class);
+    SourceSettings settings = connected(teamFolders(Map.of("id", "100", "name", "Bauamt")));
+
+    Optional<DocumentContent> found =
+        connector.openOriginal(document("ns:100/akten/plan.txt"), library, settings);
+    Optional<DocumentContent> otherTeamFolder =
+        connector.openOriginal(document("ns:200/akten/plan.txt"), library, settings);
+    Optional<DocumentContent> memberPath =
+        connector.openOriginal(document("/akten/plan.txt"), library, settings);
+
+    assertThat(found).isPresent();
+    try (InputStream stream = found.get().stream()) {
+      assertThat(new String(stream.readAllBytes(), StandardCharsets.UTF_8))
+          .isEqualTo("Bebauungsplan.");
+    }
+    assertThat(otherTeamFolder).isEmpty();
+    assertThat(memberPath).isEmpty();
+  }
+
+  @Test
+  void aChangedTeamFolderListDiscardsTheRunState() {
+    KnowledgeLibrary library = mock(KnowledgeLibrary.class);
+    when(library.getId()).thenReturn(UUID.randomUUID());
+
+    var before = connector.settingsState(library, teamFolders(Map.of("id", "100", "name", "A")));
+    var renamed = connector.settingsState(library, teamFolders(Map.of("id", "100", "name", "B")));
+    var other = connector.settingsState(library, teamFolders(Map.of("id", "200", "name", "A")));
+
+    assertThat(renamed).as("a new display name reads the same folder").isEqualTo(before);
+    assertThat(other).isNotEqualTo(before);
+    connector.onSourceChanged(library, false, Set.of("dropboxTeamFolders"));
+    verify(syncState).deleteByLibraryId(library.getId());
+  }
+
+  @Test
+  void aLibraryDoesNotSwitchBetweenMemberAndTeamApp() {
+    SourceSettings member = request(null, folders("/Akten"));
+    SourceSettings team = request(null, teamFolders(Map.of("id", "100", "name", "Bauamt")));
+
+    assertThatThrownBy(
+            () ->
+                connector.validateChange(
+                    member, request(null, teamApp(Map.of("folders", List.of("/Akten")))), false))
+        .as("folder paths under a profile that became a team app")
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Team-App");
+    assertThatThrownBy(
+            () ->
+                connector.validateChange(
+                    team,
+                    request(
+                        null,
+                        ConnectorData.of(Map.of("teamFolders", List.of(Map.of("id", "100"))))),
+                    false))
+        .as("team folders under a profile that is no team app any more")
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Team-App");
+    assertThat(
+            connector
+                .validateChange(
+                    team,
+                    request(null, teamFolders(Map.of("id", "200", "name", "Kämmerei"))),
+                    false)
+                .connectorSettings()
+                .get("teamFolders"))
+        .asString()
+        .contains("200");
+  }
+
+  @Test
+  void ownScopesOfATeamAppHoldEveryTeamScope() {
+    ConnectorData team = ConnectorData.of(Map.of("teamApp", true));
+
+    assertThatThrownBy(() -> connector.checkProfileScopes(DropboxSourceConnector.SCOPES, team))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("team_data.member")
+        .hasMessageContaining("Scopes");
+    assertThatCode(
+            () -> connector.checkProfileScopes(DropboxSourceConnector.TEAM_SCOPES + " x.y", team))
+        .doesNotThrowAnyException();
+    assertThatCode(
+            () ->
+                connector.checkProfileScopes(
+                    "files.metadata.read", ConnectorData.of(Map.of("teamApp", false))))
+        .as("a member app's own scopes stay the operator's choice")
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void aMissingScopeIsNamedAsDropboxNamesIt() {
+    server.withTeamApp();
+    server.teamFolder("100", "Bauamt");
+    server.missScope("team_data.member");
+
+    SourceConnectionTestResult result =
+        connector.testConnection(connected(teamFolders(Map.of("id", "100", "name", "B"))), null);
+
+    assertThat(result.message()).contains("team_data.member").doesNotContain("files.content.read");
+  }
+
+  @Test
+  void aTeamListingWithoutCursorEndsAsAFindingNotAnError() {
+    server.withTeamApp();
+    server.pageSizeAtMost(1);
+    server.teamFolder("100", "Bauamt");
+    server.teamFolder("200", "Kämmerei");
+    server.dropNamespaceCursor();
+
+    SourceListing listing =
+        connector.browse(new SourceBrowser.Query(connected(teamApp(Map.of())), null));
+
+    assertThat(listing.complete()).isFalse();
+    assertThat(listing.message()).contains("Fortsetzungspunkt");
+  }
+
+  @Test
+  void onlyTheRefusalOfAMemberTokenNamesTheTeamConsent() {
+    server.withTeamApp();
+    server.teamFolder("100", "Bauamt");
+    server.refuseTeamRoutes();
+
+    SourceConnectionTestResult result =
+        connector.testConnection(connected(teamFolders(Map.of("id", "100", "name", "B"))), null);
+
+    assertThat(result.reachable()).isFalse();
+    assertThat(result.message()).doesNotContain("Team-Administration").contains("ungültig");
+  }
+
+  private static ConnectorData teamApp(Map<String, Object> settings) {
+    Map<String, Object> merged = new java.util.LinkedHashMap<>(settings);
+    merged.put("teamApp", true);
+    return ConnectorData.of(merged);
+  }
+
+  @SafeVarargs
+  private static ConnectorData teamFolders(Map<String, Object>... folders) {
+    return teamApp(Map.of("teamFolders", List.of(folders)));
   }
 
   private static DropboxApiFactory apisOn(URI base) {
