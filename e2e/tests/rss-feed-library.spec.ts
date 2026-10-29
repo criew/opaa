@@ -243,7 +243,7 @@ test.describe('RSS-Feed-Quelle: Negativpfad, ein fehlerhafter Eintrag (#471)', (
   })
 })
 
-// #3396: content selector and attachment profile are settings of the feed library; the connection
+// Content selector and attachment profile are settings of the feed library; the connection
 // test checks them on the first entry's detail page (seiten/oeffnungszeiten.html, one <main> with
 // one linked attachment) without creating anything.
 test.describe('RSS-Feed-Quelle: Inhaltsselektor im Verbindungstest (#3396)', () => {

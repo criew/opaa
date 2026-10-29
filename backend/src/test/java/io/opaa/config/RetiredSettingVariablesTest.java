@@ -67,7 +67,7 @@ class RetiredSettingVariablesTest {
                 + " under Administration > Ohne Zuständigkeit");
   }
 
-  /** Content selector and attachment profile of a feed are settings of each library (#3396). */
+  /** Content selector and attachment profile of a feed are settings of each library. */
   @Test
   void aRetiredFeedDefaultIsNamedWithTheSourceConfigurationOfTheLibrary() {
     MockEnvironment environment =
