@@ -1134,14 +1134,21 @@ describe('LibraryDetailPage', () => {
       'documentCount' | 'documentsSkipped' | 'documentsFailed'
     >
 
-    /** A FILESYSTEM library mid-run, counted once at 10:00:00 with the given rows per state. */
+    let countRequests = 0
+
+    /**
+     * A FILESYSTEM library mid-run, counted once at 10:00:00 with the given rows per state. Date
+     * and setTimeout are faked but keep pace with real time; a test jumps the clock with
+     * setSystemTime (no timer fires) or advanceTimersByTimeAsync (due timers fire).
+     */
     async function renderRunningLibrary(counts: Record<string, number>) {
-      // only Date is faked: the throttle reads the clock, polling and waitFor keep real timers
-      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'], shouldAdvanceTime: true })
       vi.setSystemTime(new Date('2026-10-01T10:00:00Z'))
+      countRequests = 0
       server.use(
         http.get('/api/v1/libraries/:libraryId/documents', ({ request }) => {
           const status = new URL(request.url).searchParams.get('status') ?? ''
+          countRequests += 1
           return HttpResponse.json(pageOf([], { size: 1, totalElements: counts[status] ?? 0 }))
         }),
       )
@@ -1216,16 +1223,29 @@ describe('LibraryDetailPage', () => {
       return text
     }
 
+    /** Real time for a request already on its way to arrive; setInterval is not faked. */
+    function realPause(ms: number) {
+      return new Promise<void>((resolve) => {
+        const id = setInterval(() => {
+          clearInterval(id)
+          resolve()
+        }, ms)
+      })
+    }
+
     it('counts the rows anew while a run moves documents, at most every ten seconds', async () => {
       const counts: Record<string, number> = { FAILED: 0, PENDING: 6, INDEXED: 2 }
       const progress = await renderRunningLibrary(counts)
 
-      // within ten seconds of the last count a moving run asks nothing
+      // within ten seconds of the last count a moving run asks nothing - the follow-up count is
+      // still ten seconds away
+      const before = countRequests
       counts.PENDING = 4
       counts.INDEXED = 4
-      vi.setSystemTime(new Date('2026-10-01T10:00:05Z'))
       progress({ documentCount: 2 })
-      expect(await statusOption(/^Wird verarbeitet/)).toBe('Wird verarbeitet (6)')
+      await realPause(200)
+      expect(countRequests).toBe(before)
+      expect(countedRows()?.PENDING).toBe(6)
 
       // afterwards the next step of the run counts anew
       counts.PENDING = 1
@@ -1235,6 +1255,31 @@ describe('LibraryDetailPage', () => {
       await waitFor(() => expect(countedRows()?.PENDING).toBe(1))
       expect(await statusOption(/^Wird verarbeitet/)).toBe('Wird verarbeitet (1)')
       expect(useIndexingStore.getState().runsByLibrary[managerLibrary.id]?.status).toBe('RUNNING')
+    })
+
+    it('counts a step within the ten seconds once, at their end', async () => {
+      const counts: Record<string, number> = { FAILED: 0, PENDING: 6, INDEXED: 2 }
+      const progress = await renderRunningLibrary(counts)
+
+      counts.PENDING = 4
+      counts.INDEXED = 4
+      progress({ documentCount: 2 })
+      await act(() => vi.advanceTimersByTimeAsync(10_000))
+
+      await waitFor(() => expect(countedRows()?.PENDING).toBe(4))
+      expect(await statusOption(/^Wird verarbeitet/)).toBe('Wird verarbeitet (4)')
+    })
+
+    it('does not count again for a running run the page merely found on opening', async () => {
+      const counts: Record<string, number> = { FAILED: 0, PENDING: 6, INDEXED: 2 }
+      await renderRunningLibrary(counts)
+      const before = countRequests
+
+      // the polled status keeps reporting the same step - nothing moved
+      await act(() => vi.advanceTimersByTimeAsync(11_000))
+      await realPause(200)
+
+      expect(countRequests).toBe(before)
     })
 
     it('counts anew while a run only fails documents', async () => {
