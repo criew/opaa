@@ -97,7 +97,24 @@ public class HttpDirectorySourceConnector implements SourceConnector, OriginalAc
   @Override
   public Optional<DocumentContent> openOriginal(
       Document document, KnowledgeLibrary library, SourceSettings settings) {
-    return remoteOriginals.openOriginal(document, library, settings);
+    String sourceUrl = settings.sourceUrl();
+    if (sourceUrl == null || sourceUrl.isBlank()) {
+      return remoteOriginals.openOriginal(document, library, settings);
+    }
+    // the crawl's own scope: the credentials stay inside the start URL's subtree
+    return remoteOriginals.openOriginal(
+        document,
+        library,
+        settings,
+        AutoindexCrawlerService.credentialScope(crawlStartUrl(sourceUrl.strip())));
+  }
+
+  /**
+   * The address a crawl starts from: a slash is appended unless the address already names a file,
+   * so a working {@code .../index.html} is not turned into a false 404.
+   */
+  static String crawlStartUrl(String url) {
+    return !url.endsWith("/") && !UrlIndexingExecutor.hasFileExtension(url) ? url + "/" : url;
   }
 
   @Override
@@ -119,12 +136,7 @@ public class HttpDirectorySourceConnector implements SourceConnector, OriginalAc
 
   @Override
   public SourceConnectionTestResult testConnection(SourceSettings settings, ConnectorData stored) {
-    String url = requireHttpUrl(HttpDirectorySourceConnector.TYPE, settings);
-    // the run's own rule: a slash is appended unless the address already names a file, so a
-    // working ".../index.html" is not turned into a false 404
-    if (!url.endsWith("/") && !UrlIndexingExecutor.hasFileExtension(url)) {
-      url = url + "/";
-    }
+    String url = crawlStartUrl(requireHttpUrl(HttpDirectorySourceConnector.TYPE, settings));
     BasicCredentials config = basicCredentials(settings);
     HttpClient httpClient = SourceHttpClientFactory.buildHttpClient();
     String authHeader =

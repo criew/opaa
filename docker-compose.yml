@@ -63,6 +63,9 @@ services:
       - opaa-backend-tmp:/tmp
     environment:
       OPAA_UPLOAD_STORAGE_PATH: /app/uploads
+      # The "dev" profile refuses to start when the frontend is published beyond loopback, unless
+      # OPAA_AUTH_DEV_ALLOW_REMOTE=true confirms it (io.opaa.auth.DevExposureGuard).
+      OPAA_AUTH_DEV_PUBLISHED_ADDRESS: ${OPAA_FRONTEND_BIND_ADDRESS:-127.0.0.1}
     depends_on:
       postgres:
         condition: service_healthy
@@ -96,8 +99,11 @@ services:
       dockerfile: frontend/Dockerfile
     env_file: ${OPAA_ENV_FILE:-.env.docker}
     restart: unless-stopped
+    # Loopback by default: Docker publishes ports past ufw/firewalld, and in the "dev" profile every
+    # request is a system administrator. OPAA_FRONTEND_BIND_ADDRESS=0.0.0.0 opens it
+    # (docs/handbuch/betrieb/docker-compose.md, "Härtung des Compose-Stapels").
     ports:
-      - "${OPAA_FRONTEND_PORT:-3000}:8080"
+      - "${OPAA_FRONTEND_BIND_ADDRESS:-127.0.0.1}:${OPAA_FRONTEND_PORT:-3000}:8080"
     # A fixed address inside the subnet below, so OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS can trust
     # exactly this container's nginx (ADR-0033, Entscheidung 9) - not the whole network, whose
     # gateway address every host process and every other container could speak from.
@@ -129,8 +135,9 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
       KC_HTTP_PORT: 8180
+    # Loopback by default like the frontend: start-dev with admin/admin and the demo accounts.
     ports:
-      - "${OPAA_KEYCLOAK_PORT:-8180}:8180"
+      - "${OPAA_KEYCLOAK_BIND_ADDRESS:-127.0.0.1}:${OPAA_KEYCLOAK_PORT:-8180}:8180"
     volumes:
       # This service has no volume on purpose: the realm is imported again on every start. Both
       # exports therefore carry a fixed "id" per user, which Keycloak keeps as that user's id - so

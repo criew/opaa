@@ -81,10 +81,10 @@ public class ProfileRegistrations {
             .signIn(method)
             .map(SignIn::details)
             .orElse(null);
+    ConnectorData defaults = ConnectorData.fromJson(profile.getConnectorSettings());
     String subject =
         method == ConnectionAuthMethod.SERVICE_ACCOUNT_KEY
-            ? ServiceAccountTokens.subjectOf(
-                connector, ConnectorData.fromJson(profile.getConnectorSettings()))
+            ? ServiceAccountTokens.subjectOf(connector, defaults)
             : null;
     return new ClientRegistration(
         profile.getId(),
@@ -92,12 +92,20 @@ public class ProfileRegistrations {
         profile.getClientId(),
         secretOf(profile),
         profile.getTenant(),
-        profile.getScopes(),
+        scopesOf(connector, profile.getScopes(), defaults),
         signIn,
         subject,
         profile.isSignInRejected(),
         profile.getEndpoints(),
         profile.getVersion());
+  }
+
+  /**
+   * The scopes a profile asks for: its own, else those its connector names for its defaults, else
+   * {@code null} for the scopes the sign-in declares.
+   */
+  static String scopesOf(SourceConnector connector, String profileScopes, ConnectorData defaults) {
+    return profileScopes != null ? profileScopes : connector.signInScopes(defaults);
   }
 
   /**

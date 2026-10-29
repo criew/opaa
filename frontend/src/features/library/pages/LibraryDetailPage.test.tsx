@@ -1122,6 +1122,180 @@ describe('LibraryDetailPage', () => {
     })
   })
 
+  describe('counts during a run (#3217)', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+      // back to the IDLE status of vi.fn's own implementation for the tests after this one
+      mockGetIndexingStatus.mockReset()
+    })
+
+    type RunCounters = Pick<
+      IndexingStatusResponse,
+      'documentCount' | 'documentsSkipped' | 'documentsFailed'
+    >
+
+    let countRequests = 0
+
+    /**
+     * A FILESYSTEM library mid-run, counted once at 10:00:00 with the given rows per state. Date
+     * and setTimeout are faked but keep pace with real time; a test jumps the clock with
+     * setSystemTime (no timer fires) or advanceTimersByTimeAsync (due timers fire).
+     */
+    async function renderRunningLibrary(counts: Record<string, number>) {
+      vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'], shouldAdvanceTime: true })
+      vi.setSystemTime(new Date('2026-10-01T10:00:00Z'))
+      countRequests = 0
+      server.use(
+        http.get('/api/v1/libraries/:libraryId/documents', ({ request }) => {
+          const status = new URL(request.url).searchParams.get('status') ?? ''
+          countRequests += 1
+          return HttpResponse.json(pageOf([], { size: 1, totalElements: counts[status] ?? 0 }))
+        }),
+      )
+      let runStatus: IndexingStatusResponse = {
+        status: 'RUNNING',
+        documentCount: 0,
+        totalDocuments: 8,
+        documentsSkipped: 0,
+        documentsFailed: 0,
+        documentsIndexedTotal: 0,
+        message: null,
+        timestamp: '2026-10-01T10:00:00Z',
+      }
+      mockGetIndexingStatus.mockImplementation(async () => runStatus)
+      mockGetLibraryDocuments.mockResolvedValue(
+        pageOf([
+          {
+            id: 'doc-1',
+            fileName: 'vermerk.pdf',
+            status: 'INDEXED',
+            sourceType: 'FILESYSTEM',
+            chunkCount: 1,
+          },
+        ]),
+      )
+      setLibraryState(
+        managerLibrary,
+        detailsOf(managerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      await waitFor(() =>
+        expect(useIndexingStore.getState().runsByLibrary[managerLibrary.id]?.status).toBe(
+          'RUNNING',
+        ),
+      )
+      await waitFor(() => expect(countedRows()).toEqual(counts))
+
+      /** The polled status reports the run's counters - the next poll tick says the same. */
+      return function progress(counters: Partial<RunCounters>) {
+        runStatus = {
+          ...runStatus,
+          ...counters,
+          documentsIndexedTotal: counters.documentCount ?? runStatus.documentCount,
+        }
+        act(() => {
+          const current = useIndexingStore.getState().runsByLibrary[managerLibrary.id]
+          useIndexingStore.setState({
+            runsByLibrary: {
+              [managerLibrary.id]: {
+                ...current,
+                documentCount: runStatus.documentCount,
+                documentsSkipped: runStatus.documentsSkipped,
+                documentsFailed: runStatus.documentsFailed,
+                documentsIndexedTotal: runStatus.documentsIndexedTotal,
+              },
+            },
+          })
+        })
+      }
+    }
+
+    function countedRows() {
+      return useDocumentStore.getState().statusCountsByLibrary[managerLibrary.id]
+    }
+
+    async function statusOption(word: RegExp): Promise<string> {
+      const user = userEvent.setup()
+      await user.click(await screen.findByRole('combobox', { name: 'Status' }))
+      const option = await screen.findByRole('option', { name: word })
+      const text = option.textContent ?? ''
+      await user.keyboard('{Escape}')
+      return text
+    }
+
+    /** Real time for a request already on its way to arrive; setInterval is not faked. */
+    function realPause(ms: number) {
+      return new Promise<void>((resolve) => {
+        const id = setInterval(() => {
+          clearInterval(id)
+          resolve()
+        }, ms)
+      })
+    }
+
+    it('counts the rows anew while a run moves documents, at most every ten seconds', async () => {
+      const counts: Record<string, number> = { FAILED: 0, PENDING: 6, INDEXED: 2 }
+      const progress = await renderRunningLibrary(counts)
+
+      // within ten seconds of the last count a moving run asks nothing - the follow-up count is
+      // still ten seconds away
+      const before = countRequests
+      counts.PENDING = 4
+      counts.INDEXED = 4
+      progress({ documentCount: 2 })
+      await realPause(200)
+      expect(countRequests).toBe(before)
+      expect(countedRows()?.PENDING).toBe(6)
+
+      // afterwards the next step of the run counts anew
+      counts.PENDING = 1
+      counts.INDEXED = 7
+      vi.setSystemTime(new Date('2026-10-01T10:00:11Z'))
+      progress({ documentCount: 5 })
+      await waitFor(() => expect(countedRows()?.PENDING).toBe(1))
+      expect(await statusOption(/^Wird verarbeitet/)).toBe('Wird verarbeitet (1)')
+      expect(useIndexingStore.getState().runsByLibrary[managerLibrary.id]?.status).toBe('RUNNING')
+    })
+
+    it('counts a step within the ten seconds once, at their end', async () => {
+      const counts: Record<string, number> = { FAILED: 0, PENDING: 6, INDEXED: 2 }
+      const progress = await renderRunningLibrary(counts)
+
+      counts.PENDING = 4
+      counts.INDEXED = 4
+      progress({ documentCount: 2 })
+      await act(() => vi.advanceTimersByTimeAsync(10_000))
+
+      await waitFor(() => expect(countedRows()?.PENDING).toBe(4))
+      expect(await statusOption(/^Wird verarbeitet/)).toBe('Wird verarbeitet (4)')
+    })
+
+    it('does not count again for a running run the page merely found on opening', async () => {
+      const counts: Record<string, number> = { FAILED: 0, PENDING: 6, INDEXED: 2 }
+      await renderRunningLibrary(counts)
+      const before = countRequests
+
+      // the polled status keeps reporting the same step - nothing moved
+      await act(() => vi.advanceTimersByTimeAsync(11_000))
+      await realPause(200)
+
+      expect(countRequests).toBe(before)
+    })
+
+    it('counts anew while a run only fails documents', async () => {
+      const counts: Record<string, number> = { FAILED: 1, PENDING: 6, INDEXED: 1 }
+      const progress = await renderRunningLibrary(counts)
+
+      // broken files only: neither documentCount nor documentsSkipped moves
+      counts.FAILED = 4
+      counts.PENDING = 3
+      vi.setSystemTime(new Date('2026-10-01T10:00:11Z'))
+      progress({ documentsFailed: 3 })
+      await waitFor(() => expect(countedRows()?.FAILED).toBe(4))
+      expect(await statusOption(/^Fehlgeschlagen/)).toBe('Fehlgeschlagen (4)')
+    })
+  })
+
   it('shows the errorMessage of a FAILED document as a tooltip on its status chip', async () => {
     // A FAILED row's asynchronous processing failure is only visible to
     // the user via this German errorMessage - the status chip text alone only says something went

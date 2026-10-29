@@ -906,6 +906,11 @@ opaa:
       system-admin-email: admin@opaa.local
       issuer: ${OPAA_AUTH_DEV_ISSUER:opaa-dev}
       default-user: ${OPAA_AUTH_DEV_DEFAULT_USER:dev-admin}
+      # Host address the Compose stack publishes the frontend on (docker-compose.yml passes
+      # OPAA_FRONTEND_BIND_ADDRESS in); empty outside that stack. Beyond loopback the start is
+      # refused unless allow-remote confirms it (io.opaa.auth.DevExposureGuard).
+      published-address: ${OPAA_AUTH_DEV_PUBLISHED_ADDRESS:}
+      allow-remote: ${OPAA_AUTH_DEV_ALLOW_REMOTE:false}
       users:
         # Matches opaa.auth.dev.system-admin-email, and is therefore provisioned as SYSTEM_ADMIN
         # on first request.
@@ -929,7 +934,8 @@ opaa:
       # every backend test (all activate "dev", see AGENTS.md) can create/rotate credentials without
       # operator setup. Any deployment that does not activate the "dev" profile falls back to the
       # (empty) base value above and must set OPAA_CREDENTIALS_ENCRYPTION_KEY itself - see
-      # docs/handbuch/betrieb/netz-und-sicherheit.md.
+      # docs/handbuch/betrieb/netz-und-sicherheit.md. The "oidc" profile refuses this value even
+      # when copied over (io.opaa.security.PublishedEncryptionKeyGuard), as it does the next one.
       encryption-key: ${OPAA_CREDENTIALS_ENCRYPTION_KEY:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}
     settings:
       # NICHT FUER DEN PRODUKTIVBETRIEB - the same reasoning as opaa.security.credentials above, a

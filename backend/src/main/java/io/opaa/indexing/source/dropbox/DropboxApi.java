@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.core.JacksonException;
@@ -38,7 +39,8 @@ import tools.jackson.databind.json.JsonMapper;
  * redirect followed. The access token is asked anew per request, every attempt is charged to the
  * run's {@link RequestBudget}, and a {@code 429} is waited out as its {@code Retry-After} says. A
  * rejected token ({@code 401}) is retried once when the run's credentials hold a renewed one; every
- * other failure becomes a {@link DropboxApiException}.
+ * other failure becomes a {@link DropboxApiException}. A team token reads a team folder through
+ * {@link #asAdminIn}: a view with the folder's namespace as root and the consenting admin selected.
  */
 @DataFlow("source-dropbox")
 final class DropboxApi {
@@ -48,6 +50,11 @@ final class DropboxApi {
   private static final JsonMapper JSON = JsonMapper.builder().build();
   private static final long MAX_JSON_BYTES = 16L * 1024 * 1024;
   private static final long MAX_ERROR_BYTES = 64L * 1024;
+
+  /** The summary of a plain-text {@code 400} saying the token is of the other kind. */
+  static final String TOKEN_KIND_MISMATCH = "token_kind_mismatch";
+
+  private static final Pattern SCOPE_NAME = Pattern.compile("[a-z_]+(\\.[a-z_]+)+");
 
   private final URI apiBase;
   private final URI contentBase;
@@ -62,6 +69,9 @@ final class DropboxApi {
 
   /** The {@code Dropbox-API-Path-Root} of every call, {@code null} for the member's own folder. */
   private String pathRoot;
+
+  /** The {@code Dropbox-API-Select-Admin} of every call, {@code null} for a member's token. */
+  private final String selectAdmin;
 
   /** Where downloads are staged; {@code null} for the system temp directory. */
   private Path tempDirectory;
@@ -93,6 +103,36 @@ final class DropboxApi {
             maxRetries <= 0 ? RateLimitPolicy.NONE : RateLimitPolicy.of(maxRetries, maxRetryWait),
             sleeper,
             budget);
+    this.selectAdmin = null;
+  }
+
+  /** {@code base} with another root and admin, sharing token, budget and throttle handling. */
+  private DropboxApi(DropboxApi base, String pathRoot, String selectAdmin) {
+    this.apiBase = base.apiBase;
+    this.contentBase = base.contentBase;
+    this.token = base.token;
+    this.renewedAfterRejection = base.renewedAfterRejection;
+    this.httpClient = base.httpClient;
+    this.targetAddressValidator = base.targetAddressValidator;
+    this.timeout = base.timeout;
+    this.downloadTimeout = base.downloadTimeout;
+    this.budget = base.budget;
+    this.rateLimit = base.rateLimit;
+    this.tempDirectory = base.tempDirectory;
+    this.pathRoot = pathRoot;
+    this.selectAdmin = selectAdmin;
+  }
+
+  /**
+   * A view of this API reading the namespace {@code namespaceId} as root, acting as the team member
+   * {@code adminMemberId}: the admin who consented, for whom a team folder is content the team owns
+   * ({@code Dropbox-API-Select-Admin}).
+   */
+  DropboxApi asAdminIn(String namespaceId, String adminMemberId) {
+    Map<String, Object> root = new LinkedHashMap<>();
+    root.put(".tag", "namespace_id");
+    root.put("namespace_id", namespaceId);
+    return new DropboxApi(this, asciiJson(root), adminMemberId);
   }
 
   DropboxApi stagingIn(Path directory) {
@@ -206,6 +246,9 @@ final class DropboxApi {
       if (pathRoot != null) {
         headers.put("Dropbox-API-Path-Root", pathRoot);
       }
+      if (selectAdmin != null) {
+        headers.put("Dropbox-API-Select-Admin", selectAdmin);
+      }
       HttpResponse<InputStream> response;
       try {
         response =
@@ -253,6 +296,17 @@ final class DropboxApi {
     }
   }
 
+  /** The finding of a missing scope: the one Dropbox names, else a hint to the app's scopes. */
+  private static String missingScopeMessage(String summary) {
+    String required = summary.substring("missing_scope".length()).replaceFirst("^/", "");
+    return SCOPE_NAME.matcher(required).matches()
+        ? "Der Dropbox-App fehlt die Berechtigung "
+            + required
+            + "; die Quelle muss danach neu verbunden werden."
+        : "Der Dropbox-App fehlt eine Berechtigung, die der Zugang anfragt; die Quelle muss danach"
+            + " neu verbunden werden.";
+  }
+
   private static DropboxApiException failure(int status, String summary) {
     return switch (status) {
       case 401 ->
@@ -261,9 +315,7 @@ final class DropboxApi {
                   DropboxApiException.Kind.SCOPE_MISSING,
                   status,
                   summary,
-                  "Der Dropbox-App fehlt eine Berechtigung (files.metadata.read,"
-                      + " files.content.read, account_info.read); die Quelle muss danach neu"
-                      + " verbunden werden.")
+                  missingScopeMessage(summary))
               : new DropboxApiException(
                   DropboxApiException.Kind.UNAUTHORIZED,
                   status,
@@ -321,25 +373,46 @@ final class DropboxApi {
   }
 
   /**
-   * The {@code error_summary} of a Dropbox error body without its trailing path-free counter, or
-   * the {@code .tag} of {@code error}; {@code ""} for none. A plain-text body counts as none.
+   * The {@code error_summary} of a Dropbox error body, or the {@code .tag} of {@code error}; {@code
+   * ""} for none. A missing scope reads {@code missing_scope/<required scope>} where Dropbox names
+   * it; a plain-text body is {@link #TOKEN_KIND_MISMATCH} where it says the token is of the other
+   * kind (a member's on a team route or the reverse), none otherwise.
    */
   private static String errorSummary(HttpResponse<InputStream> response) {
+    byte[] bytes;
     try (InputStream body = response.body()) {
-      JsonNode root = JSON.readTree(BoundedStreams.readFully(body, MAX_ERROR_BYTES));
+      bytes = BoundedStreams.readFully(body, MAX_ERROR_BYTES);
+    } catch (IOException e) {
+      return "";
+    }
+    try {
+      JsonNode root = JSON.readTree(bytes);
       if (root == null || !root.isObject()) {
         return "";
+      }
+      JsonNode error = root.get("error");
+      JsonNode required = error == null ? null : error.get("required_scope");
+      if (error != null
+          && "missing_scope".equals(text(error.get(".tag")))
+          && required != null
+          && required.isString()
+          && SCOPE_NAME.matcher(required.asString()).matches()) {
+        return "missing_scope/" + required.asString();
       }
       JsonNode summary = root.get("error_summary");
       if (summary != null && summary.isString()) {
         return summary.asString();
       }
-      JsonNode error = root.get("error");
       JsonNode tag = error == null ? null : error.get(".tag");
       return tag != null && tag.isString() ? tag.asString() : "";
-    } catch (IOException | JacksonException e) {
-      return "";
+    } catch (JacksonException e) {
+      String text = new String(bytes, StandardCharsets.UTF_8);
+      return text.contains("access token you provided is for") ? TOKEN_KIND_MISMATCH : "";
     }
+  }
+
+  private static String text(JsonNode node) {
+    return node != null && node.isString() ? node.asString() : null;
   }
 
   /**

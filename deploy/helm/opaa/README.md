@@ -64,7 +64,9 @@ Die Schlüssel erzeugt der Betreiber selbst; der Chart erzeugt keine. Optionale 
 die Modell-Endpunkte, stehen in [`values.yaml`](values.yaml).
 
 **4. Werte-Datei schreiben.** `opaa-werte.yaml` braucht mindestens die Werte aus
-[`ci/minimal-values.yaml`](ci/minimal-values.yaml), mit eigenen Geheimnissen. Fehlt ein Pflichtwert,
+[`ci/minimal-values.yaml`](ci/minimal-values.yaml), mit eigenen Geheimnissen: Die Testwerte der
+Datei (`ci-only-…`, Schlüssel mit dem Kennzeichen `NICHT-FUER-DEN-PRODUKTIVBETRIEB`) lehnt das
+Backend beim Start ab. Fehlt ein Pflichtwert,
 lehnt `values.schema.json` die Installation ab; `helm template` zeigt das schon vorher (siehe
 [Prüfen](#prüfen)).
 
