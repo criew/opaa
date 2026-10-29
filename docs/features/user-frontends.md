@@ -138,7 +138,7 @@ Arbeitsraum-Übersicht; ausgenommen sind archivierte Arbeitsräume, die keine ne
 annehmen und deshalb weiterhin auf ihre Übersichtsseite (`/spaces/:spaceId`) führen. Ein bestehendes
 Gespräch wird nur fortgesetzt, wenn es bewusst in der Liste angeklickt wird; die Übersichtsseite
 eines Arbeitsraums bleibt über die Space-Übersicht erreichbar, die Verwaltung über das Zahnrad
-„Einstellungen“ am Fuß der Seitenleiste (`/spaces/:spaceId/settings/:tab`, Reiter Stammdaten,
+neben jedem Arbeitsraum in der Seitenleiste, in der Schublade neben der Arbeitsraum-Auswahl (`/spaces/:spaceId/settings/:tab`, Reiter Stammdaten,
 Mitglieder, Inhalte; die frühere Adresse `/spaces/:spaceId/manage` und die früheren Reiter
 `knowledge` und `prompts` leiten dorthin weiter). Das Zahnrad sieht jedes Mitglied; wer nicht
 verwalten darf, liest dort nur und sieht im Reiter Mitglieder statt Namen nur Zahlen (Personen, Gruppen, Rollen).

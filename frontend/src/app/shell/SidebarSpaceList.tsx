@@ -105,7 +105,12 @@ export default function SidebarSpaceList({
             </Tooltip>
           )
         }
-        sx={{ '& .MuiListItemSecondaryAction-root': { right: 4 } }}
+        sx={{
+          mb: 0.25,
+          '& .MuiListItemSecondaryAction-root': { right: 4 },
+          // Room for the gear, so a long name ends before it; MUI's own 48px is too wide.
+          '& > .MuiListItemButton-root': { pr: space.userRole ? 4.5 : 1 },
+        }}
       >
         <ListItemButton
           component={RouterLink}
@@ -113,11 +118,8 @@ export default function SidebarSpaceList({
           aria-current={active ? 'true' : undefined}
           sx={{
             borderRadius: '6px',
-            mb: 0.25,
             py: 0.5,
             px: 1,
-            // Room for the gear, so a long name ends before it.
-            pr: space.userRole ? 4.5 : 1,
             gap: 1,
             // The active row is the raised card of guidelines 2.3, like the active entry of a
             // global area's column; the others keep a transparent frame so nothing shifts.
