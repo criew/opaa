@@ -23,6 +23,26 @@ class ChunkingServiceTest {
         .orElseThrow();
   }
 
+  /**
+   * Regression guard: jtokkit holds memory linear in the length of one token piece, so text without
+   * whitespace is broken into runs of at most 1 000 characters before it is tokenized; no chunk
+   * carries a longer run.
+   */
+  @Test
+  void textWithoutWhitespaceIsBrokenIntoBoundedRunsBeforeTokenizing() {
+    var service = new ChunkingService(new IndexingProperties(1000, 100, 50, null, null, null, 0));
+
+    List<Document> chunks =
+        service.chunkDocuments("lang.txt", List.of(new Document("a".repeat(200_000))));
+
+    assertThat(chunks).isNotEmpty();
+    for (Document chunk : chunks) {
+      for (String run : chunk.getText().split("\\s+")) {
+        assertThat(run.length()).isLessThanOrEqualTo(1_000);
+      }
+    }
+  }
+
   @Test
   void chunksShortTextIntoSingleChunk() {
     var service = new ChunkingService(new IndexingProperties(1000, 100, 50, null, null, null, 0));

@@ -40,6 +40,8 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -316,6 +318,46 @@ class AttachmentIndexerTest {
     // Same cutoff, same depth - proven present via the shared ctx's deferred flag, exactly like
     // the mail chain's markDeferred() above.
     assertThat(ctx.anyEntryDeferred()).isTrue();
+  }
+
+  /**
+   * Regression guard: eight attachments per message, each one again a message with eight, four
+   * levels deep, are 4 680 documents from one root - within every limit per parent and per depth.
+   * The budget per root document ends the fan-out across all levels.
+   */
+  @Test
+  void attachmentsAcrossAllLevelsOfOneRootStopAtTheRootBudget()
+      throws IOException, InterruptedException {
+    AttachmentAccess access = mock(AttachmentAccess.class);
+    when(access.targetLibrary()).thenReturn(ctx.targetLibrary());
+    when(access.events()).thenReturn((category, message, reference) -> {});
+    when(access.progress()).thenReturn(mock(AttachmentProgressSink.class));
+    Path file = tempDir.resolve("verschachtelt.eml");
+    Files.writeString(file, "Mail mit Mails");
+    List<AttachmentSource> eight =
+        IntStream.range(0, 8)
+            .<AttachmentSource>mapToObj(
+                i -> new AttachmentSource.LocalFile(file, "m" + i + ".eml", "/root.eml/" + i))
+            .toList();
+    AtomicInteger ingested = new AtomicInteger();
+    AtomicInteger level = new AtomicInteger();
+    doAnswer(
+            invocation -> {
+              ingested.incrementAndGet();
+              if (level.incrementAndGet() < 4) {
+                indexer.indexAll(
+                    access, eight, parentDocumentId, "/root.eml", SourceTypes.FILESYSTEM, limits);
+              }
+              level.decrementAndGet();
+              return DocumentIngestResult.PROCESSED;
+            })
+        .when(documentIngestService)
+        .ingest(DocumentIngests.anyFile(), any());
+
+    indexer.indexAll(access, eight, parentDocumentId, "/root.eml", SourceTypes.FILESYSTEM, limits);
+
+    assertThat(ingested.get()).isLessThanOrEqualTo(500);
+    verify(access, org.mockito.Mockito.atLeastOnce()).markDeferred();
   }
 
   @Test

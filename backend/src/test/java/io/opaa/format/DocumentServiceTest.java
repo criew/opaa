@@ -14,6 +14,8 @@ import java.nio.file.attribute.PosixFileAttributeView;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -241,6 +243,24 @@ class DocumentServiceTest {
     assertThat(result).isNotEmpty();
     assertThat(result.getFirst().getText()).contains("Title");
     assertThat(result.getFirst().getText()).contains("Some content here");
+  }
+
+  /**
+   * Regression guard: the fallback parses no embedded object, so a container cannot multiply the
+   * text of one embedded document by listing it many times (a .doc's object pool, here a ZIP).
+   */
+  @Test
+  void parseDocumentDoesNotParseEmbeddedDocuments() throws IOException {
+    Path file = tempDir.resolve("container.zip");
+    try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(file))) {
+      zip.putNextEntry(new ZipEntry("innen.txt"));
+      zip.write("Eingebetteter Text".getBytes(StandardCharsets.UTF_8));
+      zip.closeEntry();
+    }
+
+    var result = service.parseDocument(file);
+
+    assertThat(result).allSatisfy(doc -> assertThat(doc.getText()).doesNotContain("Eingebettet"));
   }
 
   @Test
