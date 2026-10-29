@@ -61,7 +61,9 @@ class InitialAdminPolicyTest {
                 "dev-admin",
                 java.util.List.of(
                     new AuthProperties.DevUser("dev-admin", ADMIN, "Dev Admin"),
-                    new AuthProperties.DevUser("dev-user", "dev-user@opaa.local", "Dev User"))));
+                    new AuthProperties.DevUser("dev-user", "dev-user@opaa.local", "Dev User")),
+                null,
+                null));
     InitialAdminPolicy policy = policyFor(dev);
 
     assertThat(policy.grantsSystemAdmin(ADMIN, "opaa-dev")).isTrue();
@@ -73,7 +75,9 @@ class InitialAdminPolicyTest {
   void inTheDevModeTheDevIssuerStillMintsTheDevAdministrator() {
     AuthProperties dev =
         new AuthProperties(
-            "dev", null, new AuthProperties.DevAuth(ADMIN, "opaa-dev", "dev-admin", null));
+            "dev",
+            null,
+            new AuthProperties.DevAuth(ADMIN, "opaa-dev", "dev-admin", null, null, null));
     InitialAdminPolicy policy = policyFor(dev);
 
     assertThat(policy.grantsSystemAdmin(ADMIN, "opaa-dev")).isTrue();
@@ -87,7 +91,9 @@ class InitialAdminPolicyTest {
     // the default user "dev-admin" is not among the configured users: nothing to fall back to
     AuthProperties dev =
         new AuthProperties(
-            "dev", null, new AuthProperties.DevAuth("  ", "opaa-dev", "dev-admin", null));
+            "dev",
+            null,
+            new AuthProperties.DevAuth("  ", "opaa-dev", "dev-admin", null, null, null));
     InitialAdminPolicy policy = policyFor(dev);
 
     assertThat(policy.grantsSystemAdmin(ADMIN, "opaa-dev")).isFalse();
