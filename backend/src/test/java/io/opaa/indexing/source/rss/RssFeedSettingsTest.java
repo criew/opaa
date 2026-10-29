@@ -116,6 +116,47 @@ class RssFeedSettingsTest {
         .hasMessageContaining("Pseudoklassen");
   }
 
+  /**
+   * Attempts to hide a costly part from the check: the check judges the selector as Jsoup parses
+   * it, so quoting, escaping, case and nesting change nothing.
+   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "[title=it's]:has(~ p)",
+        "[title=it's] ~ p",
+        "p:HAS(~ q)",
+        "p :has(q)",
+        "p:not(:has(q))",
+        "[a]:is(p, q ~ r)",
+        "p, :has(q)",
+        "[title=']']:has(q)",
+        "p:containsData(x)",
+        "p:matchText"
+      })
+  void refusesCostlyPartsHowEverTheyAreWritten(String disguised) {
+    assertThatThrownBy(() -> RssFeedSettings.read(selector(disguised)))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("sourceSettings.mainContentSelector");
+  }
+
+  /** An escaped colon is part of a name, never a pseudo-class: Jsoup reads a plain tag. */
+  @ParameterizedTest
+  @ValueSource(strings = {"div\\3a has", "p\\:has"})
+  void anEscapedColonStaysAPlainName(String escaped) {
+    RssFeedSettings settings = RssFeedSettings.read(selector(escaped));
+
+    assertThat(settings.compiledSelector().toString()).doesNotContain(":has(");
+  }
+
+  @Test
+  void theStoredSelectorIsTheOneTheCheckParsed() {
+    RssFeedSettings settings = RssFeedSettings.read(selector("  main   .text  "));
+
+    assertThat(settings.mainContentSelector()).isEqualTo("main   .text");
+    assertThat(RssFeedSettings.read(settings.toData())).isEqualTo(settings);
+  }
+
   @ParameterizedTest
   @ValueSource(
       strings = {
