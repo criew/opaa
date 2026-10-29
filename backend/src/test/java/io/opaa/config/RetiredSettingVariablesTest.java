@@ -100,6 +100,36 @@ class RetiredSettingVariablesTest {
                 + " in the model administration");
   }
 
+  /** The shared model address and key are read in the dev mode only, outside it never. */
+  @Test
+  void theSharedModelVariablesAreNamedOutsideTheDevMode() {
+    MockEnvironment environment =
+        new MockEnvironment()
+            .withProperty("OPAA_OPENAI_BASE_URL", "https://modellserver.example.internal/v1")
+            .withProperty("OPAA_OPENAI_API_KEY", "sk-geheim");
+    environment.setActiveProfiles("docker", "oidc");
+
+    assertThat(RetiredSettingVariables.foundIn(environment))
+        .containsExactly(
+            "OPAA_OPENAI_BASE_URL is read in the dev mode only; set the chat model in the"
+                + " installation, then in the model administration, and the embedding model in the"
+                + " installation",
+            "OPAA_OPENAI_API_KEY is read in the dev mode only; set the chat model in the"
+                + " installation, then in the model administration, and the embedding model in the"
+                + " installation");
+  }
+
+  @Test
+  void theSharedModelVariablesAreReadInTheDevMode() {
+    MockEnvironment environment =
+        new MockEnvironment()
+            .withProperty("OPAA_OPENAI_BASE_URL", "http://ollama:11434/v1")
+            .withProperty("OPAA_OPENAI_API_KEY", "sk-placeholder");
+    environment.setActiveProfiles("docker", "dev");
+
+    assertThat(RetiredSettingVariables.foundIn(environment)).isEmpty();
+  }
+
   @Test
   void theRetiredVariablesAreKnown() {
     assertThat(RetiredSettingVariables.RETIRED)
