@@ -16,13 +16,21 @@ public class SuccessionScheduler {
   private final SuccessionDetectionService detectionService;
   private final SuccessionRetentionService retentionService;
 
+  /**
+   * Takes {@code properties} only so they are bound, and validated, before the expression below is
+   * read: a blank or malformed value then fails naming its variable.
+   */
   SuccessionScheduler(
-      SuccessionDetectionService detectionService, SuccessionRetentionService retentionService) {
+      SuccessionDetectionService detectionService,
+      SuccessionRetentionService retentionService,
+      SuccessionProperties properties) {
     this.detectionService = detectionService;
     this.retentionService = retentionService;
   }
 
-  @Scheduled(cron = "${opaa.succession.detection-cron:0 5 * * * *}")
+  @Scheduled(
+      cron =
+          "${opaa.succession.detection-cron:" + SuccessionProperties.DEFAULT_DETECTION_CRON + "}")
   @SchedulerLock(
       name = "succession-detection",
       lockAtLeastFor = ScheduledRunLocks.AT_LEAST_FOR_MINUTE,
