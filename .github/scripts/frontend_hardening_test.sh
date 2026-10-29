@@ -165,6 +165,17 @@ csp_start() {
   done
   return 1
 }
+# The refusal line can reach `docker logs` shortly after the container has stopped, so the log
+# is read again for a few seconds before the check fails.
+logs_name() {
+  for _ in $(seq 1 10); do
+    if docker logs "$probe" 2>&1 | grep -q "$1"; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
 newline='
 '
 for value in "https://login.example.org; script-src *" "'self'" "data: blob:" \
@@ -172,7 +183,7 @@ for value in "https://login.example.org; script-src *" "'self'" "data: blob:" \
   "https://\$host" "https://login.example.org${newline}add_header X-Evil 1" "https://a.example.org	b.example.org"; do
   if csp_start "$value"; then
     fail "start accepted OPAA_CSP_CONNECT_SRC_EXTRA='$value'"
-  elif docker logs "$probe" 2>&1 | grep -q 'ERROR: OPAA_CSP_CONNECT_SRC_EXTRA must be'; then
+  elif logs_name 'ERROR: OPAA_CSP_CONNECT_SRC_EXTRA must be'; then
     echo "refused as expected: '$value'"
   else
     fail "start failed for OPAA_CSP_CONNECT_SRC_EXTRA='$value' without naming the variable"
@@ -200,7 +211,7 @@ for value in "backend" "127.0.0.11;" "127.0.0.11 valid=1s" "127.0.0.11${newline}
   sleep 3
   if [[ "$(docker container inspect --format '{{.State.Running}}' "$probe")" == true ]]; then
     fail "start accepted OPAA_BACKEND_RESOLVER='$value'"
-  elif docker logs "$probe" 2>&1 | grep -q 'ERROR: OPAA_BACKEND_RESOLVER must be'; then
+  elif logs_name 'ERROR: OPAA_BACKEND_RESOLVER must be'; then
     echo "refused as expected: '$value'"
   else
     fail "start failed for OPAA_BACKEND_RESOLVER='$value' without naming the variable"
