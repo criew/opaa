@@ -108,9 +108,10 @@ class LocalSelfRegistrationTakeoverTest {
   }
 
   @Test
-  void aRegistrationStoresNoPasswordAndCannotSignIn() {
-    accounts.register(ADDRESS, "Erika");
+  void aRegistrationStoresNoPasswordAndNoChosenNameAndCannotSignIn() {
+    accounts.register(ADDRESS);
 
+    assertThat(user.get().getDisplayName()).isEqualTo(ADDRESS);
     assertThat(row.get().getPasswordHash()).isNull();
     assertThat(row.get().getEmailVerifiedAt()).isNull();
     assertThat(row.get().state(NOW)).isEqualTo(LocalAccountState.INVITED);
@@ -120,7 +121,7 @@ class LocalSelfRegistrationTakeoverTest {
   // regression guard for #3357: a hash or name stored before the confirmation never survives it
   @Test
   void theVerificationLinkSetsNameAndPasswordOfItsHolderAndDiscardsEarlierOnes() {
-    accounts.register(ADDRESS, "Name des Angreifers");
+    accounts.register(ADDRESS);
     // a hash already stored - by an older registration or an administrative password
     row.get().setPasswordHash(FOREIGN_HASH, NOW);
 
@@ -140,7 +141,7 @@ class LocalSelfRegistrationTakeoverTest {
 
   @Test
   void aRefusedPasswordOrNameConfirmsNothingAndEndsNoSession() {
-    accounts.register(ADDRESS, "Erika");
+    accounts.register(ADDRESS);
 
     assertThatThrownBy(() -> passwords.confirmRegistration("roh", "Erika", "kurz"))
         .isInstanceOf(FieldValidationException.class);
@@ -149,14 +150,14 @@ class LocalSelfRegistrationTakeoverTest {
 
     assertThat(row.get().getPasswordHash()).isNull();
     assertThat(row.get().getEmailVerifiedAt()).isNull();
-    assertThat(user.get().getDisplayName()).isEqualTo("Erika");
+    assertThat(user.get().getDisplayName()).isEqualTo(ADDRESS);
     verify(revocation, never()).invalidateSessionsIssuedBefore(any());
     verify(refreshTokens, never()).revokeAllForUser(any(), any());
   }
 
   @Test
   void anUnknownVerificationLinkIsRefusedLikeEveryOtherInvalidLink() {
-    accounts.register(ADDRESS, "Erika");
+    accounts.register(ADDRESS);
     when(actionTokens.redeem("fremd", ActionTokenPurpose.VERIFY_EMAIL))
         .thenReturn(Optional.empty());
 
@@ -174,7 +175,7 @@ class LocalSelfRegistrationTakeoverTest {
    */
   @Test
   void anInvitationRedeemedFirstClosesTheVerificationLink() {
-    accounts.register(ADDRESS, "Erika");
+    accounts.register(ADDRESS);
     when(actionTokens.redeem("einladung", ActionTokenPurpose.SET_PASSWORD))
         .thenAnswer(
             call ->
@@ -192,9 +193,43 @@ class LocalSelfRegistrationTakeoverTest {
     verify(actionTokens).consumeOpen(user.get().getId(), ActionTokenPurpose.VERIFY_EMAIL);
   }
 
+  /**
+   * A reset link confirms no address. Redeemed on a still unconfirmed registration that already
+   * carries a hash, it must leave the verification link open - otherwise the account could never be
+   * confirmed again.
+   */
+  @Test
+  void aResetOfAnUnconfirmedRegistrationKeepsTheVerificationLinkOpen() {
+    accounts.register(ADDRESS);
+    row.get().setPasswordHash(FOREIGN_HASH, NOW);
+    when(actionTokens.redeem("reset", ActionTokenPurpose.SET_PASSWORD))
+        .thenReturn(Optional.empty());
+    when(actionTokens.redeem("reset", ActionTokenPurpose.RESET_PASSWORD))
+        .thenAnswer(
+            call ->
+                Optional.of(
+                    new LocalActionToken(
+                        user.get().getId(),
+                        ActionTokenPurpose.RESET_PASSWORD,
+                        "hash",
+                        NOW,
+                        NOW.plus(Duration.ofHours(1)))));
+
+    passwords.setPasswordByLink("reset", "Zwischenstand-Passwort-2026");
+
+    assertThat(row.get().getEmailVerifiedAt()).isNull();
+    verify(actionTokens, never()).consumeOpen(any(), eq(ActionTokenPurpose.VERIFY_EMAIL));
+
+    passwords.confirmRegistration("roh", "Erika Muster", OWN_PASSWORD);
+
+    assertThat(row.get().getPasswordHash()).isEqualTo("{enc}" + OWN_PASSWORD);
+    assertThat(row.get().state(NOW)).isEqualTo(LocalAccountState.ACTIVE);
+    verify(actionTokens).consumeOpen(user.get().getId(), ActionTokenPurpose.VERIFY_EMAIL);
+  }
+
   @Test
   void aConfirmedAddressRefusesTheVerificationLink() {
-    accounts.register(ADDRESS, "Erika");
+    accounts.register(ADDRESS);
     row.get().setPasswordHash("{enc}" + OWN_PASSWORD, NOW);
     row.get().markEmailVerified(NOW);
 
@@ -203,7 +238,7 @@ class LocalSelfRegistrationTakeoverTest {
         .hasMessage(LocalActionTokenService.invalidToken().getMessage());
 
     assertThat(row.get().getPasswordHash()).isEqualTo("{enc}" + OWN_PASSWORD);
-    assertThat(user.get().getDisplayName()).isEqualTo("Erika");
+    assertThat(user.get().getDisplayName()).isEqualTo(ADDRESS);
     verify(revocation, never()).invalidateSessionsIssuedBefore(any());
   }
 }

@@ -156,12 +156,10 @@ export const localAuthHandlers = [
   http.post('/api/v1/auth/local/register', async ({ request }) => {
     if (!mockAuthConfig.localAccounts?.enabled) return notFound()
     if (!mockAuthConfig.localAccounts.selfRegistrationEnabled) return notFound()
-    const body = (await request.json()) as { email?: string; displayName?: string }
+    const body = (await request.json()) as { email?: string }
     const email = (body.email ?? '').trim()
-    const displayName = (body.displayName ?? '').trim()
-    // Staged like the backend (LocalUserService.requireAddress, requireText): the first failing
-    // check throws, so one answer carries the errors of one field only. The registration carries no
-    // password - the verification link sets it.
+    // Like the backend (LocalUserService.requireAddress): the registration carries the address
+    // alone - name and password are set by the verification link.
     if (!isPlausibleAddress(email)) {
       return fieldErrorResponse('Bitte geben Sie eine gültige E-Mail-Adresse an.', [
         {
@@ -169,16 +167,6 @@ export const localAuthHandlers = [
           code: 'INVALID_ADDRESS',
           message: 'Bitte geben Sie eine gültige E-Mail-Adresse an.',
         },
-      ])
-    }
-    if (displayName === '') {
-      return fieldErrorResponse('Bitte füllen Sie das Feld aus.', [
-        { field: 'displayName', code: 'REQUIRED', message: 'Das Feld darf nicht leer sein.' },
-      ])
-    }
-    if (displayName.length > 255) {
-      return fieldErrorResponse('Die Eingabe ist zu lang.', [
-        { field: 'displayName', code: 'TOO_LONG', message: 'Höchstens 255 Zeichen sind erlaubt.' },
       ])
     }
     if (email.toLowerCase() === MOCK_RATE_LIMITED_EMAIL) return tooManyRequests()

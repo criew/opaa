@@ -52,13 +52,12 @@ class LocalSelfServiceControllerTest {
     assertThatThrownBy(
             () -> controller.forgotPassword(new LocalForgotPasswordRequest("erika@stadt.example")))
         .isInstanceOf(NoResourceFoundException.class);
-    assertThatThrownBy(
-            () -> controller.register(new LocalRegisterRequest("erika@stadt.example", "Erika")))
+    assertThatThrownBy(() -> controller.register(new LocalRegisterRequest("erika@stadt.example")))
         .isInstanceOf(NoResourceFoundException.class);
 
     verifyNoInteractions(rateLimiter);
     verify(service, never()).requestPasswordReset(anyString());
-    verify(service, never()).register(anyString(), anyString());
+    verify(service, never()).register(anyString());
   }
 
   @Test
@@ -71,7 +70,7 @@ class LocalSelfServiceControllerTest {
         .isEqualTo(204);
     assertThat(
             controller
-                .register(new LocalRegisterRequest("erika@stadt.example", "Erika"))
+                .register(new LocalRegisterRequest("erika@stadt.example"))
                 .getStatusCode()
                 .value())
         .isEqualTo(202);
@@ -82,7 +81,7 @@ class LocalSelfServiceControllerTest {
         .requireAddressAllowance(AddressScope.FORGOT_PASSWORD, "erika@stadt.example");
     order.verify(service).requestPasswordReset("erika@stadt.example");
     order.verify(rateLimiter).requireAddressAllowance(AddressScope.REGISTER, "erika@stadt.example");
-    order.verify(service).register("erika@stadt.example", "Erika");
+    order.verify(service).register("erika@stadt.example");
   }
 
   @Test
@@ -94,12 +93,11 @@ class LocalSelfServiceControllerTest {
     assertThatThrownBy(
             () -> controller.forgotPassword(new LocalForgotPasswordRequest("erika@stadt.example")))
         .isInstanceOf(TooManyRequestsException.class);
-    assertThatThrownBy(
-            () -> controller.register(new LocalRegisterRequest("erika@stadt.example", "Erika")))
+    assertThatThrownBy(() -> controller.register(new LocalRegisterRequest("erika@stadt.example")))
         .isInstanceOf(TooManyRequestsException.class);
 
     verify(service, never()).requestPasswordReset(anyString());
-    verify(service, never()).register(anyString(), anyString());
+    verify(service, never()).register(anyString());
   }
 
   @Test

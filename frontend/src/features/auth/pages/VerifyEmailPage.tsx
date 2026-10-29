@@ -40,7 +40,10 @@ const HEADING = 'Passwort festlegen'
 const MISMATCH_MESSAGE = 'Die beiden Eingaben stimmen nicht überein.'
 /** The fields this form can show an error at, in the order the focus walks them. */
 const FIELDS = ['displayName', 'newPassword', 'repeatedPassword'] as const
-/** A backend that does not know the endpoint yet (rolling update); the link is untouched. */
+/**
+ * A backend that does not know the endpoint yet (rolling update) answers 401 or 404, which the API
+ * call reports as FlowUnavailableError; the link is untouched.
+ */
 const NOT_YET_AVAILABLE_MESSAGE =
   'Die Bestätigung ist gerade nicht möglich. Ihr Link ist dadurch nicht verbraucht — versuchen Sie es in einigen Minuten erneut.'
 

@@ -74,7 +74,7 @@ public class LocalSelfServiceController {
       throw unknownRoute("register");
     }
     rateLimiter.requireAddressAllowance(AddressScope.REGISTER, request.getEmail());
-    service.register(request.getEmail(), request.getDisplayName());
+    service.register(request.getEmail());
     return ResponseEntity.accepted().build();
   }
 

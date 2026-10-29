@@ -116,20 +116,24 @@ describe('VerifyEmailPage', () => {
     expect(screen.getByLabelText('Name')).toHaveFocus()
   })
 
-  // A backend that does not know the endpoint yet answers like an unknown route; the link is kept.
-  it('says the link is kept when the backend does not offer the confirmation yet', async () => {
-    server.use(
-      http.post('/api/v1/auth/local/confirm-registration', () =>
-        HttpResponse.json({ status: 404 }, { status: 404 }),
-      ),
-    )
-    renderAt(`?token=${MOCK_VERIFY_EMAIL_TOKEN}`)
+  // A backend that does not know the endpoint yet treats it as one more /api path that needs a
+  // session (401), or as an unknown route (404); either way the link is kept.
+  it.each([401, 404])(
+    'says the link is kept when the backend answers %i because it lacks the confirmation',
+    async (status) => {
+      server.use(
+        http.post('/api/v1/auth/local/confirm-registration', () =>
+          HttpResponse.json({ status }, { status }),
+        ),
+      )
+      renderAt(`?token=${MOCK_VERIFY_EMAIL_TOKEN}`)
 
-    await fillAndSubmit()
+      await fillAndSubmit()
 
-    expect(await screen.findByText(/Ihr Link ist dadurch nicht verbraucht/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Adresse bestätigen' })).toBeInTheDocument()
-  })
+      expect(await screen.findByText(/Ihr Link ist dadurch nicht verbraucht/)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Adresse bestätigen' })).toBeInTheDocument()
+    },
+  )
 
   /**
    * ADR-0033, Entscheidung 9: no raw token in any log. The URL has to be clean before the first

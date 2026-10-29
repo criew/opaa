@@ -172,7 +172,8 @@ public class LocalPasswordService {
    * it, so the transaction rolls the redemption back and the link stays open: replaces the hash,
    * clears a forced change, confirms the address unless the link is a reset, lifts a failed-login
    * lockout, consumes every other open link that could set a password and ends every session issued
-   * up to now.
+   * up to now. The verification link is consumed only once the address counts as confirmed: a reset
+   * of a still unconfirmed registration leaves it open, as the only way left to confirm.
    */
   private void writePassword(
       User user,
@@ -194,7 +195,9 @@ public class LocalPasswordService {
     revocation.invalidateSessionsIssuedBefore(user.getId());
     actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.SET_PASSWORD);
     actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.RESET_PASSWORD);
-    actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.VERIFY_EMAIL);
+    if (row.getEmailVerifiedAt() != null) {
+      actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.VERIFY_EMAIL);
+    }
     refreshTokens.revokeAllForUser(user.getId(), RevocationReason.PASSWORD_CHANGED);
   }
 

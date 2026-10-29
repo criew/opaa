@@ -85,20 +85,20 @@ public class LocalSelfServiceAccountService {
   }
 
   /**
-   * Creates the account for an already validated address and name, without a password: role {@code
-   * USER}, expiry {@code default_expiry_days} from now (mandatory), reason {@link #CREATED_REASON},
-   * address unconfirmed. The password is set only by redeeming the verification link, so whoever
-   * registers somebody else's address never decides it. A taken address is a {@link
-   * ConflictException} ({@code EMAIL_TAKEN}); an insert lost to a concurrent registration surfaces
-   * as the unique index's {@code DataIntegrityViolationException} - the caller treats both as "no
-   * account", silently. The one exception is a still unconfirmed self-registration of the same
-   * address: it gets a fresh verification link (the older one is voided) and nothing else. The
-   * personal space is not provisioned here: the first sign-in after the confirmation creates it on
-   * the path every sign-in takes, so an unconfirmed registration leaves no space behind. Both
-   * outcomes that issue a link queue its verification mail.
+   * Creates the account for an already validated address, without a password and with the address
+   * as display name: role {@code USER}, expiry {@code default_expiry_days} from now (mandatory),
+   * reason {@link #CREATED_REASON}, address unconfirmed. Name and password are set only by
+   * redeeming the verification link, so whoever registers somebody else's address decides neither.
+   * A taken address is a {@link ConflictException} ({@code EMAIL_TAKEN}); an insert lost to a
+   * concurrent registration surfaces as the unique index's {@code DataIntegrityViolationException}
+   * - the caller treats both as "no account", silently. The one exception is a still unconfirmed
+   * self-registration of the same address: it gets a fresh verification link (the older one is
+   * voided) and nothing else. The personal space is not provisioned here: the first sign-in after
+   * the confirmation creates it on the path every sign-in takes, so an unconfirmed registration
+   * leaves no space behind. Both outcomes that issue a link queue its verification mail.
    */
   @Transactional
-  public Registered register(String email, String displayName) {
+  public Registered register(String email) {
     Instant now = clock.instant();
     Optional<User> existing = users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, email);
     if (existing.isPresent()) {
@@ -107,7 +107,7 @@ public class LocalSelfServiceAccountService {
       mailer.sendRegistrationVerification(again.user(), again.verification());
       return again;
     }
-    User user = User.localAccount(email, displayName);
+    User user = User.localAccount(email, provisionalName(email));
     user.setOrganizationId(Organization.DEFAULT_ID);
     user.setLastLoginAt(null);
     user = users.saveAndFlush(user);
@@ -130,6 +130,13 @@ public class LocalSelfServiceAccountService {
             .build());
     mailer.sendRegistrationVerification(user, verification);
     return new Registered(user, row, verification);
+  }
+
+  /** The address, cut to the column width of {@code users.display_name}, until the confirmation. */
+  private static String provisionalName(String email) {
+    return email.length() <= LocalSelfServiceService.DISPLAY_NAME_MAX_LENGTH
+        ? email
+        : email.substring(0, LocalSelfServiceService.DISPLAY_NAME_MAX_LENGTH);
   }
 
   /** The account again with a fresh verification link, if it is a self-registration still open. */

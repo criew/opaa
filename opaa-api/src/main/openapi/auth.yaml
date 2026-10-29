@@ -291,12 +291,13 @@ paths:
         are switched on, selfRegistrationEnabled is on with a non-empty domain list and
         OPAA_PUBLIC_BASE_URL is configured (localAccounts.selfRegistrationEnabled in
         GET /api/v1/auth/config); otherwise it answers with the standard 404 (see
-        localForgotPassword). Where it exists, a plausible address and a display name (400 with
-        fieldErrors on email or displayName otherwise - a field error reveals nothing about
-        accounts) always answer 202 after the same response time, the work running off the request
-        thread. The registration carries no password and only a provisional name: the person sets
-        both when redeeming the verification link (localConfirmRegistration), so only who holds
-        the mailbox decides them; the verification mail never repeats the name. For a free
+        localForgotPassword). Where it exists, a plausible address (400 with fieldErrors on email
+        otherwise - a field error reveals nothing about accounts) always answers 202 after the
+        same response time, the work running off the request thread. The registration carries
+        only the address: no password, and the address stands in as the display name. The person
+        sets name and password when redeeming the verification link (localConfirmRegistration),
+        so only who holds the mailbox decides them and no name chosen by somebody else ever
+        reaches the account list. For a free
         address whose domain is on the list an account is created (role USER, expiry
         local_auth_settings.default_expiry_days from now, creation reason "Selbstregistrierung",
         no password, address unconfirmed and therefore not able to sign in) and the mail
@@ -316,7 +317,7 @@ paths:
         "202":
           description: Accepted - whether or not an account was created
         "400":
-          description: Field errors on email or displayName
+          description: Field errors on email
           content:
             application/json:
               schema:
@@ -667,7 +668,7 @@ components:
 
     LocalRegisterRequest:
       type: object
-      required: [email, displayName]
+      required: [email]
       properties:
         email:
           type: string
@@ -675,14 +676,6 @@ components:
           maxLength: 320
           description: The address, whose domain must be on local_auth_settings.self_registration_allowed_domains.
           example: erika.muster@stadt.example
-        displayName:
-          type: string
-          minLength: 1
-          maxLength: 255
-          description: >
-            Provisional until the registration is confirmed, which sets the name again; never
-            part of the verification mail.
-          example: Erika Muster
 
     LocalConfirmRegistrationRequest:
       type: object

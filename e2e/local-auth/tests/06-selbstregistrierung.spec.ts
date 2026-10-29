@@ -84,7 +84,6 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
     await clearMailbox();
     await user.goto("/register");
     await expect(user.getByRole("heading", { level: 1, name: "Konto registrieren" })).toBeVisible();
-    await user.locator("#register-display-name").fill("Fremde Person");
     await user.locator("#register-email").fill(outsideAddress);
     await user.getByRole("button", { name: "Konto registrieren" }).click();
     await expect(
@@ -94,7 +93,8 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
     // An address inside the list does create an account - unconfirmed, and therefore not yet able
     // to sign in.
     await user.goto("/register");
-    await user.locator("#register-display-name").fill("Neue Kollegin");
+    // The form asks for the address alone: nobody can put a name on somebody else's account.
+    await expect(user.locator("#register-display-name")).toHaveCount(0);
     await user.locator("#register-email").fill(address);
     await user.getByRole("button", { name: "Konto registrieren" }).click();
     await expect(
@@ -111,7 +111,6 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
     expect(await mailCount()).toBe(1);
     expect(confirmation.recipients.map((a) => a.toLowerCase())).toEqual([address.toLowerCase()]);
     expect(confirmation.text).toContain("Nicht von Ihnen?");
-    expect(confirmation.text).not.toContain("Neue Kollegin");
 
     await user.goto("/login");
     await user.getByLabel("E-Mail-Adresse").fill(address);
@@ -121,8 +120,7 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
       user.getByText("Anmeldung nicht möglich. Prüfen Sie E-Mail-Adresse und Passwort."),
     ).toBeVisible();
 
-    // The registration carried no password and only a provisional name: the page behind the link
-    // sets both and confirms the address in one step, so only who holds the mailbox decides them.
+    // The registration carried neither password nor name: the page behind the link sets both and confirms the address in one step, so only who holds the mailbox decides them.
     await user.goto(verifyPath);
     await expect(
       user.getByRole("heading", { level: 1, name: "Passwort festlegen" }),

@@ -717,9 +717,11 @@ eingeladene Konten sowie unbekannte Adressen erhalten nichts und antworten gleic
 ändert keinen Zustand und wird nicht protokolliert — Sitzungen enden erst beim Einlösen.
 **Selbstregistrierung** existiert nur mit Verwaltung an, `self_registration_enabled`, **nichtleerer
 Domänenliste** und Basis-URL (sonst ununterscheidbar von einer unbekannten Route, wie oben). Die
-Registrierung trägt **kein Passwort** und nur einen **vorläufigen Namen** (gegen Pre-Hijacking: wer
-eine fremde Adresse zuerst registriert, darf weder Passwort noch Namen bestimmen). Adresse und Anzeigename werden zuerst geprüft
-(Feldfehler `email`, `displayName` — sie verraten nichts über Konten); alles Weitere läuft auf dem
+Registrierung trägt **nur die Adresse**, kein Passwort und keinen Namen (gegen Pre-Hijacking: wer
+eine fremde Adresse zuerst registriert, darf weder Passwort noch Namen bestimmen; bis zur Bestätigung
+steht die Adresse als Anzeigename, sodass die Kontenliste nie einen von Dritten gewählten Namen
+zeigt; ein `displayName` eines älteren Clients wird ignoriert). Die Adresse wird zuerst geprüft
+(Feldfehler `email` — er verrät nichts über Konten); alles Weitere läuft auf dem
 Mail-Thread — die Antwort ist in jedem Ausgang **dieselbe 202 nach derselben Zeit** (der festen
 Frist): Domäne gegen die Liste (exakt), Adresse gegen den lokalen Issuer — eine
 freie Adresse mit erlaubter Domäne wird als Konto angelegt (Rolle `USER`, Ablauf **Pflicht** aus
@@ -734,7 +736,8 @@ nichts — auch keine Hinweis-Mail. Ereignis `LOCAL_USER_REGISTERED` unter dem S
 `local-auth`, nur bei der Anlage. Der persönliche Space entsteht erst bei der ersten Anmeldung nach
 der Bestätigung, auf dem Weg jeder Anmeldung — eine nie bestätigte Registrierung hinterlässt keinen
 Space. **Registrierung abschließen** (`confirm-registration`, ein eigener Pfad, damit ein Backend
-älterer Fassung im Rolling Update mit 404 antwortet statt ohne Passwort zu bestätigen) nimmt den
+älterer Fassung im Rolling Update den anonymen Aufruf mit 401 abweist statt ohne Passwort zu
+bestätigen) nimmt den
 `VERIFY_EMAIL`-Link, **Namen und neues Passwort** entgegen, löst den Link genau einmal ein, setzt
 `email_verified_at`, den Namen und den Hash — ein vorher gespeicherter Hash (aus einer
 Registrierung älterer Fassung oder einem erzeugten Passwort) ist damit verworfen — und beendet wie
@@ -742,7 +745,9 @@ Registrierung älterer Fassung oder einem erzeugten Passwort) ist damit verworfe
 für ein Konto mit bereits bestätigter Adresse; Feldfehler an `displayName` oder `newPassword` lassen
 den Link offen); danach ist das Konto `ACTIVE`. Eine Adressänderung durch die Verwaltung entwertet
 den Bestätigungslink. Ein administratives Zurücksetzen schickt einer unbestätigten
-Selbstregistrierung ohne Passwort die Einladung, deren Einlösen die Adresse bestätigt. Die
+Selbstregistrierung ohne Passwort die Einladung, deren Einlösen die Adresse bestätigt und den
+Bestätigungslink entwertet; hat sie schon einen Hash, kommt ein Rücksetzlink, der die Adresse nicht
+bestätigt und den Bestätigungslink deshalb offen lässt. Die
 Rate-Limits aus #1535 greifen je Client-Adresse über die Pfadregeln (auch für
 `confirm-registration` unter dem Schlüssel `verify-email`, 10/900 s) und je
 E-Mail-Adresse vor jeder Verarbeitung — für einen abgeschalteten Fluss greift **keines von beiden**:
@@ -779,7 +784,8 @@ entscheiden aber nichts, solange die Konfiguration noch lädt. `/verify-email` z
 „Passwort festlegen" (Name, leer vorbelegt, Passwort und Wiederholung) und sendet den `POST` erst
 beim Absenden — das Laden der Seite hat keine Wirkung; Erfolg ist „E-Mail-Adresse bestätigt und
 Passwort festgelegt", ein abgewiesener Link „Link ungültig", eine Begrenzung nennt die Wartezeit
-über dem Formular, ein Backend ohne den Endpunkt (404) die Auskunft, dass der Link erhalten bleibt.
+über dem Formular, ein Backend ohne den Endpunkt (401 oder 404) die Auskunft, dass der Link erhalten
+bleibt. `/register` fragt nur die Adresse.
 
 **Kein Roh-Token in der Adresszeile.** Beide Seiten lesen den Token genau einmal und **entfernen ihn
 sofort aus der URL**, bevor die erste Anfrage der Seite hinausgeht: Solange er dort steht, ist er der

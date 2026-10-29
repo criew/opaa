@@ -2,7 +2,6 @@ package io.opaa.account;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -125,14 +124,14 @@ class LocalSelfServiceServiceTest {
 
   @Test
   void aRegistrationCreatesNothingForAForeignDomainOrATakenAddress() {
-    when(accounts.register(eq("belegt@stadt.example"), anyString()))
+    when(accounts.register(eq("belegt@stadt.example")))
         .thenThrow(new ConflictException("belegt", LocalUserService.EMAIL_TAKEN));
-    when(accounts.register(eq("verloren@stadt.example"), anyString()))
+    when(accounts.register(eq("verloren@stadt.example")))
         .thenThrow(new DataIntegrityViolationException("ux_users_local_email"));
 
-    long foreign = millis(() -> service.register("wer@anderswo.example", "Wer"));
-    long taken = millis(() -> service.register("belegt@stadt.example", "Wer"));
-    long lost = millis(() -> service.register("verloren@stadt.example", "Wer"));
+    long foreign = millis(() -> service.register("wer@anderswo.example"));
+    long taken = millis(() -> service.register("belegt@stadt.example"));
+    long lost = millis(() -> service.register("verloren@stadt.example"));
 
     for (long ms : List.of(foreign, taken, lost)) {
       assertThat(ms).isBetween(FLOOR, CEILING);
@@ -143,9 +142,9 @@ class LocalSelfServiceServiceTest {
     verifyNoInteractions(accounts);
     assertThat(queued).hasSize(3);
     queued.forEach(Runnable::run);
-    verify(accounts, never()).register(eq("wer@anderswo.example"), anyString());
-    verify(accounts).register("belegt@stadt.example", "Wer");
-    verify(accounts).register("verloren@stadt.example", "Wer");
+    verify(accounts, never()).register(eq("wer@anderswo.example"));
+    verify(accounts).register("belegt@stadt.example");
+    verify(accounts).register("verloren@stadt.example");
   }
 
   @Test
@@ -153,25 +152,21 @@ class LocalSelfServiceServiceTest {
     User user = User.localAccount("neu@stadt.example", "Neu");
     IssuedActionToken token =
         new IssuedActionToken("roh", Instant.now().plus(Duration.ofHours(24)));
-    when(accounts.register("neu@stadt.example", "Neu"))
-        .thenReturn(new Registered(user, null, token));
+    when(accounts.register("neu@stadt.example")).thenReturn(new Registered(user, null, token));
 
-    service.register("neu@stadt.example", "Neu");
+    service.register("neu@stadt.example");
 
     verifyNoInteractions(accounts);
     assertThat(queued).hasSize(1);
     queued.getFirst().run();
-    verify(accounts).register("neu@stadt.example", "Neu");
+    verify(accounts).register("neu@stadt.example");
   }
 
   @Test
   void aRegistrationRefusesBadInputWithFieldErrorsBeforeAnyCost() {
-    assertThatThrownBy(() -> service.register("keine-adresse", "Wer"))
+    assertThatThrownBy(() -> service.register("keine-adresse"))
         .isInstanceOf(FieldValidationException.class)
         .satisfies(e -> assertThat(fields(e)).containsExactly("email"));
-    assertThatThrownBy(() -> service.register("wer@stadt.example", " "))
-        .isInstanceOf(FieldValidationException.class)
-        .satisfies(e -> assertThat(fields(e)).containsExactly("displayName"));
     assertThatThrownBy(() -> service.requestPasswordReset("keine-adresse"))
         .isInstanceOf(FieldValidationException.class)
         .satisfies(e -> assertThat(fields(e)).containsExactly("email"));

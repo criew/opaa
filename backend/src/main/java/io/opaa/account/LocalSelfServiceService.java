@@ -130,27 +130,26 @@ public class LocalSelfServiceService implements LocalSelfServiceAvailability {
   }
 
   /**
-   * Field errors for a bad address or name come first - they reveal nothing about accounts. After
-   * them, everything runs on the executor and the answer comes after {@link #RESPONSE_FLOOR}: the
-   * domain check against the list, the account unless the address is taken (found, or lost in a
-   * race on the unique index) or still an unconfirmed self-registration (which gets its link
-   * again), and the verification mail.
+   * A field error for a bad address comes first - it reveals nothing about accounts. After them,
+   * everything runs on the executor and the answer comes after {@link #RESPONSE_FLOOR}: the domain
+   * check against the list, the account unless the address is taken (found, or lost in a race on
+   * the unique index) or still an unconfirmed self-registration (which gets its link again), and
+   * the verification mail.
    */
-  public void register(String email, String displayName) {
+  public void register(String email) {
     String address = LocalUserService.requireAddress(email);
-    String name = LocalUserService.requireText("displayName", displayName, DISPLAY_NAME_MAX_LENGTH);
     long deadline = System.nanoTime() + RESPONSE_FLOOR.toNanos();
-    executor.execute(() -> registerOffThread(address, name));
+    executor.execute(() -> registerOffThread(address));
     holdUntil(deadline);
   }
 
-  private void registerOffThread(String address, String name) {
+  private void registerOffThread(String address) {
     if (!isDomainAllowed(address)) {
       return;
     }
     Registered registered;
     try {
-      registered = accounts.register(address, name);
+      registered = accounts.register(address);
     } catch (ConflictException | DataIntegrityViolationException taken) {
       return;
     }

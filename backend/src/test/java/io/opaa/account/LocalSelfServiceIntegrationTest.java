@@ -385,13 +385,21 @@ class LocalSelfServiceIntegrationTest {
     String email = "neu-" + UUID.randomUUID() + "@" + DOMAIN;
     Instant before = Instant.now();
 
-    register(email, "Neue Person").andExpect(status().isAccepted()).andExpect(content().string(""));
+    // a client of the former form still sends a name; it is ignored
+    mockMvc
+        .perform(
+            post(REGISTER)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json(Map.of("email", email, "displayName", "Neue Person"))))
+        .andExpect(status().isAccepted())
+        .andExpect(content().string(""));
     // the account and the mail are made off the request thread; the mail is the sync point
     assertThat(mailbox.waitFor(1, 10_000)).isTrue();
 
     User user = users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, email).orElseThrow();
     assertThat(user.getSystemRole()).isEqualTo(SystemRole.USER);
-    assertThat(user.getDisplayName()).isEqualTo("Neue Person");
+    // no name chosen by the registrant: the address stands in until the confirmation
+    assertThat(user.getDisplayName()).isEqualTo(email);
     assertThat(user.getLastLoginAt()).isNull();
     LocalCredentials row = credentials.findById(user.getId()).orElseThrow();
     assertThat(row.getCreatedReason()).isEqualTo("Selbstregistrierung");
@@ -412,7 +420,6 @@ class LocalSelfServiceIntegrationTest {
     assertThat(text)
         .contains("https://opaa.test.example/" + LocalAccountLinks.VERIFY_EMAIL_PATH + "?token=")
         .contains("Nicht von Ihnen?")
-        // the registrant's own entry never reaches an address not yet proven to be theirs
         .doesNotContain("Neue Person");
     String token = LocalMailbox.tokenIn(text);
     LocalActionToken issued =
@@ -426,7 +433,7 @@ class LocalSelfServiceIntegrationTest {
     row = credentials.findById(user.getId()).orElseThrow();
     assertThat(row.getEmailVerifiedAt()).isNotNull();
     assertThat(row.state(Instant.now())).isEqualTo(LocalAccountState.ACTIVE);
-    // the link holder chose the name; the provisional one of the registration is gone
+    // the link holder chose the name
     assertThat(users.findById(user.getId()).orElseThrow().getDisplayName())
         .isEqualTo("Erika Muster");
     MvcResult session = login(email, NEW_PASSWORD, 200);
@@ -444,7 +451,6 @@ class LocalSelfServiceIntegrationTest {
     assertThat(registered.getFirst().get("actor_ref")).isEqualTo("local-auth");
     assertThat(String.valueOf(registered.getFirst().values()))
         .doesNotContain(email)
-        .doesNotContain("Neue Person")
         .doesNotContain(user.getId().toString());
   }
 
@@ -454,8 +460,7 @@ class LocalSelfServiceIntegrationTest {
     LocalAccount taken = fixtures.activeUser("belegt-" + UUID.randomUUID() + "@" + DOMAIN);
     String foreign = "fremd-" + UUID.randomUUID() + "@anderswo.example";
     // warm-up
-    register("aufwaermen-" + UUID.randomUUID() + "@" + DOMAIN, "Aufwärmen")
-        .andExpect(status().isAccepted());
+    register("aufwaermen-" + UUID.randomUUID() + "@" + DOMAIN).andExpect(status().isAccepted());
     assertThat(mailbox.waitFor(1, 10_000)).isTrue();
 
     // Every round times each case once, in a shuffled order, after the dispatch thread has
@@ -480,7 +485,7 @@ class LocalSelfServiceIntegrationTest {
         awaitDispatchIdle();
         long start = System.nanoTime();
         MvcResult result =
-            register(testCase.getValue(), "Irgendwer").andExpect(status().isAccepted()).andReturn();
+            register(testCase.getValue()).andExpect(status().isAccepted()).andReturn();
         long ms = (System.nanoTime() - start) / 1_000_000;
         assertThat(result.getResponse().getContentAsString()).isEmpty();
         times.computeIfAbsent(testCase.getKey(), name -> new ArrayList<>()).add(ms);
@@ -553,17 +558,17 @@ class LocalSelfServiceIntegrationTest {
   void aStillUnconfirmedSelfRegistrationGetsItsLinkAgainAndNothingElse() throws Exception {
     replaceSettings(withRegistration(true, List.of(DOMAIN)));
     String email = "neu-" + UUID.randomUUID() + "@" + DOMAIN;
-    register(email, "Erste Person").andExpect(status().isAccepted());
+    register(email).andExpect(status().isAccepted());
     assertThat(mailbox.waitFor(1, 10_000)).isTrue();
     User user = users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, email).orElseThrow();
     String first = LocalMailbox.tokenIn(LocalMailbox.plainText(mailbox.messages()[0]));
 
-    register(email.toUpperCase(), "Zweite Person").andExpect(status().isAccepted());
+    register(email.toUpperCase()).andExpect(status().isAccepted());
 
     assertThat(mailbox.waitFor(2, 10_000)).isTrue();
     String second = LocalMailbox.tokenIn(LocalMailbox.plainText(mailbox.messages()[1]));
     assertThat(second).isNotEqualTo(first);
-    // one account, the name of the first registration, still no password, the first link voided
+    // one account, the address as its name, still no password, the first link voided
     assertThat(
             jdbc.queryForObject(
                 "SELECT count(*) FROM users WHERE issuer = ? AND lower(email) = lower(?)",
@@ -571,8 +576,7 @@ class LocalSelfServiceIntegrationTest {
                 LocalIssuer.URN,
                 email))
         .isEqualTo(1);
-    assertThat(users.findById(user.getId()).orElseThrow().getDisplayName())
-        .isEqualTo("Erste Person");
+    assertThat(users.findById(user.getId()).orElseThrow().getDisplayName()).isEqualTo(email);
     assertThat(credentials.findById(user.getId()).orElseThrow().getPasswordHash()).isNull();
     assertThat(actionTokens.findRedeemable(first, ActionTokenPurpose.VERIFY_EMAIL)).isEmpty();
     confirm(first, "Erika Muster", NEW_PASSWORD)
@@ -594,7 +598,7 @@ class LocalSelfServiceIntegrationTest {
       throws Exception {
     replaceSettings(withRegistration(true, List.of(DOMAIN)));
     String email = "neu-" + UUID.randomUUID() + "@" + DOMAIN;
-    register(email, "Neue Person").andExpect(status().isAccepted());
+    register(email).andExpect(status().isAccepted());
     assertThat(mailbox.waitFor(1, 10_000)).isTrue();
     User user = users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, email).orElseThrow();
     String verification = LocalMailbox.tokenIn(LocalMailbox.plainText(mailbox.messages()[0]));
@@ -624,7 +628,7 @@ class LocalSelfServiceIntegrationTest {
   void aChangedAddressClosesTheVerificationLinkOfTheOldOne() throws Exception {
     replaceSettings(withRegistration(true, List.of(DOMAIN)));
     String email = "neu-" + UUID.randomUUID() + "@" + DOMAIN;
-    register(email, "Neue Person").andExpect(status().isAccepted());
+    register(email).andExpect(status().isAccepted());
     assertThat(mailbox.waitFor(1, 10_000)).isTrue();
     User user = users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, email).orElseThrow();
     String verification = LocalMailbox.tokenIn(LocalMailbox.plainText(mailbox.messages()[0]));
@@ -654,7 +658,7 @@ class LocalSelfServiceIntegrationTest {
     // regression guard for #3357: the confirmation always replaces a hash stored before it
     replaceSettings(withRegistration(true, List.of(DOMAIN)));
     String email = "erika-" + UUID.randomUUID() + "@" + DOMAIN;
-    register(email, "Erika").andExpect(status().isAccepted());
+    register(email).andExpect(status().isAccepted());
     assertThat(mailbox.waitFor(1, 10_000)).isTrue();
     User user = users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, email).orElseThrow();
     LocalCredentials planted = credentials.findById(user.getId()).orElseThrow();
@@ -679,19 +683,13 @@ class LocalSelfServiceIntegrationTest {
   }
 
   @Test
-  void theRegistrationRefusesAnInvalidAddressOrNameWithFieldErrors() throws Exception {
+  void theRegistrationRefusesAnInvalidAddressWithAFieldError() throws Exception {
     replaceSettings(withRegistration(true, List.of(DOMAIN)));
-    register("keine-adresse", "Name")
+    register("keine-adresse")
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.fieldErrors[0].field").value("email"))
         .andExpect(jsonPath("$.fieldErrors[0].code").value("INVALID_ADDRESS"));
-    String email = "x-" + UUID.randomUUID() + "@" + DOMAIN;
-    register(email, "   ")
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.fieldErrors[0].field").value("displayName"))
-        .andExpect(jsonPath("$.fieldErrors[0].code").value("REQUIRED"));
     assertThat(mailbox.waitFor(1, 1_000)).isFalse();
-    assertThat(users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, email)).isEmpty();
   }
 
   // ---- switched-off flows
@@ -711,7 +709,7 @@ class LocalSelfServiceIntegrationTest {
     replaceSettings(withRegistration(true, List.of()));
     assertLikeUnknownRoute(REGISTER, unknown, registration(email));
     replaceSettings(withRegistration(true, List.of(DOMAIN)));
-    register(email, "Name").andExpect(status().isAccepted());
+    register(email).andExpect(status().isAccepted());
     assertThat(mailbox.waitFor(1, 10_000)).isTrue();
     fixtures.localProvider(false);
     assertLikeUnknownRoute(REGISTER, unknown, registration(email));
@@ -777,7 +775,7 @@ class LocalSelfServiceIntegrationTest {
     root.addAppender(logs);
     try {
       String email = "neu-" + UUID.randomUUID() + "@" + DOMAIN;
-      register(email, "Neue Person").andExpect(status().isAccepted());
+      register(email).andExpect(status().isAccepted());
       assertThat(mailbox.waitFor(1, 10_000)).isTrue();
       String verification = LocalMailbox.tokenIn(LocalMailbox.plainText(mailbox.messages()[0]));
       confirm(verification, "Erika Muster", NEW_PASSWORD).andExpect(status().isNoContent());
@@ -789,7 +787,7 @@ class LocalSelfServiceIntegrationTest {
 
       List<String> secrets =
           List.of(verification, reset, NEW_PASSWORD, "zweites-sicheres-passwort-2026");
-      List<String> personal = List.of(email, email.toUpperCase(), "Neue Person");
+      List<String> personal = List.of(email, email.toUpperCase(), "Erika Muster");
       List<ILoggingEvent> captured = new ArrayList<>(logs.list);
       assertThat(captured).anyMatch(event -> event.getLoggerName().startsWith("io.opaa"));
       for (ILoggingEvent event : captured) {
@@ -815,7 +813,7 @@ class LocalSelfServiceIntegrationTest {
         assertThat(text)
             .as("audit row %s", row.get("event_type"))
             .doesNotContain(email)
-            .doesNotContain("Neue Person")
+            .doesNotContain("Erika Muster")
             .doesNotContain(id.toString());
         for (String secret : secrets) {
           assertThat(text).doesNotContain(secret);
@@ -864,12 +862,12 @@ class LocalSelfServiceIntegrationTest {
             .content(json(Map.of("email", email))));
   }
 
-  private org.springframework.test.web.servlet.ResultActions register(
-      String email, String displayName) throws Exception {
+  private org.springframework.test.web.servlet.ResultActions register(String email)
+      throws Exception {
     return mockMvc.perform(
         post(REGISTER)
             .contentType(MediaType.APPLICATION_JSON)
-            .content(json(Map.of("email", email, "displayName", displayName))));
+            .content(json(Map.of("email", email))));
   }
 
   private org.springframework.test.web.servlet.ResultActions confirm(
@@ -913,9 +911,7 @@ class LocalSelfServiceIntegrationTest {
 
   private static Function<String, MockHttpServletRequestBuilder> registration(String email) {
     return path ->
-        post(path)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(json(Map.of("email", email, "displayName", "Name")));
+        post(path).contentType(MediaType.APPLICATION_JSON).content(json(Map.of("email", email)));
   }
 
   private void replaceSettings(Values values) {

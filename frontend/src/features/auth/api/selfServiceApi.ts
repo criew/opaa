@@ -92,9 +92,9 @@ export async function forgotPassword(email: string): Promise<void> {
  * Registers an account. Answers 202 whether or not one was created. Carries no password: the person
  * sets it with the verification link, so whoever registers somebody else's address cannot.
  */
-export async function register(email: string, displayName: string): Promise<void> {
+export async function register(email: string): Promise<void> {
   try {
-    await authClient.post(`${LOCAL_AUTH_BASE}/register`, { email, displayName })
+    await authClient.post(`${LOCAL_AUTH_BASE}/register`, { email })
   } catch (err) {
     rethrowAsSelfServiceFailure(err, 'Die Registrierung wurde nicht angenommen.')
   }
@@ -116,6 +116,9 @@ export async function confirmRegistration(
       newPassword,
     })
   } catch (err) {
+    // A backend from before this endpoint (rolling update) answers an anonymous call with 401,
+    // since every other /api path needs a session; that is "not yet available", not a dead link.
+    if (axios.isAxiosError(err) && err.response?.status === 401) throw new FlowUnavailableError()
     rethrowAsSelfServiceFailure(err, 'Die Bestätigung war nicht möglich.')
   }
 }
