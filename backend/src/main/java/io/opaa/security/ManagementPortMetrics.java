@@ -59,10 +59,11 @@ public class ManagementPortMetrics implements ApplicationListener<WebServerIniti
    */
   public static RequestMatcher onManagementPort(ObjectProvider<ManagementPortMetrics> metrics) {
     return request -> {
+      if (!METRIC_PATHS.matches(request)) {
+        return false;
+      }
       ManagementPortMetrics ports = metrics.getIfAvailable();
-      return ports != null
-          && ports.isManagementPort(request.getLocalPort())
-          && METRIC_PATHS.matches(request);
+      return ports != null && ports.isManagementPort(request.getLocalPort());
     };
   }
 }

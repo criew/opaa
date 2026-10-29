@@ -39,7 +39,8 @@ export function useDocumentUpload(
   // A whole-folder counterpart to fileInputRef - `webkitdirectory` is not part of React's
   // JSX typings for <input>, so it is set imperatively via the effect below instead of as a prop.
   const folderInputRef = useRef<HTMLInputElement>(null)
-  // Ends the files still to come and a running wait for a 429 once the page leaves this library.
+  // Ends a running wait for a 429 once the page leaves this library; files not yet sent still go
+  // out.
   const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
@@ -67,10 +68,8 @@ export function useDocumentUpload(
     }
     const signal = abortRef.current?.signal
     for (const entry of entries) {
-      if (signal?.aborted) return
       try {
         await uploadNewDocument(libraryId, entry.file, entry.relativePath || undefined, signal)
-        if (signal?.aborted) return
         onDocumentsChanged()
       } catch {
         // The error is already collected in documentStore.uploadErrors; the loop keeps

@@ -239,8 +239,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     boolean handedOver = false;
     try {
       // Created only after every certain-to-reject check above: resolveOrCreateFolderPath commits
-      // its
-      // folder chain on return, so a rejected upload must not reach it.
+      // its folder chain on return, so a rejected upload must not reach it.
       UUID effectiveFolderId = folderId;
       List<String> pathSegments = splitFolderPath(folderPath);
       if (!pathSegments.isEmpty()) {
@@ -250,18 +249,16 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
 
       UploadedOriginalStore.AcceptedUpload accepted =
           acceptUpload(library.getOrganizationId(), libraryId, extension, file);
-      // The working file the rest of this upload reads - the same file the asynchronous processing
-      // gets, and the one it releases when it is done (ADR-0030, Entscheidung 2). It only becomes
-      // the
-      // library's original at accepted.store() below, after the checks that still reject an upload.
+      // The working file the rest of this upload reads - the same file the asynchronous
+      // processing gets, and the one it releases when it is done (ADR-0030, Entscheidung 2). It
+      // only becomes the library's original at accepted.store() below, after the checks that
+      // still reject an upload.
       Path storedFile = accepted.workingFile();
 
       // Assigned as the last statement of the try below, and read only after it: once the upload
-      // has
-      // been handed to the asynchronous task, nothing may run inside a block whose catch discards
-      // the
-      // original the task is parsing (it would leave the committed row pointing at a dead
-      // file_path).
+      // has been handed to the asynchronous task, nothing may run inside a block whose catch
+      // discards the original the task is parsing (it would leave the committed row pointing at
+      // a dead file_path).
       Document storedRow;
       try {
         requireContentMatchesExtension(storedFile, extension);
@@ -308,20 +305,18 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
         document.setUploadedByUserId(currentUserId);
         document.setFolderId(effectiveFolderId);
         // Set on this first (and only synchronous) save: this is where a concurrent duplicate
-        // upload
-        // race against uk_documents_library_checksum is meant to be settled - before any embedding
-        // work starts, not after, even though the embedding work itself runs off this thread.
+        // upload race against uk_documents_library_checksum is meant to be settled - before
+        // any embedding work starts, not after, even though the embedding work itself runs
+        // off this thread.
         document.setChecksum(checksum);
         document.setProcessingInstanceId(currentInstance.id());
         document = documentRepository.save(document);
 
         // The row is committed: a failure from here on marks it FAILED instead of reaching the
-        // outer
-        // catch, which would leave the row pointing at a deleted file.
+        // outer catch, which would leave the row pointing at a deleted file.
         try {
           // Parsing/chunking/embedding run on uploadTaskExecutor from here - this method returns
-          // the
-          // PENDING row without waiting for that to finish.
+          // the PENDING row without waiting for that to finish.
           documentIngestService.processUploadedFileAsync(
               DocumentIngest.builder(library)
                   .file(storedFile, fileSize)

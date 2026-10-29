@@ -39,8 +39,11 @@ function rateLimitWaitSeconds(err: unknown): number | null {
   return Math.min(Math.max(retryAfterSecondsOf(err) ?? 1, 1), 60)
 }
 
-/** How often one file waits out a 429 before the refusal counts as its error. */
-const MAX_RATE_LIMIT_WAITS = 10
+/**
+ * How long one file waits out 429s in all before the refusal counts as its error: long enough for
+ * a processing queue that stays full for a few minutes.
+ */
+const MAX_RATE_LIMIT_WAIT_SECONDS = 300
 
 /** Resolves after `ms`, or as soon as `signal` aborts; true when the full time passed. */
 function waitUnlessAborted(ms: number, signal?: AbortSignal): Promise<boolean> {
@@ -163,7 +166,7 @@ interface DocumentState {
   stopRunCounting: (libraryId: string) => void
   /**
    * Uploads one file into the open folder. A 429 is waited out (Retry-After) and the same file
-   * sent again; an abort of `signal` ends the wait without an error and without a further try.
+   * sent again; an abort of `signal` ends such a wait, and the file counts as refused.
    */
   uploadNewDocument: (
     libraryId: string,
@@ -362,13 +365,11 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       // duplicate per file.
       // A folder upload sends file after file; past the upload rate limit or a full processing
       // queue it waits and goes on with the same file instead of failing every file that is left.
-      // Every try belongs to the session that started the upload and to a page still open.
-      for (let waits = 0; ; waits++) {
+      // Every try belongs to the session that started the upload. Leaving the page (signal) only
+      // ends a wait: the waiting file counts as refused, files not yet sent still go out.
+      let waitedSeconds = 0
+      for (;;) {
         if (isStaleSessionEpoch(sessionEpoch)) return
-        if (signal?.aborted) {
-          set({ isUploading: false, uploadWaitSeconds: null })
-          return
-        }
         try {
           await uploadDocumentRequest(libraryId, file, folderId, folderPath)
           break
@@ -376,14 +377,18 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
           const seconds = rateLimitWaitSeconds(err)
           if (
             seconds === null ||
-            waits >= MAX_RATE_LIMIT_WAITS ||
-            isStaleSessionEpoch(sessionEpoch)
+            waitedSeconds + seconds > MAX_RATE_LIMIT_WAIT_SECONDS ||
+            isStaleSessionEpoch(sessionEpoch) ||
+            signal?.aborted
           ) {
             throw err
           }
           set({ uploadWaitSeconds: seconds })
-          await waitUnlessAborted(seconds * 1000, signal)
-          if (!isStaleSessionEpoch(sessionEpoch)) set({ uploadWaitSeconds: null })
+          const waitedOut = await waitUnlessAborted(seconds * 1000, signal)
+          if (isStaleSessionEpoch(sessionEpoch)) return
+          set({ uploadWaitSeconds: null })
+          if (!waitedOut) throw err
+          waitedSeconds += seconds
         }
       }
       if (isStaleSessionEpoch(sessionEpoch)) return

@@ -329,18 +329,18 @@ describe('documentStore', () => {
     }
   })
 
-  it('reports the 429 as the file error once the waits are used up', async () => {
+  it('reports the 429 as the file error once five minutes of waiting are used up', async () => {
     vi.useFakeTimers()
     try {
-      mockUploadDocument.mockRejectedValue(rateLimitedError('1'))
+      mockUploadDocument.mockRejectedValue(rateLimitedError('60'))
       const file = new File(['x'], 'bestand.pdf')
 
       const upload = useDocumentStore.getState().uploadNewDocument('library-1', file)
       const settled = expect(upload).rejects.toThrow('Zu viele Anfragen')
-      await vi.advanceTimersByTimeAsync(10_000)
+      await vi.advanceTimersByTimeAsync(300_000)
       await settled
 
-      expect(mockUploadDocument).toHaveBeenCalledTimes(11)
+      expect(mockUploadDocument).toHaveBeenCalledTimes(6)
       expect(useDocumentStore.getState().uploadErrors).toEqual([
         'Zu viele Anfragen (Datei: bestand.pdf)',
       ])
@@ -372,7 +372,7 @@ describe('documentStore', () => {
     }
   })
 
-  it('ends the wait for a 429 without an error and without a further try once aborted', async () => {
+  it('ends the wait for a 429 once aborted and reports the file as refused', async () => {
     vi.useFakeTimers()
     try {
       mockUploadDocument.mockRejectedValueOnce(rateLimitedError('30'))
@@ -386,17 +386,35 @@ describe('documentStore', () => {
           undefined,
           controller.signal,
         )
+      const settled = expect(upload).rejects.toThrow('Zu viele Anfragen')
       await vi.advanceTimersByTimeAsync(1000)
       controller.abort()
-      await upload
+      await settled
 
       expect(mockUploadDocument).toHaveBeenCalledTimes(1)
-      expect(useDocumentStore.getState().uploadErrors).toEqual([])
+      expect(useDocumentStore.getState().uploadErrors).toEqual([
+        'Zu viele Anfragen (Datei: bestand.pdf)',
+      ])
       expect(useDocumentStore.getState().isUploading).toBe(false)
       expect(useDocumentStore.getState().uploadWaitSeconds).toBeNull()
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('still sends a file after the abort, only without waiting out a 429', async () => {
+    mockUploadDocument.mockResolvedValueOnce(pendingDocument)
+    mockGetLibraryDocuments.mockResolvedValueOnce(page([pendingDocument]))
+    const controller = new AbortController()
+    controller.abort()
+    const file = new File(['x'], 'naechste.pdf')
+
+    await useDocumentStore
+      .getState()
+      .uploadNewDocument('library-1', file, undefined, controller.signal)
+
+    expect(mockUploadDocument).toHaveBeenCalledWith('library-1', file, null, undefined)
+    expect(useDocumentStore.getState().uploadErrors).toEqual([])
   })
 
   it('sends no further try for a 429 once the session turned over during the wait', async () => {

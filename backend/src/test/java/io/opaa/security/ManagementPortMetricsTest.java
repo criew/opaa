@@ -2,6 +2,7 @@ package io.opaa.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.Test;
@@ -66,6 +67,18 @@ class ManagementPortMetricsTest {
     for (int port : new int[] {8080, 8081, 0, -1}) {
       assertThat(open.matches(request("/actuator/prometheus", port))).isFalse();
     }
+  }
+
+  @Test
+  void aRequestOutsideTheMetricPathsDoesNotLookUpThePort() {
+    @SuppressWarnings("unchecked")
+    ObjectProvider<ManagementPortMetrics> provider = mock(ObjectProvider.class);
+
+    boolean matched =
+        ManagementPortMetrics.onManagementPort(provider).matches(request("/api/v1/query", 8081));
+
+    assertThat(matched).isFalse();
+    verifyNoInteractions(provider);
   }
 
   @Test

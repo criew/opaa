@@ -653,8 +653,10 @@ etwas gespeichert wird. Ist der Pool voll, antwortet OPAA mit HTTP 429, ohne ein
 Ein Rate-Limit bremst außerdem, wie schnell ein Konto Dateien schickt. In beiden Fällen wartet die
 Oberfläche die genannte Zeit ab und lädt dieselbe Datei erneut hoch, ein Ordner-Upload läuft
 langsamer weiter ([Konfiguration](../../betrieb/konfiguration.md)). Während der Wartezeit zeigt die
-Bibliotheksseite einen Hinweis mit der Zahl der Sekunden. Wer die Seite verlässt oder sich abmeldet,
-beendet das Warten; die noch ausstehenden Dateien werden dann nicht mehr hochgeladen.
+Bibliotheksseite einen Hinweis mit der Zahl der Sekunden. Nach insgesamt fünf Minuten Wartezeit gilt
+die Datei als abgelehnt. Wer die Seite verlässt, beendet nur das Warten: Die gerade wartende Datei
+gilt als abgelehnt, die übrigen Dateien werden weiter hochgeladen, ohne bei einer erneuten Ablehnung
+noch zu warten.
 
 ### 7.5 Konfiguration
 
