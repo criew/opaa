@@ -277,7 +277,7 @@ Die Auskunft enthält:
 | Konnektortypen in Gebrauch | je Konnektor die Zahl der geteilten Bibliotheken der eigenen Organisation und der Zugänge; private Bibliotheken zählen nicht, damit sich keine einzelne erkennen lässt |
 | Modellanbieter | Adresse und Modell jeder Modellrolle, bei Chat-Modellen jedes angelegte |
 | Gespeicherte Daten und Protokoll | der Datenkatalog sowie die Beschreibung des Revisionsprotokolls: Ereignisarten mit Zweck und erlaubten Angaben, Felder mit Granularität, Zweck und Frist, die vorhandenen und die ausdrücklich nicht vorhandenen Abfragewege |
-| Anlassbezogene Klärungen im Berichtszeitraum | je Anlass, wie viele Klärungen beantragt, freigegeben und abgelaufen sind |
+| Anlassbezogene Klärungen im Berichtszeitraum | je Anlass, wie viele Klärungen beantragt, freigegeben und abgelaufen sind, dazu die Zahl der angehaltenen Chat-Löschungen |
 
 Die JSON-Fassung trägt das Manifest in derselben Form wie `faktenblaetter.json`; ein Werkzeug liest
 beide gleich.
@@ -295,6 +295,10 @@ Eine Ablehnung gibt es nicht: Ein Antrag, der nicht freigegeben werden soll, ble
 Zahlen von 1 und 2 erscheinen als „weniger als 3“, damit ein einzelner Fall nicht hervortritt.
 Die Schwelle schützt die einzelne Auskunft; wer mehrere überlappende Zeiträume abruft, kann die
 Zahl eines Monats erschließen, und jeder dieser Abrufe steht im Revisionsprotokoll.
+
+**Angehaltene Chat-Löschungen** zählt OPAA je Monat, ohne Person: wie oft die Systemverwaltung die
+Löschung der Chats eines gesperrten Kontos angehalten hat. Es gilt dieselbe Schwelle. Eine Klärung,
+die die Löschung aufhält, zählt hier nicht mit, sie steht bei den Klärungen.
 
 ### Abgleich eines Updates mit der Installation
 

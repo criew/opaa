@@ -22,7 +22,15 @@ export const mockQueryResponses: QueryResponse[] = [
         // The Fundort per chunk the markers above name (#0, #3).
         chunkLocations: [
           { chunkIndex: 0, location: 'Abschn. Architektur › Module' },
-          { chunkIndex: 3, location: 'Abschn. Architektur › Query-Pipeline' },
+          {
+            chunkIndex: 3,
+            location: 'Abschn. Architektur › Query-Pipeline',
+            anchor: {
+              path: ['Architektur', 'Query-Pipeline'],
+              quoteStart: 'Das Modul **query** beantwortet Fragen über RAG: Es sucht passende',
+              quoteEnd: 'Sprachmodell eine Antwort mit Belegen formulieren.',
+            },
+          },
         ],
       },
       {

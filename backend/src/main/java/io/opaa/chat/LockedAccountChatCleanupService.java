@@ -9,6 +9,7 @@ import io.opaa.api.types.ChatCleanupAfterLockStatus;
 import io.opaa.api.types.LockReason;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.ChatCleanupHoldCounts;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.User;
@@ -53,6 +54,7 @@ public class LockedAccountChatCleanupService {
   private final ChatRepository chatRepository;
   private final LocalUserService localUsers;
   private final AuditEventRecorder audit;
+  private final ChatCleanupHoldCounts holdCounts;
   private final TransactionTemplate transactionTemplate;
 
   public LockedAccountChatCleanupService(
@@ -62,6 +64,7 @@ public class LockedAccountChatCleanupService {
       ChatRepository chatRepository,
       LocalUserService localUsers,
       AuditEventRecorder audit,
+      ChatCleanupHoldCounts holdCounts,
       PlatformTransactionManager transactionManager) {
     this.store = store;
     this.dates = dates;
@@ -69,6 +72,7 @@ public class LockedAccountChatCleanupService {
     this.chatRepository = chatRepository;
     this.localUsers = localUsers;
     this.audit = audit;
+    this.holdCounts = holdCounts;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 
@@ -224,6 +228,7 @@ public class LockedAccountChatCleanupService {
     User user = localUsers.get(actor.organizationId(), userId).user();
     store.lockAccount(userId);
     if (store.hold(userId, user.getOrganizationId())) {
+      holdCounts.countHold(user.getOrganizationId());
       recordAdminAct(actor, user, AuditEventType.LOCKED_ACCOUNT_CHAT_CLEANUP_HELD);
     }
     return stateOf(actor.organizationId(), userId);

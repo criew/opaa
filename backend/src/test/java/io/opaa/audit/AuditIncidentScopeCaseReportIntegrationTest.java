@@ -84,6 +84,9 @@ class AuditIncidentScopeCaseReportIntegrationTest {
     jdbcTemplate.update(
         "DELETE FROM audit_incident_scope_monthly_counts WHERE organization_id = ?",
         organizationId);
+    jdbcTemplate.update(
+        "DELETE FROM audit_chat_cleanup_hold_monthly_counts WHERE organization_id = ?",
+        organizationId);
     for (UUID userId : createdUserIds) {
       userRepository.deleteById(userId);
     }
@@ -200,6 +203,28 @@ class AuditIncidentScopeCaseReportIntegrationTest {
   }
 
   @Test
+  void heldChatDeletionsCountPerMonthOfThePeriodOnly() {
+    holdAt("2000-12-20T10:00:00Z", 5);
+    holdAt("2001-03-05T10:00:00Z", 2);
+    holdAt("2001-11-30T23:00:00Z", 2);
+    holdAt("2002-01-01T10:00:00Z", 4);
+
+    assertThat(
+            reportAt("2002-02-02T00:00:00Z", period("2001-01-01", "2001-12-31"))
+                .heldChatDeletions())
+        .isEqualTo(CaseCount.of(4));
+    assertThat(
+            reportAt("2002-02-02T00:00:00Z", period("2001-03-01", "2001-03-31"))
+                .heldChatDeletions()
+                .belowThreshold())
+        .isTrue();
+    assertThat(
+            reportAt("2002-02-02T00:00:00Z", period("2001-04-01", "2001-10-31"))
+                .heldChatDeletions())
+        .isEqualTo(CaseCount.of(0));
+  }
+
+  @Test
   void theCountsNameNoPersonNoReasonAndNoGrant() {
     approveAt(
         "2001-03-10T10:00:00Z",
@@ -225,6 +250,7 @@ class AuditIncidentScopeCaseReportIntegrationTest {
             "requested",
             "approved",
             "expired",
+            "heldChatDeletions",
             "count",
             "notes");
   }
@@ -247,6 +273,15 @@ class AuditIncidentScopeCaseReportIntegrationTest {
     return ids;
   }
 
+  private void holdAt(String instant, int times) {
+    ChatCleanupHoldCounts counts =
+        new ChatCleanupHoldCounts(
+            jdbcTemplate, Clock.fixed(Instant.parse(instant), ZoneOffset.UTC));
+    for (int i = 0; i < times; i++) {
+      counts.countHold(organizationId);
+    }
+  }
+
   private void approveAt(String instant, List<UUID> ids) {
     AuditIncidentScopeService service = serviceAt(instant);
     for (UUID id : ids) {
@@ -255,8 +290,9 @@ class AuditIncidentScopeCaseReportIntegrationTest {
   }
 
   private IncidentScopeCases reportAt(String instant, ReportingPeriod period) {
+    Clock clock = Clock.fixed(Instant.parse(instant), ZoneOffset.UTC);
     return new AuditIncidentScopeCaseReport(
-            grantRepository, Clock.fixed(Instant.parse(instant), ZoneOffset.UTC))
+            grantRepository, new ChatCleanupHoldCounts(jdbcTemplate, clock), clock)
         .report(organizationId, period);
   }
 

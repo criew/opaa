@@ -109,6 +109,8 @@ export interface TextPreviewResult {
    *  `text/markdown` or `text/plain` - decides whether the dialog renders Markdown or plain text. */
   contentType: string
   content: string
+  /** Where the cited passage sits - the preview scrolls there and marks it. */
+  anchor?: ChunkAnchor | null
 }
 
 export interface DownloadResult {

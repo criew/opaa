@@ -101,6 +101,7 @@ class InstanceDisclosureRendererTest {
                           CaseCount.of(2),
                           CaseCount.of(1),
                           CaseCount.of(1))),
+                  CaseCount.of(7),
                   List.of("Eine Ablehnung gibt es nicht"))));
 
   @Test
@@ -185,6 +186,7 @@ class InstanceDisclosureRendererTest {
         .contains(
             "| Untersuchung einer Datenschutzverletzung | weniger als 3 | weniger als 3 |"
                 + " weniger als 3 |")
+        .contains("Angehaltene Chat-Löschungen: 7")
         .contains("- Eine Ablehnung gibt es nicht");
   }
 

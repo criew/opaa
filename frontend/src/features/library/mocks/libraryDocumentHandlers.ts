@@ -495,6 +495,16 @@ export const libraryDocumentHandlers = [
         mockPdf(GETTING_STARTED_PDF_PAGES, GETTING_STARTED_PDF_OUTLINE),
       )
     }
+    // the Markdown file the mocked chat answer cites, long enough to scroll to its passage
+    if (documentId === 'doc-arch') {
+      return new HttpResponse(new Blob([ARCHITECTURE_OVERVIEW_MD], { type: 'text/markdown' }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/markdown',
+          'Content-Disposition': 'inline; filename="architecture-overview.md"',
+        },
+      })
+    }
     const document = Object.values(mockLibraryDocuments)
       .flat()
       .find((doc) => doc.id === documentId)
@@ -536,3 +546,27 @@ function pdfResponse(fileName: string, pdf: Uint8Array<ArrayBuffer>) {
     },
   })
 }
+
+/** The mocked „architecture-overview.md“; the chat answer cites its query section (chunk 3). */
+const ARCHITECTURE_OVERVIEW_MD = [
+  '# Architektur',
+  '',
+  '## Module',
+  '',
+  'OPAA besteht aus drei Modulen: **api**, **indexing** und **query**.',
+  '',
+  ...Array.from({ length: 12 }, (_, i) => [
+    `Absatz ${i + 1} zur Modulstruktur und ihren Grenzen.`,
+    '',
+  ]).flat(),
+  '',
+  '## Query-Pipeline',
+  '',
+  'Das Modul **query** beantwortet Fragen über RAG: Es sucht passende Abschnitte im Suchindex,',
+  'ordnet sie neu und lässt das Sprachmodell eine Antwort mit Belegen formulieren.',
+  '',
+  ...Array.from({ length: 12 }, (_, i) => [
+    `Absatz ${i + 1} zu Betrieb und Überwachung.`,
+    '',
+  ]).flat(),
+].join('\n')
