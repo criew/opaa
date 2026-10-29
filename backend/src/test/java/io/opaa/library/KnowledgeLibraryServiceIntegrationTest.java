@@ -49,6 +49,7 @@ import io.opaa.permission.AssetOwnershipHistoryRepository;
 import io.opaa.permission.AssetReach;
 import io.opaa.permission.GroupMembershipHistoryRepository;
 import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.security.CipherFormatGate;
 import io.opaa.security.CredentialsEncryptionProperties;
 import io.opaa.security.CredentialsEncryptor;
 import io.opaa.space.SpaceCreation;
@@ -711,8 +712,9 @@ class KnowledgeLibraryServiceIntegrationTest {
     jdbcTemplate.update(
         "UPDATE knowledge_libraries SET source_credentials = ?, source_webhook_secret = ?"
             + " WHERE id = ?",
-        keyOfTheOperator.encrypt("admin:super-secret-password"),
-        keyOfTheOperator.encrypt("push-geheimnis"),
+        keyOfTheOperator.encrypt(
+            "admin:super-secret-password", KnowledgeLibrary.SOURCE_CREDENTIALS.row(libraryId)),
+        keyOfTheOperator.encrypt("push-geheimnis", KnowledgeLibrary.WEBHOOK_SECRET.row(libraryId)),
         libraryId);
     KnowledgeLibrary withoutKey = libraryRepository.findById(libraryId).orElseThrow();
     assertThat(withoutKey.getSourceCredentials()).isNull();
@@ -739,14 +741,16 @@ class KnowledgeLibraryServiceIntegrationTest {
                 jdbcTemplate.queryForObject(
                     "SELECT source_credentials FROM knowledge_libraries WHERE id = ?",
                     String.class,
-                    libraryId)))
+                    libraryId),
+                KnowledgeLibrary.SOURCE_CREDENTIALS.row(libraryId)))
         .isEqualTo("admin:super-secret-password");
     assertThat(
             keyOfTheOperator.decrypt(
                 jdbcTemplate.queryForObject(
                     "SELECT source_webhook_secret FROM knowledge_libraries WHERE id = ?",
                     String.class,
-                    libraryId)))
+                    libraryId),
+                KnowledgeLibrary.WEBHOOK_SECRET.row(libraryId)))
         .isEqualTo("push-geheimnis");
   }
 
@@ -769,7 +773,8 @@ class KnowledgeLibraryServiceIntegrationTest {
     UUID libraryId = response.library().getId();
     jdbcTemplate.update(
         "UPDATE knowledge_libraries SET source_credentials = ? WHERE id = ?",
-        keyOfTheOperator.encrypt("admin:super-secret-password"),
+        keyOfTheOperator.encrypt(
+            "admin:super-secret-password", KnowledgeLibrary.SOURCE_CREDENTIALS.row(libraryId)),
         libraryId);
     assertThat(libraryRepository.findById(libraryId).orElseThrow().getSourceCredentials()).isNull();
 
@@ -796,7 +801,8 @@ class KnowledgeLibraryServiceIntegrationTest {
       key[i] = (byte) (7 * i + 3);
     }
     return new CredentialsEncryptor(
-        new CredentialsEncryptionProperties(Base64.getEncoder().encodeToString(key)));
+        new CredentialsEncryptionProperties(Base64.getEncoder().encodeToString(key), List.of()),
+        CipherFormatGate.KEYED);
   }
 
   @Test

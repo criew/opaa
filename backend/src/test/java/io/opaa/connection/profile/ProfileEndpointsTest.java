@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -206,7 +207,7 @@ class ProfileEndpointsTest {
 
   @Test
   void aNewClientSecretOrNoneLetsTheEndpointChange() {
-    when(encryptor.encrypt("neu")).thenReturn("enc:neu");
+    when(encryptor.encrypt(eq("neu"), any())).thenReturn("enc:neu");
     ConnectionProfile profile = profileWithSecret("enc:alt");
     ProfileEndpoints moved =
         new ProfileEndpoints(
@@ -238,7 +239,7 @@ class ProfileEndpointsTest {
 
   @Test
   void theQuestionNamesTheOldAndTheNewEndpoints() {
-    when(encryptor.encrypt("neu")).thenReturn("enc:neu");
+    when(encryptor.encrypt(eq("neu"), any())).thenReturn("enc:neu");
     ConnectionProfile profile = profileWithSecret("enc:alt");
     ProfileEndpoints moved =
         new ProfileEndpoints(

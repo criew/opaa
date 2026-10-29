@@ -39,6 +39,7 @@ import io.opaa.organization.Organization;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.retrieval.search.VectorChunkSearch;
+import io.opaa.security.EncryptedColumn;
 import io.opaa.security.SettingsEncryptor;
 import io.opaa.test.FakeEmbeddingProbe;
 import io.opaa.test.OpaaPropertyVariantIntegrationTest;
@@ -1177,7 +1178,8 @@ class EmbeddingModelChangeIntegrationTest {
   }
 
   private String settingsCiphertext(String key) {
-    return settingsEncryptor.encrypt(key);
+    return settingsEncryptor.encrypt(
+        key, EncryptedColumn.settings("embedding_model", "api_key_ciphertext").row(1));
   }
 
   private void createVectorStore() {

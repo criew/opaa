@@ -2,6 +2,8 @@ package io.opaa.llm;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -289,7 +291,7 @@ class ModelClientRedirectTest {
                 new LlmModel(
                     "Modell R", baseUrl, "model-r", BigDecimal.ZERO, 256, apiKeyCiphertext)));
     SettingsEncryptor encryptor = mock(SettingsEncryptor.class);
-    when(encryptor.decrypt("cipher")).thenReturn("sk-geheim");
+    when(encryptor.decrypt(eq("cipher"), any())).thenReturn("sk-geheim");
     return new ActiveChatModelResolver(
         repository,
         encryptor,

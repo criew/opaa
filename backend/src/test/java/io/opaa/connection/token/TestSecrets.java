@@ -91,14 +91,15 @@ public final class TestSecrets {
     private final CredentialsEncryptor encryptor = mock(CredentialsEncryptor.class);
 
     public Store() {
-      when(encryptor.encrypt(any())).thenAnswer(call -> marked(call.getArgument(0)));
-      when(encryptor.decrypt(anyString()))
+      when(encryptor.encrypt(any(), any())).thenAnswer(call -> marked(call.getArgument(0)));
+      when(encryptor.decrypt(anyString(), any()))
           .thenAnswer(
               call -> {
                 decryptions.incrementAndGet();
                 String stored = call.getArgument(0);
                 return stored.startsWith(MARKER) ? stored.substring(MARKER.length()) : stored;
               });
+      when(encryptor.rebind(any(), any(), any())).thenCallRealMethod();
       when(repository.findByLibraryId(any()))
           .thenAnswer(
               call -> {
@@ -147,6 +148,7 @@ public final class TestSecrets {
     public void hold(UUID profileId, UUID libraryId, String value, String address) {
       ConnectionToken token =
           ConnectionToken.ofLibrarySecret(
+              UUID.randomUUID(),
               profileId,
               libraryId,
               marked(value),
@@ -159,7 +161,12 @@ public final class TestSecrets {
     public void holdUnreadable(UUID profileId, UUID libraryId, String target) {
       ConnectionToken token =
           ConnectionToken.ofLibrarySecret(
-              profileId, libraryId, "plain-not-encrypted", target, Instant.now());
+              UUID.randomUUID(),
+              profileId,
+              libraryId,
+              "plain-not-encrypted",
+              target,
+              Instant.now());
       rows.put(token.getId(), token);
     }
 

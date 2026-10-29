@@ -18,6 +18,7 @@ import io.opaa.indexing.spi.SourceBlock.Reason;
 import io.opaa.indexing.spi.SourceCredentialsException;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.security.CipherBinding;
 import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import io.opaa.security.CredentialsEncryptor;
 import java.time.Clock;
@@ -337,9 +338,17 @@ public class ConnectionSecrets {
       String target,
       Duration lifetime) {
     Instant now = clock.instant();
+    UUID id = UUID.randomUUID();
     ConnectionToken token =
         ConnectionToken.pendingGrant(
-            profileId, userId, accountLabel, ciphered(grant), target, now, now.plus(lifetime));
+            id,
+            profileId,
+            userId,
+            accountLabel,
+            ciphered(grant, id),
+            target,
+            now,
+            now.plus(lifetime));
     tokens.save(token);
     return new PendingConsent(token.getId(), userId);
   }
@@ -467,11 +476,16 @@ public class ConnectionSecrets {
         if (stored == null) {
           return;
         }
+        UUID id = UUID.randomUUID();
         String ciphertext =
-            CredentialsEncryptor.isEncrypted(stored) ? stored : encryptor.encrypt(stored);
+            carried(
+                stored,
+                KnowledgeLibrary.SOURCE_CREDENTIALS.row(libraryId),
+                ConnectionToken.SECRET.row(id));
         discardOtherRow(libraryId);
         tokens.save(
-            ConnectionToken.ofLibrarySecret(own.profileId(), libraryId, ciphertext, target, now));
+            ConnectionToken.ofLibrarySecret(
+                id, own.profileId(), libraryId, ciphertext, target, now));
         discard(new LibraryOwned(libraryId));
       }
       case LibraryOwned ignored -> {
@@ -485,6 +499,7 @@ public class ConnectionSecrets {
         if (value != null) {
           libraries.findById(libraryId).ifPresent(found -> found.replaceSourceCredentials(value));
         } else {
+          // unreadable already: it moves as stored and stays unreadable, an enc:v1 value aside
           libraries.restoreStoredSourceCredentials(libraryId, token.getSecretCiphertext());
         }
       }
@@ -638,20 +653,23 @@ public class ConnectionSecrets {
    */
   private void storeLibrarySecret(
       LibraryOnProfile owner, NewSecret.Personal secret, String target) {
-    String ciphertext = encryptor.encrypt(secret.value());
     Instant now = clock.instant();
     Optional<ConnectionToken> held = ownRowOf(owner.libraryId());
     if (held.isPresent()) {
       ConnectionToken token = held.get();
+      String ciphertext =
+          encryptor.encrypt(secret.value(), ConnectionToken.SECRET.row(token.getId()));
       token.movedTo(owner.profileId(), target, now);
       token.replace(ciphertext, null, target, now);
       tokens.save(token);
       return;
     }
+    UUID id = UUID.randomUUID();
+    String ciphertext = encryptor.encrypt(secret.value(), ConnectionToken.SECRET.row(id));
     discardOtherRow(owner.libraryId());
     tokens.save(
         ConnectionToken.ofLibrarySecret(
-            owner.profileId(), owner.libraryId(), ciphertext, target, now));
+            id, owner.profileId(), owner.libraryId(), ciphertext, target, now));
   }
 
   /**
@@ -749,9 +767,11 @@ public class ConnectionSecrets {
       return usable ? Renewal.of(accessSecret(token, access)) : Renewal.failed(e);
     }
     token.renewed(
-        encryptor.encrypt(issued.accessToken()),
+        encryptor.encrypt(issued.accessToken(), ConnectionToken.ACCESS_TOKEN.row(token.getId())),
         issued.accessTokenExpiresAt(),
-        issued.refreshToken() == null ? null : encryptor.encrypt(issued.refreshToken()),
+        issued.refreshToken() == null
+            ? null
+            : encryptor.encrypt(issued.refreshToken(), ConnectionToken.SECRET.row(token.getId())),
         issued.refreshTokenExpiresAt(),
         now);
     tokens.save(token);
@@ -804,9 +824,25 @@ public class ConnectionSecrets {
       return null;
     }
     try {
-      return encryptor.decrypt(ciphertext);
+      return encryptor.decrypt(ciphertext, ConnectionToken.ACCESS_TOKEN.row(token.getId()));
     } catch (CredentialsEncryptionKeyMissingException e) {
       return null;
+    }
+  }
+
+  /**
+   * {@code stored} of the row {@code from} encrypted for the row {@code to}; legacy cleartext is
+   * encrypted, and a value no key can read moves as stored - it was lost before the move already.
+   */
+  private String carried(String stored, CipherBinding from, CipherBinding to) {
+    try {
+      return encryptor.rebind(stored, from, to);
+    } catch (CredentialsEncryptionKeyMissingException e) {
+      if (!CredentialsEncryptor.isEncrypted(stored)) {
+        throw e;
+      }
+      log.warn("A stored secret cannot be decrypted ({}); it moves as stored", from.table());
+      return stored;
     }
   }
 
@@ -883,19 +919,20 @@ public class ConnectionSecrets {
 
   private void storePersonal(
       PersonOwned person, UUID accountId, NewSecret.Personal secret, String target) {
-    String ciphertext = encryptor.encrypt(secret.value());
     Instant now = clock.instant();
+    Optional<ConnectionToken> held = tokens.findByConnectedAccountId(accountId);
+    UUID id = held.map(ConnectionToken::getId).orElseGet(UUID::randomUUID);
+    String ciphertext = encryptor.encrypt(secret.value(), ConnectionToken.SECRET.row(id));
     ConnectionToken token =
-        tokens
-            .findByConnectedAccountId(accountId)
-            .map(
-                held -> {
-                  held.replace(ciphertext, secret.expiresAt(), target, now);
-                  return held;
+        held.map(
+                found -> {
+                  found.replace(ciphertext, secret.expiresAt(), target, now);
+                  return found;
                 })
             .orElseGet(
                 () ->
                     ConnectionToken.ofAccount(
+                        id,
                         person.profileId(),
                         accountId,
                         ciphertext,
@@ -905,10 +942,11 @@ public class ConnectionSecrets {
     tokens.save(token);
   }
 
-  private ConnectionToken.Ciphered ciphered(NewSecret.OAuthGrant grant) {
+  /** The ciphertexts of {@code grant}, encrypted for the token row {@code id}. */
+  private ConnectionToken.Ciphered ciphered(NewSecret.OAuthGrant grant, UUID id) {
     return new ConnectionToken.Ciphered(
-        encryptor.encrypt(grant.refreshToken()),
-        encryptor.encrypt(grant.accessToken()),
+        encryptor.encrypt(grant.refreshToken(), ConnectionToken.SECRET.row(id)),
+        encryptor.encrypt(grant.accessToken(), ConnectionToken.ACCESS_TOKEN.row(id)),
         grant.accessTokenExpiresAt(),
         grant.expiresAt());
   }
@@ -918,33 +956,34 @@ public class ConnectionSecrets {
    * committed, one under another profile also goes.
    */
   private void storeConsent(SourceConsent owner, NewSecret.OAuthGrant grant, String target) {
-    ConnectionToken.Ciphered ciphered = ciphered(grant);
     Instant now = clock.instant();
     Optional<ConnectionToken> held = tokens.findByLibraryId(owner.libraryId());
     held.ifPresent(replaced -> revokeAfterCommit(List.of(replaced)));
     ConnectionToken token;
     if (held.isPresent() && held.get().getProfileId().equals(owner.profileId())) {
       token = held.get();
-      token.replaceGrant(ciphered, target, now);
+      token.replaceGrant(ciphered(grant, token.getId()), target, now);
     } else {
       held.ifPresent(
           other -> {
             tokens.delete(other);
             tokens.flush();
           });
+      UUID id = UUID.randomUUID();
       token =
           ConnectionToken.ofLibraryGrant(
-              owner.profileId(), owner.libraryId(), ciphered, target, now);
+              id, owner.profileId(), owner.libraryId(), ciphered(grant, id), target, now);
     }
     tokens.save(token);
   }
 
   private void storeGrant(
       PersonOwned person, UUID accountId, NewSecret.OAuthGrant grant, String target) {
-    ConnectionToken.Ciphered ciphered = ciphered(grant);
     Instant now = clock.instant();
     Optional<ConnectionToken> held = tokens.findByConnectedAccountId(accountId);
     held.ifPresent(replaced -> revokeAfterCommit(List.of(replaced)));
+    UUID id = held.map(ConnectionToken::getId).orElseGet(UUID::randomUUID);
+    ConnectionToken.Ciphered ciphered = ciphered(grant, id);
     ConnectionToken token =
         held.map(
                 found -> {
@@ -954,7 +993,7 @@ public class ConnectionSecrets {
             .orElseGet(
                 () ->
                     ConnectionToken.ofAccountGrant(
-                        person.profileId(), accountId, ciphered, target, now));
+                        id, person.profileId(), accountId, ciphered, target, now));
     tokens.save(token);
   }
 
@@ -970,7 +1009,7 @@ public class ConnectionSecrets {
       throw new SecretRefusedException(Reason.NOT_CONNECTED);
     }
     try {
-      return encryptor.decrypt(ciphertext);
+      return encryptor.decrypt(ciphertext, ConnectionToken.SECRET.row(token.getId()));
     } catch (CredentialsEncryptionKeyMissingException e) {
       log.warn("A stored token of profile {} cannot be decrypted", token.getProfileId());
       throw new SecretRefusedException(Reason.NOT_CONNECTED);

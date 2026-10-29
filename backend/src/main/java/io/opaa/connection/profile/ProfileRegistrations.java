@@ -160,7 +160,7 @@ public class ProfileRegistrations {
       return null;
     }
     try {
-      return encryptor.decrypt(ciphertext);
+      return encryptor.decrypt(ciphertext, ConnectionProfile.CLIENT_SECRET.row(profile.getId()));
     } catch (CredentialsEncryptionKeyMissingException e) {
       log.warn("The client secret of profile {} cannot be decrypted", profile.getId());
       return null;

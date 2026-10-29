@@ -114,6 +114,7 @@ class ConnectionSecretsTest {
         ConnectionToken.ofAccount(
             UUID.randomUUID(),
             UUID.randomUUID(),
+            UUID.randomUUID(),
             "enc:v1:geheim",
             null,
             "https://quelle.example.org",

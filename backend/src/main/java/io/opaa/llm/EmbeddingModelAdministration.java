@@ -5,6 +5,8 @@ import io.opaa.common.FieldValidationException;
 import io.opaa.common.FieldValidationException.FieldError;
 import io.opaa.common.TransactionCallbacks;
 import io.opaa.compliance.DataFlow;
+import io.opaa.security.CipherBinding;
+import io.opaa.security.EncryptedColumn;
 import io.opaa.security.SettingsEncryptor;
 import java.time.Clock;
 import java.util.ArrayList;
@@ -13,6 +15,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -105,6 +109,10 @@ public class EmbeddingModelAdministration {
       boolean apiKeySet,
       long generation,
       boolean anchorRecorded) {}
+
+  private static final Logger log = LoggerFactory.getLogger(EmbeddingModelAdministration.class);
+  private static final CipherBinding EMBEDDING_ROW =
+      LlmEncryptedColumns.EMBEDDING_MODEL_KEY.row(EmbeddingModelSettings.SINGLETON_ID);
 
   private final EmbeddingModelSettingsRepository rows;
   private final PreviousEmbeddingModelRepository previousRows;
@@ -337,7 +345,13 @@ public class EmbeddingModelAdministration {
   public Change replace(Resolved resolved, int dimensions, float[] anchor, long generation) {
     EmbeddingModelSettings row = requireInstalled();
     Map<String, Object> before = state(row);
-    previousRows.saveAndFlush(new PreviousEmbeddingModel(row));
+    previousRows.saveAndFlush(
+        new PreviousEmbeddingModel(
+            row,
+            carriedKey(
+                row.getApiKeyCiphertext(),
+                LlmEncryptedColumns.EMBEDDING_MODEL_KEY,
+                LlmEncryptedColumns.PREVIOUS_EMBEDDING_MODEL_KEY)));
     row.replace(
         resolved.endpoint(),
         resolved.ciphertext(),
@@ -373,7 +387,12 @@ public class EmbeddingModelAdministration {
     }
     EmbeddingModelSettings row = requireInstalled();
     Map<String, Object> before = state(row);
-    row.restore(previous.get());
+    row.restore(
+        previous.get(),
+        carriedKey(
+            previous.get().getApiKeyCiphertext(),
+            LlmEncryptedColumns.PREVIOUS_EMBEDDING_MODEL_KEY,
+            LlmEncryptedColumns.EMBEDDING_MODEL_KEY));
     rows.saveAndFlush(row);
     dropClientAfterCommit();
     previousRows.delete(previous.get());
@@ -461,12 +480,33 @@ public class EmbeddingModelAdministration {
     return rows.findInstalled().orElseThrow(EmbeddingModelNotInstalledException::afterInstallation);
   }
 
+  /**
+   * The key {@code stored} of the singleton row of {@code from}, encrypted for the one of {@code
+   * to}. A key no key can read moves as stored: it was lost before the move already.
+   */
+  private String carriedKey(String stored, EncryptedColumn from, EncryptedColumn to) {
+    if (stored == null) {
+      return null;
+    }
+    try {
+      return settingsEncryptor.rebind(
+          stored,
+          from.row(EmbeddingModelSettings.SINGLETON_ID),
+          to.row(EmbeddingModelSettings.SINGLETON_ID));
+    } catch (IllegalStateException e) {
+      log.warn(
+          "The stored key of the embedding model cannot be decrypted ({}); it moves as stored",
+          e.getClass().getSimpleName());
+      return stored;
+    }
+  }
+
   private String decrypt(String ciphertext) {
     if (ciphertext == null) {
       return null;
     }
     try {
-      return settingsEncryptor.decrypt(ciphertext);
+      return settingsEncryptor.decrypt(ciphertext, EMBEDDING_ROW);
     } catch (IllegalStateException e) {
       throw FieldValidationException.of(
           PREFIX + ".apiKey",
@@ -478,7 +518,7 @@ public class EmbeddingModelAdministration {
 
   private String encrypt(String key) {
     try {
-      return settingsEncryptor.encrypt(key);
+      return settingsEncryptor.encrypt(key, EMBEDDING_ROW);
     } catch (IllegalStateException e) {
       throw FieldValidationException.of(
           PREFIX + ".apiKey",

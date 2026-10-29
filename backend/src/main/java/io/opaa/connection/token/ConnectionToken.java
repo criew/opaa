@@ -1,5 +1,6 @@
 package io.opaa.connection.token;
 
+import io.opaa.security.EncryptedColumn;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -29,6 +30,14 @@ class ConnectionToken {
     PERSONAL_SECRET,
     OAUTH
   }
+
+  /** {@code connection_tokens.secret_ciphertext}, bound to the token row (ADR-0064). */
+  static final EncryptedColumn SECRET =
+      EncryptedColumn.credentials("connection_tokens", "secret_ciphertext");
+
+  /** {@code connection_tokens.access_token_ciphertext}, bound to the token row (ADR-0064). */
+  static final EncryptedColumn ACCESS_TOKEN =
+      EncryptedColumn.credentials("connection_tokens", "access_token_ciphertext");
 
   @Id private UUID id;
 
@@ -84,8 +93,9 @@ class ConnectionToken {
 
   protected ConnectionToken() {}
 
-  /** A person's personal secret on the account {@code connectedAccountId}. */
+  /** A person's personal secret on the account {@code connectedAccountId}, row {@code id}. */
   static ConnectionToken ofAccount(
+      UUID id,
       UUID profileId,
       UUID connectedAccountId,
       String secretCiphertext,
@@ -93,7 +103,7 @@ class ConnectionToken {
       String issuedFor,
       Instant now) {
     ConnectionToken token = new ConnectionToken();
-    token.id = UUID.randomUUID();
+    token.id = id;
     token.profileId = profileId;
     token.connectedAccountId = connectedAccountId;
     token.kind = Kind.PERSONAL_SECRET;
@@ -107,18 +117,28 @@ class ConnectionToken {
 
   /** A person's OAuth grant on the account {@code connectedAccountId}. */
   static ConnectionToken ofAccountGrant(
-      UUID profileId, UUID connectedAccountId, Ciphered grant, String issuedFor, Instant now) {
+      UUID id,
+      UUID profileId,
+      UUID connectedAccountId,
+      Ciphered grant,
+      String issuedFor,
+      Instant now) {
     ConnectionToken token =
-        ofAccount(profileId, connectedAccountId, grant.refresh(), null, issuedFor, now);
+        ofAccount(id, profileId, connectedAccountId, grant.refresh(), null, issuedFor, now);
     token.replaceGrant(grant, issuedFor, now);
     return token;
   }
 
   /** A library's own personal secret on the profile {@code profileId}. */
   static ConnectionToken ofLibrarySecret(
-      UUID profileId, UUID libraryId, String secretCiphertext, String issuedFor, Instant now) {
+      UUID id,
+      UUID profileId,
+      UUID libraryId,
+      String secretCiphertext,
+      String issuedFor,
+      Instant now) {
     ConnectionToken token = new ConnectionToken();
-    token.id = UUID.randomUUID();
+    token.id = id;
     token.profileId = profileId;
     token.libraryId = libraryId;
     token.createdAt = now;
@@ -138,9 +158,9 @@ class ConnectionToken {
 
   /** A library's own OAuth grant ("Quelle verbinden"). */
   static ConnectionToken ofLibraryGrant(
-      UUID profileId, UUID libraryId, Ciphered grant, String issuedFor, Instant now) {
+      UUID id, UUID profileId, UUID libraryId, Ciphered grant, String issuedFor, Instant now) {
     ConnectionToken token = new ConnectionToken();
-    token.id = UUID.randomUUID();
+    token.id = id;
     token.profileId = profileId;
     token.libraryId = libraryId;
     token.createdAt = now;
@@ -153,6 +173,7 @@ class ConnectionToken {
    * held until {@code until}.
    */
   static ConnectionToken pendingGrant(
+      UUID id,
       UUID profileId,
       UUID userId,
       String accountLabel,
@@ -161,7 +182,7 @@ class ConnectionToken {
       Instant now,
       Instant until) {
     ConnectionToken token = new ConnectionToken();
-    token.id = UUID.randomUUID();
+    token.id = id;
     token.profileId = profileId;
     token.pendingUserId = userId;
     token.pendingExpiresAt = until;

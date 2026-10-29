@@ -3,6 +3,7 @@ package io.opaa.llm;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -94,14 +95,14 @@ class ModelRoleAdministrationTest {
             "installation",
             " http://8.8.8.8/v1 ",
             " whisper ",
-            "chiffrat",
+            "sk-stt",
             " EN ");
 
     verify(transcriptionRows).save(row.capture());
     assertThat(row.getValue().isEnabled()).isTrue();
     assertThat(row.getValue().getBaseUrl()).isEqualTo("http://8.8.8.8/v1");
     assertThat(row.getValue().getModelIdentifier()).isEqualTo("whisper");
-    assertThat(row.getValue().getApiKeyCiphertext()).isEqualTo("chiffrat");
+    assertThat(row.getValue().getApiKeyCiphertext()).isEqualTo("enc:sk-stt");
     assertThat(row.getValue().getLanguage()).isEqualTo("en");
     assertThat(view.enabled()).isTrue();
     assertThat(view.apiKeySet()).isTrue();
@@ -114,7 +115,8 @@ class ModelRoleAdministrationTest {
         .containsEntry("apiKeySet", true)
         .containsEntry("apiKeyChange", "SET")
         .containsEntry("language", "en")
-        .doesNotContainValue("chiffrat");
+        .doesNotContainValue("sk-stt")
+        .doesNotContainValue("enc:sk-stt");
   }
 
   @Test
@@ -190,7 +192,7 @@ class ModelRoleAdministrationTest {
 
     ModelRoleAdministration.RerankModelView view =
         administration.installRerank(
-            UUID.randomUUID(), "installation", " http://reranker:80 ", " bge ", "v1:chiffrat");
+            UUID.randomUUID(), "installation", " http://reranker:80 ", " bge ", "sk-rerank");
 
     assertThat(view.enabled()).isTrue();
     assertThat(view.baseUrl()).isEqualTo("http://reranker:80");
@@ -198,7 +200,7 @@ class ModelRoleAdministrationTest {
     assertThat(view.apiKeySet()).isTrue();
     ArgumentCaptor<RerankModelSettings> row = ArgumentCaptor.forClass(RerankModelSettings.class);
     verify(rerankRows).save(row.capture());
-    assertThat(row.getValue().getApiKeyCiphertext()).isEqualTo("v1:chiffrat");
+    assertThat(row.getValue().getApiKeyCiphertext()).isEqualTo("enc:sk-rerank");
     ArgumentCaptor<AuditEvent> event = ArgumentCaptor.forClass(AuditEvent.class);
     verify(audit).recordSystemProcessAction(event.capture());
     assertThat(event.getValue().actorRef()).isEqualTo("installation");
@@ -206,7 +208,8 @@ class ModelRoleAdministrationTest {
     assertThat(event.getValue().after())
         .containsEntry("enabled", true)
         .containsEntry("apiKeySet", true)
-        .doesNotContainValue("v1:chiffrat");
+        .doesNotContainValue("sk-rerank")
+        .doesNotContainValue("enc:sk-rerank");
     verify(audit, never()).recordUserAction(any());
   }
 
@@ -310,7 +313,7 @@ class ModelRoleAdministrationTest {
         features,
         rerankClient,
         transcriptionClient,
-        mock(SettingsEncryptor.class),
+        prefixingEncryptor(),
         ModelAddressPolicy.disabled(),
         audit,
         environment,
@@ -318,5 +321,13 @@ class ModelRoleAdministrationTest {
         mock(PlatformTransactionManager.class),
         mock(JdbcTemplate.class),
         Clock.systemUTC());
+  }
+
+  /** Stands in for the key: a stored ciphertext is {@code enc:} before the key it encrypts. */
+  private static SettingsEncryptor prefixingEncryptor() {
+    SettingsEncryptor encryptor = mock(SettingsEncryptor.class);
+    when(encryptor.encrypt(anyString(), any()))
+        .thenAnswer(call -> "enc:" + call.getArgument(0, String.class));
+    return encryptor;
   }
 }

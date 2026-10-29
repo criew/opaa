@@ -11,6 +11,7 @@ import io.opaa.common.FeatureFlags;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.FieldValidationException.FieldError;
 import io.opaa.common.TransactionCallbacks;
+import io.opaa.security.CipherBinding;
 import io.opaa.security.SettingsEncryptor;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
@@ -186,18 +187,14 @@ public class ModelRoleAdministration {
 
   /**
    * Switches the rerank role on with the checked rerank step of the installation, in the caller's
-   * transaction and audited under {@code systemActor}. {@code apiKeyCiphertext} is encrypted by the
-   * same {@link SettingsEncryptor}; the installation has run the address check before. A change to
+   * transaction and audited under {@code systemActor}. {@code apiKey} is the clear key, {@code
+   * null} for none, encrypted here; the installation has run the address check before. A change to
    * the same values writes nothing, as in {@link #changeRerank}.
    *
    * @throws FieldValidationException for an endpoint the rules of the role refuse
    */
   public RerankModelView installRerank(
-      UUID organizationId,
-      String systemActor,
-      String baseUrl,
-      String model,
-      String apiKeyCiphertext) {
+      UUID organizationId, String systemActor, String baseUrl, String model, String apiKey) {
     String address = trimmed(baseUrl);
     String identifier = trimmed(model);
     List<FieldError> errors = new ArrayList<>();
@@ -211,7 +208,14 @@ public class ModelRoleAdministration {
                 true,
                 address,
                 identifier,
-                row -> apiKeyCiphertext));
+                row -> encryptInstalled(RERANK, apiKey)));
+  }
+
+  /** The key of an installation step, encrypted for the row of the role, or none. */
+  private String encryptInstalled(String prefix, String apiKey) {
+    return apiKey == null || apiKey.isBlank()
+        ? null
+        : settingsEncryptor.encrypt(apiKey, rowOf(prefix));
   }
 
   /** Who a change of a role is recorded under: a person, or a system process. */
@@ -317,7 +321,7 @@ public class ModelRoleAdministration {
       String systemActor,
       String baseUrl,
       String model,
-      String apiKeyCiphertext,
+      String apiKey,
       String language) {
     String address = trimmed(baseUrl);
     String identifier = trimmed(model);
@@ -332,7 +336,7 @@ public class ModelRoleAdministration {
                 address,
                 identifier,
                 lang,
-                row -> apiKeyCiphertext));
+                row -> encryptInstalled(TRANSCRIPTION, apiKey)));
   }
 
   /** The rules of a transcription endpoint and its language, as field errors. */
@@ -496,7 +500,7 @@ public class ModelRoleAdministration {
               + " Schlüssel erneut eingeben oder das Feld leeren, um ohne Schlüssel zu prüfen.");
     }
     try {
-      return settingsEncryptor.decrypt(storedCiphertext);
+      return settingsEncryptor.decrypt(storedCiphertext, rowOf(prefix));
     } catch (IllegalStateException e) {
       throw FieldValidationException.of(
           prefix + ".apiKey",
@@ -583,7 +587,7 @@ public class ModelRoleAdministration {
       return null;
     }
     try {
-      return settingsEncryptor.encrypt(apiKey.strip());
+      return settingsEncryptor.encrypt(apiKey.strip(), rowOf(prefix));
     } catch (IllegalStateException e) {
       throw FieldValidationException.of(
           prefix + ".apiKey",
@@ -591,6 +595,16 @@ public class ModelRoleAdministration {
           "Der Zugangsschlüssel kann nicht gespeichert werden: OPAA_SETTINGS_ENCRYPTION_KEY ist"
               + " nicht gesetzt oder ungültig.");
     }
+  }
+
+  /** The binding of the key of the role named by the field prefix {@code prefix}. */
+  private static CipherBinding rowOf(String prefix) {
+    return switch (prefix) {
+      case RERANK -> LlmEncryptedColumns.RERANK_MODEL_KEY.row(RerankModelSettings.SINGLETON_ID);
+      case TRANSCRIPTION ->
+          LlmEncryptedColumns.TRANSCRIPTION_MODEL_KEY.row(TranscriptionModelSettings.SINGLETON_ID);
+      default -> throw new IllegalArgumentException("no model role " + prefix);
+    };
   }
 
   private void record(

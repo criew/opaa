@@ -272,7 +272,9 @@ public class MailSettingsService implements InvalidationSubscriber {
         settings.getHost(),
         settings.getPort(),
         settings.getUsername(),
-        settingsEncryptor.decrypt(settings.getPasswordCiphertext()),
+        settingsEncryptor.decrypt(
+            settings.getPasswordCiphertext(),
+            MailEncryptedColumns.SETTINGS_PASSWORD.row(settings.getId())),
         settings.getEncryption(),
         settings.getFromAddress(),
         settings.getFromName());
@@ -336,7 +338,8 @@ public class MailSettingsService implements InvalidationSubscriber {
     if (submitted.isEmpty()) {
       return null;
     }
-    return settingsEncryptor.encrypt(submitted);
+    return settingsEncryptor.encrypt(
+        submitted, MailEncryptedColumns.SETTINGS_PASSWORD.row(MailSettings.SINGLETON_ID));
   }
 
   private static void requireCompleteWhenEnabled(

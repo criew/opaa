@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Base64;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -13,136 +15,235 @@ import org.junit.jupiter.api.Test;
  */
 class CredentialsEncryptorTest {
 
-  private static String validBase64Key() {
+  static final String KEY = key(0);
+  static final String NEW_KEY = key(1);
+  static final String OTHER_KEY = key(2);
+
+  private static final UUID ROW = UUID.fromString("00000000-0000-0000-0000-000000000001");
+  private static final EncryptedColumn COLUMN =
+      EncryptedColumn.credentials("knowledge_libraries", "source_credentials");
+  private static final CipherBinding BINDING = COLUMN.row(ROW);
+
+  /** 32 bytes counting up from {@code offset}; {@code key(0)} is the key of the fixtures. */
+  static String key(int offset) {
     byte[] key = new byte[32];
     for (int i = 0; i < key.length; i++) {
-      key[i] = (byte) i;
+      key[i] = (byte) (i + offset);
     }
     return Base64.getEncoder().encodeToString(key);
   }
 
-  private CredentialsEncryptor encryptorWithKey(String base64Key) {
-    return new CredentialsEncryptor(new CredentialsEncryptionProperties(base64Key));
+  private static CredentialsEncryptor encryptor(String key, String... previous) {
+    return encryptor(CipherFormatGate.KEYED, key, previous);
+  }
+
+  private static CredentialsEncryptor encryptor(
+      CipherFormatGate gate, String key, String... previous) {
+    return new CredentialsEncryptor(
+        new CredentialsEncryptionProperties(key, List.of(previous)), gate);
   }
 
   @Test
   void encryptsAndDecryptsBackToTheOriginalPlaintext() {
-    CredentialsEncryptor encryptor = encryptorWithKey(validBase64Key());
+    CredentialsEncryptor encryptor = encryptor(KEY);
 
-    String encrypted = encryptor.encrypt("admin:super-secret-password");
+    String encrypted = encryptor.encrypt("admin:super-secret-password", BINDING);
 
-    assertThat(encrypted).startsWith("enc:v1:");
+    assertThat(encrypted).startsWith("enc:v2:" + encryptor.currentKeyId() + ":");
     assertThat(encrypted).doesNotContain("admin:super-secret-password");
-    assertThat(encryptor.decrypt(encrypted)).isEqualTo("admin:super-secret-password");
+    assertThat(encryptor.decrypt(encrypted, BINDING)).isEqualTo("admin:super-secret-password");
   }
 
   @Test
   void encryptingTheSameValueTwiceProducesDifferentCiphertextsBecauseTheIvIsRandom() {
-    CredentialsEncryptor encryptor = encryptorWithKey(validBase64Key());
+    CredentialsEncryptor encryptor = encryptor(KEY);
 
-    String first = encryptor.encrypt("admin:secret");
-    String second = encryptor.encrypt("admin:secret");
+    String first = encryptor.encrypt("admin:secret", BINDING);
+    String second = encryptor.encrypt("admin:secret", BINDING);
 
     assertThat(first).isNotEqualTo(second);
-    assertThat(encryptor.decrypt(first)).isEqualTo("admin:secret");
-    assertThat(encryptor.decrypt(second)).isEqualTo("admin:secret");
+    assertThat(encryptor.decrypt(first, BINDING)).isEqualTo("admin:secret");
+    assertThat(encryptor.decrypt(second, BINDING)).isEqualTo("admin:secret");
   }
 
   @Test
   void nullAndBlankPlaintextPassThroughUnchanged() {
-    CredentialsEncryptor encryptor = encryptorWithKey(validBase64Key());
+    CredentialsEncryptor encryptor = encryptor(KEY);
 
-    assertThat(encryptor.encrypt(null)).isNull();
-    assertThat(encryptor.encrypt("")).isEmpty();
+    assertThat(encryptor.encrypt(null, BINDING)).isNull();
+    assertThat(encryptor.encrypt("", BINDING)).isEmpty();
   }
 
   @Test
-  void decryptingALegacyPreIssue483CleartextValueReturnsItUnchanged() {
-    // A legacy cleartext value carries no "enc:v1:" prefix at all.
-    CredentialsEncryptor encryptor = encryptorWithKey(validBase64Key());
-
-    assertThat(encryptor.decrypt("admin:legacy-plaintext-secret"))
+  void decryptingALegacyCleartextValueReturnsItUnchanged() {
+    assertThat(encryptor(KEY).decrypt("admin:legacy-plaintext-secret", BINDING))
         .isEqualTo("admin:legacy-plaintext-secret");
   }
 
   @Test
   void decryptingALegacyValueRequiresNoKeyAtAll() {
-    CredentialsEncryptor encryptor = encryptorWithKey(null);
-
-    assertThat(encryptor.decrypt("admin:legacy-plaintext-secret"))
+    assertThat(encryptor(null).decrypt("admin:legacy-plaintext-secret", BINDING))
         .isEqualTo("admin:legacy-plaintext-secret");
   }
 
   @Test
   void encryptingWithoutAConfiguredKeyRaisesAClearException() {
-    CredentialsEncryptor encryptor = encryptorWithKey(null);
-
-    assertThatThrownBy(() -> encryptor.encrypt("admin:secret"))
+    assertThatThrownBy(() -> encryptor(null).encrypt("admin:secret", BINDING))
         .isInstanceOf(CredentialsEncryptionKeyMissingException.class)
         .hasMessageContaining("OPAA_CREDENTIALS_ENCRYPTION_KEY");
   }
 
   @Test
   void encryptingWithAnInvalidBase64KeyRaisesAClearException() {
-    CredentialsEncryptor encryptor = encryptorWithKey("not-valid-base64!!!");
-
-    assertThatThrownBy(() -> encryptor.encrypt("admin:secret"))
+    assertThatThrownBy(() -> encryptor("not-valid-base64!!!").encrypt("admin:secret", BINDING))
         .isInstanceOf(CredentialsEncryptionKeyMissingException.class);
   }
 
   @Test
   void encryptingWithAWrongLengthKeyRaisesAClearException() {
-    CredentialsEncryptor encryptor =
-        encryptorWithKey(Base64.getEncoder().encodeToString(new byte[16])); // AES-128, not 256
+    CredentialsEncryptor encryptor = encryptor(Base64.getEncoder().encodeToString(new byte[16]));
 
-    assertThatThrownBy(() -> encryptor.encrypt("admin:secret"))
+    assertThatThrownBy(() -> encryptor.encrypt("admin:secret", BINDING))
         .isInstanceOf(CredentialsEncryptionKeyMissingException.class)
         .hasMessageContaining("256-Bit");
   }
 
   @Test
-  void decryptingAValueWithAnUnknownVersionPrefixRaisesAClearExceptionInsteadOfPassingItThrough() {
-    // Only the exact "enc:v1:" prefix is treated as encrypted-and- decryptable; anything else
-    // that still starts with "enc:" must never be returned as if it were cleartext, so future
-    // format/version changes cannot be silently misread.
-    CredentialsEncryptor encryptor = encryptorWithKey(validBase64Key());
+  void anInvalidPreviousKeyIsNamedByItsOwnVariable() {
+    assertThatThrownBy(() -> encryptor(KEY, "not-valid-base64!!!").encrypt("admin:x", BINDING))
+        .isInstanceOf(CredentialsEncryptionKeyMissingException.class)
+        .hasMessageContaining("OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS");
+  }
 
-    assertThatThrownBy(() -> encryptor.decrypt("enc:v2:whatever-a-future-format-looks-like"))
+  @Test
+  void decryptingAValueWithAnUnknownVersionPrefixRaisesAClearExceptionInsteadOfPassingItThrough() {
+    // anything that starts with "enc:" in an unknown format must never be returned as cleartext
+    assertThatThrownBy(() -> encryptor(KEY).decrypt("enc:v3:a-future-format", BINDING))
         .isInstanceOf(CredentialsEncryptionKeyMissingException.class);
   }
 
   @Test
-  void
-      decryptingAMalformedBase64PayloadRaisesTheSameClearExceptionRatherThanAnUncaughtIllegalArgumentException() {
-    // Base64.getDecoder().decode(...) must be caught alongside the other decrypt failure modes,
-    // not left to escape as a bare IllegalArgumentException that would otherwise be misrouted to
-    // GlobalExceptionHandler's generic 400 handler with a raw JDK message.
-    CredentialsEncryptor encryptor = encryptorWithKey(validBase64Key());
-
-    assertThatThrownBy(() -> encryptor.decrypt("enc:v1:not-valid-base64!!!"))
+  void decryptingAMalformedBase64PayloadRaisesTheSameClearException() {
+    // a bare IllegalArgumentException would be misrouted to the generic 400 handler
+    assertThatThrownBy(() -> encryptor(KEY).decrypt("enc:v1:not-valid-base64!!!", BINDING))
         .isInstanceOf(CredentialsEncryptionKeyMissingException.class);
   }
 
   @Test
   void decryptingWithTheWrongKeyRaisesAClearExceptionInsteadOfSilentlyReturningGarbage() {
-    CredentialsEncryptor writer = encryptorWithKey(validBase64Key());
-    String encrypted = writer.encrypt("admin:secret");
+    String encrypted = encryptor(CipherFormatGate.KEYED, KEY).encrypt("admin:secret", BINDING);
+    String legacyFormat = encryptor(() -> false, KEY).encrypt("admin:secret", BINDING);
 
-    byte[] otherKey = new byte[32];
-    otherKey[0] = 1; // different from validBase64Key()'s all-sequential bytes
-    CredentialsEncryptor reader = encryptorWithKey(Base64.getEncoder().encodeToString(otherKey));
-
-    assertThatThrownBy(() -> reader.decrypt(encrypted))
+    assertThatThrownBy(() -> encryptor(OTHER_KEY).decrypt(encrypted, BINDING))
+        .isInstanceOf(CredentialsEncryptionKeyMissingException.class)
+        .hasMessageContaining("OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS");
+    assertThatThrownBy(() -> encryptor(OTHER_KEY).decrypt(legacyFormat, BINDING))
         .isInstanceOf(CredentialsEncryptionKeyMissingException.class);
   }
 
   @Test
-  void decryptsAValueStoredInTheEstablishedFormat() {
-    // ciphertext written with validBase64Key(); guards against format drift for persisted values
-    String stored =
-        "enc:v1:CSE4oxTU2M7odI8RjDLuJXUFWYknwhG1pm0mbh9+hjJYXQCXMNKOGotCjMLFtWlXk4RheHYNVQ==";
+  void aCiphertextMovedToAnotherRowOrColumnDoesNotDecryptThere() {
+    CredentialsEncryptor encryptor = encryptor(KEY);
+    String encrypted = encryptor.encrypt("admin:secret", BINDING);
 
-    assertThat(encryptorWithKey(validBase64Key()).decrypt(stored))
+    assertThatThrownBy(() -> encryptor.decrypt(encrypted, COLUMN.row(UUID.randomUUID())))
+        .isInstanceOf(CredentialsEncryptionKeyMissingException.class);
+    assertThatThrownBy(
+            () ->
+                encryptor.decrypt(
+                    encrypted,
+                    EncryptedColumn.credentials("knowledge_libraries", "source_webhook_secret")
+                        .row(ROW)))
+        .isInstanceOf(CredentialsEncryptionKeyMissingException.class);
+  }
+
+  @Test
+  void rebindMovesAValueToAnotherRow() {
+    CredentialsEncryptor encryptor = encryptor(KEY);
+    CipherBinding other = COLUMN.row(UUID.randomUUID());
+
+    String moved = encryptor.rebind(encryptor.encrypt("admin:secret", BINDING), BINDING, other);
+
+    assertThat(encryptor.decrypt(moved, other)).isEqualTo("admin:secret");
+    assertThatThrownBy(() -> encryptor.decrypt(moved, BINDING))
+        .isInstanceOf(CredentialsEncryptionKeyMissingException.class);
+  }
+
+  @Test
+  void aClosedFormatGateWritesTheFormatAnOlderVersionReads() {
+    String stored = encryptor(() -> false, KEY).encrypt("admin:secret", BINDING);
+
+    assertThat(stored).startsWith("enc:v1:");
+    assertThat(encryptor(KEY).decrypt(stored, COLUMN.row(UUID.randomUUID())))
+        .isEqualTo("admin:secret");
+  }
+
+  @Test
+  void afterARotationValuesUnderThePreviousKeyStayReadable() {
+    String keyed = encryptor(KEY).encrypt("admin:keyed", BINDING);
+    String legacyFormat = encryptor(() -> false, KEY).encrypt("admin:v1", BINDING);
+
+    CredentialsEncryptor rotated = encryptor(NEW_KEY, KEY);
+
+    assertThat(rotated.decrypt(keyed, BINDING)).isEqualTo("admin:keyed");
+    assertThat(rotated.decrypt(legacyFormat, BINDING)).isEqualTo("admin:v1");
+    assertThat(rotated.encrypt("admin:new", BINDING))
+        .startsWith("enc:v2:" + rotated.currentKeyId() + ":")
+        .doesNotStartWith("enc:v2:" + encryptor(KEY).currentKeyId() + ":");
+  }
+
+  @Test
+  void withoutThePreviousKeyTheMessageNamesTheVariableToSet() {
+    String keyed = encryptor(KEY).encrypt("admin:keyed", BINDING);
+
+    assertThatThrownBy(() -> encryptor(NEW_KEY).decrypt(keyed, BINDING))
+        .isInstanceOf(CredentialsEncryptionKeyMissingException.class)
+        .hasMessageContaining("OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS");
+  }
+
+  @Test
+  void rewrapPutsAValueUnderTheCurrentKeyAndLeavesACurrentOneAlone() {
+    String keyed = encryptor(KEY).encrypt("admin:keyed", BINDING);
+    String legacyFormat = encryptor(() -> false, KEY).encrypt("admin:v1", BINDING);
+    CredentialsEncryptor rotated = encryptor(NEW_KEY, KEY);
+
+    String rewrapped = rotated.rewrap(keyed, BINDING);
+    String converted = rotated.rewrap(legacyFormat, BINDING);
+
+    assertThat(rewrapped).startsWith("enc:v2:" + rotated.currentKeyId() + ":");
+    assertThat(converted).startsWith("enc:v2:" + rotated.currentKeyId() + ":");
+    assertThat(encryptor(NEW_KEY).decrypt(rewrapped, BINDING)).isEqualTo("admin:keyed");
+    assertThat(encryptor(NEW_KEY).decrypt(converted, BINDING)).isEqualTo("admin:v1");
+    assertThat(rotated.rewrap(rewrapped, BINDING)).isSameAs(rewrapped);
+  }
+
+  @Test
+  void rewrapRefusesAValueUnderAKeyItDoesNotHold() {
+    String foreign = encryptor(OTHER_KEY).encrypt("admin:secret", BINDING);
+
+    assertThatThrownBy(() -> encryptor(NEW_KEY, KEY).rewrap(foreign, BINDING))
+        .isInstanceOf(CredentialsEncryptionKeyMissingException.class);
+  }
+
+  @Test
+  void theKeyIdDependsOnTheKeyAlone() {
+    assertThat(encryptor(KEY).currentKeyId())
+        .isEqualTo(encryptor(KEY, NEW_KEY).currentKeyId())
+        .isEqualTo("585b259a1d5c0ce7")
+        .isNotEqualTo(encryptor(NEW_KEY).currentKeyId());
+  }
+
+  @Test
+  void decryptsValuesStoredInTheEstablishedFormats() {
+    // written with KEY by an independent AES-GCM implementation; guards against format drift
+    String v1 =
+        "enc:v1:CSE4oxTU2M7odI8RjDLuJXUFWYknwhG1pm0mbh9+hjJYXQCXMNKOGotCjMLFtWlXk4RheHYNVQ==";
+    String v2 =
+        "enc:v2:585b259a1d5c0ce7:ZGVmZ2hpamtsbW5vKX+zDxfTJetOBy3FqQAJjye2K3rqH4AFyKPImeYQCSN9SzPVHMNNraWSpg==";
+
+    assertThat(encryptor(KEY).decrypt(v1, BINDING)).isEqualTo("admin:super-secret-password");
+    assertThat(encryptor(KEY).decrypt(v2, BINDING)).isEqualTo("admin:super-secret-password");
+    assertThat(encryptor(NEW_KEY, KEY).decrypt(v2, BINDING))
         .isEqualTo("admin:super-secret-password");
   }
 }

@@ -2,6 +2,7 @@ package io.opaa.connection.token;
 
 import io.opaa.common.TransactionCallbacks;
 import io.opaa.security.CredentialsEncryptor;
+import io.opaa.security.EncryptedColumn;
 import jakarta.annotation.PreDestroy;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -47,6 +48,10 @@ public class GrantRevocations {
   static final int MAX_ATTEMPTS = 3;
   static final long POLL_SECONDS = 30;
   static final Duration LEASE = Duration.ofMinutes(5);
+
+  /** {@code connection_grant_revocations.order_ciphertext}, bound to the queue row (ADR-0064). */
+  static final EncryptedColumn ORDER =
+      EncryptedColumn.credentials("connection_grant_revocations", "order_ciphertext");
 
   private static final Logger log = LoggerFactory.getLogger(GrantRevocations.class);
 
@@ -108,12 +113,13 @@ public class GrantRevocations {
       return;
     }
     for (Grant grant : grants) {
+      UUID id = UUID.randomUUID();
       jdbc.update(
           "INSERT INTO connection_grant_revocations (id, profile_id, order_ciphertext)"
               + " VALUES (?, ?, ?)",
-          UUID.randomUUID(),
+          id,
           grant.profileId(),
-          encryptor.encrypt(grant.order()));
+          encryptor.encrypt(grant.order(), ORDER.row(id)));
     }
     int runs = Math.min(grants.size(), THREADS);
     TransactionCallbacks.afterCommitOrNow(() -> requestRuns(runs));
@@ -199,7 +205,7 @@ public class GrantRevocations {
       }
       String order;
       try {
-        order = encryptor.decrypt(row.orderCiphertext());
+        order = encryptor.decrypt(row.orderCiphertext(), ORDER.row(row.id()));
       } catch (RuntimeException unreadable) {
         log.warn(
             "An OAuth revocation under profile {} was dropped: its order cannot be decrypted ({});"

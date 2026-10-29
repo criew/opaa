@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 import com.sun.net.httpserver.HttpServer;
+import io.opaa.security.CipherFormatGate;
 import io.opaa.security.ScriptedResolution;
 import io.opaa.security.SettingsEncryptionProperties;
 import io.opaa.security.SettingsEncryptor;
@@ -64,7 +65,9 @@ class LlmModelConnectionTesterRebindingTest {
                 new SettingsEncryptionProperties(
                     Base64.getEncoder()
                         .encodeToString(
-                            "0123456789abcdef0123456789abcdef".getBytes(StandardCharsets.UTF_8)))),
+                            "0123456789abcdef0123456789abcdef".getBytes(StandardCharsets.UTF_8)),
+                    List.of()),
+                CipherFormatGate.KEYED),
             new ObjectMapper(),
             ModelAddressPolicy.allowing(List.of()));
 

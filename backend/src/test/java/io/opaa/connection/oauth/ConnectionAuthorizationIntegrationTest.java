@@ -45,6 +45,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.security.CredentialsEncryptor;
+import io.opaa.security.EncryptedColumn;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.test.ConnectorReleases;
 import io.opaa.test.FakeAuthorizationServer;
@@ -663,12 +664,18 @@ class ConnectionAuthorizationIntegrationTest {
     for (int i = 0; i < grants; i++) {
       String refresh = "bulk-refresh-" + i + "-" + UUID.randomUUID();
       refreshTokens.add(refresh);
+      UUID tokenId = UUID.randomUUID();
       rows.add(
           new Object[] {
-            UUID.randomUUID(),
+            tokenId,
             profile,
-            encryptor.encrypt(refresh),
-            encryptor.encrypt("bulk-access-" + i),
+            encryptor.encrypt(
+                refresh,
+                EncryptedColumn.credentials("connection_tokens", "secret_ciphertext").row(tokenId)),
+            encryptor.encrypt(
+                "bulk-access-" + i,
+                EncryptedColumn.credentials("connection_tokens", "access_token_ciphertext")
+                    .row(tokenId)),
             Timestamp.from(now.plus(Duration.ofHours(1))),
             Timestamp.from(now.plus(Duration.ofMinutes(10))),
             person,
