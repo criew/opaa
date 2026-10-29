@@ -10,12 +10,16 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import io.opaa.api.types.MailEncryption;
 import io.opaa.common.DatabaseClock;
 import jakarta.mail.SendFailedException;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import java.time.Instant;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
@@ -26,6 +30,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -60,6 +65,20 @@ class MailServiceTest {
           587,
           null,
           null,
+          MailEncryption.STARTTLS,
+          "opaa@intern.example",
+          "OPAA");
+
+  /** A password shaped like an address, as a server may echo it back in its refusal. */
+  private static final String ECHOED = "kw@geheim.zz";
+
+  private static final MailSettingsSnapshot WITH_PASSWORD =
+      new MailSettingsSnapshot(
+          true,
+          "smtp.intern.example",
+          587,
+          "kennung",
+          ECHOED,
           MailEncryption.STARTTLS,
           "opaa@intern.example",
           "OPAA");
@@ -327,6 +346,57 @@ class MailServiceTest {
         .doesNotContain("kw");
   }
 
+  // regression guard: a password the server echoes stays out of the log and last_failure_reason
+  @Test
+  void aSendWithTheStoredSettingsKeepsAnEchoedPasswordOutOfLogAndFailureReason() {
+    stubConfiguredSender(WITH_PASSWORD);
+    doThrow(
+            new MailSendException(
+                "failed", new RuntimeException("535 5.7.8 kennung " + ECHOED + " rejected")))
+        .when(sender)
+        .send(any(MimeMessage.class));
+
+    List<String> logged = loggedWhile(() -> send(MailTemplateKey.TEST_MAIL));
+
+    assertNoPartOfThePassword(logged);
+    ArgumentCaptor<String> reason = ArgumentCaptor.forClass(String.class);
+    verify(settingsService).recordSendOutcome(any(), reason.capture());
+    assertThat(reason.getValue())
+        .contains("535 5.7.8 kennung *** rejected")
+        .doesNotContain("geheim")
+        .doesNotContain("kw");
+  }
+
+  // regression guard: a password the server echoes stays out of the log and last_failure_reason
+  @Test
+  void aDeliveryOfAnOutboxRowKeepsAnEchoedPasswordOutOfLogAndFailureReason() {
+    when(senderProvider.current())
+        .thenReturn(new MailSenderProvider.Transport(sender, WITH_PASSWORD));
+    when(sender.createMimeMessage())
+        .thenReturn(new MimeMessage(Session.getInstance(new Properties())));
+    doThrow(
+            new MailSendException(
+                "failed", new RuntimeException("535 5.7.8 kennung " + ECHOED + " rejected")))
+        .when(sender)
+        .send(any(MimeMessage.class));
+    MailOutbox.Claimed claimed =
+        new MailOutbox.Claimed(
+            UUID.randomUUID(),
+            MailTemplateKey.PASSWORD_RESET,
+            RECIPIENT,
+            new RenderedMail("Betreff", "Textteil", "<p>HTML</p>"),
+            1);
+
+    SendResult[] result = new SendResult[1];
+    List<String> logged = loggedWhile(() -> result[0] = mailService.deliver(claimed));
+
+    assertNoPartOfThePassword(logged);
+    assertThat(result[0].reasonOrNull()).doesNotContain("geheim").doesNotContain("kw");
+    ArgumentCaptor<String> reason = ArgumentCaptor.forClass(String.class);
+    verify(settingsService).recordSendOutcome(any(), reason.capture());
+    assertThat(reason.getValue()).doesNotContain("geheim").doesNotContain("kw");
+  }
+
   @Test
   void shortensASingleRecipientForTheLogKeepingOnlyTheDomain() {
     assertThat(MailRecipients.shortened(RECIPIENT)).isEqualTo("e***@amt.example");
@@ -352,9 +422,32 @@ class MailServiceTest {
     return mailService.send(key, Locale.GERMAN, RECIPIENT, Map.of());
   }
 
+  private static List<String> loggedWhile(Runnable action) {
+    Logger logger = (Logger) LoggerFactory.getLogger(MailService.class);
+    ListAppender<ILoggingEvent> logs = new ListAppender<>();
+    logs.start();
+    logger.addAppender(logs);
+    try {
+      action.run();
+    } finally {
+      logger.detachAppender(logs);
+    }
+    return logs.list.stream().map(ILoggingEvent::getFormattedMessage).toList();
+  }
+
+  private static void assertNoPartOfThePassword(List<String> logged) {
+    assertThat(logged)
+        .isNotEmpty()
+        .allSatisfy(line -> assertThat(line).doesNotContain("geheim").doesNotContain("kw"));
+  }
+
   private void stubConfiguredSender() {
+    stubConfiguredSender(CONFIGURED);
+  }
+
+  private void stubConfiguredSender(MailSettingsSnapshot settings) {
     when(senderProvider.isEnabled()).thenReturn(true);
-    when(senderProvider.current()).thenReturn(new MailSenderProvider.Transport(sender, CONFIGURED));
+    when(senderProvider.current()).thenReturn(new MailSenderProvider.Transport(sender, settings));
     when(sender.createMimeMessage())
         .thenReturn(new MimeMessage(Session.getInstance(new Properties())));
     when(templates.render(eq(MailTemplateKey.TEST_MAIL), eq("de"), any()))
