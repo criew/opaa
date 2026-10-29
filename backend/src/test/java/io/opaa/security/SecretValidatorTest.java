@@ -181,18 +181,20 @@ class SecretValidatorTest {
   }
 
   /**
-   * No tracked file sets a signing secret the {@code oidc} profile would accept: every {@code
-   * OPAA_AUTH_JWT_SECRET=} and {@code jwtSecret:} value is empty or fails {@link
+   * No tracked file sets a signing secret the {@code oidc} profile would accept: every value after
+   * {@code OPAA_AUTH_JWT_SECRET=} or {@code :} (env files, Compose) and {@code jwtSecret:} or
+   * {@code =} (Helm values, {@code --set}), quoted or not, is empty or fails {@link
    * SecretValidator#isStrong} - a placeholder, the marker or a published value. With such a secret
    * anyone could sign tokens for any account; test stacks generate theirs per run.
    */
   @Test
   void everySigningSecretInTheRepositoryIsRefusedByTheOidcProfile()
       throws IOException, InterruptedException {
-    Pattern secret = Pattern.compile("(?:OPAA_AUTH_JWT_SECRET=|jwtSecret:[ \\t]*)([^\\s\"']*)");
+    Pattern secret =
+        Pattern.compile("(?:OPAA_AUTH_JWT_SECRET|jwtSecret)[=:][ \\t]*[\"']?([^\\s\"']*)");
     List<String> accepted = new ArrayList<>();
     int found = 0;
-    for (String[] hit : trackedLinesMatching("OPAA_AUTH_JWT_SECRET=|jwtSecret:")) {
+    for (String[] hit : trackedLinesMatching("OPAA_AUTH_JWT_SECRET[=:]|jwtSecret[=:]")) {
       Matcher matcher = secret.matcher(hit[1]);
       while (matcher.find()) {
         found++;

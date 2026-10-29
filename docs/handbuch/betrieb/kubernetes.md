@@ -1225,7 +1225,9 @@ Der allgemeine Ablauf steht unter [Aktualisierung](aktualisierung.md); unter Kub
    ([Ablauf eines Updates](aktualisierung.md#ablauf-eines-updates)). Stammt ein
    Verschlüsselungsschlüssel aus den Wertesätzen der CI, den Testläufen des Repositorys oder dem
    Profil `dev`, startet das Backend nicht mehr: eigenen Schlüssel erzeugen und die damit geschützten
-   Werte neu eintragen ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#schlüssel-und-geheimnisse)).
+   Werte neu eintragen. Dasselbe gilt für ein `secrets.jwtSecret` aus diesen Dateien; ein neues
+   Signaturgeheimnis (`openssl rand -base64 48`) beendet alle lokalen Sitzungen
+   ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#schlüssel-und-geheimnisse)).
 2. **Datenbank sichern**, danach die Originale (siehe
    [Sicherung und Wiederherstellung](#sicherung-und-wiederherstellung)). Ohne diese Sicherung gibt es
    nach einer Schemaänderung keinen Rückweg, außer die neue Version lässt die vorige in ihrem
