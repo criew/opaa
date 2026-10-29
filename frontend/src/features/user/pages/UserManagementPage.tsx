@@ -27,7 +27,8 @@ import { contentWidth } from '@/shared/theme/tokens'
 import GeneratedPasswordDialog, {
   type GeneratedPassword,
 } from '../components/GeneratedPasswordDialog'
-import { ROLE_CHANGE_CONFIRMED_HINT } from '../components/localUserLabels'
+import { ROLE_CHANGE_RETURNED_HINT } from '../components/localUserLabels'
+import { noteProviderReturn } from '@/shared/session/useRecentLoginGate'
 
 export type UserManagementTab = 'accounts' | 'settings'
 
@@ -73,11 +74,14 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
     url: string
   } | null>(null)
 
+  // Back from a sign-in forced at the provider: the dialog that asked for it is gone with the page,
+  // so the person makes the change again. Taken here, so no other page reads the return as its own;
+  // the gate holds it until that next attempt (useRecentLoginGate).
   useEffect(() => {
-    // Back from a sign-in forced at the provider before a role change: the dialog that asked for it
-    // is gone with the page, so the person makes the change again. Consumed here, so no other page
-    // takes the return for its own.
-    if (consumeRecentLoginReturn()) notify(ROLE_CHANGE_CONFIRMED_HINT, 'info')
+    if (consumeRecentLoginReturn()) {
+      noteProviderReturn()
+      notify(ROLE_CHANGE_RETURNED_HINT, 'info')
+    }
   }, [])
 
   useEffect(() => {

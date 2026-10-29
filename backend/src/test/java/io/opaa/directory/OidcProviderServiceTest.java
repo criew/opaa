@@ -32,8 +32,10 @@ import io.opaa.auth.OidcProviderRemovalRepository;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.auth.OidcProvidersChangedEvent;
 import io.opaa.auth.ProviderConnectionsImpact;
+import io.opaa.auth.RecentLoginPolicy;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
@@ -75,6 +77,7 @@ class OidcProviderServiceTest {
 
   private final ProviderGroupDirectory providerGroups = mock(ProviderGroupDirectory.class);
   private final ProviderConnectionsImpact connectionsImpact = mock(ProviderConnectionsImpact.class);
+  private final RecentLoginPolicy recentLogin = mock(RecentLoginPolicy.class);
 
   private OidcProviderService service;
 
@@ -94,6 +97,7 @@ class OidcProviderServiceTest {
             auditEventRecorder,
             eventPublisher,
             connectionsImpact,
+            recentLogin,
             Clock.fixed(NOW, ZoneOffset.UTC));
     when(repository.save(any(OidcProvider.class))).thenAnswer(inv -> inv.getArgument(0));
     when(repository.saveAndFlush(any(OidcProvider.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -116,6 +120,72 @@ class OidcProviderServiceTest {
   private static OidcProviderDraft draft(String name, String issuer) {
     return new OidcProviderDraft(
         name, issuer, "opaa-frontend", null, OidcClaimMapping.keycloakDefaults());
+  }
+
+  private static OidcProviderDraft draftWithAdminRole(String name, String issuer, String role) {
+    return new OidcProviderDraft(
+        name,
+        issuer,
+        "opaa-frontend",
+        null,
+        new OidcClaimMapping(null, null, "realm_access.roles", role, null, null));
+  }
+
+  private void noRecentSignIn() {
+    doThrow(new AccessDeniedException("Bitte bestätigen Sie Ihre Identität."))
+        .when(recentLogin)
+        .requireRecentLogin();
+  }
+
+  /** A role mapping hands out system roles, so it is set only after a recent sign-in. */
+  @Test
+  void aProviderWithARoleMappingIsCreatedOnlyAfterARecentSignIn() {
+    noRecentSignIn();
+
+    assertThatThrownBy(
+            () ->
+                service.createProvider(
+                    ORGANIZATION_ID,
+                    ACTOR_ID,
+                    draftWithAdminRole("Haus", "https://idp.example/realms/r", "opaa-admin")))
+        .isInstanceOf(AccessDeniedException.class);
+    verify(repository, never()).save(any(OidcProvider.class));
+
+    // without a role mapping the provider grants no system role and needs no confirmation
+    service.createProvider(
+        ORGANIZATION_ID, ACTOR_ID, draft("Haus", "https://idp.example/realms/r"));
+    verify(repository).save(any(OidcProvider.class));
+  }
+
+  @Test
+  void aChangedRoleMappingNeedsARecentSignInAnUnchangedOneDoesNot() {
+    OidcProvider self = provider("Beschäftigte", "https://idp.example/realms/a", true, true);
+    when(repository.findById(self.getId())).thenReturn(Optional.of(self));
+    noRecentSignIn();
+
+    assertThatThrownBy(
+            () ->
+                service.updateProvider(
+                    ORGANIZATION_ID,
+                    ACTOR_ID,
+                    self.getId(),
+                    draftWithAdminRole(
+                        "Beschäftigte", "https://idp.example/realms/a", "opaa-admin")))
+        .isInstanceOf(AccessDeniedException.class);
+    assertThat(self.getClaimMapping().systemAdminRole()).isNull();
+
+    OidcProvider renamed =
+        service.updateProvider(
+            ORGANIZATION_ID,
+            ACTOR_ID,
+            self.getId(),
+            new OidcProviderDraft(
+                "Beschäftigte (neu)",
+                "https://idp.example/realms/a",
+                self.getClientId(),
+                self.getJwkSetUri(),
+                self.getClaimMapping()));
+    assertThat(renamed.getDisplayName()).isEqualTo("Beschäftigte (neu)");
   }
 
   @Test

@@ -250,8 +250,12 @@ derselbe Schutz: Dem letzten anmeldefähigen Systemverwalter lässt sich die Rol
 gibt — über „Rolle ändern …", im Dialog „Bearbeiten" oder schon beim Anlegen mit einer anderen Rolle
 als „Nutzer" —, bestätigt vorher seine Anmeldung, wenn sie länger zurückliegt
 ([Erneute Anmeldung vor sensiblen Vorgängen](../betrieb/authentifizierung.md#erneute-anmeldung-vor-sensiblen-vorgängen)).
-Eine offen gelassene oder entwendete Sitzung genügt so nicht, um Verwaltungsrechte weiterzugeben.
-Die übrigen Angaben eines Kontos ändern sich ohne Bestätigung.
+Dasselbe gilt für alles, womit ein lokales Konto der Systemverwaltung oder der Revision in andere
+Hände kommen könnte: eine neue E-Mail-Adresse, „Rücksetz-Link per E-Mail", „Passwort erzeugen" und
+„An Identitätsanbieter übergeben", und für die Rollenzuordnung eines Identitätsanbieters
+([Authentifizierung](../betrieb/authentifizierung.md)). Eine offen gelassene oder entwendete Sitzung
+genügt so nicht, um Verwaltungsrechte weiterzugeben oder ein solches Konto zu übernehmen. Die übrigen
+Angaben eines Kontos und alle Handlungen an Konten mit der Rolle „Nutzer" gehen ohne Bestätigung.
 
 Systemverwalterkonten sind **persönliche** Konten, je Person eines — keine Sammelkonten. Das
 Notanker-Konto, das der Erststart anlegt, ist davon ausgenommen und kein Arbeitskonto; wofür es

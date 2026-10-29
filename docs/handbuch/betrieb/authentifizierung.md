@@ -212,7 +212,9 @@ den Rollen-Claim.
 - Ein **Rollen-Claim** (Pfad in Punktnotation, etwa `realm_access.roles`, mit den Werten für
   `SYSTEM_ADMIN` und `AUDITOR`) macht den Anbieter für diese Systemrollen führend: Die Rolle kommt bei
   jeder Anfrage aus dem Token, die manuelle Rollenvergabe ist für seine Konten gesperrt, und der letzte
-  `SYSTEM_ADMIN` der Installation wird nie per Token entzogen. Das Setzen verlangt eine Bestätigung.
+  `SYSTEM_ADMIN` der Installation wird nie per Token entzogen. Das Setzen verlangt eine Bestätigung;
+  Rollen-Claim und Rollenwerte zu setzen oder zu ändern verlangt außerdem eine
+  [erneute Anmeldung](#erneute-anmeldung-vor-sensiblen-vorgängen).
 - Ein **Gruppen-Claim** macht die Gruppennamen des Tokens bei jeder Anmeldung zu Mitgliedschaften in
   Gruppen dieses Anbieters; gleichnamige Gruppen zweier Anbieter sind zwei Gruppen. Sie sind in der
   Gruppenverwaltung schreibgeschützt. Gruppen-Claim und Verzeichnisabgleich schließen einander je
@@ -473,9 +475,10 @@ OPAA kann vor einem Vorgang verlangen, dass die Person ihre Identität gerade eb
 ein nicht gesperrter Arbeitsplatz dafür nicht genügt. Die Bestätigung gilt für kurze Zeit
 (`OPAA_AUTH_RECENT_LOGIN_MAX_AGE` in der [Variablenliste](konfiguration.md)), danach wird wieder
 gefragt. Verlangt wird sie vor dem Download der eigenen Daten
-([Selbstauskunft](../konten-und-rechte/benutzerverwaltung.md#meine-daten-die-selbstauskunft)) und
-bevor die Systemverwaltung einem Konto eine andere Systemrolle gibt
-([Rollen](../konten-und-rechte/benutzerverwaltung.md#7-rollen)).
+([Selbstauskunft](../konten-und-rechte/benutzerverwaltung.md#meine-daten-die-selbstauskunft)),
+bevor die Systemverwaltung einem Konto eine andere Systemrolle gibt oder ein Konto mit Systemrolle in
+andere Hände kommen könnte ([Rollen](../konten-und-rechte/benutzerverwaltung.md#7-rollen)), und bevor
+sie die Rollenzuordnung eines Identitätsanbieters setzt oder ändert.
 
 - **Lokales Konto:** Die Bestätigung erfolgt mit dem Passwort. Ein falsches Passwort zählt wie bei
   der Anmeldung als Fehlversuch und führt nach zu vielen Versuchen zur Sperre.

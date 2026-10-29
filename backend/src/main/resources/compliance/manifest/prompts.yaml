@@ -9,9 +9,10 @@ prompts:
       - io.opaa.query.answer.AnswerGenerationService
       - io.opaa.common.ContentFence
       - io.opaa.query.answer.DocumentBlock
+      - io.opaa.query.answer.PassageRules
       - io.opaa.query.answer.SpaceInstructionBlock
       - io.opaa.retrieval.ConversationNoteBlock
-    sha256: "dceebf1aec4601689a4cade7bdb454828e8233695f74c876fbb94f6280ef0d97"
+    sha256: "dbaa7064679347ef0684a8d84d37e8e0b0b98ad36a3799e512b9d359210dafb1"
   - id: query-decomposition
     purpose: Zerlegt eine Frage mit dem Gesprächsverlauf in Suchanfragen oder erkennt „keine Suche“
     classes:
@@ -36,7 +37,10 @@ prompts:
     classes:
       - io.opaa.query.spike.SpikeToolLoopQueryHandler
       - io.opaa.query.spike.SearchKnowledgeTool
-    sha256: "f951f0e657d5ef6801133bd8539aa8ac041dbdeb2961827a9341e9d3a7de162c"
+      - io.opaa.query.answer.PassageRules
+      - io.opaa.query.answer.DocumentBlock
+      - io.opaa.common.ContentFence
+    sha256: "e578e78060756bd8d02b05dc63353658baffd79d6797384a20977ce553589a2b"
   - id: mcp-tool-descriptions
     purpose: Beschreibungen der Werkzeuge, nach denen das Modell eines externen KI-Werkzeugs entscheidet
     classes: [io.opaa.mcp.McpToolCatalog]

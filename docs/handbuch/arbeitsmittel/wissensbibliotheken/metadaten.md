@@ -533,6 +533,7 @@ Wert ist dort als „(abgeleitet)" gekennzeichnet; ein leeres Feld fehlt.
 | Stichproben-Export | MANAGER an der Bibliothek aus einer Freigabe |
 | Modellgestützte Ermittlung und freie Schlagworte ein- oder ausschalten | MANAGER an der Bibliothek |
 | Bibliotheksfelder anlegen, ändern, löschen, Wertelisten pflegen und abbilden, Kontextpräfix-Wirkstellen schalten | MANAGER an der Bibliothek |
+| Folgekosten einer Schemaänderung sehen: Zahl der Dokumente je Feld oder Listenwert, Umfang einer Änderung | VIEWER (Listenwert) bzw. MANAGER an der Bibliothek, auch über die Systemverwaltung |
 | Wert setzen, löschen, „kein Wert ermittelbar", Sammelzuweisung | EDITOR an der Bibliothek |
 | Vokabular als Auswahlliste | jede angemeldete Person; es ist Schema, kein Bestand |
 | Bestandslauf und Kontextpräfix-Nachlauf starten, Extraktionsstand und Füllgrad aller Bibliotheken der Organisation | Systemadministrator |

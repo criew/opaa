@@ -595,9 +595,11 @@ Erste.
 Bibliothek; das Öffnen eines Originals und die Chunk-Ansicht der Suchdiagnose prüfen aber dieselbe
 Formel wie die Suche: Ohne Leserecht auf die Bibliothek antwortet die Anwendung mit einer Meldung,
 die den Grund benennt, statt den Inhalt auszuliefern. Dasselbe gilt für die Metadaten, die aus dem
-Inhalt eines Dokuments gewonnen sind: die Feldwerte eines Dokuments und der Stichproben-Export;
-die Zahlen des Füllgrads und der Extraktionsgüte sieht die Systemverwaltung dagegen wie die
-Dokumentenliste. Wer den Inhalt tatsächlich braucht, holt sich das
+Inhalt eines Dokuments gewonnen sind: die Feldwerte eines Dokuments und der Stichproben-Export.
+Zahlen sieht die Systemverwaltung dagegen wie die Dokumentenliste: Füllgrad und Extraktionsgüte und,
+weil sie jede Bibliothek auch im Schema pflegt, die Folgekosten einer Schemaänderung — wie viele
+Dokumente ein Feld oder einen Listenwert tragen und wie viele eine Änderung neu schreiben würde. Daran
+lässt sich ablesen, wie häufig ein Wert vorkommt, nicht aber, welches Dokument ihn trägt. Wer den Inhalt tatsächlich braucht, holt sich das
 Recht sichtbar: **sich selbst die Rolle „Leser" auf diese Bibliothek geben** — der kleinste Schritt,
 und er steht mit Beginn und Ende in der Rechtehistorie (Abschnitt 12) — oder, wenn die Zuständigkeit
 ohnehin übergeht, das Eigentum übernehmen („Eigentum abgeben", Abschnitt 13). So oder so geschieht

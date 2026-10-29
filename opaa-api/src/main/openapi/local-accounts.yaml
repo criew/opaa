@@ -198,7 +198,8 @@ paths:
         runs through the same path as POST /api/v1/admin/users/{id}/role and is audited as a role
         grant or withdrawal; a role different from the current one requires a recent sign-in (403
         RECENT_LOGIN_REQUIRED, response RecentLoginRequired), and the refusal applies none of the
-        fields sent alongside, while an unchanged role needs none; everything else is one LOCAL_USER_CHANGED that carries before/after
+        fields sent alongside, while an unchanged role needs none; so does a new e-mail address
+        for an account with a system role other than USER; everything else is one LOCAL_USER_CHANGED that carries before/after
         for the expiry date only and otherwise just the names of the changed fields. On the
         bootstrap account an expiry date and a role other than SYSTEM_ADMIN are refused with 409
         and code BOOTSTRAP_ACCOUNT (ADR-0033, Entscheidungen 3 and 5), and none of the fields sent
@@ -337,7 +338,8 @@ paths:
         fallback and delivery-path audit exactly as for the invitation
         (LOCAL_USER_PASSWORD_RESET_REQUESTED, or LOCAL_USER_INVITED for the resent invitation).
         Refused with 409 for the bootstrap account (BOOTSTRAP_ACCOUNT): its sealed password is
-        renewed only by the restart with OPAA_LOCAL_ADMIN_RESET=force.
+        renewed only by the restart with OPAA_LOCAL_ADMIN_RESET=force. For an account with a
+        system role other than USER it requires a recent sign-in (403 RECENT_LOGIN_REQUIRED, response RecentLoginRequired).
       parameters:
         - name: id
           in: path
@@ -372,7 +374,8 @@ paths:
         never stored in clear text and never returned again. Refused with 409 for the bootstrap
         account (BOOTSTRAP_ACCOUNT), also when it is the caller: its sealed password is renewed only
         by the restart with OPAA_LOCAL_ADMIN_RESET=force, and the account changes its own password
-        through the self-service change-password call.
+        through the self-service change-password call. For an account with a system role other
+        than USER it requires a recent sign-in (403 RECENT_LOGIN_REQUIRED, response RecentLoginRequired).
       parameters:
         - name: id
           in: path
@@ -411,7 +414,9 @@ paths:
         person's own provider token at redemption. Refused with 409 for the emergency-anchor
         account (BOOTSTRAP_ACCOUNT) and when no other login-capable system administrator would
         remain (LAST_LOGIN_CAPABLE_ADMIN, checked here and again at redemption). A provider that is
-        unknown, disabled or the LOCAL row is a 400 with fieldErrors on providerId.
+        unknown, disabled or the LOCAL row is a 400 with fieldErrors on providerId. For an account
+        with a system role other than USER it requires a recent sign-in (403 RECENT_LOGIN_REQUIRED, response RecentLoginRequired): whoever redeems
+        the code owns the account.
       parameters:
         - name: id
           in: path

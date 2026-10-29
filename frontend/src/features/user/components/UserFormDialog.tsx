@@ -25,13 +25,12 @@ import type {
   SystemRole,
 } from '@/shared/api/types'
 import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
-import { isRecentLoginRequired, recentLoginRefusalMessage } from '@/shared/session/recentLogin'
-import RecentLoginDialog from '@/shared/ui/RecentLoginDialog'
+import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
 import { useUserAdminStore } from '../stores/userAdminStore'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import LocalUserChatCleanupSection from './LocalUserChatCleanupSection'
 import {
-  ROLE_CHANGE_CONFIRM_PURPOSE,
+  PRIVILEGED_CONFIRM_PURPOSE,
   SYSTEM_ROLES,
   SYSTEM_ROLE_LABEL,
   defaultExpiryInputValue,
@@ -159,7 +158,7 @@ export default function UserFormDialog({
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
-  const [confirming, setConfirming] = useState(false)
+  const gate = useRecentLoginGate(PRIVILEGED_CONFIRM_PURPOSE)
 
   const isEdit = user !== undefined
   const isBootstrap = user?.bootstrap === true
@@ -203,7 +202,9 @@ export default function UserFormDialog({
           noExpiry: expiryRemoved,
           ...(expiryChanged ? { expiresAt: fromDateInputValue(draft.expiresAt) } : {}),
         }
-        onUpdated(await updateUser(user.id, request))
+        const updated = await updateUser(user.id, request)
+        gate.settled()
+        onUpdated(updated)
       } else {
         const request: LocalUserCreateRequest = {
           email: draft.email.trim(),
@@ -214,12 +215,14 @@ export default function UserFormDialog({
           ...(draft.noExpiry ? {} : { expiresAt: fromDateInputValue(draft.expiresAt) }),
           mode: draft.mode,
         }
-        onCreated(await createUser(request))
+        const created = await createUser(request)
+        gate.settled()
+        onCreated(created)
       }
     } catch (err) {
-      if (isRecentLoginRequired(err)) {
-        if (afterConfirmation) setError(recentLoginRefusalMessage(false))
-        else setConfirming(true)
+      const refused = gate.refusal(err, () => void submit(true), afterConfirmation)
+      if (refused !== null) {
+        if (refused) setError(refused)
         return
       }
       const violations = apiFieldErrors(err)
@@ -403,15 +406,7 @@ export default function UserFormDialog({
           </Button>
         </DialogActions>
       </Dialog>
-      <RecentLoginDialog
-        open={confirming}
-        purpose={ROLE_CHANGE_CONFIRM_PURPOSE}
-        onConfirmed={() => {
-          setConfirming(false)
-          void submit(true)
-        }}
-        onClose={() => setConfirming(false)}
-      />
+      {gate.dialog}
     </>
   )
 }

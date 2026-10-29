@@ -10,13 +10,12 @@ import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { AccountResponse, SystemRole } from '@/shared/api/types'
-import { isRecentLoginRequired, recentLoginRefusalMessage } from '@/shared/session/recentLogin'
 import { notify } from '@/shared/stores/notificationStore'
-import RecentLoginDialog from '@/shared/ui/RecentLoginDialog'
+import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
 import { useUserAdminStore } from '../stores/userAdminStore'
 import { accountOriginLabel } from './accountLabels'
 import {
-  ROLE_CHANGE_CONFIRM_PURPOSE,
+  PRIVILEGED_CONFIRM_PURPOSE,
   SYSTEM_ROLES,
   SYSTEM_ROLE_LABEL,
   localUserErrorMessage,
@@ -40,7 +39,7 @@ export default function RoleChangeDialog({ account, onClose }: RoleChangeDialogP
   const [role, setRole] = useState<SystemRole | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [confirming, setConfirming] = useState(false)
+  const gate = useRecentLoginGate(PRIVILEGED_CONFIRM_PURPOSE)
   const open = account !== null
   const selected = role ?? account?.systemRole ?? 'USER'
   const name = account?.displayName ?? account?.email ?? ''
@@ -51,15 +50,15 @@ export default function RoleChangeDialog({ account, onClose }: RoleChangeDialogP
     setError(null)
     try {
       await changeRole(account.id, selected)
+      gate.settled()
       notify(`Die Rolle von „${name}“ ist jetzt ${SYSTEM_ROLE_LABEL[selected]}.`, 'success')
       onClose()
     } catch (err) {
-      if (isRecentLoginRequired(err) && !afterConfirmation) {
-        setConfirming(true)
-      } else if (isRecentLoginRequired(err)) {
-        setError(recentLoginRefusalMessage(false))
-      } else {
+      const refused = gate.refusal(err, () => void save(true), afterConfirmation)
+      if (refused === null) {
         setError(localUserErrorMessage(err, 'Die Rolle konnte nicht geändert werden.'))
+      } else if (refused) {
+        setError(refused)
       }
     } finally {
       setSaving(false)
@@ -132,15 +131,7 @@ export default function RoleChangeDialog({ account, onClose }: RoleChangeDialogP
           </Button>
         </DialogActions>
       </Dialog>
-      <RecentLoginDialog
-        open={confirming}
-        purpose={ROLE_CHANGE_CONFIRM_PURPOSE}
-        onConfirmed={() => {
-          setConfirming(false)
-          void save(true)
-        }}
-        onClose={() => setConfirming(false)}
-      />
+      {gate.dialog}
     </>
   )
 }
