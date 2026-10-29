@@ -527,9 +527,10 @@ roles:
       von Dokumenten oder Chats
   - id: AUDITOR
     seesAboutOthers: >-
-      Protokolleinträge mit Pseudonymen über die vier begrenzten Abfragewege, die Rechtehistorie
-      als Stichtagsauskunft und das Verbindungsprotokoll; Klarnamen nur in einer freigegebenen
-      anlassbezogenen Klärung im Vier-Augen-Prinzip. Keine Verwaltungsrechte
+      Protokolleinträge über die vier begrenzten Abfragewege und das Verbindungsprotokoll, jeweils
+      ohne Kennung der handelnden oder betroffenen Person, und die Rechtehistorie als
+      Stichtagsauskunft; die Person nur in einer freigegebenen anlassbezogenen Klärung im
+      Vier-Augen-Prinzip. Keine Verwaltungsrechte
 capabilities:
   - id: CREATE_SPACE
     seesAboutOthers: Nichts über andere Personen; öffnet nur das Anlegen eines Space

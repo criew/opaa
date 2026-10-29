@@ -26,9 +26,9 @@ defaults:
     evaluations: >-
       Abfragen nach Objekt, Zeitraum, Ereignisart oder Vorgang mit Zeitraum bis 92 Tage und
       höchstens 50 Seiten; kein Filter, keine Zählung und keine Zeitreihe je Person, keine
-      Freitextsuche. Kennungen von Personen gelten in einer Antwort nur für diese Antwort, zwei
-      Antworten lassen sich über sie nicht verbinden. Personenfilter nur in der freigegebenen
-      anlassbezogenen Klärung, deren Antwort keine Kennung der handelnden Person trägt
+      Freitextsuche. Die Antworten nennen keine Person, auch nicht mit Kennung; zwei Antworten
+      lassen sich über eine Person nicht verbinden. Personenfilter nur in der freigegebenen
+      anlassbezogenen Klärung, deren Antwort ebenfalls keine Kennung einer Person trägt
     recordFields:
       - event_id
       - recorded_at
@@ -122,10 +122,12 @@ data:
     deletion: Monatsweise Löschung ganzer abgelaufener Partitionen durch eine Datenbankfunktion
     evaluations: >-
       Nur nach Objekt, Zeitraum, Ereignisart oder Vorgang; keine Auswertung je Person außer in
-      der anlassbezogenen Klärung im Vier-Augen-Prinzip. Die Revision sieht statt der
-      gespeicherten Pseudonyme Kennungen, die nur innerhalb einer Antwort gleich bleiben: Innerhalb
-      einer Seite ist erkennbar, welche Einträge dieselbe Person betreffen, über Seiten und Abfragen
-      hinweg nicht. Wer in der Datenbank selbst liest, sieht die dauerhaften Pseudonyme
+      der anlassbezogenen Klärung im Vier-Augen-Prinzip. Die Revision sieht keine Kennung einer
+      Person (weder Pseudonym noch Ersatz), nur dass eine Person gehandelt hat oder betroffen ist;
+      auch innerhalb einer Seite ist nicht erkennbar, welche Einträge dieselbe Person betreffen.
+      Objekte einer einzelnen Person (persönlicher Bereich, private Bibliothek, Zugangstoken) bleiben
+      über ihre Kennung wiedererkennbar; die Abfrage nach Objekt zeigt, was an diesem Objekt geschah.
+      Wer in der Datenbank selbst liest, sieht die dauerhaften Pseudonyme
     notes:
       - Beschäftigtendaten; Mitbestimmung bei Verhaltens- und Leistungskontrolle prüfen
   - id: audit-pseudonyms
@@ -214,7 +216,9 @@ data:
     notes:
       - >-
         Der Zeitraum einer Klärung endet spätestens beim Antrag und umfasst höchstens
-        opaa.audit.incident-scope.max-days Tage; Antrag und Freigabe stehen als eigene Einträge im
+        opaa.audit.incident-scope.max-days Tage, geprüft bei Antrag und Freigabe; aneinandergereihte
+        Klärungen zur selben Person haben in Summe keine Obergrenze, jede braucht eigene Freigabe.
+        Antrag und Freigabe stehen als eigene Einträge im
         Revisionsprotokoll (INCIDENT_SCOPE_REQUESTED, INCIDENT_SCOPE_APPROVED), damit die
         Prüfsummenkette sichert, wer eine personenbezogene Auswertung beantragt und freigegeben hat
       - >-

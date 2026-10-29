@@ -500,26 +500,30 @@ Bedarf hinter einer kontobezogenen Frage läuft über `nach Zeitraum`/`nach Erei
 Personenbezug), die freigegebene anlassbezogene Klärung oder die Rechtehistorie (#238) — nie über
 diesen Weg.
 
-**Kennungen gelten je Antwort, nicht dauerhaft (#3352).** Die Abweisung oben schließt nur den einen
+**Keine Revisionsantwort nennt eine Person (#3352).** Die Abweisung oben schließt nur den einen
 Rückweg. Solange jede Antwort das gespeicherte Pseudonym trug, ließ sich eine Person auf anderem Weg
 zuordnen — über eine Rechtevergabe zur selben Zeit, die die Stichtagsauskunft mit Namen nennt, oder
 über eine einzige freigegebene Klärung — und danach über `nach Zeitraum` in 92-Tage-Scheiben ihr
-gesamtes Handeln lesen: genau die ausgeschlossene Zeitreihe je Person. Deshalb verlässt kein
-gespeichertes Pseudonym das Protokoll über einen Abfrageweg. Jede Antwort zieht einen zufälligen
-Schlüssel und gibt jede Personenkennung — `actor_ref` einer Person, `subject_ref` einer Person,
-`object_id` eines Kontoobjekts, `ownerId` und `targetId` in `before`/`after` — als HMAC-SHA256 unter
-diesem Schlüssel aus; der Schlüssel wird nicht aufbewahrt. Innerhalb einer Antwort trägt dieselbe
-Person dieselbe Kennung, die Revision erkennt also weiter, welche Einträge einer Seite auf dieselbe
-Person zurückgehen. Über zwei Antworten hinweg — auch zwei Seiten derselben Abfrage — unterscheiden
-sich die Kennungen und lassen sich nicht verbinden. Gruppen und Systemprozesse behalten ihre
-Kennung, sie sind keine Personen. Die Klärung gibt `actor_ref` gar nicht aus: Sie nennt die Person
-ohnehin, jede Kennung neben dem Namen wäre der Schlüssel zu allen anderen Antworten.
+gesamtes Handeln lesen: genau die ausgeschlossene Zeitreihe je Person. Auch eine Kennung, die nur
+innerhalb einer Antwort gilt, hilft nicht: Zwei sich überlappende Abfragen liefern dieselben
+Einträge (gleiche Kennung des Eintrags, gleicher Zeitpunkt), daran lassen sich die Kennungen beider
+Antworten gleichsetzen, und Schritt für Schritt entsteht wieder eine dauerhafte Kennung. Deshalb
+lässt jede Antwort der Abfragewege jeden Verweis auf eine Person weg: `actor_ref` einer Person,
+`subject_ref` einer Person, `object_id` eines Kontoobjekts und `ownerId`/`targetId` in
+`before`/`after`. Dass eine Person gehandelt hat oder betroffen ist, zeigen `actor_kind` und
+`subject_kind`; Gruppen und Systemprozesse behalten ihre Kennung, sie sind keine Personen. Damit
+erkennt die Revision auch innerhalb einer Seite nicht mehr, welche Einträge auf dieselbe Person
+zurückgehen; wer gehandelt hat, klärt allein die anlassbezogene Klärung, deren Antrag die Person
+nennt und deren Antwort ebenfalls keine Kennung trägt. Dasselbe gilt für das Verbindungsprotokoll:
+Es sagt nur, ob eine Person oder das System gehandelt hat und welche Besitzart die Verbindung hat,
+nie welche Person.
 
-Was bleibt: Eine Seite einer Abfrage, die einen in der Klärung gesehenen Eintrag enthält, ordnet die
-übrigen Einträge derselben Person auf dieser Seite zu (höchstens eine Seite, innerhalb von 92 Tagen).
-Objekte, die genau einer Person gehören (persönlicher Bereich, private Bibliothek), sind über ihre
-Kennung weiter wiedererkennbar; sie stehen nur mit neutraler Bezeichnung im Protokoll. Wer direkt in
-der Datenbank liest, sieht die dauerhaften Pseudonyme; das ist der Betrieb, nicht die Revision.
+Was bleibt: Objekte, die genau einer Person gehören (persönlicher Bereich, private Bibliothek,
+Zugangstoken), sind über ihre Kennung wiedererkennbar; `nach Objekt` zeigt, was an diesem einen
+Objekt geschah, und das betrifft praktisch die Besitzerin. Einen Weg zu ihrem Handeln an anderen
+Objekten gibt das nicht mehr, weil keine Antwort eine Personenkennung trägt, an der sich Einträge
+verbinden ließen. Wer direkt in der Datenbank liest, sieht die dauerhaften Pseudonyme; das ist der
+Betrieb, nicht die Revision.
 
 **Es gibt diese Abfragen nicht — und zwar nicht abschaltbar, sondern nicht gebaut:**
 
@@ -571,7 +575,12 @@ stehen als `INCIDENT_SCOPE_REQUESTED` und `INCIDENT_SCOPE_APPROVED` im Protokoll
 Transaktion wie der Antrag, mit dem Antrag als Objekt und Zweck und Zeitraum als Angaben; die
 betroffene Person und die Begründung stehen nur im Antrag. So sichert die Prüfsummenkette, wer eine
 personenbezogene Auswertung beantragt und wer sie freigegeben hat, ohne dass die Selbstauskunft der
-betroffenen Person eine laufende Klärung verrät. **Noch nicht technisch durchgesetzt, sondern organisatorisch abzugrenzen:** dass die zwei
+betroffenen Person eine laufende Klärung verrät. Die Freigabe prüft beide Grenzen erneut, zu ihrem
+Zeitpunkt und mit der dann geltenden Höchstdauer, und eine Abfrage reicht nie über den Zeitpunkt der
+Freigabe hinaus. **Grenze:** Die Höchstdauer gilt je Klärung. Mehrere aneinandergereihte Klärungen zur
+selben Person haben in Summe keine technische Obergrenze; jede braucht ihren eigenen Antrag mit
+Begründung, ihre eigene Freigabe durch eine zweite Person und steht im Protokoll und in den
+Fallzahlen für die Personalvertretung. Das zu begrenzen ist Sache der Dienstvereinbarung. **Noch nicht technisch durchgesetzt, sondern organisatorisch abzugrenzen:** dass die zwei
 freigebenden Personen tatsächlich unterschiedliche Rollen im Sinne der Mitbestimmung besetzen (heute
 genügen zwei beliebige AUDITOR-Konten — die **Beteiligung der Personalvertretung** an der Freigabe
 selbst ist ein organisatorischer Prozessschritt, kein technisches Gate), die **Unterrichtung der

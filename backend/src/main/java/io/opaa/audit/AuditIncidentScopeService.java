@@ -89,9 +89,11 @@ public class AuditIncidentScopeService {
   /**
    * Approves a pending grant, counting the approval in the current month and its end of usability
    * in the month of {@link AuditIncidentScopeGrant#getUsableUntil()}, and records it as {@link
-   * AuditEventType#INCIDENT_SCOPE_APPROVED}. Throws {@link ValidationException} on Selbstfreigabe
-   * or a grant not pending. The row is locked, so of two concurrent approvals exactly one succeeds
-   * and is counted; the other is rejected.
+   * AuditEventType#INCIDENT_SCOPE_APPROVED}. The bounds of {@link #request} are checked again at
+   * the moment of approval and against the bound in force then, so neither an older request nor a
+   * lowered bound lets a grant through that could not be requested now. Throws {@link
+   * ValidationException} on Selbstfreigabe or a grant not pending. The row is locked, so of two
+   * concurrent approvals exactly one succeeds and is counted; the other is rejected.
    */
   @Transactional
   public AuditIncidentScopeGrant approve(UUID organizationId, UUID scopeId, UUID approvedByUserId) {
@@ -100,6 +102,7 @@ public class AuditIncidentScopeService {
             .findForApproval(scopeId, organizationId)
             .orElseThrow(() -> new NotFoundException("Vorgang nicht gefunden"));
     Instant now = Instant.now(clock);
+    requireBoundedPast(grant.getScopeStart(), grant.getScopeEnd(), now);
     grant.approve(approvedByUserId, now);
     AuditIncidentScopeGrant approved = repository.save(grant);
     count(organizationId, now, grant.getPurpose(), AuditIncidentScopeTransition.APPROVED);

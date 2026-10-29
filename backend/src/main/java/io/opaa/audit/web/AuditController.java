@@ -11,7 +11,7 @@ import io.opaa.audit.AuditIncidentScopeGrant;
 import io.opaa.audit.AuditIncidentScopeService;
 import io.opaa.audit.AuditLogEntry;
 import io.opaa.audit.AuditQueryService;
-import io.opaa.audit.AuditResponsePseudonyms;
+import io.opaa.audit.AuditResponseRedaction;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import jakarta.validation.Valid;
@@ -103,7 +103,7 @@ public class AuditController {
             to,
             page,
             size);
-    return toPage(result, true);
+    return toPage(result);
   }
 
   @GetMapping("/events/by-time-range")
@@ -117,7 +117,7 @@ public class AuditController {
     Page<AuditLogEntry> result =
         queryService.byTimeRange(
             caller.organizationId(), caller.id(), reason, from, to, page, size);
-    return toPage(result, true);
+    return toPage(result);
   }
 
   @GetMapping("/events/by-event-type")
@@ -132,7 +132,7 @@ public class AuditController {
     Page<AuditLogEntry> result =
         queryService.byEventType(
             caller.organizationId(), caller.id(), reason, eventType, from, to, page, size);
-    return toPage(result, true);
+    return toPage(result);
   }
 
   @GetMapping("/events/by-correlation")
@@ -147,7 +147,7 @@ public class AuditController {
     Page<AuditLogEntry> result =
         queryService.byCorrelation(
             caller.organizationId(), caller.id(), reason, correlationRef, from, to, page, size);
-    return toPage(result, true);
+    return toPage(result);
   }
 
   @PreAuthorize("hasRole('AUDITOR')")
@@ -187,7 +187,7 @@ public class AuditController {
     Page<AuditLogEntry> result =
         queryService.byIncidentScope(
             caller.organizationId(), caller.id(), reason, scopeId, from, to, page, size);
-    return toPage(result, false);
+    return toPage(result);
   }
 
   /**
@@ -204,24 +204,16 @@ public class AuditController {
         queryService.verifyChain(caller.organizationId(), caller.id(), reason, month));
   }
 
-  /**
-   * Every response draws its own key for the references to persons, so two responses - two pages of
-   * one query included - cannot be joined on a person; {@code withActor} is {@code false} for the
-   * anlassbezogene Klärung, whose entries are all the named person's own.
-   */
-  private AuditEventPage toPage(Page<AuditLogEntry> page, boolean withActor) {
-    AuditResponsePseudonyms pseudonyms = AuditResponsePseudonyms.forOneResponse();
+  /** Every entry without its references to persons, see {@link AuditResponseRedaction}. */
+  private AuditEventPage toPage(Page<AuditLogEntry> page) {
     return new AuditEventPage(
-        page.getContent().stream()
-            .map(entry -> toEventResponse(entry, pseudonyms, withActor))
-            .toList(),
+        page.getContent().stream().map(this::toEventResponse).toList(),
         page.getNumber(),
         page.getSize(),
         page.hasNext());
   }
 
-  private AuditEventResponse toEventResponse(
-      AuditLogEntry entry, AuditResponsePseudonyms pseudonyms, boolean withActor) {
+  private AuditEventResponse toEventResponse(AuditLogEntry entry) {
     return new AuditEventResponse(
             entry.getEventId(),
             entry.getRecordedAt(),
@@ -229,14 +221,14 @@ public class AuditController {
             entry.getActorKind(),
             entry.getEventType(),
             entry.getObjectType(),
-            pseudonyms.objectId(entry),
             entry.getOutcome())
-        .actorRef(withActor ? pseudonyms.actorRef(entry) : null)
+        .actorRef(AuditResponseRedaction.actorRef(entry))
+        .objectId(AuditResponseRedaction.objectId(entry))
         .objectLabel(entry.getObjectLabel())
         .subjectKind(entry.getSubjectKind())
-        .subjectRef(pseudonyms.subjectRef(entry))
-        .before(pseudonyms.before(entry))
-        .after(pseudonyms.after(entry))
+        .subjectRef(AuditResponseRedaction.subjectRef(entry))
+        .before(AuditResponseRedaction.before(entry))
+        .after(AuditResponseRedaction.after(entry))
         .reason(entry.getReason())
         .correlationRef(entry.getCorrelationRef())
         .schemaVersion(

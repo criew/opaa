@@ -10,7 +10,7 @@ import java.util.UUID;
  * before}/{@code after}, as pseudonym (entries written before the pseudonymisation of that key: as
  * account id) or, for a group, as group id. Only the self-disclosure searches these keys, each for
  * its event types only; the anlassbezogene Klärung finds the acting person alone. A revision
- * response never shows their stored value ({@link AuditResponsePseudonyms}).
+ * response leaves them out ({@link AuditResponseRedaction}).
  */
 final class AuditPayloadPersons {
 
@@ -28,7 +28,7 @@ final class AuditPayloadPersons {
   private static final PayloadKey TRANSFER_TARGET =
       new PayloadKey("targetId", Set.of(AuditEventType.PERMISSION_TRANSFER_EXECUTED));
 
-  /** Every payload key naming a person; a revision response keys each of them per response. */
+  /** Every payload key naming a person; a revision response leaves each of them out. */
   static final List<PayloadKey> ALL = List.of(OWNER, TRANSFER_TARGET);
 
   /** Every key the self-disclosure searches and repeats only as "Sie" or another person. */

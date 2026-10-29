@@ -190,47 +190,43 @@ class AuditControllerTest {
                 .param("to", "2026-02-28T00:00:00Z")
                 .param("reason", REASON))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.events[0].actorRef").isString())
+        .andExpect(jsonPath("$.events[0].actorRef").doesNotExist())
         .andExpect(jsonPath("$.events[0].objectId").value("lib-1"))
         .andExpect(
             jsonPath("$.events[0].schemaVersion").value((int) AuditEventCatalog.SCHEMA_VERSION));
   }
 
   /**
-   * Regression guard for #3352: a stored pseudonym never leaves through a revision response. The
-   * same person keeps one reference within a response and gets another in the next one, so a
-   * pseudonym read off one slice of by-time-range joins no second answer.
+   * Regression guard for #3352: no revision response names a person, not even with a reference
+   * valid for one answer. Two overlapping answers share event ids, so any such reference could be
+   * equated from answer to answer; with none given, the overlap has nothing to join.
    */
   @Test
-  void aPersonsReferenceHoldsWithinOneResponseAndDiffersInTheNext() throws Exception {
+  void overlappingAnswersCarryNoPersonReferenceToJoin() throws Exception {
+    AuditLogEntry shared = actedBy("pseud-x", "lib-1");
     when(queryService.byTimeRange(any(), any(), any(), any(), any(), anyInt(), anyInt()))
-        .thenReturn(
-            new PageImpl<>(
-                List.of(
-                    actedBy("pseud-x", "lib-1"),
-                    actedBy("pseud-x", "lib-2"),
-                    actedBy("pseud-y", "lib-3"))));
+        .thenReturn(new PageImpl<>(List.of(shared, actedBy("pseud-x", "lib-2"))))
+        .thenReturn(new PageImpl<>(List.of(actedBy("pseud-x", "lib-0"), shared)));
 
     String first = body(byTimeRange());
     String second = body(byTimeRange());
 
-    String x = JsonPath.read(first, "$.events[0].actorRef");
-    assertThat(first).doesNotContain("pseud-x").doesNotContain("pseud-y");
-    assertThat(x).isEqualTo(JsonPath.read(first, "$.events[1].actorRef"));
-    assertThat(x).isNotEqualTo(JsonPath.read(first, "$.events[2].actorRef"));
-    assertThat(second).doesNotContain("pseud-x");
-    assertThat(JsonPath.<String>read(second, "$.events[0].actorRef"))
-        .isNotEqualTo(x)
-        .isEqualTo(JsonPath.read(second, "$.events[1].actorRef"));
+    for (String answer : List.of(first, second)) {
+      assertThat(answer).doesNotContain("pseud-x");
+      assertThat(JsonPath.<List<Object>>read(answer, "$.events[*].actorRef")).containsOnlyNulls();
+      assertThat(JsonPath.<List<String>>read(answer, "$.events[*].actorKind")).containsOnly("USER");
+    }
+    assertThat(JsonPath.<String>read(first, "$.events[0].eventId"))
+        .isEqualTo(JsonPath.read(second, "$.events[1].eventId"));
   }
 
   /**
    * Regression guard for #3352: a rights change at the moment the Stichtagsauskunft names a person
-   * must not hand over her pseudonym - subject, account object and the owner in the payload carry
-   * the response's references, one per person, never the stored value. A group keeps its id.
+   * must not hand over her pseudonym - subject, account object and the owner in the payload are
+   * left out; the kinds stay. A group keeps its id.
    */
   @Test
-  void subjectAccountObjectAndOwnerCarryTheResponsesReferenceNotThePseudonym() throws Exception {
+  void subjectAccountObjectAndOwnerAreLeftOut() throws Exception {
     String group = UUID.randomUUID().toString();
     AuditLogEntry grant =
         AuditLogEntry.withSubject(
@@ -300,13 +296,12 @@ class AuditControllerTest {
     String body = body(byTimeRange());
 
     assertThat(body).doesNotContain("pseud-x").doesNotContain("pseud-admin");
-    String x = JsonPath.read(body, "$.events[0].subjectRef");
+    assertThat(JsonPath.<String>read(body, "$.events[0].subjectKind")).isEqualTo("USER");
+    assertThat(JsonPath.<Object>read(body, "$.events[0].subjectRef")).isNull();
     assertThat(JsonPath.<String>read(body, "$.events[1].subjectRef")).isEqualTo(group);
-    assertThat(JsonPath.<String>read(body, "$.events[2].objectId")).isEqualTo(x);
-    assertThat(JsonPath.<String>read(body, "$.events[2].subjectRef")).isEqualTo(x);
-    assertThat(JsonPath.<String>read(body, "$.events[3].after"))
-        .contains("\"ownerId\":\"" + x + "\"")
-        .contains("\"name\":\"Team\"");
+    assertThat(JsonPath.<String>read(body, "$.events[2].objectType")).isEqualTo("USER_ACCOUNT");
+    assertThat(JsonPath.<Object>read(body, "$.events[2].objectId")).isNull();
+    assertThat(JsonPath.<String>read(body, "$.events[3].after")).isEqualTo("{\"name\":\"Team\"}");
     assertThat(JsonPath.<String>read(body, "$.events[0].after")).isEqualTo("{\"role\":\"VIEWER\"}");
   }
 
@@ -334,7 +329,7 @@ class AuditControllerTest {
   }
 
   /**
-   * Regression guard for #3352: the Klärung names the person with her account id, so an actorRef
+   * Regression guard for #3352: the Klärung names the person with her account id, so a reference
    * next to it would hand over the key to every other answer. Its entries carry none.
    */
   @Test

@@ -33,14 +33,15 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * The linking paths of #3352 through the real endpoint, the real recorder and a real database: a
- * person's stored pseudonym never appears in a revision response, she keeps one reference within a
- * response, and two responses - two objects or the same object twice - cannot be joined on her. The
- * rights change that names her (what the Stichtagsauskunft would line up with) hands over nothing
- * beyond its own response.
+ * The linking paths of #3352 through the real endpoint, the real recorder and a real database:
+ * overlapping answers share event ids, so a reference to a person in them - even one valid for a
+ * single answer - could be equated from answer to answer. No answer of a general access path
+ * carries one: neither the stored pseudonym nor the account id nor any other per-person value; the
+ * rights change that names her (what the Stichtagsauskunft would line up with) shows only that a
+ * person was affected.
  */
 @OpaaIntegrationTest
-class AuditRevisionPseudonymIntegrationTest {
+class AuditRevisionPersonReferenceIntegrationTest {
 
   private static final String REASON = "Revision der Bibliotheksrechte Q4";
 
@@ -81,8 +82,8 @@ class AuditRevisionPseudonymIntegrationTest {
   }
 
   @Test
-  void aPersonsPseudonymNeverLeavesAndTwoResponsesCannotBeJoinedOnHer() throws Exception {
-    record(
+  void overlappingAnswersNameNoPersonToJoinOn() throws Exception {
+    recorder.recordUserActionOnSubject(
         AuditEvent.builder()
             .organizationId(Organization.DEFAULT_ID)
             .actor(admin)
@@ -91,43 +92,35 @@ class AuditRevisionPseudonymIntegrationTest {
             .subject(AuditSubjectKind.USER, person)
             .outcome(AuditOutcome.SUCCESS)
             .build());
-    record(changeBy(person, library));
-    record(changeBy(person, otherLibrary));
-    String stored = pseudonyms.findExistingPseudonym(person).orElseThrow().toString();
+    recorder.recordUserAction(changeBy(person, library));
+    recorder.recordUserAction(changeBy(person, otherLibrary));
+    List<String> personal =
+        List.of(
+            pseudonyms.findExistingPseudonym(person).orElseThrow().toString(),
+            pseudonyms.findExistingPseudonym(admin).orElseThrow().toString(),
+            person.toString(),
+            admin.toString());
 
     String first = byObject(library);
-    String second = byObject(library);
+    String overlapping = byObject(library);
     String other = byObject(otherLibrary);
 
-    for (String body : List.of(first, second, other)) {
-      assertThat(body).doesNotContain(stored).doesNotContain(person.toString());
-    }
-    Map<String, String> firstRefs = personRefs(first);
-    assertThat(firstRefs.get("subject"))
-        .as("within one response the person keeps one reference")
-        .isEqualTo(firstRefs.get("actor"));
-    assertThat(personRefs(second).get("actor"))
-        .as("the same query again cannot be joined with the first")
-        .isNotEqualTo(firstRefs.get("actor"));
-    assertThat(JsonPath.<String>read(other, "$.events[0].actorRef"))
-        .as("another object's answer cannot be joined with the first")
-        .isNotEqualTo(firstRefs.get("actor"));
-  }
-
-  /** The person's reference as actor of her change and as subject of the grant, in one body. */
-  private static Map<String, String> personRefs(String body) {
-    List<Map<String, Object>> events = JsonPath.read(body, "$.events");
-    String actor = null;
-    String subject = null;
-    for (Map<String, Object> event : events) {
-      if ("LIBRARY_CHANGED".equals(event.get("eventType"))) {
-        actor = (String) event.get("actorRef");
-      } else if ("ASSET_GRANT_GRANTED".equals(event.get("eventType"))) {
-        subject = (String) event.get("subjectRef");
+    assertThat(JsonPath.<List<String>>read(first, "$.events[*].eventId"))
+        .as("the two answers overlap")
+        .isEqualTo(JsonPath.read(overlapping, "$.events[*].eventId"));
+    for (String answer : List.of(first, overlapping, other)) {
+      for (String value : personal) {
+        assertThat(answer).doesNotContain(value);
+      }
+      List<Map<String, Object>> events = JsonPath.read(answer, "$.events");
+      assertThat(events).isNotEmpty();
+      for (Map<String, Object> event : events) {
+        assertThat(event.get("actorKind")).isEqualTo("USER");
+        assertThat(event.get("actorRef")).isNull();
+        assertThat(event.get("subjectRef")).isNull();
       }
     }
-    assertThat(actor).isNotNull();
-    return subject == null ? Map.of("actor", actor) : Map.of("actor", actor, "subject", subject);
+    assertThat(JsonPath.<List<String>>read(first, "$.events[*].subjectKind")).contains("USER");
   }
 
   private String byObject(UUID objectId) throws Exception {
@@ -154,14 +147,6 @@ class AuditRevisionPseudonymIntegrationTest {
         .object(AuditObjectType.KNOWLEDGE_LIBRARY, objectId, "Bibliothek")
         .outcome(AuditOutcome.SUCCESS)
         .build();
-  }
-
-  private void record(AuditEvent event) {
-    if (event.subjectKind() == null) {
-      recorder.recordUserAction(event);
-    } else {
-      recorder.recordUserActionOnSubject(event);
-    }
   }
 
   private UUID createUser() {

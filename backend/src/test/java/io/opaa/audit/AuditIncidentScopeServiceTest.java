@@ -139,6 +139,58 @@ class AuditIncidentScopeServiceTest {
         .containsEntry("usableUntil", NOW.plus(AuditIncidentScopeGrant.USABLE_WINDOW).toString());
   }
 
+  /**
+   * Regression guard for #3352: a request from before the bounds - its range still running - is not
+   * approvable; neither is one longer than the bound in force at approval.
+   */
+  @Test
+  void theApprovalChecksTheBoundsAgainAtItsMoment() {
+    AuditIncidentScopeGrant running =
+        new AuditIncidentScopeGrant(
+            organizationId,
+            subject,
+            NOW.minus(Duration.ofDays(5)),
+            NOW.plus(Duration.ofDays(20)),
+            AuditIncidentScopePurpose.SECURITY_INCIDENT,
+            REASON,
+            requester);
+    AuditIncidentScopeGrant tooLong =
+        new AuditIncidentScopeGrant(
+            organizationId,
+            subject,
+            NOW.minus(Duration.ofDays(40)),
+            NOW.minus(Duration.ofDays(1)),
+            AuditIncidentScopePurpose.SECURITY_INCIDENT,
+            REASON,
+            requester);
+    for (AuditIncidentScopeGrant grant : java.util.List.of(running, tooLong)) {
+      when(repository.findForApproval(grant.getId(), organizationId))
+          .thenReturn(Optional.of(grant));
+      assertThatThrownBy(() -> service.approve(organizationId, grant.getId(), approver))
+          .isInstanceOf(ValidationException.class);
+      assertThat(grant.isApproved()).isFalse();
+    }
+    verify(recorder, never()).recordUserAction(any());
+  }
+
+  /** Nothing after the approval is ever part of a Klärung, whatever range the grant names. */
+  @Test
+  void anApprovedGrantCoversNothingAfterItsApproval() {
+    AuditIncidentScopeGrant grant =
+        new AuditIncidentScopeGrant(
+            organizationId,
+            subject,
+            NOW.minus(Duration.ofDays(5)),
+            NOW.plus(Duration.ofDays(20)),
+            AuditIncidentScopePurpose.SECURITY_INCIDENT,
+            REASON,
+            requester);
+    grant.approve(approver, NOW);
+
+    assertThat(grant.covers(NOW.minus(Duration.ofDays(5)), NOW)).isTrue();
+    assertThat(grant.covers(NOW.minus(Duration.ofDays(5)), NOW.plusSeconds(1))).isFalse();
+  }
+
   @Test
   void aRejectedSelfApprovalRecordsNothing() {
     AuditIncidentScopeGrant grant =

@@ -7,22 +7,20 @@ paths:
   # Exactly four revision access paths, each with a mandatory time range and a bounded
   # result set - see docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt.
   # There is deliberately no `actor`/`actorRef` query parameter on any of them and no `sort`
-  # parameter at all: actorRef is output-only, never an entry point (AUDITOR role only), and a
-  # person's references are keyed per response, so no two responses can be joined on them.
+  # parameter at all, and no response names a person (see AuditEventResponse): a person's
+  # reference in an answer could be chained over overlapping answers into a lasting one.
   /api/v1/audit/events/by-object:
     get:
       operationId: listAuditEventsByObject
       tags: [audit]
       summary: >
         Revision access path "nach Objekt" (AUDITOR role required): every event recorded against
-        one object, within a mandatory time range. objectType=USER_ACCOUNT is rejected with 400: a USER_ACCOUNT object's object_id is that person's
-        pseudonym - the same pseudonym actorRef carries on that same person's own actions
-        elsewhere in the log - so accepting it here would reconstruct exactly the excluded view
-        "alle Ereignisse, bei denen Person X betroffen war" (read a pseudonym off actorRef via
-        by-time-range, then feed it back in as objectId). The legitimate need behind a
-        USER_ACCOUNT-scoped question is served by by-time-range/by-event-type (no person focus)
-        or, for a genuinely person-scoped question, by the freigegebene anlassbezogene Klärung
-        or the Rechtehistorie - never by this path.
+        one object, within a mandatory time range. objectType=USER_ACCOUNT is rejected with 400:
+        a USER_ACCOUNT object's object_id is that person's stored pseudonym, so a query by it
+        would be a person filter - the excluded view "alle Ereignisse, bei denen Person X
+        betroffen war". No response hands out such an id (see AuditEventResponse), and a
+        pseudonym obtained any other way does not open this path either. A person-scoped
+        question goes through the freigegebene anlassbezogene Klärung or the Rechtehistorie.
       parameters:
         - name: objectType
           in: query
@@ -424,8 +422,8 @@ paths:
         The one personenbezogene query path (AUDITOR role required): every event whose actor is
         the scope's named person, technically bounded to the approved scope's person and time
         range. Not callable before approval; a requested from/to outside the approved scope's time
-        range is rejected rather than silently clamped. The entries carry no actorRef: the grant
-        names the person, and her reference would join this answer with every other one.
+        range is rejected rather than silently clamped, and so is a to after the approval. Like
+        every revision answer, the entries name no person (see AuditEventResponse).
       parameters:
         - $ref: "#/components/parameters/AuditFrom"
         - $ref: "#/components/parameters/AuditTo"
@@ -708,15 +706,14 @@ components:
     AuditEventResponse:
       type: object
       description: >
-        One entry as read back through a revision access path. actorRef/subjectRef are
-        output-only fields - never accepted as a request parameter anywhere in this API. A
-        reference to a person (actorRef of a USER, subjectRef of a USER subject, objectId of a
-        USER_ACCOUNT object, ownerId and targetId in before/after) is not the stored pseudonym but
-        a keyed hash under a random key drawn for this one response: within the response, the same
-        person carries the same reference, so entries of one actor stay recognisable as such;
-        across two responses - two pages of the same query included - the references of the same
-        person differ and cannot be joined. A group subject and a system process keep their plain
-        reference.
+        One entry as read back through a revision access path. No entry names a person: actorRef
+        is absent unless a system process acted (its fixed label), subjectRef is absent for a USER
+        subject, objectId is absent for a USER_ACCOUNT object, and ownerId/targetId are removed
+        from before/after. That a person acted or was affected stays visible through actorKind and
+        subjectKind. Not even a reference valid for one response is given out: two overlapping
+        answers share eventId and recordedAt, so such references could be equated from answer to
+        answer into a lasting one. A group subject keeps its id. The anlassbezogene Klärung
+        answers the same way; its grant names the person.
       required:
         [
           eventId,
@@ -725,7 +722,6 @@ components:
           actorKind,
           eventType,
           objectType,
-          objectId,
           outcome,
         ]
       properties:
@@ -743,16 +739,15 @@ components:
         actorRef:
           type: string
           nullable: true
-          description: >
-            The acting person's reference for this response only (see the schema description),
-            the fixed label of a system process as stored. Absent in the anlassbezogene Klärung,
-            where every entry is the named person's own action.
+          description: The fixed label of a system process; absent when a person acted.
         eventType:
           $ref: "#/components/schemas/AuditEventType"
         objectType:
           $ref: "#/components/schemas/AuditObjectType"
         objectId:
           type: string
+          nullable: true
+          description: Absent for a USER_ACCOUNT object, whose id is the person's pseudonym.
         objectLabel:
           type: string
           nullable: true
@@ -1054,21 +1049,31 @@ components:
       type: string
       description: >
         Mirrors io.opaa.api.types.ConnectionLogOwnerKind - whose connection the entry is about.
-        PERSON names the person as personRef and never a library or account; LIBRARY names the
-        library and, if any, the service account's address; PROFILE names neither.
+        PERSON is a person's own connection and names neither the person nor a library or
+        account; LIBRARY names the library and, if any, the service account's address; PROFILE
+        names neither.
       enum: [PERSON, LIBRARY, PROFILE]
+      example: PERSON
+
+    ConnectionLogActorKind:
+      type: string
+      description: >
+        Who caused a connection event: PERSON for a person, who is never named, SYSTEM for an
+        event no person caused (expiry, deactivation).
+      enum: [PERSON, SYSTEM]
       example: PERSON
 
     ConnectionLogEntryResponse:
       type: object
       description: >
-        One entry of the connection log. actorRef and personRef are the person's stored pseudonym;
-        the audit log's revision responses never carry it (see AuditEventResponse), so the two
-        cannot be joined on a person. An event no person caused (expiry, deactivation) carries the
-        literal "SYSTEM" as actorRef, which is never a pseudonym.
-        profileName is the name the profile carried at the time, so an entry outlives its profile.
+        One entry of the connection log. It names no person - neither who acted nor whose
+        connection it is - only whether a person or the system acted (actor) and whose kind of
+        connection it is (ownerKind): a reference to a person, even one valid for a single answer,
+        could be chained over overlapping answers, or over library and time with the audit log,
+        into a lasting one and a time series per person. profileName is the name the profile
+        carried at the time, so an entry outlives its profile.
       required:
-        [eventId, recordedAt, organizationId, eventType, actorRef, ownerKind, profileId, profileName]
+        [eventId, recordedAt, organizationId, eventType, actor, ownerKind, profileId, profileName]
       properties:
         eventId:
           type: string
@@ -1081,15 +1086,10 @@ components:
           format: uuid
         eventType:
           $ref: "#/components/schemas/ConnectionLogEventType"
-        actorRef:
-          type: string
-          description: A pseudonym, or the literal "SYSTEM" for an event no person caused.
+        actor:
+          $ref: "#/components/schemas/ConnectionLogActorKind"
         ownerKind:
           $ref: "#/components/schemas/ConnectionLogOwnerKind"
-        personRef:
-          type: string
-          nullable: true
-          description: The person's pseudonym; set exactly for ownerKind PERSON.
         libraryId:
           type: string
           format: uuid

@@ -616,7 +616,7 @@ genau eine Person gebunden, an Gruppen und an „Alle Konten" **nicht** vergebba
 | Vollmacht | Gegenstand | Grenzen |
 |---|---|---|
 | **„Sicht als"** | Eine Diagnose im Rechtekontext einer benannten Person | Geltungsbereich ist eine wirksame **Anbietergruppe** — aus dem Verzeichnis oder aus dem Anmeldetoken —, die mindestens die Mindestgruppengröße an aktiven Konten erreicht, auch im Moment jeder Nutzung; höchstens 12 Monate; Pflichtbegründung je Lauf; Protokolleintrag; die Diagnosesperre der Bibliotheken wird abgezogen ([Suche](../spaces/suche.md), Abschnitte 8.2 und 8.3) |
-| **Geltungsbereich einer anlassbezogenen Klärung** | Der eine Fall, in dem das Nachweisprotokoll nach einer Person gefiltert werden darf | Person, Zeitraum und Zweck vorab benannt; der Zeitraum liegt ganz in der Vergangenheit und ist nach oben begrenzt (`OPAA_AUDIT_INCIDENT_SCOPE_MAX_DAYS`); **Vier-Augen-Freigabe** durch eine zweite Person der Revision; Antrag und Freigabe stehen im Nachweisprotokoll; die Antwort nennt keine Kennung der Person neben ihrem Namen |
+| **Geltungsbereich einer anlassbezogenen Klärung** | Der eine Fall, in dem das Nachweisprotokoll nach einer Person gefiltert werden darf | Person, Zeitraum und Zweck vorab benannt; der Zeitraum liegt ganz in der Vergangenheit und ist nach oben begrenzt (`OPAA_AUDIT_INCIDENT_SCOPE_MAX_DAYS`); **Vier-Augen-Freigabe** durch eine zweite Person der Revision; Antrag und Freigabe stehen im Nachweisprotokoll; die Antwort nennt keine Kennung einer Person. Die Obergrenze gilt je Klärung: Aneinandergereihte Klärungen zur selben Person haben in Summe keine, jede braucht aber eigenen Antrag und eigene Freigabe |
 
 Eine Vollmacht wird nicht historisiert: Sie ist ein Betriebsrecht der Gegenwart und sagt nichts
 darüber, wer am Tag X was lesen durfte. Ihre Erteilung, Nutzung und ihr Entzug stehen im
@@ -762,10 +762,12 @@ verbunden hat, bleibt das Protokoll leer.
   Notabschaltung, geänderte Server-Adresse, geänderte App-Registrierung, deaktiviertes Konto,
   gelöschter Zugang, vom Anbieter abgelehnt oder abgelaufen, bei einer Quellverbindung außerdem
   gelöschte Bibliothek oder Bibliothek auf einen anderen Zugang umgehängt. Ein Ende ohne Anlass nimmt die
-  Datenbank nicht an. Personen erscheinen wie im Nachweisprotokoll nur als Pseudonym; ein Ereignis
-  ohne handelnde Person trägt die Kennung `SYSTEM`. **Kein Eintrag enthält ein Token.**
+  Datenbank nicht an. Gespeichert sind Personen als Pseudonym; die Revision sieht davon nur, ob
+  eine Person oder das System gehandelt hat, nie welche Person — wie im Nachweisprotokoll.
+  **Kein Eintrag enthält ein Token.**
 - **Wessen Verbindung:** Bei einer **persönlichen** Verbindung steht die Person als Pseudonym im
-  Eintrag, **nie eine Bibliothek oder ein Kontoname beim Anbieter** — das erzwingt die Datenbank.
+  Eintrag (die Revision sieht nur „Person“), **nie eine Bibliothek oder ein Kontoname beim
+  Anbieter** — das erzwingt die Datenbank.
   Bei einer **Quellverbindung** stehen die Bibliothek und die Kontoadresse des Dienstkontos im
   Eintrag, aber keine Person. Eine Verbindung des **Zugangs** nennt weder Person noch Bibliothek
   noch Konto. Der Eintrag überlebt die Bibliothek. Die Verbindung einer privaten Bibliothek gilt
@@ -793,8 +795,8 @@ Zugänge stehen alle, zu denen das Protokoll Einträge hat, mit ihrem zuletzt pr
 ein inzwischen gelöschter trägt den Zusatz „(gelöscht)“. Die Liste stammt aus dem Protokoll selbst,
 die Revision liest dafür nichts aus der Verwaltung, und ihr Abruf nennt keine Person und wird nicht
 protokolliert. Die Tabelle zeigt je Eintrag Zeit, Ereignis, Grund des Endes, Besitzart,
-bei einer persönlichen Verbindung das Pseudonym der Person und bei einer Quellverbindung Bibliothek
-und Kontoadresse, den Zugang und wer ausgelöst hat — „System“ für ein Ereignis ohne handelnde Person.
+bei einer persönlichen Verbindung „Person“ und bei einer Quellverbindung Bibliothek und
+Kontoadresse, den Zugang und wer ausgelöst hat — „Person“ oder „System“, nie welche Person.
 Geblättert wird seitenweise, solange es weitere Einträge gibt. Eine leere Antwort sagt, dass Einträge
 erst mit verbundenen Konten entstehen.
 
