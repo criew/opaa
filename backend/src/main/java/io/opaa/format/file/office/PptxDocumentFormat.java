@@ -9,10 +9,9 @@ import io.opaa.format.chunk.ChunkAnchor;
 import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.shared.HeadingSectionSplitter;
+import io.opaa.format.shared.ParserLimitProperties;
 import io.opaa.format.shared.TableText;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -48,9 +47,15 @@ public class PptxDocumentFormat extends FileDocumentFormat<PptxDocumentFormat.Pp
   static final short VERSION = 4;
 
   private final HeadingSectionSplitter splitter;
+  private final ParserLimitProperties limits;
 
   public PptxDocumentFormat(HeadingSectionSplitter splitter) {
+    this(splitter, ParserLimitProperties.DEFAULTS);
+  }
+
+  public PptxDocumentFormat(HeadingSectionSplitter splitter, ParserLimitProperties limits) {
     this.splitter = splitter;
+    this.limits = limits;
   }
 
   @Override
@@ -87,17 +92,21 @@ public class PptxDocumentFormat extends FileDocumentFormat<PptxDocumentFormat.Pp
    */
   public record PptxContent(List<SlideChunk> slides, DocumentProperties properties) {}
 
+  /** Opened through {@link OoxmlPackages}, so its XML parts are measured before POI reads them. */
   @Override
   protected PptxContent read(DocumentFormatSource source) throws IOException {
-    try (InputStream in = Files.newInputStream(source.file());
-        XMLSlideShow slideShow = new XMLSlideShow(in)) {
-      List<XSLFSlide> slides = slideShow.getSlides();
-      List<SlideChunk> built = new ArrayList<>(slides.size());
-      for (int i = 0; i < slides.size(); i++) {
-        built.add(buildChunk(slides.get(i), i + 1));
-      }
-      return new PptxContent(built, coreProperties(slideShow));
-    }
+    return OoxmlPackages.read(
+        source.file(),
+        limits,
+        pkg -> {
+          XMLSlideShow slideShow = new XMLSlideShow(pkg);
+          List<XSLFSlide> slides = slideShow.getSlides();
+          List<SlideChunk> built = new ArrayList<>(slides.size());
+          for (int i = 0; i < slides.size(); i++) {
+            built.add(buildChunk(slides.get(i), i + 1));
+          }
+          return new PptxContent(built, coreProperties(slideShow));
+        });
   }
 
   /**
@@ -106,10 +115,7 @@ public class PptxDocumentFormat extends FileDocumentFormat<PptxDocumentFormat.Pp
    */
   @Override
   protected DocumentProperties declaredProperties(DocumentFormatSource source) throws IOException {
-    try (InputStream in = Files.newInputStream(source.file());
-        XMLSlideShow slideShow = new XMLSlideShow(in)) {
-      return coreProperties(slideShow);
-    }
+    return OoxmlPackages.read(source.file(), limits, pkg -> coreProperties(new XMLSlideShow(pkg)));
   }
 
   private static DocumentProperties coreProperties(XMLSlideShow slideShow) {
@@ -132,8 +138,10 @@ public class PptxDocumentFormat extends FileDocumentFormat<PptxDocumentFormat.Pp
     if (content.slides().stream().noneMatch(SlideChunk::hasText)) {
       return DocumentFormatResult.noExtractableText();
     }
-    return DocumentFormatResult.chunked(
-        content.slides().stream().flatMap(slide -> slide.documents().stream()).toList());
+    List<Document> chunks =
+        content.slides().stream().flatMap(slide -> slide.documents().stream()).toList();
+    limits.requireTextWithinLimit(chunks, "PPTX presentation");
+    return DocumentFormatResult.chunked(chunks);
   }
 
   @Override

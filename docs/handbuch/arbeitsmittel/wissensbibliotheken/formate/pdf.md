@@ -110,7 +110,7 @@ PDF-Dokumentinfos sowie der erste Gliederungseintrag der obersten Ebene als erst
 | Mehr als die Hälfte der Seiten zeigt nur ein Bild ohne Textebene, etwa ein am PC erstelltes Deckblatt vor eingescannten Anlagen | abgewiesen wie ein Scan, „kein extrahierbarer Text". Sonst entstünde ein Dokument, das als indiziert gilt, aber nur das Deckblatt findet. |
 | Einzelne eingescannte Seiten, höchstens die Hälfte | indiziert mit dem Text der übrigen Seiten; die Bildseiten fehlen in der Suche |
 | Text vorhanden, aber Zuschnitt ergibt nichts | abgewiesen, „kein extrahierbarer Text" |
-| Datei nicht lesbar oder beschädigt | fehlgeschlagen, „kein Inhalt" |
+| Datei nicht lesbar oder beschädigt, Grenzwert gerissen | fehlgeschlagen, „Die Datei konnte nicht verarbeitet werden" |
 
 Leere Seiten ohne eigenes Bild zählen nicht als eingescannt. Auch eine Bilddokumentation oder ein
 Foliensatz mit überwiegend reinen Bildseiten wird so abgewiesen; ihr Text auf den übrigen Seiten ist
@@ -124,9 +124,23 @@ hängt dann von dieser Textebene ab.
 
 ## 6. Grenzwerte
 
-Keine eigenen Konfigurationsschlüssel. Es gelten die Zeichenobergrenzen des gemeinsamen
-Abschnittsschneiders und die Grenzen von PDFBox. Am Webverzeichnis-Konnektor greift zusätzlich
-die Dateigrößengrenze des Konnektors.
+Keine eigenen Konfigurationsschlüssel. Es gelten die gemeinsamen Grenzen für Text,
+Rechenschritte, gelesene Inhaltsdaten und Lesezeit je Dokument, für die Größe eines einzelnen
+Inhaltsteils und für die Gliederung
+([Grenzen beim Lesen](README.md#grenzen-beim-lesen)), die Zeichenobergrenzen des gemeinsamen
+Abschnittsschneiders und die Grenzen von PDFBox. Am Webverzeichnis-Konnektor greift zusätzlich die
+Dateigrößengrenze des Konnektors.
+
+**Zeichnungslastige PDFs** wie Bebauungs- oder Lagepläne bestehen aus Millionen von
+Zeichenanweisungen je Seite und können `max-pdf-operators`, `max-pdf-stream-bytes`,
+`max-pdf-content-bytes` oder `max-pdf-parse-seconds` reißen, obwohl sie nicht präpariert sind.
+Sie gelten dann als fehlgeschlagen. Wer solche Pläne indexieren will, hebt die Grenzen an, etwa
+`OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_OPERATORS=1000000000`,
+`OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_STREAM_BYTES=134217728` (128 MiB) und
+`OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_PARSE_SECONDS=600`, und indexiert die Bibliothek neu. Jede
+Erhöhung verlängert die Zeit, die eine präparierte Datei einen Indexierungsplatz belegen kann;
+eine höhere Grenze für einen einzelnen Inhaltsteil braucht zudem entsprechend mehr Arbeitsspeicher
+für das Backend.
 
 ## 7. Nicht verarbeitet
 

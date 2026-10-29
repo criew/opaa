@@ -165,6 +165,14 @@ OOM-Kill zeigt sich als `OOMKilled` (Kubernetes) bzw. in
 `docker inspect --format '{{.State.OOMKilled}}' <container>`; dann das Limit anheben, nicht den
 Heap-Anteil. Exit-Code `137` allein ist nicht eindeutig.
 
+Reicht der Heap selbst nicht, beendet sich das Backend sofort (`-XX:+ExitOnOutOfMemoryError` im
+Image, Exit-Code `3`, im Log `Terminating due to java.lang.OutOfMemoryError`), statt mit
+beschädigten Warteschlangen und Sperren weiterzulaufen. Docker Compose (`restart: unless-stopped`)
+und Kubernetes starten es neu. Wiederholt sich das bei derselben Datei, liegt meist ein sehr großes
+Dokument vor; dann den Heap vergrößern oder die
+[Grenzen beim Lesen](../arbeitsmittel/wissensbibliotheken/formate/README.md#grenzen-beim-lesen)
+senken.
+
 ## Frontend-Laufzeitimage
 
 nginx (`nginxinc/nginx-unprivileged`), lauffähig unter Pod Security Standard `restricted`.

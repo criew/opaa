@@ -1,5 +1,6 @@
 package io.opaa.format;
 
+import io.opaa.common.FatalErrors;
 import io.opaa.format.chunk.ChunkAnchor;
 import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
@@ -22,9 +23,9 @@ import org.springframework.ai.document.Document;
  * returning, so no caller can forget the cleanup a reported-but-unclaimed attachment needs. Cleanup
  * never throws, so it cannot turn a successful result into a failure.
  *
- * <p>It is also where a parse failure becomes an outcome: a {@link RuntimeException} out of {@link
- * DocumentFormat#run} is mapped to {@link DocumentFormatResult#parseFailed()} and logged here,
- * once, for every format alike.
+ * <p>It is also where a parse failure becomes an outcome: a {@link RuntimeException} or a
+ * recoverable {@link Error} out of {@link DocumentFormat#run} is mapped to {@link
+ * DocumentFormatResult#parseFailed()} and logged here, once, for every format alike.
  *
  * <p>The {@link #run(DocumentFormat, DocumentFormatSource, Consumer)} overload lets the caller
  * index an attachment's bytes first; the cleanup afterwards is unconditional and idempotent, so a
@@ -75,13 +76,16 @@ public final class DocumentFormatRunner {
    * Turns whatever a pipeline throws while parsing into {@link DocumentFormatResult#parseFailed()}
    * and logs it once, so a pipeline reports a format's own failure by throwing rather than by
    * carrying its own catch-and-map block, and no caller of a pipeline has to defend against both
-   * forms of the same answer.
+   * forms of the same answer. That includes an {@link Error} a parser library raises on one crafted
+   * document, such as a {@link StackOverflowError} from a cyclic structure; only the errors {@link
+   * FatalErrors} names (out of memory, a broken deployment) pass through.
    */
   private static DocumentFormatResult runPipeline(
       DocumentFormat pipeline, DocumentFormatSource source) {
     try {
       return pipeline.run(source);
-    } catch (RuntimeException e) {
+    } catch (RuntimeException | Error e) {
+      FatalErrors.rethrowIfFatal(e);
       log.warn(
           "Could not parse {} with pipeline {}",
           source.logName(),
