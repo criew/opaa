@@ -394,8 +394,8 @@ bootstrap.mail, so the mail server of the answer file passes the address check o
 
 {{/*
 The answer file (ADR-0060, Entscheidung 7) from bootstrap and embedding: first account, sign-in,
-chat and embedding model, and the mail server if bootstrap.mail.host is set. Passwords and keys are never part of it, only paths of files mounted from
-the secret; the first account changes its password at the first sign-in unless told otherwise.
+chat and embedding model, and the mail server if bootstrap.mail.host is set. Passwords and keys
+are never part of it, only paths of files mounted from the secret; the first account changes its password at the first sign-in unless told otherwise.
 */}}
 {{- define "opaa.installation.answerFile" -}}
 {{- $b := .Values.bootstrap }}

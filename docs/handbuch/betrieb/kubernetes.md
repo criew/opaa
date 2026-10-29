@@ -391,8 +391,8 @@ dabei `UP`. Zwei Wege führen hinaus:
   das Protokoll nennt die fehlende Datei. Mit `bootstrap.mail.host` enthält die Antwortdatei auch den
   Mailserver; der erste Start prüft Verbindung und Anmeldung, ohne eine Nachricht zu senden. Host und
   Port trägt der Chart in `installationMailTargetAllowlist` ein, damit ein Server im eigenen Netz die
-  Adressprüfung der Installation passiert. Ohne `bootstrap.mail` bleibt der Schritt übersprungen. Scheitert eine Prüfung, nennt das Protokoll Schritt und
-  Grund:
+  Adressprüfung der Installation passiert. Ohne `bootstrap.mail` bleibt der Schritt übersprungen.
+  Scheitert eine Prüfung, nennt das Protokoll Schritt und Grund:
 
   ```bash
   kubectl -n opaa logs -l app.kubernetes.io/component=backend --tail=-1 | grep "answer file"
