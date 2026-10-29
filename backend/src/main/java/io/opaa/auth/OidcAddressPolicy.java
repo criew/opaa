@@ -2,6 +2,7 @@ package io.opaa.auth;
 
 import io.opaa.common.ValidationException;
 import io.opaa.security.TargetAddressValidator;
+import io.opaa.security.TargetAddressValidator.Scope;
 import java.io.IOException;
 import java.net.URI;
 
@@ -46,7 +47,7 @@ public class OidcAddressPolicy {
   public void requireAllowed(String uri, String fieldLabel) {
     URI parsed = OidcIssuerUris.requireHttpUri(uri, fieldLabel);
     try {
-      validator.validate(parsed);
+      validator.validate(parsed, Scope.STORED_TARGET);
     } catch (IOException e) {
       throw new ValidationException(fieldLabel + ": " + e.getMessage() + " " + ALLOWLIST_HINT);
     }

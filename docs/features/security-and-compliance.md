@@ -1601,14 +1601,17 @@ sicher zu sein — er soll etwas einschalten müssen, um es nicht zu sein, und d
   Adressen von Datenquellen (eingetragen von Bibliotheksanlegern und -verwaltern), von
   Identitätsanbietern samt Schlüsselverzeichnis und der Verwaltungsschnittstelle des
   Verzeichnisabgleichs (beide nur Systemverwaltung) werden vor dem Abruf aufgelöst und gegen private
-  und lokale Adressbereiche geprüft; Ausnahmen stehen in einer Allowlist. Nicht geprüft wird die
-  Adresse eines Sprachmodells, die nur die Systemverwaltung einträgt und die typischerweise intern
-  liegt. **Bewusst hingenommene Grenze:** Prüfung und Verbindungsaufbau lösen den Namen getrennt auf.
-  Ein Namensdienst, der dazwischen die Antwort wechselt (DNS-Rebinding), wird nicht erkannt. Das
-  vollständig abzufangen, verlangte einen eigenen HTTP-Client, der jede Verbindung an die geprüfte
-  Adresse bindet; diesen Umbau der Verbindungsschicht nimmt OPAA nicht vor. Wer das Restrisiko
-  ausschließen muss, beschränkt die ausgehenden Verbindungen des Backends zusätzlich auf Netzebene
-  (Egress-Regeln oder ein Proxy mit Zielliste).
+  und lokale Adressbereiche geprüft; Ausnahmen stehen in einer Allowlist. Die Adresse eines
+  Sprachmodells prüft eine eigene Adressprüfung mit eigener Allowlist beim Speichern, Testen und
+  Abfragen, nicht bei jedem Aufruf. **Gegen DNS-Rebinding** bindet jede Prüfung den Namen kurz an
+  die geprüften Adressen; Quellen und Zugänge prüfen vor jeder Verbindung. Gespeicherte Ziele, mit
+  denen OPAA ohne eigene Prüfung verbindet (Modelle, Identitätsanbieter, Mailserver), bleiben bis
+  zum Neustart bewacht: Danach geht keine Verbindung an eine Adresse in einem gesperrten Bereich;
+  jede Instanz prüft sie nach dem Start einmal. TLS prüft weiter den Namen
+  ([ADR-0063](../decisions/0063-bindung-gepruefter-namen-gegen-dns-rebinding.md)). Hinter dem
+  Ausgangsproxy löst der Proxy auf; interne
+  Ziele dort zu sperren ist Pflicht des Betriebs, zusätzlich empfiehlt sich die Beschränkung der
+  ausgehenden Verbindungen auf Netzebene (Egress-Regeln oder ein Proxy mit Zielliste).
 - **Härtungs- und Konfigurationsleitfäden** sind Teil des Produkts, nicht Beratungsleistung: eine
   dokumentierte Referenzkonfiguration, eine Liste der sicherheitsrelevanten Einstellungen mit ihrer
   Voreinstellung und eine Prüfliste für die Inbetriebnahme.

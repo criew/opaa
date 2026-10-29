@@ -2,6 +2,7 @@ package io.opaa.sourceaccess;
 
 import io.opaa.compliance.DataFlowCarrier;
 import io.opaa.security.TargetAddressValidator;
+import io.opaa.security.TargetAddressValidator.Scope;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -183,7 +184,7 @@ public final class RedirectFollowingFetcher {
     URI uri = URI.create(url);
     return retryingThrottled(
         () -> {
-          targetAddressValidator.validate(uri);
+          targetAddressValidator.validate(uri, Scope.PER_CONNECTION);
           HttpRequest.Builder builder =
               HttpRequest.newBuilder().uri(uri).timeout(timeout).method(method, body);
           headers.forEach(builder::header);
@@ -247,7 +248,7 @@ public final class RedirectFollowingFetcher {
     Map<String, String> currentHeaders = new LinkedHashMap<>(headers);
 
     for (int hop = 0; ; hop++) {
-      targetAddressValidator.validate(currentUri);
+      targetAddressValidator.validate(currentUri, Scope.PER_CONNECTION);
       HttpRequest.Builder reqBuilder =
           HttpRequest.newBuilder().uri(currentUri).timeout(timeout).GET();
       currentHeaders.forEach(reqBuilder::header);

@@ -6,6 +6,7 @@ import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Connection;
 import io.opaa.s3.S3Credentials;
 import io.opaa.security.TargetAddressValidator;
+import io.opaa.security.TargetAddressValidator.Scope;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
@@ -155,7 +156,7 @@ public class S3ClientFactory {
   public void validateTargets(URI endpoint, boolean pathStyle, Collection<S3Scope> scopes)
       throws S3AccessException {
     try {
-      targetAddressValidator.validate(endpoint);
+      targetAddressValidator.validate(endpoint, Scope.PER_CONNECTION);
       if (!pathStyle) {
         Set<String> buckets = new LinkedHashSet<>();
         for (S3Scope scope : scopes) {
@@ -167,7 +168,8 @@ public class S3ClientFactory {
           targetAddressValidator.validateHost(
               bucket + "." + endpoint.getHost(),
               TargetAddressValidator.portOf(endpoint),
-              throughOutboundProxy);
+              throughOutboundProxy,
+              Scope.PER_CONNECTION);
         }
       }
     } catch (TargetAddressValidator.UnknownTargetHostException e) {

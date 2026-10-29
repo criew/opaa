@@ -48,6 +48,17 @@ class MailConnectionTesterTest {
         .isEqualTo(MailConnectionTester.Failure.NOT_A_MAIL_SERVER);
   }
 
+  /** A certificate for another name than the stored host is a TLS failure, in both modes. */
+  @Test
+  void aServerIdentityTheCertificateDoesNotNameIsATlsFailure() {
+    assertThat(
+            classify(
+                new MessagingException(
+                    "Could not connect to SMTP host: 10.0.0.25, port: 465",
+                    new java.io.IOException("Can't verify identity of server: 10.0.0.25"))))
+        .isEqualTo(MailConnectionTester.Failure.TLS);
+  }
+
   @Test
   void theLoggedCauseCarriesNeitherThePasswordNorAControlCharacter() {
     assertThat(MailConnectionTester.redacted("535 bad pw geheim\r\nX: 1", "geheim"))

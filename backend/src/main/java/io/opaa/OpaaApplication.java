@@ -5,6 +5,7 @@ import io.opaa.common.PublicBaseUrlProperties;
 import io.opaa.config.DatabaseMigrationMode;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.security.CredentialsEncryptionProperties;
+import io.opaa.security.PinnedAddressResolverProvider;
 import io.opaa.security.SettingsEncryptionProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -34,9 +35,11 @@ public class OpaaApplication {
 
   /**
    * Serves, or with {@code OPAA_MODE=migrate} only migrates the database and ends, or with {@code
-   * OPAA_MODE=await-migration} only waits for that migration and ends.
+   * OPAA_MODE=await-migration} only waits for that migration and ends. Refuses to start unless the
+   * pinned address resolver is the resolver of this JVM.
    */
   public static void main(String[] args) {
+    PinnedAddressResolverProvider.requireActive();
     DatabaseMigrationMode.Mode mode = DatabaseMigrationMode.mode(args);
     if (mode != DatabaseMigrationMode.Mode.SERVE) {
       System.exit(DatabaseMigrationMode.run(mode, args));

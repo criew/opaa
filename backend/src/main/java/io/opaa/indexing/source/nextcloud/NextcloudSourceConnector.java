@@ -29,6 +29,7 @@ import io.opaa.knowledge.ServedContentTypes;
 import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.knowledge.SourceType;
 import io.opaa.security.TargetAddressValidator;
+import io.opaa.security.TargetAddressValidator.Scope;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import java.io.IOException;
@@ -379,7 +380,7 @@ public class NextcloudSourceConnector implements SourceConnector, SourceBrowser,
    */
   private void requireReachable(NextcloudConnection connection) {
     try {
-      targetAddressValidator.validate(connection.baseUrl());
+      targetAddressValidator.validate(connection.baseUrl(), Scope.PER_CONNECTION);
     } catch (IOException e) {
       throw new SourceTargetRefusedException(e.getMessage() + " " + NextcloudDav.ALLOWLIST_HINT);
     }

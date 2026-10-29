@@ -25,8 +25,8 @@ Ratenbegrenzung, Metriken, Quellzugriff (HTTP), Ausgangsproxy, S3, Graph-Client,
   Zweck ein eigenes Label. Eine Rotation beendet alle lokalen Sitzungen, offenen Links und Zugangstokens zugleich.
 - **Ratenbegrenzung:** Fenster je Instanz (`RateLimitService`), Deckel in der DB, Kontogrenze hinter der Kette;
   Wildcard-Proxy-CIDR bricht den Start ab. Marken zurück: Unangemeldete (außer Anmelden), Tokens je Adresse.
-- **`TargetAddressValidator` kann DNS-Rebinding nicht ausschließen** (akzeptiert). **Feature-Flags sind ohne Angabe
-  an;** `@ConditionalOnFeature` an Blatt-Beans und rein bedingten Teilgraphen.
+- **`TargetAddressValidator` bindet je Prüfung, bewacht `STORED_TARGET`** (JVM-Resolver, ADR-0063); kein Client löst
+  selbst auf. **Feature-Flags sind ohne Angabe an;** `@ConditionalOnFeature` an Blatt-Beans und bedingten Teilgraphen.
 - **Zwei Uhren:** Was eine andere Instanz vergleicht, aus `DatabaseClock` oder `clock_timestamp()`, sonst `Clock`. Ein
   `opaa.*`-Schlüssel ohne `@DataImpact` trägt `@InstallationWide` oder `@PerInstance` (`FingerprintKeysTest`).
 - **`OutboundProxySelector` ist der Proxy-Standard der JVM:** nur `http`/`https` über den Proxy, `socket://` (SMB, SMTP,
