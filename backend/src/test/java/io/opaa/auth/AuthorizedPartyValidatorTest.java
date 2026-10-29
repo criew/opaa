@@ -8,10 +8,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jwt.Jwt;
 
 /**
- * {@link AuthorizedPartyValidator} (ADR-0025, Entscheidung 1): the provider's own client passes, a
- * token without {@code azp} passes, a token of another client passes only when the provider
- * declared it for this client through {@code aud} - the service client of the demo seed is that
- * case - and is refused otherwise.
+ * {@link AuthorizedPartyValidator} (ADR-0025, Entscheidung 1): the provider's own client passes; a
+ * token without {@code azp}, or of another client, passes only when its {@code aud} names this
+ * client - the service client of the demo seed is that case - and is refused otherwise.
  */
 class AuthorizedPartyValidatorTest {
 
@@ -34,9 +33,17 @@ class AuthorizedPartyValidatorTest {
   }
 
   @Test
-  void theProvidersOwnClientPassesAndSoDoesATokenWithoutAzp() {
+  void theProvidersOwnClientPasses() {
     assertThat(validator.validate(token("opaa-frontend", null)).hasErrors()).isFalse();
-    assertThat(validator.validate(token(null, null)).hasErrors()).isFalse();
+  }
+
+  @Test
+  void aTokenWithoutAzpPassesOnlyWhenItsAudienceNamesThisClient() {
+    assertThat(validator.validate(token(null, null)).hasErrors()).isTrue();
+    assertThat(validator.validate(token(null, List.of("other-app"))).hasErrors()).isTrue();
+    assertThat(validator.validate(token(null, List.of("opaa-frontend"))).hasErrors()).isFalse();
+    assertThat(validator.validate(token(null, List.of("other-app", "opaa-frontend"))).hasErrors())
+        .isFalse();
   }
 
   @Test

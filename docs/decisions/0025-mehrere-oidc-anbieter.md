@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-26 · ergänzt ADR-0005 · Entscheidung 3 teilweise ersetzt durch ADR-0033 (Entscheidungen 4, 5) und ADR-0060 (Entscheidung 9) · Entscheidung 4 ergänzt durch ADR-0036, Entscheidungen 2 und 3 (Gruppenherkunft und Verzeichnisabgleich je Anbieter)
+Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt ADR-0005 · Entscheidung 3 teilweise ersetzt durch ADR-0033 (Entscheidungen 4, 5) und ADR-0060 (Entscheidung 9) · Entscheidung 4 ergänzt durch ADR-0036, Entscheidungen 2 und 3 (Gruppenherkunft und Verzeichnisabgleich je Anbieter)
 
 ## Kontext
 
@@ -28,8 +28,10 @@ Invalidierungsbus neu aufgebaut (ADR-0053 Entscheidung 5); der lokale Issuer aus
 (`LocalIssuerAuthenticationManagerResolver`). Ein unbekannter `iss` ergibt `401` mit
 `error_description="unknown_issuer"`, worauf die SPA lokal abmeldet statt zu erneuern; ein nicht
 baubarer Decoder wird übersprungen und nach `RETRY_INTERVAL` erneut versucht. `AuthorizedPartyValidator`:
-Ein vorhandenes `azp` muss der `client_id` entsprechen, oder `aud` nennt sie; `aud` allein bleibt
-ungeprüft, weil Keycloak es nicht auf den anfragenden Client setzt.
+Ein Token gilt, wenn `azp` der `client_id` entspricht oder `aud` sie enthält; ein Token ohne `azp`
+gilt also nur, wenn `aud` die `client_id` enthält (`azp` ist optional, nicht jeder Anbieter
+setzt es). Nennt `azp` den eigenen Client, bleibt `aud` ungeprüft, weil Keycloak es nicht auf den
+anfragenden Client setzt.
 
 Für die OIDC-Anmeldung speichert und prägt OPAA keine Tokens. Quellverbindungen und verbundene
 Konten speichern Refresh-, Zugriffstoken und persönliche Geheimnisse verschlüsselt im
@@ -130,7 +132,7 @@ Client-ID, Vorauswahl und Reihenfolge — keine Claim-Zuordnung, nichts über Ko
 ### 6. Grenzen
 
 Kein SAML; keine Kontenzusammenführung außer der Übergabe aus ADR-0033; nur Public Clients mit
-PKCE; keine `aud`-Prüfung; der letzte `AUDITOR` ist nicht geschützt; ein neuer Anbieter-Origin
+PKCE; `aud` wird nur geprüft, wo `azp` fehlt oder einen anderen Client nennt; der letzte `AUDITOR` ist nicht geschützt; ein neuer Anbieter-Origin
 braucht einen Frontend-Neustart; eine Organisation; der `dev`-Modus bleibt unverändert.
 
 ## Konsequenzen

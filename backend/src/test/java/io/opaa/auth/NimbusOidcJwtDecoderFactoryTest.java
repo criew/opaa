@@ -31,8 +31,9 @@ import org.springframework.security.oauth2.jwt.JwtValidationException;
 /**
  * {@link NimbusOidcJwtDecoderFactory} against a local double (ADR-0025 Entscheidung 1 and 3): the
  * decoder built from a discovery document validates a token signed with the discovered key, refuses
- * a token whose {@code azp} names another client, passes one without {@code azp}, and a discovery
- * document whose {@code jwks_uri} points outside the allowlist yields no decoder at all.
+ * a token whose {@code azp} names another client, accepts one without {@code azp} only when its
+ * {@code aud} names the client id, and a discovery document whose {@code jwks_uri} points outside
+ * the allowlist yields no decoder at all.
  */
 class NimbusOidcJwtDecoderFactoryTest {
 
@@ -100,7 +101,7 @@ class NimbusOidcJwtDecoderFactoryTest {
 
     JwtDecoder decoder = factory().create(provider(baseUrl + "/realms/opaa/certs"));
 
-    assertThat(decoder.decode(token(issuer, null)).getSubject()).isEqualTo("alice");
+    assertThat(decoder.decode(token(issuer, "opaa-frontend")).getSubject()).isEqualTo("alice");
   }
 
   /**
@@ -139,6 +140,19 @@ class NimbusOidcJwtDecoderFactoryTest {
   }
 
   @Test
+  void aTokenWithoutAzpIsAcceptedOnlyWhenItsAudienceNamesTheClientId() throws Exception {
+    JwtDecoder decoder = factory().create(provider(null));
+
+    assertThatThrownBy(() -> decoder.decode(token(issuer, null, List.of("other-app"))))
+        .isInstanceOf(JwtValidationException.class)
+        .hasMessageContaining("aud");
+    assertThatThrownBy(() -> decoder.decode(token(issuer, null, null)))
+        .isInstanceOf(JwtValidationException.class);
+    assertThat(decoder.decode(token(issuer, null, List.of("opaa-frontend"))).getSubject())
+        .isEqualTo("alice");
+  }
+
+  @Test
   void aTokenOfAnotherIssuerIsRefused() throws Exception {
     JwtDecoder decoder = factory().create(provider(null));
 
@@ -156,6 +170,10 @@ class NimbusOidcJwtDecoderFactoryTest {
   }
 
   private String token(String tokenIssuer, String azp) throws Exception {
+    return token(tokenIssuer, azp, null);
+  }
+
+  private String token(String tokenIssuer, String azp, List<String> audience) throws Exception {
     JWTClaimsSet.Builder claims =
         new JWTClaimsSet.Builder()
             .issuer(tokenIssuer)
@@ -164,6 +182,9 @@ class NimbusOidcJwtDecoderFactoryTest {
             .expirationTime(Date.from(Instant.now().plusSeconds(300)));
     if (azp != null) {
       claims.claim("azp", azp);
+    }
+    if (audience != null) {
+      claims.audience(audience);
     }
     SignedJWT jwt =
         new SignedJWT(
