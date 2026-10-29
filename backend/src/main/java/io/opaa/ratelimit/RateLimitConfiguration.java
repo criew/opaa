@@ -49,7 +49,10 @@ public class RateLimitConfiguration {
   static final String LOCAL_REGISTER_PATTERN = "^/api/v1/auth/local/register$";
   static final String LOCAL_FORGOT_PASSWORD_PATTERN = "^/api/v1/auth/local/forgot-password$";
   static final String LOCAL_SET_PASSWORD_PATTERN = "^/api/v1/auth/local/set-password$";
-  static final String LOCAL_VERIFY_EMAIL_PATTERN = "^/api/v1/auth/local/verify-email$";
+
+  /** Completing a self-registration; its limit keeps the key {@code verify-email}. */
+  static final String LOCAL_CONFIRM_REGISTRATION_PATTERN =
+      "^/api/v1/auth/local/confirm-registration$";
 
   /**
    * The two handover endpoints share one budget, like the outbound probes above: a redemption is
@@ -186,7 +189,7 @@ public class RateLimitConfiguration {
         rule(
             counters,
             "local-auth-verify-email",
-            LOCAL_VERIFY_EMAIL_PATTERN,
+            LOCAL_CONFIRM_REGISTRATION_PATTERN,
             localAuth.verifyEmail()));
     rules.add(rule(counters, "local-auth-handover", LOCAL_HANDOVER_PATTERN, localAuth.handover()));
 
