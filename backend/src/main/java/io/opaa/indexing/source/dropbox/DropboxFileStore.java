@@ -20,6 +20,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -28,11 +29,12 @@ import tools.jackson.databind.JsonNode;
 
 /**
  * The {@link FileStore} and {@link ChangeFeed} of one Dropbox library for one run. Every configured
- * folder is a container, listed recursively with {@code list_folder}; its change stream is the
- * cursor of the same listing. A file's identity is its lower-case path, so a rename or a move is a
- * removal and a new file. A reported deletion whose path was a folder is a change of structure that
- * only a full sync reconciles; Dropbox does not name the files below it. A Paper document is
- * exported as Markdown; any other file Dropbox does not hand out is no document.
+ * folder - or, under a team app, every team folder - is a container, listed recursively with {@code
+ * list_folder}; its change stream is the cursor of the same listing. A file's identity is its
+ * lower-case path, behind the namespace for a team folder, so a rename or a move is a removal and a
+ * new file. A reported deletion whose path was a folder is a change of structure that only a full
+ * sync reconciles; Dropbox does not name the files below it. A Paper document is exported as
+ * Markdown; any other file Dropbox does not hand out is no document.
  */
 final class DropboxFileStore implements FileStore, ChangeFeed {
 
@@ -42,6 +44,9 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
    */
   static final String IDENTITY_PREFIX = "dropbox:";
 
+  /** Follows {@link #IDENTITY_PREFIX} for a file of a team folder: {@code ns:<id>/<path>}. */
+  static final String TEAM_FOLDER_PREFIX = "ns:";
+
   static final String NOT_DOWNLOADABLE_NOTE =
       " Dateien übersprungen, die Dropbox weder herausgibt noch exportiert";
   static final String ROOT_NAME = "Dropbox";
@@ -49,25 +54,51 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
   private static final String MARKDOWN = "markdown";
   private static final String HTML = "html";
 
+  /** Pages of {@code team/namespaces/list} a run reads at most to find its team folders. */
+  private static final int MAX_NAMESPACE_PAGES = 100;
+
+  /**
+   * One container: its key, the folder it reads below its root ({@code /} for a team folder), the
+   * name it heads the folder chain with, and the prefix of its files' identities.
+   */
+  private record Area(String key, String folder, String label, String identityPrefix) {}
+
   private final DropboxApi api;
   private final DropboxSettings settings;
   private final int pageSize;
-  private final Map<String, String> foldersByKey = new LinkedHashMap<>();
+  private final Map<String, Area> areas = new LinkedHashMap<>();
   private final Map<String, String> exports = new ConcurrentHashMap<>();
-  private boolean rooted;
+
+  /** Per team folder its API view as the admin, or why the run cannot read it. */
+  private final Map<String, DropboxApi> teamViews = new ConcurrentHashMap<>();
+
+  private final Map<String, String> unavailable = new ConcurrentHashMap<>();
+  private boolean prepared;
 
   DropboxFileStore(DropboxApi api, DropboxSettings settings, int pageSize) {
     this.api = api;
     this.settings = settings;
     this.pageSize = pageSize;
-    for (String folder : settings.folders()) {
-      foldersByKey.put(folder, folder);
+    if (settings.readsTeamFolders()) {
+      for (DropboxSettings.TeamFolder folder : settings.teamFolders()) {
+        areas.put(
+            folder.id(),
+            new Area(
+                folder.id(),
+                "/",
+                folder.label(),
+                IDENTITY_PREFIX + TEAM_FOLDER_PREFIX + folder.id()));
+      }
+    } else {
+      for (String folder : settings.folders()) {
+        areas.put(folder, new Area(folder, folder, displayName(folder), IDENTITY_PREFIX));
+      }
     }
   }
 
   @Override
   public List<FileContainer> containers() {
-    return settings.folders().stream().map(FileContainer::new).toList();
+    return areas.keySet().stream().map(FileContainer::new).toList();
   }
 
   // --- listing ---------------------------------------------------------------------------------
@@ -75,25 +106,25 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
   @Override
   public FilePage list(FileContainer container, String continuation)
       throws FileAccessException, InterruptedException {
-    String folder = folder(container);
+    Area area = area(container.key());
     try {
       JsonNode answer;
       if (continuation == null) {
         requireReachable(container);
         Map<String, Object> args = new LinkedHashMap<>();
-        args.put("path", DropboxSettings.apiPath(folder));
+        args.put("path", DropboxSettings.apiPath(area.folder()));
         args.put("recursive", true);
         args.put("include_deleted", false);
         args.put("include_non_downloadable_files", true);
         args.put("limit", pageSize);
-        answer = api.rpc("files/list_folder", args);
+        answer = apiOf(area).rpc("files/list_folder", args);
       } else {
-        answer = api.rpc("files/list_folder/continue", Map.of("cursor", continuation));
+        answer = apiOf(area).rpc("files/list_folder/continue", Map.of("cursor", continuation));
       }
       List<FileEntry> entries = new ArrayList<>();
       for (JsonNode item : items(answer)) {
         if ("file".equals(text(item, ".tag"))) {
-          FileEntry entry = entry(folder, item);
+          FileEntry entry = entry(area, item);
           if (entry != null) {
             entries.add(entry);
           }
@@ -116,14 +147,13 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
   @Override
   public FileEntry head(FileContainer container, String id)
       throws FileAccessException, InterruptedException {
-    String folder = folder(container);
+    Area area = area(container.key());
     try {
-      root();
-      JsonNode meta = api.rpc("files/get_metadata", Map.of("path", id));
+      JsonNode meta = apiOf(area).rpc("files/get_metadata", Map.of("path", id));
       if (!"file".equals(text(meta, ".tag"))) {
         throw new FileAccessException.Gone("Die Datei gibt es in Dropbox nicht mehr.");
       }
-      FileEntry entry = entry(folder, meta);
+      FileEntry entry = entry(area, meta);
       if (entry == null) {
         throw new FileAccessException.Gone("Die Datei liegt nicht mehr im Ordner.");
       }
@@ -141,11 +171,11 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
       throws FileAccessException, InterruptedException {
     String format = exports.get(entry.id());
     try {
-      root();
+      DropboxApi reader = apiOf(area(entry.container().key()));
       Path file =
           format == null
-              ? api.download("files/download", Map.of("path", entry.id()), maxBytes)
-              : api.download(
+              ? reader.download("files/download", Map.of("path", entry.id()), maxBytes)
+              : reader.download(
                   "files/export", Map.of("path", entry.id(), "export_format", format), maxBytes);
       return new FetchedFile(file, Files.size(file), null);
     } catch (DropboxApiException e) {
@@ -167,24 +197,24 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
 
   @Override
   public String feedKey(FileContainer container) {
-    return folder(container);
+    return area(container.key()).key();
   }
 
   @Override
   public String startCursor(String feedKey) throws FileAccessException, InterruptedException {
-    String folder = foldersByKey.get(feedKey);
-    if (folder == null) {
-      throw new IllegalArgumentException("no folder " + feedKey);
-    }
+    Area area = area(feedKey);
     try {
-      root();
+      prepare();
+      if (unavailable.containsKey(area.key())) {
+        return UNREACHABLE_AT_START;
+      }
       Map<String, Object> args = new LinkedHashMap<>();
-      args.put("path", DropboxSettings.apiPath(folder));
+      args.put("path", DropboxSettings.apiPath(area.folder()));
       args.put("recursive", true);
       args.put("include_deleted", true);
       args.put("include_non_downloadable_files", true);
       args.put("limit", pageSize);
-      String cursor = text(api.rpc("files/list_folder/get_latest_cursor", args), "cursor");
+      String cursor = text(apiOf(area).rpc("files/list_folder/get_latest_cursor", args), "cursor");
       if (cursor == null) {
         throw new FileAccessException.RunEnding(
             "Dropbox hat keinen Startpunkt des Änderungsprotokolls geliefert.");
@@ -206,26 +236,23 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
   @Override
   public ChangePage read(String feedKey, String cursor)
       throws FileAccessException, InterruptedException {
-    String folder = foldersByKey.get(feedKey);
-    if (folder == null) {
-      throw new IllegalArgumentException("no folder " + feedKey);
-    }
+    Area area = area(feedKey);
     if (UNREACHABLE_AT_START.equals(cursor)) {
       throw new FileAccessException.CursorExpired(
           "Der Ordner „"
-              + folder
+              + area.label()
               + "“ war beim Beginn des letzten Vollabgleichs nicht erreichbar.");
     }
     List<Change> changes = new ArrayList<>();
     boolean structure = false;
     JsonNode answer;
     try {
-      root();
-      answer = api.rpc("files/list_folder/continue", Map.of("cursor", cursor));
+      DropboxApi reader = apiOf(area);
+      answer = reader.rpc("files/list_folder/continue", Map.of("cursor", cursor));
       for (JsonNode item : items(answer)) {
         switch (text(item, ".tag") == null ? "" : text(item, ".tag")) {
           case "file" -> {
-            FileEntry entry = entry(folder, item);
+            FileEntry entry = entry(area, item);
             if (entry != null) {
               changes.add(new Change.Updated(entry));
             }
@@ -236,8 +263,8 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
               structure = true;
               continue;
             }
-            changes.add(new Change.Removed(IDENTITY_PREFIX + pathLower));
-            if (!structure && !wasFile(pathLower)) {
+            changes.add(new Change.Removed(area.identityPrefix() + pathLower));
+            if (!structure && !wasFile(reader, pathLower)) {
               structure = true;
             }
           }
@@ -256,6 +283,9 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
         case BLOCKED -> new FileAccessException.RunEnding(e.getMessage());
         default -> new FileAccessException.Transient(e.getMessage());
       };
+    } catch (FileAccessException.ContainerUnlistable e) {
+      // a team folder gone from the team since the last run: only a full sync can tell
+      throw new FileAccessException.CursorExpired(e.getMessage());
     }
     String next = text(answer, "cursor");
     if (next == null) {
@@ -271,13 +301,14 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
    * Whether the deleted {@code pathLower} was a file: a file keeps its revisions after the
    * deletion, a folder has none. Unknown counts as a folder, so a full sync follows.
    */
-  private boolean wasFile(String pathLower) throws DropboxApiException, InterruptedException {
+  private static boolean wasFile(DropboxApi reader, String pathLower)
+      throws DropboxApiException, InterruptedException {
     Map<String, Object> args = new LinkedHashMap<>();
     args.put("path", pathLower);
     args.put("mode", "path");
     args.put("limit", 1);
     try {
-      api.rpc("files/list_revisions", args);
+      reader.rpc("files/list_revisions", args);
       return true;
     } catch (DropboxApiException e) {
       if (e.kind() == DropboxApiException.Kind.NOT_FOUND
@@ -297,16 +328,25 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
   @Override
   public void requireReachable(FileContainer container)
       throws FileAccessException, InterruptedException {
-    String folder = folder(container);
+    Area area = area(container.key());
     try {
-      root();
-      if (folder.equals("/")) {
-        api.rpc("users/get_current_account", null);
+      DropboxApi reader = apiOf(area);
+      if (settings.readsTeamFolders()) {
+        Map<String, Object> args = new LinkedHashMap<>();
+        args.put("path", "");
+        args.put("recursive", false);
+        args.put("limit", 1);
+        reader.rpc("files/list_folder", args);
         return;
       }
-      JsonNode meta = api.rpc("files/get_metadata", Map.of("path", folder));
+      if (area.folder().equals("/")) {
+        reader.rpc("users/get_current_account", null);
+        return;
+      }
+      JsonNode meta = reader.rpc("files/get_metadata", Map.of("path", area.folder()));
       if (!"folder".equals(text(meta, ".tag"))) {
-        throw new FileAccessException.ContainerUnlistable("„" + folder + "“ ist kein Ordner.");
+        throw new FileAccessException.ContainerUnlistable(
+            "„" + area.folder() + "“ ist kein Ordner.");
       }
     } catch (DropboxApiException e) {
       throw switch (e.kind()) {
@@ -315,7 +355,9 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
         case BLOCKED -> new FileAccessException.RunEnding(e.getMessage());
         case NOT_FOUND, FORBIDDEN, CONFLICT ->
             new FileAccessException.ContainerUnlistable(
-                "Der Ordner „" + folder + "“ ist für das Konto nicht sichtbar.");
+                settings.readsTeamFolders()
+                    ? "Der Team-Ordner „" + area.label() + "“ ist nicht lesbar."
+                    : "Der Ordner „" + area.folder() + "“ ist für das Konto nicht sichtbar.");
         default -> new FileAccessException.ContainerUnlistable(e.getMessage());
       };
     }
@@ -332,21 +374,74 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
   // --- helpers ---------------------------------------------------------------------------------
 
   /**
-   * Turns every call of a library in the team space to the team space's root, once per run.
+   * The API that reads {@code area}: the account's, turned to the team space where asked, or the
+   * admin's view of the team folder.
    *
-   * @throws DropboxApiException as the account lookup fails
+   * @throws FileAccessException.ContainerUnlistable for a team folder the team no longer names
    */
-  private void root() throws DropboxApiException, InterruptedException, FileAccessException {
-    if (rooted || !settings.teamSpace()) {
+  private DropboxApi apiOf(Area area)
+      throws DropboxApiException, InterruptedException, FileAccessException {
+    prepare();
+    if (!settings.readsTeamFolders()) {
+      return api;
+    }
+    DropboxApi view = teamViews.get(area.key());
+    if (view == null) {
+      throw new FileAccessException.ContainerUnlistable(unavailable.get(area.key()));
+    }
+    return view;
+  }
+
+  /**
+   * Once per run: turns every call of a library in the team space to the team space's root, or,
+   * under a team app, asks Dropbox for the consenting admin and which chosen namespaces are still
+   * team folders. A namespace that is none - gone, or a member's folder - is never read.
+   *
+   * @throws DropboxApiException as the account or team lookup fails
+   */
+  private synchronized void prepare()
+      throws DropboxApiException, InterruptedException, FileAccessException {
+    if (prepared) {
       return;
     }
-    String namespace = teamSpaceOf(api.rpc("users/get_current_account", null));
-    if (namespace == null) {
-      throw new FileAccessException.RunEnding(
-          "Das verbundene Dropbox-Konto gehört zu keinem Team mit Team-Bereich.");
+    if (settings.readsTeamFolders()) {
+      String admin;
+      DropboxTeam.TeamFolders listed;
+      try {
+        admin = text(DropboxTeam.admin(api), "team_member_id");
+        listed =
+            DropboxTeam.teamFolders(api, new LinkedHashSet<>(areas.keySet()), MAX_NAMESPACE_PAGES);
+      } catch (DropboxApiException e) {
+        throw switch (e.kind()) {
+          case UNAUTHORIZED -> new FileAccessException.CredentialsRejected(e.getMessage());
+          case SCOPE_MISSING -> new FileAccessException.PermissionMissing(e.getMessage());
+          default -> new FileAccessException.RunEnding(e.getMessage());
+        };
+      }
+      for (Area area : areas.values()) {
+        boolean teamFolder =
+            listed.folders().stream().anyMatch(folder -> folder.id().equals(area.key()));
+        if (teamFolder) {
+          teamViews.put(area.key(), api.asAdminIn(area.key(), admin));
+        } else {
+          unavailable.put(
+              area.key(),
+              "„"
+                  + area.label()
+                  + "“ ist "
+                  + (listed.complete() ? "kein Team-Ordner des Teams." : "nicht auffindbar.")
+                  + " OPAA liest nur Team-Ordner.");
+        }
+      }
+    } else if (settings.teamSpace()) {
+      String namespace = teamSpaceOf(api.rpc("users/get_current_account", null));
+      if (namespace == null) {
+        throw new FileAccessException.RunEnding(
+            "Das verbundene Dropbox-Konto gehört zu keinem Team mit Team-Bereich.");
+      }
+      api.rootAt(namespace);
     }
-    api.rootAt(namespace);
-    rooted = true;
+    prepared = true;
   }
 
   /** The root namespace of {@code account}'s team space, {@code null} without one. */
@@ -361,11 +456,12 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
   }
 
   /**
-   * The entry of the file {@code meta} below {@code folder}, {@code null} when it lies outside -
-   * the folder chain mirrors the folders below it, behind the folder's name when the library reads
-   * several.
+   * The entry of the file {@code meta} below {@code area}'s folder, {@code null} when it lies
+   * outside - the folder chain mirrors the folders below it, behind the area's name when the
+   * library reads several.
    */
-  private FileEntry entry(String folder, JsonNode meta) {
+  private FileEntry entry(Area area, JsonNode meta) {
+    String folder = area.folder();
     String id = text(meta, "id");
     String pathLower = text(meta, "path_lower");
     String pathDisplay = text(meta, "path_display");
@@ -394,8 +490,8 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
       name = parts.getLast();
     }
     List<String> segments = new ArrayList<>();
-    if (settings.folders().size() > 1) {
-      segments.add(displayName(folder));
+    if (areas.size() > 1) {
+      segments.add(area.label());
     }
     segments.addAll(chain);
     String fileName = name;
@@ -416,13 +512,13 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
       }
     }
     return new FileEntry(
-        new FileContainer(folder),
+        new FileContainer(area.key()),
         id,
-        IDENTITY_PREFIX + pathLower,
+        area.identityPrefix() + pathLower,
         fileName,
         SourceFolderPath.capped(segments),
         new SourceDocumentContext(
-            folder,
+            area.key(),
             chain.isEmpty() ? null : String.join(SourceDocumentContext.HIERARCHY_SEPARATOR, chain)),
         size,
         marker,
@@ -459,12 +555,12 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
     return folder.substring(folder.lastIndexOf('/') + 1);
   }
 
-  private String folder(FileContainer container) {
-    String folder = foldersByKey.get(container.key());
-    if (folder == null) {
-      throw new IllegalArgumentException("no folder " + container.key());
+  private Area area(String key) {
+    Area area = areas.get(key);
+    if (area == null) {
+      throw new IllegalArgumentException("no folder " + key);
     }
-    return folder;
+    return area;
   }
 
   private static FileAccessException fileFailure(DropboxApiException e) {

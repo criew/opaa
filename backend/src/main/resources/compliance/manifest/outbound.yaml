@@ -130,13 +130,25 @@ dataFlows:
     group: CONNECTOR
     viaOutboundProxy: true
     target: Die Dropbox-API (api.dropboxapi.com, content.dropboxapi.com)
-    data: API-Anfragen mit dem Token des Zugangs; Inhalte gehen nicht hinaus
-    trigger: Indizierungslauf, Verbindungstest, Original öffnen
+    data: >-
+      API-Anfragen mit dem Token des Zugangs; bei einer Team-App ein Token des ganzen Teams, mit
+      dem OPAA als zustimmende Team-Administration Team-Ordner liest und die Namespaces des Teams
+      auflistet; Inhalte gehen nicht hinaus
+    trigger: Indizierungslauf, Verbindungstest, Ordnerauswahl, Original öffnen
     switchOff: Je Bibliothek, durch Ausschalten des Zeitplans oder Löschen der Bibliothek
     settings:
       - opaa.indexing.dropbox.api-base
       - opaa.indexing.dropbox.content-base
       - knowledge_libraries.schedule_enabled
+    notes:
+      - >-
+        Über eine Team-App liest eine Bibliothek Team-Ordner, auch solche, die kein einzelnes
+        Mitgliedskonto sieht; wer die Bibliothek lesen darf, liest deren Inhalt. Mitgliederordner,
+        geteilte Ordner und App-Ordner liest OPAA nicht und bietet sie nicht zur Auswahl an
+      - >-
+        Das Token einer Team-App erlaubt Dropbox-seitig mehr, als OPAA nutzt: Es könnte im Namen
+        jedes Mitglieds dessen Ordner lesen. OPAA hält es verschlüsselt, schickt es nur an die
+        Dropbox-API und widerruft es beim Trennen
   - id: source-google-drive
     group: CONNECTOR
     viaOutboundProxy: true

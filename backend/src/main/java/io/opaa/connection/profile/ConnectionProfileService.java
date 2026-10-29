@@ -561,7 +561,10 @@ public class ConnectionProfileService {
         profile.getAuthMethod() != validated.authMethod()
             || !Objects.equals(profile.getClientId(), validated.clientId())
             || !Objects.equals(profile.getTenant(), validated.tenant())
-            || !Objects.equals(profile.getScopes(), validated.scopes())
+            || !Objects.equals(
+                ProfileRegistrations.scopesOf(connector, profile.getScopes(), defaultsBefore),
+                ProfileRegistrations.scopesOf(
+                    connector, validated.scopes(), validated.connectorSettings()))
             || !profile.getEndpoints().equals(validated.endpoints());
     ConnectionProfile candidate = profile.candidate(validated);
     List<LibraryConnection> connected = connections.findByProfileId(profile.getId());
@@ -706,10 +709,15 @@ public class ConnectionProfileService {
     SourceConnectorDescriptor descriptor = connector.descriptor();
     ConnectionProfileValues validated =
         validate(descriptor.profileDeclaration(), descriptor.displayName(), values, existingId);
-    return validated.connectorSettings() == null
-        ? validated
-        : validated.withConnectorSettings(
-            connector.readProfileDefaults(validated.connectorSettings()));
+    ConnectionProfileValues checked =
+        validated.connectorSettings() == null
+            ? validated
+            : validated.withConnectorSettings(
+                connector.readProfileDefaults(validated.connectorSettings()));
+    if (checked.scopes() != null) {
+      connector.checkProfileScopes(checked.scopes(), checked.connectorSettings());
+    }
+    return checked;
   }
 
   /**

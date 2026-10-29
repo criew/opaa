@@ -3,8 +3,9 @@
 ## 1. Was der Konnektor ist
 
 Der Konnektor liest **Ordner eines Dropbox-Kontos**, auf Wunsch auch den **Team-Bereich** eines
-Dropbox-Teams, über die **Dropbox API v2** (`api.dropboxapi.com` für Auflistungen,
-`content.dropboxapi.com` für Downloads und Exporte) und hält sie über das Änderungsprotokoll von
+Dropbox-Teams, mit einer **Team-App** die **Team-Ordner** eines Teams. Er nutzt die **Dropbox API
+v2** (`api.dropboxapi.com` für Auflistungen, `content.dropboxapi.com` für Downloads und Exporte)
+und hält die Ordner über das Änderungsprotokoll von
 Dropbox aktuell. Dropbox ist eine der [Dateiablagen](README.md#2-dateiablagen); was alle Dateiablagen
 teilen, steht dort.
 
@@ -21,16 +22,20 @@ flowchart LR
   Zugang ist **Pflicht**; er trägt die App des Betreibers, die Bibliothek ihre Zustimmung.
 - **Konnektor-eigen:** eine App in der **Dropbox App Console** mit „Scoped access" und den
   Berechtigungen `account_info.read`, `files.metadata.read` und `files.content.read`.
+- **Zwei Arten von Zugang:** Ein Zugang mit **Mitglieds-App** liest, was ein Dropbox-Konto sieht. Ein
+  Zugang mit der Vorgabe **„Team-App"** liest Team-Ordner als Team-Administration, auch solche, die
+  kein einzelnes Mitgliedskonto sieht; zustimmen muss dort eine Team-Administration (Abschnitt 2.1).
 - **Liest:** Dateien in unterstützten Formaten in einem bis fünfzig Ordnern samt Unterordnern; `/`
   liest die ganze Dropbox, auch mit dem Konto geteilte Ordner. **Paper-Dokumente** exportiert Dropbox
   als Markdown; sie erscheinen mit der Endung `.md`. Dateien, die Dropbox weder herausgibt noch
   exportiert, etwa Verknüpfungen auf Webseiten, werden übersprungen.
-- **Dokument:** Der Pfad in Kleinbuchstaben ist die Identität. Umbenennen und Verschieben machen ein
+- **Dokument:** Der Pfad in Kleinbuchstaben ist die Identität, im Team-Ordner zusammen mit dessen
+  Namespace-ID. Umbenennen und Verschieben machen ein
   neues Dokument. Einen Link in die Dropbox-Oberfläche gibt es nicht, weil Dropbox für einen Pfad keine
   verlässliche Web-Adresse nennt; **„Original öffnen"** lädt die Datei durch OPAA, nur aus einem noch
   gewählten Ordner.
 - **Rechte** aus Dropbox übernimmt OPAA nicht: Wer die Bibliothek lesen darf, liest alles, was das
-  verbundene Konto in den Ordnern sieht.
+  verbundene Konto in den Ordnern sieht, bei einer Team-App alles in den gewählten Team-Ordnern.
 
 ## 2. Einrichtung
 
@@ -54,6 +59,29 @@ App key und Secret gehen nur an den Token-Endpunkt von Dropbox; OPAA fragt die Z
 die beiden API-Hosts; Redirects folgt der Konnektor nicht. Trennen, ein Neuverbinden mit anderem
 Konto, die Notabschaltung und das Löschen des Zugangs widerrufen das Token bei Dropbox.
 
+### 2.1 Team-App
+
+Team-Ordner, die kein einzelnes Mitgliedskonto sieht, liest nur eine Team-App. Ihre Zustimmung gibt
+eine **Team-Administration** von Dropbox Business für das ganze Team.
+
+1. **App anlegen** wie oben, zusätzlich unter „Permissions" die Team-Berechtigungen
+   `team_info.read`, `team_data.member` und `files.team_metadata.read` setzen. Mit ihnen stimmen nur
+   Team-Administrationen zu.
+2. **Zugang** wie oben anlegen und unter „Vorgaben" **„Team-App (Zustimmung einer
+   Team-Administration)"** einschalten; „Scopes" bleibt leer. OPAA fragt bei der Zustimmung dann die
+   drei Berechtigungen der Mitglieds-App und die drei Team-Berechtigungen an. Wer „Scopes" doch
+   füllt, muss alle sechs nennen; fehlt eine, nimmt OPAA den Zugang nicht an.
+3. Bei „Quelle verbinden" stimmt ein Konto mit Team-Administration zu. OPAA nennt danach dieses Konto
+   („Verbunden als …").
+
+Die Vorgabe gilt für jede Bibliothek des Zugangs. Solange Bibliotheken auf dem Zugang liegen, lässt sie
+sich nicht umschalten: Ihre gespeicherte Auswahl, Ordnerpfade oder Team-Ordner, passte nicht mehr.
+Für die andere Art einen eigenen Zugang anlegen.
+
+Das Token einer Team-App reicht bei Dropbox weiter als das, was OPAA liest: Es könnte im Namen jedes
+Mitglieds lesen. OPAA liest damit nur die gewählten Team-Ordner, als die Team-Administration, die
+zugestimmt hat.
+
 ## 3. Quellkonfiguration
 
 Die Zeile „Verbindung" fragt weder Adresse noch Zugangsdaten ab. „Eigene Adresse" gibt es nicht.
@@ -69,9 +97,17 @@ Die Zeile „Verbindung" fragt weder Adresse noch Zugangsdaten ab. „Eigene Adr
    eintragen …" angeben.
 5. Der Verbindungstest prüft jeden Ordner.
 
+**Unter einem Zugang mit Team-App** steht in der Zeile „Verbindung" statt des Schalters ein Hinweis,
+dass die Bibliothek Team-Ordner des Teams liest. Der **Umfang** wählt ein bis fünfzig Team-Ordner aus
+einer flachen Liste; die übrigen Ordner eines Team-Ordners wählt man nicht einzeln, jeder Team-Ordner
+wird ganz gelesen. Fehlt ein Team-Ordner in der Liste, nimmt „Von Hand eintragen …" seine
+Namespace-ID aus Ziffern an. Mitgliederordner, geteilte Ordner und App-Ordner bietet die Liste nicht
+an. Der Verbindungstest prüft jeden Team-Ordner.
+
 Unter „Umfang" stehen die Ordner für alle Leseberechtigten, beim Team-Bereich mit „im Team-Bereich".
 Den eigenen Vollabgleich-Rhythmus setzt „Vollabgleich alle … Tage". Eine geänderte Ordnerliste oder
-ein umgeschalteter Team-Bereich lassen den nächsten Lauf vollständig abgleichen.
+ein umgeschalteter Team-Bereich lassen den nächsten Lauf vollständig abgleichen, ebenso eine geänderte
+Auswahl der Team-Ordner.
 
 ## 4. Betriebsarten und Änderungserkennung
 
@@ -123,7 +159,13 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 - **Drosselung.** Bei `429` wartet OPAA die Zeit aus `Retry-After`, höchstens `max-retry-wait`, und
   wiederholt bis zu `max-retries`-mal.
 - **Kosten eines Laufs.** Ein Änderungslauf ohne Änderungen kostet zwei Anfragen je Ordner, mit
-  Team-Bereich eine weitere je Lauf; jede Protokollseite und jeder gelöschte Pfad kosten eine mehr.
+  Team-Bereich eine weitere je Lauf, mit Team-App mindestens zwei weitere je Lauf (die
+  Team-Administration und die Liste der Team-Ordner); jede Protokollseite und jeder gelöschte Pfad
+  kosten eine mehr.
+- **Team-Ordner.** Höchstens fünfzig je Bibliothek. Die Auswahl listet bis zu zehn Seiten der
+  Namespaces des Teams, ein Lauf bis zu hundert. Darüber steht in der Auswahl „Liste
+  unvollständig.", und weitere Team-Ordner lassen sich über ihre Namespace-ID angeben; im Lauf ist
+  ein Team-Ordner jenseits dieser Grenze „nicht auffindbar" und wird nicht gelesen.
 - **Große Ordner.** Ein Ordner mit mehr Einträgen, als ein Lauf auflisten kann, kommt nie zum Ende,
   und jeder Lauf endet als „unvollständig, wird fortgesetzt". Abhilfe: Budget anheben oder den Ordner
   aufteilen.
@@ -132,7 +174,13 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
   Abschnitt 7.1).
 - **Noch nicht an einem echten Dropbox-Konto bestätigt** und auf die Dokumentation von Dropbox und ein
   Testdoppel gestützt: die Meldungen gelöschter und verschobener Ordner im Änderungsprotokoll, der
-  Markdown-Export von Paper-Dokumenten, der Team-Bereich über die Wurzel des Teams.
+  Markdown-Export von Paper-Dokumenten, der Team-Bereich über die Wurzel des Teams, die Team-App
+  samt Lesen als Team-Administration in einem Team-Ordner und die Antwort von Dropbox, wenn das Token
+  einer Mitglieds-App an eine Team-Schnittstelle geht.
+- **Offen beim neueren Team-Bereich:** In Teams mit dem neueren Modell des Team-Bereichs ist nicht
+  geklärt, ob `team/namespaces/list` die Wurzel des Team-Bereichs als Team-Ordner nennt. Nennt
+  Dropbox sie nicht, erscheint sie in der Auswahl nicht und lässt sich über eine Team-App nicht
+  lesen; das ist an keinem echten Konto bestätigt.
 
 ## 9. Protokoll und Fehlerbilder
 
@@ -140,9 +188,15 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 |---|---|---|
 | „Bitte zuerst die Quelle verbinden." | noch keine Zustimmung | „Quelle verbinden" |
 | „Dropbox hat das Zugriffstoken abgewiesen." | Zustimmung widerrufen oder App gelöscht | die Quelle neu verbinden |
-| „Der Dropbox-App fehlt eine Berechtigung …" | eine der drei Berechtigungen fehlt | ergänzen, dann neu verbinden |
+| „Der Dropbox-App fehlt die Berechtigung …" | der App fehlt die genannte Berechtigung, bei einer Team-App auch eine der Team-Berechtigungen; nennt Dropbox keine, heißt es „fehlt eine Berechtigung, die der Zugang anfragt" | in der App Console ergänzen, dann neu verbinden |
+| „Eine Team-App braucht die Scopes …; „Scopes" leer lassen oder ergänzen" | beim Speichern eines Zugangs mit Team-App: eigene Scopes ohne alle Team-Berechtigungen | „Scopes" leeren oder die genannten ergänzen |
 | „Der Ordner „…" ist für das Konto nicht sichtbar." | Pfad falsch, Ordner gelöscht oder nicht geteilt; der Bestand bleibt | Ordner prüfen |
 | „Das verbundene Dropbox-Konto gehört zu keinem Team mit Team-Bereich." | Team-Bereich gewählt, das Konto hat keinen | Schalter aus oder Teamkonto verbinden |
+| „Dropbox nimmt die Zustimmung nicht als Team-App an; die Quelle muss von einer Team-Administration neu verbunden werden." | Zugang mit Team-App, zugestimmt hat ein Konto ohne Team-Administration oder die App trägt keine Team-Berechtigungen | Berechtigungen prüfen, mit einer Team-Administration neu verbinden |
+| „„…" ist kein Team-Ordner des Teams. OPAA liest nur Team-Ordner." | der gewählte Team-Ordner ist gelöscht, archiviert oder kein Team-Ordner; der Bestand bleibt | Auswahl prüfen |
+| „„…" ist nicht auffindbar. OPAA liest nur Team-Ordner." | das Team hat mehr Namespaces, als ein Lauf listet, und der Team-Ordner kam darin nicht vor; der Bestand bleibt | Team-Ordner aufräumen |
+| „Dropbox hat die Liste der Team-Ordner ohne Fortsetzungspunkt abgebrochen." | Dropbox meldete weitere Team-Ordner, nannte aber keinen Fortsetzungspunkt; Auswahl oder Lauf enden ohne Ergebnis | später erneut versuchen |
+| „… von … Team-Ordnern … nicht lesbar." | Ergebnis des Verbindungstests; die einzelnen stehen darunter | die genannten Team-Ordner prüfen |
 | „… Dateien übersprungen, die Dropbox weder herausgibt noch exportiert" | Sammelhinweis je Lauf | nichts |
 | „Dropbox drosselt die Anfragen weiterhin" | nach allen Wiederholungen; der Strom wird erneut gelesen | Zeitplan entzerren |
 | „Die Übertragung von Dropbox dauerte länger als …" | über `download-timeout`; folgt im nächsten Lauf | Frist anheben |
@@ -169,7 +223,9 @@ Die Obergrenze von fünfzig Ordnern je Bibliothek ist fest.
 
 ## 11. Nicht gebaut
 
-- Team-Verwaltung über eine Team-App (Lesen im Namen beliebiger Mitglieder)
+- Mitgliederordner, geteilte Ordner und App-Ordner über eine Team-App (Lesen im Namen beliebiger
+  Mitglieder)
+- Unterordner eines Team-Ordners als eigener Umfang
 - Persönliche Verbindung und private Bibliotheken
 - Übernahme von Rechten aus Dropbox
 - Push-Benachrichtigungen über Webhooks; der Änderungslauf im Zeitplan ersetzt sie

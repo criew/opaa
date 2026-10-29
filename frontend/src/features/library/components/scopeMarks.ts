@@ -54,9 +54,16 @@ export function unreadableScopeNames(
         return key.startsWith('drive:') ? 'unbekannte Ablage' : 'unbekannter Ordner'
       })
     }
+    // under a team app the keys are the namespace ids of the team folders
+    case 'DROPBOX': {
+      const teamFolders = list<{ id: string; name?: string | null }>(settings, 'teamFolders')
+      if (teamFolders.length === 0) return keys.map(folderName)
+      return keys.map(
+        (key) => teamFolders.find((folder) => folder.id === key)?.name || `Team-Ordner ${key}`,
+      )
+    }
     case 'NEXTCLOUD':
     case 'SMB':
-    case 'DROPBOX':
       return keys.map(folderName)
     // a directory or web address is one entry: its unreadable parts are named below it
     case 'FILESYSTEM':
