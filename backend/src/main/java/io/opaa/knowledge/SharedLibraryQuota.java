@@ -24,22 +24,30 @@ public class SharedLibraryQuota {
 
   /** The operator's upper limit per library; {@code 0} means none. */
   public long capBytes() {
-    throw new UnsupportedOperationException();
+    return Math.max(0, properties.quotaBytes());
   }
 
   /** The value the administration set, or {@code null} while it set none. */
   public Long ownQuotaBytes() {
-    throw new UnsupportedOperationException();
+    return settingRepository
+        .findSingleton()
+        .map(SharedLibraryQuotaSetting::getQuotaBytes)
+        .orElse(null);
   }
 
   /** The limit per shared library in force; {@code 0} means unlimited. */
   public long quotaBytes() {
-    throw new UnsupportedOperationException();
+    long cap = capBytes();
+    Long own = ownQuotaBytes();
+    if (own == null) {
+      return cap;
+    }
+    return cap == 0 ? own : Math.min(own, cap);
   }
 
   /** The limit in force for {@code library}; {@code 0} means unlimited. */
   public long quotaBytesOf(KnowledgeLibrary library) {
-    throw new UnsupportedOperationException();
+    return library.isOwnerOnly() ? capBytes() : quotaBytes();
   }
 
   /**
@@ -49,6 +57,15 @@ public class SharedLibraryQuota {
    */
   @Transactional
   public void setOwnQuotaBytes(Long quotaBytes) {
-    throw new UnsupportedOperationException();
+    if (quotaBytes == null) {
+      settingRepository.clear();
+      return;
+    }
+    long cap = capBytes();
+    if (quotaBytes < 1 || (cap > 0 && quotaBytes > cap)) {
+      throw new IllegalArgumentException(
+          "quota must lie between 1 and the upper limit " + cap + ": " + quotaBytes);
+    }
+    settingRepository.upsert(quotaBytes);
   }
 }

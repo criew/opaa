@@ -594,10 +594,10 @@ opaa:
     # of an upload, must lie inside it. A report may raise it per call, never lower it.
     orphan-grace-minutes: ${OPAA_UPLOAD_ORPHAN_GRACE_MINUTES:60}
   library:
-    # Maximum total size (bytes), summed across every document a library holds, that library may
-    # occupy - enforced at every path that stores document content (upload, and the
-    # FILESYSTEM/HTTP_DIRECTORY/RSS_FEED connectors), not only the upload endpoint. Default 10 GiB.
-    # 0 or negative disables the quota entirely - see LibraryProperties#quotaBytes.
+    # Upper limit (bytes) of the total size, summed across every document a library holds, that one
+    # library may occupy - enforced at every path that stores document content. The house-wide quota
+    # of shared libraries is set below it in the administration. Default 10 GiB; 0 or negative
+    # lifts the upper limit - see LibraryProperties#quotaBytes.
     quota-bytes: ${OPAA_LIBRARY_QUOTA_BYTES:10737418240}
   external-access:
     # Longest admissible Befristung of a library's release for Fremdzugaenge. How many days before

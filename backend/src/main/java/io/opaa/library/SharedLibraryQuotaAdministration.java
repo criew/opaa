@@ -110,9 +110,12 @@ public class SharedLibraryQuotaAdministration {
     return new QuotaSetting(inForce, quota.ownQuotaBytes(), quota.capBytes(), above);
   }
 
+  /** The value in force, and the own value only while one is set. */
   private static Map<String, Object> payload(Long ownQuotaBytes, long quotaBytes) {
     Map<String, Object> payload = new LinkedHashMap<>();
-    payload.put("ownQuotaBytes", ownQuotaBytes);
+    if (ownQuotaBytes != null) {
+      payload.put("ownQuotaBytes", ownQuotaBytes);
+    }
     payload.put("quotaBytes", quotaBytes);
     return payload;
   }

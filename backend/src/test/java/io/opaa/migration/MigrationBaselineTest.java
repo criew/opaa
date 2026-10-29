@@ -188,6 +188,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "metadata_model_rejections",
             "model_role_observations",
             "private_storage_quota_settings",
+            "shared_library_quota_settings",
             "source_event_batches",
             "source_sync_presence",
             "source_sync_revisits",

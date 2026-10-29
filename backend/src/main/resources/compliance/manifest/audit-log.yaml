@@ -547,7 +547,9 @@ auditEvents:
     payloadKeys: [overridden, quotaBytes]
   - id: SHARED_LIBRARY_QUOTA_CHANGED
     trigger: Das hausweite Speicherkontingent je geteilter Bibliothek ändert sich
-    details: before und after des eigenen Werts der Systemverwaltung und des Werts in Kraft
+    details: >-
+      before und after des Werts in Kraft und des eigenen Werts der Systemverwaltung; ohne eigenen Wert
+      fehlt dieser
     payloadKeys: [ownQuotaBytes, quotaBytes]
   - id: FULL_SYNC_RHYTHM_CHANGED
     trigger: Der hausweite Vollabgleich-Rhythmus einer Quellart ändert sich
