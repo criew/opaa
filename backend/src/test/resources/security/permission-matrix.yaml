@@ -1,0 +1,408 @@
+# The expected outcome of every operation of the OpenAPI specification for every role. Rules:
+# backend/AGENTS.md, "Rechte-Matrix". Checked by PermissionMatrixTest (every operation has exactly
+# one complete entry - runs without Docker), PermissionMatrixIntegrationTest (every role but
+# anonymous, the foreign ids, the lists and the search) and PermissionMatrixAnonymousIntegrationTest
+# (anonymous). The outcomes each run observed land in backend/build/permission-matrix/ in this
+# file's spelling, each with its status class and status as a comment.
+#
+# Roles - one column each, every column is required:
+#   systemAdmin  dev-admin: system role SYSTEM_ADMIN, no member of the fixture space
+#   auditor      dev-user: system role AUDITOR ("Revision"), no member of the fixture space
+#   spaceAdmin   dev-user: space role ADMIN, MANAGER on the space's libraries
+#   curator      dev-user: space role CURATOR, EDITOR on the space's libraries
+#   member       dev-user: space role MEMBER, VIEWER on the space's libraries
+#   noRights     dev-user: system role USER, no member of the fixture space, no grant, and without
+#                the CREATE_LIBRARY grant delivered to all accounts
+#   anonymous    no credential at all (oidc mode)
+# The fixture space belongs to a third person and holds her knowledge library (a folder, a document
+# with a chunk, a selection field with one value), her prompt library with a prompt, a chat of the
+# dev user while she is a member (else the owner's) and a chat of a colleague, each with a note
+# item. Beside it stand a group with a steward and a grant, the owner's and the colleague's
+# accounts, and - written per request and rolled back - a notification and an access token of the
+# caller, an audit incident scope, a diagnostic context event and a connection profile.
+#
+# Outcomes: 401, 403 and 404 as answered; "allowed" for every other status below 500 - a 2xx as
+# much as a 400, 409 or 422, which all got past the authorization. A 5xx fails the run, except a
+# 503 in a row whose note explains it. Every request is well-formed by the specification (required
+# parameters and properties filled with their first enum value, their example or a value their
+# schema admits, ids of the fixture by their name). A row refusing every signed-in role alike tells
+# nothing by itself and needs a note saying why; so does a probe every signed-in role meets with the
+# same 400, 409 or 422, which is refused before any right is asked and fails the run otherwise.
+#
+# Foreign ids - each must answer 401, 403 or 404, never more:
+#   - every operation naming an object of a space, a person or an organization in its path is
+#     called with the ids of a foreign space by its spaceAdmin, and with the ids of a foreign
+#     organization by its systemAdmin and its auditor; "foreign: allowed" excepts an operation;
+#   - every operation naming two or more such objects is called by the spaceAdmin with her own ids
+#     and one foreign child at a time; "foreignChild: [name]" excepts that parameter;
+#   - every chat operation is called by each space role with a colleague's chat.
+# An exception needs a note saying why. The account without rights must not find the space's
+# objects in listSpaces, listLibraries, listCatalog, searchKnowledge and the other lists checked;
+# the administration and the auditor find nothing of a foreign organization there nor in the
+# organization-wide lists (tokens, groups, users, accounts).
+#
+# Limit: the matrix checks statuses. What an allowed answer contains is checked only for those lists
+# and the search; field filters elsewhere stay with the tests of their feature.
+#
+# A changed outcome is a decision, not a refresh: an outcome turning "allowed" for a weaker role is
+# reviewed as a widening of rights.
+
+operations:
+  listAssetGrants:                           {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  upsertAssetGrant:                          {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  revokeAssetGrant:                          {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  listGrantedGroupMembers:                   {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  getAssetAccessDerivation:                  {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  markAssetFavorite:                         {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  unmarkAssetFavorite:                       {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401, foreign: allowed, note: "removes only the caller's own mark and answers 204 for any id, known or not"}
+  listAssetSpaceAssociations:                {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  transferAssetOwnership:                    {systemAdmin: allowed, auditor: 404, spaceAdmin: 403, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  listSpaceAssetAssociations:                {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  associateSpaceAsset:                       {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401}
+  detachSpaceAsset:                          {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401, foreignChild: [spaceId], note: "a manager of the asset may detach it from any space, member or not; with no such association it is a no-op (204)"}
+  listCatalog:                               {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  listAuditEventsByObject:                   {systemAdmin: 403, auditor: allowed, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listAuditEventsByTimeRange:                {systemAdmin: 403, auditor: allowed, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listAuditEventsByEventType:                {systemAdmin: 403, auditor: allowed, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listAuditEventsByCorrelation:              {systemAdmin: 403, auditor: allowed, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  verifyAuditChain:                          {systemAdmin: 403, auditor: allowed, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listAccessAsOf:                            {systemAdmin: 403, auditor: allowed, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listConnectionLog:                         {systemAdmin: 403, auditor: allowed, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listConnectionLogProfiles:                 {systemAdmin: 403, auditor: allowed, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getConnectionLogRetention:                 {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateConnectionLogRetention:              {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  requestAuditIncidentScope:                 {systemAdmin: 403, auditor: allowed, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  approveAuditIncidentScope:                 {systemAdmin: 403, auditor: allowed, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listAuditEventsByIncidentScope:            {systemAdmin: 403, auditor: allowed, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getPermissionHistoryRetention:             {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updatePermissionHistoryRetention:          {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getAuthConfig:                             {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: allowed}
+  getCurrentUser:                            {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  localLogin:                                {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401, note: "404 under dev, where the local account management does not exist"}
+  localRefresh:                              {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 403, note: "the local account management does not exist under dev (404); anonymous it is reached in oidc mode and refused for lack of the CSRF token"}
+  localLogout:                               {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 403, note: "the local account management does not exist under dev (404); anonymous it is reached in oidc mode and refused for lack of the CSRF token"}
+  localChangePassword:                       {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401, note: "the local account management does not exist under dev, where every signed-in role is checked"}
+  localReauthenticate:                       {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401, note: "the local account management does not exist under dev, where every signed-in role is checked"}
+  localSetPassword:                          {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: allowed, note: "the local account management does not exist under dev; anonymous the made-up ticket is refused (400)"}
+  localForgotPassword:                       {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401, note: "the local account management does not exist under dev; in oidc mode the flow is switched off and not public (401)"}
+  localRegister:                             {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401, note: "the local account management does not exist under dev; in oidc mode the flow is switched off and not public (401)"}
+  localConfirmRegistration:                  {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: allowed, note: "the local account management does not exist under dev; anonymous the made-up token is refused (400)"}
+  localHandoverPreview:                      {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: allowed, note: "the local account management does not exist under dev; anonymous the made-up handover code is refused (400)"}
+  localHandoverRedeem:                       {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: allowed, note: "the local account management does not exist under dev; anonymous the made-up handover code is refused (400)"}
+  getBranding:                               {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: allowed}
+  getBrandingLogo:                           {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 404, note: "public by design; no logo is uploaded in the test (404)"}
+  getBrandingLoginLogo:                      {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 404, note: "public by design; no login logo is uploaded in the test (404)"}
+  getBrandingLoginBackground:                {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 404, note: "public by design; no login background is uploaded in the test (404)"}
+  updateBranding:                            {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateBrandingLogo:                        {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  deleteBrandingLogo:                        {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateBrandingLoginLogo:                   {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  deleteBrandingLoginLogo:                   {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateBrandingLoginBackground:             {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  deleteBrandingLoginBackground:             {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listMyCapabilities:                        {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  listCapabilities:                          {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  grantCapability:                           {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  revokeCapability:                          {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listChatImports:                           {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401, note: "exists only with opaa.demo.chat-import.enabled, which no test context sets"}
+  importChat:                                {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401, note: "exists only with opaa.demo.chat-import.enabled, which no test context sets"}
+  listSpaceChats:                            {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  createChat:                                {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  searchSpaceChats:                          {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  getChat:                                   {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  updateChat:                                {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  deleteChat:                                {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  exportChatPdf:                             {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  pinChat:                                   {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  unpinChat:                                 {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  archiveChat:                               {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  unarchiveChat:                             {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  listArchivedSpaceChats:                    {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  applyChatBulkAction:                       {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  deleteChatNoteItem:                        {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  getSelfDisclosureStatus:                   {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  createSelfDisclosureTicket:                {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  downloadSelfDisclosure:                    {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 404, note: "the ticket in the body is the only credential; a made-up ticket is unknown to every caller (404)"}
+  getSelfDisclosureSettings:                 {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateSelfDisclosureSettings:              {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getChatAutoCleanupRetention:               {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateChatAutoCleanupRetention:            {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getLockedAccountChatRetention:             {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateLockedAccountChatRetention:          {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getIncidentScopeRetention:                 {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateIncidentScopeRetention:              {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getDataCollectionDisclosure:               {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getDataCollectionDisclosureMarkdown:       {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listMyConnectedAccounts:                   {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  connectMyAccount:                          {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  disconnectMyAccount:                       {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401, note: "the caller has no connection on the probed profile to disconnect (404)"}
+  startConnectionAuthorization:              {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  completeConnectionAuthorization:           {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401, note: "the authorization state is made up and unknown to every caller (404)"}
+  listDormantSourceConnections:              {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listConnectionProfiles:                    {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  createConnectionProfile:                   {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getConnectionRedirect:                     {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getConnectionProfile:                      {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateConnectionProfile:                   {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  deleteConnectionProfile:                   {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getConnectionProfileImpact:                {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  previewConnectionProfileChange:            {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  disconnectAllConnectionProfileConnections: {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  testConnectionProfileSignIn:               {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  lockConnectionProfile:                     {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getOutboundProxy:                          {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateOutboundProxy:                       {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getConnectionLifecycleSettings:            {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateConnectionLifecycleSetting:          {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listMcpServers:                            {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  createMcpServer:                           {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getMcpServer:                              {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateMcpServer:                           {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  deleteMcpServer:                           {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  disconnectAllMcpServerConnections:         {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  lockMcpServer:                             {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listConnectorTypeStates:                   {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  lockConnectorType:                         {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getConnectorProfileRequirement:            {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  setConnectorProfileRequirement:            {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listConnectionProfileOptions:              {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  listDiagnosticImpersonationGrants:         {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  grantDiagnosticImpersonation:              {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  revokeDiagnosticImpersonation:             {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getDiagnosticContextRetention:             {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateDiagnosticContextRetention:          {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getClientAddressDiagnostics:               {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  setLibraryDiagnosticsLock:                 {systemAdmin: 403, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401, note: "takes an OWNER grant the caller did not issue to themselves, which no role of the fixture holds; the system administration confers nothing here"}
+  listOwnDiagnosticContextEvents:            {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  listDiagnosticContextEvents:               {systemAdmin: 403, auditor: allowed, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getDiagnosticContextEvent:                 {systemAdmin: 403, auditor: allowed, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listDirectorySyncStatus:                   {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getDirectorySyncSettings:                  {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateDirectorySyncSettings:               {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  setOidcProviderDirectorySync:              {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  setDirectoryConnector:                     {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  deleteDirectoryConnector:                  {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  testDirectoryConnector:                    {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  runDirectorySyncDryRun:                    {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  runDirectorySync:                          {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getDirectorySyncPendingPlan:               {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  confirmDirectorySyncPlan:                  {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  discardDirectorySyncPlan:                  {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getExternalAccessSettings:                 {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateExternalAccessSettings:              {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  setLibraryExternalAccess:                  {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  listExternalAccessLibraries:               {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getOwnExternalAccessChannelInfo:           {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  listOwnExternalAccessTokens:               {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  createExternalAccessToken:                 {systemAdmin: 403, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401, note: "the external access channel is switched off in the test, so no role may issue a token"}
+  listEligibleExternalAccessLibraries:       {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  revokeOwnExternalAccessToken:              {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  listAllExternalAccessTokens:               {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  blockExternalAccessToken:                  {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  blockExternalAccessTokensOfOwner:          {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listMyGroups:                              {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  listMyStewardedGroups:                     {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  createGroup:                               {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getGroup:                                  {systemAdmin: allowed, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401}
+  updateGroup:                               {systemAdmin: allowed, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401}
+  deleteGroup:                               {systemAdmin: allowed, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401}
+  listGroupMembers:                          {systemAdmin: allowed, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401}
+  addGroupMember:                            {systemAdmin: allowed, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401}
+  removeGroupMember:                         {systemAdmin: allowed, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401}
+  listGroupStewards:                         {systemAdmin: allowed, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401}
+  appointGroupSteward:                       {systemAdmin: allowed, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401}
+  dismissGroupSteward:                       {systemAdmin: allowed, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401}
+  searchSelectableGroups:                    {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  resolveSelectableGroup:                    {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  setGroupRelease:                           {systemAdmin: allowed, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401}
+  setGroupProtection:                        {systemAdmin: allowed, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401}
+  getGroupDeactivationPreview:               {systemAdmin: allowed, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401}
+  setGroupDeactivation:                      {systemAdmin: allowed, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401}
+  listGroups:                                {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listGroupPage:                             {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listGroupEffects:                          {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getHealth:                                 {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: allowed}
+  listOidcProviders:                         {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  createOidcProvider:                        {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  reorderOidcProviders:                      {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  testOidcProvider:                          {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getOidcProvider:                           {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateOidcProvider:                        {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  deleteOidcProvider:                        {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getOidcProviderImpact:                     {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  enableOidcProvider:                        {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  disableOidcProvider:                       {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  setOidcProviderExternal:                   {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  makeOidcProviderDefault:                   {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listLowChunkDocuments:                     {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getPipelineVersionStatus:                  {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  reindexPipelineBatch:                      {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  backfillMetadataBatch:                     {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  rerunContextPrefixBatch:                   {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getEmbeddingReindexStatus:                 {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  startEmbeddingReindex:                     {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  cancelEmbeddingReindex:                    {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  generatePushSecret:                        {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  removePushSecret:                          {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  receivePush:                               {systemAdmin: 401, auditor: 401, spaceAdmin: 401, curator: 401, member: 401, noRights: 401, anonymous: 401, note: "authenticated by the library's push secret, never by an account"}
+  triggerLibraryIndexing:                    {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401}
+  getLibraryIndexingStatus:                  {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  listLibraryIndexingRuns:                   {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  getInstallation:                           {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 404, note: "404 once the installation is complete, as in every test context"}
+  saveInstallationStep:                      {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 404, note: "404 once the installation is complete, as in every test context"}
+  checkInstallationStep:                     {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 404, note: "404 once the installation is complete, as in every test context"}
+  skipInstallationStep:                      {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 404, note: "404 once the installation is complete, as in every test context"}
+  discoverInstallationModels:                {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 404, note: "404 once the installation is complete, as in every test context"}
+  applyInstallationAnswerFile:               {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 404, note: "404 once the installation is complete, as in every test context"}
+  completeInstallation:                      {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 404, note: "404 once the installation is complete, as in every test context"}
+  listLibraries:                             {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  createLibrary:                             {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 403, anonymous: 401, note: "CREATE_LIBRARY ships to all accounts (ADR-0036, Entscheidung 5), so the probe creates an upload library; for noRights the run takes that delivered grant away and expects the refusal"}
+  testLibrarySource:                         {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  listSourceTypes:                           {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  browseSource:                              {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  getLibrary:                                {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  updateLibrary:                             {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  deleteLibrary:                             {systemAdmin: allowed, auditor: 404, spaceAdmin: 403, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  updateLibraryShareCap:                     {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  disconnectLibrarySource:                   {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  connectLibraryProfile:                     {systemAdmin: allowed, auditor: 404, spaceAdmin: 403, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  disconnectLibraryProfile:                  {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  listLibraryDocuments:                      {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  uploadLibraryDocument:                     {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401}
+  deleteLibraryDocument:                     {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401}
+  bulkDeleteLibraryDocuments:                {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401}
+  createLibraryFolder:                       {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401}
+  getLibraryFolder:                          {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  renameLibraryFolder:                       {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401}
+  deleteLibraryFolder:                       {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401}
+  getDocumentContent:                        {systemAdmin: 403, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401}
+  getMyPrivateStorage:                       {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  getPrivateStorageQuota:                    {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updatePrivateStorageQuota:                 {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getPrivateStorageSummary:                  {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listFullSyncRhythms:                       {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateFullSyncRhythm:                      {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getLibraryMetadataMaintenance:             {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  getDocumentMetadata:                       {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  setDocumentMetadataValue:                  {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401, foreignChild: [fieldKey], note: "a field key is local to the library in the path; another library's key is an unknown field there (400)"}
+  deleteDocumentMetadataValue:               {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401, foreignChild: [fieldKey], note: "a field key is local to the library in the path; another library's key is an unknown field there (400)"}
+  bulkSetDocumentMetadata:                   {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401}
+  listDocumentTypes:                         {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  getLibraryMetadataExtractionSettings:      {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  updateLibraryMetadataExtractionSettings:   {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  getLibraryMetadataQuality:                 {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  getLibraryMetadataSample:                  {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  listLibraryMetadataFields:                 {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  createLibraryMetadataField:                {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  updateLibraryMetadataField:                {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  deleteLibraryMetadataField:                {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  getLibraryMetadataFieldUsage:              {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  addLibraryMetadataFieldValue:              {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  relabelLibraryMetadataFieldValue:          {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  getLibraryMetadataFieldValueUsage:         {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  remapLibraryMetadataFieldValue:            {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  runLibraryMetadataSchemaChanges:           {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  getMetadataChangeImpact:                   {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  updateCoreContextPrefix:                   {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  getLinkTargets:                            {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  updateLinkTargets:                         {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listLocalUsers:                            {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  createLocalUser:                           {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getLocalUserSummary:                       {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getLocalUser:                              {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateLocalUser:                           {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  deleteLocalUser:                           {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  lockLocalUser:                             {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  unlockLocalUser:                           {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  requestLocalUserPasswordReset:             {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  generateLocalUserPassword:                 {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  requestLocalUserHandover:                  {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getLocalUserChatCleanup:                   {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  holdLocalUserChatCleanup:                  {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  resumeLocalUserChatCleanup:                {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getLocalAuthSettings:                      {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateLocalAuthSettings:                   {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getMailSettings:                           {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateMailSettings:                        {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  sendMailSettingsTest:                      {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listMailTemplates:                         {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getMailTemplate:                           {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateMailTemplate:                        {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  resetMailTemplate:                         {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  previewMailTemplate:                       {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  sendMailTemplateTest:                      {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listLlmModels:                             {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  createLlmModel:                            {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateLlmModel:                            {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  deleteLlmModel:                            {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  activateLlmModel:                          {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  testLlmModel:                              {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  discoverLlmModels:                         {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getEmbeddingInfo:                          {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  probeEmbeddingModelChange:                 {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  startEmbeddingModelChange:                 {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  discardEmbeddingModelChange:               {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  changeEmbeddingModelEndpoint:              {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getRerankModelSettings:                    {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateRerankModelSettings:                 {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  testRerankModel:                           {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getTranscriptionModelSettings:             {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateTranscriptionModelSettings:          {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  testTranscriptionModel:                    {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listNotifications:                         {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  markNotificationRead:                      {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  listPromptLibraries:                       {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  createPromptLibrary:                       {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  getPromptLibrary:                          {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  updatePromptLibrary:                       {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  deletePromptLibrary:                       {systemAdmin: allowed, auditor: 404, spaceAdmin: 403, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  listPrompts:                               {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  createPrompt:                              {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401}
+  getPrompt:                                 {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  updatePrompt:                              {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401}
+  deletePrompt:                              {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401}
+  listAvailablePrompts:                      {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  submitQuery:                               {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401, note: "503 because no chat model answers in the test; a chat the caller may not use is ignored and the query runs without it (specification of QueryRequest.chatId)"}
+  getMetadataFilterOptions:                  {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  searchKnowledge:                           {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  listSearchableLibraries:                   {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  fetchSearchHit:                            {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  getSearchAvailability:                     {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  getSearchStatus:                           {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getSearchDiagnosisContext:                 {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  runSearchDiagnosis:                        {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getSearchChunk:                            {systemAdmin: 403, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401, note: "system administration only and additionally read access to the chunk's library; no role holds both"}
+  listDocumentChunks:                        {systemAdmin: 403, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401, note: "system administration only and additionally read access to the document's library; no role holds both"}
+  exportSettings:                            {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  previewSettingsImport:                     {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  importSettings:                            {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listSpaces:                                {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  createSpace:                               {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401, note: "the request names another person as owner, which only the system administration may"}
+  getChatAutoCleanupPeriods:                 {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  getSpace:                                  {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  updateSpace:                               {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  deleteSpace:                               {systemAdmin: allowed, auditor: 404, spaceAdmin: 403, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  archiveSpace:                              {systemAdmin: allowed, auditor: 404, spaceAdmin: 403, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  getSpaceAccessDerivation:                  {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  listSpaceMembers:                          {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  addSpaceMember:                            {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  listSpaceGroupMembers:                     {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  removeSpaceMember:                         {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  updateSpaceMemberRole:                     {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  transferSpaceOwnership:                    {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  previewPermissionTransfer:                 {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401, note: "hands on another person's ownership, which only the system administration may"}
+  executePermissionTransfer:                 {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listSuccessionEntries:                     {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  countSuccessionEntries:                    {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getSuccessionSettings:                     {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  updateSuccessionSettings:                  {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getTranscriptionAvailability:              {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  createTranscription:                       {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401, note: "503 because no transcription model is set up; the operation names no object of anyone"}
+  reportOrphanedOriginals:                   {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  deleteOrphanedOriginals:                   {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  reportOrphanedLibraries:                   {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  deleteOrphanedLibraryOriginals:            {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listUsersForSelection:                     {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  listUsers:                                 {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  changeUserRole:                            {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listAccounts:                              {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}

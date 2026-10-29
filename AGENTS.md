@@ -56,7 +56,7 @@ Integrationstest-Suiten, Helm-Chart-Prüfungen, Kubernetes-Erprobungsaufbau, E2E
   - `root.yaml` enthält nur `openapi` und `info`, einschließlich der Beschreibung der Statuscodes.
   - Ein neues Thema bekommt eine neue Datei (`[a-z0-9-]+.yaml`) mit eigenem Eintrag unter `tags`.
   - Alle `$ref` zeigen in die gebündelte Spec (`#/components/schemas/...`), auch über Dateigrenzen hinweg. Doppelte Pfade oder Komponenten, nicht auflösbare `$ref`, YAML-Anker und Operationen ohne genau ein Tag aus der eigenen Datei brechen den Build ab.
-- Weitere Backend-Regeln — Abhängigkeitsverwaltung, Enum-Mapping, Mapper-Schicht, Statuscode-Deklaration, Spring-Testkontexte, Datenbankmigrationen (Flyway) — stehen in [backend/AGENTS.md](backend/AGENTS.md). **Vor jeder Änderung unter `backend/` oder `opaa-api/` lesen.**
+- Weitere Backend-Regeln — Abhängigkeitsverwaltung, Enum-Mapping, Mapper-Schicht, Statuscode-Deklaration, Rechte-Matrix je Operation, Spring-Testkontexte, Datenbankmigrationen (Flyway) — stehen in [backend/AGENTS.md](backend/AGENTS.md). **Vor jeder Änderung unter `backend/` oder `opaa-api/` lesen.**
 
 > Vollständige Begründung: [ADR-0006](docs/decisions/0006-openapi-dto-generation.md)
 
