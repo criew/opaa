@@ -61,7 +61,8 @@ freier Text und werden nicht ausgewertet.
 
 **Zuschnitt.** Ein Segment, das die konfigurierte Chunk-Größe der Auffang-Pipeline
 (Standard 1000 Tokens, 100 Überlappung) überschreitet, wird mit deren Token-Splitter geteilt.
-Das ist der einzige Größenparameter dieser Pipeline.
+Das ist der einzige Größenparameter dieser Pipeline. Bräuchte ein Segment mehr als 10.000 Chunks,
+ist die Mail „fehlgeschlagen" ([Grenzen beim Lesen](README.md#grenzen-beim-lesen)).
 
 **Nur Kopfdaten.** Eine Mail ohne Nachrichtentext, aber mit Anhängen, bekommt einen Chunk aus
 dem Kopfblock. So bleibt „Von wem kam der Bescheid und wann?" beantwortbar. Eine leere Mail

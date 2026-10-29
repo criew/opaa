@@ -67,8 +67,11 @@ gemeinsame Obergrenzen:
   Datei, auch älterer Fassungen, dazu die Objekte jedes entpackten Objektstroms und bei beschädigtem
   Querverweis die Objekte, die die Suche in der Datei findet, zusammengezählt. Ein Querverweisstrom
   zählt höchstens so viele Einträge, wie seine entpackten Daten fassen; einer ohne Eintragsbreite
-  (`/W [0 0 0]`) wird abgewiesen. So kann ein Querverweis, der Millionen Einträge angibt, nicht den
-  Speicher füllen.
+  (`/W [0 0 0]`) wird abgewiesen. Gezählt wird, bevor die Einträge gelesen werden: bei einer
+  Querverweistabelle jede Zeile, bei der Suche in einer beschädigten Datei jede Fundstelle von
+  `obj`. So kann ein Querverweis, der Millionen Einträge angibt, nicht den Speicher füllen. Weil
+  ein Objekt in einem Objektstrom doppelt zählt (als Eintrag und als Objekt des Stroms), kann ein
+  PDF schon ab etwa 500.000 Objekten abgewiesen werden.
 - **Lesezeit eines PDF** (`max-pdf-parse-seconds`): als letzte Sicherung die Zeit, die das Lesen
   eines PDF insgesamt dauern darf.
 - **Gliederung eines PDF:** Jeder Lesezeichen-Eintrag wird höchstens einmal gelesen, so dass eine
@@ -82,6 +85,10 @@ gemeinsame Obergrenzen:
   Kopfzeile einer Tabelle länger, steht sie einmal vollständig in einem eigenen Chunk, und die
   Zeilengruppen tragen nur die ersten Spaltennamen
   ([Tabellen](tabular.md#3-struktur-und-chunks)).
+- **Chunks der Auffang-Pipeline und einer E-Mail** (fest, 10.000 je Text): Bräuchte ein Text
+  mehr Chunks, ist das Dokument „fehlgeschlagen", statt dass der Rest in einem einzigen Chunk
+  landet. Das kann einen Text unterhalb von `max-text-characters` treffen, der sich schlecht in
+  Tokens zerlegen lässt, etwa seltene Schriftzeichen.
 - **Lange Zeichenfolgen ohne Leerraum** (fest, 1.000 Zeichen): In der Auffang-Pipeline und im Text
   von E-Mails wird nach je 1.000 Zeichen ohne Leerzeichen ein Leerzeichen eingefügt, bevor der Text
   in Tokens zerlegt wird. Es bleibt im gespeicherten Chunk und in der Anzeige des Fundstellentexts
@@ -111,7 +118,7 @@ Schlüssel unter `opaa.indexing.parser-limits.*`, Umgebungsvariablen
 | `max-pdf-stream-bytes` | 32 MiB | entpackte Größe eines einzelnen Seiteninhalts, einer Zeichnung oder eines Querverweis- oder Objektstroms eines PDF |
 | `max-pdf-parse-seconds` | 120 | Sekunden, die das Öffnen und Lesen eines PDF höchstens dauern darf |
 | `max-pdf-pages` | 10.000 | Seiten eines PDF |
-| `max-pdf-objects` | 1.000.000 | Objekte eines PDF: Einträge aller Querverweise, Objekte entpackter Objektströme und bei beschädigter Datei die gefundenen Objekte |
+| `max-pdf-objects` | 1.000.000 | Objekte eines PDF: Einträge aller Querverweise, Objekte entpackter Objektströme und bei beschädigter Datei die gefundenen Objekte; Objekte in Objektströmen zählen doppelt |
 
 ## Bewusst nicht zugelassen
 
