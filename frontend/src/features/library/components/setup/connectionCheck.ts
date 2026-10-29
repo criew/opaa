@@ -91,8 +91,8 @@ export function outcomeOf(
   })
   const rightsOpen: CheckStage = { label: 'Rechte', ...NOT_CHECKED }
   if (result.reachable) {
-    // a reached source that did not verify the secret (Confluence detection without credentials)
-    // has not passed: the sign-in and the rights behind it are still open
+    // a reached source that did not verify the secret has not passed: the sign-in and the rights
+    // behind it are still open
     if (signsIn && result.credentialsVerified === false) {
       return outcome('failed', [...address, { label: 'Anmeldung', ...NOT_CHECKED }, rightsOpen])
     }
