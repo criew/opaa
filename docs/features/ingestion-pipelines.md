@@ -700,10 +700,11 @@ springt, und zwei kurze Zitate, über die er die Passage markiert. Ein Format se
 
 `quoteStart`/`quoteEnd` setzt `DocumentFormatRunner` für jeden Chunk aus dem bereinigten Text,
 ohne den Vorspann, den das Format markiert (Überschriftenzeile, Folientitel, Tabellenkopf,
-Überlappung). Der Anker ist nie Teil des Embedding-Inputs; die Versionserhöhung aller Formate löst
+Überlappung); Abschnittspfad und Blattname bereinigt er wie `location`. Der Anker ist nie Teil des Embedding-Inputs; die Versionserhöhung aller Formate löst
 einen Re-Index aus, der die Vektoren bei unverändertem Text wiederverwendet. Der Abschnittspfad im
 Tika-Rückfall ist seitdem vollständig statt auf zwei Ebenen gekürzt. Ein Beleg im Chat speichert den
-Anker als Momentaufnahme.
+Anker als Momentaufnahme. `location` bleibt als Anzeigetext gespeichert und wird nicht aus dem Anker
+abgeleitet (ADR-0062, Entscheidung 7).
 
 ### Baseline-Aktualisierung als Schritt jedes Format-Issues
 

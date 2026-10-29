@@ -935,6 +935,43 @@
               "minimum": 1
             }
           }
+        },
+        "mail": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "host": {
+              "type": "string",
+              "pattern": "^[^\\s/@\\[\\]]*$",
+              "description": "Host name or address of the mail server, without scheme, port or brackets; empty skips the mail step"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "encryption": {
+              "type": "string",
+              "enum": [
+                "NONE",
+                "STARTTLS",
+                "SSL"
+              ]
+            },
+            "username": {
+              "type": "string"
+            },
+            "passwordInSecret": {
+              "type": "boolean",
+              "description": "The answer file reads the mail server's password from the secret key installation-mail-password"
+            },
+            "fromAddress": {
+              "type": "string"
+            },
+            "fromName": {
+              "type": "string"
+            }
+          }
         }
       }
     },
@@ -967,6 +1004,9 @@
           "type": "string"
         },
         "chatApiKey": {
+          "type": "string"
+        },
+        "mailPassword": {
           "type": "string"
         },
         "initialAdminPassword": {

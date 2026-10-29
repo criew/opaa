@@ -1,5 +1,6 @@
 export { getDocumentTypeVocabulary } from './api/libraryMetadataApi'
 export { default as DocumentTextPreviewDialog } from './components/DocumentTextPreviewDialog'
+export { default as PdfPreviewDialog } from './components/PdfPreviewDialog'
 export { default as FullSyncRhythmSection } from './components/FullSyncRhythmSection'
 export { default as PrivateStorageSection } from './components/PrivateStorageSection'
 export { useDocumentPreview, type OpenableDocument } from './hooks/useDocumentPreview'

@@ -292,6 +292,24 @@ class LockedAccountChatCleanupIntegrationTest {
   }
 
   @Test
+  void thePreviewCountsTheAccountsDueWithinThirtyDaysWithOrWithoutChats() {
+    int before = cleanupService.upcomingAccounts(now);
+    UUID admin = admin();
+    UUID withChat = localAccount();
+    chat(space(withChat, true), withChat);
+    lockByAdministration(withChat, now.minus(DAY.multipliedBy(340)));
+    lockByAdministration(localAccount(), now.minus(DAY.multipliedBy(345)));
+    lockByAdministration(localAccount(), now.minus(DAY.multipliedBy(300)));
+    lockByAdministration(localAccount(), now.minus(DAY.multipliedBy(366)));
+    UUID held = localAccount();
+    lockByAdministration(held, now.minus(DAY.multipliedBy(350)));
+    cleanupService.hold(actor(admin), held);
+
+    assertThat(cleanupService.upcomingAccounts(now)).isEqualTo(before + 2);
+    assertThat(service(false).upcomingAccounts(now)).isZero();
+  }
+
+  @Test
   void anOpenKlaerungSuspendsTheDeletionAndItsEndCatchesUp() {
     UUID person = localAccount();
     UUID requester = admin();

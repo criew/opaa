@@ -624,6 +624,7 @@ class OidcProviderServiceIntegrationTest {
             .issueTime(Date.from(Instant.now()))
             .expirationTime(Date.from(Instant.now().plusSeconds(300)))
             .claim("email", "alice@example.com")
+            .claim("azp", "opaa-frontend")
             .build();
     SignedJWT jwt =
         new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256).keyID("k1").build(), claims);
