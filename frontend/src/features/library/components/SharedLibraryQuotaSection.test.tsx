@@ -171,4 +171,41 @@ describe('SharedLibraryQuotaSection', () => {
       'Das Speicherkontingent darf die Obergrenze des Betriebs nicht überschreiten.',
     )
   })
+
+  describe('with an upper limit that is no multiple of a GB', () => {
+    const CAP = 10_000_000_000
+
+    it('opens with the upper limit valid and unchanged', async () => {
+      quota({ quotaBytes: CAP, capBytes: CAP })
+      renderWithProviders(<SharedLibraryQuotaSection />)
+
+      const field = await screen.findByLabelText('Grenze je Bibliothek (GB)')
+      expect(field).toHaveValue('9,313226')
+      expect(field).not.toHaveAttribute('aria-invalid', 'true')
+      expect(screen.getByRole('button', { name: 'Grenze speichern' })).toBeDisabled()
+    })
+
+    it('takes the shown upper limit as the exact upper limit', async () => {
+      quota({ quotaBytes: 2 * GIB, ownQuotaBytes: 2 * GIB, capBytes: CAP })
+      const sent = saveCapture()
+      const user = userEvent.setup()
+      renderWithProviders(<SharedLibraryQuotaSection />)
+
+      const field = await screen.findByLabelText('Grenze je Bibliothek (GB)')
+      await user.clear(field)
+      await user.type(field, '9,313226')
+      await user.click(screen.getByRole('button', { name: 'Grenze speichern' }))
+      await answerConfirm(user, /Speicherkontingent geteilter Bibliotheken auf/, 'Grenze ändern')
+
+      await waitFor(() => expect(sent).toEqual([{ quotaBytes: CAP }]))
+    })
+
+    it('leaves an own value that is no multiple of a GB unchanged', async () => {
+      quota({ quotaBytes: 5_000_000_000, ownQuotaBytes: 5_000_000_000, capBytes: CAP })
+      renderWithProviders(<SharedLibraryQuotaSection />)
+
+      expect(await screen.findByLabelText('Grenze je Bibliothek (GB)')).toHaveValue('4,656613')
+      expect(screen.getByRole('button', { name: 'Grenze speichern' })).toBeDisabled()
+    })
+  })
 })

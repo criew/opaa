@@ -247,4 +247,31 @@ describe('PrivateStorageSection – Übersicht (#2276)', () => {
       'weniger als 5',
     )
   })
+
+  it('leaves an own limit that is no multiple of a GB unchanged', async () => {
+    quota({ quotaBytes: 5_000_000_000, overridden: true })
+    summary(exactSummary)
+    renderWithProviders(<PrivateStorageSection />)
+
+    expect(await screen.findByLabelText('Grenze je Person (GB)')).toHaveValue('4,656613')
+    expect(screen.getByRole('button', { name: 'Grenze speichern' })).toBeDisabled()
+  })
+
+  it('names in its confirmation that a changed file that does not grow is still taken in', async () => {
+    quota()
+    summary(exactSummary)
+    const user = userEvent.setup()
+    renderWithProviders(<PrivateStorageSection />)
+
+    const field = await screen.findByLabelText('Grenze je Person (GB)')
+    await user.clear(field)
+    await user.type(field, '5')
+    await user.click(screen.getByRole('button', { name: 'Grenze speichern' }))
+
+    expect(
+      await screen.findByRole('dialog', {
+        name: 'Speicherkontingent privater Bibliotheken auf 5 GB je Person ändern?',
+      }),
+    ).toHaveTextContent(/nimmt nichts mehr auf, was den Speicher wachsen lässt/)
+  })
 })
