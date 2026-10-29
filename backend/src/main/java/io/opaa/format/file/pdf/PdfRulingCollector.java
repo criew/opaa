@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.pdfbox.contentstream.PDFGraphicsStreamEngine;
 import org.apache.pdfbox.contentstream.operator.Operator;
+import org.apache.pdfbox.contentstream.operator.OperatorName;
 import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -23,7 +24,7 @@ import org.apache.pdfbox.util.Vector;
  * two ways table borders are drawn). Coordinates are those of {@link
  * org.apache.pdfbox.text.TextPosition#getX()}/{@code getY()} - origin at the crop box's upper left
  * corner, y downwards - so a ruling and a glyph can be compared directly. Curves, images, shadings
- * and Type 3 glyph procedures contribute nothing.
+ * and Type 3 glyph procedures contribute nothing; inline images are not even decoded.
  */
 final class PdfRulingCollector extends PDFGraphicsStreamEngine {
 
@@ -84,9 +85,16 @@ final class PdfRulingCollector extends PDFGraphicsStreamEngine {
     }
   }
 
+  /**
+   * Counts every operator; an inline image ({@code BI}) is skipped, since PDFBox decodes its whole
+   * raster on meeting it and an image carries no rulings.
+   */
   @Override
   protected void processOperator(Operator operator, List<COSBase> operands) throws IOException {
     budget.countOperator(operands);
+    if (OperatorName.BEGIN_INLINE_IMAGE.equals(operator.getName())) {
+      return;
+    }
     super.processOperator(operator, operands);
   }
 

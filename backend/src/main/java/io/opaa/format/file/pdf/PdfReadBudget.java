@@ -14,6 +14,7 @@ import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.apache.pdfbox.cos.COSArray;
 import org.apache.pdfbox.cos.COSBase;
@@ -35,6 +36,25 @@ import org.apache.pdfbox.pdmodel.common.PDStream;
  * checked against what is left. Not thread-safe: one budget belongs to one read of one document.
  */
 final class PdfReadBudget {
+
+  /**
+   * The filters a content stream may carry, full and abbreviated names. The other standard filters
+   * are image codecs whose decoders allocate the whole raster a header claims before a byte is
+   * written; a stream naming one, or an unknown filter, is refused before it is decoded.
+   */
+  private static final Set<COSName> CONTENT_FILTERS =
+      Set.of(
+          COSName.FLATE_DECODE,
+          COSName.FLATE_DECODE_ABBREVIATION,
+          COSName.LZW_DECODE,
+          COSName.LZW_DECODE_ABBREVIATION,
+          COSName.ASCII_HEX_DECODE,
+          COSName.ASCII_HEX_DECODE_ABBREVIATION,
+          COSName.ASCII85_DECODE,
+          COSName.ASCII85_DECODE_ABBREVIATION,
+          COSName.RUN_LENGTH_DECODE,
+          COSName.RUN_LENGTH_DECODE_ABBREVIATION,
+          COSName.CRYPT);
 
   private final long maxCharacters;
   private final long maxOperators;
@@ -148,10 +168,19 @@ final class PdfReadBudget {
    * COSStream#createInputStream()}, which would decode the whole stream into memory first. The last
    * filter's output is counted and dropped; an earlier filter's, which the next one reads, is kept
    * up to {@code limit}. Throws as soon as either passes {@code limit}. Data a filter cannot decode
-   * ends the measurement with what was counted, as PDFBox's own decoding ends at the same byte.
+   * ends the measurement with what was counted, as PDFBox's own decoding ends at the same byte. A
+   * filter outside {@link #CONTENT_FILTERS} is refused before anything is decoded.
    */
   private static long decodedLength(COSStream stream, long limit) throws IOException {
     List<COSName> filters = filterNames(stream.getFilters());
+    for (COSName filter : filters) {
+      if (!CONTENT_FILTERS.contains(filter)) {
+        throw new ParserLimitExceededException(
+            "PDF content stream uses the filter "
+                + filter.getName()
+                + ", which content may not carry");
+      }
+    }
     try (InputStream raw = stream.createRawInputStream()) {
       if (filters.isEmpty()) {
         CountingSink sink = new CountingSink(limit, false);

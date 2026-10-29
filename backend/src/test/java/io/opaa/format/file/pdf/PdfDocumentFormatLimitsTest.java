@@ -1,6 +1,7 @@
 package io.opaa.format.file.pdf;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import io.opaa.format.DocumentFormatResult;
@@ -8,13 +9,17 @@ import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.shared.HeadingSectionSplitterFixture;
+import io.opaa.format.shared.ParserLimitExceededException;
 import io.opaa.format.shared.ParserLimitProperties;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Arrays;
+import javax.imageio.ImageIO;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.cos.COSStream;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -250,6 +255,156 @@ class PdfDocumentFormatLimitsTest {
 
     assertThat(runWithin(Duration.ofSeconds(5), pipeline, file))
         .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
+  }
+
+  /**
+   * A page content stream filtered with {@code DCTDecode}, holding an 8x8 JPEG whose frame header
+   * claims 40 000 x 40 000 pixels: decoding it would allocate a 1.6 GB raster before a single byte
+   * is counted. Image filters have no place in a content stream and are refused undecoded.
+   */
+  @Test
+  void aContentStreamWithAnImageFilterIsRefusedBeforeItIsDecoded() throws IOException {
+    Path file = tempDir.resolve("dct-content.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      PDPage page = new PDPage();
+      COSStream content = doc.getDocument().createCOSStream();
+      try (OutputStream out = content.createRawOutputStream()) {
+        out.write(oversizedJpeg());
+      }
+      content.setItem(COSName.FILTER, COSName.DCT_DECODE);
+      page.getCOSObject().setItem(COSName.CONTENTS, content);
+      doc.addPage(page);
+      doc.save(file.toFile());
+    }
+
+    assertThat(runWithin(Duration.ofSeconds(5), pipeline, file))
+        .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
+  }
+
+  /**
+   * The budget refuses an image filter by its name alone, whatever is left of its limits; without
+   * that, measuring the probe would decode its whole raster.
+   */
+  @Test
+  void theBudgetRefusesAnImageFilterWithoutDecodingIt() throws IOException {
+    try (PDDocument doc = new PDDocument()) {
+      COSStream content = doc.getDocument().createCOSStream();
+      try (OutputStream out = content.createRawOutputStream()) {
+        out.write(oversizedJpeg());
+      }
+      content.setItem(COSName.FILTER, COSName.DCT_DECODE);
+
+      assertThatThrownBy(() -> PdfReadBudget.unbounded().chargeContent(content))
+          .isInstanceOf(ParserLimitExceededException.class)
+          .hasMessageContaining("DCTDecode");
+    }
+  }
+
+  /**
+   * {@code /AHx} still decodes: "q Q" in hex is three bytes, charged once within and once past 4.
+   */
+  @Test
+  void theBudgetMeasuresAStreamBehindAnAbbreviatedTextFilter() throws IOException {
+    try (PDDocument doc = new PDDocument()) {
+      COSStream content = doc.getDocument().createCOSStream();
+      try (OutputStream out = content.createRawOutputStream()) {
+        out.write("712051>".getBytes(StandardCharsets.US_ASCII));
+      }
+      content.setItem(COSName.FILTER, COSName.ASCII_HEX_DECODE_ABBREVIATION);
+      PdfReadBudget budget = new PdfReadBudget(0, 0, 4, 4, 60);
+
+      budget.chargeContent(content);
+      assertThatThrownBy(() -> budget.chargeContent(content))
+          .isInstanceOf(ParserLimitExceededException.class);
+    }
+  }
+
+  /** The same probe as a form's content, behind the abbreviated filter name {@code /DCT}. */
+  @Test
+  void aFormWithAnAbbreviatedImageFilterIsRefusedBeforeItIsDecoded() throws IOException {
+    Path file = tempDir.resolve("dct-form.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      PDFormXObject form = new PDFormXObject(doc);
+      form.setBBox(new PDRectangle(600, 800));
+      try (OutputStream out = form.getCOSObject().createRawOutputStream()) {
+        out.write(oversizedJpeg());
+      }
+      form.getCOSObject().setItem(COSName.FILTER, COSName.DCT_DECODE_ABBREVIATION);
+      PDPage page = new PDPage();
+      PDResources resources = new PDResources();
+      resources.put(COSName.getPDFName("F"), form);
+      page.setResources(resources);
+      COSStream content = doc.getDocument().createCOSStream();
+      try (OutputStream out = content.createOutputStream(COSName.FLATE_DECODE)) {
+        out.write("/F Do\n".getBytes(StandardCharsets.US_ASCII));
+      }
+      page.getCOSObject().setItem(COSName.CONTENTS, content);
+      doc.addPage(page);
+      doc.save(file.toFile());
+    }
+
+    assertThat(runWithin(Duration.ofSeconds(5), pipeline, file))
+        .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
+  }
+
+  /**
+   * An inline image carrying the same probe: PDFBox decodes an inline image as soon as it meets
+   * {@code BI}. Images carry no rulings, so the image is skipped and the page's text is read.
+   */
+  @Test
+  void anInlineImageIsSkippedWithoutBeingDecoded() throws IOException {
+    Path file = tempDir.resolve("dct-inline.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      PDPage page = new PDPage();
+      PDResources resources = new PDResources();
+      COSName font = resources.add(new PDType1Font(Standard14Fonts.FontName.HELVETICA));
+      page.setResources(resources);
+      COSStream content = doc.getDocument().createCOSStream();
+      try (OutputStream out = content.createOutputStream(COSName.FLATE_DECODE)) {
+        out.write(
+            ("BT /" + font.getName() + " 12 Tf 72 700 Td (Text neben dem Bild.) Tj ET\n")
+                .getBytes(StandardCharsets.US_ASCII));
+        out.write(
+            "q 10 0 0 10 72 600 cm BI /W 40000 /H 40000 /BPC 8 /CS /G /F /DCT ID "
+                .getBytes(StandardCharsets.US_ASCII));
+        out.write(oversizedJpeg());
+        out.write("\nEI Q\n".getBytes(StandardCharsets.US_ASCII));
+      }
+      page.getCOSObject().setItem(COSName.CONTENTS, content);
+      doc.addPage(page);
+      doc.save(file.toFile());
+    }
+
+    DocumentFormatResult result =
+        assertTimeoutPreemptively(
+            Duration.ofSeconds(5),
+            () -> pipeline.run(DocumentFormatSource.ofFile(file, "dct-inline.pdf")));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+    assertThat(result.chunks())
+        .anySatisfy(chunk -> assertThat(chunk.getText()).contains("Text neben dem Bild."));
+  }
+
+  /** A greyscale 8x8 JPEG whose SOF0 header is patched to claim 40 000 x 40 000 pixels. */
+  private static byte[] oversizedJpeg() throws IOException {
+    BufferedImage image = new BufferedImage(8, 8, BufferedImage.TYPE_BYTE_GRAY);
+    ByteArrayOutputStream jpeg = new ByteArrayOutputStream();
+    if (!ImageIO.write(image, "jpeg", jpeg)) {
+      throw new IllegalStateException("no JPEG writer");
+    }
+    byte[] bytes = jpeg.toByteArray();
+    for (int i = 2; i + 8 < bytes.length; i++) {
+      if ((bytes[i] & 0xFF) == 0xFF && (bytes[i + 1] & 0xFF) == 0xC0) {
+        // marker, length (2), precision (1), height (2), width (2)
+        int size = 40_000;
+        bytes[i + 5] = (byte) (size >> 8);
+        bytes[i + 6] = (byte) size;
+        bytes[i + 7] = (byte) (size >> 8);
+        bytes[i + 8] = (byte) size;
+        return bytes;
+      }
+    }
+    throw new IllegalStateException("no SOF0 marker");
   }
 
   /** One page whose content is {@code (aaa…) pop} with {@code length} characters inside. */
