@@ -749,9 +749,9 @@ Audience-Mapper ([Tokenprüfung](#adressprüfung-und-tokenprüfung)).
 
 Der Anbieter setzt kein `azp` und führt die Client-ID der Anbieterzeile nicht in `aud`; das Backend
 weist deshalb jedes seiner Token ab ([Tokenprüfung](#adressprüfung-und-tokenprüfung)). Abhilfe: beim
-Anbieter einstellen, dass das Token für OPAA die Client-ID in `aud` trägt (etwa über einen
-Audience-Mapper oder einen Scope der für OPAA registrierten Anwendung), oder in der Anbieterzeile die
-Client-ID eintragen, die der Anbieter in `aud` setzt.
+Anbieter einen Audience-Mapper (oder die gleichwertige Einstellung) am Client einrichten, der die
+Client-ID der Anbieterzeile in `aud` einträgt. Ein zusätzlicher Scope hilft nur, wenn der Anbieter
+ihn dem Client als Standard-Scope zuordnet: Die Anmeldung fordert fest `openid profile email` an.
 
 ## Weiterführende Kapitel
 
