@@ -46,6 +46,10 @@ final class FakeDriveServer implements AutoCloseable {
     boolean canDownload = true;
     boolean sharedWithMe;
     boolean exportTooLarge;
+
+    /** Whether even the {@code text/plain} export exceeds Drive's limit. */
+    boolean textExportTooLarge;
+
     boolean trickle;
     String redirectTo;
     byte[] content = new byte[0];
@@ -239,7 +243,8 @@ final class FakeDriveServer implements AutoCloseable {
       Item item = items.get(export.group(1));
       if (item == null) {
         error(exchange, 404, "notFound");
-      } else if (item.exportTooLarge && !"text/plain".equals(query.get("mimeType"))) {
+      } else if (item.exportTooLarge
+          && (item.textExportTooLarge || !"text/plain".equals(query.get("mimeType")))) {
         error(exchange, 403, "exportSizeLimitExceeded");
       } else {
         bytes(exchange, item.content);
