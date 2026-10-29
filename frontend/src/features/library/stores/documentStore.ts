@@ -30,6 +30,22 @@ function isNotFoundError(err: unknown): boolean {
   )
 }
 
+/**
+ * How long a refused upload waits before it tries the same file again: the `Retry-After` of a 429
+ * the upload rate limit answered, at least one and at most 60 seconds; null for any other failure.
+ */
+function rateLimitWaitMs(err: unknown): number | null {
+  if (!(err instanceof Error && err.cause instanceof AxiosError)) return null
+  const response = err.cause.response
+  if (response?.status !== 429) return null
+  const header = response.headers?.['retry-after']
+  const seconds = typeof header === 'string' ? Number.parseInt(header, 10) : Number.NaN
+  return Math.min(Math.max(Number.isFinite(seconds) ? seconds : 1, 1), 60) * 1000
+}
+
+/** How often one file waits out the upload rate limit before its 429 counts as its error. */
+const MAX_RATE_LIMIT_WAITS = 10
+
 const POLL_INTERVAL_MS = 3000
 const POLLING_STOPPED_MESSAGE =
   'Die Dokumentliste wird nicht mehr automatisch aktualisiert, weil der Abruf fehlgeschlagen ist.'
@@ -310,7 +326,20 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       // created idempotently by the backend, letting a whole dragged-and-dropped or
       // webkitdirectory-selected folder tree land under one shared folder chain instead of a
       // duplicate per file.
-      await uploadDocumentRequest(libraryId, file, folderId, folderPath)
+      // A folder upload sends file after file; past the upload rate limit it waits and goes on
+      // with the same file instead of failing every file that is left.
+      for (let waits = 0; ; waits++) {
+        try {
+          await uploadDocumentRequest(libraryId, file, folderId, folderPath)
+          break
+        } catch (err) {
+          const wait = rateLimitWaitMs(err)
+          if (wait === null || waits >= MAX_RATE_LIMIT_WAITS || isStaleSessionEpoch(sessionEpoch)) {
+            throw err
+          }
+          await new Promise((resolve) => setTimeout(resolve, wait))
+        }
+      }
       if (isStaleSessionEpoch(sessionEpoch)) return
       set({ isUploading: false })
     } catch (err) {

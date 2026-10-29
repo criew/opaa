@@ -1,5 +1,6 @@
 package io.opaa.auth;
 
+import io.opaa.security.ManagementPortMetrics;
 import jakarta.annotation.PostConstruct;
 import java.time.Clock;
 import org.slf4j.Logger;
@@ -7,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -57,7 +59,10 @@ public class DevSecurityConfig {
 
   @Bean
   SecurityFilterChain securityFilterChain(
-      HttpSecurity http, CorsConfigurationSource corsConfigurationSource, Clock clock)
+      HttpSecurity http,
+      CorsConfigurationSource corsConfigurationSource,
+      Clock clock,
+      Environment environment)
       throws Exception {
     DevAuthFilter devAuthFilter = new DevAuthFilter(authProperties.dev(), clock);
     return http.csrf(AbstractHttpConfigurer::disable)
@@ -74,10 +79,14 @@ public class DevSecurityConfig {
                         // answer a status, never details
                         "/actuator/health/readiness",
                         "/actuator/health/liveness",
-                        "/actuator/info",
-                        "/actuator/metrics",
-                        "/actuator/prometheus")
+                        "/actuator/info")
                     .permitAll()
+                    // Metrics name paths, libraries and load: open on a management port of their
+                    // own, which a network policy opens to the scraper alone, else only signed in.
+                    .requestMatchers(ManagementPortMetrics.onManagementPort(environment))
+                    .permitAll()
+                    .requestMatchers(ManagementPortMetrics.anyPort())
+                    .authenticated()
                     // Every other health group needs a token: the endpoint computes its
                     // contributors before it decides what to show, so an anonymous call to
                     // embedding-model or vector-store would trigger a real embedding call and a

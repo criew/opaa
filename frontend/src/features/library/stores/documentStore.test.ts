@@ -19,6 +19,18 @@ function notFoundError(message = 'Ordner nicht gefunden'): Error {
   return new Error(message, { cause: axiosError })
 }
 
+/** A 429 of the upload rate limit, in the shape normalizeError hands on. */
+function rateLimitedError(retryAfter: string): Error {
+  const axiosError = new AxiosError('Request failed', 'ERR_BAD_REQUEST', undefined, undefined, {
+    status: 429,
+    statusText: '',
+    headers: { 'retry-after': retryAfter },
+    config: {} as never,
+    data: { error: 'Zu viele Anfragen' },
+  })
+  return new Error('Zu viele Anfragen', { cause: axiosError })
+}
+
 const {
   mockGetLibraryDocuments,
   mockUploadDocument,
@@ -291,6 +303,51 @@ describe('documentStore', () => {
       'folder-bestand',
       'Protokolle/2026',
     )
+  })
+
+  it('waits out a 429 of the upload rate limit and sends the same file again', async () => {
+    vi.useFakeTimers()
+    try {
+      mockUploadDocument
+        .mockRejectedValueOnce(rateLimitedError('2'))
+        .mockResolvedValueOnce(pendingDocument)
+      mockGetLibraryDocuments.mockResolvedValueOnce(page([pendingDocument]))
+      const file = new File(['x'], 'bestand.pdf')
+
+      const upload = useDocumentStore.getState().uploadNewDocument('library-1', file)
+      await vi.advanceTimersByTimeAsync(1999)
+      expect(mockUploadDocument).toHaveBeenCalledTimes(1)
+      await vi.advanceTimersByTimeAsync(1)
+      await upload
+
+      expect(mockUploadDocument).toHaveBeenCalledTimes(2)
+      expect(mockUploadDocument).toHaveBeenLastCalledWith('library-1', file, null, undefined)
+      expect(useDocumentStore.getState().uploadErrors).toEqual([])
+      expect(useDocumentStore.getState().isUploading).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('reports the 429 as the file error once the waits are used up', async () => {
+    vi.useFakeTimers()
+    try {
+      mockUploadDocument.mockRejectedValue(rateLimitedError('1'))
+      const file = new File(['x'], 'bestand.pdf')
+
+      const upload = useDocumentStore.getState().uploadNewDocument('library-1', file)
+      const settled = expect(upload).rejects.toThrow('Zu viele Anfragen')
+      await vi.advanceTimersByTimeAsync(10_000)
+      await settled
+
+      expect(mockUploadDocument).toHaveBeenCalledTimes(11)
+      expect(useDocumentStore.getState().uploadErrors).toEqual([
+        'Zu viele Anfragen (Datei: bestand.pdf)',
+      ])
+    } finally {
+      mockUploadDocument.mockReset()
+      vi.useRealTimers()
+    }
   })
 
   it('names the file in the upload error message, appends it to uploadErrors and rethrows', async () => {
