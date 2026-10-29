@@ -52,11 +52,6 @@ public class DetailPageExtractor {
   }
 
   /**
-   * An entry's detail page reduced to its content roots' HTML - empty when they carry no visible
-   * text - and the attachment candidates found in them, each once. {@code contentAreas} counts the
-   * selector's top-level matches, 0 when it matched nothing and the body stood in.
-   */
-  /**
    * How a run reads its detail pages: the content selector, parsed once per run, and the attachment
    * profile of the library.
    */
@@ -67,6 +62,11 @@ public class DetailPageExtractor {
     }
   }
 
+  /**
+   * An entry's detail page reduced to its content roots' HTML - empty when they carry no visible
+   * text - and the attachment candidates found in them, each once. {@code contentAreas} counts the
+   * selector's top-level matches, 0 when it matched nothing and the body stood in.
+   */
   public record DetailPage(
       String mainHtml, List<AttachmentCandidate> attachments, int contentAreas) {
 

@@ -200,6 +200,11 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
           "Not persisting RSS feed state for {} - this run deferred or failed at least one"
               + " entry, so a future 304 must not suppress it",
           feedUrl);
+      if (ctx.reprocessing()) {
+        // every entry was read under the new settings, whatever its outcome: a lasting failure
+        // must not make every later run read the whole feed again
+        feedFetcher.saveExtraction(targetLibrary.getId(), feedUrl, extraction.fingerprint());
+      }
     }
     return ListingOutcome.partial();
   }

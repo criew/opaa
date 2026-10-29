@@ -66,6 +66,8 @@ public class RssFeedSourceConnector
 
   private static final Logger log = LoggerFactory.getLogger(RssFeedSourceConnector.class);
 
+  static final String DETAIL_PAGE_UNREACHABLE = "Sie ist nicht erreichbar oder nicht zugelassen.";
+
   /** What a required profile leaves open: the detail pages an entry links to. */
   static final String REQUIREMENT_GAP =
       "Die Pflicht legt nur die Feed-Adresse fest. Die Detailseiten eines Feeds stammen aus seinen"
@@ -288,11 +290,11 @@ public class RssFeedSourceConnector
       return DetailPageCheck.unchecked(e.userMessage() + ".");
     } catch (DetailPageExtractor.UnsupportedContentTypeException e) {
       return DetailPageCheck.unchecked("Ihr Inhaltstyp wird nicht unterstützt.");
-    } catch (TargetAddressValidator.TargetAddressBlockedException e) {
-      return DetailPageCheck.unchecked(e.getMessage());
     } catch (IOException e) {
+      // the address comes from the feed operator: one wording, so the test reveals neither the
+      // target nor how it resolves; the cause goes to the log only
       log.warn("RSS_FEED detail page check failed for {}: {}", entryUrl, e.getMessage());
-      return DetailPageCheck.unchecked(translateConnectionError(e));
+      return DetailPageCheck.unchecked(DETAIL_PAGE_UNREACHABLE);
     } catch (IllegalArgumentException e) {
       return DetailPageCheck.unchecked("Ihre Adresse ist ungültig.");
     }

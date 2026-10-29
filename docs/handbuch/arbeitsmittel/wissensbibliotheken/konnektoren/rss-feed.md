@@ -65,11 +65,15 @@ die Werkseinstellung (Abschnitt „Konfiguration“). Die Zeile sehen auch Lesen
 des ersten Eintrags und meldet, wie viele Inhaltsbereiche der Selektor findet und wie viele Anlagen
 das Profil. Ohne eigene Angaben bleibt es bei der Anfrage an den Feed.
 
-**Änderung:** Sie gilt ab dem nächsten Lauf. Dieser Lauf liest den ganzen Feed und jeden Eintrag
-darin neu, auch einen mit unverändertem `pubDate`; das wiederholt sich, bis ein Lauf vollständig
-war (Abschnitt „Betriebsarten und Änderungserkennung“). Ein Eintrag mit gleichem Text behält seine
-Chunks, bekommt aber die Anlagen, die das neue Profil findet. Was nicht mehr im Feed steht, behält
-die bisherige Fassung, und Anlagen, die nur das alte Profil fand, bleiben, bis jemand sie löscht.
+**Änderung:** Sie gilt ab dem nächsten Lauf, nach Zeitplan oder mit „Jetzt indizieren“; das
+Speichern selbst startet keinen. Dieser Lauf liest den ganzen Feed und jeden Eintrag darin neu,
+auch einen mit unverändertem `pubDate`, bis zu `max-entries` Einträge; jede weitere Änderung der
+Angaben bewirkt das erneut. Hat ein Lauf jeden Eintrag einmal gelesen, gilt die Änderung als
+angewandt, auch wenn einzelne Einträge dabei zurückgestellt wurden (Abschnitt „Betriebsarten und
+Änderungserkennung“). Ein Eintrag mit gleichem Text behält seine Chunks, bekommt aber die Anlagen,
+die das neue Profil findet. Ein zurückgestellter Eintrag, was nicht mehr im Feed steht, und Anlagen,
+die nur das alte Profil fand, behalten ihre bisherige Fassung, bis sich der Eintrag ändert oder
+jemand sie löscht.
 Das Revisionsprotokoll nennt die geänderte Angabe als Änderung der Quelle, ohne ihren Wert.
 
 ## 4. Betriebsarten und Änderungserkennung
@@ -99,8 +103,8 @@ Ein unveränderter Eintrag ohne Anlagen-Dokumente lädt seine Detailseite einmal
 finden; der Text wird dabei nicht neu verarbeitet.
 
 Nach einer Änderung von Inhaltsselektor oder Anlagenprofil entfallen die Stufen 1 und 2, bis ein
-Lauf vollständig war: OPAA merkt sich mit dem Feed-Zustand, unter welchen Angaben er gespeichert
-wurde.
+Lauf jeden Eintrag des Feeds einmal unter den neuen Angaben gelesen hat: OPAA merkt sich mit dem
+Feed-Zustand, unter welchen Angaben das geschah.
 
 **Zurückstellen.** Den Feed-Zustand aus Stufe 1 speichert ein Lauf nur, wenn er vollständig war:
 kein Fehler, kein abgeschnittener Feed, keine verlorene Anlage, keine Ablehnung am Kontingent und
@@ -193,7 +197,7 @@ liegt bei bis zu einer Anlagengröße je gleichzeitig verarbeiteter Anlage.
 | „Inhaltstyp der Detailseite wird nicht unterstützt" | der Link zeigt direkt auf ein PDF o. ä. | nichts |
 | „Kein Inhalt extrahierbar" | Hauptinhalt nach der Reduktion leer | Inhaltsselektor der Bibliothek prüfen |
 | Verbindungstest: „Der Inhaltsselektor findet auf der Detailseite des ersten Eintrags nichts …" | ein Lauf nähme die ganze Seite samt Seitenrahmen | Selektor an der Detailseite anpassen |
-| Verbindungstest: „Die Detailseite des ersten Eintrags konnte nicht geprüft werden: …" | der Feed ist erreichbar, die Detailseite nicht | Ursache im Rest der Meldung; der Feed lässt sich trotzdem anlegen |
+| Verbindungstest: „Die Detailseite des ersten Eintrags konnte nicht geprüft werden: …" | der Feed ist erreichbar, die Detailseite nicht; bei nicht erreichbarer oder nicht zugelassener Adresse nennt die Meldung keine Einzelheiten | Detailseite im Browser und Log prüfen; der Feed lässt sich trotzdem anlegen |
 | Beim Speichern: „… ist kein gültiger CSS-Selektor …", „… reguläre Ausdrücke … sind nicht erlaubt", „… Pseudoklassen (:…) und die Kombinatoren ~ und + sind nicht erlaubt", „… höchstens 3 Kombinatoren …" | der Selektor wird nicht gespeichert | Selektor ohne diese Teile formulieren |
 | „Anlage antwortete mit HTML statt einem Dokument (vermutlich Bot-Schutz)" | Anlage verworfen | nichts |
 | „Anlage überschreitet die zulässige Größe" / „Anlage nicht erreichbar" / „Anlagenformat wird nicht unterstützt" | diese Anlage entfällt | nichts |

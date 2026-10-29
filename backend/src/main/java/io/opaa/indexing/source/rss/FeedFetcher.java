@@ -237,4 +237,19 @@ class FeedFetcher {
     state.setUpdatedAt(Instant.now());
     feedStateRepository.save(state);
   }
+
+  /**
+   * Records that a run read every entry under {@code extractionFingerprint} although it deferred or
+   * failed some, leaving {@code ETag}/{@code Last-Modified} as they were: a later {@code 304} must
+   * still not hide what was deferred, but the entries need no second read under the same settings.
+   */
+  void saveExtraction(UUID libraryId, String feedUrl, String extractionFingerprint) {
+    RssFeedState state =
+        feedStateRepository
+            .findByLibraryIdAndFeedUrl(libraryId, feedUrl)
+            .orElseGet(() -> new RssFeedState(libraryId, feedUrl, null, null));
+    state.setExtractionSettings(extractionFingerprint);
+    state.setUpdatedAt(Instant.now());
+    feedStateRepository.save(state);
+  }
 }
