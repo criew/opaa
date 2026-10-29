@@ -34,6 +34,8 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CommonPrefix;
 import software.amazon.awssdk.services.s3.model.DeleteMarkerEntry;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetBucketVersioningRequest;
+import software.amazon.awssdk.services.s3.model.GetBucketVersioningResponse;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
@@ -73,7 +75,8 @@ import software.amazon.awssdk.services.s3.model.S3Object;
  * <p>Deleting removes every version of the key and every delete marker by its {@code versionId}, so
  * a versioned bucket keeps no older copy of an erased original. A store without the version API, or
  * credentials without {@code s3:ListBucketVersions}, fall back to the plain {@code DeleteObject};
- * what that leaves behind {@link #countRetainedVersions} still reports.
+ * {@link #countRetainedVersions} then answers "none" only for a bucket that confirms it was never
+ * versioned, and is unavailable otherwise.
  */
 @DataFlow("original-store")
 public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoCloseable {
@@ -298,43 +301,40 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
 
   /**
    * Counts on the library's own level every object version that is not current and every delete
-   * marker: what a versioned bucket still holds of originals that are gone. A store without the
-   * version API holds none.
+   * marker: what a versioned bucket still holds of originals that are gone. A bucket that was never
+   * versioned holds none.
    *
-   * @throws UploadStoreUnavailableException when the versions cannot be listed - including
-   *     credentials without {@code s3:ListBucketVersions}, which must never read as "none"
+   * @throws UploadStoreUnavailableException when the versions cannot be listed and the bucket does
+   *     not confirm that it was never versioned - a refusal must never read as "none"
    */
   @Override
   public long countRetainedVersions(UUID organizationId, UUID libraryId) {
-    long[] retained = {0};
-    forEachRetainedVersion(organizationId, libraryId, version -> retained[0]++);
-    return retained[0];
+    return retainedVersions(organizationId, libraryId).size();
   }
 
   /**
    * Deletes on the library's own level every object version that is not current and every delete
-   * marker by its {@code versionId}; current originals stay. A version that cannot be deleted is
-   * logged and left for {@link #countRetainedVersions} to report.
+   * marker by its {@code versionId}; current originals stay. The whole listing is taken before the
+   * first deletion: removing a delete marker would otherwise make an older version current on a
+   * later page. A version that cannot be deleted is logged and left for {@link
+   * #countRetainedVersions} to report.
    *
-   * @throws UploadStoreUnavailableException when the versions cannot be listed
+   * @throws UploadStoreUnavailableException as {@link #countRetainedVersions}
    */
   @Override
   public int eraseRetainedVersions(UUID organizationId, UUID libraryId) {
-    int[] removed = {0};
-    forEachRetainedVersion(
-        organizationId,
-        libraryId,
-        version -> {
-          if (deleteVersionQuietly(version.key(), version.versionId())) {
-            removed[0]++;
-          }
-        });
-    return removed[0];
+    int removed = 0;
+    for (StoredVersion version : retainedVersions(organizationId, libraryId)) {
+      if (deleteVersionQuietly(version.key(), version.versionId())) {
+        removed++;
+      }
+    }
+    return removed;
   }
 
-  private void forEachRetainedVersion(
-      UUID organizationId, UUID libraryId, Consumer<StoredVersion> visitor) {
+  private List<StoredVersion> retainedVersions(UUID organizationId, UUID libraryId) {
     String prefix = libraryPrefix(organizationId, libraryId);
+    List<StoredVersion> retained = new ArrayList<>();
     try {
       forEachVersion(
           prefix,
@@ -344,15 +344,46 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
                         new UploadedOriginalRef(organizationId, libraryId, locator(version.key())))
                     != null;
             if (ownLevel && (version.deleteMarker() || !version.latest())) {
-              visitor.accept(version);
+              retained.add(version);
             }
           });
-    } catch (S3AccessException.NotImplemented e) {
-      log.debug("The upload store {} offers no version API; no versions retained", endpoint);
+      return retained;
+    } catch (S3AccessException.NotImplemented | S3AccessException.ListForbidden e) {
+      if (neverVersioned()) {
+        return List.of();
+      }
+      throw unavailable("list the versions of", prefix, e);
     } catch (S3AccessException e) {
       throw unavailable("list the versions of", prefix, e);
     } catch (InterruptedException e) {
       throw interrupted();
+    }
+  }
+
+  /**
+   * Whether the bucket confirms it never had versioning switched on: {@code GetBucketVersioning}
+   * names no status, or the store does not offer the call at all (and so keeps no versions). A
+   * status of {@code Enabled} or {@code Suspended}, a refusal and every other failure are "no".
+   */
+  private boolean neverVersioned() {
+    try {
+      GetBucketVersioningResponse versioning =
+          translator.call(
+              S3Operation.GET_BUCKET_VERSIONING,
+              bucket,
+              null,
+              () ->
+                  s3.getBucketVersioning(
+                      GetBucketVersioningRequest.builder().bucket(bucket).build()));
+      return versioning.status() == null;
+    } catch (S3AccessException.NotImplemented e) {
+      return true;
+    } catch (S3AccessException e) {
+      log.warn("Could not read the versioning state of bucket {}: {}", bucket, e.getMessage());
+      return false;
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return false;
     }
   }
 
@@ -464,9 +495,10 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
   }
 
   /**
-   * Every object version and delete marker under {@code prefix} on its own level, page by page; the
-   * visitor runs after each page is read and may delete what it is handed. A page that claims more
-   * without naming where to continue is a failure, as in {@link #listPage}.
+   * Every object version and delete marker under {@code prefix} on its own level, page by page. The
+   * visitor must not delete: removing a delete marker turns an older version current, and a later
+   * page would report it as such. A page that claims more without naming where to continue is a
+   * failure, as in {@link #listPage}.
    */
   private void forEachVersion(String prefix, Consumer<StoredVersion> visitor)
       throws S3AccessException, InterruptedException {
@@ -539,9 +571,9 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
   }
 
   /**
-   * Reports at startup credentials that may not list object versions: deleting then leaves older
-   * versions in a versioned bucket, and the erasure of a private library cannot finish. A store
-   * without the version API is fine.
+   * Reports at startup credentials that may not list object versions. In a bucket that was never
+   * versioned that only costs the check of {@link #neverVersioned}; otherwise deleting leaves older
+   * versions behind and the erasure of a private library cannot finish.
    */
   private void probeVersionListing() throws InterruptedException {
     String probePrefix = keyPrefix + ".opaa-probe";
@@ -558,13 +590,22 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
                       .maxKeys(1)
                       .overrideConfiguration(this::bound)
                       .build()));
-    } catch (S3AccessException.NotImplemented e) {
-      log.debug("The upload store {} offers no version API", endpoint);
     } catch (S3AccessException e) {
+      if (neverVersioned()) {
+        log.info(
+            "The upload store {} (bucket {}) does not list object versions ({}); the bucket was"
+                + " never versioned - grant s3:ListBucketVersions and s3:DeleteObjectVersion before"
+                + " switching versioning on",
+            endpoint,
+            bucket,
+            e.getMessage());
+        return;
+      }
       log.warn(
           "The upload store {} (bucket {}) does not list object versions: {} - deleted originals"
               + " keep their older versions in a versioned bucket, and erasing a private library"
-              + " fails until it does",
+              + " fails until s3:ListBucketVersions and s3:DeleteObjectVersion are granted, or"
+              + " s3:GetBucketVersioning shows the bucket was never versioned",
           endpoint,
           bucket,
           e.getMessage());
@@ -827,7 +868,10 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
     }
   }
 
-  /** Whether the version is gone; a failure is logged and leaves it for the cleanup. */
+  /**
+   * Whether the version is gone - one the store no longer knows counts as gone; a failure is logged
+   * and leaves it for the cleanup.
+   */
   private boolean deleteVersionQuietly(String key, String versionId) {
     if (versionId == null || versionId.isBlank()) {
       return false;
@@ -844,6 +888,8 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
                       .key(key)
                       .versionId(versionId)
                       .build()));
+      return true;
+    } catch (S3AccessException.ObjectNotFound e) {
       return true;
     } catch (S3AccessException e) {
       log.warn(

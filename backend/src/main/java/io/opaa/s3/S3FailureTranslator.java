@@ -232,7 +232,7 @@ public final class S3FailureTranslator {
     if ("NoSuchBucket".equals(code)) {
       return new S3AccessException.BucketNotFound(bucket);
     }
-    if ("NoSuchKey".equals(code)) {
+    if ("NoSuchKey".equals(code) || "NoSuchVersion".equals(code)) {
       return new S3AccessException.ObjectNotFound(bucket, key);
     }
     if (status == 501 || "NotImplemented".equals(code)) {

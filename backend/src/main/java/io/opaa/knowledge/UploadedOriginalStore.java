@@ -108,13 +108,12 @@ public interface UploadedOriginalStore {
   /**
    * How many copies of originals the storage still keeps on {@code libraryId}'s own level beyond
    * the current ones {@link #forEachStoredOriginal} visits: older versions and delete markers of a
-   * versioned bucket. A storage without versions keeps none.
+   * versioned bucket. A storage without versions keeps none; one that cannot tell must throw rather
+   * than answer none, because the erasure of a private library proves "nothing left" with it.
    *
    * @throws UploadStoreUnavailableException when this cannot be determined right now
    */
-  default long countRetainedVersions(UUID organizationId, UUID libraryId) {
-    return 0;
-  }
+  long countRetainedVersions(UUID organizationId, UUID libraryId);
 
   /**
    * Removes what {@link #countRetainedVersions} counts and returns how many it removed; the current
@@ -122,9 +121,7 @@ public interface UploadedOriginalStore {
    *
    * @throws UploadStoreUnavailableException when the retained versions cannot be listed right now
    */
-  default int eraseRetainedVersions(UUID organizationId, UUID libraryId) {
-    return 0;
-  }
+  int eraseRetainedVersions(UUID organizationId, UUID libraryId);
 
   /**
    * One original as the listing sees it.

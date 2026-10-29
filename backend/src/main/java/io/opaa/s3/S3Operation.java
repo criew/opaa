@@ -8,6 +8,7 @@ package io.opaa.s3;
 public enum S3Operation {
   LIST_OBJECTS("die Auflistung", Kind.BUCKET),
   LIST_OBJECT_VERSIONS("die Versionsauflistung", Kind.BUCKET),
+  GET_BUCKET_VERSIONING("die Abfrage der Versionierung", Kind.BUCKET),
   HEAD_BUCKET("die Bucket-Prüfung", Kind.BUCKET),
   LIST_BUCKETS("die Bucket-Liste", Kind.BUCKET),
   HEAD_OBJECT("die Objektprüfung", Kind.READ),
@@ -39,9 +40,13 @@ public enum S3Operation {
   S3AccessException forbidden(String bucket, String key) {
     return switch (kind) {
       case BUCKET ->
-          this == LIST_OBJECT_VERSIONS
-              ? new S3AccessException.ListForbidden(bucket, "s3:ListBucketVersions")
-              : new S3AccessException.ListForbidden(bucket);
+          switch (this) {
+            case LIST_OBJECT_VERSIONS ->
+                new S3AccessException.ListForbidden(bucket, "s3:ListBucketVersions");
+            case GET_BUCKET_VERSIONING ->
+                new S3AccessException.ListForbidden(bucket, "s3:GetBucketVersioning");
+            default -> new S3AccessException.ListForbidden(bucket);
+          };
       case READ -> new S3AccessException.ReadForbidden(bucket, key);
       case WRITE ->
           new S3AccessException.WriteForbidden(
@@ -60,7 +65,12 @@ public enum S3Operation {
     return switch (this) {
       case HEAD_OBJECT, GET_OBJECT, DELETE_OBJECT, DELETE_OBJECT_VERSION ->
           new S3AccessException.ObjectNotFound(bucket, key);
-      case LIST_OBJECTS, LIST_OBJECT_VERSIONS, HEAD_BUCKET, LIST_BUCKETS, PUT_OBJECT ->
+      case LIST_OBJECTS,
+          LIST_OBJECT_VERSIONS,
+          GET_BUCKET_VERSIONING,
+          HEAD_BUCKET,
+          LIST_BUCKETS,
+          PUT_OBJECT ->
           new S3AccessException.BucketNotFound(bucket);
     };
   }

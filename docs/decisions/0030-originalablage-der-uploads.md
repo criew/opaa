@@ -117,16 +117,17 @@ Mehrinstanzbetrieb eine Instanz aus der Lastverteilung, die Chat und Suche weite
 Abruf eines Originals unterscheidet „Objekt nicht vorhanden" (`404` ohne Unterscheidbarkeit) von
 „Speicher nicht erreichbar" (`503` mit deutscher Meldung).
 
-### 10. Verschlüsselung ruhender Daten, Aufbewahrung und Replikation gehören dem Speicher
+### 10. Verschlüsselung, Versionierung und Replikation gehören dem Speicher, das Löschen aller Versionen OPAA
 
 OPAA setzt keine Verschlüsselungskopfzeilen und verwaltet keine Schlüssel; SSE, Versionierung,
 Lebenszyklusregeln und Replikation konfiguriert der Betrieb am Bucket; das Handbuch nennt sie als
 Empfehlung. Ein Löschen ist trotzdem vollständig: Der S3-Adapter entfernt jede Version und jeden
-Löschmarker des Schlüssels einzeln (`ListObjectVersions`, `DeleteObject` mit `versionId`), statt sich
-auf eine Ablaufregel des Betriebs zu verlassen, die OPAA weder setzen noch zuverlässig prüfen kann
-(DSGVO Art. 17). Ohne Versionsschnittstelle oder ohne `s3:ListBucketVersions` löscht er nur die
-aktuelle Version; das Löschen einer privaten Bibliothek zählt die verbliebenen Versionen mit und
-schließt erst ab, wenn keine mehr liegt.
+Löschmarker des Schlüssels einzeln (`ListObjectVersions`, `DeleteObject` mit `versionId`, DSGVO
+Art. 17). Ohne Versionsschnittstelle oder ohne `s3:ListBucketVersions` löscht er nur die aktuelle
+Version. Das Löschen einer privaten Bibliothek entfernt auch verbliebene ältere Versionen ihres
+Bereichs, zählt sie in der Restprüfung mit und schließt erst ab, wenn nachweislich keine mehr liegt:
+„keine" gilt nur, wenn die Auflistung es zeigt oder `GetBucketVersioning` bestätigt, dass der Bucket
+nie versioniert war; sonst bleibt die Löschung vorgemerkt (fail closed).
 
 ### 11. Unberührt, und der Aufräumlauf
 
@@ -151,6 +152,11 @@ Kein Zeitplan, der von selbst löscht.
   Bereichsanfragen fallen für S3 weg; die Temp-Platte wird Teil der Kapazitätsplanung.
 - **Nachweisbarkeit:** Der Beleg bleibt greifbar; ein Prüfer schaut in einen Bucket statt in ein
   Verzeichnis, das Handbuch sagt ihm, wie.
+- **Rechte:** Ein versionierter Bucket verlangt für den Zugangsschlüssel `s3:ListBucketVersions` und
+  `s3:DeleteObjectVersion`, ein nie versionierter wenigstens `s3:GetBucketVersioning`. Fehlen sie,
+  schließt das Löschen privater Bibliotheken nicht ab, statt einen ungeprüften Löschnachweis zu
+  schreiben; die Startprüfung meldet eine nicht mögliche Versionsauflistung im Log. Die Versionierung
+  schützt nicht mehr vor einem Löschen in OPAA, nur noch vor einem Überschreiben.
 
 ## Verworfene Alternativen
 
@@ -158,6 +164,7 @@ Kein Zeitplan, der von selbst löscht.
 - Beide Ablagen parallel lesen — dauerhafte Verzweigung, die eine unvollständige Kopie verdeckt.
 - Eigener S3-Client ohne geteilten Bau — am Clientbau hängt mehr als am Prüfschritt.
 - Kein Organisationssegment im Schlüssel — ein verwaistes Objekt fände nach dem Löschen der Bibliothek nicht mehr zu seiner Organisation.
+- Statt aktiv zu löschen beim Start oder zur Laufzeit prüfen, ob am Bucket eine Ablaufregel für nicht aktuelle Versionen gesetzt ist — braucht `s3:GetLifecycleConfiguration`, sagt nichts über die Frist bis zum tatsächlichen Löschen und belegt das Löschen nicht; ältere Versionen blieben bis zum Ablauf lesbar.
 
 ## Offen
 

@@ -193,7 +193,9 @@ public class PrivateLibraryErasure implements AuditPayloadKeys {
   /**
    * Removes every stored original of the library's storage area, older versions and delete markers
    * of a versioned bucket included, and checks that none of either is left; a store that cannot be
-   * reached or cannot list its versions throws, and the next call tries again.
+   * reached or cannot list its versions throws, and the next call tries again. The count it
+   * returns, the proof's {@code originalsRemoved}, includes the removed older versions and delete
+   * markers.
    */
   private int eraseOriginals(KnowledgeLibrary library) {
     UUID organizationId = library.getOrganizationId();
