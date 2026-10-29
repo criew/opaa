@@ -101,15 +101,27 @@ public enum NotificationType {
   SELF_DISCLOSURE_STARTED,
 
   /**
-   * The system administration asked for the AUDITOR role for an account; it takes effect once an
-   * auditor confirms. Sent to every auditor of the organization; its object is the account.
+   * The system administration or the roles claim of an identity provider asked for the AUDITOR role
+   * for an account; it takes effect once an auditor confirms. Sent to every auditor of the
+   * organization; its object is the account.
    */
   AUDITOR_ROLE_REQUESTED,
 
   /**
-   * An account received the AUDITOR role - confirmed, as the first one of the organization or by
-   * the roles claim of its identity provider. Sent to every other auditor of the organization; its
-   * object is the account.
+   * An account received the AUDITOR role - confirmed, or as the first one of the organization. Sent
+   * to every other auditor of the organization; its object is the account.
    */
-  AUDITOR_ROLE_GRANTED
+  AUDITOR_ROLE_GRANTED,
+
+  /**
+   * An account left the AUDITOR role - by a role change, a provider's claim or its deletion. Sent
+   * to every remaining auditor of the organization; its object is the account.
+   */
+  AUDITOR_ROLE_REVOKED,
+
+  /**
+   * The system administration changed the SMTP settings or a mail template. Sent to every auditor
+   * of the organization; no object.
+   */
+  MAIL_CONFIGURATION_CHANGED
 }

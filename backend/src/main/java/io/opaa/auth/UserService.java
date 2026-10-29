@@ -10,6 +10,7 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
+import io.opaa.common.TransactionCallbacks;
 import io.opaa.organization.Organization;
 import java.time.Clock;
 import java.time.Duration;
@@ -18,6 +19,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
@@ -28,6 +31,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UserService {
+
+  private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
   // Bounds for searchInOrganization below - see its Javadoc.
   private static final int SEARCH_RESULT_LIMIT = 20;
@@ -49,6 +54,7 @@ public class UserService {
   private final LocalCredentialsRepository localCredentials;
   private final AuditorRoles auditorRoles;
   private final AuditorRoleRequestRepository auditorRoleRequests;
+  private final AuditorCredentialRenewal credentialRenewal;
   private final AuditEventRecorder auditEventRecorder;
   private final ApplicationEventPublisher eventPublisher;
   private final Clock clock;
@@ -63,6 +69,7 @@ public class UserService {
       LocalCredentialsRepository localCredentials,
       AuditorRoles auditorRoles,
       AuditorRoleRequestRepository auditorRoleRequests,
+      AuditorCredentialRenewal credentialRenewal,
       AuditEventRecorder auditEventRecorder,
       ApplicationEventPublisher eventPublisher,
       Clock clock) {
@@ -75,6 +82,7 @@ public class UserService {
     this.localCredentials = localCredentials;
     this.auditorRoles = auditorRoles;
     this.auditorRoleRequests = auditorRoleRequests;
+    this.credentialRenewal = credentialRenewal;
     this.auditEventRecorder = auditEventRecorder;
     this.eventPublisher = eventPublisher;
     this.clock = clock;
@@ -258,8 +266,10 @@ public class UserService {
    * <p>The AUDITOR role is never granted by the system administration alone: while the organization
    * has an auditor, the grant becomes an open request ({@link AuditorRoles}) that an auditor
    * confirms through {@link #confirmAuditorRequest}, and the role stays as it is; without one, only
-   * the account {@link AuditorRoleProperties} names may become the first auditor (409 {@value
-   * AuditorRoles#AUDITOR_CONFIRMATION_UNAVAILABLE} otherwise). Any other role ends an open request.
+   * the local account {@link AuditorRoleProperties} names may become the first auditor (409 {@value
+   * AuditorRoles#AUDITOR_CONFIRMATION_UNAVAILABLE} otherwise). Its credentials are renewed and the
+   * link that sets its password goes to the server log after the commit - to the operations, never
+   * to the administrator who asked. Any other role ends an open request.
    */
   @Transactional
   public User updateRole(UUID userId, SystemRole role, CurrentUser actor) {
@@ -281,8 +291,7 @@ public class UserService {
         throw new ConflictException(
             "Die Rolle Revision kann die Systemverwaltung nicht allein vergeben, und es gibt noch"
                 + " keine Person der Revision, die bestätigen könnte. Die erste Person der"
-                + " Revision erhält die Rolle über den Rollen-Claim ihres Identitätsanbieters oder"
-                + " über die vom Betrieb hinterlegte Adresse ("
+                + " Revision ist ein lokales Konto unter der vom Betrieb hinterlegten Adresse ("
                 + AuditorRoleProperties.FIRST_AUDITOR_EMAIL_VARIABLE
                 + ").",
             AuditorRoles.AUDITOR_CONFIRMATION_UNAVAILABLE);
@@ -291,27 +300,65 @@ public class UserService {
     if (role != SystemRole.AUDITOR) {
       auditorRoles.decline(user, actor.id());
     }
-    return applyRole(user, role, actor.organizationId(), actor.id());
+    User saved = applyRole(user, role, actor.organizationId(), actor.id());
+    if (role == SystemRole.AUDITOR && previousRole != SystemRole.AUDITOR) {
+      credentialRenewal
+          .renew(saved)
+          .ifPresent(
+              link -> TransactionCallbacks.afterCommitOrNow(() -> logFirstAuditorLink(link)));
+    }
+    return saved;
+  }
+
+  /** The grant of a confirmed request and the link that sets the new password, if local. */
+  public record AuditorConfirmation(User user, String setupLink) {
+
+    @Override
+    public String toString() {
+      return "AuditorConfirmation[user=" + user.getId() + ", link=" + (setupLink != null) + "]";
+    }
+  }
+
+  private static void logFirstAuditorLink(String link) {
+    String rule = "=".repeat(78);
+    log.warn(
+        "{}",
+        String.join(
+            System.lineSeparator(),
+            "",
+            rule,
+            "  ERSTE PERSON DER REVISION - EINMALIGE AUSGABE FÜR DEN BETRIEB",
+            "  Link zum Setzen des Passworts: " + link,
+            "  Den Link persönlich an die Person übergeben; er gilt einmal und läuft ab.",
+            "  Die Systemverwaltung erhält ihn nicht.",
+            rule));
   }
 
   /**
-   * Grants the AUDITOR role an administrator asked for, under the confirming auditor: the request
-   * is read under a row lock, so of two concurrent decisions exactly one acts. The checks of {@link
-   * #updateRole} apply again - the account may have changed since the request.
+   * Grants the AUDITOR role an administrator or a provider's claim asked for, under the confirming
+   * auditor: the request is read under a row lock, so of two concurrent decisions exactly one acts.
+   * The checks of {@link #updateRole} apply again - the account may have changed since the request
+   * - except that a provider's request is not refused for the provider managing the role. A local
+   * account's credentials are renewed; the link that sets its password is returned for the auditor
+   * to hand over, and sent nowhere else.
    */
   @Transactional
-  public User confirmAuditorRequest(UUID requestId, CurrentUser auditor) {
+  public AuditorConfirmation confirmAuditorRequest(UUID requestId, CurrentUser auditor) {
     AuditorRoleRequest request = decidableRequest(requestId, auditor);
     User user =
         userRepository
             .findByIdAndOrganizationId(request.getUserId(), auditor.organizationId())
             .orElseThrow(() -> new UserNotFoundException("Benutzer nicht gefunden"));
     if (user.getSystemRole() == SystemRole.AUDITOR) {
-      auditorRoles.decline(user, auditor.id());
-      return user;
+      auditorRoles.declineByAuditor(request, user, auditor.id());
+      return new AuditorConfirmation(user, null);
     }
-    requireRoleChangeable(user, SystemRole.AUDITOR);
-    return applyRole(user, SystemRole.AUDITOR, auditor.organizationId(), auditor.id());
+    requireNotBootstrap(user, SystemRole.AUDITOR);
+    if (!request.isFromProvider()) {
+      requireNotProviderManaged(user);
+    }
+    User saved = applyRole(user, SystemRole.AUDITOR, auditor.organizationId(), auditor.id());
+    return new AuditorConfirmation(saved, credentialRenewal.renew(saved).orElse(null));
   }
 
   /** Ends an open AUDITOR request without the role, under the declining auditor. */
@@ -322,7 +369,7 @@ public class UserService {
         userRepository
             .findByIdAndOrganizationId(request.getUserId(), auditor.organizationId())
             .orElseThrow(() -> new UserNotFoundException("Benutzer nicht gefunden"));
-    auditorRoles.decline(user, auditor.id());
+    auditorRoles.declineByAuditor(request, user, auditor.id());
   }
 
   /**
@@ -343,6 +390,11 @@ public class UserService {
 
   /** The bootstrap rule and the provider-managed rule, before anything is written. */
   private void requireRoleChangeable(User user, SystemRole role) {
+    requireNotBootstrap(user, role);
+    requireNotProviderManaged(user);
+  }
+
+  private void requireNotBootstrap(User user, SystemRole role) {
     // ADR-0033, Entscheidungen 3 and 5: the bootstrap account never leaves SYSTEM_ADMIN; a return
     // to it restores the promised state of an account demoted before this rule was enforced
     if (role != SystemRole.SYSTEM_ADMIN
@@ -353,6 +405,9 @@ public class UserService {
             .isPresent()) {
       throw new ConflictException(BOOTSTRAP_ROLE_MESSAGE, LocalCredentials.BOOTSTRAP_ACCOUNT);
     }
+  }
+
+  private void requireNotProviderManaged(User user) {
     // ADR-0025, Entscheidung 4: an enabled provider with a roles claim is authoritative - a role
     // written here would be overwritten by the account's next request. A disabled provider issues
     // no more tokens, so its accounts' roles are managed here again.
@@ -392,6 +447,7 @@ public class UserService {
       } else if (previousRole == SystemRole.AUDITOR) {
         recordRoleChange(
             saved, actorUserId, pseudonym, AuditEventType.AUDITOR_ROLE_REVOKED, previousRole, role);
+        eventPublisher.publishEvent(new AuditorRoleRevokedEvent(saved));
       }
       if (role == SystemRole.SYSTEM_ADMIN) {
         recordRoleChange(

@@ -29,9 +29,12 @@ describe('AuditorRoleRequestsPage', () => {
     expect(screen.getByText('lena.klein@stadt.example')).toBeInTheDocument()
     expect(screen.getByText('Systemverwaltung Muster')).toBeInTheDocument()
     expect(screen.getByText('Lokales Konto')).toBeInTheDocument()
+    expect(
+      screen.getByText('Von der Systemverwaltung geändert am 27.10.2026 – mit der Person prüfen'),
+    ).toBeInTheDocument()
   })
 
-  it('confirms a request and shows the list without it', async () => {
+  it('confirms a request, shows the setup link once and the list without it', async () => {
     signInAs('AUDITOR')
     const user = userEvent.setup()
     renderWithProviders(<AuditorRoleRequestsPage />)
@@ -40,6 +43,11 @@ describe('AuditorRoleRequestsPage', () => {
       await screen.findByRole('button', { name: 'Antrag für Lena Klein bestätigen' }),
     )
 
+    expect(await screen.findByTestId('auditor-setup-link-value')).toHaveTextContent(
+      '/set-password?token=mock-revision-token',
+    )
+    await user.click(screen.getByRole('button', { name: 'Schließen' }))
+    expect(screen.queryByTestId('auditor-setup-link-value')).not.toBeInTheDocument()
     expect(await screen.findByText('Es liegt kein Antrag vor.')).toBeInTheDocument()
   })
 
@@ -50,8 +58,8 @@ describe('AuditorRoleRequestsPage', () => {
         HttpResponse.json(
           {
             status: 409,
-            code: 'AUDITOR_ACCOUNT',
-            error: 'Ein lokales Konto erhält die Rolle Revision nur mit E-Mail-Versand.',
+            code: 'LAST_LOGIN_CAPABLE_ADMIN',
+            error: 'Es muss eine anmeldefähige Systemverwaltung bleiben.',
             timestamp: '2026-10-29T10:00:00Z',
           },
           { status: 409 },
@@ -66,7 +74,7 @@ describe('AuditorRoleRequestsPage', () => {
     )
 
     await waitFor(() =>
-      expect(screen.getByRole('alert')).toHaveTextContent('nur mit E-Mail-Versand'),
+      expect(screen.getByRole('alert')).toHaveTextContent('anmeldefähige Systemverwaltung'),
     )
   })
 

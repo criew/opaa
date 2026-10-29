@@ -1472,9 +1472,10 @@ class LocalUserAdminIntegrationTest {
 
   /**
    * Regression guard for #3356: a system administrator alone does not make an account an auditor.
-   * The grant becomes a request every auditor is told of; it takes effect only once an auditor
-   * confirms, under that auditor, and the account then starts with a password only its person sets
-   * through the link in her mailbox.
+   * The grant becomes a request every auditor is told of, naming the address and when the
+   * administration last changed it; it takes effect only once an auditor confirms, under that
+   * auditor, and the account then starts with a password only its person sets through the link the
+   * confirming auditor alone receives - no mail through the channels the administration controls.
    */
   @Test
   void theAuditorRoleTakesEffectOnlyWithAnAuditorsConfirmation() throws Exception {
@@ -1489,6 +1490,8 @@ class LocalUserAdminIntegrationTest {
     LocalAccount candidate =
         fixtures.activeUser("kandidat-" + UUID.randomUUID() + "@stadt.example");
     String path = LOCAL_USERS + "/" + candidate.id();
+    String changedAddress = "kandidat-neu-" + UUID.randomUUID() + "@stadt.example";
+    asAdminJson(patch(path), "{\"email\":\"" + changedAddress + "\"}").andExpect(status().isOk());
 
     asAdminJson(patch(path), "{\"systemRole\":\"AUDITOR\"}")
         .andExpect(status().isOk())
@@ -1519,24 +1522,43 @@ class LocalUserAdminIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].userId").value(candidate.id().toString()))
             .andExpect(jsonPath("$[0].localAccount").value(true))
+            .andExpect(jsonPath("$[0].email").value(changedAddress))
+            .andExpect(jsonPath("$[0].requestedByProvider").value(false))
+            .andExpect(jsonPath("$[0].emailChangedByAdministrationAt").isNotEmpty())
             .andReturn();
     String requestId = JsonPath.read(listed.getResponse().getContentAsString(), "$[0].id");
-    mockMvc
-        .perform(
-            post("/api/v1/audit/auditor-role-requests/" + requestId + "/confirm")
-                .header(HttpHeaders.AUTHORIZATION, auditorBearer))
-        .andExpect(status().isNoContent());
+    MvcResult confirmed =
+        mockMvc
+            .perform(
+                post("/api/v1/audit/auditor-role-requests/" + requestId + "/confirm")
+                    .header(HttpHeaders.AUTHORIZATION, auditorBearer))
+            .andExpect(status().isOk())
+            .andReturn();
+    String setupUrl = JsonPath.read(confirmed.getResponse().getContentAsString(), "$.setupUrl");
+    assertThat(setupUrl).contains("token=");
 
     assertThat(users.findById(candidate.id()).orElseThrow().getSystemRole())
         .isEqualTo(SystemRole.AUDITOR);
     LocalCredentials renewed = fixtures.credentialsOf(candidate);
     assertThat(renewed.getPasswordHash()).isNull();
     assertThat(renewed.state(Instant.now())).isEqualTo(LocalAccountState.INVITED);
-    login(candidate.email(), LocalAccountFixtures.PASSWORD, 401);
-    assertThat(greenMail.waitForIncomingEmail(10_000, 1)).isTrue();
-    MimeMessage invitation = greenMail.getReceivedMessages()[0];
-    assertThat(invitation.getAllRecipients()[0].toString()).isEqualTo(candidate.email());
-    assertThat(plainText(invitation)).contains("token=");
+    login(changedAddress, LocalAccountFixtures.PASSWORD, 401);
+    LocalMailbox.awaitOutboxDrained(jdbc);
+    assertThat(greenMail.getReceivedMessages()).isEmpty();
+    String token =
+        java.net.URLDecoder.decode(
+            setupUrl.substring(setupUrl.indexOf("token=") + "token=".length()),
+            java.nio.charset.StandardCharsets.UTF_8);
+    mockMvc
+        .perform(
+            post("/api/v1/auth/local/set-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"token\":\""
+                        + token
+                        + "\",\"newPassword\":\"revision-eigenes-passwort-2026\"}"))
+        .andExpect(status().isNoContent());
+    login(changedAddress, "revision-eigenes-passwort-2026", 200);
     assertThat(auditRows("AUDITOR_ROLE_%", candidate.id()))
         .extracting(row -> row.get("event_type"))
         .containsExactly("AUDITOR_ROLE_REQUESTED", "AUDITOR_ROLE_GRANTED");

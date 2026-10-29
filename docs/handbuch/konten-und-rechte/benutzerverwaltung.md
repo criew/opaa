@@ -169,8 +169,8 @@ fest". Ein administratives Zurücksetzen **bestätigt keine E-Mail-Adresse**: Ei
 Adresse noch nicht bestätigt hat, wird dadurch nicht anmeldefähig.
 
 Am Notanker-Konto der Systemverwaltung stehen beide Wege nicht zur Verfügung (Abschnitt 8), ebenso
-wenig an einem Konto der Revision oder einem, für das die Rolle Revision beantragt ist (Abschnitt 7):
-Dessen Passwort setzt die Person über „Passwort vergessen" selbst zurück.
+wenig an einem Konto der Revision oder einem, für das die Rolle Revision beantragt ist (Abschnitt 7,
+„Die Rolle Revision", dort auch der Weg bei vergessenem Passwort).
 
 ## 6. Die Liste und die Auflagenprüfung
 
@@ -250,30 +250,50 @@ derselbe Schutz: Dem letzten anmeldefähigen Systemverwalter lässt sich die Rol
 
 ### Die Rolle Revision
 
-Die Rolle **Revision** vergibt die Systemverwaltung **nicht allein**. Sonst könnte sie sich ein
-eigenes Revisionskonto einrichten und das Protokoll ihres eigenen Handelns lesen. Wählt sie die
-Rolle — über „Rolle ändern …", im Dialog „Bearbeiten" oder beim Anlegen —, wird daraus ein
-**Antrag**: Das Konto behält seine Rolle, die Liste zeigt „Revision beantragt", und alle Personen der
-Revision erhalten eine Benachrichtigung. Eine von ihnen bestätigt oder lehnt unter **Revision →
-Rollenanträge** ab; erst die Bestätigung gibt die Rolle. Wählt die Systemverwaltung vorher eine
-andere Rolle, zieht sie den Antrag zurück.
+Die Rolle **Revision** vergibt weder die Systemverwaltung noch ein Identitätsanbieter **allein**.
+Sonst könnte die Systemverwaltung sich ein eigenes Revisionskonto einrichten und das Protokoll ihres
+eigenen Handelns lesen. Wählt sie die Rolle — über „Rolle ändern …", im Dialog „Bearbeiten" oder
+beim Anlegen —, wird daraus ein **Antrag**: Das Konto behält seine Rolle, die Liste zeigt „Revision
+beantragt", und alle Personen der Revision erhalten eine Benachrichtigung mit Name und Adresse des
+Kontos. Hat die Systemverwaltung die Adresse eines lokalen Kontos geändert, nennen Benachrichtigung
+und Antragsliste das Datum der letzten Änderung; dann prüft die Revision die Adresse mit der Person.
+Eine Person der Revision bestätigt oder lehnt unter **Revision → Rollenanträge** ab; erst die
+Bestätigung gibt die Rolle. Wählt die Systemverwaltung vorher eine andere Rolle, zieht sie den
+Antrag zurück.
 
-Ohne eine Person der Revision kann niemand bestätigen. Die erste erhält die Rolle deshalb nur auf
-einem von zwei Wegen: über den Rollen-Claim ihres Identitätsanbieters oder, für ein lokales Konto,
-über die Adresse, die der Betrieb als `OPAA_AUTH_FIRST_AUDITOR_EMAIL` hinterlegt hat
-([Variablenliste](../betrieb/konfiguration.md)). Für jedes andere Konto lehnt OPAA die Vergabe dann
-mit einem Hinweis ab.
+Nennt der **Rollen-Claim** eines Identitätsanbieters die Rolle Revision, gilt dasselbe: Bei der
+nächsten Anmeldung entsteht ein Antrag, das Konto bleibt bis zur Bestätigung bei „Nutzer" (eine
+Systemverwalter-Rolle verliert es dabei). Ist die Rolle bestätigt, bleibt sie, solange der Claim sie
+nennt; nennt er sie nicht mehr, entzieht OPAA sie. Einen abgelehnten Antrag stellt der Claim nicht
+erneut, erst wenn er die Rolle zwischenzeitlich nicht mehr genannt hat.
 
-Die **Zugangsdaten** eines Revisionskontos bleiben bei der Person. Erhält ein lokales Konto die Rolle,
-verfallen sein Passwort und seine Sitzungen, und die Person legt über einen Link, den sie per E-Mail
-an ihre Adresse bekommt, ein neues fest — angezeigt wird dieser Link niemandem. Ohne eingerichteten
-E-Mail-Versand und öffentliche Adresse lehnt OPAA die Vergabe an ein lokales Konto ab. Ein Konto der
-Revision oder mit offenem Antrag legt die Systemverwaltung nur per Einladung an, nie mit
-Initialpasswort; Passwort erzeugen, Rücksetz-Link, neue Adresse und Übergabe an einen
-Identitätsanbieter sind dort gesperrt.
+Ohne eine Person der Revision kann niemand bestätigen. Die erste ist deshalb immer ein **lokales
+Konto** unter der Adresse, die der Betrieb als `OPAA_AUTH_FIRST_AUDITOR_EMAIL` hinterlegt hat
+([Variablenliste](../betrieb/konfiguration.md)); die Systemverwaltung legt es an und wählt die Rolle.
+Den Link, mit dem die Person ihr Passwort setzt, schreibt OPAA dann einmalig ins Server-Log — er
+erreicht also den Betrieb, nicht die Systemverwaltung, und der Betrieb übergibt ihn der Person. Für
+jedes andere Konto, und für jedes Konto eines Identitätsanbieters, lehnt OPAA die Vergabe ab, solange
+es keine Person der Revision gibt; ein Rollen-Claim vergibt sie dann nicht. Bei mehreren
+Organisationen gilt die Variable in jeder Organisation, die noch keine Person der Revision hat; da
+eine Adresse nur ein lokales Konto trägt, setzt der Betrieb sie für die nächste Organisation auf eine
+andere Adresse und startet neu.
 
-Jede wirksame Vergabe — bestätigt, als erste Person oder über den Rollen-Claim — meldet OPAA allen
-bestehenden Personen der Revision. Antrag, Bestätigung und Ablehnung stehen im Nachweisprotokoll.
+Die **Zugangsdaten** eines Revisionskontos laufen nie über einen Weg, den die Systemverwaltung
+steuert — auch nicht über E-Mail, denn Mailserver und Mailvorlagen stellt sie ein. Bestätigt eine
+Person der Revision einen Antrag für ein lokales Konto, verfallen dessen Passwort, Sitzungen und
+offene Links, und OPAA zeigt **der bestätigenden Person** einmalig den Link, mit dem die neue Person
+der Revision ihr Passwort setzt; sie übergibt ihn persönlich. Verschickt wird er nicht. Ein Konto mit
+Rolle Revision oder offenem Antrag erhält von der Systemverwaltung weder ein Initialpasswort noch eine
+Einladung; Passwort erzeugen, Rücksetz-Link, neue Adresse und Übergabe an einen Identitätsanbieter
+sind dort gesperrt. „Passwort vergessen" verschickt für solche Konten nichts und antwortet wie bei
+einer unbekannten Adresse. Hat eine Person der Revision ihr Passwort vergessen, entzieht die
+Systemverwaltung ihr die Rolle und beantragt sie neu; die Bestätigung durch eine andere Person der
+Revision zeigt dann einen neuen Link. Ist sie die einzige, geht der Weg über die Erstbesetzung.
+
+Jede wirksame Vergabe und jeder Entzug der Rolle Revision — durch Rollenwechsel, Rollen-Claim oder
+Löschen des Kontos — meldet OPAA allen übrigen Personen der Revision, ebenso jede Änderung der
+E-Mail-Einstellungen oder einer Mailvorlage durch die Systemverwaltung. Antrag, Bestätigung und
+Ablehnung stehen im Nachweisprotokoll.
 
 Systemverwalterkonten sind **persönliche** Konten, je Person eines — keine Sammelkonten. Das
 Notanker-Konto, das der Erststart anlegt, ist davon ausgenommen und kein Arbeitskonto; wofür es

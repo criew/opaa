@@ -62,6 +62,7 @@ class UserServiceTest {
   private final List<Object> otherEvents = new ArrayList<>();
   private AuditorRoles auditorRoles;
   private AuditorRoleRequestRepository auditorRoleRequests;
+  private AuditorCredentialRenewal credentialRenewal;
 
   /**
    * A settable {@link Clock}, not {@link Clock#fixed}, so a test can advance time between two
@@ -110,6 +111,8 @@ class UserServiceTest {
     localCredentials = mock(LocalCredentialsRepository.class);
     auditorRoles = mock(AuditorRoles.class);
     auditorRoleRequests = mock(AuditorRoleRequestRepository.class);
+    credentialRenewal = mock(AuditorCredentialRenewal.class);
+    when(credentialRenewal.renew(any())).thenReturn(Optional.empty());
     when(providerRegistry.findEnabledByIssuer(any())).thenReturn(Optional.empty());
     when(providerRepository.findByNormalizedIssuerUri(any())).thenReturn(Optional.empty());
     userService =
@@ -134,6 +137,7 @@ class UserServiceTest {
         localCredentials,
         auditorRoles,
         auditorRoleRequests,
+        credentialRenewal,
         auditEventRecorder,
         eventPublisher,
         clock);
@@ -837,21 +841,42 @@ class UserServiceTest {
     verify(auditorRoles, never()).request(any(), any());
   }
 
-  /** Every grant that takes effect is announced, so the other auditors learn of it. */
+  /**
+   * Every grant that takes effect is announced, and the first auditor's credentials are renewed -
+   * the new link goes to the server log, never back to the administrator who asked.
+   */
   @Test
-  void theFirstAuditorsGrantPublishesTheGrantEvent() {
+  void theFirstAuditorsGrantRenewsTheCredentialsAndPublishesTheGrantEvent() {
     UUID organizationId = UUID.randomUUID();
     UUID userId = UUID.randomUUID();
     User user = accountInOrganization(organizationId, userId, SystemRole.USER);
     when(auditorRoles.namesFirstAuditor(user)).thenReturn(true);
+    when(credentialRenewal.renew(user)).thenReturn(Optional.of("/set-password?token=secret"));
 
-    userService.updateRole(userId, SystemRole.AUDITOR, actorInOrganization(organizationId));
+    User result =
+        userService.updateRole(userId, SystemRole.AUDITOR, actorInOrganization(organizationId));
 
-    assertThat(user.getSystemRole()).isEqualTo(SystemRole.AUDITOR);
+    assertThat(result.getSystemRole()).isEqualTo(SystemRole.AUDITOR);
+    verify(credentialRenewal).renew(user);
     assertThat(otherEvents)
         .singleElement()
         .isInstanceOfSatisfying(
             AuditorRoleGrantedEvent.class, event -> assertThat(event.user()).isSameAs(user));
+  }
+
+  /** A withdrawal is announced, so the remaining auditors learn of it. */
+  @Test
+  void aWithdrawnAuditorRoleIsAnnounced() {
+    UUID organizationId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+    User user = accountInOrganization(organizationId, userId, SystemRole.AUDITOR);
+
+    userService.updateRole(userId, SystemRole.USER, actorInOrganization(organizationId));
+
+    assertThat(otherEvents)
+        .singleElement()
+        .isInstanceOfSatisfying(
+            AuditorRoleRevokedEvent.class, event -> assertThat(event.user()).isSameAs(user));
   }
 
   /** Any other role ends an open request - the administration withdraws by choosing it. */
@@ -881,14 +906,17 @@ class UserServiceTest {
     auditorRow.setSystemRole(SystemRole.AUDITOR);
     when(userRepository.findById(auditorId)).thenReturn(Optional.of(auditorRow));
     AuditorRoleRequest request =
-        new AuditorRoleRequest(organizationId, userId, UUID.randomUUID(), Instant.now());
+        new AuditorRoleRequest(organizationId, userId, UUID.randomUUID(), null, Instant.now());
     when(auditorRoleRequests.findForDecision(request.getId(), organizationId))
         .thenReturn(Optional.of(request));
+    when(credentialRenewal.renew(user)).thenReturn(Optional.of("/set-password?token=secret"));
     CurrentUser auditor = CurrentUser.of(auditorId, organizationId, SystemRole.AUDITOR, "Revision");
 
-    userService.confirmAuditorRequest(request.getId(), auditor);
+    UserService.AuditorConfirmation confirmation =
+        userService.confirmAuditorRequest(request.getId(), auditor);
 
     assertThat(user.getSystemRole()).isEqualTo(SystemRole.AUDITOR);
+    assertThat(confirmation.setupLink()).isEqualTo("/set-password?token=secret");
     verify(auditEventRecorder)
         .recordUserActionOnSubject(
             argThat(
@@ -896,6 +924,40 @@ class UserServiceTest {
                     event.eventType() == AuditEventType.AUDITOR_ROLE_GRANTED
                         && auditorId.equals(event.actorUserId())));
     assertThat(otherEvents).singleElement().isInstanceOf(AuditorRoleGrantedEvent.class);
+  }
+
+  /**
+   * A request of a provider's claim is confirmed although the provider manages the account's role -
+   * the claim keeps naming AUDITOR, so the next sign-in leaves the confirmed role as it is.
+   */
+  @Test
+  void aClaimRequestIsConfirmedForTheProviderManagedAccount() {
+    UUID organizationId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+    User user = accountInOrganization(organizationId, userId, SystemRole.USER);
+    OidcProvider provider =
+        new OidcProvider(
+            "Beschäftigte",
+            "issuer1",
+            "opaa-frontend",
+            null,
+            new OidcClaimMapping(null, null, "roles", "opaa-admin", "opaa-auditor", null));
+    when(providerRepository.findByNormalizedIssuerUri(any())).thenReturn(Optional.of(provider));
+    UUID auditorId = UUID.randomUUID();
+    User auditorRow = new User("sub-auditor", "issuer1", "revision@example.com", "Revision");
+    auditorRow.setSystemRole(SystemRole.AUDITOR);
+    when(userRepository.findById(auditorId)).thenReturn(Optional.of(auditorRow));
+    AuditorRoleRequest fromClaim =
+        new AuditorRoleRequest(organizationId, userId, null, UUID.randomUUID(), Instant.now());
+    when(auditorRoleRequests.findForDecision(fromClaim.getId(), organizationId))
+        .thenReturn(Optional.of(fromClaim));
+    CurrentUser auditor = CurrentUser.of(auditorId, organizationId, SystemRole.AUDITOR, "Revision");
+
+    UserService.AuditorConfirmation confirmation =
+        userService.confirmAuditorRequest(fromClaim.getId(), auditor);
+
+    assertThat(user.getSystemRole()).isEqualTo(SystemRole.AUDITOR);
+    assertThat(confirmation.setupLink()).isNull();
   }
 
   /**

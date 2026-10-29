@@ -39,7 +39,8 @@ class TokenRoleSynchronizerIncidentTest {
   @BeforeEach
   void setUp() {
     synchronizer =
-        new TokenRoleSynchronizer(userRepository, guard, auditEventRecorder, event -> {});
+        new TokenRoleSynchronizer(
+            userRepository, guard, auditEventRecorder, event -> {}, mock(AuditorRoles.class));
     logger = (Logger) LoggerFactory.getLogger(TokenRoleSynchronizer.class);
     logs.start();
     logger.addAppender(logs);

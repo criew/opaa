@@ -39,10 +39,13 @@ export function notificationTarget({
     // a warning without a link, on purpose: it must not lead to the download
     case 'SELF_DISCLOSURE_STARTED':
       return null
-    // the request waits for a decision of the revision; a grant is a notice only
+    // the request waits for a decision of the revision; grant, withdrawal and a change of the mail
+    // channels are notices only
     case 'AUDITOR_ROLE_REQUESTED':
       return AUDITOR_ROLE_REQUESTS_ROUTE
     case 'AUDITOR_ROLE_GRANTED':
+    case 'AUDITOR_ROLE_REVOKED':
+    case 'MAIL_CONFIGURATION_CHANGED':
       return null
     default: {
       const unknown: never = type

@@ -111,8 +111,8 @@ export default function RoleChangeDialog({ account, onClose }: RoleChangeDialogP
           <Alert severity="info" sx={{ mt: 2 }}>
             Die Rolle {SYSTEM_ROLE_LABEL.AUDITOR} vergibt die Systemverwaltung nicht allein: Sie
             wird beantragt und erst wirksam, wenn eine Person der Revision bestätigt. Ein lokales
-            Konto verliert dabei sein Passwort; die Person setzt ein neues über einen Link an ihre
-            Adresse.
+            Konto verliert dabei sein Passwort; den Link für ein neues erhält die bestätigende
+            Person der Revision und übergibt ihn – nicht die Systemverwaltung und nicht per E-Mail.
           </Alert>
         )}
       </DialogContent>

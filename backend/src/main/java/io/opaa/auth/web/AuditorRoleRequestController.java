@@ -1,5 +1,6 @@
 package io.opaa.auth.web;
 
+import io.opaa.api.dto.AuditorRoleConfirmationResponse;
 import io.opaa.api.dto.AuditorRoleRequestResponse;
 import io.opaa.auth.AuditorRoles;
 import io.opaa.auth.Caller;
@@ -16,9 +17,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The open requests of the system administration for the AUDITOR role, decided by the revision
- * alone: the system administration asks, an auditor confirms or declines. The service checks the
- * stored role once more, so a role withdrawn since the token was issued decides nothing.
+ * The open requests for the AUDITOR role, decided by the revision alone: the system administration
+ * or a provider's roles claim asks, an auditor confirms or declines. The service checks the stored
+ * role once more, so a role withdrawn since the token was issued decides nothing. A confirmation
+ * answers the link that sets the new password of a local account - to the auditor only.
  */
 @RestController
 @RequestMapping("/api/v1/audit/auditor-role-requests")
@@ -41,10 +43,11 @@ public class AuditorRoleRequestController {
   }
 
   @PostMapping("/{requestId}/confirm")
-  public ResponseEntity<Void> confirmAuditorRoleRequest(
+  public AuditorRoleConfirmationResponse confirmAuditorRoleRequest(
       @PathVariable UUID requestId, @Caller CurrentUser caller) {
-    userService.confirmAuditorRequest(requestId, caller);
-    return ResponseEntity.noContent().build();
+    AuditorRoleConfirmationResponse response = new AuditorRoleConfirmationResponse();
+    response.setSetupUrl(userService.confirmAuditorRequest(requestId, caller).setupLink());
+    return response;
   }
 
   @PostMapping("/{requestId}/decline")
@@ -61,8 +64,10 @@ public class AuditorRoleRequestController {
     response.setDisplayName(open.user().getDisplayName());
     response.setEmail(open.user().getEmail());
     response.setLocalAccount(open.localAccount());
-    response.setRequestedByDisplayName(open.requestedBy().getDisplayName());
+    response.setRequestedByDisplayName(open.requestedBy());
+    response.setRequestedByProvider(open.request().isFromProvider());
     response.setRequestedAt(open.request().getRequestedAt());
+    response.setEmailChangedByAdministrationAt(open.emailChangedByAdministrationAt());
     return response;
   }
 }

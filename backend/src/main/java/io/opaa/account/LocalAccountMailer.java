@@ -57,25 +57,6 @@ public class LocalAccountMailer {
     return deliverLink(MailTemplateKey.LOCAL_ACCOUNT_INVITATION, user, token);
   }
 
-  /**
-   * The invitation through the outbox only, never with a link fallback: the link must reach the
-   * person's mailbox and nobody else - the new password of an auditor account. Returns whether the
-   * mail was queued.
-   */
-  public boolean queueInvitation(User user, IssuedActionToken token) {
-    return mail.enqueue(
-        MailTemplateKey.LOCAL_ACCOUNT_INVITATION,
-        Locale.GERMAN,
-        user.getEmail(),
-        withDisplayName(
-            user,
-            Map.of(
-                "actionUrl",
-                LocalAccountLinks.setPasswordLink(publicBaseUrl, token.rawToken()),
-                "expiresAtHuman",
-                until(token.expiresAt()))));
-  }
-
   public LinkDelivery sendAdminPasswordReset(User user, IssuedActionToken token) {
     return deliverLink(MailTemplateKey.ADMIN_PASSWORD_RESET, user, token);
   }

@@ -1,11 +1,9 @@
 package io.opaa.account;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -14,12 +12,9 @@ import io.opaa.account.LocalActionTokenService.IssuedActionToken;
 import io.opaa.api.types.LocalAccountState;
 import io.opaa.api.types.PasswordChangeReason;
 import io.opaa.api.types.SystemRole;
-import io.opaa.auth.AuditorRoleGrantedEvent;
-import io.opaa.auth.AuditorRoles;
 import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.auth.User;
-import io.opaa.common.ConflictException;
 import io.opaa.common.PublicBaseUrl;
 import java.time.Clock;
 import java.time.Duration;
@@ -33,8 +28,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * Regression guard for #3356: a local account that becomes an auditor keeps no password the system
- * administration may know - it is discarded with every session, and the new invitation reaches the
- * account's mailbox only, never as a link displayed to the administration.
+ * administration may know - it is discarded with every session and open link, and the one new link
+ * is returned to the caller instead of travelling through the mail channels the administration
+ * controls.
  */
 class LocalAuditorCredentialRenewalTest {
 
@@ -44,7 +40,6 @@ class LocalAuditorCredentialRenewalTest {
   private final LocalAuthSettingsRepository settings = mock(LocalAuthSettingsRepository.class);
   private final LocalActionTokenService actionTokens = mock(LocalActionTokenService.class);
   private final LocalRefreshTokenRepository refreshTokens = mock(LocalRefreshTokenRepository.class);
-  private final LocalAccountMailer mailer = mock(LocalAccountMailer.class);
   private final PublicBaseUrl publicBaseUrl = mock(PublicBaseUrl.class);
   private LocalAuditorCredentialRenewal renewal;
   private User user;
@@ -58,7 +53,6 @@ class LocalAuditorCredentialRenewalTest {
             settings,
             actionTokens,
             refreshTokens,
-            mailer,
             publicBaseUrl,
             Clock.fixed(NOW, ZoneOffset.UTC));
     user = User.localAccount("revision@stadt.example", "Revision");
@@ -75,50 +69,27 @@ class LocalAuditorCredentialRenewalTest {
   }
 
   @Test
-  void theGrantDiscardsThePasswordAndSessionsAndMailsANewInvitation() {
-    when(publicBaseUrl.isConfigured()).thenReturn(true);
-    when(mailer.queueInvitation(eq(user), any())).thenReturn(true);
+  void theRenewalDiscardsThePasswordAndSessionsAndReturnsTheNewLink() {
     long generation = row.getSessionGeneration();
 
-    renewal.onGranted(new AuditorRoleGrantedEvent(user));
+    Optional<String> link = renewal.renew(user);
 
+    assertThat(link).contains("/set-password?token=raw");
     assertThat(row.getPasswordHash()).isNull();
     assertThat(row.state(NOW)).isEqualTo(LocalAccountState.INVITED);
     assertThat(row.getSessionGeneration()).isGreaterThan(generation);
     verify(refreshTokens).revokeAllForUser(user.getId(), RevocationReason.ADMIN, NOW);
+    verify(actionTokens).consumeOpen(user.getId(), ActionTokenPurpose.SET_PASSWORD);
     verify(actionTokens).consumeOpen(user.getId(), ActionTokenPurpose.HANDOVER);
     verify(actionTokens).consumeOpen(user.getId(), ActionTokenPurpose.RESET_PASSWORD);
-    verify(mailer).queueInvitation(eq(user), any());
-    verify(mailer, never()).sendInvitation(any(), any());
-  }
-
-  @Test
-  void withoutMailDeliveryTheGrantIsRefused() {
-    when(publicBaseUrl.isConfigured()).thenReturn(true);
-    when(mailer.queueInvitation(eq(user), any())).thenReturn(false);
-
-    assertThatThrownBy(() -> renewal.onGranted(new AuditorRoleGrantedEvent(user)))
-        .isInstanceOf(ConflictException.class)
-        .extracting(e -> ((ConflictException) e).getCode())
-        .isEqualTo(AuditorRoles.AUDITOR_ACCOUNT);
-  }
-
-  @Test
-  void withoutAPublicBaseUrlTheGrantIsRefusedBeforeAnythingChanges() {
-    when(publicBaseUrl.isConfigured()).thenReturn(false);
-
-    assertThatThrownBy(() -> renewal.onGranted(new AuditorRoleGrantedEvent(user)))
-        .isInstanceOf(ConflictException.class);
-    assertThat(row.getPasswordHash()).isNotNull();
-    verifyNoInteractions(actionTokens, refreshTokens, mailer);
   }
 
   @Test
   void anAccountOfAnIdentityProviderIsLeftAlone() {
     when(credentials.findById(user.getId())).thenReturn(Optional.empty());
 
-    renewal.onGranted(new AuditorRoleGrantedEvent(user));
+    assertThat(renewal.renew(user)).isEmpty();
 
-    verifyNoInteractions(actionTokens, refreshTokens, mailer, publicBaseUrl);
+    verifyNoInteractions(actionTokens, refreshTokens, publicBaseUrl);
   }
 }

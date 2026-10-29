@@ -20,21 +20,28 @@ import {
   declineAuditorRoleRequest,
   listAuditorRoleRequests,
 } from '../api/auditorRoleRequestApi'
+import AuditorSetupLinkDialog, { type AuditorSetupLink } from '../components/AuditorSetupLinkDialog'
 
 function personOf(request: AuditorRoleRequestResponse): string {
   return request.displayName ?? request.email ?? 'Unbenanntes Konto'
 }
 
+function changedOn(iso: string): string {
+  return new Date(iso).toLocaleDateString('de-DE')
+}
+
 /**
- * The requests of the system administration for the role Revision. The administration cannot grant
- * the role alone: it takes effect only once a person of the revision confirms here, so that the
- * administration never reads the audit log through an account of its own.
+ * The requests for the role Revision, asked by the system administration or by the roles claim of
+ * an identity provider. Neither grants the role alone: it takes effect only once a person of the
+ * revision confirms here, so that the administration never reads the audit log through an account
+ * of its own. The link that sets the password of a confirmed local account is shown here once.
  */
 export default function AuditorRoleRequestsPage() {
   const isAuditor = useAuthStore((s) => s.user?.systemRole === 'AUDITOR')
   const [requests, setRequests] = useState<AuditorRoleRequestResponse[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [setupLink, setSetupLink] = useState<AuditorSetupLink | null>(null)
 
   const [reloads, setReloads] = useState(0)
 
@@ -59,8 +66,9 @@ export default function AuditorRoleRequestsPage() {
     setBusyId(request.id)
     try {
       if (confirm) {
-        await confirmAuditorRoleRequest(request.id)
+        const url = await confirmAuditorRoleRequest(request.id)
         notify(`„${personOf(request)}“ hat jetzt die Rolle Revision.`, 'success')
+        if (url) setSetupLink({ person: personOf(request), email: request.email, url })
       } else {
         await declineAuditorRoleRequest(request.id)
         notify(`Der Antrag für „${personOf(request)}“ ist abgelehnt.`, 'success')
@@ -88,7 +96,7 @@ export default function AuditorRoleRequestsPage() {
         <AreaPageHeader
           icon={HowToRegOutlinedIcon}
           title="Rollenanträge"
-          description="Die Systemverwaltung kann die Rolle Revision nicht allein vergeben. Sie wird erst wirksam, wenn eine Person der Revision hier bestätigt. Ein lokales Konto verliert dabei sein Passwort; die Person setzt ein neues über den Link, den sie an ihre Adresse erhält."
+          description="Weder die Systemverwaltung noch ein Identitätsanbieter kann die Rolle Revision allein vergeben. Sie wird erst wirksam, wenn eine Person der Revision hier bestätigt. Ein lokales Konto verliert dabei sein Passwort; den Link für ein neues zeigt die Bestätigung einmalig Ihnen an, Sie übergeben ihn der Person."
         />
 
         {error && (
@@ -123,7 +131,14 @@ export default function AuditorRoleRequestsPage() {
                       </Typography>
                     )}
                   </TableCell>
-                  <TableCell>{request.email ?? '—'}</TableCell>
+                  <TableCell>
+                    {request.email ?? '—'}
+                    {request.emailChangedByAdministrationAt && (
+                      <Typography sx={{ fontSize: 12, fontWeight: 600 }}>
+                        {`Von der Systemverwaltung geändert am ${changedOn(request.emailChangedByAdministrationAt)} – mit der Person prüfen`}
+                      </Typography>
+                    )}
+                  </TableCell>
                   <TableCell>{request.requestedByDisplayName ?? 'Gelöschtes Konto'}</TableCell>
                   <TableCell>{new Date(request.requestedAt).toLocaleString('de-DE')}</TableCell>
                   <TableCell>
@@ -153,6 +168,7 @@ export default function AuditorRoleRequestsPage() {
           </Table>
         )}
       </Box>
+      <AuditorSetupLinkDialog link={setupLink} onClose={() => setSetupLink(null)} />
     </Box>
   )
 }

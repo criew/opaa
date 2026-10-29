@@ -445,9 +445,10 @@ paths:
       operationId: listAuditorRoleRequests
       tags: [audit]
       summary: >
-        The open requests of the system administration for the AUDITOR role in the caller's
-        organization (AUDITOR role required), oldest first. They name the account and the
-        requesting administrator by name, since the auditor judges the person.
+        The open requests for the AUDITOR role in the caller's organization (AUDITOR role
+        required), oldest first: asked by a system administrator or by the roles claim of an
+        identity provider. They name the account, its address and the requester by name, since the
+        auditor judges the person.
       responses:
         "200":
           description: Open requests
@@ -474,13 +475,18 @@ paths:
       summary: >
         Grants the requested AUDITOR role (AUDITOR role required), audited as AUDITOR_ROLE_GRANTED
         under the confirming auditor and told to every other auditor. A local account loses its
-        password, sessions and open links and receives a new invitation by mail only. Refused with
-        409 when the role can no longer be granted: code AUDITOR_ACCOUNT without a public base URL
-        or mail delivery for a local account, BOOTSTRAP_ACCOUNT or LAST_LOGIN_CAPABLE_ADMIN as on
-        the role endpoint, without a code when a provider's roles claim manages the role.
+        password, sessions and open links; the one link that sets its new password is answered
+        here, once, for the confirming auditor to hand to the person - it is neither mailed nor
+        shown to the system administration. Refused with 409 when the role can no longer be
+        granted: BOOTSTRAP_ACCOUNT or LAST_LOGIN_CAPABLE_ADMIN as on the role endpoint, without a
+        code when a provider's roles claim manages the role of a request of the administration.
       responses:
-        "204":
+        "200":
           description: Role granted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditorRoleConfirmationResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -501,7 +507,9 @@ paths:
       tags: [audit]
       summary: >
         Ends an open AUDITOR request without the role (AUDITOR role required), audited as
-        AUDITOR_ROLE_REQUEST_DECLINED under the declining auditor.
+        AUDITOR_ROLE_REQUEST_DECLINED under the declining auditor. A declined request of a provider
+        is kept as declined until the claim no longer names the role, so the next sign-in does not
+        ask again.
       responses:
         "204":
           description: Request declined
@@ -558,10 +566,18 @@ components:
     AuditorRoleRequestResponse:
       type: object
       description: >
-        An open request of the system administration for the AUDITOR role. Names the account and
-        the requester, because the confirming auditor judges whether this person is to read the
-        audit log.
-      required: [id, userId, displayName, email, localAccount, requestedByDisplayName, requestedAt]
+        An open request for the AUDITOR role. Names the account, its address and the requester,
+        because the confirming auditor judges whether this person is to read the audit log.
+      required:
+        - id
+        - userId
+        - displayName
+        - email
+        - localAccount
+        - requestedByDisplayName
+        - requestedByProvider
+        - requestedAt
+        - emailChangedByAdministrationAt
       properties:
         id:
           type: string
@@ -578,14 +594,41 @@ components:
         localAccount:
           type: boolean
           description: >
-            True for a local account - its password is discarded on confirmation and the person
-            sets a new one through a link to this address.
+            True for a local account - its password is discarded on confirmation, and the
+            confirmation answers the link with which the person sets a new one.
         requestedByDisplayName:
           type: string
           nullable: true
+          description: >
+            The requesting administrator's name, or the identity provider's name for a request
+            of its roles claim.
+        requestedByProvider:
+          type: boolean
+          description: True when the roles claim of an identity provider asked, not a person.
         requestedAt:
           type: string
           format: date-time
+        emailChangedByAdministrationAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            When the system administration last changed the address of the local account; null
+            when it never did. A recent change is a reason to check the address with the person.
+
+    AuditorRoleConfirmationResponse:
+      type: object
+      description: The outcome of a confirmed AUDITOR request.
+      required: [setupUrl]
+      properties:
+        setupUrl:
+          type: string
+          nullable: true
+          description: >
+            The one link that sets the password of the local account, valid for the invitation
+            lifetime; absolute with a public base URL, a path of this installation otherwise. Shown
+            once to the confirming auditor, who hands it to the person; never stored in readable
+            form or answered again. Null for an account of an identity provider.
 
     # Audit revision access path. See
     # docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt.

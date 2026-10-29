@@ -22,6 +22,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -66,6 +67,7 @@ public class MailTemplateService {
   private final BrandingSettingsService brandingSettingsService;
   private final EmailLayoutBuilder layoutBuilder;
   private final AuditEventRecorder auditEventRecorder;
+  private final ApplicationEventPublisher eventPublisher;
 
   /**
    * Two compilers, not one with a flag per call: the subject and the text part must reproduce what
@@ -80,7 +82,9 @@ public class MailTemplateService {
       MailTemplateRepository repository,
       BrandingSettingsService brandingSettingsService,
       EmailLayoutBuilder layoutBuilder,
-      AuditEventRecorder auditEventRecorder) {
+      AuditEventRecorder auditEventRecorder,
+      ApplicationEventPublisher eventPublisher) {
+    this.eventPublisher = eventPublisher;
     this.repository = repository;
     this.brandingSettingsService = brandingSettingsService;
     this.layoutBuilder = layoutBuilder;
@@ -476,5 +480,8 @@ public class MailTemplateService {
             .after(after)
             .outcome(AuditOutcome.SUCCESS)
             .build());
+    eventPublisher.publishEvent(
+        new MailConfigurationChangedEvent(
+            organizationId, "die E-Mail-Vorlage „" + key.label() + "“"));
   }
 }

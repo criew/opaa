@@ -136,7 +136,12 @@ public class MailSettingsService implements InvalidationSubscriber {
     return replace(
         update,
         actorUserId,
-        (before, after) -> recordChange(organizationId, actorUserId, before, after));
+        (before, after) -> {
+          recordChange(organizationId, actorUserId, before, after);
+          eventPublisher.publishEvent(
+              new MailConfigurationChangedEvent(
+                  organizationId, "die Einstellungen des E-Mail-Versands"));
+        });
   }
 
   /**

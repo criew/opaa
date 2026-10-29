@@ -12,6 +12,7 @@ import io.opaa.api.types.PasswordChangeReason;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.AuditorRoleRevokedEvent;
 import io.opaa.auth.AuditorRoles;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.LocalAdminAvailabilityGuard;
@@ -210,11 +211,11 @@ public class LocalUserService {
     if (creation.systemRole() != null && creation.systemRole() != SystemRole.USER) {
       user = userService.updateRole(user.getId(), creation.systemRole(), actor);
     }
-    // an account that became an auditor at once got its invitation by mail only (see
-    // LocalAuditorCredentialRenewal); a second one, displayable to the administration, must not
-    // follow
+    // an auditor account, or one with an open request, gets its first link from the revision or
+    // the operations (UserService#confirmAuditorRequest, #updateRole) - never through the
+    // administration or the mail channels it controls
     IssuedActionToken invitation =
-        creation.invite() && user.getSystemRole() != SystemRole.AUDITOR
+        creation.invite() && !auditorRoles.isAuditorOrRequested(user)
             ? actionTokens.issue(
                 user.getId(),
                 ActionTokenPurpose.SET_PASSWORD,
@@ -259,6 +260,7 @@ public class LocalUserService {
         auditorRoles.requireCredentialsWithPerson(user, "Die Adresse");
         requireAddressFree(email, user.getId());
         user.setEmail(email);
+        row.markEmailChangedByAdmin(now);
         // a link mailed to the old address must not set the password of the new one
         closeOpenLinks(user.getId());
         changed.add("email");
@@ -537,6 +539,9 @@ public class LocalUserService {
     before.put("state", current.state().name());
     recordAdminAct(actor, user, AuditEventType.LOCAL_USER_DELETED, before, null);
     events.publishEvent(new LocalAccountDeletionEvent(actor, user));
+    if (user.getSystemRole() == SystemRole.AUDITOR) {
+      events.publishEvent(new AuditorRoleRevokedEvent(user));
+    }
     try {
       users.delete(user);
       users.flush();

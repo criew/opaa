@@ -77,6 +77,9 @@ public class LocalCredentials {
   @Column(name = "email_verified_at")
   private Instant emailVerifiedAt;
 
+  @Column(name = "email_changed_by_admin_at")
+  private Instant emailChangedByAdminAt;
+
   @Column(name = "created_reason", nullable = false, length = CREATED_REASON_MAX_LENGTH)
   private String createdReason;
 
@@ -225,6 +228,16 @@ public class LocalCredentials {
 
   public void setExpiresAt(Instant expiresAt, Instant now) {
     this.expiresAt = expiresAt;
+    touch(now);
+  }
+
+  /** When the system administration last changed the account's address; {@code null} if never. */
+  public Instant getEmailChangedByAdminAt() {
+    return emailChangedByAdminAt;
+  }
+
+  public void markEmailChangedByAdmin(Instant now) {
+    this.emailChangedByAdminAt = Objects.requireNonNull(now, "now");
     touch(now);
   }
 
