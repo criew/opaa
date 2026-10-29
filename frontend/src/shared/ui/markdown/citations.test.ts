@@ -92,6 +92,7 @@ describe('buildCitationIndex', () => {
         numbers: [1],
         source: undefined,
         locations: [],
+        anchors: [],
       },
     ])
   })
@@ -171,6 +172,26 @@ describe('buildCitationIndex', () => {
 
     expect(index.locationByNumber.size).toBe(0)
     expect(index.docs[0].locations).toEqual([])
+  })
+
+  test('collects the anchors of the cited chunks once each, in footnote order', () => {
+    const second = { pageFrom: 3, pageTo: 3, quoteStart: 'Zweiter', quoteEnd: 'Ende' }
+    const first = { pageFrom: 1, pageTo: 2, quoteStart: 'Erster', quoteEnd: 'Schluss' }
+    const located: SourceReference = {
+      ...source('a.pdf', true, 'aa'),
+      chunkLocations: [
+        { chunkIndex: 0, location: 'S. 1–2', anchor: first },
+        { chunkIndex: 1, location: 'S. 3', anchor: second },
+        { chunkIndex: 2, location: 'S. 4' },
+      ],
+    }
+    const content =
+      'Eins【source: aa#1 | a.pdf】zwei【source: aa#0 | a.pdf】drei【source: aa#1 | a.pdf】' +
+      'vier【source: aa#2 | a.pdf】'
+
+    const index = buildCitationIndex(content, [located])
+
+    expect(index.docs[0].anchors).toEqual([second, first])
   })
 })
 

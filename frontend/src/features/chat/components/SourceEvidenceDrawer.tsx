@@ -20,6 +20,7 @@ import {
   withTitleMetadataOnly,
 } from '@/shared/ui/markdown/citations'
 import type {
+  ChunkAnchor,
   SourceBlockReason,
   SourceFreeze,
   SourceReference,
@@ -54,6 +55,10 @@ interface EvidenceDoc {
   docIndex?: number
   /** The Fundorte of this row's footnotes ("S. 2–4 · Abschn. Fristsetzung"). */
   locations: string[]
+  /** Where „Dokument öffnen“ jumps: the anchor of the row's first cited passage. */
+  anchor?: ChunkAnchor | null
+  /** SHA-256 of the original as indexed when the answer was given. */
+  contentSha256?: string | null
   /** False when the backend's deterministic check found at least one citation naming this
    *  source that does not match the chunks actually retrieved for this answer. */
   citationValid: boolean
@@ -165,6 +170,8 @@ export default function SourceEvidenceDrawer({
       sourceType: doc.sourceType,
       sourceUrl: doc.sourceUrl,
       sourceEntryUrl: doc.sourceEntryUrl,
+      anchor: doc.anchor,
+      contentSha256: doc.contentSha256,
     })
   }
 
@@ -183,6 +190,8 @@ export default function SourceEvidenceDrawer({
       cited: true,
       docIndex,
       locations: doc.locations,
+      anchor: doc.anchors[0] ?? null,
+      contentSha256: doc.source?.contentSha256,
       citationValid: doc.source?.citationValid !== false,
       freeze: doc.source?.freeze ?? null,
       privateSource: doc.source?.privateSource === true,

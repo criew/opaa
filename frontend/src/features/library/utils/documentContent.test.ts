@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getDocumentContent } from '../api/libraryApi'
-import { openDocumentContent, TEXT_PREVIEW_MAX_BYTES } from './documentContent'
+import { openDocumentContent, openInBrowserViewer, TEXT_PREVIEW_MAX_BYTES } from './documentContent'
 
 vi.mock('../api/libraryApi', () => ({
   getDocumentContent: vi.fn(),
@@ -28,18 +28,24 @@ describe('documentContent', () => {
   })
 
   describe('openDocumentContent', () => {
-    it('previews a PDF in a new tab and revokes the object URL after the delay', async () => {
-      // window.open with 'noopener' in its features always returns null per spec, real tab opened
-      // or not - the mock reflects that instead of a value no real browser produces.
-      windowOpenSpy.mockReturnValue(null)
-      mockGetDocumentContent.mockResolvedValueOnce({
-        blob: new Blob(['x'], { type: 'application/pdf' }),
-        fileName: 'original.pdf',
-      })
+    it('hands a PDF to the app viewer instead of a new tab', async () => {
+      const blob = new Blob(['x'], { type: 'application/pdf' })
+      mockGetDocumentContent.mockResolvedValueOnce({ blob, fileName: 'original.pdf' })
 
       const result = await openDocumentContent('doc-1', 'fallback.pdf')
 
-      expect(result).toEqual({ kind: 'blob-preview' })
+      expect(result).toEqual({ kind: 'pdf-preview', fileName: 'original.pdf', blob })
+      expect(createObjectURLSpy).not.toHaveBeenCalled()
+      expect(windowOpenSpy).not.toHaveBeenCalled()
+    })
+
+    it('opens a PDF in the browser viewer in a new tab and revokes the object URL after the delay', async () => {
+      // window.open with 'noopener' in its features always returns null per spec, real tab opened
+      // or not - the mock reflects that instead of a value no real browser produces.
+      windowOpenSpy.mockReturnValue(null)
+
+      openInBrowserViewer(new Blob(['x'], { type: 'application/pdf' }))
+
       expect(createObjectURLSpy).toHaveBeenCalledTimes(1)
       expect(windowOpenSpy).toHaveBeenCalledWith(
         'blob:mock-object-url',

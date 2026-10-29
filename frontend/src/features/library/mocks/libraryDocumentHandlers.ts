@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw'
+import { GETTING_STARTED_PDF_OUTLINE, GETTING_STARTED_PDF_PAGES, mockPdf } from './mockPdf'
 import {
   mockLibraries,
   mockLibraryDetails,
@@ -487,6 +488,13 @@ export const libraryDocumentHandlers = [
   // something realistic to exercise against.
   http.get('/api/v1/documents/:documentId/content', ({ params }) => {
     const documentId = String(params.documentId)
+    // the PDF the mocked chat answer cites, a real one so the viewer can jump and mark
+    if (documentId === 'doc-start') {
+      return pdfResponse(
+        'getting-started.pdf',
+        mockPdf(GETTING_STARTED_PDF_PAGES, GETTING_STARTED_PDF_OUTLINE),
+      )
+    }
     const document = Object.values(mockLibraryDocuments)
       .flat()
       .find((doc) => doc.id === documentId)
@@ -503,6 +511,12 @@ export const libraryDocumentHandlers = [
       )
     }
     const contentType = document.contentType ?? 'application/octet-stream'
+    if (contentType === 'application/pdf') {
+      return pdfResponse(
+        document.fileName,
+        mockPdf([[document.fileName, '', 'Inhalt der Beispieldatei.']]),
+      )
+    }
     return new HttpResponse(new Blob(['mock file content'], { type: contentType }), {
       status: 200,
       headers: {
@@ -512,3 +526,13 @@ export const libraryDocumentHandlers = [
     })
   }),
 ]
+
+function pdfResponse(fileName: string, pdf: Uint8Array<ArrayBuffer>) {
+  return new HttpResponse(new Blob([pdf], { type: 'application/pdf' }), {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `inline; filename="${fileName}"`,
+    },
+  })
+}
