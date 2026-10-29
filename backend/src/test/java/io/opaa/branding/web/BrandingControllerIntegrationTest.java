@@ -197,6 +197,41 @@ class BrandingControllerIntegrationTest {
   }
 
   @Test
+  void aProductNameOfNoBreakOrZeroWidthSpacesShowsTheStandardName() throws Exception {
+    for (String invisible : new String[] {"\\u00A0", "\\u200B"}) {
+      mockMvc
+          .perform(
+              put("/api/v1/system/branding")
+                  .with(devUser("dev-admin"))
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(
+                      "{\"productName\":\"" + invisible + "\",\"claim\":\"" + invisible + "\"}"))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.productName").value(BrandingDefaults.PRODUCT_NAME))
+          .andExpect(jsonPath("$.claim").value(BrandingDefaults.CLAIM));
+    }
+  }
+
+  @Test
+  void aProductNameWithARightToLeftOverrideIsRejectedWithAGermanMessage() throws Exception {
+    mockMvc
+        .perform(
+            put("/api/v1/system/branding")
+                .with(devUser("dev-admin"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"productName\":\"Amt \\u202Eredaeh\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.error")
+                .value(
+                    "Der Produktname darf keine Steuerzeichen und keinen Zeilenumbruch enthalten"));
+
+    mockMvc
+        .perform(get("/api/v1/branding").with(devUser("dev-user")))
+        .andExpect(jsonPath("$.productName").value(BrandingDefaults.PRODUCT_NAME));
+  }
+
+  @Test
   void anUnknownColourSchemeIsRejected() throws Exception {
     mockMvc
         .perform(

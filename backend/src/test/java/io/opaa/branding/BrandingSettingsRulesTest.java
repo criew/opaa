@@ -65,7 +65,7 @@ class BrandingSettingsRulesTest {
         .extracting(FieldError::message)
         .containsExactly(
             "Der Produktname darf höchstens 60 Zeichen lang sein",
-            "Der Claim darf keine Steuerzeichen enthalten",
+            "Der Claim darf keine Steuerzeichen und keinen Zeilenumbruch enthalten",
             "Der Hinweis zur KI-Nutzung darf keine Steuerzeichen und keinen Zeilenumbruch enthalten",
             "Die Primärfarbe muss ein sechsstelliger Hex-Wert mit führendem '#' sein, zum Beispiel"
                 + " #1292EE");
@@ -78,5 +78,62 @@ class BrandingSettingsRulesTest {
 
     assertThat(checked.errors()).isEmpty();
     assertThat(checked.values().aiNotice()).isNull();
+  }
+
+  @Test
+  void aProductNameOrClaimWithoutAVisibleCharacterFollowsTheDefault() {
+    for (String invisible : new String[] {"\u00A0", "\u200B", "\u00A0\u200B\u3000", "\uFE0F"}) {
+      BrandingSettingsRules.Checked checked =
+          BrandingSettingsRules.check("", invisible, invisible, null, null, null);
+
+      assertThat(checked.errors())
+          .as("value %s", invisible.codePoints().boxed().toList())
+          .isEmpty();
+      assertThat(checked.values().productName()).isNull();
+      assertThat(checked.values().claim()).isNull();
+    }
+  }
+
+  @Test
+  void invisibleCharactersAtTheEdgesOfAProductNameAreNotStored() {
+    BrandingSettingsRules.Checked checked =
+        BrandingSettingsRules.check(
+            "", "\u200B\u00A0Landesamt\u00A0", "\u3000Fragen.\u200B", null, null, null);
+
+    assertThat(checked.errors()).isEmpty();
+    assertThat(checked.values().productName()).isEqualTo("Landesamt");
+    assertThat(checked.values().claim()).isEqualTo("Fragen.");
+  }
+
+  @Test
+  void aBidiControlInProductNameOrClaimIsAFieldErrorWhereverItStands() {
+    for (String reordering :
+        new String[] {
+          "Amt \u202Eredaeh", "\u202EAmt", "Amt\u202E", "Amt \u2066x\u2069", "\u202E"
+        }) {
+      BrandingSettingsRules.Checked checked =
+          BrandingSettingsRules.check("branding.", reordering, reordering, null, null, null);
+
+      assertThat(checked.errors())
+          .as("value %s", reordering.codePoints().boxed().toList())
+          .extracting(FieldError::field, FieldError::code, FieldError::message)
+          .containsExactly(
+              tuple(
+                  "branding.productName",
+                  "INVALID",
+                  "Der Produktname darf keine Steuerzeichen und keinen Zeilenumbruch enthalten"),
+              tuple(
+                  "branding.claim",
+                  "INVALID",
+                  "Der Claim darf keine Steuerzeichen und keinen Zeilenumbruch enthalten"));
+    }
+  }
+
+  @Test
+  void aBidiControlAtTheEdgeOfTheNoticeIsRejectedRatherThanCut() {
+    BrandingSettingsRules.Checked checked =
+        BrandingSettingsRules.check("", null, null, "\u202EEigener Hinweis", null, null);
+
+    assertThat(checked.errors()).extracting(FieldError::field).containsExactly("aiNotice");
   }
 }
