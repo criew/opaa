@@ -145,7 +145,7 @@ Herkunft und Zwang jeder einzelnen Variable:
   zwingend: Die Zielprüfung ausgehender Abrufe (`opaa.indexing.target-validation`, #267,
   standardmäßig aktiv) lehnt Compose-interne Adressen in privaten Bereichen ab — ohne diesen Eintrag
   würde jede Indizierung der beiden Demo-Webserver und des Demo-Objektspeichers `objectstore` (#1383) mit
-  „Zieladresse liegt in einem gesperrten Adressbereich" abgelehnt (siehe [`../docs/handbuch/betrieb/netz-und-sicherheit.md`, „Zielprüfung: Abrufe des Servers"](../docs/handbuch/betrieb/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)).
+  „Die Zieladresse … ist nicht zugelassen oder nicht erreichbar …" abgelehnt (siehe [`../docs/handbuch/betrieb/netz-und-sicherheit.md`, „Zielprüfung: Abrufe des Servers"](../docs/handbuch/betrieb/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)).
   Der Eintrag steht bewusst **nicht** in `docker-compose.yml`: Der Backend-Service dort läuft immer,
   mit oder ohne `demo`-Profil, und ein dort fest eingetragener Wert würde jede eigene Belegung dieser
   Variablen aus einer Betreiber-`.env.docker` überschreiben (Vorrang von `environment:` vor
@@ -157,13 +157,13 @@ Herkunft und Zwang jeder einzelnen Variable:
   [`../docs/handbuch/betrieb/netz-und-sicherheit.md`, „Zugangsdaten-Verschlüsselung"](../docs/handbuch/betrieb/netz-und-sicherheit.md#zugangsdaten-verschlüsselung)).
   Ohne Schlüssel bricht der Seed beim Anlegen dieser Bibliothek mit `503` ab. Der Demo-Stack läuft
   mit `docker,oidc`, nicht mit `dev` — der nur dort hinterlegte Entwicklungsschlüssel greift also
-  nicht; einen eigenen Wert mit `openssl rand -base64 32` erzeugen (der Demo-Smoke-Lauf setzt in
-  `e2e/demo-smoke.env` bewusst den öffentlichen Entwicklungsschlüssel, weil er nur Demo-Werte schützt).
+  nicht; einen eigenen Wert mit `openssl rand -base64 32` erzeugen (der Demo-Smoke-Lauf lässt die
+  Zeile in `e2e/demo-smoke.env` leer, `e2e/scripts/run-e2e.mjs` erzeugt den Schlüssel je Lauf).
 - `OPAA_AUTH_JWT_SECRET` ist seit #1532 zwingend: Der Demo-Stack läuft mit `docker,oidc`, und in
   diesem Betriebsmodus bricht das Backend den Start ohne ein starkes Wurzelgeheimnis der lokalen
   Benutzerverwaltung ab (ADR-0033; mindestens 32 Zeichen, kein Platzhalter). Einen eigenen Wert mit
-  `openssl rand -base64 48` erzeugen; der Demo-Smoke-Lauf setzt in `e2e/demo-smoke.env` bewusst
-  einen öffentlichen Testwert, weil er nur Demo-Konten schützt.
+  `openssl rand -base64 48` erzeugen; der Demo-Smoke-Lauf lässt die Zeile in `e2e/demo-smoke.env`
+  leer, `e2e/scripts/run-e2e.mjs` erzeugt den Wert je Lauf.
 - `OPAA_CSP_CONNECT_SRC_EXTRA=http://localhost:8180` ist beim `oidc`-Compose-Profil **zwingend**
   (`.env.docker.example`, Kommentar bei derselben Variable) — ohne sie blockiert die
   Content-Security-Policy des Frontend-nginx die OIDC-Anmeldung im Browser still (#409/#670): kein

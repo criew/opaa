@@ -19,6 +19,16 @@ class LoggedNameTest {
     assertThat(LoggedName.OPEN.of(thrown)).isSameAs(thrown);
   }
 
+  /** A name from a source cannot forge a log line: line breaks and controls show as {@code ?}. */
+  @Test
+  void anOpenNameCarriesNoLineBreakOrControlCharacter() {
+    String forged = "Bericht.pdf\r\n2026-10-29 INFO  Admin-Konto angelegt\u2028\u202Efdp.exe\u0000";
+
+    assertThat(LoggedName.OPEN.of(forged))
+        .isEqualTo("Bericht.pdf??2026-10-29 INFO  Admin-Konto angelegt??fdp.exe?");
+    assertThat(LoggedName.OPEN.of(forged, 3)).doesNotContain("\r", "\n", "\u2028", "\u202E");
+  }
+
   @Test
   void withheldNamesShowTheReferenceOnly() {
     assertThat(WITHHELD.of("/Akten/Akte-Geheim.pdf")).isEqualTo("<private library 7>");

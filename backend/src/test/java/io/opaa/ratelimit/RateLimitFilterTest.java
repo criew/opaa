@@ -348,6 +348,66 @@ class RateLimitFilterTest {
     }
   }
 
+  /**
+   * The filter runs before the firewall: a decoded path with a control character is refused with
+   * {@code 400} before any rule counts it or any log line names it.
+   */
+  @Test
+  void aPathWithAControlCharacterIsRefusedBeforeAnyRule() throws Exception {
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    Logger logger = (Logger) LoggerFactory.getLogger(RateLimitFilter.class);
+    logger.addAppender(appender);
+    var request =
+        new MockHttpServletRequest(
+            "POST", "/api/v1/libraries/x%0d%0a2026-10-29%20INFO%20forged/push");
+    var response = new MockHttpServletResponse();
+    var chain = new MockFilterChain();
+    try {
+      filter.doFilter(request, response, chain);
+    } finally {
+      logger.detachAppender(appender);
+    }
+
+    assertThat(response.getStatus()).isEqualTo(400);
+    assertThat(response.getContentType()).isEqualTo("application/json");
+    assertThat(chain.getRequest()).isNull();
+    verify(webhookLimiter, never()).tryAcquire(anyString());
+    assertThat(appender.list)
+        .extracting(ILoggingEvent::getFormattedMessage)
+        .noneSatisfy(message -> assertThat(message).contains("\n"));
+  }
+
+  /** A path the filter lets through still reaches the log without a line or paragraph break. */
+  @Test
+  void theLoggedPathCarriesNoLineBreak() throws Exception {
+    when(webhookLimiter.tryAcquire(anyString())).thenReturn(REJECTED);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    Logger logger = (Logger) LoggerFactory.getLogger(RateLimitFilter.class);
+    logger.addAppender(appender);
+    var request =
+        new MockHttpServletRequest("POST", "/api/v1/libraries/x%E2%80%A8forged%E2%80%A9/push");
+    // CharacterEncodingFilter runs first in the application and sets UTF-8
+    request.setCharacterEncoding("UTF-8");
+    var response = new MockHttpServletResponse();
+    try {
+      filter.doFilter(request, response, new MockFilterChain());
+    } finally {
+      logger.detachAppender(appender);
+    }
+
+    assertThat(response.getStatus()).isEqualTo(429);
+    assertThat(appender.list)
+        .extracting(ILoggingEvent::getFormattedMessage)
+        .singleElement()
+        .satisfies(
+            message ->
+                assertThat(message)
+                    .contains("/api/v1/libraries/x?forged?/push")
+                    .doesNotContain("\u2028", "\u2029"));
+  }
+
   @Test
   void ipv6ClientsShareTheBucketOfTheirSlash64AndAnUnknownAddressOneKey() throws Exception {
     when(loginLimiter.tryAcquire(anyString())).thenReturn(ALLOWED);

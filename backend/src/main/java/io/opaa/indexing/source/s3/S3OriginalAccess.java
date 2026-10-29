@@ -86,7 +86,10 @@ public class S3OriginalAccess {
             .filter(candidate -> candidate.contains(ref.key()))
             .findFirst();
     if (scope.isEmpty()) {
-      log.info("Object {} lies outside every scope of library {}", filePath, library.getId());
+      log.info(
+          "Object {} lies outside every scope of library {}",
+          library.loggedNames().of(filePath),
+          library.getId());
       return Optional.empty();
     }
     S3Connection connection;
@@ -102,7 +105,10 @@ public class S3OriginalAccess {
         | S3AccessException.ReadForbidden
         | S3AccessException.Archived
         | S3AccessException.ObjectTooLarge e) {
-      log.info("Object {} is not servable: {}", filePath, e.getMessage());
+      log.info(
+          "Object {} is not servable: {}",
+          library.loggedNames().of(filePath),
+          library.loggedNames().of(e.getMessage()));
       return Optional.empty();
     }
   }

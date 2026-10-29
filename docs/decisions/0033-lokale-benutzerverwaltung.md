@@ -251,8 +251,9 @@ Platzhalter, gebrandeter HTML-Rahmen; API mit Vorschau, Zurücksetzen und Testve
   Wert im Protokoll) und Ablaufdatum (vorbelegt mit `default_expiry_days`), per Einladung oder mit
   erzeugtem Passwort; ohne Mailversand enthält die Antwort den Link genau einmal, der Zustellweg
   steht im Protokoll. **Zurücksetzen** (Link oder erzeugtes Passwort, `pcr` `ADMIN_RESET`) widerruft
-  alle Sitzungen und bestätigt die Adresse nicht (Ausweg ohne Selbstregistrierung: löschen und
-  einladen).
+  alle Sitzungen; der Rücksetzlink bestätigt die Adresse nicht. Ein Konto ohne Passwort, auch eine
+  unbestätigte Selbstregistrierung, erhält stattdessen die Einladung, deren Einlösen die Adresse
+  bestätigt.
 - **Sperren ist der Regelweg**, Löschen die Ausnahme: Sperren widerruft alle Sitzungen und hebt eine
   Fehlversuch-Sperre auf, Entsperren setzt den Zähler zurück; Selbstsperre und jede Aktion am
   letzten gesicherten Systemverwalter sind 409 (`SELF_LOCKOUT`, `LAST_LOGIN_CAPABLE_ADMIN`), am
@@ -269,11 +270,20 @@ Platzhalter, gebrandeter HTML-Rahmen; API mit Vorschau, Zurücksetzen und Testve
   Quartals-Wiedervorlage (`ADMIN_REVIEW_REMINDER`, nur Zahlen) meinen dieselbe Menge ohne Notanker
   (`LocalUserOverview#countsAsInactive()`).
 - **Selbstbedienung:** Selbstregistrierung nur mit Schalter und Domänenliste (Rolle `USER`, Ablauf
-  Pflicht, `VERIFY_EMAIL`, bei belegter Adresse dieselbe `202` ohne Hinweis-Mail, eine unbestätigte
-  behält Hash und Namen gegen Pre-Hijacking; das Einschalten ist Dienstvereinbarungspunkt); „Passwort
-  vergessen“ nur mit Schalter und Basis-URL, immer `204` nach fester Frist. Ein abgeschalteter Fluss
-  ist ohne Sitzung von einer unbekannten Route nicht zu unterscheiden (#1592). Passwort ändern
-  widerruft die übrigen Sitzungen. Abläufe und Fristen: [Benutzerverwaltung](../handbuch/konten-und-rechte/benutzerverwaltung.md).
+  Pflicht, `VERIFY_EMAIL`, bei belegter Adresse dieselbe `202` ohne Hinweis-Mail; das Einschalten
+  ist Dienstvereinbarungspunkt). **Gegen Pre-Hijacking** trägt die Registrierung nur die Adresse,
+  kein Passwort und keinen Namen (bis zur Bestätigung steht die Adresse als Anzeigename): Erst das
+  Einlösen des Bestätigungslinks über einen eigenen Endpunkt
+  (`confirm-registration`, `LocalPasswordService#confirmRegistration`) setzt Name und Passwort,
+  verwirft jeden vorher gespeicherten Hash, beendet alle Sitzungen und entwertet alle übrigen Links;
+  eine bereits bestätigte Adresse weist den Link ab, und eine eingelöste Einladung (sie bestätigt die
+  Adresse) sowie eine geänderte Adresse entwerten ihn; ein Rücksetzlink bestätigt nichts und lässt
+  ihn offen. Wer eine fremde Adresse zuerst registriert, bestimmt so weder
+  Passwort noch Namen; eine erneute Registrierung einer unbestätigten Adresse schickt nur einen neuen
+  Link. Die Bestätigungsmail nennt keinen Namen und sagt „Nicht von Ihnen? Ignorieren“. „Passwort
+  vergessen“ nur mit Schalter und Basis-URL, immer `204` nach fester Frist.
+  Ein abgeschalteter Fluss ist ohne Sitzung von einer unbekannten Route nicht zu unterscheiden
+  (#1592). Passwort ändern widerruft die übrigen Sitzungen. Abläufe und Fristen: [Benutzerverwaltung](../handbuch/konten-und-rechte/benutzerverwaltung.md).
 
 ### 12. Übergabe eines lokalen Kontos an eine Anbieteridentität — administrativ angestoßen, von der Person selbst eingelöst
 
@@ -400,6 +410,7 @@ Bedingungen des Personalrats für eine Zustimmung); Stand der Zusagen:
 - Tomcats `RemoteIpValve` mit `forward-headers-strategy: native`; `X-Forwarded-For` ungeprüft; linkester Eintrag — nicht gebaut, der Resolver liest unterhalb der Wrapper; jede IP-Grenze wirkungslos; falsch bei anhängenden Proxys (9).
 - SMTP in der Umgebung; Basis-URL als Verwaltungseinstellung; Outbox — kein Testversand; über eine kompromittierte Sitzung umlenkbar; Auth-Mails brauchen ein sofortiges Ergebnis (10).
 - Kontenliste mit exakter letzter Anmeldung oder Export; Hinweis-Mail bei belegter Adresse; Selbstregistrierung ohne Domänenliste; hartes Löschen mit Kaskade — Auswertungspfad; Aufzählungskanal; Konten ohne Ablauf; DSGVO-Pfad (11).
+- Passwort schon bei der Registrierung, unbestätigt behaltener Hash; Name aus der Registrierung in der Bestätigungsmail; neue Bestätigung unter dem alten Pfad `verify-email`; angepasste Mailvorlagen automatisch ersetzen — wer eine fremde Adresse zuerst registriert, bestimmt das Passwort, das die Person mit dem Link aktiviert; Text-Einschleusung in eine Mail an fremde Adressen; ein älteres Backend im Rolling Update bestätigte ohne Passwort; verwirft Texte der Verwaltung ohne Nachweis, dass sie veraltet sind (11).
 - Keine Übergabe; Übergabe mit eingetipptem Subject; Vier-Augen-Prinzip — wiederholt `basic`; fremde private Inhalte lesbar; die Person ist die zweite Partei (12).
 - Erfolgreiche Anmeldungen aller Verwalter auditieren; Profil umbenennen — Personen sind keine Notfallmittel; bricht jede Bereitstellung (13, 8).
 

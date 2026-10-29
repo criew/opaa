@@ -1,5 +1,6 @@
 package io.opaa.mail;
 
+import io.opaa.common.LogText;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -21,11 +22,6 @@ final class MailLogText {
   private static final String WORD_CHARACTER = "[\\p{L}\\p{M}\\p{N}_]";
 
   private static final Pattern WORD = Pattern.compile(WORD_CHARACTER);
-
-  /**
-   * Control characters (C0, DEL, C1 including U+0085) and the Unicode line and paragraph breaks.
-   */
-  private static final Pattern LINE_BREAKING = Pattern.compile("[\\p{Cc}\\p{Zl}\\p{Zp}]");
 
   private static final String SECRET_MASK = "***";
 
@@ -66,6 +62,6 @@ final class MailLogText {
 
   /** {@code text} with every character that could start a forged log line replaced by {@code ?}. */
   static String withoutLineBreaks(String text) {
-    return text == null ? null : LINE_BREAKING.matcher(text).replaceAll("?");
+    return LogText.of(text);
   }
 }

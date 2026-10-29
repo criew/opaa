@@ -17,6 +17,12 @@ import { resetMockProviderAccounts } from '../mocks/accountFixtures'
 import type { LocalAuthSettingsUpdateRequest, LocalUserUpdateRequest } from '@/shared/api/types'
 import { answerConfirm, renderWithProviders, waitForDialogClosed } from '@/test/test-utils'
 import { useAuthStore } from '@/shared/session/authStore'
+import { mockLocalAccount } from '@/shared/mocks/authFixtures'
+import {
+  RECENT_LOGIN_NOT_CONFIRMED_BY_PROVIDER_MESSAGE,
+  markRecentLoginReturn,
+} from '@/shared/session/recentLogin'
+import { resetProviderReturn } from '@/shared/session/useRecentLoginGate'
 import { useMailStore } from '@/features/mail'
 import { useUserAdminStore } from '../stores/userAdminStore'
 import UserManagementPage from './UserManagementPage'
@@ -102,6 +108,7 @@ describe('UserManagementPage', () => {
     useUserAdminStore.getState().reset()
     useMailStore.getState().reset()
     resetMockProviderAccounts()
+    resetProviderReturn()
   })
 
   it('shows no user management to an account that is not a system administrator', () => {
@@ -330,6 +337,204 @@ describe('UserManagementPage', () => {
       await within(dialog).findByText(/Richten Sie zuerst ein weiteres Systemverwalterkonto/),
     ).toBeInTheDocument()
   })
+
+  /**
+   * A system role changes only after a recent sign-in: the refusal opens the confirmation, and the
+   * change goes through once the person confirmed - without choosing the role a second time.
+   */
+  it('confirms the sign-in before a role change and then applies it', async () => {
+    signInAs('SYSTEM_ADMIN')
+    useAuthStore.setState({ sessionKind: 'local', token: 'old-token' })
+    const user = userEvent.setup()
+    let refusals = 0
+    server.use(
+      http.post('/api/v1/admin/users/:id/role', () => {
+        if (refusals > 0) return undefined
+        refusals += 1
+        return HttpResponse.json(
+          {
+            error: 'Bitte bestätigen Sie Ihre Identität.',
+            status: 403,
+            code: 'RECENT_LOGIN_REQUIRED',
+          },
+          { status: 403 },
+        )
+      }),
+    )
+    renderAccounts()
+    await screen.findByRole('table', { name: 'Konten' })
+
+    const menu = await openRowMenu(user, 'Maria Weber')
+    await user.click(within(menu).getByRole('menuitem', { name: /Rolle ändern/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Rolle von „Maria Weber“ ändern' })
+    await user.click(within(dialog).getByRole('combobox', { name: 'Rolle' }))
+    await user.click(await screen.findByRole('option', { name: 'Revision' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+    const confirm = await screen.findByRole('dialog', { name: 'Anmeldung bestätigen' })
+    expect(within(confirm).getByText(/Rolle/)).toBeInTheDocument()
+    await user.type(within(confirm).getByLabelText('Ihr Passwort'), mockLocalAccount.password)
+    await user.click(within(confirm).getByRole('button', { name: 'Bestätigen' }))
+
+    await waitFor(() =>
+      expect(within(rowOf('Maria Weber')).getByText('Revision')).toBeInTheDocument(),
+    )
+    expect(refusals).toBe(1)
+  }, 20000)
+
+  /**
+   * Back from the sign-in at the provider, the next refusal says the provider did not confirm it
+   * instead of sending the person to the provider once more; the attempt after that asks again.
+   */
+  it('tells after a provider sign-in that it was not confirmed, without a loop', async () => {
+    signInAs('SYSTEM_ADMIN')
+    useAuthStore.setState({ sessionKind: 'oidc', activeProviderId: 'keycloak' })
+    markRecentLoginReturn()
+    const user = userEvent.setup()
+    server.use(
+      http.post('/api/v1/admin/users/:id/role', () =>
+        HttpResponse.json(
+          {
+            error: 'Bitte bestätigen Sie Ihre Identität.',
+            status: 403,
+            code: 'RECENT_LOGIN_REQUIRED',
+          },
+          { status: 403 },
+        ),
+      ),
+    )
+    renderAccounts()
+    await screen.findByRole('table', { name: 'Konten' })
+    expect(await screen.findByText(/von Ihrem Anmeldedienst zurück/)).toBeInTheDocument()
+
+    const menu = await openRowMenu(user, 'Maria Weber')
+    await user.click(within(menu).getByRole('menuitem', { name: /Rolle ändern/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Rolle von „Maria Weber“ ändern' })
+    await user.click(within(dialog).getByRole('combobox', { name: 'Rolle' }))
+    await user.click(await screen.findByRole('option', { name: 'Revision' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+    expect(
+      await within(dialog).findByText(RECENT_LOGIN_NOT_CONFIRMED_BY_PROVIDER_MESSAGE),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Anmeldung bestätigen' })).not.toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+    expect(await screen.findByRole('dialog', { name: 'Anmeldung bestätigen' })).toBeInTheDocument()
+  }, 20000)
+
+  /** Leaving the page drops the return: a later visit asks for the confirmation again. */
+  it('forgets the return from the provider once the page is left', async () => {
+    signInAs('SYSTEM_ADMIN')
+    useAuthStore.setState({ sessionKind: 'oidc', activeProviderId: 'keycloak' })
+    markRecentLoginReturn()
+    const user = userEvent.setup()
+    server.use(
+      http.post('/api/v1/admin/users/:id/role', () =>
+        HttpResponse.json(
+          {
+            error: 'Bitte bestätigen Sie Ihre Identität.',
+            status: 403,
+            code: 'RECENT_LOGIN_REQUIRED',
+          },
+          { status: 403 },
+        ),
+      ),
+    )
+    const first = renderAccounts()
+    expect(await screen.findByText(/von Ihrem Anmeldedienst zurück/)).toBeInTheDocument()
+    first.unmount()
+
+    renderAccounts()
+    await screen.findByRole('table', { name: 'Konten' })
+    const menu = await openRowMenu(user, 'Maria Weber')
+    await user.click(within(menu).getByRole('menuitem', { name: /Rolle ändern/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Rolle von „Maria Weber“ ändern' })
+    await user.click(within(dialog).getByRole('combobox', { name: 'Rolle' }))
+    await user.click(await screen.findByRole('option', { name: 'Revision' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+    expect(await screen.findByRole('dialog', { name: 'Anmeldung bestätigen' })).toBeInTheDocument()
+    expect(
+      within(dialog).queryByText(RECENT_LOGIN_NOT_CONFIRMED_BY_PROVIDER_MESSAGE),
+    ).not.toBeInTheDocument()
+  }, 20000)
+
+  it('confirms the sign-in before a password is generated for an account', async () => {
+    signInAs('SYSTEM_ADMIN')
+    useAuthStore.setState({ sessionKind: 'local', token: 'old-token' })
+    const user = userEvent.setup()
+    let refusals = 0
+    server.use(
+      http.post('/api/v1/admin/local-users/:id/password', () => {
+        if (refusals > 0) return undefined
+        refusals += 1
+        return HttpResponse.json(
+          {
+            error: 'Bitte bestätigen Sie Ihre Identität.',
+            status: 403,
+            code: 'RECENT_LOGIN_REQUIRED',
+          },
+          { status: 403 },
+        )
+      }),
+    )
+    renderAccounts()
+    await screen.findByRole('table', { name: 'Konten' })
+
+    const menu = await openRowMenu(user, 'T. Klein')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Passwort erzeugen' }))
+    await answerConfirm(user, /Passwort für „T. Klein“ erzeugen/, 'Erzeugen')
+
+    const confirm = await screen.findByRole('dialog', { name: 'Anmeldung bestätigen' })
+    await user.type(within(confirm).getByLabelText('Ihr Passwort'), mockLocalAccount.password)
+    await user.click(within(confirm).getByRole('button', { name: 'Bestätigen' }))
+
+    expect(await screen.findByTestId('generated-password-value')).toBeInTheDocument()
+    expect(refusals).toBe(1)
+  }, 20000)
+
+  it('confirms the sign-in before the edit dialog changes a role', async () => {
+    signInAs('SYSTEM_ADMIN')
+    useAuthStore.setState({ sessionKind: 'local', token: 'old-token' })
+    const user = userEvent.setup()
+    const bodies: LocalUserUpdateRequest[] = []
+    server.use(
+      http.patch('/api/v1/admin/local-users/:id', async ({ params, request }) => {
+        const body = (await request.json()) as LocalUserUpdateRequest
+        bodies.push(body)
+        if (bodies.length === 1) {
+          return HttpResponse.json(
+            {
+              error: 'Bitte bestätigen Sie Ihre Identität.',
+              status: 403,
+              code: 'RECENT_LOGIN_REQUIRED',
+            },
+            { status: 403 },
+          )
+        }
+        const stored = mockLocalUsers.find((account) => account.id === String(params.id))!
+        return HttpResponse.json({ ...stored, systemRole: body.systemRole ?? stored.systemRole })
+      }),
+    )
+    renderAccounts()
+    await screen.findByRole('table', { name: 'Konten' })
+
+    const menu = await openRowMenu(user, 'T. Klein')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Bearbeiten' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('combobox', { name: 'Rolle' }))
+    await user.click(await screen.findByRole('option', { name: 'Revision' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+    const confirm = await screen.findByRole('dialog', { name: 'Anmeldung bestätigen' })
+    await user.type(within(confirm).getByLabelText('Ihr Passwort'), mockLocalAccount.password)
+    await user.click(within(confirm).getByRole('button', { name: 'Bestätigen' }))
+
+    await waitFor(() => expect(bodies).toHaveLength(2))
+    expect(bodies[1].systemRole).toBe('AUDITOR')
+    await waitForDialogClosed()
+  }, 20000)
 
   it('names the review obligation behind a hint link and jumps into the matching filter', async () => {
     signInAs('SYSTEM_ADMIN')

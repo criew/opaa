@@ -84,7 +84,7 @@ final class EmlReader {
       log.warn(
           "{} carries more than the configured limit of {} attachments; the remainder was never"
               + " extracted (opaa.indexing.mail.max-attachments-per-message)",
-          file,
+          names.of(file),
           properties.maxAttachmentsPerMessage());
     }
 

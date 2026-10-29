@@ -24,9 +24,9 @@ Controller und Mapper der Fachmodule liegen in deren `web`-Paketen („Web-Schic
   `TransportStatusCodeSpecificationTest` hält das maschinell fest (Regel in `backend/AGENTS.md`).
 - **Startwächter in `config`:** `DatabaseSchemaGuard` verlangt für `opaa.database.schema` einen
   schlichten Bezeichner in Kleinbuchstaben und prüft vor Datenquelle und Flyway.
-  `PgVectorVersionGuard` verweigert den Start bei pgvector älter als 0.8.0. Ein Wechsel des
-  Embedding-Modells verhindert den Start nicht; das erkennt `indexing.chunk.EmbeddingIndexReconciler`.
-  `OpenAiBaseUrlGuard` lehnt eine leere Basis-URL oder eine mit Zugangsdaten ab; `ModelAllowlistStartupWarning` warnt.
+  `PgVectorVersionGuard` verweigert den Start bei pgvector vor 0.8.0, `VectorIndexDistanceGuard` bei einer
+  Distanzfunktion, die nicht zum Vektorindex passt; ein Modellwechsel nicht (`indexing.chunk.EmbeddingIndexReconciler`).
+  `OpenAiBaseUrlGuard` (nur `dev`): keine leere Basis-URL, keine mit Zugangsdaten; `ModelAllowlistStartupWarning` warnt.
   `DatabasePrerequisiteCheck` läuft vor jeder `Flyway`-Bean und bricht ab, wenn pgvector auf
   dem Server nicht installiert ist; den Bericht schreibt `DatabasePrerequisiteFailureAnalyzer`
   (registriert in `META-INF/spring.factories`). Eine Fehlerkette auszuwerten genügt dafür nicht:

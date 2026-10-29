@@ -30,10 +30,11 @@ import org.springframework.transaction.annotation.Transactional;
  * The account writes of the self-service (ADR-0033, Entscheidungen 3, 11 and 13), one transaction
  * each: the registration that creates a {@code users} row of the local issuer together with its
  * {@code local_credentials} row (the invariant {@link LocalUserService} keeps for the
- * administration), the confirmation of the address, and the issue of a self-requested reset link.
- * The link mail goes to the outbox in the same transaction, so it leaves after the commit and only
- * with it (ADR-0053, Entscheidung 11). Registration is audited under the system process {@code
- * local-auth} with the account as a pseudonym and never with the address or the name.
+ * administration), and the issue of a self-requested reset link. The confirmation of the address
+ * sets the password and is therefore {@link LocalPasswordService#confirmRegistration}. The link
+ * mail goes to the outbox in the same transaction, so it leaves after the commit and only with it
+ * (ADR-0053, Entscheidung 11). Registration is audited under the system process {@code local-auth}
+ * with the account as a pseudonym and never with the address or the name.
  */
 @Service
 public class LocalSelfServiceAccountService {
@@ -84,20 +85,20 @@ public class LocalSelfServiceAccountService {
   }
 
   /**
-   * Creates the account for an already validated address and name with an already encoded hash:
-   * role {@code USER}, expiry {@code default_expiry_days} from now (mandatory), reason {@link
-   * #CREATED_REASON}, address unconfirmed. A taken address is a {@link ConflictException} ({@code
-   * EMAIL_TAKEN}); an insert lost to a concurrent registration surfaces as the unique index's
-   * {@code DataIntegrityViolationException} - the caller treats both as "no account", silently. The
-   * one exception is a still unconfirmed self-registration of the same address: it gets a fresh
-   * verification link (the older one is voided) and nothing else - neither the hash nor the name
-   * are replaced, or a second registration could plant a password the first person then confirms.
-   * The personal space is not provisioned here: the first sign-in after the confirmation creates it
-   * on the path every sign-in takes, so an unconfirmed registration leaves no space behind. Both
-   * outcomes that issue a link queue its verification mail.
+   * Creates the account for an already validated address, without a password and with the address
+   * as display name: role {@code USER}, expiry {@code default_expiry_days} from now (mandatory),
+   * reason {@link #CREATED_REASON}, address unconfirmed. Name and password are set only by
+   * redeeming the verification link, so whoever registers somebody else's address decides neither.
+   * A taken address is a {@link ConflictException} ({@code EMAIL_TAKEN}); an insert lost to a
+   * concurrent registration surfaces as the unique index's {@code DataIntegrityViolationException}
+   * - the caller treats both as "no account", silently. The one exception is a still unconfirmed
+   * self-registration of the same address: it gets a fresh verification link (the older one is
+   * voided) and nothing else. The personal space is not provisioned here: the first sign-in after
+   * the confirmation creates it on the path every sign-in takes, so an unconfirmed registration
+   * leaves no space behind. Both outcomes that issue a link queue its verification mail.
    */
   @Transactional
-  public Registered register(String email, String displayName, String passwordHash) {
+  public Registered register(String email) {
     Instant now = clock.instant();
     Optional<User> existing = users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, email);
     if (existing.isPresent()) {
@@ -106,12 +107,11 @@ public class LocalSelfServiceAccountService {
       mailer.sendRegistrationVerification(again.user(), again.verification());
       return again;
     }
-    User user = User.localAccount(email, displayName);
+    User user = User.localAccount(email, provisionalName(email));
     user.setOrganizationId(Organization.DEFAULT_ID);
     user.setLastLoginAt(null);
     user = users.saveAndFlush(user);
     LocalCredentials row = new LocalCredentials(user.getId(), CREATED_REASON, now);
-    row.setPasswordHash(passwordHash, now);
     Instant expiresAt = now.plus(Duration.ofDays(policy().defaultExpiryDays()));
     row.setExpiresAt(expiresAt, now);
     row = credentials.save(row);
@@ -132,6 +132,13 @@ public class LocalSelfServiceAccountService {
     return new Registered(user, row, verification);
   }
 
+  /** The address, cut to the column width of {@code users.display_name}, until the confirmation. */
+  private static String provisionalName(String email) {
+    return email.length() <= LocalSelfServiceService.DISPLAY_NAME_MAX_LENGTH
+        ? email
+        : email.substring(0, LocalSelfServiceService.DISPLAY_NAME_MAX_LENGTH);
+  }
+
   /** The account again with a fresh verification link, if it is a self-registration still open. */
   private Optional<Registered> pendingRegistration(User user, Instant now) {
     return credentials
@@ -139,7 +146,6 @@ public class LocalSelfServiceAccountService {
         .filter(
             row ->
                 row.getEmailVerifiedAt() == null
-                    && row.getPasswordHash() != null
                     && CREATED_REASON.equals(row.getCreatedReason())
                     && LocalAccountAccess.mayRedeemLink(row, now))
         .map(
@@ -149,35 +155,6 @@ public class LocalSelfServiceAccountService {
                     row,
                     actionTokens.issue(
                         user.getId(), ActionTokenPurpose.VERIFY_EMAIL, VERIFY_EMAIL_TTL)));
-  }
-
-  /**
-   * Redeems a {@code VERIFY_EMAIL} link exactly once and confirms the address. Every refused token
-   * is the same {@link LocalActionTokenService#invalidToken}, including one of an account that may
-   * no longer redeem a link ({@link LocalAccountAccess#mayRedeemLink}).
-   */
-  @Transactional
-  public User verifyEmail(String rawToken) {
-    Instant now = clock.instant();
-    LocalActionToken token =
-        actionTokens
-            .redeem(rawToken, ActionTokenPurpose.VERIFY_EMAIL)
-            .orElseThrow(LocalActionTokenService::invalidToken);
-    User user =
-        users
-            .findById(token.getUserId())
-            .filter(found -> LocalIssuer.URN.equals(found.getIssuer()))
-            .orElseThrow(LocalActionTokenService::invalidToken);
-    LocalCredentials row =
-        credentials
-            .findById(user.getId())
-            .filter(found -> LocalAccountAccess.mayRedeemLink(found, now))
-            .orElseThrow(LocalActionTokenService::invalidToken);
-    if (row.getEmailVerifiedAt() == null) {
-      row.markEmailVerified(now);
-      credentials.save(row);
-    }
-    return user;
   }
 
   /**

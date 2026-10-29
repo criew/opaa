@@ -3,26 +3,23 @@ package io.opaa.config;
 import io.opaa.llm.ModelEndpointUri;
 import jakarta.annotation.PostConstruct;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.env.Environment;
 import org.springframework.util.StringUtils;
 
 /**
- * Refuses to start when the base URL of the chat function is blank or carries credentials. The
- * embedding model is no configuration value any more; its address is checked by the probe embedding
- * of {@code io.opaa.llm.EmbeddingModelService}.
+ * Refuses to start the {@code dev} mode when the base URL of its chat model is blank or carries
+ * credentials. Only that mode reads the address, for the chat model it installs itself with; every
+ * other mode gets its models from the installation, so the guard is not even registered there. The
+ * embedding model's address is checked by the probe embedding of {@code
+ * io.opaa.llm.EmbeddingModelService}.
  *
- * <p>{@code openai} is a protocol name, not a vendor name: locally operated model servers (Ollama
- * included, via its own {@code /v1} endpoint) expose the same API, and it is the only connection
- * path Spring AI wires here - {@code spring.ai.model.chat} is fixed to {@code openai}, not a choice
- * anymore. {@code application.yml} therefore does carry a default base URL (the local Ollama
- * endpoint): the default itself already stays inside the organisation, so inheriting it is safe.
- * This guard protects against a narrower failure mode: an operator who sets {@code
- * OPAA_OPENAI_BASE_URL} (or one of the per-function variables) to an explicitly blank value
- * overrides that default with an empty string - {@code ${VAR:default}} only falls back to {@code
- * default} when {@code VAR} is entirely unset, not when it is set and empty - and a blank base URL
- * would otherwise fail deep inside the OpenAI client with a far less obvious error.
+ * <p>{@code ${VAR:default}} only falls back to its default when {@code VAR} is unset: an {@code
+ * OPAA_OPENAI_BASE_URL} set but empty overrides the local default with an empty string, which would
+ * otherwise fail deep inside the OpenAI client with a far less obvious error.
  */
 @Configuration
+@Profile("dev")
 public class OpenAiBaseUrlGuard {
 
   static final String OPENAI_PROVIDER = "openai";
@@ -35,8 +32,6 @@ public class OpenAiBaseUrlGuard {
 
   @PostConstruct
   void rejectMissingBaseUrl() {
-    // The chat models live in the model administration; the shared address still feeds the
-    // auto-configured client and the chat model the dev mode installs itself.
     check("chat", "spring.ai.openai.base-url", null);
   }
 
