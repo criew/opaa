@@ -60,6 +60,16 @@ describe('documentContent', () => {
       expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:mock-object-url')
     })
 
+    it.each(['image/svg+xml', 'application/xhtml+xml', 'text/html', ''])(
+      'never opens a %j blob in the browser viewer',
+      (type) => {
+        openInBrowserViewer(new Blob(['<x/>'], { type }))
+
+        expect(createObjectURLSpy).not.toHaveBeenCalled()
+        expect(windowOpenSpy).not.toHaveBeenCalled()
+      },
+    )
+
     it('previews an image in a new tab', async () => {
       windowOpenSpy.mockReturnValue(null)
       mockGetDocumentContent.mockResolvedValueOnce({

@@ -184,9 +184,13 @@ export async function openDocumentContent(
 
 /**
  * Opens `blob` in the browser's own viewer in a new tab - the fallback when the app's PDF viewer
- * cannot show a file. The object URL is revoked after {@link OBJECT_URL_REVOKE_DELAY_MS}.
+ * cannot show a file. A type outside {@link PREVIEWABLE_CONTENT_TYPES} is never opened. The object
+ * URL is revoked after {@link OBJECT_URL_REVOKE_DELAY_MS}.
  */
 export function openInBrowserViewer(blob: Blob) {
+  if (!isPreviewable(blob.type)) {
+    return
+  }
   const objectUrl = URL.createObjectURL(blob)
   try {
     window.open(objectUrl, '_blank', 'noopener,noreferrer')

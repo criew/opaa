@@ -275,8 +275,9 @@ docker build -t opaa-smoke/frontend -f frontend/Dockerfile .
 .github/scripts/image_smoke_test.sh opaa-smoke/backend opaa-smoke/frontend
 # Härtung des Frontend-nginx ohne Backend: ein Echo statt des Backends belegt, dass vom Client
 # gesetzte Forwarded/X-Forwarded-Host/-Port/-Prefix nicht ankommen; dazu Permissions-Policy,
-# Cross-Origin-Opener-Policy und Cross-Origin-Resource-Policy auf jeder Antwort, die Startprüfung von OPAA_CSP_CONNECT_SRC_EXTRA und mit OPAA_BACKEND_RESOLVER
-# die Auflösung zur Laufzeit: zwei Container hinter einem Namen bekommen beide Anfragen, ein
+# Cross-Origin-Opener-Policy und Cross-Origin-Resource-Policy auf jeder Antwort, die
+# Startprüfung von OPAA_CSP_CONNECT_SRC_EXTRA und mit OPAA_BACKEND_RESOLVER die Auflösung zur
+# Laufzeit: zwei Container hinter einem Namen bekommen beide Anfragen, ein
 # entfernter fällt ohne Neustart heraus. Stoppt einer unter parallelen Anfragen, beantwortet der
 # andere jede binnen weniger Sekunden, ohne 5xx; langsame und gestreamte Antworten sowie Uploads
 # bis zu den Grenzen kommen unverändert an. In CI im selben Job
