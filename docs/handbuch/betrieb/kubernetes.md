@@ -360,8 +360,9 @@ helm install opaa chart/opaa-<x.y.z>.tgz -n opaa -f opaa-werte.yaml \
 
 Der Chart heftet beide Images per Digest an (`backend.image.digest`, `frontend.image.digest`, dieselben
 Werte wie in `DIGESTS` im Bündel). Sie gelten unverändert in der internen Registry, weil `skopeo` die
-Digests beim Einspielen behält. Verlangt die Registry eine Anmeldung, gehört ein Secret in `imagePullSecrets`. Die
-Erprobungsdatenbank und alle übrigen Drittimages kommen auf eigenem Weg in die Registry.
+Digests beim Einspielen behält. Verlangt die Registry eine Anmeldung, gehört ein Secret in
+`imagePullSecrets`. Die Erprobungsdatenbank und alle übrigen Drittimages kommen auf eigenem Weg in die
+Registry.
 
 ### 6. Auf das Backend warten und prüfen
 
@@ -1291,7 +1292,9 @@ Hinweise zum Aufruf:
 - **Kein Image-Tag und kein Digest in der Werte-Datei**, solange aus einem Release installiert wird.
   Ein gesetzter Digest bleibt bei einem `helm upgrade` stehen, und die neue Chart-Version liefe mit
   dem alten Image. Ein gesetzter Tag allein wirkt bei einem veröffentlichten Chart gar nicht: Dessen
-  Digest hat Vorrang.
+  Digest hat Vorrang. Die Hinweise nach `helm upgrade` nennen beides: einen Tag neben dem Digest
+  und einen Digest aus einer eigenen Registry, die ihn nur kennt, wenn sie mit
+  `skopeo copy --all --preserve-digests` gefüllt ist.
 - **Backend und Frontend immer in derselben Version.** Beides folgt aus der Chart-Version, solange
   kein Tag und kein Digest gesetzt ist.
 - **Installation aus einem Checkout:** `helm upgrade opaa deploy/helm/opaa -n opaa -f opaa-werte.yaml`

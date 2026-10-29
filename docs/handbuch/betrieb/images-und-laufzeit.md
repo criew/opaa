@@ -59,7 +59,7 @@ enth채lt alles von OPAA selbst und l채sst sich hinter der Schleuse ohne Netz pr�
 | `DIGESTS` | der Digest jedes Image, derselbe wie in GHCR |
 | `chart/` | das Helm-Chart |
 | `update-paket/` | das Update-Paket, darin dieses Handbuch |
-| `sbom/`, `attestations/` | die SBOMs und die Nachweise der Herkunft von Update-Paket und SBOMs; der Nachweis des Charts bezieht sich auf den Chart in GHCR und l채sst sich offline nicht gegen die Datei in `chart/` pr체fen, die Datei deckt `SHA256SUMS` ab |
+| `sbom/`, `attestations/` | die SBOMs und die Nachweise der Herkunft von Update-Paket, SBOMs, Chart und beiden Images; die Nachweise von Chart und Images beziehen sich auf deren Manifest in der Registry und lassen sich offline nicht gegen die Dateien in `chart/` und `images/` pr체fen, die Dateien deckt `SHA256SUMS` ab |
 | `SHA256SUMS`, `SHA256SUMS.sigstore.json` | Pr체fsummen aller Dateien und ihr Herkunftsnachweis |
 
 Nicht im B체ndel sind die Datenbank, der Modellserver, ein Identit채tsanbieter und Modellgewichte.

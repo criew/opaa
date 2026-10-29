@@ -199,8 +199,19 @@ und das Packen des Charts rufen es beide auf. Ebenso gibt es eine einzige Existe
 Images und Chart, `deploy/helm/ci/oci-published.sh`. Sie fragt die Registry-API direkt und wertet
 den HTTP-Status aus. `docker buildx imagetools inspect` taugt dafür nicht, weil es eine
 Verweigerung ebenfalls als „not found“ meldet. Mit `--digest` liefert dasselbe Skript den Digest,
-auf den ein Tag zeigt, berechnet aus dem gelieferten Manifest und abgeglichen mit der Angabe der
-Registry; daraus nimmt der Job `image-digests` die Digests für Attestierung und Chart.
+auf den ein Tag zeigt, berechnet aus dem gelieferten Manifest; die Registry muss denselben Digest
+im Header `Docker-Content-Digest` nennen.
+
+**Signiert wird, was der Lauf gebaut hat, nicht was ein Tag gerade zeigt.** `publish` legt den
+Index vorher im Probelauf an (`imagetools create --dry-run`). buildx gibt dabei genau die Bytes
+aus, die es danach pusht, und hängt einen Zeilenumbruch an. Der SHA-256 dieser Ausgabe ohne den
+Zeilenumbruch ist also der Digest des Index. `publish` legt ihn als Artefakt ab, bevor ein Tag
+gesetzt wird, und setzt die Tags nur, wenn ein zweiter Probelauf unmittelbar davor dieselben Bytes
+ergibt. `image-digests` liest je Image den Digest zurück, auf den `X.Y.Z` (sonst `sha-<commit>`)
+zeigt, und bricht ab, wenn er abweicht. Attestierung und Chart nehmen nur den so bestätigten
+Digest. Hat jemand mit Schreibrecht auf GHCR den Tag zwischen `publish` und `image-digests`
+umgehängt, auch bei einer Wiederholung Tage später, attestiert der Lauf nichts und packt keinen
+Chart; ein paralleler Lauf desselben Commits auf `main`, der `sha-<commit>` neu setzt, ebenso.
 
 **Ein Release baut ohne Build-Cache.** Bei einem Tag lesen und schreiben die `build`-Jobs den
 GitHub-Actions-Cache nicht. In den Cache von `main` darf jeder Job schreiben, der auf `main` läuft,
@@ -209,15 +220,16 @@ den Basis-Images und den Paketquellen. Die Abwägung und das verbleibende Risiko
 in [renovate.md](renovate.md#sicherheitsmodell-des-gha-caches).
 
 Der Lauf ist in Jobs gestaffelt: erst die Prüfungen (`prepare`), dann die Images (`build` je Image
-und Architektur, `publish` je Image, dann `image-digests`, der die Index-Digests über den Tag
-`X.Y.Z` aus GHCR liest, und `image-attestation` je Image) und daneben die axe-Prüfung
-(`accessibility`) und nach ihr das Update-Paket (`update-package`, seine Attestierung in
-`update-package-attestation`), dann der Chart mit den Digests aus `image-digests`, dann seine
-Attestierung, dann das
+und Architektur, dann je Image `publish`, `image-digests` und `image-attestation`) und daneben die
+axe-Prüfung (`accessibility`) und nach ihr das Update-Paket (`update-package`, seine Attestierung
+in `update-package-attestation`), dann der Chart mit den bestätigten Digests, sobald beide Images
+attestiert sind, dann seine Attestierung, dann das
 [Offline-Bündel](#offline-bündel) (`offline-bundle`), zuletzt das GitHub-Release mit Update-Paket und
 Bündel als Anhang. Jeder Job startet nur, wenn die vorigen gelungen sind, und ein Fehlschlag färbt
-den Lauf rot. Ein gescheitertes Bündel hält deshalb das GitHub-Release auf, obwohl Images und Chart
-schon veröffentlicht sind. Der Chart zeigt also nie auf ein Image, das nicht veröffentlicht wurde, und das
+den Lauf rot. Ausnahme sind die drei Jobs je Image: Scheitert `publish` nur für ein Image, laufen
+`image-digests` und `image-attestation` für das andere weiter, damit kein veröffentlichtes Image
+ohne Attestierung bleibt; der Chart folgt erst, wenn beide attestiert sind. Ein gescheitertes Bündel
+hält das GitHub-Release auf, obwohl Images und Chart schon veröffentlicht sind. Der Chart zeigt also nie auf ein Image, das nicht veröffentlicht wurde, und das
 GitHub-Release kündigt nichts an, was fehlt. Wie die Images für zwei Architekturen entstehen,
 beschreibt [Mehrere Architekturen](#mehrere-architekturen).
 
@@ -858,7 +870,7 @@ wiederverwendbaren Workflow `.github/workflows/offline-bundle.yml` auf; die Logi
 | `chart/opaa-X.Y.Z.tgz` | das Helm-Chart aus GHCR |
 | `update-paket/` | das [Update-Paket](#update-paket) samt Handbuch der Version |
 | `sbom/` | die beiden CycloneDX-SBOMs |
-| `attestations/` | die Sigstore-Bundles der Attestierungen von Update-Paket, SBOMs und Chart, wie sie der Release-Lauf erzeugt hat (`gh attestation download`) |
+| `attestations/` | die Sigstore-Bundles der Attestierungen von Update-Paket, SBOMs, Chart und beiden Images, wie sie der Release-Lauf erzeugt hat (`gh attestation download`); ein Bündel eines älteren Release ohne Image-Attestierung enthält diese nicht |
 | `LIESMICH.md` | Inhalt und Kurzfassung der Prüfung |
 | `SHA256SUMS`, `SHA256SUMS.sigstore.json` | Prüfsummen aller Dateien und die Attestierung dieser Datei |
 
@@ -904,7 +916,9 @@ Loopback (`unshare --net`), mit `offline_bundle.sh check`:
 
 - Prüfsumme und Attestierung von Archiv, `SHA256SUMS` und Update-Paket
 - Digests der Image-Archive
-- Lesbarkeit des Charts
+- Lesbarkeit des Charts und die Digests in seinen Vorgabewerten: Sie müssen die aus `DIGESTS` sein
+  (`offline_bundle.sh chart-digests`); ein Chart eines älteren Release ohne Digests besteht und
+  installiert per Tag
 - zwei Manipulationen: ein geändertes Byte eines Image-Archivs scheitert an `SHA256SUMS`, eine
   daran angepasste `SHA256SUMS` an ihrer Attestierung
 
