@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-25 · ergänzt [ADR-0045](0045-gemeinsamer-datei-abgleich.md),
+Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt [ADR-0045](0045-gemeinsamer-datei-abgleich.md),
 [ADR-0038](0038-steckbare-konnektoren.md) und [ADR-0048](0048-oauth-kern-und-zugangs-geheimnisse.md)
 · ergänzt durch [ADR-0058](0058-onedrive-konnektor.md)
 
@@ -38,12 +38,21 @@ und demselben Store ([ADR-0058](0058-onedrive-konnektor.md)).
 
 ### 2. Quelle, Einstellungen, Auflistung
 
-`source_settings`: `libraries` mit 1 bis 50 Einträgen `{driveId, folders?}`, dazu
+`source_settings`: `libraries` mit 1 bis 50 Einträgen `{driveId, folders?, name?, site?}`, dazu
 `fullSyncIntervalDays` (Vorgabe 1, M2). Container ist die Dokumentbibliothek (`drive:<driveId>`);
 Ordner sind ein Filter im Store, kein eigener Container, je Laufwerk eine Aufzählung und ein Strom.
 Ein Ordner darf `{"id", "name"}` tragen; der Name ist nur Anzeige, `settingsState` und der
-Fingerabdruck vergleichen Kennungen. Der Name der Bibliothek ist „Bibliothek (Site)“; die Site wird
-nicht gespeichert. `SourceBrowser` in Stufen über Parameter der Anfrage: Site (Suche bei
+Fingerabdruck vergleichen Kennungen. Der Name der Bibliothek ist „Bibliothek (Site)“. `site` ist
+`{"id", "name"}` der Site, in der die Bibliothek gewählt wurde (`SharePointSite`, Kennung wie in der
+Auflistung `site:<id>`): Der Auswahldialog öffnet beim Bearbeiten dort, der Abgleich und
+`settingsState` lesen sie nicht, das Speichern prüft nur die Form. Ob die Bibliothek zur Site
+gehört, prüft der Verbindungstest über die Dokumentbibliotheken der Site, weil erst er ein Token
+hat. Ohne gespeicherte Site beginnt der Dialog bei den Sites; listet eine geöffnete Site eine schon
+gewählte Bibliothek ohne Site, übernimmt der Eintrag diese Site (`adoptsTrail`), und das nächste
+Speichern schreibt sie; ein Lauf schreibt keine Einstellungen. Eine Site ohne Namen zeigt der
+Dialog mit einem Platzhalter, gespeichert wird kein Ersatzname. Ein Eintrag mit
+Site, aber ohne `driveId` (alle Bibliotheken einer Site) ist nicht gebaut (#3117); ein OneDrive
+trägt keine Site. `SourceBrowser` in Stufen über Parameter der Anfrage: Site (Suche bei
 `Sites.Read.All`, sonst Adresse über `/sites/{host}:/{pfad}`), Bibliotheken, Ordner. Eine geänderte
 Auswahl verwirft den Abgleichstand (`onSourceChanged`).
 

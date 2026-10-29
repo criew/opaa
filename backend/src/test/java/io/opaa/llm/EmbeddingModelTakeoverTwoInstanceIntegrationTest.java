@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.FakeEmbeddingModel;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.TwoInstanceRace;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -35,20 +36,19 @@ class EmbeddingModelTakeoverTwoInstanceIntegrationTest {
     jdbc.update("DELETE FROM embedding_model");
   }
 
+  /** Every column of the row, so the generation the index record names comes back as well. */
   @AfterEach
   void restoreTheInstalledModel() {
     jdbc.update("DELETE FROM embedding_model");
     for (Map<String, Object> row : before) {
+      List<String> columns = List.copyOf(row.keySet());
       jdbc.update(
-          "INSERT INTO embedding_model (id, base_url, model_identifier, api_key_ciphertext,"
-              + " max_input_tokens, dimensions, installed_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          row.get("id"),
-          row.get("base_url"),
-          row.get("model_identifier"),
-          row.get("api_key_ciphertext"),
-          row.get("max_input_tokens"),
-          row.get("dimensions"),
-          row.get("installed_at"));
+          "INSERT INTO embedding_model ("
+              + String.join(", ", columns)
+              + ") VALUES ("
+              + String.join(", ", Collections.nCopies(columns.size(), "?"))
+              + ")",
+          columns.stream().map(row::get).toArray());
     }
   }
 

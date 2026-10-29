@@ -136,6 +136,31 @@ class ProfileSignInTest {
   }
 
   @Test
+  void aProfileDefaultChoosesTheScopesTheConnectorNamesUnlessTheProfileNamesItsOwn() {
+    wire(
+        new ClientCredentialsProbeSourceConnector(
+            new Endpoint.Fixed(server.tokenEndpoint()), ClientAuthentication.CLIENT_SECRET_BASIC) {
+          @Override
+          public String signInScopes(io.opaa.indexing.spi.ConnectorData profileDefaults) {
+            return profileDefaults != null && Boolean.TRUE.equals(profileDefaults.get("team"))
+                ? "probe.read team.read"
+                : null;
+          }
+        });
+    profile = clientProfile();
+    ReflectionTestUtils.setField(profile, "connectorSettings", "{\"team\":true}");
+
+    signIn.mint(profile.getId());
+    signIn.forgetMinted(profile.getId());
+    ReflectionTestUtils.setField(profile, "scopes", "Files.Read");
+    signIn.mint(profile.getId());
+
+    assertThat(server.requests())
+        .extracting(request -> request.form().get("scope"))
+        .containsExactly("probe.read team.read", "Files.Read");
+  }
+
+  @Test
   void aTokenIsObtainedAnewShortlyBeforeItExpiresAndAfterItWasForgotten() {
     wire(clientProbe(server.tokenEndpoint(), ClientAuthentication.CLIENT_SECRET_BASIC));
     profile = clientProfile();

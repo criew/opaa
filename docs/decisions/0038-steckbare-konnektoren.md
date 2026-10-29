@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-24 · ergänzt [ADR-0006](0006-openapi-dto-generation.md) · ergänzt
+Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt [ADR-0006](0006-openapi-dto-generation.md) · ergänzt
 durch [ADR-0040](0040-google-drive-konnektor.md), [ADR-0041](0041-verbindungen-als-eigenes-modul.md) und [ADR-0045](0045-gemeinsamer-datei-abgleich.md) bis [ADR-0047](0047-sharepoint-konnektor.md)
 · ersetzt Entscheidung 1 von [ADR-0017](0017-quellentypmodell-indizierung.md), den Nachtrag #1131 von
 [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md), die Entscheidungen 1, 2 und 4 von
@@ -148,6 +148,14 @@ Abgeschlossen: zuerst die interne Umstellung bei unveränderter API (#1986), dan
   (`DefaultKey#profileOnly`) ist unter einem Profil immer gebunden. Was Ziel oder Anmeldung bestimmt
   (etwa die Confluence-Edition), steht am Profil, nicht in der Bibliothek; Vorgaben enthalten nie ein
   Geheimnis.
+- **Scopes aus einer Vorgabe:** Hängt, was die Anmeldung anfragt, an einer Vorgabe, nennt der
+  Konnektor die Scopes über `SourceConnector#signInScopes`; eigene Scopes des Profils gehen vor.
+  Braucht eine Vorgabe bestimmte Scopes, weist `SourceConnector#checkProfileScopes` eigene Scopes
+  ohne sie schon beim Speichern des Profils ab, statt jeden späteren Lauf scheitern zu lassen.
+  Ändert eine Vorgabe die angefragten Scopes, ist das eine Registrierungsänderung, die Geheimnisse
+  der Bibliotheken verwirft (ADR-0048). Erster Nutzer ist Dropbox: Die Vorgabe „Team-App“ fragt die
+  Zustimmung einer Team-Administration mit Team-Scopes an; eine Bibliothek darunter liest nur
+  Team-Ordner, als diese Administration (`Dropbox-API-Select-Admin`), nie Mitgliederordner.
 - `GET /source-types` meldet `signIns`, `profileDefaults` und `serverAddress`;
   `GET /connection-profiles` meldet die Vorgaben eines Profils als `connectorDefaults`.
 

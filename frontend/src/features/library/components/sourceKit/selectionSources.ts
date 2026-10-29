@@ -18,6 +18,11 @@ import {
 } from '../../utils/sharePointSource'
 import type { ConfluenceSpaceRef } from '../../utils/confluenceSource'
 import { ONEDRIVE_API, oneDriveFolderLabel, type OneDriveFolder } from '../../utils/oneDriveSource'
+import {
+  MAX_DROPBOX_FOLDERS,
+  dropboxTeamFolderLabel,
+  type DropboxTeamFolder,
+} from '../../utils/dropboxSource'
 import type { ConnectionFields } from '../sources/sourceConnection'
 import type { BrowseResult, Crumb, SelectionItem, SelectionSource } from './selection'
 
@@ -104,6 +109,53 @@ export function folderSelectionSource(
         if (path === '/') return 'Bitte einen Ordner unterhalb von / angeben.'
         if (path.includes(',')) return 'Ein Ordnerpfad darf kein Komma enthalten.'
         return folderItem(path)
+      },
+    },
+  }
+}
+
+// ---- Dropbox team folders of a team app ---------------------------------------------------------
+
+export function dropboxTeamFolderItem(folder: DropboxTeamFolder): SelectionItem {
+  return { key: folder.id, name: dropboxTeamFolderLabel(folder), trail: [] }
+}
+
+/** Chosen objects back as team folders; a folder entered by its id alone keeps no name. */
+export function dropboxTeamFoldersOfItems(items: SelectionItem[]): DropboxTeamFolder[] {
+  return items.map((item) => ({
+    id: item.key,
+    name: item.name === dropboxTeamFolderLabel({ id: item.key }) ? null : item.name,
+  }))
+}
+
+/** The team folders of the team behind a team app, one flat list. */
+export function dropboxTeamFolderSource(
+  probe: Probe,
+  request: () => { sourceUrl: string },
+): SelectionSource {
+  return {
+    rootLabel: 'Team-Ordner',
+    noun: ['Team-Ordner', 'Team-Ordner'],
+    nested: false,
+    max: MAX_DROPBOX_FOLDERS,
+    serverSearch: () => false,
+    searchLabel: () => 'Team-Ordner suchen',
+    list: async () => {
+      const response = await browseSource(
+        'DROPBOX',
+        probe.probeRequest({ ...request(), query: {} }),
+      )
+      return resultOf(response, (key, name) => ({ key, name, selectable: true, openable: false }))
+    },
+    manual: {
+      label: 'Namespace-ID',
+      placeholder: '1234567890',
+      kind: 'add',
+      resolve: async (text) => {
+        const id = text.trim()
+        return /^[0-9]{1,32}$/.test(id)
+          ? dropboxTeamFolderItem({ id })
+          : 'Eine Namespace-ID besteht aus Ziffern.'
       },
     },
   }
@@ -249,9 +301,12 @@ export function spaceSelectionSource(list: () => Promise<SourceBrowseResponse>):
 /** The chosen document libraries and folders as objects of the dialog. */
 export function sharePointItemsOf(libraries: SharePointLibraryChoice[]): SelectionItem[] {
   return libraries.flatMap((library): SelectionItem[] => {
-    const site: Crumb[] = library.site
-      ? [{ key: `site:${library.site.id}`, name: library.site.name ?? library.site.id }]
-      : []
+    // a site stored without its name is shown by a placeholder, never by its long id
+    const site: Crumb[] = !library.site
+      ? []
+      : library.site.name
+        ? [{ key: `site:${library.site.id}`, name: library.site.name }]
+        : [{ key: `site:${library.site.id}`, name: 'Gespeicherte Site', placeholder: true }]
     // the stored name repeats the site („Dokumente (Rathaus)“); the site crumb already names it
     const label = sharePointLibraryLabel(library)
     const siteSuffix = library.site?.name ? ` (${library.site.name})` : null
@@ -285,13 +340,14 @@ export function sharePointLibrariesOfItems(items: SelectionItem[]): SharePointLi
     const drive = driveCrumbAt < 0 ? item : item.trail[driveCrumbAt]
     if (!drive.key.startsWith('drive:')) continue
     const site = item.trail.find((crumb) => crumb.key.startsWith('site:'))
+    const siteName = site && !site.placeholder ? site.name : null
     const driveId = drive.key.slice('drive:'.length)
-    const named = site && !drive.name.endsWith(`(${site.name})`)
+    const named = siteName && !drive.name.endsWith(`(${siteName})`)
     const choice = byDrive.get(driveId) ?? {
       driveId,
-      name: named ? sharePointLibraryName(drive.name, site.name) : graphShownName(drive.name),
+      name: named ? sharePointLibraryName(drive.name, siteName) : graphShownName(drive.name),
       folders: [],
-      site: site ? { id: site.key.slice('site:'.length), name: site.name } : null,
+      site: site ? { id: site.key.slice('site:'.length), name: siteName } : null,
     }
     if (item.key.startsWith('folder:')) {
       const between = item.trail.slice(driveCrumbAt + 1).map((crumb) => crumb.name)
@@ -305,6 +361,14 @@ export function sharePointLibrariesOfItems(items: SelectionItem[]): SharePointLi
   return [...byDrive.values()]
 }
 
+/** A listed site as a level; one without a name gets a placeholder, never its long id. */
+function sharePointSiteOf(entry: { key: string; name?: string | null }) {
+  const name = entry.name?.trim()
+  return name
+    ? { key: entry.key, name }
+    : { key: entry.key, name: 'Site ohne Namen', placeholder: true as const }
+}
+
 export function sharePointSelectionSource(probe: Probe): SelectionSource {
   const browse = (query: Record<string, unknown>) =>
     browseSource('SHAREPOINT', probe.probeRequest({ sourceUrl: SHAREPOINT_API, query }))
@@ -314,6 +378,8 @@ export function sharePointSelectionSource(probe: Probe): SelectionSource {
       level.length === 0 ? 'Sites' : level.length === 1 ? 'Dokumentbibliotheken' : 'Ordner',
     noun: ['Dokumentbibliothek oder Ordner', 'Dokumentbibliotheken und Ordner'],
     nested: true,
+    // a library saved without its site takes the site in which the dialog lists it
+    adoptsTrail: true,
     max: 50,
     serverSearch: (level) => level.length === 0,
     searchLabel: (level) =>
@@ -322,7 +388,15 @@ export function sharePointSelectionSource(probe: Probe): SelectionSource {
       const last = level[level.length - 1]
       if (!last) {
         const response = await browse({ search })
-        return resultOf(response, (key, name) => ({ key, name, selectable: false, openable: true }))
+        return {
+          entries: response.entries.map((entry) => ({
+            ...sharePointSiteOf(entry),
+            selectable: false,
+            openable: true,
+          })),
+          complete: response.complete,
+          message: response.message ?? null,
+        }
       }
       if (last.key.startsWith('site:')) {
         const response = await browse({ site: last.key.slice('site:'.length) })
@@ -345,7 +419,7 @@ export function sharePointSelectionSource(probe: Probe): SelectionSource {
           const response = await browse({ siteUrl: text.trim() })
           const site = response.entries[0]
           if (!site) return response.message ?? 'Unter dieser Adresse liegt keine Site.'
-          return { key: site.key, name: site.name?.trim() || site.key, trail: [] }
+          return { ...sharePointSiteOf(site), trail: [] }
         } catch (err) {
           return err instanceof Error ? err.message : 'Die Site ließ sich nicht öffnen.'
         }

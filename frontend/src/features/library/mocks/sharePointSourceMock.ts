@@ -131,6 +131,7 @@ export function browseSharePoint(body: ProbeBody & { query?: Record<string, unkn
 interface SharePointLibrarySetting {
   driveId?: string
   folders?: Array<string | { id?: string; name?: string | null }>
+  site?: { id?: string; name?: string | null } | null
 }
 
 /** The summary of SharePointSourceConnector#testConnection, singular for a single library. */
@@ -179,6 +180,14 @@ export function testSharePoint(
     }
     if (found.drive.driveType !== 'documentLibrary') {
       return { driveId, reachable: false, message: SHAREPOINT_MESSAGES.notALibrary }
+    }
+    if (library.site?.id && library.site.id !== found.site.id) {
+      const site = library.site.name ? `Site „${library.site.name}“` : 'gespeicherten Site'
+      return {
+        driveId,
+        reachable: false,
+        message: `Die Dokumentbibliothek gehört nicht zur ${site}; bitte neu aus der Auflistung wählen.`,
+      }
     }
     for (const folder of library.folders ?? []) {
       const id = typeof folder === 'string' ? folder : (folder.id ?? '')

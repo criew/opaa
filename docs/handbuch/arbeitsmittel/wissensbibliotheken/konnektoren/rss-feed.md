@@ -125,6 +125,9 @@ keinen extrahierbaren Text, werden seine Anlagen nicht indiziert.
   abgelehnt, bevor das fremde Ziel kontaktiert wird. Anlagen zählen nur auf dem Ursprung der
   Detailseite (Abschnitt 6). Beim Feed selbst werden bis zu fünf Redirects gefolgt, auf einen
   fremden Ursprung ohne Zugangsdaten.
+- **„Original öffnen"** holt einen Eintrag oder eine Anlage mit den Zugangsdaten nur, wenn die
+  Adresse auf dem Ursprung des Feeds liegt; eine Adresse auf einem anderen Server ruft OPAA ohne
+  Zugangsdaten ab.
 - **Prüfung je Eintrag**, bevor etwas geladen wird: Ein Link mit anderem Schema als `http`/`https`
   oder kaputter Adresse wird abgewiesen.
 - **XML-Härtung:** keine DTDs, keine externen Entitäten.
