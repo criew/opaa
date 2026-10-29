@@ -165,16 +165,10 @@ csp_start() {
   done
   return 1
 }
-# The refusal line can reach `docker logs` shortly after the container has stopped, so the log
-# is read again for a few seconds before the check fails.
+# Reads the whole log: `grep -q` would stop at the first match and end `docker logs` with SIGPIPE
+# while a multi-line refusal is still being written, which pipefail turns into a miss.
 logs_name() {
-  for _ in $(seq 1 10); do
-    if docker logs "$probe" 2>&1 | grep -q "$1"; then
-      return 0
-    fi
-    sleep 1
-  done
-  return 1
+  docker logs "$probe" 2>&1 | grep -- "$1" >/dev/null
 }
 newline='
 '
@@ -215,6 +209,7 @@ for value in "backend" "127.0.0.11;" "127.0.0.11 valid=1s" "127.0.0.11${newline}
     echo "refused as expected: '$value'"
   else
     fail "start failed for OPAA_BACKEND_RESOLVER='$value' without naming the variable"
+    docker logs --tail 10 "$probe" >&2 2>&1 || true
   fi
 done
 
