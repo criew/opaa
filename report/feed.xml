@@ -5,8 +5,23 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-10-28T06:01:11Z</updated>
+  <updated>2026-10-29T06:11:18Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Mittwoch, 28. Oktober 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-10-28.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-10-28.html</id>
+    <updated>2026-10-29T06:11:18Z</updated>
+    <summary type="text">feat: UI-Review 28.10.2026 – Oberfläche entschlacken und vereinheitlichen:
+— Seitenleiste nach Variante B mit Spaces als Liste und zuklappbaren Gruppen umgesetzt
+— Links, Knöpfe, Drei-Punkte-Menüs und Etiketten vereinheitlicht
+— Erklärtexte, Anlage-Knöpfe und Asset-Kacheln entschlackt
+— Belegfenster auf zitierte Belege reduziert, Benachrichtigungen oben angezeigt
+Sonstiges:
+— Installationsassistent um optionale Schritte für Branding und Modelle erweitert
+— Chatsuche im privaten Bereich liefert sporadisch 502
+— Dokument öffnen springt an Fundstelle und markiert sie</summary>
+  </entry>
   <entry>
     <title>Tagesreport Dienstag, 27. Oktober 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-10-27.html"/>
@@ -876,21 +891,5 @@ Sonstiges:
 — Einstiegsseite und Pflegeprozess des Produkthandbuchs dokumentiert
 — Handbuchkapitel zur Abfragestrecke und Suchstrecke hinzugefügt
 — Abhängigkeiten aktualisiert: Node.js, npm-Pakete, AWS SDK</summary>
-  </entry>
-  <entry>
-    <title>Tagesreport Dienstag, 8. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-08.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-08.html</id>
-    <updated>2026-09-09T04:58:54Z</updated>
-    <summary type="text">feat(indexing): Paketstruktur des Indexing-Bereichs schärfen:
-— Paketstruktur des Indexing-Bereichs in drei Phasen umgestaltet
-— Wurzelpaket in document, chunk, job und maintenance aufgeteilt
-— pipeline zu format umbenannt, Dateiformat und Datenformat getrennt
-— Formatzulassung aus registrierten Formaten abgeleitet
-Sonstiges:
-— Paketzyklen in auth, query und indexing aufgelöst
-— Lexikalischer Suchpfad liest chunk_full_text ohne Versionsfilter
-— Backend-Tests in drei parallele Shards geteilt
-— aws-java-sdk-v2 aktualisiert</summary>
   </entry>
 </feed>
