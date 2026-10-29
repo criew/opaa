@@ -2,6 +2,8 @@ package io.opaa.format;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.format.chunk.ChunkAnchor;
+import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.shared.IngestTextSanitizer;
 import java.io.IOException;
@@ -9,6 +11,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -197,6 +200,28 @@ class DocumentFormatRunnerTest {
     assertThat(cleaned.getMetadata())
         .containsEntry(ChunkMetadataKeys.LOCATION_METADATA_KEY, "Abschn. § 3 Gebühren");
     assertThat(cleaned.getText()).startsWith("## § 3 Gebühren\n");
+  }
+
+  @Test
+  void theAnchorsHeadingPathAndSheetAreCleanedWithoutCountingTheirFindingsAgain() {
+    String heading = "§" + Character.toString(0xA0) + "3 Gebühren" + Character.toString(0x200B);
+    Map<String, Object> metadata = new HashMap<>();
+    ChunkAnchors.write(
+        metadata,
+        ChunkAnchor.EMPTY
+            .withPath(List.of("Satzung", heading))
+            .withRows("Blatt" + Character.toString(0x200B), 2, 4));
+    var chunk = new Document(heading + "\n\nDie Gebühr beträgt 12 Euro.", metadata);
+    var pipeline = new FakePipeline(DocumentFormatResult.chunked(List.of(chunk)));
+
+    DocumentFormatResult result =
+        DocumentFormatRunner.run(pipeline, DocumentFormatSource.ofExtractedText("text", "f"));
+
+    ChunkAnchor anchor = ChunkAnchors.read(result.chunks().getFirst().getMetadata());
+    assertThat(anchor.path()).containsExactly("Satzung", "§ 3 Gebühren");
+    assertThat(anchor.sheet()).isEqualTo("Blatt");
+    assertThat(result.sanitizerFindings())
+        .isEqualTo(Map.of(IngestTextSanitizer.Finding.INVISIBLE_CHARACTERS, 1));
   }
 
   @Test

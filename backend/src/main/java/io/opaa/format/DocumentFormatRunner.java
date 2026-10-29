@@ -1,5 +1,6 @@
 package io.opaa.format;
 
+import io.opaa.format.chunk.ChunkAnchor;
 import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.shared.IngestTextSanitizer;
@@ -114,10 +115,9 @@ public final class DocumentFormatRunner {
       }
       if (metadata.get(ChunkMetadataKeys.ANCHOR_LEAD_METADATA_KEY) instanceof String lead) {
         // the lead is part of the chunk text, whose findings are already counted
-        metadata.put(
-            ChunkMetadataKeys.ANCHOR_LEAD_METADATA_KEY,
-            cleaned(lead, new EnumMap<>(IngestTextSanitizer.Finding.class)));
+        metadata.put(ChunkMetadataKeys.ANCHOR_LEAD_METADATA_KEY, cleaned(lead));
       }
+      ChunkAnchors.write(metadata, cleanedNames(ChunkAnchors.read(metadata)));
       ChunkAnchors.completed(metadata, text);
       chunks.add(new Document(chunk.getId(), text, metadata));
     }
@@ -138,6 +138,30 @@ public final class DocumentFormatRunner {
         result.contentByteSizeOverride(),
         properties,
         findings);
+  }
+
+  /**
+   * {@code anchor} with its heading path and sheet name cleaned like the Fundort. Both repeat text
+   * the chunk or its Fundort already carries, so their findings are not counted again.
+   */
+  private static ChunkAnchor cleanedNames(ChunkAnchor anchor) {
+    ChunkAnchor cleaned = anchor;
+    if (anchor.path() != null) {
+      List<String> path =
+          anchor.path().stream()
+              .map(DocumentFormatRunner::cleaned)
+              .filter(heading -> heading != null && !heading.isBlank())
+              .toList();
+      cleaned = cleaned.withPath(path.isEmpty() ? null : path);
+    }
+    if (anchor.sheet() != null && anchor.rowFrom() != null && anchor.rowTo() != null) {
+      cleaned = cleaned.withRows(cleaned(anchor.sheet()), anchor.rowFrom(), anchor.rowTo());
+    }
+    return cleaned;
+  }
+
+  private static String cleaned(String text) {
+    return IngestTextSanitizer.sanitize(text).text();
   }
 
   private static String cleaned(String text, Map<IngestTextSanitizer.Finding, Integer> findings) {
