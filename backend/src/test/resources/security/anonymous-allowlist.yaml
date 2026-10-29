@@ -6,7 +6,8 @@
 # An operation listed under "missingHeaders" may lack nosniff and the frame protection.
 # An entry the application outgrew fails the test: an operation gone, one refused before its
 # handler now (unless "conditional: true" - reachable only while a runtime setting is on that the
-# test context cannot switch on), headers present now.
+# test context cannot switch on), headers present now. The switched-off side of a conditional
+# entry is covered by LocalSelfServiceUnavailableIntegrationTest.
 # The key is "<METHOD> <path template>" as in the specification; health groups are concrete paths.
 anonymous:
   - operation: GET /api/health
