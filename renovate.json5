@@ -206,7 +206,8 @@
   ],
 
   packageRules: [
-    // Bereichs-Labels nach Manager
+    // Bereichs-Labels nach Manager. Bei gradle-Updates schreibt Renovate backend/gradle/verification-metadata.xml
+    // mit (docs/renovate.md, Gradle-Prüfsummen).
     {
       matchManagers: ['gradle', 'gradle-wrapper'],
       addLabels: ['backend'],

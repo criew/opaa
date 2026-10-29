@@ -14,7 +14,7 @@ jederzeit auch lokal ausführen (unten).
 
 | Quelle | Manager | Bereichs-Label |
 |---|---|---|
-| `backend/gradle/libs.versions.toml` (einzige zulässige Versionsquelle, AGENTS.md) | `gradle` | `backend` |
+| `backend/gradle/libs.versions.toml` (einzige zulässige Versionsquelle, AGENTS.md) samt `backend/gradle/verification-metadata.xml` (siehe [Gradle-Prüfsummen](#gradle-prüfsummen)) | `gradle` | `backend` |
 | Gradle-Wrapper samt `distributionSha256Sum`; ohne Auto-Merge (siehe [Gradle-Prüfsummen](#gradle-prüfsummen)) | `gradle-wrapper` | `backend` |
 | `frontend/package.json` + `pnpm-lock.yaml` (inkl. `packageManager`-Pinning) | `npm` | `frontend` |
 | `e2e/package.json` + `pnpm-lock.yaml` | `npm` | `frontend` |
@@ -99,13 +99,55 @@ holt die neue Prüfsumme aus der `.sha256`-Datei neben der Distribution und schr
 (dafür führt es `./gradlew wrapper` aus, `gradleWrapper` in `renovate.yml`), mergt aber nie
 automatisch.
 
-**Abhängigkeiten.** Eine Gradle Dependency Verification (`backend/gradle/verification-metadata.xml`)
-gibt es noch nicht. Ein erster Versuch scheiterte daran, dass die Prüfsummen von der Quelle
-abhängen: CI und Docker-Build lösen den Plugin-Classpath über das Gradle Plugin Portal auf, das
-Marker-POMs und einen Teil der POM- und Module-Dateien in eigener Fassung ausliefert, die
-Projektabhängigkeiten über Maven Central. Eine vollständige Datei lässt sich deshalb nur in einer
-Umgebung erzeugen, die beide Quellen ohne Spiegel erreicht, etwa in einem eigenen CI-Job; das ist
-ein eigenes Issue.
+**Abhängigkeiten.** `backend/gradle/verification-metadata.xml` hält für jede Datei, die der Build
+auflöst (Bibliotheken, Plugins samt Markern, POM- und Module-Dateien), die SHA-256-Prüfsumme.
+Gradle bricht jeden Bau ab, dessen heruntergeladene Datei davon abweicht: lokal, in jedem
+CI-Job und im Docker-Build des Backends (amd64 und arm64; das Dockerfile kopiert `backend/gradle/`
+mit). Ausgenommen sind nur Quellen- und Javadoc-JARs, die allein die IDE lädt
+(`trusted-artifacts`). Signaturen prüft die Datei nicht (`verify-signatures` ist `false`).
+
+- **Zwei echte Fassungen.** Das Plugin Portal leitet die meisten Anfragen an Maven Central weiter,
+  liefert Plugin-Marker und einzelne POM- und Module-Dateien aber in eigener Fassung mit anderer
+  Prüfsumme. CI, Docker-Build und Renovate lösen den Plugin-Classpath über das Portal auf, eine
+  Umgebung mit Central-Spiegel (Firmen-Proxy, Agenten-Umgebung) bekommt die Central-Fassung. Für
+  jede Datei, die das Portal selbst ausliefert, stehen deshalb beide Prüfsummen in der Datei, die
+  zweite als `also-trust`. Das ergänzt `.github/scripts/gradle_verification_variants.py`; es fragt
+  nur Portal und Central, nie einen Spiegel.
+- **Renovate pflegt die Datei mit.** Bei jedem Update des `gradle`-Managers führt Renovate selbst
+  `./gradlew --write-verification-metadata sha256 dependencies` aus (dieselbe Erlaubnis
+  `gradleWrapper` in `renovate.yml`) und committet die neuen Einträge im Update-Branch. Damit
+  läuft bei Gradle-Updates Code der neuen Plugin-Versionen im Renovate-Container, der das Token
+  hält; das gilt für Wrapper-Updates schon immer und ist durch `minimumReleaseAge` gedämpft.
+  Veraltete Einträge entfernt Renovate nicht.
+- **Was Renovate nicht erfasst.** Der Aufruf löst die Konfigurationen auf, führt aber keine Tasks
+  aus. Dateien, die erst ein Task lädt, fehlen danach: der Formatierer von Spotless
+  (`google-java-format`, seine Version hängt am Spotless-Plugin) und POM-Dateien, die das
+  CycloneDX-Plugin für Lizenzangaben liest. Ein solcher PR scheitert in `backend-build` mit
+  „Dependency verification failed“. Dann auf dem Update-Branch den Workflow
+  „Gradle-Verifikationsdatei erzeugen“ (`gradle-verification-metadata.yml`) starten und die Datei
+  aus seinem Artefakt `verification-metadata` committen.
+- **Bekannte Koordinaten behalten ihre Prüfsumme.** `--write-verification-metadata` trägt eine
+  abweichende Prüfsumme für schon bekannte Koordinaten stillschweigend als `also-trust` ein; ein
+  manipuliertes Artefakt käme so durch einen Update-PR. Der Schritt „Bestehende Prüfsummen der
+  Gradle-Verifikation prüfen“ im Pflicht-Check `changes` vergleicht deshalb die Datei mit dem
+  Basis-Branch (`.github/scripts/check_gradle_verification_metadata.py`): Neue und entfallene
+  Einträge sind erlaubt, eine geänderte Prüfsumme für dieselbe Datei bricht auf `renovate/`-Branches
+  ab und erscheint sonst als Warnung. Eine solche Änderung nur übernehmen, nachdem die Datei
+  gegen die `.sha1`/`.sha256` des Repositorys geprüft ist.
+- **Neu erzeugen.** Der Workflow „Gradle-Verifikationsdatei erzeugen“ (nur manuell, auf einem
+  wählbaren Branch) leert die Komponenten, lädt alles ohne Gradle-Cache direkt von Portal und
+  Central, führt `help spotlessCheck cyclonedxBom` aus, ergänzt die Portal-Fassungen und listet
+  im Job-Summary jede geänderte Prüfsumme. Danach sind auch veraltete Einträge weg. Lokal derselbe
+  Ablauf aus `backend/`:
+
+  ```bash
+  ./gradlew --no-configuration-cache --no-build-cache --rerun-tasks \
+    --write-verification-metadata sha256 help spotlessCheck cyclonedxBom
+  python3 ../.github/scripts/gradle_verification_variants.py gradle/verification-metadata.xml
+  ```
+
+  Ohne vorheriges Leeren ergänzt der Aufruf nur. Prüfsummen aus einem Spiegel oder einem fremden
+  Gradle-Cache nicht ungeprüft übernehmen, sondern gegen Central abgleichen.
 
 **npm wird gepinnt** (`rangeStrategy: 'pin'` für `dependencies`/`devDependencies`):
 `frontend/` und `e2e/` sind Anwendungen — exakte Versionen in der `package.json` machen jeden
@@ -682,6 +724,11 @@ docker run --rm -v "$(pwd)":/usr/src/app -w /usr/src/app \
   darunter `**/test/**`), oder `managerFilePatterns`/`matchStrings` treffen nicht. Der Nachweis
   steht oben unter „CustomManager belegt prüfen"; ohne Debug-Lauf ist dieser Fall unsichtbar, weil
   ein leerer Manager keine Warnung erzeugt (#1861).
+- **`Dependency verification failed` in einem Gradle-Update-PR:** Der Update-Branch braucht eine
+  Datei, die Renovates Aufruf nicht auflöst (Spotless-Formatierer, CycloneDX-POMs) — Heilung unter
+  [Gradle-Prüfsummen](#gradle-prüfsummen). Bricht stattdessen der Schritt „Bestehende Prüfsummen
+  der Gradle-Verifikation prüfen“ ab, hat sich eine Prüfsumme bekannter Koordinaten geändert: nicht
+  mergen, bevor die Datei gegen das Repository geprüft ist.
 - **Docker-Hub-Rate-Limit im Dry-Run:** kurz warten und wiederholen; der Lauf cached nichts
   zwischen Containern.
 - **Major-Update eines Basisimages bricht einen Build, obwohl der Update-PR grün war:** Der
