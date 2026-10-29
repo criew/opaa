@@ -20,7 +20,6 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -55,8 +54,9 @@ import org.springframework.ai.document.Document;
  * extracted, so such a page over an image counts as scanned.
  *
  * <p>The extracted text is bounded by {@link ParserLimitProperties#maxTextCharacters()} (a PDF past
- * it fails to parse), the outline walk by {@link #MAX_OUTLINE_DEPTH} and {@link #MAX_OUTLINE_ITEMS}
- * and by visiting every item once.
+ * it fails to parse), the pages by {@link ParserLimitProperties#maxPdfPages()}, counted along the
+ * page tree, the streams decoded while loading by {@link PdfLoading}, and the outline walk by
+ * {@link #MAX_OUTLINE_DEPTH} and {@link #MAX_OUTLINE_ITEMS} and by visiting every item once.
  */
 public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfContent> {
 
@@ -123,18 +123,20 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
 
   @Override
   protected PdfContent read(DocumentFormatSource source) throws IOException {
-    try (PDDocument doc = Loader.loadPDF(source.file().toFile())) {
-      List<String> pageTexts = new ArrayList<>(doc.getNumberOfPages());
-      PdfReadBudget budget = PdfReadBudget.of(limits);
+    PdfReadBudget budget = PdfReadBudget.of(limits);
+    try (PDDocument doc = PdfLoading.load(source.file(), budget)) {
+      List<PDPage> pages = PdfLoading.pages(doc, limits.maxPdfPages());
+      List<String> pageTexts = new ArrayList<>(pages.size());
       int scannedPages = 0;
-      for (int i = 0; i < doc.getNumberOfPages(); i++) {
-        String text = PdfPageText.extract(doc, i, budget);
+      for (PDPage page : pages) {
+        String text = PdfPageText.extract(doc, page, budget);
         pageTexts.add(text);
-        if (text.isBlank() && carriesImage(ownResources(doc.getPage(i)), IMAGE_SEARCH_DEPTH)) {
+        if (text.isBlank() && carriesImage(ownResources(page), IMAGE_SEARCH_DEPTH)) {
           scannedPages++;
         }
       }
-      return new PdfContent(pageTexts, flattenOutline(doc), infoProperties(doc), scannedPages);
+      return new PdfContent(
+          pageTexts, flattenOutline(doc, pageIndexes(pages)), infoProperties(doc), scannedPages);
     }
   }
 
@@ -176,13 +178,27 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
    */
   @Override
   protected DocumentProperties declaredProperties(DocumentFormatSource source) throws IOException {
-    try (PDDocument doc = Loader.loadPDF(source.file().toFile())) {
+    PdfReadBudget budget = PdfReadBudget.of(limits);
+    try (PDDocument doc = PdfLoading.load(source.file(), budget)) {
+      List<PDPage> pages = PdfLoading.pages(doc, limits.maxPdfPages());
       List<String> firstPage =
-          doc.getNumberOfPages() == 0
-              ? List.of()
-              : List.of(PdfPageText.extract(doc, 0, PdfReadBudget.of(limits)));
-      return properties(new PdfContent(firstPage, flattenOutline(doc), infoProperties(doc), 0));
+          pages.isEmpty() ? List.of() : List.of(PdfPageText.extract(doc, pages.getFirst(), budget));
+      return properties(
+          new PdfContent(
+              firstPage, flattenOutline(doc, pageIndexes(pages)), infoProperties(doc), 0));
     }
+  }
+
+  /**
+   * The position of every page dictionary in {@code pages}, its first one where the tree lists it
+   * more than once.
+   */
+  private static Map<COSDictionary, Integer> pageIndexes(List<PDPage> pages) {
+    Map<COSDictionary, Integer> indexes = new IdentityHashMap<>();
+    for (int i = 0; i < pages.size(); i++) {
+      indexes.putIfAbsent(pages.get(i).getCOSObject(), i);
+    }
+    return indexes;
   }
 
   private static DocumentProperties infoProperties(PDDocument doc) {
@@ -197,7 +213,8 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
         .build();
   }
 
-  private static List<OutlineEntry> flattenOutline(PDDocument doc) {
+  private static List<OutlineEntry> flattenOutline(
+      PDDocument doc, Map<COSDictionary, Integer> pageIndexes) {
     PDDocumentOutline outline = doc.getDocumentCatalog().getDocumentOutline();
     if (outline == null) {
       return List.of();
@@ -205,7 +222,7 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
     List<OutlineEntry> entries = new ArrayList<>();
     Set<COSDictionary> visited = Collections.newSetFromMap(new IdentityHashMap<>());
     visited.add(outline.getCOSObject());
-    collectOutline(doc, outline, 1, entries, visited);
+    collectOutline(doc, pageIndexes, outline, 1, entries, visited);
     // A pre-order walk of the catalog is not guaranteed to be monotonic in page number for every
     // pathological document; a stable sort on page index restores that order (needed by
     // HeadingSectionSplitter's section algorithm) while keeping same-page entries in their
@@ -223,6 +240,7 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
    */
   private static void collectOutline(
       PDDocument doc,
+      Map<COSDictionary, Integer> pageIndexes,
       PDOutlineNode node,
       int level,
       List<OutlineEntry> out,
@@ -233,23 +251,20 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
     for (PDOutlineItem item = node.getFirstChild();
         item != null && visited.size() <= MAX_OUTLINE_ITEMS && visited.add(item.getCOSObject());
         item = item.getNextSibling()) {
-      Integer pageIndex = resolvePageIndex(doc, item);
+      Integer pageIndex = resolvePageIndex(doc, pageIndexes, item);
       String title = item.getTitle();
       if (pageIndex != null && title != null && !title.isBlank()) {
         out.add(new OutlineEntry(level, title.strip(), pageIndex));
       }
-      collectOutline(doc, item, level + 1, out, visited);
+      collectOutline(doc, pageIndexes, item, level + 1, out, visited);
     }
   }
 
-  private static Integer resolvePageIndex(PDDocument doc, PDOutlineItem item) {
+  private static Integer resolvePageIndex(
+      PDDocument doc, Map<COSDictionary, Integer> pageIndexes, PDOutlineItem item) {
     try {
       PDPage page = item.findDestinationPage(doc);
-      if (page == null) {
-        return null;
-      }
-      int index = doc.getPages().indexOf(page);
-      return index < 0 ? null : index;
+      return page == null ? null : pageIndexes.get(page.getCOSObject());
     } catch (IOException e) {
       return null;
     }

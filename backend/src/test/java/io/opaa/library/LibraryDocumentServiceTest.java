@@ -294,7 +294,7 @@ class LibraryDocumentServiceTest {
         folderRepository,
         folderService,
         attachmentExtractor,
-        new AttachmentProperties(0, 0, 0),
+        new AttachmentProperties(0, 0, 0, 0, 0),
         new AttachmentExtractionLimiter(limits),
         ProductionDocumentFormats.supportedFormats(),
         TestSourceConnectors.connectors()
@@ -1950,7 +1950,7 @@ class LibraryDocumentServiceTest {
             folderRepository,
             folderService,
             attachmentExtractor,
-            new AttachmentProperties(0, 0, 0),
+            new AttachmentProperties(0, 0, 0, 0, 0),
             new AttachmentExtractionLimiter(new AttachmentExtractionProperties(0, null)),
             ProductionDocumentFormats.supportedFormats(),
             TestSourceConnectors.connectors()
