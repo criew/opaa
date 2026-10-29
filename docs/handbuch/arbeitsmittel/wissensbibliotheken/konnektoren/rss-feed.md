@@ -32,8 +32,11 @@ flowchart LR
 
 1. Liegt der Feed im privaten Netz, seinen Hostnamen für die
    [Zieladressprüfung](README.md#12-zieladressprüfung) freigeben.
-2. Das **Anlagenprofil** der Installation wählen (Abschnitt 6): `GENERIC` für Anlagen mit
-   Dateiendung, `GSB` für Websites auf dem Government Site Builder.
+2. Die Detailseite eines Eintrags im Browser ansehen: Trifft die Werkseinstellung des
+   Inhaltsselektors (Abschnitt „Konfiguration“) den Text nicht oder zu viel Seitenrahmen, braucht
+   die Bibliothek einen eigenen **Inhaltsselektor**.
+   Hängen die Anlagen ohne Dateiendung an der Seite, wie beim Government Site Builder, braucht
+   sie das **Anlagenprofil** `GSB` (Abschnitt „Anhänge“).
 3. Optional einen Zugang anlegen. Die Profilpflicht „Nur über Zugänge" legt nur die Feed-Adresse
    fest; Detailseiten auf anderen Servern bestimmt der Betreiber des Feeds. Das sagt OPAA, bevor die
    Pflicht eingeschaltet wird.
@@ -48,6 +51,26 @@ Oberfläche weist beim Anlegen darauf hin, dass OPAA auch die verlinkten Details
 **Über einen Zugang:** wie beim Webverzeichnis; die Feed-Adresse liegt unter der Server-Adresse des
 Zugangs. Eine Detailseite oder Anlage auf einem anderen Server ruft OPAA weiter ab, aber ohne
 Zugangsdaten.
+
+**Umfang:** wie OPAA die Detailseiten dieses Feeds liest. Beide Angaben sind optional; leer gilt
+die Werkseinstellung (Abschnitt „Konfiguration“). Die Zeile sehen auch Lesende der Bibliothek.
+
+- „Inhaltsselektor“: ein CSS-Selektor in Jsoup-Syntax, etwa `#inhalt` oder `.artikel-text`. Jeder
+  Treffer ist ein Inhaltsbereich; trifft er nichts, nimmt der Lauf die ganze Seite. Einen Selektor,
+  der nicht gelesen werden kann oder zu aufwendig wäre, lehnt OPAA beim Speichern ab (Abschnitt
+  „Grenzen und Schutzmechanismen“).
+- „Anlagenprofil“: welche Links als Anlagen gelten (Abschnitt „Anhänge“).
+
+**Verbindungstest:** Ist eine der beiden Angaben gesetzt, lädt der Test zusätzlich die Detailseite
+des ersten Eintrags und meldet, wie viele Inhaltsbereiche der Selektor findet und wie viele Anlagen
+das Profil. Ohne eigene Angaben bleibt es bei der Anfrage an den Feed.
+
+**Änderung:** Sie gilt ab dem nächsten Lauf. Dieser Lauf liest den ganzen Feed und jeden Eintrag
+darin neu, auch einen mit unverändertem `pubDate`; das wiederholt sich, bis ein Lauf vollständig
+war (Abschnitt „Betriebsarten und Änderungserkennung“). Ein Eintrag mit gleichem Text behält seine
+Chunks, bekommt aber die Anlagen, die das neue Profil findet. Was nicht mehr im Feed steht, behält
+die bisherige Fassung, und Anlagen, die nur das alte Profil fand, bleiben, bis jemand sie löscht.
+Das Revisionsprotokoll nennt die geänderte Angabe als Änderung der Quelle, ohne ihren Wert.
 
 ## 4. Betriebsarten und Änderungserkennung
 
@@ -75,6 +98,10 @@ Unverändertes erkennt er in drei Stufen:
 Ein unveränderter Eintrag ohne Anlagen-Dokumente lädt seine Detailseite einmal, nur um Anlagen zu
 finden; der Text wird dabei nicht neu verarbeitet.
 
+Nach einer Änderung von Inhaltsselektor oder Anlagenprofil entfallen die Stufen 1 und 2, bis ein
+Lauf vollständig war: OPAA merkt sich mit dem Feed-Zustand, unter welchen Angaben er gespeichert
+wurde.
+
 **Zurückstellen.** Den Feed-Zustand aus Stufe 1 speichert ein Lauf nur, wenn er vollständig war:
 kein Fehler, kein abgeschnittener Feed, keine verlorene Anlage, keine Ablehnung am Kontingent und
 kein zurückgestellter Eintrag. Zurückgestellt wird, was beim nächsten Mal klappen könnte — eine nicht
@@ -83,7 +110,7 @@ Server beim nächsten Lauf den ganzen Feed, und diese Einträge bekommen eine zw
 
 **Detailseite.** Sie wird nach den Regeln der [HTML-Pipeline](../formate/html.md) reduziert:
 Navigation, Seitenleisten, Cookie-Banner, `script`, `style` und `noscript` entfallen überall; die
-Inhaltsbereiche wählt `main-content-selector` (Rückfall `body`); Seitenkopf und -fuß entfallen nur außerhalb davon. Das HTML geht direkt an die HTML-Pipeline
+Inhaltsbereiche wählt der Inhaltsselektor der Bibliothek (Rückfall `body`); Seitenkopf und -fuß entfallen nur außerhalb davon. Das HTML geht direkt an die HTML-Pipeline
 und wird in Abschnitte geschnitten; der Titel des Eintrags ist der Kontexttitel. Bestehende Einträge,
 die noch mit der Auffang-Pipeline geschnitten wurden, behalten ihre Chunks bis zur nächsten
 `pubDate`-Änderung.
@@ -102,7 +129,7 @@ seinen Anlagen.
 ## 6. Anhänge
 
 Anlagen sind Links im reduzierten Hauptinhalt der Detailseite auf demselben Ursprung. Welche Links
-zählen, bestimmt das **Anlagenprofil** der Installation:
+zählen, bestimmt das **Anlagenprofil** der Bibliothek:
 
 | Profil | Anlage ist jeder Link auf denselben Ursprung, der … | Typischer Einsatz |
 |---|---|---|
@@ -131,6 +158,9 @@ keinen extrahierbaren Text, werden seine Anlagen nicht indiziert.
 - **Prüfung je Eintrag**, bevor etwas geladen wird: Ein Link mit anderem Schema als `http`/`https`
   oder kaputter Adresse wird abgewiesen.
 - **XML-Härtung:** keine DTDs, keine externen Entitäten.
+- **Inhaltsselektor:** höchstens 200 Zeichen, keine regulären Ausdrücke (`:matches…`,
+  `[attr~=…]`) und höchstens ein `:has`. Er läuft gegen jedes Element einer Seite, die der
+  Betreiber des Feeds bestimmt.
 - **Inhaltstyp:** Eine Detailseite muss HTML sein; eine Anlage, die HTML liefert, gilt als
   vermutliche Bot-Schutzseite und wird verworfen.
 - **Drosselung:** Nur bei HTTP 429 wird gewartet und wiederholt; danach wird zurückgestellt.
@@ -158,7 +188,10 @@ liegt bei bis zu einer Anlagengröße je gleichzeitig verarbeiteter Anlage.
 | „Zieladresse liegt in einem gesperrten Adressbereich" | Zieladressprüfung | Hostnamen freigeben |
 | „Detailseite nicht erreichbar" | Verbindungsfehler, Timeout, Seite zu groß; zurückgestellt | nichts |
 | „Inhaltstyp der Detailseite wird nicht unterstützt" | der Link zeigt direkt auf ein PDF o. ä. | nichts |
-| „Kein Inhalt extrahierbar" | Hauptinhalt nach der Reduktion leer | `main-content-selector` prüfen |
+| „Kein Inhalt extrahierbar" | Hauptinhalt nach der Reduktion leer | Inhaltsselektor der Bibliothek prüfen |
+| Verbindungstest: „Der Inhaltsselektor findet auf der Detailseite des ersten Eintrags nichts …" | ein Lauf nähme die ganze Seite samt Seitenrahmen | Selektor an der Detailseite anpassen |
+| Verbindungstest: „Die Detailseite des ersten Eintrags konnte nicht geprüft werden: …" | der Feed ist erreichbar, die Detailseite nicht | Ursache im Rest der Meldung; der Feed lässt sich trotzdem anlegen |
+| Beim Speichern: „… ist kein gültiger CSS-Selektor …", „… reguläre Ausdrücke … sind nicht erlaubt", „… darf :has höchstens einmal enthalten" | der Selektor wird nicht gespeichert | Selektor ohne diese Teile formulieren |
 | „Anlage antwortete mit HTML statt einem Dokument (vermutlich Bot-Schutz)" | Anlage verworfen | nichts |
 | „Anlage überschreitet die zulässige Größe" / „Anlage nicht erreichbar" / „Anlagenformat wird nicht unterstützt" | diese Anlage entfällt | nichts |
 | „Die Quelle hat den Lauf n-mal gedrosselt …" (Ratenbegrenzung) | eine Zeile je Lauf, wenn gewartet wurde | nichts |
@@ -176,8 +209,6 @@ Lauf während eines Eintrags gestoppt, endet er mit „Lauf unterbrochen".
 | `opaa.indexing.rss.max-feed-size-bytes` | `OPAA_INDEXING_RSS_MAX_FEED_SIZE_BYTES` | 10485760 (10 MiB) | darüber scheitert der Lauf |
 | `opaa.indexing.rss.max-page-size-bytes` | `OPAA_INDEXING_RSS_MAX_PAGE_SIZE_BYTES` | 5242880 (5 MiB) | darüber entfällt der Eintrag |
 | `opaa.indexing.rss.request-delay-ms` | `OPAA_INDEXING_RSS_REQUEST_DELAY_MS` | 1000 | Wartezeit vor jeder Detailseite und Anlage; 0 schaltet ab |
-| `opaa.indexing.rss.main-content-selector` | `OPAA_INDEXING_RSS_MAIN_CONTENT_SELECTOR` | `main, article, [role=main]` | Selektor der Inhaltsbereiche, Rückfall `body` |
-| `opaa.indexing.rss.attachment-profile` | `OPAA_INDEXING_RSS_ATTACHMENT_PROFILE` | `GENERIC` | `GENERIC` oder `GSB`, für die ganze Installation |
 | `opaa.indexing.rss.max-attachments-per-entry` | `OPAA_INDEXING_RSS_MAX_ATTACHMENTS_PER_ENTRY` | 10 | Anlagen je Eintrag |
 | `opaa.indexing.rss.max-attachment-size-bytes` | `OPAA_INDEXING_RSS_MAX_ATTACHMENT_SIZE_BYTES` | 20971520 (20 MiB) | darüber entfällt die Anlage |
 
@@ -186,10 +217,20 @@ Lauf während eines Eintrags gestoppt, endet er mit „Lauf unterbrochen".
 Die Verschachtelungstiefe der Anlagen ist allgemein (`opaa.indexing.attachments.max-depth`, im
 Kapitel [Wissensbibliotheken](../README.md)). Nicht konfigurierbar: Timeouts.
 
+Inhaltsselektor und Anlagenprofil sind Angaben je Bibliothek (Abschnitt „Quellkonfiguration“),
+ohne Vorgabe für die ganze Installation. Ohne eigene Angabe gilt die Werkseinstellung:
+
+| Angabe | Werkseinstellung |
+|---|---|
+| Inhaltsselektor | `main, article, [role=main]` |
+| Anlagenprofil | `GENERIC` |
+
+Die früheren Variablen dafür liest OPAA nicht mehr
+([Konfiguration](../../../betrieb/konfiguration.md#entfallene-und-veraltete-variablen)).
+
 ## 10. Nicht gebaut
 
 - Atom-Feeds
-- Anlagenprofil je Bibliothek statt je Installation
 - Löschung anhand eines positiven Befunds, etwa einer dauerhaft fehlenden Detailseite
 - Schonzeitraum, Rechteübernahme, ereignisgesteuerte Aktualisierung, Drosselung nach wiederholtem
   Scheitern

@@ -148,8 +148,6 @@ Meldung ab, die die Variable nennt. Deshalb lässt `.env.docker.example` solche 
 | `OPAA_INDEXING_RSS_MAX_FEED_SIZE_BYTES` | `10485760` | `10485760` | Max. Größe des abgerufenen RSS-Feeds in Byte |
 | `OPAA_INDEXING_RSS_MAX_PAGE_SIZE_BYTES` | `5242880` | `5242880` | Max. Größe einer abgerufenen Detailseite in Byte |
 | `OPAA_INDEXING_RSS_REQUEST_DELAY_MS` | `1000` | `1000` | Mindestabstand zwischen zwei Detailseiten-Abrufen in ms |
-| `OPAA_INDEXING_RSS_MAIN_CONTENT_SELECTOR` | `main, article, [role=main]` | `main, article, [role=main]` | CSS-Selektor (Jsoup-Syntax) für den Hauptinhalt einer Detailseite, Fallback `<body>` |
-| `OPAA_INDEXING_RSS_ATTACHMENT_PROFILE` | `GENERIC` | `GENERIC` | Anlagenprofil für RSS-Detailseiten: `GENERIC` oder `GSB` (Government Site Builder) — gilt für jeden RSS-Lauf dieser Installation, nicht je Lauf wählbar |
 | `OPAA_INDEXING_RSS_MAX_ATTACHMENTS_PER_ENTRY` | `10` | `10` | Max. Anzahl heruntergeladener Anlagen je RSS-Eintrag |
 | `OPAA_INDEXING_RSS_MAX_ATTACHMENT_SIZE_BYTES` | `20971520` | `20971520` | Max. Größe einer einzelnen RSS-Anlage in Byte |
 | `OPAA_INDEXING_CRAWL_MAX_DEPTH` | `10` | `10` | Maximale Rekursionstiefe eines `HTTP_DIRECTORY`-Crawls — die Wurzel liegt auf Tiefe 0, ein Crawl besucht also die Tiefen 0 bis einschließlich `max-depth`. Bricht einen Zyklus, der nie dieselbe URL zweimal erzeugt (z. B. eine Symlink-Schleife mit wachsendem Pfad) |
@@ -487,6 +485,7 @@ um.
 | `OPAA_EXTERNAL_ACCESS_REMINDER_LEAD_DAYS` | „Erinnerung vor Ablauf einer Freigabe" in den Einstellungen unter Administration → Anbindungen → Externe KI-Werkzeuge | ohne eigenen Wert gilt die Werkseinstellung von 14 Tagen; höchstens einen Tag unter `OPAA_EXTERNAL_ACCESS_MAX_RELEASE_DAYS` ([Externe KI-Werkzeuge](../spaces/fremdzugaenge.md)) |
 | `OPAA_SUCCESSION_AGING_THRESHOLD_MONTHS` | „Hervorhebung lange offener Einträge" unter Administration → Ohne Zuständigkeit | ohne eigenen Wert gilt die Werkseinstellung von 12 Monaten ([Berechtigungen](../konten-und-rechte/berechtigungen.md)) |
 | `OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION` | „Plausibilitätsschwelle" unter Administration → Verzeichnisabgleich, in ganzen Prozent von 1 bis 100 | ohne eigenen Wert gilt die Werkseinstellung von 30 %; ein Anteil wie `0.3` wird dort als `30` eingetragen, unter 1 % ist nichts mehr abbildbar. Wer strenger als `0.3` gesetzt hatte, startet die neue Version zuerst mit `OPAA_DIRECTORY_SYNC_SCHEDULE_ENABLED=false`, trägt die Schwelle ein und schaltet den Zeittakt danach wieder ein ([Authentifizierung](authentifizierung.md#verzeichnisabgleich-je-anbieter)) |
+| `OPAA_INDEXING_RSS_MAIN_CONTENT_SELECTOR`, `OPAA_INDEXING_RSS_ATTACHMENT_PROFILE` | „Inhaltsselektor" und „Anlagenprofil" je Feed-Bibliothek, Reiter „Quelle", Zeile „Umfang" | nicht übernommen; ohne eigenen Wert gilt die Werkseinstellung. Wer ein Anlagenprofil oder einen Selektor für die ganze Installation gesetzt hatte, trägt ihn bei jeder betroffenen Bibliothek ein. Der Start warnt, solange eine davon gesetzt ist ([Konnektor Feed](../arbeitsmittel/wissensbibliotheken/konnektoren/rss-feed.md#3-quellkonfiguration)) |
 
 Liegt eine der entfallenen Variablen dieser Tabelle noch in der Umgebung, schreibt der Start je
 Variable eine Warnung mit dem Ort, an dem der Wert jetzt steht. Wer einen dieser

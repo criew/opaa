@@ -399,8 +399,8 @@ Konfiguration; Gruppe E entfällt oder wandert in die Datenbank.
 | B | Schlüssel und Geheimnisse des Betriebs, die Werte der Datenbank schützen oder Dienste anbinden | 8 |
 | C | Grenzen des Betriebs (ADR-0060, Entscheidung 2) | 29 |
 | D | Lastgrenzen, Überlastschutz und Technik: Budgets, Größen, Timeouts, Nebenläufigkeit, Endpunkte | 182 |
-| E | Fachliche Einstellungen: entfallen oder wandern in die Datenbank | 48 |
-| F | Experten-Feinabstimmung von Suche und Index (ADR-0060, Entscheidung 3) | 38 |
+| E | Fachliche Einstellungen: entfallen oder wandern in die Datenbank | 50 |
+| F | Experten-Feinabstimmung von Suche und Index (ADR-0060, Entscheidung 3) | 36 |
 
 Neu hinzu kommen `OPAA_INSTALLATION_ANSWER_FILE` (Gruppe A), `OPAA_INSTALLATION_TOKEN` (Gruppe B),
 `OPAA_INSTALLATION_ALLOWED_CIDRS` sowie `OPAA_MODEL_TARGET_VALIDATION_ENABLED` und
@@ -740,6 +740,8 @@ der Quellen).
 | `OPAA_INDEXING_DROPBOX_FULL_SYNC_INTERVAL` | `opaa.indexing.dropbox.full-sync-interval` | wie Confluence |
 | `OPAA_INDEXING_GOOGLE_DRIVE_FULL_SYNC_INTERVAL` | `opaa.indexing.google-drive.full-sync-interval` | wie Confluence |
 | `OPAA_INDEXING_NEXTCLOUD_FULL_DESCENT_INTERVAL` | `opaa.indexing.nextcloud.full-descent-interval` | Vollabgleich-Rhythmus der Quellart Nextcloud (`full_sync_rhythm_settings`), in ganzen Tagen; ohne Rhythmus je Bibliothek |
+| `OPAA_INDEXING_RSS_ATTACHMENT_PROFILE` | `opaa.indexing.rss.attachment-profile` | entfällt; Anlagenprofil je Feed-Bibliothek in deren Quelleinstellungen (`source_settings`), Werkseinstellung `GENERIC` im Code, keine Vorgabe der Installation (#3396) |
+| `OPAA_INDEXING_RSS_MAIN_CONTENT_SELECTOR` | `opaa.indexing.rss.main-content-selector` | entfällt; Inhaltsselektor je Feed-Bibliothek in deren Quelleinstellungen, Werkseinstellung im Code (#3396) |
 | `OPAA_INDEXING_SHAREPOINT_FULL_SYNC_INTERVAL` | `opaa.indexing.sharepoint.full-sync-interval` | wie Confluence; OneDrive, das die Variable mitnutzte, bekommt einen eigenen Wert der Quellart |
 | `OPAA_INITIAL_ADMIN_EMAIL` | `opaa.auth.initial-admin-email` | Startwert entfällt; erstes Konto im Assistenten |
 | `OPAA_INITIAL_ADMIN_PASSWORD` | `opaa.auth.local.initial-admin-password` | Startwert entfällt; erstes Konto im Assistenten |
@@ -788,8 +790,6 @@ Lauf.
 | `OPAA_INDEXING_CHUNK_OVERLAP` | `opaa.indexing.chunk-overlap` |
 | `OPAA_INDEXING_CHUNK_SIZE` | `opaa.indexing.chunk-size` |
 | `OPAA_INDEXING_CHUNK_TARGET_CHARACTERS` | `opaa.indexing.chunk-target-characters` |
-| `OPAA_INDEXING_RSS_ATTACHMENT_PROFILE` | `opaa.indexing.rss.attachment-profile` |
-| `OPAA_INDEXING_RSS_MAIN_CONTENT_SELECTOR` | `opaa.indexing.rss.main-content-selector` |
 | `OPAA_MCP_DEFAULT_MAX_HITS` | `opaa.mcp.default-max-hits` |
 | `OPAA_MCP_EXCERPT_CHARACTERS` | `opaa.mcp.excerpt-characters` |
 | `OPAA_QUERY_CONVERSATION_WINDOW_MESSAGES` | `opaa.query.conversation-window-messages` |
