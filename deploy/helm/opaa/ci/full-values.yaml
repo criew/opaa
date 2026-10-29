@@ -31,6 +31,16 @@ bootstrap:
     apiKeyInSecret: true
     temperature: 0.2
     maxTokens: 4000
+  mail:
+    host: smtp.intern.example.org
+    port: 2587
+    encryption: STARTTLS
+    username: opaa
+    passwordInSecret: true
+    fromAddress: opaa@example.org
+    fromName: OPAA
+installationMailTargetAllowlist:
+  - relay.intern.example.org
 secrets:
   existingSecret: opaa-secrets
 uploads:

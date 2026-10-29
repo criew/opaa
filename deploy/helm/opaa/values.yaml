@@ -5,8 +5,8 @@
 # Three kinds of configuration (ADR-0042, Entscheidung 3):
 #   - deployment values, read on every start: everything outside of "bootstrap"
 #   - the answer file of the installation, applied while the installation is pending: "bootstrap"
-#   - administration settings (mail server, further providers, models): none here, they live in
-#     the user interface
+#   - administration settings (further providers, models, a changed mail server): none here, they
+#     live in the user interface
 
 nameOverride: ""
 fullnameOverride: ""
@@ -284,6 +284,22 @@ bootstrap:
     # Empty: the defaults of the model administration.
     temperature: null
     maxTokens: null
+  # The mail server of the optional step E-Mail-Versand, checked with a connection and a sign-in,
+  # without sending anything. Leave host empty to skip the step; the server is then entered under
+  # Administration -> E-Mail. Host and port are added to installationMailTargetAllowlist, so an
+  # internal server passes the address check of the installation. Its password, if needed, comes
+  # from the secret (key installation-mail-password): set secrets.mailPassword, or passwordInSecret
+  # with secrets.existingSecret.
+  mail:
+    host: ""
+    port: 587
+    # NONE, STARTTLS or SSL
+    encryption: STARTTLS
+    # Empty: the server is used without signing in.
+    username: ""
+    passwordInSecret: false
+    fromAddress: ""
+    fromName: ""
 
 secrets:
   # Name of an existing secret holding the keys below (recommended: External Secrets, Sealed
@@ -296,6 +312,7 @@ secrets:
   #             of the answer file, not an environment variable; remove it once installed)
   #   with bootstrap.chatModel.apiKeyInSecret: installation-chat-api-key (a file as well)
   #   with embedding.apiKeyInSecret: installation-embedding-api-key (a file as well)
+  #   with bootstrap.mail.passwordInSecret: installation-mail-password (a file as well)
   #   no longer read: OPAA_INITIAL_ADMIN_PASSWORD, OPAA_OPENAI_EMBEDDING_API_KEY (up to
   #             v0.1.0-rc.4)
   #   no longer read: OPAA_RERANK_API_KEY, OPAA_TRANSCRIPTION_API_KEY (set under Modelle)
@@ -316,6 +333,8 @@ secrets:
   embeddingApiKey: ""
   # Key of the chat model in the answer file (installation-chat-api-key).
   chatApiKey: ""
+  # Password of the mail server in the answer file (installation-mail-password).
+  mailPassword: ""
   # Password of the first account in the answer file (installation-admin-password), 12 to 64
   # characters, not the address. Can be removed once the installation is completed, together
   # with bootstrap.initialAdmin.email.
@@ -601,8 +620,9 @@ localAdminAllowedCidrs: []
 installationAllowedCidrs: []
 
 # Mail servers the installation assistant's optional mail step may reach on internal addresses
-# (OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST), each host or host:port. Empty: an internal mail server
-# is entered after the installation under Administration -> E-Mail, which checks no address.
+# (OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST), each host or host:port; host and port of bootstrap.mail
+# are always added. Empty: an internal mail server is entered after the installation under
+# Administration -> E-Mail, which checks no address.
 installationMailTargetAllowlist: []
 
 networkPolicy:

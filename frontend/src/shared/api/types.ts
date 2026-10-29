@@ -13,6 +13,7 @@ export type IndexingRunMetrics = components['schemas']['IndexingRunMetrics']
 export type QueryRequest = components['schemas']['QueryRequest']
 export type QueryMetadata = components['schemas']['QueryMetadata']
 export type ChunkLocation = components['schemas']['ChunkLocation']
+export type ChunkAnchor = components['schemas']['ChunkAnchor']
 export type SearchedLibrary = components['schemas']['SearchedLibrary']
 export type ErrorResponse = components['schemas']['ErrorResponse']
 

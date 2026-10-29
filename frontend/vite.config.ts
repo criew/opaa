@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolveOpaaVersion } from './opaaVersion.ts'
+import { pdfjsAssets, PDFJS_ASSET_DIR } from './pdfjsAssets.ts'
 import { prototypeOutput } from './prototypeOutput.ts'
 
 // TODO: Split MUI out of the entry chunk to bring it below 500 kB
@@ -12,7 +13,7 @@ import { prototypeOutput } from './prototypeOutput.ts'
 // scripts and its own page title.
 export default defineConfig(({ mode }) => ({
   base: mode === 'prototype' ? './' : '/',
-  plugins: [react(), mode === 'prototype' && prototypeOutput()],
+  plugins: [react(), pdfjsAssets(), mode === 'prototype' && prototypeOutput()],
   // @/ points at src/, mirroring "paths" in tsconfig.app.json; Vitest inherits it.
   resolve: {
     alias: [{ find: /^@\//, replacement: fileURLToPath(new URL('./src/', import.meta.url)) }],
@@ -22,6 +23,7 @@ export default defineConfig(({ mode }) => ({
   // 0.0.0-dev.
   define: {
     __OPAA_VERSION__: JSON.stringify(resolveOpaaVersion(process.env.OPAA_VERSION)),
+    __PDFJS_ASSET_DIR__: JSON.stringify(PDFJS_ASSET_DIR),
     ...(mode === 'prototype' && {
       'import.meta.env.VITE_ENABLE_MOCKS': JSON.stringify('true'),
     }),

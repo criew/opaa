@@ -66,6 +66,35 @@ describe('useDocumentPreview', () => {
     expect(result.current.previewDocument).toBeNull()
   })
 
+  it('opens a PDF in the app viewer with the anchor and checksum the caller passed', async () => {
+    const blob = new Blob(['%PDF'], { type: 'application/pdf' })
+    const anchor = { pageFrom: 2, pageTo: 3, quoteStart: 'Anfang', quoteEnd: 'Ende' }
+    mockOpenDocumentContent.mockResolvedValueOnce({ kind: 'pdf-preview', fileName: 'a.pdf', blob })
+    const { result } = renderHook(() => useDocumentPreview())
+
+    await act(async () => {
+      await result.current.openDocument({
+        id: 'doc-1',
+        fileName: 'fallback.pdf',
+        anchor,
+        contentSha256: 'ab12',
+      })
+    })
+
+    expect(result.current.pdfPreview).toEqual({
+      kind: 'pdf-preview',
+      fileName: 'a.pdf',
+      blob,
+      anchor,
+      contentSha256: 'ab12',
+    })
+    expect(result.current.previewDocument).toBeNull()
+
+    act(() => result.current.closePdfPreview())
+
+    expect(result.current.pdfPreview).toBeNull()
+  })
+
   // A format without a preview (DOCX among them) must give visible download feedback so a click
   // never appears to do nothing - as a global popup notification (guidelines 5.9).
   it('notifies with a German download message for a download result', async () => {
