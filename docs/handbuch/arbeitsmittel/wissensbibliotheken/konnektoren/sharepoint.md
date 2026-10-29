@@ -3,8 +3,9 @@
 ## 1. Was der Konnektor ist
 
 Der Konnektor liest **Dokumentbibliotheken von SharePoint Online** über **Microsoft Graph v1.0** und
-hält sie über dessen Änderungsprotokoll aktuell. Eine Bibliothek in OPAA liest eine bis fünfzig
-Dokumentbibliotheken, auch aus verschiedenen Sites, wahlweise eingeschränkt auf Ordner. SharePoint
+hält sie über dessen Änderungsprotokoll aktuell. Eine Bibliothek in OPAA liest alle
+Dokumentbibliotheken gewählter Sites oder eine bis fünfzig einzeln gewählte, auch aus verschiedenen
+Sites, wahlweise eingeschränkt auf Ordner. SharePoint
 ist eine der [Dateiablagen](README.md#2-dateiablagen); was alle Dateiablagen teilen, steht dort.
 
 ```mermaid
@@ -62,7 +63,16 @@ OPAA folgt nur über `https`, prüft das Ziel und sendet dorthin kein Token.
 
 Die Zeile „Verbindung" fragt weder Adresse noch Zugangsdaten ab; beides kommt vom Zugang. Steht kein
 Zugang zur Verfügung, verweist der Assistent an die Systemverwaltung. Gibt es nur einen, öffnet der
-Assistent gleich den Auswahldialog der Zeile „Umfang":
+Assistent gleich die Zeile „Umfang". Sie bietet zwei Wege:
+
+- **„Alle Dokumentbibliotheken einer Site"** — für neue Bibliotheken vorausgewählt, darunter steht
+  „Was später in der Quelle dazukommt, wird automatisch mit indiziert." Über „Sites auswählen …"
+  sucht man die Sites oder trägt über „Von Hand eintragen …" ihre „Adresse der Site" ein. Jeder Lauf
+  stellt die Dokumentbibliotheken jeder gewählten Site neu fest; eine neue Dokumentbibliothek kommt
+  so ohne Zutun dazu. „Alle Sites" gibt es nicht. Der Verbindungstest nennt die Zahl der
+  Dokumentbibliotheken, die ein Lauf jetzt fände, und prüft jede.
+- **„Nur ausgewählte Dokumentbibliotheken und Ordner"** — „Dokumentbibliotheken und Ordner
+  auswählen …" öffnet den Auswahldialog:
 
 1. **Site wählen.** Der Dialog listet die Sites („Sites suchen" geht nur mit `Sites.Read.All`); über
    „Von Hand eintragen …" öffnet man eine Site über ihre „Adresse der Site" aus dem Browser, etwa
@@ -81,14 +91,15 @@ Ist zu einer Dokumentbibliothek keine Site gespeichert, etwa nach einem Update, 
 bei den Sites. Sobald man ihre Site öffnet, ordnet der Dialog die schon gewählte
 Dokumentbibliothek samt Ordnern dieser Site zu; „Übernehmen" speichert die Site.
 
-Eine ganze Site oder „alle Sites" lässt sich nicht wählen. Sites, Dokumentbibliotheken und Ordner
-einer Ebene listet der Dialog nur bis zu einer festen Grenze; ist die Liste länger, steht dort „Liste
+Eine bestehende Bibliothek behält ihre Auswahl, bis man den Umfang ändert. Eine Site steht entweder
+mit allen Dokumentbibliotheken in der Auswahl oder mit einzelnen. Sites, Dokumentbibliotheken und
+Ordner einer Ebene listet der Dialog nur bis zu einer festen Grenze; ist die Liste länger, steht dort „Liste
 unvollständig.". Eine fehlende Site lässt sich über einen engeren Suchbegriff oder ihre Adresse
 öffnen. Im Reiter „Quelle" öffnet „Ändern" am Umfang denselben Dialog, und „Übernehmen" speichert
 sofort.
 
-Unter „Umfang" stehen die Dokumentbibliotheken für alle Leseberechtigten, jeweils mit „ganze
-Dokumentbibliothek" oder den Ordnern. Den eigenen Vollabgleich-Rhythmus setzt „Vollabgleich alle …
+Unter „Umfang" stehen die Dokumentbibliotheken bzw. die Sites für alle Leseberechtigten, jeweils mit
+„ganze Dokumentbibliothek" oder den Ordnern. Den eigenen Vollabgleich-Rhythmus setzt „Vollabgleich alle …
 Tage". Eine andere Auswahl lässt den nächsten Lauf vollständig abgleichen; ein geänderter Anzeigename
 nicht.
 
@@ -103,7 +114,7 @@ Fehlerbilder".
 
 | Laufart | Wann | Was er tut |
 |---|---|---|
-| **Vollabgleich** | erster Lauf, nach einer Änderung der Auswahl, nach einem verfallenen Änderungsstand, im Vollabgleich-Rhythmus, „Vollabgleich starten" | listet alle Dokumentbibliotheken und entfernt, was fehlt |
+| **Vollabgleich** | erster Lauf, nach einer Änderung der Auswahl, wenn eine gewählte Site eine neue Dokumentbibliothek hat, nach einem verfallenen Änderungsstand, im Vollabgleich-Rhythmus, „Vollabgleich starten" | listet alle Dokumentbibliotheken und entfernt, was fehlt |
 | **Änderungslauf** | jeder Lauf dazwischen und „Jetzt indizieren" | liest das Änderungsprotokoll jeder Dokumentbibliothek ab dem gespeicherten Stand |
 
 Jede Dokumentbibliothek hat einen eigenen Änderungsstrom; meldet Graph eine Datei mehrfach, gilt die
@@ -132,6 +143,7 @@ Lauf einen neuen Abgleich.
 | Ordner gelöscht oder aus den gewählten Ordnern verschoben | einzeln gemeldete Dateien entfernt der Änderungslauf, die übrigen der nächste Vollabgleich |
 | gewählter Ordner gelöscht | die Dokumentbibliothek gilt als nicht erreichbar, nichts wird entfernt; die Ordnerauswahl ist anzupassen |
 | Freigabe der Site entzogen, auch während eines Laufs | keine Löschung; der Bestand bleibt, und das Protokoll nennt die Dokumentbibliothek |
+| Dokumentbibliothek einer mit allen Dokumentbibliotheken gewählten Site gelöscht | das Protokoll nennt sie unter „Nicht mehr im Umfang"; was aus ihr indiziert ist, entfernt der nächste Vollabgleich |
 
 Für Ordneränderungen gilt also ein Fenster bis zum nächsten Vollabgleich; der Vollabgleich-Rhythmus
 ([Konnektoren](README.md#14-vollabgleich-rhythmus)) begrenzt es und ist ab Werk bewusst kurz, weil eine Auflistung wenig kostet.
@@ -197,6 +209,8 @@ Correlation-ID für eine Anfrage beim Microsoft-Support.
 | „Die Anwendung darf das nicht lesen. Bei der Berechtigung Sites.Selected muss die Site für die App freigegeben sein." / „… Dokumentbibliothek ist für die Anwendung nicht sichtbar …" | Site nicht freigegeben oder Kennung falsch, bei erteilter Administratorzustimmung; der Bestand bleibt | Site freigeben (Abschnitt 2) |
 | „Microsoft Graph kennt die Site oder Bibliothek nicht …" | Adresse falsch oder Site gelöscht | Adresse prüfen |
 | „Die Dokumentbibliothek gehört nicht zur Site … bitte neu aus der Auflistung wählen." | im Verbindungstest: die gespeicherte Site führt die Dokumentbibliothek nicht (mehr) | Dokumentbibliothek im Umfang neu wählen |
+| „Umfang „Alle“: … Dokumentbibliotheken" / „Neu im Umfang: …" / „Nicht mehr im Umfang: …" | bei Sites mit allen Dokumentbibliotheken die Zahl dieses Laufs und was seit dem letzten Lauf dazukam oder wegfiel | nichts |
+| „Die gewählten Sites haben keine Dokumentbibliothek, die die Anwendung sieht …" | der Lauf scheitert, der Bestand bleibt | Freigabe der Site prüfen |
 | „Die Adresse der Site ist eine https-Adresse ohne Port, Anmeldedaten, Abfrage und Anker …" | Adresse in falscher Form | Adresse aus dem Browser übernehmen |
 | „Die Site … hat keine Dokumentbibliothek, die die Anwendung lesen kann …" / „… keine SharePoint-Dokumentbibliothek …" | nur OneDrive oder andere Laufwerke | nichts; ein OneDrive liest der Konnektor [OneDrive](onedrive.md) |
 | „Die Suche nach Sites braucht die Berechtigung Sites.Read.All …" | Suche unter `Sites.Selected` | Adresse eingeben |
@@ -226,7 +240,8 @@ Alle Schlüssel unter `opaa.indexing.sharepoint.*`. Sie gelten ebenso für den K
 | `max-files-per-run` | `OPAA_INDEXING_SHAREPOINT_MAX_FILES_PER_RUN` | 1000000 | gelistete Dateien je Vollabgleich, bevor der Lauf scheitert |
 | `download-concurrency` | `OPAA_INDEXING_SHAREPOINT_DOWNLOAD_CONCURRENCY` | 2 | gleichzeitige Downloads je Lauf |
 
-Die Obergrenzen von fünfzig Dokumentbibliotheken und fünfzig Ordnern je Dokumentbibliothek sind fest.
+Die Obergrenzen von fünfzig Einträgen im Umfang (einzelne Dokumentbibliotheken und Sites mit allen
+Dokumentbibliotheken zusammen) und fünfzig Ordnern je Dokumentbibliothek sind fest.
 
 ## 11. Nicht gebaut
 

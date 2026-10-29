@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt ADR-0017 (Entscheidung 5), ADR-0018 und ADR-0023 · Entscheidung 1 verallgemeinert durch ADR-0038 · Abgleich über den gemeinsamen Datei-Abgleich (ADR-0045, Entscheidung 1)
+Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt ADR-0017 (Entscheidung 5), ADR-0018 und ADR-0023 · Entscheidung 1 verallgemeinert durch ADR-0038 · Abgleich über den gemeinsamen Datei-Abgleich (ADR-0045, Entscheidung 1)
 
 ## Kontext
 
@@ -34,7 +34,8 @@ Zertifikatsprüfung; `S3SdkClient` setzt `TRUST_ALL_CERTIFICATES` nicht.
 
 ### 2. Geltungsbereiche: eine Liste von (Bucket, Präfix), mindestens einer, ohne Überlappung
 
-Ein bis fünfzig Bereiche (`S3Scope.MAX_PER_LIBRARY`), Bucket nach AWS-Namensregeln, Präfix
+Ein bis fünfzig Bereiche (`S3Scope.MAX_PER_LIBRARY`) oder der Umfang „Alle Buckets“
+(`allBuckets: true`, Bereiche leer; beides zusammen wird abgelehnt). Bucket nach AWS-Namensregeln, Präfix
 normalisiert (kein führender, ein abschließender Schrägstrich bei nichtleerem Präfix). Zwei
 Bereiche derselben Bibliothek dürfen sich nicht überlappen, weil ein Objekt in zwei Bereichen
 zweimal denselben `file_path` hätte (`uk_documents_library_path`); zwei Bibliotheken dürfen
@@ -42,7 +43,20 @@ denselben Bereich tragen (getrennte Leserkreise, doppelte Indizierung als Preis,
 Entscheidung 5). Die Freigabe der Bibliothek gilt für alle Bereiche gemeinsam; der Wizard sagt das
 vor der Eingabe. Bereiche sind änderbar; Entfernen wirkt mit dem nächsten Vollabgleich. Jede
 Änderung von Bereichen oder Endpoint verwirft den Wiederaufnahmezustand (`SyncStateBasis`).
-`ListBuckets` ist Komfort: Ohne `s3:ListAllMyBuckets` gibt es den Hinweis, den Bucket einzutragen.
+`ListBuckets` ist für eine Auswahl Komfort: Ohne `s3:ListAllMyBuckets` gibt es den Hinweis, den
+Bucket einzutragen.
+
+„Alle Buckets“ heißt: jeder Bucket, den der Schlüssel auflisten darf, auch was später dazukommt,
+jeweils ganz. Es setzt `s3:ListAllMyBuckets` voraus: Speichern und Ändern prüfen das mit
+`ListBuckets` und lehnen ohne Berechtigung ab, die Oberfläche bietet „Alle Buckets“ dann nicht an
+und wählt es nur für neue Bibliotheken mit Berechtigung vor; bestehende Bibliotheken behalten ihre
+Bereiche. Jeder Lauf, auch ein Ereignislauf, listet die Buckets neu; fehlt die Berechtigung oder
+sieht der Schlüssel keinen Bucket, scheitert er vor dem ersten Objekt und entfernt nichts. Die
+Ordnerkette beginnt unter „Alle Buckets“ immer mit dem Bucket, damit sie sich mit der Zahl der
+Buckets nicht ändert. Das Laufprotokoll nennt die Zahl der Buckets und, gegen die in
+`source_sync_state.resolved_scopes` gemerkte letzte Ermittlung, neu hinzugekommene und
+weggefallene; was aus einem weggefallenen Bucket indiziert ist, entfernt der nächste Vollabgleich,
+weil er ihn nicht mehr auflistet.
 
 ### 3. Genau eine Betriebsart — der Vollabgleich — und ein Ereignislauf, der nie durch Abwesenheit löscht
 

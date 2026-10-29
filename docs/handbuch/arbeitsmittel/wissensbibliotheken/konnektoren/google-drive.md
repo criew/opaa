@@ -21,7 +21,8 @@ flowchart LR
   der Domäne und sieht, was dieses sieht. Ein Zugang ist möglich und darf das imitierte Konto
   vorgeben.
 - **Liest:** in einem bis fünfzig Bereichen — einer ganzen geteilten Ablage, einem Ordner samt
-  Unterordnern oder „Meine Ablage" des imitierten Kontos — Dateien in unterstützten Formaten und
+  Unterordnern oder „Meine Ablage" des imitierten Kontos — oder unter „Alle Ablagen" in jeder
+  geteilten Ablage, die das Konto sieht, Dateien in unterstützten Formaten und
   **Google-Formate als Export**:
 
   | Typ | Exportiert als | Über der Exportgrenze von Google (10 MB) |
@@ -72,7 +73,8 @@ geht immer an `https://oauth2.googleapis.com/token`, die Abrufe an `https://www.
 |---|---|
 | „Schlüsseldatei" | der Dienstkonto-Schlüssel als JSON-Datei, über „Datei wählen"; nur ohne Zugang; beim Bearbeiten bleibt der gespeicherte, solange das imitierte Konto gleich bleibt |
 | „Imitiertes Konto" | optional, nur ohne Zugang und nur mit Delegation; eine Änderung verlangt den Schlüssel neu |
-| „Geteilte Ablagen und Ordner" | in der Zeile „Umfang" aus der Auflistung gewählt — Geteilte Ablagen und freigegebene Ordner, mit imitiertem Konto auch „Meine Ablage" — oder über „Von Hand eintragen …" per „Ordner-ID"; „alle Ablagen" gibt es nicht |
+| „Alle Ablagen" / „Nur ausgewählte Geteilte Ablagen und Ordner" | in der Zeile „Umfang". „Alle Ablagen" liest jede geteilte Ablage, in der das Konto Mitglied ist, mit imitiertem Konto auch dessen „Meine Ablage", und was später dazukommt; freigegebene Ordner außerhalb geteilter Ablagen gehören nicht dazu. Darunter steht „Was später in der Quelle dazukommt, wird automatisch mit indiziert." Für neue Bibliotheken ist es vorausgewählt; eine bestehende behält ihre Bereiche |
+| „Geteilte Ablagen und Ordner" | unter „Nur ausgewählte …" aus der Auflistung gewählt — Geteilte Ablagen und freigegebene Ordner, mit imitiertem Konto auch „Meine Ablage" — oder über „Von Hand eintragen …" per „Ordner-ID" |
 
 Bei sehr vielen Geteilten Ablagen oder freigegebenen Ordnern zeigt die Auflistung nur die ersten und
 nennt sie „Liste unvollständig."; weitere Ordner lassen sich per „Ordner-ID" eintragen.
@@ -80,7 +82,8 @@ nennt sie „Liste unvollständig."; weitere Ordner lassen sich per „Ordner-ID
 Überlappende Bereiche sind erlaubt; eine Datei bleibt ein Dokument, ihr Ordner kommt aus dem ersten
 Bereich, der sie listet. Den eigenen
 Vollabgleich-Rhythmus setzt „Vollabgleich alle … Tage". Der Verbindungstest meldet sich an und
-prüft jeden Bereich (Befunde in Abschnitt 9). Eine geänderte Bereichsliste oder ein anderes
+prüft jeden Bereich (Befunde in Abschnitt 9); unter „Alle Ablagen" nennt er die Zahl der Ablagen, die
+ein Lauf jetzt fände. Eine geänderte Bereichsliste oder ein anderes
 imitiertes Konto lassen den nächsten Lauf vollständig abgleichen.
 
 **Über einen Zugang** trägt die Bibliothek nur ihre Bereiche; ein imitiertes Konto an der Bibliothek
@@ -101,6 +104,8 @@ in OPAA; bei Google widerruft ihn die Verwaltung in der Cloud Console.
 | **Änderungslauf** | jeder Lauf dazwischen und „Jetzt indizieren" | liest das Änderungsprotokoll ab dem gespeicherten Stand und lädt nur Geändertes |
 
 Jede geteilte Ablage hat einen eigenen Änderungsstrom, alle übrigen Bereiche teilen den des Kontos.
+Unter „Alle Ablagen" stellt jeder Lauf die Ablagen zuerst neu fest; eine neue Ablage hat noch keinen
+Änderungsstand, darum gleicht der nächste Lauf vollständig ab.
 Wird ein Ordner umbenannt, verschoben oder gelöscht, ist der nächste Lauf ein Vollabgleich, auch wenn
 der Ordner außerhalb der Bereiche liegt.
 
@@ -112,7 +117,9 @@ und Größe, bei Google-Formaten Änderungszeit und Zielformat. Verbindlich blei
 Entfernt wird im Vollabgleich, wenn die Datei in keinem Bereich mehr vorkommt — nur nach einem
 Vollabgleich in **einem** Lauf ([Konnektoren](README.md#23-wann-eine-gelöschte-datei-als-nachgewiesen-gilt)) —,
 und im Änderungslauf, wenn Drive sie als gelöscht oder im Papierkorb meldet oder sie in keinem Bereich
-mehr liegt. Ein Bereich, den das Konto nicht mehr sieht, führt zu keiner Löschung.
+mehr liegt. Ein Bereich, den das Konto nicht mehr sieht, führt zu keiner Löschung. Unter „Alle
+Ablagen" ist eine Ablage, die das Konto nicht mehr sieht, kein Bereich mehr: Was aus ihr indiziert
+ist, entfernt der nächste Vollabgleich.
 
 ## 6. Ordner
 
@@ -173,6 +180,8 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 | „Die domänenweite Delegation fehlt" / „Dem Zugriffstoken fehlt der Scope drive.readonly" | Delegation nicht oder ohne Scope eingetragen | Admin-Konsole; unter einem Zugang zuständig: die Systemverwaltung |
 | „Das imitierte Konto … ist in der Domäne nicht bekannt" | Tippfehler oder Konto gelöscht | Konto prüfen |
 | „Geltungsbereich „…": … nicht sichtbar" | Freigabe oder Mitgliedschaft fehlt, oder die ID ist falsch; der Bestand bleibt | freigeben |
+| „Umfang „Alle“: … Ablagen" / „Neu im Umfang: …" / „Nicht mehr im Umfang: …" | unter „Alle Ablagen" die Zahl der Ablagen und was seit dem letzten Lauf dazukam oder wegfiel; Weggefallenes bereinigt der nächste Vollabgleich | nichts, oder Mitgliedschaften prüfen |
+| „Das Konto sieht keine geteilte Ablage …" | unter „Alle Ablagen" scheitert der Lauf, der Bestand bleibt | Konto als Mitglied aufnehmen oder Bereiche auswählen |
 | „Als Text exportiert …" / „Tabelle übersprungen …" | über der Exportgrenze | Datei verkleinern oder hinnehmen |
 | „Die Datei überschreitet die Exportgrenze von Google Drive …" | auch der Textexport ist zu groß; der indizierte Stand bleibt | Datei verkleinern oder aufteilen |
 | „Google Drive hat auf eine fremde Adresse weitergeleitet …" | Download nicht gesendet; der indizierte Stand bleibt | trifft es viele Dateien, als Fehler von OPAA melden: Google liefert dann anders aus als angenommen |
