@@ -43,8 +43,9 @@ eigens angelegte Anbieterzeile.
 
 > **Warnung:** Dieser Modus schaltet die Authentifizierung vollständig ab. Er gehört nur auf
 > Arbeitsplätze und in Testumgebungen, nie auf eine erreichbare Instanz; das Backend warnt beim
-> Start. Im Compose-Stapel startet es in diesem Modus nicht, wenn das Frontend über Loopback hinaus
-> veröffentlicht ist ([Härtung des Compose-Stapels](docker-compose.md#härtung-des-compose-stapels)).
+> Start. Es startet in diesem Modus nicht, wenn das Frontend des Compose-Stapels oder, außerhalb von
+> Docker, `OPAA_SERVER_ADDRESS` über Loopback hinausreicht, außer `OPAA_AUTH_DEV_ALLOW_REMOTE=true`
+> bestätigt es ([Härtung des Compose-Stapels](docker-compose.md#härtung-des-compose-stapels)).
 
 ## Anmeldewege im Betriebsmodus `oidc`
 

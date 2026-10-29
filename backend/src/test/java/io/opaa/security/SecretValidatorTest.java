@@ -142,7 +142,9 @@ class SecretValidatorTest {
    */
   @Test
   void recognisesEveryKeyOfTheChartsCiValueSets() throws IOException {
-    Path ciDir = Path.of("../deploy/helm/opaa/ci");
+    String repositoryRoot = System.getProperty("opaa.repositoryRoot");
+    assertThat(repositoryRoot).as("system property opaa.repositoryRoot set by Gradle").isNotNull();
+    Path ciDir = Path.of(repositoryRoot, "deploy", "helm", "opaa", "ci");
     assertThat(ciDir).as("chart CI value sets").isDirectory();
     Pattern key = Pattern.compile("(?m)^\\s*(?:credentials|settings)EncryptionKey:\\s*(\\S+)\\s*$");
     int found = 0;

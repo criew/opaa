@@ -1222,7 +1222,10 @@ Probes und Metriken laufen über den Management-Port (siehe
 Der allgemeine Ablauf steht unter [Aktualisierung](aktualisierung.md); unter Kubernetes:
 
 1. **Vorbereitung prüfen** nach den Release-Notizen
-   ([Ablauf eines Updates](aktualisierung.md#ablauf-eines-updates)).
+   ([Ablauf eines Updates](aktualisierung.md#ablauf-eines-updates)). Stammt ein
+   Verschlüsselungsschlüssel aus den Wertesätzen der CI oder dem Profil `dev`, startet das Backend
+   nicht mehr: eigenen Schlüssel erzeugen und die damit geschützten Werte neu eintragen
+   ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#schlüssel-und-geheimnisse)).
 2. **Datenbank sichern**, danach die Originale (siehe
    [Sicherung und Wiederherstellung](#sicherung-und-wiederherstellung)). Ohne diese Sicherung gibt es
    nach einer Schemaänderung keinen Rückweg, außer die neue Version lässt die vorige in ihrem

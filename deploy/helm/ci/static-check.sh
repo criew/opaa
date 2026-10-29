@@ -522,6 +522,10 @@ notes_case "own secrets" "GEHEIMNISSE" "ÖFFENTLICH BEKANNTE TESTWERTE" \
   --set-string secrets.jwtSecret=own-static-check-secret-0123456789abcdefghij \
   --set-string secrets.credentialsEncryptionKey=bgkeQqaMpiL1xFl4ymM9MVJ+jYlt+GCb4w9J8o5btxI= \
   --set-string secrets.settingsEncryptionKey=NNEl4fE9dCl6LycesKNIxBXCY+hDKDDWV8D7hPi5e0A=
+notes_case "an earlier CI key" "ÖFFENTLICH BEKANNTE TESTWERTE" "INSTALLATION AUS DER ANTWORTDATEI" \
+  --set-string secrets.jwtSecret=own-static-check-secret-0123456789abcdefghij \
+  --set-string secrets.credentialsEncryptionKey=bjzhjv2AKbnBjZCYAR2V/Glp7TYZzqABwkqXs3lEyCY= \
+  --set-string secrets.settingsEncryptionKey=NNEl4fE9dCl6LycesKNIxBXCY+hDKDDWV8D7hPi5e0A=
 notes_case "egress off" "networkPolicy.egress.enabled ist aus" "INSTALLATION AUS DER ANTWORTDATEI"
 notes_case "egress on" "CLIENT-ADRESSE UND NETZTRENNUNG" "networkPolicy.egress.enabled ist aus" \
   --set networkPolicy.egress.enabled=true

@@ -6,54 +6,73 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 
 /**
- * Refuses to start the {@code dev} profile when the Compose stack publishes the frontend beyond the
- * loopback interface ({@code OPAA_FRONTEND_BIND_ADDRESS}, passed in as {@link
- * AuthProperties.DevAuth#publishedAddress()}) without {@code OPAA_AUTH_DEV_ALLOW_REMOTE=true}: in
- * this mode {@link DevAuthFilter} makes every request a system administrator. With the confirmation
- * the start goes ahead and says so at {@code WARN}. An empty address means the backend runs outside
- * that stack and is not judged.
+ * Refuses to start the {@code dev} profile when it is reachable beyond the loopback interface,
+ * because {@link DevAuthFilter} makes every request a system administrator - unless {@code
+ * OPAA_AUTH_DEV_ALLOW_REMOTE=true} confirms it; then the start says so at {@code WARN}. Judged is
+ * the address the Compose stack publishes the frontend on ({@link
+ * AuthProperties.DevAuth#publishedAddress()}); with the {@code docker} profile a missing one counts
+ * as not loopback, outside Docker {@code server.address} takes its place (empty means loopback).
  */
 @Configuration
 @Profile("dev")
 public class DevExposureGuard {
 
   static final String BIND_VARIABLE = "OPAA_FRONTEND_BIND_ADDRESS";
+  static final String SERVER_VARIABLE = "OPAA_SERVER_ADDRESS";
   static final String ALLOW_VARIABLE = "OPAA_AUTH_DEV_ALLOW_REMOTE";
 
   private static final Logger log = LoggerFactory.getLogger(DevExposureGuard.class);
 
   private final AuthProperties properties;
+  private final Environment environment;
 
-  public DevExposureGuard(AuthProperties properties) {
+  public DevExposureGuard(AuthProperties properties, Environment environment) {
     this.properties = properties;
+    this.environment = environment;
   }
 
   @PostConstruct
   void rejectRemoteExposure() {
-    String address = properties.dev().publishedAddress().trim();
-    if (address.isEmpty() || isLoopback(address)) {
+    String published = properties.dev().publishedAddress().trim();
+    String address;
+    String source;
+    if (!published.isEmpty()) {
+      address = published;
+      source = BIND_VARIABLE;
+    } else if (environment.acceptsProfiles(Profiles.of("docker"))) {
+      address = "an unknown address";
+      source = BIND_VARIABLE + " not passed in by the Compose stack";
+    } else {
+      address = environment.getProperty("server.address", "").trim();
+      source = SERVER_VARIABLE;
+      if (address.isEmpty()) {
+        return;
+      }
+    }
+    if (isLoopback(address)) {
       return;
     }
     if (Boolean.TRUE.equals(properties.dev().allowRemote())) {
       log.warn(
-          "The \"dev\" profile runs with the frontend published on {} ({}) and {}=true: every"
-              + " request that reaches this address acts as system administrator without signing"
-              + " in. Use the \"oidc\" profile for anything but a trusted development network.",
+          "The \"dev\" profile runs reachable on {} ({}) and {}=true: every request that reaches"
+              + " it acts as system administrator without signing in. Use the \"oidc\" profile for"
+              + " anything but a trusted development network.",
           address,
-          BIND_VARIABLE,
+          source,
           ALLOW_VARIABLE);
       return;
     }
     throw new IllegalStateException(
-        "The \"dev\" profile refuses to start with the frontend published on "
+        "The \"dev\" profile refuses to start reachable on "
             + address
             + " ("
-            + BIND_VARIABLE
-            + "): without sign-in every request acts as system administrator. Publish on"
-            + " 127.0.0.1, switch to SPRING_PROFILES_ACTIVE=docker,oidc, or confirm the exposure"
-            + " with "
+            + source
+            + "): without sign-in every request acts as system administrator. Bind to"
+            + " 127.0.0.1, switch to the \"oidc\" profile, or confirm the exposure with "
             + ALLOW_VARIABLE
             + "=true. See docs/handbuch/betrieb/docker-compose.md.");
   }

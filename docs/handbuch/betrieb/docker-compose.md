@@ -569,6 +569,10 @@ selbst:
 | Zugangsdaten des mitgelieferten Objektspeichers (`opaa-uploads`/`OpaaUploads!2026`, Profil `upload-s3`) | Die Originale aller hochgeladenen Dokumente sind mit Zugangsdaten geschützt, die im Repository stehen | **Zwingend** außerhalb einer Erprobung: eigene Werte über `OPAA_UPLOAD_STORE_ROOT_USER`/`OPAA_UPLOAD_STORE_ROOT_PASSWORD` in `.env` oder der Shell-Umgebung, dieselben als `OPAA_UPLOAD_S3_ACCESS_KEY`/`OPAA_UPLOAD_S3_SECRET_KEY` in `.env.docker`. Im erreichbaren Betrieb ist ein hauseigener Objektspeicher mit Verschlüsselung ruhender Daten und Versionierung der Regelfall |
 | `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` leer | Alle Clients teilen hinter dem Frontend-nginx einen Zähler | die feste Adresse des Frontend-Containers als `/32` eintragen, wie in `.env.docker.example` ([Vertraute Proxys](netz-und-sicherheit.md#vertraute-proxys-und-client-adresse)) |
 
+Der Startabbruch im Modus `dev` sieht nur die Variable `OPAA_FRONTEND_BIND_ADDRESS`: Ein eigener
+`ports:`-Eintrag in einer Override-Datei, auch der automatisch geladenen `docker-compose.override.yml`,
+umgeht ihn.
+
 Eine eigene `docker-compose.prod.yml` gibt es nicht. Mehrere Maßnahmen verlangen eine Änderung am
 Realm-Export, einen Schritt nach der Ersteinrichtung oder eine externe Datenbank für Keycloak — eine
 zweite Compose-Datei würde nur die Port-Bindungen automatisieren.
@@ -657,8 +661,9 @@ Neuaufsetzen mit vollständiger Neuindizierung.
 Welche Schritte ein Release verlangt, nennen seine Notizen im Abschnitt „Vorbereitung für
 Bestandsinstallationen"; für Einzelheiten verweisen sie hierher. Eine `.env.docker` oder eine eigene
 Compose-Datei aus einem älteren Stand braucht diese Punkte, alle **vor** dem `docker compose up -d`.
-Ohne Punkt 1 startet das Backend nicht, ohne Punkt 2 sperrt die Adressprüfung einen internen
-Anbieter, ohne Punkt 5 scheitert der erste Upload, ohne Punkt 6 ist die Oberfläche nicht erreichbar:
+Ohne Punkt 1 oder 8 startet das Backend nicht, ohne Punkt 2 sperrt die Adressprüfung einen internen
+Anbieter, ohne Punkt 5 scheitert der erste Upload, ohne Punkt 6 ist die Oberfläche nicht erreichbar,
+ohne Punkt 7 nicht mehr von anderen Rechnern:
 
 1. **`OPAA_AUTH_JWT_SECRET` setzen — Pflicht.** Im Betriebsmodus `oidc` bricht der Start ohne es ab,
    ebenso bei weniger als 32 Zeichen oder einem Platzhalter. Erzeugen mit `openssl rand -base64 48`
@@ -689,6 +694,17 @@ Anbieter, ohne Punkt 5 scheitert der erste Upload, ohne Punkt 6 ist die Oberflä
    Dienstes `frontend` (etwa `"127.0.0.1:3000:8080"`) und ein eigener Proxy im Docker-Netz
    (`frontend:8080`). Bildet sie noch auf `80` ab, antwortet der Host-Port nicht, und ein
    vorgeschalteter Proxy meldet `502`. Die `docker-compose.yml` des Repositorys tut das bereits.
+7. **Zugriff von außen ausdrücklich öffnen.** Frontend und Keycloak sind nur noch auf `127.0.0.1`
+   veröffentlicht. Wer sie ohne Reverse-Proxy auf demselben Host von anderen Rechnern erreichen muss,
+   setzt vor dem Update `OPAA_FRONTEND_BIND_ADDRESS` bzw. `OPAA_KEYCLOAK_BIND_ADDRESS` (etwa
+   `0.0.0.0`) in `.env` oder der Shell-Umgebung; im Modus `dev` zusätzlich
+   `OPAA_AUTH_DEV_ALLOW_REMOTE=true` ([Härtung des Compose-Stapels](#härtung-des-compose-stapels)).
+8. **Kopierte Test- oder Entwicklungsschlüssel ersetzen.** Steht in `OPAA_CREDENTIALS_ENCRYPTION_KEY`
+   oder `OPAA_SETTINGS_ENCRYPTION_KEY` ein Schlüssel des Profils `dev` oder der Wertesätze der CI,
+   bricht der Start im Modus `oidc` ab. Einen eigenen Schlüssel erzeugen (`openssl rand -base64 32`)
+   und die damit geschützten Werte danach neu eintragen: Zugangsdaten der Quellen und Zugänge,
+   Schlüssel der Chat-Modelle, das Passwort des Mailservers
+   ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#schlüssel-und-geheimnisse)).
 
 Bestehende Konten, Rollen, Rechte und der Index bleiben, wie sie sind; ein Identitätsanbieter läuft
 unverändert weiter, und die lokale Benutzerverwaltung bleibt aus, bis sie jemand einschaltet.

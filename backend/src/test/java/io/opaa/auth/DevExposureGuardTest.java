@@ -17,7 +17,9 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 /**
  * The {@code dev} profile makes every request a system administrator, so it refuses to start when
- * the Compose stack publishes the frontend beyond loopback, unless that is confirmed explicitly.
+ * it is reachable beyond loopback - the frontend the Compose stack publishes, a {@code docker}
+ * profile without that address, or {@code server.address} outside Docker - unless that is confirmed
+ * explicitly.
  */
 class DevExposureGuardTest {
 
@@ -68,6 +70,70 @@ class DevExposureGuardTest {
             "spring.profiles.active=dev", "opaa.auth.dev.published-address=" + address)
         .run(context -> assertThat(context).hasNotFailed());
     assertThat(appender.list).noneMatch(event -> event.getLevel() == Level.WARN);
+  }
+
+  @Test
+  void dockerProfileWithoutPublishedAddressCountsAsExposed() {
+    contextRunner
+        .withPropertyValues("spring.profiles.active=docker,dev", "server.address=0.0.0.0")
+        .run(
+            context ->
+                assertThat(context)
+                    .hasFailed()
+                    .getFailure()
+                    .rootCause()
+                    .hasMessageContaining("not passed in by the Compose stack")
+                    .hasMessageContaining("OPAA_AUTH_DEV_ALLOW_REMOTE=true"));
+  }
+
+  @Test
+  void dockerProfileJudgesThePublishedAddressNotTheContainersBinding() {
+    contextRunner
+        .withPropertyValues(
+            "spring.profiles.active=docker,dev",
+            "server.address=0.0.0.0",
+            "opaa.auth.dev.published-address=127.0.0.1")
+        .run(context -> assertThat(context).hasNotFailed());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"0.0.0.0", "::", "10.1.2.3"})
+  void outsideDockerTheServerAddressBeyondLoopbackRefusesTheStart(String address) {
+    contextRunner
+        .withPropertyValues("spring.profiles.active=local,dev", "server.address=" + address)
+        .run(
+            context ->
+                assertThat(context)
+                    .hasFailed()
+                    .getFailure()
+                    .rootCause()
+                    .hasMessageContaining(address)
+                    .hasMessageContaining("OPAA_SERVER_ADDRESS"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"localhost", "127.0.0.1", "::1"})
+  void outsideDockerALoopbackServerAddressStarts(String address) {
+    contextRunner
+        .withPropertyValues("spring.profiles.active=local,dev", "server.address=" + address)
+        .run(context -> assertThat(context).hasNotFailed());
+  }
+
+  @Test
+  void outsideDockerAConfirmedServerAddressStartsAndWarns() {
+    contextRunner
+        .withPropertyValues(
+            "spring.profiles.active=local,dev",
+            "server.address=0.0.0.0",
+            "opaa.auth.dev.allow-remote=true")
+        .run(context -> assertThat(context).hasNotFailed());
+
+    assertThat(appender.list)
+        .filteredOn(event -> event.getLevel() == Level.WARN)
+        .extracting(ILoggingEvent::getFormattedMessage)
+        .singleElement()
+        .satisfies(
+            message -> assertThat(message).contains("0.0.0.0").contains("OPAA_SERVER_ADDRESS"));
   }
 
   @Test
