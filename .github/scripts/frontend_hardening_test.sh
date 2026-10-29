@@ -165,6 +165,11 @@ csp_start() {
   done
   return 1
 }
+# Reads the whole log: `grep -q` would stop at the first match and end `docker logs` with SIGPIPE
+# while a multi-line refusal is still being written, which pipefail turns into a miss.
+logs_name() {
+  docker logs "$probe" 2>&1 | grep -- "$1" >/dev/null
+}
 newline='
 '
 for value in "https://login.example.org; script-src *" "'self'" "data: blob:" \
@@ -172,7 +177,7 @@ for value in "https://login.example.org; script-src *" "'self'" "data: blob:" \
   "https://\$host" "https://login.example.org${newline}add_header X-Evil 1" "https://a.example.org	b.example.org"; do
   if csp_start "$value"; then
     fail "start accepted OPAA_CSP_CONNECT_SRC_EXTRA='$value'"
-  elif docker logs "$probe" 2>&1 | grep -q 'ERROR: OPAA_CSP_CONNECT_SRC_EXTRA must be'; then
+  elif logs_name 'ERROR: OPAA_CSP_CONNECT_SRC_EXTRA must be'; then
     echo "refused as expected: '$value'"
   else
     fail "start failed for OPAA_CSP_CONNECT_SRC_EXTRA='$value' without naming the variable"
@@ -200,10 +205,11 @@ for value in "backend" "127.0.0.11;" "127.0.0.11 valid=1s" "127.0.0.11${newline}
   sleep 3
   if [[ "$(docker container inspect --format '{{.State.Running}}' "$probe")" == true ]]; then
     fail "start accepted OPAA_BACKEND_RESOLVER='$value'"
-  elif docker logs "$probe" 2>&1 | grep -q 'ERROR: OPAA_BACKEND_RESOLVER must be'; then
+  elif logs_name 'ERROR: OPAA_BACKEND_RESOLVER must be'; then
     echo "refused as expected: '$value'"
   else
     fail "start failed for OPAA_BACKEND_RESOLVER='$value' without naming the variable"
+    docker logs --tail 10 "$probe" >&2 2>&1 || true
   fi
 done
 
