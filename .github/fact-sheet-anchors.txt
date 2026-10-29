@@ -121,6 +121,8 @@ protokollereignisse#group-reactivated
 protokollereignisse#group-release-changed
 protokollereignisse#group-steward-appointed
 protokollereignisse#group-steward-dismissed
+protokollereignisse#incident-scope-approved
+protokollereignisse#incident-scope-requested
 protokollereignisse#incident-scope-retention-changed
 protokollereignisse#indexing-context-prefix-rerun-triggered
 protokollereignisse#indexing-metadata-backfill-triggered
@@ -299,6 +301,7 @@ voreinstellungen#local-auth-settings-invitation-token-ttl-hours
 voreinstellungen#local-auth-settings-reset-token-ttl-minutes
 voreinstellungen#locked-account-chat-cleanup-settings-delete-after-days
 voreinstellungen#locked-account-chat-cleanup-settings-enabled
+voreinstellungen#opaa-audit-incident-scope-max-days
 voreinstellungen#opaa-auth-local-access-token-ttl
 voreinstellungen#opaa-auth-local-admin-refresh-token-ttl
 voreinstellungen#opaa-auth-local-admin-session-max-lifetime

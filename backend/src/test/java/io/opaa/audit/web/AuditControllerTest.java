@@ -10,15 +10,19 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jayway.jsonpath.JsonPath;
 import com.tngtech.archunit.core.domain.JavaClass;
 import io.opaa.api.types.ActorKind;
 import io.opaa.api.types.AuditEventType;
+import io.opaa.api.types.AuditIncidentScopePurpose;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
+import io.opaa.api.types.AuditSubjectKind;
 import io.opaa.api.types.SystemRole;
 import io.opaa.architecture.MainClasses;
 import io.opaa.audit.AuditChainReport;
 import io.opaa.audit.AuditEventCatalog;
+import io.opaa.audit.AuditIncidentScopeGrant;
 import io.opaa.audit.AuditIncidentScopeService;
 import io.opaa.audit.AuditLogEntry;
 import io.opaa.audit.AuditQueryService;
@@ -49,6 +53,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -185,10 +190,239 @@ class AuditControllerTest {
                 .param("to", "2026-02-28T00:00:00Z")
                 .param("reason", REASON))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.events[0].actorRef").value("pseud-1"))
+        .andExpect(jsonPath("$.events[0].actorRef").isString())
         .andExpect(jsonPath("$.events[0].objectId").value("lib-1"))
         .andExpect(
             jsonPath("$.events[0].schemaVersion").value((int) AuditEventCatalog.SCHEMA_VERSION));
+  }
+
+  /**
+   * Regression guard for #3352: a stored pseudonym never leaves through a revision response. The
+   * same person keeps one reference within a response and gets another in the next one, so a
+   * pseudonym read off one slice of by-time-range joins no second answer.
+   */
+  @Test
+  void aPersonsReferenceHoldsWithinOneResponseAndDiffersInTheNext() throws Exception {
+    when(queryService.byTimeRange(any(), any(), any(), any(), any(), anyInt(), anyInt()))
+        .thenReturn(
+            new PageImpl<>(
+                List.of(
+                    actedBy("pseud-x", "lib-1"),
+                    actedBy("pseud-x", "lib-2"),
+                    actedBy("pseud-y", "lib-3"))));
+
+    String first = body(byTimeRange());
+    String second = body(byTimeRange());
+
+    String x = JsonPath.read(first, "$.events[0].actorRef");
+    assertThat(first).doesNotContain("pseud-x").doesNotContain("pseud-y");
+    assertThat(x).isEqualTo(JsonPath.read(first, "$.events[1].actorRef"));
+    assertThat(x).isNotEqualTo(JsonPath.read(first, "$.events[2].actorRef"));
+    assertThat(second).doesNotContain("pseud-x");
+    assertThat(JsonPath.<String>read(second, "$.events[0].actorRef"))
+        .isNotEqualTo(x)
+        .isEqualTo(JsonPath.read(second, "$.events[1].actorRef"));
+  }
+
+  /**
+   * Regression guard for #3352: a rights change at the moment the Stichtagsauskunft names a person
+   * must not hand over her pseudonym - subject, account object and the owner in the payload carry
+   * the response's references, one per person, never the stored value. A group keeps its id.
+   */
+  @Test
+  void subjectAccountObjectAndOwnerCarryTheResponsesReferenceNotThePseudonym() throws Exception {
+    String group = UUID.randomUUID().toString();
+    AuditLogEntry grant =
+        AuditLogEntry.withSubject(
+            organizationId,
+            ActorKind.USER,
+            "pseud-admin",
+            AuditEventType.ASSET_GRANT_GRANTED,
+            AuditObjectType.KNOWLEDGE_LIBRARY,
+            "lib-1",
+            "Bibliothek",
+            AuditSubjectKind.USER,
+            "pseud-x",
+            null,
+            "{\"role\":\"VIEWER\"}",
+            AuditOutcome.SUCCESS,
+            null,
+            null);
+    AuditLogEntry groupGrant =
+        AuditLogEntry.withSubject(
+            organizationId,
+            ActorKind.USER,
+            "pseud-admin",
+            AuditEventType.ASSET_GRANT_GRANTED,
+            AuditObjectType.KNOWLEDGE_LIBRARY,
+            "lib-1",
+            "Bibliothek",
+            AuditSubjectKind.GROUP,
+            group,
+            null,
+            null,
+            AuditOutcome.SUCCESS,
+            null,
+            null);
+    AuditLogEntry account =
+        AuditLogEntry.withSubject(
+            organizationId,
+            ActorKind.USER,
+            "pseud-admin",
+            AuditEventType.AUDITOR_ROLE_GRANTED,
+            AuditObjectType.USER_ACCOUNT,
+            "pseud-x",
+            null,
+            AuditSubjectKind.USER,
+            "pseud-x",
+            null,
+            null,
+            AuditOutcome.SUCCESS,
+            null,
+            null);
+    AuditLogEntry owner =
+        AuditLogEntry.withoutSubject(
+            organizationId,
+            ActorKind.USER,
+            "pseud-admin",
+            AuditEventType.SPACE_CREATED,
+            AuditObjectType.SPACE,
+            UUID.randomUUID().toString(),
+            "Team",
+            null,
+            "{\"name\":\"Team\",\"ownerId\":\"pseud-x\"}",
+            AuditOutcome.SUCCESS,
+            null,
+            null);
+    when(queryService.byTimeRange(any(), any(), any(), any(), any(), anyInt(), anyInt()))
+        .thenReturn(new PageImpl<>(List.of(grant, groupGrant, account, owner)));
+
+    String body = body(byTimeRange());
+
+    assertThat(body).doesNotContain("pseud-x").doesNotContain("pseud-admin");
+    String x = JsonPath.read(body, "$.events[0].subjectRef");
+    assertThat(JsonPath.<String>read(body, "$.events[1].subjectRef")).isEqualTo(group);
+    assertThat(JsonPath.<String>read(body, "$.events[2].objectId")).isEqualTo(x);
+    assertThat(JsonPath.<String>read(body, "$.events[2].subjectRef")).isEqualTo(x);
+    assertThat(JsonPath.<String>read(body, "$.events[3].after"))
+        .contains("\"ownerId\":\"" + x + "\"")
+        .contains("\"name\":\"Team\"");
+    assertThat(JsonPath.<String>read(body, "$.events[0].after")).isEqualTo("{\"role\":\"VIEWER\"}");
+  }
+
+  /** A system process names no person; its fixed label goes out as stored. */
+  @Test
+  void aSystemProcessKeepsItsLabel() throws Exception {
+    AuditLogEntry run =
+        AuditLogEntry.withoutSubject(
+            organizationId,
+            ActorKind.SYSTEM_PROCESS,
+            "directory-sync",
+            AuditEventType.DIRECTORY_SYNC_RUN_COMPLETED,
+            AuditObjectType.DIRECTORY_SYNC_RUN,
+            UUID.randomUUID().toString(),
+            null,
+            null,
+            null,
+            AuditOutcome.SUCCESS,
+            null,
+            null);
+    when(queryService.byTimeRange(any(), any(), any(), any(), any(), anyInt(), anyInt()))
+        .thenReturn(new PageImpl<>(List.of(run)));
+
+    byTimeRange().andExpect(jsonPath("$.events[0].actorRef").value("directory-sync"));
+  }
+
+  /**
+   * Regression guard for #3352: the Klärung names the person with her account id, so an actorRef
+   * next to it would hand over the key to every other answer. Its entries carry none.
+   */
+  @Test
+  void theKlaerungCarriesNoActorRef() throws Exception {
+    when(queryService.byIncidentScope(any(), any(), any(), any(), any(), any(), anyInt(), anyInt()))
+        .thenReturn(
+            new PageImpl<>(List.of(actedBy("pseud-x", "lib-1"), actedBy("pseud-x", "lib-2"))));
+
+    String body =
+        body(
+            mockMvc
+                .perform(
+                    get("/api/v1/audit/incident-scopes/" + UUID.randomUUID() + "/events")
+                        .with(asAuditor())
+                        .param("from", "2026-02-01T00:00:00Z")
+                        .param("to", "2026-02-28T00:00:00Z")
+                        .param("reason", REASON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.events.length()").value(2))
+                .andExpect(jsonPath("$.events[0].actorRef").doesNotExist())
+                .andExpect(jsonPath("$.events[1].actorRef").doesNotExist()));
+
+    assertThat(body).doesNotContain("pseud-x");
+  }
+
+  /** The grant names the person by account id - that is its purpose; it carries no pseudonym. */
+  @Test
+  void requestingAKlaerungAnswersWithTheGrant() throws Exception {
+    UUID subject = UUID.randomUUID();
+    AuditIncidentScopeGrant grant =
+        new AuditIncidentScopeGrant(
+            organizationId,
+            subject,
+            Instant.parse("2026-02-01T00:00:00Z"),
+            Instant.parse("2026-02-28T00:00:00Z"),
+            AuditIncidentScopePurpose.SECURITY_INCIDENT,
+            REASON,
+            UUID.randomUUID());
+    when(incidentScopeService.request(any(), any(), any(), any(), any(), any(), any()))
+        .thenReturn(grant);
+
+    mockMvc
+        .perform(
+            post("/api/v1/audit/incident-scopes")
+                .with(asAuditor())
+                .contentType("application/json")
+                .content(
+                    "{\"subjectUserId\":\""
+                        + subject
+                        + "\",\"scopeStart\":\"2026-02-01T00:00:00Z\","
+                        + "\"scopeEnd\":\"2026-02-28T00:00:00Z\","
+                        + "\"purpose\":\"SECURITY_INCIDENT\",\"reason\":\""
+                        + REASON
+                        + "\"}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.subjectUserId").value(subject.toString()))
+        .andExpect(jsonPath("$.status").value("PENDING"));
+  }
+
+  private AuditLogEntry actedBy(String actorRef, String libraryId) {
+    return AuditLogEntry.withoutSubject(
+        organizationId,
+        ActorKind.USER,
+        actorRef,
+        AuditEventType.LIBRARY_CHANGED,
+        AuditObjectType.KNOWLEDGE_LIBRARY,
+        libraryId,
+        "Bibliothek",
+        null,
+        null,
+        AuditOutcome.SUCCESS,
+        null,
+        null);
+  }
+
+  private ResultActions byTimeRange() throws Exception {
+    return mockMvc
+        .perform(
+            get("/api/v1/audit/events/by-time-range")
+                .with(asAuditor())
+                .param("from", "2026-02-01T00:00:00Z")
+                .param("to", "2026-02-28T00:00:00Z")
+                .param("reason", REASON))
+        .andExpect(status().isOk());
+  }
+
+  private static String body(ResultActions result) throws Exception {
+    return result.andReturn().getResponse().getContentAsString();
   }
 
   @Test

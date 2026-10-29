@@ -749,6 +749,9 @@ opaa:
       # A before/after key the event catalog (AuditEventCatalog) does not list is dropped and
       # logged; the dev profile and every test refuse the write instead.
       reject-unlisted: false
+    incident-scope:
+      # Longest time range one anlassbezogene Klärung may name; it always ends in the past.
+      max-days: ${OPAA_AUDIT_INCIDENT_SCOPE_MAX_DAYS:92}
   succession:
     # Wann der Feststellungslauf hinsieht. Er schreibt nur Erstfeststellung und Ende; der Zustand
     # selbst ist abgeleitet und gilt auch ohne ihn.

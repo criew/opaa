@@ -437,6 +437,17 @@ public enum AuditEventType {
    * object is the connection log itself; {@code after} carries the time range and filters.
    */
   CONNECTION_LOG_ACCESSED,
+  /**
+   * An auditor requested an anlassbezogene Klärung. The object is the grant ({@code AUDIT_LOG} with
+   * the grant id); {@code after} carries purpose and time range. The named person is neither
+   * subject nor payload: the grant names her, the entry secures who asked for what.
+   */
+  INCIDENT_SCOPE_REQUESTED,
+  /**
+   * A second auditor approved an anlassbezogene Klärung; object and payload as for {@link
+   * #INCIDENT_SCOPE_REQUESTED}, {@code after} additionally the end of usability.
+   */
+  INCIDENT_SCOPE_APPROVED,
   /** The retention period of the connection log changed; before/after carry both values. */
   CONNECTION_LOG_RETENTION_CHANGED,
   /**

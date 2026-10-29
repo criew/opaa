@@ -7,7 +7,8 @@ paths:
   # Exactly four revision access paths, each with a mandatory time range and a bounded
   # result set - see docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt.
   # There is deliberately no `actor`/`actorRef` query parameter on any of them and no `sort`
-  # parameter at all: actorRef is output-only, never an entry point (AUDITOR role only).
+  # parameter at all: actorRef is output-only, never an entry point (AUDITOR role only), and a
+  # person's references are keyed per response, so no two responses can be joined on them.
   /api/v1/audit/events/by-object:
     get:
       operationId: listAuditEventsByObject
@@ -357,7 +358,10 @@ paths:
         Requests the one exception to "kein Personenfilter" - the anlassbezogene Klärung
         (AUDITOR role required): names person, time range and purpose in advance. Created PENDING;
         unusable for querying until a second, different AUDITOR approves it via the approve
-        endpoint (Vier-Augen-Prinzip).
+        endpoint (Vier-Augen-Prinzip). The time range lies wholly in the past (scopeEnd not after
+        the moment of the request) and spans at most opaa.audit.incident-scope.max-days days (92
+        unless configured); anything else is rejected with 400, never trimmed. The request is the
+        audit event INCIDENT_SCOPE_REQUESTED.
       requestBody:
         required: true
         content:
@@ -389,7 +393,8 @@ paths:
       tags: [audit]
       summary: >
         Approves a requested incident scope (AUDITOR role required). Rejected if the approver is
-        the same person as the requester (Selbstfreigabe) or the scope was already approved.
+        the same person as the requester (Selbstfreigabe) or the scope was already approved. The
+        approval is the audit event INCIDENT_SCOPE_APPROVED.
       responses:
         "200":
           description: Incident scope approved
@@ -419,7 +424,8 @@ paths:
         The one personenbezogene query path (AUDITOR role required): every event whose actor is
         the scope's named person, technically bounded to the approved scope's person and time
         range. Not callable before approval; a requested from/to outside the approved scope's time
-        range is rejected rather than silently clamped.
+        range is rejected rather than silently clamped. The entries carry no actorRef: the grant
+        names the person, and her reference would join this answer with every other one.
       parameters:
         - $ref: "#/components/parameters/AuditFrom"
         - $ref: "#/components/parameters/AuditTo"
@@ -639,6 +645,8 @@ components:
           AUDIT_LOG_ACCESSED,
           PERMISSION_HISTORY_ACCESSED,
           CONNECTION_LOG_ACCESSED,
+          INCIDENT_SCOPE_REQUESTED,
+          INCIDENT_SCOPE_APPROVED,
           CONNECTION_LOG_RETENTION_CHANGED,
           CHAT_AUTO_CLEANUP_PERIODS_CHANGED,
           LOCKED_ACCOUNT_CHAT_CLEANUP_SETTINGS_CHANGED,
@@ -701,15 +709,20 @@ components:
       type: object
       description: >
         One entry as read back through a revision access path. actorRef/subjectRef are
-        pseudonymised, output-only fields - never accepted as a request parameter anywhere in
-        this API.
+        output-only fields - never accepted as a request parameter anywhere in this API. A
+        reference to a person (actorRef of a USER, subjectRef of a USER subject, objectId of a
+        USER_ACCOUNT object, ownerId and targetId in before/after) is not the stored pseudonym but
+        a keyed hash under a random key drawn for this one response: within the response, the same
+        person carries the same reference, so entries of one actor stay recognisable as such;
+        across two responses - two pages of the same query included - the references of the same
+        person differ and cannot be joined. A group subject and a system process keep their plain
+        reference.
       required:
         [
           eventId,
           recordedAt,
           organizationId,
           actorKind,
-          actorRef,
           eventType,
           objectType,
           objectId,
@@ -729,6 +742,11 @@ components:
           $ref: "#/components/schemas/AuditActorKind"
         actorRef:
           type: string
+          nullable: true
+          description: >
+            The acting person's reference for this response only (see the schema description),
+            the fixed label of a system process as stored. Absent in the anlassbezogene Klärung,
+            where every entry is the named person's own action.
         eventType:
           $ref: "#/components/schemas/AuditEventType"
         objectType:
@@ -1044,8 +1062,9 @@ components:
     ConnectionLogEntryResponse:
       type: object
       description: >
-        One entry of the connection log. actorRef and personRef are pseudonyms in the same scheme
-        as the audit log's actorRef. An event no person caused (expiry, deactivation) carries the
+        One entry of the connection log. actorRef and personRef are the person's stored pseudonym;
+        the audit log's revision responses never carry it (see AuditEventResponse), so the two
+        cannot be joined on a person. An event no person caused (expiry, deactivation) carries the
         literal "SYSTEM" as actorRef, which is never a pseudonym.
         profileName is the name the profile carried at the time, so an entry outlives its profile.
       required:
@@ -1209,6 +1228,9 @@ components:
         scopeEnd:
           type: string
           format: date-time
+          description: >
+            Not after the moment of the request - a Klärung looks back, never ahead - and at most
+            opaa.audit.incident-scope.max-days days after scopeStart.
         purpose:
           $ref: "#/components/schemas/AuditIncidentScopePurpose"
         reason:

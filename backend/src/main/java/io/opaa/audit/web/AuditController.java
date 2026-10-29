@@ -11,6 +11,7 @@ import io.opaa.audit.AuditIncidentScopeGrant;
 import io.opaa.audit.AuditIncidentScopeService;
 import io.opaa.audit.AuditLogEntry;
 import io.opaa.audit.AuditQueryService;
+import io.opaa.audit.AuditResponsePseudonyms;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import jakarta.validation.Valid;
@@ -102,7 +103,7 @@ public class AuditController {
             to,
             page,
             size);
-    return toPage(result);
+    return toPage(result, true);
   }
 
   @GetMapping("/events/by-time-range")
@@ -116,7 +117,7 @@ public class AuditController {
     Page<AuditLogEntry> result =
         queryService.byTimeRange(
             caller.organizationId(), caller.id(), reason, from, to, page, size);
-    return toPage(result);
+    return toPage(result, true);
   }
 
   @GetMapping("/events/by-event-type")
@@ -131,7 +132,7 @@ public class AuditController {
     Page<AuditLogEntry> result =
         queryService.byEventType(
             caller.organizationId(), caller.id(), reason, eventType, from, to, page, size);
-    return toPage(result);
+    return toPage(result, true);
   }
 
   @GetMapping("/events/by-correlation")
@@ -146,7 +147,7 @@ public class AuditController {
     Page<AuditLogEntry> result =
         queryService.byCorrelation(
             caller.organizationId(), caller.id(), reason, correlationRef, from, to, page, size);
-    return toPage(result);
+    return toPage(result, true);
   }
 
   @PreAuthorize("hasRole('AUDITOR')")
@@ -186,7 +187,7 @@ public class AuditController {
     Page<AuditLogEntry> result =
         queryService.byIncidentScope(
             caller.organizationId(), caller.id(), reason, scopeId, from, to, page, size);
-    return toPage(result);
+    return toPage(result, false);
   }
 
   /**
@@ -203,32 +204,39 @@ public class AuditController {
         queryService.verifyChain(caller.organizationId(), caller.id(), reason, month));
   }
 
-  private AuditEventPage toPage(Page<AuditLogEntry> page) {
-    AuditEventPage response =
-        new AuditEventPage(
-            page.getContent().stream().map(this::toEventResponse).toList(),
-            page.getNumber(),
-            page.getSize(),
-            page.hasNext());
-    return response;
+  /**
+   * Every response draws its own key for the references to persons, so two responses - two pages of
+   * one query included - cannot be joined on a person; {@code withActor} is {@code false} for the
+   * anlassbezogene Klärung, whose entries are all the named person's own.
+   */
+  private AuditEventPage toPage(Page<AuditLogEntry> page, boolean withActor) {
+    AuditResponsePseudonyms pseudonyms = AuditResponsePseudonyms.forOneResponse();
+    return new AuditEventPage(
+        page.getContent().stream()
+            .map(entry -> toEventResponse(entry, pseudonyms, withActor))
+            .toList(),
+        page.getNumber(),
+        page.getSize(),
+        page.hasNext());
   }
 
-  private AuditEventResponse toEventResponse(AuditLogEntry entry) {
+  private AuditEventResponse toEventResponse(
+      AuditLogEntry entry, AuditResponsePseudonyms pseudonyms, boolean withActor) {
     return new AuditEventResponse(
             entry.getEventId(),
             entry.getRecordedAt(),
             entry.getOrganizationId(),
             entry.getActorKind(),
-            entry.getActorRef(),
             entry.getEventType(),
             entry.getObjectType(),
-            entry.getObjectId(),
+            pseudonyms.objectId(entry),
             entry.getOutcome())
+        .actorRef(withActor ? pseudonyms.actorRef(entry) : null)
         .objectLabel(entry.getObjectLabel())
         .subjectKind(entry.getSubjectKind())
-        .subjectRef(entry.getSubjectRef())
-        .before(entry.getBefore())
-        .after(entry.getAfter())
+        .subjectRef(pseudonyms.subjectRef(entry))
+        .before(pseudonyms.before(entry))
+        .after(pseudonyms.after(entry))
         .reason(entry.getReason())
         .correlationRef(entry.getCorrelationRef())
         .schemaVersion(
