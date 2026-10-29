@@ -220,8 +220,8 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * The spaces this run covers: the stored selection, or for "Alle Spaces" every space but the
-   * personal ones the access sees now, in key order (ADR-0023, Entscheidung 1). None visible or
+   * The spaces this run covers: the stored selection, or for "Alle Spaces" every current space but
+   * the personal ones the access sees now, in key order (ADR-0023, Entscheidung 1). None visible or
    * more than {@link ConfluenceSourceConnector#MAX_SPACES} fail the run before anything is touched;
    * a space that appeared makes the next run a full one, which lists it completely.
    */
@@ -233,7 +233,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       return own.spaceSelection();
     }
     List<ConfluenceSpace> visible =
-        client.listSpaces().stream()
+        client.listCurrentSpaces().stream()
             .filter(space -> !space.personal() && space.key() != null)
             .sorted(Comparator.comparing(ConfluenceSpace::key))
             .toList();

@@ -90,6 +90,7 @@ public final class FakeConfluenceServer implements AutoCloseable {
   private final HttpServer server;
   private final Map<String, Space> spacesById = new LinkedHashMap<>();
   private final Map<String, Space> spacesByKey = new LinkedHashMap<>();
+  private final java.util.Set<String> archivedSpaces = new java.util.HashSet<>();
   private final Map<String, Page> pages = new LinkedHashMap<>();
   private final Map<String, List<Attachment>> attachmentsByPage = new LinkedHashMap<>();
 
@@ -142,6 +143,16 @@ public final class FakeConfluenceServer implements AutoCloseable {
     spacesById.put(id, space);
     spacesByKey.put(key, space);
     return space;
+  }
+
+  /** Archives the space: listed with status "archived", left out under {@code status=current}. */
+  public void archiveSpace(String key) {
+    archivedSpaces.add(key);
+  }
+
+  private boolean listedUnder(Map<String, List<String>> q, Space s) {
+    return !archivedSpaces.contains(s.key())
+        || !q.getOrDefault("status", List.of()).contains("current");
   }
 
   public Page addPage(
@@ -304,7 +315,7 @@ public final class FakeConfluenceServer implements AutoCloseable {
       List<String> keys = q.getOrDefault("keys", List.of());
       List<Map<String, Object>> all = new ArrayList<>();
       for (Space s : spacesById.values()) {
-        if (!canRead(readable, s.key())) {
+        if (!canRead(readable, s.key()) || !listedUnder(q, s)) {
           continue;
         }
         if (!keys.isEmpty()
@@ -543,7 +554,7 @@ public final class FakeConfluenceServer implements AutoCloseable {
     if (path.equals("/rest/api/space")) {
       List<Map<String, Object>> all = new ArrayList<>();
       for (Space s : spacesById.values()) {
-        if (canRead(readable, s.key())) {
+        if (canRead(readable, s.key()) && listedUnder(q, s)) {
           all.add(spaceJson(s));
         }
       }
@@ -785,13 +796,13 @@ public final class FakeConfluenceServer implements AutoCloseable {
     return !p.restricted && p.status.equals("current");
   }
 
-  private static Map<String, Object> spaceJson(Space s) {
+  private Map<String, Object> spaceJson(Space s) {
     Map<String, Object> node = new LinkedHashMap<>();
     node.put("id", s.id());
     node.put("key", s.key());
     node.put("name", s.name());
     node.put("type", s.key().startsWith("~") ? "personal" : "global");
-    node.put("status", "current");
+    node.put("status", archivedSpaces.contains(s.key()) ? "archived" : "current");
     return node;
   }
 
