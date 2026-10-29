@@ -180,7 +180,11 @@ class SourceConnectorProfileContractTest {
         .assertThat(dropbox.address().fixed())
         .as("DROPBOX")
         .isEqualTo("https://api.dropboxapi.com");
-    softly.assertThat(dropbox.defaults().keys()).as("DROPBOX").isEmpty();
+    softly
+        .assertThat(dropbox.defaults().keys())
+        .as("DROPBOX")
+        .singleElement()
+        .satisfies(key -> assertThat(key.key() + key.profileOnly()).isEqualTo("teamApptrue"));
     ProfileDeclaration oneDrive = declared.get("ONEDRIVE");
     softly.assertThat(oneDrive.support()).as("ONEDRIVE").isEqualTo(REQUIRED);
     softly
