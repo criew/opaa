@@ -71,7 +71,7 @@ public class RetiredSettingVariables {
 
   private static final String MODELS =
       "the chat model in the installation, then in the model administration, and the embedding"
-          + " model in the installation";
+          + " model in the installation, then under Administration > Modelle > Einbettung";
 
   /** The retired retention periods, held on the page of the data protection settings. */
   static final Map<String, String> RETIRED_RETENTION = retiredRetention();

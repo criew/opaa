@@ -113,10 +113,10 @@ class RetiredSettingVariablesTest {
         .containsExactly(
             "OPAA_OPENAI_BASE_URL is read in the dev mode only; set the chat model in the"
                 + " installation, then in the model administration, and the embedding model in the"
-                + " installation",
+                + " installation, then under Administration > Modelle > Einbettung",
             "OPAA_OPENAI_API_KEY is read in the dev mode only; set the chat model in the"
                 + " installation, then in the model administration, and the embedding model in the"
-                + " installation");
+                + " installation, then under Administration > Modelle > Einbettung");
   }
 
   @Test

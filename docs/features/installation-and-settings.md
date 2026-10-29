@@ -747,8 +747,8 @@ der Quellen).
 | `OPAA_OIDC_JWK_SET_URI` | `opaa.auth.oidc.jwk-set-uri` | Startwert entfällt; Anmeldeverfahren im Assistenten |
 | `OPAA_OLLAMA_BASE_URL` | `LlmModelSeeder (Altname)` | Altname entfällt |
 | `OPAA_OLLAMA_CHAT_MODEL` | `LlmModelSeeder (Altname)` | Altname entfällt |
-| `OPAA_OPENAI_API_KEY` | `spring.ai.openai.api-key` | gemeinsamer Rückfall entfällt; Schlüssel je Modell in der Datenbank. Bleibt nur in den Profilen `dev`/`docker` für die Modelle, mit denen sich der Modus `dev` einrichtet; außerhalb davon warnt der Start, wenn sie gesetzt ist |
-| `OPAA_OPENAI_BASE_URL` | `spring.ai.openai.base-url` | gemeinsamer Rückfall entfällt; Adresse je Modell in der Datenbank. Bleibt nur in den Profilen `dev`/`docker` für die Modelle, mit denen sich der Modus `dev` einrichtet; außerhalb davon warnt der Start, wenn sie gesetzt ist, und prüft sie nicht |
+| `OPAA_OPENAI_API_KEY` | `spring.ai.openai.api-key` | gemeinsamer Rückfall entfällt; Schlüssel je Modell in der Datenbank. Bleibt nur im Profil `dev` (Adresse im Compose-Stapel: `docker & dev`) für die Modelle, mit denen sich der Modus `dev` einrichtet; außerhalb davon warnt der Start, wenn sie gesetzt ist |
+| `OPAA_OPENAI_BASE_URL` | `spring.ai.openai.base-url` | gemeinsamer Rückfall entfällt; Adresse je Modell in der Datenbank. Bleibt nur im Profil `dev` (Adresse im Compose-Stapel: `docker & dev`) für die Modelle, mit denen sich der Modus `dev` einrichtet; außerhalb davon warnt der Start, wenn sie gesetzt ist, und prüft sie nicht |
 | `OPAA_OPENAI_CHAT_API_KEY` | `spring.ai.openai.chat.api-key` | Startwert entfällt; Chat-Modell im Assistenten |
 | `OPAA_OPENAI_CHAT_BASE_URL` | `spring.ai.openai.chat.base-url` | Startwert entfällt; Chat-Modell im Assistenten |
 | `OPAA_OPENAI_CHAT_MAX_TOKENS` | `spring.ai.openai.chat.max-tokens` | Startwert entfällt; Chat-Modell im Assistenten |
