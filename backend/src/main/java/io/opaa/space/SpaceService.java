@@ -281,11 +281,14 @@ public class SpaceService {
    * it (the personal space in particular has no succession).
    */
   public SpaceDetail detailOf(Space space, CurrentUser caller) {
+    // the instruction of a personal space is its person's own, hidden even from the administration
+    boolean foreignPersonalSpace = space.isDefault() && !space.getOwnerId().equals(caller.id());
     return new SpaceDetail(
         space,
         accessPolicy.effectiveRole(space, caller),
         successionSource.openAmong(List.of(space)).contains(space.getId()),
-        chatAutoCleanup.current());
+        chatAutoCleanup.current(),
+        foreignPersonalSpace ? null : space.getModelInstruction());
   }
 
   public Space getSpace(UUID spaceId, CurrentUser caller) {
@@ -686,10 +689,19 @@ public class SpaceService {
           "Nur ein handlungsfähiges ADMIN-Mitglied oder ein Systemadministrator kann die"
               + " Verantwortung übertragen");
     }
+    if (space.isArchived()) {
+      throw new ConflictException(
+          "Der Space ist archiviert; seine Verantwortung wird nicht mehr übertragen");
+    }
 
     SpaceMembership newOwnerMembership = userMembership(space, newOwnerUserId);
     if (newOwnerMembership == null) {
       throw new NotFoundException("Der ausgewählte Benutzer ist kein Mitglied dieses Space");
+    }
+    // an owner who cannot sign in answers for nothing: the space would at once be without one
+    if (!accessPolicy.isActiveAccount(newOwnerUserId)) {
+      throw new ConflictException(
+          "Das ausgewählte Konto ist nicht aktiv und kann die Verantwortung nicht übernehmen");
     }
 
     PermissionSubject previousOwner = space.ownerSubject();

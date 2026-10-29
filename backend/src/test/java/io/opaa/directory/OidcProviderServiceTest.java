@@ -37,6 +37,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.directory.sync.connector.DirectoryConnectorService;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -75,6 +76,8 @@ class OidcProviderServiceTest {
 
   private final ProviderGroupDirectory providerGroups = mock(ProviderGroupDirectory.class);
   private final ProviderConnectionsImpact connectionsImpact = mock(ProviderConnectionsImpact.class);
+  private final DirectoryConnectorService directoryConnectors =
+      mock(DirectoryConnectorService.class);
 
   private OidcProviderService service;
 
@@ -94,6 +97,7 @@ class OidcProviderServiceTest {
             auditEventRecorder,
             eventPublisher,
             connectionsImpact,
+            directoryConnectors,
             Clock.fixed(NOW, ZoneOffset.UTC));
     when(repository.save(any(OidcProvider.class))).thenAnswer(inv -> inv.getArgument(0));
     when(repository.saveAndFlush(any(OidcProvider.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -282,6 +286,28 @@ class OidcProviderServiceTest {
             self.getId(),
             draft("Beschäftigte", "https://idp.example/realms/neu"));
     assertThat(updated.getIssuerUri()).isEqualTo("https://idp.example/realms/neu");
+  }
+
+  // regression guard for #3358 (5): the directory secret does not follow a changed issuer
+  @Test
+  void aChangedIssuerHandsTheDirectoryAccessOverForCheckingAndARenameDoesNot() {
+    OidcProvider self = provider("Beschäftigte", "https://idp.example/realms/a", true, true);
+    when(repository.findById(self.getId())).thenReturn(Optional.of(self));
+    when(userRepository.countByIssuer("https://idp.example/realms/a")).thenReturn(0L);
+
+    service.updateProvider(
+        ORGANIZATION_ID, ACTOR_ID, self.getId(), draft("Beschäftigte (neu)", self.getIssuerUri()));
+    verify(directoryConnectors, never())
+        .forgetDerivedAccessAfterIssuerChange(any(), any(), any(), any());
+
+    service.updateProvider(
+        ORGANIZATION_ID,
+        ACTOR_ID,
+        self.getId(),
+        draft("Beschäftigte", "https://idp.fremd.example/realms/a"));
+    verify(directoryConnectors)
+        .forgetDerivedAccessAfterIssuerChange(
+            ORGANIZATION_ID, ACTOR_ID, self, "https://idp.example/realms/a");
   }
 
   /**

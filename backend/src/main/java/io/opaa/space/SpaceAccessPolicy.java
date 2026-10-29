@@ -103,6 +103,11 @@ public class SpaceAccessPolicy {
     return role != null && role.atLeast(minRole);
   }
 
+  /** Whether the account can be used at all - the measure every "who can act" question applies. */
+  public boolean isActiveAccount(UUID userId) {
+    return !accountActivity.activeAmong(Set.of(userId)).isEmpty();
+  }
+
   /** Whether the user reaches {@code spaceId} at all - directly or through one of their groups. */
   public boolean isMember(UUID spaceId, UUID userId) {
     if (membershipRepository.existsBySpaceIdAndUserId(spaceId, userId)) {
@@ -151,9 +156,14 @@ public class SpaceAccessPolicy {
 
   /**
    * Requires CURATOR {@link #effectiveRole} or above, bypassed for a system administrator; the
-   * owner counts as a curator.
+   * owner counts as a curator. Another person's personal space is curated by nobody but its owner,
+   * not even by the system administration.
    */
   public void requireCurator(Space space, CurrentUser caller) {
+    if (space.isDefault() && !space.getOwnerId().equals(caller.id())) {
+      throw new AccessDeniedException(
+          "Der persönliche Space gehört allein seiner Person; nur sie ordnet ihm etwas zu");
+    }
     if (caller.isSystemAdmin()) {
       return;
     }

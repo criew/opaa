@@ -94,6 +94,18 @@ class SpaceResponseMapperTest {
   }
 
   @Test
+  void theDetailCarriesTheInstructionTheServiceLetsTheCallerRead() {
+    Space personal =
+        new Space("Privater Bereich", null, true, UUID.randomUUID(), UUID.randomUUID());
+    personal.changeModelInstruction("Antworte im Stil meiner Notizen.");
+
+    assertThat(
+            SpaceResponseMapper.toResponse(new SpaceDetail(personal, null, false, CLEANUP, null))
+                .getModelInstruction())
+        .isNull();
+  }
+
+  @Test
   void toResponseReturnsNullUserRoleForACallerWhoIsNotAMember() {
     // SpaceService#getSpace lets a system admin read a space without being a member - the
     // response must not fabricate a role they do not actually hold.

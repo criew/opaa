@@ -1,12 +1,17 @@
 package io.opaa.space;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.opaa.account.AccountActivityService;
 import io.opaa.api.types.SpaceRole;
+import io.opaa.api.types.SystemRole;
+import io.opaa.auth.CurrentUser;
+import io.opaa.common.AccessDeniedException;
 import io.opaa.permission.GroupCapabilityService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubjectDirectory;
@@ -238,6 +243,28 @@ class SpaceAccessPolicyTest {
 
   private static Stream<SpaceRole> allRoles() {
     return Stream.of(SpaceRole.values());
+  }
+
+  // regression guard for #3358 (4): the system administration curates no other person's space
+  @Test
+  void theSystemAdministrationAssociatesNothingWithAnotherPersonsPersonalSpace() {
+    UUID owner = UUID.randomUUID();
+    Space personal = new Space("Privater Bereich", null, true, owner, ORGANIZATION);
+    personal.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, ORGANIZATION));
+    CurrentUser admin =
+        CurrentUser.of(UUID.randomUUID(), ORGANIZATION, SystemRole.SYSTEM_ADMIN, "Admin");
+
+    assertThatThrownBy(() -> policy.requireCurator(personal, admin))
+        .isInstanceOf(AccessDeniedException.class);
+  }
+
+  @Test
+  void theSystemAdministrationStillCuratesAnOrdinarySpace() {
+    Space team = spaceWithOwner(UUID.randomUUID());
+    CurrentUser admin =
+        CurrentUser.of(UUID.randomUUID(), ORGANIZATION, SystemRole.SYSTEM_ADMIN, "Admin");
+
+    assertThatCode(() -> policy.requireCurator(team, admin)).doesNotThrowAnyException();
   }
 
   /**

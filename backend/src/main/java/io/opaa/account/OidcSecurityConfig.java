@@ -56,25 +56,28 @@ public class OidcSecurityConfig {
   private final UserService userService;
   private final AuthenticationManagerResolver<HttpServletRequest> oidcAuthenticationManagerResolver;
   private final ObjectProvider<PasswordChangeRequiredFilter> passwordChangeRequiredFilter;
+  private final ObjectProvider<LocalAdminNetworkFilter> localAdminNetworkFilter;
   private final ObjectProvider<LocalSelfServiceAvailability> selfServiceFlows;
   private final JsonMapper jsonMapper;
 
   /**
-   * The {@code pcr} filter and the self-service availability are resolved lazily: the {@code oidc}
-   * profile always provides both ({@code LocalAuthIssuerConfiguration}, {@code
-   * LocalSelfServiceService}), and the {@code @WebMvcTest} slices that import this class to assert
-   * the chain's public paths do not - they never carry a local token either, and without the
+   * The {@code pcr} filter, the network filter and the self-service availability are resolved
+   * lazily: the {@code oidc} profile always provides them ({@code LocalAuthIssuerConfiguration},
+   * {@code LocalSelfServiceService}), and the {@code @WebMvcTest} slices that import this class to
+   * assert the chain's public paths do not - they never carry a local token either, and without the
    * availability no self-service flow is served.
    */
   public OidcSecurityConfig(
       UserService userService,
       AuthenticationManagerResolver<HttpServletRequest> oidcAuthenticationManagerResolver,
       ObjectProvider<PasswordChangeRequiredFilter> passwordChangeRequiredFilter,
+      ObjectProvider<LocalAdminNetworkFilter> localAdminNetworkFilter,
       ObjectProvider<LocalSelfServiceAvailability> selfServiceFlows,
       JsonMapper jsonMapper) {
     this.userService = userService;
     this.oidcAuthenticationManagerResolver = oidcAuthenticationManagerResolver;
     this.passwordChangeRequiredFilter = passwordChangeRequiredFilter;
+    this.localAdminNetworkFilter = localAdminNetworkFilter;
     this.selfServiceFlows = selfServiceFlows;
     this.jsonMapper = jsonMapper;
   }
@@ -199,6 +202,11 @@ public class OidcSecurityConfig {
     PasswordChangeRequiredFilter pcrFilter = passwordChangeRequiredFilter.getIfAvailable();
     if (pcrFilter != null) {
       http.addFilterAfter(pcrFilter, AuthorizationFilter.class);
+    }
+    // ADR-0033, Entscheidung 9: the network rule of a local SYSTEM_ADMIN holds for every request.
+    LocalAdminNetworkFilter networkFilter = localAdminNetworkFilter.getIfAvailable();
+    if (networkFilter != null) {
+      http.addFilterAfter(networkFilter, AuthorizationFilter.class);
     }
     return http.build();
   }

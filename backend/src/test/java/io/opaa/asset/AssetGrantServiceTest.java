@@ -1134,10 +1134,135 @@ class AssetGrantServiceTest {
     verify(grantRepository, never()).delete(any());
   }
 
+  // --- own grants of a time-limited manager (#3358) -----------------------------
+
+  private AssetGrant ownTimeLimitedManagerGrant(Instant expiresAt) {
+    when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
+        .thenReturn(AssetRole.MANAGER);
+    when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
+        .thenReturn(AssetRole.MANAGER);
+    AssetGrant own =
+        AssetGrant.forUser(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            organizationId,
+            managerId,
+            AssetRole.MANAGER,
+            expiresAt,
+            UUID.randomUUID());
+    when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectUserId(
+            KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.USER, managerId))
+        .thenReturn(Optional.of(own));
+    when(grantRepository.save(any(AssetGrant.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    return own;
+  }
+
+  // regression guard for #3358 (2): a time-limited manager cannot lift the expiry of their own
+  // grant
+  @Test
+  void aTimeLimitedManagerCannotLiftTheExpiryOfTheirOwnGrant() {
+    Instant expiresAt = Instant.now().plusSeconds(86_400);
+    AssetGrant own = ownTimeLimitedManagerGrant(expiresAt);
+
+    assertThatThrownBy(
+            () ->
+                grantService.upsertGrant(
+                    KnowledgeLibrary.ASSET_TYPE,
+                    libraryId,
+                    new AssetGrantUpsert(AssetGrantSubjectType.USER, managerId, AssetRole.MANAGER),
+                    managerCaller))
+        .isInstanceOf(AccessDeniedException.class);
+    assertThat(own.getExpiresAt()).isEqualTo(expiresAt);
+    verify(grantRepository, never()).save(any());
+  }
+
+  @Test
+  void aTimeLimitedManagerMayShortenOrDowngradeTheirOwnGrant() {
+    Instant expiresAt = Instant.now().plusSeconds(86_400);
+    ownTimeLimitedManagerGrant(expiresAt);
+
+    var response =
+        grantService.upsertGrant(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            new AssetGrantUpsert(AssetGrantSubjectType.USER, managerId, AssetRole.EDITOR)
+                .expiresAt(expiresAt.minusSeconds(3_600)),
+            managerCaller);
+
+    assertThat(response.grant().getRole()).isEqualTo(AssetRole.EDITOR);
+    assertThat(response.grant().getExpiresAt()).isEqualTo(expiresAt.minusSeconds(3_600));
+  }
+
+  @Test
+  void aManagerWithoutExpiryMayGiveTheirOwnGroupALastingGrant() {
+    ownTimeLimitedManagerGrant(Instant.now().plusSeconds(86_400));
+    when(accessService.holdsUntil(library, managerId, false, AssetRole.MANAGER, null))
+        .thenReturn(true);
+    GroupSubject group =
+        new GroupSubject(
+            UUID.randomUUID(),
+            organizationId,
+            "Projektteam",
+            false,
+            false,
+            false,
+            false,
+            true,
+            false);
+    when(groupDirectory.find(group.id())).thenReturn(Optional.of(group));
+    when(groupMemberships.groupIdsForUser(managerId)).thenReturn(java.util.Set.of(group.id()));
+
+    var response =
+        grantService.upsertGrant(
+            KnowledgeLibrary.ASSET_TYPE,
+            libraryId,
+            new AssetGrantUpsert(AssetGrantSubjectType.GROUP, group.id(), AssetRole.MANAGER),
+            managerCaller);
+
+    assertThat(response.grant().getExpiresAt()).isNull();
+  }
+
+  // regression guard for #3358 (2): nor can they keep the role through a group of their own
+  @Test
+  void aTimeLimitedManagerCannotGiveTheirOwnGroupALastingGrant() {
+    ownTimeLimitedManagerGrant(Instant.now().plusSeconds(86_400));
+    GroupSubject group =
+        new GroupSubject(
+            UUID.randomUUID(),
+            organizationId,
+            "Projektteam",
+            false,
+            false,
+            false,
+            false,
+            true,
+            false);
+    when(groupDirectory.find(group.id())).thenReturn(Optional.of(group));
+    when(groupMemberships.groupIdsForUser(managerId)).thenReturn(java.util.Set.of(group.id()));
+    when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupId(
+            KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.GROUP, group.id()))
+        .thenReturn(Optional.empty());
+
+    assertThatThrownBy(
+            () ->
+                grantService.upsertGrant(
+                    KnowledgeLibrary.ASSET_TYPE,
+                    libraryId,
+                    new AssetGrantUpsert(
+                        AssetGrantSubjectType.GROUP, group.id(), AssetRole.MANAGER),
+                    managerCaller))
+        .isInstanceOf(AccessDeniedException.class);
+    verify(grantRepository, never()).save(any());
+  }
+
   private void asManagerOfTheLibrary() {
     when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
         .thenReturn(AssetRole.OWNER);
     when(accessService.effectiveRole(any(), eq(managerId), anyBoolean()))
         .thenReturn(AssetRole.OWNER);
+    // an owner without expiry: "Alle Konten" reaches them too, and holds nothing beyond that
+    when(accessService.holdsUntil(any(), eq(managerId), anyBoolean(), any(), any()))
+        .thenReturn(true);
   }
 }
