@@ -137,6 +137,7 @@ public final class ChatResponseMapper {
             source.getCited(),
             source.getPrivateSource())
         .indexedAt(source.getIndexedAt())
+        .contentSha256(source.getContentSha256())
         .documentId(source.getDocumentId())
         .sourceType(source.getSourceType())
         .sourceUrl(source.getSourceUrl())

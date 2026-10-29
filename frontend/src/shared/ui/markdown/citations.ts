@@ -1,4 +1,4 @@
-import type { SourceReference } from '@/shared/api/types'
+import type { ChunkAnchor, SourceReference } from '@/shared/api/types'
 
 /**
  * The backend's citation marker (QueryService): `【source: <documentId>#<chunk> | <fileName>】`.
@@ -98,6 +98,9 @@ export interface CitationDoc {
    *  "Abschn. 4.2 Fristsetzung" - resolved from the marker's chunk index via
    *  {@link SourceReference.chunkLocations}. Empty when the pipeline knew none. */
   locations: string[]
+  /** The anchors of this row's footnotes, in footnote order, one per cited chunk that has one -
+   *  where „Dokument öffnen“ jumps to. */
+  anchors: ChunkAnchor[]
 }
 
 export interface CitationIndex {
@@ -161,10 +164,9 @@ export function buildCitationIndex(
 
   // The marker's chunk index (`<documentId>#<chunk>`) picks the location the backend
   // stored for exactly that chunk - the only join there is between a footnote and a Fundort.
-  function resolveLocation(source: SourceReference | undefined, key: string): string | undefined {
+  function locationEntry(source: SourceReference | undefined, key: string) {
     const chunkIndex = Number(key.split('#')[1])
-    const match = source?.chunkLocations?.find((entry) => entry.chunkIndex === chunkIndex)
-    return match?.location ?? undefined
+    return source?.chunkLocations?.find((entry) => entry.chunkIndex === chunkIndex)
   }
 
   const regex = new RegExp(CITATION_MARKER_RE.source, 'g')
@@ -189,11 +191,16 @@ export function buildCitationIndex(
           source,
           documentId: source?.documentId,
           locations: [],
+          anchors: [],
         })
       }
       docs[docIndex].numbers.push(number)
       docIndexByNumber.set(number, docIndex)
-      const location = resolveLocation(source, key)
+      const entry = locationEntry(source, key)
+      if (entry?.anchor && !docs[docIndex].anchors.includes(entry.anchor)) {
+        docs[docIndex].anchors.push(entry.anchor)
+      }
+      const location = entry?.location ?? undefined
       if (location !== undefined) {
         locationByNumber.set(number, location)
         if (!docs[docIndex].locations.includes(location)) {
@@ -213,6 +220,7 @@ export function buildCitationIndex(
         source,
         documentId: source.documentId,
         locations: [],
+        anchors: [],
       })
     }
   }

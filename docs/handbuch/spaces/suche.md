@@ -907,6 +907,21 @@ und „Stand vom …". Rang, Metadaten, Indexierungszeitpunkt und die Adresse in
 Belegfenster nicht. Den Rang eines Dokuments zeigt nur die Diagnose der Systemadministration
 (Abschnitt [„Das Diagnosewerkzeug"](#82-das-diagnosewerkzeug)), die eine Frage erneut durch die Suche schickt.
 
+**PDF an der Fundstelle.** „Dokument öffnen" zeigt ein PDF in einem eigenen Fenster der Anwendung,
+nicht mehr in einem neuen Browser-Tab. Es öffnet auf der Seite der zitierten Stelle und hebt die
+Stelle farbig hervor, auch wenn sie über eine Seitengrenze läuft. Die Seiten stehen untereinander
+und werden durchgescrollt; die Leiste darüber nennt die aktuelle Seite, vergrößert, verkleinert und
+stellt auf Seitenbreite. Bringt das PDF ein Inhaltsverzeichnis mit, steht es links, lässt sich
+einklappen, springt per Klick an sein Kapitel und hebt das Kapitel der aktuellen Seite hervor.
+Formulare, Links und eingebettete Skripte des PDFs bleiben im Fenster ohne Wirkung. Zwei Hinweise
+sind möglich: „Das Original wurde seit der Antwort geändert …", wenn die Datei nicht mehr die ist,
+aus der die Antwort zitiert hat; „Die Fundstelle wurde im Original nicht gefunden …", wenn der
+zitierte Text auf der Seite nicht wiederzufinden ist, etwa bei einem Scan; das Fenster zeigt dann
+die Fundseite ohne Markierung. Kann die Anwendung ein PDF nicht anzeigen, sagt das Fenster das
+und bietet „Im Browser öffnen" an. Aus der Dokumentliste einer Wissensbibliothek geöffnet, beginnt dasselbe
+Fenster auf der ersten Seite. Andere Formate verhalten sich unverändert: Bilder öffnen in einem
+neuen Tab, Office-Dateien werden heruntergeladen.
+
 **Kopieren.** Rechts unter jeder Antwort steht „Kopieren". Ein Klick legt die Antwort als Markdown in
 die Zwischenablage, ohne Fußnotenmarken und ohne Quellenliste. Der Pfeil daneben bietet zwei
 Varianten: **„Mit Quellenangaben"** setzt jede Fußnote als Markdown-Fußnote (`[^1]`, dieselbe Nummer
