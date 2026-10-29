@@ -82,7 +82,7 @@ operations:
   localSetPassword:                          {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: allowed, note: "the local account management does not exist under dev; anonymous the made-up ticket is refused (400)"}
   localForgotPassword:                       {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401, note: "the local account management does not exist under dev; in oidc mode the flow is switched off and not public (401)"}
   localRegister:                             {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401, note: "the local account management does not exist under dev; in oidc mode the flow is switched off and not public (401)"}
-  localVerifyEmail:                          {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: allowed, note: "the local account management does not exist under dev; anonymous the made-up token is refused (400)"}
+  localConfirmRegistration:                  {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: allowed, note: "the local account management does not exist under dev; anonymous the made-up token is refused (400)"}
   localHandoverPreview:                      {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: allowed, note: "the local account management does not exist under dev; anonymous the made-up handover code is refused (400)"}
   localHandoverRedeem:                       {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: allowed, note: "the local account management does not exist under dev; anonymous the made-up handover code is refused (400)"}
   getBranding:                               {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: allowed}
@@ -279,7 +279,7 @@ operations:
   listFullSyncRhythms:                       {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   updateFullSyncRhythm:                      {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   getLibraryMetadataMaintenance:             {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
-  getDocumentMetadata:                       {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  getDocumentMetadata:                       {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   setDocumentMetadataValue:                  {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401, foreignChild: [fieldKey], note: "a field key is local to the library in the path; another library's key is an unknown field there (400)"}
   deleteDocumentMetadataValue:               {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401, foreignChild: [fieldKey], note: "a field key is local to the library in the path; another library's key is an unknown field there (400)"}
   bulkSetDocumentMetadata:                   {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401}
@@ -287,7 +287,7 @@ operations:
   getLibraryMetadataExtractionSettings:      {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
   updateLibraryMetadataExtractionSettings:   {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
   getLibraryMetadataQuality:                 {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
-  getLibraryMetadataSample:                  {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  getLibraryMetadataSample:                  {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
   listLibraryMetadataFields:                 {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   createLibraryMetadataField:                {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
   updateLibraryMetadataField:                {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
