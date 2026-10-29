@@ -34,6 +34,20 @@ class PdfLoadingScanTest {
     }
   }
 
+  /**
+   * Regression guard: PDFBox reads a line as an entry unless it opens with {@code t} or a
+   * delimiter, and {@code Long.parseLong} takes a leading {@code +}.
+   */
+  @Test
+  void linesOpeningWithAnyOtherCharacterAreCountedUntilTrailerOrADelimiter() throws IOException {
+    try (RandomAccessReadBuffer source = buffer("xref\n0 3\n+9 0 n\n-9 0 n\nx\ntrailer\n")) {
+      assertThat(PdfLoading.classicTableLines(source)).isEqualTo(4);
+    }
+    try (RandomAccessReadBuffer source = buffer("xref\n0 2\n9 0 n\n<< /Size 2 >>\n9 0 n\n")) {
+      assertThat(PdfLoading.classicTableLines(source)).isEqualTo(2);
+    }
+  }
+
   @Test
   void objectMarkersFollowingWhitespaceAreCountedAndThePositionIsKept() throws IOException {
     try (RandomAccessReadBuffer source =

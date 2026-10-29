@@ -288,7 +288,7 @@ class PdfAmplificationTest {
    * them.
    */
   @ParameterizedTest
-  @ValueSource(strings = {"\f9 0 n\n", "\u00009 0 n\n", "% x\n9 0 n\n"})
+  @ValueSource(strings = {"\f9 0 n\n", "\u00009 0 n\n", "% x\n9 0 n\n", "+9 0 n\n"})
   void entriesBehindSkippedBytesCountAgainstTheObjectLimit(String line) throws IOException {
     Path file = tempDir.resolve("skipped.pdf");
     RawPdf pdf = onePage();

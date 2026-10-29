@@ -47,7 +47,8 @@ final class PdfLoading {
 
   private static final int SCAN_BUFFER_BYTES = 64 * 1024;
 
-  private static final int CLASSIC_ENTRY_BYTES = 20;
+  /** {@code 9 0 n} and a line break: the shortest line PDFBox reads as an entry. */
+  private static final int CLASSIC_ENTRY_BYTES = 6;
 
   private static final int SCAN_KEYWORD = 0;
   private static final int SCAN_SPACE = 1;
@@ -131,7 +132,8 @@ final class PdfLoading {
 
     /**
      * A classic table's lines are counted before PDFBox registers an entry for each; afterwards the
-     * bytes it read, at 20 per entry, are charged where they exceed that count.
+     * bytes it read, at the shortest entry line PDFBox accepts, are charged where they exceed that
+     * count.
      */
     @Override
     protected boolean parseXrefTable(long startByteOffset) throws IOException {
@@ -193,10 +195,10 @@ final class PdfLoading {
   }
 
   /**
-   * The lines of the classic cross-reference table at the position of {@code source} that open with
-   * a digit - entries and subsection headers - read without registering anything; the position is
-   * restored. Between lines it skips what PDFBox's {@code skipSpaces} skips, the six whitespace
-   * bytes and {@code %} comments; any other byte than a digit ends the table.
+   * The lines of the classic cross-reference table at the position of {@code source} - entries and
+   * subsection headers - read without registering anything; the position is restored. Between lines
+   * it skips what PDFBox's {@code skipSpaces} skips, the six whitespace bytes and {@code %}
+   * comments; like PDFBox, only a line opening with {@code t} or a delimiter ends the table.
    */
   static long classicTableLines(RandomAccessRead source) throws IOException {
     long start = source.getPosition();
@@ -215,11 +217,11 @@ final class PdfLoading {
             default -> {
               if (b == '%') {
                 state = SCAN_COMMENT;
-              } else if (b >= '0' && b <= '9') {
+              } else if (b == 't' || isDelimiter(b)) {
+                return lines;
+              } else if (!isPdfWhitespace(b)) {
                 lines++;
                 state = SCAN_LINE;
-              } else if (!isPdfWhitespace(b)) {
-                return lines;
               }
             }
           }
@@ -229,6 +231,11 @@ final class PdfLoading {
     } finally {
       source.seek(start);
     }
+  }
+
+  /** The delimiters that end a name for PDFBox, apart from whitespace and {@code %}. */
+  private static boolean isDelimiter(byte b) {
+    return b == '<' || b == '>' || b == '[' || b == ']' || b == '(' || b == ')' || b == '/';
   }
 
   private static boolean isPdfWhitespace(byte b) {
