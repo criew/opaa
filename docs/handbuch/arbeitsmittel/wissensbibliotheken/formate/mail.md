@@ -113,6 +113,7 @@ wird ein eigenes Dokument mit eigener Pipeline: Ein PDF-Anhang trägt `pipeline_
 | Eingebettete Nachricht | wird als `nachricht.eml` gemeldet; die Kette geht bis zur Tiefengrenze weiter | eingebettete Outlook-Objekte werden übersprungen, weil sie sich nicht als Datei ausgeben lassen |
 | Inline-Bilder | ein Inline-Bild mit Dateiname gilt als Anhang; ohne Namen wird es übergangen | wie Anhang |
 | Größengrenze je Anhang | beim Kopieren durchgesetzt | erst nach dem Lesen, weil der Leser alles im Speicher hält |
+| Wiederholte Anhänge | jeder Teil wird gemeldet | ein Anhang mit denselben Daten wie ein früherer derselben Nachricht wird übersprungen; alle Anhänge zusammen dürfen nicht größer sein als die Nachrichtendatei, der Rest wird übersprungen |
 
 **Speicherkontingent.** Die Mail meldet als eigene Größe nur Kopfblock plus Nachrichtentext.
 Sonst stünden die Anhänge, die in der Rohdatei base64-kodiert stecken, doppelt in der Bilanz:
@@ -156,7 +157,8 @@ Schlüssel unter `opaa.indexing.mail.*`:
 
 Die Verschachtelungstiefe für Mail-in-Mail ist kein eigener Mail-Schlüssel, sondern
 die allgemeine `opaa.indexing.attachments.max-depth` (siehe [Wissensbibliotheken](../README.md)) - dieselbe
-Grenze gilt für jede Anhangskette, unabhängig vom Konnektor.
+Grenze gilt für jede Anhangskette, unabhängig vom Konnektor, ebenso das Budget je Ausgangsdokument
+über alle Ebenen (`opaa.indexing.attachments.max-per-root`, `max-bytes-per-root`).
 
 Die Anhangsgrenzen oben schützen Platte und nachgelagerte Verarbeitung, nicht den Parse-Vorgang
 selbst.
