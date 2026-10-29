@@ -47,7 +47,8 @@ Wer nicht warten muss, startet gleich mit `docker compose --profile ollama up --
 lädt dann im Hintergrund.
 
 **Weg B — ein vorhandener Ollama-Server**, auf dem Host oder in einem anderen Netz. Läuft er auf dem
-Host, in `.env.docker` setzen und ohne Profil starten:
+Host, im Modus `dev` der Vorlage in `.env.docker` setzen und ohne Profil starten; im Betriebsmodus
+`oidc` wirkt die Variable nicht, dort trägt die Installation dieselbe Adresse ein:
 
 ```env
 OPAA_OPENAI_BASE_URL=http://host.docker.internal:11434/v1
@@ -671,7 +672,8 @@ ohne Punkt 7 nicht mehr von anderen Rechnern:
 2. **Adressen der Anbieter freigeben.** Eine Datenbank, auf der schon eine frühere Version lief,
    gilt als eingerichtet ([Installation](installation.md)); `OPAA_INITIAL_ADMIN_*`, `OPAA_OIDC_*`
    außer der Zielprüfung, `OPAA_OPENAI_CHAT_*`, `OPAA_OPENAI_EMBEDDING_*` außer dem Timeout und
-   `OPAA_PGVECTOR_DIMENSIONS` wirken nicht mehr und können entfallen; der Start warnt je Variable.
+   `OPAA_PGVECTOR_DIMENSIONS` wirken nicht mehr und können entfallen, ebenso `OPAA_OPENAI_BASE_URL`
+   und `OPAA_OPENAI_API_KEY`, die nur der Modus `dev` liest; der Start warnt je Variable.
    Liegt ein Anbieter auf einer internen Adresse, etwa ein Keycloak im Stapel, gehören dessen Host und
    Port in `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST`; bisher gab die Adresse aus `OPAA_OIDC_*` sie frei.
    Interne Modell-Hosts gehören mit Port in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`, nicht in die

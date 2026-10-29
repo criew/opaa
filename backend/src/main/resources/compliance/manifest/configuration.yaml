@@ -4,15 +4,6 @@ defaults:
     source: PROPERTY
 settings:
   # Standardmodelle: Modell und Adresse jeder Modellrolle
-  - key: spring.ai.openai.base-url
-    defaultValue: http://localhost:11434/v1
-    effect: >-
-      Im Modus dev die Adresse des Chat-Modells, mit dem sich die Instanz selbst einrichtet; im
-      Betrieb kommt das Chat-Modell aus der Installation. Die Voreinstellung zeigt auf einen
-      Modellserver auf demselben Rechner
-    bearings: [DATA_FLOW]
-    notes:
-      - "Profil docker: http://ollama:11434/v1"
   - key: llm_models.model_identifier
     source: DATABASE
     defaultValue: ""
@@ -21,7 +12,7 @@ settings:
       der Installation und wird in der Modellverwaltung geändert
     bearings: [DATA_FLOW]
     notes:
-      - Im Modus dev richtet sich die Instanz mit phi3:mini unter spring.ai.openai.base-url ein
+      - Im Modus dev richtet sich die Instanz mit phi3:mini unter OPAA_OPENAI_BASE_URL ein
   - key: embedding_model.base_url
     source: DATABASE
     defaultValue: keine, Angabe der Installation
