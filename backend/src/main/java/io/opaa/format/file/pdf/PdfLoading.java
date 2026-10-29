@@ -45,7 +45,9 @@ final class PdfLoading {
   /** PDFBox creates its brute-force parser lazily into this field; it is replaced up front. */
   private static final Field BRUTE_FORCE_PARSER = bruteForceParserField();
 
-  private static final int CLASSIC_ENTRY_BYTES = 20;
+  private static final int SCAN_BUFFER_BYTES = 64 * 1024;
+
+  private static final byte[] OBJ = {'o', 'b', 'j'};
 
   private PdfLoading() {}
 
@@ -120,13 +122,12 @@ final class PdfLoading {
       return stream;
     }
 
-    /** A classic table's entries are 20 bytes each, so its length bounds how many it held. */
+    /** A classic table's lines are counted before PDFBox registers an entry for each. */
     @Override
     protected boolean parseXrefTable(long startByteOffset) throws IOException {
-      long start = source.getPosition();
-      boolean parsed = super.parseXrefTable(startByteOffset);
-      budget.chargeObjects((source.getPosition() - start) / CLASSIC_ENTRY_BYTES);
-      return parsed;
+      budget.requireTime();
+      budget.chargeObjects(classicTableLines(source));
+      return super.parseXrefTable(startByteOffset);
     }
 
     @Override
@@ -177,6 +178,73 @@ final class PdfLoading {
     return Math.min(declared, decodedBytes / width);
   }
 
+  /**
+   * The lines of the classic cross-reference table at the position of {@code source} that open with
+   * a digit - entries and subsection headers - up to the first other line after {@code xref}, read
+   * without registering anything; the position is restored.
+   */
+  static long classicTableLines(RandomAccessRead source) throws IOException {
+    long start = source.getPosition();
+    try {
+      long lines = 0;
+      boolean lineStart = true;
+      boolean firstLine = true;
+      byte[] buffer = new byte[SCAN_BUFFER_BYTES];
+      for (int read; (read = source.read(buffer)) > 0; ) {
+        for (int i = 0; i < read; i++) {
+          byte b = buffer[i];
+          if (b == '\n' || b == '\r') {
+            lineStart = true;
+          } else if (lineStart && b != ' ' && b != '\t') {
+            lineStart = false;
+            if (b >= '0' && b <= '9') {
+              lines++;
+            } else if (!firstLine) {
+              return lines;
+            }
+            firstLine = false;
+          }
+        }
+      }
+      return lines;
+    } finally {
+      source.seek(start);
+    }
+  }
+
+  /**
+   * How often whitespace followed by {@code obj} occurs in {@code source}: an upper bound of the
+   * objects a brute-force search registers. The position is restored.
+   */
+  static long objectMarkers(RandomAccessRead source) throws IOException {
+    long origin = source.getPosition();
+    try {
+      source.seek(0);
+      long markers = 0;
+      int matched = -1;
+      byte[] buffer = new byte[SCAN_BUFFER_BYTES];
+      for (int read; (read = source.read(buffer)) > 0; ) {
+        for (int i = 0; i < read; i++) {
+          byte b = buffer[i];
+          if (b == 0 || b == 9 || b == 10 || b == 12 || b == 13 || b == 32) {
+            matched = 0;
+          } else if (matched >= 0 && matched < 3 && b == OBJ[matched]) {
+            matched++;
+            if (matched == 3) {
+              markers++;
+              matched = -1;
+            }
+          } else {
+            matched = -1;
+          }
+        }
+      }
+      return markers;
+    } finally {
+      source.seek(origin);
+    }
+  }
+
   /** The objects PDFBox parses from an object stream: its {@code /N}, at most one per byte. */
   static long objectStreamObjects(COSStream stream, long decodedBytes) {
     return Math.min(Math.max(0, stream.getLong(COSName.N, 0)), decodedBytes);
@@ -213,12 +281,12 @@ final class PdfLoading {
 
     @Override
     protected Map<COSObjectKey, Long> getBFCOSObjectOffsets() throws IOException {
-      Map<COSObjectKey, Long> offsets = super.getBFCOSObjectOffsets();
       if (!objectsCharged) {
         objectsCharged = true;
-        budget.chargeObjects(offsets.size());
+        budget.requireTime();
+        budget.chargeObjects(objectMarkers(source));
       }
-      return offsets;
+      return super.getBFCOSObjectOffsets();
     }
 
     @Override

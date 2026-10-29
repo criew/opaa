@@ -265,6 +265,38 @@ class PdfAmplificationTest {
         .hasMessageContaining("10000 objects");
   }
 
+  /**
+   * Regression guard: PDFBox accepts table lines of six bytes ({@code 9 0 n}), so the length of a
+   * table does not bound its entries; they are counted line by line before PDFBox reads them.
+   */
+  @Test
+  void shortClassicCrossReferenceLinesCountAgainstTheObjectLimit() throws IOException {
+    Path file = tempDir.resolve("short-lines.pdf");
+    RawPdf pdf = onePage();
+    Files.write(file, pdf.withXrefTable(1, 20_000, "9 0 n\n"));
+
+    assertThatThrownBy(() -> fewObjects.run(DocumentFormatSource.ofFile(file, "short-lines.pdf")))
+        .isInstanceOf(ParserLimitExceededException.class)
+        .hasMessageContaining("10000 objects");
+  }
+
+  /**
+   * Regression guard: the brute-force search registers an object for every {@code obj} it finds
+   * before anything is counted; the markers are counted first, here twenty thousand of one object
+   * in comments of an otherwise readable file.
+   */
+  @Test
+  void objectMarkersAreCountedBeforeTheBruteForceSearchRuns() throws IOException {
+    Path file = tempDir.resolve("markers.pdf");
+    RawPdf pdf = onePage();
+    pdf.raw("% 9 0 obj\n".repeat(20_000));
+    Files.write(file, pdf.withBrokenXref(1));
+
+    assertThatThrownBy(() -> fewObjects.run(DocumentFormatSource.ofFile(file, "markers.pdf")))
+        .isInstanceOf(ParserLimitExceededException.class)
+        .hasMessageContaining("10000 objects");
+  }
+
   /** A well-formed file with object and cross-reference streams below the limit still reads. */
   @Test
   void streamsWithinTheLimitStillLoad() throws IOException {
@@ -360,6 +392,19 @@ class PdfAmplificationTest {
      * {@code extra} entries that all point at the first object.
      */
     byte[] withXrefTable(int root, int extra) {
+      return withXrefTable(root, extra, String.format("%010d 00000 n \n", offsetOf(1)));
+    }
+
+    /** {@code text} as it is, outside any object. */
+    void raw(String text) {
+      write(ascii(text));
+    }
+
+    /**
+     * A classic cross-reference table over the objects written so far, followed by a section of
+     * {@code extra} copies of {@code line}.
+     */
+    byte[] withXrefTable(int root, int extra, String line) {
       int size = maxNumber() + 1;
       long start = body.size();
       StringBuilder table = new StringBuilder("xref\n0 " + size + "\n0000000000 65535 f \n");
@@ -370,8 +415,7 @@ class PdfAmplificationTest {
       }
       if (extra > 0) {
         table.append(size).append(' ').append(extra).append('\n');
-        String entry = String.format("%010d 00000 n \n", offsetOf(1));
-        table.append(entry.repeat(extra));
+        table.append(line.repeat(extra));
         size += extra;
       }
       table.append("trailer\n<< /Size ").append(size).append(" /Root ").append(root);

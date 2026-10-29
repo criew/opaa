@@ -19,6 +19,12 @@ public class ChunkingService {
   /** The longest run of non-whitespace characters handed to the tokenizer. */
   public static final int MAX_RUN_CHARACTERS = 1_000;
 
+  /**
+   * The most chunks one call may yield. The splitter is allowed one more, into which it puts the
+   * whole rest of a longer text; {@link #exceedsChunkLimit} recognizes that result.
+   */
+  public static final int MAX_CHUNKS = 10_000;
+
   private final ChunkSizing properties;
 
   public ChunkingService(ChunkSizing properties) {
@@ -38,8 +44,8 @@ public class ChunkingService {
             .withMinChunkSizeChars(350)
             // chunks under 5 tokens carry no meaningful semantic signal
             .withMinChunkLengthToEmbed(5)
-            // safety limit to prevent excessive chunks from oversized documents
-            .withMaxNumChunks(10000)
+            // one past the limit, so a text needing more stays recognizable
+            .withMaxNumChunks(MAX_CHUNKS + 1)
             .withKeepSeparator(true)
             .build();
     // Overlap is not a TokenTextSplitter feature in Spring AI 2.0.0 — see
@@ -55,6 +61,14 @@ public class ChunkingService {
       bounded.add(new Document(document.getId(), breakLongRuns(text), document.getMetadata()));
     }
     return bounded;
+  }
+
+  /**
+   * Whether {@code chunks} from {@link #chunkDocuments} hold more than {@link #MAX_CHUNKS}: then
+   * the last one carries the rest of the text uncut, and the result must not be used.
+   */
+  public static boolean exceedsChunkLimit(List<Document> chunks) {
+    return chunks.size() > MAX_CHUNKS;
   }
 
   /**

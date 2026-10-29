@@ -9,6 +9,7 @@ import io.opaa.format.DocumentService;
 import io.opaa.format.FormatAdmission;
 import io.opaa.format.chunk.ChunkingService;
 import io.opaa.format.shared.DocumentTitleLine;
+import io.opaa.format.shared.ParserLimitExceededException;
 import io.opaa.format.shared.SetextHeading;
 import java.util.List;
 import java.util.Set;
@@ -103,6 +104,10 @@ public class TikaFallbackFormat implements DocumentFormat {
     }
 
     List<Document> chunks = chunkingService.chunkDocuments(source.logName(), parsed);
+    if (ChunkingService.exceedsChunkLimit(chunks)) {
+      throw new ParserLimitExceededException(
+          "Document needs more than " + ChunkingService.MAX_CHUNKS + " chunks");
+    }
     if (chunks.isEmpty()) {
       // Non-blank parsed text can still chunk down to nothing (OCR noise or page footers below
       // ChunkingService's own minChunkLengthToEmbed/minChunkSizeChars) - reported as a rejection,

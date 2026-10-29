@@ -296,7 +296,8 @@ public class MailDocumentFormat implements DocumentFormat {
         text = headerLead + text;
         headerPending = false;
       }
-      List<Document> parts = chunkingService.chunkDocuments(logName, List.of(new Document(text)));
+      List<Document> parts =
+          withinChunkLimit(chunkingService.chunkDocuments(logName, List.of(new Document(text))));
       for (int j = 0; j < parts.size(); j++) {
         Map<String, Object> metadata = partMetadata(parts.get(j), i + 1);
         if (j == 0 && headerLead != null) {
@@ -311,7 +312,8 @@ public class MailDocumentFormat implements DocumentFormat {
     }
     if (headerPending && !message.attachments().isEmpty()) {
       List<Document> headerParts =
-          chunkingService.chunkDocuments(logName, List.of(new Document(headerContext)));
+          withinChunkLimit(
+              chunkingService.chunkDocuments(logName, List.of(new Document(headerContext))));
       for (int j = 0; j < headerParts.size(); j++) {
         Map<String, Object> metadata = partMetadata(headerParts.get(j), 1);
         String location = locationFor(0, 1, j, headerParts.size());
@@ -415,5 +417,13 @@ public class MailDocumentFormat implements DocumentFormat {
         log.warn("Failed to delete extracted mail attachment {}", attachment.tempFile(), e);
       }
     }
+  }
+
+  private static List<Document> withinChunkLimit(List<Document> parts) {
+    if (ChunkingService.exceedsChunkLimit(parts)) {
+      throw new ParserLimitExceededException(
+          "Mail message needs more than " + ChunkingService.MAX_CHUNKS + " chunks");
+    }
+    return parts;
   }
 }

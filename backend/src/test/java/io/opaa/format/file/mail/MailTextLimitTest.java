@@ -34,6 +34,24 @@ class MailTextLimitTest {
         .hasMessageContaining("Mail message exceeds");
   }
 
+  /**
+   * Regression guard: past its chunk count the token splitter put the whole rest of the text into
+   * its last chunk; a text needing more chunks fails instead.
+   */
+  @Test
+  void aBodyNeedingMoreChunksThanTheLimitFails() throws IOException {
+    Path file = eml("viele.eml", "Wort ".repeat(1_100_000));
+    MailDocumentFormat smallChunks =
+        new MailDocumentFormat(
+            new ChunkingService(new IndexingProperties(100, 0, 50, null, null, null, 1)),
+            new MailProperties(0, 0, 0),
+            Clock.systemUTC());
+
+    assertThatThrownBy(() -> smallChunks.run(DocumentFormatSource.ofFile(file, "viele.eml")))
+        .isInstanceOf(ParserLimitExceededException.class)
+        .hasMessageContaining("10000 chunks");
+  }
+
   @Test
   void aBodyWithinTheTextLimitIsChunked() throws IOException {
     Path file = eml("kurz.eml", "Ein Satz im Text der Nachricht. ".repeat(20));
