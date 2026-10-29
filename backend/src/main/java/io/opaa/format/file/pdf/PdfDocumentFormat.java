@@ -18,9 +18,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentInformation;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDResources;
+import org.apache.pdfbox.pdmodel.graphics.PDXObject;
+import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocumentOutline;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineNode;
@@ -40,7 +45,9 @@ import org.springframework.ai.document.Document;
  * row, cells joined as in every other format ({@link PdfPageText}).
  *
  * <p>Scan detection is answered from this pipeline's own extraction: a PDF whose text is entirely
- * blank is rejected as {@code NO_EXTRACTABLE_TEXT}.
+ * blank is rejected as {@code NO_EXTRACTABLE_TEXT}, and so is one where more than half of the pages
+ * carry an image but no text - a typed cover sheet in front of scanned pages. An empty page without
+ * an image does not count as scanned.
  */
 public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfContent> {
 
@@ -83,7 +90,13 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
    * order, the flattened outline, and the Info dictionary's own properties.
    */
   public record PdfContent(
-      List<String> pageTexts, List<OutlineEntry> entries, DocumentProperties info) {}
+      List<String> pageTexts,
+      List<OutlineEntry> entries,
+      DocumentProperties info,
+      int scannedPages) {}
+
+  /** Nesting of form XObjects followed when looking for an image on a page. */
+  private static final int IMAGE_SEARCH_DEPTH = 3;
 
   record OutlineEntry(int level, String title, int pageIndex) {}
 
@@ -91,16 +104,22 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
   protected PdfContent read(DocumentFormatSource source) throws IOException {
     try (PDDocument doc = Loader.loadPDF(source.file().toFile())) {
       List<String> pageTexts = new ArrayList<>(doc.getNumberOfPages());
+      int scannedPages = 0;
       for (int i = 0; i < doc.getNumberOfPages(); i++) {
-        pageTexts.add(extractPageText(doc, i));
+        String text = extractPageText(doc, i);
+        pageTexts.add(text);
+        if (text.isBlank() && carriesImage(doc.getPage(i).getResources(), IMAGE_SEARCH_DEPTH)) {
+          scannedPages++;
+        }
       }
-      return new PdfContent(pageTexts, flattenOutline(doc), infoProperties(doc));
+      return new PdfContent(pageTexts, flattenOutline(doc), infoProperties(doc), scannedPages);
     }
   }
 
   @Override
   protected DocumentFormatResult chunks(DocumentFormatSource source, PdfContent content) {
-    if (content.pageTexts().stream().allMatch(String::isBlank)) {
+    if (content.pageTexts().stream().allMatch(String::isBlank)
+        || content.scannedPages() * 2 > content.pageTexts().size()) {
       return DocumentFormatResult.noExtractableText();
     }
     return content.entries().isEmpty()
@@ -138,7 +157,7 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
     try (PDDocument doc = Loader.loadPDF(source.file().toFile())) {
       List<String> firstPage =
           doc.getNumberOfPages() == 0 ? List.of() : List.of(extractPageText(doc, 0));
-      return properties(new PdfContent(firstPage, flattenOutline(doc), infoProperties(doc)));
+      return properties(new PdfContent(firstPage, flattenOutline(doc), infoProperties(doc), 0));
     }
   }
 
@@ -306,6 +325,22 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
     return DocumentFormatResult.chunked(chunks);
   }
 
+  /** Whether {@code resources} draw an image, directly or inside a form up to {@code depth} deep. */
+  private static boolean carriesImage(PDResources resources, int depth) throws IOException {
+    if (resources == null || depth == 0) {
+      return false;
+    }
+    for (COSName name : resources.getXObjectNames()) {
+      PDXObject object = resources.getXObject(name);
+      if (object instanceof PDImageXObject) {
+        return true;
+      }
+      if (object instanceof PDFormXObject form && carriesImage(form.getResources(), depth - 1)) {
+        return true;
+      }
+    }
+    return false;
+  }
   /**
    * @param startPageIndex inclusive, 0-based. @param endPageIndexExclusive exclusive, 0-based.
    */

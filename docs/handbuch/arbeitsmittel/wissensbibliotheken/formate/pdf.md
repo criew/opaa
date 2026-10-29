@@ -107,8 +107,13 @@ PDF-Dokumentinfos sowie der erste Gliederungseintrag der obersten Ebene als erst
 | Befund | Ergebnis |
 |---|---|
 | Kein Text im ganzen Dokument (Scan ohne Textebene) | abgewiesen, „kein extrahierbarer Text". Das Dokument erscheint in der Admin-Liste der Dokumente ohne Chunks. |
+| Mehr als die Hälfte der Seiten zeigt nur ein Bild ohne Textebene, etwa ein am PC erstelltes Deckblatt vor eingescannten Anlagen | abgewiesen wie ein Scan, „kein extrahierbarer Text". Sonst entstünde ein Dokument, das als indiziert gilt, aber nur das Deckblatt findet. |
+| Einzelne eingescannte Seiten, höchstens die Hälfte | indiziert mit dem Text der übrigen Seiten; die Bildseiten fehlen in der Suche |
 | Text vorhanden, aber Zuschnitt ergibt nichts | abgewiesen, „kein extrahierbarer Text" |
 | Datei nicht lesbar oder beschädigt | fehlgeschlagen, „kein Inhalt" |
+
+Leere Seiten ohne Bild zählen nicht als eingescannt. Die Regel gilt für jede neue Indexierung; ein
+schon indiziertes PDF wird mit seiner nächsten Indexierung neu beurteilt.
 
 Ein PDF mit Textebene aus einer früheren OCR-Verarbeitung wird normal verarbeitet; die Qualität
 hängt dann von dieser Textebene ab.
