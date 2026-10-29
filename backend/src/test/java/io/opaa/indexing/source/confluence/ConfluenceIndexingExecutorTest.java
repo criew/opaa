@@ -1777,6 +1777,34 @@ class ConfluenceIndexingExecutorTest {
         .isEqualTo(IndexingRunMode.FULL);
   }
 
+  @Test
+  void aWebhookRunUnderAllSpacesNotesTheResolutionOnlyWhenItChanged() throws Exception {
+    start(ConfluenceEdition.CLOUD, null);
+    library.updateSourceSettings("{\"edition\": \"CLOUD\", \"allSpaces\": true, \"spaces\": []}");
+    SourceSyncState remembered = writtenUnderCurrentSettings();
+    remembered.rememberResolvedScopes(
+        Map.of("ENG", "Engineering", "HR", "Personal", "SEC", "Geheimschutz"));
+    when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(remembered));
+
+    executor.refreshPages(jobId, library, Set.of("101"));
+
+    verify(eventRepository, never())
+        .save(argThat(event(IndexingEventCategory.SUMMARY, "Umfang „Alle“", null)));
+
+    remembered.rememberResolvedScopes(Map.of("ENG", "Engineering", "HR", "Personal"));
+    executor.refreshPages(UUID.randomUUID(), library, Set.of("101"));
+
+    verify(eventRepository)
+        .save(argThat(event(IndexingEventCategory.SUMMARY, "Umfang „Alle“: 3 Spaces", null)));
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.SUMMARY,
+                    "Neu im Umfang: 1 Space – „Geheimschutz“",
+                    null)));
+  }
+
   private static ArgumentMatcher<IndexingRunEvent> event(
       IndexingEventCategory category, String messagePart, String reference) {
     return event ->

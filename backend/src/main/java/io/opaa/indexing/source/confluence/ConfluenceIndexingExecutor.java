@@ -165,6 +165,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
         frame ->
             withClient(
                 frame,
+                false,
                 run ->
                     runMode == IndexingRunMode.INCREMENTAL
                         ? incrementalSync(run, startedAt)
@@ -182,7 +183,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
         targetLibrary,
         IndexingRunMode.INCREMENTAL,
         this,
-        frame -> withClient(frame, run -> refreshPages(run, pageIds)));
+        frame -> withClient(frame, true, run -> refreshPages(run, pageIds)));
   }
 
   /** A sync over one verified client. */
@@ -196,7 +197,8 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
    * Entscheidung 2). The request cost is handed to the frame whether the sync succeeded or not; an
    * access failure ends the run with the access layer's own German message.
    */
-  private ListingOutcome withClient(IndexingRun frame, Sync sync) throws InterruptedException {
+  private ListingOutcome withClient(IndexingRun frame, boolean webhook, Sync sync)
+      throws InterruptedException {
     ConfluenceConnection connection;
     try {
       connection = ConfluenceLibraryConnection.of(frame.settings(), frame.credentials());
@@ -213,7 +215,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     frame.budgetStallAdvice(BUDGET_STALL_ADVICE);
     try {
       client.verifyCredentials();
-      return sync.run(new ConfluenceRun(frame, client, selection(frame, client)));
+      return sync.run(new ConfluenceRun(frame, client, selection(frame, client, webhook)));
     } catch (ConfluenceAccessException e) {
       throw accessFailure(frame, e);
     }
@@ -223,9 +225,11 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
    * The spaces this run covers: the stored selection, or for "Alle Spaces" every current space but
    * the personal ones the access sees now, in key order (ADR-0023, Entscheidung 1). None visible or
    * more than {@link ConfluenceSourceConnector#MAX_SPACES} fail the run before anything is touched;
-   * a space that appeared makes the next run a full one, which lists it completely.
+   * a space that appeared makes the next run a full one, which lists it completely. A webhook run
+   * notes the resolution only when it changed.
    */
-  private List<ConfluenceSpaceSelection> selection(IndexingRun frame, ConfluenceClient client)
+  private List<ConfluenceSpaceSelection> selection(
+      IndexingRun frame, ConfluenceClient client, boolean webhook)
       throws ConfluenceAccessException, InterruptedException {
     ConfluenceSourceSettings own =
         ConfluenceSourceSettings.stored(frame.settings().connectorSettings());
@@ -252,7 +256,8 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     Map<String, String> names = new LinkedHashMap<>();
     visible.forEach(space -> names.put(space.key(), space.name()));
     SourceSyncState state = journal.load(frame.library().getId());
-    ResolvedScopes.Change change = ResolvedScopes.note(frame, state, names, "Space", "Spaces");
+    ResolvedScopes.Change change =
+        ResolvedScopes.note(frame, state, names, Map.of(), "Space", "Spaces", webhook);
     if (!change.added().isEmpty()) {
       state.requireFullSync();
     }

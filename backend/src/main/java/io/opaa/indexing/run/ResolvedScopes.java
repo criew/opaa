@@ -71,6 +71,21 @@ public final class ResolvedScopes {
       Map<String, String> outside,
       String one,
       String many) {
+    return note(run, state, current, outside, one, many, run.runMode() == IndexingRunMode.EVENT);
+  }
+
+  /**
+   * {@link #note(IndexingRun, SourceSyncState, Map, Map, String, String)}, noting nothing without a
+   * change when {@code changesOnly} - for a run started by a notification about single items.
+   */
+  public static Change note(
+      IndexingRun run,
+      SourceSyncState state,
+      Map<String, String> current,
+      Map<String, String> outside,
+      String one,
+      String many,
+      boolean changesOnly) {
     Map<String, String> previous = state.resolvedScopes();
     Map<String, String> now = new TreeMap<>(current);
     Set<String> added = new LinkedHashSet<>();
@@ -82,7 +97,7 @@ public final class ResolvedScopes {
     }
     Change change = new Change(added, removed);
     state.rememberResolvedScopes(now);
-    if (run.runMode() == IndexingRunMode.EVENT && change.isEmpty()) {
+    if (changesOnly && change.isEmpty()) {
       return change;
     }
     record(run, "Umfang „Alle“: " + counted(now.size(), one, many));
