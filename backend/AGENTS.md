@@ -31,6 +31,18 @@ in [ADR-0006](../docs/decisions/0006-openapi-dto-generation.md).
 - **Eine Operation deklariert nur die Statuscodes, die sie selbst entscheidet** (`429` nur bei eigener Grenze); was die
   Infrastruktur für alle entscheidet, steht in `info.description`; `TransportStatusCodeSpecificationTest` prüft es.
 
+## Rechte-Matrix
+
+**Jede neue Operation der Spec braucht im selben PR ihren Eintrag in
+`src/test/resources/security/permission-matrix.yaml`:** das erwartete Ergebnis (`allowed`, `401`, `403`, `404`) für
+Systemverwaltung, Revision, Space-Admin, Editor, Viewer, Konto ohne Rechte und anonym; Rollen, Fixture und was als
+`allowed` zählt, stehen im Dateikopf. Ohne Eintrag schlägt `PermissionMatrixTest` fehl (auch ohne Docker) und nennt
+Datei und `operationId`. `PermissionMatrixIntegrationTest` ruft jede Operation in jeder Rolle auf, jede Operation mit
+Space- oder Organisations-ID im Pfad zusätzlich mit der ID eines fremden Space bzw. einer fremden Organisation (erwartet
+`401`, `403` oder `404`); `PermissionMatrixAnonymousIntegrationTest` prüft die Spalte `anonym`. Den beobachteten Stand
+schreiben beide nach `build/permission-matrix/`. Ein geänderter Eintrag ist eine Rechteentscheidung und wird im PR
+begründet, nie nur an das Beobachtete angeglichen.
+
 ## Logische Module und Schichtung
 
 Das Backend ist ein Gradle-Modul, gegliedert in logische Module. Die Definitionen stehen in
