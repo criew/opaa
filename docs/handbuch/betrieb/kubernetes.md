@@ -1646,7 +1646,8 @@ Grundalarme mit. Die Protokolle gehen wie bei jedem Pod auf die Standardausgabe.
 Probes und Metriken laufen über einen eigenen Port des Backends, den **Management-Port**. Die API
 bleibt auf ihrem Port. Damit kann die NetworkPolicy des Backends dem Prometheus den Management-Port
 öffnen, ohne ihm die API zu öffnen. Wer die API direkt erreicht, könnte sonst die Client-Adresse
-fälschen, aus der Rate-Limits und Anmeldesperre zählen.
+fälschen, aus der Rate-Limits und Anmeldesperre zählen. Die Metriken antworten nur auf dem
+Management-Port ohne Anmeldung, auf dem API-Port verlangen sie ein gültiges Zugangstoken.
 
 Von außen ist kein Actuator-Pfad erreichbar: Der Frontend-nginx reicht nur `/api/` und `/mcp` an das
 Backend weiter.

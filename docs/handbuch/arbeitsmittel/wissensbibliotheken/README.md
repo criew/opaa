@@ -648,7 +648,9 @@ ist eine Sicherung des Index.
 | Upload-Pool | Einzeldateien aus Uploads, getrennt vom Lauf-Pool | eigene Konfiguration |
 
 Sind Lauf-Pool und Warteschlange voll, wird ein neuer Lauf sofort als fehlgeschlagen beendet und
-die Anfrage mit HTTP 503 beantwortet.
+die Anfrage mit HTTP 503 beantwortet. Damit eine Person den Upload-Pool nicht für alle anderen
+füllt, begrenzt ein Rate-Limit die Uploads je Konto; darüber wartet die Oberfläche die genannte Zeit
+ab und lädt dieselbe Datei erneut hoch ([Konfiguration](../../betrieb/konfiguration.md)).
 
 ### 7.5 Konfiguration
 

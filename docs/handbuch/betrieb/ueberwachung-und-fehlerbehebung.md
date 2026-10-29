@@ -16,7 +16,13 @@ Installation beschreibt die [Betriebsübersicht](README.md).
   Datenbankfehler können Inhalte nennen: Ein Log über `INFO` wie Inhalte behandeln.
 - **Handlungen von Personen** stehen nicht im Log, sondern im Nachweis- und Revisionsprotokoll der
   Anwendung ([Berechtigungen](../konten-und-rechte/berechtigungen.md)).
-- **Metriken** im Prometheus-Format unter `/actuator/prometheus`:
+- **Metriken** im Prometheus-Format unter `/actuator/prometheus`, einzeln unter `/actuator/metrics`.
+  Sie nennen Pfade, Bibliotheken und Last und sind deshalb ohne Anmeldung nur auf einem eigenen
+  Management-Port erreichbar (`MANAGEMENT_SERVER_PORT`, unter Kubernetes `backend.managementPort`),
+  den eine Netzregel nur dem Prometheus öffnet. Auf dem API-Port, und ohne eigenen Management-Port
+  überall, verlangen sie ein gültiges Zugangstoken. Der Helm-Chart richtet den Port ein; unter
+  Docker Compose läuft der Actuator auf dem API-Port, wer dort Metriken einsammeln will, setzt
+  `MANAGEMENT_SERVER_PORT` ([Konfiguration](konfiguration.md)):
 
 | Metrik | Bedeutung |
 |---|---|
@@ -131,7 +137,8 @@ Actuator-Pfade sind nur über den Backend- bzw. Management-Port erreichbar, nich
 ```bash
 curl -s http://localhost:8081/actuator/info              # Version
 curl -s http://localhost:8081/actuator/health/readiness  # Readiness
-curl -s http://localhost:8081/actuator/prometheus        # Metriken
+curl -s http://localhost:8081/actuator/prometheus        # Metriken, nur auf eigenem Management-Port
+curl -s -H "Authorization: Bearer <token>" http://localhost:8081/actuator/prometheus  # sonst
 curl -s -H "Authorization: Bearer <token>" https://<host>/api/v1/admin/diagnostics/client-address
 ```
 
