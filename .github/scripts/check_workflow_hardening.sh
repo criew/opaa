@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Three rules for every file under .github/workflows/, a new workflow is covered without a list:
-# 1. No run: or script: value interpolates github.head_ref, github.event.*, inputs.* or secrets.*.
+# 1. No run: or script: value interpolates github.head_ref, github.ref_name, github.event in any
+#    form (github.event.*, github.event['...'], toJSON(github.event)), the github context as a
+#    whole or by index (toJSON(github), github['...']), inputs.*, secrets.* or vars.*.
 #    Actions expands ${{ ... }} into the script text before the shell or JavaScript runs it, so a
 #    branch name, PR title or dispatch input with shell syntax would execute. Such values go into
 #    an env: entry and are read as "$NAME" (process.env.NAME in actions/github-script).
@@ -24,7 +26,7 @@ scan() {
       lowered = tolower(text)
       # Anywhere inside the expression up to its closing braces; a single brace (a format() pattern)
       # does not end it.
-      if (lowered ~ /\$\{\{(([^}]|\}[^}])*[^a-z0-9_.])?(github\.head_ref|github\.event[.[]|inputs\.|secrets\.)/) {
+      if (lowered ~ /\$\{\{(([^}]|\}[^}])*[^a-z0-9_.])?(github\.head_ref|github\.ref_name|github\.event[^a-z0-9_]|github[^a-z0-9_.]|inputs\.|secrets\.|vars\.)/) {
         printf "context %s:%d\n", FILENAME, FNR
       }
     }
@@ -91,7 +93,7 @@ while IFS= read -r entry; do
     continue
     ;;
   context)
-    message="A run:/script: value interpolates github.head_ref, github.event.*, inputs.* or secrets.* directly. Pass it through env: and read it as \"\$NAME\" (process.env.NAME in github-script)."
+    message="A run:/script: value interpolates github.head_ref, github.ref_name, github.event, the github context as a whole, inputs.*, secrets.* or vars.* directly. Pass it through env: and read it as \"\$NAME\" (process.env.NAME in github-script)."
     ;;
   permissions)
     message="The workflow sets no top-level permissions: block. Grant the minimum (usually contents: read, or {}) and name anything more in the job that needs it."
