@@ -1,5 +1,10 @@
-import { useState } from 'react'
-import { isRecentLoginRequired, recentLoginRefusalMessage } from './recentLogin'
+import { useEffect, useRef, useState } from 'react'
+import { notify } from '../stores/notificationStore'
+import {
+  consumeRecentLoginReturn,
+  isRecentLoginRequired,
+  recentLoginRefusalMessage,
+} from './recentLogin'
 import RecentLoginDialog from '../ui/RecentLoginDialog'
 
 /**
@@ -10,8 +15,24 @@ import RecentLoginDialog from '../ui/RecentLoginDialog'
  */
 let providerReturnPending = false
 
-export function noteProviderReturn(): void {
-  providerReturnPending = true
+/**
+ * Takes the return from a sign-in at the provider for the page that renders it and says `hint`.
+ * The return stays pending only while the page is mounted: leaving the page drops it, so another
+ * page never reads it as its own. The ref carries the state across StrictMode's remount.
+ */
+export function useProviderReturn(hint: string): void {
+  const pending = useRef<boolean | null>(null)
+  useEffect(() => {
+    if (pending.current === null) {
+      pending.current = consumeRecentLoginReturn()
+      if (pending.current) notify(hint, 'info')
+    }
+    providerReturnPending = pending.current
+    return () => {
+      pending.current = providerReturnPending
+      providerReturnPending = false
+    }
+  }, [hint])
 }
 
 /** For tests: no return pending. */
@@ -23,7 +44,7 @@ export function resetProviderReturn(): void {
  * An act that demands a recent sign-in (`@RequiresRecentLogin` or `RecentLoginPolicy` in the
  * backend): `refusal` turns `RECENT_LOGIN_REQUIRED` into the confirmation dialog and repeats the act
  * once it is confirmed; `dialog` must be rendered. A page that can be returned to from the provider
- * takes the return with `consumeRecentLoginReturn()` and hands it on with {@link noteProviderReturn}.
+ * takes the return with {@link useProviderReturn}.
  */
 export function useRecentLoginGate(purpose: string) {
   const [retry, setRetry] = useState<(() => void) | null>(null)

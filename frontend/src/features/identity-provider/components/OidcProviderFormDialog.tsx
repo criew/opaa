@@ -101,10 +101,11 @@ function requestFromDraft(draft: OidcProviderDraft): OidcProviderRequest {
   }
 }
 
-/** A role mapping hands out system roles, so setting or changing it needs a recent sign-in. */
+/** Trust anchor and mappings decide whose tokens count and what they grant: a recent sign-in. */
 export const ROLE_MAPPING_CONFIRM_PURPOSE =
-  'Die Rollenzuordnung eines Anbieters vergibt Systemrollen. Sie zu setzen oder zu ändern, ' +
-  'verlangt eine gerade bestätigte Anmeldung. Bitte bestätigen Sie Ihre Anmeldung.'
+  'Verbindung, Rollen- und Gruppenzuordnung eines Anbieters entscheiden, wessen Anmeldung gilt ' +
+  'und welche Rechte sie gibt. Sie zu ändern, verlangt eine gerade bestätigte Anmeldung. ' +
+  'Bitte bestätigen Sie Ihre Anmeldung.'
 
 interface OidcProviderFormDialogProps {
   open: boolean

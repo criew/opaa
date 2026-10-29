@@ -8,7 +8,6 @@ import AddIcon from '@mui/icons-material/Add'
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined'
 import type { AccountResponse, LocalUserResponse } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
-import { consumeRecentLoginReturn } from '@/shared/session/recentLogin'
 import { notify } from '@/shared/stores/notificationStore'
 import { useUserAdminStore } from '../stores/userAdminStore'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
@@ -28,7 +27,7 @@ import GeneratedPasswordDialog, {
   type GeneratedPassword,
 } from '../components/GeneratedPasswordDialog'
 import { ROLE_CHANGE_RETURNED_HINT } from '../components/localUserLabels'
-import { noteProviderReturn } from '@/shared/session/useRecentLoginGate'
+import { useProviderReturn } from '@/shared/session/useRecentLoginGate'
 
 export type UserManagementTab = 'accounts' | 'settings'
 
@@ -77,12 +76,7 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
   // Back from a sign-in forced at the provider: the dialog that asked for it is gone with the page,
   // so the person makes the change again. Taken here, so no other page reads the return as its own;
   // the gate holds it until that next attempt (useRecentLoginGate).
-  useEffect(() => {
-    if (consumeRecentLoginReturn()) {
-      noteProviderReturn()
-      notify(ROLE_CHANGE_RETURNED_HINT, 'info')
-    }
-  }, [])
+  useProviderReturn(ROLE_CHANGE_RETURNED_HINT)
 
   useEffect(() => {
     void loadAccounts()

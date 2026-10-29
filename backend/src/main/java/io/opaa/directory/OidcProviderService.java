@@ -35,6 +35,7 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -256,8 +257,10 @@ public class OidcProviderService implements LocalAccountsSwitch {
    * Entscheidung 2): the identity is {@code (issuer, subject)} and there is no merging, so every
    * account of the old issuer would silently become a new, empty account on its next sign-in. The
    * comparison is byte for byte, like the token check and {@code users.issuer}: a trailing slash
-   * added or removed is an issuer change too. For the LOCAL row only the name is editable. A
-   * changed role mapping demands a recent sign-in, as in {@link #createProvider}.
+   * added or removed is an issuer change too. For the LOCAL row only the name is editable. A change
+   * of anything that decides whose tokens are trusted or what they grant demands a recent sign-in
+   * (see {@link #trustSettingsOf}); only the display name and the display-name claim change without
+   * one.
    */
   @Transactional
   public OidcProvider updateProvider(
@@ -265,9 +268,6 @@ public class OidcProviderService implements LocalAccountsSwitch {
     OidcProvider provider = repository.findById(id).orElseThrow(() -> notFound(id));
     if (provider.isLocal()) {
       return renameLocalRow(organizationId, actorUserId, provider, draft);
-    }
-    if (!roleMappingOf(draft.claimMapping()).equals(roleMappingOf(provider.getClaimMapping()))) {
-      recentLogin.requireRecentLogin();
     }
     validate(draft, provider.getId());
     if (provider.isDirectorySyncEnabled()
@@ -288,6 +288,16 @@ public class OidcProviderService implements LocalAccountsSwitch {
                 + " Konten angelegt, die ihre Identität verlieren würden. Legen Sie für den neuen"
                 + " Issuer einen weiteren Anbieter an.");
       }
+    }
+    if (!trustSettingsOf(
+            draft.issuerUri(), draft.clientId(), draft.jwkSetUri(), draft.claimMapping())
+        .equals(
+            trustSettingsOf(
+                provider.getIssuerUri(),
+                provider.getClientId(),
+                provider.getJwkSetUri(),
+                provider.getClaimMapping()))) {
+      recentLogin.requireRecentLogin();
     }
     Map<String, Object> before = auditState(provider);
     provider.replaceDetails(
@@ -313,6 +323,31 @@ public class OidcProviderService implements LocalAccountsSwitch {
     return mapping == null
         ? Arrays.asList(null, null, null)
         : Arrays.asList(mapping.rolesClaim(), mapping.systemAdminRole(), mapping.auditorRole());
+  }
+
+  /**
+   * The values a stolen session could turn into an account or a right: issuer, audience and signing
+   * keys decide whose tokens count, the e-mail claim feeds the initial-administrator rule, the role
+   * mapping hands out system roles and the groups claim group memberships. Normalised as {@link
+   * OidcProvider#replaceDetails} stores them, so resending the stored values is no change.
+   */
+  private static List<String> trustSettingsOf(
+      String issuerUri, String clientId, String jwkSetUri, OidcClaimMapping mapping) {
+    OidcClaimMapping effective = mapping == null ? OidcClaimMapping.keycloakDefaults() : mapping;
+    List<String> values =
+        new ArrayList<>(
+            Arrays.asList(
+                trimmed(issuerUri),
+                trimmed(clientId),
+                jwkSetUri == null || jwkSetUri.isBlank() ? null : jwkSetUri.trim(),
+                effective.emailClaim(),
+                effective.groupsClaim()));
+    values.addAll(roleMappingOf(effective));
+    return values;
+  }
+
+  private static String trimmed(String value) {
+    return value == null ? null : value.trim();
   }
 
   private OidcProvider renameLocalRow(

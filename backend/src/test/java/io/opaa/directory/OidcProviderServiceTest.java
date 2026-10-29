@@ -188,6 +188,62 @@ class OidcProviderServiceTest {
     assertThat(renamed.getDisplayName()).isEqualTo("Beschäftigte (neu)");
   }
 
+  /**
+   * Issuer, audience, signing keys, e-mail claim and groups claim decide whose tokens count and
+   * what they grant: a stolen session must not point the provider at keys of its own choosing.
+   */
+  @Test
+  void aChangedTrustAnchorNeedsARecentSignInTheDisplayNameClaimDoesNot() {
+    OidcProvider self = provider("Beschäftigte", "https://idp.example/realms/a", true, true);
+    when(repository.findById(self.getId())).thenReturn(Optional.of(self));
+    noRecentSignIn();
+    OidcClaimMapping mapping = self.getClaimMapping();
+    String issuer = self.getIssuerUri();
+    String clientId = self.getClientId();
+    List<OidcProviderDraft> refused =
+        List.of(
+            new OidcProviderDraft("B", issuer + "-neu", clientId, null, mapping),
+            new OidcProviderDraft("B", issuer, "fremder-client", null, mapping),
+            new OidcProviderDraft("B", issuer, clientId, "https://attacker.example/certs", mapping),
+            new OidcProviderDraft(
+                "B",
+                issuer,
+                clientId,
+                null,
+                new OidcClaimMapping("upn", mapping.displayNameClaim(), null, null, null, null)),
+            new OidcProviderDraft(
+                "B",
+                issuer,
+                clientId,
+                null,
+                new OidcClaimMapping(
+                    mapping.emailClaim(), mapping.displayNameClaim(), null, null, null, "groups")));
+
+    for (OidcProviderDraft draft : refused) {
+      assertThatThrownBy(
+              () -> service.updateProvider(ORGANIZATION_ID, ACTOR_ID, self.getId(), draft))
+          .as(draft.toString())
+          .isInstanceOf(AccessDeniedException.class);
+    }
+    assertThat(self.getIssuerUri()).isEqualTo(issuer);
+    assertThat(self.getJwkSetUri()).isNull();
+    verify(repository, never()).save(any(OidcProvider.class));
+
+    OidcProvider renamed =
+        service.updateProvider(
+            ORGANIZATION_ID,
+            ACTOR_ID,
+            self.getId(),
+            new OidcProviderDraft(
+                "Beschäftigte (neu)",
+                issuer,
+                clientId,
+                "  ",
+                new OidcClaimMapping(
+                    mapping.emailClaim(), "preferred_username", null, null, null, null)));
+    assertThat(renamed.getClaimMapping().displayNameClaim()).isEqualTo("preferred_username");
+  }
+
   @Test
   void theFirstProviderBecomesTheEnabledDefault() {
     OidcProvider created =

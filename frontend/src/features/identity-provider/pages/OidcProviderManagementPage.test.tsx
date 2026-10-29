@@ -291,7 +291,7 @@ describe('OidcProviderManagementPage', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Rollen-Claim setzen' }))
 
     const confirm = await screen.findByRole('dialog', { name: 'Anmeldung bestätigen' })
-    expect(within(confirm).getByText(/Rollenzuordnung/)).toBeInTheDocument()
+    expect(within(confirm).getByText(/Rollen- und Gruppenzuordnung/)).toBeInTheDocument()
     await user.type(within(confirm).getByLabelText('Ihr Passwort'), mockLocalAccount.password)
     await user.click(within(confirm).getByRole('button', { name: 'Bestätigen' }))
 

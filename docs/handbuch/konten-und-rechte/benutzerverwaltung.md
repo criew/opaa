@@ -252,9 +252,11 @@ als „Nutzer" —, bestätigt vorher seine Anmeldung, wenn sie länger zurückl
 ([Erneute Anmeldung vor sensiblen Vorgängen](../betrieb/authentifizierung.md#erneute-anmeldung-vor-sensiblen-vorgängen)).
 Dasselbe gilt für alles, womit ein lokales Konto der Systemverwaltung oder der Revision in andere
 Hände kommen könnte: eine neue E-Mail-Adresse, „Rücksetz-Link per E-Mail", „Passwort erzeugen" und
-„An Identitätsanbieter übergeben", und für die Rollenzuordnung eines Identitätsanbieters
-([Authentifizierung](../betrieb/authentifizierung.md)). Eine offen gelassene oder entwendete Sitzung
-genügt so nicht, um Verwaltungsrechte weiterzugeben oder ein solches Konto zu übernehmen. Die übrigen
+„An Identitätsanbieter übergeben". Bei einem Identitätsanbieter verlangen die Rollenzuordnung und
+alles, was bestimmt, wessen Anmeldung zählt — Issuer-URI, Client-ID, JWK-Set-URI, E-Mail-Claim und
+Gruppen-Claim —, dieselbe Bestätigung ([Authentifizierung](../betrieb/authentifizierung.md)). Eine
+offen gelassene oder entwendete Sitzung genügt so nicht, um Verwaltungsrechte weiterzugeben, ein
+solches Konto zu übernehmen oder Anmeldungen eines fremden Dienstes gelten zu lassen. Die übrigen
 Angaben eines Kontos und alle Handlungen an Konten mit der Rolle „Nutzer" gehen ohne Bestätigung.
 
 Systemverwalterkonten sind **persönliche** Konten, je Person eines — keine Sammelkonten. Das

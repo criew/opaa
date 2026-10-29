@@ -422,6 +422,43 @@ describe('UserManagementPage', () => {
     expect(await screen.findByRole('dialog', { name: 'Anmeldung bestätigen' })).toBeInTheDocument()
   }, 20000)
 
+  /** Leaving the page drops the return: a later visit asks for the confirmation again. */
+  it('forgets the return from the provider once the page is left', async () => {
+    signInAs('SYSTEM_ADMIN')
+    useAuthStore.setState({ sessionKind: 'oidc', activeProviderId: 'keycloak' })
+    markRecentLoginReturn()
+    const user = userEvent.setup()
+    server.use(
+      http.post('/api/v1/admin/users/:id/role', () =>
+        HttpResponse.json(
+          {
+            error: 'Bitte bestätigen Sie Ihre Identität.',
+            status: 403,
+            code: 'RECENT_LOGIN_REQUIRED',
+          },
+          { status: 403 },
+        ),
+      ),
+    )
+    const first = renderAccounts()
+    expect(await screen.findByText(/von Ihrem Anmeldedienst zurück/)).toBeInTheDocument()
+    first.unmount()
+
+    renderAccounts()
+    await screen.findByRole('table', { name: 'Konten' })
+    const menu = await openRowMenu(user, 'Maria Weber')
+    await user.click(within(menu).getByRole('menuitem', { name: /Rolle ändern/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Rolle von „Maria Weber“ ändern' })
+    await user.click(within(dialog).getByRole('combobox', { name: 'Rolle' }))
+    await user.click(await screen.findByRole('option', { name: 'Revision' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+    expect(await screen.findByRole('dialog', { name: 'Anmeldung bestätigen' })).toBeInTheDocument()
+    expect(
+      within(dialog).queryByText(RECENT_LOGIN_NOT_CONFIRMED_BY_PROVIDER_MESSAGE),
+    ).not.toBeInTheDocument()
+  }, 20000)
+
   it('confirms the sign-in before a password is generated for an account', async () => {
     signInAs('SYSTEM_ADMIN')
     useAuthStore.setState({ sessionKind: 'local', token: 'old-token' })

@@ -150,8 +150,11 @@ paths:
         this issuer - the trust anchor of every account of the provider. For the LOCAL row only
         displayName is editable: its issuer is fixed to urn:opaa:local (409 for any other value),
         no address check, discovery or connection test applies to it, and clientId and jwkSetUri
-        are ignored. A change of rolesClaim, systemAdminRole or auditorRole requires a recent
-        sign-in (403 RECENT_LOGIN_REQUIRED, response RecentLoginRequired); nothing is written without it.
+        are ignored. A change of anything that decides whose tokens count or what they grant -
+        issuerUri, clientId, jwkSetUri, emailClaim, groupsClaim, rolesClaim, systemAdminRole or
+        auditorRole - requires a recent sign-in (403 RECENT_LOGIN_REQUIRED, response
+        RecentLoginRequired); nothing is written without it. displayName and displayNameClaim
+        change without one.
       requestBody:
         required: true
         content:

@@ -478,7 +478,10 @@ gefragt. Verlangt wird sie vor dem Download der eigenen Daten
 ([Selbstauskunft](../konten-und-rechte/benutzerverwaltung.md#meine-daten-die-selbstauskunft)),
 bevor die Systemverwaltung einem Konto eine andere Systemrolle gibt oder ein Konto mit Systemrolle in
 andere Hände kommen könnte ([Rollen](../konten-und-rechte/benutzerverwaltung.md#7-rollen)), und bevor
-sie die Rollenzuordnung eines Identitätsanbieters setzt oder ändert.
+sie die Rollenzuordnung eines Identitätsanbieters setzt oder ändert. Ebenso verlangt sie jede
+Änderung an Issuer-URI, Client-ID, JWK-Set-URI, E-Mail-Claim oder Gruppen-Claim eines bestehenden
+Anbieters: Diese Angaben entscheiden, wessen Tokens gelten und was sie gewähren. Anzeigename und
+Anzeigenamen-Claim ändern sich ohne Bestätigung.
 
 - **Lokales Konto:** Die Bestätigung erfolgt mit dem Passwort. Ein falsches Passwort zählt wie bei
   der Anmeldung als Fehlversuch und führt nach zu vielen Versuchen zur Sperre.

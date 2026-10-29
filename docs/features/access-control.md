@@ -442,7 +442,9 @@ jede Vergabe einer Systemrolle oder Übernahme eines Kontos mit Systemrolle (#33
 `POST /api/v1/admin/users/{id}/role` per Annotation; das Anlegen eines lokalen Kontos mit anderer
 Rolle als `USER`, das Ändern seiner Rolle, und für Konten mit Systemrolle eine neue Adresse, der
 Rücksetzlink, das erzeugte Passwort und die Übergabe an einen Anbieter; das Anlegen eines Anbieters
-mit Rollenzuordnung und jede Änderung von `rolesClaim`, `systemAdminRole` oder `auditorRole`. Diese
+mit Rollenzuordnung und jede Änderung an Vertrauensanker oder Zuordnung eines Anbieters
+(`issuerUri`, `clientId`, `jwkSetUri`, `emailClaim`, `groupsClaim`, `rolesClaim`, `systemAdminRole`,
+`auditorRole`). Diese
 prüft der Dienst über `RecentLoginPolicy#requireRecentLogin()`, weil erst dort feststeht, ob sich
 etwas Rollenwirksames ändert. In der Oberfläche führt `useRecentLoginGate` (`shared/session/`) durch
 die Bestätigung und wiederholt den Vorgang danach. Das Backend hält dafür keinen Zustand: Der Nachweis steht im
