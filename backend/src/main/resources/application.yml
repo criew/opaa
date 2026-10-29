@@ -603,6 +603,9 @@ opaa:
     # Longest admissible Befristung of a library's release for Fremdzugaenge. How many days before
     # it ends the responsible person is reminded is a setting of the external AI tools.
     max-release-days: ${OPAA_EXTERNAL_ACCESS_MAX_RELEASE_DAYS:365}
+    # Days the last sign-in of an account of an identity provider may lie back for its access tokens
+    # to work; deactivation and groups at the provider reach OPAA only with a sign-in.
+    provider-sign-in-max-age-days: ${OPAA_EXTERNAL_ACCESS_PROVIDER_SIGN_IN_MAX_AGE_DAYS:30}
   documents:
     # The synchronous remote-content proxy path (GET /api/v1/documents/{documentId}/content for an
     # HTTP_DIRECTORY/RSS_FEED document) has its own, smaller bound, a short timeout per hop and a

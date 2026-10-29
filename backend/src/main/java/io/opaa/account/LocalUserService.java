@@ -471,7 +471,13 @@ public class LocalUserService {
     return password;
   }
 
+  /**
+   * Ends the sessions of a reset and what they could have created ({@link
+   * LocalAccountSessionsEndedEvent}).
+   */
   private void recordSessionsRevoked(CurrentUser actor, User user, Instant now) {
+    events.publishEvent(
+        LocalAccountSessionsEndedEvent.by(user, RevocationReason.ADMIN_RESET, actor.id()));
     int revoked = refreshTokens.revokeAllForUser(user.getId(), RevocationReason.ADMIN_RESET, now);
     if (revoked > 0) {
       recordAdminAct(

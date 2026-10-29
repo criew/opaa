@@ -10,6 +10,10 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.jayway.jsonpath.JsonPath;
+import io.opaa.account.LocalPasswordService;
+import io.opaa.account.LocalRefreshTokenService;
+import io.opaa.account.LocalRefreshTokenService.IssuedRefreshToken;
+import io.opaa.account.LocalRefreshTokenService.RotationResult;
 import io.opaa.account.LocalUserService;
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AuditEventType;
@@ -87,6 +91,8 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
   @Autowired private LibraryExternalAccessService libraryRelease;
   @Autowired private ExternalAccessTokenService tokenService;
   @Autowired private LocalUserService localUsers;
+  @Autowired private LocalPasswordService passwords;
+  @Autowired private LocalRefreshTokenService refreshTokens;
   @Autowired private LocalAccountFixturesFactory localAccountFixtures;
   @Autowired private Clock clock;
 
@@ -432,6 +438,72 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
         .singleElement()
         .asString()
         .contains(ExternalAccessTokenRevocationReason.ACCOUNT_LIFECYCLE.name());
+  }
+
+  @Test
+  void changingThePasswordEndsTheTokensOfTheAccount() {
+    LocalAccount person = fixtures.activeUser("passwort-" + UUID.randomUUID() + "@intern.example");
+    UUID personsToken = issueFor(person);
+
+    passwords.changePassword(
+        person.user(), LocalAccountFixtures.PASSWORD, "neues-fahrrad-leuchtturm-tinte");
+
+    assertEndedWithTheAccount(personsToken);
+  }
+
+  @Test
+  void anAdministratorsPasswordResetEndsTheTokensOfTheAccount() {
+    LocalAccount person = fixtures.activeUser("reset-" + UUID.randomUUID() + "@intern.example");
+    UUID personsToken = issueFor(person);
+
+    localUsers.generatePassword(
+        CurrentUser.of(
+            administrator.getId(),
+            administrator.getOrganizationId(),
+            administrator.getSystemRole(),
+            "Systemverwaltung"),
+        person.id());
+
+    assertEndedWithTheAccount(personsToken);
+  }
+
+  @Test
+  void aDetectedRefreshReplayEndsTheTokensOfTheAccount() {
+    LocalAccount person = fixtures.activeUser("replay-" + UUID.randomUUID() + "@intern.example");
+    UUID personsToken = issueFor(person);
+    IssuedRefreshToken first = refreshTokens.issue(person.user());
+    RotationResult.Rotated used = (RotationResult.Rotated) refreshTokens.rotate(first.value());
+    refreshTokens.rotate(used.token().value());
+
+    assertThat(refreshTokens.rotate(first.value()))
+        .isEqualTo(new RotationResult.Reused(person.id()));
+
+    assertEndedWithTheAccount(personsToken);
+  }
+
+  /**
+   * The groups claim and a deactivation at the provider reach OPAA only with a sign-in: a token of
+   * an account of a provider rests once that sign-in is older than the configured window, and the
+   * next sign-in revives it - nothing is revoked.
+   */
+  @Test
+  void aTokenOfAProviderAccountRestsUntilItsNextSignIn() throws Exception {
+    jdbcTemplate.update(
+        "UPDATE users SET last_login_at = now() - interval '31 days' WHERE id = ?", owner.getId());
+
+    assertRefusedWith(rawValue, "sign_in_required");
+    assertThat(tokens.findById(tokenId).orElseThrow().getRevokedAt()).isNull();
+
+    mockMvc.perform(get("/api/v1/auth/me").with(devUser())).andExpect(status().isOk());
+    assertThat(authenticator.authenticate(rawValue))
+        .isInstanceOf(ExternalAccessTokenAuthenticator.Result.Authenticated.class);
+  }
+
+  private void assertEndedWithTheAccount(UUID tokenId) {
+    ExternalAccessToken ended = tokens.findById(tokenId).orElseThrow();
+    assertThat(ended.getRevocationReason())
+        .isEqualTo(ExternalAccessTokenRevocationReason.ACCOUNT_LIFECYCLE);
+    assertThat(ended.getRevokedAt()).isNotNull();
   }
 
   /** Issues a token for a local account against the shared library, and returns its id. */

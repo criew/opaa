@@ -6,6 +6,7 @@ import io.opaa.api.types.AuditOutcome;
 import io.opaa.asset.AssetCatalogService;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
@@ -43,6 +44,10 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>The audit entries name the token by its id and never by its name: the free-text field is where
  * Vorgangsnummern and device names end up, and the trail excludes free text in these events. The
  * use of a token is deliberately no event at all.
+ *
+ * <p>An issuance requires a recent sign-in (the controller's {@code @RequiresRecentLogin}) and is
+ * announced to the person by mail, so a briefly taken-over session neither issues a token silently
+ * nor with a refreshed access token alone.
  */
 @Service
 public class ExternalAccessTokenService {
@@ -55,6 +60,8 @@ public class ExternalAccessTokenService {
   private final AssetCatalogService catalog;
   private final LocalAuthKeyService keys;
   private final AuditEventRecorder audit;
+  private final UserRepository users;
+  private final ExternalAccessTokenMailer mailer;
   private final Clock clock;
 
   public ExternalAccessTokenService(
@@ -66,6 +73,8 @@ public class ExternalAccessTokenService {
       AssetCatalogService catalog,
       LocalAuthKeyService keys,
       AuditEventRecorder audit,
+      UserRepository users,
+      ExternalAccessTokenMailer mailer,
       Clock clock) {
     this.tokens = tokens;
     this.libraries = libraries;
@@ -75,6 +84,8 @@ public class ExternalAccessTokenService {
     this.catalog = catalog;
     this.keys = keys;
     this.audit = audit;
+    this.users = users;
+    this.mailer = mailer;
     this.clock = clock;
   }
 
@@ -150,6 +161,7 @@ public class ExternalAccessTokenService {
                     expiresAt.toString()))
             .outcome(AuditOutcome.SUCCESS)
             .build());
+    users.findById(ownerId).ifPresent(owner -> mailer.sendIssued(owner, name, now));
     return new IssuedExternalAccessToken(saved, rawValue, namesOf(selected));
   }
 

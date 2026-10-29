@@ -15,11 +15,13 @@ export const LOCK_CONSEQUENCE =
   'Inhalte und Rechte des Kontos bleiben erhalten.'
 
 export const RESET_CONSEQUENCE =
-  'Alle Sitzungen des Kontos enden, und die Person erhält einen einmaligen Rücksetzlink per ' +
+  'Alle Sitzungen und Zugangstokens des Kontos enden, und die Person erhält einen einmaligen ' +
+  'Rücksetzlink per ' +
   'E-Mail. Geht die Nachricht nicht hinaus, wird der Link genau einmal zur Übergabe angezeigt.'
 
 export const GENERATE_PASSWORD_CONSEQUENCE =
-  'Es wird ein neues Passwort erzeugt und genau einmal angezeigt. Alle Sitzungen des Kontos enden; ' +
+  'Es wird ein neues Passwort erzeugt und genau einmal angezeigt. Alle Sitzungen und ' +
+  'Zugangstokens des Kontos enden; ' +
   'bei der nächsten Anmeldung muss das Passwort gewechselt werden.'
 
 export const DELETE_CONSEQUENCE =

@@ -25,6 +25,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -78,6 +79,7 @@ public class LocalRefreshTokenService {
   private final LocalTokenRevocationService revocation;
   private final AuditEventRecorder audit;
   private final TransactionTemplate transactions;
+  private final ApplicationEventPublisher events;
   private final Clock clock;
 
   public LocalRefreshTokenService(
@@ -90,6 +92,7 @@ public class LocalRefreshTokenService {
       LocalTokenRevocationService revocation,
       AuditEventRecorder audit,
       PlatformTransactionManager transactionManager,
+      ApplicationEventPublisher events,
       Clock clock) {
     this.repository = repository;
     this.users = users;
@@ -100,6 +103,7 @@ public class LocalRefreshTokenService {
     this.revocation = revocation;
     this.audit = audit;
     this.transactions = new TransactionTemplate(transactionManager);
+    this.events = events;
     this.clock = clock;
   }
 
@@ -260,8 +264,9 @@ public class LocalRefreshTokenService {
 
   /**
    * The replay response, in one transaction of its own: revoke the family, end every session of the
-   * account, audit and warn - but only when the family still had an active member; a second replay
-   * of an already dead family changes no state and writes no event.
+   * account and what a session could have created ({@link LocalAccountSessionsEndedEvent}), audit
+   * and warn - but only when the family still had an active member; a second replay of an already
+   * dead family changes no state and writes no event.
    */
   private void handleReuse(LocalRefreshToken presented, Instant now) {
     UUID userId = presented.getUserId();
@@ -274,7 +279,15 @@ public class LocalRefreshTokenService {
               if (rows > 0) {
                 repository.revokeAllForUser(userId, RevocationReason.REUSE_DETECTED, now);
                 revocation.invalidateSessionsIssuedBefore(userId);
-                users.findById(userId).ifPresent(this::auditSessionsRevoked);
+                users
+                    .findById(userId)
+                    .ifPresent(
+                        user -> {
+                          events.publishEvent(
+                              LocalAccountSessionsEndedEvent.bySystem(
+                                  user, RevocationReason.REUSE_DETECTED, SYSTEM_ACTOR));
+                          auditSessionsRevoked(user);
+                        });
               }
               return rows;
             });

@@ -19,6 +19,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,9 +29,11 @@ import org.springframework.transaction.annotation.Transactional;
  * current password and the setting through an invitation or reset link. Both check the new password
  * against the {@link PasswordPolicy}, replace the hash, clear a forced change, invalidate every
  * access token issued up to now and revoke every refresh family ({@code PASSWORD_CHANGED} - the
- * trace a later refused token names as its cause). One transaction each: a failing revocation rolls
- * the new hash back too, so the person never ends up with a new password and old sessions still
- * alive, and a policy refusal rolls the redemption of a link back, so the link stays open.
+ * trace a later refused token names as its cause), and end what a session could have created on the
+ * person's behalf ({@link LocalAccountSessionsEndedEvent}). One transaction each: a failing
+ * revocation rolls the new hash back too, so the person never ends up with a new password and old
+ * sessions still alive, and a policy refusal rolls the redemption of a link back, so the link stays
+ * open.
  */
 @Service
 public class LocalPasswordService {
@@ -45,6 +48,7 @@ public class LocalPasswordService {
   private final LocalTokenRevocationService revocation;
   private final LocalRefreshTokenService refreshTokens;
   private final AuditEventRecorder audit;
+  private final ApplicationEventPublisher events;
   private final Clock clock;
 
   public LocalPasswordService(
@@ -56,6 +60,7 @@ public class LocalPasswordService {
       LocalTokenRevocationService revocation,
       LocalRefreshTokenService refreshTokens,
       AuditEventRecorder audit,
+      ApplicationEventPublisher events,
       Clock clock) {
     this.credentials = credentials;
     this.users = users;
@@ -65,6 +70,7 @@ public class LocalPasswordService {
     this.revocation = revocation;
     this.refreshTokens = refreshTokens;
     this.audit = audit;
+    this.events = events;
     this.clock = clock;
   }
 
@@ -93,6 +99,8 @@ public class LocalPasswordService {
     credentials.save(row);
     revocation.invalidateSessionsIssuedBefore(user.getId());
     refreshTokens.revokeAllForUser(user.getId(), RevocationReason.PASSWORD_CHANGED);
+    events.publishEvent(
+        LocalAccountSessionsEndedEvent.by(user, RevocationReason.PASSWORD_CHANGED, user.getId()));
     record(user, AuditEventType.LOCAL_PASSWORD_CHANGED, null);
     return credentials.findById(user.getId()).orElse(row);
   }
@@ -142,6 +150,8 @@ public class LocalPasswordService {
     actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.SET_PASSWORD);
     actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.RESET_PASSWORD);
     refreshTokens.revokeAllForUser(user.getId(), RevocationReason.PASSWORD_CHANGED);
+    events.publishEvent(
+        LocalAccountSessionsEndedEvent.by(user, RevocationReason.PASSWORD_CHANGED, user.getId()));
     record(user, AuditEventType.LOCAL_PASSWORD_SET, Map.of("purpose", token.getPurpose().name()));
     return user;
   }

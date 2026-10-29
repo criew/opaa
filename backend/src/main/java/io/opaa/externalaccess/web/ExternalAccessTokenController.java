@@ -7,6 +7,7 @@ import io.opaa.api.dto.ExternalAccessChannelInfoResponse;
 import io.opaa.api.dto.OwnExternalAccessTokenListResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.auth.RequiresRecentLogin;
 import io.opaa.common.ConditionalOnFeature;
 import io.opaa.common.Feature;
 import io.opaa.externalaccess.ExternalAccessSettings.Values;
@@ -83,8 +84,13 @@ public class ExternalAccessTokenController {
             .toList());
   }
 
+  /**
+   * Requires a recent sign-in: a token outlives the session it was issued from, so a refreshed
+   * access token of a possibly taken-over session is not enough to create one.
+   */
   @PostMapping("/tokens")
   @ResponseStatus(HttpStatus.CREATED)
+  @RequiresRecentLogin
   public CreatedExternalAccessTokenResponse createExternalAccessToken(
       @Valid @RequestBody CreateExternalAccessTokenRequest request, @Caller CurrentUser caller) {
     IssuedExternalAccessToken issued =
