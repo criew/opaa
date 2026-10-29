@@ -609,27 +609,11 @@ class ExternalAccessTokenIntegrationTest {
 
   @Test
   void theAdministrationBlocksNoTokenOfAnotherOrganization() throws Exception {
-    UUID organization =
-        organizations
-            .save(new Organization(UUID.randomUUID(), "Fremde Stelle " + UUID.randomUUID()))
-            .getId();
+    UUID organization = foreignOrganization();
     UUID person = UUID.randomUUID();
     UUID token = UUID.randomUUID();
     try {
-      jdbcTemplate.update(
-          "INSERT INTO users (id, subject, issuer, email, display_name, organization_id)"
-              + " VALUES (?, ?, 'opaa-dev', ?, 'Fremde Person', ?)",
-          person,
-          "foreign-" + person,
-          "foreign-" + person + "@example.com",
-          organization);
-      jdbcTemplate.update(
-          "INSERT INTO external_access_tokens (id, user_id, name, token_prefix,"
-              + " token_lookup_hash, expires_at) VALUES (?, ?, 'Fremd', 'opaa_frmd', ?, ?)",
-          token,
-          person,
-          "f".repeat(32) + token.toString().replace("-", ""),
-          Timestamp.from(clock.instant().plus(Duration.ofDays(30))));
+      foreignToken(organization, person, token);
 
       mockMvc
           .perform(
@@ -644,9 +628,62 @@ class ExternalAccessTokenIntegrationTest {
           .andExpect(status().isNotFound());
       assertThat(tokens.findById(token).orElseThrow().getRevokedAt()).isNull();
     } finally {
-      jdbcTemplate.update("DELETE FROM external_access_tokens WHERE user_id = ?", person);
-      organizationFixtures.removeOrganizations(organization);
+      removeForeign(organization, person);
     }
+  }
+
+  @Test
+  void theAdministrationsListShowsNoTokenOfAnotherOrganization() throws Exception {
+    UUID organization = foreignOrganization();
+    UUID person = UUID.randomUUID();
+    UUID token = UUID.randomUUID();
+    UUID own = issueTokenId();
+    try {
+      foreignToken(organization, person, token);
+
+      for (String filter : List.of("", "?status=ACTIVE", "?expiringWithinDays=365")) {
+        String body =
+            mockMvc
+                .perform(
+                    get("/api/v1/admin/external-access/tokens" + filter).with(devUser("dev-admin")))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertThat(body).as(filter).contains(own.toString()).doesNotContain(token.toString());
+      }
+    } finally {
+      removeForeign(organization, person);
+    }
+  }
+
+  private UUID foreignOrganization() {
+    return organizations
+        .save(new Organization(UUID.randomUUID(), "Fremde Stelle " + UUID.randomUUID()))
+        .getId();
+  }
+
+  /** A person of {@code organization} with one live token. */
+  private void foreignToken(UUID organization, UUID person, UUID token) {
+    jdbcTemplate.update(
+        "INSERT INTO users (id, subject, issuer, email, display_name, organization_id)"
+            + " VALUES (?, ?, 'opaa-dev', ?, 'Fremde Person', ?)",
+        person,
+        "foreign-" + person,
+        "foreign-" + person + "@example.com",
+        organization);
+    jdbcTemplate.update(
+        "INSERT INTO external_access_tokens (id, user_id, name, token_prefix,"
+            + " token_lookup_hash, expires_at) VALUES (?, ?, 'Fremd', 'opaa_frmd', ?, ?)",
+        token,
+        person,
+        "f".repeat(32) + token.toString().replace("-", ""),
+        Timestamp.from(clock.instant().plus(Duration.ofDays(30))));
+  }
+
+  private void removeForeign(UUID organization, UUID person) {
+    jdbcTemplate.update("DELETE FROM external_access_tokens WHERE user_id = ?", person);
+    organizationFixtures.removeOrganizations(organization);
   }
 
   @Test

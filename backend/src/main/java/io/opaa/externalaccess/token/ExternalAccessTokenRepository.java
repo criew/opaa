@@ -33,18 +33,27 @@ public interface ExternalAccessTokenRepository extends JpaRepository<ExternalAcc
   @Query("SELECT t FROM ExternalAccessToken t WHERE t.id = :id")
   Optional<ExternalAccessToken> findForLapse(@Param("id") UUID id);
 
+  /** The admin lists show only tokens of persons of the caller's organization. */
+  String OF_ORGANIZATION =
+      " t.userId IN (SELECT u.id FROM User u WHERE u.organizationId = :organizationId)";
+
   /**
-   * The unfiltered Bestandsliste, soonest expiry first. The order is fixed and there is no ordering
-   * parameter: a list that could be sorted freely could be sorted by person.
+   * The unfiltered Bestandsliste of one organization, soonest expiry first. The order is fixed and
+   * there is no ordering parameter: a list that could be sorted freely could be sorted by person.
    */
-  @Query("SELECT t FROM ExternalAccessToken t ORDER BY t.expiresAt ASC")
-  List<ExternalAccessToken> findForAdminList(Pageable page);
+  @Query(
+      "SELECT t FROM ExternalAccessToken t WHERE" + OF_ORGANIZATION + " ORDER BY t.expiresAt ASC")
+  List<ExternalAccessToken> findForAdminList(
+      @Param("organizationId") UUID organizationId, Pageable page);
 
   /** Still live at {@code now}. */
   @Query(
       "SELECT t FROM ExternalAccessToken t WHERE t.revokedAt IS NULL AND t.expiresAt > :now"
+          + " AND"
+          + OF_ORGANIZATION
           + " ORDER BY t.expiresAt ASC")
-  List<ExternalAccessToken> findActiveForAdminList(@Param("now") Instant now, Pageable page);
+  List<ExternalAccessToken> findActiveForAdminList(
+      @Param("organizationId") UUID organizationId, @Param("now") Instant now, Pageable page);
 
   /**
    * Run out - either already marked by the daily run or simply past its expiry, which the derived
@@ -52,26 +61,35 @@ public interface ExternalAccessTokenRepository extends JpaRepository<ExternalAcc
    */
   @Query(
       "SELECT t FROM ExternalAccessToken t WHERE"
-          + " t.revocationReason = io.opaa.externalaccess.token"
+          + " (t.revocationReason = io.opaa.externalaccess.token"
           + ".ExternalAccessTokenRevocationReason.EXPIRED"
-          + " OR (t.revokedAt IS NULL AND t.expiresAt <= :now)"
+          + " OR (t.revokedAt IS NULL AND t.expiresAt <= :now)) AND"
+          + OF_ORGANIZATION
           + " ORDER BY t.expiresAt ASC")
-  List<ExternalAccessToken> findExpiredForAdminList(@Param("now") Instant now, Pageable page);
+  List<ExternalAccessToken> findExpiredForAdminList(
+      @Param("organizationId") UUID organizationId, @Param("now") Instant now, Pageable page);
 
   /** Withdrawn for one of the given reasons - the person's own revocation, or a block. */
   @Query(
-      "SELECT t FROM ExternalAccessToken t WHERE t.revocationReason IN :reasons"
+      "SELECT t FROM ExternalAccessToken t WHERE t.revocationReason IN :reasons AND"
+          + OF_ORGANIZATION
           + " ORDER BY t.expiresAt ASC")
   List<ExternalAccessToken> findByRevocationReasonsForAdminList(
-      @Param("reasons") Collection<ExternalAccessTokenRevocationReason> reasons, Pageable page);
+      @Param("organizationId") UUID organizationId,
+      @Param("reasons") Collection<ExternalAccessTokenRevocationReason> reasons,
+      Pageable page);
 
   /** Still live and running out inside the horizon - the "läuft demnächst ab"-Filter. */
   @Query(
       "SELECT t FROM ExternalAccessToken t WHERE t.revokedAt IS NULL"
-          + " AND t.expiresAt > :now AND t.expiresAt <= :horizon"
+          + " AND t.expiresAt > :now AND t.expiresAt <= :horizon AND"
+          + OF_ORGANIZATION
           + " ORDER BY t.expiresAt ASC")
   List<ExternalAccessToken> findExpiringWithinForAdminList(
-      @Param("now") Instant now, @Param("horizon") Instant horizon, Pageable page);
+      @Param("organizationId") UUID organizationId,
+      @Param("now") Instant now,
+      @Param("horizon") Instant horizon,
+      Pageable page);
 
   /** Tokens that have run out but whose Ausserkrafttreten has not been recorded yet. */
   @Query(
