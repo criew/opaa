@@ -8,10 +8,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import org.apache.pdfbox.cos.COSArray;
 import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSDocument;
+import org.apache.pdfbox.cos.COSName;
+import org.apache.pdfbox.cos.COSNumber;
 import org.apache.pdfbox.cos.COSObjectKey;
 import org.apache.pdfbox.cos.COSStream;
 import org.apache.pdfbox.io.IOUtils;
@@ -29,18 +33,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Loads a PDF the way {@code Loader.loadPDF} does, but measures every stream PDFBox decodes into
- * memory while loading - the cross-reference streams and the object streams - against the stream
- * limit of a {@link PdfReadBudget} before it decodes them, and checks the budget's time on every
- * such stream. Measured are: every stream the parser reads before loading has finished (a
- * cross-reference stream is decoded right after it is read; object streams are among them, still
- * encrypted where the file is), every object stream before an object is taken from it, decrypted by
- * then, and every object stream the brute-force search for a broken cross-reference decodes. On
- * that search an encrypted file's object streams are not searched at all, since they could only be
- * measured after a decryption the search does itself; objects only they hold stay missing.
- *
- * <p>The pages are read by walking the page tree ({@link #pages}), never through the {@code /Count}
- * the file declares.
+ * Loads a PDF like {@code Loader.loadPDF}, but every cross-reference and object stream PDFBox
+ * decodes is measured against the stream limit of a {@link PdfReadBudget} first, and the objects it
+ * registers - cross-reference entries, object-stream objects, brute-force finds - count against the
+ * object limit. The brute-force search skips an encrypted file's object streams.
  */
 final class PdfLoading {
 
@@ -48,6 +44,8 @@ final class PdfLoading {
 
   /** PDFBox creates its brute-force parser lazily into this field; it is replaced up front. */
   private static final Field BRUTE_FORCE_PARSER = bruteForceParserField();
+
+  private static final int CLASSIC_ENTRY_BYTES = 20;
 
   private PdfLoading() {}
 
@@ -68,6 +66,9 @@ final class PdfLoading {
   /**
    * The pages of {@code doc} in reading order, found by walking its page tree, where every listing
    * of a page is one page. Throws {@link ParserLimitExceededException} past {@code maxPages}.
+   * PDFBox queues a node's {@code /Kids} before the limit sees them (about 150 MB for millions of
+   * kids), and a tree nested hundreds of thousands deep overflows its recursion: the read then
+   * fails as a whole.
    */
   static List<PDPage> pages(PDDocument doc, long maxPages) {
     List<PDPage> pages = new ArrayList<>();
@@ -111,9 +112,21 @@ final class PdfLoading {
     protected COSStream parseCOSStream(COSDictionary dic) throws IOException {
       COSStream stream = super.parseCOSStream(dic);
       if (!loaded) {
-        budget.measure(stream);
+        long decoded = budget.measure(stream);
+        if (COSName.XREF.equals(stream.getCOSName(COSName.TYPE))) {
+          budget.chargeObjects(crossReferenceEntries(stream, decoded));
+        }
       }
       return stream;
+    }
+
+    /** A classic table's entries are 20 bytes each, so its length bounds how many it held. */
+    @Override
+    protected boolean parseXrefTable(long startByteOffset) throws IOException {
+      long start = source.getPosition();
+      boolean parsed = super.parseXrefTable(startByteOffset);
+      budget.chargeObjects((source.getPosition() - start) / CLASSIC_ENTRY_BYTES);
+      return parsed;
     }
 
     @Override
@@ -122,16 +135,58 @@ final class PdfLoading {
       budget.requireTime();
       COSBase container = document.getObjectFromPool(new COSObjectKey(objstmObjNr, 0)).getObject();
       if (container instanceof COSStream stream && objectStreams.add(stream)) {
-        budget.remeasure(stream);
+        budget.chargeObjects(objectStreamObjects(stream, budget.remeasure(stream)));
       }
       return super.parseObjectStreamObject(objstmObjNr, key);
     }
+  }
+
+  /**
+   * The entries PDFBox reads from a cross-reference stream: those its {@code /Index} (or {@code
+   * /Size}) declares, but no more than its decoded bytes hold. A stream with valid {@code /W} whose
+   * widths add up to zero would let PDFBox read entries without consuming a byte, so it is refused;
+   * any other malformed {@code /W} is left to PDFBox to reject.
+   */
+  static long crossReferenceEntries(COSStream stream, long decodedBytes) {
+    COSArray widths = stream.getCOSArray(COSName.W);
+    if (widths == null || widths.size() != 3) {
+      return 0;
+    }
+    long width = 0;
+    for (int i = 0; i < 3; i++) {
+      int w = widths.getInt(i, 0);
+      if (w < 0) {
+        return 0;
+      }
+      width += w;
+    }
+    if (width == 0) {
+      throw new ParserLimitExceededException("PDF cross-reference stream has entries of no width");
+    }
+    long declared = 0;
+    COSArray index = stream.getCOSArray(COSName.INDEX);
+    if (index == null) {
+      declared = Math.max(0, stream.getLong(COSName.SIZE, 0));
+    } else {
+      for (int i = 1; i < index.size(); i += 2) {
+        if (index.getObject(i) instanceof COSNumber count) {
+          declared = Math.min(Long.MAX_VALUE / 2, declared + Math.max(0, count.longValue()));
+        }
+      }
+    }
+    return Math.min(declared, decodedBytes / width);
+  }
+
+  /** The objects PDFBox parses from an object stream: its {@code /N}, at most one per byte. */
+  static long objectStreamObjects(COSStream stream, long decodedBytes) {
+    return Math.min(Math.max(0, stream.getLong(COSName.N, 0)), decodedBytes);
   }
 
   private static final class MeasuringBruteForceParser extends BruteForceParser {
 
     private final PdfReadBudget budget;
     private boolean searchingObjectStreams;
+    private boolean objectsCharged;
 
     MeasuringBruteForceParser(RandomAccessRead source, COSDocument document, PdfReadBudget budget)
         throws IOException {
@@ -157,10 +212,20 @@ final class PdfLoading {
     }
 
     @Override
+    protected Map<COSObjectKey, Long> getBFCOSObjectOffsets() throws IOException {
+      Map<COSObjectKey, Long> offsets = super.getBFCOSObjectOffsets();
+      if (!objectsCharged) {
+        objectsCharged = true;
+        budget.chargeObjects(offsets.size());
+      }
+      return offsets;
+    }
+
+    @Override
     protected COSStream parseCOSStream(COSDictionary dic) throws IOException {
       COSStream stream = super.parseCOSStream(dic);
       if (searchingObjectStreams) {
-        budget.measure(stream);
+        budget.chargeObjects(objectStreamObjects(stream, budget.measure(stream)));
       }
       return stream;
     }

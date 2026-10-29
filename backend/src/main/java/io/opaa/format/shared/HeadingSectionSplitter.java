@@ -92,6 +92,15 @@ public final class HeadingSectionSplitter {
     this.softChunkCharLimit = softChunkCharLimit;
   }
 
+  /**
+   * The longest unit context {@link #boundedChunks} repeats, the ellipsis included: half the target
+   * size, at least {@link RepeatedContext#MAX_LENGTH}. Next to the body {@link #bodyBudget} leaves,
+   * the context then takes no more of a chunk than the body does.
+   */
+  public int contextLimit() {
+    return Math.max(RepeatedContext.MAX_LENGTH, softChunkCharLimit / 2);
+  }
+
   /** The target size in characters every cut and every combination aims at. */
   public int softChunkCharLimit() {
     return softChunkCharLimit;
@@ -327,17 +336,18 @@ public final class HeadingSectionSplitter {
 
   /** The titles of {@code path} joined, cut to {@link RepeatedContext#MAX_LENGTH}. */
   private static String headingLine(List<PathEntry> path) {
+    int limit = RepeatedContext.MAX_LENGTH;
     StringBuilder line = new StringBuilder();
     for (PathEntry entry : path) {
-      if (line.length() > RepeatedContext.MAX_LENGTH) {
+      if (line.length() > limit) {
         break;
       }
       if (!line.isEmpty()) {
         line.append(" › ");
       }
-      line.append(entry.title(), 0, Math.min(entry.title().length(), RepeatedContext.MAX_LENGTH));
+      line.append(entry.title(), 0, Math.min(entry.title().length(), limit));
     }
-    return RepeatedContext.cut(line.toString());
+    return RepeatedContext.cut(line.toString(), limit);
   }
 
   /**
@@ -403,14 +413,14 @@ public final class HeadingSectionSplitter {
    * chunk while it fits {@link #softChunkCharLimit() target size}, otherwise {@code body} cut by
    * {@link BoundarySplitter} with {@code context} - a slide title, a table's context and header
    * line - repeated in front of every part, and named as the anchor's lead, cut to {@link
-   * RepeatedContext#MAX_LENGTH}. Every chunk gets its own copy of {@code metadata}, so each part
-   * keeps the unit's Fundort.
+   * #contextLimit()}. Every chunk gets its own copy of {@code metadata}, so each part keeps the
+   * unit's Fundort.
    *
    * @param context the leading text every part repeats, or {@code null}
    */
   public List<Document> boundedChunks(
       String context, String separator, String body, Map<String, Object> metadata) {
-    context = RepeatedContext.cut(context);
+    context = RepeatedContext.cut(context, contextLimit());
     boolean hasContext = context != null && !context.isEmpty();
     if (hasContext) {
       metadata = new HashMap<>(metadata);

@@ -83,7 +83,63 @@ class ContextAmplificationTest {
             .run(DocumentFormatSource.ofFile(file, "breit.csv"));
 
     assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
-    assertThat(totalCharacters(result)).isLessThan(2L * csv.length());
+    // the rows render to about twice their CSV size, and the context takes no more than the body
+    assertThat(totalCharacters(result)).isLessThan(4L * csv.length());
+  }
+
+  /**
+   * Regression guard: a header of sixty ordinary column names, under half the target size, is
+   * repeated in full in every row group.
+   */
+  @Test
+  void anOrdinaryWideHeaderKeepsEveryColumnName() throws IOException {
+    StringBuilder csv = new StringBuilder();
+    for (int column = 0; column < 60; column++) {
+      csv.append(column == 0 ? "" : ";").append("Spaltenname_").append(column);
+    }
+    csv.append('\n');
+    for (int row = 0; row < 200; row++) {
+      for (int column = 0; column < 60; column++) {
+        csv.append(column == 0 ? "" : ";").append('w').append(row).append('_').append(column);
+      }
+      csv.append('\n');
+    }
+    Path file = tempDir.resolve("sechzig.csv");
+    Files.writeString(file, csv);
+
+    DocumentFormatResult result = tabular().run(DocumentFormatSource.ofFile(file, "sechzig.csv"));
+
+    assertThat(result.chunks()).hasSizeGreaterThan(1);
+    assertThat(result.chunks())
+        .allSatisfy(chunk -> assertThat(chunk.getText()).contains("Spaltenname_59"));
+  }
+
+  /** A header too long to repeat in full is indexed in full once, in a chunk of its own. */
+  @Test
+  void aHeaderCutShortIsIndexedInFullOnce() throws IOException {
+    StringBuilder csv = new StringBuilder();
+    for (int column = 0; column < 50; column++) {
+      csv.append(column == 0 ? "" : ",").append("Spalte").append(column).append("x".repeat(400));
+    }
+    csv.append('\n');
+    for (int row = 0; row < 100; row++) {
+      csv.append("1,".repeat(49)).append("1\n");
+    }
+    Path file = tempDir.resolve("kopf.csv");
+    Files.writeString(file, csv);
+
+    DocumentFormatResult result = tabular().run(DocumentFormatSource.ofFile(file, "kopf.csv"));
+
+    assertThat(String.join("\n", result.chunks().stream().map(Document::getText).toList()))
+        .contains("Spalte49");
+    assertThat(result.chunks())
+        .filteredOn(chunk -> chunk.getText().contains("1 | 1 | 1"))
+        .allSatisfy(chunk -> assertThat(chunk.getText()).doesNotContain("Spalte49"));
+  }
+
+  private static TabularDocumentFormat tabular() {
+    return new TabularDocumentFormat(
+        new TabularProperties(0, 0, 0, 0), HeadingSectionSplitterFixture.DEFAULT);
   }
 
   /**

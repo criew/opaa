@@ -12,7 +12,8 @@ public final class ParserLimitExceededException extends RuntimeException {
     super(message);
   }
 
-  static ParserLimitExceededException textCharacters(String subject, long maxTextCharacters) {
+  public static ParserLimitExceededException textCharacters(
+      String subject, long maxTextCharacters) {
     return new ParserLimitExceededException(
         subject + " exceeds the configured text character limit of " + maxTextCharacters);
   }

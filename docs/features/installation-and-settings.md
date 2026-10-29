@@ -618,6 +618,7 @@ der Quellen).
 | `OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_CONTENT_BYTES` | `opaa.indexing.parser-limits.max-pdf-content-bytes` |
 | `OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_OPERATORS` | `opaa.indexing.parser-limits.max-pdf-operators` |
 | `OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_PAGES` | `opaa.indexing.parser-limits.max-pdf-pages` |
+| `OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_OBJECTS` | `opaa.indexing.parser-limits.max-pdf-objects` |
 | `OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_PARSE_SECONDS` | `opaa.indexing.parser-limits.max-pdf-parse-seconds` |
 | `OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_STREAM_BYTES` | `opaa.indexing.parser-limits.max-pdf-stream-bytes` |
 | `OPAA_INDEXING_PARSER_LIMITS_MAX_TEXT_CHARACTERS` | `opaa.indexing.parser-limits.max-text-characters` |

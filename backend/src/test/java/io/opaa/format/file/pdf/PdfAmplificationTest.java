@@ -35,7 +35,10 @@ class PdfAmplificationTest {
   private static final int BOMB_BYTES = 16 * 1024 * 1024;
 
   private static final ParserLimitProperties FOUR_MIB_STREAMS =
-      new ParserLimitProperties(0, 0, 0, 0, 0, 4L * 1024 * 1024, 0, 0);
+      new ParserLimitProperties(0, 0, 0, 0, 0, 4L * 1024 * 1024, 0, 0, 0);
+
+  private static final ParserLimitProperties TEN_THOUSAND_OBJECTS =
+      new ParserLimitProperties(0, 0, 0, 0, 0, 0, 0, 0, 10_000);
 
   @TempDir Path tempDir;
 
@@ -44,6 +47,9 @@ class PdfAmplificationTest {
 
   private final PdfDocumentFormat limited =
       new PdfDocumentFormat(HeadingSectionSplitterFixture.DEFAULT, FOUR_MIB_STREAMS);
+
+  private final PdfDocumentFormat fewObjects =
+      new PdfDocumentFormat(HeadingSectionSplitterFixture.DEFAULT, TEN_THOUSAND_OBJECTS);
 
   /**
    * Regression guard: a page tree of one page claiming two billion pages in {@code /Count} must not
@@ -154,6 +160,111 @@ class PdfAmplificationTest {
         .isInstanceOf(ParserLimitExceededException.class);
   }
 
+  /**
+   * Regression guard: an older cross-reference stream along {@code /Prev} with entries of no width
+   * lets PDFBox read entries without consuming a byte, as many as {@code /Index} claims.
+   */
+  @Test
+  void aCrossReferenceStreamWithEntriesOfNoWidthIsRefused() throws IOException {
+    Path file = tempDir.resolve("w000.pdf");
+    RawPdf pdf = onePage();
+    Files.write(
+        file, pdf.withPreviousXrefStream("/W [0 0 0] /Index [100 3000000]", new byte[] {'x'}, 1));
+
+    assertThatThrownBy(() -> pipeline.run(DocumentFormatSource.ofFile(file, "w000.pdf")))
+        .isInstanceOf(ParserLimitExceededException.class)
+        .hasMessageContaining("no width");
+  }
+
+  /**
+   * Regression guard: an older cross-reference stream along {@code /Prev} of one-byte entries,
+   * twenty thousand of them, packed into a few hundred bytes.
+   */
+  @Test
+  void crossReferenceEntriesPastTheObjectLimitAreRefused() throws IOException {
+    Path file = tempDir.resolve("w100.pdf");
+    RawPdf pdf = onePage();
+    byte[] entries = new byte[20_000];
+    java.util.Arrays.fill(entries, (byte) 1);
+    Files.write(
+        file,
+        pdf.withPreviousXrefStream(
+            "/W [1 0 0] /Index [100 20000] /Filter /FlateDecode", deflated(entries, 0), 1));
+
+    assertThatThrownBy(() -> fewObjects.run(DocumentFormatSource.ofFile(file, "w100.pdf")))
+        .isInstanceOf(ParserLimitExceededException.class)
+        .hasMessageContaining("10000 objects");
+  }
+
+  /** A cross-reference stream counts the entries its data holds, not the ones it declares. */
+  @Test
+  void aCrossReferenceStreamCountsOnlyTheEntriesItsDataHolds() throws IOException {
+    Path file = tempDir.resolve("declared.pdf");
+    RawPdf pdf = onePage();
+    Files.write(
+        file,
+        pdf.withPreviousXrefStream("/W [1 0 0] /Index [100 2000000000]", new byte[] {0, 0}, 1));
+
+    DocumentFormatResult result = fewObjects.run(DocumentFormatSource.ofFile(file, "declared.pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+  }
+
+  /**
+   * Regression guard: PDFBox parses every object of an object stream once one of them is asked for;
+   * twenty thousand empty arrays next to the catalog.
+   */
+  @Test
+  void objectStreamObjectsPastTheObjectLimitAreRefused() throws IOException {
+    Path file = tempDir.resolve("objstm-many.pdf");
+    StringBuilder header = new StringBuilder("1 0 ");
+    StringBuilder objects = new StringBuilder("<< /Type /Catalog /Pages 2 0 R >> ");
+    for (int i = 0; i < 20_000; i++) {
+      header.append(1_000 + i).append(' ').append(objects.length()).append(' ');
+      objects.append("[] ");
+    }
+    RawPdf pdf = new RawPdf();
+    pdf.stream(
+        5,
+        "/Type /ObjStm /N 20001 /First " + header.length() + " /Filter /FlateDecode",
+        deflated(ascii(header + objects.toString()), 0));
+    pdf.object(2, "<< /Type /Pages /Kids [3 0 R] /Count 1 >>");
+    pdf.object(3, page(2, 4));
+    pdf.stream(4, "", textContent("Text."));
+    Files.write(file, pdf.withXrefStream(6, 1, 5, -1));
+
+    assertThatThrownBy(() -> fewObjects.run(DocumentFormatSource.ofFile(file, "objstm-many.pdf")))
+        .isInstanceOf(ParserLimitExceededException.class)
+        .hasMessageContaining("10000 objects");
+  }
+
+  /** Regression guard: the brute-force search registers every object it finds in the file. */
+  @Test
+  void objectsTheBruteForceSearchFindsCountAgainstTheObjectLimit() throws IOException {
+    Path file = tempDir.resolve("broken-many.pdf");
+    RawPdf pdf = onePage();
+    for (int i = 0; i < 20_000; i++) {
+      pdf.object(1_000 + i, "null");
+    }
+    Files.write(file, pdf.withBrokenXref(1));
+
+    assertThatThrownBy(() -> fewObjects.run(DocumentFormatSource.ofFile(file, "broken-many.pdf")))
+        .isInstanceOf(ParserLimitExceededException.class)
+        .hasMessageContaining("10000 objects");
+  }
+
+  /** Regression guard: a classic cross-reference table of twenty thousand entries. */
+  @Test
+  void classicCrossReferenceEntriesCountAgainstTheObjectLimit() throws IOException {
+    Path file = tempDir.resolve("classic-many.pdf");
+    RawPdf pdf = onePage();
+    Files.write(file, pdf.withXrefTable(1, 20_000));
+
+    assertThatThrownBy(() -> fewObjects.run(DocumentFormatSource.ofFile(file, "classic-many.pdf")))
+        .isInstanceOf(ParserLimitExceededException.class)
+        .hasMessageContaining("10000 objects");
+  }
+
   /** A well-formed file with object and cross-reference streams below the limit still reads. */
   @Test
   void streamsWithinTheLimitStillLoad() throws IOException {
@@ -173,6 +284,16 @@ class PdfAmplificationTest {
 
     assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
     assertThat(result.chunks().getFirst().getText()).contains("Text im Objektstrom-PDF.");
+  }
+
+  /** Catalog 1, page tree 2, page 3 and its content 4. */
+  private static RawPdf onePage() {
+    RawPdf pdf = new RawPdf();
+    pdf.object(1, "<< /Type /Catalog /Pages 2 0 R >>");
+    pdf.object(2, "<< /Type /Pages /Kids [3 0 R] /Count 1 >>");
+    pdf.object(3, page(2, 4));
+    pdf.stream(4, "", textContent("Eine Seite Text."));
+    return pdf;
   }
 
   private static String page(int parent, int contents) {
@@ -231,6 +352,14 @@ class PdfAmplificationTest {
 
     /** A classic cross-reference table over the objects written so far. */
     byte[] withXrefTable(int root) {
+      return withXrefTable(root, 0);
+    }
+
+    /**
+     * A classic cross-reference table over the objects written so far, followed by a section of
+     * {@code extra} entries that all point at the first object.
+     */
+    byte[] withXrefTable(int root, int extra) {
       int size = maxNumber() + 1;
       long start = body.size();
       StringBuilder table = new StringBuilder("xref\n0 " + size + "\n0000000000 65535 f \n");
@@ -238,6 +367,12 @@ class PdfAmplificationTest {
         long offset = offsetOf(n);
         table.append(
             offset < 0 ? "0000000000 65535 f \n" : String.format("%010d 00000 n \n", offset));
+      }
+      if (extra > 0) {
+        table.append(size).append(' ').append(extra).append('\n');
+        String entry = String.format("%010d 00000 n \n", offsetOf(1));
+        table.append(entry.repeat(extra));
+        size += extra;
       }
       table.append("trailer\n<< /Size ").append(size).append(" /Root ").append(root);
       table.append(" 0 R >>\nstartxref\n").append(start).append("\n%%EOF\n");
@@ -251,6 +386,33 @@ class PdfAmplificationTest {
      * the entries are followed by that many spaces and deflated.
      */
     byte[] withXrefStream(int number, int root, int objectStream, int padding) throws IOException {
+      return withXrefStream(number, root, objectStream, padding, "");
+    }
+
+    /**
+     * An older cross-reference stream with {@code entries} and {@code data}, then a current one
+     * over the objects written so far that names it as {@code /Prev}.
+     */
+    byte[] withPreviousXrefStream(String entries, byte[] data, int root) throws IOException {
+      int previous = maxNumber() + 1;
+      long previousAt = body.size();
+      offsets.add(new long[] {previous, previousAt});
+      write(
+          ascii(
+              previous
+                  + " 0 obj\n<< /Type /XRef "
+                  + entries
+                  + " /Length "
+                  + data.length
+                  + " >>\nstream\n"));
+      write(data);
+      write(ascii("\nendstream\nendobj\n"));
+      return withXrefStream(previous + 1, root, -1, -1, " /Prev " + previousAt);
+    }
+
+    private byte[] withXrefStream(
+        int number, int root, int objectStream, int padding, String trailerEntries)
+        throws IOException {
       int size = Math.max(maxNumber(), number) + 1;
       long start = body.size();
       ByteArrayOutputStream entries = new ByteArrayOutputStream();
@@ -275,6 +437,7 @@ class PdfAmplificationTest {
                   + root
                   + " 0 R "
                   + filter
+                  + trailerEntries
                   + " /Length "
                   + data.length
                   + " >>\nstream\n"));

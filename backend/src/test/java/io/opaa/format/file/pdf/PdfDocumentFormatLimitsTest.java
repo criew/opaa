@@ -139,7 +139,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(50_000, 0, 0, 0, 0, 0, 0, 0));
+            new ParserLimitProperties(50_000, 0, 0, 0, 0, 0, 0, 0, 0));
 
     DocumentFormatResult result =
         DocumentFormatRunner.run(limited, DocumentFormatSource.ofFile(file, "fanout.pdf"));
@@ -154,7 +154,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(50_000, 0, 0, 0, 0, 0, 0, 0));
+            new ParserLimitProperties(50_000, 0, 0, 0, 0, 0, 0, 0, 0));
 
     DocumentFormatResult result =
         DocumentFormatRunner.run(limited, DocumentFormatSource.ofFile(file, "fanout-small.pdf"));
@@ -174,7 +174,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(0, 0, 0, 1_000_000, 0, 0, 0, 0));
+            new ParserLimitProperties(0, 0, 0, 1_000_000, 0, 0, 0, 0, 0));
 
     DocumentFormatResult result =
         assertTimeoutPreemptively(
@@ -197,7 +197,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(0, 0, 0, 0, 32L * 1024 * 1024, 0, 0, 0));
+            new ParserLimitProperties(0, 0, 0, 0, 32L * 1024 * 1024, 0, 0, 0, 0));
 
     assertThat(runWithin(Duration.ofSeconds(8), limited, file))
         .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
@@ -214,7 +214,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(0, 0, 0, 2_000_000, 0, 0, 0, 0));
+            new ParserLimitProperties(0, 0, 0, 2_000_000, 0, 0, 0, 0, 0));
 
     assertThat(runWithin(Duration.ofSeconds(8), limited, file))
         .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
@@ -228,7 +228,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(0, 0, 0, 0, Long.MAX_VALUE, 0, 1, 0));
+            new ParserLimitProperties(0, 0, 0, 0, Long.MAX_VALUE, 0, 1, 0, 0));
 
     assertThat(runWithin(Duration.ofSeconds(6), limited, file))
         .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
@@ -246,7 +246,7 @@ class PdfDocumentFormatLimitsTest {
     var twoPages =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(0, 0, 0, 0, 0, 0, 0, 2));
+            new ParserLimitProperties(0, 0, 0, 0, 0, 0, 0, 2, 0));
 
     assertThatThrownBy(() -> twoPages.run(DocumentFormatSource.ofFile(file, "pages.pdf")))
         .isInstanceOf(ParserLimitExceededException.class)
@@ -261,7 +261,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(0, 0, 0, 0, 0, 1024 * 1024, 0, 0));
+            new ParserLimitProperties(0, 0, 0, 0, 0, 1024 * 1024, 0, 0, 0));
 
     assertThat(runWithin(Duration.ofSeconds(8), limited, file))
         .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
@@ -336,7 +336,7 @@ class PdfDocumentFormatLimitsTest {
         out.write("712051>".getBytes(StandardCharsets.US_ASCII));
       }
       content.setItem(COSName.FILTER, COSName.ASCII_HEX_DECODE_ABBREVIATION);
-      PdfReadBudget budget = new PdfReadBudget(0, 0, 4, 4, 60);
+      PdfReadBudget budget = new PdfReadBudget(0, 0, 4, 4, 60, 0);
 
       budget.chargeContent(content);
       assertThatThrownBy(() -> budget.chargeContent(content))

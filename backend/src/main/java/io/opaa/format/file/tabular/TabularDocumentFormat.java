@@ -64,7 +64,7 @@ public class TabularDocumentFormat implements DocumentFormat {
   private static final Logger log = LoggerFactory.getLogger(TabularDocumentFormat.class);
 
   static final String ID = "tabular";
-  static final short VERSION = 4;
+  static final short VERSION = 5;
 
   /**
    * Rows of data grouped per chunk, the repeated header not counting against it - <b>gesetzt, nicht
@@ -624,14 +624,15 @@ public class TabularDocumentFormat implements DocumentFormat {
       return renderSingleRowChunk(sheetName, tableName, nonBlank.getFirst());
     }
 
-    List<String> header = nonBlank.getFirst().values();
+    RawRow headerRow = nonBlank.getFirst();
+    List<String> header = headerRow.values();
     List<List<String>> dataRows = new ArrayList<>();
     List<Long> dataRowNumbers = new ArrayList<>();
     for (RawRow row : nonBlank.subList(1, nonBlank.size())) {
       dataRows.add(row.values());
       dataRowNumbers.add(row.number());
     }
-    return buildChunks(sheetName, tableName, header, dataRows, dataRowNumbers);
+    return buildChunks(sheetName, tableName, headerRow.number(), header, dataRows, dataRowNumbers);
   }
 
   private List<Document> renderSingleRowChunk(String sheetName, String tableName, RawRow row) {
@@ -659,10 +660,13 @@ public class TabularDocumentFormat implements DocumentFormat {
    * @param tableName the table's own name: the sheet name for XLSX (this codebase does not model
    *     Excel's separate "defined table" objects, so blatt and tabelle coincide there), or the
    *     file-name-derived title for CSV
+   * @param headerRowNumber the header's own row number, for the chunk of a header too wide to
+   *     repeat in full
    */
   private List<Document> buildChunks(
       String sheetName,
       String tableName,
+      long headerRowNumber,
       List<String> header,
       List<List<String>> dataRows,
       List<Long> dataRowNumbers) {
@@ -670,7 +674,8 @@ public class TabularDocumentFormat implements DocumentFormat {
         sheetName != null
             ? "Blatt: " + sheetName + " · Tabelle: " + tableName
             : "Tabelle: " + tableName;
-    String context = RepeatedContext.cut(prefix + "\n\n" + TableText.row(header));
+    String fullContext = prefix + "\n\n" + TableText.row(header);
+    String context = RepeatedContext.cut(fullContext, splitter.contextLimit());
     // Counted as rendered: the context with its blank line, one line break per row.
     int baseChars = context.length();
     // The same body budget HeadingSectionSplitter#boundedChunks leaves a unit next to its context,
@@ -678,6 +683,10 @@ public class TabularDocumentFormat implements DocumentFormat {
     int rowChars = splitter.bodyBudget(baseChars + 1);
 
     List<Document> chunks = new ArrayList<>();
+    if (!context.equals(fullContext)) {
+      // the row groups repeat the header cut short, so the whole of it is indexed once here
+      chunks.addAll(headerChunks(prefix, sheetName, headerRowNumber, header));
+    }
     List<List<String>> currentRows = new ArrayList<>();
     int currentChars = 0;
     long chunkStartRow = -1;
@@ -707,6 +716,16 @@ public class TabularDocumentFormat implements DocumentFormat {
       chunks.addAll(renderChunk(context, currentRows, sheetName, chunkStartRow, lastRow));
     }
     return chunks;
+  }
+
+  private List<Document> headerChunks(
+      String prefix, String sheetName, long rowNumber, List<String> header) {
+    String rowRange = "Kopfzeile " + rowNumber;
+    String location = sheetName != null ? "Blatt " + sheetName + " · " + rowRange : rowRange;
+    Map<String, Object> metadata = new HashMap<>();
+    metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
+    ChunkAnchors.write(metadata, ChunkAnchor.EMPTY.withRows(sheetName, rowNumber, rowNumber));
+    return splitter.boundedChunks(prefix, TableText.row(header), metadata);
   }
 
   private List<Document> renderChunk(

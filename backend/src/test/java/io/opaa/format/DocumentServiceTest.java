@@ -269,7 +269,7 @@ class DocumentServiceTest {
   void parseDocumentStopsAtTheTextLimit() throws IOException {
     Path file = tempDir.resolve("lang.txt");
     Files.writeString(file, "Wort ".repeat(1_000));
-    var limited = new DocumentService(new ParserLimitProperties(500, 0, 0, 0, 0, 0, 0, 0));
+    var limited = new DocumentService(new ParserLimitProperties(500, 0, 0, 0, 0, 0, 0, 0, 0));
 
     assertThatThrownBy(() -> limited.parseDocument(file))
         .isInstanceOf(ParserLimitExceededException.class);

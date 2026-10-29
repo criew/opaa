@@ -33,7 +33,8 @@ import org.apache.pdfbox.pdmodel.common.PDStream;
  * since the budget was created. A single content stream may decode to no more than its own limit,
  * measured by streaming before PDFBox, which decodes a stream into memory as a whole, gets to it. A
  * page is charged with its finished text; while a page is still being stripped, its glyph count is
- * checked against what is left. Not thread-safe: one budget belongs to one read of one document.
+ * checked against what is left. The objects PDFBox registers while it loads the file count against
+ * their own limit. Not thread-safe: one budget belongs to one read of one document.
  */
 final class PdfReadBudget {
 
@@ -61,23 +62,27 @@ final class PdfReadBudget {
   private final long maxContentBytes;
   private final long maxStreamBytes;
   private final long maxSeconds;
+  private final long maxObjects;
   private final long deadline;
   private final Map<COSStream, Long> decodedLengths = new IdentityHashMap<>();
   private long usedCharacters;
   private long operators;
   private long contentBytes;
+  private long objects;
 
   PdfReadBudget(
       long maxCharacters,
       long maxOperators,
       long maxContentBytes,
       long maxStreamBytes,
-      long maxSeconds) {
+      long maxSeconds,
+      long maxObjects) {
     this.maxCharacters = maxCharacters;
     this.maxOperators = maxOperators;
     this.maxContentBytes = maxContentBytes;
     this.maxStreamBytes = maxStreamBytes;
     this.maxSeconds = maxSeconds;
+    this.maxObjects = maxObjects;
     // capped so the difference in requireTime() cannot overflow
     this.deadline =
         System.nanoTime() + Math.min(TimeUnit.SECONDS.toNanos(maxSeconds), Long.MAX_VALUE / 4);
@@ -89,12 +94,18 @@ final class PdfReadBudget {
         limits.maxPdfOperators(),
         limits.maxPdfContentBytes(),
         limits.maxPdfStreamBytes(),
-        limits.maxPdfParseSeconds());
+        limits.maxPdfParseSeconds(),
+        limits.maxPdfObjects());
   }
 
   static PdfReadBudget unbounded() {
     return new PdfReadBudget(
-        Long.MAX_VALUE, Long.MAX_VALUE, Long.MAX_VALUE, Long.MAX_VALUE, Long.MAX_VALUE);
+        Long.MAX_VALUE,
+        Long.MAX_VALUE,
+        Long.MAX_VALUE,
+        Long.MAX_VALUE,
+        Long.MAX_VALUE,
+        Long.MAX_VALUE);
   }
 
   /** Throws when {@code pageGlyphs} more characters would exceed the budget. */
@@ -171,6 +182,18 @@ final class PdfReadBudget {
   void chargePage(PDPage page) throws IOException {
     for (Iterator<PDStream> streams = page.getContentStreams(); streams.hasNext(); ) {
       chargeContent(streams.next().getCOSObject());
+    }
+  }
+
+  /**
+   * Counts {@code count} more objects PDFBox registers while loading or reading the document;
+   * throws once the document has used up its objects.
+   */
+  void chargeObjects(long count) {
+    objects += Math.max(0, count);
+    if (objects > maxObjects) {
+      throw new ParserLimitExceededException(
+          "PDF exceeds the configured limit of " + maxObjects + " objects");
     }
   }
 

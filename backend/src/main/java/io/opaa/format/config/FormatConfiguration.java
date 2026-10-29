@@ -146,8 +146,11 @@ public class FormatConfiguration {
    */
   @Bean
   MailDocumentFormat mailDocumentPipeline(
-      ChunkingService chunkingService, MailProperties mailProperties, Clock clock) {
-    return new MailDocumentFormat(chunkingService, mailProperties, clock);
+      ChunkingService chunkingService,
+      MailProperties mailProperties,
+      Clock clock,
+      ParserLimitProperties parserLimits) {
+    return new MailDocumentFormat(chunkingService, mailProperties, clock, parserLimits);
   }
 
   /**

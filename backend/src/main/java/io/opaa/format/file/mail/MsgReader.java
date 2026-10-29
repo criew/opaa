@@ -32,11 +32,7 @@ import org.slf4j.LoggerFactory;
  * not recursed into. With a {@code wantedIndex} only that attachment is materialized, and positions
  * are counted exactly as an unfiltered run counts them - a skipped attachment consumes none.
  *
- * <p>POI does not notice when several entries of the compound file share their sectors, so the data
- * of one attachment can be handed out many times. An attachment identical to one read before from
- * the same message is skipped, and all attachments of a message together may not exceed the size of
- * the message file, which stores them uncompressed; what would pass it is skipped ({@link
- * StoredBytes}).
+ * <p>Entries sharing their sectors cannot multiply the stored data: see {@link StoredBytes}.
  */
 final class MsgReader {
 
@@ -184,8 +180,9 @@ final class MsgReader {
   }
 
   /**
-   * The attachment data one message has handed out so far: a repeat of earlier data is refused, and
-   * so is data that would take the total past the message file's size.
+   * The attachment data one message has handed out so far. POI does not notice entries sharing
+   * their sectors, so a repeat of earlier data is refused, and so is data that would take the total
+   * past the message file's size, which stores attachments uncompressed.
    */
   private static final class StoredBytes {
 

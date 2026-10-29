@@ -1,27 +1,32 @@
 package io.opaa.format.shared;
 
 /**
- * The cut every context a chunk repeats goes through: the heading line in front of the chunks of a
- * section and in their Fundort, a slide title or a table's context and header line in front of
- * every part. Such text is written once per chunk, so its length is bounded to {@link #MAX_LENGTH}
- * characters - otherwise a single long heading would multiply itself by the number of chunks.
+ * The cut every context a chunk repeats goes through, so a single long one cannot multiply itself
+ * by the number of chunks: a heading line, its Fundort and anchor titles to {@link #MAX_LENGTH}; a
+ * unit's context - a slide title, a table's context and header line - to {@link
+ * HeadingSectionSplitter#contextLimit()}, which grows with the target size.
  */
 public final class RepeatedContext {
 
-  /** The longest context a chunk repeats, the ellipsis included. */
+  /** The longest heading line, Fundort or name a chunk repeats, the ellipsis included. */
   public static final int MAX_LENGTH = 500;
 
   private RepeatedContext() {}
 
+  /** {@link #cut(String, int)} to {@link #MAX_LENGTH}. */
+  public static String cut(String context) {
+    return cut(context, MAX_LENGTH);
+  }
+
   /**
-   * {@code context} itself up to {@link #MAX_LENGTH} characters, otherwise its start ending in "…",
+   * {@code context} itself up to {@code maxLength} characters, otherwise its start ending in "…",
    * never cut between the two halves of a surrogate pair; {@code null} stays {@code null}.
    */
-  public static String cut(String context) {
-    if (context == null || context.length() <= MAX_LENGTH) {
+  public static String cut(String context, int maxLength) {
+    if (context == null || context.length() <= maxLength) {
       return context;
     }
-    int end = MAX_LENGTH - 1;
+    int end = maxLength - 1;
     if (Character.isLowSurrogate(context.charAt(end))) {
       end--;
     }
