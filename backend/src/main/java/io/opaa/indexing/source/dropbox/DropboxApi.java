@@ -38,7 +38,8 @@ import tools.jackson.databind.json.JsonMapper;
  * redirect followed. The access token is asked anew per request, every attempt is charged to the
  * run's {@link RequestBudget}, and a {@code 429} is waited out as its {@code Retry-After} says. A
  * rejected token ({@code 401}) is retried once when the run's credentials hold a renewed one; every
- * other failure becomes a {@link DropboxApiException}.
+ * other failure becomes a {@link DropboxApiException}. A team token reads a team folder through
+ * {@link #asAdminIn}: a view with the folder's namespace as root and the consenting admin selected.
  */
 @DataFlow("source-dropbox")
 final class DropboxApi {
@@ -62,6 +63,9 @@ final class DropboxApi {
 
   /** The {@code Dropbox-API-Path-Root} of every call, {@code null} for the member's own folder. */
   private String pathRoot;
+
+  /** The {@code Dropbox-API-Select-Admin} of every call, {@code null} for a member's token. */
+  private final String selectAdmin;
 
   /** Where downloads are staged; {@code null} for the system temp directory. */
   private Path tempDirectory;
@@ -93,6 +97,36 @@ final class DropboxApi {
             maxRetries <= 0 ? RateLimitPolicy.NONE : RateLimitPolicy.of(maxRetries, maxRetryWait),
             sleeper,
             budget);
+    this.selectAdmin = null;
+  }
+
+  /** {@code base} with another root and admin, sharing token, budget and throttle handling. */
+  private DropboxApi(DropboxApi base, String pathRoot, String selectAdmin) {
+    this.apiBase = base.apiBase;
+    this.contentBase = base.contentBase;
+    this.token = base.token;
+    this.renewedAfterRejection = base.renewedAfterRejection;
+    this.httpClient = base.httpClient;
+    this.targetAddressValidator = base.targetAddressValidator;
+    this.timeout = base.timeout;
+    this.downloadTimeout = base.downloadTimeout;
+    this.budget = base.budget;
+    this.rateLimit = base.rateLimit;
+    this.tempDirectory = base.tempDirectory;
+    this.pathRoot = pathRoot;
+    this.selectAdmin = selectAdmin;
+  }
+
+  /**
+   * A view of this API reading the namespace {@code namespaceId} as root, acting as the team member
+   * {@code adminMemberId}: the admin who consented, for whom a team folder is content the team owns
+   * ({@code Dropbox-API-Select-Admin}).
+   */
+  DropboxApi asAdminIn(String namespaceId, String adminMemberId) {
+    Map<String, Object> root = new LinkedHashMap<>();
+    root.put(".tag", "namespace_id");
+    root.put("namespace_id", namespaceId);
+    return new DropboxApi(this, asciiJson(root), adminMemberId);
   }
 
   DropboxApi stagingIn(Path directory) {
@@ -205,6 +239,9 @@ final class DropboxApi {
       headers.put("Authorization", "Bearer " + sent);
       if (pathRoot != null) {
         headers.put("Dropbox-API-Path-Root", pathRoot);
+      }
+      if (selectAdmin != null) {
+        headers.put("Dropbox-API-Select-Admin", selectAdmin);
       }
       HttpResponse<InputStream> response;
       try {

@@ -42,22 +42,31 @@ class ProfileScopeChangeTest {
   private static final CurrentUser ADMIN =
       CurrentUser.of(UUID.randomUUID(), UUID.randomUUID(), SystemRole.SYSTEM_ADMIN, "Verwaltung");
 
-  /** The probe asking for more scopes in edition {@code DC}, the default ones otherwise. */
+  /**
+   * The probe asking for more scopes in edition {@code DC} while {@code scopesFollowEdition}, the
+   * same scopes in every edition otherwise.
+   */
   private static final class ScopedProbe extends ProfileProbeSourceConnector {
+    private volatile boolean scopesFollowEdition = true;
+
     @Override
     public String signInScopes(ConnectorData profileDefaults) {
-      return profileDefaults != null && "DC".equals(profileDefaults.get("edition"))
+      return scopesFollowEdition
+              && profileDefaults != null
+              && "DC".equals(profileDefaults.get("edition"))
           ? "probe.read probe.team"
-          : null;
+          : "probe.read";
     }
   }
+
+  private final ScopedProbe probe = new ScopedProbe();
 
   private final ConnectionProfileRepository profiles = mock(ConnectionProfileRepository.class);
   private final LibraryConnectionRepository connections = mock(LibraryConnectionRepository.class);
   private final Map<UUID, KnowledgeLibrary> rows = new HashMap<>();
   private final KnowledgeLibraryRepository libraries = LibraryRows.over(rows);
   private final SourceConnectorRegistry registry =
-      TestSourceConnectors.connectors().with(new ScopedProbe()).registry();
+      TestSourceConnectors.connectors().with(probe).registry();
   private final TransitionWiring wiring =
       new TransitionWiring(registry, connections, profiles, libraries);
   private final List<LibraryConnection> connected = new ArrayList<>();
@@ -115,21 +124,17 @@ class ProfileScopeChangeTest {
 
   @Test
   void aDefaultThatLeavesTheScopesKeepsTheSecrets() {
-    ReflectionTestUtils.setField(profile, "scopes", "eigene.scopes");
+    probe.scopesFollowEdition = false;
     KnowledgeLibrary library = library("/a");
 
-    service.update(ADMIN, profile.getId(), values("DC", "eigene.scopes"), null, true);
+    service.update(ADMIN, profile.getId(), values("DC"), null, true);
 
     assertThat(wiring.store.ownSecretOf(library.getId()))
-        .as("the profile's own scopes stand in either edition")
+        .as("the sign-in asks for the same scopes in either edition")
         .isPresent();
   }
 
   private ConnectionProfileValues values(String edition) {
-    return values(edition, null);
-  }
-
-  private ConnectionProfileValues values(String edition, String scopes) {
     return new ConnectionProfileValues(
         "Zugang Probe",
         SERVER,
@@ -138,7 +143,7 @@ class ProfileScopeChangeTest {
         null,
         null,
         null,
-        scopes,
+        null,
         ConnectorData.of(Map.of("edition", edition)));
   }
 
