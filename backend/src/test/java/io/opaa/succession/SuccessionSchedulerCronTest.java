@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.config.CronTask;
 import org.springframework.scheduling.config.ScheduledTaskHolder;
 
@@ -45,6 +46,19 @@ class SuccessionSchedulerCronTest {
               assertThat(context).hasNotFailed();
               assertThat(detectionCron(context.getBean(ScheduledTaskHolder.class)))
                   .isEqualTo("0 15 */2 * * *");
+            });
+  }
+
+  /** Spring's {@code Scheduled.CRON_DISABLED} switches the detection off, as before the check. */
+  @Test
+  void theDisabledMarkerSwitchesTheDetectionOff() {
+    contextRunner
+        .withPropertyValues("opaa.succession.detection-cron=" + Scheduled.CRON_DISABLED)
+        .run(
+            context -> {
+              assertThat(context).hasNotFailed();
+              assertThat(context.getBean(ScheduledTaskHolder.class).getScheduledTasks())
+                  .noneMatch(task -> task.toString().contains("detectOpenSuccessions"));
             });
   }
 
