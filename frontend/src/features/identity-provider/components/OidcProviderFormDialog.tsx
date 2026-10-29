@@ -14,6 +14,7 @@ import type { OidcProviderRequest, OidcProviderResponse } from '@/shared/api/typ
 import { testOidcProvider } from '../api/identityProviderApi'
 import { useOidcProviderStore } from '../stores/oidcProviderStore'
 import SectionHead from '@/shared/ui/SectionHead'
+import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
 
 export const ISSUER_HELP_TEXT =
   'Die Issuer-URI, wie der Anbieter sie in seinen Tokens prägt (bei Keycloak die Realm-Adresse). ' +
@@ -105,6 +106,12 @@ function requestFromDraft(draft: OidcProviderDraft): OidcProviderRequest {
   }
 }
 
+/** Trust anchor and mappings decide whose tokens count and what they grant: a recent sign-in. */
+export const ROLE_MAPPING_CONFIRM_PURPOSE =
+  'Verbindung, Rollen- und Gruppenzuordnung eines Anbieters entscheiden, wessen Anmeldung gilt ' +
+  'und welche Rechte sie gibt. Sie zu ändern, verlangt eine gerade bestätigte Anmeldung. ' +
+  'Bitte bestätigen Sie Ihre Anmeldung.'
+
 interface OidcProviderFormDialogProps {
   open: boolean
   /** The provider being edited; absent for creation. */
@@ -140,6 +147,7 @@ export default function OidcProviderFormDialog({
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
   // "the confirmation is being asked" - never "it was given": only the confirmation button saves
   const [rolesConfirmationOpen, setRolesConfirmationOpen] = useState(false)
+  const gate = useRecentLoginGate(ROLE_MAPPING_CONFIRM_PURPOSE)
 
   const isValid =
     draft.displayName.trim() !== '' && draft.issuerUri.trim() !== '' && draft.clientId.trim() !== ''
@@ -170,7 +178,7 @@ export default function OidcProviderFormDialog({
     }
   }
 
-  async function save() {
+  async function save(afterConfirmation = false) {
     setError(null)
     setSubmitting(true)
     try {
@@ -178,9 +186,15 @@ export default function OidcProviderFormDialog({
       const saved = provider
         ? await updateExistingProvider(provider.id, request)
         : await createNewProvider(request)
+      gate.settled()
       onSaved(saved)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Anbieter konnte nicht gespeichert werden')
+      const refused = gate.refusal(err, () => void save(true), afterConfirmation)
+      if (refused === null) {
+        setError(err instanceof Error ? err.message : 'Anbieter konnte nicht gespeichert werden')
+      } else if (refused) {
+        setError(refused)
+      }
     } finally {
       setSubmitting(false)
     }
@@ -204,197 +218,200 @@ export default function OidcProviderFormDialog({
   const title = provider ? `„${provider.displayName}“ bearbeiten` : 'Identitätsanbieter anlegen'
 
   return (
-    <Dialog open={open} onClose={submitting ? undefined : onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ pb: 0.5 }}>{title}</DialogTitle>
-      <DialogContent>
-        <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 2.5 }}>
-          Öffentlicher Client mit PKCE – ein Secret gibt es nicht zu hinterlegen. Änderungen wirken
-          ohne Neustart.
-        </Typography>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-        {rolesConfirmationOpen && (
-          // a live region (MUI's default role="alert"): announced without a focus move, and the
-          // confirming button takes the focus so the answer is one keystroke away
-          <Alert
-            severity="warning"
-            sx={{ mb: 2 }}
-            action={
-              <Stack direction="row" spacing={1}>
-                <Button
-                  size="small"
-                  onClick={() => setRolesConfirmationOpen(false)}
-                  disabled={submitting}
-                >
-                  Abbrechen
-                </Button>
-                <Button
-                  // eslint-disable-next-line jsx-a11y-x/no-autofocus
-                  autoFocus
-                  size="small"
-                  variant="contained"
-                  onClick={() => void save()}
-                  disabled={submitting}
-                >
-                  Rollen-Claim setzen
-                </Button>
-              </Stack>
-            }
-          >
-            {ROLES_CLAIM_CONFIRMATION}
-            {noRoleValues ? ` ${ROLES_CLAIM_NO_VALUES_WARNING}` : ''}
-          </Alert>
-        )}
-
-        <Box component="section" aria-labelledby="oidc-form-connection-title">
-          <SectionHead id="oidc-form-connection-title" component="h3">
-            Verbindung
-          </SectionHead>
-          <Stack spacing={2}>
-            <TextField
-              // eslint-disable-next-line jsx-a11y-x/no-autofocus
-              autoFocus
-              label="Anzeigename"
-              required
-              value={draft.displayName}
-              onChange={(e) => update('displayName', e.target.value)}
-              slotProps={{ ...REQUIRED_FIELD_SLOTS, htmlInput: { maxLength: 120 } }}
-              helperText="So heißt der Anbieter auf der Anmeldeseite."
-              fullWidth
-              size="small"
-            />
-            <TextField
-              label="Issuer-URI"
-              required
-              value={draft.issuerUri}
-              onChange={(e) => update('issuerUri', e.target.value)}
-              slotProps={{ ...REQUIRED_FIELD_SLOTS, htmlInput: { maxLength: 500 } }}
-              helperText={ISSUER_HELP_TEXT}
-              fullWidth
-              size="small"
-            />
-            {provider && draft.issuerUri.trim() !== provider.issuerUri && (
-              <Alert severity="info">{ISSUER_CHANGE_HINT}</Alert>
-            )}
-            <TextField
-              label="Client-ID"
-              required
-              value={draft.clientId}
-              onChange={(e) => update('clientId', e.target.value)}
-              slotProps={{ ...REQUIRED_FIELD_SLOTS, htmlInput: { maxLength: 255 } }}
-              helperText="Der beim Anbieter angelegte öffentliche Client (ohne Secret, mit PKCE)."
-              fullWidth
-              size="small"
-            />
-            <TextField
-              label="JWK-Set-Adresse (optional)"
-              value={draft.jwkSetUri}
-              onChange={(e) => update('jwkSetUri', e.target.value)}
-              slotProps={{ htmlInput: { maxLength: 500 } }}
-              helperText={JWK_SET_HELP_TEXT}
-              fullWidth
-              size="small"
-            />
-            {testResult && (
-              <Alert severity={testResult.success ? 'success' : 'error'}>
-                {testResult.message}
-              </Alert>
-            )}
-          </Stack>
-        </Box>
-
-        <Box component="section" aria-labelledby="oidc-form-claims-title" sx={{ mt: 4 }}>
-          <SectionHead id="oidc-form-claims-title" component="h3">
-            Claim-Zuordnung
-          </SectionHead>
-          <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 2 }}>
-            Aus welchen Token-Claims OPAA E-Mail, Anzeigename und optional Rollen und Gruppen liest.
-            Pfade in Punktnotation (z. B. <code>realm_access.roles</code>).
+    <>
+      <Dialog open={open} onClose={submitting ? undefined : onClose} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ pb: 0.5 }}>{title}</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 2.5 }}>
+            Öffentlicher Client mit PKCE – ein Secret gibt es nicht zu hinterlegen. Änderungen
+            wirken ohne Neustart.
           </Typography>
-          <Stack spacing={2}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+          {rolesConfirmationOpen && (
+            // a live region (MUI's default role="alert"): announced without a focus move, and the
+            // confirming button takes the focus so the answer is one keystroke away
+            <Alert
+              severity="warning"
+              sx={{ mb: 2 }}
+              action={
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    size="small"
+                    onClick={() => setRolesConfirmationOpen(false)}
+                    disabled={submitting}
+                  >
+                    Abbrechen
+                  </Button>
+                  <Button
+                    // eslint-disable-next-line jsx-a11y-x/no-autofocus
+                    autoFocus
+                    size="small"
+                    variant="contained"
+                    onClick={() => void save()}
+                    disabled={submitting}
+                  >
+                    Rollen-Claim setzen
+                  </Button>
+                </Stack>
+              }
+            >
+              {ROLES_CLAIM_CONFIRMATION}
+              {noRoleValues ? ` ${ROLES_CLAIM_NO_VALUES_WARNING}` : ''}
+            </Alert>
+          )}
+
+          <Box component="section" aria-labelledby="oidc-form-connection-title">
+            <SectionHead id="oidc-form-connection-title" component="h3">
+              Verbindung
+            </SectionHead>
+            <Stack spacing={2}>
               <TextField
-                label="E-Mail-Claim"
-                value={draft.emailClaim}
-                onChange={(e) => update('emailClaim', e.target.value)}
-                slotProps={{ htmlInput: { maxLength: 100 } }}
+                // eslint-disable-next-line jsx-a11y-x/no-autofocus
+                autoFocus
+                label="Anzeigename"
+                required
+                value={draft.displayName}
+                onChange={(e) => update('displayName', e.target.value)}
+                slotProps={{ ...REQUIRED_FIELD_SLOTS, htmlInput: { maxLength: 120 } }}
+                helperText="So heißt der Anbieter auf der Anmeldeseite."
+                fullWidth
                 size="small"
-                sx={{ flex: 1 }}
               />
               <TextField
-                label="Anzeigename-Claim"
-                value={draft.displayNameClaim}
-                onChange={(e) => update('displayNameClaim', e.target.value)}
-                slotProps={{ htmlInput: { maxLength: 100 } }}
-                helperText="Rückfall: preferred_username"
+                label="Issuer-URI"
+                required
+                value={draft.issuerUri}
+                onChange={(e) => update('issuerUri', e.target.value)}
+                slotProps={{ ...REQUIRED_FIELD_SLOTS, htmlInput: { maxLength: 500 } }}
+                helperText={ISSUER_HELP_TEXT}
+                fullWidth
                 size="small"
-                sx={{ flex: 1 }}
+              />
+              {provider && draft.issuerUri.trim() !== provider.issuerUri && (
+                <Alert severity="info">{ISSUER_CHANGE_HINT}</Alert>
+              )}
+              <TextField
+                label="Client-ID"
+                required
+                value={draft.clientId}
+                onChange={(e) => update('clientId', e.target.value)}
+                slotProps={{ ...REQUIRED_FIELD_SLOTS, htmlInput: { maxLength: 255 } }}
+                helperText="Der beim Anbieter angelegte öffentliche Client (ohne Secret, mit PKCE)."
+                fullWidth
+                size="small"
+              />
+              <TextField
+                label="JWK-Set-Adresse (optional)"
+                value={draft.jwkSetUri}
+                onChange={(e) => update('jwkSetUri', e.target.value)}
+                slotProps={{ htmlInput: { maxLength: 500 } }}
+                helperText={JWK_SET_HELP_TEXT}
+                fullWidth
+                size="small"
+              />
+              {testResult && (
+                <Alert severity={testResult.success ? 'success' : 'error'}>
+                  {testResult.message}
+                </Alert>
+              )}
+            </Stack>
+          </Box>
+
+          <Box component="section" aria-labelledby="oidc-form-claims-title" sx={{ mt: 4 }}>
+            <SectionHead id="oidc-form-claims-title" component="h3">
+              Claim-Zuordnung
+            </SectionHead>
+            <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 2 }}>
+              Aus welchen Token-Claims OPAA E-Mail, Anzeigename und optional Rollen und Gruppen
+              liest. Pfade in Punktnotation (z. B. <code>realm_access.roles</code>).
+            </Typography>
+            <Stack spacing={2}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField
+                  label="E-Mail-Claim"
+                  value={draft.emailClaim}
+                  onChange={(e) => update('emailClaim', e.target.value)}
+                  slotProps={{ htmlInput: { maxLength: 100 } }}
+                  size="small"
+                  sx={{ flex: 1 }}
+                />
+                <TextField
+                  label="Anzeigename-Claim"
+                  value={draft.displayNameClaim}
+                  onChange={(e) => update('displayNameClaim', e.target.value)}
+                  slotProps={{ htmlInput: { maxLength: 100 } }}
+                  helperText="Rückfall: preferred_username"
+                  size="small"
+                  sx={{ flex: 1 }}
+                />
+              </Stack>
+              <TextField
+                label="Rollen-Claim (optional)"
+                value={draft.rolesClaim}
+                onChange={(e) => update('rolesClaim', e.target.value)}
+                slotProps={{ htmlInput: { maxLength: 200 } }}
+                helperText="Leer lassen: Rollen werden in OPAA verwaltet. Gesetzt: der Anbieter ist für SYSTEM_ADMIN und AUDITOR führend."
+                fullWidth
+                size="small"
+              />
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField
+                  label="Rollenwert für SYSTEM_ADMIN"
+                  value={draft.systemAdminRole}
+                  onChange={(e) => update('systemAdminRole', e.target.value)}
+                  slotProps={{ htmlInput: { maxLength: 255 } }}
+                  disabled={!rolesClaimSet}
+                  helperText={rolesClaimSet ? undefined : 'Erst mit Rollen-Claim'}
+                  size="small"
+                  sx={{ flex: 1 }}
+                />
+                <TextField
+                  label="Rollenwert für AUDITOR"
+                  value={draft.auditorRole}
+                  onChange={(e) => update('auditorRole', e.target.value)}
+                  slotProps={{ htmlInput: { maxLength: 255 } }}
+                  disabled={!rolesClaimSet}
+                  helperText={rolesClaimSet ? undefined : 'Erst mit Rollen-Claim'}
+                  size="small"
+                  sx={{ flex: 1 }}
+                />
+              </Stack>
+              <TextField
+                label="Gruppen-Claim (optional)"
+                value={draft.groupsClaim}
+                onChange={(e) => update('groupsClaim', e.target.value)}
+                slotProps={{ htmlInput: { maxLength: 200 } }}
+                helperText="Leer lassen: keine Gruppen aus dem Token. Gesetzt: die Gruppennamen des Tokens werden bei jeder Anmeldung zu Gruppen dieses Anbieters."
+                fullWidth
+                size="small"
               />
             </Stack>
-            <TextField
-              label="Rollen-Claim (optional)"
-              value={draft.rolesClaim}
-              onChange={(e) => update('rolesClaim', e.target.value)}
-              slotProps={{ htmlInput: { maxLength: 200 } }}
-              helperText="Leer lassen: Rollen werden in OPAA verwaltet. Gesetzt: der Anbieter ist für SYSTEM_ADMIN und AUDITOR führend."
-              fullWidth
-              size="small"
-            />
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField
-                label="Rollenwert für SYSTEM_ADMIN"
-                value={draft.systemAdminRole}
-                onChange={(e) => update('systemAdminRole', e.target.value)}
-                slotProps={{ htmlInput: { maxLength: 255 } }}
-                disabled={!rolesClaimSet}
-                helperText={rolesClaimSet ? undefined : 'Erst mit Rollen-Claim'}
-                size="small"
-                sx={{ flex: 1 }}
-              />
-              <TextField
-                label="Rollenwert für AUDITOR"
-                value={draft.auditorRole}
-                onChange={(e) => update('auditorRole', e.target.value)}
-                slotProps={{ htmlInput: { maxLength: 255 } }}
-                disabled={!rolesClaimSet}
-                helperText={rolesClaimSet ? undefined : 'Erst mit Rollen-Claim'}
-                size="small"
-                sx={{ flex: 1 }}
-              />
-            </Stack>
-            <TextField
-              label="Gruppen-Claim (optional)"
-              value={draft.groupsClaim}
-              onChange={(e) => update('groupsClaim', e.target.value)}
-              slotProps={{ htmlInput: { maxLength: 200 } }}
-              helperText="Leer lassen: keine Gruppen aus dem Token. Gesetzt: die Gruppennamen des Tokens werden bei jeder Anmeldung zu Gruppen dieses Anbieters."
-              fullWidth
-              size="small"
-            />
-          </Stack>
-        </Box>
-      </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button
-          startIcon={<NetworkCheckOutlinedIcon />}
-          onClick={() => void handleTest()}
-          disabled={testing || draft.issuerUri.trim() === ''}
-          sx={{ mr: 'auto' }}
-        >
-          {testing ? 'Verbindung wird getestet …' : 'Verbindung testen'}
-        </Button>
-        <Button onClick={onClose} disabled={submitting}>
-          Abbrechen
-        </Button>
-        {!rolesConfirmationOpen && (
-          <Button variant="contained" onClick={handleSubmit} disabled={submitting || !isValid}>
-            {submitting ? 'Wird gespeichert …' : provider ? 'Speichern' : 'Anlegen'}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            startIcon={<NetworkCheckOutlinedIcon />}
+            onClick={() => void handleTest()}
+            disabled={testing || draft.issuerUri.trim() === ''}
+            sx={{ mr: 'auto' }}
+          >
+            {testing ? 'Verbindung wird getestet …' : 'Verbindung testen'}
           </Button>
-        )}
-      </DialogActions>
-    </Dialog>
+          <Button onClick={onClose} disabled={submitting}>
+            Abbrechen
+          </Button>
+          {!rolesConfirmationOpen && (
+            <Button variant="contained" onClick={handleSubmit} disabled={submitting || !isValid}>
+              {submitting ? 'Wird gespeichert …' : provider ? 'Speichern' : 'Anlegen'}
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+      {gate.dialog}
+    </>
   )
 }

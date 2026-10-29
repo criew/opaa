@@ -2,6 +2,8 @@ package io.opaa.auth.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -18,10 +20,12 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.LocalAdminAvailabilityGuard;
+import io.opaa.auth.RecentLoginPolicy;
 import io.opaa.auth.User;
 import io.opaa.auth.UserNotFoundException;
 import io.opaa.auth.UserService;
 import io.opaa.common.ConflictException;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,6 +69,20 @@ class AdminControllerTest {
    * {@code @PreAuthorize("hasRole('SYSTEM_ADMIN')")}.
    */
   private RequestPostProcessor asAdmin() {
+    return jwt()
+        .jwt(
+            builder ->
+                builder
+                    .subject(TEST_SUBJECT)
+                    .claim("iss", TEST_ISSUER)
+                    .claim(RecentLoginPolicy.AUTH_TIME_CLAIM, Instant.now().getEpochSecond()))
+        .authorities(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"));
+  }
+
+  /**
+   * The same administrator with a token from a refresh: no {@code auth_time}, no recent sign-in.
+   */
+  private RequestPostProcessor asAdminWithoutRecentSignIn() {
     return jwt()
         .jwt(builder -> builder.subject(TEST_SUBJECT).claim("iss", TEST_ISSUER))
         .authorities(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"));
@@ -156,6 +174,25 @@ class AdminControllerTest {
                 .content("{\"role\": \"SYSTEM_ADMIN\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.systemRole").value("SYSTEM_ADMIN"));
+  }
+
+  /**
+   * A system role is the widest right there is, so changing it demands a recent sign-in: a token
+   * without one is refused with the code the interface answers with a confirmation, before the
+   * service runs.
+   */
+  @Test
+  void changeRoleWithoutARecentSignInIsRefusedBeforeTheServiceRuns() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/admin/users/" + UUID.randomUUID() + "/role")
+                .with(asAdminWithoutRecentSignIn())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"role\": \"SYSTEM_ADMIN\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value(RecentLoginPolicy.CODE));
+
+    verify(userService, never()).updateRole(any(), any(), any());
   }
 
   @Test

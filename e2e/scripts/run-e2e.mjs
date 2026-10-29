@@ -48,6 +48,7 @@ import { spawnSync } from 'node:child_process'
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { envFileWithRunKeys } from './run-env-file.mjs'
 
 const e2eDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const repoRoot = resolve(e2eDir, '..')
@@ -222,7 +223,8 @@ const composeArgs = [
 const composeEnv = {
   ...process.env,
   COMPOSE_PROJECT_NAME: composeProjectName,
-  OPAA_ENV_FILE: envFile,
+  // A copy with this run's AES keys; every stack of the run (one per installation variant) uses it.
+  OPAA_ENV_FILE: envFileWithRunKeys(repoRoot, envFile),
   OPAA_BACKEND_PORT: backendPort,
   OPAA_FRONTEND_PORT: frontendPort,
   OPAA_DB_PORT: dbPort,

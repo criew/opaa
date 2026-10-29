@@ -2,6 +2,7 @@ package io.opaa.indexing.source.s3;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Connection;
@@ -39,6 +40,31 @@ class S3ClientFactoryTest {
         .hasMessageContaining("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
   }
 
+  /** A blocked endpoint and one whose name does not resolve answer in the same words. */
+  @Test
+  void aBlockedAndAnUnresolvableEndpointAnswerAlike() {
+    S3ClientFactory factory =
+        new S3ClientFactory(S3Properties.defaults(), new TargetAddressValidator(true, List.of()));
+    String unknown = "no-such-minio.invalid.opaa-test";
+
+    Throwable blocked =
+        catchThrowable(
+            () ->
+                factory.create(
+                    connection("http://10.0.0.5:9000", true), List.of(S3Scope.of("docs", ""))));
+    Throwable unresolved =
+        catchThrowable(
+            () ->
+                factory.create(
+                    connection("http://" + unknown + ":9000", true),
+                    List.of(S3Scope.of("docs", ""))));
+
+    assertThat(blocked).isInstanceOf(S3AccessException.TargetBlocked.class);
+    assertThat(unresolved).isInstanceOf(S3AccessException.Unreachable.class);
+    assertThat(unresolved.getMessage().replace(unknown, "<host>"))
+        .isEqualTo(blocked.getMessage().replace("10.0.0.5", "<host>"));
+  }
+
   @Test
   void anAllowlistedEndpointPasses() throws Exception {
     S3ClientFactory factory =
@@ -56,7 +82,7 @@ class S3ClientFactoryTest {
   void underVirtualHostAddressingEveryBucketHostIsCheckedToo() {
     // "minio.intern" is allowlisted, "docs.minio.intern" - the host the SDK actually contacts for
     // bucket "docs" - is not: it is checked, does not resolve, and the failure names it as
-    // unreachable (a DNS finding, not an allowlist one) before any request.
+    // unreachable before any request - in the words and with the hint of a blocked range.
     S3ClientFactory factory =
         new S3ClientFactory(
             S3Properties.defaults(), new TargetAddressValidator(true, List.of("minio.intern")));
@@ -68,11 +94,8 @@ class S3ClientFactoryTest {
                     List.of(S3Scope.of("docs", "2025/"))))
         .isInstanceOf(S3AccessException.Unreachable.class)
         .hasMessageContaining("docs.minio.intern")
-        .hasMessageContaining("DNS")
-        .satisfies(
-            e ->
-                assertThat(e.getMessage())
-                    .doesNotContain("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST"));
+        .hasMessageContaining("nicht zugelassen oder nicht erreichbar")
+        .hasMessageContaining("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
   }
 
   @Test

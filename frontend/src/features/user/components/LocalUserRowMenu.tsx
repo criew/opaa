@@ -5,7 +5,8 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { useUserAdminStore } from '../stores/userAdminStore'
 import type { SetupLinkHandover } from './SetupLinkDialog'
-import { localUserErrorMessage } from './localUserLabels'
+import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
+import { PRIVILEGED_CONFIRM_PURPOSE, localUserErrorMessage } from './localUserLabels'
 
 export const LOCK_CONSEQUENCE =
   'Das Konto kann sich nicht mehr anmelden, und alle laufenden Sitzungen enden sofort. Die Person ' +
@@ -15,11 +16,13 @@ export const LOCK_CONSEQUENCE =
   'Inhalte und Rechte des Kontos bleiben erhalten.'
 
 export const RESET_CONSEQUENCE =
-  'Alle Sitzungen des Kontos enden, und die Person erhält einen einmaligen Rücksetzlink per ' +
+  'Alle Sitzungen und Zugangstokens des Kontos enden, und die Person erhält einen einmaligen ' +
+  'Rücksetzlink per ' +
   'E-Mail. Geht die Nachricht nicht hinaus, wird der Link genau einmal zur Übergabe angezeigt.'
 
 export const GENERATE_PASSWORD_CONSEQUENCE =
-  'Es wird ein neues Passwort erzeugt und genau einmal angezeigt. Alle Sitzungen des Kontos enden; ' +
+  'Es wird ein neues Passwort erzeugt und genau einmal angezeigt. Alle Sitzungen und ' +
+  'Zugangstokens des Kontos enden; ' +
   'bei der nächsten Anmeldung muss das Passwort gewechselt werden.'
 
 export const DELETE_CONSEQUENCE =
@@ -82,13 +85,18 @@ export default function LocalUserRowMenu({
   const resetUserPassword = useUserAdminStore((s) => s.resetUserPassword)
   const generateUserPassword = useUserAdminStore((s) => s.generateUserPassword)
   const [busy, setBusy] = useState(false)
+  const gate = useRecentLoginGate(PRIVILEGED_CONFIRM_PURPOSE)
 
-  async function run(action: () => Promise<string>, fallback: string) {
+  async function run(action: () => Promise<string>, fallback: string, afterConfirmation = false) {
     setBusy(true)
     try {
-      notify(await action(), 'success')
+      const done = await action()
+      gate.settled()
+      notify(done, 'success')
     } catch (err) {
-      notify(localUserErrorMessage(err, fallback), 'error')
+      const refused = gate.refusal(err, () => void run(action, fallback, true), afterConfirmation)
+      if (refused === null) notify(localUserErrorMessage(err, fallback), 'error')
+      else if (refused) notify(refused, 'error')
     } finally {
       setBusy(false)
     }
@@ -189,47 +197,50 @@ export default function LocalUserRowMenu({
   const disabledReason = isSelf ? SELF_ACTION_TOOLTIP : BOOTSTRAP_LOCK_DELETE_TOOLTIP
 
   return (
-    <RowMenu
-      name={user.displayName}
-      disabled={busy}
-      items={[
-        { label: 'Bearbeiten', onClick: () => onEdit(user) },
-        user.status === 'LOCKED' && {
-          label: 'Entsperren',
-          onClick: unlock,
-        },
-        !lockedByAdministration && {
-          label: 'Sperren',
-          onClick: () => void lock(),
-          disabled: lockDisabled,
-          disabledReason: disabledReason,
-        },
-        {
-          label: 'Rücksetz-Link per E-Mail',
-          onClick: () => void resetPassword(),
-          disabled: passwordDisabled,
-          disabledReason: BOOTSTRAP_PASSWORD_TOOLTIP,
-        },
-        {
-          label: 'Passwort erzeugen',
-          onClick: () => void generatePassword(),
-          disabled: passwordDisabled,
-          disabledReason: BOOTSTRAP_PASSWORD_TOOLTIP,
-        },
-        {
-          label: 'An Identitätsanbieter übergeben',
-          onClick: () => onHandover(user),
-          disabled: handoverDisabled,
-          disabledReason: BOOTSTRAP_HANDOVER_TOOLTIP,
-        },
-        {
-          label: 'Löschen',
-          onClick: () => void remove(),
-          danger: true,
-          disabled: deleteDisabled,
-          disabledReason: disabledReason,
-        },
-      ]}
-    />
+    <>
+      <RowMenu
+        name={user.displayName}
+        disabled={busy}
+        items={[
+          { label: 'Bearbeiten', onClick: () => onEdit(user) },
+          user.status === 'LOCKED' && {
+            label: 'Entsperren',
+            onClick: unlock,
+          },
+          !lockedByAdministration && {
+            label: 'Sperren',
+            onClick: () => void lock(),
+            disabled: lockDisabled,
+            disabledReason: disabledReason,
+          },
+          {
+            label: 'Rücksetz-Link per E-Mail',
+            onClick: () => void resetPassword(),
+            disabled: passwordDisabled,
+            disabledReason: BOOTSTRAP_PASSWORD_TOOLTIP,
+          },
+          {
+            label: 'Passwort erzeugen',
+            onClick: () => void generatePassword(),
+            disabled: passwordDisabled,
+            disabledReason: BOOTSTRAP_PASSWORD_TOOLTIP,
+          },
+          {
+            label: 'An Identitätsanbieter übergeben',
+            onClick: () => onHandover(user),
+            disabled: handoverDisabled,
+            disabledReason: BOOTSTRAP_HANDOVER_TOOLTIP,
+          },
+          {
+            label: 'Löschen',
+            onClick: () => void remove(),
+            danger: true,
+            disabled: deleteDisabled,
+            disabledReason: disabledReason,
+          },
+        ]}
+      />
+      {gate.dialog}
+    </>
   )
 }

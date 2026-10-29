@@ -7,6 +7,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -26,7 +27,8 @@ public class SecurityCorsConfig {
     config.setAllowedHeaders(List.of("Content-Type", "Authorization", "X-Requested-With"));
     // ADR-0025: the SPA tells a token of an unknown (disabled) issuer apart from an expired one by
     // the error_description in this header - readable on the direct CORS path only when exposed.
-    config.setExposedHeaders(List.of("WWW-Authenticate"));
+    // Retry-After of a 429 tells the SPA how long to wait before it sends an upload again.
+    config.setExposedHeaders(List.of(HttpHeaders.WWW_AUTHENTICATE, HttpHeaders.RETRY_AFTER));
     config.setAllowCredentials(false);
 
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

@@ -28,6 +28,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 
@@ -63,6 +64,7 @@ class LocalRefreshTokenNetworkTest {
             mock(AuditEventRecorder.class),
             new LocalAdminNetworkPolicy(properties),
             transactions,
+            mock(ApplicationEventPublisher.class),
             Clock.fixed(NOW, ZoneOffset.UTC));
 
     User admin = User.localAccount("admin@stadt.example", "Admin");

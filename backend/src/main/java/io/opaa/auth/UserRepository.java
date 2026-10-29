@@ -1,6 +1,7 @@
 package io.opaa.auth;
 
 import io.opaa.api.types.SystemRole;
+import io.opaa.common.LikePatterns;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashMap;
@@ -232,14 +233,20 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   /**
    * The member search every organization member may call: {@code pageable} caps the rows, and
    * {@link UserService#searchInOrganization} only calls it with a long enough query. Matches
-   * display name and e-mail case-insensitively.
+   * display name and e-mail case-insensitively, every character of {@code query} literally - a
+   * query of {@code %%} or {@code __} must not list the whole organization.
    */
+  default List<User> searchByOrganizationId(UUID organizationId, String query, Pageable pageable) {
+    return searchByOrganizationIdMatching(organizationId, LikePatterns.containing(query), pageable);
+  }
+
+  /** {@link #searchByOrganizationId} with {@code pattern} ready to bind ({@link LikePatterns}). */
   @Query(
       "SELECT u FROM User u WHERE u.organizationId = :organizationId AND "
-          + "(LOWER(u.displayName) LIKE LOWER(CONCAT('%', :query, '%')) "
-          + "OR LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%')))")
-  List<User> searchByOrganizationId(
+          + "(LOWER(u.displayName) LIKE LOWER(:pattern) ESCAPE '\\' "
+          + "OR LOWER(u.email) LIKE LOWER(:pattern) ESCAPE '\\')")
+  List<User> searchByOrganizationIdMatching(
       @Param("organizationId") UUID organizationId,
-      @Param("query") String query,
+      @Param("pattern") String pattern,
       Pageable pageable);
 }

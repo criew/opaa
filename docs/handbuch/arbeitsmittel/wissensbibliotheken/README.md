@@ -649,7 +649,15 @@ ist eine Sicherung des Index.
 | Upload-Pool | Einzeldateien aus Uploads, getrennt vom Lauf-Pool | eigene Konfiguration |
 
 Sind Lauf-Pool und Warteschlange voll, wird ein neuer Lauf sofort als fehlgeschlagen beendet und
-die Anfrage mit HTTP 503 beantwortet.
+die Anfrage mit HTTP 503 beantwortet. Ein Upload nimmt sich seinen Platz im Upload-Pool, bevor
+etwas gespeichert wird. Ist der Pool voll, antwortet OPAA mit HTTP 429, ohne ein Dokument anzulegen.
+Ein Rate-Limit bremst außerdem, wie schnell ein Konto Dateien schickt. In beiden Fällen wartet die
+Oberfläche die genannte Zeit ab und lädt dieselbe Datei erneut hoch, ein Ordner-Upload läuft
+langsamer weiter ([Konfiguration](../../betrieb/konfiguration.md)). Während der Wartezeit zeigt die
+Bibliotheksseite einen Hinweis mit der Zahl der Sekunden. Nach insgesamt fünf Minuten Wartezeit gilt
+die Datei als abgelehnt. Wer die Seite verlässt, beendet nur das Warten: Die gerade wartende Datei
+gilt als abgelehnt, die übrigen Dateien werden weiter hochgeladen, ohne bei einer erneuten Ablehnung
+noch zu warten.
 
 ### 7.5 Konfiguration
 

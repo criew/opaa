@@ -86,7 +86,9 @@ paths:
         organization's advisory lock, so it also holds when a manual and a token-driven
         withdrawal run at the same time. A role that an enabled OIDC provider with a roles claim
         manages itself cannot be changed here (ADR-0025, Entscheidung 4) - that refusal names the
-        provider in its message and carries no code.
+        provider in its message and carries no code. Requires a recent sign-in: without one the
+        call is refused with 403 and code RECENT_LOGIN_REQUIRED (see the response
+        RecentLoginRequired) before anything is checked or written.
       requestBody:
         required: true
         content:

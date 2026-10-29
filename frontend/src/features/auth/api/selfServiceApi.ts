@@ -88,24 +88,37 @@ export async function forgotPassword(email: string): Promise<void> {
   }
 }
 
-/** Registers an account. Answers 202 whether or not one was created. */
-export async function register(
-  email: string,
-  displayName: string,
-  password: string,
-): Promise<void> {
+/**
+ * Registers an account. Answers 202 whether or not one was created. Carries no password: the person
+ * sets it with the verification link, so whoever registers somebody else's address cannot.
+ */
+export async function register(email: string): Promise<void> {
   try {
-    await authClient.post(`${LOCAL_AUTH_BASE}/register`, { email, displayName, password })
+    await authClient.post(`${LOCAL_AUTH_BASE}/register`, { email })
   } catch (err) {
     rethrowAsSelfServiceFailure(err, 'Die Registrierung wurde nicht angenommen.')
   }
 }
 
-/** Confirms the address of a self-registered account; triggered by the page, never by the link. */
-export async function verifyEmail(token: string): Promise<void> {
+/**
+ * Completes a self-registration: confirms the address and sets name and password in one step; sent
+ * by the page's form, never by the link. A refused field leaves the link open.
+ */
+export async function confirmRegistration(
+  token: string,
+  displayName: string,
+  newPassword: string,
+): Promise<void> {
   try {
-    await authClient.post(`${LOCAL_AUTH_BASE}/verify-email`, { token })
+    await authClient.post(`${LOCAL_AUTH_BASE}/confirm-registration`, {
+      token,
+      displayName,
+      newPassword,
+    })
   } catch (err) {
+    // A backend from before this endpoint (rolling update) answers an anonymous call with 401,
+    // since every other /api path needs a session; that is "not yet available", not a dead link.
+    if (axios.isAxiosError(err) && err.response?.status === 401) throw new FlowUnavailableError()
     rethrowAsSelfServiceFailure(err, 'Die Bestätigung war nicht möglich.')
   }
 }

@@ -108,6 +108,25 @@ class RateLimitSecurityChainIntegrationTest {
     }
   }
 
+  /**
+   * Through the real filter chain the path is decoded as UTF-8 before the rate limit filter looks
+   * for control characters: umlauts and the euro sign pass on to the chain (here {@code 401}), a
+   * percent-encoded line break is refused with {@code 400}.
+   */
+  @Test
+  void onlyAPathWithAControlCharacterIsRefusedAsMalformed() throws Exception {
+    mockMvc
+        .perform(
+            get(java.net.URI.create("/api/v1/spaces/B%C3%BCcher-%C3%84%E2%82%AC"))
+                .with(from("198.51.100.90")))
+        .andExpect(status().isUnauthorized());
+    mockMvc
+        .perform(
+            get(java.net.URI.create("/api/v1/spaces/x%0D%0Aforged")).with(from("198.51.100.91")))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value(RateLimitFilter.INVALID_PATH_MESSAGE));
+  }
+
   @Test
   void aRequestRefusedForAnExpiredSessionLeavesTheClientBudgetForItsRetry() throws Exception {
     // the frontend renews its token after a 401 and repeats the request at once

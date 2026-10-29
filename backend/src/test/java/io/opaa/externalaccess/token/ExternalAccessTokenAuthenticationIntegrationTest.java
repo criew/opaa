@@ -1,6 +1,7 @@
 package io.opaa.externalaccess.token;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -10,7 +11,13 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.jayway.jsonpath.JsonPath;
+import io.opaa.account.LocalAccessTokenService;
+import io.opaa.account.LocalPasswordService;
+import io.opaa.account.LocalRefreshTokenService;
+import io.opaa.account.LocalRefreshTokenService.IssuedRefreshToken;
+import io.opaa.account.LocalRefreshTokenService.RotationResult;
 import io.opaa.account.LocalUserService;
+import io.opaa.account.LocalUserService.ResetLinkIssued;
 import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.LockReason;
@@ -23,6 +30,7 @@ import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.AccessDeniedException;
 import io.opaa.directory.OidcProviderService;
 import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
@@ -35,10 +43,19 @@ import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.TestSessions;
+import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,8 +64,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * What a bearer access token reaches and what it is refused with (ADR-0035).
@@ -87,8 +107,11 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
   @Autowired private LibraryExternalAccessService libraryRelease;
   @Autowired private ExternalAccessTokenService tokenService;
   @Autowired private LocalUserService localUsers;
+  @Autowired private LocalPasswordService passwords;
+  @Autowired private LocalRefreshTokenService refreshTokens;
   @Autowired private LocalAccountFixturesFactory localAccountFixtures;
   @Autowired private Clock clock;
+  @Autowired private PlatformTransactionManager transactionManager;
 
   private LocalAccountFixtures fixtures;
 
@@ -434,6 +457,220 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
         .contains(ExternalAccessTokenRevocationReason.ACCOUNT_LIFECYCLE.name());
   }
 
+  @Test
+  void changingThePasswordEndsTheTokensOfTheAccount() {
+    LocalAccount person = fixtures.activeUser("passwort-" + UUID.randomUUID() + "@intern.example");
+    UUID personsToken = issueFor(person);
+
+    passwords.changePassword(
+        person.user(), LocalAccountFixtures.PASSWORD, "neues-fahrrad-leuchtturm-tinte");
+
+    assertEndedWithTheAccount(personsToken);
+  }
+
+  @Test
+  void anAdministratorsPasswordResetEndsTheTokensOfTheAccount() {
+    LocalAccount person = fixtures.activeUser("reset-" + UUID.randomUUID() + "@intern.example");
+    UUID personsToken = issueFor(person);
+
+    localUsers.generatePassword(
+        CurrentUser.of(
+            administrator.getId(),
+            administrator.getOrganizationId(),
+            administrator.getSystemRole(),
+            "Systemverwaltung"),
+        person.id());
+
+    assertEndedWithTheAccount(personsToken);
+  }
+
+  @Test
+  void aDetectedRefreshReplayEndsTheTokensOfTheAccount() {
+    LocalAccount person = fixtures.activeUser("replay-" + UUID.randomUUID() + "@intern.example");
+    UUID personsToken = issueFor(person);
+    IssuedRefreshToken first = refreshTokens.issue(person.user());
+    RotationResult.Rotated used =
+        (RotationResult.Rotated) refreshTokens.rotate(first.value(), null);
+    refreshTokens.rotate(used.token().value(), null);
+
+    assertThat(refreshTokens.rotate(first.value(), null))
+        .isEqualTo(new RotationResult.Reused(person.id()));
+
+    assertEndedWithTheAccount(personsToken);
+  }
+
+  /**
+   * The groups claim and a deactivation at the provider reach OPAA only with a sign-in: a token of
+   * an account of a provider rests once that sign-in is older than the configured window, and the
+   * next sign-in revives it - nothing is revoked.
+   */
+  @Test
+  void aTokenOfAProviderAccountRestsUntilItsNextSignIn() throws Exception {
+    jdbcTemplate.update(
+        "UPDATE users SET last_login_at = now() - interval '31 days' WHERE id = ?", owner.getId());
+
+    assertRefusedWith(rawValue, "sign_in_required");
+    assertThat(tokens.findById(tokenId).orElseThrow().getRevokedAt()).isNull();
+
+    mockMvc.perform(get("/api/v1/auth/me").with(devUser())).andExpect(status().isOk());
+    assertThat(authenticator.authenticate(rawValue))
+        .isInstanceOf(ExternalAccessTokenAuthenticator.Result.Authenticated.class);
+  }
+
+  @Test
+  void redeemingAResetLinkEndsTheTokensOfTheAccount() {
+    LocalAccount person = fixtures.activeUser("link-" + UUID.randomUUID() + "@intern.example");
+    ResetLinkIssued link = localUsers.issueResetLink(systemAdministration(), person.id());
+    UUID personsToken = issueFor(person);
+
+    passwords.setPasswordByLink(link.token().rawToken(), "neues-fahrrad-leuchtturm-tinte");
+
+    assertEndedWithTheAccount(personsToken);
+  }
+
+  /** A session whose sessions all ended before the issuance committed issues nothing. */
+  @Test
+  void aSessionEndedBeforeTheIssuanceIssuesNothing() {
+    LocalAccount person = fixtures.activeUser("veraltet-" + UUID.randomUUID() + "@intern.example");
+    Jwt session = sessionOf(person);
+    passwords.changePassword(
+        person.user(), LocalAccountFixtures.PASSWORD, "neues-fahrrad-leuchtturm-tinte");
+
+    assertThatThrownBy(() -> issueWithSession(person, session))
+        .isInstanceOf(AccessDeniedException.class);
+    assertThat(tokens.findByUserIdOrderByCreatedAtDesc(person.id())).isEmpty();
+  }
+
+  /**
+   * The race of an issuance against a password change: the issuance holds the account's credentials
+   * row under a share lock until it commits, and the password change writes that row before it ends
+   * the tokens - so it waits and then sees the new token instead of missing it.
+   */
+  @Test
+  void aPasswordChangeRacingAnIssuanceStillEndsTheNewToken() throws Exception {
+    LocalAccount person = fixtures.activeUser("rennen-" + UUID.randomUUID() + "@intern.example");
+    Jwt session = sessionOf(person);
+    CountDownLatch issued = new CountDownLatch(1);
+    CountDownLatch release = new CountDownLatch(1);
+    ExecutorService threads = Executors.newFixedThreadPool(2);
+    try {
+      Future<UUID> issuance =
+          threads.submit(
+              () ->
+                  new TransactionTemplate(transactionManager)
+                      .execute(
+                          status -> {
+                            UUID id = issueWithSession(person, session);
+                            issued.countDown();
+                            awaitQuietly(release);
+                            return id;
+                          }));
+      assertThat(issued.await(30, TimeUnit.SECONDS)).isTrue();
+      Future<?> change =
+          threads.submit(
+              () ->
+                  passwords.changePassword(
+                      person.user(),
+                      LocalAccountFixtures.PASSWORD,
+                      "neues-fahrrad-leuchtturm-tinte"));
+      awaitBlockedOrDone(change);
+      release.countDown();
+      UUID racingToken = issuance.get(30, TimeUnit.SECONDS);
+      change.get(30, TimeUnit.SECONDS);
+
+      assertEndedWithTheAccount(racingToken);
+    } finally {
+      release.countDown();
+      threads.shutdownNow();
+      assertThat(threads.awaitTermination(30, TimeUnit.SECONDS)).isTrue();
+    }
+  }
+
+  // regression guard: a call with an access token is no sign-in - it must not keep the provider
+  // sign-in of its account fresh, or the bound on that sign-in would never bite.
+  @Test
+  void aCallWithAnAccessTokenDoesNotCountAsASignIn() throws Exception {
+    // PostgreSQL keeps microseconds; a nanosecond clock reading would not survive the round trip.
+    Timestamp signedIn =
+        Timestamp.from(clock.instant().minus(Duration.ofDays(29)).truncatedTo(ChronoUnit.MICROS));
+    jdbcTemplate.update("UPDATE users SET last_login_at = ? WHERE id = ?", signedIn, owner.getId());
+
+    mockMvc
+        .perform(get("/api/v1/search/libraries").with(bearer(rawValue)))
+        .andExpect(status().isOk());
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT last_login_at FROM users WHERE id = ?", Timestamp.class, owner.getId()))
+        .isEqualTo(signedIn);
+  }
+
+  private CurrentUser systemAdministration() {
+    return CurrentUser.of(
+        administrator.getId(),
+        administrator.getOrganizationId(),
+        administrator.getSystemRole(),
+        "Systemverwaltung");
+  }
+
+  /** The access token of a fresh sign-in of {@code person}, as the issuance sees it. */
+  private Jwt sessionOf(LocalAccount person) {
+    Instant now = clock.instant();
+    return Jwt.withTokenValue("sitzung")
+        .header("alg", "HS256")
+        .subject(person.id().toString())
+        .issuedAt(now)
+        .expiresAt(now.plus(Duration.ofMinutes(15)))
+        .claim(
+            LocalAccessTokenService.SESSION_GENERATION_CLAIM,
+            fixtures.credentialsOf(person).getSessionGeneration())
+        .build();
+  }
+
+  private UUID issueWithSession(LocalAccount person, Jwt session) {
+    return tokenService
+        .issue(
+            person.id(),
+            person.user().getOrganizationId(),
+            "Für " + person.id(),
+            List.of(libraryId),
+            clock.instant().plus(Duration.ofDays(10)),
+            session)
+        .token()
+        .getId();
+  }
+
+  /** Until the password change waits for a lock - or, without that lock, has already finished. */
+  private void awaitBlockedOrDone(Future<?> change) throws InterruptedException {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
+    while (!change.isDone() && System.nanoTime() < deadline) {
+      Integer waiting =
+          jdbcTemplate.queryForObject(
+              "SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock'"
+                  + " AND query ILIKE '%local_credentials%'",
+              Integer.class);
+      if (waiting != null && waiting > 0) {
+        return;
+      }
+      TimeUnit.MILLISECONDS.sleep(50);
+    }
+  }
+
+  private static void awaitQuietly(CountDownLatch latch) {
+    try {
+      latch.await(30, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+  }
+
+  private void assertEndedWithTheAccount(UUID tokenId) {
+    ExternalAccessToken ended = tokens.findById(tokenId).orElseThrow();
+    assertThat(ended.getRevocationReason())
+        .isEqualTo(ExternalAccessTokenRevocationReason.ACCOUNT_LIFECYCLE);
+    assertThat(ended.getRevokedAt()).isNotNull();
+  }
+
   /** Issues a token for a local account against the shared library, and returns its id. */
   private UUID issueFor(LocalAccount person) {
     return tokenService
@@ -442,7 +679,8 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
             person.user().getOrganizationId(),
             "Für " + person.id(),
             List.of(libraryId),
-            clock.instant().plus(Duration.ofDays(10)))
+            clock.instant().plus(Duration.ofDays(10)),
+            TestSessions.current(jdbcTemplate, person.id()))
         .token()
         .getId();
   }
@@ -454,7 +692,8 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
             person.user().getOrganizationId(),
             "Für " + person.id(),
             List.of(libraryId),
-            clock.instant().plus(Duration.ofDays(10)))
+            clock.instant().plus(Duration.ofDays(10)),
+            TestSessions.current(jdbcTemplate, person.id()))
         .rawValue();
   }
 

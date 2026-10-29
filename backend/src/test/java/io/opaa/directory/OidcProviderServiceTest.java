@@ -32,8 +32,10 @@ import io.opaa.auth.OidcProviderRemovalRepository;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.auth.OidcProvidersChangedEvent;
 import io.opaa.auth.ProviderConnectionsImpact;
+import io.opaa.auth.RecentLoginPolicy;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
@@ -78,6 +80,7 @@ class OidcProviderServiceTest {
   private final ProviderConnectionsImpact connectionsImpact = mock(ProviderConnectionsImpact.class);
   private final DirectoryConnectorService directoryConnectors =
       mock(DirectoryConnectorService.class);
+  private final RecentLoginPolicy recentLogin = mock(RecentLoginPolicy.class);
 
   private OidcProviderService service;
 
@@ -98,6 +101,7 @@ class OidcProviderServiceTest {
             eventPublisher,
             connectionsImpact,
             directoryConnectors,
+            recentLogin,
             Clock.fixed(NOW, ZoneOffset.UTC));
     when(repository.save(any(OidcProvider.class))).thenAnswer(inv -> inv.getArgument(0));
     when(repository.saveAndFlush(any(OidcProvider.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -120,6 +124,128 @@ class OidcProviderServiceTest {
   private static OidcProviderDraft draft(String name, String issuer) {
     return new OidcProviderDraft(
         name, issuer, "opaa-frontend", null, OidcClaimMapping.keycloakDefaults());
+  }
+
+  private static OidcProviderDraft draftWithAdminRole(String name, String issuer, String role) {
+    return new OidcProviderDraft(
+        name,
+        issuer,
+        "opaa-frontend",
+        null,
+        new OidcClaimMapping(null, null, "realm_access.roles", role, null, null));
+  }
+
+  private void noRecentSignIn() {
+    doThrow(new AccessDeniedException("Bitte bestätigen Sie Ihre Identität."))
+        .when(recentLogin)
+        .requireRecentLogin();
+  }
+
+  /** A role mapping hands out system roles, so it is set only after a recent sign-in. */
+  @Test
+  void aProviderWithARoleMappingIsCreatedOnlyAfterARecentSignIn() {
+    noRecentSignIn();
+
+    assertThatThrownBy(
+            () ->
+                service.createProvider(
+                    ORGANIZATION_ID,
+                    ACTOR_ID,
+                    draftWithAdminRole("Haus", "https://idp.example/realms/r", "opaa-admin")))
+        .isInstanceOf(AccessDeniedException.class);
+    verify(repository, never()).save(any(OidcProvider.class));
+
+    // without a role mapping the provider grants no system role and needs no confirmation
+    service.createProvider(
+        ORGANIZATION_ID, ACTOR_ID, draft("Haus", "https://idp.example/realms/r"));
+    verify(repository).save(any(OidcProvider.class));
+  }
+
+  @Test
+  void aChangedRoleMappingNeedsARecentSignInAnUnchangedOneDoesNot() {
+    OidcProvider self = provider("Beschäftigte", "https://idp.example/realms/a", true, true);
+    when(repository.findById(self.getId())).thenReturn(Optional.of(self));
+    noRecentSignIn();
+
+    assertThatThrownBy(
+            () ->
+                service.updateProvider(
+                    ORGANIZATION_ID,
+                    ACTOR_ID,
+                    self.getId(),
+                    draftWithAdminRole(
+                        "Beschäftigte", "https://idp.example/realms/a", "opaa-admin")))
+        .isInstanceOf(AccessDeniedException.class);
+    assertThat(self.getClaimMapping().systemAdminRole()).isNull();
+
+    OidcProvider renamed =
+        service.updateProvider(
+            ORGANIZATION_ID,
+            ACTOR_ID,
+            self.getId(),
+            new OidcProviderDraft(
+                "Beschäftigte (neu)",
+                "https://idp.example/realms/a",
+                self.getClientId(),
+                self.getJwkSetUri(),
+                self.getClaimMapping()));
+    assertThat(renamed.getDisplayName()).isEqualTo("Beschäftigte (neu)");
+  }
+
+  /**
+   * Issuer, audience, signing keys, e-mail claim and groups claim decide whose tokens count and
+   * what they grant: a stolen session must not point the provider at keys of its own choosing.
+   */
+  @Test
+  void aChangedTrustAnchorNeedsARecentSignInTheDisplayNameClaimDoesNot() {
+    OidcProvider self = provider("Beschäftigte", "https://idp.example/realms/a", true, true);
+    when(repository.findById(self.getId())).thenReturn(Optional.of(self));
+    noRecentSignIn();
+    OidcClaimMapping mapping = self.getClaimMapping();
+    String issuer = self.getIssuerUri();
+    String clientId = self.getClientId();
+    List<OidcProviderDraft> refused =
+        List.of(
+            new OidcProviderDraft("B", issuer + "-neu", clientId, null, mapping),
+            new OidcProviderDraft("B", issuer, "fremder-client", null, mapping),
+            new OidcProviderDraft("B", issuer, clientId, "https://attacker.example/certs", mapping),
+            new OidcProviderDraft(
+                "B",
+                issuer,
+                clientId,
+                null,
+                new OidcClaimMapping("upn", mapping.displayNameClaim(), null, null, null, null)),
+            new OidcProviderDraft(
+                "B",
+                issuer,
+                clientId,
+                null,
+                new OidcClaimMapping(
+                    mapping.emailClaim(), mapping.displayNameClaim(), null, null, null, "groups")));
+
+    for (OidcProviderDraft draft : refused) {
+      assertThatThrownBy(
+              () -> service.updateProvider(ORGANIZATION_ID, ACTOR_ID, self.getId(), draft))
+          .as(draft.toString())
+          .isInstanceOf(AccessDeniedException.class);
+    }
+    assertThat(self.getIssuerUri()).isEqualTo(issuer);
+    assertThat(self.getJwkSetUri()).isNull();
+    verify(repository, never()).save(any(OidcProvider.class));
+
+    OidcProvider renamed =
+        service.updateProvider(
+            ORGANIZATION_ID,
+            ACTOR_ID,
+            self.getId(),
+            new OidcProviderDraft(
+                "Beschäftigte (neu)",
+                issuer,
+                clientId,
+                "  ",
+                new OidcClaimMapping(
+                    mapping.emailClaim(), "preferred_username", null, null, null, null)));
+    assertThat(renamed.getClaimMapping().displayNameClaim()).isEqualTo("preferred_username");
   }
 
   @Test

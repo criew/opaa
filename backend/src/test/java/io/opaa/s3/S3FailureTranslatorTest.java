@@ -132,15 +132,15 @@ class S3FailureTranslatorTest {
             "target blocked", new S3RequestGuard.TargetSignal("Adresse gesperrt.", false));
     NonRetryableException unknown =
         NonRetryableException.create(
-            "target unresolved", new S3RequestGuard.TargetSignal("Host unbekannt.", true));
+            "target unresolved", new S3RequestGuard.TargetSignal("Adresse gesperrt.", true));
 
     assertThat(translator.translate(S3Operation.GET_OBJECT, "b", "k", blocked))
         .isInstanceOf(S3AccessException.TargetBlocked.class)
         .hasMessage("Adresse gesperrt. Hinweis: OPAA_TEST_ALLOWLIST");
+    // an unresolved name stays unreachable but reads exactly like a blocked one
     assertThat(translator.translate(S3Operation.GET_OBJECT, "b", "k", unknown))
         .isInstanceOf(S3AccessException.Unreachable.class)
-        .hasMessageContaining("Host unbekannt.")
-        .satisfies(e -> assertThat(e.getMessage()).doesNotContain("OPAA_TEST_ALLOWLIST"));
+        .hasMessage("Adresse gesperrt. Hinweis: OPAA_TEST_ALLOWLIST");
   }
 
   @Test

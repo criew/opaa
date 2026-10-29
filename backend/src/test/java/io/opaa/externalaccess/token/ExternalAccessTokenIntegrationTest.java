@@ -39,6 +39,7 @@ import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.security.LocalAuthKeyService;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.TestSessions;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
@@ -460,7 +461,8 @@ class ExternalAccessTokenIntegrationTest {
                     owner.getOrganizationId(),
                     "Kanal zu",
                     List.of(libraryId),
-                    clock.instant().plus(Duration.ofDays(5))))
+                    clock.instant().plus(Duration.ofDays(5)),
+                    TestSessions.current(jdbcTemplate, owner.getId())))
         .isInstanceOf(AccessDeniedException.class);
   }
 
