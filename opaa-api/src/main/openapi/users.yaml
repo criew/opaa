@@ -318,9 +318,20 @@ components:
         email:
           type: string
           nullable: true
+          description: As the identity provider last reported it - unverified, see providerName.
         displayName:
           type: string
           nullable: true
+          description: As the identity provider last reported it - unverified, see providerName.
+        providerName:
+          type: string
+          nullable: true
+          description: >
+            The display name of the sign-in the account comes from (an identity provider or the
+            local accounts). Name and email are claims of that sign-in, not checked by OPAA, so two
+            accounts with the same name are told apart by it. Null when no configured sign-in
+            matches the account's issuer any more.
+          example: Landesverwaltung
 
     RoleChangeRequest:
       type: object

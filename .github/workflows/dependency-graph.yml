@@ -29,6 +29,10 @@ jobs:
   # multi-module build rooted at backend/) so Dependabot alerts cover the
   # JVM dependency tree; the pnpm lockfiles (frontend/, e2e/) are read by
   # GitHub itself without a submission step.
+  # Dependency verification stays strict. The action injects its graph plugin by init script
+  # (org.gradle:github-dependency-graph-gradle-plugin:1.5.0 from the Plugin Portal); exactly that
+  # version is trusted in the <trusted-artifacts> of backend/gradle/verification-metadata.xml.
+  # An action update that moves the version fails the resolve job of its own PR.
   submit:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest

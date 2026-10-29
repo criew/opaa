@@ -83,8 +83,9 @@ paths:
           in: query
           required: false
           description: >
-            The space of a chat not yet created; the caller must be a member of it (403 otherwise,
-            404 for an unknown space). Ignored when chatId names a chat the caller authored.
+            The space of a chat not yet created; the caller must be a member of it (404 otherwise,
+            the same as for an unknown space). Ignored when chatId names a chat the caller
+            authored.
           schema:
             type: string
             format: uuid
@@ -109,10 +110,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MetadataFilterOptionsResponse"
-        "403":
-          $ref: "#/components/responses/Forbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/SpaceNotFound"
 
   /api/v1/search:
     post:

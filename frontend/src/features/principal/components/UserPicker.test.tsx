@@ -12,7 +12,14 @@ vi.mock('../hooks/useUserSearch', () => ({
   useUserSearch: () => ({
     query: 'bo',
     setQuery,
-    users: [{ id: 'u2', displayName: 'Bob Berger', email: 'bob@opaa.local' }],
+    users: [
+      {
+        id: 'u2',
+        displayName: 'Bob Berger',
+        email: 'bob@opaa.local',
+        providerName: 'Landesverwaltung',
+      },
+    ],
     isLoading: false,
     error: null,
   }),
@@ -42,7 +49,17 @@ describe('UserPicker', () => {
     setQuery.mockClear()
     await user.click(await screen.findByRole('option', { name: /Bob Berger/ }))
 
-    expect(field).toHaveValue('Bob Berger (bob@opaa.local)')
+    expect(field).toHaveValue('Bob Berger (bob@opaa.local) · Landesverwaltung')
     expect(setQuery).not.toHaveBeenCalled()
+  })
+
+  // regression guard for #3358 (6): name and address are self-chosen, the sign-in is not
+  it('names the sign-in every hit comes from', async () => {
+    renderWithProviders(<Harness />)
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('combobox', { name: 'Verantwortliche Person' }), 'bo')
+
+    expect(await screen.findByRole('option', { name: /Landesverwaltung/ })).toBeInTheDocument()
   })
 })
