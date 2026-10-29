@@ -32,7 +32,18 @@ export const mockQueryResponses: QueryResponse[] = [
         indexedAt: '2025-01-15T10:30:00Z',
         cited: true,
         documentId: 'doc-start',
-        chunkLocations: [{ chunkIndex: 2, location: 'S. 2–3' }],
+        chunkLocations: [
+          {
+            chunkIndex: 2,
+            location: 'S. 2–3',
+            anchor: {
+              pageFrom: 2,
+              pageTo: 3,
+              quoteStart: 'Das Modul indexing verwaltet die Dokumentenaufnahme: es liest',
+              quoteEnd: 'speichert die Abschnitte mit ihren Fundstellen im Suchindex.',
+            },
+          },
+        ],
         // One mock source with an invalid citation, so the mocked frontend
         // (VITE_ENABLE_MOCKS=true) can actually show the "Beleg nicht bestätigt" state.
         citationValid: false,

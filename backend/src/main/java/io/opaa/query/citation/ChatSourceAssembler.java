@@ -351,6 +351,8 @@ public class ChatSourceAssembler {
                   ChatSource reference =
                       new ChatSource(fileName, score, matches, cited)
                           .indexedAt(indexedAt)
+                          .contentSha256(
+                              sourceDocument != null ? sourceDocument.getChecksum() : null)
                           .documentId(parseDocumentId(documentId))
                           .sourceType(
                               sourceDocument != null && sourceDocument.getSourceType() != null
@@ -501,6 +503,7 @@ public class ChatSourceAssembler {
               preferred.getMatchCount(),
               true)
           .indexedAt(preferred.getIndexedAt())
+          .contentSha256(preferred.getContentSha256())
           .documentId(preferred.getDocumentId())
           .sourceType(preferred.getSourceType())
           .sourceUrl(preferred.getSourceUrl())
