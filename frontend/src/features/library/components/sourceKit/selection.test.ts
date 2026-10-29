@@ -33,4 +33,23 @@ describe('adoptTrail', () => {
     expect(adoptTrail(placed, listed, [site])).toBe(placed)
     expect(adoptTrail(loose, listed, [])).toBe(loose)
   })
+
+  it('names a placeholder crumb by the named level with its key, never the other way round', () => {
+    const unnamed = { key: 'site:s-1', name: 'Gespeicherte Site', placeholder: true }
+    const chosen = [
+      { key: 'drive:d-1', name: 'Dokumente', trail: [unnamed] },
+      {
+        key: 'folder:f-1',
+        name: 'Akten',
+        trail: [unnamed, { key: 'drive:d-2', name: 'Protokolle' }],
+      },
+    ]
+
+    expect(adoptTrail(chosen, listed, [site])).toEqual([
+      { key: 'drive:d-1', name: 'Dokumente', trail: [site] },
+      { key: 'folder:f-1', name: 'Akten', trail: [site, { key: 'drive:d-2', name: 'Protokolle' }] },
+    ])
+    const placed = [{ key: 'drive:d-1', name: 'Dokumente', trail: [site] }]
+    expect(adoptTrail(placed, listed, [unnamed])).toBe(placed)
+  })
 })

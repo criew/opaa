@@ -62,6 +62,13 @@ interface SelectionDialogProps {
   startManual?: boolean
 }
 
+/** The level an entry opens; a placeholder name stays marked, so it is never stored. */
+function crumbOf(entry: { key: string; name: string; placeholder?: boolean }): Crumb {
+  return entry.placeholder
+    ? { key: entry.key, name: entry.name, placeholder: true }
+    : { key: entry.key, name: entry.name }
+}
+
 const ellipsis = {
   overflow: 'hidden',
   textOverflow: 'ellipsis',
@@ -232,7 +239,7 @@ function SelectionDialogBody({
     setManualError(null)
     setManualText('')
     if (source.manual!.kind === 'open') {
-      openLevel([...resolved.trail, { key: resolved.key, name: resolved.name }])
+      openLevel([...resolved.trail, crumbOf(resolved)])
     } else if (!chosenKeys.has(resolved.key)) {
       setDraft((prev) => toggle(prev, resolved, resolved.trail))
     }
@@ -484,7 +491,7 @@ function SelectionDialogBody({
                     }
                     onClick={
                       entry.openable && !entry.selectable
-                        ? () => openLevel([...level, { key: entry.key, name: entry.name }])
+                        ? () => openLevel([...level, crumbOf(entry)])
                         : undefined
                     }
                     sx={{
@@ -510,7 +517,7 @@ function SelectionDialogBody({
                     <IconButton
                       aria-label={`„${entry.name}“ öffnen`}
                       {...(!entry.selectable ? { tabIndex: -1, 'aria-hidden': true } : {})}
-                      onClick={() => openLevel([...level, { key: entry.key, name: entry.name }])}
+                      onClick={() => openLevel([...level, crumbOf(entry)])}
                     >
                       <ChevronRightIcon />
                     </IconButton>

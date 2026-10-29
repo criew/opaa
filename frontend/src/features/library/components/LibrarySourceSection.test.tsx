@@ -1070,6 +1070,29 @@ describe('LibrarySourceSection - „Ändern“ einer Zeile', () => {
     )
   })
 
+  it('shows a stored site without a name in the breadcrumb by a placeholder, not its id', async () => {
+    const user = userEvent.setup()
+    renderSection(
+      <LibrarySourceSection
+        libraryId="library-sp"
+        library={{
+          ...sharePoint,
+          sourceSettings: {
+            libraries: [{ driveId: 'd-1', name: 'Dokumente', site: { id: 's-1' } }],
+          },
+        }}
+        canEditSource
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /^Ändern\s*Umfang$/ }))
+    const dialog = await screen.findByRole('dialog', { name: /auswählen/ })
+
+    expect(await within(dialog).findByRole('checkbox', { name: 'Protokolle' })).toBeInTheDocument()
+    expect(within(dialog).getByText('Gespeicherte Site')).toBeVisible()
+    expect(within(dialog).queryByText('s-1')).toBeNull()
+  })
+
   it('stores the site of a library saved without one once its site is opened and applied', async () => {
     const user = userEvent.setup()
     renderSection(
@@ -1088,7 +1111,11 @@ describe('LibrarySourceSection - „Ändern“ einer Zeile', () => {
         expect.objectContaining({
           sourceSettings: expect.objectContaining({
             libraries: [
-              expect.objectContaining({ driveId: 'd-1', site: { id: 's-1', name: 'Rathaus' } }),
+              expect.objectContaining({
+                driveId: 'd-1',
+                name: 'Dokumente (Rathaus)',
+                site: { id: 's-1', name: 'Rathaus' },
+              }),
             ],
           }),
         }),

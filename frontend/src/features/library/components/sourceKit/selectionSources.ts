@@ -309,6 +309,14 @@ export function sharePointLibrariesOfItems(items: SelectionItem[]): SharePointLi
   return [...byDrive.values()]
 }
 
+/** A listed site as a level; one without a name gets a placeholder, never its long id. */
+function sharePointSiteOf(entry: { key: string; name?: string | null }) {
+  const name = entry.name?.trim()
+  return name
+    ? { key: entry.key, name }
+    : { key: entry.key, name: 'Site ohne Namen', placeholder: true as const }
+}
+
 export function sharePointSelectionSource(probe: Probe): SelectionSource {
   const browse = (query: Record<string, unknown>) =>
     browseSource('SHAREPOINT', probe.probeRequest({ sourceUrl: SHAREPOINT_API, query }))
@@ -328,7 +336,15 @@ export function sharePointSelectionSource(probe: Probe): SelectionSource {
       const last = level[level.length - 1]
       if (!last) {
         const response = await browse({ search })
-        return resultOf(response, (key, name) => ({ key, name, selectable: false, openable: true }))
+        return {
+          entries: response.entries.map((entry) => ({
+            ...sharePointSiteOf(entry),
+            selectable: false,
+            openable: true,
+          })),
+          complete: response.complete,
+          message: response.message ?? null,
+        }
       }
       if (last.key.startsWith('site:')) {
         const response = await browse({ site: last.key.slice('site:'.length) })
@@ -351,7 +367,7 @@ export function sharePointSelectionSource(probe: Probe): SelectionSource {
           const response = await browse({ siteUrl: text.trim() })
           const site = response.entries[0]
           if (!site) return response.message ?? 'Unter dieser Adresse liegt keine Site.'
-          return { key: site.key, name: site.name?.trim() || site.key, trail: [] }
+          return { ...sharePointSiteOf(site), trail: [] }
         } catch (err) {
           return err instanceof Error ? err.message : 'Die Site ließ sich nicht öffnen.'
         }

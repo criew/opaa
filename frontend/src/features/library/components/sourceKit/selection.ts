@@ -14,6 +14,8 @@ export interface SelectionItem {
   key: string
   name: string
   trail: Crumb[]
+  /** As {@link Crumb.placeholder}, for an object a manual entry opens as a level. */
+  placeholder?: boolean
 }
 
 /** One row of a listed level. */
@@ -26,6 +28,8 @@ export interface BrowseEntry {
   openable: boolean
   /** Why the object cannot be chosen although it is listed, shown under its name. */
   blocked?: string
+  /** Whether `name` only stands in for a name the source does not give (a site without one). */
+  placeholder?: boolean
 }
 
 export interface BrowseResult {
@@ -89,8 +93,9 @@ export function pathLabel(item: SelectionItem) {
 
 /**
  * The selection with each object stored without its levels placed below `level` where `entries`,
- * the listing of `level`, holds it or the outermost level of its trail. The same array when
- * nothing moves, and always at the outermost level, where nothing is missing.
+ * the listing of `level`, holds it or the outermost level of its trail; a placeholder crumb takes
+ * the named crumb of `level` with its key. The same array when nothing changes, which is always so
+ * at the outermost level.
  */
 export function adoptTrail(
   selection: SelectionItem[],
@@ -99,14 +104,19 @@ export function adoptTrail(
 ): SelectionItem[] {
   if (level.length === 0) return selection
   const listed = new Set(entries.map((entry) => entry.key))
-  let moved = false
+  const named = new Map(level.filter((c) => !c.placeholder).map((c) => [c.key, c]))
+  let changed = false
   const next = selection.map((item) => {
     const head = item.trail.length === 0 ? item.key : item.trail[0].key
-    if (!listed.has(head)) return item
-    moved = true
-    return { ...item, trail: [...level, ...item.trail] }
+    const placed = listed.has(head) ? [...level, ...item.trail] : item.trail
+    const trail = placed.map((crumb) => (crumb.placeholder && named.get(crumb.key)) || crumb)
+    if (trail.length === item.trail.length && trail.every((c, i) => c === item.trail[i])) {
+      return item
+    }
+    changed = true
+    return { ...item, trail }
   })
-  return moved ? next : selection
+  return changed ? next : selection
 }
 
 /**
