@@ -86,7 +86,6 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
     await expect(user.getByRole("heading", { level: 1, name: "Konto registrieren" })).toBeVisible();
     await user.locator("#register-display-name").fill("Fremde Person");
     await user.locator("#register-email").fill(outsideAddress);
-    await user.locator("#register-password").fill(password);
     await user.getByRole("button", { name: "Konto registrieren" }).click();
     await expect(
       user.getByText("Wenn zu dieser Adresse ein Konto besteht, haben wir eine E-Mail geschickt."),
@@ -97,7 +96,6 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
     await user.goto("/register");
     await user.locator("#register-display-name").fill("Neue Kollegin");
     await user.locator("#register-email").fill(address);
-    await user.locator("#register-password").fill(password);
     await user.getByRole("button", { name: "Konto registrieren" }).click();
     await expect(
       user.getByText("Wenn zu dieser Adresse ein Konto besteht, haben wir eine E-Mail geschickt."),
@@ -112,6 +110,7 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
     // erfüllt gewesen, bevor irgendein Versand hätte stattfinden können.
     expect(await mailCount()).toBe(1);
     expect(confirmation.recipients.map((a) => a.toLowerCase())).toEqual([address.toLowerCase()]);
+    expect(confirmation.text).toContain("Nicht von Ihnen?");
 
     await user.goto("/login");
     await user.getByLabel("E-Mail-Adresse").fill(address);
@@ -121,11 +120,21 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
       user.getByText("Anmeldung nicht möglich. Prüfen Sie E-Mail-Adresse und Passwort."),
     ).toBeVisible();
 
+    // The registration carried no password: the page behind the link sets it and confirms the
+    // address in one step, so only who holds the mailbox decides the password.
     await user.goto(verifyPath);
     await expect(
-      user.getByText("E-Mail-Adresse bestätigt — Sie können sich jetzt anmelden."),
+      user.getByRole("heading", { level: 1, name: "Passwort festlegen" }),
     ).toBeVisible();
     await expect.poll(() => user.url()).not.toContain("token=");
+    await user.getByLabel("Passwort", { exact: true }).fill(password);
+    await user.getByLabel("Passwort wiederholen", { exact: true }).fill(password);
+    await user.getByRole("button", { name: "Adresse bestätigen" }).click();
+    await expect(
+      user.getByText(
+        "E-Mail-Adresse bestätigt und Passwort festgelegt — Sie können sich jetzt anmelden.",
+      ),
+    ).toBeVisible();
 
     await signInSuccessfully(user, address, password);
     await user.goto("/spaces");

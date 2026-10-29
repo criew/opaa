@@ -948,6 +948,14 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       route.fulfill({ status: 204 }),
     );
     await page.goto("/verify-email?token=e2e-token");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Passwort festlegen" }),
+    ).toBeVisible();
+    await expectNoSeriousA11yViolations(page, "E-Mail-Bestätigung (Formular)");
+
+    await page.getByLabel("Passwort", { exact: true }).fill("Sommerregen-42x");
+    await page.getByLabel("Passwort wiederholen", { exact: true }).fill("Sommerregen-42x");
+    await page.getByRole("button", { name: "Adresse bestätigen" }).click();
     await expect(page.getByRole("alert")).toContainText(
       "E-Mail-Adresse bestätigt",
     );

@@ -88,23 +88,25 @@ export async function forgotPassword(email: string): Promise<void> {
   }
 }
 
-/** Registers an account. Answers 202 whether or not one was created. */
-export async function register(
-  email: string,
-  displayName: string,
-  password: string,
-): Promise<void> {
+/**
+ * Registers an account. Answers 202 whether or not one was created. Carries no password: the person
+ * sets it with the verification link, so whoever registers somebody else's address cannot.
+ */
+export async function register(email: string, displayName: string): Promise<void> {
   try {
-    await authClient.post(`${LOCAL_AUTH_BASE}/register`, { email, displayName, password })
+    await authClient.post(`${LOCAL_AUTH_BASE}/register`, { email, displayName })
   } catch (err) {
     rethrowAsSelfServiceFailure(err, 'Die Registrierung wurde nicht angenommen.')
   }
 }
 
-/** Confirms the address of a self-registered account; triggered by the page, never by the link. */
-export async function verifyEmail(token: string): Promise<void> {
+/**
+ * Confirms the address of a self-registered account and sets its password in one step; sent by the
+ * page's form, never by the link. A refused password leaves the link open.
+ */
+export async function verifyEmail(token: string, newPassword: string): Promise<void> {
   try {
-    await authClient.post(`${LOCAL_AUTH_BASE}/verify-email`, { token })
+    await authClient.post(`${LOCAL_AUTH_BASE}/verify-email`, { token, newPassword })
   } catch (err) {
     rethrowAsSelfServiceFailure(err, 'Die Bestätigung war nicht möglich.')
   }

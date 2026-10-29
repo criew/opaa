@@ -10,7 +10,6 @@ import { Navigate, Link as RouterLink } from 'react-router'
 import AuthLayout from '../components/AuthLayout'
 import AuthLoading from '../components/AuthLoading'
 import AuthNotice from '../components/AuthNotice'
-import NewPasswordField from '../components/NewPasswordField'
 import SectionEyebrow from '../components/SectionEyebrow'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
@@ -22,7 +21,6 @@ import { LOGIN_ROUTE } from '@/shared/routes'
 import {
   fieldErrorMessages,
   MAIL_SENT_MESSAGE,
-  passwordPolicyText,
   SELF_SERVICE_DISABLED_MESSAGE,
   SELF_SERVICE_UNREACHABLE_MESSAGE,
   tooManyRequestsMessage,
@@ -31,7 +29,7 @@ import { radius } from '@/shared/theme/tokens'
 
 const HEADING = 'Konto registrieren'
 /** The fields this form can show an error at, in the order the focus walks them. */
-const FIELDS = ['displayName', 'email', 'password'] as const
+const FIELDS = ['displayName', 'email'] as const
 
 /**
  * Registers an account of this installation. The acknowledgement is the same for a free address and
@@ -46,18 +44,16 @@ export default function RegisterPage() {
 
   const [email, setEmail] = useState('')
   const [displayName, setDisplayName] = useState('')
-  const [password, setPassword] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
   const displayNameRef = useRef<HTMLInputElement>(null)
   const emailRef = useRef<HTMLInputElement>(null)
-  const passwordRef = useRef<HTMLInputElement>(null)
   const alertRef = useRef<HTMLDivElement>(null)
   const focusFirstError = useErrorFocus(
     FIELDS,
-    { displayName: displayNameRef, email: emailRef, password: passwordRef },
+    { displayName: displayNameRef, email: emailRef },
     alertRef,
   )
 
@@ -74,7 +70,7 @@ export default function RegisterPage() {
     setFieldErrors({})
     setFormError(null)
     try {
-      await register(email.trim(), displayName.trim(), password)
+      await register(email.trim(), displayName.trim())
       setDone(true)
     } catch (err) {
       if (err instanceof FieldValidationError && err.fieldErrors.length > 0) {
@@ -111,23 +107,20 @@ export default function RegisterPage() {
           heading={HEADING}
           severity="success"
           message={MAIL_SENT_MESSAGE}
-          detail="Bestätigen Sie darin Ihre E-Mail-Adresse; der Link gilt 24 Stunden. Erst danach können Sie sich anmelden."
+          detail="Über den Link darin bestätigen Sie Ihre E-Mail-Adresse und legen Ihr Passwort fest; der Link gilt 24 Stunden. Erst danach können Sie sich anmelden."
         >
           <Stack spacing={1.5} sx={{ alignItems: 'flex-start' }}>
             <Link component={RouterLink} to={LOGIN_ROUTE}>
               Zur Anmeldung
             </Link>
             {/* A second registration of an address that is still unconfirmed sends the
-                verification link again and keeps the stored hash and name - so "no mail
-                arrived" has a way out that needs no administrator. The entry stays what it was;
-                the sentence says so, because the form behind this still shows a password field
-                whose content is no longer what decides. */}
+                verification link again - so "no mail arrived" has a way out that needs no
+                administrator. */}
             <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
               Keine E-Mail erhalten?{' '}
               <Link component="button" type="button" onClick={() => setDone(false)}>
                 Registrierung erneut absenden
-              </Link>{' '}
-              — Ihr Passwort von vorhin bleibt gültig.
+              </Link>
             </Typography>
           </Stack>
         </AuthNotice>
@@ -153,7 +146,8 @@ export default function RegisterPage() {
         <SectionEyebrow id="register-title">Neues Konto</SectionEyebrow>
         <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.5, mb: 2 }}>
           Ihr Haus lässt die Registrierung für bestimmte E-Mail-Domänen zu. Nach der Registrierung
-          bestätigen Sie Ihre Adresse über einen Link, den wir Ihnen schicken.
+          schicken wir Ihnen einen Link; darüber bestätigen Sie Ihre Adresse und legen Ihr Passwort
+          fest.
         </Typography>
         <Stack spacing={2}>
           <Box>
@@ -185,21 +179,6 @@ export default function RegisterPage() {
               disabled={busy}
               error={Boolean(fieldErrors.email)}
               helperText={fieldErrors.email}
-            />
-          </Box>
-          <Box>
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 1 }}>
-              {passwordPolicyText(minLength)}
-            </Typography>
-            <NewPasswordField
-              id="register-password"
-              label="Passwort"
-              value={password}
-              onChange={setPassword}
-              minLength={minLength}
-              disabled={busy}
-              errorMessage={fieldErrors.password}
-              inputRef={passwordRef}
             />
           </Box>
           <Button

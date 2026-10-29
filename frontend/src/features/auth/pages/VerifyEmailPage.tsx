@@ -1,111 +1,212 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
+import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import CircularProgress from '@mui/material/CircularProgress'
+import Button from '@mui/material/Button'
 import Link from '@mui/material/Link'
+import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { Link as RouterLink } from 'react-router'
 import AuthLayout from '../components/AuthLayout'
+import AuthLoading from '../components/AuthLoading'
 import AuthNotice from '../components/AuthNotice'
+import NewPasswordField from '../components/NewPasswordField'
+import PasswordField from '../components/PasswordField'
+import SectionEyebrow from '../components/SectionEyebrow'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
+import { useErrorFocus } from '@/shared/hooks/useErrorFocus'
 import { useLinkToken } from '../hooks/useLinkToken'
-import { RateLimitedError, verifyEmail } from '../api/selfServiceApi'
+import { FieldValidationError } from '@/shared/session/authApi'
+import { LinkInvalidError, RateLimitedError, verifyEmail } from '../api/selfServiceApi'
+import { useAuthStore } from '@/shared/session/authStore'
 import { LOGIN_ROUTE } from '@/shared/routes'
 import {
   EMAIL_VERIFIED_MESSAGE,
+  fieldErrorMessages,
   LINK_INVALID_MESSAGE,
+  passwordPolicyText,
+  SELF_SERVICE_UNREACHABLE_MESSAGE,
   tooManyRequestsMessage,
 } from '@/shared/session/authMessages'
+import { radius } from '@/shared/theme/tokens'
 
-const HEADING = 'E-Mail-Adresse bestätigen'
+const HEADING = 'Passwort festlegen'
+const MISMATCH_MESSAGE = 'Die beiden Eingaben stimmen nicht überein.'
+/** The fields this form can show an error at, in the order the focus walks them. */
+const FIELDS = ['newPassword', 'repeatedPassword'] as const
 
-type Status = 'checking' | 'confirmed' | 'invalid' | 'rateLimited'
+function SignInLink({ children = 'Zur Anmeldung' }: { children?: string }) {
+  return (
+    <Link component={RouterLink} to={LOGIN_ROUTE}>
+      {children}
+    </Link>
+  )
+}
 
 /**
- * The page behind the verification link. The link itself is a plain `GET`; the confirming `POST`
- * happens here - and exactly once per mount, which the ref guards: React's StrictMode runs the
- * effect twice in development, and the token is single-use, so the second call would consume
- * nothing and report the link as invalid right after it worked. The ref holds the token rather than
- * a flag, so a mount whose token changed would still send - the guard is "this token has been
- * sent", not "some request has gone out".
+ * The page behind the verification link of a self-registration (ADR-0033, Entscheidung 11). The
+ * registration carries no password: the person chooses it here, and the one request confirms the
+ * address and sets the password together - so only who holds the mailbox decides it. The link
+ * itself is a plain `GET`; nothing is sent before the form is submitted, and a refused password
+ * leaves the link open. Reachable whatever the self-service switches say.
  */
 export default function VerifyEmailPage() {
   // Reads the token and takes it out of the address bar before this page's first request leaves, so
   // no referrer carries it. A reload then has no token and reads as an invalid link - the link from
   // the mail is the way back (see useLinkToken).
   const token = useLinkToken()
-  const [status, setStatus] = useState<Status>(token === '' ? 'invalid' : 'checking')
-  const [waitMessage, setWaitMessage] = useState<string | null>(null)
-  const sentToken = useRef<string | null>(null)
+  const isLoading = useAuthStore((s) => s.isLoading)
+  const minLength = useAuthStore((s) => s.localAccounts.passwordMinLength)
+  const sessionKind = useAuthStore((s) => s.sessionKind)
+  const expireSession = useAuthStore((s) => s.expireSession)
 
-  useEffect(() => {
-    if (token === '' || sentToken.current === token) return
-    sentToken.current = token
-    verifyEmail(token).then(
-      () => setStatus('confirmed'),
-      (err: unknown) => {
-        // A refused rate limit is the one failure that says "try again in a moment" rather than
-        // "this link is gone" - the link is untouched, so offering it as invalid would be wrong.
-        // Every other failure reads the same: an invalid token and an unreachable backend both
-        // leave the address unconfirmed, and the way on is identical.
-        if (err instanceof RateLimitedError) {
-          setWaitMessage(tooManyRequestsMessage(err.retryAfterSeconds))
-          setStatus('rateLimited')
-          return
-        }
-        setStatus('invalid')
-      },
-    )
-  }, [token])
+  const [password, setPassword] = useState('')
+  const [repeated, setRepeated] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [formError, setFormError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState(false)
+  const [linkInvalid, setLinkInvalid] = useState(false)
+  const newPasswordRef = useRef<HTMLInputElement>(null)
+  const repeatedRef = useRef<HTMLInputElement>(null)
+  const alertRef = useRef<HTMLDivElement>(null)
+  const focusFirstError = useErrorFocus(
+    FIELDS,
+    { newPassword: newPasswordRef, repeatedPassword: repeatedRef },
+    alertRef,
+  )
 
-  if (status === 'checking') {
+  function failWith(errors: Record<string, string>, message: string | null) {
+    setFieldErrors(errors)
+    setFormError(message)
+    focusFirstError(errors)
+  }
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault()
+    if (busy) return
+    if (password !== repeated) {
+      failWith({ repeatedPassword: MISMATCH_MESSAGE }, null)
+      return
+    }
+    setBusy(true)
+    setFieldErrors({})
+    setFormError(null)
+    try {
+      await verifyEmail(token, password)
+      // The backend ended every session of the account; a local one still held by this tab would
+      // otherwise follow "Zur Anmeldung" into the application with a dead token.
+      if (sessionKind === 'local') expireSession('session_revoked:password_changed')
+      setDone(true)
+    } catch (err) {
+      if (err instanceof LinkInvalidError) {
+        setLinkInvalid(true)
+      } else if (err instanceof FieldValidationError && err.fieldErrors.length > 0) {
+        const { byField, unassigned } = fieldErrorMessages(err.fieldErrors, minLength, FIELDS)
+        failWith(byField, unassigned.length > 0 ? unassigned.join(' ') : null)
+      } else if (err instanceof FieldValidationError) {
+        failWith({}, err.message)
+      } else if (err instanceof RateLimitedError) {
+        // The link is untouched by a refused rate limit - the form stays, with the wait.
+        failWith({}, tooManyRequestsMessage(err.retryAfterSeconds))
+      } else {
+        failWith({}, SELF_SERVICE_UNREACHABLE_MESSAGE)
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (done) {
     return (
       <AuthLayout>
-        <PageHeading title={HEADING} variant="h5" />
-        <Box
-          sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 3, color: 'text.secondary' }}
-        >
-          <CircularProgress size={20} aria-hidden="true" />
-          <Typography role="status" sx={{ fontSize: 13.5 }}>
-            Ihre E-Mail-Adresse wird geprüft …
-          </Typography>
-        </Box>
+        <AuthNotice heading={HEADING} severity="success" message={EMAIL_VERIFIED_MESSAGE}>
+          <SignInLink />
+        </AuthNotice>
       </AuthLayout>
     )
   }
 
-  if (status === 'rateLimited') {
+  // A missing token and a refused one read the same: both mean "this link does not work".
+  if (linkInvalid || token === '') {
     return (
       <AuthLayout>
         <AuthNotice
           heading={HEADING}
-          severity="warning"
-          message={waitMessage ?? tooManyRequestsMessage(null)}
-          detail="Ihr Link ist dadurch nicht verbraucht — öffnen Sie ihn danach einfach erneut."
+          severity="error"
+          message={LINK_INVALID_MESSAGE}
+          detail="Der Link gilt 24 Stunden und nur einmal. Ein erneutes Laden dieser Seite hilft nicht — öffnen Sie den Link aus der E-Mail noch einmal, oder registrieren Sie sich erneut, wenn er abgelaufen ist."
         >
-          <Link component={RouterLink} to={LOGIN_ROUTE}>
-            Zur Anmeldung
-          </Link>
+          <SignInLink />
         </AuthNotice>
+      </AuthLayout>
+    )
+  }
+
+  // The form shows the policy from the configuration; it must not show the default while that is
+  // still on its way.
+  if (isLoading) {
+    return (
+      <AuthLayout>
+        <AuthLoading heading={HEADING} />
       </AuthLayout>
     )
   }
 
   return (
     <AuthLayout>
-      <AuthNotice
-        heading={HEADING}
-        severity={status === 'confirmed' ? 'success' : 'error'}
-        message={status === 'confirmed' ? EMAIL_VERIFIED_MESSAGE : LINK_INVALID_MESSAGE}
-        detail={
-          status === 'confirmed'
-            ? undefined
-            : 'Der Link gilt 24 Stunden und nur einmal. Ein erneutes Laden dieser Seite hilft nicht — öffnen Sie den Link aus der E-Mail noch einmal, oder registrieren Sie sich erneut, wenn er abgelaufen ist.'
-        }
+      <PageHeading title={HEADING} variant="h5" />
+      {formError && (
+        <Alert ref={alertRef} tabIndex={-1} severity="error" sx={{ mt: 2, textAlign: 'left' }}>
+          {formError}
+        </Alert>
+      )}
+      <Box
+        component="form"
+        aria-labelledby="verify-email-title"
+        onSubmit={submit}
+        noValidate
+        sx={{ mt: 3 }}
       >
-        <Link component={RouterLink} to={LOGIN_ROUTE}>
-          Zur Anmeldung
-        </Link>
-      </AuthNotice>
+        <SectionEyebrow id="verify-email-title">Zugang einrichten</SectionEyebrow>
+        <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.5, mb: 2 }}>
+          Mit Ihrem Passwort bestätigen Sie zugleich Ihre E-Mail-Adresse.{' '}
+          {passwordPolicyText(minLength)}
+        </Typography>
+        <Stack spacing={2}>
+          <NewPasswordField
+            id="verify-email-new"
+            label="Passwort"
+            value={password}
+            onChange={setPassword}
+            minLength={minLength}
+            disabled={busy}
+            errorMessage={fieldErrors.newPassword}
+            onGenerated={setRepeated}
+            inputRef={newPasswordRef}
+          />
+          <PasswordField
+            id="verify-email-repeat"
+            label="Passwort wiederholen"
+            value={repeated}
+            onChange={setRepeated}
+            autoComplete="new-password"
+            disabled={busy}
+            errorMessage={fieldErrors.repeatedPassword}
+            inputRef={repeatedRef}
+          />
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={busy}
+            sx={{ alignSelf: 'flex-start', borderRadius: `${radius.md}px`, minWidth: 140 }}
+          >
+            {busy ? 'Wird gespeichert …' : 'Adresse bestätigen'}
+          </Button>
+        </Stack>
+      </Box>
+      <Typography sx={{ mt: 3, fontSize: 12, textAlign: 'center' }}>
+        <SignInLink>Zurück zur Anmeldung</SignInLink>
+      </Typography>
     </AuthLayout>
   )
 }

@@ -1,17 +1,37 @@
 import { StrictMode } from 'react'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { BrowserRouter, Route, Routes } from 'react-router'
 import { renderWithProviders } from '@/test/test-utils'
 import { server } from '@/test/server'
+import { useAuthStore } from '@/shared/session/authStore'
+import { LOCAL_ACCOUNTS_DISABLED } from '@/shared/session/types'
 import { MOCK_RATE_LIMITED_TOKEN, MOCK_VERIFY_EMAIL_TOKEN } from '../mocks/localAuthFixtures'
 import VerifyEmailPage from './VerifyEmailPage'
 
+const CONFIRMED =
+  'E-Mail-Adresse bestätigt und Passwort festgelegt — Sie können sich jetzt anmelden.'
+
 /**
- * ADR-0033, Entscheidung 11: the link is a plain GET, the confirming POST happens on this page - and
- * exactly once, because the token is single-use. Reachable whatever the self-service switches say.
+ * ADR-0033, Entscheidung 11: the registration carries no password - the page behind the
+ * verification link asks for it, and one request confirms the address and sets it, so only who
+ * holds the link decides the password. The link is a plain GET; nothing is sent before the form.
+ * Reachable whatever the self-service switches say.
  */
 describe('VerifyEmailPage', () => {
+  const { expireSession } = useAuthStore.getState()
+
+  beforeEach(() => {
+    useAuthStore.setState({
+      isLoading: false,
+      isAuthenticated: false,
+      sessionKind: null,
+      localAccounts: { ...LOCAL_ACCOUNTS_DISABLED, enabled: true, passwordMinLength: 12 },
+      expireSession,
+    })
+  })
+
   const routes = (
     <Routes>
       <Route path="/verify-email" element={<VerifyEmailPage />} />
@@ -29,8 +49,8 @@ describe('VerifyEmailPage', () => {
 
   /**
    * The page in a real {@link BrowserRouter} on jsdom's own `window.location`: a MemoryRouter keeps
-   * its location in React state, where `window.location` never changes and the regression below
-   * could not be seen at all.
+   * its location in React state, where `window.location` never changes and the referrer could not
+   * be observed at all.
    */
   function renderInBrowser(search: string) {
     window.history.replaceState({}, '', `/verify-email${search}`)
@@ -39,107 +59,125 @@ describe('VerifyEmailPage', () => {
     })
   }
 
-  it('confirms the address and points at the sign-in page', async () => {
-    renderAt(`?token=${MOCK_VERIFY_EMAIL_TOKEN}`)
+  async function fillAndSubmit(password = 'Sommerregen-42x', repeated = password) {
+    await userEvent.type(screen.getByLabelText('Passwort'), password)
+    await userEvent.type(screen.getByLabelText('Passwort wiederholen'), repeated)
+    await userEvent.click(screen.getByRole('button', { name: 'Adresse bestätigen' }))
+  }
 
-    expect(
-      await screen.findByText('E-Mail-Adresse bestätigt — Sie können sich jetzt anmelden.'),
-    ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Zur Anmeldung' })).toBeInTheDocument()
+  /** The paths of every request the page makes, in order. */
+  function recordRequests(): string[] {
+    const paths: string[] = []
+    server.events.on('request:start', ({ request }) => {
+      paths.push(new URL(request.url).pathname)
+    })
+    return paths
+  }
+
+  it('asks for the password and sends nothing before the form is submitted', () => {
+    const paths = recordRequests()
+    renderAt(`?token=${MOCK_VERIFY_EMAIL_TOKEN}`, true)
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Passwort festlegen')
+    expect(screen.getByText(/bestätigen Sie zugleich Ihre E-Mail-Adresse/)).toBeInTheDocument()
+    expect(screen.getByText(/Mindestens 12 Zeichen/)).toBeInTheDocument()
+    expect(paths).toEqual([])
+    server.events.removeAllListeners('request:start')
   })
 
-  it('shows that it is checking before the answer arrives', async () => {
-    renderAt(`?token=${MOCK_VERIFY_EMAIL_TOKEN}`)
-    expect(screen.getByText('Ihre E-Mail-Adresse wird geprüft …')).toBeInTheDocument()
+  it('confirms the address with the chosen password and points at the sign-in page', async () => {
+    const paths = recordRequests()
+    renderAt(`?token=${MOCK_VERIFY_EMAIL_TOKEN}`, true)
 
-    // Awaited on purpose: the request must settle inside this test, or it would consume the
-    // single-use link after the fixtures were reset and spoil the next one.
-    expect(
-      await screen.findByText('E-Mail-Adresse bestätigt — Sie können sich jetzt anmelden.'),
-    ).toBeInTheDocument()
+    await fillAndSubmit()
+
+    expect(await screen.findByText(CONFIRMED)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Zur Anmeldung' })).toBeInTheDocument()
+    expect(paths.filter((path) => path === '/api/v1/auth/local/verify-email')).toHaveLength(1)
+    server.events.removeAllListeners('request:start')
   })
 
   /**
-   * ADR-0033, Entscheidung 9: no raw token in any log. This page is where the order is load-bearing -
-   * the confirming POST goes out during mount, so the URL has to be clean *before* it, not merely
-   * afterwards. Asserted on `window.location` at the moment the request starts, because that is what
-   * the browser reads the referrer from.
+   * ADR-0033, Entscheidung 9: no raw token in any log. The URL has to be clean before the first
+   * request leaves, because that is what the browser reads the referrer from.
    */
-  it('has no token in the address bar when the confirming request starts', async () => {
+  it('has no token in the address bar when the request starts', async () => {
     const seen: string[] = []
     server.events.on('request:start', () => seen.push(window.location.search))
     const historyBefore = window.history.length
-    renderInBrowser(`?token=${MOCK_VERIFY_EMAIL_TOKEN}`)
+    renderInBrowser(`?x=1&token=${MOCK_VERIFY_EMAIL_TOKEN}`)
 
-    expect(
-      await screen.findByText('E-Mail-Adresse bestätigt — Sie können sich jetzt anmelden.'),
-    ).toBeInTheDocument()
+    await fillAndSubmit()
+    expect(await screen.findByText(CONFIRMED)).toBeInTheDocument()
     server.events.removeAllListeners('request:start')
 
-    expect(seen).toEqual([''])
+    // the token is removed, the rest of the query stays
+    expect(seen).toEqual(['?x=1'])
     // replaceState, not pushState: the back button must not lead onto a URL with the token in it.
     expect(window.history.length).toBe(historyBefore)
   })
 
-  // Whatever else the link carries stays: the token is removed, not the query.
-  it('keeps the other query parameters of the link', async () => {
-    const seen: string[] = []
-    server.events.on('request:start', () => seen.push(window.location.search))
-    renderInBrowser(`?x=1&token=${MOCK_VERIFY_EMAIL_TOKEN}`)
+  it('marks a refused password at its field and keeps the form', async () => {
+    renderAt(`?token=${MOCK_VERIFY_EMAIL_TOKEN}`)
 
-    await screen.findByText('E-Mail-Adresse bestätigt — Sie können sich jetzt anmelden.')
+    await fillAndSubmit('kurz')
+
+    expect(
+      await screen.findByText('Das Passwort muss mindestens 12 Zeichen lang sein.'),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Passwort')).toHaveFocus()
+  })
+
+  it('refuses two different entries without asking the backend', async () => {
+    const paths = recordRequests()
+    renderAt(`?token=${MOCK_VERIFY_EMAIL_TOKEN}`)
+
+    await fillAndSubmit('Sommerregen-42x', 'Sommerregen-43x')
+
+    expect(screen.getByText('Die beiden Eingaben stimmen nicht überein.')).toBeInTheDocument()
+    expect(paths).toEqual([])
     server.events.removeAllListeners('request:start')
-
-    expect(seen).toEqual(['?x=1'])
   })
 
   it('answers an unusable link with the one wording', async () => {
     renderAt('?token=abgelaufen')
+
+    await fillAndSubmit()
 
     expect(await screen.findByText('Dieser Link ist nicht mehr gültig.')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Zur Anmeldung' })).toBeInTheDocument()
   })
 
   it('treats a link without a token like an invalid one without asking the backend', () => {
-    let requests = 0
-    server.events.on('request:start', () => {
-      requests++
-    })
+    const paths = recordRequests()
     renderAt('')
 
     expect(screen.getByText('Dieser Link ist nicht mehr gültig.')).toBeInTheDocument()
-    expect(requests).toBe(0)
-    server.events.removeAllListeners('request:start')
-  })
-
-  /**
-   * The regression this page's ref exists for: StrictMode runs the effect twice, and a second POST
-   * would consume nothing and report the link as invalid right after it worked.
-   */
-  it('sends exactly one request, also under StrictMode', async () => {
-    const paths: string[] = []
-    server.events.on('request:start', ({ request }) => {
-      paths.push(new URL(request.url).pathname)
-    })
-
-    renderAt(`?token=${MOCK_VERIFY_EMAIL_TOKEN}`, true)
-    expect(
-      await screen.findByText('E-Mail-Adresse bestätigt — Sie können sich jetzt anmelden.'),
-    ).toBeInTheDocument()
-
-    expect(paths.filter((path) => path === '/api/v1/auth/local/verify-email')).toHaveLength(1)
+    expect(paths).toEqual([])
     server.events.removeAllListeners('request:start')
   })
 
   // A refused rate limit leaves the link untouched - calling it invalid would be wrong.
-  it('names the wait of a rate-limited check and says the link still works', async () => {
+  it('names the wait of a rate-limited request and keeps the form', async () => {
     renderAt(`?token=${MOCK_RATE_LIMITED_TOKEN}`)
+
+    await fillAndSubmit()
 
     expect(
       await screen.findByText(
         'Es wurden zu viele Anfragen gestellt. Bitte versuchen Sie es in 2 Minuten erneut.',
       ),
     ).toBeInTheDocument()
-    expect(screen.getByText(/Ihr Link ist dadurch nicht verbraucht/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Adresse bestätigen' })).toBeInTheDocument()
+  })
+
+  it('ends a local session of this tab once the backend revoked it', async () => {
+    useAuthStore.setState({ isAuthenticated: true, sessionKind: 'local' })
+    renderAt(`?token=${MOCK_VERIFY_EMAIL_TOKEN}`)
+
+    await fillAndSubmit()
+
+    expect(await screen.findByText(CONFIRMED)).toBeInTheDocument()
+    expect(useAuthStore.getState().isAuthenticated).toBe(false)
   })
 })
