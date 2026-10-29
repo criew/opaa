@@ -411,7 +411,8 @@ public class LibraryMetadataFieldService {
   /**
    * How many documents carry {@code code} - the Folgekosten that stand <b>before</b> the
    * confirmation of a mapping (metadata-schema.md: "Die Zahl der betroffenen Dokumente steht vor
-   * der Bestätigung fest").
+   * der Bestätigung fest"). A cost of the schema maintenance like {@link #changeImpact}, hence open
+   * to the administration as well, not only to the content right.
    */
   @Transactional(readOnly = true)
   public long valueUsage(UUID libraryId, String fieldKey, String code, CurrentUser caller) {

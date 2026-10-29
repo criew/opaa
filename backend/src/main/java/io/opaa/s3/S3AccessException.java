@@ -177,6 +177,18 @@ public class S3AccessException extends IOException {
     public Unreachable(String detail) {
       super("Der Objektspeicher ist nicht erreichbar: " + detail);
     }
+
+    private Unreachable(String message, boolean verbatim) {
+      super(message);
+    }
+
+    /**
+     * A target name that does not resolve: unreachable, but worded exactly like {@link
+     * TargetBlocked}, so the answer does not tell whether an internal name exists.
+     */
+    public static Unreachable unresolvedTarget(String message, String allowlistHint) {
+      return new Unreachable(message + " " + allowlistHint, true);
+    }
   }
 
   /**

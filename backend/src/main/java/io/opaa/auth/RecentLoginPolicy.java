@@ -6,6 +6,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 
 /**
@@ -59,6 +60,14 @@ public class RecentLoginPolicy {
         || authTime.isAfter(now.plus(CLOCK_SKEW))) {
       throw refusal(Reason.AUTH_TIME_TOO_OLD);
     }
+  }
+
+  /**
+   * {@link #requireRecentLogin(Authentication)} for the request being served, for a service whose
+   * demand depends on what the request changes, where a handler annotation cannot decide.
+   */
+  public void requireRecentLogin() {
+    requireRecentLogin(SecurityContextHolder.getContext().getAuthentication());
   }
 
   /** The time of sign-in the token names, or {@code null} when it names none readable. */

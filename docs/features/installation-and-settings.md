@@ -398,7 +398,7 @@ Konfiguration; Gruppe E entfällt oder wandert in die Datenbank.
 | A | Start und Infrastruktur: nötig, bevor es eine Datenbank gibt, oder vom Betrieb bereitgestellte Dienste | 68 |
 | B | Schlüssel und Geheimnisse des Betriebs, die Werte der Datenbank schützen oder Dienste anbinden | 8 |
 | C | Grenzen des Betriebs (ADR-0060, Entscheidung 2) | 29 |
-| D | Lastgrenzen, Überlastschutz und Technik: Budgets, Größen, Timeouts, Nebenläufigkeit, Endpunkte | 182 |
+| D | Lastgrenzen, Überlastschutz und Technik: Budgets, Größen, Timeouts, Nebenläufigkeit, Endpunkte | 185 |
 | E | Fachliche Einstellungen: entfallen oder wandern in die Datenbank | 48 |
 | F | Experten-Feinabstimmung von Suche und Index (ADR-0060, Entscheidung 3) | 38 |
 
@@ -558,9 +558,6 @@ der Quellen).
 | `OPAA_INDEXING_CONFLUENCE_PAGE_SIZE` | `opaa.indexing.confluence.page-size` |
 | `OPAA_INDEXING_CONFLUENCE_REQUEST_BUDGET_PER_RUN` | `opaa.indexing.confluence.request-budget-per-run` |
 | `OPAA_INDEXING_CONFLUENCE_REQUEST_TIMEOUT` | `opaa.indexing.confluence.request-timeout` |
-| `OPAA_INDEXING_CONFLUENCE_WEBHOOK_DEBOUNCE` | `opaa.indexing.confluence.webhook.debounce` |
-| `OPAA_INDEXING_CONFLUENCE_WEBHOOK_MAX_DEFERRALS` | `opaa.indexing.confluence.webhook.max-deferrals` |
-| `OPAA_INDEXING_CONFLUENCE_WEBHOOK_MAX_PENDING_PAGES` | `opaa.indexing.confluence.webhook.max-pending-pages` |
 | `OPAA_INDEXING_CRAWL_MAX_DEPTH` | `opaa.indexing.crawl.max-depth` |
 | `OPAA_INDEXING_CRAWL_MAX_ENTRIES` | `opaa.indexing.crawl.max-entries` |
 | `OPAA_INDEXING_CRAWL_MAX_FILE_SIZE_BYTES` | `opaa.indexing.crawl.max-file-size-bytes` |
@@ -624,7 +621,6 @@ der Quellen).
 | `OPAA_INDEXING_RSS_MAX_FEED_SIZE_BYTES` | `opaa.indexing.rss.max-feed-size-bytes` |
 | `OPAA_INDEXING_RSS_MAX_PAGE_SIZE_BYTES` | `opaa.indexing.rss.max-page-size-bytes` |
 | `OPAA_INDEXING_RSS_REQUEST_DELAY_MS` | `opaa.indexing.rss.request-delay-ms` |
-| `OPAA_INDEXING_RSS_USER_AGENT` | `opaa.indexing.rss.user-agent` |
 | `OPAA_INDEXING_S3_DOWNLOAD_CONCURRENCY` | `opaa.indexing.s3.download-concurrency` |
 | `OPAA_INDEXING_S3_LIST_PAGE_SIZE` | `opaa.indexing.s3.list-page-size` |
 | `OPAA_INDEXING_S3_MAX_OBJECTS_PER_RUN` | `opaa.indexing.s3.max-objects-per-run` |
@@ -669,6 +665,10 @@ der Quellen).
 | `OPAA_RATE_LIMIT_DOCUMENT_CONTENT_GLOBAL_MAX_REQUESTS` | `opaa.rate-limit.document-content.global-max-requests` |
 | `OPAA_RATE_LIMIT_DOCUMENT_CONTENT_MAX_REQUESTS` | `opaa.rate-limit.document-content.max-requests` |
 | `OPAA_RATE_LIMIT_DOCUMENT_CONTENT_WINDOW_SECONDS` | `opaa.rate-limit.document-content.window-seconds` |
+| `OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_GLOBAL_MAX_REQUESTS` | `opaa.rate-limit.document-upload.global-max-requests` |
+| `OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_MAX_REQUESTS` | `opaa.rate-limit.document-upload.max-requests` |
+| `OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_MAX_REQUESTS_PER_ACCOUNT` | `opaa.rate-limit.document-upload.max-requests-per-account` |
+| `OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_WINDOW_SECONDS` | `opaa.rate-limit.document-upload.window-seconds` |
 | `OPAA_RATE_LIMIT_ENABLED` | `opaa.rate-limit.enabled` |
 | `OPAA_RATE_LIMIT_INDEXING_GLOBAL_MAX_REQUESTS` | `opaa.rate-limit.indexing.global-max-requests` |
 | `OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS` | `opaa.rate-limit.indexing.max-requests` |
@@ -705,6 +705,10 @@ der Quellen).
 | `OPAA_RATE_LIMIT_SOURCE_TEST_GLOBAL_MAX_REQUESTS` | `opaa.rate-limit.source-test.global-max-requests` |
 | `OPAA_RATE_LIMIT_SOURCE_TEST_MAX_REQUESTS` | `opaa.rate-limit.source-test.max-requests` |
 | `OPAA_RATE_LIMIT_SOURCE_TEST_WINDOW_SECONDS` | `opaa.rate-limit.source-test.window-seconds` |
+| `OPAA_RATE_LIMIT_TRANSCRIPTION_GLOBAL_MAX_REQUESTS` | `opaa.rate-limit.transcription.global-max-requests` |
+| `OPAA_RATE_LIMIT_TRANSCRIPTION_MAX_REQUESTS` | `opaa.rate-limit.transcription.max-requests` |
+| `OPAA_RATE_LIMIT_TRANSCRIPTION_MAX_REQUESTS_PER_ACCOUNT` | `opaa.rate-limit.transcription.max-requests-per-account` |
+| `OPAA_RATE_LIMIT_TRANSCRIPTION_WINDOW_SECONDS` | `opaa.rate-limit.transcription.window-seconds` |
 | `OPAA_RATE_LIMIT_WEBHOOK_GLOBAL_MAX_REQUESTS` | `opaa.rate-limit.webhook.global-max-requests` |
 | `OPAA_RATE_LIMIT_WEBHOOK_MAX_REQUESTS` | `opaa.rate-limit.webhook.max-requests` |
 | `OPAA_RATE_LIMIT_WEBHOOK_WINDOW_SECONDS` | `opaa.rate-limit.webhook.window-seconds` |
@@ -751,8 +755,8 @@ der Quellen).
 | `OPAA_OIDC_JWK_SET_URI` | `opaa.auth.oidc.jwk-set-uri` | Startwert entfällt; Anmeldeverfahren im Assistenten |
 | `OPAA_OLLAMA_BASE_URL` | `LlmModelSeeder (Altname)` | Altname entfällt |
 | `OPAA_OLLAMA_CHAT_MODEL` | `LlmModelSeeder (Altname)` | Altname entfällt |
-| `OPAA_OPENAI_API_KEY` | `spring.ai.openai.api-key` | gemeinsamer Rückfall entfällt; Schlüssel je Modell in der Datenbank |
-| `OPAA_OPENAI_BASE_URL` | `spring.ai.openai.base-url` | gemeinsamer Rückfall entfällt; Adresse je Modell in der Datenbank |
+| `OPAA_OPENAI_API_KEY` | `spring.ai.openai.api-key` | gemeinsamer Rückfall entfällt; Schlüssel je Modell in der Datenbank. Bleibt nur im Profil `dev` (Adresse im Compose-Stapel: `docker & dev`) für die Modelle, mit denen sich der Modus `dev` einrichtet; außerhalb davon warnt der Start, wenn sie gesetzt ist |
+| `OPAA_OPENAI_BASE_URL` | `spring.ai.openai.base-url` | gemeinsamer Rückfall entfällt; Adresse je Modell in der Datenbank. Bleibt nur im Profil `dev` (Adresse im Compose-Stapel: `docker & dev`) für die Modelle, mit denen sich der Modus `dev` einrichtet; außerhalb davon warnt der Start, wenn sie gesetzt ist, und prüft sie nicht |
 | `OPAA_OPENAI_CHAT_API_KEY` | `spring.ai.openai.chat.api-key` | Startwert entfällt; Chat-Modell im Assistenten |
 | `OPAA_OPENAI_CHAT_BASE_URL` | `spring.ai.openai.chat.base-url` | Startwert entfällt; Chat-Modell im Assistenten |
 | `OPAA_OPENAI_CHAT_MAX_TOKENS` | `spring.ai.openai.chat.max-tokens` | Startwert entfällt; Chat-Modell im Assistenten |

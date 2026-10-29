@@ -91,9 +91,10 @@ const templateSeeds: MailTemplateSeed[] = [
     label: 'Bestätigung der Selbstregistrierung',
     subject: 'Bestätigen Sie Ihre E-Mail-Adresse für {{productName}}',
     bodyPlain:
-      'Guten Tag {{displayName}},\n\nbestätigen Sie diese Adresse, um Ihren Zugang zu' +
-      ' {{productName}} zu aktivieren:\n\n{{actionUrl}}\n\nDer Link ist {{expiresAtHuman}}' +
-      ' gültig.\n',
+      'Guten Tag,\n\nfür diese Adresse wurde ein Zugang zu {{productName}}' +
+      ' beantragt. Bestätigen Sie die Adresse und legen Sie Ihr Passwort fest:\n\n{{actionUrl}}' +
+      '\n\nDer Link ist {{expiresAtHuman}} gültig.\n\nNicht von Ihnen? Dann ignorieren Sie' +
+      ' diese Nachricht. Ohne den Link wird kein Zugang aktiv.\n',
     placeholders: ['actionUrl', 'displayName', 'expiresAtHuman', 'productName'],
   },
   {

@@ -90,6 +90,13 @@ löschen — der Satz ist fest, damit keine Installation mit einer Vorlage ohne 
   ein Wert für einen verwendeten Platzhalter, wird nicht versendet, statt eine Nachricht mit einer
   Lücke an der Stelle des Links zu verschicken.
 - **Der Produktname kommt aus dem Branding.** Er muss nirgends eingetragen werden.
+- **Eine überschriebene Vorlage folgt geänderten Abläufen nicht von selbst.** OPAA merkt sich nicht,
+  auf welchem ausgelieferten Stand eine eigene Fassung beruht. Die „Bestätigung der
+  Selbstregistrierung" führt heute zum Festlegen von Name und Passwort und bittet, eine nicht selbst
+  ausgelöste Registrierung zu ignorieren; die Anrede bleibt dort immer leer, weil der Name noch von
+  irgendwem stammen kann. Eine ältere eigene Fassung dieser Vorlage auf den ausgelieferten Stand
+  zurücksetzen oder entsprechend anpassen
+  ([Selbstregistrierung](../konten-und-rechte/benutzerverwaltung.md#10-selbstregistrierung)).
 - **Der HTML-Teil trägt den Rahmen der Installation**: Produktname und Akzentfarbe aus dem Branding.
   Ein Logo wird nicht eingebettet. Wer einen eigenen HTML-Teil speichert, ersetzt den Rahmen
   vollständig.

@@ -263,7 +263,9 @@ jobs:
         if: github.event_name != 'pull_request' || steps.filter.outputs.workflows == 'true'
         run: .github/scripts/check_action_pins.sh
 
-      # No run: or script: block interpolates github.head_ref, github.event.*, inputs.* or secrets.*,
+      # No run: or script: block interpolates github.head_ref, github.ref, github.ref_name,
+      # github.workflow_ref, github.event in any form, the github context as a whole, or the
+      # inputs, secrets, vars and env contexts,
       # every workflow sets top-level permissions: and every checkout states persist-credentials
       # (AGENTS.md, "GitHub-Actions-Workflows").
       - name: Kontextwerte, Token-Rechte und Checkout-Credentials der Workflows prüfen
@@ -359,6 +361,30 @@ jobs:
           case "$HEAD_REF" in renovate/*) enforce=--enforce ;; esac
           python3 .github/scripts/check_gradle_verification_metadata.py \
             "$base" backend/gradle/verification-metadata.xml $enforce
+
+  # Fails a pull request whose dependency changes bring a known vulnerability of severity critical
+  # in runtime scope (docs/cve-scanning.md, "PR-Gate für Abhängigkeiten"). It compares the
+  # dependency graph of base and head through the GitHub API, so it needs no checkout. Only on
+  # pull_request: a push or merge_group run has no base to compare with.
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Neue critical-Schwachstellen im Scope runtime ablehnen
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: critical
+          fail-on-scopes: runtime
+
+      # The gate above filters by severity and scope before it reports; this run only lists every
+      # vulnerable change of both scopes in the job log and never fails.
+      - name: Alle Schwachstellen der Abhängigkeitsänderungen auflisten
+        if: success() || failure()
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: low
+          fail-on-scopes: runtime, development
+          warn-only: true
 
   # The backend suite runs as three parallel package shards (see `testShards` in
   # backend/build.gradle.kts) plus one build job for everything `build` does besides the root

@@ -31,7 +31,7 @@ class ExternalAccessSettingsServiceFeatureTest {
         mock(AuditEventRecorder.class),
         Clock.systemUTC(),
         flags,
-        new ExternalAccessProperties(365));
+        new ExternalAccessProperties(365, 30));
   }
 
   private void storedSwitch(boolean enabled) {
