@@ -969,7 +969,7 @@ Inhalt muss Text sein **und** die Datei muss `.csv` heißen.
 
 #### Umgesetzt (#1058)
 
-`TabularDocumentFormat` (`id` `tabular`, Version 1, seit #2327 Version 2, seit #2331 Version 3, seit #3315 Version 4) beansprucht `.xlsx`, `.csv` und `.ods` in der
+`TabularDocumentFormat` (`id` `tabular`, Version 1, seit #2327 Version 2, seit #2331 Version 3, seit #3315 Version 4, seit #3376 Version 5) beansprucht `.xlsx`, `.csv` und `.ods` in der
 `DocumentFormatRegistry`. XLSX wird blatt- und zellenweise über Apache POI gelesen, CSV über einen
 Trennzeichen-erkennenden Parser (Komma, Semikolon, Tabulator — die reale Exportvarianten, siehe
 Test-Fixtures). **ODS liest POI nicht** — POI deckt OOXML (XLSX/DOCX/PPTX) und die alten

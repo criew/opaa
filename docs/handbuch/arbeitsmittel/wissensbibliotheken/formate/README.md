@@ -39,7 +39,8 @@ weder die Verarbeitung anderer Dokumente blockiert noch den Speicher des Backend
 gemeinsame Obergrenzen:
 
 - **Text je Dokument** (`max-text-characters`): gilt für PDF, Word, PowerPoint, Excel, ODS und CSV,
-  HTML und Markdown sowie für die Auffang-Pipeline (`.txt`, `.doc`). PDF, ODS und die
+  HTML und Markdown, für die Auffang-Pipeline (`.txt`, `.doc`) und für den Text von E-Mails
+  (Kopfdaten und Nachrichtentext, ohne Anhänge, die eigene Dokumente sind). PDF, ODS und die
   Auffang-Pipeline zählen schon beim Lesen mit — ODS auch beim Auffalten wiederholter Zellen — und
   hören auf, sobald die Grenze überschritten ist.
 - **Entpackte Größe von Word, PowerPoint und Excel** (`max-ooxml-part-bytes` je Inhaltsdatei,
@@ -62,19 +63,30 @@ gemeinsame Obergrenzen:
 - **Seiten eines PDF** (`max-pdf-pages`): gezählt, indem der Seitenbaum durchlaufen wird, nicht nach
   der Seitenzahl, die die Datei selbst angibt; eine Seite, die mehrfach eingehängt ist, zählt
   mehrfach.
+- **Objekte eines PDF** (`max-pdf-objects`): Einträge aller Querverweistabellen und -ströme der
+  Datei, auch älterer Fassungen, dazu die Objekte jedes entpackten Objektstroms und bei beschädigtem
+  Querverweis die Objekte, die die Suche in der Datei findet, zusammengezählt. Ein Querverweisstrom
+  zählt höchstens so viele Einträge, wie seine entpackten Daten fassen; einer ohne Eintragsbreite
+  (`/W [0 0 0]`) wird abgewiesen. So kann ein Querverweis, der Millionen Einträge angibt, nicht den
+  Speicher füllen.
 - **Lesezeit eines PDF** (`max-pdf-parse-seconds`): als letzte Sicherung die Zeit, die das Lesen
   eines PDF insgesamt dauern darf.
 - **Gliederung eines PDF:** Jeder Lesezeichen-Eintrag wird höchstens einmal gelesen, so dass eine
   Gliederung, die auf sich selbst zurückverweist, das Lesen nicht aufhält; tiefer als 64 Ebenen und
   über 50.000 Einträge hinaus wird sie nicht weiter verfolgt.
-- **Wiederholter Kontext** (fest, 500 Zeichen): Was vor jedem Chunk wiederholt wird —
-  Überschriftenpfad, Folientitel, Blatt- und Tabellenname mit Kopfzeile — und der Fundort werden
-  auf 500 Zeichen gekürzt, damit eine lange Überschrift oder eine sehr breite Kopfzeile sich nicht
-  mit der Zahl der Chunks vervielfacht. Bei einer Tabelle mit sehr vielen Spalten tragen die
-  Chunks deshalb nur die ersten Spaltennamen.
+- **Wiederholter Kontext**: Was vor jedem Chunk wiederholt wird, wird gekürzt, damit eine lange
+  Überschrift oder eine sehr breite Kopfzeile sich nicht mit der Zahl der Chunks vervielfacht. Der
+  Überschriftenpfad, der Fundort sowie Blatt- und Tabellennamen werden fest auf 500 Zeichen gekürzt.
+  Folientitel und Kontextzeile mit Kopfzeile einer Tabelle werden auf die Hälfte von
+  `chunk-target-characters` gekürzt (mindestens 500, bei 4.000 Zeichen also 2.000). Ist die
+  Kopfzeile einer Tabelle länger, steht sie einmal vollständig in einem eigenen Chunk, und die
+  Zeilengruppen tragen nur die ersten Spaltennamen
+  ([Tabellen](tabular.md#3-struktur-und-chunks)).
 - **Lange Zeichenfolgen ohne Leerraum** (fest, 1.000 Zeichen): In der Auffang-Pipeline und im Text
-  von E-Mails wird nach 1.000 Zeichen ohne Leerzeichen eines eingefügt, bevor der Text in Tokens
-  zerlegt wird.
+  von E-Mails wird nach je 1.000 Zeichen ohne Leerzeichen ein Leerzeichen eingefügt, bevor der Text
+  in Tokens zerlegt wird. Es bleibt im gespeicherten Chunk und in der Anzeige des Fundstellentexts
+  stehen; eine Zeichenfolge wie ein langer Base64-Block erscheint dort also in Abschnitten von
+  1.000 Zeichen.
 - **Eingebettete Objekte in `.doc`** werden nicht gelesen, nur der Text des Dokuments selbst.
 
 Ein Dokument über einer Grenze wird nicht gekürzt, sondern ist „fehlgeschlagen" wie eine nicht
@@ -99,6 +111,7 @@ Schlüssel unter `opaa.indexing.parser-limits.*`, Umgebungsvariablen
 | `max-pdf-stream-bytes` | 32 MiB | entpackte Größe eines einzelnen Seiteninhalts, einer Zeichnung oder eines Querverweis- oder Objektstroms eines PDF |
 | `max-pdf-parse-seconds` | 120 | Sekunden, die das Öffnen und Lesen eines PDF höchstens dauern darf |
 | `max-pdf-pages` | 10.000 | Seiten eines PDF |
+| `max-pdf-objects` | 1.000.000 | Objekte eines PDF: Einträge aller Querverweise, Objekte entpackter Objektströme und bei beschädigter Datei die gefundenen Objekte |
 
 ## Bewusst nicht zugelassen
 

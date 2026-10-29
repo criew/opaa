@@ -1,6 +1,6 @@
 # Format: Tabellen (XLSX, CSV, ODS)
 
-Pipeline `tabular`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht
+Pipeline `tabular`, Version 5. Der gemeinsame Rahmen aller Format-Pipelines steht
 im Kapitel [Wissensbibliotheken](../README.md), Abschnitt 5.
 
 ## 1. Zulassung
@@ -48,6 +48,12 @@ Reisepass | 60,00 EUR | § 15 PassV
 ```
 
 Bei CSV heißt die Kontextzeile „Tabelle: …" mit einem aus dem Dateinamen abgeleiteten Namen.
+
+Kontextzeile und Kopfzeile zusammen werden vor jedem Chunk auf die halbe Zielgröße gekürzt
+(mindestens 500 Zeichen, bei 4.000 Zeichen also 2.000), damit eine sehr breite Tabelle ihre
+Kopfzeile nicht in jedem Chunk vollständig wiederholt. Ist die Kopfzeile länger, steht sie einmal
+vollständig in einem eigenen Chunk mit der Ortsangabe „Kopfzeile N" (bei Bedarf auf mehrere Chunks
+verteilt); die Zeilengruppen tragen dann nur die ersten Spaltennamen, gefolgt von „…".
 
 Sonderfall: Enthält ein Blatt genau eine nicht-leere Zeile, gilt sie als Inhalt, nicht als
 leere Kopfzeile. Lieber wird gelegentlich eine Feldnamenzeile indiziert, als dass echte Daten

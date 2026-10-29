@@ -163,6 +163,10 @@ Grenze gilt für jede Anhangskette, unabhängig vom Konnektor, ebenso das Budget
 Die Anhangsgrenzen oben schützen Platte und nachgelagerte Verarbeitung, nicht den Parse-Vorgang
 selbst.
 
+Kopfdaten und Nachrichtentext zusammen unterliegen außerdem der gemeinsamen Textgrenze
+`opaa.indexing.parser-limits.max-text-characters` ([Grenzen beim Lesen](README.md#grenzen-beim-lesen));
+eine Mail darüber ist „fehlgeschlagen", bevor ihr Text in Chunks zerlegt wird.
+
 ## 8. Nicht verarbeitet
 
 - Verschlüsselte oder signierte Nachrichten (S/MIME, PGP) werden weder entschlüsselt noch geprüft
