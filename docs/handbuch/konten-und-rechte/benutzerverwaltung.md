@@ -168,7 +168,9 @@ der Systemverwaltung zurückgesetzt" steht an anderer Stelle als „Bitte legen 
 fest". Ein administratives Zurücksetzen **bestätigt keine E-Mail-Adresse**: Ein Konto, das seine
 Adresse noch nicht bestätigt hat, wird dadurch nicht anmeldefähig.
 
-Am Notanker-Konto der Systemverwaltung stehen beide Wege nicht zur Verfügung (Abschnitt 8).
+Am Notanker-Konto der Systemverwaltung stehen beide Wege nicht zur Verfügung (Abschnitt 8), ebenso
+wenig an einem Konto der Revision oder einem, für das die Rolle Revision beantragt ist (Abschnitt 7):
+Dessen Passwort setzt die Person über „Passwort vergessen" selbst zurück.
 
 ## 6. Die Liste und die Auflagenprüfung
 
@@ -245,6 +247,33 @@ die Systemverwaltung über „Rolle ändern …" im Zeilenmenü — es sei denn,
 Rollen über seinen Rollen-Claim; dann ist der Eintrag deaktiviert und sagt das, weil ein hier
 gesetzter Wert bei der nächsten Anmeldung der Person überschrieben würde. Für beide Kontotypen gilt
 derselbe Schutz: Dem letzten anmeldefähigen Systemverwalter lässt sich die Rolle nicht entziehen.
+
+### Die Rolle Revision
+
+Die Rolle **Revision** vergibt die Systemverwaltung **nicht allein**. Sonst könnte sie sich ein
+eigenes Revisionskonto einrichten und das Protokoll ihres eigenen Handelns lesen. Wählt sie die
+Rolle — über „Rolle ändern …", im Dialog „Bearbeiten" oder beim Anlegen —, wird daraus ein
+**Antrag**: Das Konto behält seine Rolle, die Liste zeigt „Revision beantragt", und alle Personen der
+Revision erhalten eine Benachrichtigung. Eine von ihnen bestätigt oder lehnt unter **Revision →
+Rollenanträge** ab; erst die Bestätigung gibt die Rolle. Wählt die Systemverwaltung vorher eine
+andere Rolle, zieht sie den Antrag zurück.
+
+Ohne eine Person der Revision kann niemand bestätigen. Die erste erhält die Rolle deshalb nur auf
+einem von zwei Wegen: über den Rollen-Claim ihres Identitätsanbieters oder, für ein lokales Konto,
+über die Adresse, die der Betrieb als `OPAA_AUTH_FIRST_AUDITOR_EMAIL` hinterlegt hat
+([Variablenliste](../betrieb/konfiguration.md)). Für jedes andere Konto lehnt OPAA die Vergabe dann
+mit einem Hinweis ab.
+
+Die **Zugangsdaten** eines Revisionskontos bleiben bei der Person. Erhält ein lokales Konto die Rolle,
+verfallen sein Passwort und seine Sitzungen, und die Person legt über einen Link, den sie per E-Mail
+an ihre Adresse bekommt, ein neues fest — angezeigt wird dieser Link niemandem. Ohne eingerichteten
+E-Mail-Versand und öffentliche Adresse lehnt OPAA die Vergabe an ein lokales Konto ab. Ein Konto der
+Revision oder mit offenem Antrag legt die Systemverwaltung nur per Einladung an, nie mit
+Initialpasswort; Passwort erzeugen, Rücksetz-Link, neue Adresse und Übergabe an einen
+Identitätsanbieter sind dort gesperrt.
+
+Jede wirksame Vergabe — bestätigt, als erste Person oder über den Rollen-Claim — meldet OPAA allen
+bestehenden Personen der Revision. Antrag, Bestätigung und Ablehnung stehen im Nachweisprotokoll.
 
 Systemverwalterkonten sind **persönliche** Konten, je Person eines — keine Sammelkonten. Das
 Notanker-Konto, das der Erststart anlegt, ist davon ausgenommen und kein Arbeitskonto; wofür es

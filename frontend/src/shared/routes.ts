@@ -49,6 +49,8 @@ export const EXTERNAL_TOOLS_LIBRARIES_ROUTE = `${EXTERNAL_TOOLS_ROUTE}#libraries
 /** The audit's read view of the connection log, next to the rights history. */
 export const CONNECTION_LOG_ROUTE = '/revision/verbindungsprotokoll'
 export const RIGHTS_HISTORY_ROUTE = '/revision/rechtehistorie'
+/** The requests for the role Revision, which only the revision decides. */
+export const AUDITOR_ROLE_REQUESTS_ROUTE = '/revision/rollenantraege'
 /** The one entry for every asset type (ADR-0039, Entscheidung 1). */
 export const CATALOG_ROUTE = '/catalog'
 /** "Neuer Katalogeintrag" in the catalog: the type choice before the type's own wizard. */

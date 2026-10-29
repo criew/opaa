@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-24
+stand: 2026-10-29
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-24
@@ -62,6 +62,16 @@ Antwort steht in der Matrix der {{faktenblatt:rollensicht#matrix}}; die Tabelle 
 | Vorgesetzte | haben als Vorgesetzte keine eigene Rolle; sie sehen, was ihnen eine Rolle in OPAA (etwa Systemverwaltung) oder eine Mitgliedschaft gibt, wie alle anderen auch | {{faktenblatt:rollensicht#systemrollen}} |
 | Betrieb von Datenbank, Sicherungen und Logs | technisch alles; das Produkt kann es nicht verhindern | Dienstvereinbarung, Nummer 7 |
 | Ich selbst | meine Daten über die Selbstauskunft, im Umfang der Kategorien, die die eingesetzte Version ausgibt; die Übersicht der Auskunft nennt die fehlenden | {{faktenblatt:datenkatalog#self-disclosure}} |
+
+Systemverwaltung und Revision sind getrennt, auch bei der Vergabe: Die Systemverwaltung kann die
+Rolle Revision nicht allein vergeben, sondern nur beantragen; wirksam wird sie erst, wenn eine
+Person der Revision bestätigt. Die erste Person der Revision bestimmt der Identitätsanbieter oder
+der Betrieb. Die Zugangsdaten eines Revisionskontos kennt nur die Person selbst, und jede Vergabe
+erfahren alle Personen der Revision. Antrag und Entscheidung stehen im Protokoll
+({{faktenblatt:protokollereignisse#auditor-role-requested}},
+{{faktenblatt:protokollereignisse#auditor-role-granted}}); offene Anträge stehen in
+{{faktenblatt:datenkatalog#auditor-role-requests}}. So kann niemand aus der Systemverwaltung mit
+eigenen Revisionskonten das Protokoll lesen oder eine Klärung allein freigeben.
 
 ## 3. Beispiele möglicher und ausgeschlossener Auswertungen
 

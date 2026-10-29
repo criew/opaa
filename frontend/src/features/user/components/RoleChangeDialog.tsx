@@ -41,8 +41,13 @@ export default function RoleChangeDialog({ account, onClose }: RoleChangeDialogP
     setSaving(true)
     setError(null)
     try {
-      await changeRole(account.id, selected)
-      notify(`Die Rolle von „${name}“ ist jetzt ${SYSTEM_ROLE_LABEL[selected]}.`, 'success')
+      const updated = await changeRole(account.id, selected)
+      notify(
+        updated.systemRole === selected
+          ? `Die Rolle von „${name}“ ist jetzt ${SYSTEM_ROLE_LABEL[selected]}.`
+          : `Die Rolle ${SYSTEM_ROLE_LABEL[selected]} für „${name}“ ist beantragt; sie wird wirksam, sobald die Revision bestätigt.`,
+        'success',
+      )
       onClose()
     } catch (err) {
       setError(localUserErrorMessage(err, 'Die Rolle konnte nicht geändert werden.'))
@@ -102,6 +107,14 @@ export default function RoleChangeDialog({ account, onClose }: RoleChangeDialogP
             ))}
           </TextField>
         </Box>
+        {selected === 'AUDITOR' && account?.systemRole !== 'AUDITOR' && (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            Die Rolle {SYSTEM_ROLE_LABEL.AUDITOR} vergibt die Systemverwaltung nicht allein: Sie
+            wird beantragt und erst wirksam, wenn eine Person der Revision bestätigt. Ein lokales
+            Konto verliert dabei sein Passwort; die Person setzt ein neues über einen Link an ihre
+            Adresse.
+          </Alert>
+        )}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={saving}>

@@ -7,7 +7,9 @@ import io.opaa.api.types.AuditSubjectKind;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
+import io.opaa.common.NotFoundException;
 import io.opaa.organization.Organization;
 import java.time.Clock;
 import java.time.Duration;
@@ -45,6 +47,8 @@ public class UserService {
   private final TokenRoleSynchronizer roleSynchronizer;
   private final LocalAdminAvailabilityGuard adminGuard;
   private final LocalCredentialsRepository localCredentials;
+  private final AuditorRoles auditorRoles;
+  private final AuditorRoleRequestRepository auditorRoleRequests;
   private final AuditEventRecorder auditEventRecorder;
   private final ApplicationEventPublisher eventPublisher;
   private final Clock clock;
@@ -57,6 +61,8 @@ public class UserService {
       TokenRoleSynchronizer roleSynchronizer,
       LocalAdminAvailabilityGuard adminGuard,
       LocalCredentialsRepository localCredentials,
+      AuditorRoles auditorRoles,
+      AuditorRoleRequestRepository auditorRoleRequests,
       AuditEventRecorder auditEventRecorder,
       ApplicationEventPublisher eventPublisher,
       Clock clock) {
@@ -67,6 +73,8 @@ public class UserService {
     this.roleSynchronizer = roleSynchronizer;
     this.adminGuard = adminGuard;
     this.localCredentials = localCredentials;
+    this.auditorRoles = auditorRoles;
+    this.auditorRoleRequests = auditorRoleRequests;
     this.auditEventRecorder = auditEventRecorder;
     this.eventPublisher = eventPublisher;
     this.clock = clock;
@@ -246,6 +254,12 @@ public class UserService {
    * Changes the system role and audits it in the same transaction. Object and subject of the entry
    * are the same pseudonym and the label is {@code null}, so no plain id or e-mail sits next to the
    * pseudonym. A user of another organization is a 404.
+   *
+   * <p>The AUDITOR role is never granted by the system administration alone: while the organization
+   * has an auditor, the grant becomes an open request ({@link AuditorRoles}) that an auditor
+   * confirms through {@link #confirmAuditorRequest}, and the role stays as it is; without one, only
+   * the account {@link AuditorRoleProperties} names may become the first auditor (409 {@value
+   * AuditorRoles#AUDITOR_CONFIRMATION_UNAVAILABLE} otherwise). Any other role ends an open request.
    */
   @Transactional
   public User updateRole(UUID userId, SystemRole role, CurrentUser actor) {
@@ -253,11 +267,90 @@ public class UserService {
         userRepository
             .findByIdAndOrganizationId(userId, actor.organizationId())
             .orElseThrow(() -> new UserNotFoundException("Benutzer nicht gefunden: " + userId));
+    requireRoleChangeable(user, role);
+    SystemRole previousRole = user.getSystemRole();
+    if (role == SystemRole.AUDITOR && previousRole != SystemRole.AUDITOR) {
+      if (auditorRoles.organizationHasAuditor(actor.organizationId())) {
+        if (previousRole == SystemRole.SYSTEM_ADMIN) {
+          adminGuard.requireAnotherLoginCapableAdmin(actor.organizationId(), user.getId());
+        }
+        auditorRoles.request(user, actor);
+        return user;
+      }
+      if (!auditorRoles.namesFirstAuditor(user)) {
+        throw new ConflictException(
+            "Die Rolle Revision kann die Systemverwaltung nicht allein vergeben, und es gibt noch"
+                + " keine Person der Revision, die bestätigen könnte. Die erste Person der"
+                + " Revision erhält die Rolle über den Rollen-Claim ihres Identitätsanbieters oder"
+                + " über die vom Betrieb hinterlegte Adresse ("
+                + AuditorRoleProperties.FIRST_AUDITOR_EMAIL_VARIABLE
+                + ").",
+            AuditorRoles.AUDITOR_CONFIRMATION_UNAVAILABLE);
+      }
+    }
+    if (role != SystemRole.AUDITOR) {
+      auditorRoles.decline(user, actor.id());
+    }
+    return applyRole(user, role, actor.organizationId(), actor.id());
+  }
+
+  /**
+   * Grants the AUDITOR role an administrator asked for, under the confirming auditor: the request
+   * is read under a row lock, so of two concurrent decisions exactly one acts. The checks of {@link
+   * #updateRole} apply again - the account may have changed since the request.
+   */
+  @Transactional
+  public User confirmAuditorRequest(UUID requestId, CurrentUser auditor) {
+    AuditorRoleRequest request = decidableRequest(requestId, auditor);
+    User user =
+        userRepository
+            .findByIdAndOrganizationId(request.getUserId(), auditor.organizationId())
+            .orElseThrow(() -> new UserNotFoundException("Benutzer nicht gefunden"));
+    if (user.getSystemRole() == SystemRole.AUDITOR) {
+      auditorRoles.decline(user, auditor.id());
+      return user;
+    }
+    requireRoleChangeable(user, SystemRole.AUDITOR);
+    return applyRole(user, SystemRole.AUDITOR, auditor.organizationId(), auditor.id());
+  }
+
+  /** Ends an open AUDITOR request without the role, under the declining auditor. */
+  @Transactional
+  public void declineAuditorRequest(UUID requestId, CurrentUser auditor) {
+    AuditorRoleRequest request = decidableRequest(requestId, auditor);
+    User user =
+        userRepository
+            .findByIdAndOrganizationId(request.getUserId(), auditor.organizationId())
+            .orElseThrow(() -> new UserNotFoundException("Benutzer nicht gefunden"));
+    auditorRoles.decline(user, auditor.id());
+  }
+
+  /**
+   * The request, locked, once the caller is confirmed as an auditor from the stored role - not the
+   * snapshot of the request, which may predate a withdrawal.
+   */
+  private AuditorRoleRequest decidableRequest(UUID requestId, CurrentUser auditor) {
+    SystemRole stored =
+        userRepository.findById(auditor.id()).map(User::getSystemRole).orElse(SystemRole.USER);
+    if (stored != SystemRole.AUDITOR) {
+      throw new AccessDeniedException(
+          "Zugriff verweigert - Rollenanträge entscheidet nur die Revision");
+    }
+    return auditorRoleRequests
+        .findForDecision(requestId, auditor.organizationId())
+        .orElseThrow(() -> new NotFoundException("Rollenantrag nicht gefunden"));
+  }
+
+  /** The bootstrap rule and the provider-managed rule, before anything is written. */
+  private void requireRoleChangeable(User user, SystemRole role) {
     // ADR-0033, Entscheidungen 3 and 5: the bootstrap account never leaves SYSTEM_ADMIN; a return
     // to it restores the promised state of an account demoted before this rule was enforced
     if (role != SystemRole.SYSTEM_ADMIN
         && role != user.getSystemRole()
-        && localCredentials.findById(userId).filter(LocalCredentials::isBootstrap).isPresent()) {
+        && localCredentials
+            .findById(user.getId())
+            .filter(LocalCredentials::isBootstrap)
+            .isPresent()) {
       throw new ConflictException(BOOTSTRAP_ROLE_MESSAGE, LocalCredentials.BOOTSTRAP_ACCOUNT);
     }
     // ADR-0025, Entscheidung 4: an enabled provider with a roles claim is authoritative - a role
@@ -274,10 +367,13 @@ public class UserService {
                       + provider.getDisplayName()
                       + "“ verwaltet und kann hier nicht geändert werden.");
             });
+  }
+
+  private User applyRole(User user, SystemRole role, UUID organizationId, UUID actorUserId) {
     SystemRole previousRole = user.getSystemRole();
     // ADR-0033, Entscheidung 4: the manual withdrawal must leave a login-capable administrator
     if (previousRole == SystemRole.SYSTEM_ADMIN && role != SystemRole.SYSTEM_ADMIN) {
-      adminGuard.requireAnotherLoginCapableAdmin(actor.organizationId(), user.getId());
+      adminGuard.requireAnotherLoginCapableAdmin(organizationId, user.getId());
     }
     user.setSystemRole(role);
     User saved = userRepository.save(user);
@@ -288,26 +384,27 @@ public class UserService {
       if (previousRole == SystemRole.SYSTEM_ADMIN) {
         recordRoleChange(
             saved,
-            actor.id(),
+            actorUserId,
             pseudonym,
             AuditEventType.SYSTEM_ADMIN_ROLE_REVOKED,
             previousRole,
             role);
       } else if (previousRole == SystemRole.AUDITOR) {
         recordRoleChange(
-            saved, actor.id(), pseudonym, AuditEventType.AUDITOR_ROLE_REVOKED, previousRole, role);
+            saved, actorUserId, pseudonym, AuditEventType.AUDITOR_ROLE_REVOKED, previousRole, role);
       }
       if (role == SystemRole.SYSTEM_ADMIN) {
         recordRoleChange(
             saved,
-            actor.id(),
+            actorUserId,
             pseudonym,
             AuditEventType.SYSTEM_ADMIN_ROLE_GRANTED,
             previousRole,
             role);
       } else if (role == SystemRole.AUDITOR) {
         recordRoleChange(
-            saved, actor.id(), pseudonym, AuditEventType.AUDITOR_ROLE_GRANTED, previousRole, role);
+            saved, actorUserId, pseudonym, AuditEventType.AUDITOR_ROLE_GRANTED, previousRole, role);
+        eventPublisher.publishEvent(new AuditorRoleGrantedEvent(saved));
       }
     }
     return saved;

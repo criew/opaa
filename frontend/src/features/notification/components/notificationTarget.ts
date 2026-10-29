@@ -1,6 +1,7 @@
 import type { NotificationResponse } from '@/shared/api/types'
 import { isFeatureEnabled } from '@/shared/session/authStore'
 import {
+  AUDITOR_ROLE_REQUESTS_ROUTE,
   CONNECTED_ACCOUNTS_ROUTE,
   CONNECTION_PROFILES_ROUTE,
   EXTERNAL_TOOLS_TOKENS_ROUTE,
@@ -37,6 +38,11 @@ export function notificationTarget({
       return null
     // a warning without a link, on purpose: it must not lead to the download
     case 'SELF_DISCLOSURE_STARTED':
+      return null
+    // the request waits for a decision of the revision; a grant is a notice only
+    case 'AUDITOR_ROLE_REQUESTED':
+      return AUDITOR_ROLE_REQUESTS_ROUTE
+    case 'AUDITOR_ROLE_GRANTED':
       return null
     default: {
       const unknown: never = type

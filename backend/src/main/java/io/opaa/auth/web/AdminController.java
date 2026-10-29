@@ -44,6 +44,10 @@ public class AdminController {
       @Valid @RequestBody RoleChangeRequest request,
       @Caller CurrentUser caller) {
     User user = userService.updateRole(id, request.getRole(), caller);
+    // a requested role that did not take effect awaits an auditor's confirmation (UserService)
+    if (user.getSystemRole() != request.getRole()) {
+      return ResponseEntity.accepted().body(toResponse(user));
+    }
     return ResponseEntity.ok(toResponse(user));
   }
 

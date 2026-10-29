@@ -150,6 +150,17 @@ public class LocalCredentials {
     touch(now);
   }
 
+  /**
+   * Discards the password: the account is {@link LocalAccountState#INVITED} again until the person
+   * sets a new one through a link.
+   */
+  public void discardPassword(Instant now) {
+    this.passwordHash = null;
+    this.passwordChangeRequired = false;
+    this.passwordChangeReason = null;
+    touch(now);
+  }
+
   public void requirePasswordChange(PasswordChangeReason reason, Instant now) {
     this.passwordChangeReason = Objects.requireNonNull(reason, "reason");
     this.passwordChangeRequired = true;

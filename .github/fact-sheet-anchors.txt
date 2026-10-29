@@ -8,6 +8,7 @@ datenkatalog#application-log
 datenkatalog#audit-incident-scopes
 datenkatalog#audit-log
 datenkatalog#audit-pseudonyms
+datenkatalog#auditor-role-requests
 datenkatalog#bereich-accounts
 datenkatalog#bereich-audit-log
 datenkatalog#bereich-chats
@@ -67,6 +68,8 @@ protokollereignisse#audit-log-accessed
 protokollereignisse#audit-log-configuration-changed
 protokollereignisse#audit-log-month-sealed
 protokollereignisse#auditor-role-granted
+protokollereignisse#auditor-role-request-declined
+protokollereignisse#auditor-role-requested
 protokollereignisse#auditor-role-revoked
 protokollereignisse#bereich-audit-log
 protokollereignisse#branding-settings-changed

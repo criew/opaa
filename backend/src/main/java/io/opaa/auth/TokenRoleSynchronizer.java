@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,7 +29,9 @@ import org.springframework.transaction.annotation.Transactional;
  * UPDATE} under the organization's advisory lock that writes only if another administrator who can
  * actually sign in remains. A refused withdrawal is logged and audited ({@link
  * AuditEventType#SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED}); the account keeps the role the provider
- * withdrew. {@code AUDITOR} has no such protection: a claim that no longer names it withdraws it.
+ * withdrew. {@code AUDITOR} has no such protection: a claim that no longer names it withdraws it. A
+ * claim that grants {@code AUDITOR} counts as the provider's participation in the grant; it is told
+ * to every other auditor like any other grant ({@link AuditorRoleGrantedEvent}).
  *
  * <p>Only a claim the token actually carried is authoritative: a claim that names none of the
  * configured role values is the provider withdrawing the elevated role, but a token whose claim is
@@ -55,14 +58,17 @@ public class TokenRoleSynchronizer {
   private final UserRepository userRepository;
   private final LocalAdminAvailabilityGuard adminGuard;
   private final AuditEventRecorder auditEventRecorder;
+  private final ApplicationEventPublisher events;
 
   public TokenRoleSynchronizer(
       UserRepository userRepository,
       LocalAdminAvailabilityGuard adminGuard,
-      AuditEventRecorder auditEventRecorder) {
+      AuditEventRecorder auditEventRecorder,
+      ApplicationEventPublisher events) {
     this.userRepository = userRepository;
     this.adminGuard = adminGuard;
     this.auditEventRecorder = auditEventRecorder;
+    this.events = events;
   }
 
   /** The role a token's role values mean under {@code mapping}. */
@@ -132,6 +138,9 @@ public class TokenRoleSynchronizer {
     }
     user.setSystemRole(target);
     recordChange(user, provider, current, target);
+    if (target == SystemRole.AUDITOR) {
+      events.publishEvent(new AuditorRoleGrantedEvent(user));
+    }
     return user;
   }
 

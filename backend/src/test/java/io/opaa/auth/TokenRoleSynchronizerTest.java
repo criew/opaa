@@ -33,7 +33,7 @@ class TokenRoleSynchronizerTest {
   private final LocalAdminAvailabilityGuard guard = mock(LocalAdminAvailabilityGuard.class);
   private final AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
   private final TokenRoleSynchronizer synchronizer =
-      new TokenRoleSynchronizer(userRepository, guard, auditEventRecorder);
+      new TokenRoleSynchronizer(userRepository, guard, auditEventRecorder, event -> {});
   private final OidcProvider provider =
       new OidcProvider(
           "Beschäftigte",

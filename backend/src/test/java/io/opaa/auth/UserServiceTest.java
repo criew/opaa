@@ -59,6 +59,9 @@ class UserServiceTest {
   private LocalCredentialsRepository localCredentials;
   private UserService userService;
   private final List<UserProvisionedEvent> publishedEvents = new ArrayList<>();
+  private final List<Object> otherEvents = new ArrayList<>();
+  private AuditorRoles auditorRoles;
+  private AuditorRoleRequestRepository auditorRoleRequests;
 
   /**
    * A settable {@link Clock}, not {@link Clock#fixed}, so a test can advance time between two
@@ -105,9 +108,19 @@ class UserServiceTest {
     roleSynchronizer = mock(TokenRoleSynchronizer.class);
     adminGuard = mock(LocalAdminAvailabilityGuard.class);
     localCredentials = mock(LocalCredentialsRepository.class);
+    auditorRoles = mock(AuditorRoles.class);
+    auditorRoleRequests = mock(AuditorRoleRequestRepository.class);
     when(providerRegistry.findEnabledByIssuer(any())).thenReturn(Optional.empty());
     when(providerRepository.findByNormalizedIssuerUri(any())).thenReturn(Optional.empty());
-    userService = userServiceWith(event -> publishedEvents.add((UserProvisionedEvent) event));
+    userService =
+        userServiceWith(
+            event -> {
+              if (event instanceof UserProvisionedEvent provisioned) {
+                publishedEvents.add(provisioned);
+              } else {
+                otherEvents.add(event);
+              }
+            });
   }
 
   private UserService userServiceWith(ApplicationEventPublisher eventPublisher) {
@@ -119,6 +132,8 @@ class UserServiceTest {
         roleSynchronizer,
         adminGuard,
         localCredentials,
+        auditorRoles,
+        auditorRoleRequests,
         auditEventRecorder,
         eventPublisher,
         clock);
@@ -617,6 +632,7 @@ class UserServiceTest {
         .thenReturn(Optional.of(user));
     when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
     when(auditEventRecorder.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
+    when(auditorRoles.namesFirstAuditor(user)).thenReturn(true);
 
     userService.updateRole(userId, SystemRole.AUDITOR, actorInOrganization(organizationId));
 
@@ -662,6 +678,7 @@ class UserServiceTest {
         .thenReturn(Optional.of(user));
     when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
     when(auditEventRecorder.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
+    when(auditorRoles.namesFirstAuditor(user)).thenReturn(true);
 
     userService.updateRole(userId, SystemRole.AUDITOR, actorInOrganization(organizationId));
 
@@ -760,5 +777,144 @@ class UserServiceTest {
     assertThatThrownBy(
             () -> userService.findOrCreateUser("sub1", "issuer1", "race@example.com", "Race"))
         .isSameAs(violation);
+  }
+
+  // ---- separation of system administration and revision
+
+  private User accountInOrganization(UUID organizationId, UUID userId, SystemRole role) {
+    User user = new User("sub-" + userId, "issuer1", "kandidat@example.com", "Kandidat");
+    user.setOrganizationId(organizationId);
+    user.setSystemRole(role);
+    when(userRepository.findByIdAndOrganizationId(userId, organizationId))
+        .thenReturn(Optional.of(user));
+    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(auditEventRecorder.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
+    return user;
+  }
+
+  /**
+   * Regression guard for #3356: a system administrator alone must not make an account an auditor
+   * while the organization has one who can confirm - the grant becomes a request, the role and the
+   * audit trail of grants stay untouched.
+   */
+  @Test
+  void anAdministratorsAuditorGrantBecomesARequestWhileAnAuditorExists() {
+    UUID organizationId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+    User user = accountInOrganization(organizationId, userId, SystemRole.USER);
+    when(auditorRoles.organizationHasAuditor(organizationId)).thenReturn(true);
+    CurrentUser admin = actorInOrganization(organizationId);
+
+    User result = userService.updateRole(userId, SystemRole.AUDITOR, admin);
+
+    assertThat(result.getSystemRole()).isEqualTo(SystemRole.USER);
+    verify(auditorRoles).request(user, admin);
+    verify(userRepository, never()).save(any(User.class));
+    verify(auditEventRecorder, never())
+        .recordUserActionOnSubject(
+            argThat(event -> event.eventType() == AuditEventType.AUDITOR_ROLE_GRANTED));
+    assertThat(otherEvents).isEmpty();
+  }
+
+  /**
+   * Without an auditor nobody can confirm: only the account the operation named may become the
+   * first one, any other grant is refused before anything is written.
+   */
+  @Test
+  void withoutAnAuditorOnlyTheNamedFirstAuditorReceivesTheRole() {
+    UUID organizationId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+    accountInOrganization(organizationId, userId, SystemRole.USER);
+
+    assertThatThrownBy(
+            () ->
+                userService.updateRole(
+                    userId, SystemRole.AUDITOR, actorInOrganization(organizationId)))
+        .isInstanceOf(ConflictException.class)
+        .extracting(e -> ((ConflictException) e).getCode())
+        .isEqualTo(AuditorRoles.AUDITOR_CONFIRMATION_UNAVAILABLE);
+    verify(userRepository, never()).save(any(User.class));
+    verify(auditorRoles, never()).request(any(), any());
+  }
+
+  /** Every grant that takes effect is announced, so the other auditors learn of it. */
+  @Test
+  void theFirstAuditorsGrantPublishesTheGrantEvent() {
+    UUID organizationId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+    User user = accountInOrganization(organizationId, userId, SystemRole.USER);
+    when(auditorRoles.namesFirstAuditor(user)).thenReturn(true);
+
+    userService.updateRole(userId, SystemRole.AUDITOR, actorInOrganization(organizationId));
+
+    assertThat(user.getSystemRole()).isEqualTo(SystemRole.AUDITOR);
+    assertThat(otherEvents)
+        .singleElement()
+        .isInstanceOfSatisfying(
+            AuditorRoleGrantedEvent.class, event -> assertThat(event.user()).isSameAs(user));
+  }
+
+  /** Any other role ends an open request - the administration withdraws by choosing it. */
+  @Test
+  void anotherRoleEndsAnOpenRequest() {
+    UUID organizationId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+    User user = accountInOrganization(organizationId, userId, SystemRole.USER);
+    CurrentUser admin = actorInOrganization(organizationId);
+
+    userService.updateRole(userId, SystemRole.USER, admin);
+
+    verify(auditorRoles).decline(user, admin.id());
+  }
+
+  /**
+   * The confirmation grants the role under the confirming auditor - the second person of the grant
+   * - and announces it.
+   */
+  @Test
+  void anAuditorsConfirmationGrantsTheRoleUnderTheAuditor() {
+    UUID organizationId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+    User user = accountInOrganization(organizationId, userId, SystemRole.USER);
+    UUID auditorId = UUID.randomUUID();
+    User auditorRow = new User("sub-auditor", "issuer1", "revision@example.com", "Revision");
+    auditorRow.setSystemRole(SystemRole.AUDITOR);
+    when(userRepository.findById(auditorId)).thenReturn(Optional.of(auditorRow));
+    AuditorRoleRequest request =
+        new AuditorRoleRequest(organizationId, userId, UUID.randomUUID(), Instant.now());
+    when(auditorRoleRequests.findForDecision(request.getId(), organizationId))
+        .thenReturn(Optional.of(request));
+    CurrentUser auditor = CurrentUser.of(auditorId, organizationId, SystemRole.AUDITOR, "Revision");
+
+    userService.confirmAuditorRequest(request.getId(), auditor);
+
+    assertThat(user.getSystemRole()).isEqualTo(SystemRole.AUDITOR);
+    verify(auditEventRecorder)
+        .recordUserActionOnSubject(
+            argThat(
+                event ->
+                    event.eventType() == AuditEventType.AUDITOR_ROLE_GRANTED
+                        && auditorId.equals(event.actorUserId())));
+    assertThat(otherEvents).singleElement().isInstanceOf(AuditorRoleGrantedEvent.class);
+  }
+
+  /**
+   * Only the stored AUDITOR role decides a request - a system administrator cannot confirm his own
+   * request, and an auditor whose role was withdrawn since the token was issued cannot either.
+   */
+  @Test
+  void onlyAnAuditorByStoredRoleDecidesARequest() {
+    UUID organizationId = UUID.randomUUID();
+    UUID adminId = UUID.randomUUID();
+    User adminRow = new User("sub-admin", "issuer1", "admin@example.com", "Admin");
+    adminRow.setSystemRole(SystemRole.SYSTEM_ADMIN);
+    when(userRepository.findById(adminId)).thenReturn(Optional.of(adminRow));
+    CurrentUser stale = CurrentUser.of(adminId, organizationId, SystemRole.AUDITOR, "Admin");
+
+    assertThatThrownBy(() -> userService.confirmAuditorRequest(UUID.randomUUID(), stale))
+        .isInstanceOf(io.opaa.common.AccessDeniedException.class);
+    assertThatThrownBy(() -> userService.declineAuditorRequest(UUID.randomUUID(), stale))
+        .isInstanceOf(io.opaa.common.AccessDeniedException.class);
+    verify(auditorRoleRequests, never()).findForDecision(any(), any());
   }
 }

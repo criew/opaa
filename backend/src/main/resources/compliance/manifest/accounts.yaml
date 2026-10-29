@@ -298,6 +298,34 @@ data:
     accessPaths: [DATABASE]
     deletion: Nach der Zustellung oder dem letzten Fehlversuch gelöscht
     evaluations: keine
+  - id: auditor-role-requests
+    title: Offene Anträge auf die Rolle Revision
+    purpose: >-
+      Trennung von Systemverwaltung und Revision: Die Systemverwaltung beantragt die Rolle AUDITOR,
+      eine Person der Revision bestätigt oder lehnt ab
+    personalReference: EMPLOYEE
+    tables:
+      - name: auditor_role_requests
+        personalColumns: [user_id, requested_by_user_id, requested_at]
+        nonPersonalColumns: [id, organization_id]
+        person:
+          excluded: >-
+            Kurzlebiger Vorgangsstand; Antrag und Entscheidung stehen als Protokollereignisse der
+            betroffenen Person in ihrer Selbstauskunft
+    storage: Anwendungsdatenbank
+    retention:
+      rule: >-
+        Bis zur Entscheidung; ein bestätigter, abgelehnter oder zurückgezogener Antrag wird gelöscht,
+        mit dem Konto der Person oder der beantragenden Person auch
+      settings: []
+    visibility:
+      - Revision (AUDITOR) mit Name und Adresse des Kontos und Name der beantragenden Person
+      - SYSTEM_ADMIN als Vermerk „beantragt“ in der Kontenverwaltung
+    accessPaths: [UI, API, DATABASE]
+    deletion: Bei Entscheidung oder mit einem der beiden Konten (ON DELETE CASCADE)
+    evaluations: >-
+      Keine; wer wen beantragt und entschieden hat, steht im Revisionsprotokoll
+      (AUDITOR_ROLE_REQUESTED, AUDITOR_ROLE_GRANTED, AUDITOR_ROLE_REQUEST_DECLINED)
   - id: notifications
     title: Benachrichtigungen
     purpose: Hinweise an eine Person über Ereignisse an ihren Objekten

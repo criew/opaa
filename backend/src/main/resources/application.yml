@@ -177,6 +177,11 @@ opaa:
     # @RequiresRecentLogin (io.opaa.auth.RecentLoginPolicy); a non-positive value refuses the start.
     recent-login:
       max-age: ${OPAA_AUTH_RECENT_LOGIN_MAX_AGE:5m}
+    # The address of the account that may become the first AUDITOR of an organization without an
+    # identity provider's roles claim; every later AUDITOR grant needs an auditor's confirmation
+    # (io.opaa.auth.AuditorRoleProperties). Empty means none.
+    auditor-role:
+      first-auditor-email: ${OPAA_AUTH_FIRST_AUDITOR_EMAIL:}
     # Local accounts (ADR-0033): the one secret every key of the local token issuer is derived from
     # (HKDF, io.opaa.security.LocalAuthKeyService - access-token signature, refresh-token lookup,
     # action-token lookup) and the session limits of the local issuer. No default for the secret on

@@ -98,5 +98,18 @@ public enum NotificationType {
    * An export of the person's self-disclosure began - sent at the start, so it reaches her also
    * when the export aborts. Sent to that person only, without content and without a link.
    */
-  SELF_DISCLOSURE_STARTED
+  SELF_DISCLOSURE_STARTED,
+
+  /**
+   * The system administration asked for the AUDITOR role for an account; it takes effect once an
+   * auditor confirms. Sent to every auditor of the organization; its object is the account.
+   */
+  AUDITOR_ROLE_REQUESTED,
+
+  /**
+   * An account received the AUDITOR role - confirmed, as the first one of the organization or by
+   * the roles claim of its identity provider. Sent to every other auditor of the organization; its
+   * object is the account.
+   */
+  AUDITOR_ROLE_GRANTED
 }

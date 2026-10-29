@@ -118,6 +118,12 @@ paths:
         POST /api/v1/admin/users/{id}/role (audited as a role grant). An address already used by
         another local account is refused with 409 and code EMAIL_TAKEN; an OIDC account with the
         same address does not conflict.
+
+        An account created with systemRole AUDITOR takes mode INVITE only (409 AUDITOR_ACCOUNT
+        for INITIAL_PASSWORD), and the role follows the rules of the role endpoint: while the
+        organization has an auditor the account is created with role USER and an open request
+        (pendingSystemRole AUDITOR); the first auditor named by OPAA_AUTH_FIRST_AUDITOR_EMAIL
+        receives the role at once and the invitation by mail only, without setupUrl.
       requestBody:
         required: true
         content:
@@ -198,7 +204,9 @@ paths:
         for the expiry date only and otherwise just the names of the changed fields. On the
         bootstrap account an expiry date and a role other than SYSTEM_ADMIN are refused with 409
         and code BOOTSTRAP_ACCOUNT (ADR-0033, Entscheidungen 3 and 5), and none of the fields sent
-        alongside is applied; noExpiry=true and a return to SYSTEM_ADMIN stay allowed.
+        alongside is applied; noExpiry=true and a return to SYSTEM_ADMIN stay allowed. A new
+        e-mail address for an account with the AUDITOR role or an open request for it is refused
+        with 409 and code AUDITOR_ACCOUNT.
       requestBody:
         required: true
         content:
@@ -333,7 +341,10 @@ paths:
         fallback and delivery-path audit exactly as for the invitation
         (LOCAL_USER_PASSWORD_RESET_REQUESTED, or LOCAL_USER_INVITED for the resent invitation).
         Refused with 409 for the bootstrap account (BOOTSTRAP_ACCOUNT): its sealed password is
-        renewed only by the restart with OPAA_LOCAL_ADMIN_RESET=force.
+        renewed only by the restart with OPAA_LOCAL_ADMIN_RESET=force. Refused with 409 and code
+        AUDITOR_ACCOUNT for an account with the AUDITOR role or an open request for it: its
+        person resets the password herself (self-service) - the administration never holds the
+        credentials of an auditor account.
       parameters:
         - name: id
           in: path
@@ -368,7 +379,8 @@ paths:
         never stored in clear text and never returned again. Refused with 409 for the bootstrap
         account (BOOTSTRAP_ACCOUNT), also when it is the caller: its sealed password is renewed only
         by the restart with OPAA_LOCAL_ADMIN_RESET=force, and the account changes its own password
-        through the self-service change-password call.
+        through the self-service change-password call. Refused with 409 and code AUDITOR_ACCOUNT for
+        an account with the AUDITOR role or an open request for it.
       parameters:
         - name: id
           in: path
@@ -407,7 +419,9 @@ paths:
         person's own provider token at redemption. Refused with 409 for the emergency-anchor
         account (BOOTSTRAP_ACCOUNT) and when no other login-capable system administrator would
         remain (LAST_LOGIN_CAPABLE_ADMIN, checked here and again at redemption). A provider that is
-        unknown, disabled or the LOCAL row is a 400 with fieldErrors on providerId.
+        unknown, disabled or the LOCAL row is a 400 with fieldErrors on providerId. Refused with
+        409 and code AUDITOR_ACCOUNT for an account with the AUDITOR role or an open request for
+        it.
       parameters:
         - name: id
           in: path
@@ -679,6 +693,12 @@ components:
         bootstrap:
           type: boolean
           description: The one emergency account of the Systemverwaltung; it cannot be deleted.
+        pendingSystemRole:
+          allOf:
+            - $ref: "#/components/schemas/SystemRole"
+          description: >
+            AUDITOR while a request of the system administration for that role awaits an
+            auditor's confirmation; absent otherwise.
 
     LocalUserPageResponse:
       type: object

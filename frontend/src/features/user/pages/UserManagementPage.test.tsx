@@ -260,6 +260,39 @@ describe('UserManagementPage', () => {
     expect(await screen.findByText(/ist jetzt Revision/)).toBeInTheDocument()
   })
 
+  it('names an AUDITOR grant a request when the backend answers that it awaits the revision', async () => {
+    server.use(
+      http.post('/api/v1/admin/users/:id/role', ({ params }) =>
+        HttpResponse.json(
+          {
+            id: params.id,
+            email: 'maria.weber@partner.example',
+            displayName: 'Maria Weber',
+            systemRole: 'USER',
+          },
+          { status: 202 },
+        ),
+      ),
+    )
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    renderAccounts()
+    await screen.findByRole('table', { name: 'Konten' })
+
+    const menu = await openRowMenu(user, 'Maria Weber')
+    await user.click(within(menu).getByRole('menuitem', { name: /Rolle ändern/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Rolle von „Maria Weber“ ändern' })
+    await user.click(within(dialog).getByRole('combobox', { name: 'Rolle' }))
+    await user.click(await screen.findByRole('option', { name: 'Revision' }))
+    expect(
+      within(dialog).getByText(/erst wirksam, wenn eine Person der Revision bestätigt/),
+    ).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+    expect(await screen.findByText(/ist beantragt/)).toBeInTheDocument()
+    expect(screen.queryByText(/ist jetzt Revision/)).not.toBeInTheDocument()
+  })
+
   /**
    * The role dialog starts anew for every account: MUI only unmounts the children on close, the
    * last chosen role must not wander into the next opened account — an immediately active
@@ -568,6 +601,23 @@ describe('UserManagementPage', () => {
     })
     expect(uebergabe).toHaveAttribute('aria-disabled', 'true')
     expect(within(menu).getByText(/muss deshalb ein lokales Konto bleiben/)).toBeInTheDocument()
+  }, 20000)
+
+  it('offers neither a password nor a reset link nor a handover on an auditor account', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    renderAccounts()
+    await screen.findByRole('table', { name: 'Konten' })
+
+    const menu = await openRowMenu(user, 'K. Ernst')
+    for (const name of [
+      'Passwort erzeugen',
+      'Rücksetz-Link per E-Mail',
+      'An Identitätsanbieter übergeben',
+    ]) {
+      expect(within(menu).getByRole('menuitem', { name })).toHaveAttribute('aria-disabled', 'true')
+    }
+    expect(within(menu).getAllByText(/ändert nur die Person selbst/).length).toBeGreaterThan(0)
   }, 20000)
 
   /**

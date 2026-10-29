@@ -93,6 +93,7 @@ export const SearchIndexingAdminPage = themePages(() => import('@/features/searc
 )
 
 const audit = themePages(() => import('@/features/audit/routes'))
+export const AuditorRoleRequestsPage = audit('AuditorRoleRequestsPage')
 export const ConnectionLogPage = audit('ConnectionLogPage')
 export const RightsHistoryPage = audit('RightsHistoryPage')
 

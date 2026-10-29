@@ -87,6 +87,17 @@ paths:
         withdrawal run at the same time. A role that an enabled OIDC provider with a roles claim
         manages itself cannot be changed here (ADR-0025, Entscheidung 4) - that refusal names the
         provider in its message and carries no code.
+
+        The AUDITOR role is never granted by the system administration alone
+        (docs/features/access-control.md, Trennung von Systemverwaltung und Revision). While the
+        organization has an auditor, the call opens a request instead, answers 202 with the role
+        unchanged and tells every auditor; an auditor confirms or declines it under
+        /api/v1/audit/auditor-role-requests. Without an auditor, only the account whose address
+        the operation set as OPAA_AUTH_FIRST_AUDITOR_EMAIL receives the role at once; any other is
+        refused with 409 and code AUDITOR_CONFIRMATION_UNAVAILABLE. Any other role ends an open
+        request. A local account that receives the role loses its password and sessions and gets a
+        new invitation by mail only; without a public base URL or mail delivery that grant is
+        refused with 409 and code AUDITOR_ACCOUNT.
       requestBody:
         required: true
         content:
@@ -96,6 +107,14 @@ paths:
       responses:
         "200":
           description: Role updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserInfoResponse"
+        "202":
+          description: >
+            The AUDITOR role was requested and awaits an auditor's confirmation; the response
+            carries the account with its role unchanged.
           content:
             application/json:
               schema:
@@ -280,6 +299,12 @@ components:
             memberships and its content; the lock is taken back by the next run once the
             directory reports the account as enabled again - never here, since OPAA never writes
             to the directory.
+        pendingSystemRole:
+          allOf:
+            - $ref: "#/components/schemas/SystemRole"
+          description: >
+            AUDITOR while a request of the system administration for that role awaits an
+            auditor's confirmation; absent otherwise.
         provider:
           $ref: "#/components/schemas/AccountProviderResponse"
         local:

@@ -26,6 +26,13 @@ describe('notificationTarget', () => {
     expect(notificationTarget({ type: 'SELF_DISCLOSURE_STARTED', objectId: null })).toBeNull()
   })
 
+  it('leads an AUDITOR request to the decision of the revision, a grant nowhere', () => {
+    expect(notificationTarget({ type: 'AUDITOR_ROLE_REQUESTED', objectId: 'user-1' })).toBe(
+      '/revision/rollenantraege',
+    )
+    expect(notificationTarget({ type: 'AUDITOR_ROLE_GRANTED', objectId: 'user-1' })).toBeNull()
+  })
+
   it('leads an expiring secret to its profile in the connections area', () => {
     expect(
       notificationTarget({ type: 'CONNECTION_PROFILE_SECRET_EXPIRING', objectId: 'profile-1' }),
