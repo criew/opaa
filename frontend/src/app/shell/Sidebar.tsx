@@ -3,14 +3,12 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
-import List from '@mui/material/List'
-import ListItem from '@mui/material/ListItem'
-import ListItemButton from '@mui/material/ListItemButton'
-import ListItemIcon from '@mui/material/ListItemIcon'
+import IconButton from '@mui/material/IconButton'
 import ListItemText from '@mui/material/ListItemText'
 import ListSubheader from '@mui/material/ListSubheader'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { useTheme } from '@mui/material/styles'
 import AddIcon from '@mui/icons-material/Add'
@@ -42,8 +40,8 @@ export { SIDEBAR_WIDTH }
 
 /**
  * The space column (guidelines 5.13): purely space-scoped - the spaces on top, the active space's
- * chats as the middle and the only area that normally scrolls, the space's own destinations at
- * the bottom. Everything global - brand mark, catalog, administration, the user badge - lives on
+ * chats below as the only area that normally scrolls; a gear beside each space leads into its
+ * settings. Everything global - brand mark, catalog, administration, the user badge - lives on
  * the {@link GlobalRail} to its left.
  *
  * Fixed on the desktop (`resizable`), the spaces are rows ({@link SidebarSpaceList}); in the
@@ -110,8 +108,8 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
     [spaces, recentSpaceIds],
   )
 
-  // Every member sees the entry; whoever may not manage the space reads the settings only and gets
-  // counts instead of the member list.
+  // Every member sees the gear beside the switcher; whoever may not manage the space reads the
+  // settings only and gets counts instead of the member list.
   const mayOpenSettings = Boolean(activeSpace?.userRole)
   const settingsRoute = activeChatSpaceId ? spaceSettingsRoute(activeChatSpaceId) : ''
   const inSettings = location.pathname.startsWith(`/spaces/${activeChatSpaceId}/settings`)
@@ -167,7 +165,7 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
           <Divider />
         </>
       ) : (
-        <Box sx={{ px: 2, pt: 2, pb: 1.5 }}>
+        <Box sx={{ px: 2, pt: 2, pb: 1.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <Button
             fullWidth
             onClick={(event) => setSpaceMenuAnchor(event.currentTarget)}
@@ -205,6 +203,26 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
               </Typography>
             </Box>
           </Button>
+          {activeSpace && mayOpenSettings && (
+            <Tooltip title="Einstellungen">
+              <IconButton
+                component={RouterLink}
+                to={settingsRoute}
+                aria-label={`Einstellungen von „${activeSpace.name}“`}
+                // „page" only on the own target, „true" on every other tab of the settings.
+                aria-current={
+                  inSettings ? (location.pathname === settingsRoute ? 'page' : 'true') : undefined
+                }
+                sx={{
+                  flexShrink: 0,
+                  borderRadius: '6px',
+                  color: inSettings ? 'primary.main' : 'text.secondary',
+                }}
+              >
+                <SettingsOutlinedIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            </Tooltip>
+          )}
           <Menu
             anchorEl={spaceMenuAnchor}
             open={Boolean(spaceMenuAnchor)}
@@ -323,44 +341,6 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
         )}
       </Box>
 
-      {activeChatSpaceId && mayOpenSettings && (
-        <>
-          <Divider />
-          {/* Mockup 2a: the foot of the column stays space-scoped - quiet text-only links,
-                12.5px on muted white; everything global moved onto the rail. Its
-                own nav landmark, so landmark navigation still reaches these links - as a
-                container AROUND the list, not instead of its <ul>: List component="nav" in
-                place of the <ul> leaves the <li>s without a list parent, an axe "serious"
-                violation. */}
-          <Box component="nav" aria-label="Space-Navigation">
-            <List sx={{ px: '14px', py: '10px' }}>
-              {/* One entry point: everything that manages this space lies behind the gear. */}
-              <ListItem disablePadding>
-                <ListItemButton
-                  component={RouterLink}
-                  to={settingsRoute}
-                  selected={inSettings}
-                  // As on the global rail: „page" only for the own target, „true" for
-                  // every other tab of the settings - otherwise the entry would be highlighted on
-                  // .../settings/members without announcing it.
-                  aria-current={
-                    inSettings ? (location.pathname === settingsRoute ? 'page' : 'true') : undefined
-                  }
-                  sx={{ borderRadius: '6px', px: '10px', py: '5px' }}
-                >
-                  <ListItemIcon sx={{ minWidth: 26 }}>
-                    <SettingsOutlinedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary="Einstellungen"
-                    slotProps={{ primary: { sx: { fontSize: 12.5, color: 'text.secondary' } } }}
-                  />
-                </ListItemButton>
-              </ListItem>
-            </List>
-          </Box>
-        </>
-      )}
       {resizable && <SidebarResizeHandle />}
     </Box>
   )

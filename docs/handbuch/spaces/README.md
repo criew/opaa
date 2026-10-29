@@ -93,8 +93,9 @@ er lesen darf, nur lesend.
 
 ## 4. Einstellungen eines Space
 
-**In der Oberfläche liegt all das auf einer Seite je Space:** dem Zahnrad „Einstellungen" am Fuß der
-Seitenleiste. Das Zahnrad sieht jedes Mitglied; wer den Space nicht verwalten darf, liest dort nur.
+**In der Oberfläche liegt all das auf einer Seite je Space:** Das Zahnrad rechts neben dem Namen
+eines Space in der Seitenleiste öffnet sie; im schmalen Fenster steht es neben der Space-Auswahl.
+Das Zahnrad sieht jedes Mitglied; wer den Space nicht verwalten darf, liest dort nur.
 Die Seite hat drei Reiter, und keine Überschrift im Reiter wiederholt seinen Namen:
 
 | Reiter | Inhalt |

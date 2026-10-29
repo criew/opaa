@@ -140,11 +140,10 @@ describe('Sidebar', () => {
     expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Wissensbibliotheken' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Benutzermenü' })).not.toBeInTheDocument()
-    // The column's only „Einstellungen" link belongs to the space, not to the account.
-    expect(screen.getByRole('link', { name: 'Einstellungen' })).toHaveAttribute(
-      'href',
-      '/spaces/space-personal/settings/general',
-    )
+    // The column's only settings link is the gear of the space, not the account's.
+    expect(
+      screen.getByRole('link', { name: 'Einstellungen von „Privater Bereich“' }),
+    ).toHaveAttribute('href', '/spaces/space-personal/settings/general')
   })
 
   // regression guard for #2062: the chat list's live region ("15 weitere Chats angezeigt",
@@ -353,21 +352,17 @@ describe('Sidebar', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/spaces/new')
   })
 
-  // One entry point at the foot of the column instead of two - „Datenquellen dieses Space" is
-  // gone, everything administrative lies behind the settings.
-  it('links the column foot to the settings of the active space, and to nothing else', () => {
+  // The gear beside the switcher is the one entry point into the space's settings; the column
+  // has no foot of its own any more.
+  it('puts the gear of the active space beside the switcher, without a column foot', async () => {
+    const user = userEvent.setup()
     renderSidebarAtRoute('/spaces/space-engineering')
 
-    // The landmark must wrap a real list - List component="nav" once replaced the <ul>
-    // and left the <li>s parentless, an axe "serious" violation.
-    const footNav = screen.getByRole('navigation', { name: 'Space-Navigation' })
-    expect(within(footNav).getByRole('list')).toBeInTheDocument()
-
-    expect(within(footNav).getAllByRole('link')).toHaveLength(1)
-    expect(screen.getByRole('link', { name: 'Einstellungen' })).toHaveAttribute(
-      'href',
-      '/spaces/space-engineering/settings/general',
-    )
+    const gear = screen.getByRole('link', { name: 'Einstellungen von „Engineering“' })
+    expect(gear).toHaveAttribute('href', '/spaces/space-engineering/settings/general')
+    await user.hover(gear)
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Einstellungen')
+    expect(screen.queryByRole('navigation', { name: 'Space-Navigation' })).not.toBeInTheDocument()
     expect(
       screen.queryByRole('link', { name: 'Datenquellen dieses Space' }),
     ).not.toBeInTheDocument()
@@ -379,18 +374,13 @@ describe('Sidebar', () => {
    * (docs/design/accessibility.md 2.3, as on the global rail).
    */
   it('meldet den Einstellungs-Einstieg auf jedem Reiter als aktiv', () => {
+    const name = 'Einstellungen von „Engineering“'
     const { unmount } = renderSidebarAtRoute('/spaces/space-engineering/settings/general')
-    expect(screen.getByRole('link', { name: 'Einstellungen' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    )
+    expect(screen.getByRole('link', { name })).toHaveAttribute('aria-current', 'page')
     unmount()
 
     renderSidebarAtRoute('/spaces/space-engineering/settings/members')
-    expect(screen.getByRole('link', { name: 'Einstellungen' })).toHaveAttribute(
-      'aria-current',
-      'true',
-    )
+    expect(screen.getByRole('link', { name })).toHaveAttribute('aria-current', 'true')
   })
 
   /**
@@ -416,7 +406,7 @@ describe('Sidebar', () => {
       isLoadingList: false,
     })
     const { unmount } = renderSidebarAtRoute('/spaces/space-engineering')
-    expect(screen.getByRole('link', { name: 'Einstellungen' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Einstellungen von „Engineering“' })).toHaveAttribute(
       'href',
       '/spaces/space-engineering/settings/general',
     )
@@ -440,7 +430,9 @@ describe('Sidebar', () => {
       isLoadingList: false,
     })
     renderSidebarAtRoute('/spaces/space-engineering')
-    expect(screen.getByRole('link', { name: 'Einstellungen' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'Einstellungen von „Engineering“' }),
+    ).toBeInTheDocument()
   })
 
   describe('fixed column on the desktop (guidelines 5.13)', () => {
