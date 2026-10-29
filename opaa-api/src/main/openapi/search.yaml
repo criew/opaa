@@ -609,6 +609,15 @@ components:
           type: string
           format: date-time
           nullable: true
+        contentSha256:
+          type: string
+          nullable: true
+          description: >-
+            SHA-256 (lowercase hex) of the original as it was indexed when the answer was given. A
+            viewer compares it with the original it fetches; a mismatch means the anchors may no
+            longer match that file. Null for a synthetic entry, for an imported chat and for answers
+            given before it existed.
+          example: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
         documentId:
           type: string
           format: uuid

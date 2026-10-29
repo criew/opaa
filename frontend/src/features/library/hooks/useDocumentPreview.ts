@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { openDocumentContent } from '../utils/documentContent'
-import type { TextPreviewResult } from '../utils/documentContent'
+import type { PdfPreviewResult, TextPreviewResult } from '../utils/documentContent'
+import type { ChunkAnchor } from '@/shared/api/types'
 import { notify } from '@/shared/stores/notificationStore'
 import { safeExternalHref } from '@/shared/utils/safeExternalHref'
 import type { SourceTypeKey } from '@/shared/api/types'
@@ -16,6 +17,10 @@ export interface OpenableDocument {
   sourceType?: SourceTypeKey | null
   sourceUrl?: string | null
   sourceEntryUrl?: string | null
+  /** Where the cited passage sits - a PDF opens on its page with the passage marked. */
+  anchor?: ChunkAnchor | null
+  /** SHA-256 of the original as indexed when the citation was made. */
+  contentSha256?: string | null
 }
 
 /**
@@ -28,6 +33,7 @@ export interface OpenableDocument {
  */
 export function useDocumentPreview() {
   const [previewDocument, setPreviewDocument] = useState<TextPreviewResult | null>(null)
+  const [pdfPreview, setPdfPreview] = useState<PdfPreviewResult | null>(null)
 
   async function openDocument(document: OpenableDocument) {
     // ADR-0023: a source whose original is the page at the source (Confluence) has no file of its
@@ -47,6 +53,12 @@ export function useDocumentPreview() {
       const result = await openDocumentContent(document.id, document.fileName)
       if (result.kind === 'text-preview') {
         setPreviewDocument(result)
+      } else if (result.kind === 'pdf-preview') {
+        setPdfPreview({
+          ...result,
+          anchor: document.anchor,
+          contentSha256: document.contentSha256,
+        })
       } else if (result.kind === 'download') {
         // Every format without a preview (DOCX among them) must give visible feedback - a click
         // that only starts a silent download otherwise looks like it did nothing. A Markdown/plain
@@ -70,6 +82,8 @@ export function useDocumentPreview() {
   return {
     previewDocument,
     closePreview: () => setPreviewDocument(null),
+    pdfPreview,
+    closePdfPreview: () => setPdfPreview(null),
     openDocument,
   }
 }

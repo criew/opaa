@@ -18,6 +18,7 @@ import { useDocumentsUrlState } from '../hooks/useDocumentsUrlState'
 import type { DocumentUpload } from '../hooks/useDocumentUpload'
 import { useLibraryFolderActions } from '../hooks/useLibraryFolderActions'
 import DocumentTextPreviewDialog from './DocumentTextPreviewDialog'
+import PdfPreviewDialog from './PdfPreviewDialog'
 import BulkMetadataDialog from './metadata/BulkMetadataDialog'
 import DocumentMetadataPanel from './metadata/DocumentMetadataPanel'
 import { CORE_METADATA_FIELDS } from './metadata/metadataValues'
@@ -126,7 +127,8 @@ export default function LibraryDocumentsSection({
   const { bulkDialogOpen, setBulkDialogOpen, bulkResult, setBulkResult, handleBulkDone } = bulk
   // Opening the original is a read-only, per-click action that never touches the store -
   // its failure and download feedback surface as global popup notifications (guidelines 5.9).
-  const { previewDocument, closePreview, openDocument } = useDocumentPreview()
+  const { previewDocument, closePreview, pdfPreview, closePdfPreview, openDocument } =
+    useDocumentPreview()
 
   const isUploadLibrary = sourceType === 'UPLOAD'
   // ADR-0018/#443: a connector document only ever leaves the index because its source did too -
@@ -496,6 +498,7 @@ export default function LibraryDocumentsSection({
       />
 
       <DocumentTextPreviewDialog previewDocument={previewDocument} onClose={closePreview} />
+      <PdfPreviewDialog preview={pdfPreview} onClose={closePdfPreview} />
       {metadataEnabled && bulkDialogOpen && (
         <BulkMetadataDialog
           open

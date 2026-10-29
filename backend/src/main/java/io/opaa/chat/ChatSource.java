@@ -24,6 +24,7 @@ public final class ChatSource {
   private int matchCount;
   private boolean cited;
   private Instant indexedAt;
+  private String contentSha256;
   private UUID documentId;
   private String sourceType;
   private String sourceUrl;
@@ -48,6 +49,11 @@ public final class ChatSource {
 
   public ChatSource indexedAt(Instant indexedAt) {
     this.indexedAt = indexedAt;
+    return this;
+  }
+
+  public ChatSource contentSha256(String contentSha256) {
+    this.contentSha256 = contentSha256;
     return this;
   }
 
@@ -191,6 +197,18 @@ public final class ChatSource {
 
   public void setCited(boolean cited) {
     this.cited = cited;
+  }
+
+  /**
+   * SHA-256 (hex) of the original as it was indexed when the answer was given - a viewer compares
+   * it with the original it fetches to tell whether the anchors still describe that file.
+   */
+  public String getContentSha256() {
+    return contentSha256;
+  }
+
+  public void setContentSha256(String contentSha256) {
+    this.contentSha256 = contentSha256;
   }
 
   public Instant getIndexedAt() {
