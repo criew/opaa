@@ -1122,6 +1122,107 @@ describe('LibraryDetailPage', () => {
     })
   })
 
+  describe('counts during a run (#3217)', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+      // back to the IDLE status of vi.fn's own implementation for the tests after this one
+      mockGetIndexingStatus.mockReset()
+    })
+
+    it('counts the rows anew while a run moves documents, at most every ten seconds', async () => {
+      // only Date is faked: the throttle reads the clock, polling and waitFor keep real timers
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date('2026-10-01T10:00:00Z'))
+      const counts: Record<string, number> = { FAILED: 0, PENDING: 6, INDEXED: 2 }
+      server.use(
+        http.get('/api/v1/libraries/:libraryId/documents', ({ request }) => {
+          const status = new URL(request.url).searchParams.get('status') ?? ''
+          return HttpResponse.json(pageOf([], { size: 1, totalElements: counts[status] ?? 0 }))
+        }),
+      )
+      let runStatus: IndexingStatusResponse = {
+        status: 'RUNNING',
+        documentCount: 0,
+        totalDocuments: 8,
+        documentsSkipped: 0,
+        documentsFailed: 0,
+        documentsIndexedTotal: 0,
+        message: null,
+        timestamp: '2026-10-01T10:00:00Z',
+      }
+      mockGetIndexingStatus.mockImplementation(async () => runStatus)
+      mockGetLibraryDocuments.mockResolvedValue(
+        pageOf([
+          {
+            id: 'doc-1',
+            fileName: 'vermerk.pdf',
+            status: 'INDEXED',
+            sourceType: 'FILESYSTEM',
+            chunkCount: 1,
+          },
+        ]),
+      )
+      function progress(documentCount: number) {
+        runStatus = { ...runStatus, documentCount, documentsIndexedTotal: documentCount }
+        act(() => {
+          const current = useIndexingStore.getState().runsByLibrary[managerLibrary.id]
+          useIndexingStore.setState({
+            runsByLibrary: {
+              [managerLibrary.id]: {
+                ...current,
+                documentCount,
+                documentsIndexedTotal: documentCount,
+              },
+            },
+          })
+        })
+      }
+      async function pendingOption(): Promise<string> {
+        const user = userEvent.setup()
+        await user.click(await screen.findByRole('combobox', { name: 'Status' }))
+        const option = await screen.findByRole('option', { name: /^Wird verarbeitet/ })
+        const text = option.textContent ?? ''
+        await user.keyboard('{Escape}')
+        return text
+      }
+      setLibraryState(
+        managerLibrary,
+        detailsOf(managerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      await waitFor(() =>
+        expect(useIndexingStore.getState().runsByLibrary[managerLibrary.id]?.status).toBe(
+          'RUNNING',
+        ),
+      )
+      await waitFor(() =>
+        expect(useDocumentStore.getState().statusCountsByLibrary[managerLibrary.id]?.PENDING).toBe(
+          6,
+        ),
+      )
+
+      // within ten seconds of the last count a moving run asks nothing
+      counts.PENDING = 4
+      counts.INDEXED = 4
+      vi.setSystemTime(new Date('2026-10-01T10:00:05Z'))
+      progress(2)
+      expect(await pendingOption()).toBe('Wird verarbeitet (6)')
+
+      // afterwards the next step of the run counts anew
+      counts.PENDING = 1
+      counts.INDEXED = 7
+      vi.setSystemTime(new Date('2026-10-01T10:00:11Z'))
+      progress(5)
+      await waitFor(() =>
+        expect(useDocumentStore.getState().statusCountsByLibrary[managerLibrary.id]?.PENDING).toBe(
+          1,
+        ),
+      )
+      expect(await pendingOption()).toBe('Wird verarbeitet (1)')
+      expect(useIndexingStore.getState().runsByLibrary[managerLibrary.id]?.status).toBe('RUNNING')
+    })
+  })
+
   it('shows the errorMessage of a FAILED document as a tooltip on its status chip', async () => {
     // A FAILED row's asynchronous processing failure is only visible to
     // the user via this German errorMessage - the status chip text alone only says something went
