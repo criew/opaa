@@ -1356,7 +1356,8 @@ components:
             URL of an Apache mod_autoindex directory listing (HTTP_DIRECTORY), an RSS-2.0 feed
             (RSS_FEED) or the base address of a Confluence instance (CONFLUENCE: the site root
             without /wiki for Cloud, including any context path for Data Center - a trailing
-            /wiki or slash is normalised away, ADR-0023). http/https only.
+            /wiki or slash is normalised away, ADR-0023). http/https only, without user info
+            (user:pass@host, 400) - credentials belong in sourceCredentials.
           example: https://files.example.com/documents/
         sourceCredentials:
           type: string
@@ -1453,7 +1454,8 @@ components:
           type: string
           format: uri
           nullable: true
-          description: Only for sourceType HTTP_DIRECTORY or RSS_FEED. http/https only.
+          description: >
+            Only for sourceType HTTP_DIRECTORY or RSS_FEED. http/https only, without user info.
           example: https://files.example.com/documents/
         sourceCredentials:
           type: string

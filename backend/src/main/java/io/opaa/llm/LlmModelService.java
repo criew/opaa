@@ -47,6 +47,10 @@ public class LlmModelService {
 
   private static final String OBJECT_LABEL_PREFIX = "Chat-Modell";
 
+  static final String KEY_DOES_NOT_FOLLOW_MESSAGE =
+      "Die Basis-Adresse hat sich geändert: Bitte den API-Schlüssel erneut eingeben oder den"
+          + " gespeicherten Schlüssel entfernen, damit er nicht an die neue Adresse gesendet wird.";
+
   private final LlmModelRepository repository;
   private final SettingsEncryptor settingsEncryptor;
   private final AuditEventRecorder auditEventRecorder;
@@ -129,7 +133,8 @@ public class LlmModelService {
   /**
    * Replaces every editable field. {@code apiKey} follows the same three-way convention {@code
    * BrandingSettingsService#updateBranding} uses for its own optional fields: {@code null} leaves
-   * the stored key unchanged, a blank string clears it, and any other value replaces it.
+   * the stored key unchanged, a blank string clears it, and any other value replaces it. A stored
+   * key is kept only for the same endpoint; with another one, {@code null} is a 400.
    *
    * <p><b>Invalidates {@link ActiveChatModelResolver}'s cache when {@code id} is the active
    * model</b>: every field this method can change - base URL, model identifier, temperature, max
@@ -179,6 +184,7 @@ public class LlmModelService {
     LlmModel model = repository.findById(id).orElseThrow(() -> notFound(id));
     Map<String, Object> before = auditState(model);
     String previousApiKeyCiphertext = model.getApiKeyCiphertext();
+    requireKeyFollowsEndpoint(model.getBaseUrl(), baseUrl, apiKey, previousApiKeyCiphertext);
     String apiKeyCiphertext =
         apiKey == null ? previousApiKeyCiphertext : settingsEncryptor.encrypt(apiKey);
     model.replaceDetails(
@@ -355,6 +361,20 @@ public class LlmModelService {
   private static void requireBaseUrlWithoutCredentials(String baseUrl) {
     if (ModelEndpointUri.containsCredentials(baseUrl)) {
       throw new ValidationException(ModelEndpointUri.CREDENTIALS_REJECTED_MESSAGE);
+    }
+  }
+
+  /**
+   * A stored key never follows the address to another endpoint ({@link
+   * ModelEndpointRules#sameEndpoint}): with a changed endpoint the key must be entered again or
+   * removed, as for the model roles in {@code ModelRoleAdministration}.
+   */
+  private static void requireKeyFollowsEndpoint(
+      String storedBaseUrl, String baseUrl, String apiKey, String storedCiphertext) {
+    if (apiKey == null
+        && storedCiphertext != null
+        && !ModelEndpointRules.sameEndpoint(storedBaseUrl, baseUrl)) {
+      throw new ValidationException(KEY_DOES_NOT_FOLLOW_MESSAGE);
     }
   }
 

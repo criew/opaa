@@ -30,6 +30,15 @@ public final class ConnectorChecks {
    */
   public static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
 
+  /**
+   * Credentials in the address ({@code user:pass@host}) are refused: the address is stored and
+   * logged in clear text, the message never repeats it.
+   */
+  static final String USER_INFO_REJECTED_MESSAGE =
+      "sourceUrl darf keine Zugangsdaten enthalten (Form \"https://benutzer:passwort@host\")."
+          + " Tragen Sie die Adresse ohne Zugangsdaten ein und hinterlegen Sie Benutzername und"
+          + " Passwort in den Zugangsdaten der Quelle.";
+
   private ConnectorChecks() {}
 
   public static String blankToNull(String value) {
@@ -80,6 +89,9 @@ public final class ConnectorChecks {
     String scheme = uri.getScheme();
     if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
       throw new ValidationException("sourceUrl muss mit http:// oder https:// beginnen");
+    }
+    if (uri.getRawUserInfo() != null) {
+      throw new ValidationException(USER_INFO_REJECTED_MESSAGE);
     }
   }
 

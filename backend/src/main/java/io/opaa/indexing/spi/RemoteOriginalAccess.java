@@ -7,14 +7,17 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BasicCredentials;
 import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,6 +26,11 @@ import org.slf4j.LoggerFactory;
  * part of the request decides which URL is fetched. The target validation is applied again on every
  * hop, a redirect is only followed within the same origin, and the resolved credentials and TLS
  * switch apply as for a run; the credentials reach only the outbound {@code Authorization} header.
+ *
+ * <p>The stored URL is content the source operator controls (a feed entry's link), so the
+ * credentials follow only a URL on the origin of the library's own {@code sourceUrl} ({@link
+ * RedirectFollowingFetcher#sameOrigin}) and inside the connector's path scope; any other original
+ * is fetched without them, and a redirect out of the scope drops them.
  *
  * <p>The body is bounded by {@link RemoteContentProperties#maxBytes()} while streaming, each hop by
  * {@link RemoteContentProperties#timeoutSeconds()} and the whole transfer by {@link
@@ -51,16 +59,31 @@ public class RemoteOriginalAccess implements OriginalAccess {
   @Override
   public Optional<DocumentContent> openOriginal(
       Document document, KnowledgeLibrary library, SourceSettings settings) {
+    return openOriginal(document, library, settings, RedirectFollowingFetcher.ANY_TARGET);
+  }
+
+  /**
+   * {@link #openOriginal(Document, KnowledgeLibrary, SourceSettings)} for credentials bound to a
+   * path subtree of the source's origin: {@code credentialScope} must accept the stored URL and
+   * every redirect target for the credentials to travel.
+   */
+  public Optional<DocumentContent> openOriginal(
+      Document document,
+      KnowledgeLibrary library,
+      SourceSettings settings,
+      Predicate<URI> credentialScope) {
     String sourceUrl = document.getFilePath();
     if (sourceUrl == null || sourceUrl.isBlank()) {
       return Optional.empty();
     }
     HttpClient httpClient = null;
     try {
-      BasicCredentials config = BasicCredentials.parse(settings.sourceCredentials());
       httpClient = SourceHttpClientFactory.buildHttpClient();
-      String authHeader =
-          SourceHttpClientFactory.buildAuthHeader(config.username(), config.password());
+      String authHeader = null;
+      if (credentialsMayReach(settings.sourceUrl(), sourceUrl, credentialScope)) {
+        BasicCredentials config = BasicCredentials.parse(settings.sourceCredentials());
+        authHeader = SourceHttpClientFactory.buildAuthHeader(config.username(), config.password());
+      }
 
       BoundedDownloader.DownloadedStream downloaded =
           boundedDownloader.downloadStreaming(
@@ -69,7 +92,8 @@ public class RemoteOriginalAccess implements OriginalAccess {
               properties.maxBytes(),
               authHeader,
               Duration.ofSeconds(properties.timeoutSeconds()),
-              Duration.ofSeconds(properties.transferTimeoutSeconds()));
+              Duration.ofSeconds(properties.transferTimeoutSeconds()),
+              credentialScope);
 
       // the type decided at index time comes first; the declared one is only a fallback
       String contentType = document.getContentType();
@@ -108,6 +132,26 @@ public class RemoteOriginalAccess implements OriginalAccess {
   @Override
   public OptionalLong streamedOriginalBound() {
     return OptionalLong.of(properties.maxBytes());
+  }
+
+  /**
+   * Whether the library's credentials may be sent to {@code target}: same origin as the library's
+   * {@code sourceUrl} and inside {@code credentialScope}. A missing or unparseable address on
+   * either side is never trusted.
+   */
+  static boolean credentialsMayReach(
+      String librarySourceUrl, String target, Predicate<URI> credentialScope) {
+    if (librarySourceUrl == null || librarySourceUrl.isBlank()) {
+      return false;
+    }
+    try {
+      URI origin = URI.create(librarySourceUrl.strip());
+      URI targetUri = URI.create(target.strip());
+      return RedirectFollowingFetcher.sameOrigin(origin, targetUri)
+          && credentialScope.test(targetUri);
+    } catch (IllegalArgumentException e) {
+      return false;
+    }
   }
 
   private static void closeQuietly(HttpClient httpClient) {

@@ -302,6 +302,30 @@ public class BoundedDownloader {
       Duration perRequestTimeout,
       Duration transferTimeout)
       throws IOException, InterruptedException {
+    return downloadStreaming(
+        httpClient,
+        fileUrl,
+        maxBytes,
+        authHeader,
+        perRequestTimeout,
+        transferTimeout,
+        RedirectFollowingFetcher.ANY_TARGET);
+  }
+
+  /**
+   * {@link #downloadStreaming(HttpClient, String, long, String, Duration, Duration)} with {@code
+   * authHeader} dropped for the rest of the chain once a redirect target leaves {@code
+   * authorizationScope} - for credentials that belong to a path subtree, not the whole origin.
+   */
+  public DownloadedStream downloadStreaming(
+      HttpClient httpClient,
+      String fileUrl,
+      long maxBytes,
+      String authHeader,
+      Duration perRequestTimeout,
+      Duration transferTimeout,
+      Predicate<URI> authorizationScope)
+      throws IOException, InterruptedException {
     log.debug("Streaming (bounded to {} bytes): {}", maxBytes, fileUrl);
 
     HttpResponse<InputStream> response =
@@ -311,7 +335,9 @@ public class BoundedDownloader {
             perRequestTimeout,
             requestPolicy.headers(authHeader),
             targetAddressValidator,
-            RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN);
+            RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN,
+            RateLimitHandling.NONE,
+            authorizationScope);
     long deadline = System.nanoTime() + transferTimeout.toNanos();
 
     if (response.statusCode() != 200) {

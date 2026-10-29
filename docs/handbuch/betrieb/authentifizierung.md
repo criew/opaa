@@ -383,8 +383,10 @@ wie die Issuer-URI; Redirects folgt das Backend nicht.
 **Das Geheimnis liegt verschlüsselt** mit `OPAA_CREDENTIALS_ENCRYPTION_KEY`; ohne diesen Schlüssel
 lässt sich kein Zugang speichern ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#schlüssel-und-geheimnisse)).
 Angezeigt werden nur Typ, Adresse, Realm und Client-ID. Das Geheimnis des Dienstkontos lässt sich
-jederzeit wechseln: in Keycloak neu erzeugen, in OPAA neu hinterlegen. Ist es nicht mehr
-entschlüsselbar, gilt es als nicht vorhanden; jeder Lauf meldet das Verzeichnis als unerreichbar und
+jederzeit wechseln: in Keycloak neu erzeugen, in OPAA neu hinterlegen. Ein Test ohne eingetragenes
+Geheimnis nutzt das gespeicherte nur für die gespeicherte Admin-API-Adresse; für eine geänderte
+Adresse ist das Geheimnis einzutragen, sonst lehnt OPAA den Test ab, statt es dorthin zu senden.
+Ist das gespeicherte Geheimnis nicht mehr entschlüsselbar, gilt es als nicht vorhanden; jeder Lauf meldet das Verzeichnis als unerreichbar und
 entzieht nichts, bis der Zugang neu hinterlegt ist.
 
 **Obergrenzen.** Mehr als `OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_GROUPS` Gruppen oder

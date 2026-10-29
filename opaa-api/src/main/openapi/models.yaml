@@ -69,7 +69,9 @@ paths:
         A full replacement of every editable field except active, which only activateLlmModel
         changes. apiKey follows the three-way convention BrandingUpdateRequest already uses for
         its own optional fields: omitted (null) leaves the stored key unchanged, an empty string
-        clears it, and any other value replaces it. A baseUrl other than the stored endpoint passes
+        clears it, and any other value replaces it. A stored key stays only with its endpoint
+        (scheme, host, port and path): a baseUrl naming another endpoint with apiKey omitted is
+        answered with 400 while a key is stored. A baseUrl other than the stored endpoint passes
         the address check of models first (400), as for createLlmModel; the stored one is kept
         unchecked.
       requestBody:

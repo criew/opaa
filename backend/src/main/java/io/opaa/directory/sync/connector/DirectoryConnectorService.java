@@ -15,8 +15,10 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.directory.sync.keycloak.KeycloakDirectoryConnector;
 import io.opaa.directory.sync.keycloak.KeycloakRealmAddress;
+import java.net.URI;
 import java.time.Clock;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -164,7 +166,8 @@ public class DirectoryConnectorService {
 
   /**
    * Probes the access without storing anything. A blank secret means "use the stored one", so an
-   * existing connection can be re-tested without retyping a secret no response ever returns.
+   * existing connection can be re-tested without retyping a secret no response ever returns - only
+   * for the stored admin address; another one needs its secret given (400 otherwise).
    */
   @Transactional(readOnly = true)
   public KeycloakDirectoryConnector.ProbeOutcome probe(
@@ -186,6 +189,14 @@ public class DirectoryConnectorService {
                       new ValidationException(
                           "Für diesen Anbieter ist kein Verzeichniszugang hinterlegt; das"
                               + " Geheimnis des Dienstkontos ist deshalb anzugeben."));
+      KeycloakRealmAddress storedAddress =
+          KeycloakRealmAddress.of(provider.getIssuerUri(), stored.getBaseUrl());
+      if (!sameAddress(storedAddress.baseUrl(), address.baseUrl())) {
+        throw new ValidationException(
+            "Die Admin-API-Adresse hat sich geändert: Das hinterlegte Geheimnis des Dienstkontos"
+                + " wird nur an die gespeicherte Adresse gesendet. Geben Sie es für die Probe der"
+                + " neuen Adresse an.");
+      }
       effectiveSecret = stored.getClientSecret();
       if (effectiveSecret == null || effectiveSecret.isBlank()) {
         // null exactly when the stored ciphertext could not be decrypted - see
@@ -197,6 +208,25 @@ public class DirectoryConnectorService {
       }
     }
     return keycloak.probe(address, clientId, effectiveSecret);
+  }
+
+  /**
+   * Whether two admin API bases name the same endpoint: scheme, host, port (an absent one as the
+   * scheme's default) and path, so a stored secret never reaches another host, port or path.
+   */
+  private static boolean sameAddress(String stored, String requested) {
+    try {
+      return endpointKey(URI.create(stored)).equals(endpointKey(URI.create(requested)));
+    } catch (IllegalArgumentException | NullPointerException e) {
+      return false;
+    }
+  }
+
+  private static String endpointKey(URI uri) {
+    String scheme = uri.getScheme().toLowerCase(Locale.ROOT);
+    int port = uri.getPort() != -1 ? uri.getPort() : "https".equals(scheme) ? 443 : 80;
+    String path = uri.getRawPath() == null ? "" : uri.getRawPath();
+    return scheme + "://" + uri.getHost().toLowerCase(Locale.ROOT) + ":" + port + path;
   }
 
   private OidcProvider requireProvider(UUID providerId) {
