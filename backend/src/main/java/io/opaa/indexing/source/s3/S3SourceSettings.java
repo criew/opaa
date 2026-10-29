@@ -8,9 +8,11 @@ import java.util.List;
 /**
  * The typed configuration of an S3 library (ADR-0027, Entscheidung 1) as {@code
  * knowledge_libraries.source_settings} carries it: the signing region, the addressing style, one to
- * fifty non-overlapping {@link S3Scope}s and optional glob patterns on the object key. Validated on
+ * fifty non-overlapping {@link S3Scope}s - or {@code allBuckets} for every bucket the key may list
+ * (ADR-0027, Entscheidung 2) - and optional glob patterns on the object key. Validated on
  * construction; the endpoint and the credentials live in the library's existing columns and are
- * never part of this record.
+ * never part of this record. Under {@code allBuckets} the stored scopes are empty; a run puts the
+ * whole buckets it found there ({@link #resolvedTo}).
  *
  * @param region the region every request is signed for; {@code null} means {@link
  *     S3Connection#DEFAULT_REGION}
@@ -24,7 +26,8 @@ public record S3SourceSettings(
     boolean pathStyle,
     List<S3Scope> scopes,
     List<String> includePatterns,
-    List<String> excludePatterns) {
+    List<String> excludePatterns,
+    boolean allBuckets) {
 
   public static final int MAX_REGION_LENGTH = 64;
   public static final int MAX_PATTERNS = 50;
@@ -34,12 +37,56 @@ public record S3SourceSettings(
     region = normalizeRegion(region);
     scopes = scopes == null ? List.of() : List.copyOf(scopes);
     try {
-      S3Scope.requireValidSelection(scopes);
+      if (allBuckets) {
+        S3Scope.requireDisjoint(scopes);
+      } else {
+        S3Scope.requireValidSelection(scopes);
+      }
     } catch (S3Scope.InvalidS3ScopeException e) {
       throw new InvalidS3SourceSettingsException(e.getMessage());
     }
     includePatterns = normalizePatterns(includePatterns, "Einschlussmuster");
     excludePatterns = normalizePatterns(excludePatterns, "Ausschlussmuster");
+  }
+
+  /** Settings with a scope selection. */
+  public S3SourceSettings(
+      String region,
+      boolean pathStyle,
+      List<S3Scope> scopes,
+      List<String> includePatterns,
+      List<String> excludePatterns) {
+    this(region, pathStyle, scopes, includePatterns, excludePatterns, false);
+  }
+
+  /** These settings with {@code buckets} as their whole-bucket scopes, as one run found them. */
+  public S3SourceSettings resolvedTo(List<String> buckets) {
+    return new S3SourceSettings(
+        region,
+        pathStyle,
+        buckets.stream().map(bucket -> S3Scope.of(bucket, "")).toList(),
+        includePatterns,
+        excludePatterns,
+        allBuckets);
+  }
+
+  /**
+   * The scope {@code bucket/key} lies in, if any. Stored "Alle Buckets" settings, not yet resolved
+   * by a run, take the whole bucket of any name that can be one.
+   */
+  public java.util.Optional<S3Scope> scopeOf(String bucket, String key) {
+    java.util.Optional<S3Scope> listed =
+        scopes.stream()
+            .filter(scope -> scope.bucket().equals(bucket) && scope.contains(key))
+            .findFirst();
+    if (listed.isPresent() || !allBuckets || !scopes.isEmpty()) {
+      return listed;
+    }
+    try {
+      return java.util.Optional.of(S3Scope.of(bucket, ""));
+    } catch (S3Scope.InvalidS3ScopeException e) {
+      return java.util.Optional.empty();
+    }
   }
 
   /** The region a connection signs for - the default when none was configured. */

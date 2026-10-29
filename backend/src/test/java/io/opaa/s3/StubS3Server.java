@@ -51,11 +51,13 @@ public final class StubS3Server implements AutoCloseable {
   private final HttpServer server;
   private final Map<String, Map<String, byte[]>> buckets = new LinkedHashMap<>();
   private final Map<String, String> contentTypes = new LinkedHashMap<>();
+  private final Map<String, String> bucketRegions = new LinkedHashMap<>();
   private final Set<String> chunkedKeys = new java.util.HashSet<>();
   private final Deque<Failure> scripted = new ArrayDeque<>();
   private final List<Seen> seen = new CopyOnWriteArrayList<>();
   private volatile boolean omitContinuationToken;
   private volatile boolean omitLastModified;
+  private volatile int bucketPageSize = Integer.MAX_VALUE;
   private volatile int versionListingStatus;
   private volatile String versionListingCode;
   private volatile String versioningStatus;
@@ -70,6 +72,12 @@ public final class StubS3Server implements AutoCloseable {
 
   public String endpoint() {
     return "http://127.0.0.1:" + server.getAddress().getPort();
+  }
+
+  /** The bucket listing names {@code region} for {@code bucket}, as AWS does. */
+  public void bucketRegion(String bucket, String region) {
+    addBucket(bucket);
+    bucketRegions.put(bucket, region);
   }
 
   public void addBucket(String bucket) {
@@ -98,6 +106,11 @@ public final class StubS3Server implements AutoCloseable {
     omitContinuationToken = true;
   }
 
+  /** The bucket listing returns at most {@code size} buckets per page, whatever is asked. */
+  public void bucketPageSize(int size) {
+    bucketPageSize = size;
+  }
+
   /** Listings name no {@code LastModified}, as a store that does not record one would. */
   public void omitLastModified() {
     omitLastModified = true;
@@ -120,7 +133,10 @@ public final class StubS3Server implements AutoCloseable {
     versioningQueryStatus = status;
   }
 
-  /** The next {@code times} requests - whatever they are - answer {@code status}/{@code code}. */
+  /**
+   * The next {@code times} requests - whatever they are - answer {@code status}/{@code code}; a
+   * {@code null} code answers without a body, as a proxy in front of the store would.
+   */
   public void failNext(int status, String code, int times) {
     for (int i = 0; i < times; i++) {
       scripted.add(new Failure(null, null, status, code));
@@ -172,7 +188,7 @@ public final class StubS3Server implements AutoCloseable {
         return;
       }
       if (path.equals("/")) {
-        listBuckets(exchange);
+        listBuckets(exchange, query);
         return;
       }
       String[] parts = path.substring(1).split("/", 2);
@@ -292,17 +308,41 @@ public final class StubS3Server implements AutoCloseable {
     throw new IllegalArgumentException("aws-chunked body without a chunk header line");
   }
 
-  private void listBuckets(HttpExchange exchange) throws IOException {
+  /**
+   * Like AWS, names a bucket's region only to a request with a parameter such as max-buckets, and
+   * pages by {@code max-buckets} and {@code continuation-token}.
+   */
+  private void listBuckets(HttpExchange exchange, String rawQuery) throws IOException {
+    boolean withRegions = rawQuery != null && !rawQuery.isBlank();
+    Map<String, String> query = parseQuery(rawQuery);
+    List<String> names = List.copyOf(buckets.keySet());
+    int start =
+        query.containsKey("continuation-token")
+            ? Integer.parseInt(query.get("continuation-token").substring(1))
+            : 0;
+    int size =
+        Math.min(
+            bucketPageSize,
+            Integer.parseInt(query.getOrDefault("max-buckets", String.valueOf(names.size()))));
+    int end = Math.min(names.size(), start + Math.max(size, 1));
     StringBuilder xml =
         new StringBuilder(
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?><ListAllMyBucketsResult"
                 + " xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Owner><ID>stub</ID></Owner><Buckets>");
-    for (String name : buckets.keySet()) {
+    for (String name : names.subList(start, end)) {
       xml.append("<Bucket><Name>")
           .append(name)
-          .append("</Name><CreationDate>2026-01-01T00:00:00.000Z</CreationDate></Bucket>");
+          .append("</Name><CreationDate>2026-01-01T00:00:00.000Z</CreationDate>");
+      if (withRegions && bucketRegions.containsKey(name)) {
+        xml.append("<BucketRegion>").append(bucketRegions.get(name)).append("</BucketRegion>");
+      }
+      xml.append("</Bucket>");
     }
-    xml.append("</Buckets></ListAllMyBucketsResult>");
+    xml.append("</Buckets>");
+    if (end < names.size()) {
+      xml.append("<ContinuationToken>b").append(end).append("</ContinuationToken>");
+    }
+    xml.append("</ListAllMyBucketsResult>");
     xml(exchange, 200, xml.toString());
   }
 
@@ -425,7 +465,7 @@ public final class StubS3Server implements AutoCloseable {
   }
 
   private void error(HttpExchange exchange, int status, String code) throws IOException {
-    if (exchange.getRequestMethod().equals("HEAD")) {
+    if (exchange.getRequestMethod().equals("HEAD") || code == null) {
       exchange.sendResponseHeaders(status, -1);
       return;
     }

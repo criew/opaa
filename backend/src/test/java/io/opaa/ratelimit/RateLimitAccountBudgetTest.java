@@ -41,6 +41,7 @@ class RateLimitAccountBudgetTest {
 
   private static final String SEARCH = "/api/v1/search";
   private static final String QUERY = "/api/v1/query";
+  private static final String TRANSCRIPTION = "/api/v1/transcriptions";
   private static final EndpointLimit WIDE = new EndpointLimit(1000, 60, 1000, 0);
 
   private SimpleMeterRegistry meterRegistry;
@@ -223,6 +224,42 @@ class RateLimitAccountBudgetTest {
     assertThat(answer(filter, QUERY, "203.0.113.42", anna).getStatus()).isEqualTo(429);
     // the search of the same account draws on a budget of its own
     assertThat(answer(filter, SEARCH, "203.0.113.42", anna).getStatus()).isEqualTo(200);
+  }
+
+  @Test
+  void theTranscriptionAndTheUploadHaveBudgetsPerAccountOfTheirOwn() throws Exception {
+    EndpointLimit perAccountTwo = new EndpointLimit(1000, 60, 1000, 2);
+    Filter filter =
+        filter(
+            new RateLimitProperties(
+                true,
+                List.of(),
+                WIDE,
+                WIDE,
+                WIDE,
+                WIDE,
+                WIDE,
+                WIDE,
+                WIDE,
+                perAccountTwo,
+                perAccountTwo,
+                null));
+    Authentication anna = account("anna");
+    String upload = "/api/v1/libraries/" + UUID.randomUUID() + "/documents";
+
+    for (String path : List.of(TRANSCRIPTION, upload)) {
+      assertThat(answer(filter, path, "203.0.113.60", anna).getStatus()).as(path).isEqualTo(200);
+      assertThat(answer(filter, path, "203.0.113.61", anna).getStatus()).as(path).isEqualTo(200);
+      // another address buys the same account nothing
+      assertThat(answer(filter, path, "203.0.113.62", anna).getStatus()).as(path).isEqualTo(429);
+      assertThat(answer(filter, path, "203.0.113.62", account("bert")).getStatus())
+          .as(path)
+          .isEqualTo(200);
+    }
+    assertThat(rejected("transcription", "account")).isEqualTo(1.0);
+    assertThat(rejected("document-upload", "account")).isEqualTo(1.0);
+    // the query of the same account is not touched
+    assertThat(answer(filter, QUERY, "203.0.113.62", anna).getStatus()).isEqualTo(200);
   }
 
   @Test

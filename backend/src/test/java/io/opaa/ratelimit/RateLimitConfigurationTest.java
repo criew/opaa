@@ -29,13 +29,14 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * The wiring of the rules, which {@code RateLimitFilterTest} cannot see: that each switchable
  * self-service rule asks its <em>own</em> flow and a served flow is still counted, and that the
- * chat search and the search with its hits have budgets of their own. No Spring context; the
- * production {@code @Bean} method is called directly, with the shipped self-service defaults (five
- * requests per client and hour).
+ * chat search, the search with its hits, the transcription and the upload have budgets of their
+ * own. No Spring context; the production {@code @Bean} method is called directly, with the shipped
+ * self-service defaults (five requests per client and hour).
  */
 class RateLimitConfigurationTest {
 
   private static final String SEARCH = "/api/v1/search";
+  private static final String TRANSCRIPTION = "/api/v1/transcriptions";
   private static final String REGISTER = "/api/v1/auth/local/register";
   private static final String FORGOT_PASSWORD = "/api/v1/auth/local/forgot-password";
   private static final int SHIPPED_BUDGET = 5;
@@ -274,6 +275,76 @@ class RateLimitConfigurationTest {
     }
   }
 
+  @Test
+  void theTranscriptionCountsItsOwnBudgetApartFromItsAvailability() throws Exception {
+    EndpointLimit wide = new EndpointLimit(1000, 60, 1000);
+    EndpointLimit transcription = new EndpointLimit(2, 60, 1000);
+    Filter filter = filter(withTranscriptionAndUpload(wide, transcription, wide));
+
+    assertThat(statusAfter(filter, TRANSCRIPTION, 2)).isEqualTo(200);
+    assertThat(statusAfter(filter, TRANSCRIPTION, 1)).isEqualTo(429);
+    assertThat(statusAfter(filter, TRANSCRIPTION + "/availability", 1)).isEqualTo(200);
+    assertThat(statusAfter(filter, "/api/v1/query", 1)).isEqualTo(200);
+  }
+
+  @Test
+  void theTranscriptionGlobalCeilingCountsAcrossAllClients() throws Exception {
+    EndpointLimit wide = new EndpointLimit(1000, 60, 1000);
+    EndpointLimit transcription = new EndpointLimit(1000, 60, 2);
+    Filter filter = filter(withTranscriptionAndUpload(wide, transcription, wide));
+
+    assertThat(answerSignedIn(filter, TRANSCRIPTION, "203.0.113.71", 200)).isEqualTo(200);
+    assertThat(answerSignedIn(filter, TRANSCRIPTION, "203.0.113.72", 200)).isEqualTo(200);
+    assertThat(answerSignedIn(filter, TRANSCRIPTION, "203.0.113.73", 200)).isEqualTo(429);
+  }
+
+  @Test
+  void uploadsShareOneBudgetPerClientAcrossLibrariesAndLeaveTheListingOpen() throws Exception {
+    EndpointLimit wide = new EndpointLimit(1000, 60, 1000);
+    EndpointLimit upload = new EndpointLimit(2, 60, 1000);
+    Filter filter = filter(withTranscriptionAndUpload(wide, wide, upload));
+
+    assertThat(answerSignedIn(filter, documentsOf(UUID.randomUUID()), CLIENT, 201)).isEqualTo(201);
+    assertThat(answerSignedIn(filter, documentsOf(UUID.randomUUID()), CLIENT, 201)).isEqualTo(201);
+    // another library buys no fresh budget
+    assertThat(answerSignedIn(filter, documentsOf(UUID.randomUUID()), CLIENT, 201)).isEqualTo(429);
+    // the listing on the same path, a document below it and another client stay open
+    UUID library = UUID.randomUUID();
+    for (int i = 0; i < 3; i++) {
+      assertThat(respond(filter, "GET", documentsOf(library), CLIENT, 200, true).getStatus())
+          .isEqualTo(200);
+    }
+    assertThat(answerSignedIn(filter, documentsOf(library) + "/bulk-delete", CLIENT, 200))
+        .isEqualTo(200);
+    assertThat(answerSignedIn(filter, documentsOf(library), "203.0.113.80", 201)).isEqualTo(201);
+  }
+
+  @Test
+  void theUploadGlobalCeilingCountsOnlyUploadsThatAuthenticated() throws Exception {
+    EndpointLimit wide = new EndpointLimit(1000, 60, 1000);
+    EndpointLimit upload = new EndpointLimit(1000, 60, 2);
+    Filter filter = filter(withTranscriptionAndUpload(wide, wide, upload));
+    UUID library = UUID.randomUUID();
+
+    for (int stranger = 1; stranger <= 5; stranger++) {
+      assertThat(answer(filter, documentsOf(library), "198.51.100." + stranger, 401))
+          .isEqualTo(401);
+    }
+    assertThat(answerSignedIn(filter, documentsOf(library), "203.0.113.81", 201)).isEqualTo(201);
+    assertThat(answerSignedIn(filter, documentsOf(library), "203.0.113.82", 201)).isEqualTo(201);
+    assertThat(answerSignedIn(filter, documentsOf(library), "203.0.113.83", 201)).isEqualTo(429);
+  }
+
+  private static RateLimitProperties withTranscriptionAndUpload(
+      EndpointLimit wide, EndpointLimit transcription, EndpointLimit upload) {
+    return new RateLimitProperties(
+        true, List.of(), wide, wide, wide, wide, wide, wide, wide, transcription, upload, null);
+  }
+
+  private static String documentsOf(UUID libraryId) {
+    return "/api/v1/libraries/" + libraryId + "/documents";
+  }
+
   private static String pushTo(UUID libraryId) {
     return "/api/v1/libraries/" + libraryId + "/push";
   }
@@ -302,7 +373,13 @@ class RateLimitConfigurationTest {
   private static MockHttpServletResponse respond(
       Filter filter, String path, String client, int status, boolean authenticated)
       throws Exception {
-    MockHttpServletRequest request = new MockHttpServletRequest("POST", path);
+    return respond(filter, "POST", path, client, status, authenticated);
+  }
+
+  private static MockHttpServletResponse respond(
+      Filter filter, String method, String path, String client, int status, boolean authenticated)
+      throws Exception {
+    MockHttpServletRequest request = new MockHttpServletRequest(method, path);
     request.setRemoteAddr(client);
     MockHttpServletResponse response = new MockHttpServletResponse();
     FilterChain chain =

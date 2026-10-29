@@ -24,6 +24,7 @@ import {
   revokeOwnExternalAccessToken,
 } from '../api/externalAccessApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
+import { consumeRecentLoginReturn } from '@/shared/session/recentLogin'
 import { notify } from '@/shared/stores/notificationStore'
 import { fontFamily } from '@/shared/theme/tokens'
 import MetaBadge from '@/shared/ui/MetaBadge'
@@ -90,6 +91,7 @@ export default function OwnExternalAccessTokensSection() {
   const [error, setError] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [created, setCreated] = useState<CreatedExternalAccessTokenResponse | null>(null)
+  const [afterProviderSignIn, setAfterProviderSignIn] = useState(false)
 
   // The state updates live in the promise's continuations, not in the effect body: a
   // synchronous setState there causes a cascade of renders (react-hooks).
@@ -114,6 +116,16 @@ export default function OwnExternalAccessTokensSection() {
   useEffect(() => {
     void load()
   }, [load])
+
+  // Back from a sign-in forced at the provider for an issuance: the creation dialog opens again.
+  // Under StrictMode the effect runs twice; the return is consumed by the first run only.
+  useEffect(() => {
+    if (!consumeRecentLoginReturn()) return
+    void Promise.resolve().then(() => {
+      setAfterProviderSignIn(true)
+      setIsCreating(true)
+    })
+  }, [])
 
   async function handleRevoke(token: OwnExternalAccessTokenResponse) {
     const confirmed = await confirmAction({
@@ -241,9 +253,14 @@ export default function OwnExternalAccessTokensSection() {
       {isCreating && maxLifetimeDays !== null && channelEnabled === true && (
         <CreateExternalAccessTokenDialog
           tokenMaxLifetimeDays={maxLifetimeDays}
-          onClose={() => setIsCreating(false)}
+          afterProviderSignIn={afterProviderSignIn}
+          onClose={() => {
+            setIsCreating(false)
+            setAfterProviderSignIn(false)
+          }}
           onCreated={(response) => {
             setIsCreating(false)
+            setAfterProviderSignIn(false)
             setCreated(response)
             void load()
           }}

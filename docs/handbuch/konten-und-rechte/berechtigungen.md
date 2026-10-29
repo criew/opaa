@@ -240,6 +240,12 @@ Anbieter eingerichtet, und alle seine Gruppen folgen dieser Einstellung:
   in welchen Gruppen sie ist. Wird jemand dort aus einer Gruppe genommen, bleibt die Person in OPAA
   Mitglied, bis sie sich das nächste Mal anmeldet; wer sich nicht mehr anmeldet, bleibt es.
   Vergleichbar dem Dienstausweis am Einlass: Man sieht nur, wer gerade durch die Tür kommt.
+  Zugangstokens für externe KI-Werkzeuge nutzen diesen Stand nur begrenzt lange: Liegt die letzte
+  Anmeldung weiter zurück als die eingestellte Frist, ruhen die Tokens der Person bis zur nächsten
+  Anmeldung ([Externe KI-Werkzeuge](../spaces/fremdzugaenge.md), Abschnitt 6). Diese Frist gilt für
+  jedes Konto eines Identitätsanbieters, auch beim Verzeichnisabgleich. Aufgefrischt wird der
+  Gruppenstand aber nur, wenn das Anmeldetoken den Gruppen-Claim tatsächlich trägt; fehlt er, bleibt
+  der letzte bekannte Stand auch nach der Anmeldung stehen.
 - **Über den Verzeichnisabgleich:** OPAA hat ein eigenes Lesekonto beim Anbieter und liest Gruppen
   und Mitglieder im eingestellten Takt selbst aus. Änderungen gelten nach dem nächsten Abgleich,
   auch für Personen, die sich nicht anmelden. Vergleichbar der Personalliste, die das Personalamt

@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
@@ -159,6 +160,7 @@ class LibraryDocumentServiceTest {
   // io.opaa.indexing.source.s3.S3OriginalAccessIntegrationTest.
   private S3OriginalAccess s3OriginalAccess;
   private LibraryDocumentService service;
+  private UploadProcessingSlots processingSlots;
   private MalwareScanService malwareScanService = MalwareScanService.disabled();
 
   /**
@@ -207,6 +209,7 @@ class LibraryDocumentServiceTest {
             new EmbeddingRateEstimator(4.0),
             2048);
     uploadProperties = new UploadProperties(storageDir.toString(), null, 10L * 1024, null, 0);
+    processingSlots = new UploadProcessingSlots(uploadProperties);
     // The real adapter, not a mock: every assertion below about where a file ends up (or stops
     // existing) is about what it actually does with opaa.upload.storage-path.
     uploadedOriginalStore = new FilesystemUploadedOriginalStore(uploadProperties);
@@ -308,6 +311,7 @@ class LibraryDocumentServiceTest {
         mock(io.opaa.instance.CurrentInstance.class),
         malwareScanService,
         mock(EmbeddingModelService.class),
+        processingSlots,
         Clock.systemUTC());
   }
 
@@ -875,12 +879,9 @@ class LibraryDocumentServiceTest {
   }
 
   @Test
-  void aFullProcessingQueueMarksTheDocumentFailedInsteadOfLeavingItPendingForever()
-      throws IOException {
-    // uploadTaskExecutor rejects (AbortPolicy) rather than silently discarding a task when its
-    // queue is full - this is where LibraryDocumentService catches that rejection and turns it
-    // into an immediate, explained FAILED row instead of a PENDING one nothing will ever pick
-    // up.
+  void aQueueFullDespiteAFreePlaceTakesTheRowBackAndAnswers429() throws IOException {
+    // A task that gave its place back may not have left its thread yet, so the executor can still
+    // reject: the row is removed again and the upload refused like a full pool, never FAILED.
     grantEditor();
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-queue-full");
     when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
@@ -889,14 +890,82 @@ class LibraryDocumentServiceTest {
     doThrow(new TaskRejectedException("queue is full"))
         .when(documentIngestService)
         .processUploadedFileAsync(any(), any(), any());
+    int places = processingSlots.available();
 
-    LibraryDocumentEntry response =
-        service.uploadDocument(libraryId, pdfFile("report.pdf", "pdf content"), null, caller);
+    assertThatThrownBy(
+            () ->
+                service.uploadDocument(
+                    libraryId, pdfFile("report.pdf", "pdf content"), null, caller))
+        .isInstanceOf(TooManyRequestsException.class)
+        .satisfies(
+            e ->
+                assertThat(((TooManyRequestsException) e).retryAfterSeconds())
+                    .isEqualTo(UploadProcessingSlots.RETRY_AFTER_SECONDS));
 
-    assertThat(response.document().getStatus()).isEqualTo(DocumentStatus.FAILED);
-    assertThat(response.document().getErrorMessage())
-        .isEqualTo("Die Verarbeitung ist derzeit ausgelastet - bitte später erneut versuchen.");
+    verify(documentRepository).delete(any(Document.class));
+    verify(documentRepository, never()).markFailed(any(), any());
+    assertThat(processingSlots.available()).isEqualTo(places);
     assertNoFilesWereStored();
+  }
+
+  @Test
+  void aFullPoolRefusesTheUploadBeforeAnythingIsStored() throws IOException {
+    grantEditor();
+    processingSlots =
+        new UploadProcessingSlots(
+            new UploadProperties(
+                storageDir.toString(),
+                null,
+                10L * 1024,
+                new UploadProperties.ThreadPool(1, 1, 0),
+                0));
+    service = serviceWith(new AttachmentExtractionProperties(0, null));
+    when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-first");
+    when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(any(), any()))
+        .thenReturn(Optional.empty());
+    ArgumentCaptor<AutoCloseable> workingFile = ArgumentCaptor.forClass(AutoCloseable.class);
+
+    service.uploadDocument(libraryId, pdfFile("first.pdf", "pdf content"), null, caller);
+    verify(documentIngestService).processUploadedFileAsync(any(), any(), workingFile.capture());
+    clearInvocations(documentRepository, checksumService);
+
+    assertThatThrownBy(
+            () ->
+                service.uploadDocument(
+                    libraryId, pdfFile("second.pdf", "other content"), null, "Unterordner", caller))
+        .isInstanceOf(TooManyRequestsException.class)
+        .hasMessage(UploadProcessingSlots.BUSY_MESSAGE);
+    verify(documentRepository, never()).save(any());
+    verify(checksumService, never()).computeSha256(any(Path.class));
+    verify(folderService, never()).resolveOrCreateFolderPath(any(), any(), any(), any());
+
+    // the processing of the first upload ends and gives its place back
+    try {
+      workingFile.getValue().close();
+    } catch (Exception e) {
+      throw new AssertionError(e);
+    }
+    assertThat(processingSlots.available()).isEqualTo(1);
+  }
+
+  @Test
+  void aRefusedUploadGivesItsPlaceBack() throws IOException {
+    grantEditor();
+    when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-duplicate");
+    Document existing = mock(Document.class);
+    when(existing.getStatus()).thenReturn(DocumentStatus.INDEXED);
+    when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
+            libraryId, "checksum-duplicate"))
+        .thenReturn(Optional.of(existing));
+    int places = processingSlots.available();
+
+    assertThatThrownBy(
+            () ->
+                service.uploadDocument(
+                    libraryId, pdfFile("report.pdf", "pdf content"), null, caller))
+        .isInstanceOf(ConflictException.class);
+
+    assertThat(processingSlots.available()).isEqualTo(places);
   }
 
   @Test
@@ -1898,6 +1967,7 @@ class LibraryDocumentServiceTest {
             mock(io.opaa.instance.CurrentInstance.class),
             MalwareScanService.disabled(),
             mock(EmbeddingModelService.class),
+            processingSlots,
             Clock.systemUTC());
     grantViewerOnUploadLibrary();
     KnowledgeLibrary library = remoteLibrary(null);

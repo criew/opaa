@@ -112,4 +112,17 @@ public interface LocalCredentialsRepository extends JpaRepository<LocalCredentia
       @Param("userIds") Collection<UUID> userIds,
       @Param("cutoff") Instant cutoff,
       @Param("now") Instant now);
+
+  /**
+   * The session generation and the cutoff of one account, as {@code [session_generation,
+   * password_invalidated_before]}, under a share lock held until the caller's transaction ends: an
+   * act that ends every session updates this row, so it either waits for the caller or has written
+   * it already and is seen here. Empty for an account without local credentials.
+   */
+  @Query(
+      value =
+          "SELECT session_generation, password_invalidated_before FROM local_credentials"
+              + " WHERE user_id = :userId FOR SHARE",
+      nativeQuery = true)
+  List<Object[]> lockSessionStamp(@Param("userId") UUID userId);
 }

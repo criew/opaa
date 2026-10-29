@@ -38,6 +38,13 @@ import org.springframework.security.web.util.matcher.IpAddressMatcher;
  * @param search per-endpoint limits for the search without an answer ({@code POST /api/v1/search})
  *     and the fetch of a hit ({@code GET /api/v1/search/hits/{hitId}}), one budget for both: every
  *     search embeds its question with the configured model, every fetch reads stored chunks
+ * @param transcription per-endpoint limits for the dictation ({@code POST /api/v1/transcriptions}):
+ *     every request holds a transcription slot and costs a call of the transcription model; {@code
+ *     null} takes {@link #DEFAULT_TRANSCRIPTION}
+ * @param documentUpload per-endpoint limits for the upload of a document ({@code POST
+ *     /api/v1/libraries/{libraryId}/documents}), one budget across all libraries: every upload
+ *     takes a place in the upload processing pool of the instance; {@code null} takes {@link
+ *     #DEFAULT_DOCUMENT_UPLOAD}
  * @param localAuth the limits of the local sign-in and its self-service endpoints (ADR-0033,
  *     Entscheidung 9); every absent value is the ADR's default
  */
@@ -54,17 +61,55 @@ public record RateLimitProperties(
     EndpointLimit webhook,
     EndpointLimit chatSearch,
     EndpointLimit search,
+    EndpointLimit transcription,
+    EndpointLimit documentUpload,
     LocalAuthLimits localAuth) {
 
   public static final String TRUSTED_PROXY_CIDRS_VARIABLE = "OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS";
   public static final int NARROWEST_ALLOWED_PREFIX_LENGTH = 8;
 
+  /** The shipped transcription limits, as in {@code application.yml}. */
+  public static final EndpointLimit DEFAULT_TRANSCRIPTION = new EndpointLimit(10, 60, 100, 10);
+
+  /** The shipped upload limits, as in {@code application.yml}. */
+  public static final EndpointLimit DEFAULT_DOCUMENT_UPLOAD = new EndpointLimit(120, 60, 600, 60);
+
+  @ConstructorBinding
   public RateLimitProperties {
     trustedProxyCidrs = normalizeTrustedProxies(trustedProxyCidrs);
+    transcription = transcription != null ? transcription : DEFAULT_TRANSCRIPTION;
+    documentUpload = documentUpload != null ? documentUpload : DEFAULT_DOCUMENT_UPLOAD;
     localAuth =
         localAuth != null
             ? localAuth
             : new LocalAuthLimits(null, null, null, null, null, null, null, null);
+  }
+
+  /** Without the transcription and upload limits, which then take their shipped values. */
+  public RateLimitProperties(
+      boolean enabled,
+      List<String> trustedProxyCidrs,
+      EndpointLimit query,
+      EndpointLimit indexing,
+      EndpointLimit sourceTest,
+      EndpointLimit documentContent,
+      EndpointLimit webhook,
+      EndpointLimit chatSearch,
+      EndpointLimit search,
+      LocalAuthLimits localAuth) {
+    this(
+        enabled,
+        trustedProxyCidrs,
+        query,
+        indexing,
+        sourceTest,
+        documentContent,
+        webhook,
+        chatSearch,
+        search,
+        null,
+        null,
+        localAuth);
   }
 
   /**

@@ -450,7 +450,9 @@ public class IndexingConfiguration {
    * Backs {@code DocumentIngestService#processUploadedFileAsync} - deliberately its own pool with
    * its own {@link UploadProperties#threadPool} rather than a share of {@link
    * #indexingTaskExecutor}. Both use {@code AbortPolicy}, so a full queue throws synchronously back
-   * to the caller, which turns it into an immediate {@code FAILED} document or job row.
+   * to the caller: an indexing run turns it into an immediate {@code FAILED} job row, an upload
+   * reserves its place beforehand ({@code io.opaa.library.UploadProcessingSlots}) and answers a
+   * full pool with {@code 429}.
    */
   @Bean
   TaskExecutor uploadTaskExecutor(UploadProperties properties) {

@@ -27,6 +27,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
@@ -104,6 +105,7 @@ class LocalSelfRegistrationTakeoverTest {
             revocation,
             refreshTokens,
             audit,
+            mock(ApplicationEventPublisher.class),
             clock);
   }
 

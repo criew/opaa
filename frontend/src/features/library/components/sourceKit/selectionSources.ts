@@ -8,6 +8,7 @@ import {
   type GoogleDriveScope,
 } from '../../utils/googleDriveSource'
 import {
+  MAX_SHAREPOINT_LIBRARIES,
   SHAREPOINT_API,
   graphShownName,
   sharePointFolderLabel,
@@ -15,6 +16,7 @@ import {
   sharePointLibraryLabel,
   sharePointLibraryName,
   type SharePointLibraryChoice,
+  type SharePointSite,
 } from '../../utils/sharePointSource'
 import type { ConfluenceSpaceRef } from '../../utils/confluenceSource'
 import { ONEDRIVE_API, oneDriveFolderLabel, type OneDriveFolder } from '../../utils/oneDriveSource'
@@ -413,6 +415,65 @@ export function sharePointSelectionSource(probe: Probe): SelectionSource {
       label: 'Adresse der Site',
       placeholder: 'https://contoso.sharepoint.com/sites/rathaus',
       kind: 'open',
+      resolve: async (text) => {
+        if (!/^https:\/\//i.test(text.trim())) return 'Die Adresse beginnt mit https://.'
+        try {
+          const response = await browse({ siteUrl: text.trim() })
+          const site = response.entries[0]
+          if (!site) return response.message ?? 'Unter dieser Adresse liegt keine Site.'
+          return { ...sharePointSiteOf(site), trail: [] }
+        } catch (err) {
+          return err instanceof Error ? err.message : 'Die Site ließ sich nicht öffnen.'
+        }
+      },
+    },
+  }
+}
+
+/** Sites as objects of the dialog, for „Alle Dokumentbibliotheken“ of each. */
+export function sharePointSiteItemsOf(sites: SharePointSite[]): SelectionItem[] {
+  return sites.map((site) => ({
+    ...sharePointSiteOf({ key: `site:${site.id}`, name: site.name }),
+    trail: [],
+  }))
+}
+
+/** Chosen sites back in the settings' shape; a placeholder name is no name. */
+export function sharePointSitesOfItems(items: SelectionItem[]): SharePointSite[] {
+  return items.flatMap((item): SharePointSite[] =>
+    item.key.startsWith('site:')
+      ? [{ id: item.key.slice('site:'.length), name: item.placeholder ? null : item.name }]
+      : [],
+  )
+}
+
+/** The sites of SharePoint as flat objects: searched, or opened by their address. */
+export function sharePointSiteSelectionSource(probe: Probe): SelectionSource {
+  const browse = (query: Record<string, unknown>) =>
+    browseSource('SHAREPOINT', probe.probeRequest({ sourceUrl: SHAREPOINT_API, query }))
+  return {
+    rootLabel: 'Sites',
+    noun: ['Site', 'Sites'],
+    nested: false,
+    max: MAX_SHAREPOINT_LIBRARIES,
+    serverSearch: () => true,
+    searchLabel: () => 'Sites suchen',
+    list: async (_level, search) => {
+      const response = await browse({ search })
+      return {
+        entries: response.entries.map((entry) => ({
+          ...sharePointSiteOf(entry),
+          selectable: true,
+          openable: false,
+        })),
+        complete: response.complete,
+        message: response.message ?? null,
+      }
+    },
+    manual: {
+      label: 'Adresse der Site',
+      placeholder: 'https://contoso.sharepoint.com/sites/rathaus',
+      kind: 'add',
       resolve: async (text) => {
         if (!/^https:\/\//i.test(text.trim())) return 'Die Adresse beginnt mit https://.'
         try {
