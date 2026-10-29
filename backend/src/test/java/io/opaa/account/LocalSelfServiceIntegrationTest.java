@@ -51,6 +51,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -97,6 +98,7 @@ class LocalSelfServiceIntegrationTest {
   @Autowired private MailSettingsService mailSettings;
   @Autowired private MailDispatchExecutor dispatch;
   @Autowired private JdbcTemplate jdbc;
+  @Autowired private PasswordEncoder passwordEncoder;
 
   private LocalAccountFixtures fixtures;
   private LocalAccount admin;
@@ -382,9 +384,7 @@ class LocalSelfServiceIntegrationTest {
     String email = "neu-" + UUID.randomUUID() + "@" + DOMAIN;
     Instant before = Instant.now();
 
-    register(email, "Neue Person", NEW_PASSWORD)
-        .andExpect(status().isAccepted())
-        .andExpect(content().string(""));
+    register(email, "Neue Person").andExpect(status().isAccepted()).andExpect(content().string(""));
     // the account and the mail are made off the request thread; the mail is the sync point
     assertThat(mailbox.waitFor(1, 10_000)).isTrue();
 
@@ -394,7 +394,8 @@ class LocalSelfServiceIntegrationTest {
     assertThat(user.getLastLoginAt()).isNull();
     LocalCredentials row = credentials.findById(user.getId()).orElseThrow();
     assertThat(row.getCreatedReason()).isEqualTo("Selbstregistrierung");
-    assertThat(row.getPasswordHash()).isNotNull();
+    // the registration carries no password - the verification link sets it
+    assertThat(row.getPasswordHash()).isNull();
     assertThat(row.getEmailVerifiedAt()).isNull();
     assertThat(row.getExpiresAt())
         .isAfter(before.plus(Duration.ofDays(89)))
@@ -432,18 +433,20 @@ class LocalSelfServiceIntegrationTest {
         .isAfter(before.plus(Duration.ofHours(23)))
         .isBefore(before.plus(Duration.ofHours(25)));
 
-    verify(token).andExpect(status().isNoContent());
+    verify(token, "drittes-sicheres-passwort-2026").andExpect(status().isNoContent());
 
     row = credentials.findById(user.getId()).orElseThrow();
     assertThat(row.getEmailVerifiedAt()).isNotNull();
     assertThat(row.state(Instant.now())).isEqualTo(LocalAccountState.ACTIVE);
-    MvcResult session = login(email, "zweites-sicheres-passwort-2026", 200);
+    // the verification link set the password; the one set before it is gone
+    login(email, "zweites-sicheres-passwort-2026", 401);
+    MvcResult session = login(email, "drittes-sicheres-passwort-2026", 200);
     mockMvc
         .perform(get(ME).header(HttpHeaders.AUTHORIZATION, bearer(session)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.systemRole").value("USER"));
     assertThat(spacesOwnedBy(user.getId())).isEqualTo(1);
-    verify(token)
+    verify(token, "viertes-sicheres-passwort-2026")
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("TOKEN_INVALID"));
 
@@ -462,14 +465,14 @@ class LocalSelfServiceIntegrationTest {
     LocalAccount taken = fixtures.activeUser("belegt-" + UUID.randomUUID() + "@" + DOMAIN);
     String foreign = "fremd-" + UUID.randomUUID() + "@anderswo.example";
     // warm-up
-    register("aufwaermen-" + UUID.randomUUID() + "@" + DOMAIN, "Aufwärmen", NEW_PASSWORD)
+    register("aufwaermen-" + UUID.randomUUID() + "@" + DOMAIN, "Aufwärmen")
         .andExpect(status().isAccepted());
     assertThat(mailbox.waitFor(1, 10_000)).isTrue();
 
     // Every round times each case once, in a shuffled order, after the dispatch thread has
-    // finished the previous request's work. Under load the BCrypt on the request thread varies by
-    // far more than EPSILON, so a case's median may differ from the free address's by the larger
-    // of EPSILON and NOISE_FACTOR times the interquartile range of all times around their medians.
+    // finished the previous request's work. Under load the request times vary by far more than
+    // EPSILON, so a case's median may differ from the free address's by the larger of EPSILON and
+    // NOISE_FACTOR times the interquartile range of all times around their medians.
     Map<String, List<Long>> times = new LinkedHashMap<>();
     List<String> free = new ArrayList<>();
     Random order = new Random(2194);
@@ -488,9 +491,7 @@ class LocalSelfServiceIntegrationTest {
         awaitDispatchIdle();
         long start = System.nanoTime();
         MvcResult result =
-            register(testCase.getValue(), "Irgendwer", NEW_PASSWORD)
-                .andExpect(status().isAccepted())
-                .andReturn();
+            register(testCase.getValue(), "Irgendwer").andExpect(status().isAccepted()).andReturn();
         long ms = (System.nanoTime() - start) / 1_000_000;
         assertThat(result.getResponse().getContentAsString()).isEmpty();
         times.computeIfAbsent(testCase.getKey(), name -> new ArrayList<>()).add(ms);
@@ -563,19 +564,17 @@ class LocalSelfServiceIntegrationTest {
   void aStillUnconfirmedSelfRegistrationGetsItsLinkAgainAndNothingElse() throws Exception {
     replaceSettings(withRegistration(true, List.of(DOMAIN)));
     String email = "neu-" + UUID.randomUUID() + "@" + DOMAIN;
-    register(email, "Erste Person", NEW_PASSWORD).andExpect(status().isAccepted());
+    register(email, "Erste Person").andExpect(status().isAccepted());
     assertThat(mailbox.waitFor(1, 10_000)).isTrue();
     User user = users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, email).orElseThrow();
-    String firstHash = credentials.findById(user.getId()).orElseThrow().getPasswordHash();
     String first = LocalMailbox.tokenIn(LocalMailbox.plainText(mailbox.messages()[0]));
 
-    register(email.toUpperCase(), "Zweite Person", "anderes-sicheres-passwort-2026")
-        .andExpect(status().isAccepted());
+    register(email.toUpperCase(), "Zweite Person").andExpect(status().isAccepted());
 
     assertThat(mailbox.waitFor(2, 10_000)).isTrue();
     String second = LocalMailbox.tokenIn(LocalMailbox.plainText(mailbox.messages()[1]));
     assertThat(second).isNotEqualTo(first);
-    // one account, name and hash of the first registration, the first link voided
+    // one account, the name of the first registration, still no password, the first link voided
     assertThat(
             jdbc.queryForObject(
                 "SELECT count(*) FROM users WHERE issuer = ? AND lower(email) = lower(?)",
@@ -585,38 +584,64 @@ class LocalSelfServiceIntegrationTest {
         .isEqualTo(1);
     assertThat(users.findById(user.getId()).orElseThrow().getDisplayName())
         .isEqualTo("Erste Person");
-    assertThat(credentials.findById(user.getId()).orElseThrow().getPasswordHash())
-        .isEqualTo(firstHash);
+    assertThat(credentials.findById(user.getId()).orElseThrow().getPasswordHash()).isNull();
     assertThat(actionTokens.findRedeemable(first, ActionTokenPurpose.VERIFY_EMAIL)).isEmpty();
-    verify(second).andExpect(status().isNoContent());
+    verify(first, NEW_PASSWORD)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("TOKEN_INVALID"));
+    verify(second, NEW_PASSWORD).andExpect(status().isNoContent());
     login(email, NEW_PASSWORD, 200);
-    login(email, "anderes-sicheres-passwort-2026", 401);
     // the second registration created nothing and is no event
     assertThat(auditRows("LOCAL_USER_REGISTERED")).hasSize(1);
   }
 
+  /**
+   * Pre-hijacking (ADR-0033, Entscheidung 11): a hash stored on an unconfirmed self-registration -
+   * by a registration from before the password moved to the link, or by an administrative reset -
+   * never survives the confirmation; only who holds the link decides the password. The policy
+   * answers with field errors and keeps the link open.
+   */
   @Test
-  void theRegistrationRefusesAnInvalidAddressNameOrPasswordWithFieldErrors() throws Exception {
+  void aHashStoredBeforeTheConfirmationNeverSurvivesIt() throws Exception {
+    // regression guard for #3357: the confirmation always replaces a hash stored before it
     replaceSettings(withRegistration(true, List.of(DOMAIN)));
-    register("keine-adresse", "Name", NEW_PASSWORD)
+    String email = "erika-" + UUID.randomUUID() + "@" + DOMAIN;
+    register(email, "Erika").andExpect(status().isAccepted());
+    assertThat(mailbox.waitFor(1, 10_000)).isTrue();
+    User user = users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, email).orElseThrow();
+    LocalCredentials planted = credentials.findById(user.getId()).orElseThrow();
+    planted.setPasswordHash(passwordEncoder.encode("passwort-des-angreifers-2026"), Instant.now());
+    credentials.save(planted);
+    String token = LocalMailbox.tokenIn(LocalMailbox.plainText(mailbox.messages()[0]));
+
+    verify(token, "kurz")
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.fieldErrors[0].field").value("newPassword"))
+        .andExpect(jsonPath("$.fieldErrors[0].code").value("TOO_SHORT"));
+    verify(token, email)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.fieldErrors[?(@.code == 'EQUALS_EMAIL')]").exists());
+    assertThat(credentials.findById(user.getId()).orElseThrow().getEmailVerifiedAt()).isNull();
+
+    // the link survived every refusal
+    verify(token, NEW_PASSWORD).andExpect(status().isNoContent());
+
+    login(email, "passwort-des-angreifers-2026", 401);
+    login(email, NEW_PASSWORD, 200);
+  }
+
+  @Test
+  void theRegistrationRefusesAnInvalidAddressOrNameWithFieldErrors() throws Exception {
+    replaceSettings(withRegistration(true, List.of(DOMAIN)));
+    register("keine-adresse", "Name")
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.fieldErrors[0].field").value("email"))
         .andExpect(jsonPath("$.fieldErrors[0].code").value("INVALID_ADDRESS"));
-    register("x-" + UUID.randomUUID() + "@" + DOMAIN, "   ", NEW_PASSWORD)
+    String email = "x-" + UUID.randomUUID() + "@" + DOMAIN;
+    register(email, "   ")
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.fieldErrors[0].field").value("displayName"))
         .andExpect(jsonPath("$.fieldErrors[0].code").value("REQUIRED"));
-    String email = "x-" + UUID.randomUUID() + "@" + DOMAIN;
-    register(email, "Name", "kurz")
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.fieldErrors[0].field").value("password"))
-        .andExpect(jsonPath("$.fieldErrors[0].code").value("TOO_SHORT"));
-    register(email, "Name", email)
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.fieldErrors[?(@.code == 'EQUALS_EMAIL')]").exists());
-    register(email, "Name", "password12345")
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.fieldErrors[?(@.code == 'TOO_COMMON')]").exists());
     assertThat(mailbox.waitFor(1, 1_000)).isFalse();
     assertThat(users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, email)).isEmpty();
   }
@@ -638,7 +663,7 @@ class LocalSelfServiceIntegrationTest {
     replaceSettings(withRegistration(true, List.of()));
     assertLikeUnknownRoute(REGISTER, unknown, registration(email));
     replaceSettings(withRegistration(true, List.of(DOMAIN)));
-    register(email, "Name", NEW_PASSWORD).andExpect(status().isAccepted());
+    register(email, "Name").andExpect(status().isAccepted());
     assertThat(mailbox.waitFor(1, 10_000)).isTrue();
     fixtures.localProvider(false);
     assertLikeUnknownRoute(REGISTER, unknown, registration(email));
@@ -653,7 +678,7 @@ class LocalSelfServiceIntegrationTest {
     setPassword("kein-token", NEW_PASSWORD)
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("TOKEN_INVALID"));
-    verify("kein-token")
+    verify("kein-token", NEW_PASSWORD)
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("TOKEN_INVALID"));
   }
@@ -704,10 +729,10 @@ class LocalSelfServiceIntegrationTest {
     root.addAppender(logs);
     try {
       String email = "neu-" + UUID.randomUUID() + "@" + DOMAIN;
-      register(email, "Neue Person", NEW_PASSWORD).andExpect(status().isAccepted());
+      register(email, "Neue Person").andExpect(status().isAccepted());
       assertThat(mailbox.waitFor(1, 10_000)).isTrue();
       String verification = LocalMailbox.tokenIn(LocalMailbox.plainText(mailbox.messages()[0]));
-      verify(verification).andExpect(status().isNoContent());
+      verify(verification, NEW_PASSWORD).andExpect(status().isNoContent());
       forgot(email).andExpect(status().isNoContent());
       assertThat(mailbox.waitFor(2, 10_000)).isTrue();
       String reset = LocalMailbox.tokenIn(LocalMailbox.plainText(mailbox.messages()[1]));
@@ -792,19 +817,19 @@ class LocalSelfServiceIntegrationTest {
   }
 
   private org.springframework.test.web.servlet.ResultActions register(
-      String email, String displayName, String password) throws Exception {
+      String email, String displayName) throws Exception {
     return mockMvc.perform(
         post(REGISTER)
             .contentType(MediaType.APPLICATION_JSON)
-            .content(
-                json(Map.of("email", email, "displayName", displayName, "password", password))));
+            .content(json(Map.of("email", email, "displayName", displayName))));
   }
 
-  private org.springframework.test.web.servlet.ResultActions verify(String token) throws Exception {
+  private org.springframework.test.web.servlet.ResultActions verify(
+      String token, String newPassword) throws Exception {
     return mockMvc.perform(
         post(VERIFY_EMAIL)
             .contentType(MediaType.APPLICATION_JSON)
-            .content(json(Map.of("token", token))));
+            .content(json(Map.of("token", token, "newPassword", newPassword))));
   }
 
   private MvcResult login(String email, String password, int expectedStatus) throws Exception {
@@ -839,7 +864,7 @@ class LocalSelfServiceIntegrationTest {
     return path ->
         post(path)
             .contentType(MediaType.APPLICATION_JSON)
-            .content(json(Map.of("email", email, "displayName", "Name", "password", NEW_PASSWORD)));
+            .content(json(Map.of("email", email, "displayName", "Name")));
   }
 
   private void replaceSettings(Values values) {

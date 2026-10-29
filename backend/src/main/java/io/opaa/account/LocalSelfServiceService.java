@@ -14,7 +14,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 /**
@@ -24,9 +23,9 @@ import org.springframework.stereotype.Service;
  * exist always. Nothing here tells the caller whether an address has an account: after the field
  * checks - which reveal nothing about accounts - "forgot password" and a registration hand their
  * account work (lookup, account, mail) to the {@link MailDispatchExecutor} and answer after {@link
- * #RESPONSE_FLOOR}, so the response time is the same constant in every outcome; a registration
- * hashes on the request thread first - in every outcome, so the clear-text password never sits in a
- * queue - and synchronous lookups would let the time betray the account. Deliberately not
+ * #RESPONSE_FLOOR}, so the response time is the same constant in every outcome; synchronous lookups
+ * would let the time betray the account. A registration carries no password: it is set when the
+ * verification link is redeemed, so only who holds the mailbox decides it. Deliberately not
  * {@code @Transactional}: the account writes are one transaction each in {@link
  * LocalSelfServiceAccountService} and {@link LocalPasswordService}, run on the executor's thread;
  * the link mail goes to the outbox in that transaction and leaves after its commit.
@@ -37,8 +36,7 @@ public class LocalSelfServiceService implements LocalSelfServiceAvailability {
   /**
    * The least time either of the two address-taking flows takes to answer, whatever the outcome:
    * the account work runs off the request thread, so nothing outcome-dependent shapes the response
-   * time - "forgot password" answers after exactly this, a registration after the larger of this
-   * and the one BCrypt it always pays first.
+   * time - both answer after exactly this.
    */
   public static final Duration RESPONSE_FLOOR = Duration.ofMillis(250);
 
@@ -50,8 +48,6 @@ public class LocalSelfServiceService implements LocalSelfServiceAvailability {
   private final LocalAuthSettingsRepository settings;
   private final OidcProviderRegistry registry;
   private final PublicBaseUrl publicBaseUrl;
-  private final PasswordEncoder passwordEncoder;
-  private final PasswordPolicy policy;
   private final Executor executor;
 
   @Autowired
@@ -61,18 +57,8 @@ public class LocalSelfServiceService implements LocalSelfServiceAvailability {
       LocalAuthSettingsRepository settings,
       OidcProviderRegistry registry,
       PublicBaseUrl publicBaseUrl,
-      PasswordEncoder passwordEncoder,
-      PasswordPolicy policy,
       MailDispatchExecutor dispatch) {
-    this(
-        accounts,
-        passwords,
-        settings,
-        registry,
-        publicBaseUrl,
-        passwordEncoder,
-        policy,
-        (Executor) dispatch);
+    this(accounts, passwords, settings, registry, publicBaseUrl, (Executor) dispatch);
   }
 
   LocalSelfServiceService(
@@ -81,16 +67,12 @@ public class LocalSelfServiceService implements LocalSelfServiceAvailability {
       LocalAuthSettingsRepository settings,
       OidcProviderRegistry registry,
       PublicBaseUrl publicBaseUrl,
-      PasswordEncoder passwordEncoder,
-      PasswordPolicy policy,
       Executor executor) {
     this.accounts = accounts;
     this.passwords = passwords;
     this.settings = settings;
     this.registry = registry;
     this.publicBaseUrl = publicBaseUrl;
-    this.passwordEncoder = passwordEncoder;
-    this.policy = policy;
     this.executor = executor;
   }
 
@@ -135,8 +117,8 @@ public class LocalSelfServiceService implements LocalSelfServiceAvailability {
     passwords.setPasswordByLink(rawToken, newPassword);
   }
 
-  public void verifyEmail(String rawToken) {
-    accounts.verifyEmail(rawToken);
+  public void verifyEmail(String rawToken, String newPassword) {
+    passwords.confirmRegistration(rawToken, newPassword);
   }
 
   /** Answers after {@link #RESPONSE_FLOOR}; a mail leaves only for an eligible account. */
@@ -148,32 +130,27 @@ public class LocalSelfServiceService implements LocalSelfServiceAvailability {
   }
 
   /**
-   * Field errors for a bad address, name or password come first - they reveal nothing about
-   * accounts. The hash is computed here, on the request thread and in every outcome (a foreign
-   * domain and a taken address included), so the clear-text password never waits in the executor's
-   * queue; the response time is then the same constant for every outcome - the larger of the floor
-   * and one BCrypt - not the floor itself. Everything after the hash runs on the executor: the
+   * Field errors for a bad address or name come first - they reveal nothing about accounts. After
+   * them, everything runs on the executor and the answer comes after {@link #RESPONSE_FLOOR}: the
    * domain check against the list, the account unless the address is taken (found, or lost in a
    * race on the unique index) or still an unconfirmed self-registration (which gets its link
    * again), and the verification mail.
    */
-  public void register(String email, String displayName, String password) {
+  public void register(String email, String displayName) {
     String address = LocalUserService.requireAddress(email);
     String name = LocalUserService.requireText("displayName", displayName, DISPLAY_NAME_MAX_LENGTH);
-    policy.require("password", password, address);
     long deadline = System.nanoTime() + RESPONSE_FLOOR.toNanos();
-    String hash = passwordEncoder.encode(password);
-    executor.execute(() -> registerOffThread(address, name, hash));
+    executor.execute(() -> registerOffThread(address, name));
     holdUntil(deadline);
   }
 
-  private void registerOffThread(String address, String name, String hash) {
+  private void registerOffThread(String address, String name) {
     if (!isDomainAllowed(address)) {
       return;
     }
     Registered registered;
     try {
-      registered = accounts.register(address, name, hash);
+      registered = accounts.register(address, name);
     } catch (ConflictException | DataIntegrityViolationException taken) {
       return;
     }

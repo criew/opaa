@@ -25,12 +25,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The person's own password writes (ADR-0033, Entscheidungen 8, 9 and 11): the change with the
- * current password and the setting through an invitation or reset link. Both check the new password
- * against the {@link PasswordPolicy}, replace the hash, clear a forced change, invalidate every
- * access token issued up to now and revoke every refresh family ({@code PASSWORD_CHANGED} - the
- * trace a later refused token names as its cause). One transaction each: a failing revocation rolls
- * the new hash back too, so the person never ends up with a new password and old sessions still
- * alive, and a policy refusal rolls the redemption of a link back, so the link stays open.
+ * current password and the setting through an invitation, reset or verification link. All check the
+ * new password against the {@link PasswordPolicy}, replace the hash, clear a forced change,
+ * invalidate every access token issued up to now and revoke every refresh family ({@code
+ * PASSWORD_CHANGED} - the trace a later refused token names as its cause). One transaction each: a
+ * failing revocation rolls the new hash back too, so the person never ends up with a new password
+ * and old sessions still alive, and a policy refusal rolls the redemption of a link back, so the
+ * link stays open.
  */
 @Service
 public class LocalPasswordService {
@@ -104,18 +105,44 @@ public class LocalPasswordService {
    * account that may no longer redeem a link ({@link LocalAccountAccess#mayRedeemLink}). An
    * invitation link confirms the address - the invitation is the administrator's act of vouching
    * for it; a reset link does not, so a reset of a self-registered, unconfirmed account leaves the
-   * confirmation to the verification link. A failed-login lockout is lifted, every other open
-   * password link of the account is consumed, and the act is audited as {@code LOCAL_PASSWORD_SET}
-   * with the link's purpose.
+   * confirmation to the verification link. The act is audited as {@code LOCAL_PASSWORD_SET} with
+   * the link's purpose; see {@link #applyLinkPassword} for the rest.
    */
   @Transactional
   public User setPasswordByLink(String rawToken, String newPassword) {
-    Instant now = clock.instant();
     LocalActionToken token =
         actionTokens
             .redeem(rawToken, ActionTokenPurpose.SET_PASSWORD)
             .or(() -> actionTokens.redeem(rawToken, ActionTokenPurpose.RESET_PASSWORD))
             .orElseThrow(LocalActionTokenService::invalidToken);
+    User user = applyLinkPassword(token, newPassword);
+    record(user, AuditEventType.LOCAL_PASSWORD_SET, Map.of("purpose", token.getPurpose().name()));
+    return user;
+  }
+
+  /**
+   * Redeems the {@code VERIFY_EMAIL} link of a self-registration - exactly once - confirms the
+   * address and sets the password chosen now (ADR-0033, Entscheidung 11). Any hash stored before is
+   * discarded: whoever registered the address first never decides the password, only whoever holds
+   * the mailbox does. Refusals as in {@link #setPasswordByLink}; see {@link #applyLinkPassword}.
+   */
+  @Transactional
+  public User confirmRegistration(String rawToken, String newPassword) {
+    LocalActionToken token =
+        actionTokens
+            .redeem(rawToken, ActionTokenPurpose.VERIFY_EMAIL)
+            .orElseThrow(LocalActionTokenService::invalidToken);
+    return applyLinkPassword(token, newPassword);
+  }
+
+  /**
+   * The password write of a redeemed link: replaces the hash, clears a forced change, confirms the
+   * address unless the link is a reset, lifts a failed-login lockout, consumes every other open
+   * password link and ends every session issued up to now. A policy refusal throws before any
+   * write, so the transaction rolls the redemption back and the link stays open.
+   */
+  private User applyLinkPassword(LocalActionToken token, String newPassword) {
+    Instant now = clock.instant();
     User user =
         users
             .findById(token.getUserId())
@@ -129,7 +156,8 @@ public class LocalPasswordService {
     policy.require("newPassword", newPassword, user.getEmail());
     row.setPasswordHash(passwordEncoder.encode(newPassword), now);
     row.clearPasswordChangeRequirement(now);
-    if (token.getPurpose() == ActionTokenPurpose.SET_PASSWORD && row.getEmailVerifiedAt() == null) {
+    if (token.getPurpose() != ActionTokenPurpose.RESET_PASSWORD
+        && row.getEmailVerifiedAt() == null) {
       row.markEmailVerified(now);
     }
     if (row.getLockedReason() == LockReason.FAILED_LOGINS) {
@@ -142,7 +170,6 @@ public class LocalPasswordService {
     actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.SET_PASSWORD);
     actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.RESET_PASSWORD);
     refreshTokens.revokeAllForUser(user.getId(), RevocationReason.PASSWORD_CHANGED);
-    record(user, AuditEventType.LOCAL_PASSWORD_SET, Map.of("purpose", token.getPurpose().name()));
     return user;
   }
 

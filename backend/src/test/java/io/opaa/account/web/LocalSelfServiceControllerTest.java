@@ -53,14 +53,12 @@ class LocalSelfServiceControllerTest {
             () -> controller.forgotPassword(new LocalForgotPasswordRequest("erika@stadt.example")))
         .isInstanceOf(NoResourceFoundException.class);
     assertThatThrownBy(
-            () ->
-                controller.register(
-                    new LocalRegisterRequest("erika@stadt.example", "Erika", "passwort-2026-x")))
+            () -> controller.register(new LocalRegisterRequest("erika@stadt.example", "Erika")))
         .isInstanceOf(NoResourceFoundException.class);
 
     verifyNoInteractions(rateLimiter);
     verify(service, never()).requestPasswordReset(anyString());
-    verify(service, never()).register(anyString(), anyString(), anyString());
+    verify(service, never()).register(anyString(), anyString());
   }
 
   @Test
@@ -73,7 +71,7 @@ class LocalSelfServiceControllerTest {
         .isEqualTo(204);
     assertThat(
             controller
-                .register(new LocalRegisterRequest("erika@stadt.example", "Erika", "passwort-x"))
+                .register(new LocalRegisterRequest("erika@stadt.example", "Erika"))
                 .getStatusCode()
                 .value())
         .isEqualTo(202);
@@ -84,7 +82,7 @@ class LocalSelfServiceControllerTest {
         .requireAddressAllowance(AddressScope.FORGOT_PASSWORD, "erika@stadt.example");
     order.verify(service).requestPasswordReset("erika@stadt.example");
     order.verify(rateLimiter).requireAddressAllowance(AddressScope.REGISTER, "erika@stadt.example");
-    order.verify(service).register("erika@stadt.example", "Erika", "passwort-x");
+    order.verify(service).register("erika@stadt.example", "Erika");
   }
 
   @Test
@@ -97,13 +95,11 @@ class LocalSelfServiceControllerTest {
             () -> controller.forgotPassword(new LocalForgotPasswordRequest("erika@stadt.example")))
         .isInstanceOf(TooManyRequestsException.class);
     assertThatThrownBy(
-            () ->
-                controller.register(
-                    new LocalRegisterRequest("erika@stadt.example", "Erika", "passwort-x")))
+            () -> controller.register(new LocalRegisterRequest("erika@stadt.example", "Erika")))
         .isInstanceOf(TooManyRequestsException.class);
 
     verify(service, never()).requestPasswordReset(anyString());
-    verify(service, never()).register(anyString(), anyString(), anyString());
+    verify(service, never()).register(anyString(), anyString());
   }
 
   @Test
@@ -116,13 +112,13 @@ class LocalSelfServiceControllerTest {
         .isEqualTo(204);
     assertThat(
             controller
-                .verifyEmail(new LocalVerifyEmailRequest("roh-token"))
+                .verifyEmail(new LocalVerifyEmailRequest("roh-token", "neues-passwort-2026"))
                 .getStatusCode()
                 .value())
         .isEqualTo(204);
 
     verify(service).setPassword("roh-token", "neues-passwort-2026");
-    verify(service).verifyEmail("roh-token");
+    verify(service).verifyEmail("roh-token", "neues-passwort-2026");
     verifyNoInteractions(rateLimiter);
   }
 }

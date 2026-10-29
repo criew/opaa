@@ -104,7 +104,7 @@ class GlobalExceptionHandlerUnwritableAcceptTest {
     when(selfServiceService.isSelfRegistrationAvailable()).thenReturn(true);
     doThrow(new ValidationException("Die E-Mail-Adresse ist bereits vergeben.", "EMAIL_TAKEN"))
         .when(selfServiceService)
-        .register(any(), any(), any());
+        .register(any(), any());
 
     mockMvc
         .perform(
@@ -123,7 +123,7 @@ class GlobalExceptionHandlerUnwritableAcceptTest {
     when(selfServiceService.isSelfRegistrationAvailable()).thenReturn(true);
     doThrow(new ValidationException("Die E-Mail-Adresse ist bereits vergeben.", "EMAIL_TAKEN"))
         .when(selfServiceService)
-        .register(any(), any(), any());
+        .register(any(), any());
 
     mockMvc
         .perform(
