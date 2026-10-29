@@ -133,7 +133,12 @@ Java 21 auf einem Distroless-Image, ohne Shell, Coreutils, `curl` und Paketmanag
   einen leeren Store — sonst scheitert HTTPS zu allen öffentlichen Diensten
   ([Docker Compose](docker-compose.md#eigene-interne-ca-ergänzen),
   [Kubernetes](kubernetes.md#eigene-zertifizierungsstelle)).
-- **JVM-Optionen** gehen über `JAVA_TOOL_OPTIONS`.
+- **JVM-Optionen** gehen über `JAVA_TOOL_OPTIONS`. Eine Option, die vor der Anwendung einen
+  Hostnamen auflöst, verhindert den Start: ein `-javaagent` (etwa eines APM-Werkzeugs), JMX-Remote
+  (`-Dcom.sun.management.jmxremote.*`) oder `-Djdk.net.hosts.file`. OPAA muss die Namensauflösung der
+  JVM selbst übernehmen, um geprüfte Ziele zu bewachen
+  ([Zielprüfung](netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)); die Meldung beim Abbruch
+  nennt diese Ursache.
 
 <a id="nur-lesbares-dateisystem"></a>
 

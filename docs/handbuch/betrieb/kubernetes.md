@@ -739,7 +739,7 @@ Konfiguration unter [„Funktionen abschalten"](konfiguration.md#funktionen-absc
 | `backend.terminationGracePeriodSeconds` | leer: `shutdownTimeoutSeconds` plus die Pause vor dem Stopp plus `15` | — | muss größer sein als `shutdownTimeoutSeconds` plus `preStopSleepSeconds`, sonst bricht das Rendern ab |
 | `backend.preStopSleepSeconds` | `10` | — | nur mit `RollingUpdate`: so lange nimmt ein Pod, der enden soll, noch Anfragen an, bis Kubernetes ihn aus dem Service genommen hat |
 | `backend.maxRamPercentage` | `70` | `JAVA_TOOL_OPTIONS` | Heap-Anteil am Speicher-Limit; wirkt nur mit `resources.limits.memory` |
-| `backend.javaToolOptions` | leer | `JAVA_TOOL_OPTIONS` | weitere JVM-Optionen; Dateiziele gehören unter `/tmp` |
+| `backend.javaToolOptions` | leer | `JAVA_TOOL_OPTIONS` | weitere JVM-Optionen; Dateiziele gehören unter `/tmp`. Kein `-javaagent`, kein JMX-Remote und kein `-Djdk.net.hosts.file`: Sie lösen Namen vor der Anwendung auf, und der Start bricht ab ([Images und Laufzeit](images-und-laufzeit.md#backend-laufzeitimage)) |
 | `backend.timeZone` | `UTC` | `TZ` | Zeitzone der geplanten Läufe, Fristgrenzen und Datumsangaben in Mails ([Betrieb](README.md#zeitzone)); Teil des Konfigurationsabdrucks |
 | `backend.resources` | 500m CPU und 1Gi angefordert, 2Gi Grenze | — | siehe [Speicher und Container-Grenzen](images-und-laufzeit.md#speicher-und-container-grenzen) |
 | `backend.initResources` | 50m CPU und 128Mi angefordert, 256Mi Grenze | — | Init-Container des Backends: der Truststore mit `extraCACertificates` und das Warten auf die Erprobungsdatenbank |

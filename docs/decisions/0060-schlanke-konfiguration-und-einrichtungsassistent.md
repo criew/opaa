@@ -196,7 +196,7 @@ Chat-Modell eingeschlossen. Sie ist von der Zielprüfung der Quellen getrennt: E
 kein erlaubtes Ziel der Konnektoren, ein Quell-Host kein erlaubtes Modell. In der Modellverwaltung
 bleibt eine gespeicherte Adresse unverändert speicher- und testbar; die Installation prüft jede.
 Aufrufe zur Laufzeit prüft sie nicht, damit eine enger gezogene Liste kein laufendes Modell
-abschaltet; ein geprüfter Name bleibt für sie an Adressen außerhalb der gesperrten Bereiche gebunden
+abschaltet; ein geprüfter Name bleibt für sie bis zum Neustart gegen Adressen der gesperrten Bereiche bewacht
 ([ADR-0063](0063-bindung-gepruefter-namen-gegen-dns-rebinding.md), Entscheidung 3). Nennt nur die
 Liste der Quellen den Host eines gespeicherten Modells, warnt der Start.
 Begründung: Wer Bibliotheken anbinden darf, soll den internen Modellserver nicht als Quelle lesen

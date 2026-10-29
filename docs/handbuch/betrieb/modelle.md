@@ -73,9 +73,11 @@ Modellen abfragen, für Chat-, Embedding-, Rerank- und Transkriptionsmodell glei
 Modellverwaltung bleibt eine schon gespeicherte Adresse unverändert speicher- und testbar, auch wenn
 die Liste ihren Host nicht (mehr) nennt; nur eine neue Adresse muss die Prüfung bestehen. Die
 Installation prüft jede Adresse, auch eine früher gespeicherte. Die Aufrufe im laufenden Betrieb
-prüft OPAA nicht: Ein gespeichertes Modell fällt nicht aus, wenn die Liste enger wird. Ein geprüfter
-Name bleibt aber an Adressen außerhalb der gesperrten Bereiche gebunden, auch für diese Aufrufe
-([Zielprüfung](netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)). Nennt nur die
+prüft OPAA nicht: Ein gespeichertes Modell fällt nicht aus, wenn die Liste enger wird. Ein Name, den
+die Prüfung seit dem letzten Start des Backends geprüft hat, bleibt aber bewacht: Auch diese Aufrufe
+erreichen nur Adressen außerhalb der gesperrten Bereiche
+([Zielprüfung](netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)). Nach einem Neustart gilt
+das erst wieder, wenn die Adresse gespeichert, getestet oder abgefragt wird. Nennt nur die
 Liste der Quellen den Host eines gespeicherten Modells, warnt der Start im Log und nennt den
 Eintrag, der in die Liste der Modelle gehört.
 
@@ -83,7 +85,7 @@ Eintrag, der in die Liste der Modelle gehört.
 aufgelöste Adresse prüft: Wer den Namensdienst für diesen Namen kontrolliert, bestimmt, wohin die
 Anfrage geht. Deshalb nur Namen aus der eigenen, vertrauenswürdigen Zone eintragen und Einträge mit
 Port vorziehen. Ein Eintrag gilt für jede Modellrolle auf diesem Host und Port. Einen Namen aus der
-Liste bindet OPAA nicht an seine Adressen; ein späterer Wechsel seiner Namensauflösung fällt deshalb
+Liste bewacht OPAA nicht; ein späterer Wechsel seiner Namensauflösung fällt deshalb
 nicht auf, die Absicherung dafür bleibt die Beschränkung des ausgehenden Verkehrs des Backends auf
 Netzebene ([Netz und Sicherheit](netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)).
 
