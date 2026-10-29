@@ -60,11 +60,14 @@ class PdfLoadingScanTest {
 
   @Test
   void aTableReadFarPastItsCountedLinesIsRefused() {
-    // 20-byte entries read back as 3.3 lines of the shortest kind each, within the margin
+    // 20- and 40-byte entries read back as 3.3 and 6.7 lines of the shortest kind, within the
+    // margin
     assertThatCode(() -> PdfLoading.requireReadWithinCount(20L * 300_000, 300_000))
         .doesNotThrowAnyException();
+    assertThatCode(() -> PdfLoading.requireReadWithinCount(40L * 300_000, 300_000))
+        .doesNotThrowAnyException();
     assertThatCode(() -> PdfLoading.requireReadWithinCount(6L * 10, 0)).doesNotThrowAnyException();
-    assertThatThrownBy(() -> PdfLoading.requireReadWithinCount(6L * 5_000, 1_000))
+    assertThatThrownBy(() -> PdfLoading.requireReadWithinCount(6L * 20_000, 1_000))
         .isInstanceOf(ParserLimitExceededException.class);
   }
 

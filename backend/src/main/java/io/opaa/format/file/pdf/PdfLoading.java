@@ -51,7 +51,7 @@ final class PdfLoading {
   private static final int SHORTEST_ENTRY_BYTES = 6;
 
   /** How many shortest lines a counted line may span before a table counts as miscounted. */
-  private static final int READ_MARGIN = 4;
+  private static final int READ_MARGIN = 16;
 
   /** Shortest lines a table may hold beyond the margin, for the keyword and a short table. */
   private static final int READ_SLACK_LINES = 64;
@@ -241,7 +241,7 @@ final class PdfLoading {
   /**
    * Throws when a classic table read {@code bytesRead}, which at the shortest entry line PDFBox
    * accepts would hold far more entries than the {@code linesCounted} before: the count then missed
-   * lines PDFBox registered. Ordinary 20-byte entries stay well within the margin.
+   * lines PDFBox registered. Entries of up to about 96 bytes stay within the margin.
    */
   static void requireReadWithinCount(long bytesRead, long linesCounted) {
     long shortestLines = bytesRead / SHORTEST_ENTRY_BYTES;

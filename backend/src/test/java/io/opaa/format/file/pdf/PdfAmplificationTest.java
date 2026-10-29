@@ -297,6 +297,18 @@ class PdfAmplificationTest {
     assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
   }
 
+  @Test
+  void aClassicTableWithPaddedEntriesIsReadNormally() throws IOException {
+    Path file = tempDir.resolve("padded.pdf");
+    RawPdf pdf = onePage();
+    String padded = String.format("%010d 00000 n %s\n", pdf.offsetOf(1), " ".repeat(20));
+    Files.write(file, pdf.withXrefTable(1, 9_000, padded));
+
+    DocumentFormatResult result = fewObjects.run(DocumentFormatSource.ofFile(file, "padded.pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+  }
+
   /**
    * Regression guard: PDFBox skips form feeds, NUL bytes and comment lines in front of an entry, so
    * they must not end the count of a table's lines while PDFBox still reads the entries behind
