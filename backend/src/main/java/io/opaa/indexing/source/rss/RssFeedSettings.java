@@ -123,64 +123,48 @@ record RssFeedSettings(String mainContentSelector, AttachmentProfile attachmentP
       throw new ValidationException(
           field + " darf höchstens " + MAX_SELECTOR_LENGTH + " Zeichen lang sein");
     }
+    // only refuses earlier with a clearer message; the parsed tree below is what decides
     String lower = value.toLowerCase(Locale.ROOT);
     if (lower.contains(":matches") || lower.contains("~=")) {
       throw new ValidationException(
           field + ": reguläre Ausdrücke (:matches…, [attr~=…]) sind nicht erlaubt");
     }
+    Evaluator parsed;
     try {
-      QueryParser.parse(value);
+      parsed = QueryParser.parse(value);
     } catch (Selector.SelectorParseException | IllegalArgumentException e) {
       throw new ValidationException(
           field + " ist kein gültiger CSS-Selektor (Jsoup-Syntax), etwa main, #inhalt oder .text");
     }
-    requireLinearCost(value, field);
+    requireLinearCost(parsed, field);
     return value;
   }
 
   /**
-   * Refuses everything but type, id, class and attribute selectors joined by space, {@code >} or
-   * comma, with at most {@link #MAX_COMBINATORS} combinators per group and {@link #MAX_GROUPS}
-   * groups; quoted text and attribute brackets are skipped. Runs after the parse, so the selector
-   * is well-formed here.
+   * Refuses a parsed selector beyond type, id, class and attribute tests joined by space, {@code >}
+   * or comma, with more than {@link #MAX_COMBINATORS} combinators in a group or more than {@link
+   * #MAX_GROUPS} groups ({@link SelectorCost}).
    */
-  private static void requireLinearCost(String selector, String field) {
-    StringBuilder outside = new StringBuilder();
-    char quote = 0;
-    boolean inBrackets = false;
-    for (char c : selector.toCharArray()) {
-      if (quote != 0) {
-        quote = c == quote ? 0 : quote;
-      } else if (c == '"' || c == '\'') {
-        quote = c;
-      } else if (c == '[') {
-        inBrackets = true;
-      } else if (c == ']') {
-        inBrackets = false;
-        outside.append('a');
-      } else if (!inBrackets) {
-        outside.append(c);
-      }
-    }
-    String plain = outside.toString();
-    if (plain.chars().anyMatch(c -> c == ':' || c == '~' || c == '+' || c == '(')) {
+  private static void requireLinearCost(Evaluator parsed, String field) {
+    SelectorCost.Shape shape;
+    try {
+      shape = SelectorCost.of(parsed);
+    } catch (SelectorCost.Refused e) {
       throw new ValidationException(
-          field
-              + " darf nur Element-, ID-, Klassen- und Attributselektoren mit Leerzeichen, > oder"
-              + " Komma verbinden; Pseudoklassen (:…) und die Kombinatoren ~ und + sind nicht"
-              + " erlaubt");
+          e.regex
+              ? field + ": reguläre Ausdrücke (:matches…, [attr~=…]) sind nicht erlaubt"
+              : field
+                  + " darf nur Element-, ID-, Klassen- und Attributselektoren mit Leerzeichen, >"
+                  + " oder Komma verbinden; Pseudoklassen (:…) und die Kombinatoren ~ und + sind"
+                  + " nicht erlaubt");
     }
-    String[] groups = plain.split(",", -1);
-    if (groups.length > MAX_GROUPS) {
+    if (shape.groups() > MAX_GROUPS) {
       throw new ValidationException(
           field + " darf höchstens " + MAX_GROUPS + " durch Komma getrennte Selektoren enthalten");
     }
-    for (String group : groups) {
-      int combinators = group.strip().split("\\s*>\\s*|\\s+").length - 1;
-      if (combinators > MAX_COMBINATORS) {
-        throw new ValidationException(
-            field + " darf je Selektor höchstens " + MAX_COMBINATORS + " Kombinatoren enthalten");
-      }
+    if (shape.combinators() > MAX_COMBINATORS) {
+      throw new ValidationException(
+          field + " darf je Selektor höchstens " + MAX_COMBINATORS + " Kombinatoren enthalten");
     }
   }
 }
