@@ -18,6 +18,7 @@ import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderRepository;
+import io.opaa.auth.RecentLoginPolicy;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
@@ -86,6 +87,7 @@ public class LocalHandoverAccountService {
   private final LocalAccountGroupDirectory groups;
   private final AuditEventRecorder audit;
   private final ApplicationEventPublisher events;
+  private final RecentLoginPolicy recentLogin;
   private final Clock clock;
 
   public LocalHandoverAccountService(
@@ -101,6 +103,7 @@ public class LocalHandoverAccountService {
       LocalAccountGroupDirectory groups,
       AuditEventRecorder audit,
       ApplicationEventPublisher events,
+      RecentLoginPolicy recentLogin,
       Clock clock) {
     this.users = users;
     this.credentials = credentials;
@@ -114,6 +117,7 @@ public class LocalHandoverAccountService {
     this.groups = groups;
     this.audit = audit;
     this.events = events;
+    this.recentLogin = recentLogin;
     this.clock = clock;
   }
 
@@ -141,7 +145,8 @@ public class LocalHandoverAccountService {
 
   /**
    * Starts the handover: validates the reason and the provider, refuses the emergency-anchor
-   * account and a last login-capable administrator, and issues the single-use code.
+   * account and a last login-capable administrator, and issues the single-use code. An account with
+   * a system role is handed over only after a recent sign-in: whoever redeems the code owns it.
    */
   @Transactional
   public HandoverStarted start(CurrentUser actor, UUID userId, UUID providerId, String reason) {
@@ -151,6 +156,9 @@ public class LocalHandoverAccountService {
     LocalUserOverview current = load(actor.organizationId(), userId);
     if (current.credentials().isBootstrap()) {
       throw new ConflictException(BOOTSTRAP_MESSAGE, LocalCredentials.BOOTSTRAP_ACCOUNT);
+    }
+    if (current.user().getSystemRole() != SystemRole.USER) {
+      recentLogin.requireRecentLogin();
     }
     OidcProvider provider = requireEligibleProvider(providerId);
     if (current.user().getSystemRole() == SystemRole.SYSTEM_ADMIN) {

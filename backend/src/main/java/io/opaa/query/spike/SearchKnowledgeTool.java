@@ -1,5 +1,6 @@
 package io.opaa.query.spike;
 
+import io.opaa.query.answer.DocumentBlock;
 import io.opaa.retrieval.KnowledgeRetrieval;
 import io.opaa.retrieval.RetrievalPipelineResult;
 import java.util.List;
@@ -14,7 +15,8 @@ import org.springframework.stereotype.Component;
  * scope and metadata filter come exclusively from the {@link ToolLoopRunState} carried in the
  * {@link ToolContext} - never from a model argument - so the model can only choose what to search
  * for, never where; every call's chunks and search step accumulate on that same run state across
- * the whole loop of one turn.
+ * the whole loop of one turn. The passages go back as {@link DocumentBlock}, cleaned and fenced
+ * with the run's block id exactly as on the ordinary answer path.
  */
 @Component
 @ConditionalOnProperty(name = "opaa.spike.tool-loop.enabled", havingValue = "true")
@@ -24,6 +26,8 @@ class SearchKnowledgeTool {
 
   /** Must match the tool name {@link SpikeToolLoopQueryHandler}'s system prompt names. */
   static final String TOOL_NAME = "search_knowledge";
+
+  static final String NO_HITS = "Keine Treffer.";
 
   private final KnowledgeRetrieval knowledgeRetrieval;
 
@@ -43,6 +47,8 @@ class SearchKnowledgeTool {
             frage, List.of(), List.of(), runState.searchScope(), runState.metadataFilter());
     runState.searchSteps().add(frage);
     runState.collectedChunks().addAll(result.chunks());
-    return SpikeChunkFormatting.formatChunks(result.chunks());
+    return result.chunks().isEmpty()
+        ? NO_HITS
+        : DocumentBlock.render(runState.blockId(), result.chunks());
   }
 }

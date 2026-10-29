@@ -98,16 +98,23 @@ public class LocalAccountMailer {
             until(token.expiresAt())));
   }
 
-  /** The verification link of a self-registration; no link fallback, as above. */
+  /**
+   * The verification link of a self-registration; no link fallback, as above. The name is the
+   * registrant's own entry and goes to an address not yet proven to be theirs, so the mail never
+   * carries it: {@code displayName} stays declared like for every key, but is always empty here.
+   */
   public void sendRegistrationVerification(User user, IssuedActionToken token) {
-    queue(
+    mail.enqueue(
         MailTemplateKey.REGISTRATION_VERIFICATION,
-        user,
+        Locale.GERMAN,
+        user.getEmail(),
         Map.of(
             "actionUrl",
             LocalAccountLinks.verifyEmailLink(publicBaseUrl, token.rawToken()),
             "expiresAtHuman",
-            until(token.expiresAt())));
+            until(token.expiresAt()),
+            "displayName",
+            ""));
   }
 
   /**
