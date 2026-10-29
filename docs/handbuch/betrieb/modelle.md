@@ -30,23 +30,27 @@ Schnittstelle**. (Die optionale Rerank-Rolle hat eigene Angaben, siehe
 [Reranking einschalten](#reranking-einschalten).) Das ist eine Protokollangabe, keine Anbieterangabe — Ollama bedient sie unter seinem
 eigenen `/v1`-Pfad, ebenso vLLM, LiteLLM, Azure und die üblichen Zwischenschichten.
 
-**Voreingestellt sind lokal betriebene Modelle.** Eine Installation, an der niemand etwas
-konfiguriert, ruft kein Modell außerhalb des Hauses auf: `OPAA_OPENAI_BASE_URL` zeigt auf
-`http://localhost:11434/v1` (im Profil `docker` auf `http://ollama:11434/v1`), das Embedding-Modell ist
-`bge-m3`, und Ollama braucht keinen Zugangsschlüssel. Das Chat-Modell kommt aus der
-[Installation](installation.md); im Modus `dev` ist es `phi3:mini`.
-Betrieb ohne Netzanbindung ist der vorgesehene Fall; es gibt kein automatisches Ausweichen auf ein
-Modell außerhalb des Hauses. Für einen anderen Anbieter wird die **Zieladresse** überschrieben:
+**Voreingestellt sind lokal betriebene Modelle.** Chat- und Embedding-Modell legt die
+[Installation](installation.md) fest, mit Adresse und Zugangsschlüssel; die Modellverwaltung ändert
+sie. Eine Umgebungsvariable für die Modelle gibt es im Betrieb nicht, und es gibt kein
+automatisches Ausweichen auf ein Modell außerhalb des Hauses: Betrieb ohne Netzanbindung ist der
+vorgesehene Fall.
+
+**Nur im Modus `dev`** richtet sich die Instanz selbst ein, mit `phi3:mini` als Chat- und `bge-m3`
+als Embedding-Modell unter `OPAA_OPENAI_BASE_URL`. Die Voreinstellung zeigt auf
+`http://localhost:11434/v1` (im Profil `docker` auf `http://ollama:11434/v1`), Ollama braucht keinen
+Zugangsschlüssel. Für einen anderen Modellserver in der Entwicklung wird die Zieladresse
+überschrieben:
 
 ```env
 OPAA_OPENAI_BASE_URL=https://modellserver.example.internal/v1
 OPAA_OPENAI_API_KEY=sk-your-key-here
 ```
 
-Die Adresse des Embedding-Modells ist eine Angabe der Installation ([Embedding](#embedding)); das
-Chat-Modell ebenso. Ein **ausdrücklich leer gesetzter** Wert
-(`OPAA_OPENAI_BASE_URL=` in einer `.env`) überschreibt die Voreinstellung mit einer leeren
-Zeichenkette und lässt das Backend mit einer Meldung abbrechen, die die Variable nennt.
+Ein **ausdrücklich leer gesetzter** Wert (`OPAA_OPENAI_BASE_URL=` in einer `.env`) überschreibt die
+Voreinstellung mit einer leeren Zeichenkette und lässt das Backend im Modus `dev` mit einer Meldung
+abbrechen, die die Variable nennt. Außerhalb des Modus `dev` liest OPAA beide Variablen nicht; sind
+sie gesetzt, warnt das Log beim Start.
 
 > **Es gibt keine technische Sperre**, die einen Aufruf außerhalb festgelegter Netzbereiche
 > verhindert. Wer die Voreinstellung ändert, kann jedes erreichbare Ziel eintragen. Wer zusichern
@@ -687,8 +691,10 @@ HTTP/1.1-Modus; der HTTP-Client des Backends bevorzugt sonst HTTP/2, und die Ver
 
 ```env
 OPAA_HTTP_FORCE_HTTP1=true
-OPAA_OPENAI_BASE_URL=http://your-vllm-server:8000/v1
 ```
+
+Die Adresse des Servers, etwa `http://your-vllm-server:8000/v1`, trägt die Installation bzw. die
+Modellverwaltung ein.
 
 ## Verschlüsselung der Zugangsschlüssel verwalteter Chat-Modelle
 
@@ -861,7 +867,8 @@ eingerichtetes Modell deshalb nicht; sie wertet das Detail `NOT_CONFIGURED` aus 
 
 | Bild | Ursache und Abhilfe |
 |---|---|
-| Der Start bricht ab und nennt `OPAA_OPENAI_BASE_URL` | Die Variable ist leer gesetzt; die Zeile entfernen oder eine Adresse eintragen |
+| Der Start im Modus `dev` bricht ab und nennt `OPAA_OPENAI_BASE_URL` | Die Variable ist leer gesetzt; die Zeile entfernen oder eine Adresse eintragen |
+| Das Log warnt beim Start, `OPAA_OPENAI_BASE_URL` oder `OPAA_OPENAI_API_KEY` werde nur im Modus `dev` gelesen | Die Variable stammt aus einer älteren Konfiguration und wirkt nicht; die Modelle stehen in der Modellverwaltung. Die Zeile entfernen |
 | Jede Chat-Anfrage scheitert mit HTTP 400 | Meist eine Temperatur, die das Modell nicht annimmt |
 | Antworten brechen mitten im Satz ab oder fehlen, mit Hinweis unter der Antwort | Die maximale Antwortlänge ist zu knapp, oft bei Modellen mit Reasoning |
 | Indexierung und Suche antworten „Das Embedding-Modell ist noch nicht eingerichtet" | Die Installation ist nicht abgeschlossen; sie wählt das Embedding-Modell oder überspringt es ([Installation](installation.md)) |

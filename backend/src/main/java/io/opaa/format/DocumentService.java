@@ -1,5 +1,6 @@
 package io.opaa.format;
 
+import io.opaa.common.LogText;
 import io.opaa.format.chunk.PageMarkingContentHandler;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
@@ -136,7 +137,7 @@ public class DocumentService {
             if (isExcluded(file, Files.isDirectory(file, LinkOption.NOFOLLOW_LINKS))) {
               return FileVisitResult.CONTINUE;
             }
-            log.warn("Skipping unreadable {}: {}", file, e.toString());
+            log.warn("Skipping unreadable {}: {}", LogText.of(file), LogText.of(e));
             unreadable.add(file);
             return FileVisitResult.CONTINUE;
           }
@@ -149,7 +150,7 @@ public class DocumentService {
             if (dir.equals(directory)) {
               throw e;
             }
-            log.warn("Listing of {} broke off: {}", dir, e.toString());
+            log.warn("Listing of {} broke off: {}", LogText.of(dir), LogText.of(e));
             unreadable.add(dir);
             return FileVisitResult.CONTINUE;
           }
@@ -163,7 +164,7 @@ public class DocumentService {
   }
 
   public List<org.springframework.ai.document.Document> parseDocument(Path file) {
-    log.debug("Parsing document: {}", file);
+    log.debug("Parsing document: {}", LogText.of(file));
     var resource = new FileSystemResource(file);
     // Keep page boundaries as form feeds so chunks can carry a "S. n" location.
     var reader =
@@ -184,7 +185,10 @@ public class DocumentService {
       String detectedMimeType = SupportedDocumentFormats.detectMediaType(file);
       return supportedFormats.decideForFileName(file.getFileName().toString(), detectedMimeType);
     } catch (IOException e) {
-      log.warn("Could not read {} to detect its format, treating it as unsupported", file, e);
+      log.warn(
+          "Could not read {} to detect its format, treating it as unsupported",
+          LogText.of(file),
+          e);
       return supportedFormats.decideForFileName(file.getFileName().toString(), null);
     }
   }

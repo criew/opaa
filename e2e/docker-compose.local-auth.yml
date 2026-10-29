@@ -57,7 +57,7 @@ services:
       # 15 minutes): scenario 4 drives it on purpose and then has the administrator unlock the
       # account, which is the documented way out - it never waits the duration out.
 
-  # Stands in for a real chat/embedding provider (see e2e/local-auth.env's OPAA_OPENAI_BASE_URL and
+  # Stands in for a real chat/embedding provider (the models of e2e/installation/local-auth.json and
   # e2e/ai-stub/server.mjs) - reused as-is from the "e2e" target rather than duplicated, exactly
   # like e2e/docker-compose.demo-smoke.yml does. No scenario of this target asks a chat question;
   # the stub is here only so the backend's own start-up probe finds an answer.

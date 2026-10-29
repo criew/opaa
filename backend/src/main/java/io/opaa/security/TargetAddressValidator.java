@@ -1,5 +1,6 @@
 package io.opaa.security;
 
+import io.opaa.common.LogText;
 import io.opaa.common.NumericAddress;
 import io.opaa.outbound.OutboundProxySelector;
 import java.io.IOException;
@@ -26,6 +27,10 @@ import org.slf4j.LoggerFactory;
  * connection differently. A {@link Scope#STORED_TARGET} check also guards the name until restart;
  * only an allowlist entry of this validator without a port ends that guard. Through the outbound
  * proxy nothing is pinned. A name outside ASCII is refused (ADR-0063).
+ *
+ * <p>A blocked range and a name that does not resolve are refused with the same German sentence
+ * ({@link #refusal}), so whoever configures a target cannot probe which internal names exist; the
+ * cause goes to the log only. The exception types still tell the two apart.
  *
  * <p>The target is checked, never the outbound proxy. A name that does not resolve locally passes
  * only when its connection goes through the outbound proxy, because the proxy resolves it: for
@@ -255,12 +260,20 @@ public class TargetAddressValidator {
   }
 
   /**
-   * A DNS failure, deliberately not a generic "unreachable": it and a resolved-but-blocked target
-   * are different diagnoses for whoever configured the target.
+   * A DNS failure, answered in the words of a blocked range ({@link #refusal}). Logged at INFO: a
+   * dead link in crawled content is ordinary, unlike a target in a blocked range.
    */
   private static UnknownTargetHostException unknownHost(String host) {
-    return new UnknownTargetHostException(
-        "Der Host konnte nicht gefunden werden (DNS-Auflösung fehlgeschlagen): " + host);
+    log.info("Rejecting fetch to {} - the name does not resolve", LogText.of(host));
+    return new UnknownTargetHostException(refusal(host));
+  }
+
+  /** The one user-facing sentence of a blocked range and of a name that does not resolve. */
+  static String refusal(String host) {
+    return "Die Zieladresse "
+        + host
+        + " ist nicht zugelassen oder nicht erreichbar: Der Name ist nicht auflösbar oder liegt in"
+        + " einem gesperrten Adressbereich (lokal, privat oder nicht routbar).";
   }
 
   private static void rejectBlocked(String host, List<InetAddress> addresses)
@@ -270,13 +283,9 @@ public class TargetAddressValidator {
         log.warn(
             "Rejecting fetch to {} - resolved address {} lies in a blocked (loopback, link-local,"
                 + " private or otherwise non-routable) range",
-            host,
+            LogText.of(host),
             address.getHostAddress());
-        throw new TargetAddressBlockedException(
-            "Die Zieladresse "
-                + host
-                + " liegt in einem gesperrten Adressbereich (lokal, privat oder nicht routbar) und"
-                + " wird aus Sicherheitsgründen abgelehnt.");
+        throw new TargetAddressBlockedException(refusal(host));
       }
     }
   }
@@ -485,8 +494,9 @@ public class TargetAddressValidator {
 
   /**
    * The DNS branch of a rejection: the host resolved to nothing, so no address could be checked. A
-   * {@link TargetAddressBlockedException} for every existing caller; a caller that wants to report
-   * it as "unreachable" rather than "blocked" can tell the two apart.
+   * {@link TargetAddressBlockedException} for every existing caller, with the same message; a
+   * caller that handles it as transient rather than blocked can tell the two apart, but answers the
+   * user alike.
    */
   public static final class UnknownTargetHostException extends TargetAddressBlockedException {
     UnknownTargetHostException(String message) {

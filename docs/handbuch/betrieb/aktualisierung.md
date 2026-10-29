@@ -40,6 +40,10 @@ Ein Update **gefährdet den Index nicht** und verlangt **keine Neuindizierung**.
   Wechsel unter gleichem Modellnamen beim Start für erledigt halten. Solange Instanzen verschiedener
   Versionen laufen, lehnt OPAA Wechsel, Verwerfen und Endpunktwechsel ab.
 
+- **Die Distanzfunktion wird beim Start geprüft.** Passt `OPAA_PGVECTOR_DISTANCE_TYPE` nicht zum
+  bestehenden Vektorindex, bricht der Start ab; Abhilfe unter
+  [„Distanzfunktion ändern“](datenbank.md#distanzfunktion-ändern). Ein Update ändert den Wert nie.
+
 Eine vollständige Neuindizierung brauchen nur: eine verworfene Datenbank und der Austausch einer
 fehlerhaften Ollama-Fassung bei langen Eingaben ([Modelle](modelle.md#embedding)).
 

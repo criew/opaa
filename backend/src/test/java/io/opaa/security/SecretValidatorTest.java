@@ -2,17 +2,17 @@ package io.opaa.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.test.TestEncryptionKeys;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -61,9 +61,17 @@ class SecretValidatorTest {
         "change_me_change_me_change_me_change_me",
         "NICHT-FUER-DEN-PRODUKTIVBETRIEB-opaa-dev-jwt-secret-2026",
         "x-nicht-fuer-den-produktivbetrieb-x-0123456789-0123456789",
-        "ci-only-jwt-secret-0123456789abcdefghijklmnop"
+        "ci-only-jwt-secret-0123456789abcdefghijklmnop",
+        "demo-smoke-local-auth-jwt-secret-not-for-production-0123456789",
+        "e2e-local-auth-jwt-secret-not-for-production-0123456789",
+        "installation-e2e-issuer-secret-not-for-production-0123456789",
+        "local-auth-e2e-issuer-secret-not-for-production-0123456789",
+        "multi-instance-e2e-issuer-secret-not-for-production-0123456789",
+        " offline-e2e-issuer-secret-not-for-production-0123456789abcdef ",
+        "kind-install-test-jwt-secret-0123456789abcdefghij",
+        "smoke-only-jwt-secret-0123456789abcdefghijklmnop"
       })
-  void rejectsMissingShortOrPlaceholderSecrets(String value) {
+  void rejectsMissingShortPlaceholderOrPublishedSecrets(String value) {
     assertThat(validator.validate(new Holder(value)))
         .as("expected a violation for: [%s]", value)
         .isNotEmpty();
@@ -122,7 +130,11 @@ class SecretValidatorTest {
         "3J0X7GKz9q3Hq1zEo2mJ1n5Q2k8m3r9T4v6w8y0A2c4=",
         "Zm9yLWNpLW9ubHktc2V0dGluZ3Mta2V5LTAxMjM0NTY=",
         "  TklDSFQtRlVFUi1ERU4tUFJPRFVLVElWQkVUUklFQjE=  ",
-        "bmljaHQtZnVlci1kZW4tcHJvZHVrdGl2YmV0cmllYjk="
+        "bmljaHQtZnVlci1kZW4tcHJvZHVrdGl2YmV0cmllYjk=",
+        "Qo69uaPd4kBf0N5+Hne8cePloVxyZE6pye8qhEfdf+8=",
+        "gljJpg/LCRbybV9cerT5pH0EjCPGz1LIN8ry7JfrUzE=",
+        "bgkeQqaMpiL1xFl4ymM9MVJ+jYlt+GCb4w9J8o5btxI=",
+        "NNEl4fE9dCl6LycesKNIxBXCY+hDKDDWV8D7hPi5e0A="
       })
   void recognisesPublishedEncryptionKeys(String key) {
     assertThat(SecretValidator.isPubliclyKnownEncryptionKey(key)).isTrue();
@@ -130,35 +142,94 @@ class SecretValidatorTest {
 
   @ParameterizedTest
   @NullAndEmptySource
-  @ValueSource(strings = {"   ", "Qo69uaPd4kBf0N5+Hne8cePloVxyZE6pye8qhEfdf+8=", "not base64 !"})
-  void doesNotTreatOwnBlankOrInvalidKeysAsPublished(String key) {
+  @ValueSource(strings = {"   ", "not base64 !"})
+  void doesNotTreatBlankOrInvalidKeysAsPublished(String key) {
     assertThat(SecretValidator.isPubliclyKnownEncryptionKey(key)).isFalse();
   }
 
+  @Test
+  void doesNotTreatAFreshlyGeneratedKeyAsPublished() {
+    assertThat(SecretValidator.isPubliclyKnownEncryptionKey(TestEncryptionKeys.generate()))
+        .isFalse();
+  }
+
   /**
-   * Every AES key in the Helm chart's own CI value sets - the files the chart README offers as a
-   * starting point - must be refused by the {@code oidc} profile, so a copied file never runs with
-   * a key everybody can read.
+   * No tracked file of the repository holds an AES key the {@code oidc} profile would accept: every
+   * Base64 value decoding to 32 bytes is refused, so a copied env or value file never runs with a
+   * key everybody can read. Test stacks generate their keys per run. Stored ciphertext ({@code
+   * enc:v1:...}) and SRI/CSP hashes ({@code sha256-...}) are no keys.
    */
   @Test
-  void recognisesEveryKeyOfTheChartsCiValueSets() throws IOException {
-    String repositoryRoot = System.getProperty("opaa.repositoryRoot");
-    assertThat(repositoryRoot).as("system property opaa.repositoryRoot set by Gradle").isNotNull();
-    Path ciDir = Path.of(repositoryRoot, "deploy", "helm", "opaa", "ci");
-    assertThat(ciDir).as("chart CI value sets").isDirectory();
-    Pattern key = Pattern.compile("(?m)^\\s*(?:credentials|settings)EncryptionKey:\\s*(\\S+)\\s*$");
+  void everyAesKeyInTheRepositoryIsRefusedByTheOidcProfile()
+      throws IOException, InterruptedException {
+    Pattern key =
+        Pattern.compile(
+            "(?<![A-Za-z0-9+/])(?<!enc:v1:)(?<!sha256-)[A-Za-z0-9+/]{43}=(?![A-Za-z0-9+/=])");
+    List<String> accepted = new ArrayList<>();
     int found = 0;
-    try (Stream<Path> files = Files.list(ciDir)) {
-      for (Path file : files.filter(f -> f.toString().endsWith("-values.yaml")).toList()) {
-        Matcher matcher = key.matcher(Files.readString(file));
-        while (matcher.find()) {
-          found++;
-          assertThat(SecretValidator.isPubliclyKnownEncryptionKey(matcher.group(1)))
-              .as("%s in %s", matcher.group(1), file.getFileName())
-              .isTrue();
+    for (String[] hit : trackedLinesMatching("[A-Za-z0-9+/]{43}=")) {
+      Matcher matcher = key.matcher(hit[1]);
+      while (matcher.find()) {
+        found++;
+        if (!SecretValidator.isPubliclyKnownEncryptionKey(matcher.group())) {
+          accepted.add(matcher.group() + " in " + hit[0]);
         }
       }
     }
-    assertThat(found).as("encryption keys found in the CI value sets").isPositive();
+    assertThat(found).as("AES keys found in the repository").isPositive();
+    assertThat(accepted).as("keys the oidc profile would accept").isEmpty();
+  }
+
+  /**
+   * No tracked file sets a signing secret the {@code oidc} profile would accept: every value after
+   * {@code OPAA_AUTH_JWT_SECRET=} or {@code :} (env files, Compose) and {@code jwtSecret:} or
+   * {@code =} (Helm values, {@code --set}), quoted or not, is empty or fails {@link
+   * SecretValidator#isStrong} - a placeholder, the marker or a published value. With such a secret
+   * anyone could sign tokens for any account; test stacks generate theirs per run.
+   */
+  @Test
+  void everySigningSecretInTheRepositoryIsRefusedByTheOidcProfile()
+      throws IOException, InterruptedException {
+    Pattern secret =
+        Pattern.compile("(?:OPAA_AUTH_JWT_SECRET|jwtSecret)[=:][ \\t]*[\"']?([^\\s\"']*)");
+    List<String> accepted = new ArrayList<>();
+    int found = 0;
+    for (String[] hit : trackedLinesMatching("OPAA_AUTH_JWT_SECRET[=:]|jwtSecret[=:]")) {
+      Matcher matcher = secret.matcher(hit[1]);
+      while (matcher.find()) {
+        found++;
+        String value = matcher.group(1);
+        if (!value.isEmpty() && SecretValidator.isStrong(value)) {
+          accepted.add(value + " in " + hit[0]);
+        }
+      }
+    }
+    assertThat(found).as("signing secrets found in the repository").isPositive();
+    assertThat(accepted).as("signing secrets the oidc profile would accept").isEmpty();
+  }
+
+  /**
+   * Path and line of every line of a tracked text file of the working tree that matches the
+   * extended regular expression, read through {@code git grep -I}.
+   */
+  private static List<String[]> trackedLinesMatching(String extendedRegex)
+      throws IOException, InterruptedException {
+    String repositoryRoot = System.getProperty("opaa.repositoryRoot");
+    assertThat(repositoryRoot).as("system property opaa.repositoryRoot set by Gradle").isNotNull();
+    Process grep =
+        new ProcessBuilder(
+                "git", "-C", repositoryRoot, "grep", "-I", "-z", "-E", "-e", extendedRegex)
+            .redirectErrorStream(true)
+            .start();
+    String output = new String(grep.getInputStream().readAllBytes(), StandardCharsets.ISO_8859_1);
+    assertThat(grep.waitFor()).as("git grep in %s: %s", repositoryRoot, output).isZero();
+    List<String[]> lines = new ArrayList<>();
+    for (String hit : output.split("\n")) {
+      int separator = hit.indexOf('\0');
+      if (separator >= 0) {
+        lines.add(new String[] {hit.substring(0, separator), hit.substring(separator + 1)});
+      }
+    }
+    return lines;
   }
 }

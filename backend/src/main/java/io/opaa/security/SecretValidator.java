@@ -10,11 +10,12 @@ import java.util.Set;
 /**
  * The rule behind {@link ValidSecret}, also usable without Bean Validation ({@link #isStrong}): a
  * trimmed value of at least {@value #MIN_LENGTH} characters that neither starts with one of the
- * placeholders below nor contains the {@link #NON_PRODUCTION_MARKER}, compared case-insensitively.
- * Below 32 characters, brute-forcing the derived keys becomes feasible; the placeholders are what
- * an operator who forgot to set a real value, or copied a value from the repository's CI files
- * ({@code ci-only-...}), would run with. {@link #isPubliclyKnownEncryptionKey} is the matching rule
- * for the AES keys, which are random bytes and cannot carry a readable prefix.
+ * placeholders below nor contains the {@link #NON_PRODUCTION_MARKER}, compared case-insensitively,
+ * and is none of the signing secrets once published in this repository. Below 32 characters,
+ * brute-forcing the derived keys becomes feasible; the placeholders are what an operator who forgot
+ * to set a real value, or copied a value from the repository's CI files ({@code ci-only-...}),
+ * would run with. {@link #isPubliclyKnownEncryptionKey} is the matching rule for the AES keys,
+ * which are random bytes and cannot carry a readable prefix.
  */
 public class SecretValidator implements ConstraintValidator<ValidSecret, String> {
 
@@ -42,8 +43,9 @@ public class SecretValidator implements ConstraintValidator<ValidSecret, String>
 
   /**
    * AES keys published in this repository that do not decode to {@link #NON_PRODUCTION_MARKER}: the
-   * {@code dev} profile defaults in {@code application.yml} and keys of the Helm chart's CI value
-   * sets and their released predecessors. Anyone who copied one holds a key everybody can read.
+   * {@code dev} profile defaults in {@code application.yml}, keys of the Helm chart's CI value sets
+   * and their released predecessors, and the keys the E2E stacks, the chart's installation test and
+   * the image smoke test once carried. Anyone who copied one holds a key everybody can read.
    */
   private static final Set<String> PUBLISHED_ENCRYPTION_KEYS =
       Set.of(
@@ -52,14 +54,34 @@ public class SecretValidator implements ConstraintValidator<ValidSecret, String>
           "bjzhjv2AKbnBjZCYAR2V/Glp7TYZzqABwkqXs3lEyCY=",
           "CH1X+hsIYeijer8S9wq5wKRnQa4DpUPePzw4KxGMTMw=",
           "3J0X7GKz9q3Hq1zEo2mJ1n5Q2k8m3r9T4v6w8y0A2c4=",
-          "Zm9yLWNpLW9ubHktc2V0dGluZ3Mta2V5LTAxMjM0NTY=");
+          "Zm9yLWNpLW9ubHktc2V0dGluZ3Mta2V5LTAxMjM0NTY=",
+          "Qo69uaPd4kBf0N5+Hne8cePloVxyZE6pye8qhEfdf+8=",
+          "gljJpg/LCRbybV9cerT5pH0EjCPGz1LIN8ry7JfrUzE=",
+          "bgkeQqaMpiL1xFl4ymM9MVJ+jYlt+GCb4w9J8o5btxI=",
+          "NNEl4fE9dCl6LycesKNIxBXCY+hDKDDWV8D7hPi5e0A=");
+
+  /**
+   * Signing secrets the E2E stacks, the chart's installation test and the image smoke test once
+   * carried in this repository, without a placeholder prefix or the marker. Anyone who copied one
+   * signs tokens everybody can forge.
+   */
+  private static final Set<String> PUBLISHED_SECRETS =
+      Set.of(
+          "demo-smoke-local-auth-jwt-secret-not-for-production-0123456789",
+          "e2e-local-auth-jwt-secret-not-for-production-0123456789",
+          "installation-e2e-issuer-secret-not-for-production-0123456789",
+          "local-auth-e2e-issuer-secret-not-for-production-0123456789",
+          "multi-instance-e2e-issuer-secret-not-for-production-0123456789",
+          "offline-e2e-issuer-secret-not-for-production-0123456789abcdef",
+          "kind-install-test-jwt-secret-0123456789abcdefghij",
+          "smoke-only-jwt-secret-0123456789abcdefghijklmnop");
 
   public static boolean isStrong(String value) {
     if (value == null) {
       return false;
     }
     String trimmed = value.trim();
-    if (trimmed.length() < MIN_LENGTH) {
+    if (trimmed.length() < MIN_LENGTH || PUBLISHED_SECRETS.contains(trimmed)) {
       return false;
     }
     String lowered = trimmed.toLowerCase(Locale.ROOT);
