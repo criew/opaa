@@ -36,6 +36,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.support.TransactionOperations;
 
 /**
  * Credential verification of the local sign-in (ADR-0033, Entscheidung 9): the address is matched
@@ -44,7 +45,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
  * response-time class never tells an unknown address from a wrong password; only an {@code ACTIVE}
  * account signs in, and with the management switched off only a local {@code SYSTEM_ADMIN}. Every
  * refusal is the same empty result. The failed-login counter is incremented and reset here; the
- * lockout after five attempts hangs on {@link LocalLoginAttemptListener}.
+ * lockout after five attempts hangs on {@link LocalLoginAttemptListener}. What the comparison
+ * decides is settled on the row re-read under its lock ({@code findForUpdate}), never on the row
+ * read before the comparison.
  */
 class LocalLoginServiceTest {
 
@@ -84,7 +87,8 @@ class LocalLoginServiceTest {
             registry,
             List.of(listener),
             networkPolicy,
-            Clock.fixed(NOW, ZoneOffset.UTC));
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            TransactionOperations.withoutTransaction());
     when(registry.localAccountsEnabled()).thenReturn(true);
     when(networkPolicy.permitsAdminSignIn(any())).thenReturn(true);
     user = localUser(SystemRole.USER);
@@ -92,6 +96,7 @@ class LocalLoginServiceTest {
     when(users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, EMAIL))
         .thenReturn(Optional.of(user));
     when(credentials.findById(user.getId())).thenReturn(Optional.of(row));
+    when(credentials.findForUpdate(user.getId())).thenReturn(Optional.of(row));
     when(encoder.matches("richtig", HASH)).thenReturn(true);
   }
 
@@ -173,9 +178,52 @@ class LocalLoginServiceTest {
     assertThat(service.authenticate(EMAIL, "falsch", CLIENT)).isEmpty();
 
     verify(encoder, times(1)).matches("falsch", HASH);
+    verify(credentials, never()).findForUpdate(any());
     verify(credentials, never()).recordFailedLogin(any(), any());
     verify(listener, never()).onPasswordRejected(any(), any(), any());
     assertFailedAttemptLoggedOnce();
+  }
+
+  /**
+   * Regression guard for parallel sign-ins: a concurrent attempt locked the account after this one
+   * read the row and before its hash comparison ended. The right password is then refused exactly
+   * like a wrong one - neither the listener nor the counter learns of it.
+   */
+  @Test
+  void aRightPasswordIsRefusedWhenTheAccountWasLockedWhileTheHashWasCompared() {
+    when(credentials.findForUpdate(user.getId())).thenReturn(Optional.of(lockedOut(user)));
+
+    assertThat(service.authenticate(EMAIL, "richtig", CLIENT)).isEmpty();
+
+    verify(encoder, times(1)).matches("richtig", HASH);
+    verify(listener, never()).onLoginSucceeded(any(), any(), any());
+    verify(listener, never()).onPasswordRejected(any(), any(), any());
+    verify(credentials, never()).resetFailedLoginAttempts(any(), any());
+    verify(credentials, never()).recordFailedLogin(any(), any());
+  }
+
+  /** The same race for a wrong password: once the lock stands, nothing more is counted. */
+  @Test
+  void aWrongPasswordIsNotCountedWhenTheAccountWasLockedWhileTheHashWasCompared() {
+    when(credentials.findForUpdate(user.getId())).thenReturn(Optional.of(lockedOut(user)));
+
+    assertThat(service.authenticate(EMAIL, "falsch", CLIENT)).isEmpty();
+
+    verify(credentials, never()).recordFailedLogin(any(), any());
+    verify(listener, never()).onPasswordRejected(any(), any(), any());
+    assertFailedAttemptLoggedOnce();
+  }
+
+  /** A password set while the old one was being compared: the old one no longer signs in. */
+  @Test
+  void aRightPasswordIsRefusedWhenThePasswordChangedWhileTheHashWasCompared() {
+    LocalCredentials changed = activeCredentials(user);
+    changed.setPasswordHash("{bcrypt}$2a$12$another", NOW);
+    when(credentials.findForUpdate(user.getId())).thenReturn(Optional.of(changed));
+
+    assertThat(service.authenticate(EMAIL, "richtig", CLIENT)).isEmpty();
+
+    verify(listener, never()).onLoginSucceeded(any(), any(), any());
   }
 
   /**
@@ -207,6 +255,7 @@ class LocalLoginServiceTest {
     when(withFailures.getPasswordHash()).thenReturn(HASH);
     when(withFailures.getFailedLoginAttempts()).thenReturn(3);
     when(credentials.findById(user.getId())).thenReturn(Optional.of(withFailures));
+    when(credentials.findForUpdate(user.getId())).thenReturn(Optional.of(withFailures));
 
     assertThat(service.authenticate(EMAIL, "richtig", CLIENT)).isPresent();
 
@@ -228,6 +277,7 @@ class LocalLoginServiceTest {
     when(users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, EMAIL))
         .thenReturn(Optional.of(admin));
     when(credentials.findById(admin.getId())).thenReturn(Optional.of(adminRow));
+    when(credentials.findForUpdate(admin.getId())).thenReturn(Optional.of(adminRow));
 
     assertThat(service.authenticate(EMAIL, "richtig", CLIENT)).isPresent();
   }
@@ -245,6 +295,7 @@ class LocalLoginServiceTest {
     when(users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, EMAIL))
         .thenReturn(Optional.of(admin));
     when(credentials.findById(admin.getId())).thenReturn(Optional.of(adminRow));
+    when(credentials.findForUpdate(admin.getId())).thenReturn(Optional.of(adminRow));
 
     assertThat(service.authenticate(EMAIL, "richtig", "203.0.113.9")).isEmpty();
     // a wrong password from a refused network is not counted either: the account cannot be
@@ -281,6 +332,12 @@ class LocalLoginServiceTest {
     user.setOrganizationId(Organization.DEFAULT_ID);
     user.setSystemRole(role);
     return user;
+  }
+
+  private static LocalCredentials lockedOut(User user) {
+    LocalCredentials locked = activeCredentials(user);
+    locked.recordLockoutUntil(NOW.plus(Duration.ofMinutes(15)), NOW);
+    return locked;
   }
 
   private static LocalCredentials activeCredentials(User user) {
