@@ -57,10 +57,16 @@ aus, scheitert schon die Anmeldung. Das ist dann „nicht prüfbar“ und kein B
 
 ## Was der Lauf zusätzlich belegen soll
 
-Die folgenden Befunde gehören danach in den Text von ADR-0040:
+ADR-0040 führt diese Befunde unter „Offen“ als unsicher, mit dem Verhalten des Konnektors, falls
+eine Annahme nicht zutrifft. Ein Lauf belegt oder widerlegt sie; das Ergebnis gehört in den Text von
+ADR-0040, eine Abweichung zusätzlich ins Testdoppel `FakeDriveServer`:
 
 - das Fehlerbild über der Exportgrenze (`403 exportSizeLimitExceeded`),
 - ob `alt=media` auf einen anderen Host weiterleitet,
-- ob der Strom `user` Änderungen geteilter Ablagen liefert,
+- ob der Strom `user` Änderungen geteilter Ablagen und nur per Ordnerfreigabe sichtbarer Ordner
+  liefert,
 - wie oft Ordneränderungen im Strom `user` einen Vollabgleich auslösen, besonders mit `subject`,
+- ob Exporte bytegleich wiederkommen und ob Kommentar oder Umbenennung `modifiedTime` verschieben,
+- ob ein Dienstkonto Mitglied einer geteilten Ablage werden kann, wenn die Organisation externe
+  Freigaben einschränkt,
 - ob der Deep Link `open?id=` zum richtigen Editor führt.

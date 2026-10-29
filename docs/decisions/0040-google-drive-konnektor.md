@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt [ADR-0027](0027-s3-konnektor.md),
+Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt [ADR-0027](0027-s3-konnektor.md),
 [ADR-0038](0038-steckbare-konnektoren.md) (Entscheidung 7, Anmeldeart Dienstkonto-Schlüssel) und
 [ADR-0041](0041-verbindungen-als-eigenes-modul.md) · ergänzt durch
 [ADR-0045](0045-gemeinsamer-datei-abgleich.md), das Entscheidung 1 ersetzt
@@ -52,9 +52,11 @@ Token-Endpunkt der Beschreibung (POST über `SourceFormPost` in `sourceaccess`: 
 Zeitlimit, Größengrenze, keine Weiterleitung), das Zugriffstoken an `API_BASE`. Kein Ziel kommt aus
 der Schlüsseldatei, aus `source_settings` oder einer Antwort; `exportLinks`, `webContentLink` und die
 Download-URI von `files.download` werden nie mit Token abgerufen. API-Aufrufe und Downloads nutzen
-`REJECT_OFF_ORIGIN`. Gespeicherte Zugangsdaten übernimmt der Kern nur bei gleichem, gegen die
-normalisierte Adresse verglichenem Ursprung (`KnowledgeLibraryService`) geprüft an einer
-Änderung ohne Verbindungsfeld.
+`REJECT_OFF_ORIGIN`: Eine Weiterleitung innerhalb von `API_BASE` wird mit Token verfolgt, eine auf
+einen anderen Host vor jeder Anfrage dorthin abgewiesen; die Datei gilt als nicht lesbar, ihr
+gespeicherter Stand bleibt, der Lauf und der Änderungsstrom gehen weiter. Gespeicherte Zugangsdaten
+übernimmt der Kern nur bei gleichem, gegen die normalisierte Adresse verglichenem Ursprung
+(`KnowledgeLibraryService`) geprüft an einer Änderung ohne Verbindungsfeld.
 
 ### 4. Profilangabe und domänenweite Delegation
 
@@ -84,7 +86,9 @@ Container-Schlüssel `drive:<id>`, `folder:<id>`, `myDrive`. Überlappung wird n
 Identität ist die Datei-ID, der Ordner kommt aus dem ersten Bereich, der sie listet. Eine geteilte
 Ablage wird flach gelistet (`corpora=drive`), ein Ordnerbereich ebenenweise. `SourceBrowser` nennt
 `drives.list` und die freigegebenen Ordner. Vor jedem Lauf prüft der Konnektor jeden Bereich
-(`drives.get` bzw. `files.get`); ein nicht erreichbarer ist `ContainerUnlistable`.
+(`drives.get` bzw. `files.get`); ein nicht erreichbarer ist `ContainerUnlistable`, sein Bestand
+bleibt, und der Verbindungstest nennt ihn. Das gilt auch, wenn die Organisation verhindert, dass das
+Dienstkonto Mitglied einer geteilten Ablage wird.
 
 ### 6. Zwei Betriebsarten: Vollabgleich und Änderungsprotokoll
 
@@ -95,7 +99,11 @@ Auflistung, verfallene Cursor und der Änderungslauf folgen ADR-0045, Entscheidu
 Änderungslauf: `removed=true`, `file.trashed=true` oder eine Datei, die in keinem Bereich mehr liegt;
 ein `404` auf `files.get` ist keiner. Ein Ordner-Ereignis (verschoben, umbenannt, gelöscht) meldet
 `fullSyncNeeded`, der nächste Lauf ist ein Vollabgleich. Der Store gibt keine Marke; ein
-Vollabgleich gleicht nur ab, wenn er alles selbst gelistet hat.
+Vollabgleich gleicht nur ab, wenn er alles selbst gelistet hat. Meldet der Strom des Kontos eine
+Änderung einer geteilten Ablage, die einen eigenen Strom hat, ordnet `locate` sie dieser Ablage zu;
+meldet er eine Änderung nicht, holt sie der nächste Vollabgleich nach (`fullSyncInterval`). Ein
+fehlendes Ereignis kostet also Aktualität, ein überzähliges Ordner-Ereignis einen Vollabgleich;
+keines von beiden entfernt ein Dokument.
 
 ### 7. Identität, Änderungsmerkmal, Ordner, Deep Link
 
@@ -103,9 +111,13 @@ Vollabgleich gleicht nur ab, wenn er alles selbst gelistet hat.
 Verschieben behalten das Dokument. Merkmal: Binärdatei `m:<md5Checksum>|<size>` (ohne MD5
 `t:<modifiedTime>|<size>`), Google-Format `g:<modifiedTime in ms>|<Zielendung>`, sodass ein
 Wechsel des Zielformats einen neuen Export auslöst; `version` taugt nicht (Fehlalarme). Verbindlich
-bleibt die SHA-256 nach dem Laden. Ordner: Elternkette bis zur Bereichswurzel über
-`SourceFolderMirror`, bei mehreren Bereichen der Name der Ablage bzw. des Ordners vorn; Namen, die
-keine Ordnerzeile tragen kann, und zu tiefe Ketten folgen `SourceFolderPath`.
+bleibt die SHA-256 nach dem Laden: Solange `modifiedTime` gleich bleibt, wird nicht exportiert; nach
+einer neuen `modifiedTime` entscheidet die Prüfsumme, ob neu indexiert wird. Ein nicht bytegleicher
+Export kostet so höchstens eine Neuindizierung je Änderungszeit, nie eine je Lauf. Der Deep Link
+nutzt die typneutrale Form, weil nur die Datei-ID stabil ist; den Editor wählt Drive. Ordner:
+Elternkette bis zur Bereichswurzel über `SourceFolderMirror`, bei mehreren Bereichen der Name der
+Ablage bzw. des Ordners vorn; Namen, die keine Ordnerzeile tragen kann, und zu tiefe Ketten folgen
+`SourceFolderPath`.
 
 ### 8. Google-Formate: Export in Office-Formate
 
@@ -120,7 +132,8 @@ Office statt PDF, weil die Formate daraus Überschriften, Tabellen und Blätter 
 `fileName` trägt die Zielendung, die Größe eines Google-Formats gilt als unbekannt. Dateien mit
 `canDownload=false` oder Missbrauchsmarkierung werden übersprungen, `acknowledgeAbuse` nie gesetzt.
 Der Textweg hängt am Grund `exportSizeLimitExceeded`; jedes andere `403` des Exports, das keine
-Drosselung ist, gilt als nicht lesbar.
+Drosselung ist, gilt als nicht lesbar, ebenso ein Textexport, der die Grenze ebenfalls reißt. Eine
+nicht lesbare Datei behält ihren gespeicherten Stand, der Lauf geht weiter.
 
 ### 9. Verknüpfungen werden übersprungen
 
@@ -182,11 +195,21 @@ Entscheidung 8) ihn verwirft.
 
 ## Offen
 
-- Gegen ein echtes Workspace noch nicht belegt (`GoogleDriveWorkspaceIntegrationTest`, README im
-  Testpaket): Fehlerbild über der Exportgrenze, Weiterleitung von `alt=media`, ob der Strom des Kontos
-  Änderungen geteilter Ablagen und nur per Ordnerfreigabe sichtbarer Ordner liefert, wie oft
-  Ordneränderungen einen Vollabgleich auslösen, ob `open?id=` zum richtigen Editor führt, ob Exporte
-  bytegleich wiederholbar sind, `modifiedTime` bei Kommentar oder Umbenennung.
+- Gegen ein echtes Workspace nicht belegt: Es gibt keines, das Testdoppel bildet nur die Annahmen
+  nach. Die Befunde bleiben unsicher, bis die lokale Suite `GoogleDriveWorkspaceIntegrationTest`
+  (ADR-0057, Entscheidung 5) gelaufen ist; weicht sie ab, folgen Testdoppel und Code. Bis dahin
+  gilt je Befund:
+
+  | Befund | warum unsicher | wenn die Annahme nicht trifft |
+  |---|---|---|
+  | Fehlerbild über der Exportgrenze (`403 exportSizeLimitExceeded`) | nur aus der Fehlerreferenz von Google | anderes `403`: Docs und Slides nicht lesbar statt als Text; `400` oder `5xx`: in jedem Lauf vorübergehend fehlgeschlagen (Entscheidung 8) |
+  | `alt=media` bleibt auf `www.googleapis.com` | Google nennt den Download-Host nicht | jede Binärdatei nicht lesbar, das Token verlässt `API_BASE` nicht (Entscheidung 3) |
+  | Strom des Kontos liefert Änderungen geteilter Ablagen und nur per Ordnerfreigabe sichtbarer Ordner | die Referenz nennt den Umfang nicht | Änderung erst im Vollabgleich (Entscheidung 6) |
+  | Wie oft Ordneränderungen einen Vollabgleich auslösen, besonders mit `subject` | hängt an der Nutzung des Kontos | mehr Vollabgleiche, mehr Anfragen (Entscheidung 6) |
+  | Exporte bytegleich wiederholbar | Google sagt es nicht zu | eine Neuindizierung je Änderungszeit (Entscheidung 7) |
+  | `modifiedTime` verschiebt sich bei Kommentar oder Umbenennung | Google sagt es nicht zu | die Änderung erscheint erst mit der nächsten, die sie verschiebt (Entscheidung 7) |
+  | Dienstkonto als Mitglied bei eingeschränkter externer Freigabe | hängt an der Richtlinie der Organisation | Bereich nicht sichtbar, Ordnerfreigabe statt Mitgliedschaft (Entscheidung 5) |
+  | `open?id=` führt zum passenden Editor | Verhalten der Weboberfläche, nicht der API | Drive-Ansicht statt Editor, Identität unberührt (Entscheidung 7) |
 - `files.download` (LRO) als Ausweg für Exporte über 10 MB, sobald Grenze und Ziel-Host belegt sind.
 - Schlüssellose Anmeldung (Workload Identity Federation); persönliche Ablagen über verbundene Konten
   (Epic #2147); `changes.watch`.
