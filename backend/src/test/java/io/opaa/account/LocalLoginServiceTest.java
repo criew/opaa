@@ -178,6 +178,7 @@ class LocalLoginServiceTest {
     assertThat(service.authenticate(EMAIL, "falsch", CLIENT)).isEmpty();
 
     verify(encoder, times(1)).matches("falsch", HASH);
+    verify(credentials, never()).findForUpdate(any());
     verify(credentials, never()).recordFailedLogin(any(), any());
     verify(listener, never()).onPasswordRejected(any(), any(), any());
     assertFailedAttemptLoggedOnce();

@@ -182,10 +182,11 @@ class LocalAccountLockoutIntegrationTest {
   @Test
   void parallelWrongPasswordsBeyondTheThresholdLockOnceAndCountNothingAfterTheLock()
       throws Exception {
+    // more threads than the connection pool holds: the hash comparison needs no connection, and
+    // the deciding transactions queue for the row anyway
     int attempts = lockout.maxAttempts() * 4;
     CountDownLatch start = new CountDownLatch(1);
-    ExecutorService pool = Executors.newFixedThreadPool(attempts);
-    try {
+    try (ExecutorService pool = Executors.newFixedThreadPool(attempts)) {
       List<Future<Optional<AuthenticatedLocalAccount>>> results = new ArrayList<>();
       for (int i = 0; i < attempts; i++) {
         results.add(
@@ -199,8 +200,6 @@ class LocalAccountLockoutIntegrationTest {
       for (Future<Optional<AuthenticatedLocalAccount>> result : results) {
         assertThat(result.get(60, TimeUnit.SECONDS)).isEmpty();
       }
-    } finally {
-      pool.shutdownNow();
     }
 
     LocalCredentials after = credentials.findById(user.id()).orElseThrow();
@@ -225,9 +224,9 @@ class LocalAccountLockoutIntegrationTest {
    */
   @Test
   void aRightPasswordWhoseComparisonEndsAfterAParallelLockIsRefused() throws Exception {
-    ExecutorService pool = Executors.newSingleThreadExecutor();
-    Future<Optional<AuthenticatedLocalAccount>> signIn;
-    try (Connection parallelAttempt = dataSource.getConnection()) {
+    try (ExecutorService pool = Executors.newSingleThreadExecutor();
+        Connection parallelAttempt = dataSource.getConnection()) {
+      Future<Optional<AuthenticatedLocalAccount>> signIn;
       parallelAttempt.setAutoCommit(false);
       int holderPid = holdRowLock(parallelAttempt, user.id());
       signIn =
@@ -246,13 +245,9 @@ class LocalAccountLockoutIntegrationTest {
         assertThat(lock.executeUpdate()).isEqualTo(1);
       }
       parallelAttempt.commit();
-    }
-    try {
       assertThat(signIn.get(60, TimeUnit.SECONDS))
           .as("a right password decided after the lock is refused like a wrong one")
           .isEmpty();
-    } finally {
-      pool.shutdownNow();
     }
     assertThat(credentials.findById(user.id()).orElseThrow().state(Instant.now()))
         .isEqualTo(LocalAccountState.LOCKED);

@@ -22,7 +22,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionOperations;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.util.Assert;
 
 /**
  * Verifies the credentials of a local sign-in (ADR-0033, Entscheidungen 1, 3, 4 and 9). The address
@@ -41,7 +43,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * alike.
  *
  * <p>The row read before the hash comparison only selects the hash. What the comparison decides is
- * settled afterwards on the row re-read under its lock ({@code SELECT ... FOR UPDATE}): a lock set
+ * settled afterwards on the row re-read under its row lock ({@code PESSIMISTIC_WRITE}): a lock set
  * by a concurrent attempt meanwhile turns a right password into the same refusal as a wrong one and
  * stops the count, so parallel attempts beyond {@code max-attempts} reveal and count nothing.
  */
@@ -109,10 +111,15 @@ public class LocalLoginService {
   /**
    * The account when the sign-in is accepted; empty for every refusal alike. {@code clientAddress}
    * is the resolved client address ({@code io.opaa.security.ClientIpResolver}), consulted for local
-   * {@code SYSTEM_ADMIN} accounts only.
+   * {@code SYSTEM_ADMIN} accounts only. Must be called without a surrounding transaction: the
+   * decision commits in a short transaction of its own, so that its row lock is never held across
+   * the hash comparison or the caller's further work.
    */
   public Optional<AuthenticatedLocalAccount> authenticate(
       String email, String password, String clientAddress) {
+    Assert.state(
+        !TransactionSynchronizationManager.isActualTransactionActive(),
+        "LocalLoginService#authenticate must not run inside a transaction");
     String normalized = email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
     if (normalized.isEmpty() || password == null || password.isEmpty()) {
       return Optional.empty();
