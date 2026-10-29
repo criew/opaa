@@ -4,14 +4,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import io.opaa.account.LocalTokenRevocationService;
 import io.opaa.asset.AssetCatalogService;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
 import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
@@ -28,6 +31,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 /**
  * Every issued access token is announced to its owner by mail - the trace a briefly taken-over
@@ -44,6 +48,7 @@ class ExternalAccessTokenIssuanceNoticeTest {
   private final LocalAuthKeyService keys = mock(LocalAuthKeyService.class);
   private final UserRepository users = mock(UserRepository.class);
   private final ExternalAccessTokenMailer mailer = mock(ExternalAccessTokenMailer.class);
+  private final LocalTokenRevocationService sessions = mock(LocalTokenRevocationService.class);
 
   private final ExternalAccessTokenService service =
       new ExternalAccessTokenService(
@@ -57,6 +62,7 @@ class ExternalAccessTokenIssuanceNoticeTest {
           mock(AuditEventRecorder.class),
           users,
           mailer,
+          sessions,
           Clock.fixed(NOW, ZoneOffset.UTC));
 
   private final User owner = new User("sub", "https://idp.example", "anna@amt.example", "Anna");
@@ -86,6 +92,26 @@ class ExternalAccessTokenIssuanceNoticeTest {
         NOW.plus(Duration.ofDays(10)));
 
     verify(mailer).sendIssued(owner, "Claude Code", NOW);
+  }
+
+  @Test
+  void aSessionThatEndedMeanwhileIssuesNothing() {
+    Jwt session = Jwt.withTokenValue("t").header("alg", "none").subject("s").build();
+    when(sessions.sessionEndedSince(owner.getId(), session)).thenReturn(true);
+
+    assertThatThrownBy(
+            () ->
+                service.issue(
+                    owner.getId(),
+                    UUID.randomUUID(),
+                    "Claude Code",
+                    List.of(libraryId),
+                    NOW.plus(Duration.ofDays(10)),
+                    session))
+        .isInstanceOf(AccessDeniedException.class);
+
+    verify(tokens, never()).save(any());
+    verifyNoInteractions(mailer);
   }
 
   @Test

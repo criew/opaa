@@ -10,8 +10,10 @@ import java.util.UUID;
  * reset, an administrator's reset and a detected refresh replay ({@code cause}). Unlike {@link
  * LocalAccountAccessEndedEvent} the account stays usable; what a session could have created on its
  * own behalf (an access token) ends with it, so a listener runs in the publisher's transaction and
- * the new password and the end of those merkmale commit together. Exactly one of {@code
- * actorUserId} and {@code systemActor} is set.
+ * the new password and the end of those tokens commit together. The publisher flushes the account's
+ * {@code local_credentials} row before publishing, which serialises it against {@link
+ * LocalTokenRevocationService#sessionEndedSince}. Exactly one of {@code actorUserId} and {@code
+ * systemActor} is set.
  */
 public record LocalAccountSessionsEndedEvent(
     User user, RevocationReason cause, UUID actorUserId, String systemActor) {

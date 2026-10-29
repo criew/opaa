@@ -18,14 +18,14 @@ import org.springframework.stereotype.Component;
  * credentials or a session may be in someone else's hands: a token issued from a taken-over session
  * would otherwise outlive the clean-up.
  *
- * <p>The tokens of such an account are already refused per call by {@code
- * ExternalAccessTokenAuthenticator}; this listener is about the other half of the promise. Without
+ * <p>After a lock or a handover the tokens are already refused per call by {@code
+ * ExternalAccessTokenAuthenticator}; there this listener is the other half of the promise - without
  * it the token stays {@code ACTIVE} in the administration's Bestandsliste and its end produces no
- * entry at all, although {@code ACCOUNT_LIFECYCLE} is one of the two Anlässe of the
- * Ausserkrafttreten.
+ * entry. After the end of all sessions the account stays usable, so this listener is the only thing
+ * that ends the tokens.
  *
- * <p>A plain {@code @EventListener}, so it runs inside the transaction of the act that ended the
- * access: the lock and the end of the tokens commit together or not at all.
+ * <p>A plain {@code @EventListener}, so it runs inside the transaction of the act: that act and the
+ * end of the tokens commit together or not at all.
  */
 @Component
 public class ExternalAccessTokenAccountLifecycleListener {

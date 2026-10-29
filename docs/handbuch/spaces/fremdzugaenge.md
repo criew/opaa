@@ -215,9 +215,16 @@ eine kurz unbeaufsichtigte oder übernommene Sitzung soll deshalb keines anlegen
 Anmeldung länger zurück, fragt OPAA vor dem Erzeugen erneut nach dem Passwort oder leitet zum
 Anmeldedienst weiter ([Erneute Anmeldung vor sensiblen
 Vorgängen](../betrieb/authentifizierung.md#erneute-anmeldung-vor-sensiblen-vorgängen)). Nach der
-Weiterleitung zum Anmeldedienst öffnet sich der Dialog wieder leer. Jedes erzeugte Token meldet
-OPAA der Person zusätzlich **per Mail** mit seinem Namen — wer ein Token nicht selbst erzeugt hat,
-widerruft es und meldet sich bei der Systemverwaltung.
+Weiterleitung zum Anmeldedienst öffnet sich der Dialog wieder leer. **Ein Identitätsanbieter, der den
+Anmeldezeitpunkt (`auth_time`) nicht ins Zugangstoken schreibt — das betrifft je nach Einrichtung etwa
+Microsoft Entra ID —, lässt kein Erzeugen zu**; die Person sieht dann den Hinweis, dass ihr
+Anmeldedienst die erneute Anmeldung nicht bestätigt hat. Abhilfe ist allein beim Anbieter möglich:
+den Claim `auth_time` für den OPAA-Client ins Zugangstoken aufnehmen (Keycloak tut es mit dem
+mitgelieferten Client-Scope `basic`).
+
+Jedes erzeugte Token meldet OPAA der Person zusätzlich **per Mail** mit seinem Namen, sofern der
+Mailversand eingeschaltet ist und das Konto eine Adresse hat — wer ein Token nicht selbst erzeugt
+hat, widerruft es und meldet sich bei der Systemverwaltung.
 
 Ist keine Bibliothek wählbar, liegt es entweder am fehlenden Lesezugriff oder an der fehlenden
 Freigabe. Beides entscheidet, wer die Bibliothek verwaltet; einen Antragsweg in der Anwendung gibt
@@ -272,15 +279,23 @@ Kraft; ein später mit derselben Issuer-URI neu angelegter Anbieter belebt sie n
 durch die Person, das Zurücksetzen über „Passwort vergessen", ein Rücksetzlink oder ein erzeugtes
 Passwort der Systemverwaltung und die erkannte Wiederverwendung einer bereits erneuerten Sitzung.
 Ein Token, das in einer übernommenen Sitzung entstanden ist, überdauert so die Bereinigung nicht.
-Die Tokens erscheinen danach als gesperrt; die Person legt nach Bedarf neue an.
+Die Tokens erscheinen danach als gesperrt; die Person legt nach Bedarf neue an. Eine eigene Mail
+darüber gibt es nicht. Das gilt auch für die erkannte Wiederverwendung, die ein Fehlalarm sein kann
+(etwa ein zweiter Browser-Tab nach einem Netzaussetzer): Die Person merkt es daran, dass sie
+abgemeldet ist und ihre Werkzeuge mit `token_revoked` abgewiesen werden.
 
 **Konten eines Identitätsanbieters brauchen eine nicht zu alte Anmeldung.** Von einer Deaktivierung
 beim Anbieter und von geänderten Gruppen aus dem Anmeldetoken erfährt OPAA ohne Verzeichnisabgleich
 nur bei einer Anmeldung. Liegt die letzte Anmeldung der Person länger zurück als
 `OPAA_EXTERNAL_ACCESS_PROVIDER_SIGN_IN_MAX_AGE_DAYS` (Abschnitt 15), ruhen ihre Tokens: Jeder Aufruf
-wird mit `sign_in_required` abgewiesen, bis sie sich wieder in OPAA anmeldet. Widerrufen wird dabei
-nichts; mit der nächsten Anmeldung wirken die Tokens wieder, mit dem dann gültigen Gruppenstand.
-Lokale Konten sind davon ausgenommen — ihren Lebenszyklus entscheidet OPAA selbst.
+wird mit `sign_in_required` abgewiesen, bis sie sich wieder in OPAA anmeldet. Ein Aufruf mit dem
+Token selbst zählt nicht als Anmeldung. Widerrufen wird dabei nichts; mit der nächsten Anmeldung
+wirken die Tokens wieder. Die Regel gilt für jedes Konto eines Identitätsanbieters, **auch bei
+eingerichtetem Verzeichnisabgleich** — dort ist sie streng genommen nicht nötig, hält aber eine
+Regel für alle Anbieter. Lokale Konten sind ausgenommen — ihren Lebenszyklus entscheidet OPAA selbst.
+Den Gruppenstand frischt die Anmeldung nur auf, wenn das Anmeldetoken den Gruppen-Claim tatsächlich
+trägt; fehlt er oder steht dort nur ein Verweis (bei Microsoft Entra ID bei sehr vielen Gruppen),
+bleibt der letzte bekannte Stand stehen ([Berechtigungen](../konten-und-rechte/berechtigungen.md)).
 
 **Abgelaufene und widerrufene Tokenzeilen werden gelöscht**, sobald die Protokollfrist der
 Installation über ihr Außerkrafttreten hinweggelaufen ist — nicht früher, sonst fehlt der Beleg, dass
@@ -687,7 +702,7 @@ beantworten sich gleich, damit der Kanal nie bestätigt, dass ein Token existier
 | Beobachtung | Ursache | Abhilfe |
 |---|---|---|
 | `401`, `reason: token_expired` | Das Token hat sein Ablaufdatum erreicht | Die Person legt in ihren Einstellungen ein neues an. Ein abgelaufenes Token lässt sich nicht verlängern |
-| `401`, `reason: token_revoked` | Die Person hat widerrufen — oder die Systemverwaltung hat gesperrt | Neues Token. Bei einer Sperre zuerst deren Anlass klären |
+| `401`, `reason: token_revoked` | Die Person hat widerrufen — oder die Systemverwaltung hat gesperrt — oder ein Passwortwechsel, ein Rücksetzen oder die erkannte Wiederverwendung einer Sitzung hat alle Sitzungen und Tokens des Kontos beendet (Abschnitt 6) | Neues Token. Bei einer Sperre zuerst deren Anlass klären |
 | `401`, `reason: account_not_active` | Das **Konto** ist gesperrt, abgelaufen, deaktiviert oder übergeben; alle seine Tokens sind damit außer Kraft. Oder sein Identitätsanbieter beziehungsweise die lokale Kontenverwaltung ist abgeschaltet | [Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md), Abschnitt 4. Danach ist ein neues Token nötig — die alten leben nicht wieder auf. Nur nach dem Wiedereinschalten des Anbieters oder der lokalen Kontenverwaltung gelten sie wieder; ein gelöschter Anbieter beendet sie dagegen endgültig (`token_revoked`) |
 | `401`, `reason: sign_in_required` | Die Person meldet sich über einen Identitätsanbieter an, und ihre letzte Anmeldung in OPAA liegt länger zurück als erlaubt (Abschnitt 6) | Die Person meldet sich einmal in OPAA an; danach wirkt dasselbe Token wieder |
 | `401`, `reason: invalid_token` | Wert unbekannt, verstümmelt oder unvollständig kopiert | Neu einrichten. Der Wert ist nach der Einmalanzeige nirgends abrufbar; im Zweifel neues Token |

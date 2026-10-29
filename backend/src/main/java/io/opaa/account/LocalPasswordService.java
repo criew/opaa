@@ -99,6 +99,7 @@ public class LocalPasswordService {
     credentials.save(row);
     revocation.invalidateSessionsIssuedBefore(user.getId());
     refreshTokens.revokeAllForUser(user.getId(), RevocationReason.PASSWORD_CHANGED);
+    credentials.flush();
     events.publishEvent(
         LocalAccountSessionsEndedEvent.by(user, RevocationReason.PASSWORD_CHANGED, user.getId()));
     record(user, AuditEventType.LOCAL_PASSWORD_CHANGED, null);
@@ -150,6 +151,7 @@ public class LocalPasswordService {
     actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.SET_PASSWORD);
     actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.RESET_PASSWORD);
     refreshTokens.revokeAllForUser(user.getId(), RevocationReason.PASSWORD_CHANGED);
+    credentials.flush();
     events.publishEvent(
         LocalAccountSessionsEndedEvent.by(user, RevocationReason.PASSWORD_CHANGED, user.getId()));
     record(user, AuditEventType.LOCAL_PASSWORD_SET, Map.of("purpose", token.getPurpose().name()));

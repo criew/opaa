@@ -19,6 +19,9 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -99,7 +102,8 @@ public class ExternalAccessTokenController {
             caller.organizationId(),
             request.getName(),
             request.getLibraryIds(),
-            request.getExpiresAt());
+            request.getExpiresAt(),
+            sessionOfCaller());
     return ExternalAccessTokenResponseMapper.toCreated(issued, clock.instant());
   }
 
@@ -107,5 +111,11 @@ public class ExternalAccessTokenController {
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void revokeOwnExternalAccessToken(@PathVariable UUID tokenId, @Caller CurrentUser caller) {
     tokenService.revokeOwn(caller.id(), caller.organizationId(), tokenId);
+  }
+
+  /** The bearer token of the web session this request came with, if it is one. */
+  private static Jwt sessionOfCaller() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    return authentication != null && authentication.getPrincipal() instanceof Jwt jwt ? jwt : null;
   }
 }

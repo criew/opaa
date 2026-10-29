@@ -1,5 +1,6 @@
 package io.opaa.externalaccess.token;
 
+import io.opaa.account.LocalTokenRevocationService;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
@@ -28,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,6 +64,7 @@ public class ExternalAccessTokenService {
   private final AuditEventRecorder audit;
   private final UserRepository users;
   private final ExternalAccessTokenMailer mailer;
+  private final LocalTokenRevocationService sessions;
   private final Clock clock;
 
   public ExternalAccessTokenService(
@@ -75,6 +78,7 @@ public class ExternalAccessTokenService {
       AuditEventRecorder audit,
       UserRepository users,
       ExternalAccessTokenMailer mailer,
+      LocalTokenRevocationService sessions,
       Clock clock) {
     this.tokens = tokens;
     this.libraries = libraries;
@@ -86,6 +90,7 @@ public class ExternalAccessTokenService {
     this.audit = audit;
     this.users = users;
     this.mailer = mailer;
+    this.sessions = sessions;
     this.clock = clock;
   }
 
@@ -97,15 +102,30 @@ public class ExternalAccessTokenService {
     return Duration.ofDays(settings.current().values().tokenMaxLifetimeDays());
   }
 
+  /** {@link #issue(UUID, UUID, String, List, Instant, Jwt)} without a session - tests and seeds. */
+  @Transactional
+  public IssuedExternalAccessToken issue(
+      UUID ownerId, UUID organizationId, String rawName, List<UUID> libraryIds, Instant expiresAt) {
+    return issue(ownerId, organizationId, rawName, libraryIds, expiresAt, null);
+  }
+
   /**
    * Issues a token for {@code ownerId}. Every named library must be readable by that person and
-   * released; the expiry is mandatory, in the future and at most {@link #maxLifetime()} away.
+   * released; the expiry is mandatory, in the future and at most {@link #maxLifetime()} away. A
+   * {@code session} whose sessions all ended meanwhile - a password change, a reset, a replay - is
+   * refused under the lock of {@link LocalTokenRevocationService#sessionEndedSince}, so no token
+   * outlives that clean-up by racing it.
    *
    * @return the stored row together with the plain value, which exists nowhere else afterwards
    */
   @Transactional
   public IssuedExternalAccessToken issue(
-      UUID ownerId, UUID organizationId, String rawName, List<UUID> libraryIds, Instant expiresAt) {
+      UUID ownerId,
+      UUID organizationId,
+      String rawName,
+      List<UUID> libraryIds,
+      Instant expiresAt,
+      Jwt session) {
     if (!settings.isEnabled()) {
       throw new AccessDeniedException(
           "Externe KI-Werkzeuge sind für diese Installation ausgeschaltet");
@@ -135,6 +155,10 @@ public class ExternalAccessTokenService {
           "Das Ablaufdatum überschreitet die Höchstlaufzeit von " + ceiling.toDays() + " Tagen");
     }
     requireSelectable(ownerId, organizationId, selected);
+    if (sessions.sessionEndedSince(ownerId, session)) {
+      throw new AccessDeniedException(
+          "Ihre Sitzung wurde beendet. Bitte melden Sie sich erneut an.");
+    }
 
     String rawValue = ExternalAccessTokenValues.generate();
     ExternalAccessToken saved =

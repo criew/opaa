@@ -283,6 +283,7 @@ public class LocalRefreshTokenService {
                     .findById(userId)
                     .ifPresent(
                         user -> {
+                          credentials.flush();
                           events.publishEvent(
                               LocalAccountSessionsEndedEvent.bySystem(
                                   user, RevocationReason.REUSE_DETECTED, SYSTEM_ACTOR));
