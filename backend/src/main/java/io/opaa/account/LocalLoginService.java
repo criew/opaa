@@ -13,11 +13,16 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionOperations;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Verifies the credentials of a local sign-in (ADR-0033, Entscheidungen 1, 3, 4 and 9). The address
@@ -34,6 +39,11 @@ import org.springframework.stereotype.Service;
  * a wrong password - before the counter, so the account cannot be locked from there, and without
  * the listeners (ADR-0033, Entscheidung 9); the hash comparison still runs so the timing stays
  * alike.
+ *
+ * <p>The row read before the hash comparison only selects the hash. What the comparison decides is
+ * settled afterwards on the row re-read under its lock ({@code SELECT ... FOR UPDATE}): a lock set
+ * by a concurrent attempt meanwhile turns a right password into the same refusal as a wrong one and
+ * stops the count, so parallel attempts beyond {@code max-attempts} reveal and count nothing.
  */
 @Service
 public class LocalLoginService {
@@ -54,7 +64,9 @@ public class LocalLoginService {
   private final List<LocalLoginAttemptListener> listeners;
   private final LocalAdminNetworkPolicy networkPolicy;
   private final Clock clock;
+  private final TransactionOperations transactions;
 
+  @Autowired
   public LocalLoginService(
       UserRepository users,
       LocalCredentialsRepository credentials,
@@ -62,7 +74,28 @@ public class LocalLoginService {
       OidcProviderRegistry registry,
       List<LocalLoginAttemptListener> listeners,
       LocalAdminNetworkPolicy networkPolicy,
-      Clock clock) {
+      Clock clock,
+      PlatformTransactionManager transactionManager) {
+    this(
+        users,
+        credentials,
+        passwordEncoder,
+        registry,
+        listeners,
+        networkPolicy,
+        clock,
+        new TransactionTemplate(transactionManager));
+  }
+
+  LocalLoginService(
+      UserRepository users,
+      LocalCredentialsRepository credentials,
+      PasswordEncoder passwordEncoder,
+      OidcProviderRegistry registry,
+      List<LocalLoginAttemptListener> listeners,
+      LocalAdminNetworkPolicy networkPolicy,
+      Clock clock,
+      TransactionOperations transactions) {
     this.users = users;
     this.credentials = credentials;
     this.passwordEncoder = passwordEncoder;
@@ -70,6 +103,7 @@ public class LocalLoginService {
     this.listeners = List.copyOf(listeners);
     this.networkPolicy = networkPolicy;
     this.clock = clock;
+    this.transactions = transactions;
   }
 
   /**
@@ -105,25 +139,55 @@ public class LocalLoginService {
       // the one log line of a failed attempt (ADR-0033, Entscheidung 9): account id, never the
       // address, whether or not the attempt is counted
       log.info("Local sign-in of account {} refused: wrong password", user.getId());
-      // a locked account counts nothing: attempts during a lockout neither extend it nor spend the
-      // fresh budget the account has once the lockout has ended
-      if (row.state(now) == LocalAccountState.LOCKED) {
-        return Optional.empty();
+      // already locked when read: nothing to count, and no row lock taken during a lockout flood
+      if (row.state(now) != LocalAccountState.LOCKED) {
+        transactions.executeWithoutResult(status -> countFailedAttempt(user, now));
       }
-      credentials.recordFailedLogin(user.getId(), now);
-      LocalCredentials counted = credentials.findById(user.getId()).orElse(row);
-      listeners.forEach(listener -> listener.onPasswordRejected(user, counted, now));
       return Optional.empty();
     }
     if (!LocalAccountAccess.isLoginCapable(row, now)
         || !LocalAccountAccess.passesManagementSwitch(registry, user)) {
       return Optional.empty();
     }
-    if (row.getFailedLoginAttempts() != 0) {
+    LocalCredentials current = transactions.execute(status -> admitSignIn(user, row, now));
+    if (current == null) {
+      return Optional.empty();
+    }
+    listeners.forEach(listener -> listener.onLoginSucceeded(user, current, now));
+    return Optional.of(new AuthenticatedLocalAccount(user, current));
+  }
+
+  /**
+   * Counts a wrong password on the locked row. A locked account counts nothing: attempts during a
+   * lockout neither extend it nor spend the fresh budget the account has once the lockout has
+   * ended. The listeners run under the same row lock, so exactly one attempt reaches the threshold.
+   */
+  private void countFailedAttempt(User user, Instant now) {
+    LocalCredentials locked = credentials.findForUpdate(user.getId()).orElse(null);
+    if (locked == null || locked.state(now) == LocalAccountState.LOCKED) {
+      return;
+    }
+    credentials.recordFailedLogin(user.getId(), now);
+    LocalCredentials counted = credentials.findById(user.getId()).orElse(locked);
+    listeners.forEach(listener -> listener.onPasswordRejected(user, counted, now));
+  }
+
+  /**
+   * The row a verified password signs in with, or null: re-read under its lock, it must still be
+   * login-capable and still carry the hash that was compared - a lock or a new password set while
+   * the comparison ran refuses the sign-in like a wrong password.
+   */
+  private LocalCredentials admitSignIn(User user, LocalCredentials compared, Instant now) {
+    LocalCredentials locked = credentials.findForUpdate(user.getId()).orElse(null);
+    if (locked == null
+        || !Objects.equals(locked.getPasswordHash(), compared.getPasswordHash())
+        || !LocalAccountAccess.isLoginCapable(locked, now)) {
+      return null;
+    }
+    if (locked.getFailedLoginAttempts() != 0) {
       credentials.resetFailedLoginAttempts(user.getId(), now);
     }
-    listeners.forEach(listener -> listener.onLoginSucceeded(user, row, now));
-    return Optional.of(new AuthenticatedLocalAccount(user, row));
+    return locked;
   }
 
   /** A local account whose password was just verified. */

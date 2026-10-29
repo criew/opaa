@@ -1,9 +1,11 @@
 package io.opaa.account;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.account.LocalLoginService.AuthenticatedLocalAccount;
 import io.opaa.api.types.LocalAccountState;
 import io.opaa.api.types.LockReason;
 import io.opaa.auth.LocalCredentials;
@@ -12,11 +14,22 @@ import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaLocalAuthMockMvcTest;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,17 +46,23 @@ import org.springframework.test.web.servlet.ResultActions;
  * are not counted; the right password is refused during the lock with the very same answer as a
  * wrong one; once the lockout has ended the account has its full budget again and the sign-in
  * succeeds; the lock is audited exactly once under the {@code local-auth} system actor - the
- * attempts themselves never are.
+ * attempts themselves never are. Parallel attempts are decided one by one on the locked row: beyond
+ * the threshold none is counted, and a right password whose comparison ends after the lock is
+ * refused like a wrong one.
  */
 @OpaaLocalAuthMockMvcTest
 class LocalAccountLockoutIntegrationTest {
 
   private static final String LOGIN = "/api/v1/auth/local/login";
+  private static final String CLIENT = "10.20.30.40";
 
   @Autowired private MockMvc mockMvc;
   @Autowired private LocalAccountFixturesFactory fixturesFactory;
   @Autowired private LocalCredentialsRepository credentials;
   @Autowired private JdbcTemplate jdbc;
+  @Autowired private LocalLoginService loginService;
+  @Autowired private LocalLockoutProperties lockout;
+  @Autowired private DataSource dataSource;
 
   private LocalAccountFixtures fixtures;
   private LocalAccount user;
@@ -154,6 +173,110 @@ class LocalAccountLockoutIntegrationTest {
                     + LocalAccountFixtures.NAMES_A_LOCAL_ACCOUNT,
                 Long.class))
         .isZero();
+  }
+
+  /**
+   * Far more parallel wrong passwords than the threshold: exactly one lock, and none of the
+   * attempts decided after it is counted - the counter the lock reset stays at zero.
+   */
+  @Test
+  void parallelWrongPasswordsBeyondTheThresholdLockOnceAndCountNothingAfterTheLock()
+      throws Exception {
+    int attempts = lockout.maxAttempts() * 4;
+    CountDownLatch start = new CountDownLatch(1);
+    ExecutorService pool = Executors.newFixedThreadPool(attempts);
+    try {
+      List<Future<Optional<AuthenticatedLocalAccount>>> results = new ArrayList<>();
+      for (int i = 0; i < attempts; i++) {
+        results.add(
+            pool.submit(
+                () -> {
+                  start.await();
+                  return loginService.authenticate(user.email(), "falsches-passwort", CLIENT);
+                }));
+      }
+      start.countDown();
+      for (Future<Optional<AuthenticatedLocalAccount>> result : results) {
+        assertThat(result.get(60, TimeUnit.SECONDS)).isEmpty();
+      }
+    } finally {
+      pool.shutdownNow();
+    }
+
+    LocalCredentials after = credentials.findById(user.id()).orElseThrow();
+    assertThat(after.state(Instant.now())).isEqualTo(LocalAccountState.LOCKED);
+    assertThat(after.getLockedReason()).isEqualTo(LockReason.FAILED_LOGINS);
+    assertThat(after.getFailedLoginAttempts())
+        .as("no attempt decided after the lock is counted")
+        .isZero();
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM audit_log"
+                    + " WHERE event_type = 'LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS' AND "
+                    + LocalAccountFixtures.NAMES_A_LOCAL_ACCOUNT,
+                Long.class))
+        .isEqualTo(1L);
+  }
+
+  /**
+   * The right password read the account as active, and a parallel attempt locks it while the hash
+   * is compared: the sign-in is decided on the row as it stands after the lock, so it is refused
+   * like a wrong password and reveals nothing the attacker could use once the lockout has ended.
+   */
+  @Test
+  void aRightPasswordWhoseComparisonEndsAfterAParallelLockIsRefused() throws Exception {
+    ExecutorService pool = Executors.newSingleThreadExecutor();
+    Future<Optional<AuthenticatedLocalAccount>> signIn;
+    try (Connection parallelAttempt = dataSource.getConnection()) {
+      parallelAttempt.setAutoCommit(false);
+      int holderPid = holdRowLock(parallelAttempt, user.id());
+      signIn =
+          pool.submit(
+              () -> loginService.authenticate(user.email(), LocalAccountFixtures.PASSWORD, CLIENT));
+      // the sign-in has read the row and compared the hash: it now waits for the row - or, deciding
+      // on what it read before, it has already finished
+      await().atMost(Duration.ofSeconds(30)).until(() -> signIn.isDone() || waitsBehind(holderPid));
+      try (PreparedStatement lock =
+          parallelAttempt.prepareStatement(
+              "UPDATE local_credentials SET locked_reason = 'FAILED_LOGINS',"
+                  + " locked_at = clock_timestamp(),"
+                  + " lockout_until = clock_timestamp() + interval '15 minutes',"
+                  + " failed_login_attempts = 0, version = version + 1 WHERE user_id = ?")) {
+        lock.setObject(1, user.id());
+        assertThat(lock.executeUpdate()).isEqualTo(1);
+      }
+      parallelAttempt.commit();
+    }
+    try {
+      assertThat(signIn.get(60, TimeUnit.SECONDS))
+          .as("a right password decided after the lock is refused like a wrong one")
+          .isEmpty();
+    } finally {
+      pool.shutdownNow();
+    }
+    assertThat(credentials.findById(user.id()).orElseThrow().state(Instant.now()))
+        .isEqualTo(LocalAccountState.LOCKED);
+  }
+
+  private static int holdRowLock(Connection connection, UUID userId) throws Exception {
+    try (PreparedStatement select =
+        connection.prepareStatement(
+            "SELECT pg_backend_pid() FROM local_credentials WHERE user_id = ? FOR UPDATE")) {
+      select.setObject(1, userId);
+      try (ResultSet rows = select.executeQuery()) {
+        assertThat(rows.next()).isTrue();
+        return rows.getInt(1);
+      }
+    }
+  }
+
+  private boolean waitsBehind(int holderPid) {
+    Integer waiting =
+        jdbc.queryForObject(
+            "SELECT count(*) FROM pg_stat_activity WHERE ? = ANY(pg_blocking_pids(pid))",
+            Integer.class,
+            holderPid);
+    return waiting != null && waiting > 0;
   }
 
   private ResultActions login(String email, String password) throws Exception {

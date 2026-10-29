@@ -19,8 +19,10 @@ public interface LocalLoginAttemptListener {
 
   /**
    * A known account presented a wrong password; the failed-login counter has already been
-   * incremented. Not called for unknown addresses, and not for a correct password refused for
-   * another reason (locked, expired, invited, management off).
+   * incremented. Called inside the transaction that holds the account's row lock, so no parallel
+   * attempt is decided until it returns. Not called for unknown addresses, not while the account is
+   * locked, and not for a correct password refused for another reason (locked, expired, invited,
+   * management off).
    */
   void onPasswordRejected(User user, LocalCredentials credentials, Instant now);
 }
