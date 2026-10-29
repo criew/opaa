@@ -49,6 +49,16 @@ public interface SourceConnector {
   }
 
   /**
+   * The scopes a profile's sign-in asks for under its connector defaults {@code profileDefaults}
+   * where the profile names none itself; {@code null} (the default) for the scopes the sign-in
+   * declares. A default that changes them changes the profile's registration (ADR-0038,
+   * Entscheidung 7). Never a secret.
+   */
+  default String signInScopes(ConnectorData profileDefaults) {
+    return null;
+  }
+
+  /**
    * The address {@link #validate} stores for {@code requested}, {@code null} included - what the
    * core compares against the stored origin before it keeps stored credentials. A connector with a
    * fixed target returns it here; by default the request is taken as sent.

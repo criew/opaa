@@ -12,6 +12,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,7 +32,10 @@ import tools.jackson.databind.json.JsonMapper;
  * for a refused token, {@code 429} with {@code Retry-After}). Dropbox offers no emulator; this
  * double is what the tests trust about Dropbox. A cursor names its folder and position in the
  * change log, so it outlives the run that received it. The team space is a second tree, chosen by
- * {@code Dropbox-API-Path-Root}.
+ * {@code Dropbox-API-Path-Root}. Under a team app ({@link #withTeamApp}) the token is the team's:
+ * {@code team/namespaces/list} names team folders and member folders, a file route needs {@code
+ * Dropbox-API-Select-Admin} and reaches a team folder through a {@code namespace_id} path root - a
+ * member folder never, as the admin's selection reaches only content the team owns.
  */
 final class FakeDropboxServer implements AutoCloseable {
 
@@ -39,6 +43,8 @@ final class FakeDropboxServer implements AutoCloseable {
   static final String ACCOUNT = "ablage@example.org";
   static final String TEAM_ROOT = "team-root-1";
   static final String HOME = "home-1";
+  static final String ADMIN = "it-verwaltung@example.org";
+  static final String ADMIN_MEMBER_ID = "dbmid:admin-1";
 
   /** One file or folder below a root. */
   static final class Item {
@@ -61,6 +67,9 @@ final class FakeDropboxServer implements AutoCloseable {
     }
   }
 
+  /** One namespace {@code team/namespaces/list} names, with its {@code namespace_type}. */
+  private record Namespace(String id, String name, String type) {}
+
   /** One entry of the change log: the path and whether it was deleted. */
   private record Event(int seq, String root, String pathLower, boolean deleted) {}
 
@@ -74,6 +83,10 @@ final class FakeDropboxServer implements AutoCloseable {
   private final AtomicInteger ids = new AtomicInteger();
   private final List<String> requests = new CopyOnWriteArrayList<>();
   private final List<String> tokens = new CopyOnWriteArrayList<>();
+  private final List<String> selectedAdmins = new CopyOnWriteArrayList<>();
+  private final List<String> pathRoots = new CopyOnWriteArrayList<>();
+  private final Map<String, Namespace> namespaces =
+      Collections.synchronizedMap(new LinkedHashMap<>());
   private final Set<String> deniedListing = ConcurrentHashMap.newKeySet();
   private final Set<String> deniedReading = ConcurrentHashMap.newKeySet();
   private final AtomicInteger throttles = new AtomicInteger();
@@ -82,6 +95,7 @@ final class FakeDropboxServer implements AutoCloseable {
   private volatile String alsoAcceptedToken = TOKEN;
   private volatile boolean cursorsExpired;
   private volatile boolean team;
+  private volatile boolean teamApp;
   private volatile boolean scopeMissing;
   private volatile int maxPageSize = Integer.MAX_VALUE;
 
@@ -109,6 +123,16 @@ final class FakeDropboxServer implements AutoCloseable {
     return tokens;
   }
 
+  /** The {@code Dropbox-API-Select-Admin} of every request, {@code "-"} where it named none. */
+  List<String> selectedAdmins() {
+    return selectedAdmins;
+  }
+
+  /** The {@code Dropbox-API-Path-Root} of every request, {@code "-"} where it named none. */
+  List<String> pathRoots() {
+    return pathRoots;
+  }
+
   // --- arranging -------------------------------------------------------------------------------
 
   /**
@@ -122,6 +146,23 @@ final class FakeDropboxServer implements AutoCloseable {
   /** The account belongs to a team with a team space. */
   void withTeamSpace() {
     team = true;
+  }
+
+  /** From now on the token is the team's, given by the team admin {@link #ADMIN}. */
+  void withTeamApp() {
+    teamApp = true;
+  }
+
+  /** A team folder {@code name} as the namespace {@code id}, its tree empty. */
+  void teamFolder(String id, String name) {
+    roots.putIfAbsent(id, new ConcurrentHashMap<>());
+    namespaces.put(id, new Namespace(id, name, "team_folder"));
+  }
+
+  /** The private folder of the member {@code name} as the namespace {@code id}. */
+  void memberFolder(String id, String name) {
+    roots.putIfAbsent(id, new ConcurrentHashMap<>());
+    namespaces.put(id, new Namespace(id, name, "team_member_folder"));
   }
 
   Item folder(String path) {
@@ -165,13 +206,17 @@ final class FakeDropboxServer implements AutoCloseable {
 
   /** Deletes {@code path} and everything below it, without noting it in the change log. */
   void remove(String path) {
+    remove(HOME, path);
+  }
+
+  void remove(String root, String path) {
     String lower = path.toLowerCase(Locale.ROOT);
-    Map<String, Item> tree = roots.get(HOME);
+    Map<String, Item> tree = roots.get(root);
     for (String key : List.copyOf(tree.keySet())) {
       if (key.equals(lower) || key.startsWith(lower + "/")) {
         Item removed = tree.remove(key);
         if (removed != null && !removed.folder) {
-          deletedFiles.computeIfAbsent(HOME, root -> ConcurrentHashMap.newKeySet()).add(key);
+          deletedFiles.computeIfAbsent(root, any -> ConcurrentHashMap.newKeySet()).add(key);
         }
       }
     }
@@ -179,8 +224,12 @@ final class FakeDropboxServer implements AutoCloseable {
 
   /** Notes in the change log that {@code path} changed - or was deleted, if it no longer exists. */
   void changed(String path) {
+    changed(HOME, path);
+  }
+
+  void changed(String root, String path) {
     String lower = path.toLowerCase(Locale.ROOT);
-    events.add(new Event(seq.incrementAndGet(), HOME, lower, !roots.get(HOME).containsKey(lower)));
+    events.add(new Event(seq.incrementAndGet(), root, lower, !roots.get(root).containsKey(lower)));
   }
 
   /** Moves the file or folder {@code from} to {@code to}, noting both paths. */
@@ -210,11 +259,20 @@ final class FakeDropboxServer implements AutoCloseable {
   }
 
   void denyListing(String folder) {
-    deniedListing.add(folder.toLowerCase(Locale.ROOT));
+    denyListing(HOME, folder);
+  }
+
+  /** Listing {@code folder} below {@code root} is refused; {@code ""} is the root itself. */
+  void denyListing(String root, String folder) {
+    deniedListing.add(root + "|" + folder.toLowerCase(Locale.ROOT));
   }
 
   void denyReading(String folder) {
-    deniedReading.add(folder.toLowerCase(Locale.ROOT));
+    denyReading(HOME, folder);
+  }
+
+  void denyReading(String root, String folder) {
+    deniedReading.add(root + "|" + folder.toLowerCase(Locale.ROOT));
   }
 
   /** Every token is refused from now on. */
@@ -277,6 +335,10 @@ final class FakeDropboxServer implements AutoCloseable {
               ? authorization.substring("Bearer ".length())
               : null;
       tokens.add(String.valueOf(token));
+      String selectAdmin = exchange.getRequestHeaders().getFirst("Dropbox-API-Select-Admin");
+      selectedAdmins.add(selectAdmin == null ? "-" : selectAdmin);
+      String pathRoot = exchange.getRequestHeaders().getFirst("Dropbox-API-Path-Root");
+      pathRoots.add(pathRoot == null ? "-" : pathRoot);
       byte[] requestBody = exchange.getRequestBody().readAllBytes();
       if (throttles.getAndUpdate(left -> Math.max(0, left - 1)) > 0) {
         exchange.getResponseHeaders().add("Retry-After", "1");
@@ -305,15 +367,31 @@ final class FakeDropboxServer implements AutoCloseable {
                 Map.of(".tag", "missing_scope", "required_scope", "files.metadata.read")));
         return;
       }
+      JsonNode args =
+          route.startsWith("files/download") || route.startsWith("files/export")
+              ? JSON.readTree(exchange.getRequestHeaders().getFirst("Dropbox-API-Arg"))
+              : JSON.readTree(requestBody.length == 0 ? "null".getBytes() : requestBody);
+      if (route.startsWith("team/")) {
+        team(exchange, route, args);
+        return;
+      }
+      if (teamApp && !ADMIN_MEMBER_ID.equals(selectAdmin)) {
+        // as Dropbox answers a team token on a route of one account: plain text, no JSON
+        text(
+            exchange,
+            400,
+            "Error in call to API function \""
+                + route
+                + "\": This API function operates on a"
+                + " single Dropbox account, but the OAuth 2 access token you provided is for an"
+                + " entire Dropbox Business team.");
+        return;
+      }
       String root = rootOf(exchange);
       if (root == null) {
         json(exchange, 400, Map.of("error_summary", "invalid_root/..."));
         return;
       }
-      JsonNode args =
-          route.startsWith("files/download") || route.startsWith("files/export")
-              ? JSON.readTree(exchange.getRequestHeaders().getFirst("Dropbox-API-Arg"))
-              : JSON.readTree(requestBody.length == 0 ? "null".getBytes() : requestBody);
       switch (route) {
         case "users/get_current_account" -> account(exchange);
         case "files/get_metadata" -> metadata(exchange, root, text(args, "path"));
@@ -345,8 +423,74 @@ final class FakeDropboxServer implements AutoCloseable {
       return HOME;
     }
     JsonNode root = JSON.readTree(header);
+    if ("namespace_id".equals(text(root, ".tag"))) {
+      Namespace namespace = namespaces.get(text(root, "namespace_id"));
+      return teamApp && namespace != null && namespace.type().equals("team_folder")
+          ? namespace.id()
+          : null;
+    }
     String id = text(root, "root");
     return team && TEAM_ROOT.equals(id) ? TEAM_ROOT : null;
+  }
+
+  /** A team route: only a team token reaches it, as Dropbox answers a member's token. */
+  private void team(HttpExchange exchange, String route, JsonNode args) throws IOException {
+    if (!teamApp) {
+      text(
+          exchange,
+          400,
+          "Error in call to API function \""
+              + route
+              + "\": This API function operates on a"
+              + " team, but the OAuth 2 access token you provided is for a single account.");
+      return;
+    }
+    switch (route) {
+      case "team/token/get_authenticated_admin" ->
+          json(
+              exchange,
+              200,
+              Map.of(
+                  "admin_profile",
+                  Map.of("team_member_id", ADMIN_MEMBER_ID, "email", ADMIN, "status", "active")));
+      case "team/namespaces/list" ->
+          namespacePage(exchange, 0, args.get("limit") == null ? 1000 : args.get("limit").asInt());
+      case "team/namespaces/list/continue" -> {
+        String plain =
+            new String(Base64.getUrlDecoder().decode(text(args, "cursor")), StandardCharsets.UTF_8);
+        String[] parts = plain.split("\\|");
+        namespacePage(exchange, Integer.parseInt(parts[1]), Integer.parseInt(parts[2]));
+      }
+      default -> json(exchange, 400, Map.of("error_summary", "unknown_route/..."));
+    }
+  }
+
+  private void namespacePage(HttpExchange exchange, int offset, int limit) throws IOException {
+    List<Namespace> all;
+    synchronized (namespaces) {
+      all = List.copyOf(namespaces.values());
+    }
+    int size = Math.min(limit, maxPageSize);
+    int end = Math.min(all.size(), offset + size);
+    List<Map<String, Object>> entries = new ArrayList<>();
+    for (Namespace namespace : all.subList(Math.min(offset, all.size()), end)) {
+      Map<String, Object> entry = new LinkedHashMap<>();
+      entry.put("name", namespace.name());
+      entry.put("namespace_id", namespace.id());
+      entry.put("namespace_type", Map.of(".tag", namespace.type()));
+      if (namespace.type().equals("team_member_folder")) {
+        entry.put("team_member_id", "dbmid:member-" + namespace.id());
+      }
+      entries.add(entry);
+    }
+    String cursor =
+        Base64.getUrlEncoder()
+            .withoutPadding()
+            .encodeToString(("n|" + end + "|" + size).getBytes(StandardCharsets.UTF_8));
+    json(
+        exchange,
+        200,
+        Map.of("namespaces", entries, "cursor", cursor, "has_more", end < all.size()));
   }
 
   private void account(HttpExchange exchange) throws IOException {
@@ -363,7 +507,7 @@ final class FakeDropboxServer implements AutoCloseable {
       notFound(exchange, "path");
       return;
     }
-    if (item.folder && deniedListing.contains(item.pathLower())) {
+    if (item.folder && deniedListing.contains(root + "|" + item.pathLower())) {
       json(exchange, 409, Map.of("error_summary", "path/restricted_content/..."));
       return;
     }
@@ -381,7 +525,7 @@ final class FakeDropboxServer implements AutoCloseable {
         return;
       }
     }
-    if (denied(deniedListing, folder)) {
+    if (denied(deniedListing, root, folder)) {
       json(exchange, 409, Map.of("error_summary", "path/restricted_content/..."));
       return;
     }
@@ -401,7 +545,7 @@ final class FakeDropboxServer implements AutoCloseable {
         return;
       }
     }
-    if (denied(deniedListing, folder)) {
+    if (denied(deniedListing, root, folder)) {
       json(exchange, 409, Map.of("error_summary", "path/restricted_content/..."));
       return;
     }
@@ -434,7 +578,7 @@ final class FakeDropboxServer implements AutoCloseable {
     String folder = parts[2];
     int offset = Integer.parseInt(parts[3]);
     int limit = Integer.parseInt(parts[4]);
-    if (denied(deniedListing, folder)) {
+    if (denied(deniedListing, root, folder)) {
       json(exchange, 409, Map.of("error_summary", "path/restricted_content/..."));
       return;
     }
@@ -531,7 +675,7 @@ final class FakeDropboxServer implements AutoCloseable {
       notFound(exchange, "path");
       return;
     }
-    if (denied(deniedReading, item.pathLower())) {
+    if (denied(deniedReading, root, item.pathLower())) {
       json(exchange, 409, Map.of("error_summary", "path/restricted_content/..."));
       return;
     }
@@ -591,9 +735,12 @@ final class FakeDropboxServer implements AutoCloseable {
     return roots.get(root).get(lower(path));
   }
 
-  private static boolean denied(Set<String> folders, String path) {
-    for (String folder : folders) {
-      if (path.equals(folder) || path.startsWith(folder + "/")) {
+  private static boolean denied(Set<String> folders, String root, String path) {
+    for (String entry : folders) {
+      int bar = entry.indexOf('|');
+      String folder = entry.substring(bar + 1);
+      if (entry.substring(0, bar).equals(root)
+          && (folder.isEmpty() || path.equals(folder) || path.startsWith(folder + "/"))) {
         return true;
       }
     }
@@ -635,6 +782,15 @@ final class FakeDropboxServer implements AutoCloseable {
       return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content));
     } catch (NoSuchAlgorithmException e) {
       throw new IllegalStateException(e);
+    }
+  }
+
+  private static void text(HttpExchange exchange, int status, String body) throws IOException {
+    byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+    exchange.getResponseHeaders().add("Content-Type", "text/plain; charset=utf-8");
+    exchange.sendResponseHeaders(status, bytes.length);
+    try (OutputStream out = exchange.getResponseBody()) {
+      out.write(bytes);
     }
   }
 

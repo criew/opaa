@@ -26,8 +26,9 @@ import org.junit.jupiter.api.Test;
 /**
  * What the Dropbox store adds to the contracts: a deleted folder is a change of structure, a
  * deleted file is not; a Paper document is exported as Markdown, a file Dropbox does not hand out
- * is no document; the folder chain and several folders; the team space; a throttle waited out; a
- * name outside ASCII, escaped wherever it travels in a header.
+ * is no document; the folder chain and several folders; the team space; team folders under a team
+ * app, never a member folder; a throttle waited out; a name outside ASCII, escaped wherever it
+ * travels in a header.
  */
 class DropboxFileStoreTest {
 
@@ -205,6 +206,54 @@ class DropboxFileStoreTest {
   }
 
   @Test
+  void aTeamFolderIsReadInItsNamespaceAsTheAdminAndAMemberFolderNever() throws Exception {
+    server.withTeamApp();
+    server.teamFolder("100", "Bauamt");
+    server.teamFolder("200", "Kämmerei");
+    server.memberFolder("300", "Andrea Vogt");
+    server.file("100", "/Pläne/2026/plan.txt", "Plan.".getBytes(StandardCharsets.UTF_8));
+    server.file("300", "/privat.txt", "Privat.".getBytes(StandardCharsets.UTF_8));
+    DropboxFileStore store =
+        teamFolderStore(
+            Map.of("id", "100", "name", "Bauamt"),
+            Map.of("id", "200", "name", "Kämmerei"),
+            Map.of("id", "300", "name", "Andrea Vogt"));
+
+    FileEntry plan = listAll(store, new FileContainer("100")).getFirst();
+    FetchedFile fetched = store.fetch(plan, 1024);
+
+    assertThat(store.containers())
+        .extracting(FileContainer::key)
+        .containsExactly("100", "200", "300");
+    assertThat(plan.filePath())
+        .isEqualTo(DropboxFileStore.IDENTITY_PREFIX + "ns:100/pläne/2026/plan.txt");
+    assertThat(plan.folder().segments()).containsExactly("Bauamt", "Pläne", "2026");
+    assertThat(Files.readString(fetched.file())).isEqualTo("Plan.");
+    assertThatThrownBy(() -> listAll(store, new FileContainer("300")))
+        .isInstanceOf(FileAccessException.ContainerUnlistable.class)
+        .hasMessageContaining("Andrea Vogt");
+    assertThat(server.pathRoots()).noneMatch(root -> root.contains("300"));
+    assertThat(server.requests())
+        .filteredOn(route -> route.startsWith("team/token"))
+        .as("the admin is asked once per run")
+        .hasSize(1);
+    Files.deleteIfExists(fetched.file());
+  }
+
+  @Test
+  void aMemberTokenUnderATeamAppEndsTheRunAskingForATeamConsent() {
+    server.teamFolder("100", "Bauamt");
+
+    assertThatThrownBy(
+            () ->
+                listAll(
+                    teamFolderStore(Map.of("id", "100", "name", "Bauamt")),
+                    new FileContainer("100")))
+        .isInstanceOf(FileAccessException.RunEnding.class)
+        .hasMessageContaining("Team-Administration");
+  }
+
+  @Test
   void aThrottledRequestWaitsAsToldAndIsSentAgain() throws Exception {
     server.file("/Akten/a.txt", "A.");
     server.throttleNext(2);
@@ -268,6 +317,15 @@ class DropboxFileStoreTest {
         DropboxFileStoreContractTest.api(server, FakeDropboxServer.TOKEN),
         DropboxSettings.read(
             ConnectorData.of(Map.of("folders", List.of(folder), "teamSpace", true))),
+        2);
+  }
+
+  @SafeVarargs
+  private DropboxFileStore teamFolderStore(Map<String, Object>... folders) {
+    return new DropboxFileStore(
+        DropboxFileStoreContractTest.api(server, FakeDropboxServer.TOKEN),
+        DropboxSettings.read(
+            ConnectorData.of(Map.of("teamApp", true, "teamFolders", List.of(folders)))),
         2);
   }
 

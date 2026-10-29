@@ -75,6 +75,13 @@ public class DropboxSourceConnector implements SourceConnector, SourceBrowser, O
   /** The permissions the Dropbox app needs; nothing it could write with. */
   public static final String SCOPES = "account_info.read files.metadata.read files.content.read";
 
+  /**
+   * The permissions a team app needs: the member scopes for reading as the admin, the team scopes
+   * for the namespaces, the consenting admin and the team folders; nothing it could write with.
+   */
+  public static final String TEAM_SCOPES =
+      SCOPES + " files.team_metadata.read team_data.member team_info.read";
+
   static final String UNAVAILABLE =
       "Dropbox ist derzeit nicht erreichbar. Bitte später erneut versuchen.";
 
