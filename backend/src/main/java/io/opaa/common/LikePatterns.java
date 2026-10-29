@@ -10,7 +10,11 @@ public final class LikePatterns {
 
   /** A pattern matching every value that contains {@code text}, each character taken literally. */
   public static String containing(String text) {
-    String escaped = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
-    return "%" + escaped + "%";
+    return "%" + escape(text) + "%";
+  }
+
+  /** {@code text} with backslash, {@code %} and {@code _} escaped, to be taken literally. */
+  public static String escape(String text) {
+    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
   }
 }

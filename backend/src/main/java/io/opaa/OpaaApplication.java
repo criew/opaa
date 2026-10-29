@@ -4,6 +4,7 @@ import io.opaa.common.ClockConfiguration;
 import io.opaa.common.PublicBaseUrlProperties;
 import io.opaa.config.DatabaseMigrationMode;
 import io.opaa.knowledge.UploadProperties;
+import io.opaa.observability.SingleLineMessages;
 import io.opaa.security.CredentialsEncryptionProperties;
 import io.opaa.security.PinnedAddressResolverProvider;
 import io.opaa.security.SettingsEncryptionProperties;
@@ -36,9 +37,11 @@ public class OpaaApplication {
   /**
    * Serves, or with {@code OPAA_MODE=migrate} only migrates the database and ends, or with {@code
    * OPAA_MODE=await-migration} only waits for that migration and ends. Refuses to start unless the
-   * pinned address resolver is the resolver of this JVM.
+   * pinned address resolver is the resolver of this JVM. Every log message is written on one line
+   * ({@link SingleLineMessages}).
    */
   public static void main(String[] args) {
+    SingleLineMessages.install();
     PinnedAddressResolverProvider.requireActive();
     DatabaseMigrationMode.Mode mode = DatabaseMigrationMode.mode(args);
     if (mode != DatabaseMigrationMode.Mode.SERVE) {

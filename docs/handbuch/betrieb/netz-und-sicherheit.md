@@ -155,8 +155,8 @@ solche, die nur aus dem Netz des Servers erreichbar sind (SSRF). Zwei Schranken 
   auch nach dem Neustart gesperrt.
 - **Gesperrt und unbekannt klingen gleich:** Ein Ziel in einem gesperrten Bereich und ein Name, der
   sich nicht auflösen lässt, ergeben dieselbe Meldung, damit niemand über Quellen oder Zugänge
-  erkundet, welche internen Namen es gibt. Die Ursache nennt die WARN-Zeile „Rejecting fetch to …“
-  im Log.
+  erkundet, welche internen Namen es gibt. Die Ursache nennt die Zeile „Rejecting fetch to …“ im
+  Log, als WARN beim gesperrten Bereich und als INFO beim nicht auflösbaren Namen.
 - **Ein Hostname mit Zeichen außerhalb von ASCII** wird abgelehnt; internationalisierte Namen in
   Punycode-Schreibweise (`xn--…`) eintragen.
 - Nur `http` und `https`; Redirects nur auf demselben Origin, nie auf `http` herab. Zertifikate

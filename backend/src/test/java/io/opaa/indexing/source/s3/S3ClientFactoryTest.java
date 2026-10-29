@@ -2,6 +2,7 @@ package io.opaa.indexing.source.s3;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Connection;
@@ -37,6 +38,31 @@ class S3ClientFactoryTest {
         .isInstanceOf(S3AccessException.TargetBlocked.class)
         .hasMessageContaining("10.0.0.5")
         .hasMessageContaining("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
+  }
+
+  /** A blocked endpoint and one whose name does not resolve answer in the same words. */
+  @Test
+  void aBlockedAndAnUnresolvableEndpointAnswerAlike() {
+    S3ClientFactory factory =
+        new S3ClientFactory(S3Properties.defaults(), new TargetAddressValidator(true, List.of()));
+    String unknown = "no-such-minio.invalid.opaa-test";
+
+    Throwable blocked =
+        catchThrowable(
+            () ->
+                factory.create(
+                    connection("http://10.0.0.5:9000", true), List.of(S3Scope.of("docs", ""))));
+    Throwable unresolved =
+        catchThrowable(
+            () ->
+                factory.create(
+                    connection("http://" + unknown + ":9000", true),
+                    List.of(S3Scope.of("docs", ""))));
+
+    assertThat(blocked).isInstanceOf(S3AccessException.TargetBlocked.class);
+    assertThat(unresolved).isInstanceOf(S3AccessException.Unreachable.class);
+    assertThat(unresolved.getMessage().replace(unknown, "<host>"))
+        .isEqualTo(blocked.getMessage().replace("10.0.0.5", "<host>"));
   }
 
   @Test

@@ -89,6 +89,9 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   /** The longest display name an upload keeps, in code points. */
   private static final int MAX_DISPLAY_FILE_NAME_LENGTH = 255;
 
+  static final String EMPTY_FILE_NAME_MESSAGE =
+      "Der Dateiname ist leer oder besteht nur aus unzulässigen Zeichen. Bitte die Datei umbenennen.";
+
   /** An extension up to this length (dot included) survives the cut of a long display name. */
   private static final int MAX_KEPT_EXTENSION_LENGTH = 16;
 
@@ -234,6 +237,9 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     }
 
     String displayFileName = sanitizeDisplayFileName(file.getOriginalFilename());
+    if (displayFileName.isEmpty()) {
+      throw new ValidationException(EMPTY_FILE_NAME_MESSAGE);
+    }
     if (!supportedFormats.isSupported(displayFileName)) {
       throw new ValidationException(
           "Das Dateiformat wird nicht unterstützt. Erlaubt sind: "

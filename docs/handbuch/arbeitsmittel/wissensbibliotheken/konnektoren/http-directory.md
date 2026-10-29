@@ -142,7 +142,7 @@ komprimierte Inhalte liegen in den Formaten.
 | „Mindestens ein Unterverzeichnis konnte nicht abgerufen werden, der Bestand dieses Laufs ist unvollständig" | keine Löscherkennung | Server prüfen |
 | „Verzeichnisseite wurde auf eine Adresse außerhalb der Start-URL weitergeleitet …" | Redirect aus dem Unterbaum, keine Löscherkennung | Redirect am Server prüfen |
 | „Datei überschreitet die zulässige Größe von …" | Größengrenze | Grenze anheben oder hinnehmen |
-| „Zieladresse … ist nicht zugelassen oder nicht erreichbar" | Zieladressprüfung: gesperrter Adressbereich oder nicht auflösbarer Name, die Ursache steht im Backend-Log | Namen prüfen oder Hostnamen freigeben |
+| „Zieladresse … ist nicht zugelassen oder nicht erreichbar" | Zieladressprüfung: gesperrter Adressbereich oder nicht auflösbarer Name, die Ursache nennt die Zeile „Rejecting fetch to …“ im Backend-Log | Namen prüfen oder Hostnamen freigeben |
 | „Dateiformat wird nicht unterstützt" | Inhalt nicht zugelassen, auch eine Bot-Schutzseite statt einer Datei | erwartbar |
 | „Dateiendung passt nicht zum erkannten Inhalt (erkannt: …)" | wird trotzdem indiziert | nichts |
 | „Verarbeitung fehlgeschlagen" | Download- oder Pipeline-Fehler, auch HTTP 403 oder 429 nach allen Wiederholungen | bei Häufung Server prüfen |

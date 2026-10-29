@@ -92,7 +92,8 @@ Eintrag zeigt sich beim Speichern und im Verbindungstest als abgewiesenes Ziel, 
 Anmeldefehler; die Meldung nennt die Einstellung. Ein gesperrter Bereich und ein Name, der sich nicht
 auflösen lässt, ergeben bewusst denselben Satz („Die Zieladresse … ist nicht zugelassen oder nicht
 erreichbar …“), damit die Meldung nicht verrät, ob ein interner Name existiert; welches von beidem,
-nennt die WARN-Zeile „Rejecting fetch to …“ im Log. Die Prüfung lässt sich mit
+nennt die Zeile „Rejecting fetch to …“ im Log (WARN beim gesperrten Bereich, INFO beim nicht
+auflösbaren Namen). Die Prüfung lässt sich mit
 `OPAA_INDEXING_TARGET_VALIDATION_ENABLED` ganz abschalten, die Schemaprüfung bleibt dann.
 
 Die Prüfung bindet den Namen für die Verbindung: Der Konnektor verbindet genau an die geprüften

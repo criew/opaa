@@ -845,6 +845,20 @@ class LibraryDocumentServiceTest {
     assertThat(longName).endsWith(".pdf");
   }
 
+  /** A name left empty by the cleaning is refused as such, not as an unsupported format. */
+  @Test
+  void aDisplayNameLeftEmptyByTheCleaningIsRefusedWithItsOwnMessage() {
+    grantEditor();
+
+    assertThatThrownBy(
+            () ->
+                service.uploadDocument(
+                    libraryId, pdfFile("\u202E\u200B\u0007", "pdf content"), null, caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage(LibraryDocumentService.EMPTY_FILE_NAME_MESSAGE);
+    verify(documentRepository, never()).save(any(Document.class));
+  }
+
   private String uploadedName(String originalFileName) throws IOException {
     return service
         .uploadDocument(

@@ -119,7 +119,7 @@ class SmbSourceConnectorTest {
      * words of a blocked range, allowlist hint included, so the answer reveals no internal name.
      */
     @Test
-    void anUnresolvableServerIsNotFoundEvenWithAnOutboundProxySet() {
+    void anUnresolvableServerIsRefusedLikeABlockedOneEvenWithAnOutboundProxySet() {
       SmbSourceConnector guarded =
           new SmbSourceConnector(
               SmbProperties.defaults(),

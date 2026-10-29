@@ -259,9 +259,12 @@ public class TargetAddressValidator {
     return NumericAddress.isNumeric(bracketed ? host.substring(1, host.length() - 1) : host);
   }
 
-  /** A DNS failure, answered in the words of a blocked range ({@link #refusal}). */
+  /**
+   * A DNS failure, answered in the words of a blocked range ({@link #refusal}). Logged at INFO: a
+   * dead link in crawled content is ordinary, unlike a target in a blocked range.
+   */
   private static UnknownTargetHostException unknownHost(String host) {
-    log.warn("Rejecting fetch to {} - the name does not resolve", LogText.of(host));
+    log.info("Rejecting fetch to {} - the name does not resolve", LogText.of(host));
     return new UnknownTargetHostException(refusal(host));
   }
 
