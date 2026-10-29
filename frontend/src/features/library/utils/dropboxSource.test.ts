@@ -99,7 +99,7 @@ describe('Dropbox team folders of a team app', () => {
 
   it('reads the team folders of a stored library', () => {
     expect(
-      dropboxSource.configuration.fromLibrary({
+      dropboxSource.configuration!.fromLibrary({
         sourceType: 'DROPBOX',
         sourceSettings: { teamFolders: [bauamt], teamApp: true },
       }),

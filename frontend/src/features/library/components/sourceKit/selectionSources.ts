@@ -18,6 +18,7 @@ import {
 } from '../../utils/sharePointSource'
 import type { ConfluenceSpaceRef } from '../../utils/confluenceSource'
 import { ONEDRIVE_API, oneDriveFolderLabel, type OneDriveFolder } from '../../utils/oneDriveSource'
+import { dropboxTeamFolderLabel, type DropboxTeamFolder } from '../../utils/dropboxSource'
 import type { ConnectionFields } from '../sources/sourceConnection'
 import type { BrowseResult, Crumb, SelectionItem, SelectionSource } from './selection'
 
@@ -104,6 +105,53 @@ export function folderSelectionSource(
         if (path === '/') return 'Bitte einen Ordner unterhalb von / angeben.'
         if (path.includes(',')) return 'Ein Ordnerpfad darf kein Komma enthalten.'
         return folderItem(path)
+      },
+    },
+  }
+}
+
+// ---- Dropbox team folders of a team app ---------------------------------------------------------
+
+export function dropboxTeamFolderItem(folder: DropboxTeamFolder): SelectionItem {
+  return { key: folder.id, name: dropboxTeamFolderLabel(folder), trail: [] }
+}
+
+/** Chosen objects back as team folders; a folder entered by its id alone keeps no name. */
+export function dropboxTeamFoldersOfItems(items: SelectionItem[]): DropboxTeamFolder[] {
+  return items.map((item) => ({
+    id: item.key,
+    name: item.name === dropboxTeamFolderLabel({ id: item.key }) ? null : item.name,
+  }))
+}
+
+/** The team folders of the team behind a team app, one flat list. */
+export function dropboxTeamFolderSource(
+  probe: Probe,
+  request: () => { sourceUrl: string },
+): SelectionSource {
+  return {
+    rootLabel: 'Team-Ordner',
+    noun: ['Team-Ordner', 'Team-Ordner'],
+    nested: false,
+    max: 50,
+    serverSearch: () => false,
+    searchLabel: () => 'Team-Ordner suchen',
+    list: async () => {
+      const response = await browseSource(
+        'DROPBOX',
+        probe.probeRequest({ ...request(), query: {} }),
+      )
+      return resultOf(response, (key, name) => ({ key, name, selectable: true, openable: false }))
+    },
+    manual: {
+      label: 'Namespace-ID',
+      placeholder: '1234567890',
+      kind: 'add',
+      resolve: async (text) => {
+        const id = text.trim()
+        return /^[0-9]{1,32}$/.test(id)
+          ? dropboxTeamFolderItem({ id })
+          : 'Eine Namespace-ID besteht aus Ziffern.'
       },
     },
   }

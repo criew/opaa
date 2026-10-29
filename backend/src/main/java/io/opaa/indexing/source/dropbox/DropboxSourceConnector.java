@@ -261,6 +261,12 @@ public class DropboxSourceConnector implements SourceConnector, SourceBrowser, O
       for (FileContainer container : store.containers()) {
         Map<String, Object> finding = new LinkedHashMap<>();
         finding.put("folder", container.key());
+        if (team) {
+          dropboxSettings.teamFolders().stream()
+              .filter(folder -> folder.id().equals(container.key()))
+              .findFirst()
+              .ifPresent(folder -> finding.put("name", folder.label()));
+        }
         try {
           store.requireReachable(container);
           finding.put("reachable", true);

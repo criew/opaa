@@ -1,14 +1,20 @@
 import { issueAt, messageOf, type SourceIssue } from './sourceIssue'
 import type { LibraryResponse } from '@/shared/api/types'
 
+/** A team folder of a team app: its namespace id and the name it was chosen under. */
+export type DropboxTeamFolder = { id: string; name?: string | null }
+
 /**
  * The connector settings of a DROPBOX library as the API carries them in `sourceSettings`: the
- * folders of the connected account that are read and whether they lie in the team space - never
- * how it signs in, which is the library's own consent through its profile.
+ * folders of the connected account that are read and whether they lie in the team space, or under
+ * a team app the team folders - never how it signs in, which is the library's own consent through
+ * its profile. `teamApp` is the profile's default, never sent by the form.
  */
 export type DropboxSettings = {
   folders?: string[] | null
   teamSpace?: boolean | null
+  teamFolders?: DropboxTeamFolder[] | null
+  teamApp?: boolean | null
   fullSyncIntervalDays?: number | null
 }
 
@@ -19,6 +25,8 @@ export type DropboxSettings = {
 export interface DropboxSourceValues {
   folders: string
   teamSpace: boolean
+  /** Under a team app: the chosen team folders, read instead of `folders`. */
+  teamFolders: DropboxTeamFolder[]
   /** The library's own full-sync rhythm, resent as it is: the connector replaces its settings whole. */
   fullSyncIntervalDays: number | null
 }
@@ -32,7 +40,20 @@ export const MAX_DROPBOX_FOLDERS = 50
 export const EMPTY_DROPBOX_VALUES: DropboxSourceValues = {
   folders: '/',
   teamSpace: false,
+  teamFolders: [],
   fullSyncIntervalDays: null,
+}
+
+/** Whether the Zugang is a team app: its libraries read team folders as the team admin. */
+export function isDropboxTeamApp(
+  connection: { defaults: Record<string, unknown> } | null | undefined,
+): boolean {
+  return connection?.defaults.teamApp === true
+}
+
+/** The name a team folder is shown under, its namespace id where it has none. */
+export function dropboxTeamFolderLabel(folder: DropboxTeamFolder): string {
+  return folder.name?.trim() || `Team-Ordner ${folder.id}`
 }
 
 /** The Dropbox settings a library response carries, empty for any other library. */
@@ -53,14 +74,26 @@ export function dropboxFoldersOf(values: Pick<DropboxSourceValues, 'folders'>): 
   return folders
 }
 
-/** The `sourceSettings` the values send, the stored rhythm included. */
+/**
+ * The `sourceSettings` the values send, the stored rhythm included: the team folders where any are
+ * chosen, the folders otherwise.
+ */
 export function dropboxSettingsFrom(values: DropboxSourceValues): Record<string, unknown> {
+  const rhythm =
+    values.fullSyncIntervalDays != null ? { fullSyncIntervalDays: values.fullSyncIntervalDays } : {}
+  if (values.teamFolders.length > 0) {
+    return {
+      teamFolders: values.teamFolders.map((folder) => ({
+        id: folder.id,
+        ...(folder.name ? { name: folder.name } : {}),
+      })),
+      ...rhythm,
+    }
+  }
   return {
     folders: dropboxFoldersOf(values),
     ...(values.teamSpace ? { teamSpace: true } : {}),
-    ...(values.fullSyncIntervalDays != null
-      ? { fullSyncIntervalDays: values.fullSyncIntervalDays }
-      : {}),
+    ...rhythm,
   }
 }
 
