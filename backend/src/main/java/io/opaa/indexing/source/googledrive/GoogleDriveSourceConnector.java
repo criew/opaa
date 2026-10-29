@@ -75,6 +75,10 @@ public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowse
 
   public static final String SCOPE = "https://www.googleapis.com/auth/drive.readonly";
 
+  static final String NO_VISIBLE_SCOPE =
+      "Das Konto sieht keine geteilte Ablage; ohne imitiertes Konto gehört „Meine Ablage“ nicht"
+          + " zum Umfang „Alle Ablagen“.";
+
   static final String UNAVAILABLE =
       "Google Drive ist derzeit nicht erreichbar. Bitte später erneut versuchen.";
 
@@ -82,6 +86,7 @@ public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowse
 
   private static final String SCOPES_STATE = "googleDriveScopes";
   private static final String SUBJECT_STATE = "googleDriveSubject";
+  private static final String ALL_SCOPES_STATE = "[*]";
   private static final int MAX_BROWSE_PAGES = 10;
 
   private final URI apiBase;
@@ -150,7 +155,9 @@ public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowse
         SCOPES_STATE,
         settings == null
             ? null
-            : settings.scopes().stream().map(GoogleDriveScope::key).toList().toString());
+            : settings.allScopes()
+                ? ALL_SCOPES_STATE
+                : settings.scopes().stream().map(GoogleDriveScope::key).toList().toString());
     state.put(SUBJECT_STATE, settings == null ? null : settings.subject());
     return state;
   }
@@ -184,6 +191,9 @@ public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowse
       return unreachable("Bitte mindestens einen Bereich wählen.");
     }
     GoogleDriveSettings driveSettings = GoogleDriveSettings.read(effective);
+    if (driveSettings.allScopes()) {
+      return testAllScopes(settings, driveSettings);
+    }
     DriveFileStore store =
         new DriveFileStore(
             apis.open(
@@ -236,6 +246,34 @@ public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowse
     }
     return new SourceConnectionTestResult(
         all, message, null, true, ConnectorData.of(Map.of("scopes", findings)));
+  }
+
+  /** "Alle Ablagen": signs in and counts what the account sees now, as a run would resolve it. */
+  private SourceConnectionTestResult testAllScopes(
+      SourceSettings settings, GoogleDriveSettings driveSettings) {
+    DriveApi api =
+        apis.open(
+            settings.withSourceUrl(apiBase.toString()),
+            settings::sourceCredentials,
+            RequestBudget.unbounded());
+    List<GoogleDriveScope> found;
+    try {
+      found = AllDriveScopes.resolve(api, driveSettings.subject());
+    } catch (DriveApiException e) {
+      boolean verified = e.kind() != DriveApiException.Kind.UNAUTHORIZED;
+      return new SourceConnectionTestResult(false, e.getMessage(), null, verified, null);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return unreachable("Der Verbindungstest wurde unterbrochen.");
+    }
+    if (found.isEmpty()) {
+      return new SourceConnectionTestResult(false, NO_VISIBLE_SCOPE, null, true, null);
+    }
+    String message =
+        "Anmeldung erfolgreich; der Zugang sieht derzeit "
+            + (found.size() == 1 ? "1 Ablage" : found.size() + " Ablagen")
+            + ".";
+    return new SourceConnectionTestResult(true, message, null, true, null);
   }
 
   @Override

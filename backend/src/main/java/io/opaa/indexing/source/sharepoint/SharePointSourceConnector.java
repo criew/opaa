@@ -52,6 +52,7 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.databind.JsonNode;
@@ -93,6 +94,7 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
   private static final Logger log = LoggerFactory.getLogger(SharePointSourceConnector.class);
 
   private static final String LIBRARIES_STATE = "sharePointLibraries";
+  private static final String SITE_PREFIX = "site:";
   private static final int MAX_BROWSE_PAGES = 10;
   private static final Pattern HOST = Pattern.compile("[A-Za-z0-9.-]{1,253}");
 
@@ -158,7 +160,11 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
         LIBRARIES_STATE,
         settings == null
             ? null
-            : settings.libraries().stream().map(SharePointLibrary::coverage).toList().toString());
+            : Stream.concat(
+                    settings.libraries().stream().map(SharePointLibrary::coverage),
+                    settings.sites().stream().map(site -> SITE_PREFIX + site.id()))
+                .toList()
+                .toString());
     return state;
   }
 
@@ -175,8 +181,9 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
 
   /**
    * Checks each requested library (or the stored ones) with the access token the core obtained, a
-   * library stored with its site also against the site's document libraries; the finding per
-   * library is the {@code libraries} detail.
+   * library stored with its site also against the site's document libraries; a site taken whole
+   * stands for its document libraries as a run would list them now. The finding per library is the
+   * {@code libraries} detail.
    */
   @Override
   public SourceConnectionTestResult testConnection(SourceSettings settings, ConnectorData stored) {
@@ -194,6 +201,22 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
     GraphClient graph =
         graphs.open(
             settings.withSourceUrl(apiBase.toString()), settings::sourceCredentials, budget);
+    if (sharePointSettings.hasWholeSites()) {
+      try {
+        List<SharePointLibrary> found = SiteLibraries.resolve(graph, sharePointSettings.sites());
+        if (found.isEmpty()) {
+          return new SourceConnectionTestResult(
+              false, SharePointIndexingExecutor.NO_VISIBLE_LIBRARY, null, true, null);
+        }
+        sharePointSettings = sharePointSettings.resolvedTo(found);
+      } catch (GraphException e) {
+        return new SourceConnectionTestResult(
+            false, browseFailure(e), null, e.kind() != GraphException.Kind.UNAUTHORIZED, null);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        return unreachable("Der Verbindungstest wurde unterbrochen.");
+      }
+    }
     DriveFileStore store =
         new DriveFileStore(
             DriveRule.SHAREPOINT,
@@ -545,7 +568,8 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
     } catch (ValidationException e) {
       return Optional.empty();
     }
-    if (configured == null || configured.library(driveId) == null) {
+    if (configured == null
+        || (configured.library(driveId) == null && !configured.hasWholeSites())) {
       return Optional.empty();
     }
     GraphClient graph =
@@ -555,6 +579,11 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
             RequestBudget.unbounded());
     Path file;
     try {
+      if (configured.library(driveId) == null
+          && SiteLibraries.resolve(graph, configured.sites()).stream()
+              .noneMatch(found -> found.driveId().equals(driveId))) {
+        return Optional.empty();
+      }
       file =
           graph.download(
               "drives/" + driveId + "/items/" + address.get().itemId() + "/content",

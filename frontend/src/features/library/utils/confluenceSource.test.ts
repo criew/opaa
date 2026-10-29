@@ -9,12 +9,26 @@ import {
 
 const verified: ConfluenceSourceValues = {
   ...EMPTY_CONFLUENCE_VALUES,
+  allSpaces: false,
   sourceUrl: 'https://wiki.behoerde.example/confluence',
   edition: 'DATA_CENTER',
   token: 'pat',
   credentialsVerified: true,
   spaces: [{ key: 'BAU', name: 'Bauamt' }],
 }
+
+describe('„Alle Spaces“', () => {
+  it('needs no selection', () => {
+    expect(validateConfluenceValues({ ...verified, allSpaces: true, spaces: [] })).toBeNull()
+    expect(validateConfluenceValues({ ...verified, spaces: [] })).toBe(
+      'Bitte mindestens einen Space auswählen',
+    )
+  })
+
+  it('is the preselection of a new library', () => {
+    expect(EMPTY_CONFLUENCE_VALUES.allSpaces).toBe(true)
+  })
+})
 
 describe('confluenceCredentialsOf (ADR-0023, Entscheidung 3)', () => {
   it('joins e-mail and token for Cloud and trims both', () => {

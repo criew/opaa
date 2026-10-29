@@ -62,12 +62,14 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
@@ -329,7 +331,7 @@ class ConfluenceIndexingExecutorTest {
         new BoundedDownloader(TargetAddressValidator.disabled()),
         documentIngestService,
         storageQuotaService,
-        new io.opaa.indexing.attachment.AttachmentProperties(5, 0, 0),
+        new io.opaa.indexing.attachment.AttachmentProperties(5, 0, 0, 0, 0),
         ProductionDocumentFormats.supportedFormats());
   }
 
@@ -1651,6 +1653,156 @@ class ConfluenceIndexingExecutorTest {
     ArgumentCaptor<IndexingRunCost> cost = ArgumentCaptor.forClass(IndexingRunCost.class);
     verify(indexingJobService).recordRunMetrics(eq(jobId), cost.capture());
     assertThat(cost.getValue().incomplete()).isTrue();
+  }
+
+  // regression guard for #3117: "Alle Spaces" is every space the access sees, personal ones aside
+  @ParameterizedTest
+  @MethodSource("editions")
+  void allSpacesIndexesEverySpaceTheAccessSeesExceptPersonalOnes(ConfluenceEdition edition)
+      throws Exception {
+    start(edition, null);
+    server.addSpace("4", "~anna", "Anna Muster");
+    server.addPage("400", "~anna", "Privatnotizen", null, "<p>Nur für Anna.</p>", SEEDED_AT);
+    library.updateSourceSettings(
+        "{\"edition\": \"" + edition.name() + "\", \"allSpaces\": true, \"spaces\": []}");
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(documentIngestService)
+        .ingest(DocumentIngests.that().text().at(pagePath(edition, "ENG", "100")).match(), any());
+    verify(documentIngestService)
+        .ingest(DocumentIngests.that().text().at(pagePath(edition, "HR", "200")).match(), any());
+    verify(documentIngestService)
+        .ingest(DocumentIngests.that().text().at(pagePath(edition, "SEC", "300")).match(), any());
+    verify(documentIngestService, never())
+        .ingest(DocumentIngests.that().text().titled("Privatnotizen").match(), any());
+    verify(eventRepository)
+        .save(argThat(event(IndexingEventCategory.SUMMARY, "Umfang „Alle“: 3 Spaces", null)));
+  }
+
+  @Test
+  void allSpacesNamesTheSpacesThatAppearedOrVanishedSinceTheLastRun() throws Exception {
+    start(ConfluenceEdition.CLOUD, null);
+    library.updateSourceSettings("{\"edition\": \"CLOUD\", \"allSpaces\": true, \"spaces\": []}");
+    SourceSyncState remembered = new SourceSyncState(library.getId());
+    remembered.rememberResolvedScopes(
+        Map.of("ENG", "Engineering", "HR", "Personal", "OPS", "Betrieb"));
+    when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(remembered));
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.SUMMARY,
+                    "Neu im Umfang: 1 Space – „Geheimschutz“",
+                    null)));
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.SUMMARY,
+                    "Nicht mehr im Umfang: 1 Space – „Betrieb“",
+                    null)));
+    assertThat(remembered.resolvedScopes()).containsOnlyKeys("ENG", "HR", "SEC");
+  }
+
+  // regression guard for #3117: both editions list archived spaces unless asked for current ones
+  @ParameterizedTest
+  @MethodSource("editions")
+  void allSpacesLeavesOutArchivedSpaces(ConfluenceEdition edition) throws Exception {
+    start(edition, null);
+    server.archiveSpace("SEC");
+    library.updateSourceSettings(
+        "{\"edition\": \"" + edition.name() + "\", \"allSpaces\": true, \"spaces\": []}");
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(documentIngestService, never())
+        .ingest(DocumentIngests.that().text().at(pagePath(edition, "SEC", "300")).match(), any());
+    verify(eventRepository)
+        .save(argThat(event(IndexingEventCategory.SUMMARY, "Umfang „Alle“: 2 Spaces", null)));
+  }
+
+  @Test
+  void allSpacesWithoutAnyVisibleSpaceFailsTheRunAndRemovesNothing() throws Exception {
+    start(ConfluenceEdition.CLOUD, Set.of("~anna"));
+    server.addSpace("4", "~anna", "Anna Muster");
+    library.updateSourceSettings("{\"edition\": \"CLOUD\", \"allSpaces\": true, \"spaces\": []}");
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(indexingJobService).failJob(eq(jobId), eq(ConfluenceIndexingExecutor.NO_VISIBLE_SPACE));
+    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void allSpacesAboveTheLimitFailsTheRunAndRemovesNothing() throws Exception {
+    start(ConfluenceEdition.CLOUD, null);
+    for (int i = 0; i < ConfluenceSourceConnector.MAX_SPACES - 2; i++) {
+      server.addSpace(Integer.toString(1000 + i), "S" + i, "Space " + i);
+    }
+    library.updateSourceSettings("{\"edition\": \"CLOUD\", \"allSpaces\": true, \"spaces\": []}");
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(indexingJobService)
+        .failJob(
+            eq(jobId),
+            argThat(
+                message ->
+                    message.contains("sieht 501 Spaces")
+                        && message.contains("höchstens 500")
+                        && message.contains("bleibt unverändert")));
+    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void aSpaceNewToTheAccessMakesTheNextRunAFullSync() throws Exception {
+    start(ConfluenceEdition.CLOUD, null);
+    library.updateSourceSettings("{\"edition\": \"CLOUD\", \"allSpaces\": true, \"spaces\": []}");
+    SourceSyncState remembered = writtenUnderCurrentSettings();
+    remembered.completeFullSync(SEEDED_AT, SEEDED_AT);
+    remembered.rememberResolvedScopes(Map.of("ENG", "Engineering", "HR", "Personal"));
+    when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(remembered));
+
+    executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
+
+    assertThat(remembered.resolvedScopes()).containsOnlyKeys("ENG", "HR", "SEC");
+    assertThat(remembered.getFullSyncCompletedAt())
+        .as("the change run does not list the new space completely; the next full sync does")
+        .isNull();
+    assertThat(executor.defaultRunMode(library, ConnectorData.storedIn(library)))
+        .isEqualTo(IndexingRunMode.FULL);
+  }
+
+  @Test
+  void aWebhookRunUnderAllSpacesNotesTheResolutionOnlyWhenItChanged() throws Exception {
+    start(ConfluenceEdition.CLOUD, null);
+    library.updateSourceSettings("{\"edition\": \"CLOUD\", \"allSpaces\": true, \"spaces\": []}");
+    SourceSyncState remembered = writtenUnderCurrentSettings();
+    remembered.rememberResolvedScopes(
+        Map.of("ENG", "Engineering", "HR", "Personal", "SEC", "Geheimschutz"));
+    when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(remembered));
+
+    executor.refreshPages(jobId, library, Set.of("101"));
+
+    verify(eventRepository, never())
+        .save(argThat(event(IndexingEventCategory.SUMMARY, "Umfang „Alle“", null)));
+
+    remembered.rememberResolvedScopes(Map.of("ENG", "Engineering", "HR", "Personal"));
+    executor.refreshPages(UUID.randomUUID(), library, Set.of("101"));
+
+    verify(eventRepository)
+        .save(argThat(event(IndexingEventCategory.SUMMARY, "Umfang „Alle“: 3 Spaces", null)));
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.SUMMARY,
+                    "Neu im Umfang: 1 Space – „Geheimschutz“",
+                    null)));
   }
 
   private static ArgumentMatcher<IndexingRunEvent> event(

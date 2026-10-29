@@ -19,7 +19,7 @@
     "goldenDatasetFile": "eval/golden/verwaltung.json",
     "goldenDatasetSha256": "25a05ad90e0c8937c29a7e77d9e7df56f10b36eb6fb2963bcafbe3a6dafa9bee",
     "goldenCaseCount": 49,
-    "ingestionPipelineFingerprint": "confluence:5,docx:6,email:6,html:6,markdown:4,odp:5,odt:5,pdf:6,pptx:4,tabular:4,tika-fallback:2",
+    "ingestionPipelineFingerprint": "confluence:5,docx:6,email:6,html:6,markdown:4,odp:5,odt:5,pdf:6,pptx:4,tabular:5,tika-fallback:2",
     "contextPrefixFingerprint": "ff4022a9229ede226ff1b8878e55e7ddf8d7703e2f0a4a34624c269195f2a204",
     "metadataFilterEnabled": true
   },

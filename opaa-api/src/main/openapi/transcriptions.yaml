@@ -54,6 +54,8 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "413":
           $ref: "#/components/responses/PayloadTooLarge"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "502":
           $ref: "#/components/responses/BadGateway"
         "503":

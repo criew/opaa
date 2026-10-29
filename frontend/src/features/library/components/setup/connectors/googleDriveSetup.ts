@@ -28,9 +28,10 @@ export const googleDriveSetup: SourceSetupSpec<GoogleDriveSourceValues> = {
       id: 'scope',
       summary: (values) =>
         listSummary(
-          false,
+          values.allScopes,
           ['Geteilte Ablage oder Ordner', 'Geteilte Ablagen und Ordner'],
           values.scopes.map(googleDriveScopeLabel),
+          'Alle Ablagen',
         ),
       Fields: GoogleDriveScopeFields,
     },
@@ -53,18 +54,22 @@ export const googleDriveSetup: SourceSetupSpec<GoogleDriveSourceValues> = {
     at(
       'subject',
       '„Meine Ablage“ braucht ein imitiertes Konto',
-      subject === '' && values.scopes.some((s) => s.kind === 'myDrive'),
+      subject === '' && !values.allScopes && values.scopes.some((s) => s.kind === 'myDrive'),
     )
     at(
       'subject',
       'Imitiertes Konto ist eine E-Mail-Adresse',
       subject !== '' && !/^[^@\s]+@[^@\s]+$/.test(subject),
     )
-    at('scopes', 'Geteilte Ablagen und Ordner fehlen', values.scopes.length === 0)
+    at(
+      'scopes',
+      'Geteilte Ablagen und Ordner fehlen',
+      !values.allScopes && values.scopes.length === 0,
+    )
     at(
       'scopes',
       `Höchstens ${MAX_GOOGLE_DRIVE_SCOPES} Geteilte Ablagen und Ordner`,
-      values.scopes.length > MAX_GOOGLE_DRIVE_SCOPES,
+      !values.allScopes && values.scopes.length > MAX_GOOGLE_DRIVE_SCOPES,
     )
     return list
   },

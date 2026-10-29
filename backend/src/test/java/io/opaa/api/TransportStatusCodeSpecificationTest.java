@@ -347,7 +347,7 @@ class TransportStatusCodeSpecificationTest {
     Set<String> withABudget = new TreeSet<>(LIMITED_WITHOUT_A_PATH_RULE);
     forEachOperation(
         (path, method, operation) -> {
-          if (isRateLimited(path)) {
+          if (isRateLimited(path, method)) {
             withABudget.add((String) operation.get("operationId"));
           }
         });
@@ -356,16 +356,17 @@ class TransportStatusCodeSpecificationTest {
   }
 
   /**
-   * Whether the production filter refuses a second call to {@code pathTemplate} with a budget of
-   * one.
+   * Whether the production filter refuses a second {@code method} call to {@code pathTemplate} with
+   * a budget of one.
    */
-  private static boolean isRateLimited(String pathTemplate) {
+  private static boolean isRateLimited(String pathTemplate, String method) {
     String path = pathTemplate.replaceAll("\\{[^}]+}", PATH_VARIABLE);
     Filter filter = filterWithABudgetOfOne();
     MockHttpServletResponse response = new MockHttpServletResponse();
     for (int i = 0; i < 2; i++) {
       response = new MockHttpServletResponse();
-      MockHttpServletRequest request = new MockHttpServletRequest("POST", path);
+      MockHttpServletRequest request =
+          new MockHttpServletRequest(method.toUpperCase(Locale.ROOT), path);
       request.setRemoteAddr(CLIENT);
       try {
         // a signed-in call: only requests that authenticated keep their budget
@@ -390,6 +391,8 @@ class TransportStatusCodeSpecificationTest {
         new RateLimitProperties(
             true,
             List.of(),
+            one,
+            one,
             one,
             one,
             one,
