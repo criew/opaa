@@ -154,7 +154,8 @@ class S3UploadedOriginalStoreTest {
     assertThat(server.keys(BUCKET)).isEmpty();
     assertThat(server.seen())
         .extracting(StubS3Server.Seen::method)
-        .containsExactly("PUT", "DELETE");
+        .as("the put, the listing of the key's versions and the delete")
+        .containsExactly("PUT", "GET", "DELETE");
   }
 
   @Test
@@ -214,11 +215,12 @@ class S3UploadedOriginalStoreTest {
 
     accepted.discard();
     assertThat(server.keys(BUCKET)).isEmpty();
-    // Discarding after a failed put still sends the DeleteObject: a put that succeeded on the wire
+    // Discarding after a failed put still sends a DeleteObject: a put that succeeded on the wire
     // but timed out on the way back has written the object, and only the delete takes it away.
     assertThat(server.seen())
         .extracting(StubS3Server.Seen::method)
-        .containsExactly("PUT", "DELETE");
+        .as("the put, the listing of the key's versions and the delete")
+        .containsExactly("PUT", "GET", "DELETE");
   }
 
   @Test
@@ -665,6 +667,156 @@ class S3UploadedOriginalStoreTest {
 
     assertThatThrownBy(() -> store.forEachStoredLibrary(organizationId, libraryId -> {}))
         .isInstanceOf(UploadStoreUnavailableException.class);
+  }
+
+  @Test
+  void deletingInAnUnversionedBucketRemovesTheObjectByItsNullVersion() throws IOException {
+    UploadedOriginalRef ref = storedOriginal("inhalt");
+    server.seen().clear();
+
+    store.delete(ref);
+
+    assertThat(server.keys(BUCKET)).isEmpty();
+    assertThat(server.seen())
+        .filteredOn(seen -> seen.method().equals("DELETE"))
+        .extracting(StubS3Server.Seen::query)
+        .containsExactly("versionId=null");
+    assertThat(store.countRetainedVersions(organizationId, libraryId)).isZero();
+  }
+
+  @Test
+  void aStoreWithoutTheVersionApiDeletesPlainlyAndRetainsNoVersions() throws IOException {
+    UploadedOriginalRef ref = storedOriginal("inhalt");
+    server.failVersionListing(501, "NotImplemented");
+    server.seen().clear();
+
+    store.delete(ref);
+
+    assertThat(server.keys(BUCKET)).isEmpty();
+    assertThat(server.seen())
+        .filteredOn(seen -> seen.method().equals("DELETE"))
+        .extracting(StubS3Server.Seen::query)
+        .containsExactly((String) null);
+    assertThat(store.countRetainedVersions(organizationId, libraryId)).isZero();
+    assertThat(store.eraseRetainedVersions(organizationId, libraryId)).isZero();
+  }
+
+  @Test
+  void credentialsThatMayNotListVersionsStillDeleteAndANeverVersionedBucketRetainsNone()
+      throws IOException {
+    UploadedOriginalRef ref = storedOriginal("inhalt");
+    server.failVersionListing(403, "AccessDenied");
+    captureAdapterLog();
+
+    store.delete(ref);
+    assertThat(server.keys(BUCKET)).isEmpty();
+
+    assertThat(store.countRetainedVersions(organizationId, libraryId))
+        .as("GetBucketVersioning names no status: versioning was never switched on")
+        .isZero();
+    assertThat(store.eraseRetainedVersions(organizationId, libraryId)).isZero();
+
+    store.recoverAfterRestart();
+    assertThat(loggedLines())
+        .as("the startup check names the rights to grant before versioning is switched on")
+        .anyMatch(line -> line.contains("s3:ListBucketVersions") && line.contains("never"));
+  }
+
+  @Test
+  void aVersionedBucketWhoseVersionsMayNotBeListedNeverReportsNoVersionsLeft() throws IOException {
+    storedOriginal("inhalt");
+    server.failVersionListing(403, "AccessDenied");
+    captureAdapterLog();
+
+    for (String status : List.of("Enabled", "Suspended")) {
+      server.versioningStatus(status);
+      assertThatThrownBy(() -> store.countRetainedVersions(organizationId, libraryId))
+          .isInstanceOf(UploadStoreUnavailableException.class);
+      assertThatThrownBy(() -> store.eraseRetainedVersions(organizationId, libraryId))
+          .isInstanceOf(UploadStoreUnavailableException.class);
+    }
+    assertThat(loggedLines()).anyMatch(line -> line.contains("s3:ListBucketVersions"));
+
+    appender.list.clear();
+    store.recoverAfterRestart();
+    assertThat(loggedLines())
+        .as("the startup check names the missing rights")
+        .anyMatch(
+            line ->
+                line.contains("s3:ListBucketVersions") && line.contains("s3:DeleteObjectVersion"));
+  }
+
+  @Test
+  void aVersioningStateThatMayNotBeReadEitherNeverReportsNoVersionsLeft() throws IOException {
+    storedOriginal("inhalt");
+    server.failVersionListing(403, "AccessDenied");
+    server.failVersioningQuery(403, "AccessDenied");
+
+    assertThatThrownBy(() -> store.countRetainedVersions(organizationId, libraryId))
+        .isInstanceOf(UploadStoreUnavailableException.class);
+  }
+
+  @Test
+  void aStoreWithoutTheVersionListingButWithVersioningSwitchedOnIsUnavailable() throws IOException {
+    storedOriginal("inhalt");
+    server.failVersionListing(501, "NotImplemented");
+    server.versioningStatus("Enabled");
+
+    assertThatThrownBy(() -> store.countRetainedVersions(organizationId, libraryId))
+        .isInstanceOf(UploadStoreUnavailableException.class);
+  }
+
+  @Test
+  void aRefusedVersionListingIsNotExcusedByAStoreThatDoesNotReportItsVersioningState()
+      throws IOException {
+    storedOriginal("inhalt");
+    server.failVersionListing(403, "AccessDenied");
+    server.failVersioningQuery(501, "NotImplemented");
+
+    assertThatThrownBy(() -> store.countRetainedVersions(organizationId, libraryId))
+        .isInstanceOf(UploadStoreUnavailableException.class);
+  }
+
+  @Test
+  void aStoreOfferingNeitherVersionCallRetainsNoVersions() throws IOException {
+    storedOriginal("inhalt");
+    server.failVersionListing(501, "NotImplemented");
+    server.failVersioningQuery(501, "NotImplemented");
+
+    assertThat(store.countRetainedVersions(organizationId, libraryId)).isZero();
+  }
+
+  @Test
+  void aVersionTheStoreNoLongerKnowsIsGoneAndGetsNoNewDeleteMarker() throws IOException {
+    UploadedOriginalRef ref = storedOriginal("inhalt");
+    String key = ref.locator().substring(("s3://" + BUCKET + "/").length());
+    server.failNextMatching("DELETE", "/" + BUCKET + "/" + key, 404, "NoSuchVersion");
+    server.seen().clear();
+
+    store.delete(ref);
+
+    assertThat(server.seen())
+        .filteredOn(seen -> seen.method().equals("DELETE"))
+        .as("only the delete by version, no plain DeleteObject that would set a marker")
+        .extracting(StubS3Server.Seen::query)
+        .containsExactly("versionId=null");
+  }
+
+  @Test
+  void theVersionListingIsWalkedPageByPage() throws IOException {
+    store.close();
+    store = store(properties(""), 1);
+    for (int i = 0; i < 3; i++) {
+      storedOriginal("inhalt " + i);
+    }
+    server.seen().clear();
+
+    assertThat(store.countRetainedVersions(organizationId, libraryId)).isZero();
+
+    assertThat(server.seen())
+        .filteredOn(seen -> seen.query() != null && seen.query().contains("versions"))
+        .as("one request per page of one entry")
+        .hasSize(3);
   }
 
   private void assertNeitherReadableNorDeletable(UploadedOriginalRef ref) {
