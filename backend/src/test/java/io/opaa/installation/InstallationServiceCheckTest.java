@@ -145,13 +145,14 @@ class InstallationServiceCheckTest {
     for (int i = 0; i < ModelCheckBudget.MAX_MODEL_CHECKS - 1; i++) {
       service.check(InstallationStep.CHAT_MODEL);
     }
+    when(rules.toStored(any(), any(), any())).thenReturn(new StepRules.Stored("{}", null));
 
     assertThatThrownBy(
             () -> service.applyAnswers(answersWithTwoModels(), CompletionSource.ANSWER_FILE_API))
         .isInstanceOfSatisfying(
             TooManyRequestsException.class,
             e -> assertThat(e.getCode()).isEqualTo(ModelCheckBudget.LIMIT_CODE));
-    verify(rules, never()).toStored(any(), any(), any());
+    verify(checks, times(ModelCheckBudget.MAX_MODEL_CHECKS - 1)).check(any(), any(), any(), any());
 
     service.check(InstallationStep.RERANK_MODEL);
     assertThatThrownBy(() -> service.check(InstallationStep.RERANK_MODEL))
