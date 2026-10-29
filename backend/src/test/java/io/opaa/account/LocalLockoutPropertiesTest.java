@@ -7,42 +7,62 @@ import java.time.Duration;
 import org.junit.jupiter.api.Test;
 
 /**
- * {@link LocalLockoutProperties} (ADR-0033, Entscheidung 9): five attempts and a fixed quarter of
- * an hour by default; a threshold below one or a non-positive duration refuses the start, naming
- * the environment variable.
+ * {@link LocalLockoutProperties} (ADR-0060, Entscheidung 17): the limits of the operation for the
+ * lockout after failed sign-ins - by default at most ten attempts and at least five minutes. A
+ * limit that would switch the protection off or lie outside what the administration can set
+ * refuses the start, naming the environment variable.
  */
 class LocalLockoutPropertiesTest {
 
   @Test
-  void fillsInTheAdrDefaults() {
+  void fillsInTheDefaultLimits() {
     LocalLockoutProperties properties = new LocalLockoutProperties(null, null);
 
-    assertThat(properties.maxAttempts()).isEqualTo(5);
-    assertThat(properties.duration()).isEqualTo(Duration.ofMinutes(15));
+    assertThat(properties.maxAttempts()).isEqualTo(10);
+    assertThat(properties.minDuration()).isEqualTo(Duration.ofMinutes(5));
+    assertThat(properties.minDurationMinutes()).isEqualTo(5);
   }
 
   @Test
-  void readsConfiguredValues() {
+  void readsConfiguredLimits() {
     LocalLockoutProperties properties = new LocalLockoutProperties(3, Duration.ofHours(1));
 
     assertThat(properties.maxAttempts()).isEqualTo(3);
-    assertThat(properties.duration()).isEqualTo(Duration.ofHours(1));
+    assertThat(properties.minDurationMinutes()).isEqualTo(60);
+  }
+
+  /** The administration sets whole minutes: a shorter part of a minute rounds up, never down. */
+  @Test
+  void roundsTheShortestLockoutUpToWholeMinutes() {
+    assertThat(new LocalLockoutProperties(null, Duration.ofSeconds(90)).minDurationMinutes())
+        .isEqualTo(2);
+    assertThat(new LocalLockoutProperties(null, Duration.ofSeconds(30)).minDurationMinutes())
+        .isEqualTo(1);
   }
 
   @Test
-  void refusesAThresholdBelowOneNamingTheVariable() {
+  void refusesALimitBelowOneAttemptNamingTheVariable() {
     assertThatThrownBy(() -> new LocalLockoutProperties(0, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(LocalLockoutProperties.MAX_ATTEMPTS_VARIABLE);
   }
 
   @Test
-  void refusesANonPositiveDurationNamingTheVariable() {
+  void refusesANonPositiveShortestLockoutNamingTheVariable() {
     assertThatThrownBy(() -> new LocalLockoutProperties(null, Duration.ZERO))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining(LocalLockoutProperties.DURATION_VARIABLE);
+        .hasMessageContaining(LocalLockoutProperties.MIN_DURATION_VARIABLE);
     assertThatThrownBy(() -> new LocalLockoutProperties(null, Duration.ofSeconds(-1)))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining(LocalLockoutProperties.DURATION_VARIABLE);
+        .hasMessageContaining(LocalLockoutProperties.MIN_DURATION_VARIABLE);
+  }
+
+  @Test
+  void refusesAShortestLockoutBeyondTheLongestTheAdministrationCanSet() {
+    assertThatThrownBy(() -> new LocalLockoutProperties(null, Duration.ofHours(25)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(LocalLockoutProperties.MIN_DURATION_VARIABLE);
+    assertThat(new LocalLockoutProperties(null, Duration.ofHours(24)).minDurationMinutes())
+        .isEqualTo(LocalAuthSettings.MAX_LOCKOUT_DURATION_MINUTES);
   }
 }

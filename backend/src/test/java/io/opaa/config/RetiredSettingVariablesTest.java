@@ -67,8 +67,25 @@ class RetiredSettingVariablesTest {
                 + " under Administration > Ohne Zuständigkeit");
   }
 
+  /**
+   * The lockout duration is no limit of the operation any more but a setting of the administration
+   * (ADR-0060, Entscheidung 17); a value still set is named, never taken over.
+   */
   @Test
-  void theFourRetiredAdministrationValuesAreKnownUnderBothNames() {
+  void theRetiredLockoutDurationIsNamedWithItsPlaceAndTheLimitThatReplacesIt() {
+    MockEnvironment environment =
+        new MockEnvironment().withProperty("OPAA_AUTH_LOCAL_LOCKOUT_DURATION", "30m");
+
+    assertThat(RetiredSettingVariables.foundIn(environment))
+        .containsExactly(
+            "OPAA_AUTH_LOCAL_LOCKOUT_DURATION is no longer read; set the lockout duration after"
+                + " failed sign-ins under Administration > Benutzer > Einstellungen; until then the"
+                + " factory default of 15 minutes applies, never shorter than"
+                + " OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION - if it was longer, set it there");
+  }
+
+  @Test
+  void theRetiredAdministrationValuesAreKnownUnderBothNames() {
     assertThat(RetiredSettingVariables.RETIRED_ADMINISTRATION_VALUES)
         .containsOnlyKeys(
             "OPAA_EXTERNAL_ACCESS_REMINDER_LEAD_DAYS",
@@ -78,7 +95,9 @@ class RetiredSettingVariablesTest {
             "OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION",
             "opaa.directory-sync.change-threshold-fraction",
             "OPAA_INDEXING_NEXTCLOUD_FULL_DESCENT_INTERVAL",
-            "opaa.indexing.nextcloud.full-descent-interval");
+            "opaa.indexing.nextcloud.full-descent-interval",
+            "OPAA_AUTH_LOCAL_LOCKOUT_DURATION",
+            "opaa.auth.local.lockout.duration");
   }
 
   @Test

@@ -325,6 +325,48 @@ class SettingsTransferIntegrationTest {
     assertThat(auditEventTypes()).isEmpty();
   }
 
+  /**
+   * The lockout rule travels as stored, {@code null} for the factory default, and only within the
+   * limits of the operation of the importing installation (ADR-0060, Entscheidungen 12 and 17).
+   */
+  @Test
+  void theLockoutRuleTravelsWithinTheLimitsOfTheOperation() throws Exception {
+    ObjectNode document = (ObjectNode) JSON.readTree(export());
+    ObjectNode localAccounts = sections(document).withObject("localAccounts");
+    assertThat(localAccounts.get("lockoutMaxAttempts").isNull()).isTrue();
+    assertThat(localAccounts.get("lockoutDurationMinutes").isNull()).isTrue();
+    localAccounts.put("lockoutMaxAttempts", 7);
+    localAccounts.put("lockoutDurationMinutes", 30);
+
+    send(PREVIEW, JSON.writeValueAsString(document))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.changes.length()").value(2))
+        .andExpect(
+            jsonPath("$.changes[?(@.key == 'lockoutMaxAttempts')].securityRelevant")
+                .value(org.hamcrest.Matchers.contains(true)));
+    send(IMPORT, JSON.writeValueAsString(document)).andExpect(status().isOk());
+
+    ObjectNode exported = sections((ObjectNode) JSON.readTree(export()));
+    assertThat(exported.get("localAccounts").get("lockoutMaxAttempts").intValue()).isEqualTo(7);
+    assertThat(exported.get("localAccounts").get("lockoutDurationMinutes").intValue())
+        .isEqualTo(30);
+
+    Map<String, String> refused = new java.util.LinkedHashMap<>();
+    refused.put("{\"localAccounts\": {\"lockoutMaxAttempts\": 11}}", "localAccounts.lockoutMaxAttempts");
+    refused.put(
+        "{\"localAccounts\": {\"lockoutDurationMinutes\": 4}}",
+        "localAccounts.lockoutDurationMinutes");
+    for (Map.Entry<String, String> entry : refused.entrySet()) {
+      send(
+              IMPORT,
+              "{\"format\": \"opaa-settings\", \"formatVersion\": 1, \"sections\": "
+                  + entry.getKey()
+                  + "}")
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.fieldErrors[0].field").value(entry.getValue()));
+    }
+  }
+
   /** A value outside 1 to 365 days or of another type is refused under its field. */
   @Test
   void aFullSyncRhythmOutsideItsBoundsIsRefusedUnderItsField() throws Exception {

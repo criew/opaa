@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.account.LinkDelivery;
 import io.opaa.account.LocalAuthSettings;
 import io.opaa.account.LocalAuthSettingsService;
+import io.opaa.account.LocalLockoutProperties;
 import io.opaa.account.LocalUserCreated;
 import io.opaa.account.LocalUserOverview;
 import io.opaa.account.LocalUserPage;
@@ -24,6 +25,7 @@ import io.opaa.api.types.PasswordChangeReason;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.User;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -166,11 +168,13 @@ class LocalUserResponseMapperTest {
   @Test
   void mapsTheSettingsWithTheSwitchTheBaseUrlStateAndTheRevokedSessions() {
     LocalAuthSettings.Values values =
-        new LocalAuthSettings.Values(true, List.of("stadt.example"), false, 14, 48, 15, 180, 60);
+        new LocalAuthSettings.Values(
+            true, List.of("stadt.example"), false, 14, 48, 15, 180, 60, 12, 30);
+    LocalLockoutProperties limits = new LocalLockoutProperties(10, Duration.ofMinutes(5));
 
     LocalAuthSettingsResponse response =
         LocalUserResponseMapper.toSettings(
-            new LocalAuthSettingsService.View(values, true, true), 5);
+            new LocalAuthSettingsService.View(values, true, true, limits), 5);
 
     assertThat(response.getEnabled()).isTrue();
     assertThat(response.getSelfRegistrationEnabled()).isTrue();
@@ -183,9 +187,19 @@ class LocalUserResponseMapperTest {
     assertThat(response.getInactiveDays()).isEqualTo(60);
     assertThat(response.getPublicBaseUrlConfigured()).isTrue();
     assertThat(response.getRevokedSessions()).isEqualTo(5);
+    // a value stored beyond a since lowered limit reads as the limit, and is returned as stored
+    assertThat(response.getLockoutMaxAttempts()).isEqualTo(10);
+    assertThat(response.getStoredLockoutMaxAttempts()).isEqualTo(12);
+    assertThat(response.getDefaultLockoutMaxAttempts()).isEqualTo(5);
+    assertThat(response.getLockoutMaxAttemptsLimit()).isEqualTo(10);
+    assertThat(response.getLockoutDurationMinutes()).isEqualTo(30);
+    assertThat(response.getStoredLockoutDurationMinutes()).isEqualTo(30);
+    assertThat(response.getDefaultLockoutDurationMinutes()).isEqualTo(15);
+    assertThat(response.getMinLockoutDurationMinutes()).isEqualTo(5);
+    assertThat(response.getMaxLockoutDurationMinutes()).isEqualTo(1440);
     assertThat(
             LocalUserResponseMapper.toSettings(
-                    new LocalAuthSettingsService.View(values, false, false), null)
+                    new LocalAuthSettingsService.View(values, false, false, limits), null)
                 .getRevokedSessions())
         .isNull();
   }

@@ -550,6 +550,10 @@ paths:
         LOCAL_ACCOUNTS_SETTINGS_CHANGED with before/after of the changed keys only. Bounds:
         passwordMinLength 8-64, invitationTokenTtlHours 1-720, resetTokenTtlMinutes 1-1440,
         defaultExpiryDays at least 1, inactiveDays at least 30 (400 with fieldErrors otherwise).
+        The lockout after failed sign-ins (ADR-0060, Entscheidung 17) stays within the limits of
+        the operation: lockoutMaxAttempts from 1 to OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS,
+        lockoutDurationMinutes from OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION (in whole minutes, rounded
+        up) to 1440; a stored value beyond a since narrowed limit may be sent back unchanged.
         selfRegistrationEnabled needs a non-empty domain list (400). Switching
         passwordResetEnabled or selfRegistrationEnabled on is refused with 409 and code
         PUBLIC_BASE_URL_REQUIRED while OPAA_PUBLIC_BASE_URL is not set - a link nobody can see
@@ -907,7 +911,9 @@ components:
       required:
         [enabled, selfRegistrationEnabled, selfRegistrationAllowedDomains, passwordResetEnabled,
         passwordMinLength, invitationTokenTtlHours, resetTokenTtlMinutes, defaultExpiryDays,
-        inactiveDays, publicBaseUrlConfigured]
+        inactiveDays, publicBaseUrlConfigured, lockoutMaxAttempts, defaultLockoutMaxAttempts,
+        lockoutMaxAttemptsLimit, lockoutDurationMinutes, defaultLockoutDurationMinutes,
+        minLockoutDurationMinutes, maxLockoutDurationMinutes]
       properties:
         enabled:
           type: boolean
@@ -933,6 +939,49 @@ components:
           type: integer
         publicBaseUrlConfigured:
           type: boolean
+        lockoutMaxAttempts:
+          type: integer
+          description: >
+            Failed sign-ins after which a local account is locked, as in force: the stored value
+            or the factory default, never above lockoutMaxAttemptsLimit.
+        storedLockoutMaxAttempts:
+          type: integer
+          nullable: true
+          description: >
+            The value as the administration stored it, absent while the factory default applies;
+            may exceed lockoutMaxAttemptsLimit after the limit was lowered, and is the value to
+            send back unchanged.
+        defaultLockoutMaxAttempts:
+          type: integer
+          description: The factory default of lockoutMaxAttempts.
+        lockoutMaxAttemptsLimit:
+          type: integer
+          description: >
+            The most failed sign-ins the administration may allow, a limit of the operation
+            (opaa.auth.local.lockout.max-attempts); the least is 1.
+        lockoutDurationMinutes:
+          type: integer
+          description: >
+            How long the lockout lasts in minutes, as in force: the stored value or the factory
+            default, never below minLockoutDurationMinutes nor above maxLockoutDurationMinutes.
+        storedLockoutDurationMinutes:
+          type: integer
+          nullable: true
+          description: >
+            The duration as the administration stored it, absent while the factory default
+            applies; may lie below minLockoutDurationMinutes after the limit was raised, and is the
+            value to send back unchanged.
+        defaultLockoutDurationMinutes:
+          type: integer
+          description: The factory default of lockoutDurationMinutes.
+        minLockoutDurationMinutes:
+          type: integer
+          description: >
+            The shortest lockout the administration may set, a limit of the operation
+            (opaa.auth.local.lockout.min-duration) in whole minutes, rounded up.
+        maxLockoutDurationMinutes:
+          type: integer
+          description: The longest lockout the administration may set.
         revokedSessions:
           type: integer
           nullable: true
@@ -969,6 +1018,20 @@ components:
           type: integer
         inactiveDays:
           type: integer
+        lockoutMaxAttempts:
+          type: integer
+          nullable: true
+          description: >
+            Failed sign-ins after which a local account is locked, from 1 to
+            lockoutMaxAttemptsLimit, or the stored value unchanged; absent or null returns to the
+            factory default.
+        lockoutDurationMinutes:
+          type: integer
+          nullable: true
+          description: >
+            How long the lockout lasts in minutes, from minLockoutDurationMinutes to
+            maxLockoutDurationMinutes, or the stored value unchanged; absent or null returns to the
+            factory default. A lockout already running keeps its end.
 
     ChatCleanupAfterLockStatus:
       type: string

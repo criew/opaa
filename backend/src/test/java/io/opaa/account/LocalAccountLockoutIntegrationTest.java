@@ -33,7 +33,9 @@ import org.springframework.test.web.servlet.ResultActions;
  * are not counted; the right password is refused during the lock with the very same answer as a
  * wrong one; once the lockout has ended the account has its full budget again and the sign-in
  * succeeds; the lock is audited exactly once under the {@code local-auth} system actor - the
- * attempts themselves never are.
+ * attempts themselves never are. The rule comes from the table on every attempt (ADR-0060,
+ * Entscheidung 17): a change holds from the next attempt without a restart, a running lockout keeps
+ * its end, and the limits of the operation bound whatever the table says.
  */
 @OpaaLocalAuthMockMvcTest
 class LocalAccountLockoutIntegrationTest {
@@ -58,6 +60,9 @@ class LocalAccountLockoutIntegrationTest {
 
   @AfterEach
   void tearDown() {
+    jdbc.update(
+        "UPDATE local_auth_settings SET lockout_max_attempts = NULL,"
+            + " lockout_duration_minutes = NULL");
     fixtures.cleanUp();
   }
 
@@ -154,6 +159,80 @@ class LocalAccountLockoutIntegrationTest {
                     + LocalAccountFixtures.NAMES_A_LOCAL_ACCOUNT,
                 Long.class))
         .isZero();
+  }
+
+  /** Written straight into the table, as another instance would: no restart, no instance state. */
+  @Test
+  void aRuleChangedInTheTableHoldsFromTheNextAttempt() throws Exception {
+    lockoutRule(2, 60);
+
+    login(user.email(), "falsches-passwort").andExpect(status().isUnauthorized());
+    assertThat(credentials.findById(user.id()).orElseThrow().state(Instant.now()))
+        .isEqualTo(LocalAccountState.ACTIVE);
+    login(user.email(), "falsches-passwort").andExpect(status().isUnauthorized());
+
+    Instant afterLock = Instant.now();
+    LocalCredentials locked = credentials.findById(user.id()).orElseThrow();
+    assertThat(locked.state(afterLock)).isEqualTo(LocalAccountState.LOCKED);
+    assertThat(locked.getLockoutUntil())
+        .isBetween(afterLock.plus(Duration.ofMinutes(59)), afterLock.plus(Duration.ofMinutes(61)));
+  }
+
+  /**
+   * A change of the rule moves no running lockout, and an account whose counter already reaches a
+   * lowered threshold is locked by its next failed attempt, not by the change itself.
+   */
+  @Test
+  void aChangedRuleKeepsRunningLockoutsAndLocksOnlyAtTheNextAttempt() throws Exception {
+    LocalAccount other = fixtures.activeUser("max-" + UUID.randomUUID() + "@stadt.example");
+    for (int i = 0; i < 5; i++) {
+      login(other.email(), "falsches-passwort").andExpect(status().isUnauthorized());
+    }
+    Instant runningUntil = credentials.findById(other.id()).orElseThrow().getLockoutUntil();
+    assertThat(runningUntil).isNotNull();
+    for (int i = 0; i < 3; i++) {
+      login(user.email(), "falsches-passwort").andExpect(status().isUnauthorized());
+    }
+
+    lockoutRule(2, 120);
+
+    assertThat(credentials.findById(other.id()).orElseThrow().getLockoutUntil())
+        .as("a running lockout keeps its end")
+        .isEqualTo(runningUntil);
+    LocalCredentials beforeNextAttempt = credentials.findById(user.id()).orElseThrow();
+    assertThat(beforeNextAttempt.state(Instant.now())).isEqualTo(LocalAccountState.ACTIVE);
+    assertThat(beforeNextAttempt.getFailedLoginAttempts()).isEqualTo(3);
+
+    login(user.email(), "falsches-passwort").andExpect(status().isUnauthorized());
+
+    Instant afterLock = Instant.now();
+    LocalCredentials locked = credentials.findById(user.id()).orElseThrow();
+    assertThat(locked.state(afterLock)).isEqualTo(LocalAccountState.LOCKED);
+    assertThat(locked.getLockoutUntil())
+        .isBetween(
+            afterLock.plus(Duration.ofMinutes(119)), afterLock.plus(Duration.ofMinutes(121)));
+  }
+
+  /** A value below the limit of the operation, stored before it was raised, locks as the limit. */
+  @Test
+  void theLimitsOfTheOperationBoundAValueStoredBeyondThem() throws Exception {
+    lockoutRule(1, 1);
+
+    login(user.email(), "falsches-passwort").andExpect(status().isUnauthorized());
+
+    Instant afterLock = Instant.now();
+    LocalCredentials locked = credentials.findById(user.id()).orElseThrow();
+    assertThat(locked.state(afterLock)).isEqualTo(LocalAccountState.LOCKED);
+    assertThat(locked.getLockoutUntil())
+        .as("the shortest lockout of the operation, five minutes in this context")
+        .isBetween(afterLock.plus(Duration.ofMinutes(4)), afterLock.plus(Duration.ofMinutes(6)));
+  }
+
+  private void lockoutRule(int attempts, int minutes) {
+    jdbc.update(
+        "UPDATE local_auth_settings SET lockout_max_attempts = ?, lockout_duration_minutes = ?",
+        attempts,
+        minutes);
   }
 
   private ResultActions login(String email, String password) throws Exception {
