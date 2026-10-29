@@ -1,6 +1,7 @@
 package io.opaa.knowledge;
 
 import io.opaa.api.types.DocumentStatus;
+import io.opaa.common.LikePatterns;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
@@ -53,9 +54,11 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
    * or lies below it ({@code path} followed by {@link SourceDocumentContext#HIERARCHY_SEPARATOR}).
    */
   default List<Document> findInHierarchy(UUID libraryId, String containerKey, String path) {
-    String escaped = path.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     return findInHierarchyMatching(
-        libraryId, containerKey, path, escaped + SourceDocumentContext.HIERARCHY_SEPARATOR + "%");
+        libraryId,
+        containerKey,
+        path,
+        LikePatterns.escape(path) + SourceDocumentContext.HIERARCHY_SEPARATOR + "%");
   }
 
   @Query(

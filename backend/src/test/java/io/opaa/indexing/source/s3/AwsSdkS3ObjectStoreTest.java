@@ -377,7 +377,7 @@ class AwsSdkS3ObjectStoreTest {
       assertThat(store.meter().requests()).isZero();
     }
 
-    // an unresolvable host mid-run is "unreachable", not "blocked"
+    // an unresolvable host mid-run is "unreachable", not "blocked", but reads like a blocked one
     S3Connection unresolvable =
         new S3Connection(
             URI.create("http://gibtsnicht.invalid:1"),
@@ -393,11 +393,8 @@ class AwsSdkS3ObjectStoreTest {
             null)) {
       assertThatThrownBy(() -> store.listObjects(S3Scope.of("docs", ""), null))
           .isInstanceOf(S3AccessException.Unreachable.class)
-          .hasMessageContaining("DNS")
-          .satisfies(
-              e ->
-                  assertThat(e.getMessage())
-                      .doesNotContain("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST"));
+          .hasMessageContaining("nicht zugelassen oder nicht erreichbar")
+          .hasMessageContaining("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
     }
   }
 

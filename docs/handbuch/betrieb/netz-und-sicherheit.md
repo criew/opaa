@@ -156,6 +156,10 @@ solche, die nur aus dem Netz des Servers erreichbar sind (SSRF). Zwei Schranken 
   bis zum Neustart nicht erreichbar. Abhilfe: den Namen ohne Port in die passende Liste eintragen
   und das Backend neu starten; die Listen liest OPAA nur beim Start. Ohne Eintrag bleibt der Name
   auch nach dem Neustart gesperrt.
+- **Gesperrt und unbekannt klingen gleich:** Ein Ziel in einem gesperrten Bereich und ein Name, der
+  sich nicht auflösen lässt, ergeben dieselbe Meldung, damit niemand über Quellen oder Zugänge
+  erkundet, welche internen Namen es gibt. Die Ursache nennt die Zeile „Rejecting fetch to …“ im
+  Log, als WARN beim gesperrten Bereich und als INFO beim nicht auflösbaren Namen.
 - **Ein Hostname mit Zeichen außerhalb von ASCII** wird abgelehnt; internationalisierte Namen in
   Punycode-Schreibweise (`xn--…`) eintragen.
 - Nur `http` und `https`; Redirects nur auf demselben Origin, nie auf `http` herab. Zertifikate
@@ -328,11 +332,12 @@ dem Backend den Weg zum Scanner öffnen.
   (Schlüssel).
 - Außerhalb des Repositorys ablegen (Tresor, Secret-Manager) und **getrennt von der Datenbank
   sichern**: Ohne die Schlüssel enthält eine Datenbanksicherung unlesbare Zugangsdaten.
-- Die Schlüssel des Profils `dev` und die Testwerte der Wertesätze unter `deploy/helm/opaa/ci/`
-  (`ci-only-…`, Kennzeichen `NICHT-FUER-DEN-PRODUKTIVBETRIEB`) sind öffentlich. Im Modus `oidc`
-  bricht der Start mit ihnen ab und nennt die Variable. Ein bisher genutzter öffentlicher Schlüssel
-  wird wie bei einem [Schlüsselwechsel](#schlüsselwechsel) abgelöst; als abgelöster Schlüssel ist er
-  erlaubt.
+- Die Schlüssel des Profils `dev`, die Testwerte der Wertesätze unter `deploy/helm/opaa/ci/`
+  (`ci-only-…`, Kennzeichen `NICHT-FUER-DEN-PRODUKTIVBETRIEB`) und die früheren Schlüssel und
+  Signaturgeheimnisse der Testläufe des Repositorys sind öffentlich. Im Modus `oidc` bricht der Start
+  mit ihnen ab und nennt die Variable. Die Testläufe erzeugen ihre Werte je Lauf. Ein bisher genutzter
+  öffentlicher Schlüssel wird wie bei einem [Schlüsselwechsel](#schlüsselwechsel) abgelöst; als
+  abgelöster Schlüssel ist er erlaubt.
 
 ### Zugangsdaten-Verschlüsselung
 

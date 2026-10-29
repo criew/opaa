@@ -144,7 +144,7 @@ public final class S3FailureTranslator {
     S3RequestGuard.TargetSignal target = findCause(e, S3RequestGuard.TargetSignal.class);
     if (target != null) {
       return target.unknownHost()
-          ? new S3AccessException.Unreachable(target.getMessage())
+          ? S3AccessException.Unreachable.unresolvedTarget(target.getMessage(), allowlistHint)
           : new S3AccessException.TargetBlocked(target.getMessage(), allowlistHint);
     }
     if (e instanceof NoSuchBucketException && op != S3Operation.LIST_BUCKETS) {

@@ -5,6 +5,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 
 /**
@@ -16,16 +17,14 @@ import org.springframework.test.context.TestPropertySource;
  * signature assert exactly that - that the switches refuse to turn on and the public configuration
  * reports the flows as disabled. Setting the base URL globally would make those assertions
  * untestable. The {@code oidc} profile ships no settings encryption key either (only {@code dev}
- * does), so a class that stores an SMTP password needs one - not the {@code dev} key, which {@code
- * PublishedEncryptionKeyGuard} refuses in this profile.
+ * does), so a class that stores an SMTP password needs one - not a key from the repository, which
+ * {@code PublishedEncryptionKeyGuard} refuses in this profile, but one generated per test JVM
+ * ({@link OpaaTestSettingsKeyInitializer}).
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @OpaaLocalAuthMockMvcTest
-@TestPropertySource(
-    properties = {
-      "opaa.public-base-url=https://opaa.test.example",
-      "opaa.security.settings.encryption-key=Qo69uaPd4kBf0N5+Hne8cePloVxyZE6pye8qhEfdf+8="
-    })
+@TestPropertySource(properties = "opaa.public-base-url=https://opaa.test.example")
+@ContextConfiguration(initializers = OpaaTestSettingsKeyInitializer.class)
 public @interface OpaaLocalAuthLinkTest {}
