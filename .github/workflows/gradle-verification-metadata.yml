@@ -1,0 +1,84 @@
+name: Gradle-Verifikationsdatei erzeugen
+
+# Regenerates backend/gradle/verification-metadata.xml from scratch on the selected branch, straight
+# from the Gradle Plugin Portal and Maven Central without any cache or mirror, and uploads the result
+# as an artifact for a maintainer to commit (docs/renovate.md, "Gradle-Prüfsummen"). Used when an
+# update needs entries that Renovate's own refresh does not resolve, and to drop stale entries.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend/
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '25.0.4+101.0.LTS'
+
+      # No Gradle cache: every checksum comes from a fresh download of the origin repositories.
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-disabled: true
+
+      - name: Bisherigen Stand sichern und Komponenten leeren
+        run: |
+          cp gradle/verification-metadata.xml "$RUNNER_TEMP/previous.xml"
+          python3 - <<'EOF'
+          import re
+          path = "gradle/verification-metadata.xml"
+          text = open(path, encoding="utf-8").read()
+          text = re.sub(r"<components>.*</components>", "<components>\n   </components>", text, flags=re.S)
+          open(path, "w", encoding="utf-8").write(text)
+          EOF
+
+      # help resolves every resolvable configuration of both projects; plugins come through
+      # gradlePluginPortal() as in every other job, so the POM-only metadata of that repository is
+      # recorded. spotlessCheck and cyclonedxBom resolve further artifacts only while executing
+      # (the formatter, POMs read for license data), bootJar and javadoc cover the image build and
+      # the CI step; hence --rerun-tasks without build cache.
+      - name: Prüfsummen erzeugen
+        run: >-
+          ./gradlew --no-configuration-cache --no-build-cache --rerun-tasks
+          --write-verification-metadata sha256
+          help spotlessCheck cyclonedxBom bootJar javadoc
+
+      - name: Varianten des Plugin Portals ergänzen
+        working-directory: .
+        run: >-
+          python3 .github/scripts/gradle_verification_variants.py
+          backend/gradle/verification-metadata.xml
+
+      # Lists every known file whose checksums differ from the committed file as a warning; the
+      # maintainer verifies each before committing the result.
+      - name: Mit dem bisherigen Stand vergleichen
+        working-directory: .
+        run: |
+          status=0
+          python3 .github/scripts/check_gradle_verification_metadata.py \
+            "$RUNNER_TEMP/previous.xml" backend/gradle/verification-metadata.xml \
+            >"$RUNNER_TEMP/compare.txt" || status=$?
+          cat "$RUNNER_TEMP/compare.txt"
+          {
+            echo '```'
+            cat "$RUNNER_TEMP/compare.txt"
+            echo '```'
+          } >>"$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: verification-metadata
+          path: backend/gradle/verification-metadata.xml
+          if-no-files-found: error

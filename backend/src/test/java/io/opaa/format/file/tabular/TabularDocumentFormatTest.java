@@ -14,6 +14,7 @@ import io.opaa.format.file.office.CountingOdfOpener;
 import io.opaa.format.file.office.OdfPackage;
 import io.opaa.format.shared.HeadingSectionSplitter;
 import io.opaa.format.shared.HeadingSectionSplitterFixture;
+import io.opaa.format.shared.RepeatedContext;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -29,6 +30,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.ai.document.Document;
 import org.xml.sax.helpers.DefaultHandler;
 
 /**
@@ -48,7 +50,7 @@ class TabularDocumentFormatTest {
   void claimsExactlyXlsxCsvAndOds() {
     assertThat(pipeline.handledFormats()).containsExactlyInAnyOrder(".xlsx", ".csv", ".ods");
     assertThat(pipeline.id()).isEqualTo("tabular");
-    assertThat(pipeline.version()).isEqualTo((short) 4);
+    assertThat(pipeline.version()).isEqualTo((short) 5);
   }
 
   // --- XLSX ------------------------------------------------------------------------------------
@@ -523,11 +525,20 @@ class TabularDocumentFormatTest {
 
     DocumentFormatResult result = pipeline.run(DocumentFormatSource.ofFile(file, "breit.csv"));
 
-    assertThat(result.chunks())
+    // the header line, too long to repeat in full, is indexed once in chunks of its own
+    List<Document> rowGroups = rowGroups(result);
+    assertThat(String.join("", headerChunkTexts(result))).contains("Erhebungsmerkmal Nummer 140");
+    assertThat(rowGroups)
         .hasSizeLessThanOrEqualTo(5)
         .allSatisfy(
             chunk -> {
-              assertThat(chunk.getText()).startsWith("Tabelle: breit\n\n" + headerLine + "\n");
+              // context and header line are cut to half the target size
+              assertThat(chunk.getText())
+                  .startsWith(
+                      RepeatedContext.cut(
+                              "Tabelle: breit\n\n" + headerLine,
+                              HeadingSectionSplitterFixture.DEFAULT.contextLimit())
+                          + "\n");
               assertThat(chunk.getText().length())
                   .isLessThanOrEqualTo(HeadingSectionSplitter.HARD_CHUNK_CHAR_LIMIT);
             });
@@ -537,11 +548,11 @@ class TabularDocumentFormatTest {
           .as(row)
           .isEqualTo(1);
     }
-    assertThat(result.chunks().getFirst().getMetadata())
-        .containsEntry(ChunkMetadataKeys.LOCATION_METADATA_KEY, "Zeilen 2–5");
-    var anchor = ChunkAnchors.read(result.chunks().getFirst().getMetadata());
+    var anchor = ChunkAnchors.read(rowGroups.getFirst().getMetadata());
     assertThat(anchor.rowFrom()).isEqualTo(2L);
-    assertThat(anchor.rowTo()).isEqualTo(5L);
+    assertThat(anchor.rowTo()).isGreaterThan(2L);
+    assertThat(rowGroups.getFirst().getMetadata())
+        .containsEntry(ChunkMetadataKeys.LOCATION_METADATA_KEY, "Zeilen 2–" + anchor.rowTo());
   }
 
   @Test
@@ -568,10 +579,16 @@ class TabularDocumentFormatTest {
 
     DocumentFormatResult result = pipeline.run(DocumentFormatSource.ofFile(file, "sehrbreit.csv"));
 
-    assertThat(result.chunks())
+    assertThat(String.join("", headerChunkTexts(result)))
+        .contains("Erhebungsmerkmal der Statistik Nummer 155");
+    assertThat(rowGroups(result))
         .allSatisfy(
             chunk -> {
-              assertThat(chunk.getText()).startsWith(opening + "\n");
+              assertThat(chunk.getText())
+                  .startsWith(
+                      RepeatedContext.cut(
+                              opening, HeadingSectionSplitterFixture.DEFAULT.contextLimit())
+                          + "\n");
               assertThat(chunk.getText().length())
                   .isLessThanOrEqualTo(HeadingSectionSplitter.HARD_CHUNK_CHAR_LIMIT);
             });
@@ -929,5 +946,21 @@ class TabularDocumentFormatTest {
           .append("</text:p></table:table-cell>");
     }
     return xml.append("</table:table-row>").toString();
+  }
+
+  private static boolean isHeaderChunk(Document chunk) {
+    return String.valueOf(chunk.getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
+        .startsWith("Kopfzeile");
+  }
+
+  private static List<Document> rowGroups(DocumentFormatResult result) {
+    return result.chunks().stream().filter(chunk -> !isHeaderChunk(chunk)).toList();
+  }
+
+  private static List<String> headerChunkTexts(DocumentFormatResult result) {
+    return result.chunks().stream()
+        .filter(TabularDocumentFormatTest::isHeaderChunk)
+        .map(Document::getText)
+        .toList();
   }
 }

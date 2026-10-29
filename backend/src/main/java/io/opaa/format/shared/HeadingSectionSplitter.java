@@ -92,6 +92,15 @@ public final class HeadingSectionSplitter {
     this.softChunkCharLimit = softChunkCharLimit;
   }
 
+  /**
+   * The longest unit context {@link #boundedChunks} repeats, the ellipsis included: half the target
+   * size, at least {@link RepeatedContext#MAX_LENGTH}. Next to the body {@link #bodyBudget} leaves,
+   * the context then takes no more of a chunk than the body does.
+   */
+  public int contextLimit() {
+    return Math.max(RepeatedContext.MAX_LENGTH, softChunkCharLimit / 2);
+  }
+
   /** The target size in characters every cut and every combination aims at. */
   public int softChunkCharLimit() {
     return softChunkCharLimit;
@@ -233,6 +242,7 @@ public final class HeadingSectionSplitter {
       int end = start + 1;
       if (first.tiny()) {
         List<PathEntry> parent = null;
+        int combinedLength = 0;
         while (end < sections.size()) {
           Section next = sections.get(end);
           if (!next.tiny()) {
@@ -247,12 +257,18 @@ public final class HeadingSectionSplitter {
             boolean sibling = !nextParent.isEmpty() && nextParent.equals(parentOf(first.path()));
             candidate = introduction || sibling ? nextParent : null;
           }
-          if (candidate == null
-              || !nextParent.equals(candidate)
-              || combinedText(candidate, sections.subList(start, end + 1)).length()
-                  > softChunkCharLimit) {
+          if (candidate == null || !nextParent.equals(candidate)) {
             break;
           }
+          // counted member by member, so a long run of tiny sections stays linear
+          int length =
+              parent == null
+                  ? combinedText(candidate, sections.subList(start, end + 1)).length()
+                  : combinedLength + memberLength(candidate, next);
+          if (length > softChunkCharLimit) {
+            break;
+          }
+          combinedLength = length;
           parent = candidate;
           common = parent;
           end++;
@@ -301,17 +317,43 @@ public final class HeadingSectionSplitter {
     return text.toString();
   }
 
+  /** What {@code member} adds to {@link #combinedText} under {@code common}. */
+  private static int memberLength(List<PathEntry> common, Section member) {
+    String ownHeadings = headingLine(member.path().subList(common.size(), member.path().size()));
+    String body = member.bodies().isEmpty() ? "" : member.bodies().getFirst();
+    int length = 0;
+    for (String part : List.of(ownHeadings, body)) {
+      if (!part.isEmpty()) {
+        length += 2 + part.length();
+      }
+    }
+    return length;
+  }
+
   private static List<PathEntry> parentOf(List<PathEntry> path) {
     return path.isEmpty() ? path : path.subList(0, path.size() - 1);
   }
 
+  /** The titles of {@code path} joined, cut to {@link RepeatedContext#MAX_LENGTH}. */
   private static String headingLine(List<PathEntry> path) {
-    return String.join(" › ", path.stream().map(PathEntry::title).toList());
+    int limit = RepeatedContext.MAX_LENGTH;
+    StringBuilder line = new StringBuilder();
+    for (PathEntry entry : path) {
+      if (line.length() > limit) {
+        break;
+      }
+      if (!line.isEmpty()) {
+        line.append(" › ");
+      }
+      line.append(entry.title(), 0, Math.min(entry.title().length(), limit));
+    }
+    return RepeatedContext.cut(line.toString(), limit);
   }
 
   /**
-   * Fundort and anchor of a chunk under {@code path}: the full heading path, and the heading line
-   * the chunk text opens with as the anchor's lead - it repeats the path, not the passage.
+   * Fundort and anchor of a chunk under {@code path}: the heading line and the heading path with
+   * every title cut to {@link RepeatedContext#MAX_LENGTH}, and the heading line the chunk text
+   * opens with as the anchor's lead - it repeats the path, not the passage.
    */
   private static Map<String, Object> locationMetadata(List<PathEntry> path) {
     Map<String, Object> metadata = new HashMap<>();
@@ -319,7 +361,9 @@ public final class HeadingSectionSplitter {
       String headingLine = headingLine(path);
       metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, "Abschn. " + headingLine);
       ChunkAnchors.write(
-          metadata, ChunkAnchor.EMPTY.withPath(path.stream().map(PathEntry::title).toList()));
+          metadata,
+          ChunkAnchor.EMPTY.withPath(
+              path.stream().map(entry -> RepeatedContext.cut(entry.title())).toList()));
       ChunkAnchors.markLead(metadata, headingLine + "\n\n");
     }
     return metadata;
@@ -368,13 +412,15 @@ public final class HeadingSectionSplitter {
    * The chunks of one unit (page, slide, row group): {@code context + separator + body} as one
    * chunk while it fits {@link #softChunkCharLimit() target size}, otherwise {@code body} cut by
    * {@link BoundarySplitter} with {@code context} - a slide title, a table's context and header
-   * line - repeated in front of every part, and named as the anchor's lead. Every chunk gets its
-   * own copy of {@code metadata}, so each part keeps the unit's Fundort.
+   * line - repeated in front of every part, and named as the anchor's lead, cut to {@link
+   * #contextLimit()}. Every chunk gets its own copy of {@code metadata}, so each part keeps the
+   * unit's Fundort.
    *
    * @param context the leading text every part repeats, or {@code null}
    */
   public List<Document> boundedChunks(
       String context, String separator, String body, Map<String, Object> metadata) {
+    context = RepeatedContext.cut(context, contextLimit());
     boolean hasContext = context != null && !context.isEmpty();
     if (hasContext) {
       metadata = new HashMap<>(metadata);

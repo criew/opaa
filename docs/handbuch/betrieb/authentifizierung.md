@@ -390,6 +390,10 @@ Angezeigt werden nur Typ, Adresse, Realm und Client-ID. Das Geheimnis des Dienst
 jederzeit wechseln: in Keycloak neu erzeugen, in OPAA neu hinterlegen. Ein Test ohne eingetragenes
 Geheimnis nutzt das gespeicherte nur für die gespeicherte Admin-API-Adresse; für eine geänderte
 Adresse ist das Geheimnis einzutragen, sonst lehnt OPAA den Test ab, statt es dorthin zu senden.
+Aus demselben Grund entfernt OPAA einen Zugang ohne eingetragene Admin-API-Adresse, wenn eine
+geänderte Issuer-URI die abgeleitete Adresse ändert; er ist danach für die neue Adresse neu zu
+hinterlegen, die Entfernung steht im Nachweisprotokoll. Eine Umbenennung des Anbieters lässt den
+Zugang stehen.
 Ist das gespeicherte Geheimnis nicht mehr entschlüsselbar, gilt es als nicht vorhanden; jeder Lauf
 meldet das Verzeichnis als unerreichbar und entzieht nichts, bis der Zugang neu hinterlegt ist.
 
@@ -562,9 +566,10 @@ steht im Kapitel [Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md
   ([Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md#10-selbstregistrierung)). Eine
   eigene Fassung dieser Mailvorlage passt sich nicht von selbst an ([E-Mail-Versand](e-mail.md#vorlagen)).
 - **Es gibt keinen zweiten Faktor.** Bis dahin gleichen aus: die Netzbeschränkung
-  `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` (lokale Systemverwalter nur aus den genannten Netzen; leer heißt
-  ohne Beschränkung), kürzere Sitzungsfristen für Systemverwalterkonten, die Protokollierung des
-  Notanker-Kontos und die Empfehlung oben.
+  `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` (lokale Systemverwalter nur aus den genannten Netzen — bei der
+  Anmeldung, beim Verlängern der Sitzung und bei jeder Anfrage; leer heißt ohne Beschränkung),
+  kürzere Sitzungsfristen für Systemverwalterkonten, die Protokollierung des Notanker-Kontos und die
+  Empfehlung oben.
 
 **Anmeldegrenzen.** Die lokale Anmeldung ist je Client-Adresse, je Konto und insgesamt begrenzt
 (`OPAA_RATE_LIMIT_LOCAL_AUTH_*`); eine überschrittene Grenze antwortet `429` mit `Retry-After`. Die

@@ -154,7 +154,7 @@ class ConfluenceRunSecretContractTest extends RunSecretContract {
                 new BoundedDownloader(TargetAddressValidator.disabled()),
                 ingestService,
                 mock(LibraryStorageQuotaService.class),
-                new AttachmentProperties(5, 0, 0),
+                new AttachmentProperties(5, 0, 0, 0, 0),
                 ProductionDocumentFormats.supportedFormats()),
             documentRepository,
             new ScanJournal(syncState),

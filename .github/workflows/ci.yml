@@ -174,6 +174,10 @@ jobs:
               - '.github/workflows/publish-images.yml'
               - '.github/workflows/renovate.yml'
               - 'renovate.json5'
+              # test_renovate_gradle_plugins.py reads the catalog and the buildscript blocks.
+              - 'backend/gradle/libs.versions.toml'
+              - 'backend/build.gradle.kts'
+              - 'opaa-api/build.gradle.kts'
               # test_opencode_mirror.py checks the mirror workflow and the openCode metadata.
               - '.github/workflows/opencode-mirror.yml'
               - 'publiccode.yml'
@@ -221,6 +225,10 @@ jobs:
               - 'demo/**/*.py'
               - 'demo/**/*.conf'
               - '**/*.sh'
+            # Step-level filter of the Gradle verification guard below, not a job output.
+            gradleVerification:
+              - 'backend/gradle/verification-metadata.xml'
+              - '.github/scripts/check_gradle_verification_metadata.py'
             # Step-level filter of the ratchets below, not a job output.
             ratchets:
               - 'backend/src/main/**'
@@ -331,6 +339,32 @@ jobs:
         run: |
           .github/scripts/check_instant_now.sh
           .github/scripts/check_value_annotations.sh
+
+      # Known coordinates keep their checksums in backend/gradle/verification-metadata.xml; only
+      # new versions may add entries (docs/renovate.md, "Gradle-Prüfsummen"). Enforced for Renovate
+      # branches, which merge without review; elsewhere a change is a warning for the reviewer.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request' && steps.filter.outputs.gradleVerification == 'true'
+        with:
+          ref: ${{ github.base_ref }}
+          path: base-ref
+          sparse-checkout: backend/gradle
+          persist-credentials: false
+
+      - name: Bestehende Prüfsummen der Gradle-Verifikation prüfen
+        if: github.event_name == 'pull_request' && steps.filter.outputs.gradleVerification == 'true'
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          base=base-ref/backend/gradle/verification-metadata.xml
+          if [ ! -f "$base" ]; then
+            echo "Basis-Branch hat noch keine Verifikationsdatei, nichts zu vergleichen."
+            exit 0
+          fi
+          enforce=
+          case "$HEAD_REF" in renovate/*) enforce=--enforce ;; esac
+          python3 .github/scripts/check_gradle_verification_metadata.py \
+            "$base" backend/gradle/verification-metadata.xml $enforce
 
   # Fails a pull request whose dependency changes bring a known vulnerability of severity critical
   # in runtime scope (docs/cve-scanning.md, "PR-Gate für Abhängigkeiten"). It compares the

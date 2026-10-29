@@ -14,7 +14,7 @@ jederzeit auch lokal ausführen (unten).
 
 | Quelle | Manager | Bereichs-Label |
 |---|---|---|
-| `backend/gradle/libs.versions.toml` (einzige zulässige Versionsquelle, AGENTS.md) | `gradle` | `backend` |
+| `backend/gradle/libs.versions.toml` (einzige zulässige Versionsquelle, AGENTS.md) samt `backend/gradle/verification-metadata.xml` (siehe [Gradle-Prüfsummen](#gradle-prüfsummen)) | `gradle` | `backend` |
 | Gradle-Wrapper samt `distributionSha256Sum`; ohne Auto-Merge (siehe [Gradle-Prüfsummen](#gradle-prüfsummen)) | `gradle-wrapper` | `backend` |
 | `frontend/package.json` + `pnpm-lock.yaml` (inkl. `packageManager`-Pinning) | `npm` | `frontend` |
 | `e2e/package.json` + `pnpm-lock.yaml` | `npm` | `frontend` |
@@ -100,13 +100,86 @@ holt die neue Prüfsumme aus der `.sha256`-Datei neben der Distribution und schr
 (dafür führt es `./gradlew wrapper` aus, `gradleWrapper` in `renovate.yml`), mergt aber nie
 automatisch.
 
-**Abhängigkeiten.** Eine Gradle Dependency Verification (`backend/gradle/verification-metadata.xml`)
-gibt es noch nicht. Ein erster Versuch scheiterte daran, dass die Prüfsummen von der Quelle
-abhängen: CI und Docker-Build lösen den Plugin-Classpath über das Gradle Plugin Portal auf, das
-Marker-POMs und einen Teil der POM- und Module-Dateien in eigener Fassung ausliefert, die
-Projektabhängigkeiten über Maven Central. Eine vollständige Datei lässt sich deshalb nur in einer
-Umgebung erzeugen, die beide Quellen ohne Spiegel erreicht, etwa in einem eigenen CI-Job; das ist
-ein eigenes Issue.
+**Abhängigkeiten.** `backend/gradle/verification-metadata.xml` hält für jede Datei, die der Build
+auflöst (Bibliotheken, Plugins samt Markern, POM- und Module-Dateien), die SHA-256-Prüfsumme.
+Gradle bricht jeden Bau ab, dessen heruntergeladene Datei davon abweicht: lokal, in jedem
+CI-Job und im Docker-Build des Backends (amd64 und arm64; das Dockerfile kopiert `backend/gradle/`
+mit). Ausgenommen sind nur Quellen- und Javadoc-JARs, die allein die IDE lädt
+(`trusted-artifacts`). Signaturen prüft die Datei nicht (`verify-signatures` ist `false`).
+
+- **Zwei echte Fassungen.** Das Plugin Portal leitet die meisten Anfragen an Maven Central weiter,
+  liefert Plugin-Marker und einzelne POM- und Module-Dateien aber in eigener Fassung mit anderer
+  Prüfsumme. CI, Docker-Build und Renovate lösen den Plugin-Classpath über das Portal auf, eine
+  Umgebung mit Central-Spiegel (Firmen-Proxy, Agenten-Umgebung) bekommt die Central-Fassung. Für
+  jede Datei, die das Portal selbst ausliefert, stehen deshalb beide Prüfsummen in der Datei, die
+  zweite als `also-trust`. Das ergänzt `.github/scripts/gradle_verification_variants.py`; es fragt
+  nur Portal und Central, nie einen Spiegel.
+- **Andere Dateien je Repository.** Gradle legt `gradlePluginPortal()` mit der Metadatenquelle
+  `mavenPom()` an, ein selbst deklariertes `maven { }` dagegen mit Gradle-Modul-Metadaten zuerst.
+  Über das Portal liest der Build für dieselbe Komponente also die POM samt Eltern-POM und folgt
+  erst dann dem Verweis auf die `.module`-Datei (`guava-parent`, `junit-bom-*.module`), über einen
+  Spiegel nur die `.module`-Datei. Einer Datei, die über einen Spiegel im `pluginManagement`
+  erzeugt ist, fehlen deshalb Dateien, die CI und Docker-Build brauchen; das Varianten-Skript
+  findet solche Lücken nicht. Erzeugt wird deshalb immer über `gradlePluginPortal()`, wie im
+  Workflow unten. Die Datei enthält für die Plugin-Komponenten POM- und Module-Datei, damit beide
+  Wege bauen.
+- **Renovate pflegt die Datei mit.** Bei jedem Update des `gradle`-Managers führt Renovate selbst
+  `./gradlew --write-verification-metadata sha256 dependencies` mit den neuen Versionen aus
+  (dieselbe Erlaubnis `gradleWrapper` in `renovate.yml`) und committet die neuen Einträge im
+  Update-Branch. Veraltete Einträge entfernt Renovate nicht.
+- **Plugin-Updates warten länger und mergen nie automatisch.** Der Aufruf konfiguriert den Build,
+  führt also den Code eines angehobenen Gradle-Plugins im Renovate-Container aus, der das Token
+  hält. Für die `[plugins]`-Einträge in `libs.versions.toml` (`depType` `plugin`) gelten deshalb
+  14 Tage Wartefrist und kein Auto-Merge. Dieselben Werte gelten für Bibliotheken, die eine
+  `version.ref` mit einem Plugin teilen (`spring-boot-dependencies` hebt Renovate zusammen mit
+  dem Spring-Boot-Plugin an) oder auf dem Buildscript-Classpath liegen (die Jackson-BOMs im
+  `buildscript`-Block). Die Regel nennt Koordinaten, keine Katalog-Einträge: Mit
+  `com.fasterxml.jackson:jackson-bom` wartet deshalb auch der Projekt-Override `jackson2-bom`
+  14 Tage und mergt nicht automatisch. Alle übrigen Bibliotheken bleiben bei drei Tagen und Auto-Merge; Gradle
+  lädt sie bei `dependencies` nur herunter, ohne ihren Code auszuführen. Frist und Auto-Merge
+  stehen in zwei benachbarten Regeln in `renovate.json5`; `test_renovate_gradle_plugins.py`
+  schlägt fehl, sobald eine solche Bibliothek in der zweiten Regel fehlt.
+- **Nach einem Plugin-Update die Portal-Fassungen ergänzen.** Renovate löst Plugins über das
+  Portal auf und schreibt nur dessen Fassung. Fehlt die Central-Fassung eines neuen Markers,
+  scheitert jede Umgebung mit Central-Spiegel. Vor dem Merge deshalb
+  `gradle_verification_variants.py` laufen lassen oder den Workflow unten auf dem Branch starten.
+- **Was Renovate nicht erfasst.** Der Aufruf löst die Konfigurationen auf, führt aber keine Tasks
+  aus. Dateien, die erst ein Task lädt, fehlen danach: der Formatierer von Spotless
+  (`google-java-format`, seine Version hängt am Spotless-Plugin) und POM-Dateien, die das
+  CycloneDX-Plugin für Lizenzangaben liest. Ein solcher PR scheitert in `backend-build` mit
+  „Dependency verification failed“. Dann auf dem Update-Branch den Workflow
+  „Gradle-Verifikationsdatei erzeugen“ (`gradle-verification-metadata.yml`) starten und die Datei
+  aus seinem Artefakt `verification-metadata` committen.
+- **Bekannte Koordinaten behalten ihre Prüfsumme.** `--write-verification-metadata` trägt eine
+  abweichende Prüfsumme für schon bekannte Koordinaten stillschweigend als `also-trust` ein; ein
+  manipuliertes Artefakt käme so durch einen Update-PR. Der Schritt „Bestehende Prüfsummen der
+  Gradle-Verifikation prüfen“ im Pflicht-Check `changes` vergleicht deshalb die Datei mit dem
+  Basis-Branch (`.github/scripts/check_gradle_verification_metadata.py`): Neue und entfallene
+  Einträge sind erlaubt. Eine geänderte Prüfsumme für dieselbe Datei und jede Änderung außerhalb
+  von `<components>` (etwa `verify-metadata` oder `trusted-artifacts`) brechen auf
+  `renovate/`-Branches ab und erscheinen sonst als Warnung. Doppelt aufgeführte Komponenten oder
+  Dateien sind immer ein Fehler, weil Gradle doppelte Blöcke vereinigt. Eine solche Änderung nur
+  übernehmen, nachdem die Datei gegen die `.sha1`/`.sha256` des Repositorys geprüft ist.
+- **Neu erzeugen.** Der Workflow „Gradle-Verifikationsdatei erzeugen“ (nur manuell, auf einem
+  wählbaren Branch) leert die Komponenten, lädt alles ohne Gradle-Cache direkt von Portal und
+  Central, führt `help spotlessCheck cyclonedxBom bootJar javadoc` aus, ergänzt die Portal-Fassungen und listet
+  im Job-Summary jede geänderte Prüfsumme. Danach sind auch veraltete Einträge weg. Lokal derselbe
+  Ablauf aus `backend/`:
+
+  ```bash
+  ./gradlew --no-configuration-cache --no-build-cache --rerun-tasks \
+    --write-verification-metadata sha256 help spotlessCheck cyclonedxBom bootJar javadoc
+  python3 ../.github/scripts/gradle_verification_variants.py gradle/verification-metadata.xml
+  ```
+
+  Ohne vorheriges Leeren ergänzt der Aufruf nur. Ein Gradle-Init-Skript, das Plugins über einen
+  Spiegel holt, verfälscht das Ergebnis (siehe oben). Prüfsummen aus einem Spiegel oder einem
+  fremden Gradle-Cache nicht ungeprüft übernehmen, sondern gegen Central abgleichen.
+- **Dependency Graph.** Der Workflow `dependency-graph.yml` spielt per Init-Skript das Plugin
+  `org.gradle:github-dependency-graph-gradle-plugin` ein. Genau dessen Version steht in
+  `trusted-artifacts`; hebt ein Update der Action die Version an, scheitert der Resolve-Job im
+  selben PR, und die Version wird dort nachgezogen. Weil der Resolve-Job kein Required Check
+  ist, mergen Updates von `gradle/actions` nie automatisch.
 
 **npm wird gepinnt** (`rangeStrategy: 'pin'` für `dependencies`/`devDependencies`):
 `frontend/` und `e2e/` sind Anwendungen — exakte Versionen in der `package.json` machen jeden
@@ -683,6 +756,11 @@ docker run --rm -v "$(pwd)":/usr/src/app -w /usr/src/app \
   darunter `**/test/**`), oder `managerFilePatterns`/`matchStrings` treffen nicht. Der Nachweis
   steht oben unter „CustomManager belegt prüfen"; ohne Debug-Lauf ist dieser Fall unsichtbar, weil
   ein leerer Manager keine Warnung erzeugt (#1861).
+- **`Dependency verification failed` in einem Gradle-Update-PR:** Der Update-Branch braucht eine
+  Datei, die Renovates Aufruf nicht auflöst (Spotless-Formatierer, CycloneDX-POMs) — Heilung unter
+  [Gradle-Prüfsummen](#gradle-prüfsummen). Bricht stattdessen der Schritt „Bestehende Prüfsummen
+  der Gradle-Verifikation prüfen“ ab, hat sich eine Prüfsumme bekannter Koordinaten geändert: nicht
+  mergen, bevor die Datei gegen das Repository geprüft ist.
 - **Docker-Hub-Rate-Limit im Dry-Run:** kurz warten und wiederholen; der Lauf cached nichts
   zwischen Containern.
 - **Major-Update eines Basisimages bricht einen Build, obwohl der Update-PR grün war:** Der

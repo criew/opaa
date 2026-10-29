@@ -544,8 +544,10 @@ der Quellen).
 | `OPAA_DOCUMENTS_REMOTE_CONTENT_MAX_BYTES` | `opaa.documents.remote-content.max-bytes` |
 | `OPAA_DOCUMENTS_REMOTE_CONTENT_TIMEOUT_SECONDS` | `opaa.documents.remote-content.timeout-seconds` |
 | `OPAA_DOCUMENTS_REMOTE_CONTENT_TRANSFER_TIMEOUT_SECONDS` | `opaa.documents.remote-content.transfer-timeout-seconds` |
+| `OPAA_INDEXING_ATTACHMENTS_MAX_BYTES_PER_ROOT` | `opaa.indexing.attachments.max-bytes-per-root` |
 | `OPAA_INDEXING_ATTACHMENTS_MAX_DEPTH` | `opaa.indexing.attachments.max-depth` |
 | `OPAA_INDEXING_ATTACHMENTS_MAX_PER_PARENT` | `opaa.indexing.attachments.max-per-parent` |
+| `OPAA_INDEXING_ATTACHMENTS_MAX_PER_ROOT` | `opaa.indexing.attachments.max-per-root` |
 | `OPAA_INDEXING_ATTACHMENTS_MAX_SIZE_BYTES` | `opaa.indexing.attachments.max-size-bytes` |
 | `OPAA_INDEXING_BATCH_SIZE` | `opaa.indexing.batch-size` |
 | `OPAA_INDEXING_CONFLUENCE_DETECTION_TIMEOUT` | `opaa.indexing.confluence.detection-timeout` |
@@ -612,6 +614,8 @@ der Quellen).
 | `OPAA_INDEXING_PARSER_LIMITS_MAX_OOXML_TOTAL_BYTES` | `opaa.indexing.parser-limits.max-ooxml-total-bytes` |
 | `OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_CONTENT_BYTES` | `opaa.indexing.parser-limits.max-pdf-content-bytes` |
 | `OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_OPERATORS` | `opaa.indexing.parser-limits.max-pdf-operators` |
+| `OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_PAGES` | `opaa.indexing.parser-limits.max-pdf-pages` |
+| `OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_OBJECTS` | `opaa.indexing.parser-limits.max-pdf-objects` |
 | `OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_PARSE_SECONDS` | `opaa.indexing.parser-limits.max-pdf-parse-seconds` |
 | `OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_STREAM_BYTES` | `opaa.indexing.parser-limits.max-pdf-stream-bytes` |
 | `OPAA_INDEXING_PARSER_LIMITS_MAX_TEXT_CHARACTERS` | `opaa.indexing.parser-limits.max-text-characters` |

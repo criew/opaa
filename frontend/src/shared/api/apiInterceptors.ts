@@ -16,6 +16,13 @@ type SessionExpiredFn = (reason?: SessionExpiredReason) => void
 /** The forced password change (ADR-0033, Entscheidung 8) with the reason the backend names. */
 type PasswordChangeRequiredFn = (reason: PasswordChangeReason | null) => void
 
+/**
+ * The backend's code for a local system administrator outside the networks released for them
+ * (ADR-0033, Entscheidung 9), and the marker under which the session ends for it.
+ */
+export const ADMIN_NETWORK_REQUIRED = 'ADMIN_NETWORK_REQUIRED'
+const ADMIN_NETWORK_MARKER = 'admin_network_required'
+
 /** The backend's marker for "no enabled provider owns this token's issuer" (ADR-0025). */
 export const UNKNOWN_ISSUER = 'unknown_issuer'
 
@@ -33,6 +40,7 @@ export const SESSION_ENDING_MARKERS = [
   'account_not_active',
   'unknown_account',
   'malformed_token',
+  ADMIN_NETWORK_MARKER,
 ] as const
 
 export type SessionEndingMarker = (typeof SESSION_ENDING_MARKERS)[number]
@@ -77,6 +85,16 @@ export function passwordChangeRequiredReason(
   const { code, reason } = body as { code?: unknown; reason?: unknown }
   if (code !== PASSWORD_CHANGE_REQUIRED) return undefined
   return isPasswordChangeReason(reason) ? reason : null
+}
+
+/** Whether a 403 refuses a local system administrator outside the released networks. */
+export function isAdminNetworkRefusal(error: unknown): boolean {
+  const body = asChallengeCarrier(error).response?.data
+  return (
+    typeof body === 'object' &&
+    body !== null &&
+    (body as { code?: unknown }).code === ADMIN_NETWORK_REQUIRED
+  )
 }
 
 function isPasswordChangeReason(value: unknown): value is PasswordChangeReason {
@@ -127,6 +145,12 @@ export function setupAuthInterceptors(
       // ADR-0033, Entscheidung 8: the account has to set a new password before anything but
       // /api/v1/auth/local/* answers. The session is intact - only the destination changes.
       if (error.response?.status === 403) {
+        // ADR-0033, Entscheidung 9: no request of this session will be answered from here -
+        // the session ends with the reason instead of a page full of refusals.
+        if (isAdminNetworkRefusal(error)) {
+          onSessionExpired(ADMIN_NETWORK_MARKER)
+          return Promise.reject(error)
+        }
         const pcrReason = passwordChangeRequiredReason(error)
         if (pcrReason !== undefined) {
           onPasswordChangeRequired?.(pcrReason)

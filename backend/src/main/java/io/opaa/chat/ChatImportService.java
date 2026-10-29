@@ -1,7 +1,6 @@
 package io.opaa.chat;
 
 import io.opaa.api.types.ChatRole;
-import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
@@ -181,8 +180,9 @@ public class ChatImportService {
         spaceRepository
             .findById(spaceId)
             .orElseThrow(() -> new NotFoundException("Space nicht gefunden"));
+    // the same answer as for an unknown space: a refusal must not confirm that the space exists
     if (!spaceAccessPolicy.isMember(spaceId, authorId)) {
-      throw new AccessDeniedException("Sie sind kein Mitglied dieses Space");
+      throw new NotFoundException("Space nicht gefunden");
     }
     return space;
   }

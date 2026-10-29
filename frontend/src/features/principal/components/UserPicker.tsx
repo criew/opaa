@@ -22,9 +22,12 @@ interface UserPickerProps {
   inputRef?: Ref<HTMLInputElement>
 }
 
+/** Name and address are the person's own, unverified claims; the sign-in they come from is not. */
 function optionLabel(user: UserSummary): string {
-  if (user.displayName) return `${user.displayName} (${user.email ?? user.id})`
-  return user.email ?? user.id
+  const label = user.displayName
+    ? `${user.displayName} (${user.email ?? user.id})`
+    : (user.email ?? user.id)
+  return user.providerName ? `${label} · ${user.providerName}` : label
 }
 
 /**
