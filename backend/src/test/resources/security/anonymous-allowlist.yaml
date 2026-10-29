@@ -1,0 +1,103 @@
+# Operations the backend answers without a session under the "oidc" profile, each with its reason.
+# AnonymousSurfaceIntegrationTest calls every operation of the specification, every handler mapping
+# and every actuator endpoint without a token: an operation not listed under "anonymous" must answer
+# 401, 403 or 404. An operation listed under "missingHeaders" may lack nosniff and the frame
+# protection. An entry the application outgrew (operation gone, headers present) fails the test.
+# The key is "<METHOD> <path template>" as in the specification; actuator paths are concrete.
+anonymous:
+  - operation: GET /api/health
+    reason: Lebenszeichen für Load Balancer und Frontend; liefert nur den Status.
+  - operation: GET /api/v1/auth/config
+    reason: >-
+      Die Anmeldeseite braucht vor jeder Sitzung die aktiven Anmeldeverfahren und den Stand der
+      Installation.
+  - operation: POST /api/v1/auth/local/login
+    reason: Anmeldung mit lokalem Konto; Zugangsdaten stehen im Body.
+  - operation: POST /api/v1/auth/local/set-password
+    reason: Einlösen eines Einladungs- oder Rücksetzlinks; das Einmal-Token steht im Body.
+  - operation: POST /api/v1/auth/local/verify-email
+    reason: Bestätigung der E-Mail-Adresse über das Einmal-Token aus der Mail.
+  - operation: POST /api/v1/auth/local/forgot-password
+    reason: >-
+      Selbstbedienung „Passwort vergessen“, nur anonym, solange in den Einstellungen eingeschaltet;
+      ausgeschaltet antwortet sie wie eine unbekannte Route.
+  - operation: POST /api/v1/auth/local/register
+    reason: >-
+      Selbstregistrierung, nur anonym, solange in den Einstellungen eingeschaltet; ausgeschaltet
+      antwortet sie wie eine unbekannte Route.
+  - operation: POST /api/v1/auth/local/handover/preview
+    reason: Übergabe an einen Anbieter; das Anbieter-Token steht im Body, nicht im Header.
+  - operation: POST /api/v1/auth/local/handover/redeem
+    reason: Übergabe an einen Anbieter; das Anbieter-Token steht im Body, nicht im Header.
+  - operation: GET /api/v1/branding
+    reason: >-
+      Die Anmeldeseite zeigt Name, Claim und Akzentfarbe des Betreibers vor jeder Sitzung; keine
+      Nutzer- oder Konfigurationsdaten.
+  - operation: GET /api/v1/branding/logo
+    reason: Logo des Betreibers für die Anmeldeseite.
+  - operation: GET /api/v1/branding/login-logo
+    reason: Logo der Anmeldeseite.
+  - operation: GET /api/v1/branding/login-background
+    reason: Hintergrundbild der Anmeldeseite.
+  - operation: POST /api/v1/me/self-disclosure/download
+    reason: >-
+      Der Browser lädt die Selbstauskunft per Formular ohne Bearer-Token; einziger Nachweis ist das
+      Einmal-Ticket im Body.
+  - operation: GET /error
+    reason: >-
+      Fehlerseite des Servlet-Containers; direkt aufgerufen liefert sie eine leere Fehlerhülle ohne
+      Daten.
+  - operation: POST /error
+    reason: >-
+      Fehlerseite des Servlet-Containers; direkt aufgerufen liefert sie eine leere Fehlerhülle ohne
+      Daten.
+  - operation: GET /actuator/health
+    reason: Gesamtstatus ohne Details (show-details when-authorized).
+  - operation: GET /actuator/health/readiness
+    reason: Readiness-Probe für Load Balancer und Health Check des Containers; nur der Status.
+  - operation: GET /actuator/health/liveness
+    reason: Liveness-Probe für den Health Check des Containers; nur der Status.
+  - operation: GET /actuator/info
+    reason: >-
+      Version und Build des Backends für Betrieb und Image-Rauchtest; enthält keine Konfiguration.
+  - operation: GET /actuator
+    reason: >-
+      Linkübersicht der freigegebenen Betriebsendpunkte. Wird mit #3344 überprüft, bis dahin
+      hingenommen.
+  - operation: GET /actuator/metrics
+    reason: Bis #3344 behoben ist; danach nur mit Anmeldung oder auf eigenem Management-Port.
+  - operation: GET /actuator/metrics/jvm.memory.used
+    reason: Bis #3344 behoben ist; danach nur mit Anmeldung oder auf eigenem Management-Port.
+  - operation: GET /actuator/metrics/http.server.requests
+    reason: Bis #3344 behoben ist; danach nur mit Anmeldung oder auf eigenem Management-Port.
+  - operation: GET /actuator/prometheus
+    reason: Bis #3344 behoben ist; danach nur mit Anmeldung oder auf eigenem Management-Port.
+missingHeaders:
+  - operation: GET /api/v1/installation
+    reason: >-
+      Antwortet nach abgeschlossener Installation aus einem Servlet-Filter vor der Security-Kette,
+      ohne nosniff und X-Frame-Options; hingenommen bis zur Behebung im Folge-Issue aus #3382.
+  - operation: PUT /api/v1/installation/steps/{step}
+    reason: >-
+      Antwortet nach abgeschlossener Installation aus einem Servlet-Filter vor der Security-Kette,
+      ohne nosniff und X-Frame-Options; hingenommen bis zur Behebung im Folge-Issue aus #3382.
+  - operation: POST /api/v1/installation/steps/{step}/check
+    reason: >-
+      Antwortet nach abgeschlossener Installation aus einem Servlet-Filter vor der Security-Kette,
+      ohne nosniff und X-Frame-Options; hingenommen bis zur Behebung im Folge-Issue aus #3382.
+  - operation: POST /api/v1/installation/steps/{step}/skip
+    reason: >-
+      Antwortet nach abgeschlossener Installation aus einem Servlet-Filter vor der Security-Kette,
+      ohne nosniff und X-Frame-Options; hingenommen bis zur Behebung im Folge-Issue aus #3382.
+  - operation: POST /api/v1/installation/steps/{step}/discover
+    reason: >-
+      Antwortet nach abgeschlossener Installation aus einem Servlet-Filter vor der Security-Kette,
+      ohne nosniff und X-Frame-Options; hingenommen bis zur Behebung im Folge-Issue aus #3382.
+  - operation: POST /api/v1/installation/answer-file
+    reason: >-
+      Antwortet nach abgeschlossener Installation aus einem Servlet-Filter vor der Security-Kette,
+      ohne nosniff und X-Frame-Options; hingenommen bis zur Behebung im Folge-Issue aus #3382.
+  - operation: POST /api/v1/installation/complete
+    reason: >-
+      Antwortet nach abgeschlossener Installation aus einem Servlet-Filter vor der Security-Kette,
+      ohne nosniff und X-Frame-Options; hingenommen bis zur Behebung im Folge-Issue aus #3382.
