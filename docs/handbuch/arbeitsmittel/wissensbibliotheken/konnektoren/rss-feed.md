@@ -192,7 +192,7 @@ liegt bei bis zu einer Anlagengröße je gleichzeitig verarbeiteter Anlage.
 | „Verknüpfung mit nicht unterstütztem Schema abgelehnt" / „… mit ungültiger URL abgelehnt" | Link des Eintrags ist nicht http/https oder kaputt | beim Feed-Betreiber melden |
 | „Vom Quellserver abgewiesen (HTTP 403 / 429)" | Bot-Schutz oder Ratenbegrenzung der Detailseite; zurückgestellt | Wartezeit erhöhen, nächster Lauf versucht es erneut |
 | „Weiterleitung auf einen fremden Host abgelehnt" / „Weiterleitung von https auf http abgelehnt" / „Weiterleitung der Detailseite ungültig" | Redirect verlässt den Ursprung oder ist unbrauchbar | nichts |
-| „Zieladresse liegt in einem gesperrten Adressbereich" | Zieladressprüfung | Hostnamen freigeben |
+| „Zieladresse … ist nicht zugelassen oder nicht erreichbar" | Zieladressprüfung: gesperrter Adressbereich oder nicht auflösbarer Name, die Ursache nennt die Zeile „Rejecting fetch to …“ im Backend-Log | Namen prüfen oder Hostnamen freigeben |
 | „Detailseite nicht erreichbar" | Verbindungsfehler, Timeout, Seite zu groß; zurückgestellt | nichts |
 | „Inhaltstyp der Detailseite wird nicht unterstützt" | der Link zeigt direkt auf ein PDF o. ä. | nichts |
 | „Kein Inhalt extrahierbar" | Hauptinhalt nach der Reduktion leer | Inhaltsselektor der Bibliothek prüfen |

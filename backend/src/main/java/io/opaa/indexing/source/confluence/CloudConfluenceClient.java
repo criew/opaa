@@ -73,10 +73,24 @@ final class CloudConfluenceClient extends AbstractConfluenceClient {
 
   @Override
   public List<ConfluenceSpace> listSpaces() throws ConfluenceAccessException, InterruptedException {
+    return listSpaces("");
+  }
+
+  @Override
+  public List<ConfluenceSpace> listCurrentSpaces()
+      throws ConfluenceAccessException, InterruptedException {
+    return listSpaces("&status=current");
+  }
+
+  private List<ConfluenceSpace> listSpaces(String filter)
+      throws ConfluenceAccessException, InterruptedException {
     String resource = "die Space-Liste";
     List<ConfluenceSpace> spaces = new ArrayList<>();
     for (JsonNode node :
-        listAll(base() + API_V2 + "/spaces?limit=" + pageSize(), resource, v2Reader(resource))) {
+        listAll(
+            base() + API_V2 + "/spaces?limit=" + pageSize() + filter,
+            resource,
+            v2Reader(resource))) {
       spaces.add(remember(toSpace(node)));
     }
     return spaces;
@@ -302,7 +316,8 @@ final class CloudConfluenceClient extends AbstractConfluenceClient {
   }
 
   private static ConfluenceSpace toSpace(JsonNode node) {
-    return new ConfluenceSpace(text(node, "id"), text(node, "key"), text(node, "name"));
+    return ConfluenceSpace.of(
+        text(node, "id"), text(node, "key"), text(node, "name"), text(node, "type"));
   }
 
   /**

@@ -145,7 +145,7 @@ Herkunft und Zwang jeder einzelnen Variable:
   zwingend: Die Zielprüfung ausgehender Abrufe (`opaa.indexing.target-validation`, #267,
   standardmäßig aktiv) lehnt Compose-interne Adressen in privaten Bereichen ab — ohne diesen Eintrag
   würde jede Indizierung der beiden Demo-Webserver und des Demo-Objektspeichers `objectstore` (#1383) mit
-  „Zieladresse liegt in einem gesperrten Adressbereich" abgelehnt (siehe [`../docs/handbuch/betrieb/netz-und-sicherheit.md`, „Zielprüfung: Abrufe des Servers"](../docs/handbuch/betrieb/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)).
+  „Die Zieladresse … ist nicht zugelassen oder nicht erreichbar …" abgelehnt (siehe [`../docs/handbuch/betrieb/netz-und-sicherheit.md`, „Zielprüfung: Abrufe des Servers"](../docs/handbuch/betrieb/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)).
   Der Eintrag steht bewusst **nicht** in `docker-compose.yml`: Der Backend-Service dort läuft immer,
   mit oder ohne `demo`-Profil, und ein dort fest eingetragener Wert würde jede eigene Belegung dieser
   Variablen aus einer Betreiber-`.env.docker` überschreiben (Vorrang von `environment:` vor

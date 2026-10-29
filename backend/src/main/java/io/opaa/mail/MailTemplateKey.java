@@ -335,6 +335,28 @@ public enum MailTemplateKey {
       "displayName",
       "tokenName",
       "expiresAtHuman"),
+  EXTERNAL_ACCESS_TOKEN_ISSUED(
+      "Zugangstoken erzeugt",
+      "Für Ihren Zugang zu {{productName}} wurde ein Zugangstoken erzeugt",
+      """
+      Guten Tag {{displayName}},
+
+      für Ihren Zugang zu {{productName}} wurde {{occurredAtHuman}} das Zugangstoken „{{tokenName}}“ für externe KI-Werkzeuge erzeugt.
+
+      Falls Sie das nicht waren, widerrufen Sie es sofort in Ihren Einstellungen unter „Zugangstokens“ und wenden Sie sich an Ihre Systemverwaltung.
+      """,
+      """
+      <h1 style="margin:0 0 14px;font-size:22px;font-weight:700;line-height:1.3;">Zugangstoken erzeugt</h1>
+      <p style="margin:0 0 14px;">Guten Tag {{displayName}},</p>
+      <p style="margin:0 0 14px;">für Ihren Zugang zu <strong>{{productName}}</strong> wurde {{occurredAtHuman}} das Zugangstoken <strong>{{tokenName}}</strong> für externe KI-Werkzeuge erzeugt.</p>
+      <p style="margin:0;font-size:13px;">Falls Sie das nicht waren, widerrufen Sie es sofort in Ihren Einstellungen unter „Zugangstokens“ und wenden Sie sich an Ihre Systemverwaltung.</p>
+      """,
+      null,
+      "Für Ihren Zugang wurde das Zugangstoken {{tokenName}} erzeugt.",
+      "productName",
+      "displayName",
+      "tokenName",
+      "occurredAtHuman"),
 
   SELF_DISCLOSURE_STARTED(
       "Selbstauskunft gestartet",

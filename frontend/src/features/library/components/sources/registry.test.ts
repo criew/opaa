@@ -187,6 +187,7 @@ describe('the source registry (ADR-0038)', () => {
     expect(
       configurationOf('CONFLUENCE').toPayload({
         ...EMPTY_CONFLUENCE_VALUES,
+        allSpaces: false,
         sourceUrl: ' https://behoerde.atlassian.net ',
         edition: 'CLOUD',
         email: 'dienst@behoerde.example',
@@ -225,6 +226,7 @@ describe('the source registry (ADR-0038)', () => {
   describe('S3 (#1377, ADR-0027)', () => {
     const s3 = {
       ...EMPTY_S3_VALUES,
+      allBuckets: false,
       sourceUrl: ' https://minio.intern.example:9000 ',
       accessKey: 'AKIAEXAMPLE',
       secretKey: 'geheim',

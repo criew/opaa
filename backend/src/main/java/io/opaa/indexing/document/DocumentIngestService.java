@@ -516,7 +516,8 @@ public class DocumentIngestService {
       return switch (ingest.content()) {
         case DocumentIngest.File file -> {
           DocumentFormatRegistry.Routed routed =
-              pipelineRegistry.routedPipelineFor(file.path(), fileName);
+              pipelineRegistry.routedPipelineFor(
+                  file.path(), fileName, ingest.library().loggedNames());
           DocumentFormat pipeline =
               ingest.pipelineId() == null ? routed.pipeline() : pipelineById(ingest.pipelineId());
           String canonicalType =

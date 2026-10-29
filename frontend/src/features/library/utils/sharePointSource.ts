@@ -42,12 +42,20 @@ export interface SharePointSite {
  * folders and the library's own full-sync rhythm. No secret - the profile signs in.
  */
 export interface SharePointSourceValues {
+  /**
+   * „Alle Dokumentbibliotheken“ of the chosen `sites`, resolved anew by each run; the
+   * preselection of a new library. Either the sites or `libraries` are sent, never both.
+   */
+  allLibraries: boolean
+  sites: SharePointSite[]
   libraries: SharePointLibraryChoice[]
   /** The library's own full-sync rhythm, resent as it is: the connector replaces its settings whole. */
   fullSyncIntervalDays: number | null
 }
 
 export const EMPTY_SHAREPOINT_VALUES: SharePointSourceValues = {
+  allLibraries: true,
+  sites: [],
   libraries: [],
   fullSyncIntervalDays: null,
 }
@@ -88,6 +96,18 @@ export function sharePointLibrariesOf(
   })
 }
 
+/** The sites stored whole: entries with a site and no drive. */
+export function sharePointWholeSitesOf(settings: SharePointSettings | null): SharePointSite[] {
+  return (settings?.libraries ?? []).flatMap((entry): SharePointSite[] =>
+    !entry.driveId && entry.site?.id ? [{ id: entry.site.id, name: entry.site.name ?? null }] : [],
+  )
+}
+
+/** The name a site is shown under; a placeholder rather than its long Graph id. */
+export function sharePointSiteLabel(site: SharePointSite) {
+  return site.name?.trim() || 'Site ohne Namen'
+}
+
 /** The name a document library is shown under; its id when none is known. */
 export function sharePointLibraryLabel(library: Pick<SharePointLibraryChoice, 'driveId' | 'name'>) {
   return library.name?.trim() || library.driveId
@@ -123,29 +143,32 @@ export function sharePointIdsValid(library: Pick<SharePointLibraryChoice, 'drive
 
 /** The settings part of a request. */
 export function sharePointSettingsOf(values: SharePointSourceValues): Record<string, unknown> {
+  const whole = values.allLibraries ? values.sites : []
+  const chosen = values.allLibraries ? [] : values.libraries
   return {
-    libraries: values.libraries.map((library) => ({
-      driveId: library.driveId,
-      ...(library.name ? { name: library.name } : {}),
-      ...(library.folders.length > 0
-        ? {
-            folders: library.folders.map((folder) =>
-              folder.name ? { id: folder.id, name: folder.name } : folder.id,
-            ),
-          }
-        : {}),
-      ...(library.site
-        ? {
-            site: {
-              id: library.site.id,
-              ...(library.site.name ? { name: graphShownName(library.site.name) } : {}),
-            },
-          }
-        : {}),
-    })),
+    libraries: [...chosen.map(libraryEntry), ...whole.map((site) => ({ site: siteEntry(site) }))],
     ...(values.fullSyncIntervalDays != null
       ? { fullSyncIntervalDays: values.fullSyncIntervalDays }
       : {}),
+  }
+}
+
+function siteEntry(site: SharePointSite) {
+  return { id: site.id, ...(site.name ? { name: graphShownName(site.name) } : {}) }
+}
+
+function libraryEntry(library: SharePointLibraryChoice) {
+  return {
+    driveId: library.driveId,
+    ...(library.name ? { name: library.name } : {}),
+    ...(library.folders.length > 0
+      ? {
+          folders: library.folders.map((folder) =>
+            folder.name ? { id: folder.id, name: folder.name } : folder.id,
+          ),
+        }
+      : {}),
+    ...(library.site ? { site: siteEntry(library.site) } : {}),
   }
 }
 

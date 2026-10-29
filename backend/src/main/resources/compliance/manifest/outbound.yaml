@@ -276,7 +276,7 @@ dataFlows:
       nur Verbindungsaufbau und Anmeldung, eine Testmail nur an die dort angegebene Adresse
     trigger: >-
       Einladung und Kennwortvorgänge lokaler Konten, Anmeldung des Bootstrap-Kontos der Systemverwaltung, ablaufende
-      Freigaben für externe KI-Werkzeuge, Testmail; im Installationsassistenten die Prüfung des
+      Freigaben für externe KI-Werkzeuge, erzeugte und ablaufende Zugangstokens, Testmail; im Installationsassistenten die Prüfung des
       Schritts E-Mail-Versand, nur mit dem Installations-Token und vor dem Abschluss
     switchOff: >-
       Abschaltbar, Voreinstellung aus; der Abschluss der Installation schaltet den Versand nur ein,

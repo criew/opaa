@@ -313,8 +313,6 @@ final class SmbShareClient implements AutoCloseable {
     signedInWith = credentials;
     try {
       connection = client.connect(address.socketHost(), address.port());
-    } catch (TargetAddressValidator.UnknownTargetHostException e) {
-      throw new SmbAccessException.Unreachable(e.getMessage());
     } catch (TargetAddressValidator.TargetAddressBlockedException e) {
       throw new SmbAccessException.Unreachable(e.getMessage() + " " + ALLOWLIST_HINT);
     } catch (IOException | RuntimeException e) {

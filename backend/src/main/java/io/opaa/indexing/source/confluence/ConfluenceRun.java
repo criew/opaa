@@ -6,6 +6,7 @@ import io.opaa.indexing.spi.IndexingRunProgress;
 import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 /** Everything one Confluence run shares across its spaces, pages and attachments. */
@@ -16,7 +17,10 @@ final class ConfluenceRun {
   final IndexingRunProgress progress;
   final IndexingRunEventRecorder events;
 
-  /** The keys of the library's selected spaces - the selection a visited page is held against. */
+  /** The spaces this run covers: the stored selection, or what "Alle Spaces" resolved to. */
+  final List<ConfluenceSpaceSelection> selection;
+
+  /** The keys of {@link #selection} - the selection a visited page is held against. */
   final Set<String> selectedKeys = new HashSet<>();
 
   /** False once any selected space or attachment list could not be listed completely. */
@@ -38,14 +42,23 @@ final class ConfluenceRun {
 
   int total;
 
+  /** A run over the library's stored selection. */
   ConfluenceRun(IndexingRun frame, ConfluenceClient client) {
+    this(
+        frame,
+        client,
+        ConfluenceSourceSettings.stored(frame.settings().connectorSettings()).spaceSelection());
+  }
+
+  ConfluenceRun(
+      IndexingRun frame, ConfluenceClient client, List<ConfluenceSpaceSelection> selection) {
     this.frame = frame;
     this.client = client;
     this.library = frame.library();
     this.progress = frame.progress();
     this.events = frame.events();
-    for (ConfluenceSpaceSelection space :
-        ConfluenceSourceSettings.stored(frame.settings().connectorSettings()).spaceSelection()) {
+    this.selection = List.copyOf(selection);
+    for (ConfluenceSpaceSelection space : this.selection) {
       selectedKeys.add(space.getSpaceKey());
     }
   }

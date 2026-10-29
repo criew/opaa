@@ -69,6 +69,14 @@ public class S3SourceConnector
 
   private static final String SETTINGS_STATE = "s3Settings";
 
+  private static final String ALL_OR_SELECTION =
+      "sourceSettings.allBuckets: entweder alle Buckets oder eine Auswahl, nicht beides";
+
+  /** Why "Alle Buckets" is refused, at saving and in a run alike. */
+  static final String ALL_BUCKETS_NOT_LISTABLE =
+      "„Alle Buckets“ setzt voraus, dass der Zugang die Buckets auflisten darf"
+          + " (s3:ListAllMyBuckets); bitte Buckets auswählen.";
+
   private static final String REGION = "region";
   private static final String PATH_STYLE = "pathStyle";
 
@@ -224,11 +232,39 @@ public class S3SourceConnector
   }
 
   private static S3SourceSettings settingsOf(ConnectorData data) {
+    S3SourceSettings settings;
     try {
-      return S3SourceSettingsJson.fromData(data);
+      settings = S3SourceSettingsJson.fromData(data);
     } catch (S3Scope.InvalidS3ScopeException
         | S3SourceSettings.InvalidS3SourceSettingsException e) {
       throw new ValidationException("sourceSettings: " + e.getMessage());
+    }
+    if (settings.allBuckets() && !settings.scopes().isEmpty()) {
+      throw new ValidationException(ALL_OR_SELECTION);
+    }
+    return settings;
+  }
+
+  /**
+   * "Alle Buckets" needs a key that may list the buckets (ADR-0027, Entscheidung 2), asked once at
+   * the store; without credentials to ask with, the run is where a missing right shows.
+   */
+  private void requireBucketListing(
+      String normalizedUrl, String sourceCredentials, S3SourceSettings settings) {
+    if (!settings.allBuckets() || sourceCredentials == null) {
+      return;
+    }
+    S3BucketListResult listing;
+    try {
+      listing =
+          connectionService.listBuckets(
+              normalizedUrl, sourceCredentials, settings.effectiveRegion(), settings.pathStyle());
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new ValidationException("Die Bucket-Auflistung wurde unterbrochen.");
+    }
+    if (!listing.permitted()) {
+      throw new ValidationException(ALL_BUCKETS_NOT_LISTABLE);
     }
   }
 
@@ -255,6 +291,7 @@ public class S3SourceConnector
     }
     S3SourceSettings settings = settingsOf(requested.connectorSettings());
     requireReachableTargets(normalizedUrl, requested.sourceCredentials(), settings);
+    requireBucketListing(normalizedUrl, requested.sourceCredentials(), settings);
     return requested
         .withSourceUrl(normalizedUrl)
         .withConnectorSettings(S3SourceSettingsJson.toData(settings));
@@ -274,6 +311,7 @@ public class S3SourceConnector
     if (requested.connectorSettings() != null) {
       S3SourceSettings settings = settingsOf(requested.connectorSettings());
       requireReachableTargets(stored.sourceUrl(), stored.sourceCredentials(), settings);
+      requireBucketListing(stored.sourceUrl(), stored.sourceCredentials(), settings);
       return requested.withConnectorSettings(S3SourceSettingsJson.toData(settings));
     }
     return requested;
@@ -303,9 +341,10 @@ public class S3SourceConnector
   }
 
   /**
-   * A manager sees the whole record, every reader only the scopes - region, addressing style and
-   * patterns are administration detail; the record carries no credential. A stored document the
-   * record no longer accepts is left out rather than failing the whole read.
+   * A manager sees the whole record, every reader only the scopes and whether the library reads
+   * every bucket - region, addressing style and patterns are administration detail; the record
+   * carries no credential. A stored document the record no longer accepts is left out rather than
+   * failing the whole read.
    */
   @Override
   public ConnectorData settingsView(
@@ -316,7 +355,15 @@ public class S3SourceConnector
         return null;
       }
       ConnectorData whole = S3SourceSettingsJson.toData(settings);
-      return manager ? whole : ConnectorData.of(Map.of("scopes", whole.get("scopes")));
+      if (manager) {
+        return whole;
+      }
+      Map<String, Object> reader = new HashMap<>();
+      reader.put("scopes", whole.get("scopes"));
+      if (settings.allBuckets()) {
+        reader.put("allBuckets", true);
+      }
+      return ConnectorData.of(reader);
     } catch (S3Scope.InvalidS3ScopeException
         | S3SourceSettings.InvalidS3SourceSettingsException e) {
       log.warn(
@@ -358,13 +405,15 @@ public class S3SourceConnector
     }
     ConnectorData probed =
         settings.connectorSettings() != null ? settings.connectorSettings() : stored;
+    S3SourceSettings probedSettings = probed == null ? null : settingsOf(probed);
+    if (probedSettings != null && probedSettings.allBuckets()) {
+      return testBucketListing(settings, probedSettings);
+    }
     S3ConnectionService.Probe probe;
     try {
       probe =
           connectionService.probe(
-              settings.sourceUrl(),
-              blankToNull(settings.sourceCredentials()),
-              probed == null ? null : settingsOf(probed));
+              settings.sourceUrl(), blankToNull(settings.sourceCredentials()), probedSettings);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       return unreachable("Der Verbindungstest wurde unterbrochen.");
@@ -376,6 +425,70 @@ public class S3SourceConnector
         probe.credentialsVerified(),
         ConnectorData.of(
             Map.of("scopes", probe.scopes().stream().map(S3ScopeCheck::toJson).toList())));
+  }
+
+  /** The test of "Alle Buckets": the key may list the buckets, and how many it sees. */
+  private SourceConnectionTestResult testBucketListing(
+      SourceSettings settings, S3SourceSettings s3Settings) {
+    String credentials = blankToNull(settings.sourceCredentials());
+    if (credentials == null) {
+      return new SourceConnectionTestResult(
+          false,
+          "Für den Verbindungstest sind Zugangsdaten erforderlich: Access Key und Secret Key,"
+              + " getrennt durch einen Doppelpunkt.",
+          null,
+          false,
+          null);
+    }
+    S3AllBuckets.Resolution resolution;
+    try {
+      resolution =
+          connectionService.resolveAllBuckets(
+              settings.sourceUrl(),
+              credentials,
+              s3Settings.effectiveRegion(),
+              s3Settings.pathStyle());
+    } catch (ValidationException e) {
+      return unreachable(e.getMessage());
+    } catch (S3AccessException e) {
+      return new SourceConnectionTestResult(
+          false,
+          e.getMessage(),
+          null,
+          e instanceof S3AccessException.Authentication ? Boolean.FALSE : null,
+          null);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return unreachable("Der Verbindungstest wurde unterbrochen.");
+    }
+    if (resolution == null) {
+      return new SourceConnectionTestResult(false, ALL_BUCKETS_NOT_LISTABLE, null, true, null);
+    }
+    if (resolution.seen() == 0) {
+      return new SourceConnectionTestResult(
+          false, S3IndexingExecutor.NO_VISIBLE_BUCKET, null, true, null);
+    }
+    if (resolution.readable().isEmpty()) {
+      return new SourceConnectionTestResult(
+          false, S3IndexingExecutor.noReadableBucket(resolution), null, true, null);
+    }
+    return new SourceConnectionTestResult(true, allBucketsMessage(resolution), null, true, null);
+  }
+
+  /** How many buckets the key sees, how many the library reads, and why it leaves any out. */
+  static String allBucketsMessage(S3AllBuckets.Resolution resolution) {
+    int seen = resolution.seen();
+    String prefix =
+        "Anmeldung erfolgreich; der Zugang sieht " + (seen == 1 ? "1 Bucket" : seen + " Buckets");
+    if (resolution.outside().isEmpty()) {
+      return prefix + ", die Bibliothek liest sie alle.";
+    }
+    return prefix
+        + ", die Bibliothek liest "
+        + resolution.readable().size()
+        + " davon. Nicht im Umfang: "
+        + resolution.outsideNamed()
+        + ".";
   }
 
   @Override

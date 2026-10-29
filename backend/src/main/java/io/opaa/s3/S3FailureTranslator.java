@@ -144,11 +144,12 @@ public final class S3FailureTranslator {
     S3RequestGuard.TargetSignal target = findCause(e, S3RequestGuard.TargetSignal.class);
     if (target != null) {
       return target.unknownHost()
-          ? new S3AccessException.Unreachable(target.getMessage())
+          ? S3AccessException.Unreachable.unresolvedTarget(target.getMessage(), allowlistHint)
           : new S3AccessException.TargetBlocked(target.getMessage(), allowlistHint);
     }
     if (e instanceof NoSuchBucketException && op != S3Operation.LIST_BUCKETS) {
-      return new S3AccessException.BucketNotFound(bucket);
+      // a HEAD answer has no body: the SDK names any bare 404 there NoSuchBucket itself
+      return new S3AccessException.BucketNotFound(bucket, op != S3Operation.HEAD_BUCKET);
     }
     if (e instanceof NoSuchKeyException) {
       return new S3AccessException.ObjectNotFound(bucket, key);
@@ -230,7 +231,7 @@ public final class S3FailureTranslator {
       return new S3AccessException.Archived(bucket, key);
     }
     if ("NoSuchBucket".equals(code)) {
-      return new S3AccessException.BucketNotFound(bucket);
+      return new S3AccessException.BucketNotFound(bucket, op != S3Operation.HEAD_BUCKET);
     }
     if ("NoSuchKey".equals(code) || "NoSuchVersion".equals(code)) {
       return new S3AccessException.ObjectNotFound(bucket, key);

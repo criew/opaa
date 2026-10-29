@@ -142,6 +142,11 @@ function changeRow(user: User, title: string) {
   return user.click(screen.getByRole('button', { name: new RegExp(`^Ändern\\s*${title}$`) }))
 }
 
+/** Leaves the preselected scope „Alle …“ for a selection of its own. */
+async function onlySelected(user: User, plural: string) {
+  await user.click(await screen.findByRole('radio', { name: `Nur ausgewählte ${plural}` }))
+}
+
 /** Opens the selection dialog by its link and enters `texts` by hand, then „Übernehmen“. */
 async function chooseByHand(user: User, link: string, label: string, texts: string[]) {
   await user.click(await screen.findByRole('button', { name: link }))
@@ -562,18 +567,14 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       const user = await openS3Step()
 
       await next(user)
-      const summary = screen.getByRole('alert', { name: 'Fehler: 4 Angaben prüfen' })
+      // „Alle Buckets“ is preselected: the scope asks for nothing yet
+      const summary = screen.getByRole('alert', { name: 'Fehler: 3 Angaben prüfen' })
       expect(
         within(summary)
           .getAllByRole('button')
           .map((entry) => entry.textContent),
-      ).toEqual([
-        'Verbindung: Endpoint',
-        'Verbindung: Access Key',
-        'Verbindung: Secret Key',
-        'Umfang: Buckets und Präfixe',
-      ])
-      expect(within(rowOf('Umfang')).getByText('Buckets und Präfixe fehlen')).toBeInTheDocument()
+      ).toEqual(['Verbindung: Endpoint', 'Verbindung: Access Key', 'Verbindung: Secret Key'])
+      expect(within(rowOf('Umfang')).getByText('Alle Buckets')).toBeInTheDocument()
       expect(screen.getByText('Endpoint fehlt')).toBeInTheDocument()
       expect(screen.getByText('Access Key fehlt')).toBeInTheDocument()
       expect(screen.getByText('Secret Key fehlt')).toBeInTheDocument()
@@ -597,6 +598,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await user.type(screen.getByLabelText('Access Key'), 'AKIAEXAMPLE')
       await user.type(screen.getByLabelText('Secret Key'), 'geheim')
       await changeRow(user, 'Umfang')
+      await onlySelected(user, 'Buckets und Präfixe')
       await chooseByHand(user, 'Buckets und Präfixe auswählen …', 'Bucket/Präfix', [
         'protokolle/2025/protokolle',
         'satzungen',
@@ -647,6 +649,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await user.type(screen.getByLabelText('Access Key'), 'AKIAEXAMPLE')
       await user.type(screen.getByLabelText('Secret Key'), 'geheim')
       await changeRow(user, 'Umfang')
+      await onlySelected(user, 'Buckets und Präfixe')
       // up to seven buckets stand as checkboxes in the row
       await user.click(await screen.findByRole('checkbox', { name: 'verwaltung-dokumente' }))
       await changeRow(user, 'Zeitplan')
@@ -677,6 +680,54 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(mockTriggerIndexing).not.toHaveBeenCalled()
     }, 25000)
 
+    it('creates „Alle Buckets“ where the key may list them', async () => {
+      mockTestLibrarySource.mockResolvedValue({ reachable: true, message: 'Erreichbar.' })
+      mockListS3Buckets.mockResolvedValue({ listingPermitted: true, buckets: ['akten'] })
+      const user = await openS3Step()
+      await user.type(screen.getByLabelText('Endpoint'), 'https://minio.intern.example:9000')
+      await user.type(screen.getByLabelText('Access Key'), 'AKIAEXAMPLE')
+      await user.type(screen.getByLabelText('Secret Key'), 'geheim')
+      await changeRow(user, 'Umfang')
+      const all = await screen.findByRole('radio', { name: 'Alle Buckets' })
+      expect(all).toBeChecked()
+      expect(all).toHaveAccessibleDescription(
+        'Was später in der Quelle dazukommt, wird automatisch mit indiziert.',
+      )
+      await next(user)
+      await nameItAndContinue(user, 'Objektspeicher')
+      await create(user)
+
+      await waitFor(() =>
+        expect(mockCreateNewLibrary).toHaveBeenCalledWith(
+          expect.objectContaining({
+            sourceSettings: expect.objectContaining({ allBuckets: true, scopes: [] }),
+          }),
+        ),
+      )
+    }, 30000)
+
+    it('falls back to a selection where the key may not list the buckets', async () => {
+      mockTestLibrarySource.mockResolvedValue({ reachable: true, message: 'Erreichbar.' })
+      mockListS3Buckets.mockResolvedValue({ listingPermitted: false, buckets: [] })
+      const user = await openS3Step()
+      await user.type(screen.getByLabelText('Endpoint'), 'https://minio.intern.example:9000')
+      await user.type(screen.getByLabelText('Access Key'), 'AKIAEXAMPLE')
+      await user.type(screen.getByLabelText('Secret Key'), 'geheim')
+      await changeRow(user, 'Umfang')
+
+      await waitFor(() =>
+        expect(screen.getByRole('radio', { name: 'Alle Buckets' })).toBeDisabled(),
+      )
+      expect(screen.getByRole('radio', { name: 'Alle Buckets' })).toHaveAccessibleDescription(
+        /s3:ListAllMyBuckets/,
+      )
+      expect(
+        screen.getByRole('radio', { name: 'Nur ausgewählte Buckets und Präfixe' }),
+      ).toBeChecked()
+      await next(user)
+      expect(screen.getAllByText('Buckets und Präfixe fehlen').length).toBeGreaterThan(0)
+    }, 30000)
+
     it('refuses overlapping scopes before anything is sent', async () => {
       mockTestLibrarySource.mockResolvedValue({ reachable: true, message: 'Erreichbar.' })
       mockListS3Buckets.mockResolvedValue({ listingPermitted: true, buckets: ['dokumente'] })
@@ -685,6 +736,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await user.type(screen.getByLabelText('Access Key'), 'AKIAEXAMPLE')
       await user.type(screen.getByLabelText('Secret Key'), 'geheim')
       await changeRow(user, 'Umfang')
+      await onlySelected(user, 'Buckets und Präfixe')
       await chooseByHand(user, 'Buckets und Präfixe auswählen …', 'Bucket/Präfix', [
         'dokumente/2025',
         'dokumente/2025/q1',
@@ -739,12 +791,41 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(await screen.findByText(`Edition: ${edition}`)).toBeInTheDocument()
     }
 
-    /** A Data Center instance with its token; „Umfang“ is opened, which tests the connection. */
-    async function connectDataCenter(user: User) {
+    /**
+     * A Data Center instance with its token; „Umfang“ is opened, which tests the connection, and
+     * switched to a selection of its own unless `all` keeps „Alle Spaces“.
+     */
+    async function connectDataCenter(user: User, all = false) {
       await enterAddress(user, 'https://wiki.behoerde.example/confluence', 'Data Center')
       await user.type(screen.getByLabelText(/^Persönliches Zugriffstoken$/), 'pat-geheim')
       await changeRow(user, 'Umfang')
+      if (!all) await onlySelected(user, 'Spaces')
     }
+
+    it('creates „Alle Spaces“ without listing a single space', async () => {
+      mockTestLibrarySource.mockResolvedValueOnce(DC_DETECTED).mockResolvedValue(DC_VERIFIED)
+      const user = await openConfluenceStep()
+      await connectDataCenter(user, true)
+
+      const all = screen.getByRole('radio', { name: 'Alle Spaces' })
+      expect(all).toBeChecked()
+      expect(all).toHaveAccessibleDescription(
+        'Was später in der Quelle dazukommt, wird automatisch mit indiziert.',
+      )
+      await next(user)
+      await nameItAndContinue(user, 'Wiki')
+      await create(user)
+
+      await waitFor(() =>
+        expect(mockCreateNewLibrary).toHaveBeenCalledWith(
+          expect.objectContaining({
+            sourceType: 'CONFLUENCE',
+            sourceSettings: expect.objectContaining({ allSpaces: true, spaces: [] }),
+          }),
+        ),
+      )
+      expect(mockListConfluenceSpaces).not.toHaveBeenCalled()
+    }, 30000)
 
     it('detects the edition from the address and shows Cloud fields for Cloud', async () => {
       mockTestLibrarySource.mockResolvedValueOnce({
@@ -766,8 +847,8 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(screen.getByLabelText(/^E-Mail-Adresse/)).toBeInTheDocument()
       expect(screen.getByLabelText(/^API-Token$/)).toBeInTheDocument()
       expect(screen.queryByLabelText(/Persönliches Zugriffstoken/)).not.toBeInTheDocument()
-      // the selection waits in its own row, still empty
-      expect(within(rowOf('Umfang')).getByText('keine')).toBeInTheDocument()
+      // the scope waits in its own row, preselected to every space the access sees
+      expect(within(rowOf('Umfang')).getByText('Alle Spaces')).toBeInTheDocument()
     }, 15000)
 
     it('shows the token field for Data Center and refuses to continue while the test fails', async () => {
@@ -785,10 +866,11 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
       await next(user)
       expect(screen.getByText('Persönliches Zugriffstoken fehlt')).toBeInTheDocument()
-      expect(screen.getByText('Spaces fehlen')).toBeInTheDocument()
+      expect(screen.queryByText('Spaces fehlen')).not.toBeInTheDocument()
 
       await user.type(screen.getByLabelText(/^Persönliches Zugriffstoken$/), 'pat-falsch')
       await changeRow(user, 'Umfang')
+      await onlySelected(user, 'Spaces')
       await user.click(await screen.findByRole('checkbox', { name: 'Bauamt' }))
       await next(user)
 
@@ -1097,6 +1179,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await renderPage()
       await chooseType(user, /Google Drive/)
       await changeRow(user, 'Umfang')
+      await onlySelected(user, 'Geteilte Ablagen und Ordner')
       await user.click(await screen.findByRole('checkbox', { name: /Meine Ablage/ }))
 
       await next(user)
@@ -1494,7 +1577,11 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await chooseType(user, /SharePoint/)
 
       expect(mockListConnectionProfileOptions).toHaveBeenCalledWith('SHAREPOINT')
-      // nothing to fill in under „Verbindung“: it names the Zugang, and the selection opens at once
+      // nothing to fill in under „Verbindung“: it names the Zugang, and „Umfang“ opens at once
+      await onlySelected(user, 'Dokumentbibliotheken und Ordner')
+      await user.click(
+        screen.getByRole('button', { name: 'Dokumentbibliotheken und Ordner auswählen …' }),
+      )
       const dialog = await screen.findByRole('dialog', {
         name: 'Dokumentbibliotheken und Ordner auswählen',
       })
@@ -1506,7 +1593,10 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(screen.queryByRole('radio', { name: /Eigene Adresse/ })).not.toBeInTheDocument()
       await next(user)
       expect(screen.getByText('Dokumentbibliotheken fehlen')).toBeInTheDocument()
-      // the row with the issue opens, and with it the selection
+      // the row stays open at its issue; the selection opens from its link
+      await user.click(
+        screen.getByRole('button', { name: 'Dokumentbibliotheken und Ordner auswählen …' }),
+      )
       const reopened = await screen.findByRole('dialog')
       await user.click(within(reopened).getByRole('button', { name: 'Von Hand eintragen …' }))
       await user.type(
@@ -1546,6 +1636,38 @@ describe('LibraryCreatePage (#596, #1942)', () => {
           query: { siteUrl: 'https://rheinfurt.sharepoint.com/sites/bauamt' },
         }),
       )
+    }, 30000)
+
+    it('takes all document libraries of a chosen site', async () => {
+      mockListConnectionProfileOptions.mockResolvedValue([sharePointProfile])
+      mockBrowseSource.mockImplementation(
+        async (_type: string, request: { query?: Record<string, unknown> }) =>
+          request.query?.siteUrl
+            ? { complete: true, entries: [{ key: 'site:host,a,b', name: 'Bauamt' }] }
+            : { complete: true, entries: [] },
+      )
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /SharePoint/)
+
+      const all = await screen.findByRole('radio', { name: 'Alle Dokumentbibliotheken einer Site' })
+      expect(all).toBeChecked()
+      expect(all).toHaveAccessibleDescription(
+        'Was später in der Quelle dazukommt, wird automatisch mit indiziert.',
+      )
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      await chooseByHand(user, 'Sites auswählen …', 'Adresse der Site', [
+        'https://rheinfurt.sharepoint.com/sites/bauamt',
+      ])
+      await next(user)
+      expect(screen.getByLabelText(/^Name/)).toHaveValue('Bauamt')
+      await nameItAndContinue(user, 'Bauamt')
+      await create(user)
+
+      await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
+      expect(mockCreateNewLibrary.mock.calls[0][0].sourceSettings).toEqual({
+        libraries: [{ site: { id: 'host,a,b', name: 'Bauamt' } }],
+      })
     }, 30000)
 
     it('cannot be created without a profile', async () => {

@@ -4,11 +4,16 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.security.LocalAuthKeyService;
+import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -90,6 +95,38 @@ public class LocalTokenRevocationService {
               credentials.save(row);
             });
     return cutoff;
+  }
+
+  /**
+   * Whether every session of {@code userId} ended after {@code session} was minted, read under a
+   * share lock on the account's {@code local_credentials} row that lasts until the caller's
+   * transaction ends. Every act that ends all sessions writes that row before it publishes {@link
+   * LocalAccountSessionsEndedEvent}, so what the caller writes next on the session's behalf is
+   * either refused here or seen by that act's listeners. {@code false} for an account without local
+   * credentials and for a call without a session.
+   */
+  @Transactional(propagation = Propagation.MANDATORY)
+  public boolean sessionEndedSince(UUID userId, Jwt session) {
+    List<Object[]> stamp = credentials.lockSessionStamp(userId);
+    if (stamp.isEmpty() || session == null) {
+      return false;
+    }
+    Object generation = session.getClaim(LocalAccessTokenService.SESSION_GENERATION_CLAIM);
+    if (generation instanceof Number number) {
+      return number.longValue() != ((Number) stamp.getFirst()[0]).longValue();
+    }
+    Instant issuedAt = session.getIssuedAt();
+    return issuedAt == null || issuedBefore(issuedAt, instantOf(stamp.getFirst()[1]));
+  }
+
+  private static Instant instantOf(Object column) {
+    return switch (column) {
+      case null -> null;
+      case Instant instant -> instant;
+      case OffsetDateTime offset -> offset.toInstant();
+      case Timestamp timestamp -> timestamp.toInstant();
+      default -> throw new IllegalStateException("Unexpected cutoff type " + column.getClass());
+    };
   }
 
   /**

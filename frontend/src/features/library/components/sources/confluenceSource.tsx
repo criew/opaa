@@ -14,7 +14,7 @@ export const confluenceSource: SourceRegistration = {
   opensAtSource: true,
   configuration: {
     empty: EMPTY_CONFLUENCE_VALUES,
-    draftFields: ['sourceUrl', 'edition', 'email', 'spaces'],
+    draftFields: ['sourceUrl', 'edition', 'email', 'allSpaces', 'spaces'],
     addressDerived: ['edition', 'credentialsVerified'],
     // ADR-0023: the edition is fixed, the stored credentials stand until new ones are typed, and
     // the current selection is the starting point.
@@ -23,6 +23,7 @@ export const confluenceSource: SourceRegistration = {
       sourceUrl: library.sourceUrl ?? '',
       edition: confluenceSettingsOf(library).edition ?? null,
       credentialsVerified: Boolean(library.sourceCredentialsSet),
+      allSpaces: confluenceSettingsOf(library).allSpaces === true,
       spaces: confluenceSettingsOf(library).spaces ?? [],
     }),
     isDirty: (values: ConfluenceSourceValues) => values.sourceUrl !== '',
@@ -31,18 +32,21 @@ export const confluenceSource: SourceRegistration = {
       sourceCredentials: confluenceCredentialsOf(values),
       sourceSettings: {
         edition: values.edition ?? undefined,
-        spaces: values.spaces.map((space) => ({ key: space.key, name: space.name ?? null })),
+        ...(values.allSpaces ? { allSpaces: true } : {}),
+        spaces: values.allSpaces
+          ? []
+          : values.spaces.map((space) => ({ key: space.key, name: space.name ?? null })),
       },
     }),
     nameFromSource: (values: ConfluenceSourceValues) => {
       const first = values.spaces[0]
-      if (!first) return ''
+      if (values.allSpaces || !first) return ''
       return values.spaces.length === 1 ? (first.name ?? first.key) : ''
     },
     scopeNoteId: 'confluence-sharing-consequence',
     fullSyncRhythm: true,
     firstRunHint:
-      'Der erste Lauf ist ein Vollabgleich über alle ausgewählten Spaces; sein Stand bleibt auf der Detailseite sichtbar.',
+      'Der erste Lauf ist ein Vollabgleich über alle Spaces des Umfangs; sein Stand bleibt auf der Detailseite sichtbar.',
     runsHint: '„Jetzt indizieren“ liest Änderungen, „Vollabgleich starten“ alle Spaces neu.',
     setup: confluenceSetup,
   },
