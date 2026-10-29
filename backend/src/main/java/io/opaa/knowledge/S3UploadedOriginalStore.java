@@ -349,7 +349,7 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
           });
       return retained;
     } catch (S3AccessException.NotImplemented | S3AccessException.ListForbidden e) {
-      if (neverVersioned()) {
+      if (neverVersioned(e)) {
         return List.of();
       }
       throw unavailable("list the versions of", prefix, e);
@@ -361,11 +361,13 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
   }
 
   /**
-   * Whether the bucket confirms it never had versioning switched on: {@code GetBucketVersioning}
-   * names no status, or the store does not offer the call at all (and so keeps no versions). A
-   * status of {@code Enabled} or {@code Suspended}, a refusal and every other failure are "no".
+   * Whether the bucket confirms it never had versioning switched on, after the version listing
+   * failed with {@code listingFailure}: {@code GetBucketVersioning} names no status, or - only when
+   * the listing was not offered either - the store does not offer that call (and so keeps no
+   * versions). A status of {@code Enabled} or {@code Suspended}, a refusal and every other failure
+   * are "no".
    */
-  private boolean neverVersioned() {
+  private boolean neverVersioned(S3AccessException listingFailure) {
     try {
       GetBucketVersioningResponse versioning =
           translator.call(
@@ -377,7 +379,7 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
                       GetBucketVersioningRequest.builder().bucket(bucket).build()));
       return versioning.status() == null;
     } catch (S3AccessException.NotImplemented e) {
-      return true;
+      return listingFailure instanceof S3AccessException.NotImplemented;
     } catch (S3AccessException e) {
       log.warn("Could not read the versioning state of bucket {}: {}", bucket, e.getMessage());
       return false;
@@ -591,7 +593,7 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
                       .overrideConfiguration(this::bound)
                       .build()));
     } catch (S3AccessException e) {
-      if (neverVersioned()) {
+      if (neverVersioned(e)) {
         log.info(
             "The upload store {} (bucket {}) does not list object versions ({}); the bucket was"
                 + " never versioned - grant s3:ListBucketVersions and s3:DeleteObjectVersion before"

@@ -120,7 +120,9 @@ ergänzen; sonst schließt das Löschen privater Bibliotheken nicht ab (siehe un
   zeigt sich erst beim Löschen im Log.
 - **Ein Speicher ohne Versionsschnittstelle** (Antwort `NotImplemented`) löscht mit einem einfachen
   Löschaufruf und gilt als ohne Versionen, solange er nicht selbst meldet, dass die Versionierung
-  eingeschaltet ist.
+  eingeschaltet ist. Verweigert ein Speicher dagegen die Auflistung der Versionen, genügt es nicht,
+  dass er den Versionierungsstatus nicht kennt; die Löschung einer privaten Bibliothek schließt
+  dann erst mit den Rechten ab.
 - **Ablaufregel für ältere Versionen.** Als zweite Sicherung, etwa für Reste aus Löschungen vor
   dieser Version oder ohne die Rechte, empfiehlt sich am Bucket eine Lebenszyklusregel, die nicht
   aktuelle Versionen nach einer Frist und verwaiste Löschmarker entfernt

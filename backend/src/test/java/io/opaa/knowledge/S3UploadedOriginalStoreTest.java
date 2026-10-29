@@ -767,6 +767,26 @@ class S3UploadedOriginalStoreTest {
   }
 
   @Test
+  void aRefusedVersionListingIsNotExcusedByAStoreThatDoesNotReportItsVersioningState()
+      throws IOException {
+    storedOriginal("inhalt");
+    server.failVersionListing(403, "AccessDenied");
+    server.failVersioningQuery(501, "NotImplemented");
+
+    assertThatThrownBy(() -> store.countRetainedVersions(organizationId, libraryId))
+        .isInstanceOf(UploadStoreUnavailableException.class);
+  }
+
+  @Test
+  void aStoreOfferingNeitherVersionCallRetainsNoVersions() throws IOException {
+    storedOriginal("inhalt");
+    server.failVersionListing(501, "NotImplemented");
+    server.failVersioningQuery(501, "NotImplemented");
+
+    assertThat(store.countRetainedVersions(organizationId, libraryId)).isZero();
+  }
+
+  @Test
   void aVersionTheStoreNoLongerKnowsIsGoneAndGetsNoNewDeleteMarker() throws IOException {
     UploadedOriginalRef ref = storedOriginal("inhalt");
     String key = ref.locator().substring(("s3://" + BUCKET + "/").length());
