@@ -53,10 +53,13 @@ Zeitlimit, Größengrenze, keine Weiterleitung), das Zugriffstoken an `API_BASE`
 der Schlüsseldatei, aus `source_settings` oder einer Antwort; `exportLinks`, `webContentLink` und die
 Download-URI von `files.download` werden nie mit Token abgerufen. API-Aufrufe und Downloads nutzen
 `REJECT_OFF_ORIGIN`: Eine Weiterleitung innerhalb von `API_BASE` wird mit Token verfolgt, eine auf
-einen anderen Host vor jeder Anfrage dorthin abgewiesen; die Datei gilt als nicht lesbar, ihr
-gespeicherter Stand bleibt, der Lauf und der Änderungsstrom gehen weiter. Gespeicherte Zugangsdaten
-übernimmt der Kern nur bei gleichem, gegen die normalisierte Adresse verglichenem Ursprung
-(`KnowledgeLibraryService`) geprüft an einer Änderung ohne Verbindungsfeld.
+einen anderen Host vor jeder Anfrage dorthin abgewiesen (`REDIRECT_REFUSED`, nie ein Löschbefund).
+Beim Download gilt die Datei als nicht lesbar, ihr gespeicherter Stand bleibt, Lauf und
+Änderungsstrom gehen weiter; bei einer Nachfrage im Änderungslauf (Elternordner, gemeldete
+Entfernung) gilt die Seite als vorübergehend fehlgeschlagen, der Strom wird erneut gelesen; bei
+Auflistung oder Bereichsprüfung ist der Bereich nicht auflistbar, sein Bestand bleibt. Gespeicherte
+Zugangsdaten übernimmt der Kern nur bei gleichem, gegen die normalisierte Adresse verglichenem
+Ursprung (`KnowledgeLibraryService`) geprüft an einer Änderung ohne Verbindungsfeld.
 
 ### 4. Profilangabe und domänenweite Delegation
 
@@ -100,9 +103,9 @@ Auflistung, verfallene Cursor und der Änderungslauf folgen ADR-0045, Entscheidu
 ein `404` auf `files.get` ist keiner. Ein Ordner-Ereignis (verschoben, umbenannt, gelöscht) meldet
 `fullSyncNeeded`, der nächste Lauf ist ein Vollabgleich. Der Store gibt keine Marke; ein
 Vollabgleich gleicht nur ab, wenn er alles selbst gelistet hat. Meldet der Strom des Kontos eine
-Änderung einer geteilten Ablage, die einen eigenen Strom hat, ordnet `locate` sie dieser Ablage zu;
-meldet er eine Änderung nicht, holt sie der nächste Vollabgleich nach (`fullSyncInterval`). Ein
-fehlendes Ereignis kostet also Aktualität, ein überzähliges Ordner-Ereignis einen Vollabgleich;
+Änderung einer geteilten Ablage, die einen eigenen Strom hat, überlässt `locate` sie dem Strom dieser
+Ablage; meldet er eine Änderung nicht, holt sie der nächste Vollabgleich nach (`fullSyncInterval`).
+Ein fehlendes Ereignis kostet also Aktualität, ein überzähliges Ordner-Ereignis einen Vollabgleich;
 keines von beiden entfernt ein Dokument.
 
 ### 7. Identität, Änderungsmerkmal, Ordner, Deep Link

@@ -148,11 +148,14 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
   - Ein Dienstkonto kann Mitglied einer geteilten Ablage werden, auch wenn die Organisation externe
     Freigaben einschränkt. Sonst meldet der Verbindungstest die Ablage als nicht sichtbar; dann einen
     Ordner freigeben oder Delegation nutzen.
-  - Google meldet einen Export über der Grenze als `exportSizeLimitExceeded`. Sonst erscheinen große
-    Google Docs und Präsentationen als „nicht lesbar" statt als Text.
-  - Google liefert Downloads von `www.googleapis.com` selbst aus. Leitete Google auf eine andere
-    Adresse weiter, folgt OPAA nicht: Die Datei erscheint als „nicht lesbar", das Zugriffstoken geht
-    nirgendwo anders hin.
+  - Google meldet einen Export über der Grenze als `exportSizeLimitExceeded`. Kommt ein anderer
+    Ablehnungsgrund, erscheinen große Google Docs und Präsentationen als „nicht lesbar" statt als
+    Text. Antwortet Google stattdessen mit einem anderen Fehlerstatus, gilt die Datei in jedem Lauf
+    als vorübergehend fehlgeschlagen und hält den Änderungsstrom an, wie bei langen Downloads.
+  - Google beantwortet Abrufe von `www.googleapis.com` selbst. Leitete Google auf eine andere
+    Adresse weiter, folgt OPAA nicht, und das Zugriffstoken geht nirgendwo anders hin: Ein Download
+    erscheint als „nicht lesbar", eine Nachfrage im Änderungslauf lässt den Lauf das
+    Änderungsprotokoll erneut lesen. Entfernt wird dabei nichts.
   - Der Strom des Kontos meldet auch Änderungen in nur per Ordnerfreigabe sichtbaren Ordnern
     geteilter Ablagen. Sonst sieht sie erst der nächste Vollabgleich.
   - Wie oft Ordneränderungen einen Vollabgleich auslösen, hängt an der Nutzung des Kontos, besonders

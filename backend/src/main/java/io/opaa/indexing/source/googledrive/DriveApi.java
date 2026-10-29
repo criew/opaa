@@ -183,7 +183,7 @@ final class DriveApi {
       } catch (RedirectFollowingFetcher.RedirectRejectedException e) {
         // deterministic: the same request is refused the same way every time
         throw new DriveApiException(
-            DriveApiException.Kind.FORBIDDEN,
+            DriveApiException.Kind.REDIRECT_REFUSED,
             0,
             "Google Drive hat auf eine fremde Adresse weitergeleitet; die Anfrage wurde nicht"
                 + " gesendet.");
