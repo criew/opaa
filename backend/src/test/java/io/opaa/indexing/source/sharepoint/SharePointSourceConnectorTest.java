@@ -292,6 +292,34 @@ class SharePointSourceConnectorTest {
   }
 
   @Test
+  void aSiteListingCutAtItsPageLimitProvesNoLibraryOutsideTheSite() {
+    String other = siteId(8);
+    server.site(other, "contoso.sharepoint.com", "/sites/bau", "Bauamt");
+    server.drive(other, "b!plaene", "Pläne", "documentLibrary");
+    server.pageSizeAtMost(1);
+    for (int i = 1; i <= 11; i++) {
+      server.drive(SITE, "b!library" + i, "Bibliothek " + i, "documentLibrary");
+    }
+
+    SourceConnectionTestResult result =
+        connector.testConnection(
+            withToken(
+                ConnectorData.of(
+                    Map.of(
+                        "libraries",
+                        List.of(
+                            Map.of(
+                                "driveId",
+                                "b!plaene",
+                                "site",
+                                Map.of("id", SITE, "name", "Team")))))),
+            null);
+
+    assertThat(result.reachable()).isTrue();
+    assertThat(result.details().toJson()).doesNotContain("gehört nicht zur");
+  }
+
+  @Test
   void aStoredSiteGraphNoLongerKnowsLeavesTheLibraryUnreachable() {
     server.failNext("sites/" + SITE + "/drives", 404, "itemNotFound", null, 1);
 

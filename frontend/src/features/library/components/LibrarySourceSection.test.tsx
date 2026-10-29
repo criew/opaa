@@ -1070,6 +1070,32 @@ describe('LibrarySourceSection - „Ändern“ einer Zeile', () => {
     )
   })
 
+  it('stores the site of a library saved without one once its site is opened and applied', async () => {
+    const user = userEvent.setup()
+    renderSection(
+      <LibrarySourceSection libraryId="library-sp" library={sharePoint} canEditSource />,
+    )
+
+    await user.click(screen.getByRole('button', { name: /^Ändern\s*Umfang$/ }))
+    const dialog = await screen.findByRole('dialog', { name: /auswählen/ })
+    await user.click(await within(dialog).findByRole('button', { name: '„Rathaus“ öffnen' }))
+    expect(await within(dialog).findByRole('checkbox', { name: 'Dokumente' })).toBeChecked()
+    await user.click(within(dialog).getByRole('button', { name: 'Übernehmen' }))
+
+    await waitFor(() =>
+      expect(update).toHaveBeenCalledWith(
+        'library-sp',
+        expect.objectContaining({
+          sourceSettings: expect.objectContaining({
+            libraries: [
+              expect.objectContaining({ driveId: 'd-1', site: { id: 's-1', name: 'Rathaus' } }),
+            ],
+          }),
+        }),
+      ),
+    )
+  })
+
   it('saves nothing when the dialog of a dialog source is cancelled, and closes the row', async () => {
     const user = userEvent.setup()
     renderSection(
