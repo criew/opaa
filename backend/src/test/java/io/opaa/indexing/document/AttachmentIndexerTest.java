@@ -78,7 +78,7 @@ class AttachmentIndexerTest {
             attachmentDownloader,
             documentIngestService,
             storageQuotaService,
-            new AttachmentProperties(5, 0, 0),
+            new AttachmentProperties(5, 0, 0, 0, 0),
             ProductionDocumentFormats.supportedFormats());
     parentDocumentId = UUID.randomUUID();
 
@@ -209,7 +209,7 @@ class AttachmentIndexerTest {
             attachmentDownloader,
             documentIngestService,
             mock(LibraryStorageQuotaService.class),
-            new AttachmentProperties(1, 0, 0),
+            new AttachmentProperties(1, 0, 0, 0, 0),
             ProductionDocumentFormats.supportedFormats());
 
     // Mail-in-Mail: a LocalFile attachment whose own processing reports one more nested LocalFile
@@ -358,6 +358,43 @@ class AttachmentIndexerTest {
 
     assertThat(ingested.get()).isLessThanOrEqualTo(500);
     verify(access, org.mockito.Mockito.atLeastOnce()).markDeferred();
+  }
+
+  @Test
+  void anAttachmentPastTheByteBudgetOfItsRootIsSkipped() throws IOException, InterruptedException {
+    AttachmentIndexer smallBudget =
+        new AttachmentIndexer(
+            attachmentDownloader,
+            documentIngestService,
+            mock(LibraryStorageQuotaService.class),
+            new AttachmentProperties(5, 0, 0, 0, 20),
+            ProductionDocumentFormats.supportedFormats());
+    AttachmentAccess access = mock(AttachmentAccess.class);
+    when(access.targetLibrary()).thenReturn(ctx.targetLibrary());
+    when(access.events()).thenReturn((category, message, reference) -> {});
+    AttachmentProgressSink progress = mock(AttachmentProgressSink.class);
+    when(access.progress()).thenReturn(progress);
+    when(documentIngestService.ingest(DocumentIngests.anyFile(), any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
+    Path first = tempDir.resolve("eins.txt");
+    Files.writeString(first, "Zwölf Zeichen");
+    Path second = tempDir.resolve("zwei.txt");
+    Files.writeString(second, "Noch zwölf Z.");
+
+    List<String> indexed =
+        smallBudget.indexAll(
+            access,
+            List.of(
+                new AttachmentSource.LocalFile(first, "eins.txt", "/mail.eml/0"),
+                new AttachmentSource.LocalFile(second, "zwei.txt", "/mail.eml/1")),
+            parentDocumentId,
+            "/mail.eml",
+            SourceTypes.FILESYSTEM,
+            limits);
+
+    assertThat(indexed).containsExactly("/mail.eml/0");
+    verify(progress).recordAttachment(AttachmentOutcome.PROCESSED);
+    verify(progress).recordAttachment(AttachmentOutcome.SKIPPED);
   }
 
   @Test

@@ -68,13 +68,15 @@ class HeadingSectionSplitterTargetSizeTest {
     List<Document> chunks = splitter.boundedChunks(context, "\n", lines(6_000), new HashMap<>());
 
     assertThat(splitter.bodyBudget(context.length() + 1)).isEqualTo(TARGET / 2);
+    // the context a chunk repeats is cut first, which leaves the rest of the target to the body
+    String repeated = RepeatedContext.cut(context);
     assertThat(chunks).hasSizeGreaterThan(1);
     assertThat(chunks)
         .allSatisfy(
             chunk -> {
-              assertThat(chunk.getText()).startsWith(context + "\n");
-              assertThat(chunk.getText().length() - context.length() - 1)
-                  .isLessThanOrEqualTo(TARGET / 2);
+              assertThat(chunk.getText()).startsWith(repeated + "\n");
+              assertThat(chunk.getText().length() - repeated.length() - 1)
+                  .isLessThanOrEqualTo(splitter.bodyBudget(repeated.length() + 1));
             });
   }
 

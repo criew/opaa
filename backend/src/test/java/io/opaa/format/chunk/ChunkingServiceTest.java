@@ -44,6 +44,15 @@ class ChunkingServiceTest {
   }
 
   @Test
+  void breakingLongRunsLeavesOrdinaryTextAlone() {
+    String text = "Ein ganz gewöhnlicher Satz mit Wörtern.";
+
+    assertThat(ChunkingService.breakLongRuns(text)).isSameAs(text);
+    assertThat(ChunkingService.breakLongRuns("b".repeat(2_500)))
+        .isEqualTo("b".repeat(1_000) + " " + "b".repeat(1_000) + " " + "b".repeat(500));
+  }
+
+  @Test
   void chunksShortTextIntoSingleChunk() {
     var service = new ChunkingService(new IndexingProperties(1000, 100, 50, null, null, null, 0));
     var doc = new Document("This is a short text that should fit into one chunk.");

@@ -14,6 +14,7 @@ import io.opaa.format.file.office.CountingOdfOpener;
 import io.opaa.format.file.office.OdfPackage;
 import io.opaa.format.shared.HeadingSectionSplitter;
 import io.opaa.format.shared.HeadingSectionSplitterFixture;
+import io.opaa.format.shared.RepeatedContext;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -527,7 +528,9 @@ class TabularDocumentFormatTest {
         .hasSizeLessThanOrEqualTo(5)
         .allSatisfy(
             chunk -> {
-              assertThat(chunk.getText()).startsWith("Tabelle: breit\n\n" + headerLine + "\n");
+              // context and header line are cut to RepeatedContext.MAX_LENGTH
+              assertThat(chunk.getText())
+                  .startsWith(RepeatedContext.cut("Tabelle: breit\n\n" + headerLine) + "\n");
               assertThat(chunk.getText().length())
                   .isLessThanOrEqualTo(HeadingSectionSplitter.HARD_CHUNK_CHAR_LIMIT);
             });
@@ -537,11 +540,11 @@ class TabularDocumentFormatTest {
           .as(row)
           .isEqualTo(1);
     }
-    assertThat(result.chunks().getFirst().getMetadata())
-        .containsEntry(ChunkMetadataKeys.LOCATION_METADATA_KEY, "Zeilen 2–5");
     var anchor = ChunkAnchors.read(result.chunks().getFirst().getMetadata());
     assertThat(anchor.rowFrom()).isEqualTo(2L);
-    assertThat(anchor.rowTo()).isEqualTo(5L);
+    assertThat(anchor.rowTo()).isGreaterThan(2L);
+    assertThat(result.chunks().getFirst().getMetadata())
+        .containsEntry(ChunkMetadataKeys.LOCATION_METADATA_KEY, "Zeilen 2–" + anchor.rowTo());
   }
 
   @Test
@@ -571,7 +574,7 @@ class TabularDocumentFormatTest {
     assertThat(result.chunks())
         .allSatisfy(
             chunk -> {
-              assertThat(chunk.getText()).startsWith(opening + "\n");
+              assertThat(chunk.getText()).startsWith(RepeatedContext.cut(opening) + "\n");
               assertThat(chunk.getText().length())
                   .isLessThanOrEqualTo(HeadingSectionSplitter.HARD_CHUNK_CHAR_LIMIT);
             });

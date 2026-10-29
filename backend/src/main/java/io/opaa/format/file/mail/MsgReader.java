@@ -6,9 +6,14 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.HexFormat;
 import java.util.List;
+import java.util.Set;
 import org.apache.poi.hsmf.MAPIMessage;
 import org.apache.poi.hsmf.datatypes.AttachmentChunks;
 import org.apache.poi.hsmf.exceptions.ChunkNotFoundException;
@@ -26,6 +31,12 @@ import org.slf4j.LoggerFactory;
  * MailProperties#maxMessageBytes()} is the real memory bound. An embedded Outlook item is skipped,
  * not recursed into. With a {@code wantedIndex} only that attachment is materialized, and positions
  * are counted exactly as an unfiltered run counts them - a skipped attachment consumes none.
+ *
+ * <p>POI does not notice when several entries of the compound file share their sectors, so the data
+ * of one attachment can be handed out many times. An attachment identical to one read before from
+ * the same message is skipped, and all attachments of a message together may not exceed the size of
+ * the message file, which stores them uncompressed; what would pass it is skipped ({@link
+ * StoredBytes}).
  */
 final class MsgReader {
 
@@ -77,6 +88,7 @@ final class MsgReader {
     AttachmentChunks[] chunks = message.getAttachmentFiles();
     List<ParsedMailAttachment> attachments = new ArrayList<>(chunks.length);
     AttachmentBudget budget = new AttachmentBudget(properties.maxAttachmentsPerMessage());
+    StoredBytes stored = new StoredBytes(Files.size(file));
     // The extraction position an unfiltered run would assign - advanced by every attachment that
     // was read successfully, materialized or not, so a filtered run numbers them identically.
     int position = 0;
@@ -89,7 +101,8 @@ final class MsgReader {
         }
         budget.reserve();
         boolean materialize = wantedIndex == null || wantedIndex == position;
-        ParsedMailAttachment attachment = extractAttachment(chunk, properties, materialize, names);
+        ParsedMailAttachment attachment =
+            extractAttachment(chunk, properties, stored, materialize, names);
         if (attachment == null) {
           continue;
         }
@@ -123,7 +136,11 @@ final class MsgReader {
    * ParsedMailAttachment#tempFile()}, which the caller counts and drops.
    */
   private static ParsedMailAttachment extractAttachment(
-      AttachmentChunks chunk, MailProperties properties, boolean materialize, LoggedName names)
+      AttachmentChunks chunk,
+      MailProperties properties,
+      StoredBytes stored,
+      boolean materialize,
+      LoggedName names)
       throws IOException {
     byte[] data;
     String fileName;
@@ -146,6 +163,13 @@ final class MsgReader {
           properties.maxAttachmentBytes());
       return null;
     }
+    if (!stored.admit(data)) {
+      log.warn(
+          "Skipping mail attachment {}: it repeats an earlier attachment or the attachments would"
+              + " exceed the message file's own size",
+          names.of(fileName));
+      return null;
+    }
     if (!materialize) {
       return new ParsedMailAttachment(fileName, null);
     }
@@ -157,6 +181,36 @@ final class MsgReader {
       throw e;
     }
     return new ParsedMailAttachment(fileName, tempFile);
+  }
+
+  /**
+   * The attachment data one message has handed out so far: a repeat of earlier data is refused, and
+   * so is data that would take the total past the message file's size.
+   */
+  private static final class StoredBytes {
+
+    private final Set<String> digests = new HashSet<>();
+    private long remaining;
+
+    StoredBytes(long messageBytes) {
+      this.remaining = messageBytes;
+    }
+
+    boolean admit(byte[] data) {
+      if (data.length > remaining || !digests.add(sha256(data))) {
+        return false;
+      }
+      remaining -= data.length;
+      return true;
+    }
+
+    private static String sha256(byte[] data) {
+      try {
+        return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(data));
+      } catch (NoSuchAlgorithmException e) {
+        throw new IllegalStateException("SHA-256 is not available", e);
+      }
+    }
   }
 
   private static String resolveFilename(AttachmentChunks chunk) {

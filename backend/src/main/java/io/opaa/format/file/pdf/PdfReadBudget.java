@@ -136,17 +136,35 @@ final class PdfReadBudget {
    * to more than its limit, or once the document has used up its content bytes or its time.
    */
   void chargeContent(COSStream stream) throws IOException {
+    contentBytes += measure(stream);
+    if (contentBytes > maxContentBytes) {
+      throw new ParserLimitExceededException(
+          "PDF content exceeds the configured limit of " + maxContentBytes + " decoded bytes");
+    }
+  }
+
+  /**
+   * The decoded length of {@code stream}, decoded once to measure it and remembered after. Throws
+   * when it decodes to more than the stream limit, carries a filter outside the content filters, or
+   * once the document has used up its time; charges nothing.
+   */
+  long measure(COSStream stream) throws IOException {
     requireTime();
     Long length = decodedLengths.get(stream);
     if (length == null) {
       length = decodedLength(stream, maxStreamBytes);
       decodedLengths.put(stream, length);
     }
-    contentBytes += length;
-    if (contentBytes > maxContentBytes) {
-      throw new ParserLimitExceededException(
-          "PDF content exceeds the configured limit of " + maxContentBytes + " decoded bytes");
-    }
+    return length;
+  }
+
+  /**
+   * Like {@link #measure}, but decodes {@code stream} again even when it was measured before: its
+   * data may have changed since, as an object stream's does when PDFBox decrypts it.
+   */
+  long remeasure(COSStream stream) throws IOException {
+    decodedLengths.remove(stream);
+    return measure(stream);
   }
 
   /** {@link #chargeContent Charges} every content stream of {@code page}. */
@@ -156,7 +174,8 @@ final class PdfReadBudget {
     }
   }
 
-  private void requireTime() {
+  /** Throws once the document has used up its time. */
+  void requireTime() {
     if (System.nanoTime() - deadline > 0) {
       throw new ParserLimitExceededException(
           "PDF reading exceeds the configured limit of " + maxSeconds + " seconds");

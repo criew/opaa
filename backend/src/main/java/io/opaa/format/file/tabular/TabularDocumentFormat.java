@@ -13,6 +13,7 @@ import io.opaa.format.file.office.OoxmlPackages;
 import io.opaa.format.shared.HeadingSectionSplitter;
 import io.opaa.format.shared.ParserLimitExceededException;
 import io.opaa.format.shared.ParserLimitProperties;
+import io.opaa.format.shared.RepeatedContext;
 import io.opaa.format.shared.TableText;
 import io.opaa.sourceaccess.LoggedName;
 import java.io.IOException;
@@ -410,7 +411,9 @@ public class TabularDocumentFormat implements DocumentFormat {
     if (source.file() == null) {
       return List.of();
     }
-    OdsContentHandler handler = new OdsContentHandler(maxRowColumns, maxOdsCellRepeat, maxOdsRows);
+    OdsContentHandler handler =
+        new OdsContentHandler(
+            maxRowColumns, maxOdsCellRepeat, maxOdsRows, limits.maxTextCharacters());
     boolean found;
     try (OdfPackage odf = odfOpener.open(source.file())) {
       found = odf.parse("content.xml", maxOdsContentXmlBytes, handler);
@@ -449,6 +452,8 @@ public class TabularDocumentFormat implements DocumentFormat {
     private final int maxRowColumns;
     private final int maxCellRepeat;
     private final int maxRows;
+    private final long maxTextCharacters;
+    private long textCharacters;
 
     private final List<OdsSheet> sheets = new ArrayList<>();
     private String currentSheetName;
@@ -463,9 +468,18 @@ public class TabularDocumentFormat implements DocumentFormat {
     private boolean anyCellTruncated;
 
     OdsContentHandler(int maxRowColumns, int maxCellRepeat, int maxRows) {
+      this(maxRowColumns, maxCellRepeat, maxRows, Long.MAX_VALUE);
+    }
+
+    /**
+     * @param maxTextCharacters the most characters the expanded cells of all sheets may carry
+     *     together; counted cell by cell as they are expanded
+     */
+    OdsContentHandler(int maxRowColumns, int maxCellRepeat, int maxRows, long maxTextCharacters) {
       this.maxRowColumns = maxRowColumns;
       this.maxCellRepeat = maxCellRepeat;
       this.maxRows = maxRows;
+      this.maxTextCharacters = maxTextCharacters;
     }
 
     List<OdsSheet> sheets() {
@@ -541,6 +555,12 @@ public class TabularDocumentFormat implements DocumentFormat {
               anyCellTruncated = true;
             }
             for (int i = 0; i < toAdd && currentRow.size() < maxRowColumns; i++) {
+              textCharacters += text.length();
+              if (textCharacters > maxTextCharacters) {
+                throw new SAXException(
+                    "ODS spreadsheet exceeds the configured text character limit of "
+                        + maxTextCharacters);
+              }
               currentRow.add(text);
             }
           }
@@ -588,6 +608,9 @@ public class TabularDocumentFormat implements DocumentFormat {
    * @param tableName see {@link #buildChunks}
    */
   private List<Document> chunksFromRawRows(String sheetName, String tableName, List<RawRow> rows) {
+    // both repeat in every chunk's context, Fundort and anchor
+    sheetName = RepeatedContext.cut(sheetName);
+    tableName = RepeatedContext.cut(tableName);
     List<RawRow> nonBlank = new ArrayList<>();
     for (RawRow row : rows) {
       if (!isBlankRow(row.values())) {
@@ -647,9 +670,9 @@ public class TabularDocumentFormat implements DocumentFormat {
         sheetName != null
             ? "Blatt: " + sheetName + " · Tabelle: " + tableName
             : "Tabelle: " + tableName;
-    String headerLine = TableText.row(header);
-    // Counted as rendered: the blank line after the context line, one line break per row.
-    int baseChars = prefix.length() + 2 + headerLine.length();
+    String context = RepeatedContext.cut(prefix + "\n\n" + TableText.row(header));
+    // Counted as rendered: the context with its blank line, one line break per row.
+    int baseChars = context.length();
     // The same body budget HeadingSectionSplitter#boundedChunks leaves a unit next to its context,
     // so every row group keeps context and header line within the hard limit.
     int rowChars = splitter.bodyBudget(baseChars + 1);
@@ -668,8 +691,7 @@ public class TabularDocumentFormat implements DocumentFormat {
       boolean exceedsRowCount = currentRows.size() >= MAX_ROWS_PER_CHUNK;
       boolean exceedsCharBudget = !currentRows.isEmpty() && currentChars + rowLineLength > rowChars;
       if (!currentRows.isEmpty() && (exceedsRowCount || exceedsCharBudget)) {
-        chunks.addAll(
-            renderChunk(prefix, headerLine, currentRows, sheetName, chunkStartRow, lastRow));
+        chunks.addAll(renderChunk(context, currentRows, sheetName, chunkStartRow, lastRow));
         currentRows = new ArrayList<>();
         currentChars = 0;
       }
@@ -682,19 +704,13 @@ public class TabularDocumentFormat implements DocumentFormat {
       lastRow = rowNumber;
     }
     if (!currentRows.isEmpty()) {
-      chunks.addAll(
-          renderChunk(prefix, headerLine, currentRows, sheetName, chunkStartRow, lastRow));
+      chunks.addAll(renderChunk(context, currentRows, sheetName, chunkStartRow, lastRow));
     }
     return chunks;
   }
 
   private List<Document> renderChunk(
-      String prefix,
-      String headerLine,
-      List<List<String>> rows,
-      String sheetName,
-      long startRow,
-      long endRow) {
+      String context, List<List<String>> rows, String sheetName, long startRow, long endRow) {
     StringBuilder text = new StringBuilder();
     for (List<String> row : rows) {
       text.append(String.join(" | ", row)).append('\n');
@@ -707,7 +723,6 @@ public class TabularDocumentFormat implements DocumentFormat {
     Map<String, Object> metadata = new HashMap<>();
     metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
     ChunkAnchors.write(metadata, ChunkAnchor.EMPTY.withRows(sheetName, startRow, endRow));
-    return splitter.boundedChunks(
-        prefix + "\n\n" + headerLine, "\n", text.toString().stripTrailing(), metadata);
+    return splitter.boundedChunks(context, "\n", text.toString().stripTrailing(), metadata);
   }
 }

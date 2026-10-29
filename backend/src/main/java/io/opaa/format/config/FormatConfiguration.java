@@ -44,8 +44,8 @@ import org.springframework.context.annotation.Configuration;
 public class FormatConfiguration {
 
   @Bean
-  DocumentService documentService() {
-    return new DocumentService();
+  DocumentService documentService(ParserLimitProperties parserLimits) {
+    return new DocumentService(parserLimits);
   }
 
   /** The structure-aware cut every format on it shares, at the configured target size. */

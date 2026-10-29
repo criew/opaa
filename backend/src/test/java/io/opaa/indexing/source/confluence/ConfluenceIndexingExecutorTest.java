@@ -329,7 +329,7 @@ class ConfluenceIndexingExecutorTest {
         new BoundedDownloader(TargetAddressValidator.disabled()),
         documentIngestService,
         storageQuotaService,
-        new io.opaa.indexing.attachment.AttachmentProperties(5, 0, 0),
+        new io.opaa.indexing.attachment.AttachmentProperties(5, 0, 0, 0, 0),
         ProductionDocumentFormats.supportedFormats());
   }
 

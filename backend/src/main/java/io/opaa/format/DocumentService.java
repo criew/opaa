@@ -1,7 +1,10 @@
 package io.opaa.format;
 
 import io.opaa.format.chunk.PageMarkingContentHandler;
+import io.opaa.format.shared.ParserLimitExceededException;
+import io.opaa.format.shared.ParserLimitProperties;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -10,15 +13,33 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.tika.exception.TikaException;
+import org.apache.tika.exception.WriteLimitReachedException;
+import org.apache.tika.extractor.EmbeddedDocumentExtractor;
+import org.apache.tika.metadata.Metadata;
+import org.apache.tika.parser.AutoDetectParser;
+import org.apache.tika.parser.EmptyParser;
+import org.apache.tika.parser.ParseContext;
+import org.apache.tika.parser.Parser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.reader.ExtractedTextFormatter;
-import org.springframework.ai.reader.tika.TikaDocumentReader;
-import org.springframework.core.io.FileSystemResource;
+import org.xml.sax.ContentHandler;
+import org.xml.sax.SAXException;
 
 public class DocumentService {
 
   private static final Logger log = LoggerFactory.getLogger(DocumentService.class);
+
+  private final ParserLimitProperties limits;
+
+  public DocumentService() {
+    this(ParserLimitProperties.DEFAULTS);
+  }
+
+  public DocumentService(ParserLimitProperties limits) {
+    this.limits = limits;
+  }
 
   /**
    * The user-facing message a document is rejected with when a pipeline finds no extractable text
@@ -162,15 +183,51 @@ public class DocumentService {
     return new DiscoveredFiles(supported, rejected, mismatches, unreadable);
   }
 
+  /**
+   * The text of {@code file} as Tika extracts it, as one document, with page boundaries kept as
+   * form feeds so chunks can carry a "S. n" location. Embedded objects (attachments, an object
+   * pool, OLE objects) are not parsed: their text could repeat one embedded document many times
+   * over. Text past {@link ParserLimitProperties#maxTextCharacters()} fails the parse with {@link
+   * ParserLimitExceededException}.
+   */
   public List<org.springframework.ai.document.Document> parseDocument(Path file) {
     log.debug("Parsing document: {}", file);
-    var resource = new FileSystemResource(file);
-    // Keep page boundaries as form feeds so chunks can carry a "S. n" location.
-    var reader =
-        new TikaDocumentReader(
-            resource, new PageMarkingContentHandler(), ExtractedTextFormatter.defaults());
-    return reader.read();
+    int writeLimit = (int) Math.min(limits.maxTextCharacters(), Integer.MAX_VALUE - 1L);
+    PageMarkingContentHandler handler = new PageMarkingContentHandler(writeLimit);
+    ParseContext context = new ParseContext();
+    context.set(EmbeddedDocumentExtractor.class, SKIP_EMBEDDED);
+    context.set(Parser.class, new EmptyParser());
+    try (InputStream in = Files.newInputStream(file)) {
+      new AutoDetectParser().parse(in, handler, new Metadata(), context);
+    } catch (IOException | SAXException | TikaException e) {
+      if (WriteLimitReachedException.isWriteLimitReached(e)) {
+        throw new ParserLimitExceededException(
+            "Extracted text exceeds the configured text character limit of "
+                + limits.maxTextCharacters());
+      }
+      throw new IllegalStateException("Could not parse " + file.getFileName(), e);
+    }
+    var document =
+        new org.springframework.ai.document.Document(
+            ExtractedTextFormatter.defaults().format(handler.toString()));
+    document.getMetadata().put("source", file.getFileName().toString());
+    return List.of(document);
   }
+
+  /** Leaves every embedded object of a document unparsed. */
+  private static final EmbeddedDocumentExtractor SKIP_EMBEDDED =
+      new EmbeddedDocumentExtractor() {
+        @Override
+        public boolean shouldParseEmbedded(Metadata metadata) {
+          return false;
+        }
+
+        @Override
+        public void parseEmbedded(
+            InputStream stream, ContentHandler handler, Metadata metadata, boolean outputHtml) {
+          // never parsed, see shouldParseEmbedded
+        }
+      };
 
   /**
    * Decides acceptance from the file's actual content ({@link

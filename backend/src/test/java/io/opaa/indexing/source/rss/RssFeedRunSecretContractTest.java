@@ -232,7 +232,7 @@ class RssFeedRunSecretContractTest extends RunSecretContract {
                 new BoundedDownloader(validator, policy),
                 ingestService,
                 mock(LibraryStorageQuotaService.class),
-                new AttachmentProperties(5, 0, 0),
+                new AttachmentProperties(5, 0, 0, 0, 0),
                 ProductionDocumentFormats.supportedFormats()),
             new RssFeedProperties(200, 10_000, 10_000, 0, null, null, 0, 0),
             validator,

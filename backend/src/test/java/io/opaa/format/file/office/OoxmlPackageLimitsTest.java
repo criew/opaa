@@ -36,7 +36,7 @@ import org.junit.jupiter.api.io.TempDir;
 class OoxmlPackageLimitsTest {
 
   private static final ParserLimitProperties SMALL =
-      new ParserLimitProperties(0, 200_000, 300_000, 0, 0, 0, 0);
+      new ParserLimitProperties(0, 200_000, 300_000, 0, 0, 0, 0, 0);
 
   private static final String CONTENT_TYPES =
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"

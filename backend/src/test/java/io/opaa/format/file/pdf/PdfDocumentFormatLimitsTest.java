@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
+import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import io.opaa.format.shared.ParserLimitExceededException;
@@ -118,7 +119,11 @@ class PdfDocumentFormatLimitsTest {
     DocumentFormatResult result = pipeline.run(DocumentFormatSource.ofFile(file, "deep.pdf"));
 
     assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
-    assertThat(String.join("\n", result.chunks().stream().map(c -> c.getText()).toList()))
+    // the heading path, not the heading line, which is cut to RepeatedContext.MAX_LENGTH
+    assertThat(
+            result.chunks().stream()
+                .flatMap(c -> ChunkAnchors.read(c.getMetadata()).path().stream())
+                .toList())
         .contains("Ebene " + PdfDocumentFormat.MAX_OUTLINE_DEPTH)
         .doesNotContain("Ebene " + (PdfDocumentFormat.MAX_OUTLINE_DEPTH + 1));
   }
@@ -134,7 +139,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(50_000, 0, 0, 0, 0, 0, 0));
+            new ParserLimitProperties(50_000, 0, 0, 0, 0, 0, 0, 0));
 
     DocumentFormatResult result =
         DocumentFormatRunner.run(limited, DocumentFormatSource.ofFile(file, "fanout.pdf"));
@@ -149,7 +154,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(50_000, 0, 0, 0, 0, 0, 0));
+            new ParserLimitProperties(50_000, 0, 0, 0, 0, 0, 0, 0));
 
     DocumentFormatResult result =
         DocumentFormatRunner.run(limited, DocumentFormatSource.ofFile(file, "fanout-small.pdf"));
@@ -169,7 +174,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(0, 0, 0, 1_000_000, 0, 0, 0));
+            new ParserLimitProperties(0, 0, 0, 1_000_000, 0, 0, 0, 0));
 
     DocumentFormatResult result =
         assertTimeoutPreemptively(
@@ -192,7 +197,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(0, 0, 0, 0, 32L * 1024 * 1024, 0, 0));
+            new ParserLimitProperties(0, 0, 0, 0, 32L * 1024 * 1024, 0, 0, 0));
 
     assertThat(runWithin(Duration.ofSeconds(8), limited, file))
         .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
@@ -209,7 +214,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(0, 0, 0, 2_000_000, 0, 0, 0));
+            new ParserLimitProperties(0, 0, 0, 2_000_000, 0, 0, 0, 0));
 
     assertThat(runWithin(Duration.ofSeconds(8), limited, file))
         .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
@@ -223,10 +228,30 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(0, 0, 0, 0, Long.MAX_VALUE, 0, 1));
+            new ParserLimitProperties(0, 0, 0, 0, Long.MAX_VALUE, 0, 1, 0));
 
     assertThat(runWithin(Duration.ofSeconds(6), limited, file))
         .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
+  }
+
+  @Test
+  void aPdfWithMorePagesThanThePageLimitFails() throws IOException {
+    Path file = tempDir.resolve("pages.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      for (int i = 1; i <= 3; i++) {
+        addTextPage(doc, "Seite " + i);
+      }
+      doc.save(file.toFile());
+    }
+    var twoPages =
+        new PdfDocumentFormat(
+            HeadingSectionSplitterFixture.DEFAULT,
+            new ParserLimitProperties(0, 0, 0, 0, 0, 0, 0, 2));
+
+    assertThatThrownBy(() -> twoPages.run(DocumentFormatSource.ofFile(file, "pages.pdf")))
+        .isInstanceOf(ParserLimitExceededException.class)
+        .hasMessageContaining("2 pages");
+    assertThat(pipeline.run(DocumentFormatSource.ofFile(file, "pages.pdf")).chunks()).hasSize(3);
   }
 
   @Test
@@ -236,7 +261,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(0, 0, 0, 0, 0, 1024 * 1024, 0));
+            new ParserLimitProperties(0, 0, 0, 0, 0, 1024 * 1024, 0, 0));
 
     assertThat(runWithin(Duration.ofSeconds(8), limited, file))
         .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
