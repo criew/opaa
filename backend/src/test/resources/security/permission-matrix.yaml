@@ -57,8 +57,8 @@ operations:
   unmarkAssetFavorite:                       {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401, foreign: allowed, note: "removes only the caller's own mark and answers 204 for any id, known or not"}
   listAssetSpaceAssociations:                {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   transferAssetOwnership:                    {systemAdmin: allowed, auditor: 404, spaceAdmin: 403, curator: 403, member: 403, noRights: 404, anonymous: 401}
-  listSpaceAssetAssociations:                {systemAdmin: allowed, auditor: 403, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 403, anonymous: 401}
-  associateSpaceAsset:                       {systemAdmin: 404, auditor: 403, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 403, anonymous: 401}
+  listSpaceAssetAssociations:                {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  associateSpaceAsset:                       {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401}
   detachSpaceAsset:                          {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401, foreignChild: [spaceId], note: "a manager of the asset may detach it from any space, member or not; with no such association it is a no-op (204)"}
   listCatalog:                               {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
   listAuditEventsByObject:                   {systemAdmin: 403, auditor: allowed, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
@@ -106,9 +106,9 @@ operations:
   revokeCapability:                          {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   listChatImports:                           {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401, note: "exists only with opaa.demo.chat-import.enabled, which no test context sets"}
   importChat:                                {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401, note: "exists only with opaa.demo.chat-import.enabled, which no test context sets"}
-  listSpaceChats:                            {systemAdmin: 403, auditor: 403, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 403, anonymous: 401}
-  createChat:                                {systemAdmin: 403, auditor: 403, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 403, anonymous: 401}
-  searchSpaceChats:                          {systemAdmin: 403, auditor: 403, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 403, anonymous: 401}
+  listSpaceChats:                            {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  createChat:                                {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  searchSpaceChats:                          {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   getChat:                                   {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   updateChat:                                {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   deleteChat:                                {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
@@ -117,8 +117,8 @@ operations:
   unpinChat:                                 {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   archiveChat:                               {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   unarchiveChat:                             {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
-  listArchivedSpaceChats:                    {systemAdmin: 403, auditor: 403, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 403, anonymous: 401}
-  applyChatBulkAction:                       {systemAdmin: 403, auditor: 403, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 403, anonymous: 401}
+  listArchivedSpaceChats:                    {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  applyChatBulkAction:                       {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   deleteChatNoteItem:                        {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   getSelfDisclosureStatus:                   {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
   createSelfDisclosureTicket:                {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
@@ -361,9 +361,9 @@ operations:
   getPrompt:                                 {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   updatePrompt:                              {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401}
   deletePrompt:                              {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: allowed, member: 403, noRights: 404, anonymous: 401}
-  listAvailablePrompts:                      {systemAdmin: allowed, auditor: 403, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 403, anonymous: 401}
+  listAvailablePrompts:                      {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   submitQuery:                               {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401, note: "503 because no chat model answers in the test; a chat the caller may not use is ignored and the query runs without it (specification of QueryRequest.chatId)"}
-  getMetadataFilterOptions:                  {systemAdmin: 403, auditor: 403, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 403, anonymous: 401}
+  getMetadataFilterOptions:                  {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   searchKnowledge:                           {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
   listSearchableLibraries:                   {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
   fetchSearchHit:                            {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
@@ -379,17 +379,17 @@ operations:
   listSpaces:                                {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
   createSpace:                               {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401, note: "the request names another person as owner, which only the system administration may"}
   getChatAutoCleanupPeriods:                 {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
-  getSpace:                                  {systemAdmin: allowed, auditor: 403, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 403, anonymous: 401}
-  updateSpace:                               {systemAdmin: allowed, auditor: 403, spaceAdmin: allowed, curator: 403, member: 403, noRights: 403, anonymous: 401}
-  deleteSpace:                               {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
-  archiveSpace:                              {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
-  getSpaceAccessDerivation:                  {systemAdmin: allowed, auditor: 403, spaceAdmin: allowed, curator: 403, member: 403, noRights: 403, anonymous: 401}
-  listSpaceMembers:                          {systemAdmin: allowed, auditor: 403, spaceAdmin: allowed, curator: 403, member: 403, noRights: 403, anonymous: 401}
-  addSpaceMember:                            {systemAdmin: 403, auditor: 403, spaceAdmin: allowed, curator: 403, member: 403, noRights: 403, anonymous: 401}
-  listSpaceGroupMembers:                     {systemAdmin: 404, auditor: 403, spaceAdmin: 404, curator: 403, member: 403, noRights: 403, anonymous: 401}
-  removeSpaceMember:                         {systemAdmin: 403, auditor: 403, spaceAdmin: allowed, curator: 403, member: 403, noRights: 403, anonymous: 401}
-  updateSpaceMemberRole:                     {systemAdmin: 403, auditor: 403, spaceAdmin: allowed, curator: 403, member: 403, noRights: 403, anonymous: 401}
-  transferSpaceOwnership:                    {systemAdmin: allowed, auditor: 403, spaceAdmin: allowed, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  getSpace:                                  {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  updateSpace:                               {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  deleteSpace:                               {systemAdmin: allowed, auditor: 404, spaceAdmin: 403, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  archiveSpace:                              {systemAdmin: allowed, auditor: 404, spaceAdmin: 403, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  getSpaceAccessDerivation:                  {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  listSpaceMembers:                          {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  addSpaceMember:                            {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  listSpaceGroupMembers:                     {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  removeSpaceMember:                         {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  updateSpaceMemberRole:                     {systemAdmin: 403, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  transferSpaceOwnership:                    {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
   previewPermissionTransfer:                 {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401, note: "hands on another person's ownership, which only the system administration may"}
   executePermissionTransfer:                 {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   listSuccessionEntries:                     {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
