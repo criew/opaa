@@ -134,6 +134,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   private final CurrentInstance currentInstance;
   private final MalwareScanService malwareScanService;
   private final EmbeddingModelService embeddingModels;
+  private final UploadProcessingSlots processingSlots;
 
   /** One transaction per document for {@link #deleteDocuments} - see its contract. */
   private final TransactionTemplate transactionTemplate;
@@ -164,6 +165,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
       CurrentInstance currentInstance,
       MalwareScanService malwareScanService,
       EmbeddingModelService embeddingModels,
+      UploadProcessingSlots processingSlots,
       Clock clock) {
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
@@ -188,6 +190,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     this.currentInstance = currentInstance;
     this.malwareScanService = malwareScanService;
     this.embeddingModels = embeddingModels;
+    this.processingSlots = processingSlots;
     this.clock = clock;
   }
 
@@ -247,136 +250,160 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     }
     String extension = matchedExtension(displayFileName);
 
-    // Created only after every certain-to-reject check above: resolveOrCreateFolderPath commits its
-    // folder chain on return, so a rejected upload must not reach it.
-    UUID effectiveFolderId = folderId;
-    List<String> pathSegments = splitFolderPath(folderPath);
-    if (!pathSegments.isEmpty()) {
-      effectiveFolderId =
-          folderService.resolveOrCreateFolderPath(libraryId, folderId, pathSegments, caller);
-    }
-
-    UploadedOriginalStore.AcceptedUpload accepted =
-        acceptUpload(library.getOrganizationId(), libraryId, extension, file);
-    // The working file the rest of this upload reads - the same file the asynchronous processing
-    // gets, and the one it releases when it is done (ADR-0030, Entscheidung 2). It only becomes the
-    // library's original at accepted.store() below, after the checks that still reject an upload.
-    Path storedFile = accepted.workingFile();
-
-    // Assigned as the last statement of the try below, and read only after it: once the upload has
-    // been handed to the asynchronous task, nothing may run inside a block whose catch discards the
-    // original the task is parsing (it would leave the committed row pointing at a dead file_path).
-    Document storedRow;
+    // A place in the upload pool, taken before anything is stored or created: a full pool is a
+    // 429 with nothing written. The processing gives it back when it ends; until the hand-over,
+    // the finally below does.
+    UploadProcessingSlots.Slot slot = processingSlots.reserve();
+    boolean handedOver = false;
     try {
-      requireContentMatchesExtension(storedFile, extension);
-      requireNoMalware(storedFile, library, displayFileName);
-
-      String checksum = checksumService.computeSha256(storedFile);
-      // Dedup is scoped per library: the same file uploaded into two different libraries is two
-      // legitimate documents, only a second copy inside the *same* library is rejected.
-      Optional<Document> existing =
-          documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
-              libraryId, checksum);
-      if (existing.isPresent()) {
-        Document existingDoc = existing.get();
-        if (existingDoc.getStatus() != DocumentStatus.FAILED) {
-          accepted.discard();
-          throw new ConflictException("Diese Datei ist bereits in dieser Bibliothek vorhanden");
-        }
-        // A retry replaces a FAILED row together with its chunks, its original and its attachment
-        // children (ADR-0022, Entscheidung 3); the children go first (fk_documents_parent).
-        Optional<UploadedOriginalRef> oldFailedOriginal = UploadedOriginalRef.of(existingDoc);
-        for (Document descendant : descendantsDeepestFirst(existingDoc.getId())) {
-          vectorChunkStore.deleteByDocumentId(descendant.getId());
-          documentRepository.delete(descendant);
-        }
-        vectorChunkStore.deleteByDocumentId(existingDoc.getId());
-        documentRepository.delete(existingDoc);
-        oldFailedOriginal.ifPresent(uploadedOriginalStore::delete);
+      // Created only after every certain-to-reject check above: resolveOrCreateFolderPath commits
+      // its folder chain on return, so a rejected upload must not reach it.
+      UUID effectiveFolderId = folderId;
+      List<String> pathSegments = splitFolderPath(folderPath);
+      if (!pathSegments.isEmpty()) {
+        effectiveFolderId =
+            folderService.resolveOrCreateFolderPath(libraryId, folderId, pathSegments, caller);
       }
 
-      // The row is created - and returned - as PENDING here, before any parsing/embedding has
-      // happened. contentType/fileSize are read from the file this class itself just wrote; the
-      // connector paths store the canonical type of the routed format instead.
-      String contentType = Files.probeContentType(storedFile);
-      long fileSize = Files.size(storedFile);
-      Document document =
-          new Document(
-              displayFileName,
-              accepted.store().locator(),
-              contentType,
-              fileSize,
-              library.getSourceType());
-      document.setLibraryId(libraryId);
-      document.setOrganizationId(library.getOrganizationId());
-      document.setUploadedByUserId(currentUserId);
-      document.setFolderId(effectiveFolderId);
-      // Set on this first (and only synchronous) save: this is where a concurrent duplicate upload
-      // race against uk_documents_library_checksum is meant to be settled - before any embedding
-      // work starts, not after, even though the embedding work itself runs off this thread.
-      document.setChecksum(checksum);
-      document.setProcessingInstanceId(currentInstance.id());
-      document = documentRepository.save(document);
+      UploadedOriginalStore.AcceptedUpload accepted =
+          acceptUpload(library.getOrganizationId(), libraryId, extension, file);
+      // The working file the rest of this upload reads - the same file the asynchronous
+      // processing gets, and the one it releases when it is done (ADR-0030, Entscheidung 2). It
+      // only becomes the library's original at accepted.store() below, after the checks that
+      // still reject an upload.
+      Path storedFile = accepted.workingFile();
 
-      // The row is committed: a failure from here on marks it FAILED instead of reaching the outer
-      // catch, which would leave the row pointing at a deleted file.
+      // Assigned as the last statement of the try below, and read only after it: once the upload
+      // has been handed to the asynchronous task, nothing may run inside a block whose catch
+      // discards the original the task is parsing (it would leave the committed row pointing at
+      // a dead file_path).
+      Document storedRow;
       try {
-        // Parsing/chunking/embedding run on uploadTaskExecutor from here - this method returns the
-        // PENDING row without waiting for that to finish.
-        documentIngestService.processUploadedFileAsync(
-            DocumentIngest.builder(library)
-                .file(storedFile, fileSize)
-                .filePath(document.getFilePath())
-                .fileName(displayFileName)
-                .sourceType(library.getSourceType())
-                .existingRow()
-                .malwareScanned()
-                .build(),
-            new StandaloneAttachmentAccess(library, "Upload"),
-            accepted::release);
-      } catch (TaskRejectedException e) {
-        // uploadTaskExecutor rejects instead of discarding when full; a row left PENDING would be
-        // polled forever for a job nothing runs.
-        log.warn(
-            "Upload processing queue is full; marking document {} as FAILED immediately",
-            document.getId(),
-            e);
-        return failAlreadyPersistedUpload(
-            document,
-            accepted,
-            "Die Verarbeitung ist derzeit ausgelastet - bitte später erneut versuchen.");
-      } catch (RuntimeException e) {
-        log.error(
-            "Failed to start asynchronous processing for uploaded document {}",
-            document.getId(),
-            e);
-        return failAlreadyPersistedUpload(
-            document, accepted, "Die Verarbeitung konnte nicht gestartet werden");
-      }
+        requireContentMatchesExtension(storedFile, extension);
+        requireNoMalware(storedFile, library, displayFileName);
 
-      storedRow = document;
-    } catch (DataIntegrityViolationException e) {
-      // fk_documents_folder: the folder was deleted concurrently after resolveFolder above.
-      accepted.discard();
-      if (isFolderForeignKeyViolation(e)) {
-        throw new NotFoundException("Der Ordner wurde inzwischen gelöscht");
+        String checksum = checksumService.computeSha256(storedFile);
+        // Dedup is scoped per library: the same file uploaded into two different libraries is two
+        // legitimate documents, only a second copy inside the *same* library is rejected.
+        Optional<Document> existing =
+            documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
+                libraryId, checksum);
+        if (existing.isPresent()) {
+          Document existingDoc = existing.get();
+          if (existingDoc.getStatus() != DocumentStatus.FAILED) {
+            accepted.discard();
+            throw new ConflictException("Diese Datei ist bereits in dieser Bibliothek vorhanden");
+          }
+          // A retry replaces a FAILED row together with its chunks, its original and its attachment
+          // children (ADR-0022, Entscheidung 3); the children go first (fk_documents_parent).
+          Optional<UploadedOriginalRef> oldFailedOriginal = UploadedOriginalRef.of(existingDoc);
+          for (Document descendant : descendantsDeepestFirst(existingDoc.getId())) {
+            vectorChunkStore.deleteByDocumentId(descendant.getId());
+            documentRepository.delete(descendant);
+          }
+          vectorChunkStore.deleteByDocumentId(existingDoc.getId());
+          documentRepository.delete(existingDoc);
+          oldFailedOriginal.ifPresent(uploadedOriginalStore::delete);
+        }
+
+        // The row is created - and returned - as PENDING here, before any parsing/embedding has
+        // happened. contentType/fileSize are read from the file this class itself just wrote; the
+        // connector paths store the canonical type of the routed format instead.
+        String contentType = Files.probeContentType(storedFile);
+        long fileSize = Files.size(storedFile);
+        Document document =
+            new Document(
+                displayFileName,
+                accepted.store().locator(),
+                contentType,
+                fileSize,
+                library.getSourceType());
+        document.setLibraryId(libraryId);
+        document.setOrganizationId(library.getOrganizationId());
+        document.setUploadedByUserId(currentUserId);
+        document.setFolderId(effectiveFolderId);
+        // Set on this first (and only synchronous) save: this is where a concurrent duplicate
+        // upload race against uk_documents_library_checksum is meant to be settled - before
+        // any embedding work starts, not after, even though the embedding work itself runs
+        // off this thread.
+        document.setChecksum(checksum);
+        document.setProcessingInstanceId(currentInstance.id());
+        document = documentRepository.save(document);
+
+        // The row is committed: a failure from here on marks it FAILED instead of reaching the
+        // outer catch, which would leave the row pointing at a deleted file.
+        try {
+          // Parsing/chunking/embedding run on uploadTaskExecutor from here - this method returns
+          // the PENDING row without waiting for that to finish.
+          documentIngestService.processUploadedFileAsync(
+              DocumentIngest.builder(library)
+                  .file(storedFile, fileSize)
+                  .filePath(document.getFilePath())
+                  .fileName(displayFileName)
+                  .sourceType(library.getSourceType())
+                  .existingRow()
+                  .malwareScanned()
+                  .build(),
+              new StandaloneAttachmentAccess(library, "Upload"),
+              () -> {
+                try {
+                  accepted.release();
+                } finally {
+                  slot.release();
+                }
+              });
+          handedOver = true;
+        } catch (TaskRejectedException e) {
+          // The pool is full although a place was free here - a task that gave its place back has
+          // not left its thread yet. Taken back like a refused reservation: no row, no original.
+          log.warn("Upload processing queue is full; refusing document {}", document.getId());
+          try {
+            documentRepository.delete(document);
+          } catch (RuntimeException deleteFailed) {
+            log.error("Could not remove refused upload {}", document.getId(), deleteFailed);
+            return failAlreadyPersistedUpload(
+                document,
+                accepted,
+                "Die Verarbeitung ist derzeit ausgelastet - bitte später erneut versuchen.");
+          }
+          throw UploadProcessingSlots.busy();
+        } catch (RuntimeException e) {
+          log.error(
+              "Failed to start asynchronous processing for uploaded document {}",
+              document.getId(),
+              e);
+          return failAlreadyPersistedUpload(
+              document, accepted, "Die Verarbeitung konnte nicht gestartet werden");
+        }
+
+        storedRow = document;
+      } catch (DataIntegrityViolationException e) {
+        // fk_documents_folder: the folder was deleted concurrently after resolveFolder above.
+        accepted.discard();
+        if (isFolderForeignKeyViolation(e)) {
+          throw new NotFoundException("Der Ordner wurde inzwischen gelöscht");
+        }
+        // uk_documents_library_checksum settles a concurrent duplicate upload; any other violation
+        // gets the same neutral 409.
+        throw new ConflictException("Diese Datei ist bereits in dieser Bibliothek vorhanden");
+      } catch (IOException e) {
+        accepted.discard();
+        throw new UncheckedIOException("Datei konnte nicht gespeichert werden", e);
+      } catch (RuntimeException e) {
+        // Reachable before the row is committed (validation, file I/O, the dedup check above) and
+        // for a refused hand-over whose row was removed again; any other failure from
+        // documentRepository.save(document) onward is handled by the inner try/catch.
+        accepted.discard();
+        throw e;
       }
-      // uk_documents_library_checksum settles a concurrent duplicate upload; any other violation
-      // gets the same neutral 409.
-      throw new ConflictException("Diese Datei ist bereits in dieser Bibliothek vorhanden");
-    } catch (IOException e) {
-      accepted.discard();
-      throw new UncheckedIOException("Datei konnte nicht gespeichert werden", e);
-    } catch (RuntimeException e) {
-      // Only reachable before the row is committed (validation, file I/O, the dedup check above) -
-      // everything from documentRepository.save(document) onward has its own inner try/catch that
-      // never lets a RuntimeException escape to here.
-      accepted.discard();
-      throw e;
+      markUploadAsContentChange(libraryId);
+      return new LibraryDocumentEntry(
+          storedRow, LibraryFolderPaths.pathOf(folderRepository, storedRow.getFolderId()));
+    } finally {
+      if (!handedOver) {
+        slot.release();
+      }
     }
-    markUploadAsContentChange(libraryId);
-    return new LibraryDocumentEntry(
-        storedRow, LibraryFolderPaths.pathOf(folderRepository, storedRow.getFolderId()));
   }
 
   /**

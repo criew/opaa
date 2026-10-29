@@ -39,6 +39,12 @@ public interface ConfluenceClient {
   List<ConfluenceSpace> listSpaces() throws ConfluenceAccessException, InterruptedException;
 
   /**
+   * {@link #listSpaces()} without archived spaces ({@code status=current}) - what "Alle Spaces"
+   * resolves to.
+   */
+  List<ConfluenceSpace> listCurrentSpaces() throws ConfluenceAccessException, InterruptedException;
+
+  /**
    * Every current page of {@code spaceKey}, fully paginated, without bodies.
    *
    * @throws ConfluenceAccessException.Forbidden when the instance refuses the space ({@code 403})

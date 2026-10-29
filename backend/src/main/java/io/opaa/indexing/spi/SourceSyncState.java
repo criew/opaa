@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -103,6 +104,15 @@ public class SourceSyncState {
    */
   @Column(name = "full_sync_quota_held")
   private Boolean fullSyncQuotaHeld;
+
+  /**
+   * What the last run of a library with the scope "Alle" found, as JSON of scope key to shown name;
+   * {@code null} before the first such run. Outlasts a discarded basis: it describes the source,
+   * not a sync under certain settings.
+   */
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "resolved_scopes", columnDefinition = "jsonb")
+  private String resolvedScopes;
 
   /** Whether this instance was read from or written to the database. */
   @Transient private boolean stored;
@@ -359,6 +369,32 @@ public class SourceSyncState {
     public SubtreeMemory {
       containers = containers == null ? Map.of() : Map.copyOf(containers);
     }
+  }
+
+  /**
+   * The scopes the last run resolved "Alle" to, scope key to shown name ({@code null} for none
+   * known); {@code null} before the first such run.
+   */
+  public Map<String, String> resolvedScopes() {
+    if (resolvedScopes == null) {
+      return null;
+    }
+    Map<String, String> read = new LinkedHashMap<>();
+    CURSOR_JSON
+        .readTree(resolvedScopes)
+        .properties()
+        .forEach(
+            entry ->
+                read.put(
+                    entry.getKey(),
+                    entry.getValue().isNull() ? null : entry.getValue().asString()));
+    return read;
+  }
+
+  /** Remembers what "Alle" resolved to in this run, for the next run to compare against. */
+  public void rememberResolvedScopes(Map<String, String> scopes) {
+    resolvedScopes = CURSOR_JSON.writeValueAsString(new LinkedHashMap<>(scopes));
+    touch();
   }
 
   /** The remembered folder markers, {@link SubtreeMemory#NONE} when there are none. */

@@ -85,7 +85,8 @@ ADR.
 ### 5. Geltungsbereiche
 
 `source_settings.scopes`: ein bis fünfzig Bereiche (`GoogleDriveScope`): `{"drive": id}` (geteilte
-Ablage), `{"folder": id}` (Ordner samt Unterordnern) oder `{"myDrive": true}` (nur mit `subject`).
+Ablage), `{"folder": id}` (Ordner samt Unterordnern) oder `{"myDrive": true}` (nur mit `subject`);
+oder `allScopes: true` mit leeren Bereichen, beides zusammen wird abgelehnt.
 Container-Schlüssel `drive:<id>`, `folder:<id>`, `myDrive`. Überlappung wird nicht abgewiesen: Die
 Identität ist die Datei-ID, der Ordner kommt aus dem ersten Bereich, der sie listet. Eine geteilte
 Ablage wird flach gelistet (`corpora=drive`), ein Ordnerbereich ebenenweise. `SourceBrowser` nennt
@@ -93,6 +94,21 @@ Ablage wird flach gelistet (`corpora=drive`), ein Ordnerbereich ebenenweise. `So
 (`drives.get` bzw. `files.get`); ein nicht erreichbarer ist `ContainerUnlistable`, sein Bestand
 bleibt, und der Verbindungstest nennt ihn. Das gilt auch, wenn die Organisation verhindert, dass das
 Dienstkonto Mitglied einer geteilten Ablage wird.
+
+„Alle Ablagen“ (`allScopes`) heißt: jede geteilte Ablage, in der das Konto Mitglied ist
+(`drives.list`, bis zur letzten Seite), auch was später dazukommt, und mit `subject` dazu dessen
+„Meine Ablage“; ohne `subject` nicht, weil ein Dienstkonto selbst keine Dateien besitzt
+(Entscheidung 4). Freigegebene Ordner außerhalb geteilter Ablagen gehören nicht dazu. Jeder Lauf
+ermittelt die Menge nach der Anmeldung neu; findet er keine Ablage oder bricht die Auflistung ab,
+scheitert er vor der ersten Datei und der Bestand bleibt. Das Laufprotokoll nennt die Zahl der
+Ablagen und, gegen die in `source_sync_state.resolved_scopes` gemerkte letzte Ermittlung, neu
+hinzugekommene und weggefallene. Die Vorgabe der Betriebsart liest die Ströme aus dieser letzten
+Ermittlung, vor der ersten ist sie der Vollabgleich; eine neue Ablage hat noch keinen Cursor und
+macht den nächsten Lauf zum Vollabgleich (ADR-0045, Entscheidung 3). Was aus einer weggefallenen
+indiziert ist, entfernt ein Vollabgleich im selben Lauf; ein Änderungslauf überlässt es dem
+nächsten. Der Verbindungstest nennt die Zahl der Ablagen,
+die ein Lauf jetzt fände. Bestehende Bibliotheken behalten ihre Bereiche; die Oberfläche wählt
+„Alle Ablagen“ nur für neue Bibliotheken vor.
 
 ### 6. Zwei Betriebsarten: Vollabgleich und Änderungsprotokoll
 

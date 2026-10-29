@@ -81,6 +81,18 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   boolean existsBySourceEntryUrlAndLibraryId(String sourceEntryUrl, UUID libraryId);
 
   /**
+   * The buckets {@code libraryId} holds documents from: the host part of each {@code
+   * s3://<bucket>/<key>} file path, once each. "Alle Buckets" keeps an unreadable bucket among them
+   * in scope, so what is indexed from it stays.
+   */
+  @Query(
+      value =
+          "SELECT DISTINCT split_part(file_path, '/', 3) FROM documents"
+              + " WHERE library_id = :libraryId AND file_path LIKE 's3://%'",
+      nativeQuery = true)
+  List<String> findS3BucketsByLibraryId(@Param("libraryId") UUID libraryId);
+
+  /**
    * Sets the stored name of an existing row - the cleaned name of an upload or a re-index - as a
    * conditional update, so a row deleted meanwhile is never re-inserted.
    */

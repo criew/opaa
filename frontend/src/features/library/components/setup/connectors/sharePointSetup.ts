@@ -7,6 +7,7 @@ import {
   sharePointFolderLabel,
   sharePointLibraryLabel,
   sharePointSettingsOf,
+  sharePointSiteLabel,
   type SharePointSourceValues,
 } from '../../../utils/sharePointSource'
 import type { SourceSetupSpec } from '../setupTypes'
@@ -24,6 +25,13 @@ export const sharePointSetup: SourceSetupSpec<SharePointSourceValues> = {
     {
       id: 'scope',
       summary: (values) => {
+        if (values.allLibraries) {
+          if (values.sites.length === 0) return null
+          return {
+            lead: `Alle Dokumentbibliotheken von ${counted(values.sites.length, ['Site', 'Sites'])}`,
+            items: values.sites.map(sharePointSiteLabel),
+          }
+        }
         if (values.libraries.length === 0) return null
         const folders = values.libraries.reduce((sum, library) => sum + library.folders.length, 0)
         const lead = [
@@ -50,6 +58,15 @@ export const sharePointSetup: SourceSetupSpec<SharePointSourceValues> = {
   ],
   issues: (values) => {
     const { at, list } = issueList()
+    if (values.allLibraries) {
+      at('libraries', 'Site fehlt', values.sites.length === 0)
+      at(
+        'libraries',
+        `Höchstens ${MAX_SHAREPOINT_LIBRARIES} Sites`,
+        values.sites.length > MAX_SHAREPOINT_LIBRARIES,
+      )
+      return list
+    }
     at('libraries', 'Dokumentbibliotheken fehlen', values.libraries.length === 0)
     at(
       'libraries',

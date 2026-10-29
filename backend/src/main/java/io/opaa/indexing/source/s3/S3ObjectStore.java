@@ -58,6 +58,12 @@ public interface S3ObjectStore extends AutoCloseable {
   S3BucketListing listBuckets() throws S3AccessException, InterruptedException;
 
   /**
+   * One listing request for at most one key of {@code bucket}: whether the credentials may list it
+   * at all, answered by the same exceptions as {@link #listObjects}.
+   */
+  void probeListing(String bucket) throws S3AccessException, InterruptedException;
+
+  /**
    * Probes one scope step by step - bucket reachable, listing allowed, reading allowed - and
    * reports how far it got; a refused step is the result, not an exception.
    */

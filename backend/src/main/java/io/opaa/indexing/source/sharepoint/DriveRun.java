@@ -68,6 +68,38 @@ final class DriveRun {
     void require(GraphClient graph) throws FileAccessException, InterruptedException;
   }
 
+  /** Which drives a run syncs, decided once it may ask Graph. */
+  @FunctionalInterface
+  interface Drives {
+
+    /**
+     * The drives of this run; {@code state} is the run's sync state, saved by the caller after. A
+     * rejected token is {@link FileAccessException.CredentialsRejected}, anything else that refuses
+     * the run carries the German reason as its message.
+     */
+    List<SharePointLibrary> of(GraphClient graph, SourceSyncState state)
+        throws FileAccessException, InterruptedException;
+
+    /** Whether {@link #of} may change {@code state}, which the run then saves first. */
+    default boolean changesState() {
+      return true;
+    }
+  }
+
+  /** Drives fixed by the settings, without asking Graph. */
+  private record Fixed(List<SharePointLibrary> drives) implements Drives {
+
+    @Override
+    public List<SharePointLibrary> of(GraphClient graph, SourceSyncState state) {
+      return drives;
+    }
+
+    @Override
+    public boolean changesState() {
+      return false;
+    }
+  }
+
   /**
    * Syncs {@code drives} of {@code run}, each of the kind {@code rule} admits, once {@code
    * admission} let the run through; a refused run fails without touching its documents.
@@ -80,6 +112,18 @@ final class DriveRun {
       FileSyncWording wording,
       Admission admission)
       throws InterruptedException {
+    return sync(run, runMode, rule, new Fixed(drives), wording, admission);
+  }
+
+  /** As above, with the drives {@code drives} decides once the run was admitted. */
+  ListingOutcome sync(
+      IndexingRun run,
+      IndexingRunMode runMode,
+      DriveRule rule,
+      Drives drives,
+      FileSyncWording wording,
+      Admission admission)
+      throws InterruptedException {
     SharePointProperties properties = graphs.properties();
     RequestBudget budget =
         new RequestBudget(
@@ -88,17 +132,22 @@ final class DriveRun {
             properties.maxThrottleWaitPerRun());
     GraphClient graph = graphs.open(run.settings(), run.credentials(), budget);
     run.recordRequestCost(budget.meter());
+    UUID libraryId = run.library().getId();
+    SourceSyncState state = journal.load(libraryId);
+    List<SharePointLibrary> runDrives;
     try {
       admission.require(graph);
+      runDrives = drives.of(graph, state);
     } catch (FileAccessException.CredentialsRejected e) {
       throw new SourceCredentialsRejectedException(e.getMessage(), e);
     } catch (FileAccessException e) {
       throw new IndexingRunFailedException(e.getMessage(), e);
     }
-    UUID libraryId = run.library().getId();
-    SourceSyncState state = journal.load(libraryId);
+    if (drives.changesState()) {
+      state = journal.save(run.jobId(), state);
+    }
     try (DriveFileStore store =
-            new DriveFileStore(rule, graph, budget.meter(), drives, properties.pageSize());
+            new DriveFileStore(rule, graph, budget.meter(), runDrives, properties.pageSize());
         FileSync sync =
             new FileSync(
                 run,

@@ -72,6 +72,15 @@ public class RateLimitConfiguration {
    */
   static final String SEARCH_PATTERN = "^/api/v1/search(?:/hits/[^/]+)?$";
 
+  /** The dictation; the availability next to it stays outside. */
+  static final String TRANSCRIPTION_PATTERN = "^/api/v1/transcriptions$";
+
+  /**
+   * The upload into a library, keyed by the client alone and for {@code POST} only: another library
+   * buys no fresh budget, and the document listing on the same path stays outside.
+   */
+  static final String DOCUMENT_UPLOAD_PATTERN = "^/api/v1/libraries/[^/]+/documents$";
+
   @Bean
   TrustedProxyClientIpResolver clientIpResolver(RateLimitProperties properties) {
     return new TrustedProxyClientIpResolver(properties.trustedProxyCidrs());
@@ -158,6 +167,21 @@ public class RateLimitConfiguration {
     rules.add(
         rule(counters, "chat-search", CHAT_SEARCH_PATTERN, properties.chatSearch(), AUTHENTICATED));
     rules.add(rule(counters, "search", SEARCH_PATTERN, properties.search(), AUTHENTICATED));
+    rules.add(
+        rule(
+            counters,
+            "transcription",
+            TRANSCRIPTION_PATTERN,
+            properties.transcription(),
+            AUTHENTICATED));
+    rules.add(
+        rule(
+            counters,
+            "document-upload",
+            DOCUMENT_UPLOAD_PATTERN,
+            properties.documentUpload(),
+            AUTHENTICATED,
+            "POST"));
     LocalAuthLimits localAuth = properties.localAuth();
     rules.add(rule(counters, "local-auth-login", LOCAL_LOGIN_PATTERN, localAuth.login()));
     rules.add(rule(counters, "local-auth-refresh", LOCAL_REFRESH_PATTERN, localAuth.refresh()));
@@ -207,6 +231,16 @@ public class RateLimitConfiguration {
       String pattern,
       EndpointLimit limit,
       Counting counting) {
+    return rule(counters, name, pattern, limit, counting, null);
+  }
+
+  private static Rule rule(
+      InstallationCounters counters,
+      String name,
+      String pattern,
+      EndpointLimit limit,
+      Counting counting,
+      String method) {
     return new Rule(
         name,
         pattern,
@@ -216,7 +250,8 @@ public class RateLimitConfiguration {
         counting,
         limit.hasAccountLimit()
             ? new RateLimitService(limit.maxRequestsPerAccount(), limit.windowSeconds())
-            : null);
+            : null,
+        method);
   }
 
   private static Rule rule(

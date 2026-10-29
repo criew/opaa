@@ -17,6 +17,7 @@ import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
@@ -109,6 +110,34 @@ class LlmModelConnectionTesterTest {
         tester.test(baseUrl, "phi3:mini", null, null, null);
 
     assertThat(outcome.success()).isTrue();
+  }
+
+  /** An endpoint answering without end is read up to the bound, not into memory as a whole. */
+  @Test
+  void anOversizedAnswerIsCutOffAtTheBound() {
+    server.createContext(
+        "/v1/chat/completions",
+        exchange -> {
+          exchange.sendResponseHeaders(200, 0);
+          byte[] chunk = new byte[64 * 1024];
+          Arrays.fill(chunk, (byte) 'a');
+          try (OutputStream out = exchange.getResponseBody()) {
+            // four times the bound; the reader closes the connection long before
+            for (int i = 0;
+                i < 4 * LlmModelConnectionTester.MAX_RESPONSE_BYTES / chunk.length;
+                i++) {
+              out.write(chunk);
+            }
+          } catch (IOException closedByTheReader) {
+            // expected once the tester stops reading
+          }
+        });
+
+    LlmModelConnectionTester.TestOutcome outcome =
+        tester.test(baseUrl, "phi3:mini", null, null, null);
+
+    assertThat(outcome.success()).isFalse();
+    assertThat(outcome.message()).contains("unerwartet viel");
   }
 
   /** The JDK client hands the outbound proxy's {@code 407} back as an answer. */

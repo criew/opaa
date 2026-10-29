@@ -29,6 +29,7 @@ export function useDocumentUpload(
   onDocumentsChanged: () => void,
 ) {
   const isUploading = useDocumentStore((s) => s.isUploading)
+  const uploadWaitSeconds = useDocumentStore((s) => s.uploadWaitSeconds)
   const uploadNewDocument = useDocumentStore((s) => s.uploadNewDocument)
   const reportUploadError = useDocumentStore((s) => s.reportUploadError)
   const clearUploadErrors = useDocumentStore((s) => s.clearUploadErrors)
@@ -38,6 +39,15 @@ export function useDocumentUpload(
   // A whole-folder counterpart to fileInputRef - `webkitdirectory` is not part of React's
   // JSX typings for <input>, so it is set imperatively via the effect below instead of as a prop.
   const folderInputRef = useRef<HTMLInputElement>(null)
+  // Ends a running wait for a 429 once the page leaves this library; files not yet sent still go
+  // out.
+  const abortRef = useRef<AbortController | null>(null)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    abortRef.current = controller
+    return () => controller.abort()
+  }, [libraryId])
 
   useEffect(() => {
     // `webkitdirectory` (plus its older aliases) is not part of React's <input> typings, so
@@ -56,9 +66,10 @@ export function useDocumentUpload(
     if (!options?.skipClear) {
       clearUploadErrors()
     }
+    const signal = abortRef.current?.signal
     for (const entry of entries) {
       try {
-        await uploadNewDocument(libraryId, entry.file, entry.relativePath || undefined)
+        await uploadNewDocument(libraryId, entry.file, entry.relativePath || undefined, signal)
         onDocumentsChanged()
       } catch {
         // The error is already collected in documentStore.uploadErrors; the loop keeps
@@ -122,6 +133,7 @@ export function useDocumentUpload(
 
   return {
     isUploading,
+    uploadWaitSeconds,
     isDragActive,
     setIsDragActive,
     fileInputRef,

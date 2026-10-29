@@ -15,7 +15,7 @@ export const googleDriveSource: SourceRegistration = {
   containerLabel: 'Bereich',
   configuration: {
     empty: EMPTY_GOOGLE_DRIVE_VALUES,
-    draftFields: ['subject', 'storedSubject', 'scopes', 'fullSyncIntervalDays'],
+    draftFields: ['subject', 'storedSubject', 'allScopes', 'scopes', 'fullSyncIntervalDays'],
     // ADR-0040: the stored key stands while the imitated account stays the same.
     fromLibrary: (library): GoogleDriveSourceValues => {
       const settings = googleDriveSettingsFromLibrary(library)
@@ -23,6 +23,7 @@ export const googleDriveSource: SourceRegistration = {
         ...EMPTY_GOOGLE_DRIVE_VALUES,
         subject: settings?.subject ?? '',
         storedSubject: settings?.subject ?? '',
+        allScopes: settings?.allScopes === true,
         scopes: googleDriveScopesOf(settings),
         fullSyncIntervalDays: settings?.fullSyncIntervalDays ?? null,
       }
@@ -31,7 +32,9 @@ export const googleDriveSource: SourceRegistration = {
       values.keyFile !== '' || values.subject !== '' || values.scopes.length > 0,
     toPayload: googleDrivePayloadOf,
     nameFromSource: (values: GoogleDriveSourceValues) =>
-      values.scopes.length === 1 ? googleDriveScopeLabel(values.scopes[0]) : '',
+      !values.allScopes && values.scopes.length === 1
+        ? googleDriveScopeLabel(values.scopes[0])
+        : '',
     scopeNoteId: 'google-drive-sharing-consequence',
     fullSyncRhythm: true,
     rhythmSettingsBase: (library) => library.sourceSettings ?? null,

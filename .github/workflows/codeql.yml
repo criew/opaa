@@ -1,0 +1,80 @@
+name: CodeQL
+
+# Static analysis of the project's own code (docs/cve-scanning.md, "Statische Code-Analyse (CodeQL)"). Results go to
+# Security -> Code scanning, one category per language. This workflow is the only CodeQL
+# configuration: the default setup in the repository settings must stay off, GitHub rejects
+# uploads from an advanced setup while the default setup is active.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Weekly on Tuesday, so new queries of the CodeQL bundle also reach code nobody touches.
+  schedule:
+    - cron: '17 4 * * 2'
+  workflow_dispatch:
+
+# Read-only token for the workflow; the analysis job adds security-events: write for the upload.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  analyze:
+    name: Analyse (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # manual: CodeQL traces the compilation of the Gradle multi-project build rooted at
+          # backend/ (backend and opaa-api), so the DTOs generated from the OpenAPI spec are
+          # resolved instead of guessed as with build-mode none.
+          - language: java-kotlin
+            build-mode: manual
+          - language: javascript-typescript
+            build-mode: none
+          - language: actions
+            build-mode: none
+          - language: python
+            build-mode: none
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        if: matrix.language == 'java-kotlin'
+        with:
+          distribution: temurin
+          java-version: '25.0.4+101.0.LTS'
+
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        if: matrix.language == 'java-kotlin'
+        with:
+          cache-read-only: true
+
+      - name: CodeQL initialisieren
+        uses: github/codeql-action/init@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      # Every Java source must actually be compiled while CodeQL traces: a task taken from the
+      # build cache or skipped as up to date leaves its sources out of the database.
+      - name: Backend kompilieren
+        if: matrix.language == 'java-kotlin'
+        working-directory: backend/
+        run: ./gradlew --no-daemon --no-build-cache --no-configuration-cache --rerun-tasks compileJava
+
+      - name: CodeQL-Analyse
+        uses: github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          category: '/language:${{ matrix.language }}'
