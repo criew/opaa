@@ -90,9 +90,13 @@ OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=wiki.behoerde.example,minio.intern.exa
 Die Liste liest das Backend beim Start; eine Änderung wirkt erst nach einem Neustart. Ein fehlender
 Eintrag zeigt sich beim Speichern und im Verbindungstest als abgewiesenes Ziel, nicht als
 Anmeldefehler; die Meldung nennt die Einstellung. Die Prüfung lässt sich mit
-`OPAA_INDEXING_TARGET_VALIDATION_ENABLED` ganz abschalten, die Schemaprüfung bleibt dann. Eine
-Restlücke bleibt: DNS-Rebinding, bei dem ein Name zwischen Prüfung und Verbindung auf eine andere
-Adresse wechselt.
+`OPAA_INDEXING_TARGET_VALIDATION_ENABLED` ganz abschalten, die Schemaprüfung bleibt dann.
+
+Ein geprüfter Name bleibt an die geprüften Adressen gebunden: Der Konnektor verbindet genau dorthin,
+auch wenn der Namensdienst zwischen Prüfung und Verbindung eine interne Adresse nennt
+(DNS-Rebinding); Zertifikat und SNI prüft TLS weiter gegen den Namen. Wie lange die Bindung hält und
+was hinter dem Ausgangsproxy gilt, steht in
+[Netz und Sicherheit](../../../betrieb/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers).
 
 ### 1.3 Zertifikatsprüfung
 

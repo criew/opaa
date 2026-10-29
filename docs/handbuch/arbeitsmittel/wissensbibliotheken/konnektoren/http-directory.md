@@ -129,7 +129,7 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 | Summe der 429-Wartezeiten je Lauf | `opaa.indexing.http.max-rate-limit-wait-per-run` | „unvollständig, wird fortgesetzt" |
 
 Timeouts: 30 s Verbindungsaufbau, 60 s je Verzeichnisseite, 120 s je Datei. Grenzen gegen
-komprimierte Inhalte liegen in den Formaten. DNS-Rebinding bleibt eine bekannte Restlücke.
+komprimierte Inhalte liegen in den Formaten.
 
 ## 9. Protokoll und Fehlerbilder
 

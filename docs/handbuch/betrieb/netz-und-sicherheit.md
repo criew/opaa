@@ -127,14 +127,23 @@ solche, die nur aus dem Netz des Servers erreichbar sind (SSRF). Zwei Schranken 
   `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`, statt die Prüfung abzuschalten. Identitätsanbieter,
   Modell-Endpunkte und Originalablage haben eigene Schalter und Listen derselben Prüfung; ein
   Eintrag in einer Liste öffnet keine der anderen.
-- **Ein Eintrag der Listen gilt nach Name und Port,** ohne Prüfung der aufgelösten Adresse. Nur Namen
-  aus der eigenen Zone eintragen, Einträge mit Port vorziehen. Modelladressen prüft OPAA nur beim
-  Speichern, Testen und Abfragen, nicht bei jedem Aufruf; eine spätere Änderung der Namensauflösung
-  fängt allein die Beschränkung des Egress.
+- **Geprüfte Namen bleiben gebunden.** Ein Name, der die Prüfung besteht, verbindet danach nur an
+  die geprüften Adressen; später löst OPAA ihn neu auf und prüft wieder. Ein Namensdienst, der der
+  Prüfung eine öffentliche und der Verbindung eine interne Adresse nennt (DNS-Rebinding), läuft ins
+  Leere. Das gilt für jede Verbindung des Backends zu diesem Namen, bis 24 Stunden nach seiner
+  letzten Prüfung. Zertifikat und SNI prüft TLS weiter gegen den Namen.
+- **Ein Eintrag der Listen gilt nach Name und Port,** ohne Prüfung der aufgelösten Adresse und ohne
+  Bindung. Nur Namen aus der eigenen Zone eintragen, Einträge mit Port vorziehen. Modelladressen
+  prüft OPAA beim Speichern, Testen und Abfragen, nicht bei jedem Aufruf; die Bindung schützt die
+  Aufrufe danach.
+- **Wechselt ein geprüfter Name ins eigene Netz,** etwa beim Umzug eines Dienstes, ist er bis zum
+  Ablauf der Bindung nicht erreichbar. Abhilfe: den Namen in die passende Liste eintragen und das
+  Ziel einmal speichern oder testen, oder das Backend neu starten.
 - Nur `http` und `https`; Redirects nur auf demselben Origin, nie auf `http` herab. Zertifikate
   werden immer geprüft.
-- **Grenze:** DNS-Rebinding wird nicht erkannt. Wer das ausschließen muss, beschränkt den Egress des
-  Backends zusätzlich auf Netzebene.
+- **Grenze:** Hinter dem [Ausgangsproxy](#ausgangsproxy) löst der Proxy den Namen auf; dort greift
+  die Bindung nicht, interne Ziele sperrt der Proxy. Die Beschränkung des Egress auf Netzebene bleibt
+  die zweite Linie.
 
 ## Ausgangsproxy
 

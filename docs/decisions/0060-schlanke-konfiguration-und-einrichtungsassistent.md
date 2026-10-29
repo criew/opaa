@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-29 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md)
+Akzeptiert · zuletzt geändert 2026-10-29 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md), [ADR-0063](0063-bindung-gepruefter-namen-gegen-dns-rebinding.md)
 
 ## Kontext
 
@@ -196,7 +196,9 @@ Chat-Modell eingeschlossen. Sie ist von der Zielprüfung der Quellen getrennt: E
 kein erlaubtes Ziel der Konnektoren, ein Quell-Host kein erlaubtes Modell. In der Modellverwaltung
 bleibt eine gespeicherte Adresse unverändert speicher- und testbar; die Installation prüft jede.
 Aufrufe zur Laufzeit prüft sie nicht, damit eine enger gezogene Liste kein laufendes Modell
-abschaltet; nennt nur die Liste der Quellen den Host eines gespeicherten Modells, warnt der Start.
+abschaltet; ein geprüfter Name bleibt für sie an Adressen außerhalb der gesperrten Bereiche gebunden
+([ADR-0063](0063-bindung-gepruefter-namen-gegen-dns-rebinding.md), Entscheidung 3). Nennt nur die
+Liste der Quellen den Host eines gespeicherten Modells, warnt der Start.
 Begründung: Wer Bibliotheken anbinden darf, soll den internen Modellserver nicht als Quelle lesen
 können, nur weil der Betrieb ihn für die Modelle freigegeben hat.
 
