@@ -35,12 +35,13 @@ const TITLE_ID = 'document-preview-title'
  * unformatted text or trigger a silent download depending on the browser, neither of which is the
  * "Beleg bis ins Original prüfen" moment the ticket asks for.
  *
- * Security (mirrors the SVG Sperre in documentContent.ts for a different attack surface):
+ * Security (mirrors the blob preview allowlist in documentContent.ts for a different attack surface):
  * Markdown renders through {@link MarkdownRenderer}, which never enables `rehype-raw` - any literal
- * `<script>`/`<img onerror=...>` in the source text is therefore parsed as inert text, not HTML, and
- * link/image URLs pass through react-markdown's default `urlTransform`, which strips dangerous
- * protocols like `javascript:`. Plain text never goes through Markdown parsing at all - it renders as
- * a single React text node, which React itself escapes.
+ * `<script>`/`<img onerror=...>` in the source text is therefore parsed as inert text, not HTML.
+ * URLs are kept as written; MarkdownRenderer's own link component makes only http(s) links to
+ * allowed origins clickable (`javascript:` stays text) and its image component never loads an image.
+ * Plain text never goes through Markdown parsing at all - it renders as a single React text node,
+ * which React itself escapes.
  *
  * `preserveCitationMarkers`: this is a document's own original content, not a
  * chat answer - MarkdownRenderer's default citation-marker handling (stripping/resolving

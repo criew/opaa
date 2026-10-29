@@ -6,24 +6,23 @@ import { getDocumentContent } from '../api/libraryApi'
 // turn a documentId into a rendered/downloaded/previewed file, and neither can use a plain
 // <a href> since the endpoint is Bearer-authenticated (ADR-0005).
 
-// Content types the browser renders inline when navigated to directly - everything else falls back
-// to a text preview or a download instead of a probably-blank or broken preview tab. image/svg+xml is
-// deliberately excluded even though it matches the image/ prefix: the object URL it would be opened
-// from runs in this app's own origin, where the endpoint's response-level protections (CSP,
-// X-Content-Type-Options - DocumentController) do not apply to a blob: URL, so an inline SVG would
-// execute script in the app's context.
-const PREVIEWABLE_CONTENT_TYPE_PREFIXES = ['application/pdf', 'image/']
-const NEVER_PREVIEWABLE_CONTENT_TYPES = ['image/svg+xml']
+// The only content types opened inline as a blob: URL in a new tab. That tab runs in this app's
+// origin, where the endpoint's own CSP and X-Content-Type-Options (DocumentController) do not
+// apply, so the list is exact: no prefix match, nothing that can carry script (SVG, XHTML or any
+// other +xml type, text/xml, application/xml, HTML). Everything else is downloaded instead.
+const PREVIEWABLE_CONTENT_TYPES = new Set([
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+])
 
-// Markdown and plain text cannot be opened as a blob: URL like a PDF - navigated to directly, a
-// text/markdown or text/plain blob is either shown as raw, unrendered text or downloaded outright
-// depending on the browser, neither of which is the readable preview the ticket asks for. Both are
-// instead rendered client-side in DocumentTextPreviewDialog (../components/DocumentTextPreviewDialog)
-// via MarkdownRenderer - which never passes raw HTML through (no rehype-raw plugin) and sanitizes
-// link/image URLs against a safe-protocol allowlist (react-markdown's defaultUrlTransform strips
-// e.g. javascript: - see documentContent.test.ts and DocumentTextPreviewDialog.test.tsx), so no
-// gerendertes Markdown can execute script in this app's origin (the SVG Sperre above, for a
-// different attack surface).
+// Markdown and plain text are rendered client-side in DocumentTextPreviewDialog instead of being
+// opened as a blob: URL. MarkdownRenderer never passes raw HTML through (no rehype-raw) and keeps
+// every URL as written (urlTransform keepUrl); script protection comes solely from its own `a` and
+// `img` components: only http(s) links to allowed origins become clickable (isAllowedLinkTarget),
+// images are never loaded. See DocumentTextPreviewDialog.test.tsx.
 const TEXT_PREVIEWABLE_CONTENT_TYPES = ['text/markdown', 'text/plain']
 
 // `blob.text()` below reads the entire file into a JS string - the upload
@@ -34,22 +33,14 @@ const TEXT_PREVIEWABLE_CONTENT_TYPES = ['text/markdown', 'text/plain']
 // to the download branch instead; see {@link isTooLargeForTextPreview}.
 export const TEXT_PREVIEW_MAX_BYTES = 2 * 1024 * 1024
 
-// `blob.type` carries the full Content-Type line, parameters included
-// (e.g. `image/svg+xml; charset=utf-8`) - comparing that verbatim against
-// NEVER_PREVIEWABLE_CONTENT_TYPES would let a source that adds a harmless-looking parameter slip
-// past the exact-match sperre while still satisfying the `startsWith('image/')` prefix check below,
-// exactly the SVG-in-this-origin scenario the sperre closes. The essence (type/subtype, no
-// parameters) is what both checks below actually mean to compare.
+// `blob.type` carries the full Content-Type line, parameters included (e.g.
+// `image/png; charset=binary`); every check compares only the lower-cased type/subtype.
 function contentTypeEssence(contentType: string): string {
   return contentType.split(';')[0].trim().toLowerCase()
 }
 
 function isPreviewable(contentType: string): boolean {
-  const essence = contentTypeEssence(contentType)
-  if (NEVER_PREVIEWABLE_CONTENT_TYPES.includes(essence)) {
-    return false
-  }
-  return PREVIEWABLE_CONTENT_TYPE_PREFIXES.some((prefix) => essence.startsWith(prefix))
+  return PREVIEWABLE_CONTENT_TYPES.has(contentTypeEssence(contentType))
 }
 
 function isPdf(contentType: string): boolean {
@@ -124,7 +115,7 @@ export interface DownloadResult {
 
 /**
  * Loads a document's original file as a Blob and either hands a PDF to the app's own viewer,
- * previews it in a new tab (images, but never SVG - see {@link NEVER_PREVIEWABLE_CONTENT_TYPES}),
+ * previews it in a new tab (PNG, JPEG, GIF and WebP only - see {@link PREVIEWABLE_CONTENT_TYPES}),
  * returns its text content for a
  * client-side preview dialog (Markdown/plain text), or downloads it under its original file
  * name (everything else - DOCX among them; there is no server-side conversion, but the download
