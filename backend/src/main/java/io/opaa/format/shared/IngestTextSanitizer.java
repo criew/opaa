@@ -72,10 +72,36 @@ public final class IngestTextSanitizer {
               + "|ignore\\s+(?:all\\s+)?(?:previous|prior|above)\\s+instructions",
           Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
 
-  private static final Pattern DATA_URL_PLACEHOLDER =
-      Pattern.compile("https?://\\S+[?&][\\w-]+=(?:DATEN|DATA)\\b");
+  /** A URL up to the next whitespace; possessive, so a failed check never backtracks into it. */
+  private static final Pattern URL = Pattern.compile("https?://\\S++");
+
+  /** A query parameter holding a data placeholder, searched only inside one {@link #URL}. */
+  private static final Pattern DATA_PLACEHOLDER_PARAMETER =
+      Pattern.compile("[?&][\\w-]+=(?:DATEN|DATA)\\b");
+
+  /**
+   * Longest single-line field ({@link #sanitizeLabel}) kept; a title, heading or Fundort is never
+   * longer in an ordinary document.
+   */
+  public static final int LABEL_MAX_LENGTH = 1_000;
 
   private IngestTextSanitizer() {}
+
+  /**
+   * {@code label} - a title, heading or Fundort - cut to {@link #LABEL_MAX_LENGTH} characters
+   * (never inside a surrogate pair), then {@link #sanitize cleaned}; {@code null} stays {@code
+   * null}.
+   */
+  public static Result sanitizeLabel(String label) {
+    if (label == null || label.length() <= LABEL_MAX_LENGTH) {
+      return sanitize(label);
+    }
+    int end =
+        Character.isHighSurrogate(label.charAt(LABEL_MAX_LENGTH - 1))
+            ? LABEL_MAX_LENGTH - 1
+            : LABEL_MAX_LENGTH;
+    return sanitize(label.substring(0, end));
+  }
 
   /**
    * {@code text} cleaned, with what was found; {@code null} stays {@code null} without findings.
@@ -131,7 +157,7 @@ public final class IngestTextSanitizer {
     result = markersDefused.toString();
     count(findings, Finding.ROLE_TOKEN, roleTokens);
     count(findings, Finding.INSTRUCTION_PHRASE, occurrences(INSTRUCTION_PHRASE, result));
-    count(findings, Finding.DATA_URL_PLACEHOLDER, occurrences(DATA_URL_PLACEHOLDER, result));
+    count(findings, Finding.DATA_URL_PLACEHOLDER, dataUrls(result));
     return new Result(result, findings);
   }
 
@@ -174,6 +200,23 @@ public final class IngestTextSanitizer {
         || cp == 0x202F
         || cp == 0x205F
         || cp == 0x3000;
+  }
+
+  /**
+   * URLs with a data placeholder in their query. The parameter must start after the first character
+   * past the scheme and end inside the URL; each URL counts once.
+   */
+  private static int dataUrls(String text) {
+    Matcher url = URL.matcher(text);
+    Matcher parameter = DATA_PLACEHOLDER_PARAMETER.matcher(text).useTransparentBounds(true);
+    int count = 0;
+    while (url.find()) {
+      int afterScheme = text.indexOf("://", url.start()) + 3;
+      if (afterScheme < url.end() && parameter.region(afterScheme + 1, url.end()).find()) {
+        count++;
+      }
+    }
+    return count;
   }
 
   private static int occurrences(Pattern pattern, CharSequence text) {

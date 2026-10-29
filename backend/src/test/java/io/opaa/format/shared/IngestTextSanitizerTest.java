@@ -1,9 +1,11 @@
 package io.opaa.format.shared;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import io.opaa.format.shared.IngestTextSanitizer.Finding;
 import io.opaa.format.shared.IngestTextSanitizer.Result;
+import java.time.Duration;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -179,5 +181,38 @@ class IngestTextSanitizerTest {
 
     assertThat(result.findings()).isEmpty();
     assertThat(result.hasFindings()).isFalse();
+  }
+
+  @Test
+  void aLongRunOfUrlFragmentsWithoutWhitespaceIsScannedInLinearTime() {
+    // regression guard: the data-URL check must not backtrack quadratically over one long token
+    String title = "http://?a".repeat(33_000);
+
+    Result result =
+        assertTimeoutPreemptively(
+            Duration.ofSeconds(10), () -> IngestTextSanitizer.sanitize(title));
+
+    assertThat(result.text()).isEqualTo(title);
+    assertThat(result.findings()).isEmpty();
+  }
+
+  @Test
+  void aDataUrlCountsOnceHoweverManyPlaceholdersItsQueryCarries() {
+    Result result =
+        IngestTextSanitizer.sanitize(
+            "https://a.example/x?d=DATEN&e=DATA und http://b.example/?q=DATA. Kein Treffer:"
+                + " http://?d=DATA https://c.example/?d=DATENSATZ");
+
+    assertThat(result.findings()).isEqualTo(Map.of(Finding.DATA_URL_PLACEHOLDER, 2));
+  }
+
+  @Test
+  void aLabelIsCutBeforeCleaningButNeverInsideASurrogatePair() {
+    String label = "a".repeat(IngestTextSanitizer.LABEL_MAX_LENGTH - 1) + "😀" + "b".repeat(5);
+
+    assertThat(IngestTextSanitizer.sanitizeLabel(label).text())
+        .isEqualTo("a".repeat(IngestTextSanitizer.LABEL_MAX_LENGTH - 1));
+    assertThat(IngestTextSanitizer.sanitizeLabel("Kurzer Titel").text()).isEqualTo("Kurzer Titel");
+    assertThat(IngestTextSanitizer.sanitizeLabel(null).text()).isNull();
   }
 }

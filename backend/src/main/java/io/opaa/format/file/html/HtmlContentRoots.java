@@ -1,7 +1,10 @@
 package io.opaa.format.file.html;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
@@ -73,9 +76,10 @@ public final class HtmlContentRoots {
   }
 
   private static List<Element> topLevelOnly(Elements candidates) {
+    Set<Node> candidateSet = identitySetOf(candidates);
     List<Element> roots = new ArrayList<>();
     for (Element candidate : candidates) {
-      if (!isWithinAnyOf(candidate.parent(), candidates)) {
+      if (!isWithinAnyOf(candidate.parent(), candidateSet)) {
         roots.add(candidate);
       }
     }
@@ -83,15 +87,23 @@ public final class HtmlContentRoots {
   }
 
   private static void removeConditionalBoilerplateOutside(Document htmlDoc, List<Element> roots) {
+    Set<Node> rootSet = identitySetOf(roots);
     for (Element candidate : htmlDoc.select(CONDITIONAL_BOILERPLATE_SELECTOR)) {
-      if (!isWithinAnyOf(candidate, roots)) {
+      if (!isWithinAnyOf(candidate, rootSet)) {
         candidate.remove();
       }
     }
   }
 
+  /** Elements are compared by identity, as jsoup's own equality does, at constant cost. */
+  private static Set<Node> identitySetOf(List<Element> elements) {
+    Set<Node> set = Collections.newSetFromMap(new IdentityHashMap<>(elements.size() * 2));
+    set.addAll(elements);
+    return set;
+  }
+
   /** Whether {@code node} or one of its ancestors is one of {@code elements}. */
-  private static boolean isWithinAnyOf(Node node, List<Element> elements) {
+  private static boolean isWithinAnyOf(Node node, Set<Node> elements) {
     for (Node current = node; current != null; current = current.parent()) {
       if (elements.contains(current)) {
         return true;

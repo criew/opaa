@@ -10,6 +10,7 @@ import java.util.Set;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
 import org.jsoup.nodes.TextNode;
+import org.jsoup.select.NodeFilter;
 
 /**
  * Walks an XHTML DOM (a Jsoup tree, HTML- or XML-parsed) in document order and emits the
@@ -70,7 +71,17 @@ public final class XhtmlEventBuilder {
   private static final Set<String> INVISIBLE_TAGS =
       Set.of("script", "style", "noscript", "template", "head");
 
+  /**
+   * Tables nested deeper than this inside one another lose their row layout: their text is walked
+   * like a block's, so a nesting level no longer rebuilds the text of every level below it.
+   */
+  static final int MAX_TABLE_DEPTH = 8;
+
   private final ElementRule rule;
+
+  /** Tables enclosing the element being walked, carried into every {@link #inlineText} builder. */
+  private final int tableDepth;
+
   private final List<Event> events = new ArrayList<>();
   private final StringBuilder inline = new StringBuilder();
 
@@ -95,7 +106,12 @@ public final class XhtmlEventBuilder {
   }
 
   public XhtmlEventBuilder(ElementRule rule) {
+    this(rule, 0);
+  }
+
+  private XhtmlEventBuilder(ElementRule rule, int tableDepth) {
     this.rule = rule;
+    this.tableDepth = tableDepth;
   }
 
   /**
@@ -173,7 +189,11 @@ public final class XhtmlEventBuilder {
    * flatten to a space-separated line - a table cell, a heading, a task body.
    */
   public String inlineText(Element element) {
-    XhtmlEventBuilder nested = new XhtmlEventBuilder(rule);
+    return inlineText(element, tableDepth);
+  }
+
+  private String inlineText(Element element, int depth) {
+    XhtmlEventBuilder nested = new XhtmlEventBuilder(rule, depth);
     nested.walkChildren(element);
     nested.flushBlock();
     List<String> parts = new ArrayList<>();
@@ -264,25 +284,55 @@ public final class XhtmlEventBuilder {
     };
   }
 
+  /**
+   * One line per row of {@code table} itself; a nested table is flattened into its outer cell by
+   * that cell's {@link #inlineText}. Beyond {@link #MAX_TABLE_DEPTH} the table is walked as a
+   * block.
+   */
   private void table(Element table) {
+    if (tableDepth >= MAX_TABLE_DEPTH) {
+      block(table);
+      return;
+    }
     flushBlock();
-    for (Element row : table.select("tr")) {
-      if (row.closest("table") != table) {
-        // a nested table's rows are already flattened into their outer cell
-        continue;
-      }
+    for (Element row : ownRows(table)) {
       List<String> cells = new ArrayList<>();
       for (Element cell : row.children()) {
         String cellTag = cell.tagName().toLowerCase(Locale.ROOT);
         if (!cellTag.equals("td") && !cellTag.equals("th")) {
           continue;
         }
-        cells.add(inlineText(cell));
+        cells.add(inlineText(cell, tableDepth + 1));
       }
       if (!cells.isEmpty()) {
         emitLine(TableText.row(cells));
       }
     }
+  }
+
+  /**
+   * The {@code tr} elements of {@code table} in document order whose nearest enclosing table is
+   * {@code table}; the walk does not enter a nested table, so each node is visited once.
+   */
+  private static List<Element> ownRows(Element table) {
+    List<Element> rows = new ArrayList<>();
+    table.filter(
+        new NodeFilter() {
+          @Override
+          public FilterResult head(Node node, int depth) {
+            if (node == table || !(node instanceof Element element)) {
+              return FilterResult.CONTINUE;
+            }
+            if (element.normalName().equals("table")) {
+              return FilterResult.SKIP_ENTIRELY;
+            }
+            if (element.normalName().equals("tr")) {
+              rows.add(element);
+            }
+            return FilterResult.CONTINUE;
+          }
+        });
+    return rows;
   }
 
   private static String normalize(String text) {

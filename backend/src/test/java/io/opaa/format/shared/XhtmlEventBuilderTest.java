@@ -1,10 +1,12 @@
 package io.opaa.format.shared;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import io.opaa.format.shared.HeadingSectionSplitter.Event;
 import io.opaa.format.shared.HeadingSectionSplitter.Heading;
 import io.opaa.format.shared.HeadingSectionSplitter.Paragraph;
+import java.time.Duration;
 import java.util.List;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
@@ -271,5 +273,37 @@ class XhtmlEventBuilderTest {
   @Test
   void anEmptyDocumentYieldsNoEvents() {
     assertThat(events("<div>  </div><p>&nbsp;</p>")).isEmpty();
+  }
+
+  @Test
+  void deeplyNestedWideTablesAreWalkedInLinearTime() {
+    // regression guard: a table must not search its whole subtree for its rows, and nested cell
+    // text must not be rebuilt once per nesting level
+    String rows = "<tr><td>Zeile</td><td>Wert</td></tr>".repeat(1_000);
+    String html =
+        ("<table>" + rows + "<tr><td>").repeat(120) + "Kern" + "</td></tr></table>".repeat(120);
+    Element body = Jsoup.parse(html).body();
+
+    List<Event> events =
+        assertTimeoutPreemptively(
+            Duration.ofSeconds(10), () -> new XhtmlEventBuilder().build(body));
+
+    assertThat(events.getFirst()).isEqualTo(new Paragraph("Zeile | Wert"));
+    assertThat(events).anyMatch(event -> ((Paragraph) event).text().endsWith("Kern"));
+  }
+
+  @Test
+  void tablesNestedBeyondTheDepthLimitKeepTheirTextWithoutRowLayout() {
+    int levels = XhtmlEventBuilder.MAX_TABLE_DEPTH + 1;
+    String html =
+        "<table><tr><td>A</td><td>B</td></tr><tr><td>".repeat(levels)
+            + "Kern"
+            + "</td></tr></table>".repeat(levels);
+
+    List<Event> events = events(html);
+
+    // levels 1 to MAX - 1 keep "A | B" rows, the level at MAX reads as plain blocks
+    String nested = "A | B ".repeat(XhtmlEventBuilder.MAX_TABLE_DEPTH - 1);
+    assertThat(events).containsExactly(new Paragraph("A | B"), new Paragraph(nested + "A B Kern"));
   }
 }

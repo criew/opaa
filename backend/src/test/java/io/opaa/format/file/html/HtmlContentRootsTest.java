@@ -1,7 +1,9 @@
 package io.opaa.format.file.html;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
+import java.time.Duration;
 import java.util.List;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -90,5 +92,22 @@ class HtmlContentRootsTest {
     List<Element> roots = HtmlContentRoots.select(document, "#content");
 
     assertThat(roots).extracting(Element::text).containsExactly("Konfigurierter Bereich");
+  }
+
+  @Test
+  void manyContentRootsAreSelectedInLinearTime() {
+    // regression guard: membership in the root set must not be a list scan per ancestor
+    Document document =
+        Jsoup.parse(
+            "<html><body>"
+                + "<article><header>Kopf</header><p>Text</p></article>".repeat(150_000)
+                + "<footer>Fuß</footer></body></html>");
+
+    List<Element> roots =
+        assertTimeoutPreemptively(Duration.ofSeconds(10), () -> HtmlContentRoots.select(document));
+
+    assertThat(roots).hasSize(150_000);
+    assertThat(document.select("footer")).isEmpty();
+    assertThat(document.select("header")).hasSize(150_000);
   }
 }

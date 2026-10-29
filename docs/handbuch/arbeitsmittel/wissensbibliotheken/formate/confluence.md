@@ -59,7 +59,8 @@ flowchart TB
   („Abschn. Fristen › Verlängerung"). Ein Makro in einer Überschrift trägt nur seinen sichtbaren
   Text zum Pfad bei.
 - **Tabellen** werden eine Zeile je Tabellenzeile, Zellen mit „ | " getrennt. Eine Tabelle in einer
-  Zelle wird in diese Zelle geglättet. Listen und Makros in einer Zelle werden zu einer Zeile.
+  Zelle wird in diese Zelle geglättet; steckt sie in acht oder mehr anderen, bleibt ihr Text ohne
+  Trennung in Zeilen und Zellen erhalten. Listen und Makros in einer Zelle werden zu einer Zeile.
 - **Listen** werden eine Zeile je Eintrag; die Verschachtelung trägt der Marker (•, ◦, ▪ nach
   Tiefe, bei nummerierten Listen „2.1."), weil eine Einrückung den Zuschnitt nicht überlebt. Der
   Marker bleibt auch, wenn der Cloud-Editor den Text des Eintrags in einen Absatz einschließt

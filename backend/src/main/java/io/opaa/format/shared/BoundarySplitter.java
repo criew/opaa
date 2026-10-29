@@ -26,42 +26,75 @@ public final class BoundarySplitter {
       throw new IllegalArgumentException("limit must be positive, got " + limit);
     }
     List<String> parts = new ArrayList<>();
-    String rest = text.strip();
-    while (rest.length() > limit) {
-      int cut = cutPosition(rest, limit);
-      String part = rest.substring(0, cut).strip();
-      if (!part.isEmpty()) {
-        parts.add(part);
+    int end = stripEnd(text, 0, text.length());
+    int start = stripStart(text, 0, end);
+    while (end - start > limit) {
+      int cut = cutPosition(text, start, limit);
+      int partEnd = stripEnd(text, start, cut);
+      if (partEnd > start) {
+        parts.add(text.substring(start, partEnd));
       }
-      rest = rest.substring(cut).strip();
+      start = stripStart(text, cut, end);
     }
-    if (!rest.isEmpty()) {
-      parts.add(rest);
+    if (start < end) {
+      parts.add(text.substring(start, end));
     }
     return parts;
   }
 
-  /** The end (exclusive) of the next part of {@code text}, always within {@code (0, limit]}. */
-  private static int cutPosition(String text, int limit) {
-    int floor = limit / 2;
-    int paragraph = text.lastIndexOf("\n\n", limit - 2);
-    if (paragraph >= floor) {
-      return paragraph + 2;
+  /**
+   * The end (exclusive) of the next part of {@code text} starting at {@code start}, always within
+   * {@code (start, start + limit]}. Positions are absolute, so no remainder is ever copied.
+   */
+  private static int cutPosition(String text, int start, int limit) {
+    int floor = start + limit / 2;
+    int window = start + limit;
+    for (int i = window - 2; i >= floor; i--) {
+      if (text.charAt(i) == '\n' && text.charAt(i + 1) == '\n') {
+        return i + 2;
+      }
     }
-    int line = text.lastIndexOf('\n', limit - 1);
-    if (line >= floor) {
-      return line + 1;
+    for (int i = window - 1; i >= floor; i--) {
+      if (text.charAt(i) == '\n') {
+        return i + 1;
+      }
     }
-    int sentence = lastMatchEnd(SENTENCE_END, text, floor, limit);
+    int sentence = lastMatchEnd(SENTENCE_END, text, floor, window);
     if (sentence > 0) {
       return sentence;
     }
-    int space = lastMatchEnd(WHITESPACE, text, floor, limit);
+    int space = lastMatchEnd(WHITESPACE, text, floor, window);
     if (space > 0) {
       return space;
     }
     // No boundary at all: a hard cut, never between the two halves of a surrogate pair.
-    return limit > 1 && Character.isHighSurrogate(text.charAt(limit - 1)) ? limit - 1 : limit;
+    return limit > 1 && Character.isHighSurrogate(text.charAt(window - 1)) ? window - 1 : window;
+  }
+
+  /** The first index in {@code [from, to)} that is not whitespace in the sense of strip, or to. */
+  private static int stripStart(String text, int from, int to) {
+    int i = from;
+    while (i < to) {
+      int cp = text.codePointAt(i);
+      if (!Character.isWhitespace(cp)) {
+        break;
+      }
+      i += Character.charCount(cp);
+    }
+    return i;
+  }
+
+  /** One past the last index in {@code [from, to)} that is not whitespace, or from. */
+  private static int stripEnd(String text, int from, int to) {
+    int i = to;
+    while (i > from) {
+      int cp = text.codePointBefore(i);
+      if (!Character.isWhitespace(cp)) {
+        break;
+      }
+      i -= Character.charCount(cp);
+    }
+    return i;
   }
 
   /** The end of the last match of {@code pattern} ending within {@code [from, to]}, or -1. */

@@ -219,7 +219,7 @@ public class MarkdownDocumentFormat implements DocumentFormat {
         events.add(
             new HeadingSectionSplitter.Heading(
                 headingMatch.group(MarkdownHeading.LEVEL_GROUP).length(),
-                headingMatch.group(MarkdownHeading.TITLE_GROUP)));
+                MarkdownHeading.title(headingMatch)));
         continue;
       }
       if (withoutCr.isBlank()) {
