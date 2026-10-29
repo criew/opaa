@@ -567,9 +567,12 @@ lockern, aber nicht abschalten; ein gespeicherter Wert jenseits einer später en
 wirkt als diese Grenze. Eine geänderte Regel trifft laufende Sperren nicht: Sie enden zur
 ursprünglichen Zeit. Ein Konto, das schon so viele Fehlversuche hat, wie eine gesenkte Zahl
 erlaubt, wird erst beim nächsten Fehlversuch gesperrt, nicht durch die Änderung selbst. Während der
-Sperre antwortet die Anmeldung wie bei einem falschen
-Passwort, die Sperre steht im Nachweisprotokoll und in einer eigenen Metrik, der einzelne Fehlversuch
-nur im Protokoll (mit Konto-Kennung, nie mit Adresse). Wie lange der Log-Sammler dieses Protokoll
+Sperre antwortet die Anmeldung wie bei einem falschen Passwort. Gleichzeitige Versuche gegen
+dasselbe Konto entscheidet OPAA nacheinander, auch über mehrere Instanzen: Viele parallele
+Anmeldungen zählen nicht über die Grenze hinaus, und ein richtiges Passwort, dessen Prüfung erst
+nach Eintreten der Sperre endet, wird wie ein falsches beantwortet. Die Sperre steht im
+Nachweisprotokoll und in einer eigenen Metrik, der einzelne Fehlversuch nur im Protokoll (mit
+Konto-Kennung, nie mit Adresse). Wie lange der Log-Sammler dieses Protokoll
 aufbewahrt, legt der Betrieb fest; eine kurze Frist, etwa 90 Tage, genügt der Fehlersuche und hält
 das Protokoll der Fehlversuche aus der Leistungskontrolle heraus. Die Zähler je Adresse sind auf eine hohe Zahl
 gleichzeitig geführter Adressen begrenzt; darüber werden die am wenigsten genutzten vergessen und

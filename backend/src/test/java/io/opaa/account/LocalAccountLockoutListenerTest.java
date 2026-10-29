@@ -33,7 +33,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.slf4j.LoggerFactory;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
@@ -42,7 +41,8 @@ import org.springframework.test.util.ReflectionTestUtils;
  * force ({@code locked_reason = FAILED_LOGINS}) and is the one audited event of the whole affair -
  * the single failed attempt only reaches the application log, with the account id and never the
  * address. An account that is already locked, for whatever reason, is neither re-locked nor
- * extended; a concurrent lock by another request is not an error.
+ * extended. Concurrent attempts never meet here: {@code LocalLoginService} calls the listener under
+ * the account's row lock.
  */
 class LocalAccountLockoutListenerTest {
 
@@ -218,18 +218,6 @@ class LocalAccountLockoutListenerTest {
 
     assertThat(running.getLockoutUntil()).isEqualTo(lockedAt.plus(Duration.ofMinutes(15)));
     verify(repository, never()).save(any());
-  }
-
-  @Test
-  void aConcurrentLockByAnotherRequestIsNoErrorAndNotAuditedTwice() {
-    LocalCredentials row = activeRowWithFailedAttempts(5);
-    when(repository.save(any()))
-        .thenThrow(new ObjectOptimisticLockingFailureException(LocalCredentials.class, row));
-
-    listener.onPasswordRejected(user, row, NOW);
-
-    verify(audit, never()).recordSystemProcessAction(any());
-    assertThat(lockouts()).isZero();
   }
 
   @Test

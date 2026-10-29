@@ -17,7 +17,6 @@ import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Component;
 
 /**
@@ -30,10 +29,11 @@ import org.springframework.stereotype.Component;
  * LocalLoginService}, with the account id and never the address). The lock resets the counter, so
  * an ended lockout leaves the full budget again; an account that is already locked - a lockout
  * still running, or an administrator's lock - is neither re-locked nor extended ({@code
- * LocalLoginService} counts nothing for it, this is the second line of defence); a concurrent
- * request that locked first is no error. No mail and no session revocation: the validator refuses
- * the tokens of a locked account by its state. A changed rule moves no running lockout and locks no
- * account by itself: a counter that already reaches a lowered threshold locks at the next attempt.
+ * LocalLoginService} counts nothing for it, this is the second line of defence). Decided under the
+ * row lock taken by {@code LocalLoginService}; at most one call sees the threshold. No mail and no
+ * session revocation: the validator refuses the tokens of a locked account by its state. A changed
+ * rule moves no running lockout and locks no account by itself: a counter that already reaches a
+ * lowered threshold locks at the next attempt.
  */
 @Component
 public class LocalAccountLockoutListener implements LocalLoginAttemptListener {
@@ -72,12 +72,7 @@ public class LocalAccountLockoutListener implements LocalLoginAttemptListener {
     }
     Instant lockoutUntil = now.plus(policy.duration());
     row.recordLockoutUntil(lockoutUntil, now);
-    try {
-      credentials.save(row);
-    } catch (OptimisticLockingFailureException lockedByAnotherRequest) {
-      log.debug("Local account {} was locked by a concurrent request", user.getId());
-      return;
-    }
+    credentials.save(row);
     metrics.recordAccountLockedAfterFailedLogins();
     log.warn(
         "Local account {} locked until {} after too many failed sign-ins ({})",
