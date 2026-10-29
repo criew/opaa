@@ -16,6 +16,7 @@ import io.opaa.query.QueryOutcome;
 import io.opaa.query.QueryResult;
 import io.opaa.query.ToolLoopQueryHandler;
 import io.opaa.query.answer.ConversationWindowMessages;
+import io.opaa.query.answer.PassageRules;
 import io.opaa.query.citation.ChatSourceAssembler;
 import io.opaa.query.citation.CitationMarkerRepair;
 import io.opaa.query.citation.CitationParser;
@@ -92,9 +93,17 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
 
       ZITIERREGELN (verbindlich):
       - Belege jede Quelle, die du verwendest, mit einer Zitiermarke direkt im Antworttext.
-      - Verwende genau dieses Format: 【source: <document_id>#<chunk_index> | <file_name>】
-      - Übernimm die Werte exakt aus dem [Quelle]-Kopf des jeweiligen Kontextabschnitts.
+      - Übernimm die Zitiermarke Zeichen für Zeichen aus der Zeile „Zitiermarke:“ des jeweiligen \
+      Abschnitts, mit den Klammern 【 und 】.
       - Erfinde keine Zitiermarken. Zitiere nur Dokumente, die ein Werkzeugaufruf geliefert hat.
+
+      KONTEXTDOKUMENTE (verbindlich):
+      - Ein Werkzeugaufruf liefert seine Textstellen zwischen \
+      """
+          + PassageRules.FENCE_AND_DATA
+          + PassageRules.LINK_RULE
+          + """
+
 
       Suche vor jeder inhaltlichen Antwort mit dem Werkzeug search_knowledge nach den passenden \
       Textstellen; beantworte die Frage erst danach.\
@@ -178,7 +187,7 @@ public class SpikeToolLoopQueryHandler implements ToolLoopQueryHandler {
         activeChatModelResolver
             .resolveChatClient()
             .prompt()
-            .system(SYSTEM_PROMPT)
+            .system(SYSTEM_PROMPT.formatted(runState.blockId()))
             .messages(messages)
             .tools(searchKnowledgeTool)
             .toolContext(Map.of(SearchKnowledgeTool.RUN_STATE_KEY, runState))

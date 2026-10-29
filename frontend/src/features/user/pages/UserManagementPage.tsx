@@ -26,6 +26,8 @@ import { contentWidth } from '@/shared/theme/tokens'
 import GeneratedPasswordDialog, {
   type GeneratedPassword,
 } from '../components/GeneratedPasswordDialog'
+import { ROLE_CHANGE_RETURNED_HINT } from '../components/localUserLabels'
+import { useProviderReturn } from '@/shared/session/useRecentLoginGate'
 
 export type UserManagementTab = 'accounts' | 'settings'
 
@@ -70,6 +72,11 @@ function AccountsSection({ currentUserId }: { currentUserId: string | null }) {
     user: LocalUserResponse
     url: string
   } | null>(null)
+
+  // Back from a sign-in forced at the provider: the dialog that asked for it is gone with the page,
+  // so the person makes the change again. Taken here, so no other page reads the return as its own;
+  // the gate holds it until that next attempt (useRecentLoginGate).
+  useProviderReturn(ROLE_CHANGE_RETURNED_HINT)
 
   useEffect(() => {
     void loadAccounts()

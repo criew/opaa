@@ -40,14 +40,8 @@ describe('RegisterPage', () => {
     )
   }
 
-  async function submit({
-    name = 'Erika Muster',
-    email = 'erika.muster@stadt.example',
-    password = 'Sommerregen-42x',
-  } = {}) {
-    if (name) await userEvent.type(screen.getByLabelText('Name'), name)
+  async function submit({ email = 'erika.muster@stadt.example' } = {}) {
     if (email) await userEvent.type(screen.getByLabelText('E-Mail-Adresse'), email)
-    if (password) await userEvent.type(screen.getByLabelText('Passwort'), password)
     await userEvent.click(screen.getByRole('button', { name: 'Konto registrieren' }))
   }
 
@@ -60,7 +54,6 @@ describe('RegisterPage', () => {
     await submit({ email })
 
     expect(await screen.findByText(ACKNOWLEDGEMENT)).toBeInTheDocument()
-    expect(screen.queryByLabelText('Passwort')).not.toBeInTheDocument()
   })
 
   it('says nothing about the assigned role or the expiry date', async () => {
@@ -87,46 +80,32 @@ describe('RegisterPage', () => {
     )
   })
 
-  it('shows the policy the password has to meet', () => {
-    renderPage()
-    expect(screen.getByText(/Mindestens 12 Zeichen, höchstens 64/)).toBeInTheDocument()
-  })
-
   /**
-   * The backend checks in stages and the first failure answers (LocalUserService.requireAddress,
-   * requireText, PasswordPolicy) - so one answer names one field, and the page has to mark that
-   * field and take the focus there. A form that expected all three at once would hide two of them.
+   * Pre-hijacking (ADR-0033, Entscheidung 11): whoever registers somebody else's address must not
+   * decide its password or its name, so the registration asks for neither - the verification link
+   * sets both.
    */
-  it.each([
-    [
-      'the address',
-      { email: 'keine-adresse' },
-      'Bitte geben Sie eine gültige E-Mail-Adresse an.',
-      'E-Mail-Adresse',
-    ],
-    ['the name', { name: '' }, 'Bitte geben Sie Ihren Namen an.', 'Name'],
-    [
-      'the password',
-      { password: 'kurz' },
-      'Das Passwort muss mindestens 12 Zeichen lang sein.',
-      'Passwort',
-    ],
-  ])('marks a rejected %s at its field and focuses it', async (_what, entry, sentence, label) => {
+  it('asks for neither password nor name and says the link sets both', async () => {
     renderPage()
-    await submit(entry)
+    expect(screen.queryByLabelText('Passwort')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Name')).not.toBeInTheDocument()
+    expect(screen.getByText(/legen Ihren Namen und Ihr Passwort fest\./)).toBeInTheDocument()
 
-    expect(await screen.findByText(sentence)).toBeInTheDocument()
-    expect(screen.getByLabelText(label)).toHaveFocus()
+    await submit()
+
+    expect(
+      await screen.findByText(/und legen Ihren Namen und Ihr Passwort fest; der Link gilt/),
+    ).toBeInTheDocument()
   })
 
-  it('generates a password that gets through', async () => {
+  it('marks a rejected address at its field and focuses it', async () => {
     renderPage()
-    await userEvent.type(screen.getByLabelText('Name'), 'Erika Muster')
-    await userEvent.type(screen.getByLabelText('E-Mail-Adresse'), 'neu@stadt.example')
-    await userEvent.click(screen.getByRole('button', { name: 'Sicheres Passwort erzeugen' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Konto registrieren' }))
+    await submit({ email: 'keine-adresse' })
 
-    expect(await screen.findByText(ACKNOWLEDGEMENT)).toBeInTheDocument()
+    expect(
+      await screen.findByText('Bitte geben Sie eine gültige E-Mail-Adresse an.'),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('E-Mail-Adresse')).toHaveFocus()
   })
 
   it('redirects to the sign-in page while self-registration is switched off', () => {
@@ -141,6 +120,6 @@ describe('RegisterPage', () => {
     renderPage()
 
     expect(screen.queryByText('Anmeldung')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('Name')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('E-Mail-Adresse')).not.toBeInTheDocument()
   })
 })

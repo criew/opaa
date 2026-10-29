@@ -25,10 +25,12 @@ import type {
   SystemRole,
 } from '@/shared/api/types'
 import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
+import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
 import { useUserAdminStore } from '../stores/userAdminStore'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import LocalUserChatCleanupSection from './LocalUserChatCleanupSection'
 import {
+  PRIVILEGED_CONFIRM_PURPOSE,
   SYSTEM_ROLES,
   SYSTEM_ROLE_LABEL,
   defaultExpiryInputValue,
@@ -134,7 +136,9 @@ interface UserFormDialogProps {
  * decision and not an oversight.
  *
  * The backend's field errors (`fieldErrors`) land on their field, the conflict codes as a message
- * above the form: `EMAIL_TAKEN` concerns a field, `LAST_LOGIN_CAPABLE_ADMIN` the whole.
+ * above the form: `EMAIL_TAKEN` concerns a field, `LAST_LOGIN_CAPABLE_ADMIN` the whole. A role
+ * change demands a recent sign-in: its refusal opens the confirmation, after which the same form
+ * is sent again.
  */
 export default function UserFormDialog({
   open,
@@ -154,6 +158,7 @@ export default function UserFormDialog({
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
+  const gate = useRecentLoginGate(PRIVILEGED_CONFIRM_PURPOSE)
 
   const isEdit = user !== undefined
   const isBootstrap = user?.bootstrap === true
@@ -171,7 +176,7 @@ export default function UserFormDialog({
     setDraft((current) => ({ ...current, ...patch }))
   }
 
-  async function submit() {
+  async function submit(afterConfirmation = false) {
     setError(null)
     setFieldErrors({})
     setSubmitting(true)
@@ -197,7 +202,9 @@ export default function UserFormDialog({
           noExpiry: expiryRemoved,
           ...(expiryChanged ? { expiresAt: fromDateInputValue(draft.expiresAt) } : {}),
         }
-        onUpdated(await updateUser(user.id, request))
+        const updated = await updateUser(user.id, request)
+        gate.settled()
+        onUpdated(updated)
       } else {
         const request: LocalUserCreateRequest = {
           email: draft.email.trim(),
@@ -208,9 +215,16 @@ export default function UserFormDialog({
           ...(draft.noExpiry ? {} : { expiresAt: fromDateInputValue(draft.expiresAt) }),
           mode: draft.mode,
         }
-        onCreated(await createUser(request))
+        const created = await createUser(request)
+        gate.settled()
+        onCreated(created)
       }
     } catch (err) {
+      const refused = gate.refusal(err, () => void submit(true), afterConfirmation)
+      if (refused !== null) {
+        if (refused) setError(refused)
+        return
+      }
       const violations = apiFieldErrors(err)
       if (violations.length > 0) {
         setFieldErrors(Object.fromEntries(violations.map((v) => [v.field, v.message])))
@@ -229,155 +243,170 @@ export default function UserFormDialog({
   }
 
   return (
-    <Dialog open={open} fullWidth maxWidth="sm" onClose={onClose} aria-labelledby="user-form-title">
-      <DialogTitle id="user-form-title">
-        {isEdit ? `„${user.displayName}“ bearbeiten` : 'Lokales Konto anlegen'}
-      </DialogTitle>
-      <DialogContent>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-            {error}
-          </Alert>
-        )}
-        <Stack spacing={2}>
-          <Box>
-            <FieldLabel htmlFor="user-form-email">E-Mail-Adresse (Kennung)</FieldLabel>
-            <TextField
-              id="user-form-email"
-              fullWidth
-              size="small"
-              type="email"
-              required
-              slotProps={REQUIRED_FIELD_SLOTS}
-              value={draft.email}
-              onChange={(e) => update({ email: e.target.value })}
-              error={Boolean(fieldErrors.email)}
-              helperText={fieldErrors.email}
-            />
-          </Box>
-          <Box>
-            <FieldLabel htmlFor="user-form-display-name">Anzeigename</FieldLabel>
-            <TextField
-              id="user-form-display-name"
-              fullWidth
-              size="small"
-              required
-              slotProps={REQUIRED_FIELD_SLOTS}
-              value={draft.displayName}
-              onChange={(e) => update({ displayName: e.target.value })}
-              error={Boolean(fieldErrors.displayName)}
-              helperText={fieldErrors.displayName}
-            />
-          </Box>
-          <Box>
-            <FieldLabel id="user-form-role-label" htmlFor="user-form-role">
-              Rolle
-            </FieldLabel>
-            <TextField
-              id="user-form-role"
-              select
-              fullWidth
-              size="small"
-              // A <label for> names only real form elements; MUI's select renders a
-              // display with role="combobox" that needs its name via aria-labelledby (axe
-              // aria-input-field-name, serious). Pattern as in AssetGrantsDialog.
-              slotProps={{
-                select: { SelectDisplayProps: { 'aria-labelledby': 'user-form-role-label' } },
-              }}
-              value={draft.systemRole}
-              disabled={roleLocked}
-              onChange={(e) => update({ systemRole: e.target.value as SystemRole })}
-              error={Boolean(fieldErrors.systemRole)}
-              helperText={fieldErrors.systemRole ?? (isBootstrap ? BOOTSTRAP_ROLE_HINT : undefined)}
-            >
-              {roleOptions.map((role) => (
-                <MenuItem key={role} value={role}>
-                  {SYSTEM_ROLE_LABEL[role]}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Box>
-          <Box>
-            <FieldLabel htmlFor="user-form-expires-at">Ablaufdatum</FieldLabel>
-            <TextField
-              id="user-form-expires-at"
-              fullWidth
-              size="small"
-              type="date"
-              disabled={draft.noExpiry || isBootstrap}
-              value={draft.expiresAt}
-              onChange={(e) => update({ expiresAt: e.target.value })}
-              error={Boolean(fieldErrors.expiresAt)}
-              helperText={fieldErrors.expiresAt ?? (isSelf ? SELF_EXPIRY_HINT : undefined)}
-              slotProps={isSelf ? { htmlInput: { min: todayInputValue() } } : undefined}
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={draft.noExpiry}
-                  disabled={isBootstrap && !user?.expiresAt}
-                  onChange={(e) => update({ noExpiry: e.target.checked })}
-                />
-              }
-              label="Kein Ablaufdatum"
-            />
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-              {draft.noExpiry
-                ? isBootstrap
-                  ? NO_EXPIRY_HELP_BOOTSTRAP
-                  : NO_EXPIRY_HELP
-                : EXPIRY_CONSEQUENCE}
-            </Typography>
-          </Box>
-          <Box>
-            <FieldLabel htmlFor="user-form-created-reason">Anlagegrund</FieldLabel>
-            <TextField
-              id="user-form-created-reason"
-              fullWidth
-              size="small"
-              required
-              multiline
-              minRows={2}
-              slotProps={{ ...REQUIRED_FIELD_SLOTS, htmlInput: { maxLength: 200 } }}
-              value={draft.createdReason}
-              onChange={(e) => update({ createdReason: e.target.value })}
-              error={Boolean(fieldErrors.createdReason)}
-              helperText={fieldErrors.createdReason ?? CREATED_REASON_HELP}
-            />
-          </Box>
-          {isEdit && <LocalUserChatCleanupSection user={user} />}
-          {!isEdit && (
-            <FormControl>
-              <FormLabel id="user-form-mode-label" sx={{ fontSize: 12, mb: '5px' }}>
-                Zugang einrichten
-              </FormLabel>
-              <RadioGroup
-                aria-labelledby="user-form-mode-label"
-                value={draft.mode}
-                onChange={(e) => update({ mode: e.target.value as LocalUserCreationMode })}
-              >
-                {(Object.keys(MODE_LABEL) as LocalUserCreationMode[]).map((mode) => (
-                  <FormControlLabel
-                    key={mode}
-                    value={mode}
-                    control={<Radio size="small" />}
-                    slotProps={{ typography: { sx: { fontSize: 13.5 } } }}
-                    label={MODE_LABEL[mode]}
-                  />
-                ))}
-              </RadioGroup>
-            </FormControl>
+    <>
+      <Dialog
+        open={open}
+        fullWidth
+        maxWidth="sm"
+        onClose={onClose}
+        aria-labelledby="user-form-title"
+      >
+        <DialogTitle id="user-form-title">
+          {isEdit ? `„${user.displayName}“ bearbeiten` : 'Lokales Konto anlegen'}
+        </DialogTitle>
+        <DialogContent>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+              {error}
+            </Alert>
           )}
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={submitting}>
-          Abbrechen
-        </Button>
-        <Button variant="contained" onClick={() => void submit()} disabled={!isValid || submitting}>
-          {isEdit ? 'Speichern' : 'Anlegen'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+          <Stack spacing={2}>
+            <Box>
+              <FieldLabel htmlFor="user-form-email">E-Mail-Adresse (Kennung)</FieldLabel>
+              <TextField
+                id="user-form-email"
+                fullWidth
+                size="small"
+                type="email"
+                required
+                slotProps={REQUIRED_FIELD_SLOTS}
+                value={draft.email}
+                onChange={(e) => update({ email: e.target.value })}
+                error={Boolean(fieldErrors.email)}
+                helperText={fieldErrors.email}
+              />
+            </Box>
+            <Box>
+              <FieldLabel htmlFor="user-form-display-name">Anzeigename</FieldLabel>
+              <TextField
+                id="user-form-display-name"
+                fullWidth
+                size="small"
+                required
+                slotProps={REQUIRED_FIELD_SLOTS}
+                value={draft.displayName}
+                onChange={(e) => update({ displayName: e.target.value })}
+                error={Boolean(fieldErrors.displayName)}
+                helperText={fieldErrors.displayName}
+              />
+            </Box>
+            <Box>
+              <FieldLabel id="user-form-role-label" htmlFor="user-form-role">
+                Rolle
+              </FieldLabel>
+              <TextField
+                id="user-form-role"
+                select
+                fullWidth
+                size="small"
+                // A <label for> names only real form elements; MUI's select renders a
+                // display with role="combobox" that needs its name via aria-labelledby (axe
+                // aria-input-field-name, serious). Pattern as in AssetGrantsDialog.
+                slotProps={{
+                  select: { SelectDisplayProps: { 'aria-labelledby': 'user-form-role-label' } },
+                }}
+                value={draft.systemRole}
+                disabled={roleLocked}
+                onChange={(e) => update({ systemRole: e.target.value as SystemRole })}
+                error={Boolean(fieldErrors.systemRole)}
+                helperText={
+                  fieldErrors.systemRole ?? (isBootstrap ? BOOTSTRAP_ROLE_HINT : undefined)
+                }
+              >
+                {roleOptions.map((role) => (
+                  <MenuItem key={role} value={role}>
+                    {SYSTEM_ROLE_LABEL[role]}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Box>
+            <Box>
+              <FieldLabel htmlFor="user-form-expires-at">Ablaufdatum</FieldLabel>
+              <TextField
+                id="user-form-expires-at"
+                fullWidth
+                size="small"
+                type="date"
+                disabled={draft.noExpiry || isBootstrap}
+                value={draft.expiresAt}
+                onChange={(e) => update({ expiresAt: e.target.value })}
+                error={Boolean(fieldErrors.expiresAt)}
+                helperText={fieldErrors.expiresAt ?? (isSelf ? SELF_EXPIRY_HINT : undefined)}
+                slotProps={isSelf ? { htmlInput: { min: todayInputValue() } } : undefined}
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={draft.noExpiry}
+                    disabled={isBootstrap && !user?.expiresAt}
+                    onChange={(e) => update({ noExpiry: e.target.checked })}
+                  />
+                }
+                label="Kein Ablaufdatum"
+              />
+              <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                {draft.noExpiry
+                  ? isBootstrap
+                    ? NO_EXPIRY_HELP_BOOTSTRAP
+                    : NO_EXPIRY_HELP
+                  : EXPIRY_CONSEQUENCE}
+              </Typography>
+            </Box>
+            <Box>
+              <FieldLabel htmlFor="user-form-created-reason">Anlagegrund</FieldLabel>
+              <TextField
+                id="user-form-created-reason"
+                fullWidth
+                size="small"
+                required
+                multiline
+                minRows={2}
+                slotProps={{ ...REQUIRED_FIELD_SLOTS, htmlInput: { maxLength: 200 } }}
+                value={draft.createdReason}
+                onChange={(e) => update({ createdReason: e.target.value })}
+                error={Boolean(fieldErrors.createdReason)}
+                helperText={fieldErrors.createdReason ?? CREATED_REASON_HELP}
+              />
+            </Box>
+            {isEdit && <LocalUserChatCleanupSection user={user} />}
+            {!isEdit && (
+              <FormControl>
+                <FormLabel id="user-form-mode-label" sx={{ fontSize: 12, mb: '5px' }}>
+                  Zugang einrichten
+                </FormLabel>
+                <RadioGroup
+                  aria-labelledby="user-form-mode-label"
+                  value={draft.mode}
+                  onChange={(e) => update({ mode: e.target.value as LocalUserCreationMode })}
+                >
+                  {(Object.keys(MODE_LABEL) as LocalUserCreationMode[]).map((mode) => (
+                    <FormControlLabel
+                      key={mode}
+                      value={mode}
+                      control={<Radio size="small" />}
+                      slotProps={{ typography: { sx: { fontSize: 13.5 } } }}
+                      label={MODE_LABEL[mode]}
+                    />
+                  ))}
+                </RadioGroup>
+              </FormControl>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose} disabled={submitting}>
+            Abbrechen
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => void submit()}
+            disabled={!isValid || submitting}
+          >
+            {isEdit ? 'Speichern' : 'Anlegen'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {gate.dialog}
+    </>
   )
 }

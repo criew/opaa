@@ -212,7 +212,9 @@ den Rollen-Claim.
 - Ein **Rollen-Claim** (Pfad in Punktnotation, etwa `realm_access.roles`, mit den Werten für
   `SYSTEM_ADMIN` und `AUDITOR`) macht den Anbieter für diese Systemrollen führend: Die Rolle kommt bei
   jeder Anfrage aus dem Token, die manuelle Rollenvergabe ist für seine Konten gesperrt, und der letzte
-  `SYSTEM_ADMIN` der Installation wird nie per Token entzogen. Das Setzen verlangt eine Bestätigung.
+  `SYSTEM_ADMIN` der Installation wird nie per Token entzogen. Das Setzen verlangt eine Bestätigung;
+  Rollen-Claim und Rollenwerte zu setzen oder zu ändern verlangt außerdem eine
+  [erneute Anmeldung](#erneute-anmeldung-vor-sensiblen-vorgängen).
 - Ein **Gruppen-Claim** macht die Gruppennamen des Tokens bei jeder Anmeldung zu Mitgliedschaften in
   Gruppen dieses Anbieters; gleichnamige Gruppen zweier Anbieter sind zwei Gruppen. Sie sind in der
   Gruppenverwaltung schreibgeschützt. Gruppen-Claim und Verzeichnisabgleich schließen einander je
@@ -473,8 +475,14 @@ OPAA kann vor einem Vorgang verlangen, dass die Person ihre Identität gerade eb
 ein nicht gesperrter Arbeitsplatz dafür nicht genügt. Die Bestätigung gilt für kurze Zeit
 (`OPAA_AUTH_RECENT_LOGIN_MAX_AGE` in der [Variablenliste](konfiguration.md)), danach wird wieder
 gefragt. Verlangt wird sie vor dem Download der eigenen Daten
-([Selbstauskunft](../konten-und-rechte/benutzerverwaltung.md#meine-daten-die-selbstauskunft)) und vor
-dem Erzeugen eines Zugangstokens für [externe KI-Werkzeuge](../spaces/fremdzugaenge.md).
+([Selbstauskunft](../konten-und-rechte/benutzerverwaltung.md#meine-daten-die-selbstauskunft)), vor
+dem Erzeugen eines Zugangstokens für [externe KI-Werkzeuge](../spaces/fremdzugaenge.md),
+bevor die Systemverwaltung einem Konto eine andere Systemrolle gibt oder ein Konto mit Systemrolle in
+andere Hände kommen könnte ([Rollen](../konten-und-rechte/benutzerverwaltung.md#7-rollen)), und bevor
+sie die Rollenzuordnung eines Identitätsanbieters setzt oder ändert. Ebenso verlangt sie jede
+Änderung an Issuer-URI, Client-ID, JWK-Set-URI, E-Mail-Claim oder Gruppen-Claim eines bestehenden
+Anbieters: Diese Angaben entscheiden, wessen Tokens gelten und was sie gewähren. Anzeigename und
+Anzeigenamen-Claim ändern sich ohne Bestätigung.
 
 - **Lokales Konto:** Die Bestätigung erfolgt mit dem Passwort. Ein falsches Passwort zählt wie bei
   der Anmeldung als Fehlversuch und führt nach zu vielen Versuchen zur Sperre.
@@ -547,6 +555,12 @@ steht im Kapitel [Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md
 - **Einladungen und Rücksetzlinks brauchen Mail und eine öffentliche Adresse**
   (`OPAA_PUBLIC_BASE_URL`, [E-Mail-Versand](e-mail.md)). Ohne beides zeigt OPAA den Link zur Übergabe
   an, und „Passwort vergessen" und Selbstregistrierung lassen sich nicht einschalten.
+- **Bei der Selbstregistrierung legt erst der Bestätigungslink Name und Passwort fest.** Wer eine
+  fremde Adresse der erlaubten Domänen zuerst registriert, bestimmt damit weder Passwort noch Namen
+  und erhält keinen Zugang; die Bestätigungsmail nennt keinen Namen und bittet, eine nicht selbst
+  ausgelöste Registrierung zu ignorieren
+  ([Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md#10-selbstregistrierung)). Eine
+  eigene Fassung dieser Mailvorlage passt sich nicht von selbst an ([E-Mail-Versand](e-mail.md#vorlagen)).
 - **Es gibt keinen zweiten Faktor.** Bis dahin gleichen aus: die Netzbeschränkung
   `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` (lokale Systemverwalter nur aus den genannten Netzen; leer heißt
   ohne Beschränkung), kürzere Sitzungsfristen für Systemverwalterkonten, die Protokollierung des
