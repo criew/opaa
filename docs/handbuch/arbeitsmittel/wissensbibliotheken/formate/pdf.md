@@ -1,6 +1,6 @@
 # Format: PDF
 
-Pipeline `pdf`, Version 5. Der gemeinsame Rahmen aller Format-Pipelines steht im
+Pipeline `pdf`, Version 6. Der gemeinsame Rahmen aller Format-Pipelines steht im
 Kapitel [Wissensbibliotheken](../README.md), Abschnitt 5.
 
 ## 1. Zulassung
@@ -95,6 +95,7 @@ steht nur dort, wo das Dokument sie druckt.
 |---|---|---|
 | Ortsangabe (`location`) mit Gliederung | Abschnittspfad | `Abschn. Satzung › § 7 Gebühren › Absatz 2` |
 | Ortsangabe ohne Gliederung | Seitenzahl | `S. 4` |
+| Fundstellen-Anker (`anchor`) | Seitenbereich (auch mit Gliederung), Abschnittspfad und Zitat von Anfang und Ende | Seiten `4`–`5` |
 
 Die Ortsangabe erscheint im Zitat der Antwort.
 

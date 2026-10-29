@@ -1,5 +1,7 @@
 package io.opaa.chat;
 
+import java.util.Map;
+
 /**
  * Domain counterpart of the generated {@code ChunkLocation} - where one retrieved chunk sits within
  * its document. {@code ChatSourceAssembler} builds these while ranking search results; {@link
@@ -13,6 +15,13 @@ public final class ChatSourceLocation {
   private int chunkIndex;
   private String location;
 
+  /**
+   * The cited chunk's anchor as stored on the chunk ({@code ChunkAnchor#toMetadata}), kept as a
+   * snapshot of the moment of the answer: a later re-index may renumber the chunks, the anchor
+   * still names the passage. Null for a source assembled before anchors existed.
+   */
+  private Map<String, Object> anchor;
+
   public ChatSourceLocation() {}
 
   public ChatSourceLocation(int chunkIndex) {
@@ -21,6 +30,11 @@ public final class ChatSourceLocation {
 
   public ChatSourceLocation location(String location) {
     this.location = location;
+    return this;
+  }
+
+  public ChatSourceLocation anchor(Map<String, Object> anchor) {
+    this.anchor = anchor;
     return this;
   }
 
@@ -38,5 +52,13 @@ public final class ChatSourceLocation {
 
   public void setLocation(String location) {
     this.location = location;
+  }
+
+  public Map<String, Object> getAnchor() {
+    return anchor;
+  }
+
+  public void setAnchor(Map<String, Object> anchor) {
+    this.anchor = anchor;
   }
 }

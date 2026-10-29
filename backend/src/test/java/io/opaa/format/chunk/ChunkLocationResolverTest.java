@@ -32,7 +32,9 @@ class ChunkLocationResolverTest {
     int fristsetzung = text.indexOf("Die Frist");
     int zustaendigkeit = text.indexOf("Das Referat");
     assertThat(resolver.locate(fristsetzung, fristsetzung + 10))
-        .isEqualTo("Abschn. 4 Fristen › 4.2 Fristsetzung");
+        .isEqualTo("Abschn. Dienstanweisung › 4 Fristen › 4.2 Fristsetzung");
+    assertThat(resolver.anchor(fristsetzung, fristsetzung + 10).path())
+        .containsExactly("Dienstanweisung", "4 Fristen", "4.2 Fristsetzung");
     assertThat(resolver.locate(zustaendigkeit, zustaendigkeit + 5))
         .isEqualTo("Abschn. Dienstanweisung › 5 Zuständigkeit");
     assertThat(resolver.locate(text.indexOf("Einleitung"), text.indexOf("Einleitung") + 3))

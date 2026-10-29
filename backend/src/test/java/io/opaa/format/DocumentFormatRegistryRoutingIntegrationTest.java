@@ -141,17 +141,17 @@ class DocumentFormatRegistryRoutingIntegrationTest {
   void everyFormatKeepsItsPersistedIdAndVersion() {
     Map<String, Short> expectedVersionById =
         Map.ofEntries(
-            Map.entry("pdf", (short) 5),
-            Map.entry("docx", (short) 5),
-            Map.entry("pptx", (short) 3),
-            Map.entry("odt", (short) 4),
-            Map.entry("odp", (short) 4),
-            Map.entry("tabular", (short) 3),
-            Map.entry("markdown", (short) 3),
-            Map.entry("html", (short) 5),
-            Map.entry("email", (short) 5),
-            Map.entry("tika-fallback", (short) 1),
-            Map.entry("confluence", (short) 4));
+            Map.entry("pdf", (short) 6),
+            Map.entry("docx", (short) 6),
+            Map.entry("pptx", (short) 4),
+            Map.entry("odt", (short) 5),
+            Map.entry("odp", (short) 5),
+            Map.entry("tabular", (short) 4),
+            Map.entry("markdown", (short) 4),
+            Map.entry("html", (short) 6),
+            Map.entry("email", (short) 6),
+            Map.entry("tika-fallback", (short) 2),
+            Map.entry("confluence", (short) 5));
 
     assertThat(registry.pipelines())
         .extracting(DocumentFormat::id)
@@ -172,19 +172,22 @@ class DocumentFormatRegistryRoutingIntegrationTest {
    */
   @Test
   void everyPipelineDeclaresExactlyItsOwnMetadataKeys() {
+    String[] locationAndAnchor = {
+      ChunkMetadataKeys.LOCATION_METADATA_KEY, ChunkMetadataKeys.ANCHOR_METADATA_KEY
+    };
     Map<String, Set<String>> expectedByPipelineId =
         Map.ofEntries(
-            Map.entry("pdf", Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY)),
-            Map.entry("docx", Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY)),
-            Map.entry("pptx", Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY)),
-            Map.entry("tabular", Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY)),
-            Map.entry("html", Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY)),
-            Map.entry("tika-fallback", Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY)),
-            Map.entry("odt", Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY)),
-            Map.entry("odp", Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY)),
-            Map.entry("markdown", Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY)),
-            Map.entry("confluence", Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY)),
-            Map.entry("email", Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY)));
+            Map.entry("pdf", Set.of(locationAndAnchor)),
+            Map.entry("docx", Set.of(locationAndAnchor)),
+            Map.entry("pptx", Set.of(locationAndAnchor)),
+            Map.entry("tabular", Set.of(locationAndAnchor)),
+            Map.entry("html", Set.of(locationAndAnchor)),
+            Map.entry("tika-fallback", Set.of(locationAndAnchor)),
+            Map.entry("odt", Set.of(locationAndAnchor)),
+            Map.entry("odp", Set.of(locationAndAnchor)),
+            Map.entry("markdown", Set.of(locationAndAnchor)),
+            Map.entry("confluence", Set.of(locationAndAnchor)),
+            Map.entry("email", Set.of(locationAndAnchor)));
 
     assertThat(registry.pipelines())
         .extracting(DocumentFormat::id)

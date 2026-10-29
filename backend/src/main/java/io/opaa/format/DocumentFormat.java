@@ -120,6 +120,6 @@ public interface DocumentFormat {
    * DocumentFormatRegistry#allPassthroughMetadataKeys()}). Never {@code null}.
    */
   default Set<String> passthroughMetadataKeys() {
-    return Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY);
+    return Set.of(ChunkMetadataKeys.LOCATION_METADATA_KEY, ChunkMetadataKeys.ANCHOR_METADATA_KEY);
   }
 }

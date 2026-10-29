@@ -1,6 +1,6 @@
 # Format: E-Mail (EML, MSG)
 
-Pipeline `email`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht
+Pipeline `email`, Version 6. Der gemeinsame Rahmen aller Format-Pipelines steht
 im Kapitel [Wissensbibliotheken](../README.md), Abschnitt 5; der Anhangsweg dort in Abschnitt 5.7.
 
 ## 1. Zulassung
@@ -69,11 +69,12 @@ ohne Anhänge wird dagegen als „kein extrahierbarer Text" abgewiesen.
 
 ## 4. Kopfdaten als Metadaten
 
-Am Chunk trägt die Mail-Pipeline nur die Ortsangabe wie jede andere Pipeline:
+Am Chunk trägt die Mail-Pipeline nur Ortsangabe und Fundstellen-Anker wie jede andere Pipeline:
 
 | Feld | Inhalt |
 |---|---|
 | `location` | `Nachricht 2 von 4`, `Teil 3 von 7` oder `Nachricht 2 von 4 · Teil 3 von 7`; bei einer ungeteilten Nachricht leer |
+| `anchor` | Fundstellen-Anker: Position der Nachricht im Thread (auch bei einer ungeteilten Nachricht) und Zitat von Anfang und Ende |
 
 Die Kopfdaten selbst sind **Werte des Metadatenschemas am Dokument**, keine
 mail-eigenen Chunk-Schlüssel — dieselbe Mechanik wie bei den Kernfeldern, mit Herkunft

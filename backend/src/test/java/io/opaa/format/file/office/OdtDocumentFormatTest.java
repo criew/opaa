@@ -45,7 +45,7 @@ class OdtDocumentFormatTest {
   void claimsExactlyOdt() {
     assertThat(pipeline.handledFormats()).containsExactly(".odt");
     assertThat(pipeline.id()).isEqualTo("odt");
-    assertThat(pipeline.version()).isEqualTo((short) 4);
+    assertThat(pipeline.version()).isEqualTo((short) 5);
   }
 
   private static final String META_XML =

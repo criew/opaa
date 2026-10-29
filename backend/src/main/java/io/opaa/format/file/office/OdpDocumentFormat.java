@@ -5,6 +5,8 @@ import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.DocumentProperties;
 import io.opaa.format.FileDocumentFormat;
 import io.opaa.format.FormatAdmission;
+import io.opaa.format.chunk.ChunkAnchor;
+import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.shared.DeduplicatedLines;
 import io.opaa.format.shared.HeadingSectionSplitter;
@@ -39,7 +41,7 @@ public class OdpDocumentFormat extends FileDocumentFormat<OdpDocumentFormat.OdpC
   private static final Logger log = LoggerFactory.getLogger(OdpDocumentFormat.class);
 
   static final String ID = "odp";
-  static final short VERSION = 4;
+  static final short VERSION = 5;
 
   private static final String MASTER_SLIDE_LOCATION = "Masterfolie";
 
@@ -385,6 +387,7 @@ public class OdpDocumentFormat extends FileDocumentFormat<OdpDocumentFormat.OdpC
       }
       Map<String, Object> metadata = new HashMap<>();
       metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
+      ChunkAnchors.write(metadata, ChunkAnchor.EMPTY.withSlide(slideNumber));
       chunks.addAll(splitter.boundedChunks(title, rest, metadata));
       anySlideHasText |= hasText;
       hasSlide = false;

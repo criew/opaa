@@ -729,6 +729,73 @@ components:
             page breaks (PDF, Office documents), the heading path for Markdown-style headings, both
             when both are known. Null when nothing could be derived.
           example: S. 2–4 · Abschn. 4.2 ‚Fristsetzung'
+        anchor:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ChunkAnchor"
+          description: >-
+            The machine-readable position of the chunk, for jumping to it in the original. Stored
+            with the chat as a snapshot taken when the answer was given, so it stays valid when the
+            document is re-indexed later. Null for a chunk indexed before anchors existed.
+
+    ChunkAnchor:
+      type: object
+      description: >-
+        Where a chunk sits in its original. Only the units its format has are set; quoteStart is
+        set for every chunk with text. A viewer jumps by the structural units and marks the passage
+        by searching quoteStart through quoteEnd in the whitespace-normalized text.
+      properties:
+        pageFrom:
+          type: integer
+          nullable: true
+          description: First page, 1-based (PDF and paginated Tika formats).
+          example: 3
+        pageTo:
+          type: integer
+          nullable: true
+          description: Last page, 1-based, inclusive.
+          example: 3
+        path:
+          type: array
+          nullable: true
+          items:
+            type: string
+          description: The full heading path the chunk belongs to, outermost first.
+          example: ["3 Verfahren", "3.1 Fristen"]
+        slide:
+          type: integer
+          nullable: true
+          description: Slide number, 1-based (PPTX, ODP).
+        sheet:
+          type: string
+          nullable: true
+          description: Worksheet name (XLSX, ODS); null for a single-table file such as CSV.
+        rowFrom:
+          type: integer
+          format: int64
+          nullable: true
+          description: First source row number, as the spreadsheet numbers it.
+        rowTo:
+          type: integer
+          format: int64
+          nullable: true
+          description: Last source row number, inclusive.
+        message:
+          type: integer
+          nullable: true
+          description: 1-based position of the message within a mail thread.
+        quoteStart:
+          type: string
+          nullable: true
+          description: >-
+            The chunk's own text from its start, whitespace-normalized, at most 60 characters cut
+            at a word boundary; without a repeated heading line or overlap with the previous chunk.
+          example: Der Antrag ist binnen vier Wochen nach Zugang des
+        quoteEnd:
+          type: string
+          nullable: true
+          description: The same from the end of the chunk's text; null when quoteStart holds it all.
+          example: Bescheids schriftlich einzureichen.
 
     QueryMetadata:
       type: object

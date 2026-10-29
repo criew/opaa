@@ -60,6 +60,35 @@ class ChatSourceAssemblerTest {
 
   private static final Document README = chunk("readme.md", "doc-123", "Relevant content", 0.85);
 
+  /** The anchor rides into the chat as a snapshot, so a later re-index cannot move the citation. */
+  @Test
+  void snapshotsTheChunksAnchorIntoItsLocationEntry() {
+    Map<String, Object> anchor = Map.of("pageFrom", 3, "pageTo", 3, "quoteStart", "Der Antrag");
+    Document chunk =
+        Document.builder()
+            .text("Der Antrag ist einzureichen.")
+            .metadata(
+                Map.of(
+                    "file_name", "satzung.pdf",
+                    "document_id", "doc-anchor",
+                    "chunk_index", 4,
+                    "location", "S. 3",
+                    "anchor", anchor))
+            .score(0.9)
+            .build();
+
+    List<ChatSource> sources = assembler.assemble(List.of(chunk), List.of(), MetadataFilter.NONE);
+
+    assertThat(sources.getFirst().getChunkLocations())
+        .singleElement()
+        .satisfies(
+            location -> {
+              assertThat(location.getChunkIndex()).isEqualTo(4);
+              assertThat(location.getLocation()).isEqualTo("S. 3");
+              assertThat(location.getAnchor()).isEqualTo(anchor);
+            });
+  }
+
   private static ValidatedCitation citation(String documentId, String fileName, boolean valid) {
     return new ValidatedCitation(documentId, 0, fileName, valid);
   }

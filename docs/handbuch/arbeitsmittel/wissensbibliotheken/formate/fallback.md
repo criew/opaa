@@ -1,6 +1,6 @@
 # Format: Auffang-Pipeline (TXT, DOC)
 
-Pipeline `tika-fallback`, Version 1. Der gemeinsame Rahmen aller
+Pipeline `tika-fallback`, Version 2. Der gemeinsame Rahmen aller
 Format-Pipelines steht im Kapitel [Wissensbibliotheken](../README.md), Abschnitt 5.
 
 ## 1. Wann sie läuft
@@ -49,11 +49,13 @@ Die Ortsangabe wird nachträglich aus dem flachen Text rekonstruiert:
 | Erkennbar | Beispiel |
 |---|---|
 | Seitenmarker | `S. 3`, bei Chunks über mehrere Seiten `S. 3–5` |
-| Überschriftenzeilen in `#`-Schreibweise | `Abschn. Fristen › Verlängerung` (die zwei tiefsten Ebenen) |
+| Überschriftenzeilen in `#`-Schreibweise | `Abschn. Kapitel 2 › Fristen › Verlängerung` (der volle Pfad) |
 | beides | `S. 3 · Abschn. Fristen › Verlängerung` |
 | nichts | keine Ortsangabe |
 
-Die Ortsangabe beschreibt den Beginn des Chunks vor der Überlappung. Die Seitenmarker werden
+Der Fundstellen-Anker (`anchor`) trägt dieselben Seiten und denselben Pfad maschinenlesbar, dazu
+ein Zitat von Anfang und Ende des Chunks ohne die Überlappung. Die Ortsangabe beschreibt den Beginn
+des Chunks vor der Überlappung. Die Seitenmarker werden
 vor dem Speichern und Embedden wieder entfernt.
 
 **Dokumenteigenschaften:** nur die erste Textzeile als Titelzeile. Für `.txt` und `.doc` stehen

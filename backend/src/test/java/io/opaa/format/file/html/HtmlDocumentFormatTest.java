@@ -35,7 +35,7 @@ class HtmlDocumentFormatTest {
   void claimsExactlyHtml() {
     assertThat(pipeline.handledFormats()).containsExactly(".html");
     assertThat(pipeline.id()).isEqualTo("html");
-    assertThat(pipeline.version()).isEqualTo((short) 5);
+    assertThat(pipeline.version()).isEqualTo((short) 6);
   }
 
   /** ADR-0024: the page title and the first h1 are the HTML format's declared properties. */

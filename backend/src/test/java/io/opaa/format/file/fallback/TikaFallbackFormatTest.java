@@ -48,7 +48,7 @@ class TikaFallbackFormatTest {
   void claimsNoFormatSoEveryFormatKeepsReachingIt() {
     assertThat(pipeline.handledFormats()).isEmpty();
     assertThat(pipeline.id()).isEqualTo("tika-fallback");
-    assertThat(pipeline.version()).isEqualTo((short) 1);
+    assertThat(pipeline.version()).isEqualTo((short) 2);
   }
 
   @Test

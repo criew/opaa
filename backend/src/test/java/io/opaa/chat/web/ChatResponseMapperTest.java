@@ -28,6 +28,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -359,6 +360,48 @@ class ChatResponseMapperTest {
     assertThat(response.getChunkLocations()).hasSize(1);
     assertThat(response.getChunkLocations().getFirst().getChunkIndex()).isEqualTo(3);
     assertThat(response.getChunkLocations().getFirst().getLocation()).isEqualTo("S. 2-4");
+  }
+
+  @Test
+  void toSourceReferenceMapsTheStoredAnchorSnapshot() {
+    ChatSource source =
+        new ChatSource("satzung.pdf", 0.85, 1, true)
+            .chunkLocations(
+                List.of(
+                    new ChatSourceLocation(3)
+                        .location("S. 3 · Abschn. 3.1 Fristen")
+                        .anchor(
+                            Map.of(
+                                "pageFrom",
+                                3,
+                                "pageTo",
+                                3,
+                                "path",
+                                List.of("3 Verfahren", "3.1 Fristen"),
+                                "quoteStart",
+                                "Der Antrag ist",
+                                "quoteEnd",
+                                "einzureichen."))));
+
+    var anchor = ChatResponseMapper.toSourceReference(source).getChunkLocations().getFirst();
+
+    assertThat(anchor.getAnchor().getPageFrom()).isEqualTo(3);
+    assertThat(anchor.getAnchor().getPageTo()).isEqualTo(3);
+    assertThat(anchor.getAnchor().getPath()).containsExactly("3 Verfahren", "3.1 Fristen");
+    assertThat(anchor.getAnchor().getQuoteStart()).isEqualTo("Der Antrag ist");
+    assertThat(anchor.getAnchor().getQuoteEnd()).isEqualTo("einzureichen.");
+    assertThat(anchor.getAnchor().getSlide()).isNull();
+  }
+
+  @Test
+  void toSourceReferenceLeavesTheAnchorNullForASourceStoredWithoutOne() {
+    ChatSource source =
+        new ChatSource("readme.md", 0.5, 1, false)
+            .chunkLocations(List.of(new ChatSourceLocation(1).location("S. 1")));
+
+    assertThat(
+            ChatResponseMapper.toSourceReference(source).getChunkLocations().getFirst().getAnchor())
+        .isNull();
   }
 
   @Test
