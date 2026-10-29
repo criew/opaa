@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { AxiosError, type AxiosResponse } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { answerConfirm, renderWithProviders } from '../../../../test/test-utils'
 import DocumentMetadataPanel from './DocumentMetadataPanel'
@@ -88,6 +89,36 @@ describe('DocumentMetadataPanel', () => {
     // A reader sees the values but no correction controls.
     expect(within(region).queryByRole('button', { name: /bearbeiten/ })).not.toBeInTheDocument()
     expect(within(region).queryByRole('button', { name: /löschen/ })).not.toBeInTheDocument()
+  })
+
+  /**
+   * The values come from the content: the administration without a grant of its own gets the
+   * reason as a note, not as a failure, and no way to edit what it may not read.
+   */
+  it('explains instead of failing when only the administration reaches the library', async () => {
+    const reason =
+      'Für diese Bibliothek liegt keine Leseberechtigung vor; Verwaltungsrechte genügen dafür nicht.'
+    mockGetDocumentMetadata.mockRejectedValueOnce(
+      new Error(reason, {
+        cause: new AxiosError('Forbidden', 'ERR_BAD_REQUEST', undefined, undefined, {
+          status: 403,
+          data: { error: reason, status: 403 },
+        } as AxiosResponse),
+      }),
+    )
+    renderWithProviders(
+      <DocumentMetadataPanel
+        libraryId="library-team"
+        documentId="doc-1"
+        fileName="dienstanweisung.pdf"
+        canEdit
+      />,
+    )
+
+    const note = await screen.findByText(/Verwaltungsrechte genügen dafür nicht/)
+    expect(note.closest('[role="alert"]')).toBeNull()
+    expect(note).toHaveTextContent(/Rolle „Leser“/)
+    expect(screen.queryByRole('button', { name: /bearbeiten/ })).not.toBeInTheDocument()
   })
 
   it('lets an editor set the Dokumentart from the vocabulary and shows the manual value', async () => {

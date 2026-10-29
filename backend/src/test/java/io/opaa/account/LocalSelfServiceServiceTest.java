@@ -2,11 +2,9 @@ package io.opaa.account;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -30,23 +28,20 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
  * The anti-enumeration mechanics of {@link LocalSelfServiceService} (ADR-0033, Entscheidungen 9 and
  * 11) in isolation: after the field checks, "forgot password" and a registration do nothing on the
  * caller's thread but hand one task to the executor and answer after the response floor - a
- * registration pays the one BCrypt on the caller's thread first, whether or not the address is free
- * or its domain allowed, so the clear-text password never waits in the queue; the task treats a
- * taken address (found or lost in a race) as silently no account, and the link mail is queued by
- * the account service in the transaction that issues the link; the availability of the two flows is
- * the conjunction of switch, setting, domain list and public base URL, and a switch that cannot be
- * read at all means "not served".
+ * registration carries no password, the verification link sets it; the task treats a taken address
+ * (found or lost in a race) as silently no account, and the link mail is queued by the account
+ * service in the transaction that issues the link; the availability of the two flows is the
+ * conjunction of switch, setting, domain list and public base URL, and a switch that cannot be read
+ * at all means "not served".
  */
 class LocalSelfServiceServiceTest {
 
   private static final String PASSWORD = "sicheres-passwort-2026";
-  private static final String HASH = "{bcrypt}hash";
   private static final long FLOOR = LocalSelfServiceService.RESPONSE_FLOOR.toMillis();
   private static final long EPSILON = 50;
   private static final long CEILING = 4 * FLOOR;
@@ -57,27 +52,18 @@ class LocalSelfServiceServiceTest {
   private final LocalAuthSettingsRepository settings = mock(LocalAuthSettingsRepository.class);
   private final OidcProviderRegistry registry = mock(OidcProviderRegistry.class);
   private final PublicBaseUrl publicBaseUrl = mock(PublicBaseUrl.class);
-  private final PasswordEncoder encoder = mock(PasswordEncoder.class);
   private final List<Runnable> queued = new ArrayList<>();
   private final Executor executor = queued::add;
   private LocalSelfServiceService service;
 
   @BeforeEach
   void setUp() {
-    when(encoder.encode(anyString())).thenReturn(HASH);
     when(registry.localAccountsEnabled()).thenReturn(true);
     when(publicBaseUrl.isConfigured()).thenReturn(true);
     settings(new Values(true, List.of("stadt.example"), true, 12, 72, 30, 90, 90));
     service =
         new LocalSelfServiceService(
-            accounts,
-            passwords,
-            settings,
-            registry,
-            publicBaseUrl,
-            encoder,
-            new PasswordPolicy(() -> 12),
-            executor);
+            accounts, passwords, settings, registry, publicBaseUrl, executor);
   }
 
   @Test
@@ -137,75 +123,65 @@ class LocalSelfServiceServiceTest {
   }
 
   @Test
-  void aRegistrationHashesFirstAndCreatesNothingForAForeignDomainOrATakenAddress() {
-    when(accounts.register(eq("belegt@stadt.example"), anyString(), anyString()))
+  void aRegistrationCreatesNothingForAForeignDomainOrATakenAddress() {
+    when(accounts.register(eq("belegt@stadt.example")))
         .thenThrow(new ConflictException("belegt", LocalUserService.EMAIL_TAKEN));
-    when(accounts.register(eq("verloren@stadt.example"), anyString(), anyString()))
+    when(accounts.register(eq("verloren@stadt.example")))
         .thenThrow(new DataIntegrityViolationException("ux_users_local_email"));
 
-    long foreign = millis(() -> service.register("wer@anderswo.example", "Wer", PASSWORD));
-    long taken = millis(() -> service.register("belegt@stadt.example", "Wer", PASSWORD));
-    long lost = millis(() -> service.register("verloren@stadt.example", "Wer", PASSWORD));
+    long foreign = millis(() -> service.register("wer@anderswo.example"));
+    long taken = millis(() -> service.register("belegt@stadt.example"));
+    long lost = millis(() -> service.register("verloren@stadt.example"));
 
     for (long ms : List.of(foreign, taken, lost)) {
       assertThat(ms).isBetween(FLOOR, CEILING);
     }
     assertThat(Math.max(foreign, Math.max(taken, lost)) - Math.min(foreign, Math.min(taken, lost)))
         .isLessThanOrEqualTo(EPSILON);
-    // the hash is paid on the caller's thread in every outcome - the clear-text password never
-    // reaches the queue; everything else waits there
-    verify(encoder, times(3)).encode(PASSWORD);
+    // nothing happens on the caller's thread; everything waits in the queue
     verifyNoInteractions(accounts);
     assertThat(queued).hasSize(3);
     queued.forEach(Runnable::run);
-    verify(accounts, never()).register(eq("wer@anderswo.example"), anyString(), anyString());
-    verify(accounts).register("belegt@stadt.example", "Wer", HASH);
-    verify(accounts).register("verloren@stadt.example", "Wer", HASH);
+    verify(accounts, never()).register(eq("wer@anderswo.example"));
+    verify(accounts).register("belegt@stadt.example");
+    verify(accounts).register("verloren@stadt.example");
   }
 
   @Test
-  void aRegistrationOfAFreeAddressCreatesTheAccountWithTheHash() {
+  void aRegistrationOfAFreeAddressCreatesTheAccountWithoutAPassword() {
     User user = User.localAccount("neu@stadt.example", "Neu");
     IssuedActionToken token =
         new IssuedActionToken("roh", Instant.now().plus(Duration.ofHours(24)));
-    when(accounts.register("neu@stadt.example", "Neu", HASH))
-        .thenReturn(new Registered(user, null, token));
+    when(accounts.register("neu@stadt.example")).thenReturn(new Registered(user, null, token));
 
-    service.register("neu@stadt.example", "Neu", PASSWORD);
+    service.register("neu@stadt.example");
 
-    verify(encoder).encode(PASSWORD);
     verifyNoInteractions(accounts);
     assertThat(queued).hasSize(1);
     queued.getFirst().run();
-    verify(accounts).register("neu@stadt.example", "Neu", HASH);
+    verify(accounts).register("neu@stadt.example");
   }
 
   @Test
   void aRegistrationRefusesBadInputWithFieldErrorsBeforeAnyCost() {
-    assertThatThrownBy(() -> service.register("keine-adresse", "Wer", PASSWORD))
+    assertThatThrownBy(() -> service.register("keine-adresse"))
         .isInstanceOf(FieldValidationException.class)
         .satisfies(e -> assertThat(fields(e)).containsExactly("email"));
-    assertThatThrownBy(() -> service.register("wer@stadt.example", " ", PASSWORD))
-        .isInstanceOf(FieldValidationException.class)
-        .satisfies(e -> assertThat(fields(e)).containsExactly("displayName"));
-    assertThatThrownBy(() -> service.register("wer@stadt.example", "Wer", "kurz"))
-        .isInstanceOf(FieldValidationException.class)
-        .satisfies(e -> assertThat(fields(e)).containsExactly("password"));
     assertThatThrownBy(() -> service.requestPasswordReset("keine-adresse"))
         .isInstanceOf(FieldValidationException.class)
         .satisfies(e -> assertThat(fields(e)).containsExactly("email"));
 
     assertThat(queued).isEmpty();
-    verifyNoInteractions(encoder, accounts);
+    verifyNoInteractions(accounts);
   }
 
   @Test
   void theLinkEndpointsDelegateToTheTransactionalServices() {
     service.setPassword("roh", PASSWORD);
-    service.verifyEmail("roh");
+    service.confirmRegistration("roh", "Erika", PASSWORD);
 
     verify(passwords).setPasswordByLink("roh", PASSWORD);
-    verify(accounts).verifyEmail("roh");
+    verify(passwords).confirmRegistration("roh", "Erika", PASSWORD);
     assertThat(queued).isEmpty();
   }
 

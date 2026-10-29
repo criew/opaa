@@ -112,6 +112,18 @@ public class FilesystemUploadedOriginalStore implements UploadedOriginalStore {
     }
   }
 
+  /** A directory keeps no versions: what is deleted is gone. */
+  @Override
+  public long countRetainedVersions(UUID organizationId, UUID libraryId) {
+    return 0;
+  }
+
+  /** Nothing to erase, as {@link #countRetainedVersions} says. */
+  @Override
+  public int eraseRetainedVersions(UUID organizationId, UUID libraryId) {
+    return 0;
+  }
+
   @Override
   public void forEachStoredLibrary(UUID organizationId, Consumer<UUID> visitor) {
     Path organizationDirectory = realPath(organizationDirectory(organizationId));

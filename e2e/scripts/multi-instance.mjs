@@ -15,6 +15,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { previousVersionRef } from './previous-version.mjs'
+import { envFileWithRunKeys } from './run-env-file.mjs'
 
 const isWindows = process.platform === 'win32'
 
@@ -52,7 +53,8 @@ export async function runMultiInstance({ repoRoot, e2eDir, extraTestArgs }) {
   const baseEnv = {
     ...process.env,
     COMPOSE_PROJECT_NAME: project,
-    OPAA_ENV_FILE: 'e2e/multi-instance.env',
+    // A copy with this run's AES keys, passed on to the scenarios' own Compose calls (scenario 05).
+    OPAA_ENV_FILE: envFileWithRunKeys(repoRoot, 'e2e/multi-instance.env'),
     OPAA_COMPOSE_SUBNET: '172.26.0.0/16',
     OPAA_COMPOSE_FRONTEND_ADDRESS: '172.26.0.10',
     OPAA_FRONTEND_PORT: ports.frontend,

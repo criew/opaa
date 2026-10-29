@@ -1,6 +1,7 @@
 package io.opaa.query.spike;
 
 import io.opaa.metadata.MetadataFilter;
+import io.opaa.query.answer.DocumentBlock;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -12,12 +13,14 @@ import org.springframework.ai.document.Document;
  * org.springframework.ai.chat.model.ToolContext} (#1789): the search scope and metadata filter come
  * from here, never from a model argument, and every chunk any call returns accumulates here across
  * the whole tool-calling loop of one turn. One instance per {@link
- * SpikeToolLoopQueryHandler#handle} call, never shared between turns or callers.
+ * SpikeToolLoopQueryHandler#handle} call, never shared between turns or callers; its {@link
+ * #blockId} fences every tool response of the turn and is the one the system prompt names.
  */
 final class ToolLoopRunState {
 
   private final Set<UUID> searchScope;
   private final MetadataFilter metadataFilter;
+  private final String blockId = DocumentBlock.newId();
   private final List<Document> collectedChunks = new CopyOnWriteArrayList<>();
   private final List<String> searchSteps = new CopyOnWriteArrayList<>();
 
@@ -32,6 +35,10 @@ final class ToolLoopRunState {
 
   MetadataFilter metadataFilter() {
     return metadataFilter;
+  }
+
+  String blockId() {
+    return blockId;
   }
 
   List<Document> collectedChunks() {
