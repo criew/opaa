@@ -163,8 +163,10 @@ solche, die nur aus dem Netz des Servers erreichbar sind (SSRF). Zwei Schranken 
   ([Images und Laufzeit](images-und-laufzeit.md)).
 
 Fest im Code: 60 Sekunden Bindung nach einer Prüfung; 5 Sekunden, in denen eine Prüfung die letzte
-Antwort für denselben Namen wiederverwendet; höchstens 10 000 Bindungen von Prüfungen vor einer
-Verbindung (die älteste weicht) und höchstens 100 000 bewachte gespeicherte Ziele je Instanz. Ist die
+Antwort für denselben Namen wiederverwendet; höchstens 50 000 gültige Bindungen von Prüfungen vor
+einer Verbindung und höchstens 100 000 bewachte gespeicherte Ziele je Instanz. Sind alle Bindungen
+noch gültig, lehnt OPAA die Prüfung eines neuen Namens bis zu ihrem Ablauf ab und zählt
+`opaa_target_validation_refused_connection_checks_total`. Ist die
 Tabelle der bewachten Ziele voll, lehnt OPAA die Prüfung jedes neuen gespeicherten Ziels mit eigener
 Meldung ab („kann derzeit nicht geprüft werden … Höchstzahl geprüfter Hostnamen“), warnt im Log und
 zählt `opaa_target_validation_refused_checks_total`; bewachte Namen bleiben bewacht, ein Neustart

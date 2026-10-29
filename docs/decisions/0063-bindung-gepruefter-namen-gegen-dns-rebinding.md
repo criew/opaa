@@ -41,8 +41,10 @@ Adressfamilien, am Cache des JDK vorbei); eine Antwort für denselben Namen, die
 den Namen für `PIN_LIFETIME` (60 Sekunden) ab dem Abruf der Antwort an genau diese Adressen; eine
 wiederverwendete Antwort verlängert die Bindung nicht. Danach prüft er, was `InetAddress` einem Client
 jetzt liefert, weil der Cache des JDK noch eine ältere Antwort halten kann. Eine Ablehnung bindet
-nichts. IP-Literale werden geprüft, aber nicht gebunden; ein Hostname außerhalb von ASCII wird
-abgelehnt. Begründung: Die frische Antwort lässt einen legitimen Adresswechsel (rotierende
+nichts, eine leere Antwort gilt als unbekannter Host. Fragt ein Client während der Bindung nur eine
+Adressfamilie an, für die die Bindung keine Adresse hat, antwortet der Resolver mit
+`UnknownHostException`, nie mit einer ungeprüften Antwort. IP-Literale werden geprüft, aber nicht
+gebunden; ein Hostname außerhalb von ASCII wird abgelehnt. Begründung: Die frische Antwort lässt einen legitimen Adresswechsel (rotierende
 S3-Adressen, DNS-Failover) bei der nächsten Prüfung ankommen; die kurze Wiederverwendung fasst die
 Prüfungen eines Crawls oder S3-Laufs zu einer Abfrage je Name und Fenster zusammen, statt je Anfrage
 bis zu acht Abfragen (Kubernetes mit `ndots:5`) auszulösen, und übersteht einen DNS-Aussetzer dieser
@@ -55,12 +57,19 @@ Jeder Aufrufer nennt den Geltungsbereich (`TargetAddressValidator.Scope`; es gib
 
 | Geltungsbereich | Aufrufer | Wirkung |
 |---|---|---|
-| `PER_CONNECTION` | `RedirectFollowingFetcher` (jeder Hop der HTTP-Konnektoren, Zugänge, OAuth, MCP, Graph, Originalabruf), `S3RequestGuard`, `S3ClientFactory`, `UploadS3TargetPolicy`, `SmbShareClient`, `SmbSourceConnector`, `NextcloudSourceConnector` | nur die Bindung aus Entscheidung 2, in einer eigenen Tabelle von höchstens `MAX_CONNECTION_PINS` (10 000) Einträgen, die ihren ältesten verdrängt |
+| `PER_CONNECTION` | `RedirectFollowingFetcher` (jeder Hop der HTTP-Konnektoren, Zugänge, OAuth, MCP, Graph, Originalabruf), `S3RequestGuard`, `S3ClientFactory`, `UploadS3TargetPolicy`, `SmbShareClient`, `SmbSourceConnector`, `NextcloudSourceConnector` | nur die Bindung aus Entscheidung 2, in einer eigenen Tabelle von höchstens `MAX_CONNECTION_PINS` (50 000) Einträgen; nur abgelaufene Bindungen weichen, ist die Tabelle voll gültiger Bindungen, wird die Prüfung eines neuen Namens abgelehnt |
 | `STORED_TARGET` | `ModelAddressPolicy` (alle Modellrollen), `OidcAddressPolicy` (Discovery, JWK-Set, Verzeichnisabgleich), `InstallationMailTargets` | Bindung und Wächter aus Entscheidung 4 |
 
-`PER_CONNECTION` braucht keinen Wächter: Jeder dieser Clients prüft vor jeder Verbindung, ein späterer
-Adresswechsel trifft also auf eine neue Prüfung, und das Fenster zwischen Prüfung und Verbindung
-schließt die Bindung. Auch gespeicherte Basisadressen von Quellen, Zugängen und MCP-Servern laufen als
+`PER_CONNECTION` braucht keinen Wächter: Jeder dieser Clients prüft unmittelbar vor jedem neuen
+Verbindungsaufbau, ein späterer Adresswechsel trifft also auf eine neue Prüfung, und das Fenster
+zwischen Prüfung und Verbindung schließt die Bindung. `RedirectFollowingFetcher` prüft vor jedem
+`send`, auch vor jeder Wiederholung nach `429`; alle JDK-Clients folgen keiner Weiterleitung selbst
+(`Redirect.NEVER`), ein Pool baut eine neue Verbindung also nur innerhalb eines `send` auf.
+`S3RequestGuard` prüft vor jedem Übertragungsversuch des AWS SDK, bevor der Pool von Apache
+HttpClient 5 verbindet; `SmbShareClient` prüft jeden Socket in seiner `SocketFactory`. Eine
+wiederverwendete Verbindung bleibt an der Adresse, an die sie geprüft aufgebaut wurde. Eine Bindung,
+die noch gilt, wird nie verdrängt, sonst fiele ein Name zwischen Prüfung und Verbindung auf eine
+ungeprüfte Antwort zurück. Auch gespeicherte Basisadressen von Quellen, Zugängen und MCP-Servern laufen als
 `PER_CONNECTION`: Ihre Clients prüfen jede Verbindung, und jedes Konto mit Anlagerecht legt sie an;
 als `STORED_TARGET` könnten sie den Wächter füllen. Begründung: Die Wächter-Tabelle wächst nur mit der
 Konfiguration der Systemverwaltung und der Installation, nicht mit Weiterleitungen, Feed-Links oder
@@ -140,6 +149,9 @@ nennt, scheitert.
 **Restrisiken:**
 
 - Verbindungen über den Ausgangsproxy und Namen der Allowlist bindet OPAA nicht.
+- Prüft jemand in kurzer Zeit mehr als 50 000 verschiedene Namen vor einer Verbindung, lehnt die
+  Instanz weitere neue Namen ab, bis die ältesten Bindungen nach 60 Sekunden ablaufen; das zählt
+  `opaa_target_validation_refused_connection_checks_total`.
 - Ein gespeichertes Ziel, das beim Vorwärmen abgelehnt wird oder dessen Prüfung scheitert, bleibt
   unbewacht, bis es erneut erfolgreich geprüft wird.
 - Die Wächter-Tabelle füllt nur, wer gespeicherte Ziele anlegen darf: Systemverwaltung (Modelle,

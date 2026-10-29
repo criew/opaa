@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -47,8 +48,11 @@ final class ResolutionPins {
   /** At most this many guarded names; a check of a further name is refused. */
   static final int MAX_GUARDED_NAMES = 100_000;
 
-  /** At most this many pins of checks before a connection; the oldest gives way. */
-  static final int MAX_CONNECTION_PINS = 10_000;
+  /**
+   * At most this many pins of checks before a connection; only an expired pin gives way, a check of
+   * a new name finding the table full of pins in force is refused.
+   */
+  static final int MAX_CONNECTION_PINS = 50_000;
 
   private static final Duration WARNING_INTERVAL = Duration.ofMinutes(1);
 
@@ -79,7 +83,9 @@ final class ResolutionPins {
   private final int capacity;
   private final ConcurrentHashMap<NameKey, Guard> guards = new ConcurrentHashMap<>();
   private final Map<NameKey, Answer> connectionPins;
+  private final int connectionCapacity;
   private final AtomicLong refusals = new AtomicLong();
+  private final AtomicLong refusedConnectionChecks = new AtomicLong();
   private final AtomicLong lastFullWarning = new AtomicLong(Long.MIN_VALUE);
   private final AtomicLong lastFilterWarning = new AtomicLong(Long.MIN_VALUE);
   private volatile InetAddressResolver builtin;
@@ -88,14 +94,8 @@ final class ResolutionPins {
   ResolutionPins(LongSupplier nanoTime, int capacity, int connectionCapacity) {
     this.nanoTime = nanoTime;
     this.capacity = capacity;
-    this.connectionPins =
-        Collections.synchronizedMap(
-            new LinkedHashMap<>() {
-              @Override
-              protected boolean removeEldestEntry(Map.Entry<NameKey, Answer> eldest) {
-                return size() > connectionCapacity;
-              }
-            });
+    this.connectionCapacity = connectionCapacity;
+    this.connectionPins = Collections.synchronizedMap(new LinkedHashMap<>());
   }
 
   /** The guards every resolution of this JVM consults. */
@@ -163,23 +163,52 @@ final class ResolutionPins {
         upstream == null
             ? List.of(InetAddress.getAllByName(host))
             : upstream.lookupByName(host, ALL_FAMILIES).toList();
+    if (addresses.isEmpty()) {
+      throw new UnknownHostException(host);
+    }
     return new Answer(addresses, now);
   }
 
   /**
-   * Pins {@code host} to {@code vetted} after a check right before a connection: no guard, and the
-   * pin with the oldest insertion gives way once the table is full.
+   * Pins {@code host} to {@code vetted} after a check right before a connection, without a guard.
+   * Expired pins give way to a new name, a pin in force never does.
+   *
+   * @return {@code false}, pinning nothing, when the table is full of pins in force
    */
-  void pinConnection(String host, Answer vetted) {
+  boolean pinConnection(String host, Answer vetted) {
     NameKey key = key(host);
     if (key == null) {
-      return;
+      return false;
     }
+    long now = nanoTime.getAsLong();
     Answer pinned = new Answer(List.copyOf(vetted.addresses()), vetted.fetchedAt());
     synchronized (connectionPins) {
       connectionPins.remove(key);
+      Iterator<Answer> oldest = connectionPins.values().iterator();
+      while (connectionPins.size() >= connectionCapacity && oldest.hasNext()) {
+        if (now - oldest.next().fetchedAt() < PIN_LIFETIME.toNanos()) {
+          break;
+        }
+        oldest.remove();
+      }
+      if (connectionPins.size() >= connectionCapacity) {
+        refusedConnectionChecks.incrementAndGet();
+        warnAtMostOncePerInterval(
+            lastFullWarning,
+            now,
+            "Refused a target address check before a connection: {} host names are pinned right"
+                + " now, the most this instance holds within the pin lifetime",
+            connectionCapacity);
+        return false;
+      }
       connectionPins.put(key, pinned);
     }
+    return true;
+  }
+
+  /** How many checks before a connection a table full of pins in force refused. */
+  long refusedConnectionChecks() {
+    return refusedConnectionChecks.get();
   }
 
   /** The youngest pin of {@code key} from either table, {@code null} if none. */
@@ -266,9 +295,11 @@ final class ResolutionPins {
     Answer pin = latestPin(key);
     if (pin != null && now - pin.fetchedAt() < PIN_LIFETIME.toNanos()) {
       List<InetAddress> pinned = ordered(pin.addresses(), policy);
-      if (!pinned.isEmpty()) {
-        return named(host, pinned);
+      if (pinned.isEmpty()) {
+        // Bound to vetted addresses of another family: never fall through to an unchecked answer.
+        throw new UnknownHostException(host + ": bound to addresses of another family");
       }
+      return named(host, pinned);
     }
     Guard guard = guards.get(key);
     if (guard == null) {

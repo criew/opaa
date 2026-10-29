@@ -216,7 +216,13 @@ public class TargetAddressValidator {
       return;
     }
     if (scope == Scope.PER_CONNECTION) {
-      pins.pinConnection(host, answer);
+      if (!pins.pinConnection(host, answer)) {
+        throw new GuardCapacityExceededException(
+            "Die Zieladresse "
+                + host
+                + " kann derzeit nicht geprüft werden: In kurzer Zeit wurden zu viele verschiedene"
+                + " Hostnamen geprüft. Bitte in einer Minute erneut versuchen.");
+      }
     } else if (!pins.admit(host, policy, answer)) {
       throw new GuardCapacityExceededException(
           "Die Zieladresse "

@@ -221,17 +221,57 @@ class ResolutionPinsTest {
     assertThat(pins.lookup(HOST, ANY)).containsExactly(ip("127.0.0.1"));
   }
 
+  /** Regression guard: a pin still in force never gives way, a new name is refused instead. */
   @Test
-  void theConnectionTableDropsItsOldestPinWhenFull() throws Exception {
-    for (int i = 0; i <= CONNECTION_CAPACITY; i++) {
+  void aFullConnectionTableRefusesANewNameAndKeepsEveryFreshPin() throws Exception {
+    for (int i = 0; i < CONNECTION_CAPACITY; i++) {
+      answers.next("203.0.113.7");
+      String host = "hop" + i + ".example";
+      assertThat(pins.pinConnection(host, pins.resolveForCheck(host))).isTrue();
+    }
+    answers.next("203.0.113.8");
+    assertThat(pins.pinConnection("late.example", pins.resolveForCheck("late.example"))).isFalse();
+    answers.next("127.0.0.1");
+
+    for (int i = 0; i < CONNECTION_CAPACITY; i++) {
+      assertThat(pins.lookup("hop" + i + ".example", ANY)).containsExactly(ip("203.0.113.7"));
+    }
+    assertThat(pins.refusedConnectionChecks()).isOne();
+  }
+
+  @Test
+  void aFullConnectionTableDropsAnExpiredPinForANewName() throws Exception {
+    for (int i = 0; i < CONNECTION_CAPACITY; i++) {
       answers.next("203.0.113.7");
       String host = "hop" + i + ".example";
       pins.pinConnection(host, pins.resolveForCheck(host));
     }
-    answers.next("127.0.0.1");
+    later(ResolutionPins.PIN_LIFETIME);
+    answers.next("203.0.113.8");
 
-    assertThat(pins.lookup("hop0.example", ANY)).containsExactly(ip("127.0.0.1"));
-    assertThat(pins.lookup("hop1.example", ANY)).containsExactly(ip("203.0.113.7"));
+    assertThat(pins.pinConnection("late.example", pins.resolveForCheck("late.example"))).isTrue();
+    assertThat(pins.lookup("late.example", ANY)).containsExactly(ip("203.0.113.8"));
+  }
+
+  /**
+   * Regression guard: a bound name never falls through to an unchecked answer of another family.
+   */
+  @Test
+  void aBoundNameAskedForAnotherFamilyIsUnknownNotUnchecked() throws Exception {
+    answers.next("2001:db8::7");
+    pins.pinConnection(HOST, pins.resolveForCheck(HOST));
+    answers.next("10.0.0.5");
+
+    assertThatThrownBy(() -> pins.lookup(HOST, LookupPolicy.of(LookupPolicy.IPV4)))
+        .isInstanceOf(UnknownHostException.class);
+  }
+
+  /** Regression guard: an empty answer is no answer, so nothing is vetted or pinned. */
+  @Test
+  void anEmptyAnswerFailsTheCheck() {
+    answers.nextEmpty();
+
+    assertThatThrownBy(() -> pins.resolveForCheck(HOST)).isInstanceOf(UnknownHostException.class);
   }
 
   /** What the validator does for a stored target: a fresh answer, then the guard with it. */
@@ -261,9 +301,15 @@ class ResolutionPinsTest {
   private static final class Answers implements InetAddressResolver {
 
     private volatile List<InetAddress> current = List.of();
+    private volatile boolean empty;
     private int asked;
 
+    void nextEmpty() {
+      empty = true;
+    }
+
     void next(String... literals) {
+      empty = false;
       current = Stream.of(literals).map(ResolutionPinsTest::ip).toList();
     }
 
@@ -271,6 +317,9 @@ class ResolutionPinsTest {
     public Stream<InetAddress> lookupByName(String host, LookupPolicy lookupPolicy)
         throws UnknownHostException {
       asked++;
+      if (empty) {
+        return Stream.empty();
+      }
       if (current.isEmpty()) {
         throw new UnknownHostException(host);
       }

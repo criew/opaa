@@ -18,5 +18,7 @@ class GuardedNamesMetricsTest {
         .isEqualTo(ResolutionPins.process().guardedNames());
     assertThat(registry.get(GuardedNamesMetrics.REFUSED).functionCounter().count())
         .isEqualTo(ResolutionPins.process().refusedChecks());
+    assertThat(registry.get(GuardedNamesMetrics.REFUSED_CONNECTION).functionCounter().count())
+        .isEqualTo(ResolutionPins.process().refusedConnectionChecks());
   }
 }
