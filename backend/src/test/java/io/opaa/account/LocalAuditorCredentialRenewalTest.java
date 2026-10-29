@@ -20,6 +20,8 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,6 +43,8 @@ class LocalAuditorCredentialRenewalTest {
   private final LocalActionTokenService actionTokens = mock(LocalActionTokenService.class);
   private final LocalRefreshTokenRepository refreshTokens = mock(LocalRefreshTokenRepository.class);
   private final PublicBaseUrl publicBaseUrl = mock(PublicBaseUrl.class);
+  private final List<Object> events = new ArrayList<>();
+  private final UUID auditorId = UUID.randomUUID();
   private LocalAuditorCredentialRenewal renewal;
   private User user;
   private LocalCredentials row;
@@ -54,6 +58,7 @@ class LocalAuditorCredentialRenewalTest {
             actionTokens,
             refreshTokens,
             publicBaseUrl,
+            events::add,
             Clock.fixed(NOW, ZoneOffset.UTC));
     user = User.localAccount("revision@stadt.example", "Revision");
     ReflectionTestUtils.setField(user, "id", UUID.randomUUID());
@@ -72,7 +77,7 @@ class LocalAuditorCredentialRenewalTest {
   void theRenewalDiscardsThePasswordAndSessionsAndReturnsTheNewLink() {
     long generation = row.getSessionGeneration();
 
-    Optional<String> link = renewal.renew(user);
+    Optional<String> link = renewal.renew(user, auditorId);
 
     assertThat(link).contains("/set-password?token=raw");
     assertThat(row.getPasswordHash()).isNull();
@@ -82,14 +87,19 @@ class LocalAuditorCredentialRenewalTest {
     verify(actionTokens).consumeOpen(user.getId(), ActionTokenPurpose.SET_PASSWORD);
     verify(actionTokens).consumeOpen(user.getId(), ActionTokenPurpose.HANDOVER);
     verify(actionTokens).consumeOpen(user.getId(), ActionTokenPurpose.RESET_PASSWORD);
+    verify(credentials).flush();
+    assertThat(events)
+        .singleElement()
+        .isEqualTo(LocalAccountSessionsEndedEvent.by(user, RevocationReason.ADMIN, auditorId));
   }
 
   @Test
   void anAccountOfAnIdentityProviderIsLeftAlone() {
     when(credentials.findById(user.getId())).thenReturn(Optional.empty());
 
-    assertThat(renewal.renew(user)).isEmpty();
+    assertThat(renewal.renew(user, auditorId)).isEmpty();
 
     verifyNoInteractions(actionTokens, refreshTokens, publicBaseUrl);
+    assertThat(events).isEmpty();
   }
 }

@@ -303,7 +303,7 @@ public class UserService {
     User saved = applyRole(user, role, actor.organizationId(), actor.id());
     if (role == SystemRole.AUDITOR && previousRole != SystemRole.AUDITOR) {
       credentialRenewal
-          .renew(saved)
+          .renew(saved, actor.id())
           .ifPresent(
               link -> TransactionCallbacks.afterCommitOrNow(() -> logFirstAuditorLink(link)));
     }
@@ -358,7 +358,8 @@ public class UserService {
       requireNotProviderManaged(user);
     }
     User saved = applyRole(user, SystemRole.AUDITOR, auditor.organizationId(), auditor.id());
-    return new AuditorConfirmation(saved, credentialRenewal.renew(saved).orElse(null));
+    return new AuditorConfirmation(
+        saved, credentialRenewal.renew(saved, auditor.id()).orElse(null));
   }
 
   /** Ends an open AUDITOR request without the role, under the declining auditor. */

@@ -112,7 +112,7 @@ class UserServiceTest {
     auditorRoles = mock(AuditorRoles.class);
     auditorRoleRequests = mock(AuditorRoleRequestRepository.class);
     credentialRenewal = mock(AuditorCredentialRenewal.class);
-    when(credentialRenewal.renew(any())).thenReturn(Optional.empty());
+    when(credentialRenewal.renew(any(), any())).thenReturn(Optional.empty());
     when(providerRegistry.findEnabledByIssuer(any())).thenReturn(Optional.empty());
     when(providerRepository.findByNormalizedIssuerUri(any())).thenReturn(Optional.empty());
     userService =
@@ -851,13 +851,14 @@ class UserServiceTest {
     UUID userId = UUID.randomUUID();
     User user = accountInOrganization(organizationId, userId, SystemRole.USER);
     when(auditorRoles.namesFirstAuditor(user)).thenReturn(true);
-    when(credentialRenewal.renew(user)).thenReturn(Optional.of("/set-password?token=secret"));
+    when(credentialRenewal.renew(eq(user), any()))
+        .thenReturn(Optional.of("/set-password?token=secret"));
 
     User result =
         userService.updateRole(userId, SystemRole.AUDITOR, actorInOrganization(organizationId));
 
     assertThat(result.getSystemRole()).isEqualTo(SystemRole.AUDITOR);
-    verify(credentialRenewal).renew(user);
+    verify(credentialRenewal).renew(eq(user), any());
     assertThat(otherEvents)
         .singleElement()
         .isInstanceOfSatisfying(
@@ -909,7 +910,8 @@ class UserServiceTest {
         new AuditorRoleRequest(organizationId, userId, UUID.randomUUID(), null, Instant.now());
     when(auditorRoleRequests.findForDecision(request.getId(), organizationId))
         .thenReturn(Optional.of(request));
-    when(credentialRenewal.renew(user)).thenReturn(Optional.of("/set-password?token=secret"));
+    when(credentialRenewal.renew(eq(user), any()))
+        .thenReturn(Optional.of("/set-password?token=secret"));
     CurrentUser auditor = CurrentUser.of(auditorId, organizationId, SystemRole.AUDITOR, "Revision");
 
     UserService.AuditorConfirmation confirmation =

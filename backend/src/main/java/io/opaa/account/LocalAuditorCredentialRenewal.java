@@ -10,13 +10,17 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 /**
  * A local account that receives the AUDITOR role starts with credentials only its person holds: the
  * password and every session and open link end, and one new link to set a password is issued with
  * the invitation lifetime. The link is returned, never mailed - SMTP settings and templates are in
- * the hands of the system administration, which created the account and may know its password.
+ * the hands of the system administration, which created the account and may know its password. What
+ * a session could have created on the account's behalf ends with it ({@link
+ * LocalAccountSessionsEndedEvent}).
  */
 @Component
 public class LocalAuditorCredentialRenewal implements AuditorCredentialRenewal {
@@ -26,6 +30,7 @@ public class LocalAuditorCredentialRenewal implements AuditorCredentialRenewal {
   private final LocalActionTokenService actionTokens;
   private final LocalRefreshTokenRepository refreshTokens;
   private final PublicBaseUrl publicBaseUrl;
+  private final ApplicationEventPublisher events;
   private final Clock clock;
 
   public LocalAuditorCredentialRenewal(
@@ -34,7 +39,9 @@ public class LocalAuditorCredentialRenewal implements AuditorCredentialRenewal {
       LocalActionTokenService actionTokens,
       LocalRefreshTokenRepository refreshTokens,
       PublicBaseUrl publicBaseUrl,
+      ApplicationEventPublisher events,
       Clock clock) {
+    this.events = events;
     this.credentials = credentials;
     this.settings = settings;
     this.actionTokens = actionTokens;
@@ -48,7 +55,7 @@ public class LocalAuditorCredentialRenewal implements AuditorCredentialRenewal {
    * one; empty for an account without local credentials.
    */
   @Override
-  public Optional<String> renew(User user) {
+  public Optional<String> renew(User user, UUID actorUserId) {
     Optional<LocalCredentials> found = credentials.findById(user.getId());
     if (found.isEmpty()) {
       return Optional.empty();
@@ -62,6 +69,9 @@ public class LocalAuditorCredentialRenewal implements AuditorCredentialRenewal {
     actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.RESET_PASSWORD);
     actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.HANDOVER);
     refreshTokens.revokeAllForUser(user.getId(), RevocationReason.ADMIN, now);
+    credentials.flush();
+    events.publishEvent(
+        LocalAccountSessionsEndedEvent.by(user, RevocationReason.ADMIN, actorUserId));
     int ttlHours =
         settings
             .findSingleton()
