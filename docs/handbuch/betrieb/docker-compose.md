@@ -766,8 +766,13 @@ Behebung unter [„Nicht-root-Betrieb des Backend-Containers"](#nicht-root-betri
 Ein Wert des Konfigurationsabdrucks oder die Version weicht von einer Instanz ab, die laut
 Instanzregister noch läuft. Im Einzelbetrieb ist das der eigene Vorgänger, wenn er hart beendet wurde
 (Exit-Code `137`) und sich nicht abmelden konnte. Er gilt nach `OPAA_INSTANCE_DEAD_AFTER` als
-beendet; danach `docker compose up -d backend` erneut ausführen (siehe
+beendet (siehe
 [Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck)).
+
+Weil Compose das Backend nach jedem Abbruch neu startet (`restart: unless-stopped`), läuft ein
+Startabbruch in eine Neustartschleife; er löst sich von selbst, sobald der Vorgänger als beendet
+gilt. Bei einem Fehler der Konfiguration zeigt `docker compose logs backend` die Ursache, und
+`docker compose stop backend` hält die Schleife an, bis die Konfiguration berichtigt ist.
 
 ### Der Container meldet `137`
 

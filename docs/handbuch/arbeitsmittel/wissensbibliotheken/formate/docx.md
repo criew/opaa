@@ -62,7 +62,7 @@ der Datei sowie die erste Überschrift der Ebene 1.
 
 | Befund | Ergebnis |
 |---|---|
-| Datei nicht als DOCX lesbar, Grenzwert gerissen | fehlgeschlagen, „kein Inhalt" |
+| Datei nicht als DOCX lesbar, Grenzwert gerissen | fehlgeschlagen, „Die Datei konnte nicht verarbeitet werden" |
 | Dokument ohne einen einzigen Absatz | fehlgeschlagen, „kein Inhalt" |
 | Absätze vorhanden, aber ohne Text (etwa nur ein eingebettetes Scanbild) | abgewiesen, „kein extrahierbarer Text" |
 

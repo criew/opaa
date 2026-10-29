@@ -750,6 +750,22 @@ class DocumentIngestServiceTest {
     }
 
     @Test
+    void anOutOfMemoryErrorIsPassedOnWithoutBookingTheDocument() throws IOException {
+      Path file = fileNamed("oom-on-write.txt", "content");
+      stubNewRow(file, "sha256-of-oom");
+      stubParsedInto(file, chunks("chunk1"));
+      doThrow(new OutOfMemoryError("simulated"))
+          .when(vectorStoreWriter)
+          .writeEmbeddedChunks(any(), any(), anyLong());
+
+      assertThatThrownBy(() -> service.ingest(localFile(file), null))
+          .isInstanceOf(OutOfMemoryError.class);
+
+      verify(documentRepository, never()).markFailedWithoutChunks(any(), any());
+      verify(documentRepository, never()).markFailed(any(), any());
+    }
+
+    @Test
     void anExceptionAfterTheOldChunksWereDeletedRemovesTheNewlyWrittenOnes() throws IOException {
       // Past the delete there is no untouched previous state left to preserve, so the failure
       // path must clean up exactly as for a first-time document - a FAILED row never keeps

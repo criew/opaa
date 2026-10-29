@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.pdfbox.contentstream.PDFGraphicsStreamEngine;
+import org.apache.pdfbox.contentstream.operator.Operator;
+import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
@@ -47,16 +49,20 @@ final class PdfRulingCollector extends PDFGraphicsStreamEngine {
   private List<Point2D.Float> current;
   private int pathPoints;
 
-  private PdfRulingCollector(PDPage page) {
+  private final PdfReadBudget budget;
+
+  private PdfRulingCollector(PDPage page, PdfReadBudget budget) {
     super(page);
+    this.budget = budget;
     PDRectangle crop = page.getCropBox();
     this.cropLeft = crop.getLowerLeftX();
     this.cropBottom = crop.getLowerLeftY();
     this.cropHeight = crop.getHeight();
   }
 
-  static List<Ruling> collect(PDPage page) throws IOException {
-    PdfRulingCollector collector = new PdfRulingCollector(page);
+  /** The page's rulings; every operator processed is counted against {@code budget}. */
+  static List<Ruling> collect(PDPage page, PdfReadBudget budget) throws IOException {
+    PdfRulingCollector collector = new PdfRulingCollector(page, budget);
     try {
       collector.processPage(page);
     } catch (ScanLimitReached e) {
@@ -70,6 +76,12 @@ final class PdfRulingCollector extends PDFGraphicsStreamEngine {
     ScanLimitReached() {
       super(null, null, false, false);
     }
+  }
+
+  @Override
+  protected void processOperator(Operator operator, List<COSBase> operands) throws IOException {
+    budget.countOperator();
+    super.processOperator(operator, operands);
   }
 
   private void countPathPoints(int count) {

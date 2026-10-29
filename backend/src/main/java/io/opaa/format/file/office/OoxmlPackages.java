@@ -6,36 +6,26 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-import javax.xml.XMLConstants;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.parsers.SAXParserFactory;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.openxml4j.opc.PackageAccess;
-import org.xml.sax.Attributes;
-import org.xml.sax.SAXException;
-import org.xml.sax.helpers.DefaultHandler;
 
 /**
  * Opens a DOCX/PPTX/XLSX package for POI only after its XML parts have been measured: POI builds a
  * DOM of every XML part it reads, and a small, highly compressed part can unpack to a DOM far
- * larger than the heap. Every entry whose content type ({@code [Content_Types].xml}) is XML, or
- * which has no declared type, is decompressed once and counted against {@link
- * ParserLimitProperties#maxOoxmlPartBytes()} and, together with the others, {@link
- * ParserLimitProperties#maxOoxmlTotalBytes()} - the bytes actually inflated, not the sizes the
- * archive declares. Other parts (images, embedded objects) are not counted, because the package is
- * opened from the file read-only and POI reads them only on demand, which no format does.
+ * larger than the heap. Neither a part's name nor its declared content type decides whether POI
+ * parses it - a relationship may point the main document at {@code word/document.png} - so every
+ * entry is decompressed and counted against {@link ParserLimitProperties#maxOoxmlPartBytes()} and,
+ * together with the others, {@link ParserLimitProperties#maxOoxmlTotalBytes()}: the bytes actually
+ * inflated, not the sizes the archive declares. Only an entry whose first bytes cannot start an XML
+ * document in any encoding an XML parser detects ({@link #mayBeXml}) is left uncounted - an image
+ * or embedded file, which POI reads only on demand and no XML parser gets past the first byte of.
  *
  * <p>Public solely so {@code io.opaa.format.file.tabular} can open XLSX the same way.
  */
 public final class OoxmlPackages {
-
-  private static final String CONTENT_TYPES = "[Content_Types].xml";
 
   private OoxmlPackages() {}
 
@@ -83,24 +73,27 @@ public final class OoxmlPackages {
     long maxPart = limits.maxOoxmlPartBytes();
     long remaining = limits.maxOoxmlTotalBytes();
     try (ZipFile zip = new ZipFile(file.toFile())) {
-      ContentTypes types = ContentTypes.read(zip, maxPart);
       Enumeration<? extends ZipEntry> entries = zip.entries();
       while (entries.hasMoreElements()) {
         ZipEntry entry = entries.nextElement();
-        if (entry.isDirectory() || !types.parsedAsXml(entry.getName())) {
-          continue;
+        if (!entry.isDirectory()) {
+          remaining -= inflatedXmlSize(zip, entry, Math.min(maxPart, remaining), maxPart);
         }
-        long size = inflatedSize(zip, entry, Math.min(maxPart, remaining), maxPart);
-        remaining -= size;
       }
     }
   }
 
-  private static long inflatedSize(ZipFile zip, ZipEntry entry, long budget, long maxPart)
+  /** The inflated size of {@code entry}, or 0 when its first bytes rule out XML. */
+  private static long inflatedXmlSize(ZipFile zip, ZipEntry entry, long budget, long maxPart)
       throws IOException {
     long total = 0;
     byte[] buffer = new byte[8192];
     try (InputStream in = BoundedStreams.input(zip.getInputStream(entry), budget)) {
+      int head = in.readNBytes(buffer, 0, 4);
+      if (!mayBeXml(buffer, head)) {
+        return 0;
+      }
+      total = head;
       for (int n = in.read(buffer); n >= 0; n = in.read(buffer)) {
         total += n;
       }
@@ -118,69 +111,24 @@ public final class OoxmlPackages {
     return total;
   }
 
-  /** The package's content types, by extension and by part name, both lower case. */
-  private record ContentTypes(Map<String, String> byExtension, Map<String, String> byPartName) {
-
-    static ContentTypes read(ZipFile zip, long maxBytes) throws IOException {
-      ZipEntry entry = zip.getEntry(CONTENT_TYPES);
-      if (entry == null) {
-        throw new IOException("Not an OOXML package: no " + CONTENT_TYPES);
-      }
-      ContentTypes types = new ContentTypes(new HashMap<>(), new HashMap<>());
-      try (InputStream in = BoundedStreams.input(zip.getInputStream(entry), maxBytes)) {
-        SAXParserFactory factory = SAXParserFactory.newInstance();
-        factory.setNamespaceAware(true);
-        factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
-        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
-        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-        factory.setXIncludeAware(false);
-        factory.newSAXParser().parse(in, types.handler());
-      } catch (BoundedStreams.LimitExceededException e) {
-        throw new IOException(CONTENT_TYPES + " exceeds the configured size limit", e);
-      } catch (ParserConfigurationException | SAXException e) {
-        throw new IOException("Could not parse " + CONTENT_TYPES, e);
-      }
-      return types;
+  /**
+   * Whether {@code length} leading bytes can open an XML document: whitespace or {@code <} in an
+   * ASCII-compatible encoding, a UTF-8, UTF-16 or UCS-4 byte order mark, a zero byte (UTF-16 or
+   * UCS-4 without one) or {@code <?xm} in EBCDIC. An empty entry counts as XML (of size 0).
+   */
+  static boolean mayBeXml(byte[] head, int length) {
+    if (length == 0) {
+      return true;
     }
-
-    private DefaultHandler handler() {
-      return new DefaultHandler() {
-        @Override
-        public void startElement(String uri, String localName, String qName, Attributes atts) {
-          String contentType = atts.getValue("ContentType");
-          if (contentType == null) {
-            return;
-          }
-          if ("Default".equals(localName) && atts.getValue("Extension") != null) {
-            byExtension.put(lower(atts.getValue("Extension")), contentType);
-          } else if ("Override".equals(localName) && atts.getValue("PartName") != null) {
-            byPartName.put(lower(atts.getValue("PartName")), contentType);
-          }
-        }
-      };
-    }
-
-    /**
-     * Whether POI may read {@code entryName} into a DOM: an XML content type, or none at all, which
-     * counts as XML so that an undeclared part cannot slip past the limits.
-     */
-    boolean parsedAsXml(String entryName) {
-      if (CONTENT_TYPES.equals(entryName)) {
-        return true;
-      }
-      String partName = lower("/" + entryName);
-      String type = byPartName.get(partName);
-      if (type == null) {
-        int dot = partName.lastIndexOf('.');
-        int slash = partName.lastIndexOf('/');
-        type = dot > slash ? byExtension.get(partName.substring(dot + 1)) : null;
-      }
-      return type == null || lower(type).endsWith("xml");
-    }
-
-    private static String lower(String value) {
-      return value.toLowerCase(Locale.ROOT);
-    }
+    int b0 = head[0] & 0xFF;
+    int b1 = length > 1 ? head[1] & 0xFF : -1;
+    return switch (b0) {
+      case 0x00, 0x09, 0x0A, 0x0D, 0x20, 0x3C -> true;
+      case 0xEF -> b1 == 0xBB;
+      case 0xFE -> b1 == 0xFF;
+      case 0xFF -> b1 == 0xFE;
+      case 0x4C -> b1 == 0x6F;
+      default -> false;
+    };
   }
 }

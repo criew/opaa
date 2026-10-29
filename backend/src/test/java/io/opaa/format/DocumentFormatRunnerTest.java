@@ -153,13 +153,19 @@ class DocumentFormatRunnerTest {
     assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
   }
 
-  @Test
-  void anOutOfMemoryErrorIsNotTurnedIntoAParseFailure() {
-    var pipeline = new ErrorPipeline(new OutOfMemoryError("simulated"));
+  /** Out of memory or a broken deployment is no fault of the document and is passed on. */
+  @ParameterizedTest
+  @MethodSource("fatalErrors")
+  void aFatalErrorIsNotTurnedIntoAParseFailure(Error fatal) {
+    var pipeline = new ErrorPipeline(fatal);
     DocumentFormatSource source = DocumentFormatSource.ofExtractedText("text", "f");
 
-    assertThatThrownBy(() -> DocumentFormatRunner.run(pipeline, source))
-        .isInstanceOf(OutOfMemoryError.class);
+    assertThatThrownBy(() -> DocumentFormatRunner.run(pipeline, source)).isSameAs(fatal);
+  }
+
+  private static List<Error> fatalErrors() {
+    return List.of(
+        new OutOfMemoryError("simulated"), new NoClassDefFoundError("org/example/Missing"));
   }
 
   @Test

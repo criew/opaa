@@ -47,7 +47,8 @@ sowie der Titel der ersten Folie als erste Überschrift.
 
 | Befund | Ergebnis |
 |---|---|
-| Datei nicht lesbar oder ohne Folien, Grenzwert gerissen | fehlgeschlagen, „kein Inhalt" |
+| Datei nicht lesbar, Grenzwert gerissen | fehlgeschlagen, „Die Datei konnte nicht verarbeitet werden" |
+| Präsentation ohne Folien | fehlgeschlagen, „kein Inhalt" |
 | Folien vorhanden, aber keine einzige mit Text (nur Bilder) | abgewiesen, „kein extrahierbarer Text" |
 
 ## 6. Grenzwerte

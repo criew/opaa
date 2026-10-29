@@ -613,6 +613,7 @@ der Quellen).
 | `OPAA_INDEXING_ODF_MAX_TEXT_CHARACTERS` | `opaa.indexing.odf.max-text-characters` |
 | `OPAA_INDEXING_PARSER_LIMITS_MAX_OOXML_PART_BYTES` | `opaa.indexing.parser-limits.max-ooxml-part-bytes` |
 | `OPAA_INDEXING_PARSER_LIMITS_MAX_OOXML_TOTAL_BYTES` | `opaa.indexing.parser-limits.max-ooxml-total-bytes` |
+| `OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_OPERATORS` | `opaa.indexing.parser-limits.max-pdf-operators` |
 | `OPAA_INDEXING_PARSER_LIMITS_MAX_TEXT_CHARACTERS` | `opaa.indexing.parser-limits.max-text-characters` |
 | `OPAA_INDEXING_RSS_MAX_ATTACHMENTS_PER_ENTRY` | `opaa.indexing.rss.max-attachments-per-entry` |
 | `OPAA_INDEXING_RSS_MAX_ATTACHMENT_SIZE_BYTES` | `opaa.indexing.rss.max-attachment-size-bytes` |

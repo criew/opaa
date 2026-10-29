@@ -127,7 +127,7 @@ class PdfDocumentFormatLimitsTest {
     writeFormFanout(file, 200);
     var limited =
         new PdfDocumentFormat(
-            HeadingSectionSplitterFixture.DEFAULT, new ParserLimitProperties(50_000, 0, 0));
+            HeadingSectionSplitterFixture.DEFAULT, new ParserLimitProperties(50_000, 0, 0, 0));
 
     DocumentFormatResult result =
         DocumentFormatRunner.run(limited, DocumentFormatSource.ofFile(file, "fanout.pdf"));
@@ -141,12 +141,66 @@ class PdfDocumentFormatLimitsTest {
     writeFormFanout(file, 3);
     var limited =
         new PdfDocumentFormat(
-            HeadingSectionSplitterFixture.DEFAULT, new ParserLimitProperties(50_000, 0, 0));
+            HeadingSectionSplitterFixture.DEFAULT, new ParserLimitProperties(50_000, 0, 0, 0));
 
     DocumentFormatResult result =
         DocumentFormatRunner.run(limited, DocumentFormatSource.ofFile(file, "fanout-small.pdf"));
 
     assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+  }
+
+  /**
+   * 2 KB of forms nested five levels deep, each calling the next ten times, end in 100 000 forms of
+   * 200 operators that draw nothing: without an operator limit PDFBox works through 20 million
+   * operators per reading pass.
+   */
+  @Test
+  void nestedFormsThatDrawNothingStopAtTheOperatorLimit() throws IOException {
+    Path file = tempDir.resolve("nested.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      PDFormXObject form = form(doc, "q Q\n".repeat(100), null);
+      for (int level = 0; level < 5; level++) {
+        form = form(doc, "/F Do\n".repeat(10), form);
+      }
+      PDPage page = new PDPage();
+      PDResources resources = new PDResources();
+      resources.put(COSName.getPDFName("F"), form);
+      page.setResources(resources);
+      COSStream content = doc.getDocument().createCOSStream();
+      try (OutputStream out = content.createOutputStream(COSName.FLATE_DECODE)) {
+        out.write("/F Do\n".getBytes(StandardCharsets.US_ASCII));
+      }
+      page.getCOSObject().setItem(COSName.CONTENTS, content);
+      doc.addPage(page);
+      doc.save(file.toFile());
+    }
+    var limited =
+        new PdfDocumentFormat(
+            HeadingSectionSplitterFixture.DEFAULT, new ParserLimitProperties(0, 0, 0, 1_000_000));
+
+    DocumentFormatResult result =
+        assertTimeoutPreemptively(
+            Duration.ofSeconds(10),
+            () ->
+                DocumentFormatRunner.run(limited, DocumentFormatSource.ofFile(file, "nested.pdf")));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
+  }
+
+  /** A form whose content is {@code operators}, with {@code child} as its resource {@code /F}. */
+  private static PDFormXObject form(PDDocument doc, String operators, PDFormXObject child)
+      throws IOException {
+    PDFormXObject form = new PDFormXObject(doc);
+    form.setBBox(new PDRectangle(600, 800));
+    PDResources resources = new PDResources();
+    if (child != null) {
+      resources.put(COSName.getPDFName("F"), child);
+    }
+    form.setResources(resources);
+    try (OutputStream out = form.getCOSObject().createOutputStream(COSName.FLATE_DECODE)) {
+      out.write(operators.getBytes(StandardCharsets.US_ASCII));
+    }
+    return form;
   }
 
   private static void writeFormFanout(Path file, int draws) throws IOException {

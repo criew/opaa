@@ -32,8 +32,9 @@ muss nur als Text erkennbar sein und die Datei muss die Endung selbst tragen.
 ## Grenzen beim Lesen
 
 Eine präparierte Datei kann klein sein und beim Lesen trotzdem ein Vielfaches an Speicher und
-Rechenzeit verlangen: ein Word-Dokument, dessen Inhaltsdatei sich auf das Hundertfache entpackt, oder
-ein PDF, das denselben Textblock tausendfach auf eine Seite zeichnet. Damit ein einzelnes Dokument
+Rechenzeit verlangen: ein Word-Dokument, dessen Inhaltsdatei sich auf das Hundertfache entpackt, ein
+PDF, das denselben Textblock tausendfach auf eine Seite zeichnet, oder eines, das Zeichnungen
+vielfach ineinander verschachtelt, ohne etwas Sichtbares zu zeichnen. Damit ein einzelnes Dokument
 weder die Verarbeitung anderer Dokumente blockiert noch den Speicher des Backends aufbraucht, gelten
 für die Formate mit Struktur gemeinsame Obergrenzen:
 
@@ -42,7 +43,11 @@ für die Formate mit Struktur gemeinsame Obergrenzen:
   überschritten ist.
 - **Entpackte Größe von Word, PowerPoint und Excel** (`max-ooxml-part-bytes` je Inhaltsdatei,
   `max-ooxml-total-bytes` für alle Inhaltsdateien zusammen): geprüft, bevor das Dokument gelesen
-  wird. Bilder und eingebettete Dateien zählen nicht mit.
+  wird. Gezählt wird jede Datei im Container, die als Text beginnt, gleich wie sie heißt oder als
+  was sie sich ausgibt; Bilder und eingebettete Dateien, die schon an ihren ersten Bytes als
+  Binärdaten erkennbar sind, zählen nicht mit.
+- **Rechenschritte eines PDF** (`max-pdf-operators`): alle Zeichenanweisungen, die beim Lesen eines
+  PDF über alle Seiten und verschachtelten Zeichnungen ausgeführt werden.
 - **Gliederung eines PDF:** Jeder Lesezeichen-Eintrag wird höchstens einmal gelesen, so dass eine
   Gliederung, die auf sich selbst zurückverweist, das Lesen nicht aufhält; tiefer als 64 Ebenen und
   über 50.000 Einträge hinaus wird sie nicht weiter verfolgt.
@@ -64,6 +69,7 @@ Schlüssel unter `opaa.indexing.parser-limits.*`, Umgebungsvariablen
 | `max-text-characters` | 10.000.000 | Text, den ein Dokument insgesamt liefern darf |
 | `max-ooxml-part-bytes` | 32 MiB | entpackte Größe einer einzelnen Inhaltsdatei eines Word-, PowerPoint- oder Excel-Dokuments |
 | `max-ooxml-total-bytes` | 64 MiB | entpackte Größe aller Inhaltsdateien eines solchen Dokuments zusammen |
+| `max-pdf-operators` | 50.000.000 | Zeichenanweisungen, die beim Lesen eines PDF insgesamt ausgeführt werden |
 
 ## Bewusst nicht zugelassen
 

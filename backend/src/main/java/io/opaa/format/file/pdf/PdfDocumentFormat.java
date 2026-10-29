@@ -22,9 +22,14 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.cos.COSDictionary;
+import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentInformation;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDResources;
+import org.apache.pdfbox.pdmodel.graphics.PDXObject;
+import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocumentOutline;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineNode;
@@ -44,7 +49,10 @@ import org.springframework.ai.document.Document;
  * row, cells joined as in every other format ({@link PdfPageText}).
  *
  * <p>Scan detection is answered from this pipeline's own extraction: a PDF whose text is entirely
- * blank is rejected as {@code NO_EXTRACTABLE_TEXT}.
+ * blank is rejected as {@code NO_EXTRACTABLE_TEXT}, and so is one where more than half of the pages
+ * carry an image but no text - a typed cover sheet in front of scanned pages. An empty page without
+ * an image of its own does not count as scanned; text only in form fields or annotations is not
+ * extracted, so such a page over an image counts as scanned.
  *
  * <p>The extracted text is bounded by {@link ParserLimitProperties#maxTextCharacters()} (a PDF past
  * it fails to parse), the outline walk by {@link #MAX_OUTLINE_DEPTH} and {@link #MAX_OUTLINE_ITEMS}
@@ -103,7 +111,13 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
    * order, the flattened outline, and the Info dictionary's own properties.
    */
   public record PdfContent(
-      List<String> pageTexts, List<OutlineEntry> entries, DocumentProperties info) {}
+      List<String> pageTexts,
+      List<OutlineEntry> entries,
+      DocumentProperties info,
+      int scannedPages) {}
+
+  /** Nesting of form XObjects followed when looking for an image on a page. */
+  private static final int IMAGE_SEARCH_DEPTH = 3;
 
   record OutlineEntry(int level, String title, int pageIndex) {}
 
@@ -111,17 +125,23 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
   protected PdfContent read(DocumentFormatSource source) throws IOException {
     try (PDDocument doc = Loader.loadPDF(source.file().toFile())) {
       List<String> pageTexts = new ArrayList<>(doc.getNumberOfPages());
-      PdfTextBudget budget = new PdfTextBudget(limits.maxTextCharacters());
+      PdfReadBudget budget = PdfReadBudget.of(limits);
+      int scannedPages = 0;
       for (int i = 0; i < doc.getNumberOfPages(); i++) {
-        pageTexts.add(PdfPageText.extract(doc, i, budget));
+        String text = PdfPageText.extract(doc, i, budget);
+        pageTexts.add(text);
+        if (text.isBlank() && carriesImage(ownResources(doc.getPage(i)), IMAGE_SEARCH_DEPTH)) {
+          scannedPages++;
+        }
       }
-      return new PdfContent(pageTexts, flattenOutline(doc), infoProperties(doc));
+      return new PdfContent(pageTexts, flattenOutline(doc), infoProperties(doc), scannedPages);
     }
   }
 
   @Override
   protected DocumentFormatResult chunks(DocumentFormatSource source, PdfContent content) {
-    if (content.pageTexts().stream().allMatch(String::isBlank)) {
+    if (content.pageTexts().stream().allMatch(String::isBlank)
+        || content.scannedPages() * 2 > content.pageTexts().size()) {
       return DocumentFormatResult.noExtractableText();
     }
     return content.entries().isEmpty()
@@ -160,8 +180,8 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
       List<String> firstPage =
           doc.getNumberOfPages() == 0
               ? List.of()
-              : List.of(PdfPageText.extract(doc, 0, new PdfTextBudget(limits.maxTextCharacters())));
-      return properties(new PdfContent(firstPage, flattenOutline(doc), infoProperties(doc)));
+              : List.of(PdfPageText.extract(doc, 0, PdfReadBudget.of(limits)));
+      return properties(new PdfContent(firstPage, flattenOutline(doc), infoProperties(doc), 0));
     }
   }
 
@@ -345,6 +365,40 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
       return DocumentFormatResult.noExtractableText();
     }
     return DocumentFormatResult.chunked(chunks);
+  }
+
+  /**
+   * The resources the page itself names, not those inherited from the page tree: a logo shared by
+   * every page must not make an empty separator page count as scanned.
+   */
+  private static PDResources ownResources(PDPage page) {
+    COSDictionary own = page.getCOSObject().getCOSDictionary(COSName.RESOURCES);
+    return own == null ? null : new PDResources(own);
+  }
+
+  /**
+   * Whether {@code resources} name an image, directly or inside a form up to {@code depth} deep; an
+   * XObject that cannot be read counts as none, as it does for the text extraction.
+   */
+  private static boolean carriesImage(PDResources resources, int depth) {
+    if (resources == null || depth == 0) {
+      return false;
+    }
+    for (COSName name : resources.getXObjectNames()) {
+      PDXObject object;
+      try {
+        object = resources.getXObject(name);
+      } catch (IOException | RuntimeException e) {
+        continue;
+      }
+      if (object instanceof PDImageXObject) {
+        return true;
+      }
+      if (object instanceof PDFormXObject form && carriesImage(form.getResources(), depth - 1)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**

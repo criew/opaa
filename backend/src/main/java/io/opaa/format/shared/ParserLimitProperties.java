@@ -10,32 +10,38 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * Ceilings the structure formats (PDF, DOCX, PPTX, XLSX/CSV, HTML, Markdown) apply to one document,
- * so that a crafted file cannot cost more than bounded memory and embedding work. ODT/ODP/ODS keep
- * their own blocks ({@code OdfProperties}, {@code TabularProperties}). A document past any of them
- * fails to parse as a whole; nothing is truncated.
+ * so that a crafted file cannot cost more than bounded memory, CPU time and embedding work.
+ * ODT/ODP/ODS keep their own blocks ({@code OdfProperties}, {@code TabularProperties}). A document
+ * past any of them fails to parse as a whole; nothing is truncated.
  *
  * @param maxTextCharacters the most characters one document's chunks may carry in total. The PDF
  *     reader counts glyphs while it extracts, so a page that draws the same form thousands of times
- *     stops before its text reaches the heap. Default 10 000 000.
+ *     stops before its text reaches the heap; XLSX counts cell text row by row. For HTML, Markdown
+ *     and CSV the text cannot outgrow the file, which is already in memory, so there the limit
+ *     bounds the number of chunks and with it the embedding work, not the heap. Default 10 000 000.
  * @param maxOoxmlPartBytes the most bytes a single XML part of a DOCX/PPTX/XLSX package may unpack
  *     to, measured before POI builds its DOM. Default 32 MiB.
  * @param maxOoxmlTotalBytes the most bytes all XML parts of one DOCX/PPTX/XLSX package may unpack
- *     to together. Parts POI reads only on demand (images, embedded objects) do not count. Default
- *     64 MiB.
+ *     to together. A part whose first bytes cannot start an XML document (an image, an embedded
+ *     file) does not count. Default 64 MiB.
+ * @param maxPdfOperators the most content-stream operators PDFBox may process for one PDF, over all
+ *     pages, nested forms and reading passes - bounds the CPU time of forms nested many levels deep
+ *     that multiply the work without drawing any text. Default 50 000 000.
  */
 @PerInstance("bounds of a parser of this process")
 @NoDataImpact("parser bounds")
 @ConfigurationProperties(prefix = "opaa.indexing.parser-limits")
 public record ParserLimitProperties(
-    long maxTextCharacters, long maxOoxmlPartBytes, long maxOoxmlTotalBytes) {
+    long maxTextCharacters, long maxOoxmlPartBytes, long maxOoxmlTotalBytes, long maxPdfOperators) {
 
   /** The defaults, for formats constructed without configuration (tests, single-format use). */
-  public static final ParserLimitProperties DEFAULTS = new ParserLimitProperties(0, 0, 0);
+  public static final ParserLimitProperties DEFAULTS = new ParserLimitProperties(0, 0, 0, 0);
 
   public ParserLimitProperties {
     maxTextCharacters = positiveOr(maxTextCharacters, 10_000_000L);
     maxOoxmlPartBytes = positiveOr(maxOoxmlPartBytes, 33_554_432L); // 32 MiB
     maxOoxmlTotalBytes = positiveOr(maxOoxmlTotalBytes, 67_108_864L); // 64 MiB
+    maxPdfOperators = positiveOr(maxPdfOperators, 50_000_000L);
   }
 
   /**

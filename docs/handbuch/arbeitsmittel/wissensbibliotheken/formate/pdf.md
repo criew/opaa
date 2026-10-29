@@ -107,16 +107,25 @@ PDF-Dokumentinfos sowie der erste Gliederungseintrag der obersten Ebene als erst
 | Befund | Ergebnis |
 |---|---|
 | Kein Text im ganzen Dokument (Scan ohne Textebene) | abgewiesen, „kein extrahierbarer Text". Das Dokument erscheint in der Admin-Liste der Dokumente ohne Chunks. |
+| Mehr als die Hälfte der Seiten zeigt nur ein Bild ohne Textebene, etwa ein am PC erstelltes Deckblatt vor eingescannten Anlagen | abgewiesen wie ein Scan, „kein extrahierbarer Text". Sonst entstünde ein Dokument, das als indiziert gilt, aber nur das Deckblatt findet. |
+| Einzelne eingescannte Seiten, höchstens die Hälfte | indiziert mit dem Text der übrigen Seiten; die Bildseiten fehlen in der Suche |
 | Text vorhanden, aber Zuschnitt ergibt nichts | abgewiesen, „kein extrahierbarer Text" |
-| Datei nicht lesbar oder beschädigt, Grenzwert gerissen | fehlgeschlagen, „kein Inhalt" |
+| Datei nicht lesbar oder beschädigt, Grenzwert gerissen | fehlgeschlagen, „Die Datei konnte nicht verarbeitet werden" |
+
+Leere Seiten ohne eigenes Bild zählen nicht als eingescannt. Auch eine Bilddokumentation oder ein
+Foliensatz mit überwiegend reinen Bildseiten wird so abgewiesen; ihr Text auf den übrigen Seiten ist
+dann nicht durchsuchbar. Formularfelder und Anmerkungen liest OPAA nicht (Abschnitt 7), ein
+ausgefülltes Formular über einem Scanbild zählt deshalb als eingescannt. Die Regel gilt, sobald ein
+PDF neu oder geändert indiziert wird oder die Bibliothek vollständig neu indiziert wird; ein
+unverändertes, schon indiziertes PDF behält bis dahin seinen bisherigen Stand.
 
 Ein PDF mit Textebene aus einer früheren OCR-Verarbeitung wird normal verarbeitet; die Qualität
 hängt dann von dieser Textebene ab.
 
 ## 6. Grenzwerte
 
-Keine eigenen Konfigurationsschlüssel. Es gelten die gemeinsame Textgrenze je Dokument und die
-Grenzen für die Gliederung ([Grenzen beim Lesen](README.md#grenzen-beim-lesen)), die
+Keine eigenen Konfigurationsschlüssel. Es gelten die gemeinsamen Grenzen für Text und
+Rechenschritte je Dokument und die Grenzen für die Gliederung ([Grenzen beim Lesen](README.md#grenzen-beim-lesen)), die
 Zeichenobergrenzen des gemeinsamen Abschnittsschneiders und die Grenzen von PDFBox. Am
 Webverzeichnis-Konnektor greift zusätzlich die Dateigrößengrenze des Konnektors.
 

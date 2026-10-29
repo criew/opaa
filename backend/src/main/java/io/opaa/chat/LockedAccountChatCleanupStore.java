@@ -87,6 +87,24 @@ class LockedAccountChatCleanupStore {
   }
 
   /**
+   * Accounts not yet due at {@code cutoff} that are due at {@code later}, with or without chats; a
+   * hold or an open Klärung at {@code now} leaves an account out, as it does in {@link #findDue}.
+   */
+  int countDueBetween(Instant cutoff, Instant later, Instant now) {
+    Integer count =
+        jdbc.queryForObject(
+            "SELECT count(*) FROM local_credentials lc"
+                + " CROSS JOIN chat_locked_account_cleanup_state s WHERE "
+                + DUE
+                + " AND GREATEST(lc.locked_at, s.counting_since) >= ?",
+            Integer.class,
+            Timestamp.from(later),
+            Timestamp.from(now),
+            Timestamp.from(cutoff));
+    return count == null ? 0 : count;
+  }
+
+  /**
    * Whether {@code userId} is still due, read under a share lock on its credentials row until the
    * end of the transaction: an unlock or a hold waits for the deletion, or the deletion sees it.
    */

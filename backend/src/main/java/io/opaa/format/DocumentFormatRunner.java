@@ -1,5 +1,6 @@
 package io.opaa.format;
 
+import io.opaa.common.FatalErrors;
 import io.opaa.format.chunk.ChunkAnchor;
 import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
@@ -76,18 +77,15 @@ public final class DocumentFormatRunner {
    * and logs it once, so a pipeline reports a format's own failure by throwing rather than by
    * carrying its own catch-and-map block, and no caller of a pipeline has to defend against both
    * forms of the same answer. That includes an {@link Error} a parser library raises on one crafted
-   * document, such as a {@link StackOverflowError} from a cyclic structure; only the other {@link
-   * VirtualMachineError}s ({@link OutOfMemoryError} above all) pass through, since after one the
-   * process itself is no longer trustworthy.
+   * document, such as a {@link StackOverflowError} from a cyclic structure; only the errors {@link
+   * FatalErrors} names (out of memory, a broken deployment) pass through.
    */
   private static DocumentFormatResult runPipeline(
       DocumentFormat pipeline, DocumentFormatSource source) {
     try {
       return pipeline.run(source);
     } catch (RuntimeException | Error e) {
-      if (e instanceof VirtualMachineError fatal && !(e instanceof StackOverflowError)) {
-        throw fatal;
-      }
+      FatalErrors.rethrowIfFatal(e);
       log.warn(
           "Could not parse {} with pipeline {}",
           source.logName(),

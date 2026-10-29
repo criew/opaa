@@ -34,7 +34,8 @@ import org.junit.jupiter.api.io.TempDir;
  */
 class OoxmlPackageLimitsTest {
 
-  private static final ParserLimitProperties SMALL = new ParserLimitProperties(0, 200_000, 300_000);
+  private static final ParserLimitProperties SMALL =
+      new ParserLimitProperties(0, 200_000, 300_000, 0);
 
   private static final String CONTENT_TYPES =
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
@@ -91,6 +92,8 @@ class OoxmlPackageLimitsTest {
   void aLargeImagePartDoesNotCountAgainstTheXmlLimits() throws IOException {
     byte[] image = new byte[1_000_000];
     new Random(7).nextBytes(image);
+    byte[] pngSignature = {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'};
+    System.arraycopy(pngSignature, 0, image, 0, pngSignature.length);
     Map<String, byte[]> parts = new LinkedHashMap<>();
     parts.put("word/document.xml", documentXml(10));
     parts.put("word/media/image1.png", image);
@@ -98,6 +101,32 @@ class OoxmlPackageLimitsTest {
 
     assertThat(run(new DocxDocumentFormat(HeadingSectionSplitterFixture.DEFAULT, SMALL), file))
         .isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+  }
+
+  /**
+   * POI picks the parser by relationship type, not by content type: here the main document is a
+   * {@code .png} part declared as {@code image/png} and is still read as WordprocessingML.
+   */
+  @Test
+  void anXmlPartDisguisedAsAnImageCountsAgainstThePartLimit() throws IOException {
+    String contentTypes =
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            + "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">"
+            + "<Default Extension=\"rels\""
+            + " ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/>"
+            + "<Default Extension=\"png\" ContentType=\"image/png\"/>"
+            + "</Types>";
+    Map<String, byte[]> parts = new LinkedHashMap<>();
+    parts.put(
+        "_rels/.rels",
+        ROOT_RELS
+            .replace("word/document.xml", "word/document.png")
+            .getBytes(StandardCharsets.UTF_8));
+    parts.put("word/document.png", documentXml(20_000));
+    Path file = zip("getarnt.docx", contentTypes, parts);
+
+    assertThat(run(new DocxDocumentFormat(HeadingSectionSplitterFixture.DEFAULT, SMALL), file))
+        .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
   }
 
   @Test
@@ -149,11 +178,17 @@ class OoxmlPackageLimitsTest {
   }
 
   private Path docx(String name, Map<String, byte[]> parts) throws IOException {
+    Map<String, byte[]> all = new LinkedHashMap<>();
+    all.put("_rels/.rels", ROOT_RELS.getBytes(StandardCharsets.UTF_8));
+    all.putAll(parts);
+    return zip(name, CONTENT_TYPES, all);
+  }
+
+  private Path zip(String name, String contentTypes, Map<String, byte[]> parts) throws IOException {
     Path file = tempDir.resolve(name);
     try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(file))) {
       zip.setLevel(9);
-      put(zip, "[Content_Types].xml", CONTENT_TYPES.getBytes(StandardCharsets.UTF_8));
-      put(zip, "_rels/.rels", ROOT_RELS.getBytes(StandardCharsets.UTF_8));
+      put(zip, "[Content_Types].xml", contentTypes.getBytes(StandardCharsets.UTF_8));
       for (Map.Entry<String, byte[]> part : parts.entrySet()) {
         put(zip, part.getKey(), part.getValue());
       }

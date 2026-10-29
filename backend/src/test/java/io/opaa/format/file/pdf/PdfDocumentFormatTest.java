@@ -12,6 +12,7 @@ import io.opaa.format.chunk.ChunkAnchor;
 import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.shared.HeadingSectionSplitterFixture;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,12 +21,16 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Set;
 import java.util.TimeZone;
+import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPageXYZDestination;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocumentOutline;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem;
@@ -259,6 +264,79 @@ class PdfDocumentFormatTest {
   }
 
   @Test
+  void aTypedCoverSheetInFrontOfScannedPagesIsRejectedAsScan() throws IOException {
+    Path file = tempDir.resolve("arbeitsanleitung-bewertung-scan.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      addPage(doc, "Arbeitsanleitung fuer die Bewertung, Stand: 02.03.2023");
+      for (int i = 0; i < 3; i++) {
+        addScannedPage(doc);
+      }
+      doc.save(file.toFile());
+    }
+
+    DocumentFormatResult result =
+        pipeline.run(DocumentFormatSource.ofFile(file, file.getFileName().toString(), ".pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.NO_EXTRACTABLE_TEXT);
+    assertThat(result.chunks()).isEmpty();
+  }
+
+  @Test
+  void aSingleScannedAttachmentBehindTextPagesIsStillIndexed() throws IOException {
+    Path file = tempDir.resolve("bescheid.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      addPage(doc, "Bescheid ueber die Gebuehr.");
+      addPage(doc, "Begruendung des Bescheids.");
+      addScannedPage(doc);
+      doc.save(file.toFile());
+    }
+
+    DocumentFormatResult result =
+        pipeline.run(DocumentFormatSource.ofFile(file, "bescheid.pdf", ".pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+  }
+
+  @Test
+  void emptyPagesWithoutAnImageDoNotCountAsScanned() throws IOException {
+    Path file = tempDir.resolve("formular.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      addPage(doc, "Antrag auf Erstattung.");
+      for (int i = 0; i < 3; i++) {
+        doc.addPage(new PDPage(PDRectangle.A4));
+      }
+      doc.save(file.toFile());
+    }
+
+    DocumentFormatResult result =
+        pipeline.run(DocumentFormatSource.ofFile(file, "formular.pdf", ".pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+  }
+
+  @Test
+  void anImageInheritedFromThePageTreeDoesNotMakeEmptyPagesScanned() throws IOException {
+    Path file = tempDir.resolve("mit-logo.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      addPage(doc, "Antrag auf Erstattung.");
+      doc.addPage(new PDPage(PDRectangle.A4));
+      doc.addPage(new PDPage(PDRectangle.A4));
+      PDResources shared = new PDResources();
+      shared.add(
+          LosslessFactory.createFromImage(
+              doc, new BufferedImage(20, 20, BufferedImage.TYPE_INT_RGB)));
+      doc.getPages().getCOSObject().setItem(COSName.RESOURCES, shared);
+      doc.save(file.toFile());
+    }
+
+    DocumentFormatResult result =
+        pipeline.run(DocumentFormatSource.ofFile(file, "mit-logo.pdf", ".pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+  }
+
+  @Test
   void aFileThatIsNotAValidPdfIsAParseFailure() throws IOException {
     Path file = tempDir.resolve("kaputt.pdf");
     Files.writeString(file, "das ist kein pdf");
@@ -382,6 +460,17 @@ class PdfDocumentFormatTest {
       stream.endText();
     }
     return page;
+  }
+
+  /** A page that only draws an image, as a scanner writes it. */
+  private static void addScannedPage(PDDocument doc) throws IOException {
+    PDPage page = new PDPage(PDRectangle.A4);
+    doc.addPage(page);
+    PDImageXObject image =
+        LosslessFactory.createFromImage(doc, new BufferedImage(20, 20, BufferedImage.TYPE_INT_RGB));
+    try (PDPageContentStream stream = new PDPageContentStream(doc, page)) {
+      stream.drawImage(image, 50, 50, 400, 600);
+    }
   }
 
   private static PDOutlineItem outlineItem(String title, PDPage page) {

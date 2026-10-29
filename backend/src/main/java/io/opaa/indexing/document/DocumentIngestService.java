@@ -1,6 +1,7 @@
 package io.opaa.indexing.document;
 
 import io.opaa.api.types.DocumentStatus;
+import io.opaa.common.FatalErrors;
 import io.opaa.common.Feature;
 import io.opaa.common.FeatureFlags;
 import io.opaa.format.ChunkFormatMetadata;
@@ -417,7 +418,8 @@ public class DocumentIngestService {
         return result;
       }
     } catch (Exception | Error e) {
-      // an Error is booked as well, so an upload never stays PENDING after one
+      // a recoverable Error is booked as well, so an upload never stays PENDING after one
+      FatalErrors.rethrowIfFatal(e);
       if (!(ingest.reindex() && preservingPreviousChunks)) {
         markConnectorFailedAfterException(documentId, preservingPreviousChunks, failureMessage(e));
       }
