@@ -60,6 +60,16 @@ describe('documentContent', () => {
       expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:mock-object-url')
     })
 
+    it.each(['image/svg+xml', 'application/xhtml+xml', 'text/html', ''])(
+      'never opens a %j blob in the browser viewer',
+      (type) => {
+        openInBrowserViewer(new Blob(['<x/>'], { type }))
+
+        expect(createObjectURLSpy).not.toHaveBeenCalled()
+        expect(windowOpenSpy).not.toHaveBeenCalled()
+      },
+    )
+
     it('previews an image in a new tab', async () => {
       windowOpenSpy.mockReturnValue(null)
       mockGetDocumentContent.mockResolvedValueOnce({
@@ -99,6 +109,61 @@ describe('documentContent', () => {
 
       expect(windowOpenSpy).not.toHaveBeenCalled()
       expect(clickSpy).toHaveBeenCalledTimes(1)
+    })
+
+    // A blob: URL opened in a new tab runs in this app's origin, so only types that cannot carry
+    // script may be opened there: an exact allowlist, never a prefix match.
+    it.each([
+      'image/png',
+      'image/jpeg',
+      'image/gif',
+      'image/webp',
+      'IMAGE/PNG',
+      'image/jpeg; charset=binary',
+      ' Image/WebP ; foo=bar',
+    ])('previews the allowlisted image type %j in a new tab', async (type) => {
+      windowOpenSpy.mockReturnValue(null)
+      mockGetDocumentContent.mockResolvedValueOnce({
+        blob: new Blob(['x'], { type }),
+        fileName: 'original.img',
+      })
+
+      const result = await openDocumentContent('doc-1', 'fallback.img')
+
+      expect(result).toEqual({ kind: 'blob-preview' })
+      expect(windowOpenSpy).toHaveBeenCalledTimes(1)
+      expect(clickSpy).not.toHaveBeenCalled()
+    })
+
+    it.each([
+      'application/xhtml+xml',
+      'application/xhtml+xml; charset=utf-8',
+      'image/svg+xml',
+      'IMAGE/SVG+XML',
+      'application/rss+xml',
+      'application/mathml+xml',
+      'image/foo+xml',
+      'text/xml',
+      'Text/XML; charset=utf-8',
+      'application/xml',
+      'text/html',
+      'image/bmp',
+      'image/x-icon',
+      'image/avif',
+      'image/pngx',
+      'application/pdfx',
+      '',
+    ])('downloads %j instead of opening it in a tab of the app origin', async (type) => {
+      mockGetDocumentContent.mockResolvedValueOnce({
+        blob: new Blob(['<x/>'], { type }),
+        fileName: 'original.bin',
+      })
+
+      const result = await openDocumentContent('doc-1', 'fallback.bin')
+
+      expect(windowOpenSpy).not.toHaveBeenCalled()
+      expect(clickSpy).toHaveBeenCalledTimes(1)
+      expect(result).toEqual({ kind: 'download', fileName: 'original.bin' })
     })
 
     it('downloads a non-previewable file under its original name instead of opening a tab', async () => {
