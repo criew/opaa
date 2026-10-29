@@ -303,7 +303,7 @@ class BrandingSettingsServiceIntegrationTest {
 
   @Test
   void aProductNameOrClaimWithoutAVisibleCharacterRestoresTheStandard() {
-    for (String invisible : new String[] {" ", "​", " ​  "}) {
+    for (String invisible : new String[] {"\u00A0", "\u200B", " \u200B\u00A0 "}) {
       brandingSettingsService.updateBranding(
           organizationId, userId, "Landesamt", "Fragen.", null, null, null);
 
@@ -322,7 +322,7 @@ class BrandingSettingsServiceIntegrationTest {
 
   @Test
   void aProductNameOrClaimWithABidiControlIsRejectedAndNothingIsStored() {
-    for (String reordering : new String[] {"Amt ‮redaeh", "‮Amt", "Amt ⁦x⁩"}) {
+    for (String reordering : new String[] {"Amt \u202Eredaeh", "\u202EAmt", "Amt \u2066x\u2069"}) {
       assertThatThrownBy(
               () ->
                   brandingSettingsService.updateBranding(
@@ -345,9 +345,9 @@ class BrandingSettingsServiceIntegrationTest {
   void aStoredValueTheRulesNoLongerAcceptIsReadAsTheStandard() {
     jdbcTemplate.update(
         "UPDATE branding_settings SET product_name = ?, claim = ?, ai_notice = ? WHERE id = 1",
-        "Amt ‮redaeh",
-        " ​",
-        "Hinweis ⁧x");
+        "Amt \u202Eredaeh",
+        "\u00A0\u200B",
+        "Hinweis \u2067x");
 
     EffectiveBranding branding = brandingSettingsService.currentBranding();
     assertThat(branding.productName()).isEqualTo(BrandingDefaults.PRODUCT_NAME);
@@ -361,15 +361,27 @@ class BrandingSettingsServiceIntegrationTest {
   }
 
   @Test
+  void aStoredValueWithHiddenTagCharactersOrAnUnassignedCodePointIsReadAsTheStandard() {
+    jdbcTemplate.update(
+        "UPDATE branding_settings SET product_name = ?, claim = ? WHERE id = 1",
+        "OPAA󠁉󠁇󠁎",
+        "́Fragen͸");
+
+    EffectiveBranding branding = brandingSettingsService.currentBranding();
+    assertThat(branding.productName()).isEqualTo(BrandingDefaults.PRODUCT_NAME);
+    assertThat(branding.claim()).isEqualTo(BrandingDefaults.CLAIM);
+  }
+
+  @Test
   void aStoredValueTheRulesAcceptIsReadUnchanged() {
     jdbcTemplate.update(
         "UPDATE branding_settings SET product_name = ?, claim = ? WHERE id = 1",
         "Landesamt-Assistent",
-        "Fragen ⚠️");
+        "Fragen \u26A0\uFE0F");
 
     EffectiveBranding branding = brandingSettingsService.currentBranding();
     assertThat(branding.productName()).isEqualTo("Landesamt-Assistent");
-    assertThat(branding.claim()).isEqualTo("Fragen ⚠️");
+    assertThat(branding.claim()).isEqualTo("Fragen \u26A0\uFE0F");
   }
 
   @Test

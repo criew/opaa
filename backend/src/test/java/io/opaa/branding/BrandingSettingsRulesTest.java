@@ -136,4 +136,106 @@ class BrandingSettingsRulesTest {
 
     assertThat(checked.errors()).extracting(FieldError::field).containsExactly("aiNotice");
   }
+
+  private static final String FLAG_SCOTLAND = "🏴󠁧󠁢󠁳󠁣󠁴󠁿";
+
+  @Test
+  void tagCharactersOutsideAFlagSequenceAreAFieldError() {
+    for (String smuggling :
+        new String[] {
+          "OPAA󠁉󠁇󠁎", "󠁉󠁇", "OPAA 🏴󠁧󠁢󠁳", "OPAA 🏴󠁉󠁇󠁎󠁏󠁒󠁅" + "󠀠󠁁󠁌󠁌󠁿", "OPAA 󠁿"
+        }) {
+      BrandingSettingsRules.Checked checked =
+          BrandingSettingsRules.check("", smuggling, smuggling, smuggling, null, null);
+
+      assertThat(checked.errors())
+          .as("value %s", smuggling.codePoints().boxed().toList())
+          .extracting(FieldError::field, FieldError::code)
+          .containsExactly(
+              tuple("productName", "INVALID"),
+              tuple("claim", "INVALID"),
+              tuple("aiNotice", "INVALID"));
+    }
+  }
+
+  @Test
+  void aSubdivisionFlagKeepsItsTagSequence() {
+    BrandingSettingsRules.Checked checked =
+        BrandingSettingsRules.check(
+            "", "Amt " + FLAG_SCOTLAND, FLAG_SCOTLAND + " Fragen", null, null, null);
+
+    assertThat(checked.errors()).isEmpty();
+    assertThat(checked.values().productName()).isEqualTo("Amt " + FLAG_SCOTLAND);
+    assertThat(checked.values().claim()).isEqualTo(FLAG_SCOTLAND + " Fragen");
+  }
+
+  @Test
+  void fillerSymbolsAndMarksWithoutABaseAreNotVisible() {
+    for (String filler : new String[] {"𝅙", "𖿤", " 𝅙 "}) {
+      BrandingSettingsRules.Checked checked =
+          BrandingSettingsRules.check("", filler, filler, filler, null, null);
+
+      assertThat(checked.errors()).as("value %s", filler.codePoints().boxed().toList()).isEmpty();
+      assertThat(checked.values())
+          .isEqualTo(new BrandingSettingsRules.Values(null, null, null, null, null));
+    }
+  }
+
+  @Test
+  void unassignedNoncharactersLoneSurrogatesAndALeadingMarkAreAFieldError() {
+    for (String broken :
+        new String[] {"OPAA͸", "͸", "OPAA￿", "OPAA\uD800", "\uDC00OPAA", "́OPAA", "́"}) {
+      BrandingSettingsRules.Checked checked =
+          BrandingSettingsRules.check("", broken, broken, broken, null, null);
+
+      assertThat(checked.errors())
+          .as("value %s", broken.codePoints().boxed().toList())
+          .extracting(FieldError::field, FieldError::code, FieldError::message)
+          .containsExactly(
+              tuple(
+                  "productName",
+                  "INVALID",
+                  "Der Produktname darf keine unsichtbaren oder nicht darstellbaren Zeichen"
+                      + " enthalten"),
+              tuple(
+                  "claim",
+                  "INVALID",
+                  "Der Claim darf keine unsichtbaren oder nicht darstellbaren Zeichen enthalten"),
+              tuple(
+                  "aiNotice",
+                  "INVALID",
+                  "Der Hinweis zur KI-Nutzung darf keine unsichtbaren oder nicht darstellbaren"
+                      + " Zeichen enthalten"));
+    }
+  }
+
+  @Test
+  void aBaseCarriesAtMostFiveCombiningMarks() {
+    String five = "Amt e" + "́".repeat(5);
+    String six = "Amt e" + "́".repeat(6);
+    String burmese = "မြို့";
+    String vietnamese = "Việt Nam";
+
+    BrandingSettingsRules.Checked accepted =
+        BrandingSettingsRules.check("", five, burmese, vietnamese, null, null);
+    BrandingSettingsRules.Checked refused =
+        BrandingSettingsRules.check("", six, "क" + "़ँ".repeat(3), null, null, null);
+
+    assertThat(accepted.errors()).isEmpty();
+    assertThat(accepted.values().productName()).isEqualTo(five);
+    assertThat(accepted.values().claim()).isEqualTo(burmese);
+    assertThat(refused.errors())
+        .extracting(FieldError::field, FieldError::code)
+        .containsExactly(tuple("productName", "INVALID"), tuple("claim", "INVALID"));
+  }
+
+  @Test
+  void controlCharactersAtTheEdgesAreCutLikeBlanks() {
+    BrandingSettingsRules.Checked checked =
+        BrandingSettingsRules.check("", "\nOPAA\n", "\tFragen.\r\n", null, null, null);
+
+    assertThat(checked.errors()).isEmpty();
+    assertThat(checked.values().productName()).isEqualTo("OPAA");
+    assertThat(checked.values().claim()).isEqualTo("Fragen.");
+  }
 }

@@ -552,7 +552,7 @@ class StepRulesTest {
 
   @Test
   void aBrandingProductNameOrClaimWithoutAVisibleCharacterIsStoredAsTheDefault() {
-    for (String invisible : new String[] {" ", "​", " ​"}) {
+    for (String invisible : new String[] {"\u00A0", "\u200B", "\u00A0\u200B"}) {
       StepRules.Stored stored =
           rules.toStored(
               new StepInput.Branding(invisible, invisible, null, null, null), null, null);
@@ -565,7 +565,7 @@ class StepRulesTest {
 
   @Test
   void aBidiControlInTheBrandingProductNameOrClaimIsAFieldErrorUnderTheStep() {
-    for (String reordering : new String[] {"Amt ‮redaeh", "‮Amt", "Amt ⁦x⁩"}) {
+    for (String reordering : new String[] {"Amt \u202Eredaeh", "\u202EAmt", "Amt \u2066x\u2069"}) {
       assertThatThrownBy(
               () ->
                   rules.toStored(
@@ -594,7 +594,7 @@ class StepRulesTest {
   void aSavedBrandingStepWithABidiControlFailsTheCheckBeforeCompletion() {
     assertThat(
             rules.brandingErrors(
-                new StepRules.BrandingPayload("Amt ‮redaeh", "‮", null, null, null)))
+                new StepRules.BrandingPayload("Amt \u202Eredaeh", "\u202E", null, null, null)))
         .extracting(FieldValidationException.FieldError::field)
         .containsExactly("branding.productName", "branding.claim");
   }
