@@ -245,8 +245,10 @@ public class LocalUserService {
       if (!email.equalsIgnoreCase(user.getEmail())) {
         requireAddressFree(email, user.getId());
         user.setEmail(email);
-        // a link mailed to the old address must not set the password of the new one
+        // a link mailed to the old address must not set the password of the new one - the
+        // verification link of a self-registration sets one as well
         closeOpenLinks(user.getId());
+        actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.VERIFY_EMAIL);
         changed.add("email");
       }
     }

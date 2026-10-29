@@ -546,6 +546,12 @@ steht im Kapitel [Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md
 - **Einladungen und Rücksetzlinks brauchen Mail und eine öffentliche Adresse**
   (`OPAA_PUBLIC_BASE_URL`, [E-Mail-Versand](e-mail.md)). Ohne beides zeigt OPAA den Link zur Übergabe
   an, und „Passwort vergessen" und Selbstregistrierung lassen sich nicht einschalten.
+- **Bei der Selbstregistrierung legt erst der Bestätigungslink Name und Passwort fest.** Wer eine
+  fremde Adresse der erlaubten Domänen zuerst registriert, bestimmt damit weder Passwort noch Namen
+  und erhält keinen Zugang; die Bestätigungsmail nennt keinen Namen und bittet, eine nicht selbst
+  ausgelöste Registrierung zu ignorieren
+  ([Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md#10-selbstregistrierung)). Eine
+  eigene Fassung dieser Mailvorlage passt sich nicht von selbst an ([E-Mail-Versand](e-mail.md#vorlagen)).
 - **Es gibt keinen zweiten Faktor.** Bis dahin gleichen aus: die Netzbeschränkung
   `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` (lokale Systemverwalter nur aus den genannten Netzen; leer heißt
   ohne Beschränkung), kürzere Sitzungsfristen für Systemverwalterkonten, die Protokollierung des
