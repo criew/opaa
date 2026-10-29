@@ -130,7 +130,8 @@ for set_name in "${value_sets[@]}"; do
   set_name="$(basename "$set_name" -values.yaml)"
   for removed in OPAA_INITIAL_ADMIN_ OPAA_OPENAI_CHAT_ OPAA_OIDC_ISSUER_URI OPAA_OIDC_CLIENT_ID \
     OPAA_OIDC_JWK_SET_URI OPAA_OIDC_AUTHORITY OPAA_OPENAI_EMBEDDING_BASE_URL OPAA_OPENAI_EMBEDDING_MODEL \
-    OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS OPAA_PGVECTOR_DIMENSIONS OPAA_OPENAI_EMBEDDING_API_KEY; do
+    OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS OPAA_PGVECTOR_DIMENSIONS OPAA_OPENAI_EMBEDDING_API_KEY \
+    OPAA_OPENAI_BASE_URL OPAA_OPENAI_API_KEY; do
     if grep -qF "$removed" "$work_dir/$set_name.yaml"; then
       echo "Value set $set_name renders $removed, which the answer file replaces." >&2
       exit 1

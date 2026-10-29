@@ -32,7 +32,7 @@ services:
       # against demo-presse's own ~20-30 entries it only adds dead time to the smoke run.
       OPAA_INDEXING_RSS_REQUEST_DELAY_MS: "0"
 
-  # Stands in for a real chat/embedding provider (see e2e/demo-smoke.env's OPAA_OPENAI_BASE_URL
+  # Stands in for a real chat/embedding provider (the models of e2e/installation/demo-smoke.json
   # and e2e/ai-stub/server.mjs) - reused as-is from the "e2e" target rather than duplicated; the
   # stub has no dependency on which Compose profile or data set is running against it. No
   # Dockerfile, no build: the script is mounted straight into the stock node image.

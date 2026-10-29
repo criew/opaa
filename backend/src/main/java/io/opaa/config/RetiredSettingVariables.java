@@ -13,13 +13,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 
 /**
  * Warns at start about variables that once preset a setting the system administration now holds in
  * the database, or a value the installation now sets (ADR-0060, Entscheidungen 1 and 8 to 10): they
- * are no longer read, and a value still set there would otherwise be lost without a word. Only
- * warns, so an update with an old environment starts; each instance warns for its own environment
- * (ADR-0053).
+ * are no longer read, outside the {@code dev} mode or at all, and a value still set there would
+ * otherwise be lost without a word. Only warns, so an update with an old environment starts; each
+ * instance warns for its own environment (ADR-0053).
  */
 @Configuration
 public class RetiredSettingVariables {
@@ -61,6 +62,16 @@ public class RetiredSettingVariables {
               "opaa.connection.private-library-deletion-days",
           "OPAA_CONNECTION_EXPIRED_WARNING_THRESHOLD",
               "opaa.connection.expired-connections.warning-threshold");
+
+  /**
+   * The shared model address and key, read in the {@code dev} mode only (by its own installation);
+   * outside it they are named like a retired variable.
+   */
+  static final List<String> DEV_MODE_ONLY = List.of("OPAA_OPENAI_BASE_URL", "OPAA_OPENAI_API_KEY");
+
+  private static final String MODELS =
+      "the chat model in the installation, then in the model administration, and the embedding"
+          + " model in the installation, then under Administration > Modelle > Einbettung";
 
   /** The retired retention periods, held on the page of the data protection settings. */
   static final Map<String, String> RETIRED_RETENTION = retiredRetention();
@@ -116,6 +127,12 @@ public class RetiredSettingVariables {
             messages.add(name + " is no longer read; set " + setting);
           }
         });
+    if (!environment.acceptsProfiles(Profiles.of("dev"))) {
+      DEV_MODE_ONLY.stream()
+          .filter(environment::containsProperty)
+          .forEach(
+              variable -> messages.add(variable + " is read in the dev mode only; set " + MODELS));
+    }
     RetiredModelRoleVariables.setIn(environment, RetiredModelRoleVariables.RERANK)
         .forEach(variable -> messages.add(modelRoleMessage(variable, "Reranking")));
     RetiredModelRoleVariables.setIn(environment, RetiredModelRoleVariables.TRANSCRIPTION)
