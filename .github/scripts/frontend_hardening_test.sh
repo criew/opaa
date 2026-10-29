@@ -2,7 +2,8 @@
 # Checks the hardening of the frontend image's nginx without a backend: an nginx from the same image
 # stands in as upstream and answers every request with the forwarding headers it received. Passes
 # when client-supplied Forwarded/X-Forwarded-Host/-Port/-Prefix reach the upstream on none of the
-# proxy paths, every response carries the Permissions-Policy, only the self-disclosure download
+# proxy paths, every response carries the Permissions-Policy and the cross-origin isolation headers
+# (Cross-Origin-Opener-Policy, Cross-Origin-Resource-Policy), only the self-disclosure download
 # may be framed (by the application itself), and the start refuses an invalid
 # OPAA_CSP_CONNECT_SRC_EXTRA while a valid one ends up in the Content-Security-Policy, and with
 # OPAA_BACKEND_RESOLVER a name reaches every container behind it, one started after nginx included.
@@ -109,18 +110,22 @@ for request in "GET /api/v1/health" "PUT /api/v1/health" "POST /api/v1/transcrip
   fi
 done
 
-echo "--- Permissions-Policy"
+echo "--- Permissions-Policy and cross-origin isolation"
 entry="$(grep -o 'src="/assets/[^"]*\.js"' <<<"$index" | head -n 1 | sed 's/^src="//; s/"$//' || true)"
 [[ -n "$entry" ]] || fail "index.html references no entry bundle under /assets/"
 for path in / /index.html "$entry" /runtime-config.js /some/spa/route /api/v1/health /mcp \
   /assets/missing.js; do
-  policies="$(curl -sS -o /dev/null -D - --max-time 10 "$base$path" |
-    grep -i '^permissions-policy:' | tr -d '\r' || true)"
-  if [[ "$policies" == "Permissions-Policy: $expected_policy" ]]; then
-    echo "set once: $path"
-  else
-    fail "$path carries Permissions-Policy '${policies:-none}', expected exactly '$expected_policy'"
-  fi
+  headers="$(curl -sS -o /dev/null -D - --max-time 10 "$base$path" | tr -d '\r' || true)"
+  for expected in "Permissions-Policy: $expected_policy" \
+    "Cross-Origin-Opener-Policy: same-origin" "Cross-Origin-Resource-Policy: same-origin"; do
+    name="${expected%%:*}"
+    got="$(grep -i "^$name:" <<<"$headers" || true)"
+    if [[ "$got" == "$expected" ]]; then
+      echo "set once: $name on $path"
+    else
+      fail "$path carries '${got:-no $name}', expected exactly '$expected'"
+    fi
+  done
 done
 
 echo "--- framing"
