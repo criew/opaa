@@ -5,9 +5,9 @@
 # answer (401, 403, 5xx, a plain 404 of a router, a refused token, a network error) fails, so an
 # unreadable repository never passes as an unused version. Optional credentials: REGISTRY_USER and
 # REGISTRY_PASSWORD. REGISTRY_SCHEME=http serves a local registry.
-# With --digest it prints the digest of the manifest the tag points to instead, computed from the
-# bytes the registry returned and checked against its Docker-Content-Digest header; an unpublished
-# tag then fails like any other error.
+# With --digest it prints the digest of the manifest the tag points to instead: the SHA-256 of the
+# bytes the registry returned, which must equal its Docker-Content-Digest header; a missing header
+# or an unpublished tag fails like any other error.
 set -euo pipefail
 
 mode=published
@@ -115,7 +115,9 @@ print_digest() {
   local digest header
   digest="sha256:$(sha256sum "$work_dir/body" | cut -d ' ' -f 1)"
   header="$(sed -n 's/^[Dd]ocker-[Cc]ontent-[Dd]igest: *//p' "$work_dir/headers" | tr -d '\r' | tail -n 1)"
-  if [[ -n "$header" && "$header" != "$digest" ]]; then
+  if [[ -z "$header" ]]; then
+    fail "the registry named no Docker-Content-Digest"
+  elif [[ "$header" != "$digest" ]]; then
     fail "the registry names digest $header, the manifest it returned has $digest"
   fi
   echo "$digest"

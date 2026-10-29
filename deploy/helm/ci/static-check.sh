@@ -324,6 +324,21 @@ if output="$(CHART_DIR="$CHART_DIR" deploy/helm/ci/package-chart.sh v1.2.3 "$wor
   exit 1
 fi
 echo "refused as expected: malformed image digest"
+# A digest already set in the repository's values would survive the release unseen; packing refuses.
+cp -R "$CHART_DIR" "$work_dir/prefilled-chart"
+awk -v digest="$frontend_digest" '
+  /^backend:/ { backend = 1 } /^[^ #]/ && !/^backend:/ { backend = 0 }
+  backend && /^    digest: ""$/ && !done { print "    digest: \"" digest "\""; done = 1; next }
+  { print }
+' "$CHART_DIR/values.yaml" >"$work_dir/prefilled-chart/values.yaml"
+if output="$(CHART_DIR="$work_dir/prefilled-chart" deploy/helm/ci/package-chart.sh v1.2.3 \
+  "$work_dir/prefilled" "$backend_digest" "$frontend_digest" 2>&1)" ||
+  [[ "$output" != *"no single empty digest"* ]]; then
+  echo "Expected release packaging to refuse values with a digest already set:" >&2
+  echo "$output" >&2
+  exit 1
+fi
+echo "refused as expected: digest already set in values.yaml"
 expect_tag_refusal() {
   local tag="$1" expected="$2" output
   if output="$(CHART_DIR="$CHART_DIR" deploy/helm/ci/package-chart.sh "$tag" "$work_dir/packages" 2>&1)"; then
@@ -582,6 +597,15 @@ notes_case "an earlier signing secret of the test runs" "ÖFFENTLICH BEKANNTE TE
 notes_case "egress off" "networkPolicy.egress.enabled ist aus" "INSTALLATION AUS DER ANTWORTDATEI"
 notes_case "egress on" "CLIENT-ADRESSE UND NETZTRENNUNG" "networkPolicy.egress.enabled ist aus" \
   --set networkPolicy.egress.enabled=true
+# A digest wins over a tag and must exist in a mirror; both stay visible after every install.
+notes_case "a tag without digest" "Prüfen: helm test" "IMAGE: TAG OHNE WIRKUNG" --set backend.image.tag=main
+notes_case "a tag beside a digest" "BACKEND-IMAGE: TAG OHNE WIRKUNG" "AUS EIGENER REGISTRY" \
+  --set backend.image.tag=main --set-string "backend.image.digest=$backend_digest"
+notes_case "a mirror with a digest" "FRONTEND-IMAGE AUS EIGENER REGISTRY PER DIGEST" "TAG OHNE WIRKUNG" \
+  --set frontend.image.repository=registry.intern/opaa/opaa-frontend \
+  --set-string "frontend.image.digest=$frontend_digest"
+notes_case "a digest from GHCR" "Prüfen: helm test" "AUS EIGENER REGISTRY" \
+  --set-string "backend.image.digest=$backend_digest"
 
 # The CSP warning of NOTES.txt follows the issuer, the authority of the sign-in flow. Only install
 # renders NOTES.txt; a dry run without a cluster exists from Helm 3.13 on, older Helm skips this.

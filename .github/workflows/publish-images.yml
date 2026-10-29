@@ -487,10 +487,56 @@ jobs:
             exit 1
           fi
 
+      # Annotations and sources of the index go to files that the step setting the tags reads again.
+      # The digest of the dry-run output is the digest of the index create pushes: buildx prints the
+      # bytes it pushes, plus one newline. image-digests accepts only this digest.
+      - name: Manifest-Index prüfen
+        env:
+          ANNOTATIONS: ${{ needs.prepare.outputs.annotations }}
+          NAME: ${{ matrix.name }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/index" "$RUNNER_TEMP/index-digest"
+          while IFS= read -r annotation; do
+            if [[ -n "$annotation" ]]; then
+              printf '%s\n' "$annotation"
+            fi
+          done <<<"$ANNOTATIONS" >"$RUNNER_TEMP/index/annotations"
+          for file in "$RUNNER_TEMP"/digests/*; do
+            echo "$IMAGE@sha256:$(basename "$file")"
+          done >"$RUNNER_TEMP/index/sources"
+          args=()
+          while IFS= read -r annotation; do
+            args+=(--annotation "$annotation")
+          done <"$RUNNER_TEMP/index/annotations"
+          mapfile -t sources <"$RUNNER_TEMP/index/sources"
+          docker buildx imagetools create --dry-run --tag "$IMAGE:dry-run" "${args[@]}" "${sources[@]}" >"$RUNNER_TEMP/index/index.json"
+          # Checked on the dry run, so no tag ever points at an index that lacks a platform.
+          platforms=$(jq -r '[.manifests[].platform | select(.os != "unknown") | "\(.os)/\(.architecture)"] | sort | join(" ")' "$RUNNER_TEMP/index/index.json")
+          if [[ "$platforms" != "$EXPECTED_PLATFORMS" ]]; then
+            echo "::error::Index für $IMAGE enthält '$platforms' statt '$EXPECTED_PLATFORMS'"
+            exit 1
+          fi
+          if [[ "$(tail -c 1 "$RUNNER_TEMP/index/index.json" | od -An -tx1 | tr -d ' ')" != 0a ]]; then
+            echo "::error::Die Ausgabe des Probelaufs für $IMAGE endet nicht mit einem Zeilenumbruch"
+            exit 1
+          fi
+          digest="sha256:$(head -c -1 "$RUNNER_TEMP/index/index.json" | sha256sum | cut -d ' ' -f 1)"
+          echo "$digest" >"$RUNNER_TEMP/index-digest/$NAME"
+          echo "$IMAGE@$digest"
+
+      # Stored before any tag is set: a run whose expected digest is missing never tags an index.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: index-digest-${{ matrix.name }}
+          path: ${{ runner.temp }}/index-digest/${{ matrix.name }}
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
+
       - name: Manifest-Index anlegen
         env:
           TAGS: ${{ needs.prepare.outputs.tags }}
-          ANNOTATIONS: ${{ needs.prepare.outputs.annotations }}
+          NAME: ${{ matrix.name }}
         # :main is set only while this run's commit is still the tip of main, so an older run that
         # finishes late, a re-run or a rebuild overtaken by a push never moves it backwards. Asked
         # right before the tags are set; docs/releases.md describes the remaining window.
@@ -515,19 +561,13 @@ jobs:
             exit 1
           fi
           while IFS= read -r annotation; do
-            if [[ -n "$annotation" ]]; then
-              args+=(--annotation "$annotation")
-            fi
-          done <<<"$ANNOTATIONS"
-          sources=()
-          for file in "$RUNNER_TEMP"/digests/*; do
-            sources+=("$IMAGE@sha256:$(basename "$file")")
-          done
-          # Checked on the dry run, so no tag ever points at an index that lacks a platform.
-          platforms=$(docker buildx imagetools create --dry-run "${args[@]}" "${sources[@]}" |
-            jq -r '[.manifests[].platform | select(.os != "unknown") | "\(.os)/\(.architecture)"] | sort | join(" ")')
-          if [[ "$platforms" != "$EXPECTED_PLATFORMS" ]]; then
-            echo "::error::Index für $IMAGE enthält '$platforms' statt '$EXPECTED_PLATFORMS'"
+            args+=(--annotation "$annotation")
+          done <"$RUNNER_TEMP/index/annotations"
+          mapfile -t sources <"$RUNNER_TEMP/index/sources"
+          # The same index as checked above, byte for byte; otherwise no tag is set.
+          if ! docker buildx imagetools create --dry-run "${args[@]}" "${sources[@]}" |
+            cmp -s - "$RUNNER_TEMP/index/index.json"; then
+            echo "::error::Der Index für $IMAGE weicht vom geprüften Probelauf ab; kein Tag gesetzt"
             exit 1
           fi
           docker buildx imagetools create "${args[@]}" "${sources[@]}"
@@ -536,51 +576,73 @@ jobs:
           docker buildx imagetools inspect "${tags[0]}" ||
             echo "::warning::Index ${tags[0]} ist gesetzt, ließ sich aber nicht anzeigen"
 
-  # The index digest of each published image, read back by a tag this run set: X.Y.Z on a release
-  # tag, which is never overwritten, otherwise sha-<commit>. Attestation and chart take the digests
-  # from here, so each of them can be re-run on its own. An explicit result check, since on main
-  # the skipped update-package would otherwise skip this job.
+  # Per image: the digest publish computed from the bytes it pushed must be the one a tag of this
+  # run points to, X.Y.Z on a release tag, otherwise sha-<commit>. A moved tag fails the job, so
+  # neither attestation nor chart takes a foreign index. Passes the digest on as an artifact.
+  # The result check keeps the image of a successful publish leg when the other leg failed.
   image-digests:
     needs: [prepare, publish]
-    if: ${{ !cancelled() && needs.publish.result == 'success' }}
+    if: ${{ !cancelled() && (needs.publish.result == 'success' || needs.publish.result == 'failure') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
       packages: read
-    outputs:
-      backend: ${{ steps.digests.outputs.backend }}
-      frontend: ${{ steps.digests.outputs.frontend }}
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [backend, frontend]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Index-Digests bestimmen
-        id: digests
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: index-digest-${{ matrix.name }}
+          path: ${{ runner.temp }}/index-digest
+
+      - name: Index-Digest prüfen
         env:
-          PREFIX: ${{ needs.prepare.outputs.image-prefix }}
+          IMAGE: ${{ needs.prepare.outputs.image-prefix }}-${{ matrix.name }}
+          NAME: ${{ matrix.name }}
           VERSION: ${{ needs.prepare.outputs.version }}
           REGISTRY_USER: ${{ github.actor }}
           REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="${VERSION:-sha-$GITHUB_SHA}"
-          for name in backend frontend; do
-            if ! digest=$(deploy/helm/ci/oci-published.sh --digest "$PREFIX-$name" "$tag"); then
-              echo "::error::Digest von $PREFIX-$name:$tag ließ sich nicht bestimmen, siehe Meldung oben"
-              exit 1
-            fi
-            echo "$PREFIX-$name:$tag@$digest"
-            echo "$name=$digest" >>"$GITHUB_OUTPUT"
-          done
+          expected=$(cat "$RUNNER_TEMP/index-digest/$NAME")
+          if ! [[ "$expected" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::Kein gültiger Index-Digest für $IMAGE aus publish: '$expected'"
+            exit 1
+          fi
+          if ! actual=$(deploy/helm/ci/oci-published.sh --digest "$IMAGE" "$tag"); then
+            echo "::error::Digest von $IMAGE:$tag ließ sich nicht bestimmen, siehe Meldung oben"
+            exit 1
+          fi
+          if [[ "$actual" != "$expected" ]]; then
+            echo "::error::$IMAGE:$tag zeigt auf $actual, gebaut hat dieser Lauf $expected; nichts attestiert (docs/releases.md)"
+            exit 1
+          fi
+          echo "$IMAGE:$tag@$actual"
+          mkdir -p "$RUNNER_TEMP/verified"
+          echo "$actual" >"$RUNNER_TEMP/verified/$NAME"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: verified-index-digest-${{ matrix.name }}
+          path: ${{ runner.temp }}/verified/${{ matrix.name }}
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
 
   # Signed SLSA provenance for the manifest index of each image, stored with GitHub and next to the
   # image in GHCR, so `gh attestation verify oci://...` ties the image to this workflow and ref. The
-  # index digest also covers the BuildKit SBOM and provenance the index references, and with them
-  # the resolved base images. No checkout: no repository code runs next to the OIDC token.
+  # index digest also covers the BuildKit SBOM and provenance the index references. No checkout, so
+  # no repository code runs next to the OIDC token; a leg attests only what image-digests verified.
   image-attestation:
     needs: [prepare, image-digests]
-    if: ${{ !cancelled() && needs.image-digests.result == 'success' }}
+    if: ${{ !cancelled() && (needs.image-digests.result == 'success' || needs.image-digests.result == 'failure') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -593,6 +655,23 @@ jobs:
       matrix:
         name: [backend, frontend]
     steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: verified-index-digest-${{ matrix.name }}
+          path: ${{ runner.temp }}/verified
+
+      - name: Digest lesen
+        id: digest
+        env:
+          NAME: ${{ matrix.name }}
+        run: |
+          digest=$(cat "$RUNNER_TEMP/verified/$NAME")
+          if ! [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::Kein gültiger Index-Digest: '$digest'"
+            exit 1
+          fi
+          echo "digest=$digest" >>"$GITHUB_OUTPUT"
+
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ${{ env.REGISTRY }}
@@ -602,18 +681,16 @@ jobs:
       - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ needs.prepare.outputs.image-prefix }}-${{ matrix.name }}
-          subject-digest: ${{ needs.image-digests.outputs[matrix.name] }}
+          subject-digest: ${{ steps.digest.outputs.digest }}
           push-to-registry: true
           create-storage-record: false
 
-  # The chart follows the images, so it never points at an image that failed to publish. Chart
-  # version and appVersion are the release version, and the default values pin both images to the
-  # index digests published by this run (ADR-0042, Entscheidung 7). On the first attempt an existing chart version fails the job like the guard in
-  # publish. A re-run of this job that finds the version published skips the push and carries on
-  # with the digest from the registry, so attestation and release can still follow - provided the
-  # published chart has the content of this commit's package; otherwise the job fails.
+  # The chart follows the attested images; its values pin both to their verified index digests, and
+  # chart version and appVersion are the release version (ADR-0042, Entscheidung 7). A first attempt
+  # fails on a taken chart version like publish. A re-run that finds the version published skips
+  # the push and goes on with the registry's chart if its content is this commit's, else fails.
   chart:
-    needs: [publish, image-digests]
+    needs: [publish, image-attestation]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -659,14 +736,21 @@ jobs:
           fi
           echo "published=$published" >>"$GITHUB_OUTPUT"
 
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: verified-index-digest-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/verified
+
+      # package-chart.sh refuses anything but two digests sha256:<64 hex digits>.
       - name: Chart packen
         id: package
         env:
           IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/opaa
-          BACKEND_DIGEST: ${{ needs.image-digests.outputs.backend }}
-          FRONTEND_DIGEST: ${{ needs.image-digests.outputs.frontend }}
         run: |
-          package=$(deploy/helm/ci/package-chart.sh "$TAG" "$RUNNER_TEMP/chart" "$BACKEND_DIGEST" "$FRONTEND_DIGEST")
+          backend=$(cat "$RUNNER_TEMP/verified/backend")
+          frontend=$(cat "$RUNNER_TEMP/verified/frontend")
+          package=$(deploy/helm/ci/package-chart.sh "$TAG" "$RUNNER_TEMP/chart" "$backend" "$frontend")
           echo "path=$package" >>"$GITHUB_OUTPUT"
 
       - name: Chart veröffentlichen
@@ -738,7 +822,7 @@ jobs:
   # architectures as OCI archives, chart, update package, SBOMs, their attestations and SHA256SUMS,
   # attested as a whole. Pulled back from GHCR, so it holds exactly what was published.
   offline-bundle:
-    needs: [prepare, chart-attestation, update-package-attestation]
+    needs: [prepare, image-attestation, chart-attestation, update-package-attestation]
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: read
@@ -750,11 +834,11 @@ jobs:
       version: ${{ needs.prepare.outputs.version }}
       update-package-from-run: true
 
-  # The GitHub release follows images and their attestations, chart, update package and offline
-  # bundle, so its notes never announce an artifact that failed to publish or cannot be verified. Notes are generated from the merged PRs, grouped by
-  # .github/release.yml; the fixed part with images, chart, installation and update package comes
-  # from deploy/helm/ci/release-notes.sh. The attested archive with its .sha256 file, the attested
-  # SBOMs and the offline bundle with its .sha256 file and Sigstore bundle become assets.
+  # The GitHub release follows the attested images, chart, update package and offline bundle, so its
+  # notes never announce an artifact that failed to publish. Notes come from the merged PRs, grouped
+  # by .github/release.yml, plus the fixed part of deploy/helm/ci/release-notes.sh. The attested
+  # archive with its .sha256 file, the attested SBOMs and the offline bundle with its .sha256 file
+  # and Sigstore bundle become assets.
   release:
     needs: [publish, image-attestation, chart, chart-attestation, update-package-attestation, offline-bundle]
     if: startsWith(github.ref, 'refs/tags/v')

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Packages the OPAA chart for a release tag, run by .github/workflows/publish-images.yml and, as a
 # dry run, by static-check.sh. Tag vX.Y.Z[-<pre>] becomes chart version and appVersion X.Y.Z[-<pre>]
-# (ADR-0042, Entscheidung 7). Given the index digests of both published images, the packaged
-# values.yaml sets backend.image.digest and frontend.image.digest to them and the default values must
-# render exactly IMAGE_PREFIX-backend@<digest> and -frontend@<digest>; without digests (dry run) they
-# must render the images IMAGE_PREFIX-backend and -frontend tagged with the version. Refuses the
-# package otherwise, or unless chart version and appVersion carry the version. Prints the package path.
+# (ADR-0042, Entscheidung 7). Given the index digests of both images, the packaged values set
+# backend.image.digest and frontend.image.digest and must render exactly
+# IMAGE_PREFIX-backend@<digest> and -frontend@<digest>; without digests (dry run) the images tagged
+# with the version. Refuses the package otherwise, or unless chart version and appVersion carry the
+# version. Prints its path.
 set -euo pipefail
 
 CHART_DIR="${CHART_DIR:-deploy/helm/opaa}"
