@@ -33,8 +33,9 @@ public class ExternalAccessSettingsController {
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping
-  public ExternalAccessSettingsResponse getExternalAccessSettings() {
-    return ExternalAccessSettingsResponseMapper.toResponse(settingsService.current());
+  public ExternalAccessSettingsResponse getExternalAccessSettings(@Caller CurrentUser caller) {
+    return ExternalAccessSettingsResponseMapper.toResponse(
+        settingsService.current(caller.organizationId()));
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")

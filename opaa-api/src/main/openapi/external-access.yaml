@@ -372,7 +372,10 @@ components:
         updatedBy:
           type: string
           nullable: true
-          description: Display name of the person who changed the settings last; absent for a change by the installation itself.
+          description: >
+            Display name of the person who changed the settings last; absent for a change by the
+            installation itself and for a person of another organization, whose name the caller's
+            administration does not see although the settings are installation-wide.
 
     ExternalAccessSettingsUpdateRequest:
       type: object

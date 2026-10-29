@@ -13,12 +13,16 @@ import io.opaa.externalaccess.ExternalAccessSettings;
 import io.opaa.externalaccess.ExternalAccessSettingsRepository;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.library.ExternalAccessReminderLead;
+import io.opaa.organization.Organization;
+import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OwnOrganizationFixtures;
 import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,6 +55,8 @@ class ExternalAccessSettingsIntegrationTest {
   @Autowired private ExternalAccessSettingsService settingsService;
   @Autowired private ExternalAccessNetworkPolicy networkPolicy;
   @Autowired private ExternalAccessReminderLead reminderLead;
+  @Autowired private OrganizationRepository organizations;
+  @Autowired private OwnOrganizationFixtures organizationFixtures;
 
   /** Every audit row from here on belongs to this test method; earlier ones do not. */
   private Instant methodStartedAt;
@@ -187,6 +193,48 @@ class ExternalAccessSettingsIntegrationTest {
         .andExpect(status().isForbidden());
 
     assertThat(settingsService.isEnabled()).as("the channel stayed closed").isFalse();
+  }
+
+  @Test
+  void theNameOfALastEditorOfAnotherOrganizationIsNotShown() throws Exception {
+    UUID organization =
+        organizations
+            .save(new Organization(UUID.randomUUID(), "Fremde Stelle " + UUID.randomUUID()))
+            .getId();
+    UUID editor = UUID.randomUUID();
+    try {
+      jdbc.update(
+          "INSERT INTO users (id, subject, issuer, email, display_name, organization_id)"
+              + " VALUES (?, ?, 'opaa-dev', ?, 'Fremde Verwaltung', ?)",
+          editor,
+          "foreign-" + editor,
+          "foreign-" + editor + "@example.com",
+          organization);
+      editedBy(editor);
+
+      mockMvc
+          .perform(get(SETTINGS).with(devUser("dev-admin")))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.updatedAt").exists())
+          .andExpect(jsonPath("$.updatedBy").doesNotExist());
+
+      editedBy(
+          jdbc.queryForObject(
+              "SELECT id FROM users WHERE subject = 'dev-admin' AND issuer = 'opaa-dev'",
+              UUID.class));
+      mockMvc
+          .perform(get(SETTINGS).with(devUser("dev-admin")))
+          .andExpect(jsonPath("$.updatedBy").isString());
+    } finally {
+      editedBy(null);
+      organizationFixtures.removeOrganizations(organization);
+    }
+  }
+
+  private void editedBy(UUID editor) {
+    ExternalAccessSettings row = settings.findSingleton().orElseThrow();
+    row.replace(row.values(), editor, Instant.now());
+    settings.save(row);
   }
 
   @Test
