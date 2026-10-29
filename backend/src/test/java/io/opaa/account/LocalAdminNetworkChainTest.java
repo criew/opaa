@@ -21,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
@@ -45,7 +46,9 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * The real {@link OidcSecurityConfig} chain with the {@link LocalAdminNetworkFilter} in place: the
  * access token of a local system administrator reaches nothing from outside the released networks
- * but the sign-out. Only the token decoder and the sign-out handler are test doubles.
+ * but the sign-out. The filter is kept out of the servlet chain as in production, so the test
+ * proves its place in the security chain. Only the token decoder and the sign-out handler are test
+ * doubles.
  */
 @WebMvcTest(controllers = UserInfoController.class)
 @Import({OidcSecurityConfig.class, LocalAdminNetworkChainTest.Chain.class})
@@ -90,6 +93,13 @@ class LocalAdminNetworkChainTest {
           HttpServletRequest::getRemoteAddr,
           jsonMapper,
           Clock.systemUTC());
+    }
+
+    /** As in production: the filter runs only where the security chain places it. */
+    @Bean
+    FilterRegistrationBean<LocalAdminNetworkFilter> localAdminNetworkFilterRegistration(
+        LocalAdminNetworkFilter filter) {
+      return LocalAuthIssuerConfiguration.chainOnly(filter);
     }
 
     @Bean

@@ -3,8 +3,10 @@ package io.opaa.account;
 import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.auth.OidcProviderRegistry;
 import io.opaa.security.ClientIpResolver;
+import jakarta.servlet.Filter;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Clock;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -61,5 +63,29 @@ public class LocalAuthIssuerConfiguration {
       JsonMapper jsonMapper,
       Clock clock) {
     return new LocalAdminNetworkFilter(networkPolicy, clientIpResolver, jsonMapper, clock);
+  }
+
+  @Bean
+  @Profile("oidc")
+  FilterRegistrationBean<PasswordChangeRequiredFilter> passwordChangeRequiredFilterRegistration(
+      PasswordChangeRequiredFilter filter) {
+    return chainOnly(filter);
+  }
+
+  @Bean
+  @Profile("oidc")
+  FilterRegistrationBean<LocalAdminNetworkFilter> localAdminNetworkFilterRegistration(
+      LocalAdminNetworkFilter filter) {
+    return chainOnly(filter);
+  }
+
+  /**
+   * Keeps a filter bean out of the servlet container's own filter chain: it runs only where {@link
+   * OidcSecurityConfig} places it in the security chain, after authorization.
+   */
+  static <T extends Filter> FilterRegistrationBean<T> chainOnly(T filter) {
+    FilterRegistrationBean<T> registration = new FilterRegistrationBean<>(filter);
+    registration.setEnabled(false);
+    return registration;
   }
 }

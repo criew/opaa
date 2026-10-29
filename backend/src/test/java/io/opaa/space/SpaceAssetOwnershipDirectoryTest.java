@@ -1,6 +1,7 @@
 package io.opaa.space;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.RETURNS_DEFAULTS;
@@ -69,6 +70,23 @@ class SpaceAssetOwnershipDirectoryTest {
         .isInstanceOf(ConflictException.class)
         .hasMessageContaining("nicht aktiv");
     verify(spaceRepository, never()).save(any());
+  }
+
+  // regression guard for #3358 (4): already the preview of a succession names the inactive account
+  @Test
+  void anInactiveSuccessorIsRefusedBeforeAnythingMovesOnlyWhenSpacesAreOwned() {
+    UUID owner = space.getOwnerId();
+    PermissionSubject source = PermissionSubject.user(owner, ORGANIZATION);
+    PermissionSubject target = PermissionSubject.user(successor, ORGANIZATION);
+    when(accessPolicy.isActiveAccount(successor)).thenReturn(false);
+    when(spaceRepository.findByOwnerId(owner)).thenReturn(java.util.List.of(space));
+
+    assertThatThrownBy(() -> directory.requireAcceptableNewOwner(source, target))
+        .isInstanceOf(ConflictException.class);
+
+    when(spaceRepository.findByOwnerId(owner)).thenReturn(java.util.List.of());
+    assertThatCode(() -> directory.requireAcceptableNewOwner(source, target))
+        .doesNotThrowAnyException();
   }
 
   @Test

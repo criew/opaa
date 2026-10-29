@@ -104,6 +104,24 @@ class SpaceAssetOwnershipDirectory implements AssetOwnershipDirectory {
   }
 
   /**
+   * A person who owns spaces hands them only to an active account - see {@link #transferOwnership}.
+   */
+  @Override
+  public void requireAcceptableNewOwner(PermissionSubject source, PermissionSubject newOwner) {
+    if (newOwner.type() == PermissionSubjectType.USER && !ownedSpaceIds(source).isEmpty()) {
+      requireActive(newOwner);
+    }
+  }
+
+  private void requireActive(PermissionSubject newOwner) {
+    if (!accessPolicy.isActiveAccount(newOwner.id())) {
+      throw new ConflictException(
+          "Das ausgewählte Konto ist nicht aktiv und kann die Verantwortung für Spaces nicht"
+              + " übernehmen");
+    }
+  }
+
+  /**
    * Hands the space over and, if the new owner holds no membership of their own, admits them as
    * {@code ADMIN} in the same step. {@code SpaceService#transferOwnership} demands that membership
    * for a good reason - an owner who appears in the member list only through a group is a
@@ -127,11 +145,7 @@ class SpaceAssetOwnershipDirectory implements AssetOwnershipDirectory {
     if (space.isDefault()) {
       throw new ValidationException("Der Standard-Space kann nicht übertragen werden");
     }
-    if (!accessPolicy.isActiveAccount(newOwner.id())) {
-      throw new ConflictException(
-          "Das ausgewählte Konto ist nicht aktiv und kann die Verantwortung für Spaces nicht"
-              + " übernehmen");
-    }
+    requireActive(newOwner);
     PermissionSubject previousOwner = space.ownerSubject();
     space.transferOwnershipTo(newOwner.id());
     if (!membershipRepository.existsBySpaceIdAndUserId(space.getId(), newOwner.id())) {
