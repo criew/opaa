@@ -52,15 +52,15 @@ record SharePointSettings(
     return new SharePointSettings(all, fullSyncIntervalDays, sites);
   }
 
+  static final String MIXED_SELECTION =
+      "sourceSettings.libraries: Entweder ganze Sites mit allen Dokumentbibliotheken oder einzeln"
+          + " gewählte Dokumentbibliotheken, nicht beides in einer Bibliothek";
+
   /**
    * Reads and checks {@code data}.
    *
    * @throws ValidationException (German 400) for anything the connector does not accept
    */
-  static final String MIXED_SELECTION =
-      "sourceSettings.libraries: Entweder ganze Sites mit allen Dokumentbibliotheken oder einzeln"
-          + " gewählte Dokumentbibliotheken, nicht beides in einer Bibliothek";
-
   static SharePointSettings read(ConnectorData data) {
     data.requireOnly(KEYS);
     if (!(data.get("libraries") instanceof List<?> list) || list.isEmpty()) {
