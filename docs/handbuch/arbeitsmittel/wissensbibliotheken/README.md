@@ -408,7 +408,8 @@ Kontextpräfix, Antwort-Prompt und Belegprüfung sehen so denselben bereinigten 
 Wendungen wie „ignoriere alle vorherigen Anweisungen“ und Adressen mit einem Platzhalter für Daten
 bleiben im Text; sie werden nur gezählt und gemeldet (Abschnitt 6.1). Ein Restrisiko bleibt:
 Verbinder, Nicht-Verbinder und Variantenwähler können ebenfalls versteckten Text tragen, werden aber
-weder entfernt noch gezählt, weil normale Texte sie brauchen.
+weder entfernt noch gezählt, weil normale Texte sie brauchen. Titel, Überschriften und Fundort
+kürzt die Bereinigung auf 1.000 Zeichen, Dateiname und Pfad nicht.
 
 Die Zielgrößen und Grenzen stehen in Abschnitt 7.1, die Regeln je Format in dessen Kapitel.
 

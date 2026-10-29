@@ -63,7 +63,8 @@ public final class IngestTextSanitizer {
       Pattern.compile("<(start_of_turn|end_of_turn|bos|eos)>");
 
   private static final Pattern INSTRUCTION_MARKER =
-      Pattern.compile("\\[\\s*/?\\s*INST\\s*]|<<\\s*/?\\s*SYS\\s*>>", Pattern.CASE_INSENSITIVE);
+      Pattern.compile(
+          "\\[\\s*+/?+\\s*+INST\\s*+]|<<\\s*+/?+\\s*+SYS\\s*+>>", Pattern.CASE_INSENSITIVE);
 
   private static final Pattern INSTRUCTION_PHRASE =
       Pattern.compile(
@@ -72,10 +73,42 @@ public final class IngestTextSanitizer {
               + "|ignore\\s+(?:all\\s+)?(?:previous|prior|above)\\s+instructions",
           Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
 
-  private static final Pattern DATA_URL_PLACEHOLDER =
-      Pattern.compile("https?://\\S+[?&][\\w-]+=(?:DATEN|DATA)\\b");
+  /** A URL up to the next whitespace; possessive, so a failed check never backtracks into it. */
+  private static final Pattern URL = Pattern.compile("https?://\\S++");
+
+  /** A query parameter holding a data placeholder, searched only inside one {@link #URL}. */
+  private static final Pattern DATA_PLACEHOLDER_PARAMETER =
+      Pattern.compile("[?&][\\w-]+=(?:DATEN|DATA)\\b");
+
+  /**
+   * Longest single-line field ({@link #sanitizeLabel}) kept, in UTF-16 code units; a title, heading
+   * or Fundort is never longer in an ordinary document.
+   */
+  public static final int LABEL_MAX_LENGTH = 1_000;
 
   private IngestTextSanitizer() {}
+
+  /**
+   * {@code label} - a title, heading or Fundort - {@link #sanitize cleaned} and cut to {@link
+   * #LABEL_MAX_LENGTH} UTF-16 code units, never inside a surrogate pair. Only a prefix of four
+   * times that length is cleaned, so hidden characters the cleanup removes cannot empty the label;
+   * {@code null} stays {@code null}.
+   */
+  public static Result sanitizeLabel(String label) {
+    if (label == null) {
+      return sanitize(null);
+    }
+    Result cleaned = sanitize(prefix(label, 4 * LABEL_MAX_LENGTH));
+    return new Result(prefix(cleaned.text(), LABEL_MAX_LENGTH), cleaned.findings());
+  }
+
+  /** At most {@code max} code units of {@code text}, never ending on a high surrogate. */
+  private static String prefix(String text, int max) {
+    if (text.length() <= max) {
+      return text;
+    }
+    return text.substring(0, Character.isHighSurrogate(text.charAt(max - 1)) ? max - 1 : max);
+  }
 
   /**
    * {@code text} cleaned, with what was found; {@code null} stays {@code null} without findings.
@@ -131,7 +164,7 @@ public final class IngestTextSanitizer {
     result = markersDefused.toString();
     count(findings, Finding.ROLE_TOKEN, roleTokens);
     count(findings, Finding.INSTRUCTION_PHRASE, occurrences(INSTRUCTION_PHRASE, result));
-    count(findings, Finding.DATA_URL_PLACEHOLDER, occurrences(DATA_URL_PLACEHOLDER, result));
+    count(findings, Finding.DATA_URL_PLACEHOLDER, dataUrls(result));
     return new Result(result, findings);
   }
 
@@ -174,6 +207,23 @@ public final class IngestTextSanitizer {
         || cp == 0x202F
         || cp == 0x205F
         || cp == 0x3000;
+  }
+
+  /**
+   * URLs with a data placeholder in their query. The parameter must start after the first character
+   * past the scheme and end inside the URL; each URL counts once.
+   */
+  private static int dataUrls(String text) {
+    Matcher url = URL.matcher(text);
+    Matcher parameter = DATA_PLACEHOLDER_PARAMETER.matcher(text).useTransparentBounds(true);
+    int count = 0;
+    while (url.find()) {
+      int afterScheme = text.indexOf("://", url.start()) + 3;
+      if (afterScheme < url.end() && parameter.region(afterScheme + 1, url.end()).find()) {
+        count++;
+      }
+    }
+    return count;
   }
 
   private static int occurrences(Pattern pattern, CharSequence text) {

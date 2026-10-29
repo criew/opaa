@@ -49,7 +49,7 @@ final class ChunkLocationResolver {
               matcher.start(MarkdownHeading.LEVEL_GROUP),
               matcher.end(),
               matcher.group(MarkdownHeading.LEVEL_GROUP).length(),
-              matcher.group(MarkdownHeading.TITLE_GROUP).trim()));
+              MarkdownHeading.title(matcher).trim()));
     }
     return new ChunkLocationResolver(
         text, breaks.stream().mapToInt(Integer::intValue).toArray(), headings);

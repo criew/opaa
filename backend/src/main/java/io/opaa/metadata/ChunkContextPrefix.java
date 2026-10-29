@@ -245,7 +245,7 @@ public final class ChunkContextPrefix {
       if (!heading.matches()) {
         break;
       }
-      titles.add(heading.group(MarkdownHeading.TITLE_GROUP));
+      titles.add(MarkdownHeading.title(heading));
     }
     return titles;
   }
