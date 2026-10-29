@@ -49,6 +49,7 @@ public final class StubS3Server implements AutoCloseable {
   private final HttpServer server;
   private final Map<String, Map<String, byte[]>> buckets = new LinkedHashMap<>();
   private final Map<String, String> contentTypes = new LinkedHashMap<>();
+  private final Map<String, String> bucketRegions = new LinkedHashMap<>();
   private final Set<String> chunkedKeys = new java.util.HashSet<>();
   private final Deque<Failure> scripted = new ArrayDeque<>();
   private final List<Seen> seen = new CopyOnWriteArrayList<>();
@@ -63,6 +64,12 @@ public final class StubS3Server implements AutoCloseable {
 
   public String endpoint() {
     return "http://127.0.0.1:" + server.getAddress().getPort();
+  }
+
+  /** The bucket listing names {@code region} for {@code bucket}, as AWS does. */
+  public void bucketRegion(String bucket, String region) {
+    addBucket(bucket);
+    bucketRegions.put(bucket, region);
   }
 
   public void addBucket(String bucket) {
@@ -257,7 +264,11 @@ public final class StubS3Server implements AutoCloseable {
     for (String name : buckets.keySet()) {
       xml.append("<Bucket><Name>")
           .append(name)
-          .append("</Name><CreationDate>2026-01-01T00:00:00.000Z</CreationDate></Bucket>");
+          .append("</Name><CreationDate>2026-01-01T00:00:00.000Z</CreationDate>");
+      if (bucketRegions.containsKey(name)) {
+        xml.append("<BucketRegion>").append(bucketRegions.get(name)).append("</BucketRegion>");
+      }
+      xml.append("</Bucket>");
     }
     xml.append("</Buckets></ListAllMyBucketsResult>");
     xml(exchange, 200, xml.toString());

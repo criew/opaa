@@ -21,7 +21,9 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
@@ -248,13 +250,15 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
   @Override
   public S3BucketListing listBuckets() throws S3AccessException, InterruptedException {
     try {
-      List<String> names =
-          call(
-              S3Operation.LIST_BUCKETS,
-              "*",
-              null,
-              () -> s3.listBuckets().buckets().stream().map(Bucket::name).toList());
-      return new S3BucketListing.Listed(names);
+      List<Bucket> buckets =
+          call(S3Operation.LIST_BUCKETS, "*", null, () -> s3.listBuckets().buckets());
+      Map<String, String> regions = new HashMap<>();
+      for (Bucket bucket : buckets) {
+        if (bucket.bucketRegion() != null && !bucket.bucketRegion().isBlank()) {
+          regions.put(bucket.name(), bucket.bucketRegion());
+        }
+      }
+      return new S3BucketListing.Listed(buckets.stream().map(Bucket::name).toList(), regions);
     } catch (S3AccessException.ListForbidden e) {
       return new S3BucketListing.NotPermitted();
     }

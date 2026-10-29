@@ -440,32 +440,55 @@ public class S3SourceConnector
           false,
           null);
     }
-    S3BucketListResult listing;
+    S3AllBuckets.Resolution resolution;
     try {
-      listing =
-          connectionService.listBuckets(
+      resolution =
+          connectionService.resolveAllBuckets(
               settings.sourceUrl(),
               credentials,
               s3Settings.effectiveRegion(),
               s3Settings.pathStyle());
     } catch (ValidationException e) {
       return unreachable(e.getMessage());
+    } catch (S3AccessException e) {
+      return new SourceConnectionTestResult(
+          false,
+          e.getMessage(),
+          null,
+          e instanceof S3AccessException.Authentication ? Boolean.FALSE : null,
+          null);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       return unreachable("Der Verbindungstest wurde unterbrochen.");
     }
-    if (!listing.permitted()) {
+    if (resolution == null) {
       return new SourceConnectionTestResult(false, ALL_BUCKETS_NOT_LISTABLE, null, true, null);
     }
-    int count = listing.buckets().size();
-    return new SourceConnectionTestResult(
-        true,
-        "Anmeldung erfolgreich; der Zugang sieht "
-            + (count == 1 ? "1 Bucket" : count + " Buckets")
-            + ", die Bibliothek liest sie alle.",
-        null,
-        true,
-        null);
+    if (resolution.seen() == 0) {
+      return new SourceConnectionTestResult(
+          false, S3IndexingExecutor.NO_VISIBLE_BUCKET, null, true, null);
+    }
+    if (resolution.readable().isEmpty()) {
+      return new SourceConnectionTestResult(
+          false, S3IndexingExecutor.noReadableBucket(resolution), null, true, null);
+    }
+    return new SourceConnectionTestResult(true, allBucketsMessage(resolution), null, true, null);
+  }
+
+  /** How many buckets the key sees, how many the library reads, and why it leaves any out. */
+  static String allBucketsMessage(S3AllBuckets.Resolution resolution) {
+    int seen = resolution.seen();
+    String prefix =
+        "Anmeldung erfolgreich; der Zugang sieht " + (seen == 1 ? "1 Bucket" : seen + " Buckets");
+    if (resolution.outside().isEmpty()) {
+      return prefix + ", die Bibliothek liest sie alle.";
+    }
+    return prefix
+        + ", die Bibliothek liest "
+        + resolution.readable().size()
+        + " davon. Nicht im Umfang: "
+        + resolution.outsideNamed()
+        + ".";
   }
 
   @Override

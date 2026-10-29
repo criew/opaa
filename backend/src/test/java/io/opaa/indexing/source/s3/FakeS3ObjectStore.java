@@ -52,6 +52,7 @@ public class FakeS3ObjectStore implements S3ObjectStore {
   private final List<String> calls = java.util.Collections.synchronizedList(new ArrayList<>());
   private int pageSize = 1000;
   private boolean bucketListingPermitted = true;
+  private final Map<String, String> bucketRegions = new LinkedHashMap<>();
   private boolean closed;
 
   public FakeS3ObjectStore pageSize(int pageSize) {
@@ -106,6 +107,13 @@ public class FakeS3ObjectStore implements S3ObjectStore {
   /** The next call - whatever it is - fails with {@code failure}. */
   public FakeS3ObjectStore failNextCall(Supplier<S3AccessException> failure) {
     nextCallFailures.add(failure);
+    return this;
+  }
+
+  /** The bucket listing names {@code region} for {@code bucket}, as AWS does. */
+  public FakeS3ObjectStore bucketRegion(String bucket, String region) {
+    bucket(bucket);
+    bucketRegions.put(bucket, region);
     return this;
   }
 
@@ -226,7 +234,7 @@ public class FakeS3ObjectStore implements S3ObjectStore {
   public S3BucketListing listBuckets() throws S3AccessException {
     record("listBuckets");
     return bucketListingPermitted
-        ? new S3BucketListing.Listed(List.copyOf(buckets.keySet()))
+        ? new S3BucketListing.Listed(List.copyOf(buckets.keySet()), bucketRegions)
         : new S3BucketListing.NotPermitted();
   }
 

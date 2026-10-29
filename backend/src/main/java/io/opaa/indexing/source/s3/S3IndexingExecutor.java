@@ -208,9 +208,10 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * "Alle Buckets" as this run finds it: every bucket the key may list, each as a whole-bucket
-   * scope. A key without {@code s3:ListAllMyBuckets} or a listing without any bucket fails the run
-   * before any object is touched, so nothing indexed is removed. The caller saves {@code state}.
+   * "Alle Buckets" as this run finds it ({@link S3AllBuckets}): every bucket of the connection's
+   * region the key may list, each as a whole-bucket scope. A key without {@code
+   * s3:ListAllMyBuckets} or a resolution without any readable bucket fails the run before any
+   * object is touched, so nothing indexed is removed. The caller saves {@code state}.
    */
   private S3SourceSettings resolveAllBuckets(
       IndexingRun run,
@@ -228,31 +229,46 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
     if (!(listing instanceof S3BucketListing.Listed listed)) {
       throw new IndexingRunFailedException(S3SourceConnector.ALL_BUCKETS_NOT_LISTABLE);
     }
+    if (listed.names().isEmpty()) {
+      throw new IndexingRunFailedException(NO_VISIBLE_BUCKET);
+    }
+    S3AllBuckets.Resolution resolution;
+    try {
+      clientFactory.validateTargets(connection, settings.resolvedTo(namedBuckets(listed)).scopes());
+      resolution = S3AllBuckets.resolve(store, listed, settings.effectiveRegion(), () -> false);
+    } catch (S3AccessException e) {
+      throw accessFailure(run, e);
+    }
+    if (resolution.readable().isEmpty()) {
+      throw new IndexingRunFailedException(noReadableBucket(resolution));
+    }
+    Map<String, String> names = new LinkedHashMap<>();
+    resolution.readable().forEach(bucket -> names.put(bucket, bucket));
+    ResolvedScopes.note(run, state, names, resolution.outside(), "Bucket", "Buckets");
+    return settings.resolvedTo(resolution.readable());
+  }
+
+  /** The listed names that are bucket names at all; the others never get a request. */
+  private static List<String> namedBuckets(S3BucketListing.Listed listed) {
     List<String> buckets = new ArrayList<>();
     for (String name : new TreeSet<>(listed.names())) {
       try {
         buckets.add(S3Scope.validateBucket(name));
       } catch (S3Scope.InvalidS3ScopeException e) {
-        log.info(
-            "S3 run for library {} skips bucket name {}: {}",
-            run.library().getId(),
-            name,
-            e.getMessage());
+        // left out with its reason by S3AllBuckets
       }
     }
-    if (buckets.isEmpty()) {
-      throw new IndexingRunFailedException(NO_VISIBLE_BUCKET);
-    }
-    S3SourceSettings resolved = settings.resolvedTo(buckets);
-    try {
-      clientFactory.validateTargets(connection, resolved.scopes());
-    } catch (S3AccessException e) {
-      throw accessFailure(run, e);
-    }
-    Map<String, String> names = new LinkedHashMap<>();
-    buckets.forEach(bucket -> names.put(bucket, bucket));
-    ResolvedScopes.note(run, state, names, "Bucket", "Buckets");
-    return resolved;
+    return buckets;
+  }
+
+  /** The run's failure when the key sees buckets but the library may read none of them. */
+  static String noReadableBucket(S3AllBuckets.Resolution resolution) {
+    int count = resolution.seen();
+    return "Der Zugang sieht "
+        + (count == 1 ? "1 Bucket" : count + " Buckets")
+        + ", aber keinen davon kann die Bibliothek lesen: "
+        + resolution.outsideNamed()
+        + ". Der Bestand bleibt unverändert.";
   }
 
   private static IndexingRunFailedException accessFailure(IndexingRun run, S3AccessException e) {

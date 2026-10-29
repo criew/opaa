@@ -10,8 +10,10 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.SourceConnectionTestResult;
 import io.opaa.indexing.spi.SourceSettings;
 import io.opaa.indexing.spi.SourceSyncStateRepository;
+import io.opaa.s3.S3AccessException;
 import io.opaa.security.TargetAddressValidator;
 import java.util.List;
 import java.util.Map;
@@ -73,6 +75,92 @@ class S3AllBucketsTest {
                             List.of(Map.of("bucket", "dokumente", "prefix", ""))))))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("allBuckets");
+  }
+
+  @Test
+  void theConnectionTestNamesTheBucketsTheLibraryLeavesOut() throws Exception {
+    when(connectionService.resolveAllBuckets(anyString(), anyString(), any(), anyBoolean()))
+        .thenReturn(
+            new S3AllBuckets.Resolution(
+                List.of("dokumente"), Map.of("logs-us", "Region us-east-1")));
+
+    SourceConnectionTestResult result =
+        connector.testConnection(request(Map.of("allBuckets", true)), null);
+
+    assertThat(result.reachable()).isTrue();
+    assertThat(result.message())
+        .isEqualTo(
+            "Anmeldung erfolgreich; der Zugang sieht 2 Buckets, die Bibliothek liest 1 davon."
+                + " Nicht im Umfang: „logs-us“ (Region us-east-1).");
+  }
+
+  @Test
+  void theConnectionTestFailsWhenTheLibraryCouldReadNoBucket() throws Exception {
+    when(connectionService.resolveAllBuckets(anyString(), anyString(), any(), anyBoolean()))
+        .thenReturn(
+            new S3AllBuckets.Resolution(List.of(), Map.of("privat", S3AllBuckets.NOT_LISTABLE)));
+
+    SourceConnectionTestResult result =
+        connector.testConnection(request(Map.of("allBuckets", true)), null);
+
+    assertThat(result.reachable()).isFalse();
+    assertThat(result.message()).contains("keinen davon", "„privat“ (Auflisten nicht erlaubt");
+  }
+
+  @Test
+  void theConnectionTestReadsEveryBucketWhenNoneIsLeftOut() throws Exception {
+    when(connectionService.resolveAllBuckets(anyString(), anyString(), any(), anyBoolean()))
+        .thenReturn(new S3AllBuckets.Resolution(List.of("a-docs", "b-docs"), Map.of()));
+
+    SourceConnectionTestResult result =
+        connector.testConnection(request(Map.of("allBuckets", true)), null);
+
+    assertThat(result.message())
+        .isEqualTo(
+            "Anmeldung erfolgreich; der Zugang sieht 2 Buckets, die Bibliothek liest sie alle.");
+  }
+
+  @Test
+  void theResolutionProbesEachBucketOfTheRegionAndLeavesOutTheRest() throws Exception {
+    FakeS3ObjectStore store =
+        new FakeS3ObjectStore()
+            .bucketRegion("dokumente", "eu-central-1")
+            .bucketRegion("logs-us", "us-east-1")
+            .bucket("privat")
+            .failBucket("privat", () -> new S3AccessException.ListForbidden("privat"))
+            .bucket("umgezogen")
+            .failBucket("umgezogen", () -> new S3AccessException.WrongRegionOrStyle("umgezogen"))
+            .bucket("zz-spaet");
+    S3BucketListing.Listed listed = (S3BucketListing.Listed) store.listBuckets();
+    int[] probes = {0};
+
+    S3AllBuckets.Resolution resolution =
+        S3AllBuckets.resolve(store, listed, "EU-CENTRAL-1", () -> ++probes[0] > 3);
+
+    assertThat(resolution.readable()).containsExactly("dokumente");
+    assertThat(resolution.outside())
+        .containsEntry("logs-us", "Region us-east-1")
+        .containsEntry("privat", S3AllBuckets.NOT_LISTABLE)
+        .containsEntry("umgezogen", S3AllBuckets.OTHER_ENDPOINT)
+        .containsEntry("zz-spaet", S3AllBuckets.NOT_PROBED);
+    assertThat(store.calls()).noneMatch(call -> call.contains("logs-us"));
+  }
+
+  @Test
+  void aThrottledProbeIsTheCallersFailureNotALeftOutBucket() {
+    FakeS3ObjectStore store =
+        new FakeS3ObjectStore()
+            .bucket("dokumente")
+            .failBucket("dokumente", () -> new S3AccessException.RateLimited(5));
+
+    assertThatThrownBy(
+            () ->
+                S3AllBuckets.resolve(
+                    store,
+                    new S3BucketListing.Listed(List.of("dokumente")),
+                    "us-east-1",
+                    () -> false))
+        .isInstanceOf(S3AccessException.RateLimited.class);
   }
 
   @Test

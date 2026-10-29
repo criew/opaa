@@ -122,6 +122,33 @@ class S3ConnectionServiceTest {
   }
 
   @Test
+  void allBucketsProbesEveryListedBucketOfTheConnectionsRegion() throws Exception {
+    FakeS3ObjectStore store =
+        new FakeS3ObjectStore()
+            .bucketRegion("dokumente", "eu-central-1")
+            .bucketRegion("logs-us", "us-east-1")
+            .bucket("privat")
+            .failBucket("privat", () -> new S3AccessException.ListForbidden("privat"));
+    when(factory.createForProbe(any(), anyCollection())).thenReturn(store);
+
+    S3AllBuckets.Resolution resolution =
+        service.resolveAllBuckets("https://s3.example.org", "ak:sk", "eu-central-1", false);
+
+    assertThat(resolution.readable()).containsExactly("dokumente");
+    assertThat(resolution.outside()).containsOnlyKeys("logs-us", "privat");
+    assertThat(store.calls()).contains("list dokumente", "list privat");
+    assertThat(store.isClosed()).isTrue();
+  }
+
+  @Test
+  void allBucketsWithoutListAllMyBucketsIsNoResolution() throws Exception {
+    when(factory.createForProbe(any(), anyCollection()))
+        .thenReturn(new FakeS3ObjectStore().bucketListingPermitted(false));
+
+    assertThat(service.resolveAllBuckets("https://s3.example.org", "ak:sk", null, true)).isNull();
+  }
+
+  @Test
   void oneScopeThatAcceptedTheSignatureVerifiesTheKeyDespiteAnUnreachableOther() throws Exception {
     S3SourceSettings two =
         new S3SourceSettings(

@@ -57,6 +57,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -841,6 +842,149 @@ class S3IndexingExecutorTest {
     verifyNoReconciliation();
   }
 
+  private void allBuckets() {
+    library.updateSourceSettings(
+        "{\"region\": \"eu-central-1\", \"pathStyle\": true, \"allBuckets\": true,"
+            + " \"scopes\": []}");
+  }
+
+  // regression guard for #3117: ListBuckets names every bucket of the account; one of another
+  // region answered with a redirect and failed every run
+  @Test
+  void allBucketsLeavesOutTheBucketsOfAnotherRegionAndNamesThem() throws Exception {
+    allBuckets();
+    store
+        .bucketRegion("dokumente", "eu-central-1")
+        .put("dokumente", "2025/protokoll.pdf", "eins", PDF)
+        .bucketRegion("logs-us", "us-east-1")
+        .put("logs-us", "access.log.txt", "log", "text/plain")
+        .failBucket("logs-us", () -> new S3AccessException.WrongRegionOrStyle("logs-us"));
+    UUID jobId = UUID.randomUUID();
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(indexingJobService, never()).failJob(eq(jobId), any());
+    verify(eventRepository)
+        .save(argThat(event(IndexingEventCategory.SUMMARY, "Umfang „Alle“: 1 Bucket", null)));
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.SUMMARY,
+                    "Nicht im Umfang: 1 Bucket – „logs-us“ (Region us-east-1)",
+                    null)));
+    assertThat(store.calls()).noneMatch(call -> call.contains("logs-us"));
+    assertThat(reconciledPaths()).containsExactly("s3://dokumente/2025/protokoll.pdf");
+  }
+
+  // regression guard for #3117: a bucket the key sees but may not list kept every run incomplete
+  @Test
+  void allBucketsLeavesOutABucketTheKeyMayNotListAndStillReconcilesTheOthers() throws Exception {
+    allBuckets();
+    store
+        .put("dokumente", "2025/protokoll.pdf", "eins", PDF)
+        .bucket("privat")
+        .failBucket("privat", () -> new S3AccessException.ListForbidden("privat"));
+    stored("s3://privat/alt.pdf", "e:alt|3");
+    UUID jobId = UUID.randomUUID();
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.SUMMARY,
+                    "Nicht im Umfang: 1 Bucket – „privat“ (Auflisten nicht erlaubt,"
+                        + " s3:ListBucket fehlt)",
+                    null)));
+    assertThat(reconciledPaths())
+        .as("the listing is complete, so what the left-out bucket held is removed")
+        .containsExactly("s3://dokumente/2025/protokoll.pdf");
+  }
+
+  @Test
+  void allBucketsWithoutAnyReadableBucketFailsTheRunAndRemovesNothing() throws Exception {
+    allBuckets();
+    store
+        .bucket("privat")
+        .failBucket("privat", () -> new S3AccessException.ListForbidden("privat"));
+    stored("s3://privat/alt.pdf", "e:alt|3");
+    UUID jobId = UUID.randomUUID();
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(indexingJobService)
+        .failJob(
+            eq(jobId),
+            argThat(
+                message ->
+                    message.contains("keinen davon")
+                        && message.contains("„privat“ (Auflisten nicht erlaubt")));
+    verifyNoReconciliation();
+  }
+
+  @Test
+  void aThrottledBucketProbeFailsTheRunInsteadOfLeavingTheBucketOut() throws Exception {
+    allBuckets();
+    store.put("dokumente", "2025/protokoll.pdf", "eins", PDF);
+    store.failBucket("dokumente", () -> new S3AccessException.RateLimited(5));
+    UUID jobId = UUID.randomUUID();
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(indexingJobService).failJob(eq(jobId), any());
+    verifyNoReconciliation();
+  }
+
+  @Test
+  void anEventRunUnderAllBucketsChecksOnlyKeysOfReadableBucketsAndStaysQuietWithoutAChange()
+      throws Exception {
+    allBuckets();
+    store
+        .put("dokumente", "2025/neu.pdf", "neu", PDF)
+        .bucket("privat")
+        .failBucket("privat", () -> new S3AccessException.ListForbidden("privat"));
+    SourceSyncState state = writtenUnderCurrentSettings();
+    state.rememberResolvedScopes(Map.of("dokumente", "dokumente"));
+    when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(state));
+    UUID jobId = UUID.randomUUID();
+
+    executor.refreshObjects(jobId, library, Set.of("dokumente/2025/neu.pdf", "privat/x.pdf"), 0);
+
+    assertThat(store.calls())
+        .contains("head dokumente/2025/neu.pdf")
+        .doesNotContain("head privat/x.pdf");
+    verify(documentIngestService)
+        .ingest(DocumentIngests.that().file().at("s3://dokumente/2025/neu.pdf").match(), any());
+    verify(eventRepository, never())
+        .save(argThat(event(IndexingEventCategory.SUMMARY, "Umfang „Alle“", null)));
+    verify(eventRepository, never())
+        .save(argThat(event(IndexingEventCategory.SUMMARY, "Nicht im Umfang", null)));
+    verifyNoReconciliation();
+  }
+
+  @Test
+  void anEventRunUnderAllBucketsNamesABucketThatAppearedSinceTheLastRun() throws Exception {
+    allBuckets();
+    store.put("dokumente", "2025/neu.pdf", "neu", PDF).put("satzungen", "a.txt", "a", "text/plain");
+    SourceSyncState state = writtenUnderCurrentSettings();
+    state.rememberResolvedScopes(Map.of("dokumente", "dokumente"));
+    when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(state));
+
+    executor.refreshObjects(UUID.randomUUID(), library, Set.of("satzungen/a.txt"), 0);
+
+    verify(documentIngestService)
+        .ingest(DocumentIngests.that().file().at("s3://satzungen/a.txt").match(), any());
+    verify(eventRepository)
+        .save(argThat(event(IndexingEventCategory.SUMMARY, "Umfang „Alle“: 2 Buckets", null)));
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.SUMMARY, "Neu im Umfang: 1 Bucket – „satzungen“", null)));
+  }
+
   @Test
   void aRefusedKeyFailsTheRunWithTheAccessLayersMessage() throws Exception {
     store
@@ -993,6 +1137,16 @@ class S3IndexingExecutorTest {
         .isEqualTo(q1);
     verify(documentRepository).save(unchanged);
     verify(folderService).pruneOrphanedFolders(library, Set.of(q1, satzungen));
+  }
+
+  @Test
+  void underAllBucketsASingleBucketStillOpensTheChainWithItsName() throws Exception {
+    allBuckets();
+    store.put("dokumente", "2025/q1/a.pdf", "a", PDF);
+
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
+
+    verify(folderService).materializeFolderPath(library, List.of("dokumente", "2025", "q1"));
   }
 
   @Test

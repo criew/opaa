@@ -569,6 +569,13 @@ class AwsSdkS3ObjectStoreTest {
     assertThat(store.listBuckets())
         .isEqualTo(new S3BucketListing.Listed(List.of("docs", "satzungen")));
 
+    server.bucketRegion("satzungen", "eu-west-1");
+    assertThat(store.listBuckets())
+        .as("AWS names each bucket's region; the run leaves out those of another one")
+        .isEqualTo(
+            new S3BucketListing.Listed(
+                List.of("docs", "satzungen"), java.util.Map.of("satzungen", "eu-west-1")));
+
     server.failNext(403, "AccessDenied", 1);
     assertThat(store.listBuckets()).isInstanceOf(S3BucketListing.NotPermitted.class);
 
