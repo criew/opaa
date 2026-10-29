@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.rss;
 
+import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.compliance.DataFlow;
 import io.opaa.format.DocumentProperties;
@@ -55,12 +56,13 @@ import org.springframework.scheduling.annotation.Async;
  * orchestration and the per-run state ({@link RssFeedRunContext}).
  *
  * <p>Change detection is three-staged: a conditional {@code GET} on the feed, each entry's stored
- * {@code pubDate}, then the SHA-256 checksum. <b>No deletion by absence</b> (decision 5): a feed's
- * window is a property of the feed. A rejected or unreachable entry never aborts the run, and an
- * attachment failure only marks the run as having deferred something. Every request of a run counts
- * on its {@link RequestBudget} under the shared {@link SourceRequestPolicy}'s bounds; reaching one
- * ends the run through the frame as truncated, with the feed state unsaved so no entry is hidden
- * behind a later {@code 304}.
+ * {@code pubDate}, then the SHA-256 checksum. The first two are skipped while the feed state names
+ * other extraction settings than the library's ({@link RssFeedSettings}), until a complete run.
+ * <b>No deletion by absence</b> (decision 5): a feed's window is a property of the feed. A rejected
+ * or unreachable entry never aborts the run, and an attachment failure only marks the run as having
+ * deferred something. Every request of a run counts on its {@link RequestBudget} under the shared
+ * {@link SourceRequestPolicy}'s bounds; reaching one ends the run through the frame as truncated,
+ * with the feed state unsaved so no entry is hidden behind a later {@code 304}.
  */
 @DataFlow("source-rss")
 public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
@@ -145,8 +147,15 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     // the feed state stays unsaved, so the next run sees every entry again
     run.budgetContinuation(
         () -> "der Lauf endet unvollständig, der nächste Lauf nimmt die übrigen Einträge auf");
+    RssFeedSettings extraction = RssFeedSettings.read(settings.connectorSettings());
     Optional<FeedFetcher.LoadedFeed> loaded =
-        feedFetcher.fetchAndParse(httpClient, targetLibrary.getId(), feedUrl, authHeader, budget);
+        feedFetcher.fetchAndParse(
+            httpClient,
+            targetLibrary.getId(),
+            feedUrl,
+            authHeader,
+            budget,
+            extraction.fingerprint());
     if (loaded.isEmpty()) {
       run.progress().setTotal(0);
       return ListingOutcome.partial();
@@ -164,7 +173,14 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
             run.progress(),
             run.events(),
             new AtomicBoolean(loaded.get().truncated()),
-            budget);
+            budget,
+            extraction,
+            loaded.get().reprocessing());
+    if (ctx.reprocessing()) {
+      log.info(
+          "RSS feed {} was last processed under other extraction settings, reprocessing every entry",
+          feedUrl);
+    }
     for (RssFeedEntry entry : entries) {
       processEntry(run, ctx, entry);
       run.progress().report();
@@ -177,7 +193,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     if (!ctx.anyEntryDeferred().get()
         && run.progress().failedCount() == 0
         && !run.progress().quotaReached()) {
-      feedFetcher.saveState(targetLibrary.getId(), feedUrl, loaded.get().feedResponse());
+      feedFetcher.saveState(
+          targetLibrary.getId(), feedUrl, loaded.get().feedResponse(), extraction.fingerprint());
     } else {
       log.info(
           "Not persisting RSS feed state for {} - this run deferred or failed at least one"
@@ -222,7 +239,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     }
 
     Optional<Instant> publishedAt = entry.publishedAt();
-    if (run.isUnchanged(entryUrl, publishedAt.map(Instant::toString).orElse(null))) {
+    if (!ctx.reprocessing()
+        && run.isUnchanged(entryUrl, publishedAt.map(Instant::toString).orElse(null))) {
       processUnchangedEntry(ctx, entryUrl);
       return;
     }
@@ -259,7 +277,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
                   .build(),
               null);
       // A rejected or failed entry's attachments are deliberately not indexed.
-      if (run.recordOutcome(result, entryUrl)) {
+      if (run.recordOutcome(result, entryUrl) || keptUnderNewSettings(ctx, result, entryUrl)) {
         log.info("Indexed RSS entry: {}", entryUrl);
         indexAttachments(ctx, detailPage.attachments(), entryUrl);
       }
@@ -347,7 +365,11 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     try {
       return Optional.of(
           detailPageExtractor.fetch(
-              ctx.httpClient(), entryUrl, ctx.authHeaderFor(entryUrl), ctx.requestBudget()));
+              ctx.httpClient(),
+              entryUrl,
+              ctx.authHeaderFor(entryUrl),
+              ctx.requestBudget(),
+              ctx.extraction()));
     } catch (DetailPageExtractor.RejectedByRemoteException e) {
       // ADR-0017: a 403/429/redirect to a foreign host is declined, not a processing failure - the
       // German event message is e.userMessage(), never e.getMessage() (can carry the raw target).
@@ -426,6 +448,21 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
           !backfill);
     }
     return Optional.empty();
+  }
+
+  /**
+   * An entry read again under changed settings whose text stayed the same: the ingest kept its
+   * chunks ({@code SKIPPED}), but a changed profile may find attachments the old one missed.
+   */
+  private boolean keptUnderNewSettings(
+      RssFeedRunContext ctx, DocumentIngestResult result, String entryUrl) {
+    return ctx.reprocessing()
+        && result == DocumentIngestResult.SKIPPED
+        && documentRepository
+            .findByLibraryIdAndFilePath(ctx.targetLibrary().getId(), entryUrl)
+            .filter(
+                entry -> entry.getStatus() == DocumentStatus.INDEXED && !entry.hasMalwareFinding())
+            .isPresent();
   }
 
   private void recordDetailPageFailure(

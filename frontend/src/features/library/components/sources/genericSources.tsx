@@ -11,6 +11,13 @@ import {
   type FilesystemSourceValues,
 } from '../../utils/filesystemSource'
 import { filesystemSetup, urlSetup } from '../setup/connectors/genericSetups'
+import { rssFeedSetup } from '../setup/connectors/rssFeedSetup'
+import {
+  EMPTY_RSS_FEED_VALUES,
+  rssFeedPayload,
+  storedRssFeedValues,
+  type RssFeedSourceValues,
+} from '../../utils/rssFeedSource'
 import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceConfiguration, SourceRegistration } from './types'
 
@@ -64,8 +71,24 @@ export const httpDirectorySource: SourceRegistration = {
   configuration: urlConfiguration(),
 }
 
+/** The address as every web source, plus how its detail pages are read. */
+function rssFeedConfiguration(): SourceConfiguration<RssFeedSourceValues> {
+  return {
+    ...urlConfiguration(),
+    empty: EMPTY_RSS_FEED_VALUES,
+    draftFields: ['sourcePath', 'sourceUrl', 'mainContentSelector', 'attachmentProfile'],
+    fromLibrary: storedRssFeedValues,
+    isDirty: (values) =>
+      values.sourceUrl !== '' ||
+      values.mainContentSelector.trim() !== '' ||
+      values.attachmentProfile !== '',
+    toPayload: rssFeedPayload,
+    setup: rssFeedSetup,
+  }
+}
+
 export const rssFeedSource: SourceRegistration = {
   ...SOURCE_TYPE_DIRECTORY.RSS_FEED,
   runCountsEntries: true,
-  configuration: urlConfiguration(),
+  configuration: rssFeedConfiguration(),
 }

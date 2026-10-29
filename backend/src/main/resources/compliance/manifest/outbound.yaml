@@ -217,8 +217,8 @@ dataFlows:
     target: Die Ziele der Anhänge, die ein Feed-Eintrag verlinkt
     data: Abrufanfragen; die Zugangsdaten nur an die Herkunft des Feeds
     trigger: Indizierungslauf einer RSS-Bibliothek
-    switchOff: Über das Anhangsprofil und die Höchstzahl der Anhänge je Eintrag
-    settings: [opaa.indexing.rss.attachment-profile, opaa.indexing.rss.max-attachments-per-entry]
+    switchOff: Über das Anlagenprofil der Bibliothek und die Höchstzahl der Anhänge je Eintrag
+    settings: [knowledge_libraries.source_settings, opaa.indexing.rss.max-attachments-per-entry]
   - id: service-account-token
     group: CONNECTOR
     viaOutboundProxy: true

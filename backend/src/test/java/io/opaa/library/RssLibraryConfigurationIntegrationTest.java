@@ -176,7 +176,9 @@ class RssLibraryConfigurationIntegrationTest {
             .getId();
 
     libraryService.updateLibrary(
-        libraryId, libraryUpdate("Feed").sourceSettings(ConnectorData.of(Map.of())).build(), caller);
+        libraryId,
+        libraryUpdate("Feed").sourceSettings(ConnectorData.of(Map.of())).build(),
+        caller);
 
     ConnectorData stored =
         ConnectorData.storedIn(libraryRepository.findById(libraryId).orElseThrow());
@@ -185,7 +187,8 @@ class RssLibraryConfigurationIntegrationTest {
 
   private UUID createFeed(CurrentUser caller) {
     return libraryService
-        .createLibrary(libraryCreation("Feed", SourceTypes.RSS_FEED).sourceUrl(FEED).build(), caller)
+        .createLibrary(
+            libraryCreation("Feed", SourceTypes.RSS_FEED).sourceUrl(FEED).build(), caller)
         .library()
         .getId();
   }

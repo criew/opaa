@@ -29,8 +29,7 @@ describe('rssFeedSource', () => {
 
   it('ignores a stored profile it does not know', () => {
     expect(
-      storedRssFeedValues({ sourceSettings: { attachmentProfile: 'WORDPRESS' } })
-        .attachmentProfile,
+      storedRssFeedValues({ sourceSettings: { attachmentProfile: 'WORDPRESS' } }).attachmentProfile,
     ).toBe('')
   })
 

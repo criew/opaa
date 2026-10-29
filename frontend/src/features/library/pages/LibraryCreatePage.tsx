@@ -214,10 +214,12 @@ export default function LibraryCreatePage() {
       ownAddressAllowed(descriptor)
     )
 
-  const values: unknown = withConnection(
-    sourceValues[valuesKey] ?? configuration?.empty,
-    connection,
-  )
+  // types sharing a valuesKey may differ in their own fields: the empty ones fill what is missing
+  const enteredValues = (entered: unknown): unknown =>
+    configuration
+      ? { ...(configuration.empty as object), ...(entered as object | undefined) }
+      : entered
+  const values: unknown = withConnection(enteredValues(sourceValues[valuesKey]), connection)
   const formContext: SourceFormContext = {
     mode: 'create',
     sourceType,
@@ -654,10 +656,7 @@ export default function LibraryCreatePage() {
               setSourceValues((prev) => ({
                 ...prev,
                 [valuesKey]: {
-                  ...(withConnection(
-                    prev[valuesKey] ?? configuration?.empty,
-                    connection,
-                  ) as object),
+                  ...(withConnection(enteredValues(prev[valuesKey]), connection) as object),
                   ...withoutFixed(patch, connection),
                 },
               }))

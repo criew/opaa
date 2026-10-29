@@ -242,3 +242,29 @@ test.describe('RSS-Feed-Quelle: Negativpfad, ein fehlerhafter Eintrag (#471)', (
     expect(fileNames).toEqual([ENTRY_TITLE_SITZUNGSTERMINE])
   })
 })
+
+// #3396: content selector and attachment profile are settings of the feed library; the connection
+// test checks them on the first entry's detail page (seiten/oeffnungszeiten.html, one <main> with
+// one linked attachment) without creating anything.
+test.describe('RSS-Feed-Quelle: Inhaltsselektor im Verbindungstest (#3396)', () => {
+  test('4. Der Verbindungstest prüft den eigenen Inhaltsselektor auf der Detailseite', async ({
+    authenticatedPage: page,
+  }) => {
+    await openNewLibraryWizard(page)
+    await page.getByRole('radio', { name: /RSS-Feed/ }).click()
+    await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+    await page.getByLabel('Adresse', { exact: true }).fill(FEED_URL_OK)
+    await page.getByRole('button', { name: 'Ändern Umfang' }).click()
+    await page.getByLabel('Inhaltsselektor (optional)').fill('main')
+    await page.getByRole('button', { name: 'Ändern Verbindung' }).click()
+    await page.getByRole('button', { name: 'Verbindung testen' }).click()
+
+    await expect(
+      page.getByText(
+        'Der Inhaltsselektor findet auf der Detailseite des ersten Eintrags 1 Bereich, 1 Anlage' +
+          ' nach dem Anlagenprofil GENERIC.',
+        { exact: false },
+      ),
+    ).toBeVisible()
+  })
+})

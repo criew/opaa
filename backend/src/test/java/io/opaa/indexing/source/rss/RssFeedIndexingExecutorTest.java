@@ -21,7 +21,6 @@ import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.DocumentService;
 import io.opaa.format.file.html.HtmlDocumentFormat;
 import io.opaa.format.shared.HeadingSectionSplitterFixture;
-import io.opaa.indexing.attachment.AttachmentProfile;
 import io.opaa.indexing.credentials.LibrarySourceConnectionResolver;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
@@ -30,9 +29,9 @@ import io.opaa.indexing.document.DocumentIngests;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRepository;
-import io.opaa.indexing.spi.ConnectorData;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.run.IndexingRunTemplate;
+import io.opaa.indexing.spi.ConnectorData;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -662,10 +661,7 @@ class RssFeedIndexingExecutorTest {
     // its attachments backfilled - existsBySourceEntryUrlAndLibraryId(false) is that case, and the
     // entry's own pubDate stays unchanged (its main text is never reprocessed), only the
     // attachment is new.
-    executor =
-        newExecutor(
-            new RssFeedProperties(
-                200, 10_000, 10_000, 0, 10, 10_000));
+    executor = newExecutor(new RssFeedProperties(200, 10_000, 10_000, 0, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -720,10 +716,7 @@ class RssFeedIndexingExecutorTest {
     // must not suppress this library's own backfill. Stubbing a different library id to answer
     // true (while this run's own library answers false, as it genuinely has none yet) makes the
     // test fail loudly if the executor ever queries the wrong library id.
-    executor =
-        newExecutor(
-            new RssFeedProperties(
-                200, 10_000, 10_000, 0, 10, 10_000));
+    executor = newExecutor(new RssFeedProperties(200, 10_000, 10_000, 0, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1272,10 +1265,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void genericProfileFindsAndIndexesAPdfAttachmentInTheMainContent() throws IOException {
-    executor =
-        newExecutor(
-            new RssFeedProperties(
-                200, 10_000, 10_000, 0, 10, 10_000));
+    executor = newExecutor(new RssFeedProperties(200, 10_000, 10_000, 0, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1323,10 +1313,7 @@ class RssFeedIndexingExecutorTest {
     // path too - a document linked under an extension SupportedDocumentFormats does not recognize
     // ("bescheid.csv") must still become a candidate, and is accepted from its actual
     // content, with the deviation reported instead of hidden.
-    executor =
-        newExecutor(
-            new RssFeedProperties(
-                200, 10_000, 10_000, 0, 10, 10_000));
+    executor = newExecutor(new RssFeedProperties(200, 10_000, 10_000, 0, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1374,10 +1361,7 @@ class RssFeedIndexingExecutorTest {
     // progress.recordSkipped() (an attachment was never counted as a discrete unit of the run's
     // total to begin with) and instead sets anyEntryDeferred, the same deliberate "try
     // this attachment again next run" behaviour the lost-attachment handling already uses.
-    executor =
-        newExecutor(
-            new RssFeedProperties(
-                200, 10_000, 10_000, 0, 10, 10_000));
+    executor = newExecutor(new RssFeedProperties(200, 10_000, 10_000, 0, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1422,10 +1406,7 @@ class RssFeedIndexingExecutorTest {
     // document counter (documentsIndexedTotal) by one for every attachment indexed, not just for
     // the entry itself - documentsProcessed stays at one feed entry regardless of how many
     // attachments it carries.
-    executor =
-        newExecutor(
-            new RssFeedProperties(
-                200, 10_000, 10_000, 0, 10, 10_000));
+    executor = newExecutor(new RssFeedProperties(200, 10_000, 10_000, 0, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1468,10 +1449,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void aLinkToAForeignHostIsNeverTreatedAsAnAttachment() throws IOException {
-    executor =
-        newExecutor(
-            new RssFeedProperties(
-                200, 10_000, 10_000, 0, 10, 10_000));
+    executor = newExecutor(new RssFeedProperties(200, 10_000, 10_000, 0, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\"https://anderes-beispiel.gov/anlage.pdf\">Fremd</a></main></body></html>";
@@ -1569,10 +1547,7 @@ class RssFeedIndexingExecutorTest {
     // DocumentIngestService#processUrlFile already applies for HTTP_DIRECTORY files (see
     // DocumentIngestServiceTest#processUrlFileSkipsUnchangedDocument). This test exercises the
     // executor's side of that: both entries' detail pages link the identical attachment URL.
-    executor =
-        newExecutor(
-            new RssFeedProperties(
-                200, 10_000, 10_000, 0, 10, 10_000));
+    executor = newExecutor(new RssFeedProperties(200, 10_000, 10_000, 0, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1618,10 +1593,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void aFailedAttachmentDownloadDoesNotAbortTheEntryOrTheRun() throws IOException {
-    executor =
-        newExecutor(
-            new RssFeedProperties(
-                200, 10_000, 10_000, 0, 10, 10_000));
+    executor = newExecutor(new RssFeedProperties(200, 10_000, 10_000, 0, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1645,9 +1617,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void anAttachmentExceedingTheSizeLimitIsSkippedWithoutFailingTheEntry() throws IOException {
-    executor =
-        newExecutor(
-            new RssFeedProperties(200, 10_000, 10_000, 0, 10, 10));
+    executor = newExecutor(new RssFeedProperties(200, 10_000, 10_000, 0, 10, 10));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1672,10 +1642,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void attachmentsBeyondTheConfiguredLimitAreNotProcessed() throws IOException {
-    executor =
-        newExecutor(
-            new RssFeedProperties(
-                200, 10_000, 10_000, 0, 1, 10_000));
+    executor = newExecutor(new RssFeedProperties(200, 10_000, 10_000, 0, 1, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1731,10 +1698,7 @@ class RssFeedIndexingExecutorTest {
     // a bot-protection challenge or 200-status error page served for a
     // link a profile identified via its .pdf extension must never be trusted just because the URL
     // carried a supported extension.
-    executor =
-        newExecutor(
-            new RssFeedProperties(
-                200, 10_000, 10_000, 0, 10, 10_000));
+    executor = newExecutor(new RssFeedProperties(200, 10_000, 10_000, 0, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1808,10 +1772,7 @@ class RssFeedIndexingExecutorTest {
             exchange.close();
           });
 
-      executor =
-          newExecutor(
-              new RssFeedProperties(
-                  200, 10_000, 10_000, 0, 10, 10_000));
+      executor = newExecutor(new RssFeedProperties(200, 10_000, 10_000, 0, 10, 10_000));
       String detailHtml =
           "<html><body><main>Text"
               + "<a href=\""
@@ -1844,8 +1805,7 @@ class RssFeedIndexingExecutorTest {
     // leave it out.
     executor =
         newExecutor(
-            new RssFeedProperties(
-                200, 10_000, 10_000, 0, 10, 10_000),
+            new RssFeedProperties(200, 10_000, 10_000, 0, 10, 10_000),
             new SourceRequestPolicy(
                 "OPAA-Indexer/attachment-test", RateLimitPolicy.NONE, sleeps::add));
     String detailHtml =
@@ -1935,10 +1895,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void aThrottledAttachmentIsWaitedOutAndThenIndexed() throws Exception {
-    executor =
-        newExecutor(
-            new RssFeedProperties(
-                200, 10_000, 10_000, 0, 10, 10_000));
+    executor = newExecutor(new RssFeedProperties(200, 10_000, 10_000, 0, 10, 10_000));
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
     serve(
         "/a.html",
@@ -2038,10 +1995,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void attachmentDownloadSendsTheConfiguredAuthorizationHeader() throws IOException {
-    executor =
-        newExecutor(
-            new RssFeedProperties(
-                200, 10_000, 10_000, 0, 10, 10_000));
+    executor = newExecutor(new RssFeedProperties(200, 10_000, 10_000, 0, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -2119,10 +2073,7 @@ class RssFeedIndexingExecutorTest {
     // *feed*
     // but same-origin to a foreign *detail page* is exactly the gap this test
     // describes one level down from the entry itself.
-    executor =
-        newExecutor(
-            new RssFeedProperties(
-                200, 10_000, 10_000, 0, 10, 10_000));
+    executor = newExecutor(new RssFeedProperties(200, 10_000, 10_000, 0, 10, 10_000));
     HttpServer foreignServer = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
     foreignServer.start();
     String foreignBaseUrl = "http://localhost:" + foreignServer.getAddress().getPort();
@@ -2195,10 +2146,7 @@ class RssFeedIndexingExecutorTest {
             exchange.close();
           });
 
-      executor =
-          newExecutor(
-              new RssFeedProperties(
-                  200, 10_000, 10_000, 0, 10, 10_000));
+      executor = newExecutor(new RssFeedProperties(200, 10_000, 10_000, 0, 10, 10_000));
       String detailHtml =
           "<html><body><main>Text"
               + "<a href=\""
@@ -2522,8 +2470,7 @@ class RssFeedIndexingExecutorTest {
 
   /** An entry the feed state says was fully processed: indexed with the feed's own pubDate. */
   private void alreadyIndexed(String entryUrl) {
-    Document existing =
-        new Document("Titel", entryUrl, "text/html", 10L, SourceTypes.FILESYSTEM);
+    Document existing = new Document("Titel", entryUrl, "text/html", 10L, SourceTypes.FILESYSTEM);
     existing.setStatus(DocumentStatus.INDEXED);
     existing.setLastModifiedRemote(java.time.Instant.parse("2024-01-01T10:00:00Z").toString());
     existing.setLibraryId(library.getId());
@@ -2553,8 +2500,7 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void changedExtractionSettingsReprocessAnUnchangedEntryWithoutAConditionalGet()
-      throws Exception {
+  void changedExtractionSettingsReprocessAnUnchangedEntryWithoutAConditionalGet() throws Exception {
     String feedUrl = baseUrl + "/feed.xml";
     // the state of the last complete run, under the factory defaults
     when(feedStateRepository.findByLibraryIdAndFeedUrl(library.getId(), feedUrl))
@@ -2589,12 +2535,12 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void unchangedExtractionSettingsKeepTheConditionalGetAndSkipTheUnchangedEntry()
-      throws Exception {
+  void unchangedExtractionSettingsKeepTheConditionalGetAndSkipTheUnchangedEntry() throws Exception {
     String feedUrl = baseUrl + "/feed.xml";
     library.updateSourceSettings("{\"mainContentSelector\":\"#inhalt\"}");
     RssFeedState state = new RssFeedState(library.getId(), feedUrl, "\"alt\"", null);
-    state.setExtractionSettings(RssFeedSettings.read(ConnectorData.storedIn(library)).fingerprint());
+    state.setExtractionSettings(
+        RssFeedSettings.read(ConnectorData.storedIn(library)).fingerprint());
     when(feedStateRepository.findByLibraryIdAndFeedUrl(library.getId(), feedUrl))
         .thenReturn(Optional.of(state));
     AtomicReference<String> ifNoneMatch =

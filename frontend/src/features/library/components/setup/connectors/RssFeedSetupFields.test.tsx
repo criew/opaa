@@ -67,9 +67,7 @@ describe('rssFeedSetup', () => {
       context,
     )
 
-    expect(issues).toEqual([
-      expect.objectContaining({ field: 'mainContentSelector' }),
-    ])
+    expect(issues).toEqual([expect.objectContaining({ field: 'mainContentSelector' })])
     expect(rssFeedSetup.rowOf('mainContentSelector')).toBe('scope')
     expect(rssFeedSetup.rowOf('sourceUrl')).toBe('connection')
   })

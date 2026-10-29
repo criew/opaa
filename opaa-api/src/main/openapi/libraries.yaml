@@ -1385,7 +1385,10 @@ components:
             document libraries {driveId, folders, name, site}, only driveId required; site is
             {id, name} of the site the library was chosen in, the id as the listing gives it after
             site:, the name only shown - the connection test reports a library outside its site)
-            and fullSyncIntervalDays. Types without settings take none.
+            and fullSyncIntervalDays; RSS_FEED takes mainContentSelector (CSS selector in Jsoup
+            syntax, at most 200 characters, no regular expression and at most one :has) and
+            attachmentProfile (GENERIC or GSB), both optional, absent for the factory default.
+            Types without settings take none.
           nullable: true
           type: object
           additionalProperties: true
@@ -1488,7 +1491,10 @@ components:
           description: >
             The connector settings the probe uses (ADR-0038), shaped like
             LibraryRequest.sourceSettings. CONFLUENCE reads an expected edition from it; S3 the
-            scopes to probe, falling back to the stored library's with libraryId.
+            scopes to probe, falling back to the stored library's with libraryId; RSS_FEED the
+            content selector and attachment profile to check on the first entry's detail page,
+            falling back to the stored library's - under the factory defaults no detail page is
+            fetched.
           nullable: true
           type: object
           additionalProperties: true
@@ -1537,7 +1543,10 @@ components:
             detected edition as edition; S3 one entry per probed scope under scopes, each with
             bucket, prefix, bucketReachable, listAllowed, readAllowed (null when there was nothing
             to read), objectCount, objectCountIsLowerBound and message (the German diagnosis of
-            the refused step, null when every step passed).
+            the refused step, null when every step passed). RSS_FEED with its own content selector
+            or attachment profile reports detailPage with checked (false when the first entry's
+            detail page could not be read), selectorMatched, contentAreas (0 when the body stood
+            in) and attachments.
           nullable: true
           type: object
           additionalProperties: true
@@ -1887,8 +1896,9 @@ components:
             present object replaces the connector decides: CONFLUENCE replaces each part it
             carries - spaces as a whole (non-empty; every change forces a full sync),
             fullSyncIntervalDays (1-365, 0 returns to the installation-wide default) - and accepts
-            edition only when it equals the stored one; S3 and FILESYSTEM replace their settings as
-            a whole.
+            edition only when it equals the stored one; S3, FILESYSTEM and RSS_FEED replace their
+            settings as a whole (RSS_FEED: an empty object returns to the factory defaults, and a
+            changed selector or profile makes the next run read every entry of the feed again).
           nullable: true
           type: object
           additionalProperties: true

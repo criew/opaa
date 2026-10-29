@@ -90,8 +90,7 @@ class RssFeedSourceConnectorSettingsTest {
     KnowledgeLibrary library = library(baseUrl + "/feed.xml");
 
     assertThat(connector.settingsState(library, null))
-        .containsOnlyKeys(
-            RssFeedSettings.MAIN_CONTENT_SELECTOR, RssFeedSettings.ATTACHMENT_PROFILE)
+        .containsOnlyKeys(RssFeedSettings.MAIN_CONTENT_SELECTOR, RssFeedSettings.ATTACHMENT_PROFILE)
         .containsEntry(RssFeedSettings.MAIN_CONTENT_SELECTOR, null)
         .containsEntry(RssFeedSettings.ATTACHMENT_PROFILE, null);
     assertThat(
@@ -104,8 +103,8 @@ class RssFeedSourceConnectorSettingsTest {
   }
 
   /**
-   * Without any stored feed state there is nothing a changed setting could be compared against;
-   * the change leaves a state that matches no settings, so the next run reads every entry again.
+   * Without any stored feed state there is nothing a changed setting could be compared against; the
+   * change leaves a state that matches no settings, so the next run reads every entry again.
    */
   @Test
   void aChangedSettingWithoutFeedStateLeavesAStateThatForcesTheNextRunToReprocess() {
@@ -168,8 +167,7 @@ class RssFeedSourceConnectorSettingsTest {
             + "<div class=\"inhalt\">Eins</div><div class=\"inhalt\">Zwei</div></body></html>");
 
     SourceConnectionTestResult result =
-        connector.testConnection(
-            feed(Map.of("mainContentSelector", ".inhalt")), null);
+        connector.testConnection(feed(Map.of("mainContentSelector", ".inhalt")), null);
 
     assertThat(result.reachable()).isTrue();
     assertThat(result.documentCount()).isEqualTo(2L);

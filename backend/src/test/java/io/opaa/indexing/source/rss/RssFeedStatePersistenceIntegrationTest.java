@@ -75,7 +75,7 @@ class RssFeedStatePersistenceIntegrationTest {
     assertThat(lastModified.length()).isGreaterThan(200);
     FeedFetcher fetcher = new FeedFetcher(null, feedStateRepository, null, null, null);
 
-    fetcher.saveState(library.getId(), FEED_URL, responseWith(etag, lastModified));
+    fetcher.saveState(library.getId(), FEED_URL, responseWith(etag, lastModified), null);
 
     assertThat(
             jdbcTemplate.queryForMap(

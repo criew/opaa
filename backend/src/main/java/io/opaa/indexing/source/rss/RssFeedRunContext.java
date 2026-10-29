@@ -23,7 +23,9 @@ import java.util.function.Supplier;
  * none, and is asked before every request. {@link #requestBudget} counts and bounds every request
  * of the run - feed, detail pages, attachments. {@link #anyEntryDeferred} is the only mutable
  * field: set by the executor or {@code AttachmentIndexer} on any deferral, never reset, and read
- * once before deciding whether the conditional-GET state may be saved.
+ * once before deciding whether the conditional-GET state may be saved. {@link #extraction} are the
+ * library's settings for every detail page; {@link #reprocessing} lets no entry be skipped as
+ * unchanged, since the stored ones were extracted under other settings.
  */
 public record RssFeedRunContext(
     HttpClient httpClient,
@@ -33,8 +35,33 @@ public record RssFeedRunContext(
     IndexingRunProgress progress,
     IndexingRunEventRecorder events,
     AtomicBoolean anyEntryDeferred,
-    RequestBudget requestBudget)
+    RequestBudget requestBudget,
+    RssFeedSettings extraction,
+    boolean reprocessing)
     implements AttachmentAccess {
+
+  /** A run under the factory defaults whose stored entries need no reprocessing. */
+  public RssFeedRunContext(
+      HttpClient httpClient,
+      KnowledgeLibrary targetLibrary,
+      Supplier<String> authHeader,
+      String feedUrl,
+      IndexingRunProgress progress,
+      IndexingRunEventRecorder events,
+      AtomicBoolean anyEntryDeferred,
+      RequestBudget requestBudget) {
+    this(
+        httpClient,
+        targetLibrary,
+        authHeader,
+        feedUrl,
+        progress,
+        events,
+        anyEntryDeferred,
+        requestBudget,
+        RssFeedSettings.read(null),
+        false);
+  }
 
   /** {@link AttachmentAccess#markDeferred()} - delegates to {@link #anyEntryDeferred}. */
   @Override

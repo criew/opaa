@@ -32,6 +32,12 @@ import java.util.UUID;
             columnNames = {"library_id", "feed_url"}))
 public class RssFeedState {
 
+  /**
+   * Settings no run used: a change before any complete run leaves this, so the next one
+   * reprocesses.
+   */
+  public static final String UNKNOWN_EXTRACTION = "";
+
   @Id private UUID id;
 
   @Column(name = "library_id", nullable = false)
@@ -45,6 +51,13 @@ public class RssFeedState {
 
   @Column(name = "last_modified", columnDefinition = "text")
   private String lastModified;
+
+  /**
+   * The {@link RssFeedSettings#fingerprint()} the feed's entries were last completely processed
+   * under, {@code null} for the factory defaults; {@link #UNKNOWN_EXTRACTION} matches no settings.
+   */
+  @Column(name = "extraction_settings", columnDefinition = "text")
+  private String extractionSettings;
 
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
@@ -86,6 +99,14 @@ public class RssFeedState {
 
   public void setLastModified(String lastModified) {
     this.lastModified = lastModified;
+  }
+
+  public String getExtractionSettings() {
+    return extractionSettings;
+  }
+
+  public void setExtractionSettings(String extractionSettings) {
+    this.extractionSettings = extractionSettings;
   }
 
   public Instant getUpdatedAt() {

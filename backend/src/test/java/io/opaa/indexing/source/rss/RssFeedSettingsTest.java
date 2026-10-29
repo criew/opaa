@@ -117,8 +117,8 @@ class RssFeedSettingsTest {
 
   @Test
   void theFingerprintFollowsTheEffectiveSettings() {
-    String gsb = RssFeedSettings.read(ConnectorData.of(Map.of("attachmentProfile", "GSB")))
-        .fingerprint();
+    String gsb =
+        RssFeedSettings.read(ConnectorData.of(Map.of("attachmentProfile", "GSB"))).fingerprint();
     String gsbAgain =
         RssFeedSettings.read(ConnectorData.of(Map.of("attachmentProfile", "GSB"))).fingerprint();
     String selectorOnly = RssFeedSettings.read(selector("#inhalt")).fingerprint();
