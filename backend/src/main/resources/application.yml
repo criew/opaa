@@ -796,6 +796,10 @@ opaa:
       encryption-key: ${OPAA_SETTINGS_ENCRYPTION_KEY:}
       # Earlier keys after a key rotation, as for the credentials above (ADR-0064).
       previous-keys: ${OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS:}
+    cipher-format:
+      # false keeps writing enc:v1 and holds the re-encryption back, so that a rollback to a
+      # version before ADR-0064 still reads every stored secret; true once that window is over.
+      keyed: ${OPAA_ENCRYPTION_KEYED_FORMAT:true}
 
 management:
   endpoints:

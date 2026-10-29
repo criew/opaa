@@ -108,6 +108,14 @@ public class CredentialsEncryptor {
   }
 
   /**
+   * Whether {@code stored} is in the keyed format, bound to its row: such a value that no key reads
+   * can never be read at another row, so it must not be moved there as stored.
+   */
+  public static boolean isKeyed(String stored) {
+    return stored != null && stored.startsWith(EncryptionKeyring.V2_PREFIX);
+  }
+
+  /**
    * {@code stored} under the current key in the keyed format, or {@code stored} itself if it is
    * already; for {@link CiphertextRewrap}, which has checked {@link CipherFormatGate} itself.
    */

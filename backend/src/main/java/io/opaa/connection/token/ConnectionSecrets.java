@@ -71,6 +71,15 @@ public class ConnectionSecrets {
 
   private static final Logger log = LoggerFactory.getLogger(ConnectionSecrets.class);
 
+  /**
+   * Why a secret bound to its row that no key reads does not move: at the new row it could never be
+   * read again, not even once its key is restored.
+   */
+  static final String UNREADABLE_MOVE =
+      "Die gespeicherten Zugangsdaten lassen sich mit keinem hinterlegten Schlüssel entschlüsseln"
+          + " und können deshalb nicht übernommen werden. Bitte die Zugangsdaten neu eintragen oder"
+          + " den fehlenden Schlüssel in OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS ergänzen.";
+
   private final LibrariesOnProfile librariesOnProfile;
   private final KnowledgeLibraryRepository libraries;
   private final ConnectionTokenRepository tokens;
@@ -495,11 +504,14 @@ public class ConnectionSecrets {
         }
         ConnectionToken token = row.get();
         String value = decryptQuietly(token);
+        if (value == null && CredentialsEncryptor.isKeyed(token.getSecretCiphertext())) {
+          throw new CredentialsEncryptionKeyMissingException(UNREADABLE_MOVE);
+        }
         tokens.delete(token);
         if (value != null) {
           libraries.findById(libraryId).ifPresent(found -> found.replaceSourceCredentials(value));
         } else {
-          // unreadable already: it moves as stored and stays unreadable, an enc:v1 value aside
+          // unreadable already and bound to no row (enc:v1): it moves as stored
           libraries.restoreStoredSourceCredentials(libraryId, token.getSecretCiphertext());
         }
       }
@@ -832,7 +844,9 @@ public class ConnectionSecrets {
 
   /**
    * {@code stored} of the row {@code from} encrypted for the row {@code to}; legacy cleartext is
-   * encrypted, and a value no key can read moves as stored - it was lost before the move already.
+   * encrypted. A value no key can read moves as stored in the unbound format {@code enc:v1}; in the
+   * bound format it is refused ({@link #UNREADABLE_MOVE}), because at {@code to} it could never be
+   * read again.
    */
   private String carried(String stored, CipherBinding from, CipherBinding to) {
     try {
@@ -840,6 +854,9 @@ public class ConnectionSecrets {
     } catch (CredentialsEncryptionKeyMissingException e) {
       if (!CredentialsEncryptor.isEncrypted(stored)) {
         throw e;
+      }
+      if (CredentialsEncryptor.isKeyed(stored)) {
+        throw new CredentialsEncryptionKeyMissingException(UNREADABLE_MOVE, e);
       }
       log.warn("A stored secret cannot be decrypted ({}); it moves as stored", from.table());
       return stored;

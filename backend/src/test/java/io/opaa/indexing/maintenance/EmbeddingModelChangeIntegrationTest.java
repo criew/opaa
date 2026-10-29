@@ -39,7 +39,9 @@ import io.opaa.organization.Organization;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.retrieval.search.VectorChunkSearch;
+import io.opaa.security.CipherFormatGate;
 import io.opaa.security.EncryptedColumn;
+import io.opaa.security.SettingsEncryptionProperties;
 import io.opaa.security.SettingsEncryptor;
 import io.opaa.test.FakeEmbeddingProbe;
 import io.opaa.test.OpaaPropertyVariantIntegrationTest;
@@ -54,6 +56,7 @@ import java.sql.Connection;
 import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -624,6 +627,44 @@ class EmbeddingModelChangeIntegrationTest {
                 assertThat(e.fieldErrors())
                     .extracting(FieldValidationException.FieldError::field)
                     .containsExactly("embeddingModel.apiKey"));
+  }
+
+  /**
+   * A stored key in the bound format that no key of the ring reads stays where it is: kept as the
+   * previous model's key it would be bound to the wrong row and never readable again.
+   */
+  @Test
+  void aChangeAwayFromAKeyNoKeyReadsIsRefusedAndLeavesTheModelAsItWas() {
+    String lost =
+        new SettingsEncryptor(
+                new SettingsEncryptionProperties(
+                    Base64.getEncoder().encodeToString(new byte[32]), List.of()),
+                CipherFormatGate.KEYED)
+            .encrypt(
+                "sk-verloren",
+                EncryptedColumn.settings("embedding_model", "api_key_ciphertext").row(1));
+    jdbcTemplate.update("UPDATE embedding_model SET api_key_ciphertext = ? WHERE id = 1", lost);
+    long generation = modelGeneration();
+
+    assertThatThrownBy(
+            () ->
+                changes.confirm(
+                    new Draft(modelBaseUrl(), NEW_MODEL, "", null),
+                    FakeEmbeddingModel.DIMENSIONS,
+                    adminId,
+                    Organization.DEFAULT_ID))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactly("embeddingModel.apiKey"));
+    assertThat(modelGeneration()).isEqualTo(generation);
+    assertThat(previousRows()).isZero();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT api_key_ciphertext FROM embedding_model WHERE id = 1", String.class))
+        .isEqualTo(lost);
   }
 
   // --- version condition, limits, secrets ---

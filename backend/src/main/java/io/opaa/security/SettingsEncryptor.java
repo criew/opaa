@@ -93,6 +93,11 @@ public class SettingsEncryptor {
     return encrypt(decrypt(stored, from), to);
   }
 
+  /** As {@link CredentialsEncryptor#isKeyed}: a value bound to its row. */
+  public static boolean isKeyed(String stored) {
+    return CredentialsEncryptor.isKeyed(stored);
+  }
+
   /**
    * {@code stored} under the current key in the keyed format, or {@code stored} itself if it is
    * already; for {@link CiphertextRewrap}, which has checked {@link CipherFormatGate} itself.

@@ -137,7 +137,7 @@ class CiphertextRewrapIntegrationTest {
     CiphertextRewrap.Outcome outcome =
         rewrap(rotated, settings(NEW_KEY, KEY), CipherFormatGate.KEYED).rewrap();
 
-    assertThat(outcome).isEqualTo(new CiphertextRewrap.Outcome(4, 2, 2, false));
+    assertThat(outcome).isEqualTo(new CiphertextRewrap.Outcome(4, 2, 0, false));
     assertThat(newOnly.decrypt(credentialOf(keyed), CREDENTIAL.row(keyed))).isEqualTo("a-secret");
     assertThat(
             settingsNewOnly.decrypt(
@@ -176,8 +176,8 @@ class CiphertextRewrapIntegrationTest {
         credentials(OTHER_KEY).encrypt("lost", CREDENTIAL.row(lostKey)));
     CiphertextRewrap rewrap = rewrap(rotated, settings(NEW_KEY, KEY), CipherFormatGate.KEYED);
 
-    assertThat(rewrap.rewrap()).isEqualTo(new CiphertextRewrap.Outcome(1, 1, 1, false));
-    assertThat(rewrap.rewrap()).isEqualTo(new CiphertextRewrap.Outcome(0, 1, 1, false));
+    assertThat(rewrap.rewrap()).isEqualTo(new CiphertextRewrap.Outcome(1, 1, 0, false));
+    assertThat(rewrap.rewrap()).isEqualTo(new CiphertextRewrap.Outcome(0, 1, 0, false));
   }
 
   @Test
@@ -203,6 +203,29 @@ class CiphertextRewrapIntegrationTest {
       UUID id = ids.get(i);
       assertThat(newOnly.decrypt(credentialOf(id), CREDENTIAL.row(id))).isEqualTo("secret-" + i);
     }
+  }
+
+  @Test
+  void unreadableValuesDoNotUseUpTheBudgetOfTheReadableOnesBehindThem() {
+    UUID lostRow = UUID.randomUUID();
+    String lost = credentials(OTHER_KEY).encrypt("lost", CREDENTIAL.row(lostRow));
+    int unreadable = CiphertextRewrap.RUN_BUDGET + 10;
+    jdbc.update(
+        "INSERT INTO rewrap_probe SELECT gen_random_uuid(), ?, NULL FROM generate_series(1, ?)",
+        lost,
+        unreadable);
+    UUID last = UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff");
+    jdbc.update(
+        "INSERT INTO rewrap_probe VALUES (?, ?, NULL)",
+        last,
+        credentials(KEY).encrypt("hinten", CREDENTIAL.row(last)));
+
+    CiphertextRewrap.Outcome outcome =
+        rewrap(credentials(NEW_KEY, KEY), settings(NEW_KEY, KEY), CipherFormatGate.KEYED).rewrap();
+
+    assertThat(outcome).isEqualTo(new CiphertextRewrap.Outcome(1, unreadable, 0, false));
+    assertThat(credentials(NEW_KEY).decrypt(credentialOf(last), CREDENTIAL.row(last)))
+        .isEqualTo("hinten");
   }
 
   @Test
@@ -264,7 +287,7 @@ class CiphertextRewrapIntegrationTest {
         .containsAll(ciphertextColumns)
         .contains(
             "knowledge_libraries.source_credentials",
-            "knowledge_libraries.webhook_secret",
+            "knowledge_libraries.source_webhook_secret",
             "installation_steps.secret");
   }
 }

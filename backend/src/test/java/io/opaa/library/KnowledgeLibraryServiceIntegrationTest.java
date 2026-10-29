@@ -614,7 +614,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             response.library().getId());
     assertThat(rawColumnValue).isNotNull();
     assertThat(rawColumnValue).doesNotContain("admin:super-secret-password");
-    assertThat(rawColumnValue).startsWith("enc:v1:");
+    assertThat(rawColumnValue).startsWith("enc:v2:");
 
     // The entity mapping (via SourceCredentialsConverter) still transparently decrypts on load -
     // both the indexing executors and libraryRepository.findById see the plaintext (see
