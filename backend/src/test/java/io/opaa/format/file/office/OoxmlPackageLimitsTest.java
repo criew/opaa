@@ -35,7 +35,7 @@ import org.junit.jupiter.api.io.TempDir;
 class OoxmlPackageLimitsTest {
 
   private static final ParserLimitProperties SMALL =
-      new ParserLimitProperties(0, 200_000, 300_000, 0);
+      new ParserLimitProperties(0, 200_000, 300_000, 0, 0, 0);
 
   private static final String CONTENT_TYPES =
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
@@ -44,6 +44,8 @@ class OoxmlPackageLimitsTest {
           + " ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/>"
           + "<Default Extension=\"xml\" ContentType=\"application/xml\"/>"
           + "<Default Extension=\"png\" ContentType=\"image/png\"/>"
+          + "<Default Extension=\"mp4\" ContentType=\"video/mp4\"/>"
+          + "<Default Extension=\"ttf\" ContentType=\"application/x-font-ttf\"/>"
           + "<Override PartName=\"/word/document.xml\" ContentType=\"application/"
           + "vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/>"
           + "</Types>";
@@ -101,6 +103,35 @@ class OoxmlPackageLimitsTest {
 
     assertThat(run(new DocxDocumentFormat(HeadingSectionSplitterFixture.DEFAULT, SMALL), file))
         .isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+  }
+
+  /** A video ({@code 00 00 00 20 ftyp}) or font ({@code 00 01 00 00}) is no XML part. */
+  @Test
+  void largeMediaAndFontPartsStartingWithAZeroByteDoNotCount() throws IOException {
+    Map<String, byte[]> parts = new LinkedHashMap<>();
+    parts.put("word/document.xml", documentXml(10));
+    parts.put(
+        "word/media/media1.mp4",
+        binary(new byte[] {0x00, 0x00, 0x00, 0x20, 'f', 't', 'y', 'p', 'i', 's', 'o', 'm'}));
+    parts.put("word/fonts/font1.ttf", binary(new byte[] {0x00, 0x01, 0x00, 0x00}));
+    Path file = docx("video.docx", parts);
+
+    assertThat(run(new DocxDocumentFormat(HeadingSectionSplitterFixture.DEFAULT, SMALL), file))
+        .isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+  }
+
+  /** Without a byte order mark an XML parser still detects UTF-16BE from {@code 00 3C 00 3F}. */
+  @Test
+  void utf16BigEndianXmlWithoutByteOrderMarkCounts() throws IOException {
+    String xml =
+        new String(documentXml(20_000), StandardCharsets.UTF_8).replace("UTF-8", "UTF-16BE");
+    Map<String, byte[]> parts = new LinkedHashMap<>();
+    parts.put("word/document.xml", documentXml(10));
+    parts.put("word/hidden.bin", xml.getBytes(StandardCharsets.UTF_16BE));
+    Path file = docx("utf16.docx", parts);
+
+    assertThat(run(new DocxDocumentFormat(HeadingSectionSplitterFixture.DEFAULT, SMALL), file))
+        .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
   }
 
   /**
@@ -200,6 +231,14 @@ class OoxmlPackageLimitsTest {
     zip.putNextEntry(new ZipEntry(name));
     zip.write(bytes);
     zip.closeEntry();
+  }
+
+  /** One MB of random bytes behind {@code signature}. */
+  private static byte[] binary(byte[] signature) {
+    byte[] bytes = new byte[1_000_000];
+    new Random(11).nextBytes(bytes);
+    System.arraycopy(signature, 0, bytes, 0, signature.length);
+    return bytes;
   }
 
   private static byte[] documentXml(int paragraphs) {

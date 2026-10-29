@@ -28,7 +28,8 @@ import org.junit.jupiter.api.io.TempDir;
  */
 class StructureFormatTextLimitTest {
 
-  private static final ParserLimitProperties LIMIT = new ParserLimitProperties(2_000, 0, 0, 0);
+  private static final ParserLimitProperties LIMIT =
+      new ParserLimitProperties(2_000, 0, 0, 0, 0, 0);
 
   /** About 6 000 characters in sentences, cut into several chunks. */
   private static final String LONG_TEXT =

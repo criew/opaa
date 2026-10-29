@@ -12,13 +12,29 @@ public final class FatalErrors {
   private FatalErrors() {}
 
   public static boolean isFatal(Throwable thrown) {
-    return (thrown instanceof VirtualMachineError && !(thrown instanceof StackOverflowError))
-        || thrown instanceof LinkageError;
+    return isProcessFatal(thrown) || thrown instanceof LinkageError;
+  }
+
+  /**
+   * Whether {@code thrown} leaves the process untrustworthy, so that not even the unit's own state
+   * may be written any more; a {@link LinkageError} is fatal but still lets that state be written.
+   */
+  public static boolean isProcessFatal(Throwable thrown) {
+    return thrown instanceof VirtualMachineError && !(thrown instanceof StackOverflowError);
   }
 
   /** Rethrows {@code thrown} when it {@link #isFatal is fatal}; returns otherwise. */
   public static void rethrowIfFatal(Throwable thrown) {
     if (isFatal(thrown)) {
+      throw (Error) thrown;
+    }
+  }
+
+  /**
+   * Rethrows {@code thrown} when it {@link #isProcessFatal is process-fatal}; returns otherwise.
+   */
+  public static void rethrowIfProcessFatal(Throwable thrown) {
+    if (isProcessFatal(thrown)) {
       throw (Error) thrown;
     }
   }

@@ -750,6 +750,23 @@ class DocumentIngestServiceTest {
     }
 
     @Test
+    void aLinkageErrorMarksTheDocumentFailedAndIsRethrown() throws IOException {
+      Path file = fileNamed("linkage-on-write.txt", "content");
+      stubNewRow(file, "sha256-of-linkage");
+      stubParsedInto(file, chunks("chunk1"));
+      doThrow(new NoClassDefFoundError("simulated"))
+          .when(vectorStoreWriter)
+          .writeEmbeddedChunks(any(), any(), anyLong());
+
+      assertThatThrownBy(() -> service.ingest(localFile(file), null))
+          .isInstanceOf(NoClassDefFoundError.class);
+
+      UUID documentId = savedDocument().getId();
+      verify(documentRepository)
+          .markFailedWithoutChunks(documentId, DocumentIngestService.PROCESSING_FAILED_MESSAGE);
+    }
+
+    @Test
     void anOutOfMemoryErrorIsPassedOnWithoutBookingTheDocument() throws IOException {
       Path file = fileNamed("oom-on-write.txt", "content");
       stubNewRow(file, "sha256-of-oom");

@@ -124,10 +124,19 @@ hängt dann von dieser Textebene ab.
 
 ## 6. Grenzwerte
 
-Keine eigenen Konfigurationsschlüssel. Es gelten die gemeinsamen Grenzen für Text und
-Rechenschritte je Dokument und die Grenzen für die Gliederung ([Grenzen beim Lesen](README.md#grenzen-beim-lesen)), die
-Zeichenobergrenzen des gemeinsamen Abschnittsschneiders und die Grenzen von PDFBox. Am
-Webverzeichnis-Konnektor greift zusätzlich die Dateigrößengrenze des Konnektors.
+Keine eigenen Konfigurationsschlüssel. Es gelten die gemeinsamen Grenzen für Text,
+Rechenschritte, gelesene Inhaltsdaten und Lesezeit je Dokument und die Grenzen für die Gliederung
+([Grenzen beim Lesen](README.md#grenzen-beim-lesen)), die Zeichenobergrenzen des gemeinsamen
+Abschnittsschneiders und die Grenzen von PDFBox. Am Webverzeichnis-Konnektor greift zusätzlich die
+Dateigrößengrenze des Konnektors.
+
+**Zeichnungslastige PDFs** wie Bebauungs- oder Lagepläne bestehen aus Millionen von
+Zeichenanweisungen je Seite und können `max-pdf-operators`, `max-pdf-content-bytes` oder
+`max-pdf-parse-seconds` reißen, obwohl sie nicht präpariert sind. Sie gelten dann als
+fehlgeschlagen. Wer solche Pläne indexieren will, hebt die Grenzen an, etwa
+`OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_OPERATORS=1000000000` und
+`OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_PARSE_SECONDS=600`, und indexiert die Bibliothek neu. Jede
+Erhöhung verlängert die Zeit, die eine präparierte Datei einen Indexierungsplatz belegen kann.
 
 ## 7. Nicht verarbeitet
 

@@ -418,8 +418,8 @@ public class DocumentIngestService {
         return result;
       }
     } catch (Exception | Error e) {
-      // a recoverable Error is booked as well, so an upload never stays PENDING after one
-      FatalErrors.rethrowIfFatal(e);
+      // every Error but a process-fatal one is booked, so an upload never stays PENDING after it
+      FatalErrors.rethrowIfProcessFatal(e);
       if (!(ingest.reindex() && preservingPreviousChunks)) {
         markConnectorFailedAfterException(documentId, preservingPreviousChunks, failureMessage(e));
       }

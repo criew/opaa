@@ -113,17 +113,28 @@ public final class OoxmlPackages {
 
   /**
    * Whether {@code length} leading bytes can open an XML document: whitespace or {@code <} in an
-   * ASCII-compatible encoding, a UTF-8, UTF-16 or UCS-4 byte order mark, a zero byte (UTF-16 or
-   * UCS-4 without one) or {@code <?xm} in EBCDIC. An empty entry counts as XML (of size 0).
+   * ASCII-compatible encoding (which covers UTF-16LE and UCS-4LE without a byte order mark), a
+   * UTF-8, UTF-16 or UCS-4 byte order mark, {@code <} or {@code <?} in UTF-16BE or UCS-4 without
+   * one, or {@code <?xm} in EBCDIC. A leading zero byte counts only in these four-byte patterns, so
+   * MP4/MOV media ({@code 00 00 00 xx ftyp}) and TrueType fonts ({@code 00 01 00 00}) stay
+   * uncounted. An entry shorter than four bytes counts, at its harmless size.
    */
   static boolean mayBeXml(byte[] head, int length) {
-    if (length == 0) {
+    if (length < 4) {
       return true;
     }
     int b0 = head[0] & 0xFF;
-    int b1 = length > 1 ? head[1] & 0xFF : -1;
+    int b1 = head[1] & 0xFF;
+    int b2 = head[2] & 0xFF;
+    int b3 = head[3] & 0xFF;
     return switch (b0) {
-      case 0x00, 0x09, 0x0A, 0x0D, 0x20, 0x3C -> true;
+      case 0x00 ->
+          (b1 == 0x3C && b2 == 0x00 && b3 == 0x3F) // UTF-16BE "<?"
+              || (b1 == 0x3C && b2 == 0x00 && b3 == 0x00) // UCS-4 3412 "<"
+              || (b1 == 0x00 && b2 == 0x00 && b3 == 0x3C) // UCS-4BE "<"
+              || (b1 == 0x00 && b2 == 0x3C && b3 == 0x00) // UCS-4 2143 "<"
+              || (b1 == 0x00 && b2 == 0xFE && b3 == 0xFF); // UCS-4BE byte order mark
+      case 0x09, 0x0A, 0x0D, 0x20, 0x3C -> true;
       case 0xEF -> b1 == 0xBB;
       case 0xFE -> b1 == 0xFF;
       case 0xFF -> b1 == 0xFE;

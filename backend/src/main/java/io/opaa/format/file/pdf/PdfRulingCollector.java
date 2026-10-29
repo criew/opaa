@@ -11,6 +11,8 @@ import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType3Font;
+import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
+import org.apache.pdfbox.pdmodel.graphics.form.PDTransparencyGroup;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImage;
 import org.apache.pdfbox.util.Matrix;
 import org.apache.pdfbox.util.Vector;
@@ -60,7 +62,10 @@ final class PdfRulingCollector extends PDFGraphicsStreamEngine {
     this.cropHeight = crop.getHeight();
   }
 
-  /** The page's rulings; every operator processed is counted against {@code budget}. */
+  /**
+   * The page's rulings; every operator processed and every content stream parsed is counted against
+   * {@code budget}.
+   */
   static List<Ruling> collect(PDPage page, PdfReadBudget budget) throws IOException {
     PdfRulingCollector collector = new PdfRulingCollector(page, budget);
     try {
@@ -80,8 +85,26 @@ final class PdfRulingCollector extends PDFGraphicsStreamEngine {
 
   @Override
   protected void processOperator(Operator operator, List<COSBase> operands) throws IOException {
-    budget.countOperator();
+    budget.countOperator(operands);
     super.processOperator(operator, operands);
+  }
+
+  @Override
+  public void processPage(PDPage page) throws IOException {
+    budget.chargePage(page);
+    super.processPage(page);
+  }
+
+  @Override
+  public void showForm(PDFormXObject form) throws IOException {
+    budget.chargeContent(form.getCOSObject());
+    super.showForm(form);
+  }
+
+  @Override
+  public void showTransparencyGroup(PDTransparencyGroup form) throws IOException {
+    budget.chargeContent(form.getCOSObject());
+    super.showTransparencyGroup(form);
   }
 
   private void countPathPoints(int count) {

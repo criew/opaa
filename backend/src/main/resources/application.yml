@@ -533,12 +533,14 @@ opaa:
       max-text-characters: ${OPAA_INDEXING_ODF_MAX_TEXT_CHARACTERS:10000000}
     # DoS-hardening limits for the structure formats (PDF, DOCX, PPTX, XLSX/CSV, HTML, Markdown),
     # see ParserLimitProperties: text per document, the unpacked XML of an OOXML package and the
-    # content-stream operators of a PDF.
+    # content-stream operators, decoded content bytes and reading time of a PDF.
     parser-limits:
       max-text-characters: ${OPAA_INDEXING_PARSER_LIMITS_MAX_TEXT_CHARACTERS:10000000}
       max-ooxml-part-bytes: ${OPAA_INDEXING_PARSER_LIMITS_MAX_OOXML_PART_BYTES:33554432}
       max-ooxml-total-bytes: ${OPAA_INDEXING_PARSER_LIMITS_MAX_OOXML_TOTAL_BYTES:67108864}
-      max-pdf-operators: ${OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_OPERATORS:50000000}
+      max-pdf-operators: ${OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_OPERATORS:200000000}
+      max-pdf-content-bytes: ${OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_CONTENT_BYTES:536870912}
+      max-pdf-parse-seconds: ${OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_PARSE_SECONDS:120}
     # ADR-0018 Entscheidung 6: own opaa.indexing.filesystem.* property block, own binding prefix
     # (FilesystemProperties), mirroring crawl/tabular/mail/odf above. allowlist: absolute base
     # directories a FILESYSTEM library's sourcePath must resolve underneath. No default on purpose -

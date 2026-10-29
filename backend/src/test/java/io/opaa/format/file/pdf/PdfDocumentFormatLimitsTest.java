@@ -127,7 +127,8 @@ class PdfDocumentFormatLimitsTest {
     writeFormFanout(file, 200);
     var limited =
         new PdfDocumentFormat(
-            HeadingSectionSplitterFixture.DEFAULT, new ParserLimitProperties(50_000, 0, 0, 0));
+            HeadingSectionSplitterFixture.DEFAULT,
+            new ParserLimitProperties(50_000, 0, 0, 0, 0, 0));
 
     DocumentFormatResult result =
         DocumentFormatRunner.run(limited, DocumentFormatSource.ofFile(file, "fanout.pdf"));
@@ -141,7 +142,8 @@ class PdfDocumentFormatLimitsTest {
     writeFormFanout(file, 3);
     var limited =
         new PdfDocumentFormat(
-            HeadingSectionSplitterFixture.DEFAULT, new ParserLimitProperties(50_000, 0, 0, 0));
+            HeadingSectionSplitterFixture.DEFAULT,
+            new ParserLimitProperties(50_000, 0, 0, 0, 0, 0));
 
     DocumentFormatResult result =
         DocumentFormatRunner.run(limited, DocumentFormatSource.ofFile(file, "fanout-small.pdf"));
@@ -157,9 +159,85 @@ class PdfDocumentFormatLimitsTest {
   @Test
   void nestedFormsThatDrawNothingStopAtTheOperatorLimit() throws IOException {
     Path file = tempDir.resolve("nested.pdf");
+    writeNestedForms(file, "q Q\n".repeat(100), 5);
+    var limited =
+        new PdfDocumentFormat(
+            HeadingSectionSplitterFixture.DEFAULT,
+            new ParserLimitProperties(0, 0, 0, 1_000_000, 0, 0));
+
+    DocumentFormatResult result =
+        assertTimeoutPreemptively(
+            Duration.ofSeconds(10),
+            () ->
+                DocumentFormatRunner.run(limited, DocumentFormatSource.ofFile(file, "nested.pdf")));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
+  }
+
+  /**
+   * A form of 1 MB blanks around one {@code q Q}, drawn a thousand times through three levels of
+   * ten calls: PDFBox decodes and parses its bytes anew on every draw, a gigabyte per pass, while
+   * hardly an operator is counted.
+   */
+  @Test
+  void aLargeFormDrawnOverAndOverStopsAtTheContentByteLimit() throws IOException {
+    Path file = tempDir.resolve("blanks.pdf");
+    writeNestedForms(file, " ".repeat(1_000_000) + "q Q\n", 3);
+    var limited =
+        new PdfDocumentFormat(
+            HeadingSectionSplitterFixture.DEFAULT,
+            new ParserLimitProperties(0, 0, 0, 0, 32L * 1024 * 1024, 0));
+
+    assertThat(runWithin(Duration.ofSeconds(8), limited, file))
+        .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
+  }
+
+  /**
+   * One operator whose array operand holds 200 000 elements, drawn a thousand times: the operator
+   * count alone sees a thousand operators, the elements the parser builds are counted with it.
+   */
+  @Test
+  void arrayOperandElementsCountAgainstTheOperatorLimit() throws IOException {
+    Path file = tempDir.resolve("array.pdf");
+    writeNestedForms(file, "[" + "0 ".repeat(200_000) + "] 0 d\n", 3);
+    var limited =
+        new PdfDocumentFormat(
+            HeadingSectionSplitterFixture.DEFAULT,
+            new ParserLimitProperties(0, 0, 0, 2_000_000, 0, 0));
+
+    assertThat(runWithin(Duration.ofSeconds(8), limited, file))
+        .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
+  }
+
+  /** Work no count catches in time still ends at the wall-clock limit. */
+  @Test
+  void readingStopsAtTheTimeLimit() throws IOException {
+    Path file = tempDir.resolve("slow.pdf");
+    writeNestedForms(file, " ".repeat(1_000_000) + "q Q\n", 3);
+    var limited =
+        new PdfDocumentFormat(
+            HeadingSectionSplitterFixture.DEFAULT,
+            new ParserLimitProperties(0, 0, 0, 0, Long.MAX_VALUE, 1));
+
+    assertThat(runWithin(Duration.ofSeconds(6), limited, file))
+        .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
+  }
+
+  private static DocumentFormatResult.Outcome runWithin(
+      Duration timeout, PdfDocumentFormat format, Path file) {
+    return assertTimeoutPreemptively(
+        timeout,
+        () ->
+            DocumentFormatRunner.run(
+                    format, DocumentFormatSource.ofFile(file, file.getFileName().toString()))
+                .outcome());
+  }
+
+  /** One page drawing {@code leaf} through {@code levels} levels of forms that call ten times. */
+  private static void writeNestedForms(Path file, String leaf, int levels) throws IOException {
     try (PDDocument doc = new PDDocument()) {
-      PDFormXObject form = form(doc, "q Q\n".repeat(100), null);
-      for (int level = 0; level < 5; level++) {
+      PDFormXObject form = form(doc, leaf, null);
+      for (int level = 0; level < levels; level++) {
         form = form(doc, "/F Do\n".repeat(10), form);
       }
       PDPage page = new PDPage();
@@ -174,17 +252,6 @@ class PdfDocumentFormatLimitsTest {
       doc.addPage(page);
       doc.save(file.toFile());
     }
-    var limited =
-        new PdfDocumentFormat(
-            HeadingSectionSplitterFixture.DEFAULT, new ParserLimitProperties(0, 0, 0, 1_000_000));
-
-    DocumentFormatResult result =
-        assertTimeoutPreemptively(
-            Duration.ofSeconds(10),
-            () ->
-                DocumentFormatRunner.run(limited, DocumentFormatSource.ofFile(file, "nested.pdf")));
-
-    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
   }
 
   /** A form whose content is {@code operators}, with {@code child} as its resource {@code /F}. */

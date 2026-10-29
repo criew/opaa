@@ -14,6 +14,8 @@ import org.apache.pdfbox.contentstream.operator.Operator;
 import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
+import org.apache.pdfbox.pdmodel.graphics.form.PDTransparencyGroup;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.text.TextPosition;
 import org.slf4j.Logger;
@@ -202,9 +204,9 @@ final class PdfPageText {
   }
 
   /**
-   * Writes every word through {@link #separateRaisedDigits} and counts every glyph and every
-   * operator against the budget before PDFBox acts on it, so a page that draws one form over and
-   * over, or nests forms that draw nothing, stops early.
+   * Writes every word through {@link #separateRaisedDigits} and counts every glyph, every operator
+   * and every content stream it is about to parse against the budget before PDFBox acts on it, so a
+   * page that draws one form over and over, or nests forms that draw nothing, stops early.
    */
   private static class RaisedDigitStripper extends PDFTextStripper {
 
@@ -217,8 +219,29 @@ final class PdfPageText {
 
     @Override
     protected void processOperator(Operator operator, List<COSBase> operands) throws IOException {
-      budget.countOperator();
+      budget.countOperator(operands);
       super.processOperator(operator, operands);
+    }
+
+    @Override
+    public void processPage(PDPage page) throws IOException {
+      // PDFTextStripper calls this for every page and skips those outside the range itself
+      if (getCurrentPageNo() >= getStartPage() && getCurrentPageNo() <= getEndPage()) {
+        budget.chargePage(page);
+      }
+      super.processPage(page);
+    }
+
+    @Override
+    public void showForm(PDFormXObject form) throws IOException {
+      budget.chargeContent(form.getCOSObject());
+      super.showForm(form);
+    }
+
+    @Override
+    public void showTransparencyGroup(PDTransparencyGroup form) throws IOException {
+      budget.chargeContent(form.getCOSObject());
+      super.showTransparencyGroup(form);
     }
 
     @Override
