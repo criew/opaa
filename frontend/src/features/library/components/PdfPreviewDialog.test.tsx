@@ -1,4 +1,5 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useEffect } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../../../test/test-utils'
@@ -50,13 +51,20 @@ describe('PdfPreviewDialog', () => {
     expect(new TextDecoder().decode(viewer.props?.data)).toBe('%PDF-1.4')
   })
 
-  it('falls back to the browser viewer and closes when the viewer cannot show the file', async () => {
+  it('offers the browser viewer behind a click when the viewer cannot show the file', async () => {
     viewer.fail = true
     const onClose = vi.fn()
     const preview = pdf()
     renderWithProviders(<PdfPreviewDialog preview={preview} onClose={onClose} />)
 
-    await waitFor(() => expect(onClose).toHaveBeenCalled())
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Dieses PDF kann hier nicht angezeigt werden.',
+    )
+    expect(openInBrowserViewer).not.toHaveBeenCalled()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Im Browser öffnen' }))
+
     expect(openInBrowserViewer).toHaveBeenCalledWith(preview.blob)
+    expect(onClose).toHaveBeenCalled()
   })
 })

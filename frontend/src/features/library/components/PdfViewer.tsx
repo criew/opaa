@@ -4,6 +4,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
+import visuallyHidden from '@mui/utils/visuallyHidden'
 import AddIcon from '@mui/icons-material/Add'
 import RemoveIcon from '@mui/icons-material/Remove'
 import FitWidthIcon from '@mui/icons-material/WidthFull'
@@ -14,7 +15,7 @@ import 'pdfjs-dist/web/pdf_viewer.css'
 import type { ChunkAnchor } from '@/shared/api/types'
 import { markHighlight } from '@/shared/theme/tokens'
 import { loadPdf, loadPdfViewer } from '../utils/pdfjs'
-import { markedItems } from '../utils/quoteMatch'
+import { containsQuote, markedItems } from '../utils/quoteMatch'
 import { sha256Hex } from '../utils/sha256'
 import PdfOutline, { type OutlineNode } from './PdfOutline'
 
@@ -66,6 +67,8 @@ export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfV
     if (!container) return
     let cancelled = false
     let task: PDFDocumentLoadingTask | null = null
+    const abort = new AbortController()
+    let teardown = () => {}
 
     void (async () => {
       try {
@@ -74,25 +77,37 @@ export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfV
           loadPdfViewer(),
         ])
         task = loading
-        if (cancelled) return
+        if (cancelled) {
+          void loading.destroy()
+          return
+        }
         const document = await loading.promise
         if (cancelled) return
 
         const eventBus = new pdfjsViewer.EventBus()
         const linkService = new pdfjsViewer.PDFLinkService({ eventBus })
+        // abortSignal is honoured by PDFViewer but missing from its typings
         const viewer = new pdfjsViewer.PDFViewer({
           container,
           eventBus,
           linkService,
           annotationMode: pdfjs.AnnotationMode.DISABLE,
           textLayerMode: 1,
-        })
+          abortSignal: abort.signal,
+        } as ConstructorParameters<typeof pdfjsViewer.PDFViewer>[0])
         linkService.setViewer(viewer)
         viewerRef.current = viewer
+        // Detaching the document cancels every text layer, which pdf.js otherwise keeps in a static
+        // registry together with its page - each closed viewer would stay in memory.
+        teardown = () => {
+          viewer.setDocument(null)
+          linkService.setDocument(null)
+        }
 
         const passage = await passageOf(document, anchor)
         if (cancelled) return
         if (anchor?.quoteStart && passage === null) setMarkState('not-found')
+        let jumped = false
 
         eventBus.on('pagesinit', () => {
           viewer.currentScaleValue = 'auto'
@@ -114,11 +129,15 @@ export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfV
             )
             if (range) {
               for (let i = range[0]; i <= range[1]; i++) spans[i].classList.add('passage')
-              if (startsHere) {
+              // a text layer renders again on zoom and when its page scrolls back into view - the
+              // passage stays marked, but the view jumps to it only once
+              if (startsHere && !jumped) {
+                jumped = true
                 spans[range[0]].scrollIntoView?.({ block: 'center' })
                 setMarkState('marked')
               }
-            } else if (startsHere) {
+            } else if (startsHere && !jumped) {
+              jumped = true
               setMarkState('not-found')
             }
           },
@@ -138,6 +157,8 @@ export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfV
     return () => {
       cancelled = true
       viewerRef.current = null
+      teardown()
+      abort.abort()
       void task?.destroy()
     }
   }, [data, anchor])
@@ -145,9 +166,15 @@ export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfV
   useEffect(() => {
     if (!contentSha256 || !anchor) return
     let cancelled = false
-    void sha256Hex(data).then((actual) => {
-      if (!cancelled) setChanged(actual !== contentSha256.toLowerCase())
-    })
+    // without a secure context (plain-HTTP intranet) there is no crypto.subtle: the check is
+    // skipped then, which reads as "unchanged", not as "changed"
+    if (!globalThis.crypto?.subtle) return
+    sha256Hex(data).then(
+      (actual) => {
+        if (!cancelled) setChanged(actual !== contentSha256.toLowerCase())
+      },
+      () => {},
+    )
     return () => {
       cancelled = true
     }
@@ -186,14 +213,14 @@ export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfV
               size="small"
               aria-label="Inhaltsverzeichnis"
               aria-expanded={outlineOpen}
-              aria-controls="pdf-outline"
+              aria-controls={outlineOpen ? 'pdf-outline' : undefined}
               onClick={() => setOutlineOpen((open) => !open)}
             >
               <TocIcon fontSize="small" />
             </IconButton>
           </Tooltip>
         )}
-        <Typography component="span" sx={{ fontSize: 14, mx: 1 }} aria-live="polite">
+        <Typography component="span" sx={{ fontSize: 14, mx: 1 }}>
           {numPages > 0 ? `Seite ${page} von ${numPages}` : 'Lädt …'}
         </Typography>
         <Tooltip title="Verkleinern">
@@ -212,13 +239,16 @@ export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfV
           </IconButton>
         </Tooltip>
       </Box>
-      {(markState === 'not-found' || changed) && (
-        <Typography role="status" sx={{ fontSize: 13, color: 'warning.main', fontWeight: 600 }}>
-          {changed
-            ? 'Das Original wurde seit der Antwort geändert – die Markierung kann abweichen.'
-            : 'Die Fundstelle wurde im Original nicht gefunden – angezeigt wird die Fundseite.'}
-        </Typography>
-      )}
+      <Typography
+        role="status"
+        sx={
+          changed || markState === 'not-found'
+            ? { fontSize: 13, color: 'warning.main', fontWeight: 600 }
+            : visuallyHidden
+        }
+      >
+        {statusText(markState, changed, anchor?.pageFrom != null, page)}
+      </Typography>
       <Box sx={{ display: 'flex', flex: 1, minHeight: 0, gap: 1 }}>
         {hasOutline && outlineOpen && (
           <Box
@@ -247,6 +277,9 @@ export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfV
           <Box
             ref={containerRef}
             data-testid="pdf-container"
+            tabIndex={0}
+            role="region"
+            aria-label="Seiten"
             sx={{
               position: 'absolute',
               inset: 0,
@@ -264,6 +297,18 @@ export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfV
       </Box>
     </Box>
   )
+}
+
+/** What the status line says: warnings visibly, a found passage for screen readers only. */
+function statusText(markState: MarkState, changed: boolean, pageKnown: boolean, page: number) {
+  if (changed)
+    return 'Das Original wurde seit der Antwort geändert – die Markierung kann abweichen.'
+  if (markState === 'not-found') {
+    return pageKnown
+      ? 'Die Fundstelle wurde im Original nicht gefunden – angezeigt wird die Fundseite.'
+      : 'Die Fundstelle wurde im Original nicht gefunden.'
+  }
+  return markState === 'marked' ? `Fundstelle auf Seite ${page} markiert.` : ''
 }
 
 /** The last entry, in reading order, whose page is at or before `page` - the section shown. */
@@ -303,11 +348,11 @@ async function passageOf(
 async function searchStartPage(pdf: PDFDocumentProxy, quote: string): Promise<number | null> {
   const last = Math.min(pdf.numPages, SEARCH_PAGE_LIMIT)
   for (let page = 1; page <= last; page++) {
-    const content = await (await pdf.getPage(page)).getTextContent()
+    const pdfPage = await pdf.getPage(page)
+    const content = await pdfPage.getTextContent()
+    pdfPage.cleanup()
     const items = content.items.map((item) => ('str' in item ? item.str : ''))
-    if (markedItems(items, quote, null, { startsHere: true, endsHere: false }) !== null) {
-      return page
-    }
+    if (containsQuote(items, quote)) return page
   }
   return null
 }

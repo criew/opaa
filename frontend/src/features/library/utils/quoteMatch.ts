@@ -1,8 +1,8 @@
 /**
  * Finds a chunk's anchor quotes in the text items of a rendered page (a PDF text layer) and names
- * the items to mark. Text on both sides is compared whitespace-normalized and case-insensitively,
- * as the backend normalized the quotes (ADR-0062); items are joined with a single space, because a
- * text layer splits lines and words into separate items.
+ * the items to mark. Text on both sides is compared case-insensitively and without any whitespace:
+ * a text layer splits lines, words and even single words (at a font change) into separate items,
+ * so neither the spaces between items nor those inside them can be trusted.
  */
 
 /** The marked items of one page, `[first, last]` inclusive, or `null` when nothing matched. */
@@ -20,7 +20,7 @@ export interface PageRole {
 const FALLBACK_PROBE_LENGTH = 24
 
 export function normalizedText(text: string): string {
-  return text.replace(/\s+/g, ' ').trim().toLowerCase()
+  return text.replace(/\s+/g, '').toLowerCase()
 }
 
 interface JoinedItems {
@@ -33,12 +33,8 @@ function join(items: readonly string[]): JoinedItems {
   const starts: number[] = []
   let text = ''
   for (const item of items) {
-    const normalized = normalizedText(item)
-    if (text.length > 0 && normalized.length > 0) {
-      text += ' '
-    }
     starts.push(text.length)
-    text += normalized
+    text += normalizedText(item)
   }
   return { text, starts }
 }
@@ -80,6 +76,12 @@ function findEnd(text: string, quote: string, from: number): number {
   const tail = probe.slice(-FALLBACK_PROBE_LENGTH)
   const near = tail.length < probe.length ? text.indexOf(tail, from) : -1
   return near >= 0 ? near + tail.length : -1
+}
+
+/** Whether `quote` itself - no shortened probe - occurs in the joined items. */
+export function containsQuote(items: readonly string[], quote: string): boolean {
+  const probe = normalizedText(quote)
+  return probe.length > 0 && join(items).text.includes(probe)
 }
 
 /**

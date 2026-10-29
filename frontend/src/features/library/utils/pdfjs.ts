@@ -1,15 +1,20 @@
 import type { PDFDocumentLoadingTask } from 'pdfjs-dist'
 
+/** Absolute URL of pdf.js's runtime files on the app's own origin (vite.config.ts, pdfjsAssets). */
+function pdfjsAssetUrl(path: string): string {
+  return new URL(`${import.meta.env.BASE_URL}${__PDFJS_ASSET_DIR__}/${path}`, document.baseURI).href
+}
+
 /**
  * The options every PDF opens with. pdf.js 6 has no eval-based font path left, and scripting
  * exists only in its PDFViewer's scripting manager, which this viewer never loads - so an original
  * runs no JavaScript. XFA forms stay off, WebAssembly too: the app's CSP (`script-src 'self'`)
- * allows no `wasm-unsafe-eval`, and pdf.js falls back to its JavaScript decoders.
+ * allows no `wasm-unsafe-eval`. JBIG2/CCITT and JPEG 2000 images - typical of scans - then decode
+ * with the JavaScript fallbacks under `wasmUrl`, served from the app's own origin.
  */
-export const PDF_LOAD_OPTIONS = {
-  enableXfa: false,
-  useWasm: false,
-} as const
+export function pdfLoadOptions() {
+  return { enableXfa: false, useWasm: false, wasmUrl: pdfjsAssetUrl('wasm/') } as const
+}
 
 /**
  * Loads pdf.js on first use - it stays out of the main bundle - with its worker served from the
@@ -17,15 +22,13 @@ export const PDF_LOAD_OPTIONS = {
  * ends it with `destroy()`, which also stops the worker.
  */
 export async function loadPdf(data: ArrayBuffer): Promise<PDFDocumentLoadingTask> {
-  const [pdfjs, worker] = await Promise.all([
-    import('pdfjs-dist'),
-    import('pdfjs-dist/build/pdf.worker.min.mjs?url'),
-  ])
-  if (pdfjs.GlobalWorkerOptions.workerSrc !== worker.default) {
-    pdfjs.GlobalWorkerOptions.workerSrc = worker.default
+  const pdfjs = await import('pdfjs-dist')
+  const workerSrc = pdfjsAssetUrl('pdf.worker.min.js')
+  if (pdfjs.GlobalWorkerOptions.workerSrc !== workerSrc) {
+    pdfjs.GlobalWorkerOptions.workerSrc = workerSrc
   }
   // pdf.js transfers the buffer to its worker, so it gets a copy and the caller keeps its own
-  return pdfjs.getDocument({ ...PDF_LOAD_OPTIONS, data: new Uint8Array(data.slice(0)) })
+  return pdfjs.getDocument({ ...pdfLoadOptions(), data: new Uint8Array(data.slice(0)) })
 }
 
 /**

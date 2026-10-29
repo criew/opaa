@@ -917,8 +917,8 @@ Formulare, Links und eingebettete Skripte des PDFs bleiben im Fenster ohne Wirku
 sind möglich: „Das Original wurde seit der Antwort geändert …", wenn die Datei nicht mehr die ist,
 aus der die Antwort zitiert hat; „Die Fundstelle wurde im Original nicht gefunden …", wenn der
 zitierte Text auf der Seite nicht wiederzufinden ist, etwa bei einem Scan; das Fenster zeigt dann
-die Fundseite ohne Markierung. Kann die Anwendung ein PDF nicht anzeigen, öffnet es wie bisher im
-Viewer des Browsers. Aus der Dokumentliste einer Wissensbibliothek geöffnet, beginnt dasselbe
+die Fundseite ohne Markierung. Kann die Anwendung ein PDF nicht anzeigen, sagt das Fenster das
+und bietet „Im Browser öffnen" an. Aus der Dokumentliste einer Wissensbibliothek geöffnet, beginnt dasselbe
 Fenster auf der ersten Seite. Andere Formate verhalten sich unverändert: Bilder öffnen in einem
 neuen Tab, Office-Dateien werden heruntergeladen.
 

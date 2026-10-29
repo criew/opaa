@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { markedItems, normalizedText } from './quoteMatch'
+import { containsQuote, markedItems, normalizedText } from './quoteMatch'
 
 const ITEMS = [
   '2 Module',
@@ -11,8 +11,8 @@ const ITEMS = [
 const SINGLE = { startsHere: true, endsHere: true }
 
 describe('normalizedText', () => {
-  it('collapses whitespace and lower-cases', () => {
-    expect(normalizedText('  Das\n Modul\tINDEXING ')).toBe('das modul indexing')
+  it('drops all whitespace and lower-cases', () => {
+    expect(normalizedText('  Das\n Modul\tINDEXING ')).toBe('dasmodulindexing')
   })
 })
 
@@ -56,7 +56,20 @@ describe('markedItems', () => {
     expect(markedItems(ITEMS, null, null, { startsHere: false, endsHere: true })).toBeNull()
   })
 
+  it('finds a quote whose words the text layer split into separate items', () => {
+    const items = ['Die Fund', 'stelle steht ', 'hier', ' und dort.']
+    expect(markedItems(items, 'Fundstelle steht hier', 'dort.', SINGLE)).toEqual([0, 3])
+  })
+
   it('marks nothing on an empty page', () => {
     expect(markedItems([], 'a', 'b', SINGLE)).toBeNull()
+  })
+})
+
+describe('containsQuote', () => {
+  it('matches the whole quote only, never a shortened probe', () => {
+    expect(containsQuote(ITEMS, 'Das Modul indexing verwaltet die Dokumentenaufnahme')).toBe(true)
+    expect(containsQuote(ITEMS, 'Das Modul indexing verwaltet die geänderte Fassung')).toBe(false)
+    expect(containsQuote(ITEMS, '  ')).toBe(false)
   })
 })
