@@ -8,9 +8,9 @@ function rendered(html: string): HTMLElement {
 }
 
 describe('comparableText', () => {
-  it('drops whitespace, Markdown markup and link targets and lower-cases', () => {
-    expect(comparableText('Ein **fetter** [Link](https://x.example/a) `Code`')).toBe(
-      'einfetterlinkcode',
+  it('keeps only letters and digits, lower-cased', () => {
+    expect(comparableText('Ein **fetter** `Code`, - Punkt 3.\u00ad Silbe')).toBe(
+      'einfettercodepunkt3silbe',
     )
   })
 })
@@ -28,7 +28,7 @@ describe('passageRange', () => {
     })
 
     expect(range?.toString()).toBe(
-      'Die Frist beginnt mit der Zustellung des Bescheids.Sie endet nach zwei Wochen.',
+      'Die Frist beginnt mit der Zustellung des Bescheids.Sie endet nach zwei Wochen',
     )
   })
 
@@ -41,6 +41,29 @@ describe('passageRange', () => {
       quoteStart: 'Die Frist beginnt mit der Zustellung eines anderen Bescheids',
     })
     expect(range?.toString()).toBe('Die Frist beginnt mit der Zus')
+  })
+
+  it('matches a link shown with its address, as for a link target that is not allowed', () => {
+    const shown = rendered('<p>Siehe <span>Handbuch (https://x.example/h)</span> dazu.</p>')
+    expect(
+      passageRange(shown, {
+        quoteStart: 'Siehe [Handbuch](https://x.example/h) dazu.',
+      })?.toString(),
+    ).toBe('Siehe Handbuch (https://x.example/h) dazu.')
+  })
+
+  it('matches an ordered list whose numbers the page shows only as list markers', () => {
+    const list = rendered('<ol><li>Antrag stellen</li><li>Frist abwarten</li></ol>')
+    expect(
+      passageRange(list, { quoteStart: '1. Antrag stellen 2. Frist abwarten' })?.toString(),
+    ).toBe('Antrag stellenFrist abwarten')
+  })
+
+  it('ignores an end quote too far from the start', () => {
+    const far = rendered(`<p>Anfang hier.</p><p>${'x '.repeat(25_000)}</p><p>Ende dort.</p>`)
+    expect(
+      passageRange(far, { quoteStart: 'Anfang hier.', quoteEnd: 'Ende dort.' })?.toString(),
+    ).toBe('Anfang hier.')
   })
 
   it('finds nothing for a quote that is not in the text', () => {

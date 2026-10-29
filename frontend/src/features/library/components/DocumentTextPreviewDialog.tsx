@@ -14,7 +14,7 @@ import { passageRange } from '../utils/textPassage'
 /** Name of the CSS Custom Highlight that marks the cited passage. */
 const PASSAGE_HIGHLIGHT = 'opaa-passage'
 
-type MarkState = 'none' | 'marked' | 'not-found'
+type MarkState = 'none' | 'marked' | 'scrolled' | 'not-found'
 
 interface DocumentTextPreviewDialogProps {
   /** `null` keeps the dialog closed - the last previewed document's content stays out of the DOM once
@@ -54,22 +54,39 @@ export default function DocumentTextPreviewDialog({
   const [mark, setMark] = useState<{ of: TextPreviewResult; state: MarkState } | null>(null)
 
   // The cited passage is marked with the CSS Custom Highlight API, which paints a Range without
-  // touching the rendered DOM; a browser without it still scrolls to the passage. A ref callback,
-  // so it runs once the content is in the DOM and again for each newly previewed document.
+  // touching the rendered DOM. A ref callback, so it runs once the content is in the DOM and again
+  // for each newly previewed document; later re-renders of the Markdown (link targets loading)
+  // replace text nodes, so a mutation marks the passage anew - the view jumps to it only once.
   const markPassage = useCallback(
     (content: HTMLElement | null) => {
       const anchor = previewDocument?.anchor
       if (!content || !previewDocument || !anchor?.quoteStart) return
-      const range = passageRange(content, anchor)
       const highlights = typeof CSS !== 'undefined' ? CSS.highlights : undefined
-      if (range) {
-        if (highlights && typeof Highlight !== 'undefined') {
+      let jumped = false
+      const apply = () => {
+        const range = passageRange(content, anchor)
+        let highlighted = false
+        if (range && highlights && typeof Highlight !== 'undefined') {
           highlights.set(PASSAGE_HIGHLIGHT, new Highlight(range))
+          highlighted = true
+        } else {
+          highlights?.delete(PASSAGE_HIGHLIGHT)
         }
-        range.startContainer.parentElement?.scrollIntoView?.({ block: 'center' })
+        if (range && !jumped) {
+          jumped = true
+          scrollToPassage(content, range)
+        }
+        setMark({
+          of: previewDocument,
+          state: !range ? 'not-found' : highlighted ? 'marked' : 'scrolled',
+        })
       }
-      setMark({ of: previewDocument, state: range ? 'marked' : 'not-found' })
+      apply()
+      const observer =
+        typeof MutationObserver !== 'undefined' ? new MutationObserver(apply) : undefined
+      observer?.observe(content, { childList: true, subtree: true, characterData: true })
       return () => {
+        observer?.disconnect()
         highlights?.delete(PASSAGE_HIGHLIGHT)
       }
     },
@@ -92,7 +109,12 @@ export default function DocumentTextPreviewDialog({
         </Typography>
       </DialogTitleWithClose>
       <GlobalStyles
-        styles={{ [`::highlight(${PASSAGE_HIGHLIGHT})`]: { backgroundColor: markHighlight } }}
+        styles={{
+          [`::highlight(${PASSAGE_HIGHLIGHT})`]: { backgroundColor: markHighlight },
+          '@media (forced-colors: active)': {
+            [`::highlight(${PASSAGE_HIGHLIGHT})`]: { backgroundColor: 'Mark', color: 'MarkText' },
+          },
+        }}
       />
       <Typography
         role="status"
@@ -106,7 +128,9 @@ export default function DocumentTextPreviewDialog({
           ? 'Die Fundstelle wurde im Dokument nicht gefunden.'
           : markState === 'marked'
             ? 'Fundstelle markiert.'
-            : ''}
+            : markState === 'scrolled'
+              ? 'Zur Fundstelle gescrollt.'
+              : ''}
       </Typography>
       <DialogContent dividers ref={markPassage}>
         {previewDocument?.contentType === 'text/markdown' ? (
@@ -129,3 +153,23 @@ export default function DocumentTextPreviewDialog({
     </Dialog>
   )
 }
+
+/**
+ * Scrolls `content` so the passage starts in the middle of the view - by the range's own position,
+ * since the element around it may be a whole `<pre>` - and moves focus to the block that holds it,
+ * so a screen reader continues reading there.
+ */
+function scrollToPassage(content: HTMLElement, range: Range) {
+  const rect = range.getBoundingClientRect?.()
+  if (rect) {
+    const top = content.getBoundingClientRect().top
+    content.scrollTop += rect.top - top - content.clientHeight / 3
+  }
+  const block = range.startContainer.parentElement?.closest<HTMLElement>(BLOCKS)
+  if (block && content.contains(block)) {
+    if (!block.hasAttribute('tabindex')) block.setAttribute('tabindex', '-1')
+    block.focus({ preventScroll: true })
+  }
+}
+
+const BLOCKS = 'p, li, pre, td, th, blockquote, h1, h2, h3, h4, h5, h6'
