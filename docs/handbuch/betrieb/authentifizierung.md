@@ -407,8 +407,8 @@ Discovery-Dokument und JWK-Set holt das Backend selbst, ohne Redirects zu folgen
 nennt oder `aud` sie enthält; sonst antwortet das Backend mit HTTP 401 und nennt den Grund
 im Header `WWW-Authenticate`. Bei einem öffentlichen Client ist das die Kontrolle dagegen, dass ein
 Token für eine **andere** Anwendung desselben Anbieters hier gilt. Der Claim `azp` ist optional, und nicht jeder
-Anbieter setzt ihn (Microsoft Entra ID etwa nicht in Token des Endpunkts v1.0). Trägt ein Token kein
-`azp`, muss die Client-ID der Anbieterzeile in `aud` stehen, sonst wird es abgewiesen. Für eigene Dienst-Clients heißt
+Anbieter setzt ihn. Trägt ein Token kein `azp`, muss die Client-ID der Anbieterzeile in `aud`
+stehen, sonst wird es abgewiesen. Für eigene Dienst-Clients heißt
 das: Keycloak setzt `azp` auf den anfragenden Client, ein zweiter Client braucht einen
 Audience-Mapper auf die Client-ID dieser Installation — so der Client `opaa-seed` des mitgelieferten
 Realms.
@@ -744,6 +744,14 @@ Er verschiebt den nächsten geplanten Lauf um ein Intervall, ohne etwas anzuwend
 
 Das Token nennt die Client-ID der Anbieterzeile weder in `azp` noch in `aud`; der Client braucht einen
 Audience-Mapper ([Tokenprüfung](#adressprüfung-und-tokenprüfung)).
+
+### Jede Anmeldung bei einem Anbieter endet mit 401
+
+Der Anbieter setzt kein `azp` und führt die Client-ID der Anbieterzeile nicht in `aud`; das Backend
+weist deshalb jedes seiner Token ab ([Tokenprüfung](#adressprüfung-und-tokenprüfung)). Abhilfe: beim
+Anbieter einstellen, dass das Token für OPAA die Client-ID in `aud` trägt (etwa über einen
+Audience-Mapper oder einen Scope der für OPAA registrierten Anwendung), oder in der Anbieterzeile die
+Client-ID eintragen, die der Anbieter in `aud` setzt.
 
 ## Weiterführende Kapitel
 
