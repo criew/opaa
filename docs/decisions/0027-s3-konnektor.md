@@ -72,7 +72,10 @@ wieder lesbar oder bestätigt gelöscht ist. Das trifft einen Regionswechsel unt
 dem die Buckets der alten Region noch Dokumente halten, und einen bewusst entzogenen
 `s3:ListBucket`. Der Ausweg, nach einem Regionswechsel der nötige Schritt: auf „Nur ausgewählte
 Buckets“ ohne diesen Bucket wechseln und einen Vollabgleich starten; er entfernt den Bestand des
-Buckets, danach ist „Alle Buckets“ wieder möglich. Eine automatische Aufgabe nach einer Frist gibt
+Buckets, danach ist „Alle Buckets“ wieder möglich. Die ausdrückliche Auswahl fasst höchstens 50
+Bereiche; bei mehr lesbaren Buckets geht der Ausweg nicht vollständig, denn der Zwischenlauf mit
+einer Teilauswahl entfernt auch den Bestand der nicht gewählten Buckets, den der Vollabgleich nach
+dem Zurückwechseln neu indiziert. Eine automatische Aufgabe nach einer Frist gibt
 es nicht, weil sie einen vorübergehenden Ausfall nicht von einer Absicht unterscheiden kann.
 Jede andere Antwort der Prüfung (Drosselung, abgelehnter Schlüssel, Endpoint nicht erreichbar)
 lässt den Lauf scheitern. Fehlt `s3:ListAllMyBuckets`, sieht der Schlüssel keinen Bucket oder kann
