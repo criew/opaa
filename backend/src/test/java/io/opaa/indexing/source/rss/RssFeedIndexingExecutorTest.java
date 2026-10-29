@@ -2534,6 +2534,23 @@ class RssFeedIndexingExecutorTest {
                         && fingerprint.equals(state.getExtractionSettings())));
   }
 
+  /** Without a feed state no run was complete: own settings cannot be known to be applied. */
+  @Test
+  void ownSettingsWithoutAnyFeedStateReprocessAnUnchangedEntry() throws Exception {
+    library.updateSourceSettings("{\"mainContentSelector\":\"#inhalt\"}");
+    serveFeedRecordingIfNoneMatch(null, baseUrl + "/a.html");
+    serve("/a.html", 200, "text/html", "<html><body><div id=\"inhalt\">Text</div></body></html>");
+    alreadyIndexed(baseUrl + "/a.html");
+    when(documentIngestService.ingest(DocumentIngests.that().text().in(library).match(), any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
+    verify(documentIngestService)
+        .ingest(DocumentIngests.that().text().at(baseUrl + "/a.html").in(library).match(), any());
+  }
+
   @Test
   void unchangedExtractionSettingsKeepTheConditionalGetAndSkipTheUnchangedEntry() throws Exception {
     String feedUrl = baseUrl + "/feed.xml";

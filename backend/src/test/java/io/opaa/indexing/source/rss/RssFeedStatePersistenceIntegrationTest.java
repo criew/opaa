@@ -85,6 +85,24 @@ class RssFeedStatePersistenceIntegrationTest {
         .containsEntry("last_modified", lastModified);
   }
 
+  @Test
+  void theSettingsARunExtractedUnderAreStoredWithTheValidators() {
+    FeedFetcher fetcher = new FeedFetcher(null, feedStateRepository, null, null, null);
+    String fingerprint =
+        RssFeedSettings.read(
+                io.opaa.indexing.spi.ConnectorData.of(Map.of("attachmentProfile", "GSB")))
+            .fingerprint();
+
+    fetcher.saveState(library.getId(), FEED_URL, responseWith("\"v1\"", "x"), fingerprint);
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT extraction_settings FROM rss_feed_state WHERE library_id = ?",
+                String.class,
+                library.getId()))
+        .isEqualTo(fingerprint);
+  }
+
   @SuppressWarnings("unchecked")
   private static HttpResponse<InputStream> responseWith(String etag, String lastModified) {
     HttpResponse<InputStream> response = mock(HttpResponse.class);

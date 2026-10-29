@@ -31,8 +31,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /**
  * Content selector and attachment profile as settings of one feed library (#3396), through the
  * library service against the Flyway schema: stored normalised, refused when invalid, named in the
- * audit without their value, and a change leaves the feed state so the next run reads every entry
- * of the feed again.
+ * audit without their value.
  */
 @OpaaIntegrationTest
 class RssLibraryConfigurationIntegrationTest {
@@ -129,7 +128,7 @@ class RssLibraryConfigurationIntegrationTest {
   }
 
   @Test
-  void aChangeIsAuditedByFieldNameAndPreparesTheNextRunToReprocess() {
+  void aChangeIsAuditedByFieldNameWithoutItsValue() {
     CurrentUser caller = currentUser(user());
     UUID libraryId = createFeed(caller);
 
@@ -151,14 +150,6 @@ class RssLibraryConfigurationIntegrationTest {
         .satisfies(
             payload ->
                 assertThat(payload).contains("mainContentSelector").doesNotContain(".meldung"));
-    assertThat(
-            jdbcTemplate.queryForList(
-                "SELECT extraction_settings FROM rss_feed_state WHERE library_id = ? AND"
-                    + " feed_url = ?",
-                String.class,
-                libraryId,
-                FEED.toString()))
-        .containsExactly("");
   }
 
   @Test

@@ -90,13 +90,59 @@ class RssFeedSettingsTest {
         .hasMessageContaining("reguläre Ausdrücke");
   }
 
-  @Test
-  void allowsOneHasButNotANestedOrSecondOne() {
-    assertThat(RssFeedSettings.read(selector("div:has(> h1)")).mainContentSelector())
-        .isEqualTo("div:has(> h1)");
-    assertThatThrownBy(() -> RssFeedSettings.read(selector("div:has(p:has(a))")))
+  /**
+   * Every pseudo-class and the sibling combinators can cost more than linear in the elements of a
+   * page the feed operator controls ({@code :has} and {@code ~} scan siblings or subtrees per
+   * element, {@code :contains} the text below it, {@code :nth-*} the sibling list).
+   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "div:has(> h1)",
+        "p:has(~ p)",
+        "*:contains(Meldung)",
+        "p:containsOwn(x)",
+        "li:nth-child(2)",
+        "div:not(.nav)",
+        ":is(main, article)",
+        "h1 ~ p",
+        "h1 + p",
+        "div:first-child",
+      })
+  void refusesPseudoClassesAndSiblingCombinators(String costly) {
+    assertThatThrownBy(() -> RssFeedSettings.read(selector(costly)))
         .isInstanceOf(ValidationException.class)
-        .hasMessageContaining(":has");
+        .hasMessageContaining("sourceSettings.mainContentSelector")
+        .hasMessageContaining("Pseudoklassen");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "#inhalt",
+        ".artikel-text",
+        "main .text",
+        "div.inhalt > article p",
+        "[role=main]",
+        "div[itemprop=articleBody]",
+        "a[title=\"a ~ b: c\"]",
+        "main, article, [role=main]",
+        "#a, #b, #c, #d, #e"
+      })
+  void acceptsTypeIdClassAndAttributeSelectorsJoinedBySpaceChildOrComma(String plain) {
+    assertThat(RssFeedSettings.read(selector(plain)).mainContentSelector()).isEqualTo(plain);
+  }
+
+  @Test
+  void boundsTheCombinatorsPerGroupAndTheNumberOfGroups() {
+    assertThat(RssFeedSettings.read(selector("main > div .a .b")).mainContentSelector())
+        .isNotNull();
+    assertThatThrownBy(() -> RssFeedSettings.read(selector("main > div .a .b .c")))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining(String.valueOf(RssFeedSettings.MAX_COMBINATORS));
+    assertThatThrownBy(() -> RssFeedSettings.read(selector("#a, #b, #c, #d, #e, #f")))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining(String.valueOf(RssFeedSettings.MAX_GROUPS));
   }
 
   @Test

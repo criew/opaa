@@ -3,8 +3,6 @@ package io.opaa.indexing.source.rss;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -33,7 +31,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InOrder;
 
 /**
  * The feed connector's own settings - content selector and attachment profile of one library: how
@@ -103,51 +100,27 @@ class RssFeedSourceConnectorSettingsTest {
   }
 
   /**
-   * Without any stored feed state there is nothing a changed setting could be compared against; the
-   * change leaves a state that matches no settings, so the next run reads every entry again.
+   * The feed state names the settings it was saved under; the next run compares them with the
+   * library's own. A connector reads nothing but the path from the library, so a change writes no
+   * state of its own.
    */
   @Test
-  void aChangedSettingWithoutFeedStateLeavesAStateThatForcesTheNextRunToReprocess() {
-    KnowledgeLibrary library = library(baseUrl + "/feed.xml");
-
-    connector.onSourceChanged(library, false, Set.of(RssFeedSettings.MAIN_CONTENT_SELECTOR));
-
-    verify(feedStateRepository)
-        .save(
-            argThat(
-                state ->
-                    state.getLibraryId().equals(library.getId())
-                        && state.getFeedUrl().equals(baseUrl + "/feed.xml")
-                        && state.getEtag() == null
-                        && state.getLastModified() == null
-                        && RssFeedState.UNKNOWN_EXTRACTION.equals(state.getExtractionSettings())));
-  }
-
-  @Test
-  void aChangedSettingKeepsAStoredStateWhoseSettingsAlreadyDifferFromTheNewOnes() {
-    KnowledgeLibrary library = library(baseUrl + "/feed.xml");
-    when(feedStateRepository.findByLibraryIdAndFeedUrl(library.getId(), baseUrl + "/feed.xml"))
-        .thenReturn(
-            Optional.of(
-                new RssFeedState(library.getId(), baseUrl + "/feed.xml", "\"etag\"", null)));
-
-    connector.onSourceChanged(library, false, Set.of(RssFeedSettings.ATTACHMENT_PROFILE));
+  void aChangedSettingLeavesTheComparisonToTheNextRun() {
+    connector.onSourceChanged(
+        library(baseUrl + "/feed.xml"), false, Set.of(RssFeedSettings.MAIN_CONTENT_SELECTOR));
 
     verify(feedStateRepository, never()).save(any());
     verify(feedStateRepository, never()).deleteByLibraryId(any());
   }
 
   @Test
-  void aNewAddressTogetherWithNewSettingsDropsTheOldStateFirst() {
+  void aNewAddressDropsTheOldStateAlsoWithNewSettings() {
     KnowledgeLibrary library = library(baseUrl + "/neu.xml");
 
     connector.onSourceChanged(library, true, Set.of(RssFeedSettings.ATTACHMENT_PROFILE));
 
-    InOrder order = inOrder(feedStateRepository);
-    order.verify(feedStateRepository).deleteByLibraryId(library.getId());
-    order
-        .verify(feedStateRepository)
-        .save(argThat(state -> state.getFeedUrl().equals(baseUrl + "/neu.xml")));
+    verify(feedStateRepository).deleteByLibraryId(library.getId());
+    verify(feedStateRepository, never()).save(any());
   }
 
   @Test
