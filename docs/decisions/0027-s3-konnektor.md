@@ -50,24 +50,31 @@ Bucket einzutragen.
 jeweils ganz. Es setzt `s3:ListAllMyBuckets` voraus: Speichern und Ändern prüfen das mit
 `ListBuckets` und lehnen ohne Berechtigung ab, die Oberfläche bietet „Alle Buckets“ dann nicht an
 und wählt es nur für neue Bibliotheken mit Berechtigung vor; bestehende Bibliotheken behalten ihre
-Bereiche. Jeder Lauf, auch ein Ereignislauf, listet die Buckets neu (`S3AllBuckets`). Auf AWS
-nennt `ListBuckets` alle Buckets des Kontos, über alle Regionen und ohne Rücksicht auf Leserechte;
-die Bibliothek liest davon nur die Buckets der eigenen Region, die der Schlüssel auflisten darf.
-Ein Bucket, für den die Auflistung eine andere Region nennt (`BucketRegion`), bekommt keine
-Anfrage; jeden übrigen prüft die Auflistung seiner ersten Seite. Wer darauf mit `AccessDenied`
-(`s3:ListBucket` fehlt), einem Verweis auf einen anderen Endpoint oder `NoSuchBucket` antwortet,
-liegt nicht im Umfang. Solche Buckets nennt das Protokoll mit Grund unter „Nicht im Umfang“; sie
-halten den Abgleich der übrigen nicht auf. Jede andere Antwort (Drosselung, abgelehnter Schlüssel,
-Endpoint nicht erreichbar) lässt den Lauf scheitern, weil ein ausgelassener Bucket seinen Bestand
-verlöre. Fehlt `s3:ListAllMyBuckets`, sieht der Schlüssel keinen Bucket oder darf die Bibliothek
-keinen davon lesen, scheitert der Lauf vor dem ersten Objekt und entfernt nichts. Der
-Verbindungstest löst den Umfang ebenso auf und nennt die gesehenen, die gelesenen und die
-ausgelassenen Buckets mit Grund. Die Ordnerkette beginnt unter „Alle Buckets“ immer mit dem
-Bucket, damit sie sich mit der Zahl der Buckets nicht ändert. Das Laufprotokoll nennt die Zahl der
-Buckets und, gegen die in `source_sync_state.resolved_scopes` gemerkte letzte Ermittlung, neu
-hinzugekommene und weggefallene; ein Ereignislauf nennt die Ermittlung nur, wenn sie sich geändert
-hat. Was aus einem weggefallenen oder ausgelassenen Bucket indiziert ist, entfernt der
-Vollabgleich desselben Laufs, weil er den Bucket nicht mehr auflistet.
+Bereiche. Jeder Vollabgleich listet die Buckets neu (`S3AllBuckets`), seitenweise
+(`ListBuckets` mit `max-buckets`; nur so nennt AWS die Region je Bucket). Auf AWS nennt
+`ListBuckets` alle Buckets des Kontos, über alle Regionen und ohne Rücksicht auf Leserechte; die
+Bibliothek liest davon die Buckets der eigenen Region, die der Schlüssel auflisten darf. Ein Bucket,
+für den die Auflistung eine andere Region nennt (`BucketRegion`), bekommt keine Anfrage; jeden
+übrigen prüft eine Auflistung mit `max-keys=1`. Antwortet er mit `AccessDenied` (`s3:ListBucket`
+fehlt), einem Verweis auf einen anderen Endpoint oder `NoSuchBucket`, oder liegt er in einer
+anderen Region, kann die Bibliothek ihn nicht lesen. Hält sie keine Dokumente aus ihm (kein
+`file_path` unter `s3://<bucket>/`), liegt er nicht im Umfang: Das Protokoll nennt ihn mit Grund
+unter „Nicht im Umfang“, und er hält den Abgleich der übrigen nicht auf. Hält sie Dokumente aus
+ihm, bleibt er im Umfang und gilt ohne weitere Anfrage als nicht listbarer Bereich (Entscheidung
+3): Die Auflistung ist unvollständig, bereinigt wird nichts. Denn ein `403` oder `404` kann auch
+von einer vorgeschalteten Firewall oder einem Ingress kommen, und Rechteentzug ist kein
+Löschbefund. Als Löschbefund für einen Bucket gilt allein, dass `ListBuckets` ihn nicht mehr nennt.
+Jede andere Antwort der Prüfung (Drosselung, abgelehnter Schlüssel, Endpoint nicht erreichbar)
+lässt den Lauf scheitern. Fehlt `s3:ListAllMyBuckets`, sieht der Schlüssel keinen Bucket oder kann
+die Bibliothek keinen davon lesen, scheitert der Lauf vor dem ersten Objekt und entfernt nichts.
+Ein Ereignislauf prüft nur die Buckets der gemeldeten Schlüssel, prüft nur Schlüssel aus
+lesbaren Buckets und schreibt die gemerkte Ermittlung nicht fort. Der Verbindungstest löst den
+Umfang wie ein Vollabgleich auf, kennt aber keinen Bestand; er nennt die gesehenen, die gelesenen
+und die nicht lesbaren Buckets mit Grund. Die Ordnerkette beginnt unter „Alle Buckets“ immer mit
+dem Bucket, damit sie sich mit der Zahl der Buckets nicht ändert. Das Laufprotokoll nennt die Zahl
+der Buckets im Umfang und, gegen die in `source_sync_state.resolved_scopes` gemerkte letzte
+Ermittlung, neu hinzugekommene und weggefallene. Was aus einem Bucket indiziert ist, den
+`ListBuckets` nicht mehr nennt, entfernt der Vollabgleich desselben Laufs.
 
 ### 3. Genau eine Betriebsart — der Vollabgleich — und ein Ereignislauf, der nie durch Abwesenheit löscht
 
@@ -82,7 +89,8 @@ Kennung, `S3ChangeMarker` das Änderungsmerkmal), `S3FullSync` liefert Wortlaut 
 gehört nicht zum Bestand. `ListingOutcome.Complete` nur, wenn jeder Bereich bis zur letzten Seite
 gelistet wurde; ein nicht listbarer Bereich (`404 NoSuchBucket`, `403 AccessDenied`) macht die
 Auflistung unvollständig, die übrigen werden verarbeitet, bereinigt wird nichts — Rechteentzug ist
-kein Löschbefund. Ein erschöpftes Anfragebudget beendet den Lauf als „unvollständig, wird
+kein Löschbefund. Das gilt auch für einen Bucket unter „Alle Buckets“, aus dem die Bibliothek
+Dokumente hält (Entscheidung 2). Ein erschöpftes Anfragebudget beendet den Lauf als „unvollständig, wird
 fortgesetzt"; der nächste Lauf listet alle Bereiche erneut (unvollendete zuerst) und spart nur die
 Downloads; der `ContinuationToken` wird nie gespeichert. Ein Lauf, der trotz erschöpftem Budget
 kein Objekt neu aufgenommen hat, meldet das als Fehler („reicht für diese Bibliothek nicht aus").
