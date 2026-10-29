@@ -29,7 +29,8 @@ import org.springframework.util.StringUtils;
  * and the caller decides what to tell the person waiting for it.
  *
  * <p><b>No address reaches a log line, {@code last_failure_reason} or an API response:</b> every
- * cause passes {@link MailRecipients#maskAddresses} first.
+ * cause passes {@link MailRecipients#maskAddresses} first; a refusal of the mail server loses the
+ * transport's password before that ({@link #maskedCauseOf}).
  *
  * <p>Two ways out (ADR-0053, Entscheidung 11). {@link #send} is synchronous and bounded by the
  * {@link SmtpProperties} timeouts, without retry - for the mail whose outcome the person asking
@@ -129,7 +130,8 @@ public class MailService {
       message.setHeader("Message-ID", claimed.messageId());
       transport.sender().send(message);
     } catch (Exception e) {
-      return transportFailed(claimed.key(), claimed.recipient(), causeOf(e));
+      return transportFailed(
+          claimed.key(), claimed.recipient(), maskedCauseOf(e, transport.settings().password()));
     }
     recordOutcome(null);
     return new SendResult.Sent(claimed.recipient());
@@ -157,7 +159,8 @@ public class MailService {
    * {@link #send} through {@code transport} instead of the stored settings, for settings still
    * being entered. The outcome is not written to the stored settings, whose send status it does not
    * describe, and nothing here logs: the caller decides what of a failure reaches a log line. A
-   * {@link SendResult.Failed} carries the cause without any address. Never throws.
+   * {@link SendResult.Failed} carries the cause without any address and without the password of
+   * {@code transport}. Never throws.
    */
   public SendResult sendThrough(
       MailSenderProvider.Transport transport,
@@ -179,16 +182,18 @@ public class MailService {
     try {
       transport.sender().send(compose(transport.sender(), transport.settings(), recipient, mail));
     } catch (Exception e) {
-      return new SendResult.Failed(maskedCauseOf(e));
+      return new SendResult.Failed(maskedCauseOf(e, transport.settings().password()));
     }
     return new SendResult.Sent(recipient);
   }
 
   /**
-   * The cause of a failed connection or send without an address in it, as {@link #send} reports it.
+   * The cause of a failed connection or send without {@code password} and without an address in it.
+   * The password goes first: once the address mask has shortened a password that looks like an
+   * address, the rest of it would no longer be found.
    */
-  static String maskedCauseOf(Exception e) {
-    return MailRecipients.maskAddresses(causeOf(e));
+  static String maskedCauseOf(Exception e, String password) {
+    return MailRecipients.maskAddresses(MailLogText.withoutSecret(causeOf(e), password));
   }
 
   private SendResult attemptSend(
@@ -217,7 +222,7 @@ public class MailService {
     try {
       transport.sender().send(compose(transport.sender(), transport.settings(), recipient, mail));
     } catch (Exception e) {
-      return transportFailed(key, recipient, causeOf(e));
+      return transportFailed(key, recipient, maskedCauseOf(e, transport.settings().password()));
     }
     recordOutcome(null);
     return new SendResult.Sent(recipient);
@@ -279,9 +284,11 @@ public class MailService {
     return new SendResult.Failed(masked);
   }
 
-  /** The mail server was reached and refused: logged and written to the settings row. */
-  private SendResult transportFailed(MailTemplateKey key, String recipient, String reason) {
-    String masked = MailRecipients.maskAddresses(reason);
+  /**
+   * The mail server was reached and refused: logged and written to the settings row. {@code masked}
+   * comes from {@link #maskedCauseOf}, so it holds neither the password nor an address.
+   */
+  private SendResult transportFailed(MailTemplateKey key, String recipient, String masked) {
     log.warn(
         "Mailversand fehlgeschlagen (Vorlage {}, Empfaenger {}): {}",
         key.key(),

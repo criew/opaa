@@ -58,9 +58,6 @@ public class MailConnectionTester {
   static final String TEST_SENT = "Die Testnachricht wurde dem Mailserver übergeben.";
   static final String TEST_REFUSED = "Der Mailserver hat die Testnachricht nicht angenommen.";
 
-  /** Shorter values are not replaced in a logged cause: they would garble it, not protect it. */
-  private static final int MIN_REDACTED_LENGTH = 3;
-
   private static final Logger log = LoggerFactory.getLogger(MailConnectionTester.class);
 
   private final MailSenderProvider senders;
@@ -91,7 +88,7 @@ public class MailConnectionTester {
       log.warn(
           "Installation mail check failed ({}): {}",
           failure,
-          redacted(MailService.maskedCauseOf(e), settings.password()));
+          MailLogText.withoutLineBreaks(MailService.maskedCauseOf(e, settings.password())));
       return new Outcome(false, failure.message);
     }
     String connected = settings.authenticated() ? SIGNED_IN : CONNECTED;
@@ -150,15 +147,8 @@ public class MailConnectionTester {
         && message.toLowerCase(Locale.ROOT).contains("connect");
   }
 
-  /** {@code text} without {@code secret} and without control characters, for a log line. */
+  /** {@code text} without {@code secret} and without line-breaking characters, for a log line. */
   static String redacted(String text, String secret) {
-    if (text == null) {
-      return null;
-    }
-    String result = text;
-    if (secret != null && secret.length() >= MIN_REDACTED_LENGTH) {
-      result = result.replace(secret, "***");
-    }
-    return result.replaceAll("\\p{Cntrl}", "?");
+    return MailLogText.withoutLineBreaks(MailLogText.withoutSecret(text, secret));
   }
 }

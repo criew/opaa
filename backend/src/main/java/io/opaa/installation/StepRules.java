@@ -50,8 +50,11 @@ class StepRules {
   private static final String RERANK_PREFIX = "rerankModel";
   private static final String TRANSCRIPTION_PREFIX = "transcriptionModel";
 
-  /** A host name or address: no whitespace and no control character, so no forged log line. */
-  private static final Pattern MAIL_HOST = Pattern.compile("[^\\s\\p{Cntrl}]+");
+  /**
+   * A host name or address: no whitespace and no control character in the Unicode sense (U+0085,
+   * U+2028, U+2029 included), so no forged log line.
+   */
+  private static final Pattern MAIL_HOST = Pattern.compile("(?U)[^\\s\\p{Cc}\\p{Zl}\\p{Zp}]+");
 
   private static final String REQUIRED = "REQUIRED";
   private static final String TOO_LONG = "TOO_LONG";

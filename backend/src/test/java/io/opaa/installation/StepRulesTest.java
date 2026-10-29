@@ -497,6 +497,22 @@ class StepRulesTest {
                     .containsExactly("mail.host", "mail.fromAddress"));
   }
 
+  @Test
+  void aServerWithAUnicodeLineBreakIsRefusedAsInvalid() {
+    for (String host : List.of("smtp\u0085X-Evil", "smtp\u2028X-Evil", "smtp\u2029X-Evil")) {
+      assertThatThrownBy(() -> rules.toStored(mail(host, null, null), null, null))
+          .isInstanceOfSatisfying(
+              FieldValidationException.class,
+              e ->
+                  assertThat(e.fieldErrors())
+                      .extracting(
+                          FieldValidationException.FieldError::field,
+                          FieldValidationException.FieldError::code)
+                      .containsExactly(
+                          org.assertj.core.groups.Tuple.tuple("mail.host", "INVALID")));
+    }
+  }
+
   private static StepInput.Mail mail(String host, String username, String password) {
     return new StepInput.Mail(
         host, 2525, MailEncryption.NONE, username, password, " opaa@stadt.example ", "OPAA");
