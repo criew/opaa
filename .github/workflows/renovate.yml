@@ -66,8 +66,8 @@ jobs:
           # fails, Renovate falls back to the registry tag list without timestamps and holds every
           # release back under minimumReleaseAge; stopping at page 10 keeps the timestamps.
           # gradleWrapper is the only unsafe execution: Renovate needs ./gradlew to rewrite the
-          # wrapper scripts and gradle/verification-metadata.xml. It runs only for versions past
-          # minimumReleaseAge, inside this container (docs/renovate.md, "Gradle-Prüfsummen").
+          # wrapper scripts. It runs only for versions past minimumReleaseAge, inside this
+          # container; wrapper updates never merge automatically (renovate.json5).
           docker run --rm \
             -e RENOVATE_TOKEN \
             -e RENOVATE_PLATFORM=github \

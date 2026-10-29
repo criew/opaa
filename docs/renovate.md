@@ -90,62 +90,22 @@ Sicherheits-PRs (nächster Abschnitt).
 
 ## Gradle-Prüfsummen
 
-**Dependency Verification.** `backend/gradle/verification-metadata.xml` hält für jedes Artefakt,
-das der Bau auflöst (Bibliotheken, Plugins, POM- und Module-Dateien), die SHA-256-Prüfsumme
-(`<verify-metadata>true</verify-metadata>`, keine Signaturen). Gradle bricht jeden Bau, auch im
-Docker-Image-Build, mit `Dependency verification failed` ab, sobald ein Artefakt nicht passt oder
-fehlt. Ein ausgetauschtes Artefakt im Repository oder auf dem Weg dorthin fällt so auf, nicht nur
-eine neue Version.
-
 **Wrapper.** `backend/gradle/wrapper/gradle-wrapper.properties` trägt `distributionSha256Sum`;
 der Wrapper prüft die heruntergeladene Distribution dagegen. Die Prüfsumme stammt von
 [gradle.org/release-checksums](https://gradle.org/release-checksums/) („Complete (-all) ZIP“);
 die Seite nennt auch die Prüfsumme der Wrapper-JAR, gegen die sich
 `backend/gradle/wrapper/gradle-wrapper.jar` abgleichen lässt. Ein Wrapper-Update von Renovate
-holt die neue Prüfsumme aus der `.sha256`-Datei neben der Distribution und schreibt sie mit, mergt
-aber nie automatisch.
+holt die neue Prüfsumme aus der `.sha256`-Datei neben der Distribution und schreibt sie mit
+(dafür führt es `./gradlew wrapper` aus, `gradleWrapper` in `renovate.yml`), mergt aber nie
+automatisch.
 
-**Was Renovate pflegt.** Findet Renovate die Datei, ruft es bei jedem `gradle`-Update
-`./gradlew --write-verification-metadata sha256 dependencies` auf und committet die neuen Einträge
-mit. Dafür braucht es `RENOVATE_ALLOWED_UNSAFE_EXECUTIONS=gradleWrapper` (renovate.yml), also
-genau die Ausführung des Wrappers, die Renovate als unsicher einstuft: Der Aufruf lädt die
-**neue** Plugin-Version und führt sie im Renovate-Container aus, in dem auch `RENOVATE_TOKEN`
-liegt. Ohne die Freigabe bliebe jeder Gradle-Update-PR rot. Getragen wird das Restrisiko durch
-die Wartefrist: Renovate führt den Wrapper erst für Versionen aus, die drei Tage alt sind.
-Ausnahme sind Sicherheits-PRs, die ohne Frist entstehen; einer für ein Gradle-Plugin führt die
-neue Version sofort aus.
-
-**Was Renovate nicht pflegt.** `dependencies` löst nur die Konfigurationen der Projekte auf.
-Artefakte, die ein Plugin erst beim Ausführen eines Tasks nachlädt, fehlen danach; heute betrifft
-das google-java-format, dessen Version Spotless festlegt. Ein Spotless-Update bleibt deshalb rot
-(`spotlessCheck` im Job `backend`), bis jemand die Einträge lokal ergänzt.
-
-**Von Hand ergänzen oder neu erzeugen** (aus `backend/`):
-
-```bash
-LANG=C.UTF-8 ./gradlew --write-verification-metadata sha256 \
-  dependencies buildEnvironment spotlessCheck cyclonedxBom javadoc testJavadoc build -x test
-```
-
-Der Aufruf ergänzt die Datei um alles, was diese Tasks auflösen, und entfernt nichts. Um
-Einträge veralteter Versionen loszuwerden, die Datei vorher löschen; der Aufruf erzeugt sie dann
-vollständig neu (am 29.10.2026 belegt: identisch mit einer Fassung, die zusätzlich jede
-auflösbare Konfiguration aller Projekte auflöst). Den Diff vor dem Commit durchsehen: Neue
-Einträge gehören zu den geänderten Versionen. Eine **geänderte** Prüfsumme einer schon
-vorhandenen Version ist ein Alarmzeichen und wird nicht übernommen, bevor geklärt ist, warum
-sich das Artefakt geändert hat. Stichproben lassen sich gegen Maven Central abgleichen
-(`curl -sS https://repo.maven.apache.org/maven2/<pfad>/<datei> | sha256sum`).
-
-**Plugin-Marker kommen vom Plugin-Portal.** Die CI und der Docker-Build lösen Plugins über das
-Gradle Plugin Portal auf. Für die meisten Artefakte leitet das Portal auf Maven Central weiter,
-die Bytes sind dieselben. Die Marker-POMs (`<plugin-id>.gradle.plugin-<version>.pom`) liefert es
-aber in einer eigenen Fassung aus, die sich von der auf Maven Central unterscheidet; betroffen
-sind heute Spring Boot, Spring Dependency Management und Spotless. Für sie trägt die Datei beide
-Prüfsummen, die von Maven Central und die des Portals als `<also-trust>`. Wer die Datei über einen
-Spiegel von Maven Central erzeugt (etwa per Gradle-Init-Skript, das nicht ins Repository gehört),
-bekommt für die Marker nur die Prüfsumme von Maven Central, und die CI bricht ab. Abgleich:
-`curl -sS https://plugins.gradle.org/m2/<pfad>/<datei> | sha256sum`; liefert das Portal statt der
-Datei eine Weiterleitung auf Maven Central (`curl -sI`), gilt dessen Prüfsumme.
+**Abhängigkeiten.** Eine Gradle Dependency Verification (`backend/gradle/verification-metadata.xml`)
+gibt es noch nicht. Ein erster Versuch scheiterte daran, dass die Prüfsummen von der Quelle
+abhängen: CI und Docker-Build lösen den Plugin-Classpath über das Gradle Plugin Portal auf, das
+Marker-POMs und einen Teil der POM- und Module-Dateien in eigener Fassung ausliefert, die
+Projektabhängigkeiten über Maven Central. Eine vollständige Datei lässt sich deshalb nur in einer
+Umgebung erzeugen, die beide Quellen ohne Spiegel erreicht, etwa in einem eigenen CI-Job; das ist
+ein eigenes Issue.
 
 **npm wird gepinnt** (`rangeStrategy: 'pin'` für `dependencies`/`devDependencies`):
 `frontend/` und `e2e/` sind Anwendungen — exakte Versionen in der `package.json` machen jeden
@@ -648,10 +608,11 @@ docker run --rm \
 ```
 
 `RENOVATE_ALLOWED_UNSAFE_EXECUTIONS=gradleWrapper` erlaubt Renovate, bei einem Gradle-Update den
-Wrapper-Befehl auszuführen (#997) — ohne die Freigabe aktualisiert es weder die Wrapper-Skripte/JAR
-noch `gradle/verification-metadata.xml`, und Gradle-Update-PRs blieben rot. Bewusst nur dieser
-eine Befehl, keine weiteren unsicheren Ausführungen; Restrisiko und Ausgleich stehen unter
-[Gradle-Prüfsummen](#gradle-prüfsummen).
+Wrapper-Befehl auszuführen (#997) — ohne die Freigabe aktualisiert es nur
+`gradle-wrapper.properties`, nicht die Wrapper-Skripte/JAR, und der Lauf meldet eine WARN-Zeile im
+Dependency-Dashboard. Bewusst nur dieser eine Befehl, keine weiteren unsicheren Ausführungen. Der
+Wrapper läuft dabei im Renovate-Container, in dem auch `RENOVATE_TOKEN` liegt; deshalb mergen
+Wrapper-Updates nie automatisch, und Renovate schlägt erst Versionen vor, die drei Tage alt sind.
 
 Der Lauf ist idempotent: erneutes Ausführen aktualisiert bestehende Update-Branches (Rebase
 bei Bedarf), schließt Überholtes und legt nur Neues an.
@@ -689,12 +650,6 @@ docker run --rm -v "$(pwd)":/usr/src/app -w /usr/src/app \
   Default-Branch — erst mergen, dann laufen lassen.
 - **403/401 beim echten Lauf:** Token abgelaufen oder Zuschnitt zu eng (siehe
   [Token: minimale Rechte](#token-minimale-rechte)).
-- **`Dependency verification failed` in einem Gradle-Update-PR:** Ein Artefakt, das der Bau
-  auflöst, fehlt in `backend/gradle/verification-metadata.xml`, meist eines, das ein Plugin erst
-  beim Ausführen nachlädt (Spotless, siehe [Gradle-Prüfsummen](#gradle-prüfsummen)). Den Branch
-  auschecken, den Befehl dort ausführen, den Diff prüfen und auf den Branch committen. Fehlen die
-  Einträge auch für die eigentlichen Bibliotheken, hat Renovate den Wrapper nicht ausführen
-  dürfen; dann steht eine WARN-Zeile zu `allowedUnsafeExecutions` im Log des Laufs.
 - **Gradle-Updates fehlen im Log:** Der `gradle`-Manager braucht die
   `libs.versions.toml`-Einträge in Standardform (`[versions]`/`[libraries]`-Referenzen) —
   direkt in `build.gradle.kts` eingetragene Versionen sind ohnehin verboten (AGENTS.md). Ein
