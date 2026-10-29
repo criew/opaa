@@ -1453,7 +1453,7 @@ public class KnowledgeLibraryService {
             fullSyncRhythm.installationDefault(descriptor.type(), descriptor.fullSyncInterval())),
         schedule,
         lastScheduledRunsFailed,
-        storageQuotaService.quotaBytes(),
+        storageQuotaService.quotaBytes(library),
         storageQuotaService.usedBytes(library.getId()),
         externalAccessService.describe(library),
         // An upload library never carries a cap narrower than the unrestricted default

@@ -844,7 +844,7 @@ class RssFeedIndexingExecutorTest {
     serve("/over-quota.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
     when(documentIngestService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(DocumentIngestResult.QUOTA_EXCEEDED);
-    when(storageQuotaService.quotaExceededMessage(library.getId()))
+    when(storageQuotaService.quotaExceededMessage(library))
         .thenReturn("Speicherkontingent der Bibliothek erschöpft (10 GB von 10 GB belegt)");
 
     execute(baseUrl + "/feed.xml");
@@ -1207,7 +1207,7 @@ class RssFeedIndexingExecutorTest {
     serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
     when(documentIngestService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(DocumentIngestResult.QUOTA_EXCEEDED);
-    when(storageQuotaService.quotaExceededMessage(library.getId()))
+    when(storageQuotaService.quotaExceededMessage(library))
         .thenReturn("Speicherkontingent der Bibliothek erschöpft (10 GB von 10 GB belegt)");
 
     execute(baseUrl + "/feed.xml");
@@ -1392,7 +1392,7 @@ class RssFeedIndexingExecutorTest {
         .thenReturn(DocumentIngestResult.PROCESSED);
     when(documentIngestService.ingest(DocumentIngests.that().file().in(library).match(), any()))
         .thenReturn(DocumentIngestResult.QUOTA_EXCEEDED);
-    when(storageQuotaService.quotaExceededMessage(library.getId()))
+    when(storageQuotaService.quotaExceededMessage(library))
         .thenReturn("Speicherkontingent der Bibliothek erschöpft (10 GB von 10 GB belegt)");
 
     execute(baseUrl + "/feed.xml");

@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.opaa.knowledge.LibraryStorageQuotaService.IntakeHold;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
@@ -24,12 +25,25 @@ class LibraryStorageQuotaServiceTest {
   private final PersonalStorageQuota personalQuota = mock(PersonalStorageQuota.class);
   private final PlatformTransactionManager transactionManager =
       mock(PlatformTransactionManager.class);
-  private final UUID libraryId = UUID.randomUUID();
+  private final SharedLibraryQuotaSettingRepository sharedSettings =
+      mock(SharedLibraryQuotaSettingRepository.class);
+  private final KnowledgeLibrary library = sharedLibraryOf(UUID.randomUUID());
+  private final UUID libraryId = library.getId();
 
-  private LibraryStorageQuotaService service(long quotaBytes) {
-    LibraryProperties properties = new LibraryProperties(quotaBytes);
+  /** The service under the operator's upper limit {@code capBytes}, without an own value. */
+  private LibraryStorageQuotaService service(long capBytes) {
+    when(sharedSettings.findSingleton()).thenReturn(Optional.empty());
     return new LibraryStorageQuotaService(
-        documentRepository, properties, personalQuota, transactionManager);
+        documentRepository,
+        new SharedLibraryQuota(new LibraryProperties(capBytes), sharedSettings),
+        personalQuota,
+        transactionManager);
+  }
+
+  private void ownSharedValue(long bytes) {
+    SharedLibraryQuotaSetting setting = mock(SharedLibraryQuotaSetting.class);
+    when(setting.getQuotaBytes()).thenReturn(bytes);
+    when(sharedSettings.findSingleton()).thenReturn(Optional.of(setting));
   }
 
   private static KnowledgeLibrary privateLibraryOf(UUID owner) {
@@ -159,12 +173,12 @@ class LibraryStorageQuotaServiceTest {
     // than the default, which would otherwise be permanently blocked the moment this quota ships.
     LibraryStorageQuotaService zeroQuotaService = service(0);
     when(documentRepository.sumFileSizeByLibraryId(libraryId)).thenReturn(50L * 1024 * 1024 * 1024);
-    assertThat(zeroQuotaService.quotaBytes()).isZero();
-    assertThat(zeroQuotaService.wouldExceedQuota(libraryId, 1024)).isFalse();
+    assertThat(zeroQuotaService.quotaBytes(library)).isZero();
+    assertThat(zeroQuotaService.wouldExceedQuota(library, 1024)).isFalse();
 
     LibraryStorageQuotaService negativeQuotaService = service(-1);
-    assertThat(negativeQuotaService.quotaBytes()).isNegative();
-    assertThat(negativeQuotaService.wouldExceedQuota(libraryId, Long.MAX_VALUE / 2)).isFalse();
+    assertThat(negativeQuotaService.quotaBytes(library)).isZero();
+    assertThat(negativeQuotaService.wouldExceedQuota(library, Long.MAX_VALUE / 2)).isFalse();
   }
 
   @Test
@@ -174,8 +188,8 @@ class LibraryStorageQuotaServiceTest {
     LibraryStorageQuotaService quotaService = service(1000);
     when(documentRepository.sumFileSizeByLibraryId(libraryId)).thenReturn(400L);
 
-    assertThat(quotaService.wouldExceedQuota(libraryId, 600)).isFalse();
-    assertThat(quotaService.wouldExceedQuota(libraryId, 601)).isTrue();
+    assertThat(quotaService.wouldExceedQuota(library, 600)).isFalse();
+    assertThat(quotaService.wouldExceedQuota(library, 601)).isTrue();
   }
 
   @Test
@@ -184,12 +198,12 @@ class LibraryStorageQuotaServiceTest {
     // quota never reads as the indistinguishable "0 GB von 0 GB belegt".
     LibraryStorageQuotaService gibQuotaService = service(10L * 1024 * 1024 * 1024);
     when(documentRepository.sumFileSizeByLibraryId(libraryId)).thenReturn(3L * 1024 * 1024 * 1024);
-    assertThat(gibQuotaService.quotaExceededMessage(libraryId))
+    assertThat(gibQuotaService.quotaExceededMessage(library))
         .isEqualTo("Speicherkontingent der Bibliothek erschöpft (3 GB von 10 GB belegt)");
 
     LibraryStorageQuotaService smallQuotaService = service(200L * 1024 * 1024);
     when(documentRepository.sumFileSizeByLibraryId(libraryId)).thenReturn(157L * 1024 * 1024 / 2);
-    assertThat(smallQuotaService.quotaExceededMessage(libraryId))
+    assertThat(smallQuotaService.quotaExceededMessage(library))
         .isEqualTo("Speicherkontingent der Bibliothek erschöpft (78,5 MB von 200 MB belegt)");
   }
 
@@ -197,9 +211,63 @@ class LibraryStorageQuotaServiceTest {
   void quotaExceededMessageOverloadAvoidsARecomputationWhenTheCallerAlreadyKnowsUsedBytes() {
     LibraryStorageQuotaService quotaService = service(10L * 1024 * 1024 * 1024);
 
-    assertThat(quotaService.quotaExceededMessage(libraryId, 3L * 1024 * 1024 * 1024))
+    assertThat(quotaService.quotaExceededMessage(library, 3L * 1024 * 1024 * 1024))
         .isEqualTo("Speicherkontingent der Bibliothek erschöpft (3 GB von 10 GB belegt)");
     // The overload never consults the repository at all - the caller supplies usedBytes itself.
     verifyNoInteractions(documentRepository);
+  }
+
+  @Test
+  void aSharedLibraryIsHeldToTheHouseWideValueBelowTheUpperLimit() {
+    LibraryStorageQuotaService quotaService = service(10_000);
+    ownSharedValue(1000);
+    when(documentRepository.sumFileSizeByLibraryId(libraryId)).thenReturn(400L);
+
+    assertThat(quotaService.quotaBytes(library)).isEqualTo(1000);
+    assertThat(quotaService.verdictFor(library, 600)).isEqualTo(QuotaVerdict.WITHIN);
+    assertThat(quotaService.verdictFor(library, 601)).isEqualTo(QuotaVerdict.LIBRARY_EXHAUSTED);
+    assertThat(quotaService.quotaExceededMessage(library, 400))
+        .isEqualTo("Speicherkontingent der Bibliothek erschöpft (400 B von 1000 B belegt)");
+  }
+
+  @Test
+  void aPrivateLibraryIsHeldToTheUpperLimitNotToTheHouseWideValue() {
+    UUID owner = UUID.randomUUID();
+    LibraryStorageQuotaService quotaService = service(10_000);
+    ownSharedValue(1000);
+    KnowledgeLibrary privateLibrary = privateLibraryOf(owner);
+    when(documentRepository.sumFileSizeByLibraryId(privateLibrary.getId())).thenReturn(5000L);
+    when(personalQuota.quotaBytes()).thenReturn(0L);
+
+    assertThat(quotaService.quotaBytes(privateLibrary)).isEqualTo(10_000);
+    assertThat(quotaService.verdictFor(privateLibrary, 100)).isEqualTo(QuotaVerdict.WITHIN);
+  }
+
+  /**
+   * A library already above a lowered quota keeps its documents and takes in nothing that grows it;
+   * a changed document of the same or a smaller size still replaces its stored version.
+   */
+  @Test
+  void aLibraryAboveItsQuotaTakesNoGrowthButStillAChangeThatDoesNotGrow() {
+    LibraryStorageQuotaService quotaService = service(10_000);
+    ownSharedValue(1000);
+    when(documentRepository.sumFileSizeByLibraryId(libraryId)).thenReturn(1500L);
+
+    assertThat(quotaService.verdictFor(library, 1)).isEqualTo(QuotaVerdict.LIBRARY_EXHAUSTED);
+    assertThat(quotaService.wouldExceedQuota(library, 1)).isTrue();
+    assertThat(quotaService.verdictFor(library, 0)).isEqualTo(QuotaVerdict.WITHIN);
+    assertThat(quotaService.verdictFor(library, -200)).isEqualTo(QuotaVerdict.WITHIN);
+  }
+
+  /** The house-wide value is read on every check: a change applies without a restart. */
+  @Test
+  void aChangedHouseWideValueAppliesToTheNextCheck() {
+    LibraryStorageQuotaService quotaService = service(10_000);
+    when(documentRepository.sumFileSizeByLibraryId(libraryId)).thenReturn(1500L);
+    assertThat(quotaService.verdictFor(library, 100)).isEqualTo(QuotaVerdict.WITHIN);
+
+    ownSharedValue(1000);
+
+    assertThat(quotaService.verdictFor(library, 100)).isEqualTo(QuotaVerdict.LIBRARY_EXHAUSTED);
   }
 }

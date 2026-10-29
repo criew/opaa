@@ -150,7 +150,7 @@ class UrlIndexingExecutorQuotaTest {
   @Test
   void aFileOverTheLibraryStorageQuotaIsSkippedAndRecordedAsARejectedEvent() throws IOException {
     stubProcessUrlFile(invocation -> DocumentIngestResult.QUOTA_EXCEEDED);
-    when(storageQuotaService.quotaExceededMessage(library.getId()))
+    when(storageQuotaService.quotaExceededMessage(library))
         .thenReturn("Speicherkontingent der Bibliothek erschöpft (10 GB von 10 GB belegt)");
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);

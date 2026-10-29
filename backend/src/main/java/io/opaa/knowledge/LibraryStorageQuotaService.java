@@ -9,35 +9,36 @@ import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.DefaultTransactionDefinition;
 
 /**
- * Enforces the per-library storage quota ({@link LibraryProperties#quotaBytes}) for uploads and
- * connector runs alike, scoped to a library, never to a person who uploaded. The library check is
- * not reserved: concurrent uploads may overshoot by at most one file each (accepted). A private
- * library also counts against its owner's {@link PersonalStorageQuota}, checked under {@link
- * #holdIntake}, which serializes one owner's intake across every instance with a transaction-scoped
- * advisory lock (ADR-0053, Entscheidung 10).
+ * Enforces the per-library storage quota ({@link SharedLibraryQuota}) for uploads and connector
+ * runs alike, scoped to a library, never to a person who uploaded. Only growth is checked: a
+ * library above its quota keeps every document and still replaces one that does not grow. The
+ * library check is not reserved: concurrent uploads may overshoot by at most one file each
+ * (accepted). A private library also counts against its owner's {@link PersonalStorageQuota},
+ * checked under {@link #holdIntake}, which serializes one owner's intake across every instance with
+ * a transaction-scoped advisory lock (ADR-0053, Entscheidung 10).
  */
 @Service
 public class LibraryStorageQuotaService {
 
   private final DocumentRepository documentRepository;
-  private final LibraryProperties libraryProperties;
+  private final SharedLibraryQuota libraryQuota;
   private final PersonalStorageQuota personalQuota;
   private final PlatformTransactionManager transactionManager;
 
   public LibraryStorageQuotaService(
       DocumentRepository documentRepository,
-      LibraryProperties libraryProperties,
+      SharedLibraryQuota libraryQuota,
       PersonalStorageQuota personalQuota,
       PlatformTransactionManager transactionManager) {
     this.documentRepository = documentRepository;
-    this.libraryProperties = libraryProperties;
+    this.libraryQuota = libraryQuota;
     this.personalQuota = personalQuota;
     this.transactionManager = transactionManager;
   }
 
-  /** The configured per-library quota in bytes; {@code <= 0} means unlimited. */
-  public long quotaBytes() {
-    return libraryProperties.quotaBytes();
+  /** The quota in force for {@code library} in bytes; {@code 0} means unlimited. */
+  public long quotaBytes(KnowledgeLibrary library) {
+    return libraryQuota.quotaBytesOf(library);
   }
 
   /**
@@ -49,15 +50,18 @@ public class LibraryStorageQuotaService {
   }
 
   /**
-   * Whether {@code additionalBytes} more would exceed the quota; never for an unlimited one. A
-   * caller replacing a document calls this after removing the old row, so it is not counted twice.
+   * Whether {@code additionalBytes} more would exceed the quota; never for an unlimited one, nor
+   * for no growth. A caller replacing a document passes the growth over the stored version only.
    */
-  public boolean wouldExceedQuota(UUID libraryId, long additionalBytes) {
-    long quota = quotaBytes();
+  public boolean wouldExceedQuota(KnowledgeLibrary library, long additionalBytes) {
+    if (additionalBytes <= 0) {
+      return false;
+    }
+    long quota = quotaBytes(library);
     if (quota <= 0) {
       return false;
     }
-    return usedBytes(libraryId) + additionalBytes > quota;
+    return usedBytes(library.getId()) + additionalBytes > quota;
   }
 
   /**
@@ -66,10 +70,10 @@ public class LibraryStorageQuotaService {
    * before letting go; only an advisory check that stores nothing may skip the hold.
    */
   public QuotaVerdict verdictFor(KnowledgeLibrary library, long additionalBytes) {
-    if (wouldExceedQuota(library.getId(), additionalBytes)) {
+    if (wouldExceedQuota(library, additionalBytes)) {
       return QuotaVerdict.LIBRARY_EXHAUSTED;
     }
-    if (!library.isOwnerOnly()) {
+    if (additionalBytes <= 0 || !library.isOwnerOnly()) {
       return QuotaVerdict.WITHIN;
     }
     long quota = personalQuota.quotaBytes();
@@ -130,21 +134,20 @@ public class LibraryStorageQuotaService {
    * The German rejection for the upload's 413 and the run protocol alike, "Speicherkontingent der
    * Bibliothek erschöpft (X von Y belegt)"; called only after {@link #wouldExceedQuota} said so.
    */
-  public String quotaExceededMessage(UUID libraryId) {
-    return quotaExceededMessage(libraryId, usedBytes(libraryId));
+  public String quotaExceededMessage(KnowledgeLibrary library) {
+    return quotaExceededMessage(library, usedBytes(library.getId()));
   }
 
   /**
-   * Overload of {@link #quotaExceededMessage(UUID)} for a caller that already knows {@code
-   * libraryId}'s current usage (typically from its own preceding {@link #wouldExceedQuota} call) -
-   * avoids a second identical aggregate query per rejected document.
+   * Overload of {@link #quotaExceededMessage(KnowledgeLibrary)} for a caller that already knows
+   * {@code library}'s current usage - avoids a second identical aggregate query per rejection.
    */
-  public String quotaExceededMessage(UUID libraryId, long usedBytes) {
+  public String quotaExceededMessage(KnowledgeLibrary library, long usedBytes) {
     // adaptive units, so a sub-GB quota never reads as "0 GB von 0 GB belegt" in every rejection
     return "Speicherkontingent der Bibliothek erschöpft ("
         + ByteSizes.format(usedBytes)
         + " von "
-        + ByteSizes.format(quotaBytes())
+        + ByteSizes.format(quotaBytes(library))
         + " belegt)";
   }
 }

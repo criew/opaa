@@ -1029,6 +1029,49 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/admin/shared-libraries/quota:
+    get:
+      operationId: getSharedLibraryQuota
+      tags: [library]
+      summary: >
+        Reads the house-wide storage quota of every shared library (system admin only): the value
+        in force, the administration's own value, the operator's upper limit and how many shared
+        libraries of the caller's organization already occupy more than the value in force.
+      responses:
+        "200":
+          description: Current quota
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SharedLibraryQuotaResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      operationId: updateSharedLibraryQuota
+      tags: [library]
+      summary: >
+        Sets the house-wide storage quota of every shared library (system admin only); quotaBytes
+        null removes the own value, so the operator's upper limit applies alone. A value above
+        the upper limit is refused. Takes effect with the next document taken in, on every
+        instance; nothing already stored is removed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SharedLibraryQuotaRequest"
+      responses:
+        "200":
+          description: Quota updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SharedLibraryQuotaResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /api/v1/admin/private-libraries/summary:
     get:
       operationId: getPrivateStorageSummary
@@ -1179,6 +1222,45 @@ components:
         overridden:
           type: boolean
           description: Whether the administration set its own value.
+
+    SharedLibraryQuotaRequest:
+      type: object
+      properties:
+        quotaBytes:
+          type: integer
+          format: int64
+          minimum: 1
+          nullable: true
+          description: >
+            The house-wide limit per shared library in bytes, at most the operator's upper limit;
+            null (or absent) removes the own value.
+
+    SharedLibraryQuotaResponse:
+      type: object
+      required: [quotaBytes, capBytes, librariesOverQuota]
+      properties:
+        quotaBytes:
+          type: integer
+          format: int64
+          description: >
+            The limit per shared library in force; 0 means unlimited. The own value, capped by
+            the operator's upper limit, or the upper limit alone.
+        ownQuotaBytes:
+          type: integer
+          format: int64
+          nullable: true
+          description: The value the administration set; null while it set none.
+        capBytes:
+          type: integer
+          format: int64
+          description: >
+            The operator's upper limit per library (OPAA_LIBRARY_QUOTA_BYTES); 0 means none.
+        librariesOverQuota:
+          type: integer
+          format: int64
+          description: >
+            How many shared libraries of the caller's organization occupy more than quotaBytes
+            already; they keep their documents and take in nothing more.
 
     MaskedNumber:
       type: object
@@ -2217,11 +2299,12 @@ components:
           format: int64
           nullable: true
           description: >
-            The configured per-library storage quota in bytes (Standardkontingent je
-            Bibliothek) - the same value for every library today, since the quota is currently an
-            operator-wide setting rather than one configurable per library. Set only if myRole is
-            at least MANAGER - see sourcePath above for why: usage/quota is administration
-            detail, not something a mere VIEWER needs to manage the bestand.
+            The storage quota in force for this library in bytes, 0 for unlimited: for a shared
+            library the house-wide value of the administration within the operator's upper limit,
+            for a private library the operator's upper limit. A library above it keeps every
+            document and takes in nothing more until it is below again. Set only if myRole is at
+            least MANAGER - see sourcePath above for why: usage/quota is administration detail,
+            not something a mere VIEWER needs to manage the bestand.
         storageUsedBytes:
           type: integer
           format: int64

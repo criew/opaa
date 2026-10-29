@@ -343,6 +343,7 @@ nonPersonalTables:
   transcription_model:
     [id, enabled, base_url, model_identifier, api_key_ciphertext, language, updated_at]
   private_storage_quota_settings: [id, quota_bytes, updated_at]
+  shared_library_quota_settings: [id, quota_bytes, updated_at]
   full_sync_rhythm_settings: [source_type, interval_days, updated_at]
   rss_feed_state: [id, feed_url, etag, last_modified, updated_at, library_id]
   outbound_proxy_settings: [id, proxy_host, proxy_port, no_proxy, updated_at]
