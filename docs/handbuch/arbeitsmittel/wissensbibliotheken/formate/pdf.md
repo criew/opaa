@@ -125,18 +125,22 @@ hängt dann von dieser Textebene ab.
 ## 6. Grenzwerte
 
 Keine eigenen Konfigurationsschlüssel. Es gelten die gemeinsamen Grenzen für Text,
-Rechenschritte, gelesene Inhaltsdaten und Lesezeit je Dokument und die Grenzen für die Gliederung
+Rechenschritte, gelesene Inhaltsdaten und Lesezeit je Dokument, für die Größe eines einzelnen
+Inhaltsteils und für die Gliederung
 ([Grenzen beim Lesen](README.md#grenzen-beim-lesen)), die Zeichenobergrenzen des gemeinsamen
 Abschnittsschneiders und die Grenzen von PDFBox. Am Webverzeichnis-Konnektor greift zusätzlich die
 Dateigrößengrenze des Konnektors.
 
 **Zeichnungslastige PDFs** wie Bebauungs- oder Lagepläne bestehen aus Millionen von
-Zeichenanweisungen je Seite und können `max-pdf-operators`, `max-pdf-content-bytes` oder
-`max-pdf-parse-seconds` reißen, obwohl sie nicht präpariert sind. Sie gelten dann als
-fehlgeschlagen. Wer solche Pläne indexieren will, hebt die Grenzen an, etwa
-`OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_OPERATORS=1000000000` und
+Zeichenanweisungen je Seite und können `max-pdf-operators`, `max-pdf-stream-bytes`,
+`max-pdf-content-bytes` oder `max-pdf-parse-seconds` reißen, obwohl sie nicht präpariert sind.
+Sie gelten dann als fehlgeschlagen. Wer solche Pläne indexieren will, hebt die Grenzen an, etwa
+`OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_OPERATORS=1000000000`,
+`OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_STREAM_BYTES=134217728` (128 MiB) und
 `OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_PARSE_SECONDS=600`, und indexiert die Bibliothek neu. Jede
-Erhöhung verlängert die Zeit, die eine präparierte Datei einen Indexierungsplatz belegen kann.
+Erhöhung verlängert die Zeit, die eine präparierte Datei einen Indexierungsplatz belegen kann;
+eine höhere Grenze für einen einzelnen Inhaltsteil braucht zudem entsprechend mehr Arbeitsspeicher
+für das Backend.
 
 ## 7. Nicht verarbeitet
 

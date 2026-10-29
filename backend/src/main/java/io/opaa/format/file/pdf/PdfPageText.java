@@ -14,10 +14,12 @@ import org.apache.pdfbox.contentstream.operator.Operator;
 import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.font.PDType3CharProc;
 import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
 import org.apache.pdfbox.pdmodel.graphics.form.PDTransparencyGroup;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.text.TextPosition;
+import org.apache.pdfbox.util.Matrix;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -242,6 +244,13 @@ final class PdfPageText {
     public void showTransparencyGroup(PDTransparencyGroup form) throws IOException {
       budget.chargeContent(form.getCOSObject());
       super.showTransparencyGroup(form);
+    }
+
+    @Override
+    protected void processType3Stream(PDType3CharProc charProc, Matrix textRenderingMatrix)
+        throws IOException {
+      budget.chargeContent(charProc.getCOSObject());
+      super.processType3Stream(charProc, textRenderingMatrix);
     }
 
     @Override

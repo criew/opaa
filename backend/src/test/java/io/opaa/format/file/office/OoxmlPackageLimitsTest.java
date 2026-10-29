@@ -15,6 +15,7 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Random;
@@ -35,7 +36,7 @@ import org.junit.jupiter.api.io.TempDir;
 class OoxmlPackageLimitsTest {
 
   private static final ParserLimitProperties SMALL =
-      new ParserLimitProperties(0, 200_000, 300_000, 0, 0, 0);
+      new ParserLimitProperties(0, 200_000, 300_000, 0, 0, 0, 0);
 
   private static final String CONTENT_TYPES =
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
@@ -46,6 +47,8 @@ class OoxmlPackageLimitsTest {
           + "<Default Extension=\"png\" ContentType=\"image/png\"/>"
           + "<Default Extension=\"mp4\" ContentType=\"video/mp4\"/>"
           + "<Default Extension=\"ttf\" ContentType=\"application/x-font-ttf\"/>"
+          + "<Default Extension=\"odttf\" ContentType=\"application/"
+          + "vnd.openxmlformats-officedocument.obfuscatedFont\"/>"
           + "<Override PartName=\"/word/document.xml\" ContentType=\"application/"
           + "vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/>"
           + "</Types>";
@@ -120,6 +123,39 @@ class OoxmlPackageLimitsTest {
         .isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
   }
 
+  /**
+   * Embedded fonts as Word stores them: a TrueType font and an obfuscated one, whose XOR-scrambled
+   * head here opens with a blank - a byte XML may start with, but not followed by markup.
+   */
+  @Test
+  void declaredTrueTypeAndObfuscatedFontPartsDoNotCount() throws IOException {
+    Map<String, byte[]> parts = new LinkedHashMap<>();
+    parts.put("word/document.xml", documentXml(10));
+    parts.put("word/fonts/font1.ttf", binary(new byte[] {0x00, 0x01, 0x00, 0x00}));
+    parts.put(
+        "word/fonts/font2.odttf", binary(new byte[] {0x20, (byte) 0x9A, 0x13, 0x5C, 0x0A, 0x3C}));
+    Path file = docx("schriften.docx", parts);
+
+    assertThat(run(new DocxDocumentFormat(HeadingSectionSplitterFixture.DEFAULT, SMALL), file))
+        .isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+  }
+
+  /** Leading whitespace before the root element is XML and counts. */
+  @Test
+  void xmlAfterLeadingWhitespaceCounts() throws IOException {
+    byte[] xml = documentXml(20_000);
+    byte[] padded = new byte[xml.length + 100];
+    Arrays.fill(padded, 0, 100, (byte) ' ');
+    System.arraycopy(xml, 0, padded, 100, xml.length);
+    Map<String, byte[]> parts = new LinkedHashMap<>();
+    parts.put("word/document.xml", documentXml(10));
+    parts.put("word/media/leerraum.png", padded);
+    Path file = docx("leerraum.docx", parts);
+
+    assertThat(run(new DocxDocumentFormat(HeadingSectionSplitterFixture.DEFAULT, SMALL), file))
+        .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
+  }
+
   /** Without a byte order mark an XML parser still detects UTF-16BE from {@code 00 3C 00 3F}. */
   @Test
   void utf16BigEndianXmlWithoutByteOrderMarkCounts() throws IOException {
@@ -127,7 +163,7 @@ class OoxmlPackageLimitsTest {
         new String(documentXml(20_000), StandardCharsets.UTF_8).replace("UTF-8", "UTF-16BE");
     Map<String, byte[]> parts = new LinkedHashMap<>();
     parts.put("word/document.xml", documentXml(10));
-    parts.put("word/hidden.bin", xml.getBytes(StandardCharsets.UTF_16BE));
+    parts.put("word/media/utf16.png", xml.getBytes(StandardCharsets.UTF_16BE));
     Path file = docx("utf16.docx", parts);
 
     assertThat(run(new DocxDocumentFormat(HeadingSectionSplitterFixture.DEFAULT, SMALL), file))

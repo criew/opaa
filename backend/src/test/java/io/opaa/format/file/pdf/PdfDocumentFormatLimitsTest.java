@@ -14,6 +14,7 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Arrays;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.cos.COSStream;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -128,7 +129,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(50_000, 0, 0, 0, 0, 0));
+            new ParserLimitProperties(50_000, 0, 0, 0, 0, 0, 0));
 
     DocumentFormatResult result =
         DocumentFormatRunner.run(limited, DocumentFormatSource.ofFile(file, "fanout.pdf"));
@@ -143,7 +144,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(50_000, 0, 0, 0, 0, 0));
+            new ParserLimitProperties(50_000, 0, 0, 0, 0, 0, 0));
 
     DocumentFormatResult result =
         DocumentFormatRunner.run(limited, DocumentFormatSource.ofFile(file, "fanout-small.pdf"));
@@ -163,7 +164,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(0, 0, 0, 1_000_000, 0, 0));
+            new ParserLimitProperties(0, 0, 0, 1_000_000, 0, 0, 0));
 
     DocumentFormatResult result =
         assertTimeoutPreemptively(
@@ -186,7 +187,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(0, 0, 0, 0, 32L * 1024 * 1024, 0));
+            new ParserLimitProperties(0, 0, 0, 0, 32L * 1024 * 1024, 0, 0));
 
     assertThat(runWithin(Duration.ofSeconds(8), limited, file))
         .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
@@ -203,7 +204,7 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(0, 0, 0, 2_000_000, 0, 0));
+            new ParserLimitProperties(0, 0, 0, 2_000_000, 0, 0, 0));
 
     assertThat(runWithin(Duration.ofSeconds(8), limited, file))
         .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
@@ -217,10 +218,58 @@ class PdfDocumentFormatLimitsTest {
     var limited =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(0, 0, 0, 0, Long.MAX_VALUE, 1));
+            new ParserLimitProperties(0, 0, 0, 0, Long.MAX_VALUE, 0, 1));
 
     assertThat(runWithin(Duration.ofSeconds(6), limited, file))
         .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
+  }
+
+  @Test
+  void aPageContentPastTheStreamLimitFails() throws IOException {
+    Path file = tempDir.resolve("long-string.pdf");
+    writeStringLiteralPage(file, 2_000_000);
+    var limited =
+        new PdfDocumentFormat(
+            HeadingSectionSplitterFixture.DEFAULT,
+            new ParserLimitProperties(0, 0, 0, 0, 0, 1024 * 1024, 0));
+
+    assertThat(runWithin(Duration.ofSeconds(8), limited, file))
+        .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
+  }
+
+  /**
+   * Half a megabyte of file whose page content inflates to a 530 MB string literal, within the
+   * document budget: PDFBox would decode the stream into memory as a whole and build the string, a
+   * gigabyte of heap and many seconds. With the default limits the stream is measured while it
+   * streams and refused after 32 MiB, well within the timeout.
+   */
+  @Test
+  void aHugeStringLiteralIsRefusedBeforePdfBoxDecodesIt() throws IOException {
+    Path file = tempDir.resolve("huge-string.pdf");
+    writeStringLiteralPage(file, 530_000_000);
+
+    assertThat(runWithin(Duration.ofSeconds(5), pipeline, file))
+        .isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
+  }
+
+  /** One page whose content is {@code (aaa…) pop} with {@code length} characters inside. */
+  private static void writeStringLiteralPage(Path file, int length) throws IOException {
+    try (PDDocument doc = new PDDocument()) {
+      PDPage page = new PDPage();
+      COSStream content = doc.getDocument().createCOSStream();
+      byte[] chunk = new byte[1 << 20];
+      Arrays.fill(chunk, (byte) 'a');
+      try (OutputStream out = content.createOutputStream(COSName.FLATE_DECODE)) {
+        out.write('(');
+        for (int left = length; left > 0; left -= chunk.length) {
+          out.write(chunk, 0, Math.min(left, chunk.length));
+        }
+        out.write(") pop\n".getBytes(StandardCharsets.US_ASCII));
+      }
+      page.getCOSObject().setItem(COSName.CONTENTS, content);
+      doc.addPage(page);
+      doc.save(file.toFile());
+    }
   }
 
   private static DocumentFormatResult.Outcome runWithin(

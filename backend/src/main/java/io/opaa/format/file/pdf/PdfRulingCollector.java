@@ -10,6 +10,7 @@ import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDType3CharProc;
 import org.apache.pdfbox.pdmodel.font.PDType3Font;
 import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
 import org.apache.pdfbox.pdmodel.graphics.form.PDTransparencyGroup;
@@ -105,6 +106,13 @@ final class PdfRulingCollector extends PDFGraphicsStreamEngine {
   public void showTransparencyGroup(PDTransparencyGroup form) throws IOException {
     budget.chargeContent(form.getCOSObject());
     super.showTransparencyGroup(form);
+  }
+
+  @Override
+  protected void processType3Stream(PDType3CharProc charProc, Matrix textRenderingMatrix)
+      throws IOException {
+    budget.chargeContent(charProc.getCOSObject());
+    super.processType3Stream(charProc, textRenderingMatrix);
   }
 
   private void countPathPoints(int count) {

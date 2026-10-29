@@ -52,6 +52,10 @@ für die Formate mit Struktur gemeinsame Obergrenzen:
   Element einer Werteliste zählt als weiterer Schritt.
 - **Gelesene Inhaltsdaten eines PDF** (`max-pdf-content-bytes`): die entpackten Zeichenanweisungen
   aller Seiten und Zeichnungen, eine Zeichnung so oft gezählt, wie sie gezeichnet wird.
+- **Größe eines einzelnen Inhaltsteils eines PDF** (`max-pdf-stream-bytes`): Ein Seiteninhalt oder
+  eine Zeichnung darf entpackt nicht größer werden. Gemessen wird, bevor das Dokument gelesen
+  wird, ohne den Teil im Speicher auszupacken; so kann eine wenige hundert Kilobyte große Datei
+  nicht Hunderte Megabyte Speicher belegen.
 - **Lesezeit eines PDF** (`max-pdf-parse-seconds`): als letzte Sicherung die Zeit, die das Lesen
   eines PDF insgesamt dauern darf.
 - **Gliederung eines PDF:** Jeder Lesezeichen-Eintrag wird höchstens einmal gelesen, so dass eine
@@ -77,6 +81,7 @@ Schlüssel unter `opaa.indexing.parser-limits.*`, Umgebungsvariablen
 | `max-ooxml-total-bytes` | 64 MiB | entpackte Größe aller Inhaltsdateien eines solchen Dokuments zusammen |
 | `max-pdf-operators` | 200.000.000 | Zeichenanweisungen (und Elemente ihrer Wertelisten), die beim Lesen eines PDF insgesamt ausgeführt werden |
 | `max-pdf-content-bytes` | 512 MiB | entpackte Inhaltsdaten, die beim Lesen eines PDF insgesamt verarbeitet werden |
+| `max-pdf-stream-bytes` | 32 MiB | entpackte Größe eines einzelnen Seiteninhalts oder einer einzelnen Zeichnung eines PDF |
 | `max-pdf-parse-seconds` | 120 | Sekunden, die das Lesen eines PDF höchstens dauern darf |
 
 ## Bewusst nicht zugelassen

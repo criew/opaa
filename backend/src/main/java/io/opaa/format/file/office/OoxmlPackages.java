@@ -27,6 +27,9 @@ import org.apache.poi.openxml4j.opc.PackageAccess;
  */
 public final class OoxmlPackages {
 
+  /** Leading bytes of an entry examined by {@link #mayBeXml}. */
+  private static final int HEAD_BYTES = 64;
+
   private OoxmlPackages() {}
 
   /** Builds plain data from an opened package; the package is released afterwards. */
@@ -89,7 +92,7 @@ public final class OoxmlPackages {
     long total = 0;
     byte[] buffer = new byte[8192];
     try (InputStream in = BoundedStreams.input(zip.getInputStream(entry), budget)) {
-      int head = in.readNBytes(buffer, 0, 4);
+      int head = in.readNBytes(buffer, 0, HEAD_BYTES);
       if (!mayBeXml(buffer, head)) {
         return 0;
       }
@@ -117,7 +120,10 @@ public final class OoxmlPackages {
    * UTF-8, UTF-16 or UCS-4 byte order mark, {@code <} or {@code <?} in UTF-16BE or UCS-4 without
    * one, or {@code <?xm} in EBCDIC. A leading zero byte counts only in these four-byte patterns, so
    * MP4/MOV media ({@code 00 00 00 xx ftyp}) and TrueType fonts ({@code 00 01 00 00}) stay
-   * uncounted. An entry shorter than four bytes counts, at its harmless size.
+   * uncounted. In an ASCII-compatible encoding the whitespace must lead to a {@code <} followed by
+   * {@code ?}, {@code !}, a name start or a zero byte, so binary data that merely opens with one of
+   * these bytes, such as an obfuscated font, stays uncounted too; whitespace filling the whole head
+   * counts. An entry shorter than four bytes counts, at its harmless size.
    */
   static boolean mayBeXml(byte[] head, int length) {
     if (length < 4) {
@@ -134,12 +140,42 @@ public final class OoxmlPackages {
               || (b1 == 0x00 && b2 == 0x00 && b3 == 0x3C) // UCS-4BE "<"
               || (b1 == 0x00 && b2 == 0x3C && b3 == 0x00) // UCS-4 2143 "<"
               || (b1 == 0x00 && b2 == 0xFE && b3 == 0xFF); // UCS-4BE byte order mark
-      case 0x09, 0x0A, 0x0D, 0x20, 0x3C -> true;
+      case 0x09, 0x0A, 0x0D, 0x20, 0x3C -> opensMarkup(head, length);
       case 0xEF -> b1 == 0xBB;
       case 0xFE -> b1 == 0xFF;
       case 0xFF -> b1 == 0xFE;
       case 0x4C -> b1 == 0x6F;
       default -> false;
     };
+  }
+
+  /** Whitespace, then {@code <} and a byte that can follow it at the start of a document. */
+  private static boolean opensMarkup(byte[] head, int length) {
+    int i = 0;
+    while (i < length && isXmlWhitespace(head[i] & 0xFF)) {
+      i++;
+    }
+    if (i == length) {
+      return true;
+    }
+    if (head[i] != '<') {
+      return false;
+    }
+    if (i + 1 == length) {
+      return true;
+    }
+    int next = head[i + 1] & 0xFF;
+    return next == '?'
+        || next == '!'
+        || next == 0x00 // UTF-16LE or UCS-4LE without a byte order mark
+        || next == '_'
+        || next == ':'
+        || (next >= 'A' && next <= 'Z')
+        || (next >= 'a' && next <= 'z')
+        || next >= 0x80;
+  }
+
+  private static boolean isXmlWhitespace(int b) {
+    return b == 0x09 || b == 0x0A || b == 0x0D || b == 0x20;
   }
 }
