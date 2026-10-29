@@ -2,6 +2,7 @@ package io.opaa.format.shared;
 
 import io.opaa.format.DocumentProperties;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * Builds the {@link DocumentProperties#titleLine()} of a document: the first non-blank line of its
@@ -12,6 +13,8 @@ import java.util.List;
  */
 public final class DocumentTitleLine {
 
+  private static final Pattern LINE_BREAK = Pattern.compile("\\R");
+
   private DocumentTitleLine() {}
 
   /** The first non-blank line of {@code text}; {@code null} for no usable text. */
@@ -19,7 +22,7 @@ public final class DocumentTitleLine {
     if (text == null) {
       return null;
     }
-    for (String line : text.split("\\R")) {
+    for (String line : LINE_BREAK.split(text)) {
       String stripped = line.strip();
       if (!stripped.isEmpty()) {
         return stripped;

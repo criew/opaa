@@ -4,12 +4,15 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 /**
  * Temp-file naming for the attachments {@link EmlReader} and {@link MsgReader} extract; the size
  * ceiling they write under is {@link io.opaa.sourceaccess.BoundedStreams}'.
  */
 final class MailAttachmentIo {
+
+  private static final Pattern EXTENSION = Pattern.compile("\\.[a-z0-9]+");
 
   private MailAttachmentIo() {}
 
@@ -37,6 +40,6 @@ final class MailAttachmentIo {
     // is no benefit in preserving it verbatim, and an attacker-controlled file name should not
     // grow the temp file name unboundedly.
     String suffix = fileName.substring(dot).toLowerCase(Locale.ROOT);
-    return suffix.length() <= 10 && suffix.matches("\\.[a-z0-9]+") ? suffix : ".tmp";
+    return suffix.length() <= 10 && EXTENSION.matcher(suffix).matches() ? suffix : ".tmp";
   }
 }
