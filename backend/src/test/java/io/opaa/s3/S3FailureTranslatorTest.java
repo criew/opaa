@@ -137,10 +137,11 @@ class S3FailureTranslatorTest {
     assertThat(translator.translate(S3Operation.GET_OBJECT, "b", "k", blocked))
         .isInstanceOf(S3AccessException.TargetBlocked.class)
         .hasMessage("Adresse gesperrt. Hinweis: OPAA_TEST_ALLOWLIST");
+    // an unresolved name stays transient but carries the same hint, so it reads like a blocked one
     assertThat(translator.translate(S3Operation.GET_OBJECT, "b", "k", unknown))
         .isInstanceOf(S3AccessException.Unreachable.class)
-        .hasMessageContaining("Host unbekannt.")
-        .satisfies(e -> assertThat(e.getMessage()).doesNotContain("OPAA_TEST_ALLOWLIST"));
+        .hasMessage(
+            "Der Objektspeicher ist nicht erreichbar: Host unbekannt. Hinweis: OPAA_TEST_ALLOWLIST");
   }
 
   @Test

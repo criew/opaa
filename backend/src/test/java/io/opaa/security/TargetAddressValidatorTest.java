@@ -354,8 +354,8 @@ class TargetAddressValidatorTest {
   }
 
   /**
-   * A blocked range and a name that does not resolve get the same sentence, so whoever configures
-   * a source cannot probe which internal names exist; the cause goes to the log only.
+   * A blocked range and a name that does not resolve get the same sentence, so whoever configures a
+   * source cannot probe which internal names exist; the cause goes to the log only.
    */
   @Test
   void aBlockedRangeAndAnUnresolvableNameAnswerAlike() {

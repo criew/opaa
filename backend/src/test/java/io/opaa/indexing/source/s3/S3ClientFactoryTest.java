@@ -56,7 +56,7 @@ class S3ClientFactoryTest {
   void underVirtualHostAddressingEveryBucketHostIsCheckedToo() {
     // "minio.intern" is allowlisted, "docs.minio.intern" - the host the SDK actually contacts for
     // bucket "docs" - is not: it is checked, does not resolve, and the failure names it as
-    // unreachable (a DNS finding, not an allowlist one) before any request.
+    // unreachable before any request - in the words and with the hint of a blocked range.
     S3ClientFactory factory =
         new S3ClientFactory(
             S3Properties.defaults(), new TargetAddressValidator(true, List.of("minio.intern")));
@@ -68,11 +68,8 @@ class S3ClientFactoryTest {
                     List.of(S3Scope.of("docs", "2025/"))))
         .isInstanceOf(S3AccessException.Unreachable.class)
         .hasMessageContaining("docs.minio.intern")
-        .hasMessageContaining("DNS")
-        .satisfies(
-            e ->
-                assertThat(e.getMessage())
-                    .doesNotContain("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST"));
+        .hasMessageContaining("nicht zugelassen oder nicht erreichbar")
+        .hasMessageContaining("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
   }
 
   @Test

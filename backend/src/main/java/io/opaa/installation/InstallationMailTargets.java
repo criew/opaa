@@ -1,12 +1,12 @@
 package io.opaa.installation;
 
+import io.opaa.common.LogText;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.security.TargetAddressValidator.Scope;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -37,11 +37,6 @@ class InstallationMailTargets {
           + InstallationProperties.MAIL_TARGET_ALLOWLIST_VARIABLE
           + " frei; sonst den Server nach der Installation unter „Administration → E-Mail“"
           + " eintragen.";
-
-  /**
-   * Control characters (C0, DEL, C1 including U+0085) and the Unicode line and paragraph breaks.
-   */
-  private static final Pattern LINE_BREAKING = Pattern.compile("[\\p{Cc}\\p{Zl}\\p{Zp}]");
 
   private static final Logger log = LoggerFactory.getLogger(InstallationMailTargets.class);
 
@@ -97,6 +92,6 @@ class InstallationMailTargets {
    * {@code value} with every control character and Unicode line break replaced (no forged line).
    */
   static String forLog(String value) {
-    return value == null ? null : LINE_BREAKING.matcher(value).replaceAll("?");
+    return LogText.of(value);
   }
 }

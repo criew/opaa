@@ -77,8 +77,8 @@ class UserServiceOrganizationBoundaryIntegrationTest {
   }
 
   /**
-   * The member search takes {@code %}, {@code _} and {@code \\} literally: {@code %%} or {@code
-   * __} pass the minimum length but must not match every member of the organization.
+   * The member search takes {@code %}, {@code _} and {@code \} literally: {@code %%} or {@code __}
+   * pass the minimum length but must not match every member of the organization.
    */
   @Test
   void theMemberSearchTakesLikeWildcardsLiterally() {

@@ -290,7 +290,11 @@ public final class GraphClient {
           policy,
           new RateLimitHandling(RateLimitPolicy.NONE, rateLimit.sleeper(), rateLimit.listener()));
     } catch (TargetAddressValidator.UnknownTargetHostException e) {
-      throw new GraphException(GraphException.Kind.TRANSIENT, 0, null, e.getMessage());
+      throw new GraphException(
+          GraphException.Kind.TRANSIENT,
+          0,
+          null,
+          e.getMessage() + " " + TargetAddressValidator.ALLOWLIST_HINT);
     } catch (TargetAddressValidator.TargetAddressBlockedException e) {
       throw new GraphException(
           GraphException.Kind.BLOCKED,
