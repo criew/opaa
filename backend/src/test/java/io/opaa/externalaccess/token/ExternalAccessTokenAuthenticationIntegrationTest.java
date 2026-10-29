@@ -48,6 +48,7 @@ import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -588,7 +589,9 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
   // sign-in of its account fresh, or the bound on that sign-in would never bite.
   @Test
   void aCallWithAnAccessTokenDoesNotCountAsASignIn() throws Exception {
-    Timestamp signedIn = Timestamp.from(clock.instant().minus(Duration.ofDays(29)));
+    // PostgreSQL keeps microseconds; a nanosecond clock reading would not survive the round trip.
+    Timestamp signedIn =
+        Timestamp.from(clock.instant().minus(Duration.ofDays(29)).truncatedTo(ChronoUnit.MICROS));
     jdbcTemplate.update("UPDATE users SET last_login_at = ? WHERE id = ?", signedIn, owner.getId());
 
     mockMvc
