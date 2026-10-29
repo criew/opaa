@@ -396,27 +396,10 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
               onBlur={() => void commitRename(chat.id)}
             />
           ) : (
-            <>
-              {chat.pinnedAt && (
-                // Decorative: the "Angeheftet" group heading states the pin in text. It sits in
-                // the row's left padding, out of the text flow, so every title starts on one edge.
-                <PushPinIcon
-                  aria-hidden
-                  sx={{
-                    position: 'absolute',
-                    left: 1,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    fontSize: 12,
-                    opacity: 0.7,
-                  }}
-                />
-              )}
-              <ListItemText
-                primary={chatTitle(chat)}
-                slotProps={{ primary: { noWrap: true, variant: 'body2' } }}
-              />
-            </>
+            <ListItemText
+              primary={chatTitle(chat)}
+              slotProps={{ primary: { noWrap: true, variant: 'body2' } }}
+            />
           )}
         </ListItemButton>
       </ListItem>
@@ -431,6 +414,10 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
     footer?: ReactNode,
   ) {
     const headingId = `${groupIdPrefix}-${key}`
+    // The pin stands once at the head of its group, never on each row; the label states it.
+    const icon = key === 'pinned' && (
+      <PushPinIcon aria-hidden sx={{ fontSize: 12, flexShrink: 0, opacity: 0.7 }} />
+    )
     if (collapsibleGroups) {
       const collapsed = key === 'pinned' ? pinnedCollapsed : recentCollapsed
       return (
@@ -440,6 +427,7 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
             label={label}
             count={total}
             controls={`${headingId}-region`}
+            icon={icon}
             id={headingId}
           />
           <Box id={`${headingId}-region`} hidden={collapsed}>
@@ -459,8 +447,16 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
           component="h3"
           variant="overline"
           id={headingId}
-          sx={{ display: 'block', color: 'text.secondary', lineHeight: 1.8, px: 1 }}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5,
+            color: 'text.secondary',
+            lineHeight: 1.8,
+            px: 1,
+          }}
         >
+          {icon}
           {label}
         </Typography>
         {rows.length > 0 && (

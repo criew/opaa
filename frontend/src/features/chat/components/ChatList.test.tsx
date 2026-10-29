@@ -240,17 +240,13 @@ describe('ChatList ordering', () => {
     expect(screen.queryByRole('searchbox', { name: 'Chats filtern' })).not.toBeInTheDocument()
   })
 
-  // regression guard for #2077: the pin mark sits in the row's left padding, out of the text flow,
-  // so a pinned title starts on the same edge as every other title. jsdom has no layout, so this
-  // asserts the positioning itself.
-  it('keeps the pin mark out of the text flow, so pinned titles align with the rest', () => {
+  it('shows the pin once at the head of the pinned group, not on its rows', () => {
     renderWithProviders(<ChatList spaceId="space-personal" />)
 
-    const pinnedRow = within(screen.getByRole('list', { name: 'Angeheftet' })).getByRole('button', {
-      name: 'Fristen Übersicht',
-    })
-    const pin = within(pinnedRow).getByTestId('PushPinIcon')
-    expect(getComputedStyle(pin).position).toBe('absolute')
+    const heading = screen.getByRole('heading', { level: 3, name: 'Angeheftet' })
+    expect(within(heading).getByTestId('PushPinIcon')).toBeInTheDocument()
+    const pinnedList = screen.getByRole('list', { name: 'Angeheftet' })
+    expect(within(pinnedList).queryByTestId('PushPinIcon')).not.toBeInTheDocument()
   })
 
   it('always shows the pinned group open, without a collapse toggle', () => {
@@ -681,6 +677,17 @@ describe('ChatList head and groups of the space column (guidelines 5.13)', () =>
     expect(
       within(screen.getByRole('list', { name: 'Zuletzt verwendet 20' })).getAllByRole('listitem'),
     ).toHaveLength(15)
+  })
+
+  it('puts the pin into the folding head of "Angeheftet" without changing its name', () => {
+    renderWithProviders(<ChatList spaceId="space-personal" collapsibleGroups />)
+
+    const head = screen.getByRole('button', { name: 'Angeheftet 2' })
+    expect(within(head).getByTestId('PushPinIcon')).toBeInTheDocument()
+    const rows = screen.getByRole('list', { name: 'Angeheftet 2' })
+    expect(within(rows).queryByTestId('PushPinIcon')).not.toBeInTheDocument()
+    const recent = screen.getByRole('button', { name: 'Zuletzt verwendet 20' })
+    expect(within(recent).queryByTestId('PushPinIcon')).not.toBeInTheDocument()
   })
 
   it('folds "Angeheftet" like the other groups and remembers it', async () => {
