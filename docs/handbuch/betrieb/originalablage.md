@@ -91,8 +91,32 @@ Objektspeicher kennt keine, der Schrägstrich im Schlüssel ist Teil des Namens.
 **Was OPAA am Bucket nicht tut**, und was deshalb der Betrieb dort einstellt: Verschlüsselung
 ruhender Daten, Versionierung, Aufbewahrungs- und Lebenszyklusregeln, Replikation. OPAA setzt keine
 Verschlüsselungskopfzeilen und verwaltet keine Schlüssel. **Empfohlen sind Verschlüsselung ruhender
-Daten und Versionierung**: Versionierung ist zugleich der Schutz gegen ein versehentliches Löschen
-in der Oberfläche und gegen ein fehlgeleitetes Kopierkommando bei der Umstellung.
+Daten und Versionierung**: Versionierung schützt vor einem Überschreiben und vor einem
+fehlgeleiteten Kopierkommando bei der Umstellung.
+
+**Löschen entfernt alle Versionen.** Löscht OPAA ein Original — ein Dokument, eine Bibliothek, ein
+verwaistes Original, eine private Bibliothek —, entfernt es jede Version des Schlüssels und jeden
+Löschmarker einzeln. Ein versionierter Bucket behält von einem gelöschten Original also nichts
+zurück; gegen ein versehentliches Löschen in der Oberfläche hilft nur die
+[Sicherung](#sicherung-und-wiederherstellung), nicht die Versionierung. Dafür braucht der
+Zugangsschlüssel zusätzlich `s3:ListBucketVersions` und `s3:DeleteObjectVersion` (Liste aller
+Rechte bei `OPAA_UPLOAD_S3_ACCESS_KEY` in der [Variablenliste](konfiguration.md)).
+
+- **Fehlen die beiden Rechte**, löscht OPAA nur die aktuelle Version; in einem versionierten Bucket
+  bleibt das Original dann als ältere Version liegen. Die Startprüfung meldet das im Log mit dem
+  fehlenden Recht. Das Löschen einer privaten Bibliothek schließt in diesem Zustand nicht ab: Es
+  prüft auch die Versionen und gilt erst als erledigt, wenn dort nichts mehr liegt; bis dahin
+  bleibt die Bibliothek zur Löschung vorgemerkt, und jeder Lauf versucht es erneut.
+- **Ein Speicher ohne Versionsschnittstelle** (Antwort `NotImplemented`) löscht wie bisher mit
+  einem einfachen Löschaufruf; ein unversionierter Bucket braucht keine weitere Einstellung.
+- **Ablaufregel für ältere Versionen.** Als zweite Sicherung, etwa für Reste aus Löschungen vor
+  dieser Version oder ohne die beiden Rechte, empfiehlt sich am Bucket eine Lebenszyklusregel, die
+  nicht aktuelle Versionen nach einer Frist und verwaiste Löschmarker entfernt
+  (`NoncurrentVersionExpiration`, `ExpiredObjectDeleteMarker`). Die Frist ist die Zeit, die ein
+  gelöschtes Original im Speicher noch wiederherstellbar bleibt.
+- **Aufbewahrungssperren** (Object Lock, WORM) verhindern das Löschen einer Version. Für diesen
+  Bucket sind sie ungeeignet: Ein Löschen scheitert dann, und das Löschen einer privaten Bibliothek
+  schließt nicht ab.
 
 **Wie ein Prüfer ein Original wiederfindet.** Der Weg führt über die Dokumentzeile, nicht über den
 Dateinamen — im Bucket steht ein Zufallsname:

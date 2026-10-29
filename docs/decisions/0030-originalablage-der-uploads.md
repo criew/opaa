@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14
+Akzeptiert · zuletzt geändert 2026-10-29
 
 ## Kontext
 
@@ -121,7 +121,12 @@ Abruf eines Originals unterscheidet „Objekt nicht vorhanden" (`404` ohne Unter
 
 OPAA setzt keine Verschlüsselungskopfzeilen und verwaltet keine Schlüssel; SSE, Versionierung,
 Lebenszyklusregeln und Replikation konfiguriert der Betrieb am Bucket; das Handbuch nennt sie als
-Empfehlung.
+Empfehlung. Ein Löschen ist trotzdem vollständig: Der S3-Adapter entfernt jede Version und jeden
+Löschmarker des Schlüssels einzeln (`ListObjectVersions`, `DeleteObject` mit `versionId`), statt sich
+auf eine Ablaufregel des Betriebs zu verlassen, die OPAA weder setzen noch zuverlässig prüfen kann
+(DSGVO Art. 17). Ohne Versionsschnittstelle oder ohne `s3:ListBucketVersions` löscht er nur die
+aktuelle Version; das Löschen einer privaten Bibliothek zählt die verbliebenen Versionen mit und
+schließt erst ab, wenn keine mehr liegt.
 
 ### 11. Unberührt, und der Aufräumlauf
 
