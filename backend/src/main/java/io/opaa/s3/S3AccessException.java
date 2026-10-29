@@ -28,13 +28,22 @@ public class S3AccessException extends IOException {
     }
   }
 
-  /** {@code 403} while listing or heading a bucket: {@code s3:ListBucket} is missing. */
+  /**
+   * {@code 403} while listing or heading a bucket: {@code s3:ListBucket} is missing, or the {@code
+   * permission} the listing needs ({@code s3:ListBucketVersions} for the versions).
+   */
   public static final class ListForbidden extends S3AccessException {
     public ListForbidden(String bucket) {
+      this(bucket, "s3:ListBucket");
+    }
+
+    public ListForbidden(String bucket, String permission) {
       super(
           "Der Bucket „"
               + bucket
-              + "“ darf mit diesen Zugangsdaten nicht aufgelistet werden (s3:ListBucket fehlt).");
+              + "“ darf mit diesen Zugangsdaten nicht aufgelistet werden ("
+              + permission
+              + " fehlt).");
     }
   }
 
@@ -193,6 +202,16 @@ public class S3AccessException extends IOException {
   public static final class TargetBlocked extends S3AccessException {
     public TargetBlocked(String message, String allowlistHint) {
       super(message + " " + allowlistHint);
+    }
+  }
+
+  /**
+   * {@code 501 NotImplemented}: the store does not offer the operation at all - an S3-compatible
+   * store without the version API, for instance.
+   */
+  public static final class NotImplemented extends S3AccessException {
+    public NotImplemented(String operation) {
+      super("Der Objektspeicher unterstützt " + operation + " nicht (NotImplemented).");
     }
   }
 

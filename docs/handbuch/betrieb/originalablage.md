@@ -91,8 +91,46 @@ Objektspeicher kennt keine, der Schrägstrich im Schlüssel ist Teil des Namens.
 **Was OPAA am Bucket nicht tut**, und was deshalb der Betrieb dort einstellt: Verschlüsselung
 ruhender Daten, Versionierung, Aufbewahrungs- und Lebenszyklusregeln, Replikation. OPAA setzt keine
 Verschlüsselungskopfzeilen und verwaltet keine Schlüssel. **Empfohlen sind Verschlüsselung ruhender
-Daten und Versionierung**: Versionierung ist zugleich der Schutz gegen ein versehentliches Löschen
-in der Oberfläche und gegen ein fehlgeleitetes Kopierkommando bei der Umstellung.
+Daten und Versionierung**: Versionierung schützt vor einem Überschreiben und vor einem
+fehlgeleiteten Kopierkommando bei der Umstellung.
+
+**Löschen entfernt alle Versionen.** Löscht OPAA ein Original — ein Dokument, eine Bibliothek, ein
+verwaistes Original, eine private Bibliothek —, entfernt es jede Version des Schlüssels und jeden
+Löschmarker einzeln. Ein versionierter Bucket behält von einem gelöschten Original also nichts
+zurück; gegen ein versehentliches Löschen in der Oberfläche hilft nur die
+[Sicherung](#sicherung-und-wiederherstellung), nicht die Versionierung.
+
+**Rechte für das Löschen von Versionen.** Für einen versionierten Bucket — auch einen, dessen
+Versionierung nur ausgesetzt ist — braucht der Zugangsschlüssel zusätzlich `s3:ListBucketVersions`
+und `s3:DeleteObjectVersion`. Für einen Bucket, der nie versioniert war, genügt statt dieser beiden
+`s3:GetBucketVersioning`: Damit stellt OPAA fest, dass es keine älteren Versionen geben kann. Die
+Liste aller Rechte steht bei `OPAA_UPLOAD_S3_ACCESS_KEY` in der [Variablenliste](konfiguration.md).
+**Beim Update** auf diesen Stand die Richtlinie des Zugangsschlüssels um die passenden Rechte
+ergänzen; sonst schließt das Löschen privater Bibliotheken nicht ab (siehe unten).
+
+- **Fehlen die Rechte**, löscht OPAA nur die aktuelle Version; in einem versionierten Bucket bleibt
+  das Original dann als ältere Version liegen. Das Löschen einer privaten Bibliothek prüft auch die
+  Versionen und gilt erst als erledigt, wenn dort nachweislich nichts mehr liegt. Kann OPAA weder
+  die Versionen auflisten noch bestätigen, dass der Bucket nie versioniert war, bleibt die
+  Bibliothek zur Löschung vorgemerkt, und jeder Lauf versucht es erneut.
+- **Die Startprüfung** versucht einmal, Versionen aufzulisten. Gelingt das nicht, protokolliert sie
+  eine Warnung, die `s3:ListBucketVersions` und `s3:DeleteObjectVersion` nennt — oder, bei einem nie
+  versionierten Bucket, einen Hinweis, diese Rechte vor dem Einschalten der Versionierung zu
+  ergänzen. Ob `s3:DeleteObjectVersion` vorhanden ist, prüft sie nicht; ein fehlendes Löschrecht
+  zeigt sich erst beim Löschen im Log.
+- **Ein Speicher ohne Versionsschnittstelle** (Antwort `NotImplemented`) löscht mit einem einfachen
+  Löschaufruf und gilt als ohne Versionen, solange er nicht selbst meldet, dass die Versionierung
+  eingeschaltet ist. Verweigert ein Speicher dagegen die Auflistung der Versionen, genügt es nicht,
+  dass er den Versionierungsstatus nicht kennt; die Löschung einer privaten Bibliothek schließt
+  dann erst mit den Rechten ab.
+- **Ablaufregel für ältere Versionen.** Als zweite Sicherung, etwa für Reste aus Löschungen vor
+  dieser Version oder ohne die Rechte, empfiehlt sich am Bucket eine Lebenszyklusregel, die nicht
+  aktuelle Versionen nach einer Frist und verwaiste Löschmarker entfernt
+  (`NoncurrentVersionExpiration`, `ExpiredObjectDeleteMarker`). Die Frist ist die Zeit, die ein
+  gelöschtes Original im Speicher noch wiederherstellbar bleibt.
+- **Aufbewahrungssperren** (Object Lock, WORM) verhindern das Löschen einer Version. Für diesen
+  Bucket sind sie ungeeignet: Ein Löschen scheitert dann, und das Löschen einer privaten Bibliothek
+  schließt nicht ab.
 
 **Wie ein Prüfer ein Original wiederfindet.** Der Weg führt über die Dokumentzeile, nicht über den
 Dateinamen — im Bucket steht ein Zufallsname:
@@ -451,5 +489,6 @@ Drei Unterschiede zum Hinweg:
 | Der Start bricht mit einer Meldung über eine fehlende Variable ab | `OPAA_UPLOAD_STORE=s3` ohne Endpunkt, Bucket oder Zugangsschlüssel |
 | Die Health Group antwortet mit „nicht gefunden" | Es ist der Verzeichnisweg konfiguriert; die Gruppe gibt es nur beim Objektspeicher |
 | Uploads scheitern mit „Dienst nicht verfügbar", der Speicher ist erreichbar | Der Bucket fehlt oder der Zugangsschlüssel darf nicht schreiben — die Anwendung meldet beides wie eine Störung des Speichers. Den Grund nennt das **Log**, mit Bucket und fehlender Berechtigung (etwa `s3:PutObject`). Ein fehlender Bucket fällt auch der Health Group auf (`DOWN`); ein reiner Schreibrechte-Fehler nicht — ihre Sondierung prüft nur die Leserichtung und bleibt dann auf `UP` |
+| Eine private Bibliothek bleibt „Wird gelöscht", das Log meldet, dass der Speicher die Versionen nicht auflisten konnte | Dem Zugangsschlüssel fehlen die Rechte für Versionen: bei einem versionierten Bucket `s3:ListBucketVersions` und `s3:DeleteObjectVersion`, bei einem nie versionierten wenigstens `s3:GetBucketVersioning` ([Rechte für das Löschen von Versionen](#was-im-objektspeicher-liegt)). Nach dem Ergänzen schließt der nächste Lauf die Löschung ab |
 | `docker cp … /app/uploads` liefert ein leeres Verzeichnis | Die Originale liegen im Objektspeicher, nicht im Container |
 | Der Bericht über verwaiste Originale meldet den gesamten Bestand, `referencedCount` ist `0` | Zeilen und Ablage passen nicht zueinander — meist eine Umstellung, bei der die Bytes kopiert, die Verweise aber nicht umgeschrieben wurden. Nichts löschen, bevor das geklärt ist |
