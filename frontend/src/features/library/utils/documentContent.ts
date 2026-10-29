@@ -1,3 +1,4 @@
+import type { ChunkAnchor } from '@/shared/api/types'
 import { getDocumentContent } from '../api/libraryApi'
 
 // Shared between the library document list's "Original öffnen" action, the
@@ -51,6 +52,10 @@ function isPreviewable(contentType: string): boolean {
   return PREVIEWABLE_CONTENT_TYPE_PREFIXES.some((prefix) => essence.startsWith(prefix))
 }
 
+function isPdf(contentType: string): boolean {
+  return contentTypeEssence(contentType) === 'application/pdf'
+}
+
 function isTextPreviewable(contentType: string): boolean {
   return TEXT_PREVIEWABLE_CONTENT_TYPES.includes(contentTypeEssence(contentType))
 }
@@ -80,10 +85,21 @@ function triggerDownload(objectUrl: string, fileName: string) {
  * feedback that a download just started - the ticket's minimum requirement for every format that
  * does not get a preview, so a click never appears to do nothing.
  */
-export type OpenDocumentContentResult = BlobPreviewResult | TextPreviewResult | DownloadResult
+export type OpenDocumentContentResult =
+  BlobPreviewResult | PdfPreviewResult | TextPreviewResult | DownloadResult
 
 interface BlobPreviewResult {
   kind: 'blob-preview'
+}
+
+/** A PDF for the app's own viewer (PdfPreviewDialog), with where to jump in it. */
+export interface PdfPreviewResult {
+  kind: 'pdf-preview'
+  fileName: string
+  blob: Blob
+  anchor?: ChunkAnchor | null
+  /** SHA-256 of the original as indexed when the citation was made. */
+  contentSha256?: string | null
 }
 
 export interface TextPreviewResult {
@@ -105,8 +121,9 @@ export interface DownloadResult {
 }
 
 /**
- * Loads a document's original file as a Blob and either previews it in a new tab (PDF/images, but
- * never SVG - see {@link NEVER_PREVIEWABLE_CONTENT_TYPES}), returns its text content for a
+ * Loads a document's original file as a Blob and either hands a PDF to the app's own viewer,
+ * previews it in a new tab (images, but never SVG - see {@link NEVER_PREVIEWABLE_CONTENT_TYPES}),
+ * returns its text content for a
  * client-side preview dialog (Markdown/plain text), or downloads it under its original file
  * name (everything else - DOCX among them; there is no server-side conversion, but the download
  * itself must still be visible to the caller). `fallbackFileName` is used when the response
@@ -144,6 +161,10 @@ export async function openDocumentContent(
     }
   }
 
+  if (isPdf(blob.type)) {
+    return { kind: 'pdf-preview', fileName: resolvedFileName, blob }
+  }
+
   const objectUrl = URL.createObjectURL(blob)
   const previewable = isPreviewable(blob.type)
   try {
@@ -165,5 +186,18 @@ export async function openDocumentContent(
     kind: 'download',
     fileName: resolvedFileName,
     reason: isTextPreviewable(blob.type) ? 'too-large-for-preview' : undefined,
+  }
+}
+
+/**
+ * Opens `blob` in the browser's own viewer in a new tab - the fallback when the app's PDF viewer
+ * cannot show a file. The object URL is revoked after {@link OBJECT_URL_REVOKE_DELAY_MS}.
+ */
+export function openInBrowserViewer(blob: Blob) {
+  const objectUrl = URL.createObjectURL(blob)
+  try {
+    window.open(objectUrl, '_blank', 'noopener,noreferrer')
+  } finally {
+    setTimeout(() => URL.revokeObjectURL(objectUrl), OBJECT_URL_REVOKE_DELAY_MS)
   }
 }

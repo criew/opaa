@@ -89,6 +89,25 @@ class ChatSourceAssemblerTest {
             });
   }
 
+  /** The original's checksum rides along, so a viewer can tell whether the anchors still fit. */
+  @Test
+  void snapshotsTheOriginalsChecksumIntoTheSource() {
+    UUID documentId = UUID.randomUUID();
+    var stored =
+        new io.opaa.knowledge.Document(
+            "satzung.pdf", "/s.pdf", "application/pdf", 1L, SourceTypes.FILESYSTEM);
+    stored.setChecksum("ab12");
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(stored));
+
+    List<ChatSource> sources =
+        assembler.assemble(
+            List.of(chunk("satzung.pdf", documentId.toString(), "Der Antrag", 0.9)),
+            List.of(),
+            MetadataFilter.NONE);
+
+    assertThat(sources.getFirst().getContentSha256()).isEqualTo("ab12");
+  }
+
   private static ValidatedCitation citation(String documentId, String fileName, boolean valid) {
     return new ValidatedCitation(documentId, 0, fileName, valid);
   }
