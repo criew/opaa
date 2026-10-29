@@ -8,6 +8,7 @@ import {
   type GoogleDriveScope,
 } from '../../utils/googleDriveSource'
 import {
+  MAX_SHAREPOINT_LIBRARIES,
   SHAREPOINT_API,
   graphShownName,
   sharePointFolderLabel,
@@ -454,7 +455,7 @@ export function sharePointSiteSelectionSource(probe: Probe): SelectionSource {
     rootLabel: 'Sites',
     noun: ['Site', 'Sites'],
     nested: false,
-    max: 50,
+    max: MAX_SHAREPOINT_LIBRARIES,
     serverSearch: () => true,
     searchLabel: () => 'Sites suchen',
     list: async (_level, search) => {
