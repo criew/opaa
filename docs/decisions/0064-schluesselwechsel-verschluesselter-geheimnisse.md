@@ -35,9 +35,11 @@ gibt den Schlüssel nicht preis.
 Die Associated Data von `enc:v2` ist `<tabelle>/<spalte>/<zeilen-id>` (`CipherBinding`). Jede
 verschlüsselte Spalte ist einmal als `EncryptedColumn` im Modul der Tabelle deklariert; Ver- und
 Entschlüsseln nennen die Zeile. Wandert ein Wert in eine andere Zeile, wird er umgeschlüsselt
-(`rebind`); einen unlesbaren trägt der Code unverändert weiter. Ein JPA-Konverter kennt seine Zeile
-nicht, deshalb trägt `EncryptedCredentials` die Bindung vom Entity zum Konverter, und ein geladener
-Wert geht unverändert zurück. Begründung: Ein kopierter Geheimtext entschlüsselt am falschen Ort nicht.
+(`rebind`). Einen unlesbaren `v2`-Wert lehnt der Code mit einer Meldung ab, statt ihn mitzunehmen: am
+neuen Ort wäre er auch mit wiederhergestelltem Schlüssel nie mehr lesbar. Ein unlesbarer `v1`-Wert
+wandert unverändert. Ein JPA-Konverter kennt seine Zeile nicht, deshalb trägt `EncryptedCredentials`
+die Bindung vom Entity zum Konverter, und ein geladener Wert geht unverändert zurück. Begründung: Ein
+kopierter `v2`-Geheimtext entschlüsselt am falschen Ort nicht.
 
 ### 3. Schlüsselring: ein aktueller Schlüssel, abgelöste nur zum Entschlüsseln
 
@@ -54,9 +56,10 @@ Betrieb von ihm wegwechseln kann.
 `CiphertextRewrap` verschlüsselt alle zehn Minuten auf einer Instanz (ShedLock) jeden Wert einer
 registrierten Spalte neu, der nicht mit dem Präfix des aktuellen Schlüssels beginnt: seitenweise mit
 `FOR UPDATE SKIP LOCKED`, geschrieben nur, wo die Spalte noch den gelesenen Wert hält, höchstens
-5.000 Werte je Lauf. Unlesbare Werte bleiben stehen und werden mit Tabelle, Spalte und Zeile
-gemeldet, nie mit dem Wert. Das Log meldet den Abschluss; danach entfernt der Betrieb die abgelösten
-Schlüssel. Begründung: Ein Lauf statt eines Kommandos braucht kein Wartungsfenster, greift nach einer
+5.000 neu verschlüsselte Werte je Lauf. Unlesbare Werte bleiben stehen, zählen nicht gegen dieses
+Budget und werden je Instanz einmal mit Tabelle, Spalte und Zeile gemeldet, nie mit dem Wert. Das
+Log meldet den Abschluss, sobald kein lesbarer Wert mehr unter altem Schlüssel oder Format steht,
+und nennt die Zahl der unlesbaren; danach entfernt der Betrieb die abgelösten Schlüssel. Begründung: Ein Lauf statt eines Kommandos braucht kein Wartungsfenster, greift nach einer
 Rücksicherung von selbst wieder und nutzt die vorhandene Koordination mehrerer Instanzen.
 
 ### 5. `v2` erst, wenn jede Instanz es lesen kann
@@ -66,10 +69,17 @@ mit dem aktuellen Schlüssel, und die Neuverschlüsselung wartet. Begründung: A
 13, angewandt auf ein Datenformat; ein neuer Wert entsteht erst, wenn die Vorgängerversion ihn lesen
 kann.
 
+Der Schalter `OPAA_ENCRYPTION_KEYED_FORMAT` (Vorgabe `true`) hält dasselbe Tor auf Wunsch geschlossen:
+Mit `false` schreibt OPAA weiter `enc:v1` und verschlüsselt den Bestand nicht um. Begründung: Eine
+Version vor dieser liest `enc:v2` nicht. Wer sich den Rückweg auf sie ohne Rücksicherung offenhalten
+will, betreibt die neue Version zunächst mit `false` und schaltet erst um, wenn der Rückweg nicht
+mehr gebraucht wird. Ein Aufschub nach Zeit wurde verworfen, weil er einen gespeicherten Zeitpunkt
+bräuchte und neue Werte trotzdem in `v2` entstünden.
+
 ## Konsequenzen
 
 **Einfacher:** Ein Schlüsselwechsel kommt ohne Neueintragen aus; nach dem Update stellt OPAA den
-Bestand selbst auf `v2` um; ein kopierter Geheimtext ist wirkungslos.
+Bestand selbst auf `v2` um; ein kopierter `v2`-Geheimtext ist wirkungslos.
 
 **Schwieriger:** Jede neue verschlüsselte Spalte braucht ihre `EncryptedColumn` und eine
 `EncryptedColumns`-Bean; ein Test gleicht die registrierten Spalten mit jeder Spalte
@@ -78,7 +88,17 @@ Bestand selbst auf `v2` um; ein kopierter Geheimtext ist wirkungslos.
 **Restrisiken:** Ein Entity, das einen Wert vor der Neuverschlüsselung geladen hat und danach ohne
 Versionsprüfung speichert, schreibt den älteren, weiter lesbaren Geheimtext zurück; der nächste Lauf
 stellt ihn erneut um. Wer einen Geheimtext als Vergleichswert hält, etwa der Abdruck des
-Embedding-Endpunkts, sieht nach der Umstellung einmal eine Änderung und baut seinen Client neu.
+Embedding-Endpunkts, sieht nach der Umstellung einmal eine Änderung und baut seinen Client neu;
+trifft das eine laufende Änderung des Embedding-Modells, scheitert sie einmal mit einem Konflikt und
+lässt sich wiederholen.
+
+Die Bindung schützt nur `v2`. Solange `enc:v1` und Klartext lesbar bleiben, kann, wer in die Datenbank
+schreibt, einen `v1`-Geheimtext in eine andere Zeile kopieren oder einen Klartextwert einsetzen, und
+OPAA verwendet ihn. Beides nach abgeschlossener Umstellung abzulehnen, ist offen (#3431).
+
+Nach der Umstellung auf `v2` liest eine ältere Version die gespeicherten Geheimnisse nicht mehr. Der
+Weg zurück hinter diese Version führt dann nur über eine Rücksicherung von vor dem Update, oder er
+bleibt offen, solange `OPAA_ENCRYPTION_KEYED_FORMAT=false` gilt (Entscheidung 5).
 
 ## Verworfene Alternativen
 

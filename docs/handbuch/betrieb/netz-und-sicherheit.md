@@ -349,9 +349,17 @@ enthält sie.
   andere Änderungen an der Bibliothek lassen den Geheimtext stehen.
 - Ändert sich die Adresse der Quelle ohne neue Zugangsdaten, verwirft OPAA die gespeicherten
   Zugangsdaten; sie werden für die neue Adresse neu eingetragen.
+- Zugangsdaten, die keiner der eingetragenen Schlüssel entschlüsselt, übernimmt OPAA nicht in einen
+  anderen Datensatz, etwa beim Umstellen einer Bibliothek auf ein Verbindungsprofil oder beim Wechsel
+  des Embedding-Modells. Die Änderung wird mit einer Meldung abgelehnt, bis der fehlende Schlüssel
+  ergänzt oder der Wert neu eingetragen ist.
 - **Bei Schlüsselverlust** sind die Werte verloren, nicht die Bibliothek: Zugangsdaten neu eintragen.
-- Jeder gespeicherte Wert trägt die Kennung seines Schlüssels und ist an seinen Datensatz gebunden.
-  Ein Geheimtext, der in der Datenbank in einen anderen Datensatz kopiert wird, ist dort unlesbar.
+- Ein Wert im aktuellen Format `enc:v2` trägt die Kennung seines Schlüssels und ist an seinen
+  Datensatz gebunden. Ein solcher Geheimtext, der in der Datenbank in einen anderen Datensatz kopiert
+  wird, ist dort unlesbar. Werte im älteren Format `enc:v1` und Klartext aus der Zeit vor der
+  Verschlüsselung sind nicht gebunden; OPAA liest sie weiterhin, bis der Hintergrundlauf sie
+  umgestellt hat. Wer in die Datenbank schreiben kann, kann einen solchen Wert auch nach der
+  Umstellung noch einsetzen.
 
 ### Schlüsselwechsel
 
@@ -371,24 +379,37 @@ beide zugleich.
    ein Rolling Update ist dafür nicht möglich.
 4. **Umstellung abwarten.** Zwei Minuten nach dem Start und danach alle zehn Minuten verschlüsselt
    eine Instanz bis zu 5.000 Werte neu. Das Log meldet den Fortschritt mit „Re-encrypted … stored
-   secrets; … still stand under an old key or format“ und den Abschluss mit „… every readable secret
-   is now under the current keys“.
-5. **Abgelöste Schlüssel entfernen** und alle Instanzen erneut gemeinsam neu starten.
+   secrets; … readable ones still stand under an old key or format“ und den Abschluss mit „… every
+   readable secret is now under the current keys, … cannot be decrypted“. Die zweite Zahl der
+   Abschlussmeldung nennt die Werte, die kein eingetragener Schlüssel entschlüsselt (siehe unten);
+   sie halten den Abschluss nicht auf.
+5. **Abgelöste Schlüssel entfernen** und alle Instanzen erneut gemeinsam neu starten. Unlesbare
+   Werte aus Schritt 4 berührt das nicht: Sie sind schon mit den eingetragenen Schlüsseln unlesbar.
 
 Den alten Schlüssel aufbewahren, solange Datenbanksicherungen von vor dem Wechsel aufbewahrt werden:
 Wird eine solche Sicherung zurückgespielt, kommt er wieder als abgelöster Schlüssel in die Variable,
 bis der Hintergrundlauf den Bestand erneut umgestellt hat.
 
 Ein Wert, den weder der aktuelle noch ein abgelöster Schlüssel entschlüsselt, bleibt unverändert
-stehen. Der Lauf meldet ihn mit Tabelle, Spalte und Datensatz, nie mit dem Wert, und zählt alle
-solchen Werte in der Warnung „… stored secrets cannot be decrypted with the current or previous
-keys“. Abhilfe: den fehlenden Schlüssel als abgelösten Schlüssel ergänzen oder den Wert in der
+stehen. Der Lauf meldet ihn einmal je Instanz mit Tabelle, Spalte und Datensatz, nie mit dem Wert,
+und zählt alle solchen Werte in der Warnung „… stored secrets cannot be decrypted with the current or
+previous keys“, sobald sich ihre Zahl ändert. Solche Werte verbrauchen nichts von den 5.000 Werten
+eines Laufs. Abhilfe: den fehlenden Schlüssel als abgelösten Schlüssel ergänzen oder den Wert in der
 Oberfläche neu eintragen.
 
 Während eines Updates, solange noch eine Instanz der Vorversion läuft, schreibt OPAA neue Werte im
 bisherigen Format, das die Vorversion lesen kann, und der Hintergrundlauf wartet. Erst wenn alle
 Instanzen die neue Version fahren, stellt er den Bestand um, auch Werte im älteren Format ohne
 Schlüsselkennung, ohne dass dafür ein Schlüssel wechseln muss.
+
+Eine Version vor dieser liest das neue Format nicht. Ist der Bestand umgestellt, führt der Weg
+zurück auf sie nur über eine Rücksicherung von vor dem Update (siehe
+[Aktualisierung](aktualisierung.md#kein-rückweg-nach-der-umstellung-der-geheimnisse)). Wer sich den
+Rückweg ohne Rücksicherung offenhalten will, setzt beim Update `OPAA_ENCRYPTION_KEYED_FORMAT=false`:
+OPAA schreibt dann weiter das bisherige Format und stellt den Bestand nicht um. Sobald der Rückweg
+nicht mehr gebraucht wird, die Variable entfernen oder auf `true` setzen und alle Instanzen gemeinsam
+neu starten; die Variable gehört zum
+[Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck).
 
 ## Schutz gegen Prompt-Injection
 

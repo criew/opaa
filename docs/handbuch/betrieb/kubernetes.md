@@ -1358,6 +1358,15 @@ hat ihr Schema die vorige Version nur erweitert, und deren Pods starten neben de
 ersten Release mit dieser Zusage und über eine Versionsgrenze ohne Rolling Update gibt es das nicht
 ([Update ohne Ausfall](mehrere-instanzen.md#update-ohne-ausfall)).
 
+**Hinter die Version mit dem [Schlüsselwechsel](netz-und-sicherheit.md#schlüsselwechsel) führt
+`helm rollback` ohne Sicherung nicht zurück**, auch bei gleicher Zahl von Migrationen: Hat sie den
+Bestand der Geheimnisse auf das Format `enc:v2` umgestellt, liest die ältere Version die
+gespeicherten Zugangsdaten und Modellschlüssel nicht mehr. Zurück geht es dann nur mit der Sicherung
+von vor dem Upgrade. Wer sich den Rückweg offenhalten will, setzt beim Upgrade
+`OPAA_ENCRYPTION_KEYED_FORMAT=false` über `backend.extraEnv` und entfernt den Eintrag, wenn der
+Rückweg nicht mehr gebraucht wird
+([Kein Rückweg nach der Umstellung der Geheimnisse](aktualisierung.md#kein-rückweg-nach-der-umstellung-der-geheimnisse)).
+
 Ein Signal dafür, ob die Aktualisierung das Schema geändert hat, gibt die Tabelle `flyway_schema_history`.
 Vor und nach dem Upgrade, mit einem eigenen Schema vorangestellt:
 

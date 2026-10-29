@@ -21,7 +21,9 @@ dem Index macht. Es gilt für jeden Betriebsweg und gehört zum Teil Betrieb des
 5. **Prüfen:** `/actuator/info`, eine Frage im Chat, „Suche & Indexierung“.
 
 Zurück auf eine ältere Version geht es über die Sicherung; mit mehreren Instanzen innerhalb des
-Versionsfensters auch ohne Rücksicherung ([Update ohne Ausfall](mehrere-instanzen.md#update-ohne-ausfall)).
+Versionsfensters auch ohne Rücksicherung ([Update ohne Ausfall](mehrere-instanzen.md#update-ohne-ausfall)),
+außer hinter die Umstellung der gespeicherten Geheimnisse
+([Kein Rückweg nach der Umstellung der Geheimnisse](#kein-rückweg-nach-der-umstellung-der-geheimnisse)).
 
 ## Was ein Update mit dem Index macht
 
@@ -56,6 +58,20 @@ fehlerhaften Ollama-Fassung bei langen Eingaben ([Modelle](modelle.md#embedding)
 > DELETE FROM documents WHERE library_id = '<library-id>';
 > DELETE FROM rss_feed_state WHERE library_id = '<library-id>';  -- nur bei Feed-Bibliotheken
 > ```
+
+## Kein Rückweg nach der Umstellung der Geheimnisse
+
+Seit der Version mit dem [Schlüsselwechsel](netz-und-sicherheit.md#schlüsselwechsel) speichert OPAA
+Zugangsdaten und Modellschlüssel im Format `enc:v2`, sobald alle Instanzen die neue Version fahren,
+und stellt den Bestand im Hintergrund darauf um. Eine Version davor liest dieses Format nicht: Nach
+einem Rückweg sind die gespeicherten Geheimnisse für sie unlesbar, die Oberfläche zeigt sie als
+„nicht gesetzt“, und Abrufe mit Zugangsdaten scheitern.
+
+- **Zurück hinter diese Version nur mit der Rücksicherung** von vor dem Update.
+- **Rückweg ohne Rücksicherung offenhalten:** die neue Version mit
+  `OPAA_ENCRYPTION_KEYED_FORMAT=false` starten. OPAA schreibt dann weiter das bisherige Format und
+  stellt nichts um. Ist der Rückweg nicht mehr nötig, die Variable entfernen und alle Instanzen
+  gemeinsam neu starten.
 
 ## Fristen nach einem Rückweg
 
