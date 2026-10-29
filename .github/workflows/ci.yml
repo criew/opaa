@@ -172,6 +172,10 @@ jobs:
               - '.github/workflows/publish-images.yml'
               - '.github/workflows/renovate.yml'
               - 'renovate.json5'
+              # test_renovate_gradle_plugins.py reads the catalog and the buildscript blocks.
+              - 'backend/gradle/libs.versions.toml'
+              - 'backend/build.gradle.kts'
+              - 'opaa-api/build.gradle.kts'
               # test_opencode_mirror.py checks the mirror workflow and the openCode metadata.
               - '.github/workflows/opencode-mirror.yml'
               - 'publiccode.yml'

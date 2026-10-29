@@ -129,9 +129,13 @@ mit). Ausgenommen sind nur Quellen- und Javadoc-JARs, die allein die IDE lädt
 - **Plugin-Updates warten länger und mergen nie automatisch.** Der Aufruf konfiguriert den Build,
   führt also den Code eines angehobenen Gradle-Plugins im Renovate-Container aus, der das Token
   hält. Für die `[plugins]`-Einträge in `libs.versions.toml` (`depType` `plugin`) gelten deshalb
-  14 Tage Wartefrist und kein Auto-Merge; Bibliotheken bleiben bei drei Tagen und Auto-Merge, ihr
-  Code läuft bei `dependencies` nicht. Frist und Auto-Merge stehen in genau einer Regel in
-  `renovate.json5`.
+  14 Tage Wartefrist und kein Auto-Merge. Dieselben Werte gelten für Bibliotheken, die eine
+  `version.ref` mit einem Plugin teilen (`spring-boot-dependencies` hebt Renovate zusammen mit
+  dem Spring-Boot-Plugin an) oder auf dem Buildscript-Classpath liegen (die Jackson-BOMs im
+  `buildscript`-Block). Alle übrigen Bibliotheken bleiben bei drei Tagen und Auto-Merge; Gradle
+  lädt sie bei `dependencies` nur herunter, ohne ihren Code auszuführen. Frist und Auto-Merge
+  stehen in zwei benachbarten Regeln in `renovate.json5`; `test_renovate_gradle_plugins.py`
+  schlägt fehl, sobald eine solche Bibliothek in der zweiten Regel fehlt.
 - **Nach einem Plugin-Update die Portal-Fassungen ergänzen.** Renovate löst Plugins über das
   Portal auf und schreibt nur dessen Fassung. Fehlt die Central-Fassung eines neuen Markers,
   scheitert jede Umgebung mit Central-Spiegel. Vor dem Merge deshalb
@@ -171,7 +175,8 @@ mit). Ausgenommen sind nur Quellen- und Javadoc-JARs, die allein die IDE lädt
 - **Dependency Graph.** Der Workflow `dependency-graph.yml` spielt per Init-Skript das Plugin
   `org.gradle:github-dependency-graph-gradle-plugin` ein. Genau dessen Version steht in
   `trusted-artifacts`; hebt ein Update der Action die Version an, scheitert der Resolve-Job im
-  selben PR, und die Version wird dort nachgezogen.
+  selben PR, und die Version wird dort nachgezogen. Weil der Resolve-Job kein Required Check
+  ist, mergen Updates von `gradle/actions` nie automatisch.
 
 **npm wird gepinnt** (`rangeStrategy: 'pin'` für `dependencies`/`devDependencies`):
 `frontend/` und `e2e/` sind Anwendungen — exakte Versionen in der `package.json` machen jeden

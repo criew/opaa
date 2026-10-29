@@ -224,10 +224,24 @@
     // jedem Gradle-Update ./gradlew dependencies mit den neuen Versionen aus, also den Code eines
     // neuen Plugins im Container, der das Token hält, und danach jeder Bau. Deshalb längere
     // Wartefrist und kein Auto-Merge; Bibliotheken bleiben bei der Vorgabe (docs/renovate.md,
-    // Gradle-Prüfsummen). Frist und Auto-Merge sind nur hier festgelegt.
+    // Gradle-Prüfsummen). Frist und Auto-Merge stehen nur in diesen beiden Regeln.
     {
       matchManagers: ['gradle'],
       matchDepTypes: ['plugin'],
+      minimumReleaseAge: '14 days',
+      automerge: false,
+    },
+    // Dieselben Werte für Bibliotheken, die eine version.ref mit einem Plugin teilen (Renovate
+    // hebt beide in einem Update an) oder auf dem Buildscript-Classpath liegen (buildscript-Block
+    // in backend/build.gradle.kts und opaa-api/build.gradle.kts). Vollständigkeit prüft
+    // test_renovate_gradle_plugins.py.
+    {
+      matchManagers: ['gradle'],
+      matchDepNames: [
+        'org.springframework.boot:spring-boot-dependencies',
+        'tools.jackson:jackson-bom',
+        'com.fasterxml.jackson:jackson-bom',
+      ],
       minimumReleaseAge: '14 days',
       automerge: false,
     },
@@ -479,6 +493,15 @@
     {
       matchManagers: ['github-actions'],
       matchFileNames: ['.github/workflows/publish-images.yml'],
+      automerge: false,
+    },
+    // gradle/actions bringt im Dependency Graph ein Plugin mit, dem
+    // backend/gradle/verification-metadata.xml in genau einer Version vertraut. Hebt ein Update
+    // diese Version an, scheitert nur der Resolve-Job, der kein Required Check ist, und danach
+    // das Submit auf main. Deshalb nie automatisch (docs/renovate.md, Gradle-Prüfsummen).
+    {
+      matchManagers: ['github-actions'],
+      matchDepNames: ['gradle/actions'],
       automerge: false,
     },
     // Temurin-Major bleibt aus, bis die Projekt-Toolchain nachzieht: build.gradle.kts
