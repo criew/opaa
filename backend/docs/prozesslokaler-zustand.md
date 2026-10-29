@@ -24,7 +24,8 @@ führt (`AdvisoryLockNamespaceTest`); die signierte Vorschau-Kennung der Rechte�
 `uk_indexing_jobs_library_running` als Sperre gegen überlappende Läufe; die Startentscheidung der Installation
 und `OPAA_LOCAL_ADMIN_RESET` unter der Advisory-Sperre `211` (`InstallationService`, `LocalAdminReset`); die Migrationsregeln aus [migrationen.md](migrationen.md) (Expand/Contract,
 Verzeichnis der persistierten Enums, `lock_timeout`); OAuth-`state` in `connection_authorizations`; die
-bedingten `UPDATE`s von Refresh-Rotation, Action-Tokens und Fehlversuch-Sperre; Werte je Aufruf oder Lauf
+bedingten `UPDATE`s von Refresh-Rotation und Action-Tokens; die Fehlversuch-Sperre unter der
+Zeilensperre auf `local_credentials` (`LocalLoginService`); Werte je Aufruf oder Lauf
 (`FileSync.downloadPool`, `LlmModelDiscoverer`, `SourceRequestMeter`, die virtuellen Threads von
 `TranscriptionClient` und `RerankClient`). Ein `@Scheduled`-Lauf steht dagegen immer hier, auch wenn er
 idempotent ist: Jeder trägt die Sperre aus E7 (`ScheduledRunLockStructureTest`).

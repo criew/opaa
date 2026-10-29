@@ -37,10 +37,13 @@ erreichbaren Betrieb ein **TLS-terminierender Reverse-Proxy** oder Ingress. Für
 ### Sicherheits-Header und `Strict-Transport-Security`
 
 Der Frontend-Container setzt auf jede Antwort `Content-Security-Policy`, `X-Content-Type-Options`,
-`X-Frame-Options`, `Referrer-Policy` und `Permissions-Policy` (Mikrofon nur für die eigene Herkunft,
-Kamera und Standort gesperrt). Die CSP lässt keine fremden Skripte oder CDNs zu und Verbindungen nur
-zur eigenen Herkunft. Einbetten in einen Frame verbieten beide Header überall, mit einer Ausnahme: Den
-Download der Selbstauskunft darf die Anwendung selbst in einen verborgenen Frame laden
+`X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` (Mikrofon nur für die eigene Herkunft,
+Kamera und Standort gesperrt) sowie `Cross-Origin-Opener-Policy` und `Cross-Origin-Resource-Policy`
+(beide `same-origin`): Fremde Seiten erhalten keinen Zugriff auf ein geöffnetes OPAA-Fenster und
+können Antworten von OPAA nicht einbinden. Anmeldungen und Freigaben laufen als Weiterleitung im
+selben Fenster und sind davon nicht betroffen. Die CSP lässt keine fremden Skripte oder CDNs zu und
+Verbindungen nur zur eigenen Herkunft. Einbetten in einen Frame verbieten beide Header überall, mit
+einer Ausnahme: Den Download der Selbstauskunft darf die Anwendung selbst in einen verborgenen Frame laden
 (`SAMEORIGIN` bzw. `frame-ancestors 'self'`), damit eine Ablehnung die Seite nicht ersetzt. Das
 Backend sendet dieselbe Regel selbst: `SAMEORIGIN` und `frame-ancestors 'self'` für den Download,
 `X-Frame-Options: DENY` für alles andere. Der Container ersetzt die Frame-Header des Backends durch
