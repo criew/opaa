@@ -102,6 +102,12 @@ GEHEIMNISSE
   Die Schlüssel stehen in den Werten dieses Releases. Für den Betrieb secrets.existingSecret
   verwenden. Geht OPAA_CREDENTIALS_ENCRYPTION_KEY oder OPAA_SETTINGS_ENCRYPTION_KEY verloren, sind
   die damit gespeicherten Zugangsdaten unlesbar - Kopie außerhalb des Clusters aufbewahren.
+{{- $marker := "NICHT-FUER-DEN-PRODUKTIVBETRIEB" }}
+{{- if or (hasPrefix "ci-only" (lower (.Values.secrets.jwtSecret | default ""))) (contains $marker (upper (b64dec (.Values.secrets.credentialsEncryptionKey | default "")))) (contains $marker (upper (b64dec (.Values.secrets.settingsEncryptionKey | default "")))) }}
+  ÖFFENTLICH BEKANNTE TESTWERTE: secrets.jwtSecret oder ein Verschlüsselungsschlüssel stammt aus
+  den Wertesätzen der CI ({{ $marker }}). Das Backend startet damit nicht. Eigene Werte
+  erzeugen: openssl rand -base64 48 (jwtSecret), openssl rand -base64 32 (Schlüssel).
+{{- end }}
 {{- end }}
 
 {{- if .Values.evaluationDatabase.enabled }}
@@ -142,6 +148,11 @@ CLIENT-ADRESSE UND NETZTRENNUNG
 {{- end }}
 {{- if not .Values.networkPolicy.backendIngress.enabled }}
   Die Eingangs-Policy des Backends ist aus: Jeder Pod im Cluster erreicht das Backend direkt.
+{{- end }}
+{{- if not .Values.networkPolicy.egress.enabled }}
+  networkPolicy.egress.enabled ist aus: Das Backend erreicht jedes Ziel, das der Cluster zulässt,
+  auch Link-Local-Adressen wie den Metadatendienst 169.254.169.254. Die Zielprüfung des Backends
+  erkennt DNS-Rebinding nicht; nach der Einrichtung die Egress-Policies einschalten.
 {{- end }}
 {{- if and (not .Values.trustedProxyCidrs) (or .Values.installationAllowedCidrs .Values.localAdminAllowedCidrs) }}
 

@@ -63,7 +63,10 @@ Embedding-Modell, wenn `bge-m3` dort per Modelfile mit dieser Grenze angelegt is
 ([Eingabegrenze des Embedding-Modells](modelle.md#eingabegrenze-des-embedding-modells)).
 
 Ohne erreichbaren Server startet der Stapel, aber Indexierung und Fragen schlagen fehl. Danach ist
-die Oberfläche unter `http://localhost:3000` erreichbar, die API unter `http://localhost:8081/api`.
+die Oberfläche unter `http://localhost:3000` erreichbar, die API unter `http://localhost:8081/api`,
+beide nur vom Host selbst: Im Modus `dev` ist jede Anfrage ohne Anmeldung Systemverwaltung. Für
+andere Rechner gehört der Stapel in den Modus `oidc`
+([Härtung des Compose-Stapels](#härtung-des-compose-stapels)).
 Im Modus `dev` der Vorlage richtet sich der Stapel selbst ein; im Betriebsmodus `oidc` startet eine
 leere Datenbank im Installationsmodus ([Installation im Compose-Stapel](#installation-im-compose-stapel)).
 
@@ -561,7 +564,8 @@ selbst:
 
 | Vorgabe | Risiko bei erreichbarem Betrieb | Gegenmaßnahme |
 |---|---|---|
-| `postgres` und `backend` binden an `127.0.0.1`, `frontend` und `keycloak` an allen Schnittstellen | Loopback schützt vor dem Netz, nicht vor anderen Prozessen und Konten desselben Hosts; über den Backend-Port ließe sich `X-Forwarded-For` am Frontend vorbei setzen. Die beiden anderen Ports sind ohne Firewall aus dem Netz erreichbar, bei `keycloak` samt Admin-Konsole | Hinter einem Reverse-Proxy alle Ports an `127.0.0.1:` binden — für `keycloak` **zwingend**, für `frontend` empfohlen. Die `ports:`-Zuordnung von `postgres` ganz entfernen; das Backend erreicht die Datenbank im Compose-Netz. Für die lokale Entwicklung bleiben die Bindungen sinnvoll |
+| Modus `dev` in `.env.docker.example` (`SPRING_PROFILES_ACTIVE=docker,dev`) | Ohne Anmeldung ist jede Anfrage das Konto `dev-admin` mit Systemverwaltung | **Zwingend** für jeden Betrieb, den andere Rechner erreichen: `docker,oidc` ([Installation im Compose-Stapel](#installation-im-compose-stapel)). Reicht `OPAA_FRONTEND_BIND_ADDRESS` über Loopback hinaus, startet das Backend im Modus `dev` nicht; nur `OPAA_AUTH_DEV_ALLOW_REMOTE=true` in `.env.docker` lässt es zu, etwa in einem abgeschotteten Entwicklungsnetz |
+| Alle Ports binden an `127.0.0.1`; `frontend` und `keycloak` öffnen `OPAA_FRONTEND_BIND_ADDRESS` bzw. `OPAA_KEYCLOAK_BIND_ADDRESS` (etwa `0.0.0.0`, in `.env` oder der Shell-Umgebung) | Loopback schützt vor dem Netz, nicht vor anderen Prozessen und Konten desselben Hosts; über den Backend-Port ließe sich `X-Forwarded-For` am Frontend vorbei setzen. Ein geöffneter Port ist aus dem Netz erreichbar — Docker veröffentlicht ihn an ufw und firewalld vorbei —, bei `keycloak` samt Admin-Konsole | Bindungen an `127.0.0.1` **zwingend** für `keycloak`, `backend` und `postgres`; `frontend` nur öffnen, wenn kein Reverse-Proxy auf demselben Host davor steht. Die `ports:`-Zuordnung von `postgres` ganz entfernen; das Backend erreicht die Datenbank im Compose-Netz |
 | Zugangsdaten des mitgelieferten Objektspeichers (`opaa-uploads`/`OpaaUploads!2026`, Profil `upload-s3`) | Die Originale aller hochgeladenen Dokumente sind mit Zugangsdaten geschützt, die im Repository stehen | **Zwingend** außerhalb einer Erprobung: eigene Werte über `OPAA_UPLOAD_STORE_ROOT_USER`/`OPAA_UPLOAD_STORE_ROOT_PASSWORD` in `.env` oder der Shell-Umgebung, dieselben als `OPAA_UPLOAD_S3_ACCESS_KEY`/`OPAA_UPLOAD_S3_SECRET_KEY` in `.env.docker`. Im erreichbaren Betrieb ist ein hauseigener Objektspeicher mit Verschlüsselung ruhender Daten und Versionierung der Regelfall |
 | `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` leer | Alle Clients teilen hinter dem Frontend-nginx einen Zähler | die feste Adresse des Frontend-Containers als `/32` eintragen, wie in `.env.docker.example` ([Vertraute Proxys](netz-und-sicherheit.md#vertraute-proxys-und-client-adresse)) |
 

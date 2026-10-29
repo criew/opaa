@@ -32,7 +32,9 @@ class DevAuthFilterTest {
           "dev-admin",
           List.of(
               new AuthProperties.DevUser("dev-admin", "admin@opaa.local", "Dev Admin"),
-              new AuthProperties.DevUser("dev-user", "dev-user@opaa.local", "Dev User")));
+              new AuthProperties.DevUser("dev-user", "dev-user@opaa.local", "Dev User")),
+          null,
+          null);
 
   private static final Instant NOW = Instant.parse("2026-10-25T09:00:00Z");
   private static final Clock CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);

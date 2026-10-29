@@ -441,7 +441,9 @@ startet auch ohne die Dateien.
   (siehe [Proxy-Kette und Client-Adresse](#proxy-kette-und-client-adresse)). Bis dahin teilen sich
   alle Personen einen Zähler der Rate-Limits und der Anmeldesperre.
 - **Ausgang begrenzen:** die Egress-Policies einschalten, sobald alle Ziele bekannt sind (siehe
-  [NetworkPolicies](#networkpolicies)).
+  [NetworkPolicies](#networkpolicies)). Bis dahin erreicht das Backend jedes Ziel, das der Cluster
+  zulässt, auch den Metadatendienst `169.254.169.254`; die Hinweise nach `helm install` erinnern
+  daran.
 - **Überwachung anschließen:** siehe [Betriebsüberwachung](#betriebsüberwachung).
 - **Sicherung einrichten:** siehe [Sicherung und Wiederherstellung](#sicherung-und-wiederherstellung).
 

@@ -96,9 +96,11 @@ Ist die Installation aus einem größeren Netz oder dem Internet erreichbar, gil
 | eigene Geheimnisse statt Vorgaben, `OPAA_AUTH_LOCAL_COOKIE_SECURE` nicht auf `false` | ja | [Schlüssel und Geheimnisse](#schlüssel-und-geheimnisse) |
 | vertraute Proxys eintragen | ja, sobald ein Proxy vor dem Backend steht | [Vertraute Proxys](#vertraute-proxys-und-client-adresse) |
 | mitgelieferten Keycloak-Realm härten | ja, wenn er genutzt wird | [Authentifizierung](authentifizierung.md#härtung-des-mitgelieferten-keycloak) |
-| Ports nur an `127.0.0.1`, Zugangsdaten des mitgelieferten Objektspeichers ersetzen | ja für Keycloak und den Objektspeicher, sonst empfohlen | [Docker Compose](docker-compose.md#härtung-des-compose-stapels) |
+| Ports an `127.0.0.1` lassen (Vorgabe), Zugangsdaten des mitgelieferten Objektspeichers ersetzen | ja für Keycloak und den Objektspeicher, sonst empfohlen | [Docker Compose](docker-compose.md#härtung-des-compose-stapels) |
+| Ausgangsproxy sperrt private und Link-Local-Ziele | ja, sobald ein Ausgangsproxy eingetragen ist | [Ausgangsproxy](#ausgangsproxy) |
 | Netztrennung, Pod Security | empfohlen | [Kubernetes](kubernetes.md#netz-und-sicherheit) |
 | Ziele des Servers begrenzen | Vorgabe ist eingeschaltet | [Zielprüfung](#zielprüfung-abrufe-des-servers) |
+| Egress des Backends beschränken | empfohlen; unter Kubernetes nach der Einrichtung `networkPolicy.egress.enabled` | [Kubernetes](kubernetes.md#netz-und-sicherheit) |
 
 ### Vertraute Proxys und Client-Adresse
 
@@ -151,8 +153,12 @@ und `http.proxyHost` wertet OPAA nicht aus.
 - **Ausnahmeliste:** je Zeile ein Hostname (gilt mit Subdomänen), eine IP-Adresse oder ein
   CIDR-Bereich. Interne Ziele wie ein Modellserver im Haus gehören hierher.
 - **Ausnahmeliste ist keine Freigabe:** Ob ein internes Ziel erreicht werden darf, entscheidet die
-  [Zielprüfung](#zielprüfung-abrufe-des-servers). Hinter dem Proxy löst der Proxy die Adresse auf;
-  interne Ziele sperrt dann der Proxy.
+  [Zielprüfung](#zielprüfung-abrufe-des-servers).
+- **Pflicht für den Proxy:** Die Zielprüfung sieht nur die Namensauflösung des Backends; der Proxy
+  löst den Namen selbst noch einmal auf und kann eine andere Adresse erhalten (DNS-Rebinding). Er
+  muss deshalb Verbindungen zu Loopback, Link-Local (`169.254.0.0/16` samt Metadatendienst
+  `169.254.169.254`, `fe80::/10`) und privaten Bereichen sperren, soweit sie nicht ausdrücklich
+  erreichbar sein sollen.
 - Änderungen wirken ohne Neustart und stehen im Revisionsprotokoll.
 - **Notanker:** Ein falscher Proxy kann die Anmeldung über Identitätsanbieter lahmlegen; das lokale
   Systemverwaltungskonto meldet sich ohne Anbieter an und korrigiert den Eintrag.
@@ -272,15 +278,17 @@ dem Backend den Weg zum Scanner öffnen.
 | Geheimnis | Wofür | Ohne eigenen Wert | Bei Verlust oder Wechsel |
 |---|---|---|---|
 | `OPAA_AUTH_JWT_SECRET` | lokal ausgestellte Tokens und Links (Refresh, Einladung, Rücksetzen) | im Modus `oidc` bricht der Start ab | alle lokalen Sitzungen, offenen Links und Zugangstokens [externer KI-Werkzeuge](../spaces/fremdzugaenge.md) werden ungültig — gewollt nach einer [Rücksicherung](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank) |
-| `OPAA_CREDENTIALS_ENCRYPTION_KEY` | Zugangsdaten von Quellen, Zugängen und verbundenen Konten, Webhook-Geheimnisse | Speichern solcher Zugangsdaten scheitert | gespeicherte Werte unlesbar, neu einzutragen |
-| `OPAA_SETTINGS_ENCRYPTION_KEY` | Schlüssel der Chat-Modelle, SMTP-Passwort, wartende Mails | Speichern solcher Werte scheitert | Werte neu einzutragen ([Modelle](modelle.md#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)); wartende Mails verworfen |
+| `OPAA_CREDENTIALS_ENCRYPTION_KEY` | Zugangsdaten von Quellen, Zugängen und verbundenen Konten, Webhook-Geheimnisse | Speichern solcher Zugangsdaten scheitert; ein im Repository veröffentlichter Schlüssel bricht im Modus `oidc` den Start ab | gespeicherte Werte unlesbar, neu einzutragen |
+| `OPAA_SETTINGS_ENCRYPTION_KEY` | Schlüssel der Chat-Modelle, SMTP-Passwort, wartende Mails | Speichern solcher Werte scheitert; ein im Repository veröffentlichter Schlüssel bricht im Modus `oidc` den Start ab | Werte neu einzutragen ([Modelle](modelle.md#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)); wartende Mails verworfen |
 | `OPAA_DB_USERNAME`, `OPAA_DB_PASSWORD` | Datenbankkonto | Vorgabe `opaa`/`opaa`, nur Entwicklung | vor dem ersten Start setzen |
 
 - Zufällig erzeugen: `openssl rand -base64 48` (Signaturgeheimnis), `openssl rand -base64 32`
   (Schlüssel).
 - Außerhalb des Repositorys ablegen (Tresor, Secret-Manager) und **getrennt von der Datenbank
   sichern**: Ohne die Schlüssel enthält eine Datenbanksicherung unlesbare Zugangsdaten.
-- Die Schlüssel des Profils `dev` sind nicht für den Betrieb.
+- Die Schlüssel des Profils `dev` und die Testwerte der Wertesätze unter `deploy/helm/opaa/ci/`
+  (`ci-only-…`, Kennzeichen `NICHT-FUER-DEN-PRODUKTIVBETRIEB`) sind öffentlich. Im Modus `oidc`
+  bricht der Start mit ihnen ab und nennt die Variable.
 
 ### Zugangsdaten-Verschlüsselung
 

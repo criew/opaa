@@ -15,11 +15,13 @@ uploads:
   store: persistentVolumeClaim
   persistence:
     fsGroup: 65532
+# The backend really starts here in the "oidc" profile, which refuses the ci-only-... and
+# marker-bearing values of the chart's own ci/ value sets; these guard nothing but a throwaway cluster.
 secrets:
-  jwtSecret: ci-only-jwt-secret-0123456789abcdefghijklmnop
+  jwtSecret: kind-install-test-jwt-secret-0123456789abcdefghij
   databasePassword: ci-only-password
-  credentialsEncryptionKey: bjzhjv2AKbnBjZCYAR2V/Glp7TYZzqABwkqXs3lEyCY=
-  settingsEncryptionKey: CH1X+hsIYeijer8S9wq5wKRnQa4DpUPePzw4KxGMTMw=
+  credentialsEncryptionKey: bgkeQqaMpiL1xFl4ymM9MVJ+jYlt+GCb4w9J8o5btxI=
+  settingsEncryptionKey: NNEl4fE9dCl6LycesKNIxBXCY+hDKDDWV8D7hPi5e0A=
 backend:
   image:
     repository: opaa-ci/backend

@@ -1,3 +1,6 @@
+# NICHT-FUER-DEN-PRODUKTIVBETRIEB: the secrets in this file are public test values. The backend
+# refuses them in the "oidc" profile (ci-only-..., AES keys that decode to this marker); a real
+# installation generates its own (docs/handbuch/betrieb/kubernetes.md).
 # Entry through the Gateway API only (HTTPRoute, no Ingress); the secrets are throwaway test values.
 publicBaseUrl: https://opaa.example.org
 database:
@@ -23,8 +26,8 @@ secrets:
   s3SecretKey: ci-only-secret-key
   jwtSecret: ci-only-jwt-secret-0123456789abcdefghijklmnop
   databasePassword: ci-only-password
-  credentialsEncryptionKey: bjzhjv2AKbnBjZCYAR2V/Glp7TYZzqABwkqXs3lEyCY=
-  settingsEncryptionKey: CH1X+hsIYeijer8S9wq5wKRnQa4DpUPePzw4KxGMTMw=
+  credentialsEncryptionKey: TklDSFQtRlVFUi1ERU4tUFJPRFVLVElWQkVUUklFQjE=
+  settingsEncryptionKey: TklDSFQtRlVFUi1ERU4tUFJPRFVLVElWQkVUUklFQjI=
 httpRoute:
   enabled: true
   parentRefs:

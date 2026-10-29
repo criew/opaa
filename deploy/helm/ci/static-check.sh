@@ -517,6 +517,14 @@ notes_case "networks without proxies" "NETZPRÜFUNG OHNE CLIENT-ADRESSE" "INSTAL
   --set 'installationAllowedCidrs[0]=10.0.0.0/8'
 notes_case "secrets without the answer file" "wirken nur mit bootstrap.initialAdmin.email" \
   "INSTALLATION AUS DER ANTWORTDATEI" --set secrets.initialAdminPassword=ci-only-Notanker-2026
+notes_case "public test secrets" "ÖFFENTLICH BEKANNTE TESTWERTE" "INSTALLATION AUS DER ANTWORTDATEI"
+notes_case "own secrets" "GEHEIMNISSE" "ÖFFENTLICH BEKANNTE TESTWERTE" \
+  --set-string secrets.jwtSecret=own-static-check-secret-0123456789abcdefghij \
+  --set-string secrets.credentialsEncryptionKey=bgkeQqaMpiL1xFl4ymM9MVJ+jYlt+GCb4w9J8o5btxI= \
+  --set-string secrets.settingsEncryptionKey=NNEl4fE9dCl6LycesKNIxBXCY+hDKDDWV8D7hPi5e0A=
+notes_case "egress off" "networkPolicy.egress.enabled ist aus" "INSTALLATION AUS DER ANTWORTDATEI"
+notes_case "egress on" "CLIENT-ADRESSE UND NETZTRENNUNG" "networkPolicy.egress.enabled ist aus" \
+  --set networkPolicy.egress.enabled=true
 
 # The CSP warning of NOTES.txt follows the issuer, the authority of the sign-in flow. Only install
 # renders NOTES.txt; a dry run without a cluster exists from Helm 3.13 on, older Helm skips this.
