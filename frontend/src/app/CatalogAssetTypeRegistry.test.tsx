@@ -81,7 +81,7 @@ describe('a new asset type through the registry alone', () => {
     // the link names the card; badge and extent sit beside it in the card
     const card = link.parentElement as HTMLElement
     expect(within(card).getByText('Skill')).toBeInTheDocument()
-    expect(within(card).getByText('4 Schritte · in keinem Space')).toBeInTheDocument()
+    expect(within(card).getByText('4 Schritte')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Wissen' }))
     await waitFor(() =>

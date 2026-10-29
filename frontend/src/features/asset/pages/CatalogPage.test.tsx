@@ -76,7 +76,7 @@ describe('CatalogPage (ADR-0039)', () => {
     server.events.removeListener('request:start', recordCatalogRequests)
   })
 
-  it('mixes both asset types as cards with type badge, extent and responsible party', async () => {
+  it('mixes both asset types as cards with type badge and extent', async () => {
     renderCatalog()
 
     expect(screen.getByRole('heading', { level: 1, name: 'Katalog' })).toBeInTheDocument()
@@ -87,9 +87,8 @@ describe('CatalogPage (ADR-0039)', () => {
     const prompts = screen.getByRole('link', { name: /Formulierungshilfen Referat 50/ })
     expect(prompts).toHaveAttribute('href', '/prompts/prompt-library-referat-50')
     expect(within(cardOf(prompts)).getByText('Prompts')).toBeInTheDocument()
-    expect(within(cardOf(prompts)).getByText('Referat 50')).toBeInTheDocument()
-    expect(within(cardOf(prompts)).getByTitle('Zuständige Gruppe')).toBeInTheDocument()
-    expect(within(cardOf(prompts)).queryByText(/zuständig:/)).not.toBeInTheDocument()
+    // The catalog tile is the lean tile of a choice: no responsible party (#3305).
+    expect(within(cardOf(prompts)).queryByTitle('Zuständige Gruppe')).not.toBeInTheDocument()
   })
 
   it('heads the catalog like every overview: name and count, no subtitle and no footnote (#3263)', async () => {
@@ -190,7 +189,7 @@ describe('CatalogPage (ADR-0039)', () => {
     expect(screen.queryByText(/angezeigt$/)).not.toBeInTheDocument()
   })
 
-  it('names the open succession and its addressee on the card', async () => {
+  it('names the open succession on the card, its addressee only on the detail page', async () => {
     server.use(
       http.get('/api/v1/catalog', () =>
         HttpResponse.json({
@@ -212,14 +211,11 @@ describe('CatalogPage (ADR-0039)', () => {
     renderCatalog()
 
     const card = cardOf(await screen.findByRole('link', { name: /Verwaiste Bausteine/ }))
-    expect(within(card).getByText('die Systemverwaltung')).toBeInTheDocument()
-    expect(within(card).getByTitle('Zuständige Gruppe')).toBeInTheDocument()
-    expect(within(card).getByText('3 Prompts · in 1 Space')).toBeInTheDocument()
-    // "Nachfolge offen" is a state line behind a dot; the addressee stands once, without a prefix.
+    expect(within(card).getByText('3 Prompts')).toBeInTheDocument()
+    // "Nachfolge offen" is a state line behind a dot.
     const succession = within(card).getByText('Nachfolge offen')
     expect(succession.parentElement?.querySelector('[aria-hidden="true"]')).not.toBeNull()
-    expect(within(card).getAllByText('die Systemverwaltung')).toHaveLength(1)
-    expect(within(card).queryByText(/zuständig:/)).not.toBeInTheDocument()
+    expect(within(card).queryByText('die Systemverwaltung')).not.toBeInTheDocument()
   })
 
   it('marks and unmarks a favorite with a star beside the link, by keyboard', async () => {
@@ -450,7 +446,8 @@ describe('CatalogPage (ADR-0039)', () => {
       )
     }
 
-    it('marks only an entry released to all accounts, shows no role and the date of a ready entry', async () => {
+    // Release, role and date stand on the detail page only; a ready entry carries no state line.
+    it('shows neither release, role nor date on a ready entry', async () => {
       serve([
         entry('Bauordnung', {
           assetType: 'KNOWLEDGE_LIBRARY',
@@ -468,23 +465,19 @@ describe('CatalogPage (ADR-0039)', () => {
       renderCatalog()
 
       const knowledge = cardOf(await screen.findByRole('link', { name: /Bauordnung/ }))
-      const globe = within(knowledge).getByRole('img', { name: 'Für alle Konten freigegeben' })
-      // right beside the type badge, as the sketch shows it
-      const badge = within(knowledge).getByText('Wissen')
-      expect(badge.compareDocumentPosition(globe) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(
+        within(knowledge).queryByRole('img', { name: 'Für alle Konten freigegeben' }),
+      ).not.toBeInTheDocument()
       expect(within(knowledge).queryByText('Für alle')).not.toBeInTheDocument()
       expect(within(knowledge).queryByText('Verwalter')).not.toBeInTheDocument()
-      expect(within(knowledge).getByText('Aktualisiert am 18.08.2026')).toBeInTheDocument()
+      expect(within(knowledge).queryByText(/Aktualisiert am/)).not.toBeInTheDocument()
       const prompts = cardOf(screen.getByRole('link', { name: /Bescheidbausteine/ }))
       expect(
         within(prompts).queryByRole('img', { name: 'Für alle Konten freigegeben' }),
       ).not.toBeInTheDocument()
       expect(within(prompts).queryByText('Eingeschränkt')).not.toBeInTheDocument()
       expect(within(prompts).queryByText('Leser')).not.toBeInTheDocument()
-      // A type without a measure of its own is READY; its date is the last change.
-      const updated = within(prompts).getByText('Aktualisiert am 30.09.2026')
-      // A ready entry carries no coloured dot: the date stands alone, not beside one.
-      expect(updated.parentElement).toBe(prompts)
+      expect(within(prompts).queryByText(/Aktualisiert am/)).not.toBeInTheDocument()
     })
 
     it('marks a private library with the word „Privat“ beside its type badge, from the entry alone', async () => {
@@ -547,25 +540,6 @@ describe('CatalogPage (ADR-0039)', () => {
       expect(within(erasing).getByRole('img', { name: 'Wird gelöscht' })).toBeInTheDocument()
       const kept = cardOf(screen.getByRole('link', { name: /Neue Ablage/ }))
       expect(within(kept).queryByRole('img', { name: 'Wird gelöscht' })).not.toBeInTheDocument()
-    })
-
-    // An upload library has no runs and so no lastIndexedAt; its date is its last change.
-    it('gives a ready upload library its last change as date', async () => {
-      serve([
-        entry('Hochgeladenes', {
-          assetType: 'KNOWLEDGE_LIBRARY',
-          updatedAt: '2026-09-12T08:00:00Z',
-          knowledgeLibrary: {
-            sourceType: 'UPLOAD',
-            privateLibrary: false,
-            indexingStatus: 'READY',
-          },
-        }),
-      ])
-      renderCatalog()
-
-      const card = cardOf(await screen.findByRole('link', { name: /Hochgeladenes/ }))
-      expect(within(card).getByText('Aktualisiert am 12.09.2026')).toBeInTheDocument()
     })
 
     // No visible title before the type group; its accessible name stays "Typ".

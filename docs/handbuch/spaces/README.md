@@ -158,8 +158,8 @@ oder „Nachfolge offen". Solange die Nachfolge offen ist, lässt sich das Arbei
 zuordnen: Seine Kachel ist ausgegraut, lässt sich nicht wählen und nennt den Grund „Lässt sich
 nicht neu zuordnen, solange die Nachfolge offen ist." Kommt der Assistent über „Neuen Space damit
 anlegen" mit einem solchen Arbeitsmittel, übernimmt er es nicht als gewählt; ein Hinweis im Schritt
-„Inhalte" nennt den Grund. Zuständige Stelle, „Aktualisiert am", die Zahl der Spaces und das Welt-Symbol stehen im
-Katalog und auf der Detailseite. Links oben steht ein Häkchen, wenn die Kachel gewählt ist, sonst ein leerer
+„Inhalte" nennt den Grund. Es ist dieselbe Kachel wie im Katalog; zuständige Stelle, „Aktualisiert am", die Zahl der Spaces
+und das Welt-Symbol stehen auf der Detailseite. Links oben steht ein Häkchen, wenn die Kachel gewählt ist, sonst ein leerer
 Kreis; der Rahmen bleibt gleich. Ein Klick auf die Kachel wählt sie oder hebt die Wahl auf; ein
 Klick auf den Stern setzt nur den eigenen Favoriten und ändert die Wahl nicht.
 

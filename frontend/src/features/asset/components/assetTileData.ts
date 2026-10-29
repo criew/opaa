@@ -19,22 +19,14 @@ export interface AssetTileData {
   assetId: string
   name: string
   description?: string | null
-  /** Released to all accounts: the tile carries the globe beside its type badge. */
-  isPublic?: boolean
   /** A private library: the tile carries „Privat“ beside its type badge. */
   privateLibrary?: boolean
   /** A private library marked for erasure: the tile carries „Wird gelöscht“. */
   erasing?: boolean
   /** The caller's own favorite mark; absent where the source does not know it. */
   favorite?: boolean
-  /** The figures line, e.g. "12 Dokumente · in 2 Spaces". */
-  figures?: string | null
-  /** The extent alone, e.g. "12 Dokumente" - what a tile in a choice shows instead of the figures. */
+  /** The extent, e.g. "12 Dokumente". */
   extent?: string | null
-  /** Who to turn to, with whether that is a group. */
-  responsible?: { label: string; group: boolean } | null
-  /** Shown as "Aktualisiert am …" while nothing needs attention. */
-  updatedAt?: string | null
   /** The type's own state when it needs attention. */
   status?: AssetTileStatus | null
   /** An open succession, a line of its own. */
@@ -119,7 +111,7 @@ export function sourceBlockNote(block: SourceBlock): string {
   return `${word} – ${consequence} (zuständig: ${block.responsible})`
 }
 
-/** The tile of a catalog entry - the fullest a tile gets. */
+/** The tile of a catalog entry. */
 export function tileFromCatalogEntry(entry: CatalogEntryResponse): AssetTileData {
   const status = ownStatus(entry)
   const definition = assetTypeDefinition(entry.assetType)
@@ -128,17 +120,10 @@ export function tileFromCatalogEntry(entry: CatalogEntryResponse): AssetTileData
     assetId: entry.assetId,
     name: entry.name,
     description: entry.description ?? null,
-    isPublic: entry.visibility === 'PUBLIC',
     ...(entry.knowledgeLibrary?.privateLibrary ? { privateLibrary: true } : {}),
     ...(entry.knowledgeLibrary?.erasureRequestedAt ? { erasing: true } : {}),
     favorite: entry.favorite,
-    figures: definition
-      ? `${definition.extentLabel(entry.itemCount)} · ${spreadLabel(entry.spaceCount)}`
-      : null,
     extent: definition ? definition.extentLabel(entry.itemCount) : null,
-    responsible: responsibleParty(entry),
-    // An upload library has no runs, so no lastIndexedAt; its date is then its last change.
-    updatedAt: entry.knowledgeLibrary?.lastIndexedAt ?? entry.updatedAt ?? null,
     status: status === 'READY' ? null : status,
     successionOpen: Boolean(entry.succession),
     note: entry.knowledgeLibrary?.sourceBlock
