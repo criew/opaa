@@ -25,6 +25,9 @@ import { AssetTile } from '@/features/asset'
 import type { AssetTileData } from '@/features/asset'
 import { type AssetFilterKey, type AssetFilters } from '@/features/asset'
 import { AssetFilterBar } from '@/features/asset'
+import { OWN_TOKENS_ROUTE } from '@/shared/routes'
+import { isRecentLoginRequired, recentLoginRefusalMessage } from '@/shared/session/recentLogin'
+import RecentLoginDialog from '@/shared/ui/RecentLoginDialog'
 import {
   DISCLOSURE_HINT,
   NO_LIBRARIES_HINT,
@@ -42,7 +45,19 @@ interface CreateExternalAccessTokenDialogProps {
   tokenMaxLifetimeDays: number
   onClose: () => void
   onCreated: (created: CreatedExternalAccessTokenResponse) => void
+  /**
+   * The page came back from a sign-in forced at the provider for this issuance; the draft did not
+   * survive the redirect, so the dialog asks for it again.
+   */
+  afterProviderSignIn?: boolean
 }
+
+export const CONFIRM_PURPOSE =
+  'Ein Zugangstoken wirkt über diese Sitzung hinaus. Bevor Sie es erzeugen, bestätigen Sie bitte ' +
+  'Ihre Anmeldung.'
+
+export const SIGN_IN_CONFIRMED_HINT =
+  'Ihre Anmeldung ist bestätigt. Bitte geben Sie die Angaben erneut ein und erzeugen Sie das Token.'
 
 interface FieldErrors {
   name?: string
@@ -113,11 +128,15 @@ function libraryTiles(
  * The selection comes from `eligible-libraries` and is thus exactly the set the issuance
  * accepts - readable and released. Everything the dialog offers can be issued; offering one more
  * library would mean letting the person run into a rejection.
+ *
+ * The issuance requires a recent sign-in: a refusal for want of one opens the confirmation and,
+ * once confirmed, submits the same draft again; a second refusal is explained, not asked again.
  */
 export default function CreateExternalAccessTokenDialog({
   tokenMaxLifetimeDays,
   onClose,
   onCreated,
+  afterProviderSignIn = false,
 }: CreateExternalAccessTokenDialogProps) {
   const [libraries, setLibraries] = useState<EligibleExternalAccessLibraryResponse[] | null>(null)
   const [name, setName] = useState('')
@@ -134,6 +153,7 @@ export default function CreateExternalAccessTokenDialog({
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [confirming, setConfirming] = useState(false)
 
   const latest = maxExpiryDate(tokenMaxLifetimeDays)
   const latestValue = toDateInputValue(latest)
@@ -208,7 +228,7 @@ export default function CreateExternalAccessTokenDialog({
     return errors
   }
 
-  async function handleSubmit() {
+  async function handleSubmit(afterConfirmation = false) {
     const errors = validate()
     setFieldErrors(errors)
     if (Object.keys(errors).length > 0) return
@@ -222,7 +242,13 @@ export default function CreateExternalAccessTokenDialog({
       })
       onCreated(created)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Das Token konnte nicht erzeugt werden.')
+      if (isRecentLoginRequired(err) && !afterConfirmation && !afterProviderSignIn) {
+        setConfirming(true)
+      } else if (isRecentLoginRequired(err)) {
+        setError(recentLoginRefusalMessage(afterProviderSignIn && !afterConfirmation))
+      } else {
+        setError(err instanceof Error ? err.message : 'Das Token konnte nicht erzeugt werden.')
+      }
     } finally {
       setIsSaving(false)
     }
@@ -238,6 +264,11 @@ export default function CreateExternalAccessTokenDialog({
     <Dialog open fullWidth maxWidth="sm" onClose={onClose} aria-labelledby="create-token-title">
       <DialogTitle id="create-token-title">Token erzeugen</DialogTitle>
       <DialogContent>
+        {afterProviderSignIn && !error && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            {SIGN_IN_CONFIRMED_HINT}
+          </Alert>
+        )}
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
@@ -371,6 +402,16 @@ export default function CreateExternalAccessTokenDialog({
           Erzeugen
         </Button>
       </DialogActions>
+      <RecentLoginDialog
+        open={confirming}
+        purpose={CONFIRM_PURPOSE}
+        onConfirmed={() => {
+          setConfirming(false)
+          void handleSubmit(true)
+        }}
+        onClose={() => setConfirming(false)}
+        returnTo={OWN_TOKENS_ROUTE}
+      />
     </Dialog>
   )
 }

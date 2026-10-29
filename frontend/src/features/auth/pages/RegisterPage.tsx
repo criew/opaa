@@ -10,7 +10,6 @@ import { Navigate, Link as RouterLink } from 'react-router'
 import AuthLayout from '../components/AuthLayout'
 import AuthLoading from '../components/AuthLoading'
 import AuthNotice from '../components/AuthNotice'
-import NewPasswordField from '../components/NewPasswordField'
 import SectionEyebrow from '../components/SectionEyebrow'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
@@ -22,7 +21,6 @@ import { LOGIN_ROUTE } from '@/shared/routes'
 import {
   fieldErrorMessages,
   MAIL_SENT_MESSAGE,
-  passwordPolicyText,
   SELF_SERVICE_DISABLED_MESSAGE,
   SELF_SERVICE_UNREACHABLE_MESSAGE,
   tooManyRequestsMessage,
@@ -31,13 +29,14 @@ import { radius } from '@/shared/theme/tokens'
 
 const HEADING = 'Konto registrieren'
 /** The fields this form can show an error at, in the order the focus walks them. */
-const FIELDS = ['displayName', 'email', 'password'] as const
+const FIELDS = ['email'] as const
 
 /**
  * Registers an account of this installation. The acknowledgement is the same for a free address and
  * a taken one (ADR-0033, Entscheidung 11), so the page never confirms that somebody already has an
  * account here. The assigned role and the expiry date are not shown: both are the installation's
- * decision, not the registrant's.
+ * decision, not the registrant's. The form asks for the address alone - the name is set by whoever
+ * redeems the verification link, so nobody can put a name on somebody else's account.
  */
 export default function RegisterPage() {
   const isLoading = useAuthStore((s) => s.isLoading)
@@ -45,21 +44,13 @@ export default function RegisterPage() {
   const enabled = useAuthStore((s) => s.localAccounts.selfRegistrationEnabled)
 
   const [email, setEmail] = useState('')
-  const [displayName, setDisplayName] = useState('')
-  const [password, setPassword] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
-  const displayNameRef = useRef<HTMLInputElement>(null)
   const emailRef = useRef<HTMLInputElement>(null)
-  const passwordRef = useRef<HTMLInputElement>(null)
   const alertRef = useRef<HTMLDivElement>(null)
-  const focusFirstError = useErrorFocus(
-    FIELDS,
-    { displayName: displayNameRef, email: emailRef, password: passwordRef },
-    alertRef,
-  )
+  const focusFirstError = useErrorFocus(FIELDS, { email: emailRef }, alertRef)
 
   function failWith(errors: Record<string, string>, message: string | null) {
     setFieldErrors(errors)
@@ -74,7 +65,7 @@ export default function RegisterPage() {
     setFieldErrors({})
     setFormError(null)
     try {
-      await register(email.trim(), displayName.trim(), password)
+      await register(email.trim())
       setDone(true)
     } catch (err) {
       if (err instanceof FieldValidationError && err.fieldErrors.length > 0) {
@@ -111,23 +102,20 @@ export default function RegisterPage() {
           heading={HEADING}
           severity="success"
           message={MAIL_SENT_MESSAGE}
-          detail="Bestätigen Sie darin Ihre E-Mail-Adresse; der Link gilt 24 Stunden. Erst danach können Sie sich anmelden."
+          detail="Über den Link darin bestätigen Sie Ihre E-Mail-Adresse und legen Ihren Namen und Ihr Passwort fest; der Link gilt 24 Stunden. Erst danach können Sie sich anmelden."
         >
           <Stack spacing={1.5} sx={{ alignItems: 'flex-start' }}>
             <Link component={RouterLink} to={LOGIN_ROUTE}>
               Zur Anmeldung
             </Link>
             {/* A second registration of an address that is still unconfirmed sends the
-                verification link again and keeps the stored hash and name - so "no mail
-                arrived" has a way out that needs no administrator. The entry stays what it was;
-                the sentence says so, because the form behind this still shows a password field
-                whose content is no longer what decides. */}
+                verification link again - so "no mail arrived" has a way out that needs no
+                administrator. */}
             <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
               Keine E-Mail erhalten?{' '}
               <Link component="button" type="button" onClick={() => setDone(false)}>
                 Registrierung erneut absenden
-              </Link>{' '}
-              — Ihr Passwort von vorhin bleibt gültig.
+              </Link>
             </Typography>
           </Stack>
         </AuthNotice>
@@ -153,24 +141,10 @@ export default function RegisterPage() {
         <SectionEyebrow id="register-title">Neues Konto</SectionEyebrow>
         <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.5, mb: 2 }}>
           Ihr Haus lässt die Registrierung für bestimmte E-Mail-Domänen zu. Nach der Registrierung
-          bestätigen Sie Ihre Adresse über einen Link, den wir Ihnen schicken.
+          schicken wir Ihnen einen Link; darüber bestätigen Sie Ihre Adresse und legen Ihren Namen
+          und Ihr Passwort fest.
         </Typography>
         <Stack spacing={2}>
-          <Box>
-            <FieldLabel htmlFor="register-display-name">Name</FieldLabel>
-            <TextField
-              id="register-display-name"
-              inputRef={displayNameRef}
-              size="small"
-              fullWidth
-              autoComplete="name"
-              value={displayName}
-              onChange={(event) => setDisplayName(event.target.value)}
-              disabled={busy}
-              error={Boolean(fieldErrors.displayName)}
-              helperText={fieldErrors.displayName}
-            />
-          </Box>
           <Box>
             <FieldLabel htmlFor="register-email">E-Mail-Adresse</FieldLabel>
             <TextField
@@ -187,21 +161,6 @@ export default function RegisterPage() {
               helperText={fieldErrors.email}
             />
           </Box>
-          <Box>
-            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 1 }}>
-              {passwordPolicyText(minLength)}
-            </Typography>
-            <NewPasswordField
-              id="register-password"
-              label="Passwort"
-              value={password}
-              onChange={setPassword}
-              minLength={minLength}
-              disabled={busy}
-              errorMessage={fieldErrors.password}
-              inputRef={passwordRef}
-            />
-          </Box>
           <Button
             type="submit"
             variant="contained"
@@ -215,8 +174,9 @@ export default function RegisterPage() {
       {/* The installation's own privacy notice is not a page of this product yet - naming
           where it is would be a promise the application cannot keep. */}
       <Typography sx={{ mt: 3, fontSize: 12, color: 'text.secondary' }}>
-        Mit der Registrierung werden Ihr Name und Ihre E-Mail-Adresse in dieser Installation
-        gespeichert. Den Datenschutzhinweis Ihres Hauses erhalten Sie von Ihrer Systemverwaltung.
+        Mit der Registrierung wird Ihre E-Mail-Adresse in dieser Installation gespeichert, mit der
+        Bestätigung auch Ihr Name. Den Datenschutzhinweis Ihres Hauses erhalten Sie von Ihrer
+        Systemverwaltung.
       </Typography>
       <Typography sx={{ mt: 2, fontSize: 12, textAlign: 'center' }}>
         <Link component={RouterLink} to={LOGIN_ROUTE} sx={{ color: 'text.secondary' }}>

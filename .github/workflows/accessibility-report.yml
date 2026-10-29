@@ -17,6 +17,7 @@ on:
       - .github/scripts/accessibility_report.py
       - e2e/fixtures/a11y.ts
       - e2e/scripts/run-e2e.mjs
+      - e2e/scripts/run-env-file.mjs
       - .github/requirements-seed.txt
       - demo/seed/requirements.txt
 

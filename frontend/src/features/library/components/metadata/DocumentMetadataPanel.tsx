@@ -9,6 +9,7 @@ import Typography from '@mui/material/Typography'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
 import type { DocumentMetadataFieldResponse } from '@/shared/api/types'
+import { apiErrorStatus } from '@/shared/api/apiErrorDetails'
 import { deleteDocumentMetadataValue, getDocumentMetadata } from '../../api/libraryMetadataApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { metadataOriginLabel } from './metadataLabels'
@@ -50,10 +51,15 @@ function originTooltip(field: DocumentMetadataFieldResponse): string {
   }
 }
 
+export const METADATA_WITHHELD_HINT =
+  'Die Metadaten stammen aus dem Inhalt des Dokuments. Wer sie braucht, gibt sich die Rolle ' +
+  '„Leser“ an dieser Bibliothek; das steht in der Rechtehistorie.'
+
 // The core fields of one document with the provenance of every value. An empty field is
 // shown as such, a field marked "kein Wert ermittelbar" as its own state; a DERIVED value
 // is always marked "abgeleitet". Editing and deleting are only
-// offered to a person who may edit the library's documents.
+// offered to a person who may edit the library's documents. The values come from the content:
+// administering the library without a grant (403) gets the reason as a note, not as a failure.
 export default function DocumentMetadataPanel({
   libraryId,
   documentId,
@@ -64,6 +70,7 @@ export default function DocumentMetadataPanel({
 }: DocumentMetadataPanelProps) {
   const [fields, setFields] = useState<DocumentMetadataFieldResponse[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [withheld, setWithheld] = useState<string | null>(null)
   const [editing, setEditing] = useState<DocumentMetadataFieldResponse | null>(null)
 
   useEffect(() => {
@@ -73,9 +80,16 @@ export default function DocumentMetadataPanel({
         if (cancelled) return
         setFields(response.fields)
         setError(null)
+        setWithheld(null)
       })
       .catch((err: unknown) => {
         if (cancelled) return
+        if (apiErrorStatus(err) === 403) {
+          setWithheld(
+            `${err instanceof Error && err.message ? `${err.message} ` : ''}${METADATA_WITHHELD_HINT}`,
+          )
+          return
+        }
         setError(err instanceof Error ? err.message : 'Metadaten konnten nicht geladen werden')
       })
     return () => {
@@ -120,7 +134,11 @@ export default function DocumentMetadataPanel({
           {error}
         </Alert>
       )}
-      {fields === null && !error ? (
+      {withheld ? (
+        <Alert severity="info" role="status">
+          {withheld}
+        </Alert>
+      ) : fields === null && !error ? (
         <Typography variant="body2" sx={{ color: 'text.secondary' }}>
           Metadaten werden geladen …
         </Typography>

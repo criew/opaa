@@ -1,6 +1,7 @@
 package io.opaa.externalaccess.token;
 
 import io.opaa.account.LocalAccountAccessEndedEvent;
+import io.opaa.account.LocalAccountSessionsEndedEvent;
 import io.opaa.auth.OidcIssuerUris;
 import io.opaa.auth.OidcProviderDeletedEvent;
 import io.opaa.auth.User;
@@ -13,16 +14,18 @@ import org.springframework.stereotype.Component;
 /**
  * Ends the access tokens of a person whose access itself ended - a locked account, a redeemed
  * handover (ADR-0035; docs/features/external-access.md, "Lebenszyklus": "Ein Token folgt dem
- * Lebenszyklus seiner Person").
+ * Lebenszyklus seiner Person") - and of a local account whose sessions all ended because its
+ * credentials or a session may be in someone else's hands: a token issued from a taken-over session
+ * would otherwise outlive the clean-up.
  *
- * <p>The tokens of such an account are already refused per call by {@code
- * ExternalAccessTokenAuthenticator}; this listener is about the other half of the promise. Without
+ * <p>After a lock or a handover the tokens are already refused per call by {@code
+ * ExternalAccessTokenAuthenticator}; there this listener is the other half of the promise - without
  * it the token stays {@code ACTIVE} in the administration's Bestandsliste and its end produces no
- * entry at all, although {@code ACCOUNT_LIFECYCLE} is one of the two Anlässe of the
- * Ausserkrafttreten.
+ * entry. After the end of all sessions the account stays usable, so this listener is the only thing
+ * that ends the tokens.
  *
- * <p>A plain {@code @EventListener}, so it runs inside the transaction of the act that ended the
- * access: the lock and the end of the tokens commit together or not at all.
+ * <p>A plain {@code @EventListener}, so it runs inside the transaction of the act: that act and the
+ * end of the tokens commit together or not at all.
  */
 @Component
 public class ExternalAccessTokenAccountLifecycleListener {
@@ -51,6 +54,18 @@ public class ExternalAccessTokenAccountLifecycleListener {
     }
     if (ended > 0) {
       log.info("External access tokens: {} token(s) ended with their identity provider", ended);
+    }
+  }
+
+  @EventListener
+  public void onSessionsEnded(LocalAccountSessionsEndedEvent event) {
+    int ended = lapses.endTokensOfAccount(event.user(), event.actorUserId());
+    if (ended > 0) {
+      log.info(
+          "External access tokens: {} token(s) of account {} ended with its sessions ({})",
+          ended,
+          event.user().getId(),
+          event.cause());
     }
   }
 

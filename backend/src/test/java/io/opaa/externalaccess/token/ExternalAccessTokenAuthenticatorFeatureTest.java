@@ -11,6 +11,7 @@ import io.opaa.common.Feature;
 import io.opaa.common.TestFeatureFlags;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
 import io.opaa.externalaccess.token.ExternalAccessTokenAuthenticator.Result;
+import io.opaa.library.ExternalAccessProperties;
 import io.opaa.security.LocalAuthKeyService;
 import java.time.Clock;
 import org.junit.jupiter.api.Test;
@@ -37,7 +38,8 @@ class ExternalAccessTokenAuthenticatorFeatureTest {
           keys,
           settings,
           Clock.systemUTC(),
-          TestFeatureFlags.without(Feature.EXTERNAL_ACCESS));
+          TestFeatureFlags.without(Feature.EXTERNAL_ACCESS),
+          new ExternalAccessProperties(365, 30));
 
   @Test
   void neitherPathAuthenticatesAndNoValueIsLookedUp() {

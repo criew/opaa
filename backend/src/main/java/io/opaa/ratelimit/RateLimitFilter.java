@@ -1,5 +1,6 @@
 package io.opaa.ratelimit;
 
+import io.opaa.common.LogText;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.observability.RateLimitMetrics;
 import io.opaa.ratelimit.RateLimitService.Decision;
@@ -43,7 +44,9 @@ import tools.jackson.databind.json.JsonMapper;
  * the prefix into the context path) cannot reach a handler past its rule. The client address comes
  * from {@link ClientIpResolver} (ADR-0033, Entscheidung 9), never from a header a client can set
  * itself; IPv6 clients are keyed by their /64, because a single host commonly owns a whole /64.
- * CORS preflights are not counted.
+ * CORS preflights are not counted. The filter runs before the firewall of the security chain, so a
+ * decoded path with a control character is refused here with {@code 400}, and a logged path goes
+ * through {@link LogText}.
  */
 public class RateLimitFilter extends OncePerRequestFilter {
 
@@ -54,6 +57,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
           "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
   private static final Logger log = LoggerFactory.getLogger(RateLimitFilter.class);
   static final String RATE_LIMIT_MESSAGE = TooManyRequestsException.MESSAGE;
+  static final String INVALID_PATH_MESSAGE = "Der Anfragepfad enthält unzulässige Zeichen.";
 
   /** The answer of every endpoint that cannot be switched off. */
   public static final BooleanSupplier ALWAYS_SERVED = () -> true;
@@ -227,6 +231,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
       HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
       throws ServletException, IOException {
     String path = pathWithinApplication(request);
+    if (LogText.hasControlCharacter(path)) {
+      writeErrorResponse(response, HttpStatus.BAD_REQUEST, INVALID_PATH_MESSAGE);
+      return;
+    }
     Admission admission = null;
     for (CompiledRule rule : rules) {
       Matcher matcher = rule.path().matcher(path);
@@ -285,7 +293,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
         metrics.recordRejected(rule.name(), "global");
         log.warn(
-            "Global rate limit {} exceeded on {} (request from {})", rule.name(), path, client);
+            "Global rate limit {} exceeded on {} (request from {})",
+            rule.name(),
+            LogText.of(path),
+            client);
         writeRateLimitResponse(response, global.retryAfterSeconds());
         return null;
       }
@@ -320,7 +331,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
     String scope = authentication instanceof OwnQuotaAuthentication ? "token" : "account";
     metrics.recordRejected(rule.name(), scope);
-    log.info("Rate limit {} per {} exceeded on {}", rule.name(), scope, path);
+    log.info("Rate limit {} per {} exceeded on {}", rule.name(), scope, LogText.of(path));
     writeRateLimitResponse(response, decision.retryAfterSeconds());
     return false;
   }
@@ -361,7 +372,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
       return decision;
     }
     metrics.recordRejected(rule.name(), "client");
-    log.info("Rate limit {} exceeded for {} on {}", rule.name(), key, path);
+    log.info("Rate limit {} exceeded for {} on {}", rule.name(), key, LogText.of(path));
     writeRateLimitResponse(response, decision.retryAfterSeconds());
     return null;
   }
@@ -456,13 +467,18 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
   private void writeRateLimitResponse(HttpServletResponse response, long retryAfterSeconds)
       throws IOException {
-    response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
     response.setHeader(HttpHeaders.RETRY_AFTER, Long.toString(retryAfterSeconds));
+    writeErrorResponse(response, HttpStatus.TOO_MANY_REQUESTS, RATE_LIMIT_MESSAGE);
+  }
+
+  private void writeErrorResponse(HttpServletResponse response, HttpStatus status, String message)
+      throws IOException {
+    response.setStatus(status.value());
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
     var body =
         Map.of(
-            "error", RATE_LIMIT_MESSAGE,
-            "status", HttpStatus.TOO_MANY_REQUESTS.value(),
+            "error", message,
+            "status", status.value(),
             "timestamp", Instant.now(clock).toString());
     jsonMapper.writeValue(response.getOutputStream(), body);
   }

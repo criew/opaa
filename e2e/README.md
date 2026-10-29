@@ -26,6 +26,8 @@ e2e/
   tests/                    Testfälle (*.spec.ts)
   scripts/run-e2e.mjs       Orchestrierung: Stack starten → Seed → Suite ausführen → Stack stoppen
                              (Ziel "e2e" per Default, "demo" für den Demo-Smoke, siehe unten)
+  scripts/run-env-file.mjs  Kopie der Env-Datei eines Ziels, in die je Lauf erzeugte Schlüssel und
+                             Signaturgeheimnisse für die leeren Zeilen eingetragen werden
   e2e.env                   Environment für den Docker-Compose-Stack der Suite (kein Secret enthalten)
   docker-compose.e2e.yml    Compose-Overlay: Secret-Injektion + dynamische CORS-Origin
   playwright.config.ts
@@ -177,8 +179,13 @@ Szenarien nutzen die Fixtures `authenticatedPage` bzw. `regularUserPage`, statt 
 ### Keine Secrets
 
 Der `dev`-Modus kennt weder Anmeldedaten noch einen Signaturschlüssel. `e2e/e2e.env` ist deshalb
-vollständig frei von Secrets und bewusst in git eingecheckt; `scripts/run-e2e.mjs` erzeugt und
-reicht nichts Vertrauliches mehr durch.
+vollständig frei von Secrets und bewusst in git eingecheckt.
+
+Die Ziele im Betriebsmodus `oidc` brauchen Verschlüsselungsschlüssel und ein Signaturgeheimnis. Ihre
+Env-Dateien lassen diese Zeilen leer (`OPAA_AUTH_JWT_SECRET=`, `OPAA_*_ENCRYPTION_KEY=`);
+`scripts/run-env-file.mjs` erzeugt die Werte je Lauf in einer temporären Kopie, die der Stapel als
+`OPAA_ENV_FILE` bekommt. Ein eingecheckter Wert wäre öffentlich; `SecretValidatorTest` prüft, dass
+keine versionierte Datei einen Wert enthält, den `oidc` annehmen würde.
 
 ### Vier Testnutzer
 

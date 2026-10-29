@@ -121,9 +121,10 @@ class LocalSelfServiceUnavailableIntegrationTest {
         .andExpect(jsonPath("$.code").value("TOKEN_INVALID"));
     mockMvc
         .perform(
-            post("/api/v1/auth/local/verify-email")
+            post("/api/v1/auth/local/confirm-registration")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"token\":\"kein-token\"}"))
+                .content(
+                    "{\"token\":\"kein-token\",\"displayName\":\"Erika\",\"newPassword\":\"sicheres-passwort-2026\"}"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("TOKEN_INVALID"));
   }

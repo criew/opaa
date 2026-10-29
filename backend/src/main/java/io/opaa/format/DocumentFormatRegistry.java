@@ -1,5 +1,6 @@
 package io.opaa.format;
 
+import io.opaa.sourceaccess.LoggedName;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collection;
@@ -133,10 +134,20 @@ public class DocumentFormatRegistry {
    * resolved to - see {@link Routed}'s own Javadoc for why a pipeline needs it at all.
    */
   public Routed routedPipelineFor(Path file, String fileName) {
+    return routedPipelineFor(file, fileName, LoggedName.OPEN);
+  }
+
+  /**
+   * {@link #routedPipelineFor(Path, String)}, its log line naming the file as {@code names} does.
+   */
+  public Routed routedPipelineFor(Path file, String fileName, LoggedName names) {
     try {
       return routedPipelineFor(fileName, SupportedDocumentFormats.detectMediaType(file));
     } catch (IOException e) {
-      log.warn("Could not read {} to route it to a pipeline, using the fallback pipeline", file, e);
+      log.warn(
+          "Could not read {} to route it to a pipeline, using the fallback pipeline",
+          names.of(file),
+          names.of(e));
       return new Routed(fallback, null, true, null);
     }
   }

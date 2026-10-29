@@ -12,7 +12,9 @@ import org.springframework.context.ConfigurableApplicationContext;
 class OpenAiBaseUrlGuardTest {
 
   private final ApplicationContextRunner contextRunner =
-      new ApplicationContextRunner().withUserConfiguration(OpenAiBaseUrlGuard.class);
+      new ApplicationContextRunner()
+          .withUserConfiguration(OpenAiBaseUrlGuard.class)
+          .withPropertyValues("spring.profiles.active=dev");
 
   @Test
   void startsWithTheLocalDefaultsAndNoAdditionalConfiguration() {
@@ -86,6 +88,21 @@ class OpenAiBaseUrlGuardTest {
   }
 
   @Test
+  void checksNothingOutsideTheDevMode() {
+    new ApplicationContextRunner()
+        .withUserConfiguration(OpenAiBaseUrlGuard.class)
+        .withPropertyValues(
+            "spring.profiles.active=oidc",
+            "spring.ai.model.chat=openai",
+            "spring.ai.openai.base-url=https://benutzer:geheim@modellserver.example.internal/v1")
+        .run(
+            context -> {
+              assertThat(context).hasNotFailed();
+              assertThat(context).doesNotHaveBean(OpenAiBaseUrlGuard.class);
+            });
+  }
+
+  @Test
   void refusesToStartWhenTheBaseUrlIsBlank() {
     contextRunner
         .withPropertyValues("spring.ai.model.chat=openai", "spring.ai.openai.base-url=   ")
@@ -124,15 +141,17 @@ class OpenAiBaseUrlGuardTest {
    * source keep this cheap enough to run without Docker or a database - no other bean in the
    * application ever gets created.
    */
-  private ConfigurableApplicationContext runWithRealApplicationYml(String... additionalArgs) {
+  private ConfigurableApplicationContext runWithRealApplicationYml(
+      String profile, String... additionalArgs) {
     return new SpringApplicationBuilder(OpenAiBaseUrlGuard.class)
         .web(WebApplicationType.NONE)
+        .profiles(profile)
         .run(additionalArgs);
   }
 
   @Test
   void startsWithTheRealApplicationYmlAndNoOverride() {
-    ConfigurableApplicationContext context = runWithRealApplicationYml();
+    ConfigurableApplicationContext context = runWithRealApplicationYml("dev");
     try {
       assertThat(context.isActive()).isTrue();
     } finally {
@@ -145,8 +164,20 @@ class OpenAiBaseUrlGuardTest {
     // application.yml's own default base URL is never blank - only an operator-supplied, explicitly
     // empty OPAA_OPENAI_BASE_URL (e.g. an uncommented, empty line in a real .env file) reaches this
     // failure, since ${VAR:default} only falls back to default when VAR is entirely unset.
-    assertThatThrownBy(() -> runWithRealApplicationYml("--OPAA_OPENAI_BASE_URL="))
+    assertThatThrownBy(() -> runWithRealApplicationYml("dev", "--OPAA_OPENAI_BASE_URL="))
         .rootCause()
         .hasMessageContaining("No base URL is configured for the chat function");
+  }
+
+  // regression guard for #3397: outside the dev mode no model address is read, so none is checked
+  @Test
+  void ignoresAnExplicitlyBlankOverrideOutsideTheDevMode() {
+    ConfigurableApplicationContext context =
+        runWithRealApplicationYml("oidc", "--OPAA_OPENAI_BASE_URL=");
+    try {
+      assertThat(context.isActive()).isTrue();
+    } finally {
+      context.close();
+    }
   }
 }

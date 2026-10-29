@@ -4,3 +4,5 @@ org.springframework.context.ApplicationContextInitializer=\
 io.opaa.outbound.OutboundProxyInstaller
 org.springframework.boot.EnvironmentPostProcessor=\
 io.opaa.mcp.McpServerSwitch
+org.springframework.context.ApplicationListener=\
+io.opaa.observability.SafeLogMessages$Installer

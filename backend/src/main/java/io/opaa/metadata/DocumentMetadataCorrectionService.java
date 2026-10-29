@@ -91,12 +91,16 @@ public class DocumentMetadataCorrectionService {
 
   /**
    * Every schema field of the document - the three core fields followed by the library's own fields
-   * , empty ones included - for anyone who may read the library.
+   * , empty ones included - for anyone who may read the library's content ({@link
+   * LibraryAccessService#requireContentRead}): the values come from the document, so administering
+   * the library does not suffice.
    */
   @Transactional(readOnly = true)
   public List<DocumentMetadataFieldView> fieldsOf(
       UUID libraryId, UUID documentId, CurrentUser caller) {
-    KnowledgeLibrary library = requireLibrary(libraryId, caller, AssetRole.VIEWER);
+    KnowledgeLibrary library =
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
+    accessService.requireContentRead(library, caller.id(), caller.isSystemAdmin());
     Document document = requireDocument(library, documentId);
     DocumentTypeVocabulary vocabulary = vocabularyRepository.snapshot();
     Map<String, MetadataValueSnapshot> byKey = new HashMap<>();
