@@ -67,13 +67,13 @@ prüft OPAA das vor der Migration und bricht mit einem eigenen Bericht ab, weil 
 PostgreSQL in diesem Fall verloren ginge:
 
 ```text
-APPLICATION FAILED TO START
+    APPLICATION FAILED TO START
 
-Description:
-The PostgreSQL server has the pgvector extension not installed; the schema migration of OPAA needs it (CREATE EXTENSION vector).
+    Description:
+    The PostgreSQL server has the pgvector extension not installed; the schema migration of OPAA needs it (CREATE EXTENSION vector).
 
-Action:
-Install pgvector 0.8.0 or later on the database server - e.g. the image pgvector/pgvector or the package postgresql-<version>-pgvector - and start OPAA again. See docs/handbuch/betrieb/datenbank.md, section "Voraussetzungen einer eigenen PostgreSQL".
+    Action:
+    Install pgvector 0.8.0 or later on the database server - e.g. the image pgvector/pgvector or the package postgresql-<version>-pgvector - and start OPAA again. See docs/handbuch/betrieb/datenbank.md, section "Voraussetzungen einer eigenen PostgreSQL".
 ```
 
 ## Eigenes Datenbankschema

@@ -819,6 +819,9 @@ management:
           include: readinessState,db
 
 logging:
+  # The stack trace of the plain-text log with every exception message unable to forge an entry;
+  # the conversion word is registered by io.opaa.observability.SafeLogMessages.
+  exception-conversion-word: "%opaaEx"
   level:
     org.hibernate.orm.connections.pooling: WARN
     # The SDK's SigV4 signer logs the canonical request at DEBUG - session token included - and the
