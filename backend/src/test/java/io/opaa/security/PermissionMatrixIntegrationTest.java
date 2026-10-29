@@ -117,6 +117,15 @@ class PermissionMatrixIntegrationTest {
           "searchKnowledge",
           "getMetadataFilterOptions");
 
+  /** Lists over the caller's whole organization, for the administration and the auditor. */
+  private static final Set<String> ORGANIZATION_LISTINGS =
+      Set.of(
+          "listAllExternalAccessTokens",
+          "listGroups",
+          "listUsers",
+          "listAccounts",
+          "listUsersForSelection");
+
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbc;
   @Autowired private PlatformTransactionManager transactionManager;
@@ -376,6 +385,46 @@ class PermissionMatrixIntegrationTest {
     assertThat(asMember.get("listSpaces").body()).contains(own.ids().get("spaceId"));
     assertThat(asMember.get("listLibraries").body()).contains(own.ids().get("libraryId"));
     assertThat(asMember.get("searchKnowledge").body()).contains(own.ids().get("chunkId"));
+  }
+
+  /**
+   * The administration and the auditor of one organization find nothing of another in the lists,
+   * the search and the organization-wide administration lists.
+   */
+  @ParameterizedTest
+  @EnumSource(
+      value = Role.class,
+      names = {"SYSTEM_ADMIN", "AUDITOR"})
+  void theAdministrationFindsNothingOfAForeignOrganizationInLists(Role role) {
+    foreignOrganization =
+        organizationRepository
+            .save(new Organization(UUID.randomUUID(), "Fremde Stelle " + UUID.randomUUID()))
+            .getId();
+    Fixture foreign = spaceFixture(foreignOrganization, null, null);
+    if (role == Role.AUDITOR) {
+      jdbc.update("UPDATE users SET system_role = 'AUDITOR' WHERE id = ?", devUser);
+    }
+    Set<String> lists = new TreeSet<>(LISTINGS);
+    lists.addAll(ORGANIZATION_LISTINGS);
+    List<Operation> listings =
+        API.operations().stream().filter(operation -> lists.contains(operation.id())).toList();
+    assertThat(listings).hasSize(lists.size());
+    List<String> markers = new ArrayList<>(foreign.markers());
+    for (String name : List.of("tokenId", "userId", "groupId")) {
+      markers.add(foreign.ids().get(name));
+    }
+
+    Map<String, Answer> answers = run(listings, role, foreign);
+
+    List<String> findings = new ArrayList<>();
+    for (Operation operation : listings) {
+      for (String marker : markers) {
+        if (answers.get(operation.id()).body().contains(marker)) {
+          findings.add(operation.label() + " names " + marker);
+        }
+      }
+    }
+    assertThat(findings).as("what %s finds of a foreign organization", role.key).isEmpty();
   }
 
   private void assertRefused(

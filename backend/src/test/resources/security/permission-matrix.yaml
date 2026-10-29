@@ -35,7 +35,9 @@
 #     and one foreign child at a time; "foreignChild: [name]" excepts that parameter;
 #   - every chat operation is called by each space role with a colleague's chat.
 # An exception needs a note saying why. The account without rights must not find the space's
-# objects in listSpaces, listLibraries, listCatalog, searchKnowledge and the other lists checked.
+# objects in listSpaces, listLibraries, listCatalog, searchKnowledge and the other lists checked;
+# the administration and the auditor find nothing of a foreign organization there nor in the
+# organization-wide lists (tokens, groups, users, accounts).
 #
 # Limit: the matrix checks statuses. What an allowed answer contains is checked only for those lists
 # and the search; field filters elsewhere stay with the tests of their feature.

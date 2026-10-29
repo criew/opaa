@@ -47,7 +47,8 @@ Space-, Personen- oder Organisations-ID im Pfad mit den IDs eines fremden Space 
 Operation mit mehreren solchen IDs mit eigenem Elternobjekt und je einem fremden Kind (`foreignChild` nimmt einen
 Parameter mit `note` aus), und jede Chat-Operation mit dem Chat eines anderen Mitglieds. Ein Konto ohne Rechte darf die
 Objekte des Space in Listen und Suche (`listSpaces`, `listLibraries`, `listCatalog`, `searchKnowledge` u. a.) nicht
-finden. `PermissionMatrixAnonymousIntegrationTest` prüft die Spalte `anonymous`. Den beobachteten Stand mit Statusklasse
+finden; Systemverwaltung und Revision finden dort und in den organisationsweiten Listen (Zugangstokens, Gruppen,
+Konten) nichts einer fremden Organisation. `PermissionMatrixAnonymousIntegrationTest` prüft die Spalte `anonymous`. Den beobachteten Stand mit Statusklasse
 schreiben beide nach `build/permission-matrix/`.
 
 **Grenze:** Die Matrix prüft Statuscodes. Was eine erlaubte Antwort enthält, prüft sie nur über die genannten Listen und
