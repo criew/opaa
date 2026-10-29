@@ -61,9 +61,17 @@ class SecretValidatorTest {
         "change_me_change_me_change_me_change_me",
         "NICHT-FUER-DEN-PRODUKTIVBETRIEB-opaa-dev-jwt-secret-2026",
         "x-nicht-fuer-den-produktivbetrieb-x-0123456789-0123456789",
-        "ci-only-jwt-secret-0123456789abcdefghijklmnop"
+        "ci-only-jwt-secret-0123456789abcdefghijklmnop",
+        "demo-smoke-local-auth-jwt-secret-not-for-production-0123456789",
+        "e2e-local-auth-jwt-secret-not-for-production-0123456789",
+        "installation-e2e-issuer-secret-not-for-production-0123456789",
+        "local-auth-e2e-issuer-secret-not-for-production-0123456789",
+        "multi-instance-e2e-issuer-secret-not-for-production-0123456789",
+        " offline-e2e-issuer-secret-not-for-production-0123456789abcdef ",
+        "kind-install-test-jwt-secret-0123456789abcdefghij",
+        "smoke-only-jwt-secret-0123456789abcdefghijklmnop"
       })
-  void rejectsMissingShortOrPlaceholderSecrets(String value) {
+  void rejectsMissingShortPlaceholderOrPublishedSecrets(String value) {
     assertThat(validator.validate(new Holder(value)))
         .as("expected a violation for: [%s]", value)
         .isNotEmpty();
@@ -149,37 +157,77 @@ class SecretValidatorTest {
    * No tracked file of the repository holds an AES key the {@code oidc} profile would accept: every
    * Base64 value decoding to 32 bytes is refused, so a copied env or value file never runs with a
    * key everybody can read. Test stacks generate their keys per run. Stored ciphertext ({@code
-   * enc:v1:...}) is no key.
+   * enc:v1:...}) and SRI/CSP hashes ({@code sha256-...}) are no keys.
    */
   @Test
   void everyAesKeyInTheRepositoryIsRefusedByTheOidcProfile()
       throws IOException, InterruptedException {
-    String repositoryRoot = System.getProperty("opaa.repositoryRoot");
-    assertThat(repositoryRoot).as("system property opaa.repositoryRoot set by Gradle").isNotNull();
-    // git grep reads the tracked files of the working tree, binaries excluded (-I); each output
-    // line is "<path>\0<line>". The exact boundaries are checked below, ERE has no lookbehind.
-    Process grep =
-        new ProcessBuilder(
-                "git", "-C", repositoryRoot, "grep", "-I", "-z", "-E", "-e", "[A-Za-z0-9+/]{43}=")
-            .redirectErrorStream(true)
-            .start();
-    String output = new String(grep.getInputStream().readAllBytes(), StandardCharsets.ISO_8859_1);
-    assertThat(grep.waitFor()).as("git grep in %s: %s", repositoryRoot, output).isZero();
     Pattern key =
-        Pattern.compile("(?<![A-Za-z0-9+/])(?<!enc:v1:)[A-Za-z0-9+/]{43}=(?![A-Za-z0-9+/=])");
+        Pattern.compile(
+            "(?<![A-Za-z0-9+/])(?<!enc:v1:)(?<!sha256-)[A-Za-z0-9+/]{43}=(?![A-Za-z0-9+/=])");
     List<String> accepted = new ArrayList<>();
     int found = 0;
-    for (String hit : output.split("\n")) {
-      int separator = hit.indexOf('\0');
-      Matcher matcher = key.matcher(hit.substring(separator + 1));
+    for (String[] hit : trackedLinesMatching("[A-Za-z0-9+/]{43}=")) {
+      Matcher matcher = key.matcher(hit[1]);
       while (matcher.find()) {
         found++;
         if (!SecretValidator.isPubliclyKnownEncryptionKey(matcher.group())) {
-          accepted.add(matcher.group() + " in " + hit.substring(0, Math.max(separator, 0)));
+          accepted.add(matcher.group() + " in " + hit[0]);
         }
       }
     }
     assertThat(found).as("AES keys found in the repository").isPositive();
     assertThat(accepted).as("keys the oidc profile would accept").isEmpty();
+  }
+
+  /**
+   * No tracked file sets a signing secret the {@code oidc} profile would accept: every {@code
+   * OPAA_AUTH_JWT_SECRET=} and {@code jwtSecret:} value is empty or fails {@link
+   * SecretValidator#isStrong} - a placeholder, the marker or a published value. With such a secret
+   * anyone could sign tokens for any account; test stacks generate theirs per run.
+   */
+  @Test
+  void everySigningSecretInTheRepositoryIsRefusedByTheOidcProfile()
+      throws IOException, InterruptedException {
+    Pattern secret = Pattern.compile("(?:OPAA_AUTH_JWT_SECRET=|jwtSecret:[ \\t]*)([^\\s\"']*)");
+    List<String> accepted = new ArrayList<>();
+    int found = 0;
+    for (String[] hit : trackedLinesMatching("OPAA_AUTH_JWT_SECRET=|jwtSecret:")) {
+      Matcher matcher = secret.matcher(hit[1]);
+      while (matcher.find()) {
+        found++;
+        String value = matcher.group(1);
+        if (!value.isEmpty() && SecretValidator.isStrong(value)) {
+          accepted.add(value + " in " + hit[0]);
+        }
+      }
+    }
+    assertThat(found).as("signing secrets found in the repository").isPositive();
+    assertThat(accepted).as("signing secrets the oidc profile would accept").isEmpty();
+  }
+
+  /**
+   * Path and line of every line of a tracked text file of the working tree that matches the
+   * extended regular expression, read through {@code git grep -I}.
+   */
+  private static List<String[]> trackedLinesMatching(String extendedRegex)
+      throws IOException, InterruptedException {
+    String repositoryRoot = System.getProperty("opaa.repositoryRoot");
+    assertThat(repositoryRoot).as("system property opaa.repositoryRoot set by Gradle").isNotNull();
+    Process grep =
+        new ProcessBuilder(
+                "git", "-C", repositoryRoot, "grep", "-I", "-z", "-E", "-e", extendedRegex)
+            .redirectErrorStream(true)
+            .start();
+    String output = new String(grep.getInputStream().readAllBytes(), StandardCharsets.ISO_8859_1);
+    assertThat(grep.waitFor()).as("git grep in %s: %s", repositoryRoot, output).isZero();
+    List<String[]> lines = new ArrayList<>();
+    for (String hit : output.split("\n")) {
+      int separator = hit.indexOf('\0');
+      if (separator >= 0) {
+        lines.add(new String[] {hit.substring(0, separator), hit.substring(separator + 1)});
+      }
+    }
+    return lines;
   }
 }
