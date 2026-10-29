@@ -2,8 +2,8 @@
 
 The CI run only exercises the green branch against the repository's own workflows; a change that
 makes the guard laxer would go unnoticed there. These cases pin the rejecting branches of all three
-rules (context in run:/script:, including toJSON(github.event), github['...'], github.ref_name and
-vars.*; top-level permissions, checkout credentials), the end of a script
+rules (context in run:/script:, including toJSON(github.event), github['...'], github.ref,
+github.ref_name, github.workflow_ref and the inputs, secrets, vars and env contexts; top-level permissions, checkout credentials), the end of a script
 block, the mapping form of run: under defaults:, and the file selection. The same cases run once
 more with mawk, the awk of the GitHub runners, when it is installed.
 """
@@ -88,8 +88,8 @@ def test_accepts_context_through_env_and_trusted_expressions(repo: Path, awk_bin
             "        run: |\n"
             '          echo "$HEAD_REF" "${{ github.event_name }}" "${{ github.sha }}"\n'
             '          echo "${{ steps.x.outputs.inputs_count }}" "${{ matrix.shard }}"\n'
-            '          echo "${{ github.event_path }}" "${{ github.repository }}" "${{ github.ref }}"\n'
-            '          echo "${{ steps.x.outputs.vars_count }}" "${{ env.github }}"\n'
+            '          echo "${{ github.event_path }}" "${{ github.repository }}" "${{ github.ref_type }}"\n'
+            '          echo "${{ steps.x.outputs.vars_count }}" "${{ steps.x.outputs.env }}" "${{ matrix.environment }}"\n'
             "      - uses: actions/github-script@0123456789abcdef0123456789abcdef01234567 # v9.0.0\n"
             "        with:\n"
             "          script: |\n"
@@ -128,6 +128,14 @@ def test_accepts_context_through_env_and_trusted_expressions(repo: Path, awk_bin
         "      - run: echo \"${{ github['head_ref'] }}\"\n",
         "      - run: git push origin \"${{ github.ref_name }}\"\n",
         "      - run: curl \"${{ vars.MIRROR_URL }}\"\n",
+        "      - run: curl \"${{ vars['MIRROR_URL'] }}\"\n",
+        "      - run: echo '${{ toJSON(secrets) }}'\n",
+        "      - run: curl -H \"Authorization: ${{ secrets['TOKEN'] }}\" x\n",
+        "      - run: git tag \"${{ inputs['tag'] }}\"\n",
+        "      - run: echo \"${{ github.ref }}\"\n",
+        "      - run: echo \"${{ github.workflow_ref }}\"\n",
+        "      - run: echo \"${{ env.REGISTRY }}\"\n",
+        "      - run: echo '${{ toJSON(env) }}'\n",
         "      - uses: actions/github-script@0123456789abcdef0123456789abcdef01234567 # v9.0.0\n"
         "        with:\n          script: |\n            const e = ${{ toJSON(github.event) }};\n",
     ],
