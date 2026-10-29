@@ -631,9 +631,9 @@ auditEvents:
     details: >-
       Modell, Adresse ohne Zugangsdaten, Dimension, Eingabegrenze und Generation vorher und
       nachher; der Zugangsschlüssel nur als „gesetzt ja/nein“ und als „gesetzt“, „geändert“ oder
-      „entfernt“ (apiKeyChange), nie mit dem Wert; die Zahl der Abschnitte wie auf der Seite
-      und ob ein laufendes Nachfüllen endete; beim ersten Modell ohne Vorher-Stand und mit
-      initial
+      „entfernt“ (apiKeyChange), nie mit dem Wert, beim bisherigen Modell „verworfen“, wenn kein
+      Schlüssel ihn entschlüsselt; die Zahl der Abschnitte wie auf der Seite und ob ein laufendes
+      Nachfüllen endete; beim ersten Modell ohne Vorher-Stand und mit initial
     payloadKeys:
       [apiKeyChange, apiKeySet, baseUrl, dimensions, generation, initial, maxInputTokens, model,
        privateLibrariesCounted, refillEnded, totalChunks]
@@ -642,11 +642,12 @@ auditEvents:
       Die Systemverwaltung verwirft einen bestätigten Wechsel des Embedding-Modells vor dem
       Umschalten
     details: >-
-      Verworfenes und wiederhergestelltes Modell mit Generation, Status des beendeten Laufs und
-      die Zahl der nachzufüllenden Abschnitte
+      Verworfenes und wiederhergestelltes Modell mit Generation, beim wiederhergestellten Modell
+      der Zugangsschlüssel als „verworfen“ (apiKeyChange), wenn kein Schlüssel ihn entschlüsselt,
+      nie mit dem Wert; Status des beendeten Laufs und die Zahl der nachzufüllenden Abschnitte
     payloadKeys:
-      [apiKeySet, baseUrl, dimensions, generation, maxInputTokens, model, privateLibrariesCounted,
-       refillChunks, runStatus]
+      [apiKeyChange, apiKeySet, baseUrl, dimensions, generation, maxInputTokens, model,
+       privateLibrariesCounted, refillChunks, runStatus]
   - id: EMBEDDING_MODEL_ENDPOINT_CHANGED
     trigger: >-
       Die Systemverwaltung ändert Adresse, Zugangsschlüssel oder Eingabegrenze des

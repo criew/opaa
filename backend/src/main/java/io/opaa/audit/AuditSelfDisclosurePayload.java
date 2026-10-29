@@ -263,6 +263,7 @@ final class AuditSelfDisclosurePayload {
             "maxInputTokens",
             "generation",
             "apiKeySet",
+            "apiKeyChange",
             "runStatus",
             "refillChunks",
             "privateLibrariesCounted"),

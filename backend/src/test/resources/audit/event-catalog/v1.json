@@ -52,7 +52,7 @@
   "DIRECTORY_SYNC_RUN_COMPLETED": ["membershipsAdded", "membershipsRemoved", "outcome", "providerId"],
   "DOCUMENT_METADATA_CHANGED": ["confidence", "datePrecision", "displayValue", "documentId", "extractionVersion", "fieldKey", "fileName", "modelId", "origin", "state", "value"],
   "EMBEDDING_MODEL_CHANGED": ["apiKeyChange", "apiKeySet", "baseUrl", "dimensions", "generation", "initial", "maxInputTokens", "model", "privateLibrariesCounted", "refillEnded", "totalChunks"],
-  "EMBEDDING_MODEL_CHANGE_DISCARDED": ["apiKeySet", "baseUrl", "dimensions", "generation", "maxInputTokens", "model", "privateLibrariesCounted", "refillChunks", "runStatus"],
+  "EMBEDDING_MODEL_CHANGE_DISCARDED": ["apiKeyChange", "apiKeySet", "baseUrl", "dimensions", "generation", "maxInputTokens", "model", "privateLibrariesCounted", "refillChunks", "runStatus"],
   "EMBEDDING_MODEL_ENDPOINT_CHANGED": ["apiKeyChange", "apiKeySet", "baseUrl", "dimensions", "duringChange", "generation", "maxInputTokens", "model", "similarity"],
   "EMBEDDING_REINDEX_CANCELLED": ["dimensions", "embeddedChunks", "model", "privateLibrariesCounted", "totalChunks"],
   "EMBEDDING_REINDEX_COMPLETED": ["status"],

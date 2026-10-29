@@ -66,7 +66,8 @@ Rücksicherung von selbst wieder und nutzt die vorhandene Koordination mehrerer 
 
 Solange eine lebende Instanz eine andere Version fährt (`CipherFormatGate`), schreibt OPAA `enc:v1`
 mit dem aktuellen Schlüssel, und die Neuverschlüsselung behält das Format jedes Werts: Ein `enc:v1`-Wert
-wandert unter den aktuellen Schlüssel und bleibt `enc:v1`, ein `enc:v2`-Wert bleibt `enc:v2`.
+wandert unter den aktuellen Schlüssel und bleibt `enc:v1`, ein `enc:v2`-Wert bleibt `enc:v2`. Ohne abgelösten Schlüssel liest und sperrt der Lauf dann keinen `enc:v1`-Wert, weil er ohnehin
+unter dem aktuellen oder unter keinem eingetragenen Schlüssel steht.
 Begründung: ADR-0053, Entscheidung 13, angewandt auf ein Datenformat; ein neuer Wert entsteht erst,
 wenn die Vorgängerversion ihn lesen kann, und ein Schlüsselwechsel kommt trotzdem zum Abschluss.
 

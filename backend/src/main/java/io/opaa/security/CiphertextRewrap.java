@@ -117,11 +117,11 @@ public class CiphertextRewrap {
 
   private void warnIfRotatingHeldBack(Outcome outcome) {
     boolean rotating = credentials.hasPreviousKeys() || settings.hasPreviousKeys();
-    if (!outcome.heldBack() || !rotating) {
+    if (!rotating) {
       heldBackWarned = false;
       return;
     }
-    if (!heldBackWarned) {
+    if (outcome.heldBack() && !heldBackWarned) {
       heldBackWarned = true;
       log.warn(
           "Previous encryption keys are set while the keyed format is held back ({}=false, or an"
@@ -143,19 +143,35 @@ public class CiphertextRewrap {
         continue;
       }
       String current = EncryptionKeyring.V2_PREFIX + currentKeyId(column.purpose()) + ":";
+      String scope = scope(column.purpose(), keyed);
       int columnUnreadable = 0;
       int columnSettled = 0;
       if (budget > 0) {
-        Pass pass = rewrapColumn(column, current, keyed, budget);
+        Pass pass = rewrapColumn(column, scope, current, keyed, budget);
         budget -= pass.rewrapped();
         rewrapped += pass.rewrapped();
         columnUnreadable = pass.unreadable();
         columnSettled = pass.settled();
         unreadable += columnUnreadable;
       }
-      remaining += Math.max(0, countStale(column, current) - columnUnreadable - columnSettled);
+      remaining +=
+          Math.max(0, countStale(column, scope, current) - columnUnreadable - columnSettled);
     }
     return new Outcome(rewrapped, unreadable, remaining, !keyed);
+  }
+
+  /**
+   * The prefix of the values a run looks at. With the keyed format held back and no decrypt-only
+   * key, an {@code enc:v1:} value is under the current key or under none, so the run leaves every
+   * one of them alone - unread and unlocked - and moves only keyed values under another key.
+   */
+  private String scope(EncryptionPurpose purpose, boolean keyed) {
+    boolean previousKeys =
+        switch (purpose) {
+          case CREDENTIALS -> credentials.hasPreviousKeys();
+          case SETTINGS -> settings.hasPreviousKeys();
+        };
+    return keyed || previousKeys ? EncryptionKeyring.MARKER : EncryptionKeyring.V2_PREFIX;
   }
 
   private List<EncryptedColumn> columns() {
@@ -177,7 +193,8 @@ public class CiphertextRewrap {
    * column is done. Only rewritten values count against the budget: an unreadable value is passed
    * by the cursor and never holds back the readable ones behind it.
    */
-  private Pass rewrapColumn(EncryptedColumn column, String current, boolean keyed, int budget) {
+  private Pass rewrapColumn(
+      EncryptedColumn column, String scope, String current, boolean keyed, int budget) {
     int rewrapped = 0;
     int unreadable = 0;
     int settled = 0;
@@ -185,7 +202,8 @@ public class CiphertextRewrap {
     while (rewrapped < budget) {
       int limit = Math.min(PAGE_SIZE, budget - rewrapped);
       Object cursor = after;
-      Page page = transactions.execute(status -> rewrapPage(column, current, keyed, cursor, limit));
+      Page page =
+          transactions.execute(status -> rewrapPage(column, scope, current, keyed, cursor, limit));
       if (page == null || page.size() == 0) {
         break;
       }
@@ -203,7 +221,12 @@ public class CiphertextRewrap {
   private record Page(int size, int rewrapped, int unreadable, int settled, Object lastId) {}
 
   private Page rewrapPage(
-      EncryptedColumn column, String current, boolean keyed, Object after, int limit) {
+      EncryptedColumn column,
+      String scope,
+      String current,
+      boolean keyed,
+      Object after,
+      int limit) {
     String select =
         "SELECT "
             + column.idColumn()
@@ -213,7 +236,7 @@ public class CiphertextRewrap {
             + column.table()
             + " WHERE starts_with("
             + column.column()
-            + ", 'enc:') AND NOT starts_with("
+            + ", ?) AND NOT starts_with("
             + column.column()
             + ", ?)"
             + (after == null ? "" : " AND " + column.idColumn() + " > ?")
@@ -222,8 +245,8 @@ public class CiphertextRewrap {
             + " LIMIT ? FOR UPDATE SKIP LOCKED";
     List<Map<String, Object>> rows =
         after == null
-            ? jdbc.queryForList(select, current, limit)
-            : jdbc.queryForList(select, current, after, limit);
+            ? jdbc.queryForList(select, scope, current, limit)
+            : jdbc.queryForList(select, scope, current, after, limit);
     String update =
         "UPDATE "
             + column.table()
@@ -262,17 +285,18 @@ public class CiphertextRewrap {
     return new Page(rows.size(), rewrapped, unreadable, settled, lastId);
   }
 
-  private int countStale(EncryptedColumn column, String current) {
+  private int countStale(EncryptedColumn column, String scope, String current) {
     Integer count =
         jdbc.queryForObject(
             "SELECT count(*) FROM "
                 + column.table()
                 + " WHERE starts_with("
                 + column.column()
-                + ", 'enc:') AND NOT starts_with("
+                + ", ?) AND NOT starts_with("
                 + column.column()
                 + ", ?)",
             Integer.class,
+            scope,
             current);
     return count == null ? 0 : count;
   }

@@ -270,6 +270,35 @@ class CiphertextRewrapIntegrationTest {
     assertThat(credentialOf(lostKey)).isEqualTo(lostValue);
   }
 
+  /**
+   * Held back without a decrypt-only key, a run selects - and so reads and locks - no {@code
+   * enc:v1:} value: a corrupt one is not even counted, and only keyed values under another key are
+   * looked at.
+   */
+  @Test
+  void heldBackWithoutAPreviousKeyTheRunLeavesEveryUnkeyedValueAlone() {
+    CipherFormatGate heldBack = () -> false;
+    UUID current = UUID.randomUUID();
+    String currentValue =
+        credentials(heldBack, NEW_KEY).encrypt("a-secret", CREDENTIAL.row(current));
+    jdbc.update("INSERT INTO rewrap_probe VALUES (?, ?, NULL)", current, currentValue);
+    UUID corrupt = insert("enc:v1:kein-geheimtext", null);
+    UUID foreign = UUID.randomUUID();
+    String foreignValue = credentials(OTHER_KEY).encrypt("lost", CREDENTIAL.row(foreign));
+    jdbc.update("INSERT INTO rewrap_probe VALUES (?, ?, NULL)", foreign, foreignValue);
+
+    CiphertextRewrap.Outcome outcome =
+        rewrap(credentials(heldBack, NEW_KEY), settings(NEW_KEY), heldBack).rewrap();
+
+    assertThat(outcome)
+        .as(
+            "only the keyed value under another key is selected; a selected corrupt one would count")
+        .isEqualTo(new CiphertextRewrap.Outcome(0, 1, 0, true));
+    assertThat(credentialOf(current)).isEqualTo(currentValue);
+    assertThat(credentialOf(corrupt)).isEqualTo("enc:v1:kein-geheimtext");
+    assertThat(credentialOf(foreign)).isEqualTo(foreignValue);
+  }
+
   @Test
   void withoutAKeyForAPurposeItsColumnsAreLeftAlone() {
     UUID row = UUID.randomUUID();

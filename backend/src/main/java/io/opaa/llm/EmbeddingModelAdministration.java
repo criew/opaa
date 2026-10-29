@@ -344,14 +344,14 @@ public class EmbeddingModelAdministration {
   @Transactional(propagation = Propagation.MANDATORY)
   public Change replace(Resolved resolved, int dimensions, float[] anchor, long generation) {
     EmbeddingModelSettings row = requireInstalled();
-    Map<String, Object> before = state(row);
-    previousRows.saveAndFlush(
-        new PreviousEmbeddingModel(
-            row,
-            carriedKey(
-                row.getApiKeyCiphertext(),
-                LlmEncryptedColumns.EMBEDDING_MODEL_KEY,
-                LlmEncryptedColumns.PREVIOUS_EMBEDDING_MODEL_KEY)));
+    String carried =
+        carriedKey(
+            row.getApiKeyCiphertext(),
+            LlmEncryptedColumns.EMBEDDING_MODEL_KEY,
+            LlmEncryptedColumns.PREVIOUS_EMBEDDING_MODEL_KEY);
+    Map<String, Object> before =
+        withKeyChange(state(row), dropped(row.getApiKeyCiphertext(), carried));
+    previousRows.saveAndFlush(new PreviousEmbeddingModel(row, carried));
     row.replace(
         resolved.endpoint(),
         resolved.ciphertext(),
@@ -387,17 +387,18 @@ public class EmbeddingModelAdministration {
     }
     EmbeddingModelSettings row = requireInstalled();
     Map<String, Object> before = state(row);
-    row.restore(
-        previous.get(),
+    String stored = previous.get().getApiKeyCiphertext();
+    String carried =
         carriedKey(
-            previous.get().getApiKeyCiphertext(),
+            stored,
             LlmEncryptedColumns.PREVIOUS_EMBEDDING_MODEL_KEY,
-            LlmEncryptedColumns.EMBEDDING_MODEL_KEY));
+            LlmEncryptedColumns.EMBEDDING_MODEL_KEY);
+    row.restore(previous.get(), carried);
     rows.saveAndFlush(row);
     dropClientAfterCommit();
     previousRows.delete(previous.get());
     previousRows.flush();
-    return Optional.of(new Change(before, state(row)));
+    return Optional.of(new Change(before, withKeyChange(state(row), dropped(stored, carried))));
   }
 
   /** Deletes the previous model, as the switch does. */
@@ -560,6 +561,11 @@ public class EmbeddingModelAdministration {
     state.put("generation", row.getGeneration());
     state.put("apiKeySet", row.hasApiKey());
     return state;
+  }
+
+  /** {@code DROPPED} when {@link #carriedKey} let a stored key go, otherwise no key change. */
+  private static String dropped(String stored, String carried) {
+    return stored != null && carried == null ? "DROPPED" : null;
   }
 
   private static Map<String, Object> withKeyChange(Map<String, Object> state, String change) {
