@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt durch ADR-0013 (Fehlerkriterium) und
+Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt durch ADR-0013 (Fehlerkriterium) und
 ADR-0026 Entscheidung 5 (Konfidenzschwelle der Metadaten-Extraktion) · präzisiert ADR-0011
 
 ## Kontext
@@ -139,7 +139,7 @@ ungültig und keine Metrik wird verglichen.
 | `pgvectorIndexType` | `hnsw` | 1 | ein Wechsel auf exakte Suche ist eine Messänderung (ADR-0011) |
 | `corpusManifestSha256`, `corpusDocumentCount` | je Domäne | 1 | der Korpus |
 | `goldenDatasetFile`, `goldenDatasetSha256`, `goldenCaseCount` | je Domäne | 1 | der Datensatz samt Zuständen |
-| `ingestionPipelineFingerprint` | `confluence:4,docx:5,email:5,html:5,markdown:3,odp:4,odt:4,pdf:5,pptx:3,tabular:3,tika-fallback:1` | 3 | welche Pipelines in welcher Version gechunkt haben (Entscheidung 28) |
+| `ingestionPipelineFingerprint` | `confluence:5,docx:6,email:6,html:6,markdown:4,odp:5,odt:5,pdf:6,pptx:4,tabular:4,tika-fallback:2` | 3 | welche Pipelines in welcher Version gechunkt haben (Entscheidung 28) |
 | `metadataFilterEnabled` | `true` | 6 | ob die Golden-Filter in der Suche wirkten (Entscheidung 32) |
 | `ollamaImage` | `ollama/ollama:0.40.3` | 10 | das Laufzeitsystem, das die Vektoren berechnet (Entscheidung 45) |
 | `ollamaCpuBackend` | `haswell` | 11 | die ggml-Kernelvariante bewegt Rangfolgen (Entscheidung 55) |

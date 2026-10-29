@@ -1,6 +1,6 @@
 # Format: Word (DOCX)
 
-Pipeline `docx`, Version 5. Der gemeinsame Rahmen aller Format-Pipelines steht im
+Pipeline `docx`, Version 6. Der gemeinsame Rahmen aller Format-Pipelines steht im
 Kapitel [Wissensbibliotheken](../README.md), Abschnitt 5. Das ältere Binärformat `.doc` läuft über die
 [Auffang-Pipeline](fallback.md).
 
@@ -53,6 +53,7 @@ flowchart LR
 |---|---|---|
 | Ortsangabe (`location`) | Abschnittspfad | `Abschn. Allgemeines › Geltungsbereich` |
 | Ortsangabe des Kopfzeilen-Chunks | fest | `Kopf-/Fußzeile` |
+| Fundstellen-Anker (`anchor`) | voller Abschnittspfad und Zitat von Anfang und Ende | `3 Verfahren`, `3.1 Fristen` |
 
 **Dokumenteigenschaften:** Titel, Erstellungs- und Änderungsdatum aus den Dokumenteigenschaften
 der Datei sowie die erste Überschrift der Ebene 1.

@@ -5,6 +5,8 @@ import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.DocumentProperties;
 import io.opaa.format.FileDocumentFormat;
 import io.opaa.format.FormatAdmission;
+import io.opaa.format.chunk.ChunkAnchor;
+import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.shared.DocumentTitleLine;
 import io.opaa.format.shared.HeadingSectionSplitter;
@@ -30,6 +32,8 @@ import org.springframework.ai.document.Document;
  * a heading of its own nesting level, cut without a depth cap - a legal text commonly nests § and
  * Absatz as two separately citable levels - and several entries on one page split that page's text
  * between their titles. Without an outline, chunking falls back to one chunk per non-blank page.
+ * Either way every chunk's anchor names its pages; along the outline {@link PdfPageLocator} finds
+ * them again.
  *
  * <p>Every page's text is extracted exactly once, into {@link PdfContent}; a page range is the
  * concatenation of its pages. A table enclosed by a complete ruled grid is written one line per
@@ -41,7 +45,7 @@ import org.springframework.ai.document.Document;
 public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfContent> {
 
   static final String ID = "pdf";
-  static final short VERSION = 5;
+  static final short VERSION = 6;
 
   private final HeadingSectionSplitter splitter;
 
@@ -234,6 +238,7 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
     if (chunks.isEmpty()) {
       return DocumentFormatResult.noExtractableText();
     }
+    PdfPageLocator.forPages(pageTexts).addPages(chunks);
     return DocumentFormatResult.chunked(chunks);
   }
 
@@ -292,6 +297,7 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
       }
       Map<String, Object> metadata = new HashMap<>();
       metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, "S. " + (i + 1));
+      ChunkAnchors.write(metadata, ChunkAnchor.EMPTY.withPages(i + 1, i + 1));
       chunks.addAll(splitter.boundedChunks(null, text.strip(), metadata));
     }
     if (chunks.isEmpty()) {

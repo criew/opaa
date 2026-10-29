@@ -1,5 +1,6 @@
 package io.opaa.format;
 
+import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.shared.IngestTextSanitizer;
 import java.io.IOException;
@@ -94,7 +95,9 @@ public final class DocumentFormatRunner {
    * IngestTextSanitizer} - the one place every format and every connector passes, so index, context
    * prefix, prompt and citation check see the same text. A chunk left blank is dropped; with none
    * left the document has no extractable text. What the cleanup found travels in {@link
-   * DocumentFormatResult#sanitizerFindings()}, as counts per class only.
+   * DocumentFormatResult#sanitizerFindings()}, as counts per class only. Each chunk's anchor takes
+   * its quotes from the cleaned text here ({@link ChunkAnchors#completed}), so they match what the
+   * citation shows.
    */
   private static DocumentFormatResult sanitized(DocumentFormatResult result) {
     Map<IngestTextSanitizer.Finding, Integer> findings =
@@ -109,6 +112,10 @@ public final class DocumentFormatRunner {
       if (metadata.get(ChunkMetadataKeys.LOCATION_METADATA_KEY) instanceof String location) {
         metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, cleaned(location, findings));
       }
+      if (metadata.get(ChunkMetadataKeys.ANCHOR_LEAD_METADATA_KEY) instanceof String lead) {
+        metadata.put(ChunkMetadataKeys.ANCHOR_LEAD_METADATA_KEY, cleaned(lead, findings));
+      }
+      ChunkAnchors.completed(metadata, text);
       chunks.add(new Document(chunk.getId(), text, metadata));
     }
     DocumentProperties properties = result.properties();

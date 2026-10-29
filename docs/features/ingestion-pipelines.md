@@ -462,8 +462,8 @@ bedeutungsleer, mit ihr eine beantwortbare Frage.
 
 #### Umgesetzt (#1061)
 
-`PdfDocumentFormat` (`id` `pdf`, Version 1; seit #2033 Version 2, seit #2330 Version 3, seit #2327 Version 4, seit #2331 Version 5, siehe unten), `DocxDocumentFormat` (`id` `docx`, Version 3 seit
-#1187, seit #2327 Version 4, seit #2331 Version 5) und `PptxDocumentFormat` (`id` `pptx`, Version 1, seit #2327 Version 2, seit #2331 Version 3) sind registriert und beanspruchen `.pdf`,
+`PdfDocumentFormat` (`id` `pdf`, Version 1; seit #2033 Version 2, seit #2330 Version 3, seit #2327 Version 4, seit #2331 Version 5, seit #3315 Version 6, siehe unten), `DocxDocumentFormat` (`id` `docx`, Version 3 seit
+#1187, seit #2327 Version 4, seit #2331 Version 5, seit #3315 Version 6) und `PptxDocumentFormat` (`id` `pptx`, Version 1, seit #2327 Version 2, seit #2331 Version 3, seit #3315 Version 4) sind registriert und beanspruchen `.pdf`,
 `.docx` bzw. `.pptx` in der `DocumentFormatRegistry`. `.doc` bleibt unverändert bei
 `TikaFallbackFormat` — POIs OOXML-Leser kann das ältere Binärformat gar nicht öffnen.
 
@@ -513,7 +513,7 @@ für Fließtext und Tabellenzellen. **Baseline unberührt**, Fingerprint `pdf:2`
 Baselines als reine Fixpunkt-Ergänzung nachgezogen (Rohvektor 13 → 14, Pipeline 16 → 17,
 Mehrrunden-Pfad 6 → 7).
 
-**`MarkdownDocumentFormat` (`id` `markdown`, Version 1, seit #2327 Version 2, seit #2331 Version 3) ist seit #1103 als Bean registriert**, anstelle von `TikaFallbackFormat` für `.md`. Der gesamte Evaluierungskorpus (`eval/corpus/`) ist Markdown; das Umschalten war deshalb — anders als bei PDF/DOCX/PPTX — keine für den Bestand verhaltensneutrale Änderung, sondern eine Messvertrags-Änderung, siehe [ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md); die gemessene Verschiebung steht in den `notes` der Baselines. Ein Fund bei der Registrierung: Alle drei Korpora beginnen jedes Dokument mit einem YAML-Frontmatter-Block vor der ersten Überschrift, den `HeadingSectionSplitter` sonst zu einem eigenen, überschriftslosen ersten Chunk gemacht hätte — `MarkdownDocumentFormat` verwirft einen `---`-begrenzten Block am Dateianfang deshalb, statt ihn zu chunken (siehe die Pipeline-eigene Javadoc).
+**`MarkdownDocumentFormat` (`id` `markdown`, Version 1, seit #2327 Version 2, seit #2331 Version 3, seit #3315 Version 4) ist seit #1103 als Bean registriert**, anstelle von `TikaFallbackFormat` für `.md`. Der gesamte Evaluierungskorpus (`eval/corpus/`) ist Markdown; das Umschalten war deshalb — anders als bei PDF/DOCX/PPTX — keine für den Bestand verhaltensneutrale Änderung, sondern eine Messvertrags-Änderung, siehe [ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md); die gemessene Verschiebung steht in den `notes` der Baselines. Ein Fund bei der Registrierung: Alle drei Korpora beginnen jedes Dokument mit einem YAML-Frontmatter-Block vor der ersten Überschrift, den `HeadingSectionSplitter` sonst zu einem eigenen, überschriftslosen ersten Chunk gemacht hätte — `MarkdownDocumentFormat` verwirft einen `---`-begrenzten Block am Dateianfang deshalb, statt ihn zu chunken (siehe die Pipeline-eigene Javadoc).
 
 ### Chunk-Größen: gemessen, wo Messmaterial existiert — und sonst ehrlich gesetzt
 
@@ -683,6 +683,28 @@ jedes Teilstück einer Einheit mit wiederholtem Kontext, also auch für Folien m
 (`pptx` 3, `odp` 4). Erst ein Kontext, der allein bis auf 200 Zeichen an die harte Grenze
 heranreicht, bleibt der harten Teilung überlassen.
 
+### Fundstellen-Anker je Chunk (#3315)
+
+Jeder Chunk trägt neben dem Anzeigetext `location` das Metadatum `anchor`
+([ADR-0062](../decisions/0062-fundstellen-anker-je-chunk.md)): die Einheiten, auf die ein Viewer
+springt, und zwei kurze Zitate, über die er die Passage markiert. Ein Format setzt nur, was es kennt:
+
+| Format | Struktur im Anker |
+|---|---|
+| PDF | `pageFrom`/`pageTo` (auch entlang der Outline, über `PdfPageLocator`), `path` bei Outline |
+| DOCX, ODT, Markdown, HTML, Confluence | `path` (voller Überschriftenpfad) |
+| PPTX, ODP | `slide` |
+| XLSX, ODS, CSV | `sheet` (nicht bei CSV), `rowFrom`/`rowTo` |
+| EML, MSG | `message` (Position im Thread, auch bei einer Einzelmail) |
+| TXT, DOC (Tika-Rückfall) | `pageFrom`/`pageTo` bei Seitenumbrüchen, `path` bei `#`-Überschriften |
+
+`quoteStart`/`quoteEnd` setzt `DocumentFormatRunner` für jeden Chunk aus dem bereinigten Text,
+ohne den Vorspann, den das Format markiert (Überschriftenzeile, Folientitel, Tabellenkopf,
+Überlappung). Der Anker ist nie Teil des Embedding-Inputs; die Versionserhöhung aller Formate löst
+einen Re-Index aus, der die Vektoren bei unverändertem Text wiederverwendet. Der Abschnittspfad im
+Tika-Rückfall ist seitdem vollständig statt auf zwei Ebenen gekürzt. Ein Beleg im Chat speichert den
+Anker als Momentaufnahme.
+
 ### Baseline-Aktualisierung als Schritt jedes Format-Issues
 
 Jede Pipeline-Umstellung ändert den Zuschnitt und damit die Vektoren — die Retrieval-Kennzahlen
@@ -838,7 +860,7 @@ Abschnitt "Baseline-Aktualisierung als Schritt jedes Format-Issues".)
 
 #### Umgesetzt (#1110, styles.xml seit #1145)
 
-`OdtDocumentFormat` (`id` `odt`, Version 2, seit #2327 Version 3, seit #2331 Version 4) und `OdpDocumentFormat` (`id` `odp`, Version 2, seit #2327 Version 3, seit #2331 Version 4)
+`OdtDocumentFormat` (`id` `odt`, Version 2, seit #2327 Version 3, seit #2331 Version 4, seit #3315 Version 5) und `OdpDocumentFormat` (`id` `odp`, Version 2, seit #2327 Version 3, seit #2331 Version 4, seit #3315 Version 5)
 beanspruchen `.odt` bzw. `.odp` in der `DocumentFormatRegistry` und lösen damit die
 `TikaFallbackFormat` für beide Formate ab. Beide lesen `content.xml` (eine ODT-/ODP-Datei ist wie
 ODS ein ZIP-Archiv) direkt über einen gehärteten SAX-Parser, geteilt über `OdfPackage` (bis #1338
@@ -946,7 +968,7 @@ Inhalt muss Text sein **und** die Datei muss `.csv` heißen.
 
 #### Umgesetzt (#1058)
 
-`TabularDocumentFormat` (`id` `tabular`, Version 1, seit #2327 Version 2, seit #2331 Version 3) beansprucht `.xlsx`, `.csv` und `.ods` in der
+`TabularDocumentFormat` (`id` `tabular`, Version 1, seit #2327 Version 2, seit #2331 Version 3, seit #3315 Version 4) beansprucht `.xlsx`, `.csv` und `.ods` in der
 `DocumentFormatRegistry`. XLSX wird blatt- und zellenweise über Apache POI gelesen, CSV über einen
 Trennzeichen-erkennenden Parser (Komma, Semikolon, Tabulator — die reale Exportvarianten, siehe
 Test-Fixtures). **ODS liest POI nicht** — POI deckt OOXML (XLSX/DOCX/PPTX) und die alten
@@ -1028,7 +1050,7 @@ adressieren. Der Zuschnitt folgt den Überschriften h1–h3.
 
 #### Umgesetzt (#1059)
 
-`HtmlDocumentFormat` (`id` `html`, Version 1; seit #1315 Version 2, seit #1357 Version 3, seit #2327 Version 4, seit #2331 Version 5, siehe unten) beansprucht `.html` in der
+`HtmlDocumentFormat` (`id` `html`, Version 1; seit #1315 Version 2, seit #1357 Version 3, seit #2327 Version 4, seit #2331 Version 5, seit #3315 Version 6, siehe unten) beansprucht `.html` in der
 `DocumentFormatRegistry`; `.html` ist dafür neu in `SupportedDocumentFormats` zugelassen, über
 den unzweideutigen Tika-Medientyp `text/html` (bzw. `application/xhtml+xml`) — wie bei PDF/DOCX ein
 strenger, inhaltsbasierter Treffer, keine text-tolerante Sonderregel wie bei Markdown/Klartext/CSV.
@@ -1187,7 +1209,7 @@ Beleg) folgt dabei den bestehenden Regeln des Anlagenwegs, siehe
 
 #### Umgesetzt (#1060)
 
-`MailDocumentFormat` (`id` `email`, Version 5 seit #1339) beansprucht `.eml` und `.msg` in der
+`MailDocumentFormat` (`id` `email`, Version 5 seit #1339, seit #3315 Version 6) beansprucht `.eml` und `.msg` in der
 `DocumentFormatRegistry`; beide Endungen sind jetzt in `SupportedDocumentFormats` zugelassen —
 unterschiedlich streng, mit einem empirisch belegten Grund: `.msg` bekommt mit
 `application/vnd.ms-outlook` einen eindeutigen, strikten Medientyp (wie PDF/DOCX). `.eml` dagegen
@@ -1508,7 +1530,7 @@ Makro-Inhalt Seiteninhalt ist** und welcher zur Laufzeit aus anderen Quellen zus
 
 #### Umgesetzt (#1137)
 
-`ConfluenceStorageFormat` (`id` `confluence`, Version 1; seit #1357 Version 2, seit #2327 Version 3, seit #2331 Version 4, siehe HTML-Pipeline) beansprucht **kein** Format in der
+`ConfluenceStorageFormat` (`id` `confluence`, Version 1; seit #1357 Version 2, seit #2327 Version 3, seit #2331 Version 4, seit #3315 Version 5, siehe HTML-Pipeline) beansprucht **kein** Format in der
 `DocumentFormatRegistry` — der Confluence-Konnektor benennt sie im `DocumentIngest`
 (`pipelineId`), und `DocumentIngestService#ingest` ruft sie über `pipelineById` direkt auf, so wie
 seit #1315 auch ein Feed-Eintrag die HTML-Pipeline benennt; ohne registrierte Pipeline ist das ein

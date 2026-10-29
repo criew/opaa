@@ -168,6 +168,23 @@ class ChunkingServiceTest {
   }
 
   @Test
+  void anchorsAChunkByItsPagesAndMarksTheOverlapAsLead() {
+    var service = new ChunkingService(new IndexingProperties(120, 30, 50, null, null, null, 0));
+    String text = distinctSentences(200) + "\f" + distinctSentences(200);
+
+    List<Document> result = service.chunkDocuments("scan.pdf", List.of(new Document(text)));
+
+    assertThat(result).hasSizeGreaterThan(2);
+    assertThat(ChunkAnchors.read(result.getFirst().getMetadata()).pageFrom()).isEqualTo(1);
+    assertThat(ChunkAnchors.read(result.getLast().getMetadata()).pageTo()).isEqualTo(2);
+    Document second = result.get(1);
+    Object lead = second.getMetadata().get(ChunkMetadataKeys.ANCHOR_LEAD_METADATA_KEY);
+    assertThat(lead).isInstanceOf(String.class);
+    assertThat(result.getFirst().getText()).contains(((String) lead).strip());
+    assertThat(second.getText()).startsWith((String) lead);
+  }
+
+  @Test
   void leavesFlatTextWithoutALocation() {
     var service = new ChunkingService(new IndexingProperties(1000, 100, 50, null, null, null, 0));
 

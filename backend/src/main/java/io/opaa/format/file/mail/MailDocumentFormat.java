@@ -7,6 +7,8 @@ import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.DocumentProperties;
 import io.opaa.format.FormatAdmission;
 import io.opaa.format.FormatMetadataField;
+import io.opaa.format.chunk.ChunkAnchor;
+import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.chunk.ChunkingService;
 import java.io.IOException;
@@ -44,7 +46,7 @@ public class MailDocumentFormat implements DocumentFormat {
 
   static final String ID = "email";
 
-  static final short VERSION = 5;
+  static final short VERSION = 6;
 
   /**
    * Renders {@link ParsedMailMessage#date()} in the leading context line, in {@link #clock}'s own
@@ -276,7 +278,7 @@ public class MailDocumentFormat implements DocumentFormat {
       }
       List<Document> parts = chunkingService.chunkDocuments(logName, List.of(new Document(text)));
       for (int j = 0; j < parts.size(); j++) {
-        Map<String, Object> metadata = new HashMap<>();
+        Map<String, Object> metadata = partMetadata(parts.get(j), i + 1);
         String location = locationFor(i, segments.size(), j, parts.size());
         if (location != null) {
           metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
@@ -288,7 +290,7 @@ public class MailDocumentFormat implements DocumentFormat {
       List<Document> headerParts =
           chunkingService.chunkDocuments(logName, List.of(new Document(headerContext)));
       for (int j = 0; j < headerParts.size(); j++) {
-        Map<String, Object> metadata = new HashMap<>();
+        Map<String, Object> metadata = partMetadata(headerParts.get(j), 1);
         String location = locationFor(0, 1, j, headerParts.size());
         if (location != null) {
           metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
@@ -326,6 +328,19 @@ public class MailDocumentFormat implements DocumentFormat {
       text.append('\n');
     }
     text.append(label).append(": ").append(value);
+  }
+
+  /**
+   * A fresh metadata map for one part of thread message {@code message} (1-based): its anchor, and
+   * the overlap lead the token splitter marked on {@code part}.
+   */
+  private static Map<String, Object> partMetadata(Document part, int message) {
+    Map<String, Object> metadata = new HashMap<>();
+    if (part.getMetadata().get(ChunkMetadataKeys.ANCHOR_LEAD_METADATA_KEY) instanceof String lead) {
+      ChunkAnchors.markLead(metadata, lead);
+    }
+    ChunkAnchors.write(metadata, ChunkAnchor.EMPTY.withMessage(message));
+    return metadata;
   }
 
   /**

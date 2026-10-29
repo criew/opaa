@@ -88,7 +88,7 @@ class DocumentFormatRegistryTest {
     // fallback's own default (location) is part of the union too - it is a registered pipeline
     // like any other.
     assertThat(registry.allPassthroughMetadataKeys())
-        .containsExactlyInAnyOrder("location", "mail_subject");
+        .containsExactlyInAnyOrder("location", "anchor", "mail_subject");
   }
 
   @Test
@@ -208,7 +208,7 @@ class DocumentFormatRegistryTest {
     assertThat(registryWith(pdfPipeline).pipelines())
         .extracting(DocumentFormat::id, DocumentFormat::version)
         .containsExactlyInAnyOrder(
-            org.assertj.core.api.Assertions.tuple(TikaFallbackFormat.ID, (short) 1),
+            org.assertj.core.api.Assertions.tuple(TikaFallbackFormat.ID, (short) 2),
             org.assertj.core.api.Assertions.tuple("pdf", (short) 3));
   }
 }

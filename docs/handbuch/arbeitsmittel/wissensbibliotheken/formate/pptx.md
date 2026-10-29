@@ -1,6 +1,6 @@
 # Format: PowerPoint (PPTX)
 
-Pipeline `pptx`, Version 3. Der gemeinsame Rahmen aller Format-Pipelines steht im
+Pipeline `pptx`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht im
 Kapitel [Wissensbibliotheken](../README.md), Abschnitt 5.
 
 ## 1. Zulassung
@@ -38,6 +38,7 @@ Ortsangabe der Folie
 |---|---|---|
 | Ortsangabe (`location`) | Foliennummer und Titel | `Folie 3: Zuständigkeiten` |
 | Ortsangabe ohne Titel | Foliennummer | `Folie 3` |
+| Fundstellen-Anker (`anchor`) | Foliennummer und Zitat von Anfang und Ende | Folie `3` |
 
 **Dokumenteigenschaften:** Titel, Erstellungs- und Änderungsdatum aus den Dokumenteigenschaften
 sowie der Titel der ersten Folie als erste Überschrift.

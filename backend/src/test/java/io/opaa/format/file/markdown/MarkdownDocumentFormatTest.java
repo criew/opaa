@@ -31,13 +31,14 @@ class MarkdownDocumentFormatTest {
   void claimsExactlyMarkdown() {
     assertThat(pipeline.handledFormats()).containsExactly(".md");
     assertThat(pipeline.id()).isEqualTo("markdown");
-    assertThat(pipeline.version()).isEqualTo((short) 3);
+    assertThat(pipeline.version()).isEqualTo((short) 4);
   }
 
   @Test
-  void passesThroughOnlyTheLocationKey() {
+  void passesThroughOnlyLocationAndAnchor() {
     assertThat(pipeline.passthroughMetadataKeys())
-        .containsExactly(ChunkMetadataKeys.LOCATION_METADATA_KEY);
+        .containsExactlyInAnyOrder(
+            ChunkMetadataKeys.LOCATION_METADATA_KEY, ChunkMetadataKeys.ANCHOR_METADATA_KEY);
   }
 
   private static final String SATZUNG =

@@ -143,7 +143,7 @@ class OdpDocumentFormatTest {
   void claimsExactlyOdp() {
     assertThat(pipeline.handledFormats()).containsExactly(".odp");
     assertThat(pipeline.id()).isEqualTo("odp");
-    assertThat(pipeline.version()).isEqualTo((short) 4);
+    assertThat(pipeline.version()).isEqualTo((short) 5);
   }
 
   @Test

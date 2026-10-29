@@ -1,6 +1,6 @@
 # Format: Confluence-Seite
 
-Pipeline `confluence`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines
+Pipeline `confluence`, Version 5. Der gemeinsame Rahmen aller Format-Pipelines
 steht im Kapitel [Wissensbibliotheken](../README.md), Abschnitt 5; wie die Seiten in die Bibliothek
 gelangen, im Kapitel [Confluence](../konnektoren/confluence.md).
 
@@ -78,6 +78,7 @@ zusammengelegt, dieselben Regeln wie bei den anderen überschriftengetriebenen P
 | Feld | Inhalt |
 |---|---|
 | `location` | Überschriftenpfad innerhalb der Seite |
+| `anchor` | Fundstellen-Anker: voller Überschriftenpfad und Zitat von Anfang und Ende |
 | `source_container_key` | Space-Schlüssel der Seite |
 | `source_hierarchy_path` | Gliederungspfad der Seite: die Titel der übergeordneten Seiten, von der Wurzel her mit „ / " verbunden |
 | `file_name` | Seitentitel |

@@ -1,6 +1,6 @@
 # Format: HTML
 
-Pipeline `html`, Version 5. Der gemeinsame Rahmen aller Format-Pipelines steht im
+Pipeline `html`, Version 6. Der gemeinsame Rahmen aller Format-Pipelines steht im
 Kapitel [Wissensbibliotheken](../README.md), Abschnitt 5.
 
 ## 1. Wann sie läuft
@@ -61,6 +61,7 @@ Wortgrenzen werden am Quelltext geprüft: `<b>Personal</b>ausweis` bleibt „Per
 | Feld | Inhalt | Beispiel |
 |---|---|---|
 | Ortsangabe (`location`) | Abschnittspfad | `Abschn. Leistungen › Personalausweis` |
+| Fundstellen-Anker (`anchor`) | voller Abschnittspfad und Zitat von Anfang und Ende | `Leistungen`, `Personalausweis` |
 
 Der Abschnittspfad steht zusätzlich als erste Zeile im Chunk-Text.
 

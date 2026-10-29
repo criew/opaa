@@ -1,6 +1,6 @@
 # Format: Markdown
 
-Pipeline `markdown`, Version 3. Der gemeinsame Rahmen aller Format-Pipelines
+Pipeline `markdown`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines
 steht im Kapitel [Wissensbibliotheken](../README.md), Abschnitt 5.
 
 ## 1. Zulassung
@@ -39,6 +39,7 @@ Zielgröße `chunk-target-characters`, größere Abschnitte werden ohne Textverl
 | Feld | Inhalt | Beispiel |
 |---|---|---|
 | Ortsangabe (`location`) | Abschnittspfad | `Abschn. Fristen › Verlängerung` |
+| Fundstellen-Anker (`anchor`) | voller Abschnittspfad und Zitat von Anfang und Ende | `Fristen`, `Verlängerung` |
 
 **Dokumenteigenschaften:** alle Frontmatter-Skalare (Schlüssel kleingeschrieben) und die erste
 Überschrift der Ebene 1. Über diesen Weg erreichen Angaben wie `titel`, `dokumentart` oder

@@ -1,5 +1,7 @@
 package io.opaa.format.shared;
 
+import io.opaa.format.chunk.ChunkAnchor;
+import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -259,10 +261,9 @@ public final class HeadingSectionSplitter {
       if (end == start + 1) {
         chunks.addAll(sectionChunks(first));
       } else {
-        String headingLine = headingLine(common);
         chunks.add(
             new Document(
-                combinedText(common, sections.subList(start, end)), locationMetadata(headingLine)));
+                combinedText(common, sections.subList(start, end)), locationMetadata(common)));
       }
       start = end;
     }
@@ -275,7 +276,7 @@ public final class HeadingSectionSplitter {
     // a heading-only section would look like NO_EXTRACTABLE_TEXT even though its heading is
     // real, searchable content.
     List<String> bodies = section.bodies().isEmpty() ? List.of("") : section.bodies();
-    Map<String, Object> metadata = locationMetadata(headingLine);
+    Map<String, Object> metadata = locationMetadata(section.path());
     List<Document> chunks = new ArrayList<>();
     for (String body : bodies) {
       String text =
@@ -308,10 +309,18 @@ public final class HeadingSectionSplitter {
     return String.join(" › ", path.stream().map(PathEntry::title).toList());
   }
 
-  private static Map<String, Object> locationMetadata(String headingLine) {
+  /**
+   * Fundort and anchor of a chunk under {@code path}: the full heading path, and the heading line
+   * the chunk text opens with as the anchor's lead - it repeats the path, not the passage.
+   */
+  private static Map<String, Object> locationMetadata(List<PathEntry> path) {
     Map<String, Object> metadata = new HashMap<>();
-    if (headingLine != null) {
+    if (!path.isEmpty()) {
+      String headingLine = headingLine(path);
       metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, "Abschn. " + headingLine);
+      ChunkAnchors.write(
+          metadata, ChunkAnchor.EMPTY.withPath(path.stream().map(PathEntry::title).toList()));
+      ChunkAnchors.markLead(metadata, headingLine + "\n\n");
     }
     return metadata;
   }
@@ -359,14 +368,18 @@ public final class HeadingSectionSplitter {
    * The chunks of one unit (page, slide, row group): {@code context + separator + body} as one
    * chunk while it fits {@link #softChunkCharLimit() target size}, otherwise {@code body} cut by
    * {@link BoundarySplitter} with {@code context} - a slide title, a table's context and header
-   * line - repeated in front of every part. Every chunk gets its own copy of {@code metadata}, so
-   * each part keeps the unit's Fundort.
+   * line - repeated in front of every part, and named as the anchor's lead. Every chunk gets its
+   * own copy of {@code metadata}, so each part keeps the unit's Fundort.
    *
    * @param context the leading text every part repeats, or {@code null}
    */
   public List<Document> boundedChunks(
       String context, String separator, String body, Map<String, Object> metadata) {
     boolean hasContext = context != null && !context.isEmpty();
+    if (hasContext) {
+      metadata = new HashMap<>(metadata);
+      ChunkAnchors.markLead(metadata, context + separator);
+    }
     String whole = !hasContext ? body : body.isEmpty() ? context : context + separator + body;
     if (whole.length() <= softChunkCharLimit || body.isBlank()) {
       return withinCeiling(whole, metadata);

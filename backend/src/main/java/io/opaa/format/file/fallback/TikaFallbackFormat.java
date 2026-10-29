@@ -41,7 +41,7 @@ public class TikaFallbackFormat implements DocumentFormat {
    * Chunks carrying no pipeline metadata at all are attributed to {@link
    * ChunkFormatMetadata#LEGACY_PIPELINE_VERSION}, never to this version.
    */
-  public static final short VERSION = 1;
+  public static final short VERSION = 2;
 
   private final DocumentService documentService;
   private final ChunkingService chunkingService;
