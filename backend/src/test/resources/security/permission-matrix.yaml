@@ -25,7 +25,8 @@
 # 503 in a row whose note explains it. Every request is well-formed by the specification (required
 # parameters and properties filled with their first enum value, their example or a value their
 # schema admits, ids of the fixture by their name). A row refusing every signed-in role alike tells
-# nothing by itself and needs a note saying why.
+# nothing by itself and needs a note saying why; so does a probe every signed-in role meets with the
+# same 400, 409 or 422, which is refused before any right is asked and fails the run otherwise.
 #
 # Foreign ids - each must answer 401, 403 or 404, never more:
 #   - every operation naming an object of a space, a person or an organization in its path is
@@ -47,7 +48,7 @@
 
 operations:
   listAssetGrants:                           {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
-  upsertAssetGrant:                          {systemAdmin: allowed, auditor: 404, spaceAdmin: 403, curator: 403, member: 403, noRights: 404, anonymous: 401}
+  upsertAssetGrant:                          {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
   revokeAssetGrant:                          {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
   listGrantedGroupMembers:                   {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
   getAssetAccessDerivation:                  {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
@@ -134,7 +135,7 @@ operations:
   listMyConnectedAccounts:                   {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
   connectMyAccount:                          {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   disconnectMyAccount:                       {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401, note: "the caller has no connection on the probed profile to disconnect (404)"}
-  startConnectionAuthorization:              {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  startConnectionAuthorization:              {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
   completeConnectionAuthorization:           {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401, note: "the authorization state is made up and unknown to every caller (404)"}
   listDormantSourceConnections:              {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   listConnectionProfiles:                    {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
@@ -254,10 +255,10 @@ operations:
   applyInstallationAnswerFile:               {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 404, note: "404 once the installation is complete, as in every test context"}
   completeInstallation:                      {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 404, note: "404 once the installation is complete, as in every test context"}
   listLibraries:                             {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
-  createLibrary:                             {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  createLibrary:                             {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401, note: "every account may create an upload library (CREATE_LIBRARY ships to all accounts, ADR-0036, Entscheidung 5); the probe creates one"}
   testLibrarySource:                         {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
   listSourceTypes:                           {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
-  browseSource:                              {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
+  browseSource:                              {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
   getLibrary:                                {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   updateLibrary:                             {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
   deleteLibrary:                             {systemAdmin: allowed, auditor: 404, spaceAdmin: 403, curator: 403, member: 403, noRights: 404, anonymous: 401}

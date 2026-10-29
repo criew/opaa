@@ -54,6 +54,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -116,6 +117,10 @@ class PermissionMatrixIntegrationTest {
           "listAvailablePrompts",
           "searchKnowledge",
           "getMetadataFilterOptions");
+
+  /** The status each signed-in role met, by operation, across the role runs of this class. */
+  private static final Map<String, Map<Role, Integer>> SIGNED_IN_STATUSES =
+      new ConcurrentHashMap<>();
 
   /** Lists over the caller's whole organization, for the administration and the auditor. */
   private static final Set<String> ORGANIZATION_LISTINGS =
@@ -237,6 +242,13 @@ class PermissionMatrixIntegrationTest {
                   operation.id(), outcome.key, PermissionMatrix.statusClass(status), status));
       PermissionMatrix.Entry entry = MATRIX.entry(operation.id());
       String serverError = MATRIX.serverErrorOf(operation, status);
+      Map<Role, Integer> byRole =
+          SIGNED_IN_STATUSES.computeIfAbsent(operation.id(), id -> new ConcurrentHashMap<>());
+      byRole.put(role, status);
+      String sameClientError = MATRIX.sameClientErrorOf(operation, byRole);
+      if (sameClientError != null) {
+        findings.add(sameClientError);
+      }
       if (serverError != null) {
         findings.add(serverError);
       } else if (entry != null && entry.expected().get(role) != outcome) {
@@ -637,6 +649,7 @@ class PermissionMatrixIntegrationTest {
     UUID scope = UUID.randomUUID();
     UUID event = UUID.randomUUID();
     UUID profile = UUID.randomUUID();
+    UUID oauthProfile = UUID.randomUUID();
     Consumer<JdbcTemplate> seed =
         rows -> {
           noteItem(rows, item, chat, organization);
@@ -676,6 +689,12 @@ class PermissionMatrixIntegrationTest {
                   + " 'https://person.example.org', 'PERSONAL_SECRET', 'BOTH', now(), now(), 0)",
               profile,
               "Matrix-Zugang " + profile);
+          rows.update(
+              "INSERT INTO connection_profiles (id, name, source_type, server_url, auth_method,"
+                  + " ownership, created_at, updated_at, version) VALUES (?, ?, 'DROPBOX',"
+                  + " 'https://api.dropboxapi.com', 'OAUTH', 'LIBRARY', now(), now(), 0)",
+              oauthProfile,
+              "Matrix-Anmeldung " + oauthProfile);
         };
 
     Map<String, String> ids = new LinkedHashMap<>();
@@ -709,6 +728,7 @@ class PermissionMatrixIntegrationTest {
     ids.put("scopeId", scope.toString());
     ids.put("eventId", event.toString());
     ids.put("profileId", profile.toString());
+    ids.put("oauthProfileId", oauthProfile.toString());
     List<String> markers =
         List.of(
             space.toString(),

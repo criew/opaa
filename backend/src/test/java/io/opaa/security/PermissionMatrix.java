@@ -187,6 +187,35 @@ final class PermissionMatrix {
     return operation.label() + " fails with " + status;
   }
 
+  /**
+   * A finding for a probe every signed-in role meets with the same client error that is no refusal
+   * (a 400, 409 or 422 counts as allowed) on a row without a note, or {@code null}: such a probe is
+   * refused before any right is asked and tests none. Asked once all six statuses are in.
+   */
+  String sameClientErrorOf(ApiOperations.Operation operation, Map<Role, Integer> statuses) {
+    List<Integer> signedIn =
+        Arrays.stream(Role.values())
+            .filter(role -> role != Role.ANONYMOUS)
+            .map(statuses::get)
+            .toList();
+    if (signedIn.contains(null) || signedIn.stream().distinct().count() != 1) {
+      return null;
+    }
+    int status = signedIn.getFirst();
+    Entry entry = entries.get(operation.id());
+    if (status < 400 || status >= 500 || Outcome.of(status) != Outcome.ALLOWED) {
+      return null;
+    }
+    if (entry != null && entry.note() != null) {
+      return null;
+    }
+    return operation.label()
+        + " answers "
+        + status
+        + " to every signed-in role, so no right is asked: give the probe a valid request or the"
+        + " row a 'note'";
+  }
+
   /** The status class an observation records next to the outcome, such as {@code 2xx}. */
   static String statusClass(int status) {
     return status / 100 + "xx";

@@ -3,6 +3,7 @@ package io.opaa.security;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -122,6 +123,33 @@ class PermissionMatrixTest {
     assertThat(explained.serverErrorOf(listSpaces, 500)).isNotNull();
     assertThat(bare.serverErrorOf(listSpaces, 409)).isNull();
     assertThat(PermissionMatrix.statusClass(204)).isEqualTo("2xx");
+  }
+
+  @Test
+  void theSameClientErrorForEverySignedInRoleNeedsANote() {
+    ApiOperations.Operation listSpaces =
+        new ApiOperations.Operation("listSpaces", "GET", "/api/v1/spaces", List.of(), null, null);
+    Map<String, Object> row = new LinkedHashMap<>(completeRow());
+    Map<String, Object> noted = new LinkedHashMap<>(row);
+    noted.put("note", "Probe.");
+    PermissionMatrix bare = PermissionMatrix.parse(Map.of("operations", Map.of("listSpaces", row)));
+    PermissionMatrix explained =
+        PermissionMatrix.parse(Map.of("operations", Map.of("listSpaces", noted)));
+    Map<PermissionMatrix.Role, Integer> statuses = new EnumMap<>(PermissionMatrix.Role.class);
+    for (PermissionMatrix.Role role : PermissionMatrix.Role.values()) {
+      if (role != PermissionMatrix.Role.ANONYMOUS) {
+        statuses.put(role, 400);
+      }
+    }
+
+    assertThat(bare.sameClientErrorOf(listSpaces, statuses))
+        .startsWith("listSpaces (GET /api/v1/spaces) answers 400 to every signed-in role");
+    assertThat(explained.sameClientErrorOf(listSpaces, statuses)).isNull();
+    statuses.put(PermissionMatrix.Role.SYSTEM_ADMIN, 201);
+    assertThat(bare.sameClientErrorOf(listSpaces, statuses)).isNull();
+    statuses.put(PermissionMatrix.Role.SYSTEM_ADMIN, 400);
+    statuses.remove(PermissionMatrix.Role.MEMBER);
+    assertThat(bare.sameClientErrorOf(listSpaces, statuses)).as("not all roles in yet").isNull();
   }
 
   private static List<String> listSpacesWith(Map<String, Object> row) {

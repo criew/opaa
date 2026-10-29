@@ -38,7 +38,9 @@ in [ADR-0006](../docs/decisions/0006-openapi-dto-generation.md).
 Systemverwaltung (`systemAdmin`), Revision (`auditor`), Space-Admin (`spaceAdmin`), Kuratorin (`curator`), Mitglied
 (`member`), Konto ohne Rechte (`noRights`) und anonym (`anonymous`); Space-Rollen tragen die passende Freigabe auf den
 Bibliotheken des Space (Verwalten, Bearbeiten, Lesen). Rollen, Fixture und was als `allowed` zählt, stehen im
-Dateikopf. Verweigert eine Zeile allen angemeldeten Rollen gleich, braucht sie eine `note`. Ohne Eintrag schlägt
+Dateikopf. Verweigert eine Zeile allen angemeldeten Rollen gleich, braucht sie eine `note`; ebenso eine Probe, die
+alle angemeldeten Rollen mit demselben 400, 409 oder 422 beantworten – sie prüft kein Recht, und ohne `note` schlägt
+der Lauf fehl. Dann bekommt die Probe in `ProbeRequests` einen gültigen Körper. Ohne Eintrag schlägt
 `PermissionMatrixTest` fehl (auch ohne Docker) und nennt Datei und `operationId`.
 
 `PermissionMatrixIntegrationTest` ruft jede Operation in jeder Rolle auf; ein 5xx lässt den Lauf fehlschlagen, außer

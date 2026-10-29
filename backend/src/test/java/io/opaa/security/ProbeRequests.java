@@ -47,7 +47,27 @@ final class ProbeRequests {
           """
           {"sourceType": "USER", "sourceId": "{sourceId}", "targetType": "USER",
            "targetId": "{targetId}", "scope": ["OWNERSHIP"], "confirmed": true,
-           "previewId": "probe"}""");
+           "previewId": "probe"}""",
+          "createLibrary",
+          """
+          {"name": "Probe-Bibliothek", "sourceType": "UPLOAD"}""",
+          "browseSource",
+          """
+          {"sourceUrl": "https://wiki.example.org", "libraryId": "{libraryId}"}""",
+          "startConnectionAuthorization",
+          """
+          {"profileId": "{oauthProfileId}", "purpose": "LIBRARY_RECONNECT",
+           "libraryId": "{libraryId}", "serviceAccountConfirmed": true}""",
+          "upsertAssetGrant",
+          """
+          {"subjectType": "USER", "subjectId": "{targetId}", "role": "VIEWER"}""");
+
+  /**
+   * Path parameters whose example would let a rule of the domain refuse the request before the
+   * authorization is asked: a source type with a listing, so the library's MANAGER bar decides.
+   */
+  private static final Map<String, Map<String, String>> PATH_VALUES =
+      Map.of("browseSource", Map.of("sourceType", "CONFLUENCE"));
 
   private final ApiOperations api;
   private final Map<String, String> ids;
@@ -61,8 +81,11 @@ final class ProbeRequests {
   AbstractMockHttpServletRequestBuilder<?> build(ApiOperations.Operation operation) {
     String path = operation.path();
     for (ApiOperations.Parameter parameter : operation.in("path")) {
-      path =
-          path.replace("{" + parameter.name() + "}", value(parameter.name(), parameter.schema()));
+      String value =
+          PATH_VALUES
+              .getOrDefault(operation.id(), Map.of())
+              .getOrDefault(parameter.name(), value(parameter.name(), parameter.schema()));
+      path = path.replace("{" + parameter.name() + "}", value);
     }
     HttpMethod method = HttpMethod.valueOf(operation.method());
     Map<String, Object> body =
@@ -123,10 +146,10 @@ final class ProbeRequests {
 
   private String filled(String template) {
     String body = template;
-    for (String name : List.of("sourceId", "targetId", "userId")) {
-      body = body.replace("{" + name + "}", ids.getOrDefault(name, UNKNOWN.toString()));
+    for (Map.Entry<String, String> id : ids.entrySet()) {
+      body = body.replace("{" + id.getKey() + "}", id.getValue());
     }
-    return body;
+    return body.replaceAll("\\{[a-zA-Z]+Id}", UNKNOWN.toString());
   }
 
   /** A value for a parameter or a scalar property. */
