@@ -56,8 +56,11 @@ final class PdfPageLocator {
       }
       String tail = passage.substring(Math.max(0, passage.length() - PROBE_LENGTH));
       int tailStart = text.indexOf(tail, start);
-      int end = tailStart < 0 ? start : tailStart + tail.length() - 1;
       cursor = start + 1;
+      if (tailStart < 0) {
+        continue;
+      }
+      int end = tailStart + tail.length() - 1;
       ChunkAnchor anchor = ChunkAnchors.read(chunk.getMetadata());
       ChunkAnchors.write(chunk.getMetadata(), anchor.withPages(pageAt(start), pageAt(end)));
     }

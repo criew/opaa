@@ -272,13 +272,18 @@ public class MailDocumentFormat implements DocumentFormat {
       if (text.isBlank()) {
         continue;
       }
+      String headerLead = null;
       if (headerPending) {
-        text = headerContext + "\n\n" + text;
+        headerLead = headerContext + "\n\n";
+        text = headerLead + text;
         headerPending = false;
       }
       List<Document> parts = chunkingService.chunkDocuments(logName, List.of(new Document(text)));
       for (int j = 0; j < parts.size(); j++) {
         Map<String, Object> metadata = partMetadata(parts.get(j), i + 1);
+        if (j == 0 && headerLead != null) {
+          ChunkAnchors.markLead(metadata, headerLead);
+        }
         String location = locationFor(i, segments.size(), j, parts.size());
         if (location != null) {
           metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);

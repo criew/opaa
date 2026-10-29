@@ -661,6 +661,13 @@ class MailDocumentFormatTest {
     assertThat(result.chunks().get(0).getText()).endsWith("\n\nPasst, danke.");
     assertThat(result.chunks().get(0).getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
         .isEqualTo("Nachricht 1 von 2");
+    // The header block is generated, so the quoted passage starts at the message text itself.
+    Document first = result.chunks().get(0);
+    assertThat(
+            ChunkAnchors.passage(
+                first.getText(),
+                first.getMetadata().get(ChunkMetadataKeys.ANCHOR_LEAD_METADATA_KEY)))
+        .isEqualTo("Passt, danke.");
     assertThat(ChunkAnchors.read(result.chunks().get(1).getMetadata()).message()).isEqualTo(2);
     assertThat(result.chunks().get(1).getText())
         .doesNotContain("Von:")

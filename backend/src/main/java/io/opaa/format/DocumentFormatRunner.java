@@ -113,7 +113,10 @@ public final class DocumentFormatRunner {
         metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, cleaned(location, findings));
       }
       if (metadata.get(ChunkMetadataKeys.ANCHOR_LEAD_METADATA_KEY) instanceof String lead) {
-        metadata.put(ChunkMetadataKeys.ANCHOR_LEAD_METADATA_KEY, cleaned(lead, findings));
+        // the lead is part of the chunk text, whose findings are already counted
+        metadata.put(
+            ChunkMetadataKeys.ANCHOR_LEAD_METADATA_KEY,
+            cleaned(lead, new EnumMap<>(IngestTextSanitizer.Finding.class)));
       }
       ChunkAnchors.completed(metadata, text);
       chunks.add(new Document(chunk.getId(), text, metadata));
