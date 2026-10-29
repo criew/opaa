@@ -15,7 +15,7 @@ jederzeit auch lokal ausführen (unten).
 | Quelle | Manager | Bereichs-Label |
 |---|---|---|
 | `backend/gradle/libs.versions.toml` (einzige zulässige Versionsquelle, AGENTS.md) | `gradle` | `backend` |
-| Gradle-Wrapper | `gradle-wrapper` | `backend` |
+| Gradle-Wrapper samt `distributionSha256Sum`; ohne Auto-Merge (siehe [Gradle-Prüfsummen](#gradle-prüfsummen)) | `gradle-wrapper` | `backend` |
 | `frontend/package.json` + `pnpm-lock.yaml` (inkl. `packageManager`-Pinning) | `npm` | `frontend` |
 | `e2e/package.json` + `pnpm-lock.yaml` | `npm` | `frontend` |
 | cdxgen für die Frontend-SBOM (`.github/tools/cdxgen/package.json` + `pnpm-lock.yaml`); eigene Gruppe ohne Auto-Merge, weil kein Required Check den Aufruf des Release-Laufs ausübt | `npm` | `frontend`, `ci` |
@@ -25,9 +25,9 @@ jederzeit auch lokal ausführen (unten).
 | Helm-Chart (`deploy/helm/opaa/`): Abhängigkeiten in `Chart.yaml` (derzeit keine) und Images mit festem Tag in `values.yaml` (die Evaluierungsdatenbank); Backend und Frontend folgen der Chart-Version und tragen dort keinen Tag | `helmv3`, `helm-values` | `ci` |
 | Images der Hilfsdienste im Kubernetes-Erprobungsaufbau (`examples/kubernetes-trial/manifests/` und `jobs/`); ohne Auto-Merge, weil keine CI den Aufbau prüft — Beleg vor dem Merge mit `trial.sh up` (README dort) | `kubernetes` | `ci` |
 | Demo-Seed-/Generator-Requirements (`demo/*/requirements.txt`) | `pip_requirements` | `demo` |
-| pytest und PyYAML der CI-Jobs `report-script`, `seed-script` und Datenwirkung (`.github/requirements-ci.txt`) und die Pakete des Update-Pakets, markdown-it-py mit mdurl (`.github/requirements-release.txt`, je Version mit `--hash`; Renovate erneuert die Hashes beim Bump, die Jobs installieren mit `--require-hashes`); ohne Auto-Merge, weil keiner dieser Jobs ein Required Check ist | `pip_requirements` | `ci` |
+| pytest und PyYAML der CI-Jobs `report-script`, `seed-script` und Datenwirkung (`.github/requirements-ci.txt`), die Pakete des Update-Pakets, markdown-it-py mit mdurl (`.github/requirements-release.txt`), des Seeds im axe-Lauf (`.github/requirements-seed.txt`) und die Zeitzonendaten des Tagesreports (`.github/requirements-report.txt`); jede Datei listet alle Pakete samt Abhängigkeiten mit `--hash`, Renovate erneuert die Hashes beim Bump, jeder Job installiert mit `--require-hashes`. Ohne Auto-Merge, weil keiner dieser Jobs ein Required Check ist | `pip_requirements` | `ci` |
 | Node-Version für die lokale Entwicklung (`frontend/.nvmrc`) | `nvm` | `frontend` |
-| Pins, die kein regulärer Manager sieht: die Image-Konstanten in `S3TestFixture.java` und `KeycloakFixture.java`, die Werkzeugversionen der Chart-Prüfung in `helm-chart.yml`, die Helm-Version der Chart-Veröffentlichung in `publish-images.yml`, das Renovate-Image in `renovate.yml` (siehe [unten](#renovate-image-und-token-des-workflows)) | `custom.regex` | `ci` |
+| Pins, die kein regulärer Manager sieht: die Image-Konstanten in `S3TestFixture.java` und `KeycloakFixture.java`, die Werkzeugversionen der Chart-Prüfung in `helm-chart.yml`, die Helm-Version der Chart-Veröffentlichung in `publish-images.yml`, das Renovate-Image in `renovate.yml` (siehe [unten](#renovate-image-und-token-des-workflows)) und das alpine-Hilfsimage in `retrieval-regression.yml` (`ALPINE_IMAGE`, Version und Index-Digest; ein neuer Digest bei gleicher Version braucht die Freigabe in der Abhängigkeits-Übersicht) | `custom.regex` | `ci` |
 
 **Rein transitive Sicherheits-Pins brauchen einen `[libraries]`-Eintrag.** Wird eine Bibliothek
 angehoben, die kein Build-Skript direkt deklariert (eingebetteter Tomcat, Bouncy Castle —
@@ -58,10 +58,85 @@ die erste passende Rubrik gewinnt. Davor steht nur noch „Datenrelevante Änder
 bei Bedarf ein Mensch. Bereichs-Labels ergänzen die `packageRules` per `addLabels`; eine Regel
 mit `labels` würde `dependencies` ersetzen. Die Abhängigkeits-Übersicht trägt `ci`.
 
-**npm-Releases brauchen 24 h Reife** (`minimumReleaseAge: '1 day'`, #954): pnpm 11 lehnt
-jüngere Releases per Standard-Supply-Chain-Richtlinie ohnehin ab — Renovate schlägt deshalb
-erst vor, was pnpm auch installiert. Ein wegen dieser Frist noch zurückgehaltenes Update
-erscheint als „Pending" in der Abhängigkeits-Übersicht.
+**Jedes Update wartet drei Tage** (`minimumReleaseAge: '3 days'` auf oberster Ebene, #3340):
+Renovate legt einen Branch erst an, wenn die vorgeschlagene Version mindestens drei Tage alt ist,
+gleich welcher Manager — Gradle, Gradle-Wrapper, npm, Docker, Helm, pip, Actions und die
+Regex-Manager. Bis dahin steht das Update als „Pending“ in der Abhängigkeits-Übersicht; ohne
+Branch gibt es weder einen PR-Lauf noch einen Auto-Merge. Ein kompromittiertes Release, das in
+dieser Zeit auffällt und zurückgezogen wird, erreicht `main` und das Image `:main` damit nicht.
+Liefert eine Datasource keinen Zeitstempel, bleibt das Update „Pending“
+(`minimumReleaseAgeBehaviour: 'timestamp-required'`, Vorgabe). Für npm liegt die Frist über der
+von pnpm, das Releases unter 24 h ohnehin ablehnt (#954); eine Regel, die die Frist für npm unter
+einen Tag senkt, machte Update-PRs zwangsläufig rot. Ausgenommen von der Frist sind nur die
+Sicherheits-PRs (nächster Abschnitt).
+
+## Sicherheits-PRs und Lockfile-Pflege
+
+- **Sicherheits-PRs** entstehen aus zwei Quellen: aus den offenen Dependabot-Alerts
+  (`vulnerabilityAlerts`) und aus der OSV-Datenbank (`osvVulnerabilityAlerts: true`), die Renovate
+  in jedem Lauf herunterlädt und offline abfragt. OSV deckt die **direkten** Abhängigkeiten der
+  Datasources `maven`, `npm` und `pypi` ab, auch solche ohne GitHub-Advisory. Sicherheits-PRs
+  kommen sofort, ohne Wartefrist und ohne `prConcurrentLimit`, und **mergen nie automatisch**
+  (`vulnerabilityAlerts.automerge: false`): Gerade eine frische Version, die sich als
+  Sicherheitskorrektur ausgibt, sieht vor dem Merge ein Mensch. Meldet OSV eine Version als
+  bösartig, legt Renovate für das Paket keinen PR an und warnt im Log.
+- **Lockfile-Pflege** (`lockFileMaintenance`, montags im Lauf um 06:23 bzw. 05:23 Uhr, nur auf
+  `main`): Renovate löst jede `pnpm-lock.yaml` (`frontend/`, `e2e/`, `.github/tools/*`) neu auf und
+  hebt damit auch **rein transitive** Pakete, die weder ein `package.json`-Bump noch ein
+  Sicherheits-PR erreicht. Der PR mergt nicht automatisch: Für die transitiven Versionen gilt nur
+  die 24-h-Frist von pnpm, nicht die drei Tage oben. Vor dem Merge den Lockfile-Diff auf
+  unerwartete neue Pakete durchsehen. Auf den Wartungsbranches ist die Lockfile-Pflege aus
+  (Sperrregel, [Wartungsbranches](#wartungsbranches)).
+
+## Gradle-Prüfsummen
+
+**Dependency Verification.** `backend/gradle/verification-metadata.xml` hält für jedes Artefakt,
+das der Bau auflöst (Bibliotheken, Plugins, POM- und Module-Dateien), die SHA-256-Prüfsumme
+(`<verify-metadata>true</verify-metadata>`, keine Signaturen). Gradle bricht jeden Bau, auch im
+Docker-Image-Build, mit `Dependency verification failed` ab, sobald ein Artefakt nicht passt oder
+fehlt. Ein ausgetauschtes Artefakt im Repository oder auf dem Weg dorthin fällt so auf, nicht nur
+eine neue Version.
+
+**Wrapper.** `backend/gradle/wrapper/gradle-wrapper.properties` trägt `distributionSha256Sum`;
+der Wrapper prüft die heruntergeladene Distribution dagegen. Die Prüfsumme stammt von
+[gradle.org/release-checksums](https://gradle.org/release-checksums/) („Complete (-all) ZIP“);
+die Seite nennt auch die Prüfsumme der Wrapper-JAR, gegen die sich
+`backend/gradle/wrapper/gradle-wrapper.jar` abgleichen lässt. Ein Wrapper-Update von Renovate
+holt die neue Prüfsumme aus der `.sha256`-Datei neben der Distribution und schreibt sie mit, mergt
+aber nie automatisch.
+
+**Was Renovate pflegt.** Findet Renovate die Datei, ruft es bei jedem `gradle`-Update
+`./gradlew --write-verification-metadata sha256 dependencies` auf und committet die neuen Einträge
+mit. Dafür braucht es `RENOVATE_ALLOWED_UNSAFE_EXECUTIONS=gradleWrapper` (renovate.yml), also
+genau die Ausführung des Wrappers, die Renovate als unsicher einstuft: Der Aufruf lädt die
+**neue** Plugin-Version und führt sie im Renovate-Container aus, in dem auch `RENOVATE_TOKEN`
+liegt. Ohne die Freigabe bliebe jeder Gradle-Update-PR rot. Getragen wird das Restrisiko durch
+die Wartefrist: Renovate führt den Wrapper erst für Versionen aus, die drei Tage alt sind.
+Ausnahme sind Sicherheits-PRs, die ohne Frist entstehen; einer für ein Gradle-Plugin führt die
+neue Version sofort aus.
+
+**Was Renovate nicht pflegt.** `dependencies` löst nur die Konfigurationen der Projekte auf.
+Artefakte, die ein Plugin erst beim Ausführen eines Tasks nachlädt, fehlen danach; heute betrifft
+das google-java-format, dessen Version Spotless festlegt. Ein Spotless-Update bleibt deshalb rot
+(`spotlessCheck` im Job `backend`), bis jemand die Einträge lokal ergänzt.
+
+**Von Hand ergänzen oder neu erzeugen** (aus `backend/`):
+
+```bash
+LANG=C.UTF-8 ./gradlew --write-verification-metadata sha256 \
+  dependencies buildEnvironment spotlessCheck cyclonedxBom javadoc testJavadoc build -x test
+```
+
+Der Aufruf ergänzt die Datei um alles, was diese Tasks auflösen, und entfernt nichts. Um
+Einträge veralteter Versionen loszuwerden, die Datei vorher löschen; der Aufruf erzeugt sie dann
+vollständig neu (am 29.10.2026 belegt: identisch mit einer Fassung, die zusätzlich jede
+auflösbare Konfiguration aller Projekte auflöst). Den Diff vor dem Commit durchsehen: Neue
+Einträge gehören zu den geänderten Versionen. Eine **geänderte** Prüfsumme einer schon
+vorhandenen Version ist ein Alarmzeichen und wird nicht übernommen, bevor geklärt ist, warum
+sich das Artefakt geändert hat. Stichproben lassen sich gegen Maven Central abgleichen
+(`curl -sS https://repo.maven.apache.org/maven2/<pfad>/<datei> | sha256sum`). Ein lokal
+konfigurierter Spiegel (etwa per Gradle-Init-Skript) ändert nichts an den Prüfsummen, solange er
+dieselben Artefakte ausliefert; ein solches Init-Skript gehört nicht ins Repository.
 
 **npm wird gepinnt** (`rangeStrategy: 'pin'` für `dependencies`/`devDependencies`):
 `frontend/` und `e2e/` sind Anwendungen — exakte Versionen in der `package.json` machen jeden
@@ -564,16 +639,19 @@ docker run --rm \
 ```
 
 `RENOVATE_ALLOWED_UNSAFE_EXECUTIONS=gradleWrapper` erlaubt Renovate, bei einem Gradle-Update den
-Wrapper-Befehl auszuführen (#997) — ohne die Freigabe aktualisiert es nur
-`gradle-wrapper.properties`, nicht die Wrapper-Skripte/JAR, und der Lauf meldet eine WARN-Zeile im
-Dependency-Dashboard. Bewusst nur dieser eine Befehl, keine weiteren unsicheren Ausführungen.
+Wrapper-Befehl auszuführen (#997) — ohne die Freigabe aktualisiert es weder die Wrapper-Skripte/JAR
+noch `gradle/verification-metadata.xml`, und Gradle-Update-PRs blieben rot. Bewusst nur dieser
+eine Befehl, keine weiteren unsicheren Ausführungen; Restrisiko und Ausgleich stehen unter
+[Gradle-Prüfsummen](#gradle-prüfsummen).
 
 Der Lauf ist idempotent: erneutes Ausführen aktualisiert bestehende Update-Branches (Rebase
 bei Bedarf), schließt Überholtes und legt nur Neues an.
 
 **Auto-Merge (#951, eingeschränkt durch #1002):** Renovate eröffnet seine PRs mit aktiviertem
 GitHub-Auto-Merge (Squash) — gemergt wird automatisch, sobald die **Required Checks** grün
-sind. Das gilt für minor/patch/pin/digest; **Major-Updates sind ausgenommen** und bleiben als
+sind; der Branch entsteht erst nach Ablauf der Wartefrist von drei Tagen. Das gilt für
+minor/patch/pin/digest; **Major-Updates sind ausgenommen**, ebenso Wrapper-Updates,
+Sicherheits-PRs und die Lockfile-Pflege und bleiben als
 normale PRs zur menschlichen Entscheidung offen (Hintergrund: das auto-gemergte
 `eclipse-temurin`-v25-Major brach den Backend-Image-Build, siehe #1002 und „Typische
 Fehlerbilder"). Ein unerwünschtes Update lehnt man durch Schließen des PRs ab (Renovate legt
@@ -602,6 +680,12 @@ docker run --rm -v "$(pwd)":/usr/src/app -w /usr/src/app \
   Default-Branch — erst mergen, dann laufen lassen.
 - **403/401 beim echten Lauf:** Token abgelaufen oder Zuschnitt zu eng (siehe
   [Token: minimale Rechte](#token-minimale-rechte)).
+- **`Dependency verification failed` in einem Gradle-Update-PR:** Ein Artefakt, das der Bau
+  auflöst, fehlt in `backend/gradle/verification-metadata.xml`, meist eines, das ein Plugin erst
+  beim Ausführen nachlädt (Spotless, siehe [Gradle-Prüfsummen](#gradle-prüfsummen)). Den Branch
+  auschecken, den Befehl dort ausführen, den Diff prüfen und auf den Branch committen. Fehlen die
+  Einträge auch für die eigentlichen Bibliotheken, hat Renovate den Wrapper nicht ausführen
+  dürfen; dann steht eine WARN-Zeile zu `allowedUnsafeExecutions` im Log des Laufs.
 - **Gradle-Updates fehlen im Log:** Der `gradle`-Manager braucht die
   `libs.versions.toml`-Einträge in Standardform (`[versions]`/`[libraries]`-Referenzen) —
   direkt in `build.gradle.kts` eingetragene Versionen sind ohnehin verboten (AGENTS.md). Ein

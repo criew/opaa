@@ -9,6 +9,11 @@ Jede Bibliotheks- und Plugin-Version steht in `backend/gradle/libs.versions.toml
 Abhängigkeiten stehen dort in `[libraries]`, verwandte in `[bundles]` (`spring-boot`, `spring-ai`, `test-deps`), und
 `build.gradle.kts` referenziert sie über `libs.*`, `libs.bundles.*` und `libs.versions.*`.
 
+Gradle prüft jedes aufgelöste Artefakt gegen seine SHA-256-Prüfsumme in `backend/gradle/verification-metadata.xml`.
+Eine neue oder geänderte Abhängigkeit bricht den Bau mit `Dependency verification failed`, bis ihre Prüfsummen
+eingetragen sind; den Befehl und die Prüfung des Diffs beschreibt
+[docs/renovate.md](../docs/renovate.md#gradle-prüfsummen).
+
 ## Zeit
 
 Services lesen die Zeit über die `Clock`-Bean aus `io.opaa.common.ClockConfiguration` (`Instant.now(clock)`), damit
