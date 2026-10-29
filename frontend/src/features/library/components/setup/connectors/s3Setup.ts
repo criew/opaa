@@ -36,11 +36,12 @@ export const s3Setup: SourceSetupSpec<S3SourceValues> = {
       id: 'scope',
       summary: (values) => {
         const list = listSummary(
-          false,
+          values.allBuckets,
           ['Bucket oder Präfix', 'Buckets und Präfixe'],
           values.scopes
             .filter((scope) => scope.bucket.trim() !== '')
             .map((scope) => displayPath(`${scope.bucket}/${scope.prefix}`)),
+          'Alle Buckets',
         )
         // the patterns are entries of their own: what is kept („nur …“), what is left out
         const lines = (text: string) =>
@@ -85,8 +86,10 @@ export const s3Setup: SourceSetupSpec<S3SourceValues> = {
         values.sessionToken.includes(':'),
       )
     }
-    const scopes = values.scopes.filter((scope) => scope.bucket.trim() !== '')
-    at('scopes', 'Buckets und Präfixe fehlen', scopes.length === 0)
+    const scopes = values.allBuckets
+      ? []
+      : values.scopes.filter((scope) => scope.bucket.trim() !== '')
+    at('scopes', 'Buckets und Präfixe fehlen', !values.allBuckets && scopes.length === 0)
     at('scopes', `Höchstens ${MAX_S3_SCOPES} Buckets und Präfixe`, scopes.length > MAX_S3_SCOPES)
     const invalid = scopes.map(validateS3Scope).find(Boolean)
     if (invalid) at('scopes', invalid)

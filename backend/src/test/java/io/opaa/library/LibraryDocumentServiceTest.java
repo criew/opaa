@@ -294,7 +294,7 @@ class LibraryDocumentServiceTest {
         folderRepository,
         folderService,
         attachmentExtractor,
-        new AttachmentProperties(0, 0, 0),
+        new AttachmentProperties(0, 0, 0, 0, 0),
         new AttachmentExtractionLimiter(limits),
         ProductionDocumentFormats.supportedFormats(),
         TestSourceConnectors.connectors()
@@ -1173,6 +1173,28 @@ class LibraryDocumentServiceTest {
     verify(documentRepository, never()).delete(any());
   }
 
+  // regression guard for #3358 (3): the single delete refuses a connector library like the bulk one
+  @Test
+  void singleDeleteIsRefusedForAConnectorLibrary() {
+    grantEditor();
+    KnowledgeLibrary connector = mock(KnowledgeLibrary.class);
+    when(connector.getId()).thenReturn(libraryId);
+    when(connector.getOrganizationId()).thenReturn(organizationId);
+    when(connector.getSourceType()).thenReturn(SourceTypes.CONFLUENCE);
+    when(libraryRepository.findByIdAndOrganizationId(libraryId, organizationId))
+        .thenReturn(Optional.of(connector));
+    UUID documentId = UUID.randomUUID();
+    Document synced =
+        new Document("seite.html", "conf://seite", "text/html", 5L, SourceTypes.CONFLUENCE);
+    synced.setLibraryId(libraryId);
+    synced.setOrganizationId(organizationId);
+    lenient().when(documentRepository.findById(documentId)).thenReturn(Optional.of(synced));
+
+    assertThatThrownBy(() -> service.deleteDocument(libraryId, documentId, caller))
+        .isInstanceOf(ConflictException.class);
+    verify(documentRepository, never()).delete(any());
+  }
+
   @Test
   void bulkDeleteRequiresTheSameRightAsTheSingleDelete() {
     grantViewerOnly();
@@ -1950,7 +1972,7 @@ class LibraryDocumentServiceTest {
             folderRepository,
             folderService,
             attachmentExtractor,
-            new AttachmentProperties(0, 0, 0),
+            new AttachmentProperties(0, 0, 0, 0, 0),
             new AttachmentExtractionLimiter(new AttachmentExtractionProperties(0, null)),
             ProductionDocumentFormats.supportedFormats(),
             TestSourceConnectors.connectors()

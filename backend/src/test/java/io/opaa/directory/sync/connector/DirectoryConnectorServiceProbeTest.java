@@ -117,7 +117,49 @@ class DirectoryConnectorServiceProbeTest {
     verify(keycloak, never()).probe(any(), anyString(), anyString());
   }
 
-  private void storeConnector(String baseUrl) {
+  // regression guard for #3358 (5): a derived admin address does not take the secret to a new host
+  @Test
+  void anIssuerOnAnotherHostRemovesTheAccessWithADerivedAddress() {
+    DirectoryConnector stored = storeConnector(null);
+    provider.replaceDetails(
+        "Keycloak",
+        "https://sso.fremd.example/realms/haus",
+        "opaa",
+        null,
+        OidcClaimMapping.keycloakDefaults());
+
+    service.forgetDerivedAccessAfterIssuerChange(
+        UUID.randomUUID(), UUID.randomUUID(), provider, ISSUER);
+
+    verify(repository).delete(stored);
+  }
+
+  @Test
+  void anAccessWithItsOwnAddressOrTheSameDerivedHostIsKept() {
+    storeConnector("https://keycloak.intern:8443");
+    provider.replaceDetails(
+        "Keycloak",
+        "https://sso.fremd.example/realms/haus",
+        "opaa",
+        null,
+        OidcClaimMapping.keycloakDefaults());
+    service.forgetDerivedAccessAfterIssuerChange(
+        UUID.randomUUID(), UUID.randomUUID(), provider, ISSUER);
+
+    storeConnector(null);
+    provider.replaceDetails(
+        "Keycloak",
+        "https://sso.example.org/realms/anderer-realm",
+        "opaa",
+        null,
+        OidcClaimMapping.keycloakDefaults());
+    service.forgetDerivedAccessAfterIssuerChange(
+        UUID.randomUUID(), UUID.randomUUID(), provider, ISSUER);
+
+    verify(repository, never()).delete(any());
+  }
+
+  private DirectoryConnector storeConnector(String baseUrl) {
     DirectoryConnector connector =
         new DirectoryConnector(
             UUID.randomUUID(),
@@ -128,6 +170,7 @@ class DirectoryConnectorServiceProbeTest {
             STORED_SECRET,
             Clock.systemUTC().instant());
     when(repository.findByProviderId(provider.getId())).thenReturn(Optional.of(connector));
+    return connector;
   }
 
   private void probe(String baseUrl, String secret) {

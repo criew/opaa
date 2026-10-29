@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 
 /**
@@ -135,6 +136,42 @@ public class S3ConnectionService {
       };
     } catch (S3AccessException e) {
       throw new ValidationException(e.getMessage());
+    }
+  }
+
+  /**
+   * "Alle Buckets" as a run would resolve it now, each listed bucket probed once within {@link
+   * #PROBE_DEADLINE}; {@code null} when the key may not list the buckets. A refused key, a blocked
+   * or unreachable endpoint is the access layer's exception for the caller to render. The test
+   * knows no indexed documents, so it reports an unreadable bucket as left out, never as withheld.
+   */
+  S3AllBuckets.Resolution resolveAllBuckets(
+      String rawUrl, String credentials, String region, boolean pathStyle)
+      throws S3AccessException, InterruptedException {
+    URI endpoint = normalizeEndpoint(rawUrl);
+    S3Credentials parsed;
+    try {
+      parsed = S3Credentials.parse(credentials);
+    } catch (S3Credentials.InvalidCredentialsFormatException e) {
+      throw new ValidationException(e.getMessage());
+    }
+    S3Connection connection = new S3Connection(endpoint, region, pathStyle, parsed);
+    Instant deadline = clock.instant().plus(PROBE_DEADLINE);
+    try (S3ObjectStore store = clientFactory.createForProbe(connection, List.of())) {
+      if (!(store.listBuckets() instanceof S3BucketListing.Listed listed)) {
+        return null;
+      }
+      List<S3Scope> scopes = new ArrayList<>();
+      for (String name : listed.names()) {
+        try {
+          scopes.add(S3Scope.of(name, ""));
+        } catch (S3Scope.InvalidS3ScopeException e) {
+          // left out with its reason by S3AllBuckets
+        }
+      }
+      clientFactory.validateTargets(connection, scopes);
+      return S3AllBuckets.resolve(
+          store, listed, connection.region(), Set.of(), () -> clock.instant().isAfter(deadline));
     }
   }
 

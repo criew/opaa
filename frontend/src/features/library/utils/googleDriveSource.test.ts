@@ -11,9 +11,23 @@ import {
 
 const values = (patch: Partial<GoogleDriveSourceValues>): GoogleDriveSourceValues => ({
   ...EMPTY_GOOGLE_DRIVE_VALUES,
+  allScopes: false,
   keyFile: '{"client_email":"x"}',
   scopes: [{ kind: 'folder', id: 'f1', name: 'Freigabe' }],
   ...patch,
+})
+
+describe('„Alle Ablagen“', () => {
+  it('sends allScopes without a selection and needs none', () => {
+    const all = values({ allScopes: true })
+    expect(googleDrivePayloadOf(all).sourceSettings).toEqual({
+      allScopes: true,
+      scopes: [],
+      subject: null,
+    })
+    expect(validateGoogleDriveValues({ ...all, scopes: [] }, false)).toBeNull()
+    expect(EMPTY_GOOGLE_DRIVE_VALUES.allScopes).toBe(true)
+  })
 })
 
 describe('googleDriveSource (ADR-0040)', () => {

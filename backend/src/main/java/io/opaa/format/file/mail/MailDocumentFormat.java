@@ -11,6 +11,8 @@ import io.opaa.format.chunk.ChunkAnchor;
 import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.shared.ParserLimitExceededException;
+import io.opaa.format.shared.ParserLimitProperties;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -60,12 +62,22 @@ public class MailDocumentFormat implements DocumentFormat {
   private final ChunkingService chunkingService;
   private final MailProperties properties;
   private final Clock clock;
+  private final ParserLimitProperties limits;
 
   public MailDocumentFormat(
       ChunkingService chunkingService, MailProperties properties, Clock clock) {
+    this(chunkingService, properties, clock, ParserLimitProperties.DEFAULTS);
+  }
+
+  public MailDocumentFormat(
+      ChunkingService chunkingService,
+      MailProperties properties,
+      Clock clock,
+      ParserLimitProperties limits) {
     this.chunkingService = chunkingService;
     this.properties = properties;
     this.clock = clock;
+    this.limits = limits;
   }
 
   @Override
@@ -155,7 +167,13 @@ public class MailDocumentFormat implements DocumentFormat {
 
   private DocumentFormatResult resultOf(ParsedMailMessage message, String logName) {
     String headerContext = headerContextText(message);
+    // checked before the splitter runs, which appends whatever is left past its chunk count to
+    // the last chunk
+    if ((long) headerContext.length() + message.bodyText().length() > limits.maxTextCharacters()) {
+      throw ParserLimitExceededException.textCharacters("Mail message", limits.maxTextCharacters());
+    }
     List<Document> chunks = bodyChunks(message, logName, headerContext);
+    limits.requireTextWithinLimit(chunks, "Mail message");
     List<DiscoveredAttachment> discovered = discoveredAttachments(message.attachments());
 
     if (chunks.isEmpty()) {
@@ -278,7 +296,8 @@ public class MailDocumentFormat implements DocumentFormat {
         text = headerLead + text;
         headerPending = false;
       }
-      List<Document> parts = chunkingService.chunkDocuments(logName, List.of(new Document(text)));
+      List<Document> parts =
+          withinChunkLimit(chunkingService.chunkDocuments(logName, List.of(new Document(text))));
       for (int j = 0; j < parts.size(); j++) {
         Map<String, Object> metadata = partMetadata(parts.get(j), i + 1);
         if (j == 0 && headerLead != null) {
@@ -293,7 +312,8 @@ public class MailDocumentFormat implements DocumentFormat {
     }
     if (headerPending && !message.attachments().isEmpty()) {
       List<Document> headerParts =
-          chunkingService.chunkDocuments(logName, List.of(new Document(headerContext)));
+          withinChunkLimit(
+              chunkingService.chunkDocuments(logName, List.of(new Document(headerContext))));
       for (int j = 0; j < headerParts.size(); j++) {
         Map<String, Object> metadata = partMetadata(headerParts.get(j), 1);
         String location = locationFor(0, 1, j, headerParts.size());
@@ -397,5 +417,13 @@ public class MailDocumentFormat implements DocumentFormat {
         log.warn("Failed to delete extracted mail attachment {}", attachment.tempFile(), e);
       }
     }
+  }
+
+  private static List<Document> withinChunkLimit(List<Document> parts) {
+    if (ChunkingService.exceedsChunkLimit(parts)) {
+      throw new ParserLimitExceededException(
+          "Mail message needs more than " + ChunkingService.MAX_CHUNKS + " chunks");
+    }
+    return parts;
   }
 }

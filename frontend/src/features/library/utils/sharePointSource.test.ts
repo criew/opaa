@@ -6,6 +6,7 @@ import {
   sharePointLibraryName,
   sharePointPayloadOf,
   sharePointSettingsFromLibrary,
+  sharePointWholeSitesOf,
   sharePointIdsValid,
   type SharePointLibraryChoice,
 } from './sharePointSource'
@@ -53,9 +54,26 @@ describe('sharePointSource (ADR-0047)', () => {
     )
   })
 
+  it('takes a site whole as an entry without a drive, and reads it back', () => {
+    const site = { id: 'contoso.sharepoint.com,1,2', name: 'Rathaus' }
+    expect(
+      sharePointPayloadOf({
+        allLibraries: true,
+        sites: [site],
+        libraries: [{ driveId: 'b!a', name: null, folders: [] }],
+        fullSyncIntervalDays: null,
+      }).sourceSettings,
+    ).toEqual({ libraries: [{ site }] })
+    expect(sharePointWholeSitesOf({ libraries: [{ site }, { driveId: 'b!a', site }] })).toEqual([
+      site,
+    ])
+  })
+
   it('sends the fixed Graph address, no secret, and named folders as objects', () => {
     expect(
       sharePointPayloadOf({
+        allLibraries: false,
+        sites: [],
         libraries: [
           {
             driveId: 'b!a',
@@ -119,7 +137,12 @@ describe('sharePointSource (ADR-0047)', () => {
       { driveId: 'b!c', name: null, folders: [] },
     ])
     expect(
-      sharePointPayloadOf({ libraries: stored, fullSyncIntervalDays: null }).sourceSettings,
+      sharePointPayloadOf({
+        allLibraries: false,
+        sites: [],
+        libraries: stored,
+        fullSyncIntervalDays: null,
+      }).sourceSettings,
     ).toEqual({
       libraries: [
         {
@@ -146,7 +169,10 @@ describe('sharePointSource (ADR-0047)', () => {
 
   it('refuses no library, more than fifty and ids the connector would refuse, at the field', () => {
     const issues = (libraries: SharePointLibraryChoice[]) =>
-      sharePointSetup.issues({ libraries, fullSyncIntervalDays: null }, context)
+      sharePointSetup.issues(
+        { allLibraries: false, sites: [], libraries, fullSyncIntervalDays: null },
+        context,
+      )
     expect(issues(EMPTY_SHAREPOINT_VALUES.libraries)).toEqual([
       { field: 'libraries', message: 'Dokumentbibliotheken fehlen' },
     ])

@@ -12,6 +12,8 @@ import io.opaa.organization.Organization;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -240,6 +242,32 @@ public class UserService {
     }
     Pageable limit = PageRequest.of(0, SEARCH_RESULT_LIMIT);
     return userRepository.searchByOrganizationId(organizationId, trimmed, limit);
+  }
+
+  /**
+   * The display name of the sign-in each of {@code found} comes from, by account id - absent where
+   * no configured provider carries the account's issuer any more. One read of the provider rows for
+   * all of them.
+   */
+  public Map<UUID, String> providerNamesOf(Collection<User> found) {
+    if (found.isEmpty()) {
+      return Map.of();
+    }
+    Map<String, String> nameByIssuer = new HashMap<>();
+    providerRepository
+        .findAll()
+        .forEach(
+            provider ->
+                nameByIssuer.put(
+                    OidcIssuerUris.normalize(provider.getIssuerUri()), provider.getDisplayName()));
+    Map<UUID, String> names = new HashMap<>();
+    for (User user : found) {
+      String name = nameByIssuer.get(OidcIssuerUris.normalize(user.getIssuer()));
+      if (name != null) {
+        names.put(user.getId(), name);
+      }
+    }
+    return names;
   }
 
   /**

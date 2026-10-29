@@ -704,6 +704,41 @@ class SharePointSourceConnectorTest {
     assertThat(server.downloadAuthorizations()).containsOnly("(none)");
   }
 
+  @Test
+  void underAWholeSiteTheOriginalComesFromAnyDocumentLibraryTheSiteStillHas() throws Exception {
+    String bau =
+        "contoso.sharepoint.com,4c712604-1370-44e7-a1f5-426573fda80a,"
+            + "4d2244c3-251a-49ea-93a8-39e1c3a060fe";
+    server.site(bau, "contoso.sharepoint.com", "/sites/bau", "Bauamt");
+    server.drive(bau, "b!plaene", "Pläne", "documentLibrary");
+    server.file("b!plaene", "plan", "Plan.txt", FakeGraphServer.rootId("b!plaene"), bytes("Plan"));
+    ConnectorData wholeSite =
+        ConnectorData.of(Map.of("libraries", List.of(Map.of("site", Map.of("id", SITE)))));
+
+    Optional<DocumentContent> original =
+        connector.openOriginal(
+            document(DriveRule.SHAREPOINT.filePath(DRIVE_0, "bericht")),
+            mock(KnowledgeLibrary.class),
+            withToken(wholeSite));
+    Optional<DocumentContent> otherSite =
+        connector.openOriginal(
+            document(DriveRule.SHAREPOINT.filePath("b!plaene", "plan")),
+            mock(KnowledgeLibrary.class),
+            withToken(wholeSite));
+    Optional<DocumentContent> notALibrary =
+        connector.openOriginal(
+            document(DriveRule.SHAREPOINT.filePath("b!onedrive", "bericht")),
+            mock(KnowledgeLibrary.class),
+            withToken(wholeSite));
+
+    assertThat(original).isPresent();
+    try (InputStream in = original.get().stream()) {
+      assertThat(new String(in.readAllBytes(), StandardCharsets.UTF_8)).isEqualTo("Ein Bericht.");
+    }
+    assertThat(otherSite).as("a library of a site the settings do not take").isEmpty();
+    assertThat(notALibrary).as("the site's drive that is no document library").isEmpty();
+  }
+
   private static String siteId(int n) {
     return "contoso.sharepoint.com,%08d-0000-0000-0000-000000000000,%08d-0000-0000-0000-000000000000"
         .formatted(n, n);

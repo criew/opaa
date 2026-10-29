@@ -50,13 +50,14 @@ public class ExternalAccessTokenAdminController {
   @GetMapping
   public AdminExternalAccessTokenListResponse listAllExternalAccessTokens(
       @RequestParam(required = false) ExternalAccessTokenStatus status,
-      @RequestParam(required = false) Integer expiringWithinDays) {
+      @RequestParam(required = false) Integer expiringWithinDays,
+      @Caller CurrentUser caller) {
     if (expiringWithinDays != null && (expiringWithinDays < 1 || expiringWithinDays > 365)) {
       throw new ValidationException("expiringWithinDays muss zwischen 1 und 365 liegen");
     }
     Instant now = clock.instant();
     return new AdminExternalAccessTokenListResponse(
-        adminService.list(status, expiringWithinDays).stream()
+        adminService.list(caller.organizationId(), status, expiringWithinDays).stream()
             .map(view -> ExternalAccessTokenResponseMapper.toAdmin(view, now))
             .toList());
   }

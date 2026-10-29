@@ -491,6 +491,22 @@ describe('OidcProviderManagementPage', () => {
     expect(mockOidcProviders.find((p) => p.displayName === 'Partnerportal')?.sortOrder).toBe(1)
   })
 
+  it('warns before an issuer change that a derived directory access is removed', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
+    const dialog = await openEditDialog(user, 'Verzeichnisdienst')
+    expect(within(dialog).queryByText(/Verzeichniszugang/)).not.toBeInTheDocument()
+
+    const issuer = within(dialog).getByLabelText(/^Issuer-URI/)
+    await user.clear(issuer)
+    await user.type(issuer, 'https://anderer-host.example/realms/haus')
+
+    expect(
+      within(dialog).getByText(/Verzeichniszugang ohne eigene Admin-API-Adresse/),
+    ).toBeVisible()
+  })
+
   it('shows the API message when an issuer change is refused for a provider with accounts', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
