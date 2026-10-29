@@ -404,9 +404,11 @@ trägt den Anbieter der Antwortdatei mit Host und Port selbst ein.
 Discovery-Dokument und JWK-Set holt das Backend selbst, ohne Redirects zu folgen.
 
 **Tokenprüfung.** Ein Token wird nur angenommen, wenn sein `azp`-Claim die Client-ID der Anbieterzeile
-nennt, ganz fehlt, oder `aud` sie enthält; sonst antwortet das Backend mit HTTP 401 und nennt den Grund
+nennt oder `aud` sie enthält; sonst antwortet das Backend mit HTTP 401 und nennt den Grund
 im Header `WWW-Authenticate`. Bei einem öffentlichen Client ist das die Kontrolle dagegen, dass ein
-Token für eine **andere** Anwendung desselben Anbieters hier gilt. Für eigene Dienst-Clients heißt
+Token für eine **andere** Anwendung desselben Anbieters hier gilt. Der Claim `azp` ist optional, und nicht jeder
+Anbieter setzt ihn (Microsoft Entra ID etwa nicht in Token des Endpunkts v1.0). Trägt ein Token kein
+`azp`, muss die Client-ID der Anbieterzeile in `aud` stehen, sonst wird es abgewiesen. Für eigene Dienst-Clients heißt
 das: Keycloak setzt `azp` auf den anfragenden Client, ein zweiter Client braucht einen
 Audience-Mapper auf die Client-ID dieser Installation — so der Client `opaa-seed` des mitgelieferten
 Realms.
