@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest'
-import { outcomeOf } from './connectionCheck'
+import { describe, expect, it, vi } from 'vitest'
+import { act, renderHook } from '@testing-library/react'
+import { outcomeOf, useConnectionCheck } from './connectionCheck'
+import { testLibrarySource } from '../../api/libraryApi'
+
+vi.mock('../../api/libraryApi', () => ({ testLibrarySource: vi.fn() }))
 
 const stagesOf = (outcome: ReturnType<typeof outcomeOf>) =>
   outcome.stages.map((stage) => `${stage.label} ${stage.text}`)
@@ -163,5 +167,120 @@ describe('outcomeOf (#3152)', () => {
       expect(outcome.state).toBe('passed')
       expect(stagesOf(outcome)).toEqual(['Anmeldung angenommen', 'Rechte lesbar'])
     })
+  })
+})
+
+describe('outcomeOf names the unreadable scopes the way the Umfang does (#3144)', () => {
+  const partial = (details: Record<string, unknown>) => ({
+    reachable: true,
+    credentialsVerified: true,
+    message: 'Anmeldung erfolgreich; 2 von 3 Bereichen nicht erreichbar.',
+    details,
+  })
+
+  it('names Google Drive scopes by their shared drive or folder, never by their key', () => {
+    const outcome = outcomeOf(
+      't',
+      partial({
+        scopes: [
+          { scope: 'drive:0AbcDrive', reachable: false, message: 'kein Mitglied' },
+          { scope: 'folder:1XyzFolder', reachable: false, message: 'nicht geteilt' },
+          { scope: 'folder:1Readable', reachable: true },
+        ],
+      }),
+      true,
+      true,
+      {
+        sourceType: 'GOOGLE_DRIVE',
+        sourceSettings: {
+          scopes: [
+            { drive: '0AbcDrive', name: 'Projektablage' },
+            { folder: '1XyzFolder', name: 'Verträge / 2024' },
+            { folder: '1Readable', name: 'Lesbar' },
+          ],
+        },
+      },
+    )
+    expect(outcome.state).toBe('partial')
+    expect(outcome.unreadable).toEqual(['Projektablage', 'Verträge / 2024'])
+  })
+
+  it('names a Google Drive scope without a known name by a short stand-in', () => {
+    const outcome = outcomeOf(
+      't',
+      partial({
+        scopes: [
+          { scope: 'drive:0Unnamed', reachable: false },
+          { scope: 'folder:1Unnamed', reachable: false },
+          { scope: 'myDrive', reachable: false },
+        ],
+      }),
+      true,
+      true,
+      {
+        sourceType: 'GOOGLE_DRIVE',
+        sourceSettings: {
+          scopes: [{ drive: '0Unnamed' }, { folder: '1Unnamed', name: '' }, { myDrive: true }],
+        },
+      },
+    )
+    expect(outcome.unreadable).toEqual(['unbekannte Ablage', 'unbekannter Ordner', 'Meine Ablage'])
+  })
+
+  it('names SharePoint document libraries by their name, never by their drive id', () => {
+    const outcome = outcomeOf(
+      't',
+      partial({
+        libraries: [
+          { driveId: 'b!drive-1', reachable: false },
+          { driveId: 'b!drive-2', reachable: false },
+        ],
+      }),
+      true,
+      true,
+      {
+        sourceType: 'SHAREPOINT',
+        sourceSettings: { libraries: [{ driveId: 'b!drive-1', name: 'Dokumente' }] },
+      },
+    )
+    expect(outcome.unreadable).toEqual(['Dokumente', 'unbekannte Bibliothek'])
+  })
+
+  it('names Confluence spaces by their name where the selection knows it', () => {
+    const outcome = outcomeOf('t', partial({ unreadableSpaces: ['ENG', 'OPS'] }), true, false, {
+      sourceType: 'CONFLUENCE',
+      sourceSettings: { spaces: [{ key: 'ENG', name: 'Engineering' }] },
+    })
+    expect(outcome.unreadable).toEqual(['Engineering', 'OPS'])
+  })
+
+  it('keeps the bucket and prefix an S3 scope is shown under', () => {
+    const outcome = outcomeOf(
+      't',
+      partial({
+        scopes: [
+          { bucket: 'dokumente', prefix: 'akten', bucketReachable: true, listAllowed: false },
+        ],
+      }),
+      true,
+      false,
+      { sourceType: 'S3', sourceSettings: { scopes: [{ bucket: 'dokumente', prefix: 'akten' }] } },
+    )
+    expect(outcome.unreadable).toEqual(['dokumente/akten'])
+  })
+
+  it('resolves the names from the request the check ran with', async () => {
+    vi.mocked(testLibrarySource).mockResolvedValue(
+      partial({ scopes: [{ scope: 'folder:1XyzFolder', reachable: false }] }),
+    )
+    const request = {
+      sourceType: 'GOOGLE_DRIVE' as const,
+      sourceSettings: { scopes: [{ folder: '1XyzFolder', name: 'Verträge' }] },
+    }
+    const { result } = renderHook(() => useConnectionCheck(request, true, true))
+    await act(async () => {
+      await result.current.run()
+    })
+    expect(result.current.outcome?.unreadable).toEqual(['Verträge'])
   })
 })
