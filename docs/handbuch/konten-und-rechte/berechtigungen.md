@@ -594,7 +594,10 @@ Erste.
 **Auch der einzelne Inhalt bleibt zu.** Die Systemverwaltung sieht die Dokumentenliste jeder
 Bibliothek; das Öffnen eines Originals und die Chunk-Ansicht der Suchdiagnose prüfen aber dieselbe
 Formel wie die Suche: Ohne Leserecht auf die Bibliothek antwortet die Anwendung mit einer Meldung,
-die den Grund benennt, statt den Inhalt auszuliefern. Wer ihn tatsächlich braucht, holt sich das
+die den Grund benennt, statt den Inhalt auszuliefern. Dasselbe gilt für die Metadaten, die aus dem
+Inhalt eines Dokuments gewonnen sind: die Feldwerte eines Dokuments und der Stichproben-Export;
+die Zahlen des Füllgrads und der Extraktionsgüte sieht die Systemverwaltung dagegen wie die
+Dokumentenliste. Wer den Inhalt tatsächlich braucht, holt sich das
 Recht sichtbar: **sich selbst die Rolle „Leser" auf diese Bibliothek geben** — der kleinste Schritt,
 und er steht mit Beginn und Ende in der Rechtehistorie (Abschnitt 12) — oder, wenn die Zuständigkeit
 ohnehin übergeht, das Eigentum übernehmen („Eigentum abgeben", Abschnitt 13). So oder so geschieht

@@ -115,7 +115,9 @@ paths:
         carries exactly once; the first sign-in must change it (reason INITIAL). The expiry date
         defaults to now plus local_auth_settings.default_expiry_days unless expiresAt is given or
         noExpiry is true. A systemRole other than USER is granted through the same path as
-        POST /api/v1/admin/users/{id}/role (audited as a role grant). An address already used by
+        POST /api/v1/admin/users/{id}/role (audited as a role grant) and, like it, requires a
+        recent sign-in (403 RECENT_LOGIN_REQUIRED, response RecentLoginRequired) before anything is
+        written. An address already used by
         another local account is refused with 409 and code EMAIL_TAKEN; an OIDC account with the
         same address does not conflict.
       requestBody:
@@ -194,7 +196,9 @@ paths:
         SYSTEM_ADMIN role are refused with 409 and code LAST_LOGIN_CAPABLE_ADMIN while no other
         login-capable system administrator remains (ADR-0033, Entscheidung 4). The role change
         runs through the same path as POST /api/v1/admin/users/{id}/role and is audited as a role
-        grant or withdrawal; everything else is one LOCAL_USER_CHANGED that carries before/after
+        grant or withdrawal; a role different from the current one requires a recent sign-in (403
+        RECENT_LOGIN_REQUIRED, response RecentLoginRequired), and the refusal applies none of the
+        fields sent alongside, while an unchanged role needs none; everything else is one LOCAL_USER_CHANGED that carries before/after
         for the expiry date only and otherwise just the names of the changed fields. On the
         bootstrap account an expiry date and a role other than SYSTEM_ADMIN are refused with 409
         and code BOOTSTRAP_ACCOUNT (ADR-0033, Entscheidungen 3 and 5), and none of the fields sent

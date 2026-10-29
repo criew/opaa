@@ -17,6 +17,7 @@ import io.opaa.auth.LocalAdminAvailabilityGuard;
 import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.auth.LocalIssuer;
+import io.opaa.auth.RecentLoginPolicy;
 import io.opaa.auth.User;
 import io.opaa.auth.UserProvisionedEvent;
 import io.opaa.auth.UserRepository;
@@ -57,6 +58,9 @@ import org.springframework.transaction.annotation.Transactional;
  * withdrawing the role from or deleting a {@code SYSTEM_ADMIN} - runs through {@link
  * LocalAdminAvailabilityGuard} inside the same transaction, so the guard's lock holds until the
  * change commits.
+ *
+ * <p>Granting or changing a system role demands a recent sign-in ({@link RecentLoginPolicy}), as on
+ * the role endpoint itself; it is checked before anything is written.
  */
 @Service
 public class LocalUserService {
@@ -87,6 +91,7 @@ public class LocalUserService {
   private final PasswordGenerator passwordGenerator;
   private final AuditEventRecorder audit;
   private final ApplicationEventPublisher events;
+  private final RecentLoginPolicy recentLogin;
   private final Clock clock;
 
   public LocalUserService(
@@ -101,6 +106,7 @@ public class LocalUserService {
       PasswordGenerator passwordGenerator,
       AuditEventRecorder audit,
       ApplicationEventPublisher events,
+      RecentLoginPolicy recentLogin,
       Clock clock) {
     this.users = users;
     this.credentials = credentials;
@@ -113,6 +119,7 @@ public class LocalUserService {
     this.passwordGenerator = passwordGenerator;
     this.audit = audit;
     this.events = events;
+    this.recentLogin = recentLogin;
     this.clock = clock;
   }
 
@@ -163,6 +170,9 @@ public class LocalUserService {
 
   @Transactional
   public CreatedAccount create(CurrentUser actor, LocalUserCreation creation) {
+    if (creation.systemRole() != null && creation.systemRole() != SystemRole.USER) {
+      recentLogin.requireRecentLogin();
+    }
     Instant now = clock.instant();
     LocalAuthSettings.Values policy = settings();
     String email = requireAddress(creation.email());
@@ -227,6 +237,9 @@ public class LocalUserService {
     LocalUserOverview current = load(actor.organizationId(), userId);
     User user = current.user();
     LocalCredentials row = current.credentials();
+    if (update.systemRole() != null && update.systemRole() != user.getSystemRole()) {
+      recentLogin.requireRecentLogin();
+    }
     // ADR-0033, Entscheidungen 3 and 5: the bootstrap account takes no expiry; removing one
     // restores
     // the promised state. Its role is guarded in UserService#updateRole. A refusal rolls back every

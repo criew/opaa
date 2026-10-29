@@ -36,7 +36,7 @@ prompts:
     classes:
       - io.opaa.query.spike.SpikeToolLoopQueryHandler
       - io.opaa.query.spike.SearchKnowledgeTool
-    sha256: "f86c65c9c6773c6427efa3a8ad3b39f9c4a9c727b5380a23a197781a09ef9975"
+    sha256: "f951f0e657d5ef6801133bd8539aa8ac041dbdeb2961827a9341e9d3a7de162c"
   - id: mcp-tool-descriptions
     purpose: Beschreibungen der Werkzeuge, nach denen das Modell eines externen KI-Werkzeugs entscheidet
     classes: [io.opaa.mcp.McpToolCatalog]

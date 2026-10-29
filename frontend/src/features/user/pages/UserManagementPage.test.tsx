@@ -345,7 +345,11 @@ describe('UserManagementPage', () => {
         if (refusals > 0) return undefined
         refusals += 1
         return HttpResponse.json(
-          { error: 'Bitte bestätigen Sie Ihre Identität.', status: 403, code: 'RECENT_LOGIN_REQUIRED' },
+          {
+            error: 'Bitte bestätigen Sie Ihre Identität.',
+            status: 403,
+            code: 'RECENT_LOGIN_REQUIRED',
+          },
           { status: 403 },
         )
       }),
@@ -382,7 +386,11 @@ describe('UserManagementPage', () => {
         bodies.push(body)
         if (bodies.length === 1) {
           return HttpResponse.json(
-            { error: 'Bitte bestätigen Sie Ihre Identität.', status: 403, code: 'RECENT_LOGIN_REQUIRED' },
+            {
+              error: 'Bitte bestätigen Sie Ihre Identität.',
+              status: 403,
+              code: 'RECENT_LOGIN_REQUIRED',
+            },
             { status: 403 },
           )
         }
