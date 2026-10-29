@@ -65,9 +65,11 @@ jobs:
           # Docker Hub serves anonymous tag listings for at most 10 pages. Beyond that the lookup
           # fails, Renovate falls back to the registry tag list without timestamps and holds every
           # release back under minimumReleaseAge; stopping at page 10 keeps the timestamps.
-          # gradleWrapper is the only unsafe execution: Renovate needs ./gradlew to rewrite the
-          # wrapper scripts. It runs only for versions past minimumReleaseAge, inside this
-          # container; wrapper updates never merge automatically (renovate.json5).
+          # gradleWrapper is the only unsafe execution. It lets Renovate run ./gradlew inside this
+          # container, which holds the token: "wrapper" for wrapper updates, and for every Gradle
+          # update "--write-verification-metadata sha256 dependencies" with the new versions, so
+          # the code of an updated plugin runs here. Only for versions past minimumReleaseAge;
+          # wrapper and plugin updates never merge automatically (renovate.json5).
           docker run --rm \
             -e RENOVATE_TOKEN \
             -e RENOVATE_PLATFORM=github \
