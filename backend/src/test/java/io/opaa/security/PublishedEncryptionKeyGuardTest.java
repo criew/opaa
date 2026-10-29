@@ -2,6 +2,7 @@ package io.opaa.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.test.TestEncryptionKeys;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -15,7 +16,7 @@ class PublishedEncryptionKeyGuardTest {
 
   private static final String DEV_CREDENTIALS_KEY = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=";
   private static final String CI_SETTINGS_KEY = "TklDSFQtRlVFUi1ERU4tUFJPRFVLVElWQkVUUklFQjI=";
-  private static final String OWN_KEY = "Qo69uaPd4kBf0N5+Hne8cePloVxyZE6pye8qhEfdf+8=";
+  private static final String OWN_KEY = TestEncryptionKeys.generate();
 
   private final ApplicationContextRunner contextRunner =
       new ApplicationContextRunner()

@@ -11,6 +11,13 @@ Installation beschreibt die [Betriebsübersicht](README.md).
   `logstash`, `gelf`) als JSON. Beim Start stehen dort Version, Warnungen zur Konfiguration, das
   Installations-Token des ersten Starts ([Installation](installation.md#installations-token)), das
   Ergebnis einer Antwortdatei und jeder Startabbruch mit dem Namen der Variable.
+- **Textformat:** Jede Folgezeile einer mehrzeiligen Meldung oder Exception-Nachricht ist um vier
+  Leerzeichen eingerückt, Steuer- und Bidi-Zeichen erscheinen als `?`. Ein Name oder eine Adresse
+  aus einer Quelle kann so keinen eigenen Logeintrag vortäuschen; ein neuer Eintrag beginnt immer am
+  Zeilenanfang. Ein eigenes Muster (`LOGGING_PATTERN_CONSOLE`) muss dafür
+  `${LOG_EXCEPTION_CONVERSION_WORD}` oder `%opaaEx` enthalten, und `LOGGING_EXCEPTION_CONVERSION_WORD`
+  muss `%opaaEx` bleiben; sonst hängt Logback seinen eigenen Stacktrace an, und Exception-Nachrichten
+  erscheinen unbereinigt.
 - **Inhalt:** Geheimnisse, Zugangsdaten und Request-Bodies erscheinen nicht, Namen aus privaten
   Bibliotheken auch auf `DEBUG` nicht. Ausgaben eingebundener Bibliotheken auf `DEBUG`/`TRACE` und
   Datenbankfehler können Inhalte nennen: Ein Log über `INFO` wie Inhalte behandeln.

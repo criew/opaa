@@ -50,7 +50,7 @@ public class AttachmentExtractor {
     Extracted[] extracted = new Extracted[1];
     DocumentFormatRegistry.Routed routed;
     try {
-      routed = pipelineRegistry.routedPipelineFor(parentFile, parentFileName);
+      routed = pipelineRegistry.routedPipelineFor(parentFile, parentFileName, names);
     } catch (RuntimeException e) {
       // Routing reads the parent's own bytes; a parent that has since been removed or truncated
       // must cost only this one extraction. A parse failure of the routed pipeline itself needs no

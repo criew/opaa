@@ -18,6 +18,7 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
+import io.opaa.common.LikePatterns;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.OrganizationScopedLoader;
 import io.opaa.common.TransactionCallbacks;
@@ -287,7 +288,9 @@ public class GroupService {
                 caller.organizationId(), text, PageRequest.of(0, MAX_SEARCH_RESULTS)));
     candidates.addAll(
         groupRepository.searchByOrganizationIdAndText(
-            caller.organizationId(), likePattern(text), PageRequest.of(0, MAX_SEARCH_SCAN)));
+            caller.organizationId(),
+            LikePatterns.containing(text),
+            PageRequest.of(0, MAX_SEARCH_SCAN)));
     for (Group group : candidates) {
       if (!isVisibleInSelection(group, caller, ownGroupIds, stewardedGroupIds)) {
         continue;
@@ -353,16 +356,6 @@ public class GroupService {
                 .findById(id)
                 .map(provider -> toProviderView(provider, group.getOrganizationId()))
                 .orElse(null));
-  }
-
-  /**
-   * The typed text as a LIKE pattern, with {@code %}, {@code _} and the escape character itself
-   * neutralised - otherwise a query of two percent signs would match every group of the
-   * organization, and a lone backslash would start an escape sequence instead of matching itself.
-   */
-  private static String likePattern(String text) {
-    String escaped = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
-    return "%" + escaped + "%";
   }
 
   private SelectableGroup toSelectableGroup(

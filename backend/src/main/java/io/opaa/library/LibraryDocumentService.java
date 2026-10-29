@@ -53,6 +53,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.text.Normalizer;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -61,6 +62,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,6 +85,19 @@ import org.springframework.web.multipart.MultipartFile;
 public class LibraryDocumentService implements FolderDocumentDeleter {
 
   private static final Logger log = LoggerFactory.getLogger(LibraryDocumentService.class);
+
+  /** The longest display name an upload keeps, in code points. */
+  private static final int MAX_DISPLAY_FILE_NAME_LENGTH = 255;
+
+  static final String EMPTY_FILE_NAME_MESSAGE =
+      "Der Dateiname ist leer oder besteht nur aus unzulässigen Zeichen. Bitte die Datei umbenennen.";
+
+  /** An extension up to this length (dot included) survives the cut of a long display name. */
+  private static final int MAX_KEPT_EXTENSION_LENGTH = 16;
+
+  /** Control and format characters and the Unicode line and paragraph breaks. */
+  private static final Pattern INVISIBLE_IN_NAME =
+      Pattern.compile("[\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]");
 
   /** The {@code code} of the 404 for a library being erased; only a reader of it sees it. */
   public static final String LIBRARY_BEING_ERASED = "LIBRARY_BEING_ERASED";
@@ -222,6 +237,9 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     }
 
     String displayFileName = sanitizeDisplayFileName(file.getOriginalFilename());
+    if (displayFileName.isEmpty()) {
+      throw new ValidationException(EMPTY_FILE_NAME_MESSAGE);
+    }
     if (!supportedFormats.isSupported(displayFileName)) {
       throw new ValidationException(
           "Das Dateiformat wird nicht unterstützt. Erlaubt sind: "
@@ -891,16 +909,33 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   /**
    * Strips any directory components from the caller-supplied file name, keeping only its last
    * segment - defence in depth against {@code ../} alongside the fact that this name is never used
-   * to build a filesystem path in the first place (see the class Javadoc).
+   * to build a filesystem path in the first place (see the class Javadoc). Control, format (a
+   * right-to-left override among them) and line break characters are removed, the rest is NFC; a
+   * name longer than {@link #MAX_DISPLAY_FILE_NAME_LENGTH} code points is cut before its extension.
    */
-  private String sanitizeDisplayFileName(String originalFileName) {
+  private static String sanitizeDisplayFileName(String originalFileName) {
     if (originalFileName == null || originalFileName.isBlank()) {
       return "";
     }
     String normalized = originalFileName.replace('\\', '/');
     int lastSlash = normalized.lastIndexOf('/');
     String lastSegment = lastSlash >= 0 ? normalized.substring(lastSlash + 1) : normalized;
-    return lastSegment.isBlank() ? originalFileName : lastSegment;
+    String chosen = lastSegment.isBlank() ? originalFileName : lastSegment;
+    String cleaned =
+        Normalizer.normalize(INVISIBLE_IN_NAME.matcher(chosen).replaceAll(""), Normalizer.Form.NFC)
+            .strip();
+    return withinDisplayLength(cleaned);
+  }
+
+  private static String withinDisplayLength(String name) {
+    if (name.codePointCount(0, name.length()) <= MAX_DISPLAY_FILE_NAME_LENGTH) {
+      return name;
+    }
+    int dot = name.lastIndexOf('.');
+    String extension =
+        dot > 0 && name.length() - dot <= MAX_KEPT_EXTENSION_LENGTH ? name.substring(dot) : "";
+    int keep = MAX_DISPLAY_FILE_NAME_LENGTH - extension.codePointCount(0, extension.length());
+    return name.substring(0, name.offsetByCodePoints(0, keep)) + extension;
   }
 
   /**
