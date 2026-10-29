@@ -285,6 +285,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "getLibraryMetadataSample",
             "getMyPrivateStorage",
             "getPrivateStorageQuota",
+            "getSharedLibraryQuota",
             "getPrivateStorageSummary",
             "listFullSyncRhythms",
             "getChatAutoCleanupRetention",
