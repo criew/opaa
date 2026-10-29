@@ -1,9 +1,13 @@
-# Operations the backend answers without a session under the "oidc" profile, each with its reason.
-# AnonymousSurfaceIntegrationTest calls every operation of the specification, every handler mapping
-# and every actuator endpoint without a token: an operation not listed under "anonymous" must answer
-# 401, 403 or 404. An operation listed under "missingHeaders" may lack nosniff and the frame
-# protection. An entry the application outgrew (operation gone, headers present) fails the test.
-# The key is "<METHOD> <path template>" as in the specification; actuator paths are concrete.
+# Operations the backend lets through without a session under the "oidc" profile, each with its
+# reason. AnonymousSurfaceIntegrationTest calls every operation of the specification, every handler
+# mapping, the actuator and the router functions without a token (but with a self-made CSRF
+# double-submit pair, as any direct caller can send one): an operation not listed under
+# "anonymous" must be refused in the filter chain with 401, 403 or 404 - its handler never runs.
+# An operation listed under "missingHeaders" may lack nosniff and the frame protection.
+# An entry the application outgrew fails the test: an operation gone, one refused before its
+# handler now (unless "conditional: true" - reachable only while a runtime setting is on that the
+# test context cannot switch on), headers present now.
+# The key is "<METHOD> <path template>" as in the specification; health groups are concrete paths.
 anonymous:
   - operation: GET /api/health
     reason: Lebenszeichen für Load Balancer und Frontend; liefert nur den Status.
@@ -13,22 +17,38 @@ anonymous:
       Installation.
   - operation: POST /api/v1/auth/local/login
     reason: Anmeldung mit lokalem Konto; Zugangsdaten stehen im Body.
+  - operation: POST /api/v1/auth/local/refresh
+    reason: >-
+      Erneuert die Sitzung über das Refresh-Cookie und das Double-Submit-Token; trägt kein
+      Bearer-Token.
+  - operation: POST /api/v1/auth/local/logout
+    reason: >-
+      Beendet die Sitzung über das Refresh-Cookie und das Double-Submit-Token; trägt kein
+      Bearer-Token.
   - operation: POST /api/v1/auth/local/set-password
     reason: Einlösen eines Einladungs- oder Rücksetzlinks; das Einmal-Token steht im Body.
   - operation: POST /api/v1/auth/local/verify-email
     reason: Bestätigung der E-Mail-Adresse über das Einmal-Token aus der Mail.
   - operation: POST /api/v1/auth/local/forgot-password
+    conditional: true
     reason: >-
-      Selbstbedienung „Passwort vergessen“, nur anonym, solange in den Einstellungen eingeschaltet;
-      ausgeschaltet antwortet sie wie eine unbekannte Route.
+      Selbstbedienung „Passwort vergessen“, anonym nur, solange sie in den Einstellungen
+      eingeschaltet ist und eine öffentliche Basis-URL besteht. Ausgeschaltet fällt sie unter die
+      Anmeldepflicht von /api/** und wird mit 401 abgewiesen; so läuft der Testkontext.
   - operation: POST /api/v1/auth/local/register
+    conditional: true
     reason: >-
-      Selbstregistrierung, nur anonym, solange in den Einstellungen eingeschaltet; ausgeschaltet
-      antwortet sie wie eine unbekannte Route.
+      Selbstregistrierung, anonym nur, solange sie in den Einstellungen eingeschaltet ist und eine
+      öffentliche Basis-URL besteht. Ausgeschaltet fällt sie unter die Anmeldepflicht von /api/**
+      und wird mit 401 abgewiesen; so läuft der Testkontext.
   - operation: POST /api/v1/auth/local/handover/preview
     reason: Übergabe an einen Anbieter; das Anbieter-Token steht im Body, nicht im Header.
   - operation: POST /api/v1/auth/local/handover/redeem
     reason: Übergabe an einen Anbieter; das Anbieter-Token steht im Body, nicht im Header.
+  - operation: POST /api/v1/libraries/{libraryId}/push
+    reason: >-
+      Push-Benachrichtigung einer Quelle an ihre Bibliothek; die Quelle hat keine Sitzung. Der
+      Handler prüft das Geheimnis der Bibliothek, die Annahme ist je Adresse begrenzt.
   - operation: GET /api/v1/branding
     reason: >-
       Die Anmeldeseite zeigt Name, Claim und Akzentfarbe des Betreibers vor jeder Sitzung; keine
@@ -66,9 +86,7 @@ anonymous:
       hingenommen.
   - operation: GET /actuator/metrics
     reason: Bis #3344 behoben ist; danach nur mit Anmeldung oder auf eigenem Management-Port.
-  - operation: GET /actuator/metrics/jvm.memory.used
-    reason: Bis #3344 behoben ist; danach nur mit Anmeldung oder auf eigenem Management-Port.
-  - operation: GET /actuator/metrics/http.server.requests
+  - operation: GET /actuator/metrics/{requiredMetricName}
     reason: Bis #3344 behoben ist; danach nur mit Anmeldung oder auf eigenem Management-Port.
   - operation: GET /actuator/prometheus
     reason: Bis #3344 behoben ist; danach nur mit Anmeldung oder auf eigenem Management-Port.

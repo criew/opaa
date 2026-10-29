@@ -82,7 +82,7 @@ class AnonymousSurfaceTest {
 
   @Test
   void aMissingNosniffFails() {
-    Answer answer = new Answer("GET /api/health", "/api/health", 200, 2, null, "DENY", null);
+    Answer answer = new Answer("GET /api/health", "/api/health", 200, 2, true, null, "DENY", null);
 
     assertThat(ALLOWLIST.violations(List.of(answer)))
         .singleElement(STRING)
@@ -92,7 +92,8 @@ class AnonymousSurfaceTest {
   @Test
   void aMissingFrameProtectionFails() {
     Answer answer =
-        new Answer("GET /api/health", "/api/health", 401, 0, "nosniff", null, "default-src 'none'");
+        new Answer(
+            "GET /api/health", "/api/health", 200, 0, true, "nosniff", null, "default-src 'none'");
 
     assertThat(ALLOWLIST.violations(List.of(answer)))
         .singleElement(STRING)
@@ -103,7 +104,14 @@ class AnonymousSurfaceTest {
   void frameAncestorsAloneIsAFrameProtection() {
     Answer answer =
         new Answer(
-            "GET /api/health", "/api/health", 200, 2, "nosniff", null, "frame-ancestors 'self'");
+            "GET /api/health",
+            "/api/health",
+            200,
+            2,
+            true,
+            "nosniff",
+            null,
+            "frame-ancestors 'self'");
 
     assertThat(ALLOWLIST.violations(List.of(answer))).isEmpty();
   }
@@ -115,7 +123,7 @@ class AnonymousSurfaceTest {
             Map.of(
                 "missingHeaders",
                 List.of(Map.of("operation", "GET /gap", "reason", "bis zur Behebung"))));
-    Answer gap = new Answer("GET /gap", "/gap", 404, 2, null, null, null);
+    Answer gap = new Answer("GET /gap", "/gap", 404, 2, false, null, null, null);
 
     assertThat(allowlist.violations(List.of(gap))).isEmpty();
     assertThat(allowlist.violations(List.of(answer("GET /gap", 404))))
@@ -163,6 +171,91 @@ class AnonymousSurfaceTest {
     assertThat(AnonymousSurface.load().operations()).isNotEmpty();
   }
 
+  @Test
+  void aRefusalByTheHandlerOfAnUnlistedOperationFails() {
+    Answer permitted =
+        new Answer(
+            "GET /api/v1/documents/{documentId}/content",
+            "/api/v1/documents/x/content",
+            404,
+            40,
+            true,
+            "nosniff",
+            "DENY",
+            null);
+
+    assertThat(ALLOWLIST.violations(List.of(answer("GET /api/health", 200), permitted)))
+        .singleElement(STRING)
+        .startsWith("GET /api/v1/documents/{documentId}/content answered 404")
+        .contains("its handler ran");
+  }
+
+  @Test
+  void anEntryRefusedBeforeItsHandlerIsStale() {
+    Answer refused =
+        new Answer("GET /api/health", "/api/health", 401, 0, false, "nosniff", "DENY", null);
+
+    assertThat(ALLOWLIST.violations(List.of(refused)))
+        .singleElement(STRING)
+        .startsWith("GET /api/health is on")
+        .contains("refused before its handler now");
+  }
+
+  @Test
+  void aConditionalEntryMayBeRefused() {
+    AnonymousSurface allowlist =
+        AnonymousSurface.of(
+            Map.of(
+                "anonymous",
+                List.of(
+                    Map.of(
+                        "operation",
+                        "POST /register",
+                        "reason",
+                        "nur eingeschaltet",
+                        "conditional",
+                        true))));
+
+    assertThat(allowlist.violations(List.of(answer("POST /register", 401)))).isEmpty();
+    assertThat(allowlist.violations(List.of(answer("POST /other", 401))))
+        .singleElement(STRING)
+        .contains("no longer exists");
+  }
+
+  @Test
+  void conditionalIsABooleanOfAnAnonymousEntryOnly() {
+    assertThatThrownBy(
+            () ->
+                AnonymousSurface.of(
+                    Map.of(
+                        "missingHeaders",
+                        List.of(
+                            Map.of("operation", "GET /a", "reason", "x", "conditional", true)))))
+        .hasMessageContaining("conditional");
+    assertThatThrownBy(
+            () ->
+                AnonymousSurface.of(
+                    Map.of(
+                        "anonymous",
+                        List.of(
+                            Map.of("operation", "GET /a", "reason", "x", "conditional", "ja")))))
+        .hasMessageContaining("conditional");
+  }
+
+  @Test
+  void aPermissiveFrameAncestorsIsNoFrameProtection() {
+    for (String policy :
+        List.of("frame-ancestors *", "frame-ancestors https://example.org", "default-src 'none'")) {
+      Answer answer =
+          new Answer("GET /api/health", "/api/health", 200, 2, true, "nosniff", null, policy);
+
+      assertThat(ALLOWLIST.violations(List.of(answer)))
+          .as(policy)
+          .singleElement(STRING)
+          .contains("no frame protection");
+    }
+  }
+
   private static Answer answer(String operation, int status) {
     int body = status == 204 ? 0 : 2;
     return new Answer(
@@ -170,6 +263,7 @@ class AnonymousSurfaceTest {
         operation.substring(operation.indexOf(' ') + 1),
         status,
         body,
+        !AnonymousSurface.REFUSALS.contains(status),
         "nosniff",
         "DENY",
         null);

@@ -298,9 +298,9 @@ docker build -t opaa-smoke/frontend -f frontend/Dockerfile .
 ./gradlew test --tests 'io.opaa.api.AnonymousSurface*' \
   --tests 'io.opaa.library.web.DocumentContentHeadersIntegrationTest'
 
-# aus dem Wurzelverzeichnis: Compose-Vorlagen (alle docker-compose*.yml, .env.docker.example)
-# binden Ports nur an 127.0.0.1, schalten keine anonyme Systemverwaltung frei und tragen keine
-# festen Geheimnisse außer den begründeten Ausnahmen im Skript; in CI im Job changes (ci.yml),
-# Selbsttest in test_check_compose_defaults.py
+# aus dem Wurzelverzeichnis: Compose-Vorlagen (alle docker-compose*.yml, .env.docker.example,
+# .env.example) binden Ports nur an 127.0.0.1, schalten keine anonyme Systemverwaltung frei und
+# tragen keine festen Geheimnisse außer den begründeten Ausnahmen je Dienst im Skript; in CI im Job
+# changes (ci.yml), Selbsttest in test_check_compose_defaults.py
 .github/scripts/check_compose_defaults.sh
 ```

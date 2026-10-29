@@ -9,16 +9,22 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.yaml.snakeyaml.Yaml;
 
 /**
- * The rule of the attack surface without a session: an operation answers an anonymous caller with
- * {@code 401}, {@code 403} or {@code 404} unless the allowlist names it under {@code anonymous}
- * with a reason, and every answer, whatever its status, carries {@code X-Content-Type-Options:
- * nosniff} and a frame protection ({@code X-Frame-Options} or a {@code frame-ancestors} directive)
- * unless the operation is listed under {@code missingHeaders}. An entry that no longer matches what
- * the application does - an operation that vanished, headers that are now present - is an error as
- * well, so the list shrinks with every fix.
+ * The rule of the attack surface without a session. An operation the allowlist does not name under
+ * {@code anonymous} is refused before any handler runs and answers {@code 401}, {@code 403} or
+ * {@code 404}; a handler that runs for an anonymous caller - whatever it answers - means the filter
+ * chain let the request through. Every answer carries {@code X-Content-Type-Options: nosniff} and a
+ * frame protection ({@code X-Frame-Options}, or {@code frame-ancestors 'none'} or {@code 'self'})
+ * unless the operation is listed under {@code missingHeaders}.
+ *
+ * <p>An entry the application outgrew fails as well: an anonymous entry whose operation vanished or
+ * is refused before its handler now, unless it is {@code conditional} (reachable only while a
+ * runtime setting the test context cannot switch on is on); a header entry whose operation carries
+ * both headers now. So the list shrinks with every fix.
  */
 final class AnonymousSurface {
 
@@ -29,23 +35,38 @@ final class AnonymousSurface {
 
   private static final Set<String> FRAME_OPTIONS = Set.of("DENY", "SAMEORIGIN");
 
+  private static final Set<String> FRAME_ANCESTORS = Set.of("'none'", "'self'");
+
+  private static final Pattern FRAME_ANCESTORS_DIRECTIVE =
+      Pattern.compile("(?:^|;)\\s*frame-ancestors\\s+([^;]*)");
+
   /**
    * One anonymous call. {@code operation} is {@code "<METHOD> <path template>"}, the key the
-   * allowlist uses; {@code path} is the concrete path that was called.
+   * allowlist uses; {@code path} is the concrete path that was called; {@code handlerReached}
+   * whether a controller, endpoint or handler function ran for it.
    */
   record Answer(
       String operation,
       String path,
       int status,
       int bodyLength,
+      boolean handlerReached,
       String contentTypeOptions,
       String frameOptions,
-      String contentSecurityPolicy) {}
+      String contentSecurityPolicy) {
 
-  private final Map<String, String> anonymous;
-  private final Map<String, String> missingHeaders;
+    /** Whether the call got through the filter chain, or answered something but a refusal. */
+    boolean admitted() {
+      return handlerReached || !REFUSALS.contains(status);
+    }
+  }
 
-  private AnonymousSurface(Map<String, String> anonymous, Map<String, String> missingHeaders) {
+  private record Entry(String reason, boolean conditional) {}
+
+  private final Map<String, Entry> anonymous;
+  private final Map<String, Entry> missingHeaders;
+
+  private AnonymousSurface(Map<String, Entry> anonymous, Map<String, Entry> missingHeaders) {
     this.anonymous = anonymous;
     this.missingHeaders = missingHeaders;
   }
@@ -64,7 +85,8 @@ final class AnonymousSurface {
 
   /**
    * The allowlist from its parsed YAML form: a map with the lists {@code anonymous} and {@code
-   * missingHeaders}, each of {@code operation}/{@code reason} entries.
+   * missingHeaders}, each of {@code operation}/{@code reason} entries; an anonymous entry may add
+   * {@code conditional: true}.
    */
   static AnonymousSurface of(Object yaml) {
     if (!(yaml instanceof Map<?, ?> sections)
@@ -73,31 +95,36 @@ final class AnonymousSurface {
           ALLOWLIST + " must be a map with the lists 'anonymous' and 'missingHeaders'");
     }
     return new AnonymousSurface(
-        entries(sections.get("anonymous")), entries(sections.get("missingHeaders")));
+        entries(sections.get("anonymous"), true), entries(sections.get("missingHeaders"), false));
   }
 
-  private static Map<String, String> entries(Object section) {
-    Map<String, String> reasons = new LinkedHashMap<>();
+  private static Map<String, Entry> entries(Object section, boolean mayBeConditional) {
+    Map<String, Entry> entries = new LinkedHashMap<>();
     if (section == null) {
-      return reasons;
+      return entries;
     }
-    if (!(section instanceof List<?> entries)) {
+    if (!(section instanceof List<?> list)) {
       throw new IllegalStateException(ALLOWLIST + ": a section must be a list of entries");
     }
-    for (Object entry : entries) {
-      if (!(entry instanceof Map<?, ?> fields)
+    for (Object item : list) {
+      if (!(item instanceof Map<?, ?> fields)
           || !(fields.get("operation") instanceof String operation)
           || !operation.matches("(GET|POST|PUT|PATCH|DELETE) /\\S*")
           || !(fields.get("reason") instanceof String reason)
           || reason.isBlank()) {
         throw new IllegalStateException(
-            ALLOWLIST + ": every entry needs 'operation: <METHOD> <path>' and a reason: " + entry);
+            ALLOWLIST + ": every entry needs 'operation: <METHOD> <path>' and a reason: " + item);
       }
-      if (reasons.put(operation, reason) != null) {
+      Object conditional = fields.get("conditional");
+      if (conditional != null && !(mayBeConditional && conditional instanceof Boolean)) {
+        throw new IllegalStateException(
+            ALLOWLIST + ": 'conditional' is a boolean of an anonymous entry: " + item);
+      }
+      if (entries.put(operation, new Entry(reason, Boolean.TRUE.equals(conditional))) != null) {
         throw new IllegalStateException(ALLOWLIST + " names " + operation + " twice");
       }
     }
-    return reasons;
+    return entries;
   }
 
   /** The same allowlist without one anonymous entry, to prove that its operation then fails. */
@@ -105,7 +132,7 @@ final class AnonymousSurface {
     if (!anonymous.containsKey(operation)) {
       throw new IllegalArgumentException(operation + " is not on the allowlist");
     }
-    Map<String, String> fewer = new LinkedHashMap<>(anonymous);
+    Map<String, Entry> fewer = new LinkedHashMap<>(anonymous);
     fewer.remove(operation);
     return new AnonymousSurface(fewer, missingHeaders);
   }
@@ -118,20 +145,25 @@ final class AnonymousSurface {
   List<String> violations(Collection<Answer> answers) {
     List<String> violations = new ArrayList<>();
     Set<String> called = new HashSet<>();
+    Set<String> admitted = new HashSet<>();
     Set<String> headerGaps = new HashSet<>();
     for (Answer answer : answers) {
       called.add(answer.operation());
-      if (!anonymous.containsKey(answer.operation()) && !REFUSALS.contains(answer.status())) {
-        violations.add(
-            answer.operation()
-                + " answered "
-                + answer.status()
-                + " with "
-                + answer.bodyLength()
-                + " bytes without a session ("
-                + answer.path()
-                + "); refuse it with 401/403/404 or add it with a reason to "
-                + ALLOWLIST);
+      if (answer.admitted()) {
+        admitted.add(answer.operation());
+        if (!anonymous.containsKey(answer.operation())) {
+          violations.add(
+              answer.operation()
+                  + " answered "
+                  + answer.status()
+                  + " with "
+                  + answer.bodyLength()
+                  + " bytes without a session ("
+                  + answer.path()
+                  + (answer.handlerReached() ? ", its handler ran" : "")
+                  + "); refuse it in the filter chain or add it with a reason to "
+                  + ALLOWLIST);
+        }
       }
       List<String> missing = headerViolations(answer);
       if (missing.isEmpty()) {
@@ -142,10 +174,17 @@ final class AnonymousSurface {
         violations.addAll(missing);
       }
     }
-    for (String operation : anonymous.keySet()) {
+    for (Map.Entry<String, Entry> entry : anonymous.entrySet()) {
+      String operation = entry.getKey();
       if (!called.contains(operation)) {
         violations.add(
             operation + " is on " + ALLOWLIST + " but no longer exists; remove the entry");
+      } else if (!admitted.contains(operation) && !entry.getValue().conditional()) {
+        violations.add(
+            operation
+                + " is on "
+                + ALLOWLIST
+                + " but is refused before its handler now; remove the entry");
       }
     }
     for (String operation : missingHeaders.keySet()) {
@@ -173,10 +212,7 @@ final class AnonymousSurface {
     }
     boolean frameOptions =
         answer.frameOptions() != null && FRAME_OPTIONS.contains(answer.frameOptions());
-    boolean frameAncestors =
-        answer.contentSecurityPolicy() != null
-            && answer.contentSecurityPolicy().contains("frame-ancestors");
-    if (!frameOptions && !frameAncestors) {
+    if (!frameOptions && !restrictiveFrameAncestors(answer.contentSecurityPolicy())) {
       violations.add(
           at
               + " carries no frame protection: X-Frame-Options '"
@@ -186,5 +222,13 @@ final class AnonymousSurface {
               + "'");
     }
     return violations;
+  }
+
+  private static boolean restrictiveFrameAncestors(String policy) {
+    if (policy == null) {
+      return false;
+    }
+    Matcher directive = FRAME_ANCESTORS_DIRECTIVE.matcher(policy);
+    return directive.find() && FRAME_ANCESTORS.contains(directive.group(1).trim());
   }
 }

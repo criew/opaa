@@ -1,8 +1,10 @@
 """Self-check for check_compose_defaults.sh: the repository's own Compose templates pass, and each
-rule fails on a copy of them with one change - a port on 0.0.0.0 or without host, a bind variable
-that opens by default, the long port syntax without host_ip, network_mode: host, an enabled
-OPAA_AUTH_DEV_ALLOW_REMOTE, a frontend bind address the backend does not learn, a fixed secret in
-any spelling, and an exception that no longer matches."""
+rule fails on a copy of them with one change - a port on 0.0.0.0 or without host (also in a list
+at the key's own indentation), a bind variable that opens by default, the long port syntax without
+host_ip 127.0.0.1, ports or environment in flow style, network_mode: host, a bind address beyond
+loopback in an environment template, an enabled OPAA_AUTH_DEV_ALLOW_REMOTE, a frontend bind
+address the backend does not learn, a fixed secret in any spelling or in a service its exception
+does not name, and an exception that no longer matches."""
 
 import shutil
 import subprocess
@@ -18,7 +20,7 @@ BASH = shutil.which("bash") or "bash"
 def templates() -> list[str]:
     listed = subprocess.run(
         ["git", "ls-files", "--", "docker-compose*.yml", "**/docker-compose*.yml",
-         ".env.docker.example"],
+         ".env.docker.example", ".env.example"],
         cwd=ROOT, check=True, capture_output=True, text=True,
     )
     return listed.stdout.split()
@@ -94,6 +96,22 @@ def test_the_long_syntax_needs_host_ip(repo: Path) -> None:
     fails_with(run(repo), "without host_ip: 127.0.0.1")
 
 
+def test_a_list_at_the_keys_own_indentation_is_read(repo: Path) -> None:
+    replace(
+        repo,
+        "docker-compose.yml",
+        'ports:\n      - "127.0.0.1:${OPAA_DB_PORT:-5432}:5432"',
+        'ports:\n    - "0.0.0.0:5432:5432"',
+    )
+    fails_with(run(repo), "The port 0.0.0.0:5432:5432 is published beyond loopback")
+
+
+def test_host_ip_must_be_loopback_exactly(repo: Path) -> None:
+    long_syntax = "- target: 5432\n        published: 5432\n        host_ip: 127.0.0.10\n"
+    replace(repo, "docker-compose.yml", '- "127.0.0.1:${OPAA_DB_PORT:-5432}:5432"', long_syntax)
+    fails_with(run(repo), "host_ip '127.0.0.10'")
+
+
 def test_the_long_syntax_with_host_ip_passes(repo: Path) -> None:
     long_syntax = "- target: 5432\n        published: 5432\n        host_ip: 127.0.0.1\n"
     replace(repo, "docker-compose.yml", '- "127.0.0.1:${OPAA_DB_PORT:-5432}:5432"', long_syntax)
@@ -109,6 +127,17 @@ def test_ports_in_flow_style_fail(repo: Path) -> None:
         'ports: ["0.0.0.0:5432:5432"]',
     )
     fails_with(run(repo), "flow style")
+
+
+def test_environment_in_flow_style_fails(repo: Path) -> None:
+    replace(
+        repo,
+        "docker-compose.yml",
+        "    environment:\n      POSTGRES_DB: opaa\n",
+        "    environment: {OPAA_AUTH_JWT_SECRET: fest}\n    x-was-environment:\n"
+        "      POSTGRES_DB: opaa\n",
+    )
+    fails_with(run(repo), "environment: in flow style")
 
 
 def test_host_networking_fails(repo: Path) -> None:
@@ -149,11 +178,42 @@ def test_the_backend_must_learn_the_frontend_bind_address(repo: Path) -> None:
         ("docker-compose.multi.yml", "      OPAA_INSTALLATION_TOKEN: ${TOKEN:-abc}\n"),
         ("docker-compose.multi.yml", '      - "OPAA_CREDENTIALS_ENCRYPTION_KEY=QUJD"\n'),
         ("e2e/docker-compose.offline.yml", "      MINIO_ROOT_PASSWORD: geheim\n"),
+        (".env.example", "OPAA_AUTH_JWT_SECRET=ein-fester-wert\n"),
     ],
 )
 def test_a_fixed_secret_fails(repo: Path, name: str, line: str) -> None:
     append(repo, name, line)
     fails_with(run(repo), "carries the fixed value")
+
+
+def test_an_exception_covers_its_own_service_only(repo: Path) -> None:
+    replace(
+        repo,
+        "docker-compose.yml",
+        "    environment:\n      POSTGRES_DB: opaa\n",
+        "    environment:\n      POSTGRES_DB: opaa\n      KC_BOOTSTRAP_ADMIN_PASSWORD: admin\n",
+    )
+    fails_with(run(repo), "KC_BOOTSTRAP_ADMIN_PASSWORD carries the fixed value 'admin'")
+
+
+@pytest.mark.parametrize(
+    ("name", "line"),
+    [
+        (".env.example", "OPAA_FRONTEND_BIND_ADDRESS=0.0.0.0\n"),
+        (".env.docker.example", "OPAA_KEYCLOAK_BIND_ADDRESS=192.168.1.10\n"),
+    ],
+)
+def test_a_bind_address_beyond_loopback_in_an_environment_template_fails(
+    repo: Path, name: str, line: str
+) -> None:
+    append(repo, name, line)
+    fails_with(run(repo), "opens a published port beyond loopback")
+
+
+def test_a_loopback_bind_address_in_an_environment_template_passes(repo: Path) -> None:
+    append(repo, ".env.docker.example", "OPAA_FRONTEND_BIND_ADDRESS=127.0.0.1\n")
+    result = run(repo)
+    assert result.returncode == 0, result.stdout
 
 
 @pytest.mark.parametrize(
@@ -179,4 +239,4 @@ def test_an_exception_that_matches_nothing_fails(repo: Path) -> None:
         "POSTGRES_PASSWORD: ${OPAA_DB_PASSWORD:-opaa}",
         "POSTGRES_PASSWORD: ${OPAA_DB_PASSWORD:?set a password}",
     )
-    fails_with(run(repo), "no longer carries a fixed value")
+    fails_with(run(repo), "carries no fixed value there any more")

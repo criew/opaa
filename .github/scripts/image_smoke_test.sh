@@ -221,6 +221,7 @@ security_headers() {
   echo "security headers: $path"
 }
 entry="$(grep -o 'src="/assets/[^"]*\.js"' <<<"$index" | head -n 1 | sed 's/^src="//; s/"$//' || true)"
+[[ -n "$entry" ]] || fail "index.html references no entry bundle under /assets/"
 for path in / /some/spa/route "$entry" /runtime-config.js /api/health /api/v1/auth/config \
   /api/v1/spaces; do
   security_headers "$path"

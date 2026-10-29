@@ -179,6 +179,7 @@ jobs:
               - 'docker-compose*.yml'
               - '**/docker-compose*.yml'
               - '.env.docker.example'
+              - '.env.example'
             # Step-level filter of the action pin guard below, not a job output.
             workflows:
               - '.github/workflows/**'
@@ -226,6 +227,7 @@ jobs:
               - 'docker-compose*.yml'
               - '**/docker-compose*.yml'
               - '.env.docker.example'
+              - '.env.example'
               - '.github/scripts/check_compose_defaults.sh'
             # Step-level filter of the ratchets below, not a job output.
             ratchets:

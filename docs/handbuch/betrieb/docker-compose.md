@@ -569,13 +569,15 @@ selbst:
 | Zugangsdaten des mitgelieferten Objektspeichers (`opaa-uploads`/`OpaaUploads!2026`, Profil `upload-s3`) | Die Originale aller hochgeladenen Dokumente sind mit Zugangsdaten geschützt, die im Repository stehen | **Zwingend** außerhalb einer Erprobung: eigene Werte über `OPAA_UPLOAD_STORE_ROOT_USER`/`OPAA_UPLOAD_STORE_ROOT_PASSWORD` in `.env` oder der Shell-Umgebung, dieselben als `OPAA_UPLOAD_S3_ACCESS_KEY`/`OPAA_UPLOAD_S3_SECRET_KEY` in `.env.docker`. Im erreichbaren Betrieb ist ein hauseigener Objektspeicher mit Verschlüsselung ruhender Daten und Versionierung der Regelfall |
 | `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` leer | Alle Clients teilen hinter dem Frontend-nginx einen Zähler | die feste Adresse des Frontend-Containers als `/32` eintragen, wie in `.env.docker.example` ([Vertraute Proxys](netz-und-sicherheit.md#vertraute-proxys-und-client-adresse)) |
 
-Die mitgelieferten Vorlagen (`.env.docker.example` und jede `docker-compose*.yml` des Repositorys,
-auch die der Testumgebungen) halten drei Vorgaben ein, die eine Prüfung bei jeder Änderung am
-Repository durchsetzt:
+Die mitgelieferten Vorlagen (`.env.docker.example`, `.env.example` und jede `docker-compose*.yml`
+des Repositorys) halten drei Vorgaben ein, die eine Prüfung bei jeder Änderung am Repository
+durchsetzt. Die Umgebungsdateien der automatisierten Tests mit ihren öffentlichen Testwerten
+gehören nicht dazu.
 
 - **Ports nur an Loopback.** Jeder veröffentlichte Port bindet an `127.0.0.1`. Nur `frontend` und
   `keycloak` lassen sich über `OPAA_FRONTEND_BIND_ADDRESS` bzw. `OPAA_KEYCLOAK_BIND_ADDRESS` öffnen,
-  beide mit Loopback als Vorgabe; `network_mode: host` kommt nicht vor.
+  beide mit Loopback als Vorgabe, die keine Umgebungsvorlage ändert; `network_mode: host` kommt
+  nicht vor.
 - **Keine anonyme Systemverwaltung jenseits von Loopback.** Keine Vorlage setzt
   `OPAA_AUTH_DEV_ALLOW_REMOTE=true`, und das Backend erhält die Bindungsadresse des Frontends, damit
   es im Modus `dev` den Start verweigern kann.
