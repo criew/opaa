@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.shared.HeadingSectionSplitterFixture;
+import io.opaa.format.shared.ParserLimitProperties;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URISyntaxException;
@@ -377,7 +378,12 @@ class PdfDocumentFormatTableTest {
       doc.save(file.toFile());
     }
 
-    assertThat(onlyChunkText(file)).isEqualTo("Hinweis vor der Grafik.");
+    // the 120 MB stream passes a raised stream limit, so the ruling scan's own cap is what holds
+    var roomy =
+        new PdfDocumentFormat(
+            HeadingSectionSplitterFixture.DEFAULT,
+            new ParserLimitProperties(0, 0, 0, 0, 0, 256L * 1024 * 1024, 0));
+    assertThat(onlyChunkText(roomy, file)).isEqualTo("Hinweis vor der Grafik.");
   }
 
   @Test
@@ -506,8 +512,12 @@ class PdfDocumentFormatTableTest {
   }
 
   private String onlyChunkText(Path file) {
+    return onlyChunkText(pipeline, file);
+  }
+
+  private static String onlyChunkText(PdfDocumentFormat format, Path file) {
     DocumentFormatResult result =
-        pipeline.run(DocumentFormatSource.ofFile(file, file.getFileName().toString(), ".pdf"));
+        format.run(DocumentFormatSource.ofFile(file, file.getFileName().toString(), ".pdf"));
     assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
     assertThat(result.chunks()).hasSize(1);
     return result.chunks().getFirst().getText();

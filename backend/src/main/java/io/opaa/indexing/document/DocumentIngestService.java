@@ -1,6 +1,7 @@
 package io.opaa.indexing.document;
 
 import io.opaa.api.types.DocumentStatus;
+import io.opaa.common.FatalErrors;
 import io.opaa.common.Feature;
 import io.opaa.common.FeatureFlags;
 import io.opaa.format.ChunkFormatMetadata;
@@ -416,7 +417,9 @@ public class DocumentIngestService {
       if (result == DocumentIngestResult.SKIPPED) {
         return result;
       }
-    } catch (Exception e) {
+    } catch (Exception | Error e) {
+      // every Error but a process-fatal one is booked, so an upload never stays PENDING after it
+      FatalErrors.rethrowIfProcessFatal(e);
       if (!(ingest.reindex() && preservingPreviousChunks)) {
         markConnectorFailedAfterException(documentId, preservingPreviousChunks, failureMessage(e));
       }
@@ -928,7 +931,7 @@ public class DocumentIngestService {
    * or by its position when it has none; every other failure gets {@link
    * #PROCESSING_FAILED_MESSAGE}.
    */
-  static String failureMessage(Exception failure) {
+  static String failureMessage(Throwable failure) {
     if (!(failure instanceof ChunkNotEmbeddableException notEmbeddable)) {
       return PROCESSING_FAILED_MESSAGE;
     }

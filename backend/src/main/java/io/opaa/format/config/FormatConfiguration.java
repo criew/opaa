@@ -20,6 +20,7 @@ import io.opaa.format.file.pdf.PdfDocumentFormat;
 import io.opaa.format.file.tabular.TabularDocumentFormat;
 import io.opaa.format.file.tabular.TabularProperties;
 import io.opaa.format.shared.HeadingSectionSplitter;
+import io.opaa.format.shared.ParserLimitProperties;
 import java.time.Clock;
 import java.util.List;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -37,6 +38,7 @@ import org.springframework.context.annotation.Configuration;
   ChunkTargetProperties.class,
   MailProperties.class,
   OdfProperties.class,
+  ParserLimitProperties.class,
   TabularProperties.class
 })
 public class FormatConfiguration {
@@ -75,14 +77,17 @@ public class FormatConfiguration {
   /** XLSX/CSV/ODS pipeline (ingestion-pipelines.md, Teil 3, Punkt 3). */
   @Bean
   TabularDocumentFormat tabularDocumentPipeline(
-      TabularProperties tabularProperties, HeadingSectionSplitter headingSectionSplitter) {
-    return new TabularDocumentFormat(tabularProperties, headingSectionSplitter);
+      TabularProperties tabularProperties,
+      HeadingSectionSplitter headingSectionSplitter,
+      ParserLimitProperties parserLimits) {
+    return new TabularDocumentFormat(tabularProperties, headingSectionSplitter, parserLimits);
   }
 
   /** HTML pipeline (ingestion-pipelines.md, Teil 3, Punkt 4). */
   @Bean
-  HtmlDocumentFormat htmlDocumentPipeline(HeadingSectionSplitter headingSectionSplitter) {
-    return new HtmlDocumentFormat(headingSectionSplitter);
+  HtmlDocumentFormat htmlDocumentPipeline(
+      HeadingSectionSplitter headingSectionSplitter, ParserLimitProperties parserLimits) {
+    return new HtmlDocumentFormat(headingSectionSplitter, parserLimits);
   }
 
   /**
@@ -91,20 +96,23 @@ public class FormatConfiguration {
    * MarkdownDocumentFormat}.
    */
   @Bean
-  MarkdownDocumentFormat markdownDocumentPipeline(HeadingSectionSplitter headingSectionSplitter) {
-    return new MarkdownDocumentFormat(headingSectionSplitter);
+  MarkdownDocumentFormat markdownDocumentPipeline(
+      HeadingSectionSplitter headingSectionSplitter, ParserLimitProperties parserLimits) {
+    return new MarkdownDocumentFormat(headingSectionSplitter, parserLimits);
   }
 
   /** DOCX pipeline (ingestion-pipelines.md, Teil 2). */
   @Bean
-  DocxDocumentFormat docxDocumentPipeline(HeadingSectionSplitter headingSectionSplitter) {
-    return new DocxDocumentFormat(headingSectionSplitter);
+  DocxDocumentFormat docxDocumentPipeline(
+      HeadingSectionSplitter headingSectionSplitter, ParserLimitProperties parserLimits) {
+    return new DocxDocumentFormat(headingSectionSplitter, parserLimits);
   }
 
   /** PPTX pipeline (ingestion-pipelines.md, Teil 2). */
   @Bean
-  PptxDocumentFormat pptxDocumentPipeline(HeadingSectionSplitter headingSectionSplitter) {
-    return new PptxDocumentFormat(headingSectionSplitter);
+  PptxDocumentFormat pptxDocumentPipeline(
+      HeadingSectionSplitter headingSectionSplitter, ParserLimitProperties parserLimits) {
+    return new PptxDocumentFormat(headingSectionSplitter, parserLimits);
   }
 
   /** ODT pipeline (ingestion-pipelines.md, Teil 3, Punkt 2). */
@@ -126,8 +134,9 @@ public class FormatConfiguration {
    * its own PDFBox extraction rather than needing {@link DocumentService}.
    */
   @Bean
-  PdfDocumentFormat pdfDocumentPipeline(HeadingSectionSplitter headingSectionSplitter) {
-    return new PdfDocumentFormat(headingSectionSplitter);
+  PdfDocumentFormat pdfDocumentPipeline(
+      HeadingSectionSplitter headingSectionSplitter, ParserLimitProperties parserLimits) {
+    return new PdfDocumentFormat(headingSectionSplitter, parserLimits);
   }
 
   /**

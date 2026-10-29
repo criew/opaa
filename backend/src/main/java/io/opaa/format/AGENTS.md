@@ -18,8 +18,8 @@ samt Fundort (`format.chunk`, Tokenzählung mit jtokkit).
   das nur eine Quelle liefert, registriert deren Konfiguration (Confluence).
 - **Keine zweite Zulassungsliste:** `SupportedDocumentFormats` ist die Vereinigung der
   `admittedFormats()` aller Formate; zwei mit derselben Endung oder demselben Medientyp scheitern beim Start.
-- **Parse-Fehler werfen, Leere meldet das Ergebnis.** `DocumentFormatRunner` übersetzt eine
-  Exception in `PARSE_FAILED` und löscht die Temp-Dateien gefundener Anhänge.
+- **Parse-Fehler werfen, Leere meldet das Ergebnis.** `DocumentFormatRunner` macht aus Exception und
+  `Error` (außer OOM) `PARSE_FAILED`, löscht Anhang-Temp-Dateien. Grenzen: `ParserLimitProperties`.
 - **Was von oben kommt, kommt als Schnittstelle:** Chunkgröße und Überlappung über `ChunkSizing`
   (implementiert von `IndexingProperties`). Dass kein Format einen Schemaschlüssel als
   Passthrough-Schlüssel deklariert, prüft `DocumentIngestService`, der diese Schlüssel schreibt.

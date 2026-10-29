@@ -1,6 +1,7 @@
 package io.opaa.format.file.pdf;
 
 import io.opaa.format.file.pdf.PdfTableGrids.TableGrid;
+import io.opaa.format.shared.ParserLimitExceededException;
 import io.opaa.format.shared.TableText;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -9,10 +10,16 @@ import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.pdfbox.contentstream.operator.Operator;
+import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.font.PDType3CharProc;
+import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
+import org.apache.pdfbox.pdmodel.graphics.form.PDTransparencyGroup;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.text.TextPosition;
+import org.apache.pdfbox.util.Matrix;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,27 +54,44 @@ final class PdfPageText {
 
   /** A page whose plain text cannot be extracted fails the whole document. */
   static String extract(PDDocument doc, int pageIndex) throws IOException {
-    return extract(doc, pageIndex, PdfPageText::candidateGrids);
+    return extract(doc, pageIndex, PdfReadBudget.unbounded());
+  }
+
+  /**
+   * Like {@link #extract(PDDocument, int)}, charging the page's text to {@code budget}; a page that
+   * would overdraw it throws {@link ParserLimitExceededException} while its glyphs are collected.
+   */
+  static String extract(PDDocument doc, int pageIndex, PdfReadBudget budget) throws IOException {
+    return extract(doc, pageIndex, page -> candidateGrids(page, budget), budget);
   }
 
   static String extract(PDDocument doc, int pageIndex, GridFinder finder) throws IOException {
+    return extract(doc, pageIndex, finder, PdfReadBudget.unbounded());
+  }
+
+  private static String extract(
+      PDDocument doc, int pageIndex, GridFinder finder, PdfReadBudget budget) throws IOException {
+    String text = null;
     try {
-      String withTables = extractWithTables(doc, pageIndex, finder);
-      if (withTables != null) {
-        return withTables;
-      }
+      text = extractWithTables(doc, pageIndex, finder, budget);
+    } catch (ParserLimitExceededException e) {
+      throw e;
     } catch (IOException | RuntimeException e) {
       log.debug("Table detection failed on PDF page {}; using flow text", pageIndex + 1, e);
     }
-    return plain(doc, pageIndex);
+    if (text == null) {
+      text = plain(doc, pageIndex, budget);
+    }
+    budget.charge(text.length());
+    return text;
   }
 
   /** The page with its tables in place, or null when there is no table to place. */
-  private static String extractWithTables(PDDocument doc, int pageIndex, GridFinder finder)
-      throws IOException {
+  private static String extractWithTables(
+      PDDocument doc, int pageIndex, GridFinder finder, PdfReadBudget budget) throws IOException {
     List<TableGrid> grids = finder.find(doc.getPage(pageIndex));
     while (!grids.isEmpty()) {
-      TableStripper stripper = new TableStripper(grids);
+      TableStripper stripper = new TableStripper(grids, budget);
       String text = strip(stripper, doc, pageIndex);
       List<TableGrid> tabular = new ArrayList<>();
       for (int t = 0; t < grids.size(); t++) {
@@ -87,15 +111,17 @@ final class PdfPageText {
    * Rotated pages and pages with article threads keep plain extraction: the grid coordinates and
    * the stripper's single article list both assume neither.
    */
-  private static List<TableGrid> candidateGrids(PDPage page) throws IOException {
+  private static List<TableGrid> candidateGrids(PDPage page, PdfReadBudget budget)
+      throws IOException {
     if (page.getRotation() % 360 != 0 || !page.getThreadBeads().isEmpty()) {
       return List.of();
     }
-    return PdfTableGrids.detect(PdfRulingCollector.collect(page));
+    return PdfTableGrids.detect(PdfRulingCollector.collect(page, budget));
   }
 
-  private static String plain(PDDocument doc, int pageIndex) throws IOException {
-    return strip(new RaisedDigitStripper(), doc, pageIndex);
+  private static String plain(PDDocument doc, int pageIndex, PdfReadBudget budget)
+      throws IOException {
+    return strip(new RaisedDigitStripper(budget), doc, pageIndex);
   }
 
   private static String strip(PDFTextStripper stripper, PDDocument doc, int pageIndex)
@@ -179,8 +205,59 @@ final class PdfPageText {
     return Math.abs(position.getYScale());
   }
 
-  /** Writes every word through {@link #separateRaisedDigits}. */
+  /**
+   * Writes every word through {@link #separateRaisedDigits} and counts every glyph, every operator
+   * and every content stream it is about to parse against the budget before PDFBox acts on it, so a
+   * page that draws one form over and over, or nests forms that draw nothing, stops early.
+   */
   private static class RaisedDigitStripper extends PDFTextStripper {
+
+    private final PdfReadBudget budget;
+    private long glyphs;
+
+    RaisedDigitStripper(PdfReadBudget budget) {
+      this.budget = budget;
+    }
+
+    @Override
+    protected void processOperator(Operator operator, List<COSBase> operands) throws IOException {
+      budget.countOperator(operands);
+      super.processOperator(operator, operands);
+    }
+
+    @Override
+    public void processPage(PDPage page) throws IOException {
+      // PDFTextStripper calls this for every page and skips those outside the range itself
+      if (getCurrentPageNo() >= getStartPage() && getCurrentPageNo() <= getEndPage()) {
+        budget.chargePage(page);
+      }
+      super.processPage(page);
+    }
+
+    @Override
+    public void showForm(PDFormXObject form) throws IOException {
+      budget.chargeContent(form.getCOSObject());
+      super.showForm(form);
+    }
+
+    @Override
+    public void showTransparencyGroup(PDTransparencyGroup form) throws IOException {
+      budget.chargeContent(form.getCOSObject());
+      super.showTransparencyGroup(form);
+    }
+
+    @Override
+    protected void processType3Stream(PDType3CharProc charProc, Matrix textRenderingMatrix)
+        throws IOException {
+      budget.chargeContent(charProc.getCOSObject());
+      super.processType3Stream(charProc, textRenderingMatrix);
+    }
+
+    @Override
+    protected void processTextPosition(TextPosition text) {
+      budget.requireRoomFor(++glyphs);
+      super.processTextPosition(text);
+    }
 
     @Override
     protected void writeString(String text, List<TextPosition> textPositions) throws IOException {
@@ -207,7 +284,8 @@ final class PdfPageText {
     private final boolean[] anchored;
     private boolean writingCells;
 
-    TableStripper(List<TableGrid> grids) {
+    TableStripper(List<TableGrid> grids, PdfReadBudget budget) {
+      super(budget);
       this.grids = grids;
       this.anchored = new boolean[grids.size()];
       for (TableGrid grid : grids) {

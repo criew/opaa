@@ -9,7 +9,10 @@ import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkContextTitle;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.file.office.OdfPackage;
+import io.opaa.format.file.office.OoxmlPackages;
 import io.opaa.format.shared.HeadingSectionSplitter;
+import io.opaa.format.shared.ParserLimitExceededException;
+import io.opaa.format.shared.ParserLimitProperties;
 import io.opaa.format.shared.TableText;
 import io.opaa.sourceaccess.LoggedName;
 import java.io.IOException;
@@ -36,7 +39,7 @@ import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
@@ -92,13 +95,29 @@ public class TabularDocumentFormat implements DocumentFormat {
    */
   private final HeadingSectionSplitter splitter;
 
+  private final ParserLimitProperties limits;
+
   public TabularDocumentFormat(TabularProperties properties, HeadingSectionSplitter splitter) {
-    this(properties, splitter, OdfPackage::open);
+    this(properties, splitter, ParserLimitProperties.DEFAULTS);
+  }
+
+  public TabularDocumentFormat(
+      TabularProperties properties, HeadingSectionSplitter splitter, ParserLimitProperties limits) {
+    this(properties, splitter, limits, OdfPackage::open);
   }
 
   TabularDocumentFormat(
       TabularProperties properties, HeadingSectionSplitter splitter, OdfPackage.Opener odfOpener) {
+    this(properties, splitter, ParserLimitProperties.DEFAULTS, odfOpener);
+  }
+
+  private TabularDocumentFormat(
+      TabularProperties properties,
+      HeadingSectionSplitter splitter,
+      ParserLimitProperties limits,
+      OdfPackage.Opener odfOpener) {
     this.splitter = splitter;
+    this.limits = limits;
     this.maxRowColumns = properties.maxRowColumns();
     this.maxOdsCellRepeat = properties.maxOdsCellRepeat();
     this.maxOdsContentXmlBytes = properties.maxOdsContentXmlBytes();
@@ -163,6 +182,7 @@ public class TabularDocumentFormat implements DocumentFormat {
       // nothing usable" outcome TikaFallbackFormat reports for text that chunks down to nothing.
       return DocumentFormatResult.noExtractableText();
     }
+    limits.requireTextWithinLimit(chunks, "Tabular document");
     return DocumentFormatResult.chunked(chunks);
   }
 
@@ -292,11 +312,10 @@ public class TabularDocumentFormat implements DocumentFormat {
   // --- XLSX ----------------------------------------------------------------------------------
 
   /**
-   * Unlike {@link #readOds}, this reader needs no byte/row zip-bomb ceiling of its own: POI already
-   * guards every ZIP-backed reader process-wide through {@code
-   * org.apache.poi.openxml4j.util.ZipSecureFile}'s minimum inflate ratio and maximum entry size.
-   * The ODS reader needs its own guard precisely because it bypasses POI and reads the entry
-   * itself.
+   * POI's own inflate-ratio check does not bound what a sheet unpacks to, so the package is
+   * measured by {@link OoxmlPackages} before POI builds its DOM, and the cell text read is counted
+   * against {@link ParserLimitProperties#maxTextCharacters()} row by row, since shared strings let
+   * a small sheet repeat one long text in every cell.
    */
   private List<Document> readXlsx(DocumentFormatSource source) throws IOException {
     if (source.file() == null) {
@@ -314,19 +333,25 @@ public class TabularDocumentFormat implements DocumentFormat {
     // re-evaluating anything.
     cellFormatter.setUseCachedValuesForFormulaCells(true);
 
-    List<Document> chunks = new ArrayList<>();
-    // File-based, read-only: keeps POI's own temp-file/memory strategy for XLSX's ZIP+XML
-    // container rather than first buffering the whole file through an InputStream ourselves
-    // - source.file() is never re-written while this runs.
-    try (Workbook workbook = WorkbookFactory.create(source.file().toFile(), null, true)) {
-      for (Sheet sheet : workbook) {
-        chunks.addAll(readSheet(sheet, cellFormatter, source.loggedName()));
-      }
-    }
-    return chunks;
+    // File-based, read-only: POI reads only the parts it needs, and source.file() is never
+    // re-written while this runs.
+    return OoxmlPackages.read(
+        source.file(),
+        limits,
+        pkg -> {
+          List<Document> chunks = new ArrayList<>();
+          long[] characters = {0};
+          // released by OoxmlPackages.read, which reverts the read-only package
+          Workbook workbook = new XSSFWorkbook(pkg);
+          for (Sheet sheet : workbook) {
+            chunks.addAll(readSheet(sheet, cellFormatter, source.loggedName(), characters));
+          }
+          return chunks;
+        });
   }
 
-  private List<Document> readSheet(Sheet sheet, DataFormatter cellFormatter, LoggedName names) {
+  private List<Document> readSheet(
+      Sheet sheet, DataFormatter cellFormatter, LoggedName names, long[] characters) {
     List<RawRow> rows = new ArrayList<>();
     List<String> header = null;
     boolean anyRowTruncated = false;
@@ -336,6 +361,14 @@ public class TabularDocumentFormat implements DocumentFormat {
         anyRowTruncated = true;
       }
       List<String> values = toValues(row, minColumns, cellFormatter);
+      for (String value : values) {
+        characters[0] += value == null ? 0 : value.length();
+      }
+      if (characters[0] > limits.maxTextCharacters()) {
+        throw new ParserLimitExceededException(
+            "XLSX workbook exceeds the configured text character limit of "
+                + limits.maxTextCharacters());
+      }
       if (header == null && !isBlankRow(values)) {
         header = values;
       }

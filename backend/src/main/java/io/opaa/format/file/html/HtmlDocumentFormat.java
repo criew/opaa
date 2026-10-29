@@ -9,6 +9,7 @@ import io.opaa.format.shared.DocumentHeadText;
 import io.opaa.format.shared.DocumentTitleLine;
 import io.opaa.format.shared.HeadingSectionSplitter;
 import io.opaa.format.shared.HeadingSectionSplitter.Event;
+import io.opaa.format.shared.ParserLimitProperties;
 import io.opaa.format.shared.XhtmlEventBuilder;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -44,8 +45,15 @@ public class HtmlDocumentFormat implements DocumentFormat {
    */
   private final HeadingSectionSplitter splitter;
 
+  private final ParserLimitProperties limits;
+
   public HtmlDocumentFormat(HeadingSectionSplitter splitter) {
+    this(splitter, ParserLimitProperties.DEFAULTS);
+  }
+
+  public HtmlDocumentFormat(HeadingSectionSplitter splitter, ParserLimitProperties limits) {
     this.splitter = splitter;
+    this.limits = limits;
   }
 
   @Override
@@ -102,6 +110,7 @@ public class HtmlDocumentFormat implements DocumentFormat {
       // every other pipeline reports for content that reduces to nothing.
       return DocumentFormatResult.noExtractableText();
     }
+    limits.requireTextWithinLimit(chunks, "HTML document");
     return DocumentFormatResult.chunked(chunks)
         .withProperties(properties(source, htmlDoc, titleLine, headText));
   }

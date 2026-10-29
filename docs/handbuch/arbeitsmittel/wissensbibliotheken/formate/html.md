@@ -80,7 +80,8 @@ benennt andere Dokumente als sich selbst und würde sonst deren Dokumentart erbe
 
 ## 6. Grenzwerte
 
-Keine eigenen Konfigurationsschlüssel und kein Bytedeckel im Parser. Am
+Keine eigenen Konfigurationsschlüssel und kein Bytedeckel im Parser; es gilt die gemeinsame
+Textgrenze je Dokument ([Grenzen beim Lesen](README.md#grenzen-beim-lesen)). Am
 Webverzeichnis-Konnektor greift dessen Dateigrößengrenze, am Feed-Konnektor dessen
 Seitengrößengrenze.
 

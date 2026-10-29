@@ -29,6 +29,61 @@ muss nur als Text erkennbar sein und die Datei muss die Endung selbst tragen.
 | Feed-Detailseite | `html` | entfällt | wie `.html`; der Konnektor übergibt die Inhaltsbereiche als HTML | [HTML](html.md) |
 | Confluence-Seite | `confluence` | entfällt | Überschriften h1 bis h3, Tabellen, Listen, Makros nach Regelwerk | [Confluence-Seite](confluence.md) |
 
+## Grenzen beim Lesen
+
+Eine präparierte Datei kann klein sein und beim Lesen trotzdem ein Vielfaches an Speicher und
+Rechenzeit verlangen: ein Word-Dokument, dessen Inhaltsdatei sich auf das Hundertfache entpackt, ein
+PDF, das denselben Textblock tausendfach auf eine Seite zeichnet, oder eines, das Zeichnungen
+vielfach ineinander verschachtelt, ohne etwas Sichtbares zu zeichnen. Damit ein einzelnes Dokument
+weder die Verarbeitung anderer Dokumente blockiert noch den Speicher des Backends aufbraucht, gelten
+für die Formate mit Struktur gemeinsame Obergrenzen:
+
+- **Text je Dokument** (`max-text-characters`): gilt für PDF, Word, PowerPoint, Excel und CSV, HTML
+  und Markdown. Das PDF zählt schon beim Lesen der Seiten mit und hört auf, sobald die Grenze
+  überschritten ist.
+- **Entpackte Größe von Word, PowerPoint und Excel** (`max-ooxml-part-bytes` je Inhaltsdatei,
+  `max-ooxml-total-bytes` für alle Inhaltsdateien zusammen): geprüft, bevor das Dokument gelesen
+  wird. Gezählt wird jede Datei im Container, die als XML beginnen kann, gleich wie sie heißt oder
+  als was sie sich ausgibt; Bilder, Videos, Schriften und eingebettete Dateien, die schon an ihren
+  ersten Bytes als Binärdaten erkennbar sind, zählen nicht mit. Eine Präsentation mit einem großen
+  Video scheitert deshalb nicht an dieser Grenze.
+- **Rechenschritte eines PDF** (`max-pdf-operators`): alle Zeichenanweisungen, die beim Lesen eines
+  PDF über alle Seiten, verschachtelten Zeichnungen und Lesedurchgänge ausgeführt werden; jedes
+  Element einer Werteliste zählt als weiterer Schritt.
+- **Gelesene Inhaltsdaten eines PDF** (`max-pdf-content-bytes`): die entpackten Zeichenanweisungen
+  aller Seiten und Zeichnungen, eine Zeichnung so oft gezählt, wie sie gezeichnet wird.
+- **Größe eines einzelnen Inhaltsteils eines PDF** (`max-pdf-stream-bytes`): Ein Seiteninhalt oder
+  eine Zeichnung darf entpackt nicht größer werden. Gemessen wird, bevor das Dokument gelesen
+  wird, ohne den Teil im Speicher auszupacken; so kann eine wenige hundert Kilobyte große Datei
+  nicht Hunderte Megabyte Speicher belegen.
+- **Lesezeit eines PDF** (`max-pdf-parse-seconds`): als letzte Sicherung die Zeit, die das Lesen
+  eines PDF insgesamt dauern darf.
+- **Gliederung eines PDF:** Jeder Lesezeichen-Eintrag wird höchstens einmal gelesen, so dass eine
+  Gliederung, die auf sich selbst zurückverweist, das Lesen nicht aufhält; tiefer als 64 Ebenen und
+  über 50.000 Einträge hinaus wird sie nicht weiter verfolgt.
+
+Ein Dokument über einer Grenze wird nicht gekürzt, sondern ist „fehlgeschlagen" wie eine nicht
+lesbare Datei; bei einer erneuten Indexierung bleiben die bisherigen Chunks stehen. Dasselbe gilt,
+wenn eine Lesebibliothek an einem einzelnen Dokument mit einem internen Fehler abbricht. Die
+OpenDocument-Formate haben eigene Grenzen in ihren Kapiteln, E-Mails in [E-Mail](mail.md).
+
+Läuft das Backend trotzdem einmal in einen Speichermangel, beendet es sich und wird neu gestartet,
+statt in einem ungewissen Zustand weiterzuarbeiten
+([Images und Laufzeit](../../../betrieb/images-und-laufzeit.md#speicher-und-container-grenzen)).
+
+Schlüssel unter `opaa.indexing.parser-limits.*`, Umgebungsvariablen
+`OPAA_INDEXING_PARSER_LIMITS_*`:
+
+| Schlüssel | Standard | Wirkung |
+|---|---|---|
+| `max-text-characters` | 10.000.000 | Text, den ein Dokument insgesamt liefern darf |
+| `max-ooxml-part-bytes` | 32 MiB | entpackte Größe einer einzelnen Inhaltsdatei eines Word-, PowerPoint- oder Excel-Dokuments |
+| `max-ooxml-total-bytes` | 64 MiB | entpackte Größe aller Inhaltsdateien eines solchen Dokuments zusammen |
+| `max-pdf-operators` | 200.000.000 | Zeichenanweisungen (und Elemente ihrer Wertelisten), die beim Lesen eines PDF insgesamt ausgeführt werden |
+| `max-pdf-content-bytes` | 512 MiB | entpackte Inhaltsdaten, die beim Lesen eines PDF insgesamt verarbeitet werden |
+| `max-pdf-stream-bytes` | 32 MiB | entpackte Größe eines einzelnen Seiteninhalts oder einer einzelnen Zeichnung eines PDF |
+| `max-pdf-parse-seconds` | 120 | Sekunden, die das Lesen eines PDF höchstens dauern darf |
+
 ## Bewusst nicht zugelassen
 
 | Format | Grund |

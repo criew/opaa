@@ -5,10 +5,16 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.pdfbox.contentstream.PDFGraphicsStreamEngine;
+import org.apache.pdfbox.contentstream.operator.Operator;
+import org.apache.pdfbox.contentstream.operator.OperatorName;
+import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDType3CharProc;
 import org.apache.pdfbox.pdmodel.font.PDType3Font;
+import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
+import org.apache.pdfbox.pdmodel.graphics.form.PDTransparencyGroup;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImage;
 import org.apache.pdfbox.util.Matrix;
 import org.apache.pdfbox.util.Vector;
@@ -18,7 +24,7 @@ import org.apache.pdfbox.util.Vector;
  * two ways table borders are drawn). Coordinates are those of {@link
  * org.apache.pdfbox.text.TextPosition#getX()}/{@code getY()} - origin at the crop box's upper left
  * corner, y downwards - so a ruling and a glyph can be compared directly. Curves, images, shadings
- * and Type 3 glyph procedures contribute nothing.
+ * and Type 3 glyph procedures contribute nothing; inline images are not even decoded.
  */
 final class PdfRulingCollector extends PDFGraphicsStreamEngine {
 
@@ -47,16 +53,23 @@ final class PdfRulingCollector extends PDFGraphicsStreamEngine {
   private List<Point2D.Float> current;
   private int pathPoints;
 
-  private PdfRulingCollector(PDPage page) {
+  private final PdfReadBudget budget;
+
+  private PdfRulingCollector(PDPage page, PdfReadBudget budget) {
     super(page);
+    this.budget = budget;
     PDRectangle crop = page.getCropBox();
     this.cropLeft = crop.getLowerLeftX();
     this.cropBottom = crop.getLowerLeftY();
     this.cropHeight = crop.getHeight();
   }
 
-  static List<Ruling> collect(PDPage page) throws IOException {
-    PdfRulingCollector collector = new PdfRulingCollector(page);
+  /**
+   * The page's rulings; every operator processed and every content stream parsed is counted against
+   * {@code budget}.
+   */
+  static List<Ruling> collect(PDPage page, PdfReadBudget budget) throws IOException {
+    PdfRulingCollector collector = new PdfRulingCollector(page, budget);
     try {
       collector.processPage(page);
     } catch (ScanLimitReached e) {
@@ -70,6 +83,44 @@ final class PdfRulingCollector extends PDFGraphicsStreamEngine {
     ScanLimitReached() {
       super(null, null, false, false);
     }
+  }
+
+  /**
+   * Counts every operator; an inline image ({@code BI}) is skipped, since PDFBox decodes its whole
+   * raster on meeting it and an image carries no rulings.
+   */
+  @Override
+  protected void processOperator(Operator operator, List<COSBase> operands) throws IOException {
+    budget.countOperator(operands);
+    if (OperatorName.BEGIN_INLINE_IMAGE.equals(operator.getName())) {
+      return;
+    }
+    super.processOperator(operator, operands);
+  }
+
+  @Override
+  public void processPage(PDPage page) throws IOException {
+    budget.chargePage(page);
+    super.processPage(page);
+  }
+
+  @Override
+  public void showForm(PDFormXObject form) throws IOException {
+    budget.chargeContent(form.getCOSObject());
+    super.showForm(form);
+  }
+
+  @Override
+  public void showTransparencyGroup(PDTransparencyGroup form) throws IOException {
+    budget.chargeContent(form.getCOSObject());
+    super.showTransparencyGroup(form);
+  }
+
+  @Override
+  protected void processType3Stream(PDType3CharProc charProc, Matrix textRenderingMatrix)
+      throws IOException {
+    budget.chargeContent(charProc.getCOSObject());
+    super.processType3Stream(charProc, textRenderingMatrix);
   }
 
   private void countPathPoints(int count) {
