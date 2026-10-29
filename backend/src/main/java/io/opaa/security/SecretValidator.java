@@ -10,11 +10,12 @@ import java.util.Set;
 /**
  * The rule behind {@link ValidSecret}, also usable without Bean Validation ({@link #isStrong}): a
  * trimmed value of at least {@value #MIN_LENGTH} characters that neither starts with one of the
- * placeholders below nor contains the {@link #NON_PRODUCTION_MARKER}, compared case-insensitively.
- * Below 32 characters, brute-forcing the derived keys becomes feasible; the placeholders are what
- * an operator who forgot to set a real value, or copied a value from the repository's CI files
- * ({@code ci-only-...}), would run with. {@link #isPubliclyKnownEncryptionKey} is the matching rule
- * for the AES keys, which are random bytes and cannot carry a readable prefix.
+ * placeholders below nor contains the {@link #NON_PRODUCTION_MARKER}, compared case-insensitively,
+ * and is none of the signing secrets once published in this repository. Below 32 characters,
+ * brute-forcing the derived keys becomes feasible; the placeholders are what an operator who forgot
+ * to set a real value, or copied a value from the repository's CI files ({@code ci-only-...}),
+ * would run with. {@link #isPubliclyKnownEncryptionKey} is the matching rule for the AES keys,
+ * which are random bytes and cannot carry a readable prefix.
  */
 public class SecretValidator implements ConstraintValidator<ValidSecret, String> {
 
@@ -59,12 +60,28 @@ public class SecretValidator implements ConstraintValidator<ValidSecret, String>
           "bgkeQqaMpiL1xFl4ymM9MVJ+jYlt+GCb4w9J8o5btxI=",
           "NNEl4fE9dCl6LycesKNIxBXCY+hDKDDWV8D7hPi5e0A=");
 
+  /**
+   * Signing secrets the E2E stacks, the chart's installation test and the image smoke test once
+   * carried in this repository, without a placeholder prefix or the marker. Anyone who copied one
+   * signs tokens everybody can forge.
+   */
+  private static final Set<String> PUBLISHED_SECRETS =
+      Set.of(
+          "demo-smoke-local-auth-jwt-secret-not-for-production-0123456789",
+          "e2e-local-auth-jwt-secret-not-for-production-0123456789",
+          "installation-e2e-issuer-secret-not-for-production-0123456789",
+          "local-auth-e2e-issuer-secret-not-for-production-0123456789",
+          "multi-instance-e2e-issuer-secret-not-for-production-0123456789",
+          "offline-e2e-issuer-secret-not-for-production-0123456789abcdef",
+          "kind-install-test-jwt-secret-0123456789abcdefghij",
+          "smoke-only-jwt-secret-0123456789abcdefghijklmnop");
+
   public static boolean isStrong(String value) {
     if (value == null) {
       return false;
     }
     String trimmed = value.trim();
-    if (trimmed.length() < MIN_LENGTH) {
+    if (trimmed.length() < MIN_LENGTH || PUBLISHED_SECRETS.contains(trimmed)) {
       return false;
     }
     String lowered = trimmed.toLowerCase(Locale.ROOT);

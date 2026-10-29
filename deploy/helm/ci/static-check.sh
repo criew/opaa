@@ -518,23 +518,29 @@ notes_case "networks without proxies" "NETZPRÜFUNG OHNE CLIENT-ADRESSE" "INSTAL
 notes_case "secrets without the answer file" "wirken nur mit bootstrap.initialAdmin.email" \
   "INSTALLATION AUS DER ANTWORTDATEI" --set secrets.initialAdminPassword=ci-only-Notanker-2026
 notes_case "public test secrets" "ÖFFENTLICH BEKANNTE TESTWERTE" "INSTALLATION AUS DER ANTWORTDATEI"
-# Own keys are generated: a key written into this file would be public and belongs on the lists of
-# known keys instead.
+# Own secrets are generated: a value written into this file would be public and belongs on the lists
+# of known values instead.
+own_jwt_secret="$(openssl rand -base64 48 | tr -d '\n')"
 own_credentials_key="$(openssl rand -base64 32)"
 own_settings_key="$(openssl rand -base64 32)"
 notes_case "own secrets" "GEHEIMNISSE" "ÖFFENTLICH BEKANNTE TESTWERTE" \
-  --set-string secrets.jwtSecret=own-static-check-secret-0123456789abcdefghij \
+  --set-string "secrets.jwtSecret=$own_jwt_secret" \
   --set-string "secrets.credentialsEncryptionKey=$own_credentials_key" \
   --set-string "secrets.settingsEncryptionKey=$own_settings_key"
 notes_case "an earlier CI key" "ÖFFENTLICH BEKANNTE TESTWERTE" "INSTALLATION AUS DER ANTWORTDATEI" \
-  --set-string secrets.jwtSecret=own-static-check-secret-0123456789abcdefghij \
+  --set-string "secrets.jwtSecret=$own_jwt_secret" \
   --set-string secrets.credentialsEncryptionKey=bjzhjv2AKbnBjZCYAR2V/Glp7TYZzqABwkqXs3lEyCY= \
   --set-string "secrets.settingsEncryptionKey=$own_settings_key"
 notes_case "an earlier key of the test runs" "ÖFFENTLICH BEKANNTE TESTWERTE" \
   "INSTALLATION AUS DER ANTWORTDATEI" \
-  --set-string secrets.jwtSecret=own-static-check-secret-0123456789abcdefghij \
+  --set-string "secrets.jwtSecret=$own_jwt_secret" \
   --set-string "secrets.credentialsEncryptionKey=$own_credentials_key" \
   --set-string secrets.settingsEncryptionKey=NNEl4fE9dCl6LycesKNIxBXCY+hDKDDWV8D7hPi5e0A=
+notes_case "an earlier signing secret of the test runs" "ÖFFENTLICH BEKANNTE TESTWERTE" \
+  "INSTALLATION AUS DER ANTWORTDATEI" \
+  --set-string secrets.jwtSecret=kind-install-test-jwt-secret-0123456789abcdefghij \
+  --set-string "secrets.credentialsEncryptionKey=$own_credentials_key" \
+  --set-string "secrets.settingsEncryptionKey=$own_settings_key"
 notes_case "egress off" "networkPolicy.egress.enabled ist aus" "INSTALLATION AUS DER ANTWORTDATEI"
 notes_case "egress on" "CLIENT-ADRESSE UND NETZTRENNUNG" "networkPolicy.egress.enabled ist aus" \
   --set networkPolicy.egress.enabled=true

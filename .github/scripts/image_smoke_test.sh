@@ -78,10 +78,11 @@ for _ in $(seq 1 60); do
 done
 [[ "$db_ready" == true ]] || fail "PostgreSQL did not become ready"
 
-# Throwaway secrets, valid in form only: the jwt secret's minimum length and two Base64 AES-256 keys
-# generated for this run - a key written into this file would be public, and "oidc" refuses those.
-# Migration and backend share them. No answer file: the backend starts in installation mode
-# (ADR-0060), whose readiness is UP.
+# Throwaway secrets: the signing secret and two Base64 AES-256 keys are generated for this run - a
+# value written into this file would be public, and "oidc" refuses those. Migration and backend
+# share them. No answer file: the backend starts in installation mode (ADR-0060), whose readiness
+# is UP.
+jwt_secret="$(openssl rand -base64 48 | tr -d '\n')"
 credentials_key="$(openssl rand -base64 32)"
 settings_key="$(openssl rand -base64 32)"
 backend_environment=(
@@ -92,7 +93,7 @@ backend_environment=(
   -e OPAA_DB_URL=jdbc:postgresql://postgres:5432/opaa
   -e OPAA_DB_USERNAME=opaa
   -e OPAA_DB_PASSWORD=smoke-only-password
-  -e OPAA_AUTH_JWT_SECRET=smoke-only-jwt-secret-0123456789abcdefghijklmnop
+  -e "OPAA_AUTH_JWT_SECRET=$jwt_secret"
   -e "OPAA_CREDENTIALS_ENCRYPTION_KEY=$credentials_key"
   -e "OPAA_SETTINGS_ENCRYPTION_KEY=$settings_key"
 )

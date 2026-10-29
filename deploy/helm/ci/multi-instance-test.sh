@@ -25,8 +25,9 @@ PREVIOUS_BACKEND="${PREVIOUS_BACKEND:-opaa-ci/backend:previous}"
 PREVIOUS_FRONTEND="${PREVIOUS_FRONTEND:-opaa-ci/frontend:previous}"
 PHASES="${PHASES:-fresh rolling}"
 CORPUS_SIZE="${CORPUS_SIZE:-40}"
-# The AES keys of this run, generated once: install and the upgrade of scenario 05 pass the same
-# ones, and no file of the repository carries a key the "oidc" profile accepts.
+# The signing secret and AES keys of this run, generated once: install and the upgrade of scenario
+# 05 pass the same ones, and no file of the repository carries a value the "oidc" profile accepts.
+JWT_SECRET="$(openssl rand -base64 48 | tr -d '\n')"
 CREDENTIALS_KEY="$(openssl rand -base64 32)"
 SETTINGS_KEY="$(openssl rand -base64 32)"
 repo_root="$(pwd)"
@@ -103,6 +104,7 @@ install() { # backend-image frontend-image
     pod-security.kubernetes.io/enforce-version=latest
   local start=$SECONDS
   helm install "$RELEASE" "$CHART_DIR" --namespace "$NAMESPACE" -f "$VALUES" \
+    --set-string "secrets.jwtSecret=$JWT_SECRET" \
     --set-string "secrets.credentialsEncryptionKey=$CREDENTIALS_KEY" \
     --set-string "secrets.settingsEncryptionKey=$SETTINGS_KEY" \
     --set "backend.image.repository=$(repository "$1")" --set "backend.image.tag=$(tag "$1")" \
@@ -115,18 +117,19 @@ install() { # backend-image frontend-image
 scenarios() { # spec-filter...
   local upgrade
   upgrade="$(node -e '
-    const [chart, ns, values, backend, frontend, credentialsKey, settingsKey] = process.argv.slice(1);
+    const [chart, ns, values, backend, frontend, jwtSecret, credentialsKey, settingsKey] = process.argv.slice(1);
     const split = (image) => [image.slice(0, image.lastIndexOf(":")), image.slice(image.lastIndexOf(":") + 1)];
     const [br, bt] = split(backend);
     const [fr, ft] = split(frontend);
     console.log(JSON.stringify(["upgrade", "opaa", chart, "--namespace", ns, "-f", values,
+      "--set-string", `secrets.jwtSecret=${jwtSecret}`,
       "--set-string", `secrets.credentialsEncryptionKey=${credentialsKey}`,
       "--set-string", `secrets.settingsEncryptionKey=${settingsKey}`,
       "--set", `backend.image.repository=${br}`, "--set", `backend.image.tag=${bt}`,
       "--set", `frontend.image.repository=${fr}`, "--set", `frontend.image.tag=${ft}`,
       "--wait", "--wait-for-jobs", "--timeout", "15m"]));
   ' "$(realpath "$CHART_DIR")" "$NAMESPACE" "$(realpath "$VALUES")" "$NEXT_BACKEND" "$NEXT_FRONTEND" \
-    "$CREDENTIALS_KEY" "$SETTINGS_KEY")"
+    "$JWT_SECRET" "$CREDENTIALS_KEY" "$SETTINGS_KEY")"
   (
     cd e2e
     E2E_MULTI_PLATFORM=kind \

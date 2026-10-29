@@ -37,9 +37,9 @@ targetValidation:
     - ai-stub.multi-test.svc.cluster.local:8089
 # The backend really starts here in the "oidc" profile, which refuses the ci-only-... and
 # marker-bearing values of the chart's own ci/ value sets; these guard nothing but a throwaway cluster.
-# The two AES keys are not set here: multi-instance-test.sh generates them per run.
+# The signing secret and the two AES keys are not set here: multi-instance-test.sh generates them
+# per run.
 secrets:
-  jwtSecret: kind-install-test-jwt-secret-0123456789abcdefghij
   databasePassword: ci-only-password
   s3AccessKey: opaa-kind
   s3SecretKey: opaa-kind-secret

@@ -12,8 +12,9 @@ CHART_DIR="${CHART_DIR:-deploy/helm/opaa}"
 NAMESPACE="${INSTALL_NAMESPACE:-opaa-ct}"
 # The first start migrates the schema; the chart's startup probe allows up to ten minutes for it.
 INSTALL_TIMEOUT="${INSTALL_TIMEOUT:-900s}"
-# The AES keys of this run, generated: a key from a file of the repository is public, and the
-# "oidc" profile refuses it.
+# The signing secret and AES keys of this run, generated: a value from a file of the repository is
+# public, and the "oidc" profile refuses it.
+JWT_SECRET="$(openssl rand -base64 48 | tr -d '\n')"
 CREDENTIALS_KEY="$(openssl rand -base64 32)"
 SETTINGS_KEY="$(openssl rand -base64 32)"
 
@@ -40,4 +41,4 @@ cp "$CI_DIR/install-values.yaml" "$work_dir/opaa/ci/kind-values.yaml"
 ct install --config "$CI_DIR/ct.yaml" --charts "$work_dir/opaa" \
   --namespace "$NAMESPACE" --release-label app.kubernetes.io/instance \
   --helm-extra-args "--timeout $INSTALL_TIMEOUT" \
-  --helm-extra-set-args "--set-string=secrets.credentialsEncryptionKey=$CREDENTIALS_KEY --set-string=secrets.settingsEncryptionKey=$SETTINGS_KEY"
+  --helm-extra-set-args "--set-string=secrets.jwtSecret=$JWT_SECRET --set-string=secrets.credentialsEncryptionKey=$CREDENTIALS_KEY --set-string=secrets.settingsEncryptionKey=$SETTINGS_KEY"

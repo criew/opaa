@@ -107,9 +107,11 @@ GEHEIMNISSE
 {{- $publishedKeys := list "bjzhjv2AKbnBjZCYAR2V/Glp7TYZzqABwkqXs3lEyCY=" "CH1X+hsIYeijer8S9wq5wKRnQa4DpUPePzw4KxGMTMw=" "3J0X7GKz9q3Hq1zEo2mJ1n5Q2k8m3r9T4v6w8y0A2c4=" "Zm9yLWNpLW9ubHktc2V0dGluZ3Mta2V5LTAxMjM0NTY=" "Qo69uaPd4kBf0N5+Hne8cePloVxyZE6pye8qhEfdf+8=" "gljJpg/LCRbybV9cerT5pH0EjCPGz1LIN8ry7JfrUzE=" "bgkeQqaMpiL1xFl4ymM9MVJ+jYlt+GCb4w9J8o5btxI=" "NNEl4fE9dCl6LycesKNIxBXCY+hDKDDWV8D7hPi5e0A=" }}
 {{- $credentialsKey := .Values.secrets.credentialsEncryptionKey | default "" | trim }}
 {{- $settingsKey := .Values.secrets.settingsEncryptionKey | default "" | trim }}
-{{- if or (hasPrefix "ci-only" (lower (.Values.secrets.jwtSecret | default ""))) (contains $marker (upper (b64dec $credentialsKey))) (contains $marker (upper (b64dec $settingsKey))) (has $credentialsKey $publishedKeys) (has $settingsKey $publishedKeys) }}
+{{- /* signing secrets the test runs once carried; the backend refuses them as well */}}
+{{- $publishedSecrets := list "kind-install-test-jwt-secret-0123456789abcdefghij" "smoke-only-jwt-secret-0123456789abcdefghijklmnop" "demo-smoke-local-auth-jwt-secret-not-for-production-0123456789" "e2e-local-auth-jwt-secret-not-for-production-0123456789" "installation-e2e-issuer-secret-not-for-production-0123456789" "local-auth-e2e-issuer-secret-not-for-production-0123456789" "multi-instance-e2e-issuer-secret-not-for-production-0123456789" "offline-e2e-issuer-secret-not-for-production-0123456789abcdef" }}
+{{- if or (hasPrefix "ci-only" (lower (.Values.secrets.jwtSecret | default ""))) (has (.Values.secrets.jwtSecret | default "" | trim) $publishedSecrets) (contains $marker (upper (b64dec $credentialsKey))) (contains $marker (upper (b64dec $settingsKey))) (has $credentialsKey $publishedKeys) (has $settingsKey $publishedKeys) }}
   ÖFFENTLICH BEKANNTE TESTWERTE: secrets.jwtSecret oder ein Verschlüsselungsschlüssel stammt aus
-  den Wertesätzen der CI ({{ $marker }}). Das Backend startet damit nicht. Eigene Werte
+  den Wertesätzen oder Testläufen der CI ({{ $marker }}). Das Backend startet damit nicht. Eigene Werte
   erzeugen: openssl rand -base64 48 (jwtSecret), openssl rand -base64 32 (Schlüssel).
 {{- end }}
 {{- end }}
