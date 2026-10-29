@@ -164,7 +164,8 @@ absolute Höchstdauer `session-max-lifetime` (30 Tage, höchstens 90); für loka
 Start validiert wie das Secret. Cookie `opaa_refresh`:
 `HttpOnly`, `SameSite=Strict`, `Secure`, `Path=/api/v1/auth/local`; `cookie-secure = false` ist für
 lokales HTTP zulässig und erzeugt im `oidc`-Profil eine `WARN`-Zeile. Das Access-Token hält die SPA
-nur im Speicher. CSRF nur, wo das Cookie trägt (`refresh`, `logout`, Double-Submit `X-XSRF-TOKEN`).
+nur im Speicher. CSRF nur, wo das Cookie trägt (`refresh`, `logout`, Double-Submit `X-XSRF-TOKEN`);
+das Cookie `XSRF-TOKEN` bleibt für die SPA lesbar und trägt ebenfalls `SameSite=Strict`.
 Widerruf in zwei Schichten: `jti`-Denylist (Caffeine-Cache, `expireAfterWrite = access-token-ttl`)
 und `password_invalidated_before`; Logout und Passwortwechsel wirken sofort.
 `LocalTokenCleanupScheduler` (täglich 03:20) löscht Token-Zeilen spätestens sieben Tage nach Ablauf

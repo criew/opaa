@@ -96,6 +96,17 @@ public class OidcSecurityConfig {
             && flow.test(selfServiceFlows.getIfAvailable(() -> LocalSelfServiceAvailability.NONE));
   }
 
+  /**
+   * The double-submit cookie {@code XSRF-TOKEN} stays readable for the SPA, which echoes it as
+   * {@code X-XSRF-TOKEN}, and carries {@code SameSite=Strict} like the refresh cookie it guards
+   * (ADR-0033, Entscheidung 7): a cross-site request never sends it.
+   */
+  private static CookieCsrfTokenRepository csrfTokenRepository() {
+    CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+    repository.setCookieCustomizer(cookie -> cookie.sameSite("Strict"));
+    return repository;
+  }
+
   @Bean
   SecurityFilterChain securityFilterChain(
       HttpSecurity http,
@@ -105,7 +116,7 @@ public class OidcSecurityConfig {
       throws Exception {
     http.csrf(
             csrf ->
-                csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                csrf.csrfTokenRepository(csrfTokenRepository())
                     .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
                     .requireCsrfProtectionMatcher(LOCAL_COOKIE_ENDPOINTS))
         .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class)
