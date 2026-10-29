@@ -78,68 +78,71 @@ public final class BrandingSettingsRules {
   }
 
   /**
-   * Trims, turns blank into {@code null} ("back to the default") and rejects anything too long or
-   * carrying a control character - a line break in a product name is a layout defect on every page
-   * that renders it, not a customisation.
+   * One text field: a value without a single visible character - blanks, no-break and ideographic
+   * spaces, zero-width and other format characters - counts as empty ("back to the default"), so no
+   * field can be blanked by a value that merely looks empty. Characters that render empty are cut
+   * from the ends, except combining marks and tag characters that belong to a visible one before
+   * them (an emoji's variation selector). Control characters and line or paragraph separators are
+   * rejected, bidirectional controls wherever they stand, even at an edge or alone.
    */
   private static String text(
       List<FieldError> errors, String field, String value, int maxLength, String fieldLabel) {
     if (value == null) {
       return null;
     }
-    String trimmed = value.trim();
-    if (trimmed.isEmpty()) {
+    if (value.codePoints().anyMatch(BrandingSettingsRules::isBidiControl)) {
+      errors.add(new FieldError(field, INVALID, invalidMessage(fieldLabel)));
       return null;
     }
+    if (value.codePoints().noneMatch(BrandingSettingsRules::isVisible)) {
+      return null;
+    }
+    String trimmed = withoutInvisibleEdges(value);
     if (trimmed.length() > maxLength) {
       errors.add(
           new FieldError(
               field, TOO_LONG, fieldLabel + " darf höchstens " + maxLength + " Zeichen lang sein"));
       return null;
     }
-    if (trimmed.chars().anyMatch(Character::isISOControl)) {
-      errors.add(
-          new FieldError(field, INVALID, fieldLabel + " darf keine Steuerzeichen enthalten"));
+    if (trimmed.codePoints().anyMatch(BrandingSettingsRules::isControlOrLineBreak)) {
+      errors.add(new FieldError(field, INVALID, invalidMessage(fieldLabel)));
       return null;
     }
     return trimmed;
   }
 
+  private static String invalidMessage(String fieldLabel) {
+    return fieldLabel + " darf keine Steuerzeichen und keinen Zeilenumbruch enthalten";
+  }
+
   /**
-   * Like {@link #text}, but a value without a single visible character - blanks, no-break and
-   * ideographic spaces, zero-width and other format characters - counts as empty ("back to the
-   * default"): the notice must not be switched off by a value that merely looks empty. Characters
-   * that render empty are cut from the ends, except combining marks and tag characters that belong
-   * to a visible one before them (an emoji's variation selector). Control characters, line and
-   * paragraph separators and bidirectional controls are rejected, and a text equal to the standard
-   * is stored as "not set" so it keeps following the standard.
+   * {@link #text} with the notice's limit; a text equal to the standard is stored as "not set" so
+   * it keeps following the standard.
    */
   private static String notice(List<FieldError> errors, String field, String value) {
-    String label = "Der Hinweis zur KI-Nutzung";
-    if (value == null || value.codePoints().noneMatch(BrandingSettingsRules::isVisible)) {
+    String trimmed =
+        text(
+            errors,
+            field,
+            value,
+            BrandingDefaults.MAX_AI_NOTICE_LENGTH,
+            "Der Hinweis zur KI-Nutzung");
+    return BrandingDefaults.AI_NOTICE.equals(trimmed) ? null : trimmed;
+  }
+
+  /**
+   * A stored text field as it may be shown: {@code null} ("the default applies") when {@link
+   * #check} would refuse or blank it today - no visible character, a control character, a line
+   * break or a bidirectional control - otherwise unchanged. A value stored before the rules were
+   * tightened thus never reaches a window title, the sign-in page, a mail or an export.
+   */
+  public static String readable(String stored) {
+    if (stored == null
+        || stored.codePoints().noneMatch(BrandingSettingsRules::isVisible)
+        || stored.codePoints().anyMatch(BrandingSettingsRules::isControlOrLineBreak)) {
       return null;
     }
-    String trimmed = withoutInvisibleEdges(value);
-    if (trimmed.length() > BrandingDefaults.MAX_AI_NOTICE_LENGTH) {
-      errors.add(
-          new FieldError(
-              field,
-              TOO_LONG,
-              label
-                  + " darf höchstens "
-                  + BrandingDefaults.MAX_AI_NOTICE_LENGTH
-                  + " Zeichen lang sein"));
-      return null;
-    }
-    if (trimmed.codePoints().anyMatch(BrandingSettingsRules::isControlOrLineBreak)) {
-      errors.add(
-          new FieldError(
-              field,
-              INVALID,
-              label + " darf keine Steuerzeichen und keinen Zeilenumbruch enthalten"));
-      return null;
-    }
-    return trimmed.equals(BrandingDefaults.AI_NOTICE) ? null : trimmed;
+    return stored;
   }
 
   private static String color(List<FieldError> errors, String field, String value) {
@@ -190,7 +193,8 @@ public final class BrandingSettingsRules {
   }
 
   /**
-   * Bidirectional embeddings, overrides and isolates would reorder text appended after the notice.
+   * Bidirectional embeddings, overrides and isolates reorder the text around them: a product name
+   * in the window title, the notice before an appended answer.
    */
   private static boolean isBidiControl(int codePoint) {
     return (codePoint >= 0x202A && codePoint <= 0x202E)

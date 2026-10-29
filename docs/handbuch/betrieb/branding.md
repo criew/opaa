@@ -12,6 +12,24 @@ denselben Regeln; die Bilder nur hier. Welche Anmeldewege die Anmeldeseite
 zeigt und in welcher Reihenfolge, steht unter
 [Authentifizierung](authentifizierung.md#anmeldewege-im-betriebsmodus-oidc).
 
+## Regeln für die Texte
+
+Produktname, Claim und Hinweis zur KI-Nutzung folgen derselben Regel, in der Verwaltung, im
+Einrichtungs-Assistenten, in der Antwortdatei und beim Übertragen von Einstellungen:
+
+- **Ohne sichtbares Zeichen gilt das Feld als leer.** Ein Wert nur aus Leerzeichen, geschützten
+  oder unsichtbaren Zeichen (etwa geschütztes Leerzeichen oder Leerzeichen ohne Breite) stellt den
+  OPAA-Standard wieder her, statt Fenstertitel oder Anmeldeseite ohne Namen zu lassen. Solche
+  Zeichen am Anfang und Ende eines Textes werden nicht gespeichert.
+- **Steuerzeichen zur Schreibrichtung werden abgelehnt**, an jeder Stelle, mit einer Meldung am
+  Feld. Sie würden den Fenstertitel oder den Text der Anmeldeseite umdrehen. Ebenso abgelehnt
+  werden andere Steuerzeichen und Zeilenumbrüche.
+
+Ein Wert, der vor dieser Regel gespeichert wurde und gegen sie verstößt, wird nicht gezeigt: Überall
+dort, wo der Text erscheint, auch in E-Mails, im Chat-Export und in einer Exportdatei der
+Einstellungen, gilt dann der OPAA-Standard. Gespeichert bleibt er, bis das Feld das nächste Mal
+gespeichert wird; die Verwaltung zeigt bis dahin den Standard im Feld.
+
 ## Hinweis zur KI-Nutzung
 
 Das Feld **Hinweis zur KI-Nutzung** enthält den Text, mit dem das Haus seinen Nutzenden sagt, dass
