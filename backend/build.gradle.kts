@@ -488,8 +488,55 @@ tasks.named("check") {
     dependsOn(dnsRebindingTest)
 }
 
+// Parser fuzzing (io.opaa.fuzz.ParserFuzzTest): a time-boxed campaign of mutated inputs over the
+// corpus under src/test/resources/fuzz/corpus, on the production path of the formats. Nightly in
+// CI (.github/workflows/parser-fuzzing.yml), findings under build/fuzz-findings; -PfuzzDuration
+// (ISO-8601), -PfuzzSeed, -PfuzzInputTimeout and -PfuzzReplay=<file or directory>. The heap is
+// fixed, so an amplification shows as OutOfMemoryError. Not part of build/check; the corpus itself
+// runs in every build through FuzzCorpusTest.
+tasks.register<Test>("parserFuzzTest") {
+    description = "Time-boxed parser fuzzing on the production path of the formats " +
+        "(io.opaa.fuzz.ParserFuzzTest); not part of build/check."
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    filter {
+        includeTestsMatching("io.opaa.fuzz.ParserFuzzTest")
+    }
+    maxHeapSize = "1g"
+    // a StackOverflowError keeps its bottom frames, where the signature finds OPAA's own code
+    jvmArgs("-XX:MaxJavaStackTraceDepth=100000")
+    systemProperty(
+        "opaa.fuzz.findings",
+        layout.buildDirectory.dir("fuzz-findings").get().asFile.absolutePath,
+    )
+    mapOf(
+        "fuzzDuration" to "opaa.fuzz.duration",
+        "fuzzSeed" to "opaa.fuzz.seed",
+        "fuzzInputTimeout" to "opaa.fuzz.inputTimeout",
+        "fuzzReplay" to "opaa.fuzz.replay",
+    ).forEach { (property, key) ->
+        providers.gradleProperty(property).orNull?.let { systemProperty(key, it) }
+    }
+    testLogging {
+        events("passed", "skipped", "failed")
+        showStandardStreams = true
+    }
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
+tasks.register<JavaExec>("writeParserFuzzCorpus") {
+    description = "Rewrites the generated seeds of the parser fuzzing corpus (io.opaa.fuzz)."
+    group = "verification"
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("io.opaa.fuzz.FuzzCorpusGenerator")
+    args(layout.projectDirectory.dir("src/test/resources/fuzz/corpus").asFile.absolutePath)
+}
+
 tasks.named<Test>("test") {
     filter {
+        excludeTestsMatching("io.opaa.fuzz.ParserFuzzTest")
         excludeTestsMatching("*RebindingTest")
         excludeTestsMatching("io.opaa.integration.*")
         excludeTestsMatching("*.GoogleDriveWorkspaceIntegrationTest")

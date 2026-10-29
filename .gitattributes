@@ -16,3 +16,6 @@
 *.gif binary
 *.pdf binary
 *.docx binary
+
+# Fuzzing corpus: seeds and found inputs stay byte-exact, line endings included
+backend/src/test/resources/fuzz/corpus/** binary
