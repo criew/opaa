@@ -6,6 +6,7 @@ import { notify } from '@/shared/stores/notificationStore'
 import { safeExternalHref } from '@/shared/utils/safeExternalHref'
 import type { SourceTypeKey } from '@/shared/api/types'
 import { sourceRegistration } from '../components/sources/registry'
+import { withTextFragment } from '../utils/textFragment'
 
 /**
  * Everything "Original öffnen"/"Dokument öffnen" needs to decide HOW to open a document -
@@ -17,7 +18,8 @@ export interface OpenableDocument {
   sourceType?: SourceTypeKey | null
   sourceUrl?: string | null
   sourceEntryUrl?: string | null
-  /** Where the cited passage sits - a PDF opens on its page with the passage marked. */
+  /** Where the cited passage sits - a PDF, Markdown or text file opens there with the passage
+   *  marked, a page at the source through a text fragment. */
   anchor?: ChunkAnchor | null
   /** SHA-256 of the original as indexed when the citation was made. */
   contentSha256?: string | null
@@ -46,13 +48,13 @@ export function useDocumentPreview() {
         notify('Für dieses Dokument ist keine Quell-Adresse hinterlegt.', 'error')
         return
       }
-      window.open(target, '_blank', 'noopener,noreferrer')
+      window.open(withTextFragment(target, document.anchor), '_blank', 'noopener,noreferrer')
       return
     }
     try {
       const result = await openDocumentContent(document.id, document.fileName)
       if (result.kind === 'text-preview') {
-        setPreviewDocument(result)
+        setPreviewDocument({ ...result, anchor: document.anchor })
       } else if (result.kind === 'pdf-preview') {
         setPdfPreview({
           ...result,
