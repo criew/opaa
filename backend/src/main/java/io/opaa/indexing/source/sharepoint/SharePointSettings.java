@@ -14,7 +14,8 @@ import java.util.Set;
  * fifty entries under {@code libraries} and the optional own full-sync rhythm {@code
  * fullSyncIntervalDays}. No secret. An entry is a document library, or {@code {"site": ...}}
  * without a drive for every document library the site has when a run starts ({@link #sites}); a run
- * puts those it found among the {@link #libraries} ({@link #resolvedTo}).
+ * puts those it found among the {@link #libraries} ({@link #resolvedTo}). Stored entries are either
+ * all whole sites or all single libraries, never a mix.
  */
 record SharePointSettings(
     List<SharePointLibrary> libraries, Integer fullSyncIntervalDays, List<SharePointSite> sites) {
@@ -56,6 +57,10 @@ record SharePointSettings(
    *
    * @throws ValidationException (German 400) for anything the connector does not accept
    */
+  static final String MIXED_SELECTION =
+      "sourceSettings.libraries: Entweder ganze Sites mit allen Dokumentbibliotheken oder einzeln"
+          + " gewählte Dokumentbibliotheken, nicht beides in einer Bibliothek";
+
   static SharePointSettings read(ConnectorData data) {
     data.requireOnly(KEYS);
     if (!(data.get("libraries") instanceof List<?> list) || list.isEmpty()) {
@@ -92,12 +97,8 @@ record SharePointSettings(
       }
       libraries.add(library);
     }
-    for (SharePointLibrary library : libraries) {
-      if (library.site() != null && sites.containsKey(library.site().id())) {
-        throw new ValidationException(
-            "sourceSettings.libraries: Eine Site mit allen Dokumentbibliotheken enthält keine"
-                + " einzeln gewählte Dokumentbibliothek derselben Site");
-      }
+    if (!sites.isEmpty() && !libraries.isEmpty()) {
+      throw new ValidationException(MIXED_SELECTION);
     }
     return new SharePointSettings(
         libraries, interval(data.get("fullSyncIntervalDays")), List.copyOf(sites.values()));

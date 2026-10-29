@@ -1393,8 +1393,9 @@ components:
             {driveId, folders, name, site}, only driveId required, or {site} without driveId for
             every document library of that site, resolved anew by every run; site is {id, name}
             of the site, the id as the listing gives it after site:, the name only shown - the
-            connection test reports a library outside its site; a site taken whole appears once
-            and not beside one of its own libraries) and fullSyncIntervalDays. Types without
+            connection test reports a library outside its site; a site taken whole appears once,
+            and the entries are either all whole sites or all single libraries) and
+            fullSyncIntervalDays. Types without
             settings take none.
           nullable: true
           type: object

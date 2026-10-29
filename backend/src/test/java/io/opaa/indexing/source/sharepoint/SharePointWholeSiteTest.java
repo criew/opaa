@@ -117,6 +117,26 @@ class SharePointWholeSiteTest {
         .isInstanceOf(ValidationException.class);
   }
 
+  // regression guard for #3117: the setup keeps either whole sites or single libraries, so a
+  // stored mix lost its single libraries on the next save
+  @Test
+  void aWholeSiteAndASingleLibraryOfAnotherSiteAreRefusedTogether() {
+    Map<String, Object> other =
+        Map.of(
+            "driveId",
+            "b!andere",
+            "site",
+            Map.of(
+                "id",
+                "contoso.sharepoint.com,11111111-1370-44e7-a1f5-426573fda80a,2d2244c3-251a-49ea-93a8-39e1c3a060fe"));
+    Map<String, Object> site = Map.of("site", Map.of("id", SITE));
+    assertThatThrownBy(
+            () ->
+                connector.readSettings(ConnectorData.of(Map.of("libraries", List.of(site, other)))))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage(SharePointSettings.MIXED_SELECTION);
+  }
+
   @Test
   void aSiteTwiceIsRefused() {
     Map<String, Object> site = Map.of("site", Map.of("id", SITE));
