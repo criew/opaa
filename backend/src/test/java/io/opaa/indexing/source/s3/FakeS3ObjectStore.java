@@ -239,6 +239,12 @@ public class FakeS3ObjectStore implements S3ObjectStore {
   }
 
   @Override
+  public void probeListing(String bucket) throws S3AccessException {
+    record("probe " + bucket);
+    objectsOf(bucket);
+  }
+
+  @Override
   public S3AccessCheck testAccess(S3Scope scope) throws S3AccessException {
     record("testAccess " + scope.key());
     S3ListPage page;

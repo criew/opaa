@@ -136,7 +136,7 @@ class S3ConnectionServiceTest {
 
     assertThat(resolution.readable()).containsExactly("dokumente");
     assertThat(resolution.outside()).containsOnlyKeys("logs-us", "privat");
-    assertThat(store.calls()).contains("list dokumente", "list privat");
+    assertThat(store.calls()).contains("probe dokumente", "probe privat");
     assertThat(store.isClosed()).isTrue();
   }
 

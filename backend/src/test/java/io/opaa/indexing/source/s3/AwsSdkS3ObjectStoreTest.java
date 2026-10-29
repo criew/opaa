@@ -603,6 +603,18 @@ class AwsSdkS3ObjectStoreTest {
     }
   }
 
+  @Test
+  void theListingProbeAsksForOneKeyAndAnswersWithTheListingsExceptions() throws Exception {
+    S3ObjectStore store = store(properties(1000, 1, 0), true, false);
+
+    store.probeListing("docs");
+
+    assertThat(server.seen().get(server.seen().size() - 1).query()).contains("max-keys=1");
+    server.failNext(403, "AccessDenied", 1);
+    assertThatThrownBy(() -> store.probeListing("docs"))
+        .isInstanceOf(S3AccessException.ListForbidden.class);
+  }
+
   private static Throwable catchFailure(Action action) {
     try {
       action.run();

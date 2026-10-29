@@ -135,15 +135,40 @@ class S3AllBucketsTest {
     int[] probes = {0};
 
     S3AllBuckets.Resolution resolution =
-        S3AllBuckets.resolve(store, listed, "EU-CENTRAL-1", () -> ++probes[0] > 3);
+        S3AllBuckets.resolve(store, listed, "EU-CENTRAL-1", bucket -> false, () -> ++probes[0] > 3);
 
     assertThat(resolution.readable()).containsExactly("dokumente");
+    assertThat(resolution.withheld()).isEmpty();
     assertThat(resolution.outside())
         .containsEntry("logs-us", "Region us-east-1")
         .containsEntry("privat", S3AllBuckets.NOT_LISTABLE)
         .containsEntry("umgezogen", S3AllBuckets.OTHER_ENDPOINT)
         .containsEntry("zz-spaet", S3AllBuckets.NOT_PROBED);
-    assertThat(store.calls()).noneMatch(call -> call.contains("logs-us"));
+    assertThat(store.calls())
+        .contains("probe dokumente", "probe privat", "probe umgezogen")
+        .noneMatch(call -> call.contains("logs-us"));
+  }
+
+  @Test
+  void anUnreadableBucketTheLibraryHoldsDocumentsFromIsWithheldNotLeftOut() throws Exception {
+    FakeS3ObjectStore store =
+        new FakeS3ObjectStore()
+            .bucket("dokumente")
+            .bucketRegion("logs-us", "us-east-1")
+            .bucket("privat")
+            .failBucket("privat", () -> new S3AccessException.BucketNotFound("privat"));
+    S3BucketListing.Listed listed = (S3BucketListing.Listed) store.listBuckets();
+
+    S3AllBuckets.Resolution resolution =
+        S3AllBuckets.resolve(
+            store, listed, "eu-central-1", bucket -> !bucket.equals("dokumente"), () -> false);
+
+    assertThat(resolution.readable()).containsExactly("dokumente");
+    assertThat(resolution.withheld())
+        .containsEntry("logs-us", "Region us-east-1")
+        .containsEntry("privat", S3AllBuckets.GONE);
+    assertThat(resolution.outside()).isEmpty();
+    assertThat(resolution.inScope()).containsExactly("dokumente", "logs-us", "privat");
   }
 
   @Test
@@ -159,6 +184,7 @@ class S3AllBucketsTest {
                     store,
                     new S3BucketListing.Listed(List.of("dokumente")),
                     "us-east-1",
+                    bucket -> true,
                     () -> false))
         .isInstanceOf(S3AccessException.RateLimited.class);
   }

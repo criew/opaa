@@ -78,6 +78,13 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   boolean existsBySourceEntryUrlAndLibraryId(String sourceEntryUrl, UUID libraryId);
 
   /**
+   * Whether {@code libraryId} holds a document whose {@code file_path} starts with {@code prefix}
+   * (wildcards in it match literally) - the check of "Alle Buckets" whether a bucket that cannot be
+   * read now still holds indexed documents, which then stay.
+   */
+  boolean existsByLibraryIdAndFilePathStartingWith(UUID libraryId, String prefix);
+
+  /**
    * Sets the stored name of an existing row - the cleaned name of an upload or a re-index - as a
    * conditional update, so a row deleted meanwhile is never re-inserted.
    */

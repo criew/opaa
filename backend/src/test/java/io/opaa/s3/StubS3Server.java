@@ -155,7 +155,7 @@ public final class StubS3Server implements AutoCloseable {
         return;
       }
       if (path.equals("/")) {
-        listBuckets(exchange);
+        listBuckets(exchange, query);
         return;
       }
       String[] parts = path.substring(1).split("/", 2);
@@ -256,7 +256,9 @@ public final class StubS3Server implements AutoCloseable {
     throw new IllegalArgumentException("aws-chunked body without a chunk header line");
   }
 
-  private void listBuckets(HttpExchange exchange) throws IOException {
+  /** Like AWS, names a bucket's region only to a request with a parameter such as max-buckets. */
+  private void listBuckets(HttpExchange exchange, String query) throws IOException {
+    boolean withRegions = query != null && !query.isBlank();
     StringBuilder xml =
         new StringBuilder(
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?><ListAllMyBucketsResult"
@@ -265,7 +267,7 @@ public final class StubS3Server implements AutoCloseable {
       xml.append("<Bucket><Name>")
           .append(name)
           .append("</Name><CreationDate>2026-01-01T00:00:00.000Z</CreationDate>");
-      if (bucketRegions.containsKey(name)) {
+      if (withRegions && bucketRegions.containsKey(name)) {
         xml.append("<BucketRegion>").append(bucketRegions.get(name)).append("</BucketRegion>");
       }
       xml.append("</Bucket>");

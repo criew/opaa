@@ -36,6 +36,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
+import software.amazon.awssdk.services.s3.model.ListBucketsRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.S3Object;
@@ -50,6 +51,9 @@ import software.amazon.awssdk.services.s3.model.S3Object;
  */
 @DataFlow("source-s3")
 final class AwsSdkS3ObjectStore implements S3ObjectStore {
+
+  /** Buckets per ListBuckets page; AWS allows up to 10,000. */
+  static final int BUCKET_PAGE_SIZE = 1000;
 
   private final S3Properties properties;
   private final SourceRequestMeter meter = new SourceRequestMeter();
@@ -250,8 +254,19 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
   @Override
   public S3BucketListing listBuckets() throws S3AccessException, InterruptedException {
     try {
+      // AWS names a bucket's region only to a paginated request, never to the bare ListBuckets
       List<Bucket> buckets =
-          call(S3Operation.LIST_BUCKETS, "*", null, () -> s3.listBuckets().buckets());
+          call(
+              S3Operation.LIST_BUCKETS,
+              "*",
+              null,
+              () -> {
+                List<Bucket> all = new ArrayList<>();
+                s3.listBucketsPaginator(
+                        ListBucketsRequest.builder().maxBuckets(BUCKET_PAGE_SIZE).build())
+                    .forEach(page -> all.addAll(page.buckets()));
+                return all;
+              });
       Map<String, String> regions = new HashMap<>();
       for (Bucket bucket : buckets) {
         if (bucket.bucketRegion() != null && !bucket.bucketRegion().isBlank()) {
@@ -262,6 +277,15 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
     } catch (S3AccessException.ListForbidden e) {
       return new S3BucketListing.NotPermitted();
     }
+  }
+
+  @Override
+  public void probeListing(String bucket) throws S3AccessException, InterruptedException {
+    call(
+        S3Operation.LIST_OBJECTS,
+        bucket,
+        null,
+        () -> s3.listObjectsV2(ListObjectsV2Request.builder().bucket(bucket).maxKeys(1).build()));
   }
 
   @Override

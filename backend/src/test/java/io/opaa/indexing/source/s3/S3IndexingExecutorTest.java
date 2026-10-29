@@ -64,8 +64,13 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatcher;
 
@@ -123,6 +128,11 @@ class S3IndexingExecutorTest {
                     .findFirst());
     when(documentRepository.findByLibraryIdAndSourceType(any(), any()))
         .thenAnswer(invocation -> List.copyOf(storedDocuments));
+    when(documentRepository.existsByLibraryIdAndFilePathStartingWith(any(), any()))
+        .thenAnswer(
+            invocation ->
+                storedDocuments.stream()
+                    .anyMatch(d -> d.getFilePath().startsWith(invocation.<String>getArgument(1))));
     vectorChunkStore = mock(VectorChunkStore.class);
     cleanupService =
         spy(
@@ -877,15 +887,13 @@ class S3IndexingExecutorTest {
     assertThat(reconciledPaths()).containsExactly("s3://dokumente/2025/protokoll.pdf");
   }
 
-  // regression guard for #3117: a bucket the key sees but may not list kept every run incomplete
   @Test
-  void allBucketsLeavesOutABucketTheKeyMayNotListAndStillReconcilesTheOthers() throws Exception {
+  void allBucketsLeavesOutABucketTheKeyMayNotListAndHoldsNothingFrom() throws Exception {
     allBuckets();
     store
         .put("dokumente", "2025/protokoll.pdf", "eins", PDF)
         .bucket("privat")
         .failBucket("privat", () -> new S3AccessException.ListForbidden("privat"));
-    stored("s3://privat/alt.pdf", "e:alt|3");
     UUID jobId = UUID.randomUUID();
 
     executor.execute(jobId, library, IndexingRunMode.FULL);
@@ -899,8 +907,83 @@ class S3IndexingExecutorTest {
                         + " s3:ListBucket fehlt)",
                     null)));
     assertThat(reconciledPaths())
-        .as("the listing is complete, so what the left-out bucket held is removed")
+        .as("a never readable bucket does not hold back the others")
         .containsExactly("s3://dokumente/2025/protokoll.pdf");
+  }
+
+  static Stream<Arguments> refusedProbes() {
+    return Stream.of(
+        Arguments.of(
+            "ListForbidden",
+            (Supplier<S3AccessException>) () -> new S3AccessException.ListForbidden("privat")),
+        Arguments.of(
+            "BucketNotFound",
+            (Supplier<S3AccessException>) () -> new S3AccessException.BucketNotFound("privat")),
+        Arguments.of(
+            "WrongRegionOrStyle",
+            (Supplier<S3AccessException>)
+                () -> new S3AccessException.WrongRegionOrStyle("privat")));
+  }
+
+  // regression guard for #3117: a 403 or a code-less 404 of a WAF in front of the store left the
+  // bucket out, and the complete listing removed everything indexed from it
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("refusedProbes")
+  void aBucketWithIndexedDocumentsThatRefusesTheProbeStaysAndNothingIsRemoved(
+      String answer, Supplier<S3AccessException> refusal) throws Exception {
+    allBuckets();
+    store
+        .put("dokumente", "2025/protokoll.pdf", "eins", PDF)
+        .bucket("privat")
+        .failBucket("privat", refusal);
+    stored("s3://privat/alt.pdf", "e:alt|3");
+    UUID jobId = UUID.randomUUID();
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(documentIngestService)
+        .ingest(
+            DocumentIngests.that().file().at("s3://dokumente/2025/protokoll.pdf").match(), any());
+    verify(documentRepository, never()).delete(storedDocuments.get(0));
+    verifyNoReconciliation();
+    verify(indexingJobService)
+        .recordListingAssessment(
+            eq(jobId), eq(false), argThat(scopes -> scopes.contains("privat")));
+    verify(eventRepository, never())
+        .save(argThat(event(IndexingEventCategory.SUMMARY, "Nicht im Umfang", null)));
+  }
+
+  @Test
+  void aBucketOfAnotherRegionWithIndexedDocumentsStaysWithoutARequest() throws Exception {
+    allBuckets();
+    store.put("dokumente", "2025/protokoll.pdf", "eins", PDF).bucketRegion("logs-us", "us-east-1");
+    stored("s3://logs-us/alt.log", "e:alt|3");
+
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
+
+    assertThat(store.calls()).noneMatch(call -> call.contains("logs-us"));
+    verifyNoReconciliation();
+  }
+
+  @Test
+  void aBucketTheListingNoLongerNamesIsReconciledAway() throws Exception {
+    allBuckets();
+    store.put("dokumente", "2025/protokoll.pdf", "eins", PDF);
+    stored("s3://geloescht/alt.pdf", "e:alt|3");
+    SourceSyncState state = writtenUnderCurrentSettings();
+    state.rememberResolvedScopes(Map.of("dokumente", "dokumente", "geloescht", "geloescht"));
+    when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(state));
+
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
+
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.SUMMARY,
+                    "Nicht mehr im Umfang: 1 Bucket – „geloescht“",
+                    null)));
+    assertThat(reconciledPaths()).containsExactly("s3://dokumente/2025/protokoll.pdf");
   }
 
   @Test
@@ -938,11 +1021,12 @@ class S3IndexingExecutorTest {
   }
 
   @Test
-  void anEventRunUnderAllBucketsChecksOnlyKeysOfReadableBucketsAndStaysQuietWithoutAChange()
+  void anEventRunUnderAllBucketsProbesOnlyTheReportedBucketsAndChecksOnlyReadableOnes()
       throws Exception {
     allBuckets();
     store
         .put("dokumente", "2025/neu.pdf", "neu", PDF)
+        .put("satzungen", "a.txt", "a", "text/plain")
         .bucket("privat")
         .failBucket("privat", () -> new S3AccessException.ListForbidden("privat"));
     SourceSyncState state = writtenUnderCurrentSettings();
@@ -953,8 +1037,8 @@ class S3IndexingExecutorTest {
     executor.refreshObjects(jobId, library, Set.of("dokumente/2025/neu.pdf", "privat/x.pdf"), 0);
 
     assertThat(store.calls())
-        .contains("head dokumente/2025/neu.pdf")
-        .doesNotContain("head privat/x.pdf");
+        .contains("probe dokumente", "probe privat", "head dokumente/2025/neu.pdf")
+        .doesNotContain("probe satzungen", "head privat/x.pdf");
     verify(documentIngestService)
         .ingest(DocumentIngests.that().file().at("s3://dokumente/2025/neu.pdf").match(), any());
     verify(eventRepository, never())
@@ -965,7 +1049,7 @@ class S3IndexingExecutorTest {
   }
 
   @Test
-  void anEventRunUnderAllBucketsNamesABucketThatAppearedSinceTheLastRun() throws Exception {
+  void anEventRunUnderAllBucketsLeavesTheRememberedResolutionAlone() throws Exception {
     allBuckets();
     store.put("dokumente", "2025/neu.pdf", "neu", PDF).put("satzungen", "a.txt", "a", "text/plain");
     SourceSyncState state = writtenUnderCurrentSettings();
@@ -976,13 +1060,30 @@ class S3IndexingExecutorTest {
 
     verify(documentIngestService)
         .ingest(DocumentIngests.that().file().at("s3://satzungen/a.txt").match(), any());
-    verify(eventRepository)
-        .save(argThat(event(IndexingEventCategory.SUMMARY, "Umfang „Alle“: 2 Buckets", null)));
+    assertThat(state.resolvedScopes()).containsOnlyKeys("dokumente");
+    verify(syncStateRepository, never()).save(any());
+    verify(eventRepository, never())
+        .save(argThat(event(IndexingEventCategory.SUMMARY, "Umfang „Alle“", null)));
+  }
+
+  @Test
+  void anEventRunWhoseBucketsAreAllUnreadableChecksNothing() throws Exception {
+    allBuckets();
+    store
+        .bucket("privat")
+        .failBucket("privat", () -> new S3AccessException.ListForbidden("privat"));
+    UUID jobId = UUID.randomUUID();
+
+    executor.refreshObjects(jobId, library, Set.of("privat/x.pdf"), 0);
+
+    assertThat(store.calls()).doesNotContain("head privat/x.pdf");
     verify(eventRepository)
         .save(
             argThat(
                 event(
-                    IndexingEventCategory.SUMMARY, "Neu im Umfang: 1 Bucket – „satzungen“", null)));
+                    IndexingEventCategory.SUMMARY,
+                    S3IndexingExecutor.NO_READABLE_EVENT_BUCKET,
+                    null)));
   }
 
   @Test

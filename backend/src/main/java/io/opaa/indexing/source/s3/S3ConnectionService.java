@@ -141,7 +141,8 @@ public class S3ConnectionService {
   /**
    * "Alle Buckets" as a run would resolve it now, each listed bucket probed once within {@link
    * #PROBE_DEADLINE}; {@code null} when the key may not list the buckets. A refused key, a blocked
-   * or unreachable endpoint is the access layer's exception for the caller to render.
+   * or unreachable endpoint is the access layer's exception for the caller to render. The test
+   * knows no indexed documents, so it reports an unreadable bucket as left out, never as withheld.
    */
   S3AllBuckets.Resolution resolveAllBuckets(
       String rawUrl, String credentials, String region, boolean pathStyle)
@@ -169,7 +170,11 @@ public class S3ConnectionService {
       }
       clientFactory.validateTargets(connection, scopes);
       return S3AllBuckets.resolve(
-          store, listed, connection.region(), () -> clock.instant().isAfter(deadline));
+          store,
+          listed,
+          connection.region(),
+          bucket -> false,
+          () -> clock.instant().isAfter(deadline));
     }
   }
 

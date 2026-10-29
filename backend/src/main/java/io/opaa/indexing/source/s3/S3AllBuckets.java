@@ -2,19 +2,22 @@ package io.opaa.indexing.source.s3;
 
 import io.opaa.s3.S3AccessException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 import java.util.function.BooleanSupplier;
+import java.util.function.Predicate;
 
 /**
  * "Alle Buckets" as the key finds it now (ADR-0027, Entscheidung 2): of every bucket {@code
- * ListBuckets} names, the library reads those in the connection's region that the key may list. The
- * others - another region, no {@code s3:ListBucket}, gone since the listing - are left out with a
- * German reason, so they never hold back the reconciliation of the rest. Any other answer of the
- * store (throttling, a refused key, an unreachable endpoint) is the caller's exception: leaving a
- * bucket out removes what was indexed from it, which only a definite answer may do.
+ * ListBuckets} names, the library reads those in the connection's region that the key may list. A
+ * bucket it cannot read - another region, a refused or unanswered probe - is left out with a German
+ * reason when the library holds nothing from it. One it holds documents from stays in scope as
+ * withheld: the run reports it unlistable and removes nothing from it, because only a bucket that
+ * {@code ListBuckets} no longer names is a finding of deletion. Any other answer of the store
+ * (throttling, a refused key, an unreachable endpoint) is the caller's exception.
  */
 final class S3AllBuckets {
 
@@ -24,77 +27,121 @@ final class S3AllBuckets {
   static final String INVALID_NAME = "kein gültiger Bucket-Name";
   static final String NOT_PROBED = "nicht geprüft, das Zeitlimit war erreicht";
 
+  /** At most this many buckets are named in one message. */
+  static final int NAMED = 20;
+
   /**
-   * @param readable the buckets the library reads, in name order
+   * @param readable the buckets the key may list now, in name order
+   * @param withheld the buckets the library holds documents from but cannot read now, name to
+   *     reason; they stay in scope and nothing indexed from them is removed
    * @param outside the buckets the key sees but the library leaves out, name to reason
    */
-  record Resolution(List<String> readable, Map<String, String> outside) {
+  record Resolution(
+      List<String> readable, Map<String, String> withheld, Map<String, String> outside) {
 
     Resolution {
       readable = List.copyOf(readable);
-      outside = java.util.Collections.unmodifiableMap(new LinkedHashMap<>(outside));
+      withheld = Collections.unmodifiableMap(new LinkedHashMap<>(withheld));
+      outside = Collections.unmodifiableMap(new LinkedHashMap<>(outside));
+    }
+
+    Resolution(List<String> readable, Map<String, String> outside) {
+      this(readable, Map.of(), outside);
+    }
+
+    /** The buckets a full sync lists: the readable and the withheld ones, in name order. */
+    List<String> inScope() {
+      TreeSet<String> all = new TreeSet<>(readable);
+      all.addAll(withheld.keySet());
+      return List.copyOf(all);
     }
 
     int seen() {
-      return readable.size() + outside.size();
+      return readable.size() + withheld.size() + outside.size();
     }
 
-    /** "„a“ (Region us-east-1), „b“ (…)", the first {@link #NAMED} named, the rest counted. */
+    /** "„a“ (Region us-east-1), „b“ (…)" of the outside buckets. */
     String outsideNamed() {
-      List<String> named = new ArrayList<>();
-      outside.forEach((bucket, reason) -> named.add("„" + bucket + "“ (" + reason + ")"));
-      int shown = Math.min(named.size(), NAMED);
-      return String.join(", ", named.subList(0, shown))
-          + (named.size() > shown ? " und " + (named.size() - shown) + " weitere" : "");
+      return named(outside);
+    }
+
+    /** {@link #outsideNamed()} of the withheld and the outside buckets together. */
+    String unreadableNamed() {
+      Map<String, String> all = new java.util.TreeMap<>(outside);
+      all.putAll(withheld);
+      return named(all);
     }
   }
 
-  /** At most this many left-out buckets are named in one message. */
-  static final int NAMED = 20;
-
   private S3AllBuckets() {}
 
+  /** "„a“ (reason), „b“ (…)", the first {@link #NAMED} named, the rest counted. */
+  static String named(Map<String, String> reasons) {
+    List<String> named = new ArrayList<>();
+    reasons.forEach((bucket, reason) -> named.add("„" + bucket + "“ (" + reason + ")"));
+    int shown = Math.min(named.size(), NAMED);
+    return String.join(", ", named.subList(0, shown))
+        + (named.size() > shown ? " und " + (named.size() - shown) + " weitere" : "");
+  }
+
+  /** The sentence a full sync reports a withheld bucket as unlistable with. */
+  static String withheldMessage(String bucket, String reason) {
+    return "Der Bucket „"
+        + bucket
+        + "“ ist nicht lesbar ("
+        + reason
+        + "); was aus ihm indiziert ist, bleibt, bis er wieder lesbar ist oder die Bucket-Liste ihn"
+        + " nicht mehr nennt.";
+  }
+
   /**
-   * Resolves {@code listed} against {@code region} with one listing request per bucket in it.
-   * {@code timeUp} stops probing; the buckets not probed by then count as left out.
+   * Resolves {@code listed} against {@code region} with one listing request for at most one key per
+   * bucket in it. {@code holdsDocuments} tells whether the library holds documents from a bucket;
+   * {@code timeUp} stops probing, and the buckets not probed by then count as left out.
    */
   static Resolution resolve(
-      S3ObjectStore store, S3BucketListing.Listed listed, String region, BooleanSupplier timeUp)
+      S3ObjectStore store,
+      S3BucketListing.Listed listed,
+      String region,
+      Predicate<String> holdsDocuments,
+      BooleanSupplier timeUp)
       throws S3AccessException, InterruptedException {
     List<String> readable = new ArrayList<>();
+    Map<String, String> withheld = new LinkedHashMap<>();
     Map<String, String> outside = new LinkedHashMap<>();
     for (String name : new TreeSet<>(listed.names())) {
-      S3Scope scope;
       try {
-        scope = S3Scope.of(name, "");
+        S3Scope.validateBucket(name);
       } catch (S3Scope.InvalidS3ScopeException e) {
         outside.put(name, INVALID_NAME);
         continue;
       }
       String bucketRegion = listed.regionOf(name);
+      String reason;
       if (bucketRegion != null && !bucketRegion.equalsIgnoreCase(region)) {
-        outside.put(name, "Region " + bucketRegion);
-        continue;
-      }
-      if (timeUp.getAsBoolean()) {
+        reason = "Region " + bucketRegion;
+      } else if (timeUp.getAsBoolean()) {
         outside.put(name, NOT_PROBED);
         continue;
+      } else {
+        reason = probe(store, name);
       }
-      String reason = probe(store, scope);
       if (reason == null) {
         readable.add(name);
+      } else if (holdsDocuments.test(name)) {
+        withheld.put(name, reason);
       } else {
         outside.put(name, reason);
       }
     }
-    return new Resolution(readable, outside);
+    return new Resolution(readable, withheld, outside);
   }
 
-  /** {@code null} when the key may list the bucket, else why the library leaves it out. */
-  private static String probe(S3ObjectStore store, S3Scope scope)
+  /** {@code null} when the key may list the bucket, else why the library cannot read it. */
+  private static String probe(S3ObjectStore store, String bucket)
       throws S3AccessException, InterruptedException {
     try {
-      store.listObjects(scope, null);
+      store.probeListing(bucket);
       return null;
     } catch (S3AccessException.ListForbidden e) {
       return NOT_LISTABLE;

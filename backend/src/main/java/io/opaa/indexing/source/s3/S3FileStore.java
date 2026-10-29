@@ -33,8 +33,20 @@ final class S3FileStore implements FileStore {
    */
   private final boolean scopeRootChain;
 
+  /** Bucket to the sentence its listing is reported unlistable with, without a request. */
+  private final Map<String, String> withheld;
+
   S3FileStore(S3ObjectStore store, S3SourceSettings settings) {
+    this(store, settings, Map.of());
+  }
+
+  /**
+   * @param withheld buckets of "Alle Buckets" the library holds documents from but cannot read now
+   *     ({@link S3AllBuckets}), bucket to the sentence their listing is unlistable with
+   */
+  S3FileStore(S3ObjectStore store, S3SourceSettings settings, Map<String, String> withheld) {
     this.store = store;
+    this.withheld = Map.copyOf(withheld);
     for (S3Scope scope : settings.scopes()) {
       scopes.put(scope.key(), scope);
     }
@@ -55,6 +67,10 @@ final class S3FileStore implements FileStore {
   public FilePage list(FileContainer container, String continuation)
       throws FileAccessException, InterruptedException {
     S3Scope scope = scope(container);
+    String unlistable = withheld.get(scope.bucket());
+    if (unlistable != null) {
+      throw new FileAccessException.ContainerUnlistable(unlistable);
+    }
     S3ListPage page;
     try {
       page = store.listObjects(scope, continuation);
