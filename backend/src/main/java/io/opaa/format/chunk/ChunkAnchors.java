@@ -5,7 +5,7 @@ import java.util.regex.Pattern;
 
 /**
  * Writes and completes the {@link ChunkAnchor} on a chunk's metadata. A format sets the structural
- * units it knows ({@link #merge}) and, where a chunk opens with text that is not part of the
+ * units it knows ({@link #write}) and, where a chunk opens with text that is not part of the
  * passage itself - a repeated heading line, a slide title, an overlap carried over from the
  * predecessor - names that lead ({@link #markLead}). {@code DocumentFormatRunner} then derives the
  * quotes from the chunk's final text without the lead ({@link #completed}) and drops the lead key,
