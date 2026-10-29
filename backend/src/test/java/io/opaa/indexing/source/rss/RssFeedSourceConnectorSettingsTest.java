@@ -216,6 +216,47 @@ class RssFeedSourceConnectorSettingsTest {
         .contains("Die Detailseite des ersten Eintrags konnte nicht geprüft werden");
   }
 
+  /**
+   * The detail page's address comes from the feed operator: a refused target is reported in one
+   * wording, never with its host or how it resolves.
+   */
+  @Test
+  void aRefusedDetailPageIsReportedWithoutItsAddress() {
+    RssFeedSourceConnector guarded =
+        new RssFeedSourceConnector(
+            new RssFeedParser(),
+            feedStateRepository,
+            new TargetAddressValidator(true, java.util.List.of("127.0.0.1")),
+            new SourceRequestPolicy(
+                "OPAA-Indexer/test", RateLimitPolicy.of(2, Duration.ofSeconds(1)), wait -> {}),
+            new RssFeedProperties(200, 100_000, 100_000, 0, 10, 100_000),
+            mock(RemoteOriginalAccess.class));
+    String internalPage = "http://localhost:" + server.getAddress().getPort() + "/intern.html";
+    String feed =
+        "<rss version=\"2.0\"><channel><title>Feed</title><item><title>T</title><link>"
+            + internalPage
+            + "</link></item></channel></rss>";
+    server.createContext(
+        "/feed.xml",
+        exchange -> {
+          byte[] bytes = feed.getBytes(StandardCharsets.UTF_8);
+          exchange.getResponseHeaders().set("Content-Type", "application/rss+xml");
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+
+    SourceConnectionTestResult result =
+        guarded.testConnection(feed(Map.of("mainContentSelector", "#inhalt")), null);
+
+    assertThat(result.reachable()).isTrue();
+    assertThat(result.message())
+        .endsWith(
+            "Die Detailseite des ersten Eintrags konnte nicht geprüft werden: "
+                + "Sie ist nicht erreichbar oder nicht zugelassen.")
+        .doesNotContain("localhost");
+  }
+
   /** Under the factory defaults the test stays one request to the feed, as before. */
   @Test
   void withoutOwnSettingsTheTestNeverOpensADetailPage() {
