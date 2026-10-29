@@ -209,6 +209,8 @@ data:
           - reset_token_ttl_minutes
           - default_expiry_days
           - inactive_days
+          - lockout_max_attempts
+          - lockout_duration_minutes
           - updated_at
           - version
         person:
@@ -487,6 +489,32 @@ settings:
     range: mindestens 30 Tage
     effect: Sperre eines lokalen Kontos nach so vielen Tagen ohne Anmeldung
     bearings: [DATA, EVALUATION]
+  - key: local_auth_settings.lockout_max_attempts
+    source: DATABASE
+    defaultValue: "5"
+    range: 1 bis OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS (Voreinstellung 10)
+    effect: >-
+      Falsche Passwörter in Folge, nach denen ein lokales Konto vorübergehend gesperrt wird; jede
+      Sperre steht im Revisionsprotokoll. Wirkt ab dem nächsten Fehlversuch auf allen Instanzen
+    bearings: [DATA]
+    notes:
+      - >-
+        Werkseinstellung, solange die Systemverwaltung unter Administration → Benutzer →
+        Einstellungen keinen eigenen Wert setzt; die Obergrenze legt der Betrieb fest, ein darüber
+        gespeicherter Wert wirkt als Obergrenze
+  - key: local_auth_settings.lockout_duration_minutes
+    source: DATABASE
+    defaultValue: "15"
+    range: OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION (Voreinstellung 5 Minuten) bis 1440 Minuten
+    effect: >-
+      Dauer der Sperre nach Fehlversuchen; eine laufende Sperre behält ihr Ende, wenn sich der Wert
+      ändert
+    bearings: [DATA]
+    notes:
+      - >-
+        Werkseinstellung, solange die Systemverwaltung unter Administration → Benutzer →
+        Einstellungen keinen eigenen Wert setzt; die Untergrenze legt der Betrieb fest, ein darunter
+        gespeicherter Wert wirkt als Untergrenze
   - key: self_disclosure_settings.enabled
     source: DATABASE
     defaultValue: "true"

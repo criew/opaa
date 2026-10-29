@@ -296,6 +296,8 @@ voreinstellungen#llm-models-model-identifier
 voreinstellungen#local-auth-settings-default-expiry-days
 voreinstellungen#local-auth-settings-inactive-days
 voreinstellungen#local-auth-settings-invitation-token-ttl-hours
+voreinstellungen#local-auth-settings-lockout-duration-minutes
+voreinstellungen#local-auth-settings-lockout-max-attempts
 voreinstellungen#local-auth-settings-reset-token-ttl-minutes
 voreinstellungen#locked-account-chat-cleanup-settings-delete-after-days
 voreinstellungen#locked-account-chat-cleanup-settings-enabled

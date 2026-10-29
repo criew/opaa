@@ -557,8 +557,17 @@ Gesamtgrenze für Anmeldung, Registrierung und „Passwort vergessen" ist das Fr
 verteiltes Ausprobieren gestohlener Zugangsdaten. Sie zählt auch Fehlversuche und gilt für alle Adressen
 zugleich: Ist sie erreicht, antwortet der Endpunkt jeder Adresse mit `429`, und das Überschreiten steht
 als Warnung im Protokoll und in der Metrik `opaa_rate_limit_rejected_total` ([Logs und Metriken](ueberwachung-und-fehlerbehebung.md#logs-und-metriken)).
-Nach `OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS` falschen Passwörtern ist ein Konto für
-`OPAA_AUTH_LOCAL_LOCKOUT_DURATION` gesperrt; die Anmeldung antwortet dann wie bei einem falschen
+**Sperre nach Fehlversuchen.** Nach mehreren falschen Passwörtern in Folge ist ein Konto für eine
+feste Zeit gesperrt; weitere Versuche verlängern sie nicht. Wie viele Fehlversuche und wie lange,
+stellt die Systemverwaltung bei den [Regeln und Fristen](../konten-und-rechte/benutzerverwaltung.md#13-regeln-und-fristen)
+der Benutzerverwaltung ein, ohne Neustart und für alle Instanzen ab dem nächsten Fehlversuch. Der
+Betrieb begrenzt beides: höchstens `OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS` Fehlversuche, mindestens
+`OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION` Sperrdauer. So lässt sich die Sperre in der Oberfläche
+lockern, aber nicht abschalten; ein gespeicherter Wert jenseits einer später enger gezogenen Grenze
+wirkt als diese Grenze. Eine geänderte Regel trifft laufende Sperren nicht: Sie enden zur
+ursprünglichen Zeit. Ein Konto, das schon so viele Fehlversuche hat, wie eine gesenkte Zahl
+erlaubt, wird erst beim nächsten Fehlversuch gesperrt, nicht durch die Änderung selbst. Während der
+Sperre antwortet die Anmeldung wie bei einem falschen
 Passwort, die Sperre steht im Nachweisprotokoll und in einer eigenen Metrik, der einzelne Fehlversuch
 nur im Protokoll (mit Konto-Kennung, nie mit Adresse). Wie lange der Log-Sammler dieses Protokoll
 aufbewahrt, legt der Betrieb fest; eine kurze Frist, etwa 90 Tage, genügt der Fehlersuche und hält

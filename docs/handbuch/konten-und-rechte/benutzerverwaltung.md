@@ -369,8 +369,8 @@ Grund, im Bearbeiten-Dialog sind Rolle und Ablaufdatum nicht änderbar. Name, Ad
 Anlagegrund lassen sich wie bei jedem Konto pflegen. Sein Passwort ändert das Konto nach der
 Anmeldung selbst; ohne Anmeldung setzt es nur die Notfallprozedur aus dem Kapitel
 [Authentifizierung](../betrieb/authentifizierung.md#notfallprozedur-wieder-hereinkommen) neu. Von der
-Sperre nach Inaktivität ist es ausgenommen; neu treffen kann es nur noch die Fehlversuch-Sperre nach
-fünf falschen Passwörtern (15 Minuten).
+Sperre nach Inaktivität ist es ausgenommen; neu treffen kann es nur noch die Fehlversuch-Sperre
+(Abschnitt „Regeln und Fristen").
 
 Hat ein älterer Stand das Konto bereits gesperrt, befristet oder herabgesetzt, lässt sich das
 zurücknehmen — nur in diese Richtung: „Entsperren" im Zeilenmenü, „Kein Ablaufdatum" und die Rolle
@@ -761,6 +761,17 @@ Konten gelten. Sie wirken ab der nächsten Anwendung, nicht rückwirkend auf bes
 | Sperre nach Inaktivität (Tage) | Frist, nach der ein ungenutztes Konto gesperrt wird | mindestens 30 Tage |
 | Einladungslink gültig (Stunden) | Gültigkeit eines Einladungslinks | 1 bis 720 Stunden |
 | Rücksetzlink gültig (Minuten) | Gültigkeit eines Rücksetz- und Bestätigungslinks | 1 bis 1440 Minuten |
+| Fehlversuche bis zur Sperre | Falsche Passwörter in Folge, nach denen das Konto vorübergehend gesperrt wird | 1 bis `OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS`; Werkseinstellung 5 |
+| Dauer der Sperre (Minuten) | Wie lange diese Sperre dauert; weitere Versuche verlängern sie nicht | `OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION` bis 1440 Minuten; Werkseinstellung 15 Minuten |
+
+Die **Sperre nach Fehlversuchen** lässt sich lockern, aber nicht abschalten: Die Grenzen setzt der
+Betrieb in der Konfiguration ([Authentifizierung](../betrieb/authentifizierung.md#lokale-benutzerverwaltung)).
+Solange die Verwaltung keinen eigenen Wert speichert, gilt die Werkseinstellung, und das Feld sagt
+das; „Werkseinstellung" neben einem eigenen Wert kehrt nach dem Speichern zu ihr zurück. Liegt ein
+gespeicherter Wert außerhalb einer später enger gezogenen Grenze, nennt das Feld, dass er nur als
+diese Grenze wirkt. Eine Änderung gilt ab dem nächsten Fehlversuch; eine laufende Sperre behält ihr
+Ende, und ein Konto, das die gesenkte Zahl schon erreicht hat, wird erst beim nächsten Fehlversuch
+gesperrt.
 
 Die **Passwortrichtlinie** selbst ist knapp und bewusst ohne Komplexitätsregeln: mindestens die
 eingestellte Länge, höchstens 64 Zeichen, nicht gleich der eigenen E-Mail-Adresse und nicht auf der

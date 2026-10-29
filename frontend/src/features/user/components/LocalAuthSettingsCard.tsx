@@ -47,6 +47,14 @@ interface RulesDraft {
   inactiveDays: string
   invitationTokenTtlHours: string
   resetTokenTtlMinutes: string
+  /** `null` while the factory default applies. */
+  lockoutMaxAttempts: string | null
+  /** `null` while the factory default applies. */
+  lockoutDurationMinutes: string | null
+}
+
+function storedText(value: number | null | undefined): string | null {
+  return value === null || value === undefined ? null : String(value)
 }
 
 function draftOf(settings: LocalAuthSettingsResponse): RulesDraft {
@@ -57,6 +65,8 @@ function draftOf(settings: LocalAuthSettingsResponse): RulesDraft {
     inactiveDays: String(settings.inactiveDays),
     invitationTokenTtlHours: String(settings.invitationTokenTtlHours),
     resetTokenTtlMinutes: String(settings.resetTokenTtlMinutes),
+    lockoutMaxAttempts: storedText(settings.storedLockoutMaxAttempts),
+    lockoutDurationMinutes: storedText(settings.storedLockoutDurationMinutes),
   }
 }
 
@@ -83,8 +93,69 @@ function requestOf(
     resetTokenTtlMinutes: Number(draft.resetTokenTtlMinutes),
     defaultExpiryDays: Number(draft.defaultExpiryDays),
     inactiveDays: Number(draft.inactiveDays),
+    lockoutMaxAttempts: draft.lockoutMaxAttempts === null ? null : Number(draft.lockoutMaxAttempts),
+    lockoutDurationMinutes:
+      draft.lockoutDurationMinutes === null ? null : Number(draft.lockoutDurationMinutes),
     ...overrides,
   }
+}
+
+interface LockoutFieldProps {
+  id: string
+  label: string
+  /** The draft; `null` while the factory default applies. */
+  value: string | null
+  stored: number | null | undefined
+  inForce: number
+  factory: number
+  /** The factory default as it applies within the limits of the operation. */
+  factoryInForce: number
+  range: string
+  resetLabel: string
+  disabled: boolean
+  onChange: (value: string | null) => void
+}
+
+/** Why the field shows its value: factory default, own value, or a stored value the limit bounds. */
+function lockoutHint({ value, stored, inForce, factory, range }: LockoutFieldProps): string {
+  if (value === null) return `Werkseinstellung; ${range} (Grenze des Betriebs)`
+  if (stored != null && Number(value) === stored && stored !== inForce) {
+    return `Gespeichert, wirkt aber nur als ${inForce} (Grenze des Betriebs)`
+  }
+  return `Eigener Wert (Werkseinstellung: ${factory}); ${range} (Grenze des Betriebs)`
+}
+
+/**
+ * One value of the lockout after failed sign-ins (ADR-0060, Entscheidung 17): the operation sets
+ * its limits, the administration a value within them or the factory default.
+ */
+function LockoutField(props: LockoutFieldProps) {
+  const { id, label, value, factoryInForce, resetLabel, disabled, onChange } = props
+  return (
+    <Box>
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      <TextField
+        id={id}
+        fullWidth
+        size="small"
+        type="number"
+        value={value ?? String(factoryInForce)}
+        onChange={(e) => onChange(e.target.value)}
+        helperText={lockoutHint(props)}
+      />
+      {value !== null && (
+        <Button
+          size="small"
+          sx={{ mt: 0.5 }}
+          aria-label={resetLabel}
+          disabled={disabled}
+          onClick={() => onChange(null)}
+        >
+          Werkseinstellung
+        </Button>
+      )}
+    </Box>
+  )
 }
 
 function SmtpStatusLine() {
@@ -456,6 +527,54 @@ export default function LocalAuthSettingsCard() {
               />
             </Box>
           ))}
+        </Box>
+        <Typography component="h3" sx={{ fontSize: 13.5, fontWeight: 600, mt: 3, mb: 0.5 }}>
+          Sperre nach Fehlversuchen
+        </Typography>
+        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 1.5 }}>
+          Gilt ab dem nächsten Fehlversuch; eine laufende Sperre behält ihr Ende. Die Grenzen legt
+          der Betrieb fest, abschalten lässt sich die Sperre nicht.
+        </Typography>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+            columnGap: 3,
+            rowGap: 2,
+          }}
+        >
+          <LockoutField
+            id="local-auth-lockoutMaxAttempts"
+            label="Fehlversuche bis zur Sperre"
+            value={draft.lockoutMaxAttempts}
+            stored={settings.storedLockoutMaxAttempts}
+            inForce={settings.lockoutMaxAttempts}
+            factory={settings.defaultLockoutMaxAttempts}
+            factoryInForce={Math.min(
+              settings.defaultLockoutMaxAttempts,
+              settings.lockoutMaxAttemptsLimit,
+            )}
+            range={`1 bis ${settings.lockoutMaxAttemptsLimit}`}
+            resetLabel="Fehlversuche auf die Werkseinstellung setzen"
+            disabled={isSaving}
+            onChange={(value) => setEdited({ ...draft, lockoutMaxAttempts: value })}
+          />
+          <LockoutField
+            id="local-auth-lockoutDurationMinutes"
+            label="Dauer der Sperre (Minuten)"
+            value={draft.lockoutDurationMinutes}
+            stored={settings.storedLockoutDurationMinutes}
+            inForce={settings.lockoutDurationMinutes}
+            factory={settings.defaultLockoutDurationMinutes}
+            factoryInForce={Math.min(
+              Math.max(settings.defaultLockoutDurationMinutes, settings.minLockoutDurationMinutes),
+              settings.maxLockoutDurationMinutes,
+            )}
+            range={`${settings.minLockoutDurationMinutes} bis ${settings.maxLockoutDurationMinutes} Minuten`}
+            resetLabel="Dauer der Sperre auf die Werkseinstellung setzen"
+            disabled={isSaving}
+            onChange={(value) => setEdited({ ...draft, lockoutDurationMinutes: value })}
+          />
         </Box>
         <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
           <Button variant="outlined" size="small" onClick={saveRules} disabled={isSaving}>

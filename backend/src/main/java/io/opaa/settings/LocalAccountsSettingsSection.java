@@ -11,7 +11,9 @@ import org.springframework.stereotype.Component;
 /**
  * The policy of the local account management. The switch of the local accounts is no part of it: it
  * belongs to the sign-in procedure of this installation like its identity providers, and an import
- * switching it off would end the sessions of every local account.
+ * switching it off would end the sessions of every local account. The lockout travels as stored,
+ * {@code null} for its factory default, and is checked against the limits of the operation of the
+ * importing installation.
  */
 @Component
 class LocalAccountsSettingsSection implements SettingsSection {
@@ -39,23 +41,18 @@ class LocalAccountsSettingsSection implements SettingsSection {
 
   @Override
   public Map<String, String> keyLabels() {
-    return Map.of(
-        "selfRegistrationEnabled",
-        "Selbstregistrierung",
-        "selfRegistrationAllowedDomains",
-        "Zulässige Adressdomänen der Selbstregistrierung",
-        "passwordResetEnabled",
-        "„Passwort vergessen“",
-        "passwordMinLength",
-        "Mindestlänge des Passworts",
-        "invitationTokenTtlHours",
-        "Gültigkeit des Einladungslinks in Stunden",
-        "resetTokenTtlMinutes",
-        "Gültigkeit des Rücksetzlinks in Minuten",
-        "defaultExpiryDays",
-        "Vorgabe für den Kontoablauf in Tagen",
-        "inactiveDays",
-        "Inaktivität bis zur Sperre in Tagen");
+    return Map.ofEntries(
+        Map.entry("selfRegistrationEnabled", "Selbstregistrierung"),
+        Map.entry(
+            "selfRegistrationAllowedDomains", "Zulässige Adressdomänen der Selbstregistrierung"),
+        Map.entry("passwordResetEnabled", "„Passwort vergessen“"),
+        Map.entry("passwordMinLength", "Mindestlänge des Passworts"),
+        Map.entry("invitationTokenTtlHours", "Gültigkeit des Einladungslinks in Stunden"),
+        Map.entry("resetTokenTtlMinutes", "Gültigkeit des Rücksetzlinks in Minuten"),
+        Map.entry("defaultExpiryDays", "Vorgabe für den Kontoablauf in Tagen"),
+        Map.entry("inactiveDays", "Inaktivität bis zur Sperre in Tagen"),
+        Map.entry("lockoutMaxAttempts", "Fehlversuche bis zur Sperre"),
+        Map.entry("lockoutDurationMinutes", "Dauer der Sperre nach Fehlversuchen in Minuten"));
   }
 
   @Override
@@ -65,7 +62,9 @@ class LocalAccountsSettingsSection implements SettingsSection {
         "selfRegistrationAllowedDomains",
         "passwordMinLength",
         "invitationTokenTtlHours",
-        "resetTokenTtlMinutes");
+        "resetTokenTtlMinutes",
+        "lockoutMaxAttempts",
+        "lockoutDurationMinutes");
   }
 
   @Override
@@ -80,6 +79,8 @@ class LocalAccountsSettingsSection implements SettingsSection {
     values.put("resetTokenTtlMinutes", current.resetTokenTtlMinutes());
     values.put("defaultExpiryDays", current.defaultExpiryDays());
     values.put("inactiveDays", current.inactiveDays());
+    values.put("lockoutMaxAttempts", current.lockoutMaxAttempts());
+    values.put("lockoutDurationMinutes", current.lockoutDurationMinutes());
     return values;
   }
 
@@ -96,6 +97,8 @@ class LocalAccountsSettingsSection implements SettingsSection {
             values.requireInt("invitationTokenTtlHours"),
             values.requireInt("resetTokenTtlMinutes"),
             values.requireInt("defaultExpiryDays"),
-            values.requireInt("inactiveDays")));
+            values.requireInt("inactiveDays"),
+            values.optionalInt("lockoutMaxAttempts"),
+            values.optionalInt("lockoutDurationMinutes")));
   }
 }

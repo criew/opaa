@@ -595,8 +595,10 @@ Fenster (100 bzw. 50), deren Überschreiten eine Warnung und die Metrik `opaa.ra
 (`limit`, `scope=global`) erzeugt. Die adress- und kontobezogenen Grenzen liegen in
 `LocalAuthRateLimiter` (E-Mail-Adressen nur als Hash im Speicher); die Endpunkte der
 Selbstbedienung rufen `requireAddressAllowance` vor jeder Verarbeitung auf. Nach
-fünf Fehlversuchen (`OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS`) sperrt `LocalAccountLockoutListener`
-das Konto für feste 15 Minuten (`OPAA_AUTH_LOCAL_LOCKOUT_DURATION`, `locked_reason =
+so vielen Fehlversuchen, wie die Regeln der lokalen Anmeldung nennen (Werkseinstellung 5, höchstens
+`OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS`), sperrt `LocalAccountLockoutListener` das Konto für die dort
+eingestellte feste Dauer (Werkseinstellung 15 Minuten, mindestens
+`OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION`; ADR-0060, Entscheidung 17; `locked_reason =
 FAILED_LOGINS`, keine progressive Verlängerung; die Sperre setzt den Zähler auf null, während der
 Sperre wird nichts gezählt — nach ihrem Ende gilt wieder das volle Kontingent): auditiert **einmal** als `LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS`
 (Systemakteur `local-auth`, Subjekt als Pseudonym, ohne Zähler) und als Metrik

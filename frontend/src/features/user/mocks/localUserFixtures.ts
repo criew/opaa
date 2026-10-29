@@ -1,4 +1,8 @@
-import type { LocalAuthSettingsResponse, LocalUserResponse } from '@/shared/api/types'
+import type {
+  LocalAuthSettingsResponse,
+  LocalAuthSettingsUpdateRequest,
+  LocalUserResponse,
+} from '@/shared/api/types'
 
 /**
  * Fixtures of the user management (ADR-0033 Entscheidungen 4 and 11) – in a module of its own
@@ -161,6 +165,43 @@ function initialLocalAuthSettings(): LocalAuthSettingsResponse {
     defaultExpiryDays: 365,
     inactiveDays: 90,
     publicBaseUrlConfigured: true,
+    lockoutMaxAttempts: 5,
+    defaultLockoutMaxAttempts: 5,
+    lockoutMaxAttemptsLimit: 10,
+    lockoutDurationMinutes: 15,
+    defaultLockoutDurationMinutes: 15,
+    minLockoutDurationMinutes: 5,
+    maxLockoutDurationMinutes: 1440,
+  }
+}
+
+/**
+ * The settings as the backend answers a PUT: the request's values, the lockout in force within the
+ * limits (a stored value beyond them reads as the limit), and what the request does not carry.
+ */
+export function settingsAfterUpdate(
+  previous: LocalAuthSettingsResponse,
+  body: LocalAuthSettingsUpdateRequest,
+): LocalAuthSettingsResponse {
+  const attempts = body.lockoutMaxAttempts ?? null
+  const minutes = body.lockoutDurationMinutes ?? null
+  return {
+    ...previous,
+    ...body,
+    lockoutMaxAttempts: Math.min(
+      attempts ?? previous.defaultLockoutMaxAttempts,
+      previous.lockoutMaxAttemptsLimit,
+    ),
+    storedLockoutMaxAttempts: attempts,
+    lockoutDurationMinutes: Math.min(
+      Math.max(
+        minutes ?? previous.defaultLockoutDurationMinutes,
+        previous.minLockoutDurationMinutes,
+      ),
+      previous.maxLockoutDurationMinutes,
+    ),
+    storedLockoutDurationMinutes: minutes,
+    revokedSessions: undefined,
   }
 }
 

@@ -9,8 +9,8 @@ import org.junit.jupiter.api.Test;
 /**
  * {@link LocalLockoutProperties} (ADR-0060, Entscheidung 17): the limits of the operation for the
  * lockout after failed sign-ins - by default at most ten attempts and at least five minutes. A
- * limit that would switch the protection off or lie outside what the administration can set
- * refuses the start, naming the environment variable.
+ * limit that would switch the protection off or lie outside what the administration can set refuses
+ * the start, naming the environment variable.
  */
 class LocalLockoutPropertiesTest {
 

@@ -43,8 +43,7 @@ class LocalAuthSettingsLockoutTest {
     assertThat(lockout(8, 10).lockoutMaxAttemptsInForce(4)).isEqualTo(4);
     assertThat(lockout(8, 10).lockoutDurationMinutesInForce(30)).isEqualTo(30);
     assertThat(LocalAuthSettings.Values.defaults().lockoutMaxAttemptsInForce(3)).isEqualTo(3);
-    assertThat(LocalAuthSettings.Values.defaults().lockoutDurationMinutesInForce(60))
-        .isEqualTo(60);
+    assertThat(LocalAuthSettings.Values.defaults().lockoutDurationMinutesInForce(60)).isEqualTo(60);
   }
 
   @Test

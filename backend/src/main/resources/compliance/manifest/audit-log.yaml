@@ -987,6 +987,10 @@ auditEvents:
       - defaultExpiryDays
       - inactiveDays
       - invitationTokenTtlHours
+      - lockoutDurationMinutes
+      - lockoutDurationMinutesOverridden
+      - lockoutMaxAttempts
+      - lockoutMaxAttemptsOverridden
       - passwordMinLength
       - passwordResetEnabled
       - resetTokenTtlMinutes

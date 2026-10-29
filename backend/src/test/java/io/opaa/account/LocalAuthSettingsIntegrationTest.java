@@ -245,7 +245,9 @@ class LocalAuthSettingsIntegrationTest {
     assertThat(settingsEvents()).isEmpty();
   }
 
-  /** A narrowed limit bounds a value stored before; sent back unchanged, it does not block a save. */
+  /**
+   * A narrowed limit bounds a value stored before; sent back unchanged, it does not block a save.
+   */
   @Test
   void aValueStoredBeyondANarrowedLimitReadsAsTheLimitAndMayBeSentBack() throws Exception {
     jdbc.update("UPDATE local_auth_settings SET lockout_max_attempts = 12");
@@ -260,8 +262,7 @@ class LocalAuthSettingsIntegrationTest {
                 .header(HttpHeaders.AUTHORIZATION, adminBearer)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
-                    withLockout(
-                        body(true, false, List.of(), true, 14, 72, 30, 90, 90), 12, null)))
+                    withLockout(body(true, false, List.of(), true, 14, 72, 30, 90, 90), 12, null)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.passwordMinLength").value(14))
         .andExpect(jsonPath("$.storedLockoutMaxAttempts").value(12));

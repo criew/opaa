@@ -16,8 +16,8 @@ import org.springframework.core.env.Environment;
 
 /**
  * Warns at start about variables that once preset a setting the system administration now holds in
- * the database, or a value the installation now sets (ADR-0060, Entscheidungen 1 and 8 to 10): they
- * are no longer read, and a value still set there would otherwise be lost without a word. Only
+ * the database, or a value the installation now sets (ADR-0060, Entscheidungen 1, 8 to 10, 17):
+ * they are no longer read, and a value still set there would otherwise be lost without a word. Only
  * warns, so an update with an old environment starts; each instance warns for its own environment
  * (ADR-0053).
  */
@@ -152,6 +152,12 @@ public class RetiredSettingVariables {
     String descent = "the full-sync rhythm of Nextcloud in whole days " + CONNECTION_SETTINGS;
     retired.put("OPAA_INDEXING_NEXTCLOUD_FULL_DESCENT_INTERVAL", descent);
     retired.put("opaa.indexing.nextcloud.full-descent-interval", descent);
+    String lockout =
+        "the lockout duration after failed sign-ins under Administration > Benutzer >"
+            + " Einstellungen; until then the factory default of 15 minutes applies, never shorter"
+            + " than OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION - if it was longer, set it there";
+    retired.put("OPAA_AUTH_LOCAL_LOCKOUT_DURATION", lockout);
+    retired.put("opaa.auth.local.lockout.duration", lockout);
     return Collections.unmodifiableMap(retired);
   }
 

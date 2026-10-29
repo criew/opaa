@@ -95,7 +95,7 @@
   "LLM_MODEL_DELETED": ["active", "apiKeySet", "baseUrl", "displayName", "maxTokens", "modelIdentifier", "temperature"],
   "LOCAL_ACCOUNTS_DISABLED": ["enabled", "revokedSessions"],
   "LOCAL_ACCOUNTS_ENABLED": ["enabled"],
-  "LOCAL_ACCOUNTS_SETTINGS_CHANGED": ["defaultExpiryDays", "inactiveDays", "invitationTokenTtlHours", "passwordMinLength", "passwordResetEnabled", "resetTokenTtlMinutes", "selfRegistrationAllowedDomains", "selfRegistrationEnabled"],
+  "LOCAL_ACCOUNTS_SETTINGS_CHANGED": ["defaultExpiryDays", "inactiveDays", "invitationTokenTtlHours", "lockoutDurationMinutes", "lockoutDurationMinutesOverridden", "lockoutMaxAttempts", "lockoutMaxAttemptsOverridden", "passwordMinLength", "passwordResetEnabled", "resetTokenTtlMinutes", "selfRegistrationAllowedDomains", "selfRegistrationEnabled"],
   "LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS": ["lockedReason", "lockoutUntil"],
   "LOCAL_ADMIN_RESET": ["passwordSource", "recreated"],
   "LOCAL_ADMIN_SEEDED": ["passwordSource", "state"],

@@ -1048,9 +1048,7 @@ describe('UserManagementPage', () => {
 
     const attempts = await screen.findByLabelText('Fehlversuche bis zur Sperre')
     expect(attempts).toHaveValue(5)
-    expect(
-      screen.getByText('Werkseinstellung; 1 bis 10 (Grenze des Betriebs)'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('Werkseinstellung; 1 bis 10 (Grenze des Betriebs)')).toBeInTheDocument()
     expect(screen.getByLabelText('Dauer der Sperre (Minuten)')).toHaveValue(15)
     expect(
       screen.getByText('Werkseinstellung; 5 bis 1440 Minuten (Grenze des Betriebs)'),

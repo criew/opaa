@@ -50,7 +50,9 @@ public class LocalAuthSettingsController {
                 request.getInvitationTokenTtlHours(),
                 request.getResetTokenTtlMinutes(),
                 request.getDefaultExpiryDays(),
-                request.getInactiveDays()));
+                request.getInactiveDays(),
+                request.getLockoutMaxAttempts(),
+                request.getLockoutDurationMinutes()));
     return LocalUserResponseMapper.toSettings(updated.view(), updated.revokedSessions());
   }
 }

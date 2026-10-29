@@ -404,7 +404,10 @@ class LocalUserAdminControllerTest {
   void theSettingsAreReadAndReplacedThroughTheService() throws Exception {
     LocalAuthSettingsService.View view =
         new LocalAuthSettingsService.View(
-            LocalAuthSettings.Values.defaults(), true, false, new LocalLockoutProperties(null, null));
+            LocalAuthSettings.Values.defaults(),
+            true,
+            false,
+            new LocalLockoutProperties(null, null));
     when(settingsService.current()).thenReturn(view);
     when(settingsService.update(eq(caller), any()))
         .thenReturn(

@@ -39,11 +39,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 /**
  * {@link LocalAccountLockoutListener} (ADR-0033, Entscheidungen 9 and 13; ADR-0060, Entscheidung
  * 17): the failed sign-in that reaches the threshold in force locks the account for the duration in
- * force ({@code locked_reason = FAILED_LOGINS}) and is
- * the one audited event of the whole affair - the single failed attempt only reaches the
- * application log, with the account id and never the address. An account that is already locked,
- * for whatever reason, is neither re-locked nor extended; a concurrent lock by another request is
- * not an error.
+ * force ({@code locked_reason = FAILED_LOGINS}) and is the one audited event of the whole affair -
+ * the single failed attempt only reaches the application log, with the account id and never the
+ * address. An account that is already locked, for whatever reason, is neither re-locked nor
+ * extended; a concurrent lock by another request is not an error.
  */
 class LocalAccountLockoutListenerTest {
 

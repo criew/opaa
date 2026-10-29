@@ -352,7 +352,8 @@ class SettingsTransferIntegrationTest {
         .isEqualTo(30);
 
     Map<String, String> refused = new java.util.LinkedHashMap<>();
-    refused.put("{\"localAccounts\": {\"lockoutMaxAttempts\": 11}}", "localAccounts.lockoutMaxAttempts");
+    refused.put(
+        "{\"localAccounts\": {\"lockoutMaxAttempts\": 11}}", "localAccounts.lockoutMaxAttempts");
     refused.put(
         "{\"localAccounts\": {\"lockoutDurationMinutes\": 4}}",
         "localAccounts.lockoutDurationMinutes");
