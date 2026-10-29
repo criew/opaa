@@ -106,6 +106,7 @@ class LocalUserAdminIntegrationTest {
   @Autowired private LocalActionTokenService actionTokens;
   @Autowired private LocalUserAdminService adminService;
   @Autowired private UserRepository users;
+  @Autowired private LocalAccessTokenService accessTokens;
   @Autowired private KnowledgeLibraryRepository libraries;
   @Autowired private GroupRepository groups;
   @Autowired private io.opaa.auth.OidcProviderRepository providerRepository;
@@ -1448,6 +1449,72 @@ class LocalUserAdminIntegrationTest {
     row.setPasswordHash(user.getId().toString(), now);
     credentials.save(row);
     return saved;
+  }
+
+  /**
+   * Every path that changes a system role demands a recent sign-in: a token without {@code
+   * auth_time} (as a refresh issues it) cannot grant or change a role, through the role endpoint,
+   * the account change or the creation, while it still changes everything else of an account.
+   */
+  @Test
+  void aSystemRoleChangesOnlyWithARecentSignIn() throws Exception {
+    LocalAccount target = fixtures.activeUser("rolle-" + UUID.randomUUID() + "@stadt.example");
+    String refreshed = "Bearer " + accessTokens.issue(admin.user(), admin.credentials()).value();
+    String newAddress = "neu-admin-" + UUID.randomUUID() + "@stadt.example";
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/users/" + target.id() + "/role")
+                .header(HttpHeaders.AUTHORIZATION, refreshed)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"role\":\"SYSTEM_ADMIN\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("RECENT_LOGIN_REQUIRED"));
+    mockMvc
+        .perform(
+            patch(LOCAL_USERS + "/" + target.id())
+                .header(HttpHeaders.AUTHORIZATION, refreshed)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"displayName\":\"Umbenannt\",\"systemRole\":\"AUDITOR\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("RECENT_LOGIN_REQUIRED"));
+    mockMvc
+        .perform(
+            post(LOCAL_USERS)
+                .header(HttpHeaders.AUTHORIZATION, refreshed)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"email\":\""
+                        + newAddress
+                        + "\",\"displayName\":\"Neu\",\"mode\":\"INITIAL_PASSWORD\","
+                        + "\"createdReason\":\"Probe\",\"systemRole\":\"SYSTEM_ADMIN\"}"))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value("RECENT_LOGIN_REQUIRED"));
+
+    User unchanged = users.findById(target.id()).orElseThrow();
+    assertThat(unchanged.getSystemRole()).isEqualTo(SystemRole.USER);
+    assertThat(unchanged.getDisplayName()).isNotEqualTo("Umbenannt");
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM users WHERE lower(email) = lower(?)",
+                Integer.class,
+                newAddress))
+        .isZero();
+    assertThat(auditRows("%_ROLE_%", target.id())).isEmpty();
+
+    // the role sent along unchanged, as the edit dialog always sends it, needs no confirmation
+    mockMvc
+        .perform(
+            patch(LOCAL_USERS + "/" + target.id())
+                .header(HttpHeaders.AUTHORIZATION, refreshed)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"displayName\":\"Umbenannt\",\"systemRole\":\"USER\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.displayName").value("Umbenannt"));
+    // and the same changes pass with the fresh sign-in of the setup
+    asAdminJson(patch(LOCAL_USERS + "/" + target.id()), "{\"systemRole\":\"AUDITOR\"}")
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.systemRole").value("AUDITOR"));
   }
 
   private org.springframework.test.web.servlet.ResultActions asAdmin(
