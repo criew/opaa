@@ -3,6 +3,7 @@ package io.opaa.security;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import io.opaa.outbound.OutboundProxySelector;
 import io.opaa.outbound.ProxyAddress;
@@ -341,10 +342,7 @@ class TargetAddressValidatorTest {
 
   @Test
   void rejectsAHostThatCannotBeResolved() {
-    // The same friendly wording
-    // ConnectorChecks#translateConnectionError already uses for an ordinary
-    // UnknownHostException - this check now runs before that connection attempt is ever made, so
-    // it is the only place this wording is reached for an http(s) target.
+    // In the words of a blocked range - see aBlockedRangeAndAnUnresolvableNameAnswerAlike
     assertThatThrownBy(
             () ->
                 enabled()
@@ -352,7 +350,25 @@ class TargetAddressValidatorTest {
                         URI.create("http://this-host-does-not-exist.invalid.opaa-test/"),
                         Scope.PER_CONNECTION))
         .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class)
-        .hasMessageContaining("DNS-Auflösung fehlgeschlagen");
+        .hasMessageContaining("gesperrten Adressbereich");
+  }
+
+  /**
+   * A blocked range and a name that does not resolve get the same sentence, so whoever configures
+   * a source cannot probe which internal names exist; the cause goes to the log only.
+   */
+  @Test
+  void aBlockedRangeAndAnUnresolvableNameAnswerAlike() {
+    String unknown = "no-such-host.invalid.opaa-test";
+    Throwable blocked =
+        catchThrowable(
+            () -> enabled().validate(URI.create("http://127.0.0.1/"), Scope.PER_CONNECTION));
+    Throwable unresolved =
+        catchThrowable(
+            () -> enabled().validate(URI.create("http://" + unknown + "/"), Scope.PER_CONNECTION));
+
+    assertThat(unresolved.getMessage().replace(unknown, "<host>"))
+        .isEqualTo(blocked.getMessage().replace("127.0.0.1", "<host>"));
   }
 
   // --- through the outbound proxy ---------------------------------------
@@ -388,7 +404,7 @@ class TargetAddressValidatorTest {
                   enabled()
                       .validateHost("only-the-proxy-knows.invalid.opaa-test", Scope.PER_CONNECTION))
           .isInstanceOf(TargetAddressValidator.UnknownTargetHostException.class)
-          .hasMessageContaining("DNS-Auflösung fehlgeschlagen");
+          .hasMessageContaining("gesperrten Adressbereich");
       assertThatThrownBy(
               () ->
                   enabled()

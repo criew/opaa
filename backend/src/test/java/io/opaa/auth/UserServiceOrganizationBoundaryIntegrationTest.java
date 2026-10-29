@@ -76,6 +76,34 @@ class UserServiceOrganizationBoundaryIntegrationTest {
     return userRepository.save(user);
   }
 
+  /**
+   * The member search takes {@code %}, {@code _} and {@code \\} literally: {@code %%} or {@code
+   * __} pass the minimum length but must not match every member of the organization.
+   */
+  @Test
+  void theMemberSearchTakesLikeWildcardsLiterally() {
+    User plain = createUser(organizationA);
+    User percent = createUser(organizationA);
+    percent.setDisplayName("Rabatt 50% Team");
+    userRepository.save(percent);
+    User underscore = createUser(organizationA);
+    underscore.setDisplayName("max_mustermann");
+    userRepository.save(underscore);
+
+    assertThat(userService.searchInOrganization(organizationA, "%%")).isEmpty();
+    assertThat(userService.searchInOrganization(organizationA, "__")).isEmpty();
+    assertThat(userService.searchInOrganization(organizationA, "\\\\")).isEmpty();
+    assertThat(userService.searchInOrganization(organizationA, "50%"))
+        .extracting(User::getId)
+        .containsExactly(percent.getId());
+    assertThat(userService.searchInOrganization(organizationA, "x_m"))
+        .extracting(User::getId)
+        .containsExactly(underscore.getId());
+    assertThat(userService.searchInOrganization(organizationA, "test user"))
+        .extracting(User::getId)
+        .contains(plain.getId());
+  }
+
   @Test
   void findAllInOrganizationReturnsOnlyTheCallersOwnOrganization() {
     User userInA = createUser(organizationA);
