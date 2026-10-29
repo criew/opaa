@@ -2,17 +2,17 @@ package io.opaa.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.test.TestEncryptionKeys;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -122,7 +122,11 @@ class SecretValidatorTest {
         "3J0X7GKz9q3Hq1zEo2mJ1n5Q2k8m3r9T4v6w8y0A2c4=",
         "Zm9yLWNpLW9ubHktc2V0dGluZ3Mta2V5LTAxMjM0NTY=",
         "  TklDSFQtRlVFUi1ERU4tUFJPRFVLVElWQkVUUklFQjE=  ",
-        "bmljaHQtZnVlci1kZW4tcHJvZHVrdGl2YmV0cmllYjk="
+        "bmljaHQtZnVlci1kZW4tcHJvZHVrdGl2YmV0cmllYjk=",
+        "Qo69uaPd4kBf0N5+Hne8cePloVxyZE6pye8qhEfdf+8=",
+        "gljJpg/LCRbybV9cerT5pH0EjCPGz1LIN8ry7JfrUzE=",
+        "bgkeQqaMpiL1xFl4ymM9MVJ+jYlt+GCb4w9J8o5btxI=",
+        "NNEl4fE9dCl6LycesKNIxBXCY+hDKDDWV8D7hPi5e0A="
       })
   void recognisesPublishedEncryptionKeys(String key) {
     assertThat(SecretValidator.isPubliclyKnownEncryptionKey(key)).isTrue();
@@ -130,35 +134,52 @@ class SecretValidatorTest {
 
   @ParameterizedTest
   @NullAndEmptySource
-  @ValueSource(strings = {"   ", "Qo69uaPd4kBf0N5+Hne8cePloVxyZE6pye8qhEfdf+8=", "not base64 !"})
-  void doesNotTreatOwnBlankOrInvalidKeysAsPublished(String key) {
+  @ValueSource(strings = {"   ", "not base64 !"})
+  void doesNotTreatBlankOrInvalidKeysAsPublished(String key) {
     assertThat(SecretValidator.isPubliclyKnownEncryptionKey(key)).isFalse();
   }
 
+  @Test
+  void doesNotTreatAFreshlyGeneratedKeyAsPublished() {
+    assertThat(SecretValidator.isPubliclyKnownEncryptionKey(TestEncryptionKeys.generate()))
+        .isFalse();
+  }
+
   /**
-   * Every AES key in the Helm chart's own CI value sets - the files the chart README offers as a
-   * starting point - must be refused by the {@code oidc} profile, so a copied file never runs with
-   * a key everybody can read.
+   * No tracked file of the repository holds an AES key the {@code oidc} profile would accept: every
+   * Base64 value decoding to 32 bytes is refused, so a copied env or value file never runs with a
+   * key everybody can read. Test stacks generate their keys per run. Stored ciphertext ({@code
+   * enc:v1:...}) is no key.
    */
   @Test
-  void recognisesEveryKeyOfTheChartsCiValueSets() throws IOException {
+  void everyAesKeyInTheRepositoryIsRefusedByTheOidcProfile()
+      throws IOException, InterruptedException {
     String repositoryRoot = System.getProperty("opaa.repositoryRoot");
     assertThat(repositoryRoot).as("system property opaa.repositoryRoot set by Gradle").isNotNull();
-    Path ciDir = Path.of(repositoryRoot, "deploy", "helm", "opaa", "ci");
-    assertThat(ciDir).as("chart CI value sets").isDirectory();
-    Pattern key = Pattern.compile("(?m)^\\s*(?:credentials|settings)EncryptionKey:\\s*(\\S+)\\s*$");
+    // git grep reads the tracked files of the working tree, binaries excluded (-I); each output
+    // line is "<path>\0<line>". The exact boundaries are checked below, ERE has no lookbehind.
+    Process grep =
+        new ProcessBuilder(
+                "git", "-C", repositoryRoot, "grep", "-I", "-z", "-E", "-e", "[A-Za-z0-9+/]{43}=")
+            .redirectErrorStream(true)
+            .start();
+    String output = new String(grep.getInputStream().readAllBytes(), StandardCharsets.ISO_8859_1);
+    assertThat(grep.waitFor()).as("git grep in %s: %s", repositoryRoot, output).isZero();
+    Pattern key =
+        Pattern.compile("(?<![A-Za-z0-9+/])(?<!enc:v1:)[A-Za-z0-9+/]{43}=(?![A-Za-z0-9+/=])");
+    List<String> accepted = new ArrayList<>();
     int found = 0;
-    try (Stream<Path> files = Files.list(ciDir)) {
-      for (Path file : files.filter(f -> f.toString().endsWith("-values.yaml")).toList()) {
-        Matcher matcher = key.matcher(Files.readString(file));
-        while (matcher.find()) {
-          found++;
-          assertThat(SecretValidator.isPubliclyKnownEncryptionKey(matcher.group(1)))
-              .as("%s in %s", matcher.group(1), file.getFileName())
-              .isTrue();
+    for (String hit : output.split("\n")) {
+      int separator = hit.indexOf('\0');
+      Matcher matcher = key.matcher(hit.substring(separator + 1));
+      while (matcher.find()) {
+        found++;
+        if (!SecretValidator.isPubliclyKnownEncryptionKey(matcher.group())) {
+          accepted.add(matcher.group() + " in " + hit.substring(0, Math.max(separator, 0)));
         }
       }
     }
-    assertThat(found).as("encryption keys found in the CI value sets").isPositive();
+    assertThat(found).as("AES keys found in the repository").isPositive();
+    assertThat(accepted).as("keys the oidc profile would accept").isEmpty();
   }
 }

@@ -45,8 +45,10 @@ lokale Sitzung ist dort nicht fahrbar (ADR-0033, #1543):
   starkes Test-Secret (sonst verweigert `LocalAuthSecretGuard` den Start) und angehobene
   `opaa.rate-limit.local-auth.*`-Grenzen, weil alle Anmeldungen von der einen Adresse von MockMvc
   kommen.
-- **`@OpaaLocalAuthLinkTest`** — plus `opaa.public-base-url` und Einstellungs-Schlüssel; ohne
-  Basis-URL sind die Link-Flüsse abgeschaltet, und Klassen auf der Basis prüfen genau das.
+- **`@OpaaLocalAuthLinkTest`** — plus `opaa.public-base-url` und einen je Test-JVM erzeugten
+  Einstellungs-Schlüssel (`OpaaTestSettingsKeyInitializer`, ein eingecheckter Schlüssel wäre
+  öffentlich und unter `oidc` verweigert); ohne Basis-URL sind die Link-Flüsse abgeschaltet, und
+  Klassen auf der Basis prüfen genau das.
 - **`@OpaaLocalAdminRestrictionTest`** — plus Netzbeschränkung lokaler Systemverwalter, die alle
   übrigen Klassen der Familie aussperren würde.
   Mit fährt das abgeschaltete Feature-Flag `EXTERNAL_ACCESS`: was ein Tokenwert unter `oidc` ohne
@@ -75,7 +77,8 @@ einen eigenen Kontext und einen eigenen Container. Deshalb:
 - **Konstanter Wert** → `properties` der Meta-Annotation.
 - **Zur Laufzeit aus einer Ressource gelesener Wert** (Containeradresse, prozessweites
   Basisverzeichnis) → ein `ApplicationContextInitializer` der Meta-Annotation
-  (`OpaaTestPathInitializer`, `OpaaTestTargetAllowlistInitializer`, `OpaaS3UploadStoreInitializer`).
+  (`OpaaTestPathInitializer`, `OpaaTestTargetAllowlistInitializer`, `OpaaS3UploadStoreInitializer`,
+  `OpaaTestSettingsKeyInitializer`).
   Eine klassenlokale `@DynamicPropertySource` spaltet den Kontext auch bei identischem Wert, weil
   Spring die Methode selbst in den Cache-Schlüssel einbezieht.
 - **Ersetzte oder ergänzte Bean** → `OpaaTestBeans` (bzw. die `@MockitoSpyBean`-Liste der
