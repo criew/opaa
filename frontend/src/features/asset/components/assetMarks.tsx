@@ -13,8 +13,7 @@ import type { AssetTypeDefinition } from '../../../shared/assetTypes'
 
 /**
  * Only an asset released to all accounts carries the globe; a restricted one carries nothing.
- * Raised so that no stretched click area of a surrounding control swallows the pointer its tooltip
- * waits for.
+ * Raised, so a stretched click area around it cannot swallow the pointer its tooltip waits for.
  */
 export function PublicMark() {
   const label = 'Für alle Konten freigegeben'

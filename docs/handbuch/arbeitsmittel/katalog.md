@@ -38,7 +38,7 @@ Jedes Arbeitsmittel steht als Kachel im Katalog. Sie nennt:
 
 Es ist dieselbe Kachel wie bei der Zuordnung zu einem Space. Freigabe an alle Konten (Welt-Symbol),
 zuständige Stelle, die Spaces, in denen das Arbeitsmittel bereitsteht, und der Stand der letzten
-Aktualisierung stehen auf der Detailseite (Abschnitt 3).
+Aktualisierung stehen in der Detailansicht (Abschnitt 5).
 
 Was eine Art darüber hinaus zeigt, steht in ihrem Kapitel. Über den **Stern** wird die Kachel zum
 Favoriten, über das Menü **„⋯"** lässt sich das Arbeitsmittel in einem Space verwenden (Abschnitt 6).

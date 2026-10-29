@@ -87,9 +87,9 @@ flowchart TB
 ### 3.1 Im Katalog
 
 Wissensbibliotheken stehen im [Katalog](../katalog.md), der Filter „Wissen" grenzt ihn auf sie ein.
-Die Kachel einer Wissensbibliothek nennt zusätzlich die Zahl ihrer Dokumente und wie aktuell sie
-ist: das Datum des letzten erfolgreichen Abgleichs, oder in Worten, dass sie gerade aktualisiert
-wird, dass das zuletzt gescheitert ist oder dass sie noch keinen Inhalt hat.
+Die Kachel einer Wissensbibliothek nennt zusätzlich die Zahl ihrer Dokumente und in Worten, dass
+sie gerade aktualisiert wird, dass das zuletzt gescheitert ist oder dass sie noch keinen Inhalt hat.
+Das Datum des letzten erfolgreichen Abgleichs steht in der Detailansicht.
 
 ### 3.2 Die Detailansicht
 

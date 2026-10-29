@@ -87,7 +87,7 @@ describe('CatalogPage (ADR-0039)', () => {
     const prompts = screen.getByRole('link', { name: /Formulierungshilfen Referat 50/ })
     expect(prompts).toHaveAttribute('href', '/prompts/prompt-library-referat-50')
     expect(within(cardOf(prompts)).getByText('Prompts')).toBeInTheDocument()
-    // The catalog tile is the lean tile of a choice: no responsible party (#3305).
+    // The catalog tile is the lean tile of a choice: no responsible party.
     expect(within(cardOf(prompts)).queryByTitle('Zuständige Gruppe')).not.toBeInTheDocument()
   })
 

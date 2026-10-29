@@ -85,7 +85,7 @@ mit offener Nachfolge: Es lässt sich lösen, aber bis zum Abschluss der Nachfol
 zuordnen; die Meldung sagt das, statt „Rückgängig" anzubieten. Schlägt die Änderung fehl, springt
 das Häkchen zurück, und eine Fehlermeldung nennt den Grund. Beim Öffnen ist der Filter „Nur
 zugeordnete" eingeschaltet; ausgeschaltet zeigt die Liste alles, was man lesen darf und deshalb
-zuordnen könnte. In beiden Ansichten stehen die schlanken Kacheln der Auswahl (siehe „Einen Space
+zuordnen könnte. In beiden Ansichten stehen die Kacheln des Katalogs als Auswahl (siehe „Einen Space
 anlegen"), in der Reihenfolge des Katalogs: Favoriten zuerst, dann nach Name. Darüber stehen dieselben Filter wie im Katalog:
 Suche, Typ und Favoriten. Wer
 weder Kurator noch Administrator noch Eigentümer des Space ist, sieht die zugeordneten Inhalte, die
