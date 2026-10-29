@@ -185,7 +185,8 @@ paths:
       description: >
         Probes the access before it is saved, the same shape as POST /api/v1/admin/oidc-providers/
         test - a German outcome, never a stack trace. Omitting clientSecret probes the stored
-        secret, so an existing connection can be re-tested without retyping it; without a stored
+        secret, so an existing connection can be re-tested without retyping it, but only against
+        the stored admin API address (same origin and path); for another baseUrl, without a stored
         connection, and with a stored one this deployment's key cannot decrypt, the secret is
         required and its absence is answered with 400. Refused with 409 for the LOCAL row, which
         has no directory. Never writes anything, and therefore never needs the encryption key.
@@ -520,8 +521,8 @@ components:
       type: object
       required: [type, clientId]
       description: >
-        Like DirectoryConnectorRequest, but clientSecret may be omitted to probe with the stored
-        one.
+        Like DirectoryConnectorRequest, but clientSecret may be omitted to probe the stored admin
+        API address with the stored one.
       properties:
         type:
           $ref: "#/components/schemas/DirectoryConnectorType"

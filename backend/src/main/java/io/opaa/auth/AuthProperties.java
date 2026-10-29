@@ -27,7 +27,7 @@ public record AuthProperties(@InstallationWide String mode, OidcAuth oidc, DevAu
       oidc = new OidcAuth(null);
     }
     if (dev == null) {
-      dev = new DevAuth(null, null, null, null);
+      dev = new DevAuth(null, null, null, null, null, null);
     }
   }
 
@@ -81,11 +81,27 @@ public record AuthProperties(@InstallationWide String mode, OidcAuth oidc, DevAu
    * @param issuer the issuer recorded for development users
    * @param defaultUser the subject a request without {@code X-OPAA-Dev-User} is authenticated as
    * @param users the development users
+   * @param publishedAddress the host address the Compose stack publishes the frontend on, empty
+   *     when the backend does not run in that stack; anything but a loopback address refuses the
+   *     start unless {@code allowRemote} is set ({@link DevExposureGuard})
+   * @param allowRemote whether the development mode may run with a frontend published beyond the
+   *     loopback interface, where everyone reaching the port acts as system administrator
    */
   public record DevAuth(
-      String systemAdminEmail, String issuer, String defaultUser, List<DevUser> users) {
+      String systemAdminEmail,
+      String issuer,
+      String defaultUser,
+      List<DevUser> users,
+      String publishedAddress,
+      @NoDataImpact("start guard of the development mode") Boolean allowRemote) {
 
     public DevAuth {
+      if (publishedAddress == null) {
+        publishedAddress = "";
+      }
+      if (allowRemote == null) {
+        allowRemote = false;
+      }
       if (issuer == null || issuer.isBlank()) {
         issuer = "opaa-dev";
       }

@@ -233,7 +233,7 @@ Wann eine abgelehnte Datei erneut geprüft wird:
 | [SharePoint](sharepoint.md) | Dokumentbibliotheken von SharePoint Online | Microsoft Graph v1.0 | Pflicht | Vollabgleich, Änderungslauf | Vollabgleich, auch über mehrere Läufe; Änderungslauf | ja |
 | [OneDrive](onedrive.md) | das eigene OneDrive for Business einer Person, für ihre private Bibliothek | Microsoft Graph v1.0 | Pflicht, mit verbundenem Konto | Vollabgleich, Änderungslauf | Vollabgleich, auch über mehrere Läufe; Änderungslauf | ja |
 | [Nextcloud](nextcloud.md) | Ordner eines Nextcloud-Nutzers, samt Freigaben und Gruppenordnern | WebDAV | möglich | Vollabgleich | Vollabgleich in einem Lauf | ja |
-| [Dropbox](dropbox.md) | Ordner eines Dropbox-Kontos oder Team-Bereichs | Dropbox API v2 | Pflicht | Vollabgleich, Änderungslauf | Vollabgleich, auch über mehrere Läufe; Änderungslauf | ja |
+| [Dropbox](dropbox.md) | Ordner eines Dropbox-Kontos oder Team-Bereichs, Team-Ordner über eine Team-App | Dropbox API v2 | Pflicht | Vollabgleich, Änderungslauf | Vollabgleich, auch über mehrere Läufe; Änderungslauf | ja |
 | [Windows-Dateifreigabe (SMB)](smb.md) | Ordner einer Freigabe auf einem Windows- oder Samba-Server | SMB 2 und 3 | möglich | Vollabgleich | Vollabgleich, auch über mehrere Läufe | ja |
 
 Ein *vollständiger* Lauf sieht die ganze Quelle und darf deshalb entfernen, was fehlt; ein

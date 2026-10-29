@@ -105,6 +105,11 @@ export function sourceLibraryDetails(): LibraryResponse[] {
             driveId: 'b!rathausDokumente',
             name: 'Rathaus · Dokumente',
             folders: [{ id: '01RATSBESCHLUESSE', name: 'Ratsbeschlüsse' }],
+            // the site „Rathaus“ of mockSharePointSites
+            site: {
+              id: 'rheinfurt.sharepoint.com,2c712604-1370-44e7-a1f5-426573fda80a,2d2244c3-251a-49ea-93a8-39e1c3a060fe',
+              name: 'Rathaus',
+            },
           },
         ],
         fullSyncIntervalDays: 1,

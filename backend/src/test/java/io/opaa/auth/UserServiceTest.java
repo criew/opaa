@@ -98,7 +98,8 @@ class UserServiceTest {
     // The initial-admin rule is issuer-bound (ADR-0025); in this mocked "dev" mode the dev issuer
     // "issuer1" is the trusted one, so the address tests below keep their meaning.
     when(authProperties.mode()).thenReturn("dev");
-    when(authProperties.dev()).thenReturn(new AuthProperties.DevAuth(null, "issuer1", null, null));
+    when(authProperties.dev())
+        .thenReturn(new AuthProperties.DevAuth(null, "issuer1", null, null, null, null));
     providerRegistry = mock(OidcProviderRegistry.class);
     providerRepository = mock(OidcProviderRepository.class);
     roleSynchronizer = mock(TokenRoleSynchronizer.class);
@@ -298,7 +299,8 @@ class UserServiceTest {
   void findOrCreateUserCreatesNewUser() {
     when(userRepository.findBySubjectAndIssuer("sub1", "issuer1")).thenReturn(Optional.empty());
     when(userRepository.saveAndFlush(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
-    when(authProperties.dev()).thenReturn(new AuthProperties.DevAuth(null, "issuer1", null, null));
+    when(authProperties.dev())
+        .thenReturn(new AuthProperties.DevAuth(null, "issuer1", null, null, null, null));
 
     User user = userService.findOrCreateUser("sub1", "issuer1", "test@example.com", "Test");
 
@@ -449,7 +451,8 @@ class UserServiceTest {
     when(userRepository.findBySubjectAndIssuer("sub1", "issuer1")).thenReturn(Optional.empty());
     when(userRepository.saveAndFlush(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
     when(authProperties.dev())
-        .thenReturn(new AuthProperties.DevAuth("admin@example.com", "issuer1", null, null));
+        .thenReturn(
+            new AuthProperties.DevAuth("admin@example.com", "issuer1", null, null, null, null));
 
     User user = userService.findOrCreateUser("sub1", "issuer1", "admin@example.com", "Admin");
 
@@ -464,7 +467,8 @@ class UserServiceTest {
         .thenReturn(Optional.empty());
     when(userRepository.saveAndFlush(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
     when(authProperties.dev())
-        .thenReturn(new AuthProperties.DevAuth("admin@example.com", "issuer1", null, null));
+        .thenReturn(
+            new AuthProperties.DevAuth("admin@example.com", "issuer1", null, null, null, null));
 
     User user =
         userService.findOrCreateUser(
@@ -478,7 +482,8 @@ class UserServiceTest {
     when(userRepository.findBySubjectAndIssuer("sub1", "issuer1")).thenReturn(Optional.empty());
     when(userRepository.saveAndFlush(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
     when(authProperties.dev())
-        .thenReturn(new AuthProperties.DevAuth("admin@example.com", "issuer1", null, null));
+        .thenReturn(
+            new AuthProperties.DevAuth("admin@example.com", "issuer1", null, null, null, null));
 
     User user = userService.findOrCreateUser("sub1", "issuer1", "other@example.com", "Other");
 
@@ -698,7 +703,8 @@ class UserServiceTest {
   void aFailingProvisioningListenerIsNotSwallowedHere() {
     when(userRepository.findBySubjectAndIssuer("sub1", "issuer1")).thenReturn(Optional.empty());
     when(userRepository.saveAndFlush(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
-    when(authProperties.dev()).thenReturn(new AuthProperties.DevAuth(null, "issuer1", null, null));
+    when(authProperties.dev())
+        .thenReturn(new AuthProperties.DevAuth(null, "issuer1", null, null, null, null));
     RuntimeException failure = new RuntimeException("listener failed");
     UserService withFailingListener =
         userServiceWith(
@@ -725,7 +731,8 @@ class UserServiceTest {
             new DataIntegrityViolationException(
                 "duplicate key value violates unique constraint"
                     + " \"users_subject_issuer_unique\""));
-    when(authProperties.dev()).thenReturn(new AuthProperties.DevAuth(null, "issuer1", null, null));
+    when(authProperties.dev())
+        .thenReturn(new AuthProperties.DevAuth(null, "issuer1", null, null, null, null));
 
     User user = userService.findOrCreateUser("sub1", "issuer1", "race@example.com", "Race");
 
@@ -747,7 +754,8 @@ class UserServiceTest {
     DataIntegrityViolationException violation =
         new DataIntegrityViolationException("some other constraint violation");
     when(userRepository.saveAndFlush(any(User.class))).thenThrow(violation);
-    when(authProperties.dev()).thenReturn(new AuthProperties.DevAuth(null, "issuer1", null, null));
+    when(authProperties.dev())
+        .thenReturn(new AuthProperties.DevAuth(null, "issuer1", null, null, null, null));
 
     assertThatThrownBy(
             () -> userService.findOrCreateUser("sub1", "issuer1", "race@example.com", "Race"))

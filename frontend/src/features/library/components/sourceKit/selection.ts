@@ -2,6 +2,8 @@
 export interface Crumb {
   key: string
   name: string
+  /** Whether `name` only stands in for a name the source does not know; it is never stored. */
+  placeholder?: boolean
 }
 
 /**
@@ -12,6 +14,8 @@ export interface SelectionItem {
   key: string
   name: string
   trail: Crumb[]
+  /** As {@link Crumb.placeholder}, for an object a manual entry opens as a level. */
+  placeholder?: boolean
 }
 
 /** One row of a listed level. */
@@ -24,6 +28,8 @@ export interface BrowseEntry {
   openable: boolean
   /** Why the object cannot be chosen although it is listed, shown under its name. */
   blocked?: string
+  /** Whether `name` only stands in for a name the source does not give (a site without one). */
+  placeholder?: boolean
 }
 
 export interface BrowseResult {
@@ -67,6 +73,8 @@ export interface SelectionSource {
   max?: number
   /** Whether choosing an object also covers what lies below it (folders); false for flat sources. */
   nested: boolean
+  /** Whether a chosen object stored without its levels takes them where a level lists it. */
+  adoptsTrail?: boolean
 }
 
 export function noun(source: Pick<SelectionSource, 'noun'>, count: number) {
@@ -81,6 +89,34 @@ export function isBelow(item: SelectionItem, key: string) {
 /** The display path of an item: the levels above it and its own name. */
 export function pathLabel(item: SelectionItem) {
   return [...item.trail.map((crumb) => crumb.name), item.name].join(' / ')
+}
+
+/**
+ * The selection with each object stored without its levels placed below `level` where `entries`,
+ * the listing of `level`, holds it or the outermost level of its trail; a placeholder crumb takes
+ * the named crumb of `level` with its key. The same array when nothing changes, which is always so
+ * at the outermost level.
+ */
+export function adoptTrail(
+  selection: SelectionItem[],
+  entries: Pick<BrowseEntry, 'key'>[],
+  level: Crumb[],
+): SelectionItem[] {
+  if (level.length === 0) return selection
+  const listed = new Set(entries.map((entry) => entry.key))
+  const named = new Map(level.filter((c) => !c.placeholder).map((c) => [c.key, c]))
+  let changed = false
+  const next = selection.map((item) => {
+    const head = item.trail.length === 0 ? item.key : item.trail[0].key
+    const placed = listed.has(head) ? [...level, ...item.trail] : item.trail
+    const trail = placed.map((crumb) => (crumb.placeholder && named.get(crumb.key)) || crumb)
+    if (trail.length === item.trail.length && trail.every((c, i) => c === item.trail[i])) {
+      return item
+    }
+    changed = true
+    return { ...item, trail }
+  })
+  return changed ? next : selection
 }
 
 /**

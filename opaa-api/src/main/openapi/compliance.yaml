@@ -567,7 +567,9 @@ components:
         How often the anlassbezogene Klärung was requested, approved and ended in the reporting
         period, by purpose: no person, no reason, no grant id and no date finer than the month.
         Only completed months count, so repeated calls cannot show a case while its month runs.
-      required: [from, to, smallCountThreshold, purposes, notes]
+        heldChatDeletions counts how often the administration held the deletion of the chats of a
+        locked account in the period, without person or account.
+      required: [from, to, smallCountThreshold, purposes, heldChatDeletions, notes]
       properties:
         from:
           type: string
@@ -588,6 +590,8 @@ components:
           description: Every purpose of the closed list, in its order, with zero counts as well.
           items:
             $ref: "#/components/schemas/DisclosureIncidentScopePurposeCases"
+        heldChatDeletions:
+          $ref: "#/components/schemas/DisclosureCaseCount"
         notes:
           type: array
           description: What the counts mean and where they end, as readable sentences.

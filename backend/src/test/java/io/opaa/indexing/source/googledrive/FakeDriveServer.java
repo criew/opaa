@@ -46,8 +46,16 @@ final class FakeDriveServer implements AutoCloseable {
     boolean canDownload = true;
     boolean sharedWithMe;
     boolean exportTooLarge;
+
+    /** Whether even the {@code text/plain} export exceeds Drive's limit. */
+    boolean textExportTooLarge;
+
     boolean trickle;
     String redirectTo;
+
+    /** Where {@code files.get} of this item redirects, {@code null} for an answer. */
+    String metadataRedirectTo;
+
     byte[] content = new byte[0];
     Instant modifiedTime = Instant.parse("2026-10-01T10:00:00Z");
 
@@ -239,7 +247,8 @@ final class FakeDriveServer implements AutoCloseable {
       Item item = items.get(export.group(1));
       if (item == null) {
         error(exchange, 404, "notFound");
-      } else if (item.exportTooLarge && !"text/plain".equals(query.get("mimeType"))) {
+      } else if (item.exportTooLarge
+          && (item.textExportTooLarge || !"text/plain".equals(query.get("mimeType")))) {
         error(exchange, 403, "exportSizeLimitExceeded");
       } else {
         bytes(exchange, item.content);
@@ -262,6 +271,9 @@ final class FakeDriveServer implements AutoCloseable {
         } else {
           bytes(exchange, item.content);
         }
+      } else if (item.metadataRedirectTo != null) {
+        exchange.getResponseHeaders().add("Location", item.metadataRedirectTo);
+        exchange.sendResponseHeaders(302, -1);
       } else {
         json(exchange, resource(item));
       }

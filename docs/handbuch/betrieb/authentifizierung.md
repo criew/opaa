@@ -43,7 +43,9 @@ eigens angelegte Anbieterzeile.
 
 > **Warnung:** Dieser Modus schaltet die Authentifizierung vollständig ab. Er gehört nur auf
 > Arbeitsplätze und in Testumgebungen, nie auf eine erreichbare Instanz; das Backend warnt beim
-> Start.
+> Start. Es startet in diesem Modus nicht, wenn das Frontend des Compose-Stapels oder, außerhalb von
+> Docker, `OPAA_SERVER_ADDRESS` über Loopback hinausreicht, außer `OPAA_AUTH_DEV_ALLOW_REMOTE=true`
+> bestätigt es ([Härtung des Compose-Stapels](docker-compose.md#härtung-des-compose-stapels)).
 
 ## Anmeldewege im Betriebsmodus `oidc`
 
@@ -383,9 +385,11 @@ wie die Issuer-URI; Redirects folgt das Backend nicht.
 **Das Geheimnis liegt verschlüsselt** mit `OPAA_CREDENTIALS_ENCRYPTION_KEY`; ohne diesen Schlüssel
 lässt sich kein Zugang speichern ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#schlüssel-und-geheimnisse)).
 Angezeigt werden nur Typ, Adresse, Realm und Client-ID. Das Geheimnis des Dienstkontos lässt sich
-jederzeit wechseln: in Keycloak neu erzeugen, in OPAA neu hinterlegen. Ist es nicht mehr
-entschlüsselbar, gilt es als nicht vorhanden; jeder Lauf meldet das Verzeichnis als unerreichbar und
-entzieht nichts, bis der Zugang neu hinterlegt ist.
+jederzeit wechseln: in Keycloak neu erzeugen, in OPAA neu hinterlegen. Ein Test ohne eingetragenes
+Geheimnis nutzt das gespeicherte nur für die gespeicherte Admin-API-Adresse; für eine geänderte
+Adresse ist das Geheimnis einzutragen, sonst lehnt OPAA den Test ab, statt es dorthin zu senden.
+Ist das gespeicherte Geheimnis nicht mehr entschlüsselbar, gilt es als nicht vorhanden; jeder Lauf
+meldet das Verzeichnis als unerreichbar und entzieht nichts, bis der Zugang neu hinterlegt ist.
 
 **Obergrenzen.** Mehr als `OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_GROUPS` Gruppen oder
 `OPAA_DIRECTORY_SYNC_KEYCLOAK_MAX_MEMBERS_PER_GROUP` direkte Mitglieder je Gruppe lassen den Lauf als
@@ -437,8 +441,8 @@ ersten Import:
 | Client `opaa-seed` mit Passwort-Grant und ohne Secret, nur für das Befüllen der Demo | ein zweiter, passwortbasierter Tokenweg gegen jedes Konto des Realms | **Zwingend:** entfernen oder auf `enabled: false`; wer erneut befüllen will, aktiviert ihn nur für die Dauer des Laufs |
 | Client `opaa-directory` mit dem Geheimnis `RheinfurtVerzeichnis!2026` und den Rollen `view-users` und `query-groups` | Wer das Geheimnis kennt, liest den ganzen Gruppenbaum, alle Mitgliedschaften und alle Konten | **Zwingend:** ein eigenes Geheimnis erzeugen (`openssl rand -base64 32`), vor dem Import setzen oder in Keycloak unter **Credentials** neu erzeugen, und denselben Wert im [Verzeichniszugang](#keycloak-als-verzeichnis) hinterlegen. Ohne Verzeichnisabgleich den Client entfernen |
 
-Dazu die Port-Bindung des Dienstes `keycloak` an `127.0.0.1`, sonst bleibt die Admin-Konsole am Proxy
-vorbei erreichbar ([Docker Compose](docker-compose.md#härtung-des-compose-stapels)).
+Dazu bleibt die Port-Bindung des Dienstes `keycloak` an `127.0.0.1` (Vorgabe), sonst ist die
+Admin-Konsole am Proxy vorbei erreichbar ([Docker Compose](docker-compose.md#härtung-des-compose-stapels)).
 
 **Änderungen am Realm einer laufenden Instanz.** `--import-realm` importiert einen Realm nur, wenn er
 noch nicht existiert; eine spätere Änderung am Export wirkt auf einer Instanz mit persistentem
@@ -694,8 +698,9 @@ Anmeldung nicht gestartet werden konnte, fehlt meist ein Origin in `OPAA_CSP_CON
 
 ### Das Backend startet nicht und nennt `OPAA_AUTH_JWT_SECRET`
 
-Im Modus `oidc` ist das Geheimnis Pflicht, mindestens 32 Zeichen lang und kein erkannter Platzhalter.
-Mit `openssl rand -base64 48` erzeugen und setzen. Dieselbe Prüfung gilt für die Sitzungsfristen: Eine
+Im Modus `oidc` ist das Geheimnis Pflicht, mindestens 32 Zeichen lang und kein erkannter Platzhalter;
+auch die Testwerte des Repositorys (`ci-only-…`, Kennzeichen `NICHT-FUER-DEN-PRODUKTIVBETRIEB`) lehnt
+der Start ab. Mit `openssl rand -base64 48` erzeugen und setzen. Dieselbe Prüfung gilt für die Sitzungsfristen: Eine
 überschrittene Obergrenze oder eine verletzte Reihenfolge (Zugangstoken ≤ Leerlauffrist ≤ Höchstdauer)
 nennt die Meldung mit Variablennamen.
 

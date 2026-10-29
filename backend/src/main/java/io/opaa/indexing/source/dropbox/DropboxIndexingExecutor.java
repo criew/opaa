@@ -97,7 +97,9 @@ public class DropboxIndexingExecutor implements SourceIndexingExecutor {
         .filter(
             state ->
                 state.canReadChanges(
-                    new LinkedHashSet<>(dropboxSettings.folders()), interval, clock.instant()))
+                    new LinkedHashSet<>(dropboxSettings.containerKeys()),
+                    interval,
+                    clock.instant()))
         .map(state -> IndexingRunMode.INCREMENTAL)
         .orElse(IndexingRunMode.FULL);
   }

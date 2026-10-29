@@ -200,6 +200,146 @@ class SharePointSourceConnectorTest {
   }
 
   @Test
+  void aLibraryKeepsTheSiteItWasChosenInWithoutChangingTheSelection() {
+    ConnectorData withSite =
+        connector.readSettings(
+            ConnectorData.of(
+                Map.of(
+                    "libraries",
+                    List.of(
+                        Map.of(
+                            "driveId",
+                            DRIVE_0,
+                            "name",
+                            "Dokumente (Team)",
+                            "site",
+                            Map.of("id", SITE, "name", "Team")),
+                        Map.of("driveId", DRIVE_1, "site", Map.of("id", SITE))))));
+    KnowledgeLibrary library = mock(KnowledgeLibrary.class);
+
+    assertThat(withSite)
+        .isEqualTo(
+            ConnectorData.of(
+                Map.of(
+                    "libraries",
+                    List.of(
+                        Map.of(
+                            "driveId",
+                            DRIVE_0,
+                            "name",
+                            "Dokumente (Team)",
+                            "site",
+                            Map.of("id", SITE, "name", "Team")),
+                        Map.of("driveId", DRIVE_1, "site", Map.of("id", SITE))))));
+    assertThat(connector.settingsState(library, withSite))
+        .isEqualTo(connector.settingsState(library, libraries(DRIVE_0, DRIVE_1)));
+    for (Object refused :
+        List.of(
+            SITE,
+            Map.of(),
+            Map.of("name", "Team"),
+            Map.of("id", "contoso.sharepoint.com/../drives"),
+            Map.of("id", SITE, "name", "x".repeat(201)),
+            Map.of("id", SITE, "url", "https://contoso.sharepoint.com/sites/team"))) {
+      assertThatThrownBy(
+              () ->
+                  connector.readSettings(
+                      ConnectorData.of(
+                          Map.of(
+                              "libraries", List.of(Map.of("driveId", DRIVE_0, "site", refused))))))
+          .as(refused.toString())
+          .isInstanceOf(ValidationException.class)
+          .hasMessageStartingWith("sourceSettings.libraries: ");
+    }
+  }
+
+  @Test
+  void theConnectionTestRefusesALibraryOutsideTheSiteItIsStoredWith() {
+    String other = siteId(7);
+    server.site(other, "contoso.sharepoint.com", "/sites/bau", "Bauamt");
+    server.drive(other, "b!plaene", "Pläne", "documentLibrary");
+
+    SourceConnectionTestResult inSite =
+        connector.testConnection(
+            withToken(
+                ConnectorData.of(
+                    Map.of(
+                        "libraries",
+                        List.of(
+                            Map.of("driveId", DRIVE_0, "site", Map.of("id", SITE, "name", "Team")),
+                            Map.of("driveId", DRIVE_1, "site", Map.of("id", SITE)),
+                            Map.of("driveId", "b!plaene"))))),
+            null);
+    SourceConnectionTestResult elsewhere =
+        connector.testConnection(
+            withToken(
+                ConnectorData.of(
+                    Map.of(
+                        "libraries",
+                        List.of(
+                            Map.of(
+                                "driveId", DRIVE_0, "site", Map.of("id", other, "name", "Bauamt")),
+                            Map.of("driveId", "b!plaene", "site", Map.of("id", other)))))),
+            null);
+
+    assertThat(inSite.reachable()).isTrue();
+    assertThat(elsewhere.reachable()).isFalse();
+    assertThat(elsewhere.credentialsVerified()).isTrue();
+    assertThat(elsewhere.message()).contains("1 von 2");
+    assertThat(elsewhere.details().toJson())
+        .contains("Die Dokumentbibliothek gehört nicht zur Site „Bauamt“")
+        .doesNotContain(other);
+  }
+
+  @Test
+  void aSiteListingCutAtItsPageLimitProvesNoLibraryOutsideTheSite() {
+    String other = siteId(8);
+    server.site(other, "contoso.sharepoint.com", "/sites/bau", "Bauamt");
+    server.drive(other, "b!plaene", "Pläne", "documentLibrary");
+    server.pageSizeAtMost(1);
+    for (int i = 1; i <= 11; i++) {
+      server.drive(SITE, "b!library" + i, "Bibliothek " + i, "documentLibrary");
+    }
+
+    SourceConnectionTestResult result =
+        connector.testConnection(
+            withToken(
+                ConnectorData.of(
+                    Map.of(
+                        "libraries",
+                        List.of(
+                            Map.of(
+                                "driveId",
+                                "b!plaene",
+                                "site",
+                                Map.of("id", SITE, "name", "Team")))))),
+            null);
+
+    assertThat(result.reachable()).isTrue();
+    assertThat(result.details().toJson()).doesNotContain("gehört nicht zur");
+  }
+
+  @Test
+  void aStoredSiteGraphNoLongerKnowsLeavesTheLibraryUnreachable() {
+    server.failNext("sites/" + SITE + "/drives", 404, "itemNotFound", null, 1);
+
+    SourceConnectionTestResult result =
+        connector.testConnection(
+            withToken(
+                ConnectorData.of(
+                    Map.of(
+                        "libraries",
+                        List.of(Map.of("driveId", DRIVE_0, "site", Map.of("id", SITE)))))),
+            null);
+
+    assertThat(result.reachable()).isFalse();
+    assertThat(result.credentialsVerified()).isTrue();
+    assertThat(result.details().toJson())
+        .contains("\"reachable\":false")
+        .contains("Microsoft Graph kennt die Site");
+  }
+
+  @Test
   void aChangedSelectionDiscardsTheRunStateAndAnUnchangedOneDoesNot() {
     KnowledgeLibrary library = mock(KnowledgeLibrary.class);
     UUID id = UUID.randomUUID();

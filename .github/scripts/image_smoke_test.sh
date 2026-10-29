@@ -78,7 +78,8 @@ for _ in $(seq 1 60); do
 done
 [[ "$db_ready" == true ]] || fail "PostgreSQL did not become ready"
 
-# Throwaway secrets, valid in form only: the jwt secret's minimum length and two Base64 AES-256 keys.
+# Throwaway secrets, valid in form only: the jwt secret's minimum length and two Base64 AES-256 keys
+# that are not among the published development and CI keys the "oidc" profile refuses.
 # No answer file: the backend starts in installation mode (ADR-0060), whose readiness is UP.
 backend_environment=(
   -e SPRING_PROFILES_ACTIVE=oidc
@@ -89,8 +90,8 @@ backend_environment=(
   -e OPAA_DB_USERNAME=opaa
   -e OPAA_DB_PASSWORD=smoke-only-password
   -e OPAA_AUTH_JWT_SECRET=smoke-only-jwt-secret-0123456789abcdefghijklmnop
-  -e OPAA_CREDENTIALS_ENCRYPTION_KEY=bjzhjv2AKbnBjZCYAR2V/Glp7TYZzqABwkqXs3lEyCY=
-  -e OPAA_SETTINGS_ENCRYPTION_KEY=CH1X+hsIYeijer8S9wq5wKRnQa4DpUPePzw4KxGMTMw=
+  -e OPAA_CREDENTIALS_ENCRYPTION_KEY=bgkeQqaMpiL1xFl4ymM9MVJ+jYlt+GCb4w9J8o5btxI=
+  -e OPAA_SETTINGS_ENCRYPTION_KEY=NNEl4fE9dCl6LycesKNIxBXCY+hDKDDWV8D7hPi5e0A=
 )
 hardening=(--read-only --tmpfs /tmp --tmpfs /app/uploads:uid=65532,gid=65532,mode=0700
   --cap-drop ALL --security-opt no-new-privileges)

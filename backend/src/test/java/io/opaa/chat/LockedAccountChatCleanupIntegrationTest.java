@@ -289,6 +289,14 @@ class LockedAccountChatCleanupIntegrationTest {
     assertThat(chatCountOf(person)).isZero();
     assertThat(eventsOf(person, "LOCKED_ACCOUNT_CHAT_CLEANUP_HELD")).isOne();
     assertThat(eventsOf(person, "LOCKED_ACCOUNT_CHAT_CLEANUP_RESUMED")).isOne();
+    // the second hold of the same account placed nothing, so it counts once
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT coalesce(sum(hold_count), 0) FROM audit_chat_cleanup_hold_monthly_counts"
+                    + " WHERE organization_id = ?",
+                Integer.class,
+                organizationId))
+        .isOne();
   }
 
   @Test

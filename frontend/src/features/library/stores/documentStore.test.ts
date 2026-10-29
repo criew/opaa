@@ -566,6 +566,52 @@ describe('documentStore', () => {
     })
   })
 
+  describe('counts during a run (#3217)', () => {
+    it('counts a step within the interval once, at the end of the interval', async () => {
+      vi.useFakeTimers()
+      await useDocumentStore.getState().loadStatusCounts('library-1')
+      mockCountLibraryDocuments.mockClear()
+
+      await vi.advanceTimersByTimeAsync(4000)
+      await useDocumentStore.getState().refreshStatusCountsDuringRun('library-1')
+      await useDocumentStore.getState().refreshStatusCountsDuringRun('library-1')
+      await vi.advanceTimersByTimeAsync(5999)
+      expect(mockCountLibraryDocuments).not.toHaveBeenCalled()
+
+      await vi.advanceTimersByTimeAsync(1)
+      expect(mockCountLibraryDocuments).toHaveBeenCalledTimes(3)
+      await vi.advanceTimersByTimeAsync(20_000)
+      expect(mockCountLibraryDocuments).toHaveBeenCalledTimes(3)
+    })
+
+    it('drops the follow-up count of the library whose run is left', async () => {
+      vi.useFakeTimers()
+      await useDocumentStore.getState().loadStatusCounts('library-1')
+      await useDocumentStore.getState().loadStatusCounts('library-2')
+      mockCountLibraryDocuments.mockClear()
+
+      await useDocumentStore.getState().refreshStatusCountsDuringRun('library-1')
+      await useDocumentStore.getState().refreshStatusCountsDuringRun('library-2')
+      useDocumentStore.getState().stopRunCounting('library-1')
+      await vi.advanceTimersByTimeAsync(20_000)
+
+      expect(mockCountLibraryDocuments).toHaveBeenCalledTimes(3)
+      expect(mockCountLibraryDocuments.mock.calls.every(([id]) => id === 'library-2')).toBe(true)
+    })
+
+    it('drops every follow-up count on reset', async () => {
+      vi.useFakeTimers()
+      await useDocumentStore.getState().loadStatusCounts('library-1')
+      mockCountLibraryDocuments.mockClear()
+
+      await useDocumentStore.getState().refreshStatusCountsDuringRun('library-1')
+      useDocumentStore.getState().reset()
+      await vi.advanceTimersByTimeAsync(20_000)
+
+      expect(mockCountLibraryDocuments).not.toHaveBeenCalled()
+    })
+  })
+
   it('stops every running poll interval on reset, not just the last-loaded library', async () => {
     vi.useFakeTimers()
     mockGetLibraryDocuments.mockResolvedValueOnce(page([pendingDocument]))

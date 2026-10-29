@@ -14,20 +14,25 @@ export const dropboxSource: SourceRegistration = {
   containerLabel: 'Ordner',
   configuration: {
     empty: EMPTY_DROPBOX_VALUES,
-    draftFields: ['folders', 'teamSpace', 'fullSyncIntervalDays'],
+    draftFields: ['folders', 'teamSpace', 'teamFolders', 'fullSyncIntervalDays'],
     fromLibrary: (library): DropboxSourceValues => {
       const settings = dropboxSettingsOf(library)
       return {
         folders: (settings.folders ?? ['/']).join('\n'),
         teamSpace: Boolean(settings.teamSpace),
+        teamFolders: settings.teamFolders ?? [],
         fullSyncIntervalDays: settings.fullSyncIntervalDays ?? null,
       }
     },
-    isDirty: (values: DropboxSourceValues) => values.folders.trim() !== '/' || values.teamSpace,
+    isDirty: (values: DropboxSourceValues) =>
+      values.folders.trim() !== '/' || values.teamSpace || values.teamFolders.length > 0,
     toPayload: (values: DropboxSourceValues) => ({
       sourceSettings: dropboxSettingsFrom(values),
     }),
     nameFromSource: (values: DropboxSourceValues) => {
+      if (values.teamFolders.length > 0) {
+        return values.teamFolders.length === 1 ? (values.teamFolders[0].name?.trim() ?? '') : ''
+      }
       const folders = dropboxFoldersOf(values)
       if (folders.length !== 1 || folders[0] === '/') return ''
       const segments = folders[0].split('/').filter(Boolean)
