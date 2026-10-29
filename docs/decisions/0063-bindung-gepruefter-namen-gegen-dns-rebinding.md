@@ -74,8 +74,9 @@ gebunden: Der Betrieb hat ihm die interne Adresse ausdrücklich erlaubt.
 `NameResolutionBypassTest` verbietet jeder Hauptklasse außerhalb von `io.opaa.security` eine eigene
 Namensauflösung (OkHttp `Dns`, Apache `DnsResolver`, Netty, dnsjava, JNDI-DNS, ein eigener
 `InetAddressResolver`). `PinnedAddressResolverProviderTest` prüft Registrierung und Wirkung. Die
-Test-JVMs cachen keine Auflösung (`sun.net.inetaddr.ttl=0`), damit `ScriptedResolution` als
-Namensdienst eines Angreifers jede Auflösung beantwortet.
+Rebinding-Tests (`*RebindingTest`) laufen in der eigenen Gradle-Task `dnsRebindingTest`, Teil von
+`check`, in einer JVM ohne Namens-Cache (`sun.net.inetaddr.ttl=0`), damit `ScriptedResolution` als
+Namensdienst eines Angreifers jede Auflösung beantwortet; die übrigen Tests behalten den Cache.
 
 ## Konsequenzen
 

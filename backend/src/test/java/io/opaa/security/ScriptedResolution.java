@@ -11,13 +11,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 /**
- * A name server under the test's control, the attacker's DNS of the rebinding tests: the first
- * lookup of a scripted name answers {@code first}, every later one {@code then}; every other name
- * goes to the JDK's resolver. It answers in place of the JDK's resolver behind {@link
- * PinnedAddressResolverProvider}, so the bindings of the target address check apply to it exactly
- * as to a real name server. Closing restores the JDK's resolver and drops the scripted bindings.
- * The test JVM caches no answer ({@code sun.net.inetaddr.ttl=0} in {@code build.gradle.kts}), so
- * every lookup a client makes reaches it.
+ * The attacker's name server of the rebinding tests, behind {@link PinnedAddressResolverProvider}:
+ * a scripted name answers {@code first} once, then {@code then}; other names go to the JDK. Only
+ * the {@code dnsRebindingTest} task runs without the JDK's name cache, so only there every lookup
+ * of a client reaches it. Closing restores the JDK's resolver and drops the scripted bindings.
  */
 public final class ScriptedResolution implements AutoCloseable, InetAddressResolver {
 
