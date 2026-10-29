@@ -27,7 +27,7 @@ jederzeit auch lokal ausführen (unten).
 | Demo-Seed-/Generator-Requirements (`demo/*/requirements.txt`) | `pip_requirements` | `demo` |
 | pytest und PyYAML der CI-Jobs `report-script`, `seed-script` und Datenwirkung (`.github/requirements-ci.txt`), die Pakete des Update-Pakets, markdown-it-py mit mdurl (`.github/requirements-release.txt`), des Seeds im axe-Lauf (`.github/requirements-seed.txt`) und die Zeitzonendaten des Tagesreports (`.github/requirements-report.txt`); jede Datei listet alle Pakete samt Abhängigkeiten mit `--hash`, Renovate erneuert die Hashes beim Bump, jeder Job installiert mit `--require-hashes`. Ohne Auto-Merge, weil keiner dieser Jobs ein Required Check ist | `pip_requirements` | `ci` |
 | Node-Version für die lokale Entwicklung (`frontend/.nvmrc`) | `nvm` | `frontend` |
-| Pins, die kein regulärer Manager sieht: die Image-Konstanten in `S3TestFixture.java` und `KeycloakFixture.java`, die Werkzeugversionen der Chart-Prüfung in `helm-chart.yml`, die Helm-Version der Chart-Veröffentlichung in `publish-images.yml`, das Renovate-Image in `renovate.yml` (siehe [unten](#renovate-image-und-token-des-workflows)) und das alpine-Hilfsimage in `retrieval-regression.yml` (`ALPINE_IMAGE`, Version und Index-Digest; ein neuer Digest bei gleicher Version braucht die Freigabe in der Abhängigkeits-Übersicht) | `custom.regex` | `ci` |
+| Pins, die kein regulärer Manager sieht: die Image-Konstanten in `S3TestFixture.java` und `KeycloakFixture.java`, die Werkzeugversionen der Chart-Prüfung in `helm-chart.yml`, die Helm-Version der Chart-Veröffentlichung in `publish-images.yml`, das Renovate-Image in `renovate.yml` (siehe [unten](#renovate-image-und-token-des-workflows)) und das alpine-Hilfsimage in `retrieval-regression.yml` (`ALPINE_IMAGE`, Version und Index-Digest; ein neuer Digest bei gleicher Version braucht die Freigabe in der Abhängigkeits-Übersicht) und das ZAP-Image in `zap-baseline.yml` (`ZAP_IMAGE`, ebenso; nur Release-Tags `X.Y.Z`, ohne Auto-Merge, weil eine neue ZAP-Version neue Befunde bringen kann und der Scan kein Required Check ist) | `custom.regex` | `ci` |
 
 **Rein transitive Sicherheits-Pins brauchen einen `[libraries]`-Eintrag.** Wird eine Bibliothek
 angehoben, die kein Build-Skript direkt deklariert (eingebetteter Tomcat, Bouncy Castle —
@@ -45,8 +45,9 @@ Regeln in [`renovate.json5`](../renovate.json5) (kommentiert): deutsche Commit-/
 Stil `chore(deps): <Paket> auf <Version> aktualisieren`, Labels (unten), höchstens fünf
 gleichzeitig offene Update-PRs, Spring-Plattform als ein gebündelter PR, **kein**
 Digest-Pinning für Docker-Images (gleitende Tags sind eine dokumentierte Projektentscheidung,
-siehe `e2e/docker-compose.e2e.yml`; einzige Ausnahme ist das Renovate-Image selbst, siehe
-[unten](#renovate-image-und-token-des-workflows)). Zusätzlich pflegt Renovate ein Übersichts-Issue
+siehe `e2e/docker-compose.e2e.yml`; Ausnahmen sind das Renovate-Image selbst, siehe
+[unten](#renovate-image-und-token-des-workflows), und die per `docker run` gestarteten Images in
+`retrieval-regression.yml` und `zap-baseline.yml`). Zusätzlich pflegt Renovate ein Übersichts-Issue
 („Abhängigkeits-Übersicht (Renovate)") mit allen anstehenden Updates.
 
 **Labels:** Jeder Update-PR trägt `dependencies` und dazu das Bereichs-Label aus der Tabelle oben.

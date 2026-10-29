@@ -263,6 +263,21 @@ zeitgesteuerte Aufgaben, Konnektoren zu Quellen, Identitätsanbieter, Mailversan
 `.github/workflows/offline.yml` fährt das Ziel nächtlich, auf Zuruf und an einem PR über das Label
 `offline-suite`; kein Required Check.
 
+## ZAP-Baseline-Scan
+
+```bash
+# Passiver ZAP-Scan eines anonymen Aufrufers gegen einen Stack im Betriebsmodus oidc (aus dem
+# Repo-Wurzelverzeichnis; Compose-Projekt opaa-zap, Frontend auf 13010, nach dem Lauf abgebaut);
+# ZAP_SKIP_BUILD=true startet vorhandene Images opaa-zap-backend:latest und opaa-zap-frontend:latest
+.github/scripts/zap_baseline.sh ghcr.io/zaproxy/zaproxy:2.17.0 zap-out
+python3 .github/scripts/zap_rules.py summary --rules .github/zap/rules.yaml \
+  --report zap-out/zap-report.json --zap-exit $?
+```
+
+Workflow `.github/workflows/zap-baseline.yml` (nächtlich, manuell und in PRs, die den Scan
+ändern), Unterdrückungen in `.github/zap/rules.yaml`, Verfahren in
+[zap-baseline.md](zap-baseline.md).
+
 ## Image-Rauchtest
 
 ```bash
