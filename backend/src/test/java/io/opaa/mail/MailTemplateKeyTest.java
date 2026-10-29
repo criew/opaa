@@ -39,6 +39,7 @@ class MailTemplateKeyTest {
           "ADMIN_REVIEW_REMINDER",
           "EXTERNAL_ACCESS_RELEASE_EXPIRING",
           "EXTERNAL_ACCESS_TOKEN_EXPIRING",
+          "EXTERNAL_ACCESS_TOKEN_ISSUED",
           "SELF_DISCLOSURE_STARTED",
           "TEST_MAIL");
 

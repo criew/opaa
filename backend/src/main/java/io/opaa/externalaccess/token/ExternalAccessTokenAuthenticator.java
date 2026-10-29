@@ -1,14 +1,17 @@
 package io.opaa.externalaccess.token;
 
 import io.opaa.auth.AccountUsability;
+import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.Feature;
 import io.opaa.common.FeatureFlags;
 import io.opaa.externalaccess.ExternalAccessSettingsService;
+import io.opaa.library.ExternalAccessProperties;
 import io.opaa.security.LocalAuthKeyService;
 import io.opaa.security.LocalAuthKeyService.Purpose;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Optional;
@@ -22,6 +25,10 @@ import org.springframework.transaction.annotation.Transactional;
  * token row, expiry, revocation and the lifecycle of the account behind it ({@link
  * AccountUsability}). Nothing is cached and nothing is carried over from a previous call, so a
  * Notaus or a revocation takes effect with the next request of an already open connection.
+ *
+ * <p>An account of an identity provider is accepted only while its last sign-in lies at most {@link
+ * ExternalAccessProperties#providerSignInMaxAgeDays} back: a deactivation at the provider and the
+ * groups of its claim reach OPAA only with a sign-in, so the bound is how stale they may get.
  *
  * <p>It costs one indexed lookup by HMAC hash - the price ADR-0035 accepts for a Sofortwiderruf
  * that a self-contained token could not give.
@@ -39,6 +46,7 @@ public class ExternalAccessTokenAuthenticator {
   private final ExternalAccessSettingsService settings;
   private final Clock clock;
   private final FeatureFlags featureFlags;
+  private final Duration providerSignInMaxAge;
 
   public ExternalAccessTokenAuthenticator(
       ExternalAccessTokenRepository tokens,
@@ -47,7 +55,8 @@ public class ExternalAccessTokenAuthenticator {
       LocalAuthKeyService keys,
       ExternalAccessSettingsService settings,
       Clock clock,
-      FeatureFlags featureFlags) {
+      FeatureFlags featureFlags,
+      ExternalAccessProperties properties) {
     this.tokens = tokens;
     this.users = users;
     this.usability = usability;
@@ -55,6 +64,7 @@ public class ExternalAccessTokenAuthenticator {
     this.settings = settings;
     this.clock = clock;
     this.featureFlags = featureFlags;
+    this.providerSignInMaxAge = Duration.ofDays(properties.providerSignInMaxAgeDays());
   }
 
   /** The per-call check; see the class Javadoc for its order and its cost. */
@@ -134,7 +144,23 @@ public class ExternalAccessTokenAuthenticator {
       // convenient way around the account lifecycle; inactivity is a rule for connections only.
       return new Result.Refused(ExternalAccessTokenRejection.ACCOUNT_NOT_ACTIVE);
     }
+    if (providerSignInTooOld(user, now)) {
+      return new Result.Refused(ExternalAccessTokenRejection.SIGN_IN_REQUIRED);
+    }
     return new Result.Authenticated(user, token.getId(), token.getLastUsedOn());
+  }
+
+  /**
+   * A local account is left out: its lifecycle is decided in OPAA itself. One that never signed in
+   * counts from its creation, as for the inactivity of {@link AccountUsability}.
+   */
+  private boolean providerSignInTooOld(User user, Instant now) {
+    if (LocalIssuer.URN.equals(user.getIssuer())) {
+      return false;
+    }
+    Instant lastSignIn =
+        user.getLastLoginAt() != null ? user.getLastLoginAt() : user.getCreatedAt();
+    return lastSignIn == null || lastSignIn.isBefore(now.minus(providerSignInMaxAge));
   }
 
   /** Outcome of {@link #authenticate}. */

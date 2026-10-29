@@ -21,6 +21,8 @@ zugleich Notaus), persönliche Zugangstokens (`externalaccess`) und der MCP-Serv
 - **Ein Zugangstoken ist ein opaker Zufallswert mit festem Präfix**, gespeichert nur als
   HMAC-Suchhash (eigener Zweck in `LocalAuthKeyService`). Es ist an eine Person, eine
   unveränderliche Auswahl von Bibliotheken und ein Pflicht-Ablaufdatum gebunden.
+- **Ein Token folgt dem Lebenszyklus seiner Person:** Sperre, Übergabe und Ende aller Sitzungen beenden
+  es in derselben Transaktion, ein Anbieterkonto braucht eine junge Anmeldung (Handbuch, Abschnitt 6).
 - **Die wirksame Sicht wird je Aufruf berechnet, nie im Token eingefroren:** Rechte der Person,
   Freigabe der Bibliothek, Auswahl des Tokens, Schalter der Installation
   (`ExternalAccessTokenScopeService`).

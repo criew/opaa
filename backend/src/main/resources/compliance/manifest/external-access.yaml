@@ -54,6 +54,14 @@ settings:
     defaultValue: "365"
     effect: Längste Befristung der Freigabe einer Bibliothek für externe KI-Werkzeuge
     bearings: [VISIBILITY, DATA_FLOW]
+  - key: opaa.external-access.provider-sign-in-max-age-days
+    source: PROPERTY
+    defaultValue: "30"
+    effect: >-
+      Wie lange die letzte Anmeldung eines Kontos eines Identitätsanbieters zurückliegen darf, damit
+      seine Zugangstokens wirken; danach ruhen sie bis zur nächsten Anmeldung. Begrenzt, wie lange
+      eine Deaktivierung beim Anbieter und Gruppen aus dem Anmeldetoken unbemerkt bleiben
+    bearings: [VISIBILITY, DATA_FLOW]
   - key: io.opaa.externalaccess.ExternalAccessAlertRetention#RETENTION
     source: CONSTANT
     defaultValue: P14D

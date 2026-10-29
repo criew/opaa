@@ -158,6 +158,10 @@ class LocalAdminResetIntegrationTest {
    * transaction like the start-up's proxy.
    */
   private Outcome resetWithEmail(String email) {
+    return resetWithEmail(email, events);
+  }
+
+  private Outcome resetWithEmail(String email, ApplicationEventPublisher publisher) {
     LocalAuthProperties withEmail =
         new LocalAuthProperties(
             localAuthProperties.jwtSecret(),
@@ -184,7 +188,7 @@ class LocalAdminResetIntegrationTest {
             passwordEncoder,
             passwordGenerator,
             audit,
-            events,
+            publisher,
             clock);
     return new TransactionTemplate(transactionManager).execute(status -> configured.reset());
   }
@@ -242,6 +246,32 @@ class LocalAdminResetIntegrationTest {
     login(EMAIL, printed.getFirst(), null)
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.passwordChangeRequired").value(true));
+  }
+
+  /** The reset ends what the sessions of the emergency account created, its access tokens. */
+  @Test
+  void theForcedResetAnnouncesTheEndOfAllSessions() {
+    LocalAccount admin = emergencyAccount();
+    List<Object> published = new ArrayList<>();
+
+    Outcome outcome =
+        resetWithEmail(
+            RESET_EMAIL,
+            event -> {
+              published.add(event);
+              events.publishEvent(event);
+            });
+
+    assertThat(outcome).isEqualTo(Outcome.RESET);
+    assertThat(published)
+        .filteredOn(LocalAccountSessionsEndedEvent.class::isInstance)
+        .map(LocalAccountSessionsEndedEvent.class::cast)
+        .singleElement()
+        .satisfies(
+            ended -> {
+              assertThat(ended.user().getId()).isEqualTo(admin.id());
+              assertThat(ended.cause()).isEqualTo(RevocationReason.ADMIN_RESET);
+            });
   }
 
   @Test

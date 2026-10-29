@@ -8,7 +8,10 @@ import {
   mockExternalAccessSettings,
   setMockExternalAccessSettings,
 } from '../mocks/externalAccessHandlers'
-import { answerConfirm, renderWithProviders } from '@/test/test-utils'
+import { answerConfirm, renderWithProviders, setMockAuthState } from '@/test/test-utils'
+import { useAuthStore } from '@/shared/session/authStore'
+import { markRecentLoginReturn } from '@/shared/session/recentLogin'
+import { mockLocalAccount } from '@/shared/mocks/authFixtures'
 import OwnExternalAccessTokensSection from './OwnExternalAccessTokensSection'
 
 function render() {
@@ -413,6 +416,78 @@ describe('OwnExternalAccessTokensSection', () => {
       screen.queryByText('opaa_pat_new1_geheimer_wert_nur_dieses_eine_mal'),
     ).not.toBeInTheDocument()
     expect(await screen.findByText('Claude Code (Notebook)')).toBeInTheDocument()
+  })
+
+  describe('frische Anmeldung beim Erzeugen', () => {
+    const issuances = { count: 0, refuse: 0 }
+
+    beforeEach(() => {
+      issuances.count = 0
+      issuances.refuse = 1
+      setMockAuthState()
+      useAuthStore.setState({ mode: 'oidc', sessionKind: 'local', token: 'old-token' })
+      server.use(
+        http.post('*/api/v1/external-access/tokens', () => {
+          issuances.count += 1
+          if (issuances.count <= issuances.refuse) {
+            return HttpResponse.json(
+              {
+                code: 'RECENT_LOGIN_REQUIRED',
+                reason: 'AUTH_TIME_TOO_OLD',
+                message: 'Bitte bestätigen Sie Ihre Identität durch erneute Anmeldung.',
+              },
+              { status: 403 },
+            )
+          }
+          // falls through to the regular handler, which issues the token
+          return undefined
+        }),
+        http.post('*/api/v1/auth/local/reauthenticate', () =>
+          HttpResponse.json({
+            accessToken: 'recent-token',
+            expiresInSeconds: 900,
+            tokenType: 'Bearer',
+          }),
+        ),
+      )
+    })
+
+    it('bestätigt die Anmeldung und erzeugt danach dasselbe Token ohne neue Eingabe', async () => {
+      const user = userEvent.setup()
+      render()
+
+      const dialog = await openCreateDialog(user)
+      await user.type(within(dialog).getByLabelText('Name / Zweck'), 'Claude Code (Notebook)')
+      await user.click(await within(dialog).findByRole('checkbox', { name: /Eigene Unterlagen/ }))
+      await user.click(within(dialog).getByRole('button', { name: 'Erzeugen' }))
+
+      const confirm = await screen.findByRole('dialog', { name: 'Anmeldung bestätigen' })
+      expect(within(confirm).getByText(/wirkt über diese Sitzung hinaus/)).toBeInTheDocument()
+      await user.keyboard(`${mockLocalAccount.password}{Enter}`)
+
+      expect(await screen.findByRole('dialog', { name: 'Token erzeugt' })).toBeInTheDocument()
+      expect(issuances.count).toBe(2)
+    })
+
+    it('öffnet den Dialog nach der Anmeldung beim Anmeldedienst wieder und erklärt eine erneute Ablehnung', async () => {
+      useAuthStore.setState({ sessionKind: 'oidc' })
+      markRecentLoginReturn()
+      const user = userEvent.setup()
+      render()
+
+      const dialog = await screen.findByRole('dialog', { name: 'Token erzeugen' })
+      expect(within(dialog).getByText(/Ihre Anmeldung ist bestätigt/)).toBeInTheDocument()
+      await user.type(within(dialog).getByLabelText('Name / Zweck'), 'Claude Code (Notebook)')
+      await user.click(await within(dialog).findByRole('checkbox', { name: /Eigene Unterlagen/ }))
+      await user.click(within(dialog).getByRole('button', { name: 'Erzeugen' }))
+
+      expect(
+        await within(dialog).findByText(
+          /Ihr Anmeldedienst hat die erneute Anmeldung nicht bestätigt/,
+        ),
+      ).toBeInTheDocument()
+      expect(screen.queryByRole('dialog', { name: 'Anmeldung bestätigen' })).not.toBeInTheDocument()
+    })
   })
 
   it('widerruft ein Token erst nach der Rückfrage und nennt dort die Folge', async () => {

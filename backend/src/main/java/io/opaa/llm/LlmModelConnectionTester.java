@@ -4,7 +4,9 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.compliance.DataFlow;
 import io.opaa.security.SettingsEncryptor;
+import io.opaa.sourceaccess.BoundedStreams;
 import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -39,6 +41,12 @@ public class LlmModelConnectionTester {
   private static final Logger log = LoggerFactory.getLogger(LlmModelConnectionTester.class);
 
   private static final int MAX_REASON_LENGTH = 300;
+
+  /**
+   * The most of an answer the probe reads, within {@link ModelEndpointAccess#REQUEST_TIMEOUT}
+   * counted from the start of the call: a one-token completion or an error object is far smaller.
+   */
+  static final int MAX_RESPONSE_BYTES = 256 * 1024;
 
   private final ModelEndpointAccess access;
   private final ObjectMapper objectMapper;
@@ -116,10 +124,29 @@ public class LlmModelConnectionTester {
             apiKey);
 
     // Closed per request; the client never follows a redirect (see ModelEndpointAccess).
+    long deadline = System.nanoTime() + ModelEndpointAccess.REQUEST_TIMEOUT.toNanos();
     try (HttpClient httpClient = ModelEndpointAccess.newHttpClient()) {
-      HttpResponse<String> response =
-          httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
-      return interpret(response, temperature != null);
+      HttpResponse<InputStream> response =
+          httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofInputStream());
+      int status = response.statusCode();
+      String body = null;
+      try (InputStream in = response.body()) {
+        // only the answer and the provider's refusal are read; any other status speaks for itself
+        if (status == 200 || status == 400) {
+          body =
+              new String(
+                  BoundedStreams.readFullyBefore(in, MAX_RESPONSE_BYTES, deadline),
+                  StandardCharsets.UTF_8);
+        }
+      }
+      return interpret(status, body, temperature != null);
+    } catch (BoundedStreams.LimitExceededException e) {
+      log.warn(
+          "Chat model connection test answer from {} exceeds {} bytes", uri, MAX_RESPONSE_BYTES);
+      return TestOutcome.failure(
+          "Der Endpunkt hat unerwartet viel geantwortet (mehr als "
+              + MAX_RESPONSE_BYTES / 1024
+              + " KiB). Prüfen Sie die Basis-Adresse.");
     } catch (IOException e) {
       log.warn("Chat model connection test failed for {}: {}", uri, e.getMessage());
       return TestOutcome.failure(ModelEndpointAccess.translateConnectionError(e));
@@ -129,10 +156,9 @@ public class LlmModelConnectionTester {
     }
   }
 
-  private TestOutcome interpret(HttpResponse<String> response, boolean temperatureSent) {
-    int status = response.statusCode();
+  private TestOutcome interpret(int status, String body, boolean temperatureSent) {
     if (status == 200) {
-      if (LeadingReasoningText.startsWithBlock(answerText(response.body()))) {
+      if (LeadingReasoningText.startsWithBlock(answerText(body))) {
         return TestOutcome.success(
             "Verbindung erfolgreich, Modell hat geantwortet. Die Antwort beginnt mit Denktext"
                 + " des Modells; OPAA entfernt ihn vor der Weiterverarbeitung.");
@@ -152,7 +178,7 @@ public class LlmModelConnectionTester {
               + " Modell-Kennung.");
     }
     if (status == 400) {
-      return rejected(response.body(), temperatureSent);
+      return rejected(body, temperatureSent);
     }
     return TestOutcome.failure(ModelEndpointAccess.unexpectedStatus(status));
   }
