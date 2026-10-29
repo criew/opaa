@@ -25,10 +25,16 @@ export interface SharePointLibraryChoice {
   name: string | null
   folders: SharePointFolder[]
   /**
-   * The site the library was chosen in, known only while the page lives: the settings keep no
-   * site, so after saving or reloading the selection dialog starts at the sites again.
+   * The site the library was chosen in, stored with it so the selection dialog reopens there;
+   * none for a library saved before the settings kept the site, until it is chosen anew.
    */
-  site?: { id: string; name: string | null } | null
+  site?: SharePointSite | null
+}
+
+/** A SharePoint site; `id` is the Graph site id the listing keys as `site:<id>`. */
+export interface SharePointSite {
+  id: string
+  name: string | null
 }
 
 /**
@@ -52,6 +58,7 @@ export type SharePointSettings = {
     driveId?: string
     name?: string | null
     folders?: Array<string | { id?: string; name?: string | null }>
+    site?: { id?: string; name?: string | null } | null
   }>
   fullSyncIntervalDays?: number | null
 }
@@ -74,7 +81,10 @@ export function sharePointLibrariesOf(
       if (typeof folder === 'string') return [{ id: folder, name: null }]
       return folder.id ? [{ id: folder.id, name: folder.name ?? null }] : []
     })
-    return [{ driveId: library.driveId, name: library.name ?? null, folders }]
+    const site = library.site?.id ? { id: library.site.id, name: library.site.name ?? null } : null
+    return [
+      { driveId: library.driveId, name: library.name ?? null, folders, ...(site && { site }) },
+    ]
   })
 }
 
@@ -122,6 +132,14 @@ export function sharePointSettingsOf(values: SharePointSourceValues): Record<str
             folders: library.folders.map((folder) =>
               folder.name ? { id: folder.id, name: folder.name } : folder.id,
             ),
+          }
+        : {}),
+      ...(library.site
+        ? {
+            site: {
+              id: library.site.id,
+              ...(library.site.name ? { name: graphShownName(library.site.name) } : {}),
+            },
           }
         : {}),
     })),

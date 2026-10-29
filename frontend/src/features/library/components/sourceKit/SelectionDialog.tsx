@@ -22,6 +22,7 @@ import { plainMessage } from './plainMessage'
 import PathLabel from '../setup/PathLabel'
 import { TextAction } from '@/shared/ui/DetailSection'
 import {
+  adoptTrail,
   isBelow,
   noun,
   pathLabel,
@@ -59,6 +60,13 @@ interface SelectionDialogProps {
   initialLevel?: Crumb[]
   /** Opens with the field for typing an object by hand, e.g. after a refused listing. */
   startManual?: boolean
+}
+
+/** The level an entry opens; a placeholder name stays marked, so it is never stored. */
+function crumbOf(entry: { key: string; name: string; placeholder?: boolean }): Crumb {
+  return entry.placeholder
+    ? { key: entry.key, name: entry.name, placeholder: true }
+    : { key: entry.key, name: entry.name }
 }
 
 const ellipsis = {
@@ -127,7 +135,11 @@ function SelectionDialogBody({
     const delay = setTimeout(() => alive && setShowLoading(true), LOADING_DELAY)
     source
       .list(level, serverSearch ? serverQuery : '')
-      .then((result) => alive && setListing({ token, result }))
+      .then((result) => {
+        if (!alive) return
+        setListing({ token, result })
+        if (source.adoptsTrail) setDraft((prev) => adoptTrail(prev, result.entries, level))
+      })
       .catch(
         (err: unknown) =>
           alive &&
@@ -227,7 +239,7 @@ function SelectionDialogBody({
     setManualError(null)
     setManualText('')
     if (source.manual!.kind === 'open') {
-      openLevel([...resolved.trail, { key: resolved.key, name: resolved.name }])
+      openLevel([...resolved.trail, crumbOf(resolved)])
     } else if (!chosenKeys.has(resolved.key)) {
       setDraft((prev) => toggle(prev, resolved, resolved.trail))
     }
@@ -479,7 +491,7 @@ function SelectionDialogBody({
                     }
                     onClick={
                       entry.openable && !entry.selectable
-                        ? () => openLevel([...level, { key: entry.key, name: entry.name }])
+                        ? () => openLevel([...level, crumbOf(entry)])
                         : undefined
                     }
                     sx={{
@@ -505,7 +517,7 @@ function SelectionDialogBody({
                     <IconButton
                       aria-label={`„${entry.name}“ öffnen`}
                       {...(!entry.selectable ? { tabIndex: -1, 'aria-hidden': true } : {})}
-                      onClick={() => openLevel([...level, { key: entry.key, name: entry.name }])}
+                      onClick={() => openLevel([...level, crumbOf(entry)])}
                     >
                       <ChevronRightIcon />
                     </IconButton>

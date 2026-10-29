@@ -44,6 +44,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -94,8 +95,6 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
   private static final String LIBRARIES_STATE = "sharePointLibraries";
   private static final int MAX_BROWSE_PAGES = 10;
   private static final Pattern HOST = Pattern.compile("[A-Za-z0-9.-]{1,253}");
-  private static final Pattern SITE_ID =
-      Pattern.compile("[A-Za-z0-9][A-Za-z0-9.-]{0,252},[0-9A-Fa-f-]{36},[0-9A-Fa-f-]{36}");
 
   private final URI apiBase;
   private final SourceConnectorDescriptor descriptor;
@@ -175,8 +174,9 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
   // --- connection test and listing -------------------------------------------------------------
 
   /**
-   * Checks each requested library (or the stored ones) with the access token the core obtained; the
-   * finding per library is the {@code libraries} detail.
+   * Checks each requested library (or the stored ones) with the access token the core obtained, a
+   * library stored with its site also against the site's document libraries; the finding per
+   * library is the {@code libraries} detail.
    */
   @Override
   public SourceConnectionTestResult testConnection(SourceSettings settings, ConnectorData stored) {
@@ -191,15 +191,18 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
     }
     SharePointSettings sharePointSettings = SharePointSettings.read(effective);
     RequestBudget budget = RequestBudget.unbounded();
+    GraphClient graph =
+        graphs.open(
+            settings.withSourceUrl(apiBase.toString()), settings::sourceCredentials, budget);
     DriveFileStore store =
         new DriveFileStore(
             DriveRule.SHAREPOINT,
-            graphs.open(
-                settings.withSourceUrl(apiBase.toString()), settings::sourceCredentials, budget),
+            graph,
             budget.meter(),
             sharePointSettings.libraries(),
             graphs.properties().pageSize());
     List<Map<String, Object>> findings = new ArrayList<>();
+    Map<String, SiteDrives> siteDrives = new HashMap<>();
     int reachable = 0;
     try {
       for (SharePointLibrary library : sharePointSettings.libraries()) {
@@ -207,8 +210,13 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
         finding.put("driveId", library.driveId());
         try {
           store.requireReachable(library.container());
-          finding.put("reachable", true);
-          reachable++;
+          String outside = outsideSite(graph, library, siteDrives);
+          finding.put("reachable", outside == null);
+          if (outside == null) {
+            reachable++;
+          } else {
+            finding.put("message", outside);
+          }
         } catch (FileAccessException.RunEnding e) {
           return new SourceConnectionTestResult(
               false, e.getMessage(), null, e.credentialsVerified(), null);
@@ -245,6 +253,46 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
     return new SourceConnectionTestResult(
         all, message, null, true, ConnectorData.of(Map.of("libraries", findings)));
   }
+
+  /**
+   * Why {@code library} does not lie in the site it is stored with, {@code null} when it does or
+   * names none. The document libraries of each site are listed once per test, in {@code listed}; a
+   * listing cut at its page limit proves no absence.
+   */
+  private static String outsideSite(
+      GraphClient graph, SharePointLibrary library, Map<String, SiteDrives> listed)
+      throws InterruptedException {
+    SharePointSite site = library.site();
+    if (site == null) {
+      return null;
+    }
+    SiteDrives drives = listed.get(site.id());
+    if (drives == null) {
+      try {
+        SourceListing listing = documentLibraries(graph, site.id());
+        drives =
+            new SiteDrives(
+                listing.entries().stream().map(SourceListing.Entry::key).toList(),
+                listing.complete(),
+                null);
+      } catch (GraphException e) {
+        drives = new SiteDrives(List.of(), false, browseFailure(e));
+      }
+      listed.put(site.id(), drives);
+    }
+    if (drives.failure() != null) {
+      return drives.failure();
+    }
+    if (drives.keys().contains(library.key()) || !drives.complete()) {
+      return null;
+    }
+    return "Die Dokumentbibliothek gehört nicht zur "
+        + site.shown()
+        + "; bitte neu aus der Auflistung wählen.";
+  }
+
+  /** The document library keys of a site, whether that is all of them, or why Graph refused. */
+  private record SiteDrives(List<String> keys, boolean complete, String failure) {}
 
   @Override
   public String otherTypeMessage() {
@@ -283,18 +331,7 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
             folder == null ? null : SharePointLibrary.requireId(string(asked, "folder")));
       }
       if (asked.get("site") != null) {
-        String site = requireSiteId(string(asked, "site"));
-        return collect(
-            graph,
-            "sites/" + site + "/drives",
-            Map.of("$select", "id,name,driveType"),
-            drive ->
-                "documentLibrary".equals(text(drive, "driveType"))
-                    ? new SourceListing.Entry(
-                        SharePointLibrary.KEY_PREFIX + text(drive, "id"), text(drive, "name"))
-                    : null,
-            "Dokumentbibliotheken",
-            "Weitere zeigt die Auswahl nicht.");
+        return documentLibraries(graph, requireSiteId(string(asked, "site")));
       }
       if (asked.get("siteUrl") != null) {
         JsonNode site = graph.get(sitePath(string(asked, "siteUrl")), Map.of());
@@ -357,6 +394,22 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
                 ? new SourceListing.Entry("folder:" + text(item, "id"), text(item, "name"))
                 : null,
         "Ordner",
+        "Weitere zeigt die Auswahl nicht.");
+  }
+
+  /** The document libraries of {@code site}, a checked site id, keyed {@code drive:<id>}. */
+  private static SourceListing documentLibraries(GraphClient graph, String site)
+      throws GraphException, InterruptedException {
+    return collect(
+        graph,
+        "sites/" + site + "/drives",
+        Map.of("$select", "id,name,driveType"),
+        drive ->
+            "documentLibrary".equals(text(drive, "driveType"))
+                ? new SourceListing.Entry(
+                    SharePointLibrary.KEY_PREFIX + text(drive, "id"), text(drive, "name"))
+                : null,
+        "Dokumentbibliotheken",
         "Weitere zeigt die Auswahl nicht.");
   }
 
@@ -446,12 +499,9 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
             + " etwa https://contoso.sharepoint.com/sites/team");
   }
 
-  /**
-   * A site id is {@code host,siteCollectionId,webId} with two GUIDs; a host of letters, digits,
-   * dots and hyphens without an empty label, so nothing that could change a path.
-   */
+  /** A site id as {@link SharePointSite#isId} accepts it, so nothing that could change a path. */
   static String requireSiteId(String id) {
-    if (id == null || !SITE_ID.matcher(id).matches() || id.contains("..")) {
+    if (!SharePointSite.isId(id)) {
       throw new ValidationException("site ist die ID einer Site aus der Auflistung");
     }
     return id;
