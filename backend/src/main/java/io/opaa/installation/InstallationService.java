@@ -54,9 +54,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * The installation of a fresh instance (ADR-0060). Every write takes the row lock of {@code
  * installation_state}, then the start-up lock {@code 211}, in that order everywhere, so steps,
  * checks, completion and the emergency reset of all instances run one after another. The completion
- * succeeds once; every later call answers {@link NotFoundException}. Checks of the mail step and
- * its test messages have budgets per instance (ADR-0053), for all clients together; the answer file
- * read at start-up is not counted.
+ * succeeds once; every later call answers {@link NotFoundException}. Checks of the model steps
+ * ({@link ModelCheckBudget}), of the mail step and its test messages have budgets per instance
+ * (ADR-0053), for all clients together; the answer file read at start-up is not counted.
  */
 @Service
 public class InstallationService {
@@ -127,6 +127,7 @@ public class InstallationService {
       new RateLimitService(MAX_TEST_MAILS, TEST_MAIL_WINDOW_SECONDS);
   private final RateLimitService mailCheckBudget =
       new RateLimitService(MAX_MAIL_CHECKS, MAIL_CHECK_WINDOW_SECONDS);
+  private final ModelCheckBudget modelCheckBudget = new ModelCheckBudget();
 
   InstallationService(
       InstallationStateRepository states,
@@ -209,7 +210,7 @@ public class InstallationService {
    *
    * @throws ConflictException when the step is not saved, or was saved anew during the check
    * @throws ValidationException for a test recipient of another step or one that is no address
-   * @throws TooManyRequestsException past the budget of test messages
+   * @throws TooManyRequestsException past the budget of model checks, mail checks or test messages
    */
   public InstallationOverview.StepState check(InstallationStep step, String testRecipient) {
     requireOffered(step);
@@ -223,6 +224,7 @@ public class InstallationService {
                   .map(record -> new Saved(record.getPayload(), record.getSecret()))
                   .orElseThrow(() -> notSaved(step));
             });
+    modelCheckBudget.acquire(List.of(step));
     if (step == InstallationStep.MAIL) {
       acquireMailCheck();
     }
@@ -285,11 +287,19 @@ public class InstallationService {
    * run before any lock is taken; saving and completing run in one transaction.
    *
    * @throws ConflictException naming the step whose check failed; nothing is saved then
+   * @throws TooManyRequestsException past the budget of model or mail checks; nothing is counted
    */
   public InstallationOverview applyAnswers(List<StepInput> answers, CompletionSource source) {
     List<StepInput> inputs = offeredAnswers(answers);
+    ModelCheckBudget.Grant modelChecks =
+        modelCheckBudget.acquire(inputs.stream().map(StepInput::step).toList());
     if (inputs.stream().anyMatch(input -> input.step() == InstallationStep.MAIL)) {
-      acquireMailCheck();
+      try {
+        acquireMailCheck();
+      } catch (TooManyRequestsException e) {
+        modelChecks.release();
+        throw e;
+      }
     }
     List<Checked> checked = checkAnswers(inputs);
     return transactions.execute(
