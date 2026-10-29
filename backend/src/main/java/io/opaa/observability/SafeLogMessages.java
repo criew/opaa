@@ -15,14 +15,10 @@ import org.springframework.boot.logging.logback.ExtendedWhitespaceThrowableProxy
 import org.springframework.context.ApplicationListener;
 
 /**
- * The plain-text log writes every message, and the message of every exception in a stack trace, so
- * that it cannot forge an entry: a line break (CR, LF, CR LF, NEL, U+2028, U+2029) continues the
- * text on a new line indented by {@link #CONTINUATION}, so no continuation line starts where an
- * entry starts; any other control or bidirectional formatting character shows as {@code ?}, a tab
- * stays. Multi-line reports (a failure analysis) keep their lines. It replaces the converter behind
- * {@code %m}, {@code %msg} and {@code %message} for every pattern layout built afterwards, and
- * registers {@code %opaaEx}, which {@code logging.exception-conversion-word} selects instead of
- * {@code %wEx}. The structured formats escape on their own.
+ * Messages and exception messages of the plain-text log cannot forge an entry: a line break
+ * continues indented by {@link #CONTINUATION}, any other control or bidi character shows as {@code
+ * ?}, a tab stays. Replaces the converter of {@code %m}/{@code %msg}/{@code %message} and registers
+ * {@code %opaaEx}, selected by {@code logging.exception-conversion-word} instead of {@code %wEx}.
  */
 public final class SafeLogMessages {
 

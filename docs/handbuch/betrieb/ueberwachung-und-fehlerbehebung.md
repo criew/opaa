@@ -14,7 +14,10 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 - **Textformat:** Jede Folgezeile einer mehrzeiligen Meldung oder Exception-Nachricht ist um vier
   Leerzeichen eingerückt, Steuer- und Bidi-Zeichen erscheinen als `?`. Ein Name oder eine Adresse
   aus einer Quelle kann so keinen eigenen Logeintrag vortäuschen; ein neuer Eintrag beginnt immer am
-  Zeilenanfang.
+  Zeilenanfang. Ein eigenes Muster (`LOGGING_PATTERN_CONSOLE`) muss dafür
+  `${LOG_EXCEPTION_CONVERSION_WORD}` oder `%opaaEx` enthalten, und `LOGGING_EXCEPTION_CONVERSION_WORD`
+  muss `%opaaEx` bleiben; sonst hängt Logback seinen eigenen Stacktrace an, und Exception-Nachrichten
+  erscheinen unbereinigt.
 - **Inhalt:** Geheimnisse, Zugangsdaten und Request-Bodies erscheinen nicht, Namen aus privaten
   Bibliotheken auch auf `DEBUG` nicht. Ausgaben eingebundener Bibliotheken auf `DEBUG`/`TRACE` und
   Datenbankfehler können Inhalte nennen: Ein Log über `INFO` wie Inhalte behandeln.
