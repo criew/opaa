@@ -12,7 +12,7 @@ import { notify } from '@/shared/stores/notificationStore'
 import { formatFileSize } from '@/shared/utils/labels'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
-import { limitDraft, parseLimit } from '../utils/storageLimit'
+import { DRAFT_PRECISION_BYTES, limitDraft, parseLimit } from '../utils/storageLimit'
 
 /** The limit in force in words; 0 is none. */
 function currentText(quota: SharedLibraryQuotaResponse): string {
@@ -30,10 +30,18 @@ function currentText(quota: SharedLibraryQuotaResponse): string {
     : `Es gilt eine eigene Grenze: ${formatFileSize(own)} je Bibliothek (Obergrenze des Betriebs: ${formatFileSize(quota.capBytes)}).`
 }
 
-/** The typed limit, held to the upper limit of the operation. */
-function validated(draft: string, capBytes: number): { bytes: number; error: string | null } {
-  const parsed = parseLimit(draft)
+/**
+ * The typed limit, held to the upper limit of the operation; a limit above it by less than the
+ * field can show is the upper limit itself.
+ */
+function validated(
+  draft: string,
+  current: SharedLibraryQuotaResponse,
+): { bytes: number; error: string | null } {
+  const capBytes = current.capBytes
+  const parsed = parseLimit(draft, [current.ownQuotaBytes ?? 0, current.quotaBytes, capBytes])
   if (parsed.error === null && capBytes > 0 && parsed.bytes > capBytes) {
+    if (parsed.bytes - capBytes <= DRAFT_PRECISION_BYTES) return { bytes: capBytes, error: null }
     return {
       bytes: 0,
       error: `Die Grenze darf die Obergrenze des Betriebs von ${formatFileSize(capBytes)} nicht überschreiten.`,
@@ -54,7 +62,7 @@ function QuotaForm({
   const [busy, setBusy] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
-  const parsed = validated(draft, current.capBytes)
+  const parsed = validated(draft, current)
   const valid = parsed.error === null
   const changed = valid && parsed.bytes !== (own ?? current.quotaBytes)
 

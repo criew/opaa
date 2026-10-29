@@ -85,7 +85,7 @@ function QuotaForm({
   const [busy, setBusy] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
-  const parsed = unlimited ? { bytes: 0, error: null } : parseLimit(draft)
+  const parsed = unlimited ? { bytes: 0, error: null } : parseLimit(draft, [current.quotaBytes])
   const valid = parsed.error === null
   const quotaBytes = parsed.bytes
   const changed = valid && quotaBytes !== current.quotaBytes
@@ -117,7 +117,7 @@ function QuotaForm({
       consequence:
         quotaBytes === 0
           ? 'Private Bibliotheken nehmen dann ohne Grenze auf, ab dem nächsten aufgenommenen Dokument; nur das Kontingent je Bibliothek gilt weiter. Die Änderung steht im Revisionsprotokoll.'
-          : 'Die Grenze gilt für alle privaten Bibliotheken einer Person zusammen, ab dem nächsten aufgenommenen Dokument. Bereits Gespeichertes bleibt; wer über der Grenze liegt, nimmt nichts mehr auf. Die Änderung steht im Revisionsprotokoll.',
+          : 'Die Grenze gilt für alle privaten Bibliotheken einer Person zusammen, ab dem nächsten aufgenommenen Dokument. Bereits Gespeichertes bleibt; wer über der Grenze liegt, nimmt nichts mehr auf, was den Speicher wachsen lässt. Eine geänderte Datei, die nicht größer wird, ersetzt ihre bisherige Fassung weiter. Die Änderung steht im Revisionsprotokoll.',
       confirmLabel: 'Grenze ändern',
       tone: 'caution',
     })

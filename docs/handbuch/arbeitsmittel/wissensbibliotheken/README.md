@@ -677,7 +677,7 @@ die Anfrage mit HTTP 503 beantwortet.
 | `attachments.max-per-parent` / `attachments.max-size-bytes` | 10 / 20 MiB | Reserve für Konnektoren ohne eigene Werte, derzeit ohne Wirkung |
 | `http.user-agent` / `http.max-rate-limit-retries` / `http.max-retry-after` | `OPAA-Indexer/1.0` / 6 / 2m | `User-Agent` jeder Anfrage an eine fremde Quelle und die 429-Wartezeit von Feed und Webverzeichnis |
 | `http.request-budget-per-run` / `http.max-rate-limit-wait-per-run` | 0 (unbegrenzt) / 15m | Anfragen und Summe der 429-Wartezeiten je Lauf bei Feed und Webverzeichnis |
-| `OPAA_LIBRARY_QUOTA_BYTES` | 10 GiB | Obergrenze des Speicherkontingents je Bibliothek (Abschnitt 5.2); `0` hebt sie auf |
+| `opaa.library.quota-bytes` (`OPAA_LIBRARY_QUOTA_BYTES`) | 10 GiB | Obergrenze des Speicherkontingents je Bibliothek (Abschnitt 5.2); `0` hebt sie auf, ein Kontingent geteilter Bibliotheken aus der Verwaltung gilt weiter |
 | `chunk-target-characters` | 4000 Zeichen | Zielgröße eines Chunks bei allen Formaten mit Struktur (500 bis 8.000); 4.000 Zeichen deutscher Text sind mit bge-m3 etwa 950 bis 1.250 Tokens |
 | `chunk-size` / `chunk-overlap` | 1000 / 100 Tokens | nur Auffang-Pipeline und strukturlose Texte |
 | `batch-size` | 50 | Chunks je Embedding-Aufruf |

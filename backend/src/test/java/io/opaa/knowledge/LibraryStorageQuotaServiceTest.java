@@ -270,4 +270,19 @@ class LibraryStorageQuotaServiceTest {
 
     assertThat(quotaService.verdictFor(library, 100)).isEqualTo(QuotaVerdict.LIBRARY_EXHAUSTED);
   }
+
+  /** A private library whose owner is above her quota still replaces a file that does not grow. */
+  @Test
+  void anOwnerAboveHerQuotaTakesNoGrowthButStillAChangeThatDoesNotGrow() {
+    UUID owner = UUID.randomUUID();
+    LibraryStorageQuotaService quotaService = service(10_000);
+    KnowledgeLibrary privateLibrary = privateLibraryOf(owner);
+    when(documentRepository.sumFileSizeByLibraryId(privateLibrary.getId())).thenReturn(1500L);
+    when(personalQuota.quotaBytes()).thenReturn(1000L);
+    when(personalQuota.usageOf(owner)).thenReturn(1500L);
+
+    assertThat(quotaService.verdictFor(privateLibrary, 1)).isEqualTo(QuotaVerdict.PERSON_EXHAUSTED);
+    assertThat(quotaService.verdictFor(privateLibrary, 0)).isEqualTo(QuotaVerdict.WITHIN);
+    assertThat(quotaService.verdictFor(privateLibrary, -300)).isEqualTo(QuotaVerdict.WITHIN);
+  }
 }

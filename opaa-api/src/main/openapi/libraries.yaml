@@ -1260,7 +1260,7 @@ components:
           format: int64
           description: >
             How many shared libraries of the caller's organization occupy more than quotaBytes
-            already; they keep their documents and take in nothing more.
+            already; they keep their documents and take in nothing that grows them.
 
     MaskedNumber:
       type: object
@@ -2302,7 +2302,7 @@ components:
             The storage quota in force for this library in bytes, 0 for unlimited: for a shared
             library the house-wide value of the administration within the operator's upper limit,
             for a private library the operator's upper limit. A library above it keeps every
-            document and takes in nothing more until it is below again. Set only if myRole is at
+            document and takes in nothing that grows it until it is below again. Set only if myRole is at
             least MANAGER - see sourcePath above for why: usage/quota is administration detail,
             not something a mere VIEWER needs to manage the bestand.
         storageUsedBytes:
