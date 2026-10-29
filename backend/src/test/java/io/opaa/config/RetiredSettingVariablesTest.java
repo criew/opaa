@@ -67,6 +67,36 @@ class RetiredSettingVariablesTest {
                 + " under Administration > Ohne Zuständigkeit");
   }
 
+  /** Content selector and attachment profile of a feed are settings of each library (#3396). */
+  @Test
+  void aRetiredFeedDefaultIsNamedWithTheSourceConfigurationOfTheLibrary() {
+    MockEnvironment environment =
+        new MockEnvironment()
+            .withProperty("OPAA_INDEXING_RSS_ATTACHMENT_PROFILE", "GSB")
+            .withProperty("opaa.indexing.rss.attachment-profile", "GSB")
+            .withProperty("opaa.indexing.rss.main-content-selector", "#inhalt");
+
+    assertThat(RetiredSettingVariables.foundIn(environment))
+        .containsExactly(
+            "opaa.indexing.rss.main-content-selector is no longer read and not taken over; set"
+                + " the content selector of each RSS library in its source configuration (Reiter"
+                + " Quelle, Umfang) - until then the factory default main, article, [role=main]"
+                + " applies",
+            "OPAA_INDEXING_RSS_ATTACHMENT_PROFILE is no longer read and not taken over; set the"
+                + " attachment profile of each RSS library in its source configuration (Reiter"
+                + " Quelle, Umfang) - until then the factory default GENERIC applies");
+  }
+
+  @Test
+  void bothRetiredFeedDefaultsAreKnownUnderBothNames() {
+    assertThat(RetiredSettingVariables.RETIRED_PER_LIBRARY)
+        .containsOnlyKeys(
+            "OPAA_INDEXING_RSS_MAIN_CONTENT_SELECTOR",
+            "opaa.indexing.rss.main-content-selector",
+            "OPAA_INDEXING_RSS_ATTACHMENT_PROFILE",
+            "opaa.indexing.rss.attachment-profile");
+  }
+
   @Test
   void theFourRetiredAdministrationValuesAreKnownUnderBothNames() {
     assertThat(RetiredSettingVariables.RETIRED_ADMINISTRATION_VALUES)

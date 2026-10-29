@@ -30,6 +30,7 @@ import io.opaa.indexing.document.DocumentIngests;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRepository;
+import io.opaa.indexing.spi.ConnectorData;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.knowledge.Document;
@@ -138,7 +139,7 @@ class RssFeedIndexingExecutorTest {
     indexingRunEventRepository = mock(IndexingRunEventRepository.class);
     storageQuotaService = mock(LibraryStorageQuotaService.class);
 
-    executor = newExecutor(new RssFeedProperties(200, 10_000, 10_000, 0, null, null, 0, 0));
+    executor = newExecutor(new RssFeedProperties(200, 10_000, 10_000, 0, 0, 0));
   }
 
   /** Every wait the shared rate-limit handling asked for, in order - never slept for real. */
@@ -350,10 +351,11 @@ class RssFeedIndexingExecutorTest {
   @Test
   void aConfiguredContentSelectorKeepsHeaderAndTextNextToATeaserThroughThePipeline()
       throws Exception {
-    // With main-content-selector "#content" the connector's reduction is the only root selection;
-    // the pipeline must not run the default one again (no <main> match -> body fallback, which
-    // would strip the inner header and, via the <article> match, drop the text next to it).
-    executor = newExecutor(new RssFeedProperties(200, 10_000, 10_000, 0, "#content", null, 0, 0));
+    // With the library's content selector "#content" the connector's reduction is the only root
+    // selection; the pipeline must not run the default one again (no <main> match -> body
+    // fallback, which would strip the inner header and, via the <article> match, drop the text
+    // next to it).
+    library.updateSourceSettings("{\"mainContentSelector\":\"#content\"}");
     String detailHtml =
         """
         <html><body>
@@ -663,7 +665,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new RssFeedProperties(
-                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -721,7 +723,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new RssFeedProperties(
-                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1104,7 +1106,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void feedExceedingTheSizeLimitFailsTheJobInstead() throws Exception {
-    executor = newExecutor(new RssFeedProperties(200, 10, 10_000, 0, null, null, 0, 0));
+    executor = newExecutor(new RssFeedProperties(200, 10, 10_000, 0, 0, 0));
     serve(
         "/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html", baseUrl + "/b.html"));
 
@@ -1115,7 +1117,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void detailPageExceedingTheSizeLimitIsSkippedAndTheRunContinues() throws Exception {
-    executor = newExecutor(new RssFeedProperties(200, 10_000, 10, 0, null, null, 0, 0));
+    executor = newExecutor(new RssFeedProperties(200, 10_000, 10, 0, 0, 0));
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
     serve(
         "/a.html",
@@ -1141,7 +1143,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void entryCountBeyondTheConfiguredLimitIsTruncated() throws Exception {
-    executor = newExecutor(new RssFeedProperties(1, 10_000, 10_000, 0, null, null, 0, 0));
+    executor = newExecutor(new RssFeedProperties(1, 10_000, 10_000, 0, 0, 0));
     serve(
         "/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html", baseUrl + "/b.html"));
     serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
@@ -1170,7 +1172,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void feedStateIsNotPersistedWhenEntriesWereTruncatedByTheMaxEntriesLimit() throws Exception {
-    executor = newExecutor(new RssFeedProperties(1, 10_000, 10_000, 0, null, null, 0, 0));
+    executor = newExecutor(new RssFeedProperties(1, 10_000, 10_000, 0, 0, 0));
     serveFeedWithEtag(
         "/feed.xml", feedXml(baseUrl + "/a.html", baseUrl + "/b.html"), "\"etag-truncated\"");
     serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
@@ -1273,7 +1275,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new RssFeedProperties(
-                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1324,7 +1326,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new RssFeedProperties(
-                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1375,7 +1377,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new RssFeedProperties(
-                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1423,7 +1425,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new RssFeedProperties(
-                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1469,7 +1471,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new RssFeedProperties(
-                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\"https://anderes-beispiel.gov/anlage.pdf\">Fremd</a></main></body></html>";
@@ -1489,9 +1491,8 @@ class RssFeedIndexingExecutorTest {
       throws IOException {
     // Generic reproduction of the Government Site Builder pattern - a fictional
     // example.gov-style address, never a real institution's.
-    executor =
-        newExecutor(
-            new RssFeedProperties(200, 10_000, 10_000, 0, null, AttachmentProfile.GSB, 10, 10_000));
+    executor = newExecutor(new RssFeedProperties(200, 10_000, 10_000, 0, 10, 10_000));
+    library.updateSourceSettings("{\"attachmentProfile\":\"GSB\"}");
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1526,8 +1527,8 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void withoutAConfiguredProfileGenericIsUsed() throws IOException {
-    // The default in RssFeedProperties's compact constructor, exercised end to end.
-    executor = newExecutor(new RssFeedProperties(200, 10_000, 10_000, 0, null, null, 10, 10_000));
+    // The factory default of RssFeedSettings, exercised end to end.
+    executor = newExecutor(new RssFeedProperties(200, 10_000, 10_000, 0, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1571,7 +1572,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new RssFeedProperties(
-                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1620,7 +1621,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new RssFeedProperties(
-                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1646,7 +1647,7 @@ class RssFeedIndexingExecutorTest {
   void anAttachmentExceedingTheSizeLimitIsSkippedWithoutFailingTheEntry() throws IOException {
     executor =
         newExecutor(
-            new RssFeedProperties(200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10));
+            new RssFeedProperties(200, 10_000, 10_000, 0, 10, 10));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1674,7 +1675,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new RssFeedProperties(
-                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 1, 10_000));
+                200, 10_000, 10_000, 0, 1, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1733,7 +1734,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new RssFeedProperties(
-                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1810,7 +1811,7 @@ class RssFeedIndexingExecutorTest {
       executor =
           newExecutor(
               new RssFeedProperties(
-                  200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
+                  200, 10_000, 10_000, 0, 10, 10_000));
       String detailHtml =
           "<html><body><main>Text"
               + "<a href=\""
@@ -1844,7 +1845,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new RssFeedProperties(
-                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000),
+                200, 10_000, 10_000, 0, 10, 10_000),
             new SourceRequestPolicy(
                 "OPAA-Indexer/attachment-test", RateLimitPolicy.NONE, sleeps::add));
     String detailHtml =
@@ -1937,7 +1938,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new RssFeedProperties(
-                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, 10, 10_000));
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
     serve(
         "/a.html",
@@ -2040,7 +2041,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new RssFeedProperties(
-                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -2121,7 +2122,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new RssFeedProperties(
-                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, 10, 10_000));
     HttpServer foreignServer = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
     foreignServer.start();
     String foreignBaseUrl = "http://localhost:" + foreignServer.getAddress().getPort();
@@ -2197,7 +2198,7 @@ class RssFeedIndexingExecutorTest {
       executor =
           newExecutor(
               new RssFeedProperties(
-                  200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
+                  200, 10_000, 10_000, 0, 10, 10_000));
       String detailHtml =
           "<html><body><main>Text"
               + "<a href=\""
@@ -2250,7 +2251,7 @@ class RssFeedIndexingExecutorTest {
     // budget 2: the feed and a.html - b.html is the third request and is refused before it leaves
     executor =
         newExecutor(
-            new RssFeedProperties(200, 10_000, 10_000, 0, null, null, 0, 0),
+            new RssFeedProperties(200, 10_000, 10_000, 0, 0, 0),
             requestPolicy().withRunBounds(2, Duration.ofMinutes(15)));
     serveFeedWithEtag("/feed.xml", feedXml(baseUrl + "/a.html", baseUrl + "/b.html"), "\"v1\"");
     serve("/a.html", 200, "text/html", DETAIL_HTML);
@@ -2301,7 +2302,7 @@ class RssFeedIndexingExecutorTest {
     // and ends the run before it is slept
     executor =
         newExecutor(
-            new RssFeedProperties(200, 10_000, 10_000, 0, null, null, 0, 0),
+            new RssFeedProperties(200, 10_000, 10_000, 0, 0, 0),
             requestPolicy().withRunBounds(0, Duration.ofSeconds(1)));
     serve(
         "/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html", baseUrl + "/b.html"));
@@ -2336,7 +2337,7 @@ class RssFeedIndexingExecutorTest {
   }
 
   private static final RssFeedProperties RSS_WITH_ATTACHMENTS =
-      new RssFeedProperties(200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000);
+      new RssFeedProperties(200, 10_000, 10_000, 0, 10, 10_000);
 
   private String detailHtmlWithAttachments(String... names) {
     StringBuilder html = new StringBuilder("<html><body><main>Text");
@@ -2517,5 +2518,178 @@ class RssFeedIndexingExecutorTest {
                 event ->
                     event.getCategory() == IndexingEventCategory.ERROR
                         || event.getCategory() == IndexingEventCategory.UNREACHABLE));
+  }
+
+  /** An entry the feed state says was fully processed: indexed with the feed's own pubDate. */
+  private void alreadyIndexed(String entryUrl) {
+    Document existing =
+        new Document("Titel", entryUrl, "text/html", 10L, SourceTypes.FILESYSTEM);
+    existing.setStatus(DocumentStatus.INDEXED);
+    existing.setLastModifiedRemote(java.time.Instant.parse("2024-01-01T10:00:00Z").toString());
+    existing.setLibraryId(library.getId());
+    when(documentRepository.findByLibraryIdAndFilePath(library.getId(), entryUrl))
+        .thenReturn(Optional.of(existing));
+    when(documentRepository.existsBySourceEntryUrlAndLibraryId(entryUrl, library.getId()))
+        .thenReturn(true);
+  }
+
+  /** The feed, recording the conditional header it was asked with, answered in full. */
+  private AtomicReference<String> serveFeedRecordingIfNoneMatch(String etag, String... links) {
+    AtomicReference<String> ifNoneMatch = new AtomicReference<>("not asked");
+    server.createContext(
+        "/feed.xml",
+        exchange -> {
+          ifNoneMatch.set(exchange.getRequestHeaders().getFirst("If-None-Match"));
+          byte[] bytes = feedXml(links).getBytes(StandardCharsets.UTF_8);
+          exchange.getResponseHeaders().set("Content-Type", "application/rss+xml");
+          if (etag != null) {
+            exchange.getResponseHeaders().set("ETag", etag);
+          }
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+    return ifNoneMatch;
+  }
+
+  @Test
+  void changedExtractionSettingsReprocessAnUnchangedEntryWithoutAConditionalGet()
+      throws Exception {
+    String feedUrl = baseUrl + "/feed.xml";
+    // the state of the last complete run, under the factory defaults
+    when(feedStateRepository.findByLibraryIdAndFeedUrl(library.getId(), feedUrl))
+        .thenReturn(Optional.of(new RssFeedState(library.getId(), feedUrl, "\"alt\"", null)));
+    library.updateSourceSettings("{\"mainContentSelector\":\"#inhalt\"}");
+    AtomicReference<String> ifNoneMatch =
+        serveFeedRecordingIfNoneMatch("\"neu\"", baseUrl + "/a.html");
+    serve(
+        "/a.html",
+        200,
+        "text/html",
+        "<html><body><main>Seitenrahmen</main><div id=\"inhalt\">Meldungstext</div></body></html>");
+    alreadyIndexed(baseUrl + "/a.html");
+    when(documentIngestService.ingest(DocumentIngests.that().text().in(library).match(), any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
+
+    execute(feedUrl);
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
+    assertThat(ifNoneMatch.get()).as("the feed is read in full").isNull();
+    ArgumentCaptor<DocumentIngest> ingest = ArgumentCaptor.forClass(DocumentIngest.class);
+    verify(documentIngestService).ingest(ingest.capture(), any());
+    assertThat(DocumentIngests.textOf(ingest.getValue()))
+        .matches(only("Meldungstext", "Seitenrahmen"));
+    String fingerprint = RssFeedSettings.read(ConnectorData.storedIn(library)).fingerprint();
+    verify(feedStateRepository)
+        .save(
+            argThat(
+                state ->
+                    "\"neu\"".equals(state.getEtag())
+                        && fingerprint.equals(state.getExtractionSettings())));
+  }
+
+  @Test
+  void unchangedExtractionSettingsKeepTheConditionalGetAndSkipTheUnchangedEntry()
+      throws Exception {
+    String feedUrl = baseUrl + "/feed.xml";
+    library.updateSourceSettings("{\"mainContentSelector\":\"#inhalt\"}");
+    RssFeedState state = new RssFeedState(library.getId(), feedUrl, "\"alt\"", null);
+    state.setExtractionSettings(RssFeedSettings.read(ConnectorData.storedIn(library)).fingerprint());
+    when(feedStateRepository.findByLibraryIdAndFeedUrl(library.getId(), feedUrl))
+        .thenReturn(Optional.of(state));
+    AtomicReference<String> ifNoneMatch =
+        serveFeedRecordingIfNoneMatch("\"alt\"", baseUrl + "/a.html");
+    AtomicInteger detailPageHits = new AtomicInteger();
+    server.createContext(
+        "/a.html",
+        exchange -> {
+          detailPageHits.incrementAndGet();
+          exchange.sendResponseHeaders(500, -1);
+          exchange.close();
+        });
+    alreadyIndexed(baseUrl + "/a.html");
+
+    execute(feedUrl);
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
+    assertThat(ifNoneMatch.get()).isEqualTo("\"alt\"");
+    assertThat(detailPageHits.get()).isZero();
+    verify(documentIngestService, never()).ingest(any(), any());
+  }
+
+  @Test
+  void aReprocessedEntryWithUnchangedTextGetsTheAttachmentsOfItsNewProfile() throws Exception {
+    executor = newExecutor(new RssFeedProperties(200, 10_000, 10_000, 0, 10, 10_000));
+    String feedUrl = baseUrl + "/feed.xml";
+    when(feedStateRepository.findByLibraryIdAndFeedUrl(library.getId(), feedUrl))
+        .thenReturn(Optional.of(new RssFeedState(library.getId(), feedUrl, "\"alt\"", null)));
+    library.updateSourceSettings("{\"attachmentProfile\":\"GSB\"}");
+    serveFeedRecordingIfNoneMatch("\"alt\"", baseUrl + "/a.html");
+    serve(
+        "/a.html",
+        200,
+        "text/html",
+        "<html><body><main>Text<a href=\""
+            + baseUrl
+            + "/service/bescheid?__blob=publicationFile\">Bescheid</a></main></body></html>");
+    serveBytes(
+        "/service/bescheid",
+        200,
+        "application/pdf",
+        "%PDF-1.4 not real content".getBytes(StandardCharsets.UTF_8));
+    alreadyIndexed(baseUrl + "/a.html");
+    // the text is the same as before: the ingest keeps the chunks and reports SKIPPED
+    when(documentIngestService.ingest(DocumentIngests.that().text().in(library).match(), any()))
+        .thenReturn(DocumentIngestResult.SKIPPED);
+    when(documentIngestService.ingest(DocumentIngests.that().file().in(library).match(), any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
+
+    execute(feedUrl);
+
+    verify(documentIngestService, timeout(2000))
+        .ingest(
+            DocumentIngests.that()
+                .file()
+                .named("bescheid.pdf")
+                .at(baseUrl + "/service/bescheid?__blob=publicationFile")
+                .in(library)
+                .foundOn(baseUrl + "/a.html")
+                .match(),
+            any());
+  }
+
+  @Test
+  void aCompleteRunKeepsTheSettingsItRanWithEvenWhenTheFeedSendsNoValidators() throws Exception {
+    String feedUrl = baseUrl + "/feed.xml";
+    library.updateSourceSettings("{\"attachmentProfile\":\"GSB\"}");
+    serveFeedRecordingIfNoneMatch(null, baseUrl + "/a.html");
+    serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
+    when(documentIngestService.ingest(DocumentIngests.that().text().in(library).match(), any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
+
+    execute(feedUrl);
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
+    String fingerprint = RssFeedSettings.read(ConnectorData.storedIn(library)).fingerprint();
+    verify(feedStateRepository)
+        .save(
+            argThat(
+                state ->
+                    state.getEtag() == null
+                        && state.getLastModified() == null
+                        && fingerprint.equals(state.getExtractionSettings())));
+  }
+
+  @Test
+  void underTheFactoryDefaultsAFeedWithoutValidatorsLeavesNoState() throws Exception {
+    serveFeedRecordingIfNoneMatch(null, baseUrl + "/a.html");
+    serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
+    when(documentIngestService.ingest(DocumentIngests.that().text().in(library).match(), any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
+    verify(feedStateRepository, never()).save(any());
   }
 }

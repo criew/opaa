@@ -3,6 +3,7 @@ package io.opaa.library;
 import io.opaa.indexing.source.confluence.ConfluenceEdition;
 import io.opaa.indexing.source.confluence.ConfluenceSpaceSelection;
 import io.opaa.indexing.source.s3.S3SourceSettings;
+import io.opaa.indexing.spi.ConnectorData;
 import io.opaa.knowledge.SourceType;
 import java.net.URI;
 import java.util.List;
@@ -25,6 +26,7 @@ public final class LibraryUpdateBuilder {
   private List<ConfluenceSpaceSelection> confluenceSpaces;
   private Integer confluenceFullSyncIntervalDays;
   private S3SourceSettings s3Settings;
+  private ConnectorData sourceSettings;
 
   private LibraryUpdateBuilder(String name) {
     this.name = name;
@@ -84,6 +86,12 @@ public final class LibraryUpdateBuilder {
     return this;
   }
 
+  /** Connector settings sent as given, in place of the per-connector fields above. */
+  public LibraryUpdateBuilder sourceSettings(ConnectorData sourceSettings) {
+    this.sourceSettings = sourceSettings;
+    return this;
+  }
+
   public LibraryUpdate build() {
     return new LibraryUpdate(
         name,
@@ -93,7 +101,9 @@ public final class LibraryUpdateBuilder {
         sourceUrl,
         sourceCredentials,
         schedule,
-        TestSourceSettings.of(
-            confluenceEdition, confluenceSpaces, confluenceFullSyncIntervalDays, s3Settings));
+        sourceSettings != null
+            ? sourceSettings
+            : TestSourceSettings.of(
+                confluenceEdition, confluenceSpaces, confluenceFullSyncIntervalDays, s3Settings));
   }
 }
