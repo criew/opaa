@@ -775,6 +775,11 @@ beendet; danach `docker compose up -d backend` erneut ausführen (siehe
 war ([Speicher und Container-Grenzen](images-und-laufzeit.md#speicher-und-container-grenzen)); sonst lief die
 Grace Period `OPAA_STOP_GRACE_PERIOD` ab.
 
+### Der Container meldet `3`
+
+Der Heap des Backends reichte nicht; es hat sich selbst beendet und wird neu gestartet
+([Speicher und Container-Grenzen](images-und-laufzeit.md#speicher-und-container-grenzen)).
+
 ## Stoppen
 
 ```bash

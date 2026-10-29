@@ -416,7 +416,8 @@ public class DocumentIngestService {
       if (result == DocumentIngestResult.SKIPPED) {
         return result;
       }
-    } catch (Exception e) {
+    } catch (Exception | Error e) {
+      // an Error is booked as well, so an upload never stays PENDING after one
       if (!(ingest.reindex() && preservingPreviousChunks)) {
         markConnectorFailedAfterException(documentId, preservingPreviousChunks, failureMessage(e));
       }
@@ -928,7 +929,7 @@ public class DocumentIngestService {
    * or by its position when it has none; every other failure gets {@link
    * #PROCESSING_FAILED_MESSAGE}.
    */
-  static String failureMessage(Exception failure) {
+  static String failureMessage(Throwable failure) {
     if (!(failure instanceof ChunkNotEmbeddableException notEmbeddable)) {
       return PROCESSING_FAILED_MESSAGE;
     }

@@ -1,0 +1,218 @@
+package io.opaa.format.file.pdf;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
+
+import io.opaa.format.DocumentFormatResult;
+import io.opaa.format.DocumentFormatRunner;
+import io.opaa.format.DocumentFormatSource;
+import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.format.shared.HeadingSectionSplitterFixture;
+import io.opaa.format.shared.ParserLimitProperties;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.time.Duration;
+import org.apache.pdfbox.cos.COSName;
+import org.apache.pdfbox.cos.COSStream;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.PDResources;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPageXYZDestination;
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocumentOutline;
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+/**
+ * A crafted PDF costs bounded time and memory: an outline whose {@code /Next} or {@code /First}
+ * points back to an item already seen ends its walk, and text multiplied by drawing one form over
+ * and over stops at {@link ParserLimitProperties#maxTextCharacters()}.
+ */
+class PdfDocumentFormatLimitsTest {
+
+  private static final Duration WALK_TIMEOUT = Duration.ofSeconds(20);
+
+  @TempDir Path tempDir;
+
+  private final PdfDocumentFormat pipeline =
+      new PdfDocumentFormat(HeadingSectionSplitterFixture.DEFAULT);
+
+  @Test
+  void aNextCycleInTheOutlineEndsTheWalkAndKeepsTheEntriesBeforeIt() throws IOException {
+    Path file = tempDir.resolve("next-cycle.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      PDPage page = addTextPage(doc, "Kapitel Eins mit seinem Text.");
+      PDDocumentOutline outline = new PDDocumentOutline();
+      doc.getDocumentCatalog().setDocumentOutline(outline);
+      outline.addLast(outlineItem("Kapitel Eins", page));
+      PDOutlineItem loop = new PDOutlineItem();
+      loop.setTitle("Schleife");
+      outline.addLast(loop);
+      // the item names itself as its own next sibling
+      loop.getCOSObject().setItem(COSName.NEXT, loop.getCOSObject());
+      doc.save(file.toFile());
+    }
+
+    DocumentFormatResult result =
+        assertTimeoutPreemptively(
+            WALK_TIMEOUT, () -> pipeline.run(DocumentFormatSource.ofFile(file, "next-cycle.pdf")));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+    assertThat(result.chunks())
+        .extracting(chunk -> chunk.getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
+        .contains("Abschn. Kapitel Eins");
+  }
+
+  @Test
+  void aFirstCycleInTheOutlineEndsTheWalkInsteadOfOverflowingTheStack() throws IOException {
+    Path file = tempDir.resolve("first-cycle.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      PDPage page = addTextPage(doc, "Kapitel Eins mit seinem Text.");
+      PDDocumentOutline outline = new PDDocumentOutline();
+      doc.getDocumentCatalog().setDocumentOutline(outline);
+      PDOutlineItem chapter = outlineItem("Kapitel Eins", page);
+      outline.addLast(chapter);
+      // the item names itself as its own first child
+      chapter.getCOSObject().setItem(COSName.FIRST, chapter.getCOSObject());
+      chapter.getCOSObject().setItem(COSName.LAST, chapter.getCOSObject());
+      doc.save(file.toFile());
+    }
+
+    DocumentFormatResult result =
+        assertTimeoutPreemptively(
+            WALK_TIMEOUT, () -> pipeline.run(DocumentFormatSource.ofFile(file, "first-cycle.pdf")));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+  }
+
+  @Test
+  void anOutlineDeeperThanTheWalkLimitIsCutOffNotFollowed() throws IOException {
+    Path file = tempDir.resolve("deep.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      PDPage page = addTextPage(doc, "Ebene Text.");
+      PDDocumentOutline outline = new PDDocumentOutline();
+      doc.getDocumentCatalog().setDocumentOutline(outline);
+      PDOutlineItem parent = outlineItem("Ebene 1", page);
+      outline.addLast(parent);
+      for (int level = 2; level <= PdfDocumentFormat.MAX_OUTLINE_DEPTH + 10; level++) {
+        PDOutlineItem child = outlineItem("Ebene " + level, page);
+        parent.addLast(child);
+        parent = child;
+      }
+      doc.save(file.toFile());
+    }
+
+    DocumentFormatResult result = pipeline.run(DocumentFormatSource.ofFile(file, "deep.pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+    assertThat(String.join("\n", result.chunks().stream().map(c -> c.getText()).toList()))
+        .contains("Ebene " + PdfDocumentFormat.MAX_OUTLINE_DEPTH)
+        .doesNotContain("Ebene " + (PdfDocumentFormat.MAX_OUTLINE_DEPTH + 1));
+  }
+
+  /**
+   * A few hundred bytes of content stream draw one 1 000-character form 200 times; the text the
+   * page yields is two hundred times its own size and is refused once it passes the limit.
+   */
+  @Test
+  void textMultipliedByARepeatedFormFailsOnceItPassesTheTextLimit() throws IOException {
+    Path file = tempDir.resolve("fanout.pdf");
+    writeFormFanout(file, 200);
+    var limited =
+        new PdfDocumentFormat(
+            HeadingSectionSplitterFixture.DEFAULT, new ParserLimitProperties(50_000, 0, 0));
+
+    DocumentFormatResult result =
+        DocumentFormatRunner.run(limited, DocumentFormatSource.ofFile(file, "fanout.pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
+  }
+
+  @Test
+  void textWithinTheLimitIsReadAsBefore() throws IOException {
+    Path file = tempDir.resolve("fanout-small.pdf");
+    writeFormFanout(file, 3);
+    var limited =
+        new PdfDocumentFormat(
+            HeadingSectionSplitterFixture.DEFAULT, new ParserLimitProperties(50_000, 0, 0));
+
+    DocumentFormatResult result =
+        DocumentFormatRunner.run(limited, DocumentFormatSource.ofFile(file, "fanout-small.pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+  }
+
+  private static void writeFormFanout(Path file, int draws) throws IOException {
+    try (PDDocument doc = new PDDocument()) {
+      PDFormXObject form = new PDFormXObject(doc);
+      form.setBBox(new PDRectangle(600, 800));
+      PDResources formResources = new PDResources();
+      COSName font = formResources.add(new PDType1Font(Standard14Fonts.FontName.HELVETICA));
+      form.setResources(formResources);
+      StringBuilder formText = new StringBuilder();
+      for (int line = 0; line < 10; line++) {
+        formText
+            .append("BT /")
+            .append(font.getName())
+            .append(" 1 Tf 0 ")
+            .append(line)
+            .append(" Td (")
+            .append("abcdefghi ".repeat(10))
+            .append(") Tj ET\n");
+      }
+      try (OutputStream out = form.getCOSObject().createOutputStream(COSName.FLATE_DECODE)) {
+        out.write(formText.toString().getBytes(StandardCharsets.US_ASCII));
+      }
+      COSStream content = doc.getDocument().createCOSStream();
+      StringBuilder drawOperators = new StringBuilder();
+      for (int i = 0; i < draws; i++) {
+        // every copy elsewhere on the page, so no copy overlaps another
+        drawOperators
+            .append("q 1 0 0 1 ")
+            .append((i * 37) % 600)
+            .append(' ')
+            .append((i * 131) % 800)
+            .append(" cm /X0 Do Q\n");
+      }
+      try (OutputStream out = content.createOutputStream(COSName.FLATE_DECODE)) {
+        out.write(drawOperators.toString().getBytes(StandardCharsets.US_ASCII));
+      }
+      PDPage page = new PDPage();
+      PDResources pageResources = new PDResources();
+      pageResources.put(COSName.getPDFName("X0"), form);
+      page.setResources(pageResources);
+      page.getCOSObject().setItem(COSName.CONTENTS, content);
+      doc.addPage(page);
+      doc.save(file.toFile());
+    }
+  }
+
+  private static PDPage addTextPage(PDDocument doc, String text) throws IOException {
+    PDPage page = new PDPage();
+    doc.addPage(page);
+    try (PDPageContentStream content = new PDPageContentStream(doc, page)) {
+      content.beginText();
+      content.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
+      content.newLineAtOffset(72, 700);
+      content.showText(text);
+      content.endText();
+    }
+    return page;
+  }
+
+  private static PDOutlineItem outlineItem(String title, PDPage page) {
+    PDOutlineItem item = new PDOutlineItem();
+    item.setTitle(title);
+    PDPageXYZDestination destination = new PDPageXYZDestination();
+    destination.setPage(page);
+    item.setDestination(destination);
+    return item;
+  }
+}

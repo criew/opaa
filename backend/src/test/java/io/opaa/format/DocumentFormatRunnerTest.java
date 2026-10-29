@@ -1,6 +1,7 @@
 package io.opaa.format;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.format.chunk.ChunkAnchor;
 import io.opaa.format.chunk.ChunkAnchors;
@@ -118,6 +119,47 @@ class DocumentFormatRunnerTest {
         new UncheckedIOException(new IOException("corrupt container")),
         new UncheckedIOException("Could not read Markdown document f", new IOException("gone")),
         new IllegalStateException("simulated parser failure"));
+  }
+
+  private record ErrorPipeline(Error toThrow) implements DocumentFormat {
+
+    @Override
+    public String id() {
+      return "error";
+    }
+
+    @Override
+    public short version() {
+      return 1;
+    }
+
+    @Override
+    public DocumentFormatResult run(DocumentFormatSource source) {
+      throw toThrow;
+    }
+  }
+
+  /**
+   * A parser library can answer one crafted document with an {@link Error} (a stack overflow on a
+   * cyclic structure); that document fails, it does not leave its row PENDING.
+   */
+  @Test
+  void aRecoverableErrorOutOfAPipelineBecomesAParseFailure() {
+    var pipeline = new ErrorPipeline(new StackOverflowError("cyclic outline"));
+
+    DocumentFormatResult result =
+        DocumentFormatRunner.run(pipeline, DocumentFormatSource.ofExtractedText("text", "f"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
+  }
+
+  @Test
+  void anOutOfMemoryErrorIsNotTurnedIntoAParseFailure() {
+    var pipeline = new ErrorPipeline(new OutOfMemoryError("simulated"));
+    DocumentFormatSource source = DocumentFormatSource.ofExtractedText("text", "f");
+
+    assertThatThrownBy(() -> DocumentFormatRunner.run(pipeline, source))
+        .isInstanceOf(OutOfMemoryError.class);
   }
 
   @Test

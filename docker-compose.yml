@@ -34,6 +34,8 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     env_file: ${OPAA_ENV_FILE:-.env.docker}
+    # The image exits on an OutOfMemoryError (backend/Dockerfile); Compose starts it again.
+    restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
     # Loopback only, like postgres (ADR-0033, Entscheidung 9): a direct connection to the backend

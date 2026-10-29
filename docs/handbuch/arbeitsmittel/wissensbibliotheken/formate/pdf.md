@@ -108,16 +108,17 @@ PDF-Dokumentinfos sowie der erste Gliederungseintrag der obersten Ebene als erst
 |---|---|
 | Kein Text im ganzen Dokument (Scan ohne Textebene) | abgewiesen, „kein extrahierbarer Text". Das Dokument erscheint in der Admin-Liste der Dokumente ohne Chunks. |
 | Text vorhanden, aber Zuschnitt ergibt nichts | abgewiesen, „kein extrahierbarer Text" |
-| Datei nicht lesbar oder beschädigt | fehlgeschlagen, „kein Inhalt" |
+| Datei nicht lesbar oder beschädigt, Grenzwert gerissen | fehlgeschlagen, „kein Inhalt" |
 
 Ein PDF mit Textebene aus einer früheren OCR-Verarbeitung wird normal verarbeitet; die Qualität
 hängt dann von dieser Textebene ab.
 
 ## 6. Grenzwerte
 
-Keine eigenen Konfigurationsschlüssel. Es gelten die Zeichenobergrenzen des gemeinsamen
-Abschnittsschneiders und die Grenzen von PDFBox. Am Webverzeichnis-Konnektor greift zusätzlich
-die Dateigrößengrenze des Konnektors.
+Keine eigenen Konfigurationsschlüssel. Es gelten die gemeinsame Textgrenze je Dokument und die
+Grenzen für die Gliederung ([Grenzen beim Lesen](README.md#grenzen-beim-lesen)), die
+Zeichenobergrenzen des gemeinsamen Abschnittsschneiders und die Grenzen von PDFBox. Am
+Webverzeichnis-Konnektor greift zusätzlich die Dateigrößengrenze des Konnektors.
 
 ## 7. Nicht verarbeitet
 

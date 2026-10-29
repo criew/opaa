@@ -29,6 +29,42 @@ muss nur als Text erkennbar sein und die Datei muss die Endung selbst tragen.
 | Feed-Detailseite | `html` | entfällt | wie `.html`; der Konnektor übergibt die Inhaltsbereiche als HTML | [HTML](html.md) |
 | Confluence-Seite | `confluence` | entfällt | Überschriften h1 bis h3, Tabellen, Listen, Makros nach Regelwerk | [Confluence-Seite](confluence.md) |
 
+## Grenzen beim Lesen
+
+Eine präparierte Datei kann klein sein und beim Lesen trotzdem ein Vielfaches an Speicher und
+Rechenzeit verlangen: ein Word-Dokument, dessen Inhaltsdatei sich auf das Hundertfache entpackt, oder
+ein PDF, das denselben Textblock tausendfach auf eine Seite zeichnet. Damit ein einzelnes Dokument
+weder die Verarbeitung anderer Dokumente blockiert noch den Speicher des Backends aufbraucht, gelten
+für die Formate mit Struktur gemeinsame Obergrenzen:
+
+- **Text je Dokument** (`max-text-characters`): gilt für PDF, Word, PowerPoint, Excel und CSV, HTML
+  und Markdown. Das PDF zählt schon beim Lesen der Seiten mit und hört auf, sobald die Grenze
+  überschritten ist.
+- **Entpackte Größe von Word, PowerPoint und Excel** (`max-ooxml-part-bytes` je Inhaltsdatei,
+  `max-ooxml-total-bytes` für alle Inhaltsdateien zusammen): geprüft, bevor das Dokument gelesen
+  wird. Bilder und eingebettete Dateien zählen nicht mit.
+- **Gliederung eines PDF:** Jeder Lesezeichen-Eintrag wird höchstens einmal gelesen, so dass eine
+  Gliederung, die auf sich selbst zurückverweist, das Lesen nicht aufhält; tiefer als 64 Ebenen und
+  über 50.000 Einträge hinaus wird sie nicht weiter verfolgt.
+
+Ein Dokument über einer Grenze wird nicht gekürzt, sondern ist „fehlgeschlagen" wie eine nicht
+lesbare Datei; bei einer erneuten Indexierung bleiben die bisherigen Chunks stehen. Dasselbe gilt,
+wenn eine Lesebibliothek an einem einzelnen Dokument mit einem internen Fehler abbricht. Die
+OpenDocument-Formate haben eigene Grenzen in ihren Kapiteln, E-Mails in [E-Mail](mail.md).
+
+Läuft das Backend trotzdem einmal in einen Speichermangel, beendet es sich und wird neu gestartet,
+statt in einem ungewissen Zustand weiterzuarbeiten
+([Images und Laufzeit](../../../betrieb/images-und-laufzeit.md#speicher-und-container-grenzen)).
+
+Schlüssel unter `opaa.indexing.parser-limits.*`, Umgebungsvariablen
+`OPAA_INDEXING_PARSER_LIMITS_*`:
+
+| Schlüssel | Standard | Wirkung |
+|---|---|---|
+| `max-text-characters` | 10.000.000 | Text, den ein Dokument insgesamt liefern darf |
+| `max-ooxml-part-bytes` | 32 MiB | entpackte Größe einer einzelnen Inhaltsdatei eines Word-, PowerPoint- oder Excel-Dokuments |
+| `max-ooxml-total-bytes` | 64 MiB | entpackte Größe aller Inhaltsdateien eines solchen Dokuments zusammen |
+
 ## Bewusst nicht zugelassen
 
 | Format | Grund |

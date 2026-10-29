@@ -47,12 +47,14 @@ sowie der Titel der ersten Folie als erste Überschrift.
 
 | Befund | Ergebnis |
 |---|---|
-| Datei nicht lesbar oder ohne Folien | fehlgeschlagen, „kein Inhalt" |
+| Datei nicht lesbar oder ohne Folien, Grenzwert gerissen | fehlgeschlagen, „kein Inhalt" |
 | Folien vorhanden, aber keine einzige mit Text (nur Bilder) | abgewiesen, „kein extrahierbarer Text" |
 
 ## 6. Grenzwerte
 
-Keine eigenen Konfigurationsschlüssel. Apache POI schützt prozessweit gegen ZIP-Bomben.
+Keine eigenen Konfigurationsschlüssel. Es gelten die gemeinsamen Grenzen für Text und entpackte
+Größe ([Grenzen beim Lesen](README.md#grenzen-beim-lesen)); daneben prüft Apache POI das
+Entpackverhältnis.
 
 ## 7. Nicht verarbeitet
 

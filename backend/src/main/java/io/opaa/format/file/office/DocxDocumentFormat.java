@@ -9,11 +9,10 @@ import io.opaa.format.shared.DeduplicatedLines;
 import io.opaa.format.shared.DocumentHeadText;
 import io.opaa.format.shared.DocumentTitleLine;
 import io.opaa.format.shared.HeadingSectionSplitter;
+import io.opaa.format.shared.ParserLimitProperties;
 import io.opaa.format.shared.RepeatingHeaderChunk;
 import io.opaa.format.shared.TableText;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -69,9 +68,15 @@ public class DocxDocumentFormat extends FileDocumentFormat<DocxDocumentFormat.Do
       Pattern.compile("(?i)^(?:heading|berschrift|ueberschrift)[ _]?(\\d)$");
 
   private final HeadingSectionSplitter splitter;
+  private final ParserLimitProperties limits;
 
   public DocxDocumentFormat(HeadingSectionSplitter splitter) {
+    this(splitter, ParserLimitProperties.DEFAULTS);
+  }
+
+  public DocxDocumentFormat(HeadingSectionSplitter splitter, ParserLimitProperties limits) {
     this.splitter = splitter;
+    this.limits = limits;
   }
 
   @Override
@@ -115,15 +120,19 @@ public class DocxDocumentFormat extends FileDocumentFormat<DocxDocumentFormat.Do
       String headerFooterText,
       DocumentProperties coreProperties) {}
 
+  /** Opened through {@link OoxmlPackages}, so its XML parts are measured before POI reads them. */
   @Override
   protected DocxContent read(DocumentFormatSource source) throws IOException {
-    try (InputStream in = Files.newInputStream(source.file());
-        XWPFDocument document = new XWPFDocument(in)) {
-      return new DocxContent(
-          toEvents(document.getBodyElements()),
-          headerFooterText(document),
-          coreProperties(document));
-    }
+    return OoxmlPackages.read(
+        source.file(),
+        limits,
+        pkg -> {
+          XWPFDocument document = new XWPFDocument(pkg);
+          return new DocxContent(
+              toEvents(document.getBodyElements()),
+              headerFooterText(document),
+              coreProperties(document));
+        });
   }
 
   @Override
@@ -139,6 +148,7 @@ public class DocxDocumentFormat extends FileDocumentFormat<DocxDocumentFormat.Do
     }
     chunks.addAll(
         0, RepeatingHeaderChunk.of(splitter, HEADER_FOOTER_LOCATION, content.headerFooterText()));
+    limits.requireTextWithinLimit(chunks, "DOCX document");
     return DocumentFormatResult.chunked(chunks);
   }
 

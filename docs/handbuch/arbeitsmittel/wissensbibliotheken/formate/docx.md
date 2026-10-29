@@ -62,7 +62,7 @@ der Datei sowie die erste Überschrift der Ebene 1.
 
 | Befund | Ergebnis |
 |---|---|
-| Datei nicht als DOCX lesbar | fehlgeschlagen, „kein Inhalt" |
+| Datei nicht als DOCX lesbar, Grenzwert gerissen | fehlgeschlagen, „kein Inhalt" |
 | Dokument ohne einen einzigen Absatz | fehlgeschlagen, „kein Inhalt" |
 | Absätze vorhanden, aber ohne Text (etwa nur ein eingebettetes Scanbild) | abgewiesen, „kein extrahierbarer Text" |
 
@@ -72,8 +72,9 @@ indiziert zu gelten. Ein einzelner beschädigter Absatz kostet nur diesen Absatz
 
 ## 6. Grenzwerte
 
-Keine eigenen Konfigurationsschlüssel. Apache POI schützt prozessweit gegen ZIP-Bomben
-(Entpackverhältnis).
+Keine eigenen Konfigurationsschlüssel. Es gelten die gemeinsamen Grenzen für Text und entpackte
+Größe ([Grenzen beim Lesen](README.md#grenzen-beim-lesen)); daneben prüft Apache POI das
+Entpackverhältnis.
 
 ## 7. Nicht verarbeitet
 
