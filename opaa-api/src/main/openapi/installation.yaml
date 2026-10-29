@@ -98,8 +98,10 @@ paths:
         server), the cause goes to the log only. BRANDING is checked against the rules of the
         branding administration again, without any connection. For MAIL only, testRecipient additionally sends
         the test message to that address. Per instance and for all clients together at most 30
-        MAIL checks in 10 minutes (429 with code MAIL_CHECK_LIMIT) and at most 10 test messages in
-        10 minutes (429 with code MAIL_TEST_LIMIT). Every wait on the mail server is bounded by
+        checks of CHAT_MODEL, EMBEDDING_MODEL, RERANK_MODEL and TRANSCRIPTION_MODEL together in
+        10 minutes (429 with code MODEL_CHECK_LIMIT), at most 30 MAIL checks in 10 minutes (429
+        with code MAIL_CHECK_LIMIT) and at most 10 test messages in 10 minutes (429 with code
+        MAIL_TEST_LIMIT); the per-address budget of the installation API answers 429 without code. Every wait on the mail server is bounded by
         OPAA_MAIL_CONNECT_TIMEOUT, OPAA_MAIL_READ_TIMEOUT and OPAA_MAIL_WRITE_TIMEOUT. The outcome
         is stored with the step and returned; a failed check is no error of the call. Same token
         and network rules as getInstallation.
@@ -239,8 +241,10 @@ paths:
         from OPAA_INSTALLATION_ANSWER_FILE, which names its secrets as files instead. chatModel,
         embeddingModel, rerankModel, transcriptionModel, mail and branding are optional; an optional
         part left out counts as skipped and discards what the assistant saved for it.
-        transcriptionModel is ignored while OPAA_FEATURES_SPEECH_INPUT_ENABLED is off. The check of mail sends no test message and
-        counts against the budget of MAIL checks (429 with code MAIL_CHECK_LIMIT). Same token and
+        transcriptionModel is ignored while OPAA_FEATURES_SPEECH_INPUT_ENABLED is off. Every model
+        part counts as one check against the budget of model checks (429 with code
+        MODEL_CHECK_LIMIT); the check of mail sends no test message and counts against the budget
+        of MAIL checks (429 with code MAIL_CHECK_LIMIT). A refused call counts against neither. Same token and
         network rules as getInstallation.
       requestBody:
         required: true

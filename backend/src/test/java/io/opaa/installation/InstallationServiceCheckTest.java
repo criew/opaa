@@ -114,6 +114,97 @@ class InstallationServiceCheckTest {
         .check(eq(InstallationStep.MAIL), any(), any(), any());
   }
 
+  // regression guard: probes of model endpoints from the installation are bounded per instance
+  @Test
+  void checksOfAllModelStepsShareOneBudget() {
+    stepsSavedAsTheyAreAsked();
+    when(checks.check(any(), any(), any(), any()))
+        .thenReturn(new StepChecks.Outcome(false, "nicht erreichbar"));
+
+    for (int i = 0; i < ModelCheckBudget.MAX_MODEL_CHECKS; i++) {
+      service.check(PROBED_MODEL_STEPS.get(i % PROBED_MODEL_STEPS.size()));
+    }
+
+    for (InstallationStep step : PROBED_MODEL_STEPS) {
+      assertThatThrownBy(() -> service.check(step))
+          .isInstanceOfSatisfying(
+              TooManyRequestsException.class,
+              e -> {
+                assertThat(e.getCode()).isEqualTo(ModelCheckBudget.LIMIT_CODE);
+                assertThat(e.retryAfterSeconds()).isPositive();
+              });
+    }
+    verify(checks, times(ModelCheckBudget.MAX_MODEL_CHECKS)).check(any(), any(), any(), any());
+  }
+
+  @Test
+  void theAnswerApiCountsEveryModelStepAndGivesBackARefusedFile() {
+    stepsSavedAsTheyAreAsked();
+    when(checks.check(any(), any(), any(), any()))
+        .thenReturn(new StepChecks.Outcome(false, "nicht erreichbar"));
+    for (int i = 0; i < ModelCheckBudget.MAX_MODEL_CHECKS - 1; i++) {
+      service.check(InstallationStep.CHAT_MODEL);
+    }
+    when(rules.toStored(any(), any(), any())).thenReturn(new StepRules.Stored("{}", null));
+
+    assertThatThrownBy(
+            () -> service.applyAnswers(answersWithTwoModels(), CompletionSource.ANSWER_FILE_API))
+        .isInstanceOfSatisfying(
+            TooManyRequestsException.class,
+            e -> assertThat(e.getCode()).isEqualTo(ModelCheckBudget.LIMIT_CODE));
+    verify(checks, times(ModelCheckBudget.MAX_MODEL_CHECKS - 1)).check(any(), any(), any(), any());
+
+    service.check(InstallationStep.RERANK_MODEL);
+    assertThatThrownBy(() -> service.check(InstallationStep.RERANK_MODEL))
+        .isInstanceOf(TooManyRequestsException.class);
+  }
+
+  @Test
+  void anAnswerFileRefusedByTheMailBudgetGivesItsModelChecksBack() {
+    stepsSavedAsTheyAreAsked();
+    when(checks.check(any(), any(), any(), any()))
+        .thenReturn(new StepChecks.Outcome(false, "nicht erreichbar"));
+    for (int i = 0; i < InstallationService.MAX_MAIL_CHECKS; i++) {
+      service.check(InstallationStep.MAIL);
+    }
+    List<StepInput> answers =
+        java.util.stream.Stream.concat(
+                answersWithTwoModels().stream(),
+                java.util.stream.Stream.of(
+                    new StepInput.Mail(
+                        "smtp.stadt.example", 587, null, null, null, "opaa@stadt.example", null)))
+            .toList();
+
+    assertThatThrownBy(() -> service.applyAnswers(answers, CompletionSource.ANSWER_FILE_API))
+        .isInstanceOfSatisfying(
+            TooManyRequestsException.class,
+            e -> assertThat(e.getCode()).isEqualTo(InstallationService.MAIL_CHECK_LIMIT_CODE));
+
+    for (int i = 0; i < ModelCheckBudget.MAX_MODEL_CHECKS; i++) {
+      service.check(PROBED_MODEL_STEPS.get(i % PROBED_MODEL_STEPS.size()));
+    }
+    assertThatThrownBy(() -> service.check(InstallationStep.CHAT_MODEL))
+        .isInstanceOfSatisfying(
+            TooManyRequestsException.class,
+            e -> assertThat(e.getCode()).isEqualTo(ModelCheckBudget.LIMIT_CODE));
+  }
+
+  @Test
+  void theAnswerFileAtStartUpIsNotCounted() {
+    stepsSavedAsTheyAreAsked();
+    when(checks.check(any(), any(), any(), any()))
+        .thenReturn(new StepChecks.Outcome(false, "nicht erreichbar"));
+    for (int i = 0; i < ModelCheckBudget.MAX_MODEL_CHECKS; i++) {
+      service.check(InstallationStep.CHAT_MODEL);
+    }
+    when(rules.toStored(any(), any(), any())).thenReturn(new StepRules.Stored("{}", null));
+
+    assertThatThrownBy(() -> service.applyAnswersAtStartup(answersWithTwoModels()))
+        .isInstanceOf(ConflictException.class)
+        .hasMessageContaining("nicht erreichbar");
+    verify(checks).check(eq(InstallationStep.FIRST_ADMIN), any(), any(), any());
+  }
+
   @Test
   void theCompletionRefusesAnEmbeddingModelWithoutAProbedSize() {
     JsonMapper json = JsonMapper.builder().build();
@@ -142,6 +233,27 @@ class InstallationServiceCheckTest {
         .isInstanceOf(ConflictException.class)
         .hasMessageContaining("Probeeinbettung");
     verify(embeddingModels, never()).install(any(), org.mockito.ArgumentMatchers.anyInt());
+  }
+
+  /** The model steps offered without speech input. */
+  private static final List<InstallationStep> PROBED_MODEL_STEPS =
+      List.of(
+          InstallationStep.CHAT_MODEL,
+          InstallationStep.EMBEDDING_MODEL,
+          InstallationStep.RERANK_MODEL);
+
+  private void stepsSavedAsTheyAreAsked() {
+    when(steps.findById(any())).thenAnswer(call -> Optional.of(record(call.getArgument(0), "{}")));
+    when(steps.findForUpdate(any()))
+        .thenAnswer(call -> Optional.of(record(call.getArgument(0), "{}")));
+  }
+
+  private static List<StepInput> answersWithTwoModels() {
+    return List.of(
+        new StepInput.FirstAdmin("it@stadt.example", "IT", "Passwort-2026-lang"),
+        new StepInput.SignIn(StepInput.SignInMode.LOCAL_ONLY, null),
+        new StepInput.ChatModel("http://ollama:11434/v1", "qwen", null, null, null),
+        new StepInput.RerankModel("http://reranker:80", "bge-reranker", null));
   }
 
   private static InstallationStepRecord record(InstallationStep step, String payload) {

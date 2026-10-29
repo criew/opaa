@@ -216,7 +216,9 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
   Adresse von Hand sendet ihn erst „Modelle abrufen“ an die neue Adresse. Ein gespeicherter
   Schlüssel gilt nur für die gespeicherte Adresse. Meldet der Endpunkt mehr als 500 Modelle,
   zeigt die Auswahl die ersten 500 und sagt das. Je Instanz sind 30 Modellabrufe des Assistenten
-  in 10 Minuten möglich, für alle Clients zusammen.
+  in 10 Minuten möglich, für alle Clients zusammen. Die Prüfungen der vier Modellschritte haben
+  ein eigenes, gemeinsames Budget; die Antwortdatei über die API zählt jedes Modell darin vorab als
+  eine Prüfung, auch wenn sie danach abgelehnt wird.
 - **Embedding-Modell.** Nach erfolgreicher Probeeinbettung zeigt der Schritt die ermittelte Zahl
   der Dimensionen; mit ihr legt der Abschluss die Vektorablage an. Wer Adresse oder Modell danach
   ändert, prüft erneut.
@@ -392,7 +394,7 @@ Prüfungen, alles oder nichts.
 | Prüfung „… Der Mailserver hat die Testnachricht nicht angenommen.“ | die Verbindung gelang, der Server lehnte die Nachricht ab, etwa den Absender oder den Empfänger | Absenderadresse und Empfänger prüfen; die Ursache nennt die WARN-Zeile „Installation test message refused“ |
 | `403` „Die Installation ist aus diesem Netz nicht zugelassen." | Client-Adresse außerhalb von `OPAA_INSTALLATION_ALLOWED_CIDRS` | aus dem erlaubten Netz aufrufen, vertraute Proxys prüfen |
 | `400` „Die Anfrage ist zu groß." | Anfrage über 64 KiB | Antworten prüfen |
-| `429` | zu viele Aufrufe oder abgelehnte Tokens von dieser Adresse; im Assistenten „Zu viele Modellabrufe“: das Budget der Modellabrufe ist erschöpft; mit dem Code `MAIL_TEST_LIMIT` „Zu viele Testnachrichten“: das Budget der Testnachrichten ist erschöpft; mit dem Code `MAIL_CHECK_LIMIT` „Zu viele Prüfungen des Mailservers“: das Budget der Prüfungen ist erschöpft (die übrigen Fälle zeigen „Zu viele Anfragen oder Fehlversuche von dieser Adresse“) | `Retry-After` abwarten, die Modell-Kennung lässt sich so lange von Hand eintragen, der Mailserver ohne Testnachricht prüfen; hinter einem Proxy `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` setzen |
+| `429` | zu viele Aufrufe oder abgelehnte Tokens von dieser Adresse; im Assistenten „Zu viele Modellabrufe“: das Budget der Modellabrufe ist erschöpft; mit dem Code `MODEL_CHECK_LIMIT` „Zu viele Prüfungen der Modelle“: das Budget der Prüfungen der Modellschritte ist erschöpft, auch über die Antwortdatei der API; mit dem Code `MAIL_TEST_LIMIT` „Zu viele Testnachrichten“: das Budget der Testnachrichten ist erschöpft; mit dem Code `MAIL_CHECK_LIMIT` „Zu viele Prüfungen des Mailservers“: das Budget der Prüfungen ist erschöpft (die übrigen Fälle zeigen „Zu viele Anfragen oder Fehlversuche von dieser Adresse“) | `Retry-After` abwarten, die Modell-Kennung lässt sich so lange von Hand eintragen, der Mailserver ohne Testnachricht prüfen; hinter einem Proxy `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` setzen |
 | `409` beim Abschluss | ein Pflichtschritt ist nicht gespeichert oder nicht erfolgreich geprüft, oder ein gespeicherter optionaler Schritt ist nicht erfolgreich geprüft | offene Schritte prüfen oder optionale überspringen; die Meldung nennt sie |
 | `400` beim Überspringen | der Schritt ist Pflicht | Schritt ausfüllen und prüfen |
 | Prüfung des Rerank-Modells „Endpunkt oder Modell wurde nicht gefunden (HTTP 404) …“ | die Basis-Adresse enthält den Pfad `/rerank` schon, oder der Dienst kennt die Modell-Kennung nicht | Basis-Adresse ohne `/rerank` eintragen, Kennung prüfen, oder den Schritt überspringen und das Modell später unter „Modelle → Reranking“ eintragen |
@@ -438,9 +440,12 @@ einer Warnung); startet eine mit anderem Wert, gilt das zuletzt gestartete.
 
 Fest im Code: je Netzadresse und Instanz 300 Aufrufe und 10 abgelehnte Tokens in 15 Minuten; je
 Instanz 30 Modellabrufe des Assistenten in 10 Minuten, für alle Clients zusammen; höchstens 500
-Modelle je Abruf; im Schritt E-Mail-Versand je Instanz 30 Prüfungen und 10 Testnachrichten in
-10 Minuten, für alle Clients zusammen (die Antwortdatei beim Start zählt nicht), und ohne Eintrag in
-`OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` nur die Ports 25, 465, 587 und 2525.
+Modelle je Abruf; je Instanz 30 Prüfungen der Modellschritte (Chat-, Embedding-, Rerank- und
+Transkriptionsmodell zusammen) in 10 Minuten, für alle Clients zusammen, wobei die Antwortdatei über
+die API jedes Modell vorab als eine Prüfung zählt, auch wenn sie die Datei danach ablehnt; im Schritt E-Mail-Versand je Instanz 30 Prüfungen und
+10 Testnachrichten in 10 Minuten, für alle Clients zusammen; die Antwortdatei beim Start zählt bei
+keinem dieser Budgets; ohne Eintrag in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` nur die Ports 25,
+465, 587 und 2525.
 
 ## Weiterführende Kapitel
 
