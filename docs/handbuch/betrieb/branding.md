@@ -29,6 +29,9 @@ Einrichtungs-Assistenten, in der Antwortdatei und beim Übertragen von Einstellu
   Zeilenumbrüche im Text. Ebenso abgelehnt werden Zeichen, die sich nicht darstellen lassen oder
   Text verstecken: nicht belegte Zeichennummern, Tag-Zeichen außerhalb einer Regionalflagge wie der
   schottischen, ein Akzent ohne Buchstaben davor und mehr als fünf Akzente auf einem Zeichen.
+  Welche Zeichennummern belegt sind, hängt von der Unicode-Version der Java-Laufzeit ab. Zeichen,
+  die diese Version noch nicht kennt, etwa sehr neue Emoji, werden deshalb abgelehnt. Wird nach
+  dem Speichern auf ein älteres Image zurückgegangen, gilt ein solcher Wert dort als Standard.
 
 Ein gespeicherter Wert, der gegen diese Regel verstößt, wird nicht gezeigt: Überall dort, wo der
 Text erscheint, auch in E-Mails, im Chat-Export und in einer Exportdatei der Einstellungen, gilt dann
@@ -36,7 +39,9 @@ der OPAA-Standard. Gespeichert bleibt er, bis das Feld das nächste Mal gespeich
 Verwaltung zeigt bis dahin den Standard im Feld.
 
 Der Vermerk aus Hinweis und Produktname, den der Kopierknopf einer Antwort und der Chat-Export
-anfügen, lässt zusätzlich die unsichtbaren Richtungsmarken weg, die das Feld zulässt.
+anfügen, lässt zusätzlich die unsichtbaren Richtungsmarken weg, die das Feld zulässt. Auch
+Tag-Zeichen fallen dort weg; eine Regionalflagge wie die schottische erscheint im Vermerk deshalb
+als schwarze Flagge.
 
 ## Hinweis zur KI-Nutzung
 
