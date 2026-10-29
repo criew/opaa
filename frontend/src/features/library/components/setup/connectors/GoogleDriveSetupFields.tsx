@@ -13,6 +13,7 @@ import {
 import ScopePicker from '../ScopePicker'
 import SetupTextField from '../SetupTextField'
 import type { SetupFieldsProps } from '../setupTypes'
+import { ALL_SCOPE_HINT } from './common'
 import { driveItem, driveScopeOfItem, driveSelectionSource } from '../../sourceKit/selectionSources'
 
 export function GoogleDriveConnectionFields({
@@ -122,6 +123,12 @@ export function GoogleDriveScopeFields({
           scopes: items.map(driveScopeOfItem).filter((scope) => scope !== null),
         })
       }
+      all={{
+        active: values.allScopes,
+        onChange: (allScopes) => onChange({ allScopes }),
+        label: 'Alle Ablagen',
+        hint: ALL_SCOPE_HINT,
+      }}
       error={issueAt('scopes')}
       loadKey={JSON.stringify({ request, subject, probe: fields.probe })}
     />
