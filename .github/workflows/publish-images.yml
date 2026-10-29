@@ -536,14 +536,84 @@ jobs:
           docker buildx imagetools inspect "${tags[0]}" ||
             echo "::warning::Index ${tags[0]} ist gesetzt, ließ sich aber nicht anzeigen"
 
+  # The index digest of each published image, read back by a tag this run set: X.Y.Z on a release
+  # tag, which is never overwritten, otherwise sha-<commit>. Attestation and chart take the digests
+  # from here, so each of them can be re-run on its own. An explicit result check, since on main
+  # the skipped update-package would otherwise skip this job.
+  image-digests:
+    needs: [prepare, publish]
+    if: ${{ !cancelled() && needs.publish.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      backend: ${{ steps.digests.outputs.backend }}
+      frontend: ${{ steps.digests.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Index-Digests bestimmen
+        id: digests
+        env:
+          PREFIX: ${{ needs.prepare.outputs.image-prefix }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${VERSION:-sha-$GITHUB_SHA}"
+          for name in backend frontend; do
+            if ! digest=$(deploy/helm/ci/oci-published.sh --digest "$PREFIX-$name" "$tag"); then
+              echo "::error::Digest von $PREFIX-$name:$tag ließ sich nicht bestimmen, siehe Meldung oben"
+              exit 1
+            fi
+            echo "$PREFIX-$name:$tag@$digest"
+            echo "$name=$digest" >>"$GITHUB_OUTPUT"
+          done
+
+  # Signed SLSA provenance for the manifest index of each image, stored with GitHub and next to the
+  # image in GHCR, so `gh attestation verify oci://...` ties the image to this workflow and ref. The
+  # index digest also covers the BuildKit SBOM and provenance the index references, and with them
+  # the resolved base images. No checkout: no repository code runs next to the OIDC token.
+  image-attestation:
+    needs: [prepare, image-digests]
+    if: ${{ !cancelled() && needs.image-digests.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      id-token: write
+      attestations: write
+      packages: write
+    strategy:
+      # A failed attestation of one image must not cancel the other's.
+      fail-fast: false
+      matrix:
+        name: [backend, frontend]
+    steps:
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ needs.prepare.outputs.image-prefix }}-${{ matrix.name }}
+          subject-digest: ${{ needs.image-digests.outputs[matrix.name] }}
+          push-to-registry: true
+          create-storage-record: false
+
   # The chart follows the images, so it never points at an image that failed to publish. Chart
-  # version, appVersion and the default image tags are the release version (ADR-0042,
-  # Entscheidung 7). On the first attempt an existing chart version fails the job like the guard in
+  # version and appVersion are the release version, and the default values pin both images to the
+  # index digests published by this run (ADR-0042, Entscheidung 7). On the first attempt an existing chart version fails the job like the guard in
   # publish. A re-run of this job that finds the version published skips the push and carries on
   # with the digest from the registry, so attestation and release can still follow - provided the
   # published chart has the content of this commit's package; otherwise the job fails.
   chart:
-    needs: publish
+    needs: [publish, image-digests]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -593,8 +663,10 @@ jobs:
         id: package
         env:
           IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/opaa
+          BACKEND_DIGEST: ${{ needs.image-digests.outputs.backend }}
+          FRONTEND_DIGEST: ${{ needs.image-digests.outputs.frontend }}
         run: |
-          package=$(deploy/helm/ci/package-chart.sh "$TAG" "$RUNNER_TEMP/chart")
+          package=$(deploy/helm/ci/package-chart.sh "$TAG" "$RUNNER_TEMP/chart" "$BACKEND_DIGEST" "$FRONTEND_DIGEST")
           echo "path=$package" >>"$GITHUB_OUTPUT"
 
       - name: Chart veröffentlichen
@@ -678,13 +750,13 @@ jobs:
       version: ${{ needs.prepare.outputs.version }}
       update-package-from-run: true
 
-  # The GitHub release follows images, chart, update package and offline bundle, so its notes never
-  # announce an artifact that failed to publish. Notes are generated from the merged PRs, grouped by
+  # The GitHub release follows images and their attestations, chart, update package and offline
+  # bundle, so its notes never announce an artifact that failed to publish or cannot be verified. Notes are generated from the merged PRs, grouped by
   # .github/release.yml; the fixed part with images, chart, installation and update package comes
   # from deploy/helm/ci/release-notes.sh. The attested archive with its .sha256 file, the attested
   # SBOMs and the offline bundle with its .sha256 file and Sigstore bundle become assets.
   release:
-    needs: [publish, chart, chart-attestation, update-package-attestation, offline-bundle]
+    needs: [publish, image-attestation, chart, chart-attestation, update-package-attestation, offline-bundle]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     # The offline bundle is several hundred megabytes to upload.

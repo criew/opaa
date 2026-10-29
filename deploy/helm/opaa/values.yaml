@@ -350,7 +350,9 @@ backend:
     # Defaults to the chart's appVersion. Between two releases the chart carries 0.0.0-dev, for
     # which no image exists - set "main" or a release version when installing from the repository.
     tag: ""
-    # Pins the image by digest (sha256:...); takes precedence over the tag.
+    # Pins the image by digest (sha256:...); takes precedence over the tag. A released chart sets it
+    # to the index digest of its release image (deploy/helm/ci/package-chart.sh); whoever sets
+    # another tag sets this as well, or to "".
     digest: ""
     pullPolicy: IfNotPresent
 
@@ -504,6 +506,7 @@ frontend:
     repository: ghcr.io/criew/opaa-frontend
     # Defaults to the chart's appVersion, see backend.image.tag.
     tag: ""
+    # Set by a release like backend.image.digest.
     digest: ""
     pullPolicy: IfNotPresent
 

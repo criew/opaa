@@ -302,6 +302,28 @@ for tag in v1.2.3 v1.2.3-rc.1; do
   CHART_DIR="$CHART_DIR" deploy/helm/ci/package-chart.sh "$tag" "$work_dir/packages" >/dev/null
   echo "packaged as expected: $tag"
 done
+# The release passes the index digests of both images: the packaged values pin exactly these two
+# images by digest, the evaluation database keeps its own. A malformed digest is refused.
+backend_digest="sha256:$(printf '%064d' 1)"
+frontend_digest="sha256:$(printf '%064d' 2)"
+CHART_DIR="$CHART_DIR" deploy/helm/ci/package-chart.sh v1.2.3 "$work_dir/pinned" \
+  "$backend_digest" "$frontend_digest" >/dev/null
+pinned_values="$(helm show values "$work_dir/pinned/opaa-1.2.3.tgz")"
+if [[ "$(grep -c '^ *digest: "sha256:' <<<"$pinned_values")" != 2 ]] ||
+  ! grep -qxF "    digest: \"$backend_digest\"" <<<"$pinned_values" ||
+  ! grep -qxF "    digest: \"$frontend_digest\"" <<<"$pinned_values"; then
+  echo "The packaged values must pin backend and frontend by digest, nothing else:" >&2
+  grep -n 'digest:' <<<"$pinned_values" >&2
+  exit 1
+fi
+echo "packaged as expected: v1.2.3 with image digests"
+if output="$(CHART_DIR="$CHART_DIR" deploy/helm/ci/package-chart.sh v1.2.3 "$work_dir/pinned" \
+  "$backend_digest" "sha256:1234" 2>&1)" || [[ "$output" != *"is not an image digest"* ]]; then
+  echo "Expected release packaging to refuse a malformed digest:" >&2
+  echo "$output" >&2
+  exit 1
+fi
+echo "refused as expected: malformed image digest"
 expect_tag_refusal() {
   local tag="$1" expected="$2" output
   if output="$(CHART_DIR="$CHART_DIR" deploy/helm/ci/package-chart.sh "$tag" "$work_dir/packages" 2>&1)"; then
@@ -332,13 +354,23 @@ for expected in "kubectl create namespace opaa" "pod-security.kubernetes.io/enfo
   "blob/v1.2.3-rc.1/docs/handbuch/betrieb/kubernetes.md#aktualisierung-und-rückweg" \
   "blob/v1.2.3-rc.1/docs/handbuch/betrieb/docker-compose.md#vorbereitungsschritte-für-bestandsinstallationen" \
   "\`opaa-update-paket-1.2.3-rc.1.tar.gz\`" \
-  "gh attestation verify opaa-update-paket-1.2.3-rc.1.tar.gz --repo criew/opaa"; do
+  "gh attestation verify opaa-update-paket-1.2.3-rc.1.tar.gz --repo criew/opaa" \
+  "gh attestation verify oci://ghcr.io/criew/opaa-backend:1.2.3-rc.1 --repo criew/opaa" \
+  "gh attestation verify oci://ghcr.io/criew/opaa-frontend:1.2.3-rc.1 --repo criew/opaa"; do
   if [[ "$release_notes" != *"$expected"* ]]; then
     echo "The release notes do not contain '$expected':" >&2
     echo "$release_notes" >&2
     exit 1
   fi
 done
+# Every verification binds to the release workflow and the tag, not only to the repository.
+bound="--signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/v1.2.3-rc.1"
+if [[ "$(grep -c 'gh attestation verify' <<<"$release_notes")" != "$(grep -cF -- "$bound" <<<"$release_notes")" ]]; then
+  echo "Each gh attestation verify of the release notes must be followed by '$bound':" >&2
+  echo "$release_notes" >&2
+  exit 1
+fi
+echo "every verification of the release notes binds to workflow and tag"
 if [[ "$release_notes" == *"--create-namespace"* ]]; then
   echo "The release notes create the namespace with --create-namespace, without the Pod Security labels." >&2
   exit 1
@@ -464,6 +496,11 @@ if output="$(REGISTRY_SCHEME=http deploy/helm/ci/oci-published.sh 127.0.0.1:9/cr
   exit 1
 fi
 echo "refused as expected: no registry"
+if output="$(REGISTRY_SCHEME=http deploy/helm/ci/oci-published.sh --digest 127.0.0.1:9/criew/opaa-backend 1.2.3 2>&1)"; then
+  echo "Expected oci-published.sh --digest to fail without a registry, but it answered '$output'." >&2
+  exit 1
+fi
+echo "refused as expected: no registry for the digest"
 # Upper case is no valid OCI repository name; such a name is refused before any request.
 rc=0
 output="$(deploy/helm/ci/oci-published.sh ghcr.io/Criew/opaa-backend 1.2.3 2>&1)" || rc=$?

@@ -5,10 +5,18 @@
 # answer (401, 403, 5xx, a plain 404 of a router, a refused token, a network error) fails, so an
 # unreadable repository never passes as an unused version. Optional credentials: REGISTRY_USER and
 # REGISTRY_PASSWORD. REGISTRY_SCHEME=http serves a local registry.
+# With --digest it prints the digest of the manifest the tag points to instead, computed from the
+# bytes the registry returned and checked against its Docker-Content-Digest header; an unpublished
+# tag then fails like any other error.
 set -euo pipefail
 
+mode=published
+if [[ "${1:-}" == --digest ]]; then
+  mode=digest
+  shift
+fi
 if (($# != 2)); then
-  echo "Usage: $0 <[oci://]registry/repository> <tag>" >&2
+  echo "Usage: $0 [--digest] <[oci://]registry/repository> <tag>" >&2
   exit 2
 fi
 ref="${1#oci://}"
@@ -34,6 +42,7 @@ fi
 
 command -v curl >/dev/null || { echo "curl is not installed" >&2; exit 1; }
 command -v jq >/dev/null || { echo "jq is not installed" >&2; exit 1; }
+command -v sha256sum >/dev/null || { echo "sha256sum is not installed" >&2; exit 1; }
 
 url="${REGISTRY_SCHEME:-https}://$registry/v2/$repository/manifests/$tag"
 accept='application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json'
@@ -101,10 +110,29 @@ if [[ "$status" == 401 ]]; then
   esac
 fi
 
+# The digest of a manifest is the SHA-256 of its exact bytes, as the registry stores them.
+print_digest() {
+  local digest header
+  digest="sha256:$(sha256sum "$work_dir/body" | cut -d ' ' -f 1)"
+  header="$(sed -n 's/^[Dd]ocker-[Cc]ontent-[Dd]igest: *//p' "$work_dir/headers" | tr -d '\r' | tail -n 1)"
+  if [[ -n "$header" && "$header" != "$digest" ]]; then
+    fail "the registry names digest $header, the manifest it returned has $digest"
+  fi
+  echo "$digest"
+}
+
 case "$status" in
-  200) echo true ;;
+  200)
+    if [[ "$mode" == digest ]]; then
+      print_digest
+    else
+      echo true
+    fi
+    ;;
   404)
-    if jq -e '[.errors[]?.code] | any(. == "MANIFEST_UNKNOWN" or . == "NAME_UNKNOWN")' \
+    if [[ "$mode" == digest ]]; then
+      fail "HTTP 404, the tag is not published"
+    elif jq -e '[.errors[]?.code] | any(. == "MANIFEST_UNKNOWN" or . == "NAME_UNKNOWN")' \
       "$work_dir/body" >/dev/null 2>&1; then
       echo false
     else
