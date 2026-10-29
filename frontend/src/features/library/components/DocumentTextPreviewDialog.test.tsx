@@ -1,6 +1,6 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../../../test/test-utils'
 import DocumentTextPreviewDialog from './DocumentTextPreviewDialog'
 import type { TextPreviewResult } from '../utils/documentContent'
@@ -134,6 +134,60 @@ describe('DocumentTextPreviewDialog', () => {
       )
       expect(document.querySelector('img')).toBeNull()
       expect(screen.getByText(/\[Bild: Bild\]/)).toBeInTheDocument()
+    })
+  })
+
+  describe('cited passage', () => {
+    const highlights = new Map<string, unknown>()
+
+    beforeEach(() => {
+      highlights.clear()
+      vi.stubGlobal('CSS', { highlights })
+      vi.stubGlobal(
+        'Highlight',
+        class {
+          ranges: Range[]
+          constructor(...ranges: Range[]) {
+            this.ranges = ranges
+          }
+        },
+      )
+    })
+
+    afterEach(() => vi.unstubAllGlobals())
+
+    it('marks the cited passage as a highlight and says so', async () => {
+      const doc = {
+        ...markdownDoc('# Fristen\n\nDie Frist beginnt mit der **Zustellung**.\n\nDanach nichts.'),
+        anchor: { quoteStart: 'Die Frist beginnt mit der **Zustellung**.' },
+      }
+      renderWithProviders(<DocumentTextPreviewDialog previewDocument={doc} onClose={vi.fn()} />)
+
+      expect(await screen.findByRole('status')).toHaveTextContent('Fundstelle markiert.')
+      const highlight = highlights.get('opaa-passage') as { ranges: Range[] }
+      expect(highlight.ranges[0].toString()).toBe('Die Frist beginnt mit der Zustellung.')
+    })
+
+    it('says so when the passage is not in the document', async () => {
+      const doc = { ...plainTextDoc('Ganz anderer Inhalt.'), anchor: { quoteStart: 'Fehlt' } }
+      renderWithProviders(<DocumentTextPreviewDialog previewDocument={doc} onClose={vi.fn()} />)
+
+      expect(await screen.findByRole('status')).toHaveTextContent(
+        'Die Fundstelle wurde im Dokument nicht gefunden.',
+      )
+      expect(highlights.size).toBe(0)
+    })
+
+    it('removes the highlight when the dialog closes', async () => {
+      const doc = { ...plainTextDoc('Ein Satz.'), anchor: { quoteStart: 'Ein Satz.' } }
+      const { rerender } = renderWithProviders(
+        <DocumentTextPreviewDialog previewDocument={doc} onClose={vi.fn()} />,
+      )
+      expect(await screen.findByRole('status')).toHaveTextContent('Fundstelle markiert.')
+
+      rerender(<DocumentTextPreviewDialog previewDocument={null} onClose={vi.fn()} />)
+
+      expect(highlights.size).toBe(0)
     })
   })
 })
