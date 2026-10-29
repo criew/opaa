@@ -35,6 +35,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -294,27 +295,32 @@ public class SpaceAssetAssociationService {
     boolean spaceCurator =
         accessPolicy.hasAtLeast(space, caller.id(), SpaceRole.CURATOR) || caller.isSystemAdmin();
     if (!spaceCurator && !assetManager) {
+      // the bar of SpaceAccessPolicy#requireMember: a non-member learns nothing about the space
+      accessPolicy.requireMember(space, caller);
       throw new AccessDeniedException(
           "Nur Kuratoren dieses Space oder Verwaltende der "
               + definition.singular()
               + " können die Zuordnung lösen");
     }
 
-    associationRepository
-        .findBySpaceIdAndAssetId(space.getId(), asset.getId())
-        .ifPresent(
-            association -> {
-              associationRepository.delete(association);
-              auditEventRecorder.recordUserAction(
-                  AuditEvent.builder()
-                      .organizationId(space.getOrganizationId())
-                      .actor(caller.id())
-                      .type(AuditEventType.ASSET_DETACHED_FROM_SPACE)
-                      .object(definition.auditObjectType(), asset.getId(), asset.auditName())
-                      .before(asset.auditPayload(Map.of("spaceId", space.getId().toString())))
-                      .outcome(AuditOutcome.SUCCESS)
-                      .build());
-            });
+    Optional<SpaceAssetAssociation> existing =
+        associationRepository.findBySpaceIdAndAssetId(space.getId(), asset.getId());
+    if (existing.isEmpty()) {
+      // A manager of the asset who is no member may only learn of the spaces it is associated
+      // with: for any other space the answer is the one of an unknown space, not an idempotent 204.
+      accessPolicy.requireMember(space, caller);
+      return;
+    }
+    associationRepository.delete(existing.get());
+    auditEventRecorder.recordUserAction(
+        AuditEvent.builder()
+            .organizationId(space.getOrganizationId())
+            .actor(caller.id())
+            .type(AuditEventType.ASSET_DETACHED_FROM_SPACE)
+            .object(definition.auditObjectType(), asset.getId(), asset.auditName())
+            .before(asset.auditPayload(Map.of("spaceId", space.getId().toString())))
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
   }
 
   /**

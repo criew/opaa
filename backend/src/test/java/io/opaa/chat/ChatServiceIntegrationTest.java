@@ -178,7 +178,7 @@ class ChatServiceIntegrationTest {
     UUID spaceId = createSpaceWithMember(member);
 
     assertThatThrownBy(() -> chatService.createChat(spaceId, outsider, new ChatCreation()))
-        .isInstanceOf(AccessDeniedException.class);
+        .isInstanceOf(NotFoundException.class);
   }
 
   @Test

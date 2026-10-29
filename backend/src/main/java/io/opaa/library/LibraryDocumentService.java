@@ -791,6 +791,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     KnowledgeLibrary library =
         libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     requireEditable(library, caller.id(), caller.isSystemAdmin());
+    requireUploadLibrary(library);
 
     Document document =
         documentRepository

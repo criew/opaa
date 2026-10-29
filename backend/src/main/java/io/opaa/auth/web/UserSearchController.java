@@ -6,6 +6,8 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -45,12 +47,13 @@ public class UserSearchController {
   @GetMapping
   public List<UserSummaryResponse> listUsers(
       @Caller CurrentUser caller, @RequestParam(required = false) String query) {
-    return userService.searchInOrganization(caller.organizationId(), query).stream()
-        .map(this::toResponse)
-        .toList();
+    List<User> found = userService.searchInOrganization(caller.organizationId(), query);
+    Map<UUID, String> providerNames = userService.providerNamesOf(found);
+    return found.stream().map(user -> toResponse(user, providerNames.get(user.getId()))).toList();
   }
 
-  private UserSummaryResponse toResponse(User user) {
-    return new UserSummaryResponse(user.getId(), user.getEmail(), user.getDisplayName());
+  private UserSummaryResponse toResponse(User user, String providerName) {
+    return new UserSummaryResponse(user.getId(), user.getEmail(), user.getDisplayName())
+        .providerName(providerName);
   }
 }

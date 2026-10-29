@@ -1,5 +1,6 @@
 package io.opaa.account;
 
+import io.opaa.api.types.SystemRole;
 import io.opaa.common.NumericAddress;
 import java.util.List;
 import org.springframework.security.web.util.matcher.IpAddressMatcher;
@@ -27,6 +28,14 @@ public class LocalAdminNetworkPolicy {
   /** Whether any network is configured at all. */
   public boolean isRestricted() {
     return !allowed.isEmpty();
+  }
+
+  /**
+   * Whether a session of an account with {@code role} may go on from {@code clientAddress} - the
+   * rule of the sign-in, applied to the renewal and to every request too.
+   */
+  public boolean permitsSessionOf(SystemRole role, String clientAddress) {
+    return role != SystemRole.SYSTEM_ADMIN || permitsAdminSignIn(clientAddress);
   }
 
   public boolean permitsAdminSignIn(String clientAddress) {
