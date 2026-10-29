@@ -559,8 +559,11 @@ zugleich: Ist sie erreicht, antwortet der Endpunkt jeder Adresse mit `429`, und 
 als Warnung im Protokoll und in der Metrik `opaa_rate_limit_rejected_total` ([Logs und Metriken](ueberwachung-und-fehlerbehebung.md#logs-und-metriken)).
 Nach `OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS` falschen Passwörtern ist ein Konto für
 `OPAA_AUTH_LOCAL_LOCKOUT_DURATION` gesperrt; die Anmeldung antwortet dann wie bei einem falschen
-Passwort, die Sperre steht im Nachweisprotokoll und in einer eigenen Metrik, der einzelne Fehlversuch
-nur im Protokoll (mit Konto-Kennung, nie mit Adresse). Wie lange der Log-Sammler dieses Protokoll
+Passwort. Gleichzeitige Versuche gegen dasselbe Konto entscheidet OPAA nacheinander, auch über
+mehrere Instanzen: Viele parallele Anmeldungen zählen nicht über die Grenze hinaus, und ein
+richtiges Passwort, dessen Prüfung erst nach Eintreten der Sperre endet, wird wie ein falsches
+beantwortet. Die Sperre steht im Nachweisprotokoll und in einer eigenen Metrik, der einzelne
+Fehlversuch nur im Protokoll (mit Konto-Kennung, nie mit Adresse). Wie lange der Log-Sammler dieses Protokoll
 aufbewahrt, legt der Betrieb fest; eine kurze Frist, etwa 90 Tage, genügt der Fehlersuche und hält
 das Protokoll der Fehlversuche aus der Leistungskontrolle heraus. Die Zähler je Adresse sind auf eine hohe Zahl
 gleichzeitig geführter Adressen begrenzt; darüber werden die am wenigsten genutzten vergessen und
