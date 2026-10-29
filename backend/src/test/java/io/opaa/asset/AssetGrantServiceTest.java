@@ -1134,7 +1134,7 @@ class AssetGrantServiceTest {
     verify(grantRepository, never()).delete(any());
   }
 
-  // --- own grants of a time-limited manager (#3358) -----------------------------
+  // --- own grants of a time-limited manager ------------------------------------
 
   private AssetGrant ownTimeLimitedManagerGrant(Instant expiresAt) {
     when(accessService.requireRole(any(), eq(managerId), anyBoolean(), eq(AssetRole.MANAGER)))
