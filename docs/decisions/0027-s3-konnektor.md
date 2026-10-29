@@ -61,9 +61,19 @@ anderen Region, kann die Bibliothek ihn nicht lesen. Hält sie keine Dokumente a
 `file_path` unter `s3://<bucket>/`), liegt er nicht im Umfang: Das Protokoll nennt ihn mit Grund
 unter „Nicht im Umfang“, und er hält den Abgleich der übrigen nicht auf. Hält sie Dokumente aus
 ihm, bleibt er im Umfang und gilt ohne weitere Anfrage als nicht listbarer Bereich (Entscheidung
-3): Die Auflistung ist unvollständig, bereinigt wird nichts. Denn ein `403` oder `404` kann auch
-von einer vorgeschalteten Firewall oder einem Ingress kommen, und Rechteentzug ist kein
-Löschbefund. Als Löschbefund für einen Bucket gilt allein, dass `ListBuckets` ihn nicht mehr nennt.
+3): Die Auflistung ist unvollständig, bereinigt wird nichts, auch nicht in den lesbaren Buckets.
+Denn ein `403` oder `404` kann auch von einer vorgeschalteten Firewall oder einem Ingress kommen,
+und Rechteentzug ist kein Löschbefund. Als Löschbefund für einen Bucket gilt allein, dass
+`ListBuckets` ihn nicht mehr nennt und eine Auflistung mit `max-keys=1` mit `NoSuchBucket` samt
+diesem Fehlercode antwortet; jede andere Antwort hält ihn wie einen nicht lesbaren zurück. Die
+Buckets, aus denen sie Dokumente hält, ermittelt die Bibliothek einmal je Lauf aus den
+`file_path`-Werten. Ein zurückgehaltener Bucket hält das Bereinigen der ganzen Bibliothek an, bis er
+wieder lesbar oder bestätigt gelöscht ist. Das trifft einen Regionswechsel unter „Alle Buckets“, nach
+dem die Buckets der alten Region noch Dokumente halten, und einen bewusst entzogenen
+`s3:ListBucket`. Der Ausweg, nach einem Regionswechsel der nötige Schritt: auf „Nur ausgewählte
+Buckets“ ohne diesen Bucket wechseln und einen Vollabgleich starten; er entfernt den Bestand des
+Buckets, danach ist „Alle Buckets“ wieder möglich. Eine automatische Aufgabe nach einer Frist gibt
+es nicht, weil sie einen vorübergehenden Ausfall nicht von einer Absicht unterscheiden kann.
 Jede andere Antwort der Prüfung (Drosselung, abgelehnter Schlüssel, Endpoint nicht erreichbar)
 lässt den Lauf scheitern. Fehlt `s3:ListAllMyBuckets`, sieht der Schlüssel keinen Bucket oder kann
 die Bibliothek keinen davon lesen, scheitert der Lauf vor dem ersten Objekt und entfernt nichts.
@@ -74,7 +84,8 @@ und die nicht lesbaren Buckets mit Grund. Die Ordnerkette beginnt unter „Alle 
 dem Bucket, damit sie sich mit der Zahl der Buckets nicht ändert. Das Laufprotokoll nennt die Zahl
 der Buckets im Umfang und, gegen die in `source_sync_state.resolved_scopes` gemerkte letzte
 Ermittlung, neu hinzugekommene und weggefallene. Was aus einem Bucket indiziert ist, den
-`ListBuckets` nicht mehr nennt, entfernt der Vollabgleich desselben Laufs.
+`ListBuckets` nicht mehr nennt und dessen Löschung der Endpoint bestätigt, entfernt der
+Vollabgleich desselben Laufs.
 
 ### 3. Genau eine Betriebsart — der Vollabgleich — und ein Ereignislauf, der nie durch Abwesenheit löscht
 
