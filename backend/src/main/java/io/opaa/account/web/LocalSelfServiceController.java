@@ -3,10 +3,10 @@ package io.opaa.account.web;
 import io.opaa.account.LocalAuthRateLimiter;
 import io.opaa.account.LocalAuthRateLimiter.AddressScope;
 import io.opaa.account.LocalSelfServiceService;
+import io.opaa.api.dto.LocalConfirmRegistrationRequest;
 import io.opaa.api.dto.LocalForgotPasswordRequest;
 import io.opaa.api.dto.LocalRegisterRequest;
 import io.opaa.api.dto.LocalSetPasswordRequest;
-import io.opaa.api.dto.LocalVerifyEmailRequest;
 import jakarta.validation.Valid;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpMethod;
@@ -20,10 +20,10 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 /**
  * The self-service endpoints of local accounts under {@code /api/v1/auth/local} (ADR-0033,
  * Entscheidungen 9 and 11): redeeming an invitation or reset link, asking for a reset link,
- * registering, confirming the address. An available flow spends the address's budget ({@link
- * LocalAuthRateLimiter}) before anything happens with the address. The two address-taking bodies
- * are bound without {@code @Valid} on purpose: their field rules are checked behind the
- * availability gate. Exists in the {@code oidc} profile only.
+ * registering, completing a registration (address, name and first password). An available flow
+ * spends the address's budget ({@link LocalAuthRateLimiter}) before anything happens with the
+ * address. The two address-taking bodies are bound without {@code @Valid} on purpose: their field
+ * rules are checked behind the availability gate. Exists in the {@code oidc} profile only.
  *
  * <p><b>A switched-off flow never reaches these methods without a session</b>: {@code
  * OidcSecurityConfig} permits the two paths only while their flow is served, so a switched-off one
@@ -74,13 +74,15 @@ public class LocalSelfServiceController {
       throw unknownRoute("register");
     }
     rateLimiter.requireAddressAllowance(AddressScope.REGISTER, request.getEmail());
-    service.register(request.getEmail(), request.getDisplayName(), request.getPassword());
+    service.register(request.getEmail());
     return ResponseEntity.accepted().build();
   }
 
-  @PostMapping("/verify-email")
-  public ResponseEntity<Void> verifyEmail(@Valid @RequestBody LocalVerifyEmailRequest request) {
-    service.verifyEmail(request.getToken());
+  @PostMapping("/confirm-registration")
+  public ResponseEntity<Void> confirmRegistration(
+      @Valid @RequestBody LocalConfirmRegistrationRequest request) {
+    service.confirmRegistration(
+        request.getToken(), request.getDisplayName(), request.getNewPassword());
     return ResponseEntity.noContent().build();
   }
 

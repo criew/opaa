@@ -60,9 +60,12 @@ paths:
       summary: >
         The core metadata fields of one document with the provenance of every value
         (docs/features/metadata-schema.md, "Jeder Wert trägt seine Herkunft"). Every core
-        field is listed, an empty one with value null. Readable by everyone who may see the
-        library's document list (VIEWER or above); a document of another library or a library of
-        another organization is absent (404).
+        field is listed, an empty one with value null. The values come from the document's
+        content, so reading them needs the content right (VIEWER or above by a grant or the
+        organization-wide release): a system administrator who reaches the library only through
+        the administration gets 403 with a message naming that reason. A person the library does
+        not reach at all, a document of another library or a library of another organization is
+        absent (404).
       responses:
         "200":
           description: The document's core fields
@@ -70,6 +73,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DocumentMetadataResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -321,7 +326,9 @@ paths:
         A sample of documents with every stored metadata value and its provenance - the
         basis of the handausgewertete Stichprobe of 100 documents the QA role runs before the
         model-backed extraction is accepted. Deterministically ordered by document id, so a repeat
-        run examines the same documents. Requires the management right at the library.
+        run examines the same documents. Requires the management right at the library by a
+        grant: it exports titles and values taken from the content, so the administration of the
+        library alone does not suffice (403).
       responses:
         "200":
           description: The sampled documents with their values
@@ -629,7 +636,9 @@ paths:
       summary: >
         How many documents carry this value - the number that stands before the confirmation of a
         mapping (metadata-schema.md: "Die Zahl der betroffenen Dokumente steht vor der Bestätigung
-        fest"). Readable with VIEWER, since it is the number a confirmation dialog shows.
+        fest"). Readable with VIEWER, since it is the number a confirmation dialog shows; like
+        the change impact it is a cost of the schema maintenance and therefore also open to the
+        system administration, which manages every library.
       responses:
         "200":
           description: The number of affected documents

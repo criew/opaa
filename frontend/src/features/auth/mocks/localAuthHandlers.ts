@@ -156,16 +156,10 @@ export const localAuthHandlers = [
   http.post('/api/v1/auth/local/register', async ({ request }) => {
     if (!mockAuthConfig.localAccounts?.enabled) return notFound()
     if (!mockAuthConfig.localAccounts.selfRegistrationEnabled) return notFound()
-    const body = (await request.json()) as {
-      email?: string
-      displayName?: string
-      password?: string
-    }
+    const body = (await request.json()) as { email?: string }
     const email = (body.email ?? '').trim()
-    const displayName = (body.displayName ?? '').trim()
-    // Staged like the backend (LocalUserService.requireAddress, requireText, PasswordPolicy): the
-    // first failing check throws, so one answer carries the errors of one field only. Several codes
-    // at once happen within the password policy, never across fields.
+    // Like the backend (LocalUserService.requireAddress): the registration carries the address
+    // alone - name and password are set by the verification link.
     if (!isPlausibleAddress(email)) {
       return fieldErrorResponse('Bitte geben Sie eine gültige E-Mail-Adresse an.', [
         {
@@ -174,23 +168,6 @@ export const localAuthHandlers = [
           message: 'Bitte geben Sie eine gültige E-Mail-Adresse an.',
         },
       ])
-    }
-    if (displayName === '') {
-      return fieldErrorResponse('Bitte füllen Sie das Feld aus.', [
-        { field: 'displayName', code: 'REQUIRED', message: 'Das Feld darf nicht leer sein.' },
-      ])
-    }
-    if (displayName.length > 255) {
-      return fieldErrorResponse('Die Eingabe ist zu lang.', [
-        { field: 'displayName', code: 'TOO_LONG', message: 'Höchstens 255 Zeichen sind erlaubt.' },
-      ])
-    }
-    const violations = passwordViolations('password', body.password ?? '', email)
-    if (violations.length > 0) {
-      return fieldErrorResponse(
-        'Das neue Passwort entspricht nicht der Passwortrichtlinie.',
-        violations,
-      )
     }
     if (email.toLowerCase() === MOCK_RATE_LIMITED_EMAIL) return tooManyRequests()
     // A taken address, a domain outside the list and a free address all answer alike.
@@ -241,11 +218,32 @@ export const localAuthHandlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  http.post('/api/v1/auth/local/verify-email', async ({ request }) => {
-    const body = (await request.json()) as { token?: string }
+  http.post('/api/v1/auth/local/confirm-registration', async ({ request }) => {
+    const body = (await request.json()) as {
+      token?: string
+      displayName?: string
+      newPassword?: string
+    }
     if (body.token === MOCK_RATE_LIMITED_TOKEN) return tooManyRequests()
+    // As set-password: the link first, then name and password, and a refused field keeps the link.
     if (body.token !== MOCK_VERIFY_EMAIL_TOKEN || isConsumedMockToken(`verify:${body.token}`)) {
       return tokenInvalid()
+    }
+    if ((body.displayName ?? '').trim() === '') {
+      return fieldErrorResponse('Bitte füllen Sie das Feld aus.', [
+        { field: 'displayName', code: 'REQUIRED', message: 'Das Feld darf nicht leer sein.' },
+      ])
+    }
+    const violations = passwordViolations(
+      'newPassword',
+      body.newPassword ?? '',
+      mockLocalAccount.email,
+    )
+    if (violations.length > 0) {
+      return fieldErrorResponse(
+        'Das neue Passwort entspricht nicht der Passwortrichtlinie.',
+        violations,
+      )
     }
     consumeMockToken(`verify:${body.token}`)
     return new HttpResponse(null, { status: 204 })
