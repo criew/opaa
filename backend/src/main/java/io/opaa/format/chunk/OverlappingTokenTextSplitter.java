@@ -43,7 +43,8 @@ class OverlappingTokenTextSplitter extends TextSplitter {
    * ChunkMetadataKeys#LOCATION_METADATA_KEY}, derived from where the chunk's own text - before the
    * overlap prefix - sits in the source, so the location describes the chunk's beginning rather
    * than its predecessor's tail. Page-break markers are stripped after locating, since they must
-   * not reach the embedding; a chunk whose text cannot be found again carries no location.
+   * not reach the embedding; a chunk whose text cannot be found again carries no location. The same
+   * position yields the chunk's anchor, with the overlap prefix marked as its lead.
    */
   @Override
   public List<Document> apply(List<Document> documents) {
@@ -57,6 +58,7 @@ class OverlappingTokenTextSplitter extends TextSplitter {
       for (int i = 0; i < chunks.size(); i++) {
         Map<String, Object> metadata = new HashMap<>(document.getMetadata());
         String original = originals.get(i);
+        String chunk = stripPageBreaks(chunks.get(i));
         int start = locateChunk(text, original, searchFrom);
         if (start >= 0) {
           searchFrom = start + 1;
@@ -64,8 +66,14 @@ class OverlappingTokenTextSplitter extends TextSplitter {
           if (location != null) {
             metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
           }
+          ChunkAnchors.write(metadata, resolver.anchor(start, start + original.length()));
         }
-        result.add(new Document(stripPageBreaks(chunks.get(i)), metadata));
+        // The overlap carried over from the predecessor is that chunk's passage, not this one's.
+        String own = stripPageBreaks(original);
+        if (chunk.length() > own.length() && chunk.endsWith(own)) {
+          ChunkAnchors.markLead(metadata, chunk.substring(0, chunk.length() - own.length()));
+        }
+        result.add(new Document(chunk, metadata));
       }
     }
     return result;

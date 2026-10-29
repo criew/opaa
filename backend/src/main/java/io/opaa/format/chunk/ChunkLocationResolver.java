@@ -9,8 +9,9 @@ import java.util.regex.Pattern;
  * Derives the human-readable, German location ("Fundort") printed next to a footnote ("S. 2–4",
  * "Abschn. 4.2 ‚Fristsetzung'") from the structure of the text a chunk was cut from. Two
  * independent signals: form feeds ({@code \f}, emitted by {@link PageMarkingContentHandler} for
- * paginated formats) give a page range, and Markdown-style {@code # Heading} lines give the heading
- * path in effect at the chunk's start, deepest two levels only.
+ * paginated formats) give a page range, and Markdown-style {@code # Heading} lines give the full
+ * heading path in effect at the chunk's start. {@link #anchor} reports the same two as a {@link
+ * ChunkAnchor}.
  *
  * <p>Both combine; a text carrying neither yields {@code null}, and the caller stores no location
  * at all. Scanned once per document ({@link #forText}), then queried per chunk ({@link #locate}).
@@ -18,9 +19,6 @@ import java.util.regex.Pattern;
 final class ChunkLocationResolver {
 
   static final char PAGE_BREAK = '\f';
-
-  /** Deepest heading levels kept in the reported path. */
-  private static final int MAX_HEADING_LEVELS = 2;
 
   // A heading starts a line - or a page: Tika's page marker (\f) is not a line terminator to
   // Java's MULTILINE "^", yet a page always starts fresh.
@@ -74,6 +72,16 @@ final class ChunkLocationResolver {
     return parts.isEmpty() ? null : String.join(" · ", parts);
   }
 
+  /** The pages and heading path of the chunk spanning {@code [start, end)}, without quotes. */
+  ChunkAnchor anchor(int start, int end) {
+    ChunkAnchor anchor = ChunkAnchor.EMPTY;
+    if (pageBreakOffsets.length > 0) {
+      anchor = anchor.withPages(pageAt(start), pageAt(Math.max(start, end - 1)));
+    }
+    List<Heading> stack = headingStack(skipLeadingHeadings(start));
+    return stack.isEmpty() ? anchor : anchor.withPath(stack.stream().map(Heading::title).toList());
+  }
+
   private String pageRange(int start, int last) {
     if (pageBreakOffsets.length == 0) {
       return null;
@@ -113,6 +121,14 @@ final class ChunkLocationResolver {
   }
 
   private String headingPath(int offset) {
+    List<Heading> stack = headingStack(offset);
+    if (stack.isEmpty()) {
+      return null;
+    }
+    return "Abschn. " + String.join(" › ", stack.stream().map(Heading::title).toList());
+  }
+
+  private List<Heading> headingStack(int offset) {
     // The heading stack in effect at offset: a heading of level n closes every open heading of
     // level >= n, exactly as an outline reads.
     List<Heading> stack = new ArrayList<>();
@@ -125,13 +141,6 @@ final class ChunkLocationResolver {
       }
       stack.add(heading);
     }
-    if (stack.isEmpty()) {
-      return null;
-    }
-    List<String> titles =
-        stack.subList(Math.max(0, stack.size() - MAX_HEADING_LEVELS), stack.size()).stream()
-            .map(Heading::title)
-            .toList();
-    return "Abschn. " + String.join(" › ", titles);
+    return stack;
   }
 }

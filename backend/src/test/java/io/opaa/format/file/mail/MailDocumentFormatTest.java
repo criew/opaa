@@ -10,6 +10,7 @@ import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.DocumentProperties;
 import io.opaa.format.FormatMetadataField;
 import io.opaa.format.PassthroughMetadataKeysTestSupport;
+import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.chunk.ChunkingService;
 import io.opaa.indexing.IndexingProperties;
@@ -86,18 +87,19 @@ class MailDocumentFormatTest {
     MailDocumentFormat pipeline = pipeline(defaultProperties);
     assertThat(pipeline.handledFormats()).containsExactlyInAnyOrder(".eml", ".msg");
     assertThat(pipeline.id()).isEqualTo("email");
-    assertThat(pipeline.version()).isEqualTo((short) 5);
+    assertThat(pipeline.version()).isEqualTo((short) 6);
   }
 
   /**
    * regression guard for #1242: the Kopfdaten are schema values of the document, not chunk keys of
-   * this pipeline - only the Fundort passes through, like every other pipeline.
+   * this pipeline - only Fundort and anchor pass through, like every other pipeline.
    */
   @Test
-  void passesThroughTheFundortAndNoMailSpecificKeyAtAll() {
+  void passesThroughFundortAndAnchorButNoMailSpecificKey() {
     MailDocumentFormat pipeline = pipeline(defaultProperties);
     assertThat(pipeline.passthroughMetadataKeys())
-        .containsExactly(ChunkMetadataKeys.LOCATION_METADATA_KEY);
+        .containsExactlyInAnyOrder(
+            ChunkMetadataKeys.LOCATION_METADATA_KEY, ChunkMetadataKeys.ANCHOR_METADATA_KEY);
   }
 
   /**
@@ -202,6 +204,8 @@ class MailDocumentFormatTest {
     assertThat(chunk.getMetadata().keySet()).doesNotContain("mail_from", "mail_subject");
     // Single message, no thread split: no "Nachricht n von N" location needed.
     assertThat(chunk.getMetadata()).doesNotContainKey(ChunkMetadataKeys.LOCATION_METADATA_KEY);
+    // The anchor still names the message, so a viewer has a unit to jump to.
+    assertThat(ChunkAnchors.read(chunk.getMetadata()).message()).isEqualTo(1);
     assertThat(result.discoveredAttachments()).isEmpty();
     // A produced key that is part of the registry-wide passthrough union must be declared - only a
     // union key can ever ride along onto the persisted chunk.
@@ -657,6 +661,14 @@ class MailDocumentFormatTest {
     assertThat(result.chunks().get(0).getText()).endsWith("\n\nPasst, danke.");
     assertThat(result.chunks().get(0).getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
         .isEqualTo("Nachricht 1 von 2");
+    // The header block is generated, so the quoted passage starts at the message text itself.
+    Document first = result.chunks().get(0);
+    assertThat(
+            ChunkAnchors.passage(
+                first.getText(),
+                first.getMetadata().get(ChunkMetadataKeys.ANCHOR_LEAD_METADATA_KEY)))
+        .isEqualTo("Passt, danke.");
+    assertThat(ChunkAnchors.read(result.chunks().get(1).getMetadata()).message()).isEqualTo(2);
     assertThat(result.chunks().get(1).getText())
         .doesNotContain("Von:")
         .contains("Bitte um Rueckmeldung bis Freitag.");

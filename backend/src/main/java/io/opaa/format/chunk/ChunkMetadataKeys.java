@@ -13,5 +13,18 @@ public final class ChunkMetadataKeys {
    */
   public static final String LOCATION_METADATA_KEY = "location";
 
+  /**
+   * The machine-readable position of the chunk in its original ({@link ChunkAnchor}), set by the
+   * format and completed with its quotes by {@code DocumentFormatRunner}.
+   */
+  public static final String ANCHOR_METADATA_KEY = "anchor";
+
+  /**
+   * Transient: the text a chunk opens with that is not part of its own passage ({@link
+   * ChunkAnchors#markLead}). Removed by {@code DocumentFormatRunner} before a chunk leaves the
+   * format, so it is never stored.
+   */
+  public static final String ANCHOR_LEAD_METADATA_KEY = "anchor_lead";
+
   private ChunkMetadataKeys() {}
 }

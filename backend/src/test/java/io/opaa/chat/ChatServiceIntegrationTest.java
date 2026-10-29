@@ -29,6 +29,7 @@ import io.opaa.test.OpaaMockedDocumentServiceIntegrationTest;
 import io.opaa.test.OwnOrganizationFixtures;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -956,6 +957,35 @@ class ChatServiceIntegrationTest {
     assertThat(source.getChunkLocations()).hasSize(1);
     assertThat(source.getChunkLocations().getFirst().getChunkIndex()).isEqualTo(3);
     assertThat(source.getChunkLocations().getFirst().getLocation()).isEqualTo("S. 2-4");
+    assertThat(source.getChunkLocations().getFirst().getAnchor()).isNull();
+  }
+
+  @Test
+  void anAnchorSnapshotRoundTripsThroughTheStoredSourceJson() throws Exception {
+    ChatSource written =
+        new ChatSource("satzung.pdf", 0.9, 1, true)
+            .chunkLocations(
+                List.of(
+                    new ChatSourceLocation(3)
+                        .location("S. 3")
+                        .anchor(
+                            Map.of(
+                                "pageFrom",
+                                3,
+                                "path",
+                                List.of("3.1 Fristen"),
+                                "quoteStart",
+                                "Der"))));
+
+    List<ChatSource> read =
+        objectMapper.readValue(
+            objectMapper.writeValueAsString(List.of(written)),
+            new TypeReference<List<ChatSource>>() {});
+
+    assertThat(read.getFirst().getChunkLocations().getFirst().getAnchor())
+        .containsEntry("pageFrom", 3)
+        .containsEntry("path", List.of("3.1 Fristen"))
+        .containsEntry("quoteStart", "Der");
   }
 
   /**

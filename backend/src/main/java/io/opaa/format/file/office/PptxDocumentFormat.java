@@ -5,6 +5,8 @@ import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.DocumentProperties;
 import io.opaa.format.FileDocumentFormat;
 import io.opaa.format.FormatAdmission;
+import io.opaa.format.chunk.ChunkAnchor;
+import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.shared.HeadingSectionSplitter;
 import io.opaa.format.shared.TableText;
@@ -43,7 +45,7 @@ import org.springframework.ai.document.Document;
 public class PptxDocumentFormat extends FileDocumentFormat<PptxDocumentFormat.PptxContent> {
 
   static final String ID = "pptx";
-  static final short VERSION = 3;
+  static final short VERSION = 4;
 
   private final HeadingSectionSplitter splitter;
 
@@ -162,6 +164,7 @@ public class PptxDocumentFormat extends FileDocumentFormat<PptxDocumentFormat.Pp
     }
     Map<String, Object> metadata = new HashMap<>();
     metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
+    ChunkAnchors.write(metadata, ChunkAnchor.EMPTY.withSlide(slideNumber));
     return new SlideChunk(splitter.boundedChunks(title, rest, metadata), hasText);
   }
 

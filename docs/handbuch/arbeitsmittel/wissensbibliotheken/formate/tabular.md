@@ -1,6 +1,6 @@
 # Format: Tabellen (XLSX, CSV, ODS)
 
-Pipeline `tabular`, Version 3. Der gemeinsame Rahmen aller Format-Pipelines steht
+Pipeline `tabular`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht
 im Kapitel [Wissensbibliotheken](../README.md), Abschnitt 5.
 
 ## 1. Zulassung
@@ -62,6 +62,7 @@ Keine Überlappung zwischen Chunks.
 | Ortsangabe XLSX/ODS | Blatt und Zeilenbereich | `Blatt Gebühren · Zeilen 12–61` |
 | Ortsangabe XLSX/ODS, eine Zeile | Blatt und Zeile | `Blatt Gebühren · Zeile 12` |
 | Ortsangabe CSV | Zeilenbereich | `Zeilen 12–61` |
+| Fundstellen-Anker (`anchor`) | Blatt (nicht bei CSV), erste und letzte Zeile, Zitat von Anfang und Ende | Blatt `Gebühren`, Zeilen `12`–`61` |
 
 Zeilennummern sind 1-basiert wie in der Tabellenkalkulation.
 

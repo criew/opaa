@@ -23,6 +23,7 @@ import io.opaa.chat.ChatTurn;
 import io.opaa.chat.UsedPrompt;
 import io.opaa.metadata.web.MetadataFilterMapper;
 import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -205,7 +206,27 @@ public final class ChatResponseMapper {
         : locations.stream()
             .map(
                 location ->
-                    new ChunkLocation(location.getChunkIndex()).location(location.getLocation()))
+                    new ChunkLocation(location.getChunkIndex())
+                        .location(location.getLocation())
+                        .anchor(toAnchor(location.getAnchor())))
             .toList();
+  }
+
+  private static io.opaa.api.dto.ChunkAnchor toAnchor(Map<String, Object> stored) {
+    io.opaa.format.chunk.ChunkAnchor anchor = io.opaa.format.chunk.ChunkAnchor.fromMetadata(stored);
+    if (anchor.isEmpty()) {
+      return null;
+    }
+    return new io.opaa.api.dto.ChunkAnchor()
+        .pageFrom(anchor.pageFrom())
+        .pageTo(anchor.pageTo())
+        .path(anchor.path())
+        .slide(anchor.slide())
+        .sheet(anchor.sheet())
+        .rowFrom(anchor.rowFrom())
+        .rowTo(anchor.rowTo())
+        .message(anchor.message())
+        .quoteStart(anchor.quoteStart())
+        .quoteEnd(anchor.quoteEnd());
   }
 }

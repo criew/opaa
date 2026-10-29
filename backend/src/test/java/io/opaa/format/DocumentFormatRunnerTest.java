@@ -84,7 +84,7 @@ class DocumentFormatRunnerTest {
     DocumentFormatResult result =
         DocumentFormatRunner.run(pipeline, DocumentFormatSource.ofExtractedText("text", "f"));
 
-    assertThat(result.chunks()).isEqualTo(chunks);
+    assertThat(result.chunks()).extracting(Document::getText).containsExactly("chunk");
     assertThat(result.discoveredAttachments()).containsExactly(attachment);
     assertThat(Files.exists(attachmentTempFile)).isFalse();
   }

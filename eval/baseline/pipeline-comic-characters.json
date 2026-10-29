@@ -39,7 +39,7 @@
     "goldenDatasetFile": "eval/golden/comic-characters.json",
     "goldenDatasetSha256": "02ea436e2b3f27917eabc85af6c98c6c41ed0b2350aec2698481c97f42aca09f",
     "goldenCaseCount": 121,
-    "ingestionPipelineFingerprint": "confluence:4,docx:5,email:5,html:5,markdown:3,odp:4,odt:4,pdf:5,pptx:3,tabular:3,tika-fallback:1",
+    "ingestionPipelineFingerprint": "confluence:5,docx:6,email:6,html:6,markdown:4,odp:5,odt:5,pdf:6,pptx:4,tabular:4,tika-fallback:2",
     "contextPrefixFingerprint": "ff4022a9229ede226ff1b8878e55e7ddf8d7703e2f0a4a34624c269195f2a204",
     "metadataFilterEnabled": true
   },

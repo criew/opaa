@@ -68,14 +68,15 @@ class ConfluenceStorageFormatTest {
   }
 
   @Test
-  void claimsNoFormatAndDeclaresOnlyItsOwnLocationKey() {
+  void claimsNoFormatAndDeclaresOnlyItsOwnLocationAndAnchorKeys() {
     // Space key and hierarchy path are a document property, written directly by
     // DocumentIngestService for every document with a source context - not declared here.
     assertThat(pipeline.handledFormats()).isEmpty();
     assertThat(pipeline.id()).isEqualTo("confluence");
-    assertThat(pipeline.version()).isEqualTo((short) 4);
+    assertThat(pipeline.version()).isEqualTo((short) 5);
     assertThat(pipeline.passthroughMetadataKeys())
-        .containsExactlyInAnyOrder(ChunkMetadataKeys.LOCATION_METADATA_KEY);
+        .containsExactlyInAnyOrder(
+            ChunkMetadataKeys.LOCATION_METADATA_KEY, ChunkMetadataKeys.ANCHOR_METADATA_KEY);
   }
 
   @Test

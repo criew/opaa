@@ -1,6 +1,6 @@
 # Format: OpenDocument Präsentation (ODP)
 
-Pipeline `odp`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht im
+Pipeline `odp`, Version 5. Der gemeinsame Rahmen aller Format-Pipelines steht im
 Kapitel [Wissensbibliotheken](../README.md), Abschnitt 5. Das Verhalten entspricht weitgehend dem von
 [PowerPoint](pptx.md); hier stehen die Unterschiede.
 
@@ -42,6 +42,7 @@ Folientitel und trägt die Ortsangabe der Folie (Kapitel [Wissensbibliotheken](.
 |---|---|---|
 | Ortsangabe (`location`) | Foliennummer und Titel | `Folie 3: Zuständigkeiten` |
 | Ortsangabe des Master-Chunks | fest | `Masterfolie` |
+| Fundstellen-Anker (`anchor`) | Foliennummer und Zitat von Anfang und Ende | Folie `3` |
 
 **Dokumenteigenschaften:** Titel und Daten aus `meta.xml`. Keine erste Überschrift, weil Folien
 keine Überschriftenhierarchie haben.

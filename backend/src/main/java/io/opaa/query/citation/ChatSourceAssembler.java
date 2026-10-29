@@ -7,6 +7,8 @@ import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
 import io.opaa.chat.ChatSourceMetadataEntry;
 import io.opaa.chat.SearchedLibraryRef;
+import io.opaa.format.chunk.ChunkAnchor;
+import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.indexing.credentials.SourceStateLookup;
 import io.opaa.indexing.job.IndexingJobRepository;
@@ -526,9 +528,9 @@ public class ChatSourceAssembler {
 
   /**
    * The location entry of one retrieved chunk: its {@code chunk_index} - the number the citation
-   * marker names - and the {@code location} the indexing pipeline stored, null when it stored none.
-   * A chunk without a usable {@code chunk_index} yields no entry: there is no number a footnote
-   * could be resolved by.
+   * marker names - and the {@code location} and anchor the indexing pipeline stored, each null when
+   * it stored none. A chunk without a usable {@code chunk_index} yields no entry: there is no
+   * number a footnote could be resolved by.
    */
   private static List<ChatSourceLocation> chunkLocationOf(Document chunk) {
     Object rawIndex = chunk.getMetadata().get("chunk_index");
@@ -542,9 +544,12 @@ public class ChatSourceAssembler {
       return new ArrayList<>();
     }
     Object location = chunk.getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY);
+    ChunkAnchor anchor = ChunkAnchors.read(chunk.getMetadata());
     List<ChatSourceLocation> result = new ArrayList<>(1);
     result.add(
-        new ChatSourceLocation(chunkIndex).location(location != null ? location.toString() : null));
+        new ChatSourceLocation(chunkIndex)
+            .location(location != null ? location.toString() : null)
+            .anchor(anchor.isEmpty() ? null : anchor.toMetadata()));
     return result;
   }
 

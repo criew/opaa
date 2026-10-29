@@ -2,11 +2,14 @@ package io.opaa.format.file.pdf;
 
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.PassthroughMetadataKeysTestSupport;
+import io.opaa.format.chunk.ChunkAnchor;
+import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import java.io.IOException;
@@ -28,6 +31,7 @@ import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocume
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.ai.document.Document;
 
 /**
  * The PDF pipeline (ingestion-pipelines.md, Teil 1's parsing table and Teil 2): when the catalog
@@ -45,7 +49,7 @@ class PdfDocumentFormatTest {
   void claimsExactlyPdf() {
     assertThat(pipeline.handledFormats()).containsExactly(".pdf");
     assertThat(pipeline.id()).isEqualTo("pdf");
-    assertThat(pipeline.version()).isEqualTo((short) 5);
+    assertThat(pipeline.version()).isEqualTo((short) 6);
   }
 
   @Test
@@ -85,6 +89,13 @@ class PdfDocumentFormatTest {
     assertThat(result.chunks().get(2).getText())
         .startsWith("§ 1 Personaldokumente › Abs. 2 Ermaessigung")
         .contains("Minderjaehrige");
+    assertThat(result.chunks())
+        .extracting(chunk -> ChunkAnchors.read(chunk.getMetadata()))
+        .extracting(ChunkAnchor::pageFrom, ChunkAnchor::pageTo, ChunkAnchor::path)
+        .containsExactly(
+            tuple(1, 1, null),
+            tuple(2, 2, List.of("§ 1 Personaldokumente")),
+            tuple(3, 3, List.of("§ 1 Personaldokumente", "Abs. 2 Ermaessigung")));
     // A key this pipeline actually produced that also belongs to the registry-wide passthrough
     // union must be part of its own declaration - storeChunks copies any union key it finds on a
     // chunk regardless of which pipeline declares it (nested-pipeline attribution), so an
@@ -204,6 +215,32 @@ class PdfDocumentFormatTest {
     assertThat(result.chunks().get(1).getText()).contains("zweiten Seite");
     assertThat(result.chunks().get(1).getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
         .isEqualTo("S. 2");
+    assertThat(ChunkAnchors.read(result.chunks().get(1).getMetadata()).pageFrom()).isEqualTo(2);
+  }
+
+  @Test
+  void theAnchorQuotesTheSectionTextWithoutItsRepeatedHeadingLine() throws IOException {
+    Path file = tempDir.resolve("satzung.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      addPage(doc, "Diese Satzung regelt die Gebuehren der Stadt.");
+      PDPage page2 = addPage(doc, "Fuer Personalausweise werden 37,00 EUR erhoben.");
+      PDDocumentOutline outline = new PDDocumentOutline();
+      doc.getDocumentCatalog().setDocumentOutline(outline);
+      outline.addLast(outlineItem("§ 1 Personaldokumente", page2));
+      doc.save(file.toFile());
+    }
+
+    DocumentFormatResult result =
+        DocumentFormatRunner.run(
+            pipeline, DocumentFormatSource.ofFile(file, "satzung.pdf", ".pdf"));
+
+    Document section = result.chunks().get(1);
+    assertThat(section.getText()).startsWith("§ 1 Personaldokumente");
+    assertThat(section.getMetadata()).doesNotContainKey(ChunkMetadataKeys.ANCHOR_LEAD_METADATA_KEY);
+    ChunkAnchor anchor = ChunkAnchors.read(section.getMetadata());
+    assertThat(anchor.pageFrom()).isEqualTo(2);
+    assertThat(anchor.quoteStart()).isEqualTo("Fuer Personalausweise werden 37,00 EUR erhoben.");
+    assertThat(anchor.quoteEnd()).isNull();
   }
 
   @Test

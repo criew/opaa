@@ -8,6 +8,7 @@ import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.PassthroughMetadataKeysTestSupport;
+import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.file.office.CountingOdfOpener;
 import io.opaa.format.file.office.OdfPackage;
@@ -47,7 +48,7 @@ class TabularDocumentFormatTest {
   void claimsExactlyXlsxCsvAndOds() {
     assertThat(pipeline.handledFormats()).containsExactlyInAnyOrder(".xlsx", ".csv", ".ods");
     assertThat(pipeline.id()).isEqualTo("tabular");
-    assertThat(pipeline.version()).isEqualTo((short) 3);
+    assertThat(pipeline.version()).isEqualTo((short) 4);
   }
 
   // --- XLSX ------------------------------------------------------------------------------------
@@ -538,6 +539,9 @@ class TabularDocumentFormatTest {
     }
     assertThat(result.chunks().getFirst().getMetadata())
         .containsEntry(ChunkMetadataKeys.LOCATION_METADATA_KEY, "Zeilen 2–5");
+    var anchor = ChunkAnchors.read(result.chunks().getFirst().getMetadata());
+    assertThat(anchor.rowFrom()).isEqualTo(2L);
+    assertThat(anchor.rowTo()).isEqualTo(5L);
   }
 
   @Test

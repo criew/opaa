@@ -1,6 +1,6 @@
 # Format: OpenDocument Text (ODT)
 
-Pipeline `odt`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht im
+Pipeline `odt`, Version 5. Der gemeinsame Rahmen aller Format-Pipelines steht im
 Kapitel [Wissensbibliotheken](../README.md), Abschnitt 5. Das Verhalten entspricht weitgehend dem
 von [Word](docx.md); hier stehen die Unterschiede.
 
@@ -40,6 +40,7 @@ für Kopf- und Fußzeilen.
 |---|---|---|
 | Ortsangabe (`location`) | Abschnittspfad | `Abschn. Allgemeines › Geltungsbereich` |
 | Ortsangabe des Kopfzeilen-Chunks | fest | `Kopf-/Fußzeile` |
+| Fundstellen-Anker (`anchor`) | voller Abschnittspfad und Zitat von Anfang und Ende | `3 Verfahren`, `3.1 Fristen` |
 
 **Dokumenteigenschaften:** Titel, Erstellungs- und Änderungsdatum aus `meta.xml` sowie die erste
 Überschrift der Ebene 1.

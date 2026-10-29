@@ -7,6 +7,7 @@ import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.PassthroughMetadataKeysTestSupport;
+import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.shared.HeadingSectionSplitter;
 import io.opaa.format.shared.HeadingSectionSplitterFixture;
@@ -45,7 +46,7 @@ class PptxDocumentFormatTest {
   void claimsExactlyPptx() {
     assertThat(pipeline.handledFormats()).containsExactly(".pptx");
     assertThat(pipeline.id()).isEqualTo("pptx");
-    assertThat(pipeline.version()).isEqualTo((short) 3);
+    assertThat(pipeline.version()).isEqualTo((short) 4);
   }
 
   @Test
@@ -74,6 +75,7 @@ class PptxDocumentFormatTest {
         .contains("Notizen: Bitte langsam sprechen.");
     assertThat(result.chunks().get(1).getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
         .isEqualTo("Folie 2: Gebuehren");
+    assertThat(ChunkAnchors.read(result.chunks().get(1).getMetadata()).slide()).isEqualTo(2);
     // A key this pipeline actually produced that also belongs to the registry-wide passthrough
     // union must be part of its own declaration - storeChunks copies any union key it finds on a
     // chunk regardless of which pipeline declares it (nested-pipeline attribution), so an

@@ -51,7 +51,7 @@ class DocxDocumentFormatTest {
   void claimsExactlyDocx() {
     assertThat(pipeline.handledFormats()).containsExactly(".docx");
     assertThat(pipeline.id()).isEqualTo("docx");
-    assertThat(pipeline.version()).isEqualTo((short) 5);
+    assertThat(pipeline.version()).isEqualTo((short) 6);
   }
 
   @Test

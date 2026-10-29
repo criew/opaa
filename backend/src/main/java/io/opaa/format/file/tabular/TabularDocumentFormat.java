@@ -4,6 +4,8 @@ import io.opaa.format.DocumentFormat;
 import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.FormatAdmission;
+import io.opaa.format.chunk.ChunkAnchor;
+import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkContextTitle;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.file.office.OdfPackage;
@@ -58,7 +60,7 @@ public class TabularDocumentFormat implements DocumentFormat {
   private static final Logger log = LoggerFactory.getLogger(TabularDocumentFormat.class);
 
   static final String ID = "tabular";
-  static final short VERSION = 3;
+  static final short VERSION = 4;
 
   /**
    * Rows of data grouped per chunk, the repeated header not counting against it - <b>gesetzt, nicht
@@ -587,6 +589,7 @@ public class TabularDocumentFormat implements DocumentFormat {
 
     Map<String, Object> metadata = new HashMap<>();
     metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
+    ChunkAnchors.write(metadata, ChunkAnchor.EMPTY.withRows(sheetName, row.number(), row.number()));
     return splitter.boundedChunks(prefix, TableText.row(row.values()), metadata);
   }
 
@@ -670,6 +673,7 @@ public class TabularDocumentFormat implements DocumentFormat {
 
     Map<String, Object> metadata = new HashMap<>();
     metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
+    ChunkAnchors.write(metadata, ChunkAnchor.EMPTY.withRows(sheetName, startRow, endRow));
     return splitter.boundedChunks(
         prefix + "\n\n" + headerLine, "\n", text.toString().stripTrailing(), metadata);
   }

@@ -20,7 +20,8 @@ data:
             content_tsv: Abgeleiteter Suchindex desselben Inhalts
           note: >-
             Aus sources gehen nur Dokumenttitel, Bibliothek und Seite der Fundstellen heraus, nie
-            ihre Textausschnitte, Überschriften oder Blattnamen (Dokumentinhalt)
+            ihre Textausschnitte, Überschriften oder Blattnamen (Dokumentinhalt), auch nicht die
+            Zitate und der Abschnittspfad des gespeicherten Fundstellen-Ankers
       - name: chat_note_items
         personalColumns: [text]
         nonPersonalColumns: [id, chat_id, organization_id, position, kind, created_at]

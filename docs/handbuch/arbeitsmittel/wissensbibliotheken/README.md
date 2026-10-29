@@ -377,7 +377,10 @@ Die Format-Pipeline liest den Text und zerlegt ihn entlang seiner Gliederung: na
 Seiten, Folien oder Zeilengruppen. Nur wer das Format kennt, weiß, wo diese Grenzen liegen.
 
 - Jeder Chunk trägt eine **Ortsangabe**, etwa „S. 3 · Abschn. Fristen › Verlängerung", die später
-  im Zitat erscheint.
+  im Zitat erscheint, und einen **Fundstellen-Anker**: dieselbe Stelle maschinenlesbar (Seiten,
+  Abschnittspfad, Folie, Blatt und Zeilen oder Nachricht, je nach Format) und je ein kurzes Zitat
+  vom Anfang und Ende des Chunks. Ein Beleg im Chat hält den Anker fest, so wie er beim Antworten
+  war.
 - **Kein Text geht wegen seiner Länge verloren.** Ein zu langer Abschnitt wird geteilt, nie gekürzt;
   jedes Teilstück behält Überschrift und Ortsangabe.
 - **Kleinstabschnitte werden zusammengefasst**, etwa viele einzeilige Haushaltstitel unter einer
