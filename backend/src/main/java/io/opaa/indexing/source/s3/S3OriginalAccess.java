@@ -80,11 +80,7 @@ public class S3OriginalAccess {
       log.warn("Library {} carries no S3 configuration", library.getId());
       return Optional.empty();
     }
-    Optional<S3Scope> scope =
-        settings.scopes().stream()
-            .filter(candidate -> candidate.bucket().equals(ref.bucket()))
-            .filter(candidate -> candidate.contains(ref.key()))
-            .findFirst();
+    Optional<S3Scope> scope = settings.scopeOf(ref.bucket(), ref.key());
     if (scope.isEmpty()) {
       log.info("Object {} lies outside every scope of library {}", filePath, library.getId());
       return Optional.empty();

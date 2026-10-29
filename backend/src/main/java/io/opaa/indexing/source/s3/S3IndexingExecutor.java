@@ -6,6 +6,7 @@ import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.run.IndexingRun;
 import io.opaa.indexing.run.IndexingRunTemplate;
+import io.opaa.indexing.run.ResolvedScopes;
 import io.opaa.indexing.spi.ConnectorData;
 import io.opaa.indexing.spi.IndexingRunFailedException;
 import io.opaa.indexing.spi.ListingOutcome;
@@ -21,8 +22,12 @@ import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Connection;
 import io.opaa.s3.S3Credentials;
 import java.time.Clock;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +45,10 @@ import org.springframework.scheduling.annotation.Async;
 public class S3IndexingExecutor implements SourceIndexingExecutor {
 
   private static final Logger log = LoggerFactory.getLogger(S3IndexingExecutor.class);
+
+  static final String NO_VISIBLE_BUCKET =
+      "Der Zugang sieht keinen Bucket; der Umfang „Alle Buckets“ ist leer. Der Bestand bleibt"
+          + " unverändert.";
 
   private final S3ClientFactory clientFactory;
   private final S3Properties properties;
@@ -171,6 +180,15 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
     run.recordRequestCost(store.meter());
     UUID libraryId = library.getId();
     SourceSyncState state = journal.load(libraryId);
+    if (settings.allBuckets()) {
+      try {
+        settings = resolveAllBuckets(run, store, connection, settings, state);
+        state = journal.save(run.jobId(), state);
+      } catch (RuntimeException | InterruptedException e) {
+        store.close();
+        throw e;
+      }
+    }
     try (S3FileStore fileStore = new S3FileStore(store, settings);
         S3FullSync sync =
             new S3FullSync(
@@ -187,6 +205,54 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
                 supportedFormats)) {
       return body.run(sync);
     }
+  }
+
+  /**
+   * "Alle Buckets" as this run finds it: every bucket the key may list, each as a whole-bucket
+   * scope. A key without {@code s3:ListAllMyBuckets} or a listing without any bucket fails the run
+   * before any object is touched, so nothing indexed is removed. The caller saves {@code state}.
+   */
+  private S3SourceSettings resolveAllBuckets(
+      IndexingRun run,
+      S3ObjectStore store,
+      S3Connection connection,
+      S3SourceSettings settings,
+      SourceSyncState state)
+      throws InterruptedException {
+    S3BucketListing listing;
+    try {
+      listing = store.listBuckets();
+    } catch (S3AccessException e) {
+      throw accessFailure(run, e);
+    }
+    if (!(listing instanceof S3BucketListing.Listed listed)) {
+      throw new IndexingRunFailedException(S3SourceConnector.ALL_BUCKETS_NOT_LISTABLE);
+    }
+    List<String> buckets = new ArrayList<>();
+    for (String name : new TreeSet<>(listed.names())) {
+      try {
+        buckets.add(S3Scope.validateBucket(name));
+      } catch (S3Scope.InvalidS3ScopeException e) {
+        log.info(
+            "S3 run for library {} skips bucket name {}: {}",
+            run.library().getId(),
+            name,
+            e.getMessage());
+      }
+    }
+    if (buckets.isEmpty()) {
+      throw new IndexingRunFailedException(NO_VISIBLE_BUCKET);
+    }
+    S3SourceSettings resolved = settings.resolvedTo(buckets);
+    try {
+      clientFactory.validateTargets(connection, resolved.scopes());
+    } catch (S3AccessException e) {
+      throw accessFailure(run, e);
+    }
+    Map<String, String> names = new LinkedHashMap<>();
+    buckets.forEach(bucket -> names.put(bucket, bucket));
+    ResolvedScopes.note(run, state, names, "Bucket", "Buckets");
+    return resolved;
   }
 
   private static IndexingRunFailedException accessFailure(IndexingRun run, S3AccessException e) {

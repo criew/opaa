@@ -7,12 +7,14 @@ import io.opaa.indexing.filesync.FileSync;
 import io.opaa.indexing.filesync.FileSyncSettings;
 import io.opaa.indexing.run.IndexingRun;
 import io.opaa.indexing.run.IndexingRunTemplate;
+import io.opaa.indexing.run.ResolvedScopes;
 import io.opaa.indexing.spi.ConnectorData;
 import io.opaa.indexing.spi.FullSyncRhythm;
 import io.opaa.indexing.spi.IndexingRunFailedException;
 import io.opaa.indexing.spi.ListingOutcome;
 import io.opaa.indexing.spi.RequestBudget;
 import io.opaa.indexing.spi.ScanJournal;
+import io.opaa.indexing.spi.SourceCredentialsRejectedException;
 import io.opaa.indexing.spi.SourceIndexingExecutor;
 import io.opaa.indexing.spi.SourceSyncState;
 import io.opaa.indexing.spi.VanishedDocumentPolicy;
@@ -23,6 +25,7 @@ import io.opaa.knowledge.SourceType;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -33,7 +36,8 @@ import org.springframework.scheduling.annotation.Async;
  * Runs a Google Drive library (ADR-0040, Entscheidung 6): a full sync that lists every scope and
  * removes what it did not meet, or a change run that reads the change streams from their cursors.
  * The change run is the default while a full sync completed within the rhythm and every stream has
- * a cursor.
+ * a cursor. Under "Alle Ablagen" every run resolves the scopes anew ({@link AllDriveScopes}); the
+ * default run mode holds the streams of the last resolution.
  */
 public class GoogleDriveIndexingExecutor implements SourceIndexingExecutor {
 
@@ -93,11 +97,14 @@ public class GoogleDriveIndexingExecutor implements SourceIndexingExecutor {
     if (driveSettings == null) {
       return IndexingRunMode.FULL;
     }
-    Set<String> streams = streams(driveSettings);
     Duration interval = interval(driveSettings);
     return journal
         .find(library.getId())
-        .filter(state -> state.canReadChanges(streams, interval, clock.instant()))
+        .filter(
+            state -> {
+              Set<String> streams = streams(driveSettings, state);
+              return streams != null && state.canReadChanges(streams, interval, clock.instant());
+            })
         .map(state -> IndexingRunMode.INCREMENTAL)
         .orElse(IndexingRunMode.FULL);
   }
@@ -125,6 +132,10 @@ public class GoogleDriveIndexingExecutor implements SourceIndexingExecutor {
     run.recordRequestCost(budget.meter());
     UUID libraryId = run.library().getId();
     SourceSyncState state = journal.load(libraryId);
+    if (settings.allScopes()) {
+      settings = resolve(run, api, settings, state);
+      state = journal.save(run.jobId(), state);
+    }
     try (DriveFileStore store = new DriveFileStore(api, settings, properties.pageSize());
         FileSync sync =
             new FileSync(
@@ -147,6 +158,31 @@ public class GoogleDriveIndexingExecutor implements SourceIndexingExecutor {
     }
   }
 
+  /**
+   * "Alle Ablagen" as this run finds it, noted in the protocol against the last resolution. A
+   * listing that fails or finds nothing fails the run before any file is touched.
+   */
+  private static GoogleDriveSettings resolve(
+      IndexingRun run, DriveApi api, GoogleDriveSettings settings, SourceSyncState state)
+      throws InterruptedException {
+    List<GoogleDriveScope> found;
+    try {
+      found = AllDriveScopes.resolve(api, settings.subject());
+    } catch (DriveApiException e) {
+      if (e.kind() == DriveApiException.Kind.UNAUTHORIZED) {
+        throw new SourceCredentialsRejectedException(e.getMessage(), e);
+      }
+      throw new IndexingRunFailedException(e.getMessage(), e);
+    } catch (RuntimeException e) {
+      throw new IndexingRunFailedException(e.getMessage(), e);
+    }
+    if (found.isEmpty()) {
+      throw new IndexingRunFailedException(GoogleDriveSourceConnector.NO_VISIBLE_SCOPE);
+    }
+    ResolvedScopes.note(run, state, AllDriveScopes.named(found), "Ablage", "Ablagen");
+    return settings.resolvedTo(found);
+  }
+
   private Duration interval(GoogleDriveSettings settings) {
     return rhythm.interval(
         GoogleDriveSourceConnector.TYPE,
@@ -161,6 +197,23 @@ public class GoogleDriveIndexingExecutor implements SourceIndexingExecutor {
                 scope.kind() == GoogleDriveScope.Kind.DRIVE
                     ? scope.key()
                     : DriveFileStore.USER_STREAM)
+        .collect(Collectors.toSet());
+  }
+
+  /**
+   * The change streams of {@code settings}; under "Alle Ablagen" those of the resolution {@code
+   * state} remembers, {@code null} before the first one.
+   */
+  static Set<String> streams(GoogleDriveSettings settings, SourceSyncState state) {
+    if (!settings.allScopes()) {
+      return streams(settings);
+    }
+    Map<String, String> resolved = state.resolvedScopes();
+    if (resolved == null) {
+      return null;
+    }
+    return resolved.keySet().stream()
+        .map(key -> key.equals(GoogleDriveScope.MY_DRIVE_KEY) ? DriveFileStore.USER_STREAM : key)
         .collect(Collectors.toSet());
   }
 }

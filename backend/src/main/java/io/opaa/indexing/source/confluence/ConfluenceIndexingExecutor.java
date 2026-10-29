@@ -10,6 +10,7 @@ import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.run.IndexingRun;
 import io.opaa.indexing.run.IndexingRunTemplate;
+import io.opaa.indexing.run.ResolvedScopes;
 import io.opaa.indexing.spi.ConnectorData;
 import io.opaa.indexing.spi.FullSyncRhythm;
 import io.opaa.indexing.spi.IndexingRunFailedException;
@@ -28,6 +29,8 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -74,6 +77,10 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   static final String NOT_SELECTED_SUFFIX =
       "liegt in einem nicht ausgewählten Space; der bisherige Stand bleibt bis zum nächsten"
           + " Vollabgleich";
+
+  static final String NO_VISIBLE_SPACE =
+      "Der Zugang sieht keinen Space außer persönlichen; der Umfang „Alle Spaces“ ist leer, der"
+          + " Bestand bleibt unverändert.";
 
   static final String BUDGET_STALL_ADVICE =
       "Der Lauf hat keine Seite neu aufgenommen. Budget anheben oder die Space-Auswahl aufteilen.";
@@ -206,10 +213,53 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     frame.budgetStallAdvice(BUDGET_STALL_ADVICE);
     try {
       client.verifyCredentials();
-      return sync.run(new ConfluenceRun(frame, client));
+      return sync.run(new ConfluenceRun(frame, client, selection(frame, client)));
     } catch (ConfluenceAccessException e) {
       throw accessFailure(frame, e);
     }
+  }
+
+  /**
+   * The spaces this run covers: the stored selection, or for "Alle Spaces" every space but the
+   * personal ones the access sees now, in key order (ADR-0023, Entscheidung 1). None visible or
+   * more than {@link ConfluenceSourceConnector#MAX_SPACES} fail the run before anything is touched;
+   * a space that appeared makes the next run a full one, which lists it completely.
+   */
+  private List<ConfluenceSpaceSelection> selection(IndexingRun frame, ConfluenceClient client)
+      throws ConfluenceAccessException, InterruptedException {
+    ConfluenceSourceSettings own =
+        ConfluenceSourceSettings.stored(frame.settings().connectorSettings());
+    if (!own.all()) {
+      return own.spaceSelection();
+    }
+    List<ConfluenceSpace> visible =
+        client.listSpaces().stream()
+            .filter(space -> !space.personal() && space.key() != null)
+            .sorted(Comparator.comparing(ConfluenceSpace::key))
+            .toList();
+    if (visible.isEmpty()) {
+      throw new IndexingRunFailedException(NO_VISIBLE_SPACE);
+    }
+    if (visible.size() > ConfluenceSourceConnector.MAX_SPACES) {
+      throw new IndexingRunFailedException(
+          "Der Zugang sieht "
+              + visible.size()
+              + " Spaces; der Umfang „Alle Spaces“ umfasst höchstens "
+              + ConfluenceSourceConnector.MAX_SPACES
+              + ". Bitte Spaces auswählen oder die Rechte des Zugangs enger fassen; der Bestand"
+              + " bleibt unverändert.");
+    }
+    Map<String, String> names = new LinkedHashMap<>();
+    visible.forEach(space -> names.put(space.key(), space.name()));
+    SourceSyncState state = journal.load(frame.library().getId());
+    ResolvedScopes.Change change = ResolvedScopes.note(frame, state, names, "Space", "Spaces");
+    if (!change.added().isEmpty()) {
+      state.requireFullSync();
+    }
+    journal.save(frame.jobId(), state);
+    return visible.stream()
+        .map(space -> new ConfluenceSpaceSelection(space.key(), space.name()))
+        .toList();
   }
 
   private static IndexingRunFailedException accessFailure(
@@ -231,8 +281,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     UUID libraryId = run.library.getId();
     SourceSyncState state = journal.load(libraryId);
     run.frame.adopt(state);
-    List<ConfluenceSpaceSelection> spaces =
-        orderForResumption(run.frame.settings().connectorSettings(), state);
+    List<ConfluenceSpaceSelection> spaces = orderForResumption(run.selection, state);
     run.resumed = state.isFullSyncInterrupted();
     state.beginFullSync(run.frame.jobId());
     state = journal.save(run.frame.jobId(), state);
@@ -538,10 +587,8 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
 
   /** Unfinished spaces of an interrupted full sync first, then the already completed ones. */
   static List<ConfluenceSpaceSelection> orderForResumption(
-      ConnectorData settings, SourceSyncState state) {
+      List<ConfluenceSpaceSelection> selection, SourceSyncState state) {
     Set<String> completed = state.isFullSyncInterrupted() ? state.completedScopeKeys() : Set.of();
-    List<ConfluenceSpaceSelection> selection =
-        ConfluenceSourceSettings.stored(settings).spaceSelection();
     List<ConfluenceSpaceSelection> ordered = new ArrayList<>();
     for (ConfluenceSpaceSelection space : selection) {
       if (!completed.contains(space.getSpaceKey())) {

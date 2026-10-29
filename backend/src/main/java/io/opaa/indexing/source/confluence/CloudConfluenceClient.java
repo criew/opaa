@@ -302,7 +302,8 @@ final class CloudConfluenceClient extends AbstractConfluenceClient {
   }
 
   private static ConfluenceSpace toSpace(JsonNode node) {
-    return new ConfluenceSpace(text(node, "id"), text(node, "key"), text(node, "name"));
+    return ConfluenceSpace.of(
+        text(node, "id"), text(node, "key"), text(node, "name"), text(node, "type"));
   }
 
   /**

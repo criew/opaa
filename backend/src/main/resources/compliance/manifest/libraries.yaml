@@ -266,6 +266,7 @@ nonPersonalTables:
     - scan_progress
     - settings_basis
     - full_sync_quota_held
+    - resolved_scopes
   source_sync_presence: [document_id, sync_state_id, scan_id]
   document_keywords:
     [id, document_id, library_id, keyword, model_id, extraction_version, created_at]

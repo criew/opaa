@@ -8,7 +8,6 @@ import io.opaa.indexing.source.s3.S3EventAuthentication;
 import io.opaa.indexing.source.s3.S3IndexingExecutor;
 import io.opaa.indexing.source.s3.S3KeyPatterns;
 import io.opaa.indexing.source.s3.S3PushReceiver;
-import io.opaa.indexing.source.s3.S3Scope;
 import io.opaa.indexing.source.s3.S3SourceConnector;
 import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.s3.S3SourceSettingsJson;
@@ -131,11 +130,6 @@ public class S3EventService implements S3PushReceiver {
   }
 
   private static boolean inScope(S3SourceSettings settings, S3ObjectEvent event) {
-    for (S3Scope scope : settings.scopes()) {
-      if (scope.bucket().equals(event.bucket()) && scope.contains(event.key())) {
-        return true;
-      }
-    }
-    return false;
+    return settings.scopeOf(event.bucket(), event.key()).isPresent();
   }
 }

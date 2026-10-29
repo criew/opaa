@@ -87,7 +87,9 @@ final class DataCenterConfluenceClient extends AbstractConfluenceClient {
             base() + REST + "/space?limit=" + pageSize() + "&start=0",
             resource,
             reader(resource))) {
-      spaces.add(new ConfluenceSpace(text(node, "id"), text(node, "key"), text(node, "name")));
+      spaces.add(
+          ConfluenceSpace.of(
+              text(node, "id"), text(node, "key"), text(node, "name"), text(node, "type")));
     }
     return spaces;
   }

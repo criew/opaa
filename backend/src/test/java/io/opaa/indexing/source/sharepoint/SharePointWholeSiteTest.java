@@ -1,6 +1,7 @@
 package io.opaa.indexing.source.sharepoint;
 
 import static io.opaa.indexing.source.sharepoint.SharePointTestStores.DRIVE_0;
+import static io.opaa.indexing.source.sharepoint.SharePointTestStores.DRIVE_1;
 import static io.opaa.indexing.source.sharepoint.SharePointTestStores.SITE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -8,11 +9,14 @@ import static org.mockito.Mockito.mock;
 
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.RequestBudget;
 import io.opaa.indexing.spi.SourceConnectionTestResult;
 import io.opaa.indexing.spi.SourceSettings;
+import io.opaa.indexing.spi.SourceSyncState;
 import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.msgraph.FakeGraphServer;
+import io.opaa.msgraph.GraphClient;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -71,6 +75,44 @@ class SharePointWholeSiteTest {
 
     assertThat(result.reachable()).isTrue();
     assertThat(result.message()).contains("2 Dokumentbibliotheken");
+  }
+
+  @Test
+  void theResolutionListsTheDocumentLibrariesOfTheSiteOnly() throws Exception {
+    SharePointSettings settings = SharePointSettings.read(wholeSite());
+    GraphClient graph =
+        SharePointTestStores.connections(server)
+            .open(
+                new SourceSettings(null, server.origin().toString(), null, null),
+                () -> FakeGraphServer.TOKEN,
+                RequestBudget.unbounded());
+
+    List<SharePointLibrary> found = SiteLibraries.resolve(graph, settings.sites());
+
+    assertThat(found).extracting(SharePointLibrary::driveId).containsExactlyInAnyOrder(DRIVE_0, DRIVE_1);
+    assertThat(settings.resolvedTo(found).libraries()).hasSize(2);
+  }
+
+  @Test
+  void theDefaultRunModeHoldsTheLibrariesOfTheLastResolution() {
+    SharePointSettings settings = SharePointSettings.read(wholeSite());
+    SourceSyncState state = new SourceSyncState(UUID.randomUUID());
+
+    assertThat(SharePointIndexingExecutor.streams(settings, state)).isNull();
+
+    state.rememberResolvedScopes(Map.of("drive:" + DRIVE_0, "Team / Dokumente"));
+
+    assertThat(SharePointIndexingExecutor.streams(settings, state))
+        .containsExactly("drive:" + DRIVE_0);
+  }
+
+  @Test
+  void aSiteTakenWholeAndOneOfItsLibrariesAreRefusedTogether() {
+    Map<String, Object> one = Map.of("driveId", DRIVE_0, "site", Map.of("id", SITE));
+    Map<String, Object> site = Map.of("site", Map.of("id", SITE));
+    assertThatThrownBy(
+            () -> connector.readSettings(ConnectorData.of(Map.of("libraries", List.of(one, site)))))
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test

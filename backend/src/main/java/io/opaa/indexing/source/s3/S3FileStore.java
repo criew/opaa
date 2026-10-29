@@ -27,7 +27,10 @@ final class S3FileStore implements FileStore {
   private final Map<String, S3Scope> scopes = new LinkedHashMap<>();
   private final S3KeyPatterns patterns;
 
-  /** Whether bucket and prefix segments open every folder chain - a library with several scopes. */
+  /**
+   * Whether bucket and prefix segments open every folder chain - a library with several scopes, or
+   * with "Alle Buckets", whose folder structure must not change with the number of buckets.
+   */
   private final boolean scopeRootChain;
 
   S3FileStore(S3ObjectStore store, S3SourceSettings settings) {
@@ -36,7 +39,7 @@ final class S3FileStore implements FileStore {
       scopes.put(scope.key(), scope);
     }
     this.patterns = S3KeyPatterns.of(settings);
-    this.scopeRootChain = settings.scopes().size() > 1;
+    this.scopeRootChain = settings.allBuckets() || settings.scopes().size() > 1;
   }
 
   static FileContainer container(S3Scope scope) {

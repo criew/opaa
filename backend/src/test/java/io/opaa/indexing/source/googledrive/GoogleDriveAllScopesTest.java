@@ -6,13 +6,16 @@ import static org.mockito.Mockito.mock;
 
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.RequestBudget;
 import io.opaa.indexing.spi.SourceConnectionTestResult;
 import io.opaa.indexing.spi.SourceSettings;
+import io.opaa.indexing.spi.SourceSyncState;
 import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.security.TargetAddressValidator;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -86,5 +89,39 @@ class GoogleDriveAllScopesTest {
     assertThat(shared.reachable()).isTrue();
     assertThat(shared.message()).contains("2 Ablagen");
     assertThat(own.message()).contains("3 Ablagen");
+  }
+
+  @Test
+  void theResolutionReadsEveryPageOfSharedDrives() throws Exception {
+    server.addDrive("drive2", "Projekte");
+    server.pageSizeAtMost(1);
+    DriveApi api =
+        new DriveApiFactory(
+                GoogleDriveProperties.defaults(), TargetAddressValidator.disabled(), wait -> {})
+            .open(
+                new SourceSettings(null, server.base().toString(), null, null),
+                () -> FakeDriveServer.TOKEN,
+                RequestBudget.unbounded());
+
+    List<GoogleDriveScope> found = AllDriveScopes.resolve(api, "fach@example.org");
+
+    assertThat(found)
+        .extracting(GoogleDriveScope::key)
+        .containsExactly("myDrive", "drive:drive0", "drive:drive1", "drive:drive2");
+  }
+
+  @Test
+  void theDefaultRunModeHoldsTheStreamsOfTheLastResolution() {
+    GoogleDriveSettings all =
+        GoogleDriveSettings.read(
+            ConnectorData.of(Map.of("allScopes", true, "subject", "fach@example.org")));
+    SourceSyncState state = new SourceSyncState(UUID.randomUUID());
+
+    assertThat(GoogleDriveIndexingExecutor.streams(all, state)).isNull();
+
+    state.rememberResolvedScopes(Map.of("myDrive", "Meine Ablage", "drive:drive0", "Ablage"));
+
+    assertThat(GoogleDriveIndexingExecutor.streams(all, state))
+        .containsExactlyInAnyOrder("user", "drive:drive0");
   }
 }

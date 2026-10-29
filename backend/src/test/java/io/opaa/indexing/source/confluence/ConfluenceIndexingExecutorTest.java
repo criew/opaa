@@ -62,12 +62,14 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
@@ -1676,6 +1678,34 @@ class ConfluenceIndexingExecutorTest {
         .ingest(DocumentIngests.that().text().titled("Privatnotizen").match(), any());
     verify(eventRepository)
         .save(argThat(event(IndexingEventCategory.SUMMARY, "Umfang „Alle“: 3 Spaces", null)));
+  }
+
+  @Test
+  void allSpacesNamesTheSpacesThatAppearedOrVanishedSinceTheLastRun() throws Exception {
+    start(ConfluenceEdition.CLOUD, null);
+    library.updateSourceSettings("{\"edition\": \"CLOUD\", \"allSpaces\": true, \"spaces\": []}");
+    SourceSyncState remembered = new SourceSyncState(library.getId());
+    remembered.rememberResolvedScopes(
+        Map.of("ENG", "Engineering", "HR", "Personal", "OPS", "Betrieb"));
+    when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(remembered));
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.SUMMARY,
+                    "Neu im Umfang: 1 Space – „Geheimschutz“",
+                    null)));
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.SUMMARY,
+                    "Nicht mehr im Umfang: 1 Space – „Betrieb“",
+                    null)));
+    assertThat(remembered.resolvedScopes()).containsOnlyKeys("ENG", "HR", "SEC");
   }
 
   private static ArgumentMatcher<IndexingRunEvent> event(
