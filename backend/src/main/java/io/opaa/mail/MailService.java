@@ -157,7 +157,8 @@ public class MailService {
    * {@link #send} through {@code transport} instead of the stored settings, for settings still
    * being entered. The outcome is not written to the stored settings, whose send status it does not
    * describe, and nothing here logs: the caller decides what of a failure reaches a log line. A
-   * {@link SendResult.Failed} carries the cause without any address. Never throws.
+   * {@link SendResult.Failed} carries the cause without any address and without the password of
+   * {@code transport}. Never throws.
    */
   public SendResult sendThrough(
       MailSenderProvider.Transport transport,
@@ -179,16 +180,18 @@ public class MailService {
     try {
       transport.sender().send(compose(transport.sender(), transport.settings(), recipient, mail));
     } catch (Exception e) {
-      return new SendResult.Failed(maskedCauseOf(e));
+      return new SendResult.Failed(maskedCauseOf(e, transport.settings().password()));
     }
     return new SendResult.Sent(recipient);
   }
 
   /**
-   * The cause of a failed connection or send without an address in it, as {@link #send} reports it.
+   * The cause of a failed connection or send without {@code password} and without an address in it.
+   * The password goes first: once the address mask has shortened a password that looks like an
+   * address, the rest of it would no longer be found.
    */
-  static String maskedCauseOf(Exception e) {
-    return MailRecipients.maskAddresses(causeOf(e));
+  static String maskedCauseOf(Exception e, String password) {
+    return MailRecipients.maskAddresses(MailLogText.withoutSecret(causeOf(e), password));
   }
 
   private SendResult attemptSend(

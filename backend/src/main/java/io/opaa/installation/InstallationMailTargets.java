@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -36,6 +37,11 @@ class InstallationMailTargets {
           + " frei; sonst den Server nach der Installation unter „Administration → E-Mail“"
           + " eintragen.";
 
+  /**
+   * Control characters (C0, DEL, C1 including U+0085) and the Unicode line and paragraph breaks.
+   */
+  private static final Pattern LINE_BREAKING = Pattern.compile("[\\p{Cc}\\p{Zl}\\p{Zp}]");
+
   private static final Logger log = LoggerFactory.getLogger(InstallationMailTargets.class);
 
   private final TargetAddressValidator validator;
@@ -64,13 +70,19 @@ class InstallationMailTargets {
     }
   }
 
+  /**
+   * Whether an entry names {@code host:port}; a bare IPv6 literal is compared as {@code [addr]}.
+   */
   private boolean namesExactly(String host, int port) {
-    String wanted = (host + ":" + port).toLowerCase(Locale.ROOT);
+    String name = host.indexOf(':') >= 0 && !host.startsWith("[") ? "[" + host + "]" : host;
+    String wanted = (name + ":" + port).toLowerCase(Locale.ROOT);
     return allowlist.stream().anyMatch(entry -> entry.toLowerCase(Locale.ROOT).equals(wanted));
   }
 
-  /** {@code value} with every control character replaced, so it cannot forge a log line. */
+  /**
+   * {@code value} with every control character and Unicode line break replaced (no forged line).
+   */
   static String forLog(String value) {
-    return value == null ? null : value.replaceAll("\\p{Cntrl}", "?");
+    return value == null ? null : LINE_BREAKING.matcher(value).replaceAll("?");
   }
 }
