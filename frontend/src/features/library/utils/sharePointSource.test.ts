@@ -85,6 +85,54 @@ describe('sharePointSource (ADR-0047)', () => {
     })
   })
 
+  it('reads and resends the site each document library was chosen in', () => {
+    const stored = sharePointLibrariesOf(
+      sharePointSettingsFromLibrary({
+        sourceType: 'SHAREPOINT',
+        sourceSettings: {
+          libraries: [
+            {
+              driveId: 'b!a',
+              name: 'Dokumente (Rathaus)',
+              site: { id: 'contoso.sharepoint.com,s-1,w-1', name: 'Rathaus' },
+            },
+            { driveId: 'b!b', site: { id: 'contoso.sharepoint.com,s-2,w-2' } },
+            { driveId: 'b!c', site: { name: 'ohne Kennung' } },
+          ],
+        },
+      }),
+    )
+
+    expect(stored).toEqual([
+      {
+        driveId: 'b!a',
+        name: 'Dokumente (Rathaus)',
+        folders: [],
+        site: { id: 'contoso.sharepoint.com,s-1,w-1', name: 'Rathaus' },
+      },
+      {
+        driveId: 'b!b',
+        name: null,
+        folders: [],
+        site: { id: 'contoso.sharepoint.com,s-2,w-2', name: null },
+      },
+      { driveId: 'b!c', name: null, folders: [] },
+    ])
+    expect(
+      sharePointPayloadOf({ libraries: stored, fullSyncIntervalDays: null }).sourceSettings,
+    ).toEqual({
+      libraries: [
+        {
+          driveId: 'b!a',
+          name: 'Dokumente (Rathaus)',
+          site: { id: 'contoso.sharepoint.com,s-1,w-1', name: 'Rathaus' },
+        },
+        { driveId: 'b!b', site: { id: 'contoso.sharepoint.com,s-2,w-2' } },
+        { driveId: 'b!c' },
+      ],
+    })
+  })
+
   it('accepts only Graph ids the connector takes', () => {
     expect(sharePointIdsValid({ driveId: 'b!a_-9', folders: [{ id: '01X', name: null }] })).toBe(
       true,

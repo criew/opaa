@@ -195,6 +195,23 @@ class OneDriveSourceConnectorTest {
                             "libraries",
                             List.of(Map.of("driveId", DRIVE_ANNA))))))
         .isInstanceOf(ValidationException.class);
+    // a OneDrive lies in no site of the selection dialog
+    assertThatThrownBy(
+            () ->
+                connector.readSettings(
+                    ConnectorData.of(
+                        Map.of(
+                            "drive",
+                            Map.of(
+                                "driveId",
+                                DRIVE_ANNA,
+                                "site",
+                                Map.of(
+                                    "id",
+                                    "contoso.sharepoint.com,2c712604-1370-44e7-a1f5-426573fda80a,"
+                                        + "2d2244c3-251a-49ea-93a8-39e1c3a060fe"))))))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageStartingWith("sourceSettings.drive: Das OneDrive ist {");
   }
 
   @Test
