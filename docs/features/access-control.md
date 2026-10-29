@@ -920,7 +920,7 @@ Access-Token des Anbieters **im Rumpf der Anfrage**, nie im `Authorization`-Head
 irgendeinen anderen Aufruf dazwischen: Ein Bearer-Token im Header würde das Konto anlegen, dessen
 Abwesenheit diese Anfrage gerade prüfen muss. Der Endpunkt ist ohne Sitzung erreichbar und prüft das
 Anbieter-Token selbst über dieselbe Anbieter-Registry wie jede andere Anfrage (Signatur, Issuer,
-Ablauf, `azp`).
+Ablauf, `azp` bzw. `aud`).
 
 **Was dabei geschieht** — in einer Transaktion: `users.issuer` und `users.subject` werden auf die
 Identität **aus dem geprüften Token** umgeschrieben, die lokalen Zugangsdaten sowie alle Link- und
