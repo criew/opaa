@@ -125,7 +125,7 @@ public class PromptService {
    * Every prompt of every prompt library that is associated with the space {@code spaceId} and
    * readable by the caller by the formula - the space is a hard boundary. By library name, within a
    * library by sort order and name. Only a member of the space may list them: an unknown or foreign
-   * space is a {@code 404}, a caller who is no member a {@code 403}.
+   * space and a caller who is no member get the same {@code 404}.
    */
   public List<AvailablePrompt> available(CurrentUser caller, UUID spaceId) {
     Set<UUID> offered =

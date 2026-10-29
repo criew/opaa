@@ -157,6 +157,62 @@ class SpaceServiceTest {
     assertThat(space.getMemberships()).doesNotContain(memberRow);
   }
 
+  private Space spaceWithMember(UUID owner, UUID member, UUID organizationId) {
+    Space space = new Space("Team", null, false, owner, organizationId);
+    space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationId));
+    space.addMembership(SpaceMembership.ofUser(member, SpaceRole.MEMBER, organizationId));
+    when(spaceRepository.findByIdWithMemberships(any(UUID.class))).thenReturn(Optional.of(space));
+    when(accessPolicy.hasAtLeast(space, owner, SpaceRole.ADMIN)).thenReturn(true);
+    return space;
+  }
+
+  // regression guard for #3358 (4): the instruction of a personal space stays with its person
+  @Test
+  void theSystemAdministrationDoesNotReadTheInstructionOfAnotherPersonsPersonalSpace() {
+    UUID organizationId = UUID.randomUUID();
+    UUID owner = UUID.randomUUID();
+    Space personal = new Space("Privater Bereich", null, true, owner, organizationId);
+    personal.changeModelInstruction("Antworte im Stil meiner Notizen.");
+    CurrentUser admin =
+        CurrentUser.of(UUID.randomUUID(), organizationId, SystemRole.SYSTEM_ADMIN, "Admin", null);
+    CurrentUser person = CurrentUser.of(owner, organizationId, SystemRole.USER, "Person", null);
+
+    assertThat(spaceService.detailOf(personal, admin).modelInstruction()).isNull();
+    assertThat(spaceService.detailOf(personal, person).modelInstruction())
+        .isEqualTo("Antworte im Stil meiner Notizen.");
+  }
+
+  // regression guard for #3358 (4): an archived space takes no new owner
+  @Test
+  void anArchivedSpaceCannotBeHandedOver() {
+    UUID organizationId = UUID.randomUUID();
+    UUID owner = UUID.randomUUID();
+    UUID member = UUID.randomUUID();
+    Space space = spaceWithMember(owner, member, organizationId);
+    space.archive();
+    CurrentUser caller = CurrentUser.of(owner, organizationId, SystemRole.USER, "Owner", null);
+
+    assertThatThrownBy(() -> spaceService.transferOwnership(space.getId(), member, caller))
+        .isInstanceOf(ConflictException.class)
+        .hasMessageContaining("archiviert");
+    assertThat(space.getOwnerId()).isEqualTo(owner);
+  }
+
+  // regression guard for #3358 (4): ownership only goes to an account that can act
+  @Test
+  void aSpaceIsNotHandedToAnInactiveAccount() {
+    UUID organizationId = UUID.randomUUID();
+    UUID owner = UUID.randomUUID();
+    UUID member = UUID.randomUUID();
+    Space space = spaceWithMember(owner, member, organizationId);
+    CurrentUser caller = CurrentUser.of(owner, organizationId, SystemRole.USER, "Owner", null);
+
+    assertThatThrownBy(() -> spaceService.transferOwnership(space.getId(), member, caller))
+        .isInstanceOf(ConflictException.class)
+        .hasMessageContaining("nicht aktiv");
+    assertThat(space.getOwnerId()).isEqualTo(owner);
+  }
+
   @Test
   void ensureDefaultSpaceInsertsWhenNoPersonalSpaceExistsYet() {
     UUID userId = UUID.randomUUID();
