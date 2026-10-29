@@ -629,6 +629,10 @@ paths:
         survives it: neither the working file nor a new document row. The reason - a store that
         refuses the write for a missing permission included - is named in the application log; the
         upload-store health group only covers what its probe reaches, which is the read direction.
+
+        **429:** past the upload rate limit (per address, per account, for the installation), and
+        when the upload processing pool of the instance has no free place. Both are answered before
+        anything is stored and carry Retry-After; the same file may be sent again after it.
       requestBody:
         required: true
         content:
@@ -671,6 +675,8 @@ paths:
           $ref: "#/components/responses/Conflict"
         "413":
           $ref: "#/components/responses/PayloadTooLarge"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
@@ -1349,7 +1355,8 @@ components:
         is always verified against the JVM truststore; there is no switch to skip it.
         CONFLUENCE (ADR-0023)
         requires sourceUrl (the instance's base address), sourceCredentials (format depends on
-        the edition) and sourceSettings with edition and a non-empty space selection. A
+        the edition) and sourceSettings with edition and either a non-empty space selection or
+        allSpaces true. A
         combination that contradicts sourceType, or a sourceType no connector serves, is
         rejected with 400.
       properties:
@@ -1460,14 +1467,24 @@ components:
             connector of sourceType defines and validates, answering a wrong one with 400. Never
             a secret: credentials travel in sourceCredentials. CONFLUENCE takes edition (CLOUD or
             DATA_CENTER, as the connection test detected it), spaces (1-500 entries {key, name})
-            and fullSyncIntervalDays (1-365, absent for the installation-wide default); S3 takes
-            region, pathStyle, scopes (1-50 non-overlapping {bucket, prefix}), includePatterns and
-            excludePatterns; FILESYSTEM takes excludePatterns (0-50 globs relative to sourcePath,
-            "/" as separator, an invalid one answered with 400); SHAREPOINT takes libraries (1-50
-            document libraries {driveId, folders, name, site}, only driveId required; site is
-            {id, name} of the site the library was chosen in, the id as the listing gives it after
-            site:, the name only shown - the connection test reports a library outside its site)
-            and fullSyncIntervalDays. Types without settings take none.
+            or allSpaces true with spaces empty or absent (every non-personal space the access
+            sees, resolved anew by every run, at most 500), and fullSyncIntervalDays (1-365,
+            absent for the installation-wide default); S3 takes region, pathStyle, scopes (1-50
+            non-overlapping {bucket, prefix}) or allBuckets true with scopes empty (every bucket
+            the key may list, resolved anew by every run; refused with 400 when the key lacks
+            s3:ListAllMyBuckets), includePatterns and excludePatterns; FILESYSTEM takes
+            excludePatterns (0-50 globs relative to sourcePath, "/" as separator, an invalid one
+            answered with 400); GOOGLE_DRIVE takes scopes (1-50 entries {drive}, {folder} or
+            {myDrive}) or allScopes true with scopes empty or absent (every shared drive the
+            account sees and, with subject, its own drive, resolved anew by every run), subject
+            and fullSyncIntervalDays; SHAREPOINT takes libraries (1-50 entries: document libraries
+            {driveId, folders, name, site}, only driveId required, or {site} without driveId for
+            every document library of that site, resolved anew by every run; site is {id, name}
+            of the site, the id as the listing gives it after site:, the name only shown - the
+            connection test reports a library outside its site; a site taken whole appears once,
+            and the entries are either all whole sites or all single libraries) and
+            fullSyncIntervalDays. Types without
+            settings take none.
           nullable: true
           type: object
           additionalProperties: true
@@ -1967,10 +1984,11 @@ components:
           description: >
             A change of the connector's settings (ADR-0038); absent leaves them untouched. What a
             present object replaces the connector decides: CONFLUENCE replaces each part it
-            carries - spaces as a whole (non-empty; every change forces a full sync),
+            carries - spaces as a whole (non-empty; every change forces a full sync) or allSpaces
+            (true clears the selection, false requires spaces in the same request),
             fullSyncIntervalDays (1-365, 0 returns to the installation-wide default) - and accepts
-            edition only when it equals the stored one; S3 and FILESYSTEM replace their settings as
-            a whole.
+            edition only when it equals the stored one; S3, FILESYSTEM, GOOGLE_DRIVE and
+            SHAREPOINT replace their settings as a whole.
           nullable: true
           type: object
           additionalProperties: true

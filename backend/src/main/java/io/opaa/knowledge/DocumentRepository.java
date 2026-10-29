@@ -1,6 +1,7 @@
 package io.opaa.knowledge;
 
 import io.opaa.api.types.DocumentStatus;
+import io.opaa.common.LikePatterns;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
@@ -53,9 +54,11 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
    * or lies below it ({@code path} followed by {@link SourceDocumentContext#HIERARCHY_SEPARATOR}).
    */
   default List<Document> findInHierarchy(UUID libraryId, String containerKey, String path) {
-    String escaped = path.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     return findInHierarchyMatching(
-        libraryId, containerKey, path, escaped + SourceDocumentContext.HIERARCHY_SEPARATOR + "%");
+        libraryId,
+        containerKey,
+        path,
+        LikePatterns.escape(path) + SourceDocumentContext.HIERARCHY_SEPARATOR + "%");
   }
 
   @Query(
@@ -76,6 +79,18 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
    * never suppress this library's own backfill.
    */
   boolean existsBySourceEntryUrlAndLibraryId(String sourceEntryUrl, UUID libraryId);
+
+  /**
+   * The buckets {@code libraryId} holds documents from: the host part of each {@code
+   * s3://<bucket>/<key>} file path, once each. "Alle Buckets" keeps an unreadable bucket among them
+   * in scope, so what is indexed from it stays.
+   */
+  @Query(
+      value =
+          "SELECT DISTINCT split_part(file_path, '/', 3) FROM documents"
+              + " WHERE library_id = :libraryId AND file_path LIKE 's3://%'",
+      nativeQuery = true)
+  List<String> findS3BucketsByLibraryId(@Param("libraryId") UUID libraryId);
 
   /**
    * Sets the stored name of an existing row - the cleaned name of an upload or a re-index - as a

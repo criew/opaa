@@ -33,7 +33,7 @@ class LibraryExternalAccessServiceFeatureTest {
             mock(LibraryAccessService.class),
             users,
             mock(ApplicationEventPublisher.class),
-            new ExternalAccessProperties(365),
+            new ExternalAccessProperties(365, 30),
             tokenCounter,
             mock(SuccessionReachGuard.class),
             mock(OwnerOnlyRule.class),

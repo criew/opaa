@@ -260,7 +260,8 @@ export const MAIL_SENT_MESSAGE =
 
 export const PASSWORD_SET_MESSAGE = 'Passwort festgelegt — Sie können sich jetzt anmelden.'
 
-export const EMAIL_VERIFIED_MESSAGE = 'E-Mail-Adresse bestätigt — Sie können sich jetzt anmelden.'
+export const EMAIL_VERIFIED_MESSAGE =
+  'E-Mail-Adresse bestätigt und Passwort festgelegt — Sie können sich jetzt anmelden.'
 
 /** A self-service request that did not reach the backend; never the person's mistake. */
 export const SELF_SERVICE_UNREACHABLE_MESSAGE =

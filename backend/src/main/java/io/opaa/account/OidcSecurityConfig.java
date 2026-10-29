@@ -3,6 +3,7 @@ package io.opaa.account;
 import io.opaa.auth.SelfDisclosureDownloadFraming;
 import io.opaa.auth.UserProvisioningFilter;
 import io.opaa.auth.UserService;
+import io.opaa.security.ManagementPortMetrics;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Clock;
 import java.util.function.Predicate;
@@ -38,7 +39,8 @@ public class OidcSecurityConfig {
   private static final String LOCAL_SET_PASSWORD = "/api/v1/auth/local/set-password";
   private static final String LOCAL_FORGOT_PASSWORD = "/api/v1/auth/local/forgot-password";
   private static final String LOCAL_REGISTER = "/api/v1/auth/local/register";
-  private static final String LOCAL_VERIFY_EMAIL = "/api/v1/auth/local/verify-email";
+  private static final String LOCAL_CONFIRM_REGISTRATION =
+      "/api/v1/auth/local/confirm-registration";
   private static final String LOCAL_HANDOVER_PREVIEW = "/api/v1/auth/local/handover/preview";
   private static final String LOCAL_HANDOVER_REDEEM = "/api/v1/auth/local/handover/redeem";
 
@@ -96,7 +98,10 @@ public class OidcSecurityConfig {
 
   @Bean
   SecurityFilterChain securityFilterChain(
-      HttpSecurity http, CorsConfigurationSource corsConfigurationSource, Clock clock)
+      HttpSecurity http,
+      CorsConfigurationSource corsConfigurationSource,
+      Clock clock,
+      ObjectProvider<ManagementPortMetrics> managementPortMetrics)
       throws Exception {
     http.csrf(
             csrf ->
@@ -122,10 +127,14 @@ public class OidcSecurityConfig {
                         // answer a status, never details
                         "/actuator/health/readiness",
                         "/actuator/health/liveness",
-                        "/actuator/info",
-                        "/actuator/metrics",
-                        "/actuator/prometheus")
+                        "/actuator/info")
                     .permitAll()
+                    // Metrics name paths, libraries and load: open on a management port of their
+                    // own, which a network policy opens to the scraper alone, else only signed in.
+                    .requestMatchers(ManagementPortMetrics.onManagementPort(managementPortMetrics))
+                    .permitAll()
+                    .requestMatchers(ManagementPortMetrics.anyPort())
+                    .authenticated()
                     // Every other health group needs a token: the endpoint computes its
                     // contributors before it decides what to show, so an anonymous call to
                     // embedding-model or vector-store would trigger a real embedding call and a
@@ -134,6 +143,10 @@ public class OidcSecurityConfig {
                     // segments, so a single star would leave /actuator/health/<group>/<component>
                     // on anyRequest().permitAll().
                     .requestMatchers("/actuator/health/**")
+                    .authenticated()
+                    // Everything else of the actuator - its link list and any endpoint an operator
+                    // exposes on top (env, heapdump) - needs a sign-in, on every port.
+                    .requestMatchers("/actuator", "/actuator/**")
                     .authenticated()
                     .requestMatchers("/api/v1/auth/config")
                     .permitAll()
@@ -151,7 +164,7 @@ public class OidcSecurityConfig {
                         LOCAL_REFRESH,
                         LOCAL_LOGOUT,
                         LOCAL_SET_PASSWORD,
-                        LOCAL_VERIFY_EMAIL,
+                        LOCAL_CONFIRM_REGISTRATION,
                         LOCAL_HANDOVER_PREVIEW,
                         LOCAL_HANDOVER_REDEEM)
                     .permitAll()

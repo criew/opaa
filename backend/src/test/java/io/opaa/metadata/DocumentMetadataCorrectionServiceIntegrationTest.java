@@ -191,6 +191,23 @@ class DocumentMetadataCorrectionServiceIntegrationTest {
     assertThat(auditEvents()).isEmpty();
   }
 
+  /**
+   * The values come from the content: the system administration, which manages every library, reads
+   * them only with a grant of its own - the formula, not the administration, decides.
+   */
+  @Test
+  void theAdministrationReadsTheValuesOnlyWithAGrantOfItsOwn() throws IOException {
+    Document document = indexed("2026-03-13_Dienstanweisung_Telearbeit.pdf");
+    CurrentUser admin = user("admin", SystemRole.SYSTEM_ADMIN);
+
+    assertThatThrownBy(() -> correctionService.fieldsOf(library.getId(), document.getId(), admin))
+        .isInstanceOf(AccessDeniedException.class)
+        .hasMessageContaining("Verwaltungsrechte genügen dafür nicht");
+
+    grant(library, admin, AssetRole.VIEWER);
+    assertThat(correctionService.fieldsOf(library.getId(), document.getId(), admin)).hasSize(3);
+  }
+
   @Test
   void aViewerMayReadButNotCorrectAndAStrangerSeesNothing() throws IOException {
     Document document = indexed("2026-03-12_Dienstanweisung_IT-Nutzung.pdf");

@@ -24,6 +24,7 @@ import io.opaa.library.LibraryExternalAccessService;
 import io.opaa.search.SearchRequestScope;
 import io.opaa.search.SearchScopeSource;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.TestSessions;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Clock;
 import java.time.Duration;
@@ -112,7 +113,8 @@ class ExternalAccessSearchIntegrationTest {
             owner.getOrganizationId(),
             "Suchtoken",
             List.of(selectedLibraryId),
-            clock.instant().plus(Duration.ofDays(30)));
+            clock.instant().plus(Duration.ofDays(30)),
+            TestSessions.current(jdbc, owner.getId()));
     rawValue = issued.rawValue();
     tokenId = issued.token().getId();
   }

@@ -17,6 +17,8 @@ export type ConfluenceSpaceRef = {
 export type ConfluenceSettings = {
   edition?: ConfluenceEdition | null
   spaces?: ConfluenceSpaceRef[] | null
+  /** Every non-personal space the access sees, resolved anew by each run; `spaces` is empty then. */
+  allSpaces?: boolean | null
   fullSyncIntervalDays?: number | null
 }
 
@@ -49,6 +51,8 @@ export interface ConfluenceSourceValues {
   token: string
   /** True once the instance accepted the credentials (or, in edit mode, while the stored ones stand). */
   credentialsVerified: boolean
+  /** „Alle Spaces“: what the access sees when a run starts; the preselection of a new library. */
+  allSpaces: boolean
   spaces: ConfluenceSpaceRef[]
 }
 
@@ -61,6 +65,7 @@ export const EMPTY_CONFLUENCE_VALUES: ConfluenceSourceValues = {
   email: '',
   token: '',
   credentialsVerified: false,
+  allSpaces: true,
   spaces: [],
 }
 
@@ -101,6 +106,7 @@ export function confluenceIssue(values: ConfluenceSourceValues | undefined): Sou
   if (!values.credentialsVerified) {
     return formIssue('Bitte die Zugangsdaten mit „Verbindung testen“ prüfen, bevor Sie fortfahren')
   }
+  if (values.allSpaces) return null
   if (values.spaces.length === 0) {
     return formIssue('Bitte mindestens einen Space auswählen')
   }

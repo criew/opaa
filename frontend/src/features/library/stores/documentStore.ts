@@ -1,4 +1,3 @@
-import { AxiosError } from 'axios'
 import { create } from 'zustand'
 import type {
   BulkDocumentDeleteResponse,
@@ -18,16 +17,51 @@ import {
   uploadDocument as uploadDocumentRequest,
 } from '../api/libraryApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
+import { apiErrorStatus } from '@/shared/api/apiErrorDetails'
+import { retryAfterSecondsOf } from '@/shared/session/authApi'
 import { registerSessionStore } from '@/shared/session/resettableStores'
 
 // normalizeError (shared/api/api.ts) attaches the original AxiosError as
-// `cause` - this reaches into that to tell a real 404 (unknown/foreign folderId, ADR-0020) apart
+// `cause` - apiErrorStatus reaches into that to tell a real 404 (unknown/foreign folderId, ADR-0020) apart
 // from any other failure (500, network outage), which must surface as a normal error instead of
 // silently bouncing the caller back to the library's root.
 function isNotFoundError(err: unknown): boolean {
-  return (
-    err instanceof Error && err.cause instanceof AxiosError && err.cause.response?.status === 404
-  )
+  return apiErrorStatus(err) === 404
+}
+
+/**
+ * The seconds a refused upload waits before it sends the same file again: the `Retry-After` of a
+ * 429 (the upload rate limit or a full processing queue), at least one and at most 60; null for
+ * any other failure.
+ */
+function rateLimitWaitSeconds(err: unknown): number | null {
+  if (apiErrorStatus(err) !== 429) return null
+  return Math.min(Math.max(retryAfterSecondsOf(err) ?? 1, 1), 60)
+}
+
+/**
+ * How long one file waits out 429s in all before the refusal counts as its error: long enough for
+ * a processing queue that stays full for a few minutes.
+ */
+const MAX_RATE_LIMIT_WAIT_SECONDS = 300
+
+/** Resolves after `ms`, or as soon as `signal` aborts; true when the full time passed. */
+function waitUnlessAborted(ms: number, signal?: AbortSignal): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (signal?.aborted) {
+      resolve(false)
+      return
+    }
+    const onAbort = () => {
+      clearTimeout(timer)
+      resolve(false)
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort)
+      resolve(true)
+    }, ms)
+    signal?.addEventListener('abort', onAbort, { once: true })
+  })
 }
 
 const POLL_INTERVAL_MS = 3000
@@ -105,6 +139,9 @@ interface DocumentState {
   uploadErrors: string[]
   deleteError: string | null
   isUploading: boolean
+  // The seconds the running upload waits out a 429 before it sends its file again; null while it
+  // is not waiting.
+  uploadWaitSeconds: number | null
 
   reset: () => void
   loadDocuments: (
@@ -127,7 +164,16 @@ interface DocumentState {
   refreshStatusCountsDuringRun: (libraryId: string) => Promise<void>
   /** Drops the follow-up count refreshStatusCountsDuringRun scheduled for the library. */
   stopRunCounting: (libraryId: string) => void
-  uploadNewDocument: (libraryId: string, file: File, folderPath?: string) => Promise<void>
+  /**
+   * Uploads one file into the open folder. A 429 is waited out (Retry-After) and the same file
+   * sent again; an abort of `signal` ends such a wait, and the file counts as refused.
+   */
+  uploadNewDocument: (
+    libraryId: string,
+    file: File,
+    folderPath?: string,
+    signal?: AbortSignal,
+  ) => Promise<void>
   removeDocument: (libraryId: string, documentId: string) => Promise<void>
   /**
    * The chosen documents in one call - resolves to the per-id outcome, or undefined when
@@ -248,6 +294,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   uploadErrors: [],
   deleteError: null,
   isUploading: false,
+  uploadWaitSeconds: null,
 
   reset: () => {
     Object.keys(pollIntervalIds).forEach((libraryId) => get().stopPolling(libraryId))
@@ -272,6 +319,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       uploadErrors: [],
       deleteError: null,
       isUploading: false,
+      uploadWaitSeconds: null,
     })
   },
 
@@ -300,7 +348,12 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     clearRunCount(libraryId)
   },
 
-  uploadNewDocument: async (libraryId: string, file: File, folderPath?: string) => {
+  uploadNewDocument: async (
+    libraryId: string,
+    file: File,
+    folderPath?: string,
+    signal?: AbortSignal,
+  ) => {
     const sessionEpoch = currentSessionEpoch()
     const folderId = get().pageStateByLibrary[libraryId]?.folderId ?? null
     set({ isUploading: true })
@@ -310,7 +363,34 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       // created idempotently by the backend, letting a whole dragged-and-dropped or
       // webkitdirectory-selected folder tree land under one shared folder chain instead of a
       // duplicate per file.
-      await uploadDocumentRequest(libraryId, file, folderId, folderPath)
+      // A folder upload sends file after file; past the upload rate limit or a full processing
+      // queue it waits and goes on with the same file instead of failing every file that is left.
+      // Every try belongs to the session that started the upload. Leaving the page (signal) only
+      // ends a wait: the waiting file counts as refused, files not yet sent still go out.
+      let waitedSeconds = 0
+      for (;;) {
+        if (isStaleSessionEpoch(sessionEpoch)) return
+        try {
+          await uploadDocumentRequest(libraryId, file, folderId, folderPath)
+          break
+        } catch (err) {
+          const seconds = rateLimitWaitSeconds(err)
+          if (
+            seconds === null ||
+            waitedSeconds + seconds > MAX_RATE_LIMIT_WAIT_SECONDS ||
+            isStaleSessionEpoch(sessionEpoch) ||
+            signal?.aborted
+          ) {
+            throw err
+          }
+          set({ uploadWaitSeconds: seconds })
+          const waitedOut = await waitUnlessAborted(seconds * 1000, signal)
+          if (isStaleSessionEpoch(sessionEpoch)) return
+          set({ uploadWaitSeconds: null })
+          if (!waitedOut) throw err
+          waitedSeconds += seconds
+        }
+      }
       if (isStaleSessionEpoch(sessionEpoch)) return
       set({ isUploading: false })
     } catch (err) {
@@ -327,7 +407,11 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       // ambiguous to a person reading the list.
       const fileLabel = folderPath ? `${folderPath}/${file.name}` : file.name
       const message = `${rawMessage} (Datei: ${fileLabel})`
-      set({ uploadErrors: [...get().uploadErrors, message], isUploading: false })
+      set({
+        uploadErrors: [...get().uploadErrors, message],
+        isUploading: false,
+        uploadWaitSeconds: null,
+      })
       throw err
     }
     // A local prepend cannot know whether the uploaded file belongs on the page the user is looking

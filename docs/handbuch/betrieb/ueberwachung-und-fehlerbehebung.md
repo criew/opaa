@@ -11,12 +11,26 @@ Installation beschreibt die [Betriebsübersicht](README.md).
   `logstash`, `gelf`) als JSON. Beim Start stehen dort Version, Warnungen zur Konfiguration, das
   Installations-Token des ersten Starts ([Installation](installation.md#installations-token)), das
   Ergebnis einer Antwortdatei und jeder Startabbruch mit dem Namen der Variable.
+- **Textformat:** Jede Folgezeile einer mehrzeiligen Meldung oder Exception-Nachricht ist um vier
+  Leerzeichen eingerückt, Steuer- und Bidi-Zeichen erscheinen als `?`. Ein Name oder eine Adresse
+  aus einer Quelle kann so keinen eigenen Logeintrag vortäuschen; ein neuer Eintrag beginnt immer am
+  Zeilenanfang. Ein eigenes Muster (`LOGGING_PATTERN_CONSOLE`) muss dafür
+  `${LOG_EXCEPTION_CONVERSION_WORD}` oder `%opaaEx` enthalten, und `LOGGING_EXCEPTION_CONVERSION_WORD`
+  muss `%opaaEx` bleiben; sonst hängt Logback seinen eigenen Stacktrace an, und Exception-Nachrichten
+  erscheinen unbereinigt.
 - **Inhalt:** Geheimnisse, Zugangsdaten und Request-Bodies erscheinen nicht, Namen aus privaten
   Bibliotheken auch auf `DEBUG` nicht. Ausgaben eingebundener Bibliotheken auf `DEBUG`/`TRACE` und
   Datenbankfehler können Inhalte nennen: Ein Log über `INFO` wie Inhalte behandeln.
 - **Handlungen von Personen** stehen nicht im Log, sondern im Nachweis- und Revisionsprotokoll der
   Anwendung ([Berechtigungen](../konten-und-rechte/berechtigungen.md)).
-- **Metriken** im Prometheus-Format unter `/actuator/prometheus`:
+- **Metriken** im Prometheus-Format unter `/actuator/prometheus`, einzeln unter `/actuator/metrics`.
+  Sie nennen Pfade, Bibliotheken und Last und sind deshalb ohne Anmeldung nur auf einem eigenen
+  Management-Port erreichbar (`MANAGEMENT_SERVER_PORT`, unter Kubernetes `backend.managementPort`),
+  den eine Netzregel nur dem Prometheus öffnet. Mit eigenem Management-Port gibt es die
+  Actuator-Pfade auf dem API-Port nicht. Ohne ihn liegen sie auf dem API-Port, und die Metriken
+  antworten dort nur mit Anmeldung. Der Helm-Chart richtet den Management-Port ein; unter Docker
+  Compose läuft der Actuator auf dem API-Port, wer dort Metriken einsammeln will, setzt
+  `MANAGEMENT_SERVER_PORT` ([Konfiguration](konfiguration.md)):
 
 | Metrik | Bedeutung |
 |---|---|
@@ -126,14 +140,20 @@ einer internen Zertifizierungsstelle kommt über `extraCACertificates` in den Ve
 
 ## Diagnose ohne Shell
 
-Actuator-Pfade sind nur über den Backend- bzw. Management-Port erreichbar, nicht über das Frontend:
+Actuator-Pfade sind nur über den Backend- bzw. Management-Port erreichbar, nicht über das Frontend.
+Unter Docker Compose ist `localhost:8081` der API-Port des Backends auf dem Host
+(`OPAA_BACKEND_PORT`), unter Kubernetes die Portweiterleitung auf den Management-Port
+(`kubectl port-forward deploy/opaa-backend 8081:8081`):
 
 ```bash
 curl -s http://localhost:8081/actuator/info              # Version
 curl -s http://localhost:8081/actuator/health/readiness  # Readiness
-curl -s http://localhost:8081/actuator/prometheus        # Metriken
+curl -s http://localhost:8081/actuator/prometheus        # Metriken, Kubernetes (Management-Port)
+curl -s -H "Authorization: Bearer <token>" http://localhost:8081/actuator/prometheus  # Compose
 curl -s -H "Authorization: Bearer <token>" https://<host>/api/v1/admin/diagnostics/client-address
 ```
+
+`<token>` ist das Token einer angemeldeten Sitzung, etwa aus dem Browser.
 
 Der letzte Aufruf (Systemverwaltung, über den Proxy) zeigt, welche Client-Adresse das Backend für
 diese Anfrage ermittelt (`clientAddress`). Steht dort die Adresse des Proxys, fehlt er in

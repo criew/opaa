@@ -171,6 +171,10 @@ public class LocalAdminReset {
     row.invalidateSessionsIssuedBefore(LocalTokenRevocationService.cutoffFor(now), now);
     credentials.save(row);
     refreshTokens.revokeAllForUser(admin.getId(), RevocationReason.ADMIN_RESET, now);
+    credentials.flush();
+    events.publishEvent(
+        LocalAccountSessionsEndedEvent.bySystem(
+            admin, RevocationReason.ADMIN_RESET, LocalRefreshTokenService.SYSTEM_ACTOR));
     LocalAdminResetRecord done = findRecord().orElseGet(() -> new LocalAdminResetRecord(now));
     done.markForcedReset(now);
     record.save(done);

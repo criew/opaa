@@ -102,21 +102,24 @@ public enum MailTemplateKey {
       "Bestätigung der Selbstregistrierung",
       "Bestätigen Sie Ihre E-Mail-Adresse für {{productName}}",
       """
-      Guten Tag {{displayName}},
+      Guten Tag,
 
-      bestätigen Sie diese Adresse, um Ihren Zugang zu {{productName}} zu aktivieren:
+      für diese Adresse wurde ein Zugang zu {{productName}} beantragt. Bestätigen Sie die Adresse und legen Sie Ihr Passwort fest:
 
       {{actionUrl}}
 
-      Der Link ist {{expiresAtHuman}} gültig. Haben Sie sich nicht registriert, können Sie diese Nachricht ignorieren.
+      Der Link ist {{expiresAtHuman}} gültig.
+
+      Nicht von Ihnen? Dann ignorieren Sie diese Nachricht. Ohne den Link wird kein Zugang aktiv.
       """,
       """
       <h1 style="margin:0 0 14px;font-size:22px;font-weight:700;line-height:1.3;">E-Mail-Adresse bestätigen</h1>
-      <p style="margin:0 0 14px;">Guten Tag {{displayName}},</p>
-      <p style="margin:0 0 14px;">bestätigen Sie diese Adresse, um Ihren Zugang zu <strong>{{productName}}</strong> zu aktivieren.</p>
-      <p style="margin:0;font-size:13px;">Der Link ist {{expiresAtHuman}} gültig. Haben Sie sich nicht registriert, können Sie diese Nachricht ignorieren.</p>
+      <p style="margin:0 0 14px;">Guten Tag,</p>
+      <p style="margin:0 0 14px;">für diese Adresse wurde ein Zugang zu <strong>{{productName}}</strong> beantragt. Bestätigen Sie die Adresse und legen Sie Ihr Passwort fest.</p>
+      <p style="margin:0 0 14px;font-size:13px;">Der Link ist {{expiresAtHuman}} gültig.</p>
+      <p style="margin:0;font-size:13px;"><strong>Nicht von Ihnen?</strong> Dann ignorieren Sie diese Nachricht. Ohne den Link wird kein Zugang aktiv.</p>
       """,
-      "E-Mail-Adresse bestätigen",
+      "Adresse bestätigen und Passwort festlegen",
       "Bestätigen Sie Ihre Adresse für {{productName}}.",
       "productName",
       "displayName",
@@ -332,6 +335,28 @@ public enum MailTemplateKey {
       "displayName",
       "tokenName",
       "expiresAtHuman"),
+  EXTERNAL_ACCESS_TOKEN_ISSUED(
+      "Zugangstoken erzeugt",
+      "Für Ihren Zugang zu {{productName}} wurde ein Zugangstoken erzeugt",
+      """
+      Guten Tag {{displayName}},
+
+      für Ihren Zugang zu {{productName}} wurde {{occurredAtHuman}} das Zugangstoken „{{tokenName}}“ für externe KI-Werkzeuge erzeugt.
+
+      Falls Sie das nicht waren, widerrufen Sie es sofort in Ihren Einstellungen unter „Zugangstokens“ und wenden Sie sich an Ihre Systemverwaltung.
+      """,
+      """
+      <h1 style="margin:0 0 14px;font-size:22px;font-weight:700;line-height:1.3;">Zugangstoken erzeugt</h1>
+      <p style="margin:0 0 14px;">Guten Tag {{displayName}},</p>
+      <p style="margin:0 0 14px;">für Ihren Zugang zu <strong>{{productName}}</strong> wurde {{occurredAtHuman}} das Zugangstoken <strong>{{tokenName}}</strong> für externe KI-Werkzeuge erzeugt.</p>
+      <p style="margin:0;font-size:13px;">Falls Sie das nicht waren, widerrufen Sie es sofort in Ihren Einstellungen unter „Zugangstokens“ und wenden Sie sich an Ihre Systemverwaltung.</p>
+      """,
+      null,
+      "Für Ihren Zugang wurde das Zugangstoken {{tokenName}} erzeugt.",
+      "productName",
+      "displayName",
+      "tokenName",
+      "occurredAtHuman"),
 
   SELF_DISCLOSURE_STARTED(
       "Selbstauskunft gestartet",

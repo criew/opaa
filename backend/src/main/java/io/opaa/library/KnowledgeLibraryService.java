@@ -16,6 +16,7 @@ import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
+import io.opaa.common.LikePatterns;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.TransactionCallbacks;
 import io.opaa.common.ValidationException;
@@ -878,7 +879,7 @@ public class KnowledgeLibraryService {
     if (!statuses.isEmpty()) {
       return listDocumentRows(
           documentRepository.searchByStatus(
-              libraryId, searching ? escapeLike(q) : "", statuses, pageable),
+              libraryId, searching ? LikePatterns.escape(q) : "", statuses, pageable),
           libraryId,
           pageable);
     }
@@ -893,7 +894,7 @@ public class KnowledgeLibraryService {
                       libraryId, q));
       Page<Document> page =
           documentRepository.searchTopLevelByFileNameOrAttachmentRoot(
-              libraryId, escapeLike(q), attachmentRootIds, pageable);
+              libraryId, LikePatterns.escape(q), attachmentRootIds, pageable);
       Map<UUID, LibraryFolder> foldersById =
           LibraryFolderPaths.loadFoldersById(folderRepository, libraryId);
       return new LibraryDocumentPage(
@@ -943,7 +944,11 @@ public class KnowledgeLibraryService {
     }
     return listDocumentRows(
         documentRepository.searchWithoutMetadataValue(
-            libraryId, q == null ? "" : escapeLike(q), fieldKey, DocumentStatus.INDEXED, pageable),
+            libraryId,
+            q == null ? "" : LikePatterns.escape(q),
+            fieldKey,
+            DocumentStatus.INDEXED,
+            pageable),
         libraryId,
         pageable);
   }
@@ -1053,16 +1058,6 @@ public class KnowledgeLibraryService {
       parentIds = next;
     }
     return roots;
-  }
-
-  /**
-   * Backslash-escapes LIKE metacharacters ({@code \}, {@code %}, {@code _}) for {@code
-   * DocumentRepository#searchTopLevelByFileNameOrAttachmentRoot}'s hand-written LIKE - preserving
-   * the literal-match semantics the derived {@code ...ContainingIgnoreCase} finders apply
-   * automatically.
-   */
-  private static String escapeLike(String q) {
-    return q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
   }
 
   /**

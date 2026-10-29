@@ -84,9 +84,7 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
     await clearMailbox();
     await user.goto("/register");
     await expect(user.getByRole("heading", { level: 1, name: "Konto registrieren" })).toBeVisible();
-    await user.locator("#register-display-name").fill("Fremde Person");
     await user.locator("#register-email").fill(outsideAddress);
-    await user.locator("#register-password").fill(password);
     await user.getByRole("button", { name: "Konto registrieren" }).click();
     await expect(
       user.getByText("Wenn zu dieser Adresse ein Konto besteht, haben wir eine E-Mail geschickt."),
@@ -95,9 +93,9 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
     // An address inside the list does create an account - unconfirmed, and therefore not yet able
     // to sign in.
     await user.goto("/register");
-    await user.locator("#register-display-name").fill("Neue Kollegin");
+    // The form asks for the address alone: nobody can put a name on somebody else's account.
+    await expect(user.locator("#register-display-name")).toHaveCount(0);
     await user.locator("#register-email").fill(address);
-    await user.locator("#register-password").fill(password);
     await user.getByRole("button", { name: "Konto registrieren" }).click();
     await expect(
       user.getByText("Wenn zu dieser Adresse ein Konto besteht, haben wir eine E-Mail geschickt."),
@@ -112,6 +110,7 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
     // erfüllt gewesen, bevor irgendein Versand hätte stattfinden können.
     expect(await mailCount()).toBe(1);
     expect(confirmation.recipients.map((a) => a.toLowerCase())).toEqual([address.toLowerCase()]);
+    expect(confirmation.text).toContain("Nicht von Ihnen?");
 
     await user.goto("/login");
     await user.getByLabel("E-Mail-Adresse").fill(address);
@@ -121,11 +120,21 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
       user.getByText("Anmeldung nicht möglich. Prüfen Sie E-Mail-Adresse und Passwort."),
     ).toBeVisible();
 
+    // The registration carried neither password nor name: the page behind the link sets both and confirms the address in one step, so only who holds the mailbox decides them.
     await user.goto(verifyPath);
     await expect(
-      user.getByText("E-Mail-Adresse bestätigt — Sie können sich jetzt anmelden."),
+      user.getByRole("heading", { level: 1, name: "Passwort festlegen" }),
     ).toBeVisible();
     await expect.poll(() => user.url()).not.toContain("token=");
+    await user.getByLabel("Name", { exact: true }).fill("Neue Kollegin");
+    await user.getByLabel("Passwort", { exact: true }).fill(password);
+    await user.getByLabel("Passwort wiederholen", { exact: true }).fill(password);
+    await user.getByRole("button", { name: "Adresse bestätigen" }).click();
+    await expect(
+      user.getByText(
+        "E-Mail-Adresse bestätigt und Passwort festgelegt — Sie können sich jetzt anmelden.",
+      ),
+    ).toBeVisible();
 
     await signInSuccessfully(user, address, password);
     await user.goto("/spaces");
