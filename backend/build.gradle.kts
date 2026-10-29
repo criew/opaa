@@ -468,6 +468,13 @@ val testShards = mapOf(
     ),
 )
 
+// No test JVM caches a resolved name: every lookup a client makes reaches the resolver, so a test
+// can script a name server that answers the address check and the connection differently
+// (io.opaa.security.ScriptedResolution, ADR-0063).
+tasks.withType<Test>().configureEach {
+    systemProperty("sun.net.inetaddr.ttl", "0")
+}
+
 tasks.named<Test>("test") {
     filter {
         excludeTestsMatching("io.opaa.integration.*")

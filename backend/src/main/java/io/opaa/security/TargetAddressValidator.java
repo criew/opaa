@@ -1,5 +1,6 @@
 package io.opaa.security;
 
+import io.opaa.common.NumericAddress;
 import io.opaa.outbound.OutboundProxySelector;
 import java.io.IOException;
 import java.net.Inet4Address;
@@ -19,8 +20,10 @@ import org.slf4j.LoggerFactory;
  * admits every port of the host, an entry {@code host:port} (IPv6 as {@code [addr]:port}) only that
  * port - of a URI, or of a bare host whose caller names the port it connects to.
  *
- * <p>DNS rebinding is an accepted limitation: the vetted address and the one the client connects to
- * come from two resolutions of the same name, and the JDK client offers no hook to pin one.
+ * <p>A name that passes is bound to the addresses it was vetted with ({@link ResolutionPins}):
+ * every client of this JVM resolving it afterwards gets those addresses, later only fresh ones
+ * outside the blocked ranges, so a name server cannot answer the check and the connection
+ * differently. An allowlist entry ends the binding of its name (ADR-0063).
  *
  * <p>The target is checked, never the outbound proxy. A name that does not resolve locally passes
  * only when its connection goes through the outbound proxy, because the proxy resolves it: for
@@ -81,6 +84,7 @@ public class TargetAddressValidator {
       throw new TargetAddressBlockedException("Die Zieladresse enthält keinen gültigen Host.");
     }
     if (isAllowed(host, effectivePort(uri))) {
+      ResolutionPins.process().release(host);
       return;
     }
     checkHost(host, OutboundProxySelector.instance().proxyFor(uri).isPresent());
@@ -116,7 +120,11 @@ public class TargetAddressValidator {
 
   /** {@link #validateHost(String, boolean)} for a connection to {@code port}. */
   public void validateHost(String host, int port, boolean throughOutboundProxy) throws IOException {
-    if (!enabled || host == null || isAllowed(host, port < 0 ? NO_PORT : port)) {
+    if (!enabled || host == null) {
+      return;
+    }
+    if (isAllowed(host, port < 0 ? NO_PORT : port)) {
+      ResolutionPins.process().release(host);
       return;
     }
     checkHost(host, throughOutboundProxy);
@@ -145,28 +153,58 @@ public class TargetAddressValidator {
    * locally passes. Only a caller that actually hands its client that proxy may say so.
    */
   public void validateHost(String host, boolean throughOutboundProxy) throws IOException {
-    if (!enabled || host == null || isAllowed(host, NO_PORT)) {
-      return;
-    }
-    checkHost(host, throughOutboundProxy);
+    validateHost(host, NO_PORT, throughOutboundProxy);
   }
 
+  /**
+   * Vets every address {@code host} resolves to and binds the name to them; then vets what a client
+   * resolving the name now gets, which may still be an answer cached before the binding.
+   */
   private void checkHost(String host, boolean throughOutboundProxy) throws IOException {
-    InetAddress[] addresses;
+    if (isLiteral(host)) {
+      rejectBlocked(host, List.of(InetAddress.getAllByName(host)));
+      return;
+    }
+    ResolutionPins pins = ResolutionPins.process();
+    List<InetAddress> addresses;
     try {
-      addresses = InetAddress.getAllByName(host);
+      addresses = pins.resolveForCheck(host);
     } catch (UnknownHostException e) {
       if (throughOutboundProxy) {
         // The outbound proxy resolves the name, so a missing local resolution is no rejection.
         return;
       }
-      // Deliberately not surfaced as a generic "unreachable" - a DNS failure and a resolved-but-
-      // blocked target are different diagnoses for whoever configured this source. Same wording
-      // ConnectorChecks#translateConnectionError already uses for an ordinary
-      // UnknownHostException.
-      throw new UnknownTargetHostException(
-          "Der Host konnte nicht gefunden werden (DNS-Auflösung fehlgeschlagen): " + host);
+      throw unknownHost(host);
     }
+    rejectBlocked(host, addresses);
+    pins.pin(host, addresses);
+    if (throughOutboundProxy) {
+      return;
+    }
+    try {
+      rejectBlocked(host, List.of(InetAddress.getAllByName(host)));
+    } catch (UnknownHostException e) {
+      throw unknownHost(host);
+    }
+  }
+
+  /** An IP literal, bare or in brackets: it is its own address and never reaches DNS. */
+  private static boolean isLiteral(String host) {
+    boolean bracketed = host.length() > 2 && host.startsWith("[") && host.endsWith("]");
+    return NumericAddress.isNumeric(bracketed ? host.substring(1, host.length() - 1) : host);
+  }
+
+  /**
+   * A DNS failure, deliberately not a generic "unreachable": it and a resolved-but-blocked target
+   * are different diagnoses for whoever configured the target.
+   */
+  private static UnknownTargetHostException unknownHost(String host) {
+    return new UnknownTargetHostException(
+        "Der Host konnte nicht gefunden werden (DNS-Auflösung fehlgeschlagen): " + host);
+  }
+
+  private static void rejectBlocked(String host, List<InetAddress> addresses)
+      throws TargetAddressBlockedException {
     for (InetAddress address : addresses) {
       if (isBlockedAddress(address)) {
         log.warn(
