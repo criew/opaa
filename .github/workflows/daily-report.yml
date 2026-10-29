@@ -34,6 +34,9 @@ jobs:
       issues: read
       pull-requests: read
       actions: read
+    outputs:
+      # Empty when gh-pages does not exist yet or its checkout failed.
+      pages-commit: ${{ steps.pages.outputs.commit }}
     steps:
       - name: Skript auschecken
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -45,6 +48,7 @@ jobs:
           persist-credentials: false
 
       - name: Veröffentlichte Seite auschecken
+        id: pages
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: gh-pages
@@ -107,6 +111,13 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Prüfskript auschecken
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: .github/scripts/check_pages_base.sh
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
       - name: Veröffentlichte Seite auschecken
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -122,8 +133,13 @@ jobs:
           name: site
           path: generated
 
-      # The concurrency group keeps gh-pages unchanged between both jobs, so the generated tree is
-      # the complete new state of the branch.
+      # The generated tree is the complete new state of the branch only if both jobs checked out
+      # the same gh-pages commit; otherwise rsync --delete would drop what "report" did not see.
+      - name: Gleiche Basis wie der Report sicherstellen
+        env:
+          REPORT_PAGES_COMMIT: ${{ needs.report.outputs.pages-commit }}
+        run: bash .github/scripts/check_pages_base.sh site "$REPORT_PAGES_COMMIT"
+
       - name: Seite übernehmen
         run: |
           mkdir -p site
