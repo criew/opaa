@@ -246,9 +246,9 @@ paths:
         Ask for a password-reset link by e-mail (ADR-0033, Entscheidungen 9 and 11). Exists only
         while local accounts are switched on, the setting passwordResetEnabled is on and
         OPAA_PUBLIC_BASE_URL is configured (what GET /api/v1/auth/config reports as
-        localAccounts.passwordResetEnabled); otherwise it answers with the standard 404 - the
-        state is public through /auth/config anyway (an unknown route under /api answers 401
-        without a session). Where it exists it always answers 204 after the same
+        localAccounts.passwordResetEnabled). Otherwise the route is not public: without a session
+        it answers 401 like every protected route under /api, with one the standard 404 - the
+        state is public through /auth/config anyway. Where it exists it always answers 204 after the same
         response-time class - the work runs off the request thread - whether
         or not a local account exists under the address: an ACTIVE account and an account in a
         failed-login lockout receive the mail PASSWORD_RESET with a RESET_PASSWORD link
@@ -273,7 +273,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: The flow is switched off (standard 404 body)
+          description: The flow is switched off and the caller has a session (standard 404 body)
           content:
             application/json:
               schema:
@@ -290,8 +290,8 @@ paths:
         Register a local account (ADR-0033, Entscheidung 11). Exists only while local accounts
         are switched on, selfRegistrationEnabled is on with a non-empty domain list and
         OPAA_PUBLIC_BASE_URL is configured (localAccounts.selfRegistrationEnabled in
-        GET /api/v1/auth/config); otherwise it answers with the standard 404 (see
-        localForgotPassword). Where it exists, a plausible address, a display name and a password
+        GET /api/v1/auth/config); otherwise it answers 401 without a session and the standard
+        404 with one (see localForgotPassword). Where it exists, a plausible address, a display name and a password
         that passes the policy (400 with fieldErrors on email, displayName or password otherwise -
         a field error reveals nothing about accounts) always answer 202 after the same
         response-time class, the work running off the request thread:
@@ -321,7 +321,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: The flow is switched off (standard 404 body)
+          description: The flow is switched off and the caller has a session (standard 404 body)
           content:
             application/json:
               schema:

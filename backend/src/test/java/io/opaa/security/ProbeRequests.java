@@ -21,9 +21,9 @@ import tools.jackson.databind.ObjectMapper;
 /**
  * Builds one request per operation that is well-formed by the specification, so that what answers
  * is the authorization and not the request validation: every required parameter and every required
- * body property gets a value its schema admits. An id comes from the caller's {@code ids} by its
- * name ({@code spaceId}, {@code libraryId}, ...; a person's id under any {@code ...UserId}, {@code
- * ownerId} or {@code subjectId}), any other id is {@link #UNKNOWN}.
+ * body property gets its first enum value, its example (never an address) or a value its schema
+ * admits. An id comes from the caller's {@code ids} by its name, a person's under any {@code
+ * ...UserId}, {@code ownerId} or {@code subjectId}; any other id is {@link #UNKNOWN}.
  */
 final class ProbeRequests {
 
@@ -135,7 +135,7 @@ final class ProbeRequests {
     if (id != null) {
       return id;
     }
-    Object sample = scalar(name, schema);
+    Object sample = scalar(schema);
     return String.valueOf(sample);
   }
 
@@ -194,7 +194,7 @@ final class ProbeRequests {
       return object;
     }
     String id = "uuid".equals(schema.get("format")) ? idFor(name) : null;
-    return id != null ? id : scalar(name, schema);
+    return id != null ? id : scalar(schema);
   }
 
   /** Whether an optional property carries an id of the fixture, alone or as a list. */
@@ -206,13 +206,19 @@ final class ProbeRequests {
     return "uuid".equals(schema.get("format")) && idFor(name) != null;
   }
 
-  private Object scalar(String name, Map<String, Object> schema) {
+  private Object scalar(Map<String, Object> schema) {
     List<?> values = ApiOperations.list(schema.get("enum"));
     if (!values.isEmpty()) {
       return values.getFirst();
     }
     String type = String.valueOf(schema.get("type"));
     String format = String.valueOf(schema.get("format"));
+    Object example = schema.get("example");
+    if (!format.equals("uuid")
+        && (example instanceof Number
+            || example instanceof String text && !text.isBlank() && !text.contains("://"))) {
+      return example;
+    }
     if (type.equals("integer") || type.equals("number")) {
       if (schema.get("minimum") instanceof Number minimum) {
         return type.equals("integer") ? minimum.longValue() : minimum.doubleValue();
@@ -231,12 +237,12 @@ final class ProbeRequests {
       case "email" -> "probe@example.com";
       case "uri" -> "https://probe.invalid/";
       case "password" -> "Probe-Passwort-1234567890";
-      default -> patterned(name, schema);
+      default -> patterned(schema);
     };
   }
 
   /** A string its pattern and length bounds admit. */
-  private String patterned(String name, Map<String, Object> schema) {
+  private String patterned(Map<String, Object> schema) {
     String pattern = String.valueOf(schema.get("pattern"));
     String text;
     if (pattern.contains("#[0-9A-Fa-f]")) {
@@ -245,8 +251,6 @@ final class ProbeRequests {
       text = LocalDate.ofInstant(now, ZoneOffset.UTC).toString();
     } else if (pattern.startsWith("^[A-Z]")) {
       text = "PROBE";
-    } else if ("month".equals(name)) {
-      text = "2000-01";
     } else {
       text = "probe";
     }

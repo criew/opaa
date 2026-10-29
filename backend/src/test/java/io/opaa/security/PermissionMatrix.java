@@ -31,8 +31,8 @@ final class PermissionMatrix {
     SYSTEM_ADMIN("systemAdmin"),
     AUDITOR("auditor"),
     SPACE_ADMIN("spaceAdmin"),
-    EDITOR("editor"),
-    VIEWER("viewer"),
+    CURATOR("curator"),
+    MEMBER("member"),
     NO_RIGHTS("noRights"),
     ANONYMOUS("anonymous");
 
@@ -56,7 +56,10 @@ final class PermissionMatrix {
       this.key = key;
     }
 
-    /** Every status but 401, 403 and 404 got past the authorization: it counts as allowed. */
+    /**
+     * Every status but 401, 403 and 404 got past the authorization and counts as allowed; a server
+     * error is held apart by {@link #serverErrorOf}.
+     */
     static Outcome of(int status) {
       return switch (status) {
         case 401 -> UNAUTHENTICATED;
@@ -76,9 +79,12 @@ final class PermissionMatrix {
 
   /**
    * One operation's row. {@code foreignAllowed} marks an operation that may answer a foreign id
-   * with something other than 403 or 404; the {@code note} then says why.
+   * with something other than 403 or 404; {@code foreignChild} names the path parameters that may
+   * take a foreign id while the others stay the caller's own. Either needs a {@code note} saying
+   * why.
    */
-  record Entry(Map<Role, Outcome> expected, boolean foreignAllowed, String note) {}
+  record Entry(
+      Map<Role, Outcome> expected, boolean foreignAllowed, Set<String> foreignChild, String note) {}
 
   private static final Set<String> ENTRY_KEYS = entryKeys();
 
@@ -138,9 +144,52 @@ final class PermissionMatrix {
       if (foreignAllowed && note == null) {
         malformed.add(FILE + ": " + operationId + " allows a foreign id without a 'note'");
       }
-      entries.put(operationId, new Entry(expected, foreignAllowed, (String) note));
+      Set<String> foreignChild = new TreeSet<>();
+      for (Object name : ApiOperations.list(fields.get("foreignChild"))) {
+        foreignChild.add(String.valueOf(name));
+      }
+      if (!foreignChild.isEmpty() && note == null) {
+        malformed.add(FILE + ": " + operationId + " allows a foreign child without a 'note'");
+      }
+      if (note == null && expected.size() == Role.values().length && uniformlyRefused(expected)) {
+        malformed.add(
+            FILE
+                + ": "
+                + operationId
+                + " refuses every signed-in role alike and needs a 'note' saying why");
+      }
+      entries.put(operationId, new Entry(expected, foreignAllowed, foreignChild, (String) note));
     }
     return new PermissionMatrix(entries, malformed);
+  }
+
+  /** Whether all roles but the anonymous one meet the same refusal: a row that tells nothing. */
+  private static boolean uniformlyRefused(Map<Role, Outcome> expected) {
+    Outcome first = expected.get(Role.SYSTEM_ADMIN);
+    return first != Outcome.ALLOWED
+        && Arrays.stream(Role.values())
+            .filter(role -> role != Role.ANONYMOUS)
+            .allMatch(role -> expected.get(role) == first);
+  }
+
+  /**
+   * A finding for a server error, or {@code null}: only a 503 of an operation whose row explains it
+   * in its note is accepted, any other 5xx hides whether the authorization was asked at all.
+   */
+  String serverErrorOf(ApiOperations.Operation operation, int status) {
+    if (status < 500) {
+      return null;
+    }
+    Entry entry = entries.get(operation.id());
+    if (status == 503 && entry != null && entry.note() != null) {
+      return null;
+    }
+    return operation.label() + " fails with " + status;
+  }
+
+  /** The status class an observation records next to the outcome, such as {@code 2xx}. */
+  static String statusClass(int status) {
+    return status / 100 + "xx";
   }
 
   Entry entry(String operationId) {
@@ -176,7 +225,7 @@ final class PermissionMatrix {
   }
 
   private static Set<String> entryKeys() {
-    Set<String> keys = new TreeSet<>(List.of("foreign", "note"));
+    Set<String> keys = new TreeSet<>(List.of("foreign", "foreignChild", "note"));
     for (Role role : Role.values()) {
       keys.add(role.key);
     }

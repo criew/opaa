@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.PlatformTransactionManager;
 
@@ -34,6 +35,7 @@ class PermissionMatrixAnonymousIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private PlatformTransactionManager transactionManager;
+  @Autowired private JdbcTemplate jdbc;
   @Autowired private List<InvalidationSubscriber> caches;
 
   @Test
@@ -41,17 +43,22 @@ class PermissionMatrixAnonymousIntegrationTest {
     ProbeRequests probes =
         new ProbeRequests(API, Map.of("assetType", KnowledgeLibrary.ASSET_TYPE.value()));
 
-    Map<String, Integer> statuses =
-        new RolledBackRequests(mockMvc, transactionManager, caches)
-            .statuses(API.operations(), probes::build);
+    Map<String, RolledBackRequests.Answer> answers =
+        new RolledBackRequests(mockMvc, transactionManager, jdbc, caches)
+            .answers(API.operations(), probes::build, rows -> {});
 
     List<String> findings = new ArrayList<>();
     StringBuilder observed = new StringBuilder();
     for (Operation operation : API.operations()) {
-      int status = statuses.get(operation.id());
+      int status = answers.get(operation.id()).status();
       Outcome outcome = Outcome.of(status);
       observed.append(operation.id()).append(": ").append(outcome.key).append(" # ");
-      observed.append(status).append('\n');
+      observed.append(PermissionMatrix.statusClass(status)).append(' ').append(status);
+      observed.append('\n');
+      String serverError = MATRIX.serverErrorOf(operation, status);
+      if (serverError != null) {
+        findings.add(serverError + ": " + answers.get(operation.id()).body());
+      }
       PermissionMatrix.Entry entry = MATRIX.entry(operation.id());
       Outcome expected = entry == null ? null : entry.expected().get(Role.ANONYMOUS);
       if (expected != outcome) {
