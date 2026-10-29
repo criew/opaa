@@ -147,7 +147,7 @@
   "SELF_DISCLOSURE_EXPORT_FINISHED": ["abortCause", "bytes", "categories", "result", "sha256"],
   "SELF_DISCLOSURE_EXPORT_STARTED": ["categories"],
   "SELF_DISCLOSURE_SETTINGS_CHANGED": ["dailyLimit", "enabled"],
-  "SETTINGS_IMPORTED": ["formatVersion", "sections"],
+  "SETTINGS_IMPORTED": ["formatVersion", "sections", "securityRelevantKeys"],
   "SPACE_ARCHIVED": ["chatAutoCleanup", "name", "ownerId"],
   "SPACE_CHANGED": ["changedFields", "chatAutoCleanup"],
   "SPACE_CREATED": ["chatAutoCleanup", "name", "ownerId"],

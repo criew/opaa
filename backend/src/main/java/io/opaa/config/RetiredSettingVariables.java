@@ -48,6 +48,18 @@ public class RetiredSettingVariables {
       "the warning threshold of expired connected accounts (the factory default of 10 applies now) "
           + CONNECTION_SETTINGS;
 
+  /**
+   * The former fixed lockout duration: no longer the value, but while set it raises the shortest
+   * lockout ({@code io.opaa.account.LocalLockoutProperties}), so the update loosens nothing.
+   */
+  private static final String RETIRED_LOCKOUT_DURATION_MESSAGE =
+      " is no longer read as the lockout duration; set it under Administration > Benutzer >"
+          + " Einstellungen. Until it is removed it raises the shortest lockout"
+          + " (OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION) to its value, at most 1440 minutes, so the"
+          + " update loosens nothing; replace it with OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION";
+
+  private static final String RETIRED_LOCKOUT_DURATION = "retired lockout duration";
+
   /** Each retired variable with the setting it preset and the place that setting lives now. */
   static final Map<String, String> RETIRED = retired();
 
@@ -124,7 +136,10 @@ public class RetiredSettingVariables {
     RETIRED_ADMINISTRATION_VALUES.forEach(
         (name, setting) -> {
           if (environment.containsProperty(name) && named.add(setting)) {
-            messages.add(name + " is no longer read; set " + setting);
+            messages.add(
+                RETIRED_LOCKOUT_DURATION.equals(setting)
+                    ? name + RETIRED_LOCKOUT_DURATION_MESSAGE
+                    : name + " is no longer read; set " + setting);
           }
         });
     if (!environment.acceptsProfiles(Profiles.of("dev"))) {
@@ -169,12 +184,8 @@ public class RetiredSettingVariables {
     String descent = "the full-sync rhythm of Nextcloud in whole days " + CONNECTION_SETTINGS;
     retired.put("OPAA_INDEXING_NEXTCLOUD_FULL_DESCENT_INTERVAL", descent);
     retired.put("opaa.indexing.nextcloud.full-descent-interval", descent);
-    String lockout =
-        "the lockout duration after failed sign-ins under Administration > Benutzer >"
-            + " Einstellungen; until then the factory default of 15 minutes applies, never shorter"
-            + " than OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION - if it was longer, set it there";
-    retired.put("OPAA_AUTH_LOCAL_LOCKOUT_DURATION", lockout);
-    retired.put("opaa.auth.local.lockout.duration", lockout);
+    retired.put("OPAA_AUTH_LOCAL_LOCKOUT_DURATION", RETIRED_LOCKOUT_DURATION);
+    retired.put("opaa.auth.local.lockout.duration", RETIRED_LOCKOUT_DURATION);
     return Collections.unmodifiableMap(retired);
   }
 

@@ -653,7 +653,7 @@ public final class AuditEventCatalog {
         SELF_DISCLOSURE_EXPORT_FINISHED);
     put(keys, Set.of("dailyLimit", "enabled"), SELF_DISCLOSURE_SETTINGS_CHANGED);
     put(keys, Set.of("allowedOrigins"), LINK_TARGETS_CHANGED);
-    put(keys, Set.of("formatVersion", "sections"), SETTINGS_IMPORTED);
+    put(keys, Set.of("formatVersion", "sections", "securityRelevantKeys"), SETTINGS_IMPORTED);
     return Map.copyOf(keys);
   }
 

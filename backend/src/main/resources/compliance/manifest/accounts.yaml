@@ -492,7 +492,7 @@ settings:
   - key: local_auth_settings.lockout_max_attempts
     source: DATABASE
     defaultValue: "5"
-    range: 1 bis OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS (Voreinstellung 10)
+    range: 1 bis OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS (Voreinstellung 5)
     effect: >-
       Falsche Passwörter in Folge, nach denen ein lokales Konto vorübergehend gesperrt wird; jede
       Sperre steht im Revisionsprotokoll. Wirkt ab dem nächsten Fehlversuch auf allen Instanzen
@@ -505,7 +505,7 @@ settings:
   - key: local_auth_settings.lockout_duration_minutes
     source: DATABASE
     defaultValue: "15"
-    range: OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION (Voreinstellung 5 Minuten) bis 1440 Minuten
+    range: OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION (Voreinstellung 15 Minuten) bis 1440 Minuten
     effect: >-
       Dauer der Sperre nach Fehlversuchen; eine laufende Sperre behält ihr Ende, wenn sich der Wert
       ändert

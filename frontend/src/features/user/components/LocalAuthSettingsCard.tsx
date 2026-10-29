@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link as RouterLink } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -116,6 +116,14 @@ interface LockoutFieldProps {
   onChange: (value: string | null) => void
 }
 
+/** Whether the operation left the limits at the factory default: nothing looser can be set. */
+function limitsAreFactoryOnly(settings: LocalAuthSettingsResponse): boolean {
+  return (
+    settings.lockoutMaxAttemptsLimit <= settings.defaultLockoutMaxAttempts ||
+    settings.minLockoutDurationMinutes >= settings.defaultLockoutDurationMinutes
+  )
+}
+
 /** Why the field shows its value: factory default, own value, or a stored value the limit bounds. */
 function lockoutHint({ value, stored, inForce, factory, range }: LockoutFieldProps): string {
   if (value === null) return `Werkseinstellung; ${range} (Grenze des Betriebs)`
@@ -131,11 +139,18 @@ function lockoutHint({ value, stored, inForce, factory, range }: LockoutFieldPro
  */
 function LockoutField(props: LockoutFieldProps) {
   const { id, label, value, factoryInForce, resetLabel, disabled, onChange } = props
+  const inputRef = useRef<HTMLInputElement>(null)
+  // The reset button disappears with the own value; the focus goes to the field it reset.
+  function resetToFactory() {
+    onChange(null)
+    inputRef.current?.focus()
+  }
   return (
     <Box>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
       <TextField
         id={id}
+        inputRef={inputRef}
         fullWidth
         size="small"
         type="number"
@@ -149,7 +164,7 @@ function LockoutField(props: LockoutFieldProps) {
           sx={{ mt: 0.5 }}
           aria-label={resetLabel}
           disabled={disabled}
-          onClick={() => onChange(null)}
+          onClick={resetToFactory}
         >
           Werkseinstellung
         </Button>
@@ -534,6 +549,14 @@ export default function LocalAuthSettingsCard() {
         <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 1.5 }}>
           Gilt ab dem nächsten Fehlversuch; eine laufende Sperre behält ihr Ende. Die Grenzen legt
           der Betrieb fest, abschalten lässt sich die Sperre nicht.
+          {limitsAreFactoryOnly(settings) && (
+            <>
+              {' '}
+              Ab Werk lässt der Betrieb nur strengere Werte zu als die Werkseinstellung; lockern
+              geht erst, wenn er OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS oder
+              OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION weiter setzt.
+            </>
+          )}
         </Typography>
         <Box
           sx={{
@@ -576,6 +599,11 @@ export default function LocalAuthSettingsCard() {
             onChange={(value) => setEdited({ ...draft, lockoutDurationMinutes: value })}
           />
         </Box>
+        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1.5 }}>
+          Sehr strenge Werte sperren auch das Notanker-Konto der Systemverwaltung entsprechend
+          lange. Schützen lässt es sich mit OPAA_LOCAL_ADMIN_ALLOWED_CIDRS; entsperren kann es eine
+          andere Systemverwaltung oder der Betrieb mit OPAA_LOCAL_ADMIN_RESET=force.
+        </Typography>
         <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
           <Button variant="outlined" size="small" onClick={saveRules} disabled={isSaving}>
             Regeln speichern

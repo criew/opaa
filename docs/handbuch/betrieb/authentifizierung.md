@@ -576,9 +576,14 @@ feste Zeit gesperrt; weitere Versuche verlängern sie nicht. Wie viele Fehlversu
 stellt die Systemverwaltung bei den [Regeln und Fristen](../konten-und-rechte/benutzerverwaltung.md#13-regeln-und-fristen)
 der Benutzerverwaltung ein, ohne Neustart und für alle Instanzen ab dem nächsten Fehlversuch. Der
 Betrieb begrenzt beides: höchstens `OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS` Fehlversuche, mindestens
-`OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION` Sperrdauer. So lässt sich die Sperre in der Oberfläche
-lockern, aber nicht abschalten; ein gespeicherter Wert jenseits einer später enger gezogenen Grenze
-wirkt als diese Grenze. Eine geänderte Regel trifft laufende Sperren nicht: Sie enden zur
+`OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION` Sperrdauer. Ab Werk entsprechen die Grenzen der
+Werkseinstellung, die Verwaltung kann die Sperre also nur verschärfen; lockern lässt sie sich erst,
+wenn der Betrieb die Grenzen weiter setzt, abschalten nie. Ein gespeicherter Wert jenseits einer
+später enger gezogenen Grenze wirkt als diese Grenze. Eine noch gesetzte, entfallene
+`OPAA_AUTH_LOCAL_LOCKOUT_DURATION` hebt die Mindestdauer auf ihren Wert; der Start nennt die
+wirksamen Grenzen im Log. Sehr strenge Werte können auch das Notanker-Konto lange sperren;
+`OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` schützt es, und eine andere Systemverwaltung oder
+`OPAA_LOCAL_ADMIN_RESET=force` hebt die Sperre auf. Eine geänderte Regel trifft laufende Sperren nicht: Sie enden zur
 ursprünglichen Zeit. Ein Konto, das schon so viele Fehlversuche hat, wie eine gesenkte Zahl
 erlaubt, wird erst beim nächsten Fehlversuch gesperrt, nicht durch die Änderung selbst. Während der
 Sperre antwortet die Anmeldung wie bei einem falschen Passwort. Gleichzeitige Versuche gegen

@@ -43,8 +43,9 @@ import tools.jackson.databind.node.ObjectNode;
  * judge a document differently than the import. A section the document does not carry stays as it
  * is, a key a section does not carry keeps its value, and a document equal to the installation
  * changes and writes nothing. The changes of one import share a correlation reference with its
- * {@link AuditEventType#SETTINGS_IMPORTED} entry. Preview and import together are bounded by an
- * installation-wide counter ({@link #CALLS_PER_WINDOW} per {@link #WINDOW}), counted before the
+ * {@link AuditEventType#SETTINGS_IMPORTED} entry, which also names the changed security-relevant
+ * keys as {@code <section>.<key>}, never their values. Preview and import together are bounded by
+ * an installation-wide counter ({@link #CALLS_PER_WINDOW} per {@link #WINDOW}), counted before the
  * transaction so a rolled-back preview still counts.
  */
 @Service
@@ -268,6 +269,14 @@ public class SettingsTransferService {
     Map<String, Object> after = new LinkedHashMap<>();
     after.put("formatVersion", FORMAT_VERSION);
     after.put("sections", changedSections);
+    after.put(
+        "securityRelevantKeys",
+        changes.stream()
+            .filter(SettingsImportResult.Change::securityRelevant)
+            .map(change -> change.section() + "." + change.key())
+            .distinct()
+            .sorted()
+            .toList());
     audit.recordUserAction(
         AuditEvent.builder()
             .organizationId(actor.organizationId())

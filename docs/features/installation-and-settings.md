@@ -723,7 +723,7 @@ Fehlversuchen, ADR-0060, Entscheidung 17).
 |---|---|---|
 | `OPAA_AI_CHAT_PROVIDER` | `LlmModelSeeder (Altname)` | Altname entfällt |
 | `OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS` | `opaa.audit.incident-scope-retention-years` | Vorgabe im Code; `audit_incident_scope_retention_settings`, Grenzen 1 bis 10 Jahre im Code |
-| `OPAA_AUTH_LOCAL_LOCKOUT_DURATION` | `opaa.auth.local.lockout.duration` | Vorgabe im Code (15 Minuten); Regeln der lokalen Anmeldung (`local_auth_settings`), nie kürzer als `OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION`; die Zahl der Fehlversuche ebenso, höchstens `OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS` (ADR-0060, Entscheidung 17) |
+| `OPAA_AUTH_LOCAL_LOCKOUT_DURATION` | `opaa.auth.local.lockout.duration` | Vorgabe im Code (15 Minuten); Regeln der lokalen Anmeldung (`local_auth_settings`), nie kürzer als `OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION` (Vorgabe 15m), die ein noch gesetzter Altwert auf seinen Wert hebt (höchstens 1440 Minuten); die Zahl der Fehlversuche ebenso, höchstens `OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS` (ADR-0060, Entscheidung 17) |
 | `OPAA_CHAT_AUTO_CLEANUP_ARCHIVE_AFTER_DAYS` | `opaa.chat.auto-cleanup.archive-after-days` | Vorgabe im Code; `chat_auto_cleanup_settings` |
 | `OPAA_CHAT_AUTO_CLEANUP_DELETE_AFTER_DAYS` | `opaa.chat.auto-cleanup.delete-after-days` | Vorgabe im Code; `chat_auto_cleanup_settings` |
 | `OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_DELETE_AFTER_DAYS` | `opaa.chat.locked-account-cleanup.delete-after-days` | Vorgabe im Code; `locked_account_chat_cleanup_settings` |

@@ -25,8 +25,7 @@ class LocalLockoutStartupReportTest {
 
   @Test
   void namesTheRaiseByTheRetiredDuration() {
-    LocalLockoutProperties limits =
-        new LocalLockoutProperties(null, null, Duration.ofMinutes(60));
+    LocalLockoutProperties limits = new LocalLockoutProperties(null, null, Duration.ofMinutes(60));
 
     assertThat(LocalLockoutStartupReport.info(limits))
         .isEqualTo(

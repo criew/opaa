@@ -1280,8 +1280,12 @@ describe('UserManagementPage', () => {
     signInAs('SYSTEM_ADMIN')
     renderSettings()
 
-    expect(await screen.findByText('Werkseinstellung; 1 bis 10 (Grenze des Betriebs)')).toBeInTheDocument()
-    expect(screen.queryByText(/Ab Werk lässt der Betrieb nur strengere Werte zu/)).not.toBeInTheDocument()
+    expect(
+      await screen.findByText('Werkseinstellung; 1 bis 10 (Grenze des Betriebs)'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText(/Ab Werk lässt der Betrieb nur strengere Werte zu/),
+    ).not.toBeInTheDocument()
   })
 
   it('saves an own lockout rule with the rules and returns it to the factory default', async () => {

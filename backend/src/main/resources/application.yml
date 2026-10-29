@@ -202,10 +202,12 @@ opaa:
       admin-allowed-cidrs: ${OPAA_LOCAL_ADMIN_ALLOWED_CIDRS:}
       # Limits of the lockout after failed sign-ins (ADR-0060, Entscheidung 17): the administration
       # sets attempts and duration in local_auth_settings, at most max-attempts attempts and no
-      # shorter than min-duration; the factory default (5 attempts, 15 minutes) is in the code.
+      # shorter than min-duration. The defaults equal the factory default in the code (5 attempts,
+      # 15 minutes), so out of the box the administration can only tighten the lockout. A retired
+      # OPAA_AUTH_LOCAL_LOCKOUT_DURATION still set raises min-duration (LocalLockoutProperties).
       lockout:
-        max-attempts: ${OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS:10}
-        min-duration: ${OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION:5m}
+        max-attempts: ${OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS:5}
+        min-duration: ${OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION:15m}
   http:
     force-http1: ${OPAA_HTTP_FORCE_HTTP1:false}
   chat:

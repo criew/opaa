@@ -787,14 +787,23 @@ Konten gelten. Sie wirken ab der nächsten Anwendung, nicht rückwirkend auf bes
 | Fehlversuche bis zur Sperre | Falsche Passwörter in Folge, nach denen das Konto vorübergehend gesperrt wird | 1 bis `OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS`; Werkseinstellung 5 |
 | Dauer der Sperre (Minuten) | Wie lange diese Sperre dauert; weitere Versuche verlängern sie nicht | `OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION` bis 1440 Minuten; Werkseinstellung 15 Minuten |
 
-Die **Sperre nach Fehlversuchen** lässt sich lockern, aber nicht abschalten: Die Grenzen setzt der
-Betrieb in der Konfiguration ([Authentifizierung](../betrieb/authentifizierung.md#lokale-benutzerverwaltung)).
+Die **Sperre nach Fehlversuchen** lässt sich nicht abschalten: Die Grenzen setzt der Betrieb in der
+Konfiguration ([Authentifizierung](../betrieb/authentifizierung.md#lokale-benutzerverwaltung)). Ab
+Werk liegen sie auf der Werkseinstellung, die Verwaltung kann die Sperre dann nur verschärfen; die
+Karte sagt das. Lockern geht erst, wenn der Betrieb die Grenzen bewusst weiter setzt.
 Solange die Verwaltung keinen eigenen Wert speichert, gilt die Werkseinstellung, und das Feld sagt
 das; „Werkseinstellung" neben einem eigenen Wert kehrt nach dem Speichern zu ihr zurück. Liegt ein
 gespeicherter Wert außerhalb einer später enger gezogenen Grenze, nennt das Feld, dass er nur als
 diese Grenze wirkt. Eine Änderung gilt ab dem nächsten Fehlversuch; eine laufende Sperre behält ihr
 Ende, und ein Konto, das die gesenkte Zahl schon erreicht hat, wird erst beim nächsten Fehlversuch
 gesperrt.
+
+Sehr strenge Werte, etwa ein einziger Fehlversuch und eine Sperre von einem Tag, treffen auch das
+Notanker-Konto der Systemverwaltung: Wer seine Adresse kennt, kann es mit falschen Passwörtern so
+lange sperren. Schutz bietet `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS`, weil Versuche von außerhalb dieser
+Netze nicht zählen. Ist es gesperrt, hebt eine andere Systemverwaltung die Sperre mit „Entsperren"
+auf, oder der Betrieb stellt es mit `OPAA_LOCAL_ADMIN_RESET=force` wieder her
+([Notfallprozedur](../betrieb/authentifizierung.md#notfallprozedur-wieder-hereinkommen)).
 
 Die **Passwortrichtlinie** selbst ist knapp und bewusst ohne Komplexitätsregeln: mindestens die
 eingestellte Länge, höchstens 64 Zeichen, nicht gleich der eigenen E-Mail-Adresse und nicht auf der

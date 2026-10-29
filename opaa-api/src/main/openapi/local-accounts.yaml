@@ -563,6 +563,10 @@ paths:
         the operation: lockoutMaxAttempts from 1 to OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS,
         lockoutDurationMinutes from OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION (in whole minutes, rounded
         up) to 1440; a stored value beyond a since narrowed limit may be sent back unchanged.
+        The PUT replaces the settings as a whole: a client that changes one value sends every
+        other one along, the lockout values as stored (storedLockoutMaxAttempts,
+        storedLockoutDurationMinutes); a lockout value left out or null returns to its factory
+        default.
         selfRegistrationEnabled needs a non-empty domain list (400). Switching
         passwordResetEnabled or selfRegistrationEnabled on is refused with 409 and code
         PUBLIC_BASE_URL_REQUIRED while OPAA_PUBLIC_BASE_URL is not set - a link nobody can see

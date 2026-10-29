@@ -226,7 +226,11 @@ export async function prepareInstallation(baseUrl: string): Promise<Session> {
   return admin;
 }
 
-/** Switches the local account management on or off, keeping every other setting. */
+/**
+ * Switches the local account management on or off, keeping every other setting. The PUT replaces
+ * the settings as a whole: a lockout value left out returns to its factory default, so the stored
+ * lockout values (`null` for the factory default) travel along unchanged.
+ */
 export async function setLocalAccounts(
   baseUrl: string,
   token: string,
@@ -250,6 +254,8 @@ export async function setLocalAccounts(
       resetTokenTtlMinutes: current.resetTokenTtlMinutes,
       defaultExpiryDays: current.defaultExpiryDays,
       inactiveDays: current.inactiveDays,
+      lockoutMaxAttempts: current.storedLockoutMaxAttempts ?? null,
+      lockoutDurationMinutes: current.storedLockoutDurationMinutes ?? null,
     },
   });
 }
