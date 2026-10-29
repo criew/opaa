@@ -23,6 +23,11 @@ final class DriveApiException extends Exception {
     TOO_LARGE,
     /** The target address is blocked by the operator's validation. */
     BLOCKED,
+    /**
+     * Drive redirected to another origin and the request was not sent there; says nothing about
+     * whether the file exists, so it is never read as a removal.
+     */
+    REDIRECT_REFUSED,
     /** Throttled beyond the retries, a server error, a broken connection, an odd answer. */
     TRANSIENT
   }

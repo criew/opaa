@@ -392,7 +392,7 @@ public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowse
       }
     } catch (DriveApiException e) {
       return switch (e.kind()) {
-        case NOT_FOUND, FORBIDDEN, TOO_LARGE, EXPORT_LIMIT -> Optional.empty();
+        case NOT_FOUND, FORBIDDEN, TOO_LARGE, EXPORT_LIMIT, REDIRECT_REFUSED -> Optional.empty();
         default ->
             throw new OriginalUnavailableException(
                 UNAVAILABLE,
