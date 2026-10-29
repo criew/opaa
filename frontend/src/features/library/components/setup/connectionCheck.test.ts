@@ -117,7 +117,11 @@ describe('outcomeOf (#3152)', () => {
         false,
       )
       expect(outcome.state).toBe('passed')
-      expect(stagesOf(outcome)).toEqual(['Adresse erreichbar', 'Anmeldung entfällt', 'Rechte lesbar'])
+      expect(stagesOf(outcome)).toEqual([
+        'Adresse erreichbar',
+        'Anmeldung entfällt',
+        'Rechte lesbar',
+      ])
     })
   })
 
