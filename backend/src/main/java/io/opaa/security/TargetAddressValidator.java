@@ -30,8 +30,9 @@ import org.slf4j.LoggerFactory;
  * <p>The target is checked, never the outbound proxy. A name that does not resolve locally passes
  * only when its connection goes through the outbound proxy, because the proxy resolves it: for
  * {@link #validate} when {@link OutboundProxySelector#proxyFor} routes the URI there, for {@link
- * #validateHost(String, boolean)} when the caller says so. {@link #validateHost(String)} - SMB and
- * the upload storage - stays strict. IP literals and resolvable names are checked unchanged.
+ * #validateHost(String, boolean, Scope)} when the caller says so. {@link #validateHost(String,
+ * Scope)} - SMB and the upload storage - stays strict. IP literals and resolvable names are checked
+ * unchanged.
  */
 public class TargetAddressValidator {
 
@@ -133,14 +134,14 @@ public class TargetAddressValidator {
   }
 
   /**
-   * {@link #validateHost(String)} for a connection to {@code port}, so an allowlist entry {@code
-   * host:port} admits it; a negative port is none.
+   * {@link #validateHost(String, Scope)} for a connection to {@code port}, so an allowlist entry
+   * {@code host:port} admits it; a negative port is none.
    */
   public void validateHost(String host, int port, Scope scope) throws IOException {
     validateHost(host, port, false, scope);
   }
 
-  /** {@link #validateHost(String, boolean)} for a connection to {@code port}. */
+  /** {@link #validateHost(String, boolean, Scope)} for a connection to {@code port}. */
   public void validateHost(String host, int port, boolean throughOutboundProxy, Scope scope)
       throws IOException {
     Objects.requireNonNull(scope, "scope");
@@ -172,9 +173,9 @@ public class TargetAddressValidator {
   }
 
   /**
-   * {@link #validateHost(String)} for a client whose route the caller decided itself: with {@code
-   * throughOutboundProxy} the outbound proxy resolves the name, so a name that does not resolve
-   * locally passes. Only a caller that actually hands its client that proxy may say so.
+   * {@link #validateHost(String, Scope)} for a client whose route the caller decided itself: with
+   * {@code throughOutboundProxy} the outbound proxy resolves the name, so a name that does not
+   * resolve locally passes. Only a caller that actually hands its client that proxy may say so.
    */
   public void validateHost(String host, boolean throughOutboundProxy, Scope scope)
       throws IOException {
