@@ -89,7 +89,9 @@ class SharePointWholeSiteTest {
 
     List<SharePointLibrary> found = SiteLibraries.resolve(graph, settings.sites());
 
-    assertThat(found).extracting(SharePointLibrary::driveId).containsExactlyInAnyOrder(DRIVE_0, DRIVE_1);
+    assertThat(found)
+        .extracting(SharePointLibrary::driveId)
+        .containsExactlyInAnyOrder(DRIVE_0, DRIVE_1);
     assertThat(settings.resolvedTo(found).libraries()).hasSize(2);
   }
 
