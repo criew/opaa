@@ -23,6 +23,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.SourceType;
 import io.opaa.library.LibraryExternalAccessService;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.TestSessions;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -756,7 +757,8 @@ class McpServerIntegrationTest {
             DEFAULT_ORGANIZATION_ID,
             name,
             libraryIds,
-            clock.instant().plus(Duration.ofDays(30)))
+            clock.instant().plus(Duration.ofDays(30)),
+            TestSessions.current(jdbc, ownerId))
         .rawValue();
   }
 

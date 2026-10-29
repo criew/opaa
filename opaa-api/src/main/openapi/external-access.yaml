@@ -164,7 +164,8 @@ paths:
         no other, ever - the server keeps only its HMAC lookup hash and the prefix. Name, at least
         one library and an expiry are mandatory; the expiry must not exceed the installation-wide
         ceiling, and every named library must be readable by the caller and released for external
-        access. The selection is immutable afterwards - a change is a new token.
+        access. The selection is immutable afterwards - a change is a new token. Requires a recent
+        sign-in, and the person is notified of the issuance by mail.
       requestBody:
         required: true
         content:
@@ -181,7 +182,14 @@ paths:
         "400":
           $ref: "#/components/responses/ValidationError"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          description: >-
+            No recent sign-in (code RECENT_LOGIN_REQUIRED, as described for the response
+            RecentLoginRequired), the session of the caller ended meanwhile (a password change, a
+            reset or a detected refresh replay), or the installation switch is off.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/external-access/eligible-libraries:
     get:

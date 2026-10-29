@@ -39,6 +39,7 @@ import io.opaa.test.ConnectorReleases;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
 import io.opaa.test.ProviderFixtures;
+import io.opaa.test.TestSessions;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -1189,7 +1190,13 @@ class PrivateLibraryInvisibilityIntegrationTest {
     externalRelease.setExternalAccess(devCaller, shared, true, expires);
     token =
         tokens
-            .issue(devUser, Organization.DEFAULT_ID, "Prüftoken", List.of(shared), expires)
+            .issue(
+                devUser,
+                Organization.DEFAULT_ID,
+                "Prüftoken",
+                List.of(shared),
+                expires,
+                TestSessions.current(jdbc, devUser))
             .rawValue();
   }
 

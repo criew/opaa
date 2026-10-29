@@ -7,6 +7,8 @@ import io.opaa.api.dto.ExternalAccessChannelInfoResponse;
 import io.opaa.api.dto.OwnExternalAccessTokenListResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.auth.RequiresRecentLogin;
+import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConditionalOnFeature;
 import io.opaa.common.Feature;
 import io.opaa.externalaccess.ExternalAccessSettings.Values;
@@ -18,6 +20,9 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -83,8 +88,13 @@ public class ExternalAccessTokenController {
             .toList());
   }
 
+  /**
+   * Requires a recent sign-in: a token outlives the session it was issued from, so a refreshed
+   * access token of a possibly taken-over session is not enough to create one.
+   */
   @PostMapping("/tokens")
   @ResponseStatus(HttpStatus.CREATED)
+  @RequiresRecentLogin
   public CreatedExternalAccessTokenResponse createExternalAccessToken(
       @Valid @RequestBody CreateExternalAccessTokenRequest request, @Caller CurrentUser caller) {
     IssuedExternalAccessToken issued =
@@ -93,7 +103,8 @@ public class ExternalAccessTokenController {
             caller.organizationId(),
             request.getName(),
             request.getLibraryIds(),
-            request.getExpiresAt());
+            request.getExpiresAt(),
+            sessionOfCaller());
     return ExternalAccessTokenResponseMapper.toCreated(issued, clock.instant());
   }
 
@@ -101,5 +112,15 @@ public class ExternalAccessTokenController {
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void revokeOwnExternalAccessToken(@PathVariable UUID tokenId, @Caller CurrentUser caller) {
     tokenService.revokeOwn(caller.id(), caller.organizationId(), tokenId);
+  }
+
+  /** The bearer token of the web session this request came with; every chain here carries one. */
+  private static Jwt sessionOfCaller() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
+      return jwt;
+    }
+    throw new AccessDeniedException(
+        "Ein Zugangstoken lässt sich nur aus einer Anmeldung erzeugen.");
   }
 }
