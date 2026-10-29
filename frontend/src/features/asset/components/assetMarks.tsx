@@ -1,48 +1,19 @@
 import { useRef, useState } from 'react'
-import Box from '@mui/material/Box'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { type SxProps, type Theme } from '@mui/material/styles'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
-import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
-import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined'
 import PublicIcon from '@mui/icons-material/Public'
 import StarIcon from '@mui/icons-material/Star'
 import StarBorderIcon from '@mui/icons-material/StarBorder'
 import { outlinedBadgeSx } from '@/shared/ui/badgeStyles'
 import type { AssetTypeDefinition } from '../../../shared/assetTypes'
 
-/** The responsible party behind a person or group symbol. */
-export function ResponsibleLine({
-  responsible,
-  fontSize = 11.5,
-}: {
-  responsible: { label: string; group: boolean }
-  fontSize?: number
-}) {
-  const Icon = responsible.group ? GroupsOutlinedIcon : PersonOutlinedIcon
-  return (
-    <Box
-      component="span"
-      sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75, minWidth: 0 }}
-    >
-      <Icon
-        titleAccess={responsible.group ? 'Zuständige Gruppe' : 'Zuständige Person'}
-        sx={{ fontSize: fontSize + 3.5, color: 'text.secondary' }}
-      />
-      <Typography component="span" noWrap sx={{ fontSize, color: 'text.secondary' }}>
-        {responsible.label}
-      </Typography>
-    </Box>
-  )
-}
-
 /**
  * Only an asset released to all accounts carries the globe; a restricted one carries nothing.
- * Raised like the star: on a tile the stretched title link would otherwise cover it and swallow
- * the pointer its tooltip waits for.
+ * Raised, so a stretched click area around it cannot swallow the pointer its tooltip waits for.
  */
 export function PublicMark() {
   const label = 'Für alle Konten freigegeben'

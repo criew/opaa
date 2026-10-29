@@ -31,14 +31,14 @@ Die Einträge kommen seitenweise; „Weitere laden" hängt die nächste Seite an
 
 Jedes Arbeitsmittel steht als Kachel im Katalog. Sie nennt:
 
-- die **Art** als Etikett, etwa „Wissen" oder „Prompts", und ein **Welt-Symbol**, wenn das
-  Arbeitsmittel an „Alle Konten" freigegeben ist; beim Überfahren nennt es „Für alle Konten
-  freigegeben",
+- die **Art** als Etikett, etwa „Wissen" oder „Prompts",
 - **Name** und **Beschreibung**,
-- den **Umfang**, etwa die Zahl der Dokumente oder Prompts, und in wie vielen Spaces es bereitsteht,
-- die **zuständige Stelle**, eine Person oder eine Gruppe,
-- wann es zuletzt **aktualisiert** wurde, oder in Worten einen Zustand, der Aufmerksamkeit braucht,
-  etwa „Nachfolge offen".
+- den **Umfang**, etwa die Zahl der Dokumente oder Prompts,
+- in Worten einen Zustand, der Aufmerksamkeit braucht, etwa „Nachfolge offen".
+
+Es ist dieselbe Kachel wie bei der Zuordnung zu einem Space. Freigabe an alle Konten (Welt-Symbol),
+zuständige Stelle, die Spaces, in denen das Arbeitsmittel bereitsteht, und der Stand der letzten
+Aktualisierung stehen in der Detailansicht (Abschnitt 5).
 
 Was eine Art darüber hinaus zeigt, steht in ihrem Kapitel. Über den **Stern** wird die Kachel zum
 Favoriten, über das Menü **„⋯"** lässt sich das Arbeitsmittel in einem Space verwenden (Abschnitt 6).

@@ -85,7 +85,7 @@ mit offener Nachfolge: Es lässt sich lösen, aber bis zum Abschluss der Nachfol
 zuordnen; die Meldung sagt das, statt „Rückgängig" anzubieten. Schlägt die Änderung fehl, springt
 das Häkchen zurück, und eine Fehlermeldung nennt den Grund. Beim Öffnen ist der Filter „Nur
 zugeordnete" eingeschaltet; ausgeschaltet zeigt die Liste alles, was man lesen darf und deshalb
-zuordnen könnte. In beiden Ansichten stehen die schlanken Kacheln der Auswahl (siehe „Einen Space
+zuordnen könnte. In beiden Ansichten stehen die Kacheln des Katalogs als Auswahl (siehe „Einen Space
 anlegen"), in der Reihenfolge des Katalogs: Favoriten zuerst, dann nach Name. Darüber stehen dieselben Filter wie im Katalog:
 Suche, Typ und Favoriten. Wer
 weder Kurator noch Administrator noch Eigentümer des Space ist, sieht die zugeordneten Inhalte, die
@@ -158,8 +158,8 @@ oder „Nachfolge offen". Solange die Nachfolge offen ist, lässt sich das Arbei
 zuordnen: Seine Kachel ist ausgegraut, lässt sich nicht wählen und nennt den Grund „Lässt sich
 nicht neu zuordnen, solange die Nachfolge offen ist." Kommt der Assistent über „Neuen Space damit
 anlegen" mit einem solchen Arbeitsmittel, übernimmt er es nicht als gewählt; ein Hinweis im Schritt
-„Inhalte" nennt den Grund. Zuständige Stelle, „Aktualisiert am", die Zahl der Spaces und das Welt-Symbol stehen im
-Katalog und auf der Detailseite. Links oben steht ein Häkchen, wenn die Kachel gewählt ist, sonst ein leerer
+„Inhalte" nennt den Grund. Es ist dieselbe Kachel wie im Katalog; zuständige Stelle, „Aktualisiert am", die Zahl der Spaces
+und das Welt-Symbol stehen auf der Detailseite. Links oben steht ein Häkchen, wenn die Kachel gewählt ist, sonst ein leerer
 Kreis; der Rahmen bleibt gleich. Ein Klick auf die Kachel wählt sie oder hebt die Wahl auf; ein
 Klick auf den Stern setzt nur den eigenen Favoriten und ändert die Wahl nicht.
 

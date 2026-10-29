@@ -8,14 +8,7 @@ import { blue } from '@/shared/theme/tokens'
 import { catalogStatusLabel } from './assetLabels'
 import { assetTypeDefinition } from '../../../shared/assetTypes'
 import type { AssetTileData, AssetTileStatus } from './assetTileData'
-import {
-  ErasingMark,
-  FavoriteToggle,
-  PrivateMark,
-  PublicMark,
-  ResponsibleLine,
-  TypeBadge,
-} from './assetMarks'
+import { ErasingMark, FavoriteToggle, PrivateMark, TypeBadge } from './assetMarks'
 
 /** The tile opens the asset: its title is a link whose click area covers the tile. */
 interface LinkMode {
@@ -46,14 +39,6 @@ interface AssetTileProps {
   onFavoriteChange?: (favorite: boolean) => Promise<void>
   /** Further controls beside the star, e.g. the catalog's "⋯" menu. */
   actions?: ReactNode
-}
-
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
 }
 
 /** Only a state that needs attention carries a dot. */
@@ -105,7 +90,8 @@ const MAIN_CONTROL = '[data-tile-main]'
 const REASON = '[data-tile-reason]'
 
 /**
- * The one tile of an asset - in the catalog and in every choice of assets. The type badge,
+ * The one tile of an asset - in the catalog and in every choice of assets, with the same content
+ * in both: what an asset is, how large, and states that need attention. The type badge,
  * the star and further actions are separate controls above the tile's main control, never inside
  * it: in the catalog that is the title as a link, in a choice a checkbox named by the title. A
  * click on the star therefore never changes the choice.
@@ -119,9 +105,7 @@ export default function AssetTile({ tile, mode, onFavoriteChange, actions }: Ass
   const locked = Boolean(blockedReason) && !selected
   const idBase = useId()
   const descriptionId = `${idBase}-description`
-  const figuresId = `${idBase}-figures`
-  // A choice asks only what an asset is and how large: no spread, responsibility, date or globe.
-  const figures = selecting ? tile.extent : tile.figures
+  const extentId = `${idBase}-extent`
   const statusId = `${idBase}-status`
   const successionId = `${idBase}-succession`
   const noteId = `${idBase}-note`
@@ -130,7 +114,7 @@ export default function AssetTile({ tile, mode, onFavoriteChange, actions }: Ass
   // order shown.
   const describedBy = [
     tile.description && descriptionId,
-    figures && figuresId,
+    tile.extent && extentId,
     tile.status && statusId,
     tile.successionOpen && successionId,
     blockedReason && reasonId,
@@ -179,7 +163,6 @@ export default function AssetTile({ tile, mode, onFavoriteChange, actions }: Ass
         {definition && <TypeBadge definition={definition} />}
         {tile.privateLibrary && <PrivateMark />}
         {tile.erasing && <ErasingMark />}
-        {tile.isPublic && !selecting && <PublicMark />}
         {onFavoriteChange && tile.favorite !== undefined ? (
           <FavoriteToggle
             name={tile.name}
@@ -246,16 +229,10 @@ export default function AssetTile({ tile, mode, onFavoriteChange, actions }: Ass
           {tile.description}
         </Typography>
       )}
-      {/* Pushes the figures to the tile's foot; the negative margin takes back the gap. */}
+      {/* Pushes the extent to the tile's foot; the negative margin takes back the gap. */}
       <Box aria-hidden sx={{ mt: 'auto', mb: -1 }} />
-      {figures && <MetaLine id={figuresId}>{figures}</MetaLine>}
-      {tile.responsible && !selecting && <ResponsibleLine responsible={tile.responsible} />}
-      {tile.status ? (
-        <StateDotLine id={statusId} status={tile.status} />
-      ) : (
-        tile.updatedAt &&
-        !selecting && <MetaLine>Aktualisiert am {formatDate(tile.updatedAt)}</MetaLine>
-      )}
+      {tile.extent && <MetaLine id={extentId}>{tile.extent}</MetaLine>}
+      {tile.status && <StateDotLine id={statusId} status={tile.status} />}
       {tile.successionOpen && <StateDotLine id={successionId} status="SUCCESSION_OPEN" />}
       {/* Outside the checkbox and never dimmed, so it holds the text contrast (guidelines 5.11). */}
       {blockedReason && (

@@ -10,16 +10,13 @@ const tile: AssetTileData = {
   assetId: 'library-satzungen',
   name: 'Satzungen & Gebührenordnungen',
   description: 'Alle geltenden Satzungen der Stadt.',
-  isPublic: true,
   favorite: false,
-  figures: '12 Dokumente · in 2 Spaces',
   extent: '12 Dokumente',
-  responsible: { label: 'Bürgerbüro Rheinfurt', group: true },
-  updatedAt: '2026-09-30T08:00:00Z',
 }
 
 describe('AssetTile (#2131)', () => {
-  it('shows badge, globe, star, title, description, figures, responsibility and date', () => {
+  // The catalog shows the same lean tile as a choice: no spread, responsibility, date or globe.
+  it('shows badge, star, title, description and extent in the catalog', () => {
     renderWithProviders(
       <AssetTile
         tile={tile}
@@ -30,7 +27,6 @@ describe('AssetTile (#2131)', () => {
     )
 
     expect(screen.getByText('Wissen')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: 'Für alle Konten freigegeben' })).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: '„Satzungen & Gebührenordnungen“ als Favorit markieren' }),
     ).toBeInTheDocument()
@@ -39,9 +35,11 @@ describe('AssetTile (#2131)', () => {
       '/libraries/library-satzungen',
     )
     expect(screen.getByText('Alle geltenden Satzungen der Stadt.')).toBeInTheDocument()
-    expect(screen.getByText('12 Dokumente · in 2 Spaces')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: 'Zuständige Gruppe' })).toBeInTheDocument()
-    expect(screen.getByText('Aktualisiert am 30.09.2026')).toBeInTheDocument()
+    expect(screen.getByText('12 Dokumente')).toBeInTheDocument()
+    expect(screen.queryByText(/in 2 Spaces/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: 'Für alle Konten freigegeben' })).toBeNull()
+    expect(screen.queryByRole('img', { name: /Zuständige/ })).toBeNull()
+    expect(screen.queryByText(/Aktualisiert am/)).not.toBeInTheDocument()
   })
 
   it('is a checkbox named by its title and described by the rest in the selection mode', () => {
@@ -53,22 +51,6 @@ describe('AssetTile (#2131)', () => {
     expect(checkbox).toHaveAttribute('aria-checked', 'true')
     expect(checkbox).toHaveAccessibleDescription('Alle geltenden Satzungen der Stadt. 12 Dokumente')
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
-  })
-
-  // In a choice only what it is and how large it is counts.
-  it('shows only title, description and extent in the selection mode', () => {
-    renderWithProviders(
-      <AssetTile tile={tile} mode={{ kind: 'select', selected: false, onToggle: vi.fn() }} />,
-    )
-
-    expect(screen.getByText('Satzungen & Gebührenordnungen')).toBeInTheDocument()
-    expect(screen.getByText('Alle geltenden Satzungen der Stadt.')).toBeInTheDocument()
-    expect(screen.getByText('12 Dokumente')).toBeInTheDocument()
-    expect(screen.queryByText(/in 2 Spaces/)).not.toBeInTheDocument()
-    expect(screen.queryByRole('img', { name: 'Für alle Konten freigegeben' })).toBeNull()
-    expect(screen.queryByText('Bürgerbüro Rheinfurt')).not.toBeInTheDocument()
-    expect(screen.queryByRole('img', { name: 'Zuständige Gruppe' })).toBeNull()
-    expect(screen.queryByText(/Aktualisiert am/)).not.toBeInTheDocument()
   })
 
   // An open succession blocks a new association, so a choice keeps naming it.
@@ -107,24 +89,6 @@ describe('AssetTile (#2131)', () => {
       borderColor: chosen.borderTopColor,
       background: chosen.backgroundColor,
     }).toEqual(frame)
-  })
-
-  // The stretched title link covers every unraised spot of the tile, so the globe must lie
-  // above it to receive the pointer and show its tooltip. jsdom does no hit testing - hover opens
-  // the tooltip even when covered - so only the position and z-index check guards the regression.
-  it('raises the globe above the stretched title link and names it in a tooltip', async () => {
-    renderWithProviders(
-      <AssetTile tile={tile} mode={{ kind: 'link', to: '/libraries/library-satzungen' }} />,
-      { withRouter: true },
-    )
-    const user = userEvent.setup()
-
-    const globe = screen.getByRole('img', { name: 'Für alle Konten freigegeben' })
-    expect(getComputedStyle(globe).position).toBe('relative')
-    expect(Number(getComputedStyle(globe).zIndex)).toBeGreaterThanOrEqual(1)
-
-    await user.hover(globe)
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Für alle Konten freigegeben')
   })
 
   it('toggles the choice on a click and on the keyboard', async () => {

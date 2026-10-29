@@ -496,27 +496,25 @@ Zustände wie „Archiviert" oder „Nachfolge offen". Eigene Rolle und Mitglied
 Kachel, sondern in den Einstellungen des Space.
 
 **Asset-Kachel.** Eine Kachel für jedes Asset, im Katalog wie in jeder Auswahl (`AssetTile`, #2131).
-Kompakt. Die volle Kachel ist die des Katalogs; die Auswahl zeigt eine schlanke Variante (unten).
-Kopfzeile: links die Asset-Art (Icon und Wort), direkt daneben das Welt-Symbol (nur bei
-Freigabe an alle, 5.5), rechts der Favoriten-Stern. Darunter Name, Beschreibung (auf zwei Zeilen
-gekürzt, ohne die Art noch einmal zu nennen), Umfang samt Zahl der Spaces, die zuständige Stelle mit
-Personen- oder Gruppensymbol statt eines Präfixes und eine Zeile „Aktualisiert am" oder Status. Was
-eine Quelle nicht kennt (die Token-Auswahl kennt etwa keine Zahlen), lässt die Kachel weg; zugeordnete Assets zeigt sie mit den Daten des Katalogs. Die eigene
-Rolle steht nicht auf der Kachel, nur auf der Detailseite. Weil die Kachel eigene Bedienelemente
+Kompakt und überall mit demselben Inhalt (#3262, #3305): Es zählt nur, was ein Asset ist, wie groß
+es ist und ob ein Zustand Aufmerksamkeit braucht. Kopfzeile: links die Asset-Art (Icon und Wort),
+daneben „Privat"/„Wird gelöscht", rechts der Favoriten-Stern. Darunter Name, Beschreibung (auf zwei
+Zeilen gekürzt, ohne die Art noch einmal zu nennen), Umfang ohne Zahl der Spaces („12 Dokumente"),
+ein Zustand mit Punkt (auch „Nachfolge offen") und eine Zeile, die die Quelle beisteuert (etwa eine
+gesperrte Quelle oder das Ende einer Freigabe). Zuständige Stelle, „Aktualisiert am", Zahl der
+Spaces, Welt-Symbol und eigene Rolle stehen nicht auf der Kachel, nur auf der Detailseite. Was eine
+Quelle nicht kennt (die Token-Auswahl kennt etwa keine Zahlen), lässt die Kachel weg; zugeordnete
+Assets zeigt sie mit den Daten des Katalogs. Weil die Kachel eigene Bedienelemente
 trägt, ist sie **kein umschließendes Bedienelement**: Ihr Hauptelement ist der Name, seine
 Klickfläche wird über die Kachel gestreckt, und der Stern liegt darüber als eigene Tab-Position.
-Alles, was beim Überfahren etwas zeigt (Welt-Symbol mit Tooltip), liegt ebenfalls über der
+Alles, was beim Überfahren etwas zeigt (Tooltip), liegt ebenfalls über der
 gestreckten Fläche (`position: relative`, `z-index`), sonst fängt sie den Zeiger ab und der Tooltip
 erscheint nie.
 
 - **Im Katalog** ist der Name ein Link zur Detailseite. Nur hier steht neben dem Stern „⋯" für
   weitere Aktionen („In Space verwenden"); es heißt nach 5.6 „Weitere Aktionen für „<Name>"" und
   öffnet ein Menü.
-- **In einer Auswahl** zählt nur, was ein Asset ist, wie groß es ist und ob es gewählt ist (#3262):
-  Die Kachel zeigt Name, Beschreibung und Umfang ohne Zahl der Spaces („12 Dokumente"), dazu Art,
-  Stern, „Privat"/„Wird gelöscht", einen Zustand mit Punkt (auch „Nachfolge offen", dazu der
-  nächste Punkt) und eine Zeile, die die Quelle beisteuert (etwa das Ende einer
-  Freigabe). Zuständige Stelle, „Aktualisiert am", Zahl der Spaces und das Welt-Symbol entfallen. Der Name ist ein Umschalter (`role="checkbox"`,
+- **In einer Auswahl** ist der Name ein Umschalter (`role="checkbox"`,
   `aria-checked`), dessen Beschreibung der Rest der Kachel ist. Gewählt zeigt allein das Zeichen
   links oben: gefülltes Häkchen in `accent` statt leerem Kreis in `fg-2` — ein Unterschied der Form,
   nicht nur der Farbe, beide mit mindestens 3:1 gegen die Fläche (2.4). Rahmen und Fläche bleiben
@@ -554,15 +552,14 @@ Wortlisten:
 
 - **Rollen:** Leser · Bearbeiter · Verwalter · Eigentümer
 - **Sichtbarkeit:** kein Textetikett. Ein öffentliches Asset (Spezifikation: öffentlich, an alle
-  Konten freigegeben) trägt auf der Katalogkachel und im Kopf der Detailseite ein Welt-Symbol mit
-  Tooltip und `aria-label` „Für alle Konten freigegeben"; ein geschlossenes trägt nichts,
-  insbesondere kein Schloss. Auf der Kachel liegt das Symbol über dem gestreckten Titel-Link (5.4),
-  damit der Tooltip beim Überfahren erscheint. In einer Auswahl entfällt es. Abgeleitet aus den
-  Freigaben, nie eingestellt
+  Konten freigegeben) trägt im Kopf der Detailseite ein Welt-Symbol mit Tooltip und `aria-label`
+  „Für alle Konten freigegeben"; ein geschlossenes trägt nichts, insbesondere kein Schloss. Auf der
+  Asset-Kachel entfällt es (5.4). Abgeleitet aus den Freigaben, nie eingestellt
 - **Stand:** „Aktualisiert am TT.MM.JJJJ" ohne Punkt, wenn bereit; ein farbiger Punkt nur vor
   „Wird aktualisiert", „Aktualisierung fehlgeschlagen", „Noch kein Inhalt" und „Nachfolge offen".
   „Nachfolge offen" ist auf der Kachel eine eigene Zustandszeile ohne „zuständig:"; den Adressaten
-  nennt die Zeile der zuständigen Stelle
+  nennt die Detailseite. „Aktualisiert am" steht nur auf der Detailseite, die Kachel zeigt nur
+  Zustände mit Punkt
 - **Herkunft:** Upload · Dateisystem · Webverzeichnis · RSS-Feed · Confluence · S3-Objektspeicher;
   als Badge auf Kacheln die Kurzform Upload · Dateisystem · Web · Feed · Confluence · S3
 - **Asset-Art:** Wissen · Prompts — im Filter wie als Etikett, stets mit dem Icon der Art

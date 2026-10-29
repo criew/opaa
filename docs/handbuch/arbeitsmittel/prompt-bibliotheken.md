@@ -150,8 +150,8 @@ gekennzeichnet.
 
 ### Im Katalog finden
 
-Im [Katalog](katalog.md) nennt die Kachel einer Prompt-Bibliothek die Zahl ihrer Prompts und
-„Aktualisiert am" mit dem Datum der letzten Änderung, etwa eines Prompts.
+Im [Katalog](katalog.md) nennt die Kachel einer Prompt-Bibliothek die Zahl ihrer Prompts; das
+Datum der letzten Änderung steht in der Detailansicht.
 
 ## 5. Prompts pflegen
 

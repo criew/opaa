@@ -121,7 +121,7 @@ const catalogStatusLabels: Record<Exclude<CatalogEntryStatus, 'READY'>, string> 
   SUCCESSION_OPEN: 'Nachfolge offen',
 }
 
-/** The word for a state that is not READY - READY shows as the "Aktualisiert am" date instead. */
+/** The word for a state that is not READY; READY needs no word. */
 export function catalogStatusLabel(status: CatalogEntryStatus | string | undefined): string {
   if (!status || status === 'READY') return ''
   return catalogStatusLabels[status as Exclude<CatalogEntryStatus, 'READY'>] ?? status
