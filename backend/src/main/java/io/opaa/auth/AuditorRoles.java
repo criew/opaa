@@ -296,22 +296,53 @@ public class AuditorRoles {
   }
 
   /**
-   * The administration changed a channel every mail runs through; every auditor learns of it, since
-   * a notice or a link by mail is only as trustworthy as these channels.
+   * The administration changed a channel every mail runs through; every auditor of the installation
+   * learns of it - SMTP settings and templates hold for all organizations - since a notice or a
+   * link by mail is only as trustworthy as these channels.
    */
   @EventListener
   public void onMailConfigurationChanged(MailConfigurationChangedEvent event) {
-    for (User auditor : auditorsOf(event.organizationId())) {
+    notifyEveryAuditor(
+        NotificationType.MAIL_CONFIGURATION_CHANGED,
+        null,
+        "E-Mail-Versand geändert",
+        "Die Systemverwaltung hat "
+            + event.what()
+            + " geändert. Einzelheiten stehen im Revisionsprotokoll.");
+  }
+
+  /**
+   * A provider was created or its trust settings changed. Whoever sets issuer or signing keys can
+   * sign tokens for any subject of the provider, an existing auditor's included; the role grant
+   * does not protect against that, so every auditor of the installation - providers hold for all
+   * organizations - learns of it at once.
+   */
+  @EventListener
+  public void onIdentityProviderTrustChanged(IdentityProviderTrustChangedEvent event) {
+    notifyEveryAuditor(
+        NotificationType.IDENTITY_PROVIDER_TRUST_CHANGED,
+        event.providerId(),
+        event.created() ? "Identitätsanbieter angelegt" : "Identitätsanbieter geändert",
+        "Die Systemverwaltung hat den Identitätsanbieter „"
+            + event.displayName()
+            + (event.created()
+                ? "“ angelegt."
+                : "“ in Issuer, Client-ID, Signaturschlüsseln, Claims oder Rollenzuordnung"
+                    + " geändert.")
+            + " Wer diese Angaben bestimmt, kann sich als jedes Konto dieses Anbieters"
+            + " anmelden. Einzelheiten stehen im Revisionsprotokoll.");
+  }
+
+  private void notifyEveryAuditor(NotificationType type, UUID objectId, String title, String body) {
+    for (User auditor : users.findBySystemRole(SystemRole.AUDITOR)) {
       notifications.notify(
-          event.organizationId(),
+          auditor.getOrganizationId(),
           auditor.getId(),
-          NotificationType.MAIL_CONFIGURATION_CHANGED,
+          type,
           AuditObjectType.SYSTEM_SETTING,
-          null,
-          "E-Mail-Versand geändert",
-          "Die Systemverwaltung hat "
-              + event.what()
-              + " geändert. Einzelheiten stehen im Revisionsprotokoll.");
+          objectId,
+          title,
+          body);
     }
   }
 

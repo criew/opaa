@@ -236,21 +236,56 @@ class AuditorRolesTest {
     }
   }
 
+  /** SMTP settings and templates hold for the installation: every organization's auditors learn. */
   @Test
-  void aChangeOfTheMailChannelsIsToldToEveryAuditor() {
+  void aChangeOfTheMailChannelsIsToldToEveryAuditorOfTheInstallation() {
+    User elsewhere = account("revision@andere.example", SystemRole.AUDITOR);
+    UUID otherOrganization = UUID.randomUUID();
+    elsewhere.setOrganizationId(otherOrganization);
+    when(users.findBySystemRole(SystemRole.AUDITOR))
+        .thenReturn(List.of(existingAuditor, otherAuditor, elsewhere));
+
     auditorRoles.onMailConfigurationChanged(
         new MailConfigurationChangedEvent(organizationId, "die Einstellungen des E-Mail-Versands"));
 
-    for (User auditor : List.of(existingAuditor, otherAuditor)) {
+    for (User auditor : List.of(existingAuditor, otherAuditor, elsewhere)) {
       verify(notifications)
           .notify(
-              eq(organizationId),
+              eq(auditor.getOrganizationId()),
               eq(auditor.getId()),
               eq(NotificationType.MAIL_CONFIGURATION_CHANGED),
               eq(AuditObjectType.SYSTEM_SETTING),
               isNull(),
               any(),
               argThat(body -> body.contains("E-Mail-Versands")));
+    }
+  }
+
+  /**
+   * Regression guard for #3356: whoever sets a provider's issuer or signing keys can sign in as any
+   * of its accounts, an auditor's included - every auditor of the installation learns of it.
+   */
+  @Test
+  void aChangedTrustAnchorOfAProviderIsToldToEveryAuditorOfTheInstallation() {
+    User elsewhere = account("revision@andere.example", SystemRole.AUDITOR);
+    elsewhere.setOrganizationId(UUID.randomUUID());
+    when(users.findBySystemRole(SystemRole.AUDITOR))
+        .thenReturn(List.of(existingAuditor, elsewhere));
+    UUID providerId = UUID.randomUUID();
+
+    auditorRoles.onIdentityProviderTrustChanged(
+        new IdentityProviderTrustChangedEvent(providerId, "Stadt-IdP", false));
+
+    for (User auditor : List.of(existingAuditor, elsewhere)) {
+      verify(notifications)
+          .notify(
+              eq(auditor.getOrganizationId()),
+              eq(auditor.getId()),
+              eq(NotificationType.IDENTITY_PROVIDER_TRUST_CHANGED),
+              eq(AuditObjectType.SYSTEM_SETTING),
+              eq(providerId),
+              eq("Identitätsanbieter geändert"),
+              argThat(body -> body.contains("Stadt-IdP")));
     }
   }
 

@@ -121,7 +121,14 @@ public enum NotificationType {
 
   /**
    * The system administration changed the SMTP settings or a mail template. Sent to every auditor
-   * of the organization; no object.
+   * of the installation; no object.
    */
-  MAIL_CONFIGURATION_CHANGED
+  MAIL_CONFIGURATION_CHANGED,
+
+  /**
+   * The system administration created an identity provider or changed its trust settings (issuer,
+   * client id, signing keys, claims, role mapping). Sent to every auditor of the installation; its
+   * object is the provider.
+   */
+  IDENTITY_PROVIDER_TRUST_CHANGED
 }

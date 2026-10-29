@@ -46,6 +46,7 @@ export function notificationTarget({
     case 'AUDITOR_ROLE_GRANTED':
     case 'AUDITOR_ROLE_REVOKED':
     case 'MAIL_CONFIGURATION_CHANGED':
+    case 'IDENTITY_PROVIDER_TRUST_CHANGED':
       return null
     default: {
       const unknown: never = type

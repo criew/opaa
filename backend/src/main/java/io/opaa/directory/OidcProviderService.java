@@ -13,6 +13,7 @@ import io.opaa.api.types.ProviderType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.IdentityProviderTrustChangedEvent;
 import io.opaa.auth.LocalAdminAvailabilityGuard;
 import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.auth.LocalIssuer;
@@ -213,6 +214,8 @@ public class OidcProviderService implements LocalAccountsSwitch {
         null,
         auditState(provider));
     eventPublisher.publishEvent(new OidcProvidersChangedEvent());
+    eventPublisher.publishEvent(
+        new IdentityProviderTrustChangedEvent(provider.getId(), provider.getDisplayName(), true));
     return provider;
   }
 
@@ -289,14 +292,16 @@ public class OidcProviderService implements LocalAccountsSwitch {
                 + " Issuer einen weiteren Anbieter an.");
       }
     }
-    if (!trustSettingsOf(
-            draft.issuerUri(), draft.clientId(), draft.jwkSetUri(), draft.claimMapping())
-        .equals(
-            trustSettingsOf(
-                provider.getIssuerUri(),
-                provider.getClientId(),
-                provider.getJwkSetUri(),
-                provider.getClaimMapping()))) {
+    boolean trustChanged =
+        !trustSettingsOf(
+                draft.issuerUri(), draft.clientId(), draft.jwkSetUri(), draft.claimMapping())
+            .equals(
+                trustSettingsOf(
+                    provider.getIssuerUri(),
+                    provider.getClientId(),
+                    provider.getJwkSetUri(),
+                    provider.getClaimMapping()));
+    if (trustChanged) {
       recentLogin.requireRecentLogin();
     }
     Map<String, Object> before = auditState(provider);
@@ -315,6 +320,11 @@ public class OidcProviderService implements LocalAccountsSwitch {
         before,
         auditState(provider));
     eventPublisher.publishEvent(new OidcProvidersChangedEvent());
+    if (trustChanged) {
+      eventPublisher.publishEvent(
+          new IdentityProviderTrustChangedEvent(
+              provider.getId(), provider.getDisplayName(), false));
+    }
     return provider;
   }
 

@@ -33,6 +33,9 @@ describe('notificationTarget', () => {
     expect(notificationTarget({ type: 'AUDITOR_ROLE_GRANTED', objectId: 'user-1' })).toBeNull()
     expect(notificationTarget({ type: 'AUDITOR_ROLE_REVOKED', objectId: 'user-1' })).toBeNull()
     expect(notificationTarget({ type: 'MAIL_CONFIGURATION_CHANGED', objectId: null })).toBeNull()
+    expect(
+      notificationTarget({ type: 'IDENTITY_PROVIDER_TRUST_CHANGED', objectId: 'provider-1' }),
+    ).toBeNull()
   })
 
   it('leads an expiring secret to its profile in the connections area', () => {

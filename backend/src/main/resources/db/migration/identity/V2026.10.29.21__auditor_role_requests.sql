@@ -29,7 +29,3 @@ CREATE TABLE auditor_role_requests (
 CREATE INDEX idx_auditor_role_requests_organization ON auditor_role_requests USING btree (organization_id);
 CREATE INDEX idx_auditor_role_requests_requested_by ON auditor_role_requests USING btree (requested_by_user_id);
 CREATE INDEX idx_auditor_role_requests_provider ON auditor_role_requests USING btree (requested_by_provider_id);
-
--- When the system administration last changed the address of a local account: an auditor deciding
--- a request for it sees whether the address is the person's own or was set shortly before.
-ALTER TABLE local_credentials ADD COLUMN email_changed_by_admin_at timestamp with time zone;

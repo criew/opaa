@@ -76,7 +76,11 @@ stehen im Protokoll ({{faktenblatt:protokollereignisse#auditor-role-requested}},
 {{faktenblatt:datenkatalog#auditor-role-requests}}. So kann niemand aus der Systemverwaltung mit
 eigenen Revisionskonten das Protokoll lesen oder eine Klärung allein freigeben. Nicht verhindern
 kann das Produkt, dass dieselbe Person Systemverwaltung und Betrieb ausübt; das regelt die
-Dienstvereinbarung.
+Dienstvereinbarung. Ebenfalls nicht technisch verhindern kann es, dass die Systemverwaltung die
+Anmeldedaten eines externen Identitätsanbieters auf einen eigenen Server umstellt und sich so als
+ein bestehendes Revisionskonto dieses Anbieters anmeldet. Eine solche Änderung erfahren aber alle
+Personen der Revision sofort, und sie steht im Protokoll; Revisionskonten, die sich lokal bei OPAA
+anmelden, sind davon nicht betroffen.
 
 ## 3. Beispiele möglicher und ausgeschlossener Auswertungen
 

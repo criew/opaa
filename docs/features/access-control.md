@@ -148,7 +148,10 @@ nicht. Deshalb:
 - **Melden.** Antrag, jede wirksame Vergabe und jeder Entzug — Rollenwechsel, Rollen-Claim, Löschen
   des Kontos — erreichen alle übrigen `AUDITOR` als Benachrichtigung in OPAA (`AUDITOR_ROLE_REQUESTED`,
   `AUDITOR_ROLE_GRANTED`, `AUDITOR_ROLE_REVOKED`), ebenso jede Änderung der SMTP-Einstellungen oder
-  einer Mailvorlage durch die Systemverwaltung (`MAIL_CONFIGURATION_CHANGED`). Antragsliste und
+  einer Mailvorlage durch die Systemverwaltung (`MAIL_CONFIGURATION_CHANGED`) und jedes Anlegen eines
+  Identitätsanbieters oder jede Änderung seiner Vertrauensanker — Issuer, Client-ID, JWK-Set-URI,
+  E-Mail- und Gruppen-Claim, Rollenzuordnung (`IDENTITY_PROVIDER_TRUST_CHANGED`). Beide Hinweise
+  gehen an alle `AUDITOR` der Installation, weil Mailversand und Anbieter installationsweit gelten. Antragsliste und
   Benachrichtigung nennen die Adresse des Kontos und, wenn die Systemverwaltung sie geändert hat, das
   Datum der letzten Änderung (`local_credentials.email_changed_by_admin_at`).
 
@@ -159,6 +162,17 @@ zusammenwirkt. Was OPAA nicht verhindern kann: Betrieb mit Zugriff auf Datenbank
 Umgebungsvariablen, dieselbe Person in Systemverwaltung und Betrieb, und eine Systemverwaltung, die
 zugleich den Identitätsanbieter betreibt und dort Konten mit beliebiger Adresse anlegt — diese
 erreichen `AUDITOR` aber ebenfalls nur über die Bestätigung durch die Revision.
+
+**Restrisiko Vertrauensanker.** Die Systemverwaltung pflegt die Identitätsanbieter. Setzt sie die
+JWK-Set-URI oder die Issuer-URI eines Anbieters auf einen eigenen Server, kann sie Tokens mit dem
+`sub` eines **bestehenden** `AUDITOR`-Kontos dieses Anbieters signieren und meldet sich als dieses
+Konto an — ohne Antrag, weil das Konto die Rolle schon hat. OPAA verhindert das nicht technisch: Die
+Anbieter-Verwaltung ist Aufgabe der Systemverwaltung, und der Rollenantrag schützt nur die Vergabe,
+nicht ein bestehendes Konto. OPAA macht es sichtbar: Die Änderung verlangt eine frische Anmeldung,
+steht als `OIDC_PROVIDER_CHANGED` mit altem und neuem Wert im Protokoll und erreicht sofort jede
+Person der Revision als Benachrichtigung (`IDENTITY_PROVIDER_TRUST_CHANGED`). Eine Revision, die sich
+nur über einen externen Anbieter anmeldet, sollte jede solche Meldung prüfen; ein lokales
+Revisionskonto ist von diesem Weg nicht betroffen.
 
 Ist bei einem OIDC-Anbieter ein Rollen-Claim gesetzt, ist der Anbieter für beide Rollen führend (für
 `AUDITOR` nur zusammen mit der Bestätigung durch die Revision, siehe oben); die

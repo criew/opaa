@@ -305,8 +305,12 @@ Revision zeigt dann einen neuen Link. Ist sie die einzige, geht der Weg über di
 
 Jede wirksame Vergabe und jeder Entzug der Rolle Revision — durch Rollenwechsel, Rollen-Claim oder
 Löschen des Kontos — meldet OPAA allen übrigen Personen der Revision, ebenso jede Änderung der
-E-Mail-Einstellungen oder einer Mailvorlage durch die Systemverwaltung. Antrag, Bestätigung und
-Ablehnung stehen im Nachweisprotokoll.
+E-Mail-Einstellungen oder einer Mailvorlage und jedes Anlegen eines Identitätsanbieters oder jede
+Änderung seiner Anmeldedaten (Issuer, Client-ID, Signaturschlüssel, Claims, Rollenzuordnung) durch
+die Systemverwaltung — an alle Personen der Revision der Installation. Wer die Anmeldedaten eines
+Anbieters bestimmt, kann sich als jedes Konto dieses Anbieters anmelden, auch als ein bestehendes
+Revisionskonto; deshalb prüft die Revision jede solche Meldung. Antrag, Bestätigung und Ablehnung
+stehen im Nachweisprotokoll.
 
 Systemverwalterkonten sind **persönliche** Konten, je Person eines — keine Sammelkonten. Das
 Notanker-Konto, das der Erststart anlegt, ist davon ausgenommen und kein Arbeitskonto; wofür es
