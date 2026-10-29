@@ -341,9 +341,10 @@ public class S3SourceConnector
   }
 
   /**
-   * A manager sees the whole record, every reader only the scopes - region, addressing style and
-   * patterns are administration detail; the record carries no credential. A stored document the
-   * record no longer accepts is left out rather than failing the whole read.
+   * A manager sees the whole record, every reader only the scopes and whether the library reads
+   * every bucket - region, addressing style and patterns are administration detail; the record
+   * carries no credential. A stored document the record no longer accepts is left out rather than
+   * failing the whole read.
    */
   @Override
   public ConnectorData settingsView(
@@ -354,7 +355,15 @@ public class S3SourceConnector
         return null;
       }
       ConnectorData whole = S3SourceSettingsJson.toData(settings);
-      return manager ? whole : ConnectorData.of(Map.of("scopes", whole.get("scopes")));
+      if (manager) {
+        return whole;
+      }
+      Map<String, Object> reader = new HashMap<>();
+      reader.put("scopes", whole.get("scopes"));
+      if (settings.allBuckets()) {
+        reader.put("allBuckets", true);
+      }
+      return ConnectorData.of(reader);
     } catch (S3Scope.InvalidS3ScopeException
         | S3SourceSettings.InvalidS3SourceSettingsException e) {
       log.warn(
