@@ -58,7 +58,7 @@ Antwort steht in der Matrix der {{faktenblatt:rollensicht#matrix}}; die Tabelle 
 | Kolleginnen und Kollegen | wer Chats, Bibliotheken und Mitgliedschaften sieht | {{faktenblatt:rollensicht#user}}, Sichtbarkeit in {{faktenblatt:datenkatalog#chats}} |
 | Verwaltung einer Bibliothek, Gruppe oder eines Space | Mitglieder und Rechte am eigenen Objekt | {{faktenblatt:rollensicht#faehigkeiten}}, [Wer welche Gruppe sieht](../../handbuch/konten-und-rechte/berechtigungen.md#8-wer-welche-gruppe-sieht--und-wie-groß-sie-ist) |
 | Systemverwaltung | verwaltet Konten und Rechte; sieht, welche lokalen Konten länger nicht genutzt wurden; liest fremde Inhalte nur, wenn sie sich selbst ein Recht gibt, das für alle nachlesbar gespeichert wird; kann mit „Sicht als“ befristet und begründet prüfen, was eine Person sehen würde | {{faktenblatt:rollensicht#system-admin}}, [Systemrollen und Vollmachten](../../handbuch/konten-und-rechte/berechtigungen.md#10-systemrollen-und-vollmachten) |
-| Revision | liest das Protokoll ohne Namen und ohne Kennungen von Personen, sieht nur, dass eine Person gehandelt hat, und kann darin nicht nach Personen suchen | {{faktenblatt:rollensicht#auditor}}, [Pseudonymisierung im Protokoll](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll) |
+| Revision | liest Revisions- und Verbindungsprotokoll ohne Namen und ohne Kennungen von Personen, sieht dort nur, dass eine Person gehandelt hat, und kann darin nicht nach Personen suchen. Ausnahmen: Die Stichtagsauskunft zu einem Objekt nennt, wer es zu einem Zeitpunkt lesen durfte, mit Namen; das Diagnoseprotokoll nennt bei „Sicht als“ die handelnde Systemverwaltung mit ihrem Pseudonym, weil es gerade deren Handeln kontrolliert | {{faktenblatt:rollensicht#auditor}}, [Pseudonymisierung im Protokoll](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll) |
 | Vorgesetzte | haben als Vorgesetzte keine eigene Rolle; sie sehen, was ihnen eine Rolle in OPAA (etwa Systemverwaltung) oder eine Mitgliedschaft gibt, wie alle anderen auch | {{faktenblatt:rollensicht#systemrollen}} |
 | Betrieb von Datenbank, Sicherungen und Logs | technisch alles; das Produkt kann es nicht verhindern | Dienstvereinbarung, Nummer 7 |
 | Ich selbst | meine Daten über die Selbstauskunft, im Umfang der Kategorien, die die eingesetzte Version ausgibt; die Übersicht der Auskunft nennt die fehlenden | {{faktenblatt:datenkatalog#self-disclosure}} |
@@ -90,10 +90,12 @@ Erlaubt ist nur, was die Dienstvereinbarung vereinbart.
   eine Auswertung nach Person gibt es dafür nicht.
 - Rangliste der aktivsten Beschäftigten: gibt es nicht, auch nicht als Spielelement.
 - Was eine Person über Monate verwaltet hat, aus vielen Abfragen der Revision zusammensetzen: Keine
-  Antwort der Revision nennt eine Person, auch nicht mit einer Kennung, an der sich Antworten
-  verbinden ließen. Eine anlassbezogene Klärung blickt nur zurück, ist je Klärung begrenzt und
-  beobachtet niemanden fortlaufend; mehrere Klärungen nacheinander braucht je eigene Freigabe, eine
-  Obergrenze für die Summe setzt nur die Dienstvereinbarung.
+  Antwort aus Revisions- oder Verbindungsprotokoll nennt eine Person, auch nicht mit einer Kennung,
+  an der sich Antworten verbinden ließen. Eine anlassbezogene Klärung blickt nur zurück, ist je
+  Klärung begrenzt und beobachtet niemanden fortlaufend; mehrere Klärungen nacheinander brauchen je
+  eigene Freigabe, eine Obergrenze für die Summe setzt nur die Dienstvereinbarung. Nicht davon
+  erfasst sind die Stichtagsauskunft (wer ein Objekt lesen durfte, mit Namen) und das
+  Diagnoseprotokoll (welche Systemverwaltung „Sicht als“ genutzt hat).
 - Wann jemand zuletzt angemeldet war, zeigt die Kontenliste nicht als Datum.
 - Wer hat eine Selbstauskunft abgerufen? Nur Nachweis und Missbrauchserkennung, keine Auswertung.
 - Auswertungen direkt in der Datenbank: technisch möglich, durch die Dienstvereinbarung verboten.

@@ -528,9 +528,11 @@ roles:
   - id: AUDITOR
     seesAboutOthers: >-
       Protokolleinträge über die vier begrenzten Abfragewege und das Verbindungsprotokoll, jeweils
-      ohne Kennung der handelnden oder betroffenen Person, und die Rechtehistorie als
-      Stichtagsauskunft; die Person nur in einer freigegebenen anlassbezogenen Klärung im
-      Vier-Augen-Prinzip. Keine Verwaltungsrechte
+      ohne Kennung der handelnden oder betroffenen Person; die Rechtehistorie als Stichtagsauskunft
+      zu einem Objekt mit den Personen, die es lesen durften; das Diagnoseprotokoll mit dem
+      Pseudonym der handelnden Systemverwaltung bei „Sicht als“. Eine Person im Revisionsprotokoll
+      nur in einer freigegebenen anlassbezogenen Klärung im Vier-Augen-Prinzip. Keine
+      Verwaltungsrechte
 capabilities:
   - id: CREATE_SPACE
     seesAboutOthers: Nichts über andere Personen; öffnet nur das Anlegen eines Space

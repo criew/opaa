@@ -244,14 +244,15 @@ paths:
       operationId: listConnectionLog
       tags: [audit]
       summary: >
-        The connection log (AUDITOR role required, ADR-0041 Entscheidung 7): who connected,
-        reconnected or disconnected which profile, and when a connection expired, was cut off by the
-        emergency shutdown or deleted.
+        The connection log (AUDITOR role required, ADR-0041 Entscheidung 7): when which profile
+        was connected, reconnected or disconnected - by a person or the system, never naming the
+        person - and when a connection expired, was cut off by the emergency shutdown or deleted.
       description: >
         Bounded exactly like every other audit access path: a mandatory reason and time range of
         at most 92 days, a capped page size and page depth. The system administration does not read
         it. Optional filters narrow by event type and profile; there is deliberately no filter by
-        person. An entry carries no token, no account name at the provider and no library. Every
+        person. An entry names no person and carries no token; only a source connection of a
+        library names the library and the service account's address at the provider. Every
         call writes a CONNECTION_LOG_ACCESSED entry into the audit log, the rejected attempt
         included.
       parameters:

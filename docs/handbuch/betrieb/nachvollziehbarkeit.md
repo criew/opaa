@@ -128,11 +128,15 @@ gilt:
   ([Berechtigungen](../konten-und-rechte/berechtigungen.md#12-nachweis-rechtehistorie-und-stichtagsauskunft)).
   Die Ausleitung an ein Sicherheitsmonitoring trägt keine Pseudonyme
   ([Überwachung](ueberwachung-und-fehlerbehebung.md#ausleitung-an-ein-sicherheitsmonitoring)).
-- **Keine Kennung in der Antwort:** Die Revision sieht in ihren Abfragen keine Kennung einer
-  Person, weder das gespeicherte Pseudonym noch einen Ersatz, nur dass eine Person gehandelt hat oder
-  betroffen ist. Damit lassen sich Antworten nicht über eine Person verbinden, auch nicht über
-  Einträge, die in zwei Antworten vorkommen, und aus vielen Abfragen entsteht keine Zeitreihe einer
-  Person. Das gilt ebenso für das Verbindungsprotokoll.
+- **Keine Kennung in der Antwort:** In ihren Abfragen des Revisionsprotokolls und des
+  Verbindungsprotokolls sieht die Revision keine Kennung einer Person, weder das gespeicherte
+  Pseudonym noch einen Ersatz, nur dass eine Person gehandelt hat oder betroffen ist. Damit lassen
+  sich diese Antworten nicht über eine Person verbinden, auch nicht über Einträge, die in zwei
+  Antworten vorkommen, und aus vielen Abfragen entsteht keine Zeitreihe einer Person. Bewusst
+  ausgenommen sind die Stichtagsauskunft, die zu einem Objekt nennt, wer es lesen durfte
+  ([Berechtigungen](../konten-und-rechte/berechtigungen.md#12-nachweis-rechtehistorie-und-stichtagsauskunft)),
+  und das Diagnoseprotokoll, das bei „Sicht als“ die handelnde Systemverwaltung mit ihrem Pseudonym
+  nennt, um deren Handeln zu kontrollieren.
 - **Auflösen nur im Einzelfall:** Einer Person zugeordnet wird ein Eintrag nur über eine
   anlassbezogene Klärung mit Begründung und Freigabe durch eine zweite Person
   ([Berechtigungen](../konten-und-rechte/berechtigungen.md#10-systemrollen-und-vollmachten)). Ihr
