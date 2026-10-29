@@ -342,10 +342,18 @@ export function describeLocalSignInFailure(err: unknown): {
   }
 }
 
-/** The `Retry-After` seconds of a refused request; null when the header is absent or unusable. */
+/**
+ * The `Retry-After` seconds of a refused request, read from the axios error itself or from the
+ * `cause` `normalizeError` keeps it in; null when the header is absent or unusable.
+ */
 export function retryAfterSecondsOf(err: unknown): number | null {
-  if (!axios.isAxiosError(err) || !err.response) return null
-  const header = err.response.headers['retry-after']
+  const axiosError = axios.isAxiosError(err)
+    ? err
+    : err instanceof Error && axios.isAxiosError(err.cause)
+      ? err.cause
+      : null
+  if (!axiosError?.response) return null
+  const header = axiosError.response.headers['retry-after']
   const seconds = typeof header === 'string' ? Number.parseInt(header, 10) : Number.NaN
   return Number.isFinite(seconds) ? seconds : null
 }

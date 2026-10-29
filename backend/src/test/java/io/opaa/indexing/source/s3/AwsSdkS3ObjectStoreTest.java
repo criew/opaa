@@ -566,6 +566,13 @@ class AwsSdkS3ObjectStoreTest {
     assertThat(store.listBuckets())
         .isEqualTo(new S3BucketListing.Listed(List.of("docs", "satzungen")));
 
+    server.bucketRegion("satzungen", "eu-west-1");
+    assertThat(store.listBuckets())
+        .as("AWS names each bucket's region; the run leaves out those of another one")
+        .isEqualTo(
+            new S3BucketListing.Listed(
+                List.of("docs", "satzungen"), java.util.Map.of("satzungen", "eu-west-1")));
+
     server.failNext(403, "AccessDenied", 1);
     assertThat(store.listBuckets()).isInstanceOf(S3BucketListing.NotPermitted.class);
 
@@ -591,6 +598,50 @@ class AwsSdkS3ObjectStoreTest {
     } finally {
       assertThat(Thread.interrupted()).as("interrupt flag restored").isTrue();
     }
+  }
+
+  @Test
+  void theListingProbeAsksForOneKeyAndAnswersWithTheListingsExceptions() throws Exception {
+    S3ObjectStore store = store(properties(1000, 1, 0), true, false);
+
+    store.probeListing("docs");
+
+    assertThat(server.seen().get(server.seen().size() - 1).query()).contains("max-keys=1");
+    server.failNext(403, "AccessDenied", 1);
+    assertThatThrownBy(() -> store.probeListing("docs"))
+        .isInstanceOf(S3AccessException.ListForbidden.class);
+  }
+
+  @Test
+  void onlyANoSuchBucketWithItsCodeConfirmsTheBucketIsGone() throws Exception {
+    S3ObjectStore store = store(properties(1000, 1, 0), true, false);
+
+    server.failNext(404, "NoSuchBucket", 1);
+    assertThat(catchFailure(() -> store.probeListing("docs")))
+        .isInstanceOfSatisfying(
+            S3AccessException.BucketNotFound.class, e -> assertThat(e.confirmed()).isTrue());
+    server.failNext(404, null, 1);
+    assertThat(catchFailure(() -> store.probeListing("docs")))
+        .as("a bare 404 may come from a proxy in front of the store")
+        .isInstanceOfSatisfying(
+            S3AccessException.BucketNotFound.class, e -> assertThat(e.confirmed()).isFalse());
+  }
+
+  @Test
+  void listBucketsFollowsTheContinuationTokenToTheLastPage() throws Exception {
+    server.addBucket("protokolle");
+    server.bucketRegion("satzungen", "eu-west-1");
+    server.bucketPageSize(2);
+    S3ObjectStore store = store(properties(1000, 1, 0), true, false);
+
+    assertThat(store.listBuckets())
+        .isEqualTo(
+            new S3BucketListing.Listed(
+                List.of("docs", "protokolle", "satzungen"),
+                java.util.Map.of("satzungen", "eu-west-1")));
+    assertThat(server.seen()).hasSize(2);
+    assertThat(server.seen().get(0).query()).contains("max-buckets=1000");
+    assertThat(server.seen().get(1).query()).contains("continuation-token=b2");
   }
 
   private static Throwable catchFailure(Action action) {

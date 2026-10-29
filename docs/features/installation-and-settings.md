@@ -544,8 +544,10 @@ Fehlversuchen, ADR-0060, Entscheidung 17).
 | `OPAA_DOCUMENTS_REMOTE_CONTENT_MAX_BYTES` | `opaa.documents.remote-content.max-bytes` |
 | `OPAA_DOCUMENTS_REMOTE_CONTENT_TIMEOUT_SECONDS` | `opaa.documents.remote-content.timeout-seconds` |
 | `OPAA_DOCUMENTS_REMOTE_CONTENT_TRANSFER_TIMEOUT_SECONDS` | `opaa.documents.remote-content.transfer-timeout-seconds` |
+| `OPAA_INDEXING_ATTACHMENTS_MAX_BYTES_PER_ROOT` | `opaa.indexing.attachments.max-bytes-per-root` |
 | `OPAA_INDEXING_ATTACHMENTS_MAX_DEPTH` | `opaa.indexing.attachments.max-depth` |
 | `OPAA_INDEXING_ATTACHMENTS_MAX_PER_PARENT` | `opaa.indexing.attachments.max-per-parent` |
+| `OPAA_INDEXING_ATTACHMENTS_MAX_PER_ROOT` | `opaa.indexing.attachments.max-per-root` |
 | `OPAA_INDEXING_ATTACHMENTS_MAX_SIZE_BYTES` | `opaa.indexing.attachments.max-size-bytes` |
 | `OPAA_INDEXING_BATCH_SIZE` | `opaa.indexing.batch-size` |
 | `OPAA_INDEXING_CONFLUENCE_DETECTION_TIMEOUT` | `opaa.indexing.confluence.detection-timeout` |
@@ -612,6 +614,8 @@ Fehlversuchen, ADR-0060, Entscheidung 17).
 | `OPAA_INDEXING_PARSER_LIMITS_MAX_OOXML_TOTAL_BYTES` | `opaa.indexing.parser-limits.max-ooxml-total-bytes` |
 | `OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_CONTENT_BYTES` | `opaa.indexing.parser-limits.max-pdf-content-bytes` |
 | `OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_OPERATORS` | `opaa.indexing.parser-limits.max-pdf-operators` |
+| `OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_PAGES` | `opaa.indexing.parser-limits.max-pdf-pages` |
+| `OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_OBJECTS` | `opaa.indexing.parser-limits.max-pdf-objects` |
 | `OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_PARSE_SECONDS` | `opaa.indexing.parser-limits.max-pdf-parse-seconds` |
 | `OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_STREAM_BYTES` | `opaa.indexing.parser-limits.max-pdf-stream-bytes` |
 | `OPAA_INDEXING_PARSER_LIMITS_MAX_TEXT_CHARACTERS` | `opaa.indexing.parser-limits.max-text-characters` |
@@ -665,6 +669,10 @@ Fehlversuchen, ADR-0060, Entscheidung 17).
 | `OPAA_RATE_LIMIT_DOCUMENT_CONTENT_GLOBAL_MAX_REQUESTS` | `opaa.rate-limit.document-content.global-max-requests` |
 | `OPAA_RATE_LIMIT_DOCUMENT_CONTENT_MAX_REQUESTS` | `opaa.rate-limit.document-content.max-requests` |
 | `OPAA_RATE_LIMIT_DOCUMENT_CONTENT_WINDOW_SECONDS` | `opaa.rate-limit.document-content.window-seconds` |
+| `OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_GLOBAL_MAX_REQUESTS` | `opaa.rate-limit.document-upload.global-max-requests` |
+| `OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_MAX_REQUESTS` | `opaa.rate-limit.document-upload.max-requests` |
+| `OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_MAX_REQUESTS_PER_ACCOUNT` | `opaa.rate-limit.document-upload.max-requests-per-account` |
+| `OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_WINDOW_SECONDS` | `opaa.rate-limit.document-upload.window-seconds` |
 | `OPAA_RATE_LIMIT_ENABLED` | `opaa.rate-limit.enabled` |
 | `OPAA_RATE_LIMIT_INDEXING_GLOBAL_MAX_REQUESTS` | `opaa.rate-limit.indexing.global-max-requests` |
 | `OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS` | `opaa.rate-limit.indexing.max-requests` |
@@ -701,6 +709,10 @@ Fehlversuchen, ADR-0060, Entscheidung 17).
 | `OPAA_RATE_LIMIT_SOURCE_TEST_GLOBAL_MAX_REQUESTS` | `opaa.rate-limit.source-test.global-max-requests` |
 | `OPAA_RATE_LIMIT_SOURCE_TEST_MAX_REQUESTS` | `opaa.rate-limit.source-test.max-requests` |
 | `OPAA_RATE_LIMIT_SOURCE_TEST_WINDOW_SECONDS` | `opaa.rate-limit.source-test.window-seconds` |
+| `OPAA_RATE_LIMIT_TRANSCRIPTION_GLOBAL_MAX_REQUESTS` | `opaa.rate-limit.transcription.global-max-requests` |
+| `OPAA_RATE_LIMIT_TRANSCRIPTION_MAX_REQUESTS` | `opaa.rate-limit.transcription.max-requests` |
+| `OPAA_RATE_LIMIT_TRANSCRIPTION_MAX_REQUESTS_PER_ACCOUNT` | `opaa.rate-limit.transcription.max-requests-per-account` |
+| `OPAA_RATE_LIMIT_TRANSCRIPTION_WINDOW_SECONDS` | `opaa.rate-limit.transcription.window-seconds` |
 | `OPAA_RATE_LIMIT_WEBHOOK_GLOBAL_MAX_REQUESTS` | `opaa.rate-limit.webhook.global-max-requests` |
 | `OPAA_RATE_LIMIT_WEBHOOK_MAX_REQUESTS` | `opaa.rate-limit.webhook.max-requests` |
 | `OPAA_RATE_LIMIT_WEBHOOK_WINDOW_SECONDS` | `opaa.rate-limit.webhook.window-seconds` |

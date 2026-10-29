@@ -58,6 +58,12 @@ Konnektoren je in einem Unterpaket von `io.opaa.indexing.source`, ihr Vertrag in
   Konnektor mit einem Record in seinem Paket; der Kern reicht das Objekt als `ConnectorData` durch.
   Keine konnektoreigenen Tabellen: Laufzustand je Element lebt im Synchronisationszustand
   (`SourceSyncState`), nicht in der Konfiguration.
+- Ein Umfang „Alle“ (Confluence `allSpaces`, S3 `allBuckets`, Google Drive `allScopes`,
+  SharePoint `{site}` ohne `driveId`) ist ein Wert der Einstellungen, keine gespeicherte Liste:
+  Jeder Lauf ermittelt die Bereiche neu (`ResolvedScopes`). Die zuletzt ermittelten merkt sich der
+  Synchronisationszustand (`resolved_scopes`), nur um im Laufprotokoll neu hinzugekommene und
+  weggefallene zu nennen und die Ströme der nächsten Betriebsart zu kennen; die Spalte überdauert
+  einen Wechsel der Einstellungsbasis, weil sie keinen Abgleichstand trägt.
 
 ### 3. Geheimnisse stehen nie in den Einstellungen
 

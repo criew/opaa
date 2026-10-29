@@ -22,6 +22,11 @@ public final class PageMarkingContentHandler extends BodyContentHandler {
     super(-1);
   }
 
+  /** Stops with Tika's write-limit exception after {@code writeLimit} characters. */
+  public PageMarkingContentHandler(int writeLimit) {
+    super(writeLimit);
+  }
+
   @Override
   public void startElement(String uri, String localName, String name, Attributes atts)
       throws SAXException {

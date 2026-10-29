@@ -6,12 +6,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.test.ProductionDocumentFormats;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Stream;
+import org.apache.tika.exception.TikaException;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.metadata.TikaCoreProperties;
 import org.apache.tika.parser.AutoDetectParser;
@@ -24,6 +26,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.xml.sax.SAXException;
 
 /**
  * Tika's standard parser package without the libraries {@code build.gradle.kts} excludes from it
@@ -130,9 +133,15 @@ class TikaWithoutExcludedLibrariesTest {
         .as("detected %s", detected)
         .isEqualTo(new SupportedDocumentFormats.ContentDecision(true, extension, false));
 
-    var parsed = new DocumentService().parseDocument(file);
-    assertThat(parsed).isNotEmpty();
-    assertThat(parsed.getFirst().getText()).as("text extracted from %s", file).isNotBlank();
+    // Tika itself, embedded parts included: a mail's body is one of them, and only the fallback
+    // format, which skips them, goes through DocumentService
+    BodyContentHandler text = new BodyContentHandler(-1);
+    try (InputStream in = Files.newInputStream(file)) {
+      new AutoDetectParser().parse(in, text, new Metadata(), new ParseContext());
+    } catch (SAXException | TikaException e) {
+      throw new IOException(e);
+    }
+    assertThat(text.toString()).as("text extracted from %s", file).isNotBlank();
   }
 
   static Stream<Path> fixtures() throws IOException {

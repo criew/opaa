@@ -49,6 +49,17 @@ class SecurityCorsConfigTest {
   }
 
   @Test
+  void theSpaCanReadRetryAfterAndWwwAuthenticateCrossOrigin() throws IOException {
+    MockHttpServletResponse response = new MockHttpServletResponse();
+
+    assertThat(process(crossOriginRequest("POST"), response)).isTrue();
+
+    assertThat(response.getHeader(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS))
+        .contains(HttpHeaders.RETRY_AFTER)
+        .contains(HttpHeaders.WWW_AUTHENTICATE);
+  }
+
+  @Test
   void requestFromAForeignOriginStaysRejected() throws IOException {
     MockHttpServletRequest request = crossOriginRequest("PATCH");
     request.removeHeader(HttpHeaders.ORIGIN);

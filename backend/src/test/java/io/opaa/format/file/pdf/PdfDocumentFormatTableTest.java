@@ -382,7 +382,7 @@ class PdfDocumentFormatTableTest {
     var roomy =
         new PdfDocumentFormat(
             HeadingSectionSplitterFixture.DEFAULT,
-            new ParserLimitProperties(0, 0, 0, 0, 0, 256L * 1024 * 1024, 0));
+            new ParserLimitProperties(0, 0, 0, 0, 0, 256L * 1024 * 1024, 0, 0, 0));
     assertThat(onlyChunkText(roomy, file)).isEqualTo("Hinweis vor der Grafik.");
   }
 

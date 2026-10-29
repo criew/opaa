@@ -19,6 +19,8 @@ export interface GoogleDriveScope {
 /** The connector settings of a Google Drive library as `sourceSettings` carries them. */
 export type GoogleDriveSettings = {
   scopes?: Array<{ drive?: string; folder?: string; myDrive?: boolean; name?: string | null }>
+  /** Every shared drive the account sees, with `subject` also its own; `scopes` is empty then. */
+  allScopes?: boolean | null
   subject?: string | null
   fullSyncIntervalDays?: number | null
 }
@@ -33,6 +35,8 @@ export interface GoogleDriveSourceValues {
   keyAccount: string
   subject: string
   storedSubject: string
+  /** „Alle Ablagen“, resolved anew by each run; the preselection of a new library. */
+  allScopes: boolean
   scopes: GoogleDriveScope[]
   /** The library's own full-sync rhythm, resent as it is: the connector replaces its settings whole. */
   fullSyncIntervalDays: number | null
@@ -43,6 +47,7 @@ export const EMPTY_GOOGLE_DRIVE_VALUES: GoogleDriveSourceValues = {
   keyAccount: '',
   subject: '',
   storedSubject: '',
+  allScopes: true,
   scopes: [],
   fullSyncIntervalDays: null,
 }
@@ -108,13 +113,17 @@ export function googleDriveIssue(
         : 'Bitte die JSON-Schlüsseldatei des Dienstkontos hochladen.',
     )
   }
-  if (values.scopes.length === 0) {
+  if (!values.allScopes && values.scopes.length === 0) {
     return formIssue('Bitte mindestens einen Bereich wählen.')
   }
-  if (values.scopes.length > MAX_GOOGLE_DRIVE_SCOPES) {
+  if (!values.allScopes && values.scopes.length > MAX_GOOGLE_DRIVE_SCOPES) {
     return formIssue(`Höchstens ${MAX_GOOGLE_DRIVE_SCOPES} Bereiche sind möglich.`)
   }
-  if (values.scopes.some((scope) => scope.kind === 'myDrive') && values.subject.trim() === '') {
+  if (
+    !values.allScopes &&
+    values.scopes.some((scope) => scope.kind === 'myDrive') &&
+    values.subject.trim() === ''
+  ) {
     return issueAt(
       'subject',
       '„Meine Ablage“ setzt ein imitiertes Konto voraus; ein Dienstkonto besitzt keine Dateien.',
@@ -130,11 +139,14 @@ export function googleDriveIssue(
 /** The settings part of a request. */
 export function googleDriveSettingsOf(values: GoogleDriveSourceValues): Record<string, unknown> {
   return {
-    scopes: values.scopes.map((scope) =>
-      scope.kind === 'myDrive'
-        ? { myDrive: true }
-        : { [scope.kind]: scope.id, ...(scope.name ? { name: scope.name } : {}) },
-    ),
+    ...(values.allScopes ? { allScopes: true } : {}),
+    scopes: values.allScopes
+      ? []
+      : values.scopes.map((scope) =>
+          scope.kind === 'myDrive'
+            ? { myDrive: true }
+            : { [scope.kind]: scope.id, ...(scope.name ? { name: scope.name } : {}) },
+        ),
     subject: values.subject.trim() || null,
     ...(values.fullSyncIntervalDays != null
       ? { fullSyncIntervalDays: values.fullSyncIntervalDays }

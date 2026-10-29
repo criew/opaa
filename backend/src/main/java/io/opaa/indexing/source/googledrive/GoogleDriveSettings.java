@@ -12,14 +12,21 @@ import java.util.regex.Pattern;
 
 /**
  * The connector settings of a Google Drive library in {@code source_settings} (ADR-0040,
- * Entscheidungen 4 and 5): one to fifty {@code scopes}, the optional imitated account {@code
- * subject} and the optional own full-sync rhythm {@code fullSyncIntervalDays}. No secret.
+ * Entscheidungen 4 and 5): one to fifty {@code scopes} or {@code allScopes} - every shared drive
+ * the account sees and, with an imitated account, its "Meine Ablage" -, the optional imitated
+ * account {@code subject} and the optional own full-sync rhythm {@code fullSyncIntervalDays}. No
+ * secret. Under {@code allScopes} the stored scopes are empty; a run puts what it found there
+ * ({@link #resolvedTo}).
  */
 record GoogleDriveSettings(
-    List<GoogleDriveScope> scopes, String subject, Integer fullSyncIntervalDays) {
+    List<GoogleDriveScope> scopes,
+    String subject,
+    Integer fullSyncIntervalDays,
+    boolean allScopes) {
 
   static final String SUBJECT = "subject";
-  static final Set<String> KEYS = Set.of("scopes", SUBJECT, "fullSyncIntervalDays");
+  static final String ALL_SCOPES = "allScopes";
+  static final Set<String> KEYS = Set.of("scopes", SUBJECT, "fullSyncIntervalDays", ALL_SCOPES);
   static final int MAX_SCOPES = 50;
   static final int MAX_FULL_SYNC_INTERVAL_DAYS = 365;
 
@@ -29,6 +36,15 @@ record GoogleDriveSettings(
     scopes = List.copyOf(scopes);
   }
 
+  GoogleDriveSettings(List<GoogleDriveScope> scopes, String subject, Integer fullSyncIntervalDays) {
+    this(scopes, subject, fullSyncIntervalDays, false);
+  }
+
+  /** These settings with {@code found} as their scopes, as one run resolved "Alle Ablagen". */
+  GoogleDriveSettings resolvedTo(List<GoogleDriveScope> found) {
+    return new GoogleDriveSettings(found, subject, fullSyncIntervalDays, allScopes);
+  }
+
   /**
    * Reads and checks {@code data}.
    *
@@ -36,6 +52,21 @@ record GoogleDriveSettings(
    */
   static GoogleDriveSettings read(ConnectorData data) {
     data.requireOnly(KEYS);
+    Object all = data.get(ALL_SCOPES);
+    if (all != null && !(all instanceof Boolean)) {
+      throw new ValidationException("sourceSettings.allScopes: true oder false");
+    }
+    if (Boolean.TRUE.equals(all)) {
+      if (data.get("scopes") instanceof List<?> listed ? !listed.isEmpty() : data.has("scopes")) {
+        throw new ValidationException(
+            "sourceSettings: allScopes und eine Auswahl unter scopes schließen einander aus");
+      }
+      return new GoogleDriveSettings(
+          List.of(),
+          subject(data.get("subject")),
+          interval(data.get("fullSyncIntervalDays")),
+          true);
+    }
     if (!(data.get("scopes") instanceof List<?> list) || list.isEmpty()) {
       throw new ValidationException(
           "sourceSettings.scopes: mindestens ein Bereich ist erforderlich");
@@ -78,6 +109,9 @@ record GoogleDriveSettings(
   ConnectorData toData() {
     Map<String, Object> json = new LinkedHashMap<>();
     json.put("scopes", scopes.stream().map(GoogleDriveScope::toJson).toList());
+    if (allScopes) {
+      json.put(ALL_SCOPES, true);
+    }
     if (subject != null) {
       json.put("subject", subject);
     }

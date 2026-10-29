@@ -54,7 +54,10 @@ class SpringContextSignatureTest {
           OpaaLocalAuthLinkTest.class,
           OpaaLocalAdminRestrictionTest.class,
           OpaaLocalAuthRateLimitTest.class,
-          OpaaLocalAuthProviderTest.class);
+          OpaaLocalAuthProviderTest.class,
+          // The actuator on a management port of its own: a child context with its own server,
+          // which takes every actuator path off the API port the other signatures read it on.
+          OpaaManagementPortTest.class);
 
   @Test
   void everySpringBackedTestUsesOneOfTheCanonicalSignatures() {

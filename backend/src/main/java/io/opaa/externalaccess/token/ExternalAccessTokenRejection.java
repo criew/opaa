@@ -28,7 +28,13 @@ public enum ExternalAccessTokenRejection {
   NETWORK_NOT_ALLOWED("network_not_allowed"),
 
   /** The account behind the token is locked, expired, deactivated or otherwise not signed-in. */
-  ACCOUNT_NOT_ACTIVE("account_not_active");
+  ACCOUNT_NOT_ACTIVE("account_not_active"),
+
+  /**
+   * The account of an identity provider has not signed in for too long; the token works again after
+   * the next sign-in.
+   */
+  SIGN_IN_REQUIRED("sign_in_required");
 
   private final String marker;
 

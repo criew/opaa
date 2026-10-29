@@ -61,6 +61,13 @@ public class AttachmentIndexer {
    */
   private static final ThreadLocal<Integer> RECURSION_DEPTH = new ThreadLocal<>();
 
+  /**
+   * What the attachments below the current root document have used of {@link
+   * AttachmentProperties#maxPerRoot()} and {@link AttachmentProperties#maxBytesPerRoot()}, over
+   * every level of nesting; set and removed together with {@link #RECURSION_DEPTH}.
+   */
+  private static final ThreadLocal<RootBudget> ROOT_BUDGET = new ThreadLocal<>();
+
   private final BoundedDownloader attachmentDownloader;
   private final DocumentIngestService documentIngestService;
   private final LibraryStorageQuotaService storageQuotaService;
@@ -97,9 +104,11 @@ public class AttachmentIndexer {
   }
 
   /**
-   * Indexes every attachment {@code sources} lists, up to {@link AttachmentLimits#maxPerParent()}.
-   * A {@link AttachmentSource.Download}'s own politeness delay applies before it; an {@link
-   * AttachmentSource.LocalFile} makes no request.
+   * Indexes every attachment {@code sources} lists, up to {@link AttachmentLimits#maxPerParent()}
+   * and as far as the budget of the root document allows ({@link
+   * AttachmentProperties#maxPerRoot()}, {@link AttachmentProperties#maxBytesPerRoot()}), which
+   * counts every level of nesting together. A {@link AttachmentSource.Download}'s own politeness
+   * delay applies before it; an {@link AttachmentSource.LocalFile} makes no request.
    *
    * @param parentDocumentId the row every indexed attachment becomes a child of
    * @param parentPath the parent document's own {@code file_path} - recorded on every attachment
@@ -132,6 +141,7 @@ public class AttachmentIndexer {
     }
     if (topLevel) {
       RECURSION_DEPTH.set(0);
+      ROOT_BUDGET.set(new RootBudget());
     }
     try {
       int limit = Math.min(sources.size(), limits.maxPerParent());
@@ -148,7 +158,20 @@ public class AttachmentIndexer {
       List<String> indexedPaths = new ArrayList<>();
       RECURSION_DEPTH.set(depth + 1);
       try {
-        for (AttachmentSource source : sources.subList(0, limit)) {
+        for (int i = 0; i < limit; i++) {
+          AttachmentSource source = sources.get(i);
+          if (ROOT_BUDGET.get().documents >= attachmentProperties.maxPerRoot()) {
+            log.warn(
+                "The attachments below the root of {} reached the limit of {} documents, skipping"
+                    + " {} more (opaa.indexing.attachments.max-per-root)",
+                names(access).of(parentPath),
+                attachmentProperties.maxPerRoot(),
+                limit - i);
+            access.markDeferred();
+            countSkipped(access, limit - i);
+            break;
+          }
+          ROOT_BUDGET.get().documents++;
           if (source instanceof AttachmentSource.Download download) {
             RequestPoliteness.delayBeforeRequest(download.requestDelayMs());
           }
@@ -162,8 +185,15 @@ public class AttachmentIndexer {
     } finally {
       if (topLevel) {
         RECURSION_DEPTH.remove();
+        ROOT_BUDGET.remove();
       }
     }
+  }
+
+  /** Documents and bytes the attachments below one root document have used so far. */
+  private static final class RootBudget {
+    private int documents;
+    private long bytes;
   }
 
   /** How log lines name the attachments of the library {@code access} stores into. */
@@ -469,6 +499,25 @@ public class AttachmentIndexer {
       UUID parentDocumentId,
       String parentPath,
       SourceType sourceType) {
+    RootBudget root = ROOT_BUDGET.get();
+    if (size > attachmentProperties.maxBytesPerRoot() - root.bytes) {
+      log.warn(
+          "Skipping attachment {} (from {}): the attachments below its root would exceed {} bytes"
+              + " (opaa.indexing.attachments.max-bytes-per-root)",
+          names(access).of(filePathIdentity),
+          names(access).of(parentPath),
+          attachmentProperties.maxBytesPerRoot());
+      access
+          .events()
+          .record(
+              IndexingEventCategory.REJECTED,
+              "Anlagen des Dokuments überschreiten zusammen die zulässige Größe",
+              filePathIdentity);
+      access.markDeferred();
+      access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
+      return Optional.empty();
+    }
+    root.bytes += size;
     try {
       DocumentIngestResult result =
           documentIngestService.ingest(

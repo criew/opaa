@@ -34,7 +34,7 @@ import org.springframework.web.util.UrlPathHelper;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The path-keyed rate limits: the first {@link Rule} whose pattern matches the request path is
+ * The path-keyed rate limits: the first {@link Rule} whose method and pattern match the request is
  * applied - the client's own budget first, then the global ceiling, which only requests that passed
  * their client budget take a token from - and a refusal is {@code 429} with {@code Retry-After} and
  * the one German message. The filter runs before the security chain; which requests keep the tokens
@@ -117,6 +117,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
    * AuthenticatedRequestMarkerFilter} - whatever address the request came from.
    *
    * @param name the stable label of the rule in logs and metrics
+   * @param method the HTTP method the rule applies to, or {@code null} for every method; a request
+   *     with another method is matched against the rules after it
    */
   public record Rule(
       String name,
@@ -125,7 +127,19 @@ public class RateLimitFilter extends OncePerRequestFilter {
       RequestLimiter global,
       BooleanSupplier served,
       Counting counting,
-      RequestLimiter perAccount) {
+      RequestLimiter perAccount,
+      String method) {
+
+    public Rule(
+        String name,
+        String pathPattern,
+        RequestLimiter perClient,
+        RequestLimiter global,
+        BooleanSupplier served,
+        Counting counting,
+        RequestLimiter perAccount) {
+      this(name, pathPattern, perClient, global, served, counting, perAccount, null);
+    }
 
     public Rule(
         String name,
@@ -167,7 +181,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
       RequestLimiter global,
       BooleanSupplier served,
       Counting counting,
-      RequestLimiter perAccount) {}
+      RequestLimiter perAccount,
+      String method) {
+
+    boolean appliesTo(HttpServletRequest request) {
+      return method == null || method.equalsIgnoreCase(request.getMethod());
+    }
+  }
 
   /** The check of the account budget a request owes once the security chain authenticated it. */
   @FunctionalInterface
@@ -219,7 +239,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
                         rule.global(),
                         rule.served(),
                         rule.counting(),
-                        rule.perAccount()))
+                        rule.perAccount(),
+                        rule.method()))
             .toList();
     this.clientIpResolver = clientIpResolver;
     this.metrics = metrics;
@@ -237,6 +258,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
     Admission admission = null;
     for (CompiledRule rule : rules) {
+      if (!rule.appliesTo(request)) {
+        continue;
+      }
       Matcher matcher = rule.path().matcher(path);
       if (!matcher.find()) {
         continue;

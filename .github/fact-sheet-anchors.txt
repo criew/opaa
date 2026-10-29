@@ -310,6 +310,7 @@ voreinstellungen#opaa-chat-note-max-items
 voreinstellungen#opaa-demo-chat-import-enabled
 voreinstellungen#opaa-directory-sync-schedule-enabled
 voreinstellungen#opaa-external-access-max-release-days
+voreinstellungen#opaa-external-access-provider-sign-in-max-age-days
 voreinstellungen#opaa-features-external-access-enabled
 voreinstellungen#opaa-features-metadata-enabled
 voreinstellungen#opaa-features-prompt-libraries-enabled
