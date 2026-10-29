@@ -85,6 +85,21 @@ class VectorIndexDistanceGuardIntegrationTest {
         .doesNotThrowAnyException();
   }
 
+  /** An index on another type of pgvector, built by hand, is no index of the configured search. */
+  @Test
+  void anIndexOverAnotherVectorTypeIsNotChecked() {
+    createProbe(null);
+    jdbcTemplate.execute(
+        "CREATE INDEX "
+            + TABLE
+            + "_halfvec ON "
+            + probe.qualifiedName()
+            + " USING hnsw ((embedding::halfvec(3)) halfvec_l2_ops)");
+
+    assertThatCode(() -> guard(PgDistanceType.COSINE_DISTANCE).run(null))
+        .doesNotThrowAnyException();
+  }
+
   private VectorIndexDistanceGuard guard(PgDistanceType distanceType) {
     PgVectorStoreProperties properties = new PgVectorStoreProperties();
     properties.setDistanceType(distanceType);

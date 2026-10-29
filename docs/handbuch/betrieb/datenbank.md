@@ -24,12 +24,35 @@ stößt bei sehr großen Beständen im Bereich von Millionen Vektoren an Grenzen
   geschrieben werden.
 - **Die Distanzfunktion** (`OPAA_PGVECTOR_DISTANCE_TYPE`) bestimmt, wofür der Vektorindex beim
   Anlegen der Vektortabelle gebaut wird. Passt der Wert später nicht mehr zum bestehenden Index,
-  bricht der Start mit einer Meldung ab, die beide Werte nennt: Die Suche würde den Index sonst nicht
-  mehr nutzen. Abhilfe ist, den alten Wert wieder einzutragen oder den Index in der Datenbank mit
-  der neuen Distanzfunktion neu aufzubauen.
+  bricht der Start mit einer Meldung ab, die beide Werte und den Namen des Index nennt: Die Suche
+  würde den Index sonst nicht mehr nutzen. Siehe [„Distanzfunktion ändern“](#distanzfunktion-ändern).
 - **Eine neue PostgreSQL-Hauptversion** (etwa ein Image-Tag `pg18` → höher) ist ein eigener
   Migrationsvorgang der Datenbank mit Sicherung und Wiederherstellung, kein Image-Update: Das
   Datenverzeichnis ist nicht aufwärtskompatibel.
+
+### Distanzfunktion ändern
+
+Der einfachste Weg nach dem Abbruch ist, den alten Wert von `OPAA_PGVECTOR_DISTANCE_TYPE` wieder
+einzutragen. Soll die neue Distanzfunktion gelten, wird der Index in der Datenbank neu gebaut,
+bei gestopptem Backend, mit dem Indexnamen aus der Meldung und der Operator-Klasse der neuen
+Distanzfunktion (`vector_cosine_ops` für `cosine_distance`, `vector_l2_ops` für
+`euclidean_distance`, `vector_ip_ops` für `negative_inner_product`):
+
+```sql
+DROP INDEX CONCURRENTLY <schema>.<index>;
+CREATE INDEX CONCURRENTLY <index> ON <schema>.vector_store USING hnsw (embedding vector_cosine_ops);
+```
+
+- **Immer mit `CONCURRENTLY`.** Ohne den Zusatz sperrt der Neuaufbau eines HNSW-Index die
+  Schreibzugriffe auf die Tabelle, bei großen Beständen lange. Mit dem Zusatz dauert er länger,
+  sperrt aber nicht; die beiden Befehle laufen außerhalb einer Transaktion.
+- **Während einer Neueinbettung** nach einem Wechsel des Embedding-Modells
+  ([Modelle](modelle.md#modell-wechseln)) gibt es einen zweiten Index, `embedding_next_vector_index`
+  auf der Spalte `embedding_next`. Er kann ebenso betroffen sein und wird auf dieselbe Weise neu
+  gebaut, mit `embedding_next` statt `embedding`. Die Meldung nennt je Start einen Index; passt
+  danach ein weiterer nicht, nennt ihn der nächste Start.
+- **Den Index nur zu löschen beseitigt den Abbruch, aber nicht das Problem:** Ohne Index liest jede
+  Suche still die ganze Tabelle, auch wenn alle Antworten weiter stimmen.
 
 ## Voraussetzungen einer eigenen PostgreSQL
 

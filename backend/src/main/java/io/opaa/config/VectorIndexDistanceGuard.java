@@ -49,7 +49,10 @@ public class VectorIndexDistanceGuard implements ApplicationRunner {
   /** One vector index of the table and the operator class of its vector column. */
   record VectorIndex(String name, String operatorClass) {}
 
-  /** The HNSW and IVFFlat indexes of the table: the two methods pgvector searches by distance. */
+  /**
+   * The HNSW and IVFFlat indexes of the table over plain {@code vector} values, the ones the search
+   * uses; an index over a cast to {@code halfvec} or {@code bit} serves no search of OPAA.
+   */
   private List<VectorIndex> vectorIndexes() {
     return jdbcTemplate.query(
         "SELECT ic.relname AS index_name, opc.opcname AS operator_class"
@@ -58,6 +61,7 @@ public class VectorIndexDistanceGuard implements ApplicationRunner {
             + " JOIN pg_am am ON am.oid = ic.relam"
             + " JOIN pg_opclass opc ON opc.oid = ANY (i.indclass::oid[])"
             + " WHERE i.indrelid = to_regclass(?) AND am.amname IN ('hnsw', 'ivfflat')"
+            + " AND opc.opcname LIKE 'vector\\_%'"
             + " ORDER BY ic.relname",
         (rs, row) -> new VectorIndex(rs.getString("index_name"), rs.getString("operator_class")),
         table.qualifiedName());
