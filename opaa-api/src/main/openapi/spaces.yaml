@@ -95,10 +95,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SpaceResponse"
-        "403":
-          $ref: "#/components/responses/Forbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/SpaceNotFound"
 
     put:
       operationId: updateSpace
@@ -122,9 +120,9 @@ paths:
         "400":
           $ref: "#/components/responses/ValidationError"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          $ref: "#/components/responses/SpaceForbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/SpaceNotFound"
         "409":
           $ref: "#/components/responses/Conflict"
 
@@ -141,9 +139,9 @@ paths:
         "400":
           $ref: "#/components/responses/ValidationError"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          $ref: "#/components/responses/SpaceForbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/SpaceNotFound"
         "409":
           $ref: "#/components/responses/Conflict"
 
@@ -175,9 +173,9 @@ paths:
         "400":
           $ref: "#/components/responses/ValidationError"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          $ref: "#/components/responses/SpaceForbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/SpaceNotFound"
 
   /api/v1/spaces/{spaceId}/access-derivation:
     parameters:
@@ -220,9 +218,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/SpaceAccessDerivationResponse"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          $ref: "#/components/responses/SpaceForbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/SpaceNotFound"
 
   /api/v1/spaces/{spaceId}/members:
     parameters:
@@ -251,9 +249,9 @@ paths:
                 items:
                   $ref: "#/components/schemas/SpaceMemberResponse"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          $ref: "#/components/responses/SpaceForbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/SpaceNotFound"
 
     post:
       operationId: addSpaceMember
@@ -282,9 +280,9 @@ paths:
         "400":
           $ref: "#/components/responses/ValidationError"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          $ref: "#/components/responses/SpaceForbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/SpaceNotFound"
         "409":
           $ref: "#/components/responses/Conflict"
 
@@ -324,9 +322,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/GroupMemberDisclosureResponse"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          $ref: "#/components/responses/SpaceForbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/SpaceNotFound"
 
   /api/v1/spaces/{spaceId}/members/{membershipId}:
     parameters:
@@ -355,9 +353,9 @@ paths:
         "204":
           description: Member removed
         "403":
-          $ref: "#/components/responses/Forbidden"
+          $ref: "#/components/responses/SpaceForbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/SpaceNotFound"
         "409":
           $ref: "#/components/responses/Conflict"
 
@@ -400,9 +398,9 @@ paths:
         "400":
           $ref: "#/components/responses/ValidationError"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          $ref: "#/components/responses/SpaceForbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/SpaceNotFound"
         "409":
           $ref: "#/components/responses/Conflict"
 
@@ -436,9 +434,9 @@ paths:
         "400":
           $ref: "#/components/responses/ValidationError"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          $ref: "#/components/responses/SpaceForbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/SpaceNotFound"
         "409":
           $ref: "#/components/responses/Conflict"
 
@@ -891,3 +889,25 @@ components:
             the effective role is then stated without the group path. Without this, a space with
             exactly one protected group would name that group by elimination, and the namelessness
             of ADR-0036, Entscheidung 9 would be worthless. The person's own answer never withholds.
+
+  responses:
+    SpaceNotFound:
+      description: >
+        The space is unknown to the caller: it does not exist, belongs to another organization, or
+        the caller is no member of it. All three get the same answer, so that a refusal never
+        confirms that a space exists. A system administrator reaches every space of the
+        organization. An operation that also names another resource says in its summary when that
+        one is the missing part.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    SpaceForbidden:
+      description: >
+        The caller is a member of the space, or a system administrator, but may not do this here:
+        their space role is too low, or a rule of the space itself refuses it (the personal space
+        belongs to its owner alone). A caller who is no member gets 404 instead.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"

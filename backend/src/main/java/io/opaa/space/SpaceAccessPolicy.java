@@ -4,6 +4,7 @@ import io.opaa.account.AccountActivityService;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
+import io.opaa.common.NotFoundException;
 import io.opaa.permission.GroupCapabilityService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubjectDirectory;
@@ -39,6 +40,8 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class SpaceAccessPolicy {
+
+  static final String SPACE_NOT_FOUND = "Space nicht gefunden";
 
   private final GroupMembershipResolver groupMemberships;
   private final GroupSubjectDirectory groupDirectory;
@@ -118,14 +121,24 @@ public class SpaceAccessPolicy {
         && membershipRepository.existsBySpaceIdAndGroupIdIn(spaceId, groupIds);
   }
 
-  /** Requires that the caller reaches {@code space}, bypassed for a system administrator. */
+  /**
+   * Requires that the caller reaches {@code space}, bypassed for a system administrator. A
+   * non-member gets the answer of an unknown space (404): a refusal must not confirm that the space
+   * exists. A member whose role is too low is refused with 403 by the other requirements.
+   */
   public void requireMember(Space space, CurrentUser caller) {
     if (caller.isSystemAdmin()) {
       return;
     }
-    if (effectiveRole(space, caller) == null) {
-      throw new AccessDeniedException("Sie sind kein Mitglied dieses Space");
+    requireReached(effectiveRole(space, caller));
+  }
+
+  /** The answer of an unknown space for a caller without any role in it. */
+  private static SpaceRole requireReached(SpaceRole role) {
+    if (role == null) {
+      throw new NotFoundException(SPACE_NOT_FOUND);
     }
+    return role;
   }
 
   /**
@@ -160,15 +173,13 @@ public class SpaceAccessPolicy {
    * not even by the system administration.
    */
   public void requireCurator(Space space, CurrentUser caller) {
+    if (!caller.isSystemAdmin()
+        && !requireReached(effectiveRole(space, caller)).atLeast(SpaceRole.CURATOR)) {
+      throw new AccessDeniedException("Nur Kuratoren dieses Space können Bibliotheken zuordnen");
+    }
     if (space.isDefault() && !space.getOwnerId().equals(caller.id())) {
       throw new AccessDeniedException(
           "Der persönliche Space gehört allein seiner Person; nur sie ordnet ihm etwas zu");
-    }
-    if (caller.isSystemAdmin()) {
-      return;
-    }
-    if (!hasAtLeast(space, caller.id(), SpaceRole.CURATOR)) {
-      throw new AccessDeniedException("Nur Kuratoren dieses Space können Bibliotheken zuordnen");
     }
   }
 
@@ -280,12 +291,13 @@ public class SpaceAccessPolicy {
     return groupCapability.isCapable(groupId);
   }
 
+  /** A system administrator, who may open any space, learns the reason instead of a 404. */
   private void requireAtLeast(Space space, CurrentUser caller, String message) {
     SpaceRole role = effectiveRole(space, caller);
-    if (role == null) {
-      throw new AccessDeniedException("Sie sind kein Mitglied dieses Space");
+    if (!caller.isSystemAdmin()) {
+      requireReached(role);
     }
-    if (!role.atLeast(SpaceRole.ADMIN)) {
+    if (role == null || !role.atLeast(SpaceRole.ADMIN)) {
       throw new AccessDeniedException(message);
     }
   }

@@ -23,6 +23,7 @@ import io.opaa.permission.GroupAttribution;
 import io.opaa.permission.GroupMemberDisclosure;
 import io.opaa.permission.GroupMemberDisclosureDirectory;
 import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.GroupStewardshipDirectory;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.SuccessionReachGuard;
@@ -100,6 +101,7 @@ public class AssetGrantService {
   private final GroupSubjectDirectory groupDirectory;
   private final GroupMemberDisclosureDirectory disclosureDirectory;
   private final GroupMembershipResolver groupMemberships;
+  private final GroupStewardshipDirectory stewardships;
   private final AssetAuthorization authorization;
   private final AssetAccessService accessService;
   private final AssetTypes assetTypes;
@@ -115,6 +117,7 @@ public class AssetGrantService {
       GroupSubjectDirectory groupDirectory,
       GroupMemberDisclosureDirectory disclosureDirectory,
       GroupMembershipResolver groupMemberships,
+      GroupStewardshipDirectory stewardships,
       AssetAuthorization authorization,
       AssetAccessService accessService,
       AssetTypes assetTypes,
@@ -130,6 +133,7 @@ public class AssetGrantService {
     this.groupDirectory = groupDirectory;
     this.disclosureDirectory = disclosureDirectory;
     this.groupMemberships = groupMemberships;
+    this.stewardships = stewardships;
     this.authorization = authorization;
     this.accessService = accessService;
     this.assetTypes = assetTypes;
@@ -363,9 +367,10 @@ public class AssetGrantService {
   }
 
   /**
-   * A grant that reaches the caller - their own, one to a group of theirs, one to "Alle Konten" -
-   * never carries more than the caller holds anyway: a time-limited manager may shorten or
-   * downgrade it, but may neither lift its expiry nor keep the role through another recipient.
+   * A grant that reaches the caller - their own, one to a group they belong to or steward, one to
+   * "Alle Konten" - never carries more than the caller holds anyway: a time-limited manager may
+   * shorten or downgrade it, but may neither lift its expiry nor keep the role through another
+   * recipient.
    */
   private void requireNoWideningOfOwnReach(
       Asset asset, AssetGrant existing, AssetGrantUpsert request, CurrentUser caller) {
@@ -383,7 +388,10 @@ public class AssetGrantService {
   private boolean reachesCaller(AssetGrantUpsert request, CurrentUser caller) {
     return switch (request.subjectType()) {
       case USER -> caller.id().equals(request.subjectId());
-      case GROUP -> groupMemberships.groupIdsForUser(caller.id()).contains(request.subjectId());
+      // a steward who is no member yet can join at any time: the group reaches them all the same
+      case GROUP ->
+          groupMemberships.groupIdsForUser(caller.id()).contains(request.subjectId())
+              || stewardships.isSteward(request.subjectId(), caller.id());
       case ALL_ACCOUNTS -> true;
     };
   }

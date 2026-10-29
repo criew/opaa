@@ -29,6 +29,7 @@ import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.GroupMemberDisclosureDirectory;
 import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.GroupStewardshipDirectory;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.SuccessionReachGuard;
@@ -48,6 +49,7 @@ class AssetGrantServiceTest {
   private GroupSubjectDirectory groupDirectory;
   private GroupMemberDisclosureDirectory disclosureDirectory;
   private GroupMembershipResolver groupMemberships;
+  private GroupStewardshipDirectory stewardships;
   private AssetAuthorization accessService;
   private AssetAccessService assetAccessService;
   private AuditEventRecorder auditEventRecorder;
@@ -72,6 +74,7 @@ class AssetGrantServiceTest {
     groupDirectory = mock(GroupSubjectDirectory.class);
     disclosureDirectory = mock(GroupMemberDisclosureDirectory.class);
     groupMemberships = mock(GroupMembershipResolver.class);
+    stewardships = mock(GroupStewardshipDirectory.class);
     accessService = mock(AssetAuthorization.class);
     libraryType = mock(AssetTypeDefinition.class);
     when(libraryType.assetType()).thenReturn(KnowledgeLibrary.ASSET_TYPE);
@@ -86,6 +89,7 @@ class AssetGrantServiceTest {
             groupDirectory,
             disclosureDirectory,
             groupMemberships,
+            stewardships,
             accessService,
             assetAccessService,
             new AssetTypes(List.of(libraryType)),
@@ -1240,6 +1244,40 @@ class AssetGrantServiceTest {
             false);
     when(groupDirectory.find(group.id())).thenReturn(Optional.of(group));
     when(groupMemberships.groupIdsForUser(managerId)).thenReturn(java.util.Set.of(group.id()));
+    when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupId(
+            KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.GROUP, group.id()))
+        .thenReturn(Optional.empty());
+
+    assertThatThrownBy(
+            () ->
+                grantService.upsertGrant(
+                    KnowledgeLibrary.ASSET_TYPE,
+                    libraryId,
+                    new AssetGrantUpsert(
+                        AssetGrantSubjectType.GROUP, group.id(), AssetRole.MANAGER),
+                    managerCaller))
+        .isInstanceOf(AccessDeniedException.class);
+    verify(grantRepository, never()).save(any());
+  }
+
+  // regression guard for #3358 (2): a steward who is no member yet can join the group afterwards
+  @Test
+  void aTimeLimitedManagerCannotGiveAGroupTheyStewardALastingGrant() {
+    ownTimeLimitedManagerGrant(Instant.now().plusSeconds(86_400));
+    GroupSubject group =
+        new GroupSubject(
+            UUID.randomUUID(),
+            organizationId,
+            "Projektteam",
+            false,
+            false,
+            false,
+            false,
+            true,
+            false);
+    when(groupDirectory.find(group.id())).thenReturn(Optional.of(group));
+    when(groupMemberships.groupIdsForUser(managerId)).thenReturn(java.util.Set.of());
+    when(stewardships.isSteward(group.id(), managerId)).thenReturn(true);
     when(grantRepository.findByAssetTypeAndAssetIdAndSubjectTypeAndSubjectGroupId(
             KnowledgeLibrary.ASSET_TYPE, libraryId, AssetGrantSubjectType.GROUP, group.id()))
         .thenReturn(Optional.empty());

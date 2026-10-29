@@ -294,6 +294,8 @@ public class SpaceAssetAssociationService {
     boolean spaceCurator =
         accessPolicy.hasAtLeast(space, caller.id(), SpaceRole.CURATOR) || caller.isSystemAdmin();
     if (!spaceCurator && !assetManager) {
+      // the bar of SpaceAccessPolicy#requireMember: a non-member learns nothing about the space
+      accessPolicy.requireMember(space, caller);
       throw new AccessDeniedException(
           "Nur Kuratoren dieses Space oder Verwaltende der "
               + definition.singular()

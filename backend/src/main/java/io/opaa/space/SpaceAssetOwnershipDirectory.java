@@ -7,6 +7,7 @@ import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.common.ConflictException;
 import io.opaa.common.ValidationException;
 import io.opaa.permission.AssetOwnershipDirectory;
 import io.opaa.permission.AssetOwnershipHistoryService;
@@ -36,13 +37,16 @@ class SpaceAssetOwnershipDirectory implements AssetOwnershipDirectory {
   private final SpaceMembershipHistoryService membershipHistory;
   private final AssetOwnershipHistoryService ownershipHistory;
   private final AuditEventRecorder auditEventRecorder;
+  private final SpaceAccessPolicy accessPolicy;
 
   SpaceAssetOwnershipDirectory(
       SpaceRepository spaceRepository,
       SpaceMembershipRepository membershipRepository,
       SpaceMembershipHistoryService membershipHistory,
       AssetOwnershipHistoryService ownershipHistory,
-      AuditEventRecorder auditEventRecorder) {
+      AuditEventRecorder auditEventRecorder,
+      SpaceAccessPolicy accessPolicy) {
+    this.accessPolicy = accessPolicy;
     this.spaceRepository = spaceRepository;
     this.membershipRepository = membershipRepository;
     this.membershipHistory = membershipHistory;
@@ -104,7 +108,9 @@ class SpaceAssetOwnershipDirectory implements AssetOwnershipDirectory {
    * {@code ADMIN} in the same step. {@code SpaceService#transferOwnership} demands that membership
    * for a good reason - an owner who appears in the member list only through a group is a
    * responsible party the list does not name - and a succession that left the space without an
-   * owning member would create the very state it is meant to end.
+   * owning member would create the very state it is meant to end. For the same reason the new owner
+   * needs an active account (409 otherwise). An archived space goes along deliberately: left
+   * behind, it would stay without anybody answering for it.
    */
   @Override
   public void transferOwnership(
@@ -120,6 +126,11 @@ class SpaceAssetOwnershipDirectory implements AssetOwnershipDirectory {
     Space space = spaceRepository.findByIdWithMemberships(assetId).orElseThrow();
     if (space.isDefault()) {
       throw new ValidationException("Der Standard-Space kann nicht übertragen werden");
+    }
+    if (!accessPolicy.isActiveAccount(newOwner.id())) {
+      throw new ConflictException(
+          "Das ausgewählte Konto ist nicht aktiv und kann die Verantwortung für Spaces nicht"
+              + " übernehmen");
     }
     PermissionSubject previousOwner = space.ownerSubject();
     space.transferOwnershipTo(newOwner.id());

@@ -134,15 +134,16 @@ Personen, und genau dafür ist Abschnitt 13 sonst zuständig.
 
 Weitere Rollen lassen sich schon beim Anlegen vergeben. Der Assistent jeder Art sucht Personen und
 Gruppen im selben Suchfeld „Person oder Gruppe suchen" wie der Abschnitt „Berechtigungen" an einem
-bestehenden Arbeitsmittel — mit denselben Regeln für geschützte Gruppen
-(Abschnitt 8) und derselben Rückfrage vor einer Freigabe an die Gruppe eines externen Anbieters.
-Die Treffer stehen gemischt, die passendsten zuerst; eine Gruppe trägt „Gruppe" im Namen der
-Zeile, eine Person neben Name und E-Mail-Adresse die Anmeldung, aus der ihr Konto stammt. Name
-und Adresse wählt die Person bei mancher Anmeldung selbst; die Anmeldung unterscheidet
-gleichnamige Konten verlässlich. Suche, Rolle und „Vormerken" stehen in einer Zeile; „Vormerken" heißt die Schaltfläche, weil
-erst das Anlegen die Freigaben speichert. Ohne Auswahl nennt sie die fehlende Auswahl am Suchfeld.
-Den Empfänger **„Alle Konten"** bietet der Assistent nicht an: Ein Bestand, den es noch nicht gibt, hat keine Reichweite zu weiten,
-und die Obergrenze, die über eine solche Freigabe entscheidet, gehört dem angelegten Arbeitsmittel.
+bestehenden Arbeitsmittel — mit denselben Regeln für geschützte Gruppen (Abschnitt 8) und derselben
+Rückfrage vor einer Freigabe an die Gruppe eines externen Anbieters. Die Treffer stehen gemischt,
+die passendsten zuerst; eine Gruppe trägt „Gruppe" im Namen der Zeile, eine Person neben Name und
+E-Mail-Adresse die Anmeldung, aus der ihr Konto stammt. Name und Adresse wählt die Person bei
+mancher Anmeldung selbst; die Anmeldung unterscheidet gleichnamige Konten verlässlich. Suche, Rolle
+und „Vormerken" stehen in einer Zeile; „Vormerken" heißt die Schaltfläche, weil erst das Anlegen die
+Freigaben speichert. Ohne Auswahl nennt sie die fehlende Auswahl am Suchfeld. Den Empfänger **„Alle
+Konten"** bietet der Assistent nicht an: Ein Bestand, den es noch nicht gibt, hat keine Reichweite
+zu weiten, und die Obergrenze, die über eine solche Freigabe entscheidet, gehört dem angelegten
+Arbeitsmittel.
 
 ### Reichweite: „Alle Konten"
 
@@ -617,6 +618,11 @@ Nachweisprotokoll, zur Stichtagsauskunft und zum Verbindungsprotokoll (Abschnitt
 nichts; ein Revisionskonto hat
 an Inhalten genau das, was „Alle Konten" oder seine Gruppen ihm geben.
 
+**Der persönliche Space bleibt auch für die Systemverwaltung privat.** Sie liest seine Anweisung
+an das Modell nicht und ordnet ihm kein Arbeitsmittel zu; eine bestehende Zuordnung lösen kann
+sie. Mitglieder hat er außer seiner Person keine (Kapitel [Spaces](../spaces/README.md),
+Abschnitt 2).
+
 **Neue Systemrollen gibt es nicht.** Ein Haus, das einen „Bibliotheksverwalter" will, legt eine
 Gruppe an und gibt ihr die Anlegerechte und die Rollen.
 
@@ -851,10 +857,12 @@ die Übertragung.
 **Ein Space gehört immer einer natürlichen Person.** Deshalb wechselt sein Eigentum nur zwischen
 Personen; eine Gruppe besitzt keinen Space und wird auch keiner. **Der persönliche Space ist von der
 Übertragung ausgenommen** — über sein Eigentum entscheidet niemand, er erscheint auch in keiner
-Vorschau. Übernimmt eine Person einen Space,
-wird sie dabei — falls sie es noch nicht ist — als Administratorin aufgenommen: Eine Verantwortliche,
-die in der Mitgliederliste nicht auftaucht, wäre genau der Zustand, den die Übertragung beenden
-soll.
+Vorschau. Übernimmt eine Person einen Space, wird sie dabei — falls sie es noch nicht ist — als
+Administratorin aufgenommen: Eine Verantwortliche, die in der Mitgliederliste nicht auftaucht,
+wäre genau der Zustand, den die Übertragung beenden soll. Aus demselben Grund braucht sie ein
+aktives Konto; an ein gesperrtes oder noch nicht bestätigtes geht kein Space. **Archivierte
+Spaces gehen mit über**, anders als beim Eigentümerwechsel im Space selbst: Blieben sie zurück,
+stünden sie ohne Verantwortliche da.
 
 **Von einer Person gehen nur Eigentum und Verantwortung über.** Die Berechtigungen einer Person
 werden hier weder übertragen noch aufgezählt — sie enden mit ihrem Konto. Eine Vorschau „alles, was

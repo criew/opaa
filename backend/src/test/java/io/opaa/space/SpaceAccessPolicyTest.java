@@ -12,6 +12,7 @@ import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
+import io.opaa.common.NotFoundException;
 import io.opaa.permission.GroupCapabilityService;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSubjectDirectory;
@@ -255,6 +256,43 @@ class SpaceAccessPolicyTest {
         CurrentUser.of(UUID.randomUUID(), ORGANIZATION, SystemRole.SYSTEM_ADMIN, "Admin");
 
     assertThatThrownBy(() -> policy.requireCurator(personal, admin))
+        .isInstanceOf(AccessDeniedException.class);
+  }
+
+  // regression guard for #3358 (4): a refusal must not confirm that the space exists
+  @Test
+  void aNonMemberGetsTheAnswerOfAnUnknownSpaceFromEveryRequirement() {
+    UUID owner = UUID.randomUUID();
+    Space team = spaceWithOwner(owner);
+    team.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, ORGANIZATION));
+    CurrentUser stranger = CurrentUser.of(UUID.randomUUID(), ORGANIZATION, SystemRole.USER, "X");
+
+    assertThatThrownBy(() -> policy.requireMember(team, stranger))
+        .isInstanceOf(NotFoundException.class);
+    assertThatThrownBy(() -> policy.requireManager(team, stranger))
+        .isInstanceOf(NotFoundException.class);
+    assertThatThrownBy(() -> policy.requireMemberListViewer(team, stranger))
+        .isInstanceOf(NotFoundException.class);
+    assertThatThrownBy(() -> policy.requireCurator(team, stranger))
+        .isInstanceOf(NotFoundException.class);
+  }
+
+  @Test
+  void aMemberBelowTheBarAndTheSystemAdministrationLearnTheReason() {
+    UUID owner = UUID.randomUUID();
+    UUID memberId = UUID.randomUUID();
+    Space team = spaceWithOwner(owner);
+    team.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, ORGANIZATION));
+    team.addMembership(SpaceMembership.ofUser(memberId, SpaceRole.MEMBER, ORGANIZATION));
+    CurrentUser member = CurrentUser.of(memberId, ORGANIZATION, SystemRole.USER, "Mitglied");
+    CurrentUser admin =
+        CurrentUser.of(UUID.randomUUID(), ORGANIZATION, SystemRole.SYSTEM_ADMIN, "Admin");
+
+    assertThatThrownBy(() -> policy.requireManager(team, member))
+        .isInstanceOf(AccessDeniedException.class);
+    assertThatThrownBy(() -> policy.requireCurator(team, member))
+        .isInstanceOf(AccessDeniedException.class);
+    assertThatThrownBy(() -> policy.requireManager(team, admin))
         .isInstanceOf(AccessDeniedException.class);
   }
 

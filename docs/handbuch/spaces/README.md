@@ -60,8 +60,9 @@ will, legt einen Space an. Der Standard-Space lässt sich nicht übertragen, arc
 er braucht keine Nachfolge und wird mit dem Konto gelöscht. Auch die Systemverwaltung ordnet ihm
 nichts zu und liest seine Anweisung an das Modell nicht; eine bestehende Zuordnung lösen kann sie.
 
-**Wer nicht Mitglied ist, erfährt nichts über den Space.** Chats, Chatsuche und Import eines
-fremden Space antworten wie bei einem Space, den es nicht gibt.
+**Wer nicht Mitglied ist, erfährt nichts über den Space.** Seine Einstellungen, Mitglieder,
+Inhalte, Chats, Chatsuche und Prompts antworten einer solchen Person wie bei einem Space, den es
+nicht gibt. Ein Mitglied, dessen Rolle für eine Handlung nicht reicht, erfährt dagegen den Grund.
 
 ## 3. Arbeitsmittel zuordnen
 

@@ -29,6 +29,11 @@ export const ROLES_CLAIM_CONFIRMATION =
   'Sie den Rollen-Claim setzen?'
 export const ROLES_CLAIM_NO_VALUES_WARNING =
   'Ohne Rollenwerte entzieht der Anbieter allen seinen Konten SYSTEM_ADMIN und AUDITOR.'
+/** Shown while an existing provider's issuer is being changed (ADR-0033, Entscheidung 9). */
+export const ISSUER_CHANGE_HINT =
+  'Ändert der neue Issuer die daraus abgeleitete Admin-API-Adresse, entfernt OPAA beim Speichern ' +
+  'einen Verzeichniszugang ohne eigene Admin-API-Adresse samt Geheimnis. Er ist danach für die ' +
+  'neue Adresse neu zu hinterlegen.'
 const REQUIRED_FIELDS_HINT = 'Anzeigename, Issuer-URI und Client-ID sind erforderlich.'
 
 // Required fields carry aria-required but no asterisk; optional ones say so in their label
@@ -271,6 +276,9 @@ export default function OidcProviderFormDialog({
               fullWidth
               size="small"
             />
+            {provider && draft.issuerUri.trim() !== provider.issuerUri && (
+              <Alert severity="info">{ISSUER_CHANGE_HINT}</Alert>
+            )}
             <TextField
               label="Client-ID"
               required

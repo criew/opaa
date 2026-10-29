@@ -40,7 +40,8 @@ class SpaceResponseMapperTest {
     space.addMembership(SpaceMembership.ofUser(member, SpaceRole.MEMBER, organization));
 
     SpaceResponse response =
-        SpaceResponseMapper.toResponse(new SpaceDetail(space, SpaceRole.ADMIN, false, CLEANUP));
+        SpaceResponseMapper.toResponse(
+            new SpaceDetail(space, SpaceRole.ADMIN, false, CLEANUP, space.getModelInstruction()));
 
     assertThat(response.getId()).isEqualTo(space.getId());
     assertThat(response.getName()).isEqualTo("Team");
@@ -73,7 +74,12 @@ class SpaceResponseMapperTest {
 
     assertThat(
             SpaceResponseMapper.toResponse(
-                    new SpaceDetail(withInstruction, SpaceRole.MEMBER, false, CLEANUP))
+                    new SpaceDetail(
+                        withInstruction,
+                        SpaceRole.MEMBER,
+                        false,
+                        CLEANUP,
+                        withInstruction.getModelInstruction()))
                 .getModelInstruction())
         .isEqualTo("Fasse dich kurz.");
     assertThat(
@@ -83,7 +89,12 @@ class SpaceResponseMapperTest {
         .isEqualTo("Fasse dich kurz.");
     assertThat(
             SpaceResponseMapper.toResponse(
-                    new SpaceDetail(withoutInstruction, SpaceRole.MEMBER, false, CLEANUP))
+                    new SpaceDetail(
+                        withoutInstruction,
+                        SpaceRole.MEMBER,
+                        false,
+                        CLEANUP,
+                        withoutInstruction.getModelInstruction()))
                 .getModelInstruction())
         .isNull();
     assertThat(
@@ -116,7 +127,8 @@ class SpaceResponseMapperTest {
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organization));
 
     SpaceResponse response =
-        SpaceResponseMapper.toResponse(new SpaceDetail(space, null, false, CLEANUP));
+        SpaceResponseMapper.toResponse(
+            new SpaceDetail(space, null, false, CLEANUP, space.getModelInstruction()));
 
     assertThat(response.getUserRole()).isNull();
   }
@@ -135,7 +147,8 @@ class SpaceResponseMapperTest {
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.MEMBER, organization));
 
     SpaceResponse response =
-        SpaceResponseMapper.toResponse(new SpaceDetail(space, SpaceRole.ADMIN, false, CLEANUP));
+        SpaceResponseMapper.toResponse(
+            new SpaceDetail(space, SpaceRole.ADMIN, false, CLEANUP, space.getModelInstruction()));
 
     assertThat(response.getUserRole()).isEqualTo(SpaceRole.ADMIN);
     // roleCounts keeps showing the raw membership role, including the owner's own row - only
@@ -220,7 +233,8 @@ class SpaceResponseMapperTest {
         SpaceMembership.ofGroup(UUID.randomUUID(), SpaceRole.CURATOR, organization));
 
     SpaceResponse response =
-        SpaceResponseMapper.toResponse(new SpaceDetail(space, SpaceRole.MEMBER, false, CLEANUP));
+        SpaceResponseMapper.toResponse(
+            new SpaceDetail(space, SpaceRole.MEMBER, false, CLEANUP, space.getModelInstruction()));
 
     assertThat(response.getMemberships().getUserCount()).isEqualTo(2);
     assertThat(response.getMemberships().getGroupCount()).isEqualTo(1);
@@ -373,7 +387,9 @@ class SpaceResponseMapperTest {
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organization));
 
     assertThat(
-            SpaceResponseMapper.toResponse(new SpaceDetail(space, SpaceRole.ADMIN, true, CLEANUP))
+            SpaceResponseMapper.toResponse(
+                    new SpaceDetail(
+                        space, SpaceRole.ADMIN, true, CLEANUP, space.getModelInstruction()))
                 .getSuccessionOpen())
         .isTrue();
     SuccessionFinding finding =

@@ -15,14 +15,4 @@ public record SpaceDetail(
     SpaceRole userRole,
     boolean successionOpen,
     ChatAutoCleanupPeriods chatAutoCleanup,
-    String modelInstruction) {
-
-  /** The detail with the space's own instruction - for a caller who may read it. */
-  public SpaceDetail(
-      Space space,
-      SpaceRole userRole,
-      boolean successionOpen,
-      ChatAutoCleanupPeriods chatAutoCleanup) {
-    this(space, userRole, successionOpen, chatAutoCleanup, space.getModelInstruction());
-  }
-}
+    String modelInstruction) {}

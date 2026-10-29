@@ -552,8 +552,9 @@ steht im Kapitel [Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md
   an, und „Passwort vergessen" und Selbstregistrierung lassen sich nicht einschalten.
 - **Es gibt keinen zweiten Faktor.** Bis dahin gleichen aus: die Netzbeschränkung
   `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` (lokale Systemverwalter nur aus den genannten Netzen — bei der
-  Anmeldung, beim Verlängern der Sitzung und bei jeder Anfrage; leer heißt ohne Beschränkung), kürzere Sitzungsfristen für Systemverwalterkonten, die Protokollierung des
-  Notanker-Kontos und die Empfehlung oben.
+  Anmeldung, beim Verlängern der Sitzung und bei jeder Anfrage; leer heißt ohne Beschränkung),
+  kürzere Sitzungsfristen für Systemverwalterkonten, die Protokollierung des Notanker-Kontos und die
+  Empfehlung oben.
 
 **Anmeldegrenzen.** Die lokale Anmeldung ist je Client-Adresse, je Konto und insgesamt begrenzt
 (`OPAA_RATE_LIMIT_LOCAL_AUTH_*`); eine überschrittene Grenze antwortet `429` mit `Retry-After`. Die

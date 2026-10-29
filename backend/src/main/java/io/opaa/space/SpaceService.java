@@ -679,6 +679,7 @@ public class SpaceService {
   @Transactional
   public void transferOwnership(UUID spaceId, UUID newOwnerUserId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
+    accessPolicy.requireMember(space, caller);
     // The personal space belongs to its person for good; otherwise taking it over would also take
     // over the decisions reserved to its owner, such as its chat cleanup.
     if (space.isDefault()) {
@@ -732,6 +733,7 @@ public class SpaceService {
   @Transactional
   public Space updateSpace(UUID spaceId, SpaceUpdate update, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
+    accessPolicy.requireMember(space, caller);
 
     if (!caller.isSystemAdmin() && !accessPolicy.hasAtLeast(space, caller.id(), SpaceRole.ADMIN)) {
       throw new AccessDeniedException(
@@ -806,6 +808,7 @@ public class SpaceService {
   @Transactional
   public void deleteSpace(UUID spaceId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
+    accessPolicy.requireMember(space, caller);
 
     if (space.isDefault()) {
       throw new ValidationException("Der Standard-Space kann nicht gelöscht werden");
@@ -873,6 +876,7 @@ public class SpaceService {
   @Transactional
   public Space archiveSpace(UUID spaceId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
+    accessPolicy.requireMember(space, caller);
 
     if (space.isDefault()) {
       throw new ValidationException("Der Standard-Space kann nicht archiviert werden");

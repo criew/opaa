@@ -29,10 +29,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ChatSummary"
-        "403":
-          $ref: "#/components/responses/Forbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/SpaceNotFound"
 
     post:
       operationId: createChat
@@ -57,10 +55,8 @@ paths:
                 $ref: "#/components/schemas/ChatDetail"
         "400":
           $ref: "#/components/responses/ValidationError"
-        "403":
-          $ref: "#/components/responses/Forbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/SpaceNotFound"
         "409":
           $ref: "#/components/responses/Conflict"
 
@@ -102,10 +98,8 @@ paths:
                 $ref: "#/components/schemas/ChatSearchResponse"
         "400":
           $ref: "#/components/responses/ValidationError"
-        "403":
-          $ref: "#/components/responses/Forbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/SpaceNotFound"
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
@@ -333,10 +327,8 @@ paths:
                 $ref: "#/components/schemas/ChatSummaryPage"
         "400":
           $ref: "#/components/responses/ValidationError"
-        "403":
-          $ref: "#/components/responses/Forbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/SpaceNotFound"
 
   /api/v1/spaces/{spaceId}/chats/bulk-actions:
     parameters:
@@ -373,10 +365,8 @@ paths:
                 $ref: "#/components/schemas/ChatBulkActionResult"
         "400":
           $ref: "#/components/responses/ValidationError"
-        "403":
-          $ref: "#/components/responses/Forbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/SpaceNotFound"
 
   /api/v1/chats/{chatId}/note-items/{itemId}:
     parameters:
