@@ -177,7 +177,8 @@ export default function SettingsPage() {
                       <Box>
                         <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
                           Ihr Passwort gilt nur für diese Installation. Nach einer Änderung bleiben
-                          Sie hier angemeldet; Ihre übrigen Sitzungen werden beendet.
+                          Sie hier angemeldet; Ihre übrigen Sitzungen und Ihre Zugangstokens für
+                          externe KI-Werkzeuge werden beendet.
                         </Typography>
                         {/* The password page returns to where it was opened from; without the target a
                     voluntary change would end on the chat page (see redirectTargetOf). */}

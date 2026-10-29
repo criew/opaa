@@ -20,6 +20,7 @@ import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaLocalAuthRateLimitTest;
+import io.opaa.test.TestSessions;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
@@ -105,7 +106,8 @@ class ExternalAccessTokenRateLimitIntegrationTest {
             anna.user().getOrganizationId(),
             name,
             List.of(libraryId),
-            clock.instant().plus(Duration.ofDays(30)))
+            clock.instant().plus(Duration.ofDays(30)),
+            TestSessions.current(jdbcTemplate, anna.id()))
         .rawValue();
   }
 

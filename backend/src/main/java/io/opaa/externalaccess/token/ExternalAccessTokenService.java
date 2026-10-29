@@ -1,11 +1,13 @@
 package io.opaa.externalaccess.token;
 
+import io.opaa.account.LocalTokenRevocationService;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.asset.AssetCatalogService;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
@@ -24,9 +26,11 @@ import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +47,10 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>The audit entries name the token by its id and never by its name: the free-text field is where
  * Vorgangsnummern and device names end up, and the trail excludes free text in these events. The
  * use of a token is deliberately no event at all.
+ *
+ * <p>An issuance requires a recent sign-in (the controller's {@code @RequiresRecentLogin}) and is
+ * announced to the person by mail, so a briefly taken-over session neither issues a token silently
+ * nor with a refreshed access token alone.
  */
 @Service
 public class ExternalAccessTokenService {
@@ -55,6 +63,9 @@ public class ExternalAccessTokenService {
   private final AssetCatalogService catalog;
   private final LocalAuthKeyService keys;
   private final AuditEventRecorder audit;
+  private final UserRepository users;
+  private final ExternalAccessTokenMailer mailer;
+  private final LocalTokenRevocationService sessions;
   private final Clock clock;
 
   public ExternalAccessTokenService(
@@ -66,6 +77,9 @@ public class ExternalAccessTokenService {
       AssetCatalogService catalog,
       LocalAuthKeyService keys,
       AuditEventRecorder audit,
+      UserRepository users,
+      ExternalAccessTokenMailer mailer,
+      LocalTokenRevocationService sessions,
       Clock clock) {
     this.tokens = tokens;
     this.libraries = libraries;
@@ -75,6 +89,9 @@ public class ExternalAccessTokenService {
     this.catalog = catalog;
     this.keys = keys;
     this.audit = audit;
+    this.users = users;
+    this.mailer = mailer;
+    this.sessions = sessions;
     this.clock = clock;
   }
 
@@ -88,13 +105,23 @@ public class ExternalAccessTokenService {
 
   /**
    * Issues a token for {@code ownerId}. Every named library must be readable by that person and
-   * released; the expiry is mandatory, in the future and at most {@link #maxLifetime()} away.
+   * released; the expiry is mandatory, in the future and at most {@link #maxLifetime()} away. The
+   * {@code session} is the bearer token of the issuing web session, never absent; one whose
+   * sessions all ended meanwhile - a password change, a reset, a replay - is refused under the lock
+   * of {@link LocalTokenRevocationService#sessionEndedSince}, so no token outlives that clean-up by
+   * racing it.
    *
    * @return the stored row together with the plain value, which exists nowhere else afterwards
    */
   @Transactional
   public IssuedExternalAccessToken issue(
-      UUID ownerId, UUID organizationId, String rawName, List<UUID> libraryIds, Instant expiresAt) {
+      UUID ownerId,
+      UUID organizationId,
+      String rawName,
+      List<UUID> libraryIds,
+      Instant expiresAt,
+      Jwt session) {
+    Objects.requireNonNull(session, "session");
     if (!settings.isEnabled()) {
       throw new AccessDeniedException(
           "Externe KI-Werkzeuge sind für diese Installation ausgeschaltet");
@@ -124,6 +151,10 @@ public class ExternalAccessTokenService {
           "Das Ablaufdatum überschreitet die Höchstlaufzeit von " + ceiling.toDays() + " Tagen");
     }
     requireSelectable(ownerId, organizationId, selected);
+    if (sessions.sessionEndedSince(ownerId, session)) {
+      throw new AccessDeniedException(
+          "Ihre Sitzung wurde beendet. Bitte melden Sie sich erneut an.");
+    }
 
     String rawValue = ExternalAccessTokenValues.generate();
     ExternalAccessToken saved =
@@ -150,6 +181,7 @@ public class ExternalAccessTokenService {
                     expiresAt.toString()))
             .outcome(AuditOutcome.SUCCESS)
             .build());
+    users.findById(ownerId).ifPresent(owner -> mailer.sendIssued(owner, name, now));
     return new IssuedExternalAccessToken(saved, rawValue, namesOf(selected));
   }
 
