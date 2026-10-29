@@ -24,7 +24,6 @@ import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.Parser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.reader.ExtractedTextFormatter;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
 
@@ -209,8 +208,7 @@ public class DocumentService {
       throw new IllegalStateException("Could not parse " + file.getFileName(), e);
     }
     var document =
-        new org.springframework.ai.document.Document(
-            ExtractedTextFormatter.defaults().format(handler.toString()));
+        new org.springframework.ai.document.Document(AdjacentBlankLines.trim(handler.toString()));
     document.getMetadata().put("source", file.getFileName().toString());
     return List.of(document);
   }
