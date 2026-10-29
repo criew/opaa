@@ -22,7 +22,7 @@ import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Connection;
 import io.opaa.s3.S3Credentials;
 import java.time.Clock;
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -276,19 +276,18 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
           new S3BucketListing.Listed(
               listed.names().stream().filter(eventBuckets::contains).toList(), listed.regions());
     }
-    UUID libraryId = run.library().getId();
+    // an event run reads only readable buckets, so it needs no stock
+    Set<String> held =
+        eventBuckets == null
+            ? validBuckets(documentRepository.findS3BucketsByLibraryId(run.library().getId()))
+            : Set.of();
     S3AllBuckets.Resolution resolution;
     try {
-      clientFactory.validateTargets(connection, settings.resolvedTo(namedBuckets(listed)).scopes());
+      Set<String> probed = validBuckets(listed.names());
+      probed.addAll(held);
+      clientFactory.validateTargets(connection, settings.resolvedTo(List.copyOf(probed)).scopes());
       resolution =
-          S3AllBuckets.resolve(
-              store,
-              listed,
-              settings.effectiveRegion(),
-              bucket ->
-                  documentRepository.existsByLibraryIdAndFilePathStartingWith(
-                      libraryId, S3ObjectRef.filePath(bucket, "")),
-              () -> false);
+          S3AllBuckets.resolve(store, listed, settings.effectiveRegion(), held, () -> false);
     } catch (S3AccessException e) {
       throw accessFailure(run, e);
     }
@@ -298,10 +297,10 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
     return resolution;
   }
 
-  /** The listed names that are bucket names at all; the others never get a request. */
-  private static List<String> namedBuckets(S3BucketListing.Listed listed) {
-    List<String> buckets = new ArrayList<>();
-    for (String name : new TreeSet<>(listed.names())) {
+  /** The names that are bucket names at all, in name order; the others never get a request. */
+  private static Set<String> validBuckets(Collection<String> names) {
+    Set<String> buckets = new TreeSet<>();
+    for (String name : new TreeSet<>(names)) {
       try {
         buckets.add(S3Scope.validateBucket(name));
       } catch (S3Scope.InvalidS3ScopeException e) {

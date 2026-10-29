@@ -148,7 +148,7 @@ public final class S3FailureTranslator {
           : new S3AccessException.TargetBlocked(target.getMessage(), allowlistHint);
     }
     if (e instanceof NoSuchBucketException && op != S3Operation.LIST_BUCKETS) {
-      return new S3AccessException.BucketNotFound(bucket);
+      return new S3AccessException.BucketNotFound(bucket, true);
     }
     if (e instanceof NoSuchKeyException) {
       return new S3AccessException.ObjectNotFound(bucket, key);
@@ -230,7 +230,7 @@ public final class S3FailureTranslator {
       return new S3AccessException.Archived(bucket, key);
     }
     if ("NoSuchBucket".equals(code)) {
-      return new S3AccessException.BucketNotFound(bucket);
+      return new S3AccessException.BucketNotFound(bucket, true);
     }
     if ("NoSuchKey".equals(code)) {
       return new S3AccessException.ObjectNotFound(bucket, key);

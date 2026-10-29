@@ -615,6 +615,38 @@ class AwsSdkS3ObjectStoreTest {
         .isInstanceOf(S3AccessException.ListForbidden.class);
   }
 
+  @Test
+  void onlyANoSuchBucketWithItsCodeConfirmsTheBucketIsGone() throws Exception {
+    S3ObjectStore store = store(properties(1000, 1, 0), true, false);
+
+    server.failNext(404, "NoSuchBucket", 1);
+    assertThat(catchFailure(() -> store.probeListing("docs")))
+        .isInstanceOfSatisfying(
+            S3AccessException.BucketNotFound.class, e -> assertThat(e.confirmed()).isTrue());
+    server.failNext(404, null, 1);
+    assertThat(catchFailure(() -> store.probeListing("docs")))
+        .as("a bare 404 may come from a proxy in front of the store")
+        .isInstanceOfSatisfying(
+            S3AccessException.BucketNotFound.class, e -> assertThat(e.confirmed()).isFalse());
+  }
+
+  @Test
+  void listBucketsFollowsTheContinuationTokenToTheLastPage() throws Exception {
+    server.addBucket("protokolle");
+    server.bucketRegion("satzungen", "eu-west-1");
+    server.bucketPageSize(2);
+    S3ObjectStore store = store(properties(1000, 1, 0), true, false);
+
+    assertThat(store.listBuckets())
+        .isEqualTo(
+            new S3BucketListing.Listed(
+                List.of("docs", "protokolle", "satzungen"),
+                java.util.Map.of("satzungen", "eu-west-1")));
+    assertThat(server.seen()).hasSize(2);
+    assertThat(server.seen().get(0).query()).contains("max-buckets=1000");
+    assertThat(server.seen().get(1).query()).contains("continuation-token=b2");
+  }
+
   private static Throwable catchFailure(Action action) {
     try {
       action.run();

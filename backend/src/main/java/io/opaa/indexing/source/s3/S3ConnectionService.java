@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 
 /**
@@ -170,11 +171,7 @@ public class S3ConnectionService {
       }
       clientFactory.validateTargets(connection, scopes);
       return S3AllBuckets.resolve(
-          store,
-          listed,
-          connection.region(),
-          bucket -> false,
-          () -> clock.instant().isAfter(deadline));
+          store, listed, connection.region(), Set.of(), () -> clock.instant().isAfter(deadline));
     }
   }
 

@@ -128,11 +128,15 @@ class S3IndexingExecutorTest {
                     .findFirst());
     when(documentRepository.findByLibraryIdAndSourceType(any(), any()))
         .thenAnswer(invocation -> List.copyOf(storedDocuments));
-    when(documentRepository.existsByLibraryIdAndFilePathStartingWith(any(), any()))
+    when(documentRepository.findS3BucketsByLibraryId(any()))
         .thenAnswer(
             invocation ->
                 storedDocuments.stream()
-                    .anyMatch(d -> d.getFilePath().startsWith(invocation.<String>getArgument(1))));
+                    .map(Document::getFilePath)
+                    .filter(path -> path.startsWith("s3://"))
+                    .map(path -> path.split("/", -1)[2])
+                    .distinct()
+                    .toList());
     vectorChunkStore = mock(VectorChunkStore.class);
     cleanupService =
         spy(
@@ -983,7 +987,45 @@ class S3IndexingExecutorTest {
                     IndexingEventCategory.SUMMARY,
                     "Nicht mehr im Umfang: 1 Bucket – „geloescht“",
                     null)));
+    assertThat(store.calls()).contains("probe geloescht");
     assertThat(reconciledPaths()).containsExactly("s3://dokumente/2025/protokoll.pdf");
+  }
+
+  static Stream<Arguments> unconfirmedAbsences() {
+    return Stream.of(
+        Arguments.of(
+            "404 ohne Fehlercode",
+            (Supplier<S3AccessException>) () -> new S3AccessException.BucketNotFound("geloescht")),
+        Arguments.of(
+            "ListForbidden",
+            (Supplier<S3AccessException>) () -> new S3AccessException.ListForbidden("geloescht")),
+        Arguments.of(
+            "RateLimited",
+            (Supplier<S3AccessException>) () -> new S3AccessException.RateLimited(5)));
+  }
+
+  // regression guard for #3117: a bucket the listing briefly left out lost everything indexed from
+  // it, although only a NoSuchBucket with its code confirms the bucket is gone
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("unconfirmedAbsences")
+  void aBucketWithIndexedDocumentsTheListingNoLongerNamesStaysUntilTheStoreConfirmsItGone(
+      String answer, Supplier<S3AccessException> failure) throws Exception {
+    allBuckets();
+    store.put("dokumente", "2025/protokoll.pdf", "eins", PDF).failBucket("geloescht", failure);
+    stored("s3://geloescht/alt.pdf", "e:alt|3");
+    UUID jobId = UUID.randomUUID();
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(documentIngestService)
+        .ingest(
+            DocumentIngests.that().file().at("s3://dokumente/2025/protokoll.pdf").match(), any());
+    verify(documentRepository, never()).delete(storedDocuments.get(0));
+    verifyNoReconciliation();
+    verify(indexingJobService)
+        .recordListingAssessment(
+            eq(jobId), eq(false), argThat(scopes -> scopes.contains("geloescht")));
+    assertThat(store.calls()).contains("probe geloescht");
   }
 
   @Test

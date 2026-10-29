@@ -67,12 +67,27 @@ public class S3AccessException extends IOException {
     }
   }
 
+  /**
+   * The bucket is not there. {@link #confirmed()} only when the store named the error code {@code
+   * NoSuchBucket}; a bare {@code 404} may come from a proxy or ingress in front of the store.
+   */
   public static final class BucketNotFound extends S3AccessException {
+    private final boolean confirmed;
+
     public BucketNotFound(String bucket) {
+      this(bucket, false);
+    }
+
+    public BucketNotFound(String bucket, boolean confirmed) {
       super(
           "Der Bucket „"
               + bucket
               + "“ existiert nicht oder ist über diesen Endpoint nicht erreichbar.");
+      this.confirmed = confirmed;
+    }
+
+    public boolean confirmed() {
+      return confirmed;
     }
   }
 

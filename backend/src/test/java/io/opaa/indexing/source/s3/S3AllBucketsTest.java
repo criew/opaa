@@ -17,6 +17,7 @@ import io.opaa.s3.S3AccessException;
 import io.opaa.security.TargetAddressValidator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /** The scope "Alle Buckets": only for a key that may list the buckets, never with a selection. */
@@ -135,7 +136,7 @@ class S3AllBucketsTest {
     int[] probes = {0};
 
     S3AllBuckets.Resolution resolution =
-        S3AllBuckets.resolve(store, listed, "EU-CENTRAL-1", bucket -> false, () -> ++probes[0] > 3);
+        S3AllBuckets.resolve(store, listed, "EU-CENTRAL-1", Set.of(), () -> ++probes[0] > 3);
 
     assertThat(resolution.readable()).containsExactly("dokumente");
     assertThat(resolution.withheld()).isEmpty();
@@ -161,7 +162,7 @@ class S3AllBucketsTest {
 
     S3AllBuckets.Resolution resolution =
         S3AllBuckets.resolve(
-            store, listed, "eu-central-1", bucket -> !bucket.equals("dokumente"), () -> false);
+            store, listed, "eu-central-1", Set.of("logs-us", "privat"), () -> false);
 
     assertThat(resolution.readable()).containsExactly("dokumente");
     assertThat(resolution.withheld())
@@ -169,6 +170,34 @@ class S3AllBucketsTest {
         .containsEntry("privat", S3AllBuckets.GONE);
     assertThat(resolution.outside()).isEmpty();
     assertThat(resolution.inScope()).containsExactly("dokumente", "logs-us", "privat");
+  }
+
+  @Test
+  void aHeldBucketTheListingNoLongerNamesIsGoneOnlyWhenTheStoreConfirmsIt() throws Exception {
+    FakeS3ObjectStore store =
+        new FakeS3ObjectStore()
+            .bucket("dokumente")
+            .failBucket("ohne-code", () -> new S3AccessException.BucketNotFound("ohne-code"))
+            .failBucket("gesperrt", () -> new S3AccessException.ListForbidden("gesperrt"))
+            .failBucket("gedrosselt", () -> new S3AccessException.RateLimited(5));
+    S3BucketListing.Listed listed = new S3BucketListing.Listed(List.of("dokumente"));
+
+    S3AllBuckets.Resolution resolution =
+        S3AllBuckets.resolve(
+            store,
+            listed,
+            "eu-central-1",
+            Set.of("dokumente", "geloescht", "ohne-code", "gesperrt", "gedrosselt"),
+            () -> false);
+
+    assertThat(resolution.readable()).containsExactly("dokumente");
+    assertThat(resolution.withheld())
+        .containsOnlyKeys("ohne-code", "gesperrt", "gedrosselt")
+        .containsValue(S3AllBuckets.UNCONFIRMED);
+    assertThat(resolution.inScope()).doesNotContain("geloescht");
+    assertThat(resolution.seen()).isEqualTo(1);
+    assertThat(store.calls())
+        .contains("probe geloescht", "probe ohne-code", "probe gesperrt", "probe gedrosselt");
   }
 
   @Test
@@ -184,7 +213,7 @@ class S3AllBucketsTest {
                     store,
                     new S3BucketListing.Listed(List.of("dokumente")),
                     "us-east-1",
-                    bucket -> true,
+                    Set.of("dokumente"),
                     () -> false))
         .isInstanceOf(S3AccessException.RateLimited.class);
   }

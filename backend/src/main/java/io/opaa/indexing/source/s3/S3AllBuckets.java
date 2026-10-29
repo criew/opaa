@@ -6,18 +6,19 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.BooleanSupplier;
-import java.util.function.Predicate;
 
 /**
  * "Alle Buckets" as the key finds it now (ADR-0027, Entscheidung 2): of every bucket {@code
  * ListBuckets} names, the library reads those in the connection's region that the key may list. A
  * bucket it cannot read - another region, a refused or unanswered probe - is left out with a German
  * reason when the library holds nothing from it. One it holds documents from stays in scope as
- * withheld: the run reports it unlistable and removes nothing from it, because only a bucket that
- * {@code ListBuckets} no longer names is a finding of deletion. Any other answer of the store
- * (throttling, a refused key, an unreachable endpoint) is the caller's exception.
+ * withheld: the run reports it unlistable and removes nothing from it. A bucket is gone only when
+ * {@code ListBuckets} no longer names it and its probe answers {@code NoSuchBucket} with that code;
+ * any other answer keeps it withheld. Any other answer to a listed bucket's probe (throttling, a
+ * refused key, an unreachable endpoint) is the caller's exception.
  */
 final class S3AllBuckets {
 
@@ -26,6 +27,8 @@ final class S3AllBuckets {
   static final String GONE = "nicht mehr vorhanden";
   static final String INVALID_NAME = "kein gültiger Bucket-Name";
   static final String NOT_PROBED = "nicht geprüft, das Zeitlimit war erreicht";
+  static final String UNCONFIRMED =
+      "fehlt in der Bucket-Liste, der Endpoint bestätigt aber nicht, dass er gelöscht ist";
 
   /** At most this many buckets are named in one message. */
   static final int NAMED = 20;
@@ -35,9 +38,10 @@ final class S3AllBuckets {
    * @param withheld the buckets the library holds documents from but cannot read now, name to
    *     reason; they stay in scope and nothing indexed from them is removed
    * @param outside the buckets the key sees but the library leaves out, name to reason
+   * @param seen how many buckets {@code ListBuckets} named
    */
   record Resolution(
-      List<String> readable, Map<String, String> withheld, Map<String, String> outside) {
+      List<String> readable, Map<String, String> withheld, Map<String, String> outside, int seen) {
 
     Resolution {
       readable = List.copyOf(readable);
@@ -46,7 +50,7 @@ final class S3AllBuckets {
     }
 
     Resolution(List<String> readable, Map<String, String> outside) {
-      this(readable, Map.of(), outside);
+      this(readable, Map.of(), outside, readable.size() + outside.size());
     }
 
     /** The buckets a full sync lists: the readable and the withheld ones, in name order. */
@@ -54,10 +58,6 @@ final class S3AllBuckets {
       TreeSet<String> all = new TreeSet<>(readable);
       all.addAll(withheld.keySet());
       return List.copyOf(all);
-    }
-
-    int seen() {
-      return readable.size() + withheld.size() + outside.size();
     }
 
     /** "„a“ (Region us-east-1), „b“ (…)" of the outside buckets. */
@@ -96,20 +96,22 @@ final class S3AllBuckets {
 
   /**
    * Resolves {@code listed} against {@code region} with one listing request for at most one key per
-   * bucket in it. {@code holdsDocuments} tells whether the library holds documents from a bucket;
-   * {@code timeUp} stops probing, and the buckets not probed by then count as left out.
+   * bucket in it, and per bucket of {@code held} - the buckets the library holds documents from -
+   * that {@code listed} no longer names. {@code timeUp} stops probing; a listed bucket not probed
+   * by then counts as left out, an unlisted one as withheld.
    */
   static Resolution resolve(
       S3ObjectStore store,
       S3BucketListing.Listed listed,
       String region,
-      Predicate<String> holdsDocuments,
+      Set<String> held,
       BooleanSupplier timeUp)
       throws S3AccessException, InterruptedException {
     List<String> readable = new ArrayList<>();
     Map<String, String> withheld = new LinkedHashMap<>();
     Map<String, String> outside = new LinkedHashMap<>();
-    for (String name : new TreeSet<>(listed.names())) {
+    TreeSet<String> names = new TreeSet<>(listed.names());
+    for (String name : names) {
       try {
         S3Scope.validateBucket(name);
       } catch (S3Scope.InvalidS3ScopeException e) {
@@ -128,13 +130,35 @@ final class S3AllBuckets {
       }
       if (reason == null) {
         readable.add(name);
-      } else if (holdsDocuments.test(name)) {
+      } else if (held.contains(name)) {
         withheld.put(name, reason);
       } else {
         outside.put(name, reason);
       }
     }
-    return new Resolution(readable, withheld, outside);
+    for (String name : new TreeSet<>(held)) {
+      if (!names.contains(name)) {
+        if (timeUp.getAsBoolean()) {
+          withheld.put(name, NOT_PROBED);
+        } else if (!confirmedGone(store, name)) {
+          withheld.put(name, UNCONFIRMED);
+        }
+      }
+    }
+    return new Resolution(readable, withheld, outside, names.size());
+  }
+
+  /** Whether the store answers the probe of {@code bucket} with the code {@code NoSuchBucket}. */
+  private static boolean confirmedGone(S3ObjectStore store, String bucket)
+      throws InterruptedException {
+    try {
+      store.probeListing(bucket);
+      return false;
+    } catch (S3AccessException.BucketNotFound e) {
+      return e.confirmed();
+    } catch (S3AccessException e) {
+      return false;
+    }
   }
 
   /** {@code null} when the key may list the bucket, else why the library cannot read it. */

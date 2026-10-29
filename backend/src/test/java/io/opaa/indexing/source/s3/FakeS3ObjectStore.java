@@ -151,7 +151,7 @@ public class FakeS3ObjectStore implements S3ObjectStore {
     }
     TreeMap<String, StoredObject> objects = buckets.get(bucket);
     if (objects == null) {
-      throw new S3AccessException.BucketNotFound(bucket);
+      throw new S3AccessException.BucketNotFound(bucket, true);
     }
     return objects;
   }
