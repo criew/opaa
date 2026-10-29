@@ -63,7 +63,8 @@ public final class IngestTextSanitizer {
       Pattern.compile("<(start_of_turn|end_of_turn|bos|eos)>");
 
   private static final Pattern INSTRUCTION_MARKER =
-      Pattern.compile("\\[\\s*/?\\s*INST\\s*]|<<\\s*/?\\s*SYS\\s*>>", Pattern.CASE_INSENSITIVE);
+      Pattern.compile(
+          "\\[\\s*+/?+\\s*+INST\\s*+]|<<\\s*+/?+\\s*+SYS\\s*+>>", Pattern.CASE_INSENSITIVE);
 
   private static final Pattern INSTRUCTION_PHRASE =
       Pattern.compile(
@@ -80,27 +81,33 @@ public final class IngestTextSanitizer {
       Pattern.compile("[?&][\\w-]+=(?:DATEN|DATA)\\b");
 
   /**
-   * Longest single-line field ({@link #sanitizeLabel}) kept; a title, heading or Fundort is never
-   * longer in an ordinary document.
+   * Longest single-line field ({@link #sanitizeLabel}) kept, in UTF-16 code units; a title, heading
+   * or Fundort is never longer in an ordinary document.
    */
   public static final int LABEL_MAX_LENGTH = 1_000;
 
   private IngestTextSanitizer() {}
 
   /**
-   * {@code label} - a title, heading or Fundort - cut to {@link #LABEL_MAX_LENGTH} characters
-   * (never inside a surrogate pair), then {@link #sanitize cleaned}; {@code null} stays {@code
-   * null}.
+   * {@code label} - a title, heading or Fundort - {@link #sanitize cleaned} and cut to {@link
+   * #LABEL_MAX_LENGTH} UTF-16 code units, never inside a surrogate pair. Only a prefix of four
+   * times that length is cleaned, so hidden characters the cleanup removes cannot empty the label;
+   * {@code null} stays {@code null}.
    */
   public static Result sanitizeLabel(String label) {
-    if (label == null || label.length() <= LABEL_MAX_LENGTH) {
-      return sanitize(label);
+    if (label == null) {
+      return sanitize(null);
     }
-    int end =
-        Character.isHighSurrogate(label.charAt(LABEL_MAX_LENGTH - 1))
-            ? LABEL_MAX_LENGTH - 1
-            : LABEL_MAX_LENGTH;
-    return sanitize(label.substring(0, end));
+    Result cleaned = sanitize(prefix(label, 4 * LABEL_MAX_LENGTH));
+    return new Result(prefix(cleaned.text(), LABEL_MAX_LENGTH), cleaned.findings());
+  }
+
+  /** At most {@code max} code units of {@code text}, never ending on a high surrogate. */
+  private static String prefix(String text, int max) {
+    if (text.length() <= max) {
+      return text;
+    }
+    return text.substring(0, Character.isHighSurrogate(text.charAt(max - 1)) ? max - 1 : max);
   }
 
   /**

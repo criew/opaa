@@ -72,8 +72,8 @@ public final class XhtmlEventBuilder {
       Set.of("script", "style", "noscript", "template", "head");
 
   /**
-   * Tables nested deeper than this inside one another lose their row layout: their text is walked
-   * like a block's, so a nesting level no longer rebuilds the text of every level below it.
+   * A table enclosed by this many tables or more loses its row layout: its text is walked like a
+   * block's, so a nesting level no longer rebuilds the text of every level below it.
    */
   static final int MAX_TABLE_DEPTH = 8;
 

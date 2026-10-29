@@ -215,4 +215,27 @@ class IngestTextSanitizerTest {
     assertThat(IngestTextSanitizer.sanitizeLabel("Kurzer Titel").text()).isEqualTo("Kurzer Titel");
     assertThat(IngestTextSanitizer.sanitizeLabel(null).text()).isNull();
   }
+
+  @Test
+  void hiddenCharactersBeforeALabelDoNotEmptyIt() {
+    String tags = chars(0xE0041).repeat(500);
+
+    Result result = IngestTextSanitizer.sanitizeLabel(tags + "Bauantrag");
+
+    assertThat(result.text()).isEqualTo("Bauantrag");
+    assertThat(result.findings()).isEqualTo(Map.of(Finding.INVISIBLE_CHARACTERS, 500));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"[", "<<"})
+  void aLongWhitespaceRunAfterAnInstructionMarkerOpenerIsScannedInLinearTime(String opener) {
+    // regression guard: the marker's whitespace runs must not backtrack against each other
+    String text = opener + " ".repeat(100_000) + "x";
+
+    Result result =
+        assertTimeoutPreemptively(Duration.ofSeconds(10), () -> IngestTextSanitizer.sanitize(text));
+
+    assertThat(result.text()).isEqualTo(text);
+    assertThat(result.findings()).isEmpty();
+  }
 }
