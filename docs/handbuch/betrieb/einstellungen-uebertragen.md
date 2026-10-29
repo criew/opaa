@@ -16,11 +16,12 @@ Verfügung.
 
 Die Datei ist JSON, mit Formatname, Formatversion, Zeitpunkt des Exports und je Bereich dessen
 wirksame Werte. Ein leerer Wert (`null`) hat je Angabe seine eigene Bedeutung: Beim Branding gilt
-der OPAA-Standard, beim Speicherkontingent, beim Vollabgleich-Rhythmus, bei den Fristen der Chats
+der OPAA-Standard, beim Speicherkontingent privater Bibliotheken, beim Vollabgleich-Rhythmus, bei den Fristen der Chats
 und der anlassbezogenen Klärungen, bei den Schwellen und Fristen der Verbindungen, bei der
 Erinnerung vor Ablauf einer Freigabe, bei der Hervorhebung „lange offen“ und bei der
 Plausibilitätsschwelle die Werkseinstellung, bei einer E-Mail-Vorlage der
-ausgelieferte Text, bei einer Angabe des Mailservers ist sie nicht gesetzt.
+ausgelieferte Text, bei einer Angabe des Mailservers ist sie nicht gesetzt, beim Speicherkontingent
+geteilter Bibliotheken gilt die Obergrenze des Betriebs allein.
 
 | Bereich | Inhalt |
 |---|---|
@@ -35,6 +36,7 @@ ausgelieferte Text, bei einer Angabe des Mailservers ist sie nicht gesetzt.
 | Erlaubte Linkziele | die ganze Liste |
 | Ausgangsproxy | Proxy-Adresse und Ausnahmeliste |
 | Speicherkontingent privater Bibliotheken | der gesetzte Wert oder `null` für die Werkseinstellung |
+| Speicherkontingent geteilter Bibliotheken | der gesetzte Wert je Bibliothek in Byte oder `null` für die Obergrenze des Betriebs; ein Wert über der Obergrenze dieser Installation wird abgelehnt |
 | Vollabgleich-Rhythmus | je Quellart die gesetzten Tage oder `null` für die Werkseinstellung |
 | Schwellen und Fristen der Verbindungen | Inaktivitätsschwelle, Löschfrist privater Bibliotheken und Warnschwelle abgelaufener Konten, je der gesetzte Wert oder `null` für die Werkseinstellung |
 | Externe KI-Werkzeuge | Schalter, Ablauf-Obergrenze, Kontingent, Netzbereiche, Alarmschwelle, Einleitungstext, Erinnerung vor Ablauf einer Freigabe |

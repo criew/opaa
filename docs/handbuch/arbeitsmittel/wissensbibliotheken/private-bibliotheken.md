@@ -65,8 +65,8 @@ nicht mehr nutzbar“ bietet er „Zugang zuordnen“ an. Ein Lauf, der daran sc
 Grund als Kategorie ohne Inhaltsbezug.
 
 **Speicherkontingent der Person.** Alle privaten Bibliotheken einer Person teilen sich ein
-Kontingent; eine weitere private Bibliothek schafft keinen zusätzlichen Platz. Das Kontingent je
-Bibliothek gilt daneben unverändert. Gezählt wird, was tatsächlich gespeichert ist. Passt eine
+Kontingent; eine weitere private Bibliothek schafft keinen zusätzlichen Platz. Je Bibliothek gilt
+daneben die Obergrenze des Betriebs, nicht das hausweite Kontingent geteilter Bibliotheken. Gezählt wird, was tatsächlich gespeichert ist. Passt eine
 Datei nicht mehr in das Kontingent, wird sie wie am Kontingent der Bibliothek übersprungen: Der Lauf
 nimmt sie nicht auf, läuft aber weiter, übernimmt Löschungen in der Quelle und endet als
 unvollständig mit der Kategorie `QUOTA_EXHAUSTED`. Eine übersprungene Datei gilt nicht als gelöscht;

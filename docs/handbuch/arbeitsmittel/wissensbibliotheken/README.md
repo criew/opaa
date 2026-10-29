@@ -353,6 +353,24 @@ Jede Bibliothek hat ein Speicherkontingent; eine private Bibliothek zusätzlich 
 Besitzerin über alle ihre privaten Bibliotheken ([Private Bibliotheken](private-bibliotheken.md)). Geprüft wird der Zuwachs: Bei einer geänderten Datei zählt nur die
 Größendifferenz.
 
+Das Kontingent hat zwei Stufen. Der Betrieb legt mit `OPAA_LIBRARY_QUOTA_BYTES` eine **Obergrenze je
+Bibliothek** fest. Darunter setzt die Systemverwaltung unter **Administration → Anbindungen →
+Einstellungen**, Abschnitt „Speicher geteilter Bibliotheken“, ein hausweites Kontingent für alle
+geteilten Bibliotheken, etwa 2 GB, wenn der Speicher knapp wird. Ohne eigenen Wert gilt die
+Obergrenze allein; „Eigene Grenze entfernen“ kehrt dorthin zurück. Einen Wert über der Obergrenze
+nimmt OPAA nicht an; senkt der Betrieb die Obergrenze unter den eingetragenen Wert, gilt die
+Obergrenze, und der Abschnitt sagt das. Für eine private Bibliothek gilt je Bibliothek nur die
+Obergrenze. Eine Änderung wirkt ab dem nächsten aufgenommenen Dokument, ohne Neustart und auf allen
+Instanzen, steht im Revisionsprotokoll (`SHARED_LIBRARY_QUOTA_CHANGED`) und gehört zu den
+Einstellungen, die sich in eine andere Installation übertragen lassen.
+
+**Senken löscht nichts.** Belegt eine Bibliothek schon mehr als das neue Kontingent, behält sie
+alle Dokumente, und sie bleiben durchsuchbar. Sie nimmt nur nichts mehr auf, was sie wachsen lässt;
+eine geänderte Datei, die nicht größer wird, ersetzt ihre bisherige Fassung weiterhin. Der Abschnitt
+in der Verwaltung nennt, wie viele geteilte Bibliotheken über dem Kontingent liegen, und die
+Detailansicht einer solchen Bibliothek sagt es ihren Verwaltenden mit belegtem Speicher und
+Kontingent.
+
 Überschreitet ein Dokument ein Kontingent, wird es abgelehnt, und das Protokoll nennt den Grund.
 Der Lauf geht weiter und endet als unvollständig. Das abgelehnte Dokument gilt als vorhanden: Eine
 bereits aufgenommene Fassung bleibt stehen, und ein späterer Lauf versucht es erneut. Löschungen in
@@ -659,6 +677,7 @@ die Anfrage mit HTTP 503 beantwortet.
 | `attachments.max-per-parent` / `attachments.max-size-bytes` | 10 / 20 MiB | Reserve für Konnektoren ohne eigene Werte, derzeit ohne Wirkung |
 | `http.user-agent` / `http.max-rate-limit-retries` / `http.max-retry-after` | `OPAA-Indexer/1.0` / 6 / 2m | `User-Agent` jeder Anfrage an eine fremde Quelle und die 429-Wartezeit von Feed und Webverzeichnis |
 | `http.request-budget-per-run` / `http.max-rate-limit-wait-per-run` | 0 (unbegrenzt) / 15m | Anfragen und Summe der 429-Wartezeiten je Lauf bei Feed und Webverzeichnis |
+| `OPAA_LIBRARY_QUOTA_BYTES` | 10 GiB | Obergrenze des Speicherkontingents je Bibliothek (Abschnitt 5.2); `0` hebt sie auf |
 | `chunk-target-characters` | 4000 Zeichen | Zielgröße eines Chunks bei allen Formaten mit Struktur (500 bis 8.000); 4.000 Zeichen deutscher Text sind mit bge-m3 etwa 950 bis 1.250 Tokens |
 | `chunk-size` / `chunk-overlap` | 1000 / 100 Tokens | nur Auffang-Pipeline und strukturlose Texte |
 | `batch-size` | 50 | Chunks je Embedding-Aufruf |
