@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-24
+stand: 2026-10-29
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-24
@@ -58,7 +58,7 @@ Antwort steht in der Matrix der {{faktenblatt:rollensicht#matrix}}; die Tabelle 
 | Kolleginnen und Kollegen | wer Chats, Bibliotheken und Mitgliedschaften sieht | {{faktenblatt:rollensicht#user}}, Sichtbarkeit in {{faktenblatt:datenkatalog#chats}} |
 | Verwaltung einer Bibliothek, Gruppe oder eines Space | Mitglieder und Rechte am eigenen Objekt | {{faktenblatt:rollensicht#faehigkeiten}}, [Wer welche Gruppe sieht](../../handbuch/konten-und-rechte/berechtigungen.md#8-wer-welche-gruppe-sieht--und-wie-groß-sie-ist) |
 | Systemverwaltung | verwaltet Konten und Rechte; sieht, welche lokalen Konten länger nicht genutzt wurden; liest fremde Inhalte nur, wenn sie sich selbst ein Recht gibt, das für alle nachlesbar gespeichert wird; kann mit „Sicht als“ befristet und begründet prüfen, was eine Person sehen würde | {{faktenblatt:rollensicht#system-admin}}, [Systemrollen und Vollmachten](../../handbuch/konten-und-rechte/berechtigungen.md#10-systemrollen-und-vollmachten) |
-| Revision | liest das Protokoll mit Kennungen statt Namen und kann darin nicht nach Personen suchen | {{faktenblatt:rollensicht#auditor}}, [Pseudonymisierung im Protokoll](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll) |
+| Revision | liest das Protokoll mit Kennungen statt Namen, die nur in der einen Antwort gelten, und kann darin nicht nach Personen suchen | {{faktenblatt:rollensicht#auditor}}, [Pseudonymisierung im Protokoll](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll) |
 | Vorgesetzte | haben als Vorgesetzte keine eigene Rolle; sie sehen, was ihnen eine Rolle in OPAA (etwa Systemverwaltung) oder eine Mitgliedschaft gibt, wie alle anderen auch | {{faktenblatt:rollensicht#systemrollen}} |
 | Betrieb von Datenbank, Sicherungen und Logs | technisch alles; das Produkt kann es nicht verhindern | Dienstvereinbarung, Nummer 7 |
 | Ich selbst | meine Daten über die Selbstauskunft, im Umfang der Kategorien, die die eingesetzte Version ausgibt; die Übersicht der Auskunft nennt die fehlenden | {{faktenblatt:datenkatalog#self-disclosure}} |
@@ -70,7 +70,11 @@ Antwort steht in der Matrix der {{faktenblatt:rollensicht#matrix}}; die Tabelle 
 - Die Revision prüft, wer im März Rechte an der Bibliothek „Haushalt“ geändert hat; sie fragt nach
   Objekt und Zeitraum und sieht Kennungen statt Namen.
 - Nach einem Sicherheitsvorfall klärt die Revision, was ein bestimmtes Konto an einem Tag verwaltet
-  hat: nur als anlassbezogene Klärung, mit Freigabe durch eine zweite Person.
+  hat: nur als anlassbezogene Klärung für einen zurückliegenden, begrenzten Zeitraum
+  ({{faktenblatt:voreinstellungen#opaa-audit-incident-scope-max-days}}), mit Freigabe durch eine
+  zweite Person. Antrag und Freigabe stehen selbst im Protokoll
+  ({{faktenblatt:protokollereignisse#incident-scope-requested}},
+  {{faktenblatt:protokollereignisse#incident-scope-approved}}).
 - Die Systemverwaltung findet lokale Konten, mit denen sich lange niemand angemeldet hat, um sie zu
   sperren oder zu löschen; nach einer Frist sperrt OPAA sie selbst
   ({{faktenblatt:voreinstellungen#local-auth-settings-inactive-days}}).
@@ -85,6 +89,9 @@ Erlaubt ist nur, was die Dienstvereinbarung vereinbart.
 - Wer stellt die meisten Fragen? Fragen werden als Chat der Person gespeichert, nicht im Protokoll;
   eine Auswertung nach Person gibt es dafür nicht.
 - Rangliste der aktivsten Beschäftigten: gibt es nicht, auch nicht als Spielelement.
+- Was eine Person über Monate verwaltet hat, aus vielen Abfragen der Revision zusammensetzen: Die
+  Kennung einer Person gilt nur in der einen Antwort, zwei Antworten lassen sich über sie nicht
+  verbinden. Eine anlassbezogene Klärung blickt nur zurück und beobachtet niemanden fortlaufend.
 - Wann jemand zuletzt angemeldet war, zeigt die Kontenliste nicht als Datum.
 - Wer hat eine Selbstauskunft abgerufen? Nur Nachweis und Missbrauchserkennung, keine Auswertung.
 - Auswertungen direkt in der Datenbank: technisch möglich, durch die Dienstvereinbarung verboten.

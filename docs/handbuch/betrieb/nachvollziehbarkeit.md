@@ -128,9 +128,16 @@ gilt:
   ([Berechtigungen](../konten-und-rechte/berechtigungen.md#12-nachweis-rechtehistorie-und-stichtagsauskunft)).
   Die Ausleitung an ein Sicherheitsmonitoring trägt keine Pseudonyme
   ([Überwachung](ueberwachung-und-fehlerbehebung.md#ausleitung-an-ein-sicherheitsmonitoring)).
-- **Auflösen nur im Einzelfall:** Einer Person zugeordnet wird ein Pseudonym nur über eine
+- **Kennungen nur je Antwort:** Die Revision sieht nie das gespeicherte Pseudonym, sondern eine
+  Kennung, die nur in der einen Antwort gilt. Innerhalb einer Seite erkennt sie, welche Einträge auf
+  dieselbe Person zurückgehen; zwei Antworten, auch zwei Seiten derselben Abfrage, lassen sich über
+  eine Person nicht verbinden. So entsteht auch aus vielen Abfragen nacheinander keine Zeitreihe
+  einer Person.
+- **Auflösen nur im Einzelfall:** Einer Person zugeordnet wird ein Eintrag nur über eine
   anlassbezogene Klärung mit Begründung und Freigabe durch eine zweite Person
-  ([Berechtigungen](../konten-und-rechte/berechtigungen.md#10-systemrollen-und-vollmachten)).
+  ([Berechtigungen](../konten-und-rechte/berechtigungen.md#10-systemrollen-und-vollmachten)). Ihr
+  Zeitraum liegt ganz in der Vergangenheit und ist begrenzt, ihre Antwort nennt keine Kennung der
+  Person, und Antrag und Freigabe stehen selbst im Protokoll, gesichert durch die Prüfsummenkette.
 - **Löschen ohne Eingriff ins Protokoll:** Wird ein Konto gelöscht, entfällt die Zuordnung; das
   Protokoll bleibt unverändert und ist danach keiner Person mehr zuzuordnen
   ([Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md#8-löschen-oder-sperren)).

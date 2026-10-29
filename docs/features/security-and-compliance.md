@@ -500,6 +500,27 @@ Bedarf hinter einer kontobezogenen Frage läuft über `nach Zeitraum`/`nach Erei
 Personenbezug), die freigegebene anlassbezogene Klärung oder die Rechtehistorie (#238) — nie über
 diesen Weg.
 
+**Kennungen gelten je Antwort, nicht dauerhaft (#3352).** Die Abweisung oben schließt nur den einen
+Rückweg. Solange jede Antwort das gespeicherte Pseudonym trug, ließ sich eine Person auf anderem Weg
+zuordnen — über eine Rechtevergabe zur selben Zeit, die die Stichtagsauskunft mit Namen nennt, oder
+über eine einzige freigegebene Klärung — und danach über `nach Zeitraum` in 92-Tage-Scheiben ihr
+gesamtes Handeln lesen: genau die ausgeschlossene Zeitreihe je Person. Deshalb verlässt kein
+gespeichertes Pseudonym das Protokoll über einen Abfrageweg. Jede Antwort zieht einen zufälligen
+Schlüssel und gibt jede Personenkennung — `actor_ref` einer Person, `subject_ref` einer Person,
+`object_id` eines Kontoobjekts, `ownerId` und `targetId` in `before`/`after` — als HMAC-SHA256 unter
+diesem Schlüssel aus; der Schlüssel wird nicht aufbewahrt. Innerhalb einer Antwort trägt dieselbe
+Person dieselbe Kennung, die Revision erkennt also weiter, welche Einträge einer Seite auf dieselbe
+Person zurückgehen. Über zwei Antworten hinweg — auch zwei Seiten derselben Abfrage — unterscheiden
+sich die Kennungen und lassen sich nicht verbinden. Gruppen und Systemprozesse behalten ihre
+Kennung, sie sind keine Personen. Die Klärung gibt `actor_ref` gar nicht aus: Sie nennt die Person
+ohnehin, jede Kennung neben dem Namen wäre der Schlüssel zu allen anderen Antworten.
+
+Was bleibt: Eine Seite einer Abfrage, die einen in der Klärung gesehenen Eintrag enthält, ordnet die
+übrigen Einträge derselben Person auf dieser Seite zu (höchstens eine Seite, innerhalb von 92 Tagen).
+Objekte, die genau einer Person gehören (persönlicher Bereich, private Bibliothek), sind über ihre
+Kennung weiter wiedererkennbar; sie stehen nur mit neutraler Bezeichnung im Protokoll. Wer direkt in
+der Datenbank liest, sieht die dauerhaften Pseudonyme; das ist der Betrieb, nicht die Revision.
+
 **Es gibt diese Abfragen nicht — und zwar nicht abschaltbar, sondern nicht gebaut:**
 
 - **kein Filter nach handelnder Person.** Weder als Parameter, noch als Spaltenfilter, noch über eine
@@ -542,7 +563,15 @@ dafür nicht ([Protokoll der Selbstauskunft](#protokoll-der-selbstauskunft)).
 Datenbank-Constraint, nicht nur anwendungsseitig), vorab festgelegte Person/Zeitraum/Zweck, technische
 Begrenzung der Abfrage auf genau diese Grenzen, und eine Befristung der Freigabe (30 Tage ab Freigabe;
 danach ist eine erneute Freigabe mit erneutem Vier-Augen-Prinzip nötig, nicht eine Verlängerung
-derselben). **Noch nicht technisch durchgesetzt, sondern organisatorisch abzugrenzen:** dass die zwei
+derselben). **Seit #3352** endet der Zeitraum einer Klärung spätestens beim Antrag — eine Klärung
+blickt auf einen Vorfall zurück und beobachtet niemanden fortlaufend — und umfasst höchstens
+`opaa.audit.incident-scope.max-days` Tage (Voreinstellung 92, wie ein Abfragezeitraum; eine Grenze
+des Betriebs nach ADR-0060, Entscheidung 2, die Revision kann sie nicht weiten). Antrag und Freigabe
+stehen als `INCIDENT_SCOPE_REQUESTED` und `INCIDENT_SCOPE_APPROVED` im Protokoll selbst, in derselben
+Transaktion wie der Antrag, mit dem Antrag als Objekt und Zweck und Zeitraum als Angaben; die
+betroffene Person und die Begründung stehen nur im Antrag. So sichert die Prüfsummenkette, wer eine
+personenbezogene Auswertung beantragt und wer sie freigegeben hat, ohne dass die Selbstauskunft der
+betroffenen Person eine laufende Klärung verrät. **Noch nicht technisch durchgesetzt, sondern organisatorisch abzugrenzen:** dass die zwei
 freigebenden Personen tatsächlich unterschiedliche Rollen im Sinne der Mitbestimmung besetzen (heute
 genügen zwei beliebige AUDITOR-Konten — die **Beteiligung der Personalvertretung** an der Freigabe
 selbst ist ein organisatorischer Prozessschritt, kein technisches Gate), die **Unterrichtung der
