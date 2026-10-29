@@ -121,10 +121,12 @@ interface DocumentState {
   /** Counts the library's document rows per state; a failure leaves the last counts. */
   loadStatusCounts: (libraryId: string) => Promise<void>
   /**
-   * Counts anew for a step of a running connector run, unless the library was counted less
-   * than RUN_COUNT_INTERVAL_MS ago; the run's end counts anew through loadStatusCounts.
+   * Counts anew for a step of a running connector run. Within RUN_COUNT_INTERVAL_MS of the
+   * library's last count it counts once at the end of that interval instead.
    */
   refreshStatusCountsDuringRun: (libraryId: string) => Promise<void>
+  /** Drops the follow-up count refreshStatusCountsDuringRun scheduled for the library. */
+  stopRunCounting: (libraryId: string) => void
   uploadNewDocument: (libraryId: string, file: File, folderPath?: string) => Promise<void>
   removeDocument: (libraryId: string, documentId: string) => Promise<void>
   /**
@@ -195,6 +197,13 @@ let countSequence = 0
 const latestCountByLibrary: Record<string, number> = {}
 // When the newest count per library started (Date.now()), the base of the run's throttle.
 const lastCountStartByLibrary: Record<string, number> = {}
+// The follow-up count of a run step that fell within the interval; any newer count replaces it.
+const runCountTimeoutIds: Record<string, ReturnType<typeof setTimeout>> = {}
+
+function clearRunCount(libraryId: string) {
+  clearTimeout(runCountTimeoutIds[libraryId])
+  delete runCountTimeoutIds[libraryId]
+}
 
 async function refreshStatusCounts(
   libraryId: string,
@@ -205,6 +214,7 @@ async function refreshStatusCounts(
   const sequence = ++countSequence
   latestCountByLibrary[libraryId] = sequence
   lastCountStartByLibrary[libraryId] = Date.now()
+  clearRunCount(libraryId)
   try {
     const numbers = await Promise.all(
       COUNTED_STATUSES.map((status) => countLibraryDocuments(libraryId, status)),
@@ -247,6 +257,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     Object.keys(lastCountStartByLibrary).forEach((libraryId) => {
       delete lastCountStartByLibrary[libraryId]
     })
+    Object.keys(runCountTimeoutIds).forEach(clearRunCount)
     set({
       documentsByLibrary: {},
       pageStateByLibrary: {},
@@ -274,8 +285,19 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
 
   refreshStatusCountsDuringRun: async (libraryId) => {
     const lastStart = lastCountStartByLibrary[libraryId]
-    if (lastStart !== undefined && Date.now() - lastStart < RUN_COUNT_INTERVAL_MS) return
-    await refreshStatusCounts(libraryId, set, get)
+    const wait = lastStart === undefined ? 0 : lastStart + RUN_COUNT_INTERVAL_MS - Date.now()
+    if (wait <= 0) {
+      await refreshStatusCounts(libraryId, set, get)
+    } else if (runCountTimeoutIds[libraryId] === undefined) {
+      runCountTimeoutIds[libraryId] = setTimeout(
+        () => void refreshStatusCounts(libraryId, set, get),
+        wait,
+      )
+    }
+  },
+
+  stopRunCounting: (libraryId) => {
+    clearRunCount(libraryId)
   },
 
   uploadNewDocument: async (libraryId: string, file: File, folderPath?: string) => {
