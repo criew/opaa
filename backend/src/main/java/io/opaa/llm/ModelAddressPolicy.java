@@ -1,6 +1,7 @@
 package io.opaa.llm;
 
 import io.opaa.security.TargetAddressValidator;
+import io.opaa.security.TargetAddressValidator.Scope;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -54,7 +55,7 @@ public class ModelAddressPolicy {
    */
   public String blockedReason(String baseUrl) {
     try {
-      validator.validate(new URI(baseUrl.strip()));
+      validator.validate(new URI(baseUrl.strip()), Scope.STORED_TARGET);
       return null;
     } catch (URISyntaxException e) {
       return "Die Basis-Adresse ist keine gültige URL.";

@@ -11,9 +11,12 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -23,20 +26,29 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The names the target address check admitted (ADR-0063). Every resolution in this JVM passes
- * {@link #lookup} through {@link PinnedAddressResolverProvider}. A name a check admitted is guarded
- * until restart: for {@link #PIN_LIFETIME} after its latest check it answers exactly the addresses
- * that check vetted, afterwards a fresh answer with every blocked address removed, never one in a
- * blocked range. Only an allowlist entry of the guarding policy ends a guard; a full table refuses
- * new names instead of dropping a guard. Unguarded names pass unchanged. Held per instance
- * (ADR-0053).
+ * {@link #lookup} through {@link PinnedAddressResolverProvider}. For {@link #PIN_LIFETIME} after a
+ * check a name answers exactly the addresses it vetted: a check before a connection pins it in a
+ * bounded table that drops its oldest entry, a check of stored configuration also guards it until
+ * restart, so afterwards every fresh answer loses its blocked addresses. Only an allowlist entry of
+ * the guarding policy ends a guard; a full guard table refuses new names instead of dropping one.
+ * Other names pass unchanged. Held per instance (ADR-0053).
  */
 final class ResolutionPins {
 
   /** How long a client resolving a just-checked name gets exactly the vetted addresses. */
   static final Duration PIN_LIFETIME = Duration.ofSeconds(60);
 
+  /**
+   * A check reuses an upstream answer for the same name this young, so a burst of checks costs one
+   * query; a change of the name still arrives within it.
+   */
+  static final Duration ANSWER_REUSE = Duration.ofSeconds(5);
+
   /** At most this many guarded names; a check of a further name is refused. */
   static final int MAX_GUARDED_NAMES = 100_000;
+
+  /** At most this many pins of checks before a connection; the oldest gives way. */
+  static final int MAX_CONNECTION_PINS = 10_000;
 
   private static final Duration WARNING_INTERVAL = Duration.ofMinutes(1);
 
@@ -46,13 +58,16 @@ final class ResolutionPins {
   private static final Logger log = LoggerFactory.getLogger(ResolutionPins.class);
 
   private static final ResolutionPins PROCESS =
-      new ResolutionPins(System::nanoTime, MAX_GUARDED_NAMES);
+      new ResolutionPins(System::nanoTime, MAX_GUARDED_NAMES, MAX_CONNECTION_PINS);
 
   private static final ConcurrentHashMap<String, Integer> POLICIES = new ConcurrentHashMap<>();
   private static final AtomicInteger NEXT_POLICY = new AtomicInteger();
 
   /** The first 128 bits of the SHA-256 of a normalised ASCII name: compact and fixed-size. */
   record NameKey(long high, long low) {}
+
+  /** An upstream answer for a name and when it was fetched. */
+  record Answer(List<InetAddress> addresses, long fetchedAt) {}
 
   /**
    * A guarded name: its latest vetted addresses ({@code null} once the pin expired) and the
@@ -63,15 +78,24 @@ final class ResolutionPins {
   private final LongSupplier nanoTime;
   private final int capacity;
   private final ConcurrentHashMap<NameKey, Guard> guards = new ConcurrentHashMap<>();
+  private final Map<NameKey, Answer> connectionPins;
   private final AtomicLong refusals = new AtomicLong();
   private final AtomicLong lastFullWarning = new AtomicLong(Long.MIN_VALUE);
   private final AtomicLong lastFilterWarning = new AtomicLong(Long.MIN_VALUE);
   private volatile InetAddressResolver builtin;
   private volatile InetAddressResolver replacement;
 
-  ResolutionPins(LongSupplier nanoTime, int capacity) {
+  ResolutionPins(LongSupplier nanoTime, int capacity, int connectionCapacity) {
     this.nanoTime = nanoTime;
     this.capacity = capacity;
+    this.connectionPins =
+        Collections.synchronizedMap(
+            new LinkedHashMap<>() {
+              @Override
+              protected boolean removeEldestEntry(Map.Entry<NameKey, Answer> eldest) {
+                return size() > connectionCapacity;
+              }
+            });
   }
 
   /** The guards every resolution of this JVM consults. */
@@ -122,13 +146,57 @@ final class ResolutionPins {
     return refusals.get();
   }
 
-  /** What a check of {@code host} vets: always a fresh answer, every address family. */
-  List<InetAddress> resolveFresh(String host) throws UnknownHostException {
-    InetAddressResolver upstream = upstream();
-    if (upstream == null) {
-      return List.of(InetAddress.getAllByName(host));
+  /**
+   * What a check of {@code host} vets, every address family: the latest answer for the name when
+   * younger than {@link #ANSWER_REUSE}, else a fresh one. A reused answer keeps its fetch time, so
+   * a pin made from it expires as early as the first.
+   */
+  Answer resolveForCheck(String host) throws UnknownHostException {
+    long now = nanoTime.getAsLong();
+    NameKey key = key(host);
+    Answer latest = key == null ? null : latestPin(key);
+    if (latest != null && now - latest.fetchedAt() < ANSWER_REUSE.toNanos()) {
+      return latest;
     }
-    return upstream.lookupByName(host, ALL_FAMILIES).toList();
+    InetAddressResolver upstream = upstream();
+    List<InetAddress> addresses =
+        upstream == null
+            ? List.of(InetAddress.getAllByName(host))
+            : upstream.lookupByName(host, ALL_FAMILIES).toList();
+    return new Answer(addresses, now);
+  }
+
+  /**
+   * Pins {@code host} to {@code vetted} after a check right before a connection: no guard, and the
+   * pin with the oldest insertion gives way once the table is full.
+   */
+  void pinConnection(String host, Answer vetted) {
+    NameKey key = key(host);
+    if (key == null) {
+      return;
+    }
+    Answer pinned = new Answer(List.copyOf(vetted.addresses()), vetted.fetchedAt());
+    synchronized (connectionPins) {
+      connectionPins.remove(key);
+      connectionPins.put(key, pinned);
+    }
+  }
+
+  /** The youngest pin of {@code key} from either table, {@code null} if none. */
+  private Answer latestPin(NameKey key) {
+    Answer connection = connectionPins.get(key);
+    Guard guard = guards.get(key);
+    Answer guarded =
+        guard == null || guard.pinned() == null
+            ? null
+            : new Answer(guard.pinned(), guard.pinnedAt());
+    if (connection == null) {
+      return guarded;
+    }
+    if (guarded == null) {
+      return connection;
+    }
+    return guarded.fetchedAt() - connection.fetchedAt() > 0 ? guarded : connection;
   }
 
   /**
@@ -137,13 +205,14 @@ final class ResolutionPins {
    *
    * @return {@code false}, guarding nothing, when the table is full and {@code host} is new
    */
-  boolean admit(String host, int policy, List<InetAddress> vetted) {
+  boolean admit(String host, int policy, Answer vetted) {
     NameKey key = key(host);
     if (key == null) {
       return false;
     }
     long now = nanoTime.getAsLong();
-    List<InetAddress> pinned = List.copyOf(vetted);
+    long pinnedAt = vetted.fetchedAt();
+    List<InetAddress> pinned = List.copyOf(vetted.addresses());
     Guard admitted =
         guards.compute(
             key,
@@ -151,9 +220,9 @@ final class ResolutionPins {
               if (old == null) {
                 return guards.size() >= capacity
                     ? null
-                    : new Guard(pinned, now, new int[] {policy});
+                    : new Guard(pinned, pinnedAt, new int[] {policy});
               }
-              return new Guard(pinned, now, withPolicy(old.policies(), policy));
+              return new Guard(pinned, pinnedAt, withPolicy(old.policies(), policy));
             });
     if (admitted == null) {
       refusals.incrementAndGet();
@@ -190,20 +259,23 @@ final class ResolutionPins {
   List<InetAddress> lookup(String host, LookupPolicy policy) throws UnknownHostException {
     InetAddressResolver upstream = upstream();
     NameKey key = key(host);
-    Guard guard = key == null ? null : guards.get(key);
-    if (guard == null) {
+    if (key == null) {
       return upstream.lookupByName(host, policy).toList();
     }
     long now = nanoTime.getAsLong();
-    if (guard.pinned() != null) {
-      if (now - guard.pinnedAt() < PIN_LIFETIME.toNanos()) {
-        List<InetAddress> pinned = ordered(guard.pinned(), policy);
-        if (!pinned.isEmpty()) {
-          return named(host, pinned);
-        }
-      } else {
-        guards.replace(key, guard, new Guard(null, guard.pinnedAt(), guard.policies()));
+    Answer pin = latestPin(key);
+    if (pin != null && now - pin.fetchedAt() < PIN_LIFETIME.toNanos()) {
+      List<InetAddress> pinned = ordered(pin.addresses(), policy);
+      if (!pinned.isEmpty()) {
+        return named(host, pinned);
       }
+    }
+    Guard guard = guards.get(key);
+    if (guard == null) {
+      return upstream.lookupByName(host, policy).toList();
+    }
+    if (guard.pinned() != null && now - guard.pinnedAt() >= PIN_LIFETIME.toNanos()) {
+      guards.replace(key, guard, new Guard(null, guard.pinnedAt(), guard.policies()));
     }
     List<InetAddress> fresh = upstream.lookupByName(host, policy).toList();
     List<InetAddress> allowed =

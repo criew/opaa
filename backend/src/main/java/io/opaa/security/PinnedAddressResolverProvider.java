@@ -47,10 +47,9 @@ public final class PinnedAddressResolverProvider extends InetAddressResolverProv
       throw new IllegalStateException(
           "The pinned address resolver is not the resolver of this JVM, so the target address"
               + " check cannot hold clients to the addresses it vetted (ADR-0063). The JDK loads"
-              + " its resolver at the first name lookup; something resolved a name before the"
-              + " application started - typically a -javaagent (APM), JMX remote"
-              + " (-Dcom.sun.management.jmxremote.*) or -Djdk.net.hosts.file in JAVA_TOOL_OPTIONS."
-              + " Remove that option or move it past the start.");
+              + " its resolver at the first name lookup; an option in JAVA_TOOL_OPTIONS resolved a"
+              + " name before the application started: JMX remote (-Dcom.sun.management.jmxremote.*),"
+              + " -Djdk.net.hosts.file or a -javaagent that resolves names. Remove that option.");
     }
   }
 

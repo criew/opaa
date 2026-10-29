@@ -33,7 +33,7 @@ class PinnedAddressResolverProviderTest {
     assertThatThrownBy(
             () ->
                 PinnedAddressResolverProvider.requireInstalled(
-                    new ResolutionPins(System::nanoTime, 1)))
+                    new ResolutionPins(System::nanoTime, 1, 1)))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("-javaagent")
         .hasMessageContaining("jmxremote")
@@ -47,7 +47,8 @@ class PinnedAddressResolverProviderTest {
     String name = "bound.provider.opaa.test";
     InetAddress vetted = InetAddress.getByName("203.0.113.9");
     int policy = ResolutionPins.policyOf(List.of());
-    ResolutionPins.process().admit(name, policy, List.of(vetted));
+    ResolutionPins.process()
+        .admit(name, policy, new ResolutionPins.Answer(List.of(vetted), System.nanoTime()));
     try {
       assertThat(InetAddress.getAllByName(name))
           .extracting(InetAddress::getAddress)

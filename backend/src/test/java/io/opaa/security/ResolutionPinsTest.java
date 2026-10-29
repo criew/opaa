@@ -26,6 +26,7 @@ class ResolutionPinsTest {
   private static final int SOURCES = 1;
   private static final int MODELS = 2;
   private static final int CAPACITY = 3;
+  private static final int CONNECTION_CAPACITY = 5;
 
   private final AtomicLong now = new AtomicLong(1_000_000L);
   private final Answers answers = new Answers();
@@ -33,7 +34,7 @@ class ResolutionPinsTest {
 
   @BeforeEach
   void setUp() {
-    pins = new ResolutionPins(now::get, CAPACITY);
+    pins = new ResolutionPins(now::get, CAPACITY, CONNECTION_CAPACITY);
     pins.installBuiltin(answers);
   }
 
@@ -53,8 +54,9 @@ class ResolutionPinsTest {
     later(Duration.ofSeconds(30));
     answers.next("198.51.100.4");
 
-    assertThat(pins.resolveFresh(HOST)).containsExactly(ip("198.51.100.4"));
-    pins.admit(HOST, SOURCES, pins.resolveFresh(HOST));
+    ResolutionPins.Answer answer = pins.resolveForCheck(HOST);
+    assertThat(answer.addresses()).containsExactly(ip("198.51.100.4"));
+    pins.admit(HOST, SOURCES, answer);
     assertThat(pins.lookup(HOST, ANY)).containsExactly(ip("198.51.100.4"));
   }
 
@@ -88,10 +90,10 @@ class ResolutionPinsTest {
     check("b.example", "203.0.113.2");
     check("c.example", "203.0.113.3");
 
-    assertThat(pins.admit("d.example", SOURCES, List.of(ip("203.0.113.4")))).isFalse();
+    assertThat(pins.admit("d.example", SOURCES, answer("203.0.113.4"))).isFalse();
     assertThat(pins.refusedChecks()).isOne();
     assertThat(pins.guardedNames()).isEqualTo(CAPACITY);
-    assertThat(pins.admit("a.example", SOURCES, List.of(ip("203.0.113.9")))).isTrue();
+    assertThat(pins.admit("a.example", SOURCES, answer("203.0.113.9"))).isTrue();
     later(ResolutionPins.PIN_LIFETIME);
     answers.next("10.0.0.5");
     for (String guarded : List.of("a.example", "b.example", "c.example")) {
@@ -103,7 +105,7 @@ class ResolutionPinsTest {
   @Test
   void aReleaseEndsOnlyTheGuardOfItsOwnPolicy() throws Exception {
     check(HOST, "203.0.113.7");
-    pins.admit(HOST, MODELS, List.of(ip("203.0.113.7")));
+    pins.admit(HOST, MODELS, answer("203.0.113.7"));
     later(ResolutionPins.PIN_LIFETIME);
     answers.next("10.0.0.5");
 
@@ -135,14 +137,14 @@ class ResolutionPinsTest {
     check("key.example", "203.0.113.7");
 
     assertThat(ResolutionPins.key("Key.example")).isNull();
-    assertThat(pins.admit("bücher.example", SOURCES, List.of(ip("203.0.113.8")))).isFalse();
+    assertThat(pins.admit("bücher.example", SOURCES, answer("203.0.113.8"))).isFalse();
     answers.next("10.0.0.5");
     assertThat(pins.lookup("Key.example", ANY)).containsExactly(ip("10.0.0.5"));
   }
 
   @Test
   void thePinAnswersOnlyTheFamiliesAskedForInTheOrderAskedFor() throws Exception {
-    pins.admit(HOST, SOURCES, List.of(ip("2001:db8::7"), ip("203.0.113.7")));
+    pins.admit(HOST, SOURCES, answer("2001:db8::7", "203.0.113.7"));
 
     assertThat(pins.lookup(HOST, LookupPolicy.of(LookupPolicy.IPV4)))
         .containsExactly(ip("203.0.113.7"));
@@ -166,10 +168,81 @@ class ResolutionPinsTest {
         .isNotEqualTo(ResolutionPins.policyOf(List.of("a.example:443")));
   }
 
-  /** What the validator does: a fresh answer, then the guard with it. */
+  /** Regression guard: checks within the reuse window cost one query, a change arrives after it. */
+  @Test
+  void checksWithinTheReuseWindowShareOneQueryAndAChangeArrivesAfterIt() throws Exception {
+    answers.next("203.0.113.7");
+    pins.pinConnection(HOST, pins.resolveForCheck(HOST));
+    answers.next("198.51.100.4");
+    later(ResolutionPins.ANSWER_REUSE.minusMillis(1));
+
+    assertThat(pins.resolveForCheck(HOST).addresses()).containsExactly(ip("203.0.113.7"));
+    assertThat(answers.asked).isOne();
+    later(Duration.ofMillis(1));
+    assertThat(pins.resolveForCheck(HOST).addresses()).containsExactly(ip("198.51.100.4"));
+    assertThat(answers.asked).isEqualTo(2);
+  }
+
+  /** A reused answer keeps its fetch time: the pin expires as early as the first check's. */
+  @Test
+  void aReusedAnswerDoesNotExtendThePin() throws Exception {
+    answers.next("203.0.113.7");
+    pins.pinConnection(HOST, pins.resolveForCheck(HOST));
+    later(Duration.ofSeconds(4));
+    pins.pinConnection(HOST, pins.resolveForCheck(HOST));
+    answers.next("198.51.100.4");
+
+    later(ResolutionPins.PIN_LIFETIME.minusSeconds(4));
+    assertThat(pins.lookup(HOST, ANY)).containsExactly(ip("198.51.100.4"));
+  }
+
+  /** Regression guard: checks before a connection never take a place in the guard table. */
+  @Test
+  void aFloodOfConnectionChecksLeavesTheGuardTableFreeForStoredTargets() throws Exception {
+    for (int i = 0; i < 1000; i++) {
+      answers.next("203.0.113.7");
+      String host = "hop" + i + ".example";
+      pins.pinConnection(host, pins.resolveForCheck(host));
+    }
+
+    assertThat(pins.guardedNames()).isZero();
+    check("model.example", "203.0.113.8");
+    assertThat(pins.guardedNames()).isOne();
+  }
+
+  @Test
+  void aConnectionPinIsExactForItsLifetimeThenTheNameIsUnguarded() throws Exception {
+    answers.next("203.0.113.7");
+    pins.pinConnection(HOST, pins.resolveForCheck(HOST));
+    answers.next("127.0.0.1");
+
+    assertThat(pins.lookup(HOST, ANY)).containsExactly(ip("203.0.113.7"));
+    later(ResolutionPins.PIN_LIFETIME);
+    assertThat(pins.lookup(HOST, ANY)).containsExactly(ip("127.0.0.1"));
+  }
+
+  @Test
+  void theConnectionTableDropsItsOldestPinWhenFull() throws Exception {
+    for (int i = 0; i <= CONNECTION_CAPACITY; i++) {
+      answers.next("203.0.113.7");
+      String host = "hop" + i + ".example";
+      pins.pinConnection(host, pins.resolveForCheck(host));
+    }
+    answers.next("127.0.0.1");
+
+    assertThat(pins.lookup("hop0.example", ANY)).containsExactly(ip("127.0.0.1"));
+    assertThat(pins.lookup("hop1.example", ANY)).containsExactly(ip("203.0.113.7"));
+  }
+
+  /** What the validator does for a stored target: a fresh answer, then the guard with it. */
   private void check(String host, String address) throws UnknownHostException {
     answers.next(address);
-    assertThat(pins.admit(host, SOURCES, pins.resolveFresh(host))).isTrue();
+    assertThat(pins.admit(host, SOURCES, pins.resolveForCheck(host))).isTrue();
+  }
+
+  private ResolutionPins.Answer answer(String... literals) {
+    return new ResolutionPins.Answer(
+        Stream.of(literals).map(ResolutionPinsTest::ip).toList(), now.get());
   }
 
   private void later(Duration duration) {
@@ -188,6 +261,7 @@ class ResolutionPinsTest {
   private static final class Answers implements InetAddressResolver {
 
     private volatile List<InetAddress> current = List.of();
+    private int asked;
 
     void next(String... literals) {
       current = Stream.of(literals).map(ResolutionPinsTest::ip).toList();
@@ -196,6 +270,7 @@ class ResolutionPinsTest {
     @Override
     public Stream<InetAddress> lookupByName(String host, LookupPolicy lookupPolicy)
         throws UnknownHostException {
+      asked++;
       if (current.isEmpty()) {
         throw new UnknownHostException(host);
       }

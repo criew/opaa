@@ -8,6 +8,7 @@ import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.List;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,11 +21,11 @@ import org.slf4j.LoggerFactory;
  * admits every port of the host, an entry {@code host:port} (IPv6 as {@code [addr]:port}) only that
  * port - of a URI, or of a bare host whose caller names the port it connects to.
  *
- * <p>A name that passes stays guarded until restart ({@link ResolutionPins}): a client of this JVM
- * resolving it gets the addresses of the latest check for a short while, afterwards fresh ones with
- * every blocked address removed, so a name server cannot answer the check and the connection
- * differently. Only an allowlist entry of this validator without a port ends its guard; a name
- * outside ASCII is refused (ADR-0063).
+ * <p>A name that passes is pinned ({@link ResolutionPins}): a client of this JVM resolving it gets
+ * the vetted addresses for a short while, so a name server cannot answer the check and the
+ * connection differently. A {@link Scope#STORED_TARGET} check also guards the name until restart;
+ * only an allowlist entry of this validator without a port ends that guard. Through the outbound
+ * proxy nothing is pinned. A name outside ASCII is refused (ADR-0063).
  *
  * <p>The target is checked, never the outbound proxy. A name that does not resolve locally passes
  * only when its connection goes through the outbound proxy, because the proxy resolves it: for
@@ -65,6 +66,23 @@ public class TargetAddressValidator {
   }
 
   /**
+   * What a check protects (ADR-0063). Every caller names it; there is no default.
+   *
+   * <ul>
+   *   <li>{@link #PER_CONNECTION}: a check right before the connection it vets - a redirect hop, a
+   *       request, a crawl or feed fetch. Pinned for the connection only; every further connection
+   *       is checked again.
+   *   <li>{@link #STORED_TARGET}: a check of stored configuration a client later connects to
+   *       without a check of its own - model endpoints, identity providers, the mail server. Also
+   *       guarded until restart.
+   * </ul>
+   */
+  public enum Scope {
+    PER_CONNECTION,
+    STORED_TARGET
+  }
+
+  /**
    * Validates {@code uri} as a fetch target: scheme must be {@code http}/{@code https}, and - when
    * enabled and the host is not on the allowlist - every address the host resolves to must lie
    * outside every blocked range. A no-op when disabled via configuration.
@@ -73,7 +91,8 @@ public class TargetAddressValidator {
    *     message when the target is rejected - propagates through every caller's existing {@code
    *     throws IOException} the same way any other connection failure already does.
    */
-  public void validate(URI uri) throws IOException {
+  public void validate(URI uri, Scope scope) throws IOException {
+    Objects.requireNonNull(scope, "scope");
     String scheme = uri.getScheme();
     if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
       throw new TargetAddressBlockedException(
@@ -90,7 +109,7 @@ public class TargetAddressValidator {
       releaseIfAdmittedOnEveryPort(host);
       return;
     }
-    checkHost(host, OutboundProxySelector.instance().proxyFor(uri).isPresent());
+    checkHost(host, OutboundProxySelector.instance().proxyFor(uri).isPresent(), scope);
   }
 
   /** The port a client connects to: the URI's own, or the default of its scheme. */
@@ -109,20 +128,22 @@ public class TargetAddressValidator {
    * @throws TargetAddressBlockedException (an {@link IOException}) with a German, user-facing
    *     message when the host is rejected.
    */
-  public void validateHost(String host) throws IOException {
-    validateHost(host, false);
+  public void validateHost(String host, Scope scope) throws IOException {
+    validateHost(host, false, scope);
   }
 
   /**
    * {@link #validateHost(String)} for a connection to {@code port}, so an allowlist entry {@code
    * host:port} admits it; a negative port is none.
    */
-  public void validateHost(String host, int port) throws IOException {
-    validateHost(host, port, false);
+  public void validateHost(String host, int port, Scope scope) throws IOException {
+    validateHost(host, port, false, scope);
   }
 
   /** {@link #validateHost(String, boolean)} for a connection to {@code port}. */
-  public void validateHost(String host, int port, boolean throughOutboundProxy) throws IOException {
+  public void validateHost(String host, int port, boolean throughOutboundProxy, Scope scope)
+      throws IOException {
+    Objects.requireNonNull(scope, "scope");
     if (!enabled || host == null) {
       return;
     }
@@ -130,7 +151,7 @@ public class TargetAddressValidator {
       releaseIfAdmittedOnEveryPort(host);
       return;
     }
-    checkHost(host, throughOutboundProxy);
+    checkHost(host, throughOutboundProxy, scope);
   }
 
   /**
@@ -155,15 +176,18 @@ public class TargetAddressValidator {
    * throughOutboundProxy} the outbound proxy resolves the name, so a name that does not resolve
    * locally passes. Only a caller that actually hands its client that proxy may say so.
    */
-  public void validateHost(String host, boolean throughOutboundProxy) throws IOException {
-    validateHost(host, NO_PORT, throughOutboundProxy);
+  public void validateHost(String host, boolean throughOutboundProxy, Scope scope)
+      throws IOException {
+    validateHost(host, NO_PORT, throughOutboundProxy, scope);
   }
 
   /**
-   * Vets every address {@code host} resolves to and binds the name to them; then vets what a client
-   * resolving the name now gets, which may still be an answer cached before the binding.
+   * Vets every address {@code host} resolves to and pins the name to them, guarding it for a stored
+   * target; then vets what a client resolving the name now gets, which may still be an answer
+   * cached before the pin.
    */
-  private void checkHost(String host, boolean throughOutboundProxy) throws IOException {
+  private void checkHost(String host, boolean throughOutboundProxy, Scope scope)
+      throws IOException {
     if (isLiteral(host)) {
       rejectBlocked(host, List.of(InetAddress.getAllByName(host)));
       return;
@@ -176,9 +200,9 @@ public class TargetAddressValidator {
               + " Punycode-Schreibweise (xn--…) angeben.");
     }
     ResolutionPins pins = ResolutionPins.process();
-    List<InetAddress> addresses;
+    ResolutionPins.Answer answer;
     try {
-      addresses = pins.resolveFresh(host);
+      answer = pins.resolveForCheck(host);
     } catch (UnknownHostException e) {
       if (throughOutboundProxy) {
         // The outbound proxy resolves the name, so a missing local resolution is no rejection.
@@ -186,16 +210,19 @@ public class TargetAddressValidator {
       }
       throw unknownHost(host);
     }
-    rejectBlocked(host, addresses);
-    if (!pins.admit(host, policy, addresses)) {
+    rejectBlocked(host, answer.addresses());
+    if (throughOutboundProxy) {
+      // The proxy resolves the name itself; neither a pin nor a guard would reach it.
+      return;
+    }
+    if (scope == Scope.PER_CONNECTION) {
+      pins.pinConnection(host, answer);
+    } else if (!pins.admit(host, policy, answer)) {
       throw new GuardCapacityExceededException(
           "Die Zieladresse "
               + host
               + " kann derzeit nicht geprüft werden: OPAA überwacht bereits die Höchstzahl"
               + " geprüfter Hostnamen. Ein Neustart des Backends setzt die Überwachung zurück.");
-    }
-    if (throughOutboundProxy) {
-      return;
     }
     try {
       rejectBlocked(host, List.of(InetAddress.getAllByName(host)));

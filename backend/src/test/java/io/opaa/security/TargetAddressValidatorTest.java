@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.outbound.OutboundProxySelector;
 import io.opaa.outbound.ProxyAddress;
 import io.opaa.outbound.ProxyExclusions;
+import io.opaa.security.TargetAddressValidator.Scope;
 import java.net.InetAddress;
 import java.net.URI;
 import java.util.List;
@@ -35,7 +36,8 @@ class TargetAddressValidatorTest {
 
   @Test
   void rejectsAFtpUrlWithAGermanMessage() {
-    assertThatThrownBy(() -> enabled().validate(URI.create("ftp://example.com/")))
+    assertThatThrownBy(
+            () -> enabled().validate(URI.create("ftp://example.com/"), Scope.PER_CONNECTION))
         .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class)
         .hasMessageContaining("http")
         .hasMessageContaining("https");
@@ -47,14 +49,17 @@ class TargetAddressValidatorTest {
     // TargetAddressValidator's own Javadoc): OPAA never speaks anything but http(s) regardless of
     // whether an operator has disabled the SSRF address check for their own network.
     TargetAddressValidator disabled = TargetAddressValidator.disabled();
-    assertThatThrownBy(() -> disabled.validate(URI.create("ftp://example.com/")))
+    assertThatThrownBy(
+            () -> disabled.validate(URI.create("ftp://example.com/"), Scope.PER_CONNECTION))
         .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class);
   }
 
   @Test
   void allowsHttpsWhenDisabled() throws Exception {
     assertThatCode(
-            () -> TargetAddressValidator.disabled().validate(URI.create("https://127.0.0.1/")))
+            () ->
+                TargetAddressValidator.disabled()
+                    .validate(URI.create("https://127.0.0.1/"), Scope.PER_CONNECTION))
         .doesNotThrowAnyException();
   }
 
@@ -63,10 +68,10 @@ class TargetAddressValidatorTest {
   @Test
   void loopbackIsRejectedWhenEnabledButAllowedWhenDisabled() {
     URI loopback = URI.create("http://127.0.0.1/");
-    assertThatThrownBy(() -> enabled().validate(loopback))
+    assertThatThrownBy(() -> enabled().validate(loopback, Scope.PER_CONNECTION))
         .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class)
         .hasMessageContaining("gesperrten Adressbereich");
-    assertThatCode(() -> TargetAddressValidator.disabled().validate(loopback))
+    assertThatCode(() -> TargetAddressValidator.disabled().validate(loopback, Scope.PER_CONNECTION))
         .doesNotThrowAnyException();
   }
 
@@ -74,32 +79,37 @@ class TargetAddressValidatorTest {
 
   @Test
   void rejectsIpv4Loopback() {
-    assertThatThrownBy(() -> enabled().validate(URI.create("http://127.0.0.1/")))
+    assertThatThrownBy(
+            () -> enabled().validate(URI.create("http://127.0.0.1/"), Scope.PER_CONNECTION))
         .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class);
   }
 
   @Test
   void rejectsIpv4PrivateTenSlashEight() {
-    assertThatThrownBy(() -> enabled().validate(URI.create("http://10.0.0.5/")))
+    assertThatThrownBy(
+            () -> enabled().validate(URI.create("http://10.0.0.5/"), Scope.PER_CONNECTION))
         .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class);
   }
 
   @Test
   void rejectsIpv4Private172Range() {
-    assertThatThrownBy(() -> enabled().validate(URI.create("http://172.16.0.5/")))
+    assertThatThrownBy(
+            () -> enabled().validate(URI.create("http://172.16.0.5/"), Scope.PER_CONNECTION))
         .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class);
   }
 
   @Test
   void rejectsIpv4Private192168Range() {
-    assertThatThrownBy(() -> enabled().validate(URI.create("http://192.168.1.5/")))
+    assertThatThrownBy(
+            () -> enabled().validate(URI.create("http://192.168.1.5/"), Scope.PER_CONNECTION))
         .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class);
   }
 
   @Test
   void rejectsIpv4LinkLocalIncludingCloudMetadata() {
     // 169.254.169.254 - the common cloud metadata endpoint.
-    assertThatThrownBy(() -> enabled().validate(URI.create("http://169.254.169.254/")))
+    assertThatThrownBy(
+            () -> enabled().validate(URI.create("http://169.254.169.254/"), Scope.PER_CONNECTION))
         .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class);
   }
 
@@ -114,13 +124,14 @@ class TargetAddressValidatorTest {
 
   @Test
   void rejectsIpv6Loopback() {
-    assertThatThrownBy(() -> enabled().validate(URI.create("http://[::1]/")))
+    assertThatThrownBy(() -> enabled().validate(URI.create("http://[::1]/"), Scope.PER_CONNECTION))
         .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class);
   }
 
   @Test
   void rejectsIpv6LinkLocal() {
-    assertThatThrownBy(() -> enabled().validate(URI.create("http://[fe80::1]/")))
+    assertThatThrownBy(
+            () -> enabled().validate(URI.create("http://[fe80::1]/"), Scope.PER_CONNECTION))
         .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class);
   }
 
@@ -221,14 +232,20 @@ class TargetAddressValidatorTest {
     // even attempted, by using a hostname that would otherwise fail DNS resolution outright (and
     // therefore be rejected as unresolvable, not merely as blocked) if the allowlist did not short-
     // circuit first.
-    assertThatCode(() -> validator.validate(URI.create("http://internal-source.local/")))
+    assertThatCode(
+            () ->
+                validator.validate(
+                    URI.create("http://internal-source.local/"), Scope.PER_CONNECTION))
         .doesNotThrowAnyException();
   }
 
   @Test
   void allowlistIsCaseInsensitive() {
     TargetAddressValidator validator = enabled(List.of("Internal-Source.Local"));
-    assertThatCode(() -> validator.validate(URI.create("http://internal-source.local/")))
+    assertThatCode(
+            () ->
+                validator.validate(
+                    URI.create("http://internal-source.local/"), Scope.PER_CONNECTION))
         .doesNotThrowAnyException();
   }
 
@@ -236,15 +253,25 @@ class TargetAddressValidatorTest {
   void anEntryWithAPortAdmitsOnlyThatPortOfTheHost() {
     TargetAddressValidator validator = enabled(List.of("localhost:8180", "[::1]:8443"));
 
-    assertThatCode(() -> validator.validate(URI.create("http://localhost:8180/realms/opaa")))
+    assertThatCode(
+            () ->
+                validator.validate(
+                    URI.create("http://localhost:8180/realms/opaa"), Scope.PER_CONNECTION))
         .doesNotThrowAnyException();
-    assertThatCode(() -> validator.validate(URI.create("https://[::1]:8443/realms/opaa")))
+    assertThatCode(
+            () ->
+                validator.validate(
+                    URI.create("https://[::1]:8443/realms/opaa"), Scope.PER_CONNECTION))
         .doesNotThrowAnyException();
-    assertThatThrownBy(() -> validator.validate(URI.create("http://localhost:8081/actuator")))
+    assertThatThrownBy(
+            () ->
+                validator.validate(
+                    URI.create("http://localhost:8081/actuator"), Scope.PER_CONNECTION))
         .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class);
-    assertThatThrownBy(() -> validator.validate(URI.create("http://localhost/")))
+    assertThatThrownBy(
+            () -> validator.validate(URI.create("http://localhost/"), Scope.PER_CONNECTION))
         .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class);
-    assertThatThrownBy(() -> validator.validateHost("localhost"))
+    assertThatThrownBy(() -> validator.validateHost("localhost", Scope.PER_CONNECTION))
         .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class);
   }
 
@@ -252,9 +279,15 @@ class TargetAddressValidatorTest {
   void anEntryWithAPortMatchesTheDefaultPortOfTheScheme() {
     TargetAddressValidator validator = enabled(List.of("internal-source.local:443"));
 
-    assertThatCode(() -> validator.validate(URI.create("https://internal-source.local/x")))
+    assertThatCode(
+            () ->
+                validator.validate(
+                    URI.create("https://internal-source.local/x"), Scope.PER_CONNECTION))
         .doesNotThrowAnyException();
-    assertThatThrownBy(() -> validator.validate(URI.create("http://internal-source.local/x")))
+    assertThatThrownBy(
+            () ->
+                validator.validate(
+                    URI.create("http://internal-source.local/x"), Scope.PER_CONNECTION))
         .isInstanceOf(java.io.IOException.class);
   }
 
@@ -262,9 +295,11 @@ class TargetAddressValidatorTest {
   void anEntryWithoutAPortKeepsAdmittingEveryPort() {
     TargetAddressValidator validator = enabled(List.of("localhost"));
 
-    assertThatCode(() -> validator.validate(URI.create("http://localhost:8081/")))
+    assertThatCode(
+            () -> validator.validate(URI.create("http://localhost:8081/"), Scope.PER_CONNECTION))
         .doesNotThrowAnyException();
-    assertThatCode(() -> validator.validateHost("localhost")).doesNotThrowAnyException();
+    assertThatCode(() -> validator.validateHost("localhost", Scope.PER_CONNECTION))
+        .doesNotThrowAnyException();
   }
 
   @Test
@@ -285,7 +320,8 @@ class TargetAddressValidatorTest {
     TargetAddressValidator validator = enabled(entries);
 
     assertThat(validator.isAllowlisted(URI.create("http://localhost:8080/"))).isFalse();
-    assertThatThrownBy(() -> validator.validate(URI.create("http://localhost:8080/")))
+    assertThatThrownBy(
+            () -> validator.validate(URI.create("http://localhost:8080/"), Scope.PER_CONNECTION))
         .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class);
     assertThat(TargetAddressValidator.invalidEntries(entries)).isEqualTo(entries);
     assertThat(
@@ -296,7 +332,8 @@ class TargetAddressValidatorTest {
   @Test
   void allowlistDoesNotExemptAnUnrelatedHost() {
     TargetAddressValidator validator = enabled(List.of("internal-source.local"));
-    assertThatThrownBy(() -> validator.validate(URI.create("http://127.0.0.1/")))
+    assertThatThrownBy(
+            () -> validator.validate(URI.create("http://127.0.0.1/"), Scope.PER_CONNECTION))
         .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class);
   }
 
@@ -311,7 +348,9 @@ class TargetAddressValidatorTest {
     assertThatThrownBy(
             () ->
                 enabled()
-                    .validate(URI.create("http://this-host-does-not-exist.invalid.opaa-test/")))
+                    .validate(
+                        URI.create("http://this-host-does-not-exist.invalid.opaa-test/"),
+                        Scope.PER_CONNECTION))
         .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class)
         .hasMessageContaining("DNS-Auflösung fehlgeschlagen");
   }
@@ -323,9 +362,16 @@ class TargetAddressValidatorTest {
     try (OutboundRoute route = OutboundRoute.through("proxy.example.org:3128")) {
       assertThatCode(
               () ->
-                  enabled().validate(URI.create("https://only-the-proxy-knows.invalid.opaa-test/")))
+                  enabled()
+                      .validate(
+                          URI.create("https://only-the-proxy-knows.invalid.opaa-test/"),
+                          Scope.PER_CONNECTION))
           .doesNotThrowAnyException();
-      assertThatCode(() -> enabled().validateHost("only-the-proxy-knows.invalid.opaa-test", true))
+      assertThatCode(
+              () ->
+                  enabled()
+                      .validateHost(
+                          "only-the-proxy-knows.invalid.opaa-test", true, Scope.PER_CONNECTION))
           .doesNotThrowAnyException();
     }
   }
@@ -337,11 +383,17 @@ class TargetAddressValidatorTest {
   @Test
   void aBareHostStaysStrictWithTheOutboundProxySet() {
     try (OutboundRoute route = OutboundRoute.through("proxy.example.org:3128")) {
-      assertThatThrownBy(() -> enabled().validateHost("only-the-proxy-knows.invalid.opaa-test"))
+      assertThatThrownBy(
+              () ->
+                  enabled()
+                      .validateHost("only-the-proxy-knows.invalid.opaa-test", Scope.PER_CONNECTION))
           .isInstanceOf(TargetAddressValidator.UnknownTargetHostException.class)
           .hasMessageContaining("DNS-Auflösung fehlgeschlagen");
       assertThatThrownBy(
-              () -> enabled().validateHost("only-the-proxy-knows.invalid.opaa-test", false))
+              () ->
+                  enabled()
+                      .validateHost(
+                          "only-the-proxy-knows.invalid.opaa-test", false, Scope.PER_CONNECTION))
           .isInstanceOf(TargetAddressValidator.UnknownTargetHostException.class);
     }
   }
@@ -349,7 +401,9 @@ class TargetAddressValidatorTest {
   @Test
   void anUnresolvableLoopbackRouteIsNotProxiedAndStaysRejected() {
     try (OutboundRoute route = OutboundRoute.through("proxy.example.org:3128")) {
-      assertThatThrownBy(() -> enabled().validate(URI.create("http://nothing.localhost/")))
+      assertThatThrownBy(
+              () ->
+                  enabled().validate(URI.create("http://nothing.localhost/"), Scope.PER_CONNECTION))
           .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class);
     }
   }
@@ -360,7 +414,10 @@ class TargetAddressValidatorTest {
         OutboundRoute.through("proxy.example.org:3128", "invalid.opaa-test")) {
       assertThatThrownBy(
               () ->
-                  enabled().validate(URI.create("https://only-the-proxy-knows.invalid.opaa-test/")))
+                  enabled()
+                      .validate(
+                          URI.create("https://only-the-proxy-knows.invalid.opaa-test/"),
+                          Scope.PER_CONNECTION))
           .isInstanceOf(TargetAddressValidator.UnknownTargetHostException.class);
     }
   }
@@ -368,10 +425,14 @@ class TargetAddressValidatorTest {
   @Test
   void aPrivateIpLiteralIsRejectedEvenThroughTheOutboundProxy() {
     try (OutboundRoute route = OutboundRoute.through("proxy.example.org:3128")) {
-      assertThatThrownBy(() -> enabled().validate(URI.create("http://10.1.2.3/")))
+      assertThatThrownBy(
+              () -> enabled().validate(URI.create("http://10.1.2.3/"), Scope.PER_CONNECTION))
           .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class)
           .hasMessageContaining("gesperrten Adressbereich");
-      assertThatThrownBy(() -> enabled().validate(URI.create("http://169.254.169.254/latest/")))
+      assertThatThrownBy(
+              () ->
+                  enabled()
+                      .validate(URI.create("http://169.254.169.254/latest/"), Scope.PER_CONNECTION))
           .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class);
     }
   }
@@ -380,7 +441,8 @@ class TargetAddressValidatorTest {
   void aResolvableNameIsCheckedUnchangedThroughTheOutboundProxy() {
     try (OutboundRoute route = OutboundRoute.through("proxy.example.org:3128")) {
       // "localhost" resolves locally; its loopback address stays blocked.
-      assertThatThrownBy(() -> enabled().validate(URI.create("http://localhost/")))
+      assertThatThrownBy(
+              () -> enabled().validate(URI.create("http://localhost/"), Scope.PER_CONNECTION))
           .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class)
           .hasMessageContaining("gesperrten Adressbereich");
     }
@@ -407,7 +469,7 @@ class TargetAddressValidatorTest {
 
   @Test
   void validateHostRejectsALoopbackProxyHostWhenEnabled() {
-    assertThatThrownBy(() -> enabled().validateHost("127.0.0.1"))
+    assertThatThrownBy(() -> enabled().validateHost("127.0.0.1", Scope.PER_CONNECTION))
         .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class)
         .hasMessageContaining("gesperrten Adressbereich");
   }
@@ -415,19 +477,22 @@ class TargetAddressValidatorTest {
   @Test
   void validateHostIsANoOpForANullHost() {
     // No proxy configured - unlike validate(URI), a missing host here is not itself an error.
-    assertThatCode(() -> enabled().validateHost(null)).doesNotThrowAnyException();
+    assertThatCode(() -> enabled().validateHost(null, Scope.PER_CONNECTION))
+        .doesNotThrowAnyException();
   }
 
   @Test
   void validateHostIsANoOpWhenDisabled() {
-    assertThatCode(() -> TargetAddressValidator.disabled().validateHost("127.0.0.1"))
+    assertThatCode(
+            () -> TargetAddressValidator.disabled().validateHost("127.0.0.1", Scope.PER_CONNECTION))
         .doesNotThrowAnyException();
   }
 
   /** A name outside ASCII is refused before any resolution; its guard key would be ambiguous. */
   @Test
   void aHostNameOutsideAsciiIsRefused() {
-    assertThatThrownBy(() -> enabled().validateHost("b\u00fccher.example", 443))
+    assertThatThrownBy(
+            () -> enabled().validateHost("b\u00fccher.example", 443, Scope.PER_CONNECTION))
         .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class)
         .hasMessageContaining("ASCII")
         .hasMessageContaining("xn--");

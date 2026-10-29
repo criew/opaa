@@ -3,6 +3,7 @@ package io.opaa.security;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
+import io.opaa.security.TargetAddressValidator.Scope;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -49,7 +50,8 @@ class TargetAddressRebindingTest {
   void aSocketClientConnectsOnlyToTheAddressTheCheckVetted() throws IOException {
     String host = "smtp.rebind.opaa.test";
     dns.rebinding(host, PUBLIC, LOOPBACK);
-    new TargetAddressValidator(true, List.of()).validateHost(host, internal.getLocalPort());
+    new TargetAddressValidator(true, List.of())
+        .validateHost(host, internal.getLocalPort(), Scope.PER_CONNECTION);
 
     IOException failure =
         catchThrowableOfType(
@@ -71,7 +73,7 @@ class TargetAddressRebindingTest {
     String host = "model.rebind.opaa.test";
     dns.rebinding(host, PUBLIC, LOOPBACK);
     URI uri = URI.create("http://" + host + ":" + internal.getLocalPort() + "/v1/models");
-    new TargetAddressValidator(true, List.of()).validate(uri);
+    new TargetAddressValidator(true, List.of()).validate(uri, Scope.PER_CONNECTION);
     OkHttpClient client =
         new OkHttpClient.Builder()
             .connectTimeout(Duration.ofSeconds(2))
@@ -94,19 +96,50 @@ class TargetAddressRebindingTest {
     assertThat(failure).as("the connection to the vetted address %s fails", PUBLIC).isNotNull();
   }
 
-  /** Regression guard: a check within the pin resolves afresh and moves the pin along. */
+  /** Regression guard: a check after the reuse window resolves afresh and moves the pin along. */
   @Test
-  void aRepeatedCheckFollowsALegitimateAddressChangeAtOnce() throws IOException {
+  void aRepeatedCheckFollowsALegitimateAddressChange() throws Exception {
     String host = "moved.rebind.opaa.test";
     dns.rebinding(host, "2001:db8::1", "2001:db8::2");
     TargetAddressValidator validator = new TargetAddressValidator(true, List.of());
 
-    validator.validateHost(host, 443);
-    validator.validateHost(host, 443);
+    validator.validateHost(host, 443, Scope.PER_CONNECTION);
+    Thread.sleep(ResolutionPins.ANSWER_REUSE.plusMillis(100).toMillis());
+    validator.validateHost(host, 443, Scope.PER_CONNECTION);
 
     assertThat(InetAddress.getAllByName(host))
         .extracting(InetAddress::getHostAddress)
         .containsExactly(InetAddress.getByName("2001:db8::2").getHostAddress());
+  }
+
+  /** Regression guard: checks before a connection - redirect hops, feed links - guard nothing. */
+  @Test
+  void aFloodOfConnectionChecksTakesNoPlaceInTheGuardTable() throws IOException {
+    TargetAddressValidator validator = new TargetAddressValidator(true, List.of());
+    int guardedBefore = ResolutionPins.process().guardedNames();
+
+    for (int i = 0; i < 200; i++) {
+      String host = "hop" + i + ".flood.rebind.opaa.test";
+      dns.rebinding(host, "2001:db8::" + Integer.toHexString(i + 1), "127.0.0.1");
+      validator.validateHost(host, 443, Scope.PER_CONNECTION);
+    }
+
+    assertThat(ResolutionPins.process().guardedNames()).isEqualTo(guardedBefore);
+  }
+
+  /** Through the outbound proxy the proxy resolves; nothing is pinned or guarded locally. */
+  @Test
+  void aCheckThroughTheOutboundProxyPinsAndGuardsNothing() throws IOException {
+    String host = "proxied.rebind.opaa.test";
+    dns.rebinding(host, "2001:db8::9", "2001:db8::10");
+    int guardedBefore = ResolutionPins.process().guardedNames();
+
+    new TargetAddressValidator(true, List.of()).validateHost(host, 443, true, Scope.STORED_TARGET);
+
+    assertThat(ResolutionPins.process().guardedNames()).isEqualTo(guardedBefore);
+    assertThat(InetAddress.getAllByName(host))
+        .extracting(InetAddress::getHostAddress)
+        .containsExactly(InetAddress.getByName("2001:db8::10").getHostAddress());
   }
 
   /** Whether a connection is waiting in the internal service's backlog. */

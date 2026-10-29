@@ -2,6 +2,7 @@ package io.opaa.knowledge;
 
 import io.opaa.s3.S3RequestGuard;
 import io.opaa.security.TargetAddressValidator;
+import io.opaa.security.TargetAddressValidator.Scope;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Locale;
@@ -49,7 +50,7 @@ final class UploadS3TargetPolicy implements S3RequestGuard.TargetPolicy {
     if (isConfiguredEndpoint(request)) {
       return;
     }
-    validator.validateHost(request.host(), request.port());
+    validator.validateHost(request.host(), request.port(), Scope.PER_CONNECTION);
   }
 
   private boolean isConfiguredEndpoint(SdkHttpRequest request) {

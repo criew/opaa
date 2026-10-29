@@ -28,6 +28,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.ServedContentTypes;
 import io.opaa.knowledge.SourceType;
 import io.opaa.security.TargetAddressValidator;
+import io.opaa.security.TargetAddressValidator.Scope;
 import io.opaa.sourceaccess.ServerAddressRule;
 import java.io.IOException;
 import java.io.InputStream;
@@ -392,7 +393,8 @@ public class SmbSourceConnector implements SourceConnector, SourceBrowser, Origi
    */
   private void requireReachable(SmbAddress address) {
     try {
-      targetAddressValidator.validateHost(address.socketHost(), address.port());
+      targetAddressValidator.validateHost(
+          address.socketHost(), address.port(), Scope.PER_CONNECTION);
     } catch (TargetAddressValidator.UnknownTargetHostException e) {
       throw new SourceTargetRefusedException(e.getMessage());
     } catch (IOException e) {
