@@ -47,7 +47,7 @@ export function installationFailure(err: unknown, fallback: string): Installatio
   if (status === 404) return { kind: 'installed', message: INSTALLED, fieldErrors: [] }
   if (status === 403) return { kind: 'other', message: NETWORK_REFUSED, fieldErrors: [] }
   if (status === 429) {
-    return { kind: 'other', message: mailLimitMessage(err) ?? TOO_MANY_ATTEMPTS, fieldErrors: [] }
+    return { kind: 'other', message: checkLimitMessage(err) ?? TOO_MANY_ATTEMPTS, fieldErrors: [] }
   }
   if (err instanceof AxiosError && status === null) {
     const message = err.code === AxiosError.ECONNABORTED ? TIMED_OUT : UNREACHABLE
@@ -61,7 +61,8 @@ const SECONDS_PER_MINUTE = 60
 /** The code of a 429 from the budget of model discoveries, not the API's per-address budget. */
 const DISCOVERY_LIMIT_CODE = 'MODEL_DISCOVERY_LIMIT'
 
-/** The codes of a 429 from the budgets of the mail step, apart from the API's own budget. */
+/** The codes of a 429 from the budgets of the checks, apart from the API's own budget. */
+const MODEL_CHECK_LIMIT_CODE = 'MODEL_CHECK_LIMIT'
 const MAIL_TEST_LIMIT_CODE = 'MAIL_TEST_LIMIT'
 const MAIL_CHECK_LIMIT_CODE = 'MAIL_CHECK_LIMIT'
 
@@ -82,11 +83,15 @@ function waitOf(err: unknown): string {
 }
 
 /**
- * The sentence for a check of the mail step past one of its budgets: the test messages, after which
- * the check without one still works, or the checks themselves. `null` for any other failure.
+ * The sentence for a check past a budget of its own: the checks of the model steps, the test
+ * messages of the mail step, after which the check without one still works, or the checks of the
+ * mail step. `null` for any other failure.
  */
-function mailLimitMessage(err: unknown): string | null {
+function checkLimitMessage(err: unknown): string | null {
   const code = limitCode(err)
+  if (code === MODEL_CHECK_LIMIT_CODE) {
+    return `Zu viele Prüfungen der Modelle. Bitte ${waitOf(err)} erneut versuchen.`
+  }
   if (code === MAIL_TEST_LIMIT_CODE) {
     return `Zu viele Testnachrichten. Bitte ${waitOf(err)} erneut versuchen; ohne Testnachricht lässt sich der Mailserver weiter prüfen.`
   }

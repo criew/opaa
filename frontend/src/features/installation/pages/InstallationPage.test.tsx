@@ -1386,6 +1386,33 @@ describe('InstallationPage', () => {
       expect(screen.getByText(/Das Reranking bleibt aus/)).toBeInTheDocument()
     })
 
+    it('names the shared budget of model checks with its wait', async () => {
+      server.use(
+        http.post('/api/v1/installation/steps/RERANK_MODEL/check', () =>
+          HttpResponse.json(
+            {
+              error: 'Zu viele Prüfungen der Modelle.',
+              status: 429,
+              code: 'MODEL_CHECK_LIMIT',
+              timestamp: new Date().toISOString(),
+            },
+            { status: 429, headers: { 'Retry-After': '120' } },
+          ),
+        ),
+      )
+      const user = userEvent.setup()
+      await openRerankStep(user)
+
+      await user.type(field('Basis-Adresse'), 'http://reranker-ohne-liste:80')
+      await user.type(screen.getByRole('combobox', { name: 'Modell-Kennung' }), 'bge-reranker')
+      await submitStep(user)
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Zu viele Prüfungen der Modelle. Bitte in etwa 2 Minuten erneut versuchen.',
+      )
+      expect(rerankOf()?.checked).toBe(false)
+    })
+
     it('asks for the address before sending anything', async () => {
       const user = userEvent.setup()
       await openRerankStep(user)
