@@ -142,11 +142,15 @@ public class LockedAccountChatCleanupService {
 
   /**
    * How many accounts are not yet due at {@code now} but will be within {@link #PREVIEW} under the
-   * policy in force, without names; 0 while the deletion is switched off or not yet counting.
+   * policy in force, without names; 0 while the deletion is paused, switched off or not yet
+   * counting.
    */
-  public int upcomingAccounts(Instant now) {
-    LockedAccountChatCleanupPolicy policy = settings.current();
-    if (!policy.enabled() || store.countingSince().isEmpty()) {
+  int upcomingAccounts(Instant now) {
+    LockedAccountChatCleanupSettings.Setting setting = settings.setting();
+    LockedAccountChatCleanupPolicy policy = setting.policy();
+    if (!settings.pauses(setting).isEmpty()
+        || !policy.enabled()
+        || store.countingSince().isEmpty()) {
       return 0;
     }
     Instant cutoff = now.minus(policy.period());
