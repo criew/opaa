@@ -108,14 +108,19 @@ public class MailSenderProvider {
 
   /**
    * STARTTLS is configured as <em>required</em>, never merely enabled: a server that does not offer
-   * it must fail the connection rather than continue in clear.
+   * it must fail the connection rather than continue in clear. Both TLS modes check the certificate
+   * against the configured host name.
    */
   private static void applyEncryption(Properties props, MailSettingsSnapshot snapshot) {
     switch (snapshot.encryption()) {
-      case SSL -> props.put("mail.smtp.ssl.enable", "true");
+      case SSL -> {
+        props.put("mail.smtp.ssl.enable", "true");
+        props.put("mail.smtp.ssl.checkserveridentity", "true");
+      }
       case STARTTLS -> {
         props.put("mail.smtp.starttls.enable", "true");
         props.put("mail.smtp.starttls.required", "true");
+        props.put("mail.smtp.ssl.checkserveridentity", "true");
       }
       case NONE ->
           log.info(

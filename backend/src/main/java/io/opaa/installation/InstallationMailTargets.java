@@ -1,6 +1,7 @@
 package io.opaa.installation;
 
 import io.opaa.security.TargetAddressValidator;
+import io.opaa.security.TargetAddressValidator.Scope;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
@@ -62,11 +63,24 @@ class InstallationMailTargets {
       return PORT_REFUSED;
     }
     try {
-      validator.validateHost(host, port);
+      validator.validateHost(host, port, Scope.STORED_TARGET);
       return null;
     } catch (IOException e) {
       log.warn("Mail server {}:{} refused: {}", forLog(host), port, e.getClass().getSimpleName());
       return REFUSED;
+    }
+  }
+
+  /**
+   * Checks the stored mail server as a stored target, so a resolution of its name stays guarded;
+   * {@code false} when the check refuses it. Logs nothing: an internal server is the usual case.
+   */
+  boolean guardStoredServer(String host, int port) {
+    try {
+      validator.validateHost(host, port, Scope.STORED_TARGET);
+      return true;
+    } catch (IOException e) {
+      return false;
     }
   }
 

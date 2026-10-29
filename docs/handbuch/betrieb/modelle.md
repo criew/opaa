@@ -73,17 +73,21 @@ Modellen abfragen, für Chat-, Embedding-, Rerank- und Transkriptionsmodell glei
 Modellverwaltung bleibt eine schon gespeicherte Adresse unverändert speicher- und testbar, auch wenn
 die Liste ihren Host nicht (mehr) nennt; nur eine neue Adresse muss die Prüfung bestehen. Die
 Installation prüft jede Adresse, auch eine früher gespeicherte. Die Aufrufe im laufenden Betrieb
-prüft OPAA nicht: Ein gespeichertes Modell fällt nicht aus, wenn die Liste enger wird. Nennt nur die
+prüft OPAA nicht: Ein gespeichertes Modell fällt nicht aus, wenn die Liste enger wird. Nach dem
+Start prüft jede Instanz die gespeicherten Adressen aller Rollen einmal; eine bestandene Prüfung
+bewacht den Namen bis zum Neustart, sodass auch diese Aufrufe nur Adressen außerhalb der gesperrten
+Bereiche erreichen ([Zielprüfung](netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)). Eine
+abgelehnte Adresse steht als Warnung im Log und bleibt unbewacht. Nennt nur die
 Liste der Quellen den Host eines gespeicherten Modells, warnt der Start im Log und nennt den
 Eintrag, der in die Liste der Modelle gehört.
 
 **Was ein Eintrag freigibt.** Ein Eintrag wird nach Name und Port durchgelassen, ohne dass OPAA die
 aufgelöste Adresse prüft: Wer den Namensdienst für diesen Namen kontrolliert, bestimmt, wohin die
 Anfrage geht. Deshalb nur Namen aus der eigenen, vertrauenswürdigen Zone eintragen und Einträge mit
-Port vorziehen. Ein Eintrag gilt für jede Modellrolle auf diesem Host und Port. Weil die Aufrufe im
-laufenden Betrieb nicht geprüft werden, fällt auch ein späterer Wechsel der Namensauflösung nach dem
-Speichern nicht auf; die eigentliche Absicherung bleibt die Beschränkung des ausgehenden Verkehrs
-des Backends auf Netzebene ([Netz und Sicherheit](netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)).
+Port vorziehen. Ein Eintrag gilt für jede Modellrolle auf diesem Host und Port. Einen Namen aus der
+Liste bewacht OPAA nicht; ein späterer Wechsel seiner Namensauflösung fällt deshalb
+nicht auf, die Absicherung dafür bleibt die Beschränkung des ausgehenden Verkehrs des Backends auf
+Netzebene ([Netz und Sicherheit](netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)).
 
 ## Chat-Modelle in der Oberfläche anlegen
 

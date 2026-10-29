@@ -41,6 +41,36 @@
   platformAutomerge: true,
   automergeStrategy: 'squash',
 
+  // Wartefrist für JEDES Update, gleich welcher Manager: Renovate legt einen Branch erst an, wenn
+  // die vorgeschlagene Version mindestens drei Tage alt ist (internalChecksFilter 'strict', Vorgabe).
+  // Ein kompromittiertes Release, das in dieser Zeit auffällt und zurückgezogen wird, erreicht so
+  // weder einen PR-Lauf noch per Auto-Merge main. Ohne Zeitstempel der Datasource bleibt ein Update
+  // "Pending" (minimumReleaseAgeBehaviour 'timestamp-required', Vorgabe). Einzelne Regeln unten
+  // nennen die Frist zusätzlich ausdrücklich; keine darf sie unterschreiten. Für npm gilt
+  // ohnehin: pnpm lehnt Releases unter 24 h ab (ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION), eine
+  // kürzere Frist machte PRs mit brandneuen Releases in CI und Docker-Build zwangsläufig rot.
+  minimumReleaseAge: '3 days',
+
+  // Sicherheits-PRs aus Dependabot-Alerts (vulnerabilityAlerts) und aus der OSV-Datenbank
+  // (osvVulnerabilityAlerts, auch für Abhängigkeiten ohne GitHub-Advisory) kommen sofort, ohne
+  // Wartefrist — das ist ihr Zweck. Gerade deshalb mergen sie nie automatisch: Eine frische Version,
+  // die sich als Sicherheitskorrektur ausgibt, sieht vor dem Merge ein Mensch.
+  osvVulnerabilityAlerts: true,
+  vulnerabilityAlerts: {
+    automerge: false,
+  },
+
+  // Wöchentliche Lockfile-Pflege: Renovate erzeugt die pnpm-lock.yaml jedes Projekts neu und hebt
+  // damit auch rein transitive Abhängigkeiten, die kein package.json-Bump erreicht. Nur auf main;
+  // die Sperrregel der Wartungsbranches am Ende schaltet lockFileMaintenance dort ab. Kein
+  // Auto-Merge: Für die transitiven Versionen gilt nur die 24-h-Reife von pnpm, nicht die
+  // Wartefrist oben. Der Zeitplan liegt im Fenster des täglichen Laufs (06:23 bzw. 05:23 Uhr).
+  lockFileMaintenance: {
+    enabled: true,
+    schedule: ['before 9am on monday'],
+    automerge: false,
+  },
+
   // Projektsprache (AGENTS.md): Conventional-Commit-Typ und -Scope englisch, Beschreibung
   // deutsch. Ergibt z. B. "chore(deps): @mui/material auf 9.3.0 aktualisieren" — als
   // Commit-Nachricht und PR-Titel.
@@ -163,6 +193,16 @@
         '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*IMAGE: [^:\\s]+:(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]+)',
       ],
     },
+    // Das Hilfsimage, mit dem retrieval-regression.yml den Ollama-Modell-Cache in sein Volume
+    // packt, steht mit Version und Index-Digest in der Variable ALPINE_IMAGE unter dem Kommentar;
+    // ein Update schreibt beide neu.
+    {
+      customType: 'regex',
+      managerFilePatterns: ['.github/workflows/retrieval-regression.yml'],
+      matchStrings: [
+        '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*ALPINE_IMAGE: [^:\\s]+:(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]+)',
+      ],
+    },
   ],
 
   packageRules: [
@@ -170,6 +210,14 @@
     {
       matchManagers: ['gradle', 'gradle-wrapper'],
       addLabels: ['backend'],
+    },
+    // Ein Wrapper-Update tauscht die Gradle-Distribution, die jeder Bau und jeder Renovate-Lauf
+    // ausführt, und schreibt die Wrapper-Skripte per "./gradlew wrapper" neu (gradleWrapper in
+    // renovate.yml). Es mergt deshalb nie automatisch; distributionSha256Sum in
+    // gradle-wrapper.properties zieht Renovate mit (docs/renovate.md, Gradle-Prüfsummen).
+    {
+      matchManagers: ['gradle-wrapper'],
+      automerge: false,
     },
     {
       matchManagers: ['npm'],
@@ -184,14 +232,6 @@
       matchManagers: ['npm'],
       matchDepTypes: ['dependencies', 'devDependencies'],
       rangeStrategy: 'pin',
-    },
-    // pnpm 11 lehnt per Standard-Supply-Chain-Richtlinie npm-Releases ab, die jünger als
-    // 24 h sind (ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION) — Renovate wartet dieselbe
-    // Frist ab, sonst sind PRs mit brandneuen Releases in CI und Docker-Build zwangsläufig
-    // rot. Wer den Sicherheitsabstand erhöht, zieht pnpm- und Renovate-Wert gemeinsam hoch.
-    {
-      matchManagers: ['npm'],
-      minimumReleaseAge: '1 day',
     },
     // jsdom 30.1 no longer exposes the impl symbol that Vitest's jsdom environment reads to
     // convert Blob/File/FormData request bodies - every upload test throws. Hold jsdom below
@@ -233,7 +273,6 @@
       matchDepNames: ['@cyclonedx/cdxgen'],
       groupName: 'cdxgen',
       automerge: false,
-      minimumReleaseAge: '1 day',
       addLabels: ['ci'],
     },
     // Mermaid und playwright-core (.github/tools/mermaid) zeichnen die Diagramme der HTML-Fassung des
@@ -244,7 +283,6 @@
       matchManagers: ['npm'],
       matchDepNames: ['mermaid', 'playwright-core'],
       groupName: 'mermaid',
-      minimumReleaseAge: '1 day',
       addLabels: ['ci'],
     },
     // helmv3 und helm-values lesen den Chart unter deploy/helm/opaa: Chart.yaml-Abhängigkeiten
@@ -265,14 +303,19 @@
       matchFileNames: ['demo/**'],
       addLabels: ['demo'],
     },
-    // pytest der Skript- und Seed-Tests in der CI und die Pakete des Update-Pakets
-    // (requirements-release.txt) und des Seeds im axe-Lauf (requirements-seed.txt), mit Hashes, die
-    // der Manager beim Bump mitzieht. report-script,
-    // seed-script und Datenwirkung sind keine Required Checks; ein Bump mergt deshalb nicht
-    // automatisch, sondern wartet auf ihr Ergebnis im PR.
+    // pytest der Skript- und Seed-Tests in der CI, die Pakete des Update-Pakets
+    // (requirements-release.txt), des Seeds im axe-Lauf (requirements-seed.txt) und des
+    // Tagesreports (requirements-report.txt), mit Hashes, die der Manager beim Bump mitzieht.
+    // report-script, seed-script und Datenwirkung sind keine Required Checks, den Tagesreport prüft
+    // gar kein PR-Lauf; ein Bump mergt deshalb nicht automatisch, sondern wartet auf ihr Ergebnis.
     {
       matchManagers: ['pip_requirements'],
-      matchFileNames: ['.github/requirements-ci.txt', '.github/requirements-release.txt', '.github/requirements-seed.txt'],
+      matchFileNames: [
+        '.github/requirements-ci.txt',
+        '.github/requirements-release.txt',
+        '.github/requirements-seed.txt',
+        '.github/requirements-report.txt',
+      ],
       addLabels: ['ci'],
       automerge: false,
     },
@@ -329,6 +372,16 @@
       matchDepNames: ['renovate/renovate'],
       matchUpdateTypes: ['digest'],
       dependencyDashboardApproval: true,
+    },
+    // Dasselbe für das alpine-Hilfsimage der Retrieval-Regression: Sein Job läuft auf main mit
+    // Schreibrecht auf den gha-Cache. Neue Versionen kommen nach der Wartefrist wie andere Images.
+    {
+      matchManagers: ['custom.regex'],
+      matchFileNames: ['.github/workflows/retrieval-regression.yml'],
+      matchDepNames: ['alpine'],
+      matchUpdateTypes: ['digest'],
+      dependencyDashboardApproval: true,
+      automerge: false,
     },
     // Major-Updates mergen generell nicht automatisch: Auto-Merge greift, sobald die
     // Required Checks grün sind — Brüche, die nur ein Nicht-Required-Check (e2e) oder gar kein

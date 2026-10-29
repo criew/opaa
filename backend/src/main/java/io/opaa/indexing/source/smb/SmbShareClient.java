@@ -36,6 +36,7 @@ import io.opaa.indexing.spi.ConnectorChecks;
 import io.opaa.indexing.spi.RenewableCredential;
 import io.opaa.indexing.spi.RequestBudget;
 import io.opaa.security.TargetAddressValidator;
+import io.opaa.security.TargetAddressValidator.Scope;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.io.IOException;
 import java.io.InputStream;
@@ -951,7 +952,7 @@ final class SmbShareClient implements AutoCloseable {
 
     @Override
     public Socket createSocket(String host, int port) throws IOException {
-      validator.validateHost(host, port);
+      validator.validateHost(host, port, Scope.PER_CONNECTION);
       Socket socket = new Socket();
       try {
         socket.connect(new InetSocketAddress(host, port), timeoutMillis);
