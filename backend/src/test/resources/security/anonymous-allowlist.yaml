@@ -72,32 +72,4 @@ anonymous:
     reason: Bis #3344 behoben ist; danach nur mit Anmeldung oder auf eigenem Management-Port.
   - operation: GET /actuator/prometheus
     reason: Bis #3344 behoben ist; danach nur mit Anmeldung oder auf eigenem Management-Port.
-missingHeaders:
-  - operation: GET /api/v1/installation
-    reason: >-
-      Antwortet nach abgeschlossener Installation aus einem Servlet-Filter vor der Security-Kette,
-      ohne nosniff und X-Frame-Options; hingenommen bis zur Behebung im Folge-Issue aus #3382.
-  - operation: PUT /api/v1/installation/steps/{step}
-    reason: >-
-      Antwortet nach abgeschlossener Installation aus einem Servlet-Filter vor der Security-Kette,
-      ohne nosniff und X-Frame-Options; hingenommen bis zur Behebung im Folge-Issue aus #3382.
-  - operation: POST /api/v1/installation/steps/{step}/check
-    reason: >-
-      Antwortet nach abgeschlossener Installation aus einem Servlet-Filter vor der Security-Kette,
-      ohne nosniff und X-Frame-Options; hingenommen bis zur Behebung im Folge-Issue aus #3382.
-  - operation: POST /api/v1/installation/steps/{step}/skip
-    reason: >-
-      Antwortet nach abgeschlossener Installation aus einem Servlet-Filter vor der Security-Kette,
-      ohne nosniff und X-Frame-Options; hingenommen bis zur Behebung im Folge-Issue aus #3382.
-  - operation: POST /api/v1/installation/steps/{step}/discover
-    reason: >-
-      Antwortet nach abgeschlossener Installation aus einem Servlet-Filter vor der Security-Kette,
-      ohne nosniff und X-Frame-Options; hingenommen bis zur Behebung im Folge-Issue aus #3382.
-  - operation: POST /api/v1/installation/answer-file
-    reason: >-
-      Antwortet nach abgeschlossener Installation aus einem Servlet-Filter vor der Security-Kette,
-      ohne nosniff und X-Frame-Options; hingenommen bis zur Behebung im Folge-Issue aus #3382.
-  - operation: POST /api/v1/installation/complete
-    reason: >-
-      Antwortet nach abgeschlossener Installation aus einem Servlet-Filter vor der Security-Kette,
-      ohne nosniff und X-Frame-Options; hingenommen bis zur Behebung im Folge-Issue aus #3382.
+missingHeaders: []

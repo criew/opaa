@@ -96,6 +96,9 @@ public class InstallationAccessFilter extends OncePerRequestFilter {
       throws IOException {
     ErrorResponse body = new ErrorResponse(message, status.value(), clock.instant());
     response.setStatus(status.value());
+    // runs before the security chain, so its default headers never reach this answer
+    response.setHeader("X-Content-Type-Options", "nosniff");
+    response.setHeader("X-Frame-Options", "DENY");
     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
     response.setCharacterEncoding("UTF-8");
     jsonMapper.writeValue(response.getOutputStream(), body);
