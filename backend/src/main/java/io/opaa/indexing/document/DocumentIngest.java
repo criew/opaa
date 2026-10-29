@@ -87,8 +87,9 @@ public record DocumentIngest(
 
   /**
    * This ingest with file name, declared title and hierarchy path cleaned like the extracted text,
-   * since all three reach index and prompt; what the cleanup found is added to {@code findings}.
-   * The identity {@code filePath} stays as the source names it.
+   * since all three reach index and prompt, the title first cut like a format's own; what the
+   * cleanup found is added to {@code findings}. The identity {@code filePath} stays as the source
+   * names it.
    */
   public DocumentIngest withCleanNames(Map<IngestTextSanitizer.Finding, Integer> findings) {
     SourceDocumentContext cleanContext =
@@ -107,7 +108,7 @@ public record DocumentIngest(
         cleanContext,
         changeMarker,
         folder,
-        cleaned(title, findings),
+        merged(IngestTextSanitizer.sanitizeLabel(title), findings),
         syntheticName,
         documentDate,
         modifiedAt,
@@ -119,7 +120,11 @@ public record DocumentIngest(
   }
 
   private static String cleaned(String text, Map<IngestTextSanitizer.Finding, Integer> findings) {
-    IngestTextSanitizer.Result result = IngestTextSanitizer.sanitize(text);
+    return merged(IngestTextSanitizer.sanitize(text), findings);
+  }
+
+  private static String merged(
+      IngestTextSanitizer.Result result, Map<IngestTextSanitizer.Finding, Integer> findings) {
     result.findings().forEach((finding, n) -> findings.merge(finding, n, Integer::sum));
     return result.text();
   }
