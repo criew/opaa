@@ -49,6 +49,9 @@ public class AuditIncidentScopeCaseReport {
               + " unbeantwortet und wird mit Ablauf seiner Frist gelöscht. Die Differenz zwischen"
               + " beantragt und freigegeben ist keine Zahl abgelehnter Anträge, weil Antrag und"
               + " Freigabe in verschiedenen Monaten liegen können.",
+          "Angehaltene Chat-Löschungen: wie oft die Verwaltung im Zeitraum die Löschung der Chats"
+              + " eines gesperrten Kontos angehalten hat. Eine Klärung, die die Löschung aufhält,"
+              + " zählt dort nicht mit, sie steht in den Zahlen der Klärungen.",
           "Zahlen von 1 bis "
               + (CaseCount.THRESHOLD - 1)
               + " erscheinen als „weniger als "
@@ -58,10 +61,13 @@ public class AuditIncidentScopeCaseReport {
               + " Zeitraum im Revisionsprotokoll.");
 
   private final AuditIncidentScopeGrantRepository repository;
+  private final ChatCleanupHoldCounts holdCounts;
   private final Clock clock;
 
-  AuditIncidentScopeCaseReport(AuditIncidentScopeGrantRepository repository, Clock clock) {
+  AuditIncidentScopeCaseReport(
+      AuditIncidentScopeGrantRepository repository, ChatCleanupHoldCounts holdCounts, Clock clock) {
     this.repository = repository;
+    this.holdCounts = holdCounts;
     this.clock = clock;
   }
 
@@ -92,7 +98,9 @@ public class AuditIncidentScopeCaseReport {
               count(totals, purpose, AuditIncidentScopeTransition.APPROVED),
               count(totals, purpose, AuditIncidentScopeTransition.EXPIRED)));
     }
-    return new IncidentScopeCases(period, purposes, NOTES);
+    CaseCount held =
+        CaseCount.of(holdCounts.sum(organizationId, period.from(), period.to().withDayOfMonth(1)));
+    return new IncidentScopeCases(period, purposes, held, NOTES);
   }
 
   private static CaseCount count(

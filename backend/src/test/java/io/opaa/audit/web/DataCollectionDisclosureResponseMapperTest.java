@@ -73,6 +73,7 @@ class DataCollectionDisclosureResponseMapperTest {
                             CaseCount.of(5),
                             CaseCount.of(2),
                             CaseCount.of(0))),
+                    CaseCount.of(1),
                     List.of("Eine Ablehnung gibt es nicht"))));
 
     DataCollectionDisclosure response =
@@ -126,6 +127,8 @@ class DataCollectionDisclosureResponseMapperTest {
     assertThat(cases.getTo()).isEqualTo(TO);
     assertThat(cases.getSmallCountThreshold()).isEqualTo(CaseCount.THRESHOLD);
     assertThat(cases.getNotes()).containsExactly("Eine Ablehnung gibt es nicht");
+    assertThat(cases.getHeldChatDeletions().getBelowThreshold()).isTrue();
+    assertThat(cases.getHeldChatDeletions().getCount()).isNull();
     var purpose = cases.getPurposes().get(0);
     assertThat(purpose.getPurpose()).isEqualTo(AuditIncidentScopePurpose.DATA_BREACH_INVESTIGATION);
     assertThat(purpose.getLabel()).isEqualTo("Untersuchung einer Datenschutzverletzung");

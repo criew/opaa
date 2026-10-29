@@ -1529,6 +1529,10 @@ Kennungen der Freigaben. Die Grenzen dieser Zahlen:
   gibt es keine Bestandsinstallationen, deren Zahlen zu übernehmen wären. Aus demselben Grund
   hingenommen: Beim Rolling Update auf die Version mit der Monatszählung fehlen dort Anträge und
   Freigaben, die die noch laufende Vorgängerversion annimmt; das betrifft nur Updates vor `v0.1.0`.
+- **Angehaltene Chat-Löschungen (#3026).** Neben den Klärungen nennt die Auskunft, wie oft die
+  Systemverwaltung im Zeitraum die Löschung der Chats eines gesperrten Kontos angehalten hat, je
+  Kalendermonat ohne Person gezählt und mit derselben Schwelle. Eine Klärung, die die Löschung
+  aufhält, zählt dort nicht mit; sie steht in den Zahlen der Klärungen.
 
 ### Berichte
 

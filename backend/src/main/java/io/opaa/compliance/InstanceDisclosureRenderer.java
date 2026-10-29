@@ -254,7 +254,9 @@ public final class InstanceDisclosureRenderer {
           count(purpose.approved()),
           count(purpose.expired()));
     }
-    out.append('\n');
+    out.append("\nAngehaltene Chat-Löschungen: ")
+        .append(count(cases.heldChatDeletions()))
+        .append("\n\n");
     for (String note : cases.notes()) {
       out.append("- ").append(FactSheetRenderer.text(note)).append('\n');
     }

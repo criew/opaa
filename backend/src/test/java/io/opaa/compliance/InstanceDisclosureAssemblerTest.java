@@ -3,6 +3,7 @@ package io.opaa.compliance;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.compliance.ComplianceManifest.SettingSource;
+import io.opaa.compliance.InstanceDisclosure.CaseCount;
 import io.opaa.compliance.InstanceDisclosure.ConnectorUsage;
 import io.opaa.compliance.InstanceDisclosure.DataFlowState;
 import io.opaa.compliance.InstanceDisclosure.IncidentScopeCases;
@@ -45,6 +46,7 @@ class InstanceDisclosureAssemblerTest {
           new IncidentScopeCases(
               new ReportingPeriod(LocalDate.parse("2025-01-01"), LocalDate.parse("2026-12-31")),
               List.of(),
+              CaseCount.of(0),
               List.of()));
 
   private static final String API_KEY = "sk-S3CR3T-API-KEY-4711";
