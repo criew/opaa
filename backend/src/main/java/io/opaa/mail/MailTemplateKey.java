@@ -102,7 +102,7 @@ public enum MailTemplateKey {
       "Bestätigung der Selbstregistrierung",
       "Bestätigen Sie Ihre E-Mail-Adresse für {{productName}}",
       """
-      Guten Tag {{displayName}},
+      Guten Tag,
 
       für diese Adresse wurde ein Zugang zu {{productName}} beantragt. Bestätigen Sie die Adresse und legen Sie Ihr Passwort fest:
 
@@ -114,7 +114,7 @@ public enum MailTemplateKey {
       """,
       """
       <h1 style="margin:0 0 14px;font-size:22px;font-weight:700;line-height:1.3;">E-Mail-Adresse bestätigen</h1>
-      <p style="margin:0 0 14px;">Guten Tag {{displayName}},</p>
+      <p style="margin:0 0 14px;">Guten Tag,</p>
       <p style="margin:0 0 14px;">für diese Adresse wurde ein Zugang zu <strong>{{productName}}</strong> beantragt. Bestätigen Sie die Adresse und legen Sie Ihr Passwort fest.</p>
       <p style="margin:0 0 14px;font-size:13px;">Der Link ist {{expiresAtHuman}} gültig.</p>
       <p style="margin:0;font-size:13px;"><strong>Nicht von Ihnen?</strong> Dann ignorieren Sie diese Nachricht. Ohne den Link wird kein Zugang aktiv.</p>

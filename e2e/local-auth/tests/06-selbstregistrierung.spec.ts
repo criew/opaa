@@ -111,6 +111,7 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
     expect(await mailCount()).toBe(1);
     expect(confirmation.recipients.map((a) => a.toLowerCase())).toEqual([address.toLowerCase()]);
     expect(confirmation.text).toContain("Nicht von Ihnen?");
+    expect(confirmation.text).not.toContain("Neue Kollegin");
 
     await user.goto("/login");
     await user.getByLabel("E-Mail-Adresse").fill(address);
@@ -120,13 +121,14 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
       user.getByText("Anmeldung nicht möglich. Prüfen Sie E-Mail-Adresse und Passwort."),
     ).toBeVisible();
 
-    // The registration carried no password: the page behind the link sets it and confirms the
-    // address in one step, so only who holds the mailbox decides the password.
+    // The registration carried no password and only a provisional name: the page behind the link
+    // sets both and confirms the address in one step, so only who holds the mailbox decides them.
     await user.goto(verifyPath);
     await expect(
       user.getByRole("heading", { level: 1, name: "Passwort festlegen" }),
     ).toBeVisible();
     await expect.poll(() => user.url()).not.toContain("token=");
+    await user.getByLabel("Name", { exact: true }).fill("Neue Kollegin");
     await user.getByLabel("Passwort", { exact: true }).fill(password);
     await user.getByLabel("Passwort wiederholen", { exact: true }).fill(password);
     await user.getByRole("button", { name: "Adresse bestätigen" }).click();

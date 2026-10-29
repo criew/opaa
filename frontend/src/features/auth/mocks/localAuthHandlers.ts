@@ -230,12 +230,21 @@ export const localAuthHandlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  http.post('/api/v1/auth/local/verify-email', async ({ request }) => {
-    const body = (await request.json()) as { token?: string; newPassword?: string }
+  http.post('/api/v1/auth/local/confirm-registration', async ({ request }) => {
+    const body = (await request.json()) as {
+      token?: string
+      displayName?: string
+      newPassword?: string
+    }
     if (body.token === MOCK_RATE_LIMITED_TOKEN) return tooManyRequests()
-    // As set-password: the link first, then the password, and a refused password keeps the link.
+    // As set-password: the link first, then name and password, and a refused field keeps the link.
     if (body.token !== MOCK_VERIFY_EMAIL_TOKEN || isConsumedMockToken(`verify:${body.token}`)) {
       return tokenInvalid()
+    }
+    if ((body.displayName ?? '').trim() === '') {
+      return fieldErrorResponse('Bitte füllen Sie das Feld aus.', [
+        { field: 'displayName', code: 'REQUIRED', message: 'Das Feld darf nicht leer sein.' },
+      ])
     }
     const violations = passwordViolations(
       'newPassword',

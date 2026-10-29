@@ -31,10 +31,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
  * Pre-hijacking of a self-registration (ADR-0033, Entscheidung 11): whoever registers somebody
- * else's address first must not decide the password the address owner later confirms. The
- * registration stores no password, and the verification link sets it - discarding any hash stored
- * before - and ends every session of the account. Repositories are in-memory stand-ins; the real
- * chain is covered by {@code LocalSelfServiceIntegrationTest}.
+ * else's address first must not decide the password or the name the address owner later confirms.
+ * The registration stores no password, and the verification link sets name and password -
+ * discarding what was stored before - ends every session and closes every other link. Repositories
+ * are in-memory stand-ins; the real chain is covered by {@code LocalSelfServiceIntegrationTest}.
  */
 class LocalSelfRegistrationTakeoverTest {
 
@@ -117,16 +117,17 @@ class LocalSelfRegistrationTakeoverTest {
     verify(mailer).sendRegistrationVerification(eq(user.get()), any());
   }
 
-  // regression guard for #3357: a hash stored before the confirmation never survives it
+  // regression guard for #3357: a hash or name stored before the confirmation never survives it
   @Test
-  void theVerificationLinkSetsThePasswordOfItsHolderAndDiscardsAnEarlierHash() {
-    accounts.register(ADDRESS, "Erika");
-    // a hash already stored - by an older registration or an administrative reset
+  void theVerificationLinkSetsNameAndPasswordOfItsHolderAndDiscardsEarlierOnes() {
+    accounts.register(ADDRESS, "Name des Angreifers");
+    // a hash already stored - by an older registration or an administrative password
     row.get().setPasswordHash(FOREIGN_HASH, NOW);
 
-    passwords.confirmRegistration("roh", OWN_PASSWORD);
+    passwords.confirmRegistration("roh", "Erika Muster", OWN_PASSWORD);
 
     assertThat(row.get().getPasswordHash()).isEqualTo("{enc}" + OWN_PASSWORD);
+    assertThat(user.get().getDisplayName()).isEqualTo("Erika Muster");
     assertThat(row.get().getEmailVerifiedAt()).isEqualTo(NOW);
     assertThat(row.get().state(NOW)).isEqualTo(LocalAccountState.ACTIVE);
     UUID id = user.get().getId();
@@ -134,17 +135,21 @@ class LocalSelfRegistrationTakeoverTest {
     verify(refreshTokens).revokeAllForUser(id, RevocationReason.PASSWORD_CHANGED);
     verify(actionTokens).consumeOpen(id, ActionTokenPurpose.SET_PASSWORD);
     verify(actionTokens).consumeOpen(id, ActionTokenPurpose.RESET_PASSWORD);
+    verify(actionTokens).consumeOpen(id, ActionTokenPurpose.VERIFY_EMAIL);
   }
 
   @Test
-  void aPasswordThePolicyRefusesConfirmsNothingAndEndsNoSession() {
+  void aRefusedPasswordOrNameConfirmsNothingAndEndsNoSession() {
     accounts.register(ADDRESS, "Erika");
 
-    assertThatThrownBy(() -> passwords.confirmRegistration("roh", "kurz"))
+    assertThatThrownBy(() -> passwords.confirmRegistration("roh", "Erika", "kurz"))
+        .isInstanceOf(FieldValidationException.class);
+    assertThatThrownBy(() -> passwords.confirmRegistration("roh", "  ", OWN_PASSWORD))
         .isInstanceOf(FieldValidationException.class);
 
     assertThat(row.get().getPasswordHash()).isNull();
     assertThat(row.get().getEmailVerifiedAt()).isNull();
+    assertThat(user.get().getDisplayName()).isEqualTo("Erika");
     verify(revocation, never()).invalidateSessionsIssuedBefore(any());
     verify(refreshTokens, never()).revokeAllForUser(any(), any());
   }
@@ -155,10 +160,50 @@ class LocalSelfRegistrationTakeoverTest {
     when(actionTokens.redeem("fremd", ActionTokenPurpose.VERIFY_EMAIL))
         .thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> passwords.confirmRegistration("fremd", OWN_PASSWORD))
+    assertThatThrownBy(() -> passwords.confirmRegistration("fremd", "Erika", OWN_PASSWORD))
         .hasMessage(LocalActionTokenService.invalidToken().getMessage());
 
     assertThat(row.get().getPasswordHash()).isNull();
     verify(encoder, never()).encode(anyString());
+  }
+
+  /**
+   * An invitation the administration sends to an unconfirmed self-registration confirms the
+   * address; the verification link must not stay behind as a second way to set the password of the
+   * then active account, past the switch and the lifetime of the reset links.
+   */
+  @Test
+  void anInvitationRedeemedFirstClosesTheVerificationLink() {
+    accounts.register(ADDRESS, "Erika");
+    when(actionTokens.redeem("einladung", ActionTokenPurpose.SET_PASSWORD))
+        .thenAnswer(
+            call ->
+                Optional.of(
+                    new LocalActionToken(
+                        user.get().getId(),
+                        ActionTokenPurpose.SET_PASSWORD,
+                        "hash",
+                        NOW,
+                        NOW.plus(Duration.ofHours(72)))));
+
+    passwords.setPasswordByLink("einladung", OWN_PASSWORD);
+
+    assertThat(row.get().getEmailVerifiedAt()).isEqualTo(NOW);
+    verify(actionTokens).consumeOpen(user.get().getId(), ActionTokenPurpose.VERIFY_EMAIL);
+  }
+
+  @Test
+  void aConfirmedAddressRefusesTheVerificationLink() {
+    accounts.register(ADDRESS, "Erika");
+    row.get().setPasswordHash("{enc}" + OWN_PASSWORD, NOW);
+    row.get().markEmailVerified(NOW);
+
+    assertThatThrownBy(
+            () -> passwords.confirmRegistration("roh", "Jemand", "anderes-sicheres-passwort-2026"))
+        .hasMessage(LocalActionTokenService.invalidToken().getMessage());
+
+    assertThat(row.get().getPasswordHash()).isEqualTo("{enc}" + OWN_PASSWORD);
+    assertThat(user.get().getDisplayName()).isEqualTo("Erika");
+    verify(revocation, never()).invalidateSessionsIssuedBefore(any());
   }
 }

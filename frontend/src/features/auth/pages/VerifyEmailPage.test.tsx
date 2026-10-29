@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { http, HttpResponse } from 'msw'
 import { BrowserRouter, Route, Routes } from 'react-router'
 import { renderWithProviders } from '@/test/test-utils'
 import { server } from '@/test/server'
@@ -59,7 +60,12 @@ describe('VerifyEmailPage', () => {
     })
   }
 
-  async function fillAndSubmit(password = 'Sommerregen-42x', repeated = password) {
+  async function fillAndSubmit(
+    password = 'Sommerregen-42x',
+    repeated = password,
+    name = 'Erika Muster',
+  ) {
+    if (name) await userEvent.type(screen.getByLabelText('Name'), name)
     await userEvent.type(screen.getByLabelText('Passwort'), password)
     await userEvent.type(screen.getByLabelText('Passwort wiederholen'), repeated)
     await userEvent.click(screen.getByRole('button', { name: 'Adresse bestätigen' }))
@@ -74,11 +80,13 @@ describe('VerifyEmailPage', () => {
     return paths
   }
 
-  it('asks for the password and sends nothing before the form is submitted', () => {
+  it('asks for name and password and sends nothing before the form is submitted', () => {
     const paths = recordRequests()
     renderAt(`?token=${MOCK_VERIFY_EMAIL_TOKEN}`, true)
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Passwort festlegen')
+    // empty on purpose: the name of the registration came from whoever registered the address
+    expect(screen.getByLabelText<HTMLInputElement>('Name').value).toBe('')
     expect(screen.getByText(/bestätigen Sie zugleich Ihre E-Mail-Adresse/)).toBeInTheDocument()
     expect(screen.getByText(/Mindestens 12 Zeichen/)).toBeInTheDocument()
     expect(paths).toEqual([])
@@ -93,8 +101,34 @@ describe('VerifyEmailPage', () => {
 
     expect(await screen.findByText(CONFIRMED)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Zur Anmeldung' })).toBeInTheDocument()
-    expect(paths.filter((path) => path === '/api/v1/auth/local/verify-email')).toHaveLength(1)
+    expect(paths.filter((path) => path === '/api/v1/auth/local/confirm-registration')).toHaveLength(
+      1,
+    )
     server.events.removeAllListeners('request:start')
+  })
+
+  it('marks a missing name at its field and focuses it', async () => {
+    renderAt(`?token=${MOCK_VERIFY_EMAIL_TOKEN}`)
+
+    await fillAndSubmit('Sommerregen-42x', 'Sommerregen-42x', '')
+
+    expect(await screen.findByText('Bitte geben Sie Ihren Namen an.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Name')).toHaveFocus()
+  })
+
+  // A backend that does not know the endpoint yet answers like an unknown route; the link is kept.
+  it('says the link is kept when the backend does not offer the confirmation yet', async () => {
+    server.use(
+      http.post('/api/v1/auth/local/confirm-registration', () =>
+        HttpResponse.json({ status: 404 }, { status: 404 }),
+      ),
+    )
+    renderAt(`?token=${MOCK_VERIFY_EMAIL_TOKEN}`)
+
+    await fillAndSubmit()
+
+    expect(await screen.findByText(/Ihr Link ist dadurch nicht verbraucht/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Adresse bestätigen' })).toBeInTheDocument()
   })
 
   /**

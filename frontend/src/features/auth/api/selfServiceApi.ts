@@ -101,12 +101,20 @@ export async function register(email: string, displayName: string): Promise<void
 }
 
 /**
- * Confirms the address of a self-registered account and sets its password in one step; sent by the
- * page's form, never by the link. A refused password leaves the link open.
+ * Completes a self-registration: confirms the address and sets name and password in one step; sent
+ * by the page's form, never by the link. A refused field leaves the link open.
  */
-export async function verifyEmail(token: string, newPassword: string): Promise<void> {
+export async function confirmRegistration(
+  token: string,
+  displayName: string,
+  newPassword: string,
+): Promise<void> {
   try {
-    await authClient.post(`${LOCAL_AUTH_BASE}/verify-email`, { token, newPassword })
+    await authClient.post(`${LOCAL_AUTH_BASE}/confirm-registration`, {
+      token,
+      displayName,
+      newPassword,
+    })
   } catch (err) {
     rethrowAsSelfServiceFailure(err, 'Die Bestätigung war nicht möglich.')
   }

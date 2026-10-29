@@ -687,17 +687,17 @@ erzeugtes Passwort und Adresswechsel entwerten jeden offenen Einladungs- und Rü
 
 Die Selbstbedienung lokaler Konten
 liegt ohne Anmeldung unter `/api/v1/auth/local/{set-password, forgot-password, register,
-verify-email}`; die Links in den Mails zeigen auf die SPA-Routen `/set-password?token=…` und
+confirm-registration}`; die Links in den Mails zeigen auf die SPA-Routen `/set-password?token=…` und
 `/verify-email?token=…`, nie auf einen `GET` mit Nebenwirkung. **Passwort setzen**
 löst einen Einladungs- (`SET_PASSWORD`) oder Rücksetzlink (`RESET_PASSWORD`) atomar und genau einmal
 ein: unbekannt, abgelaufen, verbraucht, falscher Zweck und ein Konto, das inzwischen durch Verwalter
 oder Inaktivität gesperrt oder abgelaufen ist, antworten alle mit derselben 400 `TOKEN_INVALID`; die
 Passwortrichtlinie antwortet mit Feldfehlern und lässt den Link offen. Der eingelöste Link setzt den
 Hash, hebt einen erzwungenen Wechsel auf, bestätigt beim **Einladungslink** die Adresse (die
-Einladung ist der Akt, mit dem der Verwalter für sie bürgt — ein Rücksetzlink bestätigt nichts, eine
-unbestätigte Selbstregistrierung bleibt auf ihren Bestätigungslink angewiesen), hebt eine
-**Fehlversuch-Sperre** auf (nicht die Sperre durch Verwalter oder Inaktivität), entwertet alle
-übrigen offenen Passwortlinks des Kontos und beendet jede Sitzung (`password_invalidated_before`,
+Einladung ist der Akt, mit dem der Verwalter für sie bürgt, auch die Einladung, die „Zurücksetzen"
+einer unbestätigten Selbstregistrierung ohne Passwort schickt — ein Rücksetzlink bestätigt nichts),
+hebt eine **Fehlversuch-Sperre** auf (nicht die Sperre durch Verwalter oder Inaktivität), entwertet
+alle übrigen offenen Links des Kontos, die ein Passwort setzen können (auch den Bestätigungslink) und beendet jede Sitzung (`password_invalidated_before`,
 Familien `PASSWORD_CHANGED`); Ereignis `LOCAL_PASSWORD_SET` mit dem Zweck des Links. **Passwort
 vergessen** existiert nur, solange die Verwaltung eingeschaltet, die Einstellung an und
 `OPAA_PUBLIC_BASE_URL` gesetzt ist — sonst ist der Pfad **von einer unbekannten Route nicht zu
@@ -717,31 +717,34 @@ eingeladene Konten sowie unbekannte Adressen erhalten nichts und antworten gleic
 ändert keinen Zustand und wird nicht protokolliert — Sitzungen enden erst beim Einlösen.
 **Selbstregistrierung** existiert nur mit Verwaltung an, `self_registration_enabled`, **nichtleerer
 Domänenliste** und Basis-URL (sonst ununterscheidbar von einer unbekannten Route, wie oben). Die
-Registrierung trägt **kein Passwort** (gegen Pre-Hijacking: wer eine fremde Adresse zuerst
-registriert, darf ihr Passwort nicht bestimmen). Adresse und Anzeigename werden zuerst geprüft
+Registrierung trägt **kein Passwort** und nur einen **vorläufigen Namen** (gegen Pre-Hijacking: wer
+eine fremde Adresse zuerst registriert, darf weder Passwort noch Namen bestimmen). Adresse und Anzeigename werden zuerst geprüft
 (Feldfehler `email`, `displayName` — sie verraten nichts über Konten); alles Weitere läuft auf dem
 Mail-Thread — die Antwort ist in jedem Ausgang **dieselbe 202 nach derselben Zeit** (der festen
 Frist): Domäne gegen die Liste (exakt), Adresse gegen den lokalen Issuer — eine
 freie Adresse mit erlaubter Domäne wird als Konto angelegt (Rolle `USER`, Ablauf **Pflicht** aus
 `default_expiry_days`, Anlagegrund „Selbstregistrierung", ohne Passwort, Adresse unbestätigt und
 damit `INVITED`, nicht anmeldefähig) und erhält `REGISTRATION_VERIFICATION` mit einem 24 Stunden
-gültigen `VERIFY_EMAIL`-Link und dem Hinweis „Nicht von Ihnen? Dann ignorieren Sie diese
+gültigen `VERIFY_EMAIL`-Link, neutraler Anrede ohne Namen (`displayName` ist hier immer leer, auch
+in einer eigenen Fassung der Vorlage) und dem Hinweis „Nicht von Ihnen? Dann ignorieren Sie diese
 Nachricht"; eine **noch unbestätigte Selbstregistrierung derselben Adresse** erhält einen
-neuen Link (der ältere ist entwertet), der Name bleibt; eine belegte Adresse
+neuen Link (der ältere ist entwertet), sonst ändert sich nichts; eine belegte Adresse
 (auch bei gleichzeitiger Anlage, Unique-Index) und eine fremde Domäne legen nichts an und senden
 nichts — auch keine Hinweis-Mail. Ereignis `LOCAL_USER_REGISTERED` unter dem Systemakteur
 `local-auth`, nur bei der Anlage. Der persönliche Space entsteht erst bei der ersten Anmeldung nach
 der Bestätigung, auf dem Weg jeder Anmeldung — eine nie bestätigte Registrierung hinterlässt keinen
-Space. **E-Mail bestätigen** nimmt den `VERIFY_EMAIL`-Link **und das neue Passwort** entgegen, löst
-den Link genau einmal ein, setzt `email_verified_at` und den Hash — ein vorher gespeicherter Hash
-(aus einer Registrierung älterer Fassung oder einem administrativen Zurücksetzen) ist damit
-verworfen — und beendet wie „Passwort setzen" jede Sitzung und entwertet die übrigen Passwortlinks
-(400 `TOKEN_INVALID` wie oben; die Passwortrichtlinie antwortet mit Feldfehlern an `newPassword` und
-lässt den Link offen); danach ist das Konto `ACTIVE`. Ein
-administratives Zurücksetzen macht eine unbestätigte Selbstregistrierung **nicht** anmeldefähig —
-der Rücksetzlink bestätigt nichts; ist die Selbstregistrierung inzwischen abgeschaltet, ist der Weg
-für den Verwalter das Löschen des unbestätigten Kontos und eine Einladung. Die Rate-Limits
-aus #1535 greifen je Client-Adresse über die Pfadregeln (auch für `verify-email`, 10/900 s) und je
+Space. **Registrierung abschließen** (`confirm-registration`, ein eigener Pfad, damit ein Backend
+älterer Fassung im Rolling Update mit 404 antwortet statt ohne Passwort zu bestätigen) nimmt den
+`VERIFY_EMAIL`-Link, **Namen und neues Passwort** entgegen, löst den Link genau einmal ein, setzt
+`email_verified_at`, den Namen und den Hash — ein vorher gespeicherter Hash (aus einer
+Registrierung älterer Fassung oder einem erzeugten Passwort) ist damit verworfen — und beendet wie
+„Passwort setzen" jede Sitzung und entwertet die übrigen Links (400 `TOKEN_INVALID` wie oben, auch
+für ein Konto mit bereits bestätigter Adresse; Feldfehler an `displayName` oder `newPassword` lassen
+den Link offen); danach ist das Konto `ACTIVE`. Eine Adressänderung durch die Verwaltung entwertet
+den Bestätigungslink. Ein administratives Zurücksetzen schickt einer unbestätigten
+Selbstregistrierung ohne Passwort die Einladung, deren Einlösen die Adresse bestätigt. Die
+Rate-Limits aus #1535 greifen je Client-Adresse über die Pfadregeln (auch für
+`confirm-registration` unter dem Schlüssel `verify-email`, 10/900 s) und je
 E-Mail-Adresse vor jeder Verarbeitung — für einen abgeschalteten Fluss greift **keines von beiden**:
 Sein Pfad wird weder gezählt noch erreicht er die Adressprüfung. Der
 Mail-Thread hat eine begrenzte Warteschlange (1000); ein Versand, der keinen Platz findet, wird mit
@@ -773,9 +776,10 @@ Seite, Überschrift „Passwort festlegen", die die Herkunft des Links bewusst n
 administrativen Rücksetzung darf nicht in eine Umleitung laufen; `/forgot-password` und `/register`
 leiten auf `/login` um, sobald `localAccounts` den jeweiligen Fluss nicht als verfügbar meldet,
 entscheiden aber nichts, solange die Konfiguration noch lädt. `/verify-email` zeigt das Formular
-„Passwort festlegen" (Passwort und Wiederholung) und sendet den `POST` erst beim Absenden — das
-Laden der Seite hat keine Wirkung; Erfolg ist „E-Mail-Adresse bestätigt und Passwort festgelegt",
-ein abgewiesener Link „Link ungültig", eine Begrenzung nennt die Wartezeit über dem Formular.
+„Passwort festlegen" (Name, leer vorbelegt, Passwort und Wiederholung) und sendet den `POST` erst
+beim Absenden — das Laden der Seite hat keine Wirkung; Erfolg ist „E-Mail-Adresse bestätigt und
+Passwort festgelegt", ein abgewiesener Link „Link ungültig", eine Begrenzung nennt die Wartezeit
+über dem Formular, ein Backend ohne den Endpunkt (404) die Auskunft, dass der Link erhalten bleibt.
 
 **Kein Roh-Token in der Adresszeile.** Beide Seiten lesen den Token genau einmal und **entfernen ihn
 sofort aus der URL**, bevor die erste Anfrage der Seite hinausgeht: Solange er dort steht, ist er der

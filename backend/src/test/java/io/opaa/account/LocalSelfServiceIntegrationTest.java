@@ -2,6 +2,7 @@ package io.opaa.account;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -78,7 +79,7 @@ class LocalSelfServiceIntegrationTest {
   private static final String SET_PASSWORD = "/api/v1/auth/local/set-password";
   private static final String FORGOT_PASSWORD = "/api/v1/auth/local/forgot-password";
   private static final String REGISTER = "/api/v1/auth/local/register";
-  private static final String VERIFY_EMAIL = "/api/v1/auth/local/verify-email";
+  private static final String CONFIRM_REGISTRATION = "/api/v1/auth/local/confirm-registration";
   private static final String LOCAL_USERS = "/api/v1/admin/local-users";
   private static final String NEW_PASSWORD = "neues-sicheres-passwort-2026";
   private static final String DOMAIN = "stadt.example";
@@ -405,27 +406,14 @@ class LocalSelfServiceIntegrationTest {
     assertThat(spacesOwnedBy(user.getId())).isZero();
     login(email, NEW_PASSWORD, 401);
 
-    // an administrative reset link sets a password but confirms nothing - the invitation is the
-    // administrator's act of vouching, a reset is not
-    mockMvc
-        .perform(
-            post(LOCAL_USERS + "/" + user.getId() + "/password-reset")
-                .header(HttpHeaders.AUTHORIZATION, adminBearer))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.deliveryPath").value("MAIL_SENT"));
-    assertThat(mailbox.waitFor(2, 10_000)).isTrue();
-    String resetToken = LocalMailbox.tokenIn(LocalMailbox.plainText(mailbox.messages()[1]));
-    setPassword(resetToken, "zweites-sicheres-passwort-2026").andExpect(status().isNoContent());
-    row = credentials.findById(user.getId()).orElseThrow();
-    assertThat(row.getEmailVerifiedAt()).isNull();
-    assertThat(row.state(Instant.now())).isEqualTo(LocalAccountState.INVITED);
-    login(email, "zweites-sicheres-passwort-2026", 401);
-
     MimeMessage mail = mailbox.messages()[0];
     assertThat(mail.getAllRecipients()[0].toString()).isEqualTo(email);
     String text = LocalMailbox.plainText(mail);
     assertThat(text)
-        .contains("https://opaa.test.example/" + LocalAccountLinks.VERIFY_EMAIL_PATH + "?token=");
+        .contains("https://opaa.test.example/" + LocalAccountLinks.VERIFY_EMAIL_PATH + "?token=")
+        .contains("Nicht von Ihnen?")
+        // the registrant's own entry never reaches an address not yet proven to be theirs
+        .doesNotContain("Neue Person");
     String token = LocalMailbox.tokenIn(text);
     LocalActionToken issued =
         actionTokens.findRedeemable(token, ActionTokenPurpose.VERIFY_EMAIL).orElseThrow();
@@ -433,20 +421,21 @@ class LocalSelfServiceIntegrationTest {
         .isAfter(before.plus(Duration.ofHours(23)))
         .isBefore(before.plus(Duration.ofHours(25)));
 
-    verify(token, "drittes-sicheres-passwort-2026").andExpect(status().isNoContent());
+    confirm(token, "Erika Muster", NEW_PASSWORD).andExpect(status().isNoContent());
 
     row = credentials.findById(user.getId()).orElseThrow();
     assertThat(row.getEmailVerifiedAt()).isNotNull();
     assertThat(row.state(Instant.now())).isEqualTo(LocalAccountState.ACTIVE);
-    // the verification link set the password; the one set before it is gone
-    login(email, "zweites-sicheres-passwort-2026", 401);
-    MvcResult session = login(email, "drittes-sicheres-passwort-2026", 200);
+    // the link holder chose the name; the provisional one of the registration is gone
+    assertThat(users.findById(user.getId()).orElseThrow().getDisplayName())
+        .isEqualTo("Erika Muster");
+    MvcResult session = login(email, NEW_PASSWORD, 200);
     mockMvc
         .perform(get(ME).header(HttpHeaders.AUTHORIZATION, bearer(session)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.systemRole").value("USER"));
     assertThat(spacesOwnedBy(user.getId())).isEqualTo(1);
-    verify(token, "viertes-sicheres-passwort-2026")
+    confirm(token, "Erika Muster", "zweites-sicheres-passwort-2026")
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("TOKEN_INVALID"));
 
@@ -586,18 +575,77 @@ class LocalSelfServiceIntegrationTest {
         .isEqualTo("Erste Person");
     assertThat(credentials.findById(user.getId()).orElseThrow().getPasswordHash()).isNull();
     assertThat(actionTokens.findRedeemable(first, ActionTokenPurpose.VERIFY_EMAIL)).isEmpty();
-    verify(first, NEW_PASSWORD)
+    confirm(first, "Erika Muster", NEW_PASSWORD)
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("TOKEN_INVALID"));
-    verify(second, NEW_PASSWORD).andExpect(status().isNoContent());
+    confirm(second, "Erika Muster", NEW_PASSWORD).andExpect(status().isNoContent());
     login(email, NEW_PASSWORD, 200);
     // the second registration created nothing and is no event
     assertThat(auditRows("LOCAL_USER_REGISTERED")).hasSize(1);
   }
 
   /**
+   * The administration answers an unconfirmed self-registration without password with an
+   * invitation; redeeming it confirms the address and closes the verification link, which would
+   * otherwise stay a second way to set the password of the then active account.
+   */
+  @Test
+  void anInvitationForAnUnconfirmedRegistrationConfirmsItAndClosesTheVerificationLink()
+      throws Exception {
+    replaceSettings(withRegistration(true, List.of(DOMAIN)));
+    String email = "neu-" + UUID.randomUUID() + "@" + DOMAIN;
+    register(email, "Neue Person").andExpect(status().isAccepted());
+    assertThat(mailbox.waitFor(1, 10_000)).isTrue();
+    User user = users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, email).orElseThrow();
+    String verification = LocalMailbox.tokenIn(LocalMailbox.plainText(mailbox.messages()[0]));
+
+    mockMvc
+        .perform(
+            post(LOCAL_USERS + "/" + user.getId() + "/password-reset")
+                .header(HttpHeaders.AUTHORIZATION, adminBearer))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.deliveryPath").value("MAIL_SENT"));
+    assertThat(mailbox.waitFor(2, 10_000)).isTrue();
+    String invitation = LocalMailbox.tokenIn(LocalMailbox.plainText(mailbox.messages()[1]));
+    setPassword(invitation, NEW_PASSWORD).andExpect(status().isNoContent());
+
+    LocalCredentials row = credentials.findById(user.getId()).orElseThrow();
+    assertThat(row.getEmailVerifiedAt()).isNotNull();
+    assertThat(row.state(Instant.now())).isEqualTo(LocalAccountState.ACTIVE);
+    login(email, NEW_PASSWORD, 200);
+    confirm(verification, "Erika Muster", "zweites-sicheres-passwort-2026")
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("TOKEN_INVALID"));
+    login(email, "zweites-sicheres-passwort-2026", 401);
+  }
+
+  /** A verification link mailed to the old address must not complete the account of the new one. */
+  @Test
+  void aChangedAddressClosesTheVerificationLinkOfTheOldOne() throws Exception {
+    replaceSettings(withRegistration(true, List.of(DOMAIN)));
+    String email = "neu-" + UUID.randomUUID() + "@" + DOMAIN;
+    register(email, "Neue Person").andExpect(status().isAccepted());
+    assertThat(mailbox.waitFor(1, 10_000)).isTrue();
+    User user = users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, email).orElseThrow();
+    String verification = LocalMailbox.tokenIn(LocalMailbox.plainText(mailbox.messages()[0]));
+
+    mockMvc
+        .perform(
+            patch(LOCAL_USERS + "/" + user.getId())
+                .header(HttpHeaders.AUTHORIZATION, adminBearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json(Map.of("email", "korrigiert-" + UUID.randomUUID() + "@" + DOMAIN))))
+        .andExpect(status().isOk());
+
+    confirm(verification, "Erika Muster", NEW_PASSWORD)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("TOKEN_INVALID"));
+    assertThat(credentials.findById(user.getId()).orElseThrow().getPasswordHash()).isNull();
+  }
+
+  /**
    * Pre-hijacking (ADR-0033, Entscheidung 11): a hash stored on an unconfirmed self-registration -
-   * by a registration from before the password moved to the link, or by an administrative reset -
+   * by a registration from before the password moved to the link, or by a generated password -
    * never survives the confirmation; only who holds the link decides the password. The policy
    * answers with field errors and keeps the link open.
    */
@@ -614,17 +662,17 @@ class LocalSelfServiceIntegrationTest {
     credentials.save(planted);
     String token = LocalMailbox.tokenIn(LocalMailbox.plainText(mailbox.messages()[0]));
 
-    verify(token, "kurz")
+    confirm(token, "Erika Muster", "kurz")
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.fieldErrors[0].field").value("newPassword"))
         .andExpect(jsonPath("$.fieldErrors[0].code").value("TOO_SHORT"));
-    verify(token, email)
+    confirm(token, "Erika Muster", email)
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.fieldErrors[?(@.code == 'EQUALS_EMAIL')]").exists());
     assertThat(credentials.findById(user.getId()).orElseThrow().getEmailVerifiedAt()).isNull();
 
     // the link survived every refusal
-    verify(token, NEW_PASSWORD).andExpect(status().isNoContent());
+    confirm(token, "Erika Muster", NEW_PASSWORD).andExpect(status().isNoContent());
 
     login(email, "passwort-des-angreifers-2026", 401);
     login(email, NEW_PASSWORD, 200);
@@ -678,7 +726,7 @@ class LocalSelfServiceIntegrationTest {
     setPassword("kein-token", NEW_PASSWORD)
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("TOKEN_INVALID"));
-    verify("kein-token", NEW_PASSWORD)
+    confirm("kein-token", "Erika Muster", NEW_PASSWORD)
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.code").value("TOKEN_INVALID"));
   }
@@ -732,7 +780,7 @@ class LocalSelfServiceIntegrationTest {
       register(email, "Neue Person").andExpect(status().isAccepted());
       assertThat(mailbox.waitFor(1, 10_000)).isTrue();
       String verification = LocalMailbox.tokenIn(LocalMailbox.plainText(mailbox.messages()[0]));
-      verify(verification, NEW_PASSWORD).andExpect(status().isNoContent());
+      confirm(verification, "Erika Muster", NEW_PASSWORD).andExpect(status().isNoContent());
       forgot(email).andExpect(status().isNoContent());
       assertThat(mailbox.waitFor(2, 10_000)).isTrue();
       String reset = LocalMailbox.tokenIn(LocalMailbox.plainText(mailbox.messages()[1]));
@@ -824,12 +872,15 @@ class LocalSelfServiceIntegrationTest {
             .content(json(Map.of("email", email, "displayName", displayName))));
   }
 
-  private org.springframework.test.web.servlet.ResultActions verify(
-      String token, String newPassword) throws Exception {
+  private org.springframework.test.web.servlet.ResultActions confirm(
+      String token, String displayName, String newPassword) throws Exception {
     return mockMvc.perform(
-        post(VERIFY_EMAIL)
+        post(CONFIRM_REGISTRATION)
             .contentType(MediaType.APPLICATION_JSON)
-            .content(json(Map.of("token", token, "newPassword", newPassword))));
+            .content(
+                json(
+                    Map.of(
+                        "token", token, "displayName", displayName, "newPassword", newPassword))));
   }
 
   private MvcResult login(String email, String password, int expectedStatus) throws Exception {

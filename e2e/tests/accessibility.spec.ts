@@ -944,7 +944,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await page.route("**/api/v1/auth/config", (route) =>
       route.fulfill({ json: LOCAL_ACCOUNTS_CONFIG }),
     );
-    await page.route("**/api/v1/auth/local/verify-email", (route) =>
+    await page.route("**/api/v1/auth/local/confirm-registration", (route) =>
       route.fulfill({ status: 204 }),
     );
     await page.goto("/verify-email?token=e2e-token");
@@ -953,6 +953,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     ).toBeVisible();
     await expectNoSeriousA11yViolations(page, "E-Mail-Bestätigung (Formular)");
 
+    await page.getByLabel("Name", { exact: true }).fill("Erika Muster");
     await page.getByLabel("Passwort", { exact: true }).fill("Sommerregen-42x");
     await page.getByLabel("Passwort wiederholen", { exact: true }).fill("Sommerregen-42x");
     await page.getByRole("button", { name: "Adresse bestätigen" }).click();

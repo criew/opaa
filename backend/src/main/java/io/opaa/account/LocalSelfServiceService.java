@@ -24,11 +24,11 @@ import org.springframework.stereotype.Service;
  * checks - which reveal nothing about accounts - "forgot password" and a registration hand their
  * account work (lookup, account, mail) to the {@link MailDispatchExecutor} and answer after {@link
  * #RESPONSE_FLOOR}, so the response time is the same constant in every outcome; synchronous lookups
- * would let the time betray the account. A registration carries no password: it is set when the
- * verification link is redeemed, so only who holds the mailbox decides it. Deliberately not
- * {@code @Transactional}: the account writes are one transaction each in {@link
- * LocalSelfServiceAccountService} and {@link LocalPasswordService}, run on the executor's thread;
- * the link mail goes to the outbox in that transaction and leaves after its commit.
+ * would let the time betray the account. A registration carries no password and only a provisional
+ * name: both are set when the verification link is redeemed, so only who holds the mailbox decides
+ * them. Deliberately not {@code @Transactional}: the account writes are one transaction each in
+ * {@link LocalSelfServiceAccountService} and {@link LocalPasswordService}, run on the executor's
+ * thread; the link mail goes to the outbox in that transaction and leaves after its commit.
  */
 @Service
 public class LocalSelfServiceService implements LocalSelfServiceAvailability {
@@ -41,7 +41,7 @@ public class LocalSelfServiceService implements LocalSelfServiceAvailability {
   public static final Duration RESPONSE_FLOOR = Duration.ofMillis(250);
 
   private static final Logger log = LoggerFactory.getLogger(LocalSelfServiceService.class);
-  private static final int DISPLAY_NAME_MAX_LENGTH = 255;
+  static final int DISPLAY_NAME_MAX_LENGTH = 255;
 
   private final LocalSelfServiceAccountService accounts;
   private final LocalPasswordService passwords;
@@ -117,8 +117,8 @@ public class LocalSelfServiceService implements LocalSelfServiceAvailability {
     passwords.setPasswordByLink(rawToken, newPassword);
   }
 
-  public void verifyEmail(String rawToken, String newPassword) {
-    passwords.confirmRegistration(rawToken, newPassword);
+  public void confirmRegistration(String rawToken, String displayName, String newPassword) {
+    passwords.confirmRegistration(rawToken, displayName, newPassword);
   }
 
   /** Answers after {@link #RESPONSE_FLOOR}; a mail leaves only for an eligible account. */

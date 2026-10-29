@@ -104,60 +104,85 @@ public class LocalPasswordService {
    * LocalActionTokenService#invalidToken}: unknown, expired, consumed, of another purpose, or of an
    * account that may no longer redeem a link ({@link LocalAccountAccess#mayRedeemLink}). An
    * invitation link confirms the address - the invitation is the administrator's act of vouching
-   * for it; a reset link does not, so a reset of a self-registered, unconfirmed account leaves the
-   * confirmation to the verification link. The act is audited as {@code LOCAL_PASSWORD_SET} with
-   * the link's purpose; see {@link #applyLinkPassword} for the rest.
+   * for it, also when the administration answers an unconfirmed self-registration without password
+   * with one; a reset link confirms nothing. The act is audited as {@code LOCAL_PASSWORD_SET} with
+   * the link's purpose; see {@link #writePassword} for the rest.
    */
   @Transactional
   public User setPasswordByLink(String rawToken, String newPassword) {
+    Instant now = clock.instant();
     LocalActionToken token =
         actionTokens
             .redeem(rawToken, ActionTokenPurpose.SET_PASSWORD)
             .or(() -> actionTokens.redeem(rawToken, ActionTokenPurpose.RESET_PASSWORD))
             .orElseThrow(LocalActionTokenService::invalidToken);
-    User user = applyLinkPassword(token, newPassword);
+    User user = linkOwner(token);
+    LocalCredentials row = redeemableCredentials(user, now);
+    policy.require("newPassword", newPassword, user.getEmail());
+    writePassword(user, row, token.getPurpose(), newPassword, now);
     record(user, AuditEventType.LOCAL_PASSWORD_SET, Map.of("purpose", token.getPurpose().name()));
     return user;
   }
 
   /**
-   * Redeems the {@code VERIFY_EMAIL} link of a self-registration - exactly once - confirms the
-   * address and sets the password chosen now (ADR-0033, Entscheidung 11). Any hash stored before is
-   * discarded: whoever registered the address first never decides the password, only whoever holds
-   * the mailbox does. Refusals as in {@link #setPasswordByLink}; see {@link #applyLinkPassword}.
+   * Completes a self-registration with its {@code VERIFY_EMAIL} link - exactly once (ADR-0033,
+   * Entscheidung 11): confirms the address and sets the name and the password chosen now. The
+   * provisional name and any hash stored before are replaced, so whoever registered the address
+   * first decides neither. An account whose address is already confirmed refuses the link like any
+   * other invalid one; further refusals as in {@link #setPasswordByLink}.
    */
   @Transactional
-  public User confirmRegistration(String rawToken, String newPassword) {
+  public User confirmRegistration(String rawToken, String displayName, String newPassword) {
+    Instant now = clock.instant();
     LocalActionToken token =
         actionTokens
             .redeem(rawToken, ActionTokenPurpose.VERIFY_EMAIL)
             .orElseThrow(LocalActionTokenService::invalidToken);
-    return applyLinkPassword(token, newPassword);
+    User user = linkOwner(token);
+    LocalCredentials row = redeemableCredentials(user, now);
+    if (row.getEmailVerifiedAt() != null) {
+      throw LocalActionTokenService.invalidToken();
+    }
+    String name =
+        LocalUserService.requireText(
+            "displayName", displayName, LocalSelfServiceService.DISPLAY_NAME_MAX_LENGTH);
+    policy.require("newPassword", newPassword, user.getEmail());
+    user.setDisplayName(name);
+    users.save(user);
+    writePassword(user, row, token.getPurpose(), newPassword, now);
+    return user;
+  }
+
+  private User linkOwner(LocalActionToken token) {
+    return users
+        .findById(token.getUserId())
+        .filter(found -> LocalIssuer.URN.equals(found.getIssuer()))
+        .orElseThrow(LocalActionTokenService::invalidToken);
+  }
+
+  private LocalCredentials redeemableCredentials(User user, Instant now) {
+    return credentials
+        .findById(user.getId())
+        .filter(found -> LocalAccountAccess.mayRedeemLink(found, now))
+        .orElseThrow(LocalActionTokenService::invalidToken);
   }
 
   /**
-   * The password write of a redeemed link: replaces the hash, clears a forced change, confirms the
-   * address unless the link is a reset, lifts a failed-login lockout, consumes every other open
-   * password link and ends every session issued up to now. A policy refusal throws before any
-   * write, so the transaction rolls the redemption back and the link stays open.
+   * The password write of a redeemed link, after every check has passed - a refusal throws before
+   * it, so the transaction rolls the redemption back and the link stays open: replaces the hash,
+   * clears a forced change, confirms the address unless the link is a reset, lifts a failed-login
+   * lockout, consumes every other open link that could set a password and ends every session issued
+   * up to now.
    */
-  private User applyLinkPassword(LocalActionToken token, String newPassword) {
-    Instant now = clock.instant();
-    User user =
-        users
-            .findById(token.getUserId())
-            .filter(found -> LocalIssuer.URN.equals(found.getIssuer()))
-            .orElseThrow(LocalActionTokenService::invalidToken);
-    LocalCredentials row =
-        credentials
-            .findById(user.getId())
-            .filter(found -> LocalAccountAccess.mayRedeemLink(found, now))
-            .orElseThrow(LocalActionTokenService::invalidToken);
-    policy.require("newPassword", newPassword, user.getEmail());
+  private void writePassword(
+      User user,
+      LocalCredentials row,
+      ActionTokenPurpose purpose,
+      String newPassword,
+      Instant now) {
     row.setPasswordHash(passwordEncoder.encode(newPassword), now);
     row.clearPasswordChangeRequirement(now);
-    if (token.getPurpose() != ActionTokenPurpose.RESET_PASSWORD
-        && row.getEmailVerifiedAt() == null) {
+    if (purpose != ActionTokenPurpose.RESET_PASSWORD && row.getEmailVerifiedAt() == null) {
       row.markEmailVerified(now);
     }
     if (row.getLockedReason() == LockReason.FAILED_LOGINS) {
@@ -169,8 +194,8 @@ public class LocalPasswordService {
     revocation.invalidateSessionsIssuedBefore(user.getId());
     actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.SET_PASSWORD);
     actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.RESET_PASSWORD);
+    actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.VERIFY_EMAIL);
     refreshTokens.revokeAllForUser(user.getId(), RevocationReason.PASSWORD_CHANGED);
-    return user;
   }
 
   private void record(User user, AuditEventType type, Map<String, Object> after) {

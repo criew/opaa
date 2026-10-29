@@ -15,10 +15,10 @@ import static org.mockito.Mockito.when;
 import io.opaa.account.LocalAuthRateLimiter;
 import io.opaa.account.LocalAuthRateLimiter.AddressScope;
 import io.opaa.account.LocalSelfServiceService;
+import io.opaa.api.dto.LocalConfirmRegistrationRequest;
 import io.opaa.api.dto.LocalForgotPasswordRequest;
 import io.opaa.api.dto.LocalRegisterRequest;
 import io.opaa.api.dto.LocalSetPasswordRequest;
-import io.opaa.api.dto.LocalVerifyEmailRequest;
 import io.opaa.common.TooManyRequestsException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -112,13 +112,15 @@ class LocalSelfServiceControllerTest {
         .isEqualTo(204);
     assertThat(
             controller
-                .verifyEmail(new LocalVerifyEmailRequest("roh-token", "neues-passwort-2026"))
+                .confirmRegistration(
+                    new LocalConfirmRegistrationRequest(
+                        "roh-token", "Erika", "neues-passwort-2026"))
                 .getStatusCode()
                 .value())
         .isEqualTo(204);
 
     verify(service).setPassword("roh-token", "neues-passwort-2026");
-    verify(service).verifyEmail("roh-token", "neues-passwort-2026");
+    verify(service).confirmRegistration("roh-token", "Erika", "neues-passwort-2026");
     verifyNoInteractions(rateLimiter);
   }
 }

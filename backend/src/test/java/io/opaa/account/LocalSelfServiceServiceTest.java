@@ -183,10 +183,10 @@ class LocalSelfServiceServiceTest {
   @Test
   void theLinkEndpointsDelegateToTheTransactionalServices() {
     service.setPassword("roh", PASSWORD);
-    service.verifyEmail("roh", PASSWORD);
+    service.confirmRegistration("roh", "Erika", PASSWORD);
 
     verify(passwords).setPasswordByLink("roh", PASSWORD);
-    verify(passwords).confirmRegistration("roh", PASSWORD);
+    verify(passwords).confirmRegistration("roh", "Erika", PASSWORD);
     assertThat(queued).isEmpty();
   }
 

@@ -443,12 +443,13 @@ Was ein selbstregistriertes Konto erhält: immer die Rolle „Nutzer", ein **Pfl
 den festen Anlagegrund „Selbstregistrierung". Bis die Adresse über den Bestätigungslink bestätigt
 ist, ist das Konto nicht anmeldefähig.
 
-**Das Passwort entsteht erst mit dem Bestätigungslink.** Die Registrierung fragt nur Name und
-Adresse; die Seite hinter dem Link fragt das Passwort und bestätigt damit zugleich die Adresse. So
-bestimmt nur, wer das Postfach liest, das Passwort — auch wenn jemand anderes die Adresse zuerst
-registriert hat. Ein vorher gesetztes Passwort, etwa durch ein administratives Zurücksetzen, gilt
-danach nicht mehr, und alle Sitzungen des Kontos enden. Die Bestätigungsmail sagt ausdrücklich:
-Wer sich nicht registriert hat, ignoriert die Nachricht; ohne den Link wird kein Zugang aktiv.
+**Name und Passwort entstehen erst mit dem Bestätigungslink.** Die Registrierung fragt Name und
+Adresse, der Name gilt aber nur vorläufig. Die Seite hinter dem Link fragt Name und Passwort und
+bestätigt damit zugleich die Adresse. So bestimmt nur, wer das Postfach liest, wie das Konto heißt
+und welches Passwort es hat — auch wenn jemand anderes die Adresse zuerst registriert hat. Ein
+vorher gesetztes Passwort, etwa ein von der Verwaltung erzeugtes, gilt danach nicht mehr, und alle
+Sitzungen des Kontos enden. Die Bestätigungsmail nennt keinen Namen und sagt ausdrücklich: Wer sich
+nicht registriert hat, ignoriert die Nachricht; ohne den Link wird kein Zugang aktiv.
 
 Drei Eigenschaften, die im Alltag auffallen:
 
@@ -456,12 +457,11 @@ Drei Eigenschaften, die im Alltag auffallen:
   freien Adresse. An die belegte Adresse geht auch keine Hinweisnachricht — sie wäre selbst ein Weg,
   Adressen auszuprobieren.
 - **Eine noch unbestätigte Registrierung kann es erneut versuchen** und erhält ihren
-  Bestätigungslink neu; der ältere gilt nicht mehr. Der Name der ersten Registrierung bleibt dabei
-  erhalten.
-- **Eine unbestätigte Registrierung ist keine Sackgasse, aber auch nicht reparierbar.** Ein
-  administratives Zurücksetzen bestätigt die Adresse nicht. Ist die Selbstregistrierung inzwischen
-  abgeschaltet, ist der Ausweg: das unbestätigte Konto **löschen** (es besitzt nichts, also geht das)
-  und die Person regulär **einladen**.
+  Bestätigungslink neu; der ältere gilt nicht mehr.
+- **Die Verwaltung kann eine unbestätigte Registrierung abschließen lassen.** „Zurücksetzen" schickt
+  einem Konto ohne Passwort die Einladung; wer sie einlöst, setzt das Passwort und bestätigt damit
+  die Adresse. Der Bestätigungslink gilt danach nicht mehr, ebenso nach einer geänderten Adresse.
+  Das geht auch, wenn die Selbstregistrierung inzwischen abgeschaltet ist.
 
 Das Einschalten der Selbstregistrierung ist ein Punkt, der vor der Inbetriebnahme mit der
 Personalvertretung zu klären ist; das Kapitel [Authentifizierung](../betrieb/authentifizierung.md#lokale-benutzerverwaltung) führt die Punkte auf.
