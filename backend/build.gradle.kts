@@ -488,8 +488,28 @@ tasks.named("check") {
     dependsOn(dnsRebindingTest)
 }
 
+// Crafted input files (*HostileInputTest, docs/entwicklung/regressionssuite-eingaben.md) in a JVM
+// of a fixed small heap: a parser that no longer bounds the memory one document costs fails here
+// with an OutOfMemoryError instead of passing in the suite's 2 GB. Each case also has a time bound.
+// Part of check, so CI's `build -x :test` job runs it.
+val hostileInputTest = tasks.register<Test>("hostileInputTest") {
+    description = "Crafted input files against the parsers, in a JVM of 512 MB heap."
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    filter {
+        includeTestsMatching("*HostileInputTest")
+    }
+    maxHeapSize = "512m"
+}
+
+tasks.named("check") {
+    dependsOn(hostileInputTest)
+}
+
 tasks.named<Test>("test") {
     filter {
+        excludeTestsMatching("*HostileInputTest")
         excludeTestsMatching("*RebindingTest")
         excludeTestsMatching("io.opaa.integration.*")
         excludeTestsMatching("*.GoogleDriveWorkspaceIntegrationTest")
