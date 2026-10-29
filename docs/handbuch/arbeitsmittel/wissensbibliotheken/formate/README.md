@@ -69,13 +69,10 @@ gemeinsame Obergrenzen:
   zählt höchstens so viele Einträge, wie seine entpackten Daten fassen; einer ohne Eintragsbreite
   (`/W [0 0 0]`) wird abgewiesen. Gezählt wird, bevor die Einträge gelesen werden: bei einer
   Querverweistabelle jede Zeile, bei der Suche in einer beschädigten Datei jede Fundstelle von
-  `obj`. Nach dem Lesen einer Querverweistabelle wird zur Sicherheit zusätzlich ein Eintrag je
-  sechs gelesene Bytes angerechnet, soweit das über die gezählten Zeilen hinausgeht. So kann ein
-  Querverweis, der Millionen Einträge angibt, nicht den Speicher füllen. Die Zählung rechnet
-  bewusst eher zu viel: Ein Objekt in einem Objektstrom zählt doppelt (als Eintrag und als Objekt
-  des Stroms), und eine gewöhnliche Querverweistabelle mit 20 Bytes je Eintrag zählt gut dreifach.
-  Ein PDF kann deshalb schon ab etwa 300.000 Objekten abgewiesen werden; dann hilft ein höherer
-  Wert für `max-pdf-objects`.
+  `obj`. So kann ein Querverweis, der Millionen Einträge angibt, nicht den Speicher füllen. Liest
+  der Leser aus einer Querverweistabelle weit mehr, als vorher gezählt wurde, bricht er ab. Weil
+  ein Objekt in einem Objektstrom doppelt zählt (als Eintrag und als Objekt des Stroms), kann ein
+  PDF schon ab etwa 500.000 Objekten abgewiesen werden.
 - **Lesezeit eines PDF** (`max-pdf-parse-seconds`): als letzte Sicherung die Zeit, die das Lesen
   eines PDF insgesamt dauern darf.
 - **Gliederung eines PDF:** Jeder Lesezeichen-Eintrag wird höchstens einmal gelesen, so dass eine

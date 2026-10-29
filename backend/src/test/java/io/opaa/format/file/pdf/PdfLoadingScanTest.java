@@ -1,7 +1,10 @@
 package io.opaa.format.file.pdf;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.format.shared.ParserLimitExceededException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import org.apache.pdfbox.io.RandomAccessReadBuffer;
@@ -46,6 +49,23 @@ class PdfLoadingScanTest {
     try (RandomAccessReadBuffer source = buffer("xref\n0 2\n9 0 n\n<< /Size 2 >>\n9 0 n\n")) {
       assertThat(PdfLoading.classicTableLines(source)).isEqualTo(2);
     }
+  }
+
+  @Test
+  void linesOpeningWithABraceAreCountedSincePdfBoxReadsThemToo() throws IOException {
+    try (RandomAccessReadBuffer source = buffer("xref\n0 2\n{9 0 n\n}9 0 n\ntrailer\n")) {
+      assertThat(PdfLoading.classicTableLines(source)).isEqualTo(3);
+    }
+  }
+
+  @Test
+  void aTableReadFarPastItsCountedLinesIsRefused() {
+    // 20-byte entries read back as 3.3 lines of the shortest kind each, within the margin
+    assertThatCode(() -> PdfLoading.requireReadWithinCount(20L * 300_000, 300_000))
+        .doesNotThrowAnyException();
+    assertThatCode(() -> PdfLoading.requireReadWithinCount(6L * 10, 0)).doesNotThrowAnyException();
+    assertThatThrownBy(() -> PdfLoading.requireReadWithinCount(6L * 5_000, 1_000))
+        .isInstanceOf(ParserLimitExceededException.class);
   }
 
   @Test

@@ -48,7 +48,13 @@ final class PdfLoading {
   private static final int SCAN_BUFFER_BYTES = 64 * 1024;
 
   /** {@code 9 0 n} and a line break: the shortest line PDFBox reads as an entry. */
-  private static final int CLASSIC_ENTRY_BYTES = 6;
+  private static final int SHORTEST_ENTRY_BYTES = 6;
+
+  /** How many shortest lines a counted line may span before a table counts as miscounted. */
+  private static final int READ_MARGIN = 4;
+
+  /** Shortest lines a table may hold beyond the margin, for the keyword and a short table. */
+  private static final int READ_SLACK_LINES = 64;
 
   private static final int SCAN_KEYWORD = 0;
   private static final int SCAN_SPACE = 1;
@@ -131,9 +137,8 @@ final class PdfLoading {
     }
 
     /**
-     * A classic table's lines are counted before PDFBox registers an entry for each; afterwards the
-     * bytes it read, at the shortest entry line PDFBox accepts, are charged where they exceed that
-     * count.
+     * A classic table's lines are counted before PDFBox registers an entry for each; afterwards
+     * {@link #requireReadWithinCount} checks that count against the bytes PDFBox read.
      */
     @Override
     protected boolean parseXrefTable(long startByteOffset) throws IOException {
@@ -142,7 +147,7 @@ final class PdfLoading {
       long lines = classicTableLines(source);
       budget.chargeObjects(lines);
       boolean parsed = super.parseXrefTable(startByteOffset);
-      budget.chargeObjects((source.getPosition() - start) / CLASSIC_ENTRY_BYTES - lines);
+      requireReadWithinCount(source.getPosition() - start, lines);
       return parsed;
     }
 
@@ -230,6 +235,19 @@ final class PdfLoading {
       return lines;
     } finally {
       source.seek(start);
+    }
+  }
+
+  /**
+   * Throws when a classic table read {@code bytesRead}, which at the shortest entry line PDFBox
+   * accepts would hold far more entries than the {@code linesCounted} before: the count then missed
+   * lines PDFBox registered. Ordinary 20-byte entries stay well within the margin.
+   */
+  static void requireReadWithinCount(long bytesRead, long linesCounted) {
+    long shortestLines = bytesRead / SHORTEST_ENTRY_BYTES;
+    if (shortestLines > READ_MARGIN * linesCounted + READ_SLACK_LINES) {
+      throw new ParserLimitExceededException(
+          "PDF cross-reference table holds more entries than were counted before reading it");
     }
   }
 

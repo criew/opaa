@@ -283,6 +283,21 @@ class PdfAmplificationTest {
   }
 
   /**
+   * Regression guard: an ordinary table of 20-byte entries counts each entry once, so nine thousand
+   * of them stay within a limit of ten thousand objects.
+   */
+  @Test
+  void anOrdinaryClassicTableCountsEachEntryOnce() throws IOException {
+    Path file = tempDir.resolve("ordinary.pdf");
+    RawPdf pdf = onePage();
+    Files.write(file, pdf.withXrefTable(1, 9_000));
+
+    DocumentFormatResult result = fewObjects.run(DocumentFormatSource.ofFile(file, "ordinary.pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+  }
+
+  /**
    * Regression guard: PDFBox skips form feeds, NUL bytes and comment lines in front of an entry, so
    * they must not end the count of a table's lines while PDFBox still reads the entries behind
    * them.
