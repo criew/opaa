@@ -22,6 +22,18 @@ class PdfLoadingScanTest {
     }
   }
 
+  /**
+   * Regression guard: PDFBox skips all six whitespace bytes and {@code %} comments before an entry,
+   * so a line opening with a form feed or a NUL, or one after a comment line, is still an entry.
+   */
+  @Test
+  void linesPdfBoxReadsAfterSkippedWhitespaceAndCommentsAreCounted() throws IOException {
+    String table = "xref\n0 4\n\f9 0 n\n\u00009 0 n\n% Kommentar\n9 0 n\n\r\n 9 0 n\ntrailer\n";
+    try (RandomAccessReadBuffer source = buffer(table)) {
+      assertThat(PdfLoading.classicTableLines(source)).isEqualTo(5);
+    }
+  }
+
   @Test
   void objectMarkersFollowingWhitespaceAreCountedAndThePositionIsKept() throws IOException {
     try (RandomAccessReadBuffer source =

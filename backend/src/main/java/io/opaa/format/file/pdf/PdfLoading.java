@@ -47,6 +47,13 @@ final class PdfLoading {
 
   private static final int SCAN_BUFFER_BYTES = 64 * 1024;
 
+  private static final int CLASSIC_ENTRY_BYTES = 20;
+
+  private static final int SCAN_KEYWORD = 0;
+  private static final int SCAN_SPACE = 1;
+  private static final int SCAN_COMMENT = 2;
+  private static final int SCAN_LINE = 3;
+
   private static final byte[] OBJ = {'o', 'b', 'j'};
 
   private PdfLoading() {}
@@ -122,12 +129,19 @@ final class PdfLoading {
       return stream;
     }
 
-    /** A classic table's lines are counted before PDFBox registers an entry for each. */
+    /**
+     * A classic table's lines are counted before PDFBox registers an entry for each; afterwards the
+     * bytes it read, at 20 per entry, are charged where they exceed that count.
+     */
     @Override
     protected boolean parseXrefTable(long startByteOffset) throws IOException {
       budget.requireTime();
-      budget.chargeObjects(classicTableLines(source));
-      return super.parseXrefTable(startByteOffset);
+      long start = source.getPosition();
+      long lines = classicTableLines(source);
+      budget.chargeObjects(lines);
+      boolean parsed = super.parseXrefTable(startByteOffset);
+      budget.chargeObjects((source.getPosition() - start) / CLASSIC_ENTRY_BYTES - lines);
+      return parsed;
     }
 
     @Override
@@ -180,29 +194,34 @@ final class PdfLoading {
 
   /**
    * The lines of the classic cross-reference table at the position of {@code source} that open with
-   * a digit - entries and subsection headers - up to the first other line after {@code xref}, read
-   * without registering anything; the position is restored.
+   * a digit - entries and subsection headers - read without registering anything; the position is
+   * restored. Between lines it skips what PDFBox's {@code skipSpaces} skips, the six whitespace
+   * bytes and {@code %} comments; any other byte than a digit ends the table.
    */
   static long classicTableLines(RandomAccessRead source) throws IOException {
     long start = source.getPosition();
     try {
       long lines = 0;
-      boolean lineStart = true;
-      boolean firstLine = true;
+      int state = SCAN_KEYWORD;
+      int keywordLeft = "xref".length();
       byte[] buffer = new byte[SCAN_BUFFER_BYTES];
       for (int read; (read = source.read(buffer)) > 0; ) {
         for (int i = 0; i < read; i++) {
           byte b = buffer[i];
-          if (b == '\n' || b == '\r') {
-            lineStart = true;
-          } else if (lineStart && b != ' ' && b != '\t') {
-            lineStart = false;
-            if (b >= '0' && b <= '9') {
-              lines++;
-            } else if (!firstLine) {
-              return lines;
+          boolean endOfLine = b == '\n' || b == '\r';
+          switch (state) {
+            case SCAN_KEYWORD -> state = --keywordLeft == 0 ? SCAN_SPACE : SCAN_KEYWORD;
+            case SCAN_COMMENT, SCAN_LINE -> state = endOfLine ? SCAN_SPACE : state;
+            default -> {
+              if (b == '%') {
+                state = SCAN_COMMENT;
+              } else if (b >= '0' && b <= '9') {
+                lines++;
+                state = SCAN_LINE;
+              } else if (!isPdfWhitespace(b)) {
+                return lines;
+              }
             }
-            firstLine = false;
           }
         }
       }
@@ -210,6 +229,10 @@ final class PdfLoading {
     } finally {
       source.seek(start);
     }
+  }
+
+  private static boolean isPdfWhitespace(byte b) {
+    return b == 0 || b == 9 || b == 10 || b == 12 || b == 13 || b == 32;
   }
 
   /**
@@ -226,7 +249,7 @@ final class PdfLoading {
       for (int read; (read = source.read(buffer)) > 0; ) {
         for (int i = 0; i < read; i++) {
           byte b = buffer[i];
-          if (b == 0 || b == 9 || b == 10 || b == 12 || b == 13 || b == 32) {
+          if (isPdfWhitespace(b)) {
             matched = 0;
           } else if (matched >= 0 && matched < 3 && b == OBJ[matched]) {
             matched++;

@@ -21,6 +21,8 @@ import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * A few hundred bytes of PDF must not cost memory or time out of proportion: a page tree is read by
@@ -276,6 +278,23 @@ class PdfAmplificationTest {
     Files.write(file, pdf.withXrefTable(1, 20_000, "9 0 n\n"));
 
     assertThatThrownBy(() -> fewObjects.run(DocumentFormatSource.ofFile(file, "short-lines.pdf")))
+        .isInstanceOf(ParserLimitExceededException.class)
+        .hasMessageContaining("10000 objects");
+  }
+
+  /**
+   * Regression guard: PDFBox skips form feeds, NUL bytes and comment lines in front of an entry, so
+   * they must not end the count of a table's lines while PDFBox still reads the entries behind
+   * them.
+   */
+  @ParameterizedTest
+  @ValueSource(strings = {"\f9 0 n\n", "\u00009 0 n\n", "% x\n9 0 n\n"})
+  void entriesBehindSkippedBytesCountAgainstTheObjectLimit(String line) throws IOException {
+    Path file = tempDir.resolve("skipped.pdf");
+    RawPdf pdf = onePage();
+    Files.write(file, pdf.withXrefTable(1, 20_000, line));
+
+    assertThatThrownBy(() -> fewObjects.run(DocumentFormatSource.ofFile(file, "skipped.pdf")))
         .isInstanceOf(ParserLimitExceededException.class)
         .hasMessageContaining("10000 objects");
   }
