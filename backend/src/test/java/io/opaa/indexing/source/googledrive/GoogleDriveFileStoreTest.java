@@ -374,6 +374,7 @@ class GoogleDriveFileStoreTest {
   void aDownloadRedirectedToAnotherHostIsRefusedAndHoldsNoCursor() throws Exception {
     try (FakeDriveServer foreign = new FakeDriveServer()) {
       harness.fullSync(store());
+      String stored = harness.stored(path("bericht")).orElseThrow().getLastModifiedRemote();
       FakeDriveServer.Item bericht = server.get("bericht");
       bericht.content = "Neu.".getBytes();
       bericht.modifiedTime = Instant.now();
@@ -386,6 +387,9 @@ class GoogleDriveFileStoreTest {
       assertThat(run.eventsOf(IndexingEventCategory.REJECTED))
           .extracting(IndexingRunEvent::getReference)
           .contains(path("bericht"));
+      assertThat(harness.stored(path("bericht")).orElseThrow().getLastModifiedRemote())
+          .as("the stored version stays")
+          .isEqualTo(stored);
       assertThat(foreign.requests()).as("no request, no token reaches the other host").isEmpty();
       assertThat(harness.state().changeCursors())
           .as("a refused redirect is no transient failure")
@@ -394,12 +398,18 @@ class GoogleDriveFileStoreTest {
   }
 
   /**
-   * ADR-0040, Entscheidung 3: on a full sync a foreign redirect costs the one file, not the run.
+   * ADR-0040, Entscheidung 3: on a full sync a foreign redirect costs the new version of the one
+   * file, not its stored version and not the run.
    */
   @Test
   void aDownloadRedirectedToAnotherHostOnAFullSyncIsRejectedAndTheRunGoesOn() {
     try (FakeDriveServer foreign = new FakeDriveServer()) {
-      server.get("bericht").redirectTo =
+      harness.fullSync(store());
+      String stored = harness.stored(path("bericht")).orElseThrow().getLastModifiedRemote();
+      FakeDriveServer.Item bericht = server.get("bericht");
+      bericht.content = "Neu.".getBytes();
+      bericht.modifiedTime = Instant.now();
+      bericht.redirectTo =
           "http://localhost:" + foreign.base().getPort() + "/drive/v3/files/x?alt=media";
 
       FileSyncHarness.Run run = harness.fullSync(store());
@@ -409,8 +419,41 @@ class GoogleDriveFileStoreTest {
       assertThat(run.eventsOf(IndexingEventCategory.REJECTED))
           .extracting(IndexingRunEvent::getReference)
           .containsExactly(path("bericht"));
-      assertThat(run.ingested()).contains(path("notiz"));
+      assertThat(harness.stored(path("bericht")).orElseThrow().getLastModifiedRemote())
+          .as("the stored version stays")
+          .isEqualTo(stored);
+      assertThat(harness.stored(path("notiz"))).isPresent();
       assertThat(foreign.requests()).as("no request, no token reaches the other host").isEmpty();
+    }
+  }
+
+  /**
+   * ADR-0040, Entscheidung 3: a lookup in a change run that Drive redirects to another host is no
+   * removal finding - neither for a parent folder nor for a file reported removed; the stream is
+   * read again.
+   */
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(booleans = {true, false})
+  void aLookupRedirectedToAnotherHostInAChangeRunRemovesNothing(boolean parentFolder) {
+    try (FakeDriveServer foreign = new FakeDriveServer()) {
+      harness.fullSync(store());
+      String elsewhere = "http://localhost:" + foreign.base().getPort() + "/drive/v3/files/x";
+      if (parentFolder) {
+        server.get("bericht").modifiedTime = Instant.now();
+        server.get("prot").metadataRedirectTo = elsewhere;
+        server.changed("bericht", "drive0");
+      } else {
+        server.get("bericht").metadataRedirectTo = elsewhere;
+        server.removed("bericht", "drive0");
+      }
+      var before = harness.state().changeCursors();
+
+      FileSyncHarness.Run run = harness.changeRun(store());
+
+      assertThat(run.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
+      assertThat(harness.stored(path("bericht"))).isPresent();
+      assertThat(foreign.requests()).as("no request, no token reaches the other host").isEmpty();
+      assertThat(harness.state().changeCursors()).isEqualTo(before);
     }
   }
 
