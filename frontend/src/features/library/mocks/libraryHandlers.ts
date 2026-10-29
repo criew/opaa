@@ -557,7 +557,8 @@ export const libraryHandlers = [
           message: `Unter dieser Adresse antwortet Confluence ${label(detected)}, nicht ${label(requestedEdition)}. Die Zugangsdaten müssen zur erkannten Edition passen.`,
         })
       }
-      if (!body.sourceCredentials) {
+      // with a libraryId and no new secret the stored credentials are probed, like the backend does
+      if (!body.sourceCredentials && !body.libraryId) {
         return HttpResponse.json({
           reachable: true,
           details: { edition: detected },
@@ -568,7 +569,7 @@ export const libraryHandlers = [
               : 'Confluence Data Center erkannt. Geben Sie das Personal Access Token des Dienstkontos ein. Danach werden die Zugangsdaten geprüft und die lesbaren Spaces ermittelt.',
         })
       }
-      if (detected === 'CLOUD' && !body.sourceCredentials.includes(':')) {
+      if (detected === 'CLOUD' && body.sourceCredentials && !body.sourceCredentials.includes(':')) {
         return HttpResponse.json({
           reachable: false,
           details: { edition: detected },
