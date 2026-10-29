@@ -59,6 +59,15 @@ public interface SourceConnector {
   }
 
   /**
+   * Rejects the scopes a profile names itself ({@code profileScopes}, never {@code null}) where its
+   * connector defaults {@code profileDefaults} need others, before the profile is stored; by
+   * default every value passes.
+   *
+   * @throws io.opaa.common.ValidationException with a German message naming the missing scopes
+   */
+  default void checkProfileScopes(String profileScopes, ConnectorData profileDefaults) {}
+
+  /**
    * The address {@link #validate} stores for {@code requested}, {@code null} included - what the
    * core compares against the stored origin before it keeps stored credentials. A connector with a
    * fixed target returns it here; by default the request is taken as sent.

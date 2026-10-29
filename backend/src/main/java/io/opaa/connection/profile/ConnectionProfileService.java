@@ -709,10 +709,15 @@ public class ConnectionProfileService {
     SourceConnectorDescriptor descriptor = connector.descriptor();
     ConnectionProfileValues validated =
         validate(descriptor.profileDeclaration(), descriptor.displayName(), values, existingId);
-    return validated.connectorSettings() == null
-        ? validated
-        : validated.withConnectorSettings(
-            connector.readProfileDefaults(validated.connectorSettings()));
+    ConnectionProfileValues checked =
+        validated.connectorSettings() == null
+            ? validated
+            : validated.withConnectorSettings(
+                connector.readProfileDefaults(validated.connectorSettings()));
+    if (checked.scopes() != null) {
+      connector.checkProfileScopes(checked.scopes(), checked.connectorSettings());
+    }
+    return checked;
   }
 
   /**

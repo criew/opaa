@@ -1,6 +1,7 @@
 package io.opaa.indexing.source.dropbox;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -495,6 +496,100 @@ class DropboxSourceConnectorTest {
     assertThat(other).isNotEqualTo(before);
     connector.onSourceChanged(library, false, Set.of("dropboxTeamFolders"));
     verify(syncState).deleteByLibraryId(library.getId());
+  }
+
+  @Test
+  void aLibraryDoesNotSwitchBetweenMemberAndTeamApp() {
+    SourceSettings member = request(null, folders("/Akten"));
+    SourceSettings team = request(null, teamFolders(Map.of("id", "100", "name", "Bauamt")));
+
+    assertThatThrownBy(
+            () ->
+                connector.validateChange(
+                    member, request(null, teamApp(Map.of("folders", List.of("/Akten")))), false))
+        .as("folder paths under a profile that became a team app")
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Team-App");
+    assertThatThrownBy(
+            () ->
+                connector.validateChange(
+                    team,
+                    request(
+                        null,
+                        ConnectorData.of(Map.of("teamFolders", List.of(Map.of("id", "100"))))),
+                    false))
+        .as("team folders under a profile that is no team app any more")
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Team-App");
+    assertThat(
+            connector
+                .validateChange(
+                    team,
+                    request(null, teamFolders(Map.of("id", "200", "name", "Kämmerei"))),
+                    false)
+                .connectorSettings()
+                .get("teamFolders"))
+        .asString()
+        .contains("200");
+  }
+
+  @Test
+  void ownScopesOfATeamAppHoldEveryTeamScope() {
+    ConnectorData team = ConnectorData.of(Map.of("teamApp", true));
+
+    assertThatThrownBy(() -> connector.checkProfileScopes(DropboxSourceConnector.SCOPES, team))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("team_data.member")
+        .hasMessageContaining("Scopes");
+    assertThatCode(
+            () -> connector.checkProfileScopes(DropboxSourceConnector.TEAM_SCOPES + " x.y", team))
+        .doesNotThrowAnyException();
+    assertThatCode(
+            () ->
+                connector.checkProfileScopes(
+                    "files.metadata.read", ConnectorData.of(Map.of("teamApp", false))))
+        .as("a member app's own scopes stay the operator's choice")
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void aMissingScopeIsNamedAsDropboxNamesIt() {
+    server.withTeamApp();
+    server.teamFolder("100", "Bauamt");
+    server.missScope("team_data.member");
+
+    SourceConnectionTestResult result =
+        connector.testConnection(connected(teamFolders(Map.of("id", "100", "name", "B"))), null);
+
+    assertThat(result.message()).contains("team_data.member").doesNotContain("files.content.read");
+  }
+
+  @Test
+  void aTeamListingWithoutCursorEndsAsAFindingNotAnError() {
+    server.withTeamApp();
+    server.pageSizeAtMost(1);
+    server.teamFolder("100", "Bauamt");
+    server.teamFolder("200", "Kämmerei");
+    server.dropNamespaceCursor();
+
+    SourceListing listing =
+        connector.browse(new SourceBrowser.Query(connected(teamApp(Map.of())), null));
+
+    assertThat(listing.complete()).isFalse();
+    assertThat(listing.message()).contains("Fortsetzungspunkt");
+  }
+
+  @Test
+  void onlyTheRefusalOfAMemberTokenNamesTheTeamConsent() {
+    server.withTeamApp();
+    server.teamFolder("100", "Bauamt");
+    server.refuseTeamRoutes();
+
+    SourceConnectionTestResult result =
+        connector.testConnection(connected(teamFolders(Map.of("id", "100", "name", "B"))), null);
+
+    assertThat(result.reachable()).isFalse();
+    assertThat(result.message()).doesNotContain("Team-Administration").contains("ungültig");
   }
 
   private static ConnectorData teamApp(Map<String, Object> settings) {

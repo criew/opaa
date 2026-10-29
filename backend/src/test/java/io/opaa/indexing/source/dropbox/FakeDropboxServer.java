@@ -97,6 +97,9 @@ final class FakeDropboxServer implements AutoCloseable {
   private volatile boolean team;
   private volatile boolean teamApp;
   private volatile boolean scopeMissing;
+  private volatile String missingScope = "files.metadata.read";
+  private volatile boolean namespaceCursorDropped;
+  private volatile boolean teamRoutesRefused;
   private volatile int maxPageSize = Integer.MAX_VALUE;
 
   FakeDropboxServer() {
@@ -286,6 +289,22 @@ final class FakeDropboxServer implements AutoCloseable {
     scopeMissing = true;
   }
 
+  /** {@link #missScope()} naming {@code scope} as the {@code required_scope}. */
+  void missScope(String scope) {
+    missingScope = scope;
+    scopeMissing = true;
+  }
+
+  /** {@code team/namespaces/list} says it has more but names no cursor. */
+  void dropNamespaceCursor() {
+    namespaceCursorDropped = true;
+  }
+
+  /** Every team route answers {@code 400} with a JSON error unrelated to the token's kind. */
+  void refuseTeamRoutes() {
+    teamRoutesRefused = true;
+  }
+
   /** {@code token} is taken besides the usual one. */
   void alsoAccept(String token) {
     alsoAcceptedToken = token;
@@ -364,7 +383,7 @@ final class FakeDropboxServer implements AutoCloseable {
                 "error_summary",
                 "missing_scope/...",
                 "error",
-                Map.of(".tag", "missing_scope", "required_scope", "files.metadata.read")));
+                Map.of(".tag", "missing_scope", "required_scope", missingScope)));
         return;
       }
       JsonNode args =
@@ -445,6 +464,10 @@ final class FakeDropboxServer implements AutoCloseable {
               + " team, but the OAuth 2 access token you provided is for a single account.");
       return;
     }
+    if (teamRoutesRefused) {
+      json(exchange, 400, Map.of("error_summary", "invalid_argument/..."));
+      return;
+    }
     switch (route) {
       case "team/token/get_authenticated_admin" ->
           json(
@@ -487,10 +510,13 @@ final class FakeDropboxServer implements AutoCloseable {
         Base64.getUrlEncoder()
             .withoutPadding()
             .encodeToString(("n|" + end + "|" + size).getBytes(StandardCharsets.UTF_8));
-    json(
-        exchange,
-        200,
-        Map.of("namespaces", entries, "cursor", cursor, "has_more", end < all.size()));
+    Map<String, Object> page = new LinkedHashMap<>();
+    page.put("namespaces", entries);
+    if (!namespaceCursorDropped) {
+      page.put("cursor", cursor);
+    }
+    page.put("has_more", end < all.size());
+    json(exchange, 200, page);
   }
 
   private void account(HttpExchange exchange) throws IOException {

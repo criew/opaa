@@ -18,7 +18,11 @@ import {
 } from '../../utils/sharePointSource'
 import type { ConfluenceSpaceRef } from '../../utils/confluenceSource'
 import { ONEDRIVE_API, oneDriveFolderLabel, type OneDriveFolder } from '../../utils/oneDriveSource'
-import { dropboxTeamFolderLabel, type DropboxTeamFolder } from '../../utils/dropboxSource'
+import {
+  MAX_DROPBOX_FOLDERS,
+  dropboxTeamFolderLabel,
+  type DropboxTeamFolder,
+} from '../../utils/dropboxSource'
 import type { ConnectionFields } from '../sources/sourceConnection'
 import type { BrowseResult, Crumb, SelectionItem, SelectionSource } from './selection'
 
@@ -133,7 +137,7 @@ export function dropboxTeamFolderSource(
     rootLabel: 'Team-Ordner',
     noun: ['Team-Ordner', 'Team-Ordner'],
     nested: false,
-    max: 50,
+    max: MAX_DROPBOX_FOLDERS,
     serverSearch: () => false,
     searchLabel: () => 'Team-Ordner suchen',
     list: async () => {

@@ -149,6 +149,28 @@ public class DropboxSourceConnector implements SourceConnector, SourceBrowser, O
     return DropboxSettings.teamAppOf(profileDefaults) ? TEAM_SCOPES : null;
   }
 
+  /**
+   * Own scopes of a team app hold every team scope: without them Dropbox takes no consent as a team
+   * app's, and no reconnect helps.
+   */
+  @Override
+  public void checkProfileScopes(String profileScopes, ConnectorData profileDefaults) {
+    if (!DropboxSettings.teamAppOf(profileDefaults)) {
+      return;
+    }
+    Set<String> named = Set.of(profileScopes.trim().split("\\s+"));
+    List<String> missing =
+        java.util.Arrays.stream(TEAM_SCOPES.split(" "))
+            .filter(scope -> !named.contains(scope))
+            .toList();
+    if (!missing.isEmpty()) {
+      throw new ValidationException(
+          "Eine Team-App braucht die Scopes "
+              + String.join(", ", missing)
+              + "; „Scopes“ leer lassen oder ergänzen");
+    }
+  }
+
   @Override
   public ConnectorData readSettings(ConnectorData requested) {
     return DropboxSettings.read(requested).toData();

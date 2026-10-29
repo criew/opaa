@@ -3,8 +3,9 @@
 ## 1. Was der Konnektor ist
 
 Der Konnektor liest **Ordner eines Dropbox-Kontos**, auf Wunsch auch den **Team-Bereich** eines
-Dropbox-Teams, oder über eine **Team-App** die **Team-Ordner** eines Teams, über die **Dropbox API v2** (`api.dropboxapi.com` für Auflistungen,
-`content.dropboxapi.com` für Downloads und Exporte) und hält sie über das Änderungsprotokoll von
+Dropbox-Teams, mit einer **Team-App** die **Team-Ordner** eines Teams. Er nutzt die **Dropbox API
+v2** (`api.dropboxapi.com` für Auflistungen, `content.dropboxapi.com` für Downloads und Exporte)
+und hält die Ordner über das Änderungsprotokoll von
 Dropbox aktuell. Dropbox ist eine der [Dateiablagen](README.md#2-dateiablagen); was alle Dateiablagen
 teilen, steht dort.
 
@@ -68,7 +69,8 @@ eine **Team-Administration** von Dropbox Business für das ganze Team.
    Team-Administrationen zu.
 2. **Zugang** wie oben anlegen und unter „Vorgaben" **„Team-App (Zustimmung einer
    Team-Administration)"** einschalten; „Scopes" bleibt leer. OPAA fragt bei der Zustimmung dann die
-   drei Berechtigungen der Mitglieds-App und die drei Team-Berechtigungen an.
+   drei Berechtigungen der Mitglieds-App und die drei Team-Berechtigungen an. Wer „Scopes" doch
+   füllt, muss alle sechs nennen; fehlt eine, nimmt OPAA den Zugang nicht an.
 3. Bei „Quelle verbinden" stimmt ein Konto mit Team-Administration zu. OPAA nennt danach dieses Konto
    („Verbunden als …").
 
@@ -175,6 +177,10 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
   Markdown-Export von Paper-Dokumenten, der Team-Bereich über die Wurzel des Teams, die Team-App
   samt Lesen als Team-Administration in einem Team-Ordner und die Antwort von Dropbox, wenn das Token
   einer Mitglieds-App an eine Team-Schnittstelle geht.
+- **Offen beim neueren Team-Bereich:** In Teams mit dem neueren Modell des Team-Bereichs ist nicht
+  geklärt, ob `team/namespaces/list` die Wurzel des Team-Bereichs als Team-Ordner nennt. Nennt
+  Dropbox sie nicht, erscheint sie in der Auswahl nicht und lässt sich über eine Team-App nicht
+  lesen; das ist an keinem echten Konto bestätigt.
 
 ## 9. Protokoll und Fehlerbilder
 
@@ -182,12 +188,14 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 |---|---|---|
 | „Bitte zuerst die Quelle verbinden." | noch keine Zustimmung | „Quelle verbinden" |
 | „Dropbox hat das Zugriffstoken abgewiesen." | Zustimmung widerrufen oder App gelöscht | die Quelle neu verbinden |
-| „Der Dropbox-App fehlt eine Berechtigung …" | eine der drei Berechtigungen fehlt | ergänzen, dann neu verbinden |
+| „Der Dropbox-App fehlt die Berechtigung …" | der App fehlt die genannte Berechtigung, bei einer Team-App auch eine der Team-Berechtigungen; nennt Dropbox keine, heißt es „fehlt eine Berechtigung, die der Zugang anfragt" | in der App Console ergänzen, dann neu verbinden |
+| „Eine Team-App braucht die Scopes …; „Scopes" leer lassen oder ergänzen" | beim Speichern eines Zugangs mit Team-App: eigene Scopes ohne alle Team-Berechtigungen | „Scopes" leeren oder die genannten ergänzen |
 | „Der Ordner „…" ist für das Konto nicht sichtbar." | Pfad falsch, Ordner gelöscht oder nicht geteilt; der Bestand bleibt | Ordner prüfen |
 | „Das verbundene Dropbox-Konto gehört zu keinem Team mit Team-Bereich." | Team-Bereich gewählt, das Konto hat keinen | Schalter aus oder Teamkonto verbinden |
 | „Dropbox nimmt die Zustimmung nicht als Team-App an; die Quelle muss von einer Team-Administration neu verbunden werden." | Zugang mit Team-App, zugestimmt hat ein Konto ohne Team-Administration oder die App trägt keine Team-Berechtigungen | Berechtigungen prüfen, mit einer Team-Administration neu verbinden |
 | „„…" ist kein Team-Ordner des Teams. OPAA liest nur Team-Ordner." | der gewählte Team-Ordner ist gelöscht, archiviert oder kein Team-Ordner; der Bestand bleibt | Auswahl prüfen |
 | „„…" ist nicht auffindbar. OPAA liest nur Team-Ordner." | das Team hat mehr Namespaces, als ein Lauf listet, und der Team-Ordner kam darin nicht vor; der Bestand bleibt | Team-Ordner aufräumen |
+| „Dropbox hat die Liste der Team-Ordner ohne Fortsetzungspunkt abgebrochen." | Dropbox meldete weitere Team-Ordner, nannte aber keinen Fortsetzungspunkt; Auswahl oder Lauf enden ohne Ergebnis | später erneut versuchen |
 | „… von … Team-Ordnern … nicht lesbar." | Ergebnis des Verbindungstests; die einzelnen stehen darunter | die genannten Team-Ordner prüfen |
 | „… Dateien übersprungen, die Dropbox weder herausgibt noch exportiert" | Sammelhinweis je Lauf | nichts |
 | „Dropbox drosselt die Anfragen weiterhin" | nach allen Wiederholungen; der Strom wird erneut gelesen | Zeitplan entzerren |

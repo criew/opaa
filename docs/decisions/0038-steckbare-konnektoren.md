@@ -150,6 +150,8 @@ Abgeschlossen: zuerst die interne Umstellung bei unveränderter API (#1986), dan
   Geheimnis.
 - **Scopes aus einer Vorgabe:** Hängt, was die Anmeldung anfragt, an einer Vorgabe, nennt der
   Konnektor die Scopes über `SourceConnector#signInScopes`; eigene Scopes des Profils gehen vor.
+  Braucht eine Vorgabe bestimmte Scopes, weist `SourceConnector#checkProfileScopes` eigene Scopes
+  ohne sie schon beim Speichern des Profils ab, statt jeden späteren Lauf scheitern zu lassen.
   Ändert eine Vorgabe die angefragten Scopes, ist das eine Registrierungsänderung, die Geheimnisse
   der Bibliotheken verwirft (ADR-0048). Erster Nutzer ist Dropbox: Die Vorgabe „Team-App“ fragt die
   Zustimmung einer Team-Administration mit Team-Scopes an; eine Bibliothek darunter liest nur

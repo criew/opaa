@@ -50,6 +50,12 @@ final class DropboxApi {
   private static final long MAX_JSON_BYTES = 16L * 1024 * 1024;
   private static final long MAX_ERROR_BYTES = 64L * 1024;
 
+  /** The summary of a plain-text {@code 400} saying the token is of the other kind. */
+  static final String TOKEN_KIND_MISMATCH = "token_kind_mismatch";
+
+  private static final java.util.regex.Pattern SCOPE_NAME =
+      java.util.regex.Pattern.compile("[a-z_]+(\\.[a-z_]+)+");
+
   private final URI apiBase;
   private final URI contentBase;
   private final Supplier<String> token;
@@ -290,6 +296,17 @@ final class DropboxApi {
     }
   }
 
+  /** The finding of a missing scope: the one Dropbox names, else a hint to the app's scopes. */
+  private static String missingScopeMessage(String summary) {
+    String required = summary.substring("missing_scope".length()).replaceFirst("^/", "");
+    return SCOPE_NAME.matcher(required).matches()
+        ? "Der Dropbox-App fehlt die Berechtigung "
+            + required
+            + "; die Quelle muss danach neu verbunden werden."
+        : "Der Dropbox-App fehlt eine Berechtigung, die der Zugang anfragt; die Quelle muss danach"
+            + " neu verbunden werden.";
+  }
+
   private static DropboxApiException failure(int status, String summary) {
     return switch (status) {
       case 401 ->
@@ -298,9 +315,7 @@ final class DropboxApi {
                   DropboxApiException.Kind.SCOPE_MISSING,
                   status,
                   summary,
-                  "Der Dropbox-App fehlt eine Berechtigung (files.metadata.read,"
-                      + " files.content.read, account_info.read); die Quelle muss danach neu"
-                      + " verbunden werden.")
+                  missingScopeMessage(summary))
               : new DropboxApiException(
                   DropboxApiException.Kind.UNAUTHORIZED,
                   status,
@@ -358,25 +373,46 @@ final class DropboxApi {
   }
 
   /**
-   * The {@code error_summary} of a Dropbox error body without its trailing path-free counter, or
-   * the {@code .tag} of {@code error}; {@code ""} for none. A plain-text body counts as none.
+   * The {@code error_summary} of a Dropbox error body, or the {@code .tag} of {@code error}; {@code
+   * ""} for none. A missing scope reads {@code missing_scope/<required scope>} where Dropbox names
+   * it; a plain-text body is {@link #TOKEN_KIND_MISMATCH} where it says the token is of the other
+   * kind (a member's on a team route or the reverse), none otherwise.
    */
   private static String errorSummary(HttpResponse<InputStream> response) {
+    byte[] bytes;
     try (InputStream body = response.body()) {
-      JsonNode root = JSON.readTree(BoundedStreams.readFully(body, MAX_ERROR_BYTES));
+      bytes = BoundedStreams.readFully(body, MAX_ERROR_BYTES);
+    } catch (IOException e) {
+      return "";
+    }
+    try {
+      JsonNode root = JSON.readTree(bytes);
       if (root == null || !root.isObject()) {
         return "";
+      }
+      JsonNode error = root.get("error");
+      JsonNode required = error == null ? null : error.get("required_scope");
+      if (error != null
+          && "missing_scope".equals(text(error.get(".tag")))
+          && required != null
+          && required.isString()
+          && SCOPE_NAME.matcher(required.asString()).matches()) {
+        return "missing_scope/" + required.asString();
       }
       JsonNode summary = root.get("error_summary");
       if (summary != null && summary.isString()) {
         return summary.asString();
       }
-      JsonNode error = root.get("error");
       JsonNode tag = error == null ? null : error.get(".tag");
       return tag != null && tag.isString() ? tag.asString() : "";
-    } catch (IOException | JacksonException e) {
-      return "";
+    } catch (JacksonException e) {
+      String text = new String(bytes, StandardCharsets.UTF_8);
+      return text.contains("access token you provided is for") ? TOKEN_KIND_MISMATCH : "";
     }
+  }
+
+  private static String text(JsonNode node) {
+    return node != null && node.isString() ? node.asString() : null;
   }
 
   /**

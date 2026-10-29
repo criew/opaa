@@ -88,19 +88,27 @@ final class DropboxTeam {
         if (page >= maxPages) {
           return new TeamFolders(folders, false);
         }
-        answer =
-            api.rpc(
-                "team/namespaces/list/continue",
-                Map.of("cursor", DropboxFileStore.text(answer, "cursor")));
+        String cursor = DropboxFileStore.text(answer, "cursor");
+        if (cursor == null || cursor.isBlank()) {
+          throw new DropboxApiException(
+              DropboxApiException.Kind.TRANSIENT,
+              200,
+              null,
+              "Dropbox hat die Liste der Team-Ordner ohne Fortsetzungspunkt abgebrochen.");
+        }
+        answer = api.rpc("team/namespaces/list/continue", Map.of("cursor", cursor));
       }
     } catch (DropboxApiException e) {
       throw teamFailure(e);
     }
   }
 
-  /** {@code e} as a team route's failure: a refused request means a member's token. */
+  /**
+   * {@code e} as a team route's failure: only Dropbox's plain-text refusal of a token of the other
+   * kind means a member's token; any other refused request stays as it is.
+   */
   private static DropboxApiException teamFailure(DropboxApiException e) {
-    return e.kind() == DropboxApiException.Kind.BAD_REQUEST
+    return e.kind() == DropboxApiException.Kind.BAD_REQUEST && e.is(DropboxApi.TOKEN_KIND_MISMATCH)
         ? new DropboxApiException(
             DropboxApiException.Kind.BAD_REQUEST, e.status(), e.summary(), NOT_A_TEAM_CONSENT)
         : e;
