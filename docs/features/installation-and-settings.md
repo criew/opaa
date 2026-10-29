@@ -165,6 +165,11 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
   mit Details). Ohne Schlüssel in der Anfrage nutzt er den im Schritt gespeicherten, nur für
   dieselbe Adresse; ein leerer Schlüssel sendet keinen. Je Instanz gelten 30 Abrufe in 10 Minuten,
   danach `429`. Ohne Liste bleibt die freie Eingabe der Modell-Kennung.
+- Die Prüfungen der vier Modellschritte teilen sich je Instanz 30 in 10 Minuten, danach `429` mit
+  dem Code `MODEL_CHECK_LIMIT`; die Antwortdatei über die API zählt jedes Modell vorab als eine
+  Prüfung, auch wenn sie danach abgelehnt wird. Der Schritt E-Mail-Versand hat je Instanz 30
+  Prüfungen (`MAIL_CHECK_LIMIT`) und 10 Testnachrichten (`MAIL_TEST_LIMIT`) in 10 Minuten. Die
+  Antwortdatei beim Start zählt bei keinem Budget.
 - Fehler kommen deutsch je Feld wie in der übrigen Verwaltung.
 - Nach dem Abschluss antwortet jede Operation `404`.
 

@@ -217,8 +217,8 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
   Schlüssel gilt nur für die gespeicherte Adresse. Meldet der Endpunkt mehr als 500 Modelle,
   zeigt die Auswahl die ersten 500 und sagt das. Je Instanz sind 30 Modellabrufe des Assistenten
   in 10 Minuten möglich, für alle Clients zusammen. Die Prüfungen der vier Modellschritte haben
-  ein eigenes, gemeinsames Budget; die Antwortdatei über die API zählt jedes Modell darin als eine
-  Prüfung.
+  ein eigenes, gemeinsames Budget; die Antwortdatei über die API zählt jedes Modell darin vorab als
+  eine Prüfung, auch wenn sie danach abgelehnt wird.
 - **Embedding-Modell.** Nach erfolgreicher Probeeinbettung zeigt der Schritt die ermittelte Zahl
   der Dimensionen; mit ihr legt der Abschluss die Vektorablage an. Wer Adresse oder Modell danach
   ändert, prüft erneut.
@@ -442,7 +442,7 @@ Fest im Code: je Netzadresse und Instanz 300 Aufrufe und 10 abgelehnte Tokens in
 Instanz 30 Modellabrufe des Assistenten in 10 Minuten, für alle Clients zusammen; höchstens 500
 Modelle je Abruf; je Instanz 30 Prüfungen der Modellschritte (Chat-, Embedding-, Rerank- und
 Transkriptionsmodell zusammen) in 10 Minuten, für alle Clients zusammen, wobei die Antwortdatei über
-die API jedes Modell als eine Prüfung zählt; im Schritt E-Mail-Versand je Instanz 30 Prüfungen und
+die API jedes Modell vorab als eine Prüfung zählt, auch wenn sie die Datei danach ablehnt; im Schritt E-Mail-Versand je Instanz 30 Prüfungen und
 10 Testnachrichten in 10 Minuten, für alle Clients zusammen; die Antwortdatei beim Start zählt bei
 keinem dieser Budgets; ohne Eintrag in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` nur die Ports 25,
 465, 587 und 2525.

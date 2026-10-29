@@ -160,6 +160,36 @@ class InstallationServiceCheckTest {
   }
 
   @Test
+  void anAnswerFileRefusedByTheMailBudgetGivesItsModelChecksBack() {
+    stepsSavedAsTheyAreAsked();
+    when(checks.check(any(), any(), any(), any()))
+        .thenReturn(new StepChecks.Outcome(false, "nicht erreichbar"));
+    for (int i = 0; i < InstallationService.MAX_MAIL_CHECKS; i++) {
+      service.check(InstallationStep.MAIL);
+    }
+    List<StepInput> answers =
+        java.util.stream.Stream.concat(
+                answersWithTwoModels().stream(),
+                java.util.stream.Stream.of(
+                    new StepInput.Mail(
+                        "smtp.stadt.example", 587, null, null, null, "opaa@stadt.example", null)))
+            .toList();
+
+    assertThatThrownBy(() -> service.applyAnswers(answers, CompletionSource.ANSWER_FILE_API))
+        .isInstanceOfSatisfying(
+            TooManyRequestsException.class,
+            e -> assertThat(e.getCode()).isEqualTo(InstallationService.MAIL_CHECK_LIMIT_CODE));
+
+    for (int i = 0; i < ModelCheckBudget.MAX_MODEL_CHECKS; i++) {
+      service.check(PROBED_MODEL_STEPS.get(i % PROBED_MODEL_STEPS.size()));
+    }
+    assertThatThrownBy(() -> service.check(InstallationStep.CHAT_MODEL))
+        .isInstanceOfSatisfying(
+            TooManyRequestsException.class,
+            e -> assertThat(e.getCode()).isEqualTo(ModelCheckBudget.LIMIT_CODE));
+  }
+
+  @Test
   void theAnswerFileAtStartUpIsNotCounted() {
     stepsSavedAsTheyAreAsked();
     when(checks.check(any(), any(), any(), any()))

@@ -284,7 +284,9 @@ public class InstallationService {
 
   /**
    * Saves, checks and completes every step of an answer file, all or nothing. Validation and checks
-   * run before any lock is taken; saving and completing run in one transaction.
+   * run before any lock is taken; saving and completing run in one transaction. Every model step of
+   * the answers counts against the budget of model checks up front, also when the answers are then
+   * refused as invalid or stop at a failed check.
    *
    * @throws ConflictException naming the step whose check failed; nothing is saved then
    * @throws TooManyRequestsException past the budget of model or mail checks; nothing is counted
