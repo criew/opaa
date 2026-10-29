@@ -132,7 +132,9 @@ mit). Ausgenommen sind nur Quellen- und Javadoc-JARs, die allein die IDE lädt
   14 Tage Wartefrist und kein Auto-Merge. Dieselben Werte gelten für Bibliotheken, die eine
   `version.ref` mit einem Plugin teilen (`spring-boot-dependencies` hebt Renovate zusammen mit
   dem Spring-Boot-Plugin an) oder auf dem Buildscript-Classpath liegen (die Jackson-BOMs im
-  `buildscript`-Block). Alle übrigen Bibliotheken bleiben bei drei Tagen und Auto-Merge; Gradle
+  `buildscript`-Block). Die Regel nennt Koordinaten, keine Katalog-Einträge: Mit
+  `com.fasterxml.jackson:jackson-bom` wartet deshalb auch der Projekt-Override `jackson2-bom`
+  14 Tage und mergt nicht automatisch. Alle übrigen Bibliotheken bleiben bei drei Tagen und Auto-Merge; Gradle
   lädt sie bei `dependencies` nur herunter, ohne ihren Code auszuführen. Frist und Auto-Merge
   stehen in zwei benachbarten Regeln in `renovate.json5`; `test_renovate_gradle_plugins.py`
   schlägt fehl, sobald eine solche Bibliothek in der zweiten Regel fehlt.

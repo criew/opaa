@@ -50,16 +50,43 @@ def coupled_libraries() -> set[str]:
         and lib["version"].get("ref") in plugin_refs
     }
     for build_file in BUILD_FILES:
-        text = build_file.read_text(encoding="utf-8")
-        buildscript = text.split("plugins {", 1)[0]
-        for alias in re.findall(r"classpath\((?:platform\()?libs\.([A-Za-z0-9.]+)", buildscript):
-            coupled.add(libraries[alias.replace(".", "-")]["module"])
+        for alias in buildscript_aliases(build_file.read_text(encoding="utf-8")):
+            coupled.add(libraries[alias]["module"])
     return coupled
+
+
+def buildscript_aliases(build_script: str) -> set[str]:
+    """Catalog library keys referenced anywhere before the plugins block, whatever the wrapper."""
+    buildscript = build_script.split("plugins {", 1)[0]
+    aliases = set()
+    for reference in re.findall(r"\blibs\.([A-Za-z0-9.]+)", buildscript):
+        reference = reference.removesuffix(".get")
+        if not reference.startswith(("versions.", "plugins.", "bundles.")):
+            aliases.add(reference.replace(".", "-"))
+    return aliases
 
 
 def test_coupled_libraries_exist() -> None:
     assert "org.springframework.boot:spring-boot-dependencies" in coupled_libraries()
     assert "tools.jackson:jackson-bom" in coupled_libraries()
+
+
+def test_every_buildscript_reference_counts_whatever_the_wrapper() -> None:
+    script = """buildscript {
+    dependencies {
+        classpath(platform(libs.a.bom))
+        classpath(enforcedPlatform(libs.b.bom))
+        classpath(libs.c)
+        classpath(libs.d.get())
+        classpath("x:y:${libs.versions.e.get()}")
+    }
+}
+
+plugins {
+    alias(libs.plugins.f)
+}
+"""
+    assert buildscript_aliases(script) == {"a-bom", "b-bom", "c", "d"}
 
 
 def test_every_coupled_library_gets_the_plugin_rule() -> None:
