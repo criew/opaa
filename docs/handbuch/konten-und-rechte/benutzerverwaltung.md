@@ -246,6 +246,19 @@ Rollen über seinen Rollen-Claim; dann ist der Eintrag deaktiviert und sagt das,
 gesetzter Wert bei der nächsten Anmeldung der Person überschrieben würde. Für beide Kontotypen gilt
 derselbe Schutz: Dem letzten anmeldefähigen Systemverwalter lässt sich die Rolle nicht entziehen.
 
+**Eine Rolle ändert nur, wer sich gerade angemeldet hat.** Wer einem Konto eine andere Systemrolle
+gibt — über „Rolle ändern …", im Dialog „Bearbeiten" oder schon beim Anlegen mit einer anderen Rolle
+als „Nutzer" —, bestätigt vorher seine Anmeldung, wenn sie länger zurückliegt
+([Erneute Anmeldung vor sensiblen Vorgängen](../betrieb/authentifizierung.md#erneute-anmeldung-vor-sensiblen-vorgängen)).
+Dasselbe gilt für alles, womit ein lokales Konto der Systemverwaltung oder der Revision in andere
+Hände kommen könnte: eine neue E-Mail-Adresse, „Rücksetz-Link per E-Mail", „Passwort erzeugen" und
+„An Identitätsanbieter übergeben". Bei einem Identitätsanbieter verlangen die Rollenzuordnung und
+alles, was bestimmt, wessen Anmeldung zählt — Issuer-URI, Client-ID, JWK-Set-URI, E-Mail-Claim und
+Gruppen-Claim —, dieselbe Bestätigung ([Authentifizierung](../betrieb/authentifizierung.md)). Eine
+offen gelassene oder entwendete Sitzung genügt so nicht, um Verwaltungsrechte weiterzugeben, ein
+solches Konto zu übernehmen oder Anmeldungen eines fremden Dienstes gelten zu lassen. Die übrigen
+Angaben eines Kontos und alle Handlungen an Konten mit der Rolle „Nutzer" gehen ohne Bestätigung.
+
 Systemverwalterkonten sind **persönliche** Konten, je Person eines — keine Sammelkonten. Das
 Notanker-Konto, das der Erststart anlegt, ist davon ausgenommen und kein Arbeitskonto; wofür es
 gedacht ist und welche Auflagen dafür gelten, steht im Kapitel [Authentifizierung](../betrieb/authentifizierung.md#erststart-und-systemverwalter-konto).

@@ -101,6 +101,15 @@ public class LibraryAccessService {
   }
 
   /**
+   * {@link #requireContentRead} for a stronger role: the formula alone must grant {@code required}
+   * on the library; the administration's {@link AssetRole#OWNER} does not count.
+   */
+  public AssetRole requireContentRole(
+      KnowledgeLibrary library, UUID userId, boolean systemAdmin, AssetRole required) {
+    return authorization.requireContentRole(library, userId, systemAdmin, required);
+  }
+
+  /**
    * Whether {@code userId} holds {@link AssetRole#OWNER} on {@code library} on a basis they did not
    * create for themselves - see {@link AssetAccessService#holdsIndependentOwnerRole}. Used by
    * {@code LibraryDiagnosticsLockService} for the one rule that must hold against the

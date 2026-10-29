@@ -437,8 +437,17 @@ der Schalter (#1537) sind profilunabhängig, damit die Oberfläche und die E2E-S
 
 ### Erneute Anmeldung vor sensiblen Vorgängen (gebaut, #2996)
 
-Ein Vorgang kann eine **frische Anmeldung** verlangen; als erster und vorerst einziger tut das der
-Download der Selbstauskunft (#2989). Das Backend hält dafür keinen Zustand: Der Nachweis steht im
+Ein Vorgang kann eine **frische Anmeldung** verlangen: der Download der Selbstauskunft (#2989) und
+jede Vergabe einer Systemrolle oder Übernahme eines Kontos mit Systemrolle (#3346) —
+`POST /api/v1/admin/users/{id}/role` per Annotation; das Anlegen eines lokalen Kontos mit anderer
+Rolle als `USER`, das Ändern seiner Rolle, und für Konten mit Systemrolle eine neue Adresse, der
+Rücksetzlink, das erzeugte Passwort und die Übergabe an einen Anbieter; das Anlegen eines Anbieters
+mit Rollenzuordnung und jede Änderung an Vertrauensanker oder Zuordnung eines Anbieters
+(`issuerUri`, `clientId`, `jwkSetUri`, `emailClaim`, `groupsClaim`, `rolesClaim`, `systemAdminRole`,
+`auditorRole`). Diese
+prüft der Dienst über `RecentLoginPolicy#requireRecentLogin()`, weil erst dort feststeht, ob sich
+etwas Rollenwirksames ändert. In der Oberfläche führt `useRecentLoginGate` (`shared/session/`) durch
+die Bestätigung und wiederholt den Vorgang danach. Das Backend hält dafür keinen Zustand: Der Nachweis steht im
 Token, als Anmeldezeitpunkt `auth_time` (OIDC Core). Ein Handler mit der Annotation
 `@RequiresRecentLogin` (Methode oder ganzer Controller, `io.opaa.auth`) läuft nur, wenn `auth_time`
 höchstens `opaa.auth.recent-login.max-age` zurückliegt (Vorgabe 5 Minuten,

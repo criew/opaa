@@ -6,6 +6,7 @@ import { server } from '@/test/server'
 import { mockOidcProviderImpacts, mockOidcProviders } from '../mocks/identityProviderFixtures'
 import { answerConfirm, renderWithProviders, waitForDialogClosed } from '@/test/test-utils'
 import { useAuthStore } from '@/shared/session/authStore'
+import { mockLocalAccount } from '@/shared/mocks/authFixtures'
 import { useOidcProviderStore } from '../stores/oidcProviderStore'
 import { DEFAULT_PROVIDER_HINT } from '../components/ProviderRowMenu'
 import OidcProviderManagementPage from './OidcProviderManagementPage'
@@ -259,6 +260,48 @@ describe('OidcProviderManagementPage', () => {
           ?.claimMapping,
       ).toMatchObject({ rolesClaim: 'realm_access.roles', systemAdminRole: 'opaa-admin' })
     })
+  }, 20000)
+
+  /** A role mapping hands out system roles: saving it waits for a recent sign-in, then goes through. */
+  it('confirms the sign-in before a role mapping is saved and then saves it', async () => {
+    signInAs('SYSTEM_ADMIN')
+    useAuthStore.setState({ sessionKind: 'local', token: 'old-token' })
+    let refusals = 0
+    server.use(
+      http.put('/api/v1/admin/oidc-providers/:id', () => {
+        if (refusals > 0) return undefined
+        refusals += 1
+        return HttpResponse.json(
+          {
+            error: 'Bitte bestätigen Sie Ihre Identität.',
+            status: 403,
+            code: 'RECENT_LOGIN_REQUIRED',
+          },
+          { status: 403 },
+        )
+      }),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
+    const dialog = await openEditDialog(user, 'Verzeichnisdienst')
+
+    await user.type(within(dialog).getByLabelText(/^Rollen-Claim/), 'realm_access.roles')
+    await user.type(within(dialog).getByLabelText(/SYSTEM_ADMIN/), 'opaa-admin')
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Rollen-Claim setzen' }))
+
+    const confirm = await screen.findByRole('dialog', { name: 'Anmeldung bestätigen' })
+    expect(within(confirm).getByText(/Rollen- und Gruppenzuordnung/)).toBeInTheDocument()
+    await user.type(within(confirm).getByLabelText('Ihr Passwort'), mockLocalAccount.password)
+    await user.click(within(confirm).getByRole('button', { name: 'Bestätigen' }))
+
+    await waitFor(() => {
+      expect(
+        useOidcProviderStore.getState().providers.find((p) => p.displayName === 'Verzeichnisdienst')
+          ?.claimMapping,
+      ).toMatchObject({ rolesClaim: 'realm_access.roles', systemAdminRole: 'opaa-admin' })
+    })
+    expect(refusals).toBe(1)
   }, 20000)
 
   /** ADR-0025: the confirmation is answered by its own button only - a second click on the

@@ -339,8 +339,8 @@ Suchergebnis allein nicht beantwortet: ob ein schwacher Filter am Filter liegt o
 Ermittlung. Die Zahlen werden bei jeder Abfrage gezählt, im Rechtekontext der fragenden Person.
 
 Für die Handauswertung liefert `GET /api/v1/libraries/{libraryId}/metadata/sample?size=100`
-(Verwaltungsrecht) eine Stichprobe in stabiler Reihenfolge: je Dokument die Titelzeile und jeden Wert
-mit Herkunft, Konfidenz und Modell-Kennung.
+(Verwaltungsrecht aus einer Freigabe) eine Stichprobe in stabiler Reihenfolge: je Dokument die
+Titelzeile und jeden Wert mit Herkunft, Konfidenz und Modell-Kennung.
 
 ## 6. Bestandslauf: den vorhandenen Bestand nachziehen
 
@@ -528,9 +528,12 @@ Wert ist dort als „(abgeleitet)" gekennzeichnet; ein leeres Feld fehlt.
 
 | Was | Wer |
 |---|---|
-| Metadaten eines Dokuments sehen, Pflege-Anker und Extraktionsgüte der Bibliothek sehen | VIEWER an der Bibliothek |
-| Modellgestützte Ermittlung und freie Schlagworte ein- oder ausschalten, Stichproben-Export | MANAGER an der Bibliothek |
+| Metadaten eines Dokuments sehen | VIEWER an der Bibliothek aus einer Freigabe |
+| Pflege-Anker und Extraktionsgüte der Bibliothek sehen | VIEWER an der Bibliothek |
+| Stichproben-Export | MANAGER an der Bibliothek aus einer Freigabe |
+| Modellgestützte Ermittlung und freie Schlagworte ein- oder ausschalten | MANAGER an der Bibliothek |
 | Bibliotheksfelder anlegen, ändern, löschen, Wertelisten pflegen und abbilden, Kontextpräfix-Wirkstellen schalten | MANAGER an der Bibliothek |
+| Folgekosten einer Schemaänderung sehen: Zahl der Dokumente je Feld oder Listenwert, Umfang einer Änderung | VIEWER (Listenwert) bzw. MANAGER an der Bibliothek, auch über die Systemverwaltung |
 | Wert setzen, löschen, „kein Wert ermittelbar", Sammelzuweisung | EDITOR an der Bibliothek |
 | Vokabular als Auswahlliste | jede angemeldete Person; es ist Schema, kein Bestand |
 | Bestandslauf und Kontextpräfix-Nachlauf starten, Extraktionsstand und Füllgrad aller Bibliotheken der Organisation | Systemadministrator |
@@ -538,6 +541,10 @@ Wert ist dort als „(abgeleitet)" gekennzeichnet; ein leeres Feld fehlt.
 
 Eine Bibliothek, die eine Person nicht lesen darf, ist in allen Zahlen abwesend; schon „412
 Dokumente ohne Wert" verriete den Umfang eines fremden Bestands.
+
+„Aus einer Freigabe" heißt: Die Systemverwaltung, die jede Bibliothek verwaltet, sieht die
+Feldwerte und die Stichprobe nur mit einer eigenen Rolle an der Bibliothek, denn die Werte stammen
+aus dem Inhalt ([Berechtigungen](../../konten-und-rechte/berechtigungen.md#10-systemrollen-und-vollmachten)).
 
 ## 12. API
 
