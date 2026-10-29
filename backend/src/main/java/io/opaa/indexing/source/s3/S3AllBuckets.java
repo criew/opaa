@@ -90,8 +90,8 @@ final class S3AllBuckets {
         + bucket
         + "“ ist nicht lesbar ("
         + reason
-        + "); was aus ihm indiziert ist, bleibt, bis er wieder lesbar ist oder die Bucket-Liste ihn"
-        + " nicht mehr nennt.";
+        + "). Bis er wieder lesbar oder nachweislich gelöscht ist, bereinigt kein Vollabgleich"
+        + " diese Bibliothek; wer ihn aufgeben will, wählt „Nur ausgewählte Buckets“ ohne ihn.";
   }
 
   /**
