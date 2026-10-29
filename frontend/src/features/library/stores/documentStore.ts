@@ -59,6 +59,10 @@ export type DocumentStatusCounts = Record<DocumentStatus, number>
 
 const COUNTED_STATUSES: DocumentStatus[] = ['FAILED', 'PENDING', 'INDEXED']
 
+// A moving connector run counts anew at most this often per library - one count is a request per
+// counted state.
+const RUN_COUNT_INTERVAL_MS = 10_000
+
 const defaultPageState: DocumentPageState = {
   page: 0,
   size: DEFAULT_PAGE_SIZE,
@@ -78,9 +82,10 @@ interface DocumentState {
   // Entscheidung 4).
   foldersByLibrary: Record<string, LibraryFolderListItem[]>
   breadcrumbByLibrary: Record<string, LibraryFolderBreadcrumbItem[]>
-  // Refreshed by loadStatusCounts, after every change to the documents and whenever a polled
-  // document leaves PENDING - not on paging or searching, which change no state. Absent while
-  // the first count runs, null when it failed.
+  // Refreshed by loadStatusCounts, after every change to the documents, whenever a polled
+  // document leaves PENDING and while a connector run moves (refreshStatusCountsDuringRun) - not
+  // on paging or searching, which change no state. Absent while the first count runs, null when
+  // it failed.
   statusCountsByLibrary: Record<string, DocumentStatusCounts | null>
   isLoading: boolean
   error: string | null
@@ -115,6 +120,11 @@ interface DocumentState {
   ) => Promise<void>
   /** Counts the library's document rows per state; a failure leaves the last counts. */
   loadStatusCounts: (libraryId: string) => Promise<void>
+  /**
+   * Counts anew for a step of a running connector run, unless the library was counted less
+   * than RUN_COUNT_INTERVAL_MS ago; the run's end counts anew through loadStatusCounts.
+   */
+  refreshStatusCountsDuringRun: (libraryId: string) => Promise<void>
   uploadNewDocument: (libraryId: string, file: File, folderPath?: string) => Promise<void>
   removeDocument: (libraryId: string, documentId: string) => Promise<void>
   /**
@@ -183,6 +193,8 @@ function pendingSettled(
 // The newest count request per library; an older one never overwrites a newer answer.
 let countSequence = 0
 const latestCountByLibrary: Record<string, number> = {}
+// When the newest count per library started (Date.now()), the base of the run's throttle.
+const lastCountStartByLibrary: Record<string, number> = {}
 
 async function refreshStatusCounts(
   libraryId: string,
@@ -192,6 +204,7 @@ async function refreshStatusCounts(
   const sessionEpoch = currentSessionEpoch()
   const sequence = ++countSequence
   latestCountByLibrary[libraryId] = sequence
+  lastCountStartByLibrary[libraryId] = Date.now()
   try {
     const numbers = await Promise.all(
       COUNTED_STATUSES.map((status) => countLibraryDocuments(libraryId, status)),
@@ -231,6 +244,9 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     Object.keys(latestRequestByLibrary).forEach((libraryId) => {
       delete latestRequestByLibrary[libraryId]
     })
+    Object.keys(lastCountStartByLibrary).forEach((libraryId) => {
+      delete lastCountStartByLibrary[libraryId]
+    })
     set({
       documentsByLibrary: {},
       pageStateByLibrary: {},
@@ -253,6 +269,12 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   },
 
   loadStatusCounts: async (libraryId) => {
+    await refreshStatusCounts(libraryId, set, get)
+  },
+
+  refreshStatusCountsDuringRun: async (libraryId) => {
+    const lastStart = lastCountStartByLibrary[libraryId]
+    if (lastStart !== undefined && Date.now() - lastStart < RUN_COUNT_INTERVAL_MS) return
     await refreshStatusCounts(libraryId, set, get)
   },
 
