@@ -48,6 +48,9 @@ jobs:
         with:
           build-root-directory: backend
           dependency-graph: generate-and-submit
+          # The graph plugin this action injects is not in backend/gradle/verification-metadata.xml;
+          # lenient verification logs mismatches instead of failing. This job builds nothing.
+          additional-arguments: --dependency-verification=lenient
 
   # Same resolution inside a PR that changes this workflow: the graph is only uploaded as a
   # workflow artifact for inspection, never submitted.
@@ -68,3 +71,6 @@ jobs:
         with:
           build-root-directory: backend
           dependency-graph: generate-and-upload
+          # The graph plugin this action injects is not in backend/gradle/verification-metadata.xml;
+          # lenient verification logs mismatches instead of failing. This job builds nothing.
+          additional-arguments: --dependency-verification=lenient
