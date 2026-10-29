@@ -1,0 +1,7 @@
+# Settings for this standalone tool (pnpm reads them from here, not from a "pnpm" field in
+# package.json). No "packages" list on purpose - this is not a multi-package workspace.
+
+# cdxgen pins body-parser 2.3.0 exactly (GHSA-27r3-jxmh-p828); drop the override once a cdxgen
+# release depends on 2.4.0 or later.
+overrides:
+  body-parser: 2.4.0
