@@ -628,13 +628,15 @@ public class PermissionTransferService {
     } else {
       requireUserInOrganization(order.targetId(), organizationId);
     }
-    return new Parties(
-        new PermissionSubject(order.sourceType(), order.sourceId(), organizationId),
-        sourceLabel,
-        new PermissionSubject(order.targetType(), order.targetId(), organizationId),
-        targetLabel,
-        scope,
-        organizationId);
+    PermissionSubject source =
+        new PermissionSubject(order.sourceType(), order.sourceId(), organizationId);
+    PermissionSubject target =
+        new PermissionSubject(order.targetType(), order.targetId(), organizationId);
+    if (scope.contains(PermissionTransferScope.OWNERSHIP)) {
+      assetOwnershipDirectories.forEach(
+          directory -> directory.requireAcceptableNewOwner(source, target));
+    }
+    return new Parties(source, sourceLabel, target, targetLabel, scope, organizationId);
   }
 
   /**

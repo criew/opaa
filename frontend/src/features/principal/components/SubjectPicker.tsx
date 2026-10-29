@@ -44,9 +44,12 @@ type SubjectOption =
 
 const ALL_ACCOUNTS_OPTION: SubjectOption = { kind: 'ALL_ACCOUNTS' }
 
+/** Name and address are the person's own, unverified claims; the sign-in they come from is not. */
 function userLabel(user: UserSummary): string {
-  if (user.displayName) return `${user.displayName} (${user.email ?? user.id})`
-  return user.email ?? user.id
+  const label = user.displayName
+    ? `${user.displayName} (${user.email ?? user.id})`
+    : (user.email ?? user.id)
+  return user.providerName ? `${label} · ${user.providerName}` : label
 }
 
 function optionLabel(option: SubjectOption): string {
@@ -133,9 +136,11 @@ function OptionText({ option }: { option: SubjectOption }) {
         <Typography sx={{ fontSize: 13.5 }}>
           {option.user.displayName ?? option.user.email ?? option.user.id}
         </Typography>
-        {option.user.displayName && option.user.email && (
+        {((option.user.displayName && option.user.email) || option.user.providerName) && (
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            {option.user.email}
+            {[option.user.displayName ? option.user.email : null, option.user.providerName]
+              .filter(Boolean)
+              .join(' · ')}
           </Typography>
         )}
       </Stack>

@@ -82,6 +82,8 @@ mime4j = "0.8.15"
 # reads the PDF catalog (bookmarks) and page text directly through org.apache.pdfbox rather than only
 # through Tika's own extraction. Version pinned to what that transitive dependency resolves to today
 # (`./gradlew dependencies`). Also writes the PDF export of a chat (io.opaa.chat.ChatPdfRenderer).
+# An update must keep the private field COSParser#bruteForceParser and the protected parser hooks
+# io.opaa.format.file.pdf.PdfLoading replaces by reflection and overrides; PdfLoadingTest checks it.
 pdfbox = "3.0.8"
 # opaa-api's tests are deliberately Spring-free and use plain JUnit Jupiter/AssertJ
 # instead of the Spring Boot-managed test-deps bundle below - these two versions are therefore

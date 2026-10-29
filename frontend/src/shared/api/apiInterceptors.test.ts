@@ -2,6 +2,7 @@ import axios from 'axios'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it, vi } from 'vitest'
 import { server } from '@/test/server'
+import { sessionEndMessage } from '../session/authMessages'
 import { setupAuthInterceptors } from './apiInterceptors'
 
 /**
@@ -206,6 +207,35 @@ describe('setupAuthInterceptors', () => {
 
     expect(onPasswordChangeRequired).toHaveBeenCalledWith('ADMIN_RESET')
     expect(onSessionExpired).not.toHaveBeenCalled()
+    expect(renewToken).not.toHaveBeenCalled()
+  })
+
+  // regression guard for #3358 (6): outside the released networks no request is answered
+  it('ends the session of a local administrator outside the released networks', async () => {
+    server.use(
+      http.get('/api/test-admin-network', () =>
+        HttpResponse.json(
+          {
+            error: 'Netz nicht freigegeben',
+            status: 403,
+            timestamp: '2026-10-29T10:00:00Z',
+            code: 'ADMIN_NETWORK_REQUIRED',
+          },
+          { status: 403 },
+        ),
+      ),
+    )
+
+    const client = axios.create({ baseURL: '/api' })
+    const renewToken = vi.fn(async () => true)
+    const onSessionExpired = vi.fn()
+
+    setupAuthInterceptors(client, () => 'token', renewToken, onSessionExpired)
+
+    await expect(client.get('/test-admin-network')).rejects.toThrow()
+
+    expect(onSessionExpired).toHaveBeenCalledWith('admin_network_required')
+    expect(sessionEndMessage('admin_network_required')).toContain('freigegebenen Netzen')
     expect(renewToken).not.toHaveBeenCalled()
   })
 

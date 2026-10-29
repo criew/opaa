@@ -100,7 +100,7 @@ class RssFeedIndexingExecutorUntrustedCertificateTest {
                 new BoundedDownloader(targetAddressValidator),
                 documentIngestService,
                 mock(LibraryStorageQuotaService.class),
-                new io.opaa.indexing.attachment.AttachmentProperties(5, 0, 0),
+                new io.opaa.indexing.attachment.AttachmentProperties(5, 0, 0, 0, 0),
                 io.opaa.test.ProductionDocumentFormats.supportedFormats()),
             rss,
             targetAddressValidator,

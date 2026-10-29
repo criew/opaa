@@ -125,8 +125,9 @@ hängt dann von dieser Textebene ab.
 ## 6. Grenzwerte
 
 Keine eigenen Konfigurationsschlüssel. Es gelten die gemeinsamen Grenzen für Text,
-Rechenschritte, gelesene Inhaltsdaten und Lesezeit je Dokument, für die Größe eines einzelnen
-Inhaltsteils und für die Gliederung
+Rechenschritte, gelesene Inhaltsdaten, Lesezeit und Seiten je Dokument, für die Größe eines
+einzelnen Inhaltsteils, auch der Verzeichnisse, die schon beim Öffnen entpackt werden, und für die
+Gliederung
 ([Grenzen beim Lesen](README.md#grenzen-beim-lesen)), die Zeichenobergrenzen des gemeinsamen
 Abschnittsschneiders und die Grenzen von PDFBox. Am Webverzeichnis-Konnektor greift zusätzlich die
 Dateigrößengrenze des Konnektors.
