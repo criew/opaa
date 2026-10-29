@@ -68,8 +68,8 @@ class RetiredSettingVariablesTest {
   }
 
   /**
-   * The lockout duration is no limit of the operation any more but a setting of the administration
-   * (ADR-0060, Entscheidung 17); a value still set is named, never taken over.
+   * The lockout duration is a setting of the administration now (ADR-0060, Entscheidung 17); a
+   * value still set is named and only raises the shortest lockout, never taken over as the value.
    */
   @Test
   void theRetiredLockoutDurationIsNamedWithItsPlaceAndTheLimitThatReplacesIt() {
@@ -78,10 +78,11 @@ class RetiredSettingVariablesTest {
 
     assertThat(RetiredSettingVariables.foundIn(environment))
         .containsExactly(
-            "OPAA_AUTH_LOCAL_LOCKOUT_DURATION is no longer read; set the lockout duration after"
-                + " failed sign-ins under Administration > Benutzer > Einstellungen; until then the"
-                + " factory default of 15 minutes applies, never shorter than"
-                + " OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION - if it was longer, set it there");
+            "OPAA_AUTH_LOCAL_LOCKOUT_DURATION is no longer read as the lockout duration; set it"
+                + " under Administration > Benutzer > Einstellungen. Until it is removed it raises"
+                + " the shortest lockout (OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION) to its value, at"
+                + " most 1440 minutes, so the update loosens nothing; replace it with"
+                + " OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION");
   }
 
   @Test

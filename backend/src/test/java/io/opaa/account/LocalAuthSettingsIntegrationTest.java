@@ -33,8 +33,8 @@ import org.springframework.test.web.servlet.MvcResult;
  * the provider row and ends the sessions of regular accounts (quoted in the response), the policy
  * values are bounded and audited by their changed keys, and the two link flows cannot be switched
  * on without {@code OPAA_PUBLIC_BASE_URL}. The lockout after failed sign-ins stays within the
- * limits of the operation (ADR-0060, Entscheidung 17; defaults of this context: at most ten
- * attempts, at least five minutes) and returns to its factory default when sent without a value.
+ * limits of the operation (ADR-0060, Entscheidung 17; defaults of this context: at most five
+ * attempts, at least fifteen minutes) and returns to its factory default when sent without a value.
  */
 @OpaaLocalAuthMockMvcTest
 class LocalAuthSettingsIntegrationTest {
@@ -156,11 +156,11 @@ class LocalAuthSettingsIntegrationTest {
         .andExpect(jsonPath("$.lockoutMaxAttempts").value(5))
         .andExpect(jsonPath("$.storedLockoutMaxAttempts").doesNotExist())
         .andExpect(jsonPath("$.defaultLockoutMaxAttempts").value(5))
-        .andExpect(jsonPath("$.lockoutMaxAttemptsLimit").value(10))
+        .andExpect(jsonPath("$.lockoutMaxAttemptsLimit").value(5))
         .andExpect(jsonPath("$.lockoutDurationMinutes").value(15))
         .andExpect(jsonPath("$.storedLockoutDurationMinutes").doesNotExist())
         .andExpect(jsonPath("$.defaultLockoutDurationMinutes").value(15))
-        .andExpect(jsonPath("$.minLockoutDurationMinutes").value(5))
+        .andExpect(jsonPath("$.minLockoutDurationMinutes").value(15))
         .andExpect(jsonPath("$.maxLockoutDurationMinutes").value(1440));
   }
 
@@ -223,7 +223,7 @@ class LocalAuthSettingsIntegrationTest {
             put(SETTINGS)
                 .header(HttpHeaders.AUTHORIZATION, adminBearer)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(withLockout(defaultBody(), 11, 4)))
+                .content(withLockout(defaultBody(), 6, 14)))
         .andExpect(status().isBadRequest())
         .andExpect(
             jsonPath(
@@ -253,7 +253,7 @@ class LocalAuthSettingsIntegrationTest {
     jdbc.update("UPDATE local_auth_settings SET lockout_max_attempts = 12");
     mockMvc
         .perform(get(SETTINGS).header(HttpHeaders.AUTHORIZATION, adminBearer))
-        .andExpect(jsonPath("$.lockoutMaxAttempts").value(10))
+        .andExpect(jsonPath("$.lockoutMaxAttempts").value(5))
         .andExpect(jsonPath("$.storedLockoutMaxAttempts").value(12));
 
     mockMvc
@@ -271,7 +271,7 @@ class LocalAuthSettingsIntegrationTest {
             put(SETTINGS)
                 .header(HttpHeaders.AUTHORIZATION, adminBearer)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(withLockout(defaultBody(), 11, null)))
+                .content(withLockout(defaultBody(), 6, null)))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.fieldErrors[0].field").value("lockoutMaxAttempts"));
   }

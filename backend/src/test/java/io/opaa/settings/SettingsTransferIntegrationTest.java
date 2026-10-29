@@ -158,7 +158,8 @@ class SettingsTransferIntegrationTest {
             .orElseThrow();
     assertThat(String.valueOf(imported.get("after")))
         .contains("\"formatVersion\":1")
-        .contains("\"sections\":[\"auditRetention\",\"linkTargets\"]");
+        .contains("\"sections\":[\"auditRetention\",\"linkTargets\"]")
+        .contains("\"securityRelevantKeys\":[");
 
     send(IMPORT, changed).andExpect(status().isOk()).andExpect(jsonPath("$.changes").isEmpty());
     assertThat(auditEntries()).hasSize(3);
@@ -335,7 +336,7 @@ class SettingsTransferIntegrationTest {
     ObjectNode localAccounts = sections(document).withObject("localAccounts");
     assertThat(localAccounts.get("lockoutMaxAttempts").isNull()).isTrue();
     assertThat(localAccounts.get("lockoutDurationMinutes").isNull()).isTrue();
-    localAccounts.put("lockoutMaxAttempts", 7);
+    localAccounts.put("lockoutMaxAttempts", 4);
     localAccounts.put("lockoutDurationMinutes", 30);
 
     send(PREVIEW, JSON.writeValueAsString(document))
@@ -345,15 +346,26 @@ class SettingsTransferIntegrationTest {
             jsonPath("$.changes[?(@.key == 'lockoutMaxAttempts')].securityRelevant")
                 .value(org.hamcrest.Matchers.contains(true)));
     send(IMPORT, JSON.writeValueAsString(document)).andExpect(status().isOk());
+    // the import entry names the security-relevant keys it changed, never their values
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT CAST(after AS text) FROM audit_log WHERE event_type = 'SETTINGS_IMPORTED'"
+                    + " AND recorded_at >= ?",
+                String.class,
+                Timestamp.from(methodStartedAt)))
+        .contains(
+            "\"securityRelevantKeys\":[\"localAccounts.lockoutDurationMinutes\","
+                + "\"localAccounts.lockoutMaxAttempts\"]")
+        .doesNotContain("30");
 
     ObjectNode exported = sections((ObjectNode) JSON.readTree(export()));
-    assertThat(exported.get("localAccounts").get("lockoutMaxAttempts").intValue()).isEqualTo(7);
+    assertThat(exported.get("localAccounts").get("lockoutMaxAttempts").intValue()).isEqualTo(4);
     assertThat(exported.get("localAccounts").get("lockoutDurationMinutes").intValue())
         .isEqualTo(30);
 
     Map<String, String> refused = new java.util.LinkedHashMap<>();
     refused.put(
-        "{\"localAccounts\": {\"lockoutMaxAttempts\": 11}}", "localAccounts.lockoutMaxAttempts");
+        "{\"localAccounts\": {\"lockoutMaxAttempts\": 6}}", "localAccounts.lockoutMaxAttempts");
     refused.put(
         "{\"localAccounts\": {\"lockoutDurationMinutes\": 4}}",
         "localAccounts.lockoutDurationMinutes");

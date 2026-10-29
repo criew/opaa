@@ -243,8 +243,9 @@ class LocalAccountLockoutIntegrationTest {
     LocalCredentials locked = credentials.findById(user.id()).orElseThrow();
     assertThat(locked.state(afterLock)).isEqualTo(LocalAccountState.LOCKED);
     assertThat(locked.getLockoutUntil())
-        .as("the shortest lockout of the operation, five minutes in this context")
-        .isBetween(afterLock.plus(Duration.ofMinutes(4)), afterLock.plus(Duration.ofMinutes(6)));
+        .as("the shortest lockout of the operation, fifteen minutes in this context")
+        .isBetween(
+            afterLock.plus(Duration.ofMinutes(14)), afterLock.plus(Duration.ofMinutes(16)));
   }
 
   private void lockoutRule(int attempts, int minutes) {

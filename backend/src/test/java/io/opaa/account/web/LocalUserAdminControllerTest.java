@@ -407,7 +407,7 @@ class LocalUserAdminControllerTest {
             LocalAuthSettings.Values.defaults(),
             true,
             false,
-            new LocalLockoutProperties(null, null));
+            new LocalLockoutProperties(null, null, null));
     when(settingsService.current()).thenReturn(view);
     when(settingsService.update(eq(caller), any()))
         .thenReturn(
@@ -416,7 +416,7 @@ class LocalUserAdminControllerTest {
                     LocalAuthSettings.Values.defaults(),
                     false,
                     false,
-                    new LocalLockoutProperties(null, null)),
+                    new LocalLockoutProperties(null, null, null)),
                 3));
 
     mockMvc

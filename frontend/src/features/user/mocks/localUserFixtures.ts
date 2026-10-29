@@ -167,10 +167,10 @@ function initialLocalAuthSettings(): LocalAuthSettingsResponse {
     publicBaseUrlConfigured: true,
     lockoutMaxAttempts: 5,
     defaultLockoutMaxAttempts: 5,
-    lockoutMaxAttemptsLimit: 10,
+    lockoutMaxAttemptsLimit: 5,
     lockoutDurationMinutes: 15,
     defaultLockoutDurationMinutes: 15,
-    minLockoutDurationMinutes: 5,
+    minLockoutDurationMinutes: 15,
     maxLockoutDurationMinutes: 1440,
   }
 }

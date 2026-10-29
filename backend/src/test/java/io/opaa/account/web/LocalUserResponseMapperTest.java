@@ -170,7 +170,7 @@ class LocalUserResponseMapperTest {
     LocalAuthSettings.Values values =
         new LocalAuthSettings.Values(
             true, List.of("stadt.example"), false, 14, 48, 15, 180, 60, 12, 30);
-    LocalLockoutProperties limits = new LocalLockoutProperties(10, Duration.ofMinutes(5));
+    LocalLockoutProperties limits = new LocalLockoutProperties(10, Duration.ofMinutes(5), null);
 
     LocalAuthSettingsResponse response =
         LocalUserResponseMapper.toSettings(
