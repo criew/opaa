@@ -119,7 +119,7 @@ Vollabgleich in **einem** Lauf ([Konnektoren](README.md#23-wann-eine-gelöschte-
 und im Änderungslauf, wenn Drive sie als gelöscht oder im Papierkorb meldet oder sie in keinem Bereich
 mehr liegt. Ein Bereich, den das Konto nicht mehr sieht, führt zu keiner Löschung. Unter „Alle
 Ablagen" ist eine Ablage, die das Konto nicht mehr sieht, kein Bereich mehr: Was aus ihr indiziert
-ist, entfernt der nächste Vollabgleich.
+ist, entfernt ein Vollabgleich im selben Lauf, nach einem Änderungslauf der nächste.
 
 ## 6. Ordner
 
@@ -180,7 +180,7 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 | „Die domänenweite Delegation fehlt" / „Dem Zugriffstoken fehlt der Scope drive.readonly" | Delegation nicht oder ohne Scope eingetragen | Admin-Konsole; unter einem Zugang zuständig: die Systemverwaltung |
 | „Das imitierte Konto … ist in der Domäne nicht bekannt" | Tippfehler oder Konto gelöscht | Konto prüfen |
 | „Geltungsbereich „…": … nicht sichtbar" | Freigabe oder Mitgliedschaft fehlt, oder die ID ist falsch; der Bestand bleibt | freigeben |
-| „Umfang „Alle“: … Ablagen" / „Neu im Umfang: …" / „Nicht mehr im Umfang: …" | unter „Alle Ablagen" die Zahl der Ablagen und was seit dem letzten Lauf dazukam oder wegfiel; Weggefallenes bereinigt der nächste Vollabgleich | nichts, oder Mitgliedschaften prüfen |
+| „Umfang „Alle“: … Ablagen" / „Neu im Umfang: …" / „Nicht mehr im Umfang: …" | unter „Alle Ablagen" die Zahl der Ablagen und was seit dem letzten Lauf dazukam oder wegfiel; Weggefallenes bereinigt ein Vollabgleich im selben Lauf, sonst der nächste | nichts, oder Mitgliedschaften prüfen |
 | „Das Konto sieht keine geteilte Ablage …" | unter „Alle Ablagen" scheitert der Lauf, der Bestand bleibt | Konto als Mitglied aufnehmen oder Bereiche auswählen |
 | „Als Text exportiert …" / „Tabelle übersprungen …" | über der Exportgrenze | Datei verkleinern oder hinnehmen |
 | „Die Datei überschreitet die Exportgrenze von Google Drive …" | auch der Textexport ist zu groß; der indizierte Stand bleibt | Datei verkleinern oder aufteilen |

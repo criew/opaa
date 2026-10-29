@@ -91,8 +91,9 @@ Ist zu einer Dokumentbibliothek keine Site gespeichert, etwa nach einem Update, 
 bei den Sites. Sobald man ihre Site öffnet, ordnet der Dialog die schon gewählte
 Dokumentbibliothek samt Ordnern dieser Site zu; „Übernehmen" speichert die Site.
 
-Eine bestehende Bibliothek behält ihre Auswahl, bis man den Umfang ändert. Eine Site steht entweder
-mit allen Dokumentbibliotheken in der Auswahl oder mit einzelnen. Sites, Dokumentbibliotheken und
+Eine bestehende Bibliothek behält ihre Auswahl, bis man den Umfang ändert. Eine Bibliothek nimmt
+entweder ganze Sites oder einzelne Dokumentbibliotheken auf, nicht beides; eine Mischung weist OPAA
+beim Speichern ab. Sites, Dokumentbibliotheken und
 Ordner einer Ebene listet der Dialog nur bis zu einer festen Grenze; ist die Liste länger, steht dort „Liste
 unvollständig.". Eine fehlende Site lässt sich über einen engeren Suchbegriff oder ihre Adresse
 öffnen. Im Reiter „Quelle" öffnet „Ändern" am Umfang denselben Dialog, und „Übernehmen" speichert
@@ -143,7 +144,7 @@ Lauf einen neuen Abgleich.
 | Ordner gelöscht oder aus den gewählten Ordnern verschoben | einzeln gemeldete Dateien entfernt der Änderungslauf, die übrigen der nächste Vollabgleich |
 | gewählter Ordner gelöscht | die Dokumentbibliothek gilt als nicht erreichbar, nichts wird entfernt; die Ordnerauswahl ist anzupassen |
 | Freigabe der Site entzogen, auch während eines Laufs | keine Löschung; der Bestand bleibt, und das Protokoll nennt die Dokumentbibliothek |
-| Dokumentbibliothek einer mit allen Dokumentbibliotheken gewählten Site gelöscht | das Protokoll nennt sie unter „Nicht mehr im Umfang"; was aus ihr indiziert ist, entfernt der nächste Vollabgleich |
+| Dokumentbibliothek einer mit allen Dokumentbibliotheken gewählten Site gelöscht | das Protokoll nennt sie unter „Nicht mehr im Umfang"; was aus ihr indiziert ist, entfernt ein Vollabgleich im selben Lauf, sonst der nächste |
 
 Für Ordneränderungen gilt also ein Fenster bis zum nächsten Vollabgleich; der Vollabgleich-Rhythmus
 ([Konnektoren](README.md#14-vollabgleich-rhythmus)) begrenzt es und ist ab Werk bewusst kurz, weil eine Auflistung wenig kostet.

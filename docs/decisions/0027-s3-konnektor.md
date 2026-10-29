@@ -50,13 +50,24 @@ Bucket einzutragen.
 jeweils ganz. Es setzt `s3:ListAllMyBuckets` voraus: Speichern und Ändern prüfen das mit
 `ListBuckets` und lehnen ohne Berechtigung ab, die Oberfläche bietet „Alle Buckets“ dann nicht an
 und wählt es nur für neue Bibliotheken mit Berechtigung vor; bestehende Bibliotheken behalten ihre
-Bereiche. Jeder Lauf, auch ein Ereignislauf, listet die Buckets neu; fehlt die Berechtigung oder
-sieht der Schlüssel keinen Bucket, scheitert er vor dem ersten Objekt und entfernt nichts. Die
-Ordnerkette beginnt unter „Alle Buckets“ immer mit dem Bucket, damit sie sich mit der Zahl der
-Buckets nicht ändert. Das Laufprotokoll nennt die Zahl der Buckets und, gegen die in
-`source_sync_state.resolved_scopes` gemerkte letzte Ermittlung, neu hinzugekommene und
-weggefallene; was aus einem weggefallenen Bucket indiziert ist, entfernt der nächste Vollabgleich,
-weil er ihn nicht mehr auflistet.
+Bereiche. Jeder Lauf, auch ein Ereignislauf, listet die Buckets neu (`S3AllBuckets`). Auf AWS
+nennt `ListBuckets` alle Buckets des Kontos, über alle Regionen und ohne Rücksicht auf Leserechte;
+die Bibliothek liest davon nur die Buckets der eigenen Region, die der Schlüssel auflisten darf.
+Ein Bucket, für den die Auflistung eine andere Region nennt (`BucketRegion`), bekommt keine
+Anfrage; jeden übrigen prüft die Auflistung seiner ersten Seite. Wer darauf mit `AccessDenied`
+(`s3:ListBucket` fehlt), einem Verweis auf einen anderen Endpoint oder `NoSuchBucket` antwortet,
+liegt nicht im Umfang. Solche Buckets nennt das Protokoll mit Grund unter „Nicht im Umfang“; sie
+halten den Abgleich der übrigen nicht auf. Jede andere Antwort (Drosselung, abgelehnter Schlüssel,
+Endpoint nicht erreichbar) lässt den Lauf scheitern, weil ein ausgelassener Bucket seinen Bestand
+verlöre. Fehlt `s3:ListAllMyBuckets`, sieht der Schlüssel keinen Bucket oder darf die Bibliothek
+keinen davon lesen, scheitert der Lauf vor dem ersten Objekt und entfernt nichts. Der
+Verbindungstest löst den Umfang ebenso auf und nennt die gesehenen, die gelesenen und die
+ausgelassenen Buckets mit Grund. Die Ordnerkette beginnt unter „Alle Buckets“ immer mit dem
+Bucket, damit sie sich mit der Zahl der Buckets nicht ändert. Das Laufprotokoll nennt die Zahl der
+Buckets und, gegen die in `source_sync_state.resolved_scopes` gemerkte letzte Ermittlung, neu
+hinzugekommene und weggefallene; ein Ereignislauf nennt die Ermittlung nur, wenn sie sich geändert
+hat. Was aus einem weggefallenen oder ausgelassenen Bucket indiziert ist, entfernt der
+Vollabgleich desselben Laufs, weil er den Bucket nicht mehr auflistet.
 
 ### 3. Genau eine Betriebsart — der Vollabgleich — und ein Ereignislauf, der nie durch Abwesenheit löscht
 

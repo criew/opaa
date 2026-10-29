@@ -104,8 +104,9 @@ scheitert er vor der ersten Datei und der Bestand bleibt. Das Laufprotokoll nenn
 Ablagen und, gegen die in `source_sync_state.resolved_scopes` gemerkte letzte Ermittlung, neu
 hinzugekommene und weggefallene. Die Vorgabe der Betriebsart liest die Ströme aus dieser letzten
 Ermittlung, vor der ersten ist sie der Vollabgleich; eine neue Ablage hat noch keinen Cursor und
-macht den nächsten Lauf zum Vollabgleich (ADR-0045, Entscheidung 3), was aus einer weggefallenen
-indiziert ist, entfernt der nächste Vollabgleich. Der Verbindungstest nennt die Zahl der Ablagen,
+macht den nächsten Lauf zum Vollabgleich (ADR-0045, Entscheidung 3). Was aus einer weggefallenen
+indiziert ist, entfernt ein Vollabgleich im selben Lauf; ein Änderungslauf überlässt es dem
+nächsten. Der Verbindungstest nennt die Zahl der Ablagen,
 die ein Lauf jetzt fände. Bestehende Bibliotheken behalten ihre Bereiche; die Oberfläche wählt
 „Alle Ablagen“ nur für neue Bibliotheken vor.
 

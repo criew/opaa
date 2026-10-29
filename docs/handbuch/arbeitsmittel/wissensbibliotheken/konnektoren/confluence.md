@@ -63,7 +63,7 @@ angenommen, und er nennt die Stufe „Rechte". Scheitert er vorher an Zieladress
 Edition oder einem Serverfehler, nennt er die Stufe „Adresse". Dort steht der Umfang:
 
 - **„Alle Spaces"** — jeder Space, den das Token lesen darf, auch was später dazukommt;
-  persönliche Spaces gehören nicht dazu. Für neue Bibliotheken ist das vorausgewählt, darunter
+  persönliche und archivierte Spaces gehören nicht dazu. Für neue Bibliotheken ist das vorausgewählt, darunter
   steht „Was später in der Quelle dazukommt, wird automatisch mit indiziert." Jeder Lauf stellt
   die Spaces neu fest.
 - **„Nur ausgewählte Spaces"** — bis zu sieben direkt als Kästchen, sonst über „Spaces
@@ -179,8 +179,9 @@ Ein Dokument wird nur entfernt, wenn die Instanz selbst den Befund liefert:
   den Index nie.
 - Inkrementeller Lauf und Webhook entfernen nie wegen Abwesenheit.
 
-Unter „Alle Spaces" entfernt der nächste Vollabgleich, was aus einem Space indiziert ist, den
-das Token nicht mehr sieht.
+Unter „Alle Spaces" entfernt ein Vollabgleich im selben Lauf, was aus einem Space indiziert ist,
+den das Token nicht mehr sieht oder der archiviert wurde; nach einem inkrementellen Lauf tut es der
+nächste Vollabgleich.
 
 Wer den Bestand eines Spaces aus OPAA entfernen will, nimmt ihn aus der Auswahl, startet
 „Vollabgleich starten" (Menü „Weitere Aktionen") und prüft, dass dieser Lauf vollständig aufgelistet hat. Sofort wirkt nur das
@@ -233,8 +234,8 @@ fest 30 s Verbindungsaufbau und 120 s bis zur Antwort eines Anhangs. Makros, der
 | „Edition nicht erkannt, Adresse prüfen" | Kontextpfad fehlt, oder die Instanz liegt hinter einer Anmeldung ohne REST-Zugang | Adresse mit Kontextpfad; `curl <adresse>/rest/api/space?limit=1` aus dem Backend-Netz |
 | Data Center: Token „nicht angenommen", obwohl es im Browser geht | Token ungültig oder abgelaufen, oder das Konto darf REST nicht nutzen | neues Token, Rechte prüfen |
 | Verbindungstest gut, Space-Auswahl leer | Konto hat auf keinen Space „Ansehen" | Space-Rechte setzen |
-| „Umfang „Alle“: … Spaces" | unter „Alle Spaces" die Zahl der Spaces dieses Laufs | nichts |
-| „Neu im Umfang: …" / „Nicht mehr im Umfang: …" | seit dem letzten Lauf hinzugekommene oder nicht mehr sichtbare Spaces; Letztere bereinigt der nächste Vollabgleich | nichts, oder Rechte des Kontos prüfen |
+| „Umfang „Alle“: … Spaces" | unter „Alle Spaces" die Zahl der Spaces dieses Laufs; ein Webhook-Lauf schreibt sie nur, wenn sich etwas geändert hat | nichts |
+| „Neu im Umfang: …" / „Nicht mehr im Umfang: …" | seit dem letzten Lauf hinzugekommene oder nicht mehr sichtbare Spaces; Letztere bereinigt ein Vollabgleich im selben Lauf, sonst der nächste | nichts, oder Rechte des Kontos prüfen |
 | „Der Zugang sieht keinen Space außer persönlichen …" / „Der Zugang sieht … Spaces; der Umfang „Alle Spaces“ umfasst höchstens 500 …" | Lauf scheitert vor der ersten Seite, der Bestand bleibt | Space-Rechte setzen oder Spaces auswählen |
 | „Seite „…" (Space …) ist für das hinterlegte Dienstkonto nicht lesbar oder nicht mehr vorhanden …" | 404 oder 403 beim Einzelabruf; der Stand bleibt | Rechte prüfen |
 | „Space … ist für das hinterlegte Dienstkonto nicht lesbar …" | ganzer Space nicht auflistbar; kein Vollabgleich bereinigt | Rechte prüfen oder Space abwählen |

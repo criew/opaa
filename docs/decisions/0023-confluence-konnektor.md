@@ -34,12 +34,15 @@ Eine Confluence-Bibliothek trägt mindestens einen und höchstens 500 Spaces
 (`ConfluenceSourceConnector.MAX_SPACES`), je Space Schlüssel und Anzeigename, oder den Umfang
 „Alle Spaces“ (`allSpaces: true`, Auswahl leer); eine Anlage ohne beides wird abgelehnt, beides
 zusammen ebenso. „Alle Spaces“ heißt: alles, was der Zugang sieht, ohne persönliche Spaces
-(Typ `personal`, Schlüssel mit `~`), auch was später dazukommt. Jeder Lauf ermittelt die Menge
-nach der Anmeldung neu; sieht der Zugang keinen Space oder mehr als 500, scheitert der Lauf vor
-der ersten Seite und der Bestand bleibt. Das Laufprotokoll nennt die Zahl der Spaces und, gegen
-die in `source_sync_state.resolved_scopes` gemerkte letzte Ermittlung, neu hinzugekommene und
-weggefallene Spaces. Ein neuer Space macht den Lauf zum Vollabgleich; was aus einem weggefallenen
-indiziert ist, entfernt der nächste Vollabgleich. Bestehende Bibliotheken behalten ihre
+(Typ `personal`, Schlüssel mit `~`) und ohne archivierte (die Space-Liste wird in Cloud wie in
+Data Center mit `status=current` abgefragt), auch was später dazukommt. Jeder Lauf ermittelt die
+Menge nach der Anmeldung neu; sieht der Zugang keinen Space oder mehr als 500, scheitert der Lauf
+vor der ersten Seite und der Bestand bleibt. Das Laufprotokoll nennt die Zahl der Spaces und,
+gegen die in `source_sync_state.resolved_scopes` gemerkte letzte Ermittlung, neu hinzugekommene
+und weggefallene Spaces; ein Webhook-Lauf nennt die Ermittlung nur, wenn sie sich geändert hat.
+Ein neuer Space macht den nächsten Lauf zum Vollabgleich, der ihn vollständig liest. Was aus
+einem weggefallenen indiziert ist, entfernt ein Vollabgleich im selben Lauf; ein Änderungslauf
+überlässt es dem nächsten Vollabgleich. Bestehende Bibliotheken behalten ihre
 ausdrückliche Auswahl; die Oberfläche wählt „Alle Spaces“ nur für neue Bibliotheken vor. Die
 Auswahl liegt als Teil des Konnektor-Objekts
 `ConfluenceSourceSettings` in `knowledge_libraries.source_settings` (ADR-0038, Entscheidung 2).

@@ -54,15 +54,15 @@ Dialog mit einem Platzhalter, gespeichert wird kein Ersatzname. Ein OneDrive tr�
 
 Ein Eintrag `{site}` ohne `driveId` heißt „Alle Dokumentbibliotheken einer Site“: jedes Laufwerk
 vom Typ `documentLibrary`, das `/sites/{id}/drives` beim Laufbeginn nennt (bis zur letzten Seite),
-auch was später dazukommt; „Alle Sites“ gibt es nicht. Jede Site steht höchstens einmal so in der
-Auswahl und nicht neben einer einzeln gewählten Bibliothek derselben Site; der Eintrag zählt zu
-den 50. Jeder Lauf ermittelt die Bibliotheken neu; findet er keine oder bricht die Auflistung ab,
+auch was später dazukommt; „Alle Sites“ gibt es nicht. Eine Auswahl besteht entweder aus ganzen
+Sites oder aus einzeln gewählten Bibliotheken, nie aus beidem, weil die Einrichtung nur eine der
+beiden Formen führt; jede Site steht höchstens einmal darin, der Eintrag zählt zu den 50. Jeder Lauf ermittelt die Bibliotheken neu; findet er keine oder bricht die Auflistung ab,
 scheitert er vor der ersten Datei und der Bestand bleibt. Das Laufprotokoll nennt die Zahl der
 Dokumentbibliotheken und, gegen die in `source_sync_state.resolved_scopes` gemerkte letzte
 Ermittlung, neu hinzugekommene und weggefallene. Die Vorgabe der Betriebsart liest die Ströme aus
 dieser letzten Ermittlung, vor der ersten ist sie der Vollabgleich; eine neue Bibliothek hat noch
-keine Marke und macht den nächsten Lauf zum Vollabgleich, was aus einer weggefallenen indiziert
-ist, entfernt der nächste Vollabgleich. Verbindungstest und Original-Abruf prüfen eine solche
+keine Marke und macht den nächsten Lauf zum Vollabgleich. Was aus einer weggefallenen indiziert
+ist, entfernt ein Vollabgleich im selben Lauf; ein Änderungslauf überlässt es dem nächsten. Verbindungstest und Original-Abruf prüfen eine solche
 Bibliothek über die Auflistung der Site; `settingsState` führt die Site als `site:<id>`. Bestehende
 Bibliotheken behalten ihre Auswahl; die Oberfläche wählt „Alle Dokumentbibliotheken einer Site“
 nur für neue Bibliotheken vor. `SourceBrowser` in Stufen über Parameter der Anfrage: Site (Suche bei
