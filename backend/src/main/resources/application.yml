@@ -577,7 +577,8 @@ opaa:
         enabled: ${OPAA_UPLOAD_S3_TARGET_VALIDATION_ENABLED:true}
         allowlist: ${OPAA_UPLOAD_S3_TARGET_VALIDATION_ALLOWLIST:}
     max-file-size: ${OPAA_UPLOAD_MAX_FILE_SIZE:52428800}
-    # Own pool, deliberately not opaa.indexing.thread-pool - see UploadProperties#threadPool.
+    # Own pool, deliberately not opaa.indexing.thread-pool - see UploadProperties#threadPool. An
+    # upload takes a place (max-size plus queue-capacity) before it is stored; a full pool is a 429.
     thread-pool:
       core-size: ${OPAA_UPLOAD_THREAD_POOL_CORE_SIZE:2}
       max-size: ${OPAA_UPLOAD_THREAD_POOL_MAX_SIZE:4}
@@ -623,14 +624,15 @@ opaa:
     # profile warns about at start-up. Serves the rate limits and OPAA_LOCAL_ADMIN_ALLOWED_CIDRS
     # alike; a wildcard (0.0.0.0/0, ::/0) refuses the start.
     trusted-proxy-cidrs: ${OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS:}
-    # query to search: max-requests per client, global-max-requests across all clients; past
-    # either the answer is 429. Both count only requests the security chain authenticated (the push
-    # intake: its handler), so strangers cannot use them up; see RateLimitFilter.Counting.
-    # max-requests-per-account (query, chat-search, search) counts per signed-in account, per access
-    # token and per person over all her access tokens, whatever address they use; checked behind the
-    # security chain, 0 switches it off, an empty value fails the start. An access token gives back
-    # its address token; any 429 of a later limit that refuses before the actual work (the token
-    # quota, the busy answer of the attachment extraction) gives back the global token.
+    # query to document-upload: max-requests per client, global-max-requests across all clients;
+    # past either the answer is 429. Both count only requests the security chain authenticated (the
+    # push intake: its handler), so strangers cannot use them up; see RateLimitFilter.Counting.
+    # max-requests-per-account (query, chat-search, search, transcription, document-upload) counts
+    # per signed-in account, per access token and per person over all her access tokens, whatever
+    # address they use; checked behind the security chain, 0 switches it off, an empty value fails
+    # the start. An access token gives back its address token; any 429 of a later limit that
+    # refuses before the actual work (the token quota, the busy answer of the attachment
+    # extraction) gives back the global token.
     query:
       max-requests: ${OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS:10}
       window-seconds: ${OPAA_RATE_LIMIT_QUERY_WINDOW_SECONDS:60}
@@ -684,6 +686,22 @@ opaa:
       window-seconds: ${OPAA_RATE_LIMIT_SEARCH_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_SEARCH_GLOBAL_MAX_REQUESTS:300}
       max-requests-per-account: ${OPAA_RATE_LIMIT_SEARCH_MAX_REQUESTS_PER_ACCOUNT:30}
+    # POST /api/v1/transcriptions holds a transcription slot and calls the transcription model for
+    # every recording; sized like the query, a dictated question each few seconds.
+    transcription:
+      max-requests: ${OPAA_RATE_LIMIT_TRANSCRIPTION_MAX_REQUESTS:10}
+      window-seconds: ${OPAA_RATE_LIMIT_TRANSCRIPTION_WINDOW_SECONDS:60}
+      global-max-requests: ${OPAA_RATE_LIMIT_TRANSCRIPTION_GLOBAL_MAX_REQUESTS:100}
+      max-requests-per-account: ${OPAA_RATE_LIMIT_TRANSCRIPTION_MAX_REQUESTS_PER_ACCOUNT:10}
+    # POST /api/v1/libraries/{libraryId}/documents, one budget across all libraries (GET on the same
+    # path is not counted). It bounds how fast one account sends uploads; a full upload pool
+    # (opaa.upload.thread-pool) is answered with 429 on its own, before anything is stored. Either
+    # way the browser waits for Retry-After and goes on with the same file.
+    document-upload:
+      max-requests: ${OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_MAX_REQUESTS:120}
+      window-seconds: ${OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_WINDOW_SECONDS:60}
+      global-max-requests: ${OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_GLOBAL_MAX_REQUESTS:600}
+      max-requests-per-account: ${OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_MAX_REQUESTS_PER_ACCOUNT:60}
     # ADR-0033, Entscheidung 9: the local sign-in and its self-service endpoints. login, refresh,
     # register, forgot-password, set-password and verify-email (the confirm-registration endpoint)
     # are keyed by client address in RateLimitFilter; change-password by the authenticated

@@ -4,15 +4,15 @@ Nachschlagewissen zu den Regeln in [backend/AGENTS.md](../AGENTS.md#spring-testk
 Signaturen es gibt und warum, was einen Kontext spaltet, wie die Suite ihre eine Datenbank sauber
 hält und welche Wächter das prüfen.
 
-## Die neun Signaturen
+## Die zehn Signaturen
 
-Die gesamte Backend-Suite läuft auf **neun** Spring-Kontexten und damit neun Testcontainers-Postgres
+Die gesamte Backend-Suite läuft auf **zehn** Spring-Kontexten und damit zehn Testcontainers-Postgres
 je Test-JVM (Issues #1481, #1543 und #1563; `TestcontainersConfiguration` deklariert den Container
 als gewöhnliches Singleton-`@Bean`, es gilt also exakt: ein Kontext = ein Container). Jeder
-Backend-Test, der einen Anwendungskontext startet, trägt genau eine der neun Meta-Annotationen aus
+Backend-Test, der einen Anwendungskontext startet, trägt genau eine der zehn Meta-Annotationen aus
 `io.opaa.test` (`backend/src/test/java/io/opaa/test/`) — niemals eine eigene
 `@SpringBootTest`/`@ActiveProfiles`/`@Import`/`@Testcontainers`-Kombination. Vier davon bilden die
-Familie des `local,dev`-Profils, fünf die des Betriebsmodus `oidc`:
+Familie des `local,dev`-Profils, sechs die des Betriebsmodus `oidc`:
 
 - **`@OpaaIntegrationTest`** — die kanonische Signatur, die drei Viertel der Suite tragen: echtes
   Postgres, ganze Anwendung auf `RANDOM_PORT`, MockMvc (`@AutoConfigureMockMvc`),
@@ -37,7 +37,7 @@ Familie des `local,dev`-Profils, fünf die des Betriebsmodus `oidc`:
   Mit fährt das abgeschaltete Feature-Flag `EXTERNAL_ACCESS` (ADR-0044): Ob Filterkette, Routen und
   MCP-Server fehlen, zeigt nur ein ohne sie gestarteter Kontext.
 
-Fünf weitere tragen den Betriebsmodus **`oidc`**, den die vier oben nicht liefern können: Unter
+Sechs weitere tragen den Betriebsmodus **`oidc`**, den die vier oben nicht liefern können: Unter
 `local,dev` authentifiziert `DevAuthFilter` jede Anfrage, bevor ein Bearer-Token gelesen wird, eine
 lokale Sitzung ist dort nicht fahrbar (ADR-0033, #1543):
 
@@ -58,6 +58,11 @@ lokale Sitzung ist dort nicht fahrbar (ADR-0033, #1543):
   `NimbusJwtDecoder` über einen lokal erzeugten Schlüssel statt eines JWK-Sets aus dem Netz) für
   ein prüfbares Anbieter-Token bei der Übergabe eines lokalen Kontos (ADR-0033, Entscheidung 12).
   Nicht in die Basis ziehen: Klassen daneben fahren den Decoder des lokalen Issuers.
+- **`@OpaaManagementPortTest`** — Profil `oidc` auf `RANDOM_PORT` mit eigenem Management-Port
+  (`management.server.port=0`), wie das Helm-Chart den Dienst betreibt. Technischer Grund: Der
+  eigene Port startet einen Kindkontext mit eigenem Webserver, den es nur neben einem echten Server
+  gibt, und nimmt alle Actuator-Pfade vom API-Port, auf dem Klassen der Basis Health und Info über
+  MockMvc lesen. Nicht über die Basis meta-annotiert, weil diese an MockMvc ohne echten Port hängt.
 
 Die Varianten sind jeweils über die Basis ihrer Familie meta-annotiert und ergänzen nur ihre
 Abweichung. Eine Variante muss **nicht fachlich zusammengehören**: Wo eine Abweichung ohnehin einen
