@@ -86,8 +86,8 @@ data:
     deletion: Durch die Systemverwaltung („Löschung fortsetzen“) oder mit dem Konto
     evaluations: >-
       Ob und seit wann die Löschung für ein Konto angehalten ist; ohne Begründung. Keine Liste,
-      kein Filter und kein Export der angehaltenen Konten in der Oberfläche. Zahl der Anhalte-
-      vorgänge je Kalendermonat ohne Person, in der Auskunft über die Datenerhebung an die
+      kein Filter und kein Export der angehaltenen Konten in der Oberfläche. Zahl der
+      Anhaltevorgänge je Kalendermonat ohne Person, in der Auskunft über die Datenerhebung an die
       Personalvertretung
 nonPersonalTables:
   chat_locked_account_cleanup_state: [id, counting_since]

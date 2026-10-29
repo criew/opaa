@@ -74,7 +74,8 @@ Antwort steht in der Matrix der {{faktenblatt:rollensicht#matrix}}; die Tabelle 
 - Die Systemverwaltung findet lokale Konten, mit denen sich lange niemand angemeldet hat, um sie zu
   sperren oder zu löschen; nach einer Frist sperrt OPAA sie selbst
   ({{faktenblatt:voreinstellungen#local-auth-settings-inactive-days}}).
-- Der Personalrat erhält jährlich die Zahl der anlassbezogenen Klärungen nach Zweck, ohne Namen.
+- Der Personalrat erhält jährlich die Zahl der anlassbezogenen Klärungen nach Zweck und die Zahl
+  der angehaltenen Chat-Löschungen gesperrter Konten, ohne Namen.
 
 Was technisch möglich ist, steht je Datum im {{faktenblatt:datenkatalog}}, Spalte „Auswertungen“.
 Erlaubt ist nur, was die Dienstvereinbarung vereinbart.
