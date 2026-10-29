@@ -43,27 +43,39 @@ jobs:
           open(path, "w", encoding="utf-8").write(text)
           EOF
 
-      # help resolves every resolvable configuration of both projects. spotlessCheck and
-      # cyclonedxBom resolve further artifacts only while executing (the formatter, POMs read for
-      # license data), hence --rerun-tasks without build cache.
+      # help resolves every resolvable configuration of both projects; plugins come through
+      # gradlePluginPortal() as in every other job, so the POM-only metadata of that repository is
+      # recorded. spotlessCheck and cyclonedxBom resolve further artifacts only while executing
+      # (the formatter, POMs read for license data), bootJar and javadoc cover the image build and
+      # the CI step; hence --rerun-tasks without build cache.
       - name: Prüfsummen erzeugen
         run: >-
           ./gradlew --no-configuration-cache --no-build-cache --rerun-tasks
           --write-verification-metadata sha256
-          help spotlessCheck cyclonedxBom
+          help spotlessCheck cyclonedxBom bootJar javadoc
 
       - name: Varianten des Plugin Portals ergänzen
         working-directory: .
-        run: python3 .github/scripts/gradle_verification_variants.py backend/gradle/verification-metadata.xml
+        run: >-
+          python3 .github/scripts/gradle_verification_variants.py
+          backend/gradle/verification-metadata.xml
 
       # Lists every known file whose checksums differ from the committed file as a warning; the
       # maintainer verifies each before committing the result.
       - name: Mit dem bisherigen Stand vergleichen
         working-directory: .
-        run: >-
-          python3 .github/scripts/check_gradle_verification_metadata.py
-          "$RUNNER_TEMP/previous.xml" backend/gradle/verification-metadata.xml
-          | tee -a "$GITHUB_STEP_SUMMARY"
+        run: |
+          status=0
+          python3 .github/scripts/check_gradle_verification_metadata.py \
+            "$RUNNER_TEMP/previous.xml" backend/gradle/verification-metadata.xml \
+            >"$RUNNER_TEMP/compare.txt" || status=$?
+          cat "$RUNNER_TEMP/compare.txt"
+          {
+            echo '```'
+            cat "$RUNNER_TEMP/compare.txt"
+            echo '```'
+          } >>"$GITHUB_STEP_SUMMARY"
+          exit "$status"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
