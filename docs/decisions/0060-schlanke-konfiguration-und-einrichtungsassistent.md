@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-28 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md)
+Akzeptiert · zuletzt geändert 2026-10-29 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md)
 
 ## Kontext
 
@@ -200,6 +200,17 @@ abschaltet; nennt nur die Liste der Quellen den Host eines gespeicherten Modells
 Begründung: Wer Bibliotheken anbinden darf, soll den internen Modellserver nicht als Quelle lesen
 können, nur weil der Betrieb ihn für die Modelle freigegeben hat.
 
+In der Installation haben Modellabruf und Prüfung der Modellschritte je Instanz ein eigenes Budget
+für alle Clients zusammen (ADR-0053, Entscheidung 12); das Budget der Prüfungen teilen sich alle
+vier Modellschritte, und die Antwortdatei über die API zählt jedes Modell darin als eine Prüfung,
+die Datei beim Start nicht. Die Prüfung nennt weiter die Fehlertexte der Modellverwaltung.
+Begründung: In der Installation ist das Token die einzige Hürde, und jede Probe bindet einen
+Anfrage-Thread bis zu ihrer Wartezeit; ohne Budget hielte eine Schleife gegen einen Host, der nie
+antwortet, die Threads der Instanz fest. Die Fehlertexte bleiben, weil die Probe nur Adressen
+erreicht, die die Adressprüfung der Modelle zulässt, und die Einrichtung die genaue Ursache braucht
+(Schlüssel, Modell-Kennung, abgelehnter Parameter); was sie über die Erreichbarkeit verraten,
+begrenzt das Budget.
+
 ### 11. Jede Änderung einer Einstellung ist nachweisbar
 
 Jede Änderung einer fachlichen Einstellung über Oberfläche, REST-API oder Installation erzeugt einen
@@ -371,6 +382,10 @@ auszublenden.
   Port im internen Netz bliebe mit dem Token erreichbar, nur langsamer (Entscheidung 14).
 - Freie Ports mit den Fehlertexten des Mailservers — die Prüfung verriete, welche Dienste auf einem
   freigegebenen Host laufen (Entscheidung 14).
+- Fehlertexte der Modellprobe im Assistenten auf feste Klassen abbilden wie beim Mailserver — die
+  Einrichtung verlöre die Ursache, die sie zum Beheben braucht, und die Probe erreicht ohnehin nur
+  Adressen, die die Adressprüfung der Modelle zulässt; das Budget begrenzt, was die Texte über die
+  Erreichbarkeit verraten (Entscheidung 10).
 - Mailserver gegen die Allowlist der Modelle prüfen — machte jeden freigegebenen Modellserver zum
   erlaubten Mailserver und umgekehrt (Entscheidung 14).
 - Modelladressen gegen die Allowlist der Quellen prüfen — macht jeden freigegebenen Modellserver zum
