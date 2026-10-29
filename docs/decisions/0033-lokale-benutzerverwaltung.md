@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-27 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · Entscheidung 5 teilweise ersetzt durch ADR-0060 (Entscheidung 8) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
+Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · Entscheidung 5 teilweise ersetzt durch ADR-0060 (Entscheidung 8) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
 
 ## Kontext
 
@@ -221,7 +221,10 @@ Konten").
   weiter als `/8` verweigert den Start (`RateLimitProperties`), eine leere Liste im `oidc`-Profil
   warnt (`TrustedProxyStartupGuard`). Schema und Host übernimmt der Filter ungeprüft (Konsequenzen).
   `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` (`LocalAdminNetworkPolicy`) beschränkt lokale Systemverwalter,
-  solange es keinen zweiten Faktor gibt; MFA ist nicht gebaut.
+  solange es keinen zweiten Faktor gibt; MFA ist nicht gebaut. Die Regel gilt bei der Anmeldung,
+  bei der Erneuerung (ein Refresh von außerhalb wird wie ein unbekanntes Token abgewiesen und lässt
+  die Familie stehen) und bei jeder Anfrage (`LocalAdminNetworkFilter`, `403` mit
+  `ADMIN_NETWORK_REQUIRED`, nur die Abmeldung bleibt offen).
 - **Kein Geheimnis im Log** außer dem Einmalpasswort des Seeds (`LocalAuthLogPrivacyIntegrationTest`).
 
 Werte und Diagnose: [Konfiguration](../handbuch/betrieb/konfiguration.md),

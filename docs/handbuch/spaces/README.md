@@ -48,13 +48,20 @@ Drei Regeln halten einen Space handlungsfähig:
   Verwaltungshandlung.** Entfernen oder Herabstufen wird abgelehnt und nennt den Grund. **Eine
   Gruppe zählt dabei als Administrator, solange sie handlungsfähig ist.**
 - **Den Eigentümerwechsel darf jedes handlungsfähige Administrator-Mitglied vollziehen**, das eine
-  natürliche Person ist — an sich selbst oder an ein anderes solches Mitglied.
-- **Ein archivierter Space nimmt keine neuen Mitglieder auf.**
+  natürliche Person ist — an sich selbst oder an ein anderes solches Mitglied. Das neue
+  Mitglied braucht ein aktives Konto; ein gesperrtes oder noch nicht bestätigtes übernimmt die
+  Verantwortung nicht.
+- **Ein archivierter Space nimmt keine neuen Mitglieder auf** und wechselt den Eigentümer nicht
+  mehr.
 
 **Der persönliche Standard-Space** entsteht bei der ersten Anmeldung automatisch. Er ist immer
 privat: Außer der Person selbst wird niemand Mitglied, auch keine Gruppe. Wer mit anderen arbeiten
 will, legt einen Space an. Der Standard-Space lässt sich nicht übertragen, archivieren oder löschen;
-er braucht keine Nachfolge und wird mit dem Konto gelöscht.
+er braucht keine Nachfolge und wird mit dem Konto gelöscht. Auch die Systemverwaltung ordnet ihm
+nichts zu und liest seine Anweisung an das Modell nicht; eine bestehende Zuordnung lösen kann sie.
+
+**Wer nicht Mitglied ist, erfährt nichts über den Space.** Chats, Chatsuche und Import eines
+fremden Space antworten wie bei einem Space, den es nicht gibt.
 
 ## 3. Arbeitsmittel zuordnen
 

@@ -140,7 +140,8 @@ die „Fehlgeschlagen" sind oder noch „Wird verarbeitet", mit ihrer Zahl, die 
 dessen Fortschritt folgt; er erscheint ab fünf Dateien in der Bibliothek und nur, wenn er die Liste
 kürzt. Beide Filter listen Anhänge als eigene Zeilen
 und nennen dazu das Dokument, an dem sie hängen, etwa „Anhang von posteingang.eml". Die Aktionen
-einer Zeile, etwa „Löschen", stehen in ihrem Menü „⋯". Lehnt ein Upload Dateien ab, nennt eine
+einer Zeile, etwa „Löschen", stehen in ihrem Menü „⋯". Einzeln löschen lässt sich ein Dokument
+nur in einer Upload-Bibliothek; in einer Konnektorbibliothek folgt der Bestand der Quelle. Lehnt ein Upload Dateien ab, nennt eine
 Meldung sie; „Schließen" faltet sie zu „Abgelehnte Dateien anzeigen (n)", bis zum nächsten Upload.
 
 Im Reiter „Quelle" ändert, wer verwaltet, jede Zeile an Ort und Stelle: „Ändern" klappt sie auf,
