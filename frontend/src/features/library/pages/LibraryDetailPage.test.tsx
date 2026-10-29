@@ -1129,11 +1129,16 @@ describe('LibraryDetailPage', () => {
       mockGetIndexingStatus.mockReset()
     })
 
-    it('counts the rows anew while a run moves documents, at most every ten seconds', async () => {
+    type RunCounters = Pick<
+      IndexingStatusResponse,
+      'documentCount' | 'documentsSkipped' | 'documentsFailed'
+    >
+
+    /** A FILESYSTEM library mid-run, counted once at 10:00:00 with the given rows per state. */
+    async function renderRunningLibrary(counts: Record<string, number>) {
       // only Date is faked: the throttle reads the clock, polling and waitFor keep real timers
       vi.useFakeTimers({ toFake: ['Date'] })
       vi.setSystemTime(new Date('2026-10-01T10:00:00Z'))
-      const counts: Record<string, number> = { FAILED: 0, PENDING: 6, INDEXED: 2 }
       server.use(
         http.get('/api/v1/libraries/:libraryId/documents', ({ request }) => {
           const status = new URL(request.url).searchParams.get('status') ?? ''
@@ -1162,29 +1167,6 @@ describe('LibraryDetailPage', () => {
           },
         ]),
       )
-      function progress(documentCount: number) {
-        runStatus = { ...runStatus, documentCount, documentsIndexedTotal: documentCount }
-        act(() => {
-          const current = useIndexingStore.getState().runsByLibrary[managerLibrary.id]
-          useIndexingStore.setState({
-            runsByLibrary: {
-              [managerLibrary.id]: {
-                ...current,
-                documentCount,
-                documentsIndexedTotal: documentCount,
-              },
-            },
-          })
-        })
-      }
-      async function pendingOption(): Promise<string> {
-        const user = userEvent.setup()
-        await user.click(await screen.findByRole('combobox', { name: 'Status' }))
-        const option = await screen.findByRole('option', { name: /^Wird verarbeitet/ })
-        const text = option.textContent ?? ''
-        await user.keyboard('{Escape}')
-        return text
-      }
       setLibraryState(
         managerLibrary,
         detailsOf(managerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
@@ -1195,31 +1177,77 @@ describe('LibraryDetailPage', () => {
           'RUNNING',
         ),
       )
-      await waitFor(() =>
-        expect(useDocumentStore.getState().statusCountsByLibrary[managerLibrary.id]?.PENDING).toBe(
-          6,
-        ),
-      )
+      await waitFor(() => expect(countedRows()).toEqual(counts))
+
+      /** The polled status reports the run's counters - the next poll tick says the same. */
+      return function progress(counters: Partial<RunCounters>) {
+        runStatus = {
+          ...runStatus,
+          ...counters,
+          documentsIndexedTotal: counters.documentCount ?? runStatus.documentCount,
+        }
+        act(() => {
+          const current = useIndexingStore.getState().runsByLibrary[managerLibrary.id]
+          useIndexingStore.setState({
+            runsByLibrary: {
+              [managerLibrary.id]: {
+                ...current,
+                documentCount: runStatus.documentCount,
+                documentsSkipped: runStatus.documentsSkipped,
+                documentsFailed: runStatus.documentsFailed,
+                documentsIndexedTotal: runStatus.documentsIndexedTotal,
+              },
+            },
+          })
+        })
+      }
+    }
+
+    function countedRows() {
+      return useDocumentStore.getState().statusCountsByLibrary[managerLibrary.id]
+    }
+
+    async function statusOption(word: RegExp): Promise<string> {
+      const user = userEvent.setup()
+      await user.click(await screen.findByRole('combobox', { name: 'Status' }))
+      const option = await screen.findByRole('option', { name: word })
+      const text = option.textContent ?? ''
+      await user.keyboard('{Escape}')
+      return text
+    }
+
+    it('counts the rows anew while a run moves documents, at most every ten seconds', async () => {
+      const counts: Record<string, number> = { FAILED: 0, PENDING: 6, INDEXED: 2 }
+      const progress = await renderRunningLibrary(counts)
 
       // within ten seconds of the last count a moving run asks nothing
       counts.PENDING = 4
       counts.INDEXED = 4
       vi.setSystemTime(new Date('2026-10-01T10:00:05Z'))
-      progress(2)
-      expect(await pendingOption()).toBe('Wird verarbeitet (6)')
+      progress({ documentCount: 2 })
+      expect(await statusOption(/^Wird verarbeitet/)).toBe('Wird verarbeitet (6)')
 
       // afterwards the next step of the run counts anew
       counts.PENDING = 1
       counts.INDEXED = 7
       vi.setSystemTime(new Date('2026-10-01T10:00:11Z'))
-      progress(5)
-      await waitFor(() =>
-        expect(useDocumentStore.getState().statusCountsByLibrary[managerLibrary.id]?.PENDING).toBe(
-          1,
-        ),
-      )
-      expect(await pendingOption()).toBe('Wird verarbeitet (1)')
+      progress({ documentCount: 5 })
+      await waitFor(() => expect(countedRows()?.PENDING).toBe(1))
+      expect(await statusOption(/^Wird verarbeitet/)).toBe('Wird verarbeitet (1)')
       expect(useIndexingStore.getState().runsByLibrary[managerLibrary.id]?.status).toBe('RUNNING')
+    })
+
+    it('counts anew while a run only fails documents', async () => {
+      const counts: Record<string, number> = { FAILED: 1, PENDING: 6, INDEXED: 1 }
+      const progress = await renderRunningLibrary(counts)
+
+      // broken files only: neither documentCount nor documentsSkipped moves
+      counts.FAILED = 4
+      counts.PENDING = 3
+      vi.setSystemTime(new Date('2026-10-01T10:00:11Z'))
+      progress({ documentsFailed: 3 })
+      await waitFor(() => expect(countedRows()?.FAILED).toBe(4))
+      expect(await statusOption(/^Fehlgeschlagen/)).toBe('Fehlgeschlagen (4)')
     })
   })
 
