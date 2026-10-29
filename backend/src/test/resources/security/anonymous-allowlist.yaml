@@ -83,14 +83,4 @@ anonymous:
   - operation: GET /actuator/info
     reason: >-
       Version und Build des Backends für Betrieb und Image-Rauchtest; enthält keine Konfiguration.
-  - operation: GET /actuator
-    reason: >-
-      Linkübersicht der freigegebenen Betriebsendpunkte. Wird mit #3344 überprüft, bis dahin
-      hingenommen.
-  - operation: GET /actuator/metrics
-    reason: Bis #3344 behoben ist; danach nur mit Anmeldung oder auf eigenem Management-Port.
-  - operation: GET /actuator/metrics/{requiredMetricName}
-    reason: Bis #3344 behoben ist; danach nur mit Anmeldung oder auf eigenem Management-Port.
-  - operation: GET /actuator/prometheus
-    reason: Bis #3344 behoben ist; danach nur mit Anmeldung oder auf eigenem Management-Port.
 missingHeaders: []
