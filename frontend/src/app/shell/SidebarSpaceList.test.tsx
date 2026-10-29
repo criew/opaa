@@ -56,7 +56,8 @@ function renderList(activeSpaceId: string | null, spaces = SPACES) {
 function rowNames(): string[] {
   return within(screen.getByRole('list', { name: /^Spaces/ }))
     .getAllByRole('link')
-    .map((link) => link.querySelector('.MuiListItemText-primary')?.textContent ?? '')
+    .map((link) => link.querySelector('.MuiListItemText-primary')?.textContent)
+    .filter((name): name is string => name !== undefined && name !== null)
 }
 
 describe('SidebarSpaceList', () => {
@@ -93,15 +94,51 @@ describe('SidebarSpaceList', () => {
       '/spaces/space-zeta/chats/new',
     )
     // An archived space only appears when it was used recently, with its hint.
-    const archived = screen.getByRole('link', { name: /Altakte/ })
+    const archived = screen.getByRole('link', { name: /^Altakte/ })
     expect(archived).toHaveAttribute('href', '/spaces/space-old')
     expect(archived).toHaveTextContent('archiviert')
+  })
+
+  it('gives each row a gear into the settings of its space, with name and tooltip', async () => {
+    renderList('space-personal')
+
+    const gear = screen.getByRole('link', { name: 'Einstellungen von „Zeta“' })
+    expect(gear).toHaveAttribute('href', '/spaces/space-zeta/settings/general')
+    expect(gear).not.toHaveAttribute('aria-current')
+    // Beside the row's link, never inside it.
+    expect(screen.getByRole('link', { name: 'Zeta' })).not.toContainElement(gear)
+    await userEvent.hover(gear)
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Einstellungen')
+  })
+
+  it('marks the gear of the space whose settings are open, „page" only on the first tab', () => {
+    const { unmount } = renderWithProviders(
+      <SidebarSpaceList spaces={SPACES} activeSpaceId="space-zeta" isLoading={false} />,
+      { withRouter: true, initialRoute: '/spaces/space-zeta/settings/general' },
+    )
+    expect(screen.getByRole('link', { name: 'Einstellungen von „Zeta“' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect(
+      screen.getByRole('link', { name: 'Einstellungen von „Privater Bereich“' }),
+    ).not.toHaveAttribute('aria-current')
+    unmount()
+
+    renderWithProviders(
+      <SidebarSpaceList spaces={SPACES} activeSpaceId="space-zeta" isLoading={false} />,
+      { withRouter: true, initialRoute: '/spaces/space-zeta/settings/members' },
+    )
+    expect(screen.getByRole('link', { name: 'Einstellungen von „Zeta“' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    )
   })
 
   it('shows an archived space only when it was used recently', () => {
     renderList('space-personal')
 
-    expect(screen.queryByRole('link', { name: /Altakte/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /^Altakte/ })).not.toBeInTheDocument()
   })
 
   it('counts the person’s spaces that are not archived in the head', () => {

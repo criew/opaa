@@ -11,7 +11,9 @@ import Typography from '@mui/material/Typography'
 import { useTheme } from '@mui/material/styles'
 import AddIcon from '@mui/icons-material/Add'
 import SearchIcon from '@mui/icons-material/Search'
-import { Link as RouterLink } from 'react-router'
+import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
+import { Link as RouterLink, useLocation } from 'react-router'
+import { spaceSettingsRoute } from '@/shared/routes'
 import type { SpaceListResponse } from '@/shared/api/types'
 import CollapsibleSectionHead from '@/shared/ui/CollapsibleSectionHead'
 import { useSectionCollapsed } from '@/shared/stores/uiStore'
@@ -37,7 +39,8 @@ function spaceTarget(space: SpaceListResponse): string {
  * picked by recent use and filled up in list order, shown personal space first and then by name;
  * the active space is always among them and stays visible while the group is folded. The head
  * counts the person's spaces that are not archived; plus creates a space, the search button opens
- * the overview with the cursor in its search field.
+ * the overview with the cursor in its search field. Each row carries a gear into the settings of
+ * its space, for every member; a non-manager reads them only.
  */
 export default function SidebarSpaceList({
   spaces,
@@ -49,6 +52,7 @@ export default function SidebarSpaceList({
   const collapsed = useSectionCollapsed('spaces')
   const recentSpaceIds = useRecentSpaceIds()
   const roles = useTheme().palette.mode === 'light' ? lightRoles : darkRoles
+  const { pathname } = useLocation()
 
   const rows = useMemo(() => {
     // An archived space only fills a row when it was used recently.
@@ -72,15 +76,48 @@ export default function SidebarSpaceList({
 
   function renderRow(space: SpaceListResponse) {
     const active = space.id === activeSpaceId
+    const settingsRoute = spaceSettingsRoute(space.id)
+    const inSettings = pathname.startsWith(`/spaces/${space.id}/settings`)
     return (
-      <ListItem key={space.id} disablePadding>
+      <ListItem
+        key={space.id}
+        disablePadding
+        secondaryAction={
+          space.userRole && (
+            <Tooltip title="Einstellungen">
+              <IconButton
+                component={RouterLink}
+                to={settingsRoute}
+                size="small"
+                aria-label={`Einstellungen von „${space.name}“`}
+                // „page" only on the own target, „true" on every other tab of the settings.
+                aria-current={
+                  inSettings ? (pathname === settingsRoute ? 'page' : 'true') : undefined
+                }
+                sx={{
+                  p: 0.5,
+                  borderRadius: '4px',
+                  color: inSettings ? 'primary.main' : 'text.secondary',
+                }}
+              >
+                <SettingsOutlinedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
+          )
+        }
+        sx={{
+          mb: 0.25,
+          '& .MuiListItemSecondaryAction-root': { right: 4 },
+          // Room for the gear, so a long name ends before it; MUI's own 48px is too wide.
+          '& > .MuiListItemButton-root': { pr: space.userRole ? 4.5 : 1 },
+        }}
+      >
         <ListItemButton
           component={RouterLink}
           to={spaceTarget(space)}
           aria-current={active ? 'true' : undefined}
           sx={{
             borderRadius: '6px',
-            mb: 0.25,
             py: 0.5,
             px: 1,
             gap: 1,

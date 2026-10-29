@@ -880,6 +880,14 @@ erscheint nur, wenn er zuletzt genutzt wurde, mit dem Hinweis „archiviert". Al
 erreicht man über die Lupe im Kopf. Eine Zeile führt in einen neuen Chat des Space, bei einem
 archivierten Space auf seine Übersicht.
 
+**Einstellungen am Space, nicht am Fuß.** Jede Space-Zeile trägt rechts ein Zahnrad als Nur-Icon-Link
+nach 5.1 (`aria-label` „Einstellungen von „<Name>"", Tooltip „Einstellungen"), neben der Zeile,
+nicht in ihr; es führt auf den ersten Reiter der Einstellungen. Sind die Einstellungen eines Space
+offen, trägt sein Zahnrad `accent` und `aria-current` („page" auf dem ersten Reiter, sonst „true").
+In der Schublade steht dasselbe Zahnrad für den aktiven Space neben dem Space-Umschalter. Einen Fuß
+mit Einträgen hat die Spalte nicht. Das Zahnrad sieht jedes Mitglied; wer nicht verwalten darf,
+liest die Einstellungen nur.
+
 **Gleichrangige, zuklappbare Gruppenköpfe mit Zählern.** Die Köpfe „Spaces", „Angeheftet" und
 „Zuletzt verwendet" sind Disclosure-Köpfe mit Chevron, `aria-expanded` und `aria-controls`. Der
 Klappzustand bleibt im Browser gespeichert, wie die Spaltenbreite. Ist „Spaces" zugeklappt, bleibt

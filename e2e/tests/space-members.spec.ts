@@ -186,8 +186,9 @@ test("Einstellungen lesend für ein Mitglied, Mitglieder nur als Zählung", asyn
   const me = await member.get("/api/v1/auth/me");
   expect(me.status(), await me.text()).toBe(200);
   const memberId = ((await me.json()) as { id: string }).id;
+  const spaceName = `E2E-Lesend-${Date.now()}`;
   const created = await admin.post("/api/v1/spaces", {
-    data: { name: `E2E-Lesend-${Date.now()}` },
+    data: { name: spaceName },
   });
   expect(created.status(), await created.text()).toBe(201);
   const spaceId = ((await created.json()) as { id: string }).id;
@@ -198,7 +199,9 @@ test("Einstellungen lesend für ein Mitglied, Mitglieder nur als Zählung", asyn
     expect(added.status(), await added.text()).toBe(201);
 
     await page.goto(`/spaces/${spaceId}`);
-    await page.getByRole("link", { name: "Einstellungen" }).click();
+    await page
+      .getByRole("link", { name: `Einstellungen von „${spaceName}“` })
+      .click();
     await expect(page).toHaveURL(
       new RegExp(`/spaces/${spaceId}/settings/general$`),
     );
