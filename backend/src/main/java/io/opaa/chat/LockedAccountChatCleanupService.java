@@ -14,6 +14,7 @@ import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.User;
 import io.opaa.chat.LockedAccountChatCleanupStore.DueAccount;
 import io.opaa.instance.RetiredRetentionVariables.Pause;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -32,7 +33,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * resumes that deletion per account. A lock for inactivity or failed sign-ins starts nothing; an
  * account held or named by an open Klärung keeps its chats until that ends. One run deletes at most
  * {@link #MAX_CHATS_PER_RUN} chats in batches of their own transaction; the rest follows the next
- * night. The log names totals only, the audit one entry per account and run without a count.
+ * night. The log names totals only, the audit one entry per account and run without a count; each
+ * run also names how many accounts become due within {@link #PREVIEW}, so the operation sees a wave
+ * after a mass lock in advance.
  */
 @Service
 public class LockedAccountChatCleanupService {
@@ -42,6 +45,7 @@ public class LockedAccountChatCleanupService {
   static final String SYSTEM_ACTOR = "chat-locked-account-cleanup";
   static final int DELETE_BATCH_SIZE = 200;
   static final int MAX_CHATS_PER_RUN = 5_000;
+  static final Duration PREVIEW = Duration.ofDays(30);
 
   private final LockedAccountChatCleanupStore store;
   private final LockedAccountChatCleanupDates dates;
@@ -132,7 +136,37 @@ public class LockedAccountChatCleanupService {
           accounts,
           left > 0 || deleted >= maxChats ? ", the rest follows the next run" : "");
     }
+    logUpcoming(cutoff, now);
     return new Result(deleted, accounts, failed, false);
+  }
+
+  /**
+   * How many accounts are not yet due at {@code now} but will be within {@link #PREVIEW} under the
+   * policy in force, without names; 0 while the deletion is switched off or not yet counting.
+   */
+  public int upcomingAccounts(Instant now) {
+    LockedAccountChatCleanupPolicy policy = settings.current();
+    if (!policy.enabled() || store.countingSince().isEmpty()) {
+      return 0;
+    }
+    Instant cutoff = now.minus(policy.period());
+    return store.countDueBetween(cutoff, cutoff.plus(PREVIEW), now);
+  }
+
+  private void logUpcoming(Instant cutoff, Instant now) {
+    try {
+      int upcoming = store.countDueBetween(cutoff, cutoff.plus(PREVIEW), now);
+      if (upcoming > 0) {
+        log.info(
+            "Locked-account chat cleanup: {} account(s) become due within the next {} days",
+            upcoming,
+            PREVIEW.toDays());
+      }
+    } catch (RuntimeException e) {
+      log.warn(
+          "Locked-account chat cleanup could not count the accounts due soon ({})",
+          e.getClass().getSimpleName());
+    }
   }
 
   /** Deletes up to {@code budget} chats of {@code account}, batch by batch; returns how many. */

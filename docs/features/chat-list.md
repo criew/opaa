@@ -366,6 +366,9 @@ gleichzeitig mit der Bereinigung je Space um 03:50 Uhr. Zeitpunkt „jetzt“ is
   ([security-and-compliance.md](./security-and-compliance.md#der-auszug-für-die-personalvertretung)).
 - Anwendungslog: nur Gesamtzahlen (Chats, Konten); ein gescheitertes Konto oder ein Lauf, der die
   fälligen Konten nicht lesen kann, als **ERROR**.
+- **Vorschau für den Betrieb:** Jeder Lauf nennt als INFO die Zahl der Konten, deren Frist in den
+  nächsten 30 Tagen endet, ohne Namen und unabhängig davon, ob sie Chats haben; angehaltene Konten
+  und Konten einer offenen Klärung zählen nicht mit.
 
 ### Sichtbarkeit des Löschdatums
 
@@ -408,9 +411,10 @@ Anknüpfung an die Sperre durch die Verwaltung, Verlängerung nur mit Zustimmung
 Dienststelle, Konten Ausgeschiedener zu sperren; keine Sperre wegen bloßer Abwesenheit; Gelegenheit
 zur Selbstauskunft vor der Sperre; Verwertungsverbot für das Löschereignis.
 
-**Nicht umgesetzt (Soll-Auflagen):** eine Vorschau „in den nächsten 30 Tagen fällig“ für den
-Betrieb, ein Startlog-Hinweis auf eine verkürzte Frist und die Zahl ausgesetzter Löschungen im
-Jahresbericht an die Personalvertretung (#3026).
+**Soll-Auflagen:** Die Vorschau „in den nächsten 30 Tagen fällig“ für den Betrieb steht im
+Anwendungslog jedes Laufs. Der Startlog-Hinweis auf eine verkürzte Frist entfällt: Die Frist ist eine
+Einstellung der Systemverwaltung, jede Änderung steht mit Vorher und Nachher im Revisionsprotokoll.
+Offen ist die Zahl ausgesetzter Löschungen im Jahresbericht an die Personalvertretung.
 
 ---
 
