@@ -509,7 +509,23 @@ class PermissionMatrixIntegrationTest {
           default -> null;
         };
     UUID person = role == Role.SYSTEM_ADMIN ? admin : devUser;
-    return spaceFixture(Organization.DEFAULT_ID, spaceRole, assetRole, person);
+    Fixture fixture = spaceFixture(Organization.DEFAULT_ID, spaceRole, assetRole, person);
+    if (role != Role.NO_RIGHTS) {
+      return fixture;
+    }
+    // The delivered grant to all accounts would let createLibrary pass without its right ever
+    // being asked; without it the account without rights must meet the refusal.
+    return new Fixture(
+        fixture.ids(),
+        fixture
+            .seed()
+            .andThen(
+                rows ->
+                    rows.update(
+                        "DELETE FROM capability_grants WHERE organization_id = ?"
+                            + " AND capability = 'CREATE_LIBRARY' AND subject_type = 'ALL_ACCOUNTS'",
+                        Organization.DEFAULT_ID)),
+        fixture.markers());
   }
 
   private Fixture spaceFixture(UUID organization, SpaceRole devUserRole, String devUserAssetRole) {

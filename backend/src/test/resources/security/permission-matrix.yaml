@@ -11,7 +11,8 @@
 #   spaceAdmin   dev-user: space role ADMIN, MANAGER on the space's libraries
 #   curator      dev-user: space role CURATOR, EDITOR on the space's libraries
 #   member       dev-user: space role MEMBER, VIEWER on the space's libraries
-#   noRights     dev-user: system role USER, no member of the fixture space, no grant
+#   noRights     dev-user: system role USER, no member of the fixture space, no grant, and without
+#                the CREATE_LIBRARY grant delivered to all accounts
 #   anonymous    no credential at all (oidc mode)
 # The fixture space belongs to a third person and holds her knowledge library (a folder, a document
 # with a chunk, a selection field with one value), her prompt library with a prompt, a chat of the
@@ -255,7 +256,7 @@ operations:
   applyInstallationAnswerFile:               {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 404, note: "404 once the installation is complete, as in every test context"}
   completeInstallation:                      {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 404, note: "404 once the installation is complete, as in every test context"}
   listLibraries:                             {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
-  createLibrary:                             {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401, note: "every account may create an upload library (CREATE_LIBRARY ships to all accounts, ADR-0036, Entscheidung 5); the probe creates one"}
+  createLibrary:                             {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 403, anonymous: 401, note: "CREATE_LIBRARY ships to all accounts (ADR-0036, Entscheidung 5), so the probe creates an upload library; for noRights the run takes that delivered grant away and expects the refusal"}
   testLibrarySource:                         {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
   listSourceTypes:                           {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
   browseSource:                              {systemAdmin: allowed, auditor: 404, spaceAdmin: allowed, curator: 403, member: 403, noRights: 404, anonymous: 401}
