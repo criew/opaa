@@ -47,8 +47,10 @@ Fingerabdruck vergleichen Kennungen. Der Name der Bibliothek ist „Bibliothek (
 Auflistung `site:<id>`): Der Auswahldialog öffnet beim Bearbeiten dort, der Abgleich und
 `settingsState` lesen sie nicht, das Speichern prüft nur die Form. Ob die Bibliothek zur Site
 gehört, prüft der Verbindungstest über die Dokumentbibliotheken der Site, weil erst er ein Token
-hat. Ohne gespeicherte Site beginnt der Dialog bei den Sites; die Site kommt beim nächsten Speichern
-einer über die Site gewählten Auswahl hinzu, ein Lauf schreibt keine Einstellungen. Ein Eintrag mit
+hat. Ohne gespeicherte Site beginnt der Dialog bei den Sites; listet eine geöffnete Site eine schon
+gewählte Bibliothek ohne Site, übernimmt der Eintrag diese Site (`adoptsTrail`), und das nächste
+Speichern schreibt sie; ein Lauf schreibt keine Einstellungen. Eine Site ohne Namen zeigt der
+Dialog mit einem Platzhalter, gespeichert wird kein Ersatzname. Ein Eintrag mit
 Site, aber ohne `driveId` (alle Bibliotheken einer Site) ist nicht gebaut (#3117); ein OneDrive
 trägt keine Site. `SourceBrowser` in Stufen über Parameter der Anfrage: Site (Suche bei
 `Sites.Read.All`, sonst Adresse über `/sites/{host}:/{pfad}`), Bibliotheken, Ordner. Eine geänderte

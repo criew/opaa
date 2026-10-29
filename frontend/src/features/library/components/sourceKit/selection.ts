@@ -2,6 +2,8 @@
 export interface Crumb {
   key: string
   name: string
+  /** Whether `name` only stands in for a name the source does not know; it is never stored. */
+  placeholder?: boolean
 }
 
 /**
@@ -67,6 +69,8 @@ export interface SelectionSource {
   max?: number
   /** Whether choosing an object also covers what lies below it (folders); false for flat sources. */
   nested: boolean
+  /** Whether a chosen object stored without its levels takes them where a level lists it. */
+  adoptsTrail?: boolean
 }
 
 export function noun(source: Pick<SelectionSource, 'noun'>, count: number) {
@@ -81,6 +85,28 @@ export function isBelow(item: SelectionItem, key: string) {
 /** The display path of an item: the levels above it and its own name. */
 export function pathLabel(item: SelectionItem) {
   return [...item.trail.map((crumb) => crumb.name), item.name].join(' / ')
+}
+
+/**
+ * The selection with each object stored without its levels placed below `level` where `entries`,
+ * the listing of `level`, holds it or the outermost level of its trail. The same array when
+ * nothing moves, and always at the outermost level, where nothing is missing.
+ */
+export function adoptTrail(
+  selection: SelectionItem[],
+  entries: Pick<BrowseEntry, 'key'>[],
+  level: Crumb[],
+): SelectionItem[] {
+  if (level.length === 0) return selection
+  const listed = new Set(entries.map((entry) => entry.key))
+  let moved = false
+  const next = selection.map((item) => {
+    const head = item.trail.length === 0 ? item.key : item.trail[0].key
+    if (!listed.has(head)) return item
+    moved = true
+    return { ...item, trail: [...level, ...item.trail] }
+  })
+  return moved ? next : selection
 }
 
 /**

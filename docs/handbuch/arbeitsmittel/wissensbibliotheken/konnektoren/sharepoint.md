@@ -78,8 +78,8 @@ Assistent gleich den Auswahldialog der Zeile „Umfang":
 OPAA merkt sich zu jeder Dokumentbibliothek die Site, in der sie gewählt wurde. Liegen alle
 gewählten Dokumentbibliotheken in derselben Site, öffnet der Dialog beim Bearbeiten gleich dort.
 Ist zu einer Dokumentbibliothek keine Site gespeichert, etwa nach einem Update, beginnt der Dialog
-bei den Sites; die Site wird gespeichert, sobald die Dokumentbibliothek einmal über ihre Site neu
-gewählt und übernommen ist.
+bei den Sites. Sobald man ihre Site öffnet, ordnet der Dialog die schon gewählte
+Dokumentbibliothek samt Ordnern dieser Site zu; „Übernehmen" speichert die Site.
 
 Eine ganze Site oder „alle Sites" lässt sich nicht wählen. Sites, Dokumentbibliotheken und Ordner
 einer Ebene listet der Dialog nur bis zu einer festen Grenze; ist die Liste länger, steht dort „Liste

@@ -22,6 +22,7 @@ import { plainMessage } from './plainMessage'
 import PathLabel from '../setup/PathLabel'
 import { TextAction } from '@/shared/ui/DetailSection'
 import {
+  adoptTrail,
   isBelow,
   noun,
   pathLabel,
@@ -127,7 +128,11 @@ function SelectionDialogBody({
     const delay = setTimeout(() => alive && setShowLoading(true), LOADING_DELAY)
     source
       .list(level, serverSearch ? serverQuery : '')
-      .then((result) => alive && setListing({ token, result }))
+      .then((result) => {
+        if (!alive) return
+        setListing({ token, result })
+        if (source.adoptsTrail) setDraft((prev) => adoptTrail(prev, result.entries, level))
+      })
       .catch(
         (err: unknown) =>
           alive &&
