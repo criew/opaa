@@ -1653,6 +1653,31 @@ class ConfluenceIndexingExecutorTest {
     assertThat(cost.getValue().incomplete()).isTrue();
   }
 
+  // regression guard for #3117: "Alle Spaces" is every space the access sees, personal ones aside
+  @ParameterizedTest
+  @MethodSource("editions")
+  void allSpacesIndexesEverySpaceTheAccessSeesExceptPersonalOnes(ConfluenceEdition edition)
+      throws Exception {
+    start(edition, null);
+    server.addSpace("4", "~anna", "Anna Muster");
+    server.addPage("400", "~anna", "Privatnotizen", null, "<p>Nur für Anna.</p>", SEEDED_AT);
+    library.updateSourceSettings(
+        "{\"edition\": \"" + edition.name() + "\", \"allSpaces\": true, \"spaces\": []}");
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(documentIngestService)
+        .ingest(DocumentIngests.that().text().at(pagePath(edition, "ENG", "100")).match(), any());
+    verify(documentIngestService)
+        .ingest(DocumentIngests.that().text().at(pagePath(edition, "HR", "200")).match(), any());
+    verify(documentIngestService)
+        .ingest(DocumentIngests.that().text().at(pagePath(edition, "SEC", "300")).match(), any());
+    verify(documentIngestService, never())
+        .ingest(DocumentIngests.that().text().titled("Privatnotizen").match(), any());
+    verify(eventRepository)
+        .save(argThat(event(IndexingEventCategory.SUMMARY, "Umfang „Alle“: 3 Spaces", null)));
+  }
+
   private static ArgumentMatcher<IndexingRunEvent> event(
       IndexingEventCategory category, String messagePart, String reference) {
     return event ->

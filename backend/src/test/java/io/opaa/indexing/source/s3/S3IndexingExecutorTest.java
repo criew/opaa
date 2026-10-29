@@ -801,6 +801,46 @@ class S3IndexingExecutorTest {
     verifyNoReconciliation();
   }
 
+  // regression guard for #3117: "Alle Buckets" lists every bucket the key sees, anew in each run
+  @Test
+  void allBucketsIndexesEveryBucketTheKeySees() throws Exception {
+    library.updateSourceSettings(
+        "{\"region\": \"eu-central-1\", \"pathStyle\": true, \"allBuckets\": true,"
+            + " \"scopes\": []}");
+    store
+        .put("dokumente", "2025/protokoll.pdf", "eins", PDF)
+        .put("satzungen", "hauptsatzung.txt", "text", "text/plain");
+    UUID jobId = UUID.randomUUID();
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(documentIngestService)
+        .ingest(
+            DocumentIngests.that().file().at("s3://dokumente/2025/protokoll.pdf").match(), any());
+    verify(documentIngestService)
+        .ingest(DocumentIngests.that().file().at("s3://satzungen/hauptsatzung.txt").match(), any());
+    verify(eventRepository)
+        .save(argThat(event(IndexingEventCategory.SUMMARY, "Umfang „Alle“: 2 Buckets", null)));
+    assertThat(reconciledPaths())
+        .containsExactlyInAnyOrder(
+            "s3://dokumente/2025/protokoll.pdf", "s3://satzungen/hauptsatzung.txt");
+  }
+
+  @Test
+  void allBucketsWithoutListBucketsFailsTheRunAndRemovesNothing() throws Exception {
+    library.updateSourceSettings(
+        "{\"region\": \"eu-central-1\", \"pathStyle\": true, \"allBuckets\": true,"
+            + " \"scopes\": []}");
+    store.bucketListingPermitted(false).put("dokumente", "2025/protokoll.pdf", "eins", PDF);
+    UUID jobId = UUID.randomUUID();
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(indexingJobService)
+        .failJob(eq(jobId), argThat(message -> message.contains("ListAllMyBuckets")));
+    verifyNoReconciliation();
+  }
+
   @Test
   void aRefusedKeyFailsTheRunWithTheAccessLayersMessage() throws Exception {
     store

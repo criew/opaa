@@ -790,7 +790,7 @@ public final class FakeConfluenceServer implements AutoCloseable {
     node.put("id", s.id());
     node.put("key", s.key());
     node.put("name", s.name());
-    node.put("type", "global");
+    node.put("type", s.key().startsWith("~") ? "personal" : "global");
     node.put("status", "current");
     return node;
   }
