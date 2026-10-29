@@ -1548,6 +1548,16 @@ class LibraryDocumentServiceTest {
               UUID organizationId, java.util.function.Consumer<UUID> visitor) {
             throw new UnsupportedOperationException();
           }
+
+          @Override
+          public long countRetainedVersions(UUID organizationId, UUID libraryId) {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public int eraseRetainedVersions(UUID organizationId, UUID libraryId) {
+            throw new UnsupportedOperationException();
+          }
         };
     LibraryDocumentService streamingService =
         serviceWith(new AttachmentExtractionProperties(4, java.time.Duration.ofSeconds(10)));
@@ -2290,6 +2300,16 @@ class LibraryDocumentServiceTest {
     @Override
     public void forEachStoredLibrary(
         UUID organizationId, java.util.function.Consumer<UUID> visitor) {
+      throw new UploadStoreUnavailableException();
+    }
+
+    @Override
+    public long countRetainedVersions(UUID organizationId, UUID libraryId) {
+      throw new UploadStoreUnavailableException();
+    }
+
+    @Override
+    public int eraseRetainedVersions(UUID organizationId, UUID libraryId) {
       throw new UploadStoreUnavailableException();
     }
   }

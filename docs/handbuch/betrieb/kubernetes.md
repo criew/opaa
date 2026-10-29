@@ -1401,7 +1401,7 @@ der nächste Start führt sie erneut aus; eine Sperre bleibt dabei nicht stehen.
 | Bestandteil | Wo | Gesichert durch |
 |---|---|---|
 | Datenbank: Dokumente, Chunks samt Vektoren, Volltext, Metadaten, Rechte, Chats, Protokolle | externe PostgreSQL | Sicherung des Datenbankbetriebs, etwa `pg_dump` oder die Sicherung eines Operators |
-| Originale der Uploads | Bucket oder Volume `opaa-uploads` | Versionierung oder Replikation des Objektspeichers, Snapshots des Volumes oder eine Dateikopie |
+| Originale der Uploads | Bucket oder Volume `opaa-uploads` | Replikation oder Sicherung des Objektspeichers, Snapshots des Volumes oder eine Dateikopie; die Versionierung des Buckets nicht, denn ein Löschen in OPAA entfernt alle Versionen |
 | Geheimnisse | Secret `opaa-secrets` | Kopie außerhalb des Clusters, vor allem `OPAA_CREDENTIALS_ENCRYPTION_KEY`, `OPAA_SETTINGS_ENCRYPTION_KEY` und `OPAA_AUTH_JWT_SECRET` |
 | Konfiguration | Werte-Datei | Versionsverwaltung; sie nennt auch Endpunkt und Bucket, auf die die Verweise in der Datenbank zeigen |
 
