@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.core.JacksonException;
@@ -53,8 +54,7 @@ final class DropboxApi {
   /** The summary of a plain-text {@code 400} saying the token is of the other kind. */
   static final String TOKEN_KIND_MISMATCH = "token_kind_mismatch";
 
-  private static final java.util.regex.Pattern SCOPE_NAME =
-      java.util.regex.Pattern.compile("[a-z_]+(\\.[a-z_]+)+");
+  private static final Pattern SCOPE_NAME = Pattern.compile("[a-z_]+(\\.[a-z_]+)+");
 
   private final URI apiBase;
   private final URI contentBase;

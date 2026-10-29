@@ -5,6 +5,7 @@ import static io.opaa.api.types.ConnectionProfileSupport.OPTIONAL;
 import static io.opaa.api.types.ConnectionProfileSupport.REQUIRED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.api.types.ConnectionOwnership;
@@ -183,8 +184,8 @@ class SourceConnectorProfileContractTest {
     softly
         .assertThat(dropbox.defaults().keys())
         .as("DROPBOX")
-        .singleElement()
-        .satisfies(key -> assertThat(key.key() + key.profileOnly()).isEqualTo("teamApptrue"));
+        .extracting(DefaultKey::key, DefaultKey::profileOnly)
+        .containsExactly(tuple("teamApp", true));
     ProfileDeclaration oneDrive = declared.get("ONEDRIVE");
     softly.assertThat(oneDrive.support()).as("ONEDRIVE").isEqualTo(REQUIRED);
     softly

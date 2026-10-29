@@ -45,6 +45,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -160,9 +161,7 @@ public class DropboxSourceConnector implements SourceConnector, SourceBrowser, O
     }
     Set<String> named = Set.of(profileScopes.trim().split("\\s+"));
     List<String> missing =
-        java.util.Arrays.stream(TEAM_SCOPES.split(" "))
-            .filter(scope -> !named.contains(scope))
-            .toList();
+        Arrays.stream(TEAM_SCOPES.split(" ")).filter(scope -> !named.contains(scope)).toList();
     if (!missing.isEmpty()) {
       throw new ValidationException(
           "Eine Team-App braucht die Scopes "
