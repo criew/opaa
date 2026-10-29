@@ -22,7 +22,7 @@ export default function LibraryUploadInputs({ upload }: { upload: DocumentUpload
       {/* Always rendered, so that screen readers announce the hint when it appears. */}
       <div role="status" aria-live="polite">
         {uploadWaitSeconds !== null && (
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
             Der Server nimmt gerade keine weiteren Uploads an. Der Upload geht in{' '}
             {uploadWaitSeconds === 1 ? 'einer Sekunde' : `${uploadWaitSeconds} Sekunden`}{' '}
             automatisch weiter.
