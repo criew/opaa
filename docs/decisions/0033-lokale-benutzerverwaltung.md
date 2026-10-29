@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-27 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · Entscheidung 5 teilweise ersetzt durch ADR-0060 (Entscheidung 8) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
+Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · Entscheidung 5 teilweise ersetzt durch ADR-0060 (Entscheidung 8) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
 
 ## Kontext
 
@@ -267,11 +267,15 @@ Platzhalter, gebrandeter HTML-Rahmen; API mit Vorschau, Zurücksetzen und Testve
   Quartals-Wiedervorlage (`ADMIN_REVIEW_REMINDER`, nur Zahlen) meinen dieselbe Menge ohne Notanker
   (`LocalUserOverview#countsAsInactive()`).
 - **Selbstbedienung:** Selbstregistrierung nur mit Schalter und Domänenliste (Rolle `USER`, Ablauf
-  Pflicht, `VERIFY_EMAIL`, bei belegter Adresse dieselbe `202` ohne Hinweis-Mail, eine unbestätigte
-  behält Hash und Namen gegen Pre-Hijacking; das Einschalten ist Dienstvereinbarungspunkt); „Passwort
-  vergessen“ nur mit Schalter und Basis-URL, immer `204` nach fester Frist. Ein abgeschalteter Fluss
-  ist ohne Sitzung von einer unbekannten Route nicht zu unterscheiden (#1592). Passwort ändern
-  widerruft die übrigen Sitzungen. Abläufe und Fristen: [Benutzerverwaltung](../handbuch/konten-und-rechte/benutzerverwaltung.md).
+  Pflicht, `VERIFY_EMAIL`, bei belegter Adresse dieselbe `202` ohne Hinweis-Mail; das Einschalten
+  ist Dienstvereinbarungspunkt). **Gegen Pre-Hijacking** trägt die Registrierung kein Passwort: Erst
+  das Einlösen des Bestätigungslinks setzt es (`LocalPasswordService#confirmRegistration`), verwirft
+  jeden vorher gespeicherten Hash und beendet alle Sitzungen. Wer eine fremde Adresse zuerst
+  registriert, bestimmt so nie das Passwort; eine erneute Registrierung einer unbestätigten Adresse
+  schickt nur einen neuen Link und behält den Namen. Die Bestätigungsmail sagt „Nicht von Ihnen?
+  Ignorieren“. „Passwort vergessen“ nur mit Schalter und Basis-URL, immer `204` nach fester Frist.
+  Ein abgeschalteter Fluss ist ohne Sitzung von einer unbekannten Route nicht zu unterscheiden
+  (#1592). Passwort ändern widerruft die übrigen Sitzungen. Abläufe und Fristen: [Benutzerverwaltung](../handbuch/konten-und-rechte/benutzerverwaltung.md).
 
 ### 12. Übergabe eines lokalen Kontos an eine Anbieteridentität — administrativ angestoßen, von der Person selbst eingelöst
 
@@ -398,6 +402,7 @@ Bedingungen des Personalrats für eine Zustimmung); Stand der Zusagen:
 - Tomcats `RemoteIpValve` mit `forward-headers-strategy: native`; `X-Forwarded-For` ungeprüft; linkester Eintrag — nicht gebaut, der Resolver liest unterhalb der Wrapper; jede IP-Grenze wirkungslos; falsch bei anhängenden Proxys (9).
 - SMTP in der Umgebung; Basis-URL als Verwaltungseinstellung; Outbox — kein Testversand; über eine kompromittierte Sitzung umlenkbar; Auth-Mails brauchen ein sofortiges Ergebnis (10).
 - Kontenliste mit exakter letzter Anmeldung oder Export; Hinweis-Mail bei belegter Adresse; Selbstregistrierung ohne Domänenliste; hartes Löschen mit Kaskade — Auswertungspfad; Aufzählungskanal; Konten ohne Ablauf; DSGVO-Pfad (11).
+- Passwort schon bei der Registrierung, unbestätigt behaltener Hash — wer eine fremde Adresse zuerst registriert, bestimmt das Passwort, das die Person mit dem Link aktiviert (11).
 - Keine Übergabe; Übergabe mit eingetipptem Subject; Vier-Augen-Prinzip — wiederholt `basic`; fremde private Inhalte lesbar; die Person ist die zweite Partei (12).
 - Erfolgreiche Anmeldungen aller Verwalter auditieren; Profil umbenennen — Personen sind keine Notfallmittel; bricht jede Bereitstellung (13, 8).
 

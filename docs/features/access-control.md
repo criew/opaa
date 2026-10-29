@@ -716,26 +716,28 @@ neuer Link entwertet ältere), Konten mit Verwalter- oder Inaktivitätssperre, a
 eingeladene Konten sowie unbekannte Adressen erhalten nichts und antworten gleich. Die Anfrage
 ändert keinen Zustand und wird nicht protokolliert — Sitzungen enden erst beim Einlösen.
 **Selbstregistrierung** existiert nur mit Verwaltung an, `self_registration_enabled`, **nichtleerer
-Domänenliste** und Basis-URL (sonst ununterscheidbar von einer unbekannten Route, wie oben). Adresse, Anzeigename und Passwort werden zuerst
-geprüft (Feldfehler `email`, `displayName`, `password` — sie verraten nichts über Konten); danach
-wird der **Hash in jedem Ausgang auf dem Anfrage-Thread** berechnet (das Klartext-Passwort wartet
-nie in einer Warteschlange), und alles Weitere läuft auf dem Mail-Thread — die Antwort ist in
-jedem Ausgang **dieselbe 202 nach derselben Zeit** (dem Größeren aus fester Frist und einem
-BCrypt, nicht der Frist selbst): Domäne gegen die Liste (exakt), Adresse gegen den lokalen Issuer
-— eine
+Domänenliste** und Basis-URL (sonst ununterscheidbar von einer unbekannten Route, wie oben). Die
+Registrierung trägt **kein Passwort** (gegen Pre-Hijacking: wer eine fremde Adresse zuerst
+registriert, darf ihr Passwort nicht bestimmen). Adresse und Anzeigename werden zuerst geprüft
+(Feldfehler `email`, `displayName` — sie verraten nichts über Konten); alles Weitere läuft auf dem
+Mail-Thread — die Antwort ist in jedem Ausgang **dieselbe 202 nach derselben Zeit** (der festen
+Frist): Domäne gegen die Liste (exakt), Adresse gegen den lokalen Issuer — eine
 freie Adresse mit erlaubter Domäne wird als Konto angelegt (Rolle `USER`, Ablauf **Pflicht** aus
-`default_expiry_days`, Anlagegrund „Selbstregistrierung", Adresse unbestätigt und damit `INVITED`,
-nicht anmeldefähig) und erhält `REGISTRATION_VERIFICATION` mit einem 24 Stunden gültigen
-`VERIFY_EMAIL`-Link; eine **noch unbestätigte Selbstregistrierung derselben Adresse** erhält einen
-neuen Link (der ältere ist entwertet), Hash und Name bleiben — sonst könnte eine zweite
-Registrierung ein Passwort hinterlegen, das die erste Person dann bestätigt (bewusste Regel gegen
-ein Pre-Hijacking); eine belegte Adresse
+`default_expiry_days`, Anlagegrund „Selbstregistrierung", ohne Passwort, Adresse unbestätigt und
+damit `INVITED`, nicht anmeldefähig) und erhält `REGISTRATION_VERIFICATION` mit einem 24 Stunden
+gültigen `VERIFY_EMAIL`-Link und dem Hinweis „Nicht von Ihnen? Dann ignorieren Sie diese
+Nachricht"; eine **noch unbestätigte Selbstregistrierung derselben Adresse** erhält einen
+neuen Link (der ältere ist entwertet), der Name bleibt; eine belegte Adresse
 (auch bei gleichzeitiger Anlage, Unique-Index) und eine fremde Domäne legen nichts an und senden
 nichts — auch keine Hinweis-Mail. Ereignis `LOCAL_USER_REGISTERED` unter dem Systemakteur
 `local-auth`, nur bei der Anlage. Der persönliche Space entsteht erst bei der ersten Anmeldung nach
 der Bestätigung, auf dem Weg jeder Anmeldung — eine nie bestätigte Registrierung hinterlässt keinen
-Space. **E-Mail bestätigen** löst den `VERIFY_EMAIL`-Link genau einmal ein und setzt
-`email_verified_at` (400 `TOKEN_INVALID` wie oben); danach ist das Konto `ACTIVE`. Ein
+Space. **E-Mail bestätigen** nimmt den `VERIFY_EMAIL`-Link **und das neue Passwort** entgegen, löst
+den Link genau einmal ein, setzt `email_verified_at` und den Hash — ein vorher gespeicherter Hash
+(aus einer Registrierung älterer Fassung oder einem administrativen Zurücksetzen) ist damit
+verworfen — und beendet wie „Passwort setzen" jede Sitzung und entwertet die übrigen Passwortlinks
+(400 `TOKEN_INVALID` wie oben; die Passwortrichtlinie antwortet mit Feldfehlern an `newPassword` und
+lässt den Link offen); danach ist das Konto `ACTIVE`. Ein
 administratives Zurücksetzen macht eine unbestätigte Selbstregistrierung **nicht** anmeldefähig —
 der Rücksetzlink bestätigt nichts; ist die Selbstregistrierung inzwischen abgeschaltet, ist der Weg
 für den Verwalter das Löschen des unbestätigten Kontos und eine Einladung. Die Rate-Limits
@@ -770,11 +772,10 @@ Seite, Überschrift „Passwort festlegen", die die Herkunft des Links bewusst n
 **immer**, auch bei ausgeschalteten Schaltern — ein Link aus einer Einladung oder einer
 administrativen Rücksetzung darf nicht in eine Umleitung laufen; `/forgot-password` und `/register`
 leiten auf `/login` um, sobald `localAccounts` den jeweiligen Fluss nicht als verfügbar meldet,
-entscheiden aber nichts, solange die Konfiguration noch lädt. `/verify-email` löst den `POST` beim
-Laden **genau einmal** aus (`useRef`-Sperre gegen den doppelten Effektlauf im StrictMode — der
-zweite Aufruf würde den gerade verbrauchten Link als ungültig melden) und zeigt „wird geprüft",
-„bestätigt" oder „Link ungültig"; eine Begrenzung nennt dort die Wartezeit und sagt, dass der Link
-dadurch nicht verbraucht ist.
+entscheiden aber nichts, solange die Konfiguration noch lädt. `/verify-email` zeigt das Formular
+„Passwort festlegen" (Passwort und Wiederholung) und sendet den `POST` erst beim Absenden — das
+Laden der Seite hat keine Wirkung; Erfolg ist „E-Mail-Adresse bestätigt und Passwort festgelegt",
+ein abgewiesener Link „Link ungültig", eine Begrenzung nennt die Wartezeit über dem Formular.
 
 **Kein Roh-Token in der Adresszeile.** Beide Seiten lesen den Token genau einmal und **entfernen ihn
 sofort aus der URL**, bevor die erste Anfrage der Seite hinausgeht: Solange er dort steht, ist er der
@@ -805,7 +806,8 @@ E-Mail geschickt." (vergessen und registrieren — für bekannte und unbekannte 
 „Passwort festgelegt — Sie können sich jetzt anmelden.", „Dieser Link ist nicht mehr gültig." (eine
 Meldung für unbekannt, abgelaufen, verbraucht, falscher Zweck und fehlenden Token) — jede mit einem
 Weg zurück. Die Registrierungsbestätigung bietet „Registrierung erneut absenden" an, weil eine
-erneute Registrierung derselben unbestätigten Adresse den Bestätigungslink erneut schickt. Eine 429
+erneute Registrierung derselben unbestätigten Adresse den Bestätigungslink erneut schickt. Die
+Registrierung selbst fragt kein Passwort; sie sagt, dass es über den Link festgelegt wird. Eine 429
 nennt die Wartezeit aus `Retry-After`, ohne von „Versuchen" zu sprechen — die Grenze zählt auch
 Anfragen anderer aus demselben Netz. Die Registrierung zeigt weder Rolle noch Ablaufdatum und sagt,
 welche Daten gespeichert werden; den Datenschutzhinweis des Hauses gibt die Systemverwaltung heraus,

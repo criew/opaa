@@ -443,13 +443,21 @@ Was ein selbstregistriertes Konto erhält: immer die Rolle „Nutzer", ein **Pfl
 den festen Anlagegrund „Selbstregistrierung". Bis die Adresse über den Bestätigungslink bestätigt
 ist, ist das Konto nicht anmeldefähig.
 
+**Das Passwort entsteht erst mit dem Bestätigungslink.** Die Registrierung fragt nur Name und
+Adresse; die Seite hinter dem Link fragt das Passwort und bestätigt damit zugleich die Adresse. So
+bestimmt nur, wer das Postfach liest, das Passwort — auch wenn jemand anderes die Adresse zuerst
+registriert hat. Ein vorher gesetztes Passwort, etwa durch ein administratives Zurücksetzen, gilt
+danach nicht mehr, und alle Sitzungen des Kontos enden. Die Bestätigungsmail sagt ausdrücklich:
+Wer sich nicht registriert hat, ignoriert die Nachricht; ohne den Link wird kein Zugang aktiv.
+
 Drei Eigenschaften, die im Alltag auffallen:
 
 - **Eine belegte Adresse ergibt kein zweites Konto**, und die Antwort ist dieselbe wie bei einer
   freien Adresse. An die belegte Adresse geht auch keine Hinweisnachricht — sie wäre selbst ein Weg,
   Adressen auszuprobieren.
 - **Eine noch unbestätigte Registrierung kann es erneut versuchen** und erhält ihren
-  Bestätigungslink neu. Name und Passwort der ersten Registrierung bleiben dabei erhalten.
+  Bestätigungslink neu; der ältere gilt nicht mehr. Der Name der ersten Registrierung bleibt dabei
+  erhalten.
 - **Eine unbestätigte Registrierung ist keine Sackgasse, aber auch nicht reparierbar.** Ein
   administratives Zurücksetzen bestätigt die Adresse nicht. Ist die Selbstregistrierung inzwischen
   abgeschaltet, ist der Ausweg: das unbestätigte Konto **löschen** (es besitzt nichts, also geht das)
