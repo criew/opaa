@@ -33,12 +33,15 @@ import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryCreation;
 import io.opaa.library.LibraryExternalAccessService;
 import io.opaa.library.LibraryExternalAccessTokenCounter;
+import io.opaa.organization.Organization;
+import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.security.LocalAuthKeyService;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.OwnOrganizationFixtures;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
@@ -88,6 +91,8 @@ class ExternalAccessTokenIntegrationTest {
   @Autowired private LibraryExternalAccessService libraryRelease;
   @Autowired private Clock clock;
   @Autowired private GroupRepository groupRepository;
+  @Autowired private OrganizationRepository organizations;
+  @Autowired private OwnOrganizationFixtures organizationFixtures;
   @Autowired private GroupMembershipResolver membershipResolver;
 
   private UUID libraryId;
@@ -600,6 +605,48 @@ class ExternalAccessTokenIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.blocked").value(1));
     assertThat(tokens.findById(second).orElseThrow().getRevokedAt()).isNotNull();
+  }
+
+  @Test
+  void theAdministrationBlocksNoTokenOfAnotherOrganization() throws Exception {
+    UUID organization =
+        organizations
+            .save(new Organization(UUID.randomUUID(), "Fremde Stelle " + UUID.randomUUID()))
+            .getId();
+    UUID person = UUID.randomUUID();
+    UUID token = UUID.randomUUID();
+    try {
+      jdbcTemplate.update(
+          "INSERT INTO users (id, subject, issuer, email, display_name, organization_id)"
+              + " VALUES (?, ?, 'opaa-dev', ?, 'Fremde Person', ?)",
+          person,
+          "foreign-" + person,
+          "foreign-" + person + "@example.com",
+          organization);
+      jdbcTemplate.update(
+          "INSERT INTO external_access_tokens (id, user_id, name, token_prefix,"
+              + " token_lookup_hash, expires_at) VALUES (?, ?, 'Fremd', 'opaa_frmd', ?, ?)",
+          token,
+          person,
+          "f".repeat(32) + token.toString().replace("-", ""),
+          Timestamp.from(clock.instant().plus(Duration.ofDays(30))));
+
+      mockMvc
+          .perform(
+              post("/api/v1/admin/external-access/tokens/" + token + "/block")
+                  .with(devUser("dev-admin")))
+          .andExpect(status().isNotFound());
+      mockMvc
+          .perform(
+              post("/api/v1/admin/external-access/tokens/block-by-owner")
+                  .with(devUser("dev-admin"))
+                  .content("{\"ownerUserId\":\"" + person + "\"}"))
+          .andExpect(status().isNotFound());
+      assertThat(tokens.findById(token).orElseThrow().getRevokedAt()).isNull();
+    } finally {
+      jdbcTemplate.update("DELETE FROM external_access_tokens WHERE user_id = ?", person);
+      organizationFixtures.removeOrganizations(organization);
+    }
   }
 
   @Test

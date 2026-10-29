@@ -122,12 +122,18 @@ public class ExternalAccessTokenAdminService {
     };
   }
 
-  /** Blocks one token; already dead tokens keep the reason that ended them. */
+  /**
+   * Blocks one token of a person of the caller's organization; a token of another organization is
+   * as unknown as a missing one. Already dead tokens keep the reason that ended them.
+   */
   @Transactional
   public void block(UUID tokenId, UUID actorUserId, UUID organizationId) {
     ExternalAccessToken token =
         tokens
             .findById(tokenId)
+            .filter(
+                found ->
+                    users.findByIdAndOrganizationId(found.getUserId(), organizationId).isPresent())
             .orElseThrow(() -> new NotFoundException("Zugangstoken nicht gefunden"));
     if (token.getRevokedAt() != null) {
       return;
@@ -137,12 +143,15 @@ public class ExternalAccessTokenAdminService {
     recordBlock(token, actorUserId, organizationId);
   }
 
-  /** Blocks every still-active token of one person; returns how many that was. */
+  /**
+   * Blocks every still-active token of one person of the caller's organization; returns how many
+   * that was.
+   */
   @Transactional
   public int blockAllOf(UUID ownerUserId, UUID actorUserId, UUID organizationId) {
     User owner =
         users
-            .findById(ownerUserId)
+            .findByIdAndOrganizationId(ownerUserId, organizationId)
             .orElseThrow(() -> new NotFoundException("Konto nicht gefunden"));
     Instant now = clock.instant();
     List<ExternalAccessToken> active = tokens.findByUserIdAndRevokedAtIsNull(owner.getId());
