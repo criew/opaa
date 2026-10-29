@@ -889,7 +889,9 @@ Klappzustand bleibt im Browser gespeichert, wie die Spaltenbreite. Ist „Spaces
 die Zeile des aktiven Space sichtbar. Jeder dieser Köpfe trägt einen Zähler als Text hinter der
 Beschriftung („Angeheftet 8"), kein abweichendes `aria-label`, damit sichtbarer und zugänglicher
 Name übereinstimmen. Der Zähler nennt die ganze Gruppe: bei „Spaces" die nicht archivierten Spaces
-der Person, bei „Zuletzt verwendet" auch die Chats, die erst „… weitere" aufdeckt.
+der Person, bei „Zuletzt verwendet" auch die Chats, die erst „… weitere" aufdeckt. Die Pinnadel
+steht einmal im Kopf „Angeheftet" zwischen Chevron und Beschriftung (dekorativ, `aria-hidden`), nicht
+an jeder angehefteten Chat-Zeile: Die Gruppe sagt schon, was ihre Zeilen sind.
 
 **Ein Aktionsmuster für beide Bereiche.** Die Köpfe „Spaces" und „Chats" tragen rechts dasselbe
 Paar aus Nur-Icon-Knöpfen nach 5.1 (`aria-label` und Tooltip): Plus („Neuer Space", „Neuer Chat")

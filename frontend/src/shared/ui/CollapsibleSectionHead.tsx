@@ -14,6 +14,8 @@ interface CollapsibleSectionHeadProps {
   /** The id of the region the head shows and hides. */
   controls: string
   component?: 'h2' | 'h3'
+  /** A decorative mark between chevron and label, e.g. the pin of "Angeheftet". */
+  icon?: ReactNode
   /** Trailing actions in the same row, outside the toggle. */
   actions?: ReactNode
   id?: string
@@ -32,6 +34,7 @@ export default function CollapsibleSectionHead({
   controls,
   component = 'h3',
   actions,
+  icon,
   id,
 }: CollapsibleSectionHeadProps) {
   const collapsed = useSectionCollapsed(sectionKey)
@@ -65,6 +68,7 @@ export default function CollapsibleSectionHead({
               '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
             }}
           />
+          {icon}
           {/* Label and count share one inline box, so the space between them is rendered and
               the accessible name reads "Angeheftet 8", matching the visible text. */}
           <Typography component="span" variant="overline" noWrap sx={{ lineHeight: 1.6 }}>
