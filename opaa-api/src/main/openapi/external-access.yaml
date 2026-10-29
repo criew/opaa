@@ -184,7 +184,8 @@ paths:
         "403":
           description: >-
             No recent sign-in (code RECENT_LOGIN_REQUIRED, as described for the response
-            RecentLoginRequired), or the installation switch is off.
+            RecentLoginRequired), the session of the caller ended meanwhile (a password change, a
+            reset or a detected refresh replay), or the installation switch is off.
           content:
             application/json:
               schema:

@@ -40,6 +40,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 class ExternalAccessTokenIssuanceNoticeTest {
 
   private static final Instant NOW = Instant.parse("2026-10-29T10:00:00Z");
+  private static final Jwt SESSION =
+      Jwt.withTokenValue("t").header("alg", "none").subject("s").build();
 
   private final ExternalAccessTokenRepository tokens = mock(ExternalAccessTokenRepository.class);
   private final LibraryAccessService libraryAccess = mock(LibraryAccessService.class);
@@ -89,15 +91,15 @@ class ExternalAccessTokenIssuanceNoticeTest {
         UUID.randomUUID(),
         "  Claude Code  ",
         List.of(libraryId),
-        NOW.plus(Duration.ofDays(10)));
+        NOW.plus(Duration.ofDays(10)),
+        SESSION);
 
     verify(mailer).sendIssued(owner, "Claude Code", NOW);
   }
 
   @Test
   void aSessionThatEndedMeanwhileIssuesNothing() {
-    Jwt session = Jwt.withTokenValue("t").header("alg", "none").subject("s").build();
-    when(sessions.sessionEndedSince(owner.getId(), session)).thenReturn(true);
+    when(sessions.sessionEndedSince(owner.getId(), SESSION)).thenReturn(true);
 
     assertThatThrownBy(
             () ->
@@ -107,7 +109,7 @@ class ExternalAccessTokenIssuanceNoticeTest {
                     "Claude Code",
                     List.of(libraryId),
                     NOW.plus(Duration.ofDays(10)),
-                    session))
+                    SESSION))
         .isInstanceOf(AccessDeniedException.class);
 
     verify(tokens, never()).save(any());
@@ -123,7 +125,8 @@ class ExternalAccessTokenIssuanceNoticeTest {
                     UUID.randomUUID(),
                     "Claude Code",
                     List.of(libraryId),
-                    NOW.plus(Duration.ofDays(400))))
+                    NOW.plus(Duration.ofDays(400)),
+                    SESSION))
         .isInstanceOf(ValidationException.class);
 
     verifyNoInteractions(mailer);

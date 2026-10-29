@@ -26,6 +26,7 @@ import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -102,19 +103,13 @@ public class ExternalAccessTokenService {
     return Duration.ofDays(settings.current().values().tokenMaxLifetimeDays());
   }
 
-  /** {@link #issue(UUID, UUID, String, List, Instant, Jwt)} without a session - tests and seeds. */
-  @Transactional
-  public IssuedExternalAccessToken issue(
-      UUID ownerId, UUID organizationId, String rawName, List<UUID> libraryIds, Instant expiresAt) {
-    return issue(ownerId, organizationId, rawName, libraryIds, expiresAt, null);
-  }
-
   /**
    * Issues a token for {@code ownerId}. Every named library must be readable by that person and
-   * released; the expiry is mandatory, in the future and at most {@link #maxLifetime()} away. A
-   * {@code session} whose sessions all ended meanwhile - a password change, a reset, a replay - is
-   * refused under the lock of {@link LocalTokenRevocationService#sessionEndedSince}, so no token
-   * outlives that clean-up by racing it.
+   * released; the expiry is mandatory, in the future and at most {@link #maxLifetime()} away. The
+   * {@code session} is the bearer token of the issuing web session, never absent; one whose
+   * sessions all ended meanwhile - a password change, a reset, a replay - is refused under the lock
+   * of {@link LocalTokenRevocationService#sessionEndedSince}, so no token outlives that clean-up by
+   * racing it.
    *
    * @return the stored row together with the plain value, which exists nowhere else afterwards
    */
@@ -126,6 +121,7 @@ public class ExternalAccessTokenService {
       List<UUID> libraryIds,
       Instant expiresAt,
       Jwt session) {
+    Objects.requireNonNull(session, "session");
     if (!settings.isEnabled()) {
       throw new AccessDeniedException(
           "Externe KI-Werkzeuge sind für diese Installation ausgeschaltet");

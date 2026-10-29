@@ -43,6 +43,7 @@ import io.opaa.test.LocalAccountFixtures.LocalAccount;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.TestSessions;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
@@ -674,7 +675,8 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
             person.user().getOrganizationId(),
             "Für " + person.id(),
             List.of(libraryId),
-            clock.instant().plus(Duration.ofDays(10)))
+            clock.instant().plus(Duration.ofDays(10)),
+            TestSessions.current(jdbcTemplate, person.id()))
         .token()
         .getId();
   }
@@ -686,7 +688,8 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
             person.user().getOrganizationId(),
             "Für " + person.id(),
             List.of(libraryId),
-            clock.instant().plus(Duration.ofDays(10)))
+            clock.instant().plus(Duration.ofDays(10)),
+            TestSessions.current(jdbcTemplate, person.id()))
         .rawValue();
   }
 

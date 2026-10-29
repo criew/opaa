@@ -8,6 +8,7 @@ import io.opaa.api.dto.OwnExternalAccessTokenListResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.RequiresRecentLogin;
+import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConditionalOnFeature;
 import io.opaa.common.Feature;
 import io.opaa.externalaccess.ExternalAccessSettings.Values;
@@ -113,9 +114,13 @@ public class ExternalAccessTokenController {
     tokenService.revokeOwn(caller.id(), caller.organizationId(), tokenId);
   }
 
-  /** The bearer token of the web session this request came with, if it is one. */
+  /** The bearer token of the web session this request came with; every chain here carries one. */
   private static Jwt sessionOfCaller() {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-    return authentication != null && authentication.getPrincipal() instanceof Jwt jwt ? jwt : null;
+    if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
+      return jwt;
+    }
+    throw new AccessDeniedException(
+        "Ein Zugangstoken lässt sich nur aus einer Anmeldung erzeugen.");
   }
 }
