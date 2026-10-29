@@ -4,6 +4,7 @@ import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.CatalogEntryStatus;
 import io.opaa.api.types.CatalogVisibility;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.LikePatterns;
 import io.opaa.common.ValidationException;
 import io.opaa.permission.AssetAccessService;
 import io.opaa.permission.AssetType;
@@ -243,7 +244,6 @@ public class AssetCatalogService {
     if (query == null || query.isBlank()) {
       return "%";
     }
-    String escaped = query.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
-    return "%" + escaped + "%";
+    return LikePatterns.containing(query.strip());
   }
 }

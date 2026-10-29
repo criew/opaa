@@ -176,7 +176,11 @@ data:
       settings: []
     visibility: [Personen mit Leserecht an der Bibliothek]
     accessPaths: [UI, API, STORAGE]
-    deletion: Mit dem Dokument; verwaiste Originale auf Anstoß der Systemverwaltung
+    deletion: >-
+      Mit dem Dokument; im versionierten Objektspeicher samt aller älteren Versionen, sofern der
+      Zugangsschlüssel Versionen löschen darf, sonst bleiben sie bis zur Ablaufregel des Buckets;
+      eine Aufbewahrungssperre (Object Lock) verhindert das Löschen. Verwaiste Originale auf Anstoß
+      der Systemverwaltung
     evaluations: keine
   - id: indexing-runs
     title: Indexierungsläufe

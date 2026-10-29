@@ -5,6 +5,7 @@ import io.opaa.api.dto.AuditorRoleRequestResponse;
 import io.opaa.auth.AuditorRoles;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.auth.RequiresRecentLogin;
 import io.opaa.auth.UserService;
 import java.util.List;
 import java.util.UUID;
@@ -42,6 +43,8 @@ public class AuditorRoleRequestController {
         .toList();
   }
 
+  // a grant of a system role: a left-open or stolen session of an auditor must not hand it on
+  @RequiresRecentLogin
   @PostMapping("/{requestId}/confirm")
   public AuditorRoleConfirmationResponse confirmAuditorRoleRequest(
       @PathVariable UUID requestId, @Caller CurrentUser caller) {

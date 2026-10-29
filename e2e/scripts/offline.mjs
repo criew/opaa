@@ -8,6 +8,7 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { envFileWithRunKeys } from './run-env-file.mjs'
 
 const isWindows = process.platform === 'win32'
 
@@ -36,7 +37,7 @@ export async function runOffline({ repoRoot, e2eDir, extraTestArgs }) {
   const env = {
     ...process.env,
     COMPOSE_PROJECT_NAME: project,
-    OPAA_ENV_FILE: 'e2e/offline.env',
+    OPAA_ENV_FILE: envFileWithRunKeys(repoRoot, 'e2e/offline.env'),
     OPAA_COMPOSE_SUBNET: SUBNET,
     OPAA_COMPOSE_FRONTEND_ADDRESS: FRONTEND_ADDRESS,
     OPAA_OFFLINE_DNS_ADDRESS: DNS_ADDRESS,
@@ -123,7 +124,6 @@ function recordLogFindings(e2eDir, unreachable) {
 `)
 }
 
-/** One value of e2e/offline.env, which only the Compose stack reads. */
 /** The first account of e2e/installation/<name>.json, with the password from its password file. */
 function answerFileAdmin(e2eDir, name) {
   const dir = join(e2eDir, 'installation')

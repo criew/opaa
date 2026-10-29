@@ -248,6 +248,19 @@ Rollen über seinen Rollen-Claim; dann ist der Eintrag deaktiviert und sagt das,
 gesetzter Wert bei der nächsten Anmeldung der Person überschrieben würde. Für beide Kontotypen gilt
 derselbe Schutz: Dem letzten anmeldefähigen Systemverwalter lässt sich die Rolle nicht entziehen.
 
+**Eine Rolle ändert nur, wer sich gerade angemeldet hat.** Wer einem Konto eine andere Systemrolle
+gibt — über „Rolle ändern …", im Dialog „Bearbeiten" oder schon beim Anlegen mit einer anderen Rolle
+als „Nutzer" —, bestätigt vorher seine Anmeldung, wenn sie länger zurückliegt
+([Erneute Anmeldung vor sensiblen Vorgängen](../betrieb/authentifizierung.md#erneute-anmeldung-vor-sensiblen-vorgängen)).
+Dasselbe gilt für alles, womit ein lokales Konto der Systemverwaltung oder der Revision in andere
+Hände kommen könnte: eine neue E-Mail-Adresse, „Rücksetz-Link per E-Mail", „Passwort erzeugen" und
+„An Identitätsanbieter übergeben". Bei einem Identitätsanbieter verlangen die Rollenzuordnung und
+alles, was bestimmt, wessen Anmeldung zählt — Issuer-URI, Client-ID, JWK-Set-URI, E-Mail-Claim und
+Gruppen-Claim —, dieselbe Bestätigung ([Authentifizierung](../betrieb/authentifizierung.md)). Eine
+offen gelassene oder entwendete Sitzung genügt so nicht, um Verwaltungsrechte weiterzugeben, ein
+solches Konto zu übernehmen oder Anmeldungen eines fremden Dienstes gelten zu lassen. Die übrigen
+Angaben eines Kontos und alle Handlungen an Konten mit der Rolle „Nutzer" gehen ohne Bestätigung.
+
 ### Die Rolle Revision
 
 Die Rolle **Revision** vergibt weder die Systemverwaltung noch ein Identitätsanbieter **allein**.
@@ -492,17 +505,27 @@ Was ein selbstregistriertes Konto erhält: immer die Rolle „Nutzer", ein **Pfl
 den festen Anlagegrund „Selbstregistrierung". Bis die Adresse über den Bestätigungslink bestätigt
 ist, ist das Konto nicht anmeldefähig.
 
+**Name und Passwort entstehen erst mit dem Bestätigungslink.** Die Registrierung fragt nur die
+Adresse; bis zur Bestätigung steht das Konto in der Kontenliste unter seiner Adresse. Die Seite
+hinter dem Link fragt Name und Passwort und bestätigt damit zugleich die Adresse. So bestimmt nur, wer das Postfach liest, wie das Konto heißt
+und welches Passwort es hat — auch wenn jemand anderes die Adresse zuerst registriert hat. Ein
+vorher gesetztes Passwort, etwa ein von der Verwaltung erzeugtes, gilt danach nicht mehr, und alle
+Sitzungen des Kontos enden. Die Bestätigungsmail nennt keinen Namen und sagt ausdrücklich: Wer sich
+nicht registriert hat, ignoriert die Nachricht; ohne den Link wird kein Zugang aktiv.
+
 Drei Eigenschaften, die im Alltag auffallen:
 
 - **Eine belegte Adresse ergibt kein zweites Konto**, und die Antwort ist dieselbe wie bei einer
   freien Adresse. An die belegte Adresse geht auch keine Hinweisnachricht — sie wäre selbst ein Weg,
   Adressen auszuprobieren.
 - **Eine noch unbestätigte Registrierung kann es erneut versuchen** und erhält ihren
-  Bestätigungslink neu. Name und Passwort der ersten Registrierung bleiben dabei erhalten.
-- **Eine unbestätigte Registrierung ist keine Sackgasse, aber auch nicht reparierbar.** Ein
-  administratives Zurücksetzen bestätigt die Adresse nicht. Ist die Selbstregistrierung inzwischen
-  abgeschaltet, ist der Ausweg: das unbestätigte Konto **löschen** (es besitzt nichts, also geht das)
-  und die Person regulär **einladen**.
+  Bestätigungslink neu; der ältere gilt nicht mehr.
+- **Die Verwaltung kann eine unbestätigte Registrierung abschließen lassen.** „Zurücksetzen" schickt
+  einem Konto ohne Passwort die Einladung; wer sie einlöst, setzt das Passwort und bestätigt damit
+  die Adresse. Der Bestätigungslink gilt danach nicht mehr, ebenso nach einer geänderten Adresse.
+  Das geht auch, wenn die Selbstregistrierung inzwischen abgeschaltet ist. Hat das unbestätigte
+  Konto schon ein Passwort, schickt „Zurücksetzen" einen Rücksetzlink; der bestätigt die Adresse
+  nicht, der Bestätigungslink bleibt deshalb gültig.
 
 Das Einschalten der Selbstregistrierung ist ein Punkt, der vor der Inbetriebnahme mit der
 Personalvertretung zu klären ist; das Kapitel [Authentifizierung](../betrieb/authentifizierung.md#lokale-benutzerverwaltung) führt die Punkte auf.

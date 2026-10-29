@@ -152,7 +152,7 @@ public class HtmlDocumentFormat implements DocumentFormat {
     if (source.file() != null) {
       return HtmlContentRoots.select(htmlDoc);
     }
-    htmlDoc.select(HtmlContentRoots.UNCONDITIONAL_BOILERPLATE_SELECTOR).remove();
+    HtmlContentRoots.removeUnconditionalBoilerplate(htmlDoc);
     Element body = htmlDoc.body();
     return body == null ? List.of() : List.of(body);
   }

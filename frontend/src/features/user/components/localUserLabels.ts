@@ -97,6 +97,21 @@ export const SHOWN_ONCE_HINT =
   'Diese Ansicht erscheint nur einmal. Der Wert ist danach nicht wieder abrufbar – schließen Sie ' +
   'das Fenster erst, wenn Sie ihn übergeben haben.'
 
+/**
+ * What the confirmation of the sign-in is for: a system role, or an account holding one changing
+ * hands (address, reset link, generated password, handover).
+ */
+export const PRIVILEGED_CONFIRM_PURPOSE =
+  'Eine Rolle zu vergeben oder ein Konto mit Systemrolle zu ändern, verlangt eine gerade ' +
+  'bestätigte Anmeldung. Bitte bestätigen Sie Ihre Anmeldung.'
+
+/**
+ * Back from the sign-in at the provider the page is new, so the change has to be made again; whether
+ * the provider confirmed the sign-in only that next attempt tells.
+ */
+export const ROLE_CHANGE_RETURNED_HINT =
+  'Sie sind von Ihrem Anmeldedienst zurück. Bitte führen Sie die Änderung jetzt erneut aus.'
+
 /** The German sentence for a failed act on a local account. */
 export function localUserErrorMessage(err: unknown, fallback: string): string {
   return apiErrorMessage(err, LOCAL_USER_CONFLICT_MESSAGES, fallback)

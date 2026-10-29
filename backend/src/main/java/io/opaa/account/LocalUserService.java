@@ -19,6 +19,7 @@ import io.opaa.auth.LocalAdminAvailabilityGuard;
 import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.auth.LocalIssuer;
+import io.opaa.auth.RecentLoginPolicy;
 import io.opaa.auth.User;
 import io.opaa.auth.UserProvisionedEvent;
 import io.opaa.auth.UserRepository;
@@ -59,6 +60,11 @@ import org.springframework.transaction.annotation.Transactional;
  * withdrawing the role from or deleting a {@code SYSTEM_ADMIN} - runs through {@link
  * LocalAdminAvailabilityGuard} inside the same transaction, so the guard's lock holds until the
  * change commits.
+ *
+ * <p>Granting or changing a system role demands a recent sign-in ({@link RecentLoginPolicy}), as on
+ * the role endpoint itself, and so does every act that could hand an account with a system role to
+ * someone else: a new address, a reset link, a generated password. Checked before anything is
+ * written.
  */
 @Service
 public class LocalUserService {
@@ -90,6 +96,7 @@ public class LocalUserService {
   private final PasswordGenerator passwordGenerator;
   private final AuditEventRecorder audit;
   private final ApplicationEventPublisher events;
+  private final RecentLoginPolicy recentLogin;
   private final Clock clock;
 
   public LocalUserService(
@@ -105,6 +112,7 @@ public class LocalUserService {
       PasswordGenerator passwordGenerator,
       AuditEventRecorder audit,
       ApplicationEventPublisher events,
+      RecentLoginPolicy recentLogin,
       Clock clock) {
     this.users = users;
     this.credentials = credentials;
@@ -118,6 +126,7 @@ public class LocalUserService {
     this.passwordGenerator = passwordGenerator;
     this.audit = audit;
     this.events = events;
+    this.recentLogin = recentLogin;
     this.clock = clock;
   }
 
@@ -168,6 +177,9 @@ public class LocalUserService {
 
   @Transactional
   public CreatedAccount create(CurrentUser actor, LocalUserCreation creation) {
+    if (creation.systemRole() != null && creation.systemRole() != SystemRole.USER) {
+      recentLogin.requireRecentLogin();
+    }
     Instant now = clock.instant();
     LocalAuthSettings.Values policy = settings();
     String email = requireAddress(creation.email());
@@ -241,6 +253,12 @@ public class LocalUserService {
     LocalUserOverview current = load(actor.organizationId(), userId);
     User user = current.user();
     LocalCredentials row = current.credentials();
+    if (update.systemRole() != null && update.systemRole() != user.getSystemRole()) {
+      recentLogin.requireRecentLogin();
+    }
+    if (update.email() != null && !update.email().trim().equalsIgnoreCase(user.getEmail())) {
+      requireRecentLoginForPrivileged(user);
+    }
     // ADR-0033, Entscheidungen 3 and 5: the bootstrap account takes no expiry; removing one
     // restores
     // the promised state. Its role is guarded in UserService#updateRole. A refusal rolls back every
@@ -261,8 +279,10 @@ public class LocalUserService {
         requireAddressFree(email, user.getId());
         user.setEmail(email);
         row.markEmailChangedByAdmin(now);
-        // a link mailed to the old address must not set the password of the new one
+        // a link mailed to the old address must not set the password of the new one - the
+        // verification link of a self-registration sets one as well
         closeOpenLinks(user.getId());
+        actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.VERIFY_EMAIL);
         changed.add("email");
       }
     }
@@ -427,6 +447,7 @@ public class LocalUserService {
   public ResetLinkIssued issueResetLink(CurrentUser actor, UUID userId) {
     Instant now = clock.instant();
     LocalUserOverview current = load(actor.organizationId(), userId);
+    requireRecentLoginForPrivileged(current.user());
     LocalCredentials row = current.credentials();
     if (row.isBootstrap()) {
       throw new ConflictException(
@@ -464,6 +485,7 @@ public class LocalUserService {
   public String generatePassword(CurrentUser actor, UUID userId) {
     Instant now = clock.instant();
     LocalUserOverview current = load(actor.organizationId(), userId);
+    requireRecentLoginForPrivileged(current.user());
     LocalCredentials row = current.credentials();
     if (row.isBootstrap()) {
       throw new ConflictException(
@@ -487,6 +509,13 @@ public class LocalUserService {
     recordAdminAct(actor, current.user(), AuditEventType.LOCAL_USER_PASSWORD_GENERATED, null, null);
     recordSessionsRevoked(actor, current.user(), now);
     return password;
+  }
+
+  /** A recent sign-in before an act that could hand over an account with a system role. */
+  void requireRecentLoginForPrivileged(User user) {
+    if (user.getSystemRole() != SystemRole.USER) {
+      recentLogin.requireRecentLogin();
+    }
   }
 
   private void recordSessionsRevoked(CurrentUser actor, User user, Instant now) {

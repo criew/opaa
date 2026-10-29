@@ -13,6 +13,7 @@ import HowToRegOutlinedIcon from '@mui/icons-material/HowToRegOutlined'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import { useAuthStore } from '@/shared/session/authStore'
 import { notify } from '@/shared/stores/notificationStore'
+import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
 import type { AuditorRoleRequestResponse } from '@/shared/api/types'
 import { contentWidth } from '@/shared/theme/tokens'
 import {
@@ -42,6 +43,9 @@ export default function AuditorRoleRequestsPage() {
   const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [setupLink, setSetupLink] = useState<AuditorSetupLink | null>(null)
+  const gate = useRecentLoginGate(
+    'Die Rolle Revision zu vergeben, verlangt eine gerade bestätigte Anmeldung. Bitte bestätigen Sie Ihre Anmeldung.',
+  )
 
   const [reloads, setReloads] = useState(0)
 
@@ -62,11 +66,16 @@ export default function AuditorRoleRequestsPage() {
     }
   }, [isAuditor, reloads])
 
-  async function decide(request: AuditorRoleRequestResponse, confirm: boolean): Promise<void> {
+  async function decide(
+    request: AuditorRoleRequestResponse,
+    confirm: boolean,
+    afterConfirmation = false,
+  ): Promise<void> {
     setBusyId(request.id)
     try {
       if (confirm) {
         const url = await confirmAuditorRoleRequest(request.id)
+        gate.settled()
         notify(`„${personOf(request)}“ hat jetzt die Rolle Revision.`, 'success')
         if (url) setSetupLink({ person: personOf(request), email: request.email, url })
       } else {
@@ -76,7 +85,14 @@ export default function AuditorRoleRequestsPage() {
       setError(null)
       setReloads((count) => count + 1)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Der Antrag konnte nicht entschieden werden.')
+      const refused = confirm
+        ? gate.refusal(err, () => void decide(request, true, true), afterConfirmation)
+        : null
+      if (refused === null) {
+        setError(err instanceof Error ? err.message : 'Der Antrag konnte nicht entschieden werden.')
+      } else if (refused) {
+        setError(refused)
+      }
     } finally {
       setBusyId(null)
     }
@@ -169,6 +185,7 @@ export default function AuditorRoleRequestsPage() {
         )}
       </Box>
       <AuditorSetupLinkDialog link={setupLink} onClose={() => setSetupLink(null)} />
+      {gate.dialog}
     </Box>
   )
 }

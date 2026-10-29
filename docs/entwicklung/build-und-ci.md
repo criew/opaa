@@ -86,8 +86,8 @@ deploy/helm/ci/static-check.sh          # helm lint + template mit jedem Wertesa
                                         # deploy/helm/opaa/ci/*-values.yaml, kubeconform gegen die
                                         # drei unterstützten Kubernetes-Versionen, Prüfung der
                                         # Abbruchregeln und Trockenlauf der Release-Skripte;
-                                        # braucht helm, kubeconform, curl und jq. Neue Wertesätze dort
-                                        # ablegen, sie werden automatisch geprüft
+                                        # braucht helm, kubeconform, openssl, curl und jq. Neue
+                                        # Wertesätze dort ablegen, sie werden automatisch geprüft
 deploy/helm/ci/package-chart.sh v1.2.3 <ziel>
                                         # Chart packen wie der Release-Lauf (publish-images.yml):
                                         # Version und appVersion aus dem Tag, prüft die Image-Tags
@@ -100,7 +100,8 @@ deploy/helm/ci/install-test.sh          # Installationstest: ct install mit der 
                                         # des Charts und eingeschalteten NetworkPolicies in einen
                                         # Namespace mit Pod Security Standard restricted; wartet auf
                                         # Datenbank, Backend und Frontend und führt helm test aus,
-                                        # ohne LLM. Braucht kubectl, helm, ct und
+                                        # ohne LLM. Signaturgeheimnis und Schlüssel erzeugt es je
+                                        # Lauf. Braucht kubectl, helm, ct, openssl und
                                         # einen kind-Cluster mit den Images aus dem Commit:
                                         #   kind create cluster
                                         #   docker build -f backend/Dockerfile -t opaa-ci/backend:ci .
@@ -204,7 +205,8 @@ Entwicklung auf `main`; ab dem ersten Release mit Rolling Update den zugesagten 
 pnpm install
 pnpm run test:multi-instance
 
-# kind (aus dem Wurzelverzeichnis): erwartet die vier Images im Cluster und e2e/node_modules
+# kind (aus dem Wurzelverzeichnis): erwartet die vier Images im Cluster und e2e/node_modules,
+# braucht kubectl, helm, node, pnpm und openssl (Signaturgeheimnis und Schlüssel je Lauf)
 #   kind load docker-image opaa-ci/backend:ci opaa-ci/frontend:ci \
 #     opaa-ci/backend:previous opaa-ci/frontend:previous
 # Namensräume opaa-multi und multi-test werden vor und nach dem Lauf gelöscht
@@ -274,9 +276,10 @@ docker build -t opaa-smoke/backend -f backend/Dockerfile .
 docker build -t opaa-smoke/frontend -f frontend/Dockerfile .
 .github/scripts/image_smoke_test.sh opaa-smoke/backend opaa-smoke/frontend
 # Härtung des Frontend-nginx ohne Backend: ein Echo statt des Backends belegt, dass vom Client
-# gesetzte Forwarded/X-Forwarded-Host/-Port/-Prefix nicht ankommen; dazu Permissions-Policy auf
-# jeder Antwort, die Startprüfung von OPAA_CSP_CONNECT_SRC_EXTRA und mit OPAA_BACKEND_RESOLVER
-# die Auflösung zur Laufzeit: zwei Container hinter einem Namen bekommen beide Anfragen, ein
+# gesetzte Forwarded/X-Forwarded-Host/-Port/-Prefix nicht ankommen; dazu Permissions-Policy,
+# Cross-Origin-Opener-Policy und Cross-Origin-Resource-Policy auf jeder Antwort, die
+# Startprüfung von OPAA_CSP_CONNECT_SRC_EXTRA und mit OPAA_BACKEND_RESOLVER die Auflösung zur
+# Laufzeit: zwei Container hinter einem Namen bekommen beide Anfragen, ein
 # entfernter fällt ohne Neustart heraus. Stoppt einer unter parallelen Anfragen, beantwortet der
 # andere jede binnen weniger Sekunden, ohne 5xx; langsame und gestreamte Antworten sowie Uploads
 # bis zu den Grenzen kommen unverändert an. In CI im selben Job

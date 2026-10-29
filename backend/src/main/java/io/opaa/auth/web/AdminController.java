@@ -4,6 +4,7 @@ import io.opaa.api.dto.RoleChangeRequest;
 import io.opaa.api.dto.UserInfoResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.auth.RequiresRecentLogin;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import jakarta.validation.Valid;
@@ -37,7 +38,9 @@ public class AdminController {
         .toList();
   }
 
+  // A system role is the widest right there is; a left-open or stolen session must not hand it on.
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @RequiresRecentLogin
   @PostMapping("/users/{id}/role")
   public ResponseEntity<UserInfoResponse> changeRole(
       @PathVariable UUID id,

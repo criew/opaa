@@ -480,6 +480,9 @@ paths:
         shown to the system administration. Refused with 409 when the role can no longer be
         granted: BOOTSTRAP_ACCOUNT or LAST_LOGIN_CAPABLE_ADMIN as on the role endpoint, without a
         code when a provider's roles claim manages the role of a request of the administration.
+        Like every grant of a system role it requires a recent sign-in: without one the call is
+        refused with 403 and code RECENT_LOGIN_REQUIRED (see the response RecentLoginRequired)
+        before anything is checked or written.
       responses:
         "200":
           description: Role granted

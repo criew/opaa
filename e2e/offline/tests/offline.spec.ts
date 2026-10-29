@@ -131,7 +131,7 @@ test.describe.serial("Betrieb ohne Internetzugang", () => {
     await page.getByLabel("Adresse", { exact: true }).fill(`http://${PROBE_HOST}/`);
     await page.getByRole("button", { name: "Verbindung testen" }).click();
     await expect(
-      page.getByRole("status").filter({ hasText: "Der Host konnte nicht gefunden werden" }),
+      page.getByRole("status").filter({ hasText: "ist nicht zugelassen oder nicht erreichbar" }),
     ).toBeVisible({ timeout: 30_000 });
 
     const seen = await eventually(

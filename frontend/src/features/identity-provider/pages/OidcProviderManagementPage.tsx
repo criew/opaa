@@ -18,6 +18,7 @@ import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import SectionHead from '@/shared/ui/SectionHead'
 import ProviderList from '../components/ProviderList'
 import OidcProviderFormDialog from '../components/OidcProviderFormDialog'
+import { useProviderReturn } from '@/shared/session/useRecentLoginGate'
 import OidcProviderSetupInstructions from '../components/OidcProviderSetupInstructions'
 
 export default function OidcProviderManagementPage() {
@@ -45,6 +46,12 @@ export default function OidcProviderManagementPage() {
   useEffect(() => {
     if (isSystemAdmin) void loadProviders()
   }, [isSystemAdmin, loadProviders])
+
+  // Back from a sign-in forced at the provider before a role mapping was saved: the dialog is gone
+  // with the page, so the person saves again; the gate holds the return until that attempt.
+  useProviderReturn(
+    'Sie sind von Ihrem Anmeldedienst zurück. Bitte speichern Sie den Anbieter jetzt erneut.',
+  )
 
   if (!isSystemAdmin) {
     return (

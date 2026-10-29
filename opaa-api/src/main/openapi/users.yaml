@@ -86,18 +86,19 @@ paths:
         organization's advisory lock, so it also holds when a manual and a token-driven
         withdrawal run at the same time. A role that an enabled OIDC provider with a roles claim
         manages itself cannot be changed here (ADR-0025, Entscheidung 4) - that refusal names the
-        provider in its message and carries no code.
+        provider in its message and carries no code. Requires a recent sign-in: without one the
+        call is refused with 403 and code RECENT_LOGIN_REQUIRED (see the response
+        RecentLoginRequired) before anything is checked or written.
 
         The AUDITOR role is never granted by the system administration alone
         (docs/features/access-control.md, Trennung von Systemverwaltung und Revision). While the
         organization has an auditor, the call opens a request instead, answers 202 with the role
         unchanged and tells every auditor; an auditor confirms or declines it under
-        /api/v1/audit/auditor-role-requests. Without an auditor, only the account whose address
-        the operation set as OPAA_AUTH_FIRST_AUDITOR_EMAIL receives the role at once; any other is
-        refused with 409 and code AUDITOR_CONFIRMATION_UNAVAILABLE. Any other role ends an open
-        request. A local account that receives the role loses its password and sessions and gets a
-        new invitation by mail only; without a public base URL or mail delivery that grant is
-        refused with 409 and code AUDITOR_ACCOUNT.
+        /api/v1/audit/auditor-role-requests. Without an auditor, only the local account whose
+        address the operation set as OPAA_AUTH_FIRST_AUDITOR_EMAIL receives the role at once; its
+        password is discarded and the link that sets a new one goes to the server log, not to the
+        caller. Any other grant is refused with 409 and code AUDITOR_CONFIRMATION_UNAVAILABLE. Any
+        other role ends an open request.
       requestBody:
         required: true
         content:

@@ -345,7 +345,6 @@ voreinstellungen#rerank-model-enabled
 voreinstellungen#rerank-model-model-identifier
 voreinstellungen#self-disclosure-settings-daily-limit
 voreinstellungen#self-disclosure-settings-enabled
-voreinstellungen#spring-ai-openai-base-url
 voreinstellungen#succession-settings-aging-threshold-months
 voreinstellungen#system-prompts
 voreinstellungen#transcription-model-base-url

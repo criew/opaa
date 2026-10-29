@@ -82,7 +82,8 @@ public class LibraryMetadataExtractionService {
   /**
    * The Extraktionsgüte of {@code libraryId}: per field, how many of the library's indexed
    * documents carry a deterministic, a model-derived, a manual or no value at all - plus the
-   * Zählwerk. Reading needs {@link AssetRole#VIEWER}.
+   * Zählwerk. Reading needs {@link AssetRole#VIEWER}, the administration included: counts, unlike
+   * the values of {@link #sampleOf}, carry nothing of the content.
    */
   @Transactional(readOnly = true)
   public LibraryMetadataQuality qualityOf(UUID libraryId, CurrentUser caller) {
@@ -124,12 +125,16 @@ public class LibraryMetadataExtractionService {
 
   /**
    * The Stichprobe of {@code size} documents with every stored value and its provenance - the input
-   * of the handausgewertete Auswertung. Management right: it exports document titles and values in
-   * bulk, which is more than reading the library's Güte.
+   * of the handausgewertete Auswertung. Management right by the formula ({@link
+   * LibraryAccessService#requireContentRole}): it exports titles and values taken from the content
+   * in bulk, so neither the right to read the Güte nor the administration of the library suffices.
    */
   @Transactional(readOnly = true)
   public LibraryMetadataSample sampleOf(UUID libraryId, int size, CurrentUser caller) {
-    KnowledgeLibrary library = requireLibrary(libraryId, caller, AssetRole.MANAGER);
+    KnowledgeLibrary library =
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
+    accessService.requireContentRole(
+        library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
     int capped = Math.clamp(size, 1, MAX_SAMPLE_SIZE);
     List<Document> documents =
         documentRepository.findSampleByLibraryId(
