@@ -58,6 +58,7 @@ Alternativ legt der Chart das Secret aus den Werten an. Pflicht sind:
 | `secrets.s3SecretKey` | `OPAA_UPLOAD_S3_SECRET_KEY` | bei `uploads.store: s3`: Geheimschlüssel des Objektspeichers |
 | `secrets.initialAdminPassword` | `installation-admin-password` | für die Installation mit `bootstrap.initialAdmin.email`: Passwort des ersten Kontos, als Datei der Antwortdatei eingehängt; nach der Installation entfernen |
 | `secrets.chatApiKey`, `secrets.embeddingApiKey` | `installation-chat-api-key`, `installation-embedding-api-key` | Schlüssel der Modelle der Antwortdatei, als Datei eingehängt |
+| `secrets.mailPassword` | `installation-mail-password` | Passwort des Mailservers aus `bootstrap.mail`, als Datei eingehängt |
 
 Die Schlüssel erzeugt der Betreiber selbst; der Chart erzeugt keine. Optionale Schlüssel, etwa für
 die Modell-Endpunkte, stehen in [`values.yaml`](values.yaml).
@@ -105,7 +106,7 @@ den Weg.
 | `filesystemSources` | Verzeichnisse für den Dateisystem-Konnektor, nur lesend eingehängt |
 | `extraCACertificates` | eigene CA-Zertifikate für Identitätsanbieter, Modelle, Objektspeicher, Datenbank und Quellen (etwa Confluence, Nextcloud, Webverzeichnis und Feed) |
 | `embedding`, `rerank` | Modell-Endpunkte, auch im Cluster (etwa Ollama über seinen Service) |
-| `mail` | Zeitgrenzen der SMTP-Verbindung; den Mailserver richtet die Oberfläche ein |
+| `mail` | Zeitgrenzen der SMTP-Verbindung; den Mailserver setzt `bootstrap.mail` oder die Oberfläche |
 | `targetValidation` | Ausnahmen der Adressprüfung für Quellen, Modelle und Identitätsanbieter im eigenen Netz, je eine eigene Liste. Host und Port von `bootstrap.chatModel.baseUrl` und `embedding.baseUrl` stehen dauerhaft in der Liste der Modelle und gelten dann für jede Modellrolle auf diesem Host und Port |
 
 ## Was der Chart festlegt

@@ -349,6 +349,24 @@ chat and embedding model of the answer file, so they pass the address check of m
 {{- include "opaa.allowlistWithAddresses" (dict "hosts" .Values.targetValidation.modelAllowlist "urls" (list .Values.bootstrap.chatModel.baseUrl .Values.embedding.baseUrl)) }}
 {{- end }}
 
+{{/*
+OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST: installationMailTargetAllowlist plus host:port of
+bootstrap.mail, so the mail server of the answer file passes the address check of the installation.
+*/}}
+{{- define "opaa.installationMailTargetAllowlist" -}}
+{{- $hosts := .Values.installationMailTargetAllowlist | default list }}
+{{- with .Values.bootstrap.mail }}
+{{- if and .host (include "opaa.installation.answerFileEnabled" $) }}
+{{- $name := ternary (printf "[%s]" .host) .host (contains ":" .host) }}
+{{- $entry := printf "%s:%d" $name (int (.port | default 587)) }}
+{{- if not (has $entry $hosts) }}
+{{- $hosts = append $hosts $entry }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- join "," $hosts }}
+{{- end }}
+
 {{/* "true" when the chart renders an answer file: bootstrap.initialAdmin.email is set. */}}
 {{- define "opaa.installation.answerFileEnabled" -}}
 {{- if .Values.bootstrap.initialAdmin.email }}true{{ end }}
@@ -364,6 +382,11 @@ chat and embedding model of the answer file, so they pass the address check of m
 {{- if or .Values.embedding.apiKeyInSecret (and (not .Values.secrets.existingSecret) .Values.secrets.embeddingApiKey) }}true{{ end }}
 {{- end }}
 
+{{/* "true" when the answer file names a password file for the mail server. */}}
+{{- define "opaa.installation.mailPassword" -}}
+{{- if and .Values.bootstrap.mail.host (or .Values.bootstrap.mail.passwordInSecret (and (not .Values.secrets.existingSecret) .Values.secrets.mailPassword)) }}true{{ end }}
+{{- end }}
+
 {{/* Mount path of the secret files the answer file points to. */}}
 {{- define "opaa.installation.secretsPath" -}}
 /etc/opaa/installation-secrets
@@ -371,8 +394,8 @@ chat and embedding model of the answer file, so they pass the address check of m
 
 {{/*
 The answer file (ADR-0060, Entscheidung 7) from bootstrap and embedding: first account, sign-in,
-chat and embedding model. Password and keys are never part of it, only paths of files mounted from
-the secret; the first account changes its password at the first sign-in unless told otherwise.
+chat and embedding model, and the mail server if bootstrap.mail.host is set. Passwords and keys
+are never part of it, only paths of files mounted from the secret; the first account changes its password at the first sign-in unless told otherwise.
 */}}
 {{- define "opaa.installation.answerFile" -}}
 {{- $b := .Values.bootstrap }}
@@ -395,7 +418,17 @@ the secret; the first account changes its password at the first sign-in unless t
 {{- $embedding := dict "baseUrl" (required "embedding.baseUrl is required with bootstrap.initialAdmin.email" $e.baseUrl) "model" (required "embedding.model is required with bootstrap.initialAdmin.email" $e.model) }}
 {{- if include "opaa.installation.embeddingApiKey" . }}{{ $_ := set $embedding "apiKeyFile" (printf "%s/embedding-api-key" $secrets) }}{{ end }}
 {{- with $e.maxInputTokens }}{{ $_ := set $embedding "maxInputTokens" (int .) }}{{ end }}
-{{- dict "firstAdmin" $admin "signIn" $signIn "chatModel" $chat "embeddingModel" $embedding | toPrettyJson }}
+{{- $answers := dict "firstAdmin" $admin "signIn" $signIn "chatModel" $chat "embeddingModel" $embedding }}
+{{- with $b.mail }}
+{{- if .host }}
+{{- $mail := dict "host" .host "port" (int (.port | default 587)) "encryption" (.encryption | default "STARTTLS") "fromAddress" (required "bootstrap.mail.fromAddress is required with bootstrap.mail.host" .fromAddress) }}
+{{- with .username }}{{ $_ := set $mail "username" . }}{{ end }}
+{{- with .fromName }}{{ $_ := set $mail "fromName" . }}{{ end }}
+{{- if include "opaa.installation.mailPassword" $ }}{{ $_ := set $mail "passwordFile" (printf "%s/mail-password" $secrets) }}{{ end }}
+{{- $_ := set $answers "mail" $mail }}
+{{- end }}
+{{- end }}
+{{- $answers | toPrettyJson }}
 {{- end }}
 
 

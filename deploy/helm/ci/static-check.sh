@@ -116,6 +116,11 @@ expect_refusal "bootstrap.oidc.clientId is required" "${answers[@]}" "${chat[@]}
   --set bootstrap.oidc.issuerUri=https://login.example.org/realms/opaa
 expect_refusal "secrets.chatApiKey is required" "${answers[@]}" "${chat[@]}" \
   --set secrets.initialAdminPassword=ci-only-Notanker-2026 --set bootstrap.chatModel.apiKeyInSecret=true
+expect_refusal "bootstrap.mail.fromAddress is required" "${answers[@]}" "${chat[@]}" \
+  --set secrets.initialAdminPassword=ci-only-Notanker-2026 --set bootstrap.mail.host=smtp.example.org
+expect_refusal "secrets.mailPassword is required" "${answers[@]}" "${chat[@]}" \
+  --set secrets.initialAdminPassword=ci-only-Notanker-2026 --set bootstrap.mail.host=smtp.example.org \
+  --set bootstrap.mail.fromAddress=opaa@example.org --set bootstrap.mail.passwordInSecret=true
 expect_refusal "installationToken" --set secrets.installationToken=short
 
 # Installation over the answer file or, without one, in installation mode; the variables the answer
@@ -144,7 +149,9 @@ for expectation in 'features-off:"mode": "LOCAL_ONLY"' 'features-off:/etc/opaa/i
   'full:"mode": "LOCAL_AND_OIDC"' 'full:/etc/opaa/installation-secrets/chat-api-key' \
   'full:/etc/opaa/installation-secrets/embedding-api-key' 'full:"requirePasswordChange": false' \
   'full:"model": "text-embedding-3-small"' 'full:"maxInputTokens": 8191' \
-  'full:"jwkSetUri": "https://keys.example.org/realms/opaa/certs"'; do
+  'full:"jwkSetUri": "https://keys.example.org/realms/opaa/certs"' \
+  'full:"host": "smtp.intern.example.org"' 'full:"port": 2587' 'full:"fromAddress": "opaa@example.org"' \
+  'full:/etc/opaa/installation-secrets/mail-password'; do
   set_name="${expectation%%:*}"
   if [[ "$(answer_file "$set_name")" != *"${expectation#*:}"* ]]; then
     echo "The answer file of value set $set_name does not name '${expectation#*:}'." >&2
@@ -153,6 +160,11 @@ for expectation in 'features-off:"mode": "LOCAL_ONLY"' 'features-off:/etc/opaa/i
 done
 if [[ "$(answer_file features-off)" == *"ci-only-Notanker-2026"* || "$(answer_file features-off)" == *apiKeyFile* ]]; then
   echo "The answer file of value set features-off carries the password or a key file it has no key for." >&2
+  exit 1
+fi
+# Without bootstrap.mail the mail step stays skipped: no mail section, no password file.
+if [[ "$(answer_file features-off)" == *'"mail"'* ]] || grep -qF "installation-mail-password" "$work_dir/features-off.yaml"; then
+  echo "Value set features-off renders a mail server without bootstrap.mail.host." >&2
   exit 1
 fi
 expect_rendered_set() {
@@ -165,6 +177,10 @@ expect_rendered_set full 'OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST: "login2.example
 # Model hosts come from their own list plus the models of the answer file, never from the sources' list.
 expect_rendered_set full 'OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST: "reranker.ai.svc.cluster.local:8080,models.example.org:443"'
 expect_rendered_set full 'OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST: "confluence.example.org"'
+# The mail server of the answer file passes the address check of the installation with its port.
+expect_rendered_set full 'OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST: "relay.intern.example.org,smtp.intern.example.org:2587"'
+expect_rendered_set full "key: installation-mail-password"
+expect_rendered_set features-off 'OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST: ""'
 expect_rendered_set features-off "value: /etc/opaa/installation/installation.json"
 expect_rendered_set features-off "optional: true"
 expect_rendered_set minimal "key: OPAA_INSTALLATION_TOKEN"
