@@ -127,38 +127,48 @@ solche, die nur aus dem Netz des Servers erreichbar sind (SSRF). Zwei Schranken 
   `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`, statt die Prüfung abzuschalten. Identitätsanbieter,
   Modell-Endpunkte und Originalablage haben eigene Schalter und Listen derselben Prüfung; ein
   Eintrag in einer Liste öffnet keine der anderen.
-- **Geprüfte Namen bleiben bewacht.** Jede Prüfung löst den Namen neu auf. Bis 60 Sekunden danach
-  verbindet jede Verbindung des Backends zu diesem Namen genau an die geprüften Adressen; danach löst
-  OPAA ihn bei jeder Verbindung neu auf und entfernt jede Adresse in einem gesperrten Bereich, bis zum
-  Neustart des Backends. Ein Namensdienst, der der Prüfung eine öffentliche und der Verbindung eine
-  interne Adresse nennt (DNS-Rebinding), läuft so ins Leere, auch Tage später; ein Wechsel auf eine
-  andere öffentliche Adresse kommt sofort an. Bleibt keine Adresse übrig, scheitert die Verbindung
-  wie bei einem unbekannten Host, und das Log warnt. Zertifikat und SNI prüft TLS weiter gegen den
-  Namen, auch beim Mailserver.
+- **Geprüfte Namen sind gebunden.** Bis 60 Sekunden nach einer Prüfung verbindet jede Verbindung
+  des Backends zu dem Namen genau an die geprüften Adressen. Ein Namensdienst, der der Prüfung eine
+  öffentliche und der Verbindung eine interne Adresse nennt (DNS-Rebinding), läuft so ins Leere.
+  Zertifikat und SNI prüft TLS weiter gegen den Namen, auch beim Mailserver. Zwei Arten von Prüfung:
+  - **Vor jeder Verbindung** prüfen Quellen, Zugänge und die Originalablage: jeden Redirect, jede
+    Anfrage an einen Objektspeicher, jeden Abruf eines Crawls oder Feeds. Sie binden nur für die
+    Verbindung, denn jede weitere Verbindung wird neu geprüft.
+  - **Gespeicherte Ziele**, mit denen OPAA später ohne eigene Prüfung verbindet — Modell-Endpunkte,
+    Identitätsanbieter, der Mailserver —, bleiben darüber hinaus bis zum Neustart bewacht: Jede
+    Auflösung ihres Namens verliert jede Adresse in einem gesperrten Bereich, auch Tage später.
+    Bleibt keine übrig, scheitert die Verbindung wie bei einem unbekannten Host, und das Log warnt.
+    Nach dem Start prüft jede Instanz die gespeicherten Modell-Endpunkte und den Mailserver einmal;
+    was die Prüfung ablehnt, steht als Warnung im Log und bleibt unbewacht.
+- **Ein Adresswechsel kommt an**, sobald der Name neu geprüft oder aufgelöst wird: spätestens nach
+  dem Cache der JVM (30 Sekunden) bzw. nach der Wiederverwendung einer Antwort durch die Prüfung
+  (5 Sekunden), nach einer Bindung spätestens nach ihren 60 Sekunden.
 - **Ein Eintrag der Listen gilt nach Name und Port,** ohne Prüfung der aufgelösten Adresse und ohne
   Bewachung. Nur Namen aus der eigenen Zone eintragen, Einträge mit Port vorziehen. Modelladressen
-  prüft OPAA beim Speichern, Testen und Abfragen, nicht bei jedem Aufruf; die Bewachung schützt die
-  Aufrufe danach, solange das Backend seit der Prüfung nicht neu gestartet wurde.
-- **Wechselt ein geprüfter Name ins eigene Netz,** etwa beim Umzug eines Dienstes, ist er bis zum
-  Neustart nicht erreichbar. Abhilfe: den Namen ohne Port in die passende Liste eintragen und das
-  Backend neu starten; die Listen liest OPAA nur beim Start. Ohne Eintrag bleibt der Name auch nach
-  dem Neustart gesperrt, sobald er erneut geprüft wird.
+  prüft OPAA beim Speichern, Testen, Abfragen und nach dem Start, nicht bei jedem Aufruf; die
+  Bewachung schützt die Aufrufe danach.
+- **Wechselt ein gespeichertes Ziel ins eigene Netz,** etwa beim Umzug eines Dienstes, ist sein Name
+  bis zum Neustart nicht erreichbar. Abhilfe: den Namen ohne Port in die passende Liste eintragen
+  und das Backend neu starten; die Listen liest OPAA nur beim Start. Ohne Eintrag bleibt der Name
+  auch nach dem Neustart gesperrt.
 - **Ein Hostname mit Zeichen außerhalb von ASCII** wird abgelehnt; internationalisierte Namen in
   Punycode-Schreibweise (`xn--…`) eintragen.
 - Nur `http` und `https`; Redirects nur auf demselben Origin, nie auf `http` herab. Zertifikate
   werden immer geprüft.
-- **Grenze:** Hinter dem [Ausgangsproxy](#ausgangsproxy) löst der Proxy den Namen auf; dort greift
-  die Bewachung nicht, interne Ziele zu sperren ist Pflicht des Proxys. Die Beschränkung des Egress
-  auf Netzebene bleibt die zweite Linie.
+- **Grenze:** Hinter dem [Ausgangsproxy](#ausgangsproxy) löst der Proxy den Namen auf; OPAA bindet
+  und bewacht dort nichts, interne Ziele zu sperren ist Pflicht des Proxys. Die Beschränkung des
+  Egress auf Netzebene bleibt die zweite Linie.
 - **Start:** OPAA startet nur, wenn sein Resolver die Namensauflösung der JVM übernommen hat. Löst
   eine Startoption vor der Anwendung einen Namen auf, bricht der Start mit dieser Ursache ab
   ([Images und Laufzeit](images-und-laufzeit.md)).
 
-Fest im Code: 60 Sekunden genaue Bindung nach einer Prüfung; höchstens 100 000 bewachte Namen je
-Instanz. Ist die Tabelle voll, lehnt OPAA die Prüfung jedes neuen Namens mit eigener Meldung ab
-(„kann derzeit nicht geprüft werden … Höchstzahl geprüfter Hostnamen“), warnt im Log und zählt
-`opaa_target_validation_refused_checks_total`; bewachte Namen bleiben bewacht, ein Neustart leert die
-Tabelle.
+Fest im Code: 60 Sekunden Bindung nach einer Prüfung; 5 Sekunden, in denen eine Prüfung die letzte
+Antwort für denselben Namen wiederverwendet; höchstens 10 000 Bindungen von Prüfungen vor einer
+Verbindung (die älteste weicht) und höchstens 100 000 bewachte gespeicherte Ziele je Instanz. Ist die
+Tabelle der bewachten Ziele voll, lehnt OPAA die Prüfung jedes neuen gespeicherten Ziels mit eigener
+Meldung ab („kann derzeit nicht geprüft werden … Höchstzahl geprüfter Hostnamen“), warnt im Log und
+zählt `opaa_target_validation_refused_checks_total`; bewachte Namen bleiben bewacht, ein Neustart
+leert die Tabelle.
 
 ## Ausgangsproxy
 

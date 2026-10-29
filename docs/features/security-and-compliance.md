@@ -1596,12 +1596,13 @@ sicher zu sein — er soll etwas einschalten müssen, um es nicht zu sein, und d
   Verzeichnisabgleichs (beide nur Systemverwaltung) werden vor dem Abruf aufgelöst und gegen private
   und lokale Adressbereiche geprüft; Ausnahmen stehen in einer Allowlist. Die Adresse eines
   Sprachmodells prüft eine eigene Adressprüfung mit eigener Allowlist beim Speichern, Testen und
-  Abfragen, nicht bei jedem Aufruf. **Gegen DNS-Rebinding** bewacht OPAA einen geprüften Namen bis
-  zum Neustart: Kurz nach der Prüfung geht jede Verbindung des Backends zu diesem Namen genau an die
-  geprüften Adressen, danach nur an neu aufgelöste Adressen außerhalb der gesperrten Bereiche; TLS
-  prüft weiter den Namen
-  ([ADR-0063](../decisions/0063-bindung-gepruefter-namen-gegen-dns-rebinding.md)). Geschützt ist,
-  was die Instanz seit ihrem Start geprüft hat. Hinter dem Ausgangsproxy löst der Proxy auf; interne
+  Abfragen, nicht bei jedem Aufruf. **Gegen DNS-Rebinding** bindet jede Prüfung den Namen kurz an
+  die geprüften Adressen; Quellen und Zugänge prüfen vor jeder Verbindung. Gespeicherte Ziele, mit
+  denen OPAA ohne eigene Prüfung verbindet (Modelle, Identitätsanbieter, Mailserver), bleiben bis
+  zum Neustart bewacht: Danach geht keine Verbindung an eine Adresse in einem gesperrten Bereich;
+  jede Instanz prüft sie nach dem Start einmal. TLS prüft weiter den Namen
+  ([ADR-0063](../decisions/0063-bindung-gepruefter-namen-gegen-dns-rebinding.md)). Hinter dem
+  Ausgangsproxy löst der Proxy auf; interne
   Ziele dort zu sperren ist Pflicht des Betriebs, zusätzlich empfiehlt sich die Beschränkung der
   ausgehenden Verbindungen auf Netzebene (Egress-Regeln oder ein Proxy mit Zielliste).
 - **Härtungs- und Konfigurationsleitfäden** sind Teil des Produkts, nicht Beratungsleistung: eine

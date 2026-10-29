@@ -92,11 +92,12 @@ Eintrag zeigt sich beim Speichern und im Verbindungstest als abgewiesenes Ziel, 
 Anmeldefehler; die Meldung nennt die Einstellung. Die Prüfung lässt sich mit
 `OPAA_INDEXING_TARGET_VALIDATION_ENABLED` ganz abschalten, die Schemaprüfung bleibt dann.
 
-Ein geprüfter Name bleibt bewacht: Der Konnektor verbindet kurz nach der Prüfung genau an die
-geprüften Adressen und danach nie an eine Adresse in einem gesperrten Bereich, auch wenn der
-Namensdienst zwischen Prüfung und Verbindung eine interne Adresse nennt (DNS-Rebinding); ein Wechsel
-auf eine andere öffentliche Adresse kommt sofort an. Zertifikat und SNI prüft TLS weiter gegen den
-Namen. Wie lange die Bewachung hält und was hinter dem Ausgangsproxy gilt, steht in
+Die Prüfung bindet den Namen für die Verbindung: Der Konnektor verbindet genau an die geprüften
+Adressen, auch wenn der Namensdienst zwischen Prüfung und Verbindung eine interne Adresse nennt
+(DNS-Rebinding), und jede weitere Verbindung wird neu geprüft. Ein Wechsel auf eine andere
+öffentliche Adresse kommt spätestens nach dem Cache der JVM (30 Sekunden) bzw. nach der
+Wiederverwendung einer Antwort durch die Prüfung (5 Sekunden) an. Zertifikat und SNI prüft TLS weiter
+gegen den Namen. Wie lange die Bindung hält und was hinter dem Ausgangsproxy gilt, steht in
 [Netz und Sicherheit](../../../betrieb/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers).
 
 ### 1.3 Zertifikatsprüfung
