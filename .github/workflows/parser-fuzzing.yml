@@ -1,0 +1,65 @@
+name: Parser-Fuzzing
+
+# Time-boxed fuzzing of every admitted document format on the production path
+# (io.opaa.fuzz.ParserFuzzTest, docs/entwicklung/build-und-ci.md, "Parser-Fuzzing").
+# Never on a pull request: the campaign takes ten minutes; the PR build only replays the
+# committed corpus once (FuzzCorpusTest in the core shard).
+on:
+  schedule:
+    # 1:35 UTC, away from the other nightly jobs (0:30, 2:11, 3:17 and later).
+    - cron: '35 1 * * *'
+  workflow_dispatch:
+    inputs:
+      duration:
+        description: 'Dauer der Kampagne (ISO-8601, z. B. PT10M)'
+        required: false
+        default: 'PT10M'
+      seed:
+        description: 'Kampagnen-Seed zum Wiederholen eines Laufs (leer: Run-ID)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: parser-fuzzing
+  cancel-in-progress: false
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: backend/
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '25.0.4+101.0.LTS'
+
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      # A scheduled run uses its run id as campaign seed, so every night mutates differently and
+      # a finding names the seed that reproduces it.
+      - name: Parser fuzzen
+        env:
+          FUZZ_DURATION: ${{ inputs.duration || 'PT10M' }}
+          FUZZ_SEED: ${{ inputs.seed || github.run_id }}
+        run: ./gradlew parserFuzzTest "-PfuzzDuration=$FUZZ_DURATION" "-PfuzzSeed=$FUZZ_SEED"
+
+      - name: Befunde und Zusammenfassung hochladen
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: parser-fuzzing-findings
+          path: |
+            backend/build/fuzz-findings/
+            backend/build/reports/tests/parserFuzzTest/
+          if-no-files-found: ignore
+          retention-days: 30
