@@ -30,6 +30,18 @@ nichts gebaut. Backend und Frontend laufen immer mit **derselben** Version.
   docker buildx imagetools inspect ghcr.io/criew/opaa-backend:<tag> --format '{{ json .Provenance }}'
   ```
 
+- **Signierte Herkunft:** Jedes Image trägt zusätzlich eine signierte Provenance des Laufs, der es
+  veröffentlicht hat; sie deckt auch SBOM und Provenance am Image ab. Für ein Release wird sie gegen
+  Workflow und Tag geprüft, für `main` mit `--source-ref refs/heads/main`:
+
+  ```bash
+  gh attestation verify oci://ghcr.io/criew/opaa-backend:X.Y.Z --repo criew/opaa \
+    --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/vX.Y.Z
+  ```
+
+  Dasselbe gilt für `opaa-frontend` und den Chart
+  ([Herkunft prüfen](releases-und-nachweise.md#herkunft-prüfen)).
+
 - **Update-Paket:** Am GitHub-Release hängt ein attestiertes Paket für Datenschutz,
   Personalvertretung und Informationssicherheit
   ([Nachvollziehbarkeit](nachvollziehbarkeit.md#das-update-paket-eines-release)).

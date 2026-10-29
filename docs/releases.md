@@ -14,30 +14,52 @@ Ein Git-Tag `vX.Y.Z` auf einem Commit von `main` oder des Wartungsbranches `rele
 
 | Ergebnis | Inhalt |
 |---|---|
-| `ghcr.io/criew/opaa-backend:X.Y.Z`, `ghcr.io/criew/opaa-frontend:X.Y.Z` | der Release-Stand für `linux/amd64` und `linux/arm64` (ein Manifest-Index je Image), **nie überschrieben** |
+| `ghcr.io/criew/opaa-backend:X.Y.Z`, `ghcr.io/criew/opaa-frontend:X.Y.Z` | der Release-Stand für `linux/amd64` und `linux/arm64` (ein Manifest-Index je Image), **nie überschrieben**; der Index **attestiert** |
 | `…:X.Y` | wandert mit jedem Patch-Release dieser Linie mit |
-| Helm-Chart `oci://ghcr.io/criew/charts/opaa`, Version `X.Y.Z` | Chart-Version und `appVersion` sind `X.Y.Z`, die Vorgabewerte zeigen auf die Images `X.Y.Z`; **nie überschrieben** |
+| Helm-Chart `oci://ghcr.io/criew/charts/opaa`, Version `X.Y.Z` | Chart-Version und `appVersion` sind `X.Y.Z`, die Vorgabewerte heften die Images `X.Y.Z` per Digest an; **nie überschrieben**, **attestiert** |
 | GitHub-Release `OPAA vX.Y.Z` | Änderungsübersicht aus den gemergten PRs seit dem vorigen finalen Release, das der Commit enthält (bei einem Patch-Release das vorige Release seiner Linie), gruppiert nach Label (`.github/release.yml`), [datenrelevante Änderungen](#datenwirkung-kennzeichnen) zuerst, dazu die Image-Namen, die Installationsbefehle, die [Vorbereitung für Bestandsinstallationen](#vorbereitung-für-bestandsinstallationen) und der Hinweis auf das Update-Paket; als „Latest“ markiert nur, wenn es das höchste finale Release ist (siehe [Latest](#latest-und-vergleichsstand-der-notizen)) |
 | `opaa-update-paket-X.Y.Z.tar.gz` mit `….tar.gz.sha256`, am GitHub-Release | das [Update-Paket](#update-paket) für Behörden: Faktenblätter der Version, Delta zum vorigen finalen Release, Betriebsfolgen und Antwortqualität, [Prüfbericht Barrierefreiheit](#prüfbericht-barrierefreiheit), Lizenzübersicht, SBOMs, Vorlage Update-Vermerk; **attestiert** |
 | `opaa-offline-X.Y.Z.tar` mit `….tar.sha256` und `….tar.sigstore.json`, am GitHub-Release | das [Offline-Bündel](#offline-bündel) für Netze ohne Internetzugang: Images beider Architekturen als OCI-Archive, Chart, Update-Paket, SBOMs, ihre Attestierungen und `SHA256SUMS`; **attestiert** |
 | `opaa-backend-X.Y.Z.cdx.json`, `opaa-frontend-X.Y.Z.cdx.json`, am GitHub-Release | die CycloneDX-Stücklisten (SBOM) der ausgelieferten Abhängigkeiten von Backend und Frontend aus dem Stand des Tags ([sbom.md](sbom.md#ebene-2--ökosystem-sboms-cyclonedx)); dieselben Dateien liegen im Update-Paket; **attestiert** |
 
-Wie bei `main` tragen die Images je Architektur eine SBOM- und eine Provenance-Attestierung
-([sbom.md](sbom.md)). Der Chart trägt eine signierte Provenance-Attestierung, abgelegt bei GitHub
-und neben dem Chart in GHCR. Prüfen lässt sie sich mit:
+Wie bei `main` tragen die Images je Architektur eine SBOM- und eine Provenance-Attestierung von
+BuildKit ([sbom.md](sbom.md)); sie selbst sind nicht signiert. Signiert ist der Manifest-Index
+jedes Image: Der Job `image-attestation` legt für seinen Digest eine SLSA-Provenance bei GitHub und
+neben dem Image in GHCR ab. Weil der Index-Digest auch die Attestierungs-Manifeste umfasst, auf die
+der Index verweist, deckt die Signatur die BuildKit-SBOM und -Provenance mit ab, darunter die
+aufgelösten [Basis-Images](#basis-images). Der Chart trägt ebenso eine signierte
+Provenance-Attestierung, abgelegt bei GitHub und neben dem Chart in GHCR, und heftet die Images
+seiner Version per Digest an (`backend.image.digest`, `frontend.image.digest` in den Vorgabewerten
+des veröffentlichten Charts). Jede Prüfung bindet an den Release-Workflow und das Tag, nicht nur an
+das Repository; eine Attestierung aus einem anderen Workflow oder von `main` besteht sie nicht:
 
 ```bash
-gh attestation verify oci://ghcr.io/criew/charts/opaa:X.Y.Z --owner criew
+gh attestation verify oci://ghcr.io/criew/opaa-backend:X.Y.Z --repo criew/opaa \
+  --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/vX.Y.Z
+gh attestation verify oci://ghcr.io/criew/opaa-frontend:X.Y.Z --repo criew/opaa \
+  --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/vX.Y.Z
+gh attestation verify oci://ghcr.io/criew/charts/opaa:X.Y.Z --repo criew/opaa \
+  --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/vX.Y.Z
 ```
+
+`gh` löst den Tag dabei in den Digest auf. Wer per Digest installiert, prüft genau diesen:
+`oci://ghcr.io/criew/opaa-backend@sha256:…`. Images von `main` tragen dieselbe Attestierung mit
+`--source-ref refs/heads/main`.
 
 Das Update-Paket und die beiden SBOMs tragen ebenso je eine signierte Provenance-Attestierung,
 abgelegt bei GitHub. Geprüft wird die heruntergeladene Datei:
 
 ```bash
-gh release download vX.Y.Z --repo criew/opaa --pattern 'opaa-update-paket-*'
-gh attestation verify opaa-update-paket-X.Y.Z.tar.gz --repo criew/opaa
-gh attestation verify opaa-backend-X.Y.Z.cdx.json --repo criew/opaa   # ebenso opaa-frontend-…
+gh release download vX.Y.Z --repo criew/opaa --pattern 'opaa-update-paket-*' --pattern 'opaa-*.cdx.json'
+gh attestation verify opaa-update-paket-X.Y.Z.tar.gz --repo criew/opaa \
+  --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/vX.Y.Z
+gh attestation verify opaa-backend-X.Y.Z.cdx.json --repo criew/opaa \
+  --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/vX.Y.Z
+gh attestation verify opaa-frontend-X.Y.Z.cdx.json --repo criew/opaa \
+  --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/vX.Y.Z
 ```
+
+Dieselben Befehle stehen mit der konkreten Version in den Release-Notizen.
 
 Installiert wird der Chart ohne Checkout des Repositories, in der Reihenfolge des Handbuchs
 ([Kubernetes, Installation](handbuch/betrieb/kubernetes.md#installation)): zuerst der Namespace mit den
@@ -176,7 +198,9 @@ Das Tag-Format steht an einer Stelle, `deploy/helm/ci/release-version.sh`; die P
 und das Packen des Charts rufen es beide auf. Ebenso gibt es eine einzige Existenzprüfung für
 Images und Chart, `deploy/helm/ci/oci-published.sh`. Sie fragt die Registry-API direkt und wertet
 den HTTP-Status aus. `docker buildx imagetools inspect` taugt dafür nicht, weil es eine
-Verweigerung ebenfalls als „not found“ meldet.
+Verweigerung ebenfalls als „not found“ meldet. Mit `--digest` liefert dasselbe Skript den Digest,
+auf den ein Tag zeigt, berechnet aus dem gelieferten Manifest und abgeglichen mit der Angabe der
+Registry; daraus nimmt der Job `image-digests` die Digests für Attestierung und Chart.
 
 **Ein Release baut ohne Build-Cache.** Bei einem Tag lesen und schreiben die `build`-Jobs den
 GitHub-Actions-Cache nicht. In den Cache von `main` darf jeder Job schreiben, der auf `main` läuft,
@@ -185,8 +209,11 @@ den Basis-Images und den Paketquellen. Die Abwägung und das verbleibende Risiko
 in [renovate.md](renovate.md#sicherheitsmodell-des-gha-caches).
 
 Der Lauf ist in Jobs gestaffelt: erst die Prüfungen (`prepare`), dann die Images (`build` je Image
-und Architektur, `publish` je Image) und daneben die axe-Prüfung (`accessibility`) und nach ihr das
-Update-Paket (`update-package`, seine Attestierung in `update-package-attestation`), dann der Chart, dann seine Attestierung, dann das
+und Architektur, `publish` je Image, dann `image-digests`, der die Index-Digests über den Tag
+`X.Y.Z` aus GHCR liest, und `image-attestation` je Image) und daneben die axe-Prüfung
+(`accessibility`) und nach ihr das Update-Paket (`update-package`, seine Attestierung in
+`update-package-attestation`), dann der Chart mit den Digests aus `image-digests`, dann seine
+Attestierung, dann das
 [Offline-Bündel](#offline-bündel) (`offline-bundle`), zuletzt das GitHub-Release mit Update-Paket und
 Bündel als Anhang. Jeder Job startet nur, wenn die vorigen gelungen sind, und ein Fehlschlag färbt
 den Lauf rot. Ein gescheitertes Bündel hält deshalb das GitHub-Release auf, obwohl Images und Chart
@@ -1046,6 +1073,38 @@ höchsten finalen Release. Für jede unterstützte Linie gilt:
 
 Solange ein gescanntes Release einen `critical`-Befund trägt, bleibt das Alarm-Issue des Scans
 offen, auch wenn `main` schon behoben ist. Es schließt erst mit dem Patch-Release.
+
+## Basis-Images
+
+**Entscheidung:** Die Dockerfiles nennen ihre Basis-Images weiter mit gleitenden Tags
+(`eclipse-temurin:21-jdk`, `gcr.io/distroless/base-nossl-debian13:nonroot`, `node:24-alpine`,
+`nginxinc/nginx-unprivileged:alpine`), ohne Digest; Renovate pinnt keine Digests (`pinDigests: false`
+in `renovate.json5`). Festgehalten wird stattdessen, was ein Release tatsächlich gezogen hat: Die
+Provenance von BuildKit (`provenance: mode=max`) nennt für jedes Plattform-Image jedes verwendete
+Basis-Image mit dem aufgelösten Digest. Sie hängt am Manifest-Index des Release und ist über dessen
+signierte Attestierung mit abgedeckt ([Was ein Release erzeugt](#was-ein-release-erzeugt)).
+
+**Begründung:**
+
+- Ein Sicherheitsupdate im Basis-Image kommt als Patch-Release ohne Codeänderung, ein neues Tag auf
+  dem Commit des letzten Release der Linie ([Versionsnummern](#versionsnummern),
+  [Sicherheitsupdates für Releases](#sicherheitsupdates-für-releases)). Mit gepinnten Digests bräuchte
+  jedes solche Release erst einen Commit und einen Backport je Linie.
+- Der wöchentliche Neubau von `main` bringt die Updates der Basis-Images ohne Zutun.
+- Ein Digest-PR je Basis-Image und Linie bei jedem Neubau der Basis-Images wäre Arbeit ohne
+  Prüfgewinn: Der Digest allein sagt nichts über den Inhalt; den prüft der CVE-Scan am fertigen Image.
+
+**Folge:** Der getaggte Commit legt den Stand der Basis-Images nicht fest, das Release tut es. Wer
+wissen will, woraus ein Release-Image gebaut ist, liest es aus der Provenance:
+
+```bash
+docker buildx imagetools inspect ghcr.io/criew/opaa-backend:X.Y.Z --format '{{ json .Provenance }}' |
+  jq '[.. | objects | select((.uri? // "") | startswith("pkg:docker/")) | {uri, digest}] | unique'
+```
+
+Dasselbe gilt für `opaa-frontend`. Ein Neubau desselben Commits ergibt deshalb ein anderes Image,
+sobald ein Basis-Image neu veröffentlicht wurde; ein Release wird nie neu gebaut, sein Stand bleibt
+über den Digest des Index fest.
 
 ## Mehrere Architekturen
 

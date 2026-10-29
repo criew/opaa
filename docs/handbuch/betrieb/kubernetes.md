@@ -358,9 +358,9 @@ helm install opaa chart/opaa-<x.y.z>.tgz -n opaa -f opaa-werte.yaml \
   --set frontend.image.repository=registry.intern/opaa/opaa-frontend
 ```
 
-Die Tags bleiben die Version des Charts. Wer per Digest pinnt, nimmt die Werte aus `DIGESTS` im
-Bündel (`backend.image.digest`, `frontend.image.digest`); sie gelten unverändert in der internen
-Registry. Verlangt die Registry eine Anmeldung, gehört ein Secret in `imagePullSecrets`. Die
+Der Chart heftet beide Images per Digest an (`backend.image.digest`, `frontend.image.digest`, dieselben
+Werte wie in `DIGESTS` im Bündel). Sie gelten unverändert in der internen Registry, weil `skopeo` die
+Digests beim Einspielen behält. Verlangt die Registry eine Anmeldung, gehört ein Secret in `imagePullSecrets`. Die
 Erprobungsdatenbank und alle übrigen Drittimages kommen auf eigenem Weg in die Registry.
 
 ### 6. Auf das Backend warten und prüfen
@@ -725,7 +725,7 @@ Konfiguration unter [„Funktionen abschalten"](konfiguration.md#funktionen-absc
 |---|---|---|---|
 | `backend.image.repository` | `ghcr.io/criew/opaa-backend` | — | Image |
 | `backend.image.tag` | leer (Version des Charts) | — | Tag; für eine Release-Installation leer lassen |
-| `backend.image.digest` | leer | — | heftet das Image an einen Digest; hat Vorrang vor dem Tag |
+| `backend.image.digest` | im veröffentlichten Chart der Digest des Release-Images, im Repository leer | — | heftet das Image an einen Digest; hat Vorrang vor dem Tag. Wer ein anderes Image als das des Charts setzt, setzt auch den Digest neu oder leer (`--set backend.image.digest=`) |
 | `backend.image.pullPolicy` | `IfNotPresent` | — | Pull-Verhalten |
 | `backend.replicas` | `1` | — | Zahl der Backend-Pods, `0` hält das Backend an; mehr als `1` nur mit `backend.migration.enabled` und einer Originalablage, die jeder Pod sieht ([Mehrere Backend-Instanzen](#mehrere-backend-instanzen)) |
 | `backend.updateStrategy` | leer | — | `Recreate` oder `RollingUpdate`; leer wählt `Recreate` für einen Pod und `RollingUpdate` (`maxUnavailable: 0`, `maxSurge: 1`) für mehr. `RollingUpdate` verlangt dasselbe wie mehrere Pods |
@@ -764,7 +764,7 @@ und mit dem Migrations-Job `SPRING_FLYWAY_ENABLED=false` in den Backend-Pods.
 | Wert | Vorgabe | Setzt | Wirkung |
 |---|---|---|---|
 | `frontend.image.repository` | `ghcr.io/criew/opaa-frontend` | — | Image |
-| `frontend.image.tag`, `.digest`, `.pullPolicy` | leer (Version des Charts), leer, `IfNotPresent` | — | wie beim Backend |
+| `frontend.image.tag`, `.digest`, `.pullPolicy` | leer (Version des Charts), im veröffentlichten Chart der Digest des Release-Images, `IfNotPresent` | — | wie beim Backend |
 | `frontend.replicas` | `1` | — | Zahl der Frontend-Pods; mehr als einer ist zulässig |
 | `frontend.preStopSleepSeconds` | `5` | — | so lange nimmt ein Frontend-Pod, der enden soll, noch Anfragen an, bis Kubernetes ihn aus dem Service genommen hat; `0` lässt die Pause weg |
 | `frontend.backendReadTimeout` | leer (Vorgabe des Images, `600s`) | `OPAA_BACKEND_READ_TIMEOUT` | wie lange der Frontend-nginx auf die Antwort des Backends wartet, für `/api/` und `/mcp`; Zahl mit Einheit `s`, `m` oder `h`. Mit `rerank.timeout` zusammen anheben; Controller oder Gateway davor brauchen mindestens denselben Wert |
@@ -1288,9 +1288,10 @@ Hinweise zum Aufruf:
   `bootstrap.oidc` trägt der Chart selbst ein.
 - **Werte-Datei statt `--reuse-values`.** `--reuse-values` übernimmt die Werte der alten Fassung und
   übergeht neue Vorgaben des Charts. Die Werte-Datei gehört in eine Versionsverwaltung.
-- **Kein Image-Tag in der Werte-Datei**, solange aus einem Release installiert wird. Ein gesetztes
-  `backend.image.tag` bleibt bei einem `helm upgrade` stehen, und die neue Chart-Version liefe mit dem
-  alten Image.
+- **Kein Image-Tag und kein Digest in der Werte-Datei**, solange aus einem Release installiert wird.
+  Ein gesetzter Digest bleibt bei einem `helm upgrade` stehen, und die neue Chart-Version liefe mit
+  dem alten Image. Ein gesetzter Tag allein wirkt bei einem veröffentlichten Chart gar nicht: Dessen
+  Digest hat Vorrang.
 - **Backend und Frontend immer in derselben Version.** Beides folgt aus der Chart-Version, solange
   kein Tag und kein Digest gesetzt ist.
 - **Installation aus einem Checkout:** `helm upgrade opaa deploy/helm/opaa -n opaa -f opaa-werte.yaml`

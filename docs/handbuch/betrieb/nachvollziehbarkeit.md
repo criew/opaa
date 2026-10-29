@@ -189,8 +189,12 @@ Das Paket ist attestiert wie die Images. Die Provenance prüft:
 
 ```bash
 gh release download v<Version> --repo criew/opaa --pattern 'opaa-update-paket-*'
-gh attestation verify opaa-update-paket-<Version>.tar.gz --repo criew/opaa
+gh attestation verify opaa-update-paket-<Version>.tar.gz --repo criew/opaa \
+  --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/v<Version>
 ```
+
+Die Prüfung nennt Workflow und Tag: Sie besteht nur ein Paket, das der Release-Lauf von OPAA zu
+genau dieser Version erzeugt hat.
 
 Der Release-Lauf erzeugt das Paket nur, wenn der Wächter (siehe [Was bei jeder Änderung geprüft
 wird](#was-bei-jeder-änderung-geprüft-wird)) besteht; sonst erscheint das Release nicht.
