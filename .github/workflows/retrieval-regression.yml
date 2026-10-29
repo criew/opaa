@@ -33,6 +33,13 @@ concurrency:
   group: retrieval-regression-${{ github.event_name }}-${{ github.event.pull_request.number || 'none' }}-${{ github.event.label.name || 'none' }}
   cancel-in-progress: false
 
+# Helper image of the steps that move the Ollama model cache in and out of its Docker volume. The
+# jobs run on main with write access to the gha cache, so the image carries version and index
+# digest; a regex manager in renovate.json5 keeps both current.
+env:
+  # renovate: datasource=docker depName=alpine
+  ALPINE_IMAGE: alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+
 jobs:
   evaluate:
     # Eine Job-Definition, Matrix über die Eval-Domäne — eine weitere Domäne ist ein zusätzlicher
@@ -204,7 +211,7 @@ jobs:
           docker run --rm \
             -v opaa-eval-ollama-models:/root/.ollama \
             -v "${{ github.workspace }}":/backup \
-            alpine sh -c "tar xf /backup/ollama-model-cache.tar -C /root/.ollama"
+            "$ALPINE_IMAGE" sh -c "tar xf /backup/ollama-model-cache.tar -C /root/.ollama"
 
       - name: ${{ matrix.exec_step_name }}
         working-directory: backend
@@ -231,18 +238,18 @@ jobs:
         if: always()
         run: |
           if docker volume inspect opaa-eval-ollama-models >/dev/null 2>&1; then
-            size=$(docker run --rm -v opaa-eval-ollama-models:/root/.ollama alpine \
+            size=$(docker run --rm -v opaa-eval-ollama-models:/root/.ollama "$ALPINE_IMAGE" \
               du -sb /root/.ollama 2>/dev/null | cut -f1 || echo 0)
-            partial=$(docker run --rm -v opaa-eval-ollama-models:/root/.ollama alpine \
+            partial=$(docker run --rm -v opaa-eval-ollama-models:/root/.ollama "$ALPINE_IMAGE" \
               find /root/.ollama -iname '*partial*' 2>/dev/null | head -1)
-            manifest_present=$(docker run --rm -v opaa-eval-ollama-models:/root/.ollama alpine \
+            manifest_present=$(docker run --rm -v opaa-eval-ollama-models:/root/.ollama "$ALPINE_IMAGE" \
               sh -c "test -f /root/.ollama/models/manifests/registry.ollama.ai/library/nomic-embed-text/v1.5 && test -f /root/.ollama/models/manifests/registry.ollama.ai/library/qwen2.5/1.5b-instruct && echo yes || echo no")
             echo "Ollama-Volume-Größe: ${size:-0} Bytes, unvollständige Blobs: '${partial:-keine}', Manifeste vorhanden: ${manifest_present}"
             if [ "${size:-0}" -gt 1000000000 ] && [ -z "$partial" ] && [ "$manifest_present" = "yes" ]; then
               docker run --rm \
                 -v opaa-eval-ollama-models:/root/.ollama \
                 -v "${{ github.workspace }}":/backup \
-                alpine sh -c "tar cf /backup/ollama-model-cache.tar -C /root/.ollama ."
+                "$ALPINE_IMAGE" sh -c "tar cf /backup/ollama-model-cache.tar -C /root/.ollama ."
             else
               echo "Volume zu klein, unvollständig oder fehlend — Export übersprungen, um den Cache-Schlüssel nicht dauerhaft zu vergiften."
             fi
@@ -573,7 +580,7 @@ jobs:
           docker run --rm \
             -v opaa-eval-ollama-models:/root/.ollama \
             -v "${{ github.workspace }}":/backup \
-            alpine sh -c "tar xf /backup/ollama-model-cache.tar -C /root/.ollama"
+            "$ALPINE_IMAGE" sh -c "tar xf /backup/ollama-model-cache.tar -C /root/.ollama"
 
       # Die Gradle-Task setzt -Dopaa.eval.runConversations und -Dopaa.eval.queryDecomposition
       # selbst (backend/build.gradle.kts, registerEvalHarnessTask): Der Schalter, an dem dieser
