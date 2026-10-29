@@ -86,8 +86,8 @@ describe('DocumentTextPreviewDialog', () => {
 
   // No gerendertes Markdown may execute script in the app's origin - a
   // literal <script>/onerror-carrying <img> is inert text (react-markdown never enables rehype-raw,
-  // so raw HTML is parsed as text, not markup), and a javascript: link/image URL is stripped by
-  // react-markdown's default urlTransform (mirrors the SVG Sperre for a different surface).
+  // so raw HTML is parsed as text, not markup), and a javascript: link/image URL stays text because
+  // MarkdownRenderer's own link and image components never put it into an href or src.
   describe('security: no script execution from rendered Markdown (#780)', () => {
     it('renders a literal <script> tag as inert text, not a script element', () => {
       renderWithProviders(

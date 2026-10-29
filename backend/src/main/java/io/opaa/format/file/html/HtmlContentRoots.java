@@ -25,7 +25,7 @@ public final class HtmlContentRoots {
    * script/style/noscript sit in a content wrapper often enough that they cannot be treated the
    * same way as {@link #CONDITIONAL_BOILERPLATE_SELECTOR}.
    */
-  public static final String UNCONDITIONAL_BOILERPLATE_SELECTOR =
+  private static final String UNCONDITIONAL_BOILERPLATE_SELECTOR =
       "nav, aside, [role=navigation], [role=complementary], .nav, .navigation, .menu,"
           + " .breadcrumb, .sidebar, .cookie-banner, .cookie-consent, #cookie-banner,"
           + " #cookie-consent, script, style, noscript";
@@ -35,7 +35,7 @@ public final class HtmlContentRoots {
    * CMS article legitimately nests its own {@code <header>} or {@code <footer>}, and stripping
    * those would drop real content along with the page chrome.
    */
-  public static final String CONDITIONAL_BOILERPLATE_SELECTOR =
+  private static final String CONDITIONAL_BOILERPLATE_SELECTOR =
       "header, footer, [role=banner], [role=contentinfo]";
 
   /**
@@ -60,7 +60,7 @@ public final class HtmlContentRoots {
    * preserve nested chrome for.
    */
   public static List<Element> select(Document htmlDoc, String mainContentSelector) {
-    htmlDoc.select(UNCONDITIONAL_BOILERPLATE_SELECTOR).remove();
+    removeUnconditionalBoilerplate(htmlDoc);
     Elements mainCandidates = htmlDoc.select(mainContentSelector);
     if (!mainCandidates.isEmpty()) {
       List<Element> roots = topLevelOnly(mainCandidates);
@@ -71,8 +71,13 @@ public final class HtmlContentRoots {
     if (body == null) {
       return List.of();
     }
-    body.select(CONDITIONAL_BOILERPLATE_SELECTOR).remove();
+    removeAll(body.select(CONDITIONAL_BOILERPLATE_SELECTOR));
     return List.of(body);
+  }
+
+  /** Removes {@link #UNCONDITIONAL_BOILERPLATE_SELECTOR} matches from all of {@code htmlDoc}. */
+  public static void removeUnconditionalBoilerplate(Document htmlDoc) {
+    removeAll(htmlDoc.select(UNCONDITIONAL_BOILERPLATE_SELECTOR));
   }
 
   private static List<Element> topLevelOnly(Elements candidates) {
@@ -88,10 +93,38 @@ public final class HtmlContentRoots {
 
   private static void removeConditionalBoilerplateOutside(Document htmlDoc, List<Element> roots) {
     Set<Node> rootSet = identitySetOf(roots);
+    List<Element> outside = new ArrayList<>();
     for (Element candidate : htmlDoc.select(CONDITIONAL_BOILERPLATE_SELECTOR)) {
       if (!isWithinAnyOf(candidate, rootSet)) {
-        candidate.remove();
+        outside.add(candidate);
       }
+    }
+    removeAll(outside);
+  }
+
+  /**
+   * Detaches {@code elements} with one rebuild of each affected parent's child list, in time linear
+   * in the number of children touched: jsoup's single-node removal shifts every later sibling in
+   * the parent's child list, which makes removing many siblings one by one quadratic.
+   */
+  private static void removeAll(List<Element> elements) {
+    Set<Node> doomed = identitySetOf(elements);
+    Set<Element> parents = Collections.newSetFromMap(new IdentityHashMap<>());
+    for (Element element : elements) {
+      Element parent = element.parent();
+      if (parent != null) {
+        parents.add(parent);
+      }
+    }
+    for (Element parent : parents) {
+      List<Node> kept = new ArrayList<>(parent.childNodeSize());
+      for (Node child : parent.childNodes()) {
+        if (!doomed.contains(child)) {
+          kept.add(child);
+        }
+      }
+      parent.empty();
+      parent.appendChildren(kept);
     }
   }
 
