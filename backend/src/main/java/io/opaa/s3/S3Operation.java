@@ -7,12 +7,14 @@ package io.opaa.s3;
  */
 public enum S3Operation {
   LIST_OBJECTS("die Auflistung", Kind.BUCKET),
+  LIST_OBJECT_VERSIONS("die Versionsauflistung", Kind.BUCKET),
   HEAD_BUCKET("die Bucket-Prüfung", Kind.BUCKET),
   LIST_BUCKETS("die Bucket-Liste", Kind.BUCKET),
   HEAD_OBJECT("die Objektprüfung", Kind.READ),
   GET_OBJECT("den Download", Kind.READ),
   PUT_OBJECT("das Ablegen", Kind.WRITE),
-  DELETE_OBJECT("das Löschen", Kind.WRITE);
+  DELETE_OBJECT("das Löschen", Kind.WRITE),
+  DELETE_OBJECT_VERSION("das Löschen einer Objektversion", Kind.WRITE);
 
   /** What a {@code 403}/{@code 404} on the operation is about. */
   enum Kind {
@@ -36,20 +38,29 @@ public enum S3Operation {
   /** The {@link S3AccessException} a {@code 403} on this operation means. */
   S3AccessException forbidden(String bucket, String key) {
     return switch (kind) {
-      case BUCKET -> new S3AccessException.ListForbidden(bucket);
+      case BUCKET ->
+          this == LIST_OBJECT_VERSIONS
+              ? new S3AccessException.ListForbidden(bucket, "s3:ListBucketVersions")
+              : new S3AccessException.ListForbidden(bucket);
       case READ -> new S3AccessException.ReadForbidden(bucket, key);
       case WRITE ->
           new S3AccessException.WriteForbidden(
-              bucket, key, this == PUT_OBJECT ? "s3:PutObject" : "s3:DeleteObject");
+              bucket,
+              key,
+              switch (this) {
+                case PUT_OBJECT -> "s3:PutObject";
+                case DELETE_OBJECT_VERSION -> "s3:DeleteObjectVersion";
+                default -> "s3:DeleteObject";
+              });
     };
   }
 
   /** The {@link S3AccessException} a {@code 404} without an error code on this operation means. */
   S3AccessException notFound(String bucket, String key) {
     return switch (this) {
-      case HEAD_OBJECT, GET_OBJECT, DELETE_OBJECT ->
+      case HEAD_OBJECT, GET_OBJECT, DELETE_OBJECT, DELETE_OBJECT_VERSION ->
           new S3AccessException.ObjectNotFound(bucket, key);
-      case LIST_OBJECTS, HEAD_BUCKET, LIST_BUCKETS, PUT_OBJECT ->
+      case LIST_OBJECTS, LIST_OBJECT_VERSIONS, HEAD_BUCKET, LIST_BUCKETS, PUT_OBJECT ->
           new S3AccessException.BucketNotFound(bucket);
     };
   }

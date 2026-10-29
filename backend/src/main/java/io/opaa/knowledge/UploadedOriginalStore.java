@@ -57,7 +57,10 @@ public interface UploadedOriginalStore {
    */
   <T> Optional<T> withLocalFile(UploadedOriginalRef ref, Function<Path, T> action);
 
-  /** Removes the original behind {@code ref}; one that does not resolve is left alone. */
+  /**
+   * Removes the original behind {@code ref}, together with every older version the storage keeps of
+   * it; one that does not resolve is left alone.
+   */
   void delete(UploadedOriginalRef ref);
 
   /**
@@ -101,6 +104,27 @@ public interface UploadedOriginalStore {
    * @throws UploadStoreUnavailableException when the store cannot be listed right now
    */
   void forEachStoredLibrary(UUID organizationId, Consumer<UUID> visitor);
+
+  /**
+   * How many copies of originals the storage still keeps on {@code libraryId}'s own level beyond
+   * the current ones {@link #forEachStoredOriginal} visits: older versions and delete markers of a
+   * versioned bucket. A storage without versions keeps none.
+   *
+   * @throws UploadStoreUnavailableException when this cannot be determined right now
+   */
+  default long countRetainedVersions(UUID organizationId, UUID libraryId) {
+    return 0;
+  }
+
+  /**
+   * Removes what {@link #countRetainedVersions} counts and returns how many it removed; the current
+   * originals stay.
+   *
+   * @throws UploadStoreUnavailableException when the retained versions cannot be listed right now
+   */
+  default int eraseRetainedVersions(UUID organizationId, UUID libraryId) {
+    return 0;
+  }
 
   /**
    * One original as the listing sees it.

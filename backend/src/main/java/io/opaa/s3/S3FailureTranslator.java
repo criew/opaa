@@ -235,6 +235,9 @@ public final class S3FailureTranslator {
     if ("NoSuchKey".equals(code)) {
       return new S3AccessException.ObjectNotFound(bucket, key);
     }
+    if (status == 501 || "NotImplemented".equals(code)) {
+      return new S3AccessException.NotImplemented(op.german());
+    }
     if (status == 403) {
       return op.forbidden(bucket, key);
     }

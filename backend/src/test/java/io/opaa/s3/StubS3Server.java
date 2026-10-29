@@ -25,8 +25,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * A minimal path-style S3 stand-in for the adapter's unit tests: buckets with objects in memory,
  * {@code ListObjectsV2} with prefix, delimiter, page size and continuation tokens, {@code
  * HeadBucket}, {@code HeadObject}, {@code GetObject}, {@code PutObject}, {@code DeleteObject},
- * {@code ListBuckets}, and a script of failures the next requests answer with, regardless of route.
- * Every request is recorded for assertions.
+ * {@code ListBuckets}, {@code ListObjectVersions} as an unversioned bucket answers it (one current
+ * version {@code null} per object), and a script of failures the next requests answer with,
+ * regardless of route. Every request is recorded for assertions.
  */
 public final class StubS3Server implements AutoCloseable {
 
@@ -54,6 +55,8 @@ public final class StubS3Server implements AutoCloseable {
   private final List<Seen> seen = new CopyOnWriteArrayList<>();
   private volatile boolean omitContinuationToken;
   private volatile boolean omitLastModified;
+  private volatile int versionListingStatus;
+  private volatile String versionListingCode;
 
   public StubS3Server() throws IOException {
     server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -94,6 +97,12 @@ public final class StubS3Server implements AutoCloseable {
   /** Listings name no {@code LastModified}, as a store that does not record one would. */
   public void omitLastModified() {
     omitLastModified = true;
+  }
+
+  /** Every {@code ListObjectVersions} answers {@code status}/{@code code} from here on. */
+  public void failVersionListing(int status, String code) {
+    versionListingCode = code;
+    versionListingStatus = status;
   }
 
   /** The next {@code times} requests - whatever they are - answer {@code status}/{@code code}. */
@@ -160,10 +169,17 @@ public final class StubS3Server implements AutoCloseable {
         return;
       }
       if (key == null || key.isEmpty()) {
+        Map<String, String> parameters = parseQuery(query);
         if (method.equals("HEAD")) {
           exchange.sendResponseHeaders(200, -1);
+        } else if (parameters.containsKey("versions")) {
+          if (versionListingStatus != 0) {
+            error(exchange, versionListingStatus, versionListingCode);
+          } else {
+            listVersions(exchange, bucket, objects, parameters);
+          }
         } else {
-          list(exchange, bucket, objects, parseQuery(query));
+          list(exchange, bucket, objects, parameters);
         }
         return;
       }
@@ -339,6 +355,34 @@ public final class StubS3Server implements AutoCloseable {
           .append("</StorageClass></Contents>");
     }
     xml.append("</ListBucketResult>");
+    xml(exchange, 200, xml.toString());
+  }
+
+  /** Unpaged: every object under the prefix on its own level as its single current version. */
+  private void listVersions(
+      HttpExchange exchange, String bucket, Map<String, byte[]> objects, Map<String, String> query)
+      throws IOException {
+    String prefix = query.getOrDefault("prefix", "");
+    String delimiter = query.get("delimiter");
+    StringBuilder xml =
+        new StringBuilder(
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?><ListVersionsResult"
+                + " xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Name>");
+    xml.append(bucket).append("</Name><Prefix>").append(prefix).append("</Prefix>");
+    xml.append("<IsTruncated>false</IsTruncated>");
+    for (String key :
+        objects.keySet().stream().filter(k -> k.startsWith(prefix)).sorted().toList()) {
+      if (delimiter != null && key.substring(prefix.length()).contains(delimiter)) {
+        continue;
+      }
+      xml.append("<Version><Key>")
+          .append(key)
+          .append("</Key><VersionId>null</VersionId><IsLatest>true</IsLatest>")
+          .append("<LastModified>2026-09-01T10:00:00.000Z</LastModified><Size>")
+          .append(objects.get(key).length)
+          .append("</Size></Version>");
+    }
+    xml.append("</ListVersionsResult>");
     xml(exchange, 200, xml.toString());
   }
 

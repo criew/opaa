@@ -191,26 +191,33 @@ public class PrivateLibraryErasure implements AuditPayloadKeys {
   }
 
   /**
-   * Removes every stored original of the library's storage area and checks that none is left; a
-   * store that cannot be reached throws, and the next call tries again.
+   * Removes every stored original of the library's storage area, older versions and delete markers
+   * of a versioned bucket included, and checks that none of either is left; a store that cannot be
+   * reached or cannot list its versions throws, and the next call tries again.
    */
   private int eraseOriginals(KnowledgeLibrary library) {
+    UUID organizationId = library.getOrganizationId();
+    UUID libraryId = library.getId();
     AtomicInteger removed = new AtomicInteger();
     originals.forEachStoredOriginal(
-        library.getOrganizationId(),
-        library.getId(),
+        organizationId,
+        libraryId,
         original -> {
-          originals.delete(
-              new UploadedOriginalRef(
-                  library.getOrganizationId(), library.getId(), original.locator()));
+          originals.delete(new UploadedOriginalRef(organizationId, libraryId, original.locator()));
           removed.incrementAndGet();
         });
+    removed.addAndGet(originals.eraseRetainedVersions(organizationId, libraryId));
     AtomicInteger left = new AtomicInteger();
-    originals.forEachStoredOriginal(
-        library.getOrganizationId(), library.getId(), original -> left.incrementAndGet());
-    if (left.get() > 0) {
+    originals.forEachStoredOriginal(organizationId, libraryId, original -> left.incrementAndGet());
+    long versionsLeft = originals.countRetainedVersions(organizationId, libraryId);
+    if (left.get() > 0 || versionsLeft > 0) {
       throw new IllegalStateException(
-          left.get() + " original(s) of private library " + library.getId() + " are left");
+          left.get()
+              + " original(s) and "
+              + versionsLeft
+              + " retained version(s) of private library "
+              + libraryId
+              + " are left");
     }
     return removed.get();
   }

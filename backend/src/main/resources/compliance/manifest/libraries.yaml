@@ -176,7 +176,9 @@ data:
       settings: []
     visibility: [Personen mit Leserecht an der Bibliothek]
     accessPaths: [UI, API, STORAGE]
-    deletion: Mit dem Dokument; verwaiste Originale auf Anstoß der Systemverwaltung
+    deletion: >-
+      Mit dem Dokument, im Objektspeicher samt aller älteren Versionen; verwaiste Originale auf
+      Anstoß der Systemverwaltung
     evaluations: keine
   - id: indexing-runs
     title: Indexierungsläufe
