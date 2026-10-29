@@ -2534,6 +2534,53 @@ class RssFeedIndexingExecutorTest {
                         && fingerprint.equals(state.getExtractionSettings())));
   }
 
+  /**
+   * A permanently empty entry keeps every run incomplete; the settings still count as applied once
+   * every entry was read under them, so the next run fetches an unchanged entry no more.
+   */
+  @Test
+  void aPermanentlyEmptyEntryDoesNotMakeEveryLaterRunReprocessTheFeed() throws Exception {
+    String feedUrl = baseUrl + "/feed.xml";
+    AtomicReference<RssFeedState> stored =
+        new AtomicReference<>(new RssFeedState(library.getId(), feedUrl, null, null));
+    when(feedStateRepository.findByLibraryIdAndFeedUrl(library.getId(), feedUrl))
+        .thenAnswer(invocation -> Optional.ofNullable(stored.get()));
+    when(feedStateRepository.save(any()))
+        .thenAnswer(
+            invocation -> {
+              stored.set(invocation.getArgument(0));
+              return invocation.getArgument(0);
+            });
+    library.updateSourceSettings("{\"mainContentSelector\":\"#inhalt\"}");
+    serveFeedRecordingIfNoneMatch(null, baseUrl + "/a.html", baseUrl + "/leer.html");
+    AtomicInteger indexedEntryHits = new AtomicInteger();
+    server.createContext(
+        "/a.html",
+        exchange -> {
+          indexedEntryHits.incrementAndGet();
+          byte[] bytes =
+              "<html><body><div id=\"inhalt\">Text</div></body></html>"
+                  .getBytes(StandardCharsets.UTF_8);
+          exchange.getResponseHeaders().set("Content-Type", "text/html");
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+    serve("/leer.html", 200, "text/html", "<html><body><div id=\"inhalt\"> </div></body></html>");
+    alreadyIndexed(baseUrl + "/a.html");
+    when(documentIngestService.ingest(DocumentIngests.that().text().in(library).match(), any()))
+        .thenReturn(DocumentIngestResult.SKIPPED);
+
+    execute(feedUrl);
+    verify(indexingJobService, timeout(2000))
+        .completeJob(any(), anyInt(), anyInt(), anyInt(), anyInt());
+    execute(feedUrl);
+    verify(indexingJobService, timeout(2000).times(2))
+        .completeJob(any(), anyInt(), anyInt(), anyInt(), anyInt());
+
+    assertThat(indexedEntryHits.get()).as("read once under the new settings").isEqualTo(1);
+  }
+
   /** Without a feed state no run was complete: own settings cannot be known to be applied. */
   @Test
   void ownSettingsWithoutAnyFeedStateReprocessAnUnchangedEntry() throws Exception {
