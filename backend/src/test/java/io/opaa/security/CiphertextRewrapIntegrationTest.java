@@ -228,17 +228,46 @@ class CiphertextRewrapIntegrationTest {
         .isEqualTo("hinten");
   }
 
+  /**
+   * With the keyed format held back ({@code OPAA_ENCRYPTION_KEYED_FORMAT=false}, or an older
+   * instance still running) a rotation still completes: every value moves to the current key and
+   * keeps its format, so an {@code enc:v1:} value stays readable for an older version given the
+   * current key alone.
+   */
   @Test
-  void whileAnOlderVersionStillRunsNothingIsRewritten() {
-    UUID row = UUID.randomUUID();
-    String stored = credentials(() -> false, KEY).encrypt("a-secret", CREDENTIAL.row(row));
-    jdbc.update("INSERT INTO rewrap_probe VALUES (?, ?, NULL)", row, stored);
+  void whileTheKeyedFormatIsHeldBackARotationKeepsTheFormatAndMovesToTheCurrentKey() {
+    CipherFormatGate heldBack = () -> false;
+    UUID oldKey = UUID.randomUUID();
+    jdbc.update(
+        "INSERT INTO rewrap_probe VALUES (?, ?, NULL)",
+        oldKey,
+        credentials(heldBack, KEY).encrypt("a-secret", CREDENTIAL.row(oldKey)));
+    UUID keyedOldKey = UUID.randomUUID();
+    jdbc.update(
+        "INSERT INTO rewrap_probe VALUES (?, ?, NULL)",
+        keyedOldKey,
+        credentials(KEY).encrypt("b-secret", CREDENTIAL.row(keyedOldKey)));
+    UUID alreadyCurrent = UUID.randomUUID();
+    String currentValue =
+        credentials(heldBack, NEW_KEY).encrypt("c-secret", CREDENTIAL.row(alreadyCurrent));
+    jdbc.update("INSERT INTO rewrap_probe VALUES (?, ?, NULL)", alreadyCurrent, currentValue);
+    UUID lostKey = UUID.randomUUID();
+    String lostValue = credentials(heldBack, OTHER_KEY).encrypt("lost", CREDENTIAL.row(lostKey));
+    jdbc.update("INSERT INTO rewrap_probe VALUES (?, ?, NULL)", lostKey, lostValue);
+    CiphertextRewrap rewrap =
+        rewrap(credentials(heldBack, NEW_KEY, KEY), settings(NEW_KEY, KEY), heldBack);
 
-    CiphertextRewrap.Outcome outcome =
-        rewrap(credentials(NEW_KEY, KEY), settings(NEW_KEY, KEY), () -> false).rewrap();
+    assertThat(rewrap.rewrap()).isEqualTo(new CiphertextRewrap.Outcome(2, 1, 0, true));
+    assertThat(rewrap.rewrap()).isEqualTo(new CiphertextRewrap.Outcome(0, 1, 0, true));
 
-    assertThat(outcome.waiting()).isTrue();
-    assertThat(credentialOf(row)).isEqualTo(stored);
+    CredentialsEncryptor newOnly = credentials(heldBack, NEW_KEY);
+    assertThat(credentialOf(oldKey)).startsWith("enc:v1:");
+    assertThat(newOnly.decrypt(credentialOf(oldKey), CREDENTIAL.row(oldKey))).isEqualTo("a-secret");
+    assertThat(credentialOf(keyedOldKey)).startsWith("enc:v2:" + newOnly.currentKeyId() + ":");
+    assertThat(newOnly.decrypt(credentialOf(keyedOldKey), CREDENTIAL.row(keyedOldKey)))
+        .isEqualTo("b-secret");
+    assertThat(credentialOf(alreadyCurrent)).isEqualTo(currentValue);
+    assertThat(credentialOf(lostKey)).isEqualTo(lostValue);
   }
 
   @Test

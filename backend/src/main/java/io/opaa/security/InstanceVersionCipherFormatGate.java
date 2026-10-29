@@ -13,8 +13,8 @@ import org.springframework.stereotype.Component;
  * Opens the keyed format once every live instance runs this version (ADR-0053, Entscheidung 13),
  * unless {@link CipherFormatProperties#keyed()} holds it closed for a rollback window (ADR-0064,
  * Entscheidung 5): an older version reads only {@code enc:v1:}. The answer of the instance register
- * is kept for one heartbeat interval, the resolution the register itself has, so a write does not
- * query it each time.
+ * is kept per instance for one heartbeat interval, the resolution the register itself has, so a
+ * write does not query it each time (ADR-0053).
  *
  * <p>{@link CurrentInstance} is looked up on first use: the encryptors are built together with the
  * JPA converters, before the register and its transaction manager exist.

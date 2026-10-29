@@ -630,11 +630,14 @@ class EmbeddingModelChangeIntegrationTest {
   }
 
   /**
-   * A stored key in the bound format that no key of the ring reads stays where it is: kept as the
-   * previous model's key it would be bound to the wrong row and never readable again.
+   * A stored key in the bound format that no key of the ring reads is dropped rather than moved,
+   * both into the previous model on a change and back on a discard: at the other row it could never
+   * be read again. The change itself goes through; the model then has no key until one is entered.
    */
   @Test
-  void aChangeAwayFromAKeyNoKeyReadsIsRefusedAndLeavesTheModelAsItWas() {
+  void aKeyNoKeyReadsIsDroppedRatherThanMovedOnChangeAndDiscard() throws Exception {
+    indexed("Bewohnerparken", "SCHRANKE-FUENF");
+    String original = modelName();
     String lost =
         new SettingsEncryptor(
                 new SettingsEncryptionProperties(
@@ -644,27 +647,31 @@ class EmbeddingModelChangeIntegrationTest {
                 "sk-verloren",
                 EncryptedColumn.settings("embedding_model", "api_key_ciphertext").row(1));
     jdbcTemplate.update("UPDATE embedding_model SET api_key_ciphertext = ? WHERE id = 1", lost);
-    long generation = modelGeneration();
+    CountDownLatch held = holdTheRunAt("SCHRANKE-FUENF");
 
-    assertThatThrownBy(
-            () ->
-                changes.confirm(
-                    new Draft(modelBaseUrl(), NEW_MODEL, "", null),
-                    FakeEmbeddingModel.DIMENSIONS,
-                    adminId,
-                    Organization.DEFAULT_ID))
-        .isInstanceOfSatisfying(
-            FieldValidationException.class,
-            e ->
-                assertThat(e.fieldErrors())
-                    .extracting(FieldValidationException.FieldError::field)
-                    .containsExactly("embeddingModel.apiKey"));
-    assertThat(modelGeneration()).isEqualTo(generation);
-    assertThat(previousRows()).isZero();
+    changes.confirm(
+        new Draft(modelBaseUrl(), NEW_MODEL, "", null),
+        FakeEmbeddingModel.DIMENSIONS,
+        adminId,
+        Organization.DEFAULT_ID);
+    awaitHeld(held);
+
+    assertThat(previousRows()).isOne();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT api_key_ciphertext FROM embedding_model_previous", String.class))
+        .as("not moved to the previous model under the binding of its old row")
+        .isNull();
+
+    changes.discard(adminId, Organization.DEFAULT_ID);
+
+    assertThat(modelName()).isEqualTo(original);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT api_key_ciphertext FROM embedding_model WHERE id = 1", String.class))
-        .isEqualTo(lost);
+        .isNull();
+    releaseTheRuns();
+    awaitTheRun();
   }
 
   // --- version condition, limits, secrets ---

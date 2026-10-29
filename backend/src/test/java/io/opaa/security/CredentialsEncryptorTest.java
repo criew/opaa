@@ -207,21 +207,21 @@ class CredentialsEncryptorTest {
     String legacyFormat = encryptor(() -> false, KEY).encrypt("admin:v1", BINDING);
     CredentialsEncryptor rotated = encryptor(NEW_KEY, KEY);
 
-    String rewrapped = rotated.rewrap(keyed, BINDING);
-    String converted = rotated.rewrap(legacyFormat, BINDING);
+    String rewrapped = rotated.rewrap(keyed, BINDING, true);
+    String converted = rotated.rewrap(legacyFormat, BINDING, true);
 
     assertThat(rewrapped).startsWith("enc:v2:" + rotated.currentKeyId() + ":");
     assertThat(converted).startsWith("enc:v2:" + rotated.currentKeyId() + ":");
     assertThat(encryptor(NEW_KEY).decrypt(rewrapped, BINDING)).isEqualTo("admin:keyed");
     assertThat(encryptor(NEW_KEY).decrypt(converted, BINDING)).isEqualTo("admin:v1");
-    assertThat(rotated.rewrap(rewrapped, BINDING)).isSameAs(rewrapped);
+    assertThat(rotated.rewrap(rewrapped, BINDING, true)).isSameAs(rewrapped);
   }
 
   @Test
   void rewrapRefusesAValueUnderAKeyItDoesNotHold() {
     String foreign = encryptor(OTHER_KEY).encrypt("admin:secret", BINDING);
 
-    assertThatThrownBy(() -> encryptor(NEW_KEY, KEY).rewrap(foreign, BINDING))
+    assertThatThrownBy(() -> encryptor(NEW_KEY, KEY).rewrap(foreign, BINDING, true))
         .isInstanceOf(CredentialsEncryptionKeyMissingException.class);
   }
 

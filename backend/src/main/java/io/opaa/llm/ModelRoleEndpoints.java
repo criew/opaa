@@ -80,9 +80,7 @@ public class ModelRoleEndpoints implements InvalidationSubscriber {
                     row.getBaseUrl(),
                     row.getModelIdentifier(),
                     decrypt(
-                        row.getApiKeyCiphertext(),
-                        LlmEncryptedColumns.RERANK_MODEL_KEY.row(RerankModelSettings.SINGLETON_ID),
-                        "rerank")))
+                        row.getApiKeyCiphertext(), LlmEncryptedColumns.rerankModelKey(), "rerank")))
         .orElse(RerankEndpoint.FACTORY_DEFAULT);
   }
 

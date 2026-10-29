@@ -122,9 +122,9 @@ class SettingsEncryptorTest {
 
     assertThat(rotated.decrypt(keyed, BINDING)).isEqualTo("sk-keyed");
     assertThat(rotated.decrypt(legacyFormat, BINDING)).isEqualTo("sk-v1");
-    assertThat(encryptor(NEW_KEY).decrypt(rotated.rewrap(keyed, BINDING), BINDING))
+    assertThat(encryptor(NEW_KEY).decrypt(rotated.rewrap(keyed, BINDING, true), BINDING))
         .isEqualTo("sk-keyed");
-    assertThat(encryptor(NEW_KEY).decrypt(rotated.rewrap(legacyFormat, BINDING), BINDING))
+    assertThat(encryptor(NEW_KEY).decrypt(rotated.rewrap(legacyFormat, BINDING, true), BINDING))
         .isEqualTo("sk-v1");
   }
 

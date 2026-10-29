@@ -483,7 +483,8 @@ public class EmbeddingModelAdministration {
   /**
    * The key {@code stored} of the singleton row of {@code from}, encrypted for the one of {@code
    * to}. A key no key can read moves as stored only in the unbound format {@code enc:v1}; a bound
-   * one is refused, because at the other row it could never be read again.
+   * one is dropped with a warning, because at the other row it could never be read again - the
+   * model it belongs to then has no key until one is entered for it.
    */
   private String carriedKey(String stored, EncryptedColumn from, EncryptedColumn to) {
     if (stored == null) {
@@ -496,13 +497,13 @@ public class EmbeddingModelAdministration {
           to.row(EmbeddingModelSettings.SINGLETON_ID));
     } catch (IllegalStateException e) {
       if (SettingsEncryptor.isKeyed(stored)) {
-        throw FieldValidationException.of(
-            PREFIX + ".apiKey",
-            ModelEndpointRules.INVALID,
-            "Der gespeicherte Zugangsschlüssel lässt sich mit keinem hinterlegten Schlüssel"
-                + " entschlüsseln und kann nicht übernommen werden. Bitte den fehlenden Schlüssel"
-                + " in OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS ergänzen oder den Zugangsschlüssel"
-                + " neu eingeben.");
+        log.warn(
+            "The stored key of the embedding model in {} cannot be decrypted ({}); it is dropped"
+                + " rather than moved to {}, enter the key of that model again",
+            from.table(),
+            e.getClass().getSimpleName(),
+            to.table());
+        return null;
       }
       log.warn(
           "The stored key of the embedding model cannot be decrypted ({}); it moves as stored",

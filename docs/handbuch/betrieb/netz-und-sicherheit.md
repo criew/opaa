@@ -382,7 +382,10 @@ beide zugleich.
    secrets; … readable ones still stand under an old key or format“ und den Abschluss mit „… every
    readable secret is now under the current keys, … cannot be decrypted“. Die zweite Zahl der
    Abschlussmeldung nennt die Werte, die kein eingetragener Schlüssel entschlüsselt (siehe unten);
-   sie halten den Abschluss nicht auf.
+   sie halten den Abschluss nicht auf. Mit `OPAA_ENCRYPTION_KEYED_FORMAT=false` läuft der Wechsel
+   genauso ab, nur bleiben die Werte im bisherigen Format `enc:v1`; das Log warnt dann einmal mit
+   „Previous encryption keys are set while the keyed format is held back …“. Eine Vorversion, der man
+   den neuen Schlüssel gibt, liest danach weiter alles.
 5. **Abgelöste Schlüssel entfernen** und alle Instanzen erneut gemeinsam neu starten. Unlesbare
    Werte aus Schritt 4 berührt das nicht: Sie sind schon mit den eingetragenen Schlüsseln unlesbar.
 
@@ -398,15 +401,17 @@ eines Laufs. Abhilfe: den fehlenden Schlüssel als abgelösten Schlüssel ergän
 Oberfläche neu eintragen.
 
 Während eines Updates, solange noch eine Instanz der Vorversion läuft, schreibt OPAA neue Werte im
-bisherigen Format, das die Vorversion lesen kann, und der Hintergrundlauf wartet. Erst wenn alle
-Instanzen die neue Version fahren, stellt er den Bestand um, auch Werte im älteren Format ohne
-Schlüsselkennung, ohne dass dafür ein Schlüssel wechseln muss.
+bisherigen Format, das die Vorversion lesen kann; der Hintergrundlauf bringt Werte nur unter den
+aktuellen Schlüssel und behält ihr Format. Erst wenn alle Instanzen die neue Version fahren, stellt
+er den Bestand auf das neue Format um, auch Werte im älteren Format ohne Schlüsselkennung, ohne dass
+dafür ein Schlüssel wechseln muss.
 
 Eine Version vor dieser liest das neue Format nicht. Ist der Bestand umgestellt, führt der Weg
 zurück auf sie nur über eine Rücksicherung von vor dem Update (siehe
 [Aktualisierung](aktualisierung.md#kein-rückweg-nach-der-umstellung-der-geheimnisse)). Wer sich den
 Rückweg ohne Rücksicherung offenhalten will, setzt beim Update `OPAA_ENCRYPTION_KEYED_FORMAT=false`:
-OPAA schreibt dann weiter das bisherige Format und stellt den Bestand nicht um. Sobald der Rückweg
+OPAA schreibt dann weiter das bisherige Format und stellt den Bestand nicht darauf um; ein
+Schlüsselwechsel läuft trotzdem vollständig ab. Sobald der Rückweg
 nicht mehr gebraucht wird, die Variable entfernen oder auf `true` setzen und alle Instanzen gemeinsam
 neu starten; die Variable gehört zum
 [Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck).

@@ -65,12 +65,16 @@ Rücksicherung von selbst wieder und nutzt die vorhandene Koordination mehrerer 
 ### 5. `v2` erst, wenn jede Instanz es lesen kann
 
 Solange eine lebende Instanz eine andere Version fährt (`CipherFormatGate`), schreibt OPAA `enc:v1`
-mit dem aktuellen Schlüssel, und die Neuverschlüsselung wartet. Begründung: ADR-0053, Entscheidung
-13, angewandt auf ein Datenformat; ein neuer Wert entsteht erst, wenn die Vorgängerversion ihn lesen
-kann.
+mit dem aktuellen Schlüssel, und die Neuverschlüsselung behält das Format jedes Werts: Ein `enc:v1`-Wert
+wandert unter den aktuellen Schlüssel und bleibt `enc:v1`, ein `enc:v2`-Wert bleibt `enc:v2`.
+Begründung: ADR-0053, Entscheidung 13, angewandt auf ein Datenformat; ein neuer Wert entsteht erst,
+wenn die Vorgängerversion ihn lesen kann, und ein Schlüsselwechsel kommt trotzdem zum Abschluss.
 
 Der Schalter `OPAA_ENCRYPTION_KEYED_FORMAT` (Vorgabe `true`) hält dasselbe Tor auf Wunsch geschlossen:
-Mit `false` schreibt OPAA weiter `enc:v1` und verschlüsselt den Bestand nicht um. Begründung: Eine
+Mit `false` schreibt OPAA weiter `enc:v1` und stellt den Bestand nicht auf `v2` um. Sind dabei
+abgelöste Schlüssel gesetzt, warnt das Log einmal je Instanz, dass der Wechsel im ungebundenen Format
+läuft. Ein späteres Umschalten von `true` auf `false` öffnet den Rückweg nicht wieder, weil
+`v2`-Werte `v2` bleiben. Begründung: Eine
 Version vor dieser liest `enc:v2` nicht. Wer sich den Rückweg auf sie ohne Rücksicherung offenhalten
 will, betreibt die neue Version zunächst mit `false` und schaltet erst um, wenn der Rückweg nicht
 mehr gebraucht wird. Ein Aufschub nach Zeit wurde verworfen, weil er einen gespeicherten Zeitpunkt

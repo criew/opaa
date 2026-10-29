@@ -99,20 +99,31 @@ public class SettingsEncryptor {
   }
 
   /**
-   * {@code stored} under the current key in the keyed format, or {@code stored} itself if it is
-   * already; for {@link CiphertextRewrap}, which has checked {@link CipherFormatGate} itself.
+   * {@code stored} under the current key, or {@code stored} itself if it is there already; for
+   * {@link CiphertextRewrap}, which asks {@link CipherFormatGate} itself. With {@code keyed} the
+   * result is in the keyed format; without, the format is kept: an {@code enc:v1:} value stays
+   * unbound, so a version without the keyed format reads it with the current key.
    */
-  String rewrap(String stored, CipherBinding binding) {
+  String rewrap(String stored, CipherBinding binding, boolean keyed) {
     EncryptionKeyring keyring = requireKeyring();
     if (keyring.isCurrent(stored)) {
       return stored;
     }
+    boolean toKeyed = keyed || isKeyed(stored);
+    if (!toKeyed && keyring.isCurrentUnkeyed(stored)) {
+      return stored;
+    }
     String plaintext = decrypt(stored, binding);
     try {
-      return keyring.encrypt(plaintext, binding, true);
+      return keyring.encrypt(plaintext, binding, toKeyed);
     } catch (GeneralSecurityException e) {
       throw new IllegalStateException("Der Zugangsschlüssel konnte nicht verschlüsselt werden", e);
     }
+  }
+
+  /** Whether decrypt-only keys of an earlier rotation are set. */
+  boolean hasPreviousKeys() {
+    return properties.previousKeys().stream().anyMatch(StringUtils::hasText);
   }
 
   /** The id of the current key, as the keyed format names it. */

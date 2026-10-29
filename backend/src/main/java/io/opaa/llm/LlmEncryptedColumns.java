@@ -1,5 +1,6 @@
 package io.opaa.llm;
 
+import io.opaa.security.CipherBinding;
 import io.opaa.security.EncryptedColumn;
 import io.opaa.security.EncryptedColumns;
 import java.util.List;
@@ -21,6 +22,11 @@ public class LlmEncryptedColumns implements EncryptedColumns {
       EncryptedColumn.settings("embedding_model", "api_key_ciphertext");
   static final EncryptedColumn PREVIOUS_EMBEDDING_MODEL_KEY =
       EncryptedColumn.settings("embedding_model_previous", "api_key_ciphertext");
+
+  /** The binding of the key of the single rerank model row. */
+  public static CipherBinding rerankModelKey() {
+    return RERANK_MODEL_KEY.row(RerankModelSettings.SINGLETON_ID);
+  }
 
   @Override
   public List<EncryptedColumn> encryptedColumns() {

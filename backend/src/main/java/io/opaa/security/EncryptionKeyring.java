@@ -97,6 +97,19 @@ final class EncryptionKeyring {
     return stored != null && stored.startsWith(V2_PREFIX + currentKeyId + ":");
   }
 
+  /** Whether {@code stored} is in the {@code enc:v1:} format and opens with the current key. */
+  boolean isCurrentUnkeyed(String stored) {
+    if (stored == null || !stored.startsWith(V1_PREFIX)) {
+      return false;
+    }
+    try {
+      AesGcmCipher.open(keys.get(currentKeyId), null, stored.substring(V1_PREFIX.length()));
+      return true;
+    } catch (GeneralSecurityException | IllegalArgumentException e) {
+      return false;
+    }
+  }
+
   /** Encrypts under the current key: keyed and bound to {@code binding}, or in {@code enc:v1:}. */
   String encrypt(String plaintext, CipherBinding binding, boolean keyed)
       throws GeneralSecurityException {

@@ -70,8 +70,11 @@ einem Rückweg sind die gespeicherten Geheimnisse für sie unlesbar, die Oberfl�
 - **Zurück hinter diese Version nur mit der Rücksicherung** von vor dem Update.
 - **Rückweg ohne Rücksicherung offenhalten:** die neue Version mit
   `OPAA_ENCRYPTION_KEYED_FORMAT=false` starten. OPAA schreibt dann weiter das bisherige Format und
-  stellt nichts um. Ist der Rückweg nicht mehr nötig, die Variable entfernen und alle Instanzen
-  gemeinsam neu starten.
+  stellt nichts auf das neue Format um. Ist der Rückweg nicht mehr nötig, die Variable entfernen und
+  alle Instanzen gemeinsam neu starten.
+- **Nachträglich lässt er sich nicht öffnen:** Wer erst nach der Umstellung auf `false` schaltet,
+  behält die schon umgestellten Werte im neuen Format; der Weg zurück führt dann weiter nur über die
+  Rücksicherung.
 
 ## Fristen nach einem Rückweg
 

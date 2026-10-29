@@ -600,7 +600,7 @@ public class ModelRoleAdministration {
   /** The binding of the key of the role named by the field prefix {@code prefix}. */
   private static CipherBinding rowOf(String prefix) {
     return switch (prefix) {
-      case RERANK -> LlmEncryptedColumns.RERANK_MODEL_KEY.row(RerankModelSettings.SINGLETON_ID);
+      case RERANK -> LlmEncryptedColumns.rerankModelKey();
       case TRANSCRIPTION ->
           LlmEncryptedColumns.TRANSCRIPTION_MODEL_KEY.row(TranscriptionModelSettings.SINGLETON_ID);
       default -> throw new IllegalArgumentException("no model role " + prefix);
