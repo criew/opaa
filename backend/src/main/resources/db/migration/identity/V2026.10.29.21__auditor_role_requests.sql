@@ -21,8 +21,8 @@ CREATE TABLE auditor_role_requests (
     CONSTRAINT ck_auditor_role_requests_declined_by_provider
         CHECK (declined_at IS NULL OR requested_by_provider_id IS NOT NULL),
     CONSTRAINT fk_auditor_role_requests_organization FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
-    CONSTRAINT fk_auditor_role_requests_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_auditor_role_requests_requested_by FOREIGN KEY (requested_by_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_auditor_role_requests_user_organization FOREIGN KEY (user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE CASCADE,
+    CONSTRAINT fk_auditor_role_requests_requested_by_organization FOREIGN KEY (requested_by_user_id, organization_id) REFERENCES users(id, organization_id) ON DELETE CASCADE,
     CONSTRAINT fk_auditor_role_requests_provider FOREIGN KEY (requested_by_provider_id) REFERENCES oidc_providers(id) ON DELETE CASCADE
 );
 
