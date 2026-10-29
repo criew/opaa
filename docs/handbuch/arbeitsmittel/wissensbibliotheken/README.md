@@ -402,13 +402,13 @@ Leerzeichen werden zu normalen, und Rollen-Markierungen der Modellformate wie `<
 `<start_of_turn>` werden entschärft. Unverändert bleiben Verbinder und Nicht-Verbinder, die Emoji,
 Persisch oder Devanagari brauchen, Variantenwähler und die Richtungsmarken in arabischem oder
 hebräischem Text; ähnlich aussehende Buchstaben anderer Schriften werden nicht ersetzt. Ein Chunk,
-der danach leer ist, entfällt; bleibt keiner, gilt das Dokument als ohne extrahierbaren Text. Titel,
-Überschriften und Fundort kürzt die Bereinigung auf 1.000 Zeichen, Dateiname und Pfad nicht. Index,
+der danach leer ist, entfällt; bleibt keiner, gilt das Dokument als ohne extrahierbaren Text. Index,
 Kontextpräfix, Antwort-Prompt und Belegprüfung sehen so denselben bereinigten Text. Typische
 Wendungen wie „ignoriere alle vorherigen Anweisungen“ und Adressen mit einem Platzhalter für Daten
 bleiben im Text; sie werden nur gezählt und gemeldet (Abschnitt 6.1). Ein Restrisiko bleibt:
 Verbinder, Nicht-Verbinder und Variantenwähler können ebenfalls versteckten Text tragen, werden aber
-weder entfernt noch gezählt, weil normale Texte sie brauchen.
+weder entfernt noch gezählt, weil normale Texte sie brauchen. Titel, Überschriften und Fundort
+kürzt die Bereinigung auf 1.000 Zeichen, Dateiname und Pfad nicht.
 
 Die Zielgrößen und Grenzen stehen in Abschnitt 7.1, die Regeln je Format in dessen Kapitel.
 
