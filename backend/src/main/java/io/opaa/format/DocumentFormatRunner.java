@@ -155,7 +155,10 @@ public final class DocumentFormatRunner {
       cleaned = cleaned.withPath(path.isEmpty() ? null : path);
     }
     if (anchor.sheet() != null && anchor.rowFrom() != null && anchor.rowTo() != null) {
-      cleaned = cleaned.withRows(cleaned(anchor.sheet()), anchor.rowFrom(), anchor.rowTo());
+      String sheet = cleaned(anchor.sheet());
+      cleaned =
+          cleaned.withRows(
+              sheet == null || sheet.isBlank() ? null : sheet, anchor.rowFrom(), anchor.rowTo());
     }
     return cleaned;
   }
