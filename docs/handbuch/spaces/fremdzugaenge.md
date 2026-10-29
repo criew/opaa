@@ -255,7 +255,8 @@ eine **Bestandsliste für die Rechteprüfung und für Sperrentscheidungen**, meh
 im dritten Schritt der Einleitung steht, dass jede Person ihre Tokens selbst unter *Einstellungen →
 Zugangstokens* erzeugt, mit einem Link dorthin (Abschnitt 5).
 
-Sie zeigt Besitzer, Name, Bibliotheken, Ablauf und Zustand. Sie kennt **kein Nutzungsdatum, keine
+Sie zeigt Besitzer, Name, Bibliotheken, Ablauf und Zustand, und zwar nur für Konten der eigenen
+Organisation; auch die Sperren erreichen nur deren Tokens. Sie kennt **kein Nutzungsdatum, keine
 Nutzungszählung und keinen Filter nach Person**, sondern nur Filter über Zustand und Ablauf. Gesperrt
 wird wegen eines Vorfalls oder eines Kontenlebenszyklus, nicht wegen Nichtbenutzung — dafür braucht
 die Entscheidung kein Nutzungsdatum, und eine nach Person filterbare Tabelle mit Nutzungsdatum wäre

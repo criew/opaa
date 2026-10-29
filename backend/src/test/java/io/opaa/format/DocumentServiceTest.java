@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import io.opaa.format.shared.ParserLimitExceededException;
+import io.opaa.format.shared.ParserLimitProperties;
 import io.opaa.test.ProductionDocumentFormats;
 import io.opaa.test.UnreadableDirectory;
 import java.io.IOException;
@@ -14,6 +16,8 @@ import java.nio.file.attribute.PosixFileAttributeView;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -241,6 +245,35 @@ class DocumentServiceTest {
     assertThat(result).isNotEmpty();
     assertThat(result.getFirst().getText()).contains("Title");
     assertThat(result.getFirst().getText()).contains("Some content here");
+  }
+
+  /**
+   * Regression guard: the fallback parses no embedded object, so a container cannot multiply the
+   * text of one embedded document by listing it many times (a .doc's object pool, here a ZIP).
+   */
+  @Test
+  void parseDocumentDoesNotParseEmbeddedDocuments() throws IOException {
+    Path file = tempDir.resolve("container.zip");
+    try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(file))) {
+      zip.putNextEntry(new ZipEntry("innen.txt"));
+      zip.write("Eingebetteter Text".getBytes(StandardCharsets.UTF_8));
+      zip.closeEntry();
+    }
+
+    var result = service.parseDocument(file);
+
+    assertThat(result).allSatisfy(doc -> assertThat(doc.getText()).doesNotContain("Eingebettet"));
+  }
+
+  @Test
+  void parseDocumentStopsAtTheTextLimit() throws IOException {
+    Path file = tempDir.resolve("lang.txt");
+    Files.writeString(file, "Wort ".repeat(1_000));
+    var limited = new DocumentService(new ParserLimitProperties(500, 0, 0, 0, 0, 0, 0, 0, 0));
+
+    assertThatThrownBy(() -> limited.parseDocument(file))
+        .isInstanceOf(ParserLimitExceededException.class);
+    assertThat(service.parseDocument(file).getFirst().getText()).contains("Wort Wort");
   }
 
   @Test

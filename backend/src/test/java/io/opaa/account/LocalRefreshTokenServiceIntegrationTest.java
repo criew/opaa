@@ -98,7 +98,7 @@ class LocalRefreshTokenServiceIntegrationTest {
   void aRotationIssuesASuccessorOfTheSameFamilyAndKeepsTheFamilysEnd() {
     IssuedRefreshToken first = service.issue(user.user());
 
-    RotationResult result = service.rotate(first.value());
+    RotationResult result = service.rotate(first.value(), null);
 
     assertThat(result).isInstanceOf(RotationResult.Rotated.class);
     RotationResult.Rotated rotated = (RotationResult.Rotated) result;
@@ -126,7 +126,7 @@ class LocalRefreshTokenServiceIntegrationTest {
         java.sql.Timestamp.from(familyEnd),
         row.getId());
 
-    RotationResult.Rotated rotated = (RotationResult.Rotated) service.rotate(first.value());
+    RotationResult.Rotated rotated = (RotationResult.Rotated) service.rotate(first.value(), null);
 
     LocalRefreshToken successor = service.findPresented(rotated.token().value()).orElseThrow();
     assertThat(successor.getExpiresAt()).isCloseTo(familyEnd, within(Duration.ofSeconds(1)));
@@ -138,10 +138,11 @@ class LocalRefreshTokenServiceIntegrationTest {
     long auditedBefore = auditedSessionRevocations();
     IssuedRefreshToken first = service.issue(user.user());
     IssuedRefreshToken otherFamily = service.issue(user.user());
-    RotationResult.Rotated used = (RotationResult.Rotated) service.rotate(first.value());
-    RotationResult.Rotated rotated = (RotationResult.Rotated) service.rotate(used.token().value());
+    RotationResult.Rotated used = (RotationResult.Rotated) service.rotate(first.value(), null);
+    RotationResult.Rotated rotated =
+        (RotationResult.Rotated) service.rotate(used.token().value(), null);
 
-    RotationResult replay = service.rotate(first.value());
+    RotationResult replay = service.rotate(first.value(), null);
 
     assertThat(replay).isEqualTo(new RotationResult.Reused(user.id()));
     LocalRefreshToken successor = service.findPresented(rotated.token().value()).orElseThrow();
@@ -160,7 +161,8 @@ class LocalRefreshTokenServiceIntegrationTest {
     assertThat(other.getRevocationReason()).isEqualTo(RevocationReason.REUSE_DETECTED);
     // ... and a further presentation of the successor - revoked as REUSE_DETECTED, not ROTATED -
     // is over, not a second replay: no second warning, no second event
-    assertThat(service.rotate(rotated.token().value())).isEqualTo(new RotationResult.Unknown());
+    assertThat(service.rotate(rotated.token().value(), null))
+        .isEqualTo(new RotationResult.Unknown());
     assertThat(auditedSessionRevocations()).isEqualTo(auditedBefore + 1);
   }
 
@@ -175,9 +177,9 @@ class LocalRefreshTokenServiceIntegrationTest {
     long auditedBefore = auditedSessionRevocations();
     IssuedRefreshToken first = service.issue(user.user());
     IssuedRefreshToken otherFamily = service.issue(user.user());
-    RotationResult.Rotated discarded = (RotationResult.Rotated) service.rotate(first.value());
+    RotationResult.Rotated discarded = (RotationResult.Rotated) service.rotate(first.value(), null);
 
-    RotationResult reload = service.rotate(first.value());
+    RotationResult reload = service.rotate(first.value(), null);
 
     assertThat(reload).isInstanceOf(RotationResult.Rotated.class);
     RotationResult.Rotated renewed = (RotationResult.Rotated) reload;
@@ -188,7 +190,8 @@ class LocalRefreshTokenServiceIntegrationTest {
     assertThat(service.findPresented(first.value()).orElseThrow().getRotatedToId())
         .isEqualTo(renewed.token().id());
 
-    RotationResult.Rotated secondReload = (RotationResult.Rotated) service.rotate(first.value());
+    RotationResult.Rotated secondReload =
+        (RotationResult.Rotated) service.rotate(first.value(), null);
 
     assertThat(activeTokensOfFamily(first.familyId())).containsExactly(secondReload.token().id());
     assertThat(service.findPresented(otherFamily.value()).orElseThrow().isActive(Instant.now()))
@@ -196,7 +199,7 @@ class LocalRefreshTokenServiceIntegrationTest {
     assertThat(fixtures.credentialsOf(user).getPasswordInvalidatedBefore()).isNull();
     assertThat(auditedSessionRevocations()).isEqualTo(auditedBefore);
     // the renewed session carries on with its own token
-    assertThat(service.rotate(secondReload.token().value()))
+    assertThat(service.rotate(secondReload.token().value(), null))
         .isInstanceOf(RotationResult.Rotated.class);
   }
 
@@ -204,10 +207,10 @@ class LocalRefreshTokenServiceIntegrationTest {
   void aRotatedTokenWhoseSuccessorWasUsedIsAReplayEvenWithinTheGracePeriod() {
     IssuedRefreshToken first = service.issue(user.user());
     IssuedRefreshToken otherFamily = service.issue(user.user());
-    RotationResult.Rotated used = (RotationResult.Rotated) service.rotate(first.value());
-    service.rotate(used.token().value());
+    RotationResult.Rotated used = (RotationResult.Rotated) service.rotate(first.value(), null);
+    service.rotate(used.token().value(), null);
 
-    assertThat(service.rotate(first.value())).isEqualTo(new RotationResult.Reused(user.id()));
+    assertThat(service.rotate(first.value(), null)).isEqualTo(new RotationResult.Reused(user.id()));
     assertThat(activeTokensOfFamily(first.familyId())).isEmpty();
     assertThat(service.findPresented(otherFamily.value()).orElseThrow().getRevocationReason())
         .isEqualTo(RevocationReason.REUSE_DETECTED);
@@ -217,7 +220,7 @@ class LocalRefreshTokenServiceIntegrationTest {
   void aRotatedTokenPresentedAfterTheGracePeriodIsAReplay() {
     long auditedBefore = auditedSessionRevocations();
     IssuedRefreshToken first = service.issue(user.user());
-    service.rotate(first.value());
+    service.rotate(first.value(), null);
     LocalRefreshToken row = service.findPresented(first.value()).orElseThrow();
     Instant past = Instant.now().minus(properties.refreshGracePeriod()).minusSeconds(1);
     jdbc.update(
@@ -226,7 +229,7 @@ class LocalRefreshTokenServiceIntegrationTest {
         java.sql.Timestamp.from(past),
         row.getId());
 
-    assertThat(service.rotate(first.value())).isEqualTo(new RotationResult.Reused(user.id()));
+    assertThat(service.rotate(first.value(), null)).isEqualTo(new RotationResult.Reused(user.id()));
     assertThat(activeTokensOfFamily(first.familyId())).isEmpty();
     assertThat(auditedSessionRevocations()).isEqualTo(auditedBefore + 1);
   }
@@ -234,12 +237,12 @@ class LocalRefreshTokenServiceIntegrationTest {
   @Test
   void theGracePeriodIsRefusedForAnAccountThatMayNoLongerSignIn() {
     IssuedRefreshToken first = service.issue(user.user());
-    RotationResult.Rotated discarded = (RotationResult.Rotated) service.rotate(first.value());
+    RotationResult.Rotated discarded = (RotationResult.Rotated) service.rotate(first.value(), null);
     LocalCredentials row = fixtures.credentialsOf(user);
     row.setExpiresAt(Instant.now().minusSeconds(1), Instant.now());
     fixtures.save(row);
 
-    assertThat(service.rotate(first.value())).isEqualTo(new RotationResult.Reused(user.id()));
+    assertThat(service.rotate(first.value(), null)).isEqualTo(new RotationResult.Reused(user.id()));
     assertThat(
             service.findPresented(discarded.token().value()).orElseThrow().isActive(Instant.now()))
         .isFalse();
@@ -252,10 +255,10 @@ class LocalRefreshTokenServiceIntegrationTest {
   @Test
   void twoConcurrentRenewalsWithinTheGracePeriodNeverBothWin() throws Exception {
     IssuedRefreshToken first = service.issue(user.user());
-    RotationResult.Rotated discarded = (RotationResult.Rotated) service.rotate(first.value());
+    RotationResult.Rotated discarded = (RotationResult.Rotated) service.rotate(first.value(), null);
 
     List<RotationResult> results =
-        raceWhileLocked(discarded.token().id(), () -> service.rotate(first.value()));
+        raceWhileLocked(discarded.token().id(), () -> service.rotate(first.value(), null));
 
     assertThat(results).filteredOn(RotationResult.Rotated.class::isInstance).hasSize(1);
     assertThat(results).contains(new RotationResult.Reused(user.id()));
@@ -273,7 +276,7 @@ class LocalRefreshTokenServiceIntegrationTest {
     LocalRefreshToken row = service.findPresented(first.value()).orElseThrow();
 
     List<RotationResult> results =
-        raceWhileLocked(row.getId(), () -> service.rotate(first.value()));
+        raceWhileLocked(row.getId(), () -> service.rotate(first.value(), null));
 
     assertThat(results).allMatch(RotationResult.Rotated.class::isInstance);
     UUID last =
@@ -298,11 +301,11 @@ class LocalRefreshTokenServiceIntegrationTest {
     service.revokeAllForUser(user.id(), RevocationReason.PASSWORD_CHANGED);
     IssuedRefreshToken fresh = service.issue(user.user());
 
-    assertThat(service.rotate(otherDevice.value())).isEqualTo(new RotationResult.Unknown());
-    assertThat(service.rotate(thisDevice.value())).isEqualTo(new RotationResult.Unknown());
+    assertThat(service.rotate(otherDevice.value(), null)).isEqualTo(new RotationResult.Unknown());
+    assertThat(service.rotate(thisDevice.value(), null)).isEqualTo(new RotationResult.Unknown());
 
     // the fresh family is untouched - no family revocation happened
-    assertThat(service.rotate(fresh.value())).isInstanceOf(RotationResult.Rotated.class);
+    assertThat(service.rotate(fresh.value(), null)).isInstanceOf(RotationResult.Rotated.class);
     assertThat(auditedSessionRevocations()).isEqualTo(auditedBefore);
     assertThat(service.findPresented(otherDevice.value()).orElseThrow().getRevocationReason())
         .isEqualTo(RevocationReason.PASSWORD_CHANGED);
@@ -318,8 +321,8 @@ class LocalRefreshTokenServiceIntegrationTest {
         java.sql.Timestamp.from(Instant.now().minusSeconds(1)),
         user.id());
 
-    assertThat(service.rotate("kein-token")).isEqualTo(new RotationResult.Unknown());
-    assertThat(service.rotate(issued.value())).isEqualTo(new RotationResult.Unknown());
+    assertThat(service.rotate("kein-token", null)).isEqualTo(new RotationResult.Unknown());
+    assertThat(service.rotate(issued.value(), null)).isEqualTo(new RotationResult.Unknown());
     assertThat(service.revokePresentedFamily("kein-token", RevocationReason.LOGOUT)).isFalse();
   }
 
@@ -335,19 +338,22 @@ class LocalRefreshTokenServiceIntegrationTest {
     row.setExpiresAt(Instant.now().minusSeconds(1), Instant.now());
     fixtures.save(row);
 
-    assertThat(service.rotate(expiredAccount.value())).isEqualTo(new RotationResult.Unknown());
+    assertThat(service.rotate(expiredAccount.value(), null))
+        .isEqualTo(new RotationResult.Unknown());
     // refused, not revoked: an unlocked account rotates again
     row = fixtures.credentialsOf(user);
     row.setExpiresAt(null, Instant.now());
     fixtures.save(row);
-    assertThat(service.rotate(expiredAccount.value())).isInstanceOf(RotationResult.Rotated.class);
+    assertThat(service.rotate(expiredAccount.value(), null))
+        .isInstanceOf(RotationResult.Rotated.class);
 
     IssuedRefreshToken regular = service.issue(user.user());
     IssuedRefreshToken administrative = service.issue(admin.user());
     fixtures.localProvider(false);
     try {
-      assertThat(service.rotate(regular.value())).isEqualTo(new RotationResult.Unknown());
-      assertThat(service.rotate(administrative.value())).isInstanceOf(RotationResult.Rotated.class);
+      assertThat(service.rotate(regular.value(), null)).isEqualTo(new RotationResult.Unknown());
+      assertThat(service.rotate(administrative.value(), null))
+          .isInstanceOf(RotationResult.Rotated.class);
     } finally {
       fixtures.localProvider(true);
     }

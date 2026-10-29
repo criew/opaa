@@ -528,7 +528,8 @@ class SpaceAssetAssociationServiceIntegrationTest {
         space, KnowledgeLibrary.ASSET_TYPE, library, currentUserOf(curator));
 
     assertThatThrownBy(() -> associationService.detach(space, library, currentUserOf(stranger)))
-        .isInstanceOf(AccessDeniedException.class);
+        .as("no member of the space: it is unknown to them")
+        .isInstanceOf(NotFoundException.class);
   }
 
   // A plain MEMBER (neither CURATOR/ADMIN/owner of the space nor MANAGER of the library) must not

@@ -64,11 +64,10 @@ public class ExternalAccessTokenAdminService {
   }
 
   /**
-   * The Bestandsliste of one organization, soonest expiry first, optionally narrowed by state or by
-   * "is still valid and runs out within N days". Both filters are database predicates, not a pass
-   * over every row of the installation, and the result is capped at {@link #MAX_ROWS} - the
-   * endpoint has no paging, so a deployment that outgrew the cap is a visible, bounded gap rather
-   * than a growing query.
+   * The Bestandsliste, soonest expiry first, optionally narrowed by state or by "is still valid and
+   * runs out within N days". Both filters are database predicates, not a pass over every row of the
+   * installation, and the result is capped at {@link #MAX_ROWS} - the endpoint has no paging, so a
+   * deployment that outgrew the cap is a visible, bounded gap rather than a growing query.
    */
   @Transactional(readOnly = true)
   public List<ExternalAccessTokenAdminView> list(
@@ -125,17 +124,15 @@ public class ExternalAccessTokenAdminService {
   }
 
   /**
-   * Blocks one token of a person of the caller's organization; a token of another organization is
-   * as unknown as a missing one. Already dead tokens keep the reason that ended them.
+   * Blocks one token; already dead tokens keep the reason that ended them. A token of a person of
+   * another organization is unknown here.
    */
   @Transactional
   public void block(UUID tokenId, UUID actorUserId, UUID organizationId) {
     ExternalAccessToken token =
         tokens
             .findById(tokenId)
-            .filter(
-                found ->
-                    users.findByIdAndOrganizationId(found.getUserId(), organizationId).isPresent())
+            .filter(found -> inOrganization(found.getUserId(), organizationId))
             .orElseThrow(() -> new NotFoundException("Zugangstoken nicht gefunden"));
     if (token.getRevokedAt() != null) {
       return;
@@ -146,14 +143,14 @@ public class ExternalAccessTokenAdminService {
   }
 
   /**
-   * Blocks every still-active token of one person of the caller's organization; returns how many
-   * that was.
+   * Blocks every still-active token of one person of the organization; returns how many that was.
    */
   @Transactional
   public int blockAllOf(UUID ownerUserId, UUID actorUserId, UUID organizationId) {
     User owner =
         users
-            .findByIdAndOrganizationId(ownerUserId, organizationId)
+            .findById(ownerUserId)
+            .filter(found -> organizationId.equals(found.getOrganizationId()))
             .orElseThrow(() -> new NotFoundException("Konto nicht gefunden"));
     Instant now = clock.instant();
     List<ExternalAccessToken> active = tokens.findByUserIdAndRevokedAtIsNull(owner.getId());
@@ -163,6 +160,13 @@ public class ExternalAccessTokenAdminService {
       recordBlock(token, actorUserId, organizationId);
     }
     return active.size();
+  }
+
+  private boolean inOrganization(UUID userId, UUID organizationId) {
+    return users
+        .findById(userId)
+        .map(user -> organizationId.equals(user.getOrganizationId()))
+        .orElse(false);
   }
 
   private void recordBlock(ExternalAccessToken token, UUID actorUserId, UUID organizationId) {

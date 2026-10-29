@@ -16,6 +16,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 public interface ExternalAccessTokenRepository extends JpaRepository<ExternalAccessToken, UUID> {
 
+  /** The admin lists' predicate: the token's person belongs to {@code :organizationId}. */
+  String OWN_ORGANIZATION =
+      " t.userId IN (SELECT u.id FROM User u WHERE u.organizationId = :organizationId)";
+
   /** The one lookup of the per-call check; the hash column is unique. */
   Optional<ExternalAccessToken> findByTokenLookupHash(String tokenLookupHash);
 
@@ -33,24 +37,20 @@ public interface ExternalAccessTokenRepository extends JpaRepository<ExternalAcc
   @Query("SELECT t FROM ExternalAccessToken t WHERE t.id = :id")
   Optional<ExternalAccessToken> findForLapse(@Param("id") UUID id);
 
-  /** The admin lists show only tokens of persons of the caller's organization. */
-  String OF_ORGANIZATION =
-      " t.userId IN (SELECT u.id FROM User u WHERE u.organizationId = :organizationId)";
-
   /**
    * The unfiltered Bestandsliste of one organization, soonest expiry first. The order is fixed and
    * there is no ordering parameter: a list that could be sorted freely could be sorted by person.
+   * Every list below is limited to the tokens of persons of {@code organizationId}.
    */
   @Query(
-      "SELECT t FROM ExternalAccessToken t WHERE" + OF_ORGANIZATION + " ORDER BY t.expiresAt ASC")
+      "SELECT t FROM ExternalAccessToken t WHERE" + OWN_ORGANIZATION + " ORDER BY t.expiresAt ASC")
   List<ExternalAccessToken> findForAdminList(
       @Param("organizationId") UUID organizationId, Pageable page);
 
   /** Still live at {@code now}. */
   @Query(
-      "SELECT t FROM ExternalAccessToken t WHERE t.revokedAt IS NULL AND t.expiresAt > :now"
-          + " AND"
-          + OF_ORGANIZATION
+      "SELECT t FROM ExternalAccessToken t WHERE t.revokedAt IS NULL AND t.expiresAt > :now AND"
+          + OWN_ORGANIZATION
           + " ORDER BY t.expiresAt ASC")
   List<ExternalAccessToken> findActiveForAdminList(
       @Param("organizationId") UUID organizationId, @Param("now") Instant now, Pageable page);
@@ -64,7 +64,7 @@ public interface ExternalAccessTokenRepository extends JpaRepository<ExternalAcc
           + " (t.revocationReason = io.opaa.externalaccess.token"
           + ".ExternalAccessTokenRevocationReason.EXPIRED"
           + " OR (t.revokedAt IS NULL AND t.expiresAt <= :now)) AND"
-          + OF_ORGANIZATION
+          + OWN_ORGANIZATION
           + " ORDER BY t.expiresAt ASC")
   List<ExternalAccessToken> findExpiredForAdminList(
       @Param("organizationId") UUID organizationId, @Param("now") Instant now, Pageable page);
@@ -72,7 +72,7 @@ public interface ExternalAccessTokenRepository extends JpaRepository<ExternalAcc
   /** Withdrawn for one of the given reasons - the person's own revocation, or a block. */
   @Query(
       "SELECT t FROM ExternalAccessToken t WHERE t.revocationReason IN :reasons AND"
-          + OF_ORGANIZATION
+          + OWN_ORGANIZATION
           + " ORDER BY t.expiresAt ASC")
   List<ExternalAccessToken> findByRevocationReasonsForAdminList(
       @Param("organizationId") UUID organizationId,
@@ -83,7 +83,7 @@ public interface ExternalAccessTokenRepository extends JpaRepository<ExternalAcc
   @Query(
       "SELECT t FROM ExternalAccessToken t WHERE t.revokedAt IS NULL"
           + " AND t.expiresAt > :now AND t.expiresAt <= :horizon AND"
-          + OF_ORGANIZATION
+          + OWN_ORGANIZATION
           + " ORDER BY t.expiresAt ASC")
   List<ExternalAccessToken> findExpiringWithinForAdminList(
       @Param("organizationId") UUID organizationId,

@@ -676,8 +676,9 @@ public class ChatService {
         spaceRepository
             .findById(spaceId)
             .orElseThrow(() -> new NotFoundException("Space nicht gefunden"));
+    // the same answer as for an unknown space: a refusal must not confirm that the space exists
     if (!spaceAccessPolicy.isMember(spaceId, userId)) {
-      throw new AccessDeniedException("Sie sind kein Mitglied dieses Space");
+      throw new NotFoundException("Space nicht gefunden");
     }
     return space;
   }

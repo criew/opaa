@@ -281,11 +281,14 @@ public class SpaceService {
    * it (the personal space in particular has no succession).
    */
   public SpaceDetail detailOf(Space space, CurrentUser caller) {
+    // the instruction of a personal space is its person's own, hidden even from the administration
+    boolean foreignPersonalSpace = space.isDefault() && !space.getOwnerId().equals(caller.id());
     return new SpaceDetail(
         space,
         accessPolicy.effectiveRole(space, caller),
         successionSource.openAmong(List.of(space)).contains(space.getId()),
-        chatAutoCleanup.current());
+        chatAutoCleanup.current(),
+        foreignPersonalSpace ? null : space.getModelInstruction());
   }
 
   public Space getSpace(UUID spaceId, CurrentUser caller) {
@@ -676,6 +679,7 @@ public class SpaceService {
   @Transactional
   public void transferOwnership(UUID spaceId, UUID newOwnerUserId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
+    accessPolicy.requireMember(space, caller);
     // The personal space belongs to its person for good; otherwise taking it over would also take
     // over the decisions reserved to its owner, such as its chat cleanup.
     if (space.isDefault()) {
@@ -686,10 +690,19 @@ public class SpaceService {
           "Nur ein handlungsfähiges ADMIN-Mitglied oder ein Systemadministrator kann die"
               + " Verantwortung übertragen");
     }
+    if (space.isArchived()) {
+      throw new ConflictException(
+          "Der Space ist archiviert; seine Verantwortung wird nicht mehr übertragen");
+    }
 
     SpaceMembership newOwnerMembership = userMembership(space, newOwnerUserId);
     if (newOwnerMembership == null) {
       throw new NotFoundException("Der ausgewählte Benutzer ist kein Mitglied dieses Space");
+    }
+    // an owner who cannot sign in answers for nothing: the space would at once be without one
+    if (!accessPolicy.isActiveAccount(newOwnerUserId)) {
+      throw new ConflictException(
+          "Das ausgewählte Konto ist nicht aktiv und kann die Verantwortung nicht übernehmen");
     }
 
     PermissionSubject previousOwner = space.ownerSubject();
@@ -720,6 +733,7 @@ public class SpaceService {
   @Transactional
   public Space updateSpace(UUID spaceId, SpaceUpdate update, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
+    accessPolicy.requireMember(space, caller);
 
     if (!caller.isSystemAdmin() && !accessPolicy.hasAtLeast(space, caller.id(), SpaceRole.ADMIN)) {
       throw new AccessDeniedException(
@@ -794,6 +808,7 @@ public class SpaceService {
   @Transactional
   public void deleteSpace(UUID spaceId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
+    accessPolicy.requireMember(space, caller);
 
     if (space.isDefault()) {
       throw new ValidationException("Der Standard-Space kann nicht gelöscht werden");
@@ -861,6 +876,7 @@ public class SpaceService {
   @Transactional
   public Space archiveSpace(UUID spaceId, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
+    accessPolicy.requireMember(space, caller);
 
     if (space.isDefault()) {
       throw new ValidationException("Der Standard-Space kann nicht archiviert werden");

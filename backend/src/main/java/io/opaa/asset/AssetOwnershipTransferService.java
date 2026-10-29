@@ -5,6 +5,7 @@ import io.opaa.api.types.AssetRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.permission.AssetType;
@@ -72,6 +73,14 @@ public class AssetOwnershipTransferService {
       // The same rule that governs creating an asset in a group's name: the caller is a member,
       // and the group may still receive the owning group's MANAGER grant.
       grantService.requireOwnableGroup(newOwnerId, assetType, caller);
+      // The group's lasting MANAGER grant reaches the caller as its member: a time-limited owner
+      // would keep the asset beyond their own expiry.
+      if (!authorization.holdsUntil(
+          asset, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER, null)) {
+        throw new AccessDeniedException(
+            "Ihre Berechtigung ist befristet. Eine Übergabe an eine Gruppe, der Sie angehören,"
+                + " würde sie über die Frist hinaus verlängern.");
+      }
       newOwner = PermissionSubject.group(newOwnerId, caller.organizationId());
     } else {
       requireUserInOrganization(newOwnerId, caller.organizationId());
