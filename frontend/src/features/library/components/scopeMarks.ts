@@ -1,5 +1,10 @@
 import type { LibraryResponse } from '@/shared/api/types'
 import { displayPath } from './setup/paths'
+import {
+  googleDriveScopeKey,
+  googleDriveScopesOf,
+  type GoogleDriveSettings,
+} from '../utils/googleDriveSource'
 
 type Settings = Record<string, unknown>
 
@@ -26,26 +31,27 @@ export function unreadableScopeNames(
   switch (library.sourceType) {
     case 'CONFLUENCE': {
       const spaces = list<{ key: string; name?: string | null }>(settings, 'spaces')
-      return keys.map((key) => spaces.find((space) => space.key === key)?.name ?? key)
+      return keys.map((key) => spaces.find((space) => space.key === key)?.name?.trim() || key)
     }
     case 'SHAREPOINT': {
       const libraries = list<{ driveId: string; name?: string }>(settings, 'libraries')
       return keys.map((key) => {
         const id = key.replace(/^drive:/, '')
-        return libraries.find((entry) => entry.driveId === id)?.name ?? 'unbekannte Bibliothek'
+        return (
+          libraries.find((entry) => entry.driveId === id)?.name?.trim() || 'unbekannte Bibliothek'
+        )
       })
     }
     // one OneDrive per library: its key names the drive, the Umfang the OneDrive
     case 'ONEDRIVE':
       return keys.map(() => 'OneDrive')
     case 'GOOGLE_DRIVE': {
-      const scopes = list<{ drive?: string; folder?: string; name?: string }>(settings, 'scopes')
+      const scopes = googleDriveScopesOf(settings as GoogleDriveSettings)
       return keys.map((key) => {
-        const [kind, id] = key.split(':', 2)
-        const scope = scopes.find((entry) =>
-          kind === 'drive' ? entry.drive === id : entry.folder === id,
-        )
-        return scope?.name ?? (kind === 'drive' ? 'unbekannte Ablage' : 'unbekannter Ordner')
+        const name = scopes.find((scope) => googleDriveScopeKey(scope) === key)?.name?.trim()
+        if (name) return name
+        if (key === 'myDrive') return 'Meine Ablage'
+        return key.startsWith('drive:') ? 'unbekannte Ablage' : 'unbekannter Ordner'
       })
     }
     case 'NEXTCLOUD':

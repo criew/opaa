@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SourceConnectionTestRequest, SourceConnectionTestResponse } from '@/shared/api/types'
 import { testLibrarySource } from '../../api/libraryApi'
 import type { CheckState } from './setupTypes'
+import { unreadableScopeNames } from '../scopeMarks'
 
 export type StageState = 'ok' | 'failed' | 'skipped' | 'open'
 
@@ -21,13 +22,37 @@ export interface CheckOutcome {
   unreadable: string[]
 }
 
-/** The scope entries of a connector's findings that failed, by the names the backend gives them. */
-function unreadableOf(details: Record<string, unknown> | null | undefined): {
-  failed: string[]
+type ProbedSelection = Pick<SourceConnectionTestRequest, 'sourceType' | 'sourceSettings'>
+
+/**
+ * The scope entries of a connector's findings that failed. Entries the backend reports by key
+ * (Google Drive scopes, SharePoint drives, Confluence spaces) are named from the probed selection
+ * the way the Umfang shows them, never by their raw key.
+ */
+function unreadableOf(
+  details: Record<string, unknown> | null | undefined,
+  probed: ProbedSelection | null,
+): { failed: string[]; total: number } {
+  const { failed, total } = reportedUnreadable(details)
+  if (!probed) return { failed: failed.map((entry) => entry.name), total }
+  const names = unreadableScopeNames(
+    { sourceType: probed.sourceType, sourceSettings: probed.sourceSettings ?? {} },
+    failed.flatMap((entry) => (entry.key === undefined ? [] : [entry.key])),
+  )
+  let next = 0
+  return {
+    failed: failed.map((entry) => (entry.key === undefined ? entry.name : names[next++])),
+    total,
+  }
+}
+
+/** The failed entries as the backend reports them: a key where it names one, else a name. */
+function reportedUnreadable(details: Record<string, unknown> | null | undefined): {
+  failed: Array<{ key?: string; name: string }>
   total: number
 } {
   if (!details) return { failed: [], total: 0 }
-  const failed: string[] = []
+  const failed: Array<{ key?: string; name: string }> = []
   let total = 0
   for (const key of ['scopes', 'libraries', 'folders']) {
     const list = details[key]
@@ -44,12 +69,18 @@ function unreadableOf(details: Record<string, unknown> | null | undefined): {
         const name =
           entry.name ?? entry.folder ?? entry.scope ?? entry.driveId ?? entry.bucket ?? '?'
         const prefix = typeof entry.prefix === 'string' && entry.prefix ? `/${entry.prefix}` : ''
-        failed.push(`${String(name)}${prefix}`)
+        const scopeKey = entry.name == null ? (entry.scope ?? entry.driveId) : undefined
+        failed.push({
+          ...(typeof scopeKey === 'string' ? { key: scopeKey } : {}),
+          name: `${String(name)}${prefix}`,
+        })
       }
     }
   }
   const spaces = details.unreadableSpaces
-  if (Array.isArray(spaces)) failed.push(...spaces.map(String))
+  if (Array.isArray(spaces)) {
+    failed.push(...spaces.map((space) => ({ key: String(space), name: String(space) })))
+  }
   return { failed, total }
 }
 
@@ -59,15 +90,16 @@ const NOT_CHECKED = { state: 'open', text: 'nicht geprüft' } as const
  * The staged reading of one test result: the address answered, the sign-in was accepted, the
  * chosen scope can be read. The first stage that failed is the one the person has to fix. A
  * source at a fixed address has no address stage: what it cannot reach, it may not sign in to or
- * read.
+ * read. `probed` is the selection the test ran with; it names the unreadable scopes.
  */
 export function outcomeOf(
   token: string,
   result: SourceConnectionTestResponse,
   signsIn: boolean,
   fixedAddress = false,
+  probed: ProbedSelection | null = null,
 ): CheckOutcome {
-  const { failed, total } = unreadableOf(result.details)
+  const { failed, total } = unreadableOf(result.details, probed)
   const address: CheckStage[] = fixedAddress
     ? []
     : [{ label: 'Adresse', state: 'ok', text: 'erreichbar' }]
@@ -89,12 +121,17 @@ export function outcomeOf(
     message: result.message,
     unreadable: failed,
   })
+  const rightsOpen: CheckStage = { label: 'Rechte', ...NOT_CHECKED }
   if (result.reachable) {
+    // a reached source that did not verify the secret has not passed: the sign-in and the rights
+    // behind it are still open
+    if (signsIn && result.credentialsVerified === false) {
+      return outcome('failed', [...address, { label: 'Anmeldung', ...NOT_CHECKED }, rightsOpen])
+    }
     return failed.length > 0
       ? outcome('partial', [...address, signIn, unreadable])
       : outcome('passed', [...address, signIn, { label: 'Rechte', state: 'ok', text: 'lesbar' }])
   }
-  const rightsOpen: CheckStage = { label: 'Rechte', ...NOT_CHECKED }
   if (signsIn && result.credentialsVerified === false) {
     return outcome('failed', [
       ...address,
@@ -187,7 +224,7 @@ export function useConnectionCheck(
     setRunning(mine)
     let next: CheckOutcome
     try {
-      next = outcomeOf(mine, await testLibrarySource(current), signsIn, fixedAddress)
+      next = outcomeOf(mine, await testLibrarySource(current), signsIn, fixedAddress, current)
     } catch (err) {
       next = failedOutcome(
         mine,

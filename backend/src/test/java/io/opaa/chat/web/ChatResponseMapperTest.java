@@ -338,6 +338,7 @@ class ChatResponseMapperTest {
     ChatSource source =
         new ChatSource("readme.md", 0.85, 3, true)
             .indexedAt(indexedAt)
+            .contentSha256("ab12")
             .documentId(documentId)
             .sourceType("UPLOAD")
             .sourceUrl("https://example.com/readme.md")
@@ -352,6 +353,7 @@ class ChatResponseMapperTest {
     assertThat(response.getMatchCount()).isEqualTo(3);
     assertThat(response.getCited()).isTrue();
     assertThat(response.getIndexedAt()).isEqualTo(indexedAt);
+    assertThat(response.getContentSha256()).isEqualTo("ab12");
     assertThat(response.getDocumentId()).isEqualTo(documentId);
     assertThat(response.getSourceType()).isEqualTo("UPLOAD");
     assertThat(response.getSourceUrl()).isEqualTo("https://example.com/readme.md");
