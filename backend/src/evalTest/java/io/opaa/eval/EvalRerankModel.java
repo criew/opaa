@@ -2,6 +2,8 @@ package io.opaa.eval;
 
 import io.opaa.llm.ModelRoleEndpoints;
 import io.opaa.llm.RerankModelRole;
+import io.opaa.security.CipherBinding;
+import io.opaa.security.EncryptedColumn;
 import io.opaa.security.SettingsEncryptor;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -17,6 +19,9 @@ final class EvalRerankModel {
 
   private static final String BASE_URL_PROPERTY = "opaa.eval.rerankBaseUrl";
   private static final String MODEL_PROPERTY = "opaa.eval.rerankModel";
+  // must match LlmEncryptedColumns.RERANK_MODEL_KEY bound to the singleton row 1
+  private static final CipherBinding RERANK_KEY =
+      EncryptedColumn.settings("rerank_model", "api_key_ciphertext").row((short) 1);
   static final String API_KEY_ENVIRONMENT_VARIABLE = "OPAA_EVAL_RERANK_API_KEY";
 
   private EvalRerankModel() {}
@@ -38,7 +43,9 @@ final class EvalRerankModel {
       EvalChatModel.refuseSecretsInAddress(BASE_URL_PROPERTY, baseUrl.strip());
       String apiKey = System.getenv(API_KEY_ENVIRONMENT_VARIABLE);
       String ciphertext =
-          apiKey == null || apiKey.isBlank() ? null : settingsEncryptor.encrypt(apiKey.strip());
+          apiKey == null || apiKey.isBlank()
+              ? null
+              : settingsEncryptor.encrypt(apiKey.strip(), RERANK_KEY);
       jdbcTemplate.update(
           "INSERT INTO rerank_model (id, enabled, base_url, model_identifier, api_key_ciphertext,"
               + " updated_at) VALUES (1, true, ?, ?, ?, now())",

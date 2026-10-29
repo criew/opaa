@@ -2,6 +2,7 @@ package io.opaa.eval;
 
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.llm.ChatResponses;
+import io.opaa.llm.LlmEncryptedColumns;
 import io.opaa.llm.ModelEndpointUri;
 import io.opaa.security.SettingsEncryptor;
 import java.math.BigDecimal;
@@ -257,7 +258,7 @@ final class EvalChatModel {
               + " is set. It would measure a model nothing here reports - remove the property or "
               + "run the verwaltung harness.");
     }
-    install(jdbcTemplate, ollamaEndpoint + "/v1", MODEL, null, TEMPERATURE);
+    install(jdbcTemplate, UUID.randomUUID(), ollamaEndpoint + "/v1", MODEL, null, TEMPERATURE);
   }
 
   /**
@@ -271,20 +272,26 @@ final class EvalChatModel {
     Optional<External> external = external();
     if (external.isEmpty()) {
       refuseTemperatureWithoutExternalModel();
-      install(jdbcTemplate, ollamaEndpoint + "/v1", MODEL, null, TEMPERATURE);
+      install(jdbcTemplate, UUID.randomUUID(), ollamaEndpoint + "/v1", MODEL, null, TEMPERATURE);
       return;
     }
     External chatModel = external.get();
+    UUID id = UUID.randomUUID();
     install(
         jdbcTemplate,
+        id,
         chatModel.baseUrl(),
         chatModel.model(),
-        chatModel.apiKey() == null ? null : settingsEncryptor.encrypt(chatModel.apiKey()),
+        chatModel.apiKey() == null
+            ? null
+            : settingsEncryptor.encrypt(
+                chatModel.apiKey(), LlmEncryptedColumns.CHAT_MODEL_KEY.row(id)),
         chatModel.temperature());
   }
 
   private static void install(
       JdbcTemplate jdbcTemplate,
+      UUID id,
       String baseUrl,
       String model,
       String apiKeyCiphertext,
@@ -294,7 +301,7 @@ final class EvalChatModel {
         "INSERT INTO llm_models (id, display_name, base_url, model_identifier, temperature,"
             + " max_tokens, api_key_ciphertext, active, created_at, updated_at) VALUES (?, ?, ?, ?,"
             + " ?, ?, ?, true, now(), now())",
-        UUID.randomUUID(),
+        id,
         "Eval-Chat-Modell",
         baseUrl,
         model,
