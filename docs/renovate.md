@@ -134,9 +134,18 @@ auflösbare Konfiguration aller Projekte auflöst). Den Diff vor dem Commit durc
 Einträge gehören zu den geänderten Versionen. Eine **geänderte** Prüfsumme einer schon
 vorhandenen Version ist ein Alarmzeichen und wird nicht übernommen, bevor geklärt ist, warum
 sich das Artefakt geändert hat. Stichproben lassen sich gegen Maven Central abgleichen
-(`curl -sS https://repo.maven.apache.org/maven2/<pfad>/<datei> | sha256sum`). Ein lokal
-konfigurierter Spiegel (etwa per Gradle-Init-Skript) ändert nichts an den Prüfsummen, solange er
-dieselben Artefakte ausliefert; ein solches Init-Skript gehört nicht ins Repository.
+(`curl -sS https://repo.maven.apache.org/maven2/<pfad>/<datei> | sha256sum`).
+
+**Plugin-Marker kommen vom Plugin-Portal.** Die CI und der Docker-Build lösen Plugins über das
+Gradle Plugin Portal auf. Für die meisten Artefakte leitet das Portal auf Maven Central weiter,
+die Bytes sind dieselben. Die Marker-POMs (`<plugin-id>.gradle.plugin-<version>.pom`) liefert es
+aber in einer eigenen Fassung aus, die sich von der auf Maven Central unterscheidet; betroffen
+sind heute Spring Boot, Spring Dependency Management und Spotless. Für sie trägt die Datei beide
+Prüfsummen, die von Maven Central und die des Portals als `<also-trust>`. Wer die Datei über einen
+Spiegel von Maven Central erzeugt (etwa per Gradle-Init-Skript, das nicht ins Repository gehört),
+bekommt für die Marker nur die Prüfsumme von Maven Central, und die CI bricht ab. Abgleich:
+`curl -sS https://plugins.gradle.org/m2/<pfad>/<datei> | sha256sum`; liefert das Portal statt der
+Datei eine Weiterleitung auf Maven Central (`curl -sI`), gilt dessen Prüfsumme.
 
 **npm wird gepinnt** (`rangeStrategy: 'pin'` für `dependencies`/`devDependencies`):
 `frontend/` und `e2e/` sind Anwendungen — exakte Versionen in der `package.json` machen jeden
