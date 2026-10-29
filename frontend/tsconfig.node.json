@@ -22,5 +22,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["vite.config.ts", "opaaVersion.ts", "opaaVersion.test.ts", "prototypeOutput.ts", "prototypeOutput.test.ts"]
+  "include": ["vite.config.ts", "opaaVersion.ts", "opaaVersion.test.ts", "prototypeOutput.ts", "pdfjsAssets.ts", "prototypeOutput.test.ts"]
 }
