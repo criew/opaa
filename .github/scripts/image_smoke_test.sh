@@ -6,7 +6,7 @@
 # and the frontend hardened the same way in front of it. Passes when the backend reports readiness
 # UP, its health probe agrees, /api/health answers through the frontend's nginx, the frontend
 # serves index.html and the auth configuration reports the pending installation. Model endpoints
-# do not exist; readiness does not depend on them. Needs curl and jq.
+# do not exist; readiness does not depend on them. Needs curl, jq and openssl.
 #
 #   .github/scripts/image_smoke_test.sh <backend image> <frontend image>
 #
@@ -79,8 +79,11 @@ done
 [[ "$db_ready" == true ]] || fail "PostgreSQL did not become ready"
 
 # Throwaway secrets, valid in form only: the jwt secret's minimum length and two Base64 AES-256 keys
-# that are not among the published development and CI keys the "oidc" profile refuses.
-# No answer file: the backend starts in installation mode (ADR-0060), whose readiness is UP.
+# generated for this run - a key written into this file would be public, and "oidc" refuses those.
+# Migration and backend share them. No answer file: the backend starts in installation mode
+# (ADR-0060), whose readiness is UP.
+credentials_key="$(openssl rand -base64 32)"
+settings_key="$(openssl rand -base64 32)"
 backend_environment=(
   -e SPRING_PROFILES_ACTIVE=oidc
   -e OPAA_SERVER_ADDRESS=0.0.0.0
@@ -90,8 +93,8 @@ backend_environment=(
   -e OPAA_DB_USERNAME=opaa
   -e OPAA_DB_PASSWORD=smoke-only-password
   -e OPAA_AUTH_JWT_SECRET=smoke-only-jwt-secret-0123456789abcdefghijklmnop
-  -e OPAA_CREDENTIALS_ENCRYPTION_KEY=bgkeQqaMpiL1xFl4ymM9MVJ+jYlt+GCb4w9J8o5btxI=
-  -e OPAA_SETTINGS_ENCRYPTION_KEY=NNEl4fE9dCl6LycesKNIxBXCY+hDKDDWV8D7hPi5e0A=
+  -e "OPAA_CREDENTIALS_ENCRYPTION_KEY=$credentials_key"
+  -e "OPAA_SETTINGS_ENCRYPTION_KEY=$settings_key"
 )
 hardening=(--read-only --tmpfs /tmp --tmpfs /app/uploads:uid=65532,gid=65532,mode=0700
   --cap-drop ALL --security-opt no-new-privileges)

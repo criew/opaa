@@ -9,7 +9,7 @@
 # Expects the current kubectl context to point at a kind cluster holding the images
 #   NEXT_BACKEND (default opaa-ci/backend:ci)          PREVIOUS_BACKEND (opaa-ci/backend:previous)
 #   NEXT_FRONTEND (default opaa-ci/frontend:ci)        PREVIOUS_FRONTEND (opaa-ci/frontend:previous)
-# and e2e/node_modules installed (pnpm install in e2e/). Needs kubectl, helm, node and pnpm.
+# and e2e/node_modules installed (pnpm install in e2e/). Needs kubectl, helm, node, pnpm and openssl.
 # PHASES selects phases (default "fresh rolling"). Deletes the namespaces opaa-multi and multi-test
 # before and after the run; KEEP_NAMESPACES=1 leaves them after a failed run for the search.
 set -euo pipefail
@@ -25,6 +25,10 @@ PREVIOUS_BACKEND="${PREVIOUS_BACKEND:-opaa-ci/backend:previous}"
 PREVIOUS_FRONTEND="${PREVIOUS_FRONTEND:-opaa-ci/frontend:previous}"
 PHASES="${PHASES:-fresh rolling}"
 CORPUS_SIZE="${CORPUS_SIZE:-40}"
+# The AES keys of this run, generated once: install and the upgrade of scenario 05 pass the same
+# ones, and no file of the repository carries a key the "oidc" profile accepts.
+CREDENTIALS_KEY="$(openssl rand -base64 32)"
+SETTINGS_KEY="$(openssl rand -base64 32)"
 repo_root="$(pwd)"
 pid_file="$(mktemp)"
 
@@ -99,6 +103,8 @@ install() { # backend-image frontend-image
     pod-security.kubernetes.io/enforce-version=latest
   local start=$SECONDS
   helm install "$RELEASE" "$CHART_DIR" --namespace "$NAMESPACE" -f "$VALUES" \
+    --set-string "secrets.credentialsEncryptionKey=$CREDENTIALS_KEY" \
+    --set-string "secrets.settingsEncryptionKey=$SETTINGS_KEY" \
     --set "backend.image.repository=$(repository "$1")" --set "backend.image.tag=$(tag "$1")" \
     --set "frontend.image.repository=$(repository "$2")" --set "frontend.image.tag=$(tag "$2")" \
     --wait --wait-for-jobs --timeout 15m
@@ -109,15 +115,18 @@ install() { # backend-image frontend-image
 scenarios() { # spec-filter...
   local upgrade
   upgrade="$(node -e '
-    const [chart, ns, values, backend, frontend] = process.argv.slice(1);
+    const [chart, ns, values, backend, frontend, credentialsKey, settingsKey] = process.argv.slice(1);
     const split = (image) => [image.slice(0, image.lastIndexOf(":")), image.slice(image.lastIndexOf(":") + 1)];
     const [br, bt] = split(backend);
     const [fr, ft] = split(frontend);
     console.log(JSON.stringify(["upgrade", "opaa", chart, "--namespace", ns, "-f", values,
+      "--set-string", `secrets.credentialsEncryptionKey=${credentialsKey}`,
+      "--set-string", `secrets.settingsEncryptionKey=${settingsKey}`,
       "--set", `backend.image.repository=${br}`, "--set", `backend.image.tag=${bt}`,
       "--set", `frontend.image.repository=${fr}`, "--set", `frontend.image.tag=${ft}`,
       "--wait", "--wait-for-jobs", "--timeout", "15m"]));
-  ' "$(realpath "$CHART_DIR")" "$NAMESPACE" "$(realpath "$VALUES")" "$NEXT_BACKEND" "$NEXT_FRONTEND")"
+  ' "$(realpath "$CHART_DIR")" "$NAMESPACE" "$(realpath "$VALUES")" "$NEXT_BACKEND" "$NEXT_FRONTEND" \
+    "$CREDENTIALS_KEY" "$SETTINGS_KEY")"
   (
     cd e2e
     E2E_MULTI_PLATFORM=kind \

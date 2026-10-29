@@ -3,7 +3,8 @@
 # repository root. Expects the current kubectl context to point at a kind cluster that already holds
 # the images named in install-values.yaml. Lets chart-testing install the chart with its evaluation
 # database into a namespace enforcing the Pod Security Standard "restricted", wait until database,
-# backend and frontend are ready, run helm test and uninstall again. Needs kubectl, helm and ct.
+# backend and frontend are ready, run helm test and uninstall again. Needs kubectl, helm, ct and
+# openssl.
 set -euo pipefail
 
 CI_DIR="deploy/helm/ci"
@@ -11,6 +12,10 @@ CHART_DIR="${CHART_DIR:-deploy/helm/opaa}"
 NAMESPACE="${INSTALL_NAMESPACE:-opaa-ct}"
 # The first start migrates the schema; the chart's startup probe allows up to ten minutes for it.
 INSTALL_TIMEOUT="${INSTALL_TIMEOUT:-900s}"
+# The AES keys of this run, generated: a key from a file of the repository is public, and the
+# "oidc" profile refuses it.
+CREDENTIALS_KEY="$(openssl rand -base64 32)"
+SETTINGS_KEY="$(openssl rand -base64 32)"
 
 kubectl create namespace "$NAMESPACE" --dry-run=client --output yaml | kubectl apply -f -
 kubectl label --overwrite namespace "$NAMESPACE" \
@@ -34,4 +39,5 @@ cp "$CI_DIR/install-values.yaml" "$work_dir/opaa/ci/kind-values.yaml"
 
 ct install --config "$CI_DIR/ct.yaml" --charts "$work_dir/opaa" \
   --namespace "$NAMESPACE" --release-label app.kubernetes.io/instance \
-  --helm-extra-args "--timeout $INSTALL_TIMEOUT"
+  --helm-extra-args "--timeout $INSTALL_TIMEOUT" \
+  --helm-extra-set-args "--set-string=secrets.credentialsEncryptionKey=$CREDENTIALS_KEY --set-string=secrets.settingsEncryptionKey=$SETTINGS_KEY"

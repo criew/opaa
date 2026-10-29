@@ -24,7 +24,13 @@ MANAGEMENT_PORT="${MANAGEMENT_PORT:-18081}"
 ROLLOUT_TIMEOUT="${ROLLOUT_TIMEOUT:-15m}"
 ADMIN_EMAIL="$(sed -n 's/^    email: //p' "$CI_DIR/restore-values.yaml")"
 ADMIN_PASSWORD="$(sed -n 's/^  initialAdminPassword: //p' "$CI_DIR/restore-values.yaml")"
-VALUES=(--values "$CI_DIR/install-values.yaml" --values "$CI_DIR/restore-values.yaml")
+# The AES keys of this run, generated once: source and target share them, as the restore requires,
+# and no file of the repository carries a key the "oidc" profile accepts.
+CREDENTIALS_KEY="$(openssl rand -base64 32)"
+SETTINGS_KEY="$(openssl rand -base64 32)"
+VALUES=(--values "$CI_DIR/install-values.yaml" --values "$CI_DIR/restore-values.yaml"
+  --set-string "secrets.credentialsEncryptionKey=$CREDENTIALS_KEY"
+  --set-string "secrets.settingsEncryptionKey=$SETTINGS_KEY")
 # The chat model endpoint of T6, which the checks never reach.
 MODEL_BASE_URL="http://models.invalid/v1"
 LATE_UPLOAD="probe-nach-der-sicherung.txt"
