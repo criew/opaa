@@ -68,13 +68,17 @@ Drei Bereiche, die der frühere Stand dieses Dokuments beschrieben hat und die h
 tatsächlichen Stand abgeglichen sind. Die Dokumentenübersicht ist inzwischen gebaut — die
 Bibliotheksdetailseite (`LibraryDetailPage.tsx`) zeigt den Bestand einer Wissensbibliothek mit
 Indizierungsstand je Dokument. Seit #738 bietet jede Dokumentzeile die Aktion „Original öffnen": das
-Frontend lädt die Datei über `GET /api/v1/documents/{documentId}/content` (#736) als Blob und öffnet
-sie per Objekt-URL in einem neuen Tab (PDF/Bilder als Browser-Vorschau). Seit #780 gilt das auch für
-Markdown und Klartext: Statt eines stillen Downloads (der Browser zeigt einen `text/markdown`- oder
-`text/plain`-Blob sonst nur als Rohtext an oder lädt ihn herunter) rendert `DocumentTextPreviewDialog`
-den Inhalt clientseitig in einem eigenen Dialog — Markdown über dieselbe, bereits gehärtete
-`MarkdownRenderer`-Komponente wie die Chat-Antworten (kein `rehype-raw`, react-markdowns
-Standard-`urlTransform` entfernt `javascript:`-URLs, siehe #743 Sperre für SVG). Ein Original über 2
+Frontend lädt die Datei über `GET /api/v1/documents/{documentId}/content` (#736) als Blob. Ein PDF
+zeigt der eigene PDF-Betrachter der Anwendung; nur PNG, JPEG, GIF und WebP öffnet das Frontend per
+Objekt-URL in einem neuen Tab. Diese Liste ist abschließend (#3345): Der Tab läuft in der Herkunft
+der Anwendung, daher wird jeder andere Typ, auch SVG und jeder andere `+xml`-Typ, heruntergeladen.
+Seit #780 bekommen auch Markdown und Klartext eine Vorschau: Statt eines stillen Downloads (der
+Browser zeigt einen `text/markdown`- oder `text/plain`-Blob sonst nur als Rohtext an oder lädt ihn
+herunter) rendert `DocumentTextPreviewDialog` den Inhalt clientseitig in einem eigenen Dialog —
+Markdown über dieselbe, bereits gehärtete `MarkdownRenderer`-Komponente wie die Chat-Antworten
+(kein `rehype-raw`; Adressen bleiben unverändert, `urlTransform` ist `keepUrl`; klickbar werden über
+die eigene Link-Komponente nur http(s)-Links zu erlaubten Zielen, ein `javascript:`-Link bleibt
+Text, und die eigene Bild-Komponente lädt nie ein Bild). Ein Original über 2
 MiB fällt zurück auf den Download, mit demselben sichtbaren Hinweis wie unten beschrieben. Jedes
 andere Format (insbesondere DOCX — eine serverseitige Konvertierung ist bewusst außerhalb dieses
 Zuschnitts) bleibt beim Download unter dem ursprünglichen Dateinamen, jetzt aber mit einer sichtbaren
