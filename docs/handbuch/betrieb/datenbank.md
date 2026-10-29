@@ -22,6 +22,11 @@ stößt bei sehr großen Beständen im Bereich von Millionen Vektoren an Grenzen
   auf die neue Dimension um ([Modelle](modelle.md#modell-wechseln)); bis dahin stehen alte und neue
   Vektoren nebeneinander, und den Platz der alten gibt PostgreSQL erst frei, wenn die Zeilen neu
   geschrieben werden.
+- **Die Distanzfunktion** (`OPAA_PGVECTOR_DISTANCE_TYPE`) bestimmt, wofür der Vektorindex beim
+  Anlegen der Vektortabelle gebaut wird. Passt der Wert später nicht mehr zum bestehenden Index,
+  bricht der Start mit einer Meldung ab, die beide Werte nennt: Die Suche würde den Index sonst nicht
+  mehr nutzen. Abhilfe ist, den alten Wert wieder einzutragen oder den Index in der Datenbank mit
+  der neuen Distanzfunktion neu aufzubauen.
 - **Eine neue PostgreSQL-Hauptversion** (etwa ein Image-Tag `pg18` → höher) ist ein eigener
   Migrationsvorgang der Datenbank mit Sicherung und Wiederherstellung, kein Image-Update: Das
   Datenverzeichnis ist nicht aufwärtskompatibel.
