@@ -210,6 +210,15 @@ dafür nicht gebraucht.
 - **Ablauf** — Pflicht, begrenzt durch die Höchstlaufzeit der Installation. Die Person wird vor dem
   Ablauf per Mail erinnert (Abschnitt 15), und die eigene Liste weist rechtzeitig darauf hin.
 
+**Erzeugen verlangt eine frische Anmeldung.** Ein Token überdauert die Sitzung, in der es entsteht;
+eine kurz unbeaufsichtigte oder übernommene Sitzung soll deshalb keines anlegen können. Liegt die
+Anmeldung länger zurück, fragt OPAA vor dem Erzeugen erneut nach dem Passwort oder leitet zum
+Anmeldedienst weiter ([Erneute Anmeldung vor sensiblen
+Vorgängen](../betrieb/authentifizierung.md#erneute-anmeldung-vor-sensiblen-vorgängen)). Nach der
+Weiterleitung zum Anmeldedienst öffnet sich der Dialog wieder leer. Jedes erzeugte Token meldet
+OPAA der Person zusätzlich **per Mail** mit seinem Namen — wer ein Token nicht selbst erzeugt hat,
+widerruft es und meldet sich bei der Systemverwaltung.
+
 Ist keine Bibliothek wählbar, liegt es entweder am fehlenden Lesezugriff oder an der fehlenden
 Freigabe. Beides entscheidet, wer die Bibliothek verwaltet; einen Antragsweg in der Anwendung gibt
 es bewusst nicht.
@@ -258,6 +267,20 @@ Token abgewiesen wie eine Anmeldung über diesen Anbieter, und nach dem Wiederei
 wieder. Dasselbe gilt für ein reguläres lokales Konto, solange die lokale Kontenverwaltung
 abgeschaltet ist. Wird der Anbieter gelöscht, treten die Tokens seiner Konten endgültig außer
 Kraft; ein später mit derselben Issuer-URI neu angelegter Anbieter belebt sie nicht wieder.
+
+**Was alle Sitzungen eines lokalen Kontos beendet, beendet auch seine Tokens:** ein Passwortwechsel
+durch die Person, das Zurücksetzen über „Passwort vergessen", ein Rücksetzlink oder ein erzeugtes
+Passwort der Systemverwaltung und die erkannte Wiederverwendung einer bereits erneuerten Sitzung.
+Ein Token, das in einer übernommenen Sitzung entstanden ist, überdauert so die Bereinigung nicht.
+Die Tokens erscheinen danach als gesperrt; die Person legt nach Bedarf neue an.
+
+**Konten eines Identitätsanbieters brauchen eine nicht zu alte Anmeldung.** Von einer Deaktivierung
+beim Anbieter und von geänderten Gruppen aus dem Anmeldetoken erfährt OPAA ohne Verzeichnisabgleich
+nur bei einer Anmeldung. Liegt die letzte Anmeldung der Person länger zurück als
+`OPAA_EXTERNAL_ACCESS_PROVIDER_SIGN_IN_MAX_AGE_DAYS` (Abschnitt 15), ruhen ihre Tokens: Jeder Aufruf
+wird mit `sign_in_required` abgewiesen, bis sie sich wieder in OPAA anmeldet. Widerrufen wird dabei
+nichts; mit der nächsten Anmeldung wirken die Tokens wieder, mit dem dann gültigen Gruppenstand.
+Lokale Konten sind davon ausgenommen — ihren Lebenszyklus entscheidet OPAA selbst.
 
 **Abgelaufene und widerrufene Tokenzeilen werden gelöscht**, sobald die Protokollfrist der
 Installation über ihr Außerkrafttreten hinweggelaufen ist — nicht früher, sonst fehlt der Beleg, dass
@@ -582,7 +605,7 @@ Protokolliert wird, was die **Reichweite eines Zugriffs ändert**:
 |---|---|
 | Zugangstoken ausgestellt | Person, **Token-Kennung** (nicht der Name), Bibliotheksauswahl, Ablauf |
 | Zugangstoken widerrufen oder gesperrt | dazu, ob durch die Person selbst oder durch die Systemverwaltung |
-| Zugangstoken außer Kraft getreten | Anlass: abgelaufen oder Kontenlebenszyklus |
+| Zugangstoken außer Kraft getreten | Anlass: abgelaufen oder Kontenlebenszyklus (auch Passwortwechsel, Zurücksetzen und erkannte Wiederverwendung einer Sitzung) |
 | Bibliotheksfreigabe gesetzt oder zurückgenommen | handelnde Person, Bibliothek, Richtung, Ablaufdatum der Freigabe |
 | Bibliotheksfreigabe erloschen | Bibliothek, Anlass: Fristablauf |
 | Schalter oder Grenzwerte des Kanals geändert | handelnde Person, Vorher/Nachher |
@@ -654,7 +677,8 @@ Verhalten. Diese Antworten unterscheiden die Fälle:
 Bei geschlossenem Kanal antworten die REST-Lesewege mit `401` und der Ursache `channel_closed`;
 `404`/`503` sind das Sonderverhalten des MCP-Endpunkts, weil dort eine Person ihren Client einrichtet
 und wissen muss, ob es an ihr liegt. Die Ursachen heißen `token_expired`, `token_revoked`,
-`account_not_active`, `invalid_token`, `network_not_allowed` und `channel_closed` — und sie sind auf
+`account_not_active`, `sign_in_required`, `invalid_token`, `network_not_allowed` und
+`channel_closed` — und sie sind auf
 der „unbekannt"-Seite bewusst grob: Ein unbekannter, ein verstümmelter und ein fremder Wert
 beantworten sich gleich, damit der Kanal nie bestätigt, dass ein Token existiert.
 
@@ -665,6 +689,7 @@ beantworten sich gleich, damit der Kanal nie bestätigt, dass ein Token existier
 | `401`, `reason: token_expired` | Das Token hat sein Ablaufdatum erreicht | Die Person legt in ihren Einstellungen ein neues an. Ein abgelaufenes Token lässt sich nicht verlängern |
 | `401`, `reason: token_revoked` | Die Person hat widerrufen — oder die Systemverwaltung hat gesperrt | Neues Token. Bei einer Sperre zuerst deren Anlass klären |
 | `401`, `reason: account_not_active` | Das **Konto** ist gesperrt, abgelaufen, deaktiviert oder übergeben; alle seine Tokens sind damit außer Kraft. Oder sein Identitätsanbieter beziehungsweise die lokale Kontenverwaltung ist abgeschaltet | [Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md), Abschnitt 4. Danach ist ein neues Token nötig — die alten leben nicht wieder auf. Nur nach dem Wiedereinschalten des Anbieters oder der lokalen Kontenverwaltung gelten sie wieder; ein gelöschter Anbieter beendet sie dagegen endgültig (`token_revoked`) |
+| `401`, `reason: sign_in_required` | Die Person meldet sich über einen Identitätsanbieter an, und ihre letzte Anmeldung in OPAA liegt länger zurück als erlaubt (Abschnitt 6) | Die Person meldet sich einmal in OPAA an; danach wirkt dasselbe Token wieder |
 | `401`, `reason: invalid_token` | Wert unbekannt, verstümmelt oder unvollständig kopiert | Neu einrichten. Der Wert ist nach der Einmalanzeige nirgends abrufbar; im Zweifel neues Token |
 | `401`, `reason: network_not_allowed` | Der Aufruf kam von außerhalb der zugelassenen Netzbereiche — Heimarbeit ohne Hausnetzverbindung, ein anderes Netzsegment, oder ein Reverse Proxy ohne Eintrag in `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` (Abschnitt 3) | Verbindung ins Hausnetz herstellen, oder die Netzbereiche der Installation prüfen. **Trifft der Fehler alle Beschäftigten gleichzeitig, ist es die Proxy-Auflösung, nicht das Netz** |
 | `401`/`503`, `reason: channel_closed` | Der Schalter der Installation steht auf aus — Notaus, geplante Abschaltung oder ein Restore (Abschnitt 14) | *Administration → Anbindungen → Externe KI-Werkzeuge*. Tokens sind dabei nicht verloren |
@@ -755,6 +780,7 @@ Namensauflösung findet dabei nicht statt.
 |---|---|---|
 | `OPAA_FEATURES_EXTERNAL_ACCESS_ENABLED` | `true` | `false` schaltet den Zugriff externer KI-Werkzeuge für die Installation ab, unabhängig vom Schalter (Abschnitt 3, „Externe KI-Werkzeuge ganz abschalten"); Tokens, Freigaben und Einstellungen bleiben gespeichert |
 | `OPAA_EXTERNAL_ACCESS_MAX_RELEASE_DAYS` | `365` | Längste zulässige Befristung einer Bibliotheksfreigabe in Tagen. Muss positiv sein — eine Freigabe ohne Obergrenze ist genau die Ratsche, die die Befristung verhindert. Begrenzt auch die Erinnerung vor Ablauf: Ein höherer gespeicherter Vorlauf wirkt als ein Tag unter diesem Wert |
+| `OPAA_EXTERNAL_ACCESS_PROVIDER_SIGN_IN_MAX_AGE_DAYS` | `30` | Tage, die die letzte Anmeldung eines Kontos eines Identitätsanbieters zurückliegen darf, damit seine Tokens wirken (Abschnitt 6). Begrenzt, wie lange eine Deaktivierung beim Anbieter oder eine entzogene Gruppe aus dem Anmeldetoken für Tokens unbemerkt bleibt. Muss positiv sein |
 | `OPAA_MCP_DEFAULT_MAX_HITS` | `5` | Dokumente, die eine `search` über MCP ohne eigenes `maxHits` liefert. Bewusst niedriger als die Vorgabe des REST-Suchwegs: Hier ist ein Treffer eine Station auf dem Weg zum Abruf, nicht die Antwort |
 | `OPAA_MCP_EXCERPT_CHARACTERS` | `500` | Länge des Auszugs um die Fundstelle je MCP-Treffer. Der vollständige Abschnitt ist einen Abruf entfernt |
 | `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` | leer | Nicht auf diesen Kanal beschränkt, für ihn aber ausschlaggebend: Ohne Eintrag prüft die Netzbeschränkung hinter einem Reverse Proxy dessen Adresse (Abschnitt 3) |
