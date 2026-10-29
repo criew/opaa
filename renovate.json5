@@ -206,8 +206,8 @@
   ],
 
   packageRules: [
-    // Bereichs-Labels nach Manager. Bei gradle-Updates schreibt Renovate backend/gradle/verification-metadata.xml
-    // mit (docs/renovate.md, Gradle-Prüfsummen).
+    // Bereichs-Labels nach Manager. Bei gradle-Updates schreibt Renovate
+    // backend/gradle/verification-metadata.xml mit (docs/renovate.md, Gradle-Prüfsummen).
     {
       matchManagers: ['gradle', 'gradle-wrapper'],
       addLabels: ['backend'],
@@ -218,6 +218,17 @@
     // gradle-wrapper.properties zieht Renovate mit (docs/renovate.md, Gradle-Prüfsummen).
     {
       matchManagers: ['gradle-wrapper'],
+      automerge: false,
+    },
+    // Gradle-Plugins ([plugins] in libs.versions.toml): Renovate führt für die Prüfsummen bei
+    // jedem Gradle-Update ./gradlew dependencies mit den neuen Versionen aus, also den Code eines
+    // neuen Plugins im Container, der das Token hält, und danach jeder Bau. Deshalb längere
+    // Wartefrist und kein Auto-Merge; Bibliotheken bleiben bei der Vorgabe (docs/renovate.md,
+    // Gradle-Prüfsummen). Frist und Auto-Merge sind nur hier festgelegt.
+    {
+      matchManagers: ['gradle'],
+      matchDepTypes: ['plugin'],
+      minimumReleaseAge: '14 days',
       automerge: false,
     },
     {
