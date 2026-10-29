@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
@@ -821,6 +822,56 @@ class LibraryDocumentServiceTest {
     assertThat(storedPath.startsWith(libraryDir))
         .as("Stored file must stay inside the library's own storage directory")
         .isTrue();
+  }
+
+  /**
+   * The display name loses control and format characters (a right-to-left override would show
+   * {@code rechnung\u202Efdp.exe} as {@code rechnungexe.pdf}), is NFC-normalized and keeps at most
+   * 255 characters, its extension included.
+   */
+  @Test
+  void theDisplayNameLosesControlAndFormatCharactersIsNfcAndAtMost255Long() throws IOException {
+    grantEditor();
+    when(checksumService.computeSha256(any(Path.class)))
+        .thenReturn("checksum-a", "checksum-b", "checksum-c");
+    when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
+            any(UUID.class), anyString()))
+        .thenReturn(Optional.empty());
+
+    assertThat(uploadedName("Rech\u202Enung\u0007\u200B\r\n.pdf")).isEqualTo("Rechnung.pdf");
+    assertThat(uploadedName("Me\u0301ldung.pdf")).isEqualTo("M\u00e9ldung.pdf");
+    String longName = uploadedName("\u00e4".repeat(300) + ".pdf");
+    assertThat(longName.codePointCount(0, longName.length())).isEqualTo(255);
+    assertThat(longName).endsWith(".pdf");
+  }
+
+  /** A name left empty by the cleaning is refused as such, not as an unsupported format. */
+  @Test
+  void aDisplayNameLeftEmptyByTheCleaningIsRefusedWithItsOwnMessage() {
+    grantEditor();
+
+    assertThatThrownBy(
+            () ->
+                service.uploadDocument(
+                    libraryId, pdfFile("\u202E\u200B\u0007", "pdf content"), null, caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessage(LibraryDocumentService.EMPTY_FILE_NAME_MESSAGE);
+    verify(documentRepository, never()).save(any(Document.class));
+  }
+
+  private String uploadedName(String originalFileName) throws IOException {
+    return service
+        .uploadDocument(
+            libraryId,
+            new MockMultipartFile(
+                "file",
+                originalFileName,
+                "application/pdf",
+                (PDF_MAGIC_BYTES + originalFileName).getBytes()),
+            null,
+            caller)
+        .document()
+        .getFileName();
   }
 
   @Test

@@ -19,7 +19,7 @@ info:
 
     | Status | When |
     | --- | --- |
-    | `400` | The request could not be read at all: an unparseable body, or a path or query parameter of the wrong type. An operation's own validation of its payload is a decision of that operation and *is* declared there. |
+    | `400` | The request could not be read at all: an unparseable body, a path or query parameter of the wrong type, or a path carrying a control character. An operation's own validation of its payload is a decision of that operation and *is* declared there. |
     | `401` | The call carries no usable session - no bearer token, an expired or otherwise invalid one. Declared only where the operation itself refuses a credential it was handed: the sign-in, the refresh cookie, a webhook signature, the provider token of a handover. |
     | `403` | The call is turned away before it reaches the operation at all: a local token that must change its password first (code `PASSWORD_CHANGE_REQUIRED`) reaches nothing outside `/api/v1/auth/local/`, and an external access token reaches nothing outside the paths its channel owns. An operation's own permission check *is* declared at that operation. |
     | `404` | No such route. An operation's own "this resource is not there" is a decision of that operation and *is* declared there - including the deliberate `404` that hides an existing but inaccessible resource instead of confirming it with a `403`. |
