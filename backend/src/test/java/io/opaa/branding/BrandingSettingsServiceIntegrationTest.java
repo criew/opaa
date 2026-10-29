@@ -302,6 +302,89 @@ class BrandingSettingsServiceIntegrationTest {
   }
 
   @Test
+  void aProductNameOrClaimWithoutAVisibleCharacterRestoresTheStandard() {
+    for (String invisible : new String[] {"\u00A0", "\u200B", " \u200B\u00A0 "}) {
+      brandingSettingsService.updateBranding(
+          organizationId, userId, "Landesamt", "Fragen.", null, null, null);
+
+      EffectiveBranding branding =
+          brandingSettingsService.updateBranding(
+              organizationId, userId, invisible, invisible, null, null, null);
+
+      assertThat(branding.productName())
+          .as("value %s", invisible.codePoints().boxed().toList())
+          .isEqualTo(BrandingDefaults.PRODUCT_NAME);
+      assertThat(branding.claim()).isEqualTo(BrandingDefaults.CLAIM);
+      assertThat(jdbcTemplate.queryForObject(storedColumn("product_name"), String.class)).isNull();
+      assertThat(jdbcTemplate.queryForObject(storedColumn("claim"), String.class)).isNull();
+    }
+  }
+
+  @Test
+  void aProductNameOrClaimWithABidiControlIsRejectedAndNothingIsStored() {
+    for (String reordering : new String[] {"Amt \u202Eredaeh", "\u202EAmt", "Amt \u2066x\u2069"}) {
+      assertThatThrownBy(
+              () ->
+                  brandingSettingsService.updateBranding(
+                      organizationId, userId, reordering, null, null, null, null))
+          .isInstanceOf(ValidationException.class)
+          .hasMessage(
+              "Der Produktname darf keine Steuerzeichen und keinen Zeilenumbruch enthalten");
+      assertThatThrownBy(
+              () ->
+                  brandingSettingsService.updateBranding(
+                      organizationId, userId, null, reordering, null, null, null))
+          .isInstanceOf(ValidationException.class)
+          .hasMessage("Der Claim darf keine Steuerzeichen und keinen Zeilenumbruch enthalten");
+    }
+    assertThat(jdbcTemplate.queryForObject(storedColumn("product_name"), String.class)).isNull();
+    assertThat(jdbcTemplate.queryForObject(storedColumn("claim"), String.class)).isNull();
+  }
+
+  @Test
+  void aStoredValueTheRulesNoLongerAcceptIsReadAsTheStandard() {
+    jdbcTemplate.update(
+        "UPDATE branding_settings SET product_name = ?, claim = ?, ai_notice = ? WHERE id = 1",
+        "Amt \u202Eredaeh",
+        "\u00A0\u200B",
+        "Hinweis \u2067x");
+
+    EffectiveBranding branding = brandingSettingsService.currentBranding();
+    assertThat(branding.productName()).isEqualTo(BrandingDefaults.PRODUCT_NAME);
+    assertThat(branding.claim()).isEqualTo(BrandingDefaults.CLAIM);
+    assertThat(branding.aiNotice()).isEqualTo(BrandingDefaults.AI_NOTICE);
+
+    BrandingSettingsView stored = brandingSettingsService.storedSettings();
+    assertThat(stored.productName()).isNull();
+    assertThat(stored.claim()).isNull();
+    assertThat(stored.aiNotice()).isNull();
+  }
+
+  @Test
+  void aStoredValueWithHiddenTagCharactersOrAnUnassignedCodePointIsReadAsTheStandard() {
+    jdbcTemplate.update(
+        "UPDATE branding_settings SET product_name = ?, claim = ? WHERE id = 1",
+        "OPAA󠁉󠁇󠁎",
+        "́Fragen͸");
+
+    EffectiveBranding branding = brandingSettingsService.currentBranding();
+    assertThat(branding.productName()).isEqualTo(BrandingDefaults.PRODUCT_NAME);
+    assertThat(branding.claim()).isEqualTo(BrandingDefaults.CLAIM);
+  }
+
+  @Test
+  void aStoredValueTheRulesAcceptIsReadUnchanged() {
+    jdbcTemplate.update(
+        "UPDATE branding_settings SET product_name = ?, claim = ? WHERE id = 1",
+        "Landesamt-Assistent",
+        "Fragen \u26A0\uFE0F");
+
+    EffectiveBranding branding = brandingSettingsService.currentBranding();
+    assertThat(branding.productName()).isEqualTo("Landesamt-Assistent");
+    assertThat(branding.claim()).isEqualTo("Fragen \u26A0\uFE0F");
+  }
+
+  @Test
   void aLogoSurvivesTheRoundTripAndIsAuditedByPresenceNotByContent() throws IOException {
     byte[] content = png(120, 40);
 

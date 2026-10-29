@@ -154,8 +154,9 @@ export function copyNote(notice: string, productName: string, answeredAt: Date):
 
 /**
  * Notice and product name come from the branding. Direction controls (U+202A–202E, U+2066–2069,
- * U+200E/F, U+061C) would reorder the rest of the line when the note is pasted, and breaks or
- * control characters would split it, so they are dropped or turned into blanks.
+ * U+200E/F, U+061C) would reorder the rest of the line when the note is pasted, tag characters
+ * (U+E0000–E007F) could hide text in it, and breaks or control characters would split it, so they
+ * are dropped or turned into blanks. The PDF export of a chat applies the same rule.
  */
 function plainNoteText(text: string): string {
   return Array.from(text.replace(/[\r\n\u2028\u2029]+/g, ' '))
@@ -172,7 +173,8 @@ function isDroppedFromNote(code: number): boolean {
     code === 0x200e ||
     code === 0x200f ||
     (code >= 0x202a && code <= 0x202e) ||
-    (code >= 0x2066 && code <= 0x2069)
+    (code >= 0x2066 && code <= 0x2069) ||
+    (code >= 0xe0000 && code <= 0xe007f)
   )
 }
 

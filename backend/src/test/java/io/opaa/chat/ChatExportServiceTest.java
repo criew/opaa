@@ -114,6 +114,24 @@ class ChatExportServiceTest {
   }
 
   @Test
+  void theNoteDropsDirectionMarksAndTagCharactersLikeTheCopiedNote() throws IOException {
+    when(branding.currentBranding())
+        .thenReturn(
+            new EffectiveBranding(
+                "Amt‏ 12󠁉󠁇",
+                "Claim",
+                "Hinweis‎ (1)؜‮ geprüft⁧.",
+                "#004b87",
+                ColorScheme.LIGHT,
+                Map.of()));
+    UUID chatId = UUID.randomUUID();
+    when(chatService.getChat(chatId, userId)).thenReturn(conversation("Vermerk", List.of()));
+
+    assertThat(text(exportService.exportPdf(chatId, userId).content()))
+        .contains("Hinweis (1) geprüft. – Amt 12, 06.03.2026");
+  }
+
+  @Test
   void charactersOutsideTheFontsArePrintedAsQuestionMarksInsteadOfFailing() throws IOException {
     UUID chatId = UUID.randomUUID();
     List<ChatTurn> turns =

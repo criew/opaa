@@ -92,11 +92,13 @@ public class BrandingSettingsService implements AuditPayloadKeys {
 
   /**
    * The stored values without image bytes: {@code null} in a text field means the OPAA default
-   * applies.
+   * applies, also for a stored text the rules no longer accept ({@link
+   * BrandingSettingsRules#readable}), so an export never carries what an import would refuse.
    */
   @Transactional(readOnly = true)
   public BrandingSettingsView storedSettings() {
-    return repository.findSettingsWithoutImages().orElseThrow(BrandingSettingsService::missingRow);
+    return readable(
+        repository.findSettingsWithoutImages().orElseThrow(BrandingSettingsService::missingRow));
   }
 
   /**
@@ -262,7 +264,30 @@ public class BrandingSettingsService implements AuditPayloadKeys {
             background.updatedAt()));
   }
 
-  private EffectiveBranding resolve(BrandingSettingsView stored) {
+  /**
+   * The text fields as {@link BrandingSettingsRules#readable} lets them be shown: a value stored
+   * before the rules were tightened reads as "not set" until the next save replaces it.
+   */
+  private static BrandingSettingsView readable(BrandingSettingsView stored) {
+    return new BrandingSettingsView(
+        BrandingSettingsRules.readable(stored.productName()),
+        BrandingSettingsRules.readable(stored.claim()),
+        BrandingSettingsRules.readable(stored.aiNotice()),
+        stored.primaryColor(),
+        stored.defaultColorScheme(),
+        stored.logoContentType(),
+        stored.logoVersion(),
+        stored.logoUpdatedAt(),
+        stored.loginLogoContentType(),
+        stored.loginLogoVersion(),
+        stored.loginLogoUpdatedAt(),
+        stored.loginBackgroundContentType(),
+        stored.loginBackgroundVersion(),
+        stored.loginBackgroundUpdatedAt());
+  }
+
+  private EffectiveBranding resolve(BrandingSettingsView raw) {
+    BrandingSettingsView stored = readable(raw);
     Map<BrandingImageKind, EffectiveBranding.ImageMetadata> images =
         new EnumMap<>(BrandingImageKind.class);
     for (BrandingImageKind kind : BrandingImageKind.values()) {

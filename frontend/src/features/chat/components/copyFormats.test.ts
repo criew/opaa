@@ -181,6 +181,12 @@ describe('copy note', () => {
     )
   })
 
+  test('drops tag characters that would hide text in the note', () => {
+    expect(copyNote('Hinweis.\u{E0049}\u{E0047}', 'OPAA\u{E004E}\u{E007F}', answeredAt)).toBe(
+      'Hinweis. – OPAA, 05.03.2026',
+    )
+  })
+
   test('ends the Markdown after a rule and the plain text after a blank line', () => {
     const note = copyNote('Hinweis.', 'OPAA', answeredAt)
 

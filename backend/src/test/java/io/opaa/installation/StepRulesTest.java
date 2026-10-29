@@ -2,6 +2,7 @@ package io.opaa.installation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -563,6 +564,55 @@ class StepRulesTest {
                 assertThat(e.fieldErrors())
                     .extracting(FieldValidationException.FieldError::field)
                     .containsExactly("branding.productName", "branding.primaryColor"));
+  }
+
+  @Test
+  void aBrandingProductNameOrClaimWithoutAVisibleCharacterIsStoredAsTheDefault() {
+    for (String invisible : new String[] {"\u00A0", "\u200B", "\u00A0\u200B"}) {
+      StepRules.Stored stored =
+          rules.toStored(
+              new StepInput.Branding(invisible, invisible, null, null, null), null, null);
+
+      assertThat(rules.view(InstallationStep.BRANDING, stored.payload(), null))
+          .as("value %s", invisible.codePoints().boxed().toList())
+          .isEqualTo(new InstallationOverview.Branding(null, null, null, null, null));
+    }
+  }
+
+  @Test
+  void aBidiControlInTheBrandingProductNameOrClaimIsAFieldErrorUnderTheStep() {
+    for (String reordering : new String[] {"Amt \u202Eredaeh", "\u202EAmt", "Amt \u2066x\u2069"}) {
+      assertThatThrownBy(
+              () ->
+                  rules.toStored(
+                      new StepInput.Branding(reordering, reordering, null, null, null), null, null))
+          .as("value %s", reordering.codePoints().boxed().toList())
+          .isInstanceOfSatisfying(
+              FieldValidationException.class,
+              e ->
+                  assertThat(e.fieldErrors())
+                      .extracting(
+                          FieldValidationException.FieldError::field,
+                          FieldValidationException.FieldError::message)
+                      .containsExactly(
+                          tuple(
+                              "branding.productName",
+                              "Der Produktname darf keine Steuerzeichen und keinen Zeilenumbruch"
+                                  + " enthalten"),
+                          tuple(
+                              "branding.claim",
+                              "Der Claim darf keine Steuerzeichen und keinen Zeilenumbruch"
+                                  + " enthalten")));
+    }
+  }
+
+  @Test
+  void aSavedBrandingStepWithABidiControlFailsTheCheckBeforeCompletion() {
+    assertThat(
+            rules.brandingErrors(
+                new StepRules.BrandingPayload("Amt \u202Eredaeh", "\u202E", null, null, null)))
+        .extracting(FieldValidationException.FieldError::field)
+        .containsExactly("branding.productName", "branding.claim");
   }
 
   @Test
