@@ -289,6 +289,44 @@ class MailServiceTest {
     verify(settingsService).recordSendOutcome(any(), isNull());
   }
 
+  // regression guard: the password is replaced before the address mask can rewrite it
+  @Test
+  void aSendThroughSettingsBeingEnteredReportsNoPartOfAnEchoedAddressLikePassword() {
+    String password = "kw@geheim.zz";
+    MailSettingsSnapshot entered =
+        new MailSettingsSnapshot(
+            true,
+            "smtp.intern.example",
+            587,
+            "kennung",
+            password,
+            MailEncryption.STARTTLS,
+            "opaa@intern.example",
+            null);
+    when(sender.createMimeMessage())
+        .thenReturn(new MimeMessage(Session.getInstance(new Properties())));
+    when(templates.render(eq(MailTemplateKey.TEST_MAIL), eq("de"), any()))
+        .thenReturn(new RenderedMail("Betreff", "Textteil", "<p>HTML-Teil</p>"));
+    doThrow(
+            new MailSendException(
+                "failed", new RuntimeException("535 5.7.8 kennung " + password + " rejected")))
+        .when(sender)
+        .send(any(MimeMessage.class));
+
+    SendResult result =
+        mailService.sendThrough(
+            new MailSenderProvider.Transport(sender, entered),
+            MailTemplateKey.TEST_MAIL,
+            Locale.GERMAN,
+            RECIPIENT,
+            Map.of());
+
+    assertThat(result.reasonOrNull())
+        .contains("535 5.7.8 kennung *** rejected")
+        .doesNotContain("geheim")
+        .doesNotContain("kw");
+  }
+
   @Test
   void shortensASingleRecipientForTheLogKeepingOnlyTheDomain() {
     assertThat(MailRecipients.shortened(RECIPIENT)).isEqualTo("e***@amt.example");
