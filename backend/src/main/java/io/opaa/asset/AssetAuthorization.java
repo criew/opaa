@@ -7,6 +7,7 @@ import io.opaa.common.NotFoundException;
 import io.opaa.permission.AccessPath;
 import io.opaa.permission.AssetAccessService;
 import io.opaa.permission.AssetType;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -103,6 +104,17 @@ public class AssetAuthorization {
       throw new AccessDeniedException("Kein Zugriff auf diese " + definition.singular());
     }
     return role;
+  }
+
+  /**
+   * Whether the person holds at least {@code role} on the asset until {@code until} ({@code null}:
+   * without end) - through one grant of the formula, or through the system administration, whose
+   * floor never ends. A recipient that reaches the person is given nothing beyond this.
+   */
+  public boolean holdsUntil(
+      Asset asset, UUID userId, boolean systemAdmin, AssetRole role, Instant until) {
+    return administers(asset, systemAdmin)
+        || accessService.holdsUntil(asset.getAssetType(), asset.getId(), userId, role, until);
   }
 
   public boolean canRead(Asset asset, UUID userId, boolean systemAdmin) {

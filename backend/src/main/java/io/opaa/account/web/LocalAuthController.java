@@ -140,7 +140,7 @@ public class LocalAuthController {
     if (cookie == null || cookie.isBlank()) {
       return sessionInvalid();
     }
-    RotationResult result = refreshTokens.rotate(cookie);
+    RotationResult result = refreshTokens.rotate(cookie, clientIpResolver.resolve(request));
     if (!(result instanceof RotationResult.Rotated rotated)) {
       return sessionInvalid();
     }

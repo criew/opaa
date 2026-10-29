@@ -99,7 +99,7 @@ class ChatSearchPrivacyIntegrationTest {
           .andExpect(jsonPath("$.hits.length()").value(1));
       mockMvc
           .perform(search("dev-admin", "{\"query\":\"" + term + "\"}"))
-          .andExpect(status().isForbidden());
+          .andExpect(status().isNotFound());
       mockMvc
           .perform(search("dev-user", "{\"query\":\"" + term + "\",\"page\":-1}"))
           .andExpect(status().isBadRequest());

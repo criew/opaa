@@ -9,7 +9,6 @@ import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
@@ -239,7 +238,7 @@ class ChatImportServiceIntegrationTest {
             "Chat", "Chat", List.of(turn("Frage", FIRST_ASKED, FIRST_ASKED.plusSeconds(5))));
 
     assertThatThrownBy(() -> chatImportService.importChat(spaceId, outsider, transcript))
-        .isInstanceOf(AccessDeniedException.class);
+        .isInstanceOf(NotFoundException.class);
 
     Space space = spaceRepository.findById(spaceId).orElseThrow();
     space.archive();
@@ -495,7 +494,7 @@ class ChatImportServiceIntegrationTest {
     UUID outsider = createUser();
 
     assertThatThrownBy(() -> chatImportService.listImportedChats(spaceId, outsider))
-        .isInstanceOf(AccessDeniedException.class);
+        .isInstanceOf(NotFoundException.class);
     assertThatThrownBy(() -> chatImportService.listImportedChats(UUID.randomUUID(), author))
         .isInstanceOf(NotFoundException.class);
   }

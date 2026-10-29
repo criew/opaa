@@ -62,6 +62,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: >
+            The target person cannot take over what the order moves: the scope includes ownership,
+            the source owns spaces, and the target account is not active (locked, expired or not
+            yet confirmed). A space is owned only by somebody who can answer for it.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/permission-transfers:
     post:
@@ -107,8 +116,9 @@ paths:
         "409":
           description: >
             No valid preview (code TRANSFER_PREVIEW_REQUIRED): none was taken for this caller and
-            this order, it has expired, or the state has changed since it was shown. Nothing was
-            transferred; the caller previews again.
+            this order, it has expired, or the state has changed since it was shown. Or the target
+            person cannot take over: the scope includes ownership, the source owns spaces, and the
+            target account is not active. Nothing was transferred.
           content:
             application/json:
               schema:

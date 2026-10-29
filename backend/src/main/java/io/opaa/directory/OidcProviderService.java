@@ -34,6 +34,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.directory.sync.connector.DirectoryConnectorService;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -126,6 +127,7 @@ public class OidcProviderService implements LocalAccountsSwitch {
   private final AuditEventRecorder auditEventRecorder;
   private final ApplicationEventPublisher eventPublisher;
   private final ProviderConnectionsImpact connectionsImpact;
+  private final DirectoryConnectorService directoryConnectors;
   private final RecentLoginPolicy recentLogin;
   private final Clock clock;
 
@@ -142,6 +144,7 @@ public class OidcProviderService implements LocalAccountsSwitch {
       AuditEventRecorder auditEventRecorder,
       ApplicationEventPublisher eventPublisher,
       ProviderConnectionsImpact connectionsImpact,
+      DirectoryConnectorService directoryConnectors,
       RecentLoginPolicy recentLogin,
       Clock clock) {
     this.repository = repository;
@@ -156,6 +159,7 @@ public class OidcProviderService implements LocalAccountsSwitch {
     this.auditEventRecorder = auditEventRecorder;
     this.eventPublisher = eventPublisher;
     this.connectionsImpact = connectionsImpact;
+    this.directoryConnectors = directoryConnectors;
     this.recentLogin = recentLogin;
     this.clock = clock;
   }
@@ -260,10 +264,11 @@ public class OidcProviderService implements LocalAccountsSwitch {
    * Entscheidung 2): the identity is {@code (issuer, subject)} and there is no merging, so every
    * account of the old issuer would silently become a new, empty account on its next sign-in. The
    * comparison is byte for byte, like the token check and {@code users.issuer}: a trailing slash
-   * added or removed is an issuer change too. For the LOCAL row only the name is editable. A change
-   * of anything that decides whose tokens are trusted or what they grant demands a recent sign-in
-   * (see {@link #trustSettingsOf}); only the display name and the display-name claim change without
-   * one.
+   * added or removed is an issuer change too. A directory access whose admin address the issuer
+   * derives does not follow a changed issuer with its secret. For the LOCAL row only the name is
+   * editable. A change of anything that decides whose tokens are trusted or what they grant demands
+   * a recent sign-in (see {@link #trustSettingsOf}); only the display name and the display-name
+   * claim change without one.
    */
   @Transactional
   public OidcProvider updateProvider(
@@ -305,6 +310,7 @@ public class OidcProviderService implements LocalAccountsSwitch {
       recentLogin.requireRecentLogin();
     }
     Map<String, Object> before = auditState(provider);
+    String previousIssuer = provider.getIssuerUri();
     provider.replaceDetails(
         draft.displayName(),
         draft.issuerUri(),
@@ -312,6 +318,10 @@ public class OidcProviderService implements LocalAccountsSwitch {
         draft.jwkSetUri(),
         draft.claimMapping());
     repository.save(provider);
+    if (!previousIssuer.equals(provider.getIssuerUri())) {
+      directoryConnectors.forgetDerivedAccessAfterIssuerChange(
+          organizationId, actorUserId, provider, previousIssuer);
+    }
     recordChange(
         organizationId,
         actorUserId,

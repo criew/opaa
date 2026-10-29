@@ -23,6 +23,7 @@ import io.opaa.permission.GroupAttribution;
 import io.opaa.permission.GroupMemberDisclosure;
 import io.opaa.permission.GroupMemberDisclosureDirectory;
 import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.permission.GroupStewardshipDirectory;
 import io.opaa.permission.GroupSubject;
 import io.opaa.permission.GroupSubjectDirectory;
 import io.opaa.permission.SuccessionReachGuard;
@@ -84,6 +85,12 @@ public class AssetGrantService {
    */
   private static final AssetRole HIGHEST_ROLE_FOR_ALL_ACCOUNTS = AssetRole.EDITOR;
 
+  /** Why a grant that reaches the caller stays within what the caller holds. */
+  static final String OWN_REACH_MESSAGE =
+      "Eine Berechtigung, die Sie selbst erreicht, reicht nicht weiter als Ihre eigene: Sie können"
+          + " sie verkürzen oder herabstufen, aber nicht verlängern, entfristen oder über eine"
+          + " Gruppe oder alle Konten dauerhaft behalten.";
+
   /** Why a deactivated group receives no new grant (ADR-0036, Entscheidung 14). */
   private static final String DEACTIVATED_GROUP_GRANT_MESSAGE =
       "Die Gruppe ist deaktiviert und wirkt für niemanden. Sie kann keine neuen Berechtigungen"
@@ -94,6 +101,7 @@ public class AssetGrantService {
   private final GroupSubjectDirectory groupDirectory;
   private final GroupMemberDisclosureDirectory disclosureDirectory;
   private final GroupMembershipResolver groupMemberships;
+  private final GroupStewardshipDirectory stewardships;
   private final AssetAuthorization authorization;
   private final AssetAccessService accessService;
   private final AssetTypes assetTypes;
@@ -109,6 +117,7 @@ public class AssetGrantService {
       GroupSubjectDirectory groupDirectory,
       GroupMemberDisclosureDirectory disclosureDirectory,
       GroupMembershipResolver groupMemberships,
+      GroupStewardshipDirectory stewardships,
       AssetAuthorization authorization,
       AssetAccessService accessService,
       AssetTypes assetTypes,
@@ -124,6 +133,7 @@ public class AssetGrantService {
     this.groupDirectory = groupDirectory;
     this.disclosureDirectory = disclosureDirectory;
     this.groupMemberships = groupMemberships;
+    this.stewardships = stewardships;
     this.authorization = authorization;
     this.accessService = accessService;
     this.assetTypes = assetTypes;
@@ -258,6 +268,7 @@ public class AssetGrantService {
     AssetGrant grant = existing.orElse(null);
     boolean isNewGrant = grant == null;
     requireReachNotFrozenIfWidening(asset, grant, request);
+    requireNoWideningOfOwnReach(asset, grant, request, caller);
     // The "before" half of an ASSET_GRANT_CHANGED entry, captured before updateRole mutates it.
     AssetRole previousRole = null;
     Instant previousExpiresAt = null;
@@ -353,6 +364,36 @@ public class AssetGrantService {
         asset.getAssetType(),
         asset.getId(),
         existing == null ? "Eine neue Berechtigung" : "Eine größere Berechtigung");
+  }
+
+  /**
+   * A grant that reaches the caller - their own, one to a group they belong to or steward, one to
+   * "Alle Konten" - never carries more than the caller holds anyway: a time-limited manager may
+   * shorten or downgrade it, but may neither lift its expiry nor keep the role through another
+   * recipient.
+   */
+  private void requireNoWideningOfOwnReach(
+      Asset asset, AssetGrant existing, AssetGrantUpsert request, CurrentUser caller) {
+    if (existing != null && !widensReach(existing, request.role(), request.expiresAt())) {
+      return;
+    }
+    if (!reachesCaller(request, caller)
+        || authorization.holdsUntil(
+            asset, caller.id(), caller.isSystemAdmin(), request.role(), request.expiresAt())) {
+      return;
+    }
+    throw new AccessDeniedException(OWN_REACH_MESSAGE);
+  }
+
+  private boolean reachesCaller(AssetGrantUpsert request, CurrentUser caller) {
+    return switch (request.subjectType()) {
+      case USER -> caller.id().equals(request.subjectId());
+      // a steward who is no member yet can join at any time: the group reaches them all the same
+      case GROUP ->
+          groupMemberships.groupIdsForUser(caller.id()).contains(request.subjectId())
+              || stewardships.isSteward(request.subjectId(), caller.id());
+      case ALL_ACCOUNTS -> true;
+    };
   }
 
   private static boolean widensReach(
