@@ -25,7 +25,7 @@ public final class HtmlContentRoots {
    * script/style/noscript sit in a content wrapper often enough that they cannot be treated the
    * same way as {@link #CONDITIONAL_BOILERPLATE_SELECTOR}.
    */
-  public static final String UNCONDITIONAL_BOILERPLATE_SELECTOR =
+  private static final String UNCONDITIONAL_BOILERPLATE_SELECTOR =
       "nav, aside, [role=navigation], [role=complementary], .nav, .navigation, .menu,"
           + " .breadcrumb, .sidebar, .cookie-banner, .cookie-consent, #cookie-banner,"
           + " #cookie-consent, script, style, noscript";
@@ -35,7 +35,7 @@ public final class HtmlContentRoots {
    * CMS article legitimately nests its own {@code <header>} or {@code <footer>}, and stripping
    * those would drop real content along with the page chrome.
    */
-  public static final String CONDITIONAL_BOILERPLATE_SELECTOR =
+  private static final String CONDITIONAL_BOILERPLATE_SELECTOR =
       "header, footer, [role=banner], [role=contentinfo]";
 
   /**
@@ -104,8 +104,8 @@ public final class HtmlContentRoots {
 
   /**
    * Detaches {@code elements} with one rebuild of each affected parent's child list, in time linear
-   * in the number of children touched: jsoup's single-node removal renumbers every later sibling,
-   * which makes removing many siblings one by one quadratic.
+   * in the number of children touched: jsoup's single-node removal shifts every later sibling in
+   * the parent's child list, which makes removing many siblings one by one quadratic.
    */
   private static void removeAll(List<Element> elements) {
     Set<Node> doomed = identitySetOf(elements);

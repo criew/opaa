@@ -115,7 +115,7 @@ class HtmlContentRootsTest {
 
   @Test
   void manyUnconditionalBoilerplateSiblingsAreRemovedInLinearTime() {
-    // regression guard for #3387: removing one sibling at a time renumbers all later siblings
+    // regression guard for #3387: removing one sibling at a time shifts all later siblings
     Document document =
         Jsoup.parse(
             "<html><body>" + "<nav>Menü</nav>".repeat(MANY_SIBLINGS) + "<p>Text</p></body></html>");
@@ -128,7 +128,7 @@ class HtmlContentRootsTest {
 
   @Test
   void manyFooterSiblingsUnderABodyWithoutMainContentAreRemovedInLinearTime() {
-    // regression guard for #3387: removing one sibling at a time renumbers all later siblings
+    // regression guard for #3387: removing one sibling at a time shifts all later siblings
     Document document =
         Jsoup.parse(
             "<html><body>"
@@ -143,7 +143,7 @@ class HtmlContentRootsTest {
 
   @Test
   void manyFooterSiblingsOutsideTheMainContentAreRemovedInLinearTime() {
-    // regression guard for #3387: removing one sibling at a time renumbers all later siblings
+    // regression guard for #3387: removing one sibling at a time shifts all later siblings
     Document document =
         Jsoup.parse(
             "<html><body><main><p>Text</p><footer>Autor</footer></main>"
@@ -161,13 +161,14 @@ class HtmlContentRootsTest {
     Document document =
         Jsoup.parse(
             "<html><body><p>Eins</p><nav>Menü</nav>Zwei<footer>Fuß</footer><div><p>Drei</p>"
-                + "<script>x()</script><footer>Innen</footer><p>Vier</p></div></body></html>");
+                + "<script>x()</script><footer>Innen</footer><p>Vier</p></div>"
+                + "<aside><nav>Unten</nav><p>Rand</p></aside><p>Fünf</p></body></html>");
 
     List<Element> roots = HtmlContentRoots.select(document);
 
     assertThat(roots).hasSize(1);
     assertThat(roots.getFirst().html())
-        .isEqualTo("<p>Eins</p>\nZwei\n<div>\n <p>Drei</p>\n <p>Vier</p>\n</div>");
+        .isEqualTo("<p>Eins</p>\nZwei\n<div>\n <p>Drei</p>\n <p>Vier</p>\n</div>\n<p>Fünf</p>");
   }
 
   /**
