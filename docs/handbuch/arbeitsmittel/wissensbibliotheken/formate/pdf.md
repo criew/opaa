@@ -112,8 +112,12 @@ PDF-Dokumentinfos sowie der erste Gliederungseintrag der obersten Ebene als erst
 | Text vorhanden, aber Zuschnitt ergibt nichts | abgewiesen, „kein extrahierbarer Text" |
 | Datei nicht lesbar oder beschädigt | fehlgeschlagen, „kein Inhalt" |
 
-Leere Seiten ohne Bild zählen nicht als eingescannt. Die Regel gilt für jede neue Indexierung; ein
-schon indiziertes PDF wird mit seiner nächsten Indexierung neu beurteilt.
+Leere Seiten ohne eigenes Bild zählen nicht als eingescannt. Auch eine Bilddokumentation oder ein
+Foliensatz mit überwiegend reinen Bildseiten wird so abgewiesen; ihr Text auf den übrigen Seiten ist
+dann nicht durchsuchbar. Formularfelder und Anmerkungen liest OPAA nicht (Abschnitt 7), ein
+ausgefülltes Formular über einem Scanbild zählt deshalb als eingescannt. Die Regel gilt, sobald ein
+PDF neu oder geändert indiziert wird oder die Bibliothek vollständig neu indiziert wird; ein
+unverändertes, schon indiziertes PDF behält bis dahin seinen bisherigen Stand.
 
 Ein PDF mit Textebene aus einer früheren OCR-Verarbeitung wird normal verarbeitet; die Qualität
 hängt dann von dieser Textebene ab.

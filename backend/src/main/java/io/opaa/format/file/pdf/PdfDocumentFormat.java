@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentInformation;
@@ -47,7 +48,8 @@ import org.springframework.ai.document.Document;
  * <p>Scan detection is answered from this pipeline's own extraction: a PDF whose text is entirely
  * blank is rejected as {@code NO_EXTRACTABLE_TEXT}, and so is one where more than half of the pages
  * carry an image but no text - a typed cover sheet in front of scanned pages. An empty page without
- * an image does not count as scanned.
+ * an image of its own does not count as scanned; text only in form fields or annotations is not
+ * extracted, so such a page over an image counts as scanned.
  */
 public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfContent> {
 
@@ -108,7 +110,7 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
       for (int i = 0; i < doc.getNumberOfPages(); i++) {
         String text = extractPageText(doc, i);
         pageTexts.add(text);
-        if (text.isBlank() && carriesImage(doc.getPage(i).getResources(), IMAGE_SEARCH_DEPTH)) {
+        if (text.isBlank() && carriesImage(ownResources(doc.getPage(i)), IMAGE_SEARCH_DEPTH)) {
           scannedPages++;
         }
       }
@@ -325,13 +327,30 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
     return DocumentFormatResult.chunked(chunks);
   }
 
-  /** Whether {@code resources} draw an image, directly or inside a form up to {@code depth} deep. */
-  private static boolean carriesImage(PDResources resources, int depth) throws IOException {
+  /**
+   * The resources the page itself names, not those inherited from the page tree: a logo shared by
+   * every page must not make an empty separator page count as scanned.
+   */
+  private static PDResources ownResources(PDPage page) {
+    COSDictionary own = page.getCOSObject().getCOSDictionary(COSName.RESOURCES);
+    return own == null ? null : new PDResources(own);
+  }
+
+  /**
+   * Whether {@code resources} name an image, directly or inside a form up to {@code depth} deep; an
+   * XObject that cannot be read counts as none, as it does for the text extraction.
+   */
+  private static boolean carriesImage(PDResources resources, int depth) {
     if (resources == null || depth == 0) {
       return false;
     }
     for (COSName name : resources.getXObjectNames()) {
-      PDXObject object = resources.getXObject(name);
+      PDXObject object;
+      try {
+        object = resources.getXObject(name);
+      } catch (IOException | RuntimeException e) {
+        continue;
+      }
       if (object instanceof PDImageXObject) {
         return true;
       }
@@ -341,6 +360,7 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
     }
     return false;
   }
+
   /**
    * @param startPageIndex inclusive, 0-based. @param endPageIndexExclusive exclusive, 0-based.
    */

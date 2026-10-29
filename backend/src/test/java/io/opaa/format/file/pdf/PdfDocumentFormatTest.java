@@ -21,14 +21,16 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Set;
 import java.util.TimeZone;
+import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
-import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
-import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPageXYZDestination;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocumentOutline;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem;
@@ -309,6 +311,27 @@ class PdfDocumentFormatTest {
 
     DocumentFormatResult result =
         pipeline.run(DocumentFormatSource.ofFile(file, "formular.pdf", ".pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+  }
+
+  @Test
+  void anImageInheritedFromThePageTreeDoesNotMakeEmptyPagesScanned() throws IOException {
+    Path file = tempDir.resolve("mit-logo.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      addPage(doc, "Antrag auf Erstattung.");
+      doc.addPage(new PDPage(PDRectangle.A4));
+      doc.addPage(new PDPage(PDRectangle.A4));
+      PDResources shared = new PDResources();
+      shared.add(
+          LosslessFactory.createFromImage(
+              doc, new BufferedImage(20, 20, BufferedImage.TYPE_INT_RGB)));
+      doc.getPages().getCOSObject().setItem(COSName.RESOURCES, shared);
+      doc.save(file.toFile());
+    }
+
+    DocumentFormatResult result =
+        pipeline.run(DocumentFormatSource.ofFile(file, "mit-logo.pdf", ".pdf"));
 
     assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
   }
