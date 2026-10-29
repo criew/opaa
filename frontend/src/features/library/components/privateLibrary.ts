@@ -29,4 +29,5 @@ export const LIBRARY_QUOTA_EXHAUSTED_REMEDY =
   'Dateien, die nicht mehr passten, hat der Lauf übersprungen. ' +
   'Platz schaffen Sie, indem Sie Dateien in der Quelle löschen oder die Quelle eingrenzen. ' +
   'Jeder weitere Lauf versucht die übersprungenen Dateien erneut und nimmt sie auf, sobald ' +
-  'Platz ist. Sonst hilft ein höheres Kontingent je Bibliothek – das legt der Betrieb fest.'
+  'Platz ist. Sonst hilft ein höheres Kontingent je Bibliothek – das legt die Systemverwaltung ' +
+  'fest, höchstens bis zur Obergrenze des Betriebs.'

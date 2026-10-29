@@ -3,6 +3,7 @@ export { default as DocumentTextPreviewDialog } from './components/DocumentTextP
 export { default as PdfPreviewDialog } from './components/PdfPreviewDialog'
 export { default as FullSyncRhythmSection } from './components/FullSyncRhythmSection'
 export { default as PrivateStorageSection } from './components/PrivateStorageSection'
+export { default as SharedLibraryQuotaSection } from './components/SharedLibraryQuotaSection'
 export { useDocumentPreview, type OpenableDocument } from './hooks/useDocumentPreview'
 export { useDocumentStore } from './stores/documentStore'
 export { useIndexingStore } from './stores/indexingStore'

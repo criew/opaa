@@ -25,31 +25,9 @@ import {
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { formatFileSize } from '@/shared/utils/labels'
+import { limitDraft, parseLimit } from '../utils/storageLimit'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
-
-const BYTES_PER_GB = 1024 * 1024 * 1024
-
-const MIN_LIMIT_BYTES = 1024 * 1024
-
-/**
- * A typed limit in GB, with comma or point as decimal separator. A positive value below 1 MB or
- * beyond the safe integer range is refused, so „unbegrenzt" (0) only ever comes from its box.
- */
-function parseLimit(draft: string): { bytes: number; error: string | null } {
-  const text = draft.trim()
-  if (!/^\d+([.,]\d+)?$/.test(text)) {
-    return { bytes: 0, error: 'Bitte eine Zahl größer als 0 eingeben.' }
-  }
-  const gigabytes = Number(text.replace(',', '.'))
-  if (gigabytes <= 0) return { bytes: 0, error: 'Bitte eine Zahl größer als 0 eingeben.' }
-  const bytes = Math.round(gigabytes * BYTES_PER_GB)
-  if (bytes < MIN_LIMIT_BYTES) {
-    return { bytes: 0, error: 'Die Grenze muss mindestens 1 MB betragen.' }
-  }
-  if (!Number.isSafeInteger(bytes)) return { bytes: 0, error: 'Diese Grenze ist zu groß.' }
-  return { bytes, error: null }
-}
 
 /** A size in words; 0 is unlimited. */
 function sizeOrUnlimited(bytes: number): string {
@@ -103,14 +81,7 @@ function QuotaForm({
   onSaved: (saved: PrivateStorageQuotaResponse) => void
 }) {
   const [unlimited, setUnlimited] = useState(current.quotaBytes === 0)
-  const [draft, setDraft] = useState(
-    current.quotaBytes === 0
-      ? ''
-      : (current.quotaBytes / BYTES_PER_GB).toLocaleString('de-DE', {
-          maximumFractionDigits: 6,
-          useGrouping: false,
-        }),
-  )
+  const [draft, setDraft] = useState(current.quotaBytes === 0 ? '' : limitDraft(current.quotaBytes))
   const [busy, setBusy] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
