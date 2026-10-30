@@ -3,9 +3,9 @@ import { randomBytes } from 'node:crypto'
 import { PDFDocument, StandardFonts } from 'pdf-lib'
 import { expect, test } from '../fixtures/auth'
 import {
-  DEV_USER_HEADER,
   cleanupLibraries,
   libraryIdFromCurrentUrl,
+  uploadTextDocument,
 } from '../fixtures/libraries'
 import type { Page } from '@playwright/test'
 import { createFromReview, indexedDocumentStates, openNewLibraryWizard } from '../fixtures/chat'
@@ -23,7 +23,6 @@ import { createFromReview, indexedDocumentStates, openNewLibraryWizard } from '.
 // (fixtures/libraries.ts, cleanupLibraries) - kein anderes Szenario der Suite sieht ihre
 // admin-lesbaren Wegwerfdokumente also über das eigene test.describe-Ende hinaus.
 const runId = Date.now()
-
 
 /**
  * Builds a real, parseable PDF of roughly 2 MB, entirely in memory - not one of the suite's
@@ -110,24 +109,17 @@ function uint32BE(value: number): Buffer {
  * Uploads `count` tiny, distinct, real text documents into `libraryId` directly via the documents
  * API (not the drag-and-drop widget) - the same "viele kleine Dokumente per API anlegen" shortcut
  * the issue itself suggests for reaching a second page of results without paying for dozens of UI
- * uploads. Mirrors rss-feed-library.spec.ts's fetchLibraryDocumentFileNames in using
- * page.request directly with the dev-admin header, and LibraryDocumentService#uploadDocument's
- * "file" multipart field name (frontend/src/features/library/api/libraryApi.ts's uploadDocument).
+ * uploads. Each upload waits out a 429 of the per-account upload limit (see uploadTextDocument).
  */
 async function uploadFillerDocuments(page: Page, libraryId: string, count: number) {
   for (let i = 1; i <= count; i++) {
     const name = `E2E-Fuelldokument-${runId}-${String(i).padStart(2, '0')}.txt`
-    const response = await page.request.post(`/api/v1/libraries/${libraryId}/documents`, {
-      headers: { [DEV_USER_HEADER]: 'dev-admin' },
-      multipart: {
-        file: {
-          name,
-          mimeType: 'text/plain',
-          buffer: Buffer.from(`Inhalt des Fuelldokuments Nr. ${i} fuer Issue #547.`, 'utf-8'),
-        },
-      },
-    })
-    expect(response.ok()).toBe(true)
+    await uploadTextDocument(
+      page.request,
+      libraryId,
+      name,
+      `Inhalt des Fuelldokuments Nr. ${i} fuer Issue #547.`,
+    )
   }
 }
 
@@ -261,6 +253,8 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
   test('Mehrseitige Liste laesst sich blaettern und durchsuchen', async ({
     authenticatedPage: page,
   }) => {
+    // 22 uploads beyond the per-account share of the upload pool wait out its 429s.
+    test.setTimeout(120_000)
     const libraryName = `E2E Paging-Bibliothek ${runId}`
     const searchTargetName = `suchtreffer-${runId}.txt`
 
@@ -277,20 +271,12 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
     // than a single page holds, so the list is provably on more than one page (#517 acceptance
     // criteria: "mehr als eine Seite Dokumenten").
     await uploadFillerDocuments(page, libraryId, PAGE_SIZE + 1)
-    const searchTargetResponse = await page.request.post(
-      `/api/v1/libraries/${libraryId}/documents`,
-      {
-        headers: { [DEV_USER_HEADER]: 'dev-admin' },
-        multipart: {
-          file: {
-            name: searchTargetName,
-            mimeType: 'text/plain',
-            buffer: Buffer.from('Eindeutiger Suchtreffer fuer Issue #547.', 'utf-8'),
-          },
-        },
-      },
+    await uploadTextDocument(
+      page.request,
+      libraryId,
+      searchTargetName,
+      'Eindeutiger Suchtreffer fuer Issue #547.',
     )
-    expect(searchTargetResponse.ok()).toBe(true)
 
     await page.reload()
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
