@@ -100,10 +100,25 @@ public class S3AccessException extends IOException {
     }
   }
 
-  /** No current object under the key - the positive finding a deletion needs (Entscheidung 3). */
+  /**
+   * No current object under the key - the positive finding a deletion needs (Entscheidung 3).
+   * {@link #confirmed()} only when the store named {@code NoSuchKey} in a body; a HEAD answer has
+   * none, and a bare {@code 404} may come from a proxy or ingress in front of the store.
+   */
   public static final class ObjectNotFound extends S3AccessException {
+    private final boolean confirmed;
+
     public ObjectNotFound(String bucket, String key) {
+      this(bucket, key, true);
+    }
+
+    public ObjectNotFound(String bucket, String key, boolean confirmed) {
       super("Das Objekt „" + bucket + "/" + key + "“ existiert nicht.");
+      this.confirmed = confirmed;
+    }
+
+    public boolean confirmed() {
+      return confirmed;
     }
   }
 
