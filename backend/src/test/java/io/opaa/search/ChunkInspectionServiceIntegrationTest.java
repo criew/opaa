@@ -232,8 +232,9 @@ class ChunkInspectionServiceIntegrationTest {
   void requireReadableTextAnswersLikeTheOriginalsDownload() {
     CurrentUser reader =
         CurrentUser.of(userId, DEFAULT_ORGANIZATION_ID, SystemRole.USER, "Leser", "l@b.de");
+    // without a role the library stays invisible, as on the original's download
     assertThatThrownBy(() -> service.requireReadableText(reader, documentId))
-        .isInstanceOf(AccessDeniedException.class);
+        .isInstanceOf(NotFoundException.class);
     assertThatThrownBy(() -> service.requireReadableText(reader, foreignDocumentId))
         .isInstanceOf(NotFoundException.class);
 
