@@ -47,6 +47,11 @@ class MailSettingsRulesTest {
             "Die Absenderadresse muss eine E-Mail-Adresse sein, zum Beispiel opaa@example.org");
     assertThat(MailSettingsRules.isMailAddress("it@stadt.example")).isTrue();
     assertThat(MailSettingsRules.isMailAddress("it@stadt")).isFalse();
+    assertThat(MailSettingsRules.isMailAddress("it@s.t")).isTrue();
+    assertThat(MailSettingsRules.isMailAddress("it@.stadt.example")).isTrue();
+    assertThat(MailSettingsRules.isMailAddress("it@.stadt")).isFalse();
+    assertThat(MailSettingsRules.isMailAddress("it@stadt.")).isFalse();
+    assertThat(MailSettingsRules.isMailAddress("it@a@stadt.example")).isFalse();
     assertThat(MailSettingsRules.isMailAddress(null)).isFalse();
   }
 

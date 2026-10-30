@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -41,10 +42,11 @@ public final class MailSettingsRules {
 
   /**
    * Deliberately permissive - the mail server is the authority on what it accepts - but one mailbox
-   * only: no list separator ({@code , ;}), no display-name syntax ({@code < > "}).
+   * only: no list separator ({@code , ;}), no display-name syntax ({@code < > "}). The domain
+   * (group 1) needs a dot after its first and before its last character, checked in {@link
+   * #isMailAddress} so the match stays linear.
    */
-  private static final Pattern MAIL_ADDRESS =
-      Pattern.compile("^[^\\s@,;<>\"]+@[^\\s@,;<>\"]+\\.[^\\s@,;<>\"]+$");
+  private static final Pattern MAIL_ADDRESS = Pattern.compile("[^\\s@,;<>\"]++@([^\\s@,;<>\"]++)");
 
   private MailSettingsRules() {}
 
@@ -92,13 +94,19 @@ public final class MailSettingsRules {
 
   /**
    * Whether {@code address} has the form of a mail address, by the rule of the sender address. An
-   * address over {@link #MAX_FROM_ADDRESS_LENGTH} is none, checked before the pattern, whose dot
-   * split backtracks quadratically on long input.
+   * address over {@link #MAX_FROM_ADDRESS_LENGTH} is none.
    */
   public static boolean isMailAddress(String address) {
-    return address != null
-        && address.length() <= MAX_FROM_ADDRESS_LENGTH
-        && MAIL_ADDRESS.matcher(address).matches();
+    if (address == null || address.length() > MAX_FROM_ADDRESS_LENGTH) {
+      return false;
+    }
+    Matcher matcher = MAIL_ADDRESS.matcher(address);
+    if (!matcher.matches()) {
+      return false;
+    }
+    String domain = matcher.group(1);
+    int dot = domain.indexOf('.', 1);
+    return dot > 0 && dot < domain.length() - 1;
   }
 
   /**
