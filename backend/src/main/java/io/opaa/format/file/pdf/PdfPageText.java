@@ -264,7 +264,7 @@ final class PdfPageText {
 
     @Override
     protected void processTextPosition(TextPosition text) {
-      budget.requireRoomFor(++glyphs);
+      budget.requireRoomForPageGlyphs(++glyphs);
       super.processTextPosition(text);
     }
 

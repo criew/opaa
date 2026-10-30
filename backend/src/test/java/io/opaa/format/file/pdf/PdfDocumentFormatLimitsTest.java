@@ -40,7 +40,8 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * A crafted PDF costs bounded time and memory: an outline whose {@code /Next} or {@code /First}
  * points back to an item already seen ends its walk, and text multiplied by drawing one form over
- * and over stops at {@link ParserLimitProperties#maxTextCharacters()}.
+ * and over stops at {@link ParserLimitProperties#maxTextCharacters()} and at {@link
+ * PdfReadBudget#MAX_PAGE_GLYPHS} per page.
  */
 class PdfDocumentFormatLimitsTest {
 
@@ -158,6 +159,33 @@ class PdfDocumentFormatLimitsTest {
 
     DocumentFormatResult result =
         DocumentFormatRunner.run(limited, DocumentFormatSource.ofFile(file, "fanout-small.pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+  }
+
+  /**
+   * One 1 000-character form drawn on one page past {@link PdfReadBudget#MAX_PAGE_GLYPHS} times a
+   * thousand fails long before the document's character limit, which it stays far below.
+   */
+  @Test
+  void aPageYieldingMoreGlyphsThanThePageLimitFails() throws IOException {
+    Path file = tempDir.resolve("fanout-page.pdf");
+    writeFormFanout(file, (int) (PdfReadBudget.MAX_PAGE_GLYPHS / 1_000) + 1);
+
+    DocumentFormatResult result =
+        DocumentFormatRunner.run(pipeline, DocumentFormatSource.ofFile(file, "fanout-page.pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
+  }
+
+  @Test
+  void aPageJustBelowThePageGlyphLimitIsRead() throws IOException {
+    Path file = tempDir.resolve("fanout-page-small.pdf");
+    writeFormFanout(file, (int) (PdfReadBudget.MAX_PAGE_GLYPHS / 1_000) - 1);
+
+    DocumentFormatResult result =
+        DocumentFormatRunner.run(
+            pipeline, DocumentFormatSource.ofFile(file, "fanout-page-small.pdf"));
 
     assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
   }
