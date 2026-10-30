@@ -69,7 +69,7 @@ jobs:
           # container, which holds the token: "wrapper" for wrapper updates, and for every Gradle
           # update "--write-verification-metadata sha256 dependencies" with the new versions, so
           # the code of an updated plugin runs here. Only for versions past minimumReleaseAge;
-          # wrapper and plugin updates never merge automatically (renovate.json5).
+          # wrapper updates never merge automatically (renovate.json5).
           docker run --rm \
             -e RENOVATE_TOKEN \
             -e RENOVATE_PLATFORM=github \
