@@ -8,6 +8,7 @@ import { createAppTheme } from '@/shared/theme/theme'
 import { server } from '@/test/server'
 import ChatPage from './ChatPage'
 import { useChatStore } from '../stores/chatStore'
+import { ARRIVAL_FOCUS_ATTRIBUTE } from '@/shared/ui/a11y/routeFocus'
 
 // Deliberately does NOT mock react-router (unlike ChatPage.test.tsx): these cases need an actual
 // route match, so that navigate(..., { replace: true }) genuinely
@@ -229,7 +230,7 @@ describe('ChatPage routing (real router)', () => {
     await waitFor(() => expect(useChatStore.getState().chatId).toBe('chat-personal-2'))
     expect(screen.getByPlaceholderText(/^Nachricht eingeben …/)).not.toHaveFocus()
     expect(
-      screen.getByPlaceholderText(/^Nachricht eingeben …/).hasAttribute('data-arrival-focus'),
+      screen.getByPlaceholderText(/^Nachricht eingeben …/).hasAttribute(ARRIVAL_FOCUS_ATTRIBUTE),
     ).toBe(false)
   })
 
