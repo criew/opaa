@@ -108,3 +108,7 @@ export function passageRange(root: Node, anchor: ChunkAnchor | null | undefined)
   range.setEnd(last.node, endOffset)
   return range
 }
+
+/** Shown by the previews when a citation opens a document without a stored anchor. */
+export const NO_ANCHOR_NOTICE =
+  'Für diesen Beleg ist keine Fundstelle gespeichert – das Dokument öffnet am Anfang.'

@@ -477,7 +477,16 @@ async function runStack(variantArgs = [], variantEnv = {}) {
       : isInstallation
         ? // ai-stub is the chat model the assistant's check calls, mailpit its mail server.
           ['ai-stub', 'mailpit', 'postgres', 'backend', 'frontend']
-        : ['ai-stub', 'rss-feed', 'nextcloud', 'dropbox-stub', 'postgres', 'backend', 'frontend']
+        : [
+            'ai-stub',
+            'rss-feed',
+            'nextcloud',
+            'dropbox-stub',
+            'clamd-stub',
+            'postgres',
+            'backend',
+            'frontend',
+          ]
   console.log(
     `> Starting ${target} stack (${services.join(', ')}) as Compose project "${composeProjectName}"` +
       ` on ports ${dbPort}/${backendPort}/${frontendPort}` +

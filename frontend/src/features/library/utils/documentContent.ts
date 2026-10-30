@@ -115,6 +115,7 @@ export interface PdfPreviewResult {
   kind: 'pdf-preview'
   fileName: string
   blob: Blob
+  /** As {@link TextPreviewResult.anchor}: `null` is a citation without a stored anchor. */
   anchor?: ChunkAnchor | null
   /** SHA-256 of the original as indexed when the citation was made. */
   contentSha256?: string | null
@@ -129,7 +130,8 @@ export interface TextPreviewResult {
   content: string
   /** The original as fetched, so the dialog's download hands out its exact bytes. */
   blob: Blob
-  /** Where the cited passage sits - the preview scrolls there and marks it. */
+  /** Where the cited passage sits - the preview scrolls there and marks it. `null` is a citation
+   *  without a stored anchor and makes the preview say so; `undefined` means no citation at all. */
   anchor?: ChunkAnchor | null
 }
 

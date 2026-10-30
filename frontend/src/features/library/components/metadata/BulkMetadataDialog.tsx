@@ -14,9 +14,14 @@ import Typography from '@mui/material/Typography'
 import type {
   BulkMetadataValueResponse,
   DocumentTypeVocabularyEntryResponse,
+  LibraryMetadataFieldResponse,
   MetadataValueRequest,
 } from '@/shared/api/types'
-import { bulkSetDocumentMetadata, getDocumentTypeVocabulary } from '../../api/libraryMetadataApi'
+import {
+  bulkSetDocumentMetadata,
+  getDocumentTypeVocabulary,
+  listLibraryMetadataFields,
+} from '../../api/libraryMetadataApi'
 import MetadataValueForm from './MetadataValueForm'
 import {
   CORE_METADATA_FIELDS,
@@ -54,6 +59,7 @@ export default function BulkMetadataDialog({
   const [fieldKey, setFieldKey] = useState('document_type')
   const [value, setValue] = useState<MetadataValueRequest>({})
   const [vocabulary, setVocabulary] = useState<DocumentTypeVocabularyEntryResponse[]>([])
+  const [libraryFields, setLibraryFields] = useState<LibraryMetadataFieldResponse[]>([])
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<BulkMetadataValueResponse | null>(null)
@@ -75,10 +81,20 @@ export default function BulkMetadataDialog({
           )
         }
       })
+    // The library's own fields are offered after the core fields; one being deleted takes no
+    // new values. Without them the dialog still serves the core fields.
+    listLibraryMetadataFields(libraryId)
+      .then((response) => {
+        if (!cancelled) setLibraryFields(response.items.filter((item) => !item.deletionPending))
+      })
+      .catch(() => {})
     return () => {
       cancelled = true
     }
-  }, [open])
+  }, [open, libraryId])
+
+  const libraryField = libraryFields.find((item) => item.documentFieldKey === fieldKey) ?? null
+  const fieldLabel = libraryField?.label ?? coreMetadataFieldLabel(fieldKey)
 
   function handleClose() {
     if (submitting) return
@@ -92,7 +108,7 @@ export default function BulkMetadataDialog({
     try {
       const response = await bulkSetDocumentMetadata(libraryId, {
         fieldKey,
-        value: metadataValueRequestFor(fieldKey, value),
+        value: metadataValueRequestFor(fieldKey, value, libraryField),
         documentIds,
       })
       setResult(response)
@@ -106,7 +122,7 @@ export default function BulkMetadataDialog({
     }
   }
 
-  const complete = isMetadataValueComplete(fieldKey, value)
+  const complete = isMetadataValueComplete(fieldKey, value, libraryField)
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
@@ -134,6 +150,11 @@ export default function BulkMetadataDialog({
                       {field.label}
                     </MenuItem>
                   ))}
+                  {libraryFields.map((field) => (
+                    <MenuItem key={field.documentFieldKey} value={field.documentFieldKey}>
+                      {field.label}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
               <MetadataValueForm
@@ -141,6 +162,7 @@ export default function BulkMetadataDialog({
                 value={value}
                 onChange={setValue}
                 vocabulary={vocabulary}
+                libraryField={libraryField}
               />
               <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                 Der Wert wird für jedes ausgewählte Dokument als „manuell" gesetzt und ersetzt dort
@@ -150,9 +172,8 @@ export default function BulkMetadataDialog({
           )}
           {step === 'confirm' && (
             <Typography>
-              {coreMetadataFieldLabel(fieldKey)} = „
-              {describeMetadataValue(fieldKey, value, vocabulary)}" für{' '}
-              {documentCountLabel(documentIds.length)} setzen?
+              {fieldLabel} = „{describeMetadataValue(fieldKey, value, vocabulary, libraryField)}"
+              für {documentCountLabel(documentIds.length)} setzen?
             </Typography>
           )}
           {step === 'result' && result && (

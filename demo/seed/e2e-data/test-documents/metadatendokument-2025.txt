@@ -1,0 +1,4 @@
+Satzung ueber die Gebuehren der Stadtbibliothek, Fassung 2025.
+
+Die Jahresgebuehr fuer einen Leseausweis betraegt fuenfzehn Euro. Diese Fassung dient dem
+E2E-Szenario zum Metadatenfilter als Dokument, das der Filter ausschliesst.

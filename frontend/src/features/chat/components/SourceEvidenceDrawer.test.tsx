@@ -602,6 +602,25 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
       expect(screen.getByText(/Ausgestellt am 1\. März\./)).toBeInTheDocument()
     })
 
+    it('says in the preview when the cited passage has no stored anchor', async () => {
+      mockOpenDocumentContent.mockResolvedValueOnce({
+        kind: 'text-preview',
+        fileName: 'doc.pdf',
+        contentType: 'text/markdown',
+        content: 'Ein Absatz.',
+        blob: new Blob(['Ein Absatz.'], { type: 'text/markdown' }),
+      })
+      const { user, drawer } = await openDrawerWith(
+        source('doc.pdf', true, 0.9, true, { documentId: 'doc-1', sourceType: 'UPLOAD' }),
+      )
+
+      await user.click(within(drawer).getByRole('button', { name: 'Dokument öffnen' }))
+
+      expect(
+        await screen.findByText(/Für diesen Beleg ist keine Fundstelle gespeichert/),
+      ).toBeInTheDocument()
+    })
+
     // Every format without a preview or Textfassung must give visible
     // download feedback so the click never appears to do nothing.
     it('shows a snackbar with the file name when a download starts (#780)', async () => {
