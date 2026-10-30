@@ -142,6 +142,45 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
     return translator.call(op, bucket, key, action);
   }
 
+  /**
+   * {@code action} on one object, where a {@code 404} counts as {@link
+   * S3AccessException.ObjectNotFound} only once a listing confirms the key is gone: a HEAD answer
+   * has no body, and a bare {@code 404} may come from a proxy or ingress in front of the store. A
+   * key the listing still names, or a listing that fails, is reported as another failure.
+   */
+  private <T> T confirmingAbsence(S3Operation op, String bucket, String key, Callable<T> action)
+      throws S3AccessException, InterruptedException {
+    try {
+      return call(op, bucket, key, action);
+    } catch (S3AccessException.ObjectNotFound notFound) {
+      boolean listed =
+          call(
+              S3Operation.LIST_OBJECTS,
+              bucket,
+              null,
+              () ->
+                  s3
+                      .listObjectsV2(
+                          ListObjectsV2Request.builder()
+                              .bucket(bucket)
+                              .prefix(key)
+                              .maxKeys(1)
+                              .build())
+                      .contents()
+                      .stream()
+                      .anyMatch(object -> key.equals(object.key())));
+      if (listed) {
+        throw new S3AccessException(
+            "Der Objektspeicher meldet das Objekt „"
+                + bucket
+                + "/"
+                + key
+                + "“ als nicht vorhanden (HTTP 404), die Auflistung nennt es aber noch.");
+      }
+      throw notFound;
+    }
+  }
+
   @Override
   public S3ListPage listObjects(S3Scope scope, String continuationToken)
       throws S3AccessException, InterruptedException {
@@ -182,7 +221,7 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
   @Override
   public S3ObjectHead headObject(String bucket, String key)
       throws S3AccessException, InterruptedException {
-    return call(
+    return confirmingAbsence(
         S3Operation.HEAD_OBJECT,
         bucket,
         key,
@@ -210,7 +249,7 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
   @Override
   public S3Download getObject(String bucket, String key, long maxBytes)
       throws S3AccessException, InterruptedException {
-    return call(
+    return confirmingAbsence(
         S3Operation.GET_OBJECT,
         bucket,
         key,
