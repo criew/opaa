@@ -54,8 +54,8 @@ Merge.
 | Compose-Vorgaben | ein Port über Loopback hinaus, anonyme Systemverwaltung, ein festes Geheimnis in den Vorlagen | `check_compose_defaults.sh` |
 | Rechte-Matrix | eine API-Operation ohne Eintrag oder eine Rolle, die mehr darf als eingetragen, auch mit fremden IDs | `PermissionMatrixTest`, `PermissionMatrixIntegrationTest`, [backend/AGENTS.md](../backend/AGENTS.md#rechte-matrix) |
 | Anonyme Pfade | eine Operation, die ohne Anmeldung antwortet und nicht in der Allowlist steht; fehlende Security-Header | `AnonymousSurfaceTest`, `AnonymousSurfaceIntegrationTest`, `backend/src/test/resources/security/anonymous-allowlist.yaml` |
-| Architekturtests | Verstöße gegen Modulgrenzen und Sicherheitsinvarianten: eine Verbindung nach außen an der Zielprüfung vorbei, ein Geheimnis außerhalb der Bausteine „Geheimnis folgt Ziel“ entschlüsselt, ein Controller-Handler ohne Rechteprüfung | `SecurityInvariantsTest` und weitere ArchUnit-Tests unter `backend/src/test/java/io/opaa/architecture/` und in den Modulen, [build-und-ci.md](entwicklung/build-und-ci.md#sicherheitsinvarianten-als-architekturtests) |
-| Feindliche Eingaben | präparierte Dateien, die Parser erschöpfen; Ziele in gesperrten Adressbereichen für alle Konnektoren mit ausgehender Verbindung; Geheimnisse und Eingaben im Log | [regressionssuite-eingaben.md](entwicklung/regressionssuite-eingaben.md) |
+| Architekturtests | Verstöße gegen Modulgrenzen und Sicherheitsinvarianten, etwa eine eigene Namensauflösung oder eine Verbindung nach außen an der Zielprüfung vorbei, ein Geheimnis außerhalb der Bausteine „Geheimnis folgt Ziel“ entschlüsselt, ein Controller-Handler ohne Rechteprüfung | `SecurityInvariantsTest` und weitere ArchUnit-Tests unter `backend/src/test/java/io/opaa/architecture/` und in den Modulen, [build-und-ci.md](entwicklung/build-und-ci.md#sicherheitsinvarianten-als-architekturtests) |
+| Feindliche Eingaben | präparierte Dateien, die Parser erschöpfen; Ziele in gesperrten Adressbereichen für alle Konnektoren mit ausgehender Verbindung; gefälschte Logeinträge aus Anfragewerten | [regressionssuite-eingaben.md](entwicklung/regressionssuite-eingaben.md) |
 
 CI-Prüfungen mit Pfadfilter laufen im PR nur, wenn er die betroffenen Dateien berührt, die
 Backend-Tests also nur bei Backend-Änderungen; auf `main` läuft nach jedem Merge alles.
@@ -73,7 +73,8 @@ Betriebssystempaketen der Basis-Images. Er ist kein PR-Gate; die Befunde werden 
 
 Der [ZAP-Baseline-Scan](entwicklung/zap-baseline.md) startet einen Stack aus dem Commit wie eine
 Installation und prüft passiv und ohne Anmeldung, was die laufende Anwendung preisgibt:
-Sicherheits-Header, Cookies, Inhaltstypen. Neue Warnungen machen den Lauf rot.
+Sicherheits-Header, Cookies, Inhaltstypen. Neue Warnungen machen den Lauf rot; auf `main` öffnet
+ein roter Lauf ein Alarm-Issue.
 
 Das [Parser-Fuzzing](entwicklung/build-und-ci.md#parser-fuzzing) schickt zehn Minuten lang
 mutierte Dateien über den Produktionsweg der zugelassenen Formate. Ein Speicher- oder
@@ -123,6 +124,8 @@ Release gilt für alle Befunde, auch die eigener Audits, der vertrauliche
 Security Advisory.
 
 ## Geplant
+
+Beschlossen, aber noch nicht gebaut:
 
 - ein Abhängigkeits-Gate, das auch transitive npm- und Gradle-Abhängigkeiten sieht (#3427)
 
