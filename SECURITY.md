@@ -14,7 +14,7 @@
 > backported and its patch releases are tagged. Fixed vulnerabilities are published as
 > GitHub Security Advisories, with a CVE where applicable. Reports may be written in English or
 > German. How the project reviews its own code for vulnerabilities (review of every pull request
-> except automatically merged minor and patch dependency updates from Renovate, automated CI checks,
+> except automatically merged minor, patch, pin and digest dependency updates from Renovate, automated CI checks,
 > a weekly delta review and a deep audit twice a year) is described in
 > [docs/security-pruefung.md](docs/security-pruefung.md) (German). There has been no external audit
 > or penetration test so far.
@@ -102,8 +102,9 @@ Sicherheitslücken. Rhythmus und Einzelheiten stehen in
   Review-Rolle geprüft (KI-Agent unter Aufsicht des Maintainers), bei sicherheitsrelevanten
   Änderungen mit einer Sicherheits-Checkliste für Endpunkte, Rechteprüfungen, ausgehende
   Verbindungen, gespeicherte Geheimnisse, Parser, Anmeldung, Workflows und Abhängigkeiten.
-  **Ausnahme:** Minor- und Patch-Updates von Abhängigkeiten durch Renovate mergen nach einer
-  Wartefrist und grüner CI automatisch, ohne Review. Major-Updates und Sicherheits-PRs mergen nie
+  **Ausnahme:** Minor-, Patch-, Pin- und Digest-Updates von Abhängigkeiten durch Renovate (auch
+  Action-SHAs und Image-Digests) mergen nach einer Wartefrist und grünen Pflicht-Checks
+  automatisch, ohne Review. Major-Updates und Sicherheits-PRs mergen nie
   automatisch ([docs/renovate.md](docs/renovate.md)).
 - **Automatische Prüfungen in Pull Requests:** statische Code-Analyse mit CodeQL, ein
   Abhängigkeits-Gate gegen bekannte kritische Schwachstellen, Härtungs- und Pin-Prüfung der

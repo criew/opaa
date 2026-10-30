@@ -22,7 +22,7 @@ ganze Fehlerklassen und macht aus seinen Funden neue Tests.
 
 ## Bei jedem Pull Request
 
-**Review.** Jeder PR außer den automatisch gemergten Renovate-Updates (Ausnahme unten) durchläuft
+**Review.** Jeder PR von Menschen und Agenten (zu Renovate siehe die Ausnahme unten) durchläuft
 vor dem Merge das Review der Rolle
 [Code-Reviewer](../agents/roles/code-reviewer.md), getrennt vom Autor
 ([Workflow, Schritt 5](AGENT-ORGANIZATION.md#workflow-von-der-idee-bis-zum-merge)). Berührt der PR
@@ -30,12 +30,14 @@ einen Endpunkt, eine Rechteprüfung, eine ausgehende Verbindung, gespeicherte Ge
 Parser oder ein Dateiformat, Anmeldung und Session, einen Workflow oder eine Abhängigkeit, arbeitet
 der Reviewer die [Sicherheits-Checkliste](../agents/roles/code-reviewer.md#sicherheits-checkliste)
 ab und setzt das Label `security-relevant`. Gemergt wird von einem Maintainer oder mit seiner
-ausdrücklichen Freigabe.
+ausdrücklichen Freigabe. Renovate-PRs ohne Auto-Merge entscheidet der Maintainer vor dem Merge.
 
-**Ausnahme Renovate:** Minor- und Patch-Updates von Abhängigkeiten mergt Renovate nach einer
-Wartefrist und grüner CI automatisch, ohne Review und ohne Maintainer. Major-Updates,
+**Ausnahme Renovate:** Minor-, Patch-, Pin- und Digest-Updates von Abhängigkeiten (auch
+Action-SHAs und Image-Digests) mergt Renovate nach einer Wartefrist und grünen Pflicht-Checks
+automatisch, ohne Review und ohne Maintainer. Major-Updates,
 Sicherheits-PRs und einzelne Gruppen mergen nie automatisch
-([renovate.md](renovate.md#sicherheits-prs-und-lockfile-pflege), Regeln in `renovate.json5`).
+([renovate.md](renovate.md#was-renovate-hier-aktualisiert),
+[Sicherheits-PRs](renovate.md#sicherheits-prs-und-lockfile-pflege), Regeln in `renovate.json5`).
 Für die automatisch gemergten Updates sind die CI-Prüfungen unten die einzige Schranke vor dem
 Merge.
 
