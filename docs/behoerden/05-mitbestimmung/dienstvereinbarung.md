@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-24
+stand: 2026-10-29
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-24
@@ -166,7 +166,10 @@ Zwecken: [Sicherheitsvorfall; Verdacht auf unbefugten Zugriff; Untersuchung eine
 Datenschutzverletzung; externe Prüfung oder Kontrolle]. Ausgeschlossen sind arbeitsrechtliche,
 disziplinarische und leistungsbezogene Zwecke, auch bei gemischten Sachverhalten.
 
-(2) Person, Zeitraum und Zweck werden vorab festgelegt; eine zweite Person der Revision gibt frei.
+(2) Person, Zeitraum und Zweck werden vorab festgelegt; der Zeitraum liegt in der Vergangenheit und
+umfasst höchstens [92] Tage, was OPAA technisch durchsetzt
+({{faktenblatt:voreinstellungen#opaa-audit-incident-scope-max-days}}). Eine zweite Person der
+Revision gibt frei. Antrag und Freigabe stehen im Protokoll.
 
 (3) Der Personalrat [wird vor der Freigabe unterrichtet / benennt ein Mitglied, das vor der Freigabe
 gehört wird]. [Er kann binnen [zwei] Arbeitstagen widersprechen; der Widerspruch schiebt die

@@ -128,18 +128,10 @@ mit). Ausgenommen sind nur Quellen- und Javadoc-JARs, die allein die IDE lädt
   `./gradlew --write-verification-metadata sha256 dependencies` mit den neuen Versionen aus
   (dieselbe Erlaubnis `gradleWrapper` in `renovate.yml`) und committet die neuen Einträge im
   Update-Branch. Veraltete Einträge entfernt Renovate nicht.
-- **Plugin-Updates warten länger und mergen nie automatisch.** Der Aufruf konfiguriert den Build,
-  führt also den Code eines angehobenen Gradle-Plugins im Renovate-Container aus, der das Token
-  hält. Für die `[plugins]`-Einträge in `libs.versions.toml` (`depType` `plugin`) gelten deshalb
-  14 Tage Wartefrist und kein Auto-Merge. Dieselben Werte gelten für Bibliotheken, die eine
-  `version.ref` mit einem Plugin teilen (`spring-boot-dependencies` hebt Renovate zusammen mit
-  dem Spring-Boot-Plugin an) oder auf dem Buildscript-Classpath liegen (die Jackson-BOMs im
-  `buildscript`-Block). Die Regel nennt Koordinaten, keine Katalog-Einträge: Mit
-  `com.fasterxml.jackson:jackson-bom` wartet deshalb auch der Projekt-Override `jackson2-bom`
-  14 Tage und mergt nicht automatisch. Alle übrigen Bibliotheken bleiben bei drei Tagen und Auto-Merge; Gradle
-  lädt sie bei `dependencies` nur herunter, ohne ihren Code auszuführen. Frist und Auto-Merge
-  stehen in zwei benachbarten Regeln in `renovate.json5`; `test_renovate_gradle_plugins.py`
-  schlägt fehl, sobald eine solche Bibliothek in der zweiten Regel fehlt.
+- **Plugin-Updates laufen wie Bibliotheken.** Der Aufruf konfiguriert den Build, führt also den
+  Code eines angehobenen Gradle-Plugins im Renovate-Container aus, der das Token hält. Dieses
+  Risiko ist bewusst in Kauf genommen: Plugins kommen wie Bibliotheken nach drei Tagen Wartefrist
+  und mergen wie diese automatisch (Majors ausgenommen).
 - **Nach einem Plugin-Update die Portal-Fassungen ergänzen.** Renovate löst Plugins über das
   Portal auf und schreibt nur dessen Fassung. Fehlt die Central-Fassung eines neuen Markers,
   scheitert jede Umgebung mit Central-Spiegel. Vor dem Merge deshalb

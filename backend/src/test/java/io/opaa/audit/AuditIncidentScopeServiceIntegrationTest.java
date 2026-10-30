@@ -71,9 +71,9 @@ class AuditIncidentScopeServiceIntegrationTest {
   // audit_log is partitioned by month with a fixed horizon around the moment the
   // migration ran - a hardcoded historical date can fall outside it and make the recorded_at
   // UPDATE in writeAuditEntryForActor fail with "no partition of relation found for row", so this
-  // anchors to "now" instead.
-  private final Instant scopeStart = Instant.now().truncatedTo(ChronoUnit.SECONDS);
-  private final Instant scopeEnd = scopeStart.plus(27, ChronoUnit.DAYS);
+  // anchors to "now" instead. A Klärung looks back only, so its range ends now at the latest.
+  private final Instant scopeEnd = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+  private final Instant scopeStart = scopeEnd.minus(27, ChronoUnit.DAYS);
 
   @BeforeEach
   void setUp() {
@@ -552,6 +552,89 @@ class AuditIncidentScopeServiceIntegrationTest {
         .hasMessageContaining("gelöscht");
     assertThat(grantRepository.findById(grant.getId()).orElseThrow().getStatus())
         .isEqualTo(AuditIncidentScopeStatus.PENDING);
+  }
+
+  /**
+   * Regression guard for #3352: request and approval stand in the audit log itself, in the
+   * transaction of the grant, so the checksum chain secures who asked and who approved. The entries
+   * name the grant, not the person: neither subject nor payload carries her.
+   */
+  @Test
+  void requestAndApprovalStandInTheAuditLogAgainstTheGrant() {
+    AuditIncidentScopeGrant grant =
+        incidentScopeService.request(
+            organizationId,
+            requester,
+            subject,
+            scopeStart,
+            scopeEnd,
+            AuditIncidentScopePurpose.SECURITY_INCIDENT,
+            REASON);
+    incidentScopeService.approve(organizationId, grant.getId(), approver);
+
+    List<Map<String, Object>> rows =
+        jdbcTemplate.queryForList(
+            "SELECT event_type, actor_ref, object_type, object_id, subject_kind, subject_ref,"
+                + " after::text AS after, reason FROM audit_log"
+                + " WHERE organization_id = ? AND event_type LIKE 'INCIDENT_SCOPE_%'"
+                + " ORDER BY event_type DESC",
+            organizationId);
+
+    assertThat(rows)
+        .extracting(row -> row.get("event_type"))
+        .containsExactly("INCIDENT_SCOPE_REQUESTED", "INCIDENT_SCOPE_APPROVED");
+    assertThat(rows.get(0).get("actor_ref"))
+        .isEqualTo(pseudonymService.findExistingPseudonym(requester).orElseThrow().toString());
+    assertThat(rows.get(1).get("actor_ref"))
+        .isEqualTo(pseudonymService.findExistingPseudonym(approver).orElseThrow().toString());
+    for (Map<String, Object> row : rows) {
+      assertThat(row.get("object_type")).isEqualTo("AUDIT_LOG");
+      assertThat(row.get("object_id")).isEqualTo(grant.getId().toString());
+      assertThat(row.get("subject_kind")).isNull();
+      assertThat(row.get("subject_ref")).isNull();
+      assertThat(row.get("reason")).isNull();
+      assertThat((String) row.get("after"))
+          .contains("SECURITY_INCIDENT")
+          .contains(scopeStart.toString())
+          .doesNotContain(subject.toString());
+    }
+    assertThat(pseudonymService.findExistingPseudonym(subject)).isEmpty();
+  }
+
+  /** Regression guard for #3352: a Klärung looks back, it does not watch a person from now on. */
+  @Test
+  void aRangeEndingInTheFutureIsRejectedAndLeavesNothing() {
+    assertThatThrownBy(
+            () ->
+                incidentScopeService.request(
+                    organizationId,
+                    requester,
+                    subject,
+                    scopeStart,
+                    Instant.now(clock).plus(1, ChronoUnit.DAYS),
+                    AuditIncidentScopePurpose.SECURITY_INCIDENT,
+                    REASON))
+        .isInstanceOf(ValidationException.class);
+    assertThatThrownBy(
+            () ->
+                incidentScopeService.request(
+                    organizationId,
+                    requester,
+                    subject,
+                    scopeEnd.minus(93, ChronoUnit.DAYS),
+                    scopeEnd,
+                    AuditIncidentScopePurpose.SECURITY_INCIDENT,
+                    REASON))
+        .isInstanceOf(ValidationException.class);
+
+    assertThat(grantRepository.findAll())
+        .noneMatch(grant -> organizationId.equals(grant.getOrganizationId()));
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM audit_log WHERE organization_id = ?",
+                Integer.class,
+                organizationId))
+        .isZero();
   }
 
   @Test

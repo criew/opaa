@@ -4,10 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.dto.ConnectionLogActorKind;
 import io.opaa.api.dto.ConnectionLogEntryResponse;
 import io.opaa.api.types.ConnectionEndCause;
 import io.opaa.api.types.ConnectionLogEventType;
 import io.opaa.api.types.ConnectionLogOwnerKind;
+import io.opaa.connection.log.ConnectionLogActor;
 import io.opaa.connection.log.ConnectionLogEntry;
 import io.opaa.connection.log.ConnectionLogRetentionSettings;
 import java.time.Instant;
@@ -28,9 +30,8 @@ class ConnectionLogResponseMapperTest {
     when(entry.getRecordedAt()).thenReturn(recordedAt);
     when(entry.getOrganizationId()).thenReturn(organizationId);
     when(entry.getEventType()).thenReturn(ConnectionLogEventType.EMERGENCY_DISCONNECTED);
-    when(entry.getActorRef()).thenReturn("actor");
+    when(entry.getActorRef()).thenReturn("pseud-actor");
     when(entry.getOwnerKind()).thenReturn(ConnectionLogOwnerKind.LIBRARY);
-    when(entry.getPersonRef()).thenReturn("person");
     when(entry.getLibraryId()).thenReturn(libraryId);
     when(entry.getAccountLabel()).thenReturn("svc-opaa@rathaus.de");
     when(entry.getProfileId()).thenReturn(profileId);
@@ -43,14 +44,33 @@ class ConnectionLogResponseMapperTest {
     assertThat(response.getRecordedAt()).isEqualTo(recordedAt);
     assertThat(response.getOrganizationId()).isEqualTo(organizationId);
     assertThat(response.getEventType()).isEqualTo(ConnectionLogEventType.EMERGENCY_DISCONNECTED);
-    assertThat(response.getActorRef()).isEqualTo("actor");
+    assertThat(response.getActor()).isEqualTo(ConnectionLogActorKind.PERSON);
     assertThat(response.getOwnerKind()).isEqualTo(ConnectionLogOwnerKind.LIBRARY);
-    assertThat(response.getPersonRef()).isEqualTo("person");
     assertThat(response.getLibraryId()).isEqualTo(libraryId);
     assertThat(response.getAccountLabel()).isEqualTo("svc-opaa@rathaus.de");
     assertThat(response.getProfileId()).isEqualTo(profileId);
     assertThat(response.getProfileName()).isEqualTo("Nextcloud Rathaus");
     assertThat(response.getCause()).isEqualTo(ConnectionEndCause.EMERGENCY);
+  }
+
+  /**
+   * Regression guard for #3352: an entry names no person - only whether a person or the system
+   * acted - so neither stored pseudonym can be joined with another answer or the audit log.
+   */
+  @Test
+  void namesNoPersonOnlyTheKindOfActor() {
+    ConnectionLogEntry byPerson = mock(ConnectionLogEntry.class);
+    when(byPerson.getActorRef()).thenReturn("pseud-actor");
+    when(byPerson.getPersonRef()).thenReturn("pseud-owner");
+    ConnectionLogEntry bySystem = mock(ConnectionLogEntry.class);
+    when(bySystem.getActorRef()).thenReturn(ConnectionLogActor.SYSTEM_LABEL);
+
+    ConnectionLogEntryResponse person = ConnectionLogResponseMapper.toResponse(byPerson);
+
+    assertThat(person.getActor()).isEqualTo(ConnectionLogActorKind.PERSON);
+    assertThat(person.toString()).doesNotContain("pseud-actor").doesNotContain("pseud-owner");
+    assertThat(ConnectionLogResponseMapper.toResponse(bySystem).getActor())
+        .isEqualTo(ConnectionLogActorKind.SYSTEM);
   }
 
   @Test

@@ -57,8 +57,8 @@ class AuditIncidentScopeRetentionServiceIntegrationTest {
   private UUID approver;
   private UUID subject;
   private final List<UUID> createdUserIds = new ArrayList<>();
-  private final Instant scopeStart = Instant.now().truncatedTo(ChronoUnit.SECONDS);
-  private final Instant scopeEnd = scopeStart.plus(7, ChronoUnit.DAYS);
+  private final Instant scopeEnd = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+  private final Instant scopeStart = scopeEnd.minus(7, ChronoUnit.DAYS);
 
   @BeforeEach
   void setUp() {
@@ -73,6 +73,7 @@ class AuditIncidentScopeRetentionServiceIntegrationTest {
 
   @AfterEach
   void tearDown() {
+    jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     jdbcTemplate.update(
         "DELETE FROM audit_incident_scope_grants WHERE organization_id = ?", organizationId);
     jdbcTemplate.update(

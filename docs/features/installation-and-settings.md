@@ -497,6 +497,7 @@ der Quellen).
 
 | Variable | Property bzw. Ort |
 |---|---|
+| `OPAA_AUDIT_INCIDENT_SCOPE_MAX_DAYS` | `opaa.audit.incident-scope.max-days` |
 | `OPAA_AUTH_LOCAL_ACCESS_TOKEN_TTL` | `opaa.auth.local.access-token-ttl` |
 | `OPAA_AUTH_LOCAL_ADMIN_REFRESH_TOKEN_TTL` | `opaa.auth.local.admin-refresh-token-ttl` |
 | `OPAA_AUTH_LOCAL_ADMIN_SESSION_MAX_LIFETIME` | `opaa.auth.local.admin-session-max-lifetime` |

@@ -797,7 +797,7 @@ class LocalUserAdminIntegrationTest {
         assertThat(users.findById(account.id())).isPresent();
       }
     } finally {
-      incidentScopeGrants.deleteById(grant.getId());
+      deleteIncidentScope(grant);
     }
   }
 
@@ -818,7 +818,7 @@ class LocalUserAdminIntegrationTest {
         assertThat(users.findById(account.id())).isPresent();
       }
     } finally {
-      incidentScopeGrants.deleteById(grant.getId());
+      deleteIncidentScope(grant);
     }
   }
 
@@ -852,7 +852,7 @@ class LocalUserAdminIntegrationTest {
             .isZero();
       }
     } finally {
-      incidentScopeGrants.deleteById(grant.getId());
+      deleteIncidentScope(grant);
     }
   }
 
@@ -888,9 +888,17 @@ class LocalUserAdminIntegrationTest {
       assertThat(pseudonyms).doesNotContainNull().doesNotHaveDuplicates();
       assertThat(kept.getReason()).isEqualTo("Verdacht auf unbefugten Zugriff");
     } finally {
-      incidentScopeGrants.deleteById(grant.getId());
+      deleteIncidentScope(grant);
       pseudonyms.stream().filter(Objects::nonNull).forEach(fixtures::deleteAuditRowsNaming);
     }
+  }
+
+  /** The grant and the audit entries of its request and approval, which name it as object. */
+  private void deleteIncidentScope(AuditIncidentScopeGrant grant) {
+    jdbc.update(
+        "DELETE FROM audit_log WHERE object_type = 'AUDIT_LOG' AND object_id = ?",
+        grant.getId().toString());
+    incidentScopeGrants.deleteById(grant.getId());
   }
 
   private AuditIncidentScopeGrant requestIncidentScope(LocalAccount named, LocalAccount requester) {

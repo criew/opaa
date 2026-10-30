@@ -21,12 +21,11 @@ import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.CapabilityGrant;
 import io.opaa.permission.CapabilityGrantRepository;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.PreparedStatementCount;
 import jakarta.persistence.EntityManagerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import org.hibernate.SessionFactory;
-import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -210,27 +209,24 @@ class GroupEffectsServiceIntegrationTest {
     grantRepository.save(grantFor(one, UUID.randomUUID()));
     grantRepository.save(grantFor(two, UUID.randomUUID()));
 
-    Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
-    boolean previouslyEnabled = statistics.isStatisticsEnabled();
-    statistics.setStatisticsEnabled(true);
-    try {
-      statistics.clear();
-      groupEffectsService.listEffects(admin, null, List.of());
-      long withTwoGroups = statistics.getPrepareStatementCount();
+    long withTwoGroups =
+        PreparedStatementCount.of(
+            entityManagerFactory,
+            () -> {},
+            () -> groupEffectsService.listEffects(admin, null, List.of()));
 
-      UUID three = createGroup("Referat 62", admin);
-      grantRepository.save(grantFor(three, UUID.randomUUID()));
-      capabilityGrantRepository.save(
-          CapabilityGrant.forGroup(organizationId, Capability.CREATE_SPACE, three, admin.id()));
+    UUID three = createGroup("Referat 62", admin);
+    grantRepository.save(grantFor(three, UUID.randomUUID()));
+    capabilityGrantRepository.save(
+        CapabilityGrant.forGroup(organizationId, Capability.CREATE_SPACE, three, admin.id()));
 
-      statistics.clear();
-      groupEffectsService.listEffects(admin, null, List.of());
-      long withThreeGroups = statistics.getPrepareStatementCount();
+    long withThreeGroups =
+        PreparedStatementCount.of(
+            entityManagerFactory,
+            () -> {},
+            () -> groupEffectsService.listEffects(admin, null, List.of()));
 
-      assertThat(withThreeGroups).isEqualTo(withTwoGroups);
-    } finally {
-      statistics.setStatisticsEnabled(previouslyEnabled);
-    }
+    assertThat(withThreeGroups).isEqualTo(withTwoGroups);
   }
 
   /**

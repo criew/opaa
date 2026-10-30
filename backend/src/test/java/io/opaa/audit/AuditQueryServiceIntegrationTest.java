@@ -764,8 +764,8 @@ class AuditQueryServiceIntegrationTest {
             organizationId,
             auditorId,
             regularUserId,
-            base.minus(1, ChronoUnit.DAYS),
-            base.plus(1, ChronoUnit.DAYS),
+            base.minus(2, ChronoUnit.DAYS),
+            base,
             AuditIncidentScopePurpose.SECURITY_INCIDENT,
             "Cross-cutting #394 Testaufbau");
     UUID otherAuditorId = createUser(SystemRole.AUDITOR);
@@ -820,7 +820,7 @@ class AuditQueryServiceIntegrationTest {
                 REASON,
                 grant.getId(),
                 base.minus(1, ChronoUnit.DAYS),
-                base.plus(1, ChronoUnit.DAYS),
+                base,
                 0,
                 50)
       };
@@ -872,7 +872,7 @@ class AuditQueryServiceIntegrationTest {
                 REASON,
                 grant.getId(),
                 base.minus(1, ChronoUnit.DAYS),
-                base.plus(1, ChronoUnit.DAYS),
+                base,
                 0,
                 50)
       };
