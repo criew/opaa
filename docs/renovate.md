@@ -130,8 +130,8 @@ mit). Ausgenommen sind nur Quellen- und Javadoc-JARs, die allein die IDE lädt
   Update-Branch. Veraltete Einträge entfernt Renovate nicht.
 - **Plugin-Updates laufen wie Bibliotheken.** Der Aufruf konfiguriert den Build, führt also den
   Code eines angehobenen Gradle-Plugins im Renovate-Container aus, der das Token hält. Dieses
-  Risiko ist bewusst in Kauf genommen (Entscheidung des Maintainers vom 30.10.2026): Plugins und
-  Bibliotheken kommen gleich nach drei Tagen Wartefrist und mergen automatisch.
+  Risiko ist bewusst in Kauf genommen: Plugins kommen wie Bibliotheken nach drei Tagen Wartefrist
+  und mergen wie diese automatisch (Majors ausgenommen).
 - **Nach einem Plugin-Update die Portal-Fassungen ergänzen.** Renovate löst Plugins über das
   Portal auf und schreibt nur dessen Fassung. Fehlt die Central-Fassung eines neuen Markers,
   scheitert jede Umgebung mit Central-Spiegel. Vor dem Merge deshalb
