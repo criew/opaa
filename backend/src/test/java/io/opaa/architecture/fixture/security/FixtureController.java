@@ -8,7 +8,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** One handler without a check, two with one; abstract, so no test context registers it. */
+/**
+ * Two handlers without a check - one has none, one lets everyone in - and two with one; abstract,
+ * so no test context registers it.
+ */
 @RestController
 @RequestMapping("/fixture/items")
 public abstract class FixtureController {
@@ -21,6 +24,12 @@ public abstract class FixtureController {
   @GetMapping
   public String own(@Caller CurrentUser caller) {
     return caller.displayName();
+  }
+
+  @GetMapping("/public")
+  @PreAuthorize("permitAll()")
+  public String everyone() {
+    return "";
   }
 
   @PostMapping
