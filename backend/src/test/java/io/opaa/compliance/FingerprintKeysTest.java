@@ -67,6 +67,8 @@ class FingerprintKeysTest {
             "opaa.auth.local.jwt-secret",
             "opaa.security.credentials.encryption-key",
             "opaa.security.settings.encryption-key",
+            "opaa.security.credentials.previous-keys",
+            "opaa.security.settings.previous-keys",
             "spring.ai.vectorstore.pgvector.distance-type",
             "opaa.indexing.chunk-size",
             "opaa.indexing.chunk-overlap",
@@ -94,6 +96,8 @@ class FingerprintKeysTest {
     assertThat(FINGERPRINT.get("opaa.auth.local.jwt-secret").secret()).isTrue();
     assertThat(FINGERPRINT.get("opaa.security.credentials.encryption-key").secret()).isTrue();
     assertThat(FINGERPRINT.get("opaa.security.settings.encryption-key").secret()).isTrue();
+    assertThat(FINGERPRINT.get("opaa.security.credentials.previous-keys").secret()).isTrue();
+    assertThat(FINGERPRINT.get("opaa.security.settings.previous-keys").secret()).isTrue();
     assertThat(FINGERPRINT.get("opaa.database.schema").secret()).isFalse();
   }
 

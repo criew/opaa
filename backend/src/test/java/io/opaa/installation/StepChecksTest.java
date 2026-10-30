@@ -19,6 +19,7 @@ import io.opaa.llm.ModelAddressPolicy;
 import io.opaa.llm.ModelRoleAdministration;
 import io.opaa.mail.MailConnectionTester;
 import io.opaa.mail.MailSettingsSnapshot;
+import io.opaa.security.CipherFormatGate;
 import io.opaa.security.PasswordEncoderConfiguration;
 import io.opaa.security.SettingsEncryptionProperties;
 import io.opaa.security.SettingsEncryptor;
@@ -37,7 +38,9 @@ class StepChecksTest {
   private final JsonMapper json = JsonMapper.builder().build();
   private final SettingsEncryptor encryptor =
       new SettingsEncryptor(
-          new SettingsEncryptionProperties("c2V0dGluZ3NkZXZrZXkwMHNldHRpbmdzZGV2a2V5MDE="));
+          new SettingsEncryptionProperties(
+              "c2V0dGluZ3NkZXZrZXkwMHNldHRpbmdzZGV2a2V5MDE=", List.of()),
+          CipherFormatGate.KEYED);
   private final ModelAddressPolicy strict = ModelAddressPolicy.allowing(List.of());
   private final StepRules rules =
       new StepRules(
@@ -119,7 +122,10 @@ class StepChecksTest {
 
     StepChecks.Outcome outcome =
         checks.check(
-            InstallationStep.MAIL, payload, encryptor.encrypt("geheim"), "it@stadt.example");
+            InstallationStep.MAIL,
+            payload,
+            encryptor.encrypt("geheim", InstallationEncryptedColumns.of(InstallationStep.MAIL)),
+            "it@stadt.example");
 
     assertThat(outcome.succeeded()).isTrue();
     ArgumentCaptor<MailSettingsSnapshot> settings =
@@ -189,7 +195,12 @@ class StepChecksTest {
             new StepRules.RerankModelPayload("http://reranker:80", "bge-reranker"));
 
     StepChecks.Outcome outcome =
-        permissive.check(InstallationStep.RERANK_MODEL, payload, encryptor.encrypt("geheim"), null);
+        permissive.check(
+            InstallationStep.RERANK_MODEL,
+            payload,
+            encryptor.encrypt(
+                "geheim", InstallationEncryptedColumns.of(InstallationStep.RERANK_MODEL)),
+            null);
 
     assertThat(outcome.succeeded()).isFalse();
     assertThat(outcome.message()).isEqualTo("HTTP 401");
@@ -270,7 +281,11 @@ class StepChecksTest {
 
     StepChecks.Outcome outcome =
         open.check(
-            InstallationStep.TRANSCRIPTION_MODEL, payload, encryptor.encrypt("sk-stt"), null);
+            InstallationStep.TRANSCRIPTION_MODEL,
+            payload,
+            encryptor.encrypt(
+                "sk-stt", InstallationEncryptedColumns.of(InstallationStep.TRANSCRIPTION_MODEL)),
+            null);
 
     assertThat(outcome.succeeded()).isTrue();
     assertThat(outcome.message())

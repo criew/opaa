@@ -11,6 +11,7 @@ import com.icegreen.greenmail.util.GreenMail;
 import com.icegreen.greenmail.util.ServerSetup;
 import io.opaa.mail.MailSettingsService;
 import io.opaa.mail.MailTestSupport;
+import io.opaa.security.EncryptedColumn;
 import io.opaa.security.SettingsEncryptor;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaLocalAuthLinkTest;
@@ -140,7 +141,10 @@ class InstallationMailStepIntegrationTest {
     assertThat(stored.get("username")).isEqualTo(SMTP_USER);
     assertThat(stored.get("encryption")).isEqualTo("NONE");
     assertThat(stored.get("from_address")).isEqualTo("opaa@stadt.example");
-    assertThat(encryptor.decrypt((String) stored.get("password_ciphertext")))
+    assertThat(
+            encryptor.decrypt(
+                (String) stored.get("password_ciphertext"),
+                EncryptedColumn.settings("mail_settings", "password_ciphertext").row(1)))
         .isEqualTo(SMTP_PASSWORD);
     assertThat(mailSettings.snapshot().sendable()).isTrue();
     assertThat(auditTypes()).contains("MAIL_SETTINGS_CHANGED");

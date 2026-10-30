@@ -187,7 +187,9 @@ public class ConnectionAuthorizationService {
     String verifier = randomToken();
     Instant now = clock.instant();
     Instant expiresAt = now.plus(LIFETIME);
-    String verifierCiphertext = encryptor.encrypt(verifier);
+    UUID authorizationId = UUID.randomUUID();
+    String verifierCiphertext =
+        encryptor.encrypt(verifier, ConnectionAuthorization.CODE_VERIFIER.row(authorizationId));
     transactions.executeWithoutResult(
         status -> {
           authorizations.lockStartsOf(caller.id());
@@ -195,6 +197,7 @@ public class ConnectionAuthorizationService {
           requireBudget(caller, now);
           ConnectionAuthorization authorization =
               new ConnectionAuthorization(
+                  authorizationId,
                   hash(state),
                   caller.id(),
                   profileId,
@@ -515,7 +518,9 @@ public class ConnectionAuthorizationService {
 
   private String verifierOf(ConnectionAuthorization authorization) {
     try {
-      return encryptor.decrypt(authorization.getCodeVerifierCiphertext());
+      return encryptor.decrypt(
+          authorization.getCodeVerifierCiphertext(),
+          ConnectionAuthorization.CODE_VERIFIER.row(authorization.getId()));
     } catch (CredentialsEncryptionKeyMissingException e) {
       throw new ValidationException(
           "Die Anmeldung beim Anbieter lässt sich nicht mehr abschließen. Bitte verbinden Sie"

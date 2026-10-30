@@ -724,8 +724,9 @@ ohne Punkt 7 nicht mehr von anderen Rechnern:
    oder `OPAA_SETTINGS_ENCRYPTION_KEY` ein Schlüssel des Profils `dev`, der Wertesätze der CI oder aus
    früheren Fassungen einer `e2e/*.env`, bricht der Start im Modus `oidc` ab, ebenso mit einem
    `OPAA_AUTH_JWT_SECRET` aus einer solchen Datei. Einen eigenen Schlüssel erzeugen
-   (`openssl rand -base64 32`) und die damit geschützten Werte danach neu eintragen: Zugangsdaten der
-   Quellen und Zugänge, Schlüssel der Chat-Modelle, das Passwort des Mailservers; ein neues
+   (`openssl rand -base64 32`) und den bisherigen in `OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS` bzw.
+   `OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS` eintragen; OPAA verschlüsselt die gespeicherten Werte dann
+   selbst neu ([Schlüsselwechsel](netz-und-sicherheit.md#schlüsselwechsel)). Ein neues
    Signaturgeheimnis (`openssl rand -base64 48`) beendet alle lokalen Sitzungen
    ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#schlüssel-und-geheimnisse)).
 

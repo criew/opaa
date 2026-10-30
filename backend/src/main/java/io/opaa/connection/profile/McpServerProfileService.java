@@ -103,11 +103,15 @@ public class McpServerProfileService {
   public ConnectionProfile create(CurrentUser caller, Values values, String secret) {
     Checked checked = check(caller, values, null);
     McpServerDiscovery.Metadata metadata = discovery.discover(checked.serverUrl());
-    String ciphertext = blankToNull(secret) == null ? null : encryptor.encrypt(secret.strip());
     return transactions.execute(
         status -> {
           requireUniqueName(checked.name(), null);
           ConnectionProfile profile = ConnectionProfile.mcpServer(clock.instant());
+          String ciphertext =
+              blankToNull(secret) == null
+                  ? null
+                  : encryptor.encrypt(
+                      secret.strip(), ConnectionProfile.CLIENT_SECRET.row(profile.getId()));
           apply(profile, checked, metadata, ciphertext);
           profiles.save(profile);
           profileService.record(
@@ -132,7 +136,9 @@ public class McpServerProfileService {
     Checked checked = check(caller, values, current.getId());
     McpServerDiscovery.Metadata metadata = discovery.discover(checked.serverUrl());
     String newCiphertext =
-        secret == null || blankToNull(secret) == null ? null : encryptor.encrypt(secret.strip());
+        secret == null || blankToNull(secret) == null
+            ? null
+            : encryptor.encrypt(secret.strip(), ConnectionProfile.CLIENT_SECRET.row(id));
     return transactions.execute(
         status -> {
           profiles.lockForChange(id);

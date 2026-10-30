@@ -214,7 +214,11 @@ public class ConnectionProfileService {
     requireSecretFits(validated.authMethod(), keyed.secret());
     Instant now = clock.instant();
     ConnectionProfile profile = new ConnectionProfile(sourceType, now);
-    profile.replace(validated, encryptor.encrypt(blankToNull(keyed.secret())), now);
+    profile.replace(
+        validated,
+        encryptor.encrypt(
+            blankToNull(keyed.secret()), ConnectionProfile.CLIENT_SECRET.row(profile.getId())),
+        now);
     profiles.save(profile);
     record(
         caller,
@@ -314,7 +318,7 @@ public class ConnectionProfileService {
       ciphertext =
           keyChangesMeaning(profile, validated) ? null : profile.getClientSecretCiphertext();
     } else {
-      ciphertext = encryptor.encrypt(newSecret);
+      ciphertext = encryptor.encrypt(newSecret, ConnectionProfile.CLIENT_SECRET.row(id));
     }
     requireSecretFollows(profile, validated, secret);
     if (!confirmed) {

@@ -46,11 +46,15 @@ class PreviousEmbeddingModel {
 
   protected PreviousEmbeddingModel() {}
 
-  PreviousEmbeddingModel(EmbeddingModelSettings model) {
+  /**
+   * The values of {@code model}, its key as {@code apiKeyCiphertext} already encrypted for this
+   * table's row.
+   */
+  PreviousEmbeddingModel(EmbeddingModelSettings model, String apiKeyCiphertext) {
     this.id = EmbeddingModelSettings.SINGLETON_ID;
     this.baseUrl = model.getBaseUrl();
     this.modelIdentifier = model.getModelIdentifier();
-    this.apiKeyCiphertext = model.getApiKeyCiphertext();
+    this.apiKeyCiphertext = apiKeyCiphertext;
     this.maxInputTokens = model.getMaxInputTokens();
     this.dimensions = model.getDimensions();
     this.installedAt = model.getInstalledAt();

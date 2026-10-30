@@ -302,7 +302,7 @@ class S3LibraryConfigurationIntegrationTest {
                 String.class,
                 libraryId))
         .as("encrypted at rest like the credentials")
-        .startsWith("enc:v1:")
+        .startsWith("enc:v2:")
         .doesNotContain(first);
     assertThat(libraryService.getLibrary(libraryId, caller).managementDetail().pushSecretSet())
         .isTrue();

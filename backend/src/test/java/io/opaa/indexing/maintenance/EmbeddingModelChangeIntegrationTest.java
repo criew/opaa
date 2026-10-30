@@ -39,6 +39,9 @@ import io.opaa.organization.Organization;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.retrieval.search.VectorChunkSearch;
+import io.opaa.security.CipherFormatGate;
+import io.opaa.security.EncryptedColumn;
+import io.opaa.security.SettingsEncryptionProperties;
 import io.opaa.security.SettingsEncryptor;
 import io.opaa.test.FakeEmbeddingProbe;
 import io.opaa.test.OpaaPropertyVariantIntegrationTest;
@@ -53,6 +56,7 @@ import java.sql.Connection;
 import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -625,6 +629,70 @@ class EmbeddingModelChangeIntegrationTest {
                     .containsExactly("embeddingModel.apiKey"));
   }
 
+  /**
+   * A stored key in the bound format that no key of the ring reads is dropped rather than moved,
+   * both into the previous model on a change and back on a discard: at the other row it could never
+   * be read again. The change itself goes through; the model then has no key until one is entered,
+   * and the audit entry of each step records the key as {@code DROPPED}.
+   */
+  @Test
+  void aKeyNoKeyReadsIsDroppedRatherThanMovedOnChangeAndDiscard() throws Exception {
+    indexed("Bewohnerparken", "SCHRANKE-FUENF");
+    String original = modelName();
+    SettingsEncryptor lostKey =
+        new SettingsEncryptor(
+            new SettingsEncryptionProperties(
+                Base64.getEncoder().encodeToString(new byte[32]), List.of()),
+            CipherFormatGate.KEYED);
+    String lost =
+        lostKey.encrypt(
+            "sk-verloren",
+            EncryptedColumn.settings("embedding_model", "api_key_ciphertext").row(1));
+    jdbcTemplate.update("UPDATE embedding_model SET api_key_ciphertext = ? WHERE id = 1", lost);
+    CountDownLatch held = holdTheRunAt("SCHRANKE-FUENF");
+
+    changes.confirm(
+        new Draft(modelBaseUrl(), NEW_MODEL, "", null),
+        FakeEmbeddingModel.DIMENSIONS,
+        adminId,
+        Organization.DEFAULT_ID);
+    awaitHeld(held);
+
+    assertThat(previousRows()).isOne();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT api_key_ciphertext FROM embedding_model_previous", String.class))
+        .as("not moved to the previous model under the binding of its old row")
+        .isNull();
+    assertThat(auditPayloadOf("EMBEDDING_MODEL_CHANGED")).contains("\"apiKeyChange\":\"DROPPED\"");
+    jdbcTemplate.update(
+        "UPDATE embedding_model_previous SET api_key_ciphertext = ?",
+        lostKey.encrypt(
+            "sk-verloren",
+            EncryptedColumn.settings("embedding_model_previous", "api_key_ciphertext").row(1)));
+
+    changes.discard(adminId, Organization.DEFAULT_ID);
+
+    assertThat(modelName()).isEqualTo(original);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT api_key_ciphertext FROM embedding_model WHERE id = 1", String.class))
+        .isNull();
+    assertThat(auditPayloadOf("EMBEDDING_MODEL_CHANGE_DISCARDED"))
+        .contains("\"apiKeyChange\":\"DROPPED\"");
+    releaseTheRuns();
+    awaitTheRun();
+  }
+
+  private String auditPayloadOf(String type) {
+    return jdbcTemplate.queryForObject(
+        "SELECT coalesce(before::text, '') || coalesce(after::text, '') FROM audit_log"
+            + " WHERE event_type = ? AND recorded_at >= ?",
+        String.class,
+        type,
+        testStart);
+  }
+
   // --- version condition, limits, secrets ---
 
   @Test
@@ -1177,7 +1245,8 @@ class EmbeddingModelChangeIntegrationTest {
   }
 
   private String settingsCiphertext(String key) {
-    return settingsEncryptor.encrypt(key);
+    return settingsEncryptor.encrypt(
+        key, EncryptedColumn.settings("embedding_model", "api_key_ciphertext").row(1));
   }
 
   private void createVectorStore() {

@@ -3,6 +3,7 @@ package io.opaa.connection.oauth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -392,7 +393,7 @@ class ProfileSignInTest {
   private void secret(ConnectionProfile target, String plain) {
     String ciphertext = "enc:v1:" + UUID.randomUUID();
     ReflectionTestUtils.setField(target, "clientSecretCiphertext", ciphertext);
-    when(encryptor.decrypt(ciphertext)).thenReturn(plain);
+    when(encryptor.decrypt(eq(ciphertext), any())).thenReturn(plain);
   }
 
   /** An HTTPS server with a freshly generated certificate no trust store knows. */

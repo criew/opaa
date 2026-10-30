@@ -109,7 +109,7 @@ public class InstallationModelDiscovery {
               + " Adresse verwenden.");
     }
     try {
-      return settingsEncryptor.decrypt(saved.getSecret());
+      return settingsEncryptor.decrypt(saved.getSecret(), InstallationEncryptedColumns.of(step));
     } catch (IllegalStateException e) {
       throw new ValidationException(
           "Der gespeicherte Zugangsschlüssel ist nicht lesbar; bitte den Schlüssel erneut"

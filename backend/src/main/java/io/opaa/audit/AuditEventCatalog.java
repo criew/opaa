@@ -282,6 +282,7 @@ public final class AuditEventCatalog {
     put(
         keys,
         Set.of(
+            "apiKeyChange",
             "apiKeySet",
             "baseUrl",
             "dimensions",

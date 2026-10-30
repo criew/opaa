@@ -4,6 +4,10 @@ import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.ExternalAccessState;
 import io.opaa.asset.Asset;
 import io.opaa.permission.AssetType;
+import io.opaa.security.CipherBinding;
+import io.opaa.security.CredentialsEncryptionKeyMissingException;
+import io.opaa.security.EncryptedColumn;
+import io.opaa.security.EncryptedCredentials;
 import io.opaa.sourceaccess.LoggedName;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -13,10 +17,15 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.PrimaryKeyJoinColumn;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.Mutability;
 import org.hibernate.type.SqlTypes;
+import org.hibernate.type.descriptor.java.Immutability;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The first asset type (see docs/features/spaces-and-assets.md#assets): a document container on the
@@ -46,6 +55,16 @@ public class KnowledgeLibrary extends Asset {
    * types.
    */
   public static final AssetType ASSET_TYPE = AssetType.of("KNOWLEDGE_LIBRARY");
+
+  /** {@code knowledge_libraries.source_credentials}, bound to the library's id (ADR-0064). */
+  public static final EncryptedColumn SOURCE_CREDENTIALS =
+      EncryptedColumn.credentials("knowledge_libraries", "source_credentials");
+
+  /** {@code knowledge_libraries.source_webhook_secret}, bound to the library's id (ADR-0064). */
+  public static final EncryptedColumn WEBHOOK_SECRET =
+      EncryptedColumn.credentials("knowledge_libraries", "source_webhook_secret");
+
+  private static final Logger log = LoggerFactory.getLogger(KnowledgeLibrary.class);
 
   /**
    * The organization repeated on the type row: documents, folders, runs and chat references point
@@ -121,16 +140,17 @@ public class KnowledgeLibrary extends Asset {
   /**
    * Never exposed by the API in any response (ADR-0018, Entscheidung 4) - {@code
    * KnowledgeLibraryService} must not read this field into any {@code LibraryResponse}/{@code
-   * LibraryListResponse}. Encrypted at rest via {@link SourceCredentialsConverter} - this
-   * getter/field sees the decrypted plaintext, unless the stored value can no longer be decrypted
-   * (key lost/rotated, corrupted value), in which case the converter logs a warning and this field
-   * reads as {@code null} rather than failing the whole load. The column itself holds {@code
-   * enc:v1:<base64>} (or a legacy cleartext value, see that converter's Javadoc). The column is
-   * {@code text}: the API admits 4096 plaintext characters, which their encrypted encoding exceeds.
+   * LibraryListResponse}. Encrypted at rest via {@link SourceCredentialsConverter}, bound to this
+   * library ({@link #SOURCE_CREDENTIALS}) - the getter decrypts, unless the stored value can no
+   * longer be decrypted (key lost, corrupted value, a value of another row), in which case it logs
+   * a warning and reads as {@code null} rather than failing. The column itself holds the ciphertext
+   * (or a legacy cleartext value, see {@code CredentialsEncryptor}). The column is {@code text}:
+   * the API admits 4096 plaintext characters, which their encrypted encoding exceeds.
    */
   @Convert(converter = SourceCredentialsConverter.class)
+  @Mutability(Immutability.class)
   @Column(name = "source_credentials", columnDefinition = "text")
-  private String sourceCredentials;
+  private EncryptedCredentials sourceCredentials;
 
   /**
    * The one push secret of this library: what its connector's push intake authenticates a
@@ -140,8 +160,9 @@ public class KnowledgeLibrary extends Asset {
    * the API, only as a yes/no.
    */
   @Convert(converter = SourceCredentialsConverter.class)
+  @Mutability(Immutability.class)
   @Column(name = "source_webhook_secret", length = 3000)
-  private String webhookSecret;
+  private EncryptedCredentials webhookSecret;
 
   /**
    * The connector settings (ADR-0038) as the library's connector writes them - one JSON object
@@ -263,7 +284,7 @@ public class KnowledgeLibrary extends Asset {
     this.sourceType = sourceType;
     this.sourcePath = sourcePath;
     this.sourceUrl = sourceUrl;
-    this.sourceCredentials = sourceCredentials;
+    this.sourceCredentials = sealedCredentials(sourceCredentials);
   }
 
   /**
@@ -371,7 +392,7 @@ public class KnowledgeLibrary extends Asset {
       String sourcePath, String sourceUrl, String sourceCredentials) {
     this.sourcePath = sourcePath;
     this.sourceUrl = sourceUrl;
-    this.sourceCredentials = sourceCredentials;
+    this.sourceCredentials = sealedCredentials(sourceCredentials);
     touch();
   }
 
@@ -393,7 +414,7 @@ public class KnowledgeLibrary extends Asset {
 
   /** Takes {@code sourceCredentials} as its own secret, as on its own address it holds one. */
   public void replaceSourceCredentials(String sourceCredentials) {
-    this.sourceCredentials = sourceCredentials;
+    this.sourceCredentials = sealedCredentials(sourceCredentials);
     touch();
   }
 
@@ -548,11 +569,54 @@ public class KnowledgeLibrary extends Asset {
   }
 
   public String getSourceCredentials() {
-    return sourceCredentials;
+    return readQuietly(sourceCredentials, SOURCE_CREDENTIALS.row(getId()), "source credentials");
   }
 
   public String getWebhookSecret() {
-    return webhookSecret;
+    return readQuietly(webhookSecret, WEBHOOK_SECRET.row(getId()), "push secret");
+  }
+
+  private EncryptedCredentials sealedCredentials(String value) {
+    return sealed(sourceCredentials, value, SOURCE_CREDENTIALS.row(getId()));
+  }
+
+  /**
+   * {@code value} as the attribute that replaces {@code current}: {@code current} itself when the
+   * value reads the same, so that handing back what the getter returned - also the {@code null} of
+   * an unreadable value - changes nothing and writes nothing, as with a plain attribute.
+   */
+  private static EncryptedCredentials sealed(
+      EncryptedCredentials current, String value, CipherBinding binding) {
+    String currentValue;
+    try {
+      currentValue = current == null ? null : current.read(binding);
+    } catch (CredentialsEncryptionKeyMissingException e) {
+      currentValue = null;
+    }
+    return Objects.equals(currentValue, value) ? current : EncryptedCredentials.of(value, binding);
+  }
+
+  /**
+   * {@code value} in clear, or {@code null} when it cannot be decrypted: a missing key or a value
+   * of another row must not fail every read of the library, also not the repair path that sets new
+   * credentials (see {@link SourceCredentialsConverter}). Logs the library, never any part of the
+   * value.
+   */
+  private String readQuietly(EncryptedCredentials value, CipherBinding binding, String what) {
+    if (value == null) {
+      return null;
+    }
+    try {
+      return value.read(binding);
+    } catch (CredentialsEncryptionKeyMissingException e) {
+      log.warn(
+          "The {} of library {} cannot be decrypted and read as not set; the stored value stays."
+              + " Cause: {}",
+          what,
+          getId(),
+          e.getMessage());
+      return null;
+    }
   }
 
   /**
@@ -560,7 +624,7 @@ public class KnowledgeLibrary extends Asset {
    * connector offers a push intake, which the caller checks.
    */
   public void setWebhookSecret(String secret) {
-    this.webhookSecret = secret;
+    this.webhookSecret = sealed(webhookSecret, secret, WEBHOOK_SECRET.row(getId()));
     touch();
   }
 
