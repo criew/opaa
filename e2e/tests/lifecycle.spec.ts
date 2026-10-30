@@ -12,7 +12,7 @@ import { deleteLibraryCompletely } from "../fixtures/libraries";
  * transfer, a space's change of owner, archiving and deleting a space, deleting a library from its
  * page. Spaces, memberships and the library are set up through the API, the one chat through the
  * chat input; the path under test always runs through the interface. The succession after an
- * account lock needs local accounts and lives in the "local-auth" target (12-nachfolge.spec.ts).
+ * account lock needs local accounts and lives in the "local-auth" target (13-nachfolge.spec.ts).
  */
 const runId = Date.now();
 
