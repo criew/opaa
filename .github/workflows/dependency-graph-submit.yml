@@ -4,8 +4,8 @@ name: Dependency Graph einreichen
 # lockfiles), so the dependency review in ci.yml compares base and head with transitive
 # dependencies. Runs from main's workflow file with a write token and never checks out or
 # executes PR code; the artifacts are untrusted input from the PR (fork PRs included).
-# Each snapshot gets the sha and ref of a PR whose current head is the run's head commit, so a
-# crafted artifact can at most misdescribe that PR's own graph, never main's.
+# Each snapshot gets the sha, ref and correlator of a PR whose current head is the run's head
+# commit, so a crafted artifact can at most misdescribe the graph of that head commit, never main's.
 on:
   workflow_run:
     workflows: [Dependency Graph]
@@ -51,15 +51,21 @@ jobs:
             echo "PR #$pr steht nicht mehr auf $HEAD_SHA (jetzt $pr_head), nichts eingereicht."
             exit 0
           fi
-          shopt -s globstar nullglob
-          files=(./**/*.json)
-          if [ "${#files[@]}" -ne 2 ]; then
-            echo "::error::Erwartet zwei Snapshots (Gradle, pnpm), gefunden ${#files[@]}"
+          # download-artifact puts each artifact into a directory named after it; the Gradle one is
+          # called after its JSON file, so only regular files count.
+          mapfile -t gradle < <(find . -path './dependency-graph_pnpm-lockfiles' -prune \
+            -o -type f -name '*.json' -print)
+          if [ "${#gradle[@]}" -ne 1 ]; then
+            echo "::error::Erwartet genau einen Gradle-Snapshot, gefunden ${#gradle[@]}"
             exit 1
           fi
-          for file in "${files[@]}"; do
+          submit() {
             jq --arg sha "$HEAD_SHA" --arg ref "refs/pull/$pr/merge" --arg run "$RUN_ID" \
-              '.sha = $sha | .ref = $ref | .job.id = $run' "$file" >"$file.submit"
-            gh api -X POST "repos/$REPO/dependency-graph/snapshots" --input "$file.submit" \
+              --arg correlator "$2" \
+              '.sha = $sha | .ref = $ref | .job.id = $run | .job.correlator = $correlator' \
+              "$1" >"$RUNNER_TEMP/submit.json"
+            gh api -X POST "repos/$REPO/dependency-graph/snapshots" --input "$RUNNER_TEMP/submit.json" \
               --jq '"\(.message) (\(.result))"'
-          done
+          }
+          submit "${gradle[0]}" dependency_graph-submit
+          submit dependency-graph_pnpm-lockfiles/pnpm-lockfiles.json pnpm-lockfiles

@@ -74,10 +74,15 @@ jobs:
           gh api -X POST "repos/$REPO/dependency-graph/snapshots" --input "$RUNNER_TEMP/pnpm.json"
 
   # Same graphs for a PR head, uploaded as artifacts with the PR number. Nothing here can write;
-  # the submit workflow takes sha and ref from its own event, never from these files.
+  # the submit workflow sets sha, ref and correlator itself and only trusts the PR number after
+  # checking that this PR's head is the run's head commit.
   generate:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    env:
+      # The plugin names the manifest after the correlator; the submit job's value on main keeps
+      # base and head manifests comparable in the dependency review.
+      GITHUB_DEPENDENCY_GRAPH_JOB_CORRELATOR: dependency_graph-submit
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

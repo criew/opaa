@@ -175,3 +175,22 @@ def _version(resolved, name):
     versions = [url[len(prefix) :] for url, e in resolved.items() if url.startswith(prefix) and e["relationship"] == "direct"]
     assert len(versions) == 1
     return versions[0]
+
+
+def test_non_registry_sources_are_left_out_but_pass_scope_on(tmp_path):
+    documents = list(yaml.safe_load_all(LOCKFILE))
+    project = documents[1]
+    project["importers"]["."]["dependencies"]["vendored"] = {
+        "specifier": "file:../vendored",
+        "version": "file:../vendored",
+    }
+    project["snapshots"]["vendored@file:../vendored"] = {
+        "dependencies": {"tar": "https://example.com/tar-1.0.0.tgz"}
+    }
+    project["snapshots"]["tar@https://example.com/tar-1.0.0.tgz"] = {
+        "dependencies": {"leaf": "1.0.0"}
+    }
+    project["snapshots"]["leaf@1.0.0"] = {}
+    resolved = build(tmp_path, yaml.safe_dump_all(documents))
+    assert not any("vendored" in url or "tar" in url for url in resolved)
+    assert resolved["pkg:npm/leaf@1.0.0"]["scope"] == "runtime"

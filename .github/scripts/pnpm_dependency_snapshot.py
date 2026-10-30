@@ -9,8 +9,8 @@ package as a purl.
 
 Scope follows package.json: a package reachable from an importer's dependencies or
 optionalDependencies is runtime, everything else (devDependencies, the package manager document)
-is development. Linked workspace packages and file: or git sources are skipped, since they have
-no registry identity an advisory could name.
+is development. Linked workspace packages and file:, git or tarball sources are left out, since
+they have no registry identity an advisory could name; the scope still passes through them.
 
 Usage: pnpm_dependency_snapshot.py --sha SHA --ref REF --correlator NAME --job-id ID
        --output snapshot.json path/to/pnpm-lock.yaml...
@@ -35,8 +35,8 @@ DEVELOPMENT_GROUPS = ("devDependencies", "packageManagerDependencies")
 
 
 def resolve(name, version):
-    """Returns the snapshot key of a dependency entry, or None for non-registry sources."""
-    if version.startswith(("link:", "file:", "git+", "http:", "https:")):
+    """Returns the snapshot key of a dependency entry, or None for a linked workspace package."""
+    if version.startswith("link:"):
         return None
     if "@" in version.split("(", 1)[0][1:]:
         # alias ("strip: npm:strip-ansi@7.1.0" in package.json): the lockfile names the real package
@@ -51,6 +51,12 @@ def split_key(key):
     if at == 0:
         raise ValueError(f"no version in snapshot key {key!r}")
     return base[:at], base[at + 1 :]
+
+
+def registry(key):
+    """False for file:, git and tarball sources, which have no registry identity."""
+    _, version = split_key(key)
+    return ":" not in version and "/" not in version
 
 
 def purl(key):
@@ -105,8 +111,12 @@ def manifest(path, documents):
 
     resolved = {}
     for key, snapshot in snapshots.items():
+        if not registry(key):
+            continue
         package_url = purl(key)
-        dependencies = sorted({purl(child) for child in children(snapshot or {})})
+        dependencies = sorted(
+            {purl(child) for child in children(snapshot or {}) if registry(child)}
+        )
         entry = resolved.get(package_url)
         if entry is None:
             entry = resolved[package_url] = {
