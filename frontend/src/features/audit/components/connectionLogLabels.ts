@@ -1,5 +1,6 @@
 import type {
   ConnectionEndCause,
+  ConnectionLogActorKind,
   ConnectionLogEntryResponse,
   ConnectionLogEventType,
   ConnectionLogOwnerKind,
@@ -80,11 +81,11 @@ export function ownerKindLabel(kind: ConnectionLogOwnerKind): string {
   }
 }
 
-/** Whose connection the entry is about: the pseudonym, the library and account, or nobody. */
+/** Whose connection the entry is about: a person (never named), the library and account, or nobody. */
 export function ownerLabel(entry: ConnectionLogEntryResponse): string {
   switch (entry.ownerKind) {
     case 'PERSON':
-      return entry.personRef ?? '—'
+      return 'Person'
     case 'LIBRARY': {
       const library = entry.libraryId ? `Bibliothek ${entry.libraryId}` : 'Bibliothek'
       return entry.accountLabel ? `${library} · Konto ${entry.accountLabel}` : library
@@ -98,9 +99,7 @@ export function ownerLabel(entry: ConnectionLogEntryResponse): string {
   }
 }
 
-/** The literal the API uses for an event no person caused; never a pseudonym. */
-export const SYSTEM_ACTOR = 'SYSTEM'
-
-export function actorLabel(actorRef: string): string {
-  return actorRef === SYSTEM_ACTOR ? 'System' : actorRef
+/** Who caused the event; the log never names the person. */
+export function actorLabel(actor: ConnectionLogActorKind): string {
+  return actor === 'SYSTEM' ? 'System' : 'Person'
 }

@@ -23,9 +23,8 @@ const expired: ConnectionLogEntryResponse = {
   recordedAt: '2026-09-25T03:00:00Z',
   organizationId: 'org-1',
   eventType: 'EXPIRED',
-  actorRef: 'SYSTEM',
+  actor: 'SYSTEM',
   ownerKind: 'PERSON',
-  personRef: 'p-2c18d0',
   libraryId: null,
   accountLabel: null,
   profileId: 'profile-partner',
@@ -38,9 +37,8 @@ const sourceConnection: ConnectionLogEntryResponse = {
   recordedAt: '2026-09-26T09:00:00Z',
   organizationId: 'org-1',
   eventType: 'CONNECTED',
-  actorRef: 'p-91aa07',
+  actor: 'PERSON',
   ownerKind: 'LIBRARY',
-  personRef: null,
   libraryId: 'lib-7',
   accountLabel: 'ablage@bauamt.example',
   profileId: 'profile-dropbox',
@@ -57,7 +55,7 @@ async function fillAndSubmit(user: ReturnType<typeof userEvent.setup>): Promise<
 }
 
 describe('ConnectionLogPage', () => {
-  it('lists entries with event, cause, owner kind, pseudonym, profile and "System" as actor', async () => {
+  it('lists entries with event, cause, owner kind, profile and the kind of actor, naming no person', async () => {
     signInAs('AUDITOR')
     server.use(
       http.get(LOG, () =>
@@ -80,11 +78,10 @@ describe('ConnectionLogPage', () => {
     expect(first).toHaveTextContent('Abgelaufen')
     expect(first).toHaveTextContent('Vom Anbieter abgelehnt')
     expect(first).toHaveTextContent('Person')
-    expect(first).toHaveTextContent('p-2c18d0')
     expect(first).toHaveTextContent('Zugang Nextcloud Partner')
     expect(within(first).getByText('System')).toBeInTheDocument()
     expect(second).toHaveTextContent('Bibliothek lib-7 · Konto ablage@bauamt.example')
-    expect(second).toHaveTextContent('p-91aa07')
+    expect(within(second).getByText('Person')).toBeInTheDocument()
   })
 
   it('sends window, reason and the chosen filters, never a person', async () => {

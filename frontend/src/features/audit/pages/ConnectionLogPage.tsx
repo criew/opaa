@@ -234,7 +234,7 @@ export default function ConnectionLogPage() {
                         <TableCell>{ownerKindLabel(entry.ownerKind)}</TableCell>
                         <TableCell sx={{ wordBreak: 'break-all' }}>{ownerLabel(entry)}</TableCell>
                         <TableCell>{entry.profileName}</TableCell>
-                        <TableCell>{actorLabel(entry.actorRef)}</TableCell>
+                        <TableCell>{actorLabel(entry.actor)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

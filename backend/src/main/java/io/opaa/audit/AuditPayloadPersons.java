@@ -9,7 +9,8 @@ import java.util.UUID;
  * Where an entry names a person it carries neither as actor nor as subject: under a key of {@code
  * before}/{@code after}, as pseudonym (entries written before the pseudonymisation of that key: as
  * account id) or, for a group, as group id. Only the self-disclosure searches these keys, each for
- * its event types only; the anlassbezogene Klärung finds the acting person alone.
+ * its event types only; the anlassbezogene Klärung finds the acting person alone. A revision
+ * response leaves them out ({@link AuditResponseRedaction}).
  */
 final class AuditPayloadPersons {
 
@@ -27,8 +28,11 @@ final class AuditPayloadPersons {
   private static final PayloadKey TRANSFER_TARGET =
       new PayloadKey("targetId", Set.of(AuditEventType.PERMISSION_TRANSFER_EXECUTED));
 
+  /** Every payload key naming a person; a revision response leaves each of them out. */
+  static final List<PayloadKey> ALL = List.of(OWNER, TRANSFER_TARGET);
+
   /** Every key the self-disclosure searches and repeats only as "Sie" or another person. */
-  static final List<PayloadKey> SELF_DISCLOSURE = List.of(OWNER, TRANSFER_TARGET);
+  static final List<PayloadKey> SELF_DISCLOSURE = ALL;
 
   private AuditPayloadPersons() {}
 
