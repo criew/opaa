@@ -1,0 +1,14 @@
+Monat;Format;Eingänge;Anteil in Prozent
+2026-01;pdf;1842;61,4
+2026-01;docx;402;13,4
+2026-01;eml;311;10,4
+2026-01;jpg (zurückgewiesen);205;6,8
+2026-02;pdf;1760;62,1
+2026-02;docx;371;13,1
+2026-02;eml;298;10,5
+2026-02;xlsx;119;4,2
+2026-03;pdf;1903;63,0
+2026-03;docx;388;12,8
+2026-03;odt;96;3,2
+2026-03;msg;74;2,4
+Hinweis;Dateiformat dieses Musters: Trennzeichentext (.csv);Trennzeichen Semikolon;Kodierung UTF-8
