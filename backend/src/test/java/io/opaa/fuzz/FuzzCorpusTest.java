@@ -7,6 +7,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -63,20 +64,30 @@ class FuzzCorpusTest {
         .doesNotContainAnyElementsOf(seeded);
   }
 
+  /**
+   * Compares by {@link SeedComparison}, not byte for byte: another zlib compresses the same content
+   * to other bytes, and the committed file stays valid for it.
+   */
   @Test
   void everyGeneratedSeedIsCommittedAsTheGeneratorWritesIt() throws IOException {
     Path corpus = FuzzCorpus.repositoryRoot().resolve(FuzzCorpus.CORPUS);
+    List<String> differences = new ArrayList<>();
+    for (Map.Entry<String, byte[]> seed : FuzzCorpusGenerator.seeds().entrySet()) {
+      Path committed = corpus.resolve(seed.getKey());
+      if (!Files.exists(committed)) {
+        differences.add(seed.getKey() + ": not committed");
+        continue;
+      }
+      SeedComparison.difference(seed.getKey(), Files.readAllBytes(committed), seed.getValue())
+          .ifPresent(differences::add);
+    }
 
-    assertThat(FuzzCorpusGenerator.seeds())
+    assertThat(differences)
         .as(
             "seeds missing or changed under "
                 + FuzzCorpus.CORPUS
-                + ": ./gradlew writeParserFuzzCorpus")
-        .allSatisfy(
-            (name, bytes) -> {
-              assertThat(corpus.resolve(name)).exists();
-              assertThat(corpus.resolve(name)).as(name).hasBinaryContent(bytes);
-            });
+                + " (committed vs. generated): ./gradlew writeParserFuzzCorpus")
+        .isEmpty();
   }
 
   @Test

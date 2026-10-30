@@ -26,7 +26,8 @@ import org.apache.poi.xwpf.usermodel.XWPFTable;
  * amplification in PDF page trees and cross reference data, unpacked OOXML and ODS cells, repeated
  * context in Markdown and CSV, backtracking text, long blank-line runs, data URLs and many
  * attachments. Each seed stays small; the campaign's mutators enlarge them. Run by {@code ./gradlew
- * writeParserFuzzCorpus}; every run writes the same bytes, which {@code FuzzCorpusTest} holds.
+ * writeParserFuzzCorpus}; every run writes the same content, which {@code FuzzCorpusTest} holds
+ * against the committed files - the same bytes only with the same zlib.
  */
 public final class FuzzCorpusGenerator {
 

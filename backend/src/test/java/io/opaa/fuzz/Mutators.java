@@ -40,7 +40,7 @@ final class Mutators {
   /** The most a ZIP part may unpack to while a mutation reads it. */
   private static final int MAX_PART_BYTES = 16 * 1024 * 1024;
 
-  /** The time every written ZIP entry carries, so equal parts give equal bytes. */
+  /** The time every written ZIP entry carries, so equal parts give equal bytes with one zlib. */
   static final LocalDateTime ENTRY_TIME = LocalDateTime.of(2026, 1, 1, 0, 0);
 
   /** The creation and change date every Office package carries after {@link #reproducible}. */
@@ -351,7 +351,7 @@ final class Mutators {
 
   /**
    * A ZIP of {@code parts} in their order, each entry at {@link #ENTRY_TIME}, the {@code mimetype}
-   * of an OpenDocument stored uncompressed: the same parts always give the same bytes.
+   * of an OpenDocument stored uncompressed: with the same zlib, the same parts give the same bytes.
    */
   static byte[] zip(Map<String, byte[]> parts) throws IOException {
     ByteArrayOutputStream out = new ByteArrayOutputStream();

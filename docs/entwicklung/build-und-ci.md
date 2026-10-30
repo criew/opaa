@@ -329,12 +329,16 @@ der Metadaten. Die Konfiguration kommt aus `application.yml`, ohne Datenbank und
 - **Korpus:** je zugelassenem Format mindestens eine Probe. Eingecheckt unter
   `backend/src/test/resources/fuzz/corpus/` (höchstens 2 MiB, `-text` in `.gitattributes`) liegen
   die Proben von `FuzzCorpusGenerator`; der Generator schreibt ZIP-Einträge mit fester Zeit und
-  setzt die Paketdaten von Office-Dateien fest, gleiche Quelle ergibt also gleiche Bytes, und
-  `FuzzCorpusTest` vergleicht jede eingecheckte Datei Byte für Byte mit seiner Ausgabe. Nach einer
+  setzt die Paketdaten von Office-Dateien fest. Gleiche Quelle ergibt gleichen Inhalt, gleiche
+  Bytes aber nur mit derselben zlib: ein anderes JDK kann denselben Inhalt anders komprimieren.
+  `FuzzCorpusTest` vergleicht deshalb über `SeedComparison`: ZIP-Container Eintrag für Eintrag
+  (Name, Reihenfolge, Methode, Zeit, entpackter Inhalt), PDFs mit entpackten Flate-Streams und
+  maskierten Längen und Offsets, alles andere Byte für Byte; die Meldung nennt Datei und ersten
+  abweichenden Eintrag. Nach einer
   Änderung am Generator `./gradlew writeParserFuzzCorpus` ausführen und die Dateien einchecken.
   Dazu kommen beim Laden die präparierten Dateien der Regressionssuite (`HostileFiles`) in kleiner
   Ausprägung als `hostile-*`-Proben (`HostileSeeds`), ohne eingecheckt zu werden. Auch sie sind
-  bei jedem Laden dieselben Bytes: die Trailer-ID einer PDF wird in gleicher Länge genullt, und
+  mit demselben JDK bei jedem Laden dieselben Bytes: die Trailer-ID einer PDF wird in gleicher Länge genullt, und
   eingebettete Pakete (auch in OLE2-Objekten einer Präsentation) bekommen feste Zeiten und Daten;
   `HostileSeedsTest` prüft beides.
 - **Mutationen:** `Mutators` kippt Bits, setzt Grenzwerte, löscht, verdoppelt und spleißt

@@ -23,9 +23,9 @@ import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.junit.jupiter.api.Test;
 
 /**
- * The crafted seeds are the same bytes on every load, so a campaign seed names the same inputs: the
- * trailer ID of a PDF is fixed, and so are the times and dates of every package, also of one
- * embedded in a package or in an OLE2 object of a package.
+ * The crafted seeds are the same bytes on every load within one JDK, so a campaign seed names the
+ * same inputs there: the trailer ID of a PDF is fixed, and so are the times and dates of every
+ * package, also of one embedded in a package or in an OLE2 object of a package.
  */
 class HostileSeedsTest {
 
