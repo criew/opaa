@@ -10,8 +10,9 @@ import java.util.function.Supplier;
 /**
  * The crafted files of the regression suite ({@link HostileFiles}) as fuzzing seeds, generated at
  * load instead of committed, each scaled down so that one run takes a moment: the mutators grow
- * them, the regression suite holds their full size. A ZIP-based file is written with fixed entry
- * times and package dates, so the same campaign seed mutates the same bytes.
+ * them, the regression suite holds their full size. Each passes {@link Mutators#reproducible} -
+ * fixed PDF trailer IDs, ZIP entry times and package dates, also of embedded packages - so the same
+ * campaign seed mutates the same bytes.
  */
 final class HostileSeeds {
 

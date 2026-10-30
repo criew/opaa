@@ -3,9 +3,11 @@ package io.opaa.fuzz;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +18,13 @@ import java.util.zip.CRC32;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
+import org.apache.poi.poifs.filesystem.DirectoryEntry;
+import org.apache.poi.poifs.filesystem.DirectoryNode;
+import org.apache.poi.poifs.filesystem.DocumentEntry;
+import org.apache.poi.poifs.filesystem.DocumentInputStream;
+import org.apache.poi.poifs.filesystem.Entry;
+import org.apache.poi.poifs.filesystem.FileMagic;
+import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 
 /**
  * The mutations of a campaign: byte-level changes, textual ones aimed at counts, lengths and
@@ -32,13 +41,20 @@ final class Mutators {
   private static final int MAX_PART_BYTES = 16 * 1024 * 1024;
 
   /** The time every written ZIP entry carries, so equal parts give equal bytes. */
-  private static final LocalDateTime ENTRY_TIME = LocalDateTime.of(2026, 1, 1, 0, 0);
+  static final LocalDateTime ENTRY_TIME = LocalDateTime.of(2026, 1, 1, 0, 0);
+
+  /** The creation and change date every Office package carries after {@link #reproducible}. */
+  static final String FIXED_DATE = "2026-01-01T00:00:00Z";
 
   /**
    * The creation and change dates of an Office package, which POI sets to the moment of writing.
    */
   private static final Pattern PACKAGE_DATE =
       Pattern.compile("(<dcterms:(?:created|modified)[^>]*+>)[^<]*+(</dcterms:)");
+
+  /** The file identifier of a PDF trailer, which PDFBox derives from the moment of writing. */
+  private static final Pattern PDF_ID =
+      Pattern.compile("/ID\\s*+\\[\\s*+<([0-9A-Fa-f]*+)>\\s*+<([0-9A-Fa-f]*+)>");
 
   private static final byte[] INTERESTING_BYTES = {
     0, (byte) 0xFF, 0x7F, (byte) 0x80, '<', '>', '(', ')', '/', '\n', '"', '[', ']', '%'
@@ -360,23 +376,90 @@ final class Mutators {
   }
 
   /**
-   * {@code input} rewritten by {@link #zip} with the package dates of {@code docProps/core.xml}
-   * fixed, when it is a ZIP; anything else unchanged.
+   * {@code input} with what depends on the moment of writing fixed: the trailer IDs of a PDF are
+   * zeroed at their length, so every offset stays valid; a ZIP is rewritten by {@link #zip} with
+   * fixed package dates, and every package embedded in it, directly or in an OLE2 object, likewise.
+   * Anything else is returned unchanged.
    */
   static byte[] reproducible(byte[] input) throws IOException {
+    if (FileMagic.valueOf(input) == FileMagic.PDF) {
+      return withFixedPdfIds(input);
+    }
     Map<String, byte[]> parts = unzip(input);
     if (parts == null) {
       return input;
+    }
+    for (Map.Entry<String, byte[]> part : parts.entrySet()) {
+      part.setValue(reproducibleEmbedded(part.getValue()));
     }
     byte[] core = parts.get("docProps/core.xml");
     if (core != null) {
       String fixed =
           PACKAGE_DATE
               .matcher(new String(core, StandardCharsets.UTF_8))
-              .replaceAll("$12026-01-01T00:00:00Z$2");
+              .replaceAll("$1" + FIXED_DATE + "$2");
       parts.put("docProps/core.xml", fixed.getBytes(StandardCharsets.UTF_8));
     }
     return zip(parts);
+  }
+
+  /**
+   * A part of a package made reproducible; an OLE2 object is rewritten only when a stream in it
+   * changed, so an object without a package keeps its bytes.
+   */
+  private static byte[] reproducibleEmbedded(byte[] part) throws IOException {
+    if (FileMagic.valueOf(part) != FileMagic.OLE2) {
+      return reproducible(part);
+    }
+    try (POIFSFileSystem fs = new POIFSFileSystem(new ByteArrayInputStream(part))) {
+      if (!reproducible(fs.getRoot())) {
+        return part;
+      }
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      fs.writeFilesystem(out);
+      return out.toByteArray();
+    }
+  }
+
+  /** Makes every stream under {@code directory} reproducible; answers whether one changed. */
+  private static boolean reproducible(DirectoryNode directory) throws IOException {
+    boolean changed = false;
+    for (Entry entry : asList(directory)) {
+      if (entry instanceof DirectoryNode child) {
+        changed |= reproducible(child);
+      } else if (entry instanceof DocumentEntry document) {
+        byte[] data;
+        try (InputStream in = new DocumentInputStream(document)) {
+          data = in.readNBytes(document.getSize());
+        }
+        byte[] fixed = reproducibleEmbedded(data);
+        if (!Arrays.equals(fixed, data)) {
+          directory.createOrUpdateDocument(document.getName(), new ByteArrayInputStream(fixed));
+          changed = true;
+        }
+      }
+    }
+    return changed;
+  }
+
+  private static List<Entry> asList(DirectoryEntry directory) {
+    List<Entry> entries = new ArrayList<>();
+    directory.forEach(entries::add);
+    return entries;
+  }
+
+  private static byte[] withFixedPdfIds(byte[] input) {
+    String text = new String(input, StandardCharsets.ISO_8859_1);
+    Matcher id = PDF_ID.matcher(text);
+    StringBuilder out = new StringBuilder(text.length());
+    int from = 0;
+    while (id.find()) {
+      out.append(text, from, id.start(1)).append("0".repeat(id.end(1) - id.start(1)));
+      out.append(text, id.end(1), id.start(2)).append("0".repeat(id.end(2) - id.start(2)));
+      from = id.end(2);
+    }
+    out.append(text, from, text.length());
+    return out.toString().getBytes(StandardCharsets.ISO_8859_1);
   }
 
   private static byte[] slice(byte[] input, int from, int to) {

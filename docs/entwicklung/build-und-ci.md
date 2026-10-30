@@ -318,7 +318,10 @@ der Metadaten. Die Konfiguration kommt aus `application.yml`, ohne Datenbank und
   `FuzzCorpusTest` vergleicht jede eingecheckte Datei Byte für Byte mit seiner Ausgabe. Nach einer
   Änderung am Generator `./gradlew writeParserFuzzCorpus` ausführen und die Dateien einchecken.
   Dazu kommen beim Laden die präparierten Dateien der Regressionssuite (`HostileFiles`) in kleiner
-  Ausprägung als `hostile-*`-Proben (`HostileSeeds`), ohne eingecheckt zu werden.
+  Ausprägung als `hostile-*`-Proben (`HostileSeeds`), ohne eingecheckt zu werden. Auch sie sind
+  bei jedem Laden dieselben Bytes: die Trailer-ID einer PDF wird in gleicher Länge genullt, und
+  eingebettete Pakete (auch in OLE2-Objekten einer Präsentation) bekommen feste Zeiten und Daten;
+  `HostileSeedsTest` prüft beides.
 - **Mutationen:** `Mutators` kippt Bits, setzt Grenzwerte, löscht, verdoppelt und spleißt
   Bereiche, wiederholt Zeilen, verschachtelt Auszeichnung, verändert einzelne ZIP-Einträge und
   verpackt eine Datei als Anhang einer Mail; jede sechzehnte Eingabe bekommt eine fremde Endung.
