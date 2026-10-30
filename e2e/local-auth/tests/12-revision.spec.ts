@@ -106,7 +106,7 @@ test.describe.serial("Revision und Nachweis", () => {
     const requestId = open.find((request) => request.userId === candidateId)?.id;
     expect(requestId).toBeTruthy();
 
-    // Neither the person asked for nor the administration that asked can confirm.
+    // Only the revision decides: neither the person asked for nor the administration that asked.
     const self = await apiSignedInAs(candidate.email, candidatePassword);
     expect(
       (await self.post(`/api/v1/audit/auditor-role-requests/${requestId}/confirm`)).status(),
@@ -219,6 +219,7 @@ test.describe.serial("Revision und Nachweis", () => {
     ).toBeVisible();
     await expect(readerRow).toContainText("Direkte Freigabe");
     await expect(readerRow).toContainText(/\d{1,2}\.\d{1,2}\.\d{4}/);
+    await expect(readerRow).toContainText("noch wirksam");
 
     // Over the whole window the reader's period has ended - it is no longer in effect.
     await fillReportWindow(auditor, {
@@ -238,8 +239,8 @@ test.describe.serial("Revision und Nachweis", () => {
       reason: "E2E Stichtag nach Entzug",
     });
     await submit.click();
-    await expect(auditor.getByRole("row").filter({ hasText: "Systemverwaltung" })).toBeVisible();
     await expect(readerRow).toHaveCount(0);
+    await expect(auditor.getByRole("row").filter({ hasText: "Systemverwaltung" })).toHaveCount(1);
     await auditor.context().close();
 
     await admin.delete(`/api/v1/libraries/${libraryId}`);
@@ -330,7 +331,7 @@ test.describe.serial("Revision und Nachweis", () => {
     expect(removed.status(), await removed.text()).toBeLessThan(300);
   });
 
-  test("5. Die Prüfsummenkette des laufenden Monats ist konsistent", async () => {
+  test("5. Die Prüfsummenkette des laufenden Monats ist abrufbar und ohne Abweichung", async () => {
     const month = new Date().toISOString().slice(0, 7);
     const path = `/api/v1/audit/chain/${month}?reason=${encodeURIComponent("E2E Kettenprüfung")}`;
 
