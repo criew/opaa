@@ -30,6 +30,7 @@ import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocumentOutline;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem;
 import org.apache.poi.poifs.filesystem.DirectoryEntry;
+import org.apache.poi.poifs.filesystem.Ole10Native;
 import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.apache.poi.sl.usermodel.ObjectMetaData;
 import org.apache.poi.sl.usermodel.PictureData.PictureType;
@@ -359,7 +360,46 @@ public final class HostileFiles {
     }
   }
 
-  /** The text of the Word document {@link #pptxEmbeddingAWordDocumentPerSlide} embeds. */
+  /**
+   * A Word 97 file whose object pool holds {@code copies} packaged text files, each carrying {@link
+   * #EMBEDDED_TEXT} - a parser following embedded objects reads the text once per copy. No library
+   * on the classpath writes a {@code .doc}, so the document of the demo corpus, written once by
+   * LibreOffice, is the base; only the object pool is generated.
+   */
+  public static HostileFile docWithPackagedTextInItsObjectPool(int copies) {
+    try (POIFSFileSystem fs = new POIFSFileSystem(Files.newInputStream(demoCorpusDoc()))) {
+      DirectoryEntry pool =
+          fs.getRoot().hasEntry("ObjectPool")
+              ? (DirectoryEntry) fs.getRoot().getEntry("ObjectPool")
+              : fs.getRoot().createDirectory("ObjectPool");
+      byte[] packaged = (EMBEDDED_TEXT + ".").getBytes(StandardCharsets.UTF_8);
+      for (int n = 0; n < copies; n++) {
+        DirectoryEntry object = pool.createDirectory("_" + (1_000_000 + n));
+        ByteArrayOutputStream ole = new ByteArrayOutputStream();
+        new Ole10Native("anlage.txt", "anlage.txt", "anlage.txt", packaged).writeOut(ole);
+        object.createDocument(
+            Ole10Native.OLE10_NATIVE, new ByteArrayInputStream(ole.toByteArray()));
+      }
+      ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+      fs.writeFilesystem(bytes);
+      return new HostileFile("objektpool.doc", bytes.toByteArray());
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  /** The Word 97 document of the demo corpus, found from the working directory upwards. */
+  private static Path demoCorpusDoc() {
+    Path relative = Path.of("demo", "corpus", "formate", "13_rahmenvertrag-scandienstleister.doc");
+    for (Path dir = Path.of("").toAbsolutePath(); dir != null; dir = dir.getParent()) {
+      if (Files.isRegularFile(dir.resolve(relative))) {
+        return dir.resolve(relative);
+      }
+    }
+    throw new IllegalStateException("No " + relative + " above the working directory");
+  }
+
+  /** The text the embedded objects of {@link HostileFiles} carry. */
   public static final String EMBEDDED_TEXT = "Eingebetteter Vermerk";
 
   /** A PNG of one transparent pixel, the icon of an embedded object. */

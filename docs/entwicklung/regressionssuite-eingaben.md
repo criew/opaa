@@ -2,7 +2,7 @@
 
 Die Suite hält fest, was die Gegenprüfungen zu präparierten Dateien, SSRF-Zielen und Log-Hygiene
 gefunden haben: Jeder behobene Befund bekommt einen benannten Testfall, der auf dem fehlerhaften
-Stand rot wird. Jeder Fall trägt einen Kommentar `// regression guard for #N: <Invariante>`, der
+Stand rot wird. Jeder Wächter trägt einen Kommentar `// regression guard for #N: <Invariante>`, der
 das abgesicherte Issue und die Invariante nennt. Ein neuer Fall ist erst fertig, wenn er mit
 zurückgenommenem Fix nachweislich rot wird: Eingabegröße und Zeitgrenze so wählen, dass der
 fehlerhafte Stand die Grenze klar reißt, und wo möglich nicht nur auf die Zeit prüfen, sondern auf
@@ -17,7 +17,7 @@ Review.
 
 | Klasse | Weg | Lauf |
 |---|---|---|
-| `io.opaa.format.hostile.FormatHostileInputTest` | Format-Pipeline wie in Produktion: Weiterleitung nach erkanntem Inhalt, `DocumentFormatRunner`, Produktionsgrenzen | Gradle-Task `hostileInputTest`, eigene JVM mit **512 MB Heap**, je Fall **5 s** (unter einer Sekunde im behobenen Stand) oder **20 s** |
+| `io.opaa.format.hostile.FormatHostileInputTest` | Format-Pipeline wie in Produktion: alle registrierten Formate (`ProductionDocumentFormats.registry(...)`, gegen den Spring-Kontext gehalten von `DocumentFormatRegistryRoutingIntegrationTest`), Weiterleitung nach erkanntem Inhalt, `DocumentFormatRunner`, Produktionsgrenzen | Gradle-Task `hostileInputTest`, eigene JVM mit **512 MB Heap**, je Fall **5 s** (unter einer Sekunde im behobenen Stand) oder **20 s** |
 | `io.opaa.library.HostileUploadIntegrationTest` | Upload-Verarbeitung im gemeinsamen Spring-Kontext: Upload-Pool, Anhänge, Zeilenstatus, Folge-Upload | `./gradlew test` (Shard `api`), je Datei **90 s** bis zum Endstatus |
 
 Die Wächter der Parser-Fixes stehen in `FormatHostileInputTest`. Der Upload-Test prüft den Weg bis
@@ -54,6 +54,9 @@ Ausgangsdateien nutzen kann:
   Elementebenen an, also rund 120 Tabellenebenen; die Last kommt aus der Breite je Ebene)
 - HTML mit sehr vielen Inhaltswurzeln (`<article>`)
 - Text ohne Leerraum
+- `.doc` mit Textpaketen im Objektpool; Grundlage ist das `.doc` des Demo-Korpus
+  (`demo/corpus/formate/13_rahmenvertrag-scandienstleister.doc`), weil keine Bibliothek im
+  Klassenpfad das alte Word-Format schreibt — erzeugt wird nur der Objektpool
 - PPTX, das auf jeder Folie ein Word-Dokument als OLE-Objekt einbettet
 
 Neue Fälle kommen als Fabrikmethode in `HostileFiles` und als Testfall in beide Klassen, sofern der
@@ -63,8 +66,21 @@ Fälle, die bestehende Grenztests schon abdecken, wiederholt die Suite nicht:
 `PdfAmplificationTest`, `ContextAmplificationTest`, `MsgAmplificationTest`,
 `OoxmlPackageLimitsTest` und `BoundarySplitterTest` bleiben die Stelle für ihre Fälle. Eingebettete
 Objekte deckt neben dem PPTX-Fall `DocumentServiceTest.parseDocumentDoesNotParseEmbeddedDocuments`
-ab; ein `.doc` mit Objektpool erzeugt die Suite nicht, weil es keinen Generator für das alte
-Word-Format gibt.
+ab.
+
+Eingebettete Objekte prüft die Suite auf beiden Wegen, die Produktion nimmt:
+
+- **`.doc` über den Tika-Fallback:** `TikaFallbackFormat` nimmt nur `.txt` und `.doc` an; der
+  `.doc`-Fall sichert, dass `DocumentService.parseDocument` kein eingebettetes Objekt parst
+  (`SKIP_EMBEDDED`, #3376).
+- **`.pptx` über `PptxDocumentFormat`:** Das Format liest nur Text aus Folienformen und Notizen und
+  öffnet keinen eingebetteten Teil. Es gibt dort keinen Fix, den man zurücknehmen könnte; der Fall
+  hält die Eigenschaft fest und wird rot, sobald das Format OLE-Objekte liest.
+
+Bricht `hostileInputTest` mit „Gradle Test Executor … Java heap space“ ab, hat ein Wächter
+gegriffen, der Speicher begrenzt (Wortläufe ohne Leerraum, zyklische Gliederung). Die abgebrochene
+JVM schreibt keinen Bericht für den laufenden Fall; welcher es war, zeigt ein Einzellauf, etwa
+`./gradlew hostileInputTest --tests '*WithoutWhitespace*'` oder `--tests '*CyclicOutline*'`.
 
 **Neuer Parser:** mindestens eine Datei, die seine teuerste Struktur (Verschachtelung, Verweise,
 Kompression, Wiederholung) über die Produktionsgrenze treibt, in `FormatHostileInputTest`.

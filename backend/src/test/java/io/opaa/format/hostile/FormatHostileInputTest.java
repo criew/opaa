@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import io.opaa.format.DiscoveredAttachment;
-import io.opaa.format.DocumentFormat;
 import io.opaa.format.DocumentFormatRegistry;
 import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatResult.Outcome;
@@ -13,23 +12,15 @@ import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.DocumentService;
 import io.opaa.format.chunk.ChunkingService;
-import io.opaa.format.file.fallback.TikaFallbackFormat;
-import io.opaa.format.file.html.HtmlDocumentFormat;
-import io.opaa.format.file.mail.MailDocumentFormat;
-import io.opaa.format.file.mail.MailProperties;
-import io.opaa.format.file.markdown.MarkdownDocumentFormat;
-import io.opaa.format.file.office.DocxDocumentFormat;
 import io.opaa.format.file.office.OoxmlPackages;
-import io.opaa.format.file.pdf.PdfDocumentFormat;
 import io.opaa.format.hostile.HostileFiles.HostileFile;
-import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import io.opaa.format.shared.ParserLimitProperties;
 import io.opaa.indexing.IndexingProperties;
+import io.opaa.test.ProductionDocumentFormats;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Disabled;
@@ -38,11 +29,11 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.ai.document.Document;
 
 /**
- * Every crafted file of {@link HostileFiles} on the production path of a format - routed by its
- * detected content, run by {@link DocumentFormatRunner} - with the production limits: it ends
- * within a fixed time, as parsed or as {@code PARSE_FAILED}. The {@code hostileInputTest} task runs
- * this class in a JVM of 512 MB heap, so a fix that no longer bounds memory fails as an {@link
- * OutOfMemoryError} here rather than slowing the suite down.
+ * Every crafted file of {@link HostileFiles} on the production path of a format - every format the
+ * application registers, routed by detected content, run by {@link DocumentFormatRunner} - with the
+ * production limits: it ends within a fixed time, as parsed or as {@code PARSE_FAILED}. The {@code
+ * hostileInputTest} task runs this class in a JVM of 512 MB heap, so a fix that no longer bounds
+ * memory fails as an {@link OutOfMemoryError} here rather than slowing the suite down.
  */
 class FormatHostileInputTest {
 
@@ -173,9 +164,18 @@ class FormatHostileInputTest {
     assertThat(read.longestRun()).isLessThanOrEqualTo(ChunkingService.MAX_RUN_CHARACTERS);
   }
 
-  // regression guard for #3376: an embedded object is not parsed, however often it is embedded
+  // regression guard for #3376: the fallback parses no embedded object, however often it is pooled
   @Test
-  void anEmbeddedDocumentIsNotParsed() {
+  void aWordDocumentsPooledObjectsAreNotParsed() {
+    Read read = run(HostileFiles.docWithPackagedTextInItsObjectPool(20), BOUND);
+
+    assertThat(read.outcome()).isEqualTo(Outcome.CHUNKED);
+    assertThat(read.text()).doesNotContain(HostileFiles.EMBEDDED_TEXT);
+  }
+
+  /** The PPTX format reads the text of slide shapes and notes and never opens an embedded part. */
+  @Test
+  void aPresentationsEmbeddedDocumentsAreNotRead() {
     Read read = run(HostileFiles.pptxEmbeddingAWordDocumentPerSlide(20), BOUND);
 
     assertThat(read.outcome()).isEqualTo(Outcome.CHUNKED);
@@ -224,19 +224,14 @@ class FormatHostileInputTest {
     }
   }
 
-  /** The formats a crafted file of {@link HostileFiles} reaches, with the production limits. */
+  /**
+   * Every format the application registers, from the list {@code
+   * DocumentFormatRegistryRoutingIntegrationTest} holds against the wired context, with the default
+   * limits.
+   */
   private static DocumentFormatRegistry productionRegistry() {
-    ChunkingService chunking =
-        new ChunkingService(new IndexingProperties(0, 0, 0, null, null, null, 0));
-    DocumentFormat fallback = new TikaFallbackFormat(new DocumentService(), chunking);
-    List<DocumentFormat> formats =
-        List.of(
-            fallback,
-            new HtmlDocumentFormat(HeadingSectionSplitterFixture.DEFAULT),
-            new MarkdownDocumentFormat(HeadingSectionSplitterFixture.DEFAULT),
-            new DocxDocumentFormat(HeadingSectionSplitterFixture.DEFAULT),
-            new PdfDocumentFormat(HeadingSectionSplitterFixture.DEFAULT),
-            new MailDocumentFormat(chunking, new MailProperties(0, 0, 0), Clock.systemUTC()));
-    return new DocumentFormatRegistry(formats, fallback);
+    return ProductionDocumentFormats.registry(
+        new DocumentService(),
+        new ChunkingService(new IndexingProperties(0, 0, 0, null, null, null, 0)));
   }
 }
