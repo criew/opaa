@@ -579,6 +579,20 @@ lassen.
   und befüllen, Bibliothek mit einer Person teilen) leben in `fixtures/chat.ts`, extrahiert aus
   `knowledge-libraries.spec.ts` (#424) und von beiden Dateien importiert, statt dupliziert.
 
+- `tests/evidence-viewer.spec.ts` (#3463) — „Dokument öffnen“ und „Herunterladen“ hinter dem
+  Belegfenster: Eine Bibliothek mit einem dreiseitigen PDF und einem HTML-Dokument (beide im
+  Speicher erzeugt) entsteht per API. Das PDF öffnet in der eigenen Anzeige auf der Fundseite mit
+  markierter Passage und lässt sich bis zur letzten Seite blättern, „Original herunterladen“
+  liefert die Datei. Das HTML-Dokument öffnet als Textfassung an der Fundstelle, der Sprung über
+  die Gliederung trifft den Abschnitt, „Herunterladen“ im Belegfenster liefert das Original. axe
+  für beide Ansichten in beiden Farbschemata. Eine Person ohne Leserecht bekommt über die API
+  weder Original noch Textfassung (404), die Eigentümerin beides.
+- `tests/admin-access-denied.spec.ts` (#3463) — `dev-user` ohne Systemrolle: Jede Seite unter
+  `/admin` und `/revision` verweigert sich mit ihrem Hinweis und ohne Verwaltungsnavigation (die
+  Gruppenseite ausgenommen, dort arbeiten Gruppenverantwortliche), und die Lesewege der Verwaltung
+  und Revision antworten durch nginx mit 403. Pflichtparameter sind gesetzt, damit die Abweisung
+  von der Rollenprüfung kommt und nicht von der Validierung.
+
 - `tests/conversation-note.spec.ts` (#1489, T7 von Epic #1482) — die Gesprächsnotiz über den
   vollen Stack (`docs/features/conversation-memory.md`, „Oberfläche", ADR-0031): Ein Chat mit einer
   Rahmenangabe in Runde 1 zeigt nach Runde 2 **keine** Schaltfläche und nach Runde 3
