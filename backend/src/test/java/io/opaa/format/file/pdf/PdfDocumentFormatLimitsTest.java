@@ -191,7 +191,13 @@ class PdfDocumentFormatLimitsTest {
     try (PDDocument doc = Loader.loadPDF(file.toFile())) {
       assertThatThrownBy(() -> PdfPageText.extract(doc, 0, page -> List.of(wholePage)))
           .isInstanceOf(ParserLimitExceededException.class)
-          .hasMessageContaining("glyph limit");
+          .hasMessageContaining("glyph limit")
+          // thrown by the table pass itself, not by the flow-text pass after it
+          .satisfies(
+              e ->
+                  assertThat(e.getStackTrace())
+                      .anyMatch(
+                          frame -> frame.getClassName().endsWith("PdfPageText$TableStripper")));
     }
   }
 
