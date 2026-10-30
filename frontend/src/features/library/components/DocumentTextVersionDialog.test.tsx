@@ -161,6 +161,7 @@ describe('DocumentTextVersionDialog', () => {
     await user.click(within(outline).getByRole('button', { name: 'Folie 91' }))
 
     expect(await screen.findByText('Passage 90 der Folien.')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('Passage 90 der Folien.')).toHaveFocus())
     expect(screen.queryByText('Passage 0 der Folien.')).not.toBeInTheDocument()
     // the cited passage is merely out of view, not gone
     expect(screen.getByRole('status')).not.toHaveTextContent(/nicht mehr enthalten/)

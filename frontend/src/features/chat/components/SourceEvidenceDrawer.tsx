@@ -180,8 +180,10 @@ export default function SourceEvidenceDrawer({
     })
   }
 
+  const [downloading, setDownloading] = useState<string | null>(null)
   async function handleDownloadOriginal(doc: EvidenceDoc) {
-    if (!doc.documentId) return
+    if (!doc.documentId || downloading) return
+    setDownloading(doc.documentId)
     try {
       await downloadDocumentContent(doc.documentId, doc.fileName)
     } catch (err) {
@@ -189,6 +191,8 @@ export default function SourceEvidenceDrawer({
         err instanceof Error ? err.message : 'Das Original konnte nicht geladen werden.',
         'error',
       )
+    } finally {
+      setDownloading(null)
     }
   }
 
@@ -209,7 +213,7 @@ export default function SourceEvidenceDrawer({
       locations: doc.locations,
       anchor: doc.anchors[0] ?? null,
       contentSha256: doc.source?.contentSha256,
-      chunkIndex: doc.chunkIndexes[0],
+      chunkIndex: openingChunk(doc),
       citationValid: doc.source?.citationValid !== false,
       freeze: doc.source?.freeze ?? null,
       privateSource: doc.source?.privateSource === true,
@@ -479,11 +483,13 @@ export default function SourceEvidenceDrawer({
                     </Link>
                   )}
                   {/* a page at the source (Confluence) has no file of its own to download */}
-                  {doc.documentId && hasOwnOriginal(doc.sourceType) && (
+                  {/* an entry from before the source type was recorded may be such a page */}
+                  {doc.documentId && doc.sourceType && hasOwnOriginal(doc.sourceType) && (
                     <Link
                       component="button"
                       type="button"
                       underline="hover"
+                      disabled={downloading === doc.documentId}
                       onClick={() => void handleDownloadOriginal(doc)}
                       sx={{ fontSize: 11.5 }}
                     >
@@ -538,4 +544,17 @@ export default function SourceEvidenceDrawer({
       </Box>
     </Drawer>
   )
+}
+
+/**
+ * The passage a Textfassung opens at: the one whose anchor the row carries, so passage and anchor
+ * belong to the same footnote; without an anchor, the row's first cited passage.
+ */
+function openingChunk(doc: CitationIndex['docs'][number]): number | undefined {
+  const anchor = doc.anchors[0]
+  if (anchor) {
+    const located = doc.source?.chunkLocations?.find((entry) => entry.anchor === anchor)
+    if (located) return located.chunkIndex
+  }
+  return doc.chunkIndexes[0]
 }

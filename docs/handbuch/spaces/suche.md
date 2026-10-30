@@ -941,7 +941,7 @@ hervor. Wurde das Dokument seit der Antwort neu indexiert und liest sich die Pas
 zitiert, sagt das Fenster „Das Dokument wurde seit dem Zitat neu indexiert – die markierte Stelle
 kann abweichen."; gibt es die Passage nicht mehr, „Die Fundstelle ist in der Textfassung nicht mehr
 enthalten." und das Fenster beginnt am Anfang. Aus der Dokumentliste einer Wissensbibliothek
-geöffnet, beginnt die Textfassung am Anfang. Sie zeigt nur, wer auch das Original öffnen darf.
+geöffnet, beginnt die Textfassung am Anfang. Sehen kann sie nur, wer auch das Original öffnen darf.
 
 **Original herunterladen.** PDF-Fenster, Textvorschau und Textfassung tragen oben rechts neben dem
 Schließen-Kreuz einen Knopf „Original herunterladen", der die Datei unverändert speichert. Im

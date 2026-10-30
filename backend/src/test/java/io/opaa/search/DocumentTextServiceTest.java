@@ -131,6 +131,13 @@ class DocumentTextServiceTest {
   }
 
   @Test
+  void aPassageThatIsOnlyItsPredecessorsTailKeepsItsText() {
+    assertThat(
+            DocumentTextService.withoutOverlap("Einleitung. Die Frist endet.", "Die Frist endet."))
+        .isEqualTo("Die Frist endet.");
+  }
+
+  @Test
   void aDocumentWithoutIndexedPassagesHasNoBoundsAndNoPassages() {
     when(chunks.chunkIndexBounds(ORGANIZATION_ID, DOCUMENT_ID)).thenReturn(Optional.empty());
 

@@ -147,8 +147,7 @@ export default function DocumentTextVersionDialog({
         block.scrollIntoView?.({ block: 'center' })
         block.focus({ preventScroll: true })
       } else if (block) {
-        // the section's heading sits above the passage, in the same wrapper
-        ;(block.parentElement ?? block).scrollIntoView?.({ block: 'start' })
+        showSection(block)
       }
     }
   }, [current])
@@ -198,7 +197,7 @@ export default function DocumentTextVersionDialog({
     const container = scrollRef.current
     const block = container?.querySelector<HTMLElement>(`[data-chunk-index="${chunkIndex}"]`)
     if (block) {
-      ;(block.parentElement ?? block).scrollIntoView?.({ block: 'start' })
+      showSection(block)
       return
     }
     void loadWindow({ from: chunkIndex, to: chunkIndex + WINDOW - 1 }, 'jump', chunkIndex)
@@ -367,7 +366,7 @@ export default function DocumentTextVersionDialog({
                   {sectionsAt.get(passage.chunkIndex)?.map((section, index) => (
                     <Typography
                       key={index}
-                      component="h3"
+                      component={headingTag(section.level)}
                       sx={{
                         fontSize: section.level === 1 ? 15 : 14,
                         fontWeight: 600,
@@ -380,7 +379,8 @@ export default function DocumentTextVersionDialog({
                   ))}
                   <Box
                     data-chunk-index={passage.chunkIndex}
-                    tabIndex={passage.chunkIndex === target ? -1 : undefined}
+                    tabIndex={-1}
+                    role={passage.chunkIndex === target ? 'region' : undefined}
                     aria-label={passage.chunkIndex === target ? 'Fundstelle' : undefined}
                     sx={{
                       whiteSpace: 'pre-wrap',
@@ -477,4 +477,18 @@ function lastSectionAtOrBefore(
     found = section
   }
   return found
+}
+
+/**
+ * Brings a section into view with its heading, which sits above the passage in the same wrapper,
+ * and moves focus there, so keyboard and screen reader continue in the section.
+ */
+function showSection(block: HTMLElement) {
+  ;(block.parentElement ?? block).scrollIntoView?.({ block: 'start' })
+  block.focus({ preventScroll: true })
+}
+
+/** Outline level 1 is the dialog's h3, below the h2 title; deeper levels follow, up to h6. */
+function headingTag(level: number): 'h3' | 'h4' | 'h5' | 'h6' {
+  return (['h3', 'h4', 'h5', 'h6'] as const)[Math.min(Math.max(level, 1), 4) - 1]
 }

@@ -226,8 +226,8 @@ paths:
         to be able to read the document's library; an unknown, foreign or hidden document is 404,
         and so is a library being erased (code LIBRARY_BEING_ERASED) and a document with a malware
         finding (code MALWARE_FOUND). A window holds at most 40 passages: from defaults to the
-        first chunk, to to from + 39, and a wider range is cut to 40; to below from is 400. sections=true adds the outline
-        of the whole document, read from the passages' anchors.
+        first chunk, to to from + 39, and a wider range is cut to 40; to below from is 400.
+        sections=true adds the outline of the whole document, read from the passages' anchors.
       parameters:
         - name: documentId
           in: path

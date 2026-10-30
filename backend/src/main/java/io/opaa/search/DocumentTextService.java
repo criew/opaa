@@ -118,7 +118,8 @@ public class DocumentTextService {
       return next;
     }
     int overlap = PassageText.overlapLength(previous, next);
-    if (overlap < MIN_OVERLAP) {
+    // a passage that is nothing but its predecessor's tail keeps its text, or it would show empty
+    if (overlap < MIN_OVERLAP || overlap >= next.strip().length()) {
       return next;
     }
     return next.substring(overlap).stripLeading();
