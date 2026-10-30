@@ -930,6 +930,14 @@ der Browser die Stelle auf der Seite nicht, etwa weil sie seit der Indexierung g
 öffnet die Seite wie gewohnt oben. Andere Formate verhalten sich unverändert: Bilder öffnen in
 einem neuen Tab, Office-Dateien werden heruntergeladen.
 
+**Beleg ohne gespeicherte Fundstelle.** Die Stelle, an die PDF- und Textvorschau springen, wird beim
+Indexieren je Abschnitt gespeichert und mit der Antwort festgehalten. Fehlt sie, weil der Abschnitt
+aus einer älteren Indexierung stammt, öffnet die Vorschau am Anfang und sagt „Für diesen Beleg ist
+keine Fundstelle gespeichert – das Dokument öffnet am Anfang.". Neue Antworten springen wieder an
+die Stelle, sobald die Bibliothek über den
+[Pipeline-Nachzug](../arbeitsmittel/wissensbibliotheken/README.md#72-pipeline-versionen-und-nachzug)
+neu aufbereitet ist; eine ältere Antwort behält ihren Stand.
+
 **Kopieren.** Rechts unter jeder Antwort steht „Kopieren". Ein Klick legt die Antwort als Markdown in
 die Zwischenablage, ohne Fußnotenmarken und ohne Quellenliste. Der Pfeil daneben bietet zwei
 Varianten: **„Mit Quellenangaben"** setzt jede Fußnote als Markdown-Fußnote (`[^1]`, dieselbe Nummer
