@@ -105,7 +105,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   /** The {@code code} of the 404 for an original the malware scan found malware in. */
   public static final String MALWARE_FOUND = "MALWARE_FOUND";
 
-  static final String MALWARE_FOUND_MESSAGE =
+  /** The message of the 404 {@link #MALWARE_FOUND} names. */
+  public static final String MALWARE_FOUND_MESSAGE =
       "Die Datei ist gesperrt, weil die Virenprüfung ein Schadprogramm gefunden hat";
 
   /** The 503 a reader sees when the core cannot sign in; account and endpoint stay in the log. */

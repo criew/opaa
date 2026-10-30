@@ -122,7 +122,7 @@ final class PassageText {
    * Bounded by {@code next}'s length, so the cost stays linear in the chunk size rather than in the
    * document size.
    */
-  private static int overlapLength(CharSequence written, String next) {
+  static int overlapLength(CharSequence written, String next) {
     int max = Math.min(written.length(), next.length());
     for (int length = max; length > 0; length--) {
       int start = written.length() - length;

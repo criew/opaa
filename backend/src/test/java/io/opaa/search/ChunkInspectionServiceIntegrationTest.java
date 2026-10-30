@@ -7,6 +7,7 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
+import io.opaa.library.LibraryDocumentService;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;
 import java.util.UUID;
@@ -191,6 +192,69 @@ class ChunkInspectionServiceIntegrationTest {
 
     assertThat(service.inspectChunk(admin, chunkId)).isPresent();
     assertThat(service.inspectDocumentChunks(admin, documentId).chunks()).hasSize(5);
+  }
+
+  @Test
+  void chunkIndexBoundsSpanTheIndexedChunksAndAreEmptyForADocumentWithoutAny() {
+    assertThat(service.chunkIndexBounds(DEFAULT_ORGANIZATION_ID, documentId))
+        .contains(new ChunkInspectionService.IndexBounds(0, 3));
+
+    UUID emptyDocumentId = UUID.randomUUID();
+    insertDocument(emptyDocumentId, DEFAULT_ORGANIZATION_ID, libraryId, "leer.pdf", 0);
+    try {
+      assertThat(service.chunkIndexBounds(DEFAULT_ORGANIZATION_ID, emptyDocumentId)).isEmpty();
+    } finally {
+      jdbcTemplate.update("DELETE FROM documents WHERE id = ?", emptyDocumentId);
+    }
+  }
+
+  @Test
+  void listChunkAnchorsReadsTheAnchorsInIndexOrderAndSkipsAChunkWithoutIndex() {
+    UUID anchoredChunkId = UUID.randomUUID();
+    chunkIds.add(anchoredChunkId);
+    jdbcTemplate.update(
+        "INSERT INTO vector_store (id, content, metadata) VALUES (?, 'Folientext', ?::jsonb)",
+        anchoredChunkId,
+        "{\"document_id\":\"%s\",\"chunk_index\":4,\"anchor\":{\"slide\":2}}"
+            .formatted(documentId));
+
+    List<ChunkInspectionService.IndexedAnchor> anchors =
+        service.listChunkAnchors(DEFAULT_ORGANIZATION_ID, documentId);
+
+    assertThat(anchors)
+        .extracting(ChunkInspectionService.IndexedAnchor::chunkIndex)
+        .containsExactly(0, 1, 2, 3, 4);
+    assertThat(anchors.get(0).anchor().isEmpty()).isTrue();
+    assertThat(anchors.get(4).anchor().slide()).isEqualTo(2);
+  }
+
+  @Test
+  void requireReadableTextAnswersLikeTheOriginalsDownload() {
+    CurrentUser reader =
+        CurrentUser.of(userId, DEFAULT_ORGANIZATION_ID, SystemRole.USER, "Leser", "l@b.de");
+    assertThatThrownBy(() -> service.requireReadableText(reader, documentId))
+        .isInstanceOf(AccessDeniedException.class);
+    assertThatThrownBy(() -> service.requireReadableText(reader, foreignDocumentId))
+        .isInstanceOf(NotFoundException.class);
+
+    grantViewer(libraryId, userId);
+    assertThat(service.requireReadableText(reader, documentId).getId()).isEqualTo(documentId);
+
+    jdbcTemplate.update(
+        "UPDATE documents SET malware_signature = 'EICAR-Test-File' WHERE id = ?", documentId);
+    assertThatThrownBy(() -> service.requireReadableText(reader, documentId))
+        .isInstanceOfSatisfying(
+            NotFoundException.class,
+            e -> assertThat(e.getCode()).isEqualTo(LibraryDocumentService.MALWARE_FOUND));
+
+    jdbcTemplate.update(
+        "UPDATE knowledge_libraries SET erasure_requested_at = now(),"
+            + " erasure_cause = 'OWNER_REQUEST' WHERE id = ?",
+        libraryId);
+    assertThatThrownBy(() -> service.requireReadableText(reader, documentId))
+        .isInstanceOfSatisfying(
+            NotFoundException.class,
+            e -> assertThat(e.getCode()).isEqualTo(LibraryDocumentService.LIBRARY_BEING_ERASED));
   }
 
   private void grantViewer(UUID grantedLibraryId, UUID subjectUserId) {
