@@ -273,6 +273,11 @@ Testziel `https://intranet.e2e.example` und einen auf ein fremdes Ziel, `E2E-ANT
 Markdown-Bild mit fremder Adresse, `E2E-BEFOLGE-DOKUMENT` jeden Markdown-Link aus den Passagen
 des Prompts: Der Stub spielt dann ein Modell, das der Anweisung eines präparierten Dokuments folgt.
 
+Für den **Modellfehler** (#3467) lässt `E2E-MODELL-FEHLER` in der Frage den Antwort-Prompt mit
+`400` scheitern, wie ein Anbieter, der eine Anfrage ablehnt. Ein 4xx wiederholt der Client des
+Backends nicht, die Meldung „Fehler im KI-Dienst" steht also sofort im Chat statt nach einer
+Wartezeit; Zerlegung, Titel und Notiz antworten weiter.
+
 ### Nextcloud statt Testkonnektor
 
 `docker-compose.e2e.yml` startet zusätzlich `nextcloud` (offizielles Image, SQLite, dieselbe
@@ -578,6 +583,19 @@ lassen.
   Die wiederverwendbaren Bausteine (Chat starten/fragen, zitierte Quelle prüfen, Bibliothek anlegen
   und befüllen, Bibliothek mit einer Person teilen) leben in `fixtures/chat.ts`, extrahiert aus
   `knowledge-libraries.spec.ts` (#424) und von beiden Dateien importiert, statt dupliziert.
+
+- `tests/chat-multi-turn.spec.ts` (#3467) — ein Gespräch über vier Frage-Antwort-Runden: Die
+  Bibliotheken A und B mit je einem kleinen Dokument entstehen per API, die Runden wechseln den
+  Suchbereich per `@` von A nach B. Geprüft werden die Reihenfolge Frage/Antwort, dass jede Antwort
+  ihren eigenen Beleg und das Kennzeichen „KI-erzeugt" trägt und frühere Antworten von späteren
+  Runden unberührt bleiben, dass die neueste Antwort ohne Scrollen im Blick ist, und dass der
+  Verlauf nach Neuladen und nach einem Wechsel in einen anderen Chat und zurück derselbe ist. Dazu
+  axe für den Verlauf (hell, dunkel, mit offenem Belegfenster), bei 320 px kein waagrechter
+  Überlauf. Bildschirmfotos von Anfang und Ende des Verlaufs (breit hell, breit dunkel, 320 px)
+  hängen als Anhang am Report, damit man sieht, wie ein längeres Gespräch aussieht. Ein zweites
+  Szenario lässt mitten im Gespräch das Modell scheitern (ai-stub, `E2E-MODELL-FEHLER`): Meldung,
+  keine halbe Antwort, Eingabe bleibt bedienbar, die nächste Frage gelingt; nach dem Neuladen
+  fehlt die gescheiterte Frage, weil sie nicht gespeichert wurde.
 
 - `tests/conversation-note.spec.ts` (#1489, T7 von Epic #1482) — die Gesprächsnotiz über den
   vollen Stack (`docs/features/conversation-memory.md`, „Oberfläche", ADR-0031): Ein Chat mit einer
