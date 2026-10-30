@@ -64,9 +64,8 @@ export function cleanupLibraries(): string[] {
 }
 
 /**
- * Uploads one text document into an UPLOAD library over the API as dev-admin. An upload beyond
- * the account's share of the upload pool is refused with 429 and Retry-After until an earlier one
- * finished processing; it is sent again after that wait, like the SPA does, up to `timeoutMs`.
+ * Uploads one text document into an UPLOAD library over the API as dev-admin, see
+ * {@link uploadDocument}.
  */
 export async function uploadTextDocument(
   request: APIRequestContext,
@@ -75,16 +74,33 @@ export async function uploadTextDocument(
   content: string,
   timeoutMs = 60_000,
 ): Promise<void> {
+  await uploadDocument(
+    request,
+    libraryId,
+    { name, mimeType: 'text/plain', buffer: Buffer.from(content, 'utf-8') },
+    timeoutMs,
+  )
+}
+
+/**
+ * Uploads one file into an UPLOAD library over the API as dev-admin. An upload beyond the
+ * account's share of the upload pool is refused with 429 and Retry-After until an earlier one
+ * finished processing; it is sent again after that wait, like the SPA does, up to `timeoutMs`.
+ */
+export async function uploadDocument(
+  request: APIRequestContext,
+  libraryId: string,
+  file: { name: string; mimeType: string; buffer: Buffer },
+  timeoutMs = 60_000,
+): Promise<void> {
   const deadline = Date.now() + timeoutMs
   for (;;) {
     const response = await request.post(`/api/v1/libraries/${libraryId}/documents`, {
       headers: { [DEV_USER_HEADER]: 'dev-admin' },
-      multipart: {
-        file: { name, mimeType: 'text/plain', buffer: Buffer.from(content, 'utf-8') },
-      },
+      multipart: { file },
     })
     if (response.status() !== 429 || Date.now() >= deadline) {
-      expect(response.ok(), `upload of ${name}: ${response.status()}`).toBe(true)
+      expect(response.ok(), `upload of ${file.name}: ${response.status()}`).toBe(true)
       return
     }
     const retryAfter = Number(response.headers()['retry-after'])
