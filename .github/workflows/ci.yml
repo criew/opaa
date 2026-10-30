@@ -387,17 +387,36 @@ jobs:
   dependency-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       # Waits for the head snapshots of the Gradle graph and the pnpm lockfiles, which
       # dependency-graph.yml generates and dependency-graph-submit.yml submits for every PR.
+      # The compare API keeps answering "no snapshots" for a query it already answered that way,
+      # keyed by its parameters; the action's own retry repeats one query and never sees the
+      # snapshots. Every poll here uses a fresh per_page, the action's per_page=5 query runs last.
+      - name: Auf die Snapshots des Head-Commits warten
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          for per_page in $(seq 100 -1 41); do
+            warnings=$(gh api -i "repos/$REPO/dependency-graph/compare/$BASE_SHA...$HEAD_SHA?per_page=$per_page" \
+              | tr -d '\r' | sed -n 's/^x-github-dependency-graph-snapshot-warnings: *//Ip' | base64 -d)
+            if ! grep -q 'No snapshots were found for the head SHA' <<<"$warnings"; then
+              echo "Snapshots für $HEAD_SHA liegen vor."
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "::warning::Keine Snapshots für $HEAD_SHA nach 30 Minuten, das Gate prüft nur den Graphen, den GitHub selbst kennt."
+
       - name: Neue critical-Schwachstellen im Scope runtime ablehnen
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: critical
           fail-on-scopes: runtime
-          retry-on-snapshot-warnings: true
-          retry-on-snapshot-warnings-timeout: 900
 
       # The gate above filters by severity and scope before it reports; this run only lists every
       # vulnerable change of both scopes in the job log and never fails.
