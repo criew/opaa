@@ -9,10 +9,12 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Stream;
+import org.apache.poi.util.LocaleUtil;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -88,6 +90,27 @@ class FuzzCorpusTest {
                 + FuzzCorpus.CORPUS
                 + " (committed vs. generated): ./gradlew writeParserFuzzCorpus")
         .isEmpty();
+  }
+
+  /** POI writes its user locale into new documents, and other tests in the same JVM may set it. */
+  @Test
+  void theGeneratedSeedsDoNotDependOnThePoiUserLocale() throws IOException {
+    Map<String, byte[]> usual = FuzzCorpusGenerator.seeds();
+    Map<String, byte[]> german;
+    LocaleUtil.setUserLocale(Locale.GERMANY);
+    try {
+      german = FuzzCorpusGenerator.seeds();
+    } finally {
+      LocaleUtil.resetUserLocale();
+    }
+
+    assertThat(german.keySet()).isEqualTo(usual.keySet());
+    for (Map.Entry<String, byte[]> seed : usual.entrySet()) {
+      assertThat(
+              SeedComparison.difference(seed.getKey(), seed.getValue(), german.get(seed.getKey())))
+          .as(seed.getKey())
+          .isEmpty();
+    }
   }
 
   @Test

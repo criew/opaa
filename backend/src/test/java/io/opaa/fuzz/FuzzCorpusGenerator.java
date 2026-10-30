@@ -7,10 +7,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
+import org.apache.poi.util.LocaleUtil;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFTextBox;
 import org.apache.poi.xssf.usermodel.XSSFRow;
@@ -43,6 +45,16 @@ public final class FuzzCorpusGenerator {
 
   /** Every generated seed by file name. */
   static Map<String, byte[]> seeds() throws IOException {
+    // POI writes its user locale into new documents; earlier tests in the same JVM must not leak in
+    LocaleUtil.setUserLocale(Locale.US);
+    try {
+      return generate();
+    } finally {
+      LocaleUtil.resetUserLocale();
+    }
+  }
+
+  private static Map<String, byte[]> generate() throws IOException {
     Map<String, byte[]> seeds = new TreeMap<>();
     seeds.put("pdf-text.pdf", pdfWithContent("BT /F1 12 Tf 72 720 Td (Ein kurzer Text.) Tj ET"));
     seeds.put("pdf-page-count-two-billion.pdf", pdfPageCount());
