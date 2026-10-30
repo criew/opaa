@@ -854,6 +854,17 @@ stellt seinen Ausgangszustand in der eigenen Vorbereitung über dieselben idempo
 | `08-csp.spec.ts` | Keine CSP-Verstöße: der lokale Aussteller braucht keine zusätzliche Herkunft, anders als der OIDC-Weg |
 | `09-selbstauskunft.spec.ts` | Selbstauskunft nach erneuter Bestätigung der Anmeldung: Abbrechen und falsches Passwort führen zu keinem Download, das richtige zu einem ZIP mit Konto und eigenem Chat; die Seite wird nach der Anmeldung neu geladen, weil erst das über das Refresh-Cookie erneuerte Token kein `auth_time` trägt |
 | `10-neuladen-waehrend-refresh.spec.ts` | Neuladen mitten in der Erneuerung: Zweimal verwirft der Browser Antwort und Cookie der committeten Rotation, die Sitzung bleibt trotzdem bestehen (Gnadenfrist, ADR-0033 Entscheidung 7), und die zweite Sitzung des Kontos bleibt unberührt |
+| `11-fokusring.spec.ts` | Fokusring nach Tastaturnavigation auf Anmeldeseite und Verwaltungsfeld, in beiden Farbschemata: deckende Linie von mindestens 2 px mit 3:1 gegen die Fläche, Feldrahmen 4,5:1 |
+| `12-revision.spec.ts` | Revision und Nachweis: erste Person der Revision über `OPAA_AUTH_FIRST_AUDITOR_EMAIL` mit dem Link aus dem Server-Log; Rollenantrag im Vier-Augen-Weg (ohne die Rolle Revision bestätigt niemand, weder die beantragte Person noch die Systemverwaltung; Bestätigung mit erneuter Anmeldung und einmaligem Link, Ablehnung); Stichtagsauskunft vor und nach dem Entzug einer Freigabe; Verbindungsprotokoll einer über einen Dropbox-Zugang verbundenen und gelöschten Bibliothek; Prüfsummenkette des laufenden Monats abrufbar und ohne Abweichung (ob schon ein Prüfpunkt besteht, hängt vom Zehn-Minuten-Takt des Kettenlaufs ab, daher gilt auch `UNCHAINED`) |
+
+Für `12-revision.spec.ts` bringt der Lauf zwei Dinge mit, die die übrigen Szenarien nicht
+brauchen: `local-auth.env` setzt `OPAA_AUTH_FIRST_AUDITOR_EMAIL`, und `run-e2e.mjs` reicht den
+Compose-Projektnamen als `E2E_COMPOSE_PROJECT` durch, weil der Link der ersten Person der Revision
+nur im Log des Backend-Containers steht (`fixtures/revision.ts`). Für das Verbindungsprotokoll
+startet der Stack den [Dropbox-Ersatzserver](#dropbox-ersatzserver) auf Host-Port `18093`
+(`OPAA_DROPBOX_STUB_PORT`) und bekommt dafür einen Schlüssel für gespeicherte Zugangsdaten. Die
+Vorbedingungen (Konten, Bibliothek, Freigabe, Anträge) laufen über die API, im Browser nur die
+Seiten der Revision; das Szenario dauert rund eine Minute. Die Zeitfenster der Stichtagsauskunft sind sekundengenau und setzen voraus, dass Host und Container dieselbe Uhr haben (unter Linux und in der CI gegeben).
 
 `/login/system` wird in Szenario 5 auf Barrierefreiheit geprüft und nicht in Szenario 7: Die Route
 leitet weiter, solange die lokale Verwaltung eingeschaltet ist, und Szenario 5 ist das einzige, das
