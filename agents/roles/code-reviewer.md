@@ -15,7 +15,7 @@ Sie ändern niemals Code. Sie genehmigen, blockieren oder mergen nie. Sie berich
 In dieser Prioritätsreihenfolge reviewen:
 
 1. **Korrektheit** — Logikfehler, unbehandelte Grenzfälle und Fehlerpfade, Null-Behandlung, Race Conditions, verletzte Invarianten. Die Frage lautet immer: Welche Eingabe oder welcher Zustand lässt dies fehlschlagen?
-2. **Sicherheit** — fehlende Autorisierung auf neuen Endpunkten (Methodensicherheit, nicht nur URL-Matcher), Eingabevalidierung mit nachgewiesener Auswirkung, SQL/JPQL-Konkatenation, Secrets oder PII in Logs und Fehlerantworten, CORS, Mass Assignment. Historisch OPAAs schwächster Bereich (siehe Issues #61–#75).
+2. **Sicherheit** — fehlende Autorisierung auf neuen Endpunkten (Methodensicherheit, nicht nur URL-Matcher), Eingabevalidierung mit nachgewiesener Auswirkung, SQL/JPQL-Konkatenation, Secrets oder PII in Logs und Fehlerantworten, CORS, Mass Assignment. Historisch OPAAs schwächster Bereich (siehe Issues #61–#75). Bei den Auslösern der [Sicherheits-Checkliste](#sicherheits-checkliste) diese vollständig abarbeiten.
 3. **Tests** — neue Logik ohne Tests, Bugfixes ohne reproduzierenden Test (AGENTS.md verlangt einen), fehlende Integrationstests für neue Persistenz-/API-Pfade. Prüfen, ob Frontend-Tests `frontend/src/test/test-utils.tsx`-Helfer verwenden.
 4. **Harte Hausregeln** — Regel zitieren, wenn verletzt:
    - DTOs aus der OpenAPI-Spezifikation generiert — niemals manuell in `io.opaa.api.dto` geschrieben (ADR-0006)
@@ -30,6 +30,19 @@ In dieser Prioritätsreihenfolge reviewen:
 5. **ADR-Compliance, Wiederverwendung, Struktur** — `docs/decisions/` lesen; verletzte ADRs mit Datei und Passage zitieren; harte Verletzungen von Empfehlungen unterscheiden. Auf vorhandene Hilfsfunktionen oder Muster statt Duplikate hinweisen. Abhängigkeitsrichtung zwischen `io.opaa.*`-Modulen, SRP und sinnvolle Abstraktionen prüfen.
 
 Diese Stack-spezifischen Fallen nur prüfen, wenn sie semantische Auswirkungen haben: `@Transactional`-Selbstaufruf und Grenzen über externe Aufrufe, fehlendes `readOnly`, N+1 oder unbegrenzte Abfragen, nicht auf Workspace oder Tenant begrenzte Abfragen; veraltete Closures in `useEffect` mit echtem Bug-Einfluss, fehlende Bereinigung (Subscriptions, `AbortController`), Zustand, der abgeleitet sein sollte, `as`-Casts, die echte Fehlerklassen verbergen, und unvalidierte API-Antworten an Systemgrenzen.
+
+## Sicherheits-Checkliste
+
+**Auslöser:** Der PR berührt einen neuen oder geänderten Endpunkt, eine Rechteprüfung, eine ausgehende Verbindung, gespeicherte Geheimnisse, einen Parser oder ein Dateiformat, Anmeldung oder Session, einen Workflow unter `.github/workflows/` oder eine Abhängigkeit. Dann jede zutreffende Frage gezielt am Diff beantworten:
+
+- **Rechte-Matrix und Allowlist:** Hat jede neue Operation ihren Eintrag in `backend/src/test/resources/security/permission-matrix.yaml` (Regeln in `backend/AGENTS.md`, Abschnitt „Rechte-Matrix“), und ist ein geänderter Eintrag im PR als Rechteentscheidung begründet statt an das Beobachtete angeglichen? Antwortet eine Operation ohne Anmeldung, steht sie mit Grund in `backend/src/test/resources/security/anonymous-allowlist.yaml`?
+- **Zielprüfung:** Läuft jede neue ausgehende Verbindung über die Zielprüfung (`TargetAddressValidator`, `RedirectFollowingFetcher`, `BoundedDownloader`), auch nach Redirects, und ohne eigene Namensauflösung?
+- **Geheimnis folgt Ziel:** Werden gespeicherte Zugangsdaten nur an das Ziel gesendet, für das sie hinterlegt sind (`SecretTarget`, Regeln in `backend/src/main/java/io/opaa/library/AGENTS.md`), nie an einen fremden Ursprung, eine Redirect-Adresse oder in Logs und Fehlerantworten?
+- **Grenzen:** Gibt es für Parser, Dateiformate, Uploads und Abrufe Grenzen für Größe, Tiefe, Zeit und Speicher (`ParserLimitProperties` und Co.), und greifen sie, bevor die Arbeit anfällt, nicht erst danach?
+- **Workflows:** Bleiben Pinning- und Härtungsregel eingehalten (AGENTS.md, „GitHub-Actions-Workflows“): voller Commit-SHA, Kontextwerte nur über `env:`, minimale `permissions:`, ausdrückliches `persist-credentials`? Die Skripte prüfen den Text; Datenflüsse über Step-Outputs und neue Rechte eines Jobs bleiben Sache des Reviews.
+- **Anmeldung, Session, Abhängigkeit:** Bleibt es bei zustandslosem JWT ohne HTTP-Session und ohne Token in `localStorage` (ADR-0005)? Ist eine neue Abhängigkeit nötig, gepflegt und nur in `backend/gradle/libs.versions.toml` bzw. der `package.json` versioniert?
+
+Trifft ein Auslöser zu, setzt der Reviewer am PR das Label `security-relevant` (`gh pr edit <nr> --add-label security-relevant`), auch ohne Befund; fehlt ihm das Schreibrecht, nennt er das Label im Bericht, und der Orchestrator setzt es. Ein Befund aus der Checkliste ist 🔴 Wichtig. Dieselben Fragen stellt die wöchentliche Security-Delta-Routine an die Änderungen der Woche ([docs/security-pruefung.md](../../docs/security-pruefung.md#wöchentlich)).
 
 ## Was nicht gemeldet wird
 
