@@ -9,11 +9,8 @@ import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.zip.CRC32;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFTextBox;
 import org.apache.poi.xssf.usermodel.XSSFRow;
@@ -25,10 +22,11 @@ import org.apache.poi.xwpf.usermodel.XWPFTable;
 
 /**
  * Writes the generated seeds of the parser fuzzing corpus: one ordinary sample per format, and the
- * known hostile shapes - amplification in PDF page trees, outlines, forms and cross reference data,
- * unpacked OOXML and ODS cells, repeated context in Markdown and CSV, backtracking text, long
- * blank-line runs, nested tables and messages. Each seed stays small; the campaign's mutators
- * enlarge them. Run by {@code ./gradlew writeParserFuzzCorpus}; the seeds are deterministic.
+ * hostile shapes {@link HostileSeeds} does not already take from the regression suite -
+ * amplification in PDF page trees and cross reference data, unpacked OOXML and ODS cells, repeated
+ * context in Markdown and CSV, backtracking text, long blank-line runs, data URLs and many
+ * attachments. Each seed stays small; the campaign's mutators enlarge them. Run by {@code ./gradlew
+ * writeParserFuzzCorpus}; every run writes the same bytes, which {@code FuzzCorpusTest} holds.
  */
 public final class FuzzCorpusGenerator {
 
@@ -48,8 +46,6 @@ public final class FuzzCorpusGenerator {
     seeds.put("pdf-text.pdf", pdfWithContent("BT /F1 12 Tf 72 720 Td (Ein kurzer Text.) Tj ET"));
     seeds.put("pdf-page-count-two-billion.pdf", pdfPageCount());
     seeds.put("pdf-page-tree-repeated-kids.pdf", pdfRepeatedKids());
-    seeds.put("pdf-outline-cycle.pdf", pdfOutlineCycle());
-    seeds.put("pdf-form-drawn-many-times.pdf", pdfFormDrawnManyTimes());
     seeds.put("pdf-deflated-content-run.pdf", pdfDeflatedContentRun());
     seeds.put("pdf-xref-stream-zero-widths.pdf", pdfXrefStreamZeroWidths());
     seeds.put("pdf-object-markers-without-xref.pdf", pdfObjectMarkersWithoutXref());
@@ -68,12 +64,9 @@ public final class FuzzCorpusGenerator {
         utf8("---\ntitel: a" + " ".repeat(20_000) + "b\n---\n# Titel\n\nText.\n"));
     seeds.put("md-instruction-markers.md", utf8(markdownInstructionMarkers()));
     seeds.put("csv-wide-header.csv", utf8(csvWideHeader()));
-    seeds.put("html-nested-tables.html", utf8(htmlNestedTables(60)));
     seeds.put("html-data-urls.html", utf8(htmlDataUrls()));
     seeds.put("txt-text.txt", utf8("Titel\n=====\n\nEin Text ohne Auszeichnung.\n"));
-    seeds.put("txt-long-token.txt", utf8("x".repeat(60_000)));
     seeds.put("txt-blank-line-run.txt", utf8("Anfang" + "\n".repeat(60_000) + "Ende\n"));
-    seeds.put("eml-nested-messages.eml", utf8(emlNested(8)));
     seeds.put("eml-many-attachments.eml", utf8(emlManyAttachments(60)));
     return seeds;
   }
@@ -107,37 +100,6 @@ public final class FuzzCorpusGenerator {
     pdf.object(3, Pdf.page(2, 4));
     pdf.stream(4, "", latin1("BT /F1 12 Tf 72 720 Td (Seite) Tj ET"));
     pdf.object(5, Pdf.FONT);
-    return pdf.finish();
-  }
-
-  private static byte[] pdfOutlineCycle() {
-    Pdf pdf = new Pdf();
-    pdf.object(1, "<< /Type /Catalog /Pages 2 0 R /Outlines 6 0 R >>");
-    pdf.object(2, "<< /Type /Pages /Kids [3 0 R] /Count 1 >>");
-    pdf.object(3, Pdf.page(2, 4));
-    pdf.stream(4, "", latin1("BT /F1 12 Tf 72 720 Td (Gliederung) Tj ET"));
-    pdf.object(5, Pdf.FONT);
-    pdf.object(6, "<< /Type /Outlines /First 7 0 R /Last 8 0 R /Count 2 >>");
-    pdf.object(7, "<< /Title (Eins) /Parent 6 0 R /Next 8 0 R /First 8 0 R /Last 7 0 R >>");
-    pdf.object(8, "<< /Title (Zwei) /Parent 6 0 R /Next 7 0 R /Prev 7 0 R /First 7 0 R >>");
-    return pdf.finish();
-  }
-
-  private static byte[] pdfFormDrawnManyTimes() throws IOException {
-    Pdf pdf = new Pdf();
-    pdf.object(1, "<< /Type /Catalog /Pages 2 0 R >>");
-    pdf.object(2, "<< /Type /Pages /Kids [3 0 R] /Count 1 >>");
-    pdf.object(
-        3,
-        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R"
-            + " /Resources << /Font << /F1 5 0 R >> /XObject << /Fm1 6 0 R >> >> >>");
-    pdf.stream(4, "/Filter /FlateDecode", deflate(latin1("/Fm1 Do\n".repeat(20_000))));
-    pdf.object(5, Pdf.FONT);
-    pdf.stream(
-        6,
-        "/Type /XObject /Subtype /Form /BBox [0 0 612 792]"
-            + " /Resources << /Font << /F1 5 0 R >> >>",
-        latin1("BT /F1 12 Tf 72 700 Td (Formular) Tj ET"));
     return pdf.finish();
   }
 
@@ -323,7 +285,7 @@ public final class FuzzCorpusGenerator {
             + " Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\""
             + " Target=\"word/document.xml\"/></Relationships>");
     parts.put("word/document.xml", document);
-    return zip(parts, null);
+    return zip(parts);
   }
 
   private static byte[] pptx(int slides) throws IOException {
@@ -373,40 +335,27 @@ public final class FuzzCorpusGenerator {
             + "<manifest:file-entry manifest:full-path=\"content.xml\""
             + " manifest:media-type=\"text/xml\"/></manifest:manifest>");
     parts.put("content.xml", content);
-    return zip(parts, "mimetype");
+    return zip(parts);
   }
 
-  /** A ZIP of {@code parts}; {@code stored} names the one part written uncompressed. */
-  static byte[] zip(Map<String, String> parts, String stored) throws IOException {
-    ByteArrayOutputStream out = new ByteArrayOutputStream();
-    try (ZipOutputStream zip = new ZipOutputStream(out)) {
-      for (Map.Entry<String, String> part : parts.entrySet()) {
-        byte[] data = utf8(part.getValue());
-        ZipEntry entry = new ZipEntry(part.getKey());
-        if (part.getKey().equals(stored)) {
-          CRC32 crc = new CRC32();
-          crc.update(data);
-          entry.setMethod(ZipEntry.STORED);
-          entry.setSize(data.length);
-          entry.setCompressedSize(data.length);
-          entry.setCrc(crc.getValue());
-        }
-        zip.putNextEntry(entry);
-        zip.write(data);
-        zip.closeEntry();
-      }
-    }
-    return out.toByteArray();
+  /**
+   * A ZIP of {@code parts} as {@link Mutators#zip} writes it, the {@code mimetype} uncompressed.
+   */
+  static byte[] zip(Map<String, String> parts) throws IOException {
+    Map<String, byte[]> bytes = new LinkedHashMap<>();
+    parts.forEach((name, text) -> bytes.put(name, utf8(text)));
+    return Mutators.zip(bytes);
   }
 
   private interface Writing {
     void to(OutputStream out) throws IOException;
   }
 
+  /** What a POI document writes, with its entry times and creation dates fixed. */
   private static byte[] written(Writing writing) throws IOException {
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     writing.to(out);
-    return out.toByteArray();
+    return Mutators.reproducible(out.toByteArray());
   }
 
   // --- Text --------------------------------------------------------------------------------------
@@ -445,19 +394,6 @@ public final class FuzzCorpusGenerator {
     return csv.toString();
   }
 
-  private static String htmlNestedTables(int depth) {
-    StringBuilder html = new StringBuilder("<!DOCTYPE html><html><head><title>Tabellen</title>");
-    html.append("</head><body><h1>Verschachtelt</h1>");
-    for (int i = 0; i < depth; i++) {
-      html.append("<table><tr><td>Ebene ").append(i).append("</td><td>");
-    }
-    html.append("Innen");
-    for (int i = 0; i < depth; i++) {
-      html.append("</td></tr></table>");
-    }
-    return html.append("</body></html>").toString();
-  }
-
   private static String htmlDataUrls() {
     StringBuilder html = new StringBuilder("<!DOCTYPE html><html><head><title>Adressen</title>");
     html.append("</head><body><h1>Adressen</h1><p>");
@@ -469,32 +405,6 @@ public final class FuzzCorpusGenerator {
           .append(' ');
     }
     return html.append("</p></body></html>").toString();
-  }
-
-  private static String emlNested(int depth) {
-    String message = "From: a@example.org\r\nTo: b@example.org\r\nSubject: Innen\r\n\r\nText.\r\n";
-    for (int i = 0; i < depth; i++) {
-      message =
-          "From: a@example.org\r\nTo: b@example.org\r\nSubject: Ebene "
-              + i
-              + "\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=\"b"
-              + i
-              + "\"\r\n\r\n--b"
-              + i
-              + "\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nEbene "
-              + i
-              + "\r\n--b"
-              + i
-              + "\r\nContent-Type: message/rfc822\r\nContent-Disposition: attachment;"
-              + " filename=\"ebene"
-              + i
-              + ".eml\"\r\n\r\n"
-              + message
-              + "\r\n--b"
-              + i
-              + "--\r\n";
-    }
-    return message;
   }
 
   private static String emlManyAttachments(int count) {

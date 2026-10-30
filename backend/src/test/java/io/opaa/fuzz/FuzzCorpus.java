@@ -10,8 +10,9 @@ import java.util.Locale;
 import java.util.stream.Stream;
 
 /**
- * The seeds of the parser fuzzing: the generated and found inputs under {@link #CORPUS} and the
- * format samples under {@link #TEST_DOCUMENTS}, each file whose extension the installation admits.
+ * The seeds of the parser fuzzing: the generated and found inputs under {@link #CORPUS}, the format
+ * samples under {@link #TEST_DOCUMENTS} and the crafted files of {@link HostileSeeds}, each whose
+ * extension the installation admits.
  */
 final class FuzzCorpus {
 
@@ -40,16 +41,22 @@ final class FuzzCorpus {
     return Path.of(root);
   }
 
-  /** Every seed whose extension is among {@code admitted}, sorted by path. */
+  /**
+   * Every seed whose extension is among {@code admitted}: the files sorted by path, then the
+   * crafted ones in their fixed order.
+   */
   static List<Seed> load(Collection<String> admitted) {
     Path root = repositoryRoot();
-    return Stream.of(CORPUS, TEST_DOCUMENTS)
-        .map(root::resolve)
-        .flatMap(FuzzCorpus::files)
-        .filter(file -> admitted.contains(extensionOf(file.getFileName().toString())))
-        .sorted()
-        .map(FuzzCorpus::seed)
-        .toList();
+    Stream<Seed> files =
+        Stream.of(CORPUS, TEST_DOCUMENTS)
+            .map(root::resolve)
+            .flatMap(FuzzCorpus::files)
+            .filter(file -> admitted.contains(extensionOf(file.getFileName().toString())))
+            .sorted()
+            .map(FuzzCorpus::seed);
+    Stream<Seed> crafted =
+        HostileSeeds.seeds().stream().filter(seed -> admitted.contains(seed.extension()));
+    return Stream.concat(files, crafted).toList();
   }
 
   static String extensionOf(String fileName) {

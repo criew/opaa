@@ -40,6 +40,12 @@ final class FuzzCampaign {
   /** After this many runs that never returned the campaign stops: each still holds a thread. */
   private static final int MAX_STUCK_RUNS = 2;
 
+  /** The name of the input that runs right now, beside the findings. */
+  static final String CURRENT = "current-input";
+
+  /** The prefix of every line the campaign prints; the build shows only these. */
+  static final String LOG_PREFIX = "[parser-fuzz] ";
+
   enum Kind {
     OUT_OF_MEMORY,
     TIMEOUT,
@@ -77,14 +83,23 @@ final class FuzzCampaign {
     this.settings = settings;
   }
 
-  /** Runs the campaign and answers its findings; the summary is written either way. */
+  /** Runs the campaign on a path of its own; see {@link #run(ProductionPath)}. */
   List<Finding> run() throws IOException {
+    try (ProductionPath path = ProductionPath.start()) {
+      return run(path);
+    }
+  }
+
+  /**
+   * Runs the campaign on {@code path} and answers its findings; the summary is written either way.
+   */
+  List<Finding> run(ProductionPath path) throws IOException {
     Files.createDirectories(settings.findings());
     Path work = Files.createTempDirectory("opaa-fuzz-");
     long started = System.nanoTime();
     long iterations = 0;
     int stuck = 0;
-    try (ProductionPath path = ProductionPath.start()) {
+    try {
       List<String> admitted = path.registry().supportedFormats().extensions();
       List<FuzzCorpus.Seed> seeds = FuzzCorpus.load(admitted);
       List<byte[]> others = seeds.stream().map(FuzzCorpus.Seed::bytes).toList();
@@ -167,6 +182,7 @@ final class FuzzCampaign {
       throws IOException {
     Path file = work.resolve(input.fileName());
     Files.write(file, input.bytes());
+    writeCurrent(input);
     long started = System.nanoTime();
     Future<ProductionPath.Run> future = executor.submit(() -> path.run(file, input.fileName()));
     try {
@@ -199,6 +215,38 @@ final class FuzzCampaign {
       throw new IllegalStateException("fuzzing interrupted", e);
     } finally {
       Files.deleteIfExists(file);
+      deleteCurrent();
+    }
+  }
+
+  /**
+   * Writes the input about to run to {@link Settings#findings} as {@code current-input}, with a
+   * description beside it: should the run end the JVM, it is the reproducer left behind.
+   */
+  private void writeCurrent(Input input) throws IOException {
+    deleteCurrent();
+    Files.write(
+        settings.findings().resolve(CURRENT + FuzzCorpus.extensionOf(input.fileName())),
+        input.bytes());
+    Files.writeString(
+        settings.findings().resolve(CURRENT + ".finding"),
+        String.join(
+            "\n",
+            "kind: the JVM ended during this input (out of memory or killed)",
+            "campaign seed: " + settings.seed(),
+            "iteration: " + input.iteration(),
+            "seed file: " + input.seed().name(),
+            "mutations: " + input.mutations(),
+            "file name: " + input.fileName(),
+            "reproduce: ./gradlew parserFuzzTest -PfuzzReplay=<path of the input file>"),
+        StandardCharsets.UTF_8);
+  }
+
+  private void deleteCurrent() throws IOException {
+    try (var files = Files.list(settings.findings())) {
+      for (Path file : files.filter(f -> f.getFileName().toString().startsWith(CURRENT)).toList()) {
+        Files.deleteIfExists(file);
+      }
     }
   }
 
@@ -261,7 +309,7 @@ final class FuzzCampaign {
             perSignature.entrySet().stream()
                 .map(entry -> "  " + entry.getValue() + "x " + entry.getKey())
                 .collect(Collectors.joining("\n")));
-    System.out.println(summary);
+    System.out.println(LOG_PREFIX + summary.replace("\n", "\n" + LOG_PREFIX));
     try {
       Files.writeString(settings.findings().resolve("summary.txt"), summary + "\n");
     } catch (IOException e) {

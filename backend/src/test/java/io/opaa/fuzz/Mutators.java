@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,6 +30,15 @@ final class Mutators {
 
   /** The most a ZIP part may unpack to while a mutation reads it. */
   private static final int MAX_PART_BYTES = 16 * 1024 * 1024;
+
+  /** The time every written ZIP entry carries, so equal parts give equal bytes. */
+  private static final LocalDateTime ENTRY_TIME = LocalDateTime.of(2026, 1, 1, 0, 0);
+
+  /**
+   * The creation and change dates of an Office package, which POI sets to the moment of writing.
+   */
+  private static final Pattern PACKAGE_DATE =
+      Pattern.compile("(<dcterms:(?:created|modified)[^>]*+>)[^<]*+(</dcterms:)");
 
   private static final byte[] INTERESTING_BYTES = {
     0, (byte) 0xFF, 0x7F, (byte) 0x80, '<', '>', '(', ')', '/', '\n', '"', '[', ']', '%'
@@ -323,11 +333,16 @@ final class Mutators {
     return parts;
   }
 
+  /**
+   * A ZIP of {@code parts} in their order, each entry at {@link #ENTRY_TIME}, the {@code mimetype}
+   * of an OpenDocument stored uncompressed: the same parts always give the same bytes.
+   */
   static byte[] zip(Map<String, byte[]> parts) throws IOException {
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     try (ZipOutputStream zip = new ZipOutputStream(out)) {
       for (Map.Entry<String, byte[]> part : parts.entrySet()) {
         ZipEntry entry = new ZipEntry(part.getKey());
+        entry.setTimeLocal(ENTRY_TIME);
         if (part.getKey().equals("mimetype")) {
           CRC32 crc = new CRC32();
           crc.update(part.getValue());
@@ -342,6 +357,26 @@ final class Mutators {
       }
     }
     return out.toByteArray();
+  }
+
+  /**
+   * {@code input} rewritten by {@link #zip} with the package dates of {@code docProps/core.xml}
+   * fixed, when it is a ZIP; anything else unchanged.
+   */
+  static byte[] reproducible(byte[] input) throws IOException {
+    Map<String, byte[]> parts = unzip(input);
+    if (parts == null) {
+      return input;
+    }
+    byte[] core = parts.get("docProps/core.xml");
+    if (core != null) {
+      String fixed =
+          PACKAGE_DATE
+              .matcher(new String(core, StandardCharsets.UTF_8))
+              .replaceAll("$12026-01-01T00:00:00Z$2");
+      parts.put("docProps/core.xml", fixed.getBytes(StandardCharsets.UTF_8));
+    }
+    return zip(parts);
   }
 
   private static byte[] slice(byte[] input, int from, int to) {

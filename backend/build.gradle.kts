@@ -539,8 +539,15 @@ tasks.register<Test>("parserFuzzTest") {
     }
     testLogging {
         events("passed", "skipped", "failed")
-        showStandardStreams = true
     }
+    // Only the campaign's own lines reach the log, not what the parsers print on the way.
+    onOutput(
+        KotlinClosure2<TestDescriptor, TestOutputEvent, Unit>({ _, event ->
+            if (event.message.startsWith("[parser-fuzz]")) {
+                logger.lifecycle(event.message.trimEnd())
+            }
+        }),
+    )
     outputs.upToDateWhen { false }
     outputs.cacheIf { false }
 }
@@ -676,7 +683,6 @@ tasks.register<Test>("googleDriveIntegrationTest") {
     }
     testLogging {
         events("passed", "skipped", "failed")
-        showStandardStreams = true
     }
     outputs.upToDateWhen { false }
     outputs.cacheIf { false }

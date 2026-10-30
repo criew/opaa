@@ -22,7 +22,7 @@ class ParserFuzzTest {
   @Test
   void noInputBreaksTheProductionPath() throws IOException {
     FuzzCampaign.Settings settings = settings();
-    System.out.println("parser fuzzing with campaign seed " + settings.seed());
+    System.out.println(FuzzCampaign.LOG_PREFIX + "campaign seed " + settings.seed());
     String replay = System.getProperty("opaa.fuzz.replay");
     FuzzCampaign campaign = new FuzzCampaign(settings);
     List<FuzzCampaign.Finding> findings =
