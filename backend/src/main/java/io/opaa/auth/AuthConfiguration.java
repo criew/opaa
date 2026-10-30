@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Configuration;
  * simple constructor-injected collaborator rather than something Spring auto-detects.
  */
 @Configuration
-@EnableConfigurationProperties(AuthProperties.class)
+@EnableConfigurationProperties({AuthProperties.class, AuditorRoleProperties.class})
 public class AuthConfiguration {
 
   @Bean

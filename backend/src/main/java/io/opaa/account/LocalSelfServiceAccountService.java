@@ -9,6 +9,7 @@ import io.opaa.api.types.LocalAccountState;
 import io.opaa.api.types.LockReason;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.AuditorRoles;
 import io.opaa.auth.LocalAccountAccess;
 import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.LocalCredentialsRepository;
@@ -67,6 +68,8 @@ public class LocalSelfServiceAccountService {
   private final LocalAccountMailer mailer;
   private final Clock clock;
 
+  private final AuditorRoles auditorRoles;
+
   public LocalSelfServiceAccountService(
       UserRepository users,
       LocalCredentialsRepository credentials,
@@ -74,7 +77,9 @@ public class LocalSelfServiceAccountService {
       LocalActionTokenService actionTokens,
       AuditEventRecorder audit,
       LocalAccountMailer mailer,
+      AuditorRoles auditorRoles,
       Clock clock) {
+    this.auditorRoles = auditorRoles;
     this.users = users;
     this.credentials = credentials;
     this.settings = settings;
@@ -173,6 +178,11 @@ public class LocalSelfServiceAccountService {
     }
     Optional<LocalCredentials> row = credentials.findById(user.get().getId());
     if (row.isEmpty() || !isEligibleForReset(row.get(), now)) {
+      return Optional.empty();
+    }
+    // the link would travel through SMTP settings and templates the system administration
+    // controls; an auditor account, or one with an open request, is answered like an unknown one
+    if (auditorRoles.isAuditorOrRequested(user.get())) {
       return Optional.empty();
     }
     IssuedActionToken token =

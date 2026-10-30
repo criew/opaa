@@ -13,6 +13,7 @@ import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,8 +33,11 @@ class TokenRoleSynchronizerTest {
   private final UserRepository userRepository = mock(UserRepository.class);
   private final LocalAdminAvailabilityGuard guard = mock(LocalAdminAvailabilityGuard.class);
   private final AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
+  private final AuditorRoles auditorRoles = mock(AuditorRoles.class);
+  private final List<Object> events = new ArrayList<>();
   private final TokenRoleSynchronizer synchronizer =
-      new TokenRoleSynchronizer(userRepository, guard, auditEventRecorder);
+      new TokenRoleSynchronizer(
+          userRepository, guard, auditEventRecorder, events::add, auditorRoles);
   private final OidcProvider provider =
       new OidcProvider(
           "Beschäftigte",
@@ -92,21 +96,61 @@ class TokenRoleSynchronizerTest {
     verify(auditEventRecorder, never()).recordSystemProcessAction(any());
   }
 
+  /**
+   * Regression guard for #3356: an administrator moved to AUDITOR by the claim loses SYSTEM_ADMIN
+   * at once, conditionally, but receives AUDITOR only through an auditor's confirmation.
+   */
   @Test
-  void aWithdrawalOfSystemAdminIsConditionalAndAuditedAsRevokedPlusGranted() {
+  void aClaimMovingAnAdministratorToAuditorWithdrawsAdminAndOnlyAsksForAuditor() {
     user.setSystemRole(SystemRole.SYSTEM_ADMIN);
+    when(auditorRoles.requestFromProvider(user, provider)).thenReturn(true);
 
     User result = synchronizer.apply(user, provider, TokenRoles.named(List.of("opaa-auditor")));
 
-    assertThat(result.getSystemRole()).isEqualTo(SystemRole.AUDITOR);
+    assertThat(result.getSystemRole()).isEqualTo(SystemRole.USER);
     // the guard is the one place that counts login-capable administrators (ADR-0033, 4)
-    verify(guard).withdrawSystemAdminIfAnotherRemains(user, SystemRole.AUDITOR);
+    verify(guard).withdrawSystemAdminIfAnotherRemains(user, SystemRole.USER);
+    verify(auditorRoles).requestFromProvider(user, provider);
     ArgumentCaptor<AuditEvent> audit = ArgumentCaptor.forClass(AuditEvent.class);
-    verify(auditEventRecorder, times(2)).recordSystemProcessAction(audit.capture());
+    verify(auditEventRecorder, times(1)).recordSystemProcessAction(audit.capture());
     assertThat(audit.getAllValues())
         .extracting(AuditEvent::eventType)
-        .containsExactly(
-            AuditEventType.SYSTEM_ADMIN_ROLE_REVOKED, AuditEventType.AUDITOR_ROLE_GRANTED);
+        .containsExactly(AuditEventType.SYSTEM_ADMIN_ROLE_REVOKED);
+  }
+
+  /** Regression guard for #3356: the claim alone never makes an account an auditor. */
+  @Test
+  void aClaimNamingAuditorOpensARequestAndLeavesTheRole() {
+    when(auditorRoles.requestFromProvider(user, provider)).thenReturn(true);
+
+    User result = synchronizer.apply(user, provider, TokenRoles.named(List.of("opaa-auditor")));
+
+    assertThat(result.getSystemRole()).isEqualTo(SystemRole.USER);
+    verify(auditorRoles).requestFromProvider(user, provider);
+    verify(userRepository, never()).changeRoleIfStill(any(), any(), any());
+    verify(auditEventRecorder, never()).recordSystemProcessAction(any());
+    assertThat(events).isEmpty();
+  }
+
+  @Test
+  void withoutAnAuditorTheClaimGrantsNothing() {
+    when(auditorRoles.requestFromProvider(user, provider)).thenReturn(false);
+
+    User result = synchronizer.apply(user, provider, TokenRoles.named(List.of("opaa-auditor")));
+
+    assertThat(result.getSystemRole()).isEqualTo(SystemRole.USER);
+    verify(userRepository, never()).changeRoleIfStill(any(), any(), any());
+  }
+
+  @Test
+  void aClaimNoLongerNamingAuditorWithdrawsItTellsTheAuditorsAndEndsTheRequest() {
+    user.setSystemRole(SystemRole.AUDITOR);
+
+    User result = synchronizer.apply(user, provider, TokenRoles.named(List.of()));
+
+    assertThat(result.getSystemRole()).isEqualTo(SystemRole.USER);
+    verify(auditorRoles).endProviderRequest(user, provider);
+    assertThat(events).singleElement().isInstanceOf(AuditorRoleRevokedEvent.class);
   }
 
   @Test

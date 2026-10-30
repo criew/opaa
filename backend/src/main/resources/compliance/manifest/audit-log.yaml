@@ -478,6 +478,22 @@ auditEvents:
   - id: AUDITOR_ROLE_REVOKED
     trigger: Die Rolle AUDITOR wird entzogen
     payloadKeys: [provider, role]
+  - id: AUDITOR_ROLE_REQUESTED
+    trigger: >-
+      Die Systemverwaltung oder der Rollen-Claim eines Identitätsanbieters beantragt die Rolle
+      AUDITOR für ein Konto; wirksam wird sie erst mit der Bestätigung durch eine Person der
+      Revision (dann AUDITOR_ROLE_GRANTED unter dieser Person)
+    details: >-
+      Handelnd ist die Systemverwaltung oder der Systemakteur identity-provider (dann mit dem
+      Anbieter unter provider); Objekt und betroffene Person das Konto
+    payloadKeys: [provider, role]
+  - id: AUDITOR_ROLE_REQUEST_DECLINED
+    trigger: >-
+      Ein offener Antrag auf die Rolle AUDITOR endet ohne die Rolle: Die Revision lehnt ab, die
+      Systemverwaltung zieht ihn mit einer anderen Rolle zurück, oder der Rollen-Claim nennt die
+      Rolle nicht mehr
+    details: Die handelnde Person oder der Systemakteur zeigt, wer den Antrag beendet hat
+    payloadKeys: [provider, role]
   - id: SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED
     trigger: >-
       Der Entzug von SYSTEM_ADMIN für die letzte Systemverwaltung durch den Identitätsanbieter wird

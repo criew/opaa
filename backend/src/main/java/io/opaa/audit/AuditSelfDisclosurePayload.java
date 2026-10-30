@@ -163,6 +163,7 @@ final class AuditSelfDisclosurePayload {
         SYSTEM_ADMIN_ROLE_REVOKED,
         AUDITOR_ROLE_GRANTED,
         AUDITOR_ROLE_REVOKED);
+    put(keys, Set.of("role", "provider"), AUDITOR_ROLE_REQUESTED, AUDITOR_ROLE_REQUEST_DECLINED);
     put(keys, Set.of("role", "tokenRole"), SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED);
     put(keys, Set.of(), ACCOUNT_DEACTIVATED, ACCOUNT_REAUTHENTICATION_FORCED);
     put(keys, Set.of("expiresAt"), API_TOKEN_ISSUED);

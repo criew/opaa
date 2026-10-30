@@ -118,6 +118,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "audit_incident_scope_retention_settings",
             "audit_log",
             "audit_retention_settings",
+            "auditor_role_requests",
             "branding_settings",
             "link_target_settings",
             "local_action_tokens",

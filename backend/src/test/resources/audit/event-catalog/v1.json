@@ -17,6 +17,8 @@
   "ASSET_SUCCESSION_OPENED": [],
   "ASSET_VISIBILITY_CHANGED": [],
   "AUDITOR_ROLE_GRANTED": ["provider", "role"],
+  "AUDITOR_ROLE_REQUESTED": ["provider", "role"],
+  "AUDITOR_ROLE_REQUEST_DECLINED": ["provider", "role"],
   "AUDITOR_ROLE_REVOKED": ["provider", "role"],
   "AUDIT_LOG_ACCESSED": ["accessPath", "correlationRef", "eventId", "eventType", "from", "month", "objectId", "objectType", "scopeId", "to"],
   "AUDIT_LOG_CONFIGURATION_CHANGED": ["retentionMonths"],
