@@ -1,6 +1,7 @@
 package io.opaa.format.file.markdown;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatSource;
@@ -11,6 +12,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -234,6 +236,28 @@ class MarkdownDocumentFormatTest {
         .isEmpty();
     assertThat(MarkdownDocumentFormat.frontmatterEntries("# Titel\nfassung: 2023\n")).isEmpty();
     assertThat(MarkdownDocumentFormat.frontmatterEntries("")).isEmpty();
+  }
+
+  /**
+   * Regression guard: a lazy value before trailing blanks backtracked quadratically, a line of 200
+   * 000 blanks inside the value took minutes; it is read in linear time now.
+   */
+  @Test
+  void aFrontmatterValueWithALongRunOfBlanksIsReadInLinearTime() {
+    String text = "---\nfassung: 1" + " ".repeat(200_000) + "2 \t\n---\n# Titel\n";
+
+    Map<String, String> entries =
+        assertTimeoutPreemptively(
+            Duration.ofSeconds(5), () -> MarkdownDocumentFormat.frontmatterEntries(text));
+
+    assertThat(entries).containsOnlyKeys("fassung");
+    assertThat(entries.get("fassung")).startsWith("1 ").endsWith(" 2");
+  }
+
+  @Test
+  void aFrontmatterValueLosesOnlyItsTrailingBlanksAndTabs() {
+    assertThat(MarkdownDocumentFormat.frontmatterEntries("---\nk:  a b \t \nleer: \t\n---\n"))
+        .containsExactly(Map.entry("k", "a b"));
   }
 
   @Test

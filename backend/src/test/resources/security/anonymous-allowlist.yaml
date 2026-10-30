@@ -8,6 +8,10 @@
 # handler now (unless "conditional: true" - reachable only while a runtime setting is on that the
 # test context cannot switch on), headers present now. The switched-off side of a conditional
 # entry is covered by LocalSelfServiceUnavailableIntegrationTest.
+# "withoutHandlerCheck" lists the operations whose handler neither carries an authorization
+# annotation nor takes its caller, although they are not anonymous; an anonymous operation needs no
+# second entry there. SecurityInvariantsTest holds every controller method to both lists, and an
+# entry under "withoutHandlerCheck" whose handler checks now fails it.
 # The key is "<METHOD> <path template>" as in the specification; health groups are concrete paths.
 anonymous:
   - operation: GET /api/health
@@ -84,3 +88,40 @@ anonymous:
     reason: >-
       Version und Build des Backends für Betrieb und Image-Rauchtest; enthält keine Konfiguration.
 missingHeaders: []
+withoutHandlerCheck:
+  - operation: GET /api/v1/external-access/settings
+    reason: >-
+      Jede angemeldete Person sieht nur, ob der Kanal offen ist und wie lange ein Token gilt; keine
+      personenbezogenen Daten, keine weiteren Einstellungen.
+  - operation: GET /api/v1/link-targets
+    reason: Installationsweite Verweisziele (Impressum, Datenschutz) für jede angemeldete Person.
+  - operation: GET /api/v1/metadata/document-types
+    reason: Installationsweites Vokabular der Dokumentarten; ohne Bezug zu einer Bibliothek.
+  - operation: GET /api/v1/search/availability
+    reason: >-
+      Nur, ob Vektorsuche, Chat- und Embedding-Modell bereitstehen; die Oberfläche zeigt danach
+      einen Hinweis.
+  - operation: GET /api/v1/spaces/chat-auto-cleanup
+    reason: Installationsweite Fristen der Chat-Aufräumung, die jede Person beim Anlegen sieht.
+  - operation: GET /api/v1/transcriptions/availability
+    reason: Nur, ob die Spracheingabe eingerichtet ist.
+  - operation: POST /api/v1/transcriptions
+    reason: >-
+      Spracheingabe für jede angemeldete Person; das Ergebnis geht nur an sie zurück, die Annahme
+      begrenzen Rate-Limit und opaa.transcription.max-concurrent.
+  - operation: GET /api/v1/installation
+    reason: >-
+      Einrichtungs-Assistent; den Pfad schützen InstallationGateFilter und InstallationAccessFilter
+      (Netz, Budget, Einrichtungstoken), nach der Einrichtung antwortet er 404.
+  - operation: PUT /api/v1/installation/steps/{step}
+    reason: Einrichtungs-Assistent; geschützt wie GET /api/v1/installation.
+  - operation: POST /api/v1/installation/steps/{step}/check
+    reason: Einrichtungs-Assistent; geschützt wie GET /api/v1/installation.
+  - operation: POST /api/v1/installation/steps/{step}/discover
+    reason: Einrichtungs-Assistent; geschützt wie GET /api/v1/installation.
+  - operation: POST /api/v1/installation/steps/{step}/skip
+    reason: Einrichtungs-Assistent; geschützt wie GET /api/v1/installation.
+  - operation: POST /api/v1/installation/answer-file
+    reason: Einrichtungs-Assistent; geschützt wie GET /api/v1/installation.
+  - operation: POST /api/v1/installation/complete
+    reason: Einrichtungs-Assistent; geschützt wie GET /api/v1/installation.

@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import org.apache.pdfbox.contentstream.operator.Operator;
 import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -38,6 +39,8 @@ final class PdfPageText {
 
   /** Named apart from {@code PDFTextStripper.LINE_SEPARATOR}, which a subclass would inherit. */
   private static final String NEWLINE = "\n";
+
+  private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
   /** A raised glyph is at most this share of the following glyph's font size. */
   private static final float RAISED_MAX_SIZE_RATIO = 0.9f;
@@ -340,7 +343,7 @@ final class PdfPageText {
           charactersByArticle = cell;
           output = cellOutput;
           super.writePage();
-          texts.add(cellOutput.toString().replaceAll("\\s+", " ").strip());
+          texts.add(WHITESPACE.matcher(cellOutput.toString()).replaceAll(" ").strip());
         }
         cellTexts.add(texts);
       }

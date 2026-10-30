@@ -14,6 +14,8 @@ public final class SetextHeading {
   /** At least three characters, so a short run inside running text is no underline. */
   private static final Pattern UNDERLINE = Pattern.compile("={3,}");
 
+  private static final Pattern LINE_BREAK = Pattern.compile("\\R");
+
   private SetextHeading() {}
 
   /** The document's leading Setext heading, or {@code null} when it opens with anything else. */
@@ -21,7 +23,7 @@ public final class SetextHeading {
     if (text == null) {
       return null;
     }
-    String[] lines = text.split("\\R");
+    String[] lines = LINE_BREAK.split(text);
     for (int i = 0; i < lines.length; i++) {
       String line = lines[i].strip();
       if (line.isEmpty()) {
