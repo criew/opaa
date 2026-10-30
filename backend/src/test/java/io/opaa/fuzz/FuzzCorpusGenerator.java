@@ -25,10 +25,10 @@ import org.apache.poi.xwpf.usermodel.XWPFTable;
 
 /**
  * Writes the generated seeds of the parser fuzzing corpus: one ordinary sample per format, and the
- * known hostile shapes - amplification in PDF page trees, outlines, forms and cross reference
- * data, unpacked OOXML and ODS cells, repeated context in Markdown and CSV, backtracking text, long
- * blank-line runs, nested tables and messages. Each seed stays small; the campaign's mutators enlarge them.
- * Run by {@code ./gradlew writeParserFuzzCorpus}; the seeds are deterministic.
+ * known hostile shapes - amplification in PDF page trees, outlines, forms and cross reference data,
+ * unpacked OOXML and ODS cells, repeated context in Markdown and CSV, backtracking text, long
+ * blank-line runs, nested tables and messages. Each seed stays small; the campaign's mutators
+ * enlarge them. Run by {@code ./gradlew writeParserFuzzCorpus}; the seeds are deterministic.
  */
 public final class FuzzCorpusGenerator {
 

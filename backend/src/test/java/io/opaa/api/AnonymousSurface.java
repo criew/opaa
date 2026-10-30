@@ -86,11 +86,13 @@ final class AnonymousSurface {
   /**
    * The allowlist from its parsed YAML form: a map with the lists {@code anonymous} and {@code
    * missingHeaders}, each of {@code operation}/{@code reason} entries; an anonymous entry may add
-   * {@code conditional: true}.
+   * {@code conditional: true}. The section {@code withoutHandlerCheck} belongs to {@code
+   * SecurityInvariantsTest} and is not read here.
    */
   static AnonymousSurface of(Object yaml) {
     if (!(yaml instanceof Map<?, ?> sections)
-        || !Set.of("anonymous", "missingHeaders").containsAll(sections.keySet())) {
+        || !Set.of("anonymous", "missingHeaders", "withoutHandlerCheck")
+            .containsAll(sections.keySet())) {
       throw new IllegalStateException(
           ALLOWLIST + " must be a map with the lists 'anonymous' and 'missingHeaders'");
     }

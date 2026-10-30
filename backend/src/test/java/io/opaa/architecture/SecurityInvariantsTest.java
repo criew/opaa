@@ -98,13 +98,15 @@ class SecurityInvariantsTest {
               "io.opaa.connection.token.GrantRevocations",
               "the revocation order of a discarded grant, sent to the provider that issued it"),
           Map.entry(
-              "io.opaa.directory.sync.connector.DirectoryConnectorSecretConverter",
-              "JPA converter; DirectoryConnectorService takes the secret anew on every save and"
+              "io.opaa.directory.sync.connector.DirectoryConnector",
+              "entity; the client secret, bound to its row, goes only to the connector that signs"
+                  + " in with it, and DirectoryConnectorService takes it anew on every save and"
                   + " probes with the stored one only at the stored admin address"),
           Map.entry(
-              "io.opaa.knowledge.SourceCredentialsConverter",
-              "JPA converter; the library's own credentials leave only through the secret port,"
-                  + " which follows SecretTarget"),
+              "io.opaa.knowledge.KnowledgeLibrary",
+              "entity; both values are bound to the library's row, its credentials leave only"
+                  + " through the secret port, which follows SecretTarget, and the push secret only"
+                  + " checks incoming notifications"),
           Map.entry(
               "io.opaa.installation.InstallationModelDiscovery",
               "the key of a saved wizard step, used only for that step's own address"
