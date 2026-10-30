@@ -253,7 +253,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     // A place in the upload pool, taken before anything is stored or created: a full pool is a
     // 429 with nothing written. The processing gives it back when it ends; until the hand-over,
     // the finally below does.
-    UploadProcessingSlots.Slot slot = processingSlots.reserve();
+    UploadProcessingSlots.Slot slot = processingSlots.reserve(currentUserId);
     boolean handedOver = false;
     try {
       // Created only after every certain-to-reject check above: resolveOrCreateFolderPath commits

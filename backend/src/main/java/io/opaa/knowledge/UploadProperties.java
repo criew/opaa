@@ -7,6 +7,7 @@ import io.opaa.compliance.InstallationWide;
 import io.opaa.compliance.NoDataImpact;
 import io.opaa.compliance.PerInstance;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 
 /**
  * Configuration for the REST document upload endpoint (docs/features/knowledge-sources.md#upload).
@@ -32,6 +33,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     executors read the same properties, actually double it instead, since the upload pool grew by
  *     the same amount unnoticed. Defaults (core=2, max=4, queue=20) mirror {@code
  *     opaa.indexing.thread-pool}'s own conservative defaults.
+ * @param maxPlacesPerAccount the places of the upload pool one account may hold at once ({@code
+ *     io.opaa.library.UploadProcessingSlots}), so a single account cannot take the whole pool; 0 or
+ *     less means a quarter of the pool, at least one. Per instance, like the pool.
  * @param orphanGraceMinutes how old a stored original must be before {@code
  *     OrphanedOriginalCleanupService} may report or remove it as orphaned (ADR-0030,
  *     "Konsequenzen"): the window between storing the bytes and inserting the row, and the whole
@@ -47,8 +51,20 @@ public record UploadProperties(
     @DataImpact String store,
     long maxFileSize,
     ThreadPool threadPool,
-    @DataImpact int orphanGraceMinutes) {
+    @DataImpact int orphanGraceMinutes,
+    int maxPlacesPerAccount) {
 
+  /** Without a per-account setting, which then takes its default. */
+  public UploadProperties(
+      String storagePath,
+      String store,
+      long maxFileSize,
+      ThreadPool threadPool,
+      int orphanGraceMinutes) {
+    this(storagePath, store, maxFileSize, threadPool, orphanGraceMinutes, 0);
+  }
+
+  @ConstructorBinding
   public UploadProperties {
     if (storagePath == null || storagePath.isBlank()) {
       storagePath = "./uploads";
@@ -61,6 +77,7 @@ public record UploadProperties(
       threadPool = new ThreadPool(2, 4, 20);
     }
     orphanGraceMinutes = positiveOr(orphanGraceMinutes, 60);
+    maxPlacesPerAccount = positiveOr(maxPlacesPerAccount, Math.max(1, threadPool.places() / 4));
   }
 
   /**
@@ -78,6 +95,11 @@ public record UploadProperties(
       if (queueCapacity < 0) {
         queueCapacity = 20;
       }
+    }
+
+    /** The uploads the pool holds at once: running plus waiting. */
+    public int places() {
+      return maxSize + queueCapacity;
     }
   }
 }
