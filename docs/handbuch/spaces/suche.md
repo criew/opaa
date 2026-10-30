@@ -913,8 +913,8 @@ Stelle farbig hervor, auch wenn sie über eine Seitengrenze läuft. Die Seiten s
 und werden durchgescrollt; die Leiste darüber nennt die aktuelle Seite, vergrößert, verkleinert und
 stellt auf Seitenbreite. Bringt das PDF ein Inhaltsverzeichnis mit, steht es links, lässt sich
 einklappen, springt per Klick an sein Kapitel und hebt das Kapitel der aktuellen Seite hervor.
-Formulare, Links und eingebettete Skripte des PDFs bleiben im Fenster ohne Wirkung. Zwei Hinweise
-sind möglich: „Das Original wurde seit der Antwort geändert …", wenn die Datei nicht mehr die ist,
+Formulare, Links und eingebettete Skripte des PDFs bleiben im Fenster ohne Wirkung. Neben dem
+Hinweis auf einen Beleg ohne gespeicherte Fundstelle (unten) sind zwei Hinweise möglich: „Das Original wurde seit der Antwort geändert …", wenn die Datei nicht mehr die ist,
 aus der die Antwort zitiert hat; „Die Fundstelle wurde im Original nicht gefunden …", wenn der
 zitierte Text auf der Seite nicht wiederzufinden ist, etwa bei einem Scan; das Fenster zeigt dann
 die Fundseite ohne Markierung. Kann die Anwendung ein PDF nicht anzeigen, sagt das Fenster das
@@ -931,10 +931,11 @@ der Browser die Stelle auf der Seite nicht, etwa weil sie seit der Indexierung g
 einem neuen Tab, Office-Dateien werden heruntergeladen.
 
 **Beleg ohne gespeicherte Fundstelle.** Die Stelle, an die PDF- und Textvorschau springen, wird beim
-Indexieren je Abschnitt gespeichert und mit der Antwort festgehalten. Fehlt sie, weil der Abschnitt
-aus einer älteren Indexierung stammt, öffnet die Vorschau am Anfang und sagt „Für diesen Beleg ist
-keine Fundstelle gespeichert – das Dokument öffnet am Anfang.". Neue Antworten springen wieder an
-die Stelle, sobald die Bibliothek über den
+Indexieren je Abschnitt gespeichert und mit der Antwort festgehalten. Fehlt sie, öffnet die
+Vorschau am Anfang und sagt „Für diesen Beleg ist keine Fundstelle gespeichert – das Dokument
+öffnet am Anfang.". Das geschieht bei einem Beleg, den die Antwort ohne Fußnote nennt, und vor
+allem, wenn der Abschnitt aus einer älteren Indexierung stammt. Im zweiten Fall springen neue
+Antworten wieder an die Stelle, sobald die Bibliothek über den
 [Pipeline-Nachzug](../arbeitsmittel/wissensbibliotheken/README.md#72-pipeline-versionen-und-nachzug)
 neu aufbereitet ist; eine ältere Antwort behält ihren Stand.
 
