@@ -8,18 +8,19 @@ import {
 } from '../fixtures/chat'
 import { apiAs } from '../fixtures/externalAccess'
 import { cleanupLibraries } from '../fixtures/libraries'
+import { createKnowledgeLibraryViaApi } from '../fixtures/promptLibraries'
 import { assignToDefaultSpace } from '../fixtures/spaces'
 import type { Locator, Page, TestInfo } from '@playwright/test'
 
 /**
- * Ein Gespräch über mehrere Frage-Antwort-Runden: Reihenfolge, Belege je Antwort,
- * Kennzeichnung, Blickposition, Bestand nach Neuladen und Chatwechsel, Darstellung breit und
- * schmal in beiden Farbschemata - und ein Modellfehler mitten im Gespräch, nach dem es weitergeht.
+ * A conversation over several question-answer rounds: order, evidence per answer, AI label, scroll
+ * position, the same history after a reload and a chat switch, wide and narrow in both colour
+ * schemes - and a model failure in the middle of the conversation, after which it carries on.
  *
- * Vorbedingungen laufen über die API (zwei Upload-Bibliotheken mit je einem kleinen Dokument im
- * Standard-Space von dev-admin); die Oberfläche wird nur dort benutzt, wo sie geprüft wird. Jede
- * Runde schränkt den Suchbereich per @-Referenz auf eine Bibliothek ein, damit jede Antwort
- * nachweislich ihren eigenen Beleg trägt (gleiche Einbettung für alle Chunks im ai-stub).
+ * Preconditions go through the API (two upload libraries with one small document each, assigned
+ * to dev-admin's default space); the UI is used only where it is under test. Every round narrows
+ * the search scope to one library via an @-reference, so each answer provably carries its own
+ * evidence (ai-stub gives every chunk the same embedding).
  */
 
 const ADMIN = 'dev-admin'
@@ -30,15 +31,22 @@ interface SeededLibrary {
   documentName: string
 }
 
-/** Bibliothek mit einem Dokument anlegen, auf „indiziert" warten und dem Standard-Space zuordnen. */
-async function seedLibrary(label: string, suffix: string): Promise<SeededLibrary> {
+/**
+ * Creates an upload library with one document, waits for it to be indexed and assigns it to the
+ * default space. The id lands in `createdIds` right after creation, so a later failure still
+ * leaves it to the cleanup.
+ */
+async function seedLibrary(
+  label: string,
+  suffix: string,
+  createdIds: string[],
+): Promise<SeededLibrary> {
   const name = `E2E-Mehrrunden-${label}-${suffix}`
   const documentName = `mehrrunden-${label.toLowerCase()}-${suffix}.txt`
+  const id = await createKnowledgeLibraryViaApi(ADMIN, { name })
+  createdIds.push(id)
   const api = await apiAs(ADMIN)
   try {
-    const created = await api.post('/api/v1/libraries', { data: { name, sourceType: 'UPLOAD' } })
-    expect(created.status(), await created.text()).toBe(201)
-    const { id } = (await created.json()) as { id: string }
     const uploaded = await api.post(`/api/v1/libraries/${id}/documents`, {
       multipart: {
         file: {
@@ -73,17 +81,17 @@ function messageList(page: Page): Locator {
   return page.getByTestId('message-list')
 }
 
-/** Alle Nachrichten des Verlaufs in Anzeigereihenfolge. */
+/** Every message of the history, in display order. */
 function messages(page: Page): Locator {
   return messageList(page).locator('[data-message-id]')
 }
 
-/** Die Antworten: jede trägt das Kennzeichen „KI-erzeugt". */
+/** The answers: each carries the label "KI-erzeugt". */
 function answers(page: Page): Locator {
   return messages(page).filter({ has: page.getByTestId('ai-answer-mark') })
 }
 
-/** Ersetzt den Suchbereich durch genau die Bibliothek `libraryName` (Chip-Leiste über der Eingabe). */
+/** Replaces the search scope with exactly the library `libraryName` (chip bar above the input). */
 async function scopeTo(page: Page, libraryName: string, previous?: string): Promise<void> {
   if (previous) {
     await page
@@ -93,10 +101,12 @@ async function scopeTo(page: Page, libraryName: string, previous?: string): Prom
   const input = page.getByRole('combobox', { name: 'Nachricht eingeben' })
   await input.fill(`@${libraryName}`)
   await page.getByRole('option', { name: libraryName }).click()
-  await expect(page.getByLabel(`Bibliotheksreferenz ${libraryName} entfernen`)).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: `Bibliotheksreferenz ${libraryName} entfernen` }),
+  ).toBeVisible()
 }
 
-/** Stellt eine Frage und wartet, bis ihre Antwort als `expectedAnswers`-te im Verlauf steht. */
+/** Asks a question and waits until its answer stands in the history as answer no. `expectedAnswers`. */
 async function askRound(page: Page, question: string, expectedAnswers: number): Promise<void> {
   await askQuestion(page, question)
   await expect(answers(page)).toHaveCount(expectedAnswers, { timeout: 15_000 })
@@ -104,8 +114,9 @@ async function askRound(page: Page, question: string, expectedAnswers: number): 
 }
 
 /**
- * Öffnet das Belegfenster der `index`-ten Antwort und prüft: `cited` ist zitiert, `absent` kommt
- * auch unter den nicht zitierten Belegen nicht vor.
+ * Opens the evidence drawer of answer no. `index` and asserts that `cited` is cited and `absent`
+ * is missing, among the uncited sources too. Whether there are uncited ones comes from the
+ * answer's own count line, as in showUncitedEvidence (fixtures/chat.ts).
  */
 async function expectAnswerEvidence(
   page: Page,
@@ -113,19 +124,24 @@ async function expectAnswerEvidence(
   cited: string,
   absent: string,
 ): Promise<void> {
-  await answers(page).nth(index).getByRole('button', { name: 'Belege anzeigen' }).click()
+  const answer = answers(page).nth(index)
+  await answer.getByRole('button', { name: 'Belege anzeigen' }).click()
   const drawer = page.getByRole('dialog', { name: 'Belege dieser Antwort' })
   await expect(drawer).toBeVisible()
   const rows = drawer.getByTestId('evidence-doc')
   await expect(rows.filter({ hasText: cited })).toHaveAttribute('data-cited', 'true')
-  const uncited = drawer.getByRole('button', { name: 'Nicht zitierte anzeigen' })
-  if ((await uncited.count()) > 0) await uncited.click()
+  const summary = await answer.getByTestId('evidence-summary').textContent()
+  if (summary?.includes('geprüft')) {
+    const toggle = drawer.getByRole('button', { name: 'Nicht zitierte anzeigen' })
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  }
   await expect(rows.filter({ hasText: absent })).toHaveCount(0)
   await page.keyboard.press('Escape')
   await expect(drawer).toBeHidden()
 }
 
-/** Reihenfolge F, A, F, A, … mit den Fragen in der gestellten Reihenfolge. */
+/** Question, answer, question, answer, … with the questions in the order they were asked. */
 async function expectAlternatingHistory(page: Page, questions: string[]): Promise<void> {
   await expect(messages(page)).toHaveCount(questions.length * 2)
   for (const [round, question] of questions.entries()) {
@@ -150,10 +166,12 @@ async function scrollHistory(page: Page, to: 'top' | 'bottom'): Promise<void> {
   }, to)
 }
 
-/** Bildschirmfotos von Anfang und Ende des Verlaufs als Anhang am Report. */
+/** Screenshots of the start and the end of the history, attached to the report. */
 async function attachHistoryShots(page: Page, testInfo: TestInfo, variant: string): Promise<void> {
   for (const position of ['top', 'bottom'] as const) {
     await scrollHistory(page, position)
+    // The list's own smooth scroll to the newest message may still be running after a load.
+    await expect(messages(page).nth(position === 'top' ? 0 : -1)).toBeInViewport()
     const path = testInfo.outputPath(
       `mehrrunden-${variant}-${position === 'top' ? 'anfang' : 'ende'}.png`,
     )
@@ -166,20 +184,25 @@ async function attachHistoryShots(page: Page, testInfo: TestInfo, variant: strin
 }
 
 async function hasHorizontalOverflow(page: Page): Promise<boolean> {
-  return page.evaluate(() => {
-    const doc = (
-      globalThis as unknown as {
-        document: {
-          documentElement: { scrollWidth: number; clientWidth: number }
-          querySelector: (selector: string) => { scrollWidth: number; clientWidth: number } | null
-        }
-      }
-    ).document
-    const list = doc.querySelector('[data-testid="message-list"]')
-    return (
-      doc.documentElement.scrollWidth > doc.documentElement.clientWidth + 1 ||
-      (list !== null && list.scrollWidth > list.clientWidth + 1)
-    )
+  return page.evaluate<boolean>(
+    `(() => {
+      const root = document.documentElement
+      const list = document.querySelector('[data-testid="message-list"]')
+      return root.scrollWidth > root.clientWidth + 1 ||
+        (list !== null && list.scrollWidth > list.clientWidth + 1)
+    })()`,
+  )
+}
+
+/** Whether the history is longer than its box and scrolled away from its start. */
+async function historyIsScrolled(page: Page): Promise<boolean> {
+  return messageList(page).evaluate((element) => {
+    const list = element as unknown as {
+      scrollTop: number
+      scrollHeight: number
+      clientHeight: number
+    }
+    return list.scrollHeight > list.clientHeight && list.scrollTop > 0
   })
 }
 
@@ -189,10 +212,12 @@ test.describe.serial('Chat über mehrere Runden (#3467)', () => {
   let libraryB: SeededLibrary
 
   test.beforeAll(async () => {
+    test.setTimeout(90_000)
     const suffix = `${Date.now()}`
-    libraryA = await seedLibrary('A', suffix)
-    libraryB = await seedLibrary('B', suffix)
-    createdLibraryIds.push(libraryA.id, libraryB.id)
+    ;[libraryA, libraryB] = await Promise.all([
+      seedLibrary('A', suffix, createdLibraryIds),
+      seedLibrary('B', suffix, createdLibraryIds),
+    ])
   })
 
   test('1. Vier Runden: Reihenfolge, Belege je Antwort, Neuladen, Chatwechsel, Darstellung', async ({
@@ -217,9 +242,12 @@ test.describe.serial('Chat über mehrere Runden (#3467)', () => {
       // The newest answer is in view without scrolling, its evidence button included.
       await expect(
         answers(page).last().getByRole('button', { name: 'Belege anzeigen' }),
-      ).toBeInViewport()
+      ).toBeInViewport({ ratio: 1 })
       await expect(page.getByRole('combobox', { name: 'Nachricht eingeben' })).toBeEnabled()
     }
+    // By round four the history no longer fits its box: the newest answer is in view because the
+    // list scrolled to it, not because everything fits.
+    expect(await historyIsScrolled(page)).toBe(true)
     await expect(page).toHaveURL(/\/spaces\/[^/]+\/chats\/(?!new$)[^/]+$/)
     const chatUrl = page.url()
 
@@ -263,7 +291,7 @@ test.describe.serial('Chat über mehrere Runden (#3467)', () => {
     await page.emulateMedia({ colorScheme: 'light' })
     await page.setViewportSize({ width: 320, height: 720 })
     await expect(messages(page)).toHaveCount(questions.length * 2)
-    expect(await hasHorizontalOverflow(page)).toBe(false)
+    await expect.poll(() => hasHorizontalOverflow(page)).toBe(false)
     await attachHistoryShots(page, testInfo, '320px-hell')
   })
 
@@ -283,6 +311,9 @@ test.describe.serial('Chat über mehrere Runden (#3467)', () => {
     await askQuestion(page, failing)
     await expect(page.getByRole('alert').filter({ hasText: 'Fehler im KI-Dienst' })).toBeVisible()
     await expect(page.getByText('Denkt nach …')).toHaveCount(0)
+    // The failed question stays, without any answer of its own.
+    await expect(messages(page)).toHaveCount(3)
+    await expect(messages(page).nth(2)).toContainText(failing)
     await expect(answers(page)).toHaveCount(1)
     await expect(input).toBeEnabled()
 
@@ -290,10 +321,13 @@ test.describe.serial('Chat über mehrere Runden (#3467)', () => {
     await expect(page.getByRole('alert').filter({ hasText: 'Fehler im KI-Dienst' })).toHaveCount(0)
     await expectAnswerEvidence(page, 1, libraryA.documentName, libraryB.documentName)
 
-    // The failed round leaves no half answer behind, also after a reload.
+    // A failed round is not persisted: after a reload the history holds the two answered rounds
+    // only, without the failed question and without any half answer.
     await page.reload()
+    await expect(messages(page)).toHaveCount(4)
     await expect(answers(page)).toHaveCount(2)
     await expect(messageList(page).getByText(before)).toBeVisible()
     await expect(messageList(page).getByText(after)).toBeVisible()
+    await expect(messageList(page).getByText(failing)).toHaveCount(0)
   })
 })

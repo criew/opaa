@@ -594,7 +594,8 @@ lassen.
   Überlauf. Bildschirmfotos von Anfang und Ende des Verlaufs (breit hell, breit dunkel, 320 px)
   hängen als Anhang am Report, damit man sieht, wie ein längeres Gespräch aussieht. Ein zweites
   Szenario lässt mitten im Gespräch das Modell scheitern (ai-stub, `E2E-MODELL-FEHLER`): Meldung,
-  keine halbe Antwort, Eingabe bleibt bedienbar, die nächste Frage gelingt.
+  keine halbe Antwort, Eingabe bleibt bedienbar, die nächste Frage gelingt; nach dem Neuladen
+  fehlt die gescheiterte Frage, weil sie nicht gespeichert wurde.
 
 - `tests/conversation-note.spec.ts` (#1489, T7 von Epic #1482) — die Gesprächsnotiz über den
   vollen Stack (`docs/features/conversation-memory.md`, „Oberfläche", ADR-0031): Ein Chat mit einer
