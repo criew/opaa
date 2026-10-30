@@ -155,6 +155,8 @@ jobs:
             # both seed requirement files belong here because test_accessibility_report.py checks
             # the release wiring, the record the fixture writes and the hash-pinned seed install. The
             # Compose templates belong here because test_check_compose_defaults.py edits copies of them.
+            # zap-baseline.yml and .github/zap/** belong here because test_zap_rules.py checks the
+            # suppressions, the ZAP image pin and its wiring.
             scripts:
               - '.github/scripts/**'
               - '.github/requirements-ci.txt'
@@ -180,6 +182,8 @@ jobs:
               # test_opencode_mirror.py checks the mirror workflow and the openCode metadata.
               - '.github/workflows/opencode-mirror.yml'
               - 'publiccode.yml'
+              - '.github/workflows/zap-baseline.yml'
+              - '.github/zap/**'
               - 'docker-compose*.yml'
               - '**/docker-compose*.yml'
               - '.env.docker.example'

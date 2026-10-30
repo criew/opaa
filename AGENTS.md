@@ -43,7 +43,7 @@ pnpm run test
 pnpm run format:check                   # Prettier prüfen; pnpm run format formatiert
 ```
 
-Integrationstest-Suiten, Helm-Chart-Prüfungen, Kubernetes-Erprobungsaufbau, E2E-Suite, Image-Rauchtest und Frontend mit Mocks: [docs/entwicklung/build-und-ci.md](docs/entwicklung/build-und-ci.md).
+Integrationstest-Suiten, Helm-Chart-Prüfungen, Kubernetes-Erprobungsaufbau, E2E-Suite, ZAP-Baseline-Scan, Image-Rauchtest und Frontend mit Mocks: [docs/entwicklung/build-und-ci.md](docs/entwicklung/build-und-ci.md).
 
 ## API & DTO-Konvention
 
