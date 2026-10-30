@@ -2,6 +2,11 @@ package io.opaa.security;
 
 import java.security.GeneralSecurityException;
 import java.security.InvalidKeyException;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -15,7 +20,8 @@ import org.springframework.util.StringUtils;
  * user:password} text; they cannot be migrated in place because only the application holds the key.
  * {@link #decrypt} therefore returns any value without an {@code "enc:"} prefix unchanged, and the
  * next {@link #encrypt} of that row encrypts it. A value that starts with {@code "enc:"} in an
- * unknown format is never treated as cleartext.
+ * unknown format is never treated as cleartext. Once {@link LegacyCipherRetirement} retires the
+ * unbound forms, cleartext and {@code enc:v1:} are refused like an unreadable value.
  */
 @Component
 public class CredentialsEncryptor {
@@ -23,14 +29,30 @@ public class CredentialsEncryptor {
   static final String VARIABLE = "OPAA_CREDENTIALS_ENCRYPTION_KEY";
   static final String PREVIOUS_VARIABLE = "OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS";
   private static final String DOC_PAGE = "docs/handbuch/betrieb/netz-und-sicherheit.md";
+  private static final Logger log = LoggerFactory.getLogger(CredentialsEncryptor.class);
 
   private final CredentialsEncryptionProperties properties;
   private final CipherFormatGate formatGate;
+  private final LegacyCipherRetirement retirement;
+
+  /** Refused values already named in the log of this process, at most {@link #REPORT_LIMIT}. */
+  private final Set<CipherBinding> reported = ConcurrentHashMap.newKeySet();
+
+  static final int REPORT_LIMIT = 1_000;
 
   public CredentialsEncryptor(
       CredentialsEncryptionProperties properties, CipherFormatGate formatGate) {
+    this(properties, formatGate, LegacyCipherRetirement.NEVER);
+  }
+
+  @Autowired
+  public CredentialsEncryptor(
+      CredentialsEncryptionProperties properties,
+      CipherFormatGate formatGate,
+      LegacyCipherRetirement retirement) {
     this.properties = properties;
     this.formatGate = formatGate;
+    this.retirement = retirement;
   }
 
   /**
@@ -46,16 +68,23 @@ public class CredentialsEncryptor {
     }
     EncryptionKeyring keyring = requireKeyring();
     try {
-      return keyring.encrypt(plaintext, binding, formatGate.writesKeyedFormat());
+      return keyring.encrypt(plaintext, binding, writesKeyed());
     } catch (GeneralSecurityException e) {
       throw new CredentialsEncryptionKeyMissingException(
           "Zugangsdaten konnten nicht verschlüsselt werden", e);
     }
   }
 
+  /** Keyed while the gate is open, and always once the unbound forms were retired. */
+  private boolean writesKeyed() {
+    return formatGate.writesKeyedFormat()
+        || retirement.writesKeyedOnly(EncryptionPurpose.CREDENTIALS);
+  }
+
   /**
    * Decrypts a value {@link #encrypt} wrote for the row of {@code binding}, or returns it unchanged
-   * if blank or without any {@code "enc:"} prefix - see class Javadoc "Legacy cleartext".
+   * if blank or without any {@code "enc:"} prefix - see class Javadoc "Legacy cleartext"; once the
+   * unbound forms are retired, such cleartext and an {@code enc:v1:} value fail as unreadable.
    *
    * <p>Throws {@link CredentialsEncryptionKeyMissingException} - never returns a plaintext-looking
    * garbage string - for an unknown format version, a corrupted/non-Base64 blob, a value of another
@@ -65,11 +94,17 @@ public class CredentialsEncryptor {
    */
   public String decrypt(String stored, CipherBinding binding) {
     if (!isEncrypted(stored)) {
+      if (StringUtils.hasText(stored) && refusesLegacy()) {
+        throw refused(binding, "cleartext");
+      }
       return stored;
     }
     if (!EncryptionKeyring.isKnownFormat(stored)) {
       throw new CredentialsEncryptionKeyMissingException(
           "Gespeicherter Zugangsdaten-Wert hat ein unbekanntes Verschlüsselungsformat");
+    }
+    if (stored.startsWith(EncryptionKeyring.V1_PREFIX) && refusesLegacy()) {
+      throw refused(binding, "enc:v1");
     }
     EncryptionKeyring keyring = requireKeyring();
     try {
@@ -91,6 +126,21 @@ public class CredentialsEncryptor {
               + " Verschlüsselungsschlüssel oder beschädigter Wert",
           e);
     }
+  }
+
+  private boolean refusesLegacy() {
+    return retirement.refusesLegacy(EncryptionPurpose.CREDENTIALS);
+  }
+
+  private CredentialsEncryptionKeyMissingException refused(CipherBinding binding, String form) {
+    if (reported.size() < REPORT_LIMIT && reported.add(binding)) {
+      log.warn("Stored secret {} is in the retired form {} and is refused", binding, form);
+    }
+    return new CredentialsEncryptionKeyMissingException(
+        "Gespeicherte Zugangsdaten liegen in einem nicht mehr zugelassenen Format vor (unverschlüsselt"
+            + " oder enc:v1) und werden nicht verwendet; sie müssen neu eingetragen werden. Siehe "
+            + DOC_PAGE
+            + ".");
   }
 
   /**

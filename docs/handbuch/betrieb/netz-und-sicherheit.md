@@ -361,9 +361,14 @@ enthält sie.
 - Ein Wert im aktuellen Format `enc:v2` trägt die Kennung seines Schlüssels und ist an seinen
   Datensatz gebunden. Ein solcher Geheimtext, der in der Datenbank in einen anderen Datensatz kopiert
   wird, ist dort unlesbar. Werte im älteren Format `enc:v1` und Klartext aus der Zeit vor der
-  Verschlüsselung sind nicht gebunden; OPAA liest sie weiterhin, bis der Hintergrundlauf sie
-  umgestellt hat. Wer in die Datenbank schreiben kann, kann einen solchen Wert auch nach der
-  Umstellung noch einsetzen.
+  Verschlüsselung sind nicht gebunden; OPAA liest sie nur, bis der Hintergrundlauf den Bestand
+  umgestellt hat. Er verschlüsselt dabei auch den Klartext. Findet er zweimal im Abstand von
+  mindestens fünf Minuten und zwei Heartbeat-Intervallen keinen solchen Wert mehr, meldet das Log
+  „No stored … secret is in the format enc:v1 or in cleartext any more“. Ab dann lehnt OPAA solche
+  Werte als unlesbar ab, auf allen Instanzen spätestens nach einem Heartbeat-Intervall; ein abgelehnter Wert wird neu eingetragen.
+  Ein `enc:v1`-Wert, den kein eingetragener Schlüssel liest, hält den Abschluss auf, bis er neu
+  eingetragen oder sein Schlüssel ergänzt ist. Mit `OPAA_ENCRYPTION_KEYED_FORMAT=false` lehnt OPAA
+  nichts ab, und der Start hebt einen Abschluss wieder auf.
 
 ### Schlüsselwechsel
 
