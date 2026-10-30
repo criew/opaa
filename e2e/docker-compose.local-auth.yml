@@ -32,6 +32,15 @@ services:
       # disabled and the administration refuses to enable them), which is the one thing this target
       # must not run into - the links are what its scenarios read out of mailpit.
       OPAA_PUBLIC_BASE_URL: http://localhost:${OPAA_FRONTEND_PORT}
+      # The revision scenario connects a library to dropbox-stub for an entry in the connection
+      # log, as dropbox-source-connect.spec.ts of the "e2e" target does. Only the consent page is
+      # opened by the browser, so it names the host port; every other address is the service name.
+      OPAA_INDEXING_DROPBOX_API_BASE: http://dropbox-stub:8090
+      OPAA_INDEXING_DROPBOX_CONTENT_BASE: http://dropbox-stub:8090
+      OPAA_INDEXING_DROPBOX_AUTHORIZATION_ENDPOINT: http://localhost:${OPAA_DROPBOX_STUB_PORT:-18093}/oauth2/authorize
+      OPAA_INDEXING_DROPBOX_TOKEN_ENDPOINT: http://dropbox-stub:8090/oauth2/token
+      OPAA_INDEXING_DROPBOX_REVOCATION_ENDPOINT: http://dropbox-stub:8090/2/auth/token/revoke
+      OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST: dropbox-stub
       # ADR-0033, Entscheidung 9: every browser request of this suite arrives from the same resolved
       # client address, so all scenarios share one bucket per endpoint. Scenario 4 alone spends five
       # deliberate failed sign-ins, and each scenario signs in at least once - with the production
@@ -72,6 +81,23 @@ services:
       EMBEDDING_DIMENSIONS: *embedding-dimensions
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8089/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+
+  # Stands in for Dropbox, reused as-is from the "e2e" target (e2e/dropbox-stub/server.mjs).
+  dropbox-stub:
+    image: node:24-alpine
+    working_dir: /app
+    volumes:
+      - ./e2e/dropbox-stub:/app:ro
+    command: ["node", "server.mjs"]
+    environment:
+      PORT: "8090"
+    ports:
+      - "127.0.0.1:${OPAA_DROPBOX_STUB_PORT:-18093}:8090"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8090/health"]
       interval: 2s
       timeout: 2s
       retries: 10
