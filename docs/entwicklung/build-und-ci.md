@@ -69,6 +69,17 @@ OPAA_SP_IT_ENV_FILE=… ./gradlew sharePointIntegrationTest
                                   # (ADR-0047)
 ```
 
+## Regressionssuite für feindliche Eingaben
+
+Präparierte Dateien, SSRF-Ziele und Log-Hygiene: Aufbau, Grenzen und was ein neuer Parser oder
+Konnektor ergänzt, stehen in [regressionssuite-eingaben.md](regressionssuite-eingaben.md). Teil von
+`./gradlew check`, nicht von `./gradlew test`:
+
+```bash
+# aus backend/
+./gradlew hostileInputTest   # präparierte Dateien gegen die Formate, eigene JVM mit 512 MB Heap
+```
+
 ## Helm-Chart
 
 Der Chart liegt unter `deploy/helm/opaa/` ([ADR-0042](../decisions/0042-kubernetes-lieferung-mit-helm.md)).

@@ -80,6 +80,7 @@ class UserServiceOrganizationBoundaryIntegrationTest {
    * The member search takes {@code %}, {@code _} and {@code \} literally: {@code %%} or {@code __}
    * pass the minimum length but must not match every member of the organization.
    */
+  // regression guard for #3343: % and _ in the person search are literals, not LIKE wildcards
   @Test
   void theMemberSearchTakesLikeWildcardsLiterally() {
     User plain = createUser(organizationA);
