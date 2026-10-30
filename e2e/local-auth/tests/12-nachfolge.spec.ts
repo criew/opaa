@@ -10,12 +10,12 @@ import {
 } from "../../fixtures/localAuth";
 
 /**
- * Nachfolge nach einer Kontosperre: Wird das Konto der Eigentümerin gesperrt, steht ihr
- * Space unter „Ohne Zuständigkeit" (ADR-0036, Entscheidung 6), und die Systemverwaltung bestimmt
- * mit Vorschau und Bestätigung eine Nachfolge, die danach Eigentümerin ist.
+ * Succession after an account lock: once the owner's account is locked, their space is listed
+ * under „Ohne Zuständigkeit" (ADR-0036, Entscheidung 6), and the system administration names a
+ * successor with preview and confirmation, who owns the space afterwards.
  *
- * Lebt in diesem Ziel, weil nur lokale Konten sich über die Oberfläche sperren lassen; die
- * dev-Konten der Hauptsuite haben keinen Kontostatus.
+ * Lives in this target because only local accounts can be locked through the interface; the dev
+ * accounts of the main suite have no account status.
  */
 test.describe("Nachfolge für den Space eines gesperrten Kontos", () => {
   const leaving = {
@@ -71,7 +71,8 @@ test.describe("Nachfolge für den Space eines gesperrten Kontos", () => {
     await admin.getByRole("menuitem", { name: "Sperren" }).click();
     await expect(admin.getByText(`„${leaving.displayName}“ wurde gesperrt.`)).toBeVisible();
 
-    // The entry is derived on every call, so it is there at once - no detection run to wait for.
+    // The entry is derived on every call, so no detection run has to pass; the timeout only covers
+    // the page's first load.
     await admin.goto("/admin/succession/open");
     const entry = admin.getByRole("listitem", { name: spaceName });
     await expect(entry).toBeVisible({ timeout: 20_000 });
@@ -79,13 +80,15 @@ test.describe("Nachfolge für den Space eines gesperrten Kontos", () => {
     await entry.getByRole("button", { name: "Nachfolge bestimmen" }).click();
 
     const dialog = admin.getByRole("dialog", { name: "Nachfolge bestimmen" });
+    // Matched by address, not by name: a repeated local run leaves earlier accounts of the same
+    // name behind, and the option carries the address next to it.
     for (const [field, person] of [
-      ["Bisheriges Konto", leaving.displayName],
-      ["Nachfolge", successor.displayName],
-    ]) {
+      ["Bisheriges Konto", leaving],
+      ["Nachfolge", successor],
+    ] as const) {
       const picker = dialog.getByRole("combobox", { name: field });
-      await picker.fill(person);
-      await admin.getByRole("option", { name: new RegExp(person) }).first().click();
+      await picker.fill(person.displayName);
+      await admin.getByRole("option", { name: person.email }).click();
     }
     await dialog.getByRole("button", { name: "Vorschau erstellen" }).click();
     await expect(dialog.getByText("Vorschau", { exact: true })).toBeVisible();

@@ -722,14 +722,17 @@ lassen.
   die Rolle `AUDITOR` verlangen, die kein dev-Konto hat; am Ende stellt ein Import der
   ursprünglichen Datei den Stand wieder her. **Space:** dev-admin übergibt einen Space über „Zum
   Eigentümer machen“ an dev-user und verliert den Gefahrenbereich; dev-user archiviert ihn. Das
-  Mitglied dev-outsider ohne eigenen Chat findet ihn danach nirgends mehr, der Eigentümer sieht ihn
+  Mitglied dev-outsider ohne eigenen Chat findet ihn danach in der Übersicht nicht mehr, der Eigentümer sieht ihn
   als „Archiviert“, und dev-admin liest seinen Chat darin weiter. Löschen scheitert, solange Chats
   darin liegen, ein Space ohne Chats wird über die Oberfläche gelöscht. **Bibliothek:** Eine
   Webverzeichnis-Bibliothek mit einem Dokument wird über das Kopfmenü gelöscht; danach antworten
-  Bibliothek und Original mit 404, und die Suche findet das Dokument nicht mehr. Eine
-  Konnektor-Bibliothek nimmt ihre Dokumente beim Löschen mit, eine Upload-Bibliothek muss erst
-  leer sein. Alle Vorbedingungen entstehen über die API. Die Nachfolge nach einer Kontosperre
-  prüft das Ziel `local-auth` (`12-nachfolge.spec.ts`), weil nur lokale Konten sich sperren lassen.
+  Bibliothek und Original mit 404, und dieselbe Suche, die das Dokument vorher fand, findet es
+  nicht mehr (eine Konnektor-Bibliothek nimmt ihre Dokumente beim Löschen mit). Spaces,
+  Mitgliedschaften und die Bibliothek entstehen über die API, der eine Chat über die Eingabe. Das
+  Szenario liest das Protokoll mit der Docker-CLI aus dem Container des Compose-Projekts
+  `COMPOSE_PROJECT_NAME` (Vorgabe `opaa-e2e`); wer `pnpm run test:playwright` gegen einen anders
+  benannten Stack fährt, setzt die Variable. Die Nachfolge nach einer Kontosperre prüft das Ziel
+  `local-auth` (`12-nachfolge.spec.ts`), weil nur lokale Konten sich sperren lassen.
 
 ## Demo-Smoke (#232)
 
@@ -872,7 +875,7 @@ stellt seinen Ausgangszustand in der eigenen Vorbereitung über dieselben idempo
 | `08-csp.spec.ts` | Keine CSP-Verstöße: der lokale Aussteller braucht keine zusätzliche Herkunft, anders als der OIDC-Weg |
 | `09-selbstauskunft.spec.ts` | Selbstauskunft nach erneuter Bestätigung der Anmeldung: Abbrechen und falsches Passwort führen zu keinem Download, das richtige zu einem ZIP mit Konto und eigenem Chat; die Seite wird nach der Anmeldung neu geladen, weil erst das über das Refresh-Cookie erneuerte Token kein `auth_time` trägt |
 | `10-neuladen-waehrend-refresh.spec.ts` | Neuladen mitten in der Erneuerung: Zweimal verwirft der Browser Antwort und Cookie der committeten Rotation, die Sitzung bleibt trotzdem bestehen (Gnadenfrist, ADR-0033 Entscheidung 7), und die zweite Sitzung des Kontos bleibt unberührt |
-| `11-fokusring.spec.ts` | Fokusring auf der Anmeldeseite, mit der Tabulatortaste erreicht: mindestens 2 px, Kontrast 3:1 gegen die Fläche (Eingabefeld 4,5:1), in beiden Farbschemata |
+| `11-fokusring.spec.ts` | Fokusring nach Tastaturnavigation auf der Anmeldeseite und an einem Feld der Verwaltung: mindestens 2 px, Kontrast 3:1 gegen die Fläche (Feldumrandung 4,5:1), in beiden Farbschemata |
 | `12-nachfolge.spec.ts` | Nachfolge (#3465): Das Konto der Eigentümerin eines Space wird gesperrt, der Space steht sofort unter „Ohne Zuständigkeit“, „Nachfolge bestimmen“ mit Vorschau und Bestätigung überträgt ihn, danach ist die Nachfolge Eigentümerin |
 
 `/login/system` wird in Szenario 5 auf Barrierefreiheit geprüft und nicht in Szenario 7: Die Route

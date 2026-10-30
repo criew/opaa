@@ -1,27 +1,20 @@
 import { readFile } from "node:fs/promises";
-import type { APIRequestContext, Page } from "@playwright/test";
+import type { APIRequestContext } from "@playwright/test";
 import { expect, test } from "../fixtures/auth";
 import { askQuestion } from "../fixtures/chat";
-import { runIndexingViaApi } from "../fixtures/connectionProfiles";
+import { acceptConfirm, runIndexingViaApi } from "../fixtures/connectionProfiles";
 import { queryDatabase } from "../fixtures/database";
 import { apiAs } from "../fixtures/externalAccess";
+import { deleteLibraryCompletely } from "../fixtures/libraries";
 
 /**
- * Lebenszyklus: die Wege, die eine Installation umziehen und Bestände übergeben oder
- * entfernen - Einstellungen übertragen, Eigentümerwechsel eines Space, Archivieren und Löschen
- * eines Space, Löschen einer Bibliothek über die Oberfläche. Vorbedingungen entstehen über die
- * API, geprüft wird der Weg durch die Oberfläche. Die Nachfolge nach einer Kontosperre braucht
- * lokale Konten und liegt deshalb im Ziel "local-auth" (local-auth/tests/12-nachfolge.spec.ts).
+ * Lifecycle paths that move an installation or hand over and remove what it holds: settings
+ * transfer, a space's change of owner, archiving and deleting a space, deleting a library from its
+ * page. Spaces, memberships and the library are set up through the API, the one chat through the
+ * chat input; the path under test always runs through the interface. The succession after an
+ * account lock needs local accounts and lives in the "local-auth" target (12-nachfolge.spec.ts).
  */
 const runId = Date.now();
-
-async function confirmOverlay(page: Page): Promise<void> {
-  const overlay = page
-    .getByRole("dialog")
-    .filter({ has: page.locator("#confirm-question") });
-  await overlay.locator("#confirm-accept").click();
-  await expect(overlay).toHaveCount(0);
-}
 
 async function idOf(api: APIRequestContext): Promise<string> {
   const me = await api.get("/api/v1/auth/me");
@@ -53,7 +46,8 @@ test.describe("Einstellungen übertragen", () => {
     changed.sections.branding.claim = claim;
 
     const admin = await apiAs("dev-admin");
-    const startedAt = new Date().toISOString();
+    // The database's clock, not the host's: under Docker Desktop the VM clock can lag behind.
+    const [startedAt] = queryDatabase("select now()");
     try {
       await page.getByLabel("Einstellungsdatei auswählen").setInputFiles({
         name: "einstellungen.json",
@@ -73,7 +67,7 @@ test.describe("Einstellungen übertragen", () => {
       ).toBe(previousClaim);
 
       await page.getByRole("button", { name: "Übernehmen" }).click();
-      await confirmOverlay(page);
+      await acceptConfirm(page, "Einstellungen übernehmen?");
       await expect(page.getByText("1 Angabe wurde übernommen.")).toBeVisible();
 
       const afterImport = await admin.get("/api/v1/system/settings/export");
@@ -93,9 +87,9 @@ test.describe("Einstellungen übertragen", () => {
       expect(after).toContain("branding");
       const [related] = queryDatabase(
         `select count(*) from audit_log
-           where correlation_ref = '${correlation}' and event_type <> 'SETTINGS_IMPORTED'`,
+           where correlation_ref = '${correlation}' and event_type = 'BRANDING_SETTINGS_CHANGED'`,
       );
-      expect(Number(related)).toBeGreaterThanOrEqual(1);
+      expect(Number(related)).toBe(1);
     } finally {
       const restored = await admin.post("/api/v1/system/settings/import", { data: original });
       expect(restored.status(), await restored.text()).toBeLessThan(300);
@@ -105,9 +99,9 @@ test.describe("Einstellungen übertragen", () => {
 });
 
 /**
- * Ein Space von dev-admin wechselt an dev-user, der ihn dann archiviert. Der Chat, den dev-admin
- * vorher darin geführt hat, bleibt für ihn lesbar. Das Mitglied dev-outsider hat keinen eigenen
- * Chat darin und sieht den archivierten Space nicht mehr; der Eigentümer behält ihn, markiert.
+ * A space of dev-admin passes to dev-user, who then archives it. The chat dev-admin held in it
+ * stays readable for its author; the member dev-outsider has no chat of their own in it and no
+ * longer sees the archived space, while the owner keeps it, marked.
  */
 test.describe.serial("Space: Eigentümerwechsel, Archivieren, Löschen", () => {
   const spaceName = `E2E-Lebenszyklus-${runId}`;
@@ -147,7 +141,7 @@ test.describe.serial("Space: Eigentümerwechsel, Archivieren, Löschen", () => {
     const row = page.getByTestId("space-member-row").filter({ hasText: "Dev User" });
     await row.getByRole("button", { name: "Weitere Aktionen für „Dev User“" }).click();
     await page.getByRole("menuitem", { name: "Zum Eigentümer machen" }).click();
-    await confirmOverlay(page);
+    await acceptConfirm(page, "Verantwortung an Dev User übertragen?");
     await expect(page.getByText("Verantwortung an Dev User übertragen")).toBeVisible();
     await expect(row.getByRole("combobox")).toHaveText("Eigentümer");
 
@@ -171,14 +165,20 @@ test.describe.serial("Space: Eigentümerwechsel, Archivieren, Löschen", () => {
     await page.goto(`/spaces/${spaceId}/settings/general`);
     await expect(page.getByText("Gefahrenbereich")).toBeVisible();
     await page.getByRole("button", { name: "Space archivieren" }).click();
-    await confirmOverlay(page);
+    await acceptConfirm(page, "Diesen Space archivieren?");
     await expect(page.getByText("Space archiviert", { exact: true })).toBeVisible();
     await expect(
       page.getByText("Dieser Space ist archiviert und nimmt keinen neuen Inhalt mehr an."),
     ).toBeVisible();
 
-    // A member without a chat of their own no longer finds the space anywhere.
-    await outsiderPage.reload();
+    // A member without a chat of their own no longer finds the space in the overview. Waiting for
+    // the list itself: the heading stands before it has loaded, and an empty list would pass.
+    await Promise.all([
+      outsiderPage.waitForResponse(
+        (response) => new URL(response.url()).pathname === "/api/v1/spaces" && response.ok(),
+      ),
+      outsiderPage.reload(),
+    ]);
     await expect(outsiderPage.getByRole("heading", { level: 1, name: "Spaces" })).toBeVisible();
     await expect(outsiderPage.getByRole("link", { name: new RegExp(spaceName) })).toHaveCount(0);
 
@@ -198,7 +198,7 @@ test.describe.serial("Space: Eigentümerwechsel, Archivieren, Löschen", () => {
   }) => {
     await page.goto(`/spaces/${spaceId}/settings/general`);
     await page.getByRole("button", { name: "Space löschen" }).click();
-    await confirmOverlay(page);
+    await acceptConfirm(page, "Diesen Space löschen?");
     await expect(page.getByRole("alert").filter({ hasText: "Archivieren" })).toBeVisible();
 
     const user = await apiAs("dev-user");
@@ -207,7 +207,7 @@ test.describe.serial("Space: Eigentümerwechsel, Archivieren, Löschen", () => {
       const emptyId = await createSpace(user, emptyName);
       await page.goto(`/spaces/${emptyId}/settings/general`);
       await page.getByRole("button", { name: "Space löschen" }).click();
-      await confirmOverlay(page);
+      await acceptConfirm(page, "Diesen Space löschen?");
       await expect(page).toHaveURL(/\/spaces$/);
       await expect(page.getByRole("main").getByText(emptyName, { exact: true })).toHaveCount(0);
       expect((await user.get(`/api/v1/spaces/${emptyId}`)).status()).toBe(404);
@@ -218,21 +218,23 @@ test.describe.serial("Space: Eigentümerwechsel, Archivieren, Löschen", () => {
 });
 
 /**
- * Eine Konnektor-Bibliothek nimmt beim Löschen ihre Dokumente mit (ADR-0018, Entscheidung 5) -
- * anders als eine Upload-Bibliothek, die erst leer sein muss. Danach findet die Suche das Dokument
- * nicht mehr, und sein Original ist nicht mehr abrufbar.
+ * Deleting a connector library takes its documents along (ADR-0018, Entscheidung 5), so the search
+ * no longer finds the document and its original is gone.
  */
 test("Bibliothek über die Oberfläche löschen: Dokumente und Original sind weg", async ({
   authenticatedPage: page,
+  request,
 }) => {
+  test.setTimeout(60_000);
   const name = `E2E-Loeschpfad-${runId}`;
   const admin = await apiAs("dev-admin");
+  let libraryId = "";
   try {
     const created = await admin.post("/api/v1/libraries", {
       data: { name, sourceType: "HTTP_DIRECTORY", sourceUrl: "http://rss-feed/webverzeichnis/" },
     });
     expect(created.status(), await created.text()).toBe(201);
-    const libraryId = ((await created.json()) as { id: string }).id;
+    libraryId = ((await created.json()) as { id: string }).id;
     expect((await runIndexingViaApi("dev-admin", libraryId)).status).toBe("COMPLETED");
 
     const documents = await admin.get(`/api/v1/libraries/${libraryId}/documents`);
@@ -244,22 +246,25 @@ test("Bibliothek über die Oberfläche löschen: Dokumente und Original sind weg
       expect(response.status(), await response.text()).toBe(200);
       return ((await response.json()) as { hits: Array<{ documentId: string }> }).hits;
     };
-    const searchFor = { question: "Merkblatt Webverzeichnis" };
-    expect(
-      (await hitsOf({ ...searchFor, libraryIds: [libraryId] })).map((hit) => hit.documentId),
-    ).toContain(document.id);
+    // The same unfiltered search before and after: the stub's embedding ranks every chunk alike,
+    // so only a window wider than the suite's corpus proves the document was in it.
+    const searchFor = { question: "Merkblatt Webverzeichnis", maxHits: 50 };
+    expect((await hitsOf(searchFor)).map((hit) => hit.documentId)).toContain(document.id);
 
     await page.goto(`/libraries/${libraryId}`);
     await expect(page.getByRole("heading", { name })).toBeVisible();
     await page.getByRole("button", { name: `Weitere Aktionen für „${name}“` }).click();
     await page.getByRole("menuitem", { name: "Löschen" }).click();
-    await confirmOverlay(page);
+    await acceptConfirm(page, `Bibliothek "${name}" löschen?`);
     await expect(page).not.toHaveURL(new RegExp(`/libraries/${libraryId}`));
 
     expect((await admin.get(`/api/v1/libraries/${libraryId}`)).status()).toBe(404);
     expect((await admin.get(`/api/v1/documents/${document.id}/content`)).status()).toBe(404);
     expect((await hitsOf(searchFor)).map((hit) => hit.documentId)).not.toContain(document.id);
   } finally {
+    if (libraryId !== "" && (await admin.get(`/api/v1/libraries/${libraryId}`)).ok()) {
+      await deleteLibraryCompletely(request, libraryId);
+    }
     await admin.dispose();
   }
 });
