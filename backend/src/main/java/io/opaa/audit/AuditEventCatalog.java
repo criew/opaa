@@ -441,6 +441,8 @@ public final class AuditEventCatalog {
         keys,
         Set.of("accessPath", "eventType", "from", "profileId", "to"),
         CONNECTION_LOG_ACCESSED);
+    put(keys, Set.of("purpose", "scopeEnd", "scopeStart"), INCIDENT_SCOPE_REQUESTED);
+    put(keys, Set.of("purpose", "scopeEnd", "scopeStart", "usableUntil"), INCIDENT_SCOPE_APPROVED);
     put(keys, Set.of("noProxy", "proxyUrl"), OUTBOUND_PROXY_CHANGED);
     put(
         keys,

@@ -580,7 +580,10 @@ Verbinden, Trennen, Neuverbinden, Ablauf, Notabschaltung und Löschung einer Ver
 in ein **eigenes Verbindungsprotokoll**:
 
 - Inhalt: wer, welches Profil, welches Ereignis, wann. Keine Token, keine Kontoadresse beim Anbieter
-  (außer bei Quellverbindungen, wo sie ohnehin in den Bibliotheksdetails steht).
+  (außer bei Quellverbindungen, wo sie ohnehin in den Bibliotheksdetails steht). Personen stehen
+  als Pseudonym in der Tabelle; die Antwort an die Revision nennt nur, ob eine Person oder das System
+  gehandelt hat, keine Person (#3352): Ein Pseudonym ließe sich über Bibliothek und Zeitpunkt mit dem
+  Nachweisprotokoll und über aufeinanderfolgende Abfragen zu einer Zeitreihe je Person verbinden.
 - **Eigene Leserolle:** `AUDITOR` (Beschluss 13), mit Anlass und begrenztem Zeitraum wie beim Revisionsprotokoll
   ([ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Nachtrag vom
   03.10.2026). Die Systemverwaltung liest es nicht mit. Ausnahme: Die Liste der Zugänge mit

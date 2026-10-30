@@ -353,6 +353,8 @@ final class AuditSelfDisclosurePayload {
         PERMISSION_HISTORY_ACCESSED,
         CONNECTION_LOG_ACCESSED,
         OUTBOUND_PROXY_CHANGED);
+    put(keys, Set.of("purpose", "scopeStart", "scopeEnd"), INCIDENT_SCOPE_REQUESTED);
+    put(keys, Set.of("purpose", "scopeStart", "scopeEnd", "usableUntil"), INCIDENT_SCOPE_APPROVED);
     put(
         keys,
         Set.of("overridden", "setting", "settingValue"),

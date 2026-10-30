@@ -423,26 +423,28 @@ class ConnectionLogIntegrationTest {
             .getContentAsString();
     Map<String, Object> entry = JsonPath.read(body, "$.entries[0]");
     assertThat(entry)
-        .containsKeys("eventId", "recordedAt", "organizationId", "eventType", "actorRef")
-        .containsKeys("ownerKind", "personRef", "profileId", "profileName", "cause");
+        .containsKeys("eventId", "recordedAt", "organizationId", "eventType", "actor")
+        .containsKeys("ownerKind", "profileId", "profileName", "cause");
     assertThat(entry.keySet())
         .isSubsetOf(
             "eventId",
             "recordedAt",
             "organizationId",
             "eventType",
-            "actorRef",
+            "actor",
             "ownerKind",
-            "personRef",
             "libraryId",
             "accountLabel",
             "profileId",
             "profileName",
             "cause");
     assertThat(entry.get("ownerKind")).isEqualTo("PERSON");
+    assertThat(entry.get("actor")).isEqualTo("PERSON");
     assertThat(entry.get("libraryId")).isNull();
     assertThat(entry.get("accountLabel")).isNull();
     assertThat(body).doesNotContain(devUser.toString());
+    assertThat(body)
+        .doesNotContain(pseudonyms.findExistingPseudonym(devUser).orElseThrow().toString());
   }
 
   /**

@@ -11,8 +11,8 @@ behandelt [`docs/cve-scanning.md`](./cve-scanning.md), von außen gemeldete Lüc
 
 | Wann | Was | Wer oder was prüft |
 |---|---|---|
-| jeder Pull Request | Review mit Sicherheits-Checkliste, CI-Prüfungen, Rechte-Matrix, Allowlist der anonymen Pfade, Architekturtests | Review-Agent, CI |
-| nächtlich | Trivy-Scan der veröffentlichten Images | CI (`cve-scan.yml`) |
+| jeder Pull Request | Review mit Sicherheits-Checkliste, CI-Prüfungen, Rechte-Matrix, Allowlist der anonymen Pfade, Architekturtests, Regressionssuite für feindliche Eingaben | Review-Agent, CI |
+| nächtlich | Trivy-Scan der veröffentlichten Images, ZAP-Baseline-Scan der laufenden Anwendung, Parser-Fuzzing | CI (`cve-scan.yml`, `zap-baseline.yml`, `parser-fuzzing.yml`) |
 | wöchentlich | CodeQL über den ganzen Code, Lockfile-Pflege, Security-Delta-Review der Änderungen der Woche | CI, Renovate, geplante Routine |
 | zweimal im Jahr und anlassbezogen | Tiefen-Audit je Angriffsklasse | Agenten nach Vorgabe des Maintainers |
 
@@ -54,7 +54,8 @@ Merge.
 | Compose-Vorgaben | ein Port über Loopback hinaus, anonyme Systemverwaltung, ein festes Geheimnis in den Vorlagen | `check_compose_defaults.sh` |
 | Rechte-Matrix | eine API-Operation ohne Eintrag oder eine Rolle, die mehr darf als eingetragen, auch mit fremden IDs | `PermissionMatrixTest`, `PermissionMatrixIntegrationTest`, [backend/AGENTS.md](../backend/AGENTS.md#rechte-matrix) |
 | Anonyme Pfade | eine Operation, die ohne Anmeldung antwortet und nicht in der Allowlist steht; fehlende Security-Header | `AnonymousSurfaceTest`, `AnonymousSurfaceIntegrationTest`, `backend/src/test/resources/security/anonymous-allowlist.yaml` |
-| Architekturtests | Verstöße gegen Modulgrenzen und einzelne Sicherheitsinvarianten, etwa eine eigene Namensauflösung an der Zielprüfung vorbei | ArchUnit-Tests unter `backend/src/test/java/io/opaa/architecture/` und in den Modulen |
+| Architekturtests | Verstöße gegen Modulgrenzen und Sicherheitsinvarianten, etwa eine eigene Namensauflösung oder eine Verbindung nach außen an der Zielprüfung vorbei, ein Geheimnis außerhalb der Bausteine „Geheimnis folgt Ziel“ entschlüsselt, ein Controller-Handler ohne Rechteprüfung | `SecurityInvariantsTest` und weitere ArchUnit-Tests unter `backend/src/test/java/io/opaa/architecture/` und in den Modulen, [build-und-ci.md](entwicklung/build-und-ci.md#sicherheitsinvarianten-als-architekturtests) |
+| Feindliche Eingaben | präparierte Dateien, die Parser erschöpfen; Ziele in gesperrten Adressbereichen für alle Konnektoren mit ausgehender Verbindung; gefälschte Logeinträge aus Anfragewerten | [regressionssuite-eingaben.md](entwicklung/regressionssuite-eingaben.md) |
 
 CI-Prüfungen mit Pfadfilter laufen im PR nur, wenn er die betroffenen Dateien berührt, die
 Backend-Tests also nur bei Backend-Änderungen; auf `main` läuft nach jedem Merge alles.
@@ -69,6 +70,16 @@ Der [Trivy-Scan](cve-scanning.md#ebene-2--images-trivy-scan) prüft die Images v
 jüngsten Patch-Release jeder unterstützten Linie auf bekannte Schwachstellen, auch in den
 Betriebssystempaketen der Basis-Images. Er ist kein PR-Gate; die Befunde werden nach
 [Triage](cve-scanning.md#triage-von-image-alerts) behandelt.
+
+Der [ZAP-Baseline-Scan](entwicklung/zap-baseline.md) startet einen Stack aus dem Commit wie eine
+Installation und prüft passiv und ohne Anmeldung, was die laufende Anwendung preisgibt:
+Sicherheits-Header, Cookies, Inhaltstypen. Neue Warnungen machen den Lauf rot; auf `main` öffnet
+ein roter Lauf ein Alarm-Issue.
+
+Das [Parser-Fuzzing](entwicklung/build-und-ci.md#parser-fuzzing) schickt zehn Minuten lang
+mutierte Dateien über den Produktionsweg der zugelassenen Formate. Ein Speicher- oder
+Zeitüberlauf oder ein Fehler, der den Weg verlässt, öffnet ein Alarm-Issue; die auslösende Eingabe
+liegt als Artefakt am Lauf.
 
 ## Wöchentlich
 
@@ -112,20 +123,11 @@ Release gilt für alle Befunde, auch die eigener Audits, der vertrauliche
 [Meldeweg](../SECURITY.md#meldeweg): Ausnutzbare Details erscheinen erst mit der Korrektur als
 Security Advisory.
 
-## Geplant
-
-Diese Prüfungen sind beschlossen, aber noch nicht gebaut:
-
-- Architekturtests für Sicherheitsinvarianten als Klassen (ausgehende Verbindungen nur über die
-  Zielprüfung, Geheimnisse nur über die Bausteine „Geheimnis folgt Ziel“, Rechteprüfung an jeder
-  Controller-Methode) und ein nächtliches Parser-Fuzzing über alle zugelassenen Formate (#3379)
-- eine Regressionssuite für präparierte Dateien, SSRF-Ziele und Log-Hygiene (#3383)
-- ein nächtlicher ZAP-Baseline-Scan gegen den laufenden CI-Stack (#3384)
-
 ## Was es nicht gibt
 
 - **Keine externe Prüfung:** Eine Sicherheitsuntersuchung oder einen Penetrationstest durch Dritte
   gab es bisher nicht. Alle Prüfungen oben führt das Projekt selbst durch, mit CI-Werkzeugen und
   KI-Agenten unter Aufsicht des Maintainers.
 - **Kein Bug-Bounty-Programm.**
-- **Kein dynamischer Scan** einer laufenden Instanz in der CI (geplant, siehe oben).
+- **Kein authentifizierter oder aktiver dynamischer Scan:** Der ZAP-Scan prüft passiv und ohne
+  Anmeldung.

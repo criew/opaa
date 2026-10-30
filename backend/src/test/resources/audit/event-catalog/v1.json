@@ -74,6 +74,8 @@
   "GROUP_RELEASE_CHANGED": ["releasedForUse"],
   "GROUP_STEWARD_APPOINTED": ["transferId"],
   "GROUP_STEWARD_DISMISSED": ["transferId"],
+  "INCIDENT_SCOPE_APPROVED": ["purpose", "scopeEnd", "scopeStart", "usableUntil"],
+  "INCIDENT_SCOPE_REQUESTED": ["purpose", "scopeEnd", "scopeStart"],
   "INCIDENT_SCOPE_RETENTION_CHANGED": ["overridden", "retentionYears"],
   "INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED": ["batchSize", "processedDocuments", "skippedDocuments"],
   "INDEXING_METADATA_BACKFILL_TRIGGERED": ["batchSize", "extractionVersion", "markedForNextRun", "processedDocuments", "skippedDocuments"],
