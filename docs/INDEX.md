@@ -191,6 +191,8 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
   Repositorys, `publiccode.yml` und die Schritte der Einrichtung
 - **[`cve-scanning.md`](./cve-scanning.md)** — CVE-Erkennung: Dependency Graph, Dependabot-Alerts,
   Trivy-Image-Scan und die Triage von Image-Alerts
+- **[`security-pruefung.md`](./security-pruefung.md)** — Sicherheitsprüfung des eigenen Codes:
+  Prüfrhythmus je Pull Request, nächtlich, wöchentlich und im Tiefen-Audit; was es nicht gibt
 - **[`SECURITY.md`](../SECURITY.md)** — Sicherheitsrichtlinie: vertraulicher Meldeweg für
   Sicherheitslücken, unterstützte Versionen und Ablauf bis zum Security Advisory
 
