@@ -13,7 +13,7 @@ ungeprüft. Wer die Befehle von hier übernimmt, gleicht sie mit dem Handbuch ab
 | `chart/` | das Helm-Chart |
 | `update-paket/` | das Update-Paket der Version |
 | `sbom/` | die CycloneDX-Stücklisten von Backend und Frontend |
-| `attestations/` | die Sigstore-Bundles der Attestierungen von Update-Paket, SBOMs und Chart; die des Charts gilt dem Chart in der Registry |
+| `attestations/` | die Sigstore-Bundles der Attestierungen von Update-Paket, SBOMs, Chart und beiden Images; die von Chart und Images gelten dem Manifest in der Registry, ihr Digest steht in `DIGESTS` bzw. im Chart |
 | `SHA256SUMS`, `SHA256SUMS.sigstore.json` | Prüfsummen aller Dateien und ihre Attestierung |
 
 ## Prüfen

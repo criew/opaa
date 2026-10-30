@@ -72,7 +72,9 @@ lehnt `values.schema.json` die Installation ab; `helm template` zeigt das schon 
 
 **5. Installieren.** Jedes Release veröffentlicht den Chart neben den Images in GHCR
 ([Releases](../../../docs/releases.md)), ab dem ersten Release mit Chart; bis dahin wird aus dem
-Repository installiert (unten). Chart-Version und Image-Tags sind dieselbe Versionsnummer:
+Repository installiert (unten). Chart-Version und Image-Tags sind dieselbe Versionsnummer, und der
+veröffentlichte Chart heftet die Images dieser Version zusätzlich per Digest an
+(`backend.image.digest`, `frontend.image.digest`):
 
 ```bash
 helm install opaa oci://ghcr.io/criew/charts/opaa --version X.Y.Z -n opaa -f opaa-werte.yaml

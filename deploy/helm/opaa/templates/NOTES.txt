@@ -205,5 +205,23 @@ ANMELDUNG ÜBER {{ $origin }} WIRD BLOCKIERT
   nach frontend.cspConnectSrcExtra.
 {{- end }}
 {{- end }}
+{{- range $name := list "backend" "frontend" }}
+{{- $image := (index $.Values $name).image }}
+{{- if and $image.digest $image.tag }}
+
+{{ upper $name }}-IMAGE: TAG OHNE WIRKUNG
+  {{ $name }}.image.tag ist "{{ $image.tag }}", {{ $name }}.image.digest ebenfalls gesetzt. Der Digest
+  hat Vorrang; der Cluster zieht {{ $image.repository }}@{{ $image.digest }}.
+  Für den Tag den Digest leeren: --set {{ $name }}.image.digest=
+{{- end }}
+{{- $prefix := index $.Chart.Annotations "opaa/image-prefix" | default "" }}
+{{- if and $image.digest $prefix (ne $image.repository (printf "%s-%s" $prefix $name)) }}
+
+{{ upper $name }}-IMAGE AUS EIGENER REGISTRY PER DIGEST
+  Der Cluster zieht {{ $image.repository }}@{{ $image.digest }}. Diesen Digest gibt es dort
+  nur, wenn der Spiegel mit skopeo copy --all --preserve-digests gefüllt ist; sonst bleibt der
+  Pod in ImagePullBackOff. Ohne Digest: --set {{ $name }}.image.digest=
+{{- end }}
+{{- end }}
 
 Prüfen: helm test {{ .Release.Name }} -n {{ .Release.Namespace }}
