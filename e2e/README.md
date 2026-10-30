@@ -173,7 +173,7 @@ E2E_BROWSER=firefox node scripts/run-e2e.mjs
 `E2E_BROWSER=firefox` ersetzt das Chromium-Projekt durch das Projekt `firefox`, das nur die
 getaggten Szenarien wählt; Bericht und Traces landen in `playwright-report-firefox/` und
 `test-results-firefox/`, die Container-Logs in `docker-compose.firefox.log`. Der Workflow
-`e2e.yml` führt den Lauf nach der Chromium-Suite auf frischem Stack aus, auch wenn diese rot war,
+`e2e.yml` führt den Lauf nach der Chromium-Suite auf neuem Stack mit frischer Datenbank aus, auch wenn diese rot war,
 und meldet einen Fehlschlag über dasselbe Alarm-Issue. Playwright treibt seinen eigenen
 Firefox-Build (aktueller Stand), kein echtes ESR.
 

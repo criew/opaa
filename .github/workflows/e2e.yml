@@ -137,17 +137,19 @@ jobs:
           chmod -R o+rX documents
 
       - name: Run E2E suite
+        id: e2e-suite
         working-directory: e2e
         run: pnpm test
         env:
           E2E_SKIP_BUILD: 'true'
 
-      # Second engine: the scenarios tagged @browser-smoke in Firefox, on a fresh stack. Runs even
-      # after a red Chromium run, so a failure shows whether it is engine-specific.
+      # Second engine: the scenarios tagged @browser-smoke in Firefox, on a new stack with a fresh
+      # database. Runs even after a red Chromium run, so a failure shows whether it is
+      # engine-specific, but not when the setup before the Chromium run already failed.
       - name: Run Firefox smoke
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.e2e-suite.outcome != 'skipped' }}
         working-directory: e2e
-        timeout-minutes: 8
+        timeout-minutes: 10
         run: pnpm test
         env:
           E2E_SKIP_BUILD: 'true'
@@ -245,24 +247,32 @@ jobs:
               }
               for (const child of suite.suites ?? []) walk(child, here);
             };
-            // Chromium suite and Firefox smoke run each leave their own report.
-            const reportPaths = ['e2e/test-results/results.json', 'e2e/test-results-firefox/results.json']
-              .filter(path => fs.existsSync(path));
-            let details;
-            if (reportPaths.length > 0) {
-              for (const reportPath of reportPaths) {
-                const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
-                const engine = reportPath.includes('firefox') ? 'Firefox' : '';
-                for (const suite of report.suites ?? []) walk(suite, engine ? [engine] : []);
+            // Chromium suite and Firefox smoke run each leave their own report; an engine whose
+            // report is missing never reached the end of its suite (stack start, timeout).
+            const engines = [
+              { name: 'Chromium', path: 'e2e/test-results/results.json', prefix: [] },
+              { name: 'Firefox', path: 'e2e/test-results-firefox/results.json', prefix: ['Firefox'] },
+            ];
+            const missing = [];
+            for (const engine of engines) {
+              if (!fs.existsSync(engine.path)) {
+                missing.push(engine.name);
+                continue;
               }
-              details = failed.length
-                ? `Fehlgeschlagene Szenarien:\n\n${failed.join('\n')}`
-                : 'Der Playwright-Bericht weist keinen fehlgeschlagenen Testfall aus — der Fehler ' +
-                  'liegt vor oder nach der Suite (siehe Workflow-Logs).';
-            } else {
-              details = 'Kein Playwright-Bericht vorhanden — der Lauf hat die Suite nicht erreicht ' +
-                '(Image-Build, Stack-Start oder Zeitlimit; siehe Workflow-Logs).';
+              const report = JSON.parse(fs.readFileSync(engine.path, 'utf8'));
+              for (const suite of report.suites ?? []) walk(suite, engine.prefix);
             }
+            const parts = [];
+            if (failed.length) parts.push(`Fehlgeschlagene Szenarien:\n\n${failed.join('\n')}`);
+            if (missing.length) {
+              parts.push(`Kein Playwright-Bericht für ${missing.join(' und ')} — dieser Lauf hat das Ende ` +
+                'seiner Suite nicht erreicht (Image-Build, Stack-Start oder Zeitlimit; siehe Workflow-Logs).');
+            }
+            if (!parts.length) {
+              parts.push('Der Playwright-Bericht weist keinen fehlgeschlagenen Testfall aus — der Fehler ' +
+                'liegt vor oder nach der Suite (siehe Workflow-Logs).');
+            }
+            const details = parts.join('\n\n');
             const artifacts = 'Artefakte des Laufs: `playwright-report`, `playwright-traces`, `docker-compose-logs`.';
             const commentBody = `Erneut fehlgeschlagen: ${runUrl}\n\n${details}\n\n${artifacts}`;
             const issueBody = `${marker}\n\n**Die E2E-Suite auf \`main\` ist fehlgeschlagen.**\n\n` +
