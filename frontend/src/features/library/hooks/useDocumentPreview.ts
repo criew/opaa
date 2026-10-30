@@ -20,7 +20,8 @@ export interface OpenableDocument {
   sourceUrl?: string | null
   sourceEntryUrl?: string | null
   /** Where the cited passage sits - a PDF, Markdown or text file opens there with the passage
-   *  marked, a page at the source through a text fragment. */
+   *  marked, a page at the source through a text fragment. `null` for a citation whose anchor was
+   *  never stored (indexed before anchors existed); the preview then says so. */
   anchor?: ChunkAnchor | null
   /** SHA-256 of the original as indexed when the citation was made. */
   contentSha256?: string | null

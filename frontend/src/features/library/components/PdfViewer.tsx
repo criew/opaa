@@ -17,6 +17,7 @@ import { markHighlight } from '@/shared/theme/tokens'
 import { loadPdf, loadPdfViewer } from '../utils/pdfjs'
 import { containsQuote, markedItems } from '../utils/quoteMatch'
 import { sha256Hex } from '../utils/sha256'
+import { NO_ANCHOR_NOTICE } from '../utils/textPassage'
 import PdfOutline, { type OutlineNode } from './PdfOutline'
 
 /** Pages searched for the quote when the anchor names none (an outline PDF whose page was lost). */
@@ -35,7 +36,7 @@ export interface PdfViewerProps {
   onError: (error: unknown) => void
 }
 
-type MarkState = 'none' | 'pending' | 'marked' | 'not-found'
+type MarkState = 'none' | 'pending' | 'marked' | 'not-found' | 'no-anchor'
 
 interface Passage {
   from: number
@@ -58,7 +59,9 @@ export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfV
   const [outline, setOutline] = useState<OutlineNode[]>([])
   const [outlineOpen, setOutlineOpen] = useState(true)
   const [page, setPage] = useState(1)
-  const [markState, setMarkState] = useState<MarkState>(anchor?.quoteStart ? 'pending' : 'none')
+  const [markState, setMarkState] = useState<MarkState>(
+    anchor === null ? 'no-anchor' : anchor?.quoteStart ? 'pending' : 'none',
+  )
   const [changed, setChanged] = useState(false)
   const reportError = useEffectEvent((error: unknown) => onError(error))
 
@@ -244,7 +247,9 @@ export default function PdfViewer({ data, anchor, contentSha256, onError }: PdfV
         sx={
           changed || markState === 'not-found'
             ? { fontSize: 13, color: 'warning.main', fontWeight: 600 }
-            : visuallyHidden
+            : markState === 'no-anchor'
+              ? { fontSize: 13, color: 'text.secondary' }
+              : visuallyHidden
         }
       >
         {statusText(markState, changed, anchor?.pageFrom != null, page)}
@@ -308,6 +313,7 @@ function statusText(markState: MarkState, changed: boolean, pageKnown: boolean, 
       ? 'Die Fundstelle wurde im Original nicht gefunden – angezeigt wird die Fundseite.'
       : 'Die Fundstelle wurde im Original nicht gefunden.'
   }
+  if (markState === 'no-anchor') return NO_ANCHOR_NOTICE
   return markState === 'marked' ? `Fundstelle auf Seite ${page} markiert.` : ''
 }
 
