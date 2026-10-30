@@ -11,6 +11,7 @@ const {
   mockSetDocumentMetadataValue,
   mockDeleteDocumentMetadataValue,
   mockGetDocumentTypeVocabulary,
+  mockListLibraryMetadataFields,
 } = vi.hoisted(() => ({
   mockGetDocumentMetadata: vi.fn(),
   mockSetDocumentMetadataValue: vi.fn(),
@@ -21,6 +22,7 @@ const {
       { code: 'VERMERK', label: 'Vermerk' },
     ],
   })),
+  mockListLibraryMetadataFields: vi.fn(),
 }))
 
 vi.mock('../../api/libraryMetadataApi', async () => {
@@ -33,6 +35,7 @@ vi.mock('../../api/libraryMetadataApi', async () => {
     setDocumentMetadataValue: mockSetDocumentMetadataValue,
     deleteDocumentMetadataValue: mockDeleteDocumentMetadataValue,
     getDocumentTypeVocabulary: mockGetDocumentTypeVocabulary,
+    listLibraryMetadataFields: mockListLibraryMetadataFields,
   }
 })
 
@@ -259,5 +262,76 @@ describe('DocumentMetadataPanel', () => {
     )
     const region = screen.getByRole('region', { name: 'Metadaten von dienstanweisung.pdf' })
     expect(await within(region).findByText('– (kein Wert ermittelbar)')).toBeInTheDocument()
+  })
+  // regression guard: the dialog once offered a library field only the date input of the core
+  // field Datum/Stand and kept "Speichern" disabled, so no library field could be set by hand.
+  it('lets an editor set a library field from its value list', async () => {
+    mockGetDocumentMetadata.mockResolvedValue(
+      metadataOf([...fields, { fieldKey: 'lib:fassung', label: 'Fassung', state: 'EMPTY' }]),
+    )
+    mockListLibraryMetadataFields.mockResolvedValue({
+      items: [
+        {
+          fieldKey: 'fassung',
+          documentFieldKey: 'lib:fassung',
+          label: 'Fassung',
+          type: 'SELECT',
+          filter: true,
+          contextPrefix: false,
+          sortOrder: 0,
+          deletionPending: false,
+          values: [
+            { code: 'F2024', label: 'Fassung 2024', retiring: false },
+            { code: 'F2025', label: 'Fassung 2025', retiring: false },
+            { code: 'F2023', label: 'Fassung 2023', retiring: true },
+          ],
+        },
+      ],
+      coreContextPrefix: { documentType: false, documentDate: false },
+      documentsAwaitingContextPrefixRerun: 0,
+      pendingSchemaChanges: [],
+    })
+    mockSetDocumentMetadataValue.mockResolvedValue({
+      fieldKey: 'lib:fassung',
+      label: 'Fassung',
+      state: 'SET',
+      value: 'F2024',
+      displayValue: 'Fassung 2024',
+      origin: 'MANUAL',
+      actorDisplayName: 'Erika Muster',
+      updatedAt: '2026-10-30T10:00:00Z',
+    } satisfies DocumentMetadataFieldResponse)
+    renderWithProviders(
+      <DocumentMetadataPanel
+        libraryId="library-team"
+        documentId="doc-1"
+        fileName="dienstanweisung.pdf"
+        canEdit
+      />,
+    )
+    const user = userEvent.setup()
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Fassung von dienstanweisung.pdf bearbeiten' }),
+    )
+    const dialog = await screen.findByRole('dialog', { name: 'Fassung setzen' })
+    expect(within(dialog).queryByLabelText(/Datum/)).not.toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    await user.click(await within(dialog).findByRole('combobox', { name: /Fassung/ }))
+    expect(screen.queryByRole('option', { name: 'Fassung 2023' })).not.toBeInTheDocument()
+    await user.click(await screen.findByRole('option', { name: 'Fassung 2024' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() =>
+      expect(mockSetDocumentMetadataValue).toHaveBeenCalledWith(
+        'library-team',
+        'doc-1',
+        'lib:fassung',
+        { textValue: 'F2024' },
+      ),
+    )
+    expect(mockListLibraryMetadataFields).toHaveBeenCalledWith('library-team')
+    const region = screen.getByRole('region', { name: 'Metadaten von dienstanweisung.pdf' })
+    expect(await within(region).findByText('Fassung 2024')).toBeInTheDocument()
   })
 })

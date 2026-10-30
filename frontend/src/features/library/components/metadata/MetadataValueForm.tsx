@@ -10,22 +10,25 @@ import Typography from '@mui/material/Typography'
 import type {
   DatePrecision,
   DocumentTypeVocabularyEntryResponse,
+  LibraryMetadataFieldResponse,
   MetadataValueRequest,
 } from '@/shared/api/types'
 import { datePrecisionLabel, datePrecisions } from './metadataLabels'
-import { isNotDeterminable } from './metadataValues'
+import { isLibraryFieldKey, isNotDeterminable } from './metadataValues'
 
 interface MetadataValueFormProps {
   fieldKey: string
   value: MetadataValueRequest
   onChange: (value: MetadataValueRequest) => void
   vocabulary: DocumentTypeVocabularyEntryResponse[]
+  /** The definition of a library field (`lib:…`); null while it is still loading. */
+  libraryField?: LibraryMetadataFieldResponse | null
   disabled?: boolean
 }
 
-// The input for one core field - free text for the title, a choice from the controlled
+// The input for one field - free text for the title, a choice from the controlled
 // vocabulary for the Dokumentart (never free text: a value outside the list is not storable),
-// a date plus its precision for Datum/Stand. The third state "kein Wert ermittelbar"
+// a date plus its precision for Datum/Stand; a library field takes the input of its type. The third state "kein Wert ermittelbar"
 // is offered here as the same operation without a value, not as a separate action. Shared by the
 // single-document and the bulk dialog.
 export default function MetadataValueForm({
@@ -33,6 +36,7 @@ export default function MetadataValueForm({
   value,
   onChange,
   vocabulary,
+  libraryField = null,
   disabled = false,
 }: MetadataValueFormProps) {
   const notDeterminable = isNotDeterminable(value)
@@ -43,6 +47,7 @@ export default function MetadataValueForm({
         value={value}
         onChange={onChange}
         vocabulary={vocabulary}
+        libraryField={libraryField}
         disabled={disabled || notDeterminable}
       />
       <FormControlLabel
@@ -72,8 +77,48 @@ function ValueInput({
   value,
   onChange,
   vocabulary,
+  libraryField,
   disabled,
 }: MetadataValueFormProps & { disabled: boolean }) {
+  if (isLibraryFieldKey(fieldKey) && libraryField?.type !== 'DATE') {
+    if (!libraryField) return null
+    if (libraryField.type === 'PATTERN') {
+      return (
+        <TextField
+          label={libraryField.label}
+          value={value.textValue ?? ''}
+          onChange={(e) => onChange({ ...value, textValue: e.target.value })}
+          fullWidth
+          required
+          disabled={disabled}
+          helperText={
+            libraryField.valuePattern ? `Muster: ${libraryField.valuePattern}` : undefined
+          }
+        />
+      )
+    }
+    // A value being mapped away can no longer be set, so it is not offered.
+    const selectable = libraryField.values.filter(
+      (entry) => !entry.retiring || entry.code === value.textValue,
+    )
+    return (
+      <FormControl fullWidth required disabled={disabled}>
+        <InputLabel id="metadata-library-field-label">{libraryField.label}</InputLabel>
+        <Select
+          labelId="metadata-library-field-label"
+          label={libraryField.label}
+          value={value.textValue ?? ''}
+          onChange={(e) => onChange({ ...value, textValue: String(e.target.value) })}
+        >
+          {selectable.map((entry) => (
+            <MenuItem key={entry.code} value={entry.code}>
+              {entry.label}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+    )
+  }
   if (fieldKey === 'title') {
     return (
       <TextField

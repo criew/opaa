@@ -10,11 +10,20 @@ import Typography from '@mui/material/Typography'
 import type {
   DocumentMetadataFieldResponse,
   DocumentTypeVocabularyEntryResponse,
+  LibraryMetadataFieldResponse,
   MetadataValueRequest,
 } from '@/shared/api/types'
-import { getDocumentTypeVocabulary, setDocumentMetadataValue } from '../../api/libraryMetadataApi'
+import {
+  getDocumentTypeVocabulary,
+  listLibraryMetadataFields,
+  setDocumentMetadataValue,
+} from '../../api/libraryMetadataApi'
 import MetadataValueForm from './MetadataValueForm'
-import { isMetadataValueComplete, metadataValueRequestFor } from './metadataValues'
+import {
+  isLibraryFieldKey,
+  isMetadataValueComplete,
+  metadataValueRequestFor,
+} from './metadataValues'
 
 interface EditMetadataValueDialogProps {
   open: boolean
@@ -28,6 +37,15 @@ interface EditMetadataValueDialogProps {
 
 function initialValueOf(field: DocumentMetadataFieldResponse): MetadataValueRequest {
   if (field.state === 'NOT_DETERMINABLE') return { state: 'NOT_DETERMINABLE' }
+  if (isLibraryFieldKey(field.fieldKey)) {
+    // The type arrives with the field definition; only a DATE value carries a precision.
+    const isDate = field.datePrecision != null
+    return {
+      textValue: isDate ? '' : (field.value ?? ''),
+      dateValue: isDate ? (field.value ?? '') : '',
+      datePrecision: field.datePrecision ?? 'DAY',
+    }
+  }
   switch (field.fieldKey) {
     case 'title':
       return { textValue: field.value ?? '' }
@@ -38,7 +56,7 @@ function initialValueOf(field: DocumentMetadataFieldResponse): MetadataValueRequ
   }
 }
 
-// Sets or changes one core field of one document by hand. The saved value carries the
+// Sets or changes one core or library field of one document by hand. The saved value carries the
 // origin "manuell" and the calling person; no automatic extraction overwrites it afterwards.
 export default function EditMetadataValueDialog({
   open,
@@ -51,8 +69,29 @@ export default function EditMetadataValueDialog({
 }: EditMetadataValueDialogProps) {
   const [value, setValue] = useState<MetadataValueRequest>(() => initialValueOf(field))
   const [vocabulary, setVocabulary] = useState<DocumentTypeVocabularyEntryResponse[]>([])
+  const [libraryField, setLibraryField] = useState<LibraryMetadataFieldResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (!open || !isLibraryFieldKey(field.fieldKey)) return
+    let cancelled = false
+    listLibraryMetadataFields(libraryId)
+      .then((response) => {
+        if (cancelled) return
+        const definition = response.items.find((item) => item.documentFieldKey === field.fieldKey)
+        if (definition) setLibraryField(definition)
+        else setError('Das Feld gibt es in dieser Bibliothek nicht mehr.')
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Das Feld konnte nicht geladen werden')
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open, libraryId, field.fieldKey])
 
   useEffect(() => {
     if (!open || field.fieldKey !== 'document_type') return
@@ -80,7 +119,7 @@ export default function EditMetadataValueDialog({
 
   async function handleSave() {
     setError(null)
-    if (!isMetadataValueComplete(field.fieldKey, value)) {
+    if (!isMetadataValueComplete(field.fieldKey, value, libraryField)) {
       setError('Bitte einen Wert angeben.')
       return
     }
@@ -90,7 +129,7 @@ export default function EditMetadataValueDialog({
         libraryId,
         documentId,
         field.fieldKey,
-        metadataValueRequestFor(field.fieldKey, value),
+        metadataValueRequestFor(field.fieldKey, value, libraryField),
       )
       onSaved(saved)
       onClose()
@@ -117,6 +156,7 @@ export default function EditMetadataValueDialog({
             value={value}
             onChange={setValue}
             vocabulary={vocabulary}
+            libraryField={libraryField}
             disabled={submitting}
           />
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
@@ -132,7 +172,7 @@ export default function EditMetadataValueDialog({
         <Button
           variant="contained"
           onClick={() => void handleSave()}
-          disabled={submitting || !isMetadataValueComplete(field.fieldKey, value)}
+          disabled={submitting || !isMetadataValueComplete(field.fieldKey, value, libraryField)}
         >
           Speichern
         </Button>
