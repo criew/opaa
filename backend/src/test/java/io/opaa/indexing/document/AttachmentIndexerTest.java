@@ -118,7 +118,7 @@ class AttachmentIndexerTest {
     Path downloaded = tempDir.resolve("attachment.txt");
     Files.writeString(downloaded, "content");
     when(attachmentDownloader.downloadBounded(
-            any(), anyString(), anyString(), anyLong(), any(), any(), any()))
+            any(), anyString(), anyString(), anyLong(), any(), any(), any(), any()))
         .thenReturn(new BoundedDownloader.DownloadedFile(downloaded, "text/plain"));
     when(documentIngestService.ingest(DocumentIngests.anyFile(), any()))
         .thenReturn(DocumentIngestResult.FAILED);
@@ -273,7 +273,7 @@ class AttachmentIndexerTest {
     Path outerFeedFile = tempDir.resolve("aussen.txt");
     Files.writeString(outerFeedFile, "outer feed content");
     when(attachmentDownloader.downloadBounded(
-            any(), anyString(), anyString(), anyLong(), any(), any(), any()))
+            any(), anyString(), anyString(), anyLong(), any(), any(), any(), any()))
         .thenReturn(new BoundedDownloader.DownloadedFile(outerFeedFile, "text/plain"));
     AttachmentSource.Download nestedFeedSource =
         new AttachmentSource.Download(

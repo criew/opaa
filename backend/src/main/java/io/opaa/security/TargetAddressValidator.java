@@ -10,6 +10,7 @@ import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +31,8 @@ import org.slf4j.LoggerFactory;
  *
  * <p>A blocked range and a name that does not resolve are refused with the same German sentence
  * ({@link #refusal}), so whoever configures a target cannot probe which internal names exist; the
- * cause goes to the log only. The exception types still tell the two apart.
+ * cause goes to the log only. The exception types still tell the two apart. The log names the host
+ * and its address as {@link #namingHostsAs} decides - in the clear unless a caller says otherwise.
  *
  * <p>The target is checked, never the outbound proxy. A name that does not resolve locally passes
  * only when its connection goes through the outbound proxy, because the proxy resolves it: for
@@ -55,11 +57,27 @@ public class TargetAddressValidator {
   private final boolean enabled;
   private final List<String> allowedHosts;
   private final int policy;
+  private final Function<Object, String> loggedHosts;
 
   public TargetAddressValidator(boolean enabled, List<String> allowlist) {
+    this(enabled, allowlist == null ? List.of() : allowlist, LogText::of);
+  }
+
+  private TargetAddressValidator(
+      boolean enabled, List<String> allowedHosts, Function<Object, String> loggedHosts) {
     this.enabled = enabled;
-    this.allowedHosts = allowlist == null ? List.of() : allowlist;
-    this.policy = ResolutionPins.policyOf(this.allowedHosts);
+    this.allowedHosts = allowedHosts;
+    this.policy = ResolutionPins.policyOf(allowedHosts);
+    this.loggedHosts = loggedHosts;
+  }
+
+  /**
+   * This validator, its log lines naming a refused host and its address through {@code names} - for
+   * a caller whose target may come from content the log must not name, e.g. {@code LoggedName::of}
+   * of a private library. Checks and user-facing messages stay the same.
+   */
+  public TargetAddressValidator namingHostsAs(Function<Object, String> names) {
+    return new TargetAddressValidator(enabled, allowedHosts, Objects.requireNonNull(names));
   }
 
   /**
@@ -263,8 +281,8 @@ public class TargetAddressValidator {
    * A DNS failure, answered in the words of a blocked range ({@link #refusal}). Logged at INFO: a
    * dead link in crawled content is ordinary, unlike a target in a blocked range.
    */
-  private static UnknownTargetHostException unknownHost(String host) {
-    log.info("Rejecting fetch to {} - the name does not resolve", LogText.of(host));
+  private UnknownTargetHostException unknownHost(String host) {
+    log.info("Rejecting fetch to {} - the name does not resolve", loggedHosts.apply(host));
     return new UnknownTargetHostException(refusal(host));
   }
 
@@ -276,15 +294,14 @@ public class TargetAddressValidator {
         + " einem gesperrten Adressbereich (lokal, privat oder nicht routbar).";
   }
 
-  private static void rejectBlocked(String host, List<InetAddress> addresses)
+  private void rejectBlocked(String host, List<InetAddress> addresses)
       throws TargetAddressBlockedException {
     for (InetAddress address : addresses) {
       if (isBlockedAddress(address)) {
         log.warn(
-            "Rejecting fetch to {} - resolved address {} lies in a blocked (loopback, link-local,"
+            "Rejecting fetch to {} - its resolved address lies in a blocked (loopback, link-local,"
                 + " private or otherwise non-routable) range",
-            LogText.of(host),
-            address.getHostAddress());
+            loggedHosts.apply(host + " (" + address.getHostAddress() + ")"));
         throw new TargetAddressBlockedException(refusal(host));
       }
     }
