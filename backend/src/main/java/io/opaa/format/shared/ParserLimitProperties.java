@@ -15,8 +15,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * past any of them fails to parse as a whole; nothing is truncated.
  *
  * @param maxTextCharacters the most characters one document's chunks may carry in total. The PDF
- *     reader counts glyphs while it extracts and also stops a single page at a fixed 200 000
- *     glyphs, so a page that draws the same form thousands of times fails before its glyphs fill
+ *     reader counts glyphs while it extracts and also stops a single page at a fixed glyph limit of
+ *     its own, so a page that draws the same form thousands of times fails before its glyphs fill
  *     the heap; XLSX counts cell text row by row. For HTML, Markdown and CSV the text cannot
  *     outgrow the file, which is already in memory, so there the limit bounds the number of chunks
  *     and with it the embedding work, not the heap. Default 10 000 000.

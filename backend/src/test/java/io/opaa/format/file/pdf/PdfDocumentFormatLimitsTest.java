@@ -9,6 +9,7 @@ import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.format.file.pdf.PdfTableGrids.TableGrid;
 import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import io.opaa.format.shared.ParserLimitExceededException;
 import io.opaa.format.shared.ParserLimitProperties;
@@ -20,7 +21,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.List;
 import javax.imageio.ImageIO;
+import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.cos.COSStream;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -176,6 +179,20 @@ class PdfDocumentFormatLimitsTest {
         DocumentFormatRunner.run(pipeline, DocumentFormatSource.ofFile(file, "fanout-page.pdf"));
 
     assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
+  }
+
+  /** The table pass routes glyphs into cells and still counts every one against the page limit. */
+  @Test
+  void glyphsInsideATableCountAgainstThePageGlyphLimit() throws IOException {
+    Path file = tempDir.resolve("fanout-table.pdf");
+    writeFormFanout(file, (int) (PdfReadBudget.MAX_PAGE_GLYPHS / 1_000) + 1);
+    TableGrid wholePage = new TableGrid(new float[] {0, 700}, new float[] {0, 900});
+
+    try (PDDocument doc = Loader.loadPDF(file.toFile())) {
+      assertThatThrownBy(() -> PdfPageText.extract(doc, 0, page -> List.of(wholePage)))
+          .isInstanceOf(ParserLimitExceededException.class)
+          .hasMessageContaining("glyph limit");
+    }
   }
 
   @Test
