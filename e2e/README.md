@@ -101,9 +101,9 @@ pnpm test
 
 1. `docker compose down -v` für das **eigene** Compose-Projekt `opaa-e2e` (definierte Ausgangslage;
    siehe "Isolation von einem laufenden Dev-Stack" unten).
-2. `docker compose up -d --build ai-stub rss-feed nextcloud dropbox-stub clamd-stub postgres backend frontend` unter diesem
-   Projektnamen, mit eigenen Host-Ports und `e2e/e2e.env` als Environment (siehe unten), und Warten
-   auf Erreichbarkeit.
+2. `docker compose up -d --build ai-stub rss-feed nextcloud dropbox-stub clamd-stub postgres backend
+   frontend` unter diesem Projektnamen, mit eigenen Host-Ports und `e2e/e2e.env` als Environment
+   (siehe unten), und Warten auf Erreichbarkeit.
 3. **Seed-Lauf (#233):** `demo/seed/seed.py --profile e2e --base-url http://localhost:$OPAA_BACKEND_PORT/api`
    — derselbe gemeinsame Seed-Mechanismus, den auch das `demo`-Compose-Profil nutzt
    (`demo/seed/profiles.py`, `E2E_PROFILE`), hier gegen den dev-Auth-Modus dieses Stacks statt
@@ -645,14 +645,15 @@ lassen.
   wachsenden Korpus brächte dem Prüfgegenstand nichts.
 
 - `tests/format-pipelines-upload.spec.ts` (#1109, #3466) — lädt XLSX, HTML, EML, DOCX, PPTX, ODT,
-  ODP, Markdown, CSV, ODS, DOC und MSG in einem Durchlauf hoch und prüft, dass alle nach der Verarbeitung als indiziert
-  erscheinen. Zusammen mit `.txt` und `.pdf` aus anderen Szenarien geht damit jedes zugelassene
+  ODP, Markdown, CSV, ODS, DOC und MSG in einem Durchlauf hoch und prüft, dass alle nach der
+  Verarbeitung als indiziert erscheinen.
+  Zusammen mit `.txt` und `.pdf` aus anderen Szenarien geht damit jedes zugelassene
   Upload-Format einmal durch die echte Oberfläche und Pipeline; die Fixtures sind wenige KB groß
   (CSV, ODS, DOC und MSG stammen aus `demo/corpus/formate/`).
   `.eml` ist der wertvollste Fall, weil es als einziges Format über eine inhaltstolerante statt einer
   strikten Medientyp-Prüfung zugelassen wird und über seinen Anhang ein zweites, anderes Format
-  erneut durch die Pipeline-Registry schickt. Stellt selbst nie eine Chatfrage und läuft deshalb unter der
-  eigenen Fixture `formatPipelinesPage` (Konto `dev-format-pipelines`) statt unter `dev-admin` — ein
+  erneut durch die Pipeline-Registry schickt. Stellt selbst nie eine Chatfrage und läuft deshalb
+  unter der eigenen Fixture `formatPipelinesPage` (Konto `dev-format-pipelines`) statt unter `dev-admin` — ein
   Upload allein könnte sonst mit dem deterministischen KI-Stub-Embedding das erwartete Ergebnis eines
   anderen, zitatprüfenden Szenarios verdrängen (siehe „Vier Testnutzer" oben).
 
@@ -668,7 +669,8 @@ lassen.
   Wert über die Metadatenansicht der Dokumentliste, dann im Chat mit `@`-Referenz der Filter auf
   einen Wert; die Belege enthalten danach nur das passende Dokument, das andere auch nicht unter den
   nicht zitierten. Beide Dokumente tragen einen Wert, weil ein Dokument ohne Wert nie ausgefiltert
-  wird.
+  wird. Läuft unter `dev-admin`, weil es eine Frage stellt, und ordnet die Bibliothek dessen
+  Standard-Space zu, denn die `@`-Referenz bietet nur Bibliotheken des Space an.
 
 - `tests/external-access.spec.ts` (#1723, Teil von Epic #1715) — der Zugriff externer KI-Werkzeuge über
   den vollen Stack (`docs/features/external-access.md`, ADR-0035): der Weg von der Freigabe über das

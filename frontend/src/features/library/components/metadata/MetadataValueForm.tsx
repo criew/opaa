@@ -28,7 +28,8 @@ interface MetadataValueFormProps {
 
 // The input for one field - free text for the title, a choice from the controlled
 // vocabulary for the Dokumentart (never free text: a value outside the list is not storable),
-// a date plus its precision for Datum/Stand; a library field takes the input of its type. The third state "kein Wert ermittelbar"
+// a date plus its precision for Datum/Stand; a library field takes the input of its type. The
+// third state "kein Wert ermittelbar"
 // is offered here as the same operation without a value, not as a separate action. Shared by the
 // single-document and the bulk dialog.
 export default function MetadataValueForm({
@@ -97,7 +98,7 @@ function ValueInput({
         />
       )
     }
-    // A value being mapped away can no longer be set, so it is not offered.
+    // A value being mapped away can no longer be set: only the current one stays, disabled.
     const selectable = libraryField.values.filter(
       (entry) => !entry.retiring || entry.code === value.textValue,
     )
@@ -111,8 +112,8 @@ function ValueInput({
           onChange={(e) => onChange({ ...value, textValue: String(e.target.value) })}
         >
           {selectable.map((entry) => (
-            <MenuItem key={entry.code} value={entry.code}>
-              {entry.label}
+            <MenuItem key={entry.code} value={entry.code} disabled={entry.retiring}>
+              {entry.retiring ? `${entry.label} (läuft aus)` : entry.label}
             </MenuItem>
           ))}
         </Select>

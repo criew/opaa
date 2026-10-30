@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-24 · ergänzt durch ADR-0033, ADR-0057
+Akzeptiert · zuletzt geändert 2026-10-30 · ergänzt durch ADR-0033, ADR-0057
 
 ## Kontext
 
@@ -27,7 +27,7 @@ in `playwright.config.ts` ergänzen. Begründung und Alternativen: `e2e/README.m
 `e2e/scripts/run-e2e.mjs` startet Postgres, Backend und Frontend aus `docker-compose.yml` mit
 denselben Dockerfiles wie die Release-Images (echter Nginx-Proxy, echter Container-Build), nicht über
 Testcontainers. `e2e/docker-compose.e2e.yml` ist ein Overlay, keine zweite Stack-Definition: Es
-ergänzt nur E2E-eigene Dienste (`ai-stub`, `rss-feed`, `nextcloud`, `dropbox-stub`) und einzelne
+ergänzt nur E2E-eigene Dienste (`ai-stub`, `rss-feed`, `nextcloud`, `dropbox-stub`, `clamd-stub`) und einzelne
 Umgebungswerte; wann ein Konnektor dort einen Dienst bekommt, regelt ADR-0057, Entscheidung 6. Der
 Stack läuft als eigenes Compose-Projekt (`opaa-e2e`) mit eigenen Host-Ports und
 eigener Umgebungsdatei (`e2e/e2e.env`, nie `.env.docker`); `docker-compose.yml` hält dafür

@@ -1694,8 +1694,7 @@ describe('chatStore', () => {
       expect(patchedBody).toEqual({ metadataFilter: {} })
     })
 
-    // regression guard: the store once dropped library and format field conditions, so a chat
-    // filter on a library field or the sender was cleared the moment it was applied.
+    // regression guard: library and format field conditions are part of the chat's filter.
     it('keeps library and format field conditions of the metadata filter', async () => {
       let patchedBody: Record<string, unknown> | null = null
       server.use(
@@ -1719,7 +1718,7 @@ describe('chatStore', () => {
       await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
       const filter = {
         libraryFields: [{ libraryId: 'library-1', fieldKey: 'fassung', codes: ['F2024'] }],
-        formatFields: [{ fieldKey: 'sender', values: ['poststelle@stadt.de'] }],
+        formatFields: [{ fieldKey: 'mail_sender', values: ['poststelle@stadt.de'] }],
       }
 
       useChatStore.getState().setMetadataFilter(filter)
@@ -1727,6 +1726,16 @@ describe('chatStore', () => {
 
       expect(useChatStore.getState().metadataFilter).toEqual(filter)
       expect(patchedBody).toEqual({ metadataFilter: filter })
+
+      // The same filter in another order, with the server's null members, is no change.
+      patchedBody = null
+      useChatStore.getState().setMetadataFilter({
+        formatFields: filter.formatFields,
+        libraryFields: [
+          { libraryId: 'library-1', fieldKey: 'fassung', codes: ['F2024'], dateFrom: null },
+        ],
+      })
+      expect(patchedBody).toBeNull()
     })
 
     it('restores the chat-level metadata filter on load and sends it with the query', async () => {

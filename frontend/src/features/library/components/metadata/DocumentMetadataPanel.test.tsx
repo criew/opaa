@@ -263,8 +263,7 @@ describe('DocumentMetadataPanel', () => {
     const region = screen.getByRole('region', { name: 'Metadaten von dienstanweisung.pdf' })
     expect(await within(region).findByText('– (kein Wert ermittelbar)')).toBeInTheDocument()
   })
-  // regression guard: the dialog once offered a library field only the date input of the core
-  // field Datum/Stand and kept "Speichern" disabled, so no library field could be set by hand.
+  // regression guard: a library field is set with the input of its own type, not the date input.
   it('lets an editor set a library field from its value list', async () => {
     mockGetDocumentMetadata.mockResolvedValue(
       metadataOf([...fields, { fieldKey: 'lib:fassung', label: 'Fassung', state: 'EMPTY' }]),

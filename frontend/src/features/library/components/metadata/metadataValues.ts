@@ -41,9 +41,11 @@ export function isMetadataValueComplete(
   if (isNotDeterminable(value)) return true
   if (isLibraryFieldKey(fieldKey)) {
     if (!libraryField) return false
-    return libraryField.type === 'DATE'
-      ? Boolean(value.dateValue) && Boolean(value.datePrecision)
-      : Boolean(value.textValue?.trim())
+    if (libraryField.type === 'DATE') return Boolean(value.dateValue)
+    const text = value.textValue?.trim()
+    if (libraryField.type === 'PATTERN') return Boolean(text)
+    // A value being mapped away is refused by the backend, so it does not count as complete.
+    return libraryField.values.some((entry) => entry.code === text && !entry.retiring)
   }
   switch (fieldKey) {
     case 'title':
@@ -51,7 +53,8 @@ export function isMetadataValueComplete(
     case 'document_type':
       return Boolean(value.vocabularyCode)
     case 'document_date':
-      return Boolean(value.dateValue) && Boolean(value.datePrecision)
+      // The precision input shows "Tag" until changed, and the request sends DAY for it.
+      return Boolean(value.dateValue)
     default:
       return false
   }
@@ -100,6 +103,6 @@ export function describeMetadataValue(
         ''
       )
     default:
-      return `${value.dateValue ?? ''} (Genauigkeit: ${datePrecisionLabel(value.datePrecision)})`
+      return `${value.dateValue ?? ''} (Genauigkeit: ${datePrecisionLabel(value.datePrecision ?? 'DAY')})`
   }
 }

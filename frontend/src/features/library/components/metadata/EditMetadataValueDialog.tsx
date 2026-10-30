@@ -38,8 +38,7 @@ interface EditMetadataValueDialogProps {
 function initialValueOf(field: DocumentMetadataFieldResponse): MetadataValueRequest {
   if (field.state === 'NOT_DETERMINABLE') return { state: 'NOT_DETERMINABLE' }
   if (isLibraryFieldKey(field.fieldKey)) {
-    // The type arrives with the field definition; only a DATE value carries a precision.
-    const isDate = field.datePrecision != null
+    const isDate = field.libraryFieldType === 'DATE'
     return {
       textValue: isDate ? '' : (field.value ?? ''),
       dateValue: isDate ? (field.value ?? '') : '',
@@ -80,8 +79,10 @@ export default function EditMetadataValueDialog({
       .then((response) => {
         if (cancelled) return
         const definition = response.items.find((item) => item.documentFieldKey === field.fieldKey)
-        if (definition) setLibraryField(definition)
-        else setError('Das Feld gibt es in dieser Bibliothek nicht mehr.')
+        if (!definition) setError('Das Feld gibt es in dieser Bibliothek nicht mehr.')
+        else if (definition.deletionPending) {
+          setError(`Das Feld „${definition.label}“ wird gerade gelöscht und nimmt keine Werte an.`)
+        } else setLibraryField(definition)
       })
       .catch((err: unknown) => {
         if (!cancelled) {

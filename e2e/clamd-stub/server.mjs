@@ -13,9 +13,6 @@ const EICAR = Buffer.from(
   'latin1',
 )
 
-let scans = 0
-let findings = 0
-
 function handle(socket) {
   let buffer = Buffer.alloc(0)
   let command = null
@@ -39,9 +36,7 @@ function handle(socket) {
     while (buffer.length >= 4) {
       const length = buffer.readUInt32BE(0)
       if (length === 0) {
-        scans++
         const found = Buffer.concat(chunks).includes(EICAR)
-        if (found) findings++
         socket.end(found ? 'stream: Eicar-Test-Signature FOUND\0' : 'stream: OK\0')
         buffer = Buffer.alloc(0)
         return
@@ -56,8 +51,8 @@ function handle(socket) {
 
 createServer(handle).listen(PORT, () => console.log(`clamd-stub listening on ${PORT}`))
 
-// GET /health for the Compose healthcheck, GET /__state for how many streams were judged.
+// GET /health for the Compose healthcheck.
 createHttpServer((req, res) => {
   res.setHeader('Content-Type', 'application/json')
-  res.end(JSON.stringify(req.url === '/__state' ? { scans, findings } : { status: 'ok' }))
+  res.end(JSON.stringify({ status: 'ok' }))
 }).listen(HEALTH_PORT)

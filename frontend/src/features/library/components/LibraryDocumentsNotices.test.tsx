@@ -38,8 +38,7 @@ describe('LibraryDocumentsNotices - abgelehnte Dateien', () => {
     expect(notice).toHaveTextContent('Nicht hochgeladen: c.pdf')
   })
 
-  // regression guard: a quota rejection once lost its reason entirely, so a file larger than the
-  // remaining quota of a nearly empty library stood there without any explanation.
+  // regression guard: a quota rejection keeps its reason, the only place naming the occupancy.
   it('keeps a quota rejection whole, with how much is occupied', () => {
     useDocumentStore.setState({
       uploadErrors: [
