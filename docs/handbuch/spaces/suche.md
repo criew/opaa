@@ -927,8 +927,27 @@ wiederzufinden, sagt die Vorschau „Die Fundstelle wurde im Dokument nicht gefu
 Confluence-Seite öffnet weiter an der Quelle; die Adresse trägt dabei die zitierte Stelle als
 Textfragment, sodass Chrome, Edge, Safari und Firefox dorthin scrollen und sie hervorheben. Findet
 der Browser die Stelle auf der Seite nicht, etwa weil sie seit der Indexierung geändert wurde,
-öffnet die Seite wie gewohnt oben. Andere Formate verhalten sich unverändert: Bilder öffnen in
-einem neuen Tab, Office-Dateien werden heruntergeladen.
+öffnet die Seite wie gewohnt oben. Bilder öffnen weiter in einem neuen Tab.
+
+**Textfassung an der Fundstelle.** Formate, die der Browser nicht anzeigen kann, also
+Office-Dokumente, Tabellen und Mails wie DOCX, PPTX, XLSX oder EML, öffnet „Dokument öffnen" als
+**Textfassung**: der Text, den OPAA beim Indexieren gewonnen hat, in der Reihenfolge des Dokuments.
+Ein Hinweis oben sagt, dass das Layout des Originals nicht wiedergegeben wird. Das Fenster öffnet an
+der zitierten Passage und hebt sie als Ganzes hervor; Text davor und danach lädt es auf Klick nach
+(„Vorherigen Text laden", „Weiteren Text laden"). Links steht die Gliederung des Dokuments, nach
+Folien, Tabellenblättern, Nachrichten oder Überschriften, je nachdem, was das Format kennt; sie
+lässt sich einklappen, springt per Klick an ihren Abschnitt und hebt den Abschnitt der Fundstelle
+hervor. Wurde das Dokument seit der Antwort neu indexiert und liest sich die Passage anders als
+zitiert, sagt das Fenster „Das Dokument wurde seit dem Zitat neu indexiert – die markierte Stelle
+kann abweichen."; gibt es die Passage nicht mehr, „Die Fundstelle ist in der Textfassung nicht mehr
+enthalten." und das Fenster beginnt am Anfang. Aus der Dokumentliste einer Wissensbibliothek
+geöffnet, beginnt die Textfassung am Anfang. Sie zeigt nur, wer auch das Original öffnen darf.
+
+**Original herunterladen.** PDF-Fenster, Textvorschau und Textfassung tragen oben rechts neben dem
+Schließen-Kreuz einen Knopf „Original herunterladen", der die Datei unverändert speichert. Im
+Belegfenster steht neben „Dokument öffnen" der Link „Herunterladen". Eine Confluence-Seite hat keine
+eigene Datei und daher keinen Download; „Dokument öffnen" führt dort an die zitierte Stelle der
+Seite.
 
 **Kopieren.** Rechts unter jeder Antwort steht „Kopieren". Ein Klick legt die Antwort als Markdown in
 die Zwischenablage, ohne Fußnotenmarken und ohne Quellenliste. Der Pfeil daneben bietet zwei

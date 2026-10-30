@@ -586,6 +586,14 @@ const INTRODUCTION_SLIDES: { slide: number; title: string; text: string }[] = [
   })),
 ]
 
+/** The first up to 60 characters, cut at a word boundary, as ChunkAnchors writes them. */
+function quoteStart(text: string): string {
+  const normalized = text.replace(/\s+/g, ' ').trim()
+  if (normalized.length <= 60) return normalized
+  const cut = normalized.slice(0, 61)
+  return cut.slice(0, cut.lastIndexOf(' '))
+}
+
 function documentText(documentId: string, request: Request) {
   const url = new URL(request.url)
   const passages =
@@ -596,7 +604,7 @@ function documentText(documentId: string, request: Request) {
           location: `Folie ${entry.slide}`,
           anchor: {
             slide: entry.slide,
-            quoteStart: entry.text.replace(/\s+/g, ' ').slice(0, 60),
+            quoteStart: quoteStart(entry.text),
           },
         }))
       : [0, 1, 2].map((chunkIndex) => ({

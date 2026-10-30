@@ -9,7 +9,7 @@ export const mockQueryResponses: QueryResponse[] = [
       'stellt die REST-Endpunkte und DTOs bereit, das Modul indexing verwaltet die ' +
       'Dokumentenaufnahme【source: doc-start#2 | getting-started.pdf】 und das Modul query ' +
       'beantwortet Fragen über RAG【source: doc-arch#3 | architecture-overview.md】. Die ' +
-      'Einführungsfolien fassen den Ablauf einer Frage zusammen【source: doc-slides#4 | ' +
+      'Einführungsfolien fassen den Ablauf einer Frage zusammen【source: doc-slides#3 | ' +
       'einfuehrung-opaa.pptx】.',
     sources: [
       {
@@ -72,7 +72,7 @@ export const mockQueryResponses: QueryResponse[] = [
         sourceType: 'UPLOAD',
         chunkLocations: [
           {
-            chunkIndex: 4,
+            chunkIndex: 3,
             location: 'Folie 3',
             anchor: {
               slide: 3,

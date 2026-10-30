@@ -143,9 +143,12 @@ export default function DocumentTextVersionDialog({
       const block = container.querySelector<HTMLElement>(
         `[data-chunk-index="${pending.chunkIndex}"]`,
       )
-      if (block) {
-        block.scrollIntoView?.({ block: pending.focus ? 'center' : 'start' })
-        if (pending.focus) block.focus({ preventScroll: true })
+      if (block && pending.focus) {
+        block.scrollIntoView?.({ block: 'center' })
+        block.focus({ preventScroll: true })
+      } else if (block) {
+        // the section's heading sits above the passage, in the same wrapper
+        ;(block.parentElement ?? block).scrollIntoView?.({ block: 'start' })
       }
     }
   }, [current])
@@ -195,7 +198,7 @@ export default function DocumentTextVersionDialog({
     const container = scrollRef.current
     const block = container?.querySelector<HTMLElement>(`[data-chunk-index="${chunkIndex}"]`)
     if (block) {
-      block.scrollIntoView?.({ block: 'start' })
+      ;(block.parentElement ?? block).scrollIntoView?.({ block: 'start' })
       return
     }
     void loadWindow({ from: chunkIndex, to: chunkIndex + WINDOW - 1 }, 'jump', chunkIndex)
@@ -270,7 +273,10 @@ export default function DocumentTextVersionDialog({
           {statusText(markState)}
         </Typography>
       </Box>
-      <DialogContent dividers sx={{ display: 'flex', gap: 2, minHeight: 0, p: 0 }}>
+      <DialogContent
+        dividers
+        sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, minHeight: 0, p: 0 }}
+      >
         {failed ? (
           <Alert severity="error" sx={{ m: 2, alignSelf: 'flex-start' }}>
             {failed}
@@ -289,12 +295,15 @@ export default function DocumentTextVersionDialog({
                 id={OUTLINE_ID}
                 component="nav"
                 aria-label="Gliederung"
+                // beside the text where there is room, above it on a narrow screen
                 sx={{
-                  width: 260,
+                  width: { md: 260 },
+                  maxHeight: { xs: '35%', md: 'none' },
                   flex: 'none',
                   overflow: 'auto',
-                  borderRight: 1,
+                  borderStyle: 'solid',
                   borderColor: 'divider',
+                  borderWidth: { xs: '0 0 1px 0', md: '0 1px 0 0' },
                   p: 1,
                 }}
               >
