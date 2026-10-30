@@ -4,7 +4,9 @@ import { useDocumentPreview } from './useDocumentPreview'
 import { openDocumentContent } from '../utils/documentContent'
 import { useNotificationStore } from '@/shared/stores/notificationStore'
 
-vi.mock('../utils/documentContent', () => ({
+vi.mock('../utils/documentContent', async (importOriginal) => ({
+  opensAsTextVersion: (await importOriginal<typeof import('../utils/documentContent')>())
+    .opensAsTextVersion,
   openDocumentContent: vi.fn(),
 }))
 
@@ -29,6 +31,7 @@ describe('useDocumentPreview', () => {
   it('opens a text preview for a Markdown/plain text result', async () => {
     mockOpenDocumentContent.mockResolvedValueOnce({
       kind: 'text-preview',
+      blob: new Blob(),
       fileName: '001_personalausweis.md',
       contentType: 'text/markdown',
       content: '# Titel',
@@ -41,6 +44,7 @@ describe('useDocumentPreview', () => {
 
     expect(result.current.previewDocument).toEqual({
       kind: 'text-preview',
+      blob: new Blob(),
       fileName: '001_personalausweis.md',
       contentType: 'text/markdown',
       content: '# Titel',
@@ -51,6 +55,7 @@ describe('useDocumentPreview', () => {
   it('hands the anchor to the text preview', async () => {
     mockOpenDocumentContent.mockResolvedValueOnce({
       kind: 'text-preview',
+      blob: new Blob(),
       fileName: 'a.md',
       contentType: 'text/markdown',
       content: '# Titel',
@@ -68,6 +73,7 @@ describe('useDocumentPreview', () => {
   it('closes the preview via closePreview', async () => {
     mockOpenDocumentContent.mockResolvedValueOnce({
       kind: 'text-preview',
+      blob: new Blob(),
       fileName: 'a.txt',
       contentType: 'text/plain',
       content: 'x',
@@ -112,17 +118,17 @@ describe('useDocumentPreview', () => {
     expect(result.current.pdfPreview).toBeNull()
   })
 
-  // A format without a preview (DOCX among them) must give visible download feedback so a click
-  // never appears to do nothing - as a global popup notification (guidelines 5.9).
+  // A format without a preview or Textfassung (an archive, say) must give visible download
+  // feedback so a click never appears to do nothing - as a global popup notification (5.9).
   it('notifies with a German download message for a download result', async () => {
-    mockOpenDocumentContent.mockResolvedValueOnce({ kind: 'download', fileName: 'bescheid.docx' })
+    mockOpenDocumentContent.mockResolvedValueOnce({ kind: 'download', fileName: 'anlagen.zip' })
     const { result } = renderHook(() => useDocumentPreview())
 
     await act(async () => {
-      await result.current.openDocument({ id: 'doc-1', fileName: 'fallback.docx' })
+      await result.current.openDocument({ id: 'doc-1', fileName: 'fallback.zip' })
     })
 
-    expect(queuedMessages()).toEqual(['bescheid.docx wird heruntergeladen'])
+    expect(queuedMessages()).toEqual(['anlagen.zip wird heruntergeladen'])
     expect(result.current.previewDocument).toBeNull()
   })
 
@@ -143,6 +149,30 @@ describe('useDocumentPreview', () => {
     expect(queuedMessages()).toEqual([
       'riesiges-dokument.md ist zu groß für die Vorschau – wird heruntergeladen',
     ])
+  })
+
+  it('opens an Office document as its Textfassung at the cited passage, without fetching it', async () => {
+    const anchor = { slide: 3, quoteStart: 'Eine Frage' }
+    const { result } = renderHook(() => useDocumentPreview())
+
+    await act(async () => {
+      await result.current.openDocument({
+        id: 'doc-1',
+        fileName: 'Einführung.PPTX',
+        chunkIndex: 4,
+        anchor,
+      })
+    })
+
+    expect(mockOpenDocumentContent).not.toHaveBeenCalled()
+    expect(result.current.textVersion).toEqual({
+      documentId: 'doc-1',
+      fileName: 'Einführung.PPTX',
+      chunkIndex: 4,
+      anchor,
+    })
+    act(() => result.current.closeTextVersion())
+    expect(result.current.textVersion).toBeNull()
   })
 
   it('does not preview or notify for a blob-preview result (PDF/image unchanged)', async () => {

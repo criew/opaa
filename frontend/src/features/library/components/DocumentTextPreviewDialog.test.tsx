@@ -6,11 +6,23 @@ import DocumentTextPreviewDialog from './DocumentTextPreviewDialog'
 import type { TextPreviewResult } from '../utils/documentContent'
 
 function markdownDoc(content: string, fileName = '001_personalausweis.md'): TextPreviewResult {
-  return { kind: 'text-preview', fileName, contentType: 'text/markdown', content }
+  return {
+    kind: 'text-preview',
+    fileName,
+    contentType: 'text/markdown',
+    content,
+    blob: new Blob([content]),
+  }
 }
 
 function plainTextDoc(content: string, fileName = 'notiz.txt'): TextPreviewResult {
-  return { kind: 'text-preview', fileName, contentType: 'text/plain', content }
+  return {
+    kind: 'text-preview',
+    fileName,
+    contentType: 'text/plain',
+    content,
+    blob: new Blob([content]),
+  }
 }
 
 describe('DocumentTextPreviewDialog', () => {

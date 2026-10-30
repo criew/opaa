@@ -486,6 +486,20 @@ export const libraryDocumentHandlers = [
   // every mocked library at all. UPLOAD/FILESYSTEM answer with a small fake payload plus the same
   // Content-Disposition shape the real endpoint sets, so getDocumentContent's filename parsing has
   // something realistic to exercise against.
+  // a document's Textfassung, windowed like DocumentTextService; the cited deck has slides
+  http.get('/api/v1/documents/:documentId/text', ({ params, request }) => {
+    const documentId = String(params.documentId)
+    const known =
+      documentId === 'doc-slides' ||
+      Object.values(mockLibraryDocuments)
+        .flat()
+        .some((doc) => doc.id === documentId)
+    if (!known) {
+      return HttpResponse.json({ error: 'Das Dokument wurde nicht gefunden.' }, { status: 404 })
+    }
+    return HttpResponse.json(documentText(documentId, request))
+  }),
+
   http.get('/api/v1/documents/:documentId/content', ({ params }) => {
     const documentId = String(params.documentId)
     // the PDF the mocked chat answer cites, a real one so the viewer can jump and mark
@@ -494,6 +508,16 @@ export const libraryDocumentHandlers = [
         'getting-started.pdf',
         mockPdf(GETTING_STARTED_PDF_PAGES, GETTING_STARTED_PDF_OUTLINE),
       )
+    }
+    if (documentId === 'doc-slides') {
+      return new HttpResponse(new Blob(['mock pptx content']), {
+        status: 200,
+        headers: {
+          'Content-Type':
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          'Content-Disposition': 'attachment; filename="einfuehrung-opaa.pptx"',
+        },
+      })
     }
     // the Markdown file the mocked chat answer cites, long enough to scroll to its passage
     if (documentId === 'doc-arch') {
@@ -536,6 +560,87 @@ export const libraryDocumentHandlers = [
     })
   }),
 ]
+
+/** The mocked „einfuehrung-opaa.pptx“, one passage per slide and two for the cited slide 3. */
+const INTRODUCTION_SLIDES: { slide: number; title: string; text: string }[] = [
+  { slide: 1, title: 'OPAA – Einführung', text: 'Open Project AI Assistant\nStand: Januar 2025' },
+  {
+    slide: 2,
+    title: 'Worum es geht',
+    text: 'OPAA beantwortet Fragen zu den Unterlagen eines Projekts und belegt jede Aussage mit der Fundstelle im Original.',
+  },
+  {
+    slide: 3,
+    title: 'Der Weg einer Frage',
+    text: 'Die Frage wird zuerst in eine Suchanfrage übersetzt und mit Synonymen angereichert.',
+  },
+  {
+    slide: 3,
+    title: 'Der Weg einer Frage',
+    text: 'Eine Frage durchläuft vier Schritte: Suche im Index, Auswahl der besten Abschnitte, Formulierung durch das Sprachmodell und die Antwort mit Belegen.',
+  },
+  ...Array.from({ length: 10 }, (_, i) => ({
+    slide: i + 4,
+    title: `Thema ${i + 4}`,
+    text: `Folie ${i + 4} vertieft einen Baustein: Indexierung, Rechte, Bibliotheken und Spaces.\nStichpunkte zur Vertiefung im Workshop.`,
+  })),
+]
+
+/** The first up to 60 characters, cut at a word boundary, as ChunkAnchors writes them. */
+function quoteStart(text: string): string {
+  const normalized = text.replace(/\s+/g, ' ').trim()
+  if (normalized.length <= 60) return normalized
+  const cut = normalized.slice(0, 61)
+  return cut.slice(0, cut.lastIndexOf(' '))
+}
+
+function documentText(documentId: string, request: Request) {
+  const url = new URL(request.url)
+  const passages =
+    documentId === 'doc-slides'
+      ? INTRODUCTION_SLIDES.map((entry, chunkIndex) => ({
+          chunkIndex,
+          text: `${entry.title}\n\n${entry.text}`,
+          location: `Folie ${entry.slide}`,
+          anchor: {
+            slide: entry.slide,
+            quoteStart: quoteStart(entry.text),
+          },
+        }))
+      : [0, 1, 2].map((chunkIndex) => ({
+          chunkIndex,
+          text: `Abschnitt ${chunkIndex + 1} der Beispieldatei.`,
+          location: null,
+          anchor: null,
+        }))
+  const first = 0
+  const last = passages.length - 1
+  const from = Number(url.searchParams.get('from') ?? first)
+  const to = Math.min(Number(url.searchParams.get('to') ?? from + 39), from + 39)
+  const sections =
+    url.searchParams.get('sections') === 'true'
+      ? passages
+          .filter(
+            (passage, index) =>
+              passage.anchor?.slide != null &&
+              passage.anchor.slide !== passages[index - 1]?.anchor?.slide,
+          )
+          .map((passage) => ({
+            chunkIndex: passage.chunkIndex,
+            label: `Folie ${passage.anchor!.slide}`,
+            level: 1,
+          }))
+      : []
+  return {
+    documentId,
+    fileName: documentId === 'doc-slides' ? 'einfuehrung-opaa.pptx' : 'dokument',
+    firstChunkIndex: first,
+    lastChunkIndex: last,
+    passages: passages.filter((passage) => passage.chunkIndex >= from && passage.chunkIndex <= to),
+    sections,
+    sectionsTruncated: false,
+  }
+}
 
 function pdfResponse(fileName: string, pdf: Uint8Array<ArrayBuffer>) {
   return new HttpResponse(new Blob([pdf], { type: 'application/pdf' }), {

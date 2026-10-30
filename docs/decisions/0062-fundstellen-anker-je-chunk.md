@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-29
+Akzeptiert · zuletzt geändert 2026-10-30
 
 ## Kontext
 
@@ -72,6 +72,9 @@ aus `location`, sodass der Embedding-Input unverändert bleibt.
 ## Konsequenzen
 
 - Jeder Viewer braucht nur den Anker, keine Kenntnis des Schnitts.
+- Für Formate ohne Viewer im Browser zeigt die Textfassung die Chunks selbst in Lesereihenfolge;
+  sie markiert die zitierte Passage über ihren Chunk-Index und bildet ihre Gliederung aus den
+  Ankern (Folie, Blatt, Nachricht, Abschnittspfad, Seite).
 - Ein geändertes Original kann die Zitate unauffindbar machen; der Viewer meldet das, statt still
   daneben zu markieren.
 - Seiten, Folie und Abschnittspfad stehen doppelt im Chunk: maschinenlesbar im Anker, als

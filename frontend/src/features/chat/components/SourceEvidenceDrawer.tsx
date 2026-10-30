@@ -27,7 +27,9 @@ import type {
   SourceTypeKey,
 } from '@/shared/api/types'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
+import { downloadDocumentContent, hasOwnOriginal } from '@/features/library'
 import type { OpenableDocument } from '@/features/library'
+import { notify } from '@/shared/stores/notificationStore'
 import { focusRingWidthPx, fontFamily } from '@/shared/theme/tokens'
 
 interface SourceEvidenceDrawerProps {
@@ -59,6 +61,8 @@ interface EvidenceDoc {
   anchor?: ChunkAnchor | null
   /** SHA-256 of the original as indexed when the answer was given. */
   contentSha256?: string | null
+  /** The row's first cited passage - where a Textfassung opens. */
+  chunkIndex?: number
   /** False when the backend's deterministic check found at least one citation naming this
    *  source that does not match the chunks actually retrieved for this answer. */
   citationValid: boolean
@@ -172,7 +176,24 @@ export default function SourceEvidenceDrawer({
       sourceEntryUrl: doc.sourceEntryUrl,
       anchor: doc.anchor,
       contentSha256: doc.contentSha256,
+      chunkIndex: doc.chunkIndex,
     })
+  }
+
+  const [downloading, setDownloading] = useState<string | null>(null)
+  async function handleDownloadOriginal(doc: EvidenceDoc) {
+    if (!doc.documentId || downloading) return
+    setDownloading(doc.documentId)
+    try {
+      await downloadDocumentContent(doc.documentId, doc.fileName)
+    } catch (err) {
+      notify(
+        err instanceof Error ? err.message : 'Das Original konnte nicht geladen werden.',
+        'error',
+      )
+    } finally {
+      setDownloading(null)
+    }
   }
 
   // Without metadata (ADR-0044) a Beleg carries no filter mark.
@@ -192,6 +213,7 @@ export default function SourceEvidenceDrawer({
       locations: doc.locations,
       anchor: doc.anchors[0] ?? null,
       contentSha256: doc.source?.contentSha256,
+      chunkIndex: openingChunk(doc),
       citationValid: doc.source?.citationValid !== false,
       freeze: doc.source?.freeze ?? null,
       privateSource: doc.source?.privateSource === true,
@@ -460,6 +482,20 @@ export default function SourceEvidenceDrawer({
                       Dokument öffnen
                     </Link>
                   )}
+                  {/* a page at the source (Confluence) has no file of its own to download */}
+                  {/* an entry from before the source type was recorded may be such a page */}
+                  {doc.documentId && doc.sourceType && hasOwnOriginal(doc.sourceType) && (
+                    <Link
+                      component="button"
+                      type="button"
+                      underline="hover"
+                      disabled={downloading === doc.documentId}
+                      onClick={() => void handleDownloadOriginal(doc)}
+                      sx={{ fontSize: 11.5 }}
+                    >
+                      Herunterladen
+                    </Link>
+                  )}
                 </Box>
               </Box>
             )
@@ -508,4 +544,17 @@ export default function SourceEvidenceDrawer({
       </Box>
     </Drawer>
   )
+}
+
+/**
+ * The passage a Textfassung opens at: the one whose anchor the row carries, so passage and anchor
+ * belong to the same footnote; without an anchor, the row's first cited passage.
+ */
+function openingChunk(doc: CitationIndex['docs'][number]): number | undefined {
+  const anchor = doc.anchors[0]
+  if (anchor) {
+    const located = doc.source?.chunkLocations?.find((entry) => entry.anchor === anchor)
+    if (located) return located.chunkIndex
+  }
+  return doc.chunkIndexes[0]
 }

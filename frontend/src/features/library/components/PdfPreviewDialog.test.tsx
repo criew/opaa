@@ -6,7 +6,7 @@ import { renderWithProviders } from '../../../test/test-utils'
 import PdfPreviewDialog from './PdfPreviewDialog'
 import type { PdfViewerProps } from './PdfViewer'
 import type { PdfPreviewResult } from '../utils/documentContent'
-import { openInBrowserViewer } from '../utils/documentContent'
+import { downloadBlob, openInBrowserViewer } from '../utils/documentContent'
 
 const viewer = vi.hoisted(() => ({ fail: false, props: null as PdfViewerProps | null }))
 
@@ -20,7 +20,7 @@ vi.mock('./PdfViewer', () => ({
   },
 }))
 
-vi.mock('../utils/documentContent', () => ({ openInBrowserViewer: vi.fn() }))
+vi.mock('../utils/documentContent', () => ({ openInBrowserViewer: vi.fn(), downloadBlob: vi.fn() }))
 
 const ANCHOR = { pageFrom: 2, pageTo: 3, quoteStart: 'Anfang', quoteEnd: 'Ende' }
 
@@ -66,5 +66,15 @@ describe('PdfPreviewDialog', () => {
 
     expect(openInBrowserViewer).toHaveBeenCalledWith(preview.blob)
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('downloads the very bytes it shows from the title bar', async () => {
+    viewer.fail = false
+    const preview = pdf()
+    renderWithProviders(<PdfPreviewDialog preview={preview} onClose={vi.fn()} />)
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Original herunterladen' }))
+
+    expect(downloadBlob).toHaveBeenCalledWith(preview.blob, 'handbuch.pdf')
   })
 })
