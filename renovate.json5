@@ -229,31 +229,6 @@
       matchManagers: ['gradle-wrapper'],
       automerge: false,
     },
-    // Gradle-Plugins ([plugins] in libs.versions.toml): Renovate führt für die Prüfsummen bei
-    // jedem Gradle-Update ./gradlew dependencies mit den neuen Versionen aus, also den Code eines
-    // neuen Plugins im Container, der das Token hält, und danach jeder Bau. Deshalb längere
-    // Wartefrist und kein Auto-Merge; Bibliotheken bleiben bei der Vorgabe (docs/renovate.md,
-    // Gradle-Prüfsummen). Frist und Auto-Merge stehen nur in diesen beiden Regeln.
-    {
-      matchManagers: ['gradle'],
-      matchDepTypes: ['plugin'],
-      minimumReleaseAge: '14 days',
-      automerge: false,
-    },
-    // Dieselben Werte für Bibliotheken, die eine version.ref mit einem Plugin teilen (Renovate
-    // hebt beide in einem Update an) oder auf dem Buildscript-Classpath liegen (buildscript-Block
-    // in backend/build.gradle.kts und opaa-api/build.gradle.kts). Vollständigkeit prüft
-    // test_renovate_gradle_plugins.py.
-    {
-      matchManagers: ['gradle'],
-      matchDepNames: [
-        'org.springframework.boot:spring-boot-dependencies',
-        'tools.jackson:jackson-bom',
-        'com.fasterxml.jackson:jackson-bom',
-      ],
-      minimumReleaseAge: '14 days',
-      automerge: false,
-    },
     {
       matchManagers: ['npm'],
       addLabels: ['frontend'],
