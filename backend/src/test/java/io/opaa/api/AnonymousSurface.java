@@ -94,7 +94,9 @@ final class AnonymousSurface {
         || !Set.of("anonymous", "missingHeaders", "withoutHandlerCheck")
             .containsAll(sections.keySet())) {
       throw new IllegalStateException(
-          ALLOWLIST + " must be a map with the lists 'anonymous' and 'missingHeaders'");
+          ALLOWLIST
+              + " must be a map with the lists 'anonymous', 'missingHeaders' and"
+              + " 'withoutHandlerCheck'");
     }
     return new AnonymousSurface(
         entries(sections.get("anonymous"), true), entries(sections.get("missingHeaders"), false));

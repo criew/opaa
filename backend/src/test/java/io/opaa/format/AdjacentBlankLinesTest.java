@@ -12,7 +12,7 @@ import org.springframework.ai.reader.ExtractedTextFormatter;
 class AdjacentBlankLinesTest {
 
   private static final char[] ALPHABET = {
-    'a', ' ', '\t', '\f', '\n', '\n', '\n', '\r', '\r', '\u0085', ' '
+    'a', ' ', '\t', '\f', '\n', '\n', '\n', '\r', '\r', '\u0085', '\u2028', '\u2029'
   };
 
   @Test

@@ -97,6 +97,6 @@ final class AdjacentBlankLines {
   }
 
   private static boolean isTerminator(char c) {
-    return c == '\n' || c == '\r' || c == '\u0085' || c == ' ' || c == ' ';
+    return c == '\n' || c == '\r' || c == '\u0085' || c == '\u2028' || c == '\u2029';
   }
 }
