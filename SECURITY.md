@@ -14,10 +14,10 @@
 > backported and its patch releases are tagged. Fixed vulnerabilities are published as
 > GitHub Security Advisories, with a CVE where applicable. Reports may be written in English or
 > German. How the project reviews its own code for vulnerabilities (review of every pull request
-> except automatically merged minor, patch, pin and digest dependency updates from Renovate, automated CI checks,
-> a weekly delta review and a deep audit twice a year) is described in
-> [docs/security-pruefung.md](docs/security-pruefung.md) (German). There has been no external audit
-> or penetration test so far.
+> except automatically merged minor, patch, pin and digest dependency updates from Renovate,
+> automated CI checks, nightly image, ZAP and fuzzing runs, a weekly delta review and a deep audit
+> twice a year) is described in [docs/security-pruefung.md](docs/security-pruefung.md) (German).
+> There has been no external audit or penetration test so far.
 
 Diese Richtlinie beschreibt, wie Sicherheitslücken in OPAA gemeldet und behandelt werden. Das
 Projekt ordnet sich als Open-Source-Steward nach Art. 24 des Cyber Resilience Act
@@ -109,12 +109,15 @@ Sicherheitslücken. Rhythmus und Einzelheiten stehen in
 - **Automatische Prüfungen in Pull Requests:** statische Code-Analyse mit CodeQL, ein
   Abhängigkeits-Gate gegen bekannte kritische Schwachstellen, Härtungs- und Pin-Prüfung der
   Workflows, Prüfsummen der Abhängigkeiten, Lizenzprüfung, sichere Vorgaben der Compose-Vorlagen,
-  eine Rechte-Matrix über alle API-Operationen und Rollen und eine Allowlist der ohne Anmeldung
-  erreichbaren Pfade. Im Pull Request läuft jede Prüfung, deren Dateien er berührt; auf `main`
-  läuft nach jedem Merge alles. Secret Scanning und Push Protection sind für das Repository
-  eingeschaltet.
+  eine Rechte-Matrix über alle API-Operationen und Rollen, eine Allowlist der ohne Anmeldung
+  erreichbaren Pfade, Architekturtests für Sicherheitsinvarianten und eine Regressionssuite mit
+  präparierten Dateien und gesperrten Zieladressen. Im Pull Request läuft jede Prüfung, deren
+  Dateien er berührt; auf `main` läuft nach jedem Merge alles. Secret Scanning und Push Protection
+  sind für das Repository eingeschaltet.
 - **CVE-Erkennung:** Dependabot-Alerts für die Abhängigkeiten und ein nächtlicher Scan der
   veröffentlichten Images ([docs/cve-scanning.md](docs/cve-scanning.md)).
+- **Nächtliche Tests gegen Angriffe:** ein passiver ZAP-Scan der laufenden Anwendung und
+  Fuzzing der Dokument-Parser mit erzeugten und verfälschten Dateien.
 - **Wöchentliches Security-Delta-Review:** Eine geplante Routine prüft jeden Sonntag die
   Änderungen der Woche und legt neue Befunde als Issues an.
 - **Tiefen-Audit je Angriffsklasse:** zweimal im Jahr vor jedem Funktionsrelease und bei Anlass

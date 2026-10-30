@@ -127,8 +127,10 @@ solche, die nur aus dem Netz des Servers erreichbar sind (SSRF). Zwei Schranken 
 
 - **Pfad-Allowlist** (`OPAA_INDEXING_FILESYSTEM_ALLOWLIST`) für Dateisystem-Bibliotheken.
 - **Zielprüfung** für jede Netzquelle, standardmäßig an: Loopback, Link-Local samt
-  `169.254.169.254`, private und reservierte Bereiche werden abgelehnt, geprüft nach der
-  DNS-Auflösung und nach jedem Redirect. Interne Quellen kommen in
+  `169.254.169.254`, private und reservierte Bereiche werden abgelehnt, ebenso `0.0.0.0/8` und
+  IPv6-Präfixe, die auf IPv4 übersetzen oder tunneln (NAT64 `64:ff9b::/96` und `64:ff9b:1::/48`,
+  6to4 `2002::/16`, Teredo `2001::/32`, SIIT `::ffff:0:0:0/96`) oder verwerfen (`100::/64`), geprüft
+  nach der DNS-Auflösung und nach jedem Redirect. Interne Quellen kommen in
   `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`, statt die Prüfung abzuschalten. Identitätsanbieter,
   Modell-Endpunkte und Originalablage haben eigene Schalter und Listen derselben Prüfung; ein
   Eintrag in einer Liste öffnet keine der anderen.
@@ -201,8 +203,10 @@ und `http.proxyHost` wertet OPAA nicht aus.
   löst den Namen selbst noch einmal auf und kann eine andere Adresse erhalten (DNS-Rebinding).
   Bindung und Bewachung geprüfter Namen erreichen ihn nicht. Er muss deshalb nach seiner eigenen
   Auflösung Ziele in privaten Netzen (RFC 1918), Loopback, Link-Local (`169.254.0.0/16` samt
-  Metadatendienst `169.254.169.254`, `fe80::/10`), Carrier-Grade NAT (`100.64.0.0/10`) und IPv6-ULA
-  (`fc00::/7`) verwerfen, soweit sie nicht ausdrücklich erreichbar sein sollen. Ein Name, den das
+  Metadatendienst `169.254.169.254`, `fe80::/10`), Carrier-Grade NAT (`100.64.0.0/10`), IPv6-ULA
+  (`fc00::/7`) und die übrigen Bereiche der [Zielprüfung](#zielprüfung-abrufe-des-servers), etwa
+  `0.0.0.0/8` und die IPv6-Präfixe, die auf IPv4 übersetzen, verwerfen, soweit sie nicht
+  ausdrücklich erreichbar sein sollen. Ein Name, den das
   Backend selbst nicht auflösen kann, bleibt über den Proxy erlaubt.
 - Änderungen wirken ohne Neustart und stehen im Revisionsprotokoll.
 - **Notanker:** Ein falscher Proxy kann die Anmeldung über Identitätsanbieter lahmlegen; das lokale

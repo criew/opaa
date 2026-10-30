@@ -179,9 +179,14 @@ public class AuditIncidentScopeGrant {
         && !now.isAfter(usableUntil);
   }
 
-  /** True if {@code [from, to]} lies entirely within this grant's approved scope. */
+  /**
+   * True if {@code [from, to]} lies entirely within this grant's approved scope and ends no later
+   * than its approval: nothing after the approval is ever part of a Klärung.
+   */
   public boolean covers(Instant from, Instant to) {
-    return !from.isBefore(scopeStart) && !to.isAfter(scopeEnd);
+    return !from.isBefore(scopeStart)
+        && !to.isAfter(scopeEnd)
+        && (approvedAt == null || !to.isAfter(approvedAt));
   }
 
   public UUID getId() {
