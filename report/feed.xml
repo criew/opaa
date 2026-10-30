@@ -5,8 +5,40 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-10-29T06:11:18Z</updated>
+  <updated>2026-10-30T06:11:19Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Donnerstag, 29. Oktober 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-10-29.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-10-29.html</id>
+    <updated>2026-10-30T06:11:19Z</updated>
+    <summary type="text">feat(security): Security-Audit 2026 – Angriffsfläche systematisch prüfen und verkleinern:
+— Gradle Dependency Verification (verification-metadata.xml) einführen
+— HTML-Ingest: quadratisches Entfernen vieler Boilerplate-Geschwister in HtmlContentRoots
+— docs(security): Security-Checkliste im Review und wöchentliche Security-Prüfroutine
+— test(security): Rechte-Matrix über alle API-Operationen und Rollen
+feat: „Dokument öffnen“ springt an die Fundstelle und markiert sie:
+— feat(frontend): Sprung an die Fundstelle in Markdown/TXT und an der Quelle (Textfragment)
+— feat(frontend): Eigener PDF-Viewer mit Sprung auf Seite und Markierung
+— feat(indexing): Strukturierter Fundstellen-Anker je Chunk
+— feat: PPTX/ODP-Folienansicht mit Sprung auf die Folie (Konvertierung nach PDF klären)
+feat: UI-Review 28.10.2026 – Oberfläche entschlacken und vereinheitlichen:
+— Pinnadel nur einmal im Kopf „Angeheftet“ statt an jedem Chat
+— Space-Einstellungen über Zahnrad an der Space-Zeile statt Fußeintrag
+— Asset-Kachel im Katalog so schlank wie in der Space-Zuordnung
+— Pinnadel nur einmal im Kopf „Angeheftet“ statt an jedem Chat
+feat: Datei-Konnektoren für Cloud- und Netzablagen (Google Drive, Nextcloud, SharePoint/OneDrive, SMB, Dropbox):
+— feat(indexing): OneDrive-Konnektor für private Microsoft-Konten (driveType personal)
+— feat(indexing): Dropbox-Team-Bereiche über eine Team-App (team/namespaces/list)
+— docs(adr): Google-Drive-Befunde gegen ein echtes Workspace belegen und in ADR-0040 nachtragen
+feat: Fundament für Werkzeugaufrufe im Chat — Modellfähigkeit, Werkzeugschleife, Grenzen und Messung:
+— chore(chat): Spike-Schalter der Werkzeugschleife entfernen
+Sonstiges:
+— chore(config): Altlasten und Stolperfallen in application.yml beseitigen
+— CI: Frontend-Härtungstest liest Container-Logs zu früh (sporadisch rot auf arm64)
+— ci(e2e): E2E-Suite auf main fehlgeschlagen (automatischer Lauf)
+— ci(e2e): E2E-Suite auf main fehlgeschlagen (automatischer Lauf)</summary>
+  </entry>
   <entry>
     <title>Tagesreport Mittwoch, 28. Oktober 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-10-28.html"/>
@@ -880,16 +912,5 @@ Sonstiges:
 — Backend-Laufzeitimage auf Distroless reduziert, wöchentliche Neubau-Automation
 — Trivy-Alerts triagiert, kritische Befunde mit Alarm-Issue verknüpft
 — Daumen-Schaltflächen aus Chat entfernt, Dokumentation ergänzt</summary>
-  </entry>
-  <entry>
-    <title>Tagesreport Mittwoch, 9. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-09.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-09.html</id>
-    <updated>2026-09-10T05:02:06Z</updated>
-    <summary type="text">Sonstiges:
-— Drei kritische Tomcat-CVEs durch Update auf 11.0.25 behoben
-— Einstiegsseite und Pflegeprozess des Produkthandbuchs dokumentiert
-— Handbuchkapitel zur Abfragestrecke und Suchstrecke hinzugefügt
-— Abhängigkeiten aktualisiert: Node.js, npm-Pakete, AWS SDK</summary>
   </entry>
 </feed>
