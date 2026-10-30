@@ -731,6 +731,27 @@ lassen.
   Die Liste der Linkziele ist installationsweit; `afterAll` stellt den Stand vor der Datei wieder
   her.
 
+- `tests/lifecycle.spec.ts` (#3465, Epic #3462) — die Wege, die eine Installation umziehen und
+  Bestände übergeben oder entfernen. **Einstellungen übertragen:** Export über die Oberfläche, eine
+  im Test geänderte Angabe (Branding, Claim) erscheint in der Import-Vorschau mit neuem Wert, ohne
+  schon zu wirken; erst „Übernehmen“ ändert sie, und das Revisionsprotokoll trägt den Eintrag
+  `SETTINGS_IMPORTED` samt der Änderung unter derselben Vorgangskennung. Das Protokoll liest der
+  Test per SQL im Postgres-Container (`fixtures/database.ts`), weil die Abfragewege der Revision
+  die Rolle `AUDITOR` verlangen, die kein dev-Konto hat; am Ende stellt ein Import der
+  ursprünglichen Datei den Stand wieder her. **Space:** dev-admin übergibt einen Space über „Zum
+  Eigentümer machen“ an dev-user und verliert den Gefahrenbereich; dev-user archiviert ihn. Das
+  Mitglied dev-outsider ohne eigenen Chat findet ihn danach in der Übersicht nicht mehr, der Eigentümer sieht ihn
+  als „Archiviert“, und dev-admin liest seinen Chat darin weiter. Löschen scheitert, solange Chats
+  darin liegen, ein Space ohne Chats wird über die Oberfläche gelöscht. **Bibliothek:** Eine
+  Webverzeichnis-Bibliothek mit einem Dokument wird über das Kopfmenü gelöscht; danach antworten
+  Bibliothek und Original mit 404, und dieselbe Suche, die das Dokument vorher fand, findet es
+  nicht mehr (eine Konnektor-Bibliothek nimmt ihre Dokumente beim Löschen mit). Spaces,
+  Mitgliedschaften und die Bibliothek entstehen über die API, der eine Chat über die Eingabe. Das
+  Szenario liest das Protokoll mit der Docker-CLI aus dem Container des Compose-Projekts
+  `COMPOSE_PROJECT_NAME` (Vorgabe `opaa-e2e`); wer `pnpm run test:playwright` gegen einen anders
+  benannten Stack fährt, setzt die Variable. Die Nachfolge nach einer Kontosperre prüft das Ziel
+  `local-auth` (`13-nachfolge.spec.ts`), weil nur lokale Konten sich sperren lassen.
+
 ## Demo-Smoke (#232)
 
 Ein separater, eigenständig startbarer Lauf gegen das Compose-Profil `demo`
@@ -874,6 +895,7 @@ stellt seinen Ausgangszustand in der eigenen Vorbereitung über dieselben idempo
 | `10-neuladen-waehrend-refresh.spec.ts` | Neuladen mitten in der Erneuerung: Zweimal verwirft der Browser Antwort und Cookie der committeten Rotation, die Sitzung bleibt trotzdem bestehen (Gnadenfrist, ADR-0033 Entscheidung 7), und die zweite Sitzung des Kontos bleibt unberührt |
 | `11-fokusring.spec.ts` | Fokusring nach Tastaturnavigation auf Anmeldeseite und Verwaltungsfeld, in beiden Farbschemata: deckende Linie von mindestens 2 px mit 3:1 gegen die Fläche, Feldrahmen 4,5:1 |
 | `12-revision.spec.ts` | Revision und Nachweis: erste Person der Revision über `OPAA_AUTH_FIRST_AUDITOR_EMAIL` mit dem Link aus dem Server-Log; Rollenantrag im Vier-Augen-Weg (ohne die Rolle Revision bestätigt niemand, weder die beantragte Person noch die Systemverwaltung; Bestätigung mit erneuter Anmeldung und einmaligem Link, Ablehnung); Stichtagsauskunft vor und nach dem Entzug einer Freigabe; Verbindungsprotokoll einer über einen Dropbox-Zugang verbundenen und gelöschten Bibliothek; Prüfsummenkette des laufenden Monats abrufbar und ohne Abweichung (ob schon ein Prüfpunkt besteht, hängt vom Zehn-Minuten-Takt des Kettenlaufs ab, daher gilt auch `UNCHAINED`) |
+| `13-nachfolge.spec.ts` | Nachfolge (#3465): Das Konto der Eigentümerin eines Space wird gesperrt, der Space steht sofort unter „Ohne Zuständigkeit“, „Nachfolge bestimmen“ mit Vorschau und Bestätigung überträgt ihn, danach ist die Nachfolge Eigentümerin |
 
 Für `12-revision.spec.ts` bringt der Lauf zwei Dinge mit, die die übrigen Szenarien nicht
 brauchen: `local-auth.env` setzt `OPAA_AUTH_FIRST_AUDITOR_EMAIL`, und `run-e2e.mjs` reicht den
