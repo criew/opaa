@@ -138,7 +138,10 @@ data:
     visibility: [AUDITOR]
     accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: Monatlicher Retention-Lauf
-    evaluations: Abfrage nach Zeitraum und Filtern; jeder Abruf wird protokolliert
+    evaluations: >-
+      Abfrage nach Zeitraum und Filtern; jeder Abruf wird protokolliert. Die Antwort nennt keine
+      Person, nur ob eine Person oder das System gehandelt hat und die Besitzart der Verbindung;
+      Antworten lassen sich nicht über eine Person verbinden
 nonPersonalTables:
   connection_profiles:
     - id

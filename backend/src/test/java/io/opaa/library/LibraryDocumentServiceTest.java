@@ -294,7 +294,7 @@ class LibraryDocumentServiceTest {
         folderRepository,
         folderService,
         attachmentExtractor,
-        new AttachmentProperties(0, 0, 0),
+        new AttachmentProperties(0, 0, 0, 0, 0),
         new AttachmentExtractionLimiter(limits),
         ProductionDocumentFormats.supportedFormats(),
         TestSourceConnectors.connectors()
@@ -918,7 +918,8 @@ class LibraryDocumentServiceTest {
                 null,
                 10L * 1024,
                 new UploadProperties.ThreadPool(1, 1, 0),
-                0));
+                0,
+                5));
     service = serviceWith(new AttachmentExtractionProperties(0, null));
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-first");
     when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(any(), any()))
@@ -946,6 +947,44 @@ class LibraryDocumentServiceTest {
       throw new AssertionError(e);
     }
     assertThat(processingSlots.available()).isEqualTo(1);
+  }
+
+  @Test
+  void anAccountHoldingItsShareIsRefusedWhileAnotherAccountStillGetsAPlace() throws IOException {
+    grantEditor();
+    UUID otherUserId = UUID.randomUUID();
+    when(accessService.requireRole(any(), eq(otherUserId), eq(false), eq(AssetRole.EDITOR)))
+        .thenReturn(AssetRole.EDITOR);
+    CurrentUser other = CurrentUser.of(otherUserId, organizationId, SystemRole.USER, "Andere");
+    processingSlots =
+        new UploadProcessingSlots(
+            new UploadProperties(
+                storageDir.toString(),
+                null,
+                10L * 1024,
+                new UploadProperties.ThreadPool(1, 2, 2),
+                0,
+                1));
+    service = serviceWith(new AttachmentExtractionProperties(0, null));
+    when(checksumService.computeSha256(any(Path.class)))
+        .thenReturn("checksum-first", "checksum-other");
+    when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(any(), any()))
+        .thenReturn(Optional.empty());
+
+    service.uploadDocument(libraryId, pdfFile("first.pdf", "pdf content"), null, caller);
+    clearInvocations(documentRepository, folderService);
+
+    assertThatThrownBy(
+            () ->
+                service.uploadDocument(
+                    libraryId, pdfFile("second.pdf", "more content"), null, "Unterordner", caller))
+        .isInstanceOf(TooManyRequestsException.class)
+        .hasMessage(UploadProcessingSlots.ACCOUNT_BUSY_MESSAGE);
+    verify(documentRepository, never()).save(any());
+    verify(folderService, never()).resolveOrCreateFolderPath(any(), any(), any(), any());
+
+    service.uploadDocument(libraryId, pdfFile("other.pdf", "other content"), null, other);
+    assertThat(processingSlots.available()).isEqualTo(2);
   }
 
   @Test
@@ -1169,6 +1208,28 @@ class LibraryDocumentServiceTest {
         .thenReturn(Optional.of(connector));
 
     assertThatThrownBy(() -> service.deleteDocuments(libraryId, List.of(UUID.randomUUID()), caller))
+        .isInstanceOf(ConflictException.class);
+    verify(documentRepository, never()).delete(any());
+  }
+
+  // regression guard for #3358 (3): the single delete refuses a connector library like the bulk one
+  @Test
+  void singleDeleteIsRefusedForAConnectorLibrary() {
+    grantEditor();
+    KnowledgeLibrary connector = mock(KnowledgeLibrary.class);
+    when(connector.getId()).thenReturn(libraryId);
+    when(connector.getOrganizationId()).thenReturn(organizationId);
+    when(connector.getSourceType()).thenReturn(SourceTypes.CONFLUENCE);
+    when(libraryRepository.findByIdAndOrganizationId(libraryId, organizationId))
+        .thenReturn(Optional.of(connector));
+    UUID documentId = UUID.randomUUID();
+    Document synced =
+        new Document("seite.html", "conf://seite", "text/html", 5L, SourceTypes.CONFLUENCE);
+    synced.setLibraryId(libraryId);
+    synced.setOrganizationId(organizationId);
+    lenient().when(documentRepository.findById(documentId)).thenReturn(Optional.of(synced));
+
+    assertThatThrownBy(() -> service.deleteDocument(libraryId, documentId, caller))
         .isInstanceOf(ConflictException.class);
     verify(documentRepository, never()).delete(any());
   }
@@ -1950,7 +2011,7 @@ class LibraryDocumentServiceTest {
             folderRepository,
             folderService,
             attachmentExtractor,
-            new AttachmentProperties(0, 0, 0),
+            new AttachmentProperties(0, 0, 0, 0, 0),
             new AttachmentExtractionLimiter(new AttachmentExtractionProperties(0, null)),
             ProductionDocumentFormats.supportedFormats(),
             TestSourceConnectors.connectors()

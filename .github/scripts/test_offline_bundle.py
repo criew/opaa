@@ -120,7 +120,7 @@ def test_the_release_carries_the_offline_bundle() -> None:
     assert "uses: ./.github/workflows/offline-bundle.yml" in bundle_job
     assert "if: startsWith(github.ref, 'refs/tags/v')" in bundle_job
     assert "update-package-from-run: true" in bundle_job
-    assert re.search(r"needs: \[prepare, chart-attestation, update-package-attestation\]", bundle_job)
+    assert re.search(r"needs: \[prepare, image-attestation, chart-attestation, update-package-attestation\]", bundle_job)
 
     release = job("publish-images.yml", "release")
     assert re.search(r"needs: \[.*\boffline-bundle\b.*\]", release)
@@ -172,3 +172,57 @@ def test_on_a_tag_only_the_release_run_of_that_tag_signs_a_bundle() -> None:
 def test_a_release_run_requires_both_sboms() -> None:
     assert "REQUIRE_SBOMS: ${{ inputs.update-package-from-run }}" in job("offline-bundle.yml", "collect")
     assert '"${REQUIRE_SBOMS:-true}" == true' in SCRIPT.read_text(encoding="utf-8")
+
+
+def test_a_release_run_requires_both_image_attestations() -> None:
+    assert ("REQUIRE_IMAGE_ATTESTATIONS: ${{ inputs.update-package-from-run }}"
+            in job("offline-bundle.yml", "collect"))
+    script = SCRIPT.read_text(encoding="utf-8")
+    assert '"${REQUIRE_IMAGE_ATTESTATIONS:-true}" != true' in script
+    assert 'attestation "oci://$IMAGE_PREFIX-$name:$version"' in script
+
+
+BACKEND = "sha256:" + "1" * 64
+FRONTEND = "sha256:" + "2" * 64
+
+
+def chart_digests(bundle: Path, tmp_path: Path, backend: str, frontend: str) -> subprocess.CompletedProcess:
+    """Runs chart-digests with a helm stub whose chart values pin the given digests."""
+    (bundle / "DIGESTS").write_text(
+        f"ghcr.io/criew/opaa-backend:1.2.3@{BACKEND}\nghcr.io/criew/opaa-frontend:1.2.3@{FRONTEND}\n",
+        encoding="utf-8")
+    values = tmp_path / "values.yaml"
+    values.write_text(
+        "evaluationDatabase:\n  image:\n    digest: \"\"\n"
+        f"backend:\n  image:\n    repository: ghcr.io/criew/opaa-backend\n    digest: \"{backend}\"\n"
+        "  replicas: 1\n"
+        f"frontend:\n  image:\n    tag: \"\"\n    digest: \"{frontend}\"\n",
+        encoding="utf-8")
+    stub = tmp_path / "bin"
+    stub.mkdir(exist_ok=True)
+    (stub / "helm").write_text(f"#!/usr/bin/env bash\ncat {values.as_posix()}\n", encoding="utf-8")
+    (stub / "helm").chmod(0o755)
+    return run("chart-digests", bundle.as_posix(),
+               env={"PATH": f"{stub.as_posix()}:{os.environ['PATH']}"})
+
+
+def test_the_chart_digests_match_the_bundled_images(bundle: Path, tmp_path: Path) -> None:
+    result = chart_digests(bundle, tmp_path, BACKEND, FRONTEND)
+
+    assert result.returncode == 0, result.stderr
+    assert f"pins backend to {BACKEND}" in result.stdout
+    assert f"pins frontend to {FRONTEND}" in result.stdout
+
+
+def test_a_chart_digest_other_than_the_bundled_image_fails(bundle: Path, tmp_path: Path) -> None:
+    result = chart_digests(bundle, tmp_path, BACKEND, "sha256:" + "3" * 64)
+
+    assert result.returncode == 1
+    assert "The chart pins frontend to" in result.stderr
+
+
+def test_a_chart_without_digests_installs_by_tag(bundle: Path, tmp_path: Path) -> None:
+    result = chart_digests(bundle, tmp_path, "", "")
+
+    assert result.returncode == 0, result.stderr
+    assert "pins no digest for backend" in result.stdout

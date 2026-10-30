@@ -1,0 +1,127 @@
+# Operations the backend lets through without a session under the "oidc" profile, each with its
+# reason. AnonymousSurfaceIntegrationTest calls every operation of the specification, every handler
+# mapping, the actuator and the router functions without a token (but with a self-made CSRF
+# double-submit pair, as any direct caller can send one): an operation not listed under
+# "anonymous" must be refused in the filter chain with 401, 403 or 404 - its handler never runs.
+# An operation listed under "missingHeaders" may lack nosniff and the frame protection.
+# An entry the application outgrew fails the test: an operation gone, one refused before its
+# handler now (unless "conditional: true" - reachable only while a runtime setting is on that the
+# test context cannot switch on), headers present now. The switched-off side of a conditional
+# entry is covered by LocalSelfServiceUnavailableIntegrationTest.
+# "withoutHandlerCheck" lists the operations whose handler neither carries an authorization
+# annotation nor takes its caller, although they are not anonymous; an anonymous operation needs no
+# second entry there. SecurityInvariantsTest holds every controller method to both lists, and an
+# entry under "withoutHandlerCheck" whose handler checks now fails it.
+# The key is "<METHOD> <path template>" as in the specification; health groups are concrete paths.
+anonymous:
+  - operation: GET /api/health
+    reason: Lebenszeichen für Load Balancer und Frontend; liefert nur den Status.
+  - operation: GET /api/v1/auth/config
+    reason: >-
+      Die Anmeldeseite braucht vor jeder Sitzung die aktiven Anmeldeverfahren und den Stand der
+      Installation.
+  - operation: POST /api/v1/auth/local/login
+    reason: Anmeldung mit lokalem Konto; Zugangsdaten stehen im Body.
+  - operation: POST /api/v1/auth/local/refresh
+    reason: >-
+      Erneuert die Sitzung über das Refresh-Cookie und das Double-Submit-Token; trägt kein
+      Bearer-Token.
+  - operation: POST /api/v1/auth/local/logout
+    reason: >-
+      Beendet die Sitzung über das Refresh-Cookie und das Double-Submit-Token; trägt kein
+      Bearer-Token.
+  - operation: POST /api/v1/auth/local/set-password
+    reason: Einlösen eines Einladungs- oder Rücksetzlinks; das Einmal-Token steht im Body.
+  - operation: POST /api/v1/auth/local/confirm-registration
+    reason: >-
+      Abschluss der Selbstregistrierung über das Einmal-Token aus der Bestätigungsmail; Name und
+      Passwort stehen im Body.
+  - operation: POST /api/v1/auth/local/forgot-password
+    conditional: true
+    reason: >-
+      Selbstbedienung „Passwort vergessen“, anonym nur, solange sie in den Einstellungen
+      eingeschaltet ist und eine öffentliche Basis-URL besteht. Ausgeschaltet fällt sie unter die
+      Anmeldepflicht von /api/** und wird mit 401 abgewiesen; so läuft der Testkontext.
+  - operation: POST /api/v1/auth/local/register
+    conditional: true
+    reason: >-
+      Selbstregistrierung, anonym nur, solange sie in den Einstellungen eingeschaltet ist und eine
+      öffentliche Basis-URL besteht. Ausgeschaltet fällt sie unter die Anmeldepflicht von /api/**
+      und wird mit 401 abgewiesen; so läuft der Testkontext.
+  - operation: POST /api/v1/auth/local/handover/preview
+    reason: Übergabe an einen Anbieter; das Anbieter-Token steht im Body, nicht im Header.
+  - operation: POST /api/v1/auth/local/handover/redeem
+    reason: Übergabe an einen Anbieter; das Anbieter-Token steht im Body, nicht im Header.
+  - operation: POST /api/v1/libraries/{libraryId}/push
+    reason: >-
+      Push-Benachrichtigung einer Quelle an ihre Bibliothek; die Quelle hat keine Sitzung. Der
+      Handler prüft das Geheimnis der Bibliothek, die Annahme ist je Adresse begrenzt.
+  - operation: GET /api/v1/branding
+    reason: >-
+      Die Anmeldeseite zeigt Name, Claim und Akzentfarbe des Betreibers vor jeder Sitzung; keine
+      Nutzer- oder Konfigurationsdaten.
+  - operation: GET /api/v1/branding/logo
+    reason: Logo des Betreibers für die Anmeldeseite.
+  - operation: GET /api/v1/branding/login-logo
+    reason: Logo der Anmeldeseite.
+  - operation: GET /api/v1/branding/login-background
+    reason: Hintergrundbild der Anmeldeseite.
+  - operation: POST /api/v1/me/self-disclosure/download
+    reason: >-
+      Der Browser lädt die Selbstauskunft per Formular ohne Bearer-Token; einziger Nachweis ist das
+      Einmal-Ticket im Body.
+  - operation: GET /error
+    reason: >-
+      Fehlerseite des Servlet-Containers; direkt aufgerufen liefert sie eine leere Fehlerhülle ohne
+      Daten.
+  - operation: POST /error
+    reason: >-
+      Fehlerseite des Servlet-Containers; direkt aufgerufen liefert sie eine leere Fehlerhülle ohne
+      Daten.
+  - operation: GET /actuator/health
+    reason: Gesamtstatus ohne Details (show-details when-authorized).
+  - operation: GET /actuator/health/readiness
+    reason: Readiness-Probe für Load Balancer und Health Check des Containers; nur der Status.
+  - operation: GET /actuator/health/liveness
+    reason: Liveness-Probe für den Health Check des Containers; nur der Status.
+  - operation: GET /actuator/info
+    reason: >-
+      Version und Build des Backends für Betrieb und Image-Rauchtest; enthält keine Konfiguration.
+missingHeaders: []
+withoutHandlerCheck:
+  - operation: GET /api/v1/external-access/settings
+    reason: >-
+      Jede angemeldete Person sieht nur, ob der Kanal offen ist und wie lange ein Token gilt; keine
+      personenbezogenen Daten, keine weiteren Einstellungen.
+  - operation: GET /api/v1/link-targets
+    reason: Installationsweite Verweisziele (Impressum, Datenschutz) für jede angemeldete Person.
+  - operation: GET /api/v1/metadata/document-types
+    reason: Installationsweites Vokabular der Dokumentarten; ohne Bezug zu einer Bibliothek.
+  - operation: GET /api/v1/search/availability
+    reason: >-
+      Nur, ob Vektorsuche, Chat- und Embedding-Modell bereitstehen; die Oberfläche zeigt danach
+      einen Hinweis.
+  - operation: GET /api/v1/spaces/chat-auto-cleanup
+    reason: Installationsweite Fristen der Chat-Aufräumung, die jede Person beim Anlegen sieht.
+  - operation: GET /api/v1/transcriptions/availability
+    reason: Nur, ob die Spracheingabe eingerichtet ist.
+  - operation: POST /api/v1/transcriptions
+    reason: >-
+      Spracheingabe für jede angemeldete Person; das Ergebnis geht nur an sie zurück, die Annahme
+      begrenzen Rate-Limit und opaa.transcription.max-concurrent.
+  - operation: GET /api/v1/installation
+    reason: >-
+      Einrichtungs-Assistent; den Pfad schützen InstallationGateFilter und InstallationAccessFilter
+      (Netz, Budget, Einrichtungstoken), nach der Einrichtung antwortet er 404.
+  - operation: PUT /api/v1/installation/steps/{step}
+    reason: Einrichtungs-Assistent; geschützt wie GET /api/v1/installation.
+  - operation: POST /api/v1/installation/steps/{step}/check
+    reason: Einrichtungs-Assistent; geschützt wie GET /api/v1/installation.
+  - operation: POST /api/v1/installation/steps/{step}/discover
+    reason: Einrichtungs-Assistent; geschützt wie GET /api/v1/installation.
+  - operation: POST /api/v1/installation/steps/{step}/skip
+    reason: Einrichtungs-Assistent; geschützt wie GET /api/v1/installation.
+  - operation: POST /api/v1/installation/answer-file
+    reason: Einrichtungs-Assistent; geschützt wie GET /api/v1/installation.
+  - operation: POST /api/v1/installation/complete
+    reason: Einrichtungs-Assistent; geschützt wie GET /api/v1/installation.

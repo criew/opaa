@@ -355,6 +355,43 @@ der dieselbe Systemverwaltung die Rolle jederzeit einschaltet. Was vor der Einf�
 nennt das Handbuch unter „Spracheingabe und Mitbestimmung“, mit dem Weg, den Schritt bis dahin
 auszublenden.
 
+### 17. Sperre nach Fehlversuchen: Wert in der Datenbank, Grenzen in der Konfiguration
+
+Zahl der Fehlversuche bis zur Sperre lokaler Konten und Dauer der Sperre (ADR-0033, Entscheidung 9)
+sind fachliche Einstellungen der Regeln der lokalen Anmeldung (`local_auth_settings`), mit
+Werkseinstellung im Code (5 Fehlversuche, 15 Minuten) und je einer Spalte, die leer bleibt, solange
+sie gilt (Entscheidung 1). Die Konfiguration begrenzt sie nach Entscheidung 2 in der schützenden
+Richtung: `OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS` ist die Obergrenze der Fehlversuche (Vorgabe 5),
+`OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION` die Untergrenze der Dauer (Vorgabe 15 Minuten, in ganzen
+Minuten aufgerundet). Die Vorgaben sind die Werkseinstellung: Ab Werk kann die Verwaltung die Sperre
+nur verschärfen, lockern erst, wenn der Betrieb die Grenzen bewusst weiter setzt. Die andere Richtung
+steht fest im Code: mindestens ein Fehlversuch, höchstens 1440 Minuten; sehr strenge Werte können
+auch das Notanker-Konto sperren, wogegen `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` schützt. Abschalten lässt
+sich die Sperre damit weder in der Oberfläche noch über den Import, und der Import nennt die
+geänderten sicherheitsrelevanten Schlüssel im Revisionsprotokoll.
+Ein gespeicherter Wert jenseits einer später enger gezogenen Grenze bleibt gespeichert, wirkt als
+diese Grenze und darf unverändert zurückgeschickt werden; ein geänderter Wert muss innerhalb liegen.
+
+`OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS` behält seinen Namen und wird zur Obergrenze: Der Name sagt
+schon „höchstens so viele Versuche“, und weil die Werkseinstellung an der Grenze gekappt wird, wirkt
+ein bisher strengerer Wert nach dem Update unverändert weiter; ein großzügigerer erlaubt der
+Verwaltung nur noch, ihn einzustellen. `OPAA_AUTH_LOCAL_LOCKOUT_DURATION` entfällt als Wert: Sein
+Name passt zu keiner Grenze, und als Vorgabe der Einstellung wäre er nach Entscheidung 1 unzulässig.
+Solange er gesetzt ist, hebt er aber die Untergrenze der Dauer auf seinen Wert, höchstens 1440
+Minuten (ein größerer wird mit einer Warnung gekappt); der Start nennt ihn und die wirksamen Grenzen
+im Log. So wird die Sperre durch das Update in keinem Fall lockerer, und ein bisher längerer Wert
+gilt ohne Eingriff weiter. Eine Bremse wie in Entscheidung 13 braucht es nicht, weil eine Sperre
+nichts löscht.
+
+Die Regel wird bei jedem Fehlversuch aus der Zeile gelesen, ohne Cache; eine Änderung gilt damit ab
+dem nächsten Fehlversuch auf allen Instanzen (ADR-0053). Laufende Sperren behalten ihr Ende, das
+beim Sperren festgelegt wird, und eine gesenkte Zahl sperrt ein Konto, dessen Zähler sie schon
+erreicht, erst bei seinem nächsten Fehlversuch. Begründung: Eine Änderung der Regel ist kein Anlass,
+Personen ohne eigenen Fehlversuch zu sperren oder eine Sperre still zu verkürzen oder zu verlängern;
+wer eine Sperre sofort aufheben will, hat „Entsperren“. Das Revisionsprotokoll nennt den Wert und ob
+er ein eigener ist; Export und Import übertragen den gespeicherten Wert, leer für die
+Werkseinstellung, und prüfen ihn gegen die Grenzen der Zielinstallation (Entscheidungen 11 und 12).
+
 ## Konsequenzen
 
 - Die Konfiguration schrumpft auf Start, Infrastruktur, Schlüssel, Grenzen, Lastgrenzen und
@@ -383,6 +420,10 @@ auszublenden.
   abpassen; die Datei beim Start ist deklarativ.
 - Grenzen des Betriebs in die Oberfläche holen — hebt die Trennung zwischen Betrieb und
   Systemverwaltung auf (Entscheidung 2).
+- Die Variablen der Sperre nach Fehlversuchen als Vorgabe der Einstellung behalten — zwei Orte für
+  einen Wert (Entscheidung 1); stattdessen Grenze oder entfallen (Entscheidung 17).
+- Laufende Sperren an eine geänderte Dauer anpassen oder Konten über einer gesenkten Zahl sofort
+  sperren — die Änderung der Regel wirkte auf Personen ohne eigenen Fehlversuch (Entscheidung 17).
 - Mailserver im Assistenten nur über ein Budget begrenzen, ohne Adressprüfung — jede Adresse und jeder
   Port im internen Netz bliebe mit dem Token erreichbar, nur langsamer (Entscheidung 14).
 - Freie Ports mit den Fehlertexten des Mailservers — die Prüfung verriete, welche Dienste auf einem

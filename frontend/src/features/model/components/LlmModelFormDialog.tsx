@@ -369,7 +369,7 @@ export default function LlmModelFormDialog({
                       setApiKeyTouched(false)
                       setApiKeyInput('')
                     }}
-                    aria-label={`Gespeicherten Schlüssel von "${model.displayName}" entfernen`}
+                    aria-label={`Gespeicherten Schlüssel entfernen: ${model.displayName}`}
                   >
                     Gespeicherten Schlüssel entfernen
                   </Button>

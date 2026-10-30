@@ -112,7 +112,16 @@ final class LocalUserResponseMapper {
             values.resetTokenTtlMinutes(),
             values.defaultExpiryDays(),
             values.inactiveDays(),
-            view.publicBaseUrlConfigured());
+            view.publicBaseUrlConfigured(),
+            view.lockoutMaxAttempts(),
+            LocalAuthSettings.DEFAULT_LOCKOUT_MAX_ATTEMPTS,
+            view.lockoutLimits().maxAttempts(),
+            view.lockoutDurationMinutes(),
+            LocalAuthSettings.DEFAULT_LOCKOUT_DURATION_MINUTES,
+            view.lockoutLimits().minDurationMinutes(),
+            LocalAuthSettings.MAX_LOCKOUT_DURATION_MINUTES);
+    response.setStoredLockoutMaxAttempts(values.lockoutMaxAttempts());
+    response.setStoredLockoutDurationMinutes(values.lockoutDurationMinutes());
     response.setRevokedSessions(revokedSessions);
     return response;
   }

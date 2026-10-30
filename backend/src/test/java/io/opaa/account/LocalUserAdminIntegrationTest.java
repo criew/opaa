@@ -797,7 +797,7 @@ class LocalUserAdminIntegrationTest {
         assertThat(users.findById(account.id())).isPresent();
       }
     } finally {
-      incidentScopeGrants.deleteById(grant.getId());
+      deleteIncidentScope(grant);
     }
   }
 
@@ -818,7 +818,7 @@ class LocalUserAdminIntegrationTest {
         assertThat(users.findById(account.id())).isPresent();
       }
     } finally {
-      incidentScopeGrants.deleteById(grant.getId());
+      deleteIncidentScope(grant);
     }
   }
 
@@ -852,7 +852,7 @@ class LocalUserAdminIntegrationTest {
             .isZero();
       }
     } finally {
-      incidentScopeGrants.deleteById(grant.getId());
+      deleteIncidentScope(grant);
     }
   }
 
@@ -888,9 +888,17 @@ class LocalUserAdminIntegrationTest {
       assertThat(pseudonyms).doesNotContainNull().doesNotHaveDuplicates();
       assertThat(kept.getReason()).isEqualTo("Verdacht auf unbefugten Zugriff");
     } finally {
-      incidentScopeGrants.deleteById(grant.getId());
+      deleteIncidentScope(grant);
       pseudonyms.stream().filter(Objects::nonNull).forEach(fixtures::deleteAuditRowsNaming);
     }
+  }
+
+  /** The grant and the audit entries of its request and approval, which name it as object. */
+  private void deleteIncidentScope(AuditIncidentScopeGrant grant) {
+    jdbc.update(
+        "DELETE FROM audit_log WHERE object_type = 'AUDIT_LOG' AND object_id = ?",
+        grant.getId().toString());
+    incidentScopeGrants.deleteById(grant.getId());
   }
 
   private AuditIncidentScopeGrant requestIncidentScope(LocalAccount named, LocalAccount requester) {
@@ -1419,6 +1427,165 @@ class LocalUserAdminIntegrationTest {
     assertThat(auditRows("LOCAL_USER_UNLOCKED", user.id())).isEmpty();
   }
 
+  /**
+   * Regression guard for #3356: the system administration never holds the credentials of an auditor
+   * account - no generated or initial password, no reset link, no new address, no handover - so it
+   * cannot read the audit log through an account of its own.
+   */
+  @Test
+  void theAdministrationCannotTakeOverAnAuditorAccount() throws Exception {
+    LocalAccount auditor =
+        fixtures.account(
+            "revision-" + UUID.randomUUID() + "@stadt.example",
+            SystemRole.AUDITOR,
+            LocalAccountFixtures.PASSWORD,
+            true,
+            null);
+    String hashBefore = fixtures.credentialsOf(auditor).getPasswordHash();
+    String path = LOCAL_USERS + "/" + auditor.id();
+
+    asAdmin(post(path + "/password"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("AUDITOR_ACCOUNT"));
+    asAdmin(post(path + "/password-reset"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("AUDITOR_ACCOUNT"));
+    asAdminJson(patch(path), "{\"email\":\"uebernahme-" + UUID.randomUUID() + "@stadt.example\"}")
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("AUDITOR_ACCOUNT"));
+    asAdminJson(
+            post(path + "/handover"),
+            "{\"providerId\":\"" + UUID.randomUUID() + "\",\"reason\":\"Übernahme\"}")
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("AUDITOR_ACCOUNT"));
+    String newAddress = "neue-revision-" + UUID.randomUUID() + "@stadt.example";
+    asAdminJson(
+            post(LOCAL_USERS),
+            "{\"email\":\""
+                + newAddress
+                + "\",\"displayName\":\"Revision\",\"mode\":\"INITIAL_PASSWORD\","
+                + "\"createdReason\":\"Revision\",\"systemRole\":\"AUDITOR\"}")
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("AUDITOR_ACCOUNT"));
+
+    assertThat(fixtures.credentialsOf(auditor).getPasswordHash()).isEqualTo(hashBefore);
+    assertThat(users.findById(auditor.id()).orElseThrow().getEmail()).isEqualTo(auditor.email());
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM users WHERE lower(email) = lower(?)",
+                Integer.class,
+                newAddress))
+        .isZero();
+    assertThat(auditRows("LOCAL_USER_%", auditor.id())).isEmpty();
+  }
+
+  /**
+   * Regression guard for #3356: a system administrator alone does not make an account an auditor.
+   * The grant becomes a request every auditor is told of, naming the address and when the
+   * administration last changed it; it takes effect only once an auditor confirms, under that
+   * auditor, and the account then starts with a password only its person sets through the link the
+   * confirming auditor alone receives - no mail through the channels the administration controls.
+   */
+  @Test
+  void theAuditorRoleTakesEffectOnlyWithAnAuditorsConfirmation() throws Exception {
+    LocalAccount auditor =
+        fixtures.account(
+            "revision-" + UUID.randomUUID() + "@stadt.example",
+            SystemRole.AUDITOR,
+            LocalAccountFixtures.PASSWORD,
+            true,
+            null);
+    String auditorBearer = bearer(login(auditor.email(), LocalAccountFixtures.PASSWORD, 200));
+    LocalAccount candidate =
+        fixtures.activeUser("kandidat-" + UUID.randomUUID() + "@stadt.example");
+    String path = LOCAL_USERS + "/" + candidate.id();
+    String changedAddress = "kandidat-neu-" + UUID.randomUUID() + "@stadt.example";
+    asAdminJson(patch(path), "{\"email\":\"" + changedAddress + "\"}").andExpect(status().isOk());
+
+    asAdminJson(patch(path), "{\"systemRole\":\"AUDITOR\"}")
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.systemRole").value("USER"))
+        .andExpect(jsonPath("$.pendingSystemRole").value("AUDITOR"));
+    asAdminJson(post("/api/v1/admin/users/" + candidate.id() + "/role"), "{\"role\":\"AUDITOR\"}")
+        .andExpect(status().isAccepted())
+        .andExpect(jsonPath("$.systemRole").value("USER"));
+    asAdmin(post(path + "/password"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("AUDITOR_ACCOUNT"));
+    asAdmin(get("/api/v1/audit/auditor-role-requests")).andExpect(status().isForbidden());
+    assertThat(users.findById(candidate.id()).orElseThrow().getSystemRole())
+        .isEqualTo(SystemRole.USER);
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM notifications WHERE recipient_user_id = ? AND type = ?",
+                Integer.class,
+                auditor.id(),
+                "AUDITOR_ROLE_REQUESTED"))
+        .isEqualTo(1);
+
+    MvcResult listed =
+        mockMvc
+            .perform(
+                get("/api/v1/audit/auditor-role-requests")
+                    .header(HttpHeaders.AUTHORIZATION, auditorBearer))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].userId").value(candidate.id().toString()))
+            .andExpect(jsonPath("$[0].localAccount").value(true))
+            .andExpect(jsonPath("$[0].email").value(changedAddress))
+            .andExpect(jsonPath("$[0].requestedByProvider").value(false))
+            .andExpect(jsonPath("$[0].emailChangedByAdministrationAt").isNotEmpty())
+            .andReturn();
+    String requestId = JsonPath.read(listed.getResponse().getContentAsString(), "$[0].id");
+    MvcResult confirmed =
+        mockMvc
+            .perform(
+                post("/api/v1/audit/auditor-role-requests/" + requestId + "/confirm")
+                    .header(HttpHeaders.AUTHORIZATION, auditorBearer))
+            .andExpect(status().isOk())
+            .andReturn();
+    String setupUrl = JsonPath.read(confirmed.getResponse().getContentAsString(), "$.setupUrl");
+    assertThat(setupUrl).contains("token=");
+
+    assertThat(users.findById(candidate.id()).orElseThrow().getSystemRole())
+        .isEqualTo(SystemRole.AUDITOR);
+    LocalCredentials renewed = fixtures.credentialsOf(candidate);
+    assertThat(renewed.getPasswordHash()).isNull();
+    assertThat(renewed.state(Instant.now())).isEqualTo(LocalAccountState.INVITED);
+    login(changedAddress, LocalAccountFixtures.PASSWORD, 401);
+    LocalMailbox.awaitOutboxDrained(jdbc);
+    assertThat(greenMail.getReceivedMessages()).isEmpty();
+    String token =
+        java.net.URLDecoder.decode(
+            setupUrl.substring(setupUrl.indexOf("token=") + "token=".length()),
+            java.nio.charset.StandardCharsets.UTF_8);
+    mockMvc
+        .perform(
+            post("/api/v1/auth/local/set-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"token\":\""
+                        + token
+                        + "\",\"newPassword\":\"revision-eigenes-passwort-2026\"}"))
+        .andExpect(status().isNoContent());
+    login(changedAddress, "revision-eigenes-passwort-2026", 200);
+    assertThat(auditRows("AUDITOR_ROLE_%", candidate.id()))
+        .extracting(row -> row.get("event_type"))
+        .containsExactly("AUDITOR_ROLE_REQUESTED", "AUDITOR_ROLE_GRANTED");
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM auditor_role_requests WHERE user_id = ?",
+                Integer.class,
+                candidate.id()))
+        .isZero();
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT count(*) FROM notifications WHERE recipient_user_id = ? AND type = ?",
+                Integer.class,
+                auditor.id(),
+                "AUDITOR_ROLE_GRANTED"))
+        .isEqualTo(1);
+  }
+
   /** The raw token of a link issued through the reset endpoint (SMTP off: link displayed). */
   private String resetLink(UUID userId) throws Exception {
     MvcResult issued =
@@ -1511,10 +1678,11 @@ class LocalUserAdminIntegrationTest {
                 .content("{\"displayName\":\"Umbenannt\",\"systemRole\":\"USER\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.displayName").value("Umbenannt"));
-    // and the same changes pass with the fresh sign-in of the setup
-    asAdminJson(patch(LOCAL_USERS + "/" + target.id()), "{\"systemRole\":\"AUDITOR\"}")
+    // and the same changes pass with the fresh sign-in of the setup (SYSTEM_ADMIN: AUDITOR is
+    // only ever requested, see theAuditorRoleTakesEffectOnlyWithAnAuditorsConfirmation)
+    asAdminJson(patch(LOCAL_USERS + "/" + target.id()), "{\"systemRole\":\"SYSTEM_ADMIN\"}")
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.systemRole").value("AUDITOR"));
+        .andExpect(jsonPath("$.systemRole").value("SYSTEM_ADMIN"));
   }
 
   private org.springframework.test.web.servlet.ResultActions asAdmin(

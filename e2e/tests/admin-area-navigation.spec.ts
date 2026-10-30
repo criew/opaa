@@ -5,7 +5,7 @@ import { expect, test } from '../fixtures/auth'
  * verschoben: die Szenarien führen keine axe-Analyse aus, sie sichern Erreichbarkeit
  * und Geometrie der Admin-Sekundärspalte.
  */
-test.describe('Verwaltungsbereich: Navigation über die Sekundärspalte (#787)', () => {
+test.describe('Verwaltungsbereich: Navigation über die Sekundärspalte (#787)', { tag: '@browser-smoke' }, () => {
   // Der Durchklick durch die Admin-Sekundärspalte
   // sichert das Abnahmekriterium "Wechsel zwischen den Admin-Seiten über die Sekundärspalte"
   // - aber nur am Desktop-Viewport: die mobile Erreichbarkeit sichert er ausdrücklich

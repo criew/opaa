@@ -73,11 +73,32 @@ export function normalizeMetadataFilter(
 ): MetadataFilter | null {
   if (isEmptyMetadataFilter(filter)) return null
   const documentTypes = [...(filter?.documentTypes ?? [])].sort()
+  const libraryFields = (filter?.libraryFields ?? [])
+    .map(normalizeCondition)
+    .sort(byKey((condition) => `${condition.libraryId}:${condition.fieldKey}`))
+  const formatFields = (filter?.formatFields ?? [])
+    .map(normalizeCondition)
+    .sort(byKey((condition) => condition.fieldKey))
   return {
     ...(documentTypes.length > 0 ? { documentTypes } : {}),
     ...(filter?.documentDateFrom ? { documentDateFrom: filter.documentDateFrom } : {}),
     ...(filter?.documentDateTo ? { documentDateTo: filter.documentDateTo } : {}),
+    ...(libraryFields.length > 0 ? { libraryFields } : {}),
+    ...(formatFields.length > 0 ? { formatFields } : {}),
   }
+}
+
+/** One condition without its null members and with sorted lists, for a stable comparison. */
+function normalizeCondition<T extends object>(condition: T): T {
+  return Object.fromEntries(
+    Object.entries(condition)
+      .filter(([, value]) => value !== null && value !== undefined)
+      .map(([key, value]) => [key, Array.isArray(value) ? [...value].sort() : value]),
+  ) as T
+}
+
+function byKey<T>(key: (item: T) => string) {
+  return (a: T, b: T) => key(a).localeCompare(key(b))
 }
 
 export function sameMetadataFilter(a: MetadataFilter | null, b: MetadataFilter | null): boolean {

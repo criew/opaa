@@ -61,7 +61,8 @@ freier Text und werden nicht ausgewertet.
 
 **Zuschnitt.** Ein Segment, das die konfigurierte Chunk-Größe der Auffang-Pipeline
 (Standard 1000 Tokens, 100 Überlappung) überschreitet, wird mit deren Token-Splitter geteilt.
-Das ist der einzige Größenparameter dieser Pipeline.
+Das ist der einzige Größenparameter dieser Pipeline. Bräuchte ein Segment mehr als 10.000 Chunks,
+ist die Mail „fehlgeschlagen" ([Grenzen beim Lesen](README.md#grenzen-beim-lesen)).
 
 **Nur Kopfdaten.** Eine Mail ohne Nachrichtentext, aber mit Anhängen, bekommt einen Chunk aus
 dem Kopfblock. So bleibt „Von wem kam der Bescheid und wann?" beantwortbar. Eine leere Mail
@@ -113,6 +114,7 @@ wird ein eigenes Dokument mit eigener Pipeline: Ein PDF-Anhang trägt `pipeline_
 | Eingebettete Nachricht | wird als `nachricht.eml` gemeldet; die Kette geht bis zur Tiefengrenze weiter | eingebettete Outlook-Objekte werden übersprungen, weil sie sich nicht als Datei ausgeben lassen |
 | Inline-Bilder | ein Inline-Bild mit Dateiname gilt als Anhang; ohne Namen wird es übergangen | wie Anhang |
 | Größengrenze je Anhang | beim Kopieren durchgesetzt | erst nach dem Lesen, weil der Leser alles im Speicher hält |
+| Wiederholte Anhänge | jeder Teil wird gemeldet | ein Anhang mit denselben Daten wie ein früherer derselben Nachricht wird übersprungen; alle Anhänge zusammen dürfen nicht größer sein als die Nachrichtendatei, der Rest wird übersprungen |
 
 **Speicherkontingent.** Die Mail meldet als eigene Größe nur Kopfblock plus Nachrichtentext.
 Sonst stünden die Anhänge, die in der Rohdatei base64-kodiert stecken, doppelt in der Bilanz:
@@ -156,10 +158,15 @@ Schlüssel unter `opaa.indexing.mail.*`:
 
 Die Verschachtelungstiefe für Mail-in-Mail ist kein eigener Mail-Schlüssel, sondern
 die allgemeine `opaa.indexing.attachments.max-depth` (siehe [Wissensbibliotheken](../README.md)) - dieselbe
-Grenze gilt für jede Anhangskette, unabhängig vom Konnektor.
+Grenze gilt für jede Anhangskette, unabhängig vom Konnektor, ebenso das Budget je Ausgangsdokument
+über alle Ebenen (`opaa.indexing.attachments.max-per-root`, `max-bytes-per-root`).
 
 Die Anhangsgrenzen oben schützen Platte und nachgelagerte Verarbeitung, nicht den Parse-Vorgang
 selbst.
+
+Kopfdaten und Nachrichtentext zusammen unterliegen außerdem der gemeinsamen Textgrenze
+`opaa.indexing.parser-limits.max-text-characters` ([Grenzen beim Lesen](README.md#grenzen-beim-lesen));
+eine Mail darüber ist „fehlgeschlagen", bevor ihr Text in Chunks zerlegt wird.
 
 ## 8. Nicht verarbeitet
 

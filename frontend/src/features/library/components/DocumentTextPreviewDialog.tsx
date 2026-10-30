@@ -9,12 +9,14 @@ import DialogTitleWithClose from '@/shared/ui/DialogTitleWithClose'
 import MarkdownRenderer from '@/shared/ui/markdown/MarkdownRenderer'
 import type { TextPreviewResult } from '../utils/documentContent'
 import { fontFamily, markHighlight } from '@/shared/theme/tokens'
-import { passageRange } from '../utils/textPassage'
+import { NO_ANCHOR_NOTICE, passageRange } from '../utils/textPassage'
+import { downloadBlob } from '../utils/documentContent'
+import DownloadOriginalButton from './DownloadOriginalButton'
 
 /** Name of the CSS Custom Highlight that marks the cited passage. */
 const PASSAGE_HIGHLIGHT = 'opaa-passage'
 
-type MarkState = 'none' | 'marked' | 'scrolled' | 'not-found'
+type MarkState = 'none' | 'marked' | 'scrolled' | 'not-found' | 'no-anchor'
 
 interface DocumentTextPreviewDialogProps {
   /** `null` keeps the dialog closed - the last previewed document's content stays out of the DOM once
@@ -94,7 +96,12 @@ export default function DocumentTextPreviewDialog({
     [previewDocument],
   )
 
-  const markState = mark?.of === previewDocument ? mark.state : 'none'
+  const markState =
+    previewDocument?.anchor === null
+      ? 'no-anchor'
+      : mark?.of === previewDocument
+        ? mark.state
+        : 'none'
   return (
     <Dialog
       open={previewDocument != null}
@@ -104,7 +111,17 @@ export default function DocumentTextPreviewDialog({
       scroll="paper"
       aria-labelledby={TITLE_ID}
     >
-      <DialogTitleWithClose id={TITLE_ID} onClose={onClose}>
+      <DialogTitleWithClose
+        id={TITLE_ID}
+        onClose={onClose}
+        actions={
+          previewDocument && (
+            <DownloadOriginalButton
+              onDownload={() => downloadBlob(previewDocument.blob, previewDocument.fileName)}
+            />
+          )
+        }
+      >
         <Typography component="span" sx={{ fontWeight: 600, wordBreak: 'break-word' }}>
           {previewDocument?.fileName}
         </Typography>
@@ -122,16 +139,20 @@ export default function DocumentTextPreviewDialog({
         sx={
           markState === 'not-found'
             ? { px: 3, pb: 1, fontSize: 13, color: 'warning.main', fontWeight: 600 }
-            : visuallyHidden
+            : markState === 'no-anchor'
+              ? { px: 3, pb: 1, fontSize: 13, color: 'text.secondary' }
+              : visuallyHidden
         }
       >
         {markState === 'not-found'
           ? 'Die Fundstelle wurde im Dokument nicht gefunden.'
-          : markState === 'marked'
-            ? 'Fundstelle markiert.'
-            : markState === 'scrolled'
-              ? 'Zur Fundstelle gescrollt.'
-              : ''}
+          : markState === 'no-anchor'
+            ? NO_ANCHOR_NOTICE
+            : markState === 'marked'
+              ? 'Fundstelle markiert.'
+              : markState === 'scrolled'
+                ? 'Zur Fundstelle gescrollt.'
+                : ''}
       </Typography>
       <DialogContent dividers ref={markPassage}>
         {previewDocument?.contentType === 'text/markdown' ? (

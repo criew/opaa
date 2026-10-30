@@ -72,6 +72,8 @@ class InstallationAccessFilterTest {
     assertThat(response.getStatus()).isEqualTo(400);
     assertThat(response.getContentAsString()).contains(InstallationAccessFilter.TOO_LARGE_MESSAGE);
     assertThat(chain.getRequest()).isNull();
+    assertThat(response.getHeader("X-Content-Type-Options")).isEqualTo("nosniff");
+    assertThat(response.getHeader("X-Frame-Options")).isEqualTo("DENY");
   }
 
   @Test

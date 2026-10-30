@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt durch ADR-0023, ADR-0027, ADR-0036 (Entscheidung 6), ADR-0038, ADR-0039, ADR-0041, ADR-0063
+Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt durch ADR-0023, ADR-0027, ADR-0036 (Entscheidung 6), ADR-0038, ADR-0039, ADR-0041, ADR-0063, ADR-0064
 
 ## Kontext
 
@@ -50,8 +50,9 @@ Asset-Typen.
 
 Zugangsdaten erscheinen in keiner API-Antwort und keinem Log; die API behandelt sie als
 Nur-Schreiben-Feld, die Oberfläche zeigt höchstens, dass welche hinterlegt sind. Sie liegen
-verschlüsselt in `source_credentials` (`CredentialsEncryptor`, Schlüssel aus der Umgebung) und nie in
-`source_settings` (ADR-0038 Entscheidung 3).
+verschlüsselt in `source_credentials` (`CredentialsEncryptor`, Schlüssel aus der Umgebung, an die
+Bibliothek gebunden und wechselbar nach ADR-0064) und nie in `source_settings` (ADR-0038
+Entscheidung 3).
 
 ### 5. Löschregel je Typ
 

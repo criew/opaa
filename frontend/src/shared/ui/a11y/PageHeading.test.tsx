@@ -2,6 +2,7 @@ import { screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { renderWithProviders } from '../../../test/test-utils'
 import PageHeading, { MAIN_CONTENT_ID } from './PageHeading'
+import { ARRIVAL_FOCUS_ATTRIBUTE } from './routeFocus'
 
 function mountMain(): HTMLElement {
   const main = document.createElement('main')
@@ -32,6 +33,16 @@ describe('PageHeading', () => {
     main.focus()
     renderWithProviders(<PageHeading title="Gruppen" />)
     expect(screen.getByRole('heading', { level: 1 })).toHaveFocus()
+  })
+
+  it("hands the route-change focus to the page's arrival focus target", () => {
+    const main = mountMain()
+    const field = document.createElement('textarea')
+    field.setAttribute(ARRIVAL_FOCUS_ATTRIBUTE, '')
+    main.appendChild(field)
+    main.focus()
+    renderWithProviders(<PageHeading title="Neuer Chat" />)
+    expect(field).toHaveFocus()
   })
 
   it('leaves focus alone when <main> is not focused', () => {

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · Entscheidung 5 teilweise ersetzt durch ADR-0060 (Entscheidung 8) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
+Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · Entscheidung 5 teilweise ersetzt durch ADR-0060 (Entscheidung 8) · Entscheidung 9 ergänzt durch ADR-0060 (Entscheidung 17) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
 
 ## Kontext
 
@@ -164,7 +164,8 @@ absolute Höchstdauer `session-max-lifetime` (30 Tage, höchstens 90); für loka
 Start validiert wie das Secret. Cookie `opaa_refresh`:
 `HttpOnly`, `SameSite=Strict`, `Secure`, `Path=/api/v1/auth/local`; `cookie-secure = false` ist für
 lokales HTTP zulässig und erzeugt im `oidc`-Profil eine `WARN`-Zeile. Das Access-Token hält die SPA
-nur im Speicher. CSRF nur, wo das Cookie trägt (`refresh`, `logout`, Double-Submit `X-XSRF-TOKEN`).
+nur im Speicher. CSRF nur, wo das Cookie trägt (`refresh`, `logout`, Double-Submit `X-XSRF-TOKEN`);
+das Cookie `XSRF-TOKEN` bleibt für die SPA lesbar und trägt ebenfalls `SameSite=Strict`.
 Widerruf in zwei Schichten: `jti`-Denylist (Caffeine-Cache, `expireAfterWrite = access-token-ttl`)
 und `password_invalidated_before`; Logout und Passwortwechsel wirken sofort.
 `LocalTokenCleanupScheduler` (täglich 03:20) löscht Token-Zeilen spätestens sieben Tage nach Ablauf
@@ -209,7 +210,9 @@ Konten").
   ihre Tokens) und global; eine Abweisung je Konto gibt die übrigen Marken zurück, ein Zugangstoken
   seine Adressmarke; jede `429` einer späteren Grenze, die vor der eigentlichen Arbeit abweist
   (Token-Kontingent, Belegt-Meldung der Anhangsauswertung), gibt die globale zurück.
-- **Kontosperre** nach 5 Fehlversuchen für 15 Minuten, auditiert
+- **Kontosperre** nach Fehlversuchen für eine feste Dauer, Werkseinstellung 5 Fehlversuche und 15
+  Minuten, von der Systemverwaltung innerhalb der Grenzen des Betriebs einstellbar (ADR-0060,
+  Entscheidung 17), auditiert
   (`LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS`); der einzelne Fehlversuch steht nur im Anwendungslog
   (Konto-Kennung, nie die Adresse), dessen Aufbewahrung Betriebskonfiguration ist. Ein eingelöster
   Rücksetzlink hebt die Sperre auf (der Besitz des Postfachs ist der Nachweis); der Login antwortet
@@ -221,7 +224,10 @@ Konten").
   weiter als `/8` verweigert den Start (`RateLimitProperties`), eine leere Liste im `oidc`-Profil
   warnt (`TrustedProxyStartupGuard`). Schema und Host übernimmt der Filter ungeprüft (Konsequenzen).
   `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` (`LocalAdminNetworkPolicy`) beschränkt lokale Systemverwalter,
-  solange es keinen zweiten Faktor gibt; MFA ist nicht gebaut.
+  solange es keinen zweiten Faktor gibt; MFA ist nicht gebaut. Die Regel gilt bei der Anmeldung, bei
+  der Erneuerung (ein Refresh von außerhalb wird wie ein unbekanntes Token abgewiesen und lässt die
+  Familie stehen) und bei jeder Anfrage (`LocalAdminNetworkFilter`, `403` mit
+  `ADMIN_NETWORK_REQUIRED`, nur die Abmeldung bleibt offen).
 - **Kein Geheimnis im Log** außer dem Einmalpasswort des Seeds (`LocalAuthLogPrivacyIntegrationTest`).
 
 Werte und Diagnose: [Konfiguration](../handbuch/betrieb/konfiguration.md),

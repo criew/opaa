@@ -144,8 +144,9 @@ const aiStubPort = process.env.OPAA_AI_STUB_PORT ?? '18089'
 // The host-published port of the suite's own Nextcloud (docker-compose.e2e.yml),
 // where the scenarios create accounts and files with WebDAV. Only the "e2e" target runs one.
 const nextcloudPort = process.env.OPAA_NEXTCLOUD_PORT ?? '18090'
-// Host port of dropbox-stub; the browser follows its consent page.
-const dropboxStubPort = process.env.OPAA_DROPBOX_STUB_PORT ?? '18091'
+// Host port of dropbox-stub; the browser follows its consent page. The "local-auth" target runs one
+// of its own for the connection log of its revision scenario, on a port of its own.
+const dropboxStubPort = process.env.OPAA_DROPBOX_STUB_PORT ?? (isLocalAuth ? '18093' : '18091')
 const keycloakPort = '8180'
 const baseUrl = process.env.E2E_BASE_URL ?? `http://localhost:${frontendPort}`
 const readyUrl = `${baseUrl}/api/v1/auth/config`
@@ -250,6 +251,7 @@ const composeEnv = {
       : isInstallation
         ? '172.27.0.10'
         : '172.29.0.10',
+  ...(isLocalAuth ? { OPAA_DROPBOX_STUB_PORT: dropboxStubPort } : {}),
   ...(isDemo || isLocalAuth || isInstallation
     ? {}
     : {
@@ -286,7 +288,9 @@ function dumpLogs() {
         ? 'docker-compose.local-auth.log'
         : isInstallation
           ? 'docker-compose.installation.log'
-          : 'docker-compose.log',
+          : process.env.E2E_BROWSER === 'firefox'
+            ? 'docker-compose.firefox.log'
+            : 'docker-compose.log',
   )
   console.log(`\n> Saving container logs to ${logPath}`)
   const result = spawnSync('docker', [...composeArgs, 'logs', '--no-color', '--timestamps'], {
@@ -467,12 +471,22 @@ async function runStack(variantArgs = [], variantEnv = {}) {
       ]
     : isLocalAuth
       ? // No keycloak and no rss-feed: this target's whole point is an installation without an
-        // OIDC provider, and no scenario indexes anything.
-        ['ai-stub', 'mailpit', 'postgres', 'backend', 'frontend']
+        // OIDC provider, and no scenario indexes anything. dropbox-stub is the source the revision
+        // scenario connects, for an entry in the connection log.
+        ['ai-stub', 'mailpit', 'dropbox-stub', 'postgres', 'backend', 'frontend']
       : isInstallation
         ? // ai-stub is the chat model the assistant's check calls, mailpit its mail server.
           ['ai-stub', 'mailpit', 'postgres', 'backend', 'frontend']
-        : ['ai-stub', 'rss-feed', 'nextcloud', 'dropbox-stub', 'postgres', 'backend', 'frontend']
+        : [
+            'ai-stub',
+            'rss-feed',
+            'nextcloud',
+            'dropbox-stub',
+            'clamd-stub',
+            'postgres',
+            'backend',
+            'frontend',
+          ]
   console.log(
     `> Starting ${target} stack (${services.join(', ')}) as Compose project "${composeProjectName}"` +
       ` on ports ${dbPort}/${backendPort}/${frontendPort}` +
@@ -561,6 +575,10 @@ async function runStack(variantArgs = [], variantEnv = {}) {
             E2E_SMTP_PORT: '1025',
             E2E_BOOTSTRAP_ADMIN_EMAIL: bootstrapAdmin.email,
             E2E_BOOTSTRAP_ADMIN_PASSWORD: bootstrapAdmin.password,
+            // The revision scenario reads the first auditor's password link from the backend's
+            // container log - the one place it goes to.
+            E2E_COMPOSE_PROJECT: composeProjectName,
+            E2E_FIRST_AUDITOR_EMAIL: envFileValue('OPAA_AUTH_FIRST_AUDITOR_EMAIL') ?? '',
           }
         : {}),
       ...(isInstallation

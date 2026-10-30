@@ -12,3 +12,14 @@ export function keepsFocus(state: unknown): boolean {
     (state as { keepFocus?: unknown }).keepFocus === true
   )
 }
+
+/**
+ * Marks the element a page wants focused on arrival instead of its heading, e.g. the question
+ * field of a new chat. Both AppShell and PageHeading honour it; at most one per page.
+ */
+export const ARRIVAL_FOCUS_ATTRIBUTE = 'data-arrival-focus'
+
+/** The arrival focus target inside `container`, see {@link ARRIVAL_FOCUS_ATTRIBUTE}. */
+export function arrivalFocusTarget(container: ParentNode): HTMLElement | null {
+  return container.querySelector<HTMLElement>(`[${ARRIVAL_FOCUS_ATTRIBUTE}]`)
+}

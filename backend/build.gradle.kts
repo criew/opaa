@@ -488,12 +488,90 @@ tasks.named("check") {
     dependsOn(dnsRebindingTest)
 }
 
+// Crafted input files (*HostileInputTest, docs/entwicklung/regressionssuite-eingaben.md) in a JVM
+// of a fixed small heap: a parser that no longer bounds the memory one document costs fails here
+// with an OutOfMemoryError instead of passing in the suite's 2 GB. Each case also has a time bound.
+// Part of check, so CI's `build -x :test` job runs it.
+val hostileInputTest = tasks.register<Test>("hostileInputTest") {
+    description = "Crafted input files against the parsers, in a JVM of 512 MB heap."
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    filter {
+        includeTestsMatching("*HostileInputTest")
+    }
+    maxHeapSize = "512m"
+}
+
+tasks.named("check") {
+    dependsOn(hostileInputTest)
+}
+
+// Parser fuzzing (io.opaa.fuzz.ParserFuzzTest): a time-boxed campaign of mutated inputs over the
+// corpus under src/test/resources/fuzz/corpus, on the production path of the formats. Nightly in
+// CI (.github/workflows/parser-fuzzing.yml), findings under build/fuzz-findings; -PfuzzDuration
+// (ISO-8601), -PfuzzSeed, -PfuzzInputTimeout and -PfuzzReplay=<file or directory>. The heap is
+// fixed, so an amplification shows as OutOfMemoryError. Not part of build/check; the corpus itself
+// runs in every build through FuzzCorpusTest.
+tasks.register<Test>("parserFuzzTest") {
+    description = "Time-boxed parser fuzzing on the production path of the formats " +
+        "(io.opaa.fuzz.ParserFuzzTest); not part of build/check."
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    filter {
+        includeTestsMatching("io.opaa.fuzz.ParserFuzzTest")
+    }
+    maxHeapSize = "1g"
+    // a StackOverflowError keeps its bottom frames, where the signature finds OPAA's own code
+    jvmArgs("-XX:MaxJavaStackTraceDepth=100000")
+    systemProperty(
+        "opaa.fuzz.findings",
+        layout.buildDirectory.dir("fuzz-findings").get().asFile.absolutePath,
+    )
+    mapOf(
+        "fuzzDuration" to "opaa.fuzz.duration",
+        "fuzzSeed" to "opaa.fuzz.seed",
+        "fuzzInputTimeout" to "opaa.fuzz.inputTimeout",
+        "fuzzReplay" to "opaa.fuzz.replay",
+    ).forEach { (property, key) ->
+        providers.gradleProperty(property).orNull?.let { systemProperty(key, it) }
+    }
+    testLogging {
+        events("passed", "skipped", "failed")
+    }
+    // Only the campaign's own lines reach the log, not what the parsers print on the way.
+    onOutput(
+        KotlinClosure2<TestDescriptor, TestOutputEvent, Unit>({ _, event ->
+            if (event.message.startsWith("[parser-fuzz]")) {
+                logger.lifecycle(event.message.trimEnd())
+            }
+        }),
+    )
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
+tasks.register<JavaExec>("writeParserFuzzCorpus") {
+    description = "Rewrites the generated seeds of the parser fuzzing corpus (io.opaa.fuzz)."
+    group = "verification"
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("io.opaa.fuzz.FuzzCorpusGenerator")
+    args(layout.projectDirectory.dir("src/test/resources/fuzz/corpus").asFile.absolutePath)
+}
+
 tasks.named<Test>("test") {
     filter {
+        excludeTestsMatching("io.opaa.fuzz.ParserFuzzTest")
+        excludeTestsMatching("*HostileInputTest")
         excludeTestsMatching("*RebindingTest")
         excludeTestsMatching("io.opaa.integration.*")
         excludeTestsMatching("*.GoogleDriveWorkspaceIntegrationTest")
         excludeTestsMatching("*.SharePointTenantIntegrationTest")
+    }
+    // a failed assertion's message reaches the CI log, which is often all there is to read
+    testLogging {
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
     }
     providers.gradleProperty("testShard").orNull?.let { shard ->
         filter {

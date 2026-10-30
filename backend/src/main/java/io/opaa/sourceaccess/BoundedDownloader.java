@@ -326,7 +326,29 @@ public class BoundedDownloader {
       Duration transferTimeout,
       Predicate<URI> authorizationScope)
       throws IOException, InterruptedException {
-    log.debug("Streaming (bounded to {} bytes): {}", maxBytes, fileUrl);
+    return downloadStreaming(
+        httpClient,
+        fileUrl,
+        maxBytes,
+        authHeader,
+        perRequestTimeout,
+        transferTimeout,
+        authorizationScope,
+        LoggedName.OPEN);
+  }
+
+  /** The same, its log lines naming {@code fileUrl} and a refused host as {@code names} decides. */
+  public DownloadedStream downloadStreaming(
+      HttpClient httpClient,
+      String fileUrl,
+      long maxBytes,
+      String authHeader,
+      Duration perRequestTimeout,
+      Duration transferTimeout,
+      Predicate<URI> authorizationScope,
+      LoggedName names)
+      throws IOException, InterruptedException {
+    log.debug("Streaming (bounded to {} bytes): {}", maxBytes, names.of(fileUrl));
 
     HttpResponse<InputStream> response =
         RedirectFollowingFetcher.sendFollowingRedirects(
@@ -334,7 +356,7 @@ public class BoundedDownloader {
             fileUrl,
             perRequestTimeout,
             requestPolicy.headers(authHeader),
-            targetAddressValidator,
+            validatorFor(names),
             RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN,
             RateLimitHandling.NONE,
             authorizationScope);
@@ -352,8 +374,15 @@ public class BoundedDownloader {
 
     String contentType = response.headers().firstValue("Content-Type").orElse(null);
     InputStream bounded = BoundedStreams.inputBefore(response.body(), maxBytes, deadline);
-    log.debug("Streaming {} (content-type {})", fileUrl, contentType);
+    log.debug("Streaming {} (content-type {})", names.of(fileUrl), contentType);
     return new DownloadedStream(bounded, contentType);
+  }
+
+  /** The validator whose log lines name a refused host as {@code names} decides. */
+  private TargetAddressValidator validatorFor(LoggedName names) {
+    return names.isWithheld()
+        ? targetAddressValidator.namingHostsAs(names::of)
+        : targetAddressValidator;
   }
 
   /**
@@ -380,7 +409,7 @@ public class BoundedDownloader {
             fileUrl,
             DOWNLOAD_TIMEOUT,
             headers,
-            targetAddressValidator,
+            validatorFor(names),
             redirectPolicy,
             requestPolicy.rateLimitHandling(rateLimitListener),
             authorizationScope);

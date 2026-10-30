@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import io.micrometer.observation.ObservationRegistry;
 import io.opaa.FakeEmbeddingModel;
 import io.opaa.indexing.chunk.ScriptedEmbeddingEndpoint;
+import io.opaa.security.CipherFormatGate;
 import io.opaa.security.SettingsEncryptionProperties;
 import io.opaa.security.SettingsEncryptor;
 import java.time.Duration;
@@ -39,7 +40,8 @@ class InstalledEmbeddingModelTest {
   private final InstalledEmbeddingModel model =
       new InstalledEmbeddingModel(
           repository,
-          new SettingsEncryptor(new SettingsEncryptionProperties(null)),
+          new SettingsEncryptor(
+              new SettingsEncryptionProperties(null, List.of()), CipherFormatGate.KEYED),
           factory,
           models,
           event -> {},
@@ -141,7 +143,8 @@ class InstalledEmbeddingModelTest {
     InstalledEmbeddingModel announcing =
         new InstalledEmbeddingModel(
             repository,
-            new SettingsEncryptor(new SettingsEncryptionProperties(null)),
+            new SettingsEncryptor(
+                new SettingsEncryptionProperties(null, List.of()), CipherFormatGate.KEYED),
             factory,
             models,
             published::add,

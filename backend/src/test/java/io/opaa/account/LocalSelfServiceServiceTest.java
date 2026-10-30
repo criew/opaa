@@ -60,7 +60,7 @@ class LocalSelfServiceServiceTest {
   void setUp() {
     when(registry.localAccountsEnabled()).thenReturn(true);
     when(publicBaseUrl.isConfigured()).thenReturn(true);
-    settings(new Values(true, List.of("stadt.example"), true, 12, 72, 30, 90, 90));
+    settings(new Values(true, List.of("stadt.example"), true, 12, 72, 30, 90, 90, null, null));
     service =
         new LocalSelfServiceService(
             accounts, passwords, settings, registry, publicBaseUrl, executor);
@@ -71,13 +71,13 @@ class LocalSelfServiceServiceTest {
     assertThat(service.isPasswordResetAvailable()).isTrue();
     assertThat(service.isSelfRegistrationAvailable()).isTrue();
 
-    settings(new Values(true, List.of(), true, 12, 72, 30, 90, 90));
+    settings(new Values(true, List.of(), true, 12, 72, 30, 90, 90, null, null));
     assertThat(service.isSelfRegistrationAvailable()).isFalse();
-    settings(new Values(false, List.of("stadt.example"), false, 12, 72, 30, 90, 90));
+    settings(new Values(false, List.of("stadt.example"), false, 12, 72, 30, 90, 90, null, null));
     assertThat(service.isSelfRegistrationAvailable()).isFalse();
     assertThat(service.isPasswordResetAvailable()).isFalse();
 
-    settings(new Values(true, List.of("stadt.example"), true, 12, 72, 30, 90, 90));
+    settings(new Values(true, List.of("stadt.example"), true, 12, 72, 30, 90, 90, null, null));
     when(publicBaseUrl.isConfigured()).thenReturn(false);
     assertThat(service.isPasswordResetAvailable()).isFalse();
     assertThat(service.isSelfRegistrationAvailable()).isFalse();

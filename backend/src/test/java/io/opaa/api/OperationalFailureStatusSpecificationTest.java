@@ -17,9 +17,12 @@ import io.opaa.knowledge.UploadProperties;
 import io.opaa.llm.TranscriptionModelRole;
 import io.opaa.query.answer.AnswerGenerationService;
 import io.opaa.retrieval.RetrievalPipeline;
+import io.opaa.security.CipherBinding;
+import io.opaa.security.CipherFormatGate;
 import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import io.opaa.security.CredentialsEncryptionProperties;
 import io.opaa.security.CredentialsEncryptor;
+import io.opaa.security.EncryptedCredentials;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import java.io.InputStream;
@@ -38,6 +41,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.retry.NonTransientAiException;
@@ -290,25 +294,29 @@ class OperationalFailureStatusSpecificationTest {
    * out is reported as absent, and a blank write needs no key at all. Only an operation that writes
    * a non-blank value can therefore answer {@code 503}.
    *
-   * <p>The blank write alone does not carry the two removals, because the flush writes the whole
-   * row: a non-blank value in the <em>other</em> encrypted column would be re-encrypted with it.
-   * That column is either already encrypted - then the read reported it absent and the flush writes
-   * {@code null} - or legacy cleartext, and legacy cleartext predates the encryption. The removals
-   * exist only for {@code CONFLUENCE} and {@code S3}, both introduced long after it, so no library
-   * they can reach carries any.
+   * <p>The blank write alone carries the two removals, because the flush writes the whole row: the
+   * <em>other</em> encrypted column, as loaded, goes back to the database exactly as stored and
+   * needs no key either.
    */
   @Test
   void aSecretIsRefusedOnWriteWithoutTheKeyAndToleratedOnReadAndOnErasure() {
     SourceCredentialsConverter converter =
         new SourceCredentialsConverter(
-            new CredentialsEncryptor(new CredentialsEncryptionProperties(null)));
+            new CredentialsEncryptor(
+                new CredentialsEncryptionProperties(null, List.of()), CipherFormatGate.KEYED));
+    CipherBinding row = KnowledgeLibrary.SOURCE_CREDENTIALS.row(UUID.randomUUID());
 
-    assertThatThrownBy(() -> converter.convertToDatabaseColumn("user:secret"))
+    assertThatThrownBy(
+            () -> converter.convertToDatabaseColumn(EncryptedCredentials.of("user:secret", row)))
         .as("a secret written without a key")
         .isInstanceOf(CredentialsEncryptionKeyMissingException.class);
-    assertThat(converter.convertToEntityAttribute("enc:v1:Zm9vYmFy"))
-        .as("a secret read without a key")
-        .isNull();
+    EncryptedCredentials loaded = converter.convertToEntityAttribute("enc:v1:Zm9vYmFy");
+    assertThatThrownBy(() -> loaded.read(row))
+        .as("a secret read without a key, which the entity getter reports as absent")
+        .isInstanceOf(CredentialsEncryptionKeyMissingException.class);
+    assertThat(converter.convertToDatabaseColumn(loaded))
+        .as("a loaded secret written back without a key")
+        .isEqualTo("enc:v1:Zm9vYmFy");
     assertThat(converter.convertToDatabaseColumn(null))
         .as("an erased secret written without a key")
         .isNull();

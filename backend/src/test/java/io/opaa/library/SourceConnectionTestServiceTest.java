@@ -1069,6 +1069,41 @@ class SourceConnectionTestServiceTest {
     verify(connectorRelease, never()).requireCreatable(any(), any(), any());
   }
 
+  // regression guard for #3358 (1): a probe of another origin is a new target and needs the release
+  @Test
+  void libraryIdProbeOfAnotherOriginNeedsTheConnectorRelease() {
+    UUID libraryId = UUID.randomUUID();
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByUser(
+            organizationId,
+            "Bibliothek",
+            null,
+            currentUserId,
+            SourceTypes.HTTP_DIRECTORY,
+            null,
+            baseUrl + "/manager-dir/",
+            "admin:secret");
+    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    when(libraryAccessService.requireRole(library, currentUserId, false, AssetRole.MANAGER))
+        .thenReturn(AssetRole.MANAGER);
+    doThrow(new AccessDeniedException("Ihnen fehlt das Anlegerecht", "CAPABILITY_REQUIRED"))
+        .when(connectorRelease)
+        .requireCreatable(caller, SourceTypes.HTTP_DIRECTORY, null);
+
+    assertThatThrownBy(
+            () ->
+                service.test(
+                    sourceConnectionTest()
+                        .sourceType(SourceTypes.HTTP_DIRECTORY)
+                        .sourceUrl(URI.create("http://fremd.invalid/dir/"))
+                        .sourceCredentials("own:credentials")
+                        .libraryId(libraryId)
+                        .build(),
+                    caller))
+        .isInstanceOf(AccessDeniedException.class)
+        .hasMessage("Ihnen fehlt das Anlegerecht");
+  }
+
   @Test
   void libraryIdOfUnknownLibraryIsRejectedWith404() {
     UUID libraryId = UUID.randomUUID();

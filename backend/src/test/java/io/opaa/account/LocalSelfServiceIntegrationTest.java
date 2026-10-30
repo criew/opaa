@@ -930,7 +930,9 @@ class LocalSelfServiceIntegrationTest {
         d.invitationTokenTtlHours(),
         d.resetTokenTtlMinutes(),
         d.defaultExpiryDays(),
-        d.inactiveDays());
+        d.inactiveDays(),
+        d.lockoutMaxAttempts(),
+        d.lockoutDurationMinutes());
   }
 
   private static Values withPasswordReset(boolean enabled) {
@@ -943,7 +945,9 @@ class LocalSelfServiceIntegrationTest {
         d.invitationTokenTtlHours(),
         d.resetTokenTtlMinutes(),
         d.defaultExpiryDays(),
-        d.inactiveDays());
+        d.inactiveDays(),
+        d.lockoutMaxAttempts(),
+        d.lockoutDurationMinutes());
   }
 
   private int spacesOwnedBy(UUID userId) {

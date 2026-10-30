@@ -79,6 +79,8 @@ jobs:
           OWNER: ${{ github.repository_owner }}
           # A release run always has both SBOMs; a trial of an older release may lack them.
           REQUIRE_SBOMS: ${{ inputs.update-package-from-run }}
+          # Likewise the image attestations, which older releases do not have.
+          REQUIRE_IMAGE_ATTESTATIONS: ${{ inputs.update-package-from-run }}
         run: |
           owner="$(tr '[:upper:]' '[:lower:]' <<<"$OWNER")"
           export IMAGE_PREFIX="ghcr.io/$owner/opaa" CHART_REPOSITORY="ghcr.io/$owner/charts"

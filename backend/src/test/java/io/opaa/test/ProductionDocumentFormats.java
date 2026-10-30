@@ -2,7 +2,9 @@ package io.opaa.test;
 
 import io.opaa.format.DocumentFormat;
 import io.opaa.format.DocumentFormatRegistry;
+import io.opaa.format.DocumentService;
 import io.opaa.format.SupportedDocumentFormats;
+import io.opaa.format.chunk.ChunkingService;
 import io.opaa.format.file.fallback.TikaFallbackFormat;
 import io.opaa.format.file.html.HtmlDocumentFormat;
 import io.opaa.format.file.mail.MailDocumentFormat;
@@ -26,9 +28,11 @@ import java.util.List;
  * context - for a unit test that needs the admission set the application actually applies ({@link
  * #supportedFormats()}) rather than a hand-picked one.
  *
- * <p>Constructed with {@code null}/zero collaborators: nothing here is ever run, only asked what it
- * admits and declares. {@code DocumentFormatRegistryRoutingIntegrationTest} asserts this list
- * against the wired context, so a format added there and forgotten here fails loudly.
+ * <p>{@link #formats()} is constructed with {@code null}/zero collaborators: it is never run, only
+ * asked what it admits and declares; {@link #formats(DocumentService, ChunkingService)} is the same
+ * list able to run a document, with the default limits. {@code
+ * DocumentFormatRegistryRoutingIntegrationTest} asserts this list against the wired context, so a
+ * format added there and forgotten here fails loudly.
  */
 public final class ProductionDocumentFormats {
 
@@ -36,8 +40,16 @@ public final class ProductionDocumentFormats {
 
   /** Every registered format, the fallback first, exactly as the application registers them. */
   public static List<DocumentFormat> formats() {
+    return formats(null, null);
+  }
+
+  /**
+   * {@link #formats()} able to run a document: the fallback reads through {@code documents}, the
+   * fallback and the mail format cut with {@code chunking}; every other format needs neither.
+   */
+  public static List<DocumentFormat> formats(DocumentService documents, ChunkingService chunking) {
     return List.of(
-        new TikaFallbackFormat(null, null),
+        new TikaFallbackFormat(documents, chunking),
         new TabularDocumentFormat(
             new TabularProperties(0, 0, 0, 0), HeadingSectionSplitterFixture.DEFAULT),
         new HtmlDocumentFormat(HeadingSectionSplitterFixture.DEFAULT),
@@ -50,7 +62,14 @@ public final class ProductionDocumentFormats {
         new OdpDocumentFormat(
             new OdfProperties(0, 0, 0, 0, 0), HeadingSectionSplitterFixture.DEFAULT),
         new PdfDocumentFormat(HeadingSectionSplitterFixture.DEFAULT),
-        new MailDocumentFormat(null, new MailProperties(0, 0, 0), Clock.systemUTC()));
+        new MailDocumentFormat(chunking, new MailProperties(0, 0, 0), Clock.systemUTC()));
+  }
+
+  /** The registry of {@link #formats(DocumentService, ChunkingService)}, the fallback first. */
+  public static DocumentFormatRegistry registry(
+      DocumentService documents, ChunkingService chunking) {
+    List<DocumentFormat> formats = formats(documents, chunking);
+    return new DocumentFormatRegistry(formats, formats.getFirst());
   }
 
   /** The admission the application derives from {@link #formats()}. */

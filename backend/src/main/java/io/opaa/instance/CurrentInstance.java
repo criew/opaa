@@ -1,6 +1,7 @@
 package io.opaa.instance;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -107,6 +108,16 @@ public class CurrentInstance implements SmartLifecycle {
     return registry.instances().stream()
         .filter(RegisteredInstance::alive)
         .allMatch(instance -> InstanceVersion.compare(instance.version(), version.version()) == 0);
+  }
+
+  /**
+   * Whether an instance of another version than this one, compared as in {@link
+   * #allLiveInstancesRunThisVersion()}, has sent a heartbeat after {@code since}.
+   */
+  public boolean anotherVersionRanSince(Instant since) {
+    return registry.instances().stream()
+        .filter(instance -> instance.heartbeatAt() != null && instance.heartbeatAt().isAfter(since))
+        .anyMatch(instance -> InstanceVersion.compare(instance.version(), version.version()) != 0);
   }
 
   @Override

@@ -193,7 +193,12 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
     ConnectedAccount account =
         existing.orElseGet(
             () -> new ConnectedAccount(caller.organizationId(), caller.id(), profile.getId(), now));
-    account.connected(label == null ? null : encryptor.encrypt(label), now, existing.isPresent());
+    account.connected(
+        label == null
+            ? null
+            : encryptor.encrypt(label, ConnectedAccount.ACCOUNT_LABEL.row(account.getId())),
+        now,
+        existing.isPresent());
     accounts.saveAndFlush(account);
     secrets.store(
         new PersonOwned(profile.getId(), caller.id()), secret, effective.personTarget(profile));
@@ -626,7 +631,7 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
       return null;
     }
     try {
-      return encryptor.decrypt(ciphertext);
+      return encryptor.decrypt(ciphertext, ConnectedAccount.ACCOUNT_LABEL.row(account.getId()));
     } catch (CredentialsEncryptionKeyMissingException e) {
       return null;
     }

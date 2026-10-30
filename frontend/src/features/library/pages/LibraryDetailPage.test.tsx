@@ -209,7 +209,8 @@ const { mockOpenDocumentContent } = vi.hoisted(() => ({
   })),
 }))
 
-vi.mock('../utils/documentContent', () => ({
+vi.mock('../utils/documentContent', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../utils/documentContent')>()),
   openDocumentContent: mockOpenDocumentContent,
 }))
 
@@ -921,7 +922,7 @@ describe('LibraryDetailPage', () => {
       await user.click(await screen.findByLabelText('Freigabe an Alle erlaubt'))
       await user.click(
         await screen.findByRole('button', {
-          name: 'Obergrenze „Freigabe an Alle erlaubt“ speichern',
+          name: 'Obergrenze speichern: Freigabe an Alle erlaubt',
         }),
       )
 
@@ -3479,6 +3480,7 @@ describe('LibraryDetailPage', () => {
       )
       mockOpenDocumentContent.mockResolvedValueOnce({
         kind: 'text-preview',
+        blob: new Blob(),
         fileName: '001_personalausweis.md',
         contentType: 'text/markdown',
         content: '# Personalausweis\n\nAusgestellt am 1. März.',
@@ -3503,7 +3505,7 @@ describe('LibraryDetailPage', () => {
 
     // Every format without a preview (DOCX among them) must give visible
     // download feedback so the click never appears to do nothing.
-    it('shows a snackbar with the file name when a DOCX download starts (#780)', async () => {
+    it('opens a DOCX as its Textfassung instead of downloading it', async () => {
       mockGetLibraryDocuments.mockResolvedValueOnce(
         pageOf([
           {
@@ -3519,7 +3521,19 @@ describe('LibraryDetailPage', () => {
           },
         ]),
       )
-      mockOpenDocumentContent.mockResolvedValueOnce({ kind: 'download', fileName: 'bescheid.docx' })
+      server.use(
+        http.get('/api/v1/documents/doc-1/text', () =>
+          HttpResponse.json({
+            documentId: 'doc-1',
+            fileName: 'bescheid.docx',
+            firstChunkIndex: 0,
+            lastChunkIndex: 0,
+            passages: [{ chunkIndex: 0, text: 'Sehr geehrte Damen und Herren,' }],
+            sections: [],
+            sectionsTruncated: false,
+          }),
+        ),
+      )
       setLibraryState(managerLibrary, detailsOf(managerLibrary))
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
       const user = userEvent.setup()
@@ -3529,7 +3543,9 @@ describe('LibraryDetailPage', () => {
       })
       await user.click(button)
 
-      expect(await screen.findByText('bescheid.docx wird heruntergeladen')).toBeInTheDocument()
+      const dialog = await screen.findByRole('dialog', { name: 'bescheid.docx' })
+      expect(await within(dialog).findByText('Sehr geehrte Damen und Herren,')).toBeInTheDocument()
+      expect(mockOpenDocumentContent).not.toHaveBeenCalled()
     })
   })
 

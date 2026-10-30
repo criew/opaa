@@ -49,6 +49,7 @@ import io.opaa.permission.AssetOwnershipHistoryRepository;
 import io.opaa.permission.AssetReach;
 import io.opaa.permission.GroupMembershipHistoryRepository;
 import io.opaa.permission.GroupMembershipResolver;
+import io.opaa.security.CipherFormatGate;
 import io.opaa.security.CredentialsEncryptionProperties;
 import io.opaa.security.CredentialsEncryptor;
 import io.opaa.space.SpaceCreation;
@@ -56,6 +57,7 @@ import io.opaa.space.SpaceMembershipHistoryRepository;
 import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceService;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.PreparedStatementCount;
 import io.opaa.test.SourceTypes;
 import jakarta.persistence.EntityManagerFactory;
 import java.net.URI;
@@ -72,8 +74,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
-import org.hibernate.SessionFactory;
-import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -613,7 +613,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             response.library().getId());
     assertThat(rawColumnValue).isNotNull();
     assertThat(rawColumnValue).doesNotContain("admin:super-secret-password");
-    assertThat(rawColumnValue).startsWith("enc:v1:");
+    assertThat(rawColumnValue).startsWith("enc:v2:");
 
     // The entity mapping (via SourceCredentialsConverter) still transparently decrypts on load -
     // both the indexing executors and libraryRepository.findById see the plaintext (see
@@ -711,8 +711,9 @@ class KnowledgeLibraryServiceIntegrationTest {
     jdbcTemplate.update(
         "UPDATE knowledge_libraries SET source_credentials = ?, source_webhook_secret = ?"
             + " WHERE id = ?",
-        keyOfTheOperator.encrypt("admin:super-secret-password"),
-        keyOfTheOperator.encrypt("push-geheimnis"),
+        keyOfTheOperator.encrypt(
+            "admin:super-secret-password", KnowledgeLibrary.SOURCE_CREDENTIALS.row(libraryId)),
+        keyOfTheOperator.encrypt("push-geheimnis", KnowledgeLibrary.WEBHOOK_SECRET.row(libraryId)),
         libraryId);
     KnowledgeLibrary withoutKey = libraryRepository.findById(libraryId).orElseThrow();
     assertThat(withoutKey.getSourceCredentials()).isNull();
@@ -739,14 +740,16 @@ class KnowledgeLibraryServiceIntegrationTest {
                 jdbcTemplate.queryForObject(
                     "SELECT source_credentials FROM knowledge_libraries WHERE id = ?",
                     String.class,
-                    libraryId)))
+                    libraryId),
+                KnowledgeLibrary.SOURCE_CREDENTIALS.row(libraryId)))
         .isEqualTo("admin:super-secret-password");
     assertThat(
             keyOfTheOperator.decrypt(
                 jdbcTemplate.queryForObject(
                     "SELECT source_webhook_secret FROM knowledge_libraries WHERE id = ?",
                     String.class,
-                    libraryId)))
+                    libraryId),
+                KnowledgeLibrary.WEBHOOK_SECRET.row(libraryId)))
         .isEqualTo("push-geheimnis");
   }
 
@@ -769,7 +772,8 @@ class KnowledgeLibraryServiceIntegrationTest {
     UUID libraryId = response.library().getId();
     jdbcTemplate.update(
         "UPDATE knowledge_libraries SET source_credentials = ? WHERE id = ?",
-        keyOfTheOperator.encrypt("admin:super-secret-password"),
+        keyOfTheOperator.encrypt(
+            "admin:super-secret-password", KnowledgeLibrary.SOURCE_CREDENTIALS.row(libraryId)),
         libraryId);
     assertThat(libraryRepository.findById(libraryId).orElseThrow().getSourceCredentials()).isNull();
 
@@ -796,7 +800,8 @@ class KnowledgeLibraryServiceIntegrationTest {
       key[i] = (byte) (7 * i + 3);
     }
     return new CredentialsEncryptor(
-        new CredentialsEncryptionProperties(Base64.getEncoder().encodeToString(key)));
+        new CredentialsEncryptionProperties(Base64.getEncoder().encodeToString(key), List.of()),
+        CipherFormatGate.KEYED);
   }
 
   @Test
@@ -2490,36 +2495,31 @@ class KnowledgeLibraryServiceIntegrationTest {
     // let the first-level persistence context cache a single owner lookup and mask a regression
     // to one owner-name query per row (#438's own batching, AssetOwnerNames).
     UUID appleOwner = createUser(organizationA);
-    Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
-    boolean statisticsWerePreviouslyEnabled = statistics.isStatisticsEnabled();
-    statistics.setStatisticsEnabled(true);
-    try {
-      // Both counts on the same footing: the grants written above empty the rights caches through
-      // the invalidation bus a moment later, so each count waits for that and starts warm.
-      settleAndWarm(owner);
-      statistics.clear();
-      libraryService.listLibraries(currentUserOf(owner, false));
-      long statementsWithTwoLibraries = statistics.getPrepareStatementCount();
+    // Both counts on the same footing: the grants written above empty the rights caches through
+    // the invalidation bus a moment later, so each attempt waits for that and starts warm.
+    long statementsWithTwoLibraries =
+        PreparedStatementCount.of(
+            entityManagerFactory,
+            () -> settleAndWarm(owner),
+            () -> libraryService.listLibraries(currentUserOf(owner, false)));
 
-      LibraryDetail apple =
-          libraryService.createLibrary(
-              libraryCreation("Apple", SourceType.UPLOAD).build(), currentUserOf(appleOwner));
-      // Reaches owner without a grant of their own - the third row the query count must absorb.
-      grantToAllAccounts(apple, appleOwner);
-      Document third = new Document("c.pdf", "/tmp/477-c.pdf", null, 10L, SourceTypes.FILESYSTEM);
-      third.setLibraryId(apple.library().getId());
-      third.setOrganizationId(organizationA);
-      documentRepository.save(third);
+    LibraryDetail apple =
+        libraryService.createLibrary(
+            libraryCreation("Apple", SourceType.UPLOAD).build(), currentUserOf(appleOwner));
+    // Reaches owner without a grant of their own - the third row the query count must absorb.
+    grantToAllAccounts(apple, appleOwner);
+    Document third = new Document("c.pdf", "/tmp/477-c.pdf", null, 10L, SourceTypes.FILESYSTEM);
+    third.setLibraryId(apple.library().getId());
+    third.setOrganizationId(organizationA);
+    documentRepository.save(third);
 
-      settleAndWarm(owner);
-      statistics.clear();
-      libraryService.listLibraries(currentUserOf(owner, false));
-      long statementsWithThreeLibraries = statistics.getPrepareStatementCount();
+    long statementsWithThreeLibraries =
+        PreparedStatementCount.of(
+            entityManagerFactory,
+            () -> settleAndWarm(owner),
+            () -> libraryService.listLibraries(currentUserOf(owner, false)));
 
-      assertThat(statementsWithThreeLibraries).isEqualTo(statementsWithTwoLibraries);
-    } finally {
-      statistics.setStatisticsEnabled(statisticsWerePreviouslyEnabled);
-    }
+    assertThat(statementsWithThreeLibraries).isEqualTo(statementsWithTwoLibraries);
   }
 
   @Test

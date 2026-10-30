@@ -168,6 +168,7 @@ public final class AuditEventCatalog {
         SYSTEM_ADMIN_ROLE_REVOKED,
         AUDITOR_ROLE_GRANTED,
         AUDITOR_ROLE_REVOKED);
+    put(keys, Set.of("role", "provider"), AUDITOR_ROLE_REQUESTED, AUDITOR_ROLE_REQUEST_DECLINED);
     put(keys, Set.of("role", "tokenRole"), SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED);
     put(keys, Set.of(), ACCOUNT_DEACTIVATED, ACCOUNT_REAUTHENTICATION_FORCED);
     put(keys, Set.of("expiresAt", "libraryIds"), API_TOKEN_ISSUED);
@@ -282,6 +283,7 @@ public final class AuditEventCatalog {
     put(
         keys,
         Set.of(
+            "apiKeyChange",
             "apiKeySet",
             "baseUrl",
             "dimensions",
@@ -439,6 +441,8 @@ public final class AuditEventCatalog {
         keys,
         Set.of("accessPath", "eventType", "from", "profileId", "to"),
         CONNECTION_LOG_ACCESSED);
+    put(keys, Set.of("purpose", "scopeEnd", "scopeStart"), INCIDENT_SCOPE_REQUESTED);
+    put(keys, Set.of("purpose", "scopeEnd", "scopeStart", "usableUntil"), INCIDENT_SCOPE_APPROVED);
     put(keys, Set.of("noProxy", "proxyUrl"), OUTBOUND_PROXY_CHANGED);
     put(
         keys,
@@ -520,6 +524,10 @@ public final class AuditEventCatalog {
             "defaultExpiryDays",
             "inactiveDays",
             "invitationTokenTtlHours",
+            "lockoutDurationMinutes",
+            "lockoutDurationMinutesOverridden",
+            "lockoutMaxAttempts",
+            "lockoutMaxAttemptsOverridden",
             "passwordMinLength",
             "passwordResetEnabled",
             "resetTokenTtlMinutes",
@@ -649,7 +657,7 @@ public final class AuditEventCatalog {
         SELF_DISCLOSURE_EXPORT_FINISHED);
     put(keys, Set.of("dailyLimit", "enabled"), SELF_DISCLOSURE_SETTINGS_CHANGED);
     put(keys, Set.of("allowedOrigins"), LINK_TARGETS_CHANGED);
-    put(keys, Set.of("formatVersion", "sections"), SETTINGS_IMPORTED);
+    put(keys, Set.of("formatVersion", "sections", "securityRelevantKeys"), SETTINGS_IMPORTED);
     return Map.copyOf(keys);
   }
 

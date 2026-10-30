@@ -120,6 +120,11 @@ Herleitung schreibgeschützt.
 
 **Ein Recht kann befristet sein.** Jede Rolle wird mit oder ohne Ablaufdatum erteilt; mit dem
 Ablauf endet sie, ohne dass jemand eingreift, und das Erlöschen steht im Nachweisprotokoll.
+**Eine Frist lässt sich nicht selbst verlängern.** Eine Freigabe, die die vergebende Person
+selbst erreicht — an sie, an eine ihrer Gruppen oder an „Alle Konten" —, reicht nie weiter als
+ihre eigene Rolle: Wer befristet verwaltet, kann die eigene Freigabe verkürzen oder herabstufen,
+sie aber weder verlängern noch entfristen noch über eine Gruppe dauerhaft behalten. Aus demselben
+Grund übergibt nur, wer unbefristet verwaltet, das Eigentum an eine Gruppe, der er angehört.
 
 **Eigentum.** Ein Arbeitsmittel gehört einer **Person** oder einer **Gruppe**. Wer es anlegt, wählt
 das: Als persönliches Arbeitsmittel erhält die anlegende Person die Eigentümerrolle, bei einer Gruppe
@@ -129,13 +134,16 @@ Personen, und genau dafür ist Abschnitt 13 sonst zuständig.
 
 Weitere Rollen lassen sich schon beim Anlegen vergeben. Der Assistent jeder Art sucht Personen und
 Gruppen im selben Suchfeld „Person oder Gruppe suchen" wie der Abschnitt „Berechtigungen" an einem
-bestehenden Arbeitsmittel — mit denselben Regeln für geschützte Gruppen
-(Abschnitt 8) und derselben Rückfrage vor einer Freigabe an die Gruppe eines externen Anbieters.
-Die Treffer stehen gemischt, die passendsten zuerst; eine Gruppe trägt „Gruppe" im Namen der
-Zeile. Suche, Rolle und „Vormerken" stehen in einer Zeile; „Vormerken" heißt die Schaltfläche, weil
-erst das Anlegen die Freigaben speichert. Ohne Auswahl nennt sie die fehlende Auswahl am Suchfeld.
-Den Empfänger **„Alle Konten"** bietet der Assistent nicht an: Ein Bestand, den es noch nicht gibt, hat keine Reichweite zu weiten,
-und die Obergrenze, die über eine solche Freigabe entscheidet, gehört dem angelegten Arbeitsmittel.
+bestehenden Arbeitsmittel — mit denselben Regeln für geschützte Gruppen (Abschnitt 8) und derselben
+Rückfrage vor einer Freigabe an die Gruppe eines externen Anbieters. Die Treffer stehen gemischt,
+die passendsten zuerst; eine Gruppe trägt „Gruppe" im Namen der Zeile, eine Person neben Name und
+E-Mail-Adresse die Anmeldung, aus der ihr Konto stammt. Name und Adresse wählt die Person bei
+mancher Anmeldung selbst; die Anmeldung unterscheidet gleichnamige Konten verlässlich. Suche, Rolle
+und „Vormerken" stehen in einer Zeile; „Vormerken" heißt die Schaltfläche, weil erst das Anlegen die
+Freigaben speichert. Ohne Auswahl nennt sie die fehlende Auswahl am Suchfeld. Den Empfänger **„Alle
+Konten"** bietet der Assistent nicht an: Ein Bestand, den es noch nicht gibt, hat keine Reichweite
+zu weiten, und die Obergrenze, die über eine solche Freigabe entscheidet, gehört dem angelegten
+Arbeitsmittel.
 
 ### Reichweite: „Alle Konten"
 
@@ -541,7 +549,10 @@ Quellart öffnet keinen ihrer Zugänge.
   Systemverwaltung an. Ein Update öffnet so nie stillschweigend einen neuen Weg nach draußen.
 - **Die Freigabe regelt nur, was ein neues Ziel öffnet:** eine Bibliothek anlegen, sie einem
   anderen Zugang zuordnen oder von ihrem Zugang lösen (das gibt ihr eine eigene Adresse, also gilt
-  die Freigabe der Quellart), und vor dem Anlegen die Verbindung testen oder die Quelle auflisten.
+  die Freigabe der Quellart), die eigene Adresse auf einen anderen Server umstellen (anderes
+  Schema, anderer Host oder Port; bei einer Dateisystem-Bibliothek ein anderes Verzeichnis), und
+  vor dem Anlegen oder Umstellen die Verbindung testen oder die Quelle auflisten. Ein anderer Pfad
+  auf demselben Server braucht die Freigabe nicht.
   Wird sie entzogen, laufen bestehende Bibliotheken weiter; auch das erneute Zuordnen zum
   bisherigen Zugang bleibt möglich. Läufe stoppt nur die **Sperre** einer Quellart oder eines
   Zugangs (Kapitel [Zugänge](../arbeitsmittel/zugaenge.md)).
@@ -618,6 +629,11 @@ Nachweisprotokoll, zur Stichtagsauskunft und zum Verbindungsprotokoll (Abschnitt
 nichts; ein Revisionskonto hat
 an Inhalten genau das, was „Alle Konten" oder seine Gruppen ihm geben.
 
+**Der persönliche Space bleibt auch für die Systemverwaltung privat.** Sie liest seine Anweisung
+an das Modell nicht und ordnet ihm kein Arbeitsmittel zu; eine bestehende Zuordnung lösen kann
+sie. Mitglieder hat er außer seiner Person keine (Kapitel [Spaces](../spaces/README.md),
+Abschnitt 2).
+
 **Neue Systemrollen gibt es nicht.** Ein Haus, das einen „Bibliotheksverwalter" will, legt eine
 Gruppe an und gibt ihr die Anlegerechte und die Rollen.
 
@@ -627,7 +643,7 @@ genau eine Person gebunden, an Gruppen und an „Alle Konten" **nicht** vergebba
 | Vollmacht | Gegenstand | Grenzen |
 |---|---|---|
 | **„Sicht als"** | Eine Diagnose im Rechtekontext einer benannten Person | Geltungsbereich ist eine wirksame **Anbietergruppe** — aus dem Verzeichnis oder aus dem Anmeldetoken —, die mindestens die Mindestgruppengröße an aktiven Konten erreicht, auch im Moment jeder Nutzung; höchstens 12 Monate; Pflichtbegründung je Lauf; Protokolleintrag; die Diagnosesperre der Bibliotheken wird abgezogen ([Suche](../spaces/suche.md), Abschnitte 8.2 und 8.3) |
-| **Geltungsbereich einer anlassbezogenen Klärung** | Der eine Fall, in dem das Nachweisprotokoll nach einer Person gefiltert werden darf | Person, Zeitraum und Zweck vorab benannt; **Vier-Augen-Freigabe** durch eine zweite Person der Revision |
+| **Geltungsbereich einer anlassbezogenen Klärung** | Der eine Fall, in dem das Nachweisprotokoll nach einer Person gefiltert werden darf | Person, Zeitraum und Zweck vorab benannt; der Zeitraum liegt ganz in der Vergangenheit und ist nach oben begrenzt (`OPAA_AUDIT_INCIDENT_SCOPE_MAX_DAYS`); **Vier-Augen-Freigabe** durch eine zweite Person der Revision; Antrag und Freigabe stehen im Nachweisprotokoll; die Antwort nennt keine Kennung einer Person. Die Obergrenze gilt je Klärung: Aneinandergereihte Klärungen zur selben Person haben in Summe keine, jede braucht aber eigenen Antrag und eigene Freigabe |
 
 Eine Vollmacht wird nicht historisiert: Sie ist ein Betriebsrecht der Gegenwart und sagt nichts
 darüber, wer am Tag X was lesen durfte. Ihre Erteilung, Nutzung und ihr Entzug stehen im
@@ -773,10 +789,12 @@ verbunden hat, bleibt das Protokoll leer.
   Notabschaltung, geänderte Server-Adresse, geänderte App-Registrierung, deaktiviertes Konto,
   gelöschter Zugang, vom Anbieter abgelehnt oder abgelaufen, bei einer Quellverbindung außerdem
   gelöschte Bibliothek oder Bibliothek auf einen anderen Zugang umgehängt. Ein Ende ohne Anlass nimmt die
-  Datenbank nicht an. Personen erscheinen wie im Nachweisprotokoll nur als Pseudonym; ein Ereignis
-  ohne handelnde Person trägt die Kennung `SYSTEM`. **Kein Eintrag enthält ein Token.**
+  Datenbank nicht an. Gespeichert sind Personen als Pseudonym; die Revision sieht davon nur, ob
+  eine Person oder das System gehandelt hat, nie welche Person — wie im Nachweisprotokoll.
+  **Kein Eintrag enthält ein Token.**
 - **Wessen Verbindung:** Bei einer **persönlichen** Verbindung steht die Person als Pseudonym im
-  Eintrag, **nie eine Bibliothek oder ein Kontoname beim Anbieter** — das erzwingt die Datenbank.
+  Eintrag (die Revision sieht nur „Person“), **nie eine Bibliothek oder ein Kontoname beim
+  Anbieter** — das erzwingt die Datenbank.
   Bei einer **Quellverbindung** stehen die Bibliothek und die Kontoadresse des Dienstkontos im
   Eintrag, aber keine Person. Eine Verbindung des **Zugangs** nennt weder Person noch Bibliothek
   noch Konto. Der Eintrag überlebt die Bibliothek. Die Verbindung einer privaten Bibliothek gilt
@@ -804,8 +822,8 @@ Zugänge stehen alle, zu denen das Protokoll Einträge hat, mit ihrem zuletzt pr
 ein inzwischen gelöschter trägt den Zusatz „(gelöscht)“. Die Liste stammt aus dem Protokoll selbst,
 die Revision liest dafür nichts aus der Verwaltung, und ihr Abruf nennt keine Person und wird nicht
 protokolliert. Die Tabelle zeigt je Eintrag Zeit, Ereignis, Grund des Endes, Besitzart,
-bei einer persönlichen Verbindung das Pseudonym der Person und bei einer Quellverbindung Bibliothek
-und Kontoadresse, den Zugang und wer ausgelöst hat — „System“ für ein Ereignis ohne handelnde Person.
+bei einer persönlichen Verbindung „Person“ und bei einer Quellverbindung Bibliothek und
+Kontoadresse, den Zugang und wer ausgelöst hat — „Person“ oder „System“, nie welche Person.
 Geblättert wird seitenweise, solange es weitere Einträge gibt. Eine leere Antwort sagt, dass Einträge
 erst mit verbundenen Konten entstehen.
 
@@ -852,10 +870,12 @@ die Übertragung.
 **Ein Space gehört immer einer natürlichen Person.** Deshalb wechselt sein Eigentum nur zwischen
 Personen; eine Gruppe besitzt keinen Space und wird auch keiner. **Der persönliche Space ist von der
 Übertragung ausgenommen** — über sein Eigentum entscheidet niemand, er erscheint auch in keiner
-Vorschau. Übernimmt eine Person einen Space,
-wird sie dabei — falls sie es noch nicht ist — als Administratorin aufgenommen: Eine Verantwortliche,
-die in der Mitgliederliste nicht auftaucht, wäre genau der Zustand, den die Übertragung beenden
-soll.
+Vorschau. Übernimmt eine Person einen Space, wird sie dabei — falls sie es noch nicht ist — als
+Administratorin aufgenommen: Eine Verantwortliche, die in der Mitgliederliste nicht auftaucht,
+wäre genau der Zustand, den die Übertragung beenden soll. Aus demselben Grund braucht sie ein
+aktives Konto; an ein gesperrtes oder noch nicht bestätigtes geht kein Space. **Archivierte
+Spaces gehen mit über**, anders als beim Eigentümerwechsel im Space selbst: Blieben sie zurück,
+stünden sie ohne Verantwortliche da.
 
 **Von einer Person gehen nur Eigentum und Verantwortung über.** Die Berechtigungen einer Person
 werden hier weder übertragen noch aufgezählt — sie enden mit ihrem Konto. Eine Vorschau „alles, was
@@ -1043,6 +1063,7 @@ eingebaut.
 | Aufbewahrungshöchstdauer der Rechtehistorie | **36 Monate** | 12 bis 120 Monate | Wie lange ein beendeter Zeitraum nach seinem Ende liegen bleibt; eine Verwaltungseinstellung, keine Umgebungsvariable ([Suche](../spaces/suche.md), Abschnitt 8.4). Jede Änderung ist ein Protokollereignis |
 | Aufbewahrungsfrist des Nachweisprotokolls | **36 Monate** | 12 bis 120 Monate | Verwaltungseinstellung; ihr folgen auch die abgeschlossenen Nachfolgevorgänge (Abschnitt 13.3). Eine Verkürzung wirkt mit dem nächsten Monatslauf, und zwar vollständig; eine Verlängerung wirkt sofort, holt aber Gelöschtes nicht zurück |
 | Löschfrist der anlassbezogenen Klärungen | **1 Jahr** (Werkseinstellung) | 1 bis 10 Jahre | Verwaltungseinstellung der Systemverwaltung unter Administration → Datenschutz, Abschnitt „Anlassbezogene Klärungen“; einen Wert außerhalb weist sie ab, die Datenbank erzwingt die Grenzen zusätzlich, jede Änderung steht mit Vorher und Nachher im Revisionsprotokoll und wirkt mit dem nächsten täglichen Lauf um 03:15 Uhr Serverzeit auf allen Instanzen; setzt eine laufende Instanz noch `OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS` auf mehr Jahre, pausiert die Löschung, bis hier ein Wert gespeichert ist (Abschnitt 10): gelöscht wird am Ende des Kalenderjahres, das so viele Jahre nach dem Ende der Nutzbarkeit liegt. Die Nutzbarkeit einer Freigabe ist fest **30 Tage**; für die Löschfrist zählt bei einem nie freigegebenen Antrag als Ende der Nutzbarkeit der Antrag plus 30 Tage — freigeben lässt er sich auch danach |
+| `OPAA_AUDIT_INCIDENT_SCOPE_MAX_DAYS` | **92 Tage** | positiv; der Zeitraum endet zudem spätestens beim Antrag | Längster Zeitraum einer anlassbezogenen Klärung (Abschnitt 10). Eine Grenze des Betriebs, keine Verwaltungseinstellung: Die Revision kann sie nicht weiten; ein längerer Vorfall braucht mehrere Klärungen, jede mit eigener Freigabe |
 | Aufbewahrungsfrist des Verbindungsprotokolls | **12 Monate** | 6 bis 24 Monate | Verwaltungseinstellung der Systemverwaltung unter Administration → Anbindungen → Einstellungen, Abschnitt „Verbindungsprotokoll“; einen Wert außerhalb der Grenzen weist sie ab, und die Datenbank erzwingt sie zusätzlich. Jede Änderung ist ein Protokollereignis. Eine Verkürzung wirkt mit dem nächsten täglichen Lauf vollständig; eine Verlängerung wirkt sofort, holt aber Gelöschtes nicht zurück |
 | Obergrenze einer Übertragung | **500 Zeilen** | fest | Mehr bewegt eine Übertragung nicht; darüber wird sie abgelehnt und in mehreren Schritten gefahren (Abschnitt 13.2) |
 | Gültigkeit einer Übertragungsvorschau | **30 Minuten** | fest | Danach wird gegen einen frischen Stand neu gerechnet, statt eine alte Vorschau anzuwenden |

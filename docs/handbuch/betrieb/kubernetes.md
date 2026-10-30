@@ -358,10 +358,11 @@ helm install opaa chart/opaa-<x.y.z>.tgz -n opaa -f opaa-werte.yaml \
   --set frontend.image.repository=registry.intern/opaa/opaa-frontend
 ```
 
-Die Tags bleiben die Version des Charts. Wer per Digest pinnt, nimmt die Werte aus `DIGESTS` im
-Bündel (`backend.image.digest`, `frontend.image.digest`); sie gelten unverändert in der internen
-Registry. Verlangt die Registry eine Anmeldung, gehört ein Secret in `imagePullSecrets`. Die
-Erprobungsdatenbank und alle übrigen Drittimages kommen auf eigenem Weg in die Registry.
+Der Chart heftet beide Images per Digest an (`backend.image.digest`, `frontend.image.digest`,
+dieselben Werte wie in `DIGESTS` im Bündel). Sie gelten unverändert in der internen Registry, weil
+`skopeo` die Digests beim Einspielen behält. Verlangt die Registry eine Anmeldung, gehört ein Secret
+in `imagePullSecrets`. Die Erprobungsdatenbank und alle übrigen Drittimages kommen auf eigenem Weg in
+die Registry.
 
 ### 6. Auf das Backend warten und prüfen
 
@@ -583,6 +584,7 @@ Wegen:
 | `installation-mail-password` | `mailPassword` | mit `bootstrap.mail.passwordInSecret` | Passwort des Mailservers der Antwortdatei, als Datei eingehängt |
 | `installation-admin-password` | `initialAdminPassword` | für die Installation mit `bootstrap.initialAdmin.email` | Passwort des ersten Kontos der Antwortdatei, als Datei eingehängt; nach dem Abschluss entfernen. Fehlt es, startet der Pod, und die Installation wartet |
 | `OPAA_INSTALLATION_TOKEN` | `installationToken` | nein | Installations-Token, mindestens 32 Zeichen; ohne es schreibt der erste Start ein erzeugtes ins Protokoll |
+| `OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS`, `OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS` | `credentialsEncryptionPreviousKeys`, `settingsEncryptionPreviousKeys` | nein | nur während eines [Schlüsselwechsels](netz-und-sicherheit.md#schlüsselwechsel): die abgelösten Schlüssel, durch Kommas getrennt; danach entfernen |
 
 Die Verschlüsselungsschlüssel sind im Chart Pflicht, auch wenn noch nichts verschlüsselt gespeichert
 ist. Ein fehlender Schlüssel fiele sonst erst auf, wenn die erste Quelle ihre Zugangsdaten speichert.
@@ -606,6 +608,15 @@ Kopie außerhalb des Clusters zur Sicherung.
 startet `helm upgrade` es von selbst. Eine Änderung von `OPAA_AUTH_JWT_SECRET` beendet alle lokalen
 Sitzungen und entwertet alle offenen Einladungs- und Rücksetzlinks und alle Zugangstokens für
 externe KI-Werkzeuge.
+
+**Schlüssel wechseln.** Alle Schlüssel gehören zum
+[Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck): Mit
+mehr als einem Backend-Pod bliebe ein Rolling Update am ersten neuen Pod stehen. Bei Geheimnissen aus
+den Werten gehört `--set backend.updateStrategy=Recreate` an den Aufruf von `helm upgrade`, bei einem
+vorhandenen Secret wird das Backend vor der Änderung auf null Pods skaliert
+(`kubectl -n opaa scale deploy/opaa-backend --replicas=0`) und danach wieder auf seine Zahl. Den
+Ablauf eines Wechsels der Verschlüsselungsschlüssel beschreibt
+[Schlüsselwechsel](netz-und-sicherheit.md#schlüsselwechsel).
 
 ## Wertereferenz
 
@@ -725,7 +736,7 @@ Konfiguration unter [„Funktionen abschalten"](konfiguration.md#funktionen-absc
 |---|---|---|---|
 | `backend.image.repository` | `ghcr.io/criew/opaa-backend` | — | Image |
 | `backend.image.tag` | leer (Version des Charts) | — | Tag; für eine Release-Installation leer lassen |
-| `backend.image.digest` | leer | — | heftet das Image an einen Digest; hat Vorrang vor dem Tag |
+| `backend.image.digest` | im veröffentlichten Chart der Digest des Release-Images, im Repository leer | — | heftet das Image an einen Digest; hat Vorrang vor dem Tag. Wer ein anderes Image als das des Charts setzt, setzt auch den Digest neu oder leer (`--set backend.image.digest=`) |
 | `backend.image.pullPolicy` | `IfNotPresent` | — | Pull-Verhalten |
 | `backend.replicas` | `1` | — | Zahl der Backend-Pods, `0` hält das Backend an; mehr als `1` nur mit `backend.migration.enabled` und einer Originalablage, die jeder Pod sieht ([Mehrere Backend-Instanzen](#mehrere-backend-instanzen)) |
 | `backend.updateStrategy` | leer | — | `Recreate` oder `RollingUpdate`; leer wählt `Recreate` für einen Pod und `RollingUpdate` (`maxUnavailable: 0`, `maxSurge: 1`) für mehr. `RollingUpdate` verlangt dasselbe wie mehrere Pods |
@@ -764,7 +775,7 @@ und mit dem Migrations-Job `SPRING_FLYWAY_ENABLED=false` in den Backend-Pods.
 | Wert | Vorgabe | Setzt | Wirkung |
 |---|---|---|---|
 | `frontend.image.repository` | `ghcr.io/criew/opaa-frontend` | — | Image |
-| `frontend.image.tag`, `.digest`, `.pullPolicy` | leer (Version des Charts), leer, `IfNotPresent` | — | wie beim Backend |
+| `frontend.image.tag`, `.digest`, `.pullPolicy` | leer (Version des Charts), im veröffentlichten Chart der Digest des Release-Images, `IfNotPresent` | — | wie beim Backend |
 | `frontend.replicas` | `1` | — | Zahl der Frontend-Pods; mehr als einer ist zulässig |
 | `frontend.preStopSleepSeconds` | `5` | — | so lange nimmt ein Frontend-Pod, der enden soll, noch Anfragen an, bis Kubernetes ihn aus dem Service genommen hat; `0` lässt die Pause weg |
 | `frontend.backendReadTimeout` | leer (Vorgabe des Images, `600s`) | `OPAA_BACKEND_READ_TIMEOUT` | wie lange der Frontend-nginx auf die Antwort des Backends wartet, für `/api/` und `/mcp`; Zahl mit Einheit `s`, `m` oder `h`. Mit `rerank.timeout` zusammen anheben; Controller oder Gateway davor brauchen mindestens denselben Wert |
@@ -1224,10 +1235,12 @@ Der allgemeine Ablauf steht unter [Aktualisierung](aktualisierung.md); unter Kub
 1. **Vorbereitung prüfen** nach den Release-Notizen
    ([Ablauf eines Updates](aktualisierung.md#ablauf-eines-updates)). Stammt ein
    Verschlüsselungsschlüssel aus den Wertesätzen der CI, den Testläufen des Repositorys oder dem
-   Profil `dev`, startet das Backend nicht mehr: eigenen Schlüssel erzeugen und die damit geschützten
-   Werte neu eintragen. Dasselbe gilt für ein `secrets.jwtSecret` aus diesen Dateien; ein neues
-   Signaturgeheimnis (`openssl rand -base64 48`) beendet alle lokalen Sitzungen
-   ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#schlüssel-und-geheimnisse)).
+   Profil `dev`, startet das Backend nicht mehr: eigenen Schlüssel erzeugen und den bisherigen als
+   abgelösten Schlüssel eintragen (`secrets.credentialsEncryptionPreviousKeys` bzw.
+   `secrets.settingsEncryptionPreviousKeys`); OPAA verschlüsselt den Bestand dann selbst neu
+   ([Schlüsselwechsel](netz-und-sicherheit.md#schlüsselwechsel)). Dasselbe gilt für ein
+   `secrets.jwtSecret` aus diesen Dateien; ein neues Signaturgeheimnis (`openssl rand -base64 48`)
+   beendet alle lokalen Sitzungen ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#schlüssel-und-geheimnisse)).
 2. **Datenbank sichern**, danach die Originale (siehe
    [Sicherung und Wiederherstellung](#sicherung-und-wiederherstellung)). Ohne diese Sicherung gibt es
    nach einer Schemaänderung keinen Rückweg, außer die neue Version lässt die vorige in ihrem
@@ -1288,9 +1301,12 @@ Hinweise zum Aufruf:
   `bootstrap.oidc` trägt der Chart selbst ein.
 - **Werte-Datei statt `--reuse-values`.** `--reuse-values` übernimmt die Werte der alten Fassung und
   übergeht neue Vorgaben des Charts. Die Werte-Datei gehört in eine Versionsverwaltung.
-- **Kein Image-Tag in der Werte-Datei**, solange aus einem Release installiert wird. Ein gesetztes
-  `backend.image.tag` bleibt bei einem `helm upgrade` stehen, und die neue Chart-Version liefe mit dem
-  alten Image.
+- **Kein Image-Tag und kein Digest in der Werte-Datei**, solange aus einem Release installiert wird.
+  Ein gesetzter Digest bleibt bei einem `helm upgrade` stehen, und die neue Chart-Version liefe mit
+  dem alten Image. Ein gesetzter Tag allein wirkt bei einem veröffentlichten Chart gar nicht: Dessen
+  Digest hat Vorrang. Die Hinweise nach `helm upgrade` nennen beides: einen Tag neben dem Digest
+  und einen Digest aus einer eigenen Registry, die ihn nur kennt, wenn sie mit
+  `skopeo copy --all --preserve-digests` gefüllt ist.
 - **Backend und Frontend immer in derselben Version.** Beides folgt aus der Chart-Version, solange
   kein Tag und kein Digest gesetzt ist.
 - **Installation aus einem Checkout:** `helm upgrade opaa deploy/helm/opaa -n opaa -f opaa-werte.yaml`
@@ -1345,6 +1361,17 @@ Images der alten Revision wieder her, nicht die Datenbank. **Der verlässliche R
 hat ihr Schema die vorige Version nur erweitert, und deren Pods starten neben den neuen. Bis zum
 ersten Release mit dieser Zusage und über eine Versionsgrenze ohne Rolling Update gibt es das nicht
 ([Update ohne Ausfall](mehrere-instanzen.md#update-ohne-ausfall)).
+
+**Hinter die Version mit dem [Schlüsselwechsel](netz-und-sicherheit.md#schlüsselwechsel) führt
+`helm rollback` ohne Sicherung nicht zurück**, auch bei gleicher Zahl von Migrationen: Hat sie den
+Bestand der Geheimnisse auf das Format `enc:v2` umgestellt, liest die ältere Version die
+gespeicherten Zugangsdaten und Modellschlüssel nicht mehr. Zurück geht es dann nur mit der Sicherung
+von vor dem Upgrade. Wer sich den Rückweg offenhalten will, setzt beim Upgrade
+`OPAA_ENCRYPTION_KEYED_FORMAT=false` über `backend.extraEnv` und entfernt den Eintrag, wenn der
+Rückweg nicht mehr gebraucht wird
+([Kein Rückweg nach der Umstellung der Geheimnisse](aktualisierung.md#kein-rückweg-nach-der-umstellung-der-geheimnisse)).
+Solange der Eintrag gesetzt ist, lehnt OPAA alte Formate und Klartext nicht ab; nach dem Entfernen
+schließt der Hintergrundlauf die Umstellung von selbst erneut ab.
 
 Ein Signal dafür, ob die Aktualisierung das Schema geändert hat, gibt die Tabelle `flyway_schema_history`.
 Vor und nach dem Upgrade, mit einem eigenen Schema vorangestellt:

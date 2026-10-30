@@ -3,8 +3,10 @@ package io.opaa.mail;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import io.opaa.common.ValidationException;
+import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -101,5 +103,26 @@ class MailPlaceholderValidatorTest {
                 MailPlaceholderValidator.requireDeclaredPlaceholders(
                     MailTemplateKey.PASSWORD_RESET, "bodyHtml", null))
         .doesNotThrowAnyException();
+  }
+
+  /** Regression guard: a long whitespace run inside an unclosed tag stays linear. */
+  @ParameterizedTest
+  @ValueSource(strings = {"{{", "{{{{{{", "{{{"})
+  void anUnclosedTagWithALongWhitespaceRunIsRejectedQuickly(String opening) {
+    String content = opening + "\t".repeat(60_000);
+    assertTimeoutPreemptively(
+        Duration.ofSeconds(2),
+        () -> {
+          assertThat(MailPlaceholderValidator.referencedPlaceholders(content)).isEmpty();
+          MailPlaceholderValidator.requireSupportedTags("bodyPlain", content);
+        });
+  }
+
+  @Test
+  void keepsTheWholeTripleStacheInTheMessage() {
+    assertThatThrownBy(
+            () -> MailPlaceholderValidator.requireSupportedTags("bodyHtml", "x {{{ name }}} y"))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("{{{ name }}}");
   }
 }

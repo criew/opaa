@@ -16,6 +16,7 @@ import io.opaa.llm.LlmModelDiscoverer;
 import io.opaa.llm.LlmModelRepository;
 import io.opaa.llm.ModelAddressPolicy;
 import io.opaa.llm.ModelDiscovery;
+import io.opaa.security.CipherFormatGate;
 import io.opaa.security.PasswordEncoderConfiguration;
 import io.opaa.security.SettingsEncryptionProperties;
 import io.opaa.security.SettingsEncryptor;
@@ -49,7 +50,9 @@ class InstallationModelDiscoveryTest {
   private final JsonMapper json = JsonMapper.builder().build();
   private final SettingsEncryptor encryptor =
       new SettingsEncryptor(
-          new SettingsEncryptionProperties("c2V0dGluZ3NkZXZrZXkwMHNldHRpbmdzZGV2a2V5MDE="));
+          new SettingsEncryptionProperties(
+              "c2V0dGluZ3NkZXZrZXkwMHNldHRpbmdzZGV2a2V5MDE=", List.of()),
+          CipherFormatGate.KEYED);
   private final ModelAddressPolicy policy = ModelAddressPolicy.allowing(List.of("127.0.0.1"));
   private final StepRules rules =
       new StepRules(
@@ -181,7 +184,8 @@ class InstallationModelDiscoveryTest {
     InstallationStepRecord record = new InstallationStepRecord(InstallationStep.RERANK_MODEL);
     record.replaceValues(
         json.writeValueAsString(new StepRules.RerankModelPayload(baseUrl, "bge-reranker")),
-        encryptor.encrypt("sk-rerank"),
+        encryptor.encrypt(
+            "sk-rerank", InstallationEncryptedColumns.of(InstallationStep.RERANK_MODEL)),
         Instant.now());
     when(steps.findById(InstallationStep.RERANK_MODEL)).thenReturn(Optional.of(record));
 
@@ -256,7 +260,7 @@ class InstallationModelDiscoveryTest {
     record.replaceValues(
         json.writeValueAsString(
             new StepRules.ChatModelPayload(savedBaseUrl, "qwen2.5:7b", null, null)),
-        encryptor.encrypt(key),
+        encryptor.encrypt(key, InstallationEncryptedColumns.of(InstallationStep.CHAT_MODEL)),
         Instant.now());
     when(steps.findById(InstallationStep.CHAT_MODEL)).thenReturn(Optional.of(record));
   }

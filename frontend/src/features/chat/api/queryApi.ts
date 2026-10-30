@@ -36,6 +36,10 @@ export async function sendQuery(
 export function isEmptyMetadataFilter(filter: MetadataFilter | null | undefined): boolean {
   if (!filter) return true
   return (
-    (filter.documentTypes ?? []).length === 0 && !filter.documentDateFrom && !filter.documentDateTo
+    (filter.documentTypes ?? []).length === 0 &&
+    !filter.documentDateFrom &&
+    !filter.documentDateTo &&
+    (filter.libraryFields ?? []).length === 0 &&
+    (filter.formatFields ?? []).length === 0
   )
 }

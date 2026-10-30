@@ -17,6 +17,7 @@ import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import SendIcon from '@mui/icons-material/Send'
 import { CHAT_MAX_WIDTH, focusFrameStyle } from '@/shared/theme/theme'
 import { useAuthStore } from '@/shared/session/authStore'
+import { ARRIVAL_FOCUS_ATTRIBUTE } from '@/shared/ui/a11y/routeFocus'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import { QUESTION_MAX_LENGTH, useChatStore } from '../stores/chatStore'
 import { SpaceKnowledgeNotice } from '@/features/space'
@@ -74,6 +75,11 @@ interface ChatInputProps {
    * switched-off feature contributes nothing either way (ADR-0044).
    */
   actionSources?: readonly ChatActionSource[]
+  /**
+   * Takes the focus whenever this changes to a value other than null, and marks the input as the
+   * page's arrival focus target meanwhile - a new chat opens ready for its first question.
+   */
+  focusRequest?: string | null
 }
 
 export default function ChatInput({
@@ -83,6 +89,7 @@ export default function ChatInput({
   returnedQuestion = null,
   onReturnedQuestionHandled,
   actionSources = CHAT_ACTION_SOURCES,
+  focusRequest = null,
 }: ChatInputProps) {
   const [value, setValue] = useState('')
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -186,6 +193,10 @@ export default function ChatInput({
     }
     wasDisabled.current = disabled
   }, [disabled])
+
+  useEffect(() => {
+    if (focusRequest !== null) inputRef.current?.focus()
+  }, [focusRequest])
 
   const {
     filterScope,
@@ -405,6 +416,7 @@ export default function ChatInput({
               'aria-activedescendant': activeDescendant,
               'aria-invalid': questionTooLong,
               'aria-label': INPUT_LABEL,
+              [ARRIVAL_FOCUS_ATTRIBUTE]: focusRequest !== null ? '' : undefined,
               'aria-describedby':
                 [hint ? hintId : null, lengthCounter ? lengthCounterId : null]
                   .filter((id) => id !== null)

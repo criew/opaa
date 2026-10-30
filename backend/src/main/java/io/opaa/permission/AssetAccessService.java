@@ -97,6 +97,25 @@ public class AssetAccessService implements InvalidationSubscriber {
   }
 
   /**
+   * Whether {@code userId} holds at least {@code role} on the asset through one unexpired grant
+   * that lasts at least until {@code until} - {@code null}: without end. What a person may hand on
+   * to a recipient that reaches themselves is bounded by this.
+   */
+  public boolean holdsUntil(
+      AssetType assetType, UUID assetId, UUID userId, AssetRole role, Instant until) {
+    Instant now = Instant.now(clock);
+    Set<UUID> groupIds = membershipResolver.groupIdsForUser(userId);
+    return cachedGrants(assetType, assetId).stream()
+        .filter(grant -> !grant.isExpired(now))
+        .filter(grant -> grant.getRole().atLeast(role))
+        .filter(grant -> reaches(grant, userId, groupIds))
+        .anyMatch(
+            grant ->
+                grant.getExpiresAt() == null
+                    || (until != null && !until.isAfter(grant.getExpiresAt())));
+  }
+
+  /**
    * The effective {@link AssetRole} for every one of {@code assetIds}, for {@code userId} - the
    * list counterpart of {@link #effectiveRole}, deliberately not built by calling that method once
    * per asset:

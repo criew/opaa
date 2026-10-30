@@ -117,7 +117,7 @@ public final class FullTextIdentifiers {
    */
   private static final Pattern KEYWORD_FILE_NUMBER =
       Pattern.compile(
-          "\\b(?:Az|AZ|Aktenzeichen)\\b\\.?\\s*:?\\s*([A-Za-z0-9][A-Za-z0-9./\\-]{1,30})");
+          "\\b(?:Az|AZ|Aktenzeichen)\\b\\.?\\s*+:?\\s*+([A-Za-z0-9][A-Za-z0-9./\\-]{1,30})");
 
   /**
    * The keyword-free counterpart of {@link #KEYWORD_FILE_NUMBER}: the shape administrative file,
@@ -137,7 +137,7 @@ public final class FullTextIdentifiers {
    */
   private static final Pattern ORDINANCE_NUMBER =
       Pattern.compile(
-          "\\b(?:Drucksache|Drs|Erlass(?:\\s+Nr)?|Runderlass(?:\\s+Nr)?|Nr|Nummer)\\.?\\s*:?\\s*"
+          "\\b(?:Drucksache|Drs|Erlass(?:\\s+Nr)?|Runderlass(?:\\s+Nr)?|Nr|Nummer)\\.?\\s*+:?\\s*+"
               + "(\\d{1,6}\\s*[-/]\\s*\\d{1,6}(?:\\s*[-/]\\s*\\d{1,6})?)");
 
   /**
@@ -145,10 +145,12 @@ public final class FullTextIdentifiers {
    * single {@code email} token already; the gap is on the question side, where {@code
    * FullTextChunkSearch#wordTokens} splits it at every non-alphanumeric character. Local part and
    * domain are ASCII-only, so an umlaut ends the match early - a missed address, never a false
-   * positive, and symmetric because both sides apply this same pattern.
+   * positive, and symmetric because both sides apply this same pattern. The runs are capped near
+   * the RFC 5321 limits so a long run without {@code @} costs linear time.
    */
   private static final Pattern EMAIL_ADDRESS =
-      Pattern.compile("\\b([A-Za-z0-9][A-Za-z0-9._%+-]*@[A-Za-z0-9.-]+\\.[A-Za-z]{2,})\\b");
+      Pattern.compile(
+          "\\b([A-Za-z0-9][A-Za-z0-9._%+-]{0,63}@[A-Za-z0-9.-]{1,253}\\.[A-Za-z]{2,63})\\b");
 
   /**
    * A maximal run of letters, digits and underscores - the unit a field name is recognized in. A

@@ -7,21 +7,20 @@ paths:
   # Exactly four revision access paths, each with a mandatory time range and a bounded
   # result set - see docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt.
   # There is deliberately no `actor`/`actorRef` query parameter on any of them and no `sort`
-  # parameter at all: actorRef is output-only, never an entry point (AUDITOR role only).
+  # parameter at all, and no response names a person (see AuditEventResponse): a person's
+  # reference in an answer could be chained over overlapping answers into a lasting one.
   /api/v1/audit/events/by-object:
     get:
       operationId: listAuditEventsByObject
       tags: [audit]
       summary: >
         Revision access path "nach Objekt" (AUDITOR role required): every event recorded against
-        one object, within a mandatory time range. objectType=USER_ACCOUNT is rejected with 400: a USER_ACCOUNT object's object_id is that person's
-        pseudonym - the same pseudonym actorRef carries on that same person's own actions
-        elsewhere in the log - so accepting it here would reconstruct exactly the excluded view
-        "alle Ereignisse, bei denen Person X betroffen war" (read a pseudonym off actorRef via
-        by-time-range, then feed it back in as objectId). The legitimate need behind a
-        USER_ACCOUNT-scoped question is served by by-time-range/by-event-type (no person focus)
-        or, for a genuinely person-scoped question, by the freigegebene anlassbezogene Klärung
-        or the Rechtehistorie - never by this path.
+        one object, within a mandatory time range. objectType=USER_ACCOUNT is rejected with 400:
+        a USER_ACCOUNT object's object_id is that person's stored pseudonym, so a query by it
+        would be a person filter - the excluded view "alle Ereignisse, bei denen Person X
+        betroffen war". No response hands out such an id (see AuditEventResponse), and a
+        pseudonym obtained any other way does not open this path either. A person-scoped
+        question goes through the freigegebene anlassbezogene Klärung or the Rechtehistorie.
       parameters:
         - name: objectType
           in: query
@@ -245,14 +244,15 @@ paths:
       operationId: listConnectionLog
       tags: [audit]
       summary: >
-        The connection log (AUDITOR role required, ADR-0041 Entscheidung 7): who connected,
-        reconnected or disconnected which profile, and when a connection expired, was cut off by the
-        emergency shutdown or deleted.
+        The connection log (AUDITOR role required, ADR-0041 Entscheidung 7): when which profile
+        was connected, reconnected or disconnected - by a person or the system, never naming the
+        person - and when a connection expired, was cut off by the emergency shutdown or deleted.
       description: >
         Bounded exactly like every other audit access path: a mandatory reason and time range of
         at most 92 days, a capped page size and page depth. The system administration does not read
         it. Optional filters narrow by event type and profile; there is deliberately no filter by
-        person. An entry carries no token, no account name at the provider and no library. Every
+        person. An entry names no person and carries no token; only a source connection of a
+        library names the library and the service account's address at the provider. Every
         call writes a CONNECTION_LOG_ACCESSED entry into the audit log, the rejected attempt
         included.
       parameters:
@@ -357,7 +357,10 @@ paths:
         Requests the one exception to "kein Personenfilter" - the anlassbezogene Klärung
         (AUDITOR role required): names person, time range and purpose in advance. Created PENDING;
         unusable for querying until a second, different AUDITOR approves it via the approve
-        endpoint (Vier-Augen-Prinzip).
+        endpoint (Vier-Augen-Prinzip). The time range lies wholly in the past (scopeEnd not after
+        the moment of the request) and spans at most opaa.audit.incident-scope.max-days days (92
+        unless configured); anything else is rejected with 400, never trimmed. The request is the
+        audit event INCIDENT_SCOPE_REQUESTED.
       requestBody:
         required: true
         content:
@@ -389,7 +392,8 @@ paths:
       tags: [audit]
       summary: >
         Approves a requested incident scope (AUDITOR role required). Rejected if the approver is
-        the same person as the requester (Selbstfreigabe) or the scope was already approved.
+        the same person as the requester (Selbstfreigabe) or the scope was already approved. The
+        approval is the audit event INCIDENT_SCOPE_APPROVED.
       responses:
         "200":
           description: Incident scope approved
@@ -419,7 +423,8 @@ paths:
         The one personenbezogene query path (AUDITOR role required): every event whose actor is
         the scope's named person, technically bounded to the approved scope's person and time
         range. Not callable before approval; a requested from/to outside the approved scope's time
-        range is rejected rather than silently clamped.
+        range is rejected rather than silently clamped, and so is a to after the approval. Like
+        every revision answer, the entries name no person (see AuditEventResponse).
       parameters:
         - $ref: "#/components/parameters/AuditFrom"
         - $ref: "#/components/parameters/AuditTo"
@@ -435,6 +440,87 @@ paths:
                 $ref: "#/components/schemas/AuditEventPage"
         "400":
           $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/audit/auditor-role-requests:
+    get:
+      operationId: listAuditorRoleRequests
+      tags: [audit]
+      summary: >
+        The open requests for the AUDITOR role in the caller's organization (AUDITOR role
+        required), oldest first: asked by a system administrator or by the roles claim of an
+        identity provider. They name the account, its address and the requester by name, since the
+        auditor judges the person.
+      responses:
+        "200":
+          description: Open requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditorRoleRequestResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/audit/auditor-role-requests/{requestId}/confirm:
+    parameters:
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: confirmAuditorRoleRequest
+      tags: [audit]
+      summary: >
+        Grants the requested AUDITOR role (AUDITOR role required), audited as AUDITOR_ROLE_GRANTED
+        under the confirming auditor and told to every other auditor. A local account loses its
+        password, sessions and open links; the one link that sets its new password is answered
+        here, once, for the confirming auditor to hand to the person - it is neither mailed nor
+        shown to the system administration. Refused with 409 when the role can no longer be
+        granted: BOOTSTRAP_ACCOUNT or LAST_LOGIN_CAPABLE_ADMIN as on the role endpoint, without a
+        code when a provider's roles claim manages the role of a request of the administration.
+        Like every grant of a system role it requires a recent sign-in: without one the call is
+        refused with 403 and code RECENT_LOGIN_REQUIRED (see the response RecentLoginRequired)
+        before anything is checked or written.
+      responses:
+        "200":
+          description: Role granted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditorRoleConfirmationResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/audit/auditor-role-requests/{requestId}/decline:
+    parameters:
+      - name: requestId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: declineAuditorRoleRequest
+      tags: [audit]
+      summary: >
+        Ends an open AUDITOR request without the role (AUDITOR role required), audited as
+        AUDITOR_ROLE_REQUEST_DECLINED under the declining auditor. A declined request of a provider
+        is kept as declined until the claim no longer names the role, so the next sign-in does not
+        ask again.
+      responses:
+        "204":
+          description: Request declined
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -485,6 +571,73 @@ paths:
 
 components:
   schemas:
+    AuditorRoleRequestResponse:
+      type: object
+      description: >
+        An open request for the AUDITOR role. Names the account, its address and the requester,
+        because the confirming auditor judges whether this person is to read the audit log.
+      required:
+        - id
+        - userId
+        - displayName
+        - email
+        - localAccount
+        - requestedByDisplayName
+        - requestedByProvider
+        - requestedAt
+        - emailChangedByAdministrationAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        localAccount:
+          type: boolean
+          description: >
+            True for a local account - its password is discarded on confirmation, and the
+            confirmation answers the link with which the person sets a new one.
+        requestedByDisplayName:
+          type: string
+          nullable: true
+          description: >
+            The requesting administrator's name, or the identity provider's name for a request
+            of its roles claim.
+        requestedByProvider:
+          type: boolean
+          description: True when the roles claim of an identity provider asked, not a person.
+        requestedAt:
+          type: string
+          format: date-time
+        emailChangedByAdministrationAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            When the system administration last changed the address of the local account; null
+            when it never did. A recent change is a reason to check the address with the person.
+
+    AuditorRoleConfirmationResponse:
+      type: object
+      description: The outcome of a confirmed AUDITOR request.
+      required: [setupUrl]
+      properties:
+        setupUrl:
+          type: string
+          nullable: true
+          description: >
+            The one link that sets the password of the local account, valid for the invitation
+            lifetime; absolute with a public base URL, a path of this installation otherwise. Shown
+            once to the confirming auditor, who hands it to the person; never stored in readable
+            form or answered again. Null for an account of an identity provider.
+
     # Audit revision access path. See
     # docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt.
     AuditActorKind:
@@ -580,6 +733,8 @@ components:
           SYSTEM_ADMIN_ROLE_REVOKED,
           AUDITOR_ROLE_GRANTED,
           AUDITOR_ROLE_REVOKED,
+          AUDITOR_ROLE_REQUESTED,
+          AUDITOR_ROLE_REQUEST_DECLINED,
           SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED,
           ACCOUNT_DEACTIVATED,
           ACCOUNT_REAUTHENTICATION_FORCED,
@@ -639,6 +794,8 @@ components:
           AUDIT_LOG_ACCESSED,
           PERMISSION_HISTORY_ACCESSED,
           CONNECTION_LOG_ACCESSED,
+          INCIDENT_SCOPE_REQUESTED,
+          INCIDENT_SCOPE_APPROVED,
           CONNECTION_LOG_RETENTION_CHANGED,
           CHAT_AUTO_CLEANUP_PERIODS_CHANGED,
           LOCKED_ACCOUNT_CHAT_CLEANUP_SETTINGS_CHANGED,
@@ -700,19 +857,22 @@ components:
     AuditEventResponse:
       type: object
       description: >
-        One entry as read back through a revision access path. actorRef/subjectRef are
-        pseudonymised, output-only fields - never accepted as a request parameter anywhere in
-        this API.
+        One entry as read back through a revision access path. No entry names a person: actorRef
+        is absent unless a system process acted (its fixed label), subjectRef is absent for a USER
+        subject, objectId is absent for a USER_ACCOUNT object, and ownerId/targetId are removed
+        from before/after. That a person acted or was affected stays visible through actorKind and
+        subjectKind. Not even a reference valid for one response is given out: two overlapping
+        answers share eventId and recordedAt, so such references could be equated from answer to
+        answer into a lasting one. A group subject keeps its id. The anlassbezogene Klärung
+        answers the same way; its grant names the person.
       required:
         [
           eventId,
           recordedAt,
           organizationId,
           actorKind,
-          actorRef,
           eventType,
           objectType,
-          objectId,
           outcome,
         ]
       properties:
@@ -729,12 +889,16 @@ components:
           $ref: "#/components/schemas/AuditActorKind"
         actorRef:
           type: string
+          nullable: true
+          description: The fixed label of a system process; absent when a person acted.
         eventType:
           $ref: "#/components/schemas/AuditEventType"
         objectType:
           $ref: "#/components/schemas/AuditObjectType"
         objectId:
           type: string
+          nullable: true
+          description: Absent for a USER_ACCOUNT object, whose id is the person's pseudonym.
         objectLabel:
           type: string
           nullable: true
@@ -1036,20 +1200,31 @@ components:
       type: string
       description: >
         Mirrors io.opaa.api.types.ConnectionLogOwnerKind - whose connection the entry is about.
-        PERSON names the person as personRef and never a library or account; LIBRARY names the
-        library and, if any, the service account's address; PROFILE names neither.
+        PERSON is a person's own connection and names neither the person nor a library or
+        account; LIBRARY names the library and, if any, the service account's address; PROFILE
+        names neither.
       enum: [PERSON, LIBRARY, PROFILE]
+      example: PERSON
+
+    ConnectionLogActorKind:
+      type: string
+      description: >
+        Who caused a connection event: PERSON for a person, who is never named, SYSTEM for an
+        event no person caused (expiry, deactivation).
+      enum: [PERSON, SYSTEM]
       example: PERSON
 
     ConnectionLogEntryResponse:
       type: object
       description: >
-        One entry of the connection log. actorRef and personRef are pseudonyms in the same scheme
-        as the audit log's actorRef. An event no person caused (expiry, deactivation) carries the
-        literal "SYSTEM" as actorRef, which is never a pseudonym.
-        profileName is the name the profile carried at the time, so an entry outlives its profile.
+        One entry of the connection log. It names no person - neither who acted nor whose
+        connection it is - only whether a person or the system acted (actor) and whose kind of
+        connection it is (ownerKind): a reference to a person, even one valid for a single answer,
+        could be chained over overlapping answers, or over library and time with the audit log,
+        into a lasting one and a time series per person. profileName is the name the profile
+        carried at the time, so an entry outlives its profile.
       required:
-        [eventId, recordedAt, organizationId, eventType, actorRef, ownerKind, profileId, profileName]
+        [eventId, recordedAt, organizationId, eventType, actor, ownerKind, profileId, profileName]
       properties:
         eventId:
           type: string
@@ -1062,15 +1237,10 @@ components:
           format: uuid
         eventType:
           $ref: "#/components/schemas/ConnectionLogEventType"
-        actorRef:
-          type: string
-          description: A pseudonym, or the literal "SYSTEM" for an event no person caused.
+        actor:
+          $ref: "#/components/schemas/ConnectionLogActorKind"
         ownerKind:
           $ref: "#/components/schemas/ConnectionLogOwnerKind"
-        personRef:
-          type: string
-          nullable: true
-          description: The person's pseudonym; set exactly for ownerKind PERSON.
         libraryId:
           type: string
           format: uuid
@@ -1209,6 +1379,9 @@ components:
         scopeEnd:
           type: string
           format: date-time
+          description: >
+            Not after the moment of the request - a Klärung looks back, never ahead - and at most
+            opaa.audit.incident-scope.max-days days after scopeStart.
         purpose:
           $ref: "#/components/schemas/AuditIncidentScopePurpose"
         reason:

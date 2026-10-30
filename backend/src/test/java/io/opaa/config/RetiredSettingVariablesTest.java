@@ -97,8 +97,26 @@ class RetiredSettingVariablesTest {
             "opaa.indexing.rss.attachment-profile");
   }
 
+  /**
+   * The lockout duration is a setting of the administration now (ADR-0060, Entscheidung 17); a
+   * value still set is named and only raises the shortest lockout, never taken over as the value.
+   */
   @Test
-  void theFourRetiredAdministrationValuesAreKnownUnderBothNames() {
+  void theRetiredLockoutDurationIsNamedWithItsPlaceAndTheLimitThatReplacesIt() {
+    MockEnvironment environment =
+        new MockEnvironment().withProperty("OPAA_AUTH_LOCAL_LOCKOUT_DURATION", "30m");
+
+    assertThat(RetiredSettingVariables.foundIn(environment))
+        .containsExactly(
+            "OPAA_AUTH_LOCAL_LOCKOUT_DURATION is no longer read as the lockout duration; set it"
+                + " under Administration > Benutzer > Einstellungen. Until it is removed it raises"
+                + " the shortest lockout (OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION) to its value, at"
+                + " most 1440 minutes, so the update loosens nothing; replace it with"
+                + " OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION");
+  }
+
+  @Test
+  void theRetiredAdministrationValuesAreKnownUnderBothNames() {
     assertThat(RetiredSettingVariables.RETIRED_ADMINISTRATION_VALUES)
         .containsOnlyKeys(
             "OPAA_EXTERNAL_ACCESS_REMINDER_LEAD_DAYS",
@@ -108,7 +126,9 @@ class RetiredSettingVariablesTest {
             "OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION",
             "opaa.directory-sync.change-threshold-fraction",
             "OPAA_INDEXING_NEXTCLOUD_FULL_DESCENT_INTERVAL",
-            "opaa.indexing.nextcloud.full-descent-interval");
+            "opaa.indexing.nextcloud.full-descent-interval",
+            "OPAA_AUTH_LOCAL_LOCKOUT_DURATION",
+            "opaa.auth.local.lockout.duration");
   }
 
   @Test

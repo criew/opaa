@@ -10,10 +10,12 @@ import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import org.apache.pdfbox.contentstream.operator.Operator;
 import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageTree;
 import org.apache.pdfbox.pdmodel.font.PDType3CharProc;
 import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
 import org.apache.pdfbox.pdmodel.graphics.form.PDTransparencyGroup;
@@ -38,6 +40,8 @@ final class PdfPageText {
   /** Named apart from {@code PDFTextStripper.LINE_SEPARATOR}, which a subclass would inherit. */
   private static final String NEWLINE = "\n";
 
+  private static final Pattern WHITESPACE = Pattern.compile("\\s+");
+
   /** A raised glyph is at most this share of the following glyph's font size. */
   private static final float RAISED_MAX_SIZE_RATIO = 0.9f;
 
@@ -54,33 +58,34 @@ final class PdfPageText {
 
   /** A page whose plain text cannot be extracted fails the whole document. */
   static String extract(PDDocument doc, int pageIndex) throws IOException {
-    return extract(doc, pageIndex, PdfReadBudget.unbounded());
+    return extract(doc, doc.getPage(pageIndex), PdfReadBudget.unbounded());
   }
 
   /**
-   * Like {@link #extract(PDDocument, int)}, charging the page's text to {@code budget}; a page that
-   * would overdraw it throws {@link ParserLimitExceededException} while its glyphs are collected.
+   * The text of {@code page}, charged to {@code budget}; a page that would overdraw it throws
+   * {@link ParserLimitExceededException} while its glyphs are collected. Only {@code page} is
+   * visited, never the rest of the page tree, so extracting every page costs linear time.
    */
-  static String extract(PDDocument doc, int pageIndex, PdfReadBudget budget) throws IOException {
-    return extract(doc, pageIndex, page -> candidateGrids(page, budget), budget);
+  static String extract(PDDocument doc, PDPage page, PdfReadBudget budget) throws IOException {
+    return extract(doc, page, p -> candidateGrids(p, budget), budget);
   }
 
   static String extract(PDDocument doc, int pageIndex, GridFinder finder) throws IOException {
-    return extract(doc, pageIndex, finder, PdfReadBudget.unbounded());
+    return extract(doc, doc.getPage(pageIndex), finder, PdfReadBudget.unbounded());
   }
 
   private static String extract(
-      PDDocument doc, int pageIndex, GridFinder finder, PdfReadBudget budget) throws IOException {
+      PDDocument doc, PDPage page, GridFinder finder, PdfReadBudget budget) throws IOException {
     String text = null;
     try {
-      text = extractWithTables(doc, pageIndex, finder, budget);
+      text = extractWithTables(doc, page, finder, budget);
     } catch (ParserLimitExceededException e) {
       throw e;
     } catch (IOException | RuntimeException e) {
-      log.debug("Table detection failed on PDF page {}; using flow text", pageIndex + 1, e);
+      log.debug("Table detection failed on a PDF page; using flow text", e);
     }
     if (text == null) {
-      text = plain(doc, pageIndex, budget);
+      text = plain(doc, page, budget);
     }
     budget.charge(text.length());
     return text;
@@ -88,11 +93,11 @@ final class PdfPageText {
 
   /** The page with its tables in place, or null when there is no table to place. */
   private static String extractWithTables(
-      PDDocument doc, int pageIndex, GridFinder finder, PdfReadBudget budget) throws IOException {
-    List<TableGrid> grids = finder.find(doc.getPage(pageIndex));
+      PDDocument doc, PDPage page, GridFinder finder, PdfReadBudget budget) throws IOException {
+    List<TableGrid> grids = finder.find(page);
     while (!grids.isEmpty()) {
-      TableStripper stripper = new TableStripper(grids, budget);
-      String text = strip(stripper, doc, pageIndex);
+      TableStripper stripper = new TableStripper(page, grids, budget);
+      String text = strip(stripper, doc);
       List<TableGrid> tabular = new ArrayList<>();
       for (int t = 0; t < grids.size(); t++) {
         if (stripper.isTabular(t)) {
@@ -119,17 +124,14 @@ final class PdfPageText {
     return PdfTableGrids.detect(PdfRulingCollector.collect(page, budget));
   }
 
-  private static String plain(PDDocument doc, int pageIndex, PdfReadBudget budget)
+  private static String plain(PDDocument doc, PDPage page, PdfReadBudget budget)
       throws IOException {
-    return strip(new RaisedDigitStripper(budget), doc, pageIndex);
+    return strip(new RaisedDigitStripper(page, budget), doc);
   }
 
-  private static String strip(PDFTextStripper stripper, PDDocument doc, int pageIndex)
-      throws IOException {
+  private static String strip(PDFTextStripper stripper, PDDocument doc) throws IOException {
     stripper.setLineSeparator(NEWLINE);
     stripper.setPageEnd(NEWLINE);
-    stripper.setStartPage(pageIndex + 1);
-    stripper.setEndPage(pageIndex + 1);
     return stripper.getText(doc);
   }
 
@@ -212,11 +214,21 @@ final class PdfPageText {
    */
   private static class RaisedDigitStripper extends PDFTextStripper {
 
+    private final PDPage page;
     private final PdfReadBudget budget;
     private long glyphs;
 
-    RaisedDigitStripper(PdfReadBudget budget) {
+    RaisedDigitStripper(PDPage page, PdfReadBudget budget) {
+      this.page = page;
       this.budget = budget;
+    }
+
+    /** Processes {@link #page} as the document's only page, instead of walking the page tree. */
+    @Override
+    protected void processPages(PDPageTree pages) throws IOException {
+      if (page.hasContents()) {
+        processPage(page);
+      }
     }
 
     @Override
@@ -227,10 +239,7 @@ final class PdfPageText {
 
     @Override
     public void processPage(PDPage page) throws IOException {
-      // PDFTextStripper calls this for every page and skips those outside the range itself
-      if (getCurrentPageNo() >= getStartPage() && getCurrentPageNo() <= getEndPage()) {
-        budget.chargePage(page);
-      }
+      budget.chargePage(page);
       super.processPage(page);
     }
 
@@ -255,7 +264,7 @@ final class PdfPageText {
 
     @Override
     protected void processTextPosition(TextPosition text) {
-      budget.requireRoomFor(++glyphs);
+      budget.requireRoomForPageGlyphs(++glyphs);
       super.processTextPosition(text);
     }
 
@@ -284,8 +293,8 @@ final class PdfPageText {
     private final boolean[] anchored;
     private boolean writingCells;
 
-    TableStripper(List<TableGrid> grids, PdfReadBudget budget) {
-      super(budget);
+    TableStripper(PDPage page, List<TableGrid> grids, PdfReadBudget budget) {
+      super(page, budget);
       this.grids = grids;
       this.anchored = new boolean[grids.size()];
       for (TableGrid grid : grids) {
@@ -334,7 +343,7 @@ final class PdfPageText {
           charactersByArticle = cell;
           output = cellOutput;
           super.writePage();
-          texts.add(cellOutput.toString().replaceAll("\\s+", " ").strip());
+          texts.add(WHITESPACE.matcher(cellOutput.toString()).replaceAll(" ").strip());
         }
         cellTexts.add(texts);
       }

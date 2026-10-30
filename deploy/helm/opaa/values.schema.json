@@ -994,6 +994,16 @@
         "settingsEncryptionKey": {
           "type": "string"
         },
+        "credentialsEncryptionPreviousKeys": {
+          "type": "string",
+          "pattern": "^$|^[A-Za-z0-9+/]{43}=(,[A-Za-z0-9+/]{43}=)*$",
+          "description": "Replaced keys of OPAA_CREDENTIALS_ENCRYPTION_KEY during a key change, comma-separated (OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS); they only decrypt"
+        },
+        "settingsEncryptionPreviousKeys": {
+          "type": "string",
+          "pattern": "^$|^[A-Za-z0-9+/]{43}=(,[A-Za-z0-9+/]{43}=)*$",
+          "description": "Replaced keys of OPAA_SETTINGS_ENCRYPTION_KEY during a key change, comma-separated (OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS); they only decrypt"
+        },
         "s3AccessKey": {
           "type": "string"
         },

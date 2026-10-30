@@ -1,0 +1,431 @@
+From: a@example.org
+To: b@example.org
+Subject: Anlagen
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="grenze"
+
+--grenze
+Content-Type: text/plain; charset=utf-8
+
+Siehe Anlagen.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage0.txt"
+
+# Anlage 0
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage1.md"
+
+# Anlage 1
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage2.txt"
+
+# Anlage 2
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage3.md"
+
+# Anlage 3
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage4.txt"
+
+# Anlage 4
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage5.md"
+
+# Anlage 5
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage6.txt"
+
+# Anlage 6
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage7.md"
+
+# Anlage 7
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage8.txt"
+
+# Anlage 8
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage9.md"
+
+# Anlage 9
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage10.txt"
+
+# Anlage 10
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage11.md"
+
+# Anlage 11
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage12.txt"
+
+# Anlage 12
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage13.md"
+
+# Anlage 13
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage14.txt"
+
+# Anlage 14
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage15.md"
+
+# Anlage 15
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage16.txt"
+
+# Anlage 16
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage17.md"
+
+# Anlage 17
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage18.txt"
+
+# Anlage 18
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage19.md"
+
+# Anlage 19
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage20.txt"
+
+# Anlage 20
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage21.md"
+
+# Anlage 21
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage22.txt"
+
+# Anlage 22
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage23.md"
+
+# Anlage 23
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage24.txt"
+
+# Anlage 24
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage25.md"
+
+# Anlage 25
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage26.txt"
+
+# Anlage 26
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage27.md"
+
+# Anlage 27
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage28.txt"
+
+# Anlage 28
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage29.md"
+
+# Anlage 29
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage30.txt"
+
+# Anlage 30
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage31.md"
+
+# Anlage 31
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage32.txt"
+
+# Anlage 32
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage33.md"
+
+# Anlage 33
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage34.txt"
+
+# Anlage 34
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage35.md"
+
+# Anlage 35
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage36.txt"
+
+# Anlage 36
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage37.md"
+
+# Anlage 37
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage38.txt"
+
+# Anlage 38
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage39.md"
+
+# Anlage 39
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage40.txt"
+
+# Anlage 40
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage41.md"
+
+# Anlage 41
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage42.txt"
+
+# Anlage 42
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage43.md"
+
+# Anlage 43
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage44.txt"
+
+# Anlage 44
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage45.md"
+
+# Anlage 45
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage46.txt"
+
+# Anlage 46
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage47.md"
+
+# Anlage 47
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage48.txt"
+
+# Anlage 48
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage49.md"
+
+# Anlage 49
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage50.txt"
+
+# Anlage 50
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage51.md"
+
+# Anlage 51
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage52.txt"
+
+# Anlage 52
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage53.md"
+
+# Anlage 53
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage54.txt"
+
+# Anlage 54
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage55.md"
+
+# Anlage 55
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage56.txt"
+
+# Anlage 56
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage57.md"
+
+# Anlage 57
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage58.txt"
+
+# Anlage 58
+
+Inhalt.
+--grenze
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: attachment; filename="anlage59.md"
+
+# Anlage 59
+
+Inhalt.
+--grenze--

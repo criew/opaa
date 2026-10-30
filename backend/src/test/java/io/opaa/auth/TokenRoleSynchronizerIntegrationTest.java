@@ -97,10 +97,11 @@ class TokenRoleSynchronizerIntegrationTest {
 
   @Test
   void theSecondToLastWithdrawalIsWrittenAndTheLastOneIsRefusedAndAudited() {
+    // the claim withdraws SYSTEM_ADMIN at once but only asks for AUDITOR: an auditor confirms
     User firstAfter =
         synchronizer.apply(first, provider, TokenRoles.named(List.of("opaa-auditor")));
-    assertThat(firstAfter.getSystemRole()).isEqualTo(SystemRole.AUDITOR);
-    assertThat(storedRole(first)).isEqualTo(SystemRole.AUDITOR);
+    assertThat(firstAfter.getSystemRole()).isEqualTo(SystemRole.USER);
+    assertThat(storedRole(first)).isEqualTo(SystemRole.USER);
 
     User secondAfter = synchronizer.apply(second, provider, TokenRoles.named(List.of()));
     assertThat(secondAfter.getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);
@@ -109,8 +110,8 @@ class TokenRoleSynchronizerIntegrationTest {
     assertThat(auditRows())
         .extracting(row -> row.get("event_type") + "/" + row.get("outcome"))
         .containsExactly(
+            "AUDITOR_ROLE_REQUESTED/SUCCESS",
             "SYSTEM_ADMIN_ROLE_REVOKED/SUCCESS",
-            "AUDITOR_ROLE_GRANTED/SUCCESS",
             "SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED/DENIED");
   }
 

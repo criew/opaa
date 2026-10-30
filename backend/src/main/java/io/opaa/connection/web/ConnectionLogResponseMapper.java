@@ -1,13 +1,18 @@
 package io.opaa.connection.web;
 
+import io.opaa.api.dto.ConnectionLogActorKind;
 import io.opaa.api.dto.ConnectionLogEntryResponse;
 import io.opaa.api.dto.ConnectionLogPage;
 import io.opaa.api.dto.ConnectionLogRetentionResponse;
+import io.opaa.connection.log.ConnectionLogActor;
 import io.opaa.connection.log.ConnectionLogEntry;
 import io.opaa.connection.log.ConnectionLogRetentionSettings;
 import org.springframework.data.domain.Page;
 
-/** Maps connection log entries and the retention row onto their responses, field for field. */
+/**
+ * Maps connection log entries and the retention row onto their responses. An entry goes out without
+ * the stored pseudonyms of actor and owner: only whether a person or the system acted.
+ */
 final class ConnectionLogResponseMapper {
 
   private ConnectionLogResponseMapper() {}
@@ -26,11 +31,12 @@ final class ConnectionLogResponseMapper {
             entry.getRecordedAt(),
             entry.getOrganizationId(),
             entry.getEventType(),
-            entry.getActorRef(),
+            ConnectionLogActor.SYSTEM_LABEL.equals(entry.getActorRef())
+                ? ConnectionLogActorKind.SYSTEM
+                : ConnectionLogActorKind.PERSON,
             entry.getOwnerKind(),
             entry.getProfileId(),
             entry.getProfileName())
-        .personRef(entry.getPersonRef())
         .libraryId(entry.getLibraryId())
         .accountLabel(entry.getAccountLabel())
         .cause(entry.getCause());

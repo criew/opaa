@@ -181,7 +181,9 @@ public class InstalledEmbeddingModel
         new EmbeddingEndpoint(
             settings.getBaseUrl(),
             settings.getModelIdentifier(),
-            settingsEncryptor.decrypt(settings.getApiKeyCiphertext()),
+            settingsEncryptor.decrypt(
+                settings.getApiKeyCiphertext(),
+                LlmEncryptedColumns.EMBEDDING_MODEL_KEY.row(EmbeddingModelSettings.SINGLETON_ID)),
             settings.getMaxInputTokens());
     Installed built =
         new Installed(

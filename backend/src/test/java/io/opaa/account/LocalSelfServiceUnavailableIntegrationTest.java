@@ -69,7 +69,9 @@ class LocalSelfServiceUnavailableIntegrationTest {
             d.invitationTokenTtlHours(),
             d.resetTokenTtlMinutes(),
             d.defaultExpiryDays(),
-            d.inactiveDays()));
+            d.inactiveDays(),
+            d.lockoutMaxAttempts(),
+            d.lockoutDurationMinutes()));
   }
 
   @AfterEach

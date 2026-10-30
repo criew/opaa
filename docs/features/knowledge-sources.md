@@ -1135,8 +1135,10 @@ Dienstanweisungen wartet. Drei Stufen ordnen das:
 
 Ein Upload teilt sich also keine Warteschlange mit Verzeichnis-/URL-/RSS-Läufen und muss ihnen
 gegenüber nicht eigens vorgezogen werden — beide laufen gleichzeitig auf getrennten Pools. Innerhalb
-des Upload-Pools selbst gilt einfaches FIFO; ist er ausgelastet, schlägt die Verarbeitung mit einer
-Fehlermeldung am betroffenen Dokument fehl, statt endlos zu warten.
+des Upload-Pools selbst gilt einfaches FIFO. Ein Upload reserviert seinen Platz, bevor etwas
+gespeichert wird; ist der Pool ausgelastet oder belegt das Konto schon seinen Anteil
+(`opaa.upload.max-places-per-account`, standardmäßig ein Viertel des Pools), antwortet OPAA mit
+`429` und `Retry-After`, ohne ein Dokument anzulegen, und die Oberfläche lädt später erneut hoch.
 
 Zusätzlich soll ein **Schonzeitraum je Bibliothek** (Zielbild, mit dem Zeitplan aus #485) die Last auf
 das Quellsystem begrenzen. Ein Fachverfahren, das tagsüber im Wirkbetrieb steht, soll nicht in der

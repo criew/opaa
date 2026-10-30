@@ -36,12 +36,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
- * {@link LocalAccountLockoutListener} (ADR-0033, Entscheidungen 9 and 13): the fifth failed sign-in
- * locks the account for the fixed lockout duration ({@code locked_reason = FAILED_LOGINS}) and is
- * the one audited event of the whole affair - the single failed attempt only reaches the
- * application log, with the account id and never the address. An account that is already locked,
- * for whatever reason, is neither re-locked nor extended. Concurrent attempts never meet here:
- * {@code LocalLoginService} calls the listener under the account's row lock.
+ * {@link LocalAccountLockoutListener} (ADR-0033, Entscheidungen 9 and 13; ADR-0060, Entscheidung
+ * 17): the failed sign-in that reaches the threshold in force locks the account for the duration in
+ * force ({@code locked_reason = FAILED_LOGINS}) and is the one audited event of the whole affair -
+ * the single failed attempt only reaches the application log, with the account id and never the
+ * address. An account that is already locked, for whatever reason, is neither re-locked nor
+ * extended. Concurrent attempts never meet here: {@code LocalLoginService} calls the listener under
+ * the account's row lock.
  */
 class LocalAccountLockoutListenerTest {
 
@@ -50,6 +51,7 @@ class LocalAccountLockoutListenerTest {
   private static final UUID PSEUDONYM = UUID.randomUUID();
 
   private final LocalCredentialsRepository repository = mock(LocalCredentialsRepository.class);
+  private final LocalAuthSettingsService settings = mock(LocalAuthSettingsService.class);
   private final AuditEventRecorder audit = mock(AuditEventRecorder.class);
   private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
   private final AuthMetrics metrics = new AuthMetrics(meterRegistry);
@@ -60,9 +62,8 @@ class LocalAccountLockoutListenerTest {
 
   @BeforeEach
   void setUp() {
-    listener =
-        new LocalAccountLockoutListener(
-            repository, new LocalLockoutProperties(5, Duration.ofMinutes(15)), audit, metrics);
+    when(settings.lockoutPolicy()).thenReturn(new LocalLockoutPolicy(5, Duration.ofMinutes(15)));
+    listener = new LocalAccountLockoutListener(repository, settings, audit, metrics);
     user = User.localAccount(EMAIL, "Erika Muster");
     user.setOrganizationId(Organization.DEFAULT_ID);
     ReflectionTestUtils.setField(user, "id", UUID.randomUUID());
@@ -186,6 +187,37 @@ class LocalAccountLockoutListenerTest {
     assertThat(row.getLockoutUntil()).isEqualTo(NOW.plus(Duration.ofMinutes(15)));
     verify(repository).save(row);
     verify(audit).recordSystemProcessAction(any());
+  }
+
+  /** The rule is read at every attempt: a change made on any instance holds from the next one. */
+  @Test
+  void theRuleInForceIsReadAtEveryAttempt() {
+    LocalCredentials row = activeRowWithFailedAttempts(3);
+    listener.onPasswordRejected(user, row, NOW);
+    assertThat(row.state(NOW)).isEqualTo(LocalAccountState.ACTIVE);
+
+    when(settings.lockoutPolicy()).thenReturn(new LocalLockoutPolicy(3, Duration.ofMinutes(60)));
+    listener.onPasswordRejected(user, row, NOW);
+
+    assertThat(row.state(NOW)).isEqualTo(LocalAccountState.LOCKED);
+    assertThat(row.getLockoutUntil()).isEqualTo(NOW.plus(Duration.ofMinutes(60)));
+  }
+
+  /**
+   * A counter already above a lowered threshold locks at the next failed attempt, never by itself;
+   * a lockout already running keeps the end it was given.
+   */
+  @Test
+  void aChangedRuleNeitherLocksRetroactivelyNorMovesARunningLockout() {
+    when(settings.lockoutPolicy()).thenReturn(new LocalLockoutPolicy(2, Duration.ofMinutes(60)));
+    LocalCredentials running = activeRowWithFailedAttempts(0);
+    Instant lockedAt = NOW.minus(Duration.ofMinutes(5));
+    running.recordLockoutUntil(lockedAt.plus(Duration.ofMinutes(15)), lockedAt);
+
+    listener.onPasswordRejected(user, running, NOW);
+
+    assertThat(running.getLockoutUntil()).isEqualTo(lockedAt.plus(Duration.ofMinutes(15)));
+    verify(repository, never()).save(any());
   }
 
   @Test

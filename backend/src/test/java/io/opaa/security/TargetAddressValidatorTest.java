@@ -173,6 +173,33 @@ class TargetAddressValidatorTest {
     assertBlocked("64:ff9b::192.0.2.1");
   }
 
+  // regression guard for #3360: every IPv6 prefix that translates or tunnels to IPv4 is blocked
+  @Test
+  void rejectsEveryPrefixThatTranslatesToIpv4() throws Exception {
+    assertBlocked("64:ff9b:1::a9fe:a9fe"); // NAT64 local use, RFC 8215
+    assertBlocked("2002:a9fe:a9fe::"); // 6to4, RFC 3056
+    assertBlocked("2001::5601:5601"); // Teredo, RFC 4380
+    assertBlocked("::ffff:0:7f00:1"); // SIIT, RFC 6145
+    assertBlocked("100::1"); // discard-only, RFC 6666
+  }
+
+  @Test
+  void allowsPublicAddressesNextToTheTranslationPrefixes() throws Exception {
+    assertNotBlocked("2001:4860:4860::8888"); // 2001::/32 is Teredo, 2001:4860::/32 is not
+    assertNotBlocked("2003::1");
+    assertNotBlocked("64:ff9b:2::1");
+    assertNotBlocked("64:ff9b::1:0:0:1"); // outside both NAT64 prefixes
+    assertNotBlocked("100:0:0:1::1"); // just outside 100::/64
+    assertNotBlocked("2001:1::1"); // just outside the Teredo /32
+    assertNotBlocked("2001:db8::1");
+  }
+
+  // regression guard for #3360: "this network" 0.0.0.0/8 is blocked beyond 0.0.0.0 itself
+  @Test
+  void rejectsThisNetwork() throws Exception {
+    assertBlocked("0.1.2.3");
+  }
+
   // --- IPv4 ranges no InetAddress predicate recognizes ------------------------------------
 
   @Test

@@ -6,6 +6,7 @@ import io.opaa.api.dto.AccountPageResponse;
 import io.opaa.api.types.LocalAccountState;
 import io.opaa.api.types.ProviderType;
 import io.opaa.api.types.SystemRole;
+import io.opaa.auth.AuditorRoles;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import java.util.UUID;
@@ -25,9 +26,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AccountAdminController {
 
   private final AccountAdminService adminService;
+  private final AuditorRoles auditorRoles;
 
-  public AccountAdminController(AccountAdminService adminService) {
+  public AccountAdminController(AccountAdminService adminService, AuditorRoles auditorRoles) {
     this.adminService = adminService;
+    this.auditorRoles = auditorRoles;
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -58,6 +61,8 @@ public class AccountAdminController {
             AdminListSortParams.descending(direction),
             page,
             size);
-    return AccountResponseMapper.toPage(adminService.list(caller.organizationId(), accountQuery));
+    return PendingRoleMarks.markAccounts(
+        AccountResponseMapper.toPage(adminService.list(caller.organizationId(), accountQuery)),
+        auditorRoles);
   }
 }

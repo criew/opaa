@@ -17,6 +17,7 @@ import { renderSpaceChats } from './themeSeams'
 import {
   CATALOG_ROUTE,
   CONNECTION_CALLBACK_ROUTE,
+  AUDITOR_ROLE_REQUESTS_ROUTE,
   CONNECTION_LOG_ROUTE,
   CONNECTION_PROFILES_ROUTE,
   CONNECTIONS_ADMIN_ROUTE,
@@ -38,6 +39,7 @@ import { catalogRoute } from '@/shared/assetTypes'
 import { useBrandingStore } from '@/shared/branding/brandingStore'
 // pages, loaded on demand
 import {
+  AuditorRoleRequestsPage,
   AuthCallbackPage,
   BrandingSettingsPage,
   CapabilityManagementPage,
@@ -118,6 +120,7 @@ function AdminAreaLayout() {
 const REVISION_SECTIONS = [
   { label: 'Stichtagsauskunft', to: RIGHTS_HISTORY_ROUTE },
   { label: 'Verbindungsprotokoll', to: CONNECTION_LOG_ROUTE },
+  { label: 'Rollenanträge', to: AUDITOR_ROLE_REQUESTS_ROUTE },
 ]
 
 /** The audit's pages share a section column; other roles get the bare frame and the page's gate. */
@@ -360,6 +363,7 @@ export default function App() {
                 <Route element={<RevisionAreaLayout />}>
                   <Route path="revision/rechtehistorie" element={<RightsHistoryPage />} />
                   <Route path="revision/verbindungsprotokoll" element={<ConnectionLogPage />} />
+                  <Route path="revision/rollenantraege" element={<AuditorRoleRequestsPage />} />
                 </Route>
                 <Route element={<GlobalAreaLayout />}>
                   <Route path="settings" element={<SettingsPage />} />

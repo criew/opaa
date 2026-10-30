@@ -128,9 +128,23 @@ gilt:
   ([Berechtigungen](../konten-und-rechte/berechtigungen.md#12-nachweis-rechtehistorie-und-stichtagsauskunft)).
   Die Ausleitung an ein Sicherheitsmonitoring trägt keine Pseudonyme
   ([Überwachung](ueberwachung-und-fehlerbehebung.md#ausleitung-an-ein-sicherheitsmonitoring)).
-- **Auflösen nur im Einzelfall:** Einer Person zugeordnet wird ein Pseudonym nur über eine
+- **Keine Kennung in der Antwort:** In ihren Abfragen des Revisionsprotokolls und des
+  Verbindungsprotokolls sieht die Revision keine Kennung einer Person, weder das gespeicherte
+  Pseudonym noch einen Ersatz, nur dass eine Person gehandelt hat oder betroffen ist. Damit lassen
+  sich diese Antworten nicht über eine Person verbinden, auch nicht über Einträge, die in zwei
+  Antworten vorkommen, und aus vielen Abfragen entsteht keine Zeitreihe einer Person. Bewusst
+  ausgenommen sind die Stichtagsauskunft, die zu einem Objekt nennt, wer es lesen durfte
+  ([Berechtigungen](../konten-und-rechte/berechtigungen.md#12-nachweis-rechtehistorie-und-stichtagsauskunft)),
+  das Diagnoseprotokoll, das bei „Sicht als“ die handelnde Systemverwaltung mit ihrem Pseudonym
+  nennt, um deren Handeln zu kontrollieren, und die offenen Anträge auf die Rolle Revision, die Name
+  und Adresse des Kontos und die beantragende Person nennen, damit die Revision die Person vor der
+  Bestätigung prüft ([Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md#die-rolle-revision)).
+- **Auflösen nur im Einzelfall:** Einer Person zugeordnet wird ein Eintrag nur über eine
   anlassbezogene Klärung mit Begründung und Freigabe durch eine zweite Person
-  ([Berechtigungen](../konten-und-rechte/berechtigungen.md#10-systemrollen-und-vollmachten)).
+  ([Berechtigungen](../konten-und-rechte/berechtigungen.md#10-systemrollen-und-vollmachten)). Ihr
+  Zeitraum liegt ganz in der Vergangenheit und ist je Klärung begrenzt, ihre Antwort nennt keine
+  Kennung der Person, und Antrag und Freigabe stehen selbst im Protokoll, gesichert durch die
+  Prüfsummenkette.
 - **Löschen ohne Eingriff ins Protokoll:** Wird ein Konto gelöscht, entfällt die Zuordnung; das
   Protokoll bleibt unverändert und ist danach keiner Person mehr zuzuordnen
   ([Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md#8-löschen-oder-sperren)).
@@ -189,8 +203,12 @@ Das Paket ist attestiert wie die Images. Die Provenance prüft:
 
 ```bash
 gh release download v<Version> --repo criew/opaa --pattern 'opaa-update-paket-*'
-gh attestation verify opaa-update-paket-<Version>.tar.gz --repo criew/opaa
+gh attestation verify opaa-update-paket-<Version>.tar.gz --repo criew/opaa \
+  --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/v<Version>
 ```
+
+Die Prüfung nennt Workflow und Tag: Sie besteht nur ein Paket, das der Release-Lauf von OPAA zu
+genau dieser Version erzeugt hat.
 
 Der Release-Lauf erzeugt das Paket nur, wenn der Wächter (siehe [Was bei jeder Änderung geprüft
 wird](#was-bei-jeder-änderung-geprüft-wird)) besteht; sonst erscheint das Release nicht.

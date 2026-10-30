@@ -6,16 +6,20 @@ import java.util.Map;
 import org.springframework.stereotype.Component;
 
 /**
- * The periods of local accounts as this instance holds them, for the disclosure. The time of change
- * is the one of the whole settings row.
+ * The periods and the lockout of local accounts as this instance holds them, for the disclosure:
+ * the lockout as in force within the limits of the operation. The time of change is the one of the
+ * whole settings row.
  */
 @Component
 class LocalAuthInstanceState implements InstanceStateSource {
 
   private final LocalAuthSettingsRepository repository;
+  private final LocalLockoutProperties lockoutLimits;
 
-  LocalAuthInstanceState(LocalAuthSettingsRepository repository) {
+  LocalAuthInstanceState(
+      LocalAuthSettingsRepository repository, LocalLockoutProperties lockoutLimits) {
     this.repository = repository;
+    this.lockoutLimits = lockoutLimits;
   }
 
   @Override
@@ -32,7 +36,17 @@ class LocalAuthInstanceState implements InstanceStateSource {
                     "local_auth_settings.default_expiry_days",
                     value(settings.getDefaultExpiryDays(), settings),
                     "local_auth_settings.inactive_days",
-                    value(settings.getInactiveDays(), settings)))
+                    value(settings.getInactiveDays(), settings),
+                    "local_auth_settings.lockout_max_attempts",
+                    value(
+                        settings.values().lockoutMaxAttemptsInForce(lockoutLimits.maxAttempts()),
+                        settings),
+                    "local_auth_settings.lockout_duration_minutes",
+                    value(
+                        settings
+                            .values()
+                            .lockoutDurationMinutesInForce(lockoutLimits.minDurationMinutes()),
+                        settings)))
         .orElse(Map.of());
   }
 

@@ -77,11 +77,14 @@ public class EmbeddingModelSettings {
     this.referenceVectors = referenceVectors;
   }
 
-  /** Takes over every value of {@code previous}, the model a discarded change goes back to. */
-  void restore(PreviousEmbeddingModel previous) {
+  /**
+   * Takes over every value of {@code previous}, the model a discarded change goes back to; its key
+   * as {@code apiKeyCiphertext}, already encrypted for this table's row.
+   */
+  void restore(PreviousEmbeddingModel previous, String apiKeyCiphertext) {
     this.baseUrl = previous.getBaseUrl();
     this.modelIdentifier = previous.getModelIdentifier();
-    this.apiKeyCiphertext = previous.getApiKeyCiphertext();
+    this.apiKeyCiphertext = apiKeyCiphertext;
     this.maxInputTokens = previous.getMaxInputTokens();
     this.dimensions = previous.getDimensions();
     this.installedAt = previous.getInstalledAt();

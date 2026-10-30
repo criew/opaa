@@ -2,6 +2,7 @@ package io.opaa.indexing.source.sharepoint;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -106,7 +107,7 @@ class SharePointSignInTest {
     ReflectionTestUtils.setField(created, "tenant", TENANT);
     String ciphertext = "enc:v1:" + UUID.randomUUID();
     ReflectionTestUtils.setField(created, "clientSecretCiphertext", ciphertext);
-    when(encryptor.decrypt(ciphertext)).thenReturn("geheim");
+    when(encryptor.decrypt(eq(ciphertext), any())).thenReturn("geheim");
     return created;
   }
 }

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.test.SourceTypes;
@@ -16,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -107,7 +109,18 @@ class RemoteOriginalAccessTest {
     Document document =
         new Document("eintrag.pdf", documentUrl, "application/pdf", null, SourceTypes.RSS_FEED);
     Optional<DocumentContent> content =
-        access.openOriginal(document, null, new SourceSettings(null, sourceUrl, CREDENTIALS, null));
+        access.openOriginal(
+            document,
+            KnowledgeLibrary.ownedByUser(
+                UUID.randomUUID(),
+                "Feed",
+                null,
+                UUID.randomUUID(),
+                SourceTypes.RSS_FEED,
+                null,
+                sourceUrl,
+                CREDENTIALS),
+            new SourceSettings(null, sourceUrl, CREDENTIALS, null));
     assertThat(content).isPresent();
     try (InputStream stream = content.get().stream()) {
       assertThat(new String(stream.readAllBytes(), StandardCharsets.UTF_8)).isEqualTo("inhalt");

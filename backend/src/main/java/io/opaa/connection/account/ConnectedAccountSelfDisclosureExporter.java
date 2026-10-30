@@ -124,7 +124,11 @@ public class ConnectedAccountSelfDisclosureExporter implements SelfDisclosureExp
                   Map<String, Object> record = keyed(rs, "connected_at", "id");
                   record.put("profile", rs.getString("profile_name"));
                   record.put("state", rs.getString("state"));
-                  record.put("accountLabel", label(rs.getString("account_label_ciphertext")));
+                  record.put(
+                      "accountLabel",
+                      label(
+                          rs.getString("account_label_ciphertext"),
+                          rs.getObject("id", UUID.class)));
                   record.put("connectedAt", instant(rs.getTimestamp("connected_at")));
                   record.put("reconnectedAt", instant(rs.getTimestamp("reconnected_at")));
                   record.put("expiredAt", instant(rs.getTimestamp("expired_at")));
@@ -183,12 +187,12 @@ public class ConnectedAccountSelfDisclosureExporter implements SelfDisclosureExp
   }
 
   /** The account name for its owner; a value that is not encrypted or not readable is none. */
-  private String label(String ciphertext) {
+  private String label(String ciphertext, UUID accountId) {
     if (!CredentialsEncryptor.isEncrypted(ciphertext)) {
       return null;
     }
     try {
-      return encryptor.decrypt(ciphertext);
+      return encryptor.decrypt(ciphertext, ConnectedAccount.ACCOUNT_LABEL.row(accountId));
     } catch (CredentialsEncryptionKeyMissingException e) {
       return null;
     }

@@ -138,10 +138,11 @@ Im Reiter „Dokumente" sucht „Dateiname enthält …" in der ganzen Bibliothe
 zeigt die Dokumente ohne Wert in einem Feld. Der Filter „Status" zeigt alle Dateien der Bibliothek,
 die „Fehlgeschlagen" sind oder noch „Wird verarbeitet", mit ihrer Zahl, die während eines Laufs
 dessen Fortschritt folgt; er erscheint ab fünf Dateien in der Bibliothek und nur, wenn er die Liste
-kürzt. Beide Filter listen Anhänge als eigene Zeilen
-und nennen dazu das Dokument, an dem sie hängen, etwa „Anhang von posteingang.eml". Die Aktionen
-einer Zeile, etwa „Löschen", stehen in ihrem Menü „⋯". Lehnt ein Upload Dateien ab, nennt eine
-Meldung sie; „Schließen" faltet sie zu „Abgelehnte Dateien anzeigen (n)", bis zum nächsten Upload.
+kürzt. Beide Filter listen Anhänge als eigene Zeilen und nennen dazu das Dokument, an dem sie
+hängen, etwa „Anhang von posteingang.eml". Die Aktionen einer Zeile, etwa „Löschen", stehen in ihrem
+Menü „⋯". Einzeln löschen lässt sich ein Dokument nur in einer Upload-Bibliothek; in einer
+Konnektorbibliothek folgt der Bestand der Quelle. Lehnt ein Upload Dateien ab, nennt eine Meldung
+sie; „Schließen" faltet sie zu „Abgelehnte Dateien anzeigen (n)", bis zum nächsten Upload.
 
 Im Reiter „Quelle" ändert, wer verwaltet, jede Zeile an Ort und Stelle: „Ändern" klappt sie auf,
 „Speichern" übernimmt die Änderung, „Abbrechen" verwirft sie. Wo der Umfang nur im Auswahldialog
@@ -454,7 +455,10 @@ flowchart LR
 - Der Ort eines Anhangs enthält den Ort seines Elterndokuments und seine Position darin; zwei
   gleichnamige Anhänge kollidieren nicht.
 - Anhänge können selbst Anhänge haben (Mail in Mail). Die Tiefe ist begrenzt
-  (`attachments.max-depth`); was darüber liegt, wird übersprungen und protokolliert.
+  (`attachments.max-depth`); was darüber liegt, wird übersprungen und protokolliert. Über alle
+  Ebenen zusammen begrenzt ein Budget je Ausgangsdokument Zahl (`attachments.max-per-root`) und
+  Gesamtgröße (`attachments.max-bytes-per-root`) der Anhänge, damit eine Kette von Mails mit je
+  vielen Mails nicht Tausende Dokumente erzeugt; was darüber liegt, wird ebenso übersprungen.
 - Das Kontingent zählt Anhänge nur einmal: Eine Mail zählt nur Kopf und Text, ihre Anhänge zählen
   als eigene Dokumente.
 - Wird das Elterndokument neu verarbeitet und meldet einen früheren Anhang nicht mehr, wird dieser
@@ -650,7 +654,9 @@ ist eine Sicherung des Index.
 Sind Lauf-Pool und Warteschlange voll, wird ein neuer Lauf sofort als fehlgeschlagen beendet und
 die Anfrage mit HTTP 503 beantwortet. Ein Upload nimmt sich seinen Platz im Upload-Pool, bevor
 etwas gespeichert wird. Ist der Pool voll, antwortet OPAA mit HTTP 429, ohne ein Dokument anzulegen.
-Ein Rate-Limit bremst außerdem, wie schnell ein Konto Dateien schickt. In beiden Fällen wartet die
+Ein Konto belegt je Instanz höchstens einen Teil der Plätze, standardmäßig ein Viertel; darüber erhält es
+ebenfalls 429, während andere Konten weiter Plätze bekommen. Ein Rate-Limit bremst außerdem, wie
+schnell ein Konto Dateien schickt. In allen Fällen wartet die
 Oberfläche die genannte Zeit ab und lädt dieselbe Datei erneut hoch, ein Ordner-Upload läuft
 langsamer weiter ([Konfiguration](../../betrieb/konfiguration.md)). Während der Wartezeit zeigt die
 Bibliotheksseite einen Hinweis mit der Zahl der Sekunden. Nach insgesamt fünf Minuten Wartezeit gilt
@@ -665,6 +671,7 @@ noch zu warten.
 | `filesystem.allowlist` | leer | freigegebene Basisverzeichnisse; leer schaltet den Dateisystem-Konnektor ab |
 | `attachments.max-depth` | 5 | Verschachtelungstiefe von Anhängen, für jede Quelle |
 | `attachments.max-per-parent` / `attachments.max-size-bytes` | 10 / 20 MiB | Reserve für Konnektoren ohne eigene Werte, derzeit ohne Wirkung |
+| `attachments.max-per-root` / `attachments.max-bytes-per-root` | 500 / 1 GiB | Anhänge eines Dokuments über alle Ebenen zusammen, für jede Quelle |
 | `http.user-agent` / `http.max-rate-limit-retries` / `http.max-retry-after` | `OPAA-Indexer/1.0` / 6 / 2m | `User-Agent` jeder Anfrage an eine fremde Quelle und die 429-Wartezeit von Feed und Webverzeichnis |
 | `http.request-budget-per-run` / `http.max-rate-limit-wait-per-run` | 0 (unbegrenzt) / 15m | Anfragen und Summe der 429-Wartezeiten je Lauf bei Feed und Webverzeichnis |
 | `chunk-target-characters` | 4000 Zeichen | Zielgröße eines Chunks bei allen Formaten mit Struktur (500 bis 8.000); 4.000 Zeichen deutscher Text sind mit bge-m3 etwa 950 bis 1.250 Tokens |

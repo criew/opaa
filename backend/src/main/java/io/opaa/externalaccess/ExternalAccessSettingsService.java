@@ -157,11 +157,22 @@ public class ExternalAccessSettingsService {
     return releaseBounds.maxReleaseDays() - 1;
   }
 
+  /** The settings in force, without the name of who changed them last. */
   @Transactional(readOnly = true)
   public View current() {
+    return current(null);
+  }
+
+  /**
+   * The settings in force as the administration of {@code viewerOrganizationId} sees them: the
+   * settings are installation-wide, but the name of who changed them last is shown only to the
+   * administration of that person's organization.
+   */
+  @Transactional(readOnly = true)
+  public View current(UUID viewerOrganizationId) {
     return settings
         .findSingleton()
-        .map(row -> view(row.values(), row))
+        .map(row -> view(row.values(), row, viewerOrganizationId))
         .orElseGet(() -> new View(Values.defaults(), maxReleaseReminderLeadDays(), null, null));
   }
 
@@ -175,27 +186,30 @@ public class ExternalAccessSettingsService {
     Values before = row.values();
     Values target = validate(update, before.releaseReminderLeadDays());
     if (target.equals(before)) {
-      return view(before, row);
+      return view(before, row, actor.organizationId());
     }
     row.replace(target, actor.id(), clock.instant());
     settings.save(row);
     recordChange(actor, before, target);
-    return view(target, row);
+    return view(target, row, actor.organizationId());
   }
 
-  private View view(Values values, ExternalAccessSettings row) {
+  private View view(Values values, ExternalAccessSettings row, UUID viewerOrganizationId) {
     return new View(
         values,
         maxReleaseReminderLeadDays(),
         row.getUpdatedAt(),
-        displayNameOf(row.getUpdatedBy()));
+        displayNameOf(row.getUpdatedBy(), viewerOrganizationId));
   }
 
-  private String displayNameOf(UUID userId) {
-    if (userId == null) {
+  private String displayNameOf(UUID userId, UUID viewerOrganizationId) {
+    if (userId == null || viewerOrganizationId == null) {
       return null;
     }
-    return users.findById(userId).map(User::getDisplayName).orElse(null);
+    return users
+        .findByIdAndOrganizationId(userId, viewerOrganizationId)
+        .map(User::getDisplayName)
+        .orElse(null);
   }
 
   private Values validate(Update update, Integer storedLead) {

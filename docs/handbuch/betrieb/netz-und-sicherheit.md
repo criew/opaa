@@ -127,8 +127,10 @@ solche, die nur aus dem Netz des Servers erreichbar sind (SSRF). Zwei Schranken 
 
 - **Pfad-Allowlist** (`OPAA_INDEXING_FILESYSTEM_ALLOWLIST`) für Dateisystem-Bibliotheken.
 - **Zielprüfung** für jede Netzquelle, standardmäßig an: Loopback, Link-Local samt
-  `169.254.169.254`, private und reservierte Bereiche werden abgelehnt, geprüft nach der
-  DNS-Auflösung und nach jedem Redirect. Interne Quellen kommen in
+  `169.254.169.254`, private und reservierte Bereiche werden abgelehnt, ebenso `0.0.0.0/8` und
+  IPv6-Präfixe, die auf IPv4 übersetzen oder tunneln (NAT64 `64:ff9b::/96` und `64:ff9b:1::/48`,
+  6to4 `2002::/16`, Teredo `2001::/32`, SIIT `::ffff:0:0:0/96`) oder verwerfen (`100::/64`), geprüft
+  nach der DNS-Auflösung und nach jedem Redirect. Interne Quellen kommen in
   `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`, statt die Prüfung abzuschalten. Identitätsanbieter,
   Modell-Endpunkte und Originalablage haben eigene Schalter und Listen derselben Prüfung; ein
   Eintrag in einer Liste öffnet keine der anderen.
@@ -201,8 +203,10 @@ und `http.proxyHost` wertet OPAA nicht aus.
   löst den Namen selbst noch einmal auf und kann eine andere Adresse erhalten (DNS-Rebinding).
   Bindung und Bewachung geprüfter Namen erreichen ihn nicht. Er muss deshalb nach seiner eigenen
   Auflösung Ziele in privaten Netzen (RFC 1918), Loopback, Link-Local (`169.254.0.0/16` samt
-  Metadatendienst `169.254.169.254`, `fe80::/10`), Carrier-Grade NAT (`100.64.0.0/10`) und IPv6-ULA
-  (`fc00::/7`) verwerfen, soweit sie nicht ausdrücklich erreichbar sein sollen. Ein Name, den das
+  Metadatendienst `169.254.169.254`, `fe80::/10`), Carrier-Grade NAT (`100.64.0.0/10`), IPv6-ULA
+  (`fc00::/7`) und die übrigen Bereiche der [Zielprüfung](#zielprüfung-abrufe-des-servers), etwa
+  `0.0.0.0/8` und die IPv6-Präfixe, die auf IPv4 übersetzen, verwerfen, soweit sie nicht
+  ausdrücklich erreichbar sein sollen. Ein Name, den das
   Backend selbst nicht auflösen kann, bleibt über den Proxy erlaubt.
 - Änderungen wirken ohne Neustart und stehen im Revisionsprotokoll.
 - **Notanker:** Ein falscher Proxy kann die Anmeldung über Identitätsanbieter lahmlegen; das lokale
@@ -323,8 +327,9 @@ dem Backend den Weg zum Scanner öffnen.
 | Geheimnis | Wofür | Ohne eigenen Wert | Bei Verlust oder Wechsel |
 |---|---|---|---|
 | `OPAA_AUTH_JWT_SECRET` | lokal ausgestellte Tokens und Links (Refresh, Einladung, Rücksetzen) | im Modus `oidc` bricht der Start ab | alle lokalen Sitzungen, offenen Links und Zugangstokens [externer KI-Werkzeuge](../spaces/fremdzugaenge.md) werden ungültig — gewollt nach einer [Rücksicherung](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank) |
-| `OPAA_CREDENTIALS_ENCRYPTION_KEY` | Zugangsdaten von Quellen, Zugängen und verbundenen Konten, Webhook-Geheimnisse | Speichern solcher Zugangsdaten scheitert; ein im Repository veröffentlichter Schlüssel bricht im Modus `oidc` den Start ab | gespeicherte Werte unlesbar, neu einzutragen |
-| `OPAA_SETTINGS_ENCRYPTION_KEY` | Schlüssel der Chat-Modelle, SMTP-Passwort, wartende Mails | Speichern solcher Werte scheitert; ein im Repository veröffentlichter Schlüssel bricht im Modus `oidc` den Start ab | Werte neu einzutragen ([Modelle](modelle.md#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)); wartende Mails verworfen |
+| `OPAA_CREDENTIALS_ENCRYPTION_KEY` | Zugangsdaten von Quellen, Zugängen und verbundenen Konten, Webhook-Geheimnisse | Speichern solcher Zugangsdaten scheitert; ein im Repository veröffentlichter Schlüssel bricht im Modus `oidc` den Start ab | Verlust: gespeicherte Werte unlesbar, neu einzutragen; Wechsel: [Schlüsselwechsel](#schlüsselwechsel) |
+| `OPAA_SETTINGS_ENCRYPTION_KEY` | Schlüssel der Modelle, SMTP-Passwort, wartende Mails | Speichern solcher Werte scheitert; ein im Repository veröffentlichter Schlüssel bricht im Modus `oidc` den Start ab | Verlust: Werte neu einzutragen ([Modelle](modelle.md#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)), wartende Mails verworfen; Wechsel: [Schlüsselwechsel](#schlüsselwechsel) |
+| `OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS`, `OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS` | abgelöste Schlüssel während eines [Schlüsselwechsels](#schlüsselwechsel), nur zum Entschlüsseln | leer: kein Wechsel im Gang | nach dem Wechsel entfernen, getrennt aufbewahren |
 | `OPAA_DB_USERNAME`, `OPAA_DB_PASSWORD` | Datenbankkonto | Vorgabe `opaa`/`opaa`, nur Entwicklung | vor dem ersten Start setzen |
 
 - Zufällig erzeugen: `openssl rand -base64 48` (Signaturgeheimnis), `openssl rand -base64 32`
@@ -334,7 +339,9 @@ dem Backend den Weg zum Scanner öffnen.
 - Die Schlüssel des Profils `dev`, die Testwerte der Wertesätze unter `deploy/helm/opaa/ci/`
   (`ci-only-…`, Kennzeichen `NICHT-FUER-DEN-PRODUKTIVBETRIEB`) und die früheren Schlüssel und
   Signaturgeheimnisse der Testläufe des Repositorys sind öffentlich. Im Modus `oidc` bricht der Start
-  mit ihnen ab und nennt die Variable. Die Testläufe erzeugen ihre Werte je Lauf.
+  mit ihnen ab und nennt die Variable. Die Testläufe erzeugen ihre Werte je Lauf. Ein bisher genutzter
+  öffentlicher Schlüssel wird wie bei einem [Schlüsselwechsel](#schlüsselwechsel) abgelöst; als
+  abgelöster Schlüssel ist er erlaubt.
 
 ### Zugangsdaten-Verschlüsselung
 
@@ -346,8 +353,77 @@ enthält sie.
   andere Änderungen an der Bibliothek lassen den Geheimtext stehen.
 - Ändert sich die Adresse der Quelle ohne neue Zugangsdaten, verwirft OPAA die gespeicherten
   Zugangsdaten; sie werden für die neue Adresse neu eingetragen.
+- Zugangsdaten, die keiner der eingetragenen Schlüssel entschlüsselt, übernimmt OPAA nicht in einen
+  anderen Datensatz, etwa beim Umstellen einer Bibliothek auf ein Verbindungsprofil oder beim Wechsel
+  des Embedding-Modells. Die Änderung wird mit einer Meldung abgelehnt, bis der fehlende Schlüssel
+  ergänzt oder der Wert neu eingetragen ist.
 - **Bei Schlüsselverlust** sind die Werte verloren, nicht die Bibliothek: Zugangsdaten neu eintragen.
-- **Schlüsselwechsel** im Bestand ist nicht vorgesehen; wer wechselt, trägt alle Werte neu ein.
+- Ein Wert im aktuellen Format `enc:v2` trägt die Kennung seines Schlüssels und ist an seinen
+  Datensatz gebunden. Ein solcher Geheimtext, der in der Datenbank in einen anderen Datensatz kopiert
+  wird, ist dort unlesbar. Werte im älteren Format `enc:v1` und Klartext aus der Zeit vor der
+  Verschlüsselung sind nicht gebunden; OPAA liest sie nur, bis der Hintergrundlauf den Bestand
+  umgestellt hat. Er verschlüsselt dabei auch den Klartext. Findet er zweimal im Abstand von
+  mindestens fünf Minuten und zwei Heartbeat-Intervallen keinen solchen Wert mehr, meldet das Log
+  „No stored … secret is in the format enc:v1 or in cleartext any more“. Ab dann lehnt OPAA solche
+  Werte als unlesbar ab, auf allen Instanzen spätestens nach einem Heartbeat-Intervall; ein abgelehnter Wert wird neu eingetragen.
+  Ein `enc:v1`-Wert, den kein eingetragener Schlüssel liest, hält den Abschluss auf, bis er neu
+  eingetragen oder sein Schlüssel ergänzt ist. Mit `OPAA_ENCRYPTION_KEYED_FORMAT=false` lehnt OPAA
+  nichts ab, und der Start hebt einen Abschluss wieder auf.
+
+### Schlüsselwechsel
+
+Ein Schlüssel wird gewechselt, wenn er bekannt geworden sein kann, etwa nach dem Ausscheiden einer
+Person mit Zugriff auf die Geheimnisse, oder turnusmäßig nach den Regeln des Hauses. OPAA arbeitet
+während des Wechsels weiter: Der alte Schlüssel entschlüsselt nur noch, alles Neue verschlüsselt der
+neue, und ein Hintergrundlauf stellt den Bestand um. Der Ablauf gilt für
+`OPAA_CREDENTIALS_ENCRYPTION_KEY` und `OPAA_SETTINGS_ENCRYPTION_KEY` gleichermaßen, einzeln oder
+beide zugleich.
+
+1. **Neuen Schlüssel erzeugen** (`openssl rand -base64 32`) und sichern, bevor er eingesetzt wird.
+2. **Schlüssel tauschen:** den bisherigen Schlüssel in `OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS`
+   bzw. `OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS` eintragen, den neuen in die Variable des Schlüssels.
+   Mehrere abgelöste Schlüssel stehen durch Kommas getrennt.
+3. **Alle Instanzen gemeinsam neu starten.** Die Schlüssel gehören zum
+   [Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck);
+   ein Rolling Update ist dafür nicht möglich.
+4. **Umstellung abwarten.** Zwei Minuten nach dem Start und danach alle zehn Minuten verschlüsselt
+   eine Instanz bis zu 5.000 Werte neu. Das Log meldet den Fortschritt mit „Re-encrypted … stored
+   secrets; … readable ones still stand under an old key or format“ und den Abschluss mit „… every
+   readable secret is now under the current keys, … cannot be decrypted“. Die zweite Zahl der
+   Abschlussmeldung nennt die Werte, die kein eingetragener Schlüssel entschlüsselt (siehe unten);
+   sie halten den Abschluss nicht auf. Mit `OPAA_ENCRYPTION_KEYED_FORMAT=false` läuft der Wechsel
+   genauso ab, nur bleiben die Werte im bisherigen Format `enc:v1`; das Log warnt dann einmal mit
+   „Previous encryption keys are set while the keyed format is held back …“. Eine Vorversion, der man
+   den neuen Schlüssel gibt, liest danach weiter alles.
+5. **Abgelöste Schlüssel entfernen** und alle Instanzen erneut gemeinsam neu starten. Unlesbare
+   Werte aus Schritt 4 berührt das nicht: Sie sind schon mit den eingetragenen Schlüsseln unlesbar.
+
+Den alten Schlüssel aufbewahren, solange Datenbanksicherungen von vor dem Wechsel aufbewahrt werden:
+Wird eine solche Sicherung zurückgespielt, kommt er wieder als abgelöster Schlüssel in die Variable,
+bis der Hintergrundlauf den Bestand erneut umgestellt hat.
+
+Ein Wert, den weder der aktuelle noch ein abgelöster Schlüssel entschlüsselt, bleibt unverändert
+stehen. Der Lauf meldet ihn einmal je Instanz mit Tabelle, Spalte und Datensatz, nie mit dem Wert,
+und zählt alle solchen Werte in der Warnung „… stored secrets cannot be decrypted with the current or
+previous keys“, sobald sich ihre Zahl ändert. Solche Werte verbrauchen nichts von den 5.000 Werten
+eines Laufs. Abhilfe: den fehlenden Schlüssel als abgelösten Schlüssel ergänzen oder den Wert in der
+Oberfläche neu eintragen.
+
+Während eines Updates, solange noch eine Instanz der Vorversion läuft, schreibt OPAA neue Werte im
+bisherigen Format, das die Vorversion lesen kann; der Hintergrundlauf bringt Werte nur unter den
+aktuellen Schlüssel und behält ihr Format. Erst wenn alle Instanzen die neue Version fahren, stellt
+er den Bestand auf das neue Format um, auch Werte im älteren Format ohne Schlüsselkennung, ohne dass
+dafür ein Schlüssel wechseln muss.
+
+Eine Version vor dieser liest das neue Format nicht. Ist der Bestand umgestellt, führt der Weg
+zurück auf sie nur über eine Rücksicherung von vor dem Update (siehe
+[Aktualisierung](aktualisierung.md#kein-rückweg-nach-der-umstellung-der-geheimnisse)). Wer sich den
+Rückweg ohne Rücksicherung offenhalten will, setzt beim Update `OPAA_ENCRYPTION_KEYED_FORMAT=false`:
+OPAA schreibt dann weiter das bisherige Format und stellt den Bestand nicht darauf um; ein
+Schlüsselwechsel läuft trotzdem vollständig ab. Sobald der Rückweg
+nicht mehr gebraucht wird, die Variable entfernen oder auf `true` setzen und alle Instanzen gemeinsam
+neu starten; die Variable gehört zum
+[Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck).
 
 ## Schutz gegen Prompt-Injection
 

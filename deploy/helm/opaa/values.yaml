@@ -317,6 +317,8 @@ secrets:
   #             v0.1.0-rc.4)
   #   no longer read: OPAA_RERANK_API_KEY, OPAA_TRANSCRIPTION_API_KEY (set under Modelle)
   #   optional: OPAA_INSTALLATION_TOKEN
+  #   during a key change: OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS,
+  #             OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS
   existingSecret: ""
   # Values for a secret created by the chart. The chart never generates a key: a generated key is
   # lost with helm template, in GitOps tools or on reinstallation (ADR-0042, Entscheidung 5).
@@ -327,6 +329,12 @@ secrets:
   # encrypted with it unreadable - keep a copy outside of the cluster.
   credentialsEncryptionKey: ""
   settingsEncryptionKey: ""
+  # Only during a key change: the replaced keys, comma-separated. They only decrypt; the backend
+  # re-encrypts what they protect with the keys above and logs when it is done, then remove them.
+  # A change restarts every backend pod at once (configuration fingerprint, ADR-0053), see
+  # docs/handbuch/betrieb/netz-und-sicherheit.md.
+  credentialsEncryptionPreviousKeys: ""
+  settingsEncryptionPreviousKeys: ""
   s3AccessKey: ""
   s3SecretKey: ""
   # Key of the embedding model in the answer file (installation-embedding-api-key).
@@ -350,7 +358,9 @@ backend:
     # Defaults to the chart's appVersion. Between two releases the chart carries 0.0.0-dev, for
     # which no image exists - set "main" or a release version when installing from the repository.
     tag: ""
-    # Pins the image by digest (sha256:...); takes precedence over the tag.
+    # Pins the image by digest (sha256:...); takes precedence over the tag. A released chart sets it
+    # to the index digest of its release image (deploy/helm/ci/package-chart.sh); whoever sets
+    # another tag sets this as well, or to "".
     digest: ""
     pullPolicy: IfNotPresent
 
@@ -504,6 +514,7 @@ frontend:
     repository: ghcr.io/criew/opaa-frontend
     # Defaults to the chart's appVersion, see backend.image.tag.
     tag: ""
+    # Set by a release like backend.image.digest.
     digest: ""
     pullPolicy: IfNotPresent
 

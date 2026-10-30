@@ -489,10 +489,11 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
     LocalAccount person = fixtures.activeUser("replay-" + UUID.randomUUID() + "@intern.example");
     UUID personsToken = issueFor(person);
     IssuedRefreshToken first = refreshTokens.issue(person.user());
-    RotationResult.Rotated used = (RotationResult.Rotated) refreshTokens.rotate(first.value());
-    refreshTokens.rotate(used.token().value());
+    RotationResult.Rotated used =
+        (RotationResult.Rotated) refreshTokens.rotate(first.value(), null);
+    refreshTokens.rotate(used.token().value(), null);
 
-    assertThat(refreshTokens.rotate(first.value()))
+    assertThat(refreshTokens.rotate(first.value(), null))
         .isEqualTo(new RotationResult.Reused(person.id()));
 
     assertEndedWithTheAccount(personsToken);

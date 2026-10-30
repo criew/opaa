@@ -549,7 +549,7 @@ describe('LlmModelManagementPage', () => {
     const dialog = await openEditDialog(user, 'Modell mit Schlüssel')
     await user.click(
       within(dialog).getByRole('button', {
-        name: 'Gespeicherten Schlüssel von "Modell mit Schlüssel" entfernen',
+        name: 'Gespeicherten Schlüssel entfernen: Modell mit Schlüssel',
       }),
     )
     await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))

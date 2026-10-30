@@ -244,7 +244,7 @@ class StepRules {
         mail.host(),
         mail.port(),
         mail.username(),
-        settingsEncryptor.decrypt(secret),
+        settingsEncryptor.decrypt(secret, InstallationEncryptedColumns.of(InstallationStep.MAIL)),
         mail.encryption(),
         mail.fromAddress(),
         mail.fromName());
@@ -255,7 +255,8 @@ class StepRules {
    * password none is stored.
    */
   MailSettingsUpdate mailSettingsUpdate(MailPayload mail, String secret) {
-    String password = settingsEncryptor.decrypt(secret);
+    String password =
+        settingsEncryptor.decrypt(secret, InstallationEncryptedColumns.of(InstallationStep.MAIL));
     return new MailSettingsUpdate(
         true,
         mail.host(),
@@ -323,7 +324,19 @@ class StepRules {
   /** The endpoint of a saved embedding model step, its key decrypted. */
   EmbeddingEndpoint embeddingEndpoint(EmbeddingModelPayload model, String secret) {
     return new EmbeddingEndpoint(
-        model.baseUrl(), model.model(), settingsEncryptor.decrypt(secret), maxInputTokens(model));
+        model.baseUrl(),
+        model.model(),
+        apiKey(InstallationStep.EMBEDDING_MODEL, secret),
+        maxInputTokens(model));
+  }
+
+  /**
+   * The saved key of the model step {@code step} in clear, {@code null} without one.
+   *
+   * @throws IllegalStateException when it cannot be decrypted
+   */
+  String apiKey(InstallationStep step, String secret) {
+    return settingsEncryptor.decrypt(secret, InstallationEncryptedColumns.of(step));
   }
 
   TranscriptionModelPayload transcriptionModelPayload(String payload) {
@@ -415,6 +428,7 @@ class StepRules {
     requireNoErrors(errors);
     String secret =
         secretOf(
+            InstallationStep.CHAT_MODEL,
             "chatModel",
             input.apiKey(),
             previousSecret == null ? null : chatModelPayload(previousPayload).baseUrl(),
@@ -444,6 +458,7 @@ class StepRules {
     requireNoErrors(errors);
     String secret =
         secretOf(
+            InstallationStep.EMBEDDING_MODEL,
             "embeddingModel",
             input.apiKey(),
             previousSecret == null ? null : embeddingModelPayload(previousPayload).baseUrl(),
@@ -469,6 +484,7 @@ class StepRules {
     requireNoErrors(errors);
     String secret =
         secretOf(
+            InstallationStep.RERANK_MODEL,
             RERANK_PREFIX,
             input.apiKey(),
             previousSecret == null ? null : rerankModelPayload(previousPayload).baseUrl(),
@@ -497,6 +513,7 @@ class StepRules {
     requireNoErrors(errors);
     String secret =
         secretOf(
+            InstallationStep.TRANSCRIPTION_MODEL,
             TRANSCRIPTION_PREFIX,
             input.apiKey(),
             previousSecret == null ? null : transcriptionModelPayload(previousPayload).baseUrl(),
@@ -561,7 +578,8 @@ class StepRules {
     }
     if (fromAddress == null) {
       errors.add(error("mail.fromAddress", REQUIRED, MailSettingsRules.FROM_ADDRESS_MISSING));
-    } else {
+    } else if (fromAddress.length() <= MailSettingsRules.MAX_FROM_ADDRESS_LENGTH) {
+      // an overlong address already carries TOO_LONG from lengthErrors
       MailSettingsRules.fromAddressProblem(fromAddress)
           .ifPresent(problem -> errors.add(error("mail.fromAddress", INVALID, problem)));
     }
@@ -640,7 +658,8 @@ class StepRules {
       return null;
     }
     try {
-      return settingsEncryptor.encrypt(password);
+      return settingsEncryptor.encrypt(
+          password, InstallationEncryptedColumns.of(InstallationStep.MAIL));
     } catch (IllegalStateException e) {
       throw FieldValidationException.of(
           "mail.password",
@@ -671,7 +690,12 @@ class StepRules {
    * previousSecret} only for an unchanged endpoint.
    */
   private String secretOf(
-      String prefix, String apiKey, String previousBaseUrl, String baseUrl, String previousSecret) {
+      InstallationStep step,
+      String prefix,
+      String apiKey,
+      String previousBaseUrl,
+      String baseUrl,
+      String previousSecret) {
     if (apiKey == null) {
       if (previousSecret != null && !sameEndpoint(previousBaseUrl, baseUrl)) {
         throw FieldValidationException.of(
@@ -685,7 +709,7 @@ class StepRules {
     if (apiKey.isBlank()) {
       return null;
     }
-    return encrypt(prefix, apiKey.strip());
+    return encrypt(step, prefix, apiKey.strip());
   }
 
   /**
@@ -702,9 +726,9 @@ class StepRules {
     return ModelEndpointRules.sameEndpoint(previous, next);
   }
 
-  private String encrypt(String prefix, String apiKey) {
+  private String encrypt(InstallationStep step, String prefix, String apiKey) {
     try {
-      return settingsEncryptor.encrypt(apiKey);
+      return settingsEncryptor.encrypt(apiKey, InstallationEncryptedColumns.of(step));
     } catch (IllegalStateException e) {
       throw FieldValidationException.of(
           prefix + ".apiKey",

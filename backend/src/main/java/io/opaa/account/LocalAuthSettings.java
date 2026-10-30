@@ -17,7 +17,9 @@ import java.util.UUID;
  * the {@code LOCAL} provider row. Unlike branding, every value is a policy with the ADR's default
  * already stored, and the bounds the ADR names are enforced twice: by {@link Values} and by the
  * table's CHECKs. Self-registration works only with a non-empty domain list - an empty list means
- * "nobody can register", never "everybody".
+ * "nobody can register", never "everybody". The lockout after failed sign-ins is the exception
+ * (ADR-0060, Entscheidung 17): empty while its factory default applies, and bounded in force by the
+ * limits of the operation ({@link LocalLockoutProperties}).
  */
 @Entity
 @Table(name = "local_auth_settings")
@@ -33,10 +35,16 @@ public class LocalAuthSettings {
   public static final int MAX_RESET_TOKEN_TTL_MINUTES = 1440;
   public static final int MIN_DEFAULT_EXPIRY_DAYS = 1;
   public static final int MIN_INACTIVE_DAYS = 30;
+  public static final int DEFAULT_LOCKOUT_MAX_ATTEMPTS = 5;
+  public static final int DEFAULT_LOCKOUT_DURATION_MINUTES = 15;
+  public static final int MIN_LOCKOUT_MAX_ATTEMPTS = 1;
+  public static final int MIN_LOCKOUT_DURATION_MINUTES = 1;
+  public static final int MAX_LOCKOUT_DURATION_MINUTES = 1440;
 
   /**
-   * The eight policy values as one immutable unit, normalized (domains trimmed, lowercased,
-   * de-duplicated) and range-checked on construction - what the API reads and replaces wholesale.
+   * The policy values as one immutable unit, normalized (domains trimmed, lowercased,
+   * de-duplicated) and range-checked on construction - what the API reads and replaces wholesale. A
+   * lockout value of {@code null} means the factory default.
    */
   public record Values(
       boolean selfRegistrationEnabled,
@@ -46,7 +54,9 @@ public class LocalAuthSettings {
       int invitationTokenTtlHours,
       int resetTokenTtlMinutes,
       int defaultExpiryDays,
-      int inactiveDays) {
+      int inactiveDays,
+      Integer lockoutMaxAttempts,
+      Integer lockoutDurationMinutes) {
 
     public Values {
       selfRegistrationAllowedDomains =
@@ -66,11 +76,39 @@ public class LocalAuthSettings {
       requireBetween(
           defaultExpiryDays, MIN_DEFAULT_EXPIRY_DAYS, Integer.MAX_VALUE, "defaultExpiryDays");
       requireBetween(inactiveDays, MIN_INACTIVE_DAYS, Integer.MAX_VALUE, "inactiveDays");
+      if (lockoutMaxAttempts != null) {
+        requireBetween(
+            lockoutMaxAttempts, MIN_LOCKOUT_MAX_ATTEMPTS, Integer.MAX_VALUE, "lockoutMaxAttempts");
+      }
+      if (lockoutDurationMinutes != null) {
+        requireBetween(
+            lockoutDurationMinutes,
+            MIN_LOCKOUT_DURATION_MINUTES,
+            MAX_LOCKOUT_DURATION_MINUTES,
+            "lockoutDurationMinutes");
+      }
     }
 
-    /** The ADR's defaults - what the seed row carries. */
+    /** The ADR's defaults - what the seed row carries; the lockout follows its factory default. */
     public static Values defaults() {
-      return new Values(false, List.of(), true, 12, 72, 30, 90, 90);
+      return new Values(false, List.of(), true, 12, 72, 30, 90, 90, null, null);
+    }
+
+    /**
+     * The failed sign-ins that lock in force: stored or factory default, never above {@code limit}.
+     */
+    public int lockoutMaxAttemptsInForce(int limit) {
+      int attempts = lockoutMaxAttempts == null ? DEFAULT_LOCKOUT_MAX_ATTEMPTS : lockoutMaxAttempts;
+      return Math.max(MIN_LOCKOUT_MAX_ATTEMPTS, Math.min(attempts, limit));
+    }
+
+    /** The lockout in minutes in force: stored or factory default, never below {@code minimum}. */
+    public int lockoutDurationMinutesInForce(int minimum) {
+      int minutes =
+          lockoutDurationMinutes == null
+              ? DEFAULT_LOCKOUT_DURATION_MINUTES
+              : lockoutDurationMinutes;
+      return Math.min(MAX_LOCKOUT_DURATION_MINUTES, Math.max(minutes, minimum));
     }
 
     private static void requireBetween(int value, int min, int max, String name) {
@@ -108,6 +146,14 @@ public class LocalAuthSettings {
   @Column(name = "inactive_days", nullable = false)
   private int inactiveDays;
 
+  /** Empty while the factory default applies. */
+  @Column(name = "lockout_max_attempts")
+  private Integer lockoutMaxAttempts;
+
+  /** Empty while the factory default applies. */
+  @Column(name = "lockout_duration_minutes")
+  private Integer lockoutDurationMinutes;
+
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
@@ -129,7 +175,9 @@ public class LocalAuthSettings {
         invitationTokenTtlHours,
         resetTokenTtlMinutes,
         defaultExpiryDays,
-        inactiveDays);
+        inactiveDays,
+        lockoutMaxAttempts,
+        lockoutDurationMinutes);
   }
 
   /** Replaces every policy value at once; {@code updatedBy} may be null for a system change. */
@@ -143,6 +191,8 @@ public class LocalAuthSettings {
     this.resetTokenTtlMinutes = values.resetTokenTtlMinutes();
     this.defaultExpiryDays = values.defaultExpiryDays();
     this.inactiveDays = values.inactiveDays();
+    this.lockoutMaxAttempts = values.lockoutMaxAttempts();
+    this.lockoutDurationMinutes = values.lockoutDurationMinutes();
     this.updatedBy = updatedBy;
     this.updatedAt = Objects.requireNonNull(now, "now");
   }

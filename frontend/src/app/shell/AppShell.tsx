@@ -10,7 +10,7 @@ import Sidebar, { SIDEBAR_WIDTH } from './Sidebar'
 import MobileHeader from './MobileHeader'
 import SkipLink from '@/shared/ui/a11y/SkipLink'
 import { MAIN_CONTENT_ID } from '@/shared/ui/a11y/PageHeading'
-import { keepsFocus } from '@/shared/ui/a11y/routeFocus'
+import { arrivalFocusTarget, keepsFocus } from '@/shared/ui/a11y/routeFocus'
 import { IndexingSnackbar } from '@/features/search-admin'
 import ConfirmHost from '@/shared/ui/feedback/ConfirmHost'
 import NotificationHost from '@/shared/ui/feedback/NotificationHost'
@@ -32,17 +32,17 @@ export default function AppShell() {
   // frame carry the navigation there.
   const isGlobalArea = isGlobalAreaPath(pathname)
 
-  // On every route change, move focus to the new page's heading so screen readers announce it;
-  // if the heading is not rendered yet (data still loading), park focus on <main> and let
-  // PageHeading pick it up once it mounts. The initial load and a navigation that keeps the view
-  // (see KEEP_FOCUS_STATE) leave the focus where it is.
+  // On every route change, move focus to the new page's heading so screen readers announce it, or
+  // to the element the page marks as its arrival focus target; if neither is rendered yet (data
+  // still loading), park focus on <main> and let PageHeading pick it up once it mounts. The initial
+  // load and a navigation that keeps the view (see KEEP_FOCUS_STATE) leave the focus where it is.
   useEffect(() => {
     if (previousPathname.current === pathname) return
     previousPathname.current = pathname
     if (keepFocus) return
     const main = document.getElementById(MAIN_CONTENT_ID)
-    const heading = main?.querySelector<HTMLElement>('h1')
-    ;(heading ?? main)?.focus()
+    const target = main && (arrivalFocusTarget(main) ?? main.querySelector<HTMLElement>('h1'))
+    ;(target ?? main)?.focus()
   }, [pathname, keepFocus])
 
   // Every navigation, also one to the same path, closes the drawer in the very render that shows

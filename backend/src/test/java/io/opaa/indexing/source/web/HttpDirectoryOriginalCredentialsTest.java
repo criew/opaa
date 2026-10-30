@@ -9,6 +9,7 @@ import io.opaa.indexing.spi.RemoteOriginalAccess;
 import io.opaa.indexing.spi.SourceSettings;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.SourceRequestPolicy;
@@ -21,6 +22,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -102,7 +104,17 @@ class HttpDirectoryOriginalCredentialsTest {
             "dokument.pdf", documentUrl, "application/pdf", null, SourceTypes.HTTP_DIRECTORY);
     Optional<DocumentContent> content =
         connector.openOriginal(
-            document, null, new SourceSettings(null, base + "/akten", CREDENTIALS, null));
+            document,
+            KnowledgeLibrary.ownedByUser(
+                UUID.randomUUID(),
+                "Akten",
+                null,
+                UUID.randomUUID(),
+                SourceTypes.HTTP_DIRECTORY,
+                null,
+                base + "/akten",
+                CREDENTIALS),
+            new SourceSettings(null, base + "/akten", CREDENTIALS, null));
     assertThat(content).isPresent();
     try (InputStream stream = content.get().stream()) {
       assertThat(new String(stream.readAllBytes(), StandardCharsets.UTF_8)).isEqualTo("inhalt");
