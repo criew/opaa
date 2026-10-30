@@ -144,7 +144,7 @@ describe('ConnectionProfilesTab, sign-in of the profile', () => {
     const panel = await openProfile(user, 'Zugang Nextcloud intern')
     await user.click(
       within(panel).getByRole('button', {
-        name: 'Alle Verbindungen von Zugang Nextcloud intern trennen',
+        name: 'Alle Verbindungen trennen: Zugang Nextcloud intern',
       }),
     )
     const question = await screen.findByRole('dialog', { name: /Alle Verbindungen von/ })

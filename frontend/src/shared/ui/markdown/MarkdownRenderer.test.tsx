@@ -163,7 +163,7 @@ describe('MarkdownRenderer', () => {
     renderWithProviders(
       <MarkdownRenderer content={content} citations={buildCitationIndex(content, undefined)} />,
     )
-    const marker = screen.getByRole('button', { name: 'Fundstellen 1 bis 2' })
+    const marker = screen.getByRole('button', { name: 'Fundstellen 1–2' })
     expect(marker).toHaveTextContent('1–2')
 
     await userEvent.setup().hover(marker)

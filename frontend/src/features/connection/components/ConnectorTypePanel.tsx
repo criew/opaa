@@ -228,7 +228,7 @@ function PanelContent({
                     <Button
                       size="small"
                       onClick={() => setRequirementDialog(true)}
-                      aria-label={`Bestandswahl für ${state.displayName} ändern`}
+                      aria-label={`Bestandswahl ändern: ${state.displayName}`}
                       sx={{ mt: 0.5, ml: -1 }}
                     >
                       Bestandswahl ändern

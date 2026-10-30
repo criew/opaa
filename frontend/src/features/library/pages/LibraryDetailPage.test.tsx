@@ -922,7 +922,7 @@ describe('LibraryDetailPage', () => {
       await user.click(await screen.findByLabelText('Freigabe an Alle erlaubt'))
       await user.click(
         await screen.findByRole('button', {
-          name: 'Obergrenze „Freigabe an Alle erlaubt“ speichern',
+          name: 'Obergrenze speichern: Freigabe an Alle erlaubt',
         }),
       )
 
