@@ -283,6 +283,13 @@ class AwsSdkS3ObjectStoreTest {
     assertThat(catchFailure(() -> store.headObject("docs", "fehlt.pdf")))
         .as("an unconfirmed 404 is no deletion finding")
         .isInstanceOf(S3AccessException.ListForbidden.class);
+
+    int requests = server.seen().size();
+    assertThat(catchFailure(() -> store.getObject("docs", "fehlt.pdf")))
+        .as("NoSuchKey in a body needs no listing")
+        .isInstanceOfSatisfying(
+            S3AccessException.ObjectNotFound.class, e -> assertThat(e.confirmed()).isTrue());
+    assertThat(server.seen()).hasSize(requests + 1);
   }
 
   @Test

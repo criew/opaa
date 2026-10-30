@@ -120,7 +120,7 @@ positiven Befund der Quelle** (ADR-0023, Entscheidung 4): Ein `ObjectRemoved`-Er
 `HeadObject` an; ein `404` entfernt das Dokument samt Anhängen erst, wenn eine Auflistung mit dem
 Schlüssel als Präfix und `max-keys=1` ihn nicht mehr nennt, denn eine HEAD-Antwort trägt keinen
 Fehlercode, und ein `404` kann auch von einem vorgeschalteten Ingress kommen (dieselbe Nachprüfung
-gilt für ein `404` beim Download im Vollabgleich). `200` ändert nichts; `403`, ein `404`, dessen
+gilt für ein `404` ohne `NoSuchKey` im Körper beim Download). `200` ändert nichts; `403`, ein `404`, dessen
 Schlüssel die Auflistung noch nennt, und eine fehlgeschlagene Auflistung lassen es bis zum nächsten
 Vollabgleich stehen.
 Ein wiedereingespieltes oder mit gestohlenem Token gesendetes Löschereignis kann den Index so nicht

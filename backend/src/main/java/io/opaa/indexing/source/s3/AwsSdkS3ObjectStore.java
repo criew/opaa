@@ -143,16 +143,19 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
   }
 
   /**
-   * {@code action} on one object, where a {@code 404} counts as {@link
-   * S3AccessException.ObjectNotFound} only once a listing confirms the key is gone: a HEAD answer
-   * has no body, and a bare {@code 404} may come from a proxy or ingress in front of the store. A
-   * key the listing still names, or a listing that fails, is reported as another failure.
+   * {@code action} on one object, where a {@code 404} without the code {@code NoSuchKey} in its
+   * body counts as {@link S3AccessException.ObjectNotFound} only once a listing confirms the key is
+   * gone: a HEAD answer has no body, and a bare {@code 404} may come from a proxy or ingress in
+   * front of the store. A key the listing still names, or a listing that fails, is another failure.
    */
   private <T> T confirmingAbsence(S3Operation op, String bucket, String key, Callable<T> action)
       throws S3AccessException, InterruptedException {
     try {
       return call(op, bucket, key, action);
     } catch (S3AccessException.ObjectNotFound notFound) {
+      if (notFound.confirmed()) {
+        throw notFound;
+      }
       boolean listed =
           call(
               S3Operation.LIST_OBJECTS,

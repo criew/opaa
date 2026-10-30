@@ -152,7 +152,8 @@ public final class S3FailureTranslator {
       return new S3AccessException.BucketNotFound(bucket, op != S3Operation.HEAD_BUCKET);
     }
     if (e instanceof NoSuchKeyException) {
-      return new S3AccessException.ObjectNotFound(bucket, key);
+      // like NoSuchBucket: the SDK names any bare 404 on a HEAD NoSuchKey itself
+      return new S3AccessException.ObjectNotFound(bucket, key, op != S3Operation.HEAD_OBJECT);
     }
     if (e instanceof InvalidObjectStateException) {
       return new S3AccessException.Archived(bucket, key);
@@ -234,7 +235,7 @@ public final class S3FailureTranslator {
       return new S3AccessException.BucketNotFound(bucket, op != S3Operation.HEAD_BUCKET);
     }
     if ("NoSuchKey".equals(code) || "NoSuchVersion".equals(code)) {
-      return new S3AccessException.ObjectNotFound(bucket, key);
+      return new S3AccessException.ObjectNotFound(bucket, key, op != S3Operation.HEAD_OBJECT);
     }
     if (status == 501 || "NotImplemented".equals(code)) {
       return new S3AccessException.NotImplemented(op.german());
