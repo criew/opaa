@@ -85,7 +85,7 @@ test.describe('Metadaten einer Bibliothek', () => {
     await page.getByRole('button', { name: 'Filter für Metadaten setzen' }).click()
     await page.getByRole('checkbox', { name: 'Fassung 2024 (1)' }).check()
     await page.getByRole('button', { name: 'Anwenden' }).click()
-    await expect(page.getByRole('button', { name: /^Filter nach Fassung/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Fassung.*: Filter entfernen$/ })).toBeVisible()
 
     await askQuestion(page, 'Wie hoch ist die Jahresgebühr für einen Leseausweis?')
     await expectCitedExclusively(page, DOCUMENT_2024, DOCUMENT_2025)

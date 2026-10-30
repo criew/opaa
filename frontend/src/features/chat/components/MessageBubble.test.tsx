@@ -270,7 +270,7 @@ describe('MessageBubble', () => {
     const user = userEvent.setup()
     render(<MessageBubble message={twoCitedMessage()} />)
 
-    await user.click(screen.getByRole('button', { name: 'Fundstellen 1 bis 2' }))
+    await user.click(screen.getByRole('button', { name: 'Fundstellen 1–2' }))
 
     expect(evidenceRow('erste.md')).toHaveAttribute('data-focused', 'true')
     expect(evidenceRow('zweite.md')).toHaveAttribute('data-focused', 'true')

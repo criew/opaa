@@ -1,4 +1,5 @@
 import { test as base, expect, type Page } from '@playwright/test'
+import { expectNoSeriousA11yViolations } from './a11y'
 
 /**
  * Dev users available to the E2E stack. There are no credentials: the stack runs in dev auth
@@ -85,6 +86,28 @@ export async function openAs(page: Page, devUser: string, attempt = 1): Promise<
   await openAs(page, devUser, attempt + 1)
 }
 
+/** Teardown budget of the end-state analysis on top of the test timeout (none when unlimited). */
+const END_STATE_A11Y_TIMEOUT_MS = 20_000
+
+/**
+ * axe check of the state every UI scenario ends in, run while its page fixture is torn down, so
+ * each screen the suite reaches is measured without a call in the spec. Skipped when the test has
+ * already failed (the failure is the finding), when the page is gone or never left about:blank,
+ * and entirely with E2E_A11Y_END_STATE=false.
+ */
+async function expectAccessibleEndState(page: Page, devUser: string): Promise<void> {
+  const info = base.info()
+  if (process.env.E2E_A11Y_END_STATE === 'false' || info.status !== info.expectedStatus) return
+  if (page.isClosed() || !page.url().startsWith('http')) return
+  if (info.timeout > 0) info.setTimeout(info.timeout + END_STATE_A11Y_TIMEOUT_MS)
+  await page.waitForLoadState()
+  // A frame sandboxed without scripts never runs the axe script injected into it, and axe waits
+  // for it until the test times out; its content (a rendered mail) is not this app's interface.
+  await expectNoSeriousA11yViolations(page, `Endzustand (${devUser})`, {
+    exclude: ['iframe[sandbox]:not([sandbox*="allow-scripts"])'],
+  })
+}
+
 export const test = base.extend<{
   authenticatedPage: Page
   regularUserPage: Page
@@ -95,6 +118,7 @@ export const test = base.extend<{
   authenticatedPage: async ({ page }, use) => {
     await openAs(page, ADMIN_USER)
     await use(page)
+    await expectAccessibleEndState(page, ADMIN_USER)
   },
 
   /** The app as a non-privileged user, for scenarios covering permission boundaries. */
@@ -103,7 +127,11 @@ export const test = base.extend<{
     const page = await context.newPage()
     await openAs(page, REGULAR_USER)
     await use(page)
-    await context.close()
+    try {
+      await expectAccessibleEndState(page, REGULAR_USER)
+    } finally {
+      await context.close()
+    }
   },
 
   /**
@@ -116,7 +144,11 @@ export const test = base.extend<{
     const page = await context.newPage()
     await openAs(page, OUTSIDER_USER)
     await use(page)
-    await context.close()
+    try {
+      await expectAccessibleEndState(page, OUTSIDER_USER)
+    } finally {
+      await context.close()
+    }
   },
 
   /**
@@ -129,7 +161,11 @@ export const test = base.extend<{
     const page = await context.newPage()
     await openAs(page, FORMAT_PIPELINES_USER)
     await use(page)
-    await context.close()
+    try {
+      await expectAccessibleEndState(page, FORMAT_PIPELINES_USER)
+    } finally {
+      await context.close()
+    }
   },
 })
 

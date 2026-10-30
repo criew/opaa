@@ -232,9 +232,7 @@ describe('ConnectorTypesTab', () => {
 
     const panel = await openType(user, 'Nextcloud')
     expect(within(panel).getByText(/laufen weiter, ihre Adresse ist eingefroren/)).toBeVisible()
-    await user.click(
-      within(panel).getByRole('button', { name: 'Bestandswahl für Nextcloud ändern' }),
-    )
+    await user.click(within(panel).getByRole('button', { name: 'Bestandswahl ändern: Nextcloud' }))
     const dialog = await screen.findByRole('dialog', { name: /Bestand von Nextcloud/ })
     expect(await within(dialog).findByRole('radio', { name: /Weiterlaufen lassen/ })).toBeChecked()
     await user.click(within(dialog).getByRole('radio', { name: /Sperren – sie laufen nicht mehr/ }))

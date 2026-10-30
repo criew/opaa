@@ -11,9 +11,7 @@ import type { SelectedChatAction } from './useChatActions'
 import type { LibraryChip } from './useSpaceLibraryScope'
 import {
   formatFieldChipLabel,
-  formatFieldLabel,
   libraryFieldChipLabel,
-  libraryFieldLabel,
   withoutFormatField,
   withoutLibraryField,
 } from './metadataFilterText'
@@ -167,7 +165,7 @@ export default function ChatScopeChipBar({
               variant="outlined"
               color="secondary"
               onDelete={scopeLocked ? undefined : onRemoveDocumentTypeFilter}
-              aria-label="Filter nach Dokumentart entfernen"
+              aria-label={`${documentTypeChipLabel}: Filter entfernen`}
               data-testid="metadata-filter-chip-document-type"
             />
           )}
@@ -178,7 +176,7 @@ export default function ChatScopeChipBar({
               variant="outlined"
               color="secondary"
               onDelete={scopeLocked ? undefined : onRemoveDateFilter}
-              aria-label="Filter nach Datum entfernen"
+              aria-label={`${dateChip}: Filter entfernen`}
               data-testid="metadata-filter-chip-document-date"
             />
           )}
@@ -197,7 +195,7 @@ export default function ChatScopeChipBar({
                         onMetadataFilterChange(withoutLibraryField(metadataFilter, condition))
                     }
               }
-              aria-label={`Filter nach ${libraryFieldLabel(condition, filterOptions)} entfernen`}
+              aria-label={`${libraryFieldChipLabel(condition, filterOptions)}: Filter entfernen`}
               data-testid="metadata-filter-chip-library-field"
             />
           ))}
@@ -216,7 +214,7 @@ export default function ChatScopeChipBar({
                         onMetadataFilterChange(withoutFormatField(metadataFilter, condition))
                     }
               }
-              aria-label={`Filter nach ${formatFieldLabel(condition, filterOptions)} entfernen`}
+              aria-label={`${formatFieldChipLabel(condition, filterOptions)}: Filter entfernen`}
               data-testid="metadata-filter-chip-format-field"
             />
           ))}
