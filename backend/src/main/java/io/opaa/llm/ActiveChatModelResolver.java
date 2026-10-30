@@ -209,7 +209,8 @@ public class ActiveChatModelResolver implements InvalidationSubscriber {
     String apiKey =
         model.getApiKeyCiphertext() == null
             ? ""
-            : settingsEncryptor.decrypt(model.getApiKeyCiphertext());
+            : settingsEncryptor.decrypt(
+                model.getApiKeyCiphertext(), LlmEncryptedColumns.CHAT_MODEL_KEY.row(model.getId()));
     OpenAiChatOptions.Builder optionsBuilder =
         OpenAiChatOptions.builder()
             .baseUrl(model.getBaseUrl())

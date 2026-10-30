@@ -100,7 +100,83 @@ Sie trägt keine einzige der oben aufgezählten Verwaltungsbefugnisse.
 Leseversuch der Systemverwaltung wird abgewiesen — und der abgewiesene Versuch wird selbst protokolliert.
 Wer das System verwaltet, wertet die Spur seines eigenen Verwaltungshandelns nicht aus.
 
-Ist bei einem OIDC-Anbieter ein Rollen-Claim gesetzt, ist der Anbieter für beide Rollen führend; die
+**Weder Systemverwaltung noch Identitätsanbieter vergeben `AUDITOR` allein (gebaut, #3356).** Sonst
+könnte die Systemverwaltung sich ein eigenes Revisionskonto anlegen und mit zwei solchen Konten auch
+das Vier-Augen-Prinzip der anlassbezogenen Klärung allein erfüllen. Zwei Grundsätze: `AUDITOR` entsteht
+nie ohne Mitwirkung der Revision oder des Betriebs, und die Zugangsdaten eines `AUDITOR`-Kontos laufen
+nie über einen Kanal, den die Systemverwaltung steuert — dazu zählen SMTP-Einstellungen und
+Mailvorlagen, die sie zur Laufzeit ändert; eine SMTP-Konfiguration aus der Umgebung gibt es in OPAA
+nicht. Deshalb:
+
+- **Antrag statt Vergabe.** Hat die Organisation ein `AUDITOR`-Konto, wird die Vergabe durch die
+  Systemverwaltung — über `POST /api/v1/admin/users/{id}/role`, beim Anlegen oder Ändern eines lokalen
+  Kontos — zum Antrag (`auditor_role_requests`, einer je Konto); die Rolle bleibt, wie sie ist, die
+  Rollen-Schnittstelle antwortet `202`, die Kontenliste zeigt „Revision beantragt". Eine Person der
+  Revision bestätigt oder lehnt ab (Revision → Rollenanträge, `/api/v1/audit/auditor-role-requests`);
+  erst die Bestätigung schreibt die Rolle, protokolliert unter der bestätigenden Person
+  (`AUDITOR_ROLE_GRANTED`). Wie jede Vergabe einer Systemrolle verlangt die Bestätigung eine frische
+  Anmeldung (`RECENT_LOGIN_REQUIRED`); Rollenzuordnung und Vertrauensanker eines Anbieters zu ändern
+  verlangt sie ebenfalls, ein darüber gemeldetes `AUDITOR` bleibt trotzdem ein Antrag. Antrag und Ende ohne Rolle stehen als `AUDITOR_ROLE_REQUESTED` und
+  `AUDITOR_ROLE_REQUEST_DECLINED` im Protokoll; eine andere Rolle zieht den Antrag zurück. Gleichzeitige
+  Anträge legen genau einen an (`INSERT … ON CONFLICT DO NOTHING`), gleichzeitige Entscheidungen
+  entscheidet die Zeilensperre, und nur wer die Zeile tatsächlich beendet, protokolliert.
+- **Rollen-Claim.** Nennt der Claim eines Anbieters `AUDITOR`, öffnet die Anmeldung einen Antrag unter
+  dem Systemakteur `identity-provider`; das Konto hält bis zur Bestätigung `USER` (ein `SYSTEM_ADMIN`
+  wird dabei über den Schutz des letzten Systemverwalters entzogen). Eine bestätigte Rolle bleibt,
+  solange der Claim sie nennt; nennt er sie nicht mehr, wird sie entzogen und ein offener Antrag
+  beendet. Einen abgelehnten Antrag hält OPAA als abgelehnt fest (`declined_at`), damit dieselbe
+  Anmeldung ihn nicht erneut stellt; er verfällt, sobald der Claim die Rolle nicht mehr nennt. Ohne
+  `AUDITOR`-Konto in der Organisation vergibt der Claim nichts.
+- **Erstbesetzung nur durch den Betrieb.** Ohne `AUDITOR`-Konto kann niemand bestätigen. Dann erhält
+  die Rolle nur das **lokale** Konto unter der Adresse, die der Betrieb als
+  `OPAA_AUTH_FIRST_AUDITOR_EMAIL` hinterlegt hat; jede andere Vergabe weist OPAA mit `409`
+  `AUDITOR_CONFIRMATION_UNAVAILABLE` ab. Ein Konto eines Identitätsanbieters zählt nicht, auch nicht
+  unter derselben Adresse, weil die Adresse dort eine Aussage des Anbieters ist. Der Link zum Setzen
+  des Passworts geht nach dem Commit einmalig ins Server-Log, nicht an die Systemverwaltung und nicht
+  per Mail. Die Variable gilt in jeder Organisation ohne `AUDITOR`; da eine Adresse nur ein lokales
+  Konto trägt, besetzt sie in einer Installation mit mehreren Organisationen eine nach der anderen.
+- **Zugangsdaten nur bei der Person.** Bestätigt die Revision einen Antrag für ein lokales Konto,
+  verliert es Passwort, Sitzungen, offene Links und Refresh-Tokens; die Bestätigung antwortet den einen
+  neuen Link (`setupUrl`), den die bestätigende Person der neuen übergibt. Er wird weder gemailt noch
+  der Systemverwaltung gezeigt. Ein Konto mit `AUDITOR` oder offenem Antrag erhält von der
+  Systemverwaltung weder Initialpasswort noch Einladung; Einmalpasswort, Rücksetz-Link,
+  Adressänderung und Übergabe sind gesperrt (`409` `AUDITOR_ACCOUNT`). „Passwort vergessen"
+  verschickt für solche Konten nichts und antwortet wie bei einer unbekannten Adresse, weil der Link
+  über SMTP und Vorlage der Systemverwaltung liefe. Wer als Revision sein Passwort verliert, bekommt
+  über Entzug und neuen Antrag einen neuen Link von einer anderen Person der Revision; ein Rücksetzen
+  durch die Revision selbst ist nicht gebaut.
+- **Melden.** Antrag, jede wirksame Vergabe und jeder Entzug — Rollenwechsel, Rollen-Claim, Löschen
+  des Kontos — erreichen alle übrigen `AUDITOR` als Benachrichtigung in OPAA (`AUDITOR_ROLE_REQUESTED`,
+  `AUDITOR_ROLE_GRANTED`, `AUDITOR_ROLE_REVOKED`), ebenso jede Änderung der SMTP-Einstellungen oder
+  einer Mailvorlage durch die Systemverwaltung (`MAIL_CONFIGURATION_CHANGED`) und jedes Anlegen eines
+  Identitätsanbieters oder jede Änderung seiner Vertrauensanker — Issuer, Client-ID, JWK-Set-URI,
+  E-Mail- und Gruppen-Claim, Rollenzuordnung (`IDENTITY_PROVIDER_TRUST_CHANGED`). Beide Hinweise
+  gehen an alle `AUDITOR` der Installation, weil Mailversand und Anbieter installationsweit gelten. Antragsliste und
+  Benachrichtigung nennen die Adresse des Kontos und, wenn die Systemverwaltung sie geändert hat, das
+  Datum der letzten Änderung (`local_credentials.email_changed_by_admin_at`).
+
+Das Vier-Augen-Prinzip der anlassbezogenen Klärung prüft weiter, dass beantragendes und freigebendes
+`AUDITOR`-Konto verschieden sind (`AuditIncidentScopeGrant`): Mit der Vergabe über Antrag und
+Bestätigung stehen hinter zwei solchen Konten zwei Personen, sofern die Revision nicht selbst
+zusammenwirkt. Was OPAA nicht verhindern kann: Betrieb mit Zugriff auf Datenbank, Server-Log oder
+Umgebungsvariablen, dieselbe Person in Systemverwaltung und Betrieb, und eine Systemverwaltung, die
+zugleich den Identitätsanbieter betreibt und dort Konten mit beliebiger Adresse anlegt — diese
+erreichen `AUDITOR` aber ebenfalls nur über die Bestätigung durch die Revision.
+
+**Restrisiko Vertrauensanker.** Die Systemverwaltung pflegt die Identitätsanbieter. Setzt sie die
+JWK-Set-URI eines Anbieters auf einen eigenen Server — bei einem Anbieter ohne Konten auch die
+Issuer-URI, die gesperrt ist, sobald Konten bestehen —, kann sie Tokens mit dem
+`sub` eines **bestehenden** `AUDITOR`-Kontos dieses Anbieters signieren und meldet sich als dieses
+Konto an — ohne Antrag, weil das Konto die Rolle schon hat. OPAA verhindert das nicht technisch: Die
+Anbieter-Verwaltung ist Aufgabe der Systemverwaltung, und der Rollenantrag schützt nur die Vergabe,
+nicht ein bestehendes Konto. OPAA macht es sichtbar: Die Änderung verlangt eine frische Anmeldung,
+steht als `OIDC_PROVIDER_CHANGED` mit altem und neuem Wert im Protokoll und erreicht sofort jede
+Person der Revision als Benachrichtigung (`IDENTITY_PROVIDER_TRUST_CHANGED`). Eine Revision, die sich
+nur über einen externen Anbieter anmeldet, sollte jede solche Meldung prüfen; ein lokales
+Revisionskonto ist von diesem Weg nicht betroffen.
+
+Ist bei einem OIDC-Anbieter ein Rollen-Claim gesetzt, ist der Anbieter für beide Rollen führend (für
+`AUDITOR` nur zusammen mit der Bestätigung durch die Revision, siehe oben); die
 manuelle Rollenvergabe ist für Konten dieses Anbieters dann gesperrt (siehe
 [Claim-Zuordnung je Anbieter](#übergabe-eines-lokalen-kontos-an-eine-anbieteridentität-gebaut-1563)).
 

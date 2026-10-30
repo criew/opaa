@@ -69,6 +69,17 @@ OPAA_SP_IT_ENV_FILE=… ./gradlew sharePointIntegrationTest
                                   # (ADR-0047)
 ```
 
+## Regressionssuite für feindliche Eingaben
+
+Präparierte Dateien, SSRF-Ziele und Log-Hygiene: Aufbau, Grenzen und was ein neuer Parser oder
+Konnektor ergänzt, stehen in [regressionssuite-eingaben.md](regressionssuite-eingaben.md). Teil von
+`./gradlew check`, nicht von `./gradlew test`:
+
+```bash
+# aus backend/
+./gradlew hostileInputTest   # präparierte Dateien gegen die Formate, eigene JVM mit 512 MB Heap
+```
+
 ## Helm-Chart
 
 Der Chart liegt unter `deploy/helm/opaa/` ([ADR-0042](../decisions/0042-kubernetes-lieferung-mit-helm.md)).
@@ -263,6 +274,21 @@ zeitgesteuerte Aufgaben, Konnektoren zu Quellen, Identitätsanbieter, Mailversan
 `.github/workflows/offline.yml` fährt das Ziel nächtlich, auf Zuruf und an einem PR über das Label
 `offline-suite`; kein Required Check.
 
+## ZAP-Baseline-Scan
+
+```bash
+# Passiver ZAP-Scan eines anonymen Aufrufers gegen einen Stack im Betriebsmodus oidc (aus dem
+# Repo-Wurzelverzeichnis; Compose-Projekt opaa-zap, Frontend auf 13010, nach dem Lauf abgebaut);
+# ZAP_SKIP_BUILD=true startet vorhandene Images opaa-zap-backend:latest und opaa-zap-frontend:latest
+.github/scripts/zap_baseline.sh ghcr.io/zaproxy/zaproxy:2.17.0 zap-out
+python3 .github/scripts/zap_rules.py summary --rules .github/zap/rules.yaml \
+  --report zap-out/zap-report.json --zap-exit $?
+```
+
+Workflow `.github/workflows/zap-baseline.yml` (nächtlich, manuell und in PRs, die den Scan
+ändern), Unterdrückungen in `.github/zap/rules.yaml`, Verfahren in
+[zap-baseline.md](zap-baseline.md).
+
 ## Image-Rauchtest
 
 ```bash
@@ -270,8 +296,12 @@ zeitgesteuerte Aufgaben, Konnektoren zu Quellen, Identitätsanbieter, Mailversan
 # Docker-Hosts bauen und gehärtet starten: zuerst das Backend-Image mit OPAA_MODE=migrate und
 # danach mit OPAA_MODE=await-migration (beide müssen mit Exit-Code 0 enden), dann das Backend ohne
 # Migration gegen pgvector bis Readiness UP samt Healthcheck des Images, Frontend davor bis
-# /api/health und der gemeldeten offenen Installation (ohne Antwortdatei); in CI als Job
-# image-smoke-arm64 (ci.yml) auf einem arm64-Runner
+# /api/health und der gemeldeten offenen Installation (ohne Antwortdatei); danach tragen eigene
+# Dateien des Frontends und durchgereichte Backend-Antworten (auch eine 401) je genau einmal
+# X-Content-Type-Options: nosniff, X-Frame-Options: DENY, Cross-Origin-Opener-Policy und
+# Cross-Origin-Resource-Policy (same-origin) und die CSP mit script-src 'self',
+# object-src 'none' und frame-ancestors 'none'; in CI als Job image-smoke-arm64 (ci.yml) auf einem
+# arm64-Runner
 docker build -t opaa-smoke/backend -f backend/Dockerfile .
 docker build -t opaa-smoke/frontend -f frontend/Dockerfile .
 .github/scripts/image_smoke_test.sh opaa-smoke/backend opaa-smoke/frontend
@@ -284,4 +314,125 @@ docker build -t opaa-smoke/frontend -f frontend/Dockerfile .
 # andere jede binnen weniger Sekunden, ohne 5xx; langsame und gestreamte Antworten sowie Uploads
 # bis zu den Grenzen kommen unverändert an. In CI im selben Job
 .github/scripts/frontend_hardening_test.sh opaa-smoke/frontend
+```
+
+## Parser-Fuzzing
+
+Eine zeitbegrenzte Kampagne schickt erzeugte und verfälschte Dateien aller zugelassenen Formate
+über den Produktionsweg: Routing der `DocumentFormatRegistry`, `DocumentFormatRunner` mit Anhängen
+in den Grenzen von `opaa.indexing.attachments.*`, danach `readProperties` wie beim erneuten Auslesen
+der Metadaten. Die Konfiguration kommt aus `application.yml`, ohne Datenbank und ohne Modell.
+
+- **Befund** ist ein `OutOfMemoryError`, ein Lauf über die Eingabegrenze (Vorgabe eine Minute),
+  ein Throwable, das den Weg verlässt, statt als `PARSE_FAILED` gebucht zu werden, oder eine
+  zurückgelassene Temp-Datei eines Anhangs. Ein gebuchter Parserfehler ist kein Befund.
+- **Korpus:** je zugelassenem Format mindestens eine Probe. Eingecheckt unter
+  `backend/src/test/resources/fuzz/corpus/` (höchstens 2 MiB, `-text` in `.gitattributes`) liegen
+  die Proben von `FuzzCorpusGenerator`; der Generator schreibt ZIP-Einträge mit fester Zeit und
+  setzt die Paketdaten von Office-Dateien fest. Gleiche Quelle ergibt gleichen Inhalt, gleiche
+  Bytes aber nur mit derselben zlib: ein anderes JDK kann denselben Inhalt anders komprimieren.
+  `FuzzCorpusTest` vergleicht deshalb über `SeedComparison`: ZIP-Container Eintrag für Eintrag
+  (Name, Reihenfolge, Methode, Zeit, entpackter Inhalt; Zentralverzeichnis, Zusatzfelder und
+  Kommentare nicht), eine PDF mit Flate-Stream mit entpackten Streams samt Bytes hinter dem
+  Deflate-Ende; maskiert werden dort nur die Länge eines Flate-Streams sowie xref-Offsets und
+  `startxref`, die in ihrer eigenen Datei auf ihr Objekt oder ihre xref zeigen. Alles andere,
+  auch eine PDF ohne Flate-Stream, vergleicht er Byte für Byte; die Meldung nennt Datei und ersten
+  abweichenden Eintrag. Nach einer
+  Änderung am Generator `./gradlew writeParserFuzzCorpus` ausführen und die Dateien einchecken.
+  Dazu kommen beim Laden die präparierten Dateien der Regressionssuite (`HostileFiles`) in kleiner
+  Ausprägung als `hostile-*`-Proben (`HostileSeeds`), ohne eingecheckt zu werden. Auch sie sind
+  mit demselben JDK bei jedem Laden dieselben Bytes: die Trailer-ID einer PDF wird in gleicher Länge genullt, und
+  eingebettete Pakete (auch in OLE2-Objekten einer Präsentation) bekommen feste Zeiten und Daten;
+  `HostileSeedsTest` prüft beides.
+- **Mutationen:** `Mutators` kippt Bits, setzt Grenzwerte, löscht, verdoppelt und spleißt
+  Bereiche, wiederholt Zeilen, verschachtelt Auszeichnung, verändert einzelne ZIP-Einträge und
+  verpackt eine Datei als Anhang einer Mail; jede sechzehnte Eingabe bekommt eine fremde Endung.
+  Seed der Kampagne und Nummer der Eingabe bestimmen eine Eingabe vollständig.
+- **In jedem PR** spielt `FuzzCorpusTest` (Shard `core`) jede Probe einmal unverändert über den
+  Produktionsweg ab, rund zehn Sekunden, alle Tests in einem gemeinsamen Produktionsweg; eine
+  aufgenommene Befund-Datei wird so zum Regressionstest. Die Kampagne selbst läuft nie im PR.
+- **Abbruch der JVM:** vor jeder Eingabe schreibt die Kampagne sie als `current-input` samt
+  `current-input.finding` (Seed, Iteration, Mutationen) neben die Befunde und löscht beides
+  danach. Bleibt `current-input` liegen, hat diese Eingabe die JVM beendet (Speicher, Kill).
+- **Nächtlich** um 1:35 UTC und auf Zuruf (`workflow_dispatch` mit Dauer und Seed) startet
+  `.github/workflows/parser-fuzzing.yml` zehn Minuten Kampagne, Seed ist die Run-ID. Befunde und
+  `summary.txt` (Läufe je Format, Ergebnisse, langsamste Eingaben) liegen im Artefakt
+  `parser-fuzzing-findings`; je Befund die Eingabe und eine `.finding`-Datei mit Seed, Mutationen
+  und Stacktrace. Kein Required Check. Das Log zeigt nur die Zeilen mit `[parser-fuzz]`: Seed und
+  Zusammenfassung.
+- **Alarm:** Scheitert ein nächtlicher Lauf oder wird er abgebrochen, öffnet der Workflow ein Issue
+  (Labels `ci`, `bug`, `security`, Marker `<!-- parser-fuzzing-alert -->`) mit Seed, Lauf-Link,
+  `summary.txt` und Artefaktname, oder kommentiert das offene. Der nächste nächtliche Lauf ohne
+  Befund kommentiert und schließt es. Ein Lauf über `workflow_dispatch` berührt den Alarm nie.
+
+```bash
+# aus backend/: Kampagne, Befunde unter build/fuzz-findings/
+./gradlew parserFuzzTest -PfuzzDuration=PT2M -PfuzzSeed=3379
+# eine Befund-Datei oder ein ganzes Verzeichnis erneut abspielen
+./gradlew parserFuzzTest -PfuzzReplay=/pfad/zu/001-escaped_throwable-90.txt
+# Grenze je Eingabe ändern (Vorgabe PT1M)
+./gradlew parserFuzzTest -PfuzzInputTimeout=PT30S
+```
+
+Ein Befund wird wie jeder Fehler behoben: Test, der ihn reproduziert, und die kleinste Eingabe,
+die ihn auslöst, als Probe in den Generator. Jazzer ist bewusst nicht eingebunden: der Fuzzer
+bringt einen nativen Agenten und eine eigene JUnit-Anbindung mit, und die bekannten
+Angriffsmuster der Formate erreicht ein Mutationsfuzzer über die Proben ebenso.
+
+## Sicherheitsinvarianten als Architekturtests
+
+`io.opaa.architecture.SecurityInvariantsTest` läuft in jedem Build und prüft mit ArchUnit:
+
+- Verbindungen nach außen nur über `RedirectFollowingFetcher` und `BoundedDownloader`, die das Ziel
+  prüfen. Als Verbindung zählen `HttpClient`, `RestClient`, `RestTemplate`, `WebClient`,
+  `URL.openConnection`, Jsoup, SMB, Sockets (auch `new Socket(host, port)` und `SSLSocket`, das
+  beim Erzeugen verbindet) und SMTP (`MailSender#send`, `JavaMailSenderImpl#testConnection`, `jakarta.mail` `Service#connect`
+  und `Transport#send`). Der SMTP-Server ist ein gespeichertes Ziel, das `MailService` und
+  `MailConnectionTester` nach ADR-0063 prüfen; sie stehen begründet in der Ausnahmeliste;
+- gespeicherte Geheimnisse werden nur in `ModelEndpointAccess` und `ConnectionSecrets`
+  entschlüsselt, die das Geheimnis an sein Ziel binden. Ausgenommen ist nur der Mechanismus selbst,
+  eine ausdrückliche Klassenliste (`SettingsEncryptor`, `CredentialsEncryptor`,
+  `EncryptedCredentials`, `EncryptionKeyring`), nicht das ganze Paket `io.opaa.security`;
+- jeder Controller-Handler hat `@PreAuthorize` (oder `@PostAuthorize`, `@Secured`,
+  `@RolesAllowed`) oder einen Parameter für den Aufrufer (`@Caller`, `CurrentUser`, …). Eine
+  Annotation am Handler geht der an der Klasse vor; `permitAll()`, `isAnonymous()` und `ANONYMOUS`
+  zählen nicht als Prüfung;
+- `io.opaa.format` kompiliert kein Muster je Aufruf oder je Objekt (`String.matches`, `replaceAll`,
+  `replaceFirst`, `split`, `Pattern.matches`, `Pattern.compile` außerhalb des statischen
+  Initialisierers, auch in Konstruktoren); ein `split` an einem einzelnen Zeichen und der
+  Konstruktor eines Enums stehen mit Begründung in der Ausnahmeliste.
+
+Gezählt werden Aufrufe und Methodenreferenzen (`client::send`, `encryptor::decrypt`), gemeldet
+wird die Methode, in der sie stehen; ein Lambda zählt zu seiner umgebenden Methode. Jede Regel hat
+eine Ausnahmeliste mit einer Begründung je Methode (`Klasse#methode`); ein Eintrag, dessen Methode
+die Regel nicht mehr bricht, lässt den Test ebenfalls scheitern. Die Handler ohne eigene Prüfung
+stehen unter `withoutHandlerCheck` in `backend/src/test/resources/security/anonymous-allowlist.yaml`,
+neben den anonym erreichbaren Pfaden. Jede Regel hat in `SecurityInvariantsFixtureTest` eine
+Attrappe, die sie bricht, als Nachweis, dass sie anschlägt.
+
+Nicht erfasst sind Verbindungen, die eine Bibliothek selbst aufbaut (Spring AI, AWS SDK, JDBC, das
+Laden des JWK-Sets durch Nimbus), und Einstiege ohne Controller-Handler: `RouterFunction`, der
+MCP-Endpunkt, Actuator und Pfade, die ein Filter beantwortet; ob sie ohne Anmeldung erreichbar sind,
+prüft die Angriffsfläche ohne Anmeldung.
+
+`FormatPatternBacktrackingTest` jagt jedes Muster in `io.opaa.format`, das in einem statischen
+Feld oder einem Feld einer Enum-Konstante steht, mit faulem, verschachteltem oder mehr als einem
+unbeschränkten Quantor mit gepumpten Eingaben gegen eine Zeitgrenze; jedes solche Muster nennt dort
+seine Angriffseingaben.
+
+## Angriffsfläche ohne Anmeldung
+
+```bash
+# aus backend/: alle Operationen der Spezifikation, alle Handler-Mappings samt Actuator und /mcp
+# ohne Token im Profil oidc; nur Einträge von src/test/resources/security/anonymous-allowlist.yaml
+# (je mit Begründung) dürfen anders als 401/403/404 antworten, jede Antwort trägt nosniff und
+# Frame-Schutz. Dazu die Header des Dokument-Downloads
+./gradlew test --tests 'io.opaa.api.AnonymousSurface*' \
+  --tests 'io.opaa.library.web.DocumentContentHeadersIntegrationTest'
+
+# aus dem Wurzelverzeichnis: Compose-Vorlagen (alle docker-compose*.yml, .env.docker.example,
+# .env.example) binden Ports nur an 127.0.0.1, schalten keine anonyme Systemverwaltung frei und
+# tragen keine festen Geheimnisse außer den begründeten Ausnahmen je Dienst im Skript; in CI im Job
+# changes (ci.yml), Selbsttest in test_check_compose_defaults.py
+.github/scripts/check_compose_defaults.sh
 ```

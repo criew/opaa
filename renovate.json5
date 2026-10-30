@@ -203,6 +203,15 @@
         '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*ALPINE_IMAGE: [^:\\s]+:(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]+)',
       ],
     },
+    // Das ZAP-Image des Baseline-Scans startet zap-baseline.yml per "docker run"; Version und
+    // Index-Digest stehen in der Variable ZAP_IMAGE unter dem Kommentar, ein Update schreibt beide neu.
+    {
+      customType: 'regex',
+      managerFilePatterns: ['.github/workflows/zap-baseline.yml'],
+      matchStrings: [
+        '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*ZAP_IMAGE: [^:\\s]+:(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]+)',
+      ],
+    },
   ],
 
   packageRules: [
@@ -408,6 +417,25 @@
       matchUpdateTypes: ['digest'],
       dependencyDashboardApproval: true,
       automerge: false,
+    },
+    // Das ZAP-Image des Baseline-Scans: nur Release-Tags X.Y.Z, nie stable, weekly oder die
+    // datierten Tags. Ein neues ZAP bringt neue Regeln, und zap-baseline.yml ist kein Required
+    // Check; das Update mergt deshalb nie automatisch, sondern wartet auf den Scan seines PRs. Ein
+    // neuer Digest bei gleicher Version wartet wie oben auf Freigabe in der Abhängigkeits-Übersicht.
+    {
+      matchManagers: ['custom.regex'],
+      matchFileNames: ['.github/workflows/zap-baseline.yml'],
+      matchDepNames: ['ghcr.io/zaproxy/zaproxy'],
+      allowedVersions: '/^\\d+\\.\\d+\\.\\d+$/',
+      addLabels: ['ci'],
+      automerge: false,
+    },
+    {
+      matchManagers: ['custom.regex'],
+      matchFileNames: ['.github/workflows/zap-baseline.yml'],
+      matchDepNames: ['ghcr.io/zaproxy/zaproxy'],
+      matchUpdateTypes: ['digest'],
+      dependencyDashboardApproval: true,
     },
     // Major-Updates mergen generell nicht automatisch: Auto-Merge greift, sobald die
     // Required Checks grün sind — Brüche, die nur ein Nicht-Required-Check (e2e) oder gar kein

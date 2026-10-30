@@ -73,6 +73,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       // erasure would otherwise race a tick that erases it behind its back. The run itself is
       // exercised by calling it (PrivateLibraryDeletionRunIntegrationTest).
       "opaa.library.private-deletion.schedule-enabled=false",
+      // The tick of the re-encryption is off here: a class that compares a stored ciphertext
+      // would otherwise race a tick that moves it to the keyed format. The rewrap itself is
+      // exercised by calling it (CiphertextRewrapIntegrationTest).
+      "opaa.security.ciphertext-rewrap.schedule-enabled=false",
       // Exact search instead of the production HNSW index (which no test asserts on): every
       // embedding of a test is FakeEmbeddingModel's one constant vector, so the graph degenerates
       // into one cluster of ties and a library-filtered scan can walk hundreds of foreign chunks

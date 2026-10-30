@@ -17,7 +17,15 @@ import java.util.regex.Pattern;
  * a PATTERN library field follows.
  */
 public enum FormatMetadataField {
-  MAIL_SENDER("mail_sender", "Absender", "email", true, false, "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"),
+  // A local part, "@", and a domain with a dot that is neither its first nor its last character;
+  // possessive runs and one lookahead keep the match linear in the value.
+  MAIL_SENDER(
+      "mail_sender",
+      "Absender",
+      "email",
+      true,
+      false,
+      "^[^\\s@]++@(?=[^\\s@]+\\.[^\\s@])[^\\s@]++$"),
   MAIL_RECIPIENTS("mail_recipients", "An", "email", false, true, null),
   MAIL_SUBJECT("mail_subject", "Betreff", "email", false, false, null);
 

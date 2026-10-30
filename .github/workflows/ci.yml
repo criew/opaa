@@ -153,7 +153,10 @@ jobs:
             # the roadmap there against the list, cve-scan.yml because it checks its scan targets
             # and alarm. accessibility-report.yml, e2e/fixtures/a11y.ts, e2e/scripts/run-e2e.mjs and
             # both seed requirement files belong here because test_accessibility_report.py checks
-            # the release wiring, the record the fixture writes and the hash-pinned seed install.
+            # the release wiring, the record the fixture writes and the hash-pinned seed install. The
+            # Compose templates belong here because test_check_compose_defaults.py edits copies of them.
+            # zap-baseline.yml and .github/zap/** belong here because test_zap_rules.py checks the
+            # suppressions, the ZAP image pin and its wiring.
             scripts:
               - '.github/scripts/**'
               - '.github/requirements-ci.txt'
@@ -179,6 +182,12 @@ jobs:
               # test_opencode_mirror.py checks the mirror workflow and the openCode metadata.
               - '.github/workflows/opencode-mirror.yml'
               - 'publiccode.yml'
+              - '.github/workflows/zap-baseline.yml'
+              - '.github/zap/**'
+              - 'docker-compose*.yml'
+              - '**/docker-compose*.yml'
+              - '.env.docker.example'
+              - '.env.example'
             # Step-level filter of the action pin guard below, not a job output.
             workflows:
               - '.github/workflows/**'
@@ -221,6 +230,13 @@ jobs:
               - 'demo/**/*.py'
               - 'demo/**/*.conf'
               - '**/*.sh'
+            # Step-level filter of the Compose template check below, not a job output.
+            compose:
+              - 'docker-compose*.yml'
+              - '**/docker-compose*.yml'
+              - '.env.docker.example'
+              - '.env.example'
+              - '.github/scripts/check_compose_defaults.sh'
             # Step-level filter of the Gradle verification guard below, not a job output.
             gradleVerification:
               - 'backend/gradle/verification-metadata.xml'
@@ -327,6 +343,12 @@ jobs:
       - name: Kommentarregel prüfen
         if: github.event_name != 'pull_request' || steps.filter.outputs.comments == 'true'
         run: .github/scripts/check_code_comments.sh
+
+      # The Compose templates publish ports on loopback only, switch on no anonymous system
+      # administration and carry no fixed secret outside the script's reasoned exceptions.
+      - name: Sichere Vorgaben der Compose-Vorlagen prüfen
+        if: github.event_name != 'pull_request' || steps.filter.outputs.compose == 'true'
+        run: .github/scripts/check_compose_defaults.sh
 
       # Counted stock that must not grow: Instant.now() in Spring beans, @Value outside *Properties
       # classes (ADR-0051, Entscheidung 6). The limits sit in the scripts and only ever go down.

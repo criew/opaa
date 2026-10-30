@@ -30,6 +30,18 @@ nichts gebaut. Backend und Frontend laufen immer mit **derselben** Version.
   docker buildx imagetools inspect ghcr.io/criew/opaa-backend:<tag> --format '{{ json .Provenance }}'
   ```
 
+- **Signierte Herkunft:** Jedes Image trägt zusätzlich eine signierte Provenance des Laufs, der es
+  veröffentlicht hat; sie deckt auch SBOM und Provenance am Image ab. Für ein Release wird sie gegen
+  Workflow und Tag geprüft, für `main` mit `--source-ref refs/heads/main`:
+
+  ```bash
+  gh attestation verify oci://ghcr.io/criew/opaa-backend:X.Y.Z --repo criew/opaa \
+    --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/vX.Y.Z
+  ```
+
+  Dasselbe gilt für `opaa-frontend` und den Chart
+  ([Herkunft prüfen](releases-und-nachweise.md#herkunft-prüfen)).
+
 - **Update-Paket:** Am GitHub-Release hängt ein attestiertes Paket für Datenschutz,
   Personalvertretung und Informationssicherheit
   ([Nachvollziehbarkeit](nachvollziehbarkeit.md#das-update-paket-eines-release)).
@@ -47,7 +59,7 @@ enthält alles von OPAA selbst und lässt sich hinter der Schleuse ohne Netz pr�
 | `DIGESTS` | der Digest jedes Image, derselbe wie in GHCR |
 | `chart/` | das Helm-Chart |
 | `update-paket/` | das Update-Paket, darin dieses Handbuch |
-| `sbom/`, `attestations/` | die SBOMs und die Nachweise der Herkunft von Update-Paket und SBOMs; der Nachweis des Charts bezieht sich auf den Chart in GHCR und lässt sich offline nicht gegen die Datei in `chart/` prüfen, die Datei deckt `SHA256SUMS` ab |
+| `sbom/`, `attestations/` | die SBOMs und die Nachweise der Herkunft von Update-Paket, SBOMs, Chart und beiden Images; die Nachweise von Chart und Images beziehen sich auf deren Manifest in der Registry und lassen sich offline nicht gegen die Dateien in `chart/` und `images/` prüfen, die Dateien deckt `SHA256SUMS` ab |
 | `SHA256SUMS`, `SHA256SUMS.sigstore.json` | Prüfsummen aller Dateien und ihr Herkunftsnachweis |
 
 Nicht im Bündel sind die Datenbank, der Modellserver, ein Identitätsanbieter und Modellgewichte.

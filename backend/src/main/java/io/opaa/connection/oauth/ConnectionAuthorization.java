@@ -3,6 +3,7 @@ package io.opaa.connection.oauth;
 import io.opaa.api.types.ConnectionAuthorizationPurpose;
 import io.opaa.connection.profile.LibraryConnection.Responsible;
 import io.opaa.connection.profile.LibraryConnection.ResponsibleType;
+import io.opaa.security.EncryptedColumn;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -24,6 +25,10 @@ import java.util.UUID;
 @Entity
 @Table(name = "connection_authorizations")
 class ConnectionAuthorization {
+
+  /** {@code connection_authorizations.code_verifier_ciphertext}, bound to the row (ADR-0064). */
+  static final EncryptedColumn CODE_VERIFIER =
+      EncryptedColumn.credentials("connection_authorizations", "code_verifier_ciphertext");
 
   @Id private UUID id;
 
@@ -83,6 +88,7 @@ class ConnectionAuthorization {
   protected ConnectionAuthorization() {}
 
   ConnectionAuthorization(
+      UUID id,
       String stateHash,
       UUID userId,
       UUID profileId,
@@ -92,7 +98,7 @@ class ConnectionAuthorization {
       String redirectUri,
       Instant now,
       Instant expiresAt) {
-    this.id = UUID.randomUUID();
+    this.id = id;
     this.stateHash = stateHash;
     this.userId = userId;
     this.profileId = profileId;

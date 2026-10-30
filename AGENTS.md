@@ -43,7 +43,7 @@ pnpm run test
 pnpm run format:check                   # Prettier prüfen; pnpm run format formatiert
 ```
 
-Integrationstest-Suiten, Helm-Chart-Prüfungen, Kubernetes-Erprobungsaufbau, E2E-Suite, Image-Rauchtest und Frontend mit Mocks: [docs/entwicklung/build-und-ci.md](docs/entwicklung/build-und-ci.md).
+Integrationstest-Suiten, Helm-Chart-Prüfungen, Kubernetes-Erprobungsaufbau, E2E-Suite, ZAP-Baseline-Scan, Image-Rauchtest, Parser-Fuzzing, Sicherheitsinvarianten als Architekturtests und Frontend mit Mocks: [docs/entwicklung/build-und-ci.md](docs/entwicklung/build-und-ci.md).
 
 ## API & DTO-Konvention
 
@@ -169,6 +169,7 @@ Vor dem **ersten Push eines PRs** müssen lokal bestehen: Backend-Formatierung, 
 - `docs/releases.md` — Release-Verfahren: Versions-Tags `vX.Y.Z`, unveränderliche Release-Images, Versionszählung, Patch-Releases für Sicherheitsupdates
 - `docs/sbom.md` — Software Bill of Materials: Image-Attestierungen und CycloneDX-CI-Artefakte; Lizenzprüfung der Abhängigkeiten gegen `.github/licenses/`
 - `docs/cve-scanning.md` — CVE-Erkennung: Dependabot-Alerts, Trivy-Image-Scan und Triage-Verfahren
+- `docs/security-pruefung.md` — Sicherheitsprüfung des eigenen Codes: Prüfrhythmus (jeder PR, nächtlich, wöchentliches Security-Delta-Review, Tiefen-Audit zweimal im Jahr und anlassbezogen); Review-Checkliste in `agents/roles/code-reviewer.md`
 - `eval/` — Korpora, Golden Datasets und Generatoren der Suchqualitäts-Evaluierung, siehe `eval/README.md`. Liegt bewusst außerhalb von Gradle-Build und CI; die Generatoren laufen nur bei bewussten Korpus-Änderungen, nie automatisch. Der Metrik-Harness selbst ist ein Integrationstest im Backend
 
 ## Contributor License Agreement

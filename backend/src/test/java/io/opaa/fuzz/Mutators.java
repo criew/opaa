@@ -1,0 +1,478 @@
+package io.opaa.fuzz;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.SplittableRandom;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.zip.CRC32;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
+import org.apache.poi.poifs.filesystem.DirectoryEntry;
+import org.apache.poi.poifs.filesystem.DirectoryNode;
+import org.apache.poi.poifs.filesystem.DocumentEntry;
+import org.apache.poi.poifs.filesystem.DocumentInputStream;
+import org.apache.poi.poifs.filesystem.Entry;
+import org.apache.poi.poifs.filesystem.FileMagic;
+import org.apache.poi.poifs.filesystem.POIFSFileSystem;
+
+/**
+ * The mutations of a campaign: byte-level changes, textual ones aimed at counts, lengths and
+ * nesting (the shapes of amplification), and structural ones inside a ZIP container and around a
+ * message. Every mutation is deterministic for its {@link SplittableRandom}; none grows an input
+ * past {@link #MAX_BYTES}.
+ */
+final class Mutators {
+
+  /** The largest input a mutation produces; amplification needs no large input. */
+  static final int MAX_BYTES = 4 * 1024 * 1024;
+
+  /** The most a ZIP part may unpack to while a mutation reads it. */
+  private static final int MAX_PART_BYTES = 16 * 1024 * 1024;
+
+  /** The time every written ZIP entry carries, so equal parts give equal bytes with one zlib. */
+  static final LocalDateTime ENTRY_TIME = LocalDateTime.of(2026, 1, 1, 0, 0);
+
+  /** The creation and change date every Office package carries after {@link #reproducible}. */
+  static final String FIXED_DATE = "2026-01-01T00:00:00Z";
+
+  /**
+   * The creation and change dates of an Office package, which POI sets to the moment of writing.
+   */
+  private static final Pattern PACKAGE_DATE =
+      Pattern.compile("(<dcterms:(?:created|modified)[^>]*+>)[^<]*+(</dcterms:)");
+
+  /** The file identifier of a PDF trailer, which PDFBox derives from the moment of writing. */
+  private static final Pattern PDF_ID =
+      Pattern.compile("/ID\\s*+\\[\\s*+<([0-9A-Fa-f]*+)>\\s*+<([0-9A-Fa-f]*+)>");
+
+  private static final byte[] INTERESTING_BYTES = {
+    0, (byte) 0xFF, 0x7F, (byte) 0x80, '<', '>', '(', ')', '/', '\n', '"', '[', ']', '%'
+  };
+
+  private static final String[] INTERESTING_NUMBERS = {
+    "0",
+    "-1",
+    "1",
+    "2",
+    "255",
+    "65535",
+    "65536",
+    "1048576",
+    "2147483647",
+    "-2147483648",
+    "4294967296",
+    "9223372036854775807",
+    "99999999999999999999",
+    "1e308",
+    "0.000001"
+  };
+
+  private static final String RUN_CHARACTERS = " \t\n\r-#<[|0aÜ=*.";
+
+  private static final Pattern NUMBER = Pattern.compile("-?\\d{1,20}");
+
+  private static final Pattern OPENING_TAG =
+      Pattern.compile("<[A-Za-z][\\w:.-]{0,40}[^<>]{0,200}>");
+
+  /** One mutation: its name for the record of a finding, and what it does. */
+  record Mutation(String name, Operator operator) {}
+
+  @FunctionalInterface
+  interface Operator {
+    byte[] apply(byte[] input, SplittableRandom random, List<byte[]> others) throws IOException;
+  }
+
+  /** Mutations of any input, also applied to one part inside a container. */
+  static final List<Mutation> BASIC =
+      List.of(
+          new Mutation("flipBits", Mutators::flipBits),
+          new Mutation("interestingBytes", Mutators::interestingBytes),
+          new Mutation("deleteRange", Mutators::deleteRange),
+          new Mutation("duplicateRange", Mutators::duplicateRange),
+          new Mutation("insertRun", Mutators::insertRun),
+          new Mutation("truncate", Mutators::truncate),
+          new Mutation("splice", Mutators::splice),
+          new Mutation("replaceNumber", Mutators::replaceNumber),
+          new Mutation("repeatLine", Mutators::repeatLine),
+          new Mutation("nestMarkup", Mutators::nestMarkup));
+
+  /** {@link #BASIC} and the structural mutations of a container and a message. */
+  static final List<Mutation> ALL =
+      java.util.stream.Stream.concat(
+              BASIC.stream(),
+              java.util.stream.Stream.of(
+                  new Mutation("mutateZipPart", Mutators::mutateZipPart),
+                  new Mutation("wrapMessage", Mutators::wrapMessage)))
+          .toList();
+
+  private Mutators() {}
+
+  static byte[] flipBits(byte[] input, SplittableRandom random, List<byte[]> others) {
+    if (input.length == 0) {
+      return input;
+    }
+    byte[] out = input.clone();
+    for (int i = random.nextInt(1, 9); i > 0; i--) {
+      int at = random.nextInt(out.length);
+      out[at] ^= (byte) (1 << random.nextInt(8));
+    }
+    return out;
+  }
+
+  static byte[] interestingBytes(byte[] input, SplittableRandom random, List<byte[]> others) {
+    if (input.length == 0) {
+      return input;
+    }
+    byte[] out = input.clone();
+    for (int i = random.nextInt(1, 5); i > 0; i--) {
+      out[random.nextInt(out.length)] = INTERESTING_BYTES[random.nextInt(INTERESTING_BYTES.length)];
+    }
+    return out;
+  }
+
+  static byte[] deleteRange(byte[] input, SplittableRandom random, List<byte[]> others) {
+    if (input.length < 2) {
+      return input;
+    }
+    int from = random.nextInt(input.length);
+    int to = Math.min(input.length, from + 1 + random.nextInt(Math.min(4096, input.length)));
+    return concat(slice(input, 0, from), slice(input, to, input.length));
+  }
+
+  /** A block repeated in place: the shape of a repeated object, row, part or reference. */
+  static byte[] duplicateRange(byte[] input, SplittableRandom random, List<byte[]> others) {
+    if (input.length == 0) {
+      return input;
+    }
+    int from = random.nextInt(input.length);
+    int length = 1 + random.nextInt(Math.min(4096, input.length - from));
+    int times = 1 + random.nextInt(random.nextBoolean() ? 8 : 2_000);
+    times = Math.max(1, Math.min(times, (MAX_BYTES - input.length) / length));
+    byte[] block = slice(input, from, from + length);
+    ByteArrayOutputStream out = new ByteArrayOutputStream(input.length + block.length * times);
+    out.write(input, 0, from + length);
+    for (int i = 0; i < times; i++) {
+      out.writeBytes(block);
+    }
+    out.write(input, from + length, input.length - from - length);
+    return out.toByteArray();
+  }
+
+  /** A long run of one character: whitespace, a token, a marker, a heading or table border. */
+  static byte[] insertRun(byte[] input, SplittableRandom random, List<byte[]> others) {
+    int codePoint = RUN_CHARACTERS.codePointAt(random.nextInt(RUN_CHARACTERS.length()));
+    int length = random.nextBoolean() ? random.nextInt(1, 256) : random.nextInt(1, 100_000);
+    byte[] run = Character.toString(codePoint).repeat(length).getBytes(StandardCharsets.UTF_8);
+    if (input.length + run.length > MAX_BYTES) {
+      return input;
+    }
+    int at = random.nextInt(input.length + 1);
+    return concat(slice(input, 0, at), run, slice(input, at, input.length));
+  }
+
+  static byte[] truncate(byte[] input, SplittableRandom random, List<byte[]> others) {
+    return input.length < 2 ? input : slice(input, 0, random.nextInt(1, input.length));
+  }
+
+  /** The head of this input on the tail of another seed. */
+  static byte[] splice(byte[] input, SplittableRandom random, List<byte[]> others) {
+    byte[] other = others.get(random.nextInt(others.size()));
+    if (input.length == 0 || other.length == 0) {
+      return input;
+    }
+    byte[] spliced =
+        concat(
+            slice(input, 0, random.nextInt(input.length)),
+            slice(other, random.nextInt(other.length), other.length));
+    return spliced.length > MAX_BYTES ? input : spliced;
+  }
+
+  /** A count, length, width, offset or index replaced by a boundary value. */
+  static byte[] replaceNumber(byte[] input, SplittableRandom random, List<byte[]> others) {
+    String text = new String(input, StandardCharsets.ISO_8859_1);
+    List<int[]> numbers = new ArrayList<>();
+    Matcher matcher = NUMBER.matcher(text);
+    while (matcher.find() && numbers.size() < 10_000) {
+      numbers.add(new int[] {matcher.start(), matcher.end()});
+    }
+    if (numbers.isEmpty()) {
+      return input;
+    }
+    int[] number = numbers.get(random.nextInt(numbers.size()));
+    String replacement = INTERESTING_NUMBERS[random.nextInt(INTERESTING_NUMBERS.length)];
+    return (text.substring(0, number[0]) + replacement + text.substring(number[1]))
+        .getBytes(StandardCharsets.ISO_8859_1);
+  }
+
+  /** One line repeated: a heading, row, header line or cross-reference entry many times over. */
+  static byte[] repeatLine(byte[] input, SplittableRandom random, List<byte[]> others) {
+    if (input.length == 0) {
+      return input;
+    }
+    int at = random.nextInt(input.length);
+    int start = at;
+    while (start > 0 && input[start - 1] != '\n') {
+      start--;
+    }
+    int end = at;
+    while (end < input.length && input[end] != '\n') {
+      end++;
+    }
+    end = Math.min(input.length, end + 1);
+    int length = Math.max(1, end - start);
+    int times =
+        Math.max(1, Math.min(random.nextInt(1, 5_000), (MAX_BYTES - input.length) / length));
+    byte[] line = slice(input, start, end);
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    out.write(input, 0, end);
+    for (int i = 0; i < times; i++) {
+      out.writeBytes(line);
+    }
+    out.write(input, end, input.length - end);
+    return out.toByteArray();
+  }
+
+  /** An opening tag repeated without its closing ones: nesting as deep as the parser follows. */
+  static byte[] nestMarkup(byte[] input, SplittableRandom random, List<byte[]> others) {
+    String text = new String(input, StandardCharsets.UTF_8);
+    List<int[]> tags = new ArrayList<>();
+    Matcher matcher = OPENING_TAG.matcher(text);
+    while (matcher.find() && tags.size() < 10_000) {
+      if (text.charAt(matcher.end() - 2) != '/') {
+        tags.add(new int[] {matcher.start(), matcher.end()});
+      }
+    }
+    if (tags.isEmpty()) {
+      return input;
+    }
+    int[] tag = tags.get(random.nextInt(tags.size()));
+    String opening = text.substring(tag[0], tag[1]);
+    int times = Math.max(1, Math.min(random.nextInt(1, 3_000), MAX_BYTES / 2 / opening.length()));
+    byte[] nested =
+        (text.substring(0, tag[1]) + opening.repeat(times) + text.substring(tag[1]))
+            .getBytes(StandardCharsets.UTF_8);
+    return nested.length > MAX_BYTES ? input : nested;
+  }
+
+  /**
+   * One part of a ZIP container (OOXML, ODF) mutated by another mutation, or unpacked larger by
+   * repetition, then packed again with the parts in their order and {@code mimetype} stored.
+   */
+  static byte[] mutateZipPart(byte[] input, SplittableRandom random, List<byte[]> others)
+      throws IOException {
+    Map<String, byte[]> parts = unzip(input);
+    if (parts == null || parts.isEmpty()) {
+      return input;
+    }
+    List<String> names = new ArrayList<>(parts.keySet());
+    String name = names.get(random.nextInt(names.size()));
+    byte[] part = parts.get(name);
+    if (random.nextInt(4) == 0 && part.length > 0) {
+      int times = Math.min(random.nextInt(2, 200), MAX_PART_BYTES / part.length);
+      parts.put(name, repeatedBody(part, Math.max(1, times)));
+    } else {
+      Mutation inner = BASIC.get(random.nextInt(BASIC.size()));
+      parts.put(name, inner.operator().apply(part, random, others));
+    }
+    byte[] zipped = zip(parts);
+    return zipped.length > MAX_BYTES ? input : zipped;
+  }
+
+  /** The message as the attachment of another, one level of nesting deeper. */
+  static byte[] wrapMessage(byte[] input, SplittableRandom random, List<byte[]> others) {
+    String head = new String(input, 0, Math.min(input.length, 512), StandardCharsets.ISO_8859_1);
+    if (!head.contains("From:") && !head.contains("Subject:") && !head.contains("MIME-Version")) {
+      return input;
+    }
+    String boundary = "w" + random.nextInt(1_000_000);
+    byte[] before =
+        ("From: a@example.org\r\nSubject: Weitergeleitet\r\nMIME-Version: 1.0\r\n"
+                + "Content-Type: multipart/mixed; boundary=\""
+                + boundary
+                + "\"\r\n\r\n--"
+                + boundary
+                + "\r\nContent-Type: message/rfc822\r\n"
+                + "Content-Disposition: attachment; filename=\"weiter.eml\"\r\n\r\n")
+            .getBytes(StandardCharsets.ISO_8859_1);
+    byte[] after = ("\r\n--" + boundary + "--\r\n").getBytes(StandardCharsets.ISO_8859_1);
+    byte[] wrapped = concat(before, input, after);
+    return wrapped.length > MAX_BYTES ? input : wrapped;
+  }
+
+  /** The XML body of a part with its children repeated: the root element keeps one copy. */
+  private static byte[] repeatedBody(byte[] part, int times) {
+    String text = new String(part, StandardCharsets.UTF_8);
+    int open = text.indexOf('>', text.indexOf("<", text.startsWith("<?") ? 2 : 0) + 1);
+    int close = text.lastIndexOf("</");
+    if (open < 0 || close <= open) {
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      for (int i = 0; i < times; i++) {
+        out.writeBytes(part);
+      }
+      return out.toByteArray();
+    }
+    String body = text.substring(open + 1, close);
+    return (text.substring(0, open + 1) + body.repeat(times) + text.substring(close))
+        .getBytes(StandardCharsets.UTF_8);
+  }
+
+  /** The parts of a ZIP in their order, or {@code null} for no readable ZIP within bounds. */
+  static Map<String, byte[]> unzip(byte[] input) {
+    if (input.length < 4 || input[0] != 'P' || input[1] != 'K') {
+      return null;
+    }
+    Map<String, byte[]> parts = new LinkedHashMap<>();
+    long total = 0;
+    try (ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(input))) {
+      for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
+        byte[] data = zip.readNBytes(MAX_PART_BYTES + 1);
+        total += data.length;
+        if (data.length > MAX_PART_BYTES || total > 4L * MAX_PART_BYTES) {
+          return null;
+        }
+        parts.putIfAbsent(entry.getName(), data);
+      }
+    } catch (IOException | IllegalArgumentException e) {
+      return parts.isEmpty() ? null : parts;
+    }
+    return parts;
+  }
+
+  /**
+   * A ZIP of {@code parts} in their order, each entry at {@link #ENTRY_TIME}, the {@code mimetype}
+   * of an OpenDocument stored uncompressed: with the same zlib, the same parts give the same bytes.
+   */
+  static byte[] zip(Map<String, byte[]> parts) throws IOException {
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    try (ZipOutputStream zip = new ZipOutputStream(out)) {
+      for (Map.Entry<String, byte[]> part : parts.entrySet()) {
+        ZipEntry entry = new ZipEntry(part.getKey());
+        entry.setTimeLocal(ENTRY_TIME);
+        if (part.getKey().equals("mimetype")) {
+          CRC32 crc = new CRC32();
+          crc.update(part.getValue());
+          entry.setMethod(ZipEntry.STORED);
+          entry.setSize(part.getValue().length);
+          entry.setCompressedSize(part.getValue().length);
+          entry.setCrc(crc.getValue());
+        }
+        zip.putNextEntry(entry);
+        zip.write(part.getValue());
+        zip.closeEntry();
+      }
+    }
+    return out.toByteArray();
+  }
+
+  /**
+   * {@code input} with what depends on the moment of writing fixed: the trailer IDs of a PDF are
+   * zeroed at their length, so every offset stays valid; a ZIP is rewritten by {@link #zip} with
+   * fixed package dates, and every package embedded in it, directly or in an OLE2 object, likewise.
+   * Anything else is returned unchanged.
+   */
+  static byte[] reproducible(byte[] input) throws IOException {
+    if (FileMagic.valueOf(input) == FileMagic.PDF) {
+      return withFixedPdfIds(input);
+    }
+    Map<String, byte[]> parts = unzip(input);
+    if (parts == null) {
+      return input;
+    }
+    for (Map.Entry<String, byte[]> part : parts.entrySet()) {
+      part.setValue(reproducibleEmbedded(part.getValue()));
+    }
+    byte[] core = parts.get("docProps/core.xml");
+    if (core != null) {
+      String fixed =
+          PACKAGE_DATE
+              .matcher(new String(core, StandardCharsets.UTF_8))
+              .replaceAll("$1" + FIXED_DATE + "$2");
+      parts.put("docProps/core.xml", fixed.getBytes(StandardCharsets.UTF_8));
+    }
+    return zip(parts);
+  }
+
+  /**
+   * A part of a package made reproducible; an OLE2 object is rewritten only when a stream in it
+   * changed, so an object without a package keeps its bytes.
+   */
+  private static byte[] reproducibleEmbedded(byte[] part) throws IOException {
+    if (FileMagic.valueOf(part) != FileMagic.OLE2) {
+      return reproducible(part);
+    }
+    try (POIFSFileSystem fs = new POIFSFileSystem(new ByteArrayInputStream(part))) {
+      if (!reproducible(fs.getRoot())) {
+        return part;
+      }
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      fs.writeFilesystem(out);
+      return out.toByteArray();
+    }
+  }
+
+  /** Makes every stream under {@code directory} reproducible; answers whether one changed. */
+  private static boolean reproducible(DirectoryNode directory) throws IOException {
+    boolean changed = false;
+    for (Entry entry : asList(directory)) {
+      if (entry instanceof DirectoryNode child) {
+        changed |= reproducible(child);
+      } else if (entry instanceof DocumentEntry document) {
+        byte[] data;
+        try (InputStream in = new DocumentInputStream(document)) {
+          data = in.readNBytes(document.getSize());
+        }
+        byte[] fixed = reproducibleEmbedded(data);
+        if (!Arrays.equals(fixed, data)) {
+          directory.createOrUpdateDocument(document.getName(), new ByteArrayInputStream(fixed));
+          changed = true;
+        }
+      }
+    }
+    return changed;
+  }
+
+  private static List<Entry> asList(DirectoryEntry directory) {
+    List<Entry> entries = new ArrayList<>();
+    directory.forEach(entries::add);
+    return entries;
+  }
+
+  private static byte[] withFixedPdfIds(byte[] input) {
+    String text = new String(input, StandardCharsets.ISO_8859_1);
+    Matcher id = PDF_ID.matcher(text);
+    StringBuilder out = new StringBuilder(text.length());
+    int from = 0;
+    while (id.find()) {
+      out.append(text, from, id.start(1)).append("0".repeat(id.end(1) - id.start(1)));
+      out.append(text, id.end(1), id.start(2)).append("0".repeat(id.end(2) - id.start(2)));
+      from = id.end(2);
+    }
+    out.append(text, from, text.length());
+    return out.toString().getBytes(StandardCharsets.ISO_8859_1);
+  }
+
+  private static byte[] slice(byte[] input, int from, int to) {
+    byte[] out = new byte[to - from];
+    System.arraycopy(input, from, out, 0, out.length);
+    return out;
+  }
+
+  private static byte[] concat(byte[]... parts) {
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    for (byte[] part : parts) {
+      out.writeBytes(part);
+    }
+    return out.toByteArray();
+  }
+}

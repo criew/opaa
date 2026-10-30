@@ -286,4 +286,15 @@ class DocumentServiceTest {
     assertThat(result).isNotEmpty();
     assertThat(result.getFirst().getText()).contains("Plain text content");
   }
+
+  @Test
+  void parseDocumentReadsATextWithALongRunOfBlankLines() throws IOException {
+    // regression guard: collapsing blank lines must not take stack depth per blank line
+    Path file = tempDir.resolve("leerzeilen.txt");
+    Files.writeString(file, "Anfang" + "\n".repeat(100_000) + "Ende");
+
+    String text = service.parseDocument(file).getFirst().getText();
+
+    assertThat(text).contains("Anfang").contains("Ende").doesNotContain("\n\n\n");
+  }
 }

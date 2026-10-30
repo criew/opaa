@@ -710,7 +710,7 @@ public class InstallationService {
         model.model(),
         model.temperature(),
         StepRules.maxTokens(model),
-        step.getSecret());
+        rules.apiKey(InstallationStep.CHAT_MODEL, step.getSecret()));
   }
 
   /**
@@ -734,7 +734,11 @@ public class InstallationService {
   private void installRerankModel(InstallationStepRecord step) {
     StepRules.RerankModelPayload model = rules.rerankModelPayload(step.getPayload());
     modelRoles.installRerank(
-        Organization.DEFAULT_ID, SYSTEM_ACTOR, model.baseUrl(), model.model(), step.getSecret());
+        Organization.DEFAULT_ID,
+        SYSTEM_ACTOR,
+        model.baseUrl(),
+        model.model(),
+        rules.apiKey(InstallationStep.RERANK_MODEL, step.getSecret()));
   }
 
   /**
@@ -748,7 +752,7 @@ public class InstallationService {
         SYSTEM_ACTOR,
         model.baseUrl(),
         model.model(),
-        step.getSecret(),
+        rules.apiKey(InstallationStep.TRANSCRIPTION_MODEL, step.getSecret()),
         model.language());
   }
 

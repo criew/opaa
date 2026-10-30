@@ -121,11 +121,11 @@ class AdminControllerOrganizationBoundaryIntegrationTest {
               post("/api/v1/admin/users/" + targetUserId + "/role")
                   .with(devAdmin())
                   .contentType(MediaType.APPLICATION_JSON)
-                  .content("{\"role\": \"AUDITOR\"}"))
+                  .content("{\"role\": \"SYSTEM_ADMIN\"}"))
           .andExpect(status().isOk());
 
       assertThat(userRepository.findById(targetUserId).orElseThrow().getSystemRole())
-          .isEqualTo(SystemRole.AUDITOR);
+          .isEqualTo(SystemRole.SYSTEM_ADMIN);
     } finally {
       // fk_audit_actor_pseudonyms_user is ON DELETE CASCADE - deleting the user
       // removes its pseudonym mapping automatically; audit_log itself has no foreign key back to

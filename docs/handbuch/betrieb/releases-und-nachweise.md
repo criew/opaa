@@ -80,8 +80,8 @@ Zu jeder Version gehören:
 
 | Ort | Inhalt |
 |---|---|
-| GHCR | die Images `ghcr.io/criew/opaa-backend:X.Y.Z` und `ghcr.io/criew/opaa-frontend:X.Y.Z` für `linux/amd64` und `linux/arm64`, je mit SBOM und Provenance |
-| GHCR | das Helm-Chart `oci://ghcr.io/criew/charts/opaa` in Version `X.Y.Z`, mit signierter Provenance |
+| GHCR | die Images `ghcr.io/criew/opaa-backend:X.Y.Z` und `ghcr.io/criew/opaa-frontend:X.Y.Z` für `linux/amd64` und `linux/arm64`, je mit SBOM, Provenance und signierter Provenance |
+| GHCR | das Helm-Chart `oci://ghcr.io/criew/charts/opaa` in Version `X.Y.Z`, mit signierter Provenance; es verweist per Digest auf genau diese Images |
 | GitHub-Release `OPAA vX.Y.Z` | die Release-Notizen und das Update-Paket mit Prüfsummendatei |
 | GitHub-Release `OPAA vX.Y.Z` | das Offline-Bündel für Netze ohne Internetzugang, attestiert ([Installation ohne Internetzugang](images-und-laufzeit.md#installation-ohne-internetzugang)) |
 
@@ -90,14 +90,31 @@ Die **Release-Notizen** enthalten:
 - **Datenrelevante Änderungen** ganz oben ([Nachvollziehbarkeit](nachvollziehbarkeit.md#was-bei-jeder-änderung-geprüft-wird))
 - alle übrigen Änderungen nach Art
 - Image-Namen und Installationsbefehle
+- die Befehle, mit denen sich die Herkunft von Images, Chart, Update-Paket und SBOMs prüfen lässt
 - **Vorbereitung für Bestandsinstallationen**: was vor dem Update zu tun ist; bei übersprungenen
   Versionen für jedes übersprungene Release lesen
 
-Die Provenance des Charts prüft:
+<a id="herkunft-prüfen"></a>
+
+**Herkunft prüfen.** Images und Chart tragen je eine signierte Provenance des Release-Laufs. Sie
+belegt, dass genau dieses Image aus dem Release-Workflow von OPAA zum Tag `vX.Y.Z` stammt. Die
+Prüfung nennt deshalb Workflow und Tag; eine Signatur aus einem anderen Workflow oder einem anderen
+Stand besteht sie nicht:
 
 ```bash
-gh attestation verify oci://ghcr.io/criew/charts/opaa:X.Y.Z --owner criew
+gh attestation verify oci://ghcr.io/criew/opaa-backend:X.Y.Z --repo criew/opaa \
+  --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/vX.Y.Z
+gh attestation verify oci://ghcr.io/criew/opaa-frontend:X.Y.Z --repo criew/opaa \
+  --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/vX.Y.Z
+gh attestation verify oci://ghcr.io/criew/charts/opaa:X.Y.Z --repo criew/opaa \
+  --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/vX.Y.Z
 ```
+
+Der Chart setzt in seinen Vorgabewerten den Digest beider Images (`backend.image.digest`,
+`frontend.image.digest`). Ein Cluster zieht damit genau die geprüften Images, auch wenn jemand einen
+Tag in der Registry umhängen könnte. Wer ein anderes Image als das des Charts betreiben will, setzt
+neben dem Tag auch den Digest neu oder leer, denn der Digest hat Vorrang
+([Kubernetes, Werte](kubernetes.md#backend)).
 
 ## Das Update-Paket
 
@@ -135,11 +152,17 @@ liefert sie auf zwei Wegen:
   `opaa-backend-X.Y.Z.cdx.json` und `opaa-frontend-X.Y.Z.cdx.json` am GitHub-Release und liegen im
   Update-Paket unter `sbom/`, beide mit Provenance.
 
-Eine Provenance mit Signatur, prüfbar mit `gh attestation verify`, liegt außerdem am Chart und am
-Update-Paket.
+Eine Provenance mit Signatur, prüfbar mit `gh attestation verify`
+([Herkunft prüfen](#herkunft-prüfen)), liegt außerdem an jedem Image, am Chart, am Update-Paket und
+an beiden SBOMs. Die Signatur des Images gilt seinem Manifest-Index und deckt damit auch SBOM und
+Provenance am Image ab, darunter die genauen Basis-Images, aus denen es gebaut ist.
 
 ## Schwachstellen
 
+- **Prüfen:** Änderungen werden automatisch geprüft und von einem vom Autor getrennten Review
+  (KI-Agent unter Aufsicht des Maintainers) begutachtet, außer kleinen automatischen
+  Abhängigkeits-Updates; dazu kommen eine wöchentliche Routine und zweimal im Jahr ein Tiefen-Audit.
+  Eine Prüfung durch Dritte gab es bisher nicht; Einzelheiten in `SECURITY.md` im Repository.
 - **Erkennen:** GitHub meldet bekannte Schwachstellen in den Bibliotheken; ein nächtlicher Scan
   prüft die Images von `main` und des jüngsten Patch-Release jeder unterstützten Linie, bis zu
   deren Supportende.

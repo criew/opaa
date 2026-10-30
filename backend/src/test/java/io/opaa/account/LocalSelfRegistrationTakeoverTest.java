@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.account.LocalActionTokenService.IssuedActionToken;
 import io.opaa.api.types.LocalAccountState;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.AuditorRoles;
 import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.auth.User;
@@ -94,7 +95,14 @@ class LocalSelfRegistrationTakeoverTest {
     when(encoder.encode(anyString())).thenAnswer(call -> "{enc}" + call.getArgument(0));
     accounts =
         new LocalSelfServiceAccountService(
-            users, credentials, settings, actionTokens, audit, mailer, clock);
+            users,
+            credentials,
+            settings,
+            actionTokens,
+            audit,
+            mailer,
+            mock(AuditorRoles.class),
+            clock);
     passwords =
         new LocalPasswordService(
             credentials,

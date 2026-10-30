@@ -168,7 +168,10 @@ class ProviderDirectoryClientTest {
     try {
       var field = DirectoryConnector.class.getDeclaredField("clientSecret");
       field.setAccessible(true);
-      field.set(connector, secret);
+      field.set(
+          connector,
+          io.opaa.security.EncryptedCredentials.of(
+              secret, DirectoryConnector.CLIENT_SECRET.row(connector.getId())));
     } catch (ReflectiveOperationException e) {
       throw new IllegalStateException(e);
     }

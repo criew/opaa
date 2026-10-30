@@ -154,6 +154,18 @@ public enum AuditEventType {
   AUDITOR_ROLE_GRANTED,
   AUDITOR_ROLE_REVOKED,
   /**
+   * A system administrator asked for the AUDITOR role for an account; the role takes effect only
+   * once another AUDITOR confirms (then {@link #AUDITOR_ROLE_GRANTED} under that auditor). Object
+   * and subject are the account; {@code before}/{@code after} carry the current and the requested
+   * role.
+   */
+  AUDITOR_ROLE_REQUESTED,
+  /**
+   * An open AUDITOR request ended without the role: an auditor declined it, or the system
+   * administration withdrew it by setting another role. The actor tells which.
+   */
+  AUDITOR_ROLE_REQUEST_DECLINED,
+  /**
    * A provider's token withdrew {@code SYSTEM_ADMIN} from the last system administrator and the
    * withdrawal was refused (ADR-0025, Entscheidung 4): the installation must never be left without
    * one. Written under the identity-provider system actor.

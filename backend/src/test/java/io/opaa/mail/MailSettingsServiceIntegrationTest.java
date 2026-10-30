@@ -91,7 +91,7 @@ class MailSettingsServiceIntegrationTest {
     String stored =
         jdbcTemplate.queryForObject(
             "SELECT password_ciphertext FROM mail_settings WHERE id = 1", String.class);
-    assertThat(stored).isNotNull().startsWith("enc:v1:").doesNotContain("geheimesKennwort");
+    assertThat(stored).isNotNull().startsWith("enc:v2:").doesNotContain("geheimesKennwort");
     assertThat(mailSettingsService.snapshot().password()).isEqualTo("geheimesKennwort");
   }
 

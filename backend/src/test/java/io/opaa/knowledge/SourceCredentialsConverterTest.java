@@ -6,22 +6,30 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import io.opaa.security.CipherFormatGate;
 import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import io.opaa.security.CredentialsEncryptionProperties;
 import io.opaa.security.CredentialsEncryptor;
+import io.opaa.security.EncryptedCredentials;
 import java.util.Base64;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
- * Unit tests for {@link SourceCredentialsConverter} - no Spring context, so these exercise the
- * converter's own read/write failure handling directly rather than through a full JPA round trip
- * ({@code UrlIndexingExecutorCredentialsTest}, {@code KnowledgeLibraryServiceIntegrationTest} cover
- * that).
+ * Unit tests for {@link SourceCredentialsConverter} together with the getters of {@link
+ * KnowledgeLibrary} that read what it loads - no Spring context; a load is simulated by placing the
+ * converted column value in the entity field, as Hibernate does ({@code
+ * UrlIndexingExecutorCredentialsTest}, {@code KnowledgeLibraryServiceIntegrationTest} cover the
+ * full JPA round trip).
  */
 class SourceCredentialsConverterTest {
+
+  private static final String SECRET = "admin:super-secret-password";
 
   private ListAppender<ILoggingEvent> logs;
 
@@ -29,12 +37,12 @@ class SourceCredentialsConverterTest {
   void captureLogs() {
     logs = new ListAppender<>();
     logs.start();
-    ((Logger) LoggerFactory.getLogger(SourceCredentialsConverter.class)).addAppender(logs);
+    ((Logger) LoggerFactory.getLogger(KnowledgeLibrary.class)).addAppender(logs);
   }
 
   @AfterEach
   void releaseLogs() {
-    ((Logger) LoggerFactory.getLogger(SourceCredentialsConverter.class)).detachAppender(logs);
+    ((Logger) LoggerFactory.getLogger(KnowledgeLibrary.class)).detachAppender(logs);
   }
 
   private static String validBase64Key() {
@@ -47,70 +55,100 @@ class SourceCredentialsConverterTest {
 
   private static SourceCredentialsConverter converterWithKey(String base64Key) {
     return new SourceCredentialsConverter(
-        new CredentialsEncryptor(new CredentialsEncryptionProperties(base64Key)));
+        new CredentialsEncryptor(
+            new CredentialsEncryptionProperties(base64Key, List.of()), CipherFormatGate.KEYED));
+  }
+
+  private static KnowledgeLibrary library(String credentials) {
+    return KnowledgeLibrary.ownedByUser(
+        UUID.randomUUID(),
+        "Quelle",
+        null,
+        UUID.randomUUID(),
+        SourceType.UPLOAD,
+        null,
+        "https://quelle.example.org",
+        credentials);
+  }
+
+  /** What the column of {@code library} receives through {@code converter} on a flush. */
+  private static String column(SourceCredentialsConverter converter, KnowledgeLibrary library) {
+    return converter.convertToDatabaseColumn(
+        (EncryptedCredentials) ReflectionTestUtils.getField(library, "sourceCredentials"));
+  }
+
+  /** {@code library} as Hibernate hydrates it from a row holding {@code stored}. */
+  private static KnowledgeLibrary loaded(
+      KnowledgeLibrary library, SourceCredentialsConverter converter, String stored) {
+    ReflectionTestUtils.setField(
+        library, "sourceCredentials", converter.convertToEntityAttribute(stored));
+    return library;
   }
 
   @Test
-  void roundTripsAPlaintextValueThroughEncryptionAndBackUnchanged() {
+  void roundTripsAPlaintextValueThroughEncryptionBoundToItsLibrary() {
     SourceCredentialsConverter converter = converterWithKey(validBase64Key());
+    KnowledgeLibrary library = library(SECRET);
 
-    String stored = converter.convertToDatabaseColumn("admin:super-secret-password");
+    String stored = column(converter, library);
 
-    assertThat(stored).startsWith("enc:v1:");
-    assertThat(converter.convertToEntityAttribute(stored)).isEqualTo("admin:super-secret-password");
+    assertThat(stored).startsWith("enc:v2:").doesNotContain(SECRET);
+    assertThat(loaded(library, converter, stored).getSourceCredentials()).isEqualTo(SECRET);
+  }
+
+  @Test
+  void theCiphertextOfOneLibraryDoesNotReadAsTheCredentialsOfAnother() {
+    SourceCredentialsConverter converter = converterWithKey(validBase64Key());
+    String stored = column(converter, library(SECRET));
+
+    assertThat(loaded(library(null), converter, stored).getSourceCredentials()).isNull();
   }
 
   @Test
   void readingAValueThatCannotBeDecryptedWithTheCurrentKeyReturnsNullInsteadOfThrowing() {
     // convertToEntityAttribute runs on every hydration of a KnowledgeLibrary row - one row with
-    // an undecryptable value (key lost/rotated) must not fail the whole read (e.g. GET
-    // /api/v1/libraries for every library sharing that key).
-    SourceCredentialsConverter writer = converterWithKey(validBase64Key());
-    String encryptedWithOldKey = writer.convertToDatabaseColumn("admin:super-secret-password");
+    // an undecryptable value (key lost) must not fail the whole read.
+    KnowledgeLibrary library = library(SECRET);
+    String encryptedWithOldKey = column(converterWithKey(validBase64Key()), library);
 
     byte[] otherKey = new byte[32];
-    otherKey[0] = 1; // different from validBase64Key()'s all-sequential bytes
+    otherKey[0] = 1;
     SourceCredentialsConverter reader =
         converterWithKey(Base64.getEncoder().encodeToString(otherKey));
 
-    assertThat(reader.convertToEntityAttribute(encryptedWithOldKey)).isNull();
+    assertThat(loaded(library, reader, encryptedWithOldKey).getSourceCredentials()).isNull();
   }
 
   @Test
-  void readingAValueWithAnUnknownVersionPrefixReturnsNullInsteadOfThrowing() {
-    // Never returned as cleartext, but reading still fails soft.
+  void readingAValueWithAnUnknownVersionPrefixOrAMalformedValueReturnsNull() {
     SourceCredentialsConverter converter = converterWithKey(validBase64Key());
 
-    assertThat(converter.convertToEntityAttribute("enc:v2:whatever-a-future-format-looks-like"))
+    assertThat(
+            loaded(library(null), converter, "enc:v3:whatever-a-future-format-looks-like")
+                .getSourceCredentials())
         .isNull();
-  }
-
-  @Test
-  void readingAMalformedStoredValueReturnsNullInsteadOfThrowing() {
-    // The Base64 decode failure inside CredentialsEncryptor.decrypt must also be caught here,
-    // not just genuine key mismatches.
-    SourceCredentialsConverter converter = converterWithKey(validBase64Key());
-
-    assertThat(converter.convertToEntityAttribute("enc:v1:not-valid-base64!!!")).isNull();
+    assertThat(
+            loaded(library(null), converter, "enc:v1:not-valid-base64!!!").getSourceCredentials())
+        .isNull();
   }
 
   @Test
   void readingALegacyPreIssue483CleartextValueReturnsItUnchanged() {
     SourceCredentialsConverter converter = converterWithKey(validBase64Key());
 
-    assertThat(converter.convertToEntityAttribute("admin:legacy-plaintext-secret"))
+    assertThat(
+            loaded(library(null), converter, "admin:legacy-plaintext-secret")
+                .getSourceCredentials())
         .isEqualTo("admin:legacy-plaintext-secret");
   }
 
   @Test
   void readingWithoutAConfiguredKeyIsNotSilentAndTheWarningCarriesNoSecret() {
-    // The soft read failure is the one moment an operator can notice that a key is missing - it
-    // warns, and the warning never carries the stored or decrypted value.
-    SourceCredentialsConverter writer = converterWithKey(validBase64Key());
-    String encrypted = writer.convertToDatabaseColumn("admin:super-secret-password");
+    KnowledgeLibrary library = library(SECRET);
+    String encrypted = column(converterWithKey(validBase64Key()), library);
     logs.list.clear();
 
-    assertThat(converterWithKey(null).convertToEntityAttribute(encrypted)).isNull();
+    assertThat(loaded(library, converterWithKey(null), encrypted).getSourceCredentials()).isNull();
 
     assertThat(logs.list)
         .singleElement()
@@ -119,17 +157,29 @@ class SourceCredentialsConverterTest {
               assertThat(event.getLevel().levelStr).isEqualTo("WARN");
               assertThat(event.getFormattedMessage())
                   .contains("OPAA_CREDENTIALS_ENCRYPTION_KEY")
-                  .doesNotContain("admin:super-secret-password")
+                  .doesNotContain(SECRET)
                   .doesNotContain(encrypted);
             });
   }
 
   @Test
-  void writingWithoutAConfiguredKeyStillFailsHardRatherThanSilentlyDroppingCredentials() {
-    // Reads fail soft, writes must keep failing hard.
-    SourceCredentialsConverter converter = converterWithKey(null);
+  void anUnreadableValueIsWrittenBackAsStoredAlsoWhenTheGetterResultIsHandedBack() {
+    KnowledgeLibrary library = library(SECRET);
+    String encrypted = column(converterWithKey(validBase64Key()), library);
+    SourceCredentialsConverter keyless = converterWithKey(null);
+    loaded(library, keyless, encrypted);
 
-    assertThatThrownBy(() -> converter.convertToDatabaseColumn("admin:secret"))
+    library.replaceSourceCredentials(library.getSourceCredentials());
+
+    assertThat(column(keyless, library)).isEqualTo(encrypted);
+  }
+
+  @Test
+  void writingWithoutAConfiguredKeyStillFailsHardRatherThanSilentlyDroppingCredentials() {
+    SourceCredentialsConverter converter = converterWithKey(null);
+    KnowledgeLibrary library = library("admin:secret");
+
+    assertThatThrownBy(() -> column(converter, library))
         .isInstanceOf(CredentialsEncryptionKeyMissingException.class);
   }
 }

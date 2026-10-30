@@ -1,9 +1,14 @@
 package io.opaa.security;
 
+import static io.opaa.security.CredentialsEncryptorTest.KEY;
+import static io.opaa.security.CredentialsEncryptorTest.NEW_KEY;
+import static io.opaa.security.CredentialsEncryptorTest.OTHER_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Base64;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -12,129 +17,125 @@ import org.junit.jupiter.api.Test;
  */
 class SettingsEncryptorTest {
 
-  private static String validBase64Key() {
-    byte[] key = new byte[32];
-    for (int i = 0; i < key.length; i++) {
-      key[i] = (byte) i;
-    }
-    return Base64.getEncoder().encodeToString(key);
+  private static final UUID ROW = UUID.fromString("00000000-0000-0000-0000-000000000001");
+  private static final EncryptedColumn COLUMN =
+      EncryptedColumn.settings("llm_models", "api_key_ciphertext");
+  private static final CipherBinding BINDING = COLUMN.row(ROW);
+
+  private static SettingsEncryptor encryptor(String key, String... previous) {
+    return encryptor(CipherFormatGate.KEYED, key, previous);
   }
 
-  private SettingsEncryptor encryptorWithKey(String base64Key) {
-    return new SettingsEncryptor(new SettingsEncryptionProperties(base64Key));
+  private static SettingsEncryptor encryptor(
+      CipherFormatGate gate, String key, String... previous) {
+    return new SettingsEncryptor(new SettingsEncryptionProperties(key, List.of(previous)), gate);
   }
 
   @Test
   void encryptsAndDecryptsBackToTheOriginalPlaintext() {
-    SettingsEncryptor encryptor = encryptorWithKey(validBase64Key());
+    SettingsEncryptor encryptor = encryptor(KEY);
 
-    String encrypted = encryptor.encrypt("sk-super-secret-key");
+    String encrypted = encryptor.encrypt("sk-secret", BINDING);
 
-    assertThat(encrypted).startsWith("enc:v1:");
-    assertThat(encrypted).doesNotContain("sk-super-secret-key");
-    assertThat(encryptor.decrypt(encrypted)).isEqualTo("sk-super-secret-key");
+    assertThat(encrypted).startsWith("enc:v2:" + encryptor.currentKeyId() + ":");
+    assertThat(encrypted).doesNotContain("sk-secret");
+    assertThat(encryptor.decrypt(encrypted, BINDING)).isEqualTo("sk-secret");
   }
 
   @Test
   void encryptingTheSamePlaintextTwiceProducesDifferentCiphertextsBecauseTheIvIsRandom() {
-    SettingsEncryptor encryptor = encryptorWithKey(validBase64Key());
+    SettingsEncryptor encryptor = encryptor(KEY);
 
-    String first = encryptor.encrypt("sk-secret");
-    String second = encryptor.encrypt("sk-secret");
-
-    assertThat(first).isNotEqualTo(second);
-    assertThat(encryptor.decrypt(first)).isEqualTo("sk-secret");
-    assertThat(encryptor.decrypt(second)).isEqualTo("sk-secret");
+    assertThat(encryptor.encrypt("sk-secret", BINDING))
+        .isNotEqualTo(encryptor.encrypt("sk-secret", BINDING));
   }
 
   @Test
   void nullAndBlankPlaintextEncryptToNull() {
-    SettingsEncryptor encryptor = encryptorWithKey(validBase64Key());
+    SettingsEncryptor encryptor = encryptor(KEY);
 
-    assertThat(encryptor.encrypt(null)).isNull();
-    assertThat(encryptor.encrypt("")).isNull();
-    assertThat(encryptor.encrypt("   ")).isNull();
+    assertThat(encryptor.encrypt(null, BINDING)).isNull();
+    assertThat(encryptor.encrypt("", BINDING)).isNull();
+    assertThat(encryptor.encrypt("   ", BINDING)).isNull();
   }
 
   @Test
   void nullAndBlankStoredValueDecryptToNull() {
-    SettingsEncryptor encryptor = encryptorWithKey(validBase64Key());
+    SettingsEncryptor encryptor = encryptor(KEY);
 
-    assertThat(encryptor.decrypt(null)).isNull();
-    assertThat(encryptor.decrypt("")).isNull();
+    assertThat(encryptor.decrypt(null, BINDING)).isNull();
+    assertThat(encryptor.decrypt("", BINDING)).isNull();
   }
 
   @Test
   void modelWithoutAnApiKeyNeedsNoKeyAtAllToRoundTrip() {
-    SettingsEncryptor encryptor = encryptorWithKey(null);
+    SettingsEncryptor encryptor = encryptor(null);
 
-    assertThat(encryptor.encrypt(null)).isNull();
-    assertThat(encryptor.decrypt(null)).isNull();
+    assertThat(encryptor.encrypt(null, BINDING)).isNull();
+    assertThat(encryptor.decrypt(null, BINDING)).isNull();
   }
 
   @Test
   void encryptingWithoutAConfiguredKeyRaisesAClearException() {
-    SettingsEncryptor encryptor = encryptorWithKey(null);
-
-    assertThatThrownBy(() -> encryptor.encrypt("sk-secret"))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("OPAA_SETTINGS_ENCRYPTION_KEY");
-  }
-
-  @Test
-  void encryptingWithAnInvalidBase64KeyRaisesAClearException() {
-    SettingsEncryptor encryptor = encryptorWithKey("not-valid-base64!!!");
-
-    assertThatThrownBy(() -> encryptor.encrypt("sk-secret"))
+    assertThatThrownBy(() -> encryptor(null).encrypt("sk-secret", BINDING))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("OPAA_SETTINGS_ENCRYPTION_KEY");
   }
 
   @Test
   void encryptingWithAWrongLengthKeyRaisesAClearException() {
-    SettingsEncryptor encryptor =
-        encryptorWithKey(Base64.getEncoder().encodeToString(new byte[16])); // AES-128, not 256
+    SettingsEncryptor encryptor = encryptor(Base64.getEncoder().encodeToString(new byte[16]));
 
-    assertThatThrownBy(() -> encryptor.encrypt("sk-secret"))
+    assertThatThrownBy(() -> encryptor.encrypt("sk-secret", BINDING))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("256-Bit");
   }
 
   @Test
-  void decryptingAValueWithoutTheCurrentPrefixRaisesAClearException() {
-    SettingsEncryptor encryptor = encryptorWithKey(validBase64Key());
+  void decryptingAValueWithoutAKnownPrefixRaisesAClearException() {
+    SettingsEncryptor encryptor = encryptor(KEY);
 
-    assertThatThrownBy(() -> encryptor.decrypt("plain-not-encrypted-at-all"))
+    assertThatThrownBy(() -> encryptor.decrypt("plain-not-encrypted-at-all", BINDING))
         .isInstanceOf(IllegalStateException.class);
-    assertThatThrownBy(() -> encryptor.decrypt("enc:v2:whatever-a-future-format-looks-like"))
+    assertThatThrownBy(() -> encryptor.decrypt("enc:v3:a-future-format", BINDING))
         .isInstanceOf(IllegalStateException.class);
-  }
-
-  @Test
-  void decryptingAMalformedBase64PayloadRaisesAClearException() {
-    SettingsEncryptor encryptor = encryptorWithKey(validBase64Key());
-
-    assertThatThrownBy(() -> encryptor.decrypt("enc:v1:not-valid-base64!!!"))
+    assertThatThrownBy(() -> encryptor.decrypt("enc:v2:no-key-id-separator", BINDING))
         .isInstanceOf(IllegalStateException.class);
   }
 
   @Test
-  void decryptingWithTheWrongKeyRaisesAClearExceptionInsteadOfSilentlyReturningGarbage() {
-    SettingsEncryptor writer = encryptorWithKey(validBase64Key());
-    String encrypted = writer.encrypt("sk-secret");
+  void decryptingWithTheWrongKeyOrAtAnotherRowRaisesAClearException() {
+    String encrypted = encryptor(KEY).encrypt("sk-secret", BINDING);
 
-    byte[] otherKey = new byte[32];
-    otherKey[0] = 1; // different from validBase64Key()'s all-sequential bytes
-    SettingsEncryptor reader = encryptorWithKey(Base64.getEncoder().encodeToString(otherKey));
-
-    assertThatThrownBy(() -> reader.decrypt(encrypted)).isInstanceOf(IllegalStateException.class);
+    assertThatThrownBy(() -> encryptor(OTHER_KEY).decrypt(encrypted, BINDING))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS");
+    assertThatThrownBy(() -> encryptor(KEY).decrypt(encrypted, COLUMN.row(UUID.randomUUID())))
+        .isInstanceOf(IllegalStateException.class);
   }
 
   @Test
-  void decryptsAValueStoredInTheEstablishedFormat() {
-    // ciphertext written with validBase64Key(); guards against format drift for persisted values
-    String stored = "enc:v1:E6yfbKrCoHYne+1ZL6yQTVi1ySRE/xIhDJD7CJCKEcHldHEI9BCmykJ7jQ==";
+  void afterARotationTheOldKeyOnlyDecryptsAndRewrapMovesValuesToTheNewOne() {
+    String keyed = encryptor(KEY).encrypt("sk-keyed", BINDING);
+    String legacyFormat = encryptor(() -> false, KEY).encrypt("sk-v1", BINDING);
+    SettingsEncryptor rotated = encryptor(NEW_KEY, KEY);
 
-    assertThat(encryptorWithKey(validBase64Key()).decrypt(stored)).isEqualTo("sk-test-api-key");
+    assertThat(rotated.decrypt(keyed, BINDING)).isEqualTo("sk-keyed");
+    assertThat(rotated.decrypt(legacyFormat, BINDING)).isEqualTo("sk-v1");
+    assertThat(encryptor(NEW_KEY).decrypt(rotated.rewrap(keyed, BINDING, true), BINDING))
+        .isEqualTo("sk-keyed");
+    assertThat(encryptor(NEW_KEY).decrypt(rotated.rewrap(legacyFormat, BINDING, true), BINDING))
+        .isEqualTo("sk-v1");
+  }
+
+  @Test
+  void decryptsValuesStoredInTheEstablishedFormats() {
+    // written with KEY by an independent AES-GCM implementation; guards against format drift
+    String v1 = "enc:v1:E6yfbKrCoHYne+1ZL6yQTVi1ySRE/xIhDJD7CJCKEcHldHEI9BCmykJ7jQ==";
+    String v2 =
+        "enc:v2:585b259a1d5c0ce7:ZGVmZ2hpamtsbW5vO3DzEhyaIrNfEjbFsQATnV1+pyLCpgb6HUl3o/DscQ==";
+
+    assertThat(encryptor(KEY).decrypt(v1, BINDING)).isEqualTo("sk-test-api-key");
+    assertThat(encryptor(KEY).decrypt(v2, BINDING)).isEqualTo("sk-test-api-key");
   }
 }

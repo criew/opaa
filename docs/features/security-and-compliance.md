@@ -1677,7 +1677,8 @@ Ausgelieferte dem Geprüften entspricht.
 - **Unabhängige Prüfung als Nachweisstufe.** Eine externe Sicherheitsuntersuchung des Produkts und seines
   Quelltextes ist die Stufe, die aus einer Selbstauskunft einen Nachweis macht. Sie ist keine
   Produktfunktion, sondern ein Reifegrad; ihr Bericht gehört in das Nachweispaket. Wann und in welchem
-  Umfang sie erfolgt, entscheidet das Projekt gesondert.
+  Umfang sie erfolgt, entscheidet das Projekt gesondert. Eine externe Prüfung gab es bisher nicht;
+  wie das Projekt seinen Code selbst prüft, steht in [security-pruefung.md](../security-pruefung.md).
 
 ---
 

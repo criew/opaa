@@ -170,6 +170,11 @@ opaa:
     # @RequiresRecentLogin (io.opaa.auth.RecentLoginPolicy); a non-positive value refuses the start.
     recent-login:
       max-age: ${OPAA_AUTH_RECENT_LOGIN_MAX_AGE:5m}
+    # The address of the account that may become the first AUDITOR of an organization without an
+    # identity provider's roles claim; every later AUDITOR grant needs an auditor's confirmation
+    # (io.opaa.auth.AuditorRoleProperties). Empty means none.
+    auditor-role:
+      first-auditor-email: ${OPAA_AUTH_FIRST_AUDITOR_EMAIL:}
     # Local accounts (ADR-0033): the one secret every key of the local token issuer is derived from
     # (HKDF, io.opaa.security.LocalAuthKeyService - access-token signature, refresh-token lookup,
     # action-token lookup) and the session limits of the local issuer. No default for the secret on
@@ -806,6 +811,10 @@ opaa:
       # below (not local) sets an explicitly-marked non-production default so bootRun and tests work
       # without operator setup.
       encryption-key: ${OPAA_CREDENTIALS_ENCRYPTION_KEY:}
+      # Earlier keys after a key rotation, comma-separated: they only decrypt, and the
+      # re-encryption (io.opaa.security.CiphertextRewrap) moves their values to the key above
+      # (ADR-0064). Empty outside a rotation.
+      previous-keys: ${OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS:}
     settings:
       # AES-256 key (Base64, 32 raw bytes) for io.opaa.security.SettingsEncryptor - encrypts
       # llm_models.api_key_ciphertext at rest
@@ -819,6 +828,13 @@ opaa:
       # purpose; the dev profile below sets an explicitly-marked non-production default so bootRun
       # and tests work without operator setup.
       encryption-key: ${OPAA_SETTINGS_ENCRYPTION_KEY:}
+      # Earlier keys after a key rotation, as for the credentials above (ADR-0064).
+      previous-keys: ${OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS:}
+    cipher-format:
+      # false keeps writing enc:v1 and keeps every value's format on re-encryption, so that a
+      # rollback to a version before ADR-0064 still reads every stored secret with the current key;
+      # true once that window is over.
+      keyed: ${OPAA_ENCRYPTION_KEYED_FORMAT:true}
 
 management:
   endpoints:
