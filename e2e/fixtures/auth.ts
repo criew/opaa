@@ -86,7 +86,7 @@ export async function openAs(page: Page, devUser: string, attempt = 1): Promise<
   await openAs(page, devUser, attempt + 1)
 }
 
-/** Extra time the end-state analysis gets on top of the test's own budget. */
+/** Teardown budget of the end-state analysis on top of the test timeout (none when unlimited). */
 const END_STATE_A11Y_TIMEOUT_MS = 20_000
 
 /**
@@ -99,7 +99,8 @@ async function expectAccessibleEndState(page: Page, devUser: string): Promise<vo
   const info = base.info()
   if (process.env.E2E_A11Y_END_STATE === 'false' || info.status !== info.expectedStatus) return
   if (page.isClosed() || !page.url().startsWith('http')) return
-  info.setTimeout(info.timeout + END_STATE_A11Y_TIMEOUT_MS)
+  if (info.timeout > 0) info.setTimeout(info.timeout + END_STATE_A11Y_TIMEOUT_MS)
+  await page.waitForLoadState()
   // A frame sandboxed without scripts never runs the axe script injected into it, and axe waits
   // for it until the test times out; its content (a rendered mail) is not this app's interface.
   await expectNoSeriousA11yViolations(page, `Endzustand (${devUser})`, {
@@ -126,8 +127,11 @@ export const test = base.extend<{
     const page = await context.newPage()
     await openAs(page, REGULAR_USER)
     await use(page)
-    await expectAccessibleEndState(page, REGULAR_USER)
-    await context.close()
+    try {
+      await expectAccessibleEndState(page, REGULAR_USER)
+    } finally {
+      await context.close()
+    }
   },
 
   /**
@@ -140,8 +144,11 @@ export const test = base.extend<{
     const page = await context.newPage()
     await openAs(page, OUTSIDER_USER)
     await use(page)
-    await expectAccessibleEndState(page, OUTSIDER_USER)
-    await context.close()
+    try {
+      await expectAccessibleEndState(page, OUTSIDER_USER)
+    } finally {
+      await context.close()
+    }
   },
 
   /**
@@ -154,8 +161,11 @@ export const test = base.extend<{
     const page = await context.newPage()
     await openAs(page, FORMAT_PIPELINES_USER)
     await use(page)
-    await expectAccessibleEndState(page, FORMAT_PIPELINES_USER)
-    await context.close()
+    try {
+      await expectAccessibleEndState(page, FORMAT_PIPELINES_USER)
+    } finally {
+      await context.close()
+    }
   },
 })
 
