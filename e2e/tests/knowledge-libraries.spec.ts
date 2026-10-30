@@ -117,7 +117,7 @@ async function uploadOwnDocument(page: Page, devUser: string, libraryName: strin
  * document shows up as a Beleg (`toHaveCount(0)` received 1) - the excluded user now finds it too.
  * Both restored to green with the filter back in place.
  */
-test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Suche (#424)', () => {
+test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Suche (#424)', { tag: '@browser-smoke' }, () => {
   test('1. Eigene Bibliothek anlegen und befüllen', async ({ authenticatedPage: page }) => {
     await createLibraryWithDocument(page, LIBRARY_NAME, TEST_DOCUMENT_PATH, TEST_DOCUMENT_NAME)
   })

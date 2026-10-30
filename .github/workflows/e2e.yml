@@ -33,8 +33,9 @@ jobs:
     # Suite budget from #231 is 10 minutes for the *test run*; the image
     # build below is intentionally outside that budget (see e2e/README.md)
     # and sped up with a GitHub Actions layer cache, but still needs its own
-    # margin. Re-evaluate this number as the suite grows.
-    timeout-minutes: 20
+    # margin, and so does the Firefox smoke run after the suite. Re-evaluate
+    # this number as the suite grows.
+    timeout-minutes: 28
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -112,16 +113,16 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}-chromium-firefox
 
       - name: Install Playwright browsers
         working-directory: e2e
         timeout-minutes: 6
         run: |
           if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = "true" ]; then
-            pnpm exec playwright install chromium
+            pnpm exec playwright install chromium firefox
           else
-            pnpm exec playwright install --with-deps chromium
+            pnpm exec playwright install --with-deps chromium firefox
           fi
 
       # Establishes exactly the state docs/handbuch/betrieb/docker-compose.md documents for an
@@ -141,6 +142,17 @@ jobs:
         env:
           E2E_SKIP_BUILD: 'true'
 
+      # Second engine: the scenarios tagged @browser-smoke in Firefox, on a fresh stack. Runs even
+      # after a red Chromium run, so a failure shows whether it is engine-specific.
+      - name: Run Firefox smoke
+        if: ${{ !cancelled() }}
+        working-directory: e2e
+        timeout-minutes: 8
+        run: pnpm test
+        env:
+          E2E_SKIP_BUILD: 'true'
+          E2E_BROWSER: firefox
+
       # if: !cancelled() (not failure()) on purpose: when the job hits
       # timeout-minutes, GitHub marks it cancelled, not failed, and
       # if: failure() would silently skip artifact upload in exactly the
@@ -150,7 +162,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: playwright-report
-          path: e2e/playwright-report/
+          path: |
+            e2e/playwright-report/
+            e2e/playwright-report-firefox/
           if-no-files-found: ignore
           retention-days: 14
 
@@ -159,7 +173,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: playwright-traces
-          path: e2e/test-results/
+          path: |
+            e2e/test-results/
+            e2e/test-results-firefox/
           if-no-files-found: ignore
           retention-days: 14
 
@@ -168,7 +184,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: docker-compose-logs
-          path: e2e/docker-compose.log
+          path: |
+            e2e/docker-compose.log
+            e2e/docker-compose.firefox.log
           if-no-files-found: ignore
           retention-days: 14
 
@@ -227,11 +245,16 @@ jobs:
               }
               for (const child of suite.suites ?? []) walk(child, here);
             };
-            const reportPath = 'e2e/test-results/results.json';
+            // Chromium suite and Firefox smoke run each leave their own report.
+            const reportPaths = ['e2e/test-results/results.json', 'e2e/test-results-firefox/results.json']
+              .filter(path => fs.existsSync(path));
             let details;
-            if (fs.existsSync(reportPath)) {
-              const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
-              for (const suite of report.suites ?? []) walk(suite, []);
+            if (reportPaths.length > 0) {
+              for (const reportPath of reportPaths) {
+                const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+                const engine = reportPath.includes('firefox') ? 'Firefox' : '';
+                for (const suite of report.suites ?? []) walk(suite, engine ? [engine] : []);
+              }
               details = failed.length
                 ? `Fehlgeschlagene Szenarien:\n\n${failed.join('\n')}`
                 : 'Der Playwright-Bericht weist keinen fehlgeschlagenen Testfall aus — der Fehler ' +

@@ -2,6 +2,8 @@ node_modules/
 test-results/
 playwright-report/
 playwright-report-installation/
+playwright-report-firefox/
+test-results-firefox/
 blob-report/
 .cache/
 .venv/

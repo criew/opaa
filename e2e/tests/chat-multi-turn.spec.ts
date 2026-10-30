@@ -206,7 +206,7 @@ async function historyIsScrolled(page: Page): Promise<boolean> {
   })
 }
 
-test.describe.serial('Chat über mehrere Runden (#3467)', () => {
+test.describe.serial('Chat über mehrere Runden (#3467)', { tag: '@browser-smoke' }, () => {
   const createdLibraryIds = cleanupLibraries()
   let libraryA: SeededLibrary
   let libraryB: SeededLibrary
