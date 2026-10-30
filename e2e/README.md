@@ -101,9 +101,9 @@ pnpm test
 
 1. `docker compose down -v` für das **eigene** Compose-Projekt `opaa-e2e` (definierte Ausgangslage;
    siehe "Isolation von einem laufenden Dev-Stack" unten).
-2. `docker compose up -d --build ai-stub rss-feed nextcloud postgres backend frontend` unter diesem
-   Projektnamen, mit eigenen Host-Ports und `e2e/e2e.env` als Environment (siehe unten), und Warten
-   auf Erreichbarkeit.
+2. `docker compose up -d --build ai-stub rss-feed nextcloud dropbox-stub clamd-stub postgres backend
+   frontend` unter diesem Projektnamen, mit eigenen Host-Ports und `e2e/e2e.env` als Environment
+   (siehe unten), und Warten auf Erreichbarkeit.
 3. **Seed-Lauf (#233):** `demo/seed/seed.py --profile e2e --base-url http://localhost:$OPAA_BACKEND_PORT/api`
    — derselbe gemeinsame Seed-Mechanismus, den auch das `demo`-Compose-Profil nutzt
    (`demo/seed/profiles.py`, `E2E_PROFILE`), hier gegen den dev-Auth-Modus dieses Stacks statt
@@ -303,6 +303,20 @@ die Zustimmungsseite nennt den Host-Port (`OPAA_DROPBOX_STUB_PORT`, Vorgabe `180
 Ausnahmeliste für Zieladressen, und `OPAA_PUBLIC_BASE_URL` ist gesetzt, damit die Rücksprungadresse
 auf das Frontend des Stacks zeigt. Ein eigener Dienst statt einer Erweiterung von `ai-stub`: Dessen
 Aufgabe ist das deterministische Modell, und die Dropbox-Routen haben damit nichts gemeinsam.
+
+### Virenprüfung und kleine Aufnahmegrenzen
+
+`clamd-stub` (`e2e/clamd-stub/server.mjs`, ebenfalls ein Skript im Standard-`node`-Image) spricht
+das `INSTREAM`-Protokoll von clamd und meldet `FOUND` für die EICAR-Testzeichenfolge, `OK` für alles
+andere. `e2e.env` schaltet die Virenprüfung damit für den ganzen Stack ein (`OPAA_MALWARE_SCAN_*`),
+jeder Upload und jede Konnektoraufnahme der Suite läuft also durch sie. Ein echtes ClamAV lädt beim
+Start erst seine Signaturdatenbank aus dem Netz, das kostete jeden Lauf Minuten und Speicher.
+
+Dieselbe Datei setzt kleine Grenzen, damit die Ablehnungen ohne große Dateien prüfbar sind: 4 MiB je
+Datei (`OPAA_UPLOAD_MAX_FILE_SIZE`) und 3 MiB je Bibliothek (`OPAA_LIBRARY_QUOTA_BYTES`). Die
+Dateigrenze liegt über dem ~2-MB-PDF aus `knowledge-library-nacharbeiten.spec.ts`, das Kontingent
+über jeder Bibliothek, die die Suite füllt, und unter der Dateigrenze, sodass eine Datei dazwischen
+passt. Wer ein Szenario mit größeren Dateien ergänzt, prüft beide Werte.
 
 ## Serialisierungs-Konvention
 
@@ -644,17 +658,33 @@ lassen.
   und verwendet (entschiedener Randfall der Spezifikation), und eine unscoped Suche über den
   wachsenden Korpus brächte dem Prüfgegenstand nichts.
 
-- `tests/format-pipelines-upload.spec.ts` (#1109) — lädt XLSX, HTML und EML in einem Durchlauf
-  hoch und prüft, dass alle drei nach der Verarbeitung als indiziert erscheinen. Deckt damit Formate
-  ab, die die Suite sonst nie durch die echte Upload-Oberfläche treibt (bisher nur `.txt` und ein
-  `.pdf`-Fixture); `.eml` ist der wertvollste der drei Fälle, weil es als einziges Format über eine
-  inhaltstolerante statt einer strikten Medientyp-Prüfung zugelassen wird und über seinen Anhang ein
-  zweites, anderes Format erneut durch die Pipeline-Registry schickt. Keine erschöpfende Abdeckung
-  jedes zugelassenen Formats — das leistet die Backend-Ebene
-  (`DocumentIndexingIntegrationTest`). Stellt selbst nie eine Chatfrage und läuft deshalb unter der
-  eigenen Fixture `formatPipelinesPage` (Konto `dev-format-pipelines`) statt unter `dev-admin` — ein
+- `tests/format-pipelines-upload.spec.ts` (#1109, #3466) — lädt XLSX, HTML, EML, DOCX, PPTX, ODT,
+  ODP, Markdown, CSV, ODS, DOC und MSG in einem Durchlauf hoch und prüft, dass alle nach der
+  Verarbeitung als indiziert erscheinen.
+  Zusammen mit `.txt` und `.pdf` aus anderen Szenarien geht damit jedes zugelassene
+  Upload-Format einmal durch die echte Oberfläche und Pipeline; die Fixtures sind wenige KB groß
+  (CSV, ODS, DOC und MSG stammen aus `demo/corpus/formate/`).
+  `.eml` ist der wertvollste Fall, weil es als einziges Format über eine inhaltstolerante statt einer
+  strikten Medientyp-Prüfung zugelassen wird und über seinen Anhang ein zweites, anderes Format
+  erneut durch die Pipeline-Registry schickt. Stellt selbst nie eine Chatfrage und läuft deshalb
+  unter der eigenen Fixture `formatPipelinesPage` (Konto `dev-format-pipelines`) statt unter `dev-admin` — ein
   Upload allein könnte sonst mit dem deterministischen KI-Stub-Embedding das erwartete Ergebnis eines
   anderen, zitatprüfenden Szenarios verdrängen (siehe „Vier Testnutzer" oben).
+
+- `tests/upload-limits.spec.ts` (#3466) — die drei Ablehnungen vor jeder Speicherung in einem
+  Upload: Dateigröße, Speicherkontingent der Bibliothek und Virenprüfung (EICAR, siehe
+  „Virenprüfung und kleine Aufnahmegrenzen"). Jede Datei steht mit ihrem deutschen Grund in der
+  Meldung, keine hinterlässt eine Dokumentzeile. Die Grenzen aus `e2e.env` halten den Upload bei
+  etwa 8 MB; die EICAR-Zeichenfolge wird im Test zusammengesetzt, keine Datei im Repository trägt
+  sie am Stück. Läuft unter `formatPipelinesPage`, weil es keine Frage stellt.
+
+- `tests/library-metadata.spec.ts` (#3466) — ein Bibliotheksfeld von der Definition bis zur
+  Wirkung: „Feld anlegen" (Auswahl „Fassung" mit zwei Werten) im Reiter „Metadaten", je Dokument ein
+  Wert über die Metadatenansicht der Dokumentliste, dann im Chat mit `@`-Referenz der Filter auf
+  einen Wert; die Belege enthalten danach nur das passende Dokument, das andere auch nicht unter den
+  nicht zitierten. Beide Dokumente tragen einen Wert, weil ein Dokument ohne Wert nie ausgefiltert
+  wird. Läuft unter `dev-admin`, weil es eine Frage stellt, und ordnet die Bibliothek dessen
+  Standard-Space zu, denn die `@`-Referenz bietet nur Bibliotheken des Space an.
 
 - `tests/external-access.spec.ts` (#1723, Teil von Epic #1715) — der Zugriff externer KI-Werkzeuge über
   den vollen Stack (`docs/features/external-access.md`, ADR-0035): der Weg von der Freigabe über das

@@ -24,6 +24,8 @@ services:
         condition: service_healthy
       rss-feed:
         condition: service_healthy
+      clamd-stub:
+        condition: service_healthy
     environment:
       # test(e2e) #471: the default 1s politeness delay between RSS detail-page/attachment
       # requests (opaa.indexing.rss.request-delay-ms) is meant for a real, foreign feed operator -
@@ -215,6 +217,24 @@ services:
       - "127.0.0.1:${OPAA_DROPBOX_STUB_PORT:-18091}:8090"
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8090/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+
+  # Stands in for a clamd daemon (e2e.env's OPAA_MALWARE_SCAN_*), see e2e/clamd-stub/server.mjs:
+  # answers FOUND for the EICAR test string and OK for anything else. A real ClamAV would first load
+  # its signature database over the network, which costs minutes and memory on every run.
+  clamd-stub:
+    image: node:24-alpine
+    working_dir: /app
+    volumes:
+      - ./e2e/clamd-stub:/app:ro
+    command: ["node", "server.mjs"]
+    environment:
+      PORT: "3310"
+      HEALTH_PORT: "3311"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3311/health"]
       interval: 2s
       timeout: 2s
       retries: 10

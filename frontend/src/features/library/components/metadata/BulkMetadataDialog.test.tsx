@@ -5,8 +5,13 @@ import { renderWithProviders } from '../../../../test/test-utils'
 import BulkMetadataDialog from './BulkMetadataDialog'
 import type { BulkMetadataValueResponse } from '@/shared/api/types'
 
-const { mockBulkSetDocumentMetadata, mockGetDocumentTypeVocabulary } = vi.hoisted(() => ({
+const {
+  mockBulkSetDocumentMetadata,
+  mockGetDocumentTypeVocabulary,
+  mockListLibraryMetadataFields,
+} = vi.hoisted(() => ({
   mockBulkSetDocumentMetadata: vi.fn(),
+  mockListLibraryMetadataFields: vi.fn(),
   mockGetDocumentTypeVocabulary: vi.fn(async () => ({
     items: [
       { code: 'SATZUNG_ORDNUNG', label: 'Satzung/Ordnung' },
@@ -23,12 +28,70 @@ vi.mock('../../api/libraryMetadataApi', async () => {
     ...actual,
     bulkSetDocumentMetadata: mockBulkSetDocumentMetadata,
     getDocumentTypeVocabulary: mockGetDocumentTypeVocabulary,
+    listLibraryMetadataFields: mockListLibraryMetadataFields,
   }
 })
 
 describe('BulkMetadataDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockListLibraryMetadataFields.mockResolvedValue({
+      items: [
+        {
+          fieldKey: 'aktenzeichen',
+          documentFieldKey: 'lib:aktenzeichen',
+          label: 'Aktenzeichen',
+          type: 'PATTERN',
+          valuePattern: '^AZ-[0-9]+$',
+          filter: true,
+          contextPrefix: false,
+          sortOrder: 0,
+          deletionPending: false,
+          values: [],
+        },
+      ],
+      coreContextPrefix: { documentType: false, documentDate: false },
+      documentsAwaitingContextPrefixRerun: 0,
+      pendingSchemaChanges: [],
+    })
+  })
+
+  it('offers the library fields after the core fields and sends a library value as text', async () => {
+    mockBulkSetDocumentMetadata.mockResolvedValue({
+      updatedCount: 2,
+      unchangedCount: 0,
+      rejectedDocumentIds: [],
+      correlationRef: 'metadata-bulk-3',
+    })
+    renderWithProviders(
+      <BulkMetadataDialog
+        open
+        onClose={vi.fn()}
+        libraryId="library-team"
+        documentIds={['doc-1', 'doc-2']}
+        onDone={vi.fn()}
+      />,
+    )
+    const user = userEvent.setup()
+
+    const dialog = await screen.findByRole('dialog', { name: 'Feld für 2 Dokumente setzen' })
+    await user.click(within(dialog).getByRole('combobox', { name: /^Feld$/ }))
+    await user.click(await screen.findByRole('option', { name: 'Aktenzeichen' }))
+    expect(within(dialog).getByText('Muster: ^AZ-[0-9]+$')).toBeInTheDocument()
+    await user.type(within(dialog).getByRole('textbox', { name: /Aktenzeichen/ }), 'AZ-17')
+    await user.click(within(dialog).getByRole('button', { name: 'Weiter' }))
+    expect(
+      within(dialog).getByText(/Aktenzeichen = „AZ-17" für 2 Dokumente setzen\?/),
+    ).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Zuweisen' }))
+
+    await waitFor(() =>
+      expect(mockBulkSetDocumentMetadata).toHaveBeenCalledWith('library-team', {
+        fieldKey: 'lib:aktenzeichen',
+        value: { textValue: 'AZ-17' },
+        documentIds: ['doc-1', 'doc-2'],
+      }),
+    )
   })
 
   it('asks for one field and one value, confirms with the count and reports the outcome', async () => {

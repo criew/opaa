@@ -38,6 +38,22 @@ describe('LibraryDocumentsNotices - abgelehnte Dateien', () => {
     expect(notice).toHaveTextContent('Nicht hochgeladen: c.pdf')
   })
 
+  // regression guard: a quota rejection keeps its reason, the only place naming the occupancy.
+  it('keeps a quota rejection whole, with how much is occupied', () => {
+    useDocumentStore.setState({
+      uploadErrors: [
+        'Speicherkontingent der Bibliothek erschöpft (171 B von 3 MB belegt) (Datei: gross.txt)',
+      ],
+    })
+    renderNotices()
+
+    const notice = screen.getByRole('alert')
+    expect(notice).toHaveTextContent('Nicht hochgeladen: gross.txt')
+    expect(notice).toHaveTextContent(
+      'Speicherkontingent der Bibliothek erschöpft (171 B von 3 MB belegt)',
+    )
+  })
+
   it('folds the notice into one line on „Schließen“ and unfolds it again', async () => {
     const user = userEvent.setup()
     useDocumentStore.setState({ uploadErrors: rejected })
