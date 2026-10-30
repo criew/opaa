@@ -388,15 +388,14 @@ public final class HostileFiles {
     }
   }
 
-  /** The Word 97 document of the demo corpus, found from the working directory upwards. */
+  /** The Word 97 document of the demo corpus, below the repository root Gradle passes in. */
   private static Path demoCorpusDoc() {
-    Path relative = Path.of("demo", "corpus", "formate", "13_rahmenvertrag-scandienstleister.doc");
-    for (Path dir = Path.of("").toAbsolutePath(); dir != null; dir = dir.getParent()) {
-      if (Files.isRegularFile(dir.resolve(relative))) {
-        return dir.resolve(relative);
-      }
+    String repositoryRoot = System.getProperty("opaa.repositoryRoot");
+    if (repositoryRoot == null) {
+      throw new IllegalStateException("System property opaa.repositoryRoot is not set by Gradle");
     }
-    throw new IllegalStateException("No " + relative + " above the working directory");
+    return Path.of(
+        repositoryRoot, "demo", "corpus", "formate", "13_rahmenvertrag-scandienstleister.doc");
   }
 
   /** The text the embedded objects of {@link HostileFiles} carry. */
