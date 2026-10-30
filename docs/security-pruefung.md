@@ -4,7 +4,7 @@ Dieses Dokument beschreibt, wie das Projekt seinen eigenen Code laufend auf Sich
 prüft: was bei jedem Pull Request automatisch läuft, was nächtlich, wöchentlich und zweimal im
 Jahr dazukommt, und was es nicht gibt. Bekannte Schwachstellen in Abhängigkeiten und Images
 behandelt [`docs/cve-scanning.md`](./cve-scanning.md), von außen gemeldete Lücken
-[`SECURITY.md`](../SECURITY.md). Die Kurzfassung für Leserinnen ohne Repository-Kenntnis steht in
+[`SECURITY.md`](../SECURITY.md). Die Kurzfassung steht in
 [`SECURITY.md`, Abschnitt „Wie das Projekt seinen Code prüft“](../SECURITY.md#wie-das-projekt-seinen-code-prüft).
 
 ## Prüfrhythmus
@@ -22,14 +22,22 @@ ganze Fehlerklassen und macht aus seinen Funden neue Tests.
 
 ## Bei jedem Pull Request
 
-**Review.** Jeder PR durchläuft vor dem Merge das Review der Rolle
+**Review.** Jeder PR außer den automatisch gemergten Renovate-Updates (Ausnahme unten) durchläuft
+vor dem Merge das Review der Rolle
 [Code-Reviewer](../agents/roles/code-reviewer.md), getrennt vom Autor
 ([Workflow, Schritt 5](AGENT-ORGANIZATION.md#workflow-von-der-idee-bis-zum-merge)). Berührt der PR
 einen Endpunkt, eine Rechteprüfung, eine ausgehende Verbindung, gespeicherte Geheimnisse, einen
 Parser oder ein Dateiformat, Anmeldung und Session, einen Workflow oder eine Abhängigkeit, arbeitet
 der Reviewer die [Sicherheits-Checkliste](../agents/roles/code-reviewer.md#sicherheits-checkliste)
-ab und setzt das Label `security-relevant`. Gemergt wird nur von einem Maintainer oder mit seiner
+ab und setzt das Label `security-relevant`. Gemergt wird von einem Maintainer oder mit seiner
 ausdrücklichen Freigabe.
+
+**Ausnahme Renovate:** Minor- und Patch-Updates von Abhängigkeiten mergt Renovate nach einer
+Wartefrist und grüner CI automatisch, ohne Review und ohne Maintainer. Major-Updates,
+Sicherheits-PRs und einzelne Gruppen mergen nie automatisch
+([renovate.md](renovate.md#sicherheits-prs-und-lockfile-pflege), Regeln in `renovate.json5`).
+Für die automatisch gemergten Updates sind die CI-Prüfungen unten die einzige Schranke vor dem
+Merge.
 
 **Automatische Prüfungen in der CI:**
 
@@ -94,10 +102,13 @@ Das erste Audit lief am 29.10.2026 (Epic #3325) in acht Prüfbereichen:
 | Container, Compose, Helm und CI-Lieferkette | #3333 |
 
 Jeder Befund wurde ein eigenes Issue unter #3325 und wird über einen PR behoben; noch offene
-Befunde stehen dort. Weil OPAA in der Beta-Phase noch keine produktiven Nutzer hat, wurden die
-Befunde dieses Audits öffentlich behandelt. Für spätere Audits und für Meldungen von außen gilt der
-vertrauliche [Meldeweg](../SECURITY.md#meldeweg): Ausnutzbare Details werden erst mit der Korrektur
-als Security Advisory veröffentlicht.
+Befunde stehen dort.
+
+Bis zum ersten finalen Release behandelt das Projekt die Befunde eigener Audits öffentlich als
+Issues und Pull Requests; bisher gibt es nur Vorab-Releases (`v0.1.0-rc.N`). Ab dem ersten finalen
+Release gilt für alle Befunde, auch die eigener Audits, der vertrauliche
+[Meldeweg](../SECURITY.md#meldeweg): Ausnutzbare Details erscheinen erst mit der Korrektur als
+Security Advisory.
 
 ## Geplant
 

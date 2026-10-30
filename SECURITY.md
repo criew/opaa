@@ -13,8 +13,9 @@
 > next release. Each line is maintained on its branch `release/X.Y`, where fixes from `main` are
 > backported and its patch releases are tagged. Fixed vulnerabilities are published as
 > GitHub Security Advisories, with a CVE where applicable. Reports may be written in English or
-> German. How the project reviews its own code for vulnerabilities (review of every pull request,
-> automated CI checks, a weekly delta review and a deep audit twice a year) is described in
+> German. How the project reviews its own code for vulnerabilities (review of every pull request
+> except automatically merged minor and patch dependency updates from Renovate, automated CI checks,
+> a weekly delta review and a deep audit twice a year) is described in
 > [docs/security-pruefung.md](docs/security-pruefung.md) (German). There has been no external audit
 > or penetration test so far.
 
@@ -97,14 +98,20 @@ Neben der Reaktion auf Meldungen prüft das Projekt seinen eigenen Code laufend 
 Sicherheitslücken. Rhythmus und Einzelheiten stehen in
 [docs/security-pruefung.md](docs/security-pruefung.md).
 
-- **Review vor jedem Merge:** Jeder Pull Request wird vor dem Merge von einer vom Autor getrennten
-  Review-Rolle geprüft, mit einer Sicherheits-Checkliste für Endpunkte, Rechteprüfungen, ausgehende
+- **Review vor dem Merge:** Pull Requests werden vor dem Merge von einer vom Autor getrennten
+  Review-Rolle geprüft (KI-Agent unter Aufsicht des Maintainers), bei sicherheitsrelevanten
+  Änderungen mit einer Sicherheits-Checkliste für Endpunkte, Rechteprüfungen, ausgehende
   Verbindungen, gespeicherte Geheimnisse, Parser, Anmeldung, Workflows und Abhängigkeiten.
-- **Automatische Prüfungen in jedem Pull Request:** statische Code-Analyse mit CodeQL, ein
+  **Ausnahme:** Minor- und Patch-Updates von Abhängigkeiten durch Renovate mergen nach einer
+  Wartefrist und grüner CI automatisch, ohne Review. Major-Updates und Sicherheits-PRs mergen nie
+  automatisch ([docs/renovate.md](docs/renovate.md)).
+- **Automatische Prüfungen in Pull Requests:** statische Code-Analyse mit CodeQL, ein
   Abhängigkeits-Gate gegen bekannte kritische Schwachstellen, Härtungs- und Pin-Prüfung der
   Workflows, Prüfsummen der Abhängigkeiten, Lizenzprüfung, sichere Vorgaben der Compose-Vorlagen,
   eine Rechte-Matrix über alle API-Operationen und Rollen und eine Allowlist der ohne Anmeldung
-  erreichbaren Pfade. Secret Scanning und Push Protection sind für das Repository eingeschaltet.
+  erreichbaren Pfade. Im Pull Request läuft jede Prüfung, deren Dateien er berührt; auf `main`
+  läuft nach jedem Merge alles. Secret Scanning und Push Protection sind für das Repository
+  eingeschaltet.
 - **CVE-Erkennung:** Dependabot-Alerts für die Abhängigkeiten und ein nächtlicher Scan der
   veröffentlichten Images ([docs/cve-scanning.md](docs/cve-scanning.md)).
 - **Wöchentliches Security-Delta-Review:** Eine geplante Routine prüft jeden Sonntag die
@@ -113,10 +120,11 @@ Sicherheitslücken. Rhythmus und Einzelheiten stehen in
   (neuer Konnektor, neues Dateiformat, Änderung an Anmeldung oder Rechten). Das erste Audit lief am
   29.10.2026 in acht Prüfbereichen
   ([Epic #3325](https://github.com/criew/opaa/issues/3325)).
-- **Veröffentlichung der Ergebnisse:** Solange OPAA in der Beta-Phase ohne produktive Nutzer ist,
-  behandelt das Projekt die Befunde eigener Audits öffentlich als Issues und Pull Requests. Danach,
-  und für Meldungen von außen immer, gilt der vertrauliche [Meldeweg](#meldeweg): Ausnutzbare
-  Details erscheinen erst mit der Korrektur als Security Advisory.
+- **Veröffentlichung der Ergebnisse:** Bis zum ersten finalen Release behandelt das Projekt die
+  Befunde eigener Audits öffentlich als Issues und Pull Requests; bisher gibt es nur Vorab-Releases
+  (`v0.1.0-rc.N`). Ab dem ersten finalen Release gilt für alle Befunde, auch die eigener Audits, der
+  vertrauliche [Meldeweg](#meldeweg): Ausnutzbare Details erscheinen erst mit der Korrektur als
+  Security Advisory.
 
 **Was es nicht gibt:** Eine externe Sicherheitsprüfung oder einen Penetrationstest durch Dritte
 gab es bisher nicht, und es gibt kein Bug-Bounty-Programm. Alle Prüfungen führt das Projekt selbst

@@ -159,13 +159,10 @@ Provenance am Image ab, darunter die genauen Basis-Images, aus denen es gebaut i
 
 ## Schwachstellen
 
-- **Prüfen:** Das Projekt prüft seinen eigenen Code laufend. Jede Änderung wird vor der Aufnahme
-  von einer zweiten Instanz mit einer Sicherheits-Checkliste begutachtet und automatisch geprüft,
-  unter anderem durch statische Code-Analyse und einen Test, der für jede Schnittstelle und Rolle
-  die erlaubten Zugriffe festhält. Wöchentlich prüft eine Routine die Änderungen der Woche; zweimal
-  im Jahr vor jedem Funktionsrelease und bei Anlass, etwa einem neuen Konnektor oder Format, folgt
-  ein Tiefen-Audit. Eine Prüfung oder einen Penetrationstest durch Dritte gab es bisher nicht.
-  Einzelheiten stehen in `SECURITY.md` im Repository.
+- **Prüfen:** Änderungen werden automatisch geprüft und von einem vom Autor getrennten Review
+  (KI-Agent unter Aufsicht des Maintainers) begutachtet, außer kleinen automatischen
+  Abhängigkeits-Updates; dazu kommen eine wöchentliche Routine und zweimal im Jahr ein Tiefen-Audit.
+  Eine Prüfung durch Dritte gab es bisher nicht; Einzelheiten in `SECURITY.md` im Repository.
 - **Erkennen:** GitHub meldet bekannte Schwachstellen in den Bibliotheken; ein nächtlicher Scan
   prüft die Images von `main` und des jüngsten Patch-Release jeder unterstützten Linie, bis zu
   deren Supportende.
