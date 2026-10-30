@@ -60,14 +60,16 @@ public class TargetAddressValidator {
   private final Function<Object, String> loggedHosts;
 
   public TargetAddressValidator(boolean enabled, List<String> allowlist) {
-    this(enabled, allowlist == null ? List.of() : allowlist, LogText::of);
+    this.enabled = enabled;
+    this.allowedHosts = allowlist == null ? List.of() : allowlist;
+    this.policy = ResolutionPins.policyOf(this.allowedHosts);
+    this.loggedHosts = LogText::of;
   }
 
-  private TargetAddressValidator(
-      boolean enabled, List<String> allowedHosts, Function<Object, String> loggedHosts) {
-    this.enabled = enabled;
-    this.allowedHosts = allowedHosts;
-    this.policy = ResolutionPins.policyOf(allowedHosts);
+  private TargetAddressValidator(TargetAddressValidator of, Function<Object, String> loggedHosts) {
+    this.enabled = of.enabled;
+    this.allowedHosts = of.allowedHosts;
+    this.policy = of.policy;
     this.loggedHosts = loggedHosts;
   }
 
@@ -77,7 +79,7 @@ public class TargetAddressValidator {
    * of a private library. Checks and user-facing messages stay the same.
    */
   public TargetAddressValidator namingHostsAs(Function<Object, String> names) {
-    return new TargetAddressValidator(enabled, allowedHosts, Objects.requireNonNull(names));
+    return new TargetAddressValidator(this, Objects.requireNonNull(names));
   }
 
   /**
