@@ -643,7 +643,7 @@ genau eine Person gebunden, an Gruppen und an „Alle Konten" **nicht** vergebba
 | Vollmacht | Gegenstand | Grenzen |
 |---|---|---|
 | **„Sicht als"** | Eine Diagnose im Rechtekontext einer benannten Person | Geltungsbereich ist eine wirksame **Anbietergruppe** — aus dem Verzeichnis oder aus dem Anmeldetoken —, die mindestens die Mindestgruppengröße an aktiven Konten erreicht, auch im Moment jeder Nutzung; höchstens 12 Monate; Pflichtbegründung je Lauf; Protokolleintrag; die Diagnosesperre der Bibliotheken wird abgezogen ([Suche](../spaces/suche.md), Abschnitte 8.2 und 8.3) |
-| **Geltungsbereich einer anlassbezogenen Klärung** | Der eine Fall, in dem das Nachweisprotokoll nach einer Person gefiltert werden darf | Person, Zeitraum und Zweck vorab benannt; **Vier-Augen-Freigabe** durch eine zweite Person der Revision |
+| **Geltungsbereich einer anlassbezogenen Klärung** | Der eine Fall, in dem das Nachweisprotokoll nach einer Person gefiltert werden darf | Person, Zeitraum und Zweck vorab benannt; der Zeitraum liegt ganz in der Vergangenheit und ist nach oben begrenzt (`OPAA_AUDIT_INCIDENT_SCOPE_MAX_DAYS`); **Vier-Augen-Freigabe** durch eine zweite Person der Revision; Antrag und Freigabe stehen im Nachweisprotokoll; die Antwort nennt keine Kennung einer Person. Die Obergrenze gilt je Klärung: Aneinandergereihte Klärungen zur selben Person haben in Summe keine, jede braucht aber eigenen Antrag und eigene Freigabe |
 
 Eine Vollmacht wird nicht historisiert: Sie ist ein Betriebsrecht der Gegenwart und sagt nichts
 darüber, wer am Tag X was lesen durfte. Ihre Erteilung, Nutzung und ihr Entzug stehen im
@@ -789,10 +789,12 @@ verbunden hat, bleibt das Protokoll leer.
   Notabschaltung, geänderte Server-Adresse, geänderte App-Registrierung, deaktiviertes Konto,
   gelöschter Zugang, vom Anbieter abgelehnt oder abgelaufen, bei einer Quellverbindung außerdem
   gelöschte Bibliothek oder Bibliothek auf einen anderen Zugang umgehängt. Ein Ende ohne Anlass nimmt die
-  Datenbank nicht an. Personen erscheinen wie im Nachweisprotokoll nur als Pseudonym; ein Ereignis
-  ohne handelnde Person trägt die Kennung `SYSTEM`. **Kein Eintrag enthält ein Token.**
+  Datenbank nicht an. Gespeichert sind Personen als Pseudonym; die Revision sieht davon nur, ob
+  eine Person oder das System gehandelt hat, nie welche Person — wie im Nachweisprotokoll.
+  **Kein Eintrag enthält ein Token.**
 - **Wessen Verbindung:** Bei einer **persönlichen** Verbindung steht die Person als Pseudonym im
-  Eintrag, **nie eine Bibliothek oder ein Kontoname beim Anbieter** — das erzwingt die Datenbank.
+  Eintrag (die Revision sieht nur „Person“), **nie eine Bibliothek oder ein Kontoname beim
+  Anbieter** — das erzwingt die Datenbank.
   Bei einer **Quellverbindung** stehen die Bibliothek und die Kontoadresse des Dienstkontos im
   Eintrag, aber keine Person. Eine Verbindung des **Zugangs** nennt weder Person noch Bibliothek
   noch Konto. Der Eintrag überlebt die Bibliothek. Die Verbindung einer privaten Bibliothek gilt
@@ -820,8 +822,8 @@ Zugänge stehen alle, zu denen das Protokoll Einträge hat, mit ihrem zuletzt pr
 ein inzwischen gelöschter trägt den Zusatz „(gelöscht)“. Die Liste stammt aus dem Protokoll selbst,
 die Revision liest dafür nichts aus der Verwaltung, und ihr Abruf nennt keine Person und wird nicht
 protokolliert. Die Tabelle zeigt je Eintrag Zeit, Ereignis, Grund des Endes, Besitzart,
-bei einer persönlichen Verbindung das Pseudonym der Person und bei einer Quellverbindung Bibliothek
-und Kontoadresse, den Zugang und wer ausgelöst hat — „System“ für ein Ereignis ohne handelnde Person.
+bei einer persönlichen Verbindung „Person“ und bei einer Quellverbindung Bibliothek und
+Kontoadresse, den Zugang und wer ausgelöst hat — „Person“ oder „System“, nie welche Person.
 Geblättert wird seitenweise, solange es weitere Einträge gibt. Eine leere Antwort sagt, dass Einträge
 erst mit verbundenen Konten entstehen.
 
@@ -1061,6 +1063,7 @@ eingebaut.
 | Aufbewahrungshöchstdauer der Rechtehistorie | **36 Monate** | 12 bis 120 Monate | Wie lange ein beendeter Zeitraum nach seinem Ende liegen bleibt; eine Verwaltungseinstellung, keine Umgebungsvariable ([Suche](../spaces/suche.md), Abschnitt 8.4). Jede Änderung ist ein Protokollereignis |
 | Aufbewahrungsfrist des Nachweisprotokolls | **36 Monate** | 12 bis 120 Monate | Verwaltungseinstellung; ihr folgen auch die abgeschlossenen Nachfolgevorgänge (Abschnitt 13.3). Eine Verkürzung wirkt mit dem nächsten Monatslauf, und zwar vollständig; eine Verlängerung wirkt sofort, holt aber Gelöschtes nicht zurück |
 | Löschfrist der anlassbezogenen Klärungen | **1 Jahr** (Werkseinstellung) | 1 bis 10 Jahre | Verwaltungseinstellung der Systemverwaltung unter Administration → Datenschutz, Abschnitt „Anlassbezogene Klärungen“; einen Wert außerhalb weist sie ab, die Datenbank erzwingt die Grenzen zusätzlich, jede Änderung steht mit Vorher und Nachher im Revisionsprotokoll und wirkt mit dem nächsten täglichen Lauf um 03:15 Uhr Serverzeit auf allen Instanzen; setzt eine laufende Instanz noch `OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS` auf mehr Jahre, pausiert die Löschung, bis hier ein Wert gespeichert ist (Abschnitt 10): gelöscht wird am Ende des Kalenderjahres, das so viele Jahre nach dem Ende der Nutzbarkeit liegt. Die Nutzbarkeit einer Freigabe ist fest **30 Tage**; für die Löschfrist zählt bei einem nie freigegebenen Antrag als Ende der Nutzbarkeit der Antrag plus 30 Tage — freigeben lässt er sich auch danach |
+| `OPAA_AUDIT_INCIDENT_SCOPE_MAX_DAYS` | **92 Tage** | positiv; der Zeitraum endet zudem spätestens beim Antrag | Längster Zeitraum einer anlassbezogenen Klärung (Abschnitt 10). Eine Grenze des Betriebs, keine Verwaltungseinstellung: Die Revision kann sie nicht weiten; ein längerer Vorfall braucht mehrere Klärungen, jede mit eigener Freigabe |
 | Aufbewahrungsfrist des Verbindungsprotokolls | **12 Monate** | 6 bis 24 Monate | Verwaltungseinstellung der Systemverwaltung unter Administration → Anbindungen → Einstellungen, Abschnitt „Verbindungsprotokoll“; einen Wert außerhalb der Grenzen weist sie ab, und die Datenbank erzwingt sie zusätzlich. Jede Änderung ist ein Protokollereignis. Eine Verkürzung wirkt mit dem nächsten täglichen Lauf vollständig; eine Verlängerung wirkt sofort, holt aber Gelöschtes nicht zurück |
 | Obergrenze einer Übertragung | **500 Zeilen** | fest | Mehr bewegt eine Übertragung nicht; darüber wird sie abgelehnt und in mehreren Schritten gefahren (Abschnitt 13.2) |
 | Gültigkeit einer Übertragungsvorschau | **30 Minuten** | fest | Danach wird gegen einen frischen Stand neu gerechnet, statt eine alte Vorschau anzuwenden |

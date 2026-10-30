@@ -194,3 +194,46 @@ def test_swapped_primary_and_also_trust_is_unchanged(tmp_path):
     )
     assert result.returncode == 0, result.stdout
     assert "0 with changed checksums" in result.stdout
+
+
+def test_details_list_removed_files_and_configuration_diff(tmp_path):
+    weakened = CONFIGURATION.replace(".*-sources[.]jar", ".*")
+    result = run(
+        tmp_path,
+        metadata(component("1.0", A), component("1.1", B)),
+        metadata(component("1.1", B), configuration=weakened),
+        "--details",
+    )
+    assert result.returncode == 0
+    assert "removed: org.example:lib:1.0 lib-1.0.jar" in result.stdout
+    lines = [line.replace(" ", "") for line in result.stdout.splitlines()]
+    assert '-<trustfile=".*-sources[.]jar"regex="true"/>' in lines
+    assert '+<trustfile=".*"regex="true"/>' in lines
+
+
+def test_reordered_trust_rules_are_unchanged(tmp_path):
+    two_rules = CONFIGURATION.replace(
+        '         <trust file=".*-sources[.]jar" regex="true"/>\n',
+        '         <trust file=".*-sources[.]jar" regex="true"/>\n'
+        '         <trust group="org.gradle" name="plugin" version="1.0"/>\n',
+    )
+    swapped = CONFIGURATION.replace(
+        '         <trust file=".*-sources[.]jar" regex="true"/>\n',
+        '         <trust group="org.gradle" name="plugin" version="1.0"/>\n'
+        '         <trust file=".*-sources[.]jar" regex="true"/>\n',
+    )
+    assert two_rules != swapped
+    result = run(
+        tmp_path,
+        metadata(component("1.0", A), configuration=two_rules),
+        metadata(component("1.0", A), configuration=swapped),
+        "--enforce",
+    )
+    assert result.returncode == 0, result.stdout
+
+
+def test_line_breaks_in_coordinates_cannot_start_a_workflow_command(tmp_path):
+    crafted = component("1.0", A).replace('name="lib"', 'name="lib&#10;::error::injected"')
+    result = run(tmp_path, metadata(crafted), metadata(component("1.1", B)), "--details")
+    assert not any(line.startswith("::error::injected") for line in result.stdout.splitlines())
+    assert "lib\\n::error::injected" in result.stdout
