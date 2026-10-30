@@ -394,6 +394,8 @@ jobs:
       # The compare API keeps answering "no snapshots" for a query it already answered that way,
       # keyed by its parameters; the action's own retry repeats one query and never sees the
       # snapshots. Every poll here uses a fresh per_page, the action's per_page=5 query runs last.
+      # Advisories are matched shortly after a snapshot arrives, so the result must also hold
+      # unchanged for 60 seconds.
       - name: Auf die Snapshots des Head-Commits warten
         env:
           GH_TOKEN: ${{ github.token }}
@@ -401,16 +403,24 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
+          previous=""
           for per_page in $(seq 100 -1 41); do
-            warnings=$(gh api -i "repos/$REPO/dependency-graph/compare/$BASE_SHA...$HEAD_SHA?per_page=$per_page" \
-              | tr -d '\r' | sed -n 's/^x-github-dependency-graph-snapshot-warnings: *//Ip' | base64 -d)
-            if ! grep -q 'No snapshots were found for the head SHA' <<<"$warnings"; then
+            [ "$SECONDS" -lt 1800 ] || break
+            response=$(gh api -i "repos/$REPO/dependency-graph/compare/$BASE_SHA...$HEAD_SHA?per_page=$per_page" | tr -d '\r')
+            warnings=$(sed -n 's/^x-github-dependency-graph-snapshot-warnings: *//Ip' <<<"$response" | base64 -d)
+            if grep -q 'No snapshots were found for the head SHA' <<<"$warnings"; then
+              sleep 30
+              continue
+            fi
+            changes=$(sed '1,/^$/d' <<<"$response")
+            if [ -n "$previous" ] && [ "$changes" = "$previous" ]; then
               echo "Snapshots für $HEAD_SHA liegen vor."
               exit 0
             fi
-            sleep 30
+            previous=$changes
+            sleep 60
           done
-          echo "::warning::Keine Snapshots für $HEAD_SHA nach 30 Minuten, das Gate prüft nur den Graphen, den GitHub selbst kennt."
+          echo "::warning::Keine stabilen Snapshots für $HEAD_SHA nach 30 Minuten, das Gate prüft nur den Graphen, den GitHub selbst kennt."
 
       - name: Neue critical-Schwachstellen im Scope runtime ablehnen
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
