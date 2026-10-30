@@ -577,13 +577,27 @@ Gesamtgrenze für Anmeldung, Registrierung und „Passwort vergessen" ist das Fr
 verteiltes Ausprobieren gestohlener Zugangsdaten. Sie zählt auch Fehlversuche und gilt für alle Adressen
 zugleich: Ist sie erreicht, antwortet der Endpunkt jeder Adresse mit `429`, und das Überschreiten steht
 als Warnung im Protokoll und in der Metrik `opaa_rate_limit_rejected_total` ([Logs und Metriken](ueberwachung-und-fehlerbehebung.md#logs-und-metriken)).
-Nach `OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS` falschen Passwörtern ist ein Konto für
-`OPAA_AUTH_LOCAL_LOCKOUT_DURATION` gesperrt; die Anmeldung antwortet dann wie bei einem falschen
-Passwort. Gleichzeitige Versuche gegen dasselbe Konto entscheidet OPAA nacheinander, auch über
-mehrere Instanzen: Viele parallele Anmeldungen zählen nicht über die Grenze hinaus, und ein
-richtiges Passwort, dessen Prüfung erst nach Eintreten der Sperre endet, wird wie ein falsches
-beantwortet. Die Sperre steht im Nachweisprotokoll und in einer eigenen Metrik, der einzelne
-Fehlversuch nur im Protokoll (mit Konto-Kennung, nie mit Adresse). Wie lange der Log-Sammler dieses Protokoll
+**Sperre nach Fehlversuchen.** Nach mehreren falschen Passwörtern in Folge ist ein Konto für eine
+feste Zeit gesperrt; weitere Versuche verlängern sie nicht. Wie viele Fehlversuche und wie lange,
+stellt die Systemverwaltung bei den [Regeln und Fristen](../konten-und-rechte/benutzerverwaltung.md#13-regeln-und-fristen)
+der Benutzerverwaltung ein, ohne Neustart und für alle Instanzen ab dem nächsten Fehlversuch. Der
+Betrieb begrenzt beides: höchstens `OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS` Fehlversuche, mindestens
+`OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION` Sperrdauer. Ab Werk entsprechen die Grenzen der
+Werkseinstellung, die Verwaltung kann die Sperre also nur verschärfen; lockern lässt sie sich erst,
+wenn der Betrieb die Grenzen weiter setzt, abschalten nie. Ein gespeicherter Wert jenseits einer
+später enger gezogenen Grenze wirkt als diese Grenze. Eine noch gesetzte, entfallene
+`OPAA_AUTH_LOCAL_LOCKOUT_DURATION` hebt die Mindestdauer auf ihren Wert; der Start nennt die
+wirksamen Grenzen im Log. Sehr strenge Werte können auch das Notanker-Konto lange sperren;
+`OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` schützt es, und eine andere Systemverwaltung oder
+`OPAA_LOCAL_ADMIN_RESET=force` hebt die Sperre auf. Eine geänderte Regel trifft laufende Sperren nicht: Sie enden zur
+ursprünglichen Zeit. Ein Konto, das schon so viele Fehlversuche hat, wie eine gesenkte Zahl
+erlaubt, wird erst beim nächsten Fehlversuch gesperrt, nicht durch die Änderung selbst. Während der
+Sperre antwortet die Anmeldung wie bei einem falschen Passwort. Gleichzeitige Versuche gegen
+dasselbe Konto entscheidet OPAA nacheinander, auch über mehrere Instanzen: Viele parallele
+Anmeldungen zählen nicht über die Grenze hinaus, und ein richtiges Passwort, dessen Prüfung erst
+nach Eintreten der Sperre endet, wird wie ein falsches beantwortet. Die Sperre steht im
+Nachweisprotokoll und in einer eigenen Metrik, der einzelne Fehlversuch nur im Protokoll (mit
+Konto-Kennung, nie mit Adresse). Wie lange der Log-Sammler dieses Protokoll
 aufbewahrt, legt der Betrieb fest; eine kurze Frist, etwa 90 Tage, genügt der Fehlersuche und hält
 das Protokoll der Fehlversuche aus der Leistungskontrolle heraus. Die Zähler je Adresse sind auf eine hohe Zahl
 gleichzeitig geführter Adressen begrenzt; darüber werden die am wenigsten genutzten vergessen und

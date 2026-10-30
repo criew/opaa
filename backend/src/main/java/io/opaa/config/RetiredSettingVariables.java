@@ -17,10 +17,10 @@ import org.springframework.core.env.Profiles;
 
 /**
  * Warns at start about variables that once preset a setting the system administration now holds in
- * the database, or a value the installation now sets (ADR-0060, Entscheidungen 1 and 8 to 10): they
- * are no longer read, outside the {@code dev} mode or at all, and a value still set there would
- * otherwise be lost without a word. Only warns, so an update with an old environment starts; each
- * instance warns for its own environment (ADR-0053).
+ * the database, or a value the installation now sets (ADR-0060, Entscheidungen 1, 8 to 10, 17):
+ * they are no longer read as the value, outside the {@code dev} mode or at all, and a value still
+ * set there would otherwise be lost without a word. Only warns, so an update with an old
+ * environment starts; each instance warns for its own environment (ADR-0053).
  */
 @Configuration
 public class RetiredSettingVariables {
@@ -47,6 +47,18 @@ public class RetiredSettingVariables {
   private static final String WARNING =
       "the warning threshold of expired connected accounts (the factory default of 10 applies now) "
           + CONNECTION_SETTINGS;
+
+  /**
+   * The former fixed lockout duration: no longer the value, but while set it raises the shortest
+   * lockout ({@code io.opaa.account.LocalLockoutProperties}), so the update loosens nothing.
+   */
+  private static final String RETIRED_LOCKOUT_DURATION_MESSAGE =
+      " is no longer read as the lockout duration; set it under Administration > Benutzer >"
+          + " Einstellungen. Until it is removed it raises the shortest lockout"
+          + " (OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION) to its value, at most 1440 minutes, so the"
+          + " update loosens nothing; replace it with OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION";
+
+  private static final String RETIRED_LOCKOUT_DURATION = "retired lockout duration";
 
   /** Each retired variable with the setting it preset and the place that setting lives now. */
   static final Map<String, String> RETIRED = retired();
@@ -124,7 +136,10 @@ public class RetiredSettingVariables {
     RETIRED_ADMINISTRATION_VALUES.forEach(
         (name, setting) -> {
           if (environment.containsProperty(name) && named.add(setting)) {
-            messages.add(name + " is no longer read; set " + setting);
+            messages.add(
+                RETIRED_LOCKOUT_DURATION.equals(setting)
+                    ? name + RETIRED_LOCKOUT_DURATION_MESSAGE
+                    : name + " is no longer read; set " + setting);
           }
         });
     if (!environment.acceptsProfiles(Profiles.of("dev"))) {
@@ -169,6 +184,8 @@ public class RetiredSettingVariables {
     String descent = "the full-sync rhythm of Nextcloud in whole days " + CONNECTION_SETTINGS;
     retired.put("OPAA_INDEXING_NEXTCLOUD_FULL_DESCENT_INTERVAL", descent);
     retired.put("opaa.indexing.nextcloud.full-descent-interval", descent);
+    retired.put("OPAA_AUTH_LOCAL_LOCKOUT_DURATION", RETIRED_LOCKOUT_DURATION);
+    retired.put("opaa.auth.local.lockout.duration", RETIRED_LOCKOUT_DURATION);
     return Collections.unmodifiableMap(retired);
   }
 

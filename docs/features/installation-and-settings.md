@@ -397,15 +397,16 @@ Konfiguration; Gruppe E entfällt oder wandert in die Datenbank.
 |---|---|---|
 | A | Start und Infrastruktur: nötig, bevor es eine Datenbank gibt, oder vom Betrieb bereitgestellte Dienste | 68 |
 | B | Schlüssel und Geheimnisse des Betriebs, die Werte der Datenbank schützen oder Dienste anbinden | 8 |
-| C | Grenzen des Betriebs (ADR-0060, Entscheidung 2) | 29 |
+| C | Grenzen des Betriebs (ADR-0060, Entscheidung 2) | 28 |
 | D | Lastgrenzen, Überlastschutz und Technik: Budgets, Größen, Timeouts, Nebenläufigkeit, Endpunkte | 185 |
-| E | Fachliche Einstellungen: entfallen oder wandern in die Datenbank | 48 |
+| E | Fachliche Einstellungen: entfallen oder wandern in die Datenbank | 49 |
 | F | Experten-Feinabstimmung von Suche und Index (ADR-0060, Entscheidung 3) | 38 |
 
 Neu hinzu kommen `OPAA_INSTALLATION_ANSWER_FILE` (Gruppe A), `OPAA_INSTALLATION_TOKEN` (Gruppe B),
 `OPAA_INSTALLATION_ALLOWED_CIDRS` sowie `OPAA_MODEL_TARGET_VALIDATION_ENABLED` und
 `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` (Gruppe C, die Adressprüfung der Modelle getrennt von der
-der Quellen).
+der Quellen) und `OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION` (Gruppe C, Untergrenze der Sperrdauer nach
+Fehlversuchen, ADR-0060, Entscheidung 17).
 
 ### Gruppe A: Start und Infrastruktur (bleibt in der Konfiguration)
 
@@ -501,8 +502,7 @@ der Quellen).
 | `OPAA_AUTH_LOCAL_ACCESS_TOKEN_TTL` | `opaa.auth.local.access-token-ttl` |
 | `OPAA_AUTH_LOCAL_ADMIN_REFRESH_TOKEN_TTL` | `opaa.auth.local.admin-refresh-token-ttl` |
 | `OPAA_AUTH_LOCAL_ADMIN_SESSION_MAX_LIFETIME` | `opaa.auth.local.admin-session-max-lifetime` |
-| `OPAA_AUTH_LOCAL_LOCKOUT_DURATION` | `opaa.auth.local.lockout.duration` |
-| `OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS` | `opaa.auth.local.lockout.max-attempts` |
+| `OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS` | `opaa.auth.local.lockout.max-attempts`, Obergrenze der Fehlversuche bis zur Sperre (ADR-0060, Entscheidung 17) |
 | `OPAA_AUTH_LOCAL_REFRESH_GRACE_PERIOD` | `opaa.auth.local.refresh-grace-period` |
 | `OPAA_AUTH_LOCAL_REFRESH_TOKEN_TTL` | `opaa.auth.local.refresh-token-ttl` |
 | `OPAA_AUTH_LOCAL_SESSION_MAX_LIFETIME` | `opaa.auth.local.session-max-lifetime` |
@@ -737,6 +737,7 @@ der Quellen).
 |---|---|---|
 | `OPAA_AI_CHAT_PROVIDER` | `LlmModelSeeder (Altname)` | Altname entfällt |
 | `OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS` | `opaa.audit.incident-scope-retention-years` | Vorgabe im Code; `audit_incident_scope_retention_settings`, Grenzen 1 bis 10 Jahre im Code |
+| `OPAA_AUTH_LOCAL_LOCKOUT_DURATION` | `opaa.auth.local.lockout.duration` | Vorgabe im Code (15 Minuten); Regeln der lokalen Anmeldung (`local_auth_settings`), nie kürzer als `OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION` (Vorgabe 15m), die ein noch gesetzter Altwert auf seinen Wert hebt (höchstens 1440 Minuten); die Zahl der Fehlversuche ebenso, höchstens `OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS` (ADR-0060, Entscheidung 17) |
 | `OPAA_CHAT_AUTO_CLEANUP_ARCHIVE_AFTER_DAYS` | `opaa.chat.auto-cleanup.archive-after-days` | Vorgabe im Code; `chat_auto_cleanup_settings` |
 | `OPAA_CHAT_AUTO_CLEANUP_DELETE_AFTER_DAYS` | `opaa.chat.auto-cleanup.delete-after-days` | Vorgabe im Code; `chat_auto_cleanup_settings` |
 | `OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_DELETE_AFTER_DAYS` | `opaa.chat.locked-account-cleanup.delete-after-days` | Vorgabe im Code; `locked_account_chat_cleanup_settings` |

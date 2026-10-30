@@ -1037,6 +1037,10 @@ auditEvents:
       - defaultExpiryDays
       - inactiveDays
       - invitationTokenTtlHours
+      - lockoutDurationMinutes
+      - lockoutDurationMinutesOverridden
+      - lockoutMaxAttempts
+      - lockoutMaxAttemptsOverridden
       - passwordMinLength
       - passwordResetEnabled
       - resetTokenTtlMinutes
@@ -1236,6 +1240,7 @@ auditEvents:
       Die Systemverwaltung importiert eine Einstellungsdatei, und der Import ändert etwas; ein Import
       ohne Änderung erzeugt keinen Eintrag
     details: >-
-      Version des Dateiformats und die geänderten Abschnitte; jede einzelne Änderung steht als ihr
-      eigenes Ereignis mit Vorher/Nachher daneben, unter derselben Vorgangskennung
-    payloadKeys: [formatVersion, sections]
+      Version des Dateiformats, die geänderten Abschnitte und die Namen der geänderten
+      sicherheitsrelevanten Schlüssel ohne ihre Werte; jede einzelne Änderung steht als ihr eigenes
+      Ereignis mit Vorher/Nachher daneben, unter derselben Vorgangskennung
+    payloadKeys: [formatVersion, sections, securityRelevantKeys]

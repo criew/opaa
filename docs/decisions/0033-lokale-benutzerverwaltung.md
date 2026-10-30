@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · Entscheidung 5 teilweise ersetzt durch ADR-0060 (Entscheidung 8) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
+Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · Entscheidung 5 teilweise ersetzt durch ADR-0060 (Entscheidung 8) · Entscheidung 9 ergänzt durch ADR-0060 (Entscheidung 17) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
 
 ## Kontext
 
@@ -210,7 +210,9 @@ Konten").
   ihre Tokens) und global; eine Abweisung je Konto gibt die übrigen Marken zurück, ein Zugangstoken
   seine Adressmarke; jede `429` einer späteren Grenze, die vor der eigentlichen Arbeit abweist
   (Token-Kontingent, Belegt-Meldung der Anhangsauswertung), gibt die globale zurück.
-- **Kontosperre** nach 5 Fehlversuchen für 15 Minuten, auditiert
+- **Kontosperre** nach Fehlversuchen für eine feste Dauer, Werkseinstellung 5 Fehlversuche und 15
+  Minuten, von der Systemverwaltung innerhalb der Grenzen des Betriebs einstellbar (ADR-0060,
+  Entscheidung 17), auditiert
   (`LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS`); der einzelne Fehlversuch steht nur im Anwendungslog
   (Konto-Kennung, nie die Adresse), dessen Aufbewahrung Betriebskonfiguration ist. Ein eingelöster
   Rücksetzlink hebt die Sperre auf (der Besitz des Postfachs ist der Nachweis); der Login antwortet

@@ -18,6 +18,7 @@ import {
   mockLocalAuthSettings,
   mockLocalUsers,
   setMockLocalAuthSettings,
+  settingsAfterUpdate,
   setMockLocalUsers,
 } from './localUserFixtures'
 
@@ -145,6 +146,36 @@ function firstOutOfRange(
     const value = body[field]
     if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) {
       return { field, message }
+    }
+  }
+  return lockoutOutOfRange(body)
+}
+
+/** A changed lockout value lies within the limits of the operation; an unchanged one may not. */
+function lockoutOutOfRange(
+  body: LocalAuthSettingsUpdateRequest,
+): { field: string; message: string } | null {
+  const previous = mockLocalAuthSettings
+  const attempts = body.lockoutMaxAttempts ?? null
+  const limit = previous.lockoutMaxAttemptsLimit
+  if (
+    attempts !== null &&
+    attempts !== (previous.storedLockoutMaxAttempts ?? null) &&
+    !(Number.isInteger(attempts) && attempts >= 1 && attempts <= limit)
+  ) {
+    return { field: 'lockoutMaxAttempts', message: `Der Wert muss zwischen 1 und ${limit} liegen.` }
+  }
+  const minutes = body.lockoutDurationMinutes ?? null
+  const min = previous.minLockoutDurationMinutes
+  const max = previous.maxLockoutDurationMinutes
+  if (
+    minutes !== null &&
+    minutes !== (previous.storedLockoutDurationMinutes ?? null) &&
+    !(Number.isInteger(minutes) && minutes >= min && minutes <= max)
+  ) {
+    return {
+      field: 'lockoutDurationMinutes',
+      message: `Der Wert muss zwischen ${min} und ${max} liegen.`,
     }
   }
   return null
@@ -522,7 +553,7 @@ export const localUserHandlers = [
     const switchedOff = previous.enabled && !body.enabled
     // `revokedSessions` belongs only in the response of the switching-off PUT, not permanently in
     // the settings: a GET afterwards would otherwise carry a number the backend never returns.
-    setMockLocalAuthSettings({ ...body, publicBaseUrlConfigured: previous.publicBaseUrlConfigured })
+    setMockLocalAuthSettings(settingsAfterUpdate(previous, body))
     return HttpResponse.json(
       switchedOff
         ? {

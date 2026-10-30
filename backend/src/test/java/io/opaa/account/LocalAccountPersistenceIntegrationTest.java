@@ -300,7 +300,7 @@ class LocalAccountPersistenceIntegrationTest {
 
     settings.replace(
         new LocalAuthSettings.Values(
-            true, List.of(" Stadt.Example ", "land.example"), false, 16, 24, 15, 30, 45),
+            true, List.of(" Stadt.Example ", "land.example"), false, 16, 24, 15, 30, 45, 7, 20),
         user.getId(),
         now);
     settingsRepository.save(settings);
@@ -315,6 +315,8 @@ class LocalAccountPersistenceIntegrationTest {
     assertThat(reloaded.getResetTokenTtlMinutes()).isEqualTo(15);
     assertThat(reloaded.getDefaultExpiryDays()).isEqualTo(30);
     assertThat(reloaded.getInactiveDays()).isEqualTo(45);
+    assertThat(reloaded.values().lockoutMaxAttempts()).isEqualTo(7);
+    assertThat(reloaded.values().lockoutDurationMinutes()).isEqualTo(20);
     assertThat(reloaded.getUpdatedBy()).isEqualTo(user.getId());
     assertThat(reloaded.getVersion()).isEqualTo(versionBefore + 1);
   }
@@ -326,7 +328,8 @@ class LocalAccountPersistenceIntegrationTest {
     assertThatThrownBy(
             () ->
                 settings.replace(
-                    new LocalAuthSettings.Values(false, List.of(), true, 7, 72, 30, 90, 90),
+                    new LocalAuthSettings.Values(
+                        false, List.of(), true, 7, 72, 30, 90, 90, null, null),
                     null,
                     now))
         .isInstanceOf(IllegalArgumentException.class);

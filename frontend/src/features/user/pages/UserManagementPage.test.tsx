@@ -11,6 +11,7 @@ import {
   mockLocalUsers,
   setMockLocalAuthSettings,
   setMockLocalUsers,
+  settingsAfterUpdate,
 } from '../mocks/localUserFixtures'
 import { resetMockProviderAccounts } from '../mocks/accountFixtures'
 import type { LocalAuthSettingsUpdateRequest, LocalUserUpdateRequest } from '@/shared/api/types'
@@ -1163,7 +1164,7 @@ describe('UserManagementPage', () => {
       http.put('/api/v1/admin/local-auth-settings', async ({ request }) => {
         const body = (await request.json()) as LocalAuthSettingsUpdateRequest
         bodies.push(body)
-        setMockLocalAuthSettings({ ...mockLocalAuthSettings, ...body })
+        setMockLocalAuthSettings(settingsAfterUpdate(mockLocalAuthSettings, body))
         return HttpResponse.json(mockLocalAuthSettings)
       }),
     )
@@ -1193,7 +1194,7 @@ describe('UserManagementPage', () => {
       http.put('/api/v1/admin/local-auth-settings', async ({ request }) => {
         const body = (await request.json()) as LocalAuthSettingsUpdateRequest
         bodies.push(body)
-        setMockLocalAuthSettings({ ...mockLocalAuthSettings, ...body })
+        setMockLocalAuthSettings(settingsAfterUpdate(mockLocalAuthSettings, body))
         return HttpResponse.json(mockLocalAuthSettings)
       }),
     )
@@ -1219,7 +1220,7 @@ describe('UserManagementPage', () => {
       http.put('/api/v1/admin/local-auth-settings', async ({ request }) => {
         const body = (await request.json()) as LocalAuthSettingsUpdateRequest
         bodies.push(body)
-        setMockLocalAuthSettings({ ...mockLocalAuthSettings, ...body })
+        setMockLocalAuthSettings(settingsAfterUpdate(mockLocalAuthSettings, body))
         return HttpResponse.json(mockLocalAuthSettings)
       }),
     )
@@ -1294,6 +1295,127 @@ describe('UserManagementPage', () => {
     const link = await screen.findByRole('link', { name: 'E-Mail-Einstellungen' })
     expect(link).toHaveAttribute('href', '/admin/mail/server')
     await waitFor(() => expect(screen.getByText(/E-Mail-Versand:/)).toBeInTheDocument())
+  })
+
+  it('shows the lockout rule in force with its factory default and the limits', async () => {
+    signInAs('SYSTEM_ADMIN')
+    renderSettings()
+
+    const attempts = await screen.findByLabelText('Fehlversuche bis zur Sperre')
+    expect(attempts).toHaveValue(5)
+    expect(screen.getByText('Werkseinstellung; 1 bis 5 (Grenze des Betriebs)')).toBeInTheDocument()
+    expect(screen.getByLabelText('Dauer der Sperre (Minuten)')).toHaveValue(15)
+    expect(
+      screen.getByText('Werkseinstellung; 15 bis 1440 Minuten (Grenze des Betriebs)'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /auf die Werkseinstellung/ }),
+    ).not.toBeInTheDocument()
+    // the limits of the operation equal the factory default: the page says why nothing looser goes
+    expect(screen.getByText(/Ab Werk lässt der Betrieb nur strengere Werte zu/)).toBeInTheDocument()
+    expect(screen.getByText(/auch das Notanker-Konto/)).toHaveTextContent(
+      'OPAA_LOCAL_ADMIN_ALLOWED_CIDRS',
+    )
+    expect(screen.getByText(/auch das Notanker-Konto/)).toHaveTextContent(
+      'OPAA_LOCAL_ADMIN_RESET=force',
+    )
+  })
+
+  it('does not claim a factory-only limit once the operation widened it', async () => {
+    setMockLocalAuthSettings({
+      ...mockLocalAuthSettings,
+      lockoutMaxAttemptsLimit: 10,
+      minLockoutDurationMinutes: 5,
+    })
+    signInAs('SYSTEM_ADMIN')
+    renderSettings()
+
+    expect(
+      await screen.findByText('Werkseinstellung; 1 bis 10 (Grenze des Betriebs)'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText(/Ab Werk lässt der Betrieb nur strengere Werte zu/),
+    ).not.toBeInTheDocument()
+  })
+
+  it('saves an own lockout rule with the rules and returns it to the factory default', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    const bodies: LocalAuthSettingsUpdateRequest[] = []
+    server.use(
+      http.put('/api/v1/admin/local-auth-settings', async ({ request }) => {
+        const body = (await request.json()) as LocalAuthSettingsUpdateRequest
+        bodies.push(body)
+        setMockLocalAuthSettings(settingsAfterUpdate(mockLocalAuthSettings, body))
+        return HttpResponse.json(mockLocalAuthSettings)
+      }),
+    )
+    renderSettings()
+
+    const attempts = await screen.findByLabelText('Fehlversuche bis zur Sperre')
+    await user.clear(attempts)
+    await user.type(attempts, '3')
+    await user.click(screen.getByRole('button', { name: 'Regeln speichern' }))
+
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0].lockoutMaxAttempts).toBe(3)
+    expect(bodies[0].lockoutDurationMinutes).toBeNull()
+    expect(
+      await screen.findByText('Eigener Wert (Werkseinstellung: 5); 1 bis 5 (Grenze des Betriebs)'),
+    ).toBeInTheDocument()
+
+    await user.click(
+      screen.getByRole('button', { name: 'Fehlversuche auf die Werkseinstellung setzen' }),
+    )
+    expect(screen.getByLabelText('Fehlversuche bis zur Sperre')).toHaveValue(5)
+    // the button disappears with the own value: the focus goes to the field it reset
+    expect(screen.getByLabelText('Fehlversuche bis zur Sperre')).toHaveFocus()
+    await user.click(screen.getByRole('button', { name: 'Regeln speichern' }))
+
+    await waitFor(() => expect(bodies).toHaveLength(2))
+    expect(bodies[1].lockoutMaxAttempts).toBeNull()
+  }, 20000)
+
+  it('keeps a stored lockout rule when a switch is saved', async () => {
+    setMockLocalAuthSettings({
+      ...mockLocalAuthSettings,
+      lockoutDurationMinutes: 60,
+      storedLockoutDurationMinutes: 60,
+    })
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    const bodies: LocalAuthSettingsUpdateRequest[] = []
+    server.use(
+      http.put('/api/v1/admin/local-auth-settings', async ({ request }) => {
+        const body = (await request.json()) as LocalAuthSettingsUpdateRequest
+        bodies.push(body)
+        setMockLocalAuthSettings(settingsAfterUpdate(mockLocalAuthSettings, body))
+        return HttpResponse.json(mockLocalAuthSettings)
+      }),
+    )
+    renderSettings()
+
+    await user.click(await screen.findByRole('switch', { name: 'Passwort vergessen' }))
+
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0].lockoutDurationMinutes).toBe(60)
+    expect(bodies[0].lockoutMaxAttempts).toBeNull()
+  }, 20000)
+
+  /** A narrowed limit of the operation bounds a value stored before; the field says so. */
+  it('names a stored lockout value that only applies up to the limit', async () => {
+    setMockLocalAuthSettings({
+      ...mockLocalAuthSettings,
+      lockoutMaxAttempts: 5,
+      storedLockoutMaxAttempts: 12,
+    })
+    signInAs('SYSTEM_ADMIN')
+    renderSettings()
+
+    expect(await screen.findByLabelText('Fehlversuche bis zur Sperre')).toHaveValue(12)
+    expect(
+      screen.getByText('Gespeichert, wirkt aber nur als 5 (Grenze des Betriebs)'),
+    ).toBeInTheDocument()
   })
 
   it('searches debounced and passes the term to the API', async () => {

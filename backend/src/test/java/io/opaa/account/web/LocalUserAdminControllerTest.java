@@ -17,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import io.opaa.account.LinkDelivery;
 import io.opaa.account.LocalAuthSettings;
 import io.opaa.account.LocalAuthSettingsService;
+import io.opaa.account.LocalLockoutProperties;
 import io.opaa.account.LocalUserAdminService;
 import io.opaa.account.LocalUserCreated;
 import io.opaa.account.LocalUserCreation;
@@ -404,13 +405,20 @@ class LocalUserAdminControllerTest {
   @Test
   void theSettingsAreReadAndReplacedThroughTheService() throws Exception {
     LocalAuthSettingsService.View view =
-        new LocalAuthSettingsService.View(LocalAuthSettings.Values.defaults(), true, false);
+        new LocalAuthSettingsService.View(
+            LocalAuthSettings.Values.defaults(),
+            true,
+            false,
+            new LocalLockoutProperties(null, null, null));
     when(settingsService.current()).thenReturn(view);
     when(settingsService.update(eq(caller), any()))
         .thenReturn(
             new LocalAuthSettingsService.Updated(
                 new LocalAuthSettingsService.View(
-                    LocalAuthSettings.Values.defaults(), false, false),
+                    LocalAuthSettings.Values.defaults(),
+                    false,
+                    false,
+                    new LocalLockoutProperties(null, null, null)),
                 3));
 
     mockMvc
@@ -441,7 +449,7 @@ class LocalUserAdminControllerTest {
             eq(caller),
             eq(
                 new LocalAuthSettingsService.Update(
-                    false, true, List.of("stadt.example"), true, 14, 48, 15, 180, 60)));
+                    false, true, List.of("stadt.example"), true, 14, 48, 15, 180, 60, null, null)));
   }
 
   private static LocalUserOverview overview(UUID id, String email) {

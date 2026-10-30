@@ -21,8 +21,9 @@ import org.springframework.stereotype.Component;
 
 /**
  * The lockout after failed sign-ins (ADR-0033, Entscheidungen 9 and 13): once the atomically kept
- * counter reaches {@code opaa.auth.local.lockout.max-attempts}, the account is locked for the fixed
- * duration ({@code locked_reason = FAILED_LOGINS}, ending by itself), audited once as {@code
+ * counter reaches the threshold in force ({@link LocalAuthSettingsService#lockoutPolicy()}, read at
+ * every attempt, ADR-0060, Entscheidung 17), the account is locked for the duration in force
+ * ({@code locked_reason = FAILED_LOGINS}, ending by itself), audited once as {@code
  * LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS} under the {@code local-auth} system actor and counted
  * as a metric. The single failed attempt reaches the application log only ({@code
  * LocalLoginService}, with the account id and never the address). The lock resets the counter, so
@@ -30,7 +31,9 @@ import org.springframework.stereotype.Component;
  * still running, or an administrator's lock - is neither re-locked nor extended ({@code
  * LocalLoginService} counts nothing for it, this is the second line of defence). Decided under the
  * row lock taken by {@code LocalLoginService}; at most one call sees the threshold. No mail and no
- * session revocation: the validator refuses the tokens of a locked account by its state.
+ * session revocation: the validator refuses the tokens of a locked account by its state. A changed
+ * rule moves no running lockout and locks no account by itself: a counter that already reaches a
+ * lowered threshold locks at the next attempt.
  */
 @Component
 public class LocalAccountLockoutListener implements LocalLoginAttemptListener {
@@ -38,17 +41,17 @@ public class LocalAccountLockoutListener implements LocalLoginAttemptListener {
   private static final Logger log = LoggerFactory.getLogger(LocalAccountLockoutListener.class);
 
   private final LocalCredentialsRepository credentials;
-  private final LocalLockoutProperties properties;
+  private final LocalAuthSettingsService settings;
   private final AuditEventRecorder audit;
   private final AuthMetrics metrics;
 
   public LocalAccountLockoutListener(
       LocalCredentialsRepository credentials,
-      LocalLockoutProperties properties,
+      LocalAuthSettingsService settings,
       AuditEventRecorder audit,
       AuthMetrics metrics) {
     this.credentials = credentials;
-    this.properties = properties;
+    this.settings = settings;
     this.audit = audit;
     this.metrics = metrics;
   }
@@ -60,11 +63,14 @@ public class LocalAccountLockoutListener implements LocalLoginAttemptListener {
 
   @Override
   public void onPasswordRejected(User user, LocalCredentials row, Instant now) {
-    if (row.getFailedLoginAttempts() < properties.maxAttempts()
-        || row.state(now) == LocalAccountState.LOCKED) {
+    if (row.state(now) == LocalAccountState.LOCKED) {
       return;
     }
-    Instant lockoutUntil = now.plus(properties.duration());
+    LocalLockoutPolicy policy = settings.lockoutPolicy();
+    if (row.getFailedLoginAttempts() < policy.maxAttempts()) {
+      return;
+    }
+    Instant lockoutUntil = now.plus(policy.duration());
     row.recordLockoutUntil(lockoutUntil, now);
     credentials.save(row);
     metrics.recordAccountLockedAfterFailedLogins();
@@ -72,7 +78,7 @@ public class LocalAccountLockoutListener implements LocalLoginAttemptListener {
         "Local account {} locked until {} after too many failed sign-ins ({})",
         user.getId(),
         lockoutUntil,
-        properties.duration());
+        policy.duration());
     UUID pseudonym = audit.pseudonymFor(user.getId(), user.getOrganizationId());
     audit.recordSystemProcessAction(
         AuditEvent.builder()

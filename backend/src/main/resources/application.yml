@@ -205,12 +205,14 @@ opaa:
       admin-reset: ${OPAA_LOCAL_ADMIN_RESET:}
       admin-reset-email: ${OPAA_LOCAL_ADMIN_RESET_EMAIL:}
       admin-allowed-cidrs: ${OPAA_LOCAL_ADMIN_ALLOWED_CIDRS:}
-      # Lockout after failed sign-ins (Entscheidung 9; io.opaa.account.LocalAccountLockoutListener):
-      # a fixed duration, no progressive extension; the counter returns to zero on success. The
-      # single failed attempt is an application-log line, the lock an audit event.
+      # Limits of the lockout after failed sign-ins (ADR-0060, Entscheidung 17): the administration
+      # sets attempts and duration in local_auth_settings, at most max-attempts attempts and no
+      # shorter than min-duration. The defaults equal the factory default in the code (5 attempts,
+      # 15 minutes), so out of the box the administration can only tighten the lockout. A retired
+      # OPAA_AUTH_LOCAL_LOCKOUT_DURATION still set raises min-duration (LocalLockoutProperties).
       lockout:
         max-attempts: ${OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS:5}
-        duration: ${OPAA_AUTH_LOCAL_LOCKOUT_DURATION:15m}
+        min-duration: ${OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION:15m}
   http:
     force-http1: ${OPAA_HTTP_FORCE_HTTP1:false}
   chat:

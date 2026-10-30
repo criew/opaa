@@ -15,6 +15,7 @@ import io.opaa.common.FieldValidationException.FieldError;
 import io.opaa.common.PublicBaseUrl;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,6 +32,10 @@ import org.springframework.transaction.annotation.Transactional;
  * only. The two link flows cannot be switched <em>on</em> without {@code OPAA_PUBLIC_BASE_URL}; a
  * value that is already on stays as stored (the effective value visitors see is computed with the
  * base URL anyway, see {@code AuthConfigController}).
+ *
+ * <p>The lockout after failed sign-ins stays within the limits of the operation (ADR-0060,
+ * Entscheidung 17). A stored value beyond a since narrowed limit stays as stored, may be sent back
+ * unchanged and reads as that limit; the audit names the stored value or the factory default.
  */
 @Service
 public class LocalAuthSettingsService {
@@ -47,8 +52,23 @@ public class LocalAuthSettingsService {
   private static final String SETTINGS_OBJECT_ID = "local_auth_settings";
   private static final String SETTINGS_OBJECT_LABEL = "Lokale Benutzerverwaltung";
 
-  /** The stored values, the switch and whether links are possible. */
-  public record View(Values values, boolean enabled, boolean publicBaseUrlConfigured) {}
+  /** The stored values, the switch, whether links are possible and the limits of the lockout. */
+  public record View(
+      Values values,
+      boolean enabled,
+      boolean publicBaseUrlConfigured,
+      LocalLockoutProperties lockoutLimits) {
+
+    /** The failed sign-ins that lock, as in force. */
+    public int lockoutMaxAttempts() {
+      return values.lockoutMaxAttemptsInForce(lockoutLimits.maxAttempts());
+    }
+
+    /** The lockout in minutes, as in force. */
+    public int lockoutDurationMinutes() {
+      return values.lockoutDurationMinutesInForce(lockoutLimits.minDurationMinutes());
+    }
+  }
 
   /** A full replacement; the bounds are checked here so a violation names its field. */
   public record Update(
@@ -60,7 +80,9 @@ public class LocalAuthSettingsService {
       int invitationTokenTtlHours,
       int resetTokenTtlMinutes,
       int defaultExpiryDays,
-      int inactiveDays) {
+      int inactiveDays,
+      Integer lockoutMaxAttempts,
+      Integer lockoutDurationMinutes) {
     public Update {
       selfRegistrationAllowedDomains =
           selfRegistrationAllowedDomains == null
@@ -78,6 +100,7 @@ public class LocalAuthSettingsService {
   private final PublicBaseUrl publicBaseUrl;
   private final AuditEventRecorder audit;
   private final Clock clock;
+  private final LocalLockoutProperties lockoutLimits;
 
   public LocalAuthSettingsService(
       LocalAuthSettingsRepository settings,
@@ -85,13 +108,15 @@ public class LocalAuthSettingsService {
       LocalAccountsSwitch localAccountsSwitch,
       PublicBaseUrl publicBaseUrl,
       AuditEventRecorder audit,
-      Clock clock) {
+      Clock clock,
+      LocalLockoutProperties lockoutLimits) {
     this.settings = settings;
     this.providers = providers;
     this.localAccountsSwitch = localAccountsSwitch;
     this.publicBaseUrl = publicBaseUrl;
     this.audit = audit;
     this.clock = clock;
+    this.lockoutLimits = lockoutLimits;
   }
 
   @Transactional(readOnly = true)
@@ -99,13 +124,27 @@ public class LocalAuthSettingsService {
     Values values =
         settings.findSingleton().map(LocalAuthSettings::values).orElseGet(Values::defaults);
     boolean enabled = providers.findLocalRow().map(OidcProvider::isEnabled).orElse(false);
-    return new View(values, enabled, publicBaseUrl.isConfigured());
+    return new View(values, enabled, publicBaseUrl.isConfigured(), lockoutLimits);
+  }
+
+  /**
+   * The lockout in force, read from the row at every call: a change holds from the next failed
+   * sign-in on every instance, without a cache to invalidate (ADR-0053).
+   */
+  @Transactional(readOnly = true)
+  public LocalLockoutPolicy lockoutPolicy() {
+    Values values =
+        settings.findSingleton().map(LocalAuthSettings::values).orElseGet(Values::defaults);
+    return new LocalLockoutPolicy(
+        values.lockoutMaxAttemptsInForce(lockoutLimits.maxAttempts()),
+        Duration.ofMinutes(
+            values.lockoutDurationMinutesInForce(lockoutLimits.minDurationMinutes())));
   }
 
   @Transactional
   public Updated update(CurrentUser actor, Update update) {
-    Values target = validate(update);
     View before = current();
+    Values target = validate(update, before.values());
     if (!publicBaseUrl.isConfigured()) {
       if (target.passwordResetEnabled() && !before.values().passwordResetEnabled()) {
         throw baseUrlRequired("„Passwort vergessen“");
@@ -135,8 +174,9 @@ public class LocalAuthSettingsService {
     return new Updated(current(), revokedSessions);
   }
 
-  private static Values validate(Update update) {
+  private Values validate(Update update, Values stored) {
     List<FieldError> errors = new ArrayList<>();
+    requireLockoutBounds(errors, update, stored);
     requireBetween(
         errors,
         "passwordMinLength",
@@ -190,7 +230,31 @@ public class LocalAuthSettingsService {
         update.invitationTokenTtlHours(),
         update.resetTokenTtlMinutes(),
         update.defaultExpiryDays(),
-        update.inactiveDays());
+        update.inactiveDays(),
+        update.lockoutMaxAttempts(),
+        update.lockoutDurationMinutes());
+  }
+
+  /** A changed lockout value lies within the limits of the operation; an unchanged one may not. */
+  private void requireLockoutBounds(List<FieldError> errors, Update update, Values stored) {
+    Integer attempts = update.lockoutMaxAttempts();
+    if (attempts != null && !attempts.equals(stored.lockoutMaxAttempts())) {
+      requireBetween(
+          errors,
+          "lockoutMaxAttempts",
+          attempts,
+          LocalAuthSettings.MIN_LOCKOUT_MAX_ATTEMPTS,
+          lockoutLimits.maxAttempts());
+    }
+    Integer minutes = update.lockoutDurationMinutes();
+    if (minutes != null && !minutes.equals(stored.lockoutDurationMinutes())) {
+      requireBetween(
+          errors,
+          "lockoutDurationMinutes",
+          minutes,
+          lockoutLimits.minDurationMinutes(),
+          LocalAuthSettings.MAX_LOCKOUT_DURATION_MINUTES);
+    }
   }
 
   /** The bounds of the request schema and of the column the joined list is stored in. */
@@ -278,6 +342,18 @@ public class LocalAuthSettingsService {
     map.put("resetTokenTtlMinutes", values.resetTokenTtlMinutes());
     map.put("defaultExpiryDays", values.defaultExpiryDays());
     map.put("inactiveDays", values.inactiveDays());
+    map.put(
+        "lockoutMaxAttempts",
+        values.lockoutMaxAttempts() == null
+            ? LocalAuthSettings.DEFAULT_LOCKOUT_MAX_ATTEMPTS
+            : values.lockoutMaxAttempts());
+    map.put("lockoutMaxAttemptsOverridden", values.lockoutMaxAttempts() != null);
+    map.put(
+        "lockoutDurationMinutes",
+        values.lockoutDurationMinutes() == null
+            ? LocalAuthSettings.DEFAULT_LOCKOUT_DURATION_MINUTES
+            : values.lockoutDurationMinutes());
+    map.put("lockoutDurationMinutesOverridden", values.lockoutDurationMinutes() != null);
     return map;
   }
 }

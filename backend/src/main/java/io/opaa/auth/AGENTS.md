@@ -45,7 +45,7 @@ Branding, Mail, Benachrichtigungen, Selbstauskunft (`SelfDisclosureExporter`), E
 - [ADR-0025](../../../../../../../docs/decisions/0025-mehrere-oidc-anbieter.md): mehrere OIDC-Anbieter, Identität
 - [ADR-0033](../../../../../../../docs/decisions/0033-lokale-benutzerverwaltung.md): lokale Konten, Token, Mail
 - [ADR-0041](../../../../../../../docs/decisions/0041-verbindungen-als-eigenes-modul.md) (Entscheidung 4): eine Regel „Konto nutzbar“
-- [ADR-0060](../../../../../../../docs/decisions/0060-schlanke-konfiguration-und-einrichtungsassistent.md) (Entscheidungen 11, 12): Nachweis, Export/Import
+- [ADR-0060](../../../../../../../docs/decisions/0060-schlanke-konfiguration-und-einrichtungsassistent.md) (Entscheidungen 11, 12, 17): Nachweis, Export/Import, Grenzen der Fehlversuch-Sperre
 
 ## Verweise
 
