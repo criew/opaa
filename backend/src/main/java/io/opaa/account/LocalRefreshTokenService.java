@@ -25,6 +25,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -77,7 +78,9 @@ public class LocalRefreshTokenService {
   private final LocalAuthProperties properties;
   private final LocalTokenRevocationService revocation;
   private final AuditEventRecorder audit;
+  private final LocalAdminNetworkPolicy networkPolicy;
   private final TransactionTemplate transactions;
+  private final ApplicationEventPublisher events;
   private final Clock clock;
 
   public LocalRefreshTokenService(
@@ -89,7 +92,9 @@ public class LocalRefreshTokenService {
       LocalAuthProperties properties,
       LocalTokenRevocationService revocation,
       AuditEventRecorder audit,
+      LocalAdminNetworkPolicy networkPolicy,
       PlatformTransactionManager transactionManager,
+      ApplicationEventPublisher events,
       Clock clock) {
     this.repository = repository;
     this.users = users;
@@ -99,7 +104,9 @@ public class LocalRefreshTokenService {
     this.properties = properties;
     this.revocation = revocation;
     this.audit = audit;
+    this.networkPolicy = networkPolicy;
     this.transactions = new TransactionTemplate(transactionManager);
+    this.events = events;
     this.clock = clock;
   }
 
@@ -111,15 +118,20 @@ public class LocalRefreshTokenService {
     return insert(UUID.randomUUID(), user.getId(), now, now.plus(limits.idle()), familyExpiresAt);
   }
 
-  /** Rotates a presented raw token; see the class Javadoc for the replay semantics. */
-  public RotationResult rotate(String rawToken) {
+  /**
+   * Rotates a presented raw token; see the class Javadoc for the replay semantics. {@code
+   * clientAddress} is the resolved client address: a local {@code SYSTEM_ADMIN} renews only from
+   * the networks of {@link LocalAdminNetworkPolicy}, otherwise the token is refused like an unknown
+   * one and stays as it was.
+   */
+  public RotationResult rotate(String rawToken, String clientAddress) {
     Instant now = clock.instant();
     LocalRefreshToken presented = findPresented(rawToken).orElse(null);
     if (presented == null) {
       return new RotationResult.Unknown();
     }
     if (presented.getRevocationReason() == RevocationReason.ROTATED) {
-      return renewWithinGracePeriodOrReplay(presented, now);
+      return renewWithinGracePeriodOrReplay(presented, now, clientAddress);
     }
     if (presented.getRevokedAt() != null) {
       // ended by a sign-out, a password change or an act of administration: the other devices of
@@ -131,6 +143,9 @@ public class LocalRefreshTokenService {
     }
     User user = loginCapableOwner(presented, now);
     if (user == null) {
+      return new RotationResult.Unknown();
+    }
+    if (!permitsNetwork(user, clientAddress)) {
       return new RotationResult.Unknown();
     }
     IssuedRefreshToken successor =
@@ -151,7 +166,7 @@ public class LocalRefreshTokenService {
     }
     LocalRefreshToken current = repository.findById(presented.getId()).orElse(null);
     if (current != null && current.getRevocationReason() == RevocationReason.ROTATED) {
-      return renewWithinGracePeriodOrReplay(current, now);
+      return renewWithinGracePeriodOrReplay(current, now, clientAddress);
     }
     handleReuse(presented, now);
     return new RotationResult.Reused(presented.getUserId());
@@ -162,9 +177,13 @@ public class LocalRefreshTokenService {
    * refresh-grace-period} back, its successor is still active and the account may sign in -
    * otherwise, or when a concurrent renewal takes the successor first, a replay.
    */
-  private RotationResult renewWithinGracePeriodOrReplay(LocalRefreshToken presented, Instant now) {
+  private RotationResult renewWithinGracePeriodOrReplay(
+      LocalRefreshToken presented, Instant now, String clientAddress) {
     LocalRefreshToken unusedSuccessor = unusedSuccessorWithinGracePeriod(presented, now);
     User user = unusedSuccessor == null ? null : loginCapableOwner(presented, now);
+    if (user != null && !permitsNetwork(user, clientAddress)) {
+      return new RotationResult.Unknown();
+    }
     if (user != null) {
       IssuedRefreshToken renewed =
           transactions.execute(
@@ -207,6 +226,20 @@ public class LocalRefreshTokenService {
         .findById(presented.getRotatedToId())
         .filter(successor -> successor.isActive(now))
         .orElse(null);
+  }
+
+  /**
+   * The network rule of the sign-in, applied to every renewal of a local administrator's session.
+   */
+  private boolean permitsNetwork(User user, String clientAddress) {
+    if (networkPolicy.permitsSessionOf(user.getSystemRole(), clientAddress)) {
+      return true;
+    }
+    log.warn(
+        "Session renewal of local SYSTEM_ADMIN account {} refused: client address outside"
+            + " OPAA_LOCAL_ADMIN_ALLOWED_CIDRS",
+        user.getId());
+    return false;
   }
 
   /** The owner of the token if the account may still sign in, otherwise null. */
@@ -260,8 +293,9 @@ public class LocalRefreshTokenService {
 
   /**
    * The replay response, in one transaction of its own: revoke the family, end every session of the
-   * account, audit and warn - but only when the family still had an active member; a second replay
-   * of an already dead family changes no state and writes no event.
+   * account and what a session could have created ({@link LocalAccountSessionsEndedEvent}), audit
+   * and warn - but only when the family still had an active member; a second replay of an already
+   * dead family changes no state and writes no event.
    */
   private void handleReuse(LocalRefreshToken presented, Instant now) {
     UUID userId = presented.getUserId();
@@ -274,7 +308,16 @@ public class LocalRefreshTokenService {
               if (rows > 0) {
                 repository.revokeAllForUser(userId, RevocationReason.REUSE_DETECTED, now);
                 revocation.invalidateSessionsIssuedBefore(userId);
-                users.findById(userId).ifPresent(this::auditSessionsRevoked);
+                users
+                    .findById(userId)
+                    .ifPresent(
+                        user -> {
+                          credentials.flush();
+                          events.publishEvent(
+                              LocalAccountSessionsEndedEvent.bySystem(
+                                  user, RevocationReason.REUSE_DETECTED, SYSTEM_ACTOR));
+                          auditSessionsRevoked(user);
+                        });
               }
               return rows;
             });

@@ -27,16 +27,31 @@ final class S3FileStore implements FileStore {
   private final Map<String, S3Scope> scopes = new LinkedHashMap<>();
   private final S3KeyPatterns patterns;
 
-  /** Whether bucket and prefix segments open every folder chain - a library with several scopes. */
+  /**
+   * Whether bucket and prefix segments open every folder chain - a library with several scopes, or
+   * with "Alle Buckets", whose folder structure must not change with the number of buckets.
+   */
   private final boolean scopeRootChain;
 
+  /** Bucket to the sentence its listing is reported unlistable with, without a request. */
+  private final Map<String, String> withheld;
+
   S3FileStore(S3ObjectStore store, S3SourceSettings settings) {
+    this(store, settings, Map.of());
+  }
+
+  /**
+   * @param withheld buckets of "Alle Buckets" the library holds documents from but cannot read now
+   *     ({@link S3AllBuckets}), bucket to the sentence their listing is unlistable with
+   */
+  S3FileStore(S3ObjectStore store, S3SourceSettings settings, Map<String, String> withheld) {
     this.store = store;
+    this.withheld = Map.copyOf(withheld);
     for (S3Scope scope : settings.scopes()) {
       scopes.put(scope.key(), scope);
     }
     this.patterns = S3KeyPatterns.of(settings);
-    this.scopeRootChain = settings.scopes().size() > 1;
+    this.scopeRootChain = settings.allBuckets() || settings.scopes().size() > 1;
   }
 
   static FileContainer container(S3Scope scope) {
@@ -52,6 +67,10 @@ final class S3FileStore implements FileStore {
   public FilePage list(FileContainer container, String continuation)
       throws FileAccessException, InterruptedException {
     S3Scope scope = scope(container);
+    String unlistable = withheld.get(scope.bucket());
+    if (unlistable != null) {
+      throw new FileAccessException.ContainerUnlistable(unlistable);
+    }
     S3ListPage page;
     try {
       page = store.listObjects(scope, continuation);

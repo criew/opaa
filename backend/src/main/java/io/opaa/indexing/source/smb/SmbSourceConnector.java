@@ -395,8 +395,6 @@ public class SmbSourceConnector implements SourceConnector, SourceBrowser, Origi
     try {
       targetAddressValidator.validateHost(
           address.socketHost(), address.port(), Scope.PER_CONNECTION);
-    } catch (TargetAddressValidator.UnknownTargetHostException e) {
-      throw new SourceTargetRefusedException(e.getMessage());
     } catch (IOException e) {
       throw new SourceTargetRefusedException(e.getMessage() + " " + SmbShareClient.ALLOWLIST_HINT);
     }

@@ -95,6 +95,9 @@ export function namesSummary(names: string[], max = 5): string | null {
   return `${names.slice(0, max).join(', ')} und ${names.length - max} weitere`
 }
 
+/** The note under „Alle …“ of a source whose scope „Alle“ every run resolves anew. */
+export const ALL_SCOPE_HINT = 'Was später in der Quelle dazukommt, wird automatisch mit indiziert.'
+
 /** The summary of „Umfang“: „Alle Ordner“, or „3 Ordner“ with the chosen names below it. */
 export function listSummary(
   all: boolean,

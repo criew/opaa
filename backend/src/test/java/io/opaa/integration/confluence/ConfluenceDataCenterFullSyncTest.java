@@ -106,7 +106,7 @@ class ConfluenceDataCenterFullSyncTest {
                 new BoundedDownloader(TargetAddressValidator.disabled()),
                 documentIngestService,
                 mock(LibraryStorageQuotaService.class),
-                new io.opaa.indexing.attachment.AttachmentProperties(5, 0, 0),
+                new io.opaa.indexing.attachment.AttachmentProperties(5, 0, 0, 0, 0),
                 ProductionDocumentFormats.supportedFormats()),
             documentRepository,
             new ScanJournal(syncStateRepository),

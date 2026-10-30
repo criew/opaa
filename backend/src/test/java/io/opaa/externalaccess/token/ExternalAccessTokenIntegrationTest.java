@@ -33,12 +33,16 @@ import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryCreation;
 import io.opaa.library.LibraryExternalAccessService;
 import io.opaa.library.LibraryExternalAccessTokenCounter;
+import io.opaa.organization.Organization;
+import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.AssetGrant;
 import io.opaa.permission.AssetGrantRepository;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.security.LocalAuthKeyService;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;
+import io.opaa.test.OwnOrganizationFixtures;
+import io.opaa.test.TestSessions;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
@@ -88,6 +92,8 @@ class ExternalAccessTokenIntegrationTest {
   @Autowired private LibraryExternalAccessService libraryRelease;
   @Autowired private Clock clock;
   @Autowired private GroupRepository groupRepository;
+  @Autowired private OrganizationRepository organizations;
+  @Autowired private OwnOrganizationFixtures organizationFixtures;
   @Autowired private GroupMembershipResolver membershipResolver;
 
   private UUID libraryId;
@@ -460,7 +466,8 @@ class ExternalAccessTokenIntegrationTest {
                     owner.getOrganizationId(),
                     "Kanal zu",
                     List.of(libraryId),
-                    clock.instant().plus(Duration.ofDays(5))))
+                    clock.instant().plus(Duration.ofDays(5)),
+                    TestSessions.current(jdbcTemplate, owner.getId())))
         .isInstanceOf(AccessDeniedException.class);
   }
 
@@ -600,6 +607,85 @@ class ExternalAccessTokenIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.blocked").value(1));
     assertThat(tokens.findById(second).orElseThrow().getRevokedAt()).isNotNull();
+  }
+
+  @Test
+  void theAdministrationBlocksNoTokenOfAnotherOrganization() throws Exception {
+    UUID organization = foreignOrganization();
+    UUID person = UUID.randomUUID();
+    UUID token = UUID.randomUUID();
+    try {
+      foreignToken(organization, person, token);
+
+      mockMvc
+          .perform(
+              post("/api/v1/admin/external-access/tokens/" + token + "/block")
+                  .with(devUser("dev-admin")))
+          .andExpect(status().isNotFound());
+      mockMvc
+          .perform(
+              post("/api/v1/admin/external-access/tokens/block-by-owner")
+                  .with(devUser("dev-admin"))
+                  .content("{\"ownerUserId\":\"" + person + "\"}"))
+          .andExpect(status().isNotFound());
+      assertThat(tokens.findById(token).orElseThrow().getRevokedAt()).isNull();
+    } finally {
+      removeForeign(organization, person);
+    }
+  }
+
+  @Test
+  void theAdministrationsListShowsNoTokenOfAnotherOrganization() throws Exception {
+    UUID organization = foreignOrganization();
+    UUID person = UUID.randomUUID();
+    UUID token = UUID.randomUUID();
+    UUID own = issueTokenId();
+    try {
+      foreignToken(organization, person, token);
+
+      for (String filter : List.of("", "?status=ACTIVE", "?expiringWithinDays=365")) {
+        String body =
+            mockMvc
+                .perform(
+                    get("/api/v1/admin/external-access/tokens" + filter).with(devUser("dev-admin")))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertThat(body).as(filter).contains(own.toString()).doesNotContain(token.toString());
+      }
+    } finally {
+      removeForeign(organization, person);
+    }
+  }
+
+  private UUID foreignOrganization() {
+    return organizations
+        .save(new Organization(UUID.randomUUID(), "Fremde Stelle " + UUID.randomUUID()))
+        .getId();
+  }
+
+  /** A person of {@code organization} with one live token. */
+  private void foreignToken(UUID organization, UUID person, UUID token) {
+    jdbcTemplate.update(
+        "INSERT INTO users (id, subject, issuer, email, display_name, organization_id)"
+            + " VALUES (?, ?, 'opaa-dev', ?, 'Fremde Person', ?)",
+        person,
+        "foreign-" + person,
+        "foreign-" + person + "@example.com",
+        organization);
+    jdbcTemplate.update(
+        "INSERT INTO external_access_tokens (id, user_id, name, token_prefix,"
+            + " token_lookup_hash, expires_at) VALUES (?, ?, 'Fremd', 'opaa_frmd', ?, ?)",
+        token,
+        person,
+        "f".repeat(32) + token.toString().replace("-", ""),
+        Timestamp.from(clock.instant().plus(Duration.ofDays(30))));
+  }
+
+  private void removeForeign(UUID organization, UUID person) {
+    jdbcTemplate.update("DELETE FROM external_access_tokens WHERE user_id = ?", person);
+    organizationFixtures.removeOrganizations(organization);
   }
 
   @Test

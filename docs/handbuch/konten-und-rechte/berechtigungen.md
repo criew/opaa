@@ -120,6 +120,11 @@ Herleitung schreibgeschützt.
 
 **Ein Recht kann befristet sein.** Jede Rolle wird mit oder ohne Ablaufdatum erteilt; mit dem
 Ablauf endet sie, ohne dass jemand eingreift, und das Erlöschen steht im Nachweisprotokoll.
+**Eine Frist lässt sich nicht selbst verlängern.** Eine Freigabe, die die vergebende Person
+selbst erreicht — an sie, an eine ihrer Gruppen oder an „Alle Konten" —, reicht nie weiter als
+ihre eigene Rolle: Wer befristet verwaltet, kann die eigene Freigabe verkürzen oder herabstufen,
+sie aber weder verlängern noch entfristen noch über eine Gruppe dauerhaft behalten. Aus demselben
+Grund übergibt nur, wer unbefristet verwaltet, das Eigentum an eine Gruppe, der er angehört.
 
 **Eigentum.** Ein Arbeitsmittel gehört einer **Person** oder einer **Gruppe**. Wer es anlegt, wählt
 das: Als persönliches Arbeitsmittel erhält die anlegende Person die Eigentümerrolle, bei einer Gruppe
@@ -129,13 +134,16 @@ Personen, und genau dafür ist Abschnitt 13 sonst zuständig.
 
 Weitere Rollen lassen sich schon beim Anlegen vergeben. Der Assistent jeder Art sucht Personen und
 Gruppen im selben Suchfeld „Person oder Gruppe suchen" wie der Abschnitt „Berechtigungen" an einem
-bestehenden Arbeitsmittel — mit denselben Regeln für geschützte Gruppen
-(Abschnitt 8) und derselben Rückfrage vor einer Freigabe an die Gruppe eines externen Anbieters.
-Die Treffer stehen gemischt, die passendsten zuerst; eine Gruppe trägt „Gruppe" im Namen der
-Zeile. Suche, Rolle und „Vormerken" stehen in einer Zeile; „Vormerken" heißt die Schaltfläche, weil
-erst das Anlegen die Freigaben speichert. Ohne Auswahl nennt sie die fehlende Auswahl am Suchfeld.
-Den Empfänger **„Alle Konten"** bietet der Assistent nicht an: Ein Bestand, den es noch nicht gibt, hat keine Reichweite zu weiten,
-und die Obergrenze, die über eine solche Freigabe entscheidet, gehört dem angelegten Arbeitsmittel.
+bestehenden Arbeitsmittel — mit denselben Regeln für geschützte Gruppen (Abschnitt 8) und derselben
+Rückfrage vor einer Freigabe an die Gruppe eines externen Anbieters. Die Treffer stehen gemischt,
+die passendsten zuerst; eine Gruppe trägt „Gruppe" im Namen der Zeile, eine Person neben Name und
+E-Mail-Adresse die Anmeldung, aus der ihr Konto stammt. Name und Adresse wählt die Person bei
+mancher Anmeldung selbst; die Anmeldung unterscheidet gleichnamige Konten verlässlich. Suche, Rolle
+und „Vormerken" stehen in einer Zeile; „Vormerken" heißt die Schaltfläche, weil erst das Anlegen die
+Freigaben speichert. Ohne Auswahl nennt sie die fehlende Auswahl am Suchfeld. Den Empfänger **„Alle
+Konten"** bietet der Assistent nicht an: Ein Bestand, den es noch nicht gibt, hat keine Reichweite
+zu weiten, und die Obergrenze, die über eine solche Freigabe entscheidet, gehört dem angelegten
+Arbeitsmittel.
 
 ### Reichweite: „Alle Konten"
 
@@ -240,6 +248,12 @@ Anbieter eingerichtet, und alle seine Gruppen folgen dieser Einstellung:
   in welchen Gruppen sie ist. Wird jemand dort aus einer Gruppe genommen, bleibt die Person in OPAA
   Mitglied, bis sie sich das nächste Mal anmeldet; wer sich nicht mehr anmeldet, bleibt es.
   Vergleichbar dem Dienstausweis am Einlass: Man sieht nur, wer gerade durch die Tür kommt.
+  Zugangstokens für externe KI-Werkzeuge nutzen diesen Stand nur begrenzt lange: Liegt die letzte
+  Anmeldung weiter zurück als die eingestellte Frist, ruhen die Tokens der Person bis zur nächsten
+  Anmeldung ([Externe KI-Werkzeuge](../spaces/fremdzugaenge.md), Abschnitt 6). Diese Frist gilt für
+  jedes Konto eines Identitätsanbieters, auch beim Verzeichnisabgleich. Aufgefrischt wird der
+  Gruppenstand aber nur, wenn das Anmeldetoken den Gruppen-Claim tatsächlich trägt; fehlt er, bleibt
+  der letzte bekannte Stand auch nach der Anmeldung stehen.
 - **Über den Verzeichnisabgleich:** OPAA hat ein eigenes Lesekonto beim Anbieter und liest Gruppen
   und Mitglieder im eingestellten Takt selbst aus. Änderungen gelten nach dem nächsten Abgleich,
   auch für Personen, die sich nicht anmelden. Vergleichbar der Personalliste, die das Personalamt
@@ -535,7 +549,10 @@ Quellart öffnet keinen ihrer Zugänge.
   Systemverwaltung an. Ein Update öffnet so nie stillschweigend einen neuen Weg nach draußen.
 - **Die Freigabe regelt nur, was ein neues Ziel öffnet:** eine Bibliothek anlegen, sie einem
   anderen Zugang zuordnen oder von ihrem Zugang lösen (das gibt ihr eine eigene Adresse, also gilt
-  die Freigabe der Quellart), und vor dem Anlegen die Verbindung testen oder die Quelle auflisten.
+  die Freigabe der Quellart), die eigene Adresse auf einen anderen Server umstellen (anderes
+  Schema, anderer Host oder Port; bei einer Dateisystem-Bibliothek ein anderes Verzeichnis), und
+  vor dem Anlegen oder Umstellen die Verbindung testen oder die Quelle auflisten. Ein anderer Pfad
+  auf demselben Server braucht die Freigabe nicht.
   Wird sie entzogen, laufen bestehende Bibliotheken weiter; auch das erneute Zuordnen zum
   bisherigen Zugang bleibt möglich. Läufe stoppt nur die **Sperre** einer Quellart oder eines
   Zugangs (Kapitel [Zugänge](../arbeitsmittel/zugaenge.md)).
@@ -594,7 +611,12 @@ Erste.
 **Auch der einzelne Inhalt bleibt zu.** Die Systemverwaltung sieht die Dokumentenliste jeder
 Bibliothek; das Öffnen eines Originals und die Chunk-Ansicht der Suchdiagnose prüfen aber dieselbe
 Formel wie die Suche: Ohne Leserecht auf die Bibliothek antwortet die Anwendung mit einer Meldung,
-die den Grund benennt, statt den Inhalt auszuliefern. Wer ihn tatsächlich braucht, holt sich das
+die den Grund benennt, statt den Inhalt auszuliefern. Dasselbe gilt für die Metadaten, die aus dem
+Inhalt eines Dokuments gewonnen sind: die Feldwerte eines Dokuments und der Stichproben-Export.
+Zahlen sieht die Systemverwaltung dagegen wie die Dokumentenliste: Füllgrad und Extraktionsgüte und,
+weil sie jede Bibliothek auch im Schema pflegt, die Folgekosten einer Schemaänderung — wie viele
+Dokumente ein Feld oder einen Listenwert tragen und wie viele eine Änderung neu schreiben würde. Daran
+lässt sich ablesen, wie häufig ein Wert vorkommt, nicht aber, welches Dokument ihn trägt. Wer den Inhalt tatsächlich braucht, holt sich das
 Recht sichtbar: **sich selbst die Rolle „Leser" auf diese Bibliothek geben** — der kleinste Schritt,
 und er steht mit Beginn und Ende in der Rechtehistorie (Abschnitt 12) — oder, wenn die Zuständigkeit
 ohnehin übergeht, das Eigentum übernehmen („Eigentum abgeben", Abschnitt 13). So oder so geschieht
@@ -606,6 +628,11 @@ der vorgesehene Weg, nicht der Umweg über eine Rolle.
 Nachweisprotokoll, zur Stichtagsauskunft und zum Verbindungsprotokoll (Abschnitt 12) und sonst
 nichts; ein Revisionskonto hat
 an Inhalten genau das, was „Alle Konten" oder seine Gruppen ihm geben.
+
+**Der persönliche Space bleibt auch für die Systemverwaltung privat.** Sie liest seine Anweisung
+an das Modell nicht und ordnet ihm kein Arbeitsmittel zu; eine bestehende Zuordnung lösen kann
+sie. Mitglieder hat er außer seiner Person keine (Kapitel [Spaces](../spaces/README.md),
+Abschnitt 2).
 
 **Neue Systemrollen gibt es nicht.** Ein Haus, das einen „Bibliotheksverwalter" will, legt eine
 Gruppe an und gibt ihr die Anlegerechte und die Rollen.
@@ -843,10 +870,12 @@ die Übertragung.
 **Ein Space gehört immer einer natürlichen Person.** Deshalb wechselt sein Eigentum nur zwischen
 Personen; eine Gruppe besitzt keinen Space und wird auch keiner. **Der persönliche Space ist von der
 Übertragung ausgenommen** — über sein Eigentum entscheidet niemand, er erscheint auch in keiner
-Vorschau. Übernimmt eine Person einen Space,
-wird sie dabei — falls sie es noch nicht ist — als Administratorin aufgenommen: Eine Verantwortliche,
-die in der Mitgliederliste nicht auftaucht, wäre genau der Zustand, den die Übertragung beenden
-soll.
+Vorschau. Übernimmt eine Person einen Space, wird sie dabei — falls sie es noch nicht ist — als
+Administratorin aufgenommen: Eine Verantwortliche, die in der Mitgliederliste nicht auftaucht,
+wäre genau der Zustand, den die Übertragung beenden soll. Aus demselben Grund braucht sie ein
+aktives Konto; an ein gesperrtes oder noch nicht bestätigtes geht kein Space. **Archivierte
+Spaces gehen mit über**, anders als beim Eigentümerwechsel im Space selbst: Blieben sie zurück,
+stünden sie ohne Verantwortliche da.
 
 **Von einer Person gehen nur Eigentum und Verantwortung über.** Die Berechtigungen einer Person
 werden hier weder übertragen noch aufgezählt — sie enden mit ihrem Konto. Eine Vorschau „alles, was
@@ -1030,7 +1059,7 @@ eingebaut.
 | Abgleichintervall je Anbieter | **360 Minuten** (6 Stunden) | 5 Minuten bis 1 Woche | Wie oft der Verzeichnisabgleich eines Anbieters fällig ist; Einstellung der Anbieterzeile, nicht der Umgebung |
 | Plausibilitätsschwelle des Verzeichnisabgleichs | **30 %** | 1 bis 100 % | Ein Lauf, der mehr als diesen Anteil der Mitgliedschaften entziehen oder Konten sperren würde, schreibt nichts und legt seinen Plan zur Bestätigung vor. Verwaltungseinstellung für alle Anbieter unter Administration → Verzeichnisabgleich; jede Änderung ist ein Protokollereignis und gilt ab dem nächsten Lauf |
 | Hervorhebung lange offener Einträge | **12 Monate** | 1 bis 120 Monate | Ab welchem Alter ein Eintrag der Betriebsliste als „lange offen“ hervorgehoben wird. Hebt hervor, löst nichts aus. Verwaltungseinstellung unter Administration → Ohne Zuständigkeit; jede Änderung ist ein Protokollereignis |
-| `OPAA_SUCCESSION_DETECTION_CRON` | **stündlich** (`0 5 * * * *`) | Spring-Cron, sechs Felder | Wann der Feststellungslauf hinsieht. Er schreibt nur Erstfeststellung und Ende eines Vorgangs; der Zustand selbst ist abgeleitet und gilt auch ohne ihn — ohne den Lauf fehlt den Einträgen nur das Alter |
+| `OPAA_SUCCESSION_DETECTION_CRON` | **stündlich** (`0 5 * * * *`) | Spring-Cron, sechs Felder; `-` schaltet den Lauf ab | Wann der Feststellungslauf hinsieht. Er schreibt nur Erstfeststellung und Ende eines Vorgangs; der Zustand selbst ist abgeleitet und gilt auch ohne ihn — ohne den Lauf fehlt den Einträgen nur das Alter |
 | Aufbewahrungshöchstdauer der Rechtehistorie | **36 Monate** | 12 bis 120 Monate | Wie lange ein beendeter Zeitraum nach seinem Ende liegen bleibt; eine Verwaltungseinstellung, keine Umgebungsvariable ([Suche](../spaces/suche.md), Abschnitt 8.4). Jede Änderung ist ein Protokollereignis |
 | Aufbewahrungsfrist des Nachweisprotokolls | **36 Monate** | 12 bis 120 Monate | Verwaltungseinstellung; ihr folgen auch die abgeschlossenen Nachfolgevorgänge (Abschnitt 13.3). Eine Verkürzung wirkt mit dem nächsten Monatslauf, und zwar vollständig; eine Verlängerung wirkt sofort, holt aber Gelöschtes nicht zurück |
 | Löschfrist der anlassbezogenen Klärungen | **1 Jahr** (Werkseinstellung) | 1 bis 10 Jahre | Verwaltungseinstellung der Systemverwaltung unter Administration → Datenschutz, Abschnitt „Anlassbezogene Klärungen“; einen Wert außerhalb weist sie ab, die Datenbank erzwingt die Grenzen zusätzlich, jede Änderung steht mit Vorher und Nachher im Revisionsprotokoll und wirkt mit dem nächsten täglichen Lauf um 03:15 Uhr Serverzeit auf allen Instanzen; setzt eine laufende Instanz noch `OPAA_AUDIT_INCIDENT_SCOPE_RETENTION_YEARS` auf mehr Jahre, pausiert die Löschung, bis hier ein Wert gespeichert ist (Abschnitt 10): gelöscht wird am Ende des Kalenderjahres, das so viele Jahre nach dem Ende der Nutzbarkeit liegt. Die Nutzbarkeit einer Freigabe ist fest **30 Tage**; für die Löschfrist zählt bei einem nie freigegebenen Antrag als Ende der Nutzbarkeit der Antrag plus 30 Tage — freigeben lässt er sich auch danach |

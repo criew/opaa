@@ -34,7 +34,7 @@ export const confluenceSetup: SourceSetupSpec<ConfluenceSourceValues> = {
       id: 'scope',
       summary: (values) =>
         listSummary(
-          false,
+          values.allSpaces,
           ['Space', 'Spaces'],
           values.spaces.map((space) => space.name || space.key),
         ),
@@ -65,11 +65,11 @@ export const confluenceSetup: SourceSetupSpec<ConfluenceSourceValues> = {
         values.token.trim() === '',
       )
     }
-    at('spaces', 'Spaces fehlen', values.spaces.length === 0)
+    at('spaces', 'Spaces fehlen', !values.allSpaces && values.spaces.length === 0)
     at(
       'spaces',
       `Höchstens ${MAX_CONFLUENCE_SPACES} Spaces`,
-      values.spaces.length > MAX_CONFLUENCE_SPACES,
+      !values.allSpaces && values.spaces.length > MAX_CONFLUENCE_SPACES,
     )
     return list
   },

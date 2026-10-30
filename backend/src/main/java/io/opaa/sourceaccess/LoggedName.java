@@ -1,5 +1,6 @@
 package io.opaa.sourceaccess;
 
+import io.opaa.common.LogText;
 import java.util.Objects;
 
 /**
@@ -7,6 +8,7 @@ import java.util.Objects;
  * sheet, a title: by the name itself, or, where the administration that reads the logs must not
  * learn them (a private library), by an opaque reference. The library decides once ({@code
  * KnowledgeLibrary#loggedNames}); every log line on its run, intake and erasure goes through this.
+ * A name that shows carries no line break or control character ({@link LogText}).
  */
 public final class LoggedName {
 
@@ -30,12 +32,12 @@ public final class LoggedName {
 
   /** {@code name} where names show, else the reference; {@code null} stays {@code null}. */
   public String of(Object name) {
-    return name == null ? null : reference == null ? name.toString() : reference;
+    return name == null ? null : reference == null ? LogText.of(name) : reference;
   }
 
   /** {@code name} where names show, else the reference with {@code id}, which names nothing. */
   public String of(Object name, Object id) {
-    return name == null ? null : reference == null ? name.toString() : reference + "/" + id;
+    return name == null ? null : reference == null ? LogText.of(name) : reference + "/" + id;
   }
 
   /**

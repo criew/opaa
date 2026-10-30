@@ -97,6 +97,41 @@ describe('ScopePicker', () => {
     expect(await screen.findAllByRole('checkbox')).toHaveLength(3)
   })
 
+  it('describes „Alle“ by its hint while chosen and says why it is unavailable', () => {
+    const hint = 'Was später in der Quelle dazukommt, wird automatisch mit indiziert.'
+    const { rerender } = renderWithProviders(
+      <ScopePicker
+        id="scope"
+        source={listed(3)}
+        value={[]}
+        onChange={vi.fn()}
+        all={{ active: true, onChange: vi.fn(), hint }}
+        loadKey="k"
+      />,
+    )
+    expect(screen.getByRole('radio', { name: 'Alle Spaces' })).toHaveAccessibleDescription(hint)
+
+    rerender(
+      <ScopePicker
+        id="scope"
+        source={listed(3)}
+        value={[]}
+        onChange={vi.fn()}
+        all={{
+          active: false,
+          onChange: vi.fn(),
+          hint,
+          unavailable: 'Der Zugang darf nicht listen.',
+        }}
+        loadKey="k"
+      />,
+    )
+    const all = screen.getByRole('radio', { name: 'Alle Spaces' })
+    expect(all).toBeDisabled()
+    expect(all).toHaveAccessibleDescription('Der Zugang darf nicht listen.')
+    expect(screen.queryByText(hint)).not.toBeInTheDocument()
+  })
+
   it('names a failed listing once and loads it again on „Erneut laden“', async () => {
     const user = userEvent.setup()
     let calls = 0

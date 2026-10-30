@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 # Three rules for every file under .github/workflows/, a new workflow is covered without a list:
-# 1. No run: or script: value interpolates github.head_ref, github.event.*, inputs.* or secrets.*.
+# 1. No run: or script: value interpolates github.head_ref, github.ref_name, github.ref,
+#    github.workflow_ref, github.event in any form (github.event.*, github.event['...'],
+#    toJSON(github.event)), the github context as a whole or by index (toJSON(github),
+#    github['...']), or the inputs, secrets, vars and env contexts in any form (inputs.x,
+#    secrets['X'], toJSON(secrets), env.X).
 #    Actions expands ${{ ... }} into the script text before the shell or JavaScript runs it, so a
 #    branch name, PR title or dispatch input with shell syntax would execute. Such values go into
 #    an env: entry and are read as "$NAME" (process.env.NAME in actions/github-script).
+#    The match is textual: a string literal inside an expression ('github', 'env') is rejected
+#    as well; such an expression moves into env: like any other.
 # 2. The workflow sets permissions: at top level, so no job falls back to the repository default.
 # 3. Every actions/checkout step states persist-credentials: false, or true where the job pushes
 #    from that checkout afterwards. Otherwise the token stays in .git/config for every later step.
@@ -24,7 +30,7 @@ scan() {
       lowered = tolower(text)
       # Anywhere inside the expression up to its closing braces; a single brace (a format() pattern)
       # does not end it.
-      if (lowered ~ /\$\{\{(([^}]|\}[^}])*[^a-z0-9_.])?(github\.head_ref|github\.event[.[]|inputs\.|secrets\.)/) {
+      if (lowered ~ /\$\{\{(([^}]|\}[^}])*[^a-z0-9_.])?(github\.head_ref|github\.ref_name|github\.(ref|workflow_ref)[^a-z0-9_]|github\.event[^a-z0-9_]|github[^a-z0-9_.]|(inputs|secrets|vars|env)[^a-z0-9_])/) {
         printf "context %s:%d\n", FILENAME, FNR
       }
     }
@@ -91,7 +97,7 @@ while IFS= read -r entry; do
     continue
     ;;
   context)
-    message="A run:/script: value interpolates github.head_ref, github.event.*, inputs.* or secrets.* directly. Pass it through env: and read it as \"\$NAME\" (process.env.NAME in github-script)."
+    message="A run:/script: value interpolates github.head_ref, github.ref_name, github.ref, github.workflow_ref, github.event, the github context as a whole, inputs, secrets, vars or env directly. Pass it through env: and read it as \"\$NAME\" (process.env.NAME in github-script)."
     ;;
   permissions)
     message="The workflow sets no top-level permissions: block. Grant the minimum (usually contents: read, or {}) and name anything more in the job that needs it."

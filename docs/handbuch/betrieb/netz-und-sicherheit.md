@@ -37,10 +37,13 @@ erreichbaren Betrieb ein **TLS-terminierender Reverse-Proxy** oder Ingress. Für
 ### Sicherheits-Header und `Strict-Transport-Security`
 
 Der Frontend-Container setzt auf jede Antwort `Content-Security-Policy`, `X-Content-Type-Options`,
-`X-Frame-Options`, `Referrer-Policy` und `Permissions-Policy` (Mikrofon nur für die eigene Herkunft,
-Kamera und Standort gesperrt). Die CSP lässt keine fremden Skripte oder CDNs zu und Verbindungen nur
-zur eigenen Herkunft. Einbetten in einen Frame verbieten beide Header überall, mit einer Ausnahme: Den
-Download der Selbstauskunft darf die Anwendung selbst in einen verborgenen Frame laden
+`X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` (Mikrofon nur für die eigene Herkunft,
+Kamera und Standort gesperrt) sowie `Cross-Origin-Opener-Policy` und `Cross-Origin-Resource-Policy`
+(beide `same-origin`): Fremde Seiten erhalten keinen Zugriff auf ein geöffnetes OPAA-Fenster und
+können Antworten von OPAA nicht einbinden. Anmeldungen und Freigaben laufen als Weiterleitung im
+selben Fenster und sind davon nicht betroffen. Die CSP lässt keine fremden Skripte oder CDNs zu und
+Verbindungen nur zur eigenen Herkunft. Einbetten in einen Frame verbieten beide Header überall, mit
+einer Ausnahme: Den Download der Selbstauskunft darf die Anwendung selbst in einen verborgenen Frame laden
 (`SAMEORIGIN` bzw. `frame-ancestors 'self'`), damit eine Ablehnung die Seite nicht ersetzt. Das
 Backend sendet dieselbe Regel selbst: `SAMEORIGIN` und `frame-ancestors 'self'` für den Download,
 `X-Frame-Options: DENY` für alles andere. Der Container ersetzt die Frame-Header des Backends durch
@@ -153,6 +156,10 @@ solche, die nur aus dem Netz des Servers erreichbar sind (SSRF). Zwei Schranken 
   bis zum Neustart nicht erreichbar. Abhilfe: den Namen ohne Port in die passende Liste eintragen
   und das Backend neu starten; die Listen liest OPAA nur beim Start. Ohne Eintrag bleibt der Name
   auch nach dem Neustart gesperrt.
+- **Gesperrt und unbekannt klingen gleich:** Ein Ziel in einem gesperrten Bereich und ein Name, der
+  sich nicht auflösen lässt, ergeben dieselbe Meldung, damit niemand über Quellen oder Zugänge
+  erkundet, welche internen Namen es gibt. Die Ursache nennt die Zeile „Rejecting fetch to …“ im
+  Log, als WARN beim gesperrten Bereich und als INFO beim nicht auflösbaren Namen.
 - **Ein Hostname mit Zeichen außerhalb von ASCII** wird abgelehnt; internationalisierte Namen in
   Punycode-Schreibweise (`xn--…`) eintragen.
 - Nur `http` und `https`; Redirects nur auf demselben Origin, nie auf `http` herab. Zertifikate
@@ -324,9 +331,10 @@ dem Backend den Weg zum Scanner öffnen.
   (Schlüssel).
 - Außerhalb des Repositorys ablegen (Tresor, Secret-Manager) und **getrennt von der Datenbank
   sichern**: Ohne die Schlüssel enthält eine Datenbanksicherung unlesbare Zugangsdaten.
-- Die Schlüssel des Profils `dev` und die Testwerte der Wertesätze unter `deploy/helm/opaa/ci/`
-  (`ci-only-…`, Kennzeichen `NICHT-FUER-DEN-PRODUKTIVBETRIEB`) sind öffentlich. Im Modus `oidc`
-  bricht der Start mit ihnen ab und nennt die Variable.
+- Die Schlüssel des Profils `dev`, die Testwerte der Wertesätze unter `deploy/helm/opaa/ci/`
+  (`ci-only-…`, Kennzeichen `NICHT-FUER-DEN-PRODUKTIVBETRIEB`) und die früheren Schlüssel und
+  Signaturgeheimnisse der Testläufe des Repositorys sind öffentlich. Im Modus `oidc` bricht der Start
+  mit ihnen ab und nennt die Variable. Die Testläufe erzeugen ihre Werte je Lauf.
 
 ### Zugangsdaten-Verschlüsselung
 

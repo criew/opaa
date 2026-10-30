@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import FormControlLabel from '@mui/material/FormControlLabel'
@@ -23,7 +23,8 @@ import { displayPath } from '../paths'
 import SecretField from '../SecretField'
 import SetupTextField from '../SetupTextField'
 import type { SetupFieldsProps } from '../setupTypes'
-import { credentialsKept } from './common'
+import { ALL_SCOPE_HINT, credentialsKept } from './common'
+import { browseSource } from '../../../api/libraryApi'
 import { s3Item, s3ScopeOfItem, s3SelectionSource } from '../../sourceKit/selectionSources'
 
 export function S3ConnectionFields({
@@ -141,6 +142,33 @@ export function S3ConnectionFields({
   )
 }
 
+/**
+ * Whether the key may list the buckets, as the bucket listing answers for `loadKey`: false for a
+ * listing refused as a whole, null while unknown or when the listing failed otherwise.
+ */
+function useBucketListing(
+  loadKey: string,
+  list: () => Promise<{ complete: boolean; entries: unknown[] }>,
+): boolean | null {
+  const [answer, setAnswer] = useState<{ key: string; listable: boolean } | null>(null)
+  useEffect(() => {
+    let alive = true
+    list()
+      .then((result) => {
+        if (alive) {
+          setAnswer({ key: loadKey, listable: result.complete || result.entries.length > 0 })
+        }
+      })
+      .catch(() => alive && setAnswer(null))
+    return () => {
+      alive = false
+    }
+    // the key names everything the listing depends on
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadKey])
+  return answer?.key === loadKey ? answer.listable : null
+}
+
 export function S3ScopeFields({
   values,
   onChange,
@@ -156,6 +184,15 @@ export function S3ScopeFields({
     sourceCredentials: s3CredentialsOf(values),
   }
   const query = { region: values.region.trim() || undefined, pathStyle: values.pathStyle }
+  const loadKey = JSON.stringify({ connection, query, probe: fields.probe })
+  const listable = useBucketListing(loadKey, () =>
+    browseSource('S3', fields.probeRequest({ ...connection, query })),
+  )
+  const unlistable = listable === false
+  useEffect(() => {
+    // „Alle Buckets“ is the preselection only where the key may list the buckets
+    if (unlistable && values.allBuckets) onChange({ allBuckets: false })
+  }, [unlistable, values.allBuckets, onChange])
   return (
     <Stack spacing={2}>
       <ScopePicker
@@ -163,9 +200,18 @@ export function S3ScopeFields({
         source={s3SelectionSource(fields, () => ({ ...connection, query }))}
         value={values.scopes.filter((scope) => scope.bucket.trim() !== '').map(s3Item)}
         onChange={(items) => onChange({ scopes: items.map(s3ScopeOfItem) })}
+        all={{
+          active: values.allBuckets && !unlistable,
+          onChange: (allBuckets) => onChange({ allBuckets }),
+          label: 'Alle Buckets',
+          hint: ALL_SCOPE_HINT,
+          unavailable: unlistable
+            ? '„Alle Buckets“ setzt voraus, dass der Zugang die Buckets auflisten darf (s3:ListAllMyBuckets).'
+            : null,
+        }}
         error={issueAt('scopes')}
         labelOf={(item) => displayPath(item.key)}
-        loadKey={JSON.stringify({ connection, query, probe: fields.probe })}
+        loadKey={loadKey}
       />
       <Box>
         <Button

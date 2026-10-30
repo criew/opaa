@@ -17,6 +17,12 @@ public interface GroupStewardshipDirectory {
   /** How many groups the person is responsible for - the count behind a transfer's work limit. */
   long countStewardedGroups(UUID userId, UUID organizationId);
 
+  /**
+   * Whether the person is responsible for the internal group - and can therefore make themselves
+   * its member at any time: what reaches the group's members reaches them too.
+   */
+  boolean isSteward(UUID groupId, UUID userId);
+
   /** Every internal group the person is responsible for, in this organization. */
   List<UUID> stewardedGroupIds(UUID userId, UUID organizationId);
 

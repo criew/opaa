@@ -115,10 +115,11 @@ class SmbSourceConnectorTest {
 
     /**
      * SMB opens plain sockets, which never take the outbound proxy: a server name that does not
-     * resolve is "not found" with a proxy set, never let through for the proxy to resolve.
+     * resolve is refused with a proxy set, never let through for the proxy to resolve - in the
+     * words of a blocked range, allowlist hint included, so the answer reveals no internal name.
      */
     @Test
-    void anUnresolvableServerIsNotFoundEvenWithAnOutboundProxySet() {
+    void anUnresolvableServerIsRefusedLikeABlockedOneEvenWithAnOutboundProxySet() {
       SmbSourceConnector guarded =
           new SmbSourceConnector(
               SmbProperties.defaults(),
@@ -128,14 +129,17 @@ class SmbSourceConnectorTest {
       try (OutboundProxyRoute route = OutboundProxyRoute.through("proxy.example.org:3128")) {
         assertThatThrownBy(
                 () -> guarded.validate(settings("smb://fileserver.example.invalid/Daten", "a:b")))
-            .hasMessageContaining("DNS-Auflösung fehlgeschlagen");
+            .hasMessageContaining("gesperrten Adressbereich")
+            .hasMessageContaining("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
         assertThat(
                 guarded.testConnection(
                     settings("smb://fileserver.example.invalid/Daten", "a:b"), null))
             .satisfies(
                 result -> {
                   assertThat(result.reachable()).isFalse();
-                  assertThat(result.message()).contains("DNS-Auflösung fehlgeschlagen");
+                  assertThat(result.message())
+                      .contains("gesperrten Adressbereich")
+                      .contains("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
                 });
       }
     }

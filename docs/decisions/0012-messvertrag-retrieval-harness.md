@@ -139,7 +139,7 @@ ungültig und keine Metrik wird verglichen.
 | `pgvectorIndexType` | `hnsw` | 1 | ein Wechsel auf exakte Suche ist eine Messänderung (ADR-0011) |
 | `corpusManifestSha256`, `corpusDocumentCount` | je Domäne | 1 | der Korpus |
 | `goldenDatasetFile`, `goldenDatasetSha256`, `goldenCaseCount` | je Domäne | 1 | der Datensatz samt Zuständen |
-| `ingestionPipelineFingerprint` | `confluence:5,docx:6,email:6,html:6,markdown:4,odp:5,odt:5,pdf:6,pptx:4,tabular:4,tika-fallback:2` | 3 | welche Pipelines in welcher Version gechunkt haben (Entscheidung 28) |
+| `ingestionPipelineFingerprint` | `confluence:5,docx:6,email:6,html:6,markdown:4,odp:5,odt:5,pdf:6,pptx:4,tabular:5,tika-fallback:2` | 3 | welche Pipelines in welcher Version gechunkt haben (Entscheidung 28) |
 | `metadataFilterEnabled` | `true` | 6 | ob die Golden-Filter in der Suche wirkten (Entscheidung 32) |
 | `ollamaImage` | `ollama/ollama:0.40.3` | 10 | das Laufzeitsystem, das die Vektoren berechnet (Entscheidung 45) |
 | `ollamaCpuBackend` | `haswell` | 11 | die ggml-Kernelvariante bewegt Rangfolgen (Entscheidung 55) |

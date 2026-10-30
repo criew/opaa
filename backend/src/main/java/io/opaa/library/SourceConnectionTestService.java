@@ -94,6 +94,7 @@ public class SourceConnectionTestService {
                 request.privateLibrary(),
                 request.sourceCredentials(),
                 url,
+                request.sourcePath(),
                 () -> "sourceType passt nicht zum gespeicherten Quellentyp dieser Bibliothek");
     SourceSettings requested =
         new SourceSettings(
@@ -155,6 +156,7 @@ public class SourceConnectionTestService {
                 request.privateLibrary(),
                 request.sourceCredentials(),
                 url,
+                null,
                 null)
             : null;
     SourceBrowser browser =
@@ -175,6 +177,7 @@ public class SourceConnectionTestService {
               request.privateLibrary(),
               request.sourceCredentials(),
               url,
+              null,
               browser::otherTypeMessage);
     }
     String sourceUrl = connector.normalizeSourceUrl(target.url());
@@ -242,8 +245,8 @@ public class SourceConnectionTestService {
 
   /**
    * The bar of a probe and where it goes: towards a new library the release of its type or profile;
-   * on a stored library {@code MANAGER} and, for another profile, that one's release - the
-   * library's own lock counts only while it stays on its profile.
+   * on a stored library {@code MANAGER} and, for another profile or another origin of its own
+   * address, that release - the library's own lock counts only while it stays on its profile.
    */
   private Target target(
       CurrentUser caller,
@@ -253,6 +256,7 @@ public class SourceConnectionTestService {
       boolean privateLibrary,
       String credentials,
       String url,
+      String path,
       Supplier<String> otherType) {
     if (libraryId == null) {
       if (privateLibrary && profileId == null) {
@@ -294,6 +298,12 @@ public class SourceConnectionTestService {
       if (normalized != null) {
         libraryConnections.requireAddressAllowed(library, normalized);
       }
+      // a probe of another origin of an own address goes to a new target: the type's release
+      if (current == null
+          && SourceOrigin.changes(
+              library.getSourceUrl(), library.getSourcePath(), normalized, blankToNull(path))) {
+        connectorRelease.requireCreatable(caller, sourceType, null);
+      }
       return new Target(null, url);
     }
     connectorRelease.requireCreatable(caller, sourceType, profileId);
@@ -305,6 +315,10 @@ public class SourceConnectionTestService {
     }
     return new Target(
         profileId, libraryConnections.addressForNewLibrary(profileId, sourceType, url));
+  }
+
+  private static String blankToNull(String value) {
+    return value == null || value.isBlank() ? null : value;
   }
 
   /** An existing library's locked source is not reached, like its original (409). */

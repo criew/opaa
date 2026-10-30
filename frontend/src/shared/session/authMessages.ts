@@ -87,6 +87,8 @@ const SESSION_END_MESSAGES: Record<string, string> = {
   'account_locked:directory':
     'Ihr Konto ist im Verzeichnis Ihrer Organisation nicht mehr freigeschaltet und wurde deshalb gesperrt. Bitte wenden Sie sich an Ihre Benutzerverwaltung oder an die Systemverwaltung.',
   session_revoked: 'Ihre Sitzung wurde beendet. Bitte melden Sie sich erneut an.',
+  admin_network_required:
+    'Ihre Sitzung wurde beendet: Ein lokales Konto der Systemverwaltung ist nur aus den dafür freigegebenen Netzen nutzbar. Bitte melden Sie sich aus einem dieser Netze erneut an.',
   'session_revoked:admin_lock':
     'Ihre Sitzung wurde beendet, weil Ihr Konto gesperrt wurde. Bitte wenden Sie sich an die Systemverwaltung.',
   'session_revoked:password_changed':
@@ -260,7 +262,8 @@ export const MAIL_SENT_MESSAGE =
 
 export const PASSWORD_SET_MESSAGE = 'Passwort festgelegt — Sie können sich jetzt anmelden.'
 
-export const EMAIL_VERIFIED_MESSAGE = 'E-Mail-Adresse bestätigt — Sie können sich jetzt anmelden.'
+export const EMAIL_VERIFIED_MESSAGE =
+  'E-Mail-Adresse bestätigt und Passwort festgelegt — Sie können sich jetzt anmelden.'
 
 /** A self-service request that did not reach the backend; never the person's mistake. */
 export const SELF_SERVICE_UNREACHABLE_MESSAGE =

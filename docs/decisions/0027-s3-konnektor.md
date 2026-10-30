@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt ADR-0017 (Entscheidung 5), ADR-0018 und ADR-0023 · Entscheidung 1 verallgemeinert durch ADR-0038 · Abgleich über den gemeinsamen Datei-Abgleich (ADR-0045, Entscheidung 1)
+Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt ADR-0017 (Entscheidung 5), ADR-0018 und ADR-0023 · Entscheidung 1 verallgemeinert durch ADR-0038 · Abgleich über den gemeinsamen Datei-Abgleich (ADR-0045, Entscheidung 1)
 
 ## Kontext
 
@@ -34,7 +34,8 @@ Zertifikatsprüfung; `S3SdkClient` setzt `TRUST_ALL_CERTIFICATES` nicht.
 
 ### 2. Geltungsbereiche: eine Liste von (Bucket, Präfix), mindestens einer, ohne Überlappung
 
-Ein bis fünfzig Bereiche (`S3Scope.MAX_PER_LIBRARY`), Bucket nach AWS-Namensregeln, Präfix
+Ein bis fünfzig Bereiche (`S3Scope.MAX_PER_LIBRARY`) oder der Umfang „Alle Buckets“
+(`allBuckets: true`, Bereiche leer; beides zusammen wird abgelehnt). Bucket nach AWS-Namensregeln, Präfix
 normalisiert (kein führender, ein abschließender Schrägstrich bei nichtleerem Präfix). Zwei
 Bereiche derselben Bibliothek dürfen sich nicht überlappen, weil ein Objekt in zwei Bereichen
 zweimal denselben `file_path` hätte (`uk_documents_library_path`); zwei Bibliotheken dürfen
@@ -42,7 +43,52 @@ denselben Bereich tragen (getrennte Leserkreise, doppelte Indizierung als Preis,
 Entscheidung 5). Die Freigabe der Bibliothek gilt für alle Bereiche gemeinsam; der Wizard sagt das
 vor der Eingabe. Bereiche sind änderbar; Entfernen wirkt mit dem nächsten Vollabgleich. Jede
 Änderung von Bereichen oder Endpoint verwirft den Wiederaufnahmezustand (`SyncStateBasis`).
-`ListBuckets` ist Komfort: Ohne `s3:ListAllMyBuckets` gibt es den Hinweis, den Bucket einzutragen.
+`ListBuckets` ist für eine Auswahl Komfort: Ohne `s3:ListAllMyBuckets` gibt es den Hinweis, den
+Bucket einzutragen.
+
+„Alle Buckets“ heißt: jeder Bucket, den der Schlüssel auflisten darf, auch was später dazukommt,
+jeweils ganz. Es setzt `s3:ListAllMyBuckets` voraus: Speichern und Ändern prüfen das mit
+`ListBuckets` und lehnen ohne Berechtigung ab, die Oberfläche bietet „Alle Buckets“ dann nicht an
+und wählt es nur für neue Bibliotheken mit Berechtigung vor; bestehende Bibliotheken behalten ihre
+Bereiche. Jeder Vollabgleich listet die Buckets neu (`S3AllBuckets`), seitenweise
+(`ListBuckets` mit `max-buckets`; nur so nennt AWS die Region je Bucket). Auf AWS nennt
+`ListBuckets` alle Buckets des Kontos, über alle Regionen und ohne Rücksicht auf Leserechte; die
+Bibliothek liest davon die Buckets der eigenen Region, die der Schlüssel auflisten darf. Ein Bucket,
+für den die Auflistung eine andere Region nennt (`BucketRegion`), bekommt keine Anfrage; jeden
+übrigen prüft eine Auflistung mit `max-keys=1`. Antwortet er mit `AccessDenied` (`s3:ListBucket`
+fehlt), einem Verweis auf einen anderen Endpoint oder `NoSuchBucket`, oder liegt er in einer
+anderen Region, kann die Bibliothek ihn nicht lesen. Hält sie keine Dokumente aus ihm (kein
+`file_path` unter `s3://<bucket>/`), liegt er nicht im Umfang: Das Protokoll nennt ihn mit Grund
+unter „Nicht im Umfang“, und er hält den Abgleich der übrigen nicht auf. Hält sie Dokumente aus
+ihm, bleibt er im Umfang und gilt ohne weitere Anfrage als nicht listbarer Bereich (Entscheidung
+3): Die Auflistung ist unvollständig, bereinigt wird nichts, auch nicht in den lesbaren Buckets.
+Denn ein `403` oder `404` kann auch von einer vorgeschalteten Firewall oder einem Ingress kommen,
+und Rechteentzug ist kein Löschbefund. Als Löschbefund für einen Bucket gilt allein, dass
+`ListBuckets` ihn nicht mehr nennt und eine Auflistung mit `max-keys=1` mit `NoSuchBucket` samt
+diesem Fehlercode antwortet; jede andere Antwort hält ihn wie einen nicht lesbaren zurück. Die
+Buckets, aus denen sie Dokumente hält, ermittelt die Bibliothek einmal je Lauf aus den
+`file_path`-Werten. Ein zurückgehaltener Bucket hält das Bereinigen der ganzen Bibliothek an, bis er
+wieder lesbar oder bestätigt gelöscht ist. Das trifft einen Regionswechsel unter „Alle Buckets“, nach
+dem die Buckets der alten Region noch Dokumente halten, und einen bewusst entzogenen
+`s3:ListBucket`. Der Ausweg, nach einem Regionswechsel der nötige Schritt: auf „Nur ausgewählte
+Buckets“ ohne diesen Bucket wechseln und einen Vollabgleich starten; er entfernt den Bestand des
+Buckets, danach ist „Alle Buckets“ wieder möglich. Die ausdrückliche Auswahl fasst höchstens 50
+Bereiche; bei mehr lesbaren Buckets geht der Ausweg nicht vollständig, denn der Zwischenlauf mit
+einer Teilauswahl entfernt auch den Bestand der nicht gewählten Buckets, den der Vollabgleich nach
+dem Zurückwechseln neu indiziert. Eine automatische Aufgabe nach einer Frist gibt
+es nicht, weil sie einen vorübergehenden Ausfall nicht von einer Absicht unterscheiden kann.
+Jede andere Antwort der Prüfung (Drosselung, abgelehnter Schlüssel, Endpoint nicht erreichbar)
+lässt den Lauf scheitern. Fehlt `s3:ListAllMyBuckets`, sieht der Schlüssel keinen Bucket oder kann
+die Bibliothek keinen davon lesen, scheitert der Lauf vor dem ersten Objekt und entfernt nichts.
+Ein Ereignislauf prüft nur die Buckets der gemeldeten Schlüssel, prüft nur Schlüssel aus
+lesbaren Buckets und schreibt die gemerkte Ermittlung nicht fort. Der Verbindungstest löst den
+Umfang wie ein Vollabgleich auf, kennt aber keinen Bestand; er nennt die gesehenen, die gelesenen
+und die nicht lesbaren Buckets mit Grund. Die Ordnerkette beginnt unter „Alle Buckets“ immer mit
+dem Bucket, damit sie sich mit der Zahl der Buckets nicht ändert. Das Laufprotokoll nennt die Zahl
+der Buckets im Umfang und, gegen die in `source_sync_state.resolved_scopes` gemerkte letzte
+Ermittlung, neu hinzugekommene und weggefallene. Was aus einem Bucket indiziert ist, den
+`ListBuckets` nicht mehr nennt und dessen Löschung der Endpoint bestätigt, entfernt der
+Vollabgleich desselben Laufs.
 
 ### 3. Genau eine Betriebsart — der Vollabgleich — und ein Ereignislauf, der nie durch Abwesenheit löscht
 
@@ -57,7 +103,8 @@ Kennung, `S3ChangeMarker` das Änderungsmerkmal), `S3FullSync` liefert Wortlaut 
 gehört nicht zum Bestand. `ListingOutcome.Complete` nur, wenn jeder Bereich bis zur letzten Seite
 gelistet wurde; ein nicht listbarer Bereich (`404 NoSuchBucket`, `403 AccessDenied`) macht die
 Auflistung unvollständig, die übrigen werden verarbeitet, bereinigt wird nichts — Rechteentzug ist
-kein Löschbefund. Ein erschöpftes Anfragebudget beendet den Lauf als „unvollständig, wird
+kein Löschbefund. Das gilt auch für einen Bucket unter „Alle Buckets“, aus dem die Bibliothek
+Dokumente hält (Entscheidung 2). Ein erschöpftes Anfragebudget beendet den Lauf als „unvollständig, wird
 fortgesetzt"; der nächste Lauf listet alle Bereiche erneut (unvollendete zuerst) und spart nur die
 Downloads; der `ContinuationToken` wird nie gespeichert. Ein Lauf, der trotz erschöpftem Budget
 kein Objekt neu aufgenommen hat, meldet das als Fehler („reicht für diese Bibliothek nicht aus").

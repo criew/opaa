@@ -295,8 +295,8 @@ class PromptInChatIntegrationTest {
         .containsExactly("vermerk");
     assertThatThrownBy(
             () -> availablePromptController.listAvailablePrompts(space, callerOf(outsider)))
-        .as("the space offers its prompts only to its members")
-        .isInstanceOf(AccessDeniedException.class);
+        .as("the space offers its prompts only to its members, and is unknown to anybody else")
+        .isInstanceOf(NotFoundException.class);
   }
 
   /** A space that does not exist, or one of another organization, orders nothing: it is a 404. */

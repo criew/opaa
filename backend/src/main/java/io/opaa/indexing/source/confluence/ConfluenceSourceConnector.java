@@ -63,7 +63,14 @@ public class ConfluenceSourceConnector
   private static final String SPACES_STATE = "confluenceSpaces";
 
   private static final String SPACES_REQUIRED =
-      "sourceSettings.spaces: mindestens ein Space ist erforderlich, wenn sourceType CONFLUENCE ist";
+      "sourceSettings.spaces: mindestens ein Space ist erforderlich, wenn sourceType CONFLUENCE ist"
+          + " und allSpaces nicht gesetzt ist";
+
+  private static final String ALL_OR_SELECTION =
+      "sourceSettings.allSpaces: entweder alle Spaces oder eine Auswahl, nicht beides";
+
+  /** What {@link #settingsState} names for the scope "Alle Spaces"; no space key looks like it. */
+  private static final List<String> ALL_SPACES_STATE = List.of("*");
 
   private final ConfluenceConnectionService connectionService;
   private final SourceSyncStateRepository syncStateRepository;
@@ -141,9 +148,8 @@ public class ConfluenceSourceConnector
   public SourceSettings validate(SourceSettings requested) {
     ConfluenceSourceSettings own = ConfluenceSourceSettings.read(requested.connectorSettings());
     String normalizedUrl = validateConnection(requested, own.edition());
-    List<ConfluenceSpaceSelection> spaces =
-        own.spaces() == null ? List.of() : validateSpaces(own.spaces());
-    if (spaces.isEmpty()) {
+    List<ConfluenceSpaceSelection> spaces = scope(own);
+    if (spaces == null || (!own.all() && spaces.isEmpty())) {
       throw new ValidationException(SPACES_REQUIRED);
     }
     connectionService.requireEdition(normalizedUrl, own.edition());
@@ -151,8 +157,25 @@ public class ConfluenceSourceConnector
         .withSourceUrl(normalizedUrl)
         .withConnectorSettings(
             new ConfluenceSourceSettings(
-                    own.edition(), spaces, validateFullSyncIntervalDays(own.fullSyncIntervalDays()))
+                    own.edition(),
+                    spaces,
+                    validateFullSyncIntervalDays(own.fullSyncIntervalDays()),
+                    own.all() ? Boolean.TRUE : null)
                 .toData());
+  }
+
+  /**
+   * The selection {@code own} asks for: empty for "Alle Spaces", which no selection may accompany,
+   * {@code null} when it names neither.
+   */
+  private static List<ConfluenceSpaceSelection> scope(ConfluenceSourceSettings own) {
+    if (own.all()) {
+      if (own.spaces() != null && !own.spaces().isEmpty()) {
+        throw new ValidationException(ALL_OR_SELECTION);
+      }
+      return List.of();
+    }
+    return own.spaces() == null ? null : validateSpaces(own.spaces());
   }
 
   /**
@@ -174,8 +197,10 @@ public class ConfluenceSourceConnector
                   : "; sie bleibt bei Confluence "
                       + ConfluenceConnectionService.label(storedEdition)));
     }
-    List<ConfluenceSpaceSelection> spaces =
-        own.spaces() == null ? null : validateSpaces(own.spaces());
+    List<ConfluenceSpaceSelection> spaces = scope(own);
+    if (Boolean.FALSE.equals(own.allSpaces()) && spaces == null) {
+      throw new ValidationException(SPACES_REQUIRED);
+    }
     SourceSettings validated = requested;
     if (replacesConnection) {
       validated = requested.withSourceUrl(validateConnection(requested, storedEdition));
@@ -184,11 +209,11 @@ public class ConfluenceSourceConnector
     if (intervalDays != null && intervalDays != 0) {
       validateFullSyncIntervalDays(intervalDays);
     }
-    if (spaces == null && intervalDays == null) {
+    if (spaces == null && intervalDays == null && own.allSpaces() == null) {
       return validated.withConnectorSettings(null);
     }
     return validated.withConnectorSettings(
-        new ConfluenceSourceSettings(null, spaces, intervalDays).toData());
+        new ConfluenceSourceSettings(null, spaces, intervalDays, own.allSpaces()).toData());
   }
 
   /** The connection half: edition, address and credentials. Returns the normalised address. */
@@ -287,12 +312,16 @@ public class ConfluenceSourceConnector
     if (change.fullSyncIntervalDays() != null) {
       intervalDays = change.fullSyncIntervalDays() == 0 ? null : change.fullSyncIntervalDays();
     }
+    // a selection without the flag means the selection; the flag alone keeps or drops "Alle"
+    boolean all =
+        change.allSpaces() != null ? change.allSpaces() : change.spaces() == null && stored.all();
     store(
         library,
         new ConfluenceSourceSettings(
             stored.edition(),
-            change.spaces() != null ? change.spaces() : stored.spaceSelection(),
-            intervalDays));
+            all ? List.of() : change.spaces() != null ? change.spaces() : stored.spaceSelection(),
+            intervalDays,
+            all ? Boolean.TRUE : null));
   }
 
   /** Stores the settings with the spaces ordered by key - the order a run lists them in. */
@@ -314,7 +343,8 @@ public class ConfluenceSourceConnector
     return new ConfluenceSourceSettings(
             stored.edition(),
             stored.spaceSelection(),
-            manager ? stored.fullSyncIntervalDays() : null)
+            manager ? stored.fullSyncIntervalDays() : null,
+            stored.all() ? Boolean.TRUE : null)
         .toData();
   }
 
@@ -322,6 +352,9 @@ public class ConfluenceSourceConnector
   @Override
   public Map<String, Object> settingsState(KnowledgeLibrary library, ConnectorData storedSettings) {
     ConfluenceSourceSettings stored = readableStored(library, storedSettings);
+    if (stored != null && stored.all()) {
+      return Map.of(SPACES_STATE, ALL_SPACES_STATE);
+    }
     return Map.of(
         SPACES_STATE,
         stored == null

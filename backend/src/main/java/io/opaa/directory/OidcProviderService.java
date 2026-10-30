@@ -27,13 +27,17 @@ import io.opaa.auth.OidcProviderRemovalRepository;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.auth.OidcProvidersChangedEvent;
 import io.opaa.auth.ProviderConnectionsImpact;
+import io.opaa.auth.RecentLoginPolicy;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.directory.sync.connector.DirectoryConnectorService;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -122,6 +126,8 @@ public class OidcProviderService implements LocalAccountsSwitch {
   private final AuditEventRecorder auditEventRecorder;
   private final ApplicationEventPublisher eventPublisher;
   private final ProviderConnectionsImpact connectionsImpact;
+  private final DirectoryConnectorService directoryConnectors;
+  private final RecentLoginPolicy recentLogin;
   private final Clock clock;
 
   public OidcProviderService(
@@ -137,6 +143,8 @@ public class OidcProviderService implements LocalAccountsSwitch {
       AuditEventRecorder auditEventRecorder,
       ApplicationEventPublisher eventPublisher,
       ProviderConnectionsImpact connectionsImpact,
+      DirectoryConnectorService directoryConnectors,
+      RecentLoginPolicy recentLogin,
       Clock clock) {
     this.repository = repository;
     this.removals = removals;
@@ -150,6 +158,8 @@ public class OidcProviderService implements LocalAccountsSwitch {
     this.auditEventRecorder = auditEventRecorder;
     this.eventPublisher = eventPublisher;
     this.connectionsImpact = connectionsImpact;
+    this.directoryConnectors = directoryConnectors;
+    this.recentLogin = recentLogin;
     this.clock = clock;
   }
 
@@ -173,9 +183,16 @@ public class OidcProviderService implements LocalAccountsSwitch {
     return connectionsImpact.personsAdmitted();
   }
 
+  /**
+   * A provider with a role mapping hands out system roles through its tokens, so creating one
+   * demands a recent sign-in, like any other grant of a system role.
+   */
   @Transactional
   public OidcProvider createProvider(
       UUID organizationId, UUID actorUserId, OidcProviderDraft draft) {
+    if (!roleMappingOf(draft.claimMapping()).equals(roleMappingOf(null))) {
+      recentLogin.requireRecentLogin();
+    }
     validate(draft, null);
     OidcProvider provider =
         new OidcProvider(
@@ -244,7 +261,11 @@ public class OidcProviderService implements LocalAccountsSwitch {
    * Entscheidung 2): the identity is {@code (issuer, subject)} and there is no merging, so every
    * account of the old issuer would silently become a new, empty account on its next sign-in. The
    * comparison is byte for byte, like the token check and {@code users.issuer}: a trailing slash
-   * added or removed is an issuer change too. For the LOCAL row only the name is editable.
+   * added or removed is an issuer change too. A directory access whose admin address the issuer
+   * derives does not follow a changed issuer with its secret. For the LOCAL row only the name is
+   * editable. A change of anything that decides whose tokens are trusted or what they grant demands
+   * a recent sign-in (see {@link #trustSettingsOf}); only the display name and the display-name
+   * claim change without one.
    */
   @Transactional
   public OidcProvider updateProvider(
@@ -273,7 +294,18 @@ public class OidcProviderService implements LocalAccountsSwitch {
                 + " Issuer einen weiteren Anbieter an.");
       }
     }
+    if (!trustSettingsOf(
+            draft.issuerUri(), draft.clientId(), draft.jwkSetUri(), draft.claimMapping())
+        .equals(
+            trustSettingsOf(
+                provider.getIssuerUri(),
+                provider.getClientId(),
+                provider.getJwkSetUri(),
+                provider.getClaimMapping()))) {
+      recentLogin.requireRecentLogin();
+    }
     Map<String, Object> before = auditState(provider);
+    String previousIssuer = provider.getIssuerUri();
     provider.replaceDetails(
         draft.displayName(),
         draft.issuerUri(),
@@ -281,6 +313,10 @@ public class OidcProviderService implements LocalAccountsSwitch {
         draft.jwkSetUri(),
         draft.claimMapping());
     repository.save(provider);
+    if (!previousIssuer.equals(provider.getIssuerUri())) {
+      directoryConnectors.forgetDerivedAccessAfterIssuerChange(
+          organizationId, actorUserId, provider, previousIssuer);
+    }
     recordChange(
         organizationId,
         actorUserId,
@@ -290,6 +326,38 @@ public class OidcProviderService implements LocalAccountsSwitch {
         auditState(provider));
     eventPublisher.publishEvent(new OidcProvidersChangedEvent());
     return provider;
+  }
+
+  /** The three values that decide which system role a token of the provider grants. */
+  private static List<String> roleMappingOf(OidcClaimMapping mapping) {
+    return mapping == null
+        ? Arrays.asList(null, null, null)
+        : Arrays.asList(mapping.rolesClaim(), mapping.systemAdminRole(), mapping.auditorRole());
+  }
+
+  /**
+   * The values a stolen session could turn into an account or a right: issuer, audience and signing
+   * keys decide whose tokens count, the e-mail claim feeds the initial-administrator rule, the role
+   * mapping hands out system roles and the groups claim group memberships. Normalised as {@link
+   * OidcProvider#replaceDetails} stores them, so resending the stored values is no change.
+   */
+  private static List<String> trustSettingsOf(
+      String issuerUri, String clientId, String jwkSetUri, OidcClaimMapping mapping) {
+    OidcClaimMapping effective = mapping == null ? OidcClaimMapping.keycloakDefaults() : mapping;
+    List<String> values =
+        new ArrayList<>(
+            Arrays.asList(
+                trimmed(issuerUri),
+                trimmed(clientId),
+                jwkSetUri == null || jwkSetUri.isBlank() ? null : jwkSetUri.trim(),
+                effective.emailClaim(),
+                effective.groupsClaim()));
+    values.addAll(roleMappingOf(effective));
+    return values;
+  }
+
+  private static String trimmed(String value) {
+    return value == null ? null : value.trim();
   }
 
   private OidcProvider renameLocalRow(

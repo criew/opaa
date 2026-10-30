@@ -368,6 +368,7 @@ selbsttragender Merkmale.
 | **Anzeige (Systemverwaltung)** | Besitzer, Name, Bibliotheken, Ablauf, Zustand (gültig, abgelaufen, widerrufen, gesperrt). **Kein Nutzungsdatum, kein Personenfilter** |
 | **Keine Zählung** | Es gibt keine Anzeige, wie oft ein Token benutzt wurde, und keine Statistik darüber. Eine Zählung je Person wäre ein Tätigkeitsprofil und damit genau das, was die Mitbestimmungsfähigkeit ausschließt |
 | **Sichtbarkeit des Werts** | Genau einmal, unmittelbar nach dem Erzeugen. Danach nur noch ein Präfix zur Wiedererkennung. Kein Nachzeigen, kein Auslesen, auch nicht durch die Systemverwaltung |
+| **Ausstellung** | Nur nach frischer Anmeldung (`@RequiresRecentLogin`): Ein Token überdauert die Sitzung, aus der es entsteht, ein erneuerter Access-Token genügt deshalb nicht. Jedes erzeugte Token wird der Person per Mail mit seinem Namen gemeldet, sofern der Mailversand eingeschaltet ist und das Konto eine Adresse hat |
 
 ### Beim Erzeugen wird gesagt, was der Kanal nicht zusagt
 
@@ -413,6 +414,21 @@ wirken ihre Tokens nicht mehr. Ein Token, das die Deaktivierung überdauert, wä
 den Kontenlebenszyklus zu umgehen — dieselbe Regel gilt in
 [access-control.md](./access-control.md#offboarding) bereits für alles andere.
 
+Was alle Sitzungen eines lokalen Kontos beendet — Passwortwechsel, Rücksetzen durch Link, durch die
+Systemverwaltung oder per `OPAA_LOCAL_ADMIN_RESET`, erkannte Wiederverwendung eines erneuerten
+Refresh-Tokens —, beendet auch seine Tokens, in derselben Transaktion: Ein Token aus einer
+übernommenen Sitzung soll die Bereinigung nicht überdauern. Eine Ausstellung, die mit dieser
+Bereinigung zusammenfällt, hält die Zeile der Zugangsdaten des Kontos gesperrt, bis sie committet; die
+Bereinigung schreibt diese Zeile zuerst und sieht das neue Token deshalb, oder die Ausstellung stellt
+fest, dass ihre Sitzung schon beendet ist, und lehnt ab.
+
+Konten eines Identitätsanbieters — mit oder ohne Verzeichnisabgleich — nimmt der Kanal nur an,
+solange ihre letzte Anmeldung nicht älter ist als `opaa.external-access.provider-sign-in-max-age-days`
+(Vorgabe 30 Tage). Eine Deaktivierung beim Anbieter und Gruppen aus dem Anmeldetoken erfährt OPAA ohne
+Verzeichnisabgleich nur bei einer Anmeldung; die Frist begrenzt, wie lange ein Token sie überdauert.
+Danach ruht das Token (`sign_in_required`) und wirkt mit der nächsten Anmeldung wieder; ein Aufruf mit
+dem Token selbst zählt nicht als Anmeldung.
+
 **Der Regelfall ist der Ablauf, nicht der Widerruf.** Bei einer Höchstlaufzeit von 90 Tagen
 (Vorgabewert der Obergrenze) endet die überwiegende Mehrheit aller Tokens still. Ein Zugang, der ohne Eintrag endet, ist im Nachweis
 dieselbe Lücke wie einer, der ohne Eintrag beginnt — deshalb erzeugt auch das Außerkrafttreten einen
@@ -451,9 +467,11 @@ Gebaut sind Modell und Schema (`external_access_tokens` samt der unveränderlich
 benutzt", der Widerruf durch die Person, die Verwaltungsliste ohne Nutzungsdatum und ohne
 Personenfilter, die beiden Sperren der Systemverwaltung, der Authentifizierungsfilter samt eigener
 Filterkette, die Erinnerungsmail 14 und 3 Tage vor dem Ablauf, das Außerkrafttreten mit
-Protokolleintrag — sowohl beim Ablauf als auch beim Kontenlebenszyklus: Sperre eines Kontos und
-abgeschlossene Übergabe an eine Anbieteridentität setzen die Tokens der Person in derselben
-Transaktion außer Kraft — und die an die Protokollfrist gekoppelte Löschfrist.
+Protokolleintrag — sowohl beim Ablauf als auch beim Kontenlebenszyklus: Sperre eines Kontos,
+abgeschlossene Übergabe an eine Anbieteridentität, Passwortwechsel, Rücksetzen und erkannte
+Refresh-Wiederverwendung setzen die Tokens der Person in derselben Transaktion außer Kraft — und die
+an die Protokollfrist gekoppelte Löschfrist. Ausstellung nur nach frischer Anmeldung mit Mail an die
+Person (#3355), Ruhen bei zu alter Anmeldung über einen Identitätsanbieter (#3355).
 
 Schalter, Netzbereich und Höchstlaufzeit kommen aus den Kanaleinstellungen
 ([#1717](https://github.com/criew/opaa/issues/1717)) und werden **je Aufruf** gelesen: Ist der

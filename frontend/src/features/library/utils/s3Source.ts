@@ -15,6 +15,8 @@ export type S3Settings = {
   region?: string | null
   pathStyle?: boolean
   scopes: S3ScopeRef[]
+  /** Every bucket the key may list, resolved anew by each run; `scopes` is empty then. */
+  allBuckets?: boolean | null
   includePatterns?: string[] | null
   excludePatterns?: string[] | null
 }
@@ -52,6 +54,8 @@ export interface S3SourceValues {
   accessKey: string
   secretKey: string
   sessionToken: string
+  /** „Alle Buckets“; needs s3:ListAllMyBuckets, without it the form falls back to a selection. */
+  allBuckets: boolean
   scopes: S3ScopeInput[]
   includePatterns: string
   excludePatterns: string
@@ -86,6 +90,7 @@ export const EMPTY_S3_VALUES: S3SourceValues = {
   accessKey: '',
   secretKey: '',
   sessionToken: '',
+  allBuckets: true,
   scopes: [{ bucket: '', prefix: '' }],
   includePatterns: '',
   excludePatterns: '',
@@ -192,7 +197,7 @@ export function s3SettingsOf(values: S3SourceValues): S3Settings {
   return {
     region: region || null,
     pathStyle: values.pathStyle,
-    scopes,
+    ...(values.allBuckets ? { allBuckets: true, scopes: [] } : { scopes }),
     includePatterns: s3PatternsOf(values.includePatterns),
     excludePatterns: s3PatternsOf(values.excludePatterns),
   }
@@ -226,6 +231,7 @@ export function s3ValuesFromSettings(
     sourceUrl: url,
     region: settings?.region ?? '',
     pathStyle: settings?.pathStyle ?? true,
+    allBuckets: settings?.allBuckets === true,
     scopes:
       settings?.scopes && settings.scopes.length > 0
         ? settings.scopes.map((scope) => ({ bucket: scope.bucket, prefix: scope.prefix ?? '' }))
@@ -322,11 +328,13 @@ export function s3ValuesIssue(
       )
     }
   }
-  const rows = values.scopes
-    .map((scope, row) => ({ scope, row }))
-    .filter(({ scope }) => scope.bucket.trim() !== '' || scope.prefix.trim() !== '')
+  const rows = values.allBuckets
+    ? []
+    : values.scopes
+        .map((scope, row) => ({ scope, row }))
+        .filter(({ scope }) => scope.bucket.trim() !== '' || scope.prefix.trim() !== '')
   const scopes = rows.map(({ scope }) => scope)
-  if (scopes.length === 0) {
+  if (!values.allBuckets && scopes.length === 0) {
     return issueAt('scopes.0.bucket', 'Bitte mindestens einen Geltungsbereich (Bucket) angeben')
   }
   if (scopes.length > MAX_S3_SCOPES) {

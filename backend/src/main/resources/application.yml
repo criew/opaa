@@ -99,16 +99,9 @@ spring:
     model:
       chat: openai
       embedding: none
-    # The base URL has a default: locally operated models are the default
-    # (docs/features/llm-integration.md#eigene-modelle-zuerst). The profile-specific overrides below
-    # point at the local Ollama server (docker: the "ollama" service name; local/default:
-    # localhost). A real vendor's endpoint has to be stated explicitly by overriding the variables
-    # below; nothing here silently reaches outside the organisation, because the default itself
-    # stays local. Ollama needs no access key at all, so the placeholder default below is never sent
-    # anywhere that checks it.
+    # The shared model address and key exist in the dev mode only, see the "dev" document below:
+    # every other mode gets its models from the installation (ADR-0060).
     openai:
-      api-key: ${OPAA_OPENAI_API_KEY:sk-placeholder}
-      base-url: ${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}
       embedding:
         # Per embedding call; a batch of bge-m3 on CPU takes well over a minute. Address, model, key
         # and input limit are no configuration: they belong to the installed embedding model.
@@ -533,8 +526,8 @@ opaa:
       max-text-characters: ${OPAA_INDEXING_ODF_MAX_TEXT_CHARACTERS:10000000}
     # DoS-hardening limits for the structure formats (PDF, DOCX, PPTX, XLSX/CSV, HTML, Markdown),
     # see ParserLimitProperties: text per document, the unpacked XML of an OOXML package and the
-    # content-stream operators, decoded content bytes (per document and per stream) and reading
-    # time of a PDF.
+    # content-stream operators, decoded content bytes (per document and per stream), reading
+    # time, pages and objects of a PDF.
     parser-limits:
       max-text-characters: ${OPAA_INDEXING_PARSER_LIMITS_MAX_TEXT_CHARACTERS:10000000}
       max-ooxml-part-bytes: ${OPAA_INDEXING_PARSER_LIMITS_MAX_OOXML_PART_BYTES:33554432}
@@ -543,6 +536,8 @@ opaa:
       max-pdf-content-bytes: ${OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_CONTENT_BYTES:536870912}
       max-pdf-stream-bytes: ${OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_STREAM_BYTES:33554432}
       max-pdf-parse-seconds: ${OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_PARSE_SECONDS:120}
+      max-pdf-pages: ${OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_PAGES:10000}
+      max-pdf-objects: ${OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_OBJECTS:1000000}
     # ADR-0018 Entscheidung 6: own opaa.indexing.filesystem.* property block, own binding prefix
     # (FilesystemProperties), mirroring crawl/tabular/mail/odf above. allowlist: absolute base
     # directories a FILESYSTEM library's sourcePath must resolve underneath. No default on purpose -
@@ -557,6 +552,9 @@ opaa:
       max-depth: ${OPAA_INDEXING_ATTACHMENTS_MAX_DEPTH:5}
       max-per-parent: ${OPAA_INDEXING_ATTACHMENTS_MAX_PER_PARENT:10}
       max-size-bytes: ${OPAA_INDEXING_ATTACHMENTS_MAX_SIZE_BYTES:20971520}
+      # budget of one root document over all levels of nesting together
+      max-per-root: ${OPAA_INDEXING_ATTACHMENTS_MAX_PER_ROOT:500}
+      max-bytes-per-root: ${OPAA_INDEXING_ATTACHMENTS_MAX_BYTES_PER_ROOT:1073741824}
     # SSRF hardening for HTTP_DIRECTORY/RSS_FEED fetches - see
     # io.opaa.security.TargetAddressValidator.
     target-validation:
@@ -584,7 +582,8 @@ opaa:
         enabled: ${OPAA_UPLOAD_S3_TARGET_VALIDATION_ENABLED:true}
         allowlist: ${OPAA_UPLOAD_S3_TARGET_VALIDATION_ALLOWLIST:}
     max-file-size: ${OPAA_UPLOAD_MAX_FILE_SIZE:52428800}
-    # Own pool, deliberately not opaa.indexing.thread-pool - see UploadProperties#threadPool.
+    # Own pool, deliberately not opaa.indexing.thread-pool - see UploadProperties#threadPool. An
+    # upload takes a place (max-size plus queue-capacity) before it is stored; a full pool is a 429.
     thread-pool:
       core-size: ${OPAA_UPLOAD_THREAD_POOL_CORE_SIZE:2}
       max-size: ${OPAA_UPLOAD_THREAD_POOL_MAX_SIZE:4}
@@ -603,6 +602,9 @@ opaa:
     # Longest admissible Befristung of a library's release for Fremdzugaenge. How many days before
     # it ends the responsible person is reminded is a setting of the external AI tools.
     max-release-days: ${OPAA_EXTERNAL_ACCESS_MAX_RELEASE_DAYS:365}
+    # Days the last sign-in of an account of an identity provider may lie back for its access tokens
+    # to work; deactivation and groups at the provider reach OPAA only with a sign-in.
+    provider-sign-in-max-age-days: ${OPAA_EXTERNAL_ACCESS_PROVIDER_SIGN_IN_MAX_AGE_DAYS:30}
   documents:
     # The synchronous remote-content proxy path (GET /api/v1/documents/{documentId}/content for an
     # HTTP_DIRECTORY/RSS_FEED document) has its own, smaller bound, a short timeout per hop and a
@@ -627,14 +629,15 @@ opaa:
     # profile warns about at start-up. Serves the rate limits and OPAA_LOCAL_ADMIN_ALLOWED_CIDRS
     # alike; a wildcard (0.0.0.0/0, ::/0) refuses the start.
     trusted-proxy-cidrs: ${OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS:}
-    # query to search: max-requests per client, global-max-requests across all clients; past
-    # either the answer is 429. Both count only requests the security chain authenticated (the push
-    # intake: its handler), so strangers cannot use them up; see RateLimitFilter.Counting.
-    # max-requests-per-account (query, chat-search, search) counts per signed-in account, per access
-    # token and per person over all her access tokens, whatever address they use; checked behind the
-    # security chain, 0 switches it off, an empty value fails the start. An access token gives back
-    # its address token; any 429 of a later limit that refuses before the actual work (the token
-    # quota, the busy answer of the attachment extraction) gives back the global token.
+    # query to document-upload: max-requests per client, global-max-requests across all clients;
+    # past either the answer is 429. Both count only requests the security chain authenticated (the
+    # push intake: its handler), so strangers cannot use them up; see RateLimitFilter.Counting.
+    # max-requests-per-account (query, chat-search, search, transcription, document-upload) counts
+    # per signed-in account, per access token and per person over all her access tokens, whatever
+    # address they use; checked behind the security chain, 0 switches it off, an empty value fails
+    # the start. An access token gives back its address token; any 429 of a later limit that
+    # refuses before the actual work (the token quota, the busy answer of the attachment
+    # extraction) gives back the global token.
     query:
       max-requests: ${OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS:10}
       window-seconds: ${OPAA_RATE_LIMIT_QUERY_WINDOW_SECONDS:60}
@@ -688,11 +691,27 @@ opaa:
       window-seconds: ${OPAA_RATE_LIMIT_SEARCH_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_SEARCH_GLOBAL_MAX_REQUESTS:300}
       max-requests-per-account: ${OPAA_RATE_LIMIT_SEARCH_MAX_REQUESTS_PER_ACCOUNT:30}
+    # POST /api/v1/transcriptions holds a transcription slot and calls the transcription model for
+    # every recording; sized like the query, a dictated question each few seconds.
+    transcription:
+      max-requests: ${OPAA_RATE_LIMIT_TRANSCRIPTION_MAX_REQUESTS:10}
+      window-seconds: ${OPAA_RATE_LIMIT_TRANSCRIPTION_WINDOW_SECONDS:60}
+      global-max-requests: ${OPAA_RATE_LIMIT_TRANSCRIPTION_GLOBAL_MAX_REQUESTS:100}
+      max-requests-per-account: ${OPAA_RATE_LIMIT_TRANSCRIPTION_MAX_REQUESTS_PER_ACCOUNT:10}
+    # POST /api/v1/libraries/{libraryId}/documents, one budget across all libraries (GET on the same
+    # path is not counted). It bounds how fast one account sends uploads; a full upload pool
+    # (opaa.upload.thread-pool) is answered with 429 on its own, before anything is stored. Either
+    # way the browser waits for Retry-After and goes on with the same file.
+    document-upload:
+      max-requests: ${OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_MAX_REQUESTS:120}
+      window-seconds: ${OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_WINDOW_SECONDS:60}
+      global-max-requests: ${OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_GLOBAL_MAX_REQUESTS:600}
+      max-requests-per-account: ${OPAA_RATE_LIMIT_DOCUMENT_UPLOAD_MAX_REQUESTS_PER_ACCOUNT:60}
     # ADR-0033, Entscheidung 9: the local sign-in and its self-service endpoints. login, refresh,
-    # register, forgot-password, set-password and verify-email are keyed by client address in
-    # RateLimitFilter; change-password by the authenticated account, register and forgot-password
-    # additionally by the (hashed) e-mail address they name - both in
-    # io.opaa.account.LocalAuthRateLimiter. The global ceilings of login, register and
+    # register, forgot-password, set-password and verify-email (the confirm-registration endpoint)
+    # are keyed by client address in RateLimitFilter; change-password by the authenticated
+    # account, register and forgot-password additionally by the (hashed) e-mail address they name -
+    # both in io.opaa.account.LocalAuthRateLimiter. The global ceilings of login, register and
     # forgot-password count every attempt, failed ones included, and are the operator's early
     # warning against distributed credential stuffing: past one the answer is 429 for every client,
     # with a WARN line and a metric.
@@ -822,6 +841,9 @@ management:
           include: readinessState,db
 
 logging:
+  # The stack trace of the plain-text log with every exception message unable to forge an entry;
+  # the conversion word is registered by io.opaa.observability.SafeLogMessages.
+  exception-conversion-word: "%opaaEx"
   level:
     org.hibernate.orm.connections.pooling: WARN
     # The SDK's SigV4 signer logs the canonical request at DEBUG - session token included - and the
@@ -849,9 +871,8 @@ spring:
   config:
     activate:
       on-profile: local
-  # No override needed: the top-level defaults above already point at localhost, the correct
-  # target for this profile. This section exists only so the "local" profile documents the same
-  # explicit choice the "docker" profile below makes for its own target.
+  # No override needed: the "dev" document below already points the model address at localhost,
+  # the correct target for this profile.
 
 ---
 spring:
@@ -860,9 +881,6 @@ spring:
       on-profile: docker
   datasource:
     url: ${OPAA_DB_URL:jdbc:postgresql://postgres:5432/opaa?prepareThreshold=0}
-  ai:
-    openai:
-      base-url: ${OPAA_OPENAI_BASE_URL:http://ollama:11434/v1}
 
 ---
 spring:
@@ -888,6 +906,14 @@ spring:
   config:
     activate:
       on-profile: dev
+  ai:
+    # The address and key of the chat and embedding model the dev mode installs itself with
+    # (InstallationService, DevelopmentEmbeddingConfiguration): a locally operated Ollama server,
+    # which needs no key, so the placeholder is never sent anywhere that checks it. Any other mode
+    # reads neither; io.opaa.config.RetiredSettingVariables names the variables there.
+    openai:
+      api-key: ${OPAA_OPENAI_API_KEY:sk-placeholder}
+      base-url: ${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}
 
 opaa:
   audit:
@@ -948,3 +974,14 @@ opaa:
       # OPAA_SETTINGS_ENCRYPTION_KEY itself before storing a model's API key - see
       # docs/handbuch/betrieb/modelle.md.
       encryption-key: ${OPAA_SETTINGS_ENCRYPTION_KEY:c2V0dGluZ3NkZXZrZXkwMHNldHRpbmdzZGV2a2V5MDE=}
+
+---
+# The dev mode of the Compose stack: its optional "ollama" service instead of localhost. After the
+# "dev" document, since the later document wins.
+spring:
+  config:
+    activate:
+      on-profile: docker & dev
+  ai:
+    openai:
+      base-url: ${OPAA_OPENAI_BASE_URL:http://ollama:11434/v1}

@@ -21,6 +21,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.knowledge.SourceType;
 import io.opaa.sourceaccess.FilesystemPathAllowlist;
+import io.opaa.sourceaccess.LoggedName;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -165,14 +166,15 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
 
     ReconcilingAttachmentAccess attachmentAccess = run.attachmentAccess();
     var folderMirror = new SourceFolderMirror(folderService, targetLibrary);
+    LoggedName names = targetLibrary.loggedNames();
 
     for (Path file : files) {
       String fileName = file.getFileName().toString();
       String filePath = file.toAbsolutePath().toString();
       run.markPresent(filePath);
       try {
-        log.info("Processing: {}", fileName);
-        UUID folderId = materializeFolder(documentDir, file, folderMirror);
+        log.info("Processing: {}", names.of(fileName));
+        UUID folderId = materializeFolder(documentDir, file, folderMirror, names);
         folderMirror.markSeen(folderId);
         DocumentIngestResult result =
             documentIngestService.ingest(
@@ -180,7 +182,7 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
                 attachmentAccess);
         if (run.recordOutcome(result, fileName)) {
           run.markReprocessed(filePath);
-          log.info("Indexing completed: {}", fileName);
+          log.info("Indexing completed: {}", names.of(fileName));
         }
       } catch (Exception e) {
         IndexingRun.rethrowRunEnding(e);
@@ -221,13 +223,14 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
    *     {@code file} unexpectedly does not sit under {@code documentDir} at all, or when a
    *     directory name cannot be a folder row ({@link SourceFolderPath#rejects})
    */
-  private UUID materializeFolder(Path documentDir, Path file, SourceFolderMirror folderMirror) {
+  private UUID materializeFolder(
+      Path documentDir, Path file, SourceFolderMirror folderMirror, LoggedName names) {
     Path normalizedFile = file.toAbsolutePath().normalize();
     if (!normalizedFile.startsWith(documentDir)) {
       log.warn(
           "File {} does not sit under its library's sourcePath {} after normalization - leaving"
               + " it at the library root",
-          normalizedFile,
+          names.of(normalizedFile),
           documentDir);
       return null;
     }
@@ -245,8 +248,8 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
       log.warn(
           "Cannot map directory segment \"{}\" of {} to a folder name - leaving the document at"
               + " the library root",
-          path.rejectedSegment(),
-          normalizedFile);
+          names.of(path.rejectedSegment()),
+          names.of(normalizedFile));
       return null;
     }
     return folderMirror.folderFor(path.segments());

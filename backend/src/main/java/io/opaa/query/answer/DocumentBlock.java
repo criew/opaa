@@ -12,7 +12,7 @@ import org.springframework.ai.document.Document;
  * name - is cleaned first, so no passage can close the block, open a section, forge a head line or
  * a citation marker, or smuggle a role token or an invisible character into the prompt.
  */
-final class DocumentBlock {
+public final class DocumentBlock {
 
   static final ContentFence BLOCK = ContentFence.of("opaadokumente");
   static final ContentFence SECTION = ContentFence.of("opaaabschnitt");
@@ -53,12 +53,12 @@ final class DocumentBlock {
   private DocumentBlock() {}
 
   /** A fresh id for the block of one request. */
-  static String newId() {
+  public static String newId() {
     return ContentFence.newId();
   }
 
   /** The block over {@code chunks}, in their order; an empty list gives an empty block. */
-  static String render(String id, List<Document> chunks) {
+  public static String render(String id, List<Document> chunks) {
     String sections =
         chunks.stream().map(chunk -> section(id, chunk)).collect(Collectors.joining("\n\n"));
     return BLOCK.open(id) + "\n" + (sections.isEmpty() ? "" : sections + "\n") + BLOCK.close(id);

@@ -398,14 +398,15 @@ services:
 
   # Optional locally-run Ollama service: entirely opt-in via the "ollama" Compose profile,
   # started with `docker compose --profile ollama up`. Without the profile, this service does not
-  # exist and the stack behaves exactly as before - the backend's own defaults still assume a
-  # reachable Ollama server (application.yml, "docker" profile: OPAA_OPENAI_BASE_URL defaults to
-  # http://ollama:11434/v1), see docs/handbuch/betrieb/modelle.md, section "LLM-Anbieter", for the
+  # exist. In the dev mode (SPRING_PROFILES_ACTIVE=docker,dev) the backend's own defaults assume a
+  # reachable Ollama server (application.yml, profile "docker & dev": OPAA_OPENAI_BASE_URL defaults
+  # to http://ollama:11434/v1), see docs/handbuch/betrieb/modelle.md, section "LLM-Anbieter", for the
   # alternatives (an external Ollama, host.docker.internal, or a different openai-compatible
-  # provider).
+  # provider). In the operating mode "oidc" the installation names the model addresses, for this
+  # service http://ollama:11434/v1.
   #
   # Serves both chat and embedding through Ollama's own OpenAI-compatible /v1 endpoint - no
-  # provider-specific configuration exists, so activating this profile needs no
+  # provider-specific configuration exists, so in the dev mode activating this profile needs no
   # environment variable changes at all: the application defaults already point here.
   ollama:
     image: ollama/ollama:0.40.6

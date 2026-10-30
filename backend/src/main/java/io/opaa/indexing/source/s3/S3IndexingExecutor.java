@@ -6,6 +6,7 @@ import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.run.IndexingRun;
 import io.opaa.indexing.run.IndexingRunTemplate;
+import io.opaa.indexing.run.ResolvedScopes;
 import io.opaa.indexing.spi.ConnectorData;
 import io.opaa.indexing.spi.IndexingRunFailedException;
 import io.opaa.indexing.spi.ListingOutcome;
@@ -21,8 +22,12 @@ import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Connection;
 import io.opaa.s3.S3Credentials;
 import java.time.Clock;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +45,14 @@ import org.springframework.scheduling.annotation.Async;
 public class S3IndexingExecutor implements SourceIndexingExecutor {
 
   private static final Logger log = LoggerFactory.getLogger(S3IndexingExecutor.class);
+
+  static final String NO_VISIBLE_BUCKET =
+      "Der Zugang sieht keinen Bucket; der Umfang „Alle Buckets“ ist leer. Der Bestand bleibt"
+          + " unverändert.";
+
+  static final String NO_READABLE_EVENT_BUCKET =
+      "Ereignislauf: Keiner der gemeldeten Buckets ist für die Bibliothek lesbar - nichts zu"
+          + " prüfen.";
 
   private final S3ClientFactory clientFactory;
   private final S3Properties properties;
@@ -131,7 +144,17 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
         targetLibrary,
         IndexingRunMode.EVENT,
         this,
-        run -> withStore(run, sync -> sync.refresh(references, dropped)));
+        run -> withStore(run, bucketsOf(references), sync -> sync.refresh(references, dropped)));
+  }
+
+  /** The buckets {@code references} ({@code bucket/key}) name. */
+  private static Set<String> bucketsOf(Set<String> references) {
+    Set<String> buckets = new TreeSet<>();
+    for (String reference : references) {
+      int slash = reference.indexOf('/');
+      buckets.add(slash < 0 ? reference : reference.substring(0, slash));
+    }
+    return buckets;
   }
 
   /** One run body over the open store and sync. */
@@ -146,10 +169,14 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
    * German sentence, before any object is touched.
    */
   ListingOutcome indexScopes(IndexingRun run) throws InterruptedException {
-    return withStore(run, S3FullSync::run);
+    return withStore(run, null, S3FullSync::run);
   }
 
-  private ListingOutcome withStore(IndexingRun run, SyncBody body) throws InterruptedException {
+  /**
+   * @param eventBuckets the buckets an event run's keys name, {@code null} for the full sync
+   */
+  private ListingOutcome withStore(IndexingRun run, Set<String> eventBuckets, SyncBody body)
+      throws InterruptedException {
     KnowledgeLibrary library = run.library();
     S3SourceSettings settings = S3SourceSettingsJson.of(run.settings().connectorSettings());
     S3Connection connection;
@@ -171,7 +198,36 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
     run.recordRequestCost(store.meter());
     UUID libraryId = library.getId();
     SourceSyncState state = journal.load(libraryId);
-    try (S3FileStore fileStore = new S3FileStore(store, settings);
+    Map<String, String> withheld = Map.of();
+    if (settings.allBuckets()) {
+      try {
+        S3AllBuckets.Resolution resolution =
+            resolveAllBuckets(run, store, connection, settings, eventBuckets);
+        if (eventBuckets == null) {
+          Map<String, String> names = new LinkedHashMap<>();
+          resolution.inScope().forEach(bucket -> names.put(bucket, bucket));
+          ResolvedScopes.note(run, state, names, resolution.outside(), "Bucket", "Buckets");
+          state = journal.save(run.jobId(), state);
+          withheld = new LinkedHashMap<>();
+          for (Map.Entry<String, String> entry : resolution.withheld().entrySet()) {
+            withheld.put(
+                entry.getKey(), S3AllBuckets.withheldMessage(entry.getKey(), entry.getValue()));
+          }
+          settings = settings.resolvedTo(resolution.inScope());
+        } else if (resolution.readable().isEmpty()) {
+          // stored "Alle Buckets" settings without scopes would admit any bucket
+          store.close();
+          run.events().recordRunNote(IndexingEventCategory.SUMMARY, NO_READABLE_EVENT_BUCKET);
+          return ListingOutcome.partial();
+        } else {
+          settings = settings.resolvedTo(resolution.readable());
+        }
+      } catch (RuntimeException | InterruptedException e) {
+        store.close();
+        throw e;
+      }
+    }
+    try (S3FileStore fileStore = new S3FileStore(store, settings, withheld);
         S3FullSync sync =
             new S3FullSync(
                 run,
@@ -187,6 +243,90 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
                 supportedFormats)) {
       return body.run(sync);
     }
+  }
+
+  /**
+   * "Alle Buckets" as this run finds it ({@link S3AllBuckets}): every bucket of the connection's
+   * region the key may list, plus those it cannot read but the library holds documents from. An
+   * event run probes only {@code eventBuckets} and leaves the remembered resolution alone. A key
+   * without {@code s3:ListAllMyBuckets} or a full resolution without any readable bucket fails the
+   * run before any object is touched, so nothing indexed is removed.
+   */
+  private S3AllBuckets.Resolution resolveAllBuckets(
+      IndexingRun run,
+      S3ObjectStore store,
+      S3Connection connection,
+      S3SourceSettings settings,
+      Set<String> eventBuckets)
+      throws InterruptedException {
+    S3BucketListing listing;
+    try {
+      listing = store.listBuckets();
+    } catch (S3AccessException e) {
+      throw accessFailure(run, e);
+    }
+    if (!(listing instanceof S3BucketListing.Listed listed)) {
+      throw new IndexingRunFailedException(S3SourceConnector.ALL_BUCKETS_NOT_LISTABLE);
+    }
+    if (listed.names().isEmpty()) {
+      throw new IndexingRunFailedException(NO_VISIBLE_BUCKET);
+    }
+    if (eventBuckets != null) {
+      listed =
+          new S3BucketListing.Listed(
+              listed.names().stream().filter(eventBuckets::contains).toList(), listed.regions());
+    }
+    // an event run reads only readable buckets, so it needs no stock
+    Set<String> held =
+        eventBuckets == null
+            ? validBuckets(documentRepository.findS3BucketsByLibraryId(run.library().getId()))
+            : Set.of();
+    S3AllBuckets.Resolution resolution;
+    try {
+      clientFactory.validateTargets(
+          connection, settings.resolvedTo(List.copyOf(validBuckets(listed.names()))).scopes());
+      // a held bucket the listing no longer names may have no address left; that never fails the
+      // run
+      resolution =
+          S3AllBuckets.resolve(
+              store,
+              listed,
+              settings.effectiveRegion(),
+              held,
+              bucket ->
+                  clientFactory.validateTargets(
+                      connection, settings.resolvedTo(List.of(bucket)).scopes()),
+              () -> false);
+    } catch (S3AccessException e) {
+      throw accessFailure(run, e);
+    }
+    if (eventBuckets == null && resolution.readable().isEmpty()) {
+      throw new IndexingRunFailedException(noReadableBucket(resolution));
+    }
+    return resolution;
+  }
+
+  /** The names that are bucket names at all, in name order; the others never get a request. */
+  private static Set<String> validBuckets(Collection<String> names) {
+    Set<String> buckets = new TreeSet<>();
+    for (String name : new TreeSet<>(names)) {
+      try {
+        buckets.add(S3Scope.validateBucket(name));
+      } catch (S3Scope.InvalidS3ScopeException e) {
+        // left out with its reason by S3AllBuckets
+      }
+    }
+    return buckets;
+  }
+
+  /** The run's failure when the key sees buckets but the library may read none of them. */
+  static String noReadableBucket(S3AllBuckets.Resolution resolution) {
+    int count = resolution.seen();
+    return "Der Zugang sieht "
+        + (count == 1 ? "1 Bucket" : count + " Buckets")
+        + ", aber keinen davon kann die Bibliothek lesen: "
+        + resolution.unreadableNamed()
+        + ". Der Bestand bleibt unverändert.";
   }
 
   private static IndexingRunFailedException accessFailure(IndexingRun run, S3AccessException e) {

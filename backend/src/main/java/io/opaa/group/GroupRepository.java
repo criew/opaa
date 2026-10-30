@@ -81,8 +81,8 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
    * authenticated member of the organization, so it is never allowed to load the whole organization
    * - the same deliberate bound {@code UserRepository#searchByOrganizationId} carries. {@code
    * pattern} arrives ready to bind, with {@code %}, {@code _} and the escape character itself
-   * already neutralised by {@code GroupService#likePattern}; without that, a query of two percent
-   * signs would match every row of the organization.
+   * already neutralised by {@link io.opaa.common.LikePatterns}; without that, a query of two
+   * percent signs would match every row of the organization.
    */
   @Query(
       "select g from Group g where g.organizationId = :organizationId"

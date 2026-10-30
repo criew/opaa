@@ -14,7 +14,8 @@ import type { LocalUserResponse } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { useUserAdminStore } from '../stores/userAdminStore'
-import { localUserErrorMessage } from './localUserLabels'
+import { useRecentLoginGate } from '@/shared/session/useRecentLoginGate'
+import { PRIVILEGED_CONFIRM_PURPOSE, localUserErrorMessage } from './localUserLabels'
 
 /** The same limit the creation reason has - and the same purpose binding (ADR-0033, E. 11). */
 const REASON_MAX_LENGTH = 200
@@ -66,17 +67,19 @@ export default function HandoverDialog({
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const gate = useRecentLoginGate(PRIVILEGED_CONFIRM_PURPOSE)
 
   if (!target) return null
   const { user } = target
   const reasonTooLong = reason.trim().length > REASON_MAX_LENGTH
   const canSubmit = providerId !== '' && reason.trim().length > 0 && !reasonTooLong && !busy
 
-  async function submit() {
+  async function submit(afterConfirmation = false) {
     setBusy(true)
     setError(null)
     try {
       const result = await requestHandover(user.id, providerId, reason)
+      gate.settled()
       if (result.handoverUrl) {
         onLinkDisplayed(user, result.handoverUrl)
       } else {
@@ -84,84 +87,92 @@ export default function HandoverDialog({
       }
       onClose()
     } catch (err) {
-      setError(localUserErrorMessage(err, 'Die Übergabe konnte nicht angestoßen werden.'))
+      const refused = gate.refusal(err, () => void submit(true), afterConfirmation)
+      if (refused === null) {
+        setError(localUserErrorMessage(err, 'Die Übergabe konnte nicht angestoßen werden.'))
+      } else if (refused) {
+        setError(refused)
+      }
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <Dialog open fullWidth maxWidth="sm" onClose={onClose} aria-labelledby="handover-title">
-      <DialogTitle id="handover-title">An Identitätsanbieter übergeben</DialogTitle>
-      <DialogContent>
-        <Typography sx={{ fontSize: 13.5, mb: 1.5 }}>
-          Für „{user.displayName}“ ({user.email})
-        </Typography>
-        <Typography sx={{ fontSize: 13.5, mb: 1 }}>{HANDOVER_EXPLANATION}</Typography>
-        <Typography component="h3" sx={{ fontSize: 13.5, fontWeight: 600, mb: 0.5 }}>
-          So läuft es ab
-        </Typography>
-        <Box component="ol" sx={{ m: 0, mb: 2, pl: 2.5, fontSize: 13.5 }}>
-          {HANDOVER_STEPS.map((step) => (
-            <Box component="li" key={step} sx={{ mb: 0.25 }}>
-              {step}
-            </Box>
-          ))}
-        </Box>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-        {providers.length === 0 ? (
-          <Alert severity="warning">
-            Diese Installation hat keinen aktivierten Identitätsanbieter. Richten Sie zuerst einen
-            ein — ohne ihn gibt es keine Identität, an die ein Konto übergeben werden könnte.
-          </Alert>
-        ) : (
-          <Stack spacing={2}>
-            <TextField
-              select
-              required
-              fullWidth
-              label="Identitätsanbieter"
-              value={providerId}
-              onChange={(e) => setProviderId(e.target.value)}
-              helperText="Bei diesem Anbieter meldet sich die Person an, um die Übergabe abzuschließen."
-            >
-              {providers.map((provider) => (
-                <MenuItem key={provider.id} value={provider.id}>
-                  {provider.displayName}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              required
-              fullWidth
-              multiline
-              minRows={2}
-              label="Anlass"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              error={reasonTooLong}
-              helperText={
-                reasonTooLong
-                  ? `Höchstens ${REASON_MAX_LENGTH} Zeichen sind erlaubt.`
-                  : REASON_HELPER
-              }
-            />
-            <Alert severity="warning">{HANDOVER_CONSEQUENCE}</Alert>
-          </Stack>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={busy}>
-          Abbrechen
-        </Button>
-        <Button variant="contained" onClick={() => void submit()} disabled={!canSubmit}>
-          An Identitätsanbieter übergeben
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <>
+      <Dialog open fullWidth maxWidth="sm" onClose={onClose} aria-labelledby="handover-title">
+        <DialogTitle id="handover-title">An Identitätsanbieter übergeben</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ fontSize: 13.5, mb: 1.5 }}>
+            Für „{user.displayName}“ ({user.email})
+          </Typography>
+          <Typography sx={{ fontSize: 13.5, mb: 1 }}>{HANDOVER_EXPLANATION}</Typography>
+          <Typography component="h3" sx={{ fontSize: 13.5, fontWeight: 600, mb: 0.5 }}>
+            So läuft es ab
+          </Typography>
+          <Box component="ol" sx={{ m: 0, mb: 2, pl: 2.5, fontSize: 13.5 }}>
+            {HANDOVER_STEPS.map((step) => (
+              <Box component="li" key={step} sx={{ mb: 0.25 }}>
+                {step}
+              </Box>
+            ))}
+          </Box>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+          {providers.length === 0 ? (
+            <Alert severity="warning">
+              Diese Installation hat keinen aktivierten Identitätsanbieter. Richten Sie zuerst einen
+              ein — ohne ihn gibt es keine Identität, an die ein Konto übergeben werden könnte.
+            </Alert>
+          ) : (
+            <Stack spacing={2}>
+              <TextField
+                select
+                required
+                fullWidth
+                label="Identitätsanbieter"
+                value={providerId}
+                onChange={(e) => setProviderId(e.target.value)}
+                helperText="Bei diesem Anbieter meldet sich die Person an, um die Übergabe abzuschließen."
+              >
+                {providers.map((provider) => (
+                  <MenuItem key={provider.id} value={provider.id}>
+                    {provider.displayName}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                required
+                fullWidth
+                multiline
+                minRows={2}
+                label="Anlass"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                error={reasonTooLong}
+                helperText={
+                  reasonTooLong
+                    ? `Höchstens ${REASON_MAX_LENGTH} Zeichen sind erlaubt.`
+                    : REASON_HELPER
+                }
+              />
+              <Alert severity="warning">{HANDOVER_CONSEQUENCE}</Alert>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose} disabled={busy}>
+            Abbrechen
+          </Button>
+          <Button variant="contained" onClick={() => void submit()} disabled={!canSubmit}>
+            An Identitätsanbieter übergeben
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {gate.dialog}
+    </>
   )
 }

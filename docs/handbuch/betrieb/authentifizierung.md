@@ -212,7 +212,9 @@ den Rollen-Claim.
 - Ein **Rollen-Claim** (Pfad in Punktnotation, etwa `realm_access.roles`, mit den Werten für
   `SYSTEM_ADMIN` und `AUDITOR`) macht den Anbieter für diese Systemrollen führend: Die Rolle kommt bei
   jeder Anfrage aus dem Token, die manuelle Rollenvergabe ist für seine Konten gesperrt, und der letzte
-  `SYSTEM_ADMIN` der Installation wird nie per Token entzogen. Das Setzen verlangt eine Bestätigung.
+  `SYSTEM_ADMIN` der Installation wird nie per Token entzogen. Das Setzen verlangt eine Bestätigung;
+  Rollen-Claim und Rollenwerte zu setzen oder zu ändern verlangt außerdem eine
+  [erneute Anmeldung](#erneute-anmeldung-vor-sensiblen-vorgängen).
 - Ein **Gruppen-Claim** macht die Gruppennamen des Tokens bei jeder Anmeldung zu Mitgliedschaften in
   Gruppen dieses Anbieters; gleichnamige Gruppen zweier Anbieter sind zwei Gruppen. Sie sind in der
   Gruppenverwaltung schreibgeschützt. Gruppen-Claim und Verzeichnisabgleich schließen einander je
@@ -388,6 +390,10 @@ Angezeigt werden nur Typ, Adresse, Realm und Client-ID. Das Geheimnis des Dienst
 jederzeit wechseln: in Keycloak neu erzeugen, in OPAA neu hinterlegen. Ein Test ohne eingetragenes
 Geheimnis nutzt das gespeicherte nur für die gespeicherte Admin-API-Adresse; für eine geänderte
 Adresse ist das Geheimnis einzutragen, sonst lehnt OPAA den Test ab, statt es dorthin zu senden.
+Aus demselben Grund entfernt OPAA einen Zugang ohne eingetragene Admin-API-Adresse, wenn eine
+geänderte Issuer-URI die abgeleitete Adresse ändert; er ist danach für die neue Adresse neu zu
+hinterlegen, die Entfernung steht im Nachweisprotokoll. Eine Umbenennung des Anbieters lässt den
+Zugang stehen.
 Ist das gespeicherte Geheimnis nicht mehr entschlüsselbar, gilt es als nicht vorhanden; jeder Lauf
 meldet das Verzeichnis als unerreichbar und entzieht nichts, bis der Zugang neu hinterlegt ist.
 
@@ -473,7 +479,14 @@ OPAA kann vor einem Vorgang verlangen, dass die Person ihre Identität gerade eb
 ein nicht gesperrter Arbeitsplatz dafür nicht genügt. Die Bestätigung gilt für kurze Zeit
 (`OPAA_AUTH_RECENT_LOGIN_MAX_AGE` in der [Variablenliste](konfiguration.md)), danach wird wieder
 gefragt. Verlangt wird sie vor dem Download der eigenen Daten
-([Selbstauskunft](../konten-und-rechte/benutzerverwaltung.md#meine-daten-die-selbstauskunft)).
+([Selbstauskunft](../konten-und-rechte/benutzerverwaltung.md#meine-daten-die-selbstauskunft)), vor
+dem Erzeugen eines Zugangstokens für [externe KI-Werkzeuge](../spaces/fremdzugaenge.md),
+bevor die Systemverwaltung einem Konto eine andere Systemrolle gibt oder ein Konto mit Systemrolle in
+andere Hände kommen könnte ([Rollen](../konten-und-rechte/benutzerverwaltung.md#7-rollen)), und bevor
+sie die Rollenzuordnung eines Identitätsanbieters setzt oder ändert. Ebenso verlangt sie jede
+Änderung an Issuer-URI, Client-ID, JWK-Set-URI, E-Mail-Claim oder Gruppen-Claim eines bestehenden
+Anbieters: Diese Angaben entscheiden, wessen Tokens gelten und was sie gewähren. Anzeigename und
+Anzeigenamen-Claim ändern sich ohne Bestätigung.
 
 - **Lokales Konto:** Die Bestätigung erfolgt mit dem Passwort. Ein falsches Passwort zählt wie bei
   der Anmeldung als Fehlversuch und führt nach zu vielen Versuchen zur Sperre.
@@ -546,10 +559,17 @@ steht im Kapitel [Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md
 - **Einladungen und Rücksetzlinks brauchen Mail und eine öffentliche Adresse**
   (`OPAA_PUBLIC_BASE_URL`, [E-Mail-Versand](e-mail.md)). Ohne beides zeigt OPAA den Link zur Übergabe
   an, und „Passwort vergessen" und Selbstregistrierung lassen sich nicht einschalten.
+- **Bei der Selbstregistrierung legt erst der Bestätigungslink Name und Passwort fest.** Wer eine
+  fremde Adresse der erlaubten Domänen zuerst registriert, bestimmt damit weder Passwort noch Namen
+  und erhält keinen Zugang; die Bestätigungsmail nennt keinen Namen und bittet, eine nicht selbst
+  ausgelöste Registrierung zu ignorieren
+  ([Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md#10-selbstregistrierung)). Eine
+  eigene Fassung dieser Mailvorlage passt sich nicht von selbst an ([E-Mail-Versand](e-mail.md#vorlagen)).
 - **Es gibt keinen zweiten Faktor.** Bis dahin gleichen aus: die Netzbeschränkung
-  `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` (lokale Systemverwalter nur aus den genannten Netzen; leer heißt
-  ohne Beschränkung), kürzere Sitzungsfristen für Systemverwalterkonten, die Protokollierung des
-  Notanker-Kontos und die Empfehlung oben.
+  `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` (lokale Systemverwalter nur aus den genannten Netzen — bei der
+  Anmeldung, beim Verlängern der Sitzung und bei jeder Anfrage; leer heißt ohne Beschränkung),
+  kürzere Sitzungsfristen für Systemverwalterkonten, die Protokollierung des Notanker-Kontos und die
+  Empfehlung oben.
 
 **Anmeldegrenzen.** Die lokale Anmeldung ist je Client-Adresse, je Konto und insgesamt begrenzt
 (`OPAA_RATE_LIMIT_LOCAL_AUTH_*`); eine überschrittene Grenze antwortet `429` mit `Retry-After`. Die
@@ -559,8 +579,11 @@ zugleich: Ist sie erreicht, antwortet der Endpunkt jeder Adresse mit `429`, und 
 als Warnung im Protokoll und in der Metrik `opaa_rate_limit_rejected_total` ([Logs und Metriken](ueberwachung-und-fehlerbehebung.md#logs-und-metriken)).
 Nach `OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS` falschen Passwörtern ist ein Konto für
 `OPAA_AUTH_LOCAL_LOCKOUT_DURATION` gesperrt; die Anmeldung antwortet dann wie bei einem falschen
-Passwort, die Sperre steht im Nachweisprotokoll und in einer eigenen Metrik, der einzelne Fehlversuch
-nur im Protokoll (mit Konto-Kennung, nie mit Adresse). Wie lange der Log-Sammler dieses Protokoll
+Passwort. Gleichzeitige Versuche gegen dasselbe Konto entscheidet OPAA nacheinander, auch über
+mehrere Instanzen: Viele parallele Anmeldungen zählen nicht über die Grenze hinaus, und ein
+richtiges Passwort, dessen Prüfung erst nach Eintreten der Sperre endet, wird wie ein falsches
+beantwortet. Die Sperre steht im Nachweisprotokoll und in einer eigenen Metrik, der einzelne
+Fehlversuch nur im Protokoll (mit Konto-Kennung, nie mit Adresse). Wie lange der Log-Sammler dieses Protokoll
 aufbewahrt, legt der Betrieb fest; eine kurze Frist, etwa 90 Tage, genügt der Fehlersuche und hält
 das Protokoll der Fehlversuche aus der Leistungskontrolle heraus. Die Zähler je Adresse sind auf eine hohe Zahl
 gleichzeitig geführter Adressen begrenzt; darüber werden die am wenigsten genutzten vergessen und

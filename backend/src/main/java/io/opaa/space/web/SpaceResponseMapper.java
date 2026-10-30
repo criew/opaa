@@ -72,7 +72,7 @@ final class SpaceResponseMapper {
             space.getCreatedAt(),
             space.getUpdatedAt())
         .description(space.getDescription())
-        .modelInstruction(space.getModelInstruction())
+        .modelInstruction(detail.modelInstruction())
         .userRole(detail.userRole())
         .successionOpen(detail.successionOpen())
         .lastTransfer(PermissionTransferResponseMapper.toResponse(lastTransfer))

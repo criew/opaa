@@ -23,6 +23,7 @@ describe('the field a source issue names', () => {
   it('names the S3 field of each stage, a scope by its row', () => {
     const complete = {
       ...EMPTY_S3_VALUES,
+      allBuckets: false,
       sourceUrl: 'https://minio.example:9000',
       accessKey: 'AKIA',
       secretKey: 'geheim',
