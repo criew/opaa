@@ -51,6 +51,7 @@ data:
           - expires_at
           - expiry_reminded_for
           - email_verified_at
+          - email_changed_by_admin_at
           - created_reason
           - session_generation
         nonPersonalColumns:
@@ -71,6 +72,9 @@ data:
             lockout_until: >-
               Nach der erneuten Anmeldung vor der Auskunft stets zurückgesetzt, ohne Aussage
             session_generation: Technischer Merker ohne Aussage über die Person
+            email_changed_by_admin_at: >-
+              Vermerk für die Revision; die Adressänderung selbst steht als LOCAL_USER_CHANGED im
+              Protokoll und damit in der Selbstauskunft
             expiry_reminded_for: Technischer Merker ohne Aussage über die Person
     storage: Anwendungsdatenbank; Passwort nur als Hash
     retention:
@@ -298,6 +302,39 @@ data:
     accessPaths: [DATABASE]
     deletion: Nach der Zustellung oder dem letzten Fehlversuch gelöscht
     evaluations: keine
+  - id: auditor-role-requests
+    title: Offene Anträge auf die Rolle Revision
+    purpose: >-
+      Trennung von Systemverwaltung und Revision: Die Systemverwaltung oder der Rollen-Claim eines
+      Identitätsanbieters beantragt die Rolle AUDITOR, eine Person der Revision bestätigt oder
+      lehnt ab
+    personalReference: EMPLOYEE
+    tables:
+      - name: auditor_role_requests
+        personalColumns: [user_id, requested_by_user_id, requested_at, declined_at]
+        nonPersonalColumns: [id, organization_id, requested_by_provider_id]
+        person:
+          excluded: >-
+            Kurzlebiger Vorgangsstand; Antrag und Entscheidung stehen als Protokollereignisse der
+            betroffenen Person in ihrer Selbstauskunft
+    storage: Anwendungsdatenbank
+    retention:
+      rule: >-
+        Bis zur Entscheidung; ein bestätigter, abgelehnter oder zurückgezogener Antrag wird gelöscht,
+        mit dem Konto der Person, der beantragenden Person oder dem Identitätsanbieter auch. Ein
+        abgelehnter Antrag eines Identitätsanbieters bleibt als abgelehnt stehen, bis der Rollen-Claim
+        die Rolle nicht mehr nennt
+      settings: []
+    visibility:
+      - >-
+        Revision (AUDITOR) mit Name und Adresse des Kontos, Datum des letzten Adresswechsels durch
+        die Systemverwaltung und Name der beantragenden Person oder des Identitätsanbieters
+      - SYSTEM_ADMIN als Vermerk „beantragt“ in der Kontenverwaltung
+    accessPaths: [UI, API, DATABASE]
+    deletion: Bei Entscheidung oder mit einem der beiden Konten (ON DELETE CASCADE)
+    evaluations: >-
+      Keine; wer wen beantragt und entschieden hat, steht im Revisionsprotokoll
+      (AUDITOR_ROLE_REQUESTED, AUDITOR_ROLE_GRANTED, AUDITOR_ROLE_REQUEST_DECLINED)
   - id: notifications
     title: Benachrichtigungen
     purpose: Hinweise an eine Person über Ereignisse an ihren Objekten

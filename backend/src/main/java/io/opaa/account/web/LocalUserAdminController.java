@@ -18,6 +18,7 @@ import io.opaa.api.dto.LocalUserSummaryResponse;
 import io.opaa.api.dto.LocalUserUpdateRequest;
 import io.opaa.api.types.LocalAccountState;
 import io.opaa.api.types.SystemRole;
+import io.opaa.auth.AuditorRoles;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import jakarta.validation.Valid;
@@ -47,9 +48,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class LocalUserAdminController {
 
   private final LocalUserAdminService adminService;
+  private final AuditorRoles auditorRoles;
 
-  public LocalUserAdminController(LocalUserAdminService adminService) {
+  public LocalUserAdminController(LocalUserAdminService adminService, AuditorRoles auditorRoles) {
     this.adminService = adminService;
+    this.auditorRoles = auditorRoles;
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -76,8 +79,10 @@ public class LocalUserAdminController {
             AdminListSortParams.descending(direction),
             page,
             size);
-    return LocalUserResponseMapper.toPage(
-        adminService.list(caller.organizationId(), localUserQuery));
+    LocalUserPageResponse response =
+        LocalUserResponseMapper.toPage(adminService.list(caller.organizationId(), localUserQuery));
+    PendingRoleMarks.markAll(response.getItems(), auditorRoles);
+    return response;
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -100,14 +105,18 @@ public class LocalUserAdminController {
             Boolean.TRUE.equals(request.getNoExpiry()),
             request.getCreatedReason(),
             mode == LocalUserCreationMode.INVITE);
-    return ResponseEntity.status(HttpStatus.CREATED)
-        .body(LocalUserResponseMapper.toCreated(adminService.create(caller, creation), mode));
+    LocalUserCreatedResponse response =
+        LocalUserResponseMapper.toCreated(adminService.create(caller, creation), mode);
+    PendingRoleMarks.mark(response.getUser(), auditorRoles);
+    return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping("/{id}")
   public LocalUserResponse getLocalUser(@PathVariable UUID id, @Caller CurrentUser caller) {
-    return LocalUserResponseMapper.toResponse(adminService.get(caller.organizationId(), id));
+    return PendingRoleMarks.mark(
+        LocalUserResponseMapper.toResponse(adminService.get(caller.organizationId(), id)),
+        auditorRoles);
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -124,7 +133,8 @@ public class LocalUserAdminController {
             request.getExpiresAt(),
             Boolean.TRUE.equals(request.getNoExpiry()),
             request.getCreatedReason());
-    return LocalUserResponseMapper.toResponse(adminService.update(caller, id, update));
+    return PendingRoleMarks.mark(
+        LocalUserResponseMapper.toResponse(adminService.update(caller, id, update)), auditorRoles);
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")

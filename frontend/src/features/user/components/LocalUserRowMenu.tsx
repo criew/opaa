@@ -48,6 +48,10 @@ export const BOOTSTRAP_PASSWORD_TOOLTIP =
   'zurückgesetzt – sonst wäre das versiegelt hinterlegte Passwort unbemerkt wertlos. Das Konto ' +
   'ändert sein Passwort selbst.'
 
+export const AUDITOR_CREDENTIALS_TOOLTIP =
+  'Passwort, Adresse und Anmeldung eines Kontos der Revision ändert nur die Person selbst – sonst ' +
+  'hielte die Systemverwaltung Zugang zum Revisionsprotokoll.'
+
 interface LocalUserRowMenuProps {
   user: LocalUserResponse
   /** The caller's own row: locking and deleting it is refused by the backend anyway (409). */
@@ -191,8 +195,14 @@ export default function LocalUserRowMenu({
   // alone starts the deletion period of the chats.
   const lockedByAdministration = user.status === 'LOCKED' && user.lockedReason === 'ADMIN'
   const lockDisabled = isSelf || user.bootstrap
-  const handoverDisabled = user.bootstrap
-  const passwordDisabled = user.bootstrap
+  // an auditor account, or one with an open request for the role, keeps its credentials with its
+  // person; the backend refuses these acts with AUDITOR_ACCOUNT
+  const auditorAccount = user.systemRole === 'AUDITOR' || user.pendingSystemRole === 'AUDITOR'
+  const handoverDisabled = user.bootstrap || auditorAccount
+  const passwordDisabled = user.bootstrap || auditorAccount
+  const credentialsReason = auditorAccount
+    ? AUDITOR_CREDENTIALS_TOOLTIP
+    : BOOTSTRAP_PASSWORD_TOOLTIP
   const deleteDisabled = isSelf || user.bootstrap
   const disabledReason = isSelf ? SELF_ACTION_TOOLTIP : BOOTSTRAP_LOCK_DELETE_TOOLTIP
 
@@ -217,19 +227,21 @@ export default function LocalUserRowMenu({
             label: 'Rücksetz-Link per E-Mail',
             onClick: () => void resetPassword(),
             disabled: passwordDisabled,
-            disabledReason: BOOTSTRAP_PASSWORD_TOOLTIP,
+            disabledReason: credentialsReason,
           },
           {
             label: 'Passwort erzeugen',
             onClick: () => void generatePassword(),
             disabled: passwordDisabled,
-            disabledReason: BOOTSTRAP_PASSWORD_TOOLTIP,
+            disabledReason: credentialsReason,
           },
           {
             label: 'An Identitätsanbieter übergeben',
             onClick: () => onHandover(user),
             disabled: handoverDisabled,
-            disabledReason: BOOTSTRAP_HANDOVER_TOOLTIP,
+            disabledReason: auditorAccount
+              ? AUDITOR_CREDENTIALS_TOOLTIP
+              : BOOTSTRAP_HANDOVER_TOOLTIP,
           },
           {
             label: 'Löschen',

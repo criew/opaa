@@ -77,6 +77,9 @@ public class LocalCredentials {
   @Column(name = "email_verified_at")
   private Instant emailVerifiedAt;
 
+  @Column(name = "email_changed_by_admin_at")
+  private Instant emailChangedByAdminAt;
+
   @Column(name = "created_reason", nullable = false, length = CREATED_REASON_MAX_LENGTH)
   private String createdReason;
 
@@ -150,6 +153,17 @@ public class LocalCredentials {
     touch(now);
   }
 
+  /**
+   * Discards the password: the account is {@link LocalAccountState#INVITED} again until the person
+   * sets a new one through a link.
+   */
+  public void discardPassword(Instant now) {
+    this.passwordHash = null;
+    this.passwordChangeRequired = false;
+    this.passwordChangeReason = null;
+    touch(now);
+  }
+
   public void requirePasswordChange(PasswordChangeReason reason, Instant now) {
     this.passwordChangeReason = Objects.requireNonNull(reason, "reason");
     this.passwordChangeRequired = true;
@@ -214,6 +228,16 @@ public class LocalCredentials {
 
   public void setExpiresAt(Instant expiresAt, Instant now) {
     this.expiresAt = expiresAt;
+    touch(now);
+  }
+
+  /** When the system administration last changed the account's address; {@code null} if never. */
+  public Instant getEmailChangedByAdminAt() {
+    return emailChangedByAdminAt;
+  }
+
+  public void markEmailChangedByAdmin(Instant now) {
+    this.emailChangedByAdminAt = Objects.requireNonNull(now, "now");
     touch(now);
   }
 

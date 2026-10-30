@@ -6,6 +6,7 @@ import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.PermissionTransferScope;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SystemRole;
+import io.opaa.auth.AuditorRoles;
 import io.opaa.auth.AuthProperties;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
@@ -56,6 +57,7 @@ class AuditLogSelfDisclosureRealWritersIntegrationTest {
   private static final JsonMapper JSON = JsonMapper.builder().build();
 
   @Autowired private AuditLogSelfDisclosureExporter exporter;
+  @Autowired private AuditorRoles auditorRoles;
   @Autowired private UserService userService;
   @Autowired private UserRepository users;
   @Autowired private GroupService groupService;
@@ -110,7 +112,14 @@ class AuditLogSelfDisclosureRealWritersIntegrationTest {
         CurrentUser.of(
             admin.getId(), organizationId, SystemRole.SYSTEM_ADMIN, ADMIN_NAME, ADMIN_EMAIL);
 
+    // the AUDITOR role takes effect only with an auditor's confirmation
+    User auditor = user("Rita Revision", "rita.revision@sd2990.example");
+    auditor.setSystemRole(SystemRole.AUDITOR);
+    users.save(auditor);
     userService.updateRole(person.getId(), SystemRole.AUDITOR, byAdmin);
+    userService.confirmAuditorRequest(
+        auditorRoles.openRequestOf(person.getId()).orElseThrow().getId(),
+        CurrentUser.of(auditor.getId(), organizationId, SystemRole.AUDITOR, "Rita Revision"));
     UUID groupId =
         groupService
             .createGroup(new GroupCreation("Referat 2990", "Prüfung"), byAdmin)

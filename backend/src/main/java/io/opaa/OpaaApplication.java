@@ -4,6 +4,7 @@ import io.opaa.common.ClockConfiguration;
 import io.opaa.common.PublicBaseUrlProperties;
 import io.opaa.config.DatabaseMigrationMode;
 import io.opaa.knowledge.UploadProperties;
+import io.opaa.security.CipherFormatProperties;
 import io.opaa.security.CredentialsEncryptionProperties;
 import io.opaa.security.PinnedAddressResolverProvider;
 import io.opaa.security.SettingsEncryptionProperties;
@@ -27,6 +28,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   PublicBaseUrlProperties.class,
   CredentialsEncryptionProperties.class,
   SettingsEncryptionProperties.class,
+  CipherFormatProperties.class,
   UploadProperties.class
 })
 // Enables io.opaa.audit.AuditRetentionScheduler's @Scheduled monthly retention deletion.

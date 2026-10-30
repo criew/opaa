@@ -285,8 +285,12 @@ Workflow `.github/workflows/zap-baseline.yml` (nächtlich, manuell und in PRs, d
 # Docker-Hosts bauen und gehärtet starten: zuerst das Backend-Image mit OPAA_MODE=migrate und
 # danach mit OPAA_MODE=await-migration (beide müssen mit Exit-Code 0 enden), dann das Backend ohne
 # Migration gegen pgvector bis Readiness UP samt Healthcheck des Images, Frontend davor bis
-# /api/health und der gemeldeten offenen Installation (ohne Antwortdatei); in CI als Job
-# image-smoke-arm64 (ci.yml) auf einem arm64-Runner
+# /api/health und der gemeldeten offenen Installation (ohne Antwortdatei); danach tragen eigene
+# Dateien des Frontends und durchgereichte Backend-Antworten (auch eine 401) je genau einmal
+# X-Content-Type-Options: nosniff, X-Frame-Options: DENY, Cross-Origin-Opener-Policy und
+# Cross-Origin-Resource-Policy (same-origin) und die CSP mit script-src 'self',
+# object-src 'none' und frame-ancestors 'none'; in CI als Job image-smoke-arm64 (ci.yml) auf einem
+# arm64-Runner
 docker build -t opaa-smoke/backend -f backend/Dockerfile .
 docker build -t opaa-smoke/frontend -f frontend/Dockerfile .
 .github/scripts/image_smoke_test.sh opaa-smoke/backend opaa-smoke/frontend
@@ -299,4 +303,21 @@ docker build -t opaa-smoke/frontend -f frontend/Dockerfile .
 # andere jede binnen weniger Sekunden, ohne 5xx; langsame und gestreamte Antworten sowie Uploads
 # bis zu den Grenzen kommen unverändert an. In CI im selben Job
 .github/scripts/frontend_hardening_test.sh opaa-smoke/frontend
+```
+
+## Angriffsfläche ohne Anmeldung
+
+```bash
+# aus backend/: alle Operationen der Spezifikation, alle Handler-Mappings samt Actuator und /mcp
+# ohne Token im Profil oidc; nur Einträge von src/test/resources/security/anonymous-allowlist.yaml
+# (je mit Begründung) dürfen anders als 401/403/404 antworten, jede Antwort trägt nosniff und
+# Frame-Schutz. Dazu die Header des Dokument-Downloads
+./gradlew test --tests 'io.opaa.api.AnonymousSurface*' \
+  --tests 'io.opaa.library.web.DocumentContentHeadersIntegrationTest'
+
+# aus dem Wurzelverzeichnis: Compose-Vorlagen (alle docker-compose*.yml, .env.docker.example,
+# .env.example) binden Ports nur an 127.0.0.1, schalten keine anonyme Systemverwaltung frei und
+# tragen keine festen Geheimnisse außer den begründeten Ausnahmen je Dienst im Skript; in CI im Job
+# changes (ci.yml), Selbsttest in test_check_compose_defaults.py
+.github/scripts/check_compose_defaults.sh
 ```

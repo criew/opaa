@@ -78,8 +78,8 @@ class EndpointChangeClientSecretTest {
                 new ClientCredentialsProbeSourceConnector(
                     new Endpoint.FromProfile(), ClientAuthentication.CLIENT_SECRET_BASIC))
             .registry();
-    when(encryptor.encrypt(anyString())).thenAnswer(call -> "enc:" + call.getArgument(0));
-    when(encryptor.decrypt(anyString()))
+    when(encryptor.encrypt(anyString(), any())).thenAnswer(call -> "enc:" + call.getArgument(0));
+    when(encryptor.decrypt(anyString(), any()))
         .thenAnswer(call -> call.<String>getArgument(0).substring("enc:".length()));
     when(profiles.findById(any())).thenAnswer(call -> Optional.ofNullable(profile));
     ConnectionProfileService service = service(registry);

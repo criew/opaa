@@ -30,6 +30,7 @@ import io.opaa.api.types.LocalAccountState;
 import io.opaa.api.types.MailDeliveryPath;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.AdminTestSecurityConfig;
+import io.opaa.auth.AuditorRoles;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.User;
@@ -72,6 +73,7 @@ class LocalUserAdminControllerTest {
   @MockitoBean private LocalUserAdminService adminService;
   @MockitoBean private LocalAuthSettingsService settingsService;
   @MockitoBean private UserService userService;
+  @MockitoBean private AuditorRoles auditorRoles;
 
   private final UUID adminId = UUID.randomUUID();
   private final UUID organizationId = UUID.randomUUID();

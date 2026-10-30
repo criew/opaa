@@ -80,6 +80,7 @@ class InstallationServiceSpeechInputTest {
                 mandatoryAdmin(),
                 mandatorySignIn(),
                 record(InstallationStep.TRANSCRIPTION_MODEL, TRANSCRIPTION, "chiffrat", true)));
+    when(rules.apiKey(InstallationStep.TRANSCRIPTION_MODEL, "chiffrat")).thenReturn("sk-stt");
 
     service(true).complete(CompletionSource.INSTALLATION_API);
 
@@ -89,7 +90,7 @@ class InstallationServiceSpeechInputTest {
             InstallationService.SYSTEM_ACTOR,
             "http://speaches:8000/v1",
             "whisper",
-            "chiffrat",
+            "sk-stt",
             "en");
   }
 

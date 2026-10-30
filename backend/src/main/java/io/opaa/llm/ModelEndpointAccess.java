@@ -96,7 +96,8 @@ final class ModelEndpointAccess {
               + " verwendet werden - bitte den Schlüssel erneut eingeben oder die"
               + " gespeicherte Basis-Adresse verwenden.");
     }
-    return settingsEncryptor.decrypt(model.getApiKeyCiphertext());
+    return settingsEncryptor.decrypt(
+        model.getApiKeyCiphertext(), LlmEncryptedColumns.CHAT_MODEL_KEY.row(model.getId()));
   }
 
   private static boolean sameOrigin(String requestBaseUrl, String storedBaseUrl) {

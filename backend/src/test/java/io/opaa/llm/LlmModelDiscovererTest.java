@@ -10,6 +10,7 @@ import com.sun.net.httpserver.HttpServer;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.llm.ModelDiscovery.Failure;
+import io.opaa.security.CipherFormatGate;
 import io.opaa.security.SettingsEncryptionProperties;
 import io.opaa.security.SettingsEncryptor;
 import java.io.IOException;
@@ -94,7 +95,9 @@ class LlmModelDiscovererTest {
     settingsEncryptor =
         new SettingsEncryptor(
             new SettingsEncryptionProperties(
-                Base64.getEncoder().encodeToString("0123456789abcdef0123456789abcdef".getBytes())));
+                Base64.getEncoder().encodeToString("0123456789abcdef0123456789abcdef".getBytes()),
+                List.of()),
+            CipherFormatGate.KEYED);
     discoverer =
         new LlmModelDiscoverer(
             repository, settingsEncryptor, new ObjectMapper(), ModelAddressPolicy.disabled());
@@ -658,7 +661,7 @@ class LlmModelDiscovererTest {
   void theStoredKeyIsUsedForTheModelsOwnOrigin() {
     UUID modelId = UUID.randomUUID();
     when(repository.findById(modelId))
-        .thenReturn(Optional.of(storedModel(baseUrl, settingsEncryptor.encrypt("sk-stored"))));
+        .thenReturn(Optional.of(storedModel(modelId, baseUrl, "sk-stored")));
     respond("/v1/models", 200, OPENAI_MODELS);
 
     discoverer.discover(baseUrl, "", modelId);
@@ -670,7 +673,7 @@ class LlmModelDiscovererTest {
   void theStoredKeyNeverLeavesTheOriginOfItsModel() throws IOException {
     UUID modelId = UUID.randomUUID();
     when(repository.findById(modelId))
-        .thenReturn(Optional.of(storedModel(baseUrl, settingsEncryptor.encrypt("sk-stored"))));
+        .thenReturn(Optional.of(storedModel(modelId, baseUrl, "sk-stored")));
 
     HttpServer attacker = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
     attacker.start();
@@ -698,7 +701,7 @@ class LlmModelDiscovererTest {
   void aModelWithoutStoredKeyIsListedWithoutKeyAtAnyAddress() {
     UUID modelId = UUID.randomUUID();
     when(repository.findById(modelId))
-        .thenReturn(Optional.of(storedModel("http://elsewhere.example/v1", null)));
+        .thenReturn(Optional.of(storedModel(modelId, "http://elsewhere.example/v1", null)));
     respond("/v1/models", 200, OPENAI_MODELS);
 
     ModelDiscovery discovery = discoverer.discover(baseUrl, null, modelId);
@@ -716,9 +719,15 @@ class LlmModelDiscovererTest {
         .isInstanceOf(NotFoundException.class);
   }
 
-  private static LlmModel storedModel(String storedBaseUrl, String ciphertext) {
+  private LlmModel storedModel(UUID modelId, String storedBaseUrl, String apiKey) {
     return new LlmModel(
-        "Gespeichert", storedBaseUrl, "gpt-4o", new BigDecimal("0.70"), 2000, ciphertext);
+        modelId,
+        "Gespeichert",
+        storedBaseUrl,
+        "gpt-4o",
+        new BigDecimal("0.70"),
+        2000,
+        settingsEncryptor.encrypt(apiKey, LlmEncryptedColumns.CHAT_MODEL_KEY.row(modelId)));
   }
 
   @Test

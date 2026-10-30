@@ -125,7 +125,7 @@ spec:
                   name: {{ $secretName }}
                   key: {{ . }}
             {{- end }}
-            {{- range list "OPAA_INSTALLATION_TOKEN" }}
+            {{- range list "OPAA_INSTALLATION_TOKEN" "OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS" "OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS" }}
             - name: {{ . }}
               valueFrom:
                 secretKeyRef:

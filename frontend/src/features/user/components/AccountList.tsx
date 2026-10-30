@@ -209,6 +209,11 @@ function RoleCell({ account }: { account: AccountResponse }) {
           <MetaBadge wrap>Vom Anbieter geführt</MetaBadge>
         </Box>
       )}
+      {account.pendingSystemRole && (
+        <Box sx={{ mt: 0.5 }}>
+          <MetaBadge wrap>{`${SYSTEM_ROLE_LABEL[account.pendingSystemRole]} beantragt`}</MetaBadge>
+        </Box>
+      )}
     </Box>
   )
 }
@@ -238,8 +243,11 @@ function AccountCard(props: RowProps) {
       </Box>
       <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.75 }}>
         {SYSTEM_ROLE_LABEL[account.systemRole]}
-        {account.roleManagedByProvider ? ' (vom Anbieter geführt)' : ''} · Ablauf{' '}
-        {expiryText(account)}
+        {account.roleManagedByProvider ? ' (vom Anbieter geführt)' : ''}
+        {account.pendingSystemRole
+          ? ` (${SYSTEM_ROLE_LABEL[account.pendingSystemRole]} beantragt)`
+          : ''}{' '}
+        · Ablauf {expiryText(account)}
       </Typography>
     </Box>
   )

@@ -1,5 +1,6 @@
 package io.opaa.eval;
 
+import io.opaa.llm.LlmEncryptedColumns;
 import io.opaa.llm.ModelRoleEndpoints;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.security.SettingsEncryptor;
@@ -38,7 +39,9 @@ final class EvalRerankModel {
       EvalChatModel.refuseSecretsInAddress(BASE_URL_PROPERTY, baseUrl.strip());
       String apiKey = System.getenv(API_KEY_ENVIRONMENT_VARIABLE);
       String ciphertext =
-          apiKey == null || apiKey.isBlank() ? null : settingsEncryptor.encrypt(apiKey.strip());
+          apiKey == null || apiKey.isBlank()
+              ? null
+              : settingsEncryptor.encrypt(apiKey.strip(), LlmEncryptedColumns.rerankModelKey());
       jdbcTemplate.update(
           "INSERT INTO rerank_model (id, enabled, base_url, model_identifier, api_key_ciphertext,"
               + " updated_at) VALUES (1, true, ?, ?, ?, now())",

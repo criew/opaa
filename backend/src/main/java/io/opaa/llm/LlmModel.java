@@ -73,7 +73,29 @@ public class LlmModel {
       BigDecimal temperature,
       int maxTokens,
       String apiKeyCiphertext) {
-    this.id = UUID.randomUUID();
+    this(
+        UUID.randomUUID(),
+        displayName,
+        baseUrl,
+        modelIdentifier,
+        temperature,
+        maxTokens,
+        apiKeyCiphertext);
+  }
+
+  /**
+   * A model under {@code id}, for a caller that encrypts the key for this row before it exists
+   * ({@link LlmEncryptedColumns#CHAT_MODEL_KEY}).
+   */
+  public LlmModel(
+      UUID id,
+      String displayName,
+      String baseUrl,
+      String modelIdentifier,
+      BigDecimal temperature,
+      int maxTokens,
+      String apiKeyCiphertext) {
+    this.id = id;
     this.displayName = displayName;
     this.baseUrl = baseUrl;
     this.modelIdentifier = modelIdentifier;

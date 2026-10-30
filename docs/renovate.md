@@ -45,7 +45,8 @@ Regeln in [`renovate.json5`](../renovate.json5) (kommentiert): deutsche Commit-/
 Stil `chore(deps): <Paket> auf <Version> aktualisieren`, Labels (unten), höchstens fünf
 gleichzeitig offene Update-PRs, Spring-Plattform als ein gebündelter PR, **kein**
 Digest-Pinning für Docker-Images (gleitende Tags sind eine dokumentierte Projektentscheidung,
-siehe `e2e/docker-compose.e2e.yml`; Ausnahmen sind das Renovate-Image selbst, siehe
+siehe `e2e/docker-compose.e2e.yml` und für die Basis-Images der Release-Images
+[releases.md](releases.md#basis-images); Ausnahmen sind das Renovate-Image selbst, siehe
 [unten](#renovate-image-und-token-des-workflows), und die per `docker run` gestarteten Images in
 `retrieval-regression.yml` und `zap-baseline.yml`). Zusätzlich pflegt Renovate ein Übersichts-Issue
 („Abhängigkeits-Übersicht (Renovate)") mit allen anstehenden Updates.

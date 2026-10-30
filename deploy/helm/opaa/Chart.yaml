@@ -13,3 +13,7 @@ keywords:
   - rag
   - knowledge-management
   - llm
+annotations:
+  # Prefix of the images the default values name (<prefix>-backend, <prefix>-frontend);
+  # package-chart.sh refuses a package whose IMAGE_PREFIX differs. NOTES.txt compares with it.
+  opaa/image-prefix: ghcr.io/criew/opaa

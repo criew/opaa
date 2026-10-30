@@ -137,7 +137,7 @@ class DirectoryConnectorIntegrationTest {
             "SELECT client_secret FROM directory_connectors WHERE provider_id = ?",
             String.class,
             provider.getId());
-    assertThat(stored).startsWith("enc:v1:").doesNotContain("streng-geheim");
+    assertThat(stored).startsWith("enc:v2:").doesNotContain("streng-geheim");
   }
 
   @Test

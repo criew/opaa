@@ -2,6 +2,7 @@ package io.opaa.connection.account;
 
 import io.opaa.api.types.ConnectedAccountState;
 import io.opaa.api.types.ConnectionEndCause;
+import io.opaa.security.EncryptedColumn;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -21,6 +22,10 @@ import java.util.UUID;
 @Entity
 @Table(name = "connected_accounts")
 class ConnectedAccount {
+
+  /** {@code connected_accounts.account_label_ciphertext}, bound to the account (ADR-0064). */
+  static final EncryptedColumn ACCOUNT_LABEL =
+      EncryptedColumn.credentials("connected_accounts", "account_label_ciphertext");
 
   @Id private UUID id;
 

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.security.CipherFormatGate;
 import io.opaa.security.SettingsEncryptionProperties;
 import io.opaa.security.SettingsEncryptor;
 import io.opaa.test.OutboundProxyRoute;
@@ -59,7 +60,9 @@ class LlmModelConnectionTesterTest {
     settingsEncryptor =
         new SettingsEncryptor(
             new SettingsEncryptionProperties(
-                Base64.getEncoder().encodeToString("0123456789abcdef0123456789abcdef".getBytes())));
+                Base64.getEncoder().encodeToString("0123456789abcdef0123456789abcdef".getBytes()),
+                List.of()),
+            CipherFormatGate.KEYED);
     tester =
         new LlmModelConnectionTester(
             repository, settingsEncryptor, new ObjectMapper(), ModelAddressPolicy.disabled());
@@ -243,12 +246,14 @@ class LlmModelConnectionTesterTest {
         .thenReturn(
             Optional.of(
                 new LlmModel(
+                    modelId,
                     "Bestand",
                     baseUrl,
                     "phi3:mini",
                     new BigDecimal("0.70"),
                     2000,
-                    settingsEncryptor.encrypt("sk-stored-secret"))));
+                    settingsEncryptor.encrypt(
+                        "sk-stored-secret", LlmEncryptedColumns.CHAT_MODEL_KEY.row(modelId)))));
     LlmModelConnectionTester strict =
         new LlmModelConnectionTester(
             repository,
@@ -407,12 +412,14 @@ class LlmModelConnectionTesterTest {
     UUID modelId = UUID.randomUUID();
     LlmModel model =
         new LlmModel(
+            modelId,
             "Modell mit Schlüssel",
             baseUrl,
             "phi3:mini",
             new BigDecimal("0.70"),
             2000,
-            settingsEncryptor.encrypt("sk-stored-secret"));
+            settingsEncryptor.encrypt(
+                "sk-stored-secret", LlmEncryptedColumns.CHAT_MODEL_KEY.row(modelId)));
     when(repository.findById(modelId)).thenReturn(Optional.of(model));
     AtomicReference<String> receivedAuthHeader = new AtomicReference<>();
     server.createContext(
@@ -435,12 +442,14 @@ class LlmModelConnectionTesterTest {
     UUID modelId = UUID.randomUUID();
     LlmModel model =
         new LlmModel(
+            modelId,
             "Modell mit Schlüssel",
             baseUrl,
             "phi3:mini",
             new BigDecimal("0.70"),
             2000,
-            settingsEncryptor.encrypt("sk-stored-secret"));
+            settingsEncryptor.encrypt(
+                "sk-stored-secret", LlmEncryptedColumns.CHAT_MODEL_KEY.row(modelId)));
     when(repository.findById(modelId)).thenReturn(Optional.of(model));
     AtomicReference<String> receivedAuthHeader = new AtomicReference<>();
     server.createContext(
@@ -474,12 +483,14 @@ class LlmModelConnectionTesterTest {
     UUID modelId = UUID.randomUUID();
     LlmModel model =
         new LlmModel(
+            modelId,
             "Modell mit Schlüssel",
             baseUrl, // the model's own, stored baseUrl
             "phi3:mini",
             new BigDecimal("0.70"),
             2000,
-            settingsEncryptor.encrypt("sk-stored-secret"));
+            settingsEncryptor.encrypt(
+                "sk-stored-secret", LlmEncryptedColumns.CHAT_MODEL_KEY.row(modelId)));
     when(repository.findById(modelId)).thenReturn(Optional.of(model));
 
     HttpServer attackerServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);

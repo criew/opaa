@@ -74,6 +74,7 @@ class ConnectionTokenExpiryTest {
     return ConnectionToken.ofAccountGrant(
         UUID.randomUUID(),
         UUID.randomUUID(),
+        UUID.randomUUID(),
         new Ciphered("r1", "a1", NOW.plus(Duration.ofHours(1)), end),
         "target",
         NOW);

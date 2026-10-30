@@ -2,6 +2,7 @@ package io.opaa.indexing.source.sharepoint;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -255,7 +256,8 @@ class SharePointTenantIntegrationTest {
     ReflectionTestUtils.setField(profile, "tenant", env.get("OPAA_SP_TENANT_ID"));
     ReflectionTestUtils.setField(profile, "clientSecretCiphertext", "enc:v1:tenant-run");
     CredentialsEncryptor encryptor = mock(CredentialsEncryptor.class);
-    when(encryptor.decrypt("enc:v1:tenant-run")).thenReturn(env.get("OPAA_SP_CLIENT_SECRET"));
+    when(encryptor.decrypt(eq("enc:v1:tenant-run"), any()))
+        .thenReturn(env.get("OPAA_SP_CLIENT_SECRET"));
     ConnectionProfileRepository profiles = mock(ConnectionProfileRepository.class);
     when(profiles.findById(any())).thenReturn(Optional.of(profile));
     SourceConnectorRegistry registry = TestSourceConnectors.connectors().with(connector).registry();

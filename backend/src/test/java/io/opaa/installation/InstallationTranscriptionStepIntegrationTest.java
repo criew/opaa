@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.llm.ModelRoleAdministration;
+import io.opaa.security.EncryptedColumn;
 import io.opaa.security.SettingsEncryptor;
 import io.opaa.test.LocalAccountFixturesFactory;
 import io.opaa.test.OpaaLocalAuthLinkTest;
@@ -112,7 +113,11 @@ class InstallationTranscriptionStepIntegrationTest {
     assertThat(row.get("base_url")).isEqualTo(fixture.chatBaseUrl());
     assertThat(row.get("model_identifier")).isEqualTo("whisper-1");
     assertThat(row.get("language")).isEqualTo("en");
-    assertThat(encryptor.decrypt((String) row.get("api_key_ciphertext"))).isEqualTo(KEY);
+    assertThat(
+            encryptor.decrypt(
+                (String) row.get("api_key_ciphertext"),
+                EncryptedColumn.settings("transcription_model", "api_key_ciphertext").row(1)))
+        .isEqualTo(KEY);
     assertThat(auditAfter("TRANSCRIPTION_MODEL_CHANGED"))
         .contains("\"enabled\":true")
         .contains("\"apiKeyChange\":\"SET\"")

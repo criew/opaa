@@ -919,7 +919,9 @@ def readme(release: Release) -> str:
         "## Prüfen",
         "",
         "```bash",
-        f"gh attestation verify {name}.tar.gz --repo {release.repository}",
+        f"gh attestation verify {name}.tar.gz --repo {release.repository} \\",
+        f"  --signer-workflow {release.repository}/.github/workflows/publish-images.yml"
+        f" --source-ref refs/tags/{release.tag}",
         "sha256sum -c SHA256SUMS   # im entpackten Verzeichnis",
         "```",
         "",
