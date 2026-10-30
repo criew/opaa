@@ -391,12 +391,17 @@ jobs:
   dependency-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
+      # Waits for the head snapshots of the Gradle graph and the pnpm lockfiles, which
+      # dependency-graph.yml generates and dependency-graph-submit.yml submits for every PR.
       - name: Neue critical-Schwachstellen im Scope runtime ablehnen
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: critical
           fail-on-scopes: runtime
+          retry-on-snapshot-warnings: true
+          retry-on-snapshot-warnings-timeout: 900
 
       # The gate above filters by severity and scope before it reports; this run only lists every
       # vulnerable change of both scopes in the job log and never fails.
