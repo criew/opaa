@@ -45,12 +45,13 @@ public final class FuzzCorpusGenerator {
 
   /** Every generated seed by file name. */
   static Map<String, byte[]> seeds() throws IOException {
-    // POI writes its user locale into new documents; earlier tests in the same JVM must not leak in
+    // POI writes its user locale, by default the JVM's, into new documents
+    Locale callers = LocaleUtil.getUserLocale();
     LocaleUtil.setUserLocale(Locale.US);
     try {
       return generate();
     } finally {
-      LocaleUtil.resetUserLocale();
+      LocaleUtil.setUserLocale(callers);
     }
   }
 
@@ -220,7 +221,9 @@ public final class FuzzCorpusGenerator {
       for (int number = 1; number < size; number++) {
         Integer offset = offsets.get(number);
         xref.append(
-            offset == null ? "0000000000 65535 f \n" : String.format("%010d 00000 n \n", offset));
+            offset == null
+                ? "0000000000 65535 f \n"
+                : String.format(Locale.ROOT, "%010d 00000 n \n", offset));
       }
       xref.append("trailer\n<< /Size ")
           .append(size)

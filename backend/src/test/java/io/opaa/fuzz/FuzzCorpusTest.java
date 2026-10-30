@@ -92,7 +92,7 @@ class FuzzCorpusTest {
         .isEmpty();
   }
 
-  /** POI writes its user locale into new documents, and other tests in the same JVM may set it. */
+  /** POI writes its user locale, by default the JVM's, into new documents. */
   @Test
   void theGeneratedSeedsDoNotDependOnThePoiUserLocale() throws IOException {
     Map<String, byte[]> usual = FuzzCorpusGenerator.seeds();
