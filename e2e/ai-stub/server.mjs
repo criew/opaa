@@ -155,6 +155,27 @@ const ANSWER_TRIGGERS = [
   },
 ]
 
+// The trigger word E2E-MODELL-FEHLER in the person's question makes the answer prompt fail with a
+// 400, the way a misconfigured provider refuses a request. A 4xx is not retried by the backend's
+// client, so the failure reaches the chat at once instead of after a backoff. Decomposition, title
+// and note prompts carry the question as well and keep answering, as with the triggers above.
+const FAILURE_TRIGGER = 'E2E-MODELL-FEHLER'
+
+function answerFails(messages) {
+  const isAnswerPrompt = messages.some(
+    (message) =>
+      message.role === 'system' &&
+      typeof message.content === 'string' &&
+      message.content.includes(ANSWER_PROMPT_MARKER),
+  )
+  const question = [...messages].reverse().find((message) => message.role === 'user')
+  return (
+    isAnswerPrompt &&
+    typeof question?.content === 'string' &&
+    question.content.includes(FAILURE_TRIGGER)
+  )
+}
+
 function triggeredFragments(messages) {
   const systemText = messages
     .filter((message) => message.role === 'system' && typeof message.content === 'string')
@@ -317,6 +338,17 @@ const server = createServer(async (req, res) => {
       const body = JSON.parse(await readBody(req))
       lastChatModel = typeof body.model === 'string' ? body.model : null
       const messages = Array.isArray(body.messages) ? body.messages : []
+      if (answerFails(messages)) {
+        sendJson(res, 400, {
+          error: {
+            message: 'The stub refuses this answer prompt.',
+            type: 'invalid_request_error',
+            code: null,
+            param: null,
+          },
+        })
+        return
+      }
       const combinedText = messages
         .map((message) => (typeof message.content === 'string' ? message.content : ''))
         .join('\n')
