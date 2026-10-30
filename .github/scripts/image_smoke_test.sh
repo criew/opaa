@@ -5,8 +5,11 @@
 # in production (read-only root, /tmp and /app/uploads as tmpfs, no capabilities, profile "oidc"),
 # and the frontend hardened the same way in front of it. Passes when the backend reports readiness
 # UP, its health probe agrees, /api/health answers through the frontend's nginx, the frontend
-# serves index.html and the auth configuration reports the pending installation. Model endpoints
-# do not exist; readiness does not depend on them. Needs curl, jq and openssl.
+# serves index.html, the auth configuration reports the pending installation, and the frontend's
+# own files as well as proxied backend answers carry nosniff, X-Frame-Options DENY, both
+# Cross-Origin policies and a Content-Security-Policy with script-src 'self' and frame-ancestors
+# 'none', each exactly once.
+# Model endpoints do not exist; readiness does not depend on them. Needs curl, jq and openssl.
 #
 #   .github/scripts/image_smoke_test.sh <backend image> <frontend image>
 #
@@ -192,4 +195,39 @@ auth_config="$(curl -fsS --max-time 10 "http://127.0.0.1:$frontend_port/api/v1/a
 [[ "$(jq -r '.installationPending' <<<"$auth_config" 2>/dev/null)" == true ]] ||
   fail "/api/v1/auth/config does not report the pending installation: ${auth_config:-no answer}"
 echo "/api/v1/auth/config through the frontend: installation pending"
+
+# The security headers of the frontend on its own files and on the backend's answers, a refusal
+# included: each exactly once, so nginx neither drops nor duplicates the backend's own.
+security_headers() {
+  local path="$1" headers csp script_src
+  headers="$(curl -sS -o /dev/null -D - --max-time 10 "http://127.0.0.1:$frontend_port$path" |
+    tr -d '\r' || true)"
+  [[ "$(grep -ci '^x-content-type-options: nosniff$' <<<"$headers" || true)" == 1 &&
+    "$(grep -ci '^x-content-type-options:' <<<"$headers" || true)" == 1 ]] ||
+    fail "$path does not carry X-Content-Type-Options: nosniff exactly once"
+  [[ "$(grep -ci '^x-frame-options:' <<<"$headers" || true)" == 1 &&
+    "$(grep -ci '^x-frame-options: DENY$' <<<"$headers" || true)" == 1 ]] ||
+    fail "$path does not carry X-Frame-Options: DENY exactly once"
+  for header in "Cross-Origin-Opener-Policy: same-origin" "Cross-Origin-Resource-Policy: same-origin"; do
+    [[ "$(grep -ci "^${header%%:*}:" <<<"$headers" || true)" == 1 &&
+      "$(grep -cix "$header" <<<"$headers" || true)" == 1 ]] ||
+      fail "$path does not carry $header exactly once"
+  done
+  [[ "$(grep -ci '^content-security-policy:' <<<"$headers" || true)" == 1 ]] ||
+    fail "$path does not carry exactly one Content-Security-Policy"
+  csp="$(grep -i '^content-security-policy:' <<<"$headers" | sed 's/^[^:]*: //')"
+  for directive in "default-src 'self'" "object-src 'none'" "frame-ancestors 'none'" "base-uri 'self'"; do
+    [[ "$csp" == *"$directive"* ]] || fail "$path: Content-Security-Policy lacks $directive: $csp"
+  done
+  script_src="$(grep -o "script-src [^;]*" <<<"$csp" || true)"
+  [[ "$script_src" == "script-src 'self'" ]] ||
+    fail "$path: Content-Security-Policy allows more than script-src 'self': ${script_src:-none}"
+  echo "security headers: $path"
+}
+entry="$(grep -o 'src="/assets/[^"]*\.js"' <<<"$index" | head -n 1 | sed 's/^src="//; s/"$//' || true)"
+[[ -n "$entry" ]] || fail "index.html references no entry bundle under /assets/"
+for path in / /some/spa/route "$entry" /runtime-config.js /api/health /api/v1/auth/config \
+  /api/v1/spaces; do
+  security_headers "$path"
+done
 echo "OK: backend and frontend run on linux/$expect_arch"
