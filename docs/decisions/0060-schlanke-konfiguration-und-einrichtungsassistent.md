@@ -395,7 +395,7 @@ Werkseinstellung, und prüfen ihn gegen die Grenzen der Zielinstallation (Entsch
 ## Konsequenzen
 
 - Die Konfiguration schrumpft auf Start, Infrastruktur, Schlüssel, Grenzen, Lastgrenzen und
-  Experten-Feinabstimmung; 48 Variablen entfallen oder wandern in die Datenbank.
+  Experten-Feinabstimmung; 50 Variablen entfallen oder wandern in die Datenbank.
 - Eine Rücksicherung der Datenbank rollt Einstellungen mit zurück; das Handbuch-Kapitel zu Sicherung
   und Wiederherstellung nennt die Prüfschritte.
 - Eine Instanz mit leerer Datenbank ist erst nach der Installation nutzbar; automatisierte Aufbauten

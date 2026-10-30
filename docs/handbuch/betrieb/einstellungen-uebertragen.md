@@ -67,6 +67,9 @@ nicht, wer einen Wert wann geändert hat. Ebenfalls nicht dabei:
   Quellart und je Zugang“).
 - **Die drei Bilder des Brandings.** Sie können größer sein, als eine Datei sein darf, und werden
   im Branding hochgeladen.
+- **Angaben einzelner Bibliotheken**, etwa Inhaltsselektor und Anlagenprofil eines Feeds. Sie
+  gehören zur Bibliothek, nicht zu den Einstellungen der Installation, und werden in deren Reiter
+  „Quelle“ gepflegt.
 
 ## Importieren
 

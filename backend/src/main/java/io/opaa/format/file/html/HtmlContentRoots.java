@@ -9,6 +9,8 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
 import org.jsoup.select.Elements;
+import org.jsoup.select.Evaluator;
+import org.jsoup.select.QueryParser;
 
 /**
  * The one boilerplate and main-content selection for an HTML page, shared by {@link
@@ -60,6 +62,11 @@ public final class HtmlContentRoots {
    * preserve nested chrome for.
    */
   public static List<Element> select(Document htmlDoc, String mainContentSelector) {
+    return select(htmlDoc, QueryParser.parse(mainContentSelector));
+  }
+
+  /** {@link #select(Document, String)} with a selector parsed once by the caller. */
+  public static List<Element> select(Document htmlDoc, Evaluator mainContentSelector) {
     removeUnconditionalBoilerplate(htmlDoc);
     Elements mainCandidates = htmlDoc.select(mainContentSelector);
     if (!mainCandidates.isEmpty()) {

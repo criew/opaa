@@ -19,6 +19,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -56,9 +57,15 @@ class FeedFetcher {
     this.requestPolicy = requestPolicy;
   }
 
-  /** The feed response and parsed entries {@link #fetchAndParse} hands back on success. */
+  /**
+   * The feed response and parsed entries {@link #fetchAndParse} hands back on success; {@code
+   * reprocessing} when the feed state was saved under other extraction settings than the run's.
+   */
   record LoadedFeed(
-      HttpResponse<InputStream> feedResponse, List<RssFeedEntry> entries, boolean truncated) {}
+      HttpResponse<InputStream> feedResponse,
+      List<RssFeedEntry> entries,
+      boolean truncated,
+      boolean reprocessing) {}
 
   /**
    * Fetches, reads and parses {@code feedUrl} in one step. An unchanged feed ({@code 304}) returns
@@ -67,15 +74,26 @@ class FeedFetcher {
    * {@code 401} to the header sent is retried once when {@code authHeader} was renewed, and
    * otherwise ends the run as {@link SourceCredentialsRejectedException}. {@code rateLimitListener}
    * is told about every wait and retry on a {@code 429}.
+   *
+   * <p>A state saved under another {@code extractionFingerprint} ({@link
+   * RssFeedSettings#fingerprint()}) is not sent as conditional {@code GET}: the run reads the feed
+   * in full and reprocesses its entries; so do own settings without any stored state, since no run
+   * under them is known to have been complete.
    */
   Optional<LoadedFeed> fetchAndParse(
       HttpClient httpClient,
       UUID libraryId,
       String feedUrl,
       RenewableCredential<String> authHeader,
-      RateLimitListener rateLimitListener)
+      RateLimitListener rateLimitListener,
+      String extractionFingerprint)
       throws IOException, InterruptedException {
-    Optional<RssFeedState> feedState = findState(libraryId, feedUrl);
+    Optional<RssFeedState> storedState = findState(libraryId, feedUrl);
+    boolean reprocessing =
+        storedState
+            .map(state -> !Objects.equals(state.getExtractionSettings(), extractionFingerprint))
+            .orElse(extractionFingerprint != null);
+    Optional<RssFeedState> feedState = reprocessing ? Optional.empty() : storedState;
     String sent = authHeader.get();
     HttpResponse<InputStream> feedResponse =
         fetchFeed(httpClient, feedUrl, feedState, sent, rateLimitListener);
@@ -132,7 +150,7 @@ class FeedFetcher {
           properties.maxEntries());
       entries = entries.subList(0, properties.maxEntries());
     }
-    return Optional.of(new LoadedFeed(feedResponse, entries, truncated));
+    return Optional.of(new LoadedFeed(feedResponse, entries, truncated, reprocessing));
   }
 
   /** A {@code 401} to an {@code Authorization} the feed's own origin received. */
@@ -194,23 +212,43 @@ class FeedFetcher {
 
   /**
    * Persists {@code feedResponse}'s {@code ETag}/{@code Last-Modified} for the next run's
-   * conditional {@code GET} - a no-op when the response carries neither header. The caller only
-   * invokes this once a run has accounted for every entry it saw (see {@link
+   * conditional {@code GET}, together with the {@code extractionFingerprint} the run processed the
+   * entries under - a no-op when there is neither header, no stored state and the factory defaults.
+   * The caller only invokes this once a run has accounted for every entry it saw (see {@link
    * RssFeedIndexingExecutor#execute}); saving state after a run that deferred or failed an entry
    * would let a future {@code 304} permanently hide it.
    */
-  void saveState(UUID libraryId, String feedUrl, HttpResponse<InputStream> feedResponse) {
+  void saveState(
+      UUID libraryId,
+      String feedUrl,
+      HttpResponse<InputStream> feedResponse,
+      String extractionFingerprint) {
     String etag = feedResponse.headers().firstValue("ETag").orElse(null);
     String lastModified = feedResponse.headers().firstValue("Last-Modified").orElse(null);
-    if (etag == null && lastModified == null) {
+    Optional<RssFeedState> stored =
+        feedStateRepository.findByLibraryIdAndFeedUrl(libraryId, feedUrl);
+    if (etag == null && lastModified == null && stored.isEmpty() && extractionFingerprint == null) {
       return;
     }
+    RssFeedState state = stored.orElseGet(() -> new RssFeedState(libraryId, feedUrl, null, null));
+    state.setEtag(etag);
+    state.setLastModified(lastModified);
+    state.setExtractionSettings(extractionFingerprint);
+    state.setUpdatedAt(Instant.now());
+    feedStateRepository.save(state);
+  }
+
+  /**
+   * Records that a run read every entry under {@code extractionFingerprint} although it deferred or
+   * failed some, leaving {@code ETag}/{@code Last-Modified} as they were: a later {@code 304} must
+   * still not hide what was deferred, but the entries need no second read under the same settings.
+   */
+  void saveExtraction(UUID libraryId, String feedUrl, String extractionFingerprint) {
     RssFeedState state =
         feedStateRepository
             .findByLibraryIdAndFeedUrl(libraryId, feedUrl)
             .orElseGet(() -> new RssFeedState(libraryId, feedUrl, null, null));
-    state.setEtag(etag);
-    state.setLastModified(lastModified);
+    state.setExtractionSettings(extractionFingerprint);
     state.setUpdatedAt(Instant.now());
     feedStateRepository.save(state);
   }

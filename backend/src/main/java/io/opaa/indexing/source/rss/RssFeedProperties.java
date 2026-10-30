@@ -4,8 +4,6 @@ import static io.opaa.common.PropertyDefaults.positiveOr;
 
 import io.opaa.compliance.NoDataImpact;
 import io.opaa.compliance.PerInstance;
-import io.opaa.format.file.html.HtmlContentRoots;
-import io.opaa.indexing.attachment.AttachmentProfile;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -15,7 +13,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * any of these limits itself (it is a pure, unbounded parser meant to run without network or
  * database), so the executor that drives it is the only place left to apply them. The {@code
  * User-Agent} and the {@code 429} tolerance are {@code SourceHttpProperties}', shared with every
- * other connector.
+ * other connector. Content selector and attachment profile belong to each library ({@link
+ * RssFeedSettings}).
  *
  * @param maxEntries the maximum number of feed entries processed in a single run. Excess entries
  *     are logged and dropped, not treated as an error.
@@ -28,13 +27,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param requestDelayMs the minimum delay, in milliseconds, between two detail-page requests -
  *     being a well-behaved crawler against sites OPAA does not operate. Default 1000: a
  *     conservative one request per second.
- * @param mainContentSelector the CSS selector (Jsoup syntax) used to find a detail page's main
- *     content, tried against the whole document ({@code HtmlContentRoots}). Falls back to {@code
- *     body} when it matches nothing, so an unusual page still yields the full page rather than
- *     nothing at all.
- * @param attachmentProfile the {@link AttachmentProfile} deciding which links on a detail page
- *     count as attachments. Defaults to {@link AttachmentProfile#GENERIC}. This is deliberately an
- *     application property.
  * @param maxAttachmentsPerEntry the maximum number of attachments downloaded per RSS entry. Excess
  *     candidates are logged and dropped, not treated as an error - mirrors {@link #maxEntries}'s
  *     truncation-not-failure treatment.
@@ -50,14 +42,8 @@ public record RssFeedProperties(
     long maxFeedSizeBytes,
     long maxPageSizeBytes,
     long requestDelayMs,
-    String mainContentSelector,
-    AttachmentProfile attachmentProfile,
     int maxAttachmentsPerEntry,
     long maxAttachmentSizeBytes) {
-
-  /** The HTML pipeline's own choice, so a file and a feed page are reduced the same way. */
-  static final String DEFAULT_MAIN_CONTENT_SELECTOR =
-      HtmlContentRoots.DEFAULT_MAIN_CONTENT_SELECTOR;
 
   public RssFeedProperties {
     maxEntries = positiveOr(maxEntries, 200);
@@ -65,12 +51,6 @@ public record RssFeedProperties(
     maxPageSizeBytes = positiveOr(maxPageSizeBytes, 5_242_880L); // 5 MiB
     if (requestDelayMs < 0) {
       requestDelayMs = 1000L;
-    }
-    if (mainContentSelector == null || mainContentSelector.isBlank()) {
-      mainContentSelector = DEFAULT_MAIN_CONTENT_SELECTOR;
-    }
-    if (attachmentProfile == null) {
-      attachmentProfile = AttachmentProfile.GENERIC;
     }
     maxAttachmentsPerEntry = positiveOr(maxAttachmentsPerEntry, 10);
     maxAttachmentSizeBytes = positiveOr(maxAttachmentSizeBytes, 20_971_520L); // 20 MiB

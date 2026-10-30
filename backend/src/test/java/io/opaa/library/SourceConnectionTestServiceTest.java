@@ -566,7 +566,7 @@ class SourceConnectionTestServiceTest {
             libraryAccessService,
             TestSourceConnectors.connectors()
                 .filesystemAllowlist(filesystemAllowlist)
-                .rssProperties(new RssFeedProperties(200, 10, 10, 0, null, null, 0, 0))
+                .rssProperties(new RssFeedProperties(200, 10, 10, 0, 0, 0))
                 .registry(),
             connectorRelease,
             new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
@@ -702,7 +702,7 @@ class SourceConnectionTestServiceTest {
             libraryAccessService,
             TestSourceConnectors.connectors()
                 .filesystemAllowlist(filesystemAllowlist)
-                .rssProperties(new RssFeedProperties(1, 0, 0, 0, null, null, 0, 0))
+                .rssProperties(new RssFeedProperties(1, 0, 0, 0, 0, 0))
                 .registry(),
             connectorRelease,
             new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));
@@ -749,7 +749,7 @@ class SourceConnectionTestServiceTest {
             libraryAccessService,
             TestSourceConnectors.connectors()
                 .filesystemAllowlist(filesystemAllowlist)
-                .rssProperties(new RssFeedProperties(200, 10, 10, 0, null, null, 0, 0))
+                .rssProperties(new RssFeedProperties(200, 10, 10, 0, 0, 0))
                 .registry(),
             connectorRelease,
             new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC()));

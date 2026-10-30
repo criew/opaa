@@ -31,14 +31,17 @@ import io.opaa.knowledge.SourceType;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BasicCredentials;
 import io.opaa.sourceaccess.BoundedStreams;
+import io.opaa.sourceaccess.RateLimitListener;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -62,6 +65,8 @@ public class RssFeedSourceConnector
   public static final SourceType TYPE = SourceType.of("RSS_FEED");
 
   private static final Logger log = LoggerFactory.getLogger(RssFeedSourceConnector.class);
+
+  static final String DETAIL_PAGE_UNREACHABLE = "Sie ist nicht erreichbar oder nicht zugelassen.";
 
   /** What a required profile leaves open: the detail pages an entry links to. */
   static final String REQUIREMENT_GAP =
@@ -87,6 +92,7 @@ public class RssFeedSourceConnector
   private final long maxFeedSizeBytes;
   private final int maxFeedEntries;
   private final RemoteOriginalAccess remoteOriginals;
+  private final DetailPageExtractor detailPageExtractor;
 
   public RssFeedSourceConnector(
       RssFeedParser feedParser,
@@ -102,6 +108,8 @@ public class RssFeedSourceConnector
     this.maxFeedSizeBytes = properties.maxFeedSizeBytes();
     this.maxFeedEntries = properties.maxEntries();
     this.remoteOriginals = remoteOriginals;
+    this.detailPageExtractor =
+        new DetailPageExtractor(targetAddressValidator, properties, requestPolicy);
   }
 
   @Override
@@ -120,6 +128,30 @@ public class RssFeedSourceConnector
     return DESCRIPTOR;
   }
 
+  /** Content selector and attachment profile ({@link RssFeedSettings}), each optional. */
+  @Override
+  public ConnectorData readSettings(ConnectorData requested) {
+    return RssFeedSettings.read(requested).toData();
+  }
+
+  /** Readers see how the detail pages are read, as the row „Umfang“ shows it to them. */
+  @Override
+  public ConnectorData settingsView(
+      KnowledgeLibrary library, ConnectorData stored, boolean manager) {
+    return stored;
+  }
+
+  @Override
+  public Map<String, Object> settingsState(KnowledgeLibrary library, ConnectorData stored) {
+    RssFeedSettings settings = RssFeedSettings.read(stored);
+    Map<String, Object> state = new LinkedHashMap<>();
+    state.put(RssFeedSettings.MAIN_CONTENT_SELECTOR, settings.mainContentSelector());
+    state.put(
+        RssFeedSettings.ATTACHMENT_PROFILE,
+        settings.attachmentProfile() == null ? null : settings.attachmentProfile().name());
+    return state;
+  }
+
   @Override
   public SourceSettings validate(SourceSettings requested) {
     ConnectorChecks.validateUrlBasedConfiguration(
@@ -129,7 +161,9 @@ public class RssFeedSourceConnector
 
   /**
    * The feed state row only goes away with the library itself (ON DELETE CASCADE); returning to a
-   * former address must not find its stale ETag again and end the run in a false 304.
+   * former address must not find its stale ETag again and end the run in a false 304. Changed
+   * extraction settings need nothing here: the feed state names the ones it was saved under, and
+   * the next run compares them with the library's.
    */
   @Override
   public void onSourceChanged(
@@ -196,7 +230,16 @@ public class RssFeedSourceConnector
                   + maxFeedEntries
                   + ".";
         }
-        return reachable(message, countedEntries);
+        RssFeedSettings extraction =
+            RssFeedSettings.read(
+                settings.connectorSettings() != null ? settings.connectorSettings() : stored);
+        if (extraction.isFactoryDefault() || entries.isEmpty()) {
+          return reachable(message, countedEntries);
+        }
+        DetailPageCheck check =
+            checkDetailPage(httpClient, url, authHeader, entries.getFirst().link(), extraction);
+        return new SourceConnectionTestResult(
+            true, message + " " + check.message(), (long) countedEntries, null, check.details());
       }
     } catch (IOException e) {
       log.warn("RSS_FEED source test failed for {}: {}", url, e.getMessage());
@@ -205,6 +248,78 @@ public class RssFeedSourceConnector
       Thread.currentThread().interrupt();
       return unreachable("Die Verbindung wurde unterbrochen.");
     }
+  }
+
+  /** What the test found on the first entry's detail page, as sentence and as findings. */
+  private record DetailPageCheck(String message, ConnectorData details) {
+
+    static DetailPageCheck unchecked(String reason) {
+      return new DetailPageCheck(
+          "Die Detailseite des ersten Eintrags konnte nicht geprüft werden: " + reason,
+          ConnectorData.of(Map.of("detailPage", Map.of("checked", false))));
+    }
+  }
+
+  /**
+   * Reduces the first entry's detail page the way a run would under {@code extraction} and reports
+   * what the selector and the profile find there. Credentials go only to the feed's own origin, as
+   * in a run; a page that cannot be read leaves the feed reachable and only says so.
+   */
+  private DetailPageCheck checkDetailPage(
+      HttpClient httpClient,
+      String feedUrl,
+      String authHeader,
+      String entryUrl,
+      RssFeedSettings extraction)
+      throws InterruptedException {
+    DetailPageExtractor.DetailPage page;
+    try {
+      String entryAuth =
+          authHeader != null
+                  && RedirectFollowingFetcher.sameOrigin(URI.create(feedUrl), URI.create(entryUrl))
+              ? authHeader
+              : null;
+      page =
+          detailPageExtractor.fetch(
+              httpClient,
+              entryUrl,
+              entryAuth,
+              RateLimitListener.NONE,
+              DetailPageExtractor.Extraction.of(extraction));
+    } catch (DetailPageExtractor.RejectedByRemoteException e) {
+      return DetailPageCheck.unchecked(e.userMessage() + ".");
+    } catch (DetailPageExtractor.UnsupportedContentTypeException e) {
+      return DetailPageCheck.unchecked("Ihr Inhaltstyp wird nicht unterstützt.");
+    } catch (IOException e) {
+      // the address comes from the feed operator: one wording, so the test reveals neither the
+      // target nor how it resolves; the cause goes to the log only
+      log.warn("RSS_FEED detail page check failed for {}: {}", entryUrl, e.getMessage());
+      return DetailPageCheck.unchecked(DETAIL_PAGE_UNREACHABLE);
+    } catch (IllegalArgumentException e) {
+      return DetailPageCheck.unchecked("Ihre Adresse ist ungültig.");
+    }
+    String found =
+        page.selectorMatched()
+            ? "Der Inhaltsselektor findet auf der Detailseite des ersten Eintrags "
+                + page.contentAreas()
+                + (page.contentAreas() == 1 ? " Bereich" : " Bereiche")
+            : "Der Inhaltsselektor findet auf der Detailseite des ersten Eintrags nichts; ein Lauf"
+                + " nimmt dort die ganze Seite";
+    int attachments = page.attachments().size();
+    String message =
+        found
+            + ", "
+            + attachments
+            + (attachments == 1 ? " Anlage" : " Anlagen")
+            + " nach dem Anlagenprofil "
+            + extraction.effectiveProfile().name()
+            + ".";
+    Map<String, Object> findings = new LinkedHashMap<>();
+    findings.put("checked", true);
+    findings.put("selectorMatched", page.selectorMatched());
+    findings.put("contentAreas", page.contentAreas());
+    findings.put("attachments", attachments);
+    return new DetailPageCheck(message, ConnectorData.of(Map.of("detailPage", findings)));
   }
 
   /**

@@ -12,8 +12,8 @@ import org.jsoup.nodes.Element;
 /**
  * Describes which links on an RSS entry's detail page count as attachments - an explicit code
  * construct rather than an {@code if} chain, so a second CMS with a different pattern becomes a
- * third constant. Selected per deployment via {@code opaa.indexing.rss.attachment-profile}, never
- * by guessing the CMS from the feed's address.
+ * third constant. Selected per feed library in its connector settings, never by guessing the CMS
+ * from the feed's address.
  *
  * <p>Both profiles search only inside the content area the article text is extracted from, so a
  * navigation or footer link is never an attachment, and neither ever considers a link to a

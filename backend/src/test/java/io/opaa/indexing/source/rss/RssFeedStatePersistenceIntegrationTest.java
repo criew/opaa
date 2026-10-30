@@ -75,7 +75,7 @@ class RssFeedStatePersistenceIntegrationTest {
     assertThat(lastModified.length()).isGreaterThan(200);
     FeedFetcher fetcher = new FeedFetcher(null, feedStateRepository, null, null, null);
 
-    fetcher.saveState(library.getId(), FEED_URL, responseWith(etag, lastModified));
+    fetcher.saveState(library.getId(), FEED_URL, responseWith(etag, lastModified), null);
 
     assertThat(
             jdbcTemplate.queryForMap(
@@ -83,6 +83,24 @@ class RssFeedStatePersistenceIntegrationTest {
                 library.getId()))
         .containsEntry("etag", etag)
         .containsEntry("last_modified", lastModified);
+  }
+
+  @Test
+  void theSettingsARunExtractedUnderAreStoredWithTheValidators() {
+    FeedFetcher fetcher = new FeedFetcher(null, feedStateRepository, null, null, null);
+    String fingerprint =
+        RssFeedSettings.read(
+                io.opaa.indexing.spi.ConnectorData.of(Map.of("attachmentProfile", "GSB")))
+            .fingerprint();
+
+    fetcher.saveState(library.getId(), FEED_URL, responseWith("\"v1\"", "x"), fingerprint);
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT extraction_settings FROM rss_feed_state WHERE library_id = ?",
+                String.class,
+                library.getId()))
+        .isEqualTo(fingerprint);
   }
 
   @SuppressWarnings("unchecked")

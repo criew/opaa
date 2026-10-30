@@ -95,7 +95,7 @@ class RssFeedIndexingExecutorTargetValidationTest {
     // sendFollowingRedirects would already reject the start URL.
     TargetAddressValidator enabledValidator =
         new TargetAddressValidator(true, List.of("127.0.0.1"));
-    RssFeedProperties rss = new RssFeedProperties(200, 10_000, 10_000, 0, null, null, 0, 0);
+    RssFeedProperties rss = new RssFeedProperties(200, 10_000, 10_000, 0, 0, 0);
     executor =
         new RssFeedIndexingExecutor(
             new RssFeedParser(),

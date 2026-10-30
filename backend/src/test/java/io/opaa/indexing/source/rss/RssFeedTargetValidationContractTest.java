@@ -29,7 +29,7 @@ class RssFeedTargetValidationContractTest extends TargetValidationContract {
             mock(RssFeedStateRepository.class),
             validator,
             SourceRequestPolicy.defaults(),
-            new RssFeedProperties(0, 0, 0, 0, null, null, 0, 0),
+            new RssFeedProperties(0, 0, 0, 0, 0, 0),
             new RemoteOriginalAccess(
                 new BoundedDownloader(validator), validator, new RemoteContentProperties(0, 0, 0)));
     return connector.testConnection(

@@ -87,7 +87,7 @@ class RssFeedIndexingExecutorUntrustedCertificateTest {
     when(feedStateRepository.findByLibraryIdAndFeedUrl(any(), anyString()))
         .thenReturn(Optional.empty());
 
-    RssFeedProperties rss = new RssFeedProperties(200, 10_000, 10_000, 0, null, null, 0, 0);
+    RssFeedProperties rss = new RssFeedProperties(200, 10_000, 10_000, 0, 0, 0);
     // the feed is deliberately on loopback; target validation has its own tests
     TargetAddressValidator targetAddressValidator = TargetAddressValidator.disabled();
     executor =

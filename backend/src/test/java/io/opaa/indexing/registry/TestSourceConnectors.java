@@ -40,7 +40,7 @@ import java.util.stream.Stream;
 public final class TestSourceConnectors {
 
   private FilesystemPathAllowlist filesystemAllowlist = mock(FilesystemPathAllowlist.class);
-  private RssFeedProperties rssProperties = new RssFeedProperties(0, 0, 0, 0, null, null, 0, 0);
+  private RssFeedProperties rssProperties = new RssFeedProperties(0, 0, 0, 0, 0, 0);
   private RssFeedStateRepository rssFeedStateRepository = mock(RssFeedStateRepository.class);
   private SourceSyncStateRepository sourceSyncStateRepository =
       mock(SourceSyncStateRepository.class);

@@ -4,6 +4,7 @@ import io.opaa.compliance.DataFlow;
 import io.opaa.format.file.html.HtmlContentRoots;
 import io.opaa.format.shared.Whitespace;
 import io.opaa.indexing.attachment.AttachmentCandidate;
+import io.opaa.indexing.attachment.AttachmentProfile;
 import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;
@@ -25,13 +26,14 @@ import java.util.Set;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.select.Evaluator;
 
 /**
  * Fetches a single RSS entry's detail page and reduces it to the HTML of its main content plus
  * attachment candidates, split out of {@code RssFeedIndexingExecutor}. The reduction is {@link
  * HtmlContentRoots}' - the same boilerplate stripping and root selection the HTML pipeline applies
- * to a file, here with the configured {@link RssFeedProperties#mainContentSelector()} - so
- * boilerplate never survives into the index and is never considered for attachments.
+ * to a file, here with the library's {@link RssFeedSettings#effectiveSelector()} - so boilerplate
+ * never survives into the index and is never considered for attachments.
  */
 @DataFlow("source-rss")
 public class DetailPageExtractor {
@@ -50,17 +52,35 @@ public class DetailPageExtractor {
   }
 
   /**
-   * An entry's detail page reduced to its content roots' HTML - empty when they carry no visible
-   * text - and the attachment candidates found in them, each once.
+   * How a run reads its detail pages: the content selector, parsed once per run, and the attachment
+   * profile of the library.
    */
-  public record DetailPage(String mainHtml, List<AttachmentCandidate> attachments) {}
+  public record Extraction(Evaluator contentSelector, AttachmentProfile attachmentProfile) {
+
+    static Extraction of(RssFeedSettings settings) {
+      return new Extraction(settings.compiledSelector(), settings.effectiveProfile());
+    }
+  }
+
+  /**
+   * An entry's detail page reduced to its content roots' HTML - empty when they carry no visible
+   * text - and the attachment candidates found in them, each once. {@code contentAreas} counts the
+   * selector's top-level matches, 0 when it matched nothing and the body stood in.
+   */
+  public record DetailPage(
+      String mainHtml, List<AttachmentCandidate> attachments, int contentAreas) {
+
+    public boolean selectorMatched() {
+      return contentAreas > 0;
+    }
+  }
 
   /**
    * Fetches {@code entryUrl} and extracts its main content, following redirects only within {@code
    * entryUrl}'s own origin ({@link RedirectFollowingFetcher.RedirectPolicy#REJECT_OFF_ORIGIN}) - an
    * entry's {@code <link>} is content the feed operator controls, so a redirect leaving that origin
    * is refused outright rather than followed anonymized. {@code rateLimitListener} is told about
-   * every wait and retry on a {@code 429}.
+   * every wait and retry on a {@code 429}. Content areas and attachments follow {@code extraction}.
    *
    * @throws RejectedByRemoteException if the remote end declined outright (403, or 429 past the
    *     {@link SourceRequestPolicy}'s retries) or a redirect would leave {@code entryUrl}'s own
@@ -73,7 +93,8 @@ public class DetailPageExtractor {
       HttpClient httpClient,
       String entryUrl,
       String authHeader,
-      RateLimitListener rateLimitListener)
+      RateLimitListener rateLimitListener,
+      Extraction extraction)
       throws IOException, InterruptedException {
     HttpResponse<InputStream> response =
         sendDetailPageRequest(httpClient, entryUrl, authHeader, rateLimitListener);
@@ -119,10 +140,14 @@ public class DetailPageExtractor {
       // hardcoded StandardCharsets.UTF_8, which silently mangles e.g. ISO-8859-1 into U+FFFD.
       Document htmlDoc =
           Jsoup.parse(new ByteArrayInputStream(pageBytes), charsetNameFrom(contentType), entryUrl);
-      List<Element> roots = HtmlContentRoots.select(htmlDoc, properties.mainContentSelector());
+      Evaluator selector = extraction.contentSelector();
+      List<Element> roots = HtmlContentRoots.select(htmlDoc, selector);
       if (roots.isEmpty()) {
-        return new DetailPage("", List.of());
+        return new DetailPage("", List.of(), 0);
       }
+      // the body stands in only when nothing matched, unless the selector names the body itself
+      boolean bodyFallback =
+          roots.size() == 1 && roots.getFirst() == htmlDoc.body() && !htmlDoc.body().is(selector);
       // Serialized verbatim: pretty-printing would insert whitespace inside inline text, and the
       // pipeline decodes any entity again, so the output charset is UTF-8 regardless of the page's.
       htmlDoc.outputSettings().prettyPrint(false).charset(StandardCharsets.UTF_8);
@@ -131,11 +156,14 @@ public class DetailPageExtractor {
       boolean hasText = false;
       for (Element root : roots) {
         attachments.addAll(
-            properties.attachmentProfile().findAttachments(root, URI.create(entryUrl)));
+            extraction.attachmentProfile().findAttachments(root, URI.create(entryUrl)));
         hasText |= !Whitespace.normalize(root.text()).isBlank();
         html.append(root.outerHtml()).append('\n');
       }
-      return new DetailPage(hasText ? html.toString() : "", List.copyOf(attachments));
+      return new DetailPage(
+          hasText ? html.toString() : "",
+          List.copyOf(attachments),
+          bodyFallback ? 0 : roots.size());
     }
   }
 

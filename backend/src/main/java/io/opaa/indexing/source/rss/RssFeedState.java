@@ -46,6 +46,13 @@ public class RssFeedState {
   @Column(name = "last_modified", columnDefinition = "text")
   private String lastModified;
 
+  /**
+   * The {@link RssFeedSettings#fingerprint()} the feed's entries were last completely processed
+   * under, {@code null} for the factory defaults.
+   */
+  @Column(name = "extraction_settings", columnDefinition = "text")
+  private String extractionSettings;
+
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
@@ -86,6 +93,14 @@ public class RssFeedState {
 
   public void setLastModified(String lastModified) {
     this.lastModified = lastModified;
+  }
+
+  public String getExtractionSettings() {
+    return extractionSettings;
+  }
+
+  public void setExtractionSettings(String extractionSettings) {
+    this.extractionSettings = extractionSettings;
   }
 
   public Instant getUpdatedAt() {

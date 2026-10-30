@@ -16,11 +16,11 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 
 /**
- * Warns at start about variables that once preset a setting the system administration now holds in
- * the database, or a value the installation now sets (ADR-0060, Entscheidungen 1, 8 to 10, 17):
- * they are no longer read as the value, outside the {@code dev} mode or at all, and a value still
- * set there would otherwise be lost without a word. Only warns, so an update with an old
- * environment starts; each instance warns for its own environment (ADR-0053).
+ * Warns at start about variables that once preset a setting the system administration or each
+ * library now holds in the database, or a value the installation now sets (ADR-0060, Entscheidungen
+ * 1, 8 to 10, 17): they are no longer read as the value, outside the {@code dev} mode or at all,
+ * and a value still set there would otherwise be lost without a word. Only warns, so an update with
+ * an old environment starts; each instance warns for its own environment (ADR-0053).
  */
 @Configuration
 public class RetiredSettingVariables {
@@ -94,6 +94,13 @@ public class RetiredSettingVariables {
    */
   static final Map<String, String> RETIRED_ADMINISTRATION_VALUES = retiredAdministrationValues();
 
+  /**
+   * The retired installation-wide defaults of a feed library's own settings, each under its
+   * variable and its property name; never taken over, every library starts from the factory
+   * default.
+   */
+  static final Map<String, String> RETIRED_PER_LIBRARY = retiredPerLibrary();
+
   private final Environment environment;
 
   public RetiredSettingVariables(Environment environment) {
@@ -142,6 +149,13 @@ public class RetiredSettingVariables {
                     : name + " is no longer read; set " + setting);
           }
         });
+    Set<String> perLibrary = new HashSet<>();
+    RETIRED_PER_LIBRARY.forEach(
+        (name, setting) -> {
+          if (environment.containsProperty(name) && perLibrary.add(setting)) {
+            messages.add(name + " is no longer read and not taken over; set " + setting);
+          }
+        });
     if (!environment.acceptsProfiles(Profiles.of("dev"))) {
       DEV_MODE_ONLY.stream()
           .filter(environment::containsProperty)
@@ -186,6 +200,22 @@ public class RetiredSettingVariables {
     retired.put("opaa.indexing.nextcloud.full-descent-interval", descent);
     retired.put("OPAA_AUTH_LOCAL_LOCKOUT_DURATION", RETIRED_LOCKOUT_DURATION);
     retired.put("opaa.auth.local.lockout.duration", RETIRED_LOCKOUT_DURATION);
+    return Collections.unmodifiableMap(retired);
+  }
+
+  private static Map<String, String> retiredPerLibrary() {
+    Map<String, String> retired = new LinkedHashMap<>();
+    String place = " of each RSS library in its source configuration (Reiter Quelle, Umfang)";
+    String selector =
+        "the content selector"
+            + place
+            + " - until then the factory default main, article, [role=main] applies";
+    retired.put("OPAA_INDEXING_RSS_MAIN_CONTENT_SELECTOR", selector);
+    retired.put("opaa.indexing.rss.main-content-selector", selector);
+    String profile =
+        "the attachment profile" + place + " - until then the factory default GENERIC applies";
+    retired.put("OPAA_INDEXING_RSS_ATTACHMENT_PROFILE", profile);
+    retired.put("opaa.indexing.rss.attachment-profile", profile);
     return Collections.unmodifiableMap(retired);
   }
 
