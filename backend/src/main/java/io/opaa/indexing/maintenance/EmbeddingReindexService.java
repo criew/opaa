@@ -216,8 +216,8 @@ public class EmbeddingReindexService {
 
   /**
    * Counts the target column while it is filled, the embedding column otherwise. A stale snapshot
-   * without a target column means another instance switched the columns before this one heard of
-   * it: the embedding column then holds the vectors the target column was filled with.
+   * without a target column means another instance switched or discarded the change before this one
+   * heard of it; until the bus tells this instance, the counts are those of the embedding column.
    */
   private Counted counted(boolean stale, boolean privateCounted) {
     if (schema.columnDimensions(EmbeddingIndexState.EMBEDDING_COLUMN) == null) {
