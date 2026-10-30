@@ -1,0 +1,210 @@
+name: ZAP Baseline
+
+# Passive OWASP ZAP scan of an anonymous caller against a stack built from this commit; procedure
+# and handling of findings in docs/entwicklung/zap-baseline.md. Every warning of risk Low or higher
+# that .github/zap/rules.yaml does not suppress turns the run red. Not a gate on every PR: only a
+# change to the scan itself runs it there.
+on:
+  schedule:
+    # Offset from cve-scan.yml (03:30) and e2e.yml (03:17), which build and start stacks as well.
+    - cron: '45 4 * * *'
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/zap-baseline.yml"
+      - ".github/zap/**"
+      - ".github/scripts/zap_baseline.sh"
+      - ".github/scripts/zap_rules.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Version and index digest; a regex manager in renovate.json5 keeps both current.
+env:
+  # renovate: datasource=docker depName=ghcr.io/zaproxy/zaproxy
+  ZAP_IMAGE: ghcr.io/zaproxy/zaproxy:2.17.0@sha256:030d3df57735dacbb83464854758e674dd9ad01d79d12a129a8e58b1fd384238
+
+jobs:
+  # Own job without a needs edge to the scan: an expired or malformed suppression turns the run red
+  # but never keeps the scan from running. The scan leaves such an entry out, so its finding counts.
+  rules-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.15'
+
+      - name: Install PyYAML
+        run: pip install --require-hashes -r .github/requirements-ci.txt
+
+      - name: Unterdrückungen prüfen
+        run: python3 .github/scripts/zap_rules.py check --rules .github/zap/rules.yaml
+
+  zap-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Reads the layer cache e2e.yml writes on main and writes none of its own. Tagged as Compose
+      # names the images of project opaa-zap, so zap_baseline.sh starts them without a build.
+      - name: Backend-Image bauen
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: backend/Dockerfile
+          tags: opaa-zap-backend:latest
+          load: true
+          cache-from: type=gha,scope=e2e-backend
+
+      - name: Frontend-Image bauen
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: frontend/Dockerfile
+          tags: opaa-zap-frontend:latest
+          load: true
+          cache-from: type=gha,scope=e2e-frontend
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.15'
+
+      - name: Install PyYAML
+        run: pip install --require-hashes -r .github/requirements-ci.txt
+
+      - name: ZAP-Image laden
+        run: docker pull "$ZAP_IMAGE"
+
+      # The exit status is evaluated together with the report in the next step, so the summary is
+      # written whatever ZAP found.
+      - name: Stack starten und scannen
+        id: scan
+        env:
+          ZAP_SKIP_BUILD: 'true'
+        run: |
+          status=0
+          .github/scripts/zap_baseline.sh "$ZAP_IMAGE" zap-out || status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+
+      - name: Befunde auswerten
+        if: ${{ !cancelled() }}
+        env:
+          ZAP_EXIT: ${{ steps.scan.outputs.status }}
+        run: |
+          mkdir -p zap-out
+          python3 .github/scripts/zap_rules.py summary --rules .github/zap/rules.yaml \
+            --report zap-out/zap-report.json --zap-exit "${ZAP_EXIT:-3}" >zap-out/summary.md && passed=true || passed=false
+          cat zap-out/summary.md >> "$GITHUB_STEP_SUMMARY"
+          if [ "$passed" != true ]; then
+            echo "::error::Der ZAP-Baseline-Scan meldet neue Warnungen oder ist gescheitert, siehe Zusammenfassung und Artefakt zap-baseline."
+            exit 1
+          fi
+
+      - name: Berichte hochladen
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: zap-baseline
+          path: zap-out/
+          if-no-files-found: ignore
+          retention-days: 14
+          overwrite: true
+
+  # A red nightly run is invisible without a PR, so it opens an alarm issue or comments on the one
+  # already open (same pattern as e2e.yml); the next green run on main closes it. The body of an
+  # existing issue is never overwritten. Runs only on main and never for a pull_request: a branch
+  # dispatch runs a modified scan whose result says nothing about main.
+  alarm:
+    needs: [rules-check, zap-baseline]
+    if: ${{ !cancelled() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Bericht laden
+        continue-on-error: true
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: zap-baseline
+          path: zap-out
+
+      - name: Alarm-Issue öffnen, kommentieren oder schließen
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          RULES_RESULT: ${{ needs.rules-check.result }}
+          SCAN_RESULT: ${{ needs.zap-baseline.result }}
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- zap-baseline-alert -->';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const green = process.env.RULES_RESULT === 'success' && process.env.SCAN_RESULT === 'success';
+
+            const issuesAndPrs = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'security',
+              per_page: 100,
+            });
+            const existing = issuesAndPrs.find(i => !i.pull_request && i.body && i.body.includes(marker));
+
+            if (green) {
+              if (existing) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: existing.number,
+                  body: `Der ZAP-Baseline-Scan ist wieder grün: ${runUrl}`,
+                });
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: existing.number,
+                  state: 'closed',
+                });
+              }
+              return;
+            }
+
+            const summaryPath = 'zap-out/summary.md';
+            const summary = fs.existsSync(summaryPath)
+              ? fs.readFileSync(summaryPath, 'utf8').replace(/^## ZAP-Baseline-Scan\n*/, '')
+              : 'Keine Auswertung vorhanden: Der Lauf hat den Scan nicht erreicht oder nicht beendet (siehe Workflow-Logs).';
+            const details = `Prüfung der Unterdrückungen: \`${process.env.RULES_RESULT}\` · ` +
+              `Scan: \`${process.env.SCAN_RESULT}\`\n\n${summary}`;
+            const procedure = 'Verfahren: `docs/entwicklung/zap-baseline.md`, Abschnitt „Umgang mit einem Befund“. ' +
+              'Artefakt des Laufs: `zap-baseline`.';
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: `Erneut rot: ${runUrl}\n\n${details}\n\n${procedure}`,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: 'ci(security): ZAP-Baseline-Scan auf main rot (automatischer Lauf)',
+                body: `${marker}\n\n**Der ZAP-Baseline-Scan auf \`main\` ist rot.**\n\n` +
+                  `Workflow-Lauf: ${runUrl} (Auslöser: ${context.eventName})\n\n${details}\n\n${procedure}\n\n` +
+                  'Dieses Issue wird automatisch geschlossen, sobald ein Lauf auf `main` wieder grün ist.',
+                labels: ['security', 'ci', 'bug'],
+              });
+            }
