@@ -173,8 +173,8 @@ mit). Ausgenommen sind nur Quellen- und Javadoc-JARs, die allein die IDE lädt
   fremden Gradle-Cache nicht ungeprüft übernehmen, sondern gegen Central abgleichen.
 - **Dependency Graph.** Der Workflow `dependency-graph.yml` spielt per Init-Skript das Plugin
   `org.gradle:github-dependency-graph-gradle-plugin` ein. Genau dessen Version steht in
-  `trusted-artifacts`; hebt ein Update der Action die Version an, scheitert der Resolve-Job im
-  selben PR, und die Version wird dort nachgezogen. Weil der Resolve-Job kein Required Check
+  `trusted-artifacts`; hebt ein Update der Action die Version an, scheitert der Job `generate`
+  im selben PR, und die Version wird dort nachgezogen. Weil der Job kein Required Check
   ist, mergen Updates von `gradle/actions` nie automatisch.
 
 **npm wird gepinnt** (`rangeStrategy: 'pin'` für `dependencies`/`devDependencies`):

@@ -46,7 +46,7 @@ Merge.
 | Prüfung | Was sie abfängt | Wo |
 |---|---|---|
 | Statische Code-Analyse (CodeQL) | unsichere Datenflüsse wie Injection oder Pfadmanipulation in Java, TypeScript, Python und den Workflows | `codeql.yml`, [cve-scanning.md](cve-scanning.md#statische-code-analyse-codeql) |
-| Abhängigkeits-Gate | neue oder geänderte Laufzeit-Abhängigkeit mit bekannter `critical`-Schwachstelle | Job `dependency-review` in `ci.yml`, [cve-scanning.md](cve-scanning.md#pr-gate-für-abhängigkeiten) |
+| Abhängigkeits-Gate | neue oder geänderte Laufzeit-Abhängigkeit mit bekannter `critical`-Schwachstelle, auch transitiv in npm und Gradle | Job `dependency-review` in `ci.yml`, [cve-scanning.md](cve-scanning.md#pr-gate-für-abhängigkeiten) |
 | Workflow-Härtung | vom Auslöser bestimmte Werte in Skripten, fehlende `permissions:`, Checkout ohne `persist-credentials` | `check_workflow_hardening.sh`, [cve-scanning.md](cve-scanning.md#härtung-der-workflows) |
 | Action-Pins | eine Action, die nicht über den vollen Commit-SHA eingebunden ist | `check_action_pins.sh`, [renovate.md](renovate.md#actions-per-commit-sha) |
 | Prüfsummen der Lieferkette | eine Gradle-Abhängigkeit, deren Prüfsumme nicht zu `backend/gradle/verification-metadata.xml` passt; ein `packageManager`-Feld ohne Corepack-Prüfsumme | Gradle bei jedem Build, `check_package_manager_hash.sh` |
@@ -122,12 +122,6 @@ Issues und Pull Requests; bisher gibt es nur Vorab-Releases (`v0.1.0-rc.N`). Ab 
 Release gilt für alle Befunde, auch die eigener Audits, der vertrauliche
 [Meldeweg](../SECURITY.md#meldeweg): Ausnutzbare Details erscheinen erst mit der Korrektur als
 Security Advisory.
-
-## Geplant
-
-Beschlossen, aber noch nicht gebaut:
-
-- ein Abhängigkeits-Gate, das auch transitive npm- und Gradle-Abhängigkeiten sieht (#3427)
 
 ## Was es nicht gibt
 
