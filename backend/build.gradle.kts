@@ -569,6 +569,10 @@ tasks.named<Test>("test") {
         excludeTestsMatching("*.GoogleDriveWorkspaceIntegrationTest")
         excludeTestsMatching("*.SharePointTenantIntegrationTest")
     }
+    // a failed assertion's message reaches the CI log, which is often all there is to read
+    testLogging {
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
     providers.gradleProperty("testShard").orNull?.let { shard ->
         filter {
             when (shard) {
