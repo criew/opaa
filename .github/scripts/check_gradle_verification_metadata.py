@@ -31,10 +31,18 @@ def local(tag: str) -> str:
     return tag.rsplit("}", 1)[-1]
 
 
+# Rule lists Gradle reads as sets; --write-verification-metadata sorts them on every run.
+UNORDERED = {"trusted-artifacts", "trusted-keys", "ignored-keys"}
+
+
 def canonical(element: ET.Element) -> str:
-    """Order-independent for attributes, order-preserving for children, whitespace-insensitive."""
+    """Order-independent for attributes and rule lists, otherwise order-preserving for children,
+    whitespace-insensitive."""
     attributes = " ".join(f'{k}="{v}"' for k, v in sorted(element.attrib.items()))
-    children = "".join(canonical(child) for child in element)
+    parts = [canonical(child) for child in element]
+    if local(element.tag) in UNORDERED:
+        parts.sort()
+    children = "".join(parts)
     text = (element.text or "").strip()
     return f"<{local(element.tag)} {attributes}>{text}{children}</{local(element.tag)}>"
 

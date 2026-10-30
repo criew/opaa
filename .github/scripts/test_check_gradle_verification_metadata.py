@@ -209,3 +209,24 @@ def test_details_list_removed_files_and_configuration_diff(tmp_path):
     lines = [line.replace(" ", "") for line in result.stdout.splitlines()]
     assert '-<trustfile=".*-sources[.]jar"regex="true"/>' in lines
     assert '+<trustfile=".*"regex="true"/>' in lines
+
+
+def test_reordered_trust_rules_are_unchanged(tmp_path):
+    two_rules = CONFIGURATION.replace(
+        '         <trust file=".*-sources[.]jar" regex="true"/>\n',
+        '         <trust file=".*-sources[.]jar" regex="true"/>\n'
+        '         <trust group="org.gradle" name="plugin" version="1.0"/>\n',
+    )
+    swapped = CONFIGURATION.replace(
+        '         <trust file=".*-sources[.]jar" regex="true"/>\n',
+        '         <trust group="org.gradle" name="plugin" version="1.0"/>\n'
+        '         <trust file=".*-sources[.]jar" regex="true"/>\n',
+    )
+    assert two_rules != swapped
+    result = run(
+        tmp_path,
+        metadata(component("1.0", A), configuration=two_rules),
+        metadata(component("1.0", A), configuration=swapped),
+        "--enforce",
+    )
+    assert result.returncode == 0, result.stdout
