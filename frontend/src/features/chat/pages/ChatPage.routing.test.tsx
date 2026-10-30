@@ -200,6 +200,39 @@ describe('ChatPage routing (real router)', () => {
     expect(useChatStore.getState().referencedLibraryIds).toEqual(['library-referat-50'])
   })
 
+  it('puts the focus into the question input on every arrival at a new chat', async () => {
+    renderChatPageWithNavLinks('/spaces/space-personal/chats/chat-personal-1')
+    await screen.findAllByRole('button', { name: 'Belege anzeigen' })
+    const input = () => screen.getByPlaceholderText(/^Nachricht eingeben …/)
+    expect(input()).not.toHaveFocus()
+
+    const newChat = screen.getByRole('link', { name: 'Neuer Chat' })
+    fireEvent.click(newChat)
+    await waitFor(() => expect(input()).toHaveFocus())
+
+    // The plus clicked again on the new chat itself, which keeps the path.
+    newChat.focus()
+    fireEvent.click(newChat)
+    await waitFor(() => expect(input()).toHaveFocus())
+
+    fireEvent.click(screen.getByRole('link', { name: 'Neuer Chat im anderen Space' }))
+    await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-engineering'))
+    expect(input()).toHaveFocus()
+  })
+
+  it('leaves the focus alone when an existing chat opens', async () => {
+    renderChatPageWithNavLinks('/spaces/space-personal/chats/new')
+    const chat2 = screen.getByRole('link', { name: 'Chat 2' })
+    chat2.focus()
+    fireEvent.click(chat2)
+
+    await waitFor(() => expect(useChatStore.getState().chatId).toBe('chat-personal-2'))
+    expect(screen.getByPlaceholderText(/^Nachricht eingeben …/)).not.toHaveFocus()
+    expect(
+      screen.getByPlaceholderText(/^Nachricht eingeben …/).hasAttribute('data-arrival-focus'),
+    ).toBe(false)
+  })
+
   // Picking a space leads to that space's ".../chats/new" - so one draft can follow
   // another with only the :spaceId changing. The draft must then belong to the space just picked
   // and start over: a sticky knowledge scope of the previous draft would otherwise silently carry

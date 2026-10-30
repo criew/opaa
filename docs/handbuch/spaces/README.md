@@ -285,7 +285,8 @@ verwendet" mit den 15 zuletzt genutzten. „15 weitere" blendet die nächsten ei
 wieder auf die ersten 15 zurück. Beide Gruppen lassen sich zuklappen; die Zahl hinter dem Namen
 nennt die ganze Gruppe, bei „Zuletzt verwendet" auch die noch nicht eingeblendeten Chats. Welche
 Gruppen zugeklappt sind, merkt sich der Browser, wie die Breite der Seitenleiste. Im Kopf „Chats"
-beginnt das Plus „Neuer Chat" einen Chat, in einem archivierten Space ist es gesperrt. Ein
+beginnt das Plus „Neuer Chat" einen Chat, in einem archivierten Space ist es gesperrt. Ein neuer
+Chat öffnet auf jedem Weg mit dem Cursor im Eingabefeld, die erste Frage lässt sich sofort tippen. Ein
 Filterfeld gibt es nicht; die Lupe daneben öffnet die Chatsuche ([Suche](suche.md), Abschnitt 7.2),
 die auch archivierte Chats findet. Jeder Eintrag hat ein
 Menü mit Umbenennen, Anheften, Archivieren, den beiden Exporten als Markdown und PDF

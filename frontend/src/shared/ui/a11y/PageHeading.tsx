@@ -3,6 +3,7 @@ import Typography from '@mui/material/Typography'
 import type { TypographyProps } from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import { usePageTitle } from '../../hooks/usePageTitle'
+import { arrivalFocusTarget } from './routeFocus'
 
 export const MAIN_CONTENT_ID = 'main-content'
 
@@ -22,7 +23,8 @@ interface PageHeadingProps {
 /**
  * The one <h1> of a page. Sets the document title and takes focus when it mounts after a route
  * change: AppShell moves focus to <main> on navigation, and a heading that renders later (async
- * data) pulls it from there so screen readers announce the new page by its title.
+ * data) pulls it from there so screen readers announce the new page by its title - or hands it to
+ * the page's arrival focus target, if it marks one.
  */
 export default function PageHeading({
   title,
@@ -38,7 +40,7 @@ export default function PageHeading({
   useEffect(() => {
     const main = document.getElementById(MAIN_CONTENT_ID)
     if (main && document.activeElement === main) {
-      ref.current?.focus()
+      ;(arrivalFocusTarget(main) ?? ref.current)?.focus()
     }
   }, [])
 
