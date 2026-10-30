@@ -253,7 +253,7 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
   test('Mehrseitige Liste laesst sich blaettern und durchsuchen', async ({
     authenticatedPage: page,
   }) => {
-    // 22 uploads beyond the per-account share of the upload pool wait out its 429s.
+    // PAGE_SIZE + 2 uploads, more than the per-account share of the upload pool, wait out its 429s.
     test.setTimeout(120_000)
     const libraryName = `E2E Paging-Bibliothek ${runId}`
     const searchTargetName = `suchtreffer-${runId}.txt`

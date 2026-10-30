@@ -87,7 +87,8 @@ export async function uploadTextDocument(
       expect(response.ok(), `upload of ${name}: ${response.status()}`).toBe(true)
       return
     }
-    const retryAfterSeconds = Number(response.headers()['retry-after'] ?? '1')
-    await new Promise((resolve) => setTimeout(resolve, Math.max(retryAfterSeconds, 1) * 1000))
+    const retryAfter = Number(response.headers()['retry-after'])
+    const waitSeconds = Number.isFinite(retryAfter) ? Math.min(Math.max(retryAfter, 1), 60) : 1
+    await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000))
   }
 }
