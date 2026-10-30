@@ -138,4 +138,31 @@ class SettingsEncryptorTest {
     assertThat(encryptor(KEY).decrypt(v1, BINDING)).isEqualTo("sk-test-api-key");
     assertThat(encryptor(KEY).decrypt(v2, BINDING)).isEqualTo("sk-test-api-key");
   }
+
+  @Test
+  void onceTheUnboundFormsAreRetiredOnlyTheKeyedFormatIsReadAndWritten() {
+    String v1 = encryptor(() -> false, KEY).encrypt("admin:secret", BINDING);
+    String v2 = encryptor(KEY).encrypt("admin:secret", BINDING);
+    LegacyCipherRetirement all =
+        new LegacyCipherRetirement() {
+          @Override
+          public boolean refusesLegacy(EncryptionPurpose purpose) {
+            return true;
+          }
+
+          @Override
+          public void retire(EncryptionPurpose purpose) {}
+        };
+    SettingsEncryptor retired =
+        new SettingsEncryptor(new SettingsEncryptionProperties(KEY, List.of()), () -> false, all);
+
+    assertThat(retired.decrypt(v2, BINDING)).isEqualTo("admin:secret");
+    assertThatThrownBy(() -> retired.decrypt(v1, BINDING))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("enc:v1");
+    assertThat(retired.encrypt("admin:secret", BINDING)).startsWith("enc:v2:");
+    assertThat(encryptor(() -> false, KEY).decrypt(v1, BINDING))
+        .as("not retired")
+        .isEqualTo("admin:secret");
+  }
 }

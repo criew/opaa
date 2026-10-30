@@ -364,6 +364,7 @@ nonPersonalTables:
     - retired_settings
   backend_instance_fingerprint_key: [id, hmac_key, created_at]
   shedlock: [name, lock_until, locked_at, locked_by]
+  cipher_legacy_retirements: [purpose, retired_at]
   installation_counters:
     - counter_key
     - window_seconds

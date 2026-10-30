@@ -2,6 +2,11 @@ package io.opaa.security;
 
 import java.security.GeneralSecurityException;
 import java.security.InvalidKeyException;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -12,7 +17,8 @@ import org.springframework.util.StringUtils;
  * {@code OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS}, Base64) and are deliberately separate from {@link
  * CredentialsEncryptor}'s: the two protect different kinds of secret with no reason to share a
  * rotation schedule. Every call names the {@link CipherBinding} of the row the value belongs to.
- * Every stored value was written by this class, so there is no legacy-cleartext fallback.
+ * Every stored value was written by this class, so there is no legacy-cleartext fallback. Once
+ * {@link LegacyCipherRetirement} retires the unbound form, an {@code enc:v1:} value is refused.
  *
  * <p>The key is validated lazily, on first use, not at startup: most deployments never store a
  * model API key, and a startup check would refuse to start them for a variable they never need.
@@ -23,13 +29,29 @@ public class SettingsEncryptor {
   static final String VARIABLE = "OPAA_SETTINGS_ENCRYPTION_KEY";
   static final String PREVIOUS_VARIABLE = "OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS";
   private static final String DOC_PAGE = "docs/handbuch/betrieb/modelle.md";
+  private static final Logger log = LoggerFactory.getLogger(SettingsEncryptor.class);
 
   private final SettingsEncryptionProperties properties;
   private final CipherFormatGate formatGate;
+  private final LegacyCipherRetirement retirement;
+
+  /** Refused values already named in the log of this process, at most {@link #REPORT_LIMIT}. */
+  private final Set<CipherBinding> reported = ConcurrentHashMap.newKeySet();
+
+  static final int REPORT_LIMIT = 1_000;
 
   public SettingsEncryptor(SettingsEncryptionProperties properties, CipherFormatGate formatGate) {
+    this(properties, formatGate, LegacyCipherRetirement.NEVER);
+  }
+
+  @Autowired
+  public SettingsEncryptor(
+      SettingsEncryptionProperties properties,
+      CipherFormatGate formatGate,
+      LegacyCipherRetirement retirement) {
     this.properties = properties;
     this.formatGate = formatGate;
+    this.retirement = retirement;
   }
 
   /**
@@ -44,17 +66,22 @@ public class SettingsEncryptor {
     }
     EncryptionKeyring keyring = requireKeyring();
     try {
-      return keyring.encrypt(plaintext, binding, formatGate.writesKeyedFormat());
+      return keyring.encrypt(plaintext, binding, writesKeyed());
     } catch (GeneralSecurityException e) {
       throw new IllegalStateException("Der Zugangsschlüssel konnte nicht verschlüsselt werden", e);
     }
   }
 
+  /** Keyed while the gate is open, and always once the unbound form is refused. */
+  private boolean writesKeyed() {
+    return formatGate.writesKeyedFormat() || retirement.refusesLegacy(EncryptionPurpose.SETTINGS);
+  }
+
   /**
    * Decrypts a value {@link #encrypt} wrote for the row of {@code binding}, or returns {@code null}
    * if blank. Throws {@link IllegalStateException} for an unknown format version, a
-   * corrupted/non-Base64 blob, a value of another row, or a wrong/missing key - never returns
-   * plaintext-looking garbage.
+   * corrupted/non-Base64 blob, a value of another row, a wrong/missing key, or an {@code enc:v1:}
+   * value once the unbound form is retired - never returns plaintext-looking garbage.
    */
   public String decrypt(String stored, CipherBinding binding) {
     if (!StringUtils.hasText(stored)) {
@@ -63,6 +90,17 @@ public class SettingsEncryptor {
     if (!EncryptionKeyring.isKnownFormat(stored)) {
       throw new IllegalStateException(
           "Gespeicherter Zugangsschlüssel hat ein unbekanntes Verschlüsselungsformat");
+    }
+    if (stored.startsWith(EncryptionKeyring.V1_PREFIX)
+        && retirement.refusesLegacy(EncryptionPurpose.SETTINGS)) {
+      if (reported.size() < REPORT_LIMIT && reported.add(binding)) {
+        log.warn("Stored secret {} is in the retired form enc:v1 and is refused", binding);
+      }
+      throw new IllegalStateException(
+          "Gespeicherter Zugangsschlüssel liegt im nicht mehr zugelassenen Format enc:v1 vor und"
+              + " wird nicht verwendet; er muss neu eingetragen werden. Siehe "
+              + DOC_PAGE
+              + ".");
     }
     EncryptionKeyring keyring = requireKeyring();
     try {

@@ -4,11 +4,13 @@ import static io.opaa.security.CredentialsEncryptorTest.KEY;
 import static io.opaa.security.CredentialsEncryptorTest.NEW_KEY;
 import static io.opaa.security.CredentialsEncryptorTest.OTHER_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.test.OpaaIntegrationTest;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -81,13 +83,138 @@ class CiphertextRewrapIntegrationTest {
 
   private CiphertextRewrap rewrap(
       CredentialsEncryptor credentials, SettingsEncryptor settings, CipherFormatGate gate) {
+    return rewrap(credentials, settings, gate, LegacyCipherRetirement.NEVER);
+  }
+
+  private CiphertextRewrap rewrap(
+      CredentialsEncryptor credentials,
+      SettingsEncryptor settings,
+      CipherFormatGate gate,
+      LegacyCipherRetirement retirement) {
     return new CiphertextRewrap(
         jdbc,
         new DataSourceTransactionManager(probe),
         List.of(PROBE_COLUMNS),
         credentials,
         settings,
-        gate);
+        gate,
+        retirement);
+  }
+
+  /** Records the purposes a run retires, without the table of the application. */
+  private static final class RecordedRetirement implements LegacyCipherRetirement {
+
+    private final Set<EncryptionPurpose> retired = EnumSet.noneOf(EncryptionPurpose.class);
+
+    @Override
+    public boolean refusesLegacy(EncryptionPurpose purpose) {
+      return retired.contains(purpose);
+    }
+
+    @Override
+    public void retire(EncryptionPurpose purpose) {
+      retired.add(purpose);
+    }
+  }
+
+  @Test
+  void aKeyedRunRetiresTheUnboundFormsOnceItHasMovedTheLastEncV1Value() {
+    UUID row = UUID.randomUUID();
+    jdbc.update(
+        "INSERT INTO rewrap_probe VALUES (?, ?, ?)",
+        row,
+        credentials(() -> false, KEY).encrypt("a-secret", CREDENTIAL.row(row)),
+        new SettingsEncryptor(new SettingsEncryptionProperties(KEY, List.of()), () -> false)
+            .encrypt("a-setting", SETTING.row(row)));
+    insert("   ", null);
+    RecordedRetirement retirement = new RecordedRetirement();
+
+    rewrap(credentials(KEY), settings(KEY), CipherFormatGate.KEYED, retirement).rewrap();
+
+    assertThat(retirement.retired)
+        .containsExactlyInAnyOrder(EncryptionPurpose.CREDENTIALS, EncryptionPurpose.SETTINGS);
+    assertThat(credentialOf(row)).startsWith("enc:v2:");
+  }
+
+  @Test
+  void cleartextAnUnreadableEncV1ValueOrAHeldBackFormatKeepTheUnboundFormsReadable() {
+    UUID cleartext = insert("legacy-cleartext", null);
+    RecordedRetirement retirement = new RecordedRetirement();
+
+    rewrap(credentials(KEY), settings(KEY), CipherFormatGate.KEYED, retirement).rewrap();
+
+    assertThat(retirement.retired).containsExactly(EncryptionPurpose.SETTINGS);
+    assertThat(credentialOf(cleartext)).as("never encrypted here").isEqualTo("legacy-cleartext");
+
+    jdbc.update("DELETE FROM rewrap_probe WHERE id = ?", cleartext);
+    UUID lost = UUID.randomUUID();
+    jdbc.update(
+        "INSERT INTO rewrap_probe VALUES (?, ?, NULL)",
+        lost,
+        credentials(() -> false, OTHER_KEY).encrypt("lost", CREDENTIAL.row(lost)));
+
+    rewrap(credentials(KEY), settings(KEY), CipherFormatGate.KEYED, retirement).rewrap();
+
+    assertThat(retirement.retired).containsExactly(EncryptionPurpose.SETTINGS);
+
+    jdbc.update("DELETE FROM rewrap_probe WHERE id = ?", lost);
+    RecordedRetirement heldBack = new RecordedRetirement();
+
+    rewrap(credentials(KEY), settings(KEY), () -> false, heldBack).rewrap();
+
+    assertThat(heldBack.retired).isEmpty();
+  }
+
+  @Test
+  void onceRetiredAnEncV1ValueOrCleartextInAColumnIsRefusedAndOnlyTheKeyedFormatIsRead()
+      throws SQLException {
+    UUID keyed = UUID.randomUUID();
+    String keyedValue = credentials(KEY).encrypt("a-secret", CREDENTIAL.row(keyed));
+    UUID legacy = UUID.randomUUID();
+    String legacyValue = credentials(() -> false, KEY).encrypt("b-secret", CREDENTIAL.row(legacy));
+    try (Connection held = dataSource.getConnection()) {
+      held.setAutoCommit(false);
+      JdbcTemplate inTransaction = new JdbcTemplate(new SingleConnectionDataSource(held, true));
+      try {
+        StoredLegacyCipherRetirement retirement =
+            new StoredLegacyCipherRetirement(
+                true, () -> inTransaction, java.time.Duration.ofMinutes(1), System::nanoTime);
+        CredentialsEncryptor encryptor =
+            new CredentialsEncryptor(
+                new CredentialsEncryptionProperties(KEY, List.of()), () -> false, retirement);
+        assertThat(encryptor.decrypt(legacyValue, CREDENTIAL.row(legacy))).isEqualTo("b-secret");
+
+        retirement.retire(EncryptionPurpose.CREDENTIALS);
+
+        StoredLegacyCipherRetirement elsewhere =
+            new StoredLegacyCipherRetirement(
+                true, () -> inTransaction, java.time.Duration.ofMinutes(1), System::nanoTime);
+        CredentialsEncryptor reader =
+            new CredentialsEncryptor(
+                new CredentialsEncryptionProperties(KEY, List.of()), () -> false, elsewhere);
+        assertThat(reader.decrypt(keyedValue, CREDENTIAL.row(keyed))).isEqualTo("a-secret");
+        assertThatThrownBy(() -> reader.decrypt(legacyValue, CREDENTIAL.row(legacy)))
+            .isInstanceOf(CredentialsEncryptionKeyMissingException.class)
+            .hasMessageContaining("nicht mehr zugelassenen Format");
+        assertThatThrownBy(() -> reader.decrypt("admin:cleartext", CREDENTIAL.row(legacy)))
+            .isInstanceOf(CredentialsEncryptionKeyMissingException.class);
+        assertThat(reader.encrypt("c-secret", CREDENTIAL.row(keyed)))
+            .as("keyed although the gate is closed")
+            .startsWith("enc:v2:");
+
+        StoredLegacyCipherRetirement unkeyed =
+            new StoredLegacyCipherRetirement(
+                false, () -> inTransaction, java.time.Duration.ofMinutes(1), System::nanoTime);
+        assertThat(
+                new CredentialsEncryptor(
+                        new CredentialsEncryptionProperties(KEY, List.of()), () -> false, unkeyed)
+                    .decrypt(legacyValue, CREDENTIAL.row(legacy)))
+            .as("OPAA_ENCRYPTION_KEYED_FORMAT=false refuses nothing")
+            .isEqualTo("b-secret");
+      } finally {
+        held.rollback();
+      }
+    }
   }
 
   private UUID insert(String credential, String setting) {

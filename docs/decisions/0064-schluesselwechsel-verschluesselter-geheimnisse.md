@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt ADR-0018 Entscheidung 4 und ADR-0053 Entscheidung 4
+Akzeptiert · zuletzt geändert 2026-10-30 · ergänzt ADR-0018 Entscheidung 4 und ADR-0053 Entscheidung 4
 
 ## Kontext
 
@@ -27,7 +27,7 @@ Versionen nebeneinander (ADR-0053).
 Neue Werte haben die Form `enc:v2:<kid>:<base64(iv‖ct‖tag)>`, AES-256-GCM mit 96-Bit-IV und
 128-Bit-Tag. `kid` sind die ersten 8 Byte von HMAC-SHA256(Schlüssel, `opaa-encryption-key-id`) als
 Hex (`EncryptionKeyring`). `enc:v1:` bleibt lesbar, ebenso Klartext ohne `enc:` aus der Zeit vor der
-Verschlüsselung. Begründung: Die Kennung bestimmt den Schlüssel eindeutig und ohne Register, und sie
+Verschlüsselung, bis die Umstellung abgeschlossen ist (Entscheidung 6). Begründung: Die Kennung bestimmt den Schlüssel eindeutig und ohne Register, und sie
 gibt den Schlüssel nicht preis.
 
 ### 2. Bindung an Tabelle, Spalte und Zeile
@@ -81,6 +81,23 @@ will, betreibt die neue Version zunächst mit `false` und schaltet erst um, wenn
 mehr gebraucht wird. Ein Aufschub nach Zeit wurde verworfen, weil er einen gespeicherten Zeitpunkt
 bräuchte und neue Werte trotzdem in `v2` entstünden.
 
+### 6. Nach der Umstellung nur noch `v2`
+
+Findet ein Lauf der Neuverschlüsselung bei offenem Formattor (Entscheidung 5) in keiner Spalte eines
+Zwecks mehr einen Wert in `enc:v1:` und, bei Zugangsdaten, keinen Klartext, lesbar oder nicht, hält
+er den Zweck in `cipher_legacy_retirements` als umgestellt fest (`LegacyCipherRetirement`). Ab dann
+lehnen `CredentialsEncryptor` und `SettingsEncryptor` beim Entschlüsseln `enc:v1:` und Klartext ab
+wie einen unlesbaren Wert, das Log nennt Tabelle, Spalte und Zeile, nie den Wert; neue Werte entstehen
+immer in `v2`, auch während eines Rolling Updates bei geschlossenem Tor. Eine Instanz fragt den
+Eintrag höchstens einmal je Heartbeat-Intervall und merkt sich danach den Abschluss bis zum Neustart.
+Mit `OPAA_ENCRYPTION_KEYED_FORMAT=false` wird nichts festgehalten und nichts abgelehnt. Die
+Neuverschlüsselung verschlüsselt Klartext nicht: Manche Spalten weisen ihn heute schon ab, und ein
+Verschlüsseln machte einen eingesetzten Klartext erst verwendbar; er verschwindet, sobald sein
+Datensatz neu gespeichert wird, bis dahin bleibt die Umstellung offen und das Log nennt die Spalten.
+Begründung: Erst der Abschluss nimmt dem Kopieren eines `v1`-Werts und dem Einsetzen von Klartext
+die Wirkung; ein Abschluss nur nach Messung im Bestand setzt keinen Betrieb mit noch nötigen
+Altwerten aus.
+
 ## Konsequenzen
 
 **Einfacher:** Ein Schlüsselwechsel kommt ohne Neueintragen aus; nach dem Update stellt OPAA den
@@ -97,9 +114,14 @@ Embedding-Endpunkts, sieht nach der Umstellung einmal eine Änderung und baut se
 trifft das eine laufende Änderung des Embedding-Modells, scheitert sie einmal mit einem Konflikt und
 lässt sich wiederholen.
 
-Die Bindung schützt nur `v2`. Solange `enc:v1` und Klartext lesbar bleiben, kann, wer in die Datenbank
-schreibt, einen `v1`-Geheimtext in eine andere Zeile kopieren oder einen Klartextwert einsetzen, und
-OPAA verwendet ihn. Beides nach abgeschlossener Umstellung abzulehnen, ist offen (#3431).
+Die Bindung schützt nur `v2`. Bis zum Abschluss der Umstellung (Entscheidung 6) kann, wer in die
+Datenbank schreibt, einen `v1`-Geheimtext in eine andere Zeile kopieren oder einen Klartextwert
+einsetzen, und OPAA verwendet ihn. Ein unlesbarer `v1`-Wert oder ein nie neu gespeicherter Klartext
+hält den Abschluss auf, bis er neu eingetragen ist. Wer `cipher_legacy_retirements` leert, öffnet die
+Altformate bis zum nächsten Lauf wieder; wer dort schreiben kann, kann aber ohnehin Klartext einsetzen.
+Nach dem Abschluss liest auch eine Version zwischen ADR-0064 und Entscheidung 6 neue Werte, schreibt
+bei geschlossenem Tor aber `v1`, das danach abgelehnt wird; ein Rückweg dorthin braucht
+`OPAA_ENCRYPTION_KEYED_FORMAT=false`.
 
 Nach der Umstellung auf `v2` liest eine ältere Version die gespeicherten Geheimnisse nicht mehr. Der
 Weg zurück hinter diese Version führt dann nur über eine Rücksicherung von vor dem Update, oder er

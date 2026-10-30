@@ -1,6 +1,7 @@
 package io.opaa.security;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -26,6 +27,12 @@ import org.springframework.transaction.support.TransactionTemplate;
  * handles at most {@link #RUN_BUDGET} values and leaves the rest to the next one; a value it cannot
  * decrypt is passed over without counting against that budget, counted and logged with table,
  * column and row, never with any part of the value.
+ *
+ * <p>A run with the keyed format open retires the unbound forms of a purpose ({@link
+ * LegacyCipherRetirement}) once none of its columns holds an {@code enc:v1:} value or, for
+ * credentials, non-blank cleartext any more - readable or not. Cleartext is never encrypted here: a
+ * column may refuse it today, and encrypting it would make it usable; it is gone once its row is
+ * saved again.
  */
 @Component
 public class CiphertextRewrap {
@@ -41,6 +48,7 @@ public class CiphertextRewrap {
   private final CredentialsEncryptor credentials;
   private final SettingsEncryptor settings;
   private final CipherFormatGate formatGate;
+  private final LegacyCipherRetirement retirement;
 
   CiphertextRewrap(
       JdbcTemplate jdbc,
@@ -48,13 +56,15 @@ public class CiphertextRewrap {
       List<EncryptedColumns> sources,
       CredentialsEncryptor credentials,
       SettingsEncryptor settings,
-      CipherFormatGate formatGate) {
+      CipherFormatGate formatGate,
+      LegacyCipherRetirement retirement) {
     this.jdbc = jdbc;
     this.transactions = new TransactionTemplate(transactionManager);
     this.sources = List.copyOf(sources);
     this.credentials = credentials;
     this.settings = settings;
     this.formatGate = formatGate;
+    this.retirement = retirement;
   }
 
   /**
@@ -73,6 +83,9 @@ public class CiphertextRewrap {
   private volatile int lastRemaining = -1;
 
   private volatile int lastUnreadable;
+
+  /** Whether this process has said which columns still hold legacy cleartext. */
+  private volatile boolean cleartextNoted;
 
   /**
    * What one run did, summed over all columns: values moved to the current key, values no key
@@ -157,7 +170,69 @@ public class CiphertextRewrap {
       remaining +=
           Math.max(0, countStale(column, scope, current) - columnUnreadable - columnSettled);
     }
+    if (keyed) {
+      retireUnboundForms();
+    }
     return new Outcome(rewrapped, unreadable, remaining, !keyed);
+  }
+
+  /** See the class Javadoc; a purpose without a current key holds nothing it could retire. */
+  private void retireUnboundForms() {
+    Map<EncryptionPurpose, Integer> unbound = new EnumMap<>(EncryptionPurpose.class);
+    List<String> cleartext = new ArrayList<>();
+    for (EncryptedColumn column : columns()) {
+      int legacy = countUnbound(column);
+      if (column.purpose() == EncryptionPurpose.CREDENTIALS) {
+        int plain = countCleartext(column);
+        if (plain > 0) {
+          cleartext.add(column.table() + "." + column.column() + " (" + plain + ")");
+        }
+        legacy += plain;
+      }
+      unbound.merge(column.purpose(), legacy, Integer::sum);
+    }
+    for (EncryptionPurpose purpose : EncryptionPurpose.values()) {
+      if (hasKey(purpose)
+          && unbound.getOrDefault(purpose, 0) == 0
+          && !retirement.refusesLegacy(purpose)) {
+        retirement.retire(purpose);
+      }
+    }
+    if (!cleartext.isEmpty() && !cleartextNoted) {
+      cleartextNoted = true;
+      log.info(
+          "Stored credentials in cleartext keep enc:v1 and cleartext readable until their rows are"
+              + " saved again: {}",
+          String.join(", ", cleartext));
+    }
+  }
+
+  private int countUnbound(EncryptedColumn column) {
+    Integer count =
+        jdbc.queryForObject(
+            "SELECT count(*) FROM "
+                + column.table()
+                + " WHERE starts_with("
+                + column.column()
+                + ", ?)",
+            Integer.class,
+            EncryptionKeyring.V1_PREFIX);
+    return count == null ? 0 : count;
+  }
+
+  private int countCleartext(EncryptedColumn column) {
+    Integer count =
+        jdbc.queryForObject(
+            "SELECT count(*) FROM "
+                + column.table()
+                + " WHERE NOT starts_with("
+                + column.column()
+                + ", ?) AND "
+                + column.column()
+                + " ~ '\\S'",
+            Integer.class,
+            EncryptionKeyring.MARKER);
+    return count == null ? 0 : count;
   }
 
   /**
