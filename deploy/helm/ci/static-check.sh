@@ -606,6 +606,20 @@ notes_case "a mirror with a digest" "FRONTEND-IMAGE AUS EIGENER REGISTRY PER DIG
   --set-string "frontend.image.digest=$frontend_digest"
 notes_case "a digest from GHCR" "Prüfen: helm test" "AUS EIGENER REGISTRY" \
   --set-string "backend.image.digest=$backend_digest"
+# A fork names its own prefix in the annotation opaa/image-prefix; its images are no mirror.
+cp -R "$work_dir/notes-chart" "$work_dir/fork-notes-chart"
+sed -i 's#^  opaa/image-prefix: .*#  opaa/image-prefix: ghcr.io/fork/opaa#' "$work_dir/fork-notes-chart/Chart.yaml"
+fork_notes() {
+  helm template opaa "$work_dir/fork-notes-chart" --namespace opaa \
+    --values "$CHART_DIR/ci/minimal-values.yaml" --show-only templates/notes-check.yaml \
+    --set-string "backend.image.digest=$backend_digest" "$@" | sed -n 's/^notes: //p' | jq -r .
+}
+if [[ "$(fork_notes --set backend.image.repository=ghcr.io/fork/opaa-backend)" == *"AUS EIGENER REGISTRY"* ||
+  "$(fork_notes)" != *"BACKEND-IMAGE AUS EIGENER REGISTRY PER DIGEST"* ]]; then
+  echo "The notes of a fork must take its images from opaa/image-prefix as the default, others as a mirror." >&2
+  exit 1
+fi
+echo "notes as expected: the images of a fork"
 
 # The CSP warning of NOTES.txt follows the issuer, the authority of the sign-in flow. Only install
 # renders NOTES.txt; a dry run without a cluster exists from Helm 3.13 on, older Helm skips this.

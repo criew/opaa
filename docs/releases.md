@@ -210,8 +210,9 @@ gesetzt wird, und setzt die Tags nur, wenn ein zweiter Probelauf unmittelbar dav
 ergibt. `image-digests` liest je Image den Digest zurück, auf den `X.Y.Z` (sonst `sha-<commit>`)
 zeigt, und bricht ab, wenn er abweicht. Attestierung und Chart nehmen nur den so bestätigten
 Digest. Hat jemand mit Schreibrecht auf GHCR den Tag zwischen `publish` und `image-digests`
-umgehängt, auch bei einer Wiederholung Tage später, attestiert der Lauf nichts und packt keinen
-Chart; ein paralleler Lauf desselben Commits auf `main`, der `sha-<commit>` neu setzt, ebenso.
+umgehängt, auch bei einer Wiederholung Tage später, attestiert der Lauf keinen fremden Index und
+packt keinen Chart; ein paralleler Lauf desselben Commits auf `main`, der `sha-<commit>` neu setzt,
+ebenso.
 
 **Ein Release baut ohne Build-Cache.** Bei einem Tag lesen und schreiben die `build`-Jobs den
 GitHub-Actions-Cache nicht. In den Cache von `main` darf jeder Job schreiben, der auf `main` läuft,
@@ -229,8 +230,9 @@ Bündel als Anhang. Jeder Job startet nur, wenn die vorigen gelungen sind, und e
 den Lauf rot. Ausnahme sind die drei Jobs je Image: Scheitert `publish` nur für ein Image, laufen
 `image-digests` und `image-attestation` für das andere weiter, damit kein veröffentlichtes Image
 ohne Attestierung bleibt; der Chart folgt erst, wenn beide attestiert sind. Ein gescheitertes Bündel
-hält das GitHub-Release auf, obwohl Images und Chart schon veröffentlicht sind. Der Chart zeigt also nie auf ein Image, das nicht veröffentlicht wurde, und das
-GitHub-Release kündigt nichts an, was fehlt. Wie die Images für zwei Architekturen entstehen,
+hält das GitHub-Release auf, obwohl Images und Chart schon veröffentlicht sind. Der Chart zeigt also
+nie auf ein Image, das nicht veröffentlicht wurde, und das GitHub-Release kündigt nichts an, was
+fehlt. Wie die Images für zwei Architekturen entstehen,
 beschreibt [Mehrere Architekturen](#mehrere-architekturen).
 
 Scheitert ein späterer Job an einer vorübergehenden Störung, etwa von GHCR oder Sigstore, wird er

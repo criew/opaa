@@ -120,11 +120,12 @@ einem Lauf (`publish-images.yml`, `deploy/helm/ci/package-chart.sh`); die Vorgab
 veröffentlichten Charts heften genau diese Images per Index-Digest an (`backend.image.digest`,
 `frontend.image.digest`), Images und Chart tragen je eine signierte Provenance des Laufs. So zieht ein
 Cluster das geprüfte Image, auch wenn ein Tag in der Registry umgehängt würde. Im Repository steht
-`0.0.0-dev`; die CI prüft keine Versionssteigerung (`ct lint --check-version-increment=false`). Ein reiner Chart-Fix ist ein Patch-Release der Anwendung —
-dafür entfällt eine Zuordnungstabelle. Veröffentlicht unter `oci://ghcr.io/criew/charts/opaa`. Images
-erscheinen für `linux/amd64` und `linux/arm64` (#2401), je Architektur auf einem eigenen Runner gebaut,
-per Digest gepusht, erst der Manifest-Index bekommt die Tags; E2E-Suite und Installationstest bleiben
-auf amd64, ein Rauchtest prüft arm64 ([releases.md](../releases.md#mehrere-architekturen)).
+`0.0.0-dev`; die CI prüft keine Versionssteigerung (`ct lint --check-version-increment=false`). Ein
+reiner Chart-Fix ist ein Patch-Release der Anwendung — dafür entfällt eine Zuordnungstabelle.
+Veröffentlicht unter `oci://ghcr.io/criew/charts/opaa`. Images erscheinen für `linux/amd64` und
+`linux/arm64` (#2401), je Architektur auf einem eigenen Runner gebaut, per Digest gepusht, erst der
+Manifest-Index bekommt die Tags; E2E-Suite und Installationstest bleiben auf amd64, ein Rauchtest
+prüft arm64 ([releases.md](../releases.md#mehrere-architekturen)).
 
 ### 8. Unterstützte Kubernetes-Versionen
 

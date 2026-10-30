@@ -358,11 +358,11 @@ helm install opaa chart/opaa-<x.y.z>.tgz -n opaa -f opaa-werte.yaml \
   --set frontend.image.repository=registry.intern/opaa/opaa-frontend
 ```
 
-Der Chart heftet beide Images per Digest an (`backend.image.digest`, `frontend.image.digest`, dieselben
-Werte wie in `DIGESTS` im Bündel). Sie gelten unverändert in der internen Registry, weil `skopeo` die
-Digests beim Einspielen behält. Verlangt die Registry eine Anmeldung, gehört ein Secret in
-`imagePullSecrets`. Die Erprobungsdatenbank und alle übrigen Drittimages kommen auf eigenem Weg in die
-Registry.
+Der Chart heftet beide Images per Digest an (`backend.image.digest`, `frontend.image.digest`,
+dieselben Werte wie in `DIGESTS` im Bündel). Sie gelten unverändert in der internen Registry, weil
+`skopeo` die Digests beim Einspielen behält. Verlangt die Registry eine Anmeldung, gehört ein Secret
+in `imagePullSecrets`. Die Erprobungsdatenbank und alle übrigen Drittimages kommen auf eigenem Weg in
+die Registry.
 
 ### 6. Auf das Backend warten und prüfen
 

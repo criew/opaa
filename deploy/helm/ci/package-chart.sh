@@ -5,7 +5,7 @@
 # backend.image.digest and frontend.image.digest and must render exactly
 # IMAGE_PREFIX-backend@<digest> and -frontend@<digest>; without digests (dry run) the images tagged
 # with the version. Refuses the package otherwise, or unless chart version and appVersion carry the
-# version. Prints its path.
+# version and the annotation opaa/image-prefix is IMAGE_PREFIX. Prints its path.
 set -euo pipefail
 
 CHART_DIR="${CHART_DIR:-deploy/helm/opaa}"
@@ -65,6 +65,12 @@ for field in version appVersion; do
     exit 1
   fi
 done
+# NOTES.txt tells a mirror from the default images by this annotation.
+if ! grep -qxF -e "  opaa/image-prefix: $IMAGE_PREFIX" -e "  opaa/image-prefix: \"$IMAGE_PREFIX\"" <<<"$chart"; then
+  echo "Packaged chart does not carry the annotation opaa/image-prefix: $IMAGE_PREFIX:" >&2
+  echo "$chart" >&2
+  exit 1
+fi
 
 images="$(helm template opaa "$package" --values "$CHART_DIR/ci/minimal-values.yaml" |
   sed -n 's/^ *image: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p' | sort -u)"

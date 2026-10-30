@@ -153,9 +153,9 @@ liefert sie auf zwei Wegen:
   Update-Paket unter `sbom/`, beide mit Provenance.
 
 Eine Provenance mit Signatur, prüfbar mit `gh attestation verify`
-([Herkunft prüfen](#herkunft-prüfen)), liegt außerdem an jedem Image, am Chart, am Update-Paket und an beiden SBOMs. Die Signatur des Images
-gilt seinem Manifest-Index und deckt damit auch SBOM und Provenance am Image ab, darunter die genauen
-Basis-Images, aus denen es gebaut ist.
+([Herkunft prüfen](#herkunft-prüfen)), liegt außerdem an jedem Image, am Chart, am Update-Paket und
+an beiden SBOMs. Die Signatur des Images gilt seinem Manifest-Index und deckt damit auch SBOM und
+Provenance am Image ab, darunter die genauen Basis-Images, aus denen es gebaut ist.
 
 ## Schwachstellen
 

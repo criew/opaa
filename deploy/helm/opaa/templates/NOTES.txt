@@ -214,7 +214,8 @@ ANMELDUNG ÜBER {{ $origin }} WIRD BLOCKIERT
   hat Vorrang; der Cluster zieht {{ $image.repository }}@{{ $image.digest }}.
   Für den Tag den Digest leeren: --set {{ $name }}.image.digest=
 {{- end }}
-{{- if and $image.digest (ne $image.repository (printf "ghcr.io/criew/opaa-%s" $name)) }}
+{{- $prefix := index $.Chart.Annotations "opaa/image-prefix" | default "" }}
+{{- if and $image.digest $prefix (ne $image.repository (printf "%s-%s" $prefix $name)) }}
 
 {{ upper $name }}-IMAGE AUS EIGENER REGISTRY PER DIGEST
   Der Cluster zieht {{ $image.repository }}@{{ $image.digest }}. Diesen Digest gibt es dort
