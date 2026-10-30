@@ -131,7 +131,7 @@ function renderCitationGroup(
               aria-haspopup="dialog"
               aria-label={
                 isRange
-                  ? `Fundstellen ${first.number} bis ${last.number}`
+                  ? `Fundstellen ${first.number}–${last.number}`
                   : `Fundstelle ${first.number}: ${first.fileName}`
               }
               onClick={() => onCitationClick?.(segment.map((c) => c.number))}

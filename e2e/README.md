@@ -370,6 +370,11 @@ lassen.
   der Reihenfolge der Suite unabhängig. Der Durchklick durch die Admin-Sekundärspalte liegt
   seit #805 in `tests/admin-area-navigation.spec.ts` (mit 320-px-Geometrie-Zusicherung), weil
   er keine axe-Analyse ausführt.
+  **Endzustand jedes Szenarios (#3475):** Unabhängig von dieser Spec prüfen die Seiten-Fixtures
+  `authenticatedPage`, `regularUserPage`, `outsiderPage` und `formatPipelinesPage` beim Abbau die
+  Seite, auf der der Test endet, mit denselben Regeln und derselben Schwelle; die Prüfung bekommt
+  20 s zusätzlich zum Testbudget, entfällt bei einem bereits roten Test und lässt sich lokal mit
+  `E2E_A11Y_END_STATE=false` abschalten.
   **Berichtsmodus für den Release-Lauf:** Mit `E2E_A11Y_RESULTS_DIR` legt die Fixture jede Analyse
   als JSON-Datensatz in diesem Verzeichnis ab, mit `E2E_A11Y_REPORT_ONLY=true` hält sie Verstöße fest,
   statt den Test scheitern zu lassen. Daraus entsteht der Prüfbericht Barrierefreiheit im

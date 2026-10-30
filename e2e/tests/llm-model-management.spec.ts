@@ -336,7 +336,7 @@ test.describe.serial('Modellverwaltung (#760)', () => {
     await expect(editDialog.getByLabel('API-Schlüssel', { exact: false })).toHaveValue('')
     await expect(
       editDialog.getByRole('button', {
-        name: `Gespeicherten Schlüssel von "${KEY_MODEL_NAME}" entfernen`,
+        name: `Gespeicherten Schlüssel entfernen: ${KEY_MODEL_NAME}`,
       }),
     ).toBeVisible()
   })

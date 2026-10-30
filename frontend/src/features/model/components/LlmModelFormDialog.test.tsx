@@ -503,7 +503,7 @@ describe('LlmModelFormDialog – Review-Befunde', () => {
 
     await user.click(
       dialog.getByRole('button', {
-        name: `Gespeicherten Schlüssel von "${withKey.displayName}" entfernen`,
+        name: `Gespeicherten Schlüssel entfernen: ${withKey.displayName}`,
       }),
     )
     await user.click(dialog.getByRole('button', { name: 'Verbindung testen' }))
@@ -525,7 +525,7 @@ describe('LlmModelFormDialog – Review-Befunde', () => {
 
     await user.click(
       dialog.getByRole('button', {
-        name: `Gespeicherten Schlüssel von "${withKey.displayName}" entfernen`,
+        name: `Gespeicherten Schlüssel entfernen: ${withKey.displayName}`,
       }),
     )
     await user.click(dialog.getByRole('button', { name: 'Verbindung testen' }))

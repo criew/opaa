@@ -175,6 +175,10 @@ Ausschnitt.
   nächtlich und auf Anforderung (`.github/workflows/e2e.yml`), keine Bedingung eines PRs; ein
   Fehlschlag öffnet ein Alarm-Issue. Geprüft werden Anmeldung, Chat in beiden
   Farbschemata, Space-Seite, Wissensbibliotheken, Verwaltungsbereich, Benutzer-Einstellungen.
+  Zusätzlich prüft jeder UI-Test der Suite seinen **Endzustand**: Die Seiten-Fixtures
+  (`e2e/fixtures/auth.ts`) lassen axe beim Abbau über die Seite laufen, auf der das Szenario
+  endet (#3475). So ist jeder Bildschirm erfasst, den die Suite erreicht, ohne Aufruf im Spec;
+  ein bereits roter Test wird nicht zusätzlich gemessen.
   Verstöße der Stufen
   „serious" und „critical" lassen die Prüfung fehlschlagen, „minor"/„moderate" erscheinen als
   Annotation im Report. Geprüft wird gegen die Regelsätze WCAG 2.0 und 2.1, A und AA

@@ -364,7 +364,9 @@ describe('ChatInput', () => {
 
     // A chip's delete action is reachable by keyboard on the focused, labelled chip - the same
     // way the library chips are removed in the tests above.
-    const dateChip = screen.getByRole('button', { name: 'Filter nach Datum entfernen' })
+    const dateChip = screen.getByRole('button', {
+      name: 'Datum: 01.01.2024 – 31.12.2024: Filter entfernen',
+    })
     dateChip.focus()
     await user.keyboard('{Backspace}')
     expect(setMetadataFilter).toHaveBeenCalledWith({ documentTypes: ['VERMERK'] })
