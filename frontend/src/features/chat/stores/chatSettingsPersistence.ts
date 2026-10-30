@@ -77,6 +77,8 @@ export function normalizeMetadataFilter(
     ...(documentTypes.length > 0 ? { documentTypes } : {}),
     ...(filter?.documentDateFrom ? { documentDateFrom: filter.documentDateFrom } : {}),
     ...(filter?.documentDateTo ? { documentDateTo: filter.documentDateTo } : {}),
+    ...((filter?.libraryFields ?? []).length > 0 ? { libraryFields: filter?.libraryFields } : {}),
+    ...((filter?.formatFields ?? []).length > 0 ? { formatFields: filter?.formatFields } : {}),
   }
 }
 

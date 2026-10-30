@@ -1694,6 +1694,41 @@ describe('chatStore', () => {
       expect(patchedBody).toEqual({ metadataFilter: {} })
     })
 
+    // regression guard: the store once dropped library and format field conditions, so a chat
+    // filter on a library field or the sender was cleared the moment it was applied.
+    it('keeps library and format field conditions of the metadata filter', async () => {
+      let patchedBody: Record<string, unknown> | null = null
+      server.use(
+        http.patch('/api/v1/chats/:chatId', async ({ request, params }) => {
+          patchedBody = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json({
+            id: params.chatId,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: true,
+            referencedLibraryIds: [],
+            metadataFilter: patchedBody.metadataFilter ?? null,
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+      )
+      await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
+      const filter = {
+        libraryFields: [{ libraryId: 'library-1', fieldKey: 'fassung', codes: ['F2024'] }],
+        formatFields: [{ fieldKey: 'sender', values: ['poststelle@stadt.de'] }],
+      }
+
+      useChatStore.getState().setMetadataFilter(filter)
+      await useChatStore.getState().pendingSettingsUpdate
+
+      expect(useChatStore.getState().metadataFilter).toEqual(filter)
+      expect(patchedBody).toEqual({ metadataFilter: filter })
+    })
+
     it('restores the chat-level metadata filter on load and sends it with the query', async () => {
       server.use(
         http.get('/api/v1/chats/:chatId', ({ params }) =>
