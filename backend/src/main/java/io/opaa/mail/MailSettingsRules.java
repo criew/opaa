@@ -83,16 +83,22 @@ public final class MailSettingsRules {
 
   /** Why {@code address} is no sender address, or empty; {@code null} is no problem here. */
   public static Optional<String> fromAddressProblem(String address) {
-    if (address == null || MAIL_ADDRESS.matcher(address).matches()) {
+    if (address == null || isMailAddress(address)) {
       return Optional.empty();
     }
     return Optional.of(
         "Die Absenderadresse muss eine E-Mail-Adresse sein, zum Beispiel opaa@example.org");
   }
 
-  /** Whether {@code address} has the form of a mail address, by the rule of the sender address. */
+  /**
+   * Whether {@code address} has the form of a mail address, by the rule of the sender address. An
+   * address over {@link #MAX_FROM_ADDRESS_LENGTH} is none, checked before the pattern, whose dot
+   * split backtracks quadratically on long input.
+   */
   public static boolean isMailAddress(String address) {
-    return address != null && MAIL_ADDRESS.matcher(address).matches();
+    return address != null
+        && address.length() <= MAX_FROM_ADDRESS_LENGTH
+        && MAIL_ADDRESS.matcher(address).matches();
   }
 
   /**

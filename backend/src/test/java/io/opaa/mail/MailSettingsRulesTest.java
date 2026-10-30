@@ -1,9 +1,11 @@
 package io.opaa.mail;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import io.opaa.api.types.MailEncryption;
 import io.opaa.common.FieldValidationException.FieldError;
+import java.time.Duration;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -72,5 +74,18 @@ class MailSettingsRulesTest {
   private static boolean same(String host, int port, String user, MailEncryption encryption) {
     return MailSettingsRules.sameTarget(
         "smtp", 587, "u", MailEncryption.STARTTLS, host, port, user, encryption);
+  }
+
+  /** Regression guard: an overlong sender address is refused before the pattern backtracks. */
+  @Test
+  void anOverlongAddressIsNoMailAddressAndIsRejectedQuickly() {
+    String address = "a@" + ".".repeat(64_000) + " ";
+    assertTimeoutPreemptively(
+        Duration.ofSeconds(2),
+        () -> {
+          assertThat(MailSettingsRules.isMailAddress(address)).isFalse();
+          assertThat(MailSettingsRules.fromAddressProblem(address)).isPresent();
+        });
+    assertThat(MailSettingsRules.isMailAddress("opaa@example.org")).isTrue();
   }
 }

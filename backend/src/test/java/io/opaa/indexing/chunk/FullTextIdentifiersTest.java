@@ -2,7 +2,9 @@ package io.opaa.indexing.chunk;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
+import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -420,5 +422,27 @@ class FullTextIdentifiersTest {
         .contains("xpar1", "xpar12", "xpar1baugb", "xpar12baugb");
     assertThat(FullTextIdentifiers.extract("§ 35 Abs. 1 Satz 2 Nr. 4 Hs. 1 Buchst. a BauGB"))
         .doesNotContain("xfldbaugb");
+  }
+
+  /** Regression guard: keyword patterns and the address pattern stay linear on long runs. */
+  @Test
+  void longWhitespaceAndDotRunsAreAnalyzedQuickly() {
+    String tabs = "\t".repeat(32_000);
+    assertTimeoutPreemptively(
+        Duration.ofSeconds(2),
+        () -> {
+          FullTextIdentifiers.extract("Az" + tabs + "x");
+          FullTextIdentifiers.extract("Nr" + tabs + "x");
+          FullTextIdentifiers.extract("a".repeat(32_000));
+          FullTextIdentifiers.extract("a@" + "a.".repeat(16_000));
+        });
+  }
+
+  @Test
+  void keepsKeywordNumbersAndAddressesAfterTheLinearPatterns() {
+    assertThat(FullTextIdentifiers.extract("Az.  :  12/2024")).contains("xakz122024");
+    assertThat(FullTextIdentifiers.extract("Erlass Nr. 12/2024")).contains("xnr122024");
+    assertThat(FullTextIdentifiers.extract("Kontakt: max.muster@example.org"))
+        .anyMatch(lexeme -> lexeme.startsWith("xmail"));
   }
 }
