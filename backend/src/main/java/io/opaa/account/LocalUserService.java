@@ -12,6 +12,8 @@ import io.opaa.api.types.PasswordChangeReason;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.AuditorRoleRevokedEvent;
+import io.opaa.auth.AuditorRoles;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.LocalAdminAvailabilityGuard;
 import io.opaa.auth.LocalCredentials;
@@ -89,6 +91,7 @@ public class LocalUserService {
   private final LocalRefreshTokenRepository refreshTokens;
   private final LocalAdminAvailabilityGuard adminGuard;
   private final UserService userService;
+  private final AuditorRoles auditorRoles;
   private final PasswordEncoder passwordEncoder;
   private final PasswordGenerator passwordGenerator;
   private final AuditEventRecorder audit;
@@ -104,6 +107,7 @@ public class LocalUserService {
       LocalRefreshTokenRepository refreshTokens,
       LocalAdminAvailabilityGuard adminGuard,
       UserService userService,
+      AuditorRoles auditorRoles,
       PasswordEncoder passwordEncoder,
       PasswordGenerator passwordGenerator,
       AuditEventRecorder audit,
@@ -117,6 +121,7 @@ public class LocalUserService {
     this.refreshTokens = refreshTokens;
     this.adminGuard = adminGuard;
     this.userService = userService;
+    this.auditorRoles = auditorRoles;
     this.passwordEncoder = passwordEncoder;
     this.passwordGenerator = passwordGenerator;
     this.audit = audit;
@@ -185,6 +190,12 @@ public class LocalUserService {
     Instant expiresAt =
         resolveExpiry(creation.expiresAt(), creation.noExpiry(), policy.defaultExpiryDays(), now);
     requireAddressFree(email, null);
+    boolean auditor = creation.systemRole() == SystemRole.AUDITOR;
+    if (auditor && !creation.invite()) {
+      throw new ConflictException(
+          "Ein Konto für die Revision erhält kein Initialpasswort. Laden Sie die Person ein.",
+          AuditorRoles.AUDITOR_ACCOUNT);
+    }
 
     User user = User.localAccount(email, displayName);
     user.setOrganizationId(actor.organizationId());
@@ -205,13 +216,6 @@ public class LocalUserService {
       row.requirePasswordChange(PasswordChangeReason.INITIAL, now);
     }
     row = credentials.save(row);
-    IssuedActionToken invitation =
-        creation.invite()
-            ? actionTokens.issue(
-                user.getId(),
-                ActionTokenPurpose.SET_PASSWORD,
-                Duration.ofHours(policy.invitationTokenTtlHours()))
-            : null;
     Map<String, Object> after = new LinkedHashMap<>();
     after.put("mode", creation.invite() ? "INVITE" : "INITIAL_PASSWORD");
     after.put("expiresAt", expiryValue(expiresAt));
@@ -219,6 +223,16 @@ public class LocalUserService {
     if (creation.systemRole() != null && creation.systemRole() != SystemRole.USER) {
       user = userService.updateRole(user.getId(), creation.systemRole(), actor);
     }
+    // an auditor account, or one with an open request, gets its first link from the revision or
+    // the operations (UserService#confirmAuditorRequest, #updateRole) - never through the
+    // administration or the mail channels it controls
+    IssuedActionToken invitation =
+        creation.invite() && !auditorRoles.isAuditorOrRequested(user)
+            ? actionTokens.issue(
+                user.getId(),
+                ActionTokenPurpose.SET_PASSWORD,
+                Duration.ofHours(policy.invitationTokenTtlHours()))
+            : null;
     // the personal space, written in this transaction (PersonalSpaceProvisioner)
     events.publishEvent(UserProvisionedEvent.withoutTokenGroups(user, true));
     return new CreatedAccount(user, row, invitation, initialPassword);
@@ -261,8 +275,10 @@ public class LocalUserService {
     if (update.email() != null) {
       String email = requireAddress(update.email());
       if (!email.equalsIgnoreCase(user.getEmail())) {
+        auditorRoles.requireCredentialsWithPerson(user, "Die Adresse");
         requireAddressFree(email, user.getId());
         user.setEmail(email);
+        row.markEmailChangedByAdmin(now);
         // a link mailed to the old address must not set the password of the new one - the
         // verification link of a self-registration sets one as well
         closeOpenLinks(user.getId());
@@ -439,6 +455,7 @@ public class LocalUserService {
               + " verschickt werden.",
           LocalCredentials.BOOTSTRAP_ACCOUNT);
     }
+    auditorRoles.requireCredentialsWithPerson(current.user(), "Das Passwort");
     LocalAuthSettings.Values policy = settings();
     boolean invitation = row.getPasswordHash() == null;
     IssuedActionToken token =
@@ -475,6 +492,7 @@ public class LocalUserService {
           "Für das Notanker-Konto der Systemverwaltung kann kein neues Passwort erzeugt werden.",
           LocalCredentials.BOOTSTRAP_ACCOUNT);
     }
+    auditorRoles.requireCredentialsWithPerson(current.user(), "Das Passwort");
     boolean first = row.getPasswordHash() == null;
     String password = passwordGenerator.generate();
     row.setPasswordHash(passwordEncoder.encode(password), now);
@@ -557,6 +575,9 @@ public class LocalUserService {
     before.put("state", current.state().name());
     recordAdminAct(actor, user, AuditEventType.LOCAL_USER_DELETED, before, null);
     events.publishEvent(new LocalAccountDeletionEvent(actor, user));
+    if (user.getSystemRole() == SystemRole.AUDITOR) {
+      events.publishEvent(new AuditorRoleRevokedEvent(user));
+    }
     try {
       users.delete(user);
       users.flush();

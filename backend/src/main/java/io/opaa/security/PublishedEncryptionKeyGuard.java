@@ -45,8 +45,9 @@ public class PublishedEncryptionKeyGuard {
               + " value, marked "
               + SecretValidator.NON_PRODUCTION_MARKER
               + "). The \"oidc\" profile refuses to start with it. Generate a key of your own with:"
-              + " openssl rand -base64 32 - and keep it: data already encrypted with the old key"
-              + " must be re-entered. See docs/handbuch/betrieb/netz-und-sicherheit.md.");
+              + " openssl rand -base64 32 - and move the published key to the matching"
+              + " *_PREVIOUS_KEYS variable, which keeps data encrypted with it readable until it"
+              + " is re-encrypted. See docs/handbuch/betrieb/netz-und-sicherheit.md.");
     }
   }
 }

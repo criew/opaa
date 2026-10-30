@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,7 +29,15 @@ import org.springframework.transaction.annotation.Transactional;
  * UPDATE} under the organization's advisory lock that writes only if another administrator who can
  * actually sign in remains. A refused withdrawal is logged and audited ({@link
  * AuditEventType#SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED}); the account keeps the role the provider
- * withdrew. {@code AUDITOR} has no such protection: a claim that no longer names it withdraws it.
+ * withdrew. {@code AUDITOR} has no such protection: a claim that no longer names it withdraws it,
+ * which is told to every remaining auditor ({@link AuditorRoleRevokedEvent}).
+ *
+ * <p>A claim never grants {@code AUDITOR} alone - the provider may be run by the same
+ * administration the role is to be separated from. While the organization has an auditor, a claim
+ * naming the role opens a request an auditor decides ({@link AuditorRoles#requestFromProvider});
+ * without one, the claim grants nothing and the first auditor comes from the operations ({@link
+ * AuditorRoleProperties}). Until confirmed, the account holds {@code USER}. A confirmed role stays
+ * while the claim keeps naming it; a claim that no longer names it ends the request.
  *
  * <p>Only a claim the token actually carried is authoritative: a claim that names none of the
  * configured role values is the provider withdrawing the elevated role, but a token whose claim is
@@ -55,14 +64,20 @@ public class TokenRoleSynchronizer {
   private final UserRepository userRepository;
   private final LocalAdminAvailabilityGuard adminGuard;
   private final AuditEventRecorder auditEventRecorder;
+  private final ApplicationEventPublisher events;
+  private final AuditorRoles auditorRoles;
 
   public TokenRoleSynchronizer(
       UserRepository userRepository,
       LocalAdminAvailabilityGuard adminGuard,
-      AuditEventRecorder auditEventRecorder) {
+      AuditEventRecorder auditEventRecorder,
+      ApplicationEventPublisher events,
+      AuditorRoles auditorRoles) {
     this.userRepository = userRepository;
     this.adminGuard = adminGuard;
     this.auditEventRecorder = auditEventRecorder;
+    this.events = events;
+    this.auditorRoles = auditorRoles;
   }
 
   /** The role a token's role values mean under {@code mapping}. */
@@ -111,8 +126,17 @@ public class TokenRoleSynchronizer {
   }
 
   private User align(User user, OidcProvider provider, List<String> tokenRoles) {
-    SystemRole target = roleFor(provider.getClaimMapping(), tokenRoles);
+    SystemRole claimed = roleFor(provider.getClaimMapping(), tokenRoles);
     SystemRole current = user.getSystemRole();
+    SystemRole target = claimed;
+    if (claimed == SystemRole.AUDITOR && current != SystemRole.AUDITOR) {
+      if (!auditorRoles.requestFromProvider(user, provider)) {
+        reportNoAuditor(provider);
+      }
+      target = SystemRole.USER;
+    } else if (claimed != SystemRole.AUDITOR) {
+      auditorRoles.endProviderRequest(user, provider);
+    }
     if (target == current) {
       return user;
     }
@@ -132,7 +156,24 @@ public class TokenRoleSynchronizer {
     }
     user.setSystemRole(target);
     recordChange(user, provider, current, target);
+    if (current == SystemRole.AUDITOR) {
+      events.publishEvent(new AuditorRoleRevokedEvent(user));
+    }
     return user;
+  }
+
+  /** A claim naming AUDITOR in an organization without auditor grants nothing; logged, limited. */
+  private void reportNoAuditor(OidcProvider provider) {
+    if (!incidentLog.isAllowed(provider.getId() + ":NO_AUDITOR")) {
+      return;
+    }
+    log.warn(
+        "The token of provider '{}' names the AUDITOR role, but the organization has no auditor to"
+            + " confirm it; the role is not granted. The first auditor is a local account named by"
+            + " {} (further incidents are suppressed for {} seconds)",
+        provider.getDisplayName(),
+        AuditorRoleProperties.FIRST_AUDITOR_EMAIL_VARIABLE,
+        INCIDENT_WINDOW_SECONDS);
   }
 
   private void refuseWithdrawal(User user, OidcProvider provider, SystemRole target) {

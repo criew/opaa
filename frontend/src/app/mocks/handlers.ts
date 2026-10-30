@@ -47,6 +47,7 @@ import { settingsHandlers } from '@/features/settings/mocks/settingsHandlers'
 // connection
 import { connectionProfileHandlers } from '@/features/connection/mocks/connectionProfileHandlers'
 import { connectedAccountHandlers } from '@/features/connection/mocks/connectedAccountHandlers'
+import { auditorRoleRequestHandlers } from '@/features/audit/mocks/auditorRoleRequestHandlers'
 import { connectionLogHandlers } from '@/features/audit/mocks/connectionLogHandlers'
 import { outboundProxyHandlers } from '@/features/connection/mocks/outboundProxyHandlers'
 import { connectionLifecycleHandlers } from '@/features/connection/mocks/connectionLifecycleHandlers'
@@ -129,6 +130,7 @@ export const handlers = [
   ...connectionProfileHandlers,
   ...connectedAccountHandlers,
   ...connectionLogHandlers,
+  ...auditorRoleRequestHandlers,
   ...outboundProxyHandlers,
   ...connectionLifecycleHandlers,
   // external-access

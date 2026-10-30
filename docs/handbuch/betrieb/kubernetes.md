@@ -584,6 +584,7 @@ Wegen:
 | `installation-mail-password` | `mailPassword` | mit `bootstrap.mail.passwordInSecret` | Passwort des Mailservers der Antwortdatei, als Datei eingehängt |
 | `installation-admin-password` | `initialAdminPassword` | für die Installation mit `bootstrap.initialAdmin.email` | Passwort des ersten Kontos der Antwortdatei, als Datei eingehängt; nach dem Abschluss entfernen. Fehlt es, startet der Pod, und die Installation wartet |
 | `OPAA_INSTALLATION_TOKEN` | `installationToken` | nein | Installations-Token, mindestens 32 Zeichen; ohne es schreibt der erste Start ein erzeugtes ins Protokoll |
+| `OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS`, `OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS` | `credentialsEncryptionPreviousKeys`, `settingsEncryptionPreviousKeys` | nein | nur während eines [Schlüsselwechsels](netz-und-sicherheit.md#schlüsselwechsel): die abgelösten Schlüssel, durch Kommas getrennt; danach entfernen |
 
 Die Verschlüsselungsschlüssel sind im Chart Pflicht, auch wenn noch nichts verschlüsselt gespeichert
 ist. Ein fehlender Schlüssel fiele sonst erst auf, wenn die erste Quelle ihre Zugangsdaten speichert.
@@ -607,6 +608,15 @@ Kopie außerhalb des Clusters zur Sicherung.
 startet `helm upgrade` es von selbst. Eine Änderung von `OPAA_AUTH_JWT_SECRET` beendet alle lokalen
 Sitzungen und entwertet alle offenen Einladungs- und Rücksetzlinks und alle Zugangstokens für
 externe KI-Werkzeuge.
+
+**Schlüssel wechseln.** Alle Schlüssel gehören zum
+[Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck): Mit
+mehr als einem Backend-Pod bliebe ein Rolling Update am ersten neuen Pod stehen. Bei Geheimnissen aus
+den Werten gehört `--set backend.updateStrategy=Recreate` an den Aufruf von `helm upgrade`, bei einem
+vorhandenen Secret wird das Backend vor der Änderung auf null Pods skaliert
+(`kubectl -n opaa scale deploy/opaa-backend --replicas=0`) und danach wieder auf seine Zahl. Den
+Ablauf eines Wechsels der Verschlüsselungsschlüssel beschreibt
+[Schlüsselwechsel](netz-und-sicherheit.md#schlüsselwechsel).
 
 ## Wertereferenz
 
@@ -1225,10 +1235,12 @@ Der allgemeine Ablauf steht unter [Aktualisierung](aktualisierung.md); unter Kub
 1. **Vorbereitung prüfen** nach den Release-Notizen
    ([Ablauf eines Updates](aktualisierung.md#ablauf-eines-updates)). Stammt ein
    Verschlüsselungsschlüssel aus den Wertesätzen der CI, den Testläufen des Repositorys oder dem
-   Profil `dev`, startet das Backend nicht mehr: eigenen Schlüssel erzeugen und die damit geschützten
-   Werte neu eintragen. Dasselbe gilt für ein `secrets.jwtSecret` aus diesen Dateien; ein neues
-   Signaturgeheimnis (`openssl rand -base64 48`) beendet alle lokalen Sitzungen
-   ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#schlüssel-und-geheimnisse)).
+   Profil `dev`, startet das Backend nicht mehr: eigenen Schlüssel erzeugen und den bisherigen als
+   abgelösten Schlüssel eintragen (`secrets.credentialsEncryptionPreviousKeys` bzw.
+   `secrets.settingsEncryptionPreviousKeys`); OPAA verschlüsselt den Bestand dann selbst neu
+   ([Schlüsselwechsel](netz-und-sicherheit.md#schlüsselwechsel)). Dasselbe gilt für ein
+   `secrets.jwtSecret` aus diesen Dateien; ein neues Signaturgeheimnis (`openssl rand -base64 48`)
+   beendet alle lokalen Sitzungen ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#schlüssel-und-geheimnisse)).
 2. **Datenbank sichern**, danach die Originale (siehe
    [Sicherung und Wiederherstellung](#sicherung-und-wiederherstellung)). Ohne diese Sicherung gibt es
    nach einer Schemaänderung keinen Rückweg, außer die neue Version lässt die vorige in ihrem
@@ -1349,6 +1361,15 @@ Images der alten Revision wieder her, nicht die Datenbank. **Der verlässliche R
 hat ihr Schema die vorige Version nur erweitert, und deren Pods starten neben den neuen. Bis zum
 ersten Release mit dieser Zusage und über eine Versionsgrenze ohne Rolling Update gibt es das nicht
 ([Update ohne Ausfall](mehrere-instanzen.md#update-ohne-ausfall)).
+
+**Hinter die Version mit dem [Schlüsselwechsel](netz-und-sicherheit.md#schlüsselwechsel) führt
+`helm rollback` ohne Sicherung nicht zurück**, auch bei gleicher Zahl von Migrationen: Hat sie den
+Bestand der Geheimnisse auf das Format `enc:v2` umgestellt, liest die ältere Version die
+gespeicherten Zugangsdaten und Modellschlüssel nicht mehr. Zurück geht es dann nur mit der Sicherung
+von vor dem Upgrade. Wer sich den Rückweg offenhalten will, setzt beim Upgrade
+`OPAA_ENCRYPTION_KEYED_FORMAT=false` über `backend.extraEnv` und entfernt den Eintrag, wenn der
+Rückweg nicht mehr gebraucht wird
+([Kein Rückweg nach der Umstellung der Geheimnisse](aktualisierung.md#kein-rückweg-nach-der-umstellung-der-geheimnisse)).
 
 Ein Signal dafür, ob die Aktualisierung das Schema geändert hat, gibt die Tabelle `flyway_schema_history`.
 Vor und nach dem Upgrade, mit einem eigenen Schema vorangestellt:

@@ -3,6 +3,7 @@ package io.opaa.llm;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -69,12 +70,12 @@ class LlmModelServiceTest {
   @Test
   void aChangedAddressTakesANewKeyOrNone() {
     LlmModel withNewKey = stored("https://anbieter.example/v1", "cipher-alt");
-    when(encryptor.encrypt("sk-neu")).thenReturn("cipher-neu");
+    when(encryptor.encrypt(eq("sk-neu"), any())).thenReturn("cipher-neu");
     assertThat(update(withNewKey, "https://fremd.example/v1", "sk-neu").getApiKeyCiphertext())
         .isEqualTo("cipher-neu");
 
     LlmModel cleared = stored("https://anbieter.example/v1", "cipher-alt");
-    when(encryptor.encrypt("")).thenReturn(null);
+    when(encryptor.encrypt(eq(""), any())).thenReturn(null);
     assertThat(update(cleared, "https://fremd.example/v1", "").getApiKeyCiphertext()).isNull();
   }
 

@@ -114,7 +114,9 @@ class StepChecks {
     }
     String apiKey;
     try {
-      apiKey = settingsEncryptor.decrypt(secret);
+      apiKey =
+          settingsEncryptor.decrypt(
+              secret, InstallationEncryptedColumns.of(InstallationStep.CHAT_MODEL));
     } catch (IllegalStateException e) {
       return new Outcome(false, UNREADABLE_KEY);
     }
@@ -144,7 +146,9 @@ class StepChecks {
     }
     String apiKey;
     try {
-      apiKey = settingsEncryptor.decrypt(secret);
+      apiKey =
+          settingsEncryptor.decrypt(
+              secret, InstallationEncryptedColumns.of(InstallationStep.RERANK_MODEL));
     } catch (IllegalStateException e) {
       return new Outcome(false, UNREADABLE_KEY);
     }
@@ -160,7 +164,9 @@ class StepChecks {
     }
     String apiKey;
     try {
-      apiKey = settingsEncryptor.decrypt(secret);
+      apiKey =
+          settingsEncryptor.decrypt(
+              secret, InstallationEncryptedColumns.of(InstallationStep.TRANSCRIPTION_MODEL));
     } catch (IllegalStateException e) {
       return new Outcome(false, UNREADABLE_KEY);
     }

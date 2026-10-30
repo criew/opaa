@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.auth.AccountUsability;
 import io.opaa.auth.UserRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import io.opaa.security.CredentialsEncryptor;
 import java.time.Clock;
 import java.time.Instant;
@@ -28,6 +29,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 public final class TestSecrets {
 
   private static final String MARKER = "enc:v1:";
+
+  /** A value in the bound format under a key the store's encryptor does not hold. */
+  public static final String UNREADABLE_KEYED = "enc:v2:0123456789abcdef:unlesbar";
 
   private TestSecrets() {}
 
@@ -91,14 +95,18 @@ public final class TestSecrets {
     private final CredentialsEncryptor encryptor = mock(CredentialsEncryptor.class);
 
     public Store() {
-      when(encryptor.encrypt(any())).thenAnswer(call -> marked(call.getArgument(0)));
-      when(encryptor.decrypt(anyString()))
+      when(encryptor.encrypt(any(), any())).thenAnswer(call -> marked(call.getArgument(0)));
+      when(encryptor.decrypt(anyString(), any()))
           .thenAnswer(
               call -> {
                 decryptions.incrementAndGet();
                 String stored = call.getArgument(0);
+                if (stored.equals(UNREADABLE_KEYED)) {
+                  throw new CredentialsEncryptionKeyMissingException("no key in the ring");
+                }
                 return stored.startsWith(MARKER) ? stored.substring(MARKER.length()) : stored;
               });
+      when(encryptor.rebind(any(), any(), any())).thenCallRealMethod();
       when(repository.findByLibraryId(any()))
           .thenAnswer(
               call -> {
@@ -147,6 +155,7 @@ public final class TestSecrets {
     public void hold(UUID profileId, UUID libraryId, String value, String address) {
       ConnectionToken token =
           ConnectionToken.ofLibrarySecret(
+              UUID.randomUUID(),
               profileId,
               libraryId,
               marked(value),
@@ -155,11 +164,24 @@ public final class TestSecrets {
       rows.put(token.getId(), token);
     }
 
+    /** Holds {@link #UNREADABLE_KEYED} as the own secret of {@code libraryId}. */
+    public void holdUnreadableKeyed(UUID profileId, UUID libraryId, String target) {
+      ConnectionToken token =
+          ConnectionToken.ofLibrarySecret(
+              UUID.randomUUID(), profileId, libraryId, UNREADABLE_KEYED, target, Instant.now());
+      rows.put(token.getId(), token);
+    }
+
     /** Holds a value the key cannot read as the own secret of {@code libraryId}. */
     public void holdUnreadable(UUID profileId, UUID libraryId, String target) {
       ConnectionToken token =
           ConnectionToken.ofLibrarySecret(
-              profileId, libraryId, "plain-not-encrypted", target, Instant.now());
+              UUID.randomUUID(),
+              profileId,
+              libraryId,
+              "plain-not-encrypted",
+              target,
+              Instant.now());
       rows.put(token.getId(), token);
     }
 

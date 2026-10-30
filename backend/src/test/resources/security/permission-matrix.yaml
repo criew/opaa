@@ -74,6 +74,9 @@ operations:
   requestAuditIncidentScope:                 {systemAdmin: 403, auditor: allowed, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   approveAuditIncidentScope:                 {systemAdmin: 403, auditor: allowed, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   listAuditEventsByIncidentScope:            {systemAdmin: 403, auditor: allowed, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  listAuditorRoleRequests:                   {systemAdmin: 403, auditor: allowed, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  confirmAuditorRoleRequest:                 {systemAdmin: 403, auditor: 404, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  declineAuditorRoleRequest:                 {systemAdmin: 403, auditor: 404, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   getPermissionHistoryRetention:             {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   updatePermissionHistoryRetention:          {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   getAuthConfig:                             {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: allowed}

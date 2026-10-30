@@ -13,11 +13,13 @@ import static org.mockito.Mockito.when;
 import io.opaa.common.ConflictException;
 import io.opaa.common.InstallationStatus;
 import io.opaa.knowledge.VectorTableCreator;
+import io.opaa.security.CipherFormatGate;
 import io.opaa.security.SettingsEncryptionProperties;
 import io.opaa.security.SettingsEncryptor;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -216,7 +218,8 @@ class EmbeddingModelServiceTest {
     return new EmbeddingModelService(
         repository,
         probe,
-        new SettingsEncryptor(new SettingsEncryptionProperties(settingsKey)),
+        new SettingsEncryptor(
+            new SettingsEncryptionProperties(settingsKey, List.of()), CipherFormatGate.KEYED),
         table,
         new DevelopmentEmbeddingConfiguration(environment),
         index,

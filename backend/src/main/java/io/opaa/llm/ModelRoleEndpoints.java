@@ -4,6 +4,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import io.opaa.instance.BusBoundCache;
 import io.opaa.instance.InvalidationBus;
 import io.opaa.instance.InvalidationSubscriber;
+import io.opaa.security.CipherBinding;
 import io.opaa.security.SettingsEncryptor;
 import java.util.Set;
 import org.slf4j.Logger;
@@ -78,7 +79,8 @@ public class ModelRoleEndpoints implements InvalidationSubscriber {
                     row.isEnabled(),
                     row.getBaseUrl(),
                     row.getModelIdentifier(),
-                    decrypt(row.getApiKeyCiphertext(), "rerank")))
+                    decrypt(
+                        row.getApiKeyCiphertext(), LlmEncryptedColumns.rerankModelKey(), "rerank")))
         .orElse(RerankEndpoint.FACTORY_DEFAULT);
   }
 
@@ -91,17 +93,21 @@ public class ModelRoleEndpoints implements InvalidationSubscriber {
                     row.isEnabled(),
                     row.getBaseUrl(),
                     row.getModelIdentifier(),
-                    decrypt(row.getApiKeyCiphertext(), "transcription"),
+                    decrypt(
+                        row.getApiKeyCiphertext(),
+                        LlmEncryptedColumns.TRANSCRIPTION_MODEL_KEY.row(
+                            TranscriptionModelSettings.SINGLETON_ID),
+                        "transcription"),
                     row.getLanguage()))
         .orElse(TranscriptionEndpoint.FACTORY_DEFAULT);
   }
 
-  private String decrypt(String ciphertext, String role) {
+  private String decrypt(String ciphertext, CipherBinding binding, String role) {
     if (ciphertext == null) {
       return "";
     }
     try {
-      return settingsEncryptor.decrypt(ciphertext);
+      return settingsEncryptor.decrypt(ciphertext, binding);
     } catch (IllegalStateException e) {
       log.error(
           "The stored key of the {} model cannot be decrypted ({}); calls go without a key until"

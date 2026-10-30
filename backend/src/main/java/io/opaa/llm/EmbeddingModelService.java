@@ -368,7 +368,10 @@ public class EmbeddingModelService {
             new EmbeddingModelSettings(
                 endpoint.baseUrl(),
                 endpoint.modelIdentifier(),
-                settingsEncryptor.encrypt(endpoint.apiKey()),
+                settingsEncryptor.encrypt(
+                    endpoint.apiKey(),
+                    LlmEncryptedColumns.EMBEDDING_MODEL_KEY.row(
+                        EmbeddingModelSettings.SINGLETON_ID)),
                 endpoint.maxInputTokens(),
                 dimensions,
                 clock.instant(),

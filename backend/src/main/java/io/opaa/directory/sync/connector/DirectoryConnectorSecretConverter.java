@@ -1,27 +1,23 @@
 package io.opaa.directory.sync.connector;
 
-import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import io.opaa.security.CredentialsEncryptor;
+import io.opaa.security.EncryptedCredentials;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
- * JPA converter for {@link DirectoryConnector#getClientSecret()} (ADR-0036 Entscheidung 3):
- * encrypts on the way to the database, decrypts on the way back, transparent to the connector that
- * signs in with it. Same shape as {@code SourceCredentialsConverter}, and deliberately the same
- * encryptor the issue names - one key per deployment for stored access credentials, not a second
- * one to forget.
+ * JPA converter for {@link DirectoryConnector#getClientSecret()} (ADR-0036 Entscheidung 3,
+ * ADR-0064): a new secret is encrypted for its connector on the way to the database, a loaded one
+ * stays as stored until the getter decrypts it for the connector's id. Same shape as {@code
+ * SourceCredentialsConverter}, and deliberately the same encryptor - one key per deployment for
+ * stored access credentials, not a second one to forget.
  *
  * <p><b>Write fails hard, read fails soft</b> - and for the same reason the library converter does
- * it: this is an attribute of the entity, so it is decrypted on <em>every</em> hydration of the
- * row, not only where the secret is actually wanted. Reading it hard would take down the provider
- * list ({@code GET /api/v1/admin/oidc-providers} maps every row), the delete and the re-store as
- * soon as one value cannot be decrypted (a rotated {@code OPAA_CREDENTIALS_ENCRYPTION_KEY}, a
- * restored backup) - and those last two are exactly the two repair paths {@code
- * docs/handbuch/betrieb/authentifizierung.md} points an operator at. A read failure therefore
- * yields {@code null} and a warning without any part of the value.
+ * it: the provider list ({@code GET /api/v1/admin/oidc-providers} maps every row), the delete and
+ * the re-store must keep working when one value cannot be decrypted (a lost key, a restored backup)
+ * - the last two are exactly the repair paths {@code docs/handbuch/betrieb/authentifizierung.md}
+ * points an operator at. Loading never decrypts; the getter reads such a value as {@code null} and
+ * logs a warning without any part of the value.
  *
  * <p><b>The two callers that need the secret check for {@code null} themselves</b> and say so:
  * {@link ProviderDirectoryClient} reports the directory as unreachable (so a run revokes nothing),
@@ -30,10 +26,8 @@ import org.slf4j.LoggerFactory;
  * does.
  */
 @Converter(autoApply = false)
-public class DirectoryConnectorSecretConverter implements AttributeConverter<String, String> {
-
-  private static final Logger log =
-      LoggerFactory.getLogger(DirectoryConnectorSecretConverter.class);
+public class DirectoryConnectorSecretConverter
+    implements AttributeConverter<EncryptedCredentials, String> {
 
   private final CredentialsEncryptor credentialsEncryptor;
 
@@ -42,21 +36,12 @@ public class DirectoryConnectorSecretConverter implements AttributeConverter<Str
   }
 
   @Override
-  public String convertToDatabaseColumn(String attribute) {
-    return credentialsEncryptor.encrypt(attribute);
+  public String convertToDatabaseColumn(EncryptedCredentials attribute) {
+    return attribute == null ? null : attribute.toColumn(credentialsEncryptor);
   }
 
   @Override
-  public String convertToEntityAttribute(String dbData) {
-    try {
-      return credentialsEncryptor.decrypt(dbData);
-    } catch (CredentialsEncryptionKeyMissingException e) {
-      log.warn(
-          "Das Geheimnis eines Verzeichniszugangs konnte beim Lesen nicht entschluesselt werden -"
-              + " der Zugang wird als unbrauchbar behandelt, bis er neu hinterlegt wird. Ursache:"
-              + " {}",
-          e.getMessage());
-      return null;
-    }
+  public EncryptedCredentials convertToEntityAttribute(String dbData) {
+    return EncryptedCredentials.loaded(dbData, credentialsEncryptor);
   }
 }

@@ -3,6 +3,7 @@ package io.opaa.connection.profile;
 import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.api.types.ConnectionOwnership;
 import io.opaa.knowledge.SourceType;
+import io.opaa.security.EncryptedColumn;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -25,6 +26,10 @@ import java.util.UUID;
 @Entity
 @Table(name = "connection_profiles")
 public class ConnectionProfile {
+
+  /** {@code connection_profiles.client_secret_ciphertext}, bound to the profile (ADR-0064). */
+  static final EncryptedColumn CLIENT_SECRET =
+      EncryptedColumn.credentials("connection_profiles", "client_secret_ciphertext");
 
   @Id private UUID id;
 
