@@ -10,6 +10,8 @@ interface DialogTitleWithCloseProps {
   id: string
   onClose: () => void
   children: ReactNode
+  /** Icon buttons for the whole view (a download, say), placed left of the ✕. */
+  actions?: ReactNode
 }
 
 /**
@@ -17,9 +19,16 @@ interface DialogTitleWithCloseProps {
  * the title on the left, a ✕ named „Schließen“ at the top right. Escape and a click beside the
  * dialog still close it; a form dialog with „Abbrechen“ keeps that as its only way out.
  */
-export default function DialogTitleWithClose({ id, onClose, children }: DialogTitleWithCloseProps) {
+export default function DialogTitleWithClose({
+  id,
+  onClose,
+  children,
+  actions,
+}: DialogTitleWithCloseProps) {
   return (
+    // an id of its own, or DialogTitle takes the dialog's title id and the name would read the buttons
     <DialogTitle
+      id={`${id}-bar`}
       component="div"
       sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1 }}
     >
@@ -31,15 +40,14 @@ export default function DialogTitleWithClose({ id, onClose, children }: DialogTi
       >
         {children}
       </Box>
-      <Tooltip title="Schließen">
-        <IconButton
-          onClick={onClose}
-          aria-label="Schließen"
-          sx={{ flex: 'none', mt: -0.75, mr: -1.5 }}
-        >
-          <CloseIcon fontSize="small" />
-        </IconButton>
-      </Tooltip>
+      <Box sx={{ display: 'flex', flex: 'none', gap: 0.5, mt: -0.75, mr: -1.5 }}>
+        {actions}
+        <Tooltip title="Schließen">
+          <IconButton onClick={onClose} aria-label="Schließen">
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Box>
     </DialogTitle>
   )
 }

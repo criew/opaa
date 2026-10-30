@@ -214,8 +214,12 @@ public final class ChatResponseMapper {
   }
 
   private static io.opaa.api.dto.ChunkAnchor toAnchor(Map<String, Object> stored) {
-    io.opaa.format.chunk.ChunkAnchor anchor = io.opaa.format.chunk.ChunkAnchor.fromMetadata(stored);
-    if (anchor.isEmpty()) {
+    return toAnchor(io.opaa.format.chunk.ChunkAnchor.fromMetadata(stored));
+  }
+
+  /** The anchor as the API carries it; {@code null} for none, so a citation and a passage agree. */
+  public static io.opaa.api.dto.ChunkAnchor toAnchor(io.opaa.format.chunk.ChunkAnchor anchor) {
+    if (anchor == null || anchor.isEmpty()) {
       return null;
     }
     return new io.opaa.api.dto.ChunkAnchor()

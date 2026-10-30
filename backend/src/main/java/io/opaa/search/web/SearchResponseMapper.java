@@ -1,10 +1,14 @@
 package io.opaa.search.web;
 
+import io.opaa.api.dto.DocumentTextPassage;
+import io.opaa.api.dto.DocumentTextResponse;
+import io.opaa.api.dto.DocumentTextSection;
 import io.opaa.api.dto.SearchHitContentResponse;
 import io.opaa.api.dto.SearchResponse;
 import io.opaa.api.dto.SearchedLibrary;
 import io.opaa.chat.SearchedLibraryRef;
 import io.opaa.chat.web.ChatResponseMapper;
+import io.opaa.search.DocumentText;
 import io.opaa.search.FetchedPassage;
 import io.opaa.search.SearchHit;
 import io.opaa.search.SearchOutcome;
@@ -84,5 +88,27 @@ final class SearchResponseMapper {
     return refs == null
         ? List.of()
         : refs.stream().map(ref -> new SearchedLibrary(ref.id(), ref.name())).toList();
+  }
+
+  static DocumentTextResponse toResponse(DocumentText text) {
+    return new DocumentTextResponse(
+            text.documentId(),
+            text.fileName(),
+            text.passages().stream().map(SearchResponseMapper::toPassage).toList(),
+            text.sections().stream()
+                .map(
+                    section ->
+                        new DocumentTextSection(
+                            section.chunkIndex(), section.label(), section.level()))
+                .toList(),
+            text.sectionsTruncated())
+        .firstChunkIndex(text.firstChunkIndex())
+        .lastChunkIndex(text.lastChunkIndex());
+  }
+
+  private static DocumentTextPassage toPassage(DocumentText.Passage passage) {
+    return new DocumentTextPassage(passage.chunkIndex(), passage.text())
+        .location(passage.location())
+        .anchor(ChatResponseMapper.toAnchor(passage.anchor()));
   }
 }

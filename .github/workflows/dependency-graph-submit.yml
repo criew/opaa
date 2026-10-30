@@ -1,0 +1,76 @@
+name: Dependency Graph einreichen
+
+# Submits the graphs that dependency-graph.yml generated for a PR head (Gradle and pnpm
+# lockfiles), so the dependency review in ci.yml compares base and head with transitive
+# dependencies. Runs from main's workflow file with a write token and never checks out or
+# executes PR code; the artifacts are untrusted input from the PR (fork PRs included).
+# Each snapshot gets the sha, ref and correlator of a PR whose current head is the run's head
+# commit, so a crafted artifact can at most misdescribe the graph of that head commit, never main's.
+on:
+  workflow_run:
+    workflows: [Dependency Graph]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: read
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: dependency-graph_*
+          path: ${{ runner.temp }}/graphs
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Snapshots einreichen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/graphs"
+          # With a single matching artifact download-artifact skips the per-artifact directory.
+          if [ ! -f dependency-graph_pnpm-lockfiles/pr-number ]; then
+            echo "::error::Artefakte unvollständig, erwartet Gradle- und pnpm-Snapshot"
+            exit 1
+          fi
+          pr=$(cat dependency-graph_pnpm-lockfiles/pr-number)
+          if ! [[ "$pr" =~ ^[1-9][0-9]{0,9}$ ]]; then
+            echo "::error::Ungültige PR-Nummer im Artefakt"
+            exit 1
+          fi
+          pr_head=$(gh api "repos/$REPO/pulls/$pr" --jq '.head.sha')
+          if [ "$pr_head" != "$HEAD_SHA" ]; then
+            echo "PR #$pr steht nicht mehr auf $HEAD_SHA (jetzt $pr_head), nichts eingereicht."
+            exit 0
+          fi
+          # download-artifact puts each artifact into a directory named after it; the Gradle one is
+          # called after its JSON file, so only regular files count.
+          mapfile -t gradle < <(find . -path './dependency-graph_pnpm-lockfiles' -prune \
+            -o -type f -name '*.json' -print)
+          if [ "${#gradle[@]}" -ne 1 ]; then
+            echo "::error::Erwartet genau einen Gradle-Snapshot, gefunden ${#gradle[@]}"
+            exit 1
+          fi
+          submit() {
+            jq --arg sha "$HEAD_SHA" --arg ref "refs/pull/$pr/merge" --arg run "$RUN_ID" \
+              --arg correlator "$2" \
+              '.sha = $sha | .ref = $ref | .job.id = $run | .job.correlator = $correlator' \
+              "$1" >"$RUNNER_TEMP/submit.json"
+            gh api -X POST "repos/$REPO/dependency-graph/snapshots" --input "$RUNNER_TEMP/submit.json" \
+              --jq '"\(.message) (\(.result))"'
+          }
+          submit "${gradle[0]}" dependency_graph-submit
+          submit dependency-graph_pnpm-lockfiles/pnpm-lockfiles.json pnpm-lockfiles

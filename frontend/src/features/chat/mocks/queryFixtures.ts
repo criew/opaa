@@ -8,7 +8,9 @@ export const mockQueryResponses: QueryResponse[] = [
       'api, indexing und query【source: doc-arch#0 | architecture-overview.md】. Das Modul api ' +
       'stellt die REST-Endpunkte und DTOs bereit, das Modul indexing verwaltet die ' +
       'Dokumentenaufnahme【source: doc-start#2 | getting-started.pdf】 und das Modul query ' +
-      'beantwortet Fragen über RAG【source: doc-arch#3 | architecture-overview.md】.',
+      'beantwortet Fragen über RAG【source: doc-arch#3 | architecture-overview.md】. Die ' +
+      'Einführungsfolien fassen den Ablauf einer Frage zusammen【source: doc-slides#3 | ' +
+      'einfuehrung-opaa.pptx】.',
     sources: [
       {
         fileName: 'architecture-overview.md',
@@ -56,6 +58,29 @@ export const mockQueryResponses: QueryResponse[] = [
         // (VITE_ENABLE_MOCKS=true) can actually show the "Beleg nicht bestätigt" state.
         citationValid: false,
         privateSource: false,
+      },
+      {
+        // a PowerPoint deck: „Dokument öffnen“ shows its Textfassung, opened at slide 3
+        fileName: 'einfuehrung-opaa.pptx',
+        relevanceScore: 0.45,
+        matchCount: 1,
+        indexedAt: '2025-01-15T10:30:00Z',
+        cited: true,
+        citationValid: true,
+        privateSource: false,
+        documentId: 'doc-slides',
+        sourceType: 'UPLOAD',
+        chunkLocations: [
+          {
+            chunkIndex: 3,
+            location: 'Folie 3',
+            anchor: {
+              slide: 3,
+              quoteStart: 'Eine Frage durchläuft vier Schritte: Suche im Index, Auswahl',
+              quoteEnd: 'und die Antwort mit Belegen.',
+            },
+          },
+        ],
       },
       {
         fileName: 'adr-0002-technology-stack.md',

@@ -246,7 +246,9 @@ final class NextcloudDav implements AutoCloseable {
         "application/xml; charset=utf-8",
         timeout,
         headers,
-        targetAddressValidator,
+        names.isWithheld()
+            ? targetAddressValidator.namingHostsAs(names::of)
+            : targetAddressValidator,
         requestPolicy.rateLimitHandling(budget));
   }
 

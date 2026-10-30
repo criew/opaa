@@ -294,6 +294,30 @@ class EmbeddingReindexIntegrationTest {
   }
 
   /**
+   * Regression guard: the progress of an instance whose snapshot is still stale stays answerable
+   * after another instance switched the columns and before the bus told this one.
+   */
+  @Test
+  void theProgressStaysAnswerableWhenAnotherInstanceSwitchedTheColumnsMeanwhile()
+      throws IOException {
+    indexed("satzung-a.md");
+    replaceVectorsByAnOldModel(768);
+    reconciler.reconcile();
+    assertThat(state.isStale()).isTrue();
+    jdbcTemplate.update(
+        "UPDATE vector_store SET embedding_next = ?::vector",
+        "[" + String.join(",", Collections.nCopies(1536, "0.2")) + "]");
+
+    jdbcTemplate.execute("ALTER TABLE vector_store DROP COLUMN embedding");
+    jdbcTemplate.execute("ALTER TABLE vector_store RENAME COLUMN embedding_next TO embedding");
+
+    assertThat(state.isStale()).as("this instance has not heard of the switch").isTrue();
+    EmbeddingReindexProgress progress = reindexService.progress();
+    assertThat(progress.embeddedChunks()).isEqualTo(progress.totalChunks());
+    assertThat(progress.withoutCurrentVector()).isZero();
+  }
+
+  /**
    * Abbruch über eine andere Instanz wirkt auf den laufenden Worker: the worker of instance B holds
    * its first document while this instance - A - is asked; a start on A is refused, a cancel on A
    * stops B's worker after that document, and nothing is switched.

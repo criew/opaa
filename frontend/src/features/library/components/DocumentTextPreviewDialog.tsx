@@ -10,6 +10,8 @@ import MarkdownRenderer from '@/shared/ui/markdown/MarkdownRenderer'
 import type { TextPreviewResult } from '../utils/documentContent'
 import { fontFamily, markHighlight } from '@/shared/theme/tokens'
 import { NO_ANCHOR_NOTICE, passageRange } from '../utils/textPassage'
+import { downloadBlob } from '../utils/documentContent'
+import DownloadOriginalButton from './DownloadOriginalButton'
 
 /** Name of the CSS Custom Highlight that marks the cited passage. */
 const PASSAGE_HIGHLIGHT = 'opaa-passage'
@@ -109,7 +111,17 @@ export default function DocumentTextPreviewDialog({
       scroll="paper"
       aria-labelledby={TITLE_ID}
     >
-      <DialogTitleWithClose id={TITLE_ID} onClose={onClose}>
+      <DialogTitleWithClose
+        id={TITLE_ID}
+        onClose={onClose}
+        actions={
+          previewDocument && (
+            <DownloadOriginalButton
+              onDownload={() => downloadBlob(previewDocument.blob, previewDocument.fileName)}
+            />
+          )
+        }
+      >
         <Typography component="span" sx={{ fontWeight: 600, wordBreak: 'break-word' }}>
           {previewDocument?.fileName}
         </Typography>

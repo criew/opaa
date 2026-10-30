@@ -93,6 +93,7 @@ describe('buildCitationIndex', () => {
         source: undefined,
         locations: [],
         anchors: [],
+        chunkIndexes: [0],
       },
     ])
   })

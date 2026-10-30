@@ -45,7 +45,7 @@ im Repository. Die Fabrikmethoden sind öffentlich, damit ein späteres Fuzzing-
 Ausgangsdateien nutzen kann:
 
 - PDF mit zyklischer Gliederung
-- PDF, das ein Form-XObject vielfach zeichnet; der Testfall ist bis zum Fix von #3434 deaktiviert
+- PDF, das ein Form-XObject vielfach auf eine Seite zeichnet (scheitert an der Zeichengrenze je Seite, #3434)
 - DOCX-Kompressionsbombe
 - EML mit verschachtelten Nachrichten und Anhängen
 - MSG mit gemeinsam genutzten Anhangssektoren

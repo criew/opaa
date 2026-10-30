@@ -101,6 +101,9 @@ export interface CitationDoc {
   /** The anchors of this row's footnotes, in footnote order, one per cited chunk that has one -
    *  where „Dokument öffnen“ jumps to. */
   anchors: ChunkAnchor[]
+  /** The distinct chunk indexes of this row's footnotes, in footnote order - the passage a
+   *  Textfassung opens at. */
+  chunkIndexes: number[]
 }
 
 export interface CitationIndex {
@@ -192,9 +195,14 @@ export function buildCitationIndex(
           documentId: source?.documentId,
           locations: [],
           anchors: [],
+          chunkIndexes: [],
         })
       }
       docs[docIndex].numbers.push(number)
+      const chunkIndex = Number(key.split('#')[1])
+      if (Number.isInteger(chunkIndex) && !docs[docIndex].chunkIndexes.includes(chunkIndex)) {
+        docs[docIndex].chunkIndexes.push(chunkIndex)
+      }
       docIndexByNumber.set(number, docIndex)
       const entry = locationEntry(source, key)
       if (entry?.anchor && !docs[docIndex].anchors.includes(entry.anchor)) {
@@ -221,6 +229,7 @@ export function buildCitationIndex(
         documentId: source.documentId,
         locations: [],
         anchors: [],
+        chunkIndexes: [],
       })
     }
   }

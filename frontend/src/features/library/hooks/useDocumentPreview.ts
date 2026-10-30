@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { openDocumentContent } from '../utils/documentContent'
+import { openDocumentContent, opensAsTextVersion } from '../utils/documentContent'
 import type { PdfPreviewResult, TextPreviewResult } from '../utils/documentContent'
 import type { ChunkAnchor } from '@/shared/api/types'
 import { notify } from '@/shared/stores/notificationStore'
@@ -7,6 +7,7 @@ import { safeExternalHref } from '@/shared/utils/safeExternalHref'
 import type { SourceTypeKey } from '@/shared/api/types'
 import { sourceRegistration } from '../components/sources/registry'
 import { withTextFragment } from '../utils/textFragment'
+import type { TextVersionPreview } from '../components/DocumentTextVersionDialog'
 
 /**
  * Everything "Original öffnen"/"Dokument öffnen" needs to decide HOW to open a document -
@@ -24,6 +25,13 @@ export interface OpenableDocument {
   anchor?: ChunkAnchor | null
   /** SHA-256 of the original as indexed when the citation was made. */
   contentSha256?: string | null
+  /** The cited passage - a Textfassung opens there and marks it. */
+  chunkIndex?: number | null
+}
+
+/** Whether a document of `sourceType` has a file of its own; a page at the source has none. */
+export function hasOwnOriginal(sourceType: SourceTypeKey | null | undefined): boolean {
+  return !sourceRegistration(sourceType)?.opensAtSource
 }
 
 /**
@@ -37,12 +45,13 @@ export interface OpenableDocument {
 export function useDocumentPreview() {
   const [previewDocument, setPreviewDocument] = useState<TextPreviewResult | null>(null)
   const [pdfPreview, setPdfPreview] = useState<PdfPreviewResult | null>(null)
+  const [textVersion, setTextVersion] = useState<TextVersionPreview | null>(null)
 
   async function openDocument(document: OpenableDocument) {
     // ADR-0023: a source whose original is the page at the source (Confluence) has no file of its
     // own - the backend's content endpoint deliberately answers 404 there. It opens directly at
     // the source URL, exactly like the citation deep link.
-    if (sourceRegistration(document.sourceType)?.opensAtSource) {
+    if (!hasOwnOriginal(document.sourceType)) {
       // Only an http(s) address is opened; any other scheme counts as no address at all.
       const target = safeExternalHref(document.sourceUrl ?? document.sourceEntryUrl)
       if (!target) {
@@ -50,6 +59,16 @@ export function useDocumentPreview() {
         return
       }
       window.open(withTextFragment(target, document.anchor), '_blank', 'noopener,noreferrer')
+      return
+    }
+    // a format the browser cannot show opens as its Textfassung; the original is not fetched
+    if (opensAsTextVersion(document.fileName)) {
+      setTextVersion({
+        documentId: document.id,
+        fileName: document.fileName,
+        chunkIndex: document.chunkIndex,
+        anchor: document.anchor,
+      })
       return
     }
     try {
@@ -87,6 +106,8 @@ export function useDocumentPreview() {
     closePreview: () => setPreviewDocument(null),
     pdfPreview,
     closePdfPreview: () => setPdfPreview(null),
+    textVersion,
+    closeTextVersion: () => setTextVersion(null),
     openDocument,
   }
 }

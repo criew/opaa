@@ -105,7 +105,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
   /** The {@code code} of the 404 for an original the malware scan found malware in. */
   public static final String MALWARE_FOUND = "MALWARE_FOUND";
 
-  static final String MALWARE_FOUND_MESSAGE =
+  /** The message of the 404 {@link #MALWARE_FOUND} names. */
+  public static final String MALWARE_FOUND_MESSAGE =
       "Die Datei ist gesperrt, weil die Virenprüfung ein Schadprogramm gefunden hat";
 
   /** The 503 a reader sees when the core cannot sign in; account and endpoint stay in the log. */
@@ -253,7 +254,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     // A place in the upload pool, taken before anything is stored or created: a full pool is a
     // 429 with nothing written. The processing gives it back when it ends; until the hand-over,
     // the finally below does.
-    UploadProcessingSlots.Slot slot = processingSlots.reserve();
+    UploadProcessingSlots.Slot slot = processingSlots.reserve(currentUserId);
     boolean handedOver = false;
     try {
       // Created only after every certain-to-reject check above: resolveOrCreateFolderPath commits

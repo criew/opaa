@@ -33,8 +33,9 @@ import org.apache.pdfbox.pdmodel.common.PDStream;
  * since the budget was created. A single content stream may decode to no more than its own limit,
  * measured by streaming before PDFBox, which decodes a stream into memory as a whole, gets to it. A
  * page is charged with its finished text; while a page is still being stripped, its glyph count is
- * checked against what is left. The objects PDFBox registers while it loads the file count against
- * their own limit. Not thread-safe: one budget belongs to one read of one document.
+ * checked against what is left and against {@link #MAX_PAGE_GLYPHS}. The objects PDFBox registers
+ * while it loads the file count against their own limit. Not thread-safe: one budget belongs to one
+ * read of one document.
  */
 final class PdfReadBudget {
 
@@ -56,6 +57,13 @@ final class PdfReadBudget {
           COSName.RUN_LENGTH_DECODE,
           COSName.RUN_LENGTH_DECODE_ABBREVIATION,
           COSName.CRYPT);
+
+  /**
+   * The most glyphs one page may yield in one pass. PDFBox holds every glyph of a page as a {@code
+   * TextPosition} of roughly 200 bytes until the page is written, so this bounds the heap of a page
+   * that draws one form thousands of times well below what the document's character limit allows.
+   */
+  static final long MAX_PAGE_GLYPHS = 200_000;
 
   private final long maxCharacters;
   private final long maxOperators;
@@ -109,11 +117,23 @@ final class PdfReadBudget {
   }
 
   /** Throws when {@code pageGlyphs} more characters would exceed the budget. */
-  void requireRoomFor(long pageGlyphs) {
+  private void requireRoomFor(long pageGlyphs) {
     if (pageGlyphs > maxCharacters - usedCharacters) {
       throw new ParserLimitExceededException(
           "PDF text exceeds the configured text character limit of " + maxCharacters);
     }
+  }
+
+  /**
+   * Throws when a page has yielded {@code pageGlyphs} glyphs, past {@link #MAX_PAGE_GLYPHS} or past
+   * what is left of the document's characters.
+   */
+  void requireRoomForPageGlyphs(long pageGlyphs) {
+    if (pageGlyphs > MAX_PAGE_GLYPHS) {
+      throw new ParserLimitExceededException(
+          "PDF page exceeds the glyph limit of " + MAX_PAGE_GLYPHS + " per page");
+    }
+    requireRoomFor(pageGlyphs);
   }
 
   /** Adds a finished page's {@code characters}; throws when the budget is exceeded. */

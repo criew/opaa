@@ -246,4 +246,34 @@ class CredentialsEncryptorTest {
     assertThat(encryptor(NEW_KEY, KEY).decrypt(v2, BINDING))
         .isEqualTo("admin:super-secret-password");
   }
+
+  @Test
+  void onceTheUnboundFormsAreRetiredOnlyTheKeyedFormatIsReadAndWritten() {
+    String v1 = encryptor(() -> false, KEY).encrypt("admin:secret", BINDING);
+    String v2 = encryptor(KEY).encrypt("admin:secret", BINDING);
+    LegacyCipherRetirement all =
+        new LegacyCipherRetirement() {
+          @Override
+          public boolean refusesLegacy(EncryptionPurpose purpose) {
+            return true;
+          }
+
+          @Override
+          public void measured(EncryptionPurpose purpose, int unbound) {}
+        };
+    CredentialsEncryptor retired =
+        new CredentialsEncryptor(
+            new CredentialsEncryptionProperties(KEY, List.of()), () -> false, all);
+
+    assertThat(retired.decrypt(v2, BINDING)).isEqualTo("admin:secret");
+    assertThatThrownBy(() -> retired.decrypt(v1, BINDING))
+        .isInstanceOf(CredentialsEncryptionKeyMissingException.class)
+        .hasMessageContaining("enc:v1");
+    assertThatThrownBy(() -> retired.decrypt("admin:cleartext", BINDING))
+        .isInstanceOf(CredentialsEncryptionKeyMissingException.class);
+    assertThat(retired.encrypt("admin:secret", BINDING)).startsWith("enc:v2:");
+    assertThat(encryptor(() -> false, KEY).decrypt(v1, BINDING))
+        .as("not retired")
+        .isEqualTo("admin:secret");
+  }
 }

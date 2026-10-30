@@ -15,7 +15,7 @@ import CopyQuestionButton, { QUESTION_COPY_CLASS } from './CopyQuestionButton'
 import EvidenceFooter from './EvidenceFooter'
 import MarkdownRenderer from '@/shared/ui/markdown/MarkdownRenderer'
 import SourceEvidenceDrawer from './SourceEvidenceDrawer'
-import { DocumentTextPreviewDialog, PdfPreviewDialog } from '@/features/library'
+import { DocumentPreviewDialogs } from '@/features/library'
 import { NO_KNOWLEDGE_ASSIGNED, NO_KNOWLEDGE_READABLE } from '@/features/space'
 import { useDocumentPreview } from '@/features/library'
 
@@ -254,18 +254,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             />
           )}
 
-          {!isUser && (
-            <DocumentTextPreviewDialog
-              previewDocument={documentPreview.previewDocument}
-              onClose={documentPreview.closePreview}
-            />
-          )}
-          {!isUser && (
-            <PdfPreviewDialog
-              preview={documentPreview.pdfPreview}
-              onClose={documentPreview.closePdfPreview}
-            />
-          )}
+          {!isUser && <DocumentPreviewDialogs preview={documentPreview} />}
         </Box>
       </Box>
     </Box>

@@ -382,20 +382,30 @@ jobs:
 
   # Fails a pull request whose dependency changes bring a known vulnerability of severity critical
   # in runtime scope (docs/cve-scanning.md, "PR-Gate für Abhängigkeiten"). It compares the
-  # dependency graph of base and head through the GitHub API, so it needs no checkout. Only on
-  # pull_request: a push or merge_group run has no base to compare with.
+  # dependency graph of base and head through the GitHub API and checks out only its script. Only
+  # on pull_request: a push or merge_group run has no base to compare with.
   dependency-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
-      - name: Neue critical-Schwachstellen im Scope runtime ablehnen
-        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fail-on-severity: critical
-          fail-on-scopes: runtime
+          persist-credentials: false
+          sparse-checkout: .github/scripts
 
-      # The gate above filters by severity and scope before it reports; this run only lists every
-      # vulnerable change of both scopes in the job log and never fails.
+      # Waits for the head snapshots that dependency-graph.yml generates and
+      # dependency-graph-submit.yml submits for every PR, then is the gate itself; why it does not
+      # use the action's own retry is in the header of dependency_review_gate.py.
+      - name: Neue critical-Schwachstellen im Scope runtime ablehnen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 .github/scripts/dependency_review_gate.py
+
+      # Lists every vulnerable change of both scopes in the job log and summary, never fails.
       - name: Alle Schwachstellen der Abhängigkeitsänderungen auflisten
         if: success() || failure()
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0

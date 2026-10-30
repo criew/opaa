@@ -6,6 +6,8 @@ import MessageBubble from './MessageBubble'
 import type { ChatMessage } from '../types/chat'
 import type { SourceReference } from '@/shared/api/types'
 import type { OpenDocumentContentResult } from '@/features/library'
+import { http, HttpResponse } from 'msw'
+import { server } from '@/test/server'
 
 // The "Dokument öffnen" action delegates to this shared module (see its own tests for the
 // Blob-fetch/preview-vs-download behaviour; LibraryDetailPage.test.tsx uses the same mock pattern).
@@ -14,7 +16,8 @@ const { mockOpenDocumentContent } = vi.hoisted(() => ({
     kind: 'blob-preview',
   })),
 }))
-vi.mock('../../library/utils/documentContent', () => ({
+vi.mock('../../library/utils/documentContent', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../library/utils/documentContent')>()),
   openDocumentContent: mockOpenDocumentContent,
 }))
 
@@ -493,14 +496,17 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
   })
 
   describe('"Dokument öffnen" (#739)', () => {
-    async function openDrawerWith(source: SourceReference) {
+    async function openDrawerWith(
+      source: SourceReference,
+      content = 'Beleg【source: a#0 | doc.pdf】.',
+    ) {
       const user = userEvent.setup()
       renderWithProviders(
         <MessageBubble
           message={{
             id: 'ev-open',
             role: 'assistant',
-            content: 'Beleg【source: a#0 | doc.pdf】.',
+            content,
             sources: [source],
             timestamp: new Date('2026-08-21T09:00:00'),
           }}
@@ -571,6 +577,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     it('opens a Markdown text preview dialog instead of a silent download (#780)', async () => {
       mockOpenDocumentContent.mockResolvedValueOnce({
         kind: 'text-preview',
+        blob: new Blob(),
         fileName: '001_personalausweis.md',
         contentType: 'text/markdown',
         content: '# Personalausweis\n\nAusgestellt am 1. März.',
@@ -601,6 +608,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
         fileName: 'doc.pdf',
         contentType: 'text/markdown',
         content: 'Ein Absatz.',
+        blob: new Blob(['Ein Absatz.'], { type: 'text/markdown' }),
       })
       const { user, drawer } = await openDrawerWith(
         source('doc.pdf', true, 0.9, true, { documentId: 'doc-1', sourceType: 'UPLOAD' }),
@@ -613,12 +621,12 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
       ).toBeInTheDocument()
     })
 
-    // Every format without a preview (DOCX among them) must give visible
+    // Every format without a preview or Textfassung must give visible
     // download feedback so the click never appears to do nothing.
-    it('shows a snackbar with the file name when a DOCX download starts (#780)', async () => {
-      mockOpenDocumentContent.mockResolvedValueOnce({ kind: 'download', fileName: 'bescheid.docx' })
+    it('shows a snackbar with the file name when a download starts (#780)', async () => {
+      mockOpenDocumentContent.mockResolvedValueOnce({ kind: 'download', fileName: 'anlagen.zip' })
       const { user, drawer } = await openDrawerWith(
-        source('bescheid.docx', true, 0.9, true, {
+        source('anlagen.zip', true, 0.9, true, {
           documentId: 'doc-1',
           sourceType: 'UPLOAD',
         }),
@@ -626,7 +634,60 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
 
       await user.click(within(drawer).getByRole('button', { name: 'Dokument öffnen' }))
 
-      expect(await screen.findByText('bescheid.docx wird heruntergeladen')).toBeInTheDocument()
+      expect(await screen.findByText('anlagen.zip wird heruntergeladen')).toBeInTheDocument()
+    })
+
+    it('opens a PowerPoint deck as its Textfassung at the cited passage', async () => {
+      server.use(
+        http.get('/api/v1/documents/doc-1/text', ({ request }) => {
+          const params = new URL(request.url).searchParams
+          return HttpResponse.json({
+            documentId: 'doc-1',
+            fileName: 'vortrag.pptx',
+            firstChunkIndex: 0,
+            lastChunkIndex: 9,
+            passages: [
+              { chunkIndex: 0, text: 'Titelfolie' },
+              { chunkIndex: 1, text: 'Die Frist beträgt vier Wochen.', anchor: { slide: 2 } },
+            ].filter((passage) => passage.chunkIndex >= Number(params.get('from'))),
+            sections: [],
+            sectionsTruncated: false,
+          })
+        }),
+      )
+      const { user, drawer } = await openDrawerWith(
+        source('vortrag.pptx', true, 0.9, true, {
+          documentId: 'doc-1',
+          sourceType: 'UPLOAD',
+          chunkLocations: [{ chunkIndex: 1, location: 'Folie 2', anchor: { slide: 2 } }],
+        }),
+        'Laut Folie【source: doc-1#1 | vortrag.pptx】.',
+      )
+
+      await user.click(within(drawer).getByRole('button', { name: 'Dokument öffnen' }))
+
+      expect(await screen.findByLabelText('Fundstelle')).toHaveTextContent(
+        'Die Frist beträgt vier Wochen.',
+      )
+      expect(mockOpenDocumentContent).not.toHaveBeenCalled()
+    })
+
+    it('offers the download of the original, but not for a page at its source', async () => {
+      const { drawer } = await openDrawerWith(
+        source('vortrag.pptx', true, 0.9, true, { documentId: 'doc-1', sourceType: 'UPLOAD' }),
+      )
+      expect(within(drawer).getByRole('button', { name: 'Herunterladen' })).toBeInTheDocument()
+    })
+
+    it('offers no download for a Confluence page', async () => {
+      const { drawer } = await openDrawerWith(
+        source('Seite', true, 0.9, true, {
+          documentId: 'doc-1',
+          sourceType: 'CONFLUENCE',
+          sourceUrl: 'https://wiki.example.org/x',
+        }),
+      )
+      expect(within(drawer).queryByRole('button', { name: 'Herunterladen' })).toBeNull()
     })
   })
 })

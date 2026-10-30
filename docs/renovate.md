@@ -150,13 +150,16 @@ mit). Ausgenommen sind nur Quellen- und Javadoc-JARs, die allein die IDE lädt
   Basis-Branch (`.github/scripts/check_gradle_verification_metadata.py`): Neue und entfallene
   Einträge sind erlaubt. Eine geänderte Prüfsumme für dieselbe Datei und jede Änderung außerhalb
   von `<components>` (etwa `verify-metadata` oder `trusted-artifacts`) brechen auf
-  `renovate/`-Branches ab und erscheinen sonst als Warnung. Doppelt aufgeführte Komponenten oder
+  `renovate/`-Branches ab und erscheinen sonst als Warnung. Die Reihenfolge innerhalb von
+  `trusted-artifacts`, `trusted-keys` und `ignored-keys` zählt nicht, weil Gradle sie beim
+  Schreiben sortiert. Doppelt aufgeführte Komponenten oder
   Dateien sind immer ein Fehler, weil Gradle doppelte Blöcke vereinigt. Eine solche Änderung nur
   übernehmen, nachdem die Datei gegen die `.sha1`/`.sha256` des Repositorys geprüft ist.
 - **Neu erzeugen.** Der Workflow „Gradle-Verifikationsdatei erzeugen“ (nur manuell, auf einem
   wählbaren Branch) leert die Komponenten, lädt alles ohne Gradle-Cache direkt von Portal und
   Central, führt `help spotlessCheck cyclonedxBom bootJar javadoc` aus, ergänzt die Portal-Fassungen und listet
-  im Job-Summary jede geänderte Prüfsumme. Danach sind auch veraltete Einträge weg. Lokal derselbe
+  im Job-Summary jede geänderte Prüfsumme, jede entfallene Datei und jede Abweichung außerhalb
+  von `<components>` als Diff. Danach sind auch veraltete Einträge weg. Lokal derselbe
   Ablauf aus `backend/`:
 
   ```bash
@@ -170,8 +173,8 @@ mit). Ausgenommen sind nur Quellen- und Javadoc-JARs, die allein die IDE lädt
   fremden Gradle-Cache nicht ungeprüft übernehmen, sondern gegen Central abgleichen.
 - **Dependency Graph.** Der Workflow `dependency-graph.yml` spielt per Init-Skript das Plugin
   `org.gradle:github-dependency-graph-gradle-plugin` ein. Genau dessen Version steht in
-  `trusted-artifacts`; hebt ein Update der Action die Version an, scheitert der Resolve-Job im
-  selben PR, und die Version wird dort nachgezogen. Weil der Resolve-Job kein Required Check
+  `trusted-artifacts`; hebt ein Update der Action die Version an, scheitert der Job `generate`
+  im selben PR, und die Version wird dort nachgezogen. Weil der Job kein Required Check
   ist, mergen Updates von `gradle/actions` nie automatisch.
 
 **npm wird gepinnt** (`rangeStrategy: 'pin'` für `dependencies`/`devDependencies`):

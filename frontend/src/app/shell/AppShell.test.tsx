@@ -8,7 +8,7 @@ import AppShell from './AppShell'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useUiStore } from '@/shared/stores/uiStore'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
-import { KEEP_FOCUS_STATE } from '@/shared/ui/a11y/routeFocus'
+import { ARRIVAL_FOCUS_ATTRIBUTE, KEEP_FOCUS_STATE } from '@/shared/ui/a11y/routeFocus'
 import { SPACE_SEARCH_HANDOVER } from '@/features/space'
 import GlobalAreaLayout from './GlobalAreaLayout'
 import { useSpaceListLoader } from '@/features/asset'
@@ -431,6 +431,40 @@ describe('AppShell', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { level: 1, name: 'Chat' })).toHaveFocus(),
     )
+  })
+
+  it("prefers the page's arrival focus target over its heading after a route change", async () => {
+    const handle: { navigate: ReturnType<typeof useNavigate> } = { navigate: () => undefined }
+    function NavigateHandle() {
+      handle.navigate = useNavigate()
+      return null
+    }
+    renderWithProviders(
+      <>
+        <NavigateHandle />
+        <Routes>
+          <Route element={<AppShell />}>
+            <Route path="/chat" element={<div>Chat-Inhalt</div>} />
+            <Route
+              path="/spaces/s1/chats/new"
+              element={
+                <>
+                  <PageHeading title="Neuer Chat" visuallyHidden />
+                  <textarea aria-label="Frage" {...{ [ARRIVAL_FOCUS_ATTRIBUTE]: '' }} />
+                </>
+              }
+            />
+          </Route>
+        </Routes>
+      </>,
+      { withRouter: true, initialRoute: '/chat' },
+    )
+
+    act(() => {
+      void handle.navigate('/spaces/s1/chats/new')
+    })
+
+    expect(screen.getByRole('textbox', { name: 'Frage' })).toHaveFocus()
   })
 
   it('falls back to focusing main when the new page has no heading yet', async () => {

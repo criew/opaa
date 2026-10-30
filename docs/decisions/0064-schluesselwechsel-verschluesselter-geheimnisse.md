@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt ADR-0018 Entscheidung 4 und ADR-0053 Entscheidung 4
+Akzeptiert · zuletzt geändert 2026-10-30 · ergänzt ADR-0018 Entscheidung 4 und ADR-0053 Entscheidung 4
 
 ## Kontext
 
@@ -27,7 +27,7 @@ Versionen nebeneinander (ADR-0053).
 Neue Werte haben die Form `enc:v2:<kid>:<base64(iv‖ct‖tag)>`, AES-256-GCM mit 96-Bit-IV und
 128-Bit-Tag. `kid` sind die ersten 8 Byte von HMAC-SHA256(Schlüssel, `opaa-encryption-key-id`) als
 Hex (`EncryptionKeyring`). `enc:v1:` bleibt lesbar, ebenso Klartext ohne `enc:` aus der Zeit vor der
-Verschlüsselung. Begründung: Die Kennung bestimmt den Schlüssel eindeutig und ohne Register, und sie
+Verschlüsselung, bis die Umstellung abgeschlossen ist (Entscheidung 6). Begründung: Die Kennung bestimmt den Schlüssel eindeutig und ohne Register, und sie
 gibt den Schlüssel nicht preis.
 
 ### 2. Bindung an Tabelle, Spalte und Zeile
@@ -81,6 +81,30 @@ will, betreibt die neue Version zunächst mit `false` und schaltet erst um, wenn
 mehr gebraucht wird. Ein Aufschub nach Zeit wurde verworfen, weil er einen gespeicherten Zeitpunkt
 bräuchte und neue Werte trotzdem in `v2` entstünden.
 
+### 6. Nach der Umstellung nur noch `v2`
+
+Jeder Lauf der Neuverschlüsselung bei offenem Formattor (Entscheidung 5) zählt vor seinem Durchgang
+je Zweck die Werte in `enc:v1:` und, bei Zugangsdaten, den Klartext, lesbar oder nicht. Klartext
+verschlüsselt er mit, außer in Spalten, deren Leser ihn heute schon als fehlend behandeln
+(`EncryptedColumn#refusingCleartext`, die Token verbundener Zugänge); dort zählt er nicht. Zählen
+zwei Läufe im Abstand von mindestens fünf Minuten und zwei Heartbeat-Intervallen nichts und keiner
+dazwischen etwas, hält `cipher_legacy_retirements` den Zweck als umgestellt fest
+(`LegacyCipherRetirement`). Ab dann lehnen `CredentialsEncryptor` und `SettingsEncryptor` beim
+Entschlüsseln `enc:v1:` und Klartext ab wie einen unlesbaren Wert, das Log nennt Tabelle, Spalte und
+Zeile, nie den Wert, und die Neuverschlüsselung wählt solche Werte nicht mehr aus. Neue Werte
+entstehen immer in `v2`, auch bei geschlossenem Tor. Eine Instanz fragt den Eintrag höchstens einmal
+je Heartbeat-Intervall. Neue Werte bleiben `v2`, solange ein Abschluss eingetragen ist, auch ein
+verfallener. Der Abschluss verfällt, sobald eine Instanz einer anderen Version nach ihm einen
+Heartbeat geschrieben hat, etwa bei einem Rolling Update oder Rollback, weil sie wieder `enc:v1`
+schreiben kann; die nächste Messung löscht ihn und beginnt neu. Mit
+`OPAA_ENCRYPTION_KEYED_FORMAT=false` lehnt keine Instanz etwas ab, und ihr Start leert die Tabelle,
+weil sie wieder `enc:v1` schreibt.
+Begründung: Erst der Abschluss nimmt dem Kopieren eines `v1`-Werts und dem Einsetzen von Klartext
+die Wirkung. Der Abstand der Messungen ist länger als die Zeit, die eine Instanz die Antwort des
+Formattors behält, und als eine Transaktion, die vor der Messung einen `v1`-Wert schrieb; ein solcher
+Wert verschiebt den Abschluss, statt danach abgelehnt zu werden. Das Verschlüsseln von Klartext macht
+nichts verwendbar, was der Leser nicht schon verwendet.
+
 ## Konsequenzen
 
 **Einfacher:** Ein Schlüsselwechsel kommt ohne Neueintragen aus; nach dem Update stellt OPAA den
@@ -97,9 +121,16 @@ Embedding-Endpunkts, sieht nach der Umstellung einmal eine Änderung und baut se
 trifft das eine laufende Änderung des Embedding-Modells, scheitert sie einmal mit einem Konflikt und
 lässt sich wiederholen.
 
-Die Bindung schützt nur `v2`. Solange `enc:v1` und Klartext lesbar bleiben, kann, wer in die Datenbank
-schreibt, einen `v1`-Geheimtext in eine andere Zeile kopieren oder einen Klartextwert einsetzen, und
-OPAA verwendet ihn. Beides nach abgeschlossener Umstellung abzulehnen, ist offen (#3431).
+Die Bindung schützt nur `v2`. Bis zum Abschluss der Umstellung (Entscheidung 6) kann, wer in die
+Datenbank schreibt, einen `v1`-Geheimtext in eine andere Zeile kopieren oder einen Klartextwert
+einsetzen, und OPAA verwendet ihn. Ein `v1`-Wert, den kein Schlüssel liest, hält den Abschluss auf,
+bis er neu eingetragen ist. Nach dem Abschluss genügt das Schreiben eines Altwerts nicht mehr: Wer zusätzlich den Eintrag in
+`cipher_legacy_retirements` löscht oder eine Instanz anderer Version ins Register einträgt, öffnet die
+Altformate für alle Instanzen nach einem Heartbeat-Intervall, bis zwei Läufe wieder nichts finden.
+Während eines Updates und bis zum erneuten Abschluss danach gilt dasselbe wie vor der Umstellung.
+Fegt das Register die Zeile einer Instanz anderer Version weg, bevor eine Instanz dieser Version
+startet, etwa nach mehr als sieben Tagen Stillstand nach einem Rückweg, verfällt ein Abschluss nicht;
+ein Rückweg auf eine Version vor Entscheidung 6 läuft deshalb mit `OPAA_ENCRYPTION_KEYED_FORMAT=false`.
 
 Nach der Umstellung auf `v2` liest eine ältere Version die gespeicherten Geheimnisse nicht mehr. Der
 Weg zurück hinter diese Version führt dann nur über eine Rücksicherung von vor dem Update, oder er

@@ -27,6 +27,7 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | **Fundstelle** (Beleg) | Eine Quellenangabe zu einer Antwort, eine je Dokument; das Belegfenster zeigt Titel und Ortsangabe, die Ausgabe für externe KI-Werkzeuge zusätzlich Rang und Metadaten |
 | **Ortsangabe** | Die Stelle eines Chunks im Dokument, etwa „S. 3 · Abschn. Fristen" |
 | **Fundstellen-Anker** | Die Stelle eines Chunks maschinenlesbar: Seiten, Abschnittspfad, Folie, Blatt und Zeilen oder Nachricht, dazu je ein kurzes Zitat von Anfang und Ende; Grundlage für den Sprung an die Fundstelle |
+| **Textfassung** | Der beim Indexieren gewonnene Text eines Dokuments in Lesereihenfolge; „Dokument öffnen" zeigt ihn für Formate, die der Browser nicht anzeigen kann, an der Fundstelle |
 | **Fakten-Manifest** | Die Beschreibung im Code, welche Daten OPAA speichert, protokolliert, wem es sie zeigt, wohin es sie sendet und was voreingestellt ist; Prüfungen im Build halten sie mit dem Code gleich |
 | **Faktenblatt** | Ein aus dem Fakten-Manifest erzeugtes Dokument zu einem Thema, etwa Datenflüsse oder Fristen, mit Version und Commit im Kopf ([Nachvollziehbarkeit](betrieb/nachvollziehbarkeit.md)) |
 | **Modellrolle** | Eine der vier Aufgaben, für die ein externes Modell konfiguriert wird: Chat, Embedding, Reranking, Transkription |

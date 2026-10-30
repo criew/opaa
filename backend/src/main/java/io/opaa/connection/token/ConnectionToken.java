@@ -33,11 +33,12 @@ class ConnectionToken {
 
   /** {@code connection_tokens.secret_ciphertext}, bound to the token row (ADR-0064). */
   static final EncryptedColumn SECRET =
-      EncryptedColumn.credentials("connection_tokens", "secret_ciphertext");
+      EncryptedColumn.credentials("connection_tokens", "secret_ciphertext").refusingCleartext();
 
   /** {@code connection_tokens.access_token_ciphertext}, bound to the token row (ADR-0064). */
   static final EncryptedColumn ACCESS_TOKEN =
-      EncryptedColumn.credentials("connection_tokens", "access_token_ciphertext");
+      EncryptedColumn.credentials("connection_tokens", "access_token_ciphertext")
+          .refusingCleartext();
 
   @Id private UUID id;
 

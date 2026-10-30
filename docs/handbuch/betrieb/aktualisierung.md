@@ -75,6 +75,14 @@ einem Rückweg sind die gespeicherten Geheimnisse für sie unlesbar, die Oberfl�
 - **Nachträglich lässt er sich nicht öffnen:** Wer erst nach der Umstellung auf `false` schaltet,
   behält die schon umgestellten Werte im neuen Format; der Weg zurück führt dann weiter nur über die
   Rücksicherung.
+- **Abschluss der Umstellung:** Findet der Hintergrundlauf zweimal im Abstand von mindestens fünf
+  Minuten und zwei Heartbeat-Intervallen keinen Wert mehr im alten Format, lehnt OPAA alte Werte
+  und Klartext danach ab (siehe [Zugangsdaten-Verschlüsselung](netz-und-sicherheit.md#zugangsdaten-verschlüsselung)). Ein Start
+  mit `OPAA_ENCRYPTION_KEYED_FORMAT=false` hebt diesen Abschluss wieder auf, damit die in dieser Zeit
+  geschriebenen Werte nach dem Zurückschalten lesbar bleiben und umgestellt werden; danach schließt
+  der Hintergrundlauf die Umstellung von selbst erneut ab. Ebenso hebt jedes Update und jeder
+  Rollback, bei dem eine Instanz einer anderen Version läuft, den Abschluss auf; nach dem Update
+  schließt der Hintergrundlauf ihn erneut ab.
 
 ## Fristen nach einem Rückweg
 
