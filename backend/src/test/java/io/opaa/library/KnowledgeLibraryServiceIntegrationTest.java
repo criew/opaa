@@ -57,6 +57,7 @@ import io.opaa.space.SpaceMembershipHistoryRepository;
 import io.opaa.space.SpaceRepository;
 import io.opaa.space.SpaceService;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.PreparedStatementCount;
 import io.opaa.test.SourceTypes;
 import jakarta.persistence.EntityManagerFactory;
 import java.net.URI;
@@ -73,8 +74,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
-import org.hibernate.SessionFactory;
-import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -2496,36 +2495,31 @@ class KnowledgeLibraryServiceIntegrationTest {
     // let the first-level persistence context cache a single owner lookup and mask a regression
     // to one owner-name query per row (#438's own batching, AssetOwnerNames).
     UUID appleOwner = createUser(organizationA);
-    Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
-    boolean statisticsWerePreviouslyEnabled = statistics.isStatisticsEnabled();
-    statistics.setStatisticsEnabled(true);
-    try {
-      // Both counts on the same footing: the grants written above empty the rights caches through
-      // the invalidation bus a moment later, so each count waits for that and starts warm.
-      settleAndWarm(owner);
-      statistics.clear();
-      libraryService.listLibraries(currentUserOf(owner, false));
-      long statementsWithTwoLibraries = statistics.getPrepareStatementCount();
+    // Both counts on the same footing: the grants written above empty the rights caches through
+    // the invalidation bus a moment later, so each attempt waits for that and starts warm.
+    long statementsWithTwoLibraries =
+        PreparedStatementCount.of(
+            entityManagerFactory,
+            () -> settleAndWarm(owner),
+            () -> libraryService.listLibraries(currentUserOf(owner, false)));
 
-      LibraryDetail apple =
-          libraryService.createLibrary(
-              libraryCreation("Apple", SourceType.UPLOAD).build(), currentUserOf(appleOwner));
-      // Reaches owner without a grant of their own - the third row the query count must absorb.
-      grantToAllAccounts(apple, appleOwner);
-      Document third = new Document("c.pdf", "/tmp/477-c.pdf", null, 10L, SourceTypes.FILESYSTEM);
-      third.setLibraryId(apple.library().getId());
-      third.setOrganizationId(organizationA);
-      documentRepository.save(third);
+    LibraryDetail apple =
+        libraryService.createLibrary(
+            libraryCreation("Apple", SourceType.UPLOAD).build(), currentUserOf(appleOwner));
+    // Reaches owner without a grant of their own - the third row the query count must absorb.
+    grantToAllAccounts(apple, appleOwner);
+    Document third = new Document("c.pdf", "/tmp/477-c.pdf", null, 10L, SourceTypes.FILESYSTEM);
+    third.setLibraryId(apple.library().getId());
+    third.setOrganizationId(organizationA);
+    documentRepository.save(third);
 
-      settleAndWarm(owner);
-      statistics.clear();
-      libraryService.listLibraries(currentUserOf(owner, false));
-      long statementsWithThreeLibraries = statistics.getPrepareStatementCount();
+    long statementsWithThreeLibraries =
+        PreparedStatementCount.of(
+            entityManagerFactory,
+            () -> settleAndWarm(owner),
+            () -> libraryService.listLibraries(currentUserOf(owner, false)));
 
-      assertThat(statementsWithThreeLibraries).isEqualTo(statementsWithTwoLibraries);
-    } finally {
-      statistics.setStatisticsEnabled(statisticsWerePreviouslyEnabled);
-    }
+    assertThat(statementsWithThreeLibraries).isEqualTo(statementsWithTwoLibraries);
   }
 
   @Test
