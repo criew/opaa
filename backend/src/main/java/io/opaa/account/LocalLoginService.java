@@ -45,7 +45,7 @@ import org.springframework.util.Assert;
  * <p>The row read before the hash comparison only selects the hash. What the comparison decides is
  * settled afterwards on the row re-read under its row lock ({@code PESSIMISTIC_WRITE}): a lock set
  * by a concurrent attempt meanwhile turns a right password into the same refusal as a wrong one and
- * stops the count, so parallel attempts beyond {@code max-attempts} reveal and count nothing.
+ * stops the count, so parallel attempts beyond the threshold in force reveal and count nothing.
  */
 @Service
 public class LocalLoginService {

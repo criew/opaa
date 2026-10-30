@@ -869,7 +869,7 @@ describe('ConnectionProfilesTab', () => {
 
     const panel = await openProfile(user, PROFILE)
     await user.click(
-      within(panel).getByRole('button', { name: `Alle Verbindungen von ${PROFILE} trennen` }),
+      within(panel).getByRole('button', { name: `Alle Verbindungen trennen: ${PROFILE}` }),
     )
     const question = await screen.findByRole('dialog', { name: /Alle Verbindungen von/ })
     expect(question).toHaveTextContent('2 Verbindungen')
@@ -885,7 +885,7 @@ describe('ConnectionProfilesTab', () => {
 
     const panel = await openProfile(user, PROFILE)
     await user.click(
-      within(panel).getByRole('button', { name: `Alle Verbindungen von ${PROFILE} trennen` }),
+      within(panel).getByRole('button', { name: `Alle Verbindungen trennen: ${PROFILE}` }),
     )
     const question = await screen.findByRole('dialog', { name: /Alle Verbindungen von/ })
     expect(question).toHaveTextContent('verbundene Konten von Personen: weniger als 5')
@@ -900,7 +900,7 @@ describe('ConnectionProfilesTab', () => {
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     const panel = await openProfile(user, PROFILE)
-    await user.click(within(panel).getByRole('button', { name: `${PROFILE} löschen` }))
+    await user.click(within(panel).getByRole('button', { name: `Zugang löschen: ${PROFILE}` }))
     const question = await screen.findByRole('dialog', { name: /löschen\?/ })
     expect(question).toHaveTextContent('Zugang entfernt')
     await answerConfirm(user, /löschen\?/, 'Löschen')

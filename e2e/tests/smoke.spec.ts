@@ -1,7 +1,7 @@
 import { expect, test } from '../fixtures/auth'
 import { gotoLibraries, gotoLibraryDetail, indexedDocumentStates } from '../fixtures/chat'
 
-test.describe('Rauchtest', () => {
+test.describe('Rauchtest', { tag: '@browser-smoke' }, () => {
   test('Anwendung als Testnutzer öffnen, Startseite lädt', async ({ authenticatedPage }) => {
     // The chat page is the landing page (see frontend/src/app/App.tsx). Its input
     // placeholder is a stable, user-visible marker that the app shell rendered

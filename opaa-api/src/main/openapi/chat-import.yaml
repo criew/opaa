@@ -36,10 +36,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ImportedChat"
-        "403":
-          $ref: "#/components/responses/Forbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/SpaceNotFound"
 
     post:
       operationId: importChat
@@ -75,10 +73,8 @@ paths:
                 $ref: "#/components/schemas/ChatSummary"
         "400":
           $ref: "#/components/responses/ValidationError"
-        "403":
-          $ref: "#/components/responses/Forbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/SpaceNotFound"
         "409":
           $ref: "#/components/responses/Conflict"
 

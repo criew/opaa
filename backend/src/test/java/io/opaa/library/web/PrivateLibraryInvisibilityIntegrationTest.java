@@ -244,6 +244,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "countSuccessionEntries",
             "getSuccessionSettings",
             "listUsers",
+            "listAuditorRoleRequests",
             "getAssetAccessDerivation",
             "listAssetGrants",
             "listGrantedGroupMembers",
@@ -261,6 +262,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "exportChatPdf",
             "listConnectionProfileOptions",
             "getDocumentContent",
+            "getDocumentText",
             "listEligibleExternalAccessLibraries",
             "getOwnExternalAccessChannelInfo",
             "listOwnExternalAccessTokens",
@@ -732,6 +734,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
     ways.put("getMetadataFilterOptions", Ids.VALUE);
     ways.put("listLibraryDocuments", Ids.FILE_NAME);
     ways.put("getDocumentMetadata", Ids.VALUE);
+    ways.put("getDocumentText", Ids.FILE_NAME);
     ways.put("getLibrary", Ids.NAME);
     ways.put("listLibraries", Ids.NAME);
     ways.put("listSearchableLibraries", Ids.NAME);

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt ADR-0017 (Entscheidung 5), ADR-0018 und ADR-0023 · Entscheidung 1 verallgemeinert durch ADR-0038 · Abgleich über den gemeinsamen Datei-Abgleich (ADR-0045, Entscheidung 1)
+Akzeptiert · zuletzt geändert 2026-10-30 · ergänzt ADR-0017 (Entscheidung 5), ADR-0018 und ADR-0023 · Entscheidung 1 verallgemeinert durch ADR-0038 · Abgleich über den gemeinsamen Datei-Abgleich (ADR-0045, Entscheidung 1)
 
 ## Kontext
 
@@ -117,8 +117,12 @@ Der **Ereignislauf** (`IndexingRunMode.EVENT`) ist ein eigener Wert, nicht ein w
 mit `JobTriggerSource.WEBHOOK` (Anstoß-Endpunkt und Zeitplan weisen ihn ab), meldet
 `ListingOutcome.Partial` und rührt den Wiederaufnahmezustand nicht an. **Löschung braucht einen
 positiven Befund der Quelle** (ADR-0023, Entscheidung 4): Ein `ObjectRemoved`-Ereignis stößt ein
-`HeadObject` an; `404 NoSuchKey` (eindeutig, weil `s3:ListBucket` Pflichtrecht ist) entfernt das
-Dokument samt Anhängen, `200` ändert nichts, `403` lässt es bis zum nächsten Vollabgleich stehen.
+`HeadObject` an; ein `404` entfernt das Dokument samt Anhängen erst, wenn eine Auflistung mit dem
+Schlüssel als Präfix und `max-keys=1` ihn nicht mehr nennt, denn eine HEAD-Antwort trägt keinen
+Fehlercode, und ein `404` kann auch von einem vorgeschalteten Ingress kommen (dieselbe Nachprüfung
+gilt für ein `404` ohne `NoSuchKey` im Körper beim Download). `200` ändert nichts; `403`, ein `404`, dessen
+Schlüssel die Auflistung noch nennt, und eine fehlgeschlagene Auflistung lassen es bis zum nächsten
+Vollabgleich stehen.
 Ein wiedereingespieltes oder mit gestohlenem Token gesendetes Löschereignis kann den Index so nicht
 leeren.
 

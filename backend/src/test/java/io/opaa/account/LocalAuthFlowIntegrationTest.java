@@ -121,6 +121,16 @@ class LocalAuthFlowIntegrationTest {
   }
 
   @Test
+  void theCsrfCookieStaysReadableForTheSpaButIsNeverSentCrossSite() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/auth/config"))
+        .andExpect(status().isOk())
+        .andExpect(cookie().exists("XSRF-TOKEN"))
+        .andExpect(cookie().httpOnly("XSRF-TOKEN", false))
+        .andExpect(cookie().attribute("XSRF-TOKEN", "SameSite", "Strict"));
+  }
+
+  @Test
   void everyRefusedSignInIsTheSameAnswer() throws Exception {
     LocalAccount locked = fixtures.activeUser("locked-" + UUID.randomUUID() + "@stadt.example");
     LocalCredentials lockedRow = fixtures.credentialsOf(locked);

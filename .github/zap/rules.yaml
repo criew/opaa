@@ -1,0 +1,48 @@
+# Unterdrückungen des ZAP-Baseline-Scans (.github/workflows/zap-baseline.yml). Ohne Eintrag hier
+# macht jede Warnung der Stufe Low oder höher den Lauf rot; informative Befunde zählen nie.
+#
+# Jeder Eintrag nennt id und name der ZAP-Regel, eine Begründung (reason, Anforderungen wie in
+# docs/cve-scanning.md, „Begründungsqualität") und ein Ablaufdatum (expires, YYYY-MM-DD, höchstens
+# 92 Tage voraus). Ab dem Ablaufdatum gilt der Eintrag nicht mehr und der Lauf ist rot, bis er
+# erneuert oder der Befund behoben ist. Wo es geht, grenzen paths (reguläre Ausdrücke, ab Pfadanfang)
+# und params (genauer Wert des Parameters, etwa ein Cookie-Name) den Eintrag ein.
+# .github/scripts/zap_rules.py prüft die Datei; Verfahren in docs/entwicklung/zap-baseline.md.
+
+rules:
+  - id: 10010
+    name: Cookie No HttpOnly Flag
+    paths: ["/api/"]
+    params: ["XSRF-TOKEN"]
+    reason: >-
+      XSRF-TOKEN ist das Double-Submit-Cookie aus OidcSecurityConfig (ADR-0033, Entscheidung 7):
+      Die SPA liest es per Skript und schickt es als X-XSRF-TOKEN an refresh und logout zurück; mit
+      HttpOnly fiele der CSRF-Schutz dieser beiden Endpunkte weg. Das Cookie ist kein
+      Sitzungsnachweis. Wer es per Skript liest, führt bereits Code im Origin der Anwendung aus und
+      kann dort ohnehin Anfragen stellen; das Refresh-Cookie opaa_refresh bleibt HttpOnly
+      (LocalAuthFlowIntegrationTest). Der Eintrag gilt nur für dieses Cookie. Neu zu bewerten, sobald
+      das Cookie mehr als ein CSRF-Token trägt oder der CSRF-Schutz anders als per Double-Submit
+      umgesetzt wird.
+    expires: 2027-01-27
+
+  - id: 10055
+    name: "CSP: style-src unsafe-inline"
+    reason: >-
+      Material UI erzeugt seine Styles zur Laufzeit über Emotion und fügt sie als style-Elemente ein.
+      Ein Nonce verlangt einen Server, der ihn je Antwort erzeugt und in index.html einsetzt; nginx
+      liefert die SPA statisch aus (frontend/nginx-security-headers.conf). script-src bleibt 'self'
+      ohne Ausnahme, eingeschleuster Code läuft also nicht. Eingeschleustes CSS kann Inhalte
+      verändern oder per Attributselektor Werte erraten, aber nur, wenn eine HTML-Injektion gelingt,
+      die React durch Escaping verhindert. Neu zu bewerten, sobald das Frontend ohne Laufzeit-Styles
+      auskommt oder die Auslieferung einen Nonce je Antwort setzen kann.
+    expires: 2027-01-27
+
+  - id: 10096
+    name: Timestamp Disclosure - Unix
+    paths: ["/assets/"]
+    reason: >-
+      Der gemeldete Wert 1540483477 (0x5bd1e995) ist die Multiplikationskonstante von MurmurHash2 in
+      Emotions Hash-Funktion im gebündelten JavaScript, kein Zeitstempel. Die Dateien unter /assets/
+      sind statische Build-Ergebnisse ohne Daten aus dem Betrieb. Gilt nur für /assets/; ein Befund
+      in einer API-Antwort bleibt sichtbar. Neu zu bewerten, sobald Emotion nicht mehr Teil des
+      Bundles ist, spätestens beim Ablauf anhand der im Bericht genannten Werte.
+    expires: 2027-01-27

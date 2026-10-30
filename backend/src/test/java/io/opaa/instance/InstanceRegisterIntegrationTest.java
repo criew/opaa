@@ -239,6 +239,26 @@ class InstanceRegisterIntegrationTest {
   }
 
   @Test
+  void anotherVersionCountsFromItsLastHeartbeatEvenAfterItStopped() {
+    insertInstance(currentVersion(), currentVersion(), Duration.ofSeconds(5));
+    insertInstance("9.0.0", "9.0.0", Duration.ofMinutes(3));
+    var now = databaseClock.now();
+
+    assertThat(currentInstance.anotherVersionRanSince(now.minus(Duration.ofMinutes(10)))).isTrue();
+    assertThat(currentInstance.anotherVersionRanSince(now.minus(Duration.ofMinutes(1))))
+        .as("its last heartbeat lies before")
+        .isFalse();
+  }
+
+  private String currentVersion() {
+    return registry.instances().stream()
+        .filter(instance -> instance.id().equals(currentInstance.id()))
+        .findFirst()
+        .orElseThrow()
+        .version();
+  }
+
+  @Test
   void aHeartbeatIsStampedByTheDatabaseClock() {
     UUID alive = insertInstance("0.0.0-dev", "0.0.0-dev", Duration.ofSeconds(5));
     var before = databaseClock.now();

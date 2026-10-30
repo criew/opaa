@@ -29,6 +29,7 @@ export default function ShareCapSwitch({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const changed = draft !== checked
+  const buttonText = saving ? 'Wird gespeichert …' : 'Obergrenze speichern'
 
   async function handleSave() {
     setError(null)
@@ -62,11 +63,11 @@ export default function ShareCapSwitch({
           variant="outlined"
           disabled={saving || !changed}
           // Both halves of the upper bound are on the same page; the visible text is
-          // the same, so the accessible name says which half is saved.
-          aria-label={`Obergrenze „${label}“ speichern`}
+          // the same, so the accessible name adds which half is saved after it.
+          aria-label={`${buttonText}: ${label}`}
           onClick={() => void handleSave()}
         >
-          {saving ? 'Wird gespeichert …' : 'Obergrenze speichern'}
+          {buttonText}
         </Button>
       </Stack>
       {error && (

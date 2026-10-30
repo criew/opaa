@@ -63,6 +63,12 @@ Alternativ legt der Chart das Secret aus den Werten an. Pflicht sind:
 Die Schlüssel erzeugt der Betreiber selbst; der Chart erzeugt keine. Optionale Schlüssel, etwa für
 die Modell-Endpunkte, stehen in [`values.yaml`](values.yaml).
 
+Nur während eines Schlüsselwechsels gesetzt werden `secrets.credentialsEncryptionPreviousKeys`
+(`OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS`) und `secrets.settingsEncryptionPreviousKeys`
+(`OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS`): die abgelösten Schlüssel, durch Kommas getrennt. Sie
+entschlüsseln nur noch; das Backend verschlüsselt den Bestand mit dem neuen Schlüssel neu. Ablauf in
+[Netz und Sicherheit](../../../docs/handbuch/betrieb/netz-und-sicherheit.md#schlüsselwechsel).
+
 **4. Werte-Datei schreiben.** `opaa-werte.yaml` braucht mindestens die Werte aus
 [`ci/minimal-values.yaml`](ci/minimal-values.yaml), mit eigenen Geheimnissen: Die Testwerte der
 Datei (`ci-only-…`, Schlüssel mit dem Kennzeichen `NICHT-FUER-DEN-PRODUKTIVBETRIEB`) lehnt das
@@ -72,7 +78,9 @@ lehnt `values.schema.json` die Installation ab; `helm template` zeigt das schon 
 
 **5. Installieren.** Jedes Release veröffentlicht den Chart neben den Images in GHCR
 ([Releases](../../../docs/releases.md)), ab dem ersten Release mit Chart; bis dahin wird aus dem
-Repository installiert (unten). Chart-Version und Image-Tags sind dieselbe Versionsnummer:
+Repository installiert (unten). Chart-Version und Image-Tags sind dieselbe Versionsnummer, und der
+veröffentlichte Chart heftet die Images dieser Version zusätzlich per Digest an
+(`backend.image.digest`, `frontend.image.digest`):
 
 ```bash
 helm install opaa oci://ghcr.io/criew/charts/opaa --version X.Y.Z -n opaa -f opaa-werte.yaml

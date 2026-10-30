@@ -20,6 +20,7 @@ import io.opaa.api.types.LocalAccountState;
 import io.opaa.api.types.ProviderType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.AdminTestSecurityConfig;
+import io.opaa.auth.AuditorRoles;
 import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.OidcClaimMapping;
 import io.opaa.auth.OidcProvider;
@@ -52,6 +53,7 @@ class AccountAdminControllerTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private AccountAdminService adminService;
   @MockitoBean private UserService userService;
+  @MockitoBean private AuditorRoles auditorRoles;
 
   private final UUID organizationId = UUID.randomUUID();
 

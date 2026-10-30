@@ -40,6 +40,8 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -76,7 +78,7 @@ class AttachmentIndexerTest {
             attachmentDownloader,
             documentIngestService,
             storageQuotaService,
-            new AttachmentProperties(5, 0, 0),
+            new AttachmentProperties(5, 0, 0, 0, 0),
             ProductionDocumentFormats.supportedFormats());
     parentDocumentId = UUID.randomUUID();
 
@@ -116,7 +118,7 @@ class AttachmentIndexerTest {
     Path downloaded = tempDir.resolve("attachment.txt");
     Files.writeString(downloaded, "content");
     when(attachmentDownloader.downloadBounded(
-            any(), anyString(), anyString(), anyLong(), any(), any(), any()))
+            any(), anyString(), anyString(), anyLong(), any(), any(), any(), any()))
         .thenReturn(new BoundedDownloader.DownloadedFile(downloaded, "text/plain"));
     when(documentIngestService.ingest(DocumentIngests.anyFile(), any()))
         .thenReturn(DocumentIngestResult.FAILED);
@@ -207,7 +209,7 @@ class AttachmentIndexerTest {
             attachmentDownloader,
             documentIngestService,
             mock(LibraryStorageQuotaService.class),
-            new AttachmentProperties(1, 0, 0),
+            new AttachmentProperties(1, 0, 0, 0, 0),
             ProductionDocumentFormats.supportedFormats());
 
     // Mail-in-Mail: a LocalFile attachment whose own processing reports one more nested LocalFile
@@ -271,7 +273,7 @@ class AttachmentIndexerTest {
     Path outerFeedFile = tempDir.resolve("aussen.txt");
     Files.writeString(outerFeedFile, "outer feed content");
     when(attachmentDownloader.downloadBounded(
-            any(), anyString(), anyString(), anyLong(), any(), any(), any()))
+            any(), anyString(), anyString(), anyLong(), any(), any(), any(), any()))
         .thenReturn(new BoundedDownloader.DownloadedFile(outerFeedFile, "text/plain"));
     AttachmentSource.Download nestedFeedSource =
         new AttachmentSource.Download(
@@ -316,6 +318,83 @@ class AttachmentIndexerTest {
     // Same cutoff, same depth - proven present via the shared ctx's deferred flag, exactly like
     // the mail chain's markDeferred() above.
     assertThat(ctx.anyEntryDeferred()).isTrue();
+  }
+
+  /**
+   * Regression guard: eight attachments per message, each one again a message with eight, four
+   * levels deep, are 4 680 documents from one root - within every limit per parent and per depth.
+   * The budget per root document ends the fan-out across all levels.
+   */
+  @Test
+  void attachmentsAcrossAllLevelsOfOneRootStopAtTheRootBudget()
+      throws IOException, InterruptedException {
+    AttachmentAccess access = mock(AttachmentAccess.class);
+    when(access.targetLibrary()).thenReturn(ctx.targetLibrary());
+    when(access.events()).thenReturn((category, message, reference) -> {});
+    when(access.progress()).thenReturn(mock(AttachmentProgressSink.class));
+    Path file = tempDir.resolve("verschachtelt.eml");
+    Files.writeString(file, "Mail mit Mails");
+    List<AttachmentSource> eight =
+        IntStream.range(0, 8)
+            .<AttachmentSource>mapToObj(
+                i -> new AttachmentSource.LocalFile(file, "m" + i + ".eml", "/root.eml/" + i))
+            .toList();
+    AtomicInteger ingested = new AtomicInteger();
+    AtomicInteger level = new AtomicInteger();
+    doAnswer(
+            invocation -> {
+              ingested.incrementAndGet();
+              if (level.incrementAndGet() < 4) {
+                indexer.indexAll(
+                    access, eight, parentDocumentId, "/root.eml", SourceTypes.FILESYSTEM, limits);
+              }
+              level.decrementAndGet();
+              return DocumentIngestResult.PROCESSED;
+            })
+        .when(documentIngestService)
+        .ingest(DocumentIngests.anyFile(), any());
+
+    indexer.indexAll(access, eight, parentDocumentId, "/root.eml", SourceTypes.FILESYSTEM, limits);
+
+    assertThat(ingested.get()).isLessThanOrEqualTo(500);
+    verify(access, org.mockito.Mockito.atLeastOnce()).markDeferred();
+  }
+
+  @Test
+  void anAttachmentPastTheByteBudgetOfItsRootIsSkipped() throws IOException, InterruptedException {
+    AttachmentIndexer smallBudget =
+        new AttachmentIndexer(
+            attachmentDownloader,
+            documentIngestService,
+            mock(LibraryStorageQuotaService.class),
+            new AttachmentProperties(5, 0, 0, 0, 20),
+            ProductionDocumentFormats.supportedFormats());
+    AttachmentAccess access = mock(AttachmentAccess.class);
+    when(access.targetLibrary()).thenReturn(ctx.targetLibrary());
+    when(access.events()).thenReturn((category, message, reference) -> {});
+    AttachmentProgressSink progress = mock(AttachmentProgressSink.class);
+    when(access.progress()).thenReturn(progress);
+    when(documentIngestService.ingest(DocumentIngests.anyFile(), any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
+    Path first = tempDir.resolve("eins.txt");
+    Files.writeString(first, "Zwölf Zeichen");
+    Path second = tempDir.resolve("zwei.txt");
+    Files.writeString(second, "Noch zwölf Z.");
+
+    List<String> indexed =
+        smallBudget.indexAll(
+            access,
+            List.of(
+                new AttachmentSource.LocalFile(first, "eins.txt", "/mail.eml/0"),
+                new AttachmentSource.LocalFile(second, "zwei.txt", "/mail.eml/1")),
+            parentDocumentId,
+            "/mail.eml",
+            SourceTypes.FILESYSTEM,
+            limits);
+
+    assertThat(indexed).containsExactly("/mail.eml/0");
+    verify(progress).recordAttachment(AttachmentOutcome.PROCESSED);
+    verify(progress).recordAttachment(AttachmentOutcome.SKIPPED);
   }
 
   @Test

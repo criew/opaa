@@ -58,11 +58,13 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
                   "backend_instances",
                   "backend_instance_fingerprint_key",
                   "shedlock",
-                  "installation_counters")),
+                  "installation_counters",
+                  "cipher_legacy_retirements")),
           Map.entry(
               IDENTITY,
               List.of(
                   "users",
+                  "auditor_role_requests",
                   "oidc_providers",
                   "oidc_provider_seed_marker",
                   "oidc_provider_removals",

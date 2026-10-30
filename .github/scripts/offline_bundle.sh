@@ -11,9 +11,12 @@
 #                               a release asset
 #   check <tar> <trusted-root>  the verification of the handbook, without network, then two
 #                               manipulations that must be detected
+#   chart-digests <dir>         the image digests the chart's values pin are those in DIGESTS; a
+#                               chart without digests installs by tag and passes (part of check)
 #
 # collect reads IMAGE_PREFIX, CHART_REPOSITORY, GH_REPO and UPDATE_PACKAGE_DIR (update package and
-# SBOMs of the version); a missing SBOM fails it unless REQUIRE_SBOMS is false. check reads GH_REPO
+# SBOMs of the version); a missing SBOM fails it unless REQUIRE_SBOMS is false, a missing image
+# attestation unless REQUIRE_IMAGE_ATTESTATIONS is false. check reads GH_REPO
 # and the expected signers: BUNDLE_SIGNER_WORKFLOW and BUNDLE_SOURCE_REF for SHA256SUMS,
 # RELEASE_SIGNER_WORKFLOW and RELEASE_SOURCE_REF for the update package.
 set -euo pipefail
@@ -23,7 +26,7 @@ MAX_BYTES="${OFFLINE_BUNDLE_MAX_BYTES:-2040109465}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
 usage() {
-  sed -n '2,19p' "$0" >&2
+  sed -n '2,22p' "$0" >&2
   exit 2
 }
 
@@ -38,16 +41,21 @@ raw_digest() {
   skopeo inspect --raw "$1" | sha256sum | cut -d' ' -f1
 }
 
-# gh attestation download writes <algorithm>-<digest>.jsonl into the working directory.
+# gh attestation download writes <algorithm>-<digest>.jsonl into the working directory. With a
+# third argument "optional", a subject without attestation is reported and skipped.
 attestation() {
-  local subject="$1" target="$2" work found
+  local subject="$1" target="$2" mode="${3:-required}" work found
   work="$(mktemp -d)"
   if [[ "$subject" != oci://* ]]; then
     subject="$(cd "$(dirname "$subject")" && pwd)/$(basename "$subject")"
   fi
-  (cd "$work" && gh attestation download "$subject" --repo "$GH_REPO" >&2)
+  (cd "$work" && gh attestation download "$subject" --repo "$GH_REPO" >&2) || [[ "$mode" == optional ]]
   found="$(find "$work" -name '*.jsonl' -size +0 | head -n 1)"
-  if [[ -z "$found" ]]; then
+  if [[ -z "$found" && "$mode" == optional ]]; then
+    echo "::warning::No attestation for $subject; the bundle carries none for it" >&2
+    rm -rf "$work"
+    return 0
+  elif [[ -z "$found" ]]; then
     echo "No attestation for $subject" >&2
     exit 1
   fi
@@ -98,9 +106,39 @@ collect() {
     attestation "$subject" "$dir/attestations/$(basename "$subject").jsonl"
   done
   attestation "oci://$CHART_REPOSITORY/opaa:$version" "$dir/attestations/chart-opaa-$version.jsonl"
+  local mode=required
+  if [[ "${REQUIRE_IMAGE_ATTESTATIONS:-true}" != true ]]; then
+    mode=optional
+  fi
+  for name in backend frontend; do
+    attestation "oci://$IMAGE_PREFIX-$name:$version" "$dir/attestations/opaa-$name-$version.jsonl" "$mode"
+  done
 
   sed -e "s/@VERSION@/$version/g" -e "s#@REPO@#$GH_REPO#g" \
     "$HERE/offline_bundle_readme.md" >"$dir/LIESMICH.md"
+}
+
+# Compares the digest under backend.image and frontend.image of the chart's values with DIGESTS.
+chart_digests() {
+  local dir="$1" values name pinned line
+  need helm
+  values="$(helm show values "$dir"/chart/*.tgz)"
+  for name in backend frontend; do
+    pinned="$(awk -v name="$name" '
+      /^[^ #]/ { top = $0; sub(/:.*/, "", top); image = 0 }
+      /^  [^ #]/ { image = ($0 ~ /^  image:[ ]*$/) }
+      image && top == name && /^    digest:/ { value = $2; gsub(/"/, "", value); print value; exit }
+    ' <<<"$values")"
+    line="$(grep -F -- "-$name:" "$dir/DIGESTS" || true)"
+    if [[ -z "$pinned" ]]; then
+      echo "ok   the chart pins no digest for $name and installs it by tag"
+    elif [[ -z "$line" || "$pinned" != "sha256:${line##*@sha256:}" ]]; then
+      echo "The chart pins $name to $pinned, DIGESTS names '$line'" >&2
+      exit 1
+    else
+      echo "ok   the chart pins $name to $pinned, as in DIGESTS"
+    fi
+  done
 }
 
 sums() {
@@ -172,6 +210,7 @@ check() {
   done <"$dir/DIGESTS"
   helm show chart "$dir"/chart/*.tgz >/dev/null
   echo "ok   the chart is readable by helm"
+  chart_digests "$dir"
 
   local forged="$work/forged"
   cp -r "$dir" "$forged"
@@ -200,5 +239,6 @@ collect) (($# == 2)) || usage; collect "$@" ;;
 sums) (($# == 1)) || usage; sums "$@" ;;
 pack) (($# == 2)) || usage; pack "$@" ;;
 check) (($# == 2)) || usage; check "$@" ;;
+chart-digests) (($# == 1)) || usage; chart_digests "$@" ;;
 *) usage ;;
 esac

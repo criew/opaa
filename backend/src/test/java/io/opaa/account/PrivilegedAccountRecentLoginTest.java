@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.AuditorRoles;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.LocalAdminAvailabilityGuard;
 import io.opaa.auth.LocalCredentials;
@@ -60,6 +61,7 @@ class PrivilegedAccountRecentLoginTest {
           mock(LocalRefreshTokenRepository.class),
           mock(LocalAdminAvailabilityGuard.class),
           userService,
+          mock(AuditorRoles.class),
           mock(PasswordEncoder.class),
           passwordGenerator,
           mock(AuditEventRecorder.class),
@@ -76,6 +78,7 @@ class PrivilegedAccountRecentLoginTest {
           mock(LocalRefreshTokenRepository.class),
           mock(LocalRevokedTokenRepository.class),
           mock(LocalAdminAvailabilityGuard.class),
+          mock(AuditorRoles.class),
           providers,
           mock(LocalAccountSpaceDirectory.class),
           mock(LocalAccountGroupDirectory.class),

@@ -913,8 +913,8 @@ Stelle farbig hervor, auch wenn sie über eine Seitengrenze läuft. Die Seiten s
 und werden durchgescrollt; die Leiste darüber nennt die aktuelle Seite, vergrößert, verkleinert und
 stellt auf Seitenbreite. Bringt das PDF ein Inhaltsverzeichnis mit, steht es links, lässt sich
 einklappen, springt per Klick an sein Kapitel und hebt das Kapitel der aktuellen Seite hervor.
-Formulare, Links und eingebettete Skripte des PDFs bleiben im Fenster ohne Wirkung. Zwei Hinweise
-sind möglich: „Das Original wurde seit der Antwort geändert …", wenn die Datei nicht mehr die ist,
+Formulare, Links und eingebettete Skripte des PDFs bleiben im Fenster ohne Wirkung. Neben dem
+Hinweis auf einen Beleg ohne gespeicherte Fundstelle (unten) sind zwei Hinweise möglich: „Das Original wurde seit der Antwort geändert …", wenn die Datei nicht mehr die ist,
 aus der die Antwort zitiert hat; „Die Fundstelle wurde im Original nicht gefunden …", wenn der
 zitierte Text auf der Seite nicht wiederzufinden ist, etwa bei einem Scan; das Fenster zeigt dann
 die Fundseite ohne Markierung. Kann die Anwendung ein PDF nicht anzeigen, sagt das Fenster das
@@ -927,8 +927,36 @@ wiederzufinden, sagt die Vorschau „Die Fundstelle wurde im Dokument nicht gefu
 Confluence-Seite öffnet weiter an der Quelle; die Adresse trägt dabei die zitierte Stelle als
 Textfragment, sodass Chrome, Edge, Safari und Firefox dorthin scrollen und sie hervorheben. Findet
 der Browser die Stelle auf der Seite nicht, etwa weil sie seit der Indexierung geändert wurde,
-öffnet die Seite wie gewohnt oben. Andere Formate verhalten sich unverändert: Bilder öffnen in
-einem neuen Tab, Office-Dateien werden heruntergeladen.
+öffnet die Seite wie gewohnt oben. Bilder öffnen weiter in einem neuen Tab.
+
+**Textfassung an der Fundstelle.** Formate, die der Browser nicht anzeigen kann, also
+Office-Dokumente, Tabellen und Mails wie DOCX, PPTX, XLSX oder EML, öffnet „Dokument öffnen" als
+**Textfassung**: der Text, den OPAA beim Indexieren gewonnen hat, in der Reihenfolge des Dokuments.
+Ein Hinweis oben sagt, dass das Layout des Originals nicht wiedergegeben wird. Das Fenster öffnet an
+der zitierten Passage und hebt sie als Ganzes hervor; Text davor und danach lädt es auf Klick nach
+(„Vorherigen Text laden", „Weiteren Text laden"). Links steht die Gliederung des Dokuments, nach
+Folien, Tabellenblättern, Nachrichten oder Überschriften, je nachdem, was das Format kennt; sie
+lässt sich einklappen, springt per Klick an ihren Abschnitt und hebt den Abschnitt der Fundstelle
+hervor. Wurde das Dokument seit der Antwort neu indexiert und liest sich die Passage anders als
+zitiert, sagt das Fenster „Das Dokument wurde seit dem Zitat neu indexiert – die markierte Stelle
+kann abweichen."; gibt es die Passage nicht mehr, „Die Fundstelle ist in der Textfassung nicht mehr
+enthalten." und das Fenster beginnt am Anfang. Aus der Dokumentliste einer Wissensbibliothek
+geöffnet, beginnt die Textfassung am Anfang. Sehen kann sie nur, wer auch das Original öffnen darf.
+
+**Original herunterladen.** PDF-Fenster, Textvorschau und Textfassung tragen oben rechts neben dem
+Schließen-Kreuz einen Knopf „Original herunterladen", der die Datei unverändert speichert. Im
+Belegfenster steht neben „Dokument öffnen" der Link „Herunterladen". Eine Confluence-Seite hat keine
+eigene Datei und daher keinen Download; „Dokument öffnen" führt dort an die zitierte Stelle der
+Seite.
+
+**Beleg ohne gespeicherte Fundstelle.** Die Stelle, an die PDF- und Textvorschau springen, wird beim
+Indexieren je Abschnitt gespeichert und mit der Antwort festgehalten. Fehlt sie, öffnet die
+Vorschau am Anfang und sagt „Für diesen Beleg ist keine Fundstelle gespeichert – das Dokument
+öffnet am Anfang.". Das geschieht bei einem Beleg, den die Antwort ohne Fußnote nennt, und vor
+allem, wenn der Abschnitt aus einer älteren Indexierung stammt. Im zweiten Fall springen neue
+Antworten wieder an die Stelle, sobald die Bibliothek über den
+[Pipeline-Nachzug](../arbeitsmittel/wissensbibliotheken/README.md#72-pipeline-versionen-und-nachzug)
+neu aufbereitet ist; eine ältere Antwort behält ihren Stand.
 
 **Kopieren.** Rechts unter jeder Antwort steht „Kopieren". Ein Klick legt die Antwort als Markdown in
 die Zwischenablage, ohne Fußnotenmarken und ohne Quellenliste. Der Pfeil daneben bietet zwei

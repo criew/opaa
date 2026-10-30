@@ -33,7 +33,9 @@ import org.apache.pdfbox.pdmodel.common.PDStream;
  * since the budget was created. A single content stream may decode to no more than its own limit,
  * measured by streaming before PDFBox, which decodes a stream into memory as a whole, gets to it. A
  * page is charged with its finished text; while a page is still being stripped, its glyph count is
- * checked against what is left. Not thread-safe: one budget belongs to one read of one document.
+ * checked against what is left and against {@link #MAX_PAGE_GLYPHS}. The objects PDFBox registers
+ * while it loads the file count against their own limit. Not thread-safe: one budget belongs to one
+ * read of one document.
  */
 final class PdfReadBudget {
 
@@ -56,28 +58,39 @@ final class PdfReadBudget {
           COSName.RUN_LENGTH_DECODE_ABBREVIATION,
           COSName.CRYPT);
 
+  /**
+   * The most glyphs one page may yield in one pass. PDFBox holds every glyph of a page as a {@code
+   * TextPosition} of roughly 200 bytes until the page is written, so this bounds the heap of a page
+   * that draws one form thousands of times well below what the document's character limit allows.
+   */
+  static final long MAX_PAGE_GLYPHS = 200_000;
+
   private final long maxCharacters;
   private final long maxOperators;
   private final long maxContentBytes;
   private final long maxStreamBytes;
   private final long maxSeconds;
+  private final long maxObjects;
   private final long deadline;
   private final Map<COSStream, Long> decodedLengths = new IdentityHashMap<>();
   private long usedCharacters;
   private long operators;
   private long contentBytes;
+  private long objects;
 
   PdfReadBudget(
       long maxCharacters,
       long maxOperators,
       long maxContentBytes,
       long maxStreamBytes,
-      long maxSeconds) {
+      long maxSeconds,
+      long maxObjects) {
     this.maxCharacters = maxCharacters;
     this.maxOperators = maxOperators;
     this.maxContentBytes = maxContentBytes;
     this.maxStreamBytes = maxStreamBytes;
     this.maxSeconds = maxSeconds;
+    this.maxObjects = maxObjects;
     // capped so the difference in requireTime() cannot overflow
     this.deadline =
         System.nanoTime() + Math.min(TimeUnit.SECONDS.toNanos(maxSeconds), Long.MAX_VALUE / 4);
@@ -89,20 +102,38 @@ final class PdfReadBudget {
         limits.maxPdfOperators(),
         limits.maxPdfContentBytes(),
         limits.maxPdfStreamBytes(),
-        limits.maxPdfParseSeconds());
+        limits.maxPdfParseSeconds(),
+        limits.maxPdfObjects());
   }
 
   static PdfReadBudget unbounded() {
     return new PdfReadBudget(
-        Long.MAX_VALUE, Long.MAX_VALUE, Long.MAX_VALUE, Long.MAX_VALUE, Long.MAX_VALUE);
+        Long.MAX_VALUE,
+        Long.MAX_VALUE,
+        Long.MAX_VALUE,
+        Long.MAX_VALUE,
+        Long.MAX_VALUE,
+        Long.MAX_VALUE);
   }
 
   /** Throws when {@code pageGlyphs} more characters would exceed the budget. */
-  void requireRoomFor(long pageGlyphs) {
+  private void requireRoomFor(long pageGlyphs) {
     if (pageGlyphs > maxCharacters - usedCharacters) {
       throw new ParserLimitExceededException(
           "PDF text exceeds the configured text character limit of " + maxCharacters);
     }
+  }
+
+  /**
+   * Throws when a page has yielded {@code pageGlyphs} glyphs, past {@link #MAX_PAGE_GLYPHS} or past
+   * what is left of the document's characters.
+   */
+  void requireRoomForPageGlyphs(long pageGlyphs) {
+    if (pageGlyphs > MAX_PAGE_GLYPHS) {
+      throw new ParserLimitExceededException(
+          "PDF page exceeds the glyph limit of " + MAX_PAGE_GLYPHS + " per page");
+    }
+    requireRoomFor(pageGlyphs);
   }
 
   /** Adds a finished page's {@code characters}; throws when the budget is exceeded. */
@@ -136,17 +167,35 @@ final class PdfReadBudget {
    * to more than its limit, or once the document has used up its content bytes or its time.
    */
   void chargeContent(COSStream stream) throws IOException {
+    contentBytes += measure(stream);
+    if (contentBytes > maxContentBytes) {
+      throw new ParserLimitExceededException(
+          "PDF content exceeds the configured limit of " + maxContentBytes + " decoded bytes");
+    }
+  }
+
+  /**
+   * The decoded length of {@code stream}, decoded once to measure it and remembered after. Throws
+   * when it decodes to more than the stream limit, carries a filter outside the content filters, or
+   * once the document has used up its time; charges nothing.
+   */
+  long measure(COSStream stream) throws IOException {
     requireTime();
     Long length = decodedLengths.get(stream);
     if (length == null) {
       length = decodedLength(stream, maxStreamBytes);
       decodedLengths.put(stream, length);
     }
-    contentBytes += length;
-    if (contentBytes > maxContentBytes) {
-      throw new ParserLimitExceededException(
-          "PDF content exceeds the configured limit of " + maxContentBytes + " decoded bytes");
-    }
+    return length;
+  }
+
+  /**
+   * Like {@link #measure}, but decodes {@code stream} again even when it was measured before: its
+   * data may have changed since, as an object stream's does when PDFBox decrypts it.
+   */
+  long remeasure(COSStream stream) throws IOException {
+    decodedLengths.remove(stream);
+    return measure(stream);
   }
 
   /** {@link #chargeContent Charges} every content stream of {@code page}. */
@@ -156,7 +205,20 @@ final class PdfReadBudget {
     }
   }
 
-  private void requireTime() {
+  /**
+   * Counts {@code count} more objects PDFBox registers while loading or reading the document;
+   * throws once the document has used up its objects.
+   */
+  void chargeObjects(long count) {
+    objects += Math.max(0, count);
+    if (objects > maxObjects) {
+      throw new ParserLimitExceededException(
+          "PDF exceeds the configured limit of " + maxObjects + " objects");
+    }
+  }
+
+  /** Throws once the document has used up its time. */
+  void requireTime() {
     if (System.nanoTime() - deadline > 0) {
       throw new ParserLimitExceededException(
           "PDF reading exceeds the configured limit of " + maxSeconds + " seconds");

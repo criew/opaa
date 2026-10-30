@@ -2,6 +2,8 @@ package io.opaa.search;
 
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
+import io.opaa.format.chunk.ChunkAnchor;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
@@ -9,6 +11,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.knowledge.VectorTable;
+import io.opaa.library.LibraryDocumentService;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -111,7 +114,7 @@ public class ChunkInspectionService {
    * administering a library never opens its content. A document without a library, or one whose
    * library is gone, is treated as unknown.
    */
-  private void requireReadableLibrary(CurrentUser caller, UUID libraryId) {
+  private KnowledgeLibrary requireReadableLibrary(CurrentUser caller, UUID libraryId) {
     KnowledgeLibrary library =
         (libraryId == null
                 ? Optional.<KnowledgeLibrary>empty()
@@ -119,6 +122,27 @@ public class ChunkInspectionService {
             .filter(candidate -> !hiddenPrivateLibrary(caller, candidate.getId()))
             .orElseThrow(() -> new NotFoundException("Das Dokument wurde nicht gefunden."));
     libraryAccessService.requireContentRead(library, caller.id(), caller.isSystemAdmin());
+    return library;
+  }
+
+  /**
+   * The document whose indexed text {@code caller} may read, under exactly the answers the
+   * original's download gives: the reading permission on its library, a 404 with {@code
+   * LIBRARY_BEING_ERASED} while that library is being erased and one with {@code MALWARE_FOUND} for
+   * a document the malware scan flagged.
+   */
+  public Document requireReadableText(CurrentUser caller, UUID documentId) {
+    Document document = requireDocument(caller.organizationId(), documentId);
+    KnowledgeLibrary library = requireReadableLibrary(caller, document.getLibraryId());
+    if (library.isErasureRequested()) {
+      throw new NotFoundException(
+          "Die Bibliothek wird gelöscht", LibraryDocumentService.LIBRARY_BEING_ERASED);
+    }
+    if (document.hasMalwareFinding()) {
+      throw new NotFoundException(
+          LibraryDocumentService.MALWARE_FOUND_MESSAGE, LibraryDocumentService.MALWARE_FOUND);
+    }
+    return document;
   }
 
   /**
@@ -246,6 +270,73 @@ public class ChunkInspectionService {
         .toList();
   }
 
+  /**
+   * The lowest and highest {@code chunk_index} of the document's stored chunks, or empty when none
+   * carries one.
+   */
+  public Optional<IndexBounds> chunkIndexBounds(UUID organizationId, UUID documentId) {
+    requireDocument(organizationId, documentId);
+    if (!chunksStored()) {
+      return Optional.empty();
+    }
+    String index = "(metadata->>'" + CHUNK_INDEX_KEY + "')::integer";
+    return jdbcTemplate
+        .query(
+            "SELECT MIN("
+                + index
+                + ") AS first_index, MAX("
+                + index
+                + ") AS last_index FROM "
+                + vectorTable.qualifiedName()
+                + " WHERE metadata->>'"
+                + DOCUMENT_ID_KEY
+                + "' = ?",
+            (rs, rowNum) -> {
+              int first = rs.getInt("first_index");
+              return rs.wasNull() ? null : new IndexBounds(first, rs.getInt("last_index"));
+            },
+            documentId.toString())
+        .stream()
+        .filter(java.util.Objects::nonNull)
+        .findFirst();
+  }
+
+  /**
+   * The anchor of every indexed chunk of the document in index order, without its text - what an
+   * outline of the whole document is built from. A chunk without an anchor yields {@link
+   * ChunkAnchor#EMPTY}.
+   */
+  public List<IndexedAnchor> listChunkAnchors(UUID organizationId, UUID documentId) {
+    requireDocument(organizationId, documentId);
+    if (!chunksStored()) {
+      return List.of();
+    }
+    String index = "(metadata->>'" + CHUNK_INDEX_KEY + "')::integer";
+    return jdbcTemplate.query(
+        "SELECT "
+            + index
+            + " AS chunk_index, metadata->'"
+            + ChunkMetadataKeys.ANCHOR_METADATA_KEY
+            + "' AS anchor FROM "
+            + vectorTable.qualifiedName()
+            + " WHERE metadata->>'"
+            + DOCUMENT_ID_KEY
+            + "' = ? AND "
+            + index
+            + " IS NOT NULL ORDER BY "
+            + index,
+        (rs, rowNum) -> {
+          String anchor = rs.getString("anchor");
+          return new IndexedAnchor(
+              rs.getInt("chunk_index"),
+              anchor == null
+                  ? ChunkAnchor.EMPTY
+                  : ChunkAnchor.fromMetadata(
+                      objectMapper.readValue(anchor, new TypeReference<Map<String, Object>>() {})));
+        },
+        documentId.toString());
+  }
+
   /** The document, or {@link NotFoundException} for an unknown id and a foreign one alike. */
   private Document requireDocument(UUID organizationId, UUID documentId) {
     return documentRepository
@@ -289,6 +380,12 @@ public class ChunkInspectionService {
     }
     return objectMapper.readValue(metadataJson, new TypeReference<Map<String, Object>>() {});
   }
+
+  /** The lowest and highest {@code chunk_index} of a document, both inclusive. */
+  public record IndexBounds(int first, int last) {}
+
+  /** A chunk's index and anchor, read without its text. */
+  public record IndexedAnchor(int chunkIndex, ChunkAnchor anchor) {}
 
   /** One raw vector-store row before it is resolved against the documents table. */
   private record StoredChunk(String id, String content, Map<String, Object> metadata) {

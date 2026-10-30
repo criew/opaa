@@ -17,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import io.opaa.account.LinkDelivery;
 import io.opaa.account.LocalAuthSettings;
 import io.opaa.account.LocalAuthSettingsService;
+import io.opaa.account.LocalLockoutProperties;
 import io.opaa.account.LocalUserAdminService;
 import io.opaa.account.LocalUserCreated;
 import io.opaa.account.LocalUserCreation;
@@ -30,6 +31,7 @@ import io.opaa.api.types.LocalAccountState;
 import io.opaa.api.types.MailDeliveryPath;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.AdminTestSecurityConfig;
+import io.opaa.auth.AuditorRoles;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.User;
@@ -72,6 +74,7 @@ class LocalUserAdminControllerTest {
   @MockitoBean private LocalUserAdminService adminService;
   @MockitoBean private LocalAuthSettingsService settingsService;
   @MockitoBean private UserService userService;
+  @MockitoBean private AuditorRoles auditorRoles;
 
   private final UUID adminId = UUID.randomUUID();
   private final UUID organizationId = UUID.randomUUID();
@@ -402,13 +405,20 @@ class LocalUserAdminControllerTest {
   @Test
   void theSettingsAreReadAndReplacedThroughTheService() throws Exception {
     LocalAuthSettingsService.View view =
-        new LocalAuthSettingsService.View(LocalAuthSettings.Values.defaults(), true, false);
+        new LocalAuthSettingsService.View(
+            LocalAuthSettings.Values.defaults(),
+            true,
+            false,
+            new LocalLockoutProperties(null, null, null));
     when(settingsService.current()).thenReturn(view);
     when(settingsService.update(eq(caller), any()))
         .thenReturn(
             new LocalAuthSettingsService.Updated(
                 new LocalAuthSettingsService.View(
-                    LocalAuthSettings.Values.defaults(), false, false),
+                    LocalAuthSettings.Values.defaults(),
+                    false,
+                    false,
+                    new LocalLockoutProperties(null, null, null)),
                 3));
 
     mockMvc
@@ -439,7 +449,7 @@ class LocalUserAdminControllerTest {
             eq(caller),
             eq(
                 new LocalAuthSettingsService.Update(
-                    false, true, List.of("stadt.example"), true, 14, 48, 15, 180, 60)));
+                    false, true, List.of("stadt.example"), true, 14, 48, 15, 180, 60, null, null)));
   }
 
   private static LocalUserOverview overview(UUID id, String email) {

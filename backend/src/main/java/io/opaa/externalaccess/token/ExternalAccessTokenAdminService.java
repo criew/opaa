@@ -71,19 +71,19 @@ public class ExternalAccessTokenAdminService {
    */
   @Transactional(readOnly = true)
   public List<ExternalAccessTokenAdminView> list(
-      ExternalAccessTokenStatus status, Integer expiringWithinDays) {
+      UUID organizationId, ExternalAccessTokenStatus status, Integer expiringWithinDays) {
     Instant now = clock.instant();
     Pageable page = PageRequest.of(0, MAX_ROWS);
     List<ExternalAccessToken> rows;
     if (expiringWithinDays != null) {
       rows =
           tokens.findExpiringWithinForAdminList(
-              now, now.plus(Duration.ofDays(expiringWithinDays)), page);
+              organizationId, now, now.plus(Duration.ofDays(expiringWithinDays)), page);
       if (status != null) {
         rows = rows.stream().filter(token -> token.status(now) == status).toList();
       }
     } else {
-      rows = byStatus(status, now, page);
+      rows = byStatus(organizationId, status, now, page);
     }
     Map<UUID, String> libraryNames = selfService.namesOf(selfService.allSelected(rows));
     Map<UUID, User> owners =
@@ -103,18 +103,19 @@ public class ExternalAccessTokenAdminService {
   }
 
   private List<ExternalAccessToken> byStatus(
-      ExternalAccessTokenStatus status, Instant now, Pageable page) {
+      UUID organizationId, ExternalAccessTokenStatus status, Instant now, Pageable page) {
     if (status == null) {
-      return tokens.findForAdminList(page);
+      return tokens.findForAdminList(organizationId, page);
     }
     return switch (status) {
-      case ACTIVE -> tokens.findActiveForAdminList(now, page);
-      case EXPIRED -> tokens.findExpiredForAdminList(now, page);
+      case ACTIVE -> tokens.findActiveForAdminList(organizationId, now, page);
+      case EXPIRED -> tokens.findExpiredForAdminList(organizationId, now, page);
       case REVOKED ->
           tokens.findByRevocationReasonsForAdminList(
-              List.of(ExternalAccessTokenRevocationReason.OWNER), page);
+              organizationId, List.of(ExternalAccessTokenRevocationReason.OWNER), page);
       case BLOCKED ->
           tokens.findByRevocationReasonsForAdminList(
+              organizationId,
               List.of(
                   ExternalAccessTokenRevocationReason.ADMIN,
                   ExternalAccessTokenRevocationReason.ACCOUNT_LIFECYCLE),
@@ -122,12 +123,16 @@ public class ExternalAccessTokenAdminService {
     };
   }
 
-  /** Blocks one token; already dead tokens keep the reason that ended them. */
+  /**
+   * Blocks one token; already dead tokens keep the reason that ended them. A token of a person of
+   * another organization is unknown here.
+   */
   @Transactional
   public void block(UUID tokenId, UUID actorUserId, UUID organizationId) {
     ExternalAccessToken token =
         tokens
             .findById(tokenId)
+            .filter(found -> inOrganization(found.getUserId(), organizationId))
             .orElseThrow(() -> new NotFoundException("Zugangstoken nicht gefunden"));
     if (token.getRevokedAt() != null) {
       return;
@@ -137,12 +142,15 @@ public class ExternalAccessTokenAdminService {
     recordBlock(token, actorUserId, organizationId);
   }
 
-  /** Blocks every still-active token of one person; returns how many that was. */
+  /**
+   * Blocks every still-active token of one person of the organization; returns how many that was.
+   */
   @Transactional
   public int blockAllOf(UUID ownerUserId, UUID actorUserId, UUID organizationId) {
     User owner =
         users
             .findById(ownerUserId)
+            .filter(found -> organizationId.equals(found.getOrganizationId()))
             .orElseThrow(() -> new NotFoundException("Konto nicht gefunden"));
     Instant now = clock.instant();
     List<ExternalAccessToken> active = tokens.findByUserIdAndRevokedAtIsNull(owner.getId());
@@ -152,6 +160,13 @@ public class ExternalAccessTokenAdminService {
       recordBlock(token, actorUserId, organizationId);
     }
     return active.size();
+  }
+
+  private boolean inOrganization(UUID userId, UUID organizationId) {
+    return users
+        .findById(userId)
+        .map(user -> organizationId.equals(user.getOrganizationId()))
+        .orElse(false);
   }
 
   private void recordBlock(ExternalAccessToken token, UUID actorUserId, UUID organizationId) {

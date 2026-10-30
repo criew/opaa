@@ -170,6 +170,11 @@ opaa:
     # @RequiresRecentLogin (io.opaa.auth.RecentLoginPolicy); a non-positive value refuses the start.
     recent-login:
       max-age: ${OPAA_AUTH_RECENT_LOGIN_MAX_AGE:5m}
+    # The address of the account that may become the first AUDITOR of an organization without an
+    # identity provider's roles claim; every later AUDITOR grant needs an auditor's confirmation
+    # (io.opaa.auth.AuditorRoleProperties). Empty means none.
+    auditor-role:
+      first-auditor-email: ${OPAA_AUTH_FIRST_AUDITOR_EMAIL:}
     # Local accounts (ADR-0033): the one secret every key of the local token issuer is derived from
     # (HKDF, io.opaa.security.LocalAuthKeyService - access-token signature, refresh-token lookup,
     # action-token lookup) and the session limits of the local issuer. No default for the secret on
@@ -200,12 +205,14 @@ opaa:
       admin-reset: ${OPAA_LOCAL_ADMIN_RESET:}
       admin-reset-email: ${OPAA_LOCAL_ADMIN_RESET_EMAIL:}
       admin-allowed-cidrs: ${OPAA_LOCAL_ADMIN_ALLOWED_CIDRS:}
-      # Lockout after failed sign-ins (Entscheidung 9; io.opaa.account.LocalAccountLockoutListener):
-      # a fixed duration, no progressive extension; the counter returns to zero on success. The
-      # single failed attempt is an application-log line, the lock an audit event.
+      # Limits of the lockout after failed sign-ins (ADR-0060, Entscheidung 17): the administration
+      # sets attempts and duration in local_auth_settings, at most max-attempts attempts and no
+      # shorter than min-duration. The defaults equal the factory default in the code (5 attempts,
+      # 15 minutes), so out of the box the administration can only tighten the lockout. A retired
+      # OPAA_AUTH_LOCAL_LOCKOUT_DURATION still set raises min-duration (LocalLockoutProperties).
       lockout:
         max-attempts: ${OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS:5}
-        duration: ${OPAA_AUTH_LOCAL_LOCKOUT_DURATION:15m}
+        min-duration: ${OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION:15m}
   http:
     force-http1: ${OPAA_HTTP_FORCE_HTTP1:false}
   chat:
@@ -526,8 +533,8 @@ opaa:
       max-text-characters: ${OPAA_INDEXING_ODF_MAX_TEXT_CHARACTERS:10000000}
     # DoS-hardening limits for the structure formats (PDF, DOCX, PPTX, XLSX/CSV, HTML, Markdown),
     # see ParserLimitProperties: text per document, the unpacked XML of an OOXML package and the
-    # content-stream operators, decoded content bytes (per document and per stream) and reading
-    # time of a PDF.
+    # content-stream operators, decoded content bytes (per document and per stream), reading
+    # time, pages and objects of a PDF.
     parser-limits:
       max-text-characters: ${OPAA_INDEXING_PARSER_LIMITS_MAX_TEXT_CHARACTERS:10000000}
       max-ooxml-part-bytes: ${OPAA_INDEXING_PARSER_LIMITS_MAX_OOXML_PART_BYTES:33554432}
@@ -536,6 +543,8 @@ opaa:
       max-pdf-content-bytes: ${OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_CONTENT_BYTES:536870912}
       max-pdf-stream-bytes: ${OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_STREAM_BYTES:33554432}
       max-pdf-parse-seconds: ${OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_PARSE_SECONDS:120}
+      max-pdf-pages: ${OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_PAGES:10000}
+      max-pdf-objects: ${OPAA_INDEXING_PARSER_LIMITS_MAX_PDF_OBJECTS:1000000}
     # ADR-0018 Entscheidung 6: own opaa.indexing.filesystem.* property block, own binding prefix
     # (FilesystemProperties), mirroring crawl/tabular/mail/odf above. allowlist: absolute base
     # directories a FILESYSTEM library's sourcePath must resolve underneath. No default on purpose -
@@ -550,6 +559,9 @@ opaa:
       max-depth: ${OPAA_INDEXING_ATTACHMENTS_MAX_DEPTH:5}
       max-per-parent: ${OPAA_INDEXING_ATTACHMENTS_MAX_PER_PARENT:10}
       max-size-bytes: ${OPAA_INDEXING_ATTACHMENTS_MAX_SIZE_BYTES:20971520}
+      # budget of one root document over all levels of nesting together
+      max-per-root: ${OPAA_INDEXING_ATTACHMENTS_MAX_PER_ROOT:500}
+      max-bytes-per-root: ${OPAA_INDEXING_ATTACHMENTS_MAX_BYTES_PER_ROOT:1073741824}
     # SSRF hardening for HTTP_DIRECTORY/RSS_FEED fetches - see
     # io.opaa.security.TargetAddressValidator.
     target-validation:
@@ -583,6 +595,8 @@ opaa:
       core-size: ${OPAA_UPLOAD_THREAD_POOL_CORE_SIZE:2}
       max-size: ${OPAA_UPLOAD_THREAD_POOL_MAX_SIZE:4}
       queue-capacity: ${OPAA_UPLOAD_THREAD_POOL_QUEUE_CAPACITY:20}
+    # Places of the pool above one account may hold at once; 0 means a quarter of the pool.
+    max-places-per-account: ${OPAA_UPLOAD_MAX_PLACES_PER_ACCOUNT:0}
     # How old a stored original must be before the orphan cleanup may report or remove it - the
     # window between writing the bytes and inserting the row, and the whole asynchronous processing
     # of an upload, must lie inside it. A report may raise it per call, never lower it.
@@ -763,6 +777,9 @@ opaa:
       # A before/after key the event catalog (AuditEventCatalog) does not list is dropped and
       # logged; the dev profile and every test refuse the write instead.
       reject-unlisted: false
+    incident-scope:
+      # Longest time range one anlassbezogene Klärung may name; it always ends in the past.
+      max-days: ${OPAA_AUDIT_INCIDENT_SCOPE_MAX_DAYS:92}
   succession:
     # Wann der Feststellungslauf hinsieht. Er schreibt nur Erstfeststellung und Ende; der Zustand
     # selbst ist abgeleitet und gilt auch ohne ihn.
@@ -798,6 +815,10 @@ opaa:
       # below (not local) sets an explicitly-marked non-production default so bootRun and tests work
       # without operator setup.
       encryption-key: ${OPAA_CREDENTIALS_ENCRYPTION_KEY:}
+      # Earlier keys after a key rotation, comma-separated: they only decrypt, and the
+      # re-encryption (io.opaa.security.CiphertextRewrap) moves their values to the key above
+      # (ADR-0064). Empty outside a rotation.
+      previous-keys: ${OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS:}
     settings:
       # AES-256 key (Base64, 32 raw bytes) for io.opaa.security.SettingsEncryptor - encrypts
       # llm_models.api_key_ciphertext at rest
@@ -811,6 +832,13 @@ opaa:
       # purpose; the dev profile below sets an explicitly-marked non-production default so bootRun
       # and tests work without operator setup.
       encryption-key: ${OPAA_SETTINGS_ENCRYPTION_KEY:}
+      # Earlier keys after a key rotation, as for the credentials above (ADR-0064).
+      previous-keys: ${OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS:}
+    cipher-format:
+      # false keeps writing enc:v1 and keeps every value's format on re-encryption, so that a
+      # rollback to a version before ADR-0064 still reads every stored secret with the current key;
+      # true once that window is over.
+      keyed: ${OPAA_ENCRYPTION_KEYED_FORMAT:true}
 
 management:
   endpoints:

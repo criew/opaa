@@ -165,6 +165,45 @@ public class DirectoryConnectorService {
   }
 
   /**
+   * After the provider's issuer changed from {@code previousIssuer}: an access whose admin address
+   * is derived from the issuer would follow it to another endpoint, its stored secret with it - it
+   * is removed instead, and the secret must be stored anew for the new address. An access with its
+   * own admin address, or one whose derived address stays the same, is kept.
+   */
+  @Transactional
+  public void forgetDerivedAccessAfterIssuerChange(
+      UUID organizationId, UUID actorUserId, OidcProvider provider, String previousIssuer) {
+    Optional<DirectoryConnector> existing = repository.findByProviderId(provider.getId());
+    if (existing.isEmpty()
+        || (existing.get().getBaseUrl() != null && !existing.get().getBaseUrl().isBlank())) {
+      return;
+    }
+    String before = derivedBase(previousIssuer);
+    String after = derivedBase(provider.getIssuerUri());
+    if (before != null && after != null && sameAddress(before, after)) {
+      return;
+    }
+    repository.delete(existing.get());
+    record(
+        organizationId,
+        actorUserId,
+        provider,
+        auditState(existing.get()),
+        new HashMap<>(),
+        "Verzeichniszugang entfernt: Die Admin-API-Adresse folgt dem geänderten Issuer; das"
+            + " Geheimnis des Dienstkontos wird nicht an die neue Adresse gesendet");
+  }
+
+  /** The admin base derived from {@code issuer}, or {@code null} where it is no realm address. */
+  private static String derivedBase(String issuer) {
+    try {
+      return KeycloakRealmAddress.of(issuer, null).baseUrl();
+    } catch (ValidationException notARealm) {
+      return null;
+    }
+  }
+
+  /**
    * Probes the access without storing anything. A blank secret means "use the stored one", so an
    * existing connection can be re-tested without retyping a secret no response ever returns - only
    * for the stored admin address; another one needs its secret given (400 otherwise).

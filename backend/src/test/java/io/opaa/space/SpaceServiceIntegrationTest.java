@@ -758,7 +758,7 @@ class SpaceServiceIntegrationTest {
     Space saved = spaceRepository.save(space);
 
     assertThatThrownBy(() -> spaceService.listMembers(saved.getId(), currentUserOf(outsider)))
-        .isInstanceOf(AccessDeniedException.class);
+        .isInstanceOf(NotFoundException.class);
   }
 
   // The full member list (identities and display names) is restricted to ADMIN, the owner and

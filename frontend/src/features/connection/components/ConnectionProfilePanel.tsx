@@ -411,7 +411,7 @@ function PanelContent({
                 color="warning"
                 disabled={busy}
                 onClick={() => void run(() => onDisconnect(profile))}
-                aria-label={`Alle Verbindungen von ${profile.name} trennen`}
+                aria-label={`Alle Verbindungen trennen: ${profile.name}`}
               >
                 Alle Verbindungen trennen
               </Button>
@@ -432,7 +432,7 @@ function PanelContent({
                     if (await onDelete(profile)) onClose()
                   })
                 }
-                aria-label={`${profile.name} löschen`}
+                aria-label={`Zugang löschen: ${profile.name}`}
               >
                 Zugang löschen
               </Button>

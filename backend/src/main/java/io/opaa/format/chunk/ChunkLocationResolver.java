@@ -24,6 +24,12 @@ final class ChunkLocationResolver {
   // Java's MULTILINE "^", yet a page always starts fresh.
   private static final Pattern HEADING = MarkdownHeading.IN_TEXT;
 
+  /**
+   * The most characters of a heading title a location carries, the cut marked with "…": every chunk
+   * below a heading repeats its title, so an unbounded title would multiply with the chunk count.
+   */
+  static final int MAX_TITLE_CHARACTERS = 200;
+
   private record Heading(int offset, int end, int level, String title) {}
 
   private final String text;
@@ -49,10 +55,21 @@ final class ChunkLocationResolver {
               matcher.start(MarkdownHeading.LEVEL_GROUP),
               matcher.end(),
               matcher.group(MarkdownHeading.LEVEL_GROUP).length(),
-              MarkdownHeading.title(matcher).trim()));
+              cut(MarkdownHeading.title(matcher).trim())));
     }
     return new ChunkLocationResolver(
         text, breaks.stream().mapToInt(Integer::intValue).toArray(), headings);
+  }
+
+  private static String cut(String title) {
+    if (title.length() <= MAX_TITLE_CHARACTERS) {
+      return title;
+    }
+    int end = MAX_TITLE_CHARACTERS - 1;
+    if (Character.isHighSurrogate(title.charAt(end - 1))) {
+      end--;
+    }
+    return title.substring(0, end) + "…";
   }
 
   /**

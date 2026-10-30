@@ -580,6 +580,15 @@ public class KnowledgeLibraryService {
                 : requestedSettings;
     if (replacesSourceConfiguration) {
       libraryConnections.requireAddressAllowed(library, validatedSettings.sourceUrl());
+      // A new origin of an own address is a new target: the type's release counts, as at creation.
+      if (!onProfile(library)
+          && SourceOrigin.changes(
+              library.getSourceUrl(),
+              library.getSourcePath(),
+              validatedSettings.sourceUrl(),
+              validatedSettings.sourcePath())) {
+        connectorRelease.requireCreatable(caller, library.getSourceType(), null);
+      }
     }
     if (replacesSourceConfiguration || replacesOwnSettings) {
       // validated against the profile's frame: it must still stand when the change is written

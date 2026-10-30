@@ -101,9 +101,9 @@ pnpm test
 
 1. `docker compose down -v` für das **eigene** Compose-Projekt `opaa-e2e` (definierte Ausgangslage;
    siehe "Isolation von einem laufenden Dev-Stack" unten).
-2. `docker compose up -d --build ai-stub rss-feed nextcloud postgres backend frontend` unter diesem
-   Projektnamen, mit eigenen Host-Ports und `e2e/e2e.env` als Environment (siehe unten), und Warten
-   auf Erreichbarkeit.
+2. `docker compose up -d --build ai-stub rss-feed nextcloud dropbox-stub clamd-stub postgres backend
+   frontend` unter diesem Projektnamen, mit eigenen Host-Ports und `e2e/e2e.env` als Environment
+   (siehe unten), und Warten auf Erreichbarkeit.
 3. **Seed-Lauf (#233):** `demo/seed/seed.py --profile e2e --base-url http://localhost:$OPAA_BACKEND_PORT/api`
    — derselbe gemeinsame Seed-Mechanismus, den auch das `demo`-Compose-Profil nutzt
    (`demo/seed/profiles.py`, `E2E_PROFILE`), hier gegen den dev-Auth-Modus dieses Stacks statt
@@ -155,6 +155,27 @@ pnpm exec playwright test   # ohne laufenden Stack
 ```
 
 Der Test schlägt mit `net::ERR_CONNECTION_REFUSED` fehl und legt Trace/Screenshot ab.
+
+### Zweite Browser-Engine: Firefox-Smoke-Lauf (#3474)
+
+Die Suite läuft in Chromium; Edge teilt diese Engine. Für Firefox (Gecko, in Behörden oft als
+ESR im Einsatz) gibt es einen schmalen Smoke-Lauf über die Kernszenarien: Rauchtest,
+Mehrrunden-Chat, Fundstellen-Anzeige mit PDF, Textfassung und Download, Upload und Freigabe
+einer Wissensbibliothek, Verwaltungsnavigation. Diese Szenarien tragen das Tag
+`@browser-smoke`; ein neues Kernszenario bekommt es ebenso.
+
+```bash
+cd e2e
+pnpm exec playwright install firefox
+E2E_BROWSER=firefox node scripts/run-e2e.mjs
+```
+
+`E2E_BROWSER=firefox` ersetzt das Chromium-Projekt durch das Projekt `firefox`, das nur die
+getaggten Szenarien wählt; Bericht und Traces landen in `playwright-report-firefox/` und
+`test-results-firefox/`, die Container-Logs in `docker-compose.firefox.log`. Der Workflow
+`e2e.yml` führt den Lauf nach der Chromium-Suite auf neuem Stack mit frischer Datenbank aus, auch wenn diese rot war,
+und meldet einen Fehlschlag über dasselbe Alarm-Issue. Playwright treibt seinen eigenen
+Firefox-Build (aktueller Stand), kein echtes ESR.
 
 ## Warum der `dev`-Auth-Modus?
 
@@ -273,6 +294,11 @@ Testziel `https://intranet.e2e.example` und einen auf ein fremdes Ziel, `E2E-ANT
 Markdown-Bild mit fremder Adresse, `E2E-BEFOLGE-DOKUMENT` jeden Markdown-Link aus den Passagen
 des Prompts: Der Stub spielt dann ein Modell, das der Anweisung eines präparierten Dokuments folgt.
 
+Für den **Modellfehler** (#3467) lässt `E2E-MODELL-FEHLER` in der Frage den Antwort-Prompt mit
+`400` scheitern, wie ein Anbieter, der eine Anfrage ablehnt. Ein 4xx wiederholt der Client des
+Backends nicht, die Meldung „Fehler im KI-Dienst" steht also sofort im Chat statt nach einer
+Wartezeit; Zerlegung, Titel und Notiz antworten weiter.
+
 ### Nextcloud statt Testkonnektor
 
 `docker-compose.e2e.yml` startet zusätzlich `nextcloud` (offizielles Image, SQLite, dieselbe
@@ -298,6 +324,20 @@ die Zustimmungsseite nennt den Host-Port (`OPAA_DROPBOX_STUB_PORT`, Vorgabe `180
 Ausnahmeliste für Zieladressen, und `OPAA_PUBLIC_BASE_URL` ist gesetzt, damit die Rücksprungadresse
 auf das Frontend des Stacks zeigt. Ein eigener Dienst statt einer Erweiterung von `ai-stub`: Dessen
 Aufgabe ist das deterministische Modell, und die Dropbox-Routen haben damit nichts gemeinsam.
+
+### Virenprüfung und kleine Aufnahmegrenzen
+
+`clamd-stub` (`e2e/clamd-stub/server.mjs`, ebenfalls ein Skript im Standard-`node`-Image) spricht
+das `INSTREAM`-Protokoll von clamd und meldet `FOUND` für die EICAR-Testzeichenfolge, `OK` für alles
+andere. `e2e.env` schaltet die Virenprüfung damit für den ganzen Stack ein (`OPAA_MALWARE_SCAN_*`),
+jeder Upload und jede Konnektoraufnahme der Suite läuft also durch sie. Ein echtes ClamAV lädt beim
+Start erst seine Signaturdatenbank aus dem Netz, das kostete jeden Lauf Minuten und Speicher.
+
+Dieselbe Datei setzt kleine Grenzen, damit die Ablehnungen ohne große Dateien prüfbar sind: 4 MiB je
+Datei (`OPAA_UPLOAD_MAX_FILE_SIZE`) und 3 MiB je Bibliothek (`OPAA_LIBRARY_QUOTA_BYTES`). Die
+Dateigrenze liegt über dem ~2-MB-PDF aus `knowledge-library-nacharbeiten.spec.ts`, das Kontingent
+über jeder Bibliothek, die die Suite füllt, und unter der Dateigrenze, sodass eine Datei dazwischen
+passt. Wer ein Szenario mit größeren Dateien ergänzt, prüft beide Werte.
 
 ## Serialisierungs-Konvention
 
@@ -351,6 +391,12 @@ lassen.
   der Reihenfolge der Suite unabhängig. Der Durchklick durch die Admin-Sekundärspalte liegt
   seit #805 in `tests/admin-area-navigation.spec.ts` (mit 320-px-Geometrie-Zusicherung), weil
   er keine axe-Analyse ausführt.
+  **Endzustand jedes Szenarios (#3475):** Unabhängig von dieser Spec prüfen die Seiten-Fixtures
+  `authenticatedPage`, `regularUserPage`, `outsiderPage` und `formatPipelinesPage` beim Abbau die
+  Seite, auf der der Test endet, mit denselben Regeln und derselben Schwelle; der Abbau bekommt
+  dafür das Testbudget plus 20 s, die Prüfung entfällt bei einem bereits roten Test und lässt sich
+  lokal mit `E2E_A11Y_END_STATE=false` abschalten. Ein Befund am Endzustand lässt den Test
+  fehlschlagen und beendet damit auch eine `describe.serial`-Kette.
   **Berichtsmodus für den Release-Lauf:** Mit `E2E_A11Y_RESULTS_DIR` legt die Fixture jede Analyse
   als JSON-Datensatz in diesem Verzeichnis ab, mit `E2E_A11Y_REPORT_ONLY=true` hält sie Verstöße fest,
   statt den Test scheitern zu lassen. Daraus entsteht der Prüfbericht Barrierefreiheit im
@@ -579,6 +625,33 @@ lassen.
   und befüllen, Bibliothek mit einer Person teilen) leben in `fixtures/chat.ts`, extrahiert aus
   `knowledge-libraries.spec.ts` (#424) und von beiden Dateien importiert, statt dupliziert.
 
+- `tests/chat-multi-turn.spec.ts` (#3467) — ein Gespräch über vier Frage-Antwort-Runden: Die
+  Bibliotheken A und B mit je einem kleinen Dokument entstehen per API, die Runden wechseln den
+  Suchbereich per `@` von A nach B. Geprüft werden die Reihenfolge Frage/Antwort, dass jede Antwort
+  ihren eigenen Beleg und das Kennzeichen „KI-erzeugt" trägt und frühere Antworten von späteren
+  Runden unberührt bleiben, dass die neueste Antwort ohne Scrollen im Blick ist, und dass der
+  Verlauf nach Neuladen und nach einem Wechsel in einen anderen Chat und zurück derselbe ist. Dazu
+  axe für den Verlauf (hell, dunkel, mit offenem Belegfenster), bei 320 px kein waagrechter
+  Überlauf. Bildschirmfotos von Anfang und Ende des Verlaufs (breit hell, breit dunkel, 320 px)
+  hängen als Anhang am Report, damit man sieht, wie ein längeres Gespräch aussieht. Ein zweites
+  Szenario lässt mitten im Gespräch das Modell scheitern (ai-stub, `E2E-MODELL-FEHLER`): Meldung,
+  keine halbe Antwort, Eingabe bleibt bedienbar, die nächste Frage gelingt; nach dem Neuladen
+  fehlt die gescheiterte Frage, weil sie nicht gespeichert wurde.
+
+- `tests/evidence-viewer.spec.ts` (#3463) — „Dokument öffnen“ und „Herunterladen“ hinter dem
+  Belegfenster: Eine Bibliothek mit einem dreiseitigen PDF und einem HTML-Dokument (beide im
+  Speicher erzeugt) entsteht per API. Das PDF öffnet in der eigenen Anzeige auf der Fundseite mit
+  markierter Passage und lässt sich bis zur letzten Seite blättern, „Original herunterladen“
+  liefert die Datei. Das HTML-Dokument öffnet als Textfassung an der Fundstelle, der Sprung über
+  die Gliederung trifft den Abschnitt, „Herunterladen“ im Belegfenster liefert das Original. axe
+  für beide Ansichten in beiden Farbschemata. Eine Person ohne Leserecht bekommt über die API
+  weder Original noch Textfassung (404), die Eigentümerin beides.
+- `tests/admin-access-denied.spec.ts` (#3463) — `dev-user` ohne Systemrolle: Jede Seite unter
+  `/admin` und `/revision` verweigert sich mit ihrem Hinweis und ohne Verwaltungsnavigation (die
+  Gruppenseite ausgenommen, dort arbeiten Gruppenverantwortliche), und die Lesewege der Verwaltung
+  und Revision antworten durch nginx mit 403. Pflichtparameter sind gesetzt, damit die Abweisung
+  von der Rollenprüfung kommt und nicht von der Validierung.
+
 - `tests/conversation-note.spec.ts` (#1489, T7 von Epic #1482) — die Gesprächsnotiz über den
   vollen Stack (`docs/features/conversation-memory.md`, „Oberfläche", ADR-0031): Ein Chat mit einer
   Rahmenangabe in Runde 1 zeigt nach Runde 2 **keine** Schaltfläche und nach Runde 3
@@ -612,17 +685,33 @@ lassen.
   und verwendet (entschiedener Randfall der Spezifikation), und eine unscoped Suche über den
   wachsenden Korpus brächte dem Prüfgegenstand nichts.
 
-- `tests/format-pipelines-upload.spec.ts` (#1109) — lädt XLSX, HTML und EML in einem Durchlauf
-  hoch und prüft, dass alle drei nach der Verarbeitung als indiziert erscheinen. Deckt damit Formate
-  ab, die die Suite sonst nie durch die echte Upload-Oberfläche treibt (bisher nur `.txt` und ein
-  `.pdf`-Fixture); `.eml` ist der wertvollste der drei Fälle, weil es als einziges Format über eine
-  inhaltstolerante statt einer strikten Medientyp-Prüfung zugelassen wird und über seinen Anhang ein
-  zweites, anderes Format erneut durch die Pipeline-Registry schickt. Keine erschöpfende Abdeckung
-  jedes zugelassenen Formats — das leistet die Backend-Ebene
-  (`DocumentIndexingIntegrationTest`). Stellt selbst nie eine Chatfrage und läuft deshalb unter der
-  eigenen Fixture `formatPipelinesPage` (Konto `dev-format-pipelines`) statt unter `dev-admin` — ein
+- `tests/format-pipelines-upload.spec.ts` (#1109, #3466) — lädt XLSX, HTML, EML, DOCX, PPTX, ODT,
+  ODP, Markdown, CSV, ODS, DOC und MSG in einem Durchlauf hoch und prüft, dass alle nach der
+  Verarbeitung als indiziert erscheinen.
+  Zusammen mit `.txt` und `.pdf` aus anderen Szenarien geht damit jedes zugelassene
+  Upload-Format einmal durch die echte Oberfläche und Pipeline; die Fixtures sind wenige KB groß
+  (CSV, ODS, DOC und MSG stammen aus `demo/corpus/formate/`).
+  `.eml` ist der wertvollste Fall, weil es als einziges Format über eine inhaltstolerante statt einer
+  strikten Medientyp-Prüfung zugelassen wird und über seinen Anhang ein zweites, anderes Format
+  erneut durch die Pipeline-Registry schickt. Stellt selbst nie eine Chatfrage und läuft deshalb
+  unter der eigenen Fixture `formatPipelinesPage` (Konto `dev-format-pipelines`) statt unter `dev-admin` — ein
   Upload allein könnte sonst mit dem deterministischen KI-Stub-Embedding das erwartete Ergebnis eines
   anderen, zitatprüfenden Szenarios verdrängen (siehe „Vier Testnutzer" oben).
+
+- `tests/upload-limits.spec.ts` (#3466) — die drei Ablehnungen vor jeder Speicherung in einem
+  Upload: Dateigröße, Speicherkontingent der Bibliothek und Virenprüfung (EICAR, siehe
+  „Virenprüfung und kleine Aufnahmegrenzen"). Jede Datei steht mit ihrem deutschen Grund in der
+  Meldung, keine hinterlässt eine Dokumentzeile. Die Grenzen aus `e2e.env` halten den Upload bei
+  etwa 8 MB; die EICAR-Zeichenfolge wird im Test zusammengesetzt, keine Datei im Repository trägt
+  sie am Stück. Läuft unter `formatPipelinesPage`, weil es keine Frage stellt.
+
+- `tests/library-metadata.spec.ts` (#3466) — ein Bibliotheksfeld von der Definition bis zur
+  Wirkung: „Feld anlegen" (Auswahl „Fassung" mit zwei Werten) im Reiter „Metadaten", je Dokument ein
+  Wert über die Metadatenansicht der Dokumentliste, dann im Chat mit `@`-Referenz der Filter auf
+  einen Wert; die Belege enthalten danach nur das passende Dokument, das andere auch nicht unter den
+  nicht zitierten. Beide Dokumente tragen einen Wert, weil ein Dokument ohne Wert nie ausgefiltert
+  wird. Läuft unter `dev-admin`, weil es eine Frage stellt, und ordnet die Bibliothek dessen
+  Standard-Space zu, denn die `@`-Referenz bietet nur Bibliotheken des Space an.
 
 - `tests/external-access.spec.ts` (#1723, Teil von Epic #1715) — der Zugriff externer KI-Werkzeuge über
   den vollen Stack (`docs/features/external-access.md`, ADR-0035): der Weg von der Freigabe über das
@@ -712,6 +801,27 @@ lassen.
   (`praepariertes-merkblatt.txt`) übernommene Links bleiben Text, und der Beleg zeigt das Merkblatt.
   Die Liste der Linkziele ist installationsweit; `afterAll` stellt den Stand vor der Datei wieder
   her.
+
+- `tests/lifecycle.spec.ts` (#3465, Epic #3462) — die Wege, die eine Installation umziehen und
+  Bestände übergeben oder entfernen. **Einstellungen übertragen:** Export über die Oberfläche, eine
+  im Test geänderte Angabe (Branding, Claim) erscheint in der Import-Vorschau mit neuem Wert, ohne
+  schon zu wirken; erst „Übernehmen“ ändert sie, und das Revisionsprotokoll trägt den Eintrag
+  `SETTINGS_IMPORTED` samt der Änderung unter derselben Vorgangskennung. Das Protokoll liest der
+  Test per SQL im Postgres-Container (`fixtures/database.ts`), weil die Abfragewege der Revision
+  die Rolle `AUDITOR` verlangen, die kein dev-Konto hat; am Ende stellt ein Import der
+  ursprünglichen Datei den Stand wieder her. **Space:** dev-admin übergibt einen Space über „Zum
+  Eigentümer machen“ an dev-user und verliert den Gefahrenbereich; dev-user archiviert ihn. Das
+  Mitglied dev-outsider ohne eigenen Chat findet ihn danach in der Übersicht nicht mehr, der Eigentümer sieht ihn
+  als „Archiviert“, und dev-admin liest seinen Chat darin weiter. Löschen scheitert, solange Chats
+  darin liegen, ein Space ohne Chats wird über die Oberfläche gelöscht. **Bibliothek:** Eine
+  Webverzeichnis-Bibliothek mit einem Dokument wird über das Kopfmenü gelöscht; danach antworten
+  Bibliothek und Original mit 404, und dieselbe Suche, die das Dokument vorher fand, findet es
+  nicht mehr (eine Konnektor-Bibliothek nimmt ihre Dokumente beim Löschen mit). Spaces,
+  Mitgliedschaften und die Bibliothek entstehen über die API, der eine Chat über die Eingabe. Das
+  Szenario liest das Protokoll mit der Docker-CLI aus dem Container des Compose-Projekts
+  `COMPOSE_PROJECT_NAME` (Vorgabe `opaa-e2e`); wer `pnpm run test:playwright` gegen einen anders
+  benannten Stack fährt, setzt die Variable. Die Nachfolge nach einer Kontosperre prüft das Ziel
+  `local-auth` (`13-nachfolge.spec.ts`), weil nur lokale Konten sich sperren lassen.
 
 ## Demo-Smoke (#232)
 
@@ -854,6 +964,18 @@ stellt seinen Ausgangszustand in der eigenen Vorbereitung über dieselben idempo
 | `08-csp.spec.ts` | Keine CSP-Verstöße: der lokale Aussteller braucht keine zusätzliche Herkunft, anders als der OIDC-Weg |
 | `09-selbstauskunft.spec.ts` | Selbstauskunft nach erneuter Bestätigung der Anmeldung: Abbrechen und falsches Passwort führen zu keinem Download, das richtige zu einem ZIP mit Konto und eigenem Chat; die Seite wird nach der Anmeldung neu geladen, weil erst das über das Refresh-Cookie erneuerte Token kein `auth_time` trägt |
 | `10-neuladen-waehrend-refresh.spec.ts` | Neuladen mitten in der Erneuerung: Zweimal verwirft der Browser Antwort und Cookie der committeten Rotation, die Sitzung bleibt trotzdem bestehen (Gnadenfrist, ADR-0033 Entscheidung 7), und die zweite Sitzung des Kontos bleibt unberührt |
+| `11-fokusring.spec.ts` | Fokusring nach Tastaturnavigation auf Anmeldeseite und Verwaltungsfeld, in beiden Farbschemata: deckende Linie von mindestens 2 px mit 3:1 gegen die Fläche, Feldrahmen 4,5:1 |
+| `12-revision.spec.ts` | Revision und Nachweis: erste Person der Revision über `OPAA_AUTH_FIRST_AUDITOR_EMAIL` mit dem Link aus dem Server-Log; Rollenantrag im Vier-Augen-Weg (ohne die Rolle Revision bestätigt niemand, weder die beantragte Person noch die Systemverwaltung; Bestätigung mit erneuter Anmeldung und einmaligem Link, Ablehnung); Stichtagsauskunft vor und nach dem Entzug einer Freigabe; Verbindungsprotokoll einer über einen Dropbox-Zugang verbundenen und gelöschten Bibliothek; Prüfsummenkette des laufenden Monats abrufbar und ohne Abweichung (ob schon ein Prüfpunkt besteht, hängt vom Zehn-Minuten-Takt des Kettenlaufs ab, daher gilt auch `UNCHAINED`) |
+| `13-nachfolge.spec.ts` | Nachfolge (#3465): Das Konto der Eigentümerin eines Space wird gesperrt, der Space steht sofort unter „Ohne Zuständigkeit“, „Nachfolge bestimmen“ mit Vorschau und Bestätigung überträgt ihn, danach ist die Nachfolge Eigentümerin |
+
+Für `12-revision.spec.ts` bringt der Lauf zwei Dinge mit, die die übrigen Szenarien nicht
+brauchen: `local-auth.env` setzt `OPAA_AUTH_FIRST_AUDITOR_EMAIL`, und `run-e2e.mjs` reicht den
+Compose-Projektnamen als `E2E_COMPOSE_PROJECT` durch, weil der Link der ersten Person der Revision
+nur im Log des Backend-Containers steht (`fixtures/revision.ts`). Für das Verbindungsprotokoll
+startet der Stack den [Dropbox-Ersatzserver](#dropbox-ersatzserver) auf Host-Port `18093`
+(`OPAA_DROPBOX_STUB_PORT`) und bekommt dafür einen Schlüssel für gespeicherte Zugangsdaten. Die
+Vorbedingungen (Konten, Bibliothek, Freigabe, Anträge) laufen über die API, im Browser nur die
+Seiten der Revision; das Szenario dauert rund eine Minute. Die Zeitfenster der Stichtagsauskunft sind sekundengenau und setzen voraus, dass Host und Container dieselbe Uhr haben (unter Linux und in der CI gegeben).
 
 `/login/system` wird in Szenario 5 auf Barrierefreiheit geprüft und nicht in Szenario 7: Die Route
 leitet weiter, solange die lokale Verwaltung eingeschaltet ist, und Szenario 5 ist das einzige, das

@@ -90,6 +90,21 @@ class UserSearchControllerTest {
         .andExpect(jsonPath("$[0].displayName").value("Colleague"));
   }
 
+  // regression guard for #3358 (6): unverified name and email claims come with their sign-in
+  @Test
+  void listUsersNamesTheSignInEveryHitComesFrom() throws Exception {
+    User other = new User("sub1", "issuer1", "colleague@example.com", "Colleague");
+    when(userService.searchInOrganization(actingUserOrganizationId, "Coll"))
+        .thenReturn(List.of(other));
+    when(userService.providerNamesOf(List.of(other)))
+        .thenReturn(java.util.Map.of(other.getId(), "Partnerverzeichnis"));
+
+    mockMvc
+        .perform(get("/api/v1/users").param("query", "Coll").with(asRegularUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].providerName").value("Partnerverzeichnis"));
+  }
+
   @Test
   void listUsersResponseCarriesNoSystemRoleField() throws Exception {
     User other = new User("sub1", "issuer1", "colleague@example.com", "Colleague");

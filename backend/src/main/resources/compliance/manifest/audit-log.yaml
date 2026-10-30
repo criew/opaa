@@ -26,7 +26,9 @@ defaults:
     evaluations: >-
       Abfragen nach Objekt, Zeitraum, Ereignisart oder Vorgang mit Zeitraum bis 92 Tage und
       höchstens 50 Seiten; kein Filter, keine Zählung und keine Zeitreihe je Person, keine
-      Freitextsuche. Personenfilter nur in der freigegebenen anlassbezogenen Klärung
+      Freitextsuche. Die Antworten nennen keine Person, auch nicht mit Kennung; zwei Antworten
+      lassen sich über eine Person nicht verbinden. Personenfilter nur in der freigegebenen
+      anlassbezogenen Klärung, deren Antwort ebenfalls keine Kennung einer Person trägt
     recordFields:
       - event_id
       - recorded_at
@@ -120,7 +122,12 @@ data:
     deletion: Monatsweise Löschung ganzer abgelaufener Partitionen durch eine Datenbankfunktion
     evaluations: >-
       Nur nach Objekt, Zeitraum, Ereignisart oder Vorgang; keine Auswertung je Person außer in
-      der anlassbezogenen Klärung im Vier-Augen-Prinzip
+      der anlassbezogenen Klärung im Vier-Augen-Prinzip. Die Revision sieht keine Kennung einer
+      Person (weder Pseudonym noch Ersatz), nur dass eine Person gehandelt hat oder betroffen ist;
+      auch innerhalb einer Seite ist nicht erkennbar, welche Einträge dieselbe Person betreffen.
+      Objekte einer einzelnen Person (persönlicher Bereich, private Bibliothek, Zugangstoken) bleiben
+      über ihre Kennung wiedererkennbar; die Abfrage nach Objekt zeigt, was an diesem Objekt geschah.
+      Wer in der Datenbank selbst liest, sieht die dauerhaften Pseudonyme
     notes:
       - Beschäftigtendaten; Mitbestimmung bei Verhaltens- und Leistungskontrolle prüfen
   - id: audit-pseudonyms
@@ -208,6 +215,13 @@ data:
       abgeschlossenen Monats erschließen
     notes:
       - >-
+        Der Zeitraum einer Klärung endet spätestens beim Antrag und umfasst höchstens
+        opaa.audit.incident-scope.max-days Tage, geprüft bei Antrag und Freigabe; aneinandergereihte
+        Klärungen zur selben Person haben in Summe keine Obergrenze, jede braucht eigene Freigabe.
+        Antrag und Freigabe stehen als eigene Einträge im
+        Revisionsprotokoll (INCIDENT_SCOPE_REQUESTED, INCIDENT_SCOPE_APPROVED), damit die
+        Prüfsummenkette sichert, wer eine personenbezogene Auswertung beantragt und freigegeben hat
+      - >-
         Nach Löschung eines Kontos führt die Klärung keinen Personenfilter mehr aus; das Pseudonym
         im Nachweis wird nicht als Filter verwendet
       - >-
@@ -228,6 +242,13 @@ nonPersonalTables:
     [month, position, last_recorded_at, last_event_id, head_hash, algorithm, created_at]
   audit_chain_seals: [month, entry_count, head_hash, algorithm, sealed_at, seal_event_id]
 settings:
+  - key: opaa.audit.incident-scope.max-days
+    source: PROPERTY
+    defaultValue: "92"
+    effect: >-
+      Längster Zeitraum, den eine anlassbezogene Klärung nennen darf, in Tagen; der Zeitraum endet
+      immer in der Vergangenheit, eine Klärung beobachtet keine Person fortlaufend
+    bearings: [EVALUATION]
   - key: opaa.siem-export.enabled
     source: PROPERTY
     defaultValue: "false"
@@ -478,6 +499,22 @@ auditEvents:
   - id: AUDITOR_ROLE_REVOKED
     trigger: Die Rolle AUDITOR wird entzogen
     payloadKeys: [provider, role]
+  - id: AUDITOR_ROLE_REQUESTED
+    trigger: >-
+      Die Systemverwaltung oder der Rollen-Claim eines Identitätsanbieters beantragt die Rolle
+      AUDITOR für ein Konto; wirksam wird sie erst mit der Bestätigung durch eine Person der
+      Revision (dann AUDITOR_ROLE_GRANTED unter dieser Person)
+    details: >-
+      Handelnd ist die Systemverwaltung oder der Systemakteur identity-provider (dann mit dem
+      Anbieter unter provider); Objekt und betroffene Person das Konto
+    payloadKeys: [provider, role]
+  - id: AUDITOR_ROLE_REQUEST_DECLINED
+    trigger: >-
+      Ein offener Antrag auf die Rolle AUDITOR endet ohne die Rolle: Die Revision lehnt ab, die
+      Systemverwaltung zieht ihn mit einer anderen Rolle zurück, oder der Rollen-Claim nennt die
+      Rolle nicht mehr
+    details: Die handelnde Person oder der Systemakteur zeigt, wer den Antrag beendet hat
+    payloadKeys: [provider, role]
   - id: SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED
     trigger: >-
       Der Entzug von SYSTEM_ADMIN für die letzte Systemverwaltung durch den Identitätsanbieter wird
@@ -637,9 +674,9 @@ auditEvents:
     details: >-
       Modell, Adresse ohne Zugangsdaten, Dimension, Eingabegrenze und Generation vorher und
       nachher; der Zugangsschlüssel nur als „gesetzt ja/nein“ und als „gesetzt“, „geändert“ oder
-      „entfernt“ (apiKeyChange), nie mit dem Wert; die Zahl der Abschnitte wie auf der Seite
-      und ob ein laufendes Nachfüllen endete; beim ersten Modell ohne Vorher-Stand und mit
-      initial
+      „entfernt“ (apiKeyChange), nie mit dem Wert, beim bisherigen Modell „verworfen“, wenn kein
+      Schlüssel ihn entschlüsselt; die Zahl der Abschnitte wie auf der Seite und ob ein laufendes
+      Nachfüllen endete; beim ersten Modell ohne Vorher-Stand und mit initial
     payloadKeys:
       [apiKeyChange, apiKeySet, baseUrl, dimensions, generation, initial, maxInputTokens, model,
        privateLibrariesCounted, refillEnded, totalChunks]
@@ -648,11 +685,12 @@ auditEvents:
       Die Systemverwaltung verwirft einen bestätigten Wechsel des Embedding-Modells vor dem
       Umschalten
     details: >-
-      Verworfenes und wiederhergestelltes Modell mit Generation, Status des beendeten Laufs und
-      die Zahl der nachzufüllenden Abschnitte
+      Verworfenes und wiederhergestelltes Modell mit Generation, beim wiederhergestellten Modell
+      der Zugangsschlüssel als „verworfen“ (apiKeyChange), wenn kein Schlüssel ihn entschlüsselt,
+      nie mit dem Wert; Status des beendeten Laufs und die Zahl der nachzufüllenden Abschnitte
     payloadKeys:
-      [apiKeySet, baseUrl, dimensions, generation, maxInputTokens, model, privateLibrariesCounted,
-       refillChunks, runStatus]
+      [apiKeyChange, apiKeySet, baseUrl, dimensions, generation, maxInputTokens, model,
+       privateLibrariesCounted, refillChunks, runStatus]
   - id: EMBEDDING_MODEL_ENDPOINT_CHANGED
     trigger: >-
       Die Systemverwaltung ändert Adresse, Zugangsschlüssel oder Eingabegrenze des
@@ -848,6 +886,18 @@ auditEvents:
     trigger: Das Verbindungsprotokoll wird gelesen, auch abgewiesen
     details: Zeitraum und Filter
     payloadKeys: [accessPath, eventType, from, profileId, to]
+  - id: INCIDENT_SCOPE_REQUESTED
+    trigger: Eine Person der Revision beantragt eine anlassbezogene Klärung
+    details: >-
+      Objekt ist der Antrag (Kennung); Zweck und Zeitraum. Die betroffene Person steht nur im
+      Antrag selbst, nicht im Eintrag; Begründung ebenso
+    payloadKeys: [purpose, scopeEnd, scopeStart]
+  - id: INCIDENT_SCOPE_APPROVED
+    trigger: Eine zweite Person der Revision gibt eine anlassbezogene Klärung frei
+    details: >-
+      Objekt ist der Antrag (Kennung); Zweck, Zeitraum und Ende der Nutzbarkeit. Die betroffene
+      Person steht nur im Antrag selbst, nicht im Eintrag
+    payloadKeys: [purpose, scopeEnd, scopeStart, usableUntil]
   - id: CONNECTION_LOG_RETENTION_CHANGED
     trigger: Die Aufbewahrungsfrist des Verbindungsprotokolls ändert sich
     payloadKeys: [retentionMonths]
@@ -993,6 +1043,10 @@ auditEvents:
       - defaultExpiryDays
       - inactiveDays
       - invitationTokenTtlHours
+      - lockoutDurationMinutes
+      - lockoutDurationMinutesOverridden
+      - lockoutMaxAttempts
+      - lockoutMaxAttemptsOverridden
       - passwordMinLength
       - passwordResetEnabled
       - resetTokenTtlMinutes
@@ -1192,6 +1246,7 @@ auditEvents:
       Die Systemverwaltung importiert eine Einstellungsdatei, und der Import ändert etwas; ein Import
       ohne Änderung erzeugt keinen Eintrag
     details: >-
-      Version des Dateiformats und die geänderten Abschnitte; jede einzelne Änderung steht als ihr
-      eigenes Ereignis mit Vorher/Nachher daneben, unter derselben Vorgangskennung
-    payloadKeys: [formatVersion, sections]
+      Version des Dateiformats, die geänderten Abschnitte und die Namen der geänderten
+      sicherheitsrelevanten Schlüssel ohne ihre Werte; jede einzelne Änderung steht als ihr eigenes
+      Ereignis mit Vorher/Nachher daneben, unter derselben Vorgangskennung
+    payloadKeys: [formatVersion, sections, securityRelevantKeys]

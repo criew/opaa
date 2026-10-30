@@ -6,8 +6,10 @@ import io.opaa.compliance.DataFlow;
 import io.opaa.directory.sync.keycloak.KeycloakDirectoryConnector;
 import io.opaa.directory.sync.keycloak.KeycloakDirectoryProperties;
 import io.opaa.security.CredentialsEncryptor;
+import io.opaa.security.EncryptedColumns;
 import java.net.http.HttpClient;
 import java.time.Clock;
+import java.util.List;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -54,5 +56,11 @@ public class DirectoryConnectorConfiguration {
   DirectoryConnectorSecretConverter directoryConnectorSecretConverter(
       CredentialsEncryptor credentialsEncryptor) {
     return new DirectoryConnectorSecretConverter(credentialsEncryptor);
+  }
+
+  /** The client secret of a directory connector, for the re-encryption (ADR-0064). */
+  @Bean
+  EncryptedColumns directoryConnectorEncryptedColumns() {
+    return () -> List.of(DirectoryConnector.CLIENT_SECRET);
   }
 }

@@ -2,6 +2,7 @@ package io.opaa.indexing.chunk;
 
 import io.opaa.knowledge.VectorTable;
 import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore.PgDistanceType;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore.PgIndexType;
@@ -214,6 +215,20 @@ public class VectorIndexSchema {
    */
   public void lockSchemaChanges() {
     jdbcTemplate.query("SELECT pg_advisory_xact_lock(?, 0)", rs -> null, SCHEMA_LOCK_NAMESPACE);
+  }
+
+  /**
+   * Runs {@code read} in a transaction holding {@link #SCHEMA_LOCK_NAMESPACE} shared, so no
+   * instance changes the embedding columns between the statements of {@code read}; it joins the
+   * caller's transaction when there is one.
+   */
+  public <T> T whileUnchanged(Supplier<T> read) {
+    return transactionTemplate.execute(
+        status -> {
+          jdbcTemplate.query(
+              "SELECT pg_advisory_xact_lock_shared(?, 0)", rs -> null, SCHEMA_LOCK_NAMESPACE);
+          return read.get();
+        });
   }
 
   /**

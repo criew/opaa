@@ -15,6 +15,8 @@ import { defineConfig, devices } from "@playwright/test";
  * Individual specs may still opt into parallel `test()` calls internally if
  * they are self-contained.
  */
+const isFirefox = process.env.E2E_BROWSER === "firefox";
+
 export default defineConfig({
   testDir: "./tests",
   // Needs a stack in installation mode: the target "installation" runs it with its own config.
@@ -36,12 +38,29 @@ export default defineConfig({
   workers: 1,
   // The JSON report is what the CI alarm issue reads to list the failed scenarios by name; the
   // github reporter puts every failure, with the step it hung in, on the check run as an annotation.
+  // The Firefox smoke run writes beside the Chromium run of the same CI job instead of over it.
+  outputDir: isFirefox ? "test-results-firefox" : "test-results",
   reporter: process.env.CI
     ? [
         ["list"],
         ["github"],
-        ["html", { open: "never" }],
-        ["json", { outputFile: "test-results/results.json" }],
+        [
+          "html",
+          {
+            open: "never",
+            outputFolder: isFirefox
+              ? "playwright-report-firefox"
+              : "playwright-report",
+          },
+        ],
+        [
+          "json",
+          {
+            outputFile: isFirefox
+              ? "test-results-firefox/results.json"
+              : "test-results/results.json",
+          },
+        ],
       ]
     : [["list"]],
   use: {
@@ -49,10 +68,20 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
-  projects: [
-    {
-      name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
-    },
-  ],
+  // E2E_BROWSER=firefox swaps the full Chromium suite for the cross-engine smoke run: only the
+  // scenarios tagged @browser-smoke, in Playwright's Firefox (Gecko).
+  projects: isFirefox
+    ? [
+        {
+          name: "firefox",
+          use: { ...devices["Desktop Firefox"] },
+          grep: /@browser-smoke/,
+        },
+      ]
+    : [
+        {
+          name: "chromium",
+          use: { ...devices["Desktop Chrome"] },
+        },
+      ],
 });

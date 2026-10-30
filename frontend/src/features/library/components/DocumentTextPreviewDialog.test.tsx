@@ -6,11 +6,23 @@ import DocumentTextPreviewDialog from './DocumentTextPreviewDialog'
 import type { TextPreviewResult } from '../utils/documentContent'
 
 function markdownDoc(content: string, fileName = '001_personalausweis.md'): TextPreviewResult {
-  return { kind: 'text-preview', fileName, contentType: 'text/markdown', content }
+  return {
+    kind: 'text-preview',
+    fileName,
+    contentType: 'text/markdown',
+    content,
+    blob: new Blob([content]),
+  }
 }
 
 function plainTextDoc(content: string, fileName = 'notiz.txt'): TextPreviewResult {
-  return { kind: 'text-preview', fileName, contentType: 'text/plain', content }
+  return {
+    kind: 'text-preview',
+    fileName,
+    contentType: 'text/plain',
+    content,
+    blob: new Blob([content]),
+  }
 }
 
 describe('DocumentTextPreviewDialog', () => {
@@ -179,6 +191,28 @@ describe('DocumentTextPreviewDialog', () => {
         'Die Fundstelle wurde im Dokument nicht gefunden.',
       )
       expect(highlights.size).toBe(0)
+    })
+
+    // regression guard: a citation indexed before anchors existed opened silently unmarked
+    it('says so when the citation has no stored anchor', () => {
+      const doc = { ...markdownDoc('# Titel\n\nEin Absatz.'), anchor: null }
+      renderWithProviders(<DocumentTextPreviewDialog previewDocument={doc} onClose={vi.fn()} />)
+
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Für diesen Beleg ist keine Fundstelle gespeichert',
+      )
+      expect(highlights.size).toBe(0)
+    })
+
+    it('stays silent when the document was opened without a citation', () => {
+      renderWithProviders(
+        <DocumentTextPreviewDialog
+          previewDocument={markdownDoc('Ein Absatz.')}
+          onClose={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByRole('status')).toBeEmptyDOMElement()
     })
 
     it('finds the passage in rendered Markdown lists, tables and links', async () => {

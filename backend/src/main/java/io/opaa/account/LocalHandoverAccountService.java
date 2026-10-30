@@ -10,6 +10,7 @@ import io.opaa.api.types.ProviderType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.AuditorRoles;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.LocalAccountAccess;
 import io.opaa.auth.LocalAdminAvailabilityGuard;
@@ -82,6 +83,7 @@ public class LocalHandoverAccountService {
   private final LocalRefreshTokenRepository refreshTokens;
   private final LocalRevokedTokenRepository revokedTokens;
   private final LocalAdminAvailabilityGuard adminGuard;
+  private final AuditorRoles auditorRoles;
   private final OidcProviderRepository providers;
   private final LocalAccountSpaceDirectory spaces;
   private final LocalAccountGroupDirectory groups;
@@ -98,6 +100,7 @@ public class LocalHandoverAccountService {
       LocalRefreshTokenRepository refreshTokens,
       LocalRevokedTokenRepository revokedTokens,
       LocalAdminAvailabilityGuard adminGuard,
+      AuditorRoles auditorRoles,
       OidcProviderRepository providers,
       LocalAccountSpaceDirectory spaces,
       LocalAccountGroupDirectory groups,
@@ -112,6 +115,7 @@ public class LocalHandoverAccountService {
     this.refreshTokens = refreshTokens;
     this.revokedTokens = revokedTokens;
     this.adminGuard = adminGuard;
+    this.auditorRoles = auditorRoles;
     this.providers = providers;
     this.spaces = spaces;
     this.groups = groups;
@@ -160,6 +164,7 @@ public class LocalHandoverAccountService {
     if (current.user().getSystemRole() != SystemRole.USER) {
       recentLogin.requireRecentLogin();
     }
+    auditorRoles.requireCredentialsWithPerson(current.user(), "Die Anmeldung");
     OidcProvider provider = requireEligibleProvider(providerId);
     if (current.user().getSystemRole() == SystemRole.SYSTEM_ADMIN) {
       adminGuard.requireAnotherLoginCapableAdmin(actor.organizationId(), userId);

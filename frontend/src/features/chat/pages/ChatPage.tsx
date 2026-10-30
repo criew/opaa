@@ -7,7 +7,7 @@ import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import { useNavigate, useParams, useSearchParams } from 'react-router'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import MessageList from '../components/MessageList'
 import ChatInput from '../components/ChatInput'
 import SearchAvailabilityNotice from '../components/SearchAvailabilityNotice'
@@ -28,6 +28,7 @@ export default function ChatPage() {
   const navigate = useNavigate()
   // `?message=` opens the chat at a chat search hit; it survives a reload like the chat id itself.
   const [searchParams] = useSearchParams()
+  const { key: locationKey } = useLocation()
 
   const messages = useChatStore((s) => s.messages)
   const isLoading = useChatStore((s) => s.isLoading)
@@ -367,6 +368,8 @@ export default function ChatPage() {
         answerPending={isLoading}
         returnedQuestion={returnedQuestionForView}
         onReturnedQuestionHandled={clearReturnedQuestion}
+        // Every arrival at a new chat - also the plus clicked again on one - lands in the input.
+        focusRequest={isNewChat ? locationKey : null}
       />
     </Box>
   )

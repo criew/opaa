@@ -314,10 +314,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SpaceAssetAssociationListResponse"
-        "403":
-          $ref: "#/components/responses/Forbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/SpaceNotFound"
 
     post:
       operationId: associateSpaceAsset
@@ -351,9 +349,9 @@ paths:
         "400":
           $ref: "#/components/responses/ValidationError"
         "403":
-          $ref: "#/components/responses/Forbidden"
+          $ref: "#/components/responses/SpaceForbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/SpaceNotFound"
         "409":
           $ref: "#/components/responses/Conflict"
 
@@ -386,9 +384,9 @@ paths:
         "204":
           description: Association removed (or did not exist)
         "403":
-          $ref: "#/components/responses/Forbidden"
+          $ref: "#/components/responses/SpaceForbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          $ref: "#/components/responses/SpaceNotFound"
 
   /api/v1/catalog:
     get:

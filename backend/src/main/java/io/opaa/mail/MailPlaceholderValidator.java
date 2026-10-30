@@ -21,9 +21,12 @@ import java.util.regex.Pattern;
  */
 public final class MailPlaceholderValidator {
 
-  /** A triple-stache (captured separately), or an ordinary double-stache. */
+  /**
+   * A triple-stache (captured separately), or an ordinary double-stache. The inner text keeps its
+   * surrounding whitespace, which callers trim; one possessive run keeps the match linear.
+   */
   private static final Pattern TAG =
-      Pattern.compile("(\\{\\{\\{\\s*[^{}]*?\\s*\\}\\}\\})|\\{\\{\\s*([^{}]*?)\\s*\\}\\}");
+      Pattern.compile("(\\{\\{\\{[^{}]*+\\}\\}\\})|\\{\\{([^{}]*+)\\}\\}");
 
   /** Tag prefixes that are neither a plain variable nor a comment. */
   private static final String UNSUPPORTED_PREFIXES = ">#/^&=";

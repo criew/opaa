@@ -32,7 +32,9 @@ import org.springframework.test.web.servlet.MvcResult;
  * the shared local-auth context, which has no public base URL on purpose: the switch runs through
  * the provider row and ends the sessions of regular accounts (quoted in the response), the policy
  * values are bounded and audited by their changed keys, and the two link flows cannot be switched
- * on without {@code OPAA_PUBLIC_BASE_URL}.
+ * on without {@code OPAA_PUBLIC_BASE_URL}. The lockout after failed sign-ins stays within the
+ * limits of the operation (ADR-0060, Entscheidung 17; defaults of this context: at most five
+ * attempts, at least fifteen minutes) and returns to its factory default when sent without a value.
  */
 @OpaaLocalAuthMockMvcTest
 class LocalAuthSettingsIntegrationTest {
@@ -144,6 +146,134 @@ class LocalAuthSettingsIntegrationTest {
         .andExpect(jsonPath("$.fieldErrors[0].field").value("selfRegistrationAllowedDomains"));
     assertThat(settings.findSingleton().orElseThrow().values())
         .isEqualTo(LocalAuthSettings.Values.defaults());
+  }
+
+  @Test
+  void theLockoutRuleCarriesItsValueInForceItsFactoryDefaultAndTheLimits() throws Exception {
+    mockMvc
+        .perform(get(SETTINGS).header(HttpHeaders.AUTHORIZATION, adminBearer))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.lockoutMaxAttempts").value(5))
+        .andExpect(jsonPath("$.storedLockoutMaxAttempts").doesNotExist())
+        .andExpect(jsonPath("$.defaultLockoutMaxAttempts").value(5))
+        .andExpect(jsonPath("$.lockoutMaxAttemptsLimit").value(5))
+        .andExpect(jsonPath("$.lockoutDurationMinutes").value(15))
+        .andExpect(jsonPath("$.storedLockoutDurationMinutes").doesNotExist())
+        .andExpect(jsonPath("$.defaultLockoutDurationMinutes").value(15))
+        .andExpect(jsonPath("$.minLockoutDurationMinutes").value(15))
+        .andExpect(jsonPath("$.maxLockoutDurationMinutes").value(1440));
+  }
+
+  @Test
+  void anOwnLockoutRuleIsStoredAuditedAndReturnsToTheFactoryDefault() throws Exception {
+    mockMvc
+        .perform(
+            put(SETTINGS)
+                .header(HttpHeaders.AUTHORIZATION, adminBearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(withLockout(defaultBody(), 3, 30)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.lockoutMaxAttempts").value(3))
+        .andExpect(jsonPath("$.storedLockoutMaxAttempts").value(3))
+        .andExpect(jsonPath("$.lockoutDurationMinutes").value(30))
+        .andExpect(jsonPath("$.storedLockoutDurationMinutes").value(30));
+    LocalAuthSettings.Values stored = settings.findSingleton().orElseThrow().values();
+    assertThat(stored.lockoutMaxAttempts()).isEqualTo(3);
+    assertThat(stored.lockoutDurationMinutes()).isEqualTo(30);
+    List<Map<String, Object>> events = settingsEvents();
+    assertThat(events).hasSize(1);
+    assertThat((String) events.getFirst().get("before"))
+        .contains("\"lockoutMaxAttempts\":5")
+        .contains("\"lockoutDurationMinutes\":15")
+        .contains("\"lockoutMaxAttemptsOverridden\":false");
+    assertThat((String) events.getFirst().get("after"))
+        .contains("\"lockoutMaxAttempts\":3")
+        .contains("\"lockoutDurationMinutes\":30")
+        .contains("\"lockoutDurationMinutesOverridden\":true")
+        .doesNotContain("passwordMinLength");
+
+    // the same rule again changes nothing
+    mockMvc
+        .perform(
+            put(SETTINGS)
+                .header(HttpHeaders.AUTHORIZATION, adminBearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(withLockout(defaultBody(), 3, 30)))
+        .andExpect(status().isOk());
+    assertThat(settingsEvents()).hasSize(1);
+
+    // without a value: back to the factory default
+    mockMvc
+        .perform(
+            put(SETTINGS)
+                .header(HttpHeaders.AUTHORIZATION, adminBearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(defaultBody()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.lockoutMaxAttempts").value(5))
+        .andExpect(jsonPath("$.storedLockoutMaxAttempts").doesNotExist());
+    assertThat(settings.findSingleton().orElseThrow().values().lockoutMaxAttempts()).isNull();
+    assertThat(settingsEvents()).hasSize(2);
+  }
+
+  @Test
+  void theLockoutRuleCannotLeaveTheLimitsOfTheOperation() throws Exception {
+    mockMvc
+        .perform(
+            put(SETTINGS)
+                .header(HttpHeaders.AUTHORIZATION, adminBearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(withLockout(defaultBody(), 6, 14)))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath(
+                "$.fieldErrors[*].field",
+                Matchers.containsInAnyOrder("lockoutMaxAttempts", "lockoutDurationMinutes")));
+    mockMvc
+        .perform(
+            put(SETTINGS)
+                .header(HttpHeaders.AUTHORIZATION, adminBearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(withLockout(defaultBody(), 0, 1441)))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath(
+                "$.fieldErrors[*].field",
+                Matchers.containsInAnyOrder("lockoutMaxAttempts", "lockoutDurationMinutes")));
+    assertThat(settings.findSingleton().orElseThrow().values())
+        .isEqualTo(LocalAuthSettings.Values.defaults());
+    assertThat(settingsEvents()).isEmpty();
+  }
+
+  /**
+   * A narrowed limit bounds a value stored before; sent back unchanged, it does not block a save.
+   */
+  @Test
+  void aValueStoredBeyondANarrowedLimitReadsAsTheLimitAndMayBeSentBack() throws Exception {
+    jdbc.update("UPDATE local_auth_settings SET lockout_max_attempts = 12");
+    mockMvc
+        .perform(get(SETTINGS).header(HttpHeaders.AUTHORIZATION, adminBearer))
+        .andExpect(jsonPath("$.lockoutMaxAttempts").value(5))
+        .andExpect(jsonPath("$.storedLockoutMaxAttempts").value(12));
+
+    mockMvc
+        .perform(
+            put(SETTINGS)
+                .header(HttpHeaders.AUTHORIZATION, adminBearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    withLockout(body(true, false, List.of(), true, 14, 72, 30, 90, 90), 12, null)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.passwordMinLength").value(14))
+        .andExpect(jsonPath("$.storedLockoutMaxAttempts").value(12));
+    mockMvc
+        .perform(
+            put(SETTINGS)
+                .header(HttpHeaders.AUTHORIZATION, adminBearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(withLockout(defaultBody(), 6, null)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.fieldErrors[0].field").value("lockoutMaxAttempts"));
   }
 
   @Test
@@ -279,6 +409,19 @@ class LocalAuthSettingsIntegrationTest {
     LocalAuthSettings row = settings.findSingleton().orElseThrow();
     row.replace(LocalAuthSettings.Values.defaults(), null, java.time.Instant.now());
     settings.save(row);
+  }
+
+  private static String defaultBody() {
+    return body(true, false, List.of(), true, 12, 72, 30, 90, 90);
+  }
+
+  private static String withLockout(String body, Integer attempts, Integer minutes) {
+    return body.substring(0, body.length() - 1)
+        + ",\"lockoutMaxAttempts\":"
+        + attempts
+        + ",\"lockoutDurationMinutes\":"
+        + minutes
+        + "}";
   }
 
   private static String body(

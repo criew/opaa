@@ -48,13 +48,21 @@ Drei Regeln halten einen Space handlungsfähig:
   Verwaltungshandlung.** Entfernen oder Herabstufen wird abgelehnt und nennt den Grund. **Eine
   Gruppe zählt dabei als Administrator, solange sie handlungsfähig ist.**
 - **Den Eigentümerwechsel darf jedes handlungsfähige Administrator-Mitglied vollziehen**, das eine
-  natürliche Person ist — an sich selbst oder an ein anderes solches Mitglied.
-- **Ein archivierter Space nimmt keine neuen Mitglieder auf.**
+  natürliche Person ist — an sich selbst oder an ein anderes solches Mitglied. Das neue
+  Mitglied braucht ein aktives Konto; ein gesperrtes oder noch nicht bestätigtes übernimmt die
+  Verantwortung nicht.
+- **Ein archivierter Space nimmt keine neuen Mitglieder auf** und wechselt den Eigentümer nicht
+  mehr.
 
 **Der persönliche Standard-Space** entsteht bei der ersten Anmeldung automatisch. Er ist immer
 privat: Außer der Person selbst wird niemand Mitglied, auch keine Gruppe. Wer mit anderen arbeiten
 will, legt einen Space an. Der Standard-Space lässt sich nicht übertragen, archivieren oder löschen;
-er braucht keine Nachfolge und wird mit dem Konto gelöscht.
+er braucht keine Nachfolge und wird mit dem Konto gelöscht. Auch die Systemverwaltung ordnet ihm
+nichts zu und liest seine Anweisung an das Modell nicht; eine bestehende Zuordnung lösen kann sie.
+
+**Wer nicht Mitglied ist, erfährt nichts über den Space.** Seine Einstellungen, Mitglieder,
+Inhalte, Chats, Chatsuche und Prompts antworten einer solchen Person wie bei einem Space, den es
+nicht gibt. Ein Mitglied, dessen Rolle für eine Handlung nicht reicht, erfährt dagegen den Grund.
 
 ## 3. Arbeitsmittel zuordnen
 
@@ -277,8 +285,9 @@ verwendet" mit den 15 zuletzt genutzten. „15 weitere" blendet die nächsten ei
 wieder auf die ersten 15 zurück. Beide Gruppen lassen sich zuklappen; die Zahl hinter dem Namen
 nennt die ganze Gruppe, bei „Zuletzt verwendet" auch die noch nicht eingeblendeten Chats. Welche
 Gruppen zugeklappt sind, merkt sich der Browser, wie die Breite der Seitenleiste. Im Kopf „Chats"
-beginnt das Plus „Neuer Chat" einen Chat, in einem archivierten Space ist es gesperrt. Ein
-Filterfeld gibt es nicht; die Lupe daneben öffnet die Chatsuche ([Suche](suche.md), Abschnitt 7.2),
+beginnt das Plus „Neuer Chat" einen Chat, in einem archivierten Space ist es gesperrt. Ein neuer
+Chat öffnet auf jedem Weg mit dem Cursor im Eingabefeld, die erste Frage lässt sich sofort
+tippen. Ein Filterfeld gibt es nicht; die Lupe daneben öffnet die Chatsuche ([Suche](suche.md), Abschnitt 7.2),
 die auch archivierte Chats findet. Jeder Eintrag hat ein
 Menü mit Umbenennen, Anheften, Archivieren, den beiden Exporten als Markdown und PDF
 ([Suche](suche.md#7-belege-prüfen-und-fundstellen-bilden), Abschnitt „Belege prüfen und Fundstellen bilden", Absatz „Exportieren") und Löschen; der Titel des offenen Chats lässt sich

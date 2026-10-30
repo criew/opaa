@@ -9,7 +9,6 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.chat.ChatSearchMatch.Highlight;
-import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.organization.Organization;
@@ -214,10 +213,10 @@ class ChatSearchIntegrationTest {
     UUID unknownSpace = UUID.randomUUID();
 
     assertThatThrownBy(() -> chatService.listChats(spaceId, outsider))
-        .isInstanceOf(AccessDeniedException.class);
+        .isInstanceOf(NotFoundException.class);
     assertThatThrownBy(() -> chatService.searchChats(spaceId, outsider, "Widerspruch", 0, 20))
-        .isInstanceOf(AccessDeniedException.class)
-        .hasMessage("Sie sind kein Mitglied dieses Space");
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage("Space nicht gefunden");
     assertThatThrownBy(() -> chatService.listChats(unknownSpace, author))
         .isInstanceOf(NotFoundException.class);
     assertThatThrownBy(() -> chatService.searchChats(unknownSpace, author, "Widerspruch", 0, 20))

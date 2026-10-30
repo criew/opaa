@@ -214,6 +214,7 @@ describe('documentContent', () => {
         fileName: '001_personalausweis.md',
         contentType: 'text/markdown',
         content: '# Titel\n\nInhalt',
+        blob: expect.any(Blob),
       })
     })
 
@@ -232,6 +233,7 @@ describe('documentContent', () => {
         fileName: 'notiz.txt',
         contentType: 'text/plain',
         content: 'Reiner Text ohne Markup.',
+        blob: expect.any(Blob),
       })
     })
 

@@ -55,6 +55,13 @@ public interface AssetOwnershipDirectory {
   Map<AssetType, List<UUID>> assetIdsOwnedBy(PermissionSubject owner);
 
   /**
+   * Refuses a {@code newOwner} who could not answer for what {@code source} owns here - checked
+   * when the transfer is resolved, so the preview names the reason before anything moves. Anybody
+   * may take over by default.
+   */
+  default void requireAcceptableNewOwner(PermissionSubject source, PermissionSubject newOwner) {}
+
+  /**
    * Hands one asset to {@code newOwner}, writing the ownership interval with the boundary and the
    * transfer id the whole operation shares. Called only for ids this directory itself returned from
    * {@link #assetIdsOwnedBy}, inside the transfer's transaction.

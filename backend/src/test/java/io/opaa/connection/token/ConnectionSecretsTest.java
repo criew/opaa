@@ -2,7 +2,9 @@ package io.opaa.connection.token;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -15,6 +17,7 @@ import io.opaa.indexing.spi.SecretKind;
 import io.opaa.indexing.spi.SourceBlock;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import io.opaa.test.SourceTypes;
 import java.util.HashMap;
 import java.util.List;
@@ -114,6 +117,7 @@ class ConnectionSecretsTest {
         ConnectionToken.ofAccount(
             UUID.randomUUID(),
             UUID.randomUUID(),
+            UUID.randomUUID(),
             "enc:v1:geheim",
             null,
             "https://quelle.example.org",
@@ -193,6 +197,39 @@ class ConnectionSecretsTest {
 
     assertThat(store.ownSecretOf(library.getId())).isEmpty();
     verify(libraries).restoreStoredSourceCredentials(library.getId(), "plain-not-encrypted");
+  }
+
+  /**
+   * A secret bound to its row that no key reads is refused rather than moved: at the other row it
+   * could never be read again, not even with its key restored.
+   */
+  @Test
+  void anUnreadableBoundSecretDoesNotMoveInEitherDirection() {
+    TestSecrets.Store store = new TestSecrets.Store();
+    ConnectionSecrets withStore = TestSecrets.overLibraries(onProfile, libraries, store);
+    UUID profileId = UUID.randomUUID();
+    KnowledgeLibrary inColumn = library(TestSecrets.UNREADABLE_KEYED);
+    KnowledgeLibrary inStore = library(null);
+    store.holdUnreadableKeyed(profileId, inStore.getId(), "https://quelle.example.org:443");
+
+    assertThatThrownBy(
+            () ->
+                withStore.carryOver(
+                    inColumn.getId(),
+                    new SecretOwner.LibraryOnProfile(profileId, inColumn.getId()),
+                    "ziel"))
+        .isInstanceOf(CredentialsEncryptionKeyMissingException.class)
+        .hasMessage(ConnectionSecrets.UNREADABLE_MOVE);
+    assertThatThrownBy(
+            () ->
+                withStore.carryOver(
+                    inStore.getId(), new SecretOwner.LibraryOwned(inStore.getId()), null))
+        .isInstanceOf(CredentialsEncryptionKeyMissingException.class)
+        .hasMessage(ConnectionSecrets.UNREADABLE_MOVE);
+
+    assertThat(store.rawOwnSecretOf(inColumn.getId())).isEmpty();
+    assertThat(store.rawOwnSecretOf(inStore.getId())).contains(TestSecrets.UNREADABLE_KEYED);
+    verify(libraries, never()).restoreStoredSourceCredentials(any(), any());
   }
 
   /** A legacy cleartext value moves encrypted; a value left next to a row goes from the column. */

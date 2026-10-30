@@ -170,7 +170,7 @@ class RssFeedIndexingExecutorTest {
             new BoundedDownloader(targetAddressValidator, requestPolicy),
             documentIngestService,
             storageQuotaService,
-            new io.opaa.indexing.attachment.AttachmentProperties(5, 0, 0),
+            new io.opaa.indexing.attachment.AttachmentProperties(5, 0, 0, 0, 0),
             io.opaa.test.ProductionDocumentFormats.supportedFormats()),
         rss,
         targetAddressValidator,

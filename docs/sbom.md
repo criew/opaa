@@ -13,7 +13,22 @@ die BuildKit beim Push erzeugt (`.github/workflows/publish-images.yml`, Job `bui
 `sbom: true` / `provenance: mode=max`). Jede Architektur wird in einem eigenen Job auf einem Runner
 dieser Architektur gebaut; der Job `publish` führt die Images samt ihren Attestierungs-Manifesten
 zu einem Manifest-Index zusammen, auf den die Tags zeigen. Die SBOM deckt auch die OS-Pakete des
-Basis-Images ab.
+Basis-Images ab; die Provenance nennt jedes Basis-Image mit dem Digest, den der Bau gezogen hat
+([releases.md](releases.md#basis-images)).
+
+Die BuildKit-Attestierungen selbst sind nicht signiert. Signiert ist der Manifest-Index: Der Job
+`image-attestation` legt für seinen Digest eine SLSA-Provenance bei GitHub und neben dem Image in
+GHCR ab. Der Index-Digest umfasst die Attestierungs-Manifeste, auf die der Index verweist, und damit
+SBOM und Provenance jeder Plattform. Wer die Signatur des Index geprüft hat und SBOM und
+Provenance danach über denselben Digest liest (`ghcr.io/criew/opaa-backend@sha256:…`), liest
+also genau die signierten:
+
+```bash
+gh attestation verify oci://ghcr.io/criew/opaa-backend:X.Y.Z --repo criew/opaa \
+  --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/vX.Y.Z
+```
+
+Für `main` lautet die Referenz `--source-ref refs/heads/main`.
 
 Abrufen (die Ausgabe ist nach Plattform gegliedert):
 
@@ -55,8 +70,10 @@ scheitert der Release-Lauf, bevor ein Tag gesetzt ist.
 
 ```bash
 gh release download vX.Y.Z --repo criew/opaa --pattern 'opaa-*.cdx.json'
-gh attestation verify opaa-backend-X.Y.Z.cdx.json --repo criew/opaa
-gh attestation verify opaa-frontend-X.Y.Z.cdx.json --repo criew/opaa
+gh attestation verify opaa-backend-X.Y.Z.cdx.json --repo criew/opaa \
+  --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/vX.Y.Z
+gh attestation verify opaa-frontend-X.Y.Z.cdx.json --repo criew/opaa \
+  --signer-workflow criew/opaa/.github/workflows/publish-images.yml --source-ref refs/tags/vX.Y.Z
 ```
 
 Beide SBOMs sind auf das beschränkt, was tatsächlich ausgeliefert wird — keine Test-/Lint-/Build-Toolchain:

@@ -76,4 +76,29 @@ class ChunkLocationResolverTest {
 
     assertThat(resolver.locate(text.indexOf("Text"), text.length())).isNull();
   }
+
+  @Test
+  void aHeadingTitleIsCutSoEveryChunkCarriesABoundedLocation() {
+    // regression guard: an unbounded title was copied into the location of every chunk below it
+    String title = "Ü".repeat(100_000);
+    String text = "# " + title + "\nText.";
+    var resolver = ChunkLocationResolver.forText(text);
+
+    int body = text.indexOf("Text.");
+    String location = resolver.locate(body, body + 5);
+    assertThat(location).startsWith("Abschn. ÜÜÜ").endsWith("…");
+    assertThat(location.length())
+        .isLessThanOrEqualTo(8 + ChunkLocationResolver.MAX_TITLE_CHARACTERS);
+    assertThat(resolver.anchor(body, body + 5).path().getFirst())
+        .hasSize(ChunkLocationResolver.MAX_TITLE_CHARACTERS);
+  }
+
+  @Test
+  void aCutTitleKeepsASurrogatePairWhole() {
+    String title = "a".repeat(ChunkLocationResolver.MAX_TITLE_CHARACTERS - 2) + "😀😀😀";
+    var resolver = ChunkLocationResolver.forText("# " + title + "\nText.");
+
+    String cut = resolver.anchor(title.length() + 3, title.length() + 8).path().getFirst();
+    assertThat(cut).isEqualTo("a".repeat(ChunkLocationResolver.MAX_TITLE_CHARACTERS - 2) + "…");
+  }
 }

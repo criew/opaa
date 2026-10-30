@@ -50,8 +50,12 @@ public class MarkdownDocumentFormat implements DocumentFormat {
 
   private static final Pattern FRONTMATTER_DELIMITER = Pattern.compile("^-{3}[ \\t]*$");
 
+  /**
+   * A {@code key: value} line; the value runs to the line end, its trailing blanks are cut in code
+   * ({@link #withoutTrailingBlanks}), so a match takes linear time in the line.
+   */
   private static final Pattern FRONTMATTER_ENTRY =
-      Pattern.compile("^([A-Za-z0-9_\\-]+)[ \\t]*:[ \\t]*(\\S.*?)[ \\t]*$");
+      Pattern.compile("^([A-Za-z0-9_\\-]+)[ \\t]*+:[ \\t]*+(\\S.*)$");
 
   private final HeadingSectionSplitter splitter;
   private final ParserLimitProperties limits;
@@ -160,7 +164,7 @@ public class MarkdownDocumentFormat implements DocumentFormat {
       }
       Matcher entry = FRONTMATTER_ENTRY.matcher(line);
       if (entry.matches()) {
-        entries.put(entry.group(1), entry.group(2));
+        entries.put(entry.group(1), withoutTrailingBlanks(entry.group(2)));
       }
     }
     return Map.of();
@@ -182,6 +186,14 @@ public class MarkdownDocumentFormat implements DocumentFormat {
       }
     }
     return text;
+  }
+
+  private static String withoutTrailingBlanks(String value) {
+    int end = value.length();
+    while (end > 0 && (value.charAt(end - 1) == ' ' || value.charAt(end - 1) == '\t')) {
+      end--;
+    }
+    return value.substring(0, end);
   }
 
   private static String stripCr(String line) {

@@ -98,5 +98,37 @@ public enum NotificationType {
    * An export of the person's self-disclosure began - sent at the start, so it reaches her also
    * when the export aborts. Sent to that person only, without content and without a link.
    */
-  SELF_DISCLOSURE_STARTED
+  SELF_DISCLOSURE_STARTED,
+
+  /**
+   * The system administration or the roles claim of an identity provider asked for the AUDITOR role
+   * for an account; it takes effect once an auditor confirms. Sent to every auditor of the
+   * organization; its object is the account.
+   */
+  AUDITOR_ROLE_REQUESTED,
+
+  /**
+   * An account received the AUDITOR role - confirmed, or as the first one of the organization. Sent
+   * to every other auditor of the organization; its object is the account.
+   */
+  AUDITOR_ROLE_GRANTED,
+
+  /**
+   * An account left the AUDITOR role - by a role change, a provider's claim or its deletion. Sent
+   * to every remaining auditor of the organization; its object is the account.
+   */
+  AUDITOR_ROLE_REVOKED,
+
+  /**
+   * The system administration changed the SMTP settings or a mail template. Sent to every auditor
+   * of the installation; no object.
+   */
+  MAIL_CONFIGURATION_CHANGED,
+
+  /**
+   * The system administration created an identity provider or changed its trust settings (issuer,
+   * client id, signing keys, claims, role mapping). Sent to every auditor of the installation; its
+   * object is the provider.
+   */
+  IDENTITY_PROVIDER_TRUST_CHANGED
 }

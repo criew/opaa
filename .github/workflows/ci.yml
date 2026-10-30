@@ -153,7 +153,10 @@ jobs:
             # the roadmap there against the list, cve-scan.yml because it checks its scan targets
             # and alarm. accessibility-report.yml, e2e/fixtures/a11y.ts, e2e/scripts/run-e2e.mjs and
             # both seed requirement files belong here because test_accessibility_report.py checks
-            # the release wiring, the record the fixture writes and the hash-pinned seed install.
+            # the release wiring, the record the fixture writes and the hash-pinned seed install. The
+            # Compose templates belong here because test_check_compose_defaults.py edits copies of them.
+            # zap-baseline.yml and .github/zap/** belong here because test_zap_rules.py checks the
+            # suppressions, the ZAP image pin and its wiring.
             scripts:
               - '.github/scripts/**'
               - '.github/requirements-ci.txt'
@@ -175,6 +178,12 @@ jobs:
               # test_opencode_mirror.py checks the mirror workflow and the openCode metadata.
               - '.github/workflows/opencode-mirror.yml'
               - 'publiccode.yml'
+              - '.github/workflows/zap-baseline.yml'
+              - '.github/zap/**'
+              - 'docker-compose*.yml'
+              - '**/docker-compose*.yml'
+              - '.env.docker.example'
+              - '.env.example'
             # Step-level filter of the action pin guard below, not a job output.
             workflows:
               - '.github/workflows/**'
@@ -217,6 +226,17 @@ jobs:
               - 'demo/**/*.py'
               - 'demo/**/*.conf'
               - '**/*.sh'
+            # Step-level filter of the Compose template check below, not a job output.
+            compose:
+              - 'docker-compose*.yml'
+              - '**/docker-compose*.yml'
+              - '.env.docker.example'
+              - '.env.example'
+              - '.github/scripts/check_compose_defaults.sh'
+            # Step-level filter of the Gradle verification guard below, not a job output.
+            gradleVerification:
+              - 'backend/gradle/verification-metadata.xml'
+              - '.github/scripts/check_gradle_verification_metadata.py'
             # Step-level filter of the ratchets below, not a job output.
             ratchets:
               - 'backend/src/main/**'
@@ -320,6 +340,12 @@ jobs:
         if: github.event_name != 'pull_request' || steps.filter.outputs.comments == 'true'
         run: .github/scripts/check_code_comments.sh
 
+      # The Compose templates publish ports on loopback only, switch on no anonymous system
+      # administration and carry no fixed secret outside the script's reasoned exceptions.
+      - name: Sichere Vorgaben der Compose-Vorlagen prüfen
+        if: github.event_name != 'pull_request' || steps.filter.outputs.compose == 'true'
+        run: .github/scripts/check_compose_defaults.sh
+
       # Counted stock that must not grow: Instant.now() in Spring beans, @Value outside *Properties
       # classes (ADR-0051, Entscheidung 6). The limits sit in the scripts and only ever go down.
       - name: Ratschen für Instant.now() und @Value prüfen
@@ -328,22 +354,58 @@ jobs:
           .github/scripts/check_instant_now.sh
           .github/scripts/check_value_annotations.sh
 
+      # Known coordinates keep their checksums in backend/gradle/verification-metadata.xml; only
+      # new versions may add entries (docs/renovate.md, "Gradle-Prüfsummen"). Enforced for Renovate
+      # branches, which merge without review; elsewhere a change is a warning for the reviewer.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request' && steps.filter.outputs.gradleVerification == 'true'
+        with:
+          ref: ${{ github.base_ref }}
+          path: base-ref
+          sparse-checkout: backend/gradle
+          persist-credentials: false
+
+      - name: Bestehende Prüfsummen der Gradle-Verifikation prüfen
+        if: github.event_name == 'pull_request' && steps.filter.outputs.gradleVerification == 'true'
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          base=base-ref/backend/gradle/verification-metadata.xml
+          if [ ! -f "$base" ]; then
+            echo "Basis-Branch hat noch keine Verifikationsdatei, nichts zu vergleichen."
+            exit 0
+          fi
+          enforce=
+          case "$HEAD_REF" in renovate/*) enforce=--enforce ;; esac
+          python3 .github/scripts/check_gradle_verification_metadata.py \
+            "$base" backend/gradle/verification-metadata.xml $enforce
+
   # Fails a pull request whose dependency changes bring a known vulnerability of severity critical
   # in runtime scope (docs/cve-scanning.md, "PR-Gate für Abhängigkeiten"). It compares the
-  # dependency graph of base and head through the GitHub API, so it needs no checkout. Only on
-  # pull_request: a push or merge_group run has no base to compare with.
+  # dependency graph of base and head through the GitHub API and checks out only its script. Only
+  # on pull_request: a push or merge_group run has no base to compare with.
   dependency-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
-      - name: Neue critical-Schwachstellen im Scope runtime ablehnen
-        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fail-on-severity: critical
-          fail-on-scopes: runtime
+          persist-credentials: false
+          sparse-checkout: .github/scripts
 
-      # The gate above filters by severity and scope before it reports; this run only lists every
-      # vulnerable change of both scopes in the job log and never fails.
+      # Waits for the head snapshots that dependency-graph.yml generates and
+      # dependency-graph-submit.yml submits for every PR, then is the gate itself; why it does not
+      # use the action's own retry is in the header of dependency_review_gate.py.
+      - name: Neue critical-Schwachstellen im Scope runtime ablehnen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 .github/scripts/dependency_review_gate.py
+
+      # Lists every vulnerable change of both scopes in the job log and summary, never fails.
       - name: Alle Schwachstellen der Abhängigkeitsänderungen auflisten
         if: success() || failure()
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0

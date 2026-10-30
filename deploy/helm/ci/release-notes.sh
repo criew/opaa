@@ -61,6 +61,26 @@ helm install opaa oci://ghcr.io/${owner}/charts/opaa --version ${version} \\
   -n opaa -f opaa-werte.yaml
 \`\`\`
 
+**Herkunft prüfen**
+
+Images, Chart, Update-Paket und Stücklisten tragen je eine signierte Provenance dieses Release-Laufs; der Chart verweist per Digest auf genau diese Images. Jede Prüfung bindet an Workflow und Tag des Release:
+
+\`\`\`bash
+gh attestation verify oci://ghcr.io/${owner}/opaa-backend:${version} --repo ${repository} \\
+  --signer-workflow ${repository}/.github/workflows/publish-images.yml --source-ref refs/tags/${tag}
+gh attestation verify oci://ghcr.io/${owner}/opaa-frontend:${version} --repo ${repository} \\
+  --signer-workflow ${repository}/.github/workflows/publish-images.yml --source-ref refs/tags/${tag}
+gh attestation verify oci://ghcr.io/${owner}/charts/opaa:${version} --repo ${repository} \\
+  --signer-workflow ${repository}/.github/workflows/publish-images.yml --source-ref refs/tags/${tag}
+gh release download ${tag} --repo ${repository} --pattern 'opaa-update-paket-*' --pattern 'opaa-*.cdx.json'
+gh attestation verify opaa-update-paket-${version}.tar.gz --repo ${repository} \\
+  --signer-workflow ${repository}/.github/workflows/publish-images.yml --source-ref refs/tags/${tag}
+gh attestation verify opaa-backend-${version}.cdx.json --repo ${repository} \\
+  --signer-workflow ${repository}/.github/workflows/publish-images.yml --source-ref refs/tags/${tag}
+gh attestation verify opaa-frontend-${version}.cdx.json --repo ${repository} \\
+  --signer-workflow ${repository}/.github/workflows/publish-images.yml --source-ref refs/tags/${tag}
+\`\`\`
+
 **Vorbereitung für Bestandsinstallationen**
 
 EOF
@@ -70,7 +90,7 @@ Ablauf der Aktualisierung im Handbuch: für Kubernetes [Aktualisierung und Rück
 
 **Update-Paket für Behörden**
 
-Am Release hängt \`opaa-update-paket-${version}.tar.gz\` mit Prüfsummendatei: die Faktenblätter dieser Version, die Änderungen der Fakten seit dem vorigen finalen Release mit Stufenvorschlag, Betriebsfolgen und Antwortqualität für dasselbe Intervall, die Lizenzübersicht, die Stücklisten (SBOM) und die Vorlage für den Update-Vermerk. Die Herkunft prüft \`gh attestation verify opaa-update-paket-${version}.tar.gz --repo ${repository}\`. Die CycloneDX-Stücklisten der ausgelieferten Abhängigkeiten hängen zusätzlich einzeln am Release, \`opaa-backend-${version}.cdx.json\` und \`opaa-frontend-${version}.cdx.json\`, ebenso attestiert. Das Delta für ein anderes Versionspaar erzeugt \`./gradlew complianceDelta -PfromRef=<älteres Tag> -PtoRef=${tag}\` aus \`backend/\` eines Checkouts mit Tags.
+Am Release hängt \`opaa-update-paket-${version}.tar.gz\` mit Prüfsummendatei: die Faktenblätter dieser Version, die Änderungen der Fakten seit dem vorigen finalen Release mit Stufenvorschlag, Betriebsfolgen und Antwortqualität für dasselbe Intervall, die Lizenzübersicht, die Stücklisten (SBOM) und die Vorlage für den Update-Vermerk. Die Herkunft prüfen die Befehle unter „Herkunft prüfen“. Die CycloneDX-Stücklisten der ausgelieferten Abhängigkeiten hängen zusätzlich einzeln am Release, \`opaa-backend-${version}.cdx.json\` und \`opaa-frontend-${version}.cdx.json\`, ebenso attestiert. Das Delta für ein anderes Versionspaar erzeugt \`./gradlew complianceDelta -PfromRef=<älteres Tag> -PtoRef=${tag}\` aus \`backend/\` eines Checkouts mit Tags.
 
 **Offline-Bündel**
 

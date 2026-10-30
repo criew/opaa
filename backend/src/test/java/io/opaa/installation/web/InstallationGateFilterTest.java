@@ -53,6 +53,8 @@ class InstallationGateFilterTest {
     assertThat(response.getStatus()).isEqualTo(expected);
     if (expected == 503) {
       assertThat(response.getContentAsString()).contains("INSTALLATION_PENDING");
+      assertThat(response.getHeader("X-Content-Type-Options")).isEqualTo("nosniff");
+      assertThat(response.getHeader("X-Frame-Options")).isEqualTo("DENY");
     }
   }
 

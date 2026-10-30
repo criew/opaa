@@ -7,6 +7,7 @@ import io.opaa.compliance.SelfDisclosureCategory;
 import io.opaa.compliance.SelfDisclosureExporter;
 import io.opaa.compliance.SelfDisclosureSubject;
 import io.opaa.security.CredentialsEncryptor;
+import io.opaa.security.EncryptedColumn;
 import io.opaa.test.OpaaIntegrationTest;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -537,15 +538,20 @@ class RightsCollaborationSelfDisclosureIntegrationTest {
             + " VALUES (?, 'sd2991 Zugang', 'PERSON_PROBE', 'https://anbieter.example',"
             + " 'PERSONAL_SECRET', 'BOTH', 'SECRET-CLIENT-2991', now(), now(), 0)",
         profile);
-    personLabelCiphertext = encryptor.encrypt("ich-konto@anbieter.example");
-    otherLabelCiphertext = encryptor.encrypt("fremd-konto@anbieter.example");
     UUID personAccount = UUID.randomUUID();
+    UUID otherAccount = UUID.randomUUID();
+    EncryptedColumn label =
+        EncryptedColumn.credentials("connected_accounts", "account_label_ciphertext");
+    personLabelCiphertext =
+        encryptor.encrypt("ich-konto@anbieter.example", label.row(personAccount));
+    otherLabelCiphertext =
+        encryptor.encrypt("fremd-konto@anbieter.example", label.row(otherAccount));
     String account =
         "INSERT INTO connected_accounts (id, organization_id, user_id, profile_id, state,"
             + " account_label_ciphertext, connected_at, version)"
             + " VALUES (?, ?, ?, ?, 'CONNECTED', ?, now(), 0)";
     jdbc.update(account, personAccount, organization, person, profile, personLabelCiphertext);
-    jdbc.update(account, UUID.randomUUID(), organization, other, profile, otherLabelCiphertext);
+    jdbc.update(account, otherAccount, organization, other, profile, otherLabelCiphertext);
     jdbc.update(
         "INSERT INTO connection_tokens (id, profile_id, connected_account_id, kind,"
             + " secret_ciphertext, access_token_ciphertext, issued_for, pending_account_label,"

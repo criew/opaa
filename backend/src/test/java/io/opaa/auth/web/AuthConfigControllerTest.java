@@ -208,7 +208,8 @@ class AuthConfigControllerTest {
         .thenReturn(Optional.of(local));
     when(settings.values())
         .thenReturn(
-            new LocalAuthSettings.Values(true, List.of("stadt.example"), true, 14, 72, 30, 90, 90));
+            new LocalAuthSettings.Values(
+                true, List.of("stadt.example"), true, 14, 72, 30, 90, 90, null, null));
 
     mockMvc
         .perform(get("/api/v1/auth/config"))

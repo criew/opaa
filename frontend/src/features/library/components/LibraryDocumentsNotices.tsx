@@ -112,11 +112,12 @@ function groupByReason(messages: string[]): Array<{ reason: string; files: strin
 }
 
 /**
- * A reason in one short sentence: the full quota is the head's state already, a format rejection
- * names no list of allowed endings.
+ * A reason in one short sentence, a format rejection without its list of allowed endings. A quota
+ * rejection stays whole: its figures are the only place that says how much is occupied, and a single
+ * file can exceed the quota of a library that is nearly empty.
  */
 function shortReason(reason: string): string {
-  if (/kontingent/i.test(reason)) return ''
+  if (/kontingent/i.test(reason)) return reason.trim()
   return reason.split(/[.:;(]/)[0].trim()
 }
 
