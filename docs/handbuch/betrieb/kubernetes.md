@@ -1370,6 +1370,8 @@ von vor dem Upgrade. Wer sich den Rückweg offenhalten will, setzt beim Upgrade
 `OPAA_ENCRYPTION_KEYED_FORMAT=false` über `backend.extraEnv` und entfernt den Eintrag, wenn der
 Rückweg nicht mehr gebraucht wird
 ([Kein Rückweg nach der Umstellung der Geheimnisse](aktualisierung.md#kein-rückweg-nach-der-umstellung-der-geheimnisse)).
+Solange der Eintrag gesetzt ist, lehnt OPAA alte Formate und Klartext nicht ab; nach dem Entfernen
+schließt der Hintergrundlauf die Umstellung von selbst erneut ab.
 
 Ein Signal dafür, ob die Aktualisierung das Schema geändert hat, gibt die Tabelle `flyway_schema_history`.
 Vor und nach dem Upgrade, mit einem eigenen Schema vorangestellt:

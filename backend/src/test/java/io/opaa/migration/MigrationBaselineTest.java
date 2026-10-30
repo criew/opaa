@@ -102,6 +102,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             // foundation
             "backend_instance_fingerprint_key",
             "backend_instances",
+            "cipher_legacy_retirements",
             "installation_counters",
             "organizations",
             "outbound_proxy_settings",

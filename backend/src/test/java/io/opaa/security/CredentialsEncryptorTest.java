@@ -259,7 +259,7 @@ class CredentialsEncryptorTest {
           }
 
           @Override
-          public void retire(EncryptionPurpose purpose) {}
+          public void measured(EncryptionPurpose purpose, int unbound) {}
         };
     CredentialsEncryptor retired =
         new CredentialsEncryptor(

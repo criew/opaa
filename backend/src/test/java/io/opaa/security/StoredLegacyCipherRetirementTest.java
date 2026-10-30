@@ -49,19 +49,23 @@ class StoredLegacyCipherRetirementTest {
   }
 
   @Test
-  void eachPurposeIsAskedForItself() {
+  void aConfirmedMeasurementLatchesItsPurposeAlone() {
     stored(false);
+    when(jdbc.update(anyString(), any(Object[].class))).thenReturn(1);
     StoredLegacyCipherRetirement retirement = retirement(true);
 
-    retirement.retire(EncryptionPurpose.SETTINGS);
+    retirement.measured(EncryptionPurpose.SETTINGS, 0);
 
     assertThat(retirement.refusesLegacy(EncryptionPurpose.SETTINGS)).isTrue();
     assertThat(retirement.refusesLegacy(EncryptionPurpose.CREDENTIALS)).isFalse();
   }
 
   @Test
-  void withTheKeyedFormatHeldBackNothingIsRefusedAndNothingAsked() {
-    assertThat(retirement(false).refusesLegacy(EncryptionPurpose.CREDENTIALS)).isFalse();
+  void withTheKeyedFormatHeldBackNothingIsRefusedAskedOrMeasured() {
+    StoredLegacyCipherRetirement retirement = retirement(false);
+
+    assertThat(retirement.refusesLegacy(EncryptionPurpose.CREDENTIALS)).isFalse();
+    retirement.measured(EncryptionPurpose.CREDENTIALS, 0);
 
     verifyNoInteractions(jdbc);
   }

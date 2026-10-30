@@ -16,7 +16,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 /**
  * Re-encrypts every value of the {@link EncryptedColumns} that is not yet in the keyed format under
  * the current key (ADR-0064): values under a decrypt-only key after a key rotation, and {@code
- * enc:v1:} values without key id and binding. Legacy cleartext and blank values stay as they are.
+ * enc:v1:} values without key id and binding. Blank values stay as they are.
  *
  * <p>Runs every ten minutes on one instance ({@link CiphertextRewrapSchedule}). While {@link
  * CipherFormatGate} holds the keyed format back - an older instance still runs, or the operator
@@ -28,11 +28,12 @@ import org.springframework.transaction.support.TransactionTemplate;
  * decrypt is passed over without counting against that budget, counted and logged with table,
  * column and row, never with any part of the value.
  *
- * <p>A run with the keyed format open retires the unbound forms of a purpose ({@link
- * LegacyCipherRetirement}) once none of its columns holds an {@code enc:v1:} value or, for
- * credentials, non-blank cleartext any more - readable or not. Cleartext is never encrypted here: a
- * column may refuse it today, and encrypting it would make it usable; it is gone once its row is
- * saved again.
+ * <p>A run with the keyed format open also encrypts legacy cleartext of the credential columns
+ * whose readers use it, never of one that refuses it ({@link EncryptedColumn#cleartextRefused()}):
+ * that would make it usable. Before its pass it counts, per purpose, the values still in an unbound
+ * form - {@code enc:v1:} or such cleartext, readable or not - and reports the count to {@link
+ * LegacyCipherRetirement}, which retires the purpose after enough runs found none. Once retired, a
+ * purpose's unbound values are refused by its encryptor, so the run neither reads nor moves them.
  */
 @Component
 public class CiphertextRewrap {
@@ -83,9 +84,6 @@ public class CiphertextRewrap {
   private volatile int lastRemaining = -1;
 
   private volatile int lastUnreadable;
-
-  /** Whether this process has said which columns still hold legacy cleartext. */
-  private volatile boolean cleartextNoted;
 
   /**
    * What one run did, summed over all columns: values moved to the current key, values no key
@@ -147,6 +145,7 @@ public class CiphertextRewrap {
   /** Runs one pass now and reports it; see the class Javadoc. */
   public Outcome rewrap() {
     boolean keyed = formatGate.writesKeyedFormat();
+    Map<EncryptionPurpose, Integer> unbound = keyed ? countUnboundBeforeThePass() : Map.of();
     int budget = RUN_BUDGET;
     int rewrapped = 0;
     int unreadable = 0;
@@ -156,83 +155,49 @@ public class CiphertextRewrap {
         continue;
       }
       String current = EncryptionKeyring.V2_PREFIX + currentKeyId(column.purpose()) + ":";
-      String scope = scope(column.purpose(), keyed);
-      int columnUnreadable = 0;
-      int columnSettled = 0;
-      if (budget > 0) {
-        Pass pass = rewrapColumn(column, scope, current, keyed, budget);
-        budget -= pass.rewrapped();
-        rewrapped += pass.rewrapped();
-        columnUnreadable = pass.unreadable();
-        columnSettled = pass.settled();
-        unreadable += columnUnreadable;
+      List<Selector> selectors = new ArrayList<>();
+      selectors.add(stale(column, scope(column.purpose(), keyed), current));
+      if (keyed && column.acceptsCleartext() && !retirement.refusesLegacy(column.purpose())) {
+        selectors.add(cleartext(column));
       }
-      remaining +=
-          Math.max(0, countStale(column, scope, current) - columnUnreadable - columnSettled);
+      for (Selector selector : selectors) {
+        int selectorUnreadable = 0;
+        int selectorSettled = 0;
+        if (budget > 0) {
+          Pass pass = rewrapColumn(column, selector, keyed, budget);
+          budget -= pass.rewrapped();
+          rewrapped += pass.rewrapped();
+          selectorUnreadable = pass.unreadable();
+          selectorSettled = pass.settled();
+          unreadable += selectorUnreadable;
+        }
+        remaining += Math.max(0, count(column, selector) - selectorUnreadable - selectorSettled);
+      }
     }
-    if (keyed) {
-      retireUnboundForms();
-    }
+    unbound.forEach(retirement::measured);
     return new Outcome(rewrapped, unreadable, remaining, !keyed);
   }
 
-  /** See the class Javadoc; a purpose without a current key holds nothing it could retire. */
-  private void retireUnboundForms() {
+  /**
+   * The unbound values of each purpose not yet retired, counted before the pass moves them: a value
+   * written by an instance that still held the keyed format back shows up here, so it postpones the
+   * retirement although this very pass re-encrypts it. A purpose without a current key holds
+   * nothing it could retire.
+   */
+  private Map<EncryptionPurpose, Integer> countUnboundBeforeThePass() {
     Map<EncryptionPurpose, Integer> unbound = new EnumMap<>(EncryptionPurpose.class);
-    List<String> cleartext = new ArrayList<>();
     for (EncryptedColumn column : columns()) {
-      int legacy = countUnbound(column);
-      if (column.purpose() == EncryptionPurpose.CREDENTIALS) {
-        int plain = countCleartext(column);
-        if (plain > 0) {
-          cleartext.add(column.table() + "." + column.column() + " (" + plain + ")");
-        }
-        legacy += plain;
+      EncryptionPurpose purpose = column.purpose();
+      if (!hasKey(purpose) || retirement.refusesLegacy(purpose)) {
+        continue;
       }
-      unbound.merge(column.purpose(), legacy, Integer::sum);
-    }
-    for (EncryptionPurpose purpose : EncryptionPurpose.values()) {
-      if (hasKey(purpose)
-          && unbound.getOrDefault(purpose, 0) == 0
-          && !retirement.refusesLegacy(purpose)) {
-        retirement.retire(purpose);
+      int legacy = count(column, unboundFormat(column));
+      if (column.acceptsCleartext()) {
+        legacy += count(column, cleartext(column));
       }
+      unbound.merge(purpose, legacy, Integer::sum);
     }
-    if (!cleartext.isEmpty() && !cleartextNoted) {
-      cleartextNoted = true;
-      log.info(
-          "Stored credentials in cleartext keep enc:v1 and cleartext readable until their rows are"
-              + " saved again: {}",
-          String.join(", ", cleartext));
-    }
-  }
-
-  private int countUnbound(EncryptedColumn column) {
-    Integer count =
-        jdbc.queryForObject(
-            "SELECT count(*) FROM "
-                + column.table()
-                + " WHERE starts_with("
-                + column.column()
-                + ", ?)",
-            Integer.class,
-            EncryptionKeyring.V1_PREFIX);
-    return count == null ? 0 : count;
-  }
-
-  private int countCleartext(EncryptedColumn column) {
-    Integer count =
-        jdbc.queryForObject(
-            "SELECT count(*) FROM "
-                + column.table()
-                + " WHERE NOT starts_with("
-                + column.column()
-                + ", ?) AND "
-                + column.column()
-                + " ~ '\\S'",
-            Integer.class,
-            EncryptionKeyring.MARKER);
-    return count == null ? 0 : count;
+    return unbound;
   }
 
   /**
@@ -257,6 +222,28 @@ public class CiphertextRewrap {
     return columns;
   }
 
+  /** A condition on the column's value, as SQL with its parameters. */
+  private record Selector(String where, List<Object> parameters) {}
+
+  /** Values under {@code scope} that are not under the current key. */
+  private static Selector stale(EncryptedColumn column, String scope, String current) {
+    return new Selector(
+        "starts_with(" + column.column() + ", ?) AND NOT starts_with(" + column.column() + ", ?)",
+        List.of(scope, current));
+  }
+
+  private static Selector unboundFormat(EncryptedColumn column) {
+    return new Selector(
+        "starts_with(" + column.column() + ", ?)", List.of(EncryptionKeyring.V1_PREFIX));
+  }
+
+  /** Legacy cleartext: a value with a non-blank character and without the marker. */
+  private static Selector cleartext(EncryptedColumn column) {
+    return new Selector(
+        "NOT starts_with(" + column.column() + ", ?) AND " + column.column() + " ~ '\\S'",
+        List.of(EncryptionKeyring.MARKER));
+  }
+
   /**
    * {@code settled}: values under the current key in the {@code enc:v1:} format, which the stale
    * selector still matches; only a run that keeps the format leaves such values.
@@ -264,12 +251,11 @@ public class CiphertextRewrap {
   private record Pass(int rewrapped, int unreadable, int settled) {}
 
   /**
-   * Walks the stale values of {@code column} by id until {@code budget} values are rewritten or the
-   * column is done. Only rewritten values count against the budget: an unreadable value is passed
-   * by the cursor and never holds back the readable ones behind it.
+   * Walks the values of {@code column} that {@code selector} matches by id until {@code budget}
+   * values are rewritten or the column is done. Only rewritten values count against the budget: an
+   * unreadable value is passed by the cursor and never holds back the readable ones behind it.
    */
-  private Pass rewrapColumn(
-      EncryptedColumn column, String scope, String current, boolean keyed, int budget) {
+  private Pass rewrapColumn(EncryptedColumn column, Selector selector, boolean keyed, int budget) {
     int rewrapped = 0;
     int unreadable = 0;
     int settled = 0;
@@ -278,7 +264,7 @@ public class CiphertextRewrap {
       int limit = Math.min(PAGE_SIZE, budget - rewrapped);
       Object cursor = after;
       Page page =
-          transactions.execute(status -> rewrapPage(column, scope, current, keyed, cursor, limit));
+          transactions.execute(status -> rewrapPage(column, selector, keyed, cursor, limit));
       if (page == null || page.size() == 0) {
         break;
       }
@@ -296,12 +282,7 @@ public class CiphertextRewrap {
   private record Page(int size, int rewrapped, int unreadable, int settled, Object lastId) {}
 
   private Page rewrapPage(
-      EncryptedColumn column,
-      String scope,
-      String current,
-      boolean keyed,
-      Object after,
-      int limit) {
+      EncryptedColumn column, Selector selector, boolean keyed, Object after, int limit) {
     String select =
         "SELECT "
             + column.idColumn()
@@ -309,19 +290,18 @@ public class CiphertextRewrap {
             + column.column()
             + " AS stored FROM "
             + column.table()
-            + " WHERE starts_with("
-            + column.column()
-            + ", ?) AND NOT starts_with("
-            + column.column()
-            + ", ?)"
+            + " WHERE "
+            + selector.where()
             + (after == null ? "" : " AND " + column.idColumn() + " > ?")
             + " ORDER BY "
             + column.idColumn()
             + " LIMIT ? FOR UPDATE SKIP LOCKED";
-    List<Map<String, Object>> rows =
-        after == null
-            ? jdbc.queryForList(select, scope, current, limit)
-            : jdbc.queryForList(select, scope, current, after, limit);
+    List<Object> arguments = new ArrayList<>(selector.parameters());
+    if (after != null) {
+      arguments.add(after);
+    }
+    arguments.add(limit);
+    List<Map<String, Object>> rows = jdbc.queryForList(select, arguments.toArray());
     String update =
         "UPDATE "
             + column.table()
@@ -360,19 +340,12 @@ public class CiphertextRewrap {
     return new Page(rows.size(), rewrapped, unreadable, settled, lastId);
   }
 
-  private int countStale(EncryptedColumn column, String scope, String current) {
+  private int count(EncryptedColumn column, Selector selector) {
     Integer count =
         jdbc.queryForObject(
-            "SELECT count(*) FROM "
-                + column.table()
-                + " WHERE starts_with("
-                + column.column()
-                + ", ?) AND NOT starts_with("
-                + column.column()
-                + ", ?)",
+            "SELECT count(*) FROM " + column.table() + " WHERE " + selector.where(),
             Integer.class,
-            scope,
-            current);
+            selector.parameters().toArray());
     return count == null ? 0 : count;
   }
 

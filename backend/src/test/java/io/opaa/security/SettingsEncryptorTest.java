@@ -151,7 +151,7 @@ class SettingsEncryptorTest {
           }
 
           @Override
-          public void retire(EncryptionPurpose purpose) {}
+          public void measured(EncryptionPurpose purpose, int unbound) {}
         };
     SettingsEncryptor retired =
         new SettingsEncryptor(new SettingsEncryptionProperties(KEY, List.of()), () -> false, all);
