@@ -45,6 +45,21 @@ innerhalb der Grenze. Begründung: Wer nur Rechte in der Anwendung hat, darf die
 Betriebs nicht aufweichen, etwa um interne Adressen abrufen oder Pfade außerhalb der Freigabe lesen
 zu lassen.
 
+Für das Speicherkontingent heißt das: `OPAA_LIBRARY_QUOTA_BYTES` ist die Obergrenze je Bibliothek
+(`0` hebt sie auf). Darunter setzt die Systemverwaltung ein hausweites Kontingent für alle geteilten
+Bibliotheken (`shared_library_quota_settings`, protokolliert als `SHARED_LIBRARY_QUOTA_CHANGED`,
+übertragbar nach Entscheidung 12). Ohne eigenen Wert gilt die Obergrenze allein; das ist keine
+Vorgabe aus der Konfiguration im Sinne von Entscheidung 1, sondern die Grenze selbst, und es gibt
+keine Werkseinstellung darunter: Sie sperrte beim Update jede Installation, die die Obergrenze für
+große Bibliotheken angehoben hat. Ein Wert über der Obergrenze wird abgelehnt, auch beim Import;
+senkt der Betrieb die Obergrenze unter den gespeicherten Wert, gilt die Obergrenze. Eine private
+Bibliothek hat je Bibliothek nur die Obergrenze und daneben das Kontingent ihrer Besitzerin
+(ADR-0049). Gelesen wird der Wert bei jeder Prüfung aus der Datenbank, ohne Cache, und wirkt damit
+ohne Neustart auf allen Instanzen (ADR-0053). Ein gesenktes Kontingent löscht nichts: Eine
+Bibliothek darüber behält ihre Dokumente und nimmt nur nichts mehr auf, was sie wachsen lässt; die
+Verwaltung zählt solche Bibliotheken, ihre Detailansicht sagt es den Verwaltenden. Eine Ausnahme je
+Bibliothek gibt es nicht (siehe Offen).
+
 ### 3. Experten-Feinabstimmung von Suche und Index bleibt vorerst in der Konfiguration
 
 `OPAA_QUERY_*`, `OPAA_SEARCH_*`, `OPAA_MCP_*` und die Zerlegung in Chunks bleiben
@@ -452,3 +467,5 @@ Werkseinstellung, und prüfen ihn gegen die Grenzen der Zielinstallation (Entsch
 
 - Ob die Experten-Feinabstimmung (Entscheidung 3) später mit Messung und Leitplanken in die
   Verwaltung wandert.
+- Ob eine geteilte Bibliothek ein eigenes Speicherkontingent unter der Obergrenze bekommen kann und
+  wer es setzt, die Systemverwaltung oder auch die Verwaltenden der Bibliothek (#3404).

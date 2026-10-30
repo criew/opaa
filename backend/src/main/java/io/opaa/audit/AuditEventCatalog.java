@@ -214,6 +214,7 @@ public final class AuditEventCatalog {
     put(keys, Set.of("overridden", "retentionYears"), INCIDENT_SCOPE_RETENTION_CHANGED);
     put(keys, Set.of("allAccountsGrantAllowed"), CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED);
     put(keys, Set.of("overridden", "quotaBytes"), PRIVATE_STORAGE_QUOTA_CHANGED);
+    put(keys, Set.of("ownQuotaBytes", "quotaBytes"), SHARED_LIBRARY_QUOTA_CHANGED);
     put(keys, Set.of("intervalDays", "overridden", "sourceType"), FULL_SYNC_RHYTHM_CHANGED);
     put(keys, Set.of("agingThresholdMonths", "overridden"), SUCCESSION_AGING_THRESHOLD_CHANGED);
     put(

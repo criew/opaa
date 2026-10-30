@@ -236,8 +236,8 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
               + " MB");
     }
     // Checked before anything is written; a FAILED row this upload may replace is not netted out.
-    if (storageQuotaService.wouldExceedQuota(libraryId, file.getSize())) {
-      throw new PayloadTooLargeException(storageQuotaService.quotaExceededMessage(libraryId));
+    if (storageQuotaService.wouldExceedQuota(library, file.getSize())) {
+      throw new PayloadTooLargeException(storageQuotaService.quotaExceededMessage(library));
     }
 
     String displayFileName = sanitizeDisplayFileName(file.getOriginalFilename());

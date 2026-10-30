@@ -264,7 +264,9 @@ Skizze; Feldnamen legt die Spec-Änderung fest:
   `diagnosticContextRetention`, `externalAccess`, `linkTargets`, `localAccounts` (ohne den
   Schalter der lokalen Konten), `mail` (ohne Passwort), `mailTemplates` (je Vorlage der Sprache
   `de` ein Schlüssel), `fullSyncRhythm` (je Quellart mit Rhythmus ein Schlüssel, Tage oder `null`),
-  `outboundProxy`, `permissionHistoryRetention`, `privateStorageQuota`, `selfDisclosure`.
+  `outboundProxy`, `permissionHistoryRetention`, `privateStorageQuota`, `selfDisclosure`,
+  `sharedLibraryQuota` (Byte je geteilter Bibliothek, `null` für die Obergrenze des Betriebs; ein
+  Wert über der Obergrenze der Zielinstallation wird abgelehnt).
 - **Sperren und „Nur über Zugänge“** (`connectorLocks`): abgeglichen über den Schlüssel der
   Quellart, angewandt über `ConnectorLockService.lockType` und `ProfileRequirementService.require`
   mit deren Ereignissen (`CONNECTOR_LOCKED`/`CONNECTOR_UNLOCKED`, `CONNECTOR_PROFILE_REQUIRED`/

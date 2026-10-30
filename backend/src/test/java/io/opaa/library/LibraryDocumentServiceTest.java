@@ -658,8 +658,10 @@ class LibraryDocumentServiceTest {
     // The library's storage quota is checked before anything is written to disk, exactly like
     // the per-file size limit above - a rejected upload must leave the bestand unchanged.
     grantEditor();
-    when(storageQuotaService.wouldExceedQuota(eq(libraryId), anyLong())).thenReturn(true);
-    when(storageQuotaService.quotaExceededMessage(libraryId))
+    when(storageQuotaService.wouldExceedQuota(
+            argThat(library -> library.getId().equals(libraryId)), anyLong()))
+        .thenReturn(true);
+    when(storageQuotaService.quotaExceededMessage(any(KnowledgeLibrary.class)))
         .thenReturn("Speicherkontingent der Bibliothek erschöpft (10 GB von 10 GB belegt)");
 
     assertThatThrownBy(

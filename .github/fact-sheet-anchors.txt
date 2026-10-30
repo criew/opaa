@@ -202,6 +202,7 @@ protokollereignisse#self-disclosure-export-finished
 protokollereignisse#self-disclosure-export-started
 protokollereignisse#self-disclosure-settings-changed
 protokollereignisse#settings-imported
+protokollereignisse#shared-library-quota-changed
 protokollereignisse#space-archived
 protokollereignisse#space-changed
 protokollereignisse#space-created

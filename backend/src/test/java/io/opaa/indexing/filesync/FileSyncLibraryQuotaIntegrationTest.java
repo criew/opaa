@@ -42,6 +42,8 @@ import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.knowledge.LibraryProperties;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.PersonalStorageQuota;
+import io.opaa.knowledge.SharedLibraryQuota;
+import io.opaa.knowledge.SharedLibraryQuotaSettingRepository;
 import io.opaa.knowledge.SourceType;
 import io.opaa.metadata.DocumentMetadataService;
 import io.opaa.metadata.ModelMetadataExtractor;
@@ -60,6 +62,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -274,11 +277,16 @@ class FileSyncLibraryQuotaIntegrationTest {
         DocumentRepository documentRepository,
         PersonalStorageQuota personalQuota,
         org.springframework.transaction.PlatformTransactionManager transactionManager) {
-      super(documentRepository, new LibraryProperties(0), personalQuota, transactionManager);
+      super(
+          documentRepository,
+          new SharedLibraryQuota(
+              new LibraryProperties(0), Mockito.mock(SharedLibraryQuotaSettingRepository.class)),
+          personalQuota,
+          transactionManager);
     }
 
     @Override
-    public long quotaBytes() {
+    public long quotaBytes(KnowledgeLibrary library) {
       return quotaBytes;
     }
 

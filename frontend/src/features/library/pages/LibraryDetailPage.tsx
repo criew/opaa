@@ -39,6 +39,7 @@ import { useLibraryDeletion } from '../components/useLibraryDeletion'
 import LibraryStateLink from '../components/LibraryStateLink'
 import { libraryState, runWord } from '../components/libraryState'
 import LibraryNextSteps from '../components/LibraryNextSteps'
+import LibraryQuotaNotice from '../components/LibraryQuotaNotice'
 import { useNextSteps } from '../components/nextSteps'
 import { CONTENT_WIDTH } from '../components/setup/rowStyles'
 import { useDocumentUpload } from '../hooks/useDocumentUpload'
@@ -405,8 +406,9 @@ export default function LibraryDetailPage() {
               {details?.storageQuotaBytes != null && details.storageUsedBytes != null && (
                 <HeaderFigure>
                   <span title="Belegtes Speicherkontingent dieser Bibliothek">
-                    {formatFileSize(details.storageUsedBytes)} von{' '}
-                    {formatFileSize(details.storageQuotaBytes)}
+                    {details.storageQuotaBytes > 0
+                      ? `${formatFileSize(details.storageUsedBytes)} von ${formatFileSize(details.storageQuotaBytes)}`
+                      : `${formatFileSize(details.storageUsedBytes)} belegt`}
                   </span>
                 </HeaderFigure>
               )}
@@ -551,6 +553,12 @@ export default function LibraryDetailPage() {
             es in einem Moment erneut.
           </Alert>
         )}
+
+        <LibraryQuotaNotice
+          usedBytes={details?.storageUsedBytes}
+          quotaBytes={details?.storageQuotaBytes}
+          privateLibrary={privateLibrary}
+        />
 
         <LibraryDetailTabBar activeTab={activeTab} tabs={tabs} tabSearch={tabSearch} />
 

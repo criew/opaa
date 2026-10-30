@@ -15,6 +15,7 @@ import { documentMetadataHandlers } from '@/features/library/mocks/documentMetad
 import { libraryFolderHandlers } from '@/features/library/mocks/libraryFolderHandlers'
 import { indexingHandlers } from '@/features/library/mocks/indexingHandlers'
 import { privateStorageHandlers } from '@/features/library/mocks/privateStorageHandlers'
+import { sharedLibraryQuotaHandlers } from '@/features/library/mocks/sharedLibraryQuotaHandlers'
 import { fullSyncRhythmHandlers } from '@/features/library/mocks/fullSyncRhythmHandlers'
 // prompt
 import { promptLibraryHandlers } from '@/features/prompt/mocks/promptLibraryHandlers'
@@ -97,6 +98,7 @@ export const handlers = [
   ...libraryFolderHandlers,
   ...indexingHandlers,
   ...privateStorageHandlers,
+  ...sharedLibraryQuotaHandlers,
   ...fullSyncRhythmHandlers,
   // prompt
   ...promptLibraryHandlers,

@@ -7,7 +7,9 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.library.LibraryDocumentService;
+import io.opaa.permission.AssetAccessService;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.List;
 import java.util.UUID;
@@ -30,6 +32,7 @@ class ChunkInspectionServiceIntegrationTest {
 
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private ChunkInspectionService service;
+  @Autowired private AssetAccessService assetAccessService;
 
   private UUID userId;
   private UUID foreignUserId;
@@ -268,6 +271,8 @@ class ChunkInspectionServiceIntegrationTest {
         DEFAULT_ORGANIZATION_ID,
         subjectUserId,
         subjectUserId);
+    // the bus delivers the invalidation asynchronously; drop the cached grants as a grant does
+    assetAccessService.invalidateAsset(KnowledgeLibrary.ASSET_TYPE, grantedLibraryId);
   }
 
   private void insertUser(UUID id, UUID organizationId) {

@@ -105,6 +105,18 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
   long countPrivateLibraryOwners(@Param("organizationId") UUID organizationId);
 
   /**
+   * How many shared libraries of one organization occupy more than {@code bytes}, counted like
+   * {@code DocumentRepository#sumFileSizeByLibraryId} - a number, never a list.
+   */
+  @Query(
+      "select count(l) from KnowledgeLibrary l"
+          + " where l.organizationId = :organizationId and l.ownerOnly = false"
+          + " and (select coalesce(sum(coalesce(d.fileSize, 0)), 0) from Document d"
+          + " where d.libraryId = l.id) > :bytes")
+  long countSharedLibrariesAbove(
+      @Param("organizationId") UUID organizationId, @Param("bytes") long bytes);
+
+  /**
    * How many persons own private libraries across the installation - for installation-wide counts.
    */
   @Query("select count(distinct l.ownerUserId) from KnowledgeLibrary l where l.ownerOnly = true")

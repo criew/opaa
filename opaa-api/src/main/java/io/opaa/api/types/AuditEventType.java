@@ -247,6 +247,12 @@ public enum AuditEventType {
    */
   PRIVATE_STORAGE_QUOTA_CHANGED,
   /**
+   * The system administration set the house-wide storage quota of every shared library, or removed
+   * its own value so that the operator's upper limit applies alone; {@code before} and {@code
+   * after} carry the own value and the value in force only.
+   */
+  SHARED_LIBRARY_QUOTA_CHANGED,
+  /**
    * The system administration set the installation-wide rhythm of the full sync of one source type,
    * or returned it to the factory default; {@code before} and {@code after} carry the type and the
    * days only.

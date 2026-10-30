@@ -36,7 +36,7 @@ public final class DocumentIngestOutcomes {
     /** The messages of {@code library}'s own quota and of its owner's private storage. */
     public static QuotaMessages of(LibraryStorageQuotaService quota, KnowledgeLibrary library) {
       return new QuotaMessages(
-          () -> quota.quotaExceededMessage(library.getId()),
+          () -> quota.quotaExceededMessage(library),
           () -> quota.personalQuotaExceededMessage(library));
     }
   }

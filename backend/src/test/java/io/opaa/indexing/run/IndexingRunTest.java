@@ -115,7 +115,7 @@ class IndexingRunTest {
 
   @Test
   void recordOutcomeResolvesTheQuotaMessageForTheRunsLibrary() {
-    when(quotaService.quotaExceededMessage(library.getId()))
+    when(quotaService.quotaExceededMessage(library))
         .thenReturn("Speicherkontingent der Bibliothek erschöpft");
 
     boolean processed = run.recordOutcome(DocumentIngestResult.QUOTA_EXCEEDED, "datei.txt");

@@ -1053,7 +1053,7 @@ class IndexingRunTemplateTest {
   /** The library's own quota ends the run the same way: reconciled, incomplete, QUOTA_EXHAUSTED. */
   @Test
   void anItemAtTheExhaustedLibraryQuotaLetsTheRunReconcileAndMarksIt() throws Exception {
-    when(quotaService.quotaExceededMessage(library.getId()))
+    when(quotaService.quotaExceededMessage(library))
         .thenReturn("Speicherkontingent der Bibliothek erschöpft (10 GB von 10 GB belegt)");
 
     template.run(

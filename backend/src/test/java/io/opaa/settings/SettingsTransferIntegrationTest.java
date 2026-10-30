@@ -197,6 +197,7 @@ class SettingsTransferIntegrationTest {
     override.putNull("bodyHtml");
     sections.withObject("outboundProxy").putArray("noProxy").add("intranet.stadt.example");
     sections.withObject("privateStorageQuota").put("quotaBytes", 1_073_741_824L);
+    sections.withObject("sharedLibraryQuota").put("quotaBytes", 2_147_483_648L);
     sections.withObject("fullSyncRhythm").put("SHAREPOINT", 3);
     sections.withObject("selfDisclosure").put("dailyLimit", 7);
     sections.withObject("chatAutoCleanup").put("archiveAfterDays", 120).put("deleteAfterDays", 400);
@@ -649,6 +650,8 @@ class SettingsTransferIntegrationTest {
             + "\"}}}",
         "mailTemplates." + template + ".bodyPlain");
     refused.put("{\"mail\": {\"host\": \"" + "h".repeat(300) + "\"}}", "mail.host");
+    refused.put(
+        "{\"sharedLibraryQuota\": {\"quotaBytes\": 10737418241}}", "sharedLibraryQuota.quotaBytes");
     refused.put("{\"mail\": {\"fromName\": \"" + "n".repeat(121) + "\"}}", "mail.fromName");
     StringBuilder domains = new StringBuilder();
     for (int i = 0; i < 150; i++) {

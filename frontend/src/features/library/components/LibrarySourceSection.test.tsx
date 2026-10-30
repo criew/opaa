@@ -875,6 +875,7 @@ describe('LibrarySourceSection - private Bibliothek: Kontingent und Löschung (#
     expect(row).not.toHaveTextContent('privaten')
     const remedy = await openRun(user, 'Kontingent voll')
     expect(remedy).toHaveTextContent(/in der Quelle löschen/)
+    expect(remedy).toHaveTextContent(/legt die Systemverwaltung fest/)
     expect(remedy).not.toHaveTextContent(/private Bibliothek/)
   })
 

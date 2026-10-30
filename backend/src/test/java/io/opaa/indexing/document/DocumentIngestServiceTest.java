@@ -53,6 +53,8 @@ import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.MalwareScanService;
 import io.opaa.knowledge.PersonalStorageQuota;
 import io.opaa.knowledge.QuotaVerdict;
+import io.opaa.knowledge.SharedLibraryQuota;
+import io.opaa.knowledge.SharedLibraryQuotaSettingRepository;
 import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.knowledge.SourceType;
 import io.opaa.metadata.EmbeddingRateEstimator;
@@ -1619,7 +1621,9 @@ class DocumentIngestServiceTest {
               TestPipelineRegistries.fallbackOnly(documentService, chunkingService),
               new LibraryStorageQuotaService(
                   documentRepository,
-                  new LibraryProperties(1000),
+                  new SharedLibraryQuota(
+                      new LibraryProperties(1000),
+                      Mockito.mock(SharedLibraryQuotaSettingRepository.class)),
                   Mockito.mock(PersonalStorageQuota.class),
                   Mockito.mock(org.springframework.transaction.PlatformTransactionManager.class)));
       Path file = fileNamed("replace-under-quota.txt", "x".repeat(950));

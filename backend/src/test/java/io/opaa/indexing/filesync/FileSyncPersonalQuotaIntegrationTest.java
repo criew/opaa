@@ -29,10 +29,10 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryFolderService;
-import io.opaa.knowledge.LibraryProperties;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.PersonalStorageQuota;
 import io.opaa.knowledge.QuotaVerdict;
+import io.opaa.knowledge.SharedLibraryQuota;
 import io.opaa.knowledge.SourceType;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
@@ -84,7 +84,7 @@ class FileSyncPersonalQuotaIntegrationTest {
   @Autowired private TransactionTemplate transactionTemplate;
   @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   @Autowired private JdbcTemplate jdbcTemplate;
-  @Autowired private LibraryProperties libraryProperties;
+  @Autowired private SharedLibraryQuota libraryQuota;
   @Autowired private PlatformTransactionManager transactionManager;
 
   private UUID ownerId;
@@ -245,7 +245,7 @@ class FileSyncPersonalQuotaIntegrationTest {
   /** A second backend process: the same database and beans, its own quota service. */
   private LibraryStorageQuotaService secondInstance() {
     return new LibraryStorageQuotaService(
-        documentRepository, libraryProperties, personalQuota, transactionManager);
+        documentRepository, libraryQuota, personalQuota, transactionManager);
   }
 
   /** A listed size past the owner's quota is rejected before the download, as after it. */
