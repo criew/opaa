@@ -164,7 +164,8 @@ mit). Ausgenommen sind nur Quellen- und Javadoc-JARs, die allein die IDE lädt
 - **Neu erzeugen.** Der Workflow „Gradle-Verifikationsdatei erzeugen“ (nur manuell, auf einem
   wählbaren Branch) leert die Komponenten, lädt alles ohne Gradle-Cache direkt von Portal und
   Central, führt `help spotlessCheck cyclonedxBom bootJar javadoc` aus, ergänzt die Portal-Fassungen und listet
-  im Job-Summary jede geänderte Prüfsumme. Danach sind auch veraltete Einträge weg. Lokal derselbe
+  im Job-Summary jede geänderte Prüfsumme, jede entfallene Datei und jede Abweichung außerhalb
+  von `<components>` als Diff. Danach sind auch veraltete Einträge weg. Lokal derselbe
   Ablauf aus `backend/`:
 
   ```bash
