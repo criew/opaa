@@ -88,16 +88,17 @@ je Zweck die Werte in `enc:v1:` und, bei Zugangsdaten, den Klartext, lesbar oder
 verschlüsselt er mit, außer in Spalten, deren Leser ihn heute schon als fehlend behandeln
 (`EncryptedColumn#refusingCleartext`, die Token verbundener Zugänge); dort zählt er nicht. Zählen
 zwei Läufe im Abstand von mindestens fünf Minuten und zwei Heartbeat-Intervallen nichts und keiner
-dazwischen etwas, hält
-`cipher_legacy_retirements` den Zweck als umgestellt fest (`LegacyCipherRetirement`). Ab dann lehnen
-`CredentialsEncryptor` und `SettingsEncryptor` beim Entschlüsseln `enc:v1:` und Klartext ab wie
-einen unlesbaren Wert, das Log nennt Tabelle, Spalte und Zeile, nie den Wert, und die
-Neuverschlüsselung wählt solche Werte nicht mehr aus. Neue Werte entstehen immer in `v2`, auch bei
-geschlossenem Tor. Eine Instanz fragt den Eintrag höchstens einmal je Heartbeat-Intervall. Der
-Abschluss verfällt, sobald eine Instanz einer anderen Version nach ihm einen Heartbeat geschrieben
-hat, etwa bei einem Rolling Update oder Rollback, weil sie wieder `enc:v1` schreiben kann; die
-nächste Messung löscht ihn und beginnt neu. Mit `OPAA_ENCRYPTION_KEYED_FORMAT=false` lehnt keine
-Instanz etwas ab, und ihr Start leert die Tabelle, weil sie wieder `enc:v1` schreibt.
+dazwischen etwas, hält `cipher_legacy_retirements` den Zweck als umgestellt fest
+(`LegacyCipherRetirement`). Ab dann lehnen `CredentialsEncryptor` und `SettingsEncryptor` beim
+Entschlüsseln `enc:v1:` und Klartext ab wie einen unlesbaren Wert, das Log nennt Tabelle, Spalte und
+Zeile, nie den Wert, und die Neuverschlüsselung wählt solche Werte nicht mehr aus. Neue Werte
+entstehen immer in `v2`, auch bei geschlossenem Tor. Eine Instanz fragt den Eintrag höchstens einmal
+je Heartbeat-Intervall. Neue Werte bleiben `v2`, solange ein Abschluss eingetragen ist, auch ein
+verfallener. Der Abschluss verfällt, sobald eine Instanz einer anderen Version nach ihm einen
+Heartbeat geschrieben hat, etwa bei einem Rolling Update oder Rollback, weil sie wieder `enc:v1`
+schreiben kann; die nächste Messung löscht ihn und beginnt neu. Mit
+`OPAA_ENCRYPTION_KEYED_FORMAT=false` lehnt keine Instanz etwas ab, und ihr Start leert die Tabelle,
+weil sie wieder `enc:v1` schreibt.
 Begründung: Erst der Abschluss nimmt dem Kopieren eines `v1`-Werts und dem Einsetzen von Klartext
 die Wirkung. Der Abstand der Messungen ist länger als die Zeit, die eine Instanz die Antwort des
 Formattors behält, und als eine Transaktion, die vor der Messung einen `v1`-Wert schrieb; ein solcher
@@ -123,10 +124,13 @@ lässt sich wiederholen.
 Die Bindung schützt nur `v2`. Bis zum Abschluss der Umstellung (Entscheidung 6) kann, wer in die
 Datenbank schreibt, einen `v1`-Geheimtext in eine andere Zeile kopieren oder einen Klartextwert
 einsetzen, und OPAA verwendet ihn. Ein `v1`-Wert, den kein Schlüssel liest, hält den Abschluss auf,
-bis er neu eingetragen ist. Nach dem Abschluss genügt das Schreiben in die Datenbank nicht mehr: Wer
-zusätzlich den Eintrag in `cipher_legacy_retirements` löscht, öffnet die Altformate für jede danach
-gestartete Instanz und, sobald zwei Läufe wieder nichts finden, nur bis zum erneuten Abschluss.
+bis er neu eingetragen ist. Nach dem Abschluss genügt das Schreiben eines Altwerts nicht mehr: Wer zusätzlich den Eintrag in
+`cipher_legacy_retirements` löscht oder eine Instanz anderer Version ins Register einträgt, öffnet die
+Altformate für alle Instanzen nach einem Heartbeat-Intervall, bis zwei Läufe wieder nichts finden.
 Während eines Updates und bis zum erneuten Abschluss danach gilt dasselbe wie vor der Umstellung.
+Fegt das Register die Zeile einer Instanz anderer Version weg, bevor eine Instanz dieser Version
+startet, etwa nach mehr als sieben Tagen Stillstand nach einem Rückweg, verfällt ein Abschluss nicht;
+ein Rückweg auf eine Version vor Entscheidung 6 läuft deshalb mit `OPAA_ENCRYPTION_KEYED_FORMAT=false`.
 
 Nach der Umstellung auf `v2` liest eine ältere Version die gespeicherten Geheimnisse nicht mehr. Der
 Weg zurück hinter diese Version führt dann nur über eine Rücksicherung von vor dem Update, oder er

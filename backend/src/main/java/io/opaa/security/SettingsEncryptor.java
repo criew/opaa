@@ -72,9 +72,9 @@ public class SettingsEncryptor {
     }
   }
 
-  /** Keyed while the gate is open, and always once the unbound form is refused. */
+  /** Keyed while the gate is open, and always once the unbound form was retired. */
   private boolean writesKeyed() {
-    return formatGate.writesKeyedFormat() || retirement.refusesLegacy(EncryptionPurpose.SETTINGS);
+    return formatGate.writesKeyedFormat() || retirement.writesKeyedOnly(EncryptionPurpose.SETTINGS);
   }
 
   /**

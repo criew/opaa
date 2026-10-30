@@ -160,7 +160,7 @@ public class CiphertextRewrap {
       boolean refusing = retirement.refusesLegacy(column.purpose());
       String scope = refusing ? EncryptionKeyring.V2_PREFIX : scope(column.purpose(), keyed);
       selectors.add(stale(column, scope, current));
-      if (keyed && column.acceptsCleartext() && !retirement.refusesLegacy(column.purpose())) {
+      if (keyed && column.acceptsCleartext() && !refusing) {
         selectors.add(cleartext(column));
       }
       for (Selector selector : selectors) {

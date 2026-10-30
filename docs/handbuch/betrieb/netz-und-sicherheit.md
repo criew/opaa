@@ -363,9 +363,9 @@ enthält sie.
   wird, ist dort unlesbar. Werte im älteren Format `enc:v1` und Klartext aus der Zeit vor der
   Verschlüsselung sind nicht gebunden; OPAA liest sie nur, bis der Hintergrundlauf den Bestand
   umgestellt hat. Er verschlüsselt dabei auch den Klartext. Findet er zweimal im Abstand von
-  mindestens fünf Minuten keinen solchen Wert mehr, meldet das Log „No stored … secret is in the
-  format enc:v1 or in cleartext any more“. Ab dann lehnt OPAA solche Werte als unlesbar ab, auf allen
-  Instanzen spätestens nach einem Heartbeat-Intervall; ein abgelehnter Wert wird neu eingetragen.
+  mindestens fünf Minuten und zwei Heartbeat-Intervallen keinen solchen Wert mehr, meldet das Log
+  „No stored … secret is in the format enc:v1 or in cleartext any more“. Ab dann lehnt OPAA solche
+  Werte als unlesbar ab, auf allen Instanzen spätestens nach einem Heartbeat-Intervall; ein abgelehnter Wert wird neu eingetragen.
   Ein `enc:v1`-Wert, den kein eingetragener Schlüssel liest, hält den Abschluss auf, bis er neu
   eingetragen oder sein Schlüssel ergänzt ist. Mit `OPAA_ENCRYPTION_KEYED_FORMAT=false` lehnt OPAA
   nichts ab, und der Start hebt einen Abschluss wieder auf.

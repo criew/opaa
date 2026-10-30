@@ -17,7 +17,6 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -25,10 +24,12 @@ import org.springframework.stereotype.Component;
  * {@link LegacyCipherRetirement} from {@code cipher_legacy_retirements} (ADR-0053: "Datenbank"):
  * each instance asks at most once per heartbeat interval per purpose, so a retirement recorded or
  * lapsed elsewhere counts here within that interval. A retirement lapses once an instance of
- * another version has sent a heartbeat after it; the next measurement then deletes it and starts
- * anew. With {@link CipherFormatProperties#keyed()} {@code false} nothing is refused, and the start
- * of such an instance clears every retirement: it writes {@code enc:v1:} again, which the
- * re-encryption must still be able to read once the keyed format is opened again.
+ * another version has sent a heartbeat after it, as long as the register still holds that
+ * instance's row; the next measurement then deletes it and starts anew. New values stay keyed while
+ * a retirement is recorded, lapsed or not. With {@link CipherFormatProperties#keyed()} {@code
+ * false} nothing is refused, and the start of such an instance clears every retirement: it writes
+ * {@code enc:v1:} again, which the re-encryption must still be able to read once the keyed format
+ * is opened again.
  *
  * <p>Two measurements without unbound values are at least {@link #MIN_CONFIRMATION} and two
  * heartbeat intervals apart: longer than an instance keeps the answer of {@link CipherFormatGate}
@@ -50,7 +51,8 @@ class StoredLegacyCipherRetirement implements LegacyCipherRetirement, Applicatio
   private final Duration confirmation;
   private final LongSupplier nanoTime;
 
-  private record Answer(long at, boolean refuses) {}
+  /** {@code retired}: a retirement is recorded, lapsed or not; {@code refuses}: it holds. */
+  private record Answer(long at, boolean retired, boolean refuses) {}
 
   private final Map<EncryptionPurpose, Answer> answers = new ConcurrentHashMap<>();
 
@@ -104,24 +106,31 @@ class StoredLegacyCipherRetirement implements LegacyCipherRetirement, Applicatio
 
   @Override
   public boolean refusesLegacy(EncryptionPurpose purpose) {
-    if (!keyed) {
-      return false;
-    }
+    return keyed && answer(purpose).refuses();
+  }
+
+  @Override
+  public boolean writesKeyedOnly(EncryptionPurpose purpose) {
+    return keyed && answer(purpose).retired();
+  }
+
+  /** The cached answer, or a new one; a failed lookup is not cached and refuses nothing. */
+  private Answer answer(EncryptionPurpose purpose) {
     long now = nanoTime.getAsLong();
     Answer cached = answers.get(purpose);
     if (cached != null && now - cached.at() < cacheNanos) {
-      return cached.refuses();
+      return cached;
     }
-    boolean refuses;
     try {
       Instant retiredAt = retiredAt(purpose);
-      refuses = retiredAt != null && !anotherVersionRanSince.test(retiredAt);
-    } catch (DataAccessException e) {
+      boolean retired = retiredAt != null;
+      Answer answer = new Answer(now, retired, retired && !anotherVersionRanSince.test(retiredAt));
+      answers.put(purpose, answer);
+      return answer;
+    } catch (RuntimeException e) {
       log.warn("Whether {} secrets refuse enc:v1 and cleartext could not be read", purpose, e);
-      refuses = false;
+      return new Answer(now, false, false);
     }
-    answers.put(purpose, new Answer(now, refuses));
-    return refuses;
   }
 
   @Override

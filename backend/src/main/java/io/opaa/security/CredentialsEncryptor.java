@@ -75,10 +75,10 @@ public class CredentialsEncryptor {
     }
   }
 
-  /** Keyed while the gate is open, and always once the unbound forms are refused. */
+  /** Keyed while the gate is open, and always once the unbound forms were retired. */
   private boolean writesKeyed() {
     return formatGate.writesKeyedFormat()
-        || retirement.refusesLegacy(EncryptionPurpose.CREDENTIALS);
+        || retirement.writesKeyedOnly(EncryptionPurpose.CREDENTIALS);
   }
 
   /**

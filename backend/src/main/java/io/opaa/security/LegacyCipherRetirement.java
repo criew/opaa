@@ -29,6 +29,15 @@ public interface LegacyCipherRetirement {
   boolean refusesLegacy(EncryptionPurpose purpose);
 
   /**
+   * Whether new values of {@code purpose} are written keyed whatever {@link CipherFormatGate} says:
+   * once retired, also after the retirement lapsed, because every version running beside it since
+   * reads the keyed format.
+   */
+  default boolean writesKeyedOnly(EncryptionPurpose purpose) {
+    return refusesLegacy(purpose);
+  }
+
+  /**
    * Reports that a run with the keyed format open found {@code unbound} values of {@code purpose}
    * in an unbound form; none twice, a confirmation interval apart, retires the purpose.
    */
