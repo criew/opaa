@@ -654,7 +654,9 @@ ist eine Sicherung des Index.
 Sind Lauf-Pool und Warteschlange voll, wird ein neuer Lauf sofort als fehlgeschlagen beendet und
 die Anfrage mit HTTP 503 beantwortet. Ein Upload nimmt sich seinen Platz im Upload-Pool, bevor
 etwas gespeichert wird. Ist der Pool voll, antwortet OPAA mit HTTP 429, ohne ein Dokument anzulegen.
-Ein Rate-Limit bremst außerdem, wie schnell ein Konto Dateien schickt. In beiden Fällen wartet die
+Ein Konto belegt je Instanz höchstens einen Teil der Plätze, standardmäßig ein Viertel; darüber erhält es
+ebenfalls 429, während andere Konten weiter Plätze bekommen. Ein Rate-Limit bremst außerdem, wie
+schnell ein Konto Dateien schickt. In allen Fällen wartet die
 Oberfläche die genannte Zeit ab und lädt dieselbe Datei erneut hoch, ein Ordner-Upload läuft
 langsamer weiter ([Konfiguration](../../betrieb/konfiguration.md)). Während der Wartezeit zeigt die
 Bibliotheksseite einen Hinweis mit der Zahl der Sekunden. Nach insgesamt fünf Minuten Wartezeit gilt

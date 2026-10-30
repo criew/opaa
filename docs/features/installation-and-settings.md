@@ -725,6 +725,7 @@ der Quellen).
 | `OPAA_TRANSCRIPTION_MAX_AUDIO_BYTES` | `opaa.transcription.max-audio-bytes` |
 | `OPAA_TRANSCRIPTION_MAX_CONCURRENT` | `opaa.transcription.max-concurrent` |
 | `OPAA_TRANSCRIPTION_TIMEOUT` | `opaa.transcription.timeout` |
+| `OPAA_UPLOAD_MAX_PLACES_PER_ACCOUNT` | `opaa.upload.max-places-per-account` |
 | `OPAA_UPLOAD_ORPHAN_GRACE_MINUTES` | `opaa.upload.orphan-grace-minutes` |
 | `OPAA_UPLOAD_THREAD_POOL_CORE_SIZE` | `opaa.upload.thread-pool.core-size` |
 | `OPAA_UPLOAD_THREAD_POOL_MAX_SIZE` | `opaa.upload.thread-pool.max-size` |
