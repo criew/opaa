@@ -75,6 +75,11 @@ gemeinsame Obergrenzen:
   PDF schon ab etwa 500.000 Objekten abgewiesen werden.
 - **Lesezeit eines PDF** (`max-pdf-parse-seconds`): als letzte Sicherung die Zeit, die das Lesen
   eines PDF insgesamt dauern darf.
+- **Zeichen je PDF-Seite** (fest, 200.000): Eine einzelne Seite darf beim Lesen höchstens so viele
+  Zeichen liefern, gleich wie oft sie dieselbe Zeichnung wiederholt. Der Leser hält jedes Zeichen
+  einer Seite im Speicher, bis die Seite fertig ist; ohne diese Grenze könnte eine wenige Kilobyte
+  große Datei, die eine Zeichnung tausendfach auf eine Seite setzt, den Speicher füllen, bevor
+  `max-text-characters` greift. Eine Seite darüber macht das ganze Dokument „fehlgeschlagen".
 - **Gliederung eines PDF:** Jeder Lesezeichen-Eintrag wird höchstens einmal gelesen, so dass eine
   Gliederung, die auf sich selbst zurückverweist, das Lesen nicht aufhält; tiefer als 64 Ebenen und
   über 50.000 Einträge hinaus wird sie nicht weiter verfolgt.
