@@ -433,7 +433,7 @@ class FullTextIdentifiersTest {
         () -> {
           FullTextIdentifiers.extract("Az" + tabs + "x");
           FullTextIdentifiers.extract("Nr" + tabs + "x");
-          FullTextIdentifiers.extract("a".repeat(32_000));
+          FullTextIdentifiers.extract("a.".repeat(16_000));
           FullTextIdentifiers.extract("a@" + "a.".repeat(16_000));
         });
   }
@@ -443,6 +443,6 @@ class FullTextIdentifiersTest {
     assertThat(FullTextIdentifiers.extract("Az.  :  12/2024")).contains("xakz122024");
     assertThat(FullTextIdentifiers.extract("Erlass Nr. 12/2024")).contains("xnr122024");
     assertThat(FullTextIdentifiers.extract("Kontakt: max.muster@example.org"))
-        .anyMatch(lexeme -> lexeme.startsWith("xmail"));
+        .contains("xmailmaxmusterexampleorg");
   }
 }
