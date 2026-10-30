@@ -64,7 +64,7 @@ public enum S3Operation {
   S3AccessException notFound(String bucket, String key) {
     return switch (this) {
       case HEAD_OBJECT, GET_OBJECT, DELETE_OBJECT, DELETE_OBJECT_VERSION ->
-          new S3AccessException.ObjectNotFound(bucket, key);
+          new S3AccessException.ObjectNotFound(bucket, key, false);
       case LIST_OBJECTS,
           LIST_OBJECT_VERSIONS,
           GET_BUCKET_VERSIONING,

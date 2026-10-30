@@ -251,6 +251,47 @@ class AwsSdkS3ObjectStoreTest {
     assertThat(head.archived()).isFalse();
   }
 
+  // regression guard for #3428: a bare 404 from a proxy in front of the store is no deletion
+  @Test
+  void aBare404OnAnObjectTheListingStillNamesIsNoDeletionFinding() throws Exception {
+    S3ObjectStore store = store(properties(1000, 1, 0), true, false);
+
+    server.failNextMatching("HEAD", "/docs/2025/a.pdf", 404, null);
+    assertThat(catchFailure(() -> store.headObject("docs", "2025/a.pdf")))
+        .isInstanceOf(S3AccessException.class)
+        .isNotInstanceOf(S3AccessException.ObjectNotFound.class)
+        .hasMessageContaining("docs/2025/a.pdf");
+
+    server.failNextMatching("GET", "/docs/2025/a.pdf", 404, null);
+    assertThat(catchFailure(() -> store.getObject("docs", "2025/a.pdf")))
+        .isInstanceOf(S3AccessException.class)
+        .isNotInstanceOf(S3AccessException.ObjectNotFound.class);
+  }
+
+  @Test
+  void a404IsADeletionFindingOnceTheListingConfirmsTheKeyIsGone() throws Exception {
+    S3ObjectStore store = store(properties(1000, 1, 0), true, false);
+
+    assertThat(catchFailure(() -> store.headObject("docs", "2025/a")))
+        .as("a key that only prefixes another is still gone")
+        .isInstanceOf(S3AccessException.ObjectNotFound.class);
+    StubS3Server.Seen confirmation = server.seen().get(server.seen().size() - 1);
+    assertThat(confirmation.method()).isEqualTo("GET");
+    assertThat(confirmation.query()).contains("prefix=2025%2Fa").contains("max-keys=1");
+
+    server.failNextMatching("GET", "/docs", 403, "AccessDenied");
+    assertThat(catchFailure(() -> store.headObject("docs", "fehlt.pdf")))
+        .as("an unconfirmed 404 is no deletion finding")
+        .isInstanceOf(S3AccessException.ListForbidden.class);
+
+    int requests = server.seen().size();
+    assertThat(catchFailure(() -> store.getObject("docs", "fehlt.pdf")))
+        .as("NoSuchKey in a body needs no listing")
+        .isInstanceOfSatisfying(
+            S3AccessException.ObjectNotFound.class, e -> assertThat(e.confirmed()).isTrue());
+    assertThat(server.seen()).hasSize(requests + 1);
+  }
+
   @Test
   void downloadsIntoATemporaryFileTheCallerDeletes() throws Exception {
     S3ObjectStore store = store(properties(1000, 1, 0), true, false);

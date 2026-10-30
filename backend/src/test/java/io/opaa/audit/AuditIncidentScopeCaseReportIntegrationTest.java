@@ -53,6 +53,8 @@ class AuditIncidentScopeCaseReportIntegrationTest {
 
   @Autowired private AuditIncidentScopeGrantRepository grantRepository;
   @Autowired private AuditPersonDirectory people;
+  @Autowired private AuditEventRecorder eventRecorder;
+  @Autowired private AuditIncidentScopeProperties incidentScopeProperties;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -79,6 +81,7 @@ class AuditIncidentScopeCaseReportIntegrationTest {
 
   @AfterEach
   void tearDown() {
+    jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     jdbcTemplate.update(
         "DELETE FROM audit_incident_scope_grants WHERE organization_id = ?", organizationId);
     jdbcTemplate.update(
@@ -298,7 +301,11 @@ class AuditIncidentScopeCaseReportIntegrationTest {
 
   private AuditIncidentScopeService serviceAt(String instant) {
     return new AuditIncidentScopeService(
-        grantRepository, people, Clock.fixed(Instant.parse(instant), ZoneOffset.UTC));
+        grantRepository,
+        people,
+        eventRecorder,
+        incidentScopeProperties,
+        Clock.fixed(Instant.parse(instant), ZoneOffset.UTC));
   }
 
   private <T> T inTransaction(Supplier<T> work) {

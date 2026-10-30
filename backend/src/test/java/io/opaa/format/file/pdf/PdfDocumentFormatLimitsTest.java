@@ -9,6 +9,7 @@ import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.chunk.ChunkAnchors;
 import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.format.file.pdf.PdfTableGrids.TableGrid;
 import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import io.opaa.format.shared.ParserLimitExceededException;
 import io.opaa.format.shared.ParserLimitProperties;
@@ -20,7 +21,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.List;
 import javax.imageio.ImageIO;
+import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.cos.COSStream;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -40,7 +43,8 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * A crafted PDF costs bounded time and memory: an outline whose {@code /Next} or {@code /First}
  * points back to an item already seen ends its walk, and text multiplied by drawing one form over
- * and over stops at {@link ParserLimitProperties#maxTextCharacters()}.
+ * and over stops at {@link ParserLimitProperties#maxTextCharacters()} and at {@link
+ * PdfReadBudget#MAX_PAGE_GLYPHS} per page.
  */
 class PdfDocumentFormatLimitsTest {
 
@@ -158,6 +162,53 @@ class PdfDocumentFormatLimitsTest {
 
     DocumentFormatResult result =
         DocumentFormatRunner.run(limited, DocumentFormatSource.ofFile(file, "fanout-small.pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
+  }
+
+  /**
+   * One 1 000-character form drawn on one page past {@link PdfReadBudget#MAX_PAGE_GLYPHS} times a
+   * thousand fails long before the document's character limit, which it stays far below.
+   */
+  @Test
+  void aPageYieldingMoreGlyphsThanThePageLimitFails() throws IOException {
+    Path file = tempDir.resolve("fanout-page.pdf");
+    writeFormFanout(file, (int) (PdfReadBudget.MAX_PAGE_GLYPHS / 1_000) + 1);
+
+    DocumentFormatResult result =
+        DocumentFormatRunner.run(pipeline, DocumentFormatSource.ofFile(file, "fanout-page.pdf"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.PARSE_FAILED);
+  }
+
+  /** The table pass routes glyphs into cells and still counts every one against the page limit. */
+  @Test
+  void glyphsInsideATableCountAgainstThePageGlyphLimit() throws IOException {
+    Path file = tempDir.resolve("fanout-table.pdf");
+    writeFormFanout(file, (int) (PdfReadBudget.MAX_PAGE_GLYPHS / 1_000) + 1);
+    TableGrid wholePage = new TableGrid(new float[] {0, 700}, new float[] {0, 900});
+
+    try (PDDocument doc = Loader.loadPDF(file.toFile())) {
+      assertThatThrownBy(() -> PdfPageText.extract(doc, 0, page -> List.of(wholePage)))
+          .isInstanceOf(ParserLimitExceededException.class)
+          .hasMessageContaining("glyph limit")
+          // thrown by the table pass itself, not by the flow-text pass after it
+          .satisfies(
+              e ->
+                  assertThat(e.getStackTrace())
+                      .anyMatch(
+                          frame -> frame.getClassName().endsWith("PdfPageText$TableStripper")));
+    }
+  }
+
+  @Test
+  void aPageJustBelowThePageGlyphLimitIsRead() throws IOException {
+    Path file = tempDir.resolve("fanout-page-small.pdf");
+    writeFormFanout(file, (int) (PdfReadBudget.MAX_PAGE_GLYPHS / 1_000) - 1);
+
+    DocumentFormatResult result =
+        DocumentFormatRunner.run(
+            pipeline, DocumentFormatSource.ofFile(file, "fanout-page-small.pdf"));
 
     assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
   }

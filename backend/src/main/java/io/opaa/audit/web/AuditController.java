@@ -11,6 +11,7 @@ import io.opaa.audit.AuditIncidentScopeGrant;
 import io.opaa.audit.AuditIncidentScopeService;
 import io.opaa.audit.AuditLogEntry;
 import io.opaa.audit.AuditQueryService;
+import io.opaa.audit.AuditResponseRedaction;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import jakarta.validation.Valid;
@@ -203,14 +204,13 @@ public class AuditController {
         queryService.verifyChain(caller.organizationId(), caller.id(), reason, month));
   }
 
+  /** Every entry without its references to persons, see {@link AuditResponseRedaction}. */
   private AuditEventPage toPage(Page<AuditLogEntry> page) {
-    AuditEventPage response =
-        new AuditEventPage(
-            page.getContent().stream().map(this::toEventResponse).toList(),
-            page.getNumber(),
-            page.getSize(),
-            page.hasNext());
-    return response;
+    return new AuditEventPage(
+        page.getContent().stream().map(this::toEventResponse).toList(),
+        page.getNumber(),
+        page.getSize(),
+        page.hasNext());
   }
 
   private AuditEventResponse toEventResponse(AuditLogEntry entry) {
@@ -219,16 +219,16 @@ public class AuditController {
             entry.getRecordedAt(),
             entry.getOrganizationId(),
             entry.getActorKind(),
-            entry.getActorRef(),
             entry.getEventType(),
             entry.getObjectType(),
-            entry.getObjectId(),
             entry.getOutcome())
+        .actorRef(AuditResponseRedaction.actorRef(entry))
+        .objectId(AuditResponseRedaction.objectId(entry))
         .objectLabel(entry.getObjectLabel())
         .subjectKind(entry.getSubjectKind())
-        .subjectRef(entry.getSubjectRef())
-        .before(entry.getBefore())
-        .after(entry.getAfter())
+        .subjectRef(AuditResponseRedaction.subjectRef(entry))
+        .before(AuditResponseRedaction.before(entry))
+        .after(AuditResponseRedaction.after(entry))
         .reason(entry.getReason())
         .correlationRef(entry.getCorrelationRef())
         .schemaVersion(

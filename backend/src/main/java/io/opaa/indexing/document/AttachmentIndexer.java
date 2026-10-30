@@ -241,7 +241,8 @@ public class AttachmentIndexer {
               limits.maxSizeBytes(),
               download.authHeader().get(),
               RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN,
-              access.rateLimitListener());
+              access.rateLimitListener(),
+              names(access));
 
       String contentType = downloaded.contentType();
       if (isHtmlContentType(contentType)) {

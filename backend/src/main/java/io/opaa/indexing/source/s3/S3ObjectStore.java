@@ -31,8 +31,8 @@ public interface S3ObjectStore extends AutoCloseable {
   /**
    * The head of one object - content type, tag, size, timestamp, storage class, archive state.
    *
-   * @throws S3AccessException.ObjectNotFound when there is no current object under {@code key}
-   *     (unambiguous only with {@code s3:ListBucket}, which is a required right)
+   * @throws S3AccessException.ObjectNotFound when there is no current object under {@code key}: a
+   *     {@code 404} that a listing of the key confirms (a bare {@code 404} may come from a proxy)
    * @throws S3AccessException.ReadForbidden when the credentials may not read it
    */
   S3ObjectHead headObject(String bucket, String key) throws S3AccessException, InterruptedException;

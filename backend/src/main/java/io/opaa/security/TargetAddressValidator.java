@@ -10,6 +10,7 @@ import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +31,8 @@ import org.slf4j.LoggerFactory;
  *
  * <p>A blocked range and a name that does not resolve are refused with the same German sentence
  * ({@link #refusal}), so whoever configures a target cannot probe which internal names exist; the
- * cause goes to the log only. The exception types still tell the two apart.
+ * cause goes to the log only. The exception types still tell the two apart. The log names the host
+ * and its address as {@link #namingHostsAs} decides - in the clear unless a caller says otherwise.
  *
  * <p>The target is checked, never the outbound proxy. A name that does not resolve locally passes
  * only when its connection goes through the outbound proxy, because the proxy resolves it: for
@@ -55,11 +57,29 @@ public class TargetAddressValidator {
   private final boolean enabled;
   private final List<String> allowedHosts;
   private final int policy;
+  private final Function<Object, String> loggedHosts;
 
   public TargetAddressValidator(boolean enabled, List<String> allowlist) {
     this.enabled = enabled;
     this.allowedHosts = allowlist == null ? List.of() : allowlist;
     this.policy = ResolutionPins.policyOf(this.allowedHosts);
+    this.loggedHosts = LogText::of;
+  }
+
+  private TargetAddressValidator(TargetAddressValidator of, Function<Object, String> loggedHosts) {
+    this.enabled = of.enabled;
+    this.allowedHosts = of.allowedHosts;
+    this.policy = of.policy;
+    this.loggedHosts = loggedHosts;
+  }
+
+  /**
+   * This validator, its log lines naming a refused host and its address through {@code names} - for
+   * a caller whose target may come from content the log must not name, e.g. {@code LoggedName::of}
+   * of a private library. Checks and user-facing messages stay the same.
+   */
+  public TargetAddressValidator namingHostsAs(Function<Object, String> names) {
+    return new TargetAddressValidator(this, Objects.requireNonNull(names));
   }
 
   /**
@@ -263,8 +283,8 @@ public class TargetAddressValidator {
    * A DNS failure, answered in the words of a blocked range ({@link #refusal}). Logged at INFO: a
    * dead link in crawled content is ordinary, unlike a target in a blocked range.
    */
-  private static UnknownTargetHostException unknownHost(String host) {
-    log.info("Rejecting fetch to {} - the name does not resolve", LogText.of(host));
+  private UnknownTargetHostException unknownHost(String host) {
+    log.info("Rejecting fetch to {} - the name does not resolve", loggedHosts.apply(host));
     return new UnknownTargetHostException(refusal(host));
   }
 
@@ -276,15 +296,14 @@ public class TargetAddressValidator {
         + " einem gesperrten Adressbereich (lokal, privat oder nicht routbar).";
   }
 
-  private static void rejectBlocked(String host, List<InetAddress> addresses)
+  private void rejectBlocked(String host, List<InetAddress> addresses)
       throws TargetAddressBlockedException {
     for (InetAddress address : addresses) {
       if (isBlockedAddress(address)) {
         log.warn(
-            "Rejecting fetch to {} - resolved address {} lies in a blocked (loopback, link-local,"
+            "Rejecting fetch to {} - its resolved address lies in a blocked (loopback, link-local,"
                 + " private or otherwise non-routable) range",
-            LogText.of(host),
-            address.getHostAddress());
+            loggedHosts.apply(host + " (" + address.getHostAddress() + ")"));
         throw new TargetAddressBlockedException(refusal(host));
       }
     }
@@ -358,13 +377,12 @@ public class TargetAddressValidator {
     if (isIpv4EmbeddedIpv6(bytes)) {
       // isCommonBlockedRange(address) too, not the embedded check alone: the deprecated
       // IPv4-compatible form (unlike the mapped one) overlaps with addresses Java already
-      // recognizes directly on the IPv6 side - ::1 (loopback) is bytes[10..11] == 0 the same way
-      // an IPv4-compatible address is, but its embedded "IPv4" (0.0.0.1) is not itself in any
-      // blocked IPv4 range. Without this fallback, ::1 fell through this branch as allowed.
+      // recognizes directly on the IPv6 side - ::1 (loopback) shares the all-zero upper bytes of
+      // an IPv4-compatible address, so the IPv6-side predicates must still apply here.
       byte[] embedded = new byte[] {bytes[12], bytes[13], bytes[14], bytes[15]};
       return isBlockedIpv4Bytes(embedded) || isCommonBlockedRange(address);
     }
-    if (isUniqueLocalIpv6(bytes) || isNat64Ipv6(bytes)) {
+    if (isUniqueLocalIpv6(bytes) || isTranslationPrefixIpv6(bytes)) {
       return true;
     }
     return isCommonBlockedRange(address);
@@ -400,14 +418,18 @@ public class TargetAddressValidator {
   }
 
   /**
-   * IPv4 ranges none of {@link InetAddress}'s own predicates recognize: the reserved {@code
-   * 240.0.0.0/4} block including the broadcast address, Carrier-Grade NAT ({@code 100.64.0.0/10}),
-   * the IETF Protocol Assignments block ({@code 192.0.0.0/24}) and the benchmarking range ({@code
-   * 198.18.0.0/15}). None are meant to be reachable from outside the assigning network.
+   * IPv4 ranges none of {@link InetAddress}'s own predicates recognize: "this network" {@code
+   * 0.0.0.0/8} beyond {@code 0.0.0.0} itself, the reserved {@code 240.0.0.0/4} block including the
+   * broadcast address, Carrier-Grade NAT ({@code 100.64.0.0/10}), the IETF Protocol Assignments
+   * block ({@code 192.0.0.0/24}) and the benchmarking range ({@code 198.18.0.0/15}). None are meant
+   * to be reachable from outside the assigning network.
    */
   private static boolean isAdditionalBlockedIpv4Range(byte[] ipv4Bytes) {
     int first = ipv4Bytes[0] & 0xFF;
     int second = ipv4Bytes[1] & 0xFF;
+    if (first == 0) {
+      return true; // 0.0.0.0/8
+    }
     if (first >= 240) {
       return true; // 240.0.0.0/4, including 255.255.255.255
     }
@@ -450,27 +472,38 @@ public class TargetAddressValidator {
   }
 
   /**
-   * {@code 64:ff9b::/96} - the well-known NAT64 prefix (RFC 6052), which translates an embedded
-   * IPv4 address on the other side of the NAT64 gateway; not recognized by any {@link InetAddress}
-   * predicate. Deliberately not folded into {@link #isIpv4EmbeddedIpv6} - this class has no reason
-   * to inspect the embedded address itself, the whole prefix is non-routable regardless.
+   * IPv6 prefixes that translate or tunnel to an IPv4 address (NAT64 {@code 64:ff9b::/96} and
+   * {@code 64:ff9b:1::/48}, 6to4 {@code 2002::/16}, Teredo {@code 2001::/32}, SIIT {@code
+   * ::ffff:0:0:0/96}) or only discard ({@code 100::/64}); none is recognized by an {@link
+   * InetAddress} predicate. Each is blocked as a whole, so the embedded address never matters.
    */
-  private static boolean isNat64Ipv6(byte[] bytes) {
-    if (bytes.length != 16) {
-      return false;
-    }
-    if (bytes[0] != 0x00
-        || (bytes[1] & 0xFF) != 0x64
-        || (bytes[2] & 0xFF) != 0xFF
-        || (bytes[3] & 0xFF) != 0x9B) {
-      return false;
-    }
-    for (int i = 4; i < 12; i++) {
-      if (bytes[i] != 0) {
-        return false;
+  private static final List<Ipv6Prefix> TRANSLATION_PREFIXES =
+      List.of(
+          new Ipv6Prefix(new byte[] {0x00, 0x64, (byte) 0xFF, (byte) 0x9B}, 96),
+          new Ipv6Prefix(new byte[] {0x00, 0x64, (byte) 0xFF, (byte) 0x9B, 0x00, 0x01}, 48),
+          new Ipv6Prefix(new byte[] {0x20, 0x02}, 16),
+          new Ipv6Prefix(new byte[] {0x20, 0x01, 0x00, 0x00}, 32),
+          new Ipv6Prefix(
+              new byte[] {0, 0, 0, 0, 0, 0, 0, 0, (byte) 0xFF, (byte) 0xFF, 0x00, 0x00}, 96),
+          new Ipv6Prefix(new byte[] {0x01, 0x00}, 64));
+
+  private static boolean isTranslationPrefixIpv6(byte[] bytes) {
+    return bytes.length == 16 && TRANSLATION_PREFIXES.stream().anyMatch(p -> p.contains(bytes));
+  }
+
+  /**
+   * The first {@code bits} bits of {@code head}, zero-extended; {@code bits} is a multiple of 8.
+   */
+  private record Ipv6Prefix(byte[] head, int bits) {
+    boolean contains(byte[] address) {
+      for (int i = 0; i < bits / 8; i++) {
+        byte expected = i < head.length ? head[i] : 0;
+        if (address[i] != expected) {
+          return false;
+        }
       }
+      return true;
     }
-    return true;
   }
 
   /**

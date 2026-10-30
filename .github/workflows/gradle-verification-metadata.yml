@@ -60,14 +60,15 @@ jobs:
           python3 .github/scripts/gradle_verification_variants.py
           backend/gradle/verification-metadata.xml
 
-      # Lists every known file whose checksums differ from the committed file as a warning; the
-      # maintainer verifies each before committing the result.
+      # Lists every known file whose checksums differ from the committed file as a warning, every
+      # removed file and a diff of <configuration>; the maintainer verifies each before committing
+      # the result.
       - name: Mit dem bisherigen Stand vergleichen
         working-directory: .
         run: |
           status=0
           python3 .github/scripts/check_gradle_verification_metadata.py \
-            "$RUNNER_TEMP/previous.xml" backend/gradle/verification-metadata.xml \
+            "$RUNNER_TEMP/previous.xml" backend/gradle/verification-metadata.xml --details \
             >"$RUNNER_TEMP/compare.txt" || status=$?
           cat "$RUNNER_TEMP/compare.txt"
           {

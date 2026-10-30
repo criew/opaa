@@ -255,6 +255,7 @@ export type SignInProfileEndpoints = components['schemas']['SignInProfileEndpoin
 export type ConnectionRedirectResponse = components['schemas']['ConnectionRedirectResponse']
 export type ConnectionLogEventType = components['schemas']['ConnectionLogEventType']
 export type ConnectionLogOwnerKind = components['schemas']['ConnectionLogOwnerKind']
+export type ConnectionLogActorKind = components['schemas']['ConnectionLogActorKind']
 export type ConnectionEndCause = components['schemas']['ConnectionEndCause']
 export type ConnectionLogEntryResponse = components['schemas']['ConnectionLogEntryResponse']
 export type ConnectionLogPage = components['schemas']['ConnectionLogPage']

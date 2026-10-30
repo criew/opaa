@@ -23,7 +23,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.ai.document.Document;
@@ -182,9 +181,9 @@ class FormatHostileInputTest {
     assertThat(read.text()).contains("Folie 19").doesNotContain(HostileFiles.EMBEDDED_TEXT);
   }
 
-  @Disabled("#3434")
+  // regression guard for #3434: a page drawing one form over and over fails at the page glyph limit
   @Test
-  void aPdfDrawingOneFormOverAndOverFailsAtTheTextLimit() {
+  void aPdfDrawingOneFormOverAndOverFailsAtThePageGlyphLimit() {
     assertThat(run(HostileFiles.pdfDrawingOneFormOverAndOver(11_000), BOUND).outcome())
         .isEqualTo(Outcome.PARSE_FAILED);
   }
