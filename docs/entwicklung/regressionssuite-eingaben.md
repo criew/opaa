@@ -2,8 +2,12 @@
 
 Die Suite hält fest, was die Gegenprüfungen zu präparierten Dateien, SSRF-Zielen und Log-Hygiene
 gefunden haben: Jeder behobene Befund bekommt einen benannten Testfall, der auf dem fehlerhaften
-Stand rot würde. Jeder Fall trägt einen Kommentar `// regression guard for #N: <Invariante>`, der
-das abgesicherte Issue und die Invariante nennt.
+Stand rot wird. Jeder Fall trägt einen Kommentar `// regression guard for #N: <Invariante>`, der
+das abgesicherte Issue und die Invariante nennt. Ein neuer Fall ist erst fertig, wenn er mit
+zurückgenommenem Fix nachweislich rot wird: Eingabegröße und Zeitgrenze so wählen, dass der
+fehlerhafte Stand die Grenze klar reißt, und wo möglich nicht nur auf die Zeit prüfen, sondern auf
+das, was der Fix sicherstellt (Meldung der Grenze, Länge der Wortläufe, fehlender eingebetteter
+Text).
 
 **Ein neuer Parser oder ein neuer Konnektor mit ausgehender Verbindung erweitert die Suite im
 selben PR.** Für Konnektoren erzwingt das ein Test (siehe unten), für Parser die Durchsicht im
@@ -13,8 +17,12 @@ Review.
 
 | Klasse | Weg | Lauf |
 |---|---|---|
-| `io.opaa.format.hostile.FormatHostileInputTest` | Format-Pipeline wie in Produktion: Weiterleitung nach erkanntem Inhalt, `DocumentFormatRunner`, Produktionsgrenzen | Gradle-Task `hostileInputTest`, eigene JVM mit **512 MB Heap**, je Fall **20 s** |
-| `io.opaa.library.HostileUploadIntegrationTest` | Upload-Verarbeitung im gemeinsamen Spring-Kontext: Upload-Pool, Anhänge, Zeilenstatus | `./gradlew test` (Shard `api`), je Datei **90 s** bis zum Endstatus |
+| `io.opaa.format.hostile.FormatHostileInputTest` | Format-Pipeline wie in Produktion: Weiterleitung nach erkanntem Inhalt, `DocumentFormatRunner`, Produktionsgrenzen | Gradle-Task `hostileInputTest`, eigene JVM mit **512 MB Heap**, je Fall **5 s** (unter einer Sekunde im behobenen Stand) oder **20 s** |
+| `io.opaa.library.HostileUploadIntegrationTest` | Upload-Verarbeitung im gemeinsamen Spring-Kontext: Upload-Pool, Anhänge, Zeilenstatus, Folge-Upload | `./gradlew test` (Shard `api`), je Datei **90 s** bis zum Endstatus |
+
+Die Wächter der Parser-Fixes stehen in `FormatHostileInputTest`. Der Upload-Test prüft den Weg bis
+zur Zeile; als Wächter zählt er nur, wo ein zurückgenommener Fix den Endstatus ändert
+(DOCX-Kompressionsbombe: ohne Teilgrenze wird sie indiziert statt abgewiesen).
 
 Die Erwartung je Datei: Die Verarbeitung endet innerhalb der Zeitgrenze und ohne
 `OutOfMemoryError` in der kleinen JVM. Eine Datei, die eine Grenze verwirft, endet als
@@ -37,20 +45,26 @@ im Repository. Die Fabrikmethoden sind öffentlich, damit ein späteres Fuzzing-
 Ausgangsdateien nutzen kann:
 
 - PDF mit zyklischer Gliederung
-- PDF, das ein Form-XObject vielfach zeichnet (bisher nur Generator, ohne Testfall)
+- PDF, das ein Form-XObject vielfach zeichnet; der Testfall ist bis zum Fix von #3434 deaktiviert
 - DOCX-Kompressionsbombe
 - EML mit verschachtelten Nachrichten und Anhängen
 - MSG mit gemeinsam genutzten Anhangssektoren
-- HTML-Titel, Markdown-Überschrift und tief verschachtelte Tabellen, an denen ein Ausdruck
-  zurückgesetzt hat
+- HTML-Titel und -Absatz sowie Markdown-Überschrift, an denen ein Ausdruck zurückgesetzt hat
+- tief verschachtelte Tabellen mit vielen Zeilen je Ebene (jsoup nimmt höchstens 512
+  Elementebenen an, also rund 120 Tabellenebenen; die Last kommt aus der Breite je Ebene)
+- HTML mit sehr vielen Inhaltswurzeln (`<article>`)
 - Text ohne Leerraum
+- PPTX, das auf jeder Folie ein Word-Dokument als OLE-Objekt einbettet
 
 Neue Fälle kommen als Fabrikmethode in `HostileFiles` und als Testfall in beide Klassen, sofern der
 Weg über den Upload etwas zusätzlich prüft (Status, Anhänge, Folge-Upload).
 
 Fälle, die bestehende Grenztests schon abdecken, wiederholt die Suite nicht:
 `PdfAmplificationTest`, `ContextAmplificationTest`, `MsgAmplificationTest`,
-`OoxmlPackageLimitsTest` und `BoundarySplitterTest` bleiben die Stelle für ihre Fälle.
+`OoxmlPackageLimitsTest` und `BoundarySplitterTest` bleiben die Stelle für ihre Fälle. Eingebettete
+Objekte deckt neben dem PPTX-Fall `DocumentServiceTest.parseDocumentDoesNotParseEmbeddedDocuments`
+ab; ein `.doc` mit Objektpool erzeugt die Suite nicht, weil es keinen Generator für das alte
+Word-Format gibt.
 
 **Neuer Parser:** mindestens eine Datei, die seine teuerste Struktur (Verschachtelung, Verweise,
 Kompression, Wiederholung) über die Produktionsgrenze treibt, in `FormatHostileInputTest`.
@@ -65,6 +79,10 @@ auflöst, und eine Weiterleitung auf ein internes Ziel. Die Erwartung: abgelehnt
 Zielprüfung („gesperrten Adressbereich“), bevor eine Verbindung das interne Ziel erreicht. Ein
 Kontrollfall belegt, dass der Konnektor ein zugelassenes Ziel tatsächlich erreicht.
 
+Der Vertrag prüft den Verbindungstest. Der Lauf eines Konnektors baut seinen Client mit derselben
+Klasse bzw. Fabrik und derselben Zielprüfung; was nur der Lauf tut, prüfen die Executor-Tests und
+die `*RebindingTest`-Klassen des Tasks `dnsRebindingTest`.
+
 Je Konnektor gibt es eine Unterklasse `<Typ>TargetValidationContractTest` im Testpaket des
 Konnektors. Sie baut den echten Konnektor mit der übergebenen Zielprüfung und richtet jede Anfrage
 auf das übergebene Ziel. Bei Konnektoren mit fester Adresse (Google Drive, Dropbox, SharePoint,
@@ -76,8 +94,13 @@ OneDrive) steht das Ziel für die API-Basis.
 
 ## Log-Hygiene
 
-- `io.opaa.api.RequestLogInjectionIntegrationTest`: Ein prozentkodierter Zeilenumbruch in Pfad oder
-  Query-Parameter, gefolgt von einem gefälschten Logeintrag, beginnt keine eigene Logzeile.
+- `io.opaa.observability.ForgedLogEntryIntegrationTest`: Ein dekodierter Zeilenumbruch aus einer
+  Anfrage, gefolgt von einem gefälschten Logeintrag, steht im Klartextlog der laufenden Anwendung nur
+  als eingerückte Fortsetzung, im Argument einer Meldung wie in einer Exception-Meldung. Der Test
+  schreibt über Logger der Anwendung, weil heute keine Anfrage einen dekodierten Pfad- oder
+  Query-Wert ins Log bringt: Ein Pfad mit Steuerzeichen wird vorher mit 400 abgewiesen
+  (`RateLimitSecurityChainIntegrationTest`), das Anfrageprotokoll schreibt den Pfad kodiert und
+  ohne Query.
 - `UserServiceOrganizationBoundaryIntegrationTest.theMemberSearchTakesLikeWildcardsLiterally`:
   `%` und `_` in der Personensuche sind Literale.
 

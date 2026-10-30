@@ -46,7 +46,9 @@ import org.springframework.mock.web.MockMultipartFile;
  * bookkeeping of the row: each one ends within a fixed time, a file a limit refuses as {@code
  * FAILED} with the German message of the upload list, and a regular file uploaded right after it is
  * indexed. The suite's upload limit is a few kilobytes, so a crafted file enters behind the size
- * check, the way {@link LibraryDocumentService#uploadDocument} hands an accepted file over.
+ * check, the way {@link LibraryDocumentService#uploadDocument} hands an accepted file over. The
+ * guards of the parser fixes themselves, with bounds that turn a reverted fix red, are in {@code
+ * FormatHostileInputTest}; a case here guards a fix only where the row would end otherwise.
  */
 @OpaaIntegrationTest
 @Timeout(value = 3, unit = TimeUnit.MINUTES)
@@ -99,7 +101,6 @@ class HostileUploadIntegrationTest {
     organizationRepository.deleteById(organizationId);
   }
 
-  // regression guard for #3336: an outline item that is its own next sibling ends the outline walk
   @Test
   void aPdfWithACyclicOutlineIsIndexedAndTheNextUploadToo() throws IOException {
     Document pdf = processed(HostileFiles.pdfWithCyclicOutline());
@@ -117,7 +118,6 @@ class HostileUploadIntegrationTest {
     assertTheNextUploadIsIndexed("nach-bombe.txt");
   }
 
-  // regression guard for #3376: attachments nested past the depth limit are not followed
   @Test
   void messagesNestedPastTheDepthLimitAreCutOffAndTheNextUploadIsIndexed() throws IOException {
     Document mail = processed(HostileFiles.emlWithNestedMessages(8, 2));
@@ -135,7 +135,6 @@ class HostileUploadIntegrationTest {
     assertTheNextUploadIsIndexed("nach-anhaengen.txt");
   }
 
-  // regression guard for #3376: attachment entries sharing sectors unpack to no more than the file
   @Test
   void anOutlookMessageSharingAttachmentSectorsStaysWithinItsSize() throws IOException {
     HostileFile file = HostileFiles.msgWithSharedAttachmentSectors(64 * 1024, 30, 512);
@@ -152,7 +151,6 @@ class HostileUploadIntegrationTest {
     assertTheNextUploadIsIndexed("nach-nachricht.txt");
   }
 
-  // regression guard for #3375: the URL cleanup of a title runs in linear time
   @Test
   void anHtmlTitleThatMadeTheUrlCleanupBacktrackIsIndexed() throws IOException {
     Document html = processed(HostileFiles.htmlWithBacktrackingTitle(33_000));
@@ -161,7 +159,6 @@ class HostileUploadIntegrationTest {
     assertTheNextUploadIsIndexed("nach-titel.txt");
   }
 
-  // regression guard for #3375: a Markdown heading is matched without lazy backtracking
   @Test
   void aMarkdownHeadingThatMadeThePatternBacktrackIsIndexed() throws IOException {
     Document markdown = processed(HostileFiles.markdownWithBacktrackingHeading(200_000));
@@ -170,10 +167,9 @@ class HostileUploadIntegrationTest {
     assertTheNextUploadIsIndexed("nach-ueberschrift.txt");
   }
 
-  // regression guard for #3375: nested tables are walked by their direct rows, to a bounded depth
   @Test
-  void tablesNestedThousandsDeepAreIndexed() throws IOException {
-    Document html = processed(HostileFiles.htmlWithNestedTables(50_000));
+  void deeplyNestedWideTablesAreIndexed() throws IOException {
+    Document html = processed(HostileFiles.htmlWithNestedTables(120, 1_000));
 
     assertThat(html.getStatus()).isEqualTo(DocumentStatus.INDEXED);
     assertTheNextUploadIsIndexed("nach-tabellen.txt");

@@ -11,6 +11,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 import java.util.Random;
 import java.util.zip.ZipEntry;
@@ -29,6 +31,13 @@ import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocume
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem;
 import org.apache.poi.poifs.filesystem.DirectoryEntry;
 import org.apache.poi.poifs.filesystem.POIFSFileSystem;
+import org.apache.poi.sl.usermodel.ObjectMetaData;
+import org.apache.poi.sl.usermodel.PictureData.PictureType;
+import org.apache.poi.xslf.usermodel.XMLSlideShow;
+import org.apache.poi.xslf.usermodel.XSLFObjectShape;
+import org.apache.poi.xslf.usermodel.XSLFPictureData;
+import org.apache.poi.xslf.usermodel.XSLFSlide;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
 
 /**
  * Crafted input files, generated at runtime instead of checked in as binaries: each one cost a
@@ -63,7 +72,7 @@ public final class HostileFiles {
 
   /**
    * A PDF whose outline holds an item naming itself as its own {@code /Next} sibling, so a walk
-   * along the siblings never ends.
+   * along the siblings never ends and, as the item has a page, collects an entry per step.
    */
   public static HostileFile pdfWithCyclicOutline() {
     try (PDDocument doc = new PDDocument()) {
@@ -76,6 +85,7 @@ public final class HostileFiles {
       outline.addLast(chapter);
       PDOutlineItem loop = new PDOutlineItem();
       loop.setTitle("Schleife");
+      loop.setDestination(page);
       outline.addLast(loop);
       loop.getCOSObject().setItem(COSName.NEXT, loop.getCOSObject());
       return new HostileFile("zyklische-gliederung.pdf", save(doc));
@@ -283,17 +293,80 @@ public final class HostileFiles {
   }
 
   /**
-   * An HTML page of {@code depth} tables, each nested in the only cell of the one before -
-   * superlinear for a walk that selects all rows below every table.
+   * An HTML page of {@code depth} tables, each nested in the last cell of the one before and each
+   * with {@code rowsPerLevel} rows of its own - superlinear for a walk that searches the whole
+   * subtree of every table for its rows. jsoup's parser nests at most 512 elements, four per level
+   * here, so a depth beyond about 120 does not arrive.
    */
-  public static HostileFile htmlWithNestedTables(int depth) {
-    StringBuilder html = new StringBuilder("<html><body><p>Vor den Tabellen.</p>");
-    html.append("<table><tr><td>".repeat(depth))
-        .append("Innerste Zelle")
-        .append("</td></tr></table>".repeat(depth))
-        .append("</body></html>");
-    return new HostileFile("verschachtelte-tabellen.html", ascii(html.toString()));
+  public static HostileFile htmlWithNestedTables(int depth, int rowsPerLevel) {
+    String rows = "<tr><td>Zeile</td><td>Wert</td></tr>".repeat(rowsPerLevel);
+    String html =
+        "<html><body><p>Vor den Tabellen.</p>"
+            + ("<table>" + rows + "<tr><td>").repeat(depth)
+            + "Innerste Zelle"
+            + "</td></tr></table>".repeat(depth)
+            + "</body></html>";
+    return new HostileFile("verschachtelte-tabellen.html", ascii(html));
   }
+
+  /**
+   * An HTML page of {@code articles} sibling {@code <article>} elements, each a content root -
+   * quadratic for a membership test that scans the list of roots.
+   */
+  public static HostileFile htmlWithManyContentRoots(int articles) {
+    String html =
+        "<html><body>"
+            + "<article><header>Kopf</header><p>Text</p></article>".repeat(articles)
+            + "<footer>Fuß</footer></body></html>";
+    return new HostileFile("viele-artikel.html", html.getBytes(StandardCharsets.UTF_8));
+  }
+
+  /**
+   * An HTML page whose paragraph repeats {@code "http://?a"} {@code repeats} times without
+   * whitespace - quadratic backtracking for a URL pattern scanning for query parameters.
+   */
+  public static HostileFile htmlWithBacktrackingParagraph(int repeats) {
+    return new HostileFile(
+        "absatz-backtracking.html",
+        ("<html><body><h1>Bericht</h1><p>" + "http://?a".repeat(repeats) + "</p></body></html>")
+            .getBytes(StandardCharsets.UTF_8));
+  }
+
+  /**
+   * A PowerPoint file of {@code slides} slides, each embedding a Word document as an OLE object - a
+   * parser following embedded objects reads the embedded text once per slide.
+   */
+  public static HostileFile pptxEmbeddingAWordDocumentPerSlide(int slides) {
+    try (XMLSlideShow show = new XMLSlideShow();
+        XWPFDocument word = new XWPFDocument();
+        ByteArrayOutputStream embedded = new ByteArrayOutputStream()) {
+      word.createParagraph().createRun().setText(EMBEDDED_TEXT);
+      word.write(embedded);
+      XSLFPictureData icon = show.addPicture(PNG_PIXEL, PictureType.PNG);
+      for (int n = 0; n < slides; n++) {
+        XSLFSlide slide = show.createSlide();
+        slide.createTextBox().setText("Folie " + n);
+        XSLFObjectShape ole = slide.createOleShape(icon);
+        try (OutputStream out = ole.updateObjectData(ObjectMetaData.Application.WORD_V12, null)) {
+          out.write(embedded.toByteArray());
+        }
+      }
+      ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+      show.write(bytes);
+      return new HostileFile("eingebettete-objekte.pptx", bytes.toByteArray());
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  /** The text of the Word document {@link #pptxEmbeddingAWordDocumentPerSlide} embeds. */
+  public static final String EMBEDDED_TEXT = "Eingebetteter Vermerk";
+
+  /** A PNG of one transparent pixel, the icon of an embedded object. */
+  private static final byte[] PNG_PIXEL =
+      Base64.getDecoder()
+          .decode(
+              "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==");
 
   /**
    * A text file of {@code characters} letters without any whitespace - one token whose encoding
@@ -301,7 +374,7 @@ public final class HostileFiles {
    */
   public static HostileFile textWithoutWhitespace(int characters) {
     byte[] bytes = new byte[characters];
-    java.util.Arrays.fill(bytes, (byte) 'a');
+    Arrays.fill(bytes, (byte) 'a');
     return new HostileFile("ohne-leerraum.txt", bytes);
   }
 

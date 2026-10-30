@@ -41,6 +41,8 @@ class TargetValidationContractCoverageTest {
       }
     }
 
+    // the ten remote connectors of today: a connector dropping out of the registry or losing its
+    // remote flag must not shrink the set the contract is held against unnoticed
     assertThat(registered).hasSizeGreaterThanOrEqualTo(10);
     assertThat(contractTypes()).containsAll(registered);
   }

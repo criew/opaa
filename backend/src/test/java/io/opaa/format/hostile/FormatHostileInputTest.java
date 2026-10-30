@@ -1,6 +1,7 @@
 package io.opaa.format.hostile;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import io.opaa.format.DiscoveredAttachment;
@@ -18,9 +19,11 @@ import io.opaa.format.file.mail.MailDocumentFormat;
 import io.opaa.format.file.mail.MailProperties;
 import io.opaa.format.file.markdown.MarkdownDocumentFormat;
 import io.opaa.format.file.office.DocxDocumentFormat;
+import io.opaa.format.file.office.OoxmlPackages;
 import io.opaa.format.file.pdf.PdfDocumentFormat;
 import io.opaa.format.hostile.HostileFiles.HostileFile;
 import io.opaa.format.shared.HeadingSectionSplitterFixture;
+import io.opaa.format.shared.ParserLimitProperties;
 import io.opaa.indexing.IndexingProperties;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -29,8 +32,10 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.ai.document.Document;
 
 /**
  * Every crafted file of {@link HostileFiles} on the production path of a format - routed by its
@@ -43,30 +48,65 @@ class FormatHostileInputTest {
 
   private static final Duration BOUND = Duration.ofSeconds(20);
 
+  /** The bound of a case whose fixed state ends in well under a second. */
+  private static final Duration SHORT_BOUND = Duration.ofSeconds(5);
+
   @TempDir Path tempDir;
 
   private final DocumentFormatRegistry registry = productionRegistry();
 
-  /** What a run yielded: its outcome, its attachments and the bytes they unpacked to. */
-  private record Read(Outcome outcome, int attachments, long unpackedBytes) {}
+  /**
+   * What a run yielded: its outcome, its chunks' text, its attachments and the bytes they unpacked
+   * to.
+   */
+  private record Read(Outcome outcome, List<String> chunks, int attachments, long unpackedBytes) {
+
+    String text() {
+      return String.join("\n", chunks);
+    }
+
+    /** The longest run of characters without whitespace in any chunk. */
+    int longestRun() {
+      int longest = 0;
+      for (String chunk : chunks) {
+        int run = 0;
+        for (int i = 0; i < chunk.length(); i++) {
+          run = Character.isWhitespace(chunk.charAt(i)) ? 0 : run + 1;
+          longest = Math.max(longest, run);
+        }
+      }
+      return longest;
+    }
+  }
 
   // regression guard for #3336: an outline item that is its own next sibling ends the outline walk
   @Test
-  void aPdfWithACyclicOutlineIsReadWithinTheBound() {
-    assertThat(run(HostileFiles.pdfWithCyclicOutline()).outcome()).isEqualTo(Outcome.CHUNKED);
+  void aPdfWithACyclicOutlineIsReadAlongItsOutlineWithinTheBound() {
+    Read read = run(HostileFiles.pdfWithCyclicOutline(), SHORT_BOUND);
+
+    assertThat(read.outcome()).isEqualTo(Outcome.CHUNKED);
+    assertThat(read.text()).contains("Kapitel Eins mit seinem Text.");
   }
 
   // regression guard for #3336: an XML part unpacking past the part limit fails before the DOM
   @Test
-  void aDocxCompressionBombFailsBeforeItIsUnpacked() {
-    assertThat(run(HostileFiles.docxCompressionBomb(40L * 1024 * 1024)).outcome())
-        .isEqualTo(Outcome.PARSE_FAILED);
+  void aDocxCompressionBombFailsAtThePartLimitBeforeItIsUnpacked() {
+    HostileFile bomb = HostileFiles.docxCompressionBomb(40L * 1024 * 1024);
+    Path file = bomb.writeTo(tempDir);
+
+    assertTimeoutPreemptively(
+        SHORT_BOUND,
+        () ->
+            assertThatThrownBy(() -> OoxmlPackages.open(file, ParserLimitProperties.DEFAULTS))
+                .isInstanceOf(IOException.class)
+                .hasMessageContaining("word/document.xml exceeds the configured size limit"));
+    assertThat(run(bomb, SHORT_BOUND).outcome()).isEqualTo(Outcome.PARSE_FAILED);
   }
 
-  // regression guard for #3376: a message nesting messages hands out only its own level
+  // regression guard: a message nesting messages hands out only its own level (ADR-0022)
   @Test
   void aMessageNestingMessagesIsReadOneLevelAtATime() {
-    Read read = run(HostileFiles.emlWithNestedMessages(8, 30));
+    Read read = run(HostileFiles.emlWithNestedMessages(8, 30), BOUND);
 
     assertThat(read.outcome()).isEqualTo(Outcome.CHUNKED);
     // the thirty text attachments and the one nested message of the top level
@@ -78,44 +118,81 @@ class FormatHostileInputTest {
   void anOutlookMessageWithSharedAttachmentSectorsUnpacksToNoMoreThanItsSize() {
     HostileFile file = HostileFiles.msgWithSharedAttachmentSectors(64 * 1024, 30, 512);
 
-    Read read = run(file);
+    Read read = run(file, BOUND);
 
     assertThat(read.outcome()).isEqualTo(Outcome.CHUNKED);
     assertThat(read.attachments()).isPositive();
     assertThat(read.unpackedBytes()).isLessThanOrEqualTo(file.bytes().length);
   }
 
-  // regression guard for #3375: the URL cleanup of a title runs in linear time
+  // regression guard for #3375: a title is cut to the label length before the URL cleanup scans it
   @Test
-  void anHtmlTitleThatMadeTheUrlCleanupBacktrackIsReadWithinTheBound() {
-    assertThat(run(HostileFiles.htmlWithBacktrackingTitle(33_000)).outcome())
+  void anHtmlTitleThatMadeTheUrlCleanupBacktrackIsCutBeforeTheScan() {
+    assertThat(run(HostileFiles.htmlWithBacktrackingTitle(33_000), SHORT_BOUND).outcome())
+        .isEqualTo(Outcome.CHUNKED);
+  }
+
+  // regression guard for #3375: the URL cleanup of a paragraph runs in linear time
+  @Test
+  void aParagraphThatMadeTheUrlCleanupBacktrackIsReadWithinTheBound() {
+    assertThat(run(HostileFiles.htmlWithBacktrackingParagraph(330_000), SHORT_BOUND).outcome())
         .isEqualTo(Outcome.CHUNKED);
   }
 
   // regression guard for #3375: a Markdown heading is matched without lazy backtracking
   @Test
   void aMarkdownHeadingThatMadeThePatternBacktrackIsReadWithinTheBound() {
-    assertThat(run(HostileFiles.markdownWithBacktrackingHeading(200_000)).outcome())
+    assertThat(run(HostileFiles.markdownWithBacktrackingHeading(200_000), SHORT_BOUND).outcome())
         .isEqualTo(Outcome.CHUNKED);
   }
 
-  // regression guard for #3375: nested tables are walked by their direct rows, to a bounded depth
+  // regression guard for #3375: a table collects only its own rows, to a bounded nesting depth
   @Test
-  void tablesNestedThousandsDeepAreReadWithinTheBound() {
-    assertThat(run(HostileFiles.htmlWithNestedTables(50_000)).outcome()).isEqualTo(Outcome.CHUNKED);
+  void deeplyNestedWideTablesAreReadWithinTheBound() {
+    Read read = run(HostileFiles.htmlWithNestedTables(120, 1_000), SHORT_BOUND);
+
+    assertThat(read.outcome()).isEqualTo(Outcome.CHUNKED);
+    assertThat(read.text()).contains("Innerste Zelle");
+  }
+
+  // regression guard for #3375: membership in the content roots is no list scan
+  @Test
+  void manyContentRootsAreSelectedWithinTheBound() {
+    Read read = run(HostileFiles.htmlWithManyContentRoots(150_000), BOUND);
+
+    assertThat(read.outcome()).isEqualTo(Outcome.CHUNKED);
+    assertThat(read.text()).doesNotContain("Fuß");
   }
 
   // regression guard for #3376: a run without whitespace is cut before it is tokenised
   @Test
-  void textWithoutWhitespaceIsChunkedWithinTheHeap() {
-    assertThat(run(HostileFiles.textWithoutWhitespace(6_000_000)).outcome())
-        .isEqualTo(Outcome.CHUNKED);
+  void textWithoutWhitespaceIsCutIntoBoundedRuns() {
+    Read read = run(HostileFiles.textWithoutWhitespace(6_000_000), BOUND);
+
+    assertThat(read.outcome()).isEqualTo(Outcome.CHUNKED);
+    assertThat(read.longestRun()).isLessThanOrEqualTo(ChunkingService.MAX_RUN_CHARACTERS);
   }
 
-  private Read run(HostileFile hostile) {
+  // regression guard for #3376: an embedded object is not parsed, however often it is embedded
+  @Test
+  void anEmbeddedDocumentIsNotParsed() {
+    Read read = run(HostileFiles.pptxEmbeddingAWordDocumentPerSlide(20), BOUND);
+
+    assertThat(read.outcome()).isEqualTo(Outcome.CHUNKED);
+    assertThat(read.text()).contains("Folie 19").doesNotContain(HostileFiles.EMBEDDED_TEXT);
+  }
+
+  @Disabled("#3434")
+  @Test
+  void aPdfDrawingOneFormOverAndOverFailsAtTheTextLimit() {
+    assertThat(run(HostileFiles.pdfDrawingOneFormOverAndOver(11_000), BOUND).outcome())
+        .isEqualTo(Outcome.PARSE_FAILED);
+  }
+
+  private Read run(HostileFile hostile, Duration bound) {
     Path file = hostile.writeTo(tempDir);
     return assertTimeoutPreemptively(
-        BOUND,
+        bound,
         () -> {
           DocumentFormatRegistry.Routed routed =
               registry.routedPipelineFor(file, hostile.fileName());
@@ -130,7 +207,11 @@ class FormatHostileInputTest {
                       unpacked[0] += sizeOf(attachment.tempFile());
                     }
                   });
-          return new Read(result.outcome(), result.discoveredAttachments().size(), unpacked[0]);
+          return new Read(
+              result.outcome(),
+              result.chunks().stream().map(Document::getText).toList(),
+              result.discoveredAttachments().size(),
+              unpacked[0]);
         },
         hostile.fileName());
   }
