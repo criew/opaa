@@ -273,6 +273,11 @@ Testziel `https://intranet.e2e.example` und einen auf ein fremdes Ziel, `E2E-ANT
 Markdown-Bild mit fremder Adresse, `E2E-BEFOLGE-DOKUMENT` jeden Markdown-Link aus den Passagen
 des Prompts: Der Stub spielt dann ein Modell, das der Anweisung eines präparierten Dokuments folgt.
 
+Für den **Modellfehler** (#3467) lässt `E2E-MODELL-FEHLER` in der Frage den Antwort-Prompt mit
+`400` scheitern, wie ein Anbieter, der eine Anfrage ablehnt. Ein 4xx wiederholt der Client des
+Backends nicht, die Meldung „Fehler im KI-Dienst" steht also sofort im Chat statt nach einer
+Wartezeit; Zerlegung, Titel und Notiz antworten weiter.
+
 ### Nextcloud statt Testkonnektor
 
 `docker-compose.e2e.yml` startet zusätzlich `nextcloud` (offizielles Image, SQLite, dieselbe
@@ -593,6 +598,19 @@ lassen.
   und befüllen, Bibliothek mit einer Person teilen) leben in `fixtures/chat.ts`, extrahiert aus
   `knowledge-libraries.spec.ts` (#424) und von beiden Dateien importiert, statt dupliziert.
 
+- `tests/chat-multi-turn.spec.ts` (#3467) — ein Gespräch über vier Frage-Antwort-Runden: Die
+  Bibliotheken A und B mit je einem kleinen Dokument entstehen per API, die Runden wechseln den
+  Suchbereich per `@` von A nach B. Geprüft werden die Reihenfolge Frage/Antwort, dass jede Antwort
+  ihren eigenen Beleg und das Kennzeichen „KI-erzeugt" trägt und frühere Antworten von späteren
+  Runden unberührt bleiben, dass die neueste Antwort ohne Scrollen im Blick ist, und dass der
+  Verlauf nach Neuladen und nach einem Wechsel in einen anderen Chat und zurück derselbe ist. Dazu
+  axe für den Verlauf (hell, dunkel, mit offenem Belegfenster), bei 320 px kein waagrechter
+  Überlauf. Bildschirmfotos von Anfang und Ende des Verlaufs (breit hell, breit dunkel, 320 px)
+  hängen als Anhang am Report, damit man sieht, wie ein längeres Gespräch aussieht. Ein zweites
+  Szenario lässt mitten im Gespräch das Modell scheitern (ai-stub, `E2E-MODELL-FEHLER`): Meldung,
+  keine halbe Antwort, Eingabe bleibt bedienbar, die nächste Frage gelingt; nach dem Neuladen
+  fehlt die gescheiterte Frage, weil sie nicht gespeichert wurde.
+
 - `tests/conversation-note.spec.ts` (#1489, T7 von Epic #1482) — die Gesprächsnotiz über den
   vollen Stack (`docs/features/conversation-memory.md`, „Oberfläche", ADR-0031): Ein Chat mit einer
   Rahmenangabe in Runde 1 zeigt nach Runde 2 **keine** Schaltfläche und nach Runde 3
@@ -882,6 +900,17 @@ stellt seinen Ausgangszustand in der eigenen Vorbereitung über dieselben idempo
 | `08-csp.spec.ts` | Keine CSP-Verstöße: der lokale Aussteller braucht keine zusätzliche Herkunft, anders als der OIDC-Weg |
 | `09-selbstauskunft.spec.ts` | Selbstauskunft nach erneuter Bestätigung der Anmeldung: Abbrechen und falsches Passwort führen zu keinem Download, das richtige zu einem ZIP mit Konto und eigenem Chat; die Seite wird nach der Anmeldung neu geladen, weil erst das über das Refresh-Cookie erneuerte Token kein `auth_time` trägt |
 | `10-neuladen-waehrend-refresh.spec.ts` | Neuladen mitten in der Erneuerung: Zweimal verwirft der Browser Antwort und Cookie der committeten Rotation, die Sitzung bleibt trotzdem bestehen (Gnadenfrist, ADR-0033 Entscheidung 7), und die zweite Sitzung des Kontos bleibt unberührt |
+| `11-fokusring.spec.ts` | Fokusring nach Tastaturnavigation auf Anmeldeseite und Verwaltungsfeld, in beiden Farbschemata: deckende Linie von mindestens 2 px mit 3:1 gegen die Fläche, Feldrahmen 4,5:1 |
+| `12-revision.spec.ts` | Revision und Nachweis: erste Person der Revision über `OPAA_AUTH_FIRST_AUDITOR_EMAIL` mit dem Link aus dem Server-Log; Rollenantrag im Vier-Augen-Weg (ohne die Rolle Revision bestätigt niemand, weder die beantragte Person noch die Systemverwaltung; Bestätigung mit erneuter Anmeldung und einmaligem Link, Ablehnung); Stichtagsauskunft vor und nach dem Entzug einer Freigabe; Verbindungsprotokoll einer über einen Dropbox-Zugang verbundenen und gelöschten Bibliothek; Prüfsummenkette des laufenden Monats abrufbar und ohne Abweichung (ob schon ein Prüfpunkt besteht, hängt vom Zehn-Minuten-Takt des Kettenlaufs ab, daher gilt auch `UNCHAINED`) |
+
+Für `12-revision.spec.ts` bringt der Lauf zwei Dinge mit, die die übrigen Szenarien nicht
+brauchen: `local-auth.env` setzt `OPAA_AUTH_FIRST_AUDITOR_EMAIL`, und `run-e2e.mjs` reicht den
+Compose-Projektnamen als `E2E_COMPOSE_PROJECT` durch, weil der Link der ersten Person der Revision
+nur im Log des Backend-Containers steht (`fixtures/revision.ts`). Für das Verbindungsprotokoll
+startet der Stack den [Dropbox-Ersatzserver](#dropbox-ersatzserver) auf Host-Port `18093`
+(`OPAA_DROPBOX_STUB_PORT`) und bekommt dafür einen Schlüssel für gespeicherte Zugangsdaten. Die
+Vorbedingungen (Konten, Bibliothek, Freigabe, Anträge) laufen über die API, im Browser nur die
+Seiten der Revision; das Szenario dauert rund eine Minute. Die Zeitfenster der Stichtagsauskunft sind sekundengenau und setzen voraus, dass Host und Container dieselbe Uhr haben (unter Linux und in der CI gegeben).
 
 `/login/system` wird in Szenario 5 auf Barrierefreiheit geprüft und nicht in Szenario 7: Die Route
 leitet weiter, solange die lokale Verwaltung eingeschaltet ist, und Szenario 5 ist das einzige, das
