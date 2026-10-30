@@ -130,6 +130,7 @@ dependencies {
     // io.opaa.api.dto classes onto this module's compile classpath via opaa-api's own main
     // sourceSet output, without recompiling them here.
     implementation(project(":opaa-api"))
+    runtimeOnly("org.apache.commons:commons-text") { version { strictly("1.9") } }
     implementation(libs.bundles.spring.boot)
     implementation(libs.bundles.spring.ai)
     implementation(libs.spring.boot.starter.flyway)

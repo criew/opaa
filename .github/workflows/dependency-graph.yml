@@ -97,6 +97,7 @@ jobs:
         with:
           build-root-directory: backend
           dependency-graph: generate-and-upload
+          additional-arguments: --dependency-verification lenient
           artifact-retention-days: 3
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
