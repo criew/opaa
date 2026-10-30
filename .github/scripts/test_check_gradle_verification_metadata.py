@@ -230,3 +230,10 @@ def test_reordered_trust_rules_are_unchanged(tmp_path):
         "--enforce",
     )
     assert result.returncode == 0, result.stdout
+
+
+def test_line_breaks_in_coordinates_cannot_start_a_workflow_command(tmp_path):
+    crafted = component("1.0", A).replace('name="lib"', 'name="lib&#10;::error::injected"')
+    result = run(tmp_path, metadata(crafted), metadata(component("1.1", B)), "--details")
+    assert not any(line.startswith("::error::injected") for line in result.stdout.splitlines())
+    assert "lib\\n::error::injected" in result.stdout

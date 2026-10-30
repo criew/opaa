@@ -158,7 +158,9 @@ mit). Ausgenommen sind nur Quellen- und Javadoc-JARs, die allein die IDE lädt
   Basis-Branch (`.github/scripts/check_gradle_verification_metadata.py`): Neue und entfallene
   Einträge sind erlaubt. Eine geänderte Prüfsumme für dieselbe Datei und jede Änderung außerhalb
   von `<components>` (etwa `verify-metadata` oder `trusted-artifacts`) brechen auf
-  `renovate/`-Branches ab und erscheinen sonst als Warnung. Doppelt aufgeführte Komponenten oder
+  `renovate/`-Branches ab und erscheinen sonst als Warnung. Die Reihenfolge innerhalb von
+  `trusted-artifacts`, `trusted-keys` und `ignored-keys` zählt nicht, weil Gradle sie beim
+  Schreiben sortiert. Doppelt aufgeführte Komponenten oder
   Dateien sind immer ein Fehler, weil Gradle doppelte Blöcke vereinigt. Eine solche Änderung nur
   übernehmen, nachdem die Datei gegen die `.sha1`/`.sha256` des Repositorys geprüft ist.
 - **Neu erzeugen.** Der Workflow „Gradle-Verifikationsdatei erzeugen“ (nur manuell, auf einem

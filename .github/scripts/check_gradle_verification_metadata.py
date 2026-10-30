@@ -47,6 +47,11 @@ def canonical(element: ET.Element) -> str:
     return f"<{local(element.tag)} {attributes}>{text}{children}</{local(element.tag)}>"
 
 
+def one_line(text: str) -> str:
+    """Escapes line breaks so an XML value cannot start its own workflow command line."""
+    return text.replace("\r", "\\r").replace("\n", "\\n")
+
+
 def parse(path: Path) -> tuple[str, dict[Key, frozenset[str]], list[str]]:
     root = ET.parse(path).getroot()
     configuration = "".join(canonical(child) for child in root if local(child.tag) != "components")
@@ -107,11 +112,11 @@ def main() -> int:
     )
     if args.details:
         for group, name, version, file in removed:
-            print(f"removed: {group}:{name}:{version} {file}")
+            print(one_line(f"removed: {group}:{name}:{version} {file}"))
 
     level = "error" if args.enforce else "warning"
     for line in duplicates:
-        print(f"::error::{line}; Gradle merges duplicates, list each entry once.")
+        print(f"::error::{one_line(line)}; Gradle merges duplicates, list each entry once.")
     if head_configuration != base_configuration:
         print(
             f"::{level}::<configuration> differs from the base branch (verify-metadata, trusted "
@@ -130,7 +135,7 @@ def main() -> int:
     for group, name, version, file in changed:
         key = (group, name, version, file)
         print(
-            f"::{level}::{group}:{name}:{version} {file}: checksums changed from "
+            f"::{level}::{one_line(f'{group}:{name}:{version} {file}')}: checksums changed from "
             f"{sorted(base[key])} to {sorted(head[key])}. Verify against the repository "
             "before accepting (docs/renovate.md, Gradle-Prüfsummen)."
         )
