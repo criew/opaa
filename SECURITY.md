@@ -16,8 +16,8 @@
 > German. How the project reviews its own code for vulnerabilities (review of every pull request
 > except automatically merged minor, patch, pin and digest dependency updates from Renovate,
 > automated CI checks, nightly image, ZAP and fuzzing runs, a weekly delta review and a deep audit
-> twice a year) is described in [docs/security-pruefung.md](docs/security-pruefung.md) (German). There has been no external audit
-> or penetration test so far.
+> twice a year) is described in [docs/security-pruefung.md](docs/security-pruefung.md) (German).
+> There has been no external audit or penetration test so far.
 
 Diese Richtlinie beschreibt, wie Sicherheitslücken in OPAA gemeldet und behandelt werden. Das
 Projekt ordnet sich als Open-Source-Steward nach Art. 24 des Cyber Resilience Act
