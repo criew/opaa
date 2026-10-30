@@ -8,7 +8,8 @@ import DialogContent from '@mui/material/DialogContent'
 import Typography from '@mui/material/Typography'
 import DialogTitleWithClose from '@/shared/ui/DialogTitleWithClose'
 import type { PdfPreviewResult } from '../utils/documentContent'
-import { openInBrowserViewer } from '../utils/documentContent'
+import { downloadBlob, openInBrowserViewer } from '../utils/documentContent'
+import DownloadOriginalButton from './DownloadOriginalButton'
 
 // pdf.js and the viewer load only when a PDF is opened, never with the page that offers it; a
 // chunk that fails to load falls back to the browser viewer like a file pdf.js cannot open
@@ -68,7 +69,17 @@ export default function PdfPreviewDialog({ preview, onClose }: PdfPreviewDialogP
       aria-labelledby={TITLE_ID}
       slotProps={{ paper: { sx: { height: '90vh' } } }}
     >
-      <DialogTitleWithClose id={TITLE_ID} onClose={onClose}>
+      <DialogTitleWithClose
+        id={TITLE_ID}
+        onClose={onClose}
+        actions={
+          preview && (
+            <DownloadOriginalButton
+              onDownload={() => downloadBlob(preview.blob, preview.fileName)}
+            />
+          )
+        }
+      >
         <Typography component="span" sx={{ fontWeight: 600, wordBreak: 'break-word' }}>
           {preview?.fileName}
         </Typography>

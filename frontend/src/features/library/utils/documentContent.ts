@@ -60,6 +60,33 @@ function isTooLargeForTextPreview(sizeBytes: number): boolean {
 // it explicitly rather than guessing at the delay from behaviour alone.
 export const OBJECT_URL_REVOKE_DELAY_MS = 60_000
 
+// Office formats, spreadsheets and mail have no viewer in the browser; „Dokument öffnen“ shows
+// their indexed text instead (DocumentTextVersionDialog) and keeps the original one click away.
+// Decided by the file name, so the original is not fetched just to learn it gets no preview.
+const TEXT_VERSION_EXTENSIONS = new Set([
+  'doc',
+  'docx',
+  'odt',
+  'rtf',
+  'ppt',
+  'pptx',
+  'odp',
+  'xls',
+  'xlsx',
+  'ods',
+  'csv',
+  'eml',
+  'msg',
+  'htm',
+  'html',
+])
+
+/** Whether „Dokument öffnen“ shows `fileName`'s Textfassung rather than fetching the original. */
+export function opensAsTextVersion(fileName: string): boolean {
+  const dot = fileName.lastIndexOf('.')
+  return dot >= 0 && TEXT_VERSION_EXTENSIONS.has(fileName.slice(dot + 1).toLowerCase())
+}
+
 function triggerDownload(objectUrl: string, fileName: string) {
   const link = document.createElement('a')
   link.href = objectUrl
@@ -100,6 +127,8 @@ export interface TextPreviewResult {
    *  `text/markdown` or `text/plain` - decides whether the dialog renders Markdown or plain text. */
   contentType: string
   content: string
+  /** The original as fetched, so the dialog's download hands out its exact bytes. */
+  blob: Blob
   /** Where the cited passage sits - the preview scrolls there and marks it. */
   anchor?: ChunkAnchor | null
 }
@@ -151,6 +180,7 @@ export async function openDocumentContent(
       fileName: resolvedFileName,
       contentType: contentTypeEssence(blob.type),
       content: await blob.text(),
+      blob,
     }
   }
 
@@ -197,4 +227,28 @@ export function openInBrowserViewer(blob: Blob) {
   } finally {
     setTimeout(() => URL.revokeObjectURL(objectUrl), OBJECT_URL_REVOKE_DELAY_MS)
   }
+}
+
+/** Saves `blob` under `fileName`; the object URL is revoked after {@link OBJECT_URL_REVOKE_DELAY_MS}. */
+export function downloadBlob(blob: Blob, fileName: string) {
+  const objectUrl = URL.createObjectURL(blob)
+  try {
+    triggerDownload(objectUrl, fileName)
+  } finally {
+    setTimeout(() => URL.revokeObjectURL(objectUrl), OBJECT_URL_REVOKE_DELAY_MS)
+  }
+}
+
+/**
+ * Fetches a document's original and saves it, whatever its type - the „Original herunterladen“
+ * of a view that has not fetched the file itself. Returns the file name it was saved under.
+ */
+export async function downloadDocumentContent(
+  documentId: string,
+  fallbackFileName: string,
+): Promise<string> {
+  const { blob, fileName } = await getDocumentContent(documentId)
+  const resolvedFileName = fileName ?? fallbackFileName
+  downloadBlob(blob, resolvedFileName)
+  return resolvedFileName
 }

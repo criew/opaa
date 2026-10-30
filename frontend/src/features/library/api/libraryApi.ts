@@ -18,6 +18,7 @@ import type {
   SourceTypeKey,
   BulkDocumentDeleteResponse,
   DocumentStatus,
+  DocumentTextResponse,
 } from '@/shared/api/types'
 import { isErrorResponse, type ErrorResponse } from '@/shared/api/types'
 import { apiClient as client, normalizeError } from '@/shared/api/api'
@@ -335,6 +336,24 @@ export function parseContentDispositionFileName(headerValue: string | undefined)
   // with only `filename*=UTF-8''...` would match here with `*=UTF-8''...` as the "file name".
   const plain = /filename(?!\*)="?([^";]+)"?/i.exec(headerValue)
   return plain ? plain[1].trim() : null
+}
+
+/**
+ * One window of a document's Textfassung: passages with chunkIndex in [from, to] (at most 40),
+ * plus the whole document's outline when `sections` is set.
+ */
+export async function getDocumentText(
+  documentId: string,
+  params: { from?: number; to?: number; sections?: boolean },
+): Promise<DocumentTextResponse> {
+  try {
+    const { data } = await client.get<DocumentTextResponse>(`/v1/documents/${documentId}/text`, {
+      params,
+    })
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
 }
 
 export interface DocumentContent {
