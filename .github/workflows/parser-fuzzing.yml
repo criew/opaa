@@ -30,6 +30,14 @@ jobs:
   fuzz:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    # Only the alarm steps below write: they open, comment on and close the alarm issue.
+    permissions:
+      contents: read
+      issues: write
+    env:
+      # A scheduled run uses its run id as campaign seed, so every night mutates differently and
+      # a finding names the seed that reproduces it.
+      FUZZ_SEED: ${{ inputs.seed || github.run_id }}
     defaults:
       run:
         working-directory: backend/
@@ -45,12 +53,9 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
 
-      # A scheduled run uses its run id as campaign seed, so every night mutates differently and
-      # a finding names the seed that reproduces it.
       - name: Parser fuzzen
         env:
           FUZZ_DURATION: ${{ inputs.duration || 'PT10M' }}
-          FUZZ_SEED: ${{ inputs.seed || github.run_id }}
         run: ./gradlew parserFuzzTest "-PfuzzDuration=$FUZZ_DURATION" "-PfuzzSeed=$FUZZ_SEED"
 
       - name: Befunde und Zusammenfassung hochladen
@@ -63,3 +68,86 @@ jobs:
             backend/build/reports/tests/parserFuzzTest/
           if-no-files-found: ignore
           retention-days: 30
+
+      # No PR makes a red nightly run visible, so a failed or timed-out scheduled run opens an alarm
+      # issue, or comments on the open one, with seed, run and the findings of summary.txt - the
+      # pattern of e2e.yml. A manual run never raises or closes the alarm: its duration and seed
+      # are someone's experiment. The issue body is never overwritten.
+      - name: Fehlschlag als Issue melden
+        if: (failure() || cancelled()) && github.event_name == 'schedule'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- parser-fuzzing-alert -->';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const seed = process.env.FUZZ_SEED;
+            const summaryPath = 'backend/build/fuzz-findings/summary.txt';
+            const summary = fs.existsSync(summaryPath)
+              ? '```\n' + fs.readFileSync(summaryPath, 'utf8').trim() + '\n```'
+              : 'Keine Zusammenfassung vorhanden — der Lauf hat die Kampagne nicht beendet ' +
+                '(Build, Speicher oder Zeitlimit; siehe Workflow-Logs und `current-input` im Artefakt).';
+            const reproduce = 'Wiederholen: `./gradlew parserFuzzTest -PfuzzSeed=' + seed +
+              '` oder eine Befund-Datei aus dem Artefakt mit `-PfuzzReplay=<Datei>` ' +
+              '(docs/entwicklung/build-und-ci.md, Abschnitt „Parser-Fuzzing“).';
+            const artifact = 'Artefakt des Laufs: `parser-fuzzing-findings`.';
+            const commentBody = `Erneut fehlgeschlagen: ${runUrl} (Seed ${seed})\n\n${summary}\n\n${artifact}`;
+            const issueBody = `${marker}\n\n**Das nächtliche Parser-Fuzzing hat Befunde.**\n\n` +
+              `Workflow-Lauf: ${runUrl}\nKampagnen-Seed: ${seed}\n\n${summary}\n\n${artifact}\n\n` +
+              `${reproduce}\n\nDas Issue wird automatisch geschlossen, sobald ein nächtlicher Lauf ` +
+              'wieder ohne Befund endet.';
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'ci',
+              per_page: 100,
+            });
+            const existing = issues.find(i => !i.pull_request && i.body && i.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: commentBody,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: 'ci(format): Parser-Fuzzing mit Befunden (nächtlicher Lauf)',
+                body: issueBody,
+                labels: ['ci', 'bug', 'security'],
+              });
+            }
+
+      - name: Alarm-Issue bei Lauf ohne Befund schließen
+        if: success() && github.event_name == 'schedule'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const marker = '<!-- parser-fuzzing-alert -->';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'ci',
+              per_page: 100,
+            });
+            const existing = issues.find(i => !i.pull_request && i.body && i.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: `Das Parser-Fuzzing endet wieder ohne Befund: ${runUrl} (Seed ${process.env.FUZZ_SEED})`,
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                state: 'closed',
+              });
+            }
