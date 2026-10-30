@@ -62,7 +62,7 @@ public class RemoteOriginalAccess implements OriginalAccess {
       Document document, KnowledgeLibrary library, SourceSettings settings) {
     String sourceUrl = document.getFilePath();
     boolean withCredentials = credentialsMayReachOrigin(settings.sourceUrl(), sourceUrl);
-    return open(document, settings, withCredentials, RedirectFollowingFetcher.ANY_TARGET);
+    return open(document, library, settings, withCredentials, RedirectFollowingFetcher.ANY_TARGET);
   }
 
   /**
@@ -79,11 +79,12 @@ public class RemoteOriginalAccess implements OriginalAccess {
       Predicate<URI> credentialScope) {
     boolean withCredentials =
         credentialsMayReachSubtree(settings.sourceUrl(), document.getFilePath(), credentialScope);
-    return open(document, settings, withCredentials, credentialScope);
+    return open(document, library, settings, withCredentials, credentialScope);
   }
 
   private Optional<DocumentContent> open(
       Document document,
+      KnowledgeLibrary library,
       SourceSettings settings,
       boolean withCredentials,
       Predicate<URI> credentialScope) {
@@ -108,7 +109,8 @@ public class RemoteOriginalAccess implements OriginalAccess {
               authHeader,
               Duration.ofSeconds(properties.timeoutSeconds()),
               Duration.ofSeconds(properties.transferTimeoutSeconds()),
-              credentialScope);
+              credentialScope,
+              library.loggedNames());
 
       // the type decided at index time comes first; the declared one is only a fallback
       String contentType = document.getContentType();
@@ -134,7 +136,10 @@ public class RemoteOriginalAccess implements OriginalAccess {
       return Optional.of(
           DocumentContent.ofStream(closingStream, document.getFileName(), contentType));
     } catch (BoundedDownloader.AttachmentTooLargeException | IOException e) {
-      log.warn("Remote document content unavailable: {} ({})", sourceUrl, e.getMessage());
+      log.warn(
+          "Remote document content unavailable: {} ({})",
+          library.loggedNames().of(sourceUrl),
+          library.loggedNames().of(e.getMessage()));
       closeQuietly(httpClient);
       return Optional.empty();
     } catch (InterruptedException e) {
