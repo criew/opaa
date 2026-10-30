@@ -127,8 +127,10 @@ solche, die nur aus dem Netz des Servers erreichbar sind (SSRF). Zwei Schranken 
 
 - **Pfad-Allowlist** (`OPAA_INDEXING_FILESYSTEM_ALLOWLIST`) für Dateisystem-Bibliotheken.
 - **Zielprüfung** für jede Netzquelle, standardmäßig an: Loopback, Link-Local samt
-  `169.254.169.254`, private und reservierte Bereiche werden abgelehnt, geprüft nach der
-  DNS-Auflösung und nach jedem Redirect. Interne Quellen kommen in
+  `169.254.169.254`, private und reservierte Bereiche werden abgelehnt, ebenso `0.0.0.0/8` und
+  IPv6-Präfixe, die auf IPv4 übersetzen oder tunneln (NAT64 `64:ff9b::/96` und `64:ff9b:1::/48`,
+  6to4 `2002::/16`, Teredo `2001::/32`, SIIT `::ffff:0:0/96`) oder verwerfen (`100::/64`), geprüft
+  nach der DNS-Auflösung und nach jedem Redirect. Interne Quellen kommen in
   `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`, statt die Prüfung abzuschalten. Identitätsanbieter,
   Modell-Endpunkte und Originalablage haben eigene Schalter und Listen derselben Prüfung; ein
   Eintrag in einer Liste öffnet keine der anderen.
