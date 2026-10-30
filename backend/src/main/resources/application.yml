@@ -593,6 +593,8 @@ opaa:
       core-size: ${OPAA_UPLOAD_THREAD_POOL_CORE_SIZE:2}
       max-size: ${OPAA_UPLOAD_THREAD_POOL_MAX_SIZE:4}
       queue-capacity: ${OPAA_UPLOAD_THREAD_POOL_QUEUE_CAPACITY:20}
+    # Places of the pool above one account may hold at once; 0 means a quarter of the pool.
+    max-places-per-account: ${OPAA_UPLOAD_MAX_PLACES_PER_ACCOUNT:0}
     # How old a stored original must be before the orphan cleanup may report or remove it - the
     # window between writing the bytes and inserting the row, and the whole asynchronous processing
     # of an upload, must lie inside it. A report may raise it per call, never lower it.

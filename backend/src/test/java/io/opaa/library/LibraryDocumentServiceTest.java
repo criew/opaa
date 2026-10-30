@@ -918,7 +918,8 @@ class LibraryDocumentServiceTest {
                 null,
                 10L * 1024,
                 new UploadProperties.ThreadPool(1, 1, 0),
-                0));
+                0,
+                5));
     service = serviceWith(new AttachmentExtractionProperties(0, null));
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-first");
     when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(any(), any()))
