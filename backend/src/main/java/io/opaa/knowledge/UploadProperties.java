@@ -54,7 +54,7 @@ public record UploadProperties(
     @DataImpact int orphanGraceMinutes,
     int maxPlacesPerAccount) {
 
-  /** Without a per-account setting: a quarter of the pool. */
+  /** Without a per-account setting, which then takes its default. */
   public UploadProperties(
       String storagePath,
       String store,
