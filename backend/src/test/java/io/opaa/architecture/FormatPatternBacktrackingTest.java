@@ -22,11 +22,12 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 /**
- * ReDoS self-test of every static {@link Pattern} in {@code io.opaa.format}: each runs over pumped
- * inputs of {@link #RUN} characters within {@link #BOUND}, searched and matched whole. A linear
- * pattern needs milliseconds, a quadratic one seconds. A pattern {@link #isRisky} - a lazy
- * quantifier, a quantified group holding a quantifier, or two unbounded greedy quantifiers - also
- * runs the inputs {@link #ATTACKS} names for it, and fails without them.
+ * ReDoS self-test of every static {@link Pattern} in {@code io.opaa.format}, and of every pattern
+ * an enum constant there holds: each runs over pumped inputs of {@link #RUN} characters within
+ * {@link #BOUND}, searched and matched whole. A linear pattern needs milliseconds, a quadratic one
+ * seconds. A pattern {@link #isRisky} - a lazy quantifier, a quantified group holding a quantifier,
+ * or two unbounded greedy quantifiers - also runs the inputs {@link #ATTACKS} names for it, and
+ * fails without them.
  */
 class FormatPatternBacktrackingTest {
 
@@ -57,7 +58,9 @@ class FormatPatternBacktrackingTest {
           "io.opaa.format.chunk.MarkdownHeading#IN_TEXT",
           List.of("# " + " \t".repeat(RUN / 2), ("\f# " + " ".repeat(40)).repeat(RUN / 43)),
           "io.opaa.format.chunk.ChunkLocationResolver#HEADING",
-          List.of("# " + " \t".repeat(RUN / 2), ("\f# " + " ".repeat(40)).repeat(RUN / 43)));
+          List.of("# " + " \t".repeat(RUN / 2), ("\f# " + " ".repeat(40)).repeat(RUN / 43)),
+          "io.opaa.format.FormatMetadataField.MAIL_SENDER#valuePattern",
+          List.of("a@" + ".".repeat(RUN) + " ", "a@" + "b.".repeat(RUN / 2) + " "));
 
   /** Runs of one character, or two alternating, that every pattern meets. */
   private static final List<String> PUMPS =
@@ -120,7 +123,11 @@ class FormatPatternBacktrackingTest {
         .map(e -> org.junit.jupiter.params.provider.Arguments.of(e.getKey(), e.getValue()));
   }
 
-  /** Every static {@link Pattern} field of the classes in {@code io.opaa.format}. */
+  /**
+   * Every static {@link Pattern} field of the classes in {@code io.opaa.format}, keyed {@code
+   * <class>#<field>}, and every pattern an enum constant holds in an instance field, keyed {@code
+   * <class>.<constant>#<field>}; a {@code null} field holds no pattern.
+   */
   static Map<String, Pattern> formatPatterns() {
     Map<String, Pattern> patterns = new TreeMap<>();
     for (JavaClass type : MainClasses.get()) {
@@ -128,19 +135,30 @@ class FormatPatternBacktrackingTest {
         continue;
       }
       for (JavaField field : type.getFields()) {
-        if (field.getModifiers().contains(JavaModifier.STATIC)
-            && field.getRawType().isEquivalentTo(Pattern.class)) {
-          patterns.put(type.getName() + "#" + field.getName(), valueOf(field.reflect()));
+        if (!field.getRawType().isEquivalentTo(Pattern.class)) {
+          continue;
+        }
+        if (field.getModifiers().contains(JavaModifier.STATIC)) {
+          patterns.put(type.getName() + "#" + field.getName(), valueOf(field.reflect(), null));
+        } else if (type.isEnum()) {
+          for (Object constant : type.reflect().getEnumConstants()) {
+            Pattern pattern = valueOf(field.reflect(), constant);
+            if (pattern != null) {
+              patterns.put(
+                  type.getName() + "." + ((Enum<?>) constant).name() + "#" + field.getName(),
+                  pattern);
+            }
+          }
         }
       }
     }
     return patterns;
   }
 
-  private static Pattern valueOf(Field field) {
+  private static Pattern valueOf(Field field, Object owner) {
     try {
       field.setAccessible(true);
-      return (Pattern) field.get(null);
+      return (Pattern) field.get(owner);
     } catch (IllegalAccessException e) {
       throw new IllegalStateException("Cannot read " + field, e);
     }
