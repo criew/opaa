@@ -87,15 +87,17 @@ Jeder Lauf der Neuverschlüsselung bei offenem Formattor (Entscheidung 5) zählt
 je Zweck die Werte in `enc:v1:` und, bei Zugangsdaten, den Klartext, lesbar oder nicht. Klartext
 verschlüsselt er mit, außer in Spalten, deren Leser ihn heute schon als fehlend behandeln
 (`EncryptedColumn#refusingCleartext`, die Token verbundener Zugänge); dort zählt er nicht. Zählen
-zwei Läufe im Abstand von mindestens fünf Minuten nichts und keiner dazwischen etwas, hält
+zwei Läufe im Abstand von mindestens fünf Minuten und zwei Heartbeat-Intervallen nichts und keiner
+dazwischen etwas, hält
 `cipher_legacy_retirements` den Zweck als umgestellt fest (`LegacyCipherRetirement`). Ab dann lehnen
 `CredentialsEncryptor` und `SettingsEncryptor` beim Entschlüsseln `enc:v1:` und Klartext ab wie
 einen unlesbaren Wert, das Log nennt Tabelle, Spalte und Zeile, nie den Wert, und die
-Neuverschlüsselung fasst solche Werte nicht mehr an. Neue Werte entstehen immer in `v2`, auch bei
-geschlossenem Tor während eines Rolling Updates. Eine Instanz fragt den Eintrag höchstens einmal je
-Heartbeat-Intervall und merkt sich den Abschluss bis zum Neustart. Mit
-`OPAA_ENCRYPTION_KEYED_FORMAT=false` lehnt keine Instanz etwas ab, und ihr Start leert die Tabelle,
-weil sie wieder `enc:v1` schreibt.
+Neuverschlüsselung wählt solche Werte nicht mehr aus. Neue Werte entstehen immer in `v2`, auch bei
+geschlossenem Tor. Eine Instanz fragt den Eintrag höchstens einmal je Heartbeat-Intervall. Der
+Abschluss verfällt, sobald eine Instanz einer anderen Version nach ihm einen Heartbeat geschrieben
+hat, etwa bei einem Rolling Update oder Rollback, weil sie wieder `enc:v1` schreiben kann; die
+nächste Messung löscht ihn und beginnt neu. Mit `OPAA_ENCRYPTION_KEYED_FORMAT=false` lehnt keine
+Instanz etwas ab, und ihr Start leert die Tabelle, weil sie wieder `enc:v1` schreibt.
 Begründung: Erst der Abschluss nimmt dem Kopieren eines `v1`-Werts und dem Einsetzen von Klartext
 die Wirkung. Der Abstand der Messungen ist länger als die Zeit, die eine Instanz die Antwort des
 Formattors behält, und als eine Transaktion, die vor der Messung einen `v1`-Wert schrieb; ein solcher
@@ -124,6 +126,7 @@ einsetzen, und OPAA verwendet ihn. Ein `v1`-Wert, den kein Schlüssel liest, hä
 bis er neu eingetragen ist. Nach dem Abschluss genügt das Schreiben in die Datenbank nicht mehr: Wer
 zusätzlich den Eintrag in `cipher_legacy_retirements` löscht, öffnet die Altformate für jede danach
 gestartete Instanz und, sobald zwei Läufe wieder nichts finden, nur bis zum erneuten Abschluss.
+Während eines Updates und bis zum erneuten Abschluss danach gilt dasselbe wie vor der Umstellung.
 
 Nach der Umstellung auf `v2` liest eine ältere Version die gespeicherten Geheimnisse nicht mehr. Der
 Weg zurück hinter diese Version führt dann nur über eine Rücksicherung von vor dem Update, oder er

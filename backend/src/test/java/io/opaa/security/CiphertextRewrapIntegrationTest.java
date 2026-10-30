@@ -185,7 +185,7 @@ class CiphertextRewrapIntegrationTest {
     CiphertextRewrap.Outcome outcome =
         rewrap(credentials(retirement), settings(KEY), CipherFormatGate.KEYED, retirement).rewrap();
 
-    assertThat(outcome.unreadable()).as("the copied enc:v1 value is refused").isEqualTo(1);
+    assertThat(outcome.unreadable()).as("the copied enc:v1 value is not even selected").isZero();
     assertThat(credentialOf(copied)).startsWith("enc:v1:");
     assertThat(credentialOf(cleartext)).isEqualTo("injected-cleartext");
     assertThat(retirement.measured).doesNotContainKey(EncryptionPurpose.CREDENTIALS);
@@ -249,13 +249,22 @@ class CiphertextRewrapIntegrationTest {
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("enc:v1");
 
+        assertThat(stored(true, inTransaction, true).refusesLegacy(EncryptionPurpose.CREDENTIALS))
+            .as("an instance of another version ran since")
+            .isFalse();
+        stored(true, inTransaction, true).measured(EncryptionPurpose.SETTINGS, 0);
+        assertThat(stored(true, inTransaction).refusesLegacy(EncryptionPurpose.SETTINGS))
+            .as("the lapsed retirement is deleted and measured anew")
+            .isFalse();
+        assertThat(stored(true, inTransaction).refusesLegacy(EncryptionPurpose.CREDENTIALS))
+            .isTrue();
+
         StoredLegacyCipherRetirement wayBack = stored(false, inTransaction);
         assertThat(wayBack.refusesLegacy(EncryptionPurpose.CREDENTIALS)).isFalse();
         wayBack.run(null);
         assertThat(stored(true, inTransaction).refusesLegacy(EncryptionPurpose.CREDENTIALS))
             .as("OPAA_ENCRYPTION_KEYED_FORMAT=false clears the retirement at start")
             .isFalse();
-        assertThat(stored(true, inTransaction).refusesLegacy(EncryptionPurpose.SETTINGS)).isFalse();
       } finally {
         held.rollback();
       }
@@ -263,11 +272,19 @@ class CiphertextRewrapIntegrationTest {
   }
 
   private static StoredLegacyCipherRetirement stored(boolean keyed, JdbcTemplate jdbc) {
-    return new StoredLegacyCipherRetirement(
-        keyed, () -> jdbc, Duration.ofMinutes(1), System::nanoTime);
+    return stored(keyed, jdbc, false);
   }
 
-  /** Moves every pending measurement back beyond {@link LegacyCipherRetirement#CONFIRMATION}. */
+  private static StoredLegacyCipherRetirement stored(
+      boolean keyed, JdbcTemplate jdbc, boolean anotherVersionRan) {
+    return new StoredLegacyCipherRetirement(
+        keyed, () -> jdbc, since -> anotherVersionRan, Duration.ofMinutes(1), System::nanoTime);
+  }
+
+  /**
+   * Moves every pending measurement back beyond {@link
+   * StoredLegacyCipherRetirement#MIN_CONFIRMATION}.
+   */
   private static void backdate(JdbcTemplate jdbc) {
     jdbc.update(
         "UPDATE cipher_legacy_retirements SET measured_since = measured_since - interval '6 minutes'"

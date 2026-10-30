@@ -80,8 +80,9 @@ einem Rückweg sind die gespeicherten Geheimnisse für sie unlesbar, die Oberfl�
   [Zugangsdaten-Verschlüsselung](netz-und-sicherheit.md#zugangsdaten-verschlüsselung)). Ein Start
   mit `OPAA_ENCRYPTION_KEYED_FORMAT=false` hebt diesen Abschluss wieder auf, damit die in dieser Zeit
   geschriebenen Werte nach dem Zurückschalten lesbar bleiben und umgestellt werden; danach schließt
-  der Hintergrundlauf die Umstellung von selbst erneut ab. Dasselbe gilt für einen Mischbetrieb mit
-  einer Version, die die Ablehnung noch nicht kennt: Er braucht `false`.
+  der Hintergrundlauf die Umstellung von selbst erneut ab. Ebenso hebt jedes Update und jeder
+  Rollback, bei dem eine Instanz einer anderen Version läuft, den Abschluss auf; nach dem Update
+  schließt der Hintergrundlauf ihn erneut ab.
 
 ## Fristen nach einem Rückweg
 

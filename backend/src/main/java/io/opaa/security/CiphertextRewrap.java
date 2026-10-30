@@ -33,7 +33,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  * that would make it usable. Before its pass it counts, per purpose, the values still in an unbound
  * form - {@code enc:v1:} or such cleartext, readable or not - and reports the count to {@link
  * LegacyCipherRetirement}, which retires the purpose after enough runs found none. Once retired, a
- * purpose's unbound values are refused by its encryptor, so the run neither reads nor moves them.
+ * purpose's unbound values are refused by its encryptor, and the run neither selects nor moves
+ * them.
  */
 @Component
 public class CiphertextRewrap {
@@ -156,7 +157,9 @@ public class CiphertextRewrap {
       }
       String current = EncryptionKeyring.V2_PREFIX + currentKeyId(column.purpose()) + ":";
       List<Selector> selectors = new ArrayList<>();
-      selectors.add(stale(column, scope(column.purpose(), keyed), current));
+      boolean refusing = retirement.refusesLegacy(column.purpose());
+      String scope = refusing ? EncryptionKeyring.V2_PREFIX : scope(column.purpose(), keyed);
+      selectors.add(stale(column, scope, current));
       if (keyed && column.acceptsCleartext() && !retirement.refusesLegacy(column.purpose())) {
         selectors.add(cleartext(column));
       }
