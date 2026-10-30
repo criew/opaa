@@ -35,6 +35,32 @@ in [ADR-0006](../docs/decisions/0006-openapi-dto-generation.md).
 - **Eine Operation deklariert nur die Statuscodes, die sie selbst entscheidet** (`429` nur bei eigener Grenze); was die
   Infrastruktur für alle entscheidet, steht in `info.description`; `TransportStatusCodeSpecificationTest` prüft es.
 
+## Rechte-Matrix
+
+**Jede neue Operation der Spec braucht im selben PR ihren Eintrag in
+`src/test/resources/security/permission-matrix.yaml`:** das erwartete Ergebnis (`allowed`, `401`, `403`, `404`) für
+Systemverwaltung (`systemAdmin`), Revision (`auditor`), Space-Admin (`spaceAdmin`), Kuratorin (`curator`), Mitglied
+(`member`), Konto ohne Rechte (`noRights`) und anonym (`anonymous`); Space-Rollen tragen die passende Freigabe auf den
+Bibliotheken des Space (Verwalten, Bearbeiten, Lesen). Rollen, Fixture und was als `allowed` zählt, stehen im
+Dateikopf. Verweigert eine Zeile allen angemeldeten Rollen gleich, braucht sie eine `note`; ebenso eine Probe, die
+alle angemeldeten Rollen mit demselben 400, 409 oder 422 beantworten – sie prüft kein Recht, und ohne `note` schlägt
+der Lauf fehl. Dann bekommt die Probe in `ProbeRequests` einen gültigen Körper. Ohne Eintrag schlägt
+`PermissionMatrixTest` fehl (auch ohne Docker) und nennt Datei und `operationId`.
+
+`PermissionMatrixIntegrationTest` ruft jede Operation in jeder Rolle auf; ein 5xx lässt den Lauf fehlschlagen, außer
+einem 503 in einer Zeile mit `note`. Zusätzlich verlangt er `401`, `403` oder `404` bei fremden IDs: jede Operation mit
+Space-, Personen- oder Organisations-ID im Pfad mit den IDs eines fremden Space bzw. einer fremden Organisation, jede
+Operation mit mehreren solchen IDs mit eigenem Elternobjekt und je einem fremden Kind (`foreignChild` nimmt einen
+Parameter mit `note` aus), und jede Chat-Operation mit dem Chat eines anderen Mitglieds. Ein Konto ohne Rechte darf die
+Objekte des Space in Listen und Suche (`listSpaces`, `listLibraries`, `listCatalog`, `searchKnowledge` u. a.) nicht
+finden; Systemverwaltung und Revision finden dort und in den organisationsweiten Listen (Zugangstokens, Gruppen,
+Konten) nichts einer fremden Organisation. `PermissionMatrixAnonymousIntegrationTest` prüft die Spalte `anonymous`. Den beobachteten Stand mit Statusklasse
+schreiben beide nach `build/permission-matrix/`.
+
+**Grenze:** Die Matrix prüft Statuscodes. Was eine erlaubte Antwort enthält, prüft sie nur über die genannten Listen und
+die Suche; Feldfilter in Antworten und Listen anderer Operationen bleiben Sache der fachlichen Tests. Ein geänderter
+Eintrag ist eine Rechteentscheidung und wird im PR begründet, nie nur an das Beobachtete angeglichen.
+
 ## Logische Module und Schichtung
 
 Das Backend ist ein Gradle-Modul, gegliedert in logische Module. Die Definitionen stehen in

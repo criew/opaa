@@ -200,7 +200,8 @@ Zeit; zwei, die gleichzeitig starten, prüfen nacheinander.
 
 - jede Einstellung, die auf Daten wirkt, etwa Fristen und Löschregeln
 - die Geheimnisse `OPAA_AUTH_JWT_SECRET`, `OPAA_CREDENTIALS_ENCRYPTION_KEY` und
-  `OPAA_SETTINGS_ENCRYPTION_KEY`
+  `OPAA_SETTINGS_ENCRYPTION_KEY` samt ihren abgelösten Schlüsseln aus einem
+  [Schlüsselwechsel](netz-und-sicherheit.md#schlüsselwechsel)
 - Modell, Adresse und Dimension der Einbettung und die Teilung in Chunks
 - das Anmeldeprofil, `OPAA_DB_SCHEMA` und die Originalablage
 - die Freigabelisten der Zielprüfung, die vertrauten Proxys und `OPAA_PUBLIC_BASE_URL`

@@ -1,8 +1,8 @@
 package io.opaa.security;
 
 /**
- * Raised by {@link CredentialsEncryptor#encrypt(String)} when a caller attempts to persist a
- * non-blank {@code sourceCredentials} value without {@code
+ * Raised by {@link CredentialsEncryptor#encrypt(String, CipherBinding)} when a caller attempts to
+ * persist a non-blank {@code sourceCredentials} value without {@code
  * opaa.security.credentials.encryption-key} (env {@code OPAA_CREDENTIALS_ENCRYPTION_KEY})
  * configured, or with a value that is not a valid Base64-encoded AES-256 key.
  *

@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-24
+stand: 2026-10-29
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-24
@@ -62,6 +62,26 @@ Antwort steht in der Matrix der {{faktenblatt:rollensicht#matrix}}; die Tabelle 
 | Vorgesetzte | haben als Vorgesetzte keine eigene Rolle; sie sehen, was ihnen eine Rolle in OPAA (etwa Systemverwaltung) oder eine Mitgliedschaft gibt, wie alle anderen auch | {{faktenblatt:rollensicht#systemrollen}} |
 | Betrieb von Datenbank, Sicherungen und Logs | technisch alles; das Produkt kann es nicht verhindern | Dienstvereinbarung, Nummer 7 |
 | Ich selbst | meine Daten über die Selbstauskunft, im Umfang der Kategorien, die die eingesetzte Version ausgibt; die Übersicht der Auskunft nennt die fehlenden | {{faktenblatt:datenkatalog#self-disclosure}} |
+
+Systemverwaltung und Revision sind getrennt, auch bei der Vergabe: Weder die Systemverwaltung noch
+ein Identitätsanbieter kann die Rolle Revision allein vergeben; wirksam wird sie erst, wenn eine
+Person der Revision bestätigt. Die erste Person der Revision bestimmt der Betrieb über eine
+hinterlegte Adresse, und ihren Zugangslink erhält der Betrieb, nicht die Systemverwaltung. Die
+Zugangsdaten eines Revisionskontos laufen nie über die Systemverwaltung, auch nicht über die von ihr
+eingestellten E-Mail-Wege: Den Link für das Passwort übergibt die bestätigende Person der Revision
+selbst. Jede Vergabe und jeder Entzug der Rolle, und jede Änderung von E-Mail-Einstellungen und
+Mailvorlagen durch die Systemverwaltung, erfahren alle Personen der Revision. Antrag und Entscheidung
+stehen im Protokoll ({{faktenblatt:protokollereignisse#auditor-role-requested}},
+{{faktenblatt:protokollereignisse#auditor-role-granted}}); offene Anträge stehen in
+{{faktenblatt:datenkatalog#auditor-role-requests}}. So kann niemand aus der Systemverwaltung mit
+eigenen Revisionskonten das Protokoll lesen oder eine Klärung allein freigeben. Nicht verhindern
+kann das Produkt, dass dieselbe Person Systemverwaltung und Betrieb ausübt; das regelt die
+Dienstvereinbarung. Ebenfalls nicht technisch verhindern kann es, dass die Systemverwaltung die
+Signaturschlüssel eines externen Identitätsanbieters (die JWK-Set-URI; bei einem Anbieter ohne
+Konten auch den Issuer) auf einen eigenen Server umstellt und sich so als
+ein bestehendes Revisionskonto dieses Anbieters anmeldet. Eine solche Änderung erfahren aber alle
+Personen der Revision sofort, und sie steht im Protokoll; Revisionskonten, die sich lokal bei OPAA
+anmelden, sind davon nicht betroffen.
 
 ## 3. Beispiele möglicher und ausgeschlossener Auswertungen
 

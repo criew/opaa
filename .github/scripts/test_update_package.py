@@ -309,7 +309,9 @@ def test_the_readme_names_version_previous_release_and_the_verification(tmp_path
     assert "gilt-fuer: 1.2.3\ncommit: " + "a" * 40 in text
     assert "vorgaenger: v1.2.2\n" in text
     assert "gegenüber v1.2.2, dem vorigen finalen Release." in text
-    assert "gh attestation verify opaa-update-paket-1.2.3.tar.gz --repo criew/opaa" in text
+    assert ("gh attestation verify opaa-update-paket-1.2.3.tar.gz --repo criew/opaa \\\n"
+            "  --signer-workflow criew/opaa/.github/workflows/publish-images.yml"
+            " --source-ref refs/tags/v1.2.3\n") in text
     assert "-PtoRef=v1.2.3" in text
     assert "Probelauf" not in text
     assert "| `betrieb/betriebsfolgen.md` |" in text
@@ -1097,7 +1099,12 @@ def test_the_release_notes_name_the_package_and_its_verification(tmp_path: Path)
     ).stdout
 
     assert f"`{update_package.PREFIX}1.2.4.tar.gz`" in notes
-    assert f"gh attestation verify {update_package.PREFIX}1.2.4.tar.gz --repo criew/opaa" in notes
+    signer = ("--signer-workflow criew/opaa/.github/workflows/publish-images.yml"
+              " --source-ref refs/tags/v1.2.4")
+    for subject in (f"{update_package.PREFIX}1.2.4.tar.gz", "opaa-backend-1.2.4.cdx.json",
+                    "opaa-frontend-1.2.4.cdx.json", "oci://ghcr.io/criew/opaa-backend:1.2.4",
+                    "oci://ghcr.io/criew/opaa-frontend:1.2.4", "oci://ghcr.io/criew/charts/opaa:1.2.4"):
+        assert f"gh attestation verify {subject} --repo criew/opaa \\\n  {signer}\n" in notes
     assert "`opaa-backend-1.2.4.cdx.json`" in notes and "`opaa-frontend-1.2.4.cdx.json`" in notes
     assert "./gradlew complianceDelta -PfromRef=" in notes
 

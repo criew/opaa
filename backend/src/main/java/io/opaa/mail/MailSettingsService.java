@@ -136,7 +136,12 @@ public class MailSettingsService implements InvalidationSubscriber {
     return replace(
         update,
         actorUserId,
-        (before, after) -> recordChange(organizationId, actorUserId, before, after));
+        (before, after) -> {
+          recordChange(organizationId, actorUserId, before, after);
+          eventPublisher.publishEvent(
+              new MailConfigurationChangedEvent(
+                  organizationId, "die Einstellungen des E-Mail-Versands"));
+        });
   }
 
   /**
@@ -272,7 +277,9 @@ public class MailSettingsService implements InvalidationSubscriber {
         settings.getHost(),
         settings.getPort(),
         settings.getUsername(),
-        settingsEncryptor.decrypt(settings.getPasswordCiphertext()),
+        settingsEncryptor.decrypt(
+            settings.getPasswordCiphertext(),
+            MailEncryptedColumns.SETTINGS_PASSWORD.row(settings.getId())),
         settings.getEncryption(),
         settings.getFromAddress(),
         settings.getFromName());
@@ -336,7 +343,8 @@ public class MailSettingsService implements InvalidationSubscriber {
     if (submitted.isEmpty()) {
       return null;
     }
-    return settingsEncryptor.encrypt(submitted);
+    return settingsEncryptor.encrypt(
+        submitted, MailEncryptedColumns.SETTINGS_PASSWORD.row(MailSettings.SINGLETON_ID));
   }
 
   private static void requireCompleteWhenEnabled(

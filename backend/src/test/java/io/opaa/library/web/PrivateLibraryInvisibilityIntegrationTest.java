@@ -244,6 +244,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "countSuccessionEntries",
             "getSuccessionSettings",
             "listUsers",
+            "listAuditorRoleRequests",
             "getAssetAccessDerivation",
             "listAssetGrants",
             "listGrantedGroupMembers",

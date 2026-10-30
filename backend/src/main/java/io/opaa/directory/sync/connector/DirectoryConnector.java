@@ -1,6 +1,9 @@
 package io.opaa.directory.sync.connector;
 
 import io.opaa.api.types.DirectoryConnectorType;
+import io.opaa.security.CredentialsEncryptionKeyMissingException;
+import io.opaa.security.EncryptedColumn;
+import io.opaa.security.EncryptedCredentials;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
@@ -11,6 +14,10 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
+import org.hibernate.annotations.Mutability;
+import org.hibernate.type.descriptor.java.Immutability;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The access one provider's directory run signs in with (ADR-0036 Entscheidung 3). At most one row
@@ -25,16 +32,20 @@ import java.util.UUID;
  * only, the same split {@code jwk_set_uri} makes for the JWK set.
  *
  * <p><b>The secret is stored encrypted</b> by {@link DirectoryConnectorSecretConverter} ({@code
- * io.opaa.security.CredentialsEncryptor}, AES-256-GCM, {@code enc:v1:}). Rotating the encryption
- * key itself is not supported in place (a key change is expected to bring an {@code enc:v2:}
- * format); a house whose rules require the <em>service account's</em> password to be rotated
- * regularly can do so freely - that is a write through {@link DirectoryConnectorService}, which
- * re-encrypts with the current key - but must keep {@code OPAA_CREDENTIALS_ENCRYPTION_KEY} itself
- * stable. See {@code docs/handbuch/betrieb/authentifizierung.md}, "Keycloak als Verzeichnis".
+ * io.opaa.security.CredentialsEncryptor}, AES-256-GCM), bound to this row ({@link #CLIENT_SECRET},
+ * ADR-0064). A rotation of {@code OPAA_CREDENTIALS_ENCRYPTION_KEY} re-encrypts it in place; the
+ * <em>service account's</em> password itself is replaced through {@link DirectoryConnectorService}.
+ * See {@code docs/handbuch/betrieb/authentifizierung.md}, "Keycloak als Verzeichnis".
  */
 @Entity
 @Table(name = "directory_connectors")
 public class DirectoryConnector {
+
+  /** {@code directory_connectors.client_secret}, bound to the connector's id. */
+  static final EncryptedColumn CLIENT_SECRET =
+      EncryptedColumn.credentials("directory_connectors", "client_secret");
+
+  private static final Logger log = LoggerFactory.getLogger(DirectoryConnector.class);
 
   @Id private UUID id;
 
@@ -56,8 +67,9 @@ public class DirectoryConnector {
   private String clientId;
 
   @Convert(converter = DirectoryConnectorSecretConverter.class)
+  @Mutability(Immutability.class)
   @Column(name = "client_secret", nullable = false, length = 2000)
-  private String clientSecret;
+  private EncryptedCredentials clientSecret;
 
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
@@ -91,7 +103,11 @@ public class DirectoryConnector {
     this.connectorType = Objects.requireNonNull(connectorType, "connectorType");
     this.baseUrl = baseUrl == null || baseUrl.isBlank() ? null : baseUrl.trim();
     this.clientId = Objects.requireNonNull(clientId, "clientId").trim();
-    this.clientSecret = Objects.requireNonNull(clientSecret, "clientSecret");
+    Objects.requireNonNull(clientSecret, "clientSecret");
+    // the same secret again keeps the stored value: nothing to write, as with a plain attribute
+    if (!clientSecret.equals(readableSecret())) {
+      this.clientSecret = EncryptedCredentials.of(clientSecret, CLIENT_SECRET.row(id));
+    }
     this.updatedAt = now;
   }
 
@@ -124,8 +140,28 @@ public class DirectoryConnector {
    * exactly when the stored ciphertext could not be decrypted with this deployment's key; the two
    * callers that need it check for that and say so ({@link DirectoryConnectorSecretConverter}).
    */
+  private String readableSecret() {
+    try {
+      return clientSecret == null ? null : clientSecret.read(CLIENT_SECRET.row(id));
+    } catch (CredentialsEncryptionKeyMissingException e) {
+      return null;
+    }
+  }
+
   public String getClientSecret() {
-    return clientSecret;
+    if (clientSecret == null) {
+      return null;
+    }
+    try {
+      return clientSecret.read(CLIENT_SECRET.row(id));
+    } catch (CredentialsEncryptionKeyMissingException e) {
+      log.warn(
+          "The secret of directory connector {} cannot be decrypted; the connector counts as"
+              + " unusable until it is stored again. Cause: {}",
+          id,
+          e.getMessage());
+      return null;
+    }
   }
 
   public Instant getCreatedAt() {

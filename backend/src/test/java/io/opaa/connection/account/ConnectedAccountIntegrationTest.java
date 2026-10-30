@@ -167,14 +167,14 @@ class ConnectedAccountIntegrationTest {
                     + " ON a.id = t.connected_account_id WHERE a.profile_id = ?",
                 String.class,
                 profile))
-        .startsWith("enc:v1:")
+        .startsWith("enc:v2:")
         .doesNotContain(PASSWORD);
     assertThat(
             jdbc.queryForObject(
                 "SELECT account_label_ciphertext FROM connected_accounts WHERE profile_id = ?",
                 String.class,
                 profile))
-        .startsWith("enc:v1:")
+        .startsWith("enc:v2:")
         .doesNotContain("avogt");
 
     connect("dev-user", PASSWORD).andExpect(status().isOk());

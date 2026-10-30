@@ -66,10 +66,16 @@ class MailOutbox {
    */
   UUID insert(MailTemplateKey key, String recipient, RenderedMail mail) {
     UUID id = UUID.randomUUID();
-    String recipientCiphertext = encryptor.encrypt(recipient);
-    String subjectCiphertext = encryptor.encrypt(mail.subject());
-    String plainCiphertext = encryptor.encrypt(mail.bodyPlain());
-    String htmlCiphertext = mail.hasHtml() ? encryptor.encrypt(mail.bodyHtml()) : null;
+    String recipientCiphertext =
+        encryptor.encrypt(recipient, MailEncryptedColumns.OUTBOX_RECIPIENT.row(id));
+    String subjectCiphertext =
+        encryptor.encrypt(mail.subject(), MailEncryptedColumns.OUTBOX_SUBJECT.row(id));
+    String plainCiphertext =
+        encryptor.encrypt(mail.bodyPlain(), MailEncryptedColumns.OUTBOX_BODY_PLAIN.row(id));
+    String htmlCiphertext =
+        mail.hasHtml()
+            ? encryptor.encrypt(mail.bodyHtml(), MailEncryptedColumns.OUTBOX_BODY_HTML.row(id))
+            : null;
     jdbc.update(
         "INSERT INTO mail_outbox (id, template_key, recipient_ciphertext, subject_ciphertext,"
             + " body_plain_ciphertext, body_html_ciphertext) VALUES (?, ?, ?, ?, ?, ?)",
@@ -141,11 +147,16 @@ class MailOutbox {
             .orElseThrow(() -> new IllegalStateException("Unknown template " + row.templateKey()));
     RenderedMail mail =
         new RenderedMail(
-            encryptor.decrypt(row.subjectCiphertext()),
-            encryptor.decrypt(row.plainCiphertext()),
-            encryptor.decrypt(row.htmlCiphertext()));
-    return new Claimed(
-        row.id(), key, encryptor.decrypt(row.recipientCiphertext()), mail, row.attempts());
+            encryptor.decrypt(
+                row.subjectCiphertext(), MailEncryptedColumns.OUTBOX_SUBJECT.row(row.id())),
+            encryptor.decrypt(
+                row.plainCiphertext(), MailEncryptedColumns.OUTBOX_BODY_PLAIN.row(row.id())),
+            encryptor.decrypt(
+                row.htmlCiphertext(), MailEncryptedColumns.OUTBOX_BODY_HTML.row(row.id())));
+    String recipient =
+        encryptor.decrypt(
+            row.recipientCiphertext(), MailEncryptedColumns.OUTBOX_RECIPIENT.row(row.id()));
+    return new Claimed(row.id(), key, recipient, mail, row.attempts());
   }
 
   private static String truncated(String reason) {

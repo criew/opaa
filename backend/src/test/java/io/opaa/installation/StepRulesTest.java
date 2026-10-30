@@ -15,6 +15,7 @@ import io.opaa.common.FieldValidationException;
 import io.opaa.common.ValidationException;
 import io.opaa.llm.ModelAddressPolicy;
 import io.opaa.mail.MailSettingsRules;
+import io.opaa.security.CipherFormatGate;
 import io.opaa.security.PasswordEncoderConfiguration;
 import io.opaa.security.SettingsEncryptionProperties;
 import io.opaa.security.SettingsEncryptor;
@@ -36,7 +37,8 @@ class StepRulesTest {
 
   private final PasswordEncoder encoder = new PasswordEncoderConfiguration().passwordEncoder();
   private final SettingsEncryptor encryptor =
-      new SettingsEncryptor(new SettingsEncryptionProperties(KEY));
+      new SettingsEncryptor(
+          new SettingsEncryptionProperties(KEY, List.of()), CipherFormatGate.KEYED);
   private final OidcAddressPolicy addressPolicy = mock(OidcAddressPolicy.class);
   private final StepRules rules =
       new StepRules(
@@ -79,7 +81,10 @@ class StepRulesTest {
             null,
             null);
     assertThat(first.secret()).doesNotContain("sk-geheim");
-    assertThat(encryptor.decrypt(first.secret())).isEqualTo("sk-geheim");
+    assertThat(
+            encryptor.decrypt(
+                first.secret(), InstallationEncryptedColumns.of(InstallationStep.CHAT_MODEL)))
+        .isEqualTo("sk-geheim");
     assertThat(first.payload()).doesNotContain("sk-geheim");
 
     StepRules.Stored kept =
@@ -183,7 +188,10 @@ class StepRulesTest {
             new StepInput.ChatModel("https://ollama:11434/v1", "qwen", "sk-neu", null, null),
             first.payload(),
             first.secret());
-    assertThat(encryptor.decrypt(withNewKey.secret())).isEqualTo("sk-neu");
+    assertThat(
+            encryptor.decrypt(
+                withNewKey.secret(), InstallationEncryptedColumns.of(InstallationStep.CHAT_MODEL)))
+        .isEqualTo("sk-neu");
   }
 
   // regression guard: the model address of the installation passes the address check of models
@@ -277,7 +285,10 @@ class StepRulesTest {
             saved.secret());
     assertThat(rules.embeddingModelPayload(again.payload()).dimensions()).isNull();
     assertThat(again.secret()).isEqualTo(saved.secret());
-    assertThat(encryptor.decrypt(again.secret())).isEqualTo("sk-geheim");
+    assertThat(
+            encryptor.decrypt(
+                again.secret(), InstallationEncryptedColumns.of(InstallationStep.EMBEDDING_MODEL)))
+        .isEqualTo("sk-geheim");
   }
 
   // regression guard: a saved key must never follow a changed embedding address
@@ -335,7 +346,10 @@ class StepRulesTest {
 
     assertThat(stored.payload()).contains("127.0.0.1").doesNotContain(MAIL_PASSWORD);
     assertThat(stored.secret()).startsWith("enc:").doesNotContain(MAIL_PASSWORD);
-    assertThat(encryptor.decrypt(stored.secret())).isEqualTo(MAIL_PASSWORD);
+    assertThat(
+            encryptor.decrypt(
+                stored.secret(), InstallationEncryptedColumns.of(InstallationStep.MAIL)))
+        .isEqualTo(MAIL_PASSWORD);
     InstallationOverview.Mail view =
         (InstallationOverview.Mail)
             rules.view(InstallationStep.MAIL, stored.payload(), stored.secret());
@@ -624,7 +638,10 @@ class StepRulesTest {
             null);
 
     assertThat(stored.payload()).doesNotContain("sk-geheim");
-    assertThat(encryptor.decrypt(stored.secret())).isEqualTo("sk-geheim");
+    assertThat(
+            encryptor.decrypt(
+                stored.secret(), InstallationEncryptedColumns.of(InstallationStep.RERANK_MODEL)))
+        .isEqualTo("sk-geheim");
     assertThat(rules.view(InstallationStep.RERANK_MODEL, stored.payload(), stored.secret()))
         .isEqualTo(
             new InstallationOverview.RerankModel("http://ollama:8080", "bge-reranker", true));
@@ -707,7 +724,11 @@ class StepRulesTest {
             null);
 
     assertThat(stored.payload()).doesNotContain("sk-stt");
-    assertThat(encryptor.decrypt(stored.secret())).isEqualTo("sk-stt");
+    assertThat(
+            encryptor.decrypt(
+                stored.secret(),
+                InstallationEncryptedColumns.of(InstallationStep.TRANSCRIPTION_MODEL)))
+        .isEqualTo("sk-stt");
     assertThat(rules.transcriptionModelPayload(stored.payload()))
         .isEqualTo(
             new StepRules.TranscriptionModelPayload("http://ollama:8000/v1", "whisper", "en"));

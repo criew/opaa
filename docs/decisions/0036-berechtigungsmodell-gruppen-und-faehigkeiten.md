@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-26 · ergänzt durch [ADR-0037](0037-reichweite-als-freigabe-an-alle.md),
+Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt durch [ADR-0037](0037-reichweite-als-freigabe-an-alle.md),
 [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) und
 [ADR-0041](0041-verbindungen-als-eigenes-modul.md) · ersetzt Entscheidung 6 von
 [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md) · präzisiert ADR-0016 (Entscheidung 8),
@@ -590,8 +590,6 @@ erst nach der Lebensdauer ihrer Caches (ADR-0053 Entscheidung 5).
 - Pseudonymisierung der `RESTRICT`-Personenspalten der Rechtehistorie als Voraussetzung von
   Personen-Einstieg und Kontolöschung.
 - Anbieter je Organisation (`oidc_providers.organization_id`, #1442).
-- Schlüsselrotation von `CredentialsEncryptor` (keine Rotation im Bestand vorgesehen) für das
-  Dienstkonto-Passwort des Verzeichnis-Konnektors.
 - Allgemeine Protokollpflicht für Profil-Läufe ohne Space-Kontext; Lastverhalten der Ableitung
   „Nachfolge offen" (Antwort wäre ein materialisiertes Ergebnis des Feststellungslaufs, kein Flag).
 - Mehrfachzugehörigkeit zu Organisationseinheiten; ob Entra-P1/P2-Häuser die SCIM-Zurückstellung

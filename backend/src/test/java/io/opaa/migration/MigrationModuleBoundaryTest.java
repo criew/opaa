@@ -63,6 +63,7 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
               IDENTITY,
               List.of(
                   "users",
+                  "auditor_role_requests",
                   "oidc_providers",
                   "oidc_provider_seed_marker",
                   "oidc_provider_removals",

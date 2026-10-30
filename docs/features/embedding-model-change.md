@@ -375,8 +375,8 @@ Bestätigung, Endpunktwechsel und Ersatz-Endpunkt prüfen alles neu, unabhängig
 
 | Ereignis | Anlass | Inhalt |
 |---|---|---|
-| `EMBEDDING_MODEL_CHANGED` | Bestätigung eines Modellwechsels | Modell, Adresse ohne Zugangsdaten, Dimension, Eingabegrenze und Generation vorher und nachher; Schlüssel nur als „gesetzt", „geändert", „beibehalten" oder „entfernt"; Chunks der Vorschau |
-| `EMBEDDING_MODEL_CHANGE_DISCARDED` | Verwerfen | zurückgesetztes und verworfenes Modell mit Generation; Status des beendeten Laufs; Zahl der nachzufüllenden Chunks |
+| `EMBEDDING_MODEL_CHANGED` | Bestätigung eines Modellwechsels | Modell, Adresse ohne Zugangsdaten, Dimension, Eingabegrenze und Generation vorher und nachher; Schlüssel nur als „gesetzt", „geändert", „beibehalten" oder „entfernt", beim bisherigen Modell „verworfen" (`DROPPED`), wenn kein Schlüssel ihn entschlüsselt; Chunks der Vorschau |
+| `EMBEDDING_MODEL_CHANGE_DISCARDED` | Verwerfen | zurückgesetztes und verworfenes Modell mit Generation; beim zurückgesetzten Modell „verworfen" (`DROPPED`), wenn kein Schlüssel seinen Schlüssel entschlüsselt; Status des beendeten Laufs; Zahl der nachzufüllenden Chunks |
 | `EMBEDDING_MODEL_ENDPOINT_CHANGED` | Endpunktwechsel, Ersatz-Endpunkt | Adresse und Eingabegrenze vorher und nachher, Schlüsselstatus, kleinste gemessene Ähnlichkeit, ob während eines Wechsels |
 | `EMBEDDING_REINDEX_STARTED`, `…_CANCELLED` | Fortsetzen, Abbrechen | wie gebaut |
 | `EMBEDDING_REINDEX_COMPLETED` | Umschalten oder Fehler des Laufs | wie gebaut |

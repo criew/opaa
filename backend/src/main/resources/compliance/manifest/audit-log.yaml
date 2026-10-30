@@ -478,6 +478,22 @@ auditEvents:
   - id: AUDITOR_ROLE_REVOKED
     trigger: Die Rolle AUDITOR wird entzogen
     payloadKeys: [provider, role]
+  - id: AUDITOR_ROLE_REQUESTED
+    trigger: >-
+      Die Systemverwaltung oder der Rollen-Claim eines Identitätsanbieters beantragt die Rolle
+      AUDITOR für ein Konto; wirksam wird sie erst mit der Bestätigung durch eine Person der
+      Revision (dann AUDITOR_ROLE_GRANTED unter dieser Person)
+    details: >-
+      Handelnd ist die Systemverwaltung oder der Systemakteur identity-provider (dann mit dem
+      Anbieter unter provider); Objekt und betroffene Person das Konto
+    payloadKeys: [provider, role]
+  - id: AUDITOR_ROLE_REQUEST_DECLINED
+    trigger: >-
+      Ein offener Antrag auf die Rolle AUDITOR endet ohne die Rolle: Die Revision lehnt ab, die
+      Systemverwaltung zieht ihn mit einer anderen Rolle zurück, oder der Rollen-Claim nennt die
+      Rolle nicht mehr
+    details: Die handelnde Person oder der Systemakteur zeigt, wer den Antrag beendet hat
+    payloadKeys: [provider, role]
   - id: SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED
     trigger: >-
       Der Entzug von SYSTEM_ADMIN für die letzte Systemverwaltung durch den Identitätsanbieter wird
@@ -631,9 +647,9 @@ auditEvents:
     details: >-
       Modell, Adresse ohne Zugangsdaten, Dimension, Eingabegrenze und Generation vorher und
       nachher; der Zugangsschlüssel nur als „gesetzt ja/nein“ und als „gesetzt“, „geändert“ oder
-      „entfernt“ (apiKeyChange), nie mit dem Wert; die Zahl der Abschnitte wie auf der Seite
-      und ob ein laufendes Nachfüllen endete; beim ersten Modell ohne Vorher-Stand und mit
-      initial
+      „entfernt“ (apiKeyChange), nie mit dem Wert, beim bisherigen Modell „verworfen“, wenn kein
+      Schlüssel ihn entschlüsselt; die Zahl der Abschnitte wie auf der Seite und ob ein laufendes
+      Nachfüllen endete; beim ersten Modell ohne Vorher-Stand und mit initial
     payloadKeys:
       [apiKeyChange, apiKeySet, baseUrl, dimensions, generation, initial, maxInputTokens, model,
        privateLibrariesCounted, refillEnded, totalChunks]
@@ -642,11 +658,12 @@ auditEvents:
       Die Systemverwaltung verwirft einen bestätigten Wechsel des Embedding-Modells vor dem
       Umschalten
     details: >-
-      Verworfenes und wiederhergestelltes Modell mit Generation, Status des beendeten Laufs und
-      die Zahl der nachzufüllenden Abschnitte
+      Verworfenes und wiederhergestelltes Modell mit Generation, beim wiederhergestellten Modell
+      der Zugangsschlüssel als „verworfen“ (apiKeyChange), wenn kein Schlüssel ihn entschlüsselt,
+      nie mit dem Wert; Status des beendeten Laufs und die Zahl der nachzufüllenden Abschnitte
     payloadKeys:
-      [apiKeySet, baseUrl, dimensions, generation, maxInputTokens, model, privateLibrariesCounted,
-       refillChunks, runStatus]
+      [apiKeyChange, apiKeySet, baseUrl, dimensions, generation, maxInputTokens, model,
+       privateLibrariesCounted, refillChunks, runStatus]
   - id: EMBEDDING_MODEL_ENDPOINT_CHANGED
     trigger: >-
       Die Systemverwaltung ändert Adresse, Zugangsschlüssel oder Eingabegrenze des

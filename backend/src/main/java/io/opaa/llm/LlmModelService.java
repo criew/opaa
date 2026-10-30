@@ -113,14 +113,16 @@ public class LlmModelService {
     requireAllowedAddress(baseUrl, null);
     return transactions.execute(
         status -> {
+          UUID id = UUID.randomUUID();
           LlmModel model =
               new LlmModel(
+                  id,
                   displayName,
                   baseUrl,
                   modelIdentifier,
                   temperature,
                   maxTokens,
-                  settingsEncryptor.encrypt(apiKey));
+                  settingsEncryptor.encrypt(apiKey, LlmEncryptedColumns.CHAT_MODEL_KEY.row(id)));
           repository.save(model);
           Map<String, Object> after = auditState(model);
           AuditSecretChange.put(after, "apiKey", null, model.getApiKeyCiphertext());
@@ -186,7 +188,9 @@ public class LlmModelService {
     String previousApiKeyCiphertext = model.getApiKeyCiphertext();
     requireKeyFollowsEndpoint(model.getBaseUrl(), baseUrl, apiKey, previousApiKeyCiphertext);
     String apiKeyCiphertext =
-        apiKey == null ? previousApiKeyCiphertext : settingsEncryptor.encrypt(apiKey);
+        apiKey == null
+            ? previousApiKeyCiphertext
+            : settingsEncryptor.encrypt(apiKey, LlmEncryptedColumns.CHAT_MODEL_KEY.row(id));
     model.replaceDetails(
         displayName, baseUrl, modelIdentifier, temperature, maxTokens, apiKeyCiphertext);
     repository.save(model);
@@ -280,8 +284,8 @@ public class LlmModelService {
   /**
    * The chat model of an installation (ADR-0060, Entscheidung 10): created active in place of any
    * other, recorded under the system process {@code actorRef} because no account exists yet. {@code
-   * apiKeyCiphertext} is already encrypted with {@link SettingsEncryptor}, {@code null} without a
-   * key. Runs inside the caller's transaction.
+   * apiKey} is the clear key, encrypted here for the new row, {@code null} without a key. Runs
+   * inside the caller's transaction.
    */
   @Transactional(propagation = Propagation.MANDATORY)
   public LlmModel installActiveModel(
@@ -292,15 +296,22 @@ public class LlmModelService {
       String modelIdentifier,
       BigDecimal temperature,
       int maxTokens,
-      String apiKeyCiphertext) {
+      String apiKey) {
     requireBaseUrlWithoutCredentials(baseUrl);
     for (LlmModel currentlyActive : repository.findAllByActiveTrue()) {
       currentlyActive.deactivate();
       repository.saveAndFlush(currentlyActive);
     }
+    UUID id = UUID.randomUUID();
     LlmModel model =
         new LlmModel(
-            displayName, baseUrl, modelIdentifier, temperature, maxTokens, apiKeyCiphertext);
+            id,
+            displayName,
+            baseUrl,
+            modelIdentifier,
+            temperature,
+            maxTokens,
+            settingsEncryptor.encrypt(apiKey, LlmEncryptedColumns.CHAT_MODEL_KEY.row(id)));
     model.activate();
     repository.save(model);
     auditEventRecorder.recordSystemProcessAction(

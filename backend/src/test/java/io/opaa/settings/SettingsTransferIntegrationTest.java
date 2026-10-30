@@ -97,7 +97,7 @@ class SettingsTransferIntegrationTest {
         .containsExactlyInAnyOrder(
             "enabled", "host", "port", "username", "encryption", "fromAddress", "fromName");
     assertThat(body)
-        .doesNotContain("enc:v1:")
+        .doesNotContain("enc:")
         .doesNotContainIgnoringCase("password\"")
         .doesNotContain("passwordSet")
         .doesNotContain("updatedBy")

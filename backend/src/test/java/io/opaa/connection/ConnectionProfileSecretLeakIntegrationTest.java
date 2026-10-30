@@ -108,7 +108,7 @@ class ConnectionProfileSecretLeakIntegrationTest {
             "SELECT client_secret_ciphertext FROM connection_profiles WHERE id = ?",
             String.class,
             profile);
-    assertThat(stored).startsWith("enc:v1:").doesNotContain(SECRET);
+    assertThat(stored).startsWith("enc:v2:").doesNotContain(SECRET);
 
     call(get(ADMIN), null);
     call(get(ADMIN + "/" + profile), null);
