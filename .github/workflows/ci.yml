@@ -382,64 +382,30 @@ jobs:
 
   # Fails a pull request whose dependency changes bring a known vulnerability of severity critical
   # in runtime scope (docs/cve-scanning.md, "PR-Gate für Abhängigkeiten"). It compares the
-  # dependency graph of base and head through the GitHub API, so it needs no checkout. Only on
-  # pull_request: a push or merge_group run has no base to compare with.
+  # dependency graph of base and head through the GitHub API and checks out only its script. Only
+  # on pull_request: a push or merge_group run has no base to compare with.
   dependency-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
-      # Waits for the head snapshots of the Gradle graph and the pnpm lockfiles, which
-      # dependency-graph.yml generates and dependency-graph-submit.yml submits for every PR, and
-      # is the gate itself. The compare API is only eventually consistent: a query it once
-      # answered with "no snapshots" keeps that answer, and advisories show up on a change
-      # minutes late and not in every response. So every request uses a fresh per_page, and once
-      # the snapshots are there the gate reads six samples a minute apart and fails on any
-      # critical advisory of an added runtime dependency seen in one of them.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+
+      # Waits for the head snapshots that dependency-graph.yml generates and
+      # dependency-graph-submit.yml submits for every PR, then is the gate itself; why it does not
+      # use the action's own retry is in the script header.
       - name: Neue critical-Schwachstellen im Scope runtime ablehnen
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          compare="repos/$REPO/dependency-graph/compare/$BASE_SHA...$HEAD_SHA"
-          samples=0
-          for per_page in $(seq 100 -1 41); do
-            [ "$SECONDS" -lt 1800 ] || break
-            response=$(gh api -i "$compare?per_page=$per_page" | tr -d '\r')
-            warnings=$(sed -n 's/^x-github-dependency-graph-snapshot-warnings: *//Ip' <<<"$response" | base64 -d)
-            if grep -q 'No snapshots were found for the head SHA' <<<"$warnings"; then
-              sleep 30
-              continue
-            fi
-            sample="$RUNNER_TEMP/sample-$samples.json"
-            sed '1,/^$/d' <<<"$response" >"$sample"
-            page=1
-            while [ "$(jq -s 'last | length' "$sample")" -eq "$per_page" ]; do
-              page=$((page + 1))
-              gh api "$compare?per_page=$per_page&page=$page" >>"$sample"
-            done
-            samples=$((samples + 1))
-            [ "$samples" -lt 6 ] || break
-            sleep 60
-          done
-          if [ "$samples" -eq 0 ]; then
-            echo "::warning::Keine Snapshots für $HEAD_SHA nach 30 Minuten, das Gate prüft nur den Graphen, den GitHub selbst kennt."
-            gh api "$compare?per_page=100" >"$RUNNER_TEMP/sample-0.json"
-          fi
-          findings=$(jq -rs '[.[][] | select(.change_type == "added" and .scope == "runtime")
-              | .manifest as $m | .name as $n | .version as $v
-              | .vulnerabilities[] | select(.severity == "critical")
-              | "\($m) » \($n)@\($v): \(.advisory_ghsa_id) \(.advisory_summary)"] | unique | .[]' \
-            "$RUNNER_TEMP"/sample-*.json)
-          if [ -n "$findings" ]; then
-            while IFS= read -r finding; do echo "::error::$finding"; done <<<"$findings"
-            exit 1
-          fi
-          echo "Keine neue critical-Schwachstelle im Scope runtime ($samples Stichproben)."
+        run: python3 .github/scripts/dependency_review_gate.py
 
-      # Lists every vulnerable change of both scopes in the job summary and never fails.
+      # Lists every vulnerable change of both scopes in the job log and summary, never fails.
       - name: Alle Schwachstellen der Abhängigkeitsänderungen auflisten
         if: success() || failure()
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
