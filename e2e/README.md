@@ -156,6 +156,27 @@ pnpm exec playwright test   # ohne laufenden Stack
 
 Der Test schlägt mit `net::ERR_CONNECTION_REFUSED` fehl und legt Trace/Screenshot ab.
 
+### Zweite Browser-Engine: Firefox-Smoke-Lauf (#3474)
+
+Die Suite läuft in Chromium; Edge teilt diese Engine. Für Firefox (Gecko, in Behörden oft als
+ESR im Einsatz) gibt es einen schmalen Smoke-Lauf über die Kernszenarien: Rauchtest,
+Mehrrunden-Chat, Fundstellen-Anzeige mit PDF, Textfassung und Download, Upload und Freigabe
+einer Wissensbibliothek, Verwaltungsnavigation. Diese Szenarien tragen das Tag
+`@browser-smoke`; ein neues Kernszenario bekommt es ebenso.
+
+```bash
+cd e2e
+pnpm exec playwright install firefox
+E2E_BROWSER=firefox node scripts/run-e2e.mjs
+```
+
+`E2E_BROWSER=firefox` ersetzt das Chromium-Projekt durch das Projekt `firefox`, das nur die
+getaggten Szenarien wählt; Bericht und Traces landen in `playwright-report-firefox/` und
+`test-results-firefox/`, die Container-Logs in `docker-compose.firefox.log`. Der Workflow
+`e2e.yml` führt den Lauf nach der Chromium-Suite auf neuem Stack mit frischer Datenbank aus, auch wenn diese rot war,
+und meldet einen Fehlschlag über dasselbe Alarm-Issue. Playwright treibt seinen eigenen
+Firefox-Build (aktueller Stand), kein echtes ESR.
+
 ## Warum der `dev`-Auth-Modus?
 
 OPAA kennt zwei Auth-Modi (`opaa.auth.mode`: `oidc`, `dev` — siehe

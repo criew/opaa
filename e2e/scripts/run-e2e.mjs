@@ -288,7 +288,9 @@ function dumpLogs() {
         ? 'docker-compose.local-auth.log'
         : isInstallation
           ? 'docker-compose.installation.log'
-          : 'docker-compose.log',
+          : process.env.E2E_BROWSER === 'firefox'
+            ? 'docker-compose.firefox.log'
+            : 'docker-compose.log',
   )
   console.log(`\n> Saving container logs to ${logPath}`)
   const result = spawnSync('docker', [...composeArgs, 'logs', '--no-color', '--timestamps'], {

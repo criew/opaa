@@ -86,6 +86,26 @@ export async function openAs(page: Page, devUser: string, attempt = 1): Promise<
   await openAs(page, devUser, attempt + 1)
 }
 
+/**
+ * Firefox aborts a `page.goto` with NS_BINDING_ABORTED when the app still finishes a navigation of
+ * its own that is still in flight; Chromium lets the newer navigation win.
+ * In Firefox every `goto` therefore waits for the page to settle and repeats once on exactly that
+ * abort, so scenarios navigate the same way in both engines.
+ */
+function settleNavigationInFirefox(page: Page): void {
+  if (page.context().browser()?.browserType().name() !== 'firefox') return
+  const goto = page.goto.bind(page)
+  page.goto = async (url, options) => {
+    try {
+      return await goto(url, options)
+    } catch (error) {
+      if (!String(error).includes('NS_BINDING_ABORTED')) throw error
+      await page.waitForLoadState('load').catch(() => undefined)
+      return goto(url, options)
+    }
+  }
+}
+
 /** Teardown budget of the end-state analysis on top of the test timeout (none when unlimited). */
 const END_STATE_A11Y_TIMEOUT_MS = 20_000
 
@@ -116,6 +136,7 @@ export const test = base.extend<{
 }>({
   /** The app as SYSTEM_ADMIN — the default for scenarios that need indexing or admin endpoints. */
   authenticatedPage: async ({ page }, use) => {
+    settleNavigationInFirefox(page)
     await openAs(page, ADMIN_USER)
     await use(page)
     await expectAccessibleEndState(page, ADMIN_USER)
@@ -125,6 +146,7 @@ export const test = base.extend<{
   regularUserPage: async ({ browser }, use) => {
     const context = await browser.newContext()
     const page = await context.newPage()
+    settleNavigationInFirefox(page)
     await openAs(page, REGULAR_USER)
     await use(page)
     try {
@@ -142,6 +164,7 @@ export const test = base.extend<{
   outsiderPage: async ({ browser }, use) => {
     const context = await browser.newContext()
     const page = await context.newPage()
+    settleNavigationInFirefox(page)
     await openAs(page, OUTSIDER_USER)
     await use(page)
     try {
@@ -159,6 +182,7 @@ export const test = base.extend<{
   formatPipelinesPage: async ({ browser }, use) => {
     const context = await browser.newContext()
     const page = await context.newPage()
+    settleNavigationInFirefox(page)
     await openAs(page, FORMAT_PIPELINES_USER)
     await use(page)
     try {

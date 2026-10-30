@@ -149,7 +149,7 @@ async function expectDownloadOf(download: Download, document: SeededDocument): P
   expect((await readFile(await download.path())).equals(document.content)).toBe(true)
 }
 
-test.describe.serial('Fundstellen-Anzeige und Original', () => {
+test.describe.serial('Fundstellen-Anzeige und Original', { tag: '@browser-smoke' }, () => {
   const createdLibraryIds = cleanupLibraries()
   let library: Awaited<ReturnType<typeof seedLibrary>>
 
