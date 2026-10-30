@@ -195,36 +195,44 @@ public class EmbeddingReindexService {
           boolean stale = snapshot != null && snapshot.stale();
           boolean privateCounted =
               personThreshold.discloses(libraryRepository.countAllPrivateLibraryOwners());
-          long total = 0;
-          long embedded = 0;
-          long withoutCurrent = 0;
-          if (schema.columnDimensions(EmbeddingIndexState.EMBEDDING_COLUMN) != null) {
-            ChunkCounts counts =
-                schema.chunkCounts(
-                    stale
-                        ? EmbeddingIndexState.TARGET_COLUMN
-                        : EmbeddingIndexState.EMBEDDING_COLUMN);
-            total = counts.sharedTotal() + (privateCounted ? counts.privateTotal() : 0);
-            embedded =
-                total - counts.sharedWithout() - (privateCounted ? counts.privateWithout() : 0);
-            ChunkCounts current =
-                stale ? schema.chunkCounts(EmbeddingIndexState.EMBEDDING_COLUMN) : counts;
-            withoutCurrent =
-                current.sharedWithout() + (privateCounted ? current.privateWithout() : 0);
-          }
+          Counted counted = schema.whileUnchanged(() -> counted(stale, privateCounted));
           return new EmbeddingReindexProgress(
               snapshot == null ? null : snapshot.current(),
               snapshot == null ? null : snapshot.configured(),
               stale,
               running,
               run,
-              total,
-              embedded,
+              counted.total(),
+              counted.embedded(),
               privateCounted,
               previous,
               liveOwner && run.indexBuildStartedAt() != null,
-              withoutCurrent);
+              counted.withoutCurrent());
         });
+  }
+
+  /** The chunks {@link #progress} reports, of the private libraries only when they are counted. */
+  private record Counted(long total, long embedded, long withoutCurrent) {}
+
+  /**
+   * Counts the target column while it is filled, the embedding column otherwise. A stale snapshot
+   * without a target column means another instance switched or discarded the change before this one
+   * heard of it; until the bus tells this instance, the counts are those of the embedding column.
+   */
+  private Counted counted(boolean stale, boolean privateCounted) {
+    if (schema.columnDimensions(EmbeddingIndexState.EMBEDDING_COLUMN) == null) {
+      return new Counted(0, 0, 0);
+    }
+    boolean filling = stale && schema.columnDimensions(EmbeddingIndexState.TARGET_COLUMN) != null;
+    ChunkCounts counts =
+        schema.chunkCounts(
+            filling ? EmbeddingIndexState.TARGET_COLUMN : EmbeddingIndexState.EMBEDDING_COLUMN);
+    long total = counts.sharedTotal() + (privateCounted ? counts.privateTotal() : 0);
+    long embedded = total - counts.sharedWithout() - (privateCounted ? counts.privateWithout() : 0);
+    ChunkCounts current =
+        filling ? schema.chunkCounts(EmbeddingIndexState.EMBEDDING_COLUMN) : counts;
+    return new Counted(
+        total, embedded, current.sharedWithout() + (privateCounted ? current.privateWithout() : 0));
   }
 
   /**
