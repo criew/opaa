@@ -332,8 +332,11 @@ der Metadaten. Die Konfiguration kommt aus `application.yml`, ohne Datenbank und
   setzt die Paketdaten von Office-Dateien fest. Gleiche Quelle ergibt gleichen Inhalt, gleiche
   Bytes aber nur mit derselben zlib: ein anderes JDK kann denselben Inhalt anders komprimieren.
   `FuzzCorpusTest` vergleicht deshalb über `SeedComparison`: ZIP-Container Eintrag für Eintrag
-  (Name, Reihenfolge, Methode, Zeit, entpackter Inhalt), PDFs mit entpackten Flate-Streams und
-  maskierten Längen und Offsets, alles andere Byte für Byte; die Meldung nennt Datei und ersten
+  (Name, Reihenfolge, Methode, Zeit, entpackter Inhalt; Zentralverzeichnis, Zusatzfelder und
+  Kommentare nicht), eine PDF mit Flate-Stream mit entpackten Streams samt Bytes hinter dem
+  Deflate-Ende; maskiert werden dort nur die Länge eines Flate-Streams sowie xref-Offsets und
+  `startxref`, die in ihrer eigenen Datei auf ihr Objekt oder ihre xref zeigen. Alles andere,
+  auch eine PDF ohne Flate-Stream, vergleicht er Byte für Byte; die Meldung nennt Datei und ersten
   abweichenden Eintrag. Nach einer
   Änderung am Generator `./gradlew writeParserFuzzCorpus` ausführen und die Dateien einchecken.
   Dazu kommen beim Laden die präparierten Dateien der Regressionssuite (`HostileFiles`) in kleiner
