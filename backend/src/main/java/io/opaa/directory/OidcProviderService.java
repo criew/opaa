@@ -256,6 +256,8 @@ public class OidcProviderService implements LocalAccountsSwitch {
             .outcome(AuditOutcome.SUCCESS)
             .build());
     eventPublisher.publishEvent(new OidcProvidersChangedEvent());
+    eventPublisher.publishEvent(
+        new IdentityProviderTrustChangedEvent(provider.getId(), provider.getDisplayName(), true));
     return provider;
   }
 

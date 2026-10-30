@@ -164,7 +164,8 @@ zugleich den Identitätsanbieter betreibt und dort Konten mit beliebiger Adresse
 erreichen `AUDITOR` aber ebenfalls nur über die Bestätigung durch die Revision.
 
 **Restrisiko Vertrauensanker.** Die Systemverwaltung pflegt die Identitätsanbieter. Setzt sie die
-JWK-Set-URI oder die Issuer-URI eines Anbieters auf einen eigenen Server, kann sie Tokens mit dem
+JWK-Set-URI eines Anbieters auf einen eigenen Server — bei einem Anbieter ohne Konten auch die
+Issuer-URI, die gesperrt ist, sobald Konten bestehen —, kann sie Tokens mit dem
 `sub` eines **bestehenden** `AUDITOR`-Kontos dieses Anbieters signieren und meldet sich als dieses
 Konto an — ohne Antrag, weil das Konto die Rolle schon hat. OPAA verhindert das nicht technisch: Die
 Anbieter-Verwaltung ist Aufgabe der Systemverwaltung, und der Rollenantrag schützt nur die Vergabe,

@@ -307,9 +307,9 @@ Jede wirksame Vergabe und jeder Entzug der Rolle Revision — durch Rollenwechse
 Löschen des Kontos — meldet OPAA allen übrigen Personen der Revision, ebenso jede Änderung der
 E-Mail-Einstellungen oder einer Mailvorlage und jedes Anlegen eines Identitätsanbieters oder jede
 Änderung seiner Anmeldedaten (Issuer, Client-ID, Signaturschlüssel, Claims, Rollenzuordnung) durch
-die Systemverwaltung — an alle Personen der Revision der Installation. Wer die Anmeldedaten eines
-Anbieters bestimmt, kann sich als jedes Konto dieses Anbieters anmelden, auch als ein bestehendes
-Revisionskonto; deshalb prüft die Revision jede solche Meldung. Antrag, Bestätigung und Ablehnung
+die Systemverwaltung — an alle Personen der Revision der Installation. Wer die JWK-Set-URI eines
+Anbieters auf einen eigenen Server setzt — bei einem Anbieter ohne Konten auch den Issuer —, kann
+sich als jedes Konto dieses Anbieters anmelden, auch als ein bestehendes Revisionskonto; deshalb prüft die Revision jede solche Meldung. Antrag, Bestätigung und Ablehnung
 stehen im Nachweisprotokoll.
 
 Systemverwalterkonten sind **persönliche** Konten, je Person eines — keine Sammelkonten. Das
