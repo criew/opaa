@@ -109,12 +109,15 @@ Sicherheitslücken. Rhythmus und Einzelheiten stehen in
 - **Automatische Prüfungen in Pull Requests:** statische Code-Analyse mit CodeQL, ein
   Abhängigkeits-Gate gegen bekannte kritische Schwachstellen, Härtungs- und Pin-Prüfung der
   Workflows, Prüfsummen der Abhängigkeiten, Lizenzprüfung, sichere Vorgaben der Compose-Vorlagen,
-  eine Rechte-Matrix über alle API-Operationen und Rollen und eine Allowlist der ohne Anmeldung
-  erreichbaren Pfade. Im Pull Request läuft jede Prüfung, deren Dateien er berührt; auf `main`
+  eine Rechte-Matrix über alle API-Operationen und Rollen, eine Allowlist der ohne Anmeldung
+  erreichbaren Pfade, Architekturtests für Sicherheitsinvarianten und eine Regressionssuite mit
+  präparierten Dateien und gesperrten Zieladressen. Im Pull Request läuft jede Prüfung, deren Dateien er berührt; auf `main`
   läuft nach jedem Merge alles. Secret Scanning und Push Protection sind für das Repository
   eingeschaltet.
 - **CVE-Erkennung:** Dependabot-Alerts für die Abhängigkeiten und ein nächtlicher Scan der
   veröffentlichten Images ([docs/cve-scanning.md](docs/cve-scanning.md)).
+- **Nächtliche Tests gegen Angriffe:** ein passiver ZAP-Scan der laufenden Anwendung und
+  Fuzzing der Dokument-Parser mit präparierten Dateien.
 - **Wöchentliches Security-Delta-Review:** Eine geplante Routine prüft jeden Sonntag die
   Änderungen der Woche und legt neue Befunde als Issues an.
 - **Tiefen-Audit je Angriffsklasse:** zweimal im Jahr vor jedem Funktionsrelease und bei Anlass
