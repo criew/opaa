@@ -358,9 +358,8 @@ public class TargetAddressValidator {
     if (isIpv4EmbeddedIpv6(bytes)) {
       // isCommonBlockedRange(address) too, not the embedded check alone: the deprecated
       // IPv4-compatible form (unlike the mapped one) overlaps with addresses Java already
-      // recognizes directly on the IPv6 side - ::1 (loopback) is bytes[10..11] == 0 the same way
-      // an IPv4-compatible address is, but its embedded "IPv4" (0.0.0.1) is not itself in any
-      // blocked IPv4 range. Without this fallback, ::1 fell through this branch as allowed.
+      // recognizes directly on the IPv6 side - ::1 (loopback) shares the all-zero upper bytes of
+      // an IPv4-compatible address, so the IPv6-side predicates must still apply here.
       byte[] embedded = new byte[] {bytes[12], bytes[13], bytes[14], bytes[15]};
       return isBlockedIpv4Bytes(embedded) || isCommonBlockedRange(address);
     }
@@ -456,7 +455,7 @@ public class TargetAddressValidator {
   /**
    * IPv6 prefixes that translate or tunnel to an IPv4 address (NAT64 {@code 64:ff9b::/96} and
    * {@code 64:ff9b:1::/48}, 6to4 {@code 2002::/16}, Teredo {@code 2001::/32}, SIIT {@code
-   * ::ffff:0:0/96}) or only discard ({@code 100::/64}); none is recognized by an {@link
+   * ::ffff:0:0:0/96}) or only discard ({@code 100::/64}); none is recognized by an {@link
    * InetAddress} predicate. Each is blocked as a whole, so the embedded address never matters.
    */
   private static final List<Ipv6Prefix> TRANSLATION_PREFIXES =
@@ -473,7 +472,9 @@ public class TargetAddressValidator {
     return bytes.length == 16 && TRANSLATION_PREFIXES.stream().anyMatch(p -> p.contains(bytes));
   }
 
-  /** The first {@code bits} bits of {@code head}, zero-extended; {@code bits} is a whole byte. */
+  /**
+   * The first {@code bits} bits of {@code head}, zero-extended; {@code bits} is a multiple of 8.
+   */
   private record Ipv6Prefix(byte[] head, int bits) {
     boolean contains(byte[] address) {
       for (int i = 0; i < bits / 8; i++) {

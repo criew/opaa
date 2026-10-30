@@ -188,6 +188,10 @@ class TargetAddressValidatorTest {
     assertNotBlocked("2001:4860:4860::8888"); // 2001::/32 is Teredo, 2001:4860::/32 is not
     assertNotBlocked("2003::1");
     assertNotBlocked("64:ff9b:2::1");
+    assertNotBlocked("64:ff9b::1:0:0:1"); // outside both NAT64 prefixes
+    assertNotBlocked("100:0:0:1::1"); // just outside 100::/64
+    assertNotBlocked("2001:1::1"); // just outside the Teredo /32
+    assertNotBlocked("2001:db8::1");
   }
 
   // regression guard for #3360: "this network" 0.0.0.0/8 is blocked beyond 0.0.0.0 itself

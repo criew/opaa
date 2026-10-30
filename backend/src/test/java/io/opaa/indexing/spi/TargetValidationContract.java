@@ -140,7 +140,7 @@ public abstract class TargetValidationContract {
         Arguments.of("IPv4-mapped cloud metadata", "[::ffff:169.254.169.254]"),
         Arguments.of("IPv4-compatible loopback", "[::127.0.0.1]"),
         Arguments.of("NAT64 well-known prefix", "[64:ff9b::a9fe:a9fe]"),
-        // regression guard for #3360: prefixes embedding the cloud metadata address
+        // regression guard for #3360: IPv4-translating, discard-only and 0.0.0.0/8 targets
         Arguments.of("NAT64 local-use prefix", "[64:ff9b:1::a9fe:a9fe]"),
         Arguments.of("6to4", "[2002:a9fe:a9fe::]"),
         Arguments.of("Teredo", "[2001::5601:5601]"),
