@@ -1,10 +1,11 @@
+import { readFile } from 'node:fs/promises'
 import { PDFDocument, StandardFonts } from 'pdf-lib'
 import { expect, test } from '../fixtures/auth'
 import { expectNoSeriousA11yViolations } from '../fixtures/a11y'
 import { askQuestion, startFreshChat } from '../fixtures/chat'
 import { apiAs } from '../fixtures/externalAccess'
-import { cleanupLibraries } from '../fixtures/libraries'
-import { createKnowledgeLibraryViaApi } from '../fixtures/promptLibraries'
+import { cleanupLibraries, uploadDocument } from '../fixtures/libraries'
+import { createKnowledgeLibraryViaApi, escapeRegExp } from '../fixtures/promptLibraries'
 import { assignToDefaultSpace } from '../fixtures/spaces'
 import type { Download, Locator, Page } from '@playwright/test'
 
@@ -22,10 +23,12 @@ import type { Download, Locator, Page } from '@playwright/test'
 const ADMIN = 'dev-admin'
 const OUTSIDER = 'dev-outsider'
 const PDF_PAGES = 3
+const SECTIONS = ['Geltungsbereich', 'Zuständigkeit', 'Fristen']
 
 interface SeededDocument {
   id: string
   fileName: string
+  content: Buffer
 }
 
 async function buildPdf(): Promise<Buffer> {
@@ -44,17 +47,15 @@ async function buildPdf(): Promise<Buffer> {
 }
 
 function buildHtml(): Buffer {
-  const sections = ['Geltungsbereich', 'Zuständigkeit', 'Fristen']
-    .map(
-      (title, index) =>
-        `<h2>${title}</h2>\n` +
-        Array.from(
-          { length: 12 },
-          (_, line) =>
-            `<p>Abschnitt ${index + 1}, Satz ${line + 1}: Diese Regel zum Thema ${title} gilt für alle Stellen der Verwaltung.</p>`,
-        ).join('\n'),
-    )
-    .join('\n')
+  const sections = SECTIONS.map(
+    (title, index) =>
+      `<h2>${title}</h2>\n` +
+      Array.from(
+        { length: 25 },
+        (_, line) =>
+          `<p>Abschnitt ${index + 1}, Satz ${line + 1}: Diese Regel zum Thema ${title} gilt für alle Stellen der Verwaltung.</p>`,
+      ).join('\n'),
+  ).join('\n')
   return Buffer.from(
     `<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Merkblatt</title></head>` +
       `<body><h1>Merkblatt Fundstellen</h1>\n${sections}</body></html>`,
@@ -76,10 +77,7 @@ async function seedLibrary(
   const api = await apiAs(ADMIN)
   try {
     for (const file of files) {
-      const uploaded = await api.post(`/api/v1/libraries/${id}/documents`, {
-        multipart: { file },
-      })
-      expect(uploaded.ok(), await uploaded.text()).toBe(true)
+      await uploadDocument(api, id, file)
     }
     let documents: Array<{ id: string; fileName: string; status: string }> = []
     await expect
@@ -93,12 +91,12 @@ async function seedLibrary(
       )
       .toBe('INDEXED,INDEXED')
     await assignToDefaultSpace(ADMIN, 'KNOWLEDGE_LIBRARY', id)
-    const byName = (fileName: string): SeededDocument => {
-      const document = documents.find((candidate) => candidate.fileName === fileName)
-      expect(document, `${fileName} fehlt in der Bibliothek`).toBeDefined()
-      return { id: document!.id, fileName }
+    const seeded = (file: (typeof files)[number]): SeededDocument => {
+      const document = documents.find((candidate) => candidate.fileName === file.name)
+      expect(document, `${file.name} fehlt in der Bibliothek`).toBeDefined()
+      return { id: document!.id, fileName: file.name, content: file.buffer }
     }
-    return { name, pdf: byName(files[0].name), html: byName(files[1].name) }
+    return { name, pdf: seeded(files[0]), html: seeded(files[1]) }
   } finally {
     await api.dispose()
   }
@@ -123,9 +121,32 @@ function evidenceRow(drawer: Locator, fileName: string): Locator {
   return drawer.getByTestId('evidence-doc').filter({ hasText: fileName })
 }
 
-async function expectDownloadOf(download: Download, fileName: string): Promise<void> {
-  expect(download.suggestedFilename()).toBe(fileName)
+/** Same check as toBeInViewport, as a value: intersection with the viewport after clipping. */
+async function isInViewport(locator: Locator): Promise<boolean> {
+  return locator.evaluate((element) => {
+    // The e2e tsconfig has no DOM lib; the browser provides IntersectionObserver.
+    type Entry = { intersectionRatio: number }
+    type Observer = { observe(target: unknown): void; disconnect(): void }
+    const IntersectionObserverCtor = (
+      globalThis as unknown as {
+        IntersectionObserver: new (callback: (entries: Entry[]) => void) => Observer
+      }
+    ).IntersectionObserver
+    return new Promise<boolean>((resolve) => {
+      const observer = new IntersectionObserverCtor(([entry]) => {
+        observer.disconnect()
+        resolve(entry.intersectionRatio > 0)
+      })
+      observer.observe(element)
+    })
+  })
+}
+
+/** The download carries the document's name and exactly the uploaded bytes. */
+async function expectDownloadOf(download: Download, document: SeededDocument): Promise<void> {
+  expect(download.suggestedFilename()).toBe(document.fileName)
   expect(await download.failure()).toBeNull()
+  expect((await readFile(await download.path())).equals(document.content)).toBe(true)
 }
 
 test.describe.serial('Fundstellen-Anzeige und Original', () => {
@@ -144,25 +165,21 @@ test.describe.serial('Fundstellen-Anzeige und Original', () => {
     const drawer = await openEvidenceOfAnswer(page, library.name)
     const row = evidenceRow(drawer, library.pdf.fileName)
     await expect(row).toHaveAttribute('data-cited', 'true')
+    // The drawer names the cited page ("S. 2" or "S. 2–3"); the viewer must open on that page.
+    const location = (await row.getByTestId('source-location').textContent()) ?? ''
+    const citedPage = Number(/S\. (\d)/.exec(location)?.[1])
+    expect(citedPage, `Seitenangabe im Belegfenster: "${location}"`).toBeGreaterThan(0)
     await row.getByRole('button', { name: 'Dokument öffnen' }).click()
 
     const viewer = page.getByRole('dialog', { name: library.pdf.fileName })
     await expect(viewer).toBeVisible()
     await expect(
-      viewer.getByRole('status').filter({ hasText: /^Fundstelle auf Seite \d markiert\.$/ }),
-    ).toBeAttached({
-      timeout: 15_000,
-    })
-    const markedPage = Number(
-      /Seite (\d)/.exec(
-        (await viewer
-          .getByRole('status')
-          .filter({ hasText: /^Fundstelle auf Seite/ })
-          .textContent()) ?? '',
-      )?.[1],
-    )
-    await expect(viewer.getByText(`Seite ${markedPage} von ${PDF_PAGES}`)).toBeVisible()
-    await expect(viewer.locator('.textLayer .passage').first()).toBeVisible()
+      viewer.getByRole('status').filter({ hasText: `Fundstelle auf Seite ${citedPage} markiert.` }),
+    ).toBeAttached({ timeout: 15_000 })
+    await expect(viewer.getByText(`Seite ${citedPage} von ${PDF_PAGES}`)).toBeVisible()
+    await expect(
+      viewer.locator(`.page[data-page-number="${citedPage}"] .textLayer .passage`).first(),
+    ).toBeVisible()
 
     const pages = viewer.getByRole('region', { name: 'Seiten' })
     await pages.evaluate((element) => {
@@ -180,7 +197,7 @@ test.describe.serial('Fundstellen-Anzeige und Original', () => {
       page.waitForEvent('download'),
       viewer.getByRole('button', { name: 'Original herunterladen' }).click(),
     ])
-    await expectDownloadOf(download, library.pdf.fileName)
+    await expectDownloadOf(download, library.pdf)
     await page.keyboard.press('Escape')
     await expect(viewer).toBeHidden()
   })
@@ -196,19 +213,29 @@ test.describe.serial('Fundstellen-Anzeige und Original', () => {
       page.waitForEvent('download'),
       row.getByRole('button', { name: 'Herunterladen' }).click(),
     ])
-    await expectDownloadOf(download, library.html.fileName)
+    await expectDownloadOf(download, library.html)
 
     await row.getByRole('button', { name: 'Dokument öffnen' }).click()
-    const textVersion = page.getByRole('dialog', { name: new RegExp(library.html.fileName) })
+    const textVersion = page.getByRole('dialog', {
+      name: new RegExp(escapeRegExp(library.html.fileName)),
+    })
     await expect(textVersion).toBeVisible()
     const passage = textVersion.getByRole('region', { name: 'Fundstelle' })
     await expect(passage).toBeVisible()
     await expect(passage).toBeInViewport()
 
+    // Jump to a section whose heading is out of view, so arriving there is the outline's doing.
     const outline = textVersion.getByRole('navigation', { name: 'Gliederung' })
-    await expect(outline.getByRole('button', { name: 'Fristen' })).toBeVisible()
-    await outline.getByRole('button', { name: 'Fristen' }).click()
-    await expect(textVersion.getByRole('heading', { name: 'Fristen' })).toBeInViewport()
+    let target = ''
+    for (const title of SECTIONS) {
+      if (!(await isInViewport(textVersion.getByRole('heading', { name: title })))) {
+        target = title
+        break
+      }
+    }
+    expect(target, 'Alle Abschnittsüberschriften sind schon sichtbar').not.toBe('')
+    await outline.getByRole('button', { name: target }).click()
+    await expect(textVersion.getByRole('heading', { name: target })).toBeInViewport()
 
     await expectNoSeriousA11yViolations(page, 'Textfassung an der Fundstelle (hell)')
     await page.emulateMedia({ colorScheme: 'dark' })

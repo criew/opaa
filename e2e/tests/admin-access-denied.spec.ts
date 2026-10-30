@@ -13,6 +13,10 @@ const PAGES: Array<{ path: string; refusal: RegExp }> = [
   { path: '/admin/settings-transfer', refusal: /nicht freigegeben/ },
   { path: '/admin/models/chat', refusal: /nicht freigegeben/ },
   { path: '/admin/identity-providers', refusal: /nicht freigegeben/ },
+  {
+    path: '/admin/identity-providers/00000000-0000-4000-8000-000000000000/groups',
+    refusal: /nicht freigegeben/,
+  },
   { path: '/admin/directory-sync', refusal: /nicht freigegeben/ },
   { path: '/admin/connections/settings', refusal: /nicht freigegeben/ },
   { path: '/admin/capabilities', refusal: /nicht freigegeben/ },
@@ -30,28 +34,49 @@ const READ_ENDPOINTS = [
   '/api/v1/admin/accounts',
   '/api/v1/admin/capabilities',
   '/api/v1/admin/compliance/data-collection-disclosure',
+  '/api/v1/admin/connection-lifecycle-settings',
   '/api/v1/admin/connection-log/retention',
   '/api/v1/admin/connection-profiles',
+  '/api/v1/admin/connector-types',
   '/api/v1/admin/diagnostic-context/retention',
   '/api/v1/admin/diagnostic-impersonation-grants',
+  '/api/v1/admin/directory-sync/settings',
   '/api/v1/admin/directory-sync/status',
+  '/api/v1/admin/external-access/libraries',
   '/api/v1/admin/external-access/tokens',
+  '/api/v1/admin/full-sync-rhythms',
+  '/api/v1/admin/indexing/low-chunk-documents',
   '/api/v1/admin/indexing/pipeline-versions',
   '/api/v1/admin/local-auth-settings',
   '/api/v1/admin/local-users',
+  '/api/v1/admin/local-users/summary',
+  '/api/v1/admin/mcp-servers',
   '/api/v1/admin/models',
+  '/api/v1/admin/models/embedding-info',
+  '/api/v1/admin/models/rerank',
+  '/api/v1/admin/models/transcription',
   '/api/v1/admin/oidc-providers',
   '/api/v1/admin/outbound-proxy',
   '/api/v1/admin/permission-history/retention',
+  '/api/v1/admin/private-libraries/quota',
   '/api/v1/admin/private-libraries/summary',
   '/api/v1/admin/retention/chat-auto-cleanup',
+  '/api/v1/admin/retention/incident-scopes',
+  '/api/v1/admin/retention/locked-account-chats',
   '/api/v1/admin/search/status',
   '/api/v1/admin/self-disclosure/settings',
+  '/api/v1/admin/source-connections/dormant',
+  '/api/v1/admin/succession/counts',
+  '/api/v1/admin/succession/settings',
   '/api/v1/admin/succession?kind=OPEN_SUCCESSION',
   '/api/v1/admin/users',
+  '/api/v1/audit/access-as-of?objectType=KNOWLEDGE_LIBRARY&objectId=00000000-0000-4000-8000-000000000000&from=2026-01-01T00:00:00Z&to=2026-01-02T00:00:00Z&reason=E2E-Pruefung',
   '/api/v1/audit/auditor-role-requests',
+  '/api/v1/audit/connection-log/profiles',
   '/api/v1/audit/connection-log?from=2026-01-01T00:00:00Z&to=2026-01-02T00:00:00Z&reason=E2E-Pruefung',
   '/api/v1/audit/diagnostic-context-events?from=2026-01-01T00:00:00Z&to=2026-01-02T00:00:00Z&reason=E2E-Pruefung',
+  '/api/v1/system/mail-settings',
+  '/api/v1/system/mail-templates',
   '/api/v1/system/settings/export',
 ]
 
@@ -66,7 +91,9 @@ test.describe('Verwaltung und Revision ohne Systemrolle', () => {
     for (const { path, refusal } of PAGES) {
       await page.goto(path)
       await expect(page.getByText(refusal).first(), path).toBeVisible()
-      await expect(page.getByRole('navigation', { name: 'Administration' }), path).toHaveCount(0)
+      for (const area of ['Administration', 'Revision']) {
+        await expect(page.getByRole('navigation', { name: area }), path).toHaveCount(0)
+      }
     }
   })
 
