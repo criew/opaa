@@ -578,7 +578,8 @@ class StepRules {
     }
     if (fromAddress == null) {
       errors.add(error("mail.fromAddress", REQUIRED, MailSettingsRules.FROM_ADDRESS_MISSING));
-    } else {
+    } else if (fromAddress.length() <= MailSettingsRules.MAX_FROM_ADDRESS_LENGTH) {
+      // an overlong address already carries TOO_LONG from lengthErrors
       MailSettingsRules.fromAddressProblem(fromAddress)
           .ifPresent(problem -> errors.add(error("mail.fromAddress", INVALID, problem)));
     }

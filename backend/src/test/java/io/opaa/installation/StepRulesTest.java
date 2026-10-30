@@ -380,6 +380,27 @@ class StepRulesTest {
                             MailSettingsRules.fromAddressProblem("opaa").orElseThrow())));
   }
 
+  @Test
+  void anOverlongSenderAddressCarriesOnlyTheLengthError() {
+    String overlong = "a".repeat(MailSettingsRules.MAX_FROM_ADDRESS_LENGTH) + "@example.org";
+    assertThatThrownBy(
+            () ->
+                rules.toStored(
+                    new StepInput.Mail("smtp.example.org", 587, null, null, null, overlong, null),
+                    null,
+                    null))
+        .isInstanceOfSatisfying(
+            FieldValidationException.class,
+            e ->
+                assertThat(e.fieldErrors())
+                    .singleElement()
+                    .satisfies(
+                        error -> {
+                          assertThat(error.field()).isEqualTo("mail.fromAddress");
+                          assertThat(error.code()).isEqualTo("TOO_LONG");
+                        }));
+  }
+
   // regression guard: the installation's mail check reaches no internal address unless released
   @Test
   void anInternalMailServerIsRefusedUntilTheOperatorReleasesIt() {
