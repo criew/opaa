@@ -52,7 +52,9 @@ teardown() {
 }
 trap teardown EXIT
 
-python3 .github/scripts/zap_rules.py render --rules .github/zap/rules.yaml --out "$work/rules.conf"
+# Only this directory is mounted into ZAP; the env file with the run's keys stays outside it.
+mkdir "$work/zap"
+python3 .github/scripts/zap_rules.py render --rules .github/zap/rules.yaml --out "$work/zap/rules.conf"
 
 mkdir -p documents uploads
 "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
@@ -78,24 +80,26 @@ if [ "$ready" != true ]; then
   exit 1
 fi
 
-# ZAP runs as uid 1000 and writes its reports into /zap/wrk.
-chmod 777 "$work"
+# ZAP runs as uid 1000 and writes its reports into /zap/wrk. "-silent" keeps ZAP from updating or
+# installing add-ons at start, so the scan rules are exactly those of the digest-pinned image.
+chmod 777 "$work/zap"
 set +e
 docker run --rm --network host \
-  -v "$work:/zap/wrk:rw" \
+  -v "$work/zap:/zap/wrk:rw" \
   -v "$PWD/.github/zap:/zap/opaa:ro" \
   "$ZAP_IMAGE" zap-baseline.py \
   -t "$TARGET/" \
   -c rules.conf \
   -J zap-report.json -r zap-report.html -w zap-report.md \
   --hook=/zap/opaa/hooks.py \
+  -z "-silent" \
   2>&1 | tee "$OUT_DIR/zap.log"
 status="${PIPESTATUS[0]}"
 set -e
 
 for report in zap-report.json zap-report.html zap-report.md; do
-  if [ -f "$work/$report" ]; then
-    cp "$work/$report" "$OUT_DIR/"
+  if [ -f "$work/zap/$report" ]; then
+    cp "$work/zap/$report" "$OUT_DIR/"
   fi
 done
 exit "$status"

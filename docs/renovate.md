@@ -27,7 +27,7 @@ jederzeit auch lokal ausführen (unten).
 | Demo-Seed-/Generator-Requirements (`demo/*/requirements.txt`) | `pip_requirements` | `demo` |
 | pytest und PyYAML der CI-Jobs `report-script`, `seed-script` und Datenwirkung (`.github/requirements-ci.txt`), die Pakete des Update-Pakets, markdown-it-py mit mdurl (`.github/requirements-release.txt`), des Seeds im axe-Lauf (`.github/requirements-seed.txt`) und die Zeitzonendaten des Tagesreports (`.github/requirements-report.txt`); jede Datei listet alle Pakete samt Abhängigkeiten mit `--hash`, Renovate erneuert die Hashes beim Bump, jeder Job installiert mit `--require-hashes`. Ohne Auto-Merge, weil keiner dieser Jobs ein Required Check ist | `pip_requirements` | `ci` |
 | Node-Version für die lokale Entwicklung (`frontend/.nvmrc`) | `nvm` | `frontend` |
-| Pins, die kein regulärer Manager sieht: die Image-Konstanten in `S3TestFixture.java` und `KeycloakFixture.java`, die Werkzeugversionen der Chart-Prüfung in `helm-chart.yml`, die Helm-Version der Chart-Veröffentlichung in `publish-images.yml`, das Renovate-Image in `renovate.yml` (siehe [unten](#renovate-image-und-token-des-workflows)) und das alpine-Hilfsimage in `retrieval-regression.yml` (`ALPINE_IMAGE`, Version und Index-Digest; ein neuer Digest bei gleicher Version braucht die Freigabe in der Abhängigkeits-Übersicht) und das ZAP-Image in `zap-baseline.yml` (`ZAP_IMAGE`, ebenso; nur Release-Tags `X.Y.Z`, ohne Auto-Merge, weil eine neue ZAP-Version neue Befunde bringen kann und der Scan kein Required Check ist) | `custom.regex` | `ci` |
+| Pins, die kein regulärer Manager sieht: die Image-Konstanten in `S3TestFixture.java` und `KeycloakFixture.java`, die Werkzeugversionen der Chart-Prüfung in `helm-chart.yml`, die Helm-Version der Chart-Veröffentlichung in `publish-images.yml`, das Renovate-Image in `renovate.yml` (siehe [unten](#renovate-image-und-token-des-workflows)), das alpine-Hilfsimage in `retrieval-regression.yml` (`ALPINE_IMAGE`, Version und Index-Digest; ein neuer Digest bei gleicher Version braucht die Freigabe in der Abhängigkeits-Übersicht) und das ZAP-Image in `zap-baseline.yml` (`ZAP_IMAGE`, ebenso; nur Release-Tags `X.Y.Z`, ohne Auto-Merge, weil der Digest die Scan-Regeln festlegt, eine neue ZAP-Version also neue Befunde bringen kann, und der Scan kein Required Check ist) | `custom.regex` | `ci` |
 
 **Rein transitive Sicherheits-Pins brauchen einen `[libraries]`-Eintrag.** Wird eine Bibliothek
 angehoben, die kein Build-Skript direkt deklariert (eingebetteter Tomcat, Bouncy Castle —
@@ -336,8 +336,9 @@ Deshalb gilt zusätzlich zu den Pins:
   bewusst getragenes Restrisiko: Code, der in einem Job auf `main` läuft, kann den Bau-Cache
   dieser Images vergiften. Nach den SHA-Pins bleiben dafür eine kompromittierte Abhängigkeit, ein
   Fehler in einem gemergten Workflow oder ein per Tag referenziertes Image, das Jobs auf `main`
-  starten. Solche Images sind die Compose-Stacks von E2E-, Demo- und Anmelde-Läufen (etwa
-  `node:24-alpine`, `pgvector/pgvector:pg18`, `httpd:2.4-alpine`), die Datenbank im Rauchtest
+  starten. Solche Images sind die Compose-Stacks von E2E-, Demo- und Anmelde-Läufen und des
+  ZAP-Baseline-Scans (etwa `node:24-alpine`, auch als `ai-stub`, `pgvector/pgvector:pg18`,
+  `axllent/mailpit`, `httpd:2.4-alpine`), die Datenbank im Rauchtest
   von `image-smoke-arm64` und das kind-Node-Image im Helm-Test. Ein umgehängter Tag dort läuft im
   selben Job wie die Schritte, die den Cache schreiben dürfen. Die Stufe `runtime` baut jeder Lauf ohnehin neu
   (`no-cache-filters`). Wer geprüft und reproduzierbar betreiben will, nimmt ein Release

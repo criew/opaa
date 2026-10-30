@@ -24,8 +24,12 @@ nicht.
    (Version und Index-Digest im Workflow) ruft die Startseite auf und folgt ihren Links. Weil weder
    die SPA noch die API auf API-Pfade verlinken, ruft `.github/zap/hooks.py` vorher eine feste
    Liste von Pfaden ab: jede eigene nginx-`location`, die anonymen API-Endpunkte und je ein Beispiel
-   für eine abgewiesene (`401`) und eine unbekannte Route. Nur `GET`; der Scan greift nicht an,
-   meldet sich nicht an und ändert keinen Zustand.
+   für eine abgewiesene (`401`) und eine unbekannte Route. Der Hook hebt außerdem ZAPs Grenze von
+   zehn Meldungen je Regel auf, damit jede Fundstelle im Bericht steht und eine Eingrenzung per
+   `params` alle Parameter sieht. Nur `GET`; der Scan greift nicht an,
+   meldet sich nicht an und ändert keinen Zustand. ZAP startet mit `-silent`, lädt also keine
+   Add-ons nach und aktualisiert keine: Die Regeln sind genau die des Images, und welches Image
+   läuft, legt der Digest im Workflow fest.
 4. **Bewertung.** Jede Warnung der Stufe *Low* oder höher, die `.github/zap/rules.yaml` nicht
    unterdrückt, macht den Lauf rot; ebenso ein Scan, der keinen Bericht liefert. Informative
    Befunde (*Informational*) zählen nie, wie bei `zap-baseline.py` selbst.
@@ -37,9 +41,11 @@ nicht.
 Scans echter Installationen. Was ein angemeldeter Aufrufer sieht, prüfen die Integrationstests des
 Backends.
 
-Ein roter Lauf öffnet kein Issue. Er fällt in der Liste der Workflow-Läufe auf und landet bei der
-Person, die den Zeitplan zuletzt geändert hat; die Behebung geht danach den normalen Weg über ein
-Issue.
+**Alarm-Issue.** Ein roter Lauf auf `main` (nächtlich oder manuell, nie aus einem Pull Request
+oder von einem anderen Branch) öffnet ein Issue mit den Labels `security`, `ci` und `bug` und der
+Auswertung des Laufs, oder kommentiert das schon offene (erkannt an einem unsichtbaren Marker im
+Body, der Body wird nie überschrieben). Der nächste grüne Lauf auf `main` kommentiert und schließt
+es. Behoben wird über einen gewöhnlichen PR.
 
 ## Umgang mit einem Befund
 
@@ -47,7 +53,7 @@ Issue.
 Recht bemängelt, wird im Code oder in `frontend/nginx.conf` bzw.
 `frontend/nginx-security-headers.conf` korrigiert, mit Test nach dem
 [Reproduktionsnachweis](../../AGENTS.md#reproduktionsnachweis). Vorbild: das Cookie `XSRF-TOKEN`
-ohne `SameSite` (Regel 10054), behoben im PR, der den Scan einführte.
+ohne `SameSite` (Regel 10054), behoben in #3436.
 
 **Unterdrücken nur mit Begründung und Ablaufdatum.** Ist der Befund gewollt oder ein Fehlalarm,
 kommt ein Eintrag nach `.github/zap/rules.yaml`:
@@ -82,7 +88,12 @@ Anbindung an Workflow und Renovate fest und läuft im Job `report-script` von `c
 
 **Neue ZAP-Version.** Renovate schlägt neue Release-Tags `X.Y.Z` als PR vor, ohne Auto-Merge;
 der Scan läuft in diesem PR. Bringt die Version neue Regeln mit neuen Befunden, werden sie im
-selben PR behoben oder begründet unterdrückt.
+selben PR behoben oder begründet unterdrückt. Die Regeln kommen allein aus dem Image, ein neuer
+Digest ist also ein neuer Regelsatz.
+
+**Regel 10116 „ZAP is Out of Date“** beantwortet das Renovate-Update auf die neue ZAP-Version.
+Erscheint der Befund, bevor Renovate eine neuere Version vorschlägt (Wartefrist), bekommt er einen
+kurzen, datierten Eintrag in `rules.yaml`, der mit dem Update wieder entfällt.
 
 ## Lokal ausführen
 

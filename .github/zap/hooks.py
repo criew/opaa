@@ -34,6 +34,9 @@ def zap_started(zap, target):
 
 
 def zap_tuned(zap):
+    # zap_tune caps every rule at 10 alerts; uncapped, each instance reaches the report, so the
+    # params narrowing in rules.yaml sees every cookie and the counts are complete.
+    zap.pscan.set_max_alerts_per_rule(0)
     for path in PATHS:
         result = zap.urlopen(_target + path)
         if result.startswith("ZAP Error"):
