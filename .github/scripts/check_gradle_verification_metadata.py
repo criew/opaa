@@ -11,10 +11,15 @@ Everything outside <components> (verify-metadata, trusted artifacts, keys) must 
 reported, and with --enforce failing. A component or artifact listed twice is always an error,
 because Gradle merges duplicates and a second block could smuggle in an extra checksum.
 
-Usage: check_gradle_verification_metadata.py BASE HEAD [--enforce]
+With --details, the report also lists every removed artifact file and shows <configuration> as a
+diff, so a maintainer can judge a regenerated file from the job summary alone.
+
+Usage: check_gradle_verification_metadata.py BASE HEAD [--enforce] [--details]
 """
 
 import argparse
+import copy
+import difflib
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -26,12 +31,25 @@ def local(tag: str) -> str:
     return tag.rsplit("}", 1)[-1]
 
 
+# Rule lists Gradle reads as sets; --write-verification-metadata sorts them on every run.
+UNORDERED = {"trusted-artifacts", "trusted-keys", "ignored-keys"}
+
+
 def canonical(element: ET.Element) -> str:
-    """Order-independent for attributes, order-preserving for children, whitespace-insensitive."""
+    """Order-independent for attributes and rule lists, otherwise order-preserving for children,
+    whitespace-insensitive."""
     attributes = " ".join(f'{k}="{v}"' for k, v in sorted(element.attrib.items()))
-    children = "".join(canonical(child) for child in element)
+    parts = [canonical(child) for child in element]
+    if local(element.tag) in UNORDERED:
+        parts.sort()
+    children = "".join(parts)
     text = (element.text or "").strip()
     return f"<{local(element.tag)} {attributes}>{text}{children}</{local(element.tag)}>"
+
+
+def one_line(text: str) -> str:
+    """Escapes line breaks so an XML value cannot start its own workflow command line."""
+    return text.replace("\r", "\\r").replace("\n", "\\n")
 
 
 def parse(path: Path) -> tuple[str, dict[Key, frozenset[str]], list[str]]:
@@ -61,35 +79,63 @@ def parse(path: Path) -> tuple[str, dict[Key, frozenset[str]], list[str]]:
     return configuration, entries, duplicates
 
 
+def configuration_lines(path: Path) -> list[str]:
+    """Everything outside <components>, indented one element per line for a readable diff."""
+    root = copy.deepcopy(ET.parse(path).getroot())
+    for components in [child for child in root if local(child.tag) == "components"]:
+        root.remove(components)
+    for element in root.iter():
+        element.tag = local(element.tag)
+        element.attrib = dict(sorted(element.attrib.items()))
+        element.text = (element.text or "").strip() or None
+        element.tail = None
+    ET.indent(root)
+    return ET.tostring(root, encoding="unicode").splitlines()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("base", type=Path)
     parser.add_argument("head", type=Path)
     parser.add_argument("--enforce", action="store_true")
+    parser.add_argument("--details", action="store_true")
     args = parser.parse_args()
 
     base_configuration, base, _ = parse(args.base)
     head_configuration, head, duplicates = parse(args.head)
     changed = sorted(key for key in base.keys() & head.keys() if base[key] != head[key])
     added = len(head.keys() - base.keys())
-    removed = len(base.keys() - head.keys())
+    removed = sorted(base.keys() - head.keys())
     print(
-        f"{added} artifact file(s) added, {removed} removed, "
+        f"{added} artifact file(s) added, {len(removed)} removed, "
         f"{len(changed)} with changed checksums."
     )
+    if args.details:
+        for group, name, version, file in removed:
+            print(one_line(f"removed: {group}:{name}:{version} {file}"))
 
     level = "error" if args.enforce else "warning"
     for line in duplicates:
-        print(f"::error::{line}; Gradle merges duplicates, list each entry once.")
+        print(f"::error::{one_line(line)}; Gradle merges duplicates, list each entry once.")
     if head_configuration != base_configuration:
         print(
             f"::{level}::<configuration> differs from the base branch (verify-metadata, trusted "
             "artifacts or keys). Review it before accepting."
         )
+        if args.details:
+            diff = difflib.unified_diff(
+                configuration_lines(args.base),
+                configuration_lines(args.head),
+                "base",
+                "head",
+                lineterm="",
+            )
+            for line in diff:
+                print(line)
     for group, name, version, file in changed:
         key = (group, name, version, file)
         print(
-            f"::{level}::{group}:{name}:{version} {file}: checksums changed from "
+            f"::{level}::{one_line(f'{group}:{name}:{version} {file}')}: checksums changed from "
             f"{sorted(base[key])} to {sorted(head[key])}. Verify against the repository "
             "before accepting (docs/renovate.md, Gradle-Prüfsummen)."
         )
