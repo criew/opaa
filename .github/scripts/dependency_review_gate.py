@@ -4,7 +4,8 @@ Reads the dependency-graph compare API between the PR's base and head commit. Th
 eventually consistent: a query it once answered with "no snapshots" for the head keeps that answer
 for a while, and advisories show up on a change minutes late and not in every response. So every
 request for the head snapshots uses a per_page value not used before, and once they are there the
-gate reads several samples a minute apart and fails on a finding seen in any of them. Without head
+gate reads several samples a minute apart and fails on a finding seen in any of them. The
+action's own retry-on-snapshot-warnings repeats one query and never sees late snapshots. Without head
 snapshots it warns and checks the graph GitHub knows on its own (fail-open).
 
 Environment: GH_TOKEN, REPO, BASE_SHA, HEAD_SHA; optional GITHUB_API_URL.
@@ -29,7 +30,8 @@ RETRIES = 4
 
 
 class Api:
-    """GET requests with retries on 429 and 5xx; any other non-2xx status raises."""
+    """GET requests with retries on 5xx and rate limits (429, or 403 with an exhausted or
+    retry-after rate limit); any other non-2xx status raises."""
 
     def __init__(self, base_url, token, sleep=time.sleep, opener=urllib.request.urlopen):
         self.base_url = base_url.rstrip("/")
@@ -54,13 +56,22 @@ class Api:
                     headers = {k.lower(): v for k, v in response.headers.items()}
                     return headers, json.loads(response.read().decode("utf-8"))
             except urllib.error.HTTPError as error:
-                if error.code != 429 and error.code < 500 or attempt == RETRIES - 1:
+                if not retryable(error) or attempt == RETRIES - 1:
                     raise
             except urllib.error.URLError:
                 if attempt == RETRIES - 1:
                     raise
             self.sleep(10 * (attempt + 1))
         raise AssertionError("unreachable")
+
+
+def retryable(error):
+    if error.code == 429 or error.code >= 500:
+        return True
+    headers = error.headers or {}
+    return error.code == 403 and (
+        headers.get("x-ratelimit-remaining") == "0" or headers.get("retry-after") is not None
+    )
 
 
 def next_link(headers):

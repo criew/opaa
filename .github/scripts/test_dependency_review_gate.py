@@ -127,12 +127,17 @@ class Response(io.BytesIO):
         return False
 
 
-def http_error(code):
-    return urllib.error.HTTPError("u", code, "e", {}, io.BytesIO(b""))
+def http_error(code, headers=None):
+    return urllib.error.HTTPError("u", code, "e", headers or {}, io.BytesIO(b""))
 
 
 def test_client_retries_rate_limits_and_server_errors():
-    attempts = [http_error(502), http_error(429), Response(b"[]", {"Link": "x"})]
+    attempts = [
+        http_error(502),
+        http_error(429),
+        http_error(403, {"x-ratelimit-remaining": "0"}),
+        Response(b"[]", {"Link": "x"}),
+    ]
 
     def opener(request, timeout):
         result = attempts.pop(0)
