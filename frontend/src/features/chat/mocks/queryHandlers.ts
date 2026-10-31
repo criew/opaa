@@ -1,4 +1,4 @@
-import { http, HttpResponse } from 'msw'
+import { getResponse, http, HttpResponse, type RequestHandler } from 'msw'
 import { getRandomMockResponse, mockErrorResponse } from './queryFixtures'
 import { mockChatDetails, mockChatArchive } from './chatFixtures'
 import { mockSpaceAssetAssociations } from '../../asset/mocks/assetFixtures'
@@ -32,6 +32,26 @@ export function setMockAnswerDeltas(enabled: boolean): void {
   mockAnswerDeltas = enabled
 }
 
+/**
+ * Where the mock stream finds the answer of POST /api/v1/query: by default a request over the
+ * network, which the service worker answers in the browser. The test server answers it in-process
+ * from its current handlers instead - a request sent from inside a handler is not reliably
+ * intercepted under Node and may reach the real network.
+ */
+let currentHandlers: (() => RequestHandler[]) | null = null
+
+export function answerQueriesFrom(handlers: () => RequestHandler[]): void {
+  currentHandlers = handlers
+}
+
+async function answerOf(request: Request): Promise<Response> {
+  if (currentHandlers === null) return fetch(request)
+  return (
+    (await getResponse(currentHandlers(), request)) ??
+    HttpResponse.json({ error: 'No mock for POST /api/v1/query' }, { status: 500 })
+  )
+}
+
 /** The answer of POST /api/v1/query as the event stream of POST /api/v1/query/stream. */
 function eventStreamOf(response: { answer?: string }): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder()
@@ -52,11 +72,13 @@ export const queryHandlers = [
   // Mirrors QueryStreamController: the same turn as POST /api/v1/query below - or the handler a
   // test put in its place - with its refusals as plain statuses and its answer as events.
   http.post('/api/v1/query/stream', async ({ request }) => {
-    const answered = await fetch(new URL('/api/v1/query', request.url), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: await request.text(),
-    })
+    const answered = await answerOf(
+      new Request(new URL('/api/v1/query', request.url), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: await request.text(),
+      }),
+    )
     if (!answered.ok) {
       return new HttpResponse(await answered.text(), {
         status: answered.status,
