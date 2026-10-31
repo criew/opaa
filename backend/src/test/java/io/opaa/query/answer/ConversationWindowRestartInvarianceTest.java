@@ -62,7 +62,8 @@ class ConversationWindowRestartInvarianceTest {
             .chatMemoryRepository(new CaffeineChatMemoryRepository(new SimpleMeterRegistry()))
             .maxMessages(20)
             .build();
-    answerGenerationService = new AnswerGenerationService(activeChatModelResolver, chatMemory);
+    answerGenerationService =
+        new AnswerGenerationService(activeChatModelResolver, chatMemory, new ActiveAnswerStreams());
   }
 
   @Test

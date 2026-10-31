@@ -10,11 +10,15 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
+import reactor.core.publisher.Flux;
 
 /**
  * Wraps the active chat model so no caller sees {@link LeadingReasoningText}: each generation's
  * text loses its leading reasoning text, everything else of the response (metadata, usage, finish
- * reason, tool calls) is passed on unchanged. Streaming is not offered.
+ * reason, tool calls) is passed on unchanged. A stream is passed on raw, chunk by chunk: whether a
+ * chunk belongs to leading reasoning text is only known later, so a streaming caller strips the
+ * text it has so far itself ({@link LeadingReasoningText}) and the aggregate with {@link
+ * #withoutReasoningText}.
  */
 public class ReasoningTextStrippingChatModel implements ChatModel {
 
@@ -28,7 +32,16 @@ public class ReasoningTextStrippingChatModel implements ChatModel {
 
   @Override
   public ChatResponse call(Prompt prompt) {
-    ChatResponse response = delegate.call(prompt);
+    return withoutReasoningText(delegate.call(prompt));
+  }
+
+  @Override
+  public Flux<ChatResponse> stream(Prompt prompt) {
+    return delegate.stream(prompt);
+  }
+
+  /** {@code response} with the leading reasoning text removed from every generation. */
+  public static ChatResponse withoutReasoningText(ChatResponse response) {
     if (response == null) {
       return null;
     }

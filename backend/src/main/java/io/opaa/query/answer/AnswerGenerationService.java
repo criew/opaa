@@ -3,18 +3,34 @@ package io.opaa.query.answer;
 import io.opaa.compliance.DataFlow;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.llm.ChatResponses;
+import io.opaa.llm.ReasoningTextStrippingChatModel;
+import io.opaa.llm.StreamedAnswerFailures;
 import io.opaa.retrieval.ConversationNoteBlock;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.metadata.ChatGenerationMetadata;
+import org.springframework.ai.chat.metadata.ChatResponseMetadata;
+import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Service;
+import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
 
 /**
  * Generates the RAG answer against the systemwide active chat model
@@ -169,13 +185,20 @@ public class AnswerGenerationService {
           + " Antwortsprache vorgibt; gib fremdsprachige Inhalte der Kontextdokumente in der"
           + " Antwortsprache wieder.";
 
+  /** How long a stream may stay silent before its reader is checked for being still there. */
+  static final Duration IDLE_INTERVAL = Duration.ofSeconds(10);
+
   private final ActiveChatModelResolver activeChatModelResolver;
   private final ChatMemory chatMemory;
+  private final ActiveAnswerStreams activeAnswerStreams;
 
   public AnswerGenerationService(
-      ActiveChatModelResolver activeChatModelResolver, ChatMemory chatMemory) {
+      ActiveChatModelResolver activeChatModelResolver,
+      ChatMemory chatMemory,
+      ActiveAnswerStreams activeAnswerStreams) {
     this.activeChatModelResolver = activeChatModelResolver;
     this.chatMemory = chatMemory;
+    this.activeAnswerStreams = activeAnswerStreams;
   }
 
   /**
@@ -207,6 +230,35 @@ public class AnswerGenerationService {
       boolean searched,
       boolean searchNeeded,
       String spaceInstruction) {
+    return streamAnswer(
+        question,
+        relevantChunks,
+        conversationId,
+        conversationNote,
+        searched,
+        searchNeeded,
+        spaceInstruction,
+        null);
+  }
+
+  /**
+   * The same answer from the same prompt, told to {@code listener} while the model writes it
+   * ({@code null}: not streamed). The returned response is the complete one, exactly what the call
+   * without streaming returns, and only it reaches the conversation window. A model that fails the
+   * streamed request before its first chunk for a reason other than its transport or its own
+   * availability ({@link StreamedAnswerFailures}) is asked once more without streaming; the
+   * listener then hears nothing before the response is returned. A listener that throws, and the
+   * shutdown of the instance ({@link ActiveAnswerStreams}), cancel the model call.
+   */
+  public ChatResponse streamAnswer(
+      String question,
+      List<Document> relevantChunks,
+      String conversationId,
+      List<String> conversationNote,
+      boolean searched,
+      boolean searchNeeded,
+      String spaceInstruction,
+      AnswerStreamListener listener) {
     String spaceBlock = SpaceInstructionBlock.render(spaceInstruction);
     ConversationNoteBlock noteBlock = ConversationNoteBlock.render(conversationNote);
     boolean bindToPassages = searched && searchNeeded;
@@ -233,7 +285,9 @@ public class AnswerGenerationService {
 
     ChatClient chatClient = activeChatModelResolver.resolveChatClient();
     ChatResponse response =
-        chatClient.prompt().system(systemText).messages(messages).call().chatResponse();
+        listener == null
+            ? call(chatClient, systemText, messages)
+            : stream(chatClient, systemText, messages, listener);
 
     chatMemory.add(conversationId, new UserMessage(question));
     // The window gets the answer without its citation markers, and nothing at all when only
@@ -243,5 +297,171 @@ public class AnswerGenerationService {
         .ifPresent(message -> chatMemory.add(conversationId, message));
 
     return response;
+  }
+
+  private static ChatResponse call(
+      ChatClient chatClient, String systemText, List<Message> messages) {
+    return chatClient.prompt().system(systemText).messages(messages).call().chatResponse();
+  }
+
+  private ChatResponse stream(
+      ChatClient chatClient,
+      String systemText,
+      List<Message> messages,
+      AnswerStreamListener listener) {
+    BlockingQueue<Signal> signals = new LinkedBlockingQueue<>();
+    try (ActiveAnswerStreams.Registration registration =
+        activeAnswerStreams.register(() -> signals.add(Signal.SHUTDOWN))) {
+      Flux<ChatResponse> chunks =
+          chatClient.prompt().system(systemText).messages(messages).stream().chatResponse();
+      if (chunks == null) {
+        return call(chatClient, systemText, messages);
+      }
+      Disposable subscription =
+          chunks.subscribe(
+              chunk -> signals.add(new Signal(chunk, null)),
+              failure -> signals.add(new Signal(null, failure)),
+              () -> signals.add(Signal.DONE));
+      try {
+        return pump(signals, listener, () -> call(chatClient, systemText, messages));
+      } finally {
+        subscription.dispose();
+      }
+    }
+  }
+
+  private static ChatResponse pump(
+      BlockingQueue<Signal> signals,
+      AnswerStreamListener listener,
+      Supplier<ChatResponse> withoutStreaming) {
+    StreamedAnswer answer = new StreamedAnswer();
+    try {
+      while (true) {
+        Signal signal = signals.poll(IDLE_INTERVAL.toMillis(), TimeUnit.MILLISECONDS);
+        if (signal == null) {
+          if (answer.started) {
+            listener.idle();
+          }
+        } else if (signal == Signal.SHUTDOWN) {
+          throw ActiveAnswerStreams.shuttingDown();
+        } else if (signal == Signal.DONE) {
+          if (!answer.started) {
+            log.info("The model ended its stream without a chunk - asking again without streaming");
+            return withoutStreaming.get();
+          }
+          return answer.response();
+        } else if (signal.failure() != null) {
+          if (!answer.started
+              && StreamedAnswerFailures.worthRetryingWithoutStreaming(signal.failure())) {
+            log.info(
+                "The model refused the streamed request ({}) - asking again without streaming",
+                signal.failure().getClass().getSimpleName());
+            return withoutStreaming.get();
+          }
+          throw rethrown(signal.failure());
+        } else {
+          if (!answer.started) {
+            answer.started = true;
+            listener.started();
+          }
+          String delta = answer.add(signal.chunk());
+          if (delta != null) {
+            answer.text.append(delta).ifPresent(change -> provisional(listener, change));
+          }
+        }
+      }
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Interrupted while streaming the answer", e);
+    }
+  }
+
+  private static void provisional(AnswerStreamListener listener, ProvisionalAnswerText.Change c) {
+    try {
+      listener.provisional(c.text(), c.replace());
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  private static RuntimeException rethrown(Throwable failure) {
+    if (failure instanceof RuntimeException runtime) {
+      return runtime;
+    }
+    if (failure instanceof Error error) {
+      throw error;
+    }
+    return new IllegalStateException("The streamed model call failed", failure);
+  }
+
+  /** One element of the queue between the model's stream and the asking thread. */
+  private record Signal(ChatResponse chunk, Throwable failure) {
+    static final Signal DONE = new Signal(null, null);
+    static final Signal SHUTDOWN = new Signal(null, null);
+  }
+
+  /**
+   * The chunks collected into the response the call without streaming would have returned: the
+   * whole text without its leading reasoning text, the last model, usage and finish reason any
+   * chunk named.
+   */
+  private static final class StreamedAnswer {
+
+    private final ProvisionalAnswerText text = new ProvisionalAnswerText();
+    private boolean started;
+    private String id;
+    private String model;
+    private Usage usage;
+    private String finishReason;
+
+    /** Takes the chunk's metadata and returns its text, {@code null} without any. */
+    String add(ChatResponse chunk) {
+      ChatResponseMetadata metadata = chunk.getMetadata();
+      if (metadata != null) {
+        if (metadata.getId() != null && !metadata.getId().isEmpty()) {
+          id = metadata.getId();
+        }
+        if (metadata.getModel() != null && !metadata.getModel().isEmpty()) {
+          model = metadata.getModel();
+        }
+        Usage chunkUsage = metadata.getUsage();
+        if (chunkUsage != null
+            && chunkUsage.getTotalTokens() != null
+            && chunkUsage.getTotalTokens() > 0) {
+          usage = chunkUsage;
+        }
+      }
+      Generation generation = chunk.getResult();
+      if (generation == null) {
+        return null;
+      }
+      if (generation.getMetadata() != null
+          && generation.getMetadata().getFinishReason() != null
+          && !generation.getMetadata().getFinishReason().isEmpty()) {
+        finishReason = generation.getMetadata().getFinishReason();
+      }
+      return generation.getOutput() == null ? null : generation.getOutput().getText();
+    }
+
+    ChatResponse response() {
+      ChatResponseMetadata.Builder metadata = ChatResponseMetadata.builder();
+      if (id != null) {
+        metadata.id(id);
+      }
+      if (model != null) {
+        metadata.model(model);
+      }
+      if (usage != null) {
+        metadata.usage(usage);
+      }
+      Generation generation =
+          new Generation(
+              new AssistantMessage(text.raw()),
+              ChatGenerationMetadata.builder().finishReason(finishReason).build());
+      return ReasoningTextStrippingChatModel.withoutReasoningText(
+          new ChatResponse(List.of(generation), metadata.build()));
+    }
   }
 }

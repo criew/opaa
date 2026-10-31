@@ -48,7 +48,8 @@ class AnswerGenerationServiceTest {
     lenient()
         .when(activeChatModelResolver.resolveChatClient())
         .thenReturn(ChatClient.builder(chatModel).build());
-    answerGenerationService = new AnswerGenerationService(activeChatModelResolver, chatMemory);
+    answerGenerationService =
+        new AnswerGenerationService(activeChatModelResolver, chatMemory, new ActiveAnswerStreams());
   }
 
   /**

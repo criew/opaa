@@ -69,7 +69,7 @@ class PromptUsageSpecificationTest {
   }
 
   @Test
-  void onlyTheQueryTakesTheUsedPromptInItsRequest() {
+  void onlyTheQueryAndItsStreamTakeTheUsedPromptInTheirRequest() {
     Set<String> requestSchemas = new TreeSet<>();
     forEachOperation(
         (path, method, operation) -> {
@@ -78,7 +78,7 @@ class PromptUsageSpecificationTest {
           }
         });
 
-    assertThat(requestSchemas).containsExactly("submitQuery");
+    assertThat(requestSchemas).containsExactly("submitQuery", "submitQueryStream");
   }
 
   @Test
