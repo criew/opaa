@@ -84,6 +84,7 @@ class SpecEnumParityTest {
         Arguments.of("MetadataOrigin", MetadataOrigin.values()),
         Arguments.of("DatePrecision", DatePrecision.values()),
         Arguments.of("MetadataFilterMatch", MetadataFilterMatch.values()),
+        Arguments.of("EvidenceLevel", EvidenceLevel.values()),
         Arguments.of("RetrievalStage", RetrievalStageName.values()),
         Arguments.of("SearchModelRole", ModelRole.values()),
         Arguments.of("SearchModelRoleState", ModelRoleCondition.values()),

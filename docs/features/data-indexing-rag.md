@@ -38,8 +38,9 @@ Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
    abgerufenen Fundstellen passen. Geprüft wird die **Form** des Belegs, nicht seine inhaltliche Deckung;
    ein Zwangs- und Verweigerungsapparat darüber ist bewusst nicht gebaut (siehe
    [Belegvalidierung](#belegvalidierung)).
-3. **Konfidenz wird ausgewiesen**, getrennt nach Trefferqualität und Belegdeckung — zwei verschiedene
-   Aussagen, die nicht zu einer Zahl verschmolzen werden.
+3. **Konfidenz wird als Belegstand ausgewiesen** — belegt, teilweise belegt, nicht belegt, mit einem
+   Satz Begründung; abgeleitet aus der Belegvalidierung, nicht aus Ähnlichkeitswerten (siehe
+   [Konfidenz](#konfidenz)).
 4. **Gesucht wird hybrid**: Vektorsuche und Volltextsuche laufen nebeneinander, ihre Ergebnisse werden
    zusammengeführt und durch ein Reranking auf Präzision gebracht.
 5. **Die Rechteprüfung sitzt in der Suche**, nicht dahinter. Was jemand nicht lesen darf, wird nicht
@@ -177,20 +178,47 @@ lediglich das bestehende `citationValid`-Signal.
 
 ### Konfidenz
 
-Der Nutzen einer Konfidenzangabe hängt daran, dass sie eine beantwortbare Frage beantwortet. „0,73" tut
-das nicht. OPAA weist deshalb **zwei getrennte Größen** aus:
+**(gebaut, #3491)** Der Nutzen einer Konfidenzangabe hängt daran, dass sie eine beantwortbare Frage
+beantwortet. „0,73" tut das nicht, und eine Wahrscheinlichkeit, dass die Antwort stimmt, kann OPAA
+nicht belegen. Belegen kann es, **worauf sich eine Antwort stützt**. An der Antwort steht deshalb ein
+**Belegstand** in drei Stufen, an der Oberfläche bewusst nicht „Konfidenz" genannt:
 
-| Größe | Frage | Grundlage |
+| Stufe | Bedingung | Satz (Beispiel) |
 |---|---|---|
-| **Trefferqualität** | Wie gut passen die gefundenen Stellen zur Frage? | Bewertung nach dem Reranking, je Fundstelle |
-| **Belegdeckung** | Wie viel der Antwort ist belegt? | Anteil der Quellenangaben mit einem gültigen Beleg (`cited = true` und `citationValid = true`, siehe [Belegvalidierung](#belegvalidierung)) |
+| Belegt | mindestens ein bestätigter Beleg, kein unbestätigter, jede Teilfrage gedeckt, Antwort vollständig | „alle Belege bestätigt" |
+| Teilweise belegt | mindestens ein bestätigter Beleg, aber unbestätigter Beleg, ungedeckte Teilfrage oder abgebrochene Antwort | „1 Beleg nicht bestätigt" · „zur Teilfrage ‚…' keine Fundstelle" · „Antwort abgebrochen" |
+| Nicht belegt | kein bestätigter Beleg | „keine Fundstelle im durchsuchten Bereich · vor Verwendung prüfen" |
 
-Beide werden in Stufen dargestellt — hoch, mittel, gering — und nicht als Nachkommastelle, die eine
-Genauigkeit vortäuscht, die das Verfahren nicht hat. Der Zahlenwert bleibt in der Detailansicht und im
-Protokoll erhalten, weil die Qualitätsmessung ihn braucht.
+Der Belegstand folgt **fest** aus der [Belegvalidierung](#belegvalidierung) und den Teilfragen der
+Suche, ohne zweiten Modellaufruf. Eine Teilfrage gilt als gedeckt, wenn ein bestätigter Beleg auf ein
+Dokument zeigt, das die Suche für diese Teilfrage gefunden und die Fusion ausgewählt hat
+(Erklärprotokoll); ein Dokument, das mehreren Teilfragen diente, deckt alle, auch wenn die Quote der
+Fusion es nur einer zurechnet. Kein Belegstand entsteht für eine Nachricht ohne
+Suchbedarf und für eine leere Antwort. Er wird mit der Antwort gespeichert, steht in der API (Feld
+`evidence`) und als anonyme Metrik `opaa.query.evidence` je Stufe zur Verfügung.
 
-Eine hohe Trefferqualität bei geringer Belegdeckung ist der gefährlichste Fall — gute Quellen, freie
-Antwort — und wird ausdrücklich als solcher gekennzeichnet, nicht zu einem Mittelwert verrechnet.
+| Signal | genutzt | Grund |
+|---|---|---|
+| bestätigte und unbestätigte Belege | ja | deterministisch, schon im Belegfenster sichtbar |
+| Teilfrage, für die die Suche ein ausgewähltes Dokument gefunden hat | ja | macht eine ungedeckte Teilfrage sichtbar |
+| leerer Suchbereich, kein Treffer, abgeschnittene Antwort | ja | erklären „nicht belegt" und „teilweise belegt" |
+| Fusions-, Vektor- und Rerank-Werte | nein | nicht kalibriert; Reranking und Relevanzschnitt sind im Auslieferungsstand aus, eine Stufe daraus wäre je Installation anders |
+| Selbsteinschätzung des Modells | nein | Scheingenauigkeit und zusätzliche Kosten |
+| Widerspruch zwischen Fundstellen | nein | deterministisch nicht zuverlässig erkennbar |
+
+**Darstellung.** Eine Zeile über dem Fuß der Antwort: Symbol, Stufenwort und Satz. Die Stufe ist immer
+als Wort lesbar, das Symbol in der Signalfarbe unterstreicht sie nur; die Zahl der Stellen und
+Dokumente nennt weiter die Zeile neben „Belege anzeigen". Der Belegstand bewertet die Antwort und den
+Datenbestand, nie eine Person.
+
+**Einordnung.** Gängige generative Assistenten zeigen an der Antwort nur Quellen und einen pauschalen
+Hinweis, dass KI Fehler machen kann; Stufen oder Zahlen gibt es dort nur bei Suchdiensten für
+extraktive Treffer. Quellenlisten allein erwecken den Eindruck der Prüfbarkeit, auch wo Zitate
+ungenau sind. Der Belegstand macht stattdessen das Ergebnis der deterministischen Prüfung sichtbar.
+
+**Verworfen** wurde die frühere Fassung dieses Abschnitts mit zwei getrennten Größen
+„Trefferqualität" (aus den Rerank-Werten) und „Belegdeckung": Die Werte, auf denen die
+Trefferqualität beruht hätte, sind nicht kalibriert und ohne Reranking nicht vorhanden.
 
 ---
 

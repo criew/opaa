@@ -78,6 +78,7 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
                           "Verwendeter Prompt",
                           "chat_messages." + ChatMessage.TITLE_OF_USED_COLUMN),
                       Field.of("createdAt", "Zeitpunkt", "chat_messages.created_at"),
+                      Field.of("evidence", "Belegstand", "chat_messages.answer_evidence"),
                       Field.of(
                           "sources",
                           "Fundstellen (Titel, Bibliothek, Ort)",
@@ -255,6 +256,7 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
                         message.getContent(),
                         message.getUsedPrompt() == null ? null : message.getUsedPrompt().title(),
                         message.getCreatedAt(),
+                        evidenceOf(message.getAnswerEvidence()),
                         sourcesOf(message.getSources())))
             .toList();
     Map<UUID, String> libraries = libraryNames(stored, chat.organizationId());
@@ -270,6 +272,7 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
       record.put("content", message.content());
       record.put("prompt", message.prompt());
       record.put("createdAt", message.createdAt());
+      record.put("evidence", message.evidence());
       record.put(
           "sources",
           message.sources().stream()
@@ -336,6 +339,34 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
     return result;
   }
 
+  private static final JsonMapper EVIDENCE_JSON = JsonMapper.builder().build();
+
+  /**
+   * The stored Belegstand as its German level word, followed by the uncovered sub-queries it names,
+   * which rephrase the person's question; {@code null} without one or for an unknown level.
+   */
+  static String evidenceOf(String evidence) {
+    if (evidence == null || evidence.isBlank()) {
+      return null;
+    }
+    JsonNode node = EVIDENCE_JSON.readTree(evidence);
+    String level =
+        switch (node.path("level").asString("")) {
+          case "SUPPORTED" -> "belegt";
+          case "PARTIALLY_SUPPORTED" -> "teilweise belegt";
+          case "UNSUPPORTED" -> "nicht belegt";
+          default -> null;
+        };
+    if (level == null) {
+      return null;
+    }
+    List<String> uncovered = new ArrayList<>();
+    node.path("uncoveredSubQueries").forEach(query -> uncovered.add(query.asString("")));
+    return uncovered.isEmpty()
+        ? level
+        : level + " (ohne Fundstelle: " + String.join("; ", uncovered) + ")";
+  }
+
   /**
    * The numbered position within {@code location} - page, slide, row, message or part - without
    * heading paths, sheet names or slide titles, which are text of the document; {@code null} when
@@ -399,6 +430,7 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
       String content,
       String prompt,
       Instant createdAt,
+      String evidence,
       List<StoredSource> sources) {}
 
   record StoredSource(String fileName, UUID documentId, List<String> locations, boolean cited) {}

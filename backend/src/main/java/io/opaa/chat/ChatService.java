@@ -535,10 +535,26 @@ public class ChatService {
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public String appendTurn(
       Chat chat, String question, UsedPrompt usedPrompt, String answer, List<ChatSource> sources) {
+    return appendTurn(chat, question, usedPrompt, answer, sources, null);
+  }
+
+  /**
+   * {@link #appendTurn(Chat, String, UsedPrompt, String, List)} with the answer's Belegstand, kept
+   * on the answer's message; {@code null} for none.
+   */
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
+  public String appendTurn(
+      Chat chat,
+      String question,
+      UsedPrompt usedPrompt,
+      String answer,
+      List<ChatSource> sources,
+      AnswerEvidence evidence) {
     // An archived space accepts no new turn; QueryService#query checks this early, this call
     // guards a space archived in between.
     requireSpaceNotArchived(chat.getSpaceId());
     String serializedSources = serializeSources(sources);
+    String serializedEvidence = serializeEvidence(evidence);
     String derivedTitle = deriveTitle(question);
     boolean firstTurn = false;
     for (int attempt = 1; attempt <= APPEND_TURN_MAX_ATTEMPTS; attempt++) {
@@ -553,6 +569,7 @@ public class ChatService {
                 usedPrompt,
                 answer,
                 serializedSources,
+                serializedEvidence,
                 derivedTitle);
         break;
       } catch (DataIntegrityViolationException e) {
@@ -633,7 +650,32 @@ public class ChatService {
         message.getContent(),
         parseSources(message.getSources()),
         message.getUsedPrompt(),
-        message.getCreatedAt());
+        message.getCreatedAt(),
+        parseEvidence(message.getAnswerEvidence()));
+  }
+
+  private AnswerEvidence parseEvidence(String evidenceJson) {
+    if (evidenceJson == null || evidenceJson.isBlank()) {
+      return null;
+    }
+    try {
+      return objectMapper.readValue(evidenceJson, AnswerEvidence.class);
+    } catch (JacksonException e) {
+      log.warn("Failed to parse persisted answer evidence, treating as absent", e);
+      return null;
+    }
+  }
+
+  private String serializeEvidence(AnswerEvidence evidence) {
+    if (evidence == null) {
+      return null;
+    }
+    try {
+      return objectMapper.writeValueAsString(evidence);
+    } catch (JacksonException e) {
+      log.warn("Failed to serialize answer evidence, storing none", e);
+      return null;
+    }
   }
 
   private List<ChatSource> parseSources(String sourcesJson) {
