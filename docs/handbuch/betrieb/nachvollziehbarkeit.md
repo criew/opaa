@@ -295,7 +295,7 @@ Die Auskunft enthält:
 | Konnektortypen in Gebrauch | je Konnektor die Zahl der geteilten Bibliotheken der eigenen Organisation und der Zugänge; private Bibliotheken zählen nicht, damit sich keine einzelne erkennen lässt |
 | Modellanbieter | Adresse und Modell jeder Modellrolle, bei Chat-Modellen jedes angelegte |
 | Gespeicherte Daten und Protokoll | der Datenkatalog sowie die Beschreibung des Revisionsprotokolls: Ereignisarten mit Zweck und erlaubten Angaben, Felder mit Granularität, Zweck und Frist, die vorhandenen und die ausdrücklich nicht vorhandenen Abfragewege |
-| Anlassbezogene Klärungen im Berichtszeitraum | je Anlass, wie viele Klärungen beantragt, freigegeben und abgelaufen sind, dazu die Zahl der angehaltenen Chat-Löschungen |
+| Anlassbezogene Klärungen im Berichtszeitraum | je Anlass, wie viele Klärungen beantragt, freigegeben und abgelaufen sind, dazu die Zahl der angehaltenen Chat-Löschungen und je Zweck ihre Anträge, Freigaben, Verlängerungen, Ablehnungen und Abläufe |
 
 Die JSON-Fassung trägt das Manifest in derselben Form wie `faktenblaetter.json`; ein Werkzeug liest
 beide gleich.
@@ -314,9 +314,12 @@ Zahlen von 1 und 2 erscheinen als „weniger als 3“, damit ein einzelner Fall 
 Die Schwelle schützt die einzelne Auskunft; wer mehrere überlappende Zeiträume abruft, kann die
 Zahl eines Monats erschließen, und jeder dieser Abrufe steht im Revisionsprotokoll.
 
-**Angehaltene Chat-Löschungen** zählt OPAA je Monat, ohne Person: wie oft die Systemverwaltung die
-Löschung der Chats eines gesperrten Kontos angehalten hat. Es gilt dieselbe Schwelle. Eine Klärung,
-die die Löschung aufhält, zählt hier nicht mit, sie steht bei den Klärungen.
+**Angehaltene Chat-Löschungen** zählt OPAA je Monat, ohne Person: wie oft eine Anhaltung der
+Löschung der Chats eines gesperrten Kontos mit der Freigabe durch eine zweite Person wirksam wurde.
+Darunter steht je Zweck, wie viele Anhaltungen beantragt, freigegeben, verlängert, abgelehnt
+(einschließlich zurückgezogener und unbeantwortet verfallener Anträge) und mit ihrer Höchstdauer
+abgelaufen sind; eine vorzeitig aufgehobene zählt nicht als abgelaufen. Es gilt dieselbe Schwelle.
+Eine Klärung, die die Löschung aufhält, zählt hier nicht mit, sie steht bei den Klärungen.
 
 ### Abgleich eines Updates mit der Installation
 

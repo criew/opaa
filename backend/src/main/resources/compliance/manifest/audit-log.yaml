@@ -235,6 +235,8 @@ nonPersonalTables:
   audit_incident_scope_monthly_counts:
     [organization_id, case_month, purpose, transition, case_count]
   audit_chat_cleanup_hold_monthly_counts: [organization_id, hold_month, hold_count]
+  audit_chat_cleanup_hold_purpose_counts:
+    [organization_id, case_month, purpose, transition, case_count]
   audit_retention_settings: [id, retention_months, last_cutoff, last_run_month, updated_at]
   audit_incident_scope_retention_settings: [id, retention_years, updated_at]
   siem_export_cursor: [id, started_at, last_recorded_at, last_event_id, disabled_at, updated_at]
@@ -372,11 +374,35 @@ auditEvents:
       Wie jedes Ereignis nur nach Objekt, Zeitraum, Ereignisart oder Vorgang, ohne Zählung je
       Person; die Zahl der gelöschten Chats steht nur als Gesamtzahl im Anwendungslog
     payloadKeys: [lockReason, periodStart]
+  - id: LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_REQUESTED
+    trigger: >-
+      Eine Person der Systemverwaltung beantragt, die Löschung der Chats eines Kontos nach der
+      Sperre anzuhalten oder eine laufende Anhaltung zu verlängern
+    details: Zweck aus der festen Liste und ob verlängert wird, nie die Begründung
+    payloadKeys: [extension, purpose]
   - id: LOCKED_ACCOUNT_CHAT_CLEANUP_HELD
-    trigger: Die Systemverwaltung hält die Löschung der Chats eines Kontos nach der Sperre an
-    details: Keine Begründung
+    trigger: >-
+      Eine zweite, andere Person der Systemverwaltung gibt einen Antrag frei; die Anhaltung greift
+    details: Zweck und Ende der Anhaltung, nie die Begründung
+    payloadKeys: [heldUntil, purpose]
+  - id: LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_EXTENDED
+    trigger: Eine zweite, andere Person der Systemverwaltung gibt eine Verlängerung frei
+    details: Zweck und neues Ende der Anhaltung, nie die Begründung
+    payloadKeys: [heldUntil, purpose]
+  - id: LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_REJECTED
+    trigger: >-
+      Ein Antrag auf Anhaltung wird abgelehnt, von der beantragenden Person zurückgezogen oder
+      nach 14 Tagen ohne Antwort vom nächtlichen Lauf verworfen
+    details: Zweck und Anlass (REJECTED, WITHDRAWN, UNANSWERED)
+    payloadKeys: [cause, purpose]
+  - id: LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_EXPIRED
+    trigger: Der nächtliche Lauf beendet eine Anhaltung, deren Höchstdauer abgelaufen ist
+    details: Zweck (fehlt bei Anhaltungen aus der Zeit vor der Freigabe) und Ende der Anhaltung
+    payloadKeys: [heldUntil, purpose]
   - id: LOCKED_ACCOUNT_CHAT_CLEANUP_RESUMED
-    trigger: Die Systemverwaltung setzt die angehaltene Löschung der Chats eines Kontos fort
+    trigger: >-
+      Die Systemverwaltung hebt eine Anhaltung vor ihrem Ende auf und setzt die Löschung der Chats
+      eines Kontos fort
   - id: PRIVATE_LIBRARY_ERASED
     trigger: Eine private Bibliothek wird mit ihrem Inhalt gelöscht
     details: Zeitpunkt des Antrags, Anlass und Zahlen des Entfernten, nie Name, Pfad oder Inhalt

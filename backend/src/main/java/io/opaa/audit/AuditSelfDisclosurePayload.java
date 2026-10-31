@@ -494,7 +494,15 @@ final class AuditSelfDisclosurePayload {
     put(keys, Set.of("allowedOrigins"), LINK_TARGETS_CHANGED);
     put(keys, Set.of("formatVersion", "sections", "securityRelevantKeys"), SETTINGS_IMPORTED);
     put(keys, Set.of("periodStart", "lockReason"), LOCKED_ACCOUNT_CHATS_DELETED);
-    put(keys, Set.of(), LOCKED_ACCOUNT_CHAT_CLEANUP_HELD, LOCKED_ACCOUNT_CHAT_CLEANUP_RESUMED);
+    put(keys, Set.of("extension", "purpose"), LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_REQUESTED);
+    put(
+        keys,
+        Set.of("heldUntil", "purpose"),
+        LOCKED_ACCOUNT_CHAT_CLEANUP_HELD,
+        LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_EXTENDED,
+        LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_EXPIRED);
+    put(keys, Set.of("cause", "purpose"), LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_REJECTED);
+    put(keys, Set.of(), LOCKED_ACCOUNT_CHAT_CLEANUP_RESUMED);
     return Map.copyOf(keys);
   }
 

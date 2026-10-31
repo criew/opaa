@@ -169,6 +169,10 @@ protokollereignisse#local-user-password-reset-requested
 protokollereignisse#local-user-registered
 protokollereignisse#local-user-unlocked
 protokollereignisse#locked-account-chat-cleanup-held
+protokollereignisse#locked-account-chat-cleanup-hold-expired
+protokollereignisse#locked-account-chat-cleanup-hold-extended
+protokollereignisse#locked-account-chat-cleanup-hold-rejected
+protokollereignisse#locked-account-chat-cleanup-hold-requested
 protokollereignisse#locked-account-chat-cleanup-resumed
 protokollereignisse#locked-account-chat-cleanup-settings-changed
 protokollereignisse#locked-account-chats-deleted
@@ -313,6 +317,7 @@ voreinstellungen#opaa-auth-local-admin-refresh-token-ttl
 voreinstellungen#opaa-auth-local-admin-session-max-lifetime
 voreinstellungen#opaa-auth-local-refresh-token-ttl
 voreinstellungen#opaa-auth-local-session-max-lifetime
+voreinstellungen#opaa-chat-locked-account-cleanup-hold-max-days
 voreinstellungen#opaa-chat-note-max-items
 voreinstellungen#opaa-demo-chat-import-enabled
 voreinstellungen#opaa-directory-sync-schedule-enabled
@@ -383,5 +388,6 @@ fristen#opaa-auth-local-admin-refresh-token-ttl
 fristen#opaa-auth-local-admin-session-max-lifetime
 fristen#opaa-auth-local-refresh-token-ttl
 fristen#opaa-auth-local-session-max-lifetime
+fristen#opaa-chat-locked-account-cleanup-hold-max-days
 fristen#permission-history-retention-settings-retention-months
 fristen#protokollereignisse

@@ -40,7 +40,10 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
  * load.
  */
 @Configuration
-@EnableConfigurationProperties(ChatNoteProperties.class)
+@EnableConfigurationProperties({
+  ChatNoteProperties.class,
+  LockedAccountChatCleanupHoldProperties.class
+})
 public class ChatConfiguration {
 
   private static final Logger log = LoggerFactory.getLogger(ChatConfiguration.class);

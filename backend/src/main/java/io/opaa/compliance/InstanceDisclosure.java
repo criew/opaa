@@ -182,23 +182,42 @@ public record InstanceDisclosure(
    * completed months, so repeated disclosures cannot show a case while its month runs.
    *
    * @param purposes every purpose of the closed list, zero counts included
-   * @param heldChatDeletions how often the administration held the deletion of the chats of a
-   *     locked account in the period
+   * @param heldChatDeletions how often a hold of the deletion of the chats of a locked account took
+   *     effect in the period
+   * @param chatDeletionHolds the steps of those holds by purpose, every purpose of their closed
+   *     list
    * @param notes what the counts mean and where they end
    */
   public record IncidentScopeCases(
       ReportingPeriod period,
       List<PurposeCases> purposes,
       CaseCount heldChatDeletions,
+      List<HoldPurposeCases> chatDeletionHolds,
       List<String> notes) {
 
     public IncidentScopeCases {
       Objects.requireNonNull(period, "period");
       Objects.requireNonNull(heldChatDeletions, "heldChatDeletions");
       purposes = List.copyOf(purposes);
+      chatDeletionHolds = List.copyOf(chatDeletionHolds);
       notes = List.copyOf(notes);
     }
   }
+
+  /**
+   * The steps of the holds of the deletion of a locked account's chats for one purpose.
+   *
+   * @param purpose the purpose as its constant, such as {@code AUTHORITY_OR_COURT_ORDER}
+   * @param label the purpose in words
+   */
+  public record HoldPurposeCases(
+      String purpose,
+      String label,
+      CaseCount requested,
+      CaseCount approved,
+      CaseCount extended,
+      CaseCount rejected,
+      CaseCount expired) {}
 
   /**
    * The counts of one purpose.

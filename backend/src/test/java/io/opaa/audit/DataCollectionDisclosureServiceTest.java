@@ -51,7 +51,8 @@ class DataCollectionDisclosureServiceTest {
     when(caseReport.report(any(), any()))
         .thenAnswer(
             call ->
-                new IncidentScopeCases(call.getArgument(1), List.of(), CaseCount.of(0), List.of()));
+                new IncidentScopeCases(
+                    call.getArgument(1), List.of(), CaseCount.of(0), List.of(), List.of()));
   }
 
   @Test

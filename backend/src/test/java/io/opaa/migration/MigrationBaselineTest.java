@@ -113,6 +113,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "audit_chain_checkpoints",
             "audit_chain_seals",
             "audit_chat_cleanup_hold_monthly_counts",
+            "audit_chat_cleanup_hold_purpose_counts",
             "audit_incident_scope_case_counts",
             "audit_incident_scope_grants",
             "audit_incident_scope_monthly_counts",
@@ -224,6 +225,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "space_memberships",
             "spaces",
             // assistant
+            "chat_cleanup_hold_requests",
             "chat_cleanup_holds",
             "chat_library_references",
             "chat_locked_account_cleanup_state",

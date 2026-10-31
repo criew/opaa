@@ -7,6 +7,7 @@ import io.opaa.compliance.ComplianceManifest.SettingSource;
 import io.opaa.compliance.InstanceDisclosure.CaseCount;
 import io.opaa.compliance.InstanceDisclosure.ConnectorUsage;
 import io.opaa.compliance.InstanceDisclosure.DataFlowState;
+import io.opaa.compliance.InstanceDisclosure.HoldPurposeCases;
 import io.opaa.compliance.InstanceDisclosure.IncidentScopeCases;
 import io.opaa.compliance.InstanceDisclosure.ModelProvider;
 import io.opaa.compliance.InstanceDisclosure.Protocol;
@@ -102,6 +103,15 @@ class InstanceDisclosureRendererTest {
                           CaseCount.of(1),
                           CaseCount.of(1))),
                   CaseCount.of(7),
+                  List.of(
+                      new HoldPurposeCases(
+                          "AUTHORITY_OR_COURT_ORDER",
+                          "Behördliche oder gerichtliche Anordnung",
+                          CaseCount.of(5),
+                          CaseCount.of(4),
+                          CaseCount.of(1),
+                          CaseCount.of(0),
+                          CaseCount.of(3))),
                   List.of("Eine Ablehnung gibt es nicht"))));
 
   @Test
@@ -187,6 +197,7 @@ class InstanceDisclosureRendererTest {
             "| Untersuchung einer Datenschutzverletzung | weniger als 3 | weniger als 3 |"
                 + " weniger als 3 |")
         .contains("Angehaltene Chat-Löschungen: 7")
+        .contains("| Behördliche oder gerichtliche Anordnung | 5 | 4 | weniger als 3 | 0 | 3 |")
         .contains("- Eine Ablehnung gibt es nicht");
   }
 

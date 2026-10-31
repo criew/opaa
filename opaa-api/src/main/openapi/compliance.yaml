@@ -567,9 +567,11 @@ components:
         How often the anlassbezogene Klärung was requested, approved and ended in the reporting
         period, by purpose: no person, no reason, no grant id and no date finer than the month.
         Only completed months count, so repeated calls cannot show a case while its month runs.
-        heldChatDeletions counts how often the administration held the deletion of the chats of a
-        locked account in the period, without person or account.
-      required: [from, to, smallCountThreshold, purposes, heldChatDeletions, notes]
+        heldChatDeletions counts how often a hold of the deletion of the chats of a locked account
+        took effect in the period, without person or account; chatDeletionHolds breaks the holds
+        down by purpose and step.
+      required:
+        [from, to, smallCountThreshold, purposes, heldChatDeletions, chatDeletionHolds, notes]
       properties:
         from:
           type: string
@@ -592,6 +594,11 @@ components:
             $ref: "#/components/schemas/DisclosureIncidentScopePurposeCases"
         heldChatDeletions:
           $ref: "#/components/schemas/DisclosureCaseCount"
+        chatDeletionHolds:
+          type: array
+          description: Every purpose of the closed list of holds, in its order, zero counts as well.
+          items:
+            $ref: "#/components/schemas/DisclosureChatDeletionHoldCases"
         notes:
           type: array
           description: What the counts mean and where they end, as readable sentences.
@@ -610,6 +617,26 @@ components:
         requested:
           $ref: "#/components/schemas/DisclosureCaseCount"
         approved:
+          $ref: "#/components/schemas/DisclosureCaseCount"
+        expired:
+          $ref: "#/components/schemas/DisclosureCaseCount"
+
+    DisclosureChatDeletionHoldCases:
+      type: object
+      required: [purpose, label, requested, approved, extended, rejected, expired]
+      properties:
+        purpose:
+          $ref: "#/components/schemas/ChatCleanupHoldPurpose"
+        label:
+          type: string
+          description: The purpose in words.
+        requested:
+          $ref: "#/components/schemas/DisclosureCaseCount"
+        approved:
+          $ref: "#/components/schemas/DisclosureCaseCount"
+        extended:
+          $ref: "#/components/schemas/DisclosureCaseCount"
+        rejected:
           $ref: "#/components/schemas/DisclosureCaseCount"
         expired:
           $ref: "#/components/schemas/DisclosureCaseCount"

@@ -327,10 +327,28 @@ aussagekräftigste Teil der Daten über eine Person.
   Antrag oder einer noch nutzbaren Freigabe steht, gleich in welcher Rolle, löscht der Lauf nicht;
   dieselbe Regel wie bei der Kontolöschung. Nach dem Ende holt der nächste Lauf nach, die Aussetzung
   verlängert nichts.
-- **Anhalten je Konto** durch die Systemverwaltung, etwa für ein Disziplinarverfahren oder einen
-  Rechtsstreit außerhalb von OPAA: „Löschung anhalten“ und „Löschung fortsetzen“ in der
-  Einzelansicht des Kontos, ohne Begründung (sie wäre selbst ein sensibles Datum über die Person),
-  beide protokolliert. Ist die Frist beim Fortsetzen abgelaufen, löscht der nächste Lauf.
+- **Anhalten der Löschung** (#3488), geregelt wie die anlassbezogene Klärung:
+  - **Zweck aus fester Liste** (`ChatCleanupHoldPurpose`): behördliche oder gerichtliche Anordnung,
+    Sicherung von Beweismitteln nach einem Sicherheitsvorfall, laufender Auskunfts- oder Löschantrag
+    der Person. Ein disziplinarischer, arbeitsrechtlicher oder leistungsbezogener Zweck fehlt in der
+    Liste und ist damit nicht wählbar. Dazu eine **Pflichtbegründung** (10 bis 1.000 Zeichen).
+  - **Vier-Augen-Prinzip:** Eine Person der Systemverwaltung beantragt in der Einzelansicht des
+    Kontos, eine zweite, andere gibt frei (Selbstfreigabe: 400). Erst mit der Freigabe greift die
+    Anhaltung; ein Antrag allein hält nichts an. Je Konto liegt höchstens ein Antrag vor (409).
+    Ablehnen darf jede Person der Systemverwaltung, die beantragende zieht damit zurück; ein Antrag
+    ohne Antwort verfällt nach 14 Tagen im nächtlichen Lauf.
+  - **Höchstdauer:** Eine freigegebene Anhaltung endet nach
+    `opaa.chat.locked-account-cleanup.hold-max-days` Tagen (Voreinstellung 180, 7 bis 730) ab
+    Freigabe von selbst. Die Grenze setzt der Betrieb, nicht die Systemverwaltung, die beantragt und
+    freigibt (wie `opaa.audit.incident-scope.max-days`, ADR-0060 Entscheidung 2). **Verlängern** ist
+    ein neuer Antrag mit neuer Freigabe; er ersetzt Zweck, Begründung und Ende, der Beginn bleibt.
+    Nach dem Ende gilt die Frist nach der Sperre, als hätte es die Anhaltung nicht gegeben: Ist sie
+    abgelaufen, löscht derselbe Lauf, der die Anhaltung beendet.
+  - **Aufheben** („Löschung fortsetzen“) darf eine Person allein, weil es nur die Löschung ihren
+    Lauf nehmen lässt; ein offener Antrag bleibt davon unberührt.
+  - **Bestand:** Anhaltungen aus der Zeit vor dieser Regel haben weder Zweck noch Begründung. Der
+    erste nächtliche Lauf nach dem Update setzt ihr Ende auf jetzt plus Höchstdauer; danach laufen
+    sie wie jede andere ab. Bis dahin halten sie an wie bisher.
 
 ### Lauf
 
@@ -343,10 +361,14 @@ gleichzeitig mit der Bereinigung je Space um 03:50 Uhr. Zeitpunkt „jetzt“ is
 - **Erneute Prüfung unter Sperre:** Jeder Stapel prüft das Konto unter einer Lesesperre auf seine
   Zugangsdaten erneut; ein Entsperren oder Anhalten wartet auf den Stapel oder wird von ihm gesehen.
   Der Lauf ist zustandsbasiert: Bricht er ab, setzt die nächste Nacht fort.
+- **Pflege der Anhaltungen vor der Löschung:** Der Lauf gibt Anhaltungen ohne Ende ihr Ende, beendet
+  abgelaufene Anhaltungen und verwirft Anträge, die 14 Tage unbeantwortet lagen, je Konto in eigener
+  Transaktion mit Protokolleintrag (höchstens 1.000 je Art und Lauf). Ein Fehler dabei hält die
+  Löschung nicht auf.
 - **Wiederherstellung aus einer Sicherung:** Tauchen gelöschte Chats wieder auf, löscht der nächste
   Lauf sie erneut und schreibt ein neues Ereignis. Wer Chats einer zu Unrecht gesperrten Person
-  zurückholen will, spielt die Sicherung ein und entsperrt das Konto oder hält die Löschung an,
-  **bevor der nächste Lauf um 02:30 Uhr** beginnt: Eine vollständig eingespielte Datenbank bringt
+  zurückholen will, spielt die Sicherung ein und entsperrt das Konto (oder lässt die Löschung von
+  zwei Personen anhalten), **bevor der nächste Lauf um 02:30 Uhr** beginnt: Eine vollständig eingespielte Datenbank bringt
   auch Sperre, Anhalten und Fristbeginn auf den Stand der Sicherung zurück, ein vorher gesetzter
   Halt ginge verloren. Alternativ startet die eingespielte Installation mit abgeschalteter
   Löschung; dann beginnen alle Fristen neu.
@@ -358,8 +380,12 @@ gleichzeitig mit der Bereinigung je Space um 03:50 Uhr. Zeitpunkt „jetzt“ is
   trägt den **Fristbeginn** und den **Sperrgrund**, **keine Zahl**, keinen Titel, keinen Inhalt,
   keinen Space. Die Zahl gelöschter Chats je Person wäre ein Nutzungsmaß, das nach der Löschung als
   einzige Spur bliebe. Verteilt sich ein Konto auf mehrere Nächte, entsteht je Nacht ein Ereignis.
-- `LOCKED_ACCOUNT_CHAT_CLEANUP_HELD` und `…_RESUMED` für Anhalten und Fortsetzen, ohne Begründung;
-  ein wiederholtes Anhalten schreibt nichts.
+- Anhaltungen, je mit der Person als Betroffener und **nie mit der Begründung**:
+  `LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_REQUESTED` (Antrag oder Verlängerungsantrag; Zweck, ob
+  verlängert wird), `LOCKED_ACCOUNT_CHAT_CLEANUP_HELD` (Freigabe einer neuen Anhaltung; Zweck, Ende),
+  `…_HOLD_EXTENDED` (Freigabe einer Verlängerung; Zweck, neues Ende), `…_HOLD_REJECTED` (Zweck,
+  Anlass `REJECTED`, `WITHDRAWN` oder `UNANSWERED`), `…_HOLD_EXPIRED` (Lauf; Zweck, Ende) und
+  `…_RESUMED` (vorzeitiges Aufheben). Ein Fortsetzen ohne Anhaltung schreibt nichts.
 - Aufbewahrung: allgemeine Protokollfrist (Voreinstellung 36 Monate, wie die Rechtehistorie).
   Wird das Konto später gelöscht, bleibt das Ereignis mit dem Pseudonym ohne Zuordnung stehen.
 - Im **Auszug für die Personalvertretung** mit Zweck, Zugriff und Frist
@@ -375,7 +401,12 @@ gleichzeitig mit der Bereinigung je Space um 03:50 Uhr. Zeitpunkt „jetzt“ is
 - „Frühestens am …“ steht **nur in der Einzelansicht** des Kontos in der Verwaltung (Dialog
   „Bearbeiten“), für jedes durch die Verwaltung gesperrte Konto, **unabhängig davon, ob und wie
   viele Chats es hat**. Eine laufende Klärung ändert die Anzeige nicht. Ein Anhalten zeigt die
-  Ansicht, weil es ein Akt der Verwaltung selbst ist.
+  Ansicht, weil es ein Akt der Verwaltung selbst ist: mit Zweck, Begründung, Ende und Restlaufzeit,
+  ein offener Antrag mit Zweck, Begründung und Datum; „Freigeben“ fehlt für die beantragende Person.
+- **Selbstauskunft:** Die betroffene Person sieht Beginn, Ende und Zweck einer laufenden Anhaltung
+  (Kategorie `chat-cleanup-holds`), die Begründung nicht: Sie kann eine Anordnung nennen, über die
+  die Person noch nicht unterrichtet werden darf. Antrag, Freigabe, Ablehnung und Ablauf stehen mit
+  Zweck in ihrem Protokollteil.
 - **Keine Spalte, kein Filter, keine Sortierung, kein Export** in der Kontenliste: Eine Liste „wird
   bald gelöscht“ wäre eine Liste der Ausgeschiedenen samt Zeitpunkt.
 - **Nachricht bei der Sperre:** Die Mail der Sperre durch die Verwaltung nennt das früheste
@@ -414,9 +445,19 @@ zur Selbstauskunft vor der Sperre; Verwertungsverbot für das Löschereignis.
 **Soll-Auflagen:** Die Vorschau „in den nächsten 30 Tagen fällig“ für den Betrieb steht im
 Anwendungslog jedes Laufs. Der Startlog-Hinweis auf eine verkürzte Frist entfällt: Die Frist ist eine
 Einstellung der Systemverwaltung, jede Änderung steht mit Vorher und Nachher im Revisionsprotokoll.
-Wie oft die Verwaltung die Löschung angehalten hat, zählt OPAA je Monat ohne Person; die Auskunft
-über die Datenerhebung nennt die Zahl für den Berichtszeitraum als „Angehaltene Chat-Löschungen“
-an die Personalvertretung, mit derselben Schwelle wie die Klärungen (#3026).
+Wie oft eine Anhaltung wirksam wurde, zählt OPAA je Monat ohne Person; die Auskunft über die
+Datenerhebung nennt die Zahl für den Berichtszeitraum als „Angehaltene Chat-Löschungen“ an die
+Personalvertretung, mit derselben Schwelle wie die Klärungen (#3026). Seit #3488 kommen je Zweck
+Anträge, Freigaben, Verlängerungen, Ablehnungen und Abläufe hinzu (`chatDeletionHolds`).
+
+**Nachtrag #3488 (Stakeholder-Review vor `v0.1.0-rc.5`):** Personalrat und Betrieb tragen ein
+Anhalten durch eine Person ohne Zweck, Begründung und Höchstdauer nicht mit, weil es Chats gesperrter
+Personen still und unbegrenzt auf Vorrat halten ließe. Das Anhalten folgt seither dem Muster der
+anlassbezogenen Klärung (oben). Wirkung: neues Datum `chat_cleanup_hold_requests`, neue Spalten der
+Anhaltung, neue Ereignisarten, neue Voreinstellung `opaa.chat.locked-account-cleanup.hold-max-days`,
+neue Zählung in der Auskunft über die Datenerhebung; Löschkonzept, Muster-Dienstvereinbarung
+(Nr. 12 Abs. 2 Ziff. 4) und Informationsmappe Personalrat sind nachgezogen, das Beispiel
+„Disziplinarverfahren“ ist überall gestrichen.
 
 ---
 

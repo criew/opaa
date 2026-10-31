@@ -116,6 +116,7 @@ class SpecEnumParityTest {
         Arguments.of("LocalAccountState", LocalAccountState.values()),
         Arguments.of("LockReason", LockReason.values()),
         Arguments.of("ChatCleanupAfterLockStatus", ChatCleanupAfterLockStatus.values()),
+        Arguments.of("ChatCleanupHoldPurpose", ChatCleanupHoldPurpose.values()),
         Arguments.of("LocalAccountActivity", LocalAccountActivity.values()),
         Arguments.of("MailDeliveryPath", MailDeliveryPath.values()),
         Arguments.of("ExternalAccessTokenStatus", ExternalAccessTokenStatus.values()),

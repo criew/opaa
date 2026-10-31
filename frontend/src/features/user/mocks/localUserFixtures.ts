@@ -1,4 +1,5 @@
 import type {
+  ChatCleanupHoldPurpose,
   LocalAuthSettingsResponse,
   LocalAuthSettingsUpdateRequest,
   LocalUserResponse,
@@ -218,5 +219,27 @@ export function resetMockLocalAuthSettings() {
 /** Earliest deletion of the chats of every mock account locked by the administration. */
 export const MOCK_CHAT_DELETION_AT = '2027-10-23T08:00:00Z'
 
-/** Accounts whose chat deletion is held; tests clear it themselves. */
-export const mockChatCleanupHolds = new Set<string>()
+/** A running hold of the mock, as the backend reports it. */
+export interface MockChatCleanupHold {
+  purpose: ChatCleanupHoldPurpose | null
+  reason: string | null
+  heldSince: string
+  heldUntil: string | null
+}
+
+/** A pending request of the mock; {@code byMe} when the signed-in administrator filed it. */
+export interface MockChatCleanupRequest {
+  purpose: ChatCleanupHoldPurpose
+  reason: string
+  requestedAt: string
+  byMe: boolean
+}
+
+/** Running holds by account; tests clear it themselves. */
+export const mockChatCleanupHolds = new Map<string, MockChatCleanupHold>()
+
+/** Pending hold requests by account; tests clear it themselves. */
+export const mockChatCleanupRequests = new Map<string, MockChatCleanupRequest>()
+
+/** The longest a hold of the mock runs, in days. */
+export const MOCK_CHAT_CLEANUP_HOLD_MAX_DAYS = 180

@@ -266,7 +266,9 @@ ersten Stufe nicht geschrieben.
   betroffene Person ist das Pseudonym in `subject_ref`
 - **Löschung der Chats gesperrter Konten** ([chat-list.md](./chat-list.md#löschung-der-chats-gesperrter-konten),
   #2997): je Konto und Lauf die Löschung mit Fristbeginn und Sperrgrund, nie mit Zahl, Titel, Inhalt
-  oder Space; Anhalten und Fortsetzen der Löschung je Konto durch die Systemverwaltung, ohne Begründung
+  oder Space; Antrag, Freigabe, Verlängerung, Ablehnung, Ablauf und Fortsetzen einer Anhaltung je
+  Konto im Vier-Augen-Prinzip mit Zweck aus einer festen Liste und Höchstdauer (#3488); die
+  Begründung steht in der Anhaltung, nicht im Protokoll
 - **Jede bewirkte** Rechteänderung aus einem Verzeichnisabgleich — je Änderung, nicht je Lauf, verbunden
   über `correlation_ref`; dazu ein Kopfeintrag des Laufs mit Ergebnis und, oberhalb der Schwelle, mit
   der bestätigenden Person und ihrem Anlass. **Das Verwerfen** eines vorgelegten Plans ist ein
@@ -588,8 +590,9 @@ betroffenen Person** nach Abschluss und der Bericht an die Personalvertretung al
 drei bleiben Dienstvereinbarung/Prozess, bis ein eigenes Ticket sie technisch abbildet. Technisch
 geliefert werden die Zahlen für den Bericht: Die [Auskunft über die
 Datenerhebung](#auskunft-über-die-datenerhebung) nennt je Anlass, wie viele Klärungen in einem
-wählbaren Berichtszeitraum beantragt, freigegeben und abgelaufen sind, dazu die Zahl der
-angehaltenen Chat-Löschungen.
+wählbaren Berichtszeitraum beantragt, freigegeben und abgelaufen sind, dazu je Zweck die
+beantragten, freigegebenen, verlängerten, abgelehnten und abgelaufenen Anhaltungen der
+Chat-Löschung (#3488).
 
 **Aufbewahrung der Freigaben (#2859).** Antrag und Freigabe sind nach dem Ende der Nutzbarkeit nur
 noch Nachweis und haben eine Löschfrist: Gelöscht wird am Ende des Kalenderjahres, das auf das Ende
@@ -1289,7 +1292,7 @@ nicht als ausgeschlossen nennt, sind Teil der Auskunft.
 | `notifications` | #2990 | Art, Objektart, Titel, Text, Eingang, gelesen | — (Texte erzeugt OPAA und nennen Objekte, keine Personen; nennt ein Typ künftig eine andere Person, geht er ohne Text heraus) |
 | `audit-log` | #2990 | Einträge, in denen die Person handelt (`actor_ref`), betroffen ist (`subject_ref`), Kontoobjekt ist oder als Besitzerin (`ownerId` bei den Ereignisarten mit Besitzerin) oder als Ziel einer ausgeführten Rechteübertragung (`targetId` nur bei `PERMISSION_TRANSFER_EXECUTED`, mit den Umfangszahlen der übertragenen Rechte; die Vorschau `PERMISSION_TRANSFER_PREVIEWED` nennt Umfangszahlen der Quelle zu einer womöglich nie ausgeführten Übertragung und erscheint in der Auskunft der Zielperson nicht) genannt ist, in `before`/`after` per Pseudonym oder, in älteren Einträgen, per Kontokennung, auch ohne Pseudonym (#3135): Zeitpunkt, Ereignisart, Objektart, Objektbezeichnung, Ergebnis, Vorher/Nachher nach Positivliste je Ereignisart, Vorgangskennung, Version des Ereigniskatalogs (`schemaVersion`), ob ein Anlass angegeben war | Pseudonymkennungen, auch die eigene; `reason`, auch der eigene (Begründungsfreitext, siehe unten); Ereignisse einer anlassbezogenen Klärung über die Person; `object_label` an fremden Kontoobjekten |
 | `chats` | #2992 | eigene Chats (`author_id`) mit Titel, Filter, Nachrichten, Notizen, Anheften und Archiv; je Nachricht eine Zeile mit Kennzeichnung als KI-erzeugt (`generatedByAi`); an Antworten die Fundstellen nur mit Dokumenttitel (Dateiname), heutigem Namen der Bibliothek und Seite (bzw. Folie, Zeile, Nachricht oder Teil), zitiert oder nicht | Textausschnitte der Fundstellen (Dokumentinhalt); Überschriftenpfade, Blattnamen und Folientitel des Fundorts (Text aus dem Dokument); Dokument- und Chunkkennungen, Quellverweise und Metadaten der Fundstelle; `content_tsv` (abgeleiteter Suchindex) |
-| `chat-cleanup-holds` | #2992 | ob und seit wann die Löschung der eigenen Chats nach einer Sperre angehalten ist; angehalten von „andere Person“ (nur die Verwaltung hält an) | — (eine Begründung wird nicht gespeichert; das Fortsetzen löscht die Zeile und steht im Protokoll) |
+| `chat-cleanup-holds` | #2992, #3488 | ob, seit wann und bis wann die Löschung der eigenen Chats nach einer Sperre angehalten ist, mit Zweck; angehalten von „andere Person“ (nur die Verwaltung hält an) | Begründung der Anhaltung und offene Anträge (Freitext der Verwaltung; das Fortsetzen und der Ablauf löschen die Zeile und stehen im Protokoll) |
 | `connected-accounts` | #2991 | eigene verbundene Konten (Bezeichnung beim Anbieter, Zeitpunkte), von der Person verbundene Bibliotheken und Bibliotheken, für deren Einwilligung die Person verantwortlich ist (eine andere verantwortliche Person als „andere Person“) | `connection_tokens`, `connection_authorizations`, `connection_grant_revocations` (Geheimnisse und Zwischenstände eines laufenden Verbindungsaufbaus oder Widerrufs, kurzlebig) |
 | `connection-person-states` | #2991 | Ruhezustand der eigenen Verbindungen | — |
 | `connection-log` | #2991 | Einträge, in denen die Person handelt oder betroffen ist | Pseudonymkennungen |
@@ -1568,9 +1571,10 @@ Kennungen der Freigaben. Die Grenzen dieser Zahlen:
   gibt es keine Bestandsinstallationen, deren Zahlen zu übernehmen wären. Aus demselben Grund
   hingenommen: Beim Rolling Update auf die Version mit der Monatszählung fehlen dort Anträge und
   Freigaben, die die noch laufende Vorgängerversion annimmt; das betrifft nur Updates vor `v0.1.0`.
-- **Angehaltene Chat-Löschungen (#3026).** Neben den Klärungen nennt die Auskunft, wie oft die
+- **Angehaltene Chat-Löschungen (#3026, #3488).** Neben den Klärungen nennt die Auskunft, wie oft die
   Systemverwaltung im Zeitraum die Löschung der Chats eines gesperrten Kontos angehalten hat, je
-  Kalendermonat ohne Person gezählt und mit derselben Schwelle. Eine Klärung, die die Löschung
+  Kalendermonat ohne Person gezählt und mit derselben Schwelle; dazu je Zweck, wie viele
+  Anhaltungen beantragt, freigegeben, verlängert, abgelehnt und abgelaufen sind. Eine Klärung, die die Löschung
   aufhält, zählt dort nicht mit; sie steht in den Zahlen der Klärungen. Wie bei der Monatszählung
   der Klärungen fehlen beim Rolling Update auf diese Version Anhaltevorgänge der noch laufenden
   Vorgängerversion; das betrifft nur Updates vor `v0.1.0`.

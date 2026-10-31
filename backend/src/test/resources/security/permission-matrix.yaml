@@ -324,7 +324,9 @@ operations:
   generateLocalUserPassword:                 {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   requestLocalUserHandover:                  {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   getLocalUserChatCleanup:                   {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
-  holdLocalUserChatCleanup:                  {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  requestLocalUserChatCleanupHold:           {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  approveLocalUserChatCleanupHold:           {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
+  rejectLocalUserChatCleanupHold:            {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   resumeLocalUserChatCleanup:                {systemAdmin: 404, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   getLocalAuthSettings:                      {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
   updateLocalAuthSettings:                   {systemAdmin: allowed, auditor: 403, spaceAdmin: 403, curator: 403, member: 403, noRights: 403, anonymous: 401}
