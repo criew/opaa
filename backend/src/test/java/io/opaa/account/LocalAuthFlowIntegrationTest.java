@@ -748,6 +748,7 @@ class LocalAuthFlowIntegrationTest {
             .claim("email", "fremd@stadt.example")
             .claim("name", "Fremd")
             .claim("pcr", false)
+            .claim(LocalAccessTokenService.SESSION_GENERATION_CLAIM, 0L)
             .build();
     SignedJWT jwt =
         new SignedJWT(
