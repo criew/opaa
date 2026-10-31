@@ -1,6 +1,7 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import MessageList, { ANSWER_ARRIVED_ANNOUNCEMENT } from './MessageList'
+import { PROVISIONAL_ANSWER_LABEL } from './ProvisionalAnswer'
 import type { ChatMessage } from '../types/chat'
 
 describe('MessageList', () => {
@@ -158,6 +159,52 @@ describe('MessageList', () => {
       expect(screen.getByText('Danke')).toBeInTheDocument()
       expect(screen.queryByRole('article')).not.toBeInTheDocument()
       expect(document.body).toHaveFocus()
+    })
+  })
+
+  describe('while the answer is streamed', () => {
+    const question: ChatMessage = {
+      id: '1',
+      role: 'user',
+      content: 'Wie lang ist die Frist?',
+      timestamp: new Date(),
+    }
+
+    it('shows the provisional text marked as such, without the markers and without actions', () => {
+      render(
+        <MessageList
+          messages={[question]}
+          isLoading
+          streamingAnswer={
+            'Die Frist beträgt einen Monat. 【source: 3fa85f64-5717-4562-b3fc-2c963f66afa6#4 | merkblatt.pdf】 Sie beginnt 【source: 3fa8'
+          }
+        />,
+      )
+
+      const provisional = screen.getByTestId('provisional-answer')
+      expect(provisional).toHaveAttribute('aria-busy', 'true')
+      expect(provisional).toHaveTextContent('Die Frist beträgt einen Monat.')
+      expect(provisional).toHaveTextContent('Sie beginnt')
+      expect(provisional).not.toHaveTextContent('source')
+      expect(screen.getByText(PROVISIONAL_ANSWER_LABEL).closest('[role="status"]')).not.toBeNull()
+      expect(screen.queryByText('Denkt nach …')).not.toBeInTheDocument()
+      expect(within(provisional).queryByRole('button')).toBeNull()
+    })
+
+    // The announcement must not read the answer word by word: the growing text is outside every
+    // live region.
+    it('keeps the growing text out of every live region', () => {
+      render(<MessageList messages={[question]} isLoading streamingAnswer="Die Frist beträgt" />)
+
+      const text = screen.getByText('Die Frist beträgt')
+      expect(text.closest('[aria-live], [role="status"], [role="log"], [role="alert"]')).toBeNull()
+    })
+
+    it('shows the thinking indicator until the first part arrives', () => {
+      render(<MessageList messages={[question]} isLoading streamingAnswer={null} />)
+
+      expect(screen.getByText('Denkt nach …')).toBeInTheDocument()
+      expect(screen.queryByTestId('provisional-answer')).not.toBeInTheDocument()
     })
   })
 })

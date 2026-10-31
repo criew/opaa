@@ -15,6 +15,7 @@ import Typography from '@mui/material/Typography'
 import AllInclusiveIcon from '@mui/icons-material/AllInclusive'
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import SendIcon from '@mui/icons-material/Send'
+import StopIcon from '@mui/icons-material/Stop'
 import { CHAT_MAX_WIDTH, focusFrameStyle } from '@/shared/theme/theme'
 import { useAuthStore } from '@/shared/session/authStore'
 import { ARRIVAL_FOCUS_ATTRIBUTE } from '@/shared/ui/a11y/routeFocus'
@@ -66,6 +67,8 @@ interface ChatInputProps {
    * running answer keeps the scope it was asked with; typing the next question stays possible.
    */
   answerPending?: boolean
+  /** Ends the pending answer; while one is pending, the send button turns into this one. */
+  onCancelAnswer?: () => void
   /** A question refused while another chat was shown; put into the input if it is empty. */
   returnedQuestion?: SendOutcome | null
   /** Called once `returnedQuestion` has been handled, whether it was taken or not. */
@@ -86,6 +89,7 @@ export default function ChatInput({
   onSend,
   disabled = false,
   answerPending = false,
+  onCancelAnswer,
   returnedQuestion = null,
   onReturnedQuestionHandled,
   actionSources = CHAT_ACTION_SOURCES,
@@ -445,6 +449,23 @@ export default function ChatInput({
           onError={setDictationError}
           disabled={disabled}
         />
+        {/* Ends the pending answer; the send button beside it stays locked until it is over. */}
+        {answerPending && onCancelAnswer && (
+          <IconButton
+            onClick={onCancelAnswer}
+            aria-label="Antwort abbrechen"
+            sx={{
+              alignSelf: 'flex-end',
+              border: 1,
+              borderColor: 'primary.main',
+              color: 'primary.main',
+              borderRadius: '8px',
+              p: 1,
+            }}
+          >
+            <StopIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        )}
         {/* A send symbol, not "Fragen" - the input triggers more than questions. */}
         <IconButton
           color="primary"

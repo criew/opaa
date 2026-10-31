@@ -27,6 +27,9 @@ export interface ChatState {
   /** True while an existing chat's history is being fetched via loadChat. */
   isLoadingChat: boolean
   error: string | null
+  /** The provisional answer this view waits for while the model writes it - unvalidated, not to be
+   * copied or exported - or null. The final answer replaces it in `messages`. */
+  streamingAnswer: string | null
   /** A question refused while another chat was shown, to be put back into the input of this chat;
    * cleared by `clearReturnedQuestion` once the input has handled it. */
   returnedQuestion: RefusedQuestion | null
@@ -93,6 +96,9 @@ export interface ChatState {
    * subsequent sign-in by a different user never briefly sees the previous user's conversation. */
   reset: () => void
   clearReturnedQuestion: () => void
+  /** Ends the answer the shown view waits for: the server stops generating, nothing of the turn is
+   * kept, and the question goes back to the input. */
+  cancelAnswer: () => void
 }
 
 export type ChatGet = () => ChatState

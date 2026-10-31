@@ -32,6 +32,8 @@ export default function ChatPage() {
 
   const messages = useChatStore((s) => s.messages)
   const isLoading = useChatStore((s) => s.isLoading)
+  const streamingAnswer = useChatStore((s) => s.streamingAnswer)
+  const cancelAnswer = useChatStore((s) => s.cancelAnswer)
   const isLoadingChat = useChatStore((s) => s.isLoadingChat)
   const error = useChatStore((s) => s.error)
   const returnedQuestion = useChatStore((s) => s.returnedQuestion)
@@ -361,11 +363,13 @@ export default function ChatPage() {
         messages={messages}
         isLoading={isLoading}
         targetMessageId={targetMessageId}
+        streamingAnswer={streamingAnswer}
       />
       <SearchAvailabilityNotice />
       <ChatInput
         onSend={(message, usedPrompt) => sendMessage(message, usedPrompt)}
         answerPending={isLoading}
+        onCancelAnswer={cancelAnswer}
         returnedQuestion={returnedQuestionForView}
         onReturnedQuestionHandled={clearReturnedQuestion}
         // Every arrival at a new chat - also the plus clicked again on one - lands in the input.

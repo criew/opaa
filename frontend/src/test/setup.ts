@@ -13,6 +13,7 @@ import { server } from './server'
 
 // chat
 import { resetChatMockState } from '@/features/chat/mocks/chatHandlers'
+import { setMockAnswerDeltas } from '@/features/chat/mocks/queryHandlers'
 // asset
 import { resetGrantMockState } from '@/features/asset/mocks/assetHandlers'
 import { resetMockSpaceAssetAssociations } from '@/features/asset/mocks/assetFixtures'
@@ -62,9 +63,13 @@ function clearCookies() {
   }
 }
 
-beforeAll(() => server.listen())
+beforeAll(() => {
+  server.listen()
+  setMockAnswerDeltas(false)
+})
 afterEach(() => {
   server.resetHandlers()
+  setMockAnswerDeltas(false)
   resetIndexingState()
   resetDocumentMockState()
   resetGrantMockState()

@@ -21,7 +21,52 @@ function applyMockChatTitle(chatId: string, question: string): string | null {
   return generated
 }
 
+/**
+ * Whether the mock stream sends the answer word by word before its final event. On in the browser;
+ * the test setup turns it off, so that a test finding the answer text finds the final message, not
+ * a provisional one that is replaced a moment later. A test of the provisional view turns it on.
+ */
+let mockAnswerDeltas = true
+
+export function setMockAnswerDeltas(enabled: boolean): void {
+  mockAnswerDeltas = enabled
+}
+
+/** The answer of POST /api/v1/query as the event stream of POST /api/v1/query/stream. */
+function eventStreamOf(response: { answer?: string }): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder()
+  const frame = (event: Record<string, unknown>) =>
+    encoder.encode(`event: ${String(event.type)}\ndata: ${JSON.stringify(event)}\n\n`)
+  const parts = mockAnswerDeltas ? ((response.answer ?? '').match(/\S+\s*/g) ?? []) : []
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue(frame({ type: 'started' }))
+      for (const part of parts) controller.enqueue(frame({ type: 'delta', text: part }))
+      controller.enqueue(frame({ type: 'final', response }))
+      controller.close()
+    },
+  })
+}
+
 export const queryHandlers = [
+  // Mirrors QueryStreamController: the same turn as POST /api/v1/query below - or the handler a
+  // test put in its place - with its refusals as plain statuses and its answer as events.
+  http.post('/api/v1/query/stream', async ({ request }) => {
+    const answered = await fetch(new URL('/api/v1/query', request.url), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: await request.text(),
+    })
+    if (!answered.ok) {
+      return new HttpResponse(await answered.text(), {
+        status: answered.status,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+    return new HttpResponse(eventStreamOf((await answered.json()) as { answer?: string }), {
+      headers: { 'Content-Type': 'text/event-stream' },
+    })
+  }),
   http.post('/api/v1/query', async ({ request }) => {
     const body = (await request.json()) as QueryRequest
     if (!body.question || body.question.trim() === '') {
