@@ -51,6 +51,11 @@ class ChatCleanupHoldSelfDisclosureExporterIntegrationTest {
     assertThat(none.text()).isEqualTo("{}");
 
     hold(person, "now() - interval '1 day'");
+    jdbc.update(
+        "UPDATE chat_cleanup_holds SET purpose = 'AUTHORITY_OR_COURT_ORDER', reason = ?,"
+            + " held_until = now() + interval '179 days' WHERE user_id = ?",
+        REASON,
+        person);
     CapturingSelfDisclosureSink sink = export();
 
     assertThat(sink.records("holds"))
@@ -58,13 +63,19 @@ class ChatCleanupHoldSelfDisclosureExporterIntegrationTest {
         .satisfies(
             record -> {
               assertThat(record).containsEntry("heldBy", SelfDisclosureLabels.OTHER_PERSON);
+              assertThat(record)
+                  .containsEntry("purpose", "Behördliche oder gerichtliche Anordnung");
               assertThat(record.get("heldSince")).isNotNull();
+              assertThat(record.get("heldUntil")).isNotNull();
             });
     assertThat(sink.text())
+        .doesNotContain(REASON)
         .doesNotContain("otto")
         .doesNotContain(other.toString())
         .doesNotContain(person.toString());
   }
+
+  private static final String REASON = "Beschluss des Amtsgerichts vom 3. Mai";
 
   private void hold(UUID account, String heldAt) {
     jdbc.update(

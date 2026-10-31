@@ -5,6 +5,7 @@ import io.opaa.compliance.ComplianceManifest.DataEntry;
 import io.opaa.compliance.InstanceDisclosure.CaseCount;
 import io.opaa.compliance.InstanceDisclosure.ConnectorUsage;
 import io.opaa.compliance.InstanceDisclosure.DataFlowState;
+import io.opaa.compliance.InstanceDisclosure.HoldPurposeCases;
 import io.opaa.compliance.InstanceDisclosure.IncidentScopeCases;
 import io.opaa.compliance.InstanceDisclosure.ModelProvider;
 import io.opaa.compliance.InstanceDisclosure.Protocol;
@@ -257,6 +258,20 @@ public final class InstanceDisclosureRenderer {
     out.append("\nAngehaltene Chat-Löschungen: ")
         .append(count(cases.heldChatDeletions()))
         .append("\n\n");
+    out.append(
+        "| Zweck der Anhaltung | Beantragt | Freigegeben | Verlängert | Abgelehnt | Abgelaufen |\n");
+    out.append("|---|---|---|---|---|---|\n");
+    for (HoldPurposeCases purpose : cases.chatDeletionHolds()) {
+      row(
+          out,
+          FactSheetRenderer.text(purpose.label()),
+          count(purpose.requested()),
+          count(purpose.approved()),
+          count(purpose.extended()),
+          count(purpose.rejected()),
+          count(purpose.expired()));
+    }
+    out.append('\n');
     for (String note : cases.notes()) {
       out.append("- ").append(FactSheetRenderer.text(note)).append('\n');
     }

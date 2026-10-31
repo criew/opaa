@@ -17,7 +17,7 @@ import { clearMailbox, linkPathIn, mailCount, waitForMail } from "../../fixtures
  * Two properties are asserted that are easy to lose: the answer is the same whether or not an
  * account exists under the address (ADR-0033, Entscheidung 11 - the flow must not be an enumeration
  * channel), and setting a new password revokes the sessions the old one still had
- * (`password_invalidated_before`, Entscheidung 7) - the old tab learns *why* on its next call.
+ * (session generation `sgen`, Entscheidung 7) - the old tab learns *why* on its next call.
  */
 test.describe("Passwort vergessen, Rücksetzen, alte Sitzung endet", () => {
   const address = uniqueAddress("jana.feldmann");
@@ -100,7 +100,7 @@ test.describe("Passwort vergessen, Rücksetzen, alte Sitzung endet", () => {
       reset.getByText("Passwort festgelegt — Sie können sich jetzt anmelden."),
     ).toBeVisible();
 
-    // The other tab's access token carries an `iat` before password_invalidated_before, so its next
+    // The other tab's access token carries an outdated session generation (`sgen`), so its next
     // call is refused with session_revoked:password_changed - and the sign-in page names the reason
     // instead of a bare "session expired" (ADR-0033, Entscheidung 8).
     await expectSessionEndedWith(running, "session_revoked:password_changed", {

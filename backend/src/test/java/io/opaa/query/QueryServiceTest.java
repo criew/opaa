@@ -22,6 +22,7 @@ import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.DatePrecision;
+import io.opaa.api.types.EvidenceLevel;
 import io.opaa.api.types.MetadataOrigin;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
@@ -973,7 +974,12 @@ class QueryServiceTest {
     QueryResult response = queryService.query("Question", chatId, caller, true, List.of());
 
     assertThat(response.chatId()).isEqualTo(chatId);
-    verify(chatService).appendTurn(eq(chat), eq("Question"), isNull(), eq("Answer"), any());
+    assertThat(response.evidence().level()).isEqualTo(EvidenceLevel.UNSUPPORTED);
+    assertThat(response.evidence().knowledgeSearched()).isTrue();
+    assertThat(response.evidence().passagesFound()).isFalse();
+    verify(chatService)
+        .appendTurn(
+            eq(chat), eq("Question"), isNull(), eq("Answer"), any(), eq(response.evidence()));
   }
 
   /**
@@ -997,7 +1003,7 @@ class QueryServiceTest {
     when(answerGenerationService.generateAnswer(
             any(), any(), eq(conversationKey), any(), anyBoolean(), anyBoolean(), any()))
         .thenReturn(chatResponse);
-    when(chatService.appendTurn(eq(chat), any(), any(), any(), any()))
+    when(chatService.appendTurn(eq(chat), any(), any(), any(), any(), any()))
         .thenReturn("Frage zur Frist");
 
     QueryResult response = queryService.query("Frage zur Frist", chatId, caller, true, List.of());
@@ -1188,7 +1194,7 @@ class QueryServiceTest {
     QueryResult response = queryService.query("Question", foreignChatId, caller, true, List.of());
 
     assertThat(response.chatId()).isEqualTo(foreignChatId);
-    verify(chatService, never()).appendTurn(any(), any(), any(), any(), any());
+    verify(chatService, never()).appendTurn(any(), any(), any(), any(), any(), any());
   }
 
   // A space archived between a persisted chat's creation and this query must reject the query
@@ -1217,7 +1223,7 @@ class QueryServiceTest {
     // placement, not merely that it precedes the LLM call specifically.
     verifyNoInteractions(
         vectorChunkSearch, answerGenerationService, libraryAccessService, chatMemory);
-    verify(chatService, never()).appendTurn(any(), any(), any(), any(), any());
+    verify(chatService, never()).appendTurn(any(), any(), any(), any(), any(), any());
   }
 
   /**
@@ -1241,7 +1247,7 @@ class QueryServiceTest {
 
     verifyNoInteractions(
         vectorChunkSearch, answerGenerationService, libraryAccessService, chatMemory);
-    verify(chatService, never()).appendTurn(any(), any(), any(), any(), any());
+    verify(chatService, never()).appendTurn(any(), any(), any(), any(), any(), any());
   }
 
   /**
@@ -1289,6 +1295,7 @@ class QueryServiceTest {
             eq("Fasse den Stand zum 24.09.2026 zusammen."),
             eq(new UsedPrompt(promptId, "Zusammenfassung")),
             eq("Answer"),
+            any(),
             any());
   }
 
@@ -1500,6 +1507,9 @@ class QueryServiceTest {
     assertThat(response.sources()).hasSize(2);
     assertThat(response.sources().get(0).getCited()).isTrue();
     assertThat(response.sources().get(1).getCited()).isFalse();
+    assertThat(response.evidence().level()).isEqualTo(EvidenceLevel.SUPPORTED);
+    assertThat(response.evidence().confirmedPassages()).isEqualTo(1);
+    assertThat(response.evidence().confirmedDocuments()).isEqualTo(1);
   }
 
   /**

@@ -61,6 +61,61 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
+  /api/v1/query/stream:
+    post:
+      operationId: submitQueryStream
+      tags: [query]
+      summary: >
+        The same turn as POST /api/v1/query, with the answer shown while the model writes it. Meant
+        for the chat of the web interface; the integration API and the MCP channel keep POST
+        /api/v1/query.
+      description: >
+        Checks, retrieval and every refusal are those of POST /api/v1/query and answer with the
+        same status codes before any event is sent: the response is committed only once the model
+        has begun to answer. A model that cannot stream is asked once more without streaming, and
+        its answer arrives as the final event alone. After the commit the body is a
+        text/event-stream of QueryStreamEvent objects, one per event in its data line: started,
+        then delta and reset with the provisional text, ping comments while nothing else is
+        sent, and exactly one closing event, final or error. Citation validation, sources and
+        persistence run after the model has finished, as in POST /api/v1/query; final carries
+        the complete QueryResponse, which replaces the provisional text. The stream lives within
+        this one request: there is no reconnection and no resumption, and a turn whose stream
+        ends without final - the client went away, the instance shut down - was not persisted.
+        The response carries X-Accel-Buffering: no for proxies in front of the application.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueryRequest"
+      responses:
+        "200":
+          description: >
+            The model has begun to answer; the events follow as they are produced.
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/QueryStreamEvent"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          description: >
+            The same refusals as POST /api/v1/query: the author of the named chat is no longer a
+            member of its space, or usedPromptId names a prompt the caller may not use, with code
+            PROMPT_NOT_USABLE.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
   /api/v1/search/metadata-filter-options:
     get:
       operationId: getMetadataFilterOptions
@@ -555,6 +610,34 @@ components:
             prompt's id and its current title as a snapshot on the question's message. It changes
             nothing about the model call.
 
+    QueryStreamEvent:
+      type: object
+      required: [type]
+      description: >
+        One event of POST /api/v1/query/stream, sent as the data line of a server-sent event whose
+        event name is the type.
+      properties:
+        type:
+          type: string
+          enum: [started, delta, reset, final, error]
+          description: >
+            started - the model has begun to answer. delta - text appended to the provisional
+            answer. reset - the provisional answer is replaced by text, for instance once leading
+            reasoning text of the model is recognised as such. final - the turn is complete and
+            persisted, response is the same QueryResponse POST /api/v1/query returns. error -
+            the turn ended without an answer and was not persisted; error carries the envelope and
+            the status the request would have been answered with, with code SHUTTING_DOWN when the
+            instance stopped. final and error are the last event.
+        text:
+          type: string
+          description: >
+            delta and reset only. Provisional text as the model writes it, citation markers
+            included and not yet validated; it must not be copied or exported as the answer.
+        response:
+          $ref: "#/components/schemas/QueryResponse"
+        error:
+          $ref: "#/components/schemas/ErrorResponse"
+
     QueryResponse:
       type: object
       required: [answer, generatedByAi, sources, privateSourcesInContext, metadata, chatId]
@@ -582,6 +665,13 @@ components:
             (SourceReference.privateSource).
         metadata:
           $ref: "#/components/schemas/QueryMetadata"
+        evidence:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/AnswerEvidence"
+          description: >-
+            The answer's Belegstand. Null when there is nothing to assess: a message without
+            anything to search for (a thanks, a wish about the answer's form), an empty answer.
         chatId:
           type: string
           format: uuid
@@ -1297,6 +1387,71 @@ components:
             field's pattern does not accept is rejected with 400.
           items:
             $ref: "#/components/schemas/MetadataFilterFormatFieldCondition"
+
+    EvidenceLevel:
+      type: string
+      description: >-
+        How far an answer rests on confirmed citations: SUPPORTED - only confirmed citations, every
+        sub-query of the search covered by one, answer complete; PARTIALLY_SUPPORTED - at least
+        one confirmed citation, but also an unconfirmed one, a sub-query without a confirmed
+        citation or a cut-off answer; UNSUPPORTED - no confirmed citation at all. A statement
+        about the answer's basis, not about whether it is true.
+      enum: [SUPPORTED, PARTIALLY_SUPPORTED, UNSUPPORTED]
+      example: PARTIALLY_SUPPORTED
+
+    AnswerEvidence:
+      type: object
+      description: >-
+        The Belegstand of one answer, derived deterministically from the citation check and the
+        sub-queries of the search - no score, no model judgment. A client shows the level as
+        word and symbol together with a one-sentence reason built from the fields below.
+      required:
+        - level
+        - confirmedPassages
+        - confirmedDocuments
+        - unconfirmedCitations
+        - uncoveredSubQueries
+        - truncated
+        - knowledgeSearched
+        - passagesFound
+      properties:
+        level:
+          $ref: "#/components/schemas/EvidenceLevel"
+        confirmedPassages:
+          type: integer
+          minimum: 0
+          description: Distinct passages (document and chunk) cited by a confirmed citation.
+          example: 4
+        confirmedDocuments:
+          type: integer
+          minimum: 0
+          description: Distinct documents among the confirmed passages.
+          example: 2
+        unconfirmedCitations:
+          type: integer
+          minimum: 0
+          description: >-
+            Distinct citations the check could not confirm ("Beleg nicht bestätigt").
+          example: 1
+        uncoveredSubQueries:
+          type: array
+          items:
+            type: string
+          description: >-
+            The sub-queries of a decomposed question no confirmed citation stems from, in search
+            order. Empty for an undecomposed question.
+          example: [Gültigkeitsdauer Anwohnerparkausweis]
+        truncated:
+          type: boolean
+          description: The answer was cut off at the model's output limit.
+        knowledgeSearched:
+          type: boolean
+          description: >-
+            Whether any knowledge was searched for this answer - false when the chat searched
+            nothing (no space, nothing associated or readable, Wissen switched off).
+        passagesFound:
+          type: boolean
+          description: Whether the search handed the answer any passage at all.
 
     MetadataFilterMatch:
       type: string

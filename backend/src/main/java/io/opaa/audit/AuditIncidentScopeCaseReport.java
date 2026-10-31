@@ -1,8 +1,10 @@
 package io.opaa.audit;
 
 import io.opaa.api.types.AuditIncidentScopePurpose;
+import io.opaa.api.types.ChatCleanupHoldPurpose;
 import io.opaa.audit.AuditIncidentScopeGrantRepository.TransitionCount;
 import io.opaa.compliance.InstanceDisclosure.CaseCount;
+import io.opaa.compliance.InstanceDisclosure.HoldPurposeCases;
 import io.opaa.compliance.InstanceDisclosure.IncidentScopeCases;
 import io.opaa.compliance.InstanceDisclosure.PurposeCases;
 import io.opaa.compliance.InstanceDisclosure.ReportingPeriod;
@@ -16,10 +18,11 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 /**
- * Requests, approvals and ends of usability of the anlassbezogene Klärung per purpose in a period
- * of completed months, from the monthly counts that outlive the grants: no person, no grant,
- * nothing finer than a month, a count below {@link CaseCount#THRESHOLD} only as such. Ends are
- * counted ahead at approval; in a completed month they have all happened.
+ * Requests, approvals and ends of usability of the anlassbezogene Klärung per purpose, and the
+ * steps of the holds of the chat deletion of locked accounts per purpose, in a period of completed
+ * months, from the monthly counts that outlive the grants: no person, no grant, nothing finer than
+ * a month, a count below {@link CaseCount#THRESHOLD} only as such. Ends are counted ahead at
+ * approval; in a completed month they have all happened.
  */
 @Service
 public class AuditIncidentScopeCaseReport {
@@ -49,9 +52,15 @@ public class AuditIncidentScopeCaseReport {
               + " unbeantwortet und wird mit Ablauf seiner Frist gelöscht. Die Differenz zwischen"
               + " beantragt und freigegeben ist keine Zahl abgelehnter Anträge, weil Antrag und"
               + " Freigabe in verschiedenen Monaten liegen können.",
-          "Angehaltene Chat-Löschungen: wie oft die Verwaltung im Zeitraum die Löschung der Chats"
-              + " eines gesperrten Kontos angehalten hat. Eine Klärung, die die Löschung aufhält,"
-              + " zählt dort nicht mit, sie steht in den Zahlen der Klärungen.",
+          "Angehaltene Chat-Löschungen: wie oft im Zeitraum eine Anhaltung der Löschung der"
+              + " Chats eines gesperrten Kontos wirksam wurde, also im Vier-Augen-Prinzip"
+              + " freigegeben. Eine Klärung, die die Löschung aufhält, zählt dort nicht mit, sie"
+              + " steht in den Zahlen der Klärungen.",
+          "Anhaltungen nach Zweck: Beantragt zählt Anträge auf Anhaltung und auf Verlängerung,"
+              + " Freigegeben neu wirksame Anhaltungen, Verlängert freigegebene Verlängerungen,"
+              + " Abgelehnt abgelehnte, zurückgezogene und unbeantwortet verfallene Anträge,"
+              + " Abgelaufen Anhaltungen, die mit ihrer Höchstdauer endeten. Ein vorzeitig"
+              + " aufgehobener Anhalt zählt nicht als abgelaufen.",
           "Zahlen von 1 bis "
               + (CaseCount.THRESHOLD - 1)
               + " erscheinen als „weniger als "
@@ -100,7 +109,22 @@ public class AuditIncidentScopeCaseReport {
     }
     CaseCount held =
         CaseCount.of(holdCounts.sum(organizationId, period.from(), period.to().withDayOfMonth(1)));
-    return new IncidentScopeCases(period, purposes, held, NOTES);
+    List<HoldPurposeCases> holds = new ArrayList<>();
+    for (ChatCleanupHoldPurpose purpose : ChatCleanupHoldPurpose.values()) {
+      Map<ChatCleanupHoldTransition, Long> steps =
+          holdCounts.sumByTransition(
+              organizationId, purpose, period.from(), period.to().withDayOfMonth(1));
+      holds.add(
+          new HoldPurposeCases(
+              purpose.name(),
+              ChatCleanupHoldPurposeLabels.label(purpose),
+              CaseCount.of(steps.get(ChatCleanupHoldTransition.REQUESTED)),
+              CaseCount.of(steps.get(ChatCleanupHoldTransition.APPROVED)),
+              CaseCount.of(steps.get(ChatCleanupHoldTransition.EXTENDED)),
+              CaseCount.of(steps.get(ChatCleanupHoldTransition.REJECTED)),
+              CaseCount.of(steps.get(ChatCleanupHoldTransition.EXPIRED))));
+    }
+    return new IncidentScopeCases(period, purposes, held, holds, NOTES);
   }
 
   private static CaseCount count(

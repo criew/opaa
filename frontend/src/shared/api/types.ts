@@ -18,6 +18,7 @@ export type DocumentTextResponse = components['schemas']['DocumentTextResponse']
 export type DocumentTextPassage = components['schemas']['DocumentTextPassage']
 export type DocumentTextSection = components['schemas']['DocumentTextSection']
 export type SearchedLibrary = components['schemas']['SearchedLibrary']
+export type AnswerEvidence = components['schemas']['AnswerEvidence']
 export type ErrorResponse = components['schemas']['ErrorResponse']
 
 export type SpaceRole = components['schemas']['SpaceRole']
@@ -486,6 +487,9 @@ export type LocalUserCreatedResponse = components['schemas']['LocalUserCreatedRe
 export type LocalUserUpdateRequest = components['schemas']['LocalUserUpdateRequest']
 export type LocalUserChatCleanupResponse = components['schemas']['LocalUserChatCleanupResponse']
 export type ChatCleanupAfterLockStatus = components['schemas']['ChatCleanupAfterLockStatus']
+export type ChatCleanupHoldPurpose = components['schemas']['ChatCleanupHoldPurpose']
+export type LocalUserChatCleanupHoldRequest =
+  components['schemas']['LocalUserChatCleanupHoldRequest']
 export type LocalUserLockRequest = components['schemas']['LocalUserLockRequest']
 export type LocalUserPasswordResetResponse = components['schemas']['LocalUserPasswordResetResponse']
 export type LocalUserGeneratedPasswordResponse =

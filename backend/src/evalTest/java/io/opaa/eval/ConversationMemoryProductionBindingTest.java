@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.metadata.MetadataFilter;
+import io.opaa.query.answer.ActiveAnswerStreams;
 import io.opaa.query.answer.AnswerGenerationService;
 import io.opaa.query.answer.CaffeineChatMemoryRepository;
 import io.opaa.query.answer.ConversationWindowMessages;
@@ -118,7 +119,7 @@ class ConversationMemoryProductionBindingTest {
     String conversationId = "binding-test-" + UUID.randomUUID();
 
     ChatResponse response =
-        new AnswerGenerationService(resolver, chatMemory)
+        new AnswerGenerationService(resolver, chatMemory, new ActiveAnswerStreams())
             .generateAnswer(
                 "Was kostet ein Anwohnerparkausweis?",
                 List.of(),
@@ -158,7 +159,7 @@ class ConversationMemoryProductionBindingTest {
     ActiveChatModelResolver resolver = mock(ActiveChatModelResolver.class);
     when(resolver.resolveChatClient()).thenReturn(chatClient);
     String conversationId = "binding-test-" + UUID.randomUUID();
-    new AnswerGenerationService(resolver, liveMemory)
+    new AnswerGenerationService(resolver, liveMemory, new ActiveAnswerStreams())
         .generateAnswer(
             "Was kostet ein Anwohnerparkausweis?",
             List.of(),

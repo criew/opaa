@@ -1,6 +1,6 @@
 import type { ChatMessage } from '../types/chat'
 import { createChat } from '../api/chatApi'
-import { sendQuery } from '../api/queryApi'
+import { streamQuery } from '../api/queryStream'
 import { useChatListStore } from './chatListStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
@@ -17,6 +17,7 @@ import {
   parkRefused,
   parkedRefusalsByChatId,
   parkedRefusalsByNewChatSpaceId,
+  isShutdownNotice,
   responseStatus,
 } from './chatRefusals'
 import {
@@ -29,6 +30,8 @@ import {
 } from './chatTurnTracking'
 import type { InFlightSend } from './chatTurnTracking'
 import type { ChatGet, ChatSet, RefusedQuestion } from './chatState'
+
+export const ANSWER_CANCELLED_NOTE = 'Antwort abgebrochen. Die Frage steht wieder im Eingabefeld.'
 
 function generateId(): string {
   return crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
@@ -87,6 +90,8 @@ export async function sendChatMessage(
   const isSendingViewShown = () =>
     isTargetChatShown() && currentChatLoadSequence() === send.loadSequence
 
+  const answerAbort = new AbortController()
+  send.abort = () => answerAbort.abort()
   inFlightSends.add(send)
   set((state) => ({
     messages: [...state.messages, send.userMessage],
@@ -95,9 +100,11 @@ export async function sendChatMessage(
   }))
 
   // A 4xx means the question was not persisted: it is handed back instead of lost.
+  // A stream the instance ended on shutdown kept nothing either: the question goes back as well.
   const classifyRefusal = (failure: unknown): { reason: string; note: string } | null => {
     const status = responseStatus(failure)
-    if (status === null || status < 400 || status >= 500) return null
+    if (status === null || ((status < 400 || status >= 500) && !isShutdownNotice(failure)))
+      return null
     const message =
       failure instanceof Error ? failure.message : 'Ein unerwarteter Fehler ist aufgetreten'
     const promptNotUsable = usedPrompt !== undefined && isPromptNotUsable(failure)
@@ -173,13 +180,22 @@ export async function sendChatMessage(
       await pendingChainForChat
     }
 
-    const response = await sendQuery(
+    const response = await streamQuery(
       question,
       chatId,
       useKnowledge,
       libraryIds,
       metadataFilter,
       usedPrompt?.id,
+      {
+        signal: answerAbort.signal,
+        // Only the view the question was sent from shows its provisional answer.
+        onProvisional: (text) => {
+          if (!isStaleSessionEpoch(sessionEpoch) && isSendingViewShown()) {
+            set({ streamingAnswer: text })
+          }
+        },
+      },
     )
     // The query answer arriving after a logout must not resurrect messages/chatId into the
     // now-emptied store - the second of the two write-back paths after the await.
@@ -212,6 +228,7 @@ export async function sendChatMessage(
         void useChatListStore.getState().chatReturnedFromArchive(spaceId)
       }
     }
+    if (isSendingViewShown()) set({ streamingAnswer: null })
     if (!isSendingViewShown() || send.persisted) {
       // Another chat shown now keeps its own state. The own chat, reloaded in the meantime, may
       // lack this turn in its snapshot - or already show it - and is read again instead of
@@ -233,6 +250,7 @@ export async function sendChatMessage(
       answerTruncated: response.metadata.answerTruncated ?? false,
       answerEmpty: response.metadata.answerEmpty ?? false,
       privateSourcesInContext: response.privateSourcesInContext,
+      ...(response.evidence ? { evidence: response.evidence } : {}),
       timestamp: new Date(),
     }
     set((state) => ({
@@ -256,6 +274,18 @@ export async function sendChatMessage(
     if (isStaleSessionEpoch(sessionEpoch)) return
     inFlightSends.delete(send)
     const isLoading = isViewAwaitingAnswer(get().chatId)
+    if (isSendingViewShown()) set({ streamingAnswer: null })
+    // Cancelled by the person: the server kept nothing, the question goes back to the input. A
+    // turn that the server completed just before the cancellation shows up on the reload.
+    if (answerAbort.signal.aborted) {
+      set((state) => ({
+        messages: state.messages.filter((m) => m !== send.userMessage),
+        isLoading,
+      }))
+      if (send.chatId && isTargetChatShown()) reloadChatTurns(get, set, send.chatId)
+      notify(ANSWER_CANCELLED_NOTE, 'info')
+      return isTargetChatShown() ? { restoreDraft: question, onRestored: () => {} } : undefined
+    }
     // A failure is shown in its own chat only, not in one the person switched to.
     if (!isTargetChatShown()) {
       set({ isLoading })

@@ -28,6 +28,8 @@ export interface InFlightSend {
   persistedUserTurnsBefore: number
   /** Set once an applied server read of the chat already contained this question's turn. */
   persisted: boolean
+  /** Ends the streamed answer: the server stops generating and keeps nothing of the turn. */
+  abort?: () => void
 }
 
 // Every question still waiting for its answer, across chats - the source of each view's isLoading

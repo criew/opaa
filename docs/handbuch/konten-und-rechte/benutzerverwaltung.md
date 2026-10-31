@@ -394,10 +394,27 @@ Konto und der persönliche Space bleiben.
   der Kontenliste steht es bewusst nicht. Die Mail an die Person nennt es ebenfalls. So fällt eine
   irrtümliche Sperre auf, bevor etwas verloren geht; **Entsperren** beendet die Frist, eine neue
   Sperre beginnt sie von vorn.
-- **Anhalten:** „Löschung anhalten“ im selben Dialog hält die Löschung für das Konto an, etwa für ein
-  Disziplinarverfahren oder einen Rechtsstreit; „Löschung fortsetzen“ hebt das auf. Beides steht im
-  Nachweisprotokoll, ohne Begründung. Ist die Frist beim Fortsetzen abgelaufen, löscht die nächste
-  Nacht. Wie oft im Monat angehalten wurde, zählt OPAA ohne Person für die
+- **Anhalten im Vier-Augen-Prinzip:** Muss OPAA die Chats länger aufheben, etwa weil eine Behörde
+  oder ein Gericht es anordnet, beantragt eine Person der Systemverwaltung im selben Dialog
+  „Anhaltung beantragen“. Sie wählt einen Zweck aus fester Liste — behördliche oder gerichtliche
+  Anordnung, Sicherung von Beweismitteln nach einem Sicherheitsvorfall, laufender Auskunfts- oder
+  Löschantrag der Person — und begründet ihn, etwa mit dem Aktenzeichen. Ein disziplinarischer,
+  arbeitsrechtlicher oder leistungsbezogener Zweck steht nicht zur Wahl. Der Antrag allein hält
+  nichts an: Erst wenn eine **zweite** Person der Systemverwaltung im Dialog „Freigeben“ wählt,
+  greift die Anhaltung; die beantragende Person kann nicht selbst freigeben. Jede Person der
+  Systemverwaltung kann einen Antrag ablehnen, die beantragende ihn zurückziehen; unbeantwortet
+  verfällt er nach 14 Tagen.
+- **Ende der Anhaltung:** Der Dialog zeigt Zweck, Begründung, Ende und Restlaufzeit. Die Anhaltung
+  endet nach einer Höchstdauer von selbst (`OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_HOLD_MAX_DAYS`, Kapitel
+  [Konfiguration](../betrieb/konfiguration.md)); weiter geht es nur mit „Verlängerung beantragen“ und
+  einer neuen Freigabe. „Löschung fortsetzen“ hebt sie vorher auf, das darf eine Person allein. Ist
+  die Frist nach der Sperre beim Ende schon abgelaufen, löscht die nächste Nacht. Anhaltungen aus
+  einer Version vor dem Vier-Augen-Prinzip haben keinen Zweck; die erste Nacht nach dem Update gibt
+  ihnen das Ende nach der Höchstdauer.
+- **Nachweis:** Antrag, Freigabe, Verlängerung, Ablehnung, Ablauf und Fortsetzen stehen im
+  Nachweisprotokoll mit dem Zweck, nie mit der Begründung. Die Person sieht Zweck, Beginn und Ende
+  in ihrer Selbstauskunft, die Begründung nicht. Wie oft im Monat und zu welchem Zweck angehalten
+  wurde, zählt OPAA ohne Person für die
   [Auskunft über die Datenerhebung](../betrieb/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation).
 - **Anlassbezogene Klärung:** Steht das Konto in einem offenen Antrag oder einer noch nutzbaren
   Freigabe, wird nicht gelöscht; danach holt die nächste Nacht nach. Am angezeigten Datum ändert das
@@ -408,8 +425,8 @@ Konto und der persönliche Space bleiben.
   Sicherungen bleiben sie, bis diese nach dem Sicherungskonzept des Betriebs ablaufen. Wird eine
   Sicherung eingespielt, löscht die nächste Nacht wieder auftauchende Chats erneut. Wer die Chats
   einer zu Unrecht gesperrten Person zurückholen will, geht in drei Schritten vor: die Sicherung
-  einspielen, **vor dem nächsten nächtlichen Lauf** das Konto entsperren oder die Löschung anhalten,
-  danach prüfen, dass die Chats da sind. Andersherum geht es nicht: Die Sicherung bringt auch den
+  einspielen, **vor dem nächsten nächtlichen Lauf** das Konto entsperren (ein Anhalten braucht zwei
+  Personen und dauert deshalb meist länger), danach prüfen, dass die Chats da sind. Andersherum geht es nicht: Die Sicherung bringt auch den
   alten Stand von Sperre und Anhalten zurück.
 - **Selbstauskunft:** Nach der Sperre kann sich die Person nicht mehr anmelden und keine
   Selbstauskunft mehr ziehen. Bei planbarem Ausscheiden gibt die Dienststelle ihr vorher Gelegenheit

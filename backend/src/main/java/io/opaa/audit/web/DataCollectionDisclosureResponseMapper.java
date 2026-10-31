@@ -2,6 +2,7 @@ package io.opaa.audit.web;
 
 import io.opaa.api.dto.DataCollectionDisclosure;
 import io.opaa.api.dto.DisclosureCaseCount;
+import io.opaa.api.dto.DisclosureChatDeletionHoldCases;
 import io.opaa.api.dto.DisclosureConnectorType;
 import io.opaa.api.dto.DisclosureDataFlow;
 import io.opaa.api.dto.DisclosureIncidentScopeCases;
@@ -14,6 +15,7 @@ import io.opaa.api.dto.DisclosureQueryPath;
 import io.opaa.api.dto.DisclosureRunningInstance;
 import io.opaa.api.dto.DisclosureSetting;
 import io.opaa.api.types.AuditIncidentScopePurpose;
+import io.opaa.api.types.ChatCleanupHoldPurpose;
 import io.opaa.compliance.FactSheetRenderer;
 import io.opaa.compliance.InstanceDisclosure;
 import io.opaa.compliance.InstanceDisclosure.CaseCount;
@@ -135,6 +137,19 @@ final class DataCollectionDisclosureResponseMapper {
                             .expired(caseCount(purpose.expired())))
                 .toList())
         .heldChatDeletions(caseCount(cases.heldChatDeletions()))
+        .chatDeletionHolds(
+            cases.chatDeletionHolds().stream()
+                .map(
+                    purpose ->
+                        new DisclosureChatDeletionHoldCases()
+                            .purpose(ChatCleanupHoldPurpose.valueOf(purpose.purpose()))
+                            .label(purpose.label())
+                            .requested(caseCount(purpose.requested()))
+                            .approved(caseCount(purpose.approved()))
+                            .extended(caseCount(purpose.extended()))
+                            .rejected(caseCount(purpose.rejected()))
+                            .expired(caseCount(purpose.expired())))
+                .toList())
         .notes(cases.notes());
   }
 

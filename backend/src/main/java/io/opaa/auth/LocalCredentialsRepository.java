@@ -98,31 +98,24 @@ public interface LocalCredentialsRepository extends JpaRepository<LocalCredentia
   /**
    * The mass revocation of several accounts in one statement (switching the local account
    * management off, ADR-0033 Entscheidung 4): the session generation of every account in {@code
-   * userIds} goes up, and {@code cutoff} is set for tokens without it. Bypasses the optimistic
-   * {@code version}, as every bulk update does - a stale entity written afterwards cannot lower the
-   * generation, the trigger on the table keeps it; returns the number of rows written.
+   * userIds} goes up. Bypasses the optimistic {@code version}, as every bulk update does - a stale
+   * entity written afterwards cannot lower the generation, the trigger on the table keeps it;
+   * returns the number of rows written.
    */
   @Transactional
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query(
-      "UPDATE LocalCredentials c SET c.passwordInvalidatedBefore = :cutoff,"
-          + " c.sessionGeneration = c.sessionGeneration + 1, c.updatedAt = :now"
-          + " WHERE c.userId IN :userIds")
-  int invalidateSessionsIssuedBefore(
-      @Param("userIds") Collection<UUID> userIds,
-      @Param("cutoff") Instant cutoff,
-      @Param("now") Instant now);
+      "UPDATE LocalCredentials c SET c.sessionGeneration = c.sessionGeneration + 1,"
+          + " c.updatedAt = :now WHERE c.userId IN :userIds")
+  int endAllSessions(@Param("userIds") Collection<UUID> userIds, @Param("now") Instant now);
 
   /**
-   * The session generation and the cutoff of one account, as {@code [session_generation,
-   * password_invalidated_before]}, under a share lock held until the caller's transaction ends: an
-   * act that ends every session updates this row, so it either waits for the caller or has written
-   * it already and is seen here. Empty for an account without local credentials.
+   * The session generation of one account, under a share lock held until the caller's transaction
+   * ends: an act that ends every session updates this row, so it either waits for the caller or has
+   * written it already and is seen here. Empty for an account without local credentials.
    */
   @Query(
-      value =
-          "SELECT session_generation, password_invalidated_before FROM local_credentials"
-              + " WHERE user_id = :userId FOR SHARE",
+      value = "SELECT session_generation FROM local_credentials WHERE user_id = :userId FOR SHARE",
       nativeQuery = true)
-  List<Object[]> lockSessionStamp(@Param("userId") UUID userId);
+  List<Long> lockSessionGeneration(@Param("userId") UUID userId);
 }

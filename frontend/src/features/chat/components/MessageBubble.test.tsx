@@ -29,6 +29,42 @@ const uncitedSource = {
 }
 
 describe('MessageBubble', () => {
+  it('shows the Belegstand under an answer as word and reason, never as colour alone', () => {
+    render(
+      <MessageBubble
+        message={{
+          id: '1',
+          role: 'assistant',
+          content: 'Antwort',
+          evidence: {
+            level: 'PARTIALLY_SUPPORTED',
+            confirmedPassages: 2,
+            confirmedDocuments: 1,
+            unconfirmedCitations: 1,
+            uncoveredSubQueries: [],
+            truncated: false,
+            knowledgeSearched: true,
+            passagesFound: true,
+          },
+          timestamp: new Date(),
+        }}
+      />,
+    )
+
+    const line = screen.getByTestId('answer-evidence')
+    expect(line).toHaveTextContent('Belegstand: Teilweise belegt · 1 Beleg nicht bestätigt')
+    expect(line).toHaveAttribute('data-level', 'PARTIALLY_SUPPORTED')
+  })
+
+  it('shows no Belegstand where none was assessed', () => {
+    render(
+      <MessageBubble
+        message={{ id: '1', role: 'assistant', content: 'Gern geschehen.', timestamp: new Date() }}
+      />,
+    )
+    expect(screen.queryByTestId('answer-evidence')).not.toBeInTheDocument()
+  })
+
   it('names the prompt a question was built from, as plain text without a link', () => {
     render(
       <MessageBubble

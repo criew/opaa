@@ -307,7 +307,7 @@ public class LocalRefreshTokenService {
                       presented.getFamilyId(), RevocationReason.REUSE_DETECTED, now);
               if (rows > 0) {
                 repository.revokeAllForUser(userId, RevocationReason.REUSE_DETECTED, now);
-                revocation.invalidateSessionsIssuedBefore(userId);
+                revocation.endAllSessions(userId);
                 users
                     .findById(userId)
                     .ifPresent(

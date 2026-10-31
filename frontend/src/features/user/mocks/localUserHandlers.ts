@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw'
 import type {
   LocalAuthSettingsUpdateRequest,
+  LocalUserChatCleanupHoldRequest,
   LocalUserChatCleanupResponse,
   LocalUserCreateRequest,
   LocalUserResponse,
@@ -14,7 +15,9 @@ import {
   MOCK_CHAT_DELETION_AT,
   MOCK_SELF_USER_ID,
   OWNS_CONTENT_USER_ID,
+  MOCK_CHAT_CLEANUP_HOLD_MAX_DAYS,
   mockChatCleanupHolds,
+  mockChatCleanupRequests,
   mockLocalAuthSettings,
   mockLocalUsers,
   setMockLocalAuthSettings,
@@ -183,17 +186,29 @@ function lockoutOutOfRange(
 
 /** Only a lock by the administration schedules the deletion; chats play no part in the date. */
 function chatCleanupOf(user: LocalUserResponse): LocalUserChatCleanupResponse {
-  const held = mockChatCleanupHolds.has(user.id)
-  if (held) return { status: 'HELD', held, deleteAfterDays: 365 }
-  if (user.status === 'LOCKED' && user.lockedReason === 'ADMIN') {
-    return {
-      status: 'SCHEDULED',
-      held,
-      deleteAfterDays: 365,
-      earliestDeletionAt: MOCK_CHAT_DELETION_AT,
-    }
+  const hold = mockChatCleanupHolds.get(user.id) ?? null
+  const request = mockChatCleanupRequests.get(user.id)
+  const held = hold !== null
+  const base = {
+    held,
+    deleteAfterDays: 365,
+    holdMaxDays: MOCK_CHAT_CLEANUP_HOLD_MAX_DAYS,
+    hold,
+    pendingRequest: request
+      ? {
+          purpose: request.purpose,
+          reason: request.reason,
+          requestedAt: request.requestedAt,
+          requestedByMe: request.byMe,
+          extension: held,
+        }
+      : null,
   }
-  return { status: 'NOT_LOCKED', held, deleteAfterDays: 365 }
+  if (held) return { ...base, status: 'HELD' }
+  if (user.status === 'LOCKED' && user.lockedReason === 'ADMIN') {
+    return { ...base, status: 'SCHEDULED', earliestDeletionAt: MOCK_CHAT_DELETION_AT }
+  }
+  return { ...base, status: 'NOT_LOCKED' }
 }
 
 export const localUserHandlers = [
@@ -426,10 +441,52 @@ export const localUserHandlers = [
     return HttpResponse.json(chatCleanupOf(user))
   }),
 
-  http.put('/api/v1/admin/local-users/:id/chat-cleanup/hold', ({ params }) => {
+  http.post(
+    '/api/v1/admin/local-users/:id/chat-cleanup/hold-request',
+    async ({ params, request }) => {
+      const user = find(String(params.id))
+      if (!user) return notFound()
+      if (mockChatCleanupRequests.has(user.id)) {
+        return HttpResponse.json(
+          { message: 'Für dieses Konto liegt bereits ein Antrag auf Anhaltung der Löschung vor' },
+          { status: 409 },
+        )
+      }
+      const body = (await request.json()) as LocalUserChatCleanupHoldRequest
+      mockChatCleanupRequests.set(user.id, {
+        purpose: body.purpose,
+        reason: body.reason,
+        requestedAt: new Date().toISOString(),
+        byMe: true,
+      })
+      return HttpResponse.json(chatCleanupOf(user))
+    },
+  ),
+
+  http.post('/api/v1/admin/local-users/:id/chat-cleanup/hold-request/approve', ({ params }) => {
     const user = find(String(params.id))
     if (!user) return notFound()
-    mockChatCleanupHolds.add(user.id)
+    const pending = mockChatCleanupRequests.get(user.id)
+    if (!pending) return notFound()
+    if (pending.byMe) {
+      return HttpResponse.json({ message: 'Selbstfreigabe ist nicht zulässig' }, { status: 400 })
+    }
+    mockChatCleanupRequests.delete(user.id)
+    const now = new Date()
+    const until = new Date(now.getTime() + MOCK_CHAT_CLEANUP_HOLD_MAX_DAYS * 86_400_000)
+    mockChatCleanupHolds.set(user.id, {
+      purpose: pending.purpose,
+      reason: pending.reason,
+      heldSince: mockChatCleanupHolds.get(user.id)?.heldSince ?? now.toISOString(),
+      heldUntil: until.toISOString(),
+    })
+    return HttpResponse.json(chatCleanupOf(user))
+  }),
+
+  http.delete('/api/v1/admin/local-users/:id/chat-cleanup/hold-request', ({ params }) => {
+    const user = find(String(params.id))
+    if (!user) return notFound()
+    if (!mockChatCleanupRequests.delete(user.id)) return notFound()
     return HttpResponse.json(chatCleanupOf(user))
   }),
 

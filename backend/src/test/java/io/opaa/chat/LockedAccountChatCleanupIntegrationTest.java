@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.account.LocalUserService;
 import io.opaa.api.types.ChatCleanupAfterLockStatus;
+import io.opaa.api.types.ChatCleanupHoldPurpose;
 import io.opaa.api.types.LockReason;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SystemRole;
@@ -13,7 +14,9 @@ import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.space.Space;
@@ -51,6 +54,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 class LockedAccountChatCleanupIntegrationTest {
 
   private static final Duration DAY = Duration.ofDays(1);
+  private static final String REASON = "Anordnung der Staatsanwaltschaft, Az. 12 Js 345/26";
 
   @Autowired private LockedAccountChatCleanupService cleanupService;
   @Autowired private LockedAccountChatCleanupStore store;
@@ -270,26 +274,56 @@ class LockedAccountChatCleanupIntegrationTest {
   }
 
   @Test
-  void aHeldAccountKeepsItsChatsAndResumingCatchesUpInTheNextRun() {
+  void aRequestAloneHoldsNothing() {
     UUID admin = admin();
     UUID person = localAccount();
     chat(space(person, true), person);
     lockByAdministration(person, now.minus(DAY.multipliedBy(800)));
 
-    assertThat(cleanupService.hold(actor(admin), person).status())
-        .isEqualTo(ChatCleanupAfterLockStatus.HELD);
-    cleanupService.hold(actor(admin), person);
+    LockedAccountChatCleanup state =
+        cleanupService.requestHold(
+            actor(admin), person, ChatCleanupHoldPurpose.AUTHORITY_OR_COURT_ORDER, REASON);
+
+    assertThat(state.status()).isEqualTo(ChatCleanupAfterLockStatus.SCHEDULED);
+    assertThat(state.held()).isFalse();
+    assertThat(state.pendingRequest().requestedBy()).isEqualTo(admin);
+    assertThat(state.pendingRequest().extension()).isFalse();
+    cleanupService.runOnce(now);
+    assertThat(chatCountOf(person)).isZero();
+    assertThat(eventsOf(person, "LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_REQUESTED")).isOne();
+  }
+
+  @Test
+  void aSecondAdministratorApprovesTheHoldAndResumingCatchesUpInTheNextRun() {
+    UUID requester = admin();
+    UUID approver = admin();
+    UUID person = localAccount();
+    chat(space(person, true), person);
+    lockByAdministration(person, now.minus(DAY.multipliedBy(800)));
+    cleanupService.requestHold(
+        actor(requester), person, ChatCleanupHoldPurpose.SECURITY_INCIDENT_EVIDENCE, REASON);
+
+    assertThatThrownBy(() -> cleanupService.approveHold(actor(requester), person))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Selbstfreigabe");
+    LockedAccountChatCleanup held = cleanupService.approveHold(actor(approver), person);
+
+    assertThat(held.status()).isEqualTo(ChatCleanupAfterLockStatus.HELD);
+    assertThat(held.pendingRequest()).isNull();
+    assertThat(held.hold().purpose()).isEqualTo(ChatCleanupHoldPurpose.SECURITY_INCIDENT_EVIDENCE);
+    assertThat(held.hold().reason()).isEqualTo(REASON);
+    assertThat(held.hold().heldUntil())
+        .isBetween(now.plus(DAY.multipliedBy(179)), now.plus(DAY.multipliedBy(181)));
     cleanupService.runOnce(now);
     assertThat(chatCountOf(person)).isOne();
 
-    assertThat(cleanupService.resume(actor(admin), person).status())
+    assertThat(cleanupService.resume(actor(requester), person).status())
         .isEqualTo(ChatCleanupAfterLockStatus.SCHEDULED);
-    cleanupService.resume(actor(admin), person);
+    cleanupService.resume(actor(requester), person);
     cleanupService.runOnce(now);
     assertThat(chatCountOf(person)).isZero();
     assertThat(eventsOf(person, "LOCKED_ACCOUNT_CHAT_CLEANUP_HELD")).isOne();
     assertThat(eventsOf(person, "LOCKED_ACCOUNT_CHAT_CLEANUP_RESUMED")).isOne();
-    // the second hold of the same account placed nothing, so it counts once
     assertThat(
             jdbc.queryForObject(
                 "SELECT coalesce(sum(hold_count), 0) FROM audit_chat_cleanup_hold_monthly_counts"
@@ -297,6 +331,137 @@ class LockedAccountChatCleanupIntegrationTest {
                 Integer.class,
                 organizationId))
         .isOne();
+    assertThat(stepCount(ChatCleanupHoldPurpose.SECURITY_INCIDENT_EVIDENCE, "REQUESTED")).isOne();
+    assertThat(stepCount(ChatCleanupHoldPurpose.SECURITY_INCIDENT_EVIDENCE, "APPROVED")).isOne();
+  }
+
+  @Test
+  void aRequestNeedsAPurposeAndAReasonAndOnlyOneIsPendingAtATime() {
+    UUID admin = admin();
+    UUID person = localAccount();
+
+    assertThatThrownBy(() -> cleanupService.requestHold(actor(admin), person, null, REASON))
+        .isInstanceOf(ValidationException.class);
+    assertThatThrownBy(
+            () ->
+                cleanupService.requestHold(
+                    actor(admin), person, ChatCleanupHoldPurpose.DATA_SUBJECT_REQUEST, "  kurz  "))
+        .isInstanceOf(ValidationException.class);
+    cleanupService.requestHold(
+        actor(admin), person, ChatCleanupHoldPurpose.DATA_SUBJECT_REQUEST, REASON);
+    assertThatThrownBy(
+            () ->
+                cleanupService.requestHold(
+                    actor(admin(), organizationId),
+                    person,
+                    ChatCleanupHoldPurpose.DATA_SUBJECT_REQUEST,
+                    REASON))
+        .isInstanceOf(ConflictException.class);
+    assertThatThrownBy(() -> cleanupService.approveHold(actor(admin()), localAccount()))
+        .isInstanceOf(NotFoundException.class);
+  }
+
+  @Test
+  void aRejectedOrWithdrawnRequestLeavesNoHold() {
+    UUID requester = admin();
+    UUID person = localAccount();
+    cleanupService.requestHold(
+        actor(requester), person, ChatCleanupHoldPurpose.DATA_SUBJECT_REQUEST, REASON);
+    assertThat(cleanupService.rejectHold(actor(admin()), person).pendingRequest()).isNull();
+    cleanupService.requestHold(
+        actor(requester), person, ChatCleanupHoldPurpose.DATA_SUBJECT_REQUEST, REASON);
+    assertThat(cleanupService.rejectHold(actor(requester), person).held()).isFalse();
+
+    assertThat(causesOf(person, "LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_REJECTED"))
+        .containsExactlyInAnyOrder("REJECTED", "WITHDRAWN");
+    assertThat(stepCount(ChatCleanupHoldPurpose.DATA_SUBJECT_REQUEST, "REJECTED")).isEqualTo(2);
+    assertThatThrownBy(() -> cleanupService.rejectHold(actor(requester), person))
+        .isInstanceOf(NotFoundException.class);
+  }
+
+  @Test
+  void anExtensionNeedsANewApprovalAndKeepsTheStartOfTheHold() {
+    UUID first = admin();
+    UUID second = admin();
+    UUID person = localAccount();
+    LockedAccountChatCleanup held = approvedHold(person, first, second);
+    setHeldUntil(person, now.plus(DAY.multipliedBy(3)));
+
+    LockedAccountChatCleanup requested =
+        cleanupService.requestHold(
+            actor(second), person, ChatCleanupHoldPurpose.AUTHORITY_OR_COURT_ORDER, REASON + "!");
+    assertThat(requested.pendingRequest().extension()).isTrue();
+    assertThat(requested.hold().heldUntil()).isBefore(now.plus(DAY.multipliedBy(4)));
+    LockedAccountChatCleanup extended = cleanupService.approveHold(actor(first), person);
+
+    assertThat(extended.hold().heldSince()).isEqualTo(held.hold().heldSince());
+    assertThat(extended.hold().heldUntil()).isAfter(now.plus(DAY.multipliedBy(179)));
+    assertThat(extended.hold().reason()).isEqualTo(REASON + "!");
+    assertThat(eventsOf(person, "LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_EXTENDED")).isOne();
+    assertThat(eventsOf(person, "LOCKED_ACCOUNT_CHAT_CLEANUP_HELD")).isOne();
+    assertThat(stepCount(ChatCleanupHoldPurpose.AUTHORITY_OR_COURT_ORDER, "EXTENDED")).isOne();
+  }
+
+  @Test
+  void aHoldEndsAtItsMaximumDurationAndAnOverduePeriodDeletesInTheSameRun() {
+    UUID person = localAccount();
+    chat(space(person, true), person);
+    lockByAdministration(person, now.minus(DAY.multipliedBy(800)));
+    approvedHold(person, admin(), admin());
+    setHeldUntil(person, now.minus(DAY));
+
+    assertThat(cleanupService.stateOf(organizationId, person).status())
+        .isEqualTo(ChatCleanupAfterLockStatus.SCHEDULED);
+    cleanupService.runOnce(now);
+
+    assertThat(chatCountOf(person)).isZero();
+    assertThat(store.findHold(person)).isEmpty();
+    assertThat(eventsOf(person, "LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_EXPIRED")).isOne();
+    assertThat(stepCount(ChatCleanupHoldPurpose.AUTHORITY_OR_COURT_ORDER, "EXPIRED")).isOne();
+  }
+
+  @Test
+  void aHoldFromBeforeTheApprovalGetsItsEndInTheFirstRunAndKeepsTheChatsUntilThen() {
+    UUID person = localAccount();
+    chat(space(person, true), person);
+    lockByAdministration(person, now.minus(DAY.multipliedBy(800)));
+    jdbc.update(
+        "INSERT INTO chat_cleanup_holds (user_id, organization_id, held_at) VALUES (?, ?, ?)",
+        person,
+        organizationId,
+        Timestamp.from(now.minus(DAY.multipliedBy(400))));
+    assertThat(cleanupService.stateOf(organizationId, person).hold().heldUntil()).isNull();
+
+    cleanupService.runOnce(now);
+
+    assertThat(chatCountOf(person)).isOne();
+    LockedAccountChatCleanup state = cleanupService.stateOf(organizationId, person);
+    assertThat(state.status()).isEqualTo(ChatCleanupAfterLockStatus.HELD);
+    assertThat(state.hold().purpose()).isNull();
+    assertThat(state.hold().heldUntil())
+        .isBetween(now.plus(DAY.multipliedBy(179)), now.plus(DAY.multipliedBy(181)));
+  }
+
+  @Test
+  void theRunDropsARequestUnansweredForFourteenDays() {
+    UUID requester = admin();
+    UUID stale = localAccount();
+    UUID fresh = localAccount();
+    cleanupService.requestHold(
+        actor(requester), stale, ChatCleanupHoldPurpose.DATA_SUBJECT_REQUEST, REASON);
+    cleanupService.requestHold(
+        actor(requester), fresh, ChatCleanupHoldPurpose.DATA_SUBJECT_REQUEST, REASON);
+    jdbc.update(
+        "UPDATE chat_cleanup_hold_requests SET requested_at = ? WHERE user_id = ?",
+        Timestamp.from(now.minus(DAY.multipliedBy(15))),
+        stale);
+
+    cleanupService.runOnce(now);
+
+    assertThat(store.findRequest(stale)).isEmpty();
+    assertThat(store.findRequest(fresh)).isPresent();
+    assertThat(causesOf(stale, "LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_REJECTED"))
+        .containsExactly("UNANSWERED");
   }
 
   @Test
@@ -311,7 +476,7 @@ class LockedAccountChatCleanupIntegrationTest {
     lockByAdministration(localAccount(), now.minus(DAY.multipliedBy(366)));
     UUID held = localAccount();
     lockByAdministration(held, now.minus(DAY.multipliedBy(350)));
-    cleanupService.hold(actor(admin), held);
+    approvedHold(held, admin, admin());
 
     assertThat(cleanupService.upcomingAccounts(now)).isEqualTo(before + 2);
     assertThat(service(false).upcomingAccounts(now)).isZero();
@@ -353,7 +518,13 @@ class LockedAccountChatCleanupIntegrationTest {
 
     LockedAccountChatCleanup expected =
         new LockedAccountChatCleanup(
-            ChatCleanupAfterLockStatus.SCHEDULED, false, 365, lockedAt.plus(DAY.multipliedBy(365)));
+            ChatCleanupAfterLockStatus.SCHEDULED,
+            false,
+            365,
+            180,
+            lockedAt.plus(DAY.multipliedBy(365)),
+            null,
+            null);
     assertThat(cleanupService.stateOf(organizationId, withChats)).isEqualTo(expected);
     assertThat(cleanupService.stateOf(organizationId, withoutChats)).isEqualTo(expected);
     assertThat(cleanupService.stateOf(organizationId, inKlaerung)).isEqualTo(expected);
@@ -590,6 +761,44 @@ class LockedAccountChatCleanupIntegrationTest {
     UUID id = userRepository.save(user).getId();
     credentialsRepository.save(new LocalCredentials(id, "Testkonto", now));
     return id;
+  }
+
+  private CurrentUser actor(UUID adminId, UUID organization) {
+    return CurrentUser.of(
+        adminId, organization, SystemRole.SYSTEM_ADMIN, "Verwaltung", "admin@stadt.example");
+  }
+
+  /** A hold of {@code person} requested by {@code requester} and approved by {@code approver}. */
+  private LockedAccountChatCleanup approvedHold(UUID person, UUID requester, UUID approver) {
+    cleanupService.requestHold(
+        actor(requester), person, ChatCleanupHoldPurpose.AUTHORITY_OR_COURT_ORDER, REASON);
+    return cleanupService.approveHold(actor(approver), person);
+  }
+
+  private void setHeldUntil(UUID person, Instant heldUntil) {
+    jdbc.update(
+        "UPDATE chat_cleanup_holds SET held_until = ? WHERE user_id = ?",
+        Timestamp.from(heldUntil),
+        person);
+  }
+
+  private long stepCount(ChatCleanupHoldPurpose purpose, String transition) {
+    return jdbc.queryForObject(
+        "SELECT coalesce(sum(case_count), 0) FROM audit_chat_cleanup_hold_purpose_counts"
+            + " WHERE organization_id = ? AND purpose = ? AND transition = ?",
+        Long.class,
+        organizationId,
+        purpose.name(),
+        transition);
+  }
+
+  private List<String> causesOf(UUID userId, String type) {
+    return jdbc.queryForList(
+        "SELECT CAST(after AS jsonb) ->> 'cause' FROM audit_log WHERE event_type = ? AND subject_ref IN"
+            + " (SELECT CAST(pseudonym_id AS text) FROM audit_actor_pseudonyms WHERE user_id = ?)",
+        String.class,
+        type,
+        userId);
   }
 
   private CurrentUser actor(UUID adminId) {

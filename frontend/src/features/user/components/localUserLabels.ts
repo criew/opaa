@@ -1,4 +1,5 @@
 import type {
+  ChatCleanupHoldPurpose,
   LocalAccountState,
   LockReason,
   LocalUserChatCleanupResponse,
@@ -166,9 +167,9 @@ export function chatCleanupText(state: LocalUserChatCleanupResponse): string {
       )
     case 'HELD':
       return (
-        'Die Löschung der Chats ist für dieses Konto angehalten. Nach dem Fortsetzen löscht der ' +
-        'nächste nächtliche Lauf, sobald die Frist nach einer Sperre durch die Verwaltung ' +
-        'abgelaufen ist.'
+        'Die Löschung der Chats ist für dieses Konto angehalten. Nach dem Ende der Anhaltung ' +
+        'löscht der nächste nächtliche Lauf, sobald die Frist nach einer Sperre durch die ' +
+        'Verwaltung abgelaufen ist.'
       )
     case 'SWITCHED_OFF':
       return 'Die Löschung der Chats gesperrter Konten ist im Betrieb abgeschaltet.'
@@ -178,4 +179,31 @@ export function chatCleanupText(state: LocalUserChatCleanupResponse): string {
         'danach gelöscht. Eine Sperre wegen Inaktivität oder Fehlversuchen löst das nicht aus.'
       )
   }
+}
+
+/**
+ * The closed list of purposes a hold may name, in the order of the specification. A
+ * disziplinarischer, arbeitsrechtlicher or leistungsbezogener purpose is deliberately absent.
+ */
+export const CHAT_CLEANUP_HOLD_PURPOSES: readonly ChatCleanupHoldPurpose[] = [
+  'AUTHORITY_OR_COURT_ORDER',
+  'SECURITY_INCIDENT_EVIDENCE',
+  'DATA_SUBJECT_REQUEST',
+]
+
+export const CHAT_CLEANUP_HOLD_PURPOSE_LABEL: Readonly<Record<ChatCleanupHoldPurpose, string>> = {
+  AUTHORITY_OR_COURT_ORDER: 'Behördliche oder gerichtliche Anordnung',
+  SECURITY_INCIDENT_EVIDENCE: 'Sicherung von Beweismitteln nach einem Sicherheitsvorfall',
+  DATA_SUBJECT_REQUEST: 'Laufender Auskunfts- oder Löschantrag',
+}
+
+/** The purpose of a hold in words; a hold from before the approval in pairs has none. */
+export function chatCleanupHoldPurposeText(purpose: ChatCleanupHoldPurpose | null | undefined) {
+  return purpose ? CHAT_CLEANUP_HOLD_PURPOSE_LABEL[purpose] : 'ohne Zweckangabe (Altbestand)'
+}
+
+/** Whole days from `now` until `until`, never below zero. */
+export function remainingDays(until: string, now: Date = new Date()): number {
+  const ms = new Date(until).getTime() - now.getTime()
+  return Math.max(0, Math.ceil(ms / 86_400_000))
 }

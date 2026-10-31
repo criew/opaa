@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-29
+stand: 2026-10-31
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-24
@@ -251,9 +251,14 @@ der Sperre durch die Verwaltung kennt:
    oder den Datenschutzbeauftragten.
 3. Die Chats werden nach [Frist, nicht kürzer als die Untergrenze der Version] gelöscht. Eine
    Verlängerung bedarf der Zustimmung des Personalrats.
-4. Die Löschung eines Kontos wird nur [auf Antrag der betroffenen Person / auf gerichtliche oder
-   behördliche Anordnung] angehalten, nicht allein wegen eines Disziplinarverfahrens; der Personalrat
-   wird unterrichtet.
+4. Die Löschung der Chats eines Kontos wird nur für einen der Zwecke angehalten, die die eingesetzte
+   Version zur Auswahl stellt (behördliche oder gerichtliche Anordnung, Sicherung von Beweismitteln
+   nach einem Sicherheitsvorfall, laufender Auskunfts- oder Löschantrag der Person), nie für einen
+   disziplinarischen, arbeitsrechtlichen oder leistungsbezogenen Zweck. Eine Person beantragt mit
+   Begründung, eine zweite gibt frei; die Anhaltung endet nach höchstens [Höchstdauer, nicht länger
+   als die Voreinstellung der Version] und wird nur mit erneuter Freigabe verlängert. Der Personalrat
+   wird [im Einzelfall / mit dem Bericht nach Nr. …] unterrichtet; die betroffene Person sieht Zweck
+   und Dauer in ihrer Selbstauskunft.
 5. Der Protokolleintrag über die Löschung dient nur deren Nachweis.
 
 #### 13. Datenflüsse nach außen

@@ -86,31 +86,11 @@ class LocalAccessTokenServiceTest {
   }
 
   @Test
-  void mintsNoEarlierThanNotBeforeAndKeepsTheLifetimeFromThere() {
-    User user = localUser("a@stadt.example", "A");
-    Instant cutoff = NOW.plusSeconds(1);
-
-    LocalCredentials revoked = credentials(user);
-    revoked.invalidateSessionsIssuedBefore(cutoff, NOW);
-    LocalCredentials revokedEarlier = credentials(user);
-    revokedEarlier.invalidateSessionsIssuedBefore(NOW.minusSeconds(5), NOW);
-
-    LocalAccessTokenService.IssuedAccessToken replacement = service.issue(user, revoked);
-    LocalAccessTokenService.IssuedAccessToken past = service.issue(user, revokedEarlier);
-
-    assertThat(replacement.issuedAt()).isEqualTo(cutoff);
-    assertThat(replacement.expiresAt()).isEqualTo(cutoff.plus(Duration.ofMinutes(15)));
-    assertThat(decode(replacement.value()).getIssuedAt()).isEqualTo(cutoff);
-    // a notBefore in the past changes nothing
-    assertThat(past.issuedAt()).isEqualTo(NOW);
-  }
-
-  @Test
   void carriesTheSessionGenerationOfTheAccount() {
     User user = localUser("a@stadt.example", "A");
     LocalCredentials row = credentials(user);
-    row.invalidateSessionsIssuedBefore(NOW, NOW);
-    row.invalidateSessionsIssuedBefore(NOW, NOW);
+    row.endAllSessions(NOW);
+    row.endAllSessions(NOW);
 
     Jwt jwt = decode(service.issue(user, row).value());
 

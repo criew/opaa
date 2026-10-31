@@ -12,7 +12,7 @@ prompts:
       - io.opaa.query.answer.PassageRules
       - io.opaa.query.answer.SpaceInstructionBlock
       - io.opaa.retrieval.ConversationNoteBlock
-    sha256: "dbaa7064679347ef0684a8d84d37e8e0b0b98ad36a3799e512b9d359210dafb1"
+    sha256: "ece4655f419e6c88037798105df112d6620f8434b12b0e0a6ba817f0e2b6009c"
   - id: query-decomposition
     purpose: Zerlegt eine Frage mit dem Gesprächsverlauf in Suchanfragen oder erkennt „keine Suche“
     classes:

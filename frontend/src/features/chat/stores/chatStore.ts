@@ -32,6 +32,7 @@ import {
   currentChatLoadSequence,
   currentCompletedTurnSequence,
   inFlightSends,
+  isNewChatViewOf,
   persistedUserTurnsByChatId,
   recordPersistedTurns,
 } from './chatTurnTracking'
@@ -81,6 +82,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   isLoading: false,
   isLoadingChat: false,
   error: null,
+  streamingAnswer: null,
   returnedQuestion: null,
   scope: 'all',
   referencedLibraryIds: [],
@@ -96,7 +98,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // why a per-chat counter, rather than settingsUpdateChains, is needed to catch this ordering.
     const settingsSequenceAtStart = settingsChangeSequenceByChatId.get(chatId) ?? 0
     const completedTurnsAtStart = currentCompletedTurnSequence()
-    set({ isLoadingChat: true, error: null, returnedQuestion: null })
+    set({ isLoadingChat: true, error: null, returnedQuestion: null, streamingAnswer: null })
     try {
       const detail = await getChat(chatId)
       // A newer loadChat/startNewChat call superseded this one while the request was in flight -
@@ -183,6 +185,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       title: null,
       messages: [],
       error: null,
+      streamingAnswer: null,
       scope: 'all',
       referencedLibraryIds: [],
       metadataFilter: null,
@@ -260,6 +263,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   clearReturnedQuestion: () => set({ returnedQuestion: null }),
 
+  cancelAnswer: () => {
+    const chatId = get().chatId
+    for (const send of inFlightSends) {
+      if (chatId !== null ? send.chatId === chatId : isNewChatViewOf(send)) send.abort?.()
+    }
+  },
+
   reset: () => {
     // Invalidates any loadChat still in flight, matching startNewChat above - otherwise a
     // response arriving after reset() could resurrect the previous user's chat.
@@ -284,6 +294,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       isLoading: false,
       isLoadingChat: false,
       error: null,
+      streamingAnswer: null,
       returnedQuestion: null,
       scope: 'all',
       referencedLibraryIds: [],

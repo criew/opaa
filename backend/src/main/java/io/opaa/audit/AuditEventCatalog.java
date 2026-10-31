@@ -516,7 +516,15 @@ public final class AuditEventCatalog {
     put(keys, Set.of("reason"), LOCAL_USER_LOCKED);
     put(keys, Set.of("lockedReason"), LOCAL_USER_UNLOCKED);
     put(keys, Set.of("lockReason", "periodStart"), LOCKED_ACCOUNT_CHATS_DELETED);
-    put(keys, Set.of(), LOCKED_ACCOUNT_CHAT_CLEANUP_HELD, LOCKED_ACCOUNT_CHAT_CLEANUP_RESUMED);
+    put(keys, Set.of("extension", "purpose"), LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_REQUESTED);
+    put(
+        keys,
+        Set.of("heldUntil", "purpose"),
+        LOCKED_ACCOUNT_CHAT_CLEANUP_HELD,
+        LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_EXTENDED,
+        LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_EXPIRED);
+    put(keys, Set.of("cause", "purpose"), LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_REJECTED);
+    put(keys, Set.of(), LOCKED_ACCOUNT_CHAT_CLEANUP_RESUMED);
     put(keys, Set.of(), LOCAL_USER_PASSWORD_GENERATED);
     put(keys, Set.of("state", "systemRole"), LOCAL_USER_DELETED);
     put(

@@ -29,6 +29,7 @@ final class QueryResponseMapper {
             ChatSource.anyPrivate(result.sources()),
             toMetadata(result.metadata()),
             result.chatId())
+        .evidence(ChatResponseMapper.toEvidence(result.evidence()))
         .chatTitle(result.chatTitle())
         .noteItems(ChatResponseMapper.toNoteItems(result.noteItems()));
   }
