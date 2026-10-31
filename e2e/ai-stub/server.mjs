@@ -161,6 +161,70 @@ const ANSWER_TRIGGERS = [
 // and note prompts carry the question as well and keep answering, as with the triggers above.
 const FAILURE_TRIGGER = 'E2E-MODELL-FEHLER'
 
+// --- Streamed answers (chat stream, #3490) -----------------------------------------------------
+//
+// A request with "stream": true gets the answer as OpenAI chunks (text/event-stream), a few words
+// per chunk, then a usage chunk and [DONE]. The trigger word E2E-ANTWORT-LANGSAM in the person's
+// question pads the answer and sends one chunk every STREAM_SLOW_DELAY_MS, so a scenario can watch
+// the provisional text grow and cancel it. GET /control/streams counts streams the reader left
+// before their end - a cancel in the chat has to reach the model, not just the browser.
+const SLOW_TRIGGER = 'E2E-ANTWORT-LANGSAM'
+const STREAM_SLOW_DELAY_MS = 400
+const SLOW_PADDING = Array.from(
+  { length: 20 },
+  (_, index) => `Ausführung ${index + 1} folgt hier.`,
+).join(' ')
+let abandonedStreams = 0
+let finishedStreams = 0
+
+function streamsSlowly(messages) {
+  return answerPromptQuestion(messages)?.includes(SLOW_TRIGGER) ?? false
+}
+
+function chunksOf(content) {
+  const words = content.split(/(?<= )/)
+  const chunks = []
+  for (let index = 0; index < words.length; index += 3) {
+    chunks.push(words.slice(index, index + 3).join(''))
+  }
+  return chunks
+}
+
+function streamCompletion(req, res, model, content, slow) {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+  })
+  const created = Math.floor(Date.now() / 1000)
+  const event = (choices, extra = {}) =>
+    `data: ${JSON.stringify({ id: 'chatcmpl-stub', object: 'chat.completion.chunk', created, model, choices, ...extra })}\n\n`
+  const parts = chunksOf(content)
+  let index = 0
+  let closed = false
+  res.on('close', () => {
+    if (!res.writableFinished) {
+      closed = true
+      abandonedStreams += 1
+    }
+  })
+  const next = () => {
+    if (closed) return
+    if (index < parts.length) {
+      const delta = index === 0 ? { role: 'assistant', content: parts[0] } : { content: parts[index] }
+      res.write(event([{ index: 0, delta, finish_reason: null, logprobs: null }]))
+      index += 1
+      setTimeout(next, slow ? STREAM_SLOW_DELAY_MS : 0)
+      return
+    }
+    res.write(event([{ index: 0, delta: {}, finish_reason: 'stop', logprobs: null }]))
+    res.write(event([], { usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 } }))
+    res.end('data: [DONE]\n\n')
+    finishedStreams += 1
+  }
+  next()
+}
+
 function systemTextOf(messages) {
   return messages
     .filter((message) => message.role === 'system' && typeof message.content === 'string')
@@ -265,6 +329,11 @@ const server = createServer(async (req, res) => {
       return
     }
 
+    if (req.method === 'GET' && matchesEndpoint(req.url, '/control/streams')) {
+      sendJson(res, 200, { abandoned: abandonedStreams, finished: finishedStreams })
+      return
+    }
+
     if (req.method === 'POST' && matchesEndpoint(req.url, '/control/embedding-hold')) {
       const body = JSON.parse(await readBody(req))
       if (body.hold === true && typeof body.marker === 'string' && body.marker !== '') {
@@ -364,6 +433,18 @@ const server = createServer(async (req, res) => {
       const content = combinedText.includes(NOTE_PROMPT_MARKER)
         ? condensedNote(combinedText)
         : answer
+
+      if (body.stream === true) {
+        const slow = streamsSlowly(messages)
+        streamCompletion(
+          req,
+          res,
+          body.model ?? 'stub-chat',
+          slow ? `${content}\n\n${SLOW_PADDING}` : content,
+          slow,
+        )
+        return
+      }
 
       sendJson(res, 200, {
         id: 'chatcmpl-stub',

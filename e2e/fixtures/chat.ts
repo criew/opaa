@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test'
+import type { Locator, Page, Response } from '@playwright/test'
 import { expect } from '@playwright/test'
 
 /**
@@ -49,6 +49,36 @@ export async function startAnotherChatViaSidebar(page: Page): Promise<void> {
 export async function clearSearchScope(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Referenz Space-Wissen entfernen' }).press('Backspace')
   await expect(page.getByText('Antwortet ohne Dokumente.')).toBeVisible()
+}
+
+/** The path the chat sends a question to: the answer arrives there as an event stream. */
+export const CHAT_ANSWER_PATH = '/api/v1/query/stream'
+
+/** Whether a response is the chat's answer to a question (see {@link CHAT_ANSWER_PATH}). */
+export function isChatAnswer(response: Response): boolean {
+  return (
+    response.request().method() === 'POST' &&
+    new URL(response.url()).pathname === CHAT_ANSWER_PATH
+  )
+}
+
+/**
+ * The id of the chat on screen, once the first answer has persisted it and the URL has left
+ * `/chats/new`. Read from the URL, not the response: Chromium hands out no body of a streamed
+ * response the page has read itself.
+ */
+export async function shownChatId(page: Page): Promise<string> {
+  await page.waitForURL(/\/spaces\/[^/]+\/chats\/(?!new$)[^/]+$/)
+  return new URL(page.url()).pathname.split('/').pop()!
+}
+
+/**
+ * Waits until the chat no longer waits for an answer: neither "Denkt nach …" nor the provisional
+ * answer is shown. Only meaningful once the question has been sent.
+ */
+export async function expectAnswerSettled(page: Page): Promise<void> {
+  await expect(page.getByText('Denkt nach …')).toHaveCount(0)
+  await expect(page.getByTestId('provisional-answer')).toHaveCount(0)
 }
 
 /** Fills the chat input and sends it, waiting for it to be visible first (see startFreshChat). */
