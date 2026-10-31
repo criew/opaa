@@ -27,8 +27,8 @@ ausschließlich unterhalb von `report/`.
 dem VPS holt den öffentlichen Branch `gh-pages` (`git fetch --depth 1`) und
 spiegelt ihn ohne `.git` in das Wurzelverzeichnis des Webservers. Dafür braucht
 weder GitHub einen Zugang zum Server noch der Server einen Zugang zu GitHub;
-eine Änderung ist nach dem nächsten Timerlauf sichtbar. Die Einrichtung des
-Timers und des Webservers liegt außerhalb dieses Repositorys.
+eine Änderung ist nach dem nächsten Timerlauf sichtbar. Skript, systemd-Units
+und nginx-Konfiguration liegen unter [`deploy/landing-page/`](../deploy/landing-page/README.md).
 
 Die Rohdaten unter `report/data/` sind der eigentliche Bestand: Der Report
 erzeugt aus ihnen bei jedem Lauf sämtliche Seiten neu, damit Layoutänderungen
