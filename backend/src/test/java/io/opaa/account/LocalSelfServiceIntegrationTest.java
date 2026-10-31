@@ -146,7 +146,7 @@ class LocalSelfServiceIntegrationTest {
     assertThat(row.getPasswordHash()).isNotNull();
     assertThat(row.isPasswordChangeRequired()).isFalse();
     assertThat(row.getEmailVerifiedAt()).isNotNull();
-    assertThat(row.getPasswordInvalidatedBefore()).isNotNull();
+    assertThat(row.getSessionGeneration()).isPositive();
     login(email, NEW_PASSWORD, 200);
     // exactly once: the second redemption is the one 400
     setPassword(token, "noch-ein-anderes-passwort-2026")

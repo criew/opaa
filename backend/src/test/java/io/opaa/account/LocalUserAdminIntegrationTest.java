@@ -1027,8 +1027,7 @@ class LocalUserAdminIntegrationTest {
     LocalCredentials after = credentials.findById(bootstrap.id()).orElseThrow();
     assertThat(after.getPasswordHash()).isEqualTo(before.getPasswordHash());
     assertThat(after.isPasswordChangeRequired()).isFalse();
-    assertThat(after.getPasswordInvalidatedBefore())
-        .isEqualTo(before.getPasswordInvalidatedBefore());
+    assertThat(after.getSessionGeneration()).isEqualTo(before.getSessionGeneration());
     mockMvc
         .perform(get(ME).header(HttpHeaders.AUTHORIZATION, bearer(session)))
         .andExpect(status().isOk());

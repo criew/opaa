@@ -755,8 +755,7 @@ class OidcProviderServiceTest {
 
     assertThat(off.isEnabled()).isFalse();
     verify(credentials)
-        .invalidateSessionsIssuedBefore(
-            eq(java.util.Set.of(regular.getId(), idle.getId())), eq(NOW.plusSeconds(1)), eq(NOW));
+        .endAllSessions(eq(java.util.Set.of(regular.getId(), idle.getId())), eq(NOW));
     verify(refreshTokens).revokeAllForUser(regular.getId(), RevocationReason.ADMIN, NOW);
     verify(refreshTokens, never()).revokeAllForUser(eq(idle.getId()), any(), any());
     verify(auditEventRecorder, times(2)).recordUserAction(audit.capture());
