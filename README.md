@@ -64,7 +64,7 @@ Vorgaben gelten — alle erben es, Änderungen wirken sofort überall.
 ## Ausprobieren
 
 Eine öffentliche Instanz der Demo „Stadt Rheinfurt" läuft unter
-[opaa.ewerlin.com](https://opaa.ewerlin.com) — Anmeldung erforderlich, kein anonymer Zugang; die
+[demo.opaa.io](https://demo.opaa.io) — Anmeldung erforderlich, kein anonymer Zugang; die
 Demo-Konten stehen in [demo/README.md](demo/README.md#nutzerkonten). Details zum Betrieb der
 öffentlichen Instanz stehen ebenfalls dort, unter „Öffentliche Instanz betreiben".
 

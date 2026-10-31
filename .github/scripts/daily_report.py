@@ -73,7 +73,7 @@ SEARCH_MAX_PAGES = 10
 PROMPT_MAX_ITEMS = 25
 # Ziel des Links auf die laufende Instanz. Überschreibbar, damit ein Fork oder
 # eine verschobene Umgebung keine Codeänderung erfordert.
-DEFAULT_TEST_URL = "https://opaa.ewerlin.com/chat"
+DEFAULT_TEST_URL = "https://demo.opaa.io/chat"
 
 WEEKDAYS = (
     "Montag",

@@ -389,7 +389,7 @@ unten, dann das Vorführ-Drehbuch abspielen:
 
 Alle Passwörter sind offene **Demo-Werte, keine Secrets** — vor jedem erreichbaren Deployment gemäß
 [`../docs/handbuch/betrieb/netz-und-sicherheit.md`, „Härtung für erreichbare Deployments"](../docs/handbuch/betrieb/netz-und-sicherheit.md#härtung-für-erreichbare-deployments)
-zu ersetzen. Der Ist-Zustand auf der öffentlichen Instanz opaa.ewerlin.com weicht davon für
+zu ersetzen. Der Ist-Zustand auf der öffentlichen Instanz demo.opaa.io weicht davon für
 `demo-admin` bewusst ab — siehe „Öffentliche Instanz betreiben" unten.
 
 | Konto | Rolle im Szenario | Spaces | Lesbare Bibliotheken | Passwort |
@@ -978,7 +978,7 @@ hinterlegter Zugang nur durch ein ausdrücklich übergebenes Geheimnis.
 Demo-Wert mit, und der Seed hinterlegt denselben. Das Skript ist dort nur nötig, um einen eigenen
 Keycloak mit Volume nachzuziehen; der Container heißt dann `<Projektname>-keycloak-1`.
 
-**Öffentlich erreichbare Instanz** (etwa opaa.ewerlin.com, deren Admin-API von außen erreichbar ist):
+**Öffentlich erreichbare Instanz** (etwa demo.opaa.io, deren Admin-API von außen erreichbar ist):
 Der Demo-Wert steht im Repository und öffnet über `client_credentials` den ganzen Verzeichnisabzug.
 Deshalb dort immer ein eigenes Geheimnis erzeugen, auf dem Server ablegen und an Skript **und** Seed
 durchreichen:
@@ -996,8 +996,8 @@ DIRECTORY_CLIENT_SECRET="$(cat /srv/opaa/.directory-client-secret)" \
 
 # Seed - hinterlegt dasselbe Geheimnis als Verzeichniszugang
 OPAA_DEMO_DIRECTORY_CLIENT_SECRET="$(cat /srv/opaa/.directory-client-secret)" \
-  python seed.py --profile demo --base-url https://opaa.ewerlin.com/api \
-  --keycloak-url https://opaa.ewerlin.com/idp
+  python seed.py --profile demo --base-url https://demo.opaa.io/api \
+  --keycloak-url https://demo.opaa.io/idp
 ```
 
 Wer das Geheimnis später rotiert, erzeugt die Datei neu und lässt beide Aufrufe erneut laufen.
@@ -1011,9 +1011,9 @@ ginge ins Leere. Außerdem blieben die alten Token-Gruppen als „Wird nicht meh
 Für die Umstellung deshalb: Skript ausführen, dann die OPAA-Datenbank zurücksetzen (Postgres-Volume
 verwerfen; das Keycloak-Volume bleibt) und neu seeden.
 
-### Öffentliche Instanz betreiben (opaa.ewerlin.com)
+### Öffentliche Instanz betreiben (demo.opaa.io)
 
-Unter **https://opaa.ewerlin.com** betreibt der Maintainer eine öffentliche **Test-/Demo-Instanz** von
+Unter **https://demo.opaa.io** betreibt der Maintainer eine öffentliche **Test-/Demo-Instanz** von
 OPAA mit genau diesem Rheinfurt-Korpus. Es handelt sich ausdrücklich nicht um einen Produktivbetrieb —
 es gelten keine Verfügbarkeits- oder Datenerhaltungsgarantien. Seit dem 21.08.2026 (#230, Epic #708)
 wurde der Stack per Reset neu aufgesetzt (frische Datenbank, frischer Keycloak-Realm-Import mit den
@@ -1021,6 +1021,8 @@ Demo-Konten) und mit dem Rheinfurt-Korpus samt Seed-Profil `demo` befüllt.
 
 - **Betreiber:** Der Maintainer (`criew`), auf privater VPS-Infrastruktur außerhalb dieses
   Repositorys.
+- **Frühere Adresse:** Bis zum Umzug auf `opaa.io` lief die Instanz unter `opaa.ewerlin.com`;
+  diese Adresse leitet dauerhaft (301) auf `https://demo.opaa.io` weiter.
 - **Zweck:** Öffentlich erreichbare Vorführinstanz der Demo „Stadt Rheinfurt" auf dem aktuellen
   `main`-Stand.
 - **Zugriff:** Die Instanz läuft im Auth-Modus `oidc` hinter Keycloak. Der Zugang ist bewusst
@@ -1190,8 +1192,8 @@ API und Keycloak, nicht auf dem Server selbst:
 ```bash
 OPAA_DEMO_DIRECTORY_CLIENT_SECRET="$(cat /srv/opaa/.directory-client-secret)" \
 python seed.py --profile demo \
-  --base-url https://opaa.ewerlin.com/api \
-  --keycloak-url https://opaa.ewerlin.com/idp
+  --base-url https://demo.opaa.io/api \
+  --keycloak-url https://demo.opaa.io/idp
 ```
 
 Das Geheimnis des Verzeichnis-Dienstkontos `opaa-directory` ist dort ein eigener, auf dem Server
@@ -1237,7 +1239,7 @@ fachliche Vorführkonten ohne administrative Rechte.
 
 **Entwicklungs-Nutzer `testuser`:** Der Realm-Import bringt neben den fünf Demo-Nutzern auch den in
 `keycloak/realm-export.json` mitgelieferten Entwicklungs-Nutzer `testuser`/`testpass` auf die Instanz.
-Er ist auf opaa.ewerlin.com per `kcadm` deaktiviert (`enabled: false`) — siehe
+Er ist auf demo.opaa.io per `kcadm` deaktiviert (`enabled: false`) — siehe
 [„Härtung des mitgelieferten Keycloak"](../docs/handbuch/betrieb/authentifizierung.md#härtung-des-mitgelieferten-keycloak),
 Realm-Benutzer.
 

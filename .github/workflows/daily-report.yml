@@ -82,13 +82,12 @@ jobs:
           # Vorgabe aus dem Skript, siehe DEFAULT_TEST_URL.
           OPAA_REPORT_TEST_URL: ${{ vars.OPAA_REPORT_TEST_URL }}
           REPORT_DATE: ${{ inputs.date }}
-          REPOSITORY_NAME: ${{ github.event.repository.name }}
         run: |
           python .github/scripts/daily_report.py \
             --repo "$GITHUB_REPOSITORY" \
             --date "$REPORT_DATE" \
             --output site/report \
-            --site-url "https://$GITHUB_REPOSITORY_OWNER.github.io/$REPOSITORY_NAME/report"
+            --site-url "https://opaa.io/report"
 
       - name: Auslieferung ohne Jekyll sicherstellen
         run: touch site/.nojekyll

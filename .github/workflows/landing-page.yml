@@ -1,9 +1,9 @@
 name: Landing Page
 
-# Veröffentlicht den Inhalt von page/ als Startseite der GitHub Page.
+# Veröffentlicht den Inhalt von page/ als Startseite von https://opaa.io.
 #
-# Die Seite wird aus dem Branch gh-pages ausgeliefert (Pages-Quelle: Branch,
-# nicht Actions-Deploy), weil dort auch die Rohdaten des Tagesreports liegen,
+# Ziel ist der Branch gh-pages, den der Webserver per Pull spiegelt (siehe
+# page/README.md), weil dort auch die Rohdaten des Tagesreports liegen,
 # aus denen dieser bei jedem Lauf sämtliche Seiten neu erzeugt. Beide
 # Workflows schreiben deshalb in denselben Branch, aber in getrennte Bereiche:
 # dieser hier das Wurzelverzeichnis, der Tagesreport ausschließlich report/.
