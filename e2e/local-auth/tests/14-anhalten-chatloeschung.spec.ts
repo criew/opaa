@@ -9,7 +9,7 @@ import {
 import { apiSignedInAs, changeRole, createLocalAccount } from "../../fixtures/revision";
 
 /**
- * Holding the deletion of a locked account's chats in the Vier-Augen-Prinzip (#3488): one system
+ * Holding the deletion of a locked account's chats in the Vier-Augen-Prinzip: one system
  * administrator requests with a purpose of the closed list and a reason, the request alone holds
  * nothing and its author cannot approve it, a second administrator approves, and the hold shows
  * its end and the days left. The end of a hold itself is a nightly run and is covered by
