@@ -12,14 +12,13 @@ Spätere Fortschreibungen erheben nur das Delta ab diesen Marken.
 |---|---|
 | Commit-Stand `main` | `ANKER_KURZ` — ANKER_TITEL, Stand von `v0.1.0-rc.5` |
 | Abfragezeitpunkt GitHub (Issues/PRs) | 2026-10-31T08:42Z |
-| Im Zeitraum geschlossene Issues | 680 |
+| Im Zeitraum geschlossene Issues | 681 |
 | Im Zeitraum gemergte PRs | 725 |
 | Commits auf `main` (`--first-parent`) im Zeitraum | ANKER_COMMITS |
 
 Erhoben über die REST-API (`gh api repos/criew/opaa/issues?state=closed&since=2026-09-29T00:00:00Z`,
 seitenweise), weil GraphQL und die Suche in Cloud-Sessions gesperrt sind; gefiltert auf
-`closed_at` bzw. `merged_at` ab dem 30.09.2026. Abgezogen wurde Issue #2057, das schon in der
-Erhebung zum 30.09. enthalten war. Die Issue↔PR-Zuordnung stammt aus „Closes/Fixes/Resolves #N“ im
+`closed_at` bzw. `merged_at` ab dem 30.09.2026. Die Issue↔PR-Zuordnung stammt aus „Closes/Fixes/Resolves #N“ im
 vollständigen PR-Text; 165 PRs haben keine solche Verknüpfung (davon 73 Renovate-Updates).
 
 Die PRs nach dem Abfragezeitpunkt bis zum Anker-Commit (#3484, #3485, Release-Vorbereitung von

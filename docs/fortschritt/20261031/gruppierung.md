@@ -4,7 +4,7 @@ Gruppiert wird wie am [Vorgänger-Stichtag](../20260930/gruppierung.md) entlang 
 Themenbereiche A–K der [Produktvision](../../VISION.md)**, ergänzt um Produktvision (V), Projekt als
 Produkt (P), Projektsetup (T1), Agenten-Organisation (T2) und Testinfrastruktur (T3).
 
-Jeder der 845 geprüften Vorgänge ist genau **einem** Bereich zugeordnet; die 73
+Jeder der 846 geprüften Vorgänge ist genau **einem** Bereich zugeordnet; die 73
 Renovate-Updates stehen gesammelt unter T1. `#N` = Issue, `PR#N` = PR ohne Issue-Verknüpfung.
 Befunde stehen in [bausteine.md](./bausteine.md).
 
@@ -194,21 +194,21 @@ Architektur-Review des Backends (Epic #2678) mit Architekturvertrag und Ratschen
 Frontend-Gliederung nach Themen per ESLint, Liquibase durch Flyway ersetzt (ADR-0056), UI-Lab als
 wiederholbarer Ablauf.
 
-#2641, #2642, #2643, #2644, #2645, #2646, #2647, #2648, #2649, #2650, #2651, #2652, #2653, #2654,
-#2655, #2656, #2657, #2658, #2659, #2660, #2661, #2662, #2663, #2678, #2679, #2680, #2681, #2682,
-#2683, #2684, #2685, #2687, #2688, #2689, #2690, #2691, #2692, #2693, #2694, #2695, #2704, #2715,
-#2716, #2720, #2724, #2741, #2753, #2758, #2761, #2777, #2782, #2783, #2804, #2825, #2847, #2913,
-#3019, #3100, #3164, #3168, #3169, #3170, #3171, #3439, PR#2919, PR#2921, PR#2926, PR#2928, PR#2930,
-PR#2931, PR#2933, PR#2934, PR#3143, PR#3149, PR#3157, PR#2072, PR#2073, PR#2074, PR#2075, PR#2076,
-PR#2083, PR#2084, PR#2108, PR#2109, PR#2110, PR#2140, PR#2141, PR#2142, PR#2143, PR#2144, PR#2229,
-PR#2230, PR#2315, PR#2316, PR#2317, PR#2318, PR#2319, PR#2323, PR#2324, PR#2325, PR#2326, PR#2379,
-PR#2380, PR#2381, PR#2382, PR#2383, PR#2451, PR#2452, PR#2453, PR#2454, PR#2455, PR#2474, PR#2475,
-PR#2476, PR#2477, PR#2478, PR#2523, PR#2524, PR#2525, PR#2526, PR#2578, PR#2579, PR#2580, PR#2581,
-PR#2582, PR#2667, PR#2668, PR#2669, PR#2670, PR#2807, PR#2808, PR#2809, PR#2871, PR#2872, PR#2873,
-PR#2874, PR#2875, PR#2878, PR#2879, PR#2880, PR#2881, PR#2882, PR#2936, PR#2937, PR#2938, PR#2939,
-PR#2940, PR#3390
+#2057, #2641, #2642, #2643, #2644, #2645, #2646, #2647, #2648, #2649, #2650, #2651, #2652, #2653,
+#2654, #2655, #2656, #2657, #2658, #2659, #2660, #2661, #2662, #2663, #2678, #2679, #2680, #2681,
+#2682, #2683, #2684, #2685, #2687, #2688, #2689, #2690, #2691, #2692, #2693, #2694, #2695, #2704,
+#2715, #2716, #2720, #2724, #2741, #2753, #2758, #2761, #2777, #2782, #2783, #2804, #2825, #2847,
+#2913, #3019, #3100, #3164, #3168, #3169, #3170, #3171, #3439, PR#2919, PR#2921, PR#2926, PR#2928,
+PR#2930, PR#2931, PR#2933, PR#2934, PR#3143, PR#3149, PR#3157, PR#2072, PR#2073, PR#2074, PR#2075,
+PR#2076, PR#2083, PR#2084, PR#2108, PR#2109, PR#2110, PR#2140, PR#2141, PR#2142, PR#2143, PR#2144,
+PR#2229, PR#2230, PR#2315, PR#2316, PR#2317, PR#2318, PR#2319, PR#2323, PR#2324, PR#2325, PR#2326,
+PR#2379, PR#2380, PR#2381, PR#2382, PR#2383, PR#2451, PR#2452, PR#2453, PR#2454, PR#2455, PR#2474,
+PR#2475, PR#2476, PR#2477, PR#2478, PR#2523, PR#2524, PR#2525, PR#2526, PR#2578, PR#2579, PR#2580,
+PR#2581, PR#2582, PR#2667, PR#2668, PR#2669, PR#2670, PR#2807, PR#2808, PR#2809, PR#2871, PR#2872,
+PR#2873, PR#2874, PR#2875, PR#2878, PR#2879, PR#2880, PR#2881, PR#2882, PR#2936, PR#2937, PR#2938,
+PR#2939, PR#2940, PR#3390
 
-(148 Vorgänge einschließlich 73 Renovate-Updates, davon 3 mit Befund)
+(149 Vorgänge einschließlich 73 Renovate-Updates, davon 3 mit Befund)
 
 ---
 

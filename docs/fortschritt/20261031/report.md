@@ -1,7 +1,7 @@
 # Zeitraumsbericht 30.09.–31.10.2026
 
 > **Bericht zum Stichtag 31.10.2026.** Er beruht auf der Fortschreibung mit Datenstand 31.10.2026
-> (`main@ANKER_KURZ`, dem Stand von `v0.1.0-rc.5`; 680 geschlossene Issues und 725 gemergte PRs im
+> (`main@ANKER_KURZ`, dem Stand von `v0.1.0-rc.5`; 681 geschlossene Issues und 725 gemergte PRs im
 > Zeitraum — siehe [anker.md](./anker.md)). Er enthält nur das **Delta zum Stichtag 30.09.2026**;
 > den konsolidierten Stand führt [gesamtstand.md](../gesamtstand.md). Jede Aussage ist über
 > Issue- und PR-Nummer auf Code rückführbar. Wo Lieferung und Vorgang auseinanderfallen, steht die
@@ -10,7 +10,7 @@
 
 ## Management Summary
 
-Der Oktober war der bisher umfangreichste Monat: 725 gemergte PRs, 27 abgeschlossene Epics und fünf
+Der Oktober war der bisher umfangreichste Monat: 725 gemergte PRs, 28 abgeschlossene Epics und fünf
 Release-Kandidaten (`v0.1.0-rc.1` bis `v0.1.0-rc.5`). Er hat OPAA von einer funktionsreichen
 Anwendung zu einem **lieferfähigen Produkt** gemacht. Es gibt versionierte, signierte Releases mit
 Update-Paket und Behördenunterlagen, einen Betrieb unter Kubernetes und mit mehreren Instanzen, eine
@@ -129,15 +129,15 @@ schwer genug, dass die Schätzung trotz des Lieferumfangs nur um fünf Punkte st
 - **Schutz der KI-Funktionen:** Schutz gegen Prompt-Injection (Epic #3008), Kennzeichnung
   KI-erzeugter Antworten (Epic #3010).
 - **Schutz der Aufnahme und der Ziele:** optionale Schadprogrammprüfung über clamd, ab Werk aus
-  (#3007). Ein Schutz gegen DNS-Rebinding bindet geprüfte Namen (#3239, PR#3323, ADR-0063), Modell-
-  Endpunkte haben eine eigene Freigabeliste (#3224), die Zertifikatsprüfung ist nicht mehr
+  (#3007). Ein Schutz gegen DNS-Rebinding bindet geprüfte Namen (#3239, PR#3323, ADR-0063), Modell-Endpunkte
+  haben eine eigene Freigabeliste (#3224), die Zertifikatsprüfung ist nicht mehr
   abschaltbar (#2537).
 - **Security-Audit 2026** (Epic #3325, 50 Sub-Issues): acht Prüfbereiche (#3326–#3333), gegen
   Ressourcen-Erschöpfung gehärtete Parser (#3336, #3375, #3376, #3387, #3434), geschlossene
   Rechtekanten (#3346, #3352–#3358) und ein Schlüsselwechsel verschlüsselter Geheimnisse (#3347,
   #3431, ADR-0064). Dauerhaft abgesichert durch Rechte-Matrix (#3377), Prüfung anonymer Pfade und
   Header (#3382), Architekturtests und Parser-Fuzzing (#3379) und einen ZAP-Scan (#3384).
-  Lieferkette: CodeQL (#3341, #3422), signierte Images (#3342), Gradle Dependency Verification
+  Lieferkette: CodeQL (#3341, PR#3422), signierte Images (#3342), Gradle Dependency Verification
   (#3391).
 - Härtung aus einem Code-Review: Rate-Limits (#2900, #2901), Workflows (#2905), nginx (#2906),
   MCP-Suchumfang fail-closed (#2909), Quell-Links nur http(s) (#2912). Dazu die Maskierung nach
@@ -150,7 +150,7 @@ schwer genug, dass die Schätzung trotz des Lieferumfangs nur um fünf Punkte st
   Markdown, Text und Confluence (#3318), Textfassung mit Original-Download für alle übrigen
   Formate (#3316).
 - **Quelleinrichtung nach UI-Lab-Variante F** (Epic #3104, #3105–#3109) und Detailansicht der
-  Bibliothek mit Statusfilter (#3162, #3165, #3186). Der alte Pfad ist entfernt (#3125).
+  Bibliothek mit Statusfilter (#3162, #3165, PR#3186). Der alte Pfad ist entfernt (#3125).
 - **UI-Politur und Review** (Epics #1441, #1928, #3269): überarbeitete Admin-Seiten, Belegfenster
   (#3259), Seitenleiste mit Spaces als Liste (#3292), einheitliches Zeilenmenü und Etiketten (#3284,
   #3283), Konsistenz-Audit (#3265).
@@ -171,7 +171,7 @@ schwer genug, dass die Schätzung trotz des Lieferumfangs nur um fünf Punkte st
 - **Schlanke Konfiguration** (Epic #3160, ADR-0060): Installationsmodus mit Token, API und
   Antwortdatei (#3189), Browser-Assistent mit optionalen Schritten für Mail, Modelle, Branding,
   Rerank und Transkription (#3190, #3237, #3245, #3246, #3253, #3257, #3258). Fachliche Werte liegen in
-  der Datenbank (#3192, #3203, #3208–#3210), mit Einstellungsexport (#3193, #3201). Helm und
+  der Datenbank (#3192, PR#3203, #3208–#3210), mit Einstellungsexport (#3193, #3201). Helm und
   Compose sind umgestellt (#3194, PR#3202).
 - **Releases:** versionierte Releases (#2350), Release-Zyklus mit Supportlinien und LTS (#2575,
   ADR-0054), Wartungsbranches und Backport (#3017), Offline-Bündel (#2557), Handbuch als
@@ -193,7 +193,7 @@ schwer genug, dass die Schätzung trotz des Lieferumfangs nur um fünf Punkte st
 
 - **Architektur:** Architektur-Review des Backends (Epic #2678, 30 Sub-Issues) mit
   Architekturvertrag und Ratschen (#2777, ADR-0051). Das Frontend ist nach Themen gegliedert, die
-  Grenzen prüft ESLint (#2641–#2663). Liquibase ist durch Flyway ersetzt, mit einer Baseline je
+  Grenzen prüft ESLint (Epic #2057, #2641–#2663). Liquibase ist durch Flyway ersetzt, mit einer Baseline je
   Modul (#2825, ADR-0056).
 - **Tests:** Teststufen für Konnektoren (Epic #1293, ADR-0057), E2E-Lücken geschlossen (Epic #3462)
   mit Firefox-Lauf (#3474) und axe-Prüfung am Endzustand (#3475).
@@ -256,18 +256,21 @@ Gegen die Phase-1-Definition der [Vision](../../VISION.md), nach Gewicht:
 6. **Regelung des Anhaltens der Chat-Löschung** (aus dem Stakeholder-Review vor `v0.1.0-rc.5`)
 
 **Betrieb**
-7. **Erprobung auf einem produktiven Cluster** und Abnahme des ersten finalen Release `v0.1.0`
+7. **Erprobung auf einem produktiven Cluster** und Abnahme des ersten finalen Release `v0.1.0`;
+   getrennte Dienste für große Installationen (Epic #1439)
 8. Mandantenfähigkeit mit mehreren Organisationen in einer Installation (Epic #1442, geparkt)
 
 **Nachrangig, aus der Restliste des Vormonats fortgeführt**
-9. Sitzungsverwaltung mit erzwungener Neuanmeldung (die erneute Anmeldung vor sensiblen Vorgängen
-   ist gebaut, #2996)
+9. Sitzungsverwaltung mit erzwungener Neuanmeldung und Einschränkung auf Netzbereiche (die
+   erneute Anmeldung vor sensiblen Vorgängen ist gebaut, #2996; Netzbereiche gibt es für
+   Fremdzugänge)
 10. Antwort-Bewertung mit Speicherung — weiter ohne Konzept
 11. Modell-Obergrenze je Space und Bibliothek
 
 Erledigt gegenüber der Restliste des Vormonats: Schadsoftwareprüfung des Uploads (6), Integrität
 des Audit-Trails und extern anbindbarer Ereignisstrom (7), Kubernetes, Mehrinstanzbetrieb,
-signierte Builds und Betrieb ohne Internetzugang (8). Reranking produktiv machen ist von Platz 3 auf
+signierte Builds und Betrieb ohne Internetzugang (8, ohne getrennte Dienste für große
+Installationen, Epic #1439). Reranking produktiv machen ist von Platz 3 auf
 4 gerückt, weil es jetzt in der Oberfläche einstellbar ist.
 
 **Phase 2:** Fortschritt nur am Rand. Der MCP-Server ist als Profilart von Zugängen Grundlage für
@@ -279,12 +282,12 @@ Werkzeuge (#2173). Das Fundament für Werkzeugaufrufe (Epic #1747) und Skills al
 | | |
 |---|---|
 | Gemergte Pull Requests | 725, davon 73 Renovate-Updates |
-| Geschlossene Issues | 680, davon 19 „not planned“, 4 Duplikate und 30 automatisch geöffnete und wieder geschlossene Alarm-Issues aus CI-Läufen |
-| Abgeschlossene Epics | 27 (dazu Epic #2305 als „not planned“) |
-| Vorgänge mit Befund | 72 von 845 geprüften (9 %; Vorgänger-Stichtag: 43 von 616) |
+| Geschlossene Issues | 681, davon 19 „not planned“, 4 Duplikate und 30 automatisch geöffnete und wieder geschlossene Alarm-Issues aus CI-Läufen |
+| Abgeschlossene Epics | 28 (dazu Epic #2305 als „not planned“) |
+| Vorgänge mit Befund | 72 von 846 geprüften (9 %; Vorgänger-Stichtag: 43 von 616) |
 | Releases | fünf Release-Kandidaten, `v0.1.0-rc.1` bis `v0.1.0-rc.5` |
 | Architecture Decision Records | 62 gepflegt, 26 im Zeitraum neu |
-| Produkthandbuch | 59 Kapitel unter `docs/handbuch/` (Vorgänger-Stichtag: 25) |
+| Produkthandbuch | 57 Kapitel unter `docs/handbuch/` (Vorgänger-Stichtag: 25 Dateien) |
 | Themenbereiche ohne Vorgang im Zeitraum | H (Monitoring/Kosten) |
 
 ---
