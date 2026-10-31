@@ -1,5 +1,12 @@
 import { expect, test } from '../fixtures/auth'
-import { askQuestion, clearSearchScope, startFreshChat } from '../fixtures/chat'
+import {
+  askQuestion,
+  clearSearchScope,
+  expectAnswerSettled,
+  isChatAnswer,
+  shownChatId,
+  startFreshChat,
+} from '../fixtures/chat'
 import type { Locator, Page, TestInfo } from '@playwright/test'
 
 /**
@@ -80,20 +87,17 @@ async function fetchChat(page: Page, chatId: string): Promise<ChatDetail> {
 
 /**
  * Asks one question and returns once its answer has arrived, yielding the chat's id. Waits for the
- * query response and then for the "Denkt nach …" indicator to be gone, so the next step acts on a
- * rendered turn rather than on an in-flight one.
+ * streamed answer and then for the chat to show it as final, so the next step acts on a rendered
+ * turn rather than on an in-flight one.
  */
 async function askTurn(page: Page, question: string): Promise<string> {
   const [response] = await Promise.all([
-    page.waitForResponse(
-      (candidate) =>
-        candidate.request().method() === 'POST' && candidate.url().endsWith('/api/v1/query'),
-    ),
+    page.waitForResponse(isChatAnswer),
     askQuestion(page, question),
   ])
   expect(response.status()).toBe(200)
-  await expect(page.getByText('Denkt nach …')).toHaveCount(0)
-  return ((await response.json()) as { chatId: string }).chatId
+  await expectAnswerSettled(page)
+  return shownChatId(page)
 }
 
 /**

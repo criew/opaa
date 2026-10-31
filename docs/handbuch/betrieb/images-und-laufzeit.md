@@ -245,6 +245,9 @@ Beim Stopp nimmt das Backend keine neuen Verbindungen an und lässt laufende Anf
   `backend.terminationGracePeriodSeconds` unter Kubernetes), sonst endet der Prozess abrupt.
 - **Indexierungs- und Upload-Läufe** der stoppenden Instanz brechen sofort ab und lassen sich
   wiederholen.
+- **Antworten, die gerade in den Chat strömen,** bricht die stoppende Instanz sofort ab, statt auf
+  das Modell zu warten. Die Person sieht einen Hinweis, die Runde wird nicht gespeichert, und die
+  Frage steht wieder im Eingabefeld.
 - **Mails** liegen bis zur Zustellung in der Datenbank und gehen nicht verloren.
 - Bei einem Rolling Update stellt der Helm-Chart die Zeitfenster passend ein
   ([Kubernetes](kubernetes.md#mehrere-backend-instanzen)).

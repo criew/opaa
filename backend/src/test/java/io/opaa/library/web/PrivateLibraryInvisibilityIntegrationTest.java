@@ -432,6 +432,11 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "{\"question\": \"Was steht in der Abrechnung?\", \"usedPromptId\": \"{unknown}\","
                 + " \"libraryIds\": [\"{library}\"]}"));
     probes.put(
+        "submitQueryStream",
+        same(
+            "{\"question\": \"Was steht in der Abrechnung?\", \"usedPromptId\": \"{unknown}\","
+                + " \"libraryIds\": [\"{library}\"]}"));
+    probes.put(
         "searchKnowledge",
         same("{\"question\": \"Was steht in der Abrechnung?\", \"libraryIds\": [\"{library}\"]}"));
     probes.put(

@@ -970,4 +970,22 @@ describe('ChatInput', () => {
     expect(useChatStore.getState().referencedLibraryIds).toEqual([])
     expect(useChatStore.getState().scope).toBe('none')
   })
+
+  describe('while an answer is pending', () => {
+    it('offers to cancel it next to the locked send button', async () => {
+      const onCancelAnswer = vi.fn()
+      render(<ChatInput onSend={vi.fn()} answerPending onCancelAnswer={onCancelAnswer} />)
+
+      expect(screen.getByLabelText('Senden')).toBeDisabled()
+      await userEvent.click(screen.getByRole('button', { name: 'Antwort abbrechen' }))
+
+      expect(onCancelAnswer).toHaveBeenCalledTimes(1)
+    })
+
+    it('offers no cancelling without a pending answer', () => {
+      render(<ChatInput onSend={vi.fn()} onCancelAnswer={vi.fn()} />)
+
+      expect(screen.queryByRole('button', { name: 'Antwort abbrechen' })).not.toBeInTheDocument()
+    })
+  })
 })

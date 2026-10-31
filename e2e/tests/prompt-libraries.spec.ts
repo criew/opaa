@@ -1,5 +1,5 @@
 import { expect, test } from '../fixtures/auth'
-import { startFreshChat } from '../fixtures/chat'
+import { isChatAnswer, startFreshChat } from '../fixtures/chat'
 import { apiAs } from '../fixtures/externalAccess'
 import {
   catalogEntry,
@@ -296,11 +296,7 @@ test.describe.serial('Prompt-Bibliotheken: Freigabewege und Katalog (#1904)', ()
 
     // The answer is what persists the turn; a reload before it would find no chat yet.
     const [answer] = await Promise.all([
-      outsider.waitForResponse(
-        (response) =>
-          response.request().method() === 'POST' &&
-          new URL(response.url()).pathname === '/api/v1/query',
-      ),
+      outsider.waitForResponse(isChatAnswer),
       outsider.getByRole('button', { name: 'Senden' }).click(),
     ])
     expect(answer.status()).toBe(200)

@@ -11,6 +11,7 @@ import { CHAT_MAX_WIDTH } from '@/shared/theme/theme'
 import { AiNotice } from './AiNotice'
 import MessageBubble from './MessageBubble'
 import DateSeparator from './DateSeparator'
+import ProvisionalAnswer, { PROVISIONAL_ANSWER_LABEL } from './ProvisionalAnswer'
 import { useCopyAnnouncement } from './copyAnnouncer'
 
 interface MessageListProps {
@@ -21,6 +22,8 @@ interface MessageListProps {
    * focus, and focused. An id that is not among `messages` leaves the list as it would be without.
    */
   targetMessageId?: string | null
+  /** The provisional answer while the model writes it, null before its first part. */
+  streamingAnswer?: string | null
 }
 
 function shouldShowDate(messages: ChatMessage[], index: number): boolean {
@@ -32,7 +35,12 @@ function shouldShowDate(messages: ChatMessage[], index: number): boolean {
 
 export const ANSWER_ARRIVED_ANNOUNCEMENT = 'Antwort eingetroffen'
 
-export default function MessageList({ messages, isLoading, targetMessageId }: MessageListProps) {
+export default function MessageList({
+  messages,
+  isLoading,
+  targetMessageId,
+  streamingAnswer = null,
+}: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const targetRef = useRef<HTMLDivElement>(null)
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
@@ -54,6 +62,15 @@ export default function MessageList({ messages, isLoading, targetMessageId }: Me
     }
   }, [messages.length, prefersReducedMotion, target])
 
+  // The growing provisional answer stays in view, without the smooth scroll of a new message.
+  const streaming = streamingAnswer !== null
+  useEffect(() => {
+    if (!streaming || target) return
+    if (typeof bottomRef.current?.scrollIntoView === 'function') {
+      bottomRef.current.scrollIntoView({ block: 'end' })
+    }
+  }, [streaming, streamingAnswer, target])
+
   useEffect(() => {
     const element = targetRef.current
     if (!target || !element || jumpedRef.current?.id === target.id) return
@@ -67,7 +84,7 @@ export default function MessageList({ messages, isLoading, targetMessageId }: Me
     element.focus({ preventScroll: true })
   }, [target, messages.length, prefersReducedMotion])
 
-  // Answers arrive in one piece, so the only cue for screen reader users is this live region:
+  // The streamed text is no live region, so the only cue for screen reader users is this one:
   // announce the loading -> done transition, then clear it so the next answer is read out again.
   useEffect(() => {
     if (wasLoading.current && !isLoading) {
@@ -168,18 +185,22 @@ export default function MessageList({ messages, isLoading, targetMessageId }: Me
           )
         })}
 
+        {/* One status from "Denkt nach …" to the end of the answer: its text changes once the
+            first part arrives, which a screen reader announces; a region inserted with its text
+            would not be. */}
         {isLoading && (
           <Box
             role="status"
             aria-live="polite"
-            sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, mb: 2 }}
+            sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, mb: streaming ? 1 : 2 }}
           >
-            <CircularProgress size={20} />
+            <CircularProgress size={streaming ? 16 : 20} aria-hidden />
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              Denkt nach …
+              {streaming ? PROVISIONAL_ANSWER_LABEL : 'Denkt nach …'}
             </Typography>
           </Box>
         )}
+        {isLoading && streamingAnswer !== null && <ProvisionalAnswer text={streamingAnswer} />}
 
         {liveRegion}
         <div ref={bottomRef} />

@@ -3,6 +3,7 @@ import '@testing-library/jest-dom/vitest'
 // carrying a `File` hang forever instead of completing.
 import './jsdom-blob-stream'
 import { beforeAll, afterEach, afterAll } from 'vitest'
+import type { RequestHandler } from 'msw'
 import { server } from './server'
 // Deliberately only the fixture module, never a store or `src/shared/api/api`: importing
 // anything that pulls in the axios instance *from this file* makes a dozen unrelated dialog tests
@@ -13,6 +14,7 @@ import { server } from './server'
 
 // chat
 import { resetChatMockState } from '@/features/chat/mocks/chatHandlers'
+import { answerQueriesFrom, setMockAnswerDeltas } from '@/features/chat/mocks/queryHandlers'
 // asset
 import { resetGrantMockState } from '@/features/asset/mocks/assetHandlers'
 import { resetMockSpaceAssetAssociations } from '@/features/asset/mocks/assetFixtures'
@@ -62,9 +64,14 @@ function clearCookies() {
   }
 }
 
-beforeAll(() => server.listen())
+beforeAll(() => {
+  server.listen()
+  answerQueriesFrom(() => server.listHandlers() as RequestHandler[])
+  setMockAnswerDeltas(false)
+})
 afterEach(() => {
   server.resetHandlers()
+  setMockAnswerDeltas(false)
   resetIndexingState()
   resetDocumentMockState()
   resetGrantMockState()

@@ -20,6 +20,8 @@ import io.opaa.observability.QueryMetrics;
 import io.opaa.prompt.Prompt;
 import io.opaa.prompt.PromptService;
 import io.opaa.query.answer.AnswerGenerationService;
+import io.opaa.query.answer.AnswerReaderGoneException;
+import io.opaa.query.answer.AnswerStreamListener;
 import io.opaa.query.answer.ConversationWindowMessages;
 import io.opaa.query.citation.AnswerEvidenceAssessor;
 import io.opaa.query.citation.ChatSourceAssembler;
@@ -32,6 +34,7 @@ import io.opaa.retrieval.RetrievalPipeline;
 import io.opaa.retrieval.RetrievalPipelineResult;
 import io.opaa.retrieval.context.NeighborChunkExpansion;
 import io.opaa.retrieval.search.SubQueryDecompositionStage;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -182,6 +185,33 @@ public class QueryService {
       List<UUID> requestedLibraryIds,
       MetadataFilter requestedMetadataFilter,
       UUID usedPromptId) {
+    return query(
+        question,
+        chatId,
+        caller,
+        useKnowledge,
+        requestedLibraryIds,
+        requestedMetadataFilter,
+        usedPromptId,
+        null);
+  }
+
+  /**
+   * The same query, with the answer told to {@code answerListener} while the model writes it
+   * ({@code null}: not streamed, see {@link AnswerGenerationService#streamAnswer}). Everything
+   * after the generation - citation repair and validation, sources, persistence, the note - runs on
+   * the complete answer exactly as without streaming, and only once it is complete: a stream that
+   * ends early persists nothing. A turn the tool loop takes over is not streamed.
+   */
+  public QueryResult query(
+      String question,
+      UUID chatId,
+      CurrentUser caller,
+      boolean useKnowledge,
+      List<UUID> requestedLibraryIds,
+      MetadataFilter requestedMetadataFilter,
+      UUID usedPromptId,
+      AnswerStreamListener answerListener) {
     UUID currentUserId = caller.id();
     return metrics
         .queryTimer()
@@ -313,14 +343,24 @@ public class QueryService {
                 // --- LLM call: the slowest step, and the reason no phase of this method
                 // carries a transaction.
                 ChatResponse chatResponse =
-                    answerGenerationService.generateAnswer(
-                        question,
-                        relevantChunks,
-                        conversationKey,
-                        noteTexts(notePoints, null),
-                        !searchScope.isEmpty(),
-                        searchNeeded,
-                        spaceInstruction);
+                    answerListener == null
+                        ? answerGenerationService.generateAnswer(
+                            question,
+                            relevantChunks,
+                            conversationKey,
+                            noteTexts(notePoints, null),
+                            !searchScope.isEmpty(),
+                            searchNeeded,
+                            spaceInstruction)
+                        : answerGenerationService.streamAnswer(
+                            question,
+                            relevantChunks,
+                            conversationKey,
+                            noteTexts(notePoints, null),
+                            !searchScope.isEmpty(),
+                            searchNeeded,
+                            spaceInstruction,
+                            answerListener);
 
                 String answer =
                     CitationMarkerRepair.repair(ChatResponses.text(chatResponse), relevantChunks);
@@ -367,6 +407,13 @@ public class QueryService {
                 // `chat` instance loaded above, is the source of truth for the title - the
                 // fallback title on a first turn, never the LLM-derived one, which is generated
                 // asynchronously after this response is built.
+                if (answerListener != null) {
+                  try {
+                    answerListener.beforeKeeping();
+                  } catch (IOException readerGone) {
+                    throw new AnswerReaderGoneException(readerGone);
+                  }
+                }
                 String chatTitle =
                     chat.map(
                             c ->

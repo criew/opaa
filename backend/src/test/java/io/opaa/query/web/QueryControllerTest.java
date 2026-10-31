@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -19,12 +20,16 @@ import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.chat.ChatSource;
+import io.opaa.common.ConflictException;
+import io.opaa.common.ServiceUnavailableException;
 import io.opaa.llm.AnswerCompleteness;
 import io.opaa.metadata.CoreMetadataField;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.query.QueryOutcome;
 import io.opaa.query.QueryResult;
 import io.opaa.query.QueryService;
+import io.opaa.query.answer.ActiveAnswerStreams;
+import io.opaa.query.answer.AnswerStreamListener;
 import io.opaa.query.filter.MetadataFilterOptions;
 import io.opaa.query.filter.MetadataFilterOptionsService;
 import java.time.Instant;
@@ -45,7 +50,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
-@WebMvcTest({QueryController.class, MetadataFilterOptionsController.class})
+@WebMvcTest({
+  QueryController.class,
+  QueryStreamController.class,
+  MetadataFilterOptionsController.class
+})
 @ActiveProfiles({"test", "dev"})
 @Import(TestSecurityConfig.class)
 class QueryControllerTest {
@@ -516,5 +525,158 @@ class QueryControllerTest {
     ChatSource sourceReference = new ChatSource(fileName, relevanceScore, matchCount, cited);
     sourceReference.setIndexedAt(indexedAt);
     return sourceReference;
+  }
+
+  private static QueryResult streamedResult(UUID chatId) {
+    return new QueryResult(
+        "Die Antwort.",
+        List.of(),
+        new QueryOutcome(
+            "gpt-4o", 100, 500L, false, false, false, false, null, AnswerCompleteness.COMPLETE),
+        chatId,
+        "Titel",
+        null);
+  }
+
+  private static AnswerStreamListener listenerOf(org.mockito.invocation.InvocationOnMock call) {
+    return call.getArgument(7);
+  }
+
+  @Test
+  void theStreamedTurnSendsStartedThenTheProvisionalTextThenTheFinalResponse() throws Exception {
+    UUID chatId = UUID.randomUUID();
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any(), any(), any()))
+        .thenAnswer(
+            call -> {
+              AnswerStreamListener listener = listenerOf(call);
+              listener.started();
+              listener.provisional("Die ", false);
+              listener.idle();
+              listener.provisional("Antwort.", false);
+              return streamedResult(chatId);
+            });
+
+    String body =
+        mockMvc
+            .perform(
+                post("/api/v1/query/stream")
+                    .with(asTestUser())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"question\": \"Frage?\", \"chatId\": \"" + chatId + "\"}"))
+            .andExpect(status().isOk())
+            .andExpect(header().string("X-Accel-Buffering", "no"))
+            .andExpect(header().string("Content-Type", "text/event-stream;charset=UTF-8"))
+            .andReturn()
+            .getResponse()
+            .getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+
+    assertThat(body.split("\n\n"))
+        .satisfiesExactly(
+            started ->
+                assertThat(started).startsWith("event: started\ndata: {\"type\":\"started\""),
+            delta ->
+                assertThat(delta)
+                    .startsWith("event: delta\ndata: {\"type\":\"delta\"")
+                    .endsWith("\"text\":\"Die \"}"),
+            ping -> assertThat(ping).isEqualTo(": ping"),
+            delta ->
+                assertThat(delta).startsWith("event: delta\n").endsWith("\"text\":\"Antwort.\"}"),
+            last ->
+                assertThat(last)
+                    .startsWith("event: final\ndata: {\"type\":\"final\"")
+                    .contains("\"answer\":\"Die Antwort.\"")
+                    .contains("\"chatId\":\"" + chatId + "\""));
+    verify(queryService)
+        .query(eq("Frage?"), eq(chatId), any(), eq(true), any(), any(), any(), any());
+  }
+
+  /** A turn the model answered without streaming still arrives as a stream with its final event. */
+  @Test
+  void aTurnWithoutStreamedTextStillEndsInTheFinalEvent() throws Exception {
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any(), any(), any()))
+        .thenReturn(streamedResult(UUID.randomUUID()));
+
+    String body =
+        mockMvc
+            .perform(
+                post("/api/v1/query/stream")
+                    .with(asTestUser())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"question\": \"Frage?\"}"))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+
+    assertThat(body).startsWith("event: started\n").contains("event: final\n");
+  }
+
+  @Test
+  void aRefusalBeforeTheModelAnswersKeepsItsOwnStatus() throws Exception {
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any(), any(), any()))
+        .thenThrow(new ConflictException("Der Space ist archiviert."));
+
+    mockMvc
+        .perform(
+            post("/api/v1/query/stream")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"question\": \"Frage?\"}"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.error").value("Der Space ist archiviert."));
+  }
+
+  @Test
+  void aFailureAfterTheModelBeganEndsTheStreamWithTheEnvelopeItWouldHaveHad() throws Exception {
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any(), any(), any()))
+        .thenAnswer(
+            call -> {
+              listenerOf(call).started();
+              listenerOf(call).provisional("Teil", false);
+              throw new TransientAiException("connection reset");
+            });
+
+    String body =
+        mockMvc
+            .perform(
+                post("/api/v1/query/stream")
+                    .with(asTestUser())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"question\": \"Frage?\"}"))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+
+    assertThat(body)
+        .contains("event: error\ndata: {\"type\":\"error\"")
+        .contains("\"error\":\"KI-Dienst vorübergehend nicht verfügbar\"")
+        .contains("\"status\":503")
+        .doesNotContain("event: final");
+  }
+
+  @Test
+  void theShutdownEndsTheStreamWithItsCode() throws Exception {
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any(), any(), any()))
+        .thenAnswer(
+            call -> {
+              listenerOf(call).started();
+              throw new ServiceUnavailableException(
+                  "Die Antwort wurde abgebrochen.", ActiveAnswerStreams.SHUTTING_DOWN);
+            });
+
+    String body =
+        mockMvc
+            .perform(
+                post("/api/v1/query/stream")
+                    .with(asTestUser())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"question\": \"Frage?\"}"))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+
+    assertThat(body).contains("\"code\":\"SHUTTING_DOWN\"").contains("\"status\":503");
   }
 }

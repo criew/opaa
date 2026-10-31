@@ -10,6 +10,7 @@ import io.opaa.api.dto.FieldError;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.BadGatewayException;
 import io.opaa.common.ConflictException;
+import io.opaa.common.FailureDescriber;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
@@ -21,6 +22,8 @@ import io.opaa.knowledge.UploadProperties;
 import io.opaa.ratelimit.RateLimitAuthentication;
 import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import jakarta.servlet.http.HttpServletRequest;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
@@ -49,6 +52,7 @@ import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
+import org.springframework.web.method.annotation.ExceptionHandlerMethodResolver;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
@@ -65,7 +69,7 @@ import org.springframework.web.util.DisconnectedClientHelper;
  * ErrorBodyNegotiator}).
  */
 @RestControllerAdvice
-public class GlobalExceptionHandler {
+public class GlobalExceptionHandler implements FailureDescriber {
 
   private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
@@ -81,6 +85,9 @@ public class GlobalExceptionHandler {
 
   // Kept out of the Spring context for the same reason as errorSanitizer above.
   private final ErrorBodyNegotiator errorBodyNegotiator = new ErrorBodyNegotiator();
+
+  private static final ExceptionHandlerMethodResolver HANDLER_METHODS =
+      new ExceptionHandlerMethodResolver(GlobalExceptionHandler.class);
 
   private final UploadProperties uploadProperties;
   private final Clock clock;
@@ -174,6 +181,66 @@ public class GlobalExceptionHandler {
       return errorBodyNegotiator.acceptsErrorBody(servletAttributes.getRequest());
     }
     return true;
+  }
+
+  /**
+   * The envelope this handler answers {@code failure} with, for a response that is already under
+   * way and can carry it only inside its body (the streamed answer): the same branch, message and
+   * status as a response not yet begun, without its headers. The branch runs as for a request
+   * without a bound response, so that it describes instead of breaking the connection.
+   */
+  @Override
+  public ErrorResponse describe(Throwable failure, HttpServletRequest request) {
+    RequestAttributes bound = RequestContextHolder.getRequestAttributes();
+    RequestContextHolder.resetRequestAttributes();
+    try {
+      ResponseEntity<ErrorResponse> answer = dispatch(failure, request);
+      if (answer != null && answer.getBody() != null) {
+        return answer.getBody();
+      }
+      HttpStatusCode status =
+          answer != null
+              ? answer.getStatusCode()
+              : failure instanceof ResponseStatusException statusException
+                  ? statusException.getStatusCode()
+                  : HttpStatus.INTERNAL_SERVER_ERROR;
+      return error(status, defaultMessageFor(status));
+    } finally {
+      RequestContextHolder.setRequestAttributes(bound);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private ResponseEntity<ErrorResponse> dispatch(Throwable failure, HttpServletRequest request) {
+    Method handler = HANDLER_METHODS.resolveMethodByThrowable(failure);
+    if (handler == null) {
+      return handleGenericException(
+          failure instanceof Exception exception ? exception : new IllegalStateException(failure));
+    }
+    Object[] arguments = new Object[handler.getParameterCount()];
+    Class<?>[] types = handler.getParameterTypes();
+    for (int i = 0; i < types.length; i++) {
+      arguments[i] = types[i] == HttpServletRequest.class ? request : matching(failure, types[i]);
+    }
+    try {
+      return (ResponseEntity<ErrorResponse>) handler.invoke(this, arguments);
+    } catch (IllegalAccessException e) {
+      throw new IllegalStateException(e);
+    } catch (InvocationTargetException e) {
+      throw sneakyThrow(e.getCause());
+    }
+  }
+
+  private static Object matching(Throwable failure, Class<?> type) {
+    for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+      if (type.isInstance(cause)) {
+        return cause;
+      }
+      if (cause.getCause() == cause) {
+        break;
+      }
+    }
+    return null;
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)

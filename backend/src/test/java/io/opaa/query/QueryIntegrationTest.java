@@ -834,6 +834,137 @@ class QueryIntegrationTest {
     assertThat(messageCount).isEqualTo(2);
   }
 
+  /** The streamed turn persists exactly what the non-streamed one persists, once it is complete. */
+  @Test
+  void aStreamedTurnIsPersistedOnceTheModelHasFinished() {
+    UUID spaceId = insertSpaceWithMembership(userId);
+    UUID chatId = insertChat(spaceId, userId);
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Notiz")))));
+    when(chatModel.stream(any(Prompt.class)))
+        .thenReturn(
+            reactor.core.publisher.Flux.just(
+                new ChatResponse(List.of(new Generation(new AssistantMessage("Gestreamte ")))),
+                new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))))));
+    List<String> provisional = new java.util.ArrayList<>();
+
+    QueryResult result =
+        queryService.query(
+            "Erste Frage",
+            chatId,
+            asCaller(userId),
+            true,
+            List.of(),
+            io.opaa.metadata.MetadataFilter.NONE,
+            null,
+            new io.opaa.query.answer.AnswerStreamListener() {
+              @Override
+              public void started() {}
+
+              @Override
+              public void provisional(String text, boolean replace) {
+                provisional.add(text);
+              }
+
+              @Override
+              public void idle() {}
+            });
+
+    assertThat(provisional).containsExactly("Gestreamte ", "Antwort");
+    assertThat(result.answer()).isEqualTo("Gestreamte Antwort");
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT content FROM chat_messages WHERE chat_id = ? ORDER BY sequence",
+                String.class,
+                chatId))
+        .containsExactly("Erste Frage", "Gestreamte Antwort");
+  }
+
+  /** A reader that goes away mid-answer leaves no half of a turn behind. */
+  @Test
+  void aStreamWhoseReaderWentAwayPersistsNothing() {
+    UUID spaceId = insertSpaceWithMembership(userId);
+    UUID chatId = insertChat(spaceId, userId);
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Notiz")))));
+    when(chatModel.stream(any(Prompt.class)))
+        .thenReturn(
+            reactor.core.publisher.Flux.just(
+                new ChatResponse(List.of(new Generation(new AssistantMessage("Erster Teil"))))));
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () ->
+                queryService.query(
+                    "Erste Frage",
+                    chatId,
+                    asCaller(userId),
+                    true,
+                    List.of(),
+                    io.opaa.metadata.MetadataFilter.NONE,
+                    null,
+                    new io.opaa.query.answer.AnswerStreamListener() {
+                      @Override
+                      public void started() {}
+
+                      @Override
+                      public void provisional(String text, boolean replace)
+                          throws java.io.IOException {
+                        throw new java.io.IOException("Broken pipe");
+                      }
+
+                      @Override
+                      public void idle() {}
+                    }))
+        .isInstanceOf(io.opaa.query.answer.AnswerReaderGoneException.class);
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM chat_messages WHERE chat_id = ?", Integer.class, chatId))
+        .isZero();
+  }
+
+  /**
+   * Without a single streamed part - here the model ends its stream empty and answers on the call
+   * without streaming - the reader is checked once more before the turn is kept.
+   */
+  @Test
+  void anUnstreamedAnswerWhoseReaderWentAwayPersistsNothing() {
+    UUID spaceId = insertSpaceWithMembership(userId);
+    UUID chatId = insertChat(spaceId, userId);
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort")))));
+    when(chatModel.stream(any(Prompt.class))).thenReturn(reactor.core.publisher.Flux.empty());
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () ->
+                queryService.query(
+                    "Erste Frage",
+                    chatId,
+                    asCaller(userId),
+                    true,
+                    List.of(),
+                    io.opaa.metadata.MetadataFilter.NONE,
+                    null,
+                    new io.opaa.query.answer.AnswerStreamListener() {
+                      @Override
+                      public void started() {}
+
+                      @Override
+                      public void provisional(String text, boolean replace) {}
+
+                      @Override
+                      public void idle() throws java.io.IOException {
+                        throw new java.io.IOException("Broken pipe");
+                      }
+                    }))
+        .isInstanceOf(io.opaa.query.answer.AnswerReaderGoneException.class);
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM chat_messages WHERE chat_id = ?", Integer.class, chatId))
+        .isZero();
+  }
+
   /**
    * Rehydration: with the in-memory conversation cache cold - simulating a restart or eviction - a
    * follow-up question in the same persisted chat must still be enriched from the first turn,
@@ -927,7 +1058,8 @@ class QueryIntegrationTest {
         retrievalContextFactory,
         searchScopeResolver,
         chatSourceAssembler,
-        new AnswerGenerationService(activeChatModelResolver, memoryOfB),
+        new AnswerGenerationService(
+            activeChatModelResolver, memoryOfB, new io.opaa.query.answer.ActiveAnswerStreams()),
         memoryOfB,
         citationParser,
         citationValidator,

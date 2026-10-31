@@ -6,7 +6,10 @@ import {
   askQuestion,
   clearSearchScope,
   createLibraryWithDocuments,
+  expectAnswerSettled,
   expectCitedSource,
+  isChatAnswer,
+  shownChatId,
 } from '../fixtures/chat'
 import { apiAs } from '../fixtures/externalAccess'
 import { deleteLibraryCompletely, libraryIdFromCurrentUrl } from '../fixtures/libraries'
@@ -160,15 +163,12 @@ async function storedLocations(devUser: string, chatId: string): Promise<string[
 /** Asks one question in the open chat, waits for its answer and returns the chat id. */
 async function askAndWait(page: Page, question: string): Promise<string> {
   const [response] = await Promise.all([
-    page.waitForResponse(
-      (candidate) =>
-        candidate.request().method() === 'POST' && candidate.url().endsWith('/api/v1/query'),
-    ),
+    page.waitForResponse(isChatAnswer),
     askQuestion(page, question),
   ])
   expect(response.status()).toBe(200)
-  await expect(page.getByText('Denkt nach …')).toHaveCount(0)
-  return ((await response.json()) as { chatId: string }).chatId
+  await expectAnswerSettled(page)
+  return shownChatId(page)
 }
 
 async function openSpaceChat(page: Page): Promise<void> {

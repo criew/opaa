@@ -1,5 +1,11 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { askQuestion, clearSearchScope, startFreshChat } from "../../fixtures/chat";
+import {
+  askQuestion,
+  clearSearchScope,
+  expectAnswerSettled,
+  isChatAnswer,
+  startFreshChat,
+} from "../../fixtures/chat";
 import {
   acceptConfirmDialogs,
   bootstrapAdmin,
@@ -128,14 +134,11 @@ test.describe("Selbstauskunft nach bestätigter Anmeldung", () => {
     await startFreshChat(page);
     await clearSearchScope(page);
     const [answered] = await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" && response.url().endsWith("/api/v1/query"),
-      ),
+      page.waitForResponse(isChatAnswer),
       askQuestion(page, question),
     ]);
     expect(answered.status()).toBe(200);
-    await expect(page.getByText("Denkt nach …")).toHaveCount(0);
+    await expectAnswerSettled(page);
 
     await loadMyDataWithoutRecentLogin(page);
     await expect(page.getByText(PERSONAL_ONLY_NOTICE)).toBeVisible();

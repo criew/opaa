@@ -29,6 +29,13 @@ export function responseStatus(err: unknown): number | null {
   return typeof status === 'number' ? status : null
 }
 
+/** The instance stopped while it answered (POST /api/v1/query/stream, code SHUTTING_DOWN). */
+export function isShutdownNotice(err: unknown): boolean {
+  const cause = err instanceof Error ? err.cause : undefined
+  const data = (cause as { response?: { data?: { code?: unknown } } } | undefined)?.response?.data
+  return data?.code === 'SHUTTING_DOWN'
+}
+
 /** The server refused the question because the person may no longer use its prompt. */
 export function isPromptNotUsable(err: unknown): boolean {
   const cause = err instanceof Error ? err.cause : undefined
