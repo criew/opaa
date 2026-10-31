@@ -82,15 +82,14 @@ jobs:
           # Vorgabe aus dem Skript, siehe DEFAULT_TEST_URL.
           OPAA_REPORT_TEST_URL: ${{ vars.OPAA_REPORT_TEST_URL }}
           REPORT_DATE: ${{ inputs.date }}
+          # Base URL of the published report; a fork sets its own.
+          OPAA_REPORT_SITE_URL: ${{ vars.OPAA_REPORT_SITE_URL }}
         run: |
           python .github/scripts/daily_report.py \
             --repo "$GITHUB_REPOSITORY" \
             --date "$REPORT_DATE" \
             --output site/report \
-            --site-url "https://opaa.io/report"
-
-      - name: Auslieferung ohne Jekyll sicherstellen
-        run: touch site/.nojekyll
+            --site-url "${OPAA_REPORT_SITE_URL:-https://opaa.io/report}"
 
       # The whole site without its git metadata; "publish" mirrors it onto gh-pages.
       - name: Seite übergeben

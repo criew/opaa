@@ -1,16 +1,16 @@
 # Tagesreport
 
 Ein täglich laufender Workflow trägt zusammen, was im Projekt passiert ist, und
-veröffentlicht das Ergebnis als Seite auf GitHub Pages. Über einen Atom-Feed
+veröffentlicht das Ergebnis als Seite unter https://opaa.io. Über einen Atom-Feed
 lässt sich der Report abonnieren.
 
-- **Übersicht:** https://criew.github.io/opaa/report/
-- **Aktueller Tag:** https://criew.github.io/opaa/report/latest.html
-- **Feed:** https://criew.github.io/opaa/report/feed.xml
+- **Übersicht:** https://opaa.io/report/
+- **Aktueller Tag:** https://opaa.io/report/latest.html
+- **Feed:** https://opaa.io/report/feed.xml
 
 `latest.html` ist die feste Adresse zum Bookmarken: Sie führt stets zum
-jüngsten vorhandenen Report. GitHub Pages liefert nur statische Dateien, eine
-serverseitige Weiterleitung gibt es dort nicht — die Seite leitet deshalb selbst
+jüngsten vorhandenen Report. Der Webserver spiegelt nur statische Dateien und
+kennt den jüngsten Tag nicht — die Seite leitet deshalb selbst
 weiter (`meta refresh`) und trägt für den Fall, dass das unterbunden ist, einen
 sichtbaren Link zum Ziel. Die Adresse in der Adresszeile wird dabei zum
 konkreten Tag, sodass sich ein geteilter Link immer auf einen festen Tag
@@ -49,7 +49,7 @@ zu den Kalendernachbarn: Tage ohne Bewegung werden übersprungen, weil es für
 sie keine Seite gibt. Am Rand des Bestands entfällt der jeweilige Link, statt
 ins Leere zu zeigen.
 
-Die Adresse der Testumgebung ist `https://opaa.ewerlin.com/chat`. Sie lässt
+Die Adresse der Testumgebung ist `https://demo.opaa.io/chat`. Sie lässt
 sich ohne Codeänderung umstellen, über `--test-url` oder die Umgebungsvariable
 `OPAA_REPORT_TEST_URL`. Ein leerer Wert lässt den Link weg.
 
@@ -182,7 +182,7 @@ python .github/scripts/daily_report.py \
   --repo criew/opaa \
   --date 2026-08-01 \
   --output /tmp/report \
-  --test-url https://opaa.ewerlin.com/chat
+  --test-url https://demo.opaa.io/chat
 ```
 
 Das Skript benötigt eine angemeldete GitHub-CLI und kommt ohne zusätzliche
@@ -251,12 +251,10 @@ Störung beim Anbieter Merges blockieren.
 
 ## Einmalige Einrichtung
 
-Der Branch `gh-pages` entsteht beim ersten Lauf des Workflows. Danach muss
-GitHub Pages einmalig auf diesen Branch gestellt werden:
+Der Branch `gh-pages` entsteht beim ersten Lauf des Workflows. Ausgeliefert wird
+er vom VPS, der ihn per Timer spiegelt; die Einrichtung steht in
+[`deploy/landing-page/README.md`](../../deploy/landing-page/README.md). GitHub
+Pages wird dafür nicht gebraucht.
 
-```bash
-gh api -X POST repos/criew/opaa/pages \
-  -f 'source[branch]=gh-pages' -f 'source[path]=/'
-```
-
-Alternativ unter *Settings → Pages → Branch: gh-pages*.
+Die Basis-URL im Feed ist `https://opaa.io/report`; ein Fork setzt seine eigene
+über die Repository-Variable `OPAA_REPORT_SITE_URL`.

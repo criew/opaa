@@ -15,8 +15,11 @@ if [ ! -d "$cache_dir/.git" ]; then
   git init -q "$cache_dir"
   git -C "$cache_dir" remote add origin "$repo_url"
 fi
+git -C "$cache_dir" remote set-url origin "$repo_url"
 
-git -C "$cache_dir" fetch -q --depth 1 origin "$branch"
+# A stalled transfer aborts instead of blocking the next timer run.
+git -C "$cache_dir" -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 \
+  fetch -q --depth 1 origin "$branch"
 fetched="$(git -C "$cache_dir" rev-parse FETCH_HEAD)"
 state_file="$cache_dir/.git/opaa-deployed"
 deployed="$(cat "$state_file" 2>/dev/null || true)"
@@ -29,8 +32,9 @@ git -C "$cache_dir" checkout -q --force --detach "$fetched"
 git -C "$cache_dir" clean -q -f -d -x
 
 # .nojekyll only matters to GitHub Pages and README.md describes the source tree; everything
-# else is published as is.
-rsync -a --delete --delete-excluded --exclude '.git/' --exclude '.nojekyll' --exclude '/README.md' "$cache_dir/" "$web_root/"
+# else is published as is. Symlinks pointing outside the tree are dropped, so the branch can
+# never expose other files of this host.
+rsync -a --safe-links --delete --delete-excluded --exclude '.git/' --exclude '.nojekyll' --exclude '/README.md' "$cache_dir/" "$web_root/"
 printf '%s\n' "$fetched" > "$state_file"
 
 # A shallow fetch per change piles up unreachable objects; drop them right away.

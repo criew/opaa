@@ -46,7 +46,7 @@ Die Schritte A und B wurden live durchgespielt und danach zurückgesetzt: Mitgli
 wieder aufnehmen, Keycloak-Mitgliedschaft entfernen, abgleichen, zurückgeben und erneut abgleichen.
 
 **Schritt E zusätzlich mit echtem Modell:** Am 27.09.2026 wurden die Fachfragen aus Schritt E live
-auf der Demo-Instanz demo.opaa.io gestellt (Chat-Modell `claude-haiku-4-5`, Suche auf die
+auf der Demo-Instanz opaa.ewerlin.com (heute demo.opaa.io) gestellt (Chat-Modell `claude-haiku-4-5`, Suche auf die
 jeweilige Bibliothek eingeschränkt). Die beiden XLSX-Fragen (BB-3311, BB-3213), die CSV-Frage, die
 Anhang-Frage zum Auftakttermin in Nordfeld (3 von 3 Läufen) und die Frage an die Feuerwache-Anlage aus
 Schritt D lieferten korrekte, zitierte Antworten.

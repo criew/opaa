@@ -457,7 +457,7 @@ Entwicklungsumgebung ihn nicht startet.
 
 ### Die öffentliche Instanz
 
-**Sie existiert bereits: `demo.opaa.io`.** Es ist also kein Hosting aufzubauen, sondern der
+**Sie existiert bereits: `opaa.ewerlin.com` (heute `demo.opaa.io`).** Es ist also kein Hosting aufzubauen, sondern der
 Korpus auf eine laufende Instanz auszurollen. Das verkleinert Phase 2 erheblich.
 
 > **Korrektur (aus dem Review zu PR #247), zweite Fassung (2026-08-02).** Dieser Abschnitt wurde
@@ -491,7 +491,7 @@ Drei Folgerungen:
   Rollout oder eine Neuindizierung des Korpus kostet unabhängig von seiner Größe nichts.
 - **Der CI-Harness und die Instanz betten identisch ein.** Beide verwenden `nomic-embed-text` über
   Ollama. Ein grüner Regressionslauf misst damit dieselbe Retrieval-Konfiguration, die ein Besucher
-  auf `demo.opaa.io` erlebt — siehe den Nachtrag im ADR.
+  auf `opaa.ewerlin.com` (heute `demo.opaa.io`) erlebt — siehe den Nachtrag im ADR.
 - **Die Instanz ist inzwischen dokumentiert.** `docs/handbuch/betrieb/docker-compose.md` beschreibt sie seit #244; die
   Betriebsdetails zu Korpus-Rollout, Indizierung und Aktualisierung sind dort ergänzt.
 
@@ -550,7 +550,7 @@ Phase 1 und 2 sind der Gegenstand der jetzt erstellten Issues.
 - `docs/discussions/discussion-retrieval-strategien.md` (Abschnitt 9, GraphRAG) — die Tier-Domäne mit
   ihrer Taxonomie ist der natürliche Testfall, falls GraphRAG evaluiert wird.
 - Issues #115 und #117 — Voraussetzung für die Multi-Tenancy-Demonstration.
-- `docs/handbuch/betrieb/docker-compose.md` — beschreibt die bestehende öffentliche Instanz `demo.opaa.io` noch
+- `docs/handbuch/betrieb/docker-compose.md` — beschreibt die bestehende öffentliche Instanz `opaa.ewerlin.com` (heute `demo.opaa.io`) noch
   nicht; das ist Voraussetzung für den Korpus-Rollout.
 - `docs/AGENT-ORGANIZATION.md` — der QA Engineer ist Eigentümer der RAG-Evaluierung im laufenden
   Betrieb; dieses Feature liefert ihm das Werkzeug.
@@ -565,7 +565,7 @@ Vom Maintainer entschieden:
 |---|---|
 | 1 | **Phase-1-Quelle:** `jrtec/Superheroes` (CC0-1.0). Der FiveThirtyEight-Datensatz entfällt. |
 | 2 | **Multi-Tenancy:** ein gemeinsamer Index, Domänentrennung über Dateinamen-Präfix. Die Workspace-Variante wartet auf #115/#117, nicht auf Epic #198. |
-| 3 | **Demo-Hosting:** die bestehende Instanz `demo.opaa.io`. **Chat: `claude-haiku-4-5` von Anthropic** über dessen OpenAI-kompatible Schicht (`OPAA_AI_CHAT_PROVIDER=openai` bezeichnet das Protokoll, nicht den Anbieter). **Einbettung: `nomic-embed-text` lokal über Ollama**, 768 Dimensionen. *Zweimal korrigiert am 2026-08-02: zuerst war „bestehende Ollama-Konfiguration (`phi3:mini`), kein kommerzielles Modell" falsch, dann die Ersatzangabe „läuft auf OpenAI" ungenau.* Ein reales Kostenrisiko pro Anfrage besteht nur beim Chat und wird über Ausgabenlimit und Rate Limiting begrenzt; die Indizierung ist kostenlos. |
+| 3 | **Demo-Hosting:** die bestehende Instanz `opaa.ewerlin.com` (heute `demo.opaa.io`). **Chat: `claude-haiku-4-5` von Anthropic** über dessen OpenAI-kompatible Schicht (`OPAA_AI_CHAT_PROVIDER=openai` bezeichnet das Protokoll, nicht den Anbieter). **Einbettung: `nomic-embed-text` lokal über Ollama**, 768 Dimensionen. *Zweimal korrigiert am 2026-08-02: zuerst war „bestehende Ollama-Konfiguration (`phi3:mini`), kein kommerzielles Modell" falsch, dann die Ersatzangabe „läuft auf OpenAI" ungenau.* Ein reales Kostenrisiko pro Anfrage besteht nur beim Chat und wird über Ausgabenlimit und Rate Limiting begrenzt; die Indizierung ist kostenlos. |
 | 4 | **Korpus-Ablage:** Hauptrepository mit SHA-256-Manifest; Neubewertung bei der Ausweitung auf vier Domänen. |
 | 5 | **ADR-0011** ist akzeptiert. Zur korrigierten Kostenprämisse siehe den Nachtrag im ADR. |
 | 6 | **Zugangsmodell der Demo:** account-gebunden hinter Keycloak. Kein Gast- und kein Read-only-Zugang. *Korrigiert am 2026-08-02; die vorherige Anforderung „anonymer Lesezugriff" ist gestrichen.* Für diese Entscheidung wird ausdrücklich **kein ADR** angelegt. |
