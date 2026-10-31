@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-29 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
+Akzeptiert · zuletzt geändert 2026-10-31 · ersetzt [ADR-0021](0021-single-instance-betrieb.md) ·
 ergänzt ADR-0032 Entscheidung 3 und ADR-0042 Entscheidung 2 · ergänzt durch ADR-0060, ADR-0061 und ADR-0064
 
 ## Kontext
@@ -36,11 +36,16 @@ Instanzgrenzen.
 
 Mehrere gleichrangige Backend-Instanzen bedienen gleichzeitig Anfragen und Hintergrundarbeit, ohne
 Sitzungsaffinität: Alle Sicherheitskonfigurationen sind zustandslos (`STATELESS`), der CSRF-Schutz
-der lokalen Anmeldung liegt in einem Cookie, und es gibt keinen SSE- oder WebSocket-Endpunkt; jede
-Instanz beantwortet jede Anfrage. Gestreamt wird nur der Download der Selbstauskunft: eine Antwort
-ohne Zustand über die Anfrage hinaus, deren Reservierung mit Ablauf in der Datenbank liegt. Bricht
-ein Rolling Update sie ab, verfällt die Reservierung und nichts ist verbraucht; die Person startet
-neu. Die erste nutzbare Stufe heißt „zwei
+der lokalen Anmeldung liegt in einem Cookie, und es gibt keinen WebSocket-Endpunkt; jede Instanz
+beantwortet jede Anfrage. Gestreamt werden nur Antworten, die ganz in ihrer Anfrage leben: Der
+Download der Selbstauskunft hat keinen Zustand über die Anfrage hinaus, seine Reservierung liegt mit
+Ablauf in der Datenbank. Bricht ein Rolling Update ihn ab, verfällt die Reservierung und nichts ist
+verbraucht; die Person startet neu. Der einzige SSE-Endpunkt, der Antwortstrom des Chats
+(`POST /api/v1/query/stream`), kennt kein Wiederaufnehmen und keine Ereignis-ID, ein Wiederverbinden
+an eine andere Instanz gibt es nicht. Die Runde wird erst nach der fertigen Antwort gespeichert,
+genau wie ohne Strom. Beim Stopp schneidet die Instanz ihre offenen Ströme sofort mit einem Hinweis
+ab, statt im Graceful Shutdown auf das Modell zu warten; die Person sendet die Frage erneut, und
+jede Instanz kann sie beantworten. Die erste nutzbare Stufe heißt „zwei
 Instanzen, Update ohne Ausfall“; ihre Grenze steht unter Konsequenzen. Eine zweite Stufe macht
 Budgets und Anzeigen installationsweit (Entscheidung 12). Die Instanzzahl ist eine feste Größe der
 Bereitstellung, ein automatisches Skalieren des Backends ist nicht vorgesehen. Eine einzelne Instanz

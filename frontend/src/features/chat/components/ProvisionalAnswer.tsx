@@ -1,6 +1,4 @@
 import Box from '@mui/material/Box'
-import CircularProgress from '@mui/material/CircularProgress'
-import Typography from '@mui/material/Typography'
 import MarkdownRenderer from '@/shared/ui/markdown/MarkdownRenderer'
 
 export const PROVISIONAL_ANSWER_LABEL =
@@ -16,19 +14,14 @@ interface ProvisionalAnswerProps {
 
 /**
  * The answer while the model writes it. Marked as provisional and without any action: it is not
- * validated yet and cannot be copied or exported; the final answer replaces it. The label is a
- * status that is announced once; the growing text is no live region, so a screen reader is not
- * read every word.
+ * validated yet and cannot be copied or exported; the final answer replaces it. The growing text is
+ * no live region, so a screen reader is not read every word; {@link PROVISIONAL_ANSWER_LABEL} is
+ * shown by the list's loading status above it, which stays mounted from "Denkt nach …" on so the
+ * change is announced once.
  */
 export default function ProvisionalAnswer({ text }: ProvisionalAnswerProps) {
   return (
     <Box data-testid="provisional-answer" aria-busy="true" sx={{ px: 2, mb: 2 }}>
-      <Box role="status" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-        <CircularProgress size={16} aria-hidden />
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          {PROVISIONAL_ANSWER_LABEL}
-        </Typography>
-      </Box>
       <Box sx={{ borderLeft: 3, borderColor: 'divider', borderLeftStyle: 'dashed', pl: 2 }}>
         {/* Without a citation index the renderer drops every marker; the open one at the end it
             cannot recognise yet. */}

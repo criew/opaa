@@ -11,7 +11,7 @@ import { CHAT_MAX_WIDTH } from '@/shared/theme/theme'
 import { AiNotice } from './AiNotice'
 import MessageBubble from './MessageBubble'
 import DateSeparator from './DateSeparator'
-import ProvisionalAnswer from './ProvisionalAnswer'
+import ProvisionalAnswer, { PROVISIONAL_ANSWER_LABEL } from './ProvisionalAnswer'
 import { useCopyAnnouncement } from './copyAnnouncer'
 
 interface MessageListProps {
@@ -185,19 +185,22 @@ export default function MessageList({
           )
         })}
 
-        {isLoading && streamingAnswer !== null && <ProvisionalAnswer text={streamingAnswer} />}
-        {isLoading && streamingAnswer === null && (
+        {/* One status from "Denkt nach …" to the end of the answer: its text changes once the
+            first part arrives, which a screen reader announces; a region inserted with its text
+            would not be. */}
+        {isLoading && (
           <Box
             role="status"
             aria-live="polite"
-            sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, mb: 2 }}
+            sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, mb: streaming ? 1 : 2 }}
           >
-            <CircularProgress size={20} />
+            <CircularProgress size={streaming ? 16 : 20} aria-hidden />
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              Denkt nach …
+              {streaming ? PROVISIONAL_ANSWER_LABEL : 'Denkt nach …'}
             </Typography>
           </Box>
         )}
+        {isLoading && streamingAnswer !== null && <ProvisionalAnswer text={streamingAnswer} />}
 
         {liveRegion}
         <div ref={bottomRef} />

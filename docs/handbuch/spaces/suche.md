@@ -809,6 +809,20 @@ folgen. Die Kontextdokumente der Suche bleiben stehen, und enthält die Nachrich
 wird sie aus ihnen beantwortet. Quellen und die „Durchsucht wurden"-Zeile erscheinen wie bei jeder
 Suche. Die Anweisung hängt allein an der Nachricht, nie an den Leserechten.
 
+**Antwort im Fluss.** Im Chat erscheint die Antwort, während das Modell sie schreibt. Bis sie fertig
+ist, steht sie als **vorläufig** gekennzeichnet da, ohne Quellen und ohne klickbare Zitiermarken:
+Belegprüfung und Fundstellen (Abschnitt 7) laufen erst über die fertige Antwort, und deren
+Fassung ersetzt dann die vorläufige. Kopieren und Exportieren gibt es erst danach. Screenreader
+melden einmal „Antwort wird geschrieben" und am Ende „Antwort eingetroffen", nicht jedes neue Wort.
+Solange die Antwort entsteht, steht neben „Senden" die Schaltfläche **„Antwort abbrechen"**: Das
+Backend beendet die Erzeugung, die Runde wird nicht gespeichert, und die Frage steht wieder im
+Eingabefeld. Bricht die Verbindung ab, gilt dasselbe; ein halb gespeichertes Gespräch entsteht nie.
+Kann das Modell nicht streamen, antwortet es wie früher in einem Stück. Suchprotokoll,
+Erklärungsprotokoll, Kosten und Tokens erfasst OPAA in beiden Fällen gleich. Die Schnittstelle für
+Programme (`POST /api/v1/query`) und der MCP-Server antworten weiterhin in einem Stück; der Chat
+nutzt `POST /api/v1/query/stream`. Was ein Proxy davor braucht, steht in
+[Netz und Sicherheit](../betrieb/netz-und-sicherheit.md#netzwerkzugang).
+
 Nach der Antwort wird die Nutzernachricht dieser Runde nebenläufig zur Gesprächsnotiz verdichtet
 (Abschnitt 2); ein daraus entstehender Punkt wirkt ab der nächsten Frage.
 

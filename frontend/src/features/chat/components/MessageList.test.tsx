@@ -200,6 +200,17 @@ describe('MessageList', () => {
       expect(text.closest('[aria-live], [role="status"], [role="log"], [role="alert"]')).toBeNull()
     })
 
+    it('changes the text of the same status when the first part arrives', () => {
+      const { rerender } = render(
+        <MessageList messages={[question]} isLoading streamingAnswer={null} />,
+      )
+      const status = screen.getByText('Denkt nach …').closest('[role="status"]')
+
+      rerender(<MessageList messages={[question]} isLoading streamingAnswer="Die Frist" />)
+
+      expect(screen.getByText(PROVISIONAL_ANSWER_LABEL).closest('[role="status"]')).toBe(status)
+    })
+
     it('shows the thinking indicator until the first part arrives', () => {
       render(<MessageList messages={[question]} isLoading streamingAnswer={null} />)
 

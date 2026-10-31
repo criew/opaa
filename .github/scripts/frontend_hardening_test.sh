@@ -9,10 +9,10 @@
 # OPAA_BACKEND_RESOLVER a name reaches every container behind it, one started after nginx included.
 # Under parallel requests one of two containers behind the name stops: every request is answered
 # by the other, with its body and URI intact, within a few seconds. A slow answer, a streamed /mcp
-# answer and uploads up to the size limits pass unchanged. A request other than GET and HEAD that a
-# backend has received is never sent to a second one, neither when that backend closes the
-# connection without an answer nor when the answer outlasts OPAA_BACKEND_READ_TIMEOUT; next to an
-# address that refuses connections it is still answered.
+# answer, a streamed chat answer and uploads up to the size limits pass unchanged. A request other
+# than GET and HEAD that a backend has received is never sent to a second one, neither when that
+# backend closes the connection without an answer nor when the answer outlasts
+# OPAA_BACKEND_READ_TIMEOUT; next to an address that refuses connections it is still answered.
 #
 #   .github/scripts/frontend_hardening_test.sh <frontend image>
 set -euo pipefail
@@ -99,7 +99,7 @@ forged=(-H 'Forwarded: for=192.0.2.1;host=evil.example;proto=https'
   -H 'X-Forwarded-Host: evil.example' -H 'X-Forwarded-Port: 8443' -H 'X-Forwarded-Prefix: /evil')
 clean='forwarded=[] host=[] port=[] prefix=[]'
 for request in "GET /api/v1/health" "PUT /api/v1/health" "POST /api/v1/transcriptions" "POST /mcp" \
-  "DELETE /mcp" "POST /api/v1/me/self-disclosure/download"; do
+  "DELETE /mcp" "POST /api/v1/me/self-disclosure/download" "POST /api/v1/query/stream"; do
   method="${request% *}"
   path="${request#* }"
   received="$(curl -sS --max-time 10 -X "$method" "${forged[@]}" "$base$path" || true)"
@@ -255,8 +255,8 @@ fi
 
 echo "--- one of two containers stops under load"
 # A full nginx configuration with njs: the stub answers with its name, the URI it received and the
-# length of the request body; /api/v1/slow after 4 s, /mcp/stream as five events over 4 s, and
-# /api/v1/drop and /mcp/drop close the connection without an answer. Every request it receives is
+# length of the request body; /api/v1/slow after 4 s, /mcp/stream and /api/v1/query/stream as five
+# events over 4 s, and /api/v1/drop and /mcp/drop close the connection without an answer. Every request it receives is
 # logged with its X-Test-Request header.
 stub_conf='load_module /etc/nginx/modules/ngx_http_js_module.so;
 env STUB_NAME;
@@ -291,7 +291,7 @@ stub_js='function handle(r) {
         setTimeout(function () { r.return(200, "slow\n"); }, 4000);
         return;
     }
-    if (r.uri === "/mcp/stream") {
+    if (r.uri === "/mcp/stream" || r.uri === "/api/v1/query/stream") {
         var n = 0;
         r.status = 200;
         r.headersOut["Content-Type"] = "text/event-stream";
@@ -355,13 +355,16 @@ if [[ "$code" == 200 && "$(cat "$workdir/slow" 2>/dev/null)" == slow ]] && at_le
 else
   fail "the 4 s answer on /api/ ended with ${code:-no status} after ${total:-?} s"
 fi
-read -r code first total <<<"$(fetch "$workdir/stream" -N "$failover_base/mcp/stream")"
-if [[ "$code" == 200 && "$(grep -c '^data: ' "$workdir/stream" 2>/dev/null)" == 5 ]] &&
-  at_least 1.5 "$first" && at_least "$total" 3.5; then
-  echo "a stream on /mcp arrives event by event: first byte after $first s, end after $total s"
-else
-  fail "the stream on /mcp ended with ${code:-no status}, first byte after ${first:-?} s, end after ${total:-?} s"
-fi
+for stream in "/mcp/stream" "/api/v1/query/stream"; do
+  read -r code first total <<<"$(fetch "$workdir/stream" -N -X POST -H 'Accept-Encoding: gzip' \
+    "$failover_base$stream")"
+  if [[ "$code" == 200 && "$(grep -c '^data: ' "$workdir/stream" 2>/dev/null)" == 5 ]] &&
+    at_least 1.5 "$first" && at_least "$total" 3.5; then
+    echo "a stream on $stream arrives event by event: first byte after $first s, end after $total s"
+  else
+    fail "the stream on $stream ended with ${code:-no status}, first byte after ${first:-?} s, end after ${total:-?} s"
+  fi
+done
 head -c 41943040 /dev/zero >"$workdir/upload"
 head -c 10485760 /dev/zero >"$workdir/dictation"
 for upload in "/api/v1/documents upload 41943040" "/api/v1/transcriptions dictation 10485760"; do
