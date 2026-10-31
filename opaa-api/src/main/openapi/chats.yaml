@@ -773,6 +773,14 @@ components:
           items:
             $ref: "#/components/schemas/SourceReference"
           description: Present on ASSISTANT messages that used document context; absent otherwise.
+        evidence:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/AnswerEvidence"
+          description: >-
+            On an ASSISTANT message: its Belegstand as assessed when the answer was generated.
+            Null on a USER message, on an answer without anything to assess and on answers from
+            before the Belegstand existed.
         privateSourcesInContext:
           type: boolean
           nullable: true

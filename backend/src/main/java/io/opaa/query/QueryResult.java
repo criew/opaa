@@ -1,5 +1,6 @@
 package io.opaa.query;
 
+import io.opaa.chat.AnswerEvidence;
 import io.opaa.chat.ChatNotePoint;
 import io.opaa.chat.ChatSource;
 import java.util.List;
@@ -13,6 +14,7 @@ import java.util.UUID;
  * @param noteItems the Gesprächsnotiz state that went into <em>this</em> answer, {@code null} for a
  *     turn outside a chat. Never the state of the condensation this turn triggers - that runs after
  *     this result is built, the same rule {@code chatTitle} follows.
+ * @param evidence the answer's Belegstand, {@code null} when there is nothing to assess.
  */
 public record QueryResult(
     String answer,
@@ -20,4 +22,17 @@ public record QueryResult(
     QueryOutcome metadata,
     UUID chatId,
     String chatTitle,
-    List<ChatNotePoint> noteItems) {}
+    List<ChatNotePoint> noteItems,
+    AnswerEvidence evidence) {
+
+  /** A result without a Belegstand - a path that does not assess one. */
+  public QueryResult(
+      String answer,
+      List<ChatSource> sources,
+      QueryOutcome metadata,
+      UUID chatId,
+      String chatTitle,
+      List<ChatNotePoint> noteItems) {
+    this(answer, sources, metadata, chatId, chatTitle, noteItems, null);
+  }
+}

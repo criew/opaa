@@ -71,6 +71,7 @@ class ChatTurnTransactionBoundaryTest {
             UsedPrompt.class,
             String.class,
             String.class,
+            String.class,
             String.class);
 
     Transactional annotation = writeTurnOnce.getAnnotation(Transactional.class);

@@ -61,6 +61,11 @@ public class ChatMessage {
   @Column(name = "sources", updatable = false, columnDefinition = "json")
   private String sources;
 
+  /** The answer's Belegstand as JSON ({@link AnswerEvidence}), null on a question. */
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "answer_evidence", updatable = false, columnDefinition = "json")
+  private String answerEvidence;
+
   @Column(name = "used_prompt_id", updatable = false)
   private UUID usedPromptId;
 
@@ -148,5 +153,14 @@ public class ChatMessage {
 
   public Instant getCreatedAt() {
     return createdAt;
+  }
+
+  public String getAnswerEvidence() {
+    return answerEvidence;
+  }
+
+  /** Sets the Belegstand before the answer's message is first saved; never changed afterwards. */
+  void setAnswerEvidence(String answerEvidence) {
+    this.answerEvidence = answerEvidence;
   }
 }

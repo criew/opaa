@@ -53,12 +53,15 @@ class ChatMessageWriter {
       UsedPrompt usedPrompt,
       String answer,
       String serializedSources,
+      String serializedEvidence,
       String derivedTitle) {
     int nextSequence = nextSequenceFor(chatId);
     chatMessageRepository.save(
         new ChatMessage(chatId, nextSequence, ChatRole.USER, question, null, usedPrompt));
-    chatMessageRepository.save(
-        new ChatMessage(chatId, nextSequence + 1, ChatRole.ASSISTANT, answer, serializedSources));
+    ChatMessage answerMessage =
+        new ChatMessage(chatId, nextSequence + 1, ChatRole.ASSISTANT, answer, serializedSources);
+    answerMessage.setAnswerEvidence(serializedEvidence);
+    chatMessageRepository.save(answerMessage);
     chatRepository.deriveTitleFromFirstQuestionIfAbsent(chatId, derivedTitle);
     chatRepository.touch(chatId, Instant.now(clock));
     if (chatPersonalMarkRepository.clearArchive(chatId, senderId) > 0) {

@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.QueryResponse;
 import io.opaa.api.types.ChatNoteItemKind;
+import io.opaa.api.types.EvidenceLevel;
+import io.opaa.chat.AnswerEvidence;
 import io.opaa.chat.ChatNotePoint;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.SearchedLibraryRef;
@@ -48,7 +50,9 @@ class QueryResponseMapperTest {
             "Rückstellung für Altlastensanierung",
             List.of(
                 new ChatNotePoint(
-                    noteItemId, "Bezugsjahr 2024", ChatNoteItemKind.RAHMEN, noteCreatedAt)));
+                    noteItemId, "Bezugsjahr 2024", ChatNoteItemKind.RAHMEN, noteCreatedAt)),
+            new AnswerEvidence(
+                EvidenceLevel.PARTIALLY_SUPPORTED, 3, 2, 1, List.of("Frist"), true, true, true));
 
     QueryResponse response = QueryResponseMapper.toResponse(result);
 
@@ -77,6 +81,14 @@ class QueryResponseMapperTest {
         .isEqualTo(libraryId);
     assertThat(response.getMetadata().getSearchedLibraries().getFirst().getName())
         .isEqualTo("Dienstanweisungen");
+    assertThat(response.getEvidence().getLevel()).isEqualTo(EvidenceLevel.PARTIALLY_SUPPORTED);
+    assertThat(response.getEvidence().getConfirmedPassages()).isEqualTo(3);
+    assertThat(response.getEvidence().getConfirmedDocuments()).isEqualTo(2);
+    assertThat(response.getEvidence().getUnconfirmedCitations()).isEqualTo(1);
+    assertThat(response.getEvidence().getUncoveredSubQueries()).containsExactly("Frist");
+    assertThat(response.getEvidence().getTruncated()).isTrue();
+    assertThat(response.getEvidence().getKnowledgeSearched()).isTrue();
+    assertThat(response.getEvidence().getPassagesFound()).isTrue();
   }
 
   @Test
