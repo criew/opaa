@@ -5,8 +5,31 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-10-30T06:11:19Z</updated>
+  <updated>2026-10-31T06:05:46Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Freitag, 30. Oktober 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-10-30.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-10-30.html</id>
+    <updated>2026-10-31T06:05:46Z</updated>
+    <summary type="text">feat(security): Security-Audit 2026 – Angriffsfläche systematisch prüfen und verkleinern:
+— Security-Audit abgeschlossen: 50 von 50 Tickets erledigt
+— PDF-Heap-Erschöpfung bei vielfach gezeichnetem Formular behoben
+— enc:v1 und Klartext nach Umstellung auf enc:v2 abgelehnt
+— Abhängigkeits-Gate, CodeQL-Triagierung, ZAP-Scan und Regressionstests etabliert
+test(e2e): Lücken der E2E-Suite schließen:
+— E2E-Suite-Lücken geschlossen: 7 von 7 Tickets erledigt
+— Firefox-Smoke-Lauf für Kernszenarien implementiert
+— axe-Prüfung am Endzustand jedes UI-Szenarios aktiviert
+— Fundstellen-Anzeige, Revision, Chat-Mehrfachrunden und Formate getestet
+feat: „Dokument öffnen“ springt an die Fundstelle und markiert sie:
+— Textfassung an Fundstelle und Original-Download implementiert
+— Dokument öffnen springt an Fundstelle und markiert sie
+Sonstiges:
+— E2E-Suite-Fehler bei Upload-Kontogrenze behoben, Fokus im Chat-Eingabefeld
+— S3-404-Behandlung, Embedding-Wechsel und Verbindungsprotokoll-Pseudonyme korrigiert
+— RSS-Inhaltsselektor, Speicherkontingent und Lockout-Regeln konfigurierbar gemacht</summary>
+  </entry>
   <entry>
     <title>Tagesreport Donnerstag, 29. Oktober 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-10-29.html"/>
@@ -896,21 +919,5 @@ Sonstiges:
 — Spring-Testkontexte von 23 auf vier konsolidiert
 — Pauschale Löschungen in Testklassen eingegrenzt
 — Rechtehistorie mit streng monotonen Intervallgrenzen</summary>
-  </entry>
-  <entry>
-    <title>Tagesreport Donnerstag, 10. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-10.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-10.html</id>
-    <updated>2026-09-11T04:58:09Z</updated>
-    <summary type="text">feat: UI-Politur-Runde Oktober 2026 — Sammel-Epic:
-— Fundstellenblock unter Antworten verschlankt
-— Filterangebot der Metadaten — Konzept für Sichtbarkeit je Bibliothek
-feat: Gruppen, Rollen und Berechtigungen: Subjekte, Herkunft und Folgen für Freigaben:
-— Gruppenherkunft je Identitätsanbieter — Sync-Konfiguration
-Sonstiges:
-— Query-Paket refaktoriert: Entkernung, Paketschnitt, Doppelungen entfernt
-— Backend-Laufzeitimage auf Distroless reduziert, wöchentliche Neubau-Automation
-— Trivy-Alerts triagiert, kritische Befunde mit Alarm-Issue verknüpft
-— Daumen-Schaltflächen aus Chat entfernt, Dokumentation ergänzt</summary>
   </entry>
 </feed>
