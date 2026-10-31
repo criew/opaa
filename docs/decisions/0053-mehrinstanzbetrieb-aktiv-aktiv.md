@@ -160,15 +160,10 @@ begrenzt. Kurze TTLs statt eines Busses ließen die Lücke für die ganze TTL of
   „Nicht widerrufen“ wird bei jeder Prüfung aus `local_revoked_tokens` gelesen.
 - Der Sitzungswiderruf (Passwortwechsel, Sperre, Admin-Reset, Ausschalten der lokalen Konten,
   Wiederverwendungserkennung) erhöht einen Zähler je Konto. Das Token trägt den Zählerstand als Claim,
-  die Prüfung verlangt Gleichheit. `iat` wird nicht mehr gegen einen Cutoff aus einer anderen Uhr
-  verglichen.
-- **Rolling-Update-Fenster:** Die Vorgängerversion kennt den Claim nicht. Die neue Version schreibt
-  den Cutoff weiter mit, damit die Vorgängerversion widerruft, und prüft ein Token ohne Claim, das
-  nur die Vorgängerversion ausstellt, weiter gegen den Cutoff. Schreibt die Vorgängerversion nur den
-  Cutoff, erhöht ein Trigger den Zähler; er lässt ihn nie sinken. Das Folgerelease lehnt ein Token
-  ohne Claim ab.
+  die Prüfung verlangt Gleichheit; ein Token ohne Claim ist `malformed_token`. `iat` wird nie gegen
+  einen Cutoff aus einer anderen Uhr verglichen. Ein Trigger lässt den Zähler nie sinken.
 
-Umsetzung: #2946. Ein Negativ-Cache ist auf jeder Instanz außer der widerrufenden falsch, und zwar für
+Umsetzung: #2946, #2959. Ein Negativ-Cache ist auf jeder Instanz außer der widerrufenden falsch, und zwar für
 die volle Token-Lebensdauer. Ein Zeitvergleich über zwei Hosts scheitert schon an einer Sekunde
 Drift; ein Zähler kennt keine Uhr.
 

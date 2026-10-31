@@ -267,7 +267,7 @@ paths:
       summary: Lock a local account (system admin only)
       description: >
         Sets locked_reason ADMIN, ends every session of the account at once (access tokens
-        through password_invalidated_before, refresh families as ACCOUNT_LOCKED; audited as
+        through the session generation, refresh families as ACCOUNT_LOCKED; audited as
         LOCAL_SESSION_REVOKED only when a session was actually active), replaces a running
         failed-login lockout or a lock for inactivity - the lock by the administration starts
         from now, without an unlock in between and without the ACCOUNT_UNLOCKED mail - resets the

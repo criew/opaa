@@ -144,13 +144,14 @@ class LocalCredentialsTest {
   }
 
   @Test
-  void invalidatingSessionsRecordsTheCutoff() {
+  void endingAllSessionsRaisesTheSessionGeneration() {
     LocalCredentials credentials = activeCredentials();
     Instant later = NOW.plus(Duration.ofHours(1));
+    long before = credentials.getSessionGeneration();
 
-    credentials.invalidateSessionsIssuedBefore(NOW, later);
+    credentials.endAllSessions(later);
 
-    assertThat(credentials.getPasswordInvalidatedBefore()).isEqualTo(NOW);
+    assertThat(credentials.getSessionGeneration()).isEqualTo(before + 1);
     assertThat(credentials.getUpdatedAt()).isEqualTo(later);
   }
 

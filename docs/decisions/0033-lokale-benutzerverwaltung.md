@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · Entscheidung 5 teilweise ersetzt durch ADR-0060 (Entscheidung 8) · Entscheidung 9 ergänzt durch ADR-0060 (Entscheidung 17) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
+Akzeptiert · zuletzt geändert 2026-10-31 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · Entscheidung 5 teilweise ersetzt durch ADR-0060 (Entscheidung 8) · Entscheidung 9 ergänzt durch ADR-0060 (Entscheidung 17) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
 
 ## Kontext
 
@@ -39,7 +39,7 @@ Rollen unberührt. Die Regel `(issuer, subject)` aus ADR-0025 gilt unverändert.
 
 `local_credentials` (`user_id` als Primär- und Fremdschlüssel, `ON DELETE CASCADE`): `password_hash`
 (nullbar), `password_change_required` mit `password_change_reason` (`INITIAL | ADMIN_RESET |
-SECURITY`), `password_invalidated_before` (Massenwiderruf), `locked_at`/`locked_reason` (`ADMIN |
+SECURITY`), `session_generation` (Massenwiderruf, ADR-0053 Entscheidung 6), `locked_at`/`locked_reason` (`ADMIN |
 INACTIVITY`), `failed_login_attempts`/`lockout_until` (Zähler wird nie ausgegeben; geht bei jeder erfolgreichen
 Anmeldung, jedem Zurücksetzen und jeder Entsperrung auf null), `expires_at`, `email_verified_at`
 (gesetzt beim Anlegen durch einen Verwalter — er bürgt für die Adresse —, sonst durch Einladungs-
@@ -167,7 +167,7 @@ lokales HTTP zulässig und erzeugt im `oidc`-Profil eine `WARN`-Zeile. Das Acces
 nur im Speicher. CSRF nur, wo das Cookie trägt (`refresh`, `logout`, Double-Submit `X-XSRF-TOKEN`);
 das Cookie `XSRF-TOKEN` bleibt für die SPA lesbar und trägt ebenfalls `SameSite=Strict`.
 Widerruf in zwei Schichten: `jti`-Denylist (Caffeine-Cache, `expireAfterWrite = access-token-ttl`)
-und `password_invalidated_before`; Logout und Passwortwechsel wirken sofort.
+und Sitzungszähler `session_generation` (Claim `sgen`); Logout und Passwortwechsel wirken sofort.
 `LocalTokenCleanupScheduler` (täglich 03:20) löscht Token-Zeilen spätestens sieben Tage nach Ablauf
 oder Widerruf, sperrt nach Inaktivität und verschickt Erinnerungen. **Keine Oberfläche und keine
 Schnittstelle gibt dieses Sitzungsjournal je Person aus.** Nach einer Rücksicherung: Secret rotieren,
@@ -178,7 +178,7 @@ Origin der SPA; ein getrennter API-Origin wird nicht unterstützt.
 
 `OidcProviderRegistry` registriert für den lokalen Issuer einen `NimbusJwtDecoder.withSecretKey`
 mit Issuer-, Zeit- und Widerrufs-Validator (`LocalAccessTokenDecoder`: Denylist,
-`password_invalidated_before`, Kontozustand, Schalter — bei jeder Anfrage gegen die Datenbank;
+Sitzungszähler, Kontozustand, Schalter — bei jeder Anfrage gegen die Datenbank;
 Prüfungen in `LocalTokenValidator`, Anlässe als `LocalTokenRejection`). Keine `azp`-Prüfung: es gibt
 keine `client_id`. Abgewiesene Tokens tragen in `WWW-Authenticate` den Grund (`LocalTokenMarkers`):
 `malformed_token`, `unknown_account`, `local_accounts_disabled`, `account_not_active`, `account_locked` (`admin | failed_logins | inactivity`),

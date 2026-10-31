@@ -174,6 +174,25 @@ def test_repeated_ids_names_each_id_that_occurs_twice_on_a_page() -> None:
     assert package_html.repeated_ids(pages) == ["a.html: e"]
 
 
+def test_a_heading_leaves_its_id_to_an_explicit_anchor_of_the_same_name() -> None:
+    # Fact sheets write headings as '### <a id="mail"></a>mail'; the anchor keeps the id alone.
+    pages = site({"f.md": '# Datenflüsse\n\n### <a id="mail"></a>mail\n\n### mail\n\n'
+                          '<a id="user"></a>\n\n## user\n\n[Mail](#mail) [Rolle](#user)\n'})
+
+    assert package_html.repeated_ids({path: text.encode("utf-8") for path, text in pages.items()}) == []
+    assert '<h3><a id="mail"></a>mail</h3>' in pages["f.html"]
+    assert '<h3 id="mail-1">mail</h3>' in pages["f.html"]
+    assert '<h2>user</h2>' in pages["f.html"]
+    assert package_html.broken_links({path: text.encode("utf-8") for path, text in pages.items()}) == []
+
+
+def test_an_anchor_in_code_or_a_lookalike_attribute_leaves_the_heading_its_id() -> None:
+    pages = site({"f.md": "# Konvention\n\n`<a id=\"mail\"></a>`\n\n```html\n<a id=\"user\"></a>\n```\n\n"
+                          '<span data-id="rolle"></span>\n\n## mail\n\n## user\n\n## rolle\n'})
+
+    assert all(f'<h2 id="{name}">' in pages["f.html"] for name in ("mail", "user", "rolle"))
+
+
 def test_a_diagram_with_its_own_description_keeps_it_beside_the_source_text() -> None:
     source = "flowchart LR\n  accDescr: Beschreibung\n  A --> B\n"
     page = site({"a.md": f"# Titel\n\n```mermaid\n{source}```\n"},

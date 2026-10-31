@@ -55,10 +55,8 @@ public class LocalAccessTokenService {
   }
 
   /**
-   * Mints a token for the account's current state: its forced change, its session generation, and
-   * {@code iat} no earlier than its cutoff - the replacement token of a password change, whose
-   * cutoff lies in the next whole second, must pass the previous version's check during a rolling
-   * update. Carries no {@code auth_time}: for a session that continues without a password.
+   * Mints a token for the account's current state: its forced change and its session generation.
+   * Carries no {@code auth_time}: for a session that continues without a password.
    */
   public IssuedAccessToken issue(User user, LocalCredentials credentials) {
     return mint(user, credentials, false);
@@ -74,11 +72,7 @@ public class LocalAccessTokenService {
 
   private IssuedAccessToken mint(User user, LocalCredentials credentials, boolean signedIn) {
     boolean passwordChangeRequired = credentials.isPasswordChangeRequired();
-    Instant notBefore = credentials.getPasswordInvalidatedBefore();
     Instant now = clock.instant();
-    if (notBefore != null && notBefore.isAfter(now)) {
-      now = notBefore;
-    }
     Instant expiresAt = now.plus(properties.accessTokenTtl());
     String jti = UUID.randomUUID().toString();
     JwtClaimsSet.Builder claims =

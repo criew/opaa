@@ -6,7 +6,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.auth.LocalCredentialsRepository;
-import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -17,8 +16,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 
 /**
  * Whether the session behind a request ended since its token was minted, read under the share lock
- * of the account's credentials row: by the session generation the token carries, or by the cutoff
- * for a token of the previous version without it.
+ * of the account's credentials row: by the session generation the token carries; a token without
+ * one counts as ended.
  */
 class LocalTokenRevocationServiceSessionEndedTest {
 
@@ -35,37 +34,35 @@ class LocalTokenRevocationServiceSessionEndedTest {
 
   @Test
   void aSessionOfAnEarlierGenerationHasEnded() {
-    stamp(4L, null);
+    stamp(4L);
 
     assertThat(service.sessionEndedSince(userId, session(3L, NOW))).isTrue();
-    verify(credentials).lockSessionStamp(userId);
+    verify(credentials).lockSessionGeneration(userId);
   }
 
   @Test
   void aSessionOfTheCurrentGenerationGoesOn() {
-    stamp(4L, null);
+    stamp(4L);
 
     assertThat(service.sessionEndedSince(userId, session(4L, NOW))).isFalse();
   }
 
   @Test
-  void aTokenWithoutGenerationIsHeldAgainstTheCutoff() {
-    stamp(4L, Timestamp.from(NOW.plusSeconds(1)));
+  void aTokenWithoutGenerationHasEndedHoweverLateItsIat() {
+    stamp(4L);
 
-    assertThat(service.sessionEndedSince(userId, session(null, NOW))).isTrue();
-    assertThat(service.sessionEndedSince(userId, session(null, NOW.plusSeconds(2)))).isFalse();
+    assertThat(service.sessionEndedSince(userId, session(null, NOW.plusSeconds(60)))).isTrue();
   }
 
   @Test
   void anAccountWithoutLocalCredentialsHasNoSessionToEnd() {
-    when(credentials.lockSessionStamp(userId)).thenReturn(List.of());
+    when(credentials.lockSessionGeneration(userId)).thenReturn(List.of());
 
     assertThat(service.sessionEndedSince(userId, session(1L, NOW))).isFalse();
   }
 
-  private void stamp(long generation, Timestamp cutoff) {
-    when(credentials.lockSessionStamp(userId))
-        .thenReturn(List.<Object[]>of(new Object[] {generation, cutoff}));
+  private void stamp(long generation) {
+    when(credentials.lockSessionGeneration(userId)).thenReturn(List.of(generation));
   }
 
   private static Jwt session(Long generation, Instant issuedAt) {

@@ -389,7 +389,7 @@ public class LocalUserService {
     Instant now = clock.instant();
     row.unlock(now);
     row.lock(reason, now, null);
-    row.invalidateSessionsIssuedBefore(LocalTokenRevocationService.cutoffFor(now), now);
+    row.endAllSessions(now);
     credentials.save(row);
     closeOpenLinks(user.getId());
     int revoked =
@@ -469,7 +469,7 @@ public class LocalUserService {
                 ActionTokenPurpose.RESET_PASSWORD,
                 Duration.ofMinutes(policy.resetTokenTtlMinutes()));
     if (!invitation) {
-      row.invalidateSessionsIssuedBefore(LocalTokenRevocationService.cutoffFor(now), now);
+      row.endAllSessions(now);
       credentials.save(row);
       recordSessionsRevoked(actor, current.user(), now);
     }
@@ -503,7 +503,7 @@ public class LocalUserService {
     } else {
       row.resetFailedLoginAttempts(now);
     }
-    row.invalidateSessionsIssuedBefore(LocalTokenRevocationService.cutoffFor(now), now);
+    row.endAllSessions(now);
     credentials.save(row);
     closeOpenLinks(userId);
     recordAdminAct(actor, current.user(), AuditEventType.LOCAL_USER_PASSWORD_GENERATED, null, null);

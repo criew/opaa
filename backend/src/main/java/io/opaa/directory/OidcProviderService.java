@@ -3,7 +3,6 @@ package io.opaa.directory;
 import io.opaa.account.InitialAdministrator;
 import io.opaa.account.LocalAccountsSwitch;
 import io.opaa.account.LocalRefreshTokenRepository;
-import io.opaa.account.LocalTokenRevocationService;
 import io.opaa.account.RevocationReason;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
@@ -663,10 +662,10 @@ public class OidcProviderService implements LocalAccountsSwitch {
 
   /**
    * The management switch (ADR-0033, Entscheidung 4). Switching off ends every session of every
-   * regular local account at once - access tokens through one {@code password_invalidated_before}
-   * update over all regular accounts, refresh families through {@link RevocationReason#ADMIN} for
-   * the accounts that actually hold an active one - and audits exactly those as a foreign-caused
-   * {@code LOCAL_SESSION_REVOKED}; local {@code SYSTEM_ADMIN} accounts keep signing in.
+   * regular local account at once - access tokens through one raise of the session generation over
+   * all regular accounts, refresh families through {@link RevocationReason#ADMIN} for the accounts
+   * that actually hold an active one - and audits exactly those as a foreign-caused {@code
+   * LOCAL_SESSION_REVOKED}; local {@code SYSTEM_ADMIN} accounts keep signing in.
    */
   private LocalAccountsSwitch.Result switchLocalAccounts(
       UUID organizationId, UUID actorUserId, OidcProvider local, boolean enabled) {
@@ -764,8 +763,7 @@ public class OidcProviderService implements LocalAccountsSwitch {
     }
     Map<UUID, User> byId = new HashMap<>();
     regular.forEach(user -> byId.put(user.getId(), user));
-    credentials.invalidateSessionsIssuedBefore(
-        byId.keySet(), LocalTokenRevocationService.cutoffFor(now), now);
+    credentials.endAllSessions(byId.keySet(), now);
     List<UUID> withSessions = refreshTokens.findUserIdsWithActiveTokens(byId.keySet(), now);
     for (UUID userId : withSessions) {
       User user = byId.get(userId);

@@ -75,8 +75,8 @@ public class LocalPasswordService {
   }
 
   /**
-   * @return the credentials after the change (detached); their {@code password_invalidated_before}
-   *     is the cutoff the replacement access token is minted at
+   * @return the credentials after the change (detached); their session generation is the one the
+   *     replacement access token is minted with
    */
   @Transactional
   public LocalCredentials changePassword(User user, String currentPassword, String newPassword) {
@@ -97,7 +97,7 @@ public class LocalPasswordService {
     row.setPasswordHash(passwordEncoder.encode(newPassword), now);
     row.clearPasswordChangeRequirement(now);
     credentials.save(row);
-    revocation.invalidateSessionsIssuedBefore(user.getId());
+    revocation.endAllSessions(user.getId());
     refreshTokens.revokeAllForUser(user.getId(), RevocationReason.PASSWORD_CHANGED);
     credentials.flush();
     events.publishEvent(
@@ -201,7 +201,7 @@ public class LocalPasswordService {
       row.resetFailedLoginAttempts(now);
     }
     credentials.save(row);
-    revocation.invalidateSessionsIssuedBefore(user.getId());
+    revocation.endAllSessions(user.getId());
     actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.SET_PASSWORD);
     actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.RESET_PASSWORD);
     if (row.getEmailVerifiedAt() != null) {

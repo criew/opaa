@@ -47,13 +47,9 @@ public class LocalCredentials {
   @Column(name = "password_change_reason", length = 32)
   private PasswordChangeReason passwordChangeReason;
 
-  @Column(name = "password_invalidated_before")
-  private Instant passwordInvalidatedBefore;
-
   /**
    * Raised by every end of all sessions; an access token is valid only with the generation it was
-   * minted with (ADR-0053, Entscheidung 6). A trigger never lets it fall and raises it when only
-   * the cutoff changes.
+   * minted with (ADR-0053, Entscheidung 6). A trigger on the table never lets it fall.
    */
   @Column(name = "session_generation", nullable = false)
   private long sessionGeneration;
@@ -178,10 +174,9 @@ public class LocalCredentials {
 
   /**
    * Ends every session - the mass revocation: the session generation goes up, so every token minted
-   * before becomes invalid, and {@code cutoff} is kept for tokens without the generation.
+   * before becomes invalid.
    */
-  public void invalidateSessionsIssuedBefore(Instant cutoff, Instant now) {
-    this.passwordInvalidatedBefore = Objects.requireNonNull(cutoff, "cutoff");
+  public void endAllSessions(Instant now) {
     this.sessionGeneration++;
     touch(now);
   }
@@ -269,10 +264,6 @@ public class LocalCredentials {
 
   public PasswordChangeReason getPasswordChangeReason() {
     return passwordChangeReason;
-  }
-
-  public Instant getPasswordInvalidatedBefore() {
-    return passwordInvalidatedBefore;
   }
 
   public long getSessionGeneration() {
