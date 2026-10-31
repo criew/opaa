@@ -12,7 +12,7 @@ data:
         person:
           columns: [author_id]
       - name: chat_messages
-        personalColumns: [content, content_tsv, sources, used_prompt_title, created_at]
+        personalColumns: [content, content_tsv, sources, answer_evidence, used_prompt_title, created_at]
         nonPersonalColumns: [id, chat_id, sequence, role, used_prompt_id]
         person:
           via: chats

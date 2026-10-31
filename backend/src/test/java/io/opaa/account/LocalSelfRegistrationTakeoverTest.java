@@ -142,7 +142,7 @@ class LocalSelfRegistrationTakeoverTest {
     assertThat(row.get().getEmailVerifiedAt()).isEqualTo(NOW);
     assertThat(row.get().state(NOW)).isEqualTo(LocalAccountState.ACTIVE);
     UUID id = user.get().getId();
-    verify(revocation).invalidateSessionsIssuedBefore(id);
+    verify(revocation).endAllSessions(id);
     verify(refreshTokens).revokeAllForUser(id, RevocationReason.PASSWORD_CHANGED);
     verify(actionTokens).consumeOpen(id, ActionTokenPurpose.SET_PASSWORD);
     verify(actionTokens).consumeOpen(id, ActionTokenPurpose.RESET_PASSWORD);
@@ -161,7 +161,7 @@ class LocalSelfRegistrationTakeoverTest {
     assertThat(row.get().getPasswordHash()).isNull();
     assertThat(row.get().getEmailVerifiedAt()).isNull();
     assertThat(user.get().getDisplayName()).isEqualTo(ADDRESS);
-    verify(revocation, never()).invalidateSessionsIssuedBefore(any());
+    verify(revocation, never()).endAllSessions(any());
     verify(refreshTokens, never()).revokeAllForUser(any(), any());
   }
 
@@ -249,6 +249,6 @@ class LocalSelfRegistrationTakeoverTest {
 
     assertThat(row.get().getPasswordHash()).isEqualTo("{enc}" + OWN_PASSWORD);
     assertThat(user.get().getDisplayName()).isEqualTo(ADDRESS);
-    verify(revocation, never()).invalidateSessionsIssuedBefore(any());
+    verify(revocation, never()).endAllSessions(any());
   }
 }

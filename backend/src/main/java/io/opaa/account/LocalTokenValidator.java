@@ -23,11 +23,10 @@ import org.springframework.stereotype.Component;
  * through), then the {@code jti} denylist and the account's {@code local_credentials} row (one
  * primary-key lookup each - the derived state and the session generation, which the token's {@value
  * LocalAccessTokenService#SESSION_GENERATION_CLAIM} must equal; ADR-0053, Entscheidung 6). A token
- * without that claim was minted by the previous version during a rolling update and is held against
- * {@code password_invalidated_before} instead, until #2959 removes that path. Fail closed: only an
- * account {@link LocalAccountAccess#isLoginCapable login-capable} right now passes. Every refusal
- * is a {@link LocalTokenRejection} naming its reason; a token whose subject has no local account is
- * refused rather than provisioned.
+ * without that claim is malformed. Fail closed: only an account {@link
+ * LocalAccountAccess#isLoginCapable login-capable} right now passes. Every refusal is a {@link
+ * LocalTokenRejection} naming its reason; a token whose subject has no local account is refused
+ * rather than provisioned.
  *
  * <p>The switch is read first because while it is off it is the effective reason a regular local
  * token is refused (ADR-0033, Entscheidung 4): the switch-off also revokes the running sessions, so
@@ -68,7 +67,7 @@ public class LocalTokenValidator {
     if (jti == null
         || issuedAt == null
         || userId == null
-        || (generation != null && !(generation instanceof Long || generation instanceof Integer))) {
+        || !(generation instanceof Long || generation instanceof Integer)) {
       return Optional.of(new LocalTokenRejection(LocalTokenMarkers.MALFORMED_TOKEN, null));
     }
     if (!registry.localAccountsEnabled() && !passesManagementSwitch(userId)) {
@@ -101,12 +100,7 @@ public class LocalTokenValidator {
             default -> new LocalTokenRejection(LocalTokenMarkers.ACCOUNT_NOT_ACTIVE, null);
           });
     }
-    boolean revoked =
-        generation != null
-            ? ((Number) generation).longValue() != row.getSessionGeneration()
-            : LocalTokenRevocationService.issuedBefore(
-                issuedAt, row.getPasswordInvalidatedBefore());
-    if (revoked) {
+    if (((Number) generation).longValue() != row.getSessionGeneration()) {
       return Optional.of(
           new LocalTokenRejection(
               LocalTokenMarkers.SESSION_REVOKED, latestRevocationCause(userId)));

@@ -635,7 +635,7 @@ Systemverwalters, wird er abgelehnt. Die
 (nur der Anzeigename), Adressprüfung und Verbindungstest entfallen für sie; ihr
 Aktivieren/Deaktivieren ist der Schalter der lokalen Verwaltung (`LOCAL_ACCOUNTS_ENABLED`/
 `_DISABLED`), und das Abschalten beendet die Sitzungen aller regulären lokalen Konten (ein
-`UPDATE` von `password_invalidated_before`; `LOCAL_SESSION_REVOKED` je Konto mit tatsächlich
+`UPDATE` des Sitzungszählers `session_generation`; `LOCAL_SESSION_REVOKED` je Konto mit tatsächlich
 aktiver Sitzung), nicht die der Systemverwalter. Der erste OIDC-Anbieter wird
 auch neben der `LOCAL`-Zeile automatisch Standard; der Standard kann deaktiviert oder gelöscht
 werden, sobald er der letzte aktivierte OIDC-Anbieter ist — nur mit `acknowledgeLastProvider=true`
@@ -729,7 +729,7 @@ eingrenzen. **Ändern** (`PATCH`) von Anzeigename, Adresse,
 Anlagegrund und Ablaufdatum ist ein `LOCAL_USER_CHANGED` mit Vorher/Nachher **nur für das
 Ablaufdatum** und sonst nur den Namen der geänderten Felder; die Rolle läuft über denselben Pfad wie
 `POST /api/v1/admin/users/{id}/role` (Rollenereignisse, Aussperrschutz). **Sperren** (`locked_reason
-ADMIN`) beendet alle Sitzungen sofort (`password_invalidated_before` am Konto, Refresh-Familien
+ADMIN`) beendet alle Sitzungen sofort (Sitzungszähler am Konto erhöht, Refresh-Familien
 `ACCOUNT_LOCKED`; `LOCAL_SESSION_REVOKED` nur, wenn tatsächlich eine Sitzung lief), ersetzt eine
 Fehlversuch-Sperre und setzt den Zähler zurück; **Entsperren** hebt jede Sperre und den Zähler auf.
 Beides wird der Person per Mail mitgeteilt (`ACCOUNT_LOCKED` mit dem Grund, den der Verwalter für die
@@ -784,7 +784,7 @@ Hash, hebt einen erzwungenen Wechsel auf, bestätigt beim **Einladungslink** die
 Einladung ist der Akt, mit dem der Verwalter für sie bürgt, auch die Einladung, die „Zurücksetzen"
 einer unbestätigten Selbstregistrierung ohne Passwort schickt — ein Rücksetzlink bestätigt nichts),
 hebt eine **Fehlversuch-Sperre** auf (nicht die Sperre durch Verwalter oder Inaktivität), entwertet
-alle übrigen offenen Links des Kontos, die ein Passwort setzen können (auch den Bestätigungslink) und beendet jede Sitzung (`password_invalidated_before`,
+alle übrigen offenen Links des Kontos, die ein Passwort setzen können (auch den Bestätigungslink) und beendet jede Sitzung (Sitzungszähler erhöht,
 Familien `PASSWORD_CHANGED`); Ereignis `LOCAL_PASSWORD_SET` mit dem Zweck des Links. **Passwort
 vergessen** existiert nur, solange die Verwaltung eingeschaltet, die Einstellung an und
 `OPAA_PUBLIC_BASE_URL` gesetzt ist — sonst ist der Pfad **von einer unbekannten Route nicht zu

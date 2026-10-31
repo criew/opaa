@@ -18,6 +18,7 @@ export type DocumentTextResponse = components['schemas']['DocumentTextResponse']
 export type DocumentTextPassage = components['schemas']['DocumentTextPassage']
 export type DocumentTextSection = components['schemas']['DocumentTextSection']
 export type SearchedLibrary = components['schemas']['SearchedLibrary']
+export type AnswerEvidence = components['schemas']['AnswerEvidence']
 export type ErrorResponse = components['schemas']['ErrorResponse']
 
 export type SpaceRole = components['schemas']['SpaceRole']

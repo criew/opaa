@@ -63,7 +63,7 @@ public class LocalAuditorCredentialRenewal implements AuditorCredentialRenewal {
     Instant now = clock.instant();
     LocalCredentials row = found.get();
     row.discardPassword(now);
-    row.invalidateSessionsIssuedBefore(LocalTokenRevocationService.cutoffFor(now), now);
+    row.endAllSessions(now);
     credentials.save(row);
     actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.SET_PASSWORD);
     actionTokens.consumeOpen(user.getId(), ActionTokenPurpose.RESET_PASSWORD);

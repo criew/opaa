@@ -26,6 +26,7 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | **Suchbereich** | Die Bibliotheken, in denen eine Frage sucht; steht in der Chip-Leiste des Chats (Standard `@Space-Wissen`) und ist nie weiter als Zuordnung und Leserechte |
 | **Fundstelle** (Beleg) | Eine Quellenangabe zu einer Antwort, eine je Dokument; das Belegfenster zeigt Titel und Ortsangabe, die Ausgabe für externe KI-Werkzeuge zusätzlich Rang und Metadaten |
 | **Ortsangabe** | Die Stelle eines Chunks im Dokument, etwa „S. 3 · Abschn. Fristen" |
+| **Belegstand** | Die Stufe unter einer Antwort, wie weit sie sich auf bestätigte Belege stützt: „Belegt", „Teilweise belegt" oder „Nicht belegt", mit einem Satz Begründung; keine Zahl und kein Urteil über die Richtigkeit ([Suche](spaces/suche.md)) |
 | **Fundstellen-Anker** | Die Stelle eines Chunks maschinenlesbar: Seiten, Abschnittspfad, Folie, Blatt und Zeilen oder Nachricht, dazu je ein kurzes Zitat von Anfang und Ende; Grundlage für den Sprung an die Fundstelle |
 | **Textfassung** | Der beim Indexieren gewonnene Text eines Dokuments in Lesereihenfolge; „Dokument öffnen" zeigt ihn für Formate, die der Browser nicht anzeigen kann, an der Fundstelle |
 | **Fakten-Manifest** | Die Beschreibung im Code, welche Daten OPAA speichert, protokolliert, wem es sie zeigt, wohin es sie sendet und was voreingestellt ist; Prüfungen im Build halten sie mit dem Code gleich |

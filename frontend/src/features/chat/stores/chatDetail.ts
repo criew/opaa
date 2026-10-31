@@ -27,6 +27,7 @@ export function toChatMessage(message: ChatMessageResponse): ChatMessage {
     })),
     ...(message.usedPromptTitle ? { usedPromptTitle: message.usedPromptTitle } : {}),
     ...(message.privateSourcesInContext ? { privateSourcesInContext: true } : {}),
+    ...(message.evidence ? { evidence: message.evidence } : {}),
     timestamp: new Date(message.createdAt),
   }
 }

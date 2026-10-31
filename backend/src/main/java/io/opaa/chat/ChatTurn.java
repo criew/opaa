@@ -22,6 +22,7 @@ public final class ChatTurn {
   private final List<ChatSource> sources;
   private final UsedPrompt usedPrompt;
   private final Instant createdAt;
+  private final AnswerEvidence evidence;
 
   public ChatTurn(
       UUID id,
@@ -41,6 +42,19 @@ public final class ChatTurn {
       List<ChatSource> sources,
       UsedPrompt usedPrompt,
       Instant createdAt) {
+    this(id, chatId, role, content, sources, usedPrompt, createdAt, null);
+  }
+
+  public ChatTurn(
+      UUID id,
+      UUID chatId,
+      ChatRole role,
+      String content,
+      List<ChatSource> sources,
+      UsedPrompt usedPrompt,
+      Instant createdAt,
+      AnswerEvidence evidence) {
+    this.evidence = evidence;
     this.id = id;
     this.chatId = chatId;
     this.role = role;
@@ -77,5 +91,10 @@ public final class ChatTurn {
 
   public Instant getCreatedAt() {
     return createdAt;
+  }
+
+  /** The Belegstand of an answer, or {@code null}. */
+  public AnswerEvidence getEvidence() {
+    return evidence;
   }
 }

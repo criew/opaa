@@ -168,7 +168,7 @@ public class LocalAdminReset {
     String generated = passwordGenerator.generate();
     row.setPasswordHash(passwordEncoder.encode(generated), now);
     row.requirePasswordChange(PasswordChangeReason.INITIAL, now);
-    row.invalidateSessionsIssuedBefore(LocalTokenRevocationService.cutoffFor(now), now);
+    row.endAllSessions(now);
     credentials.save(row);
     refreshTokens.revokeAllForUser(admin.getId(), RevocationReason.ADMIN_RESET, now);
     credentials.flush();

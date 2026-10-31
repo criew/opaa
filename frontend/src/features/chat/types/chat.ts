@@ -1,4 +1,4 @@
-import type { SearchedLibrary, SourceReference } from '@/shared/api/types'
+import type { AnswerEvidence, SearchedLibrary, SourceReference } from '@/shared/api/types'
 
 export type MessageRole = 'user' | 'assistant'
 
@@ -38,6 +38,8 @@ export interface ChatMessage {
   answerTruncated?: boolean
   /** The model returned no visible text at all (QueryMetadata#answerEmpty). */
   answerEmpty?: boolean
+  /** The answer's Belegstand (QueryResponse/ChatMessageResponse#evidence), absent when not assessed. */
+  evidence?: AnswerEvidence
   /**
    * True when any source the answer was given with - cited or not - came from one of the
    * caller's private libraries (QueryResponse/ChatMessageResponse#privateSourcesInContext).

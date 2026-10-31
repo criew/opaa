@@ -2,6 +2,7 @@ package io.opaa.query;
 
 import io.opaa.api.types.ChatNoteItemKind;
 import io.opaa.auth.CurrentUser;
+import io.opaa.chat.AnswerEvidence;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatNoteExtractionService;
 import io.opaa.chat.ChatNotePoint;
@@ -20,6 +21,7 @@ import io.opaa.prompt.Prompt;
 import io.opaa.prompt.PromptService;
 import io.opaa.query.answer.AnswerGenerationService;
 import io.opaa.query.answer.ConversationWindowMessages;
+import io.opaa.query.citation.AnswerEvidenceAssessor;
 import io.opaa.query.citation.ChatSourceAssembler;
 import io.opaa.query.citation.CitationMarkerRepair;
 import io.opaa.query.citation.CitationParser;
@@ -31,6 +33,7 @@ import io.opaa.retrieval.RetrievalPipelineResult;
 import io.opaa.retrieval.context.NeighborChunkExpansion;
 import io.opaa.retrieval.search.SubQueryDecompositionStage;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -289,6 +292,8 @@ public class QueryService {
                 // search - an empty scope would otherwise pay for it and discard the result.
                 List<Document> relevantChunks;
                 boolean searchNeeded = true;
+                List<String> searchQueries = List.of();
+                Map<String, Set<Integer>> subQueriesByDocument = Map.of();
                 if (searchScope.isEmpty()) {
                   relevantChunks = List.of();
                 } else {
@@ -301,6 +306,8 @@ public class QueryService {
                           metadataFilter);
                   relevantChunks = neighborChunkExpansion.expand(retrieval.chunks(), searchScope);
                   searchNeeded = retrieval.searchNeeded();
+                  searchQueries = retrieval.searchQueries();
+                  subQueriesByDocument = retrieval.subQueriesByDocument();
                 }
 
                 // --- LLM call: the slowest step, and the reason no phase of this method
@@ -344,6 +351,16 @@ public class QueryService {
                 }
 
                 metrics.recordSuccess(tokenCount);
+                AnswerEvidence evidence =
+                    AnswerEvidenceAssessor.assess(
+                        validatedCitations,
+                        !searchScope.isEmpty(),
+                        !relevantChunks.isEmpty(),
+                        searchNeeded,
+                        searchQueries,
+                        subQueriesByDocument,
+                        completeness);
+                metrics.recordEvidence(evidence == null ? null : evidence.level());
 
                 // --- Write phase: the one place this method's result is persisted, in
                 // ChatService#appendTurn's own transaction(s). appendTurn's return value, not the
@@ -351,7 +368,10 @@ public class QueryService {
                 // fallback title on a first turn, never the LLM-derived one, which is generated
                 // asynchronously after this response is built.
                 String chatTitle =
-                    chat.map(c -> chatService.appendTurn(c, question, usedPrompt, answer, sources))
+                    chat.map(
+                            c ->
+                                chatService.appendTurn(
+                                    c, question, usedPrompt, answer, sources, evidence))
                         .orElse(null);
                 // The condensation of this turn's question, off the request thread and only once
                 // the turn is durably persisted - triggered here rather than inside appendTurn so
@@ -374,7 +394,7 @@ public class QueryService {
                         chatSourceAssembler.searchedLibraries(searchScope),
                         completeness);
                 return new QueryResult(
-                    answer, sources, metadata, effectiveChatId, chatTitle, notePoints);
+                    answer, sources, metadata, effectiveChatId, chatTitle, notePoints, evidence);
               } catch (RuntimeException e) {
                 metrics.recordError();
                 throw e;

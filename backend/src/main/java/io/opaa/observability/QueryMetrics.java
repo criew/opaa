@@ -3,6 +3,10 @@ package io.opaa.observability;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import io.opaa.api.types.EvidenceLevel;
+import java.util.EnumMap;
+import java.util.Locale;
+import java.util.Map;
 
 /** Encapsulates all Micrometer metrics related to the query pipeline. */
 public class QueryMetrics {
@@ -22,6 +26,9 @@ public class QueryMetrics {
   private final Counter prunedDecompositionCounter;
   private final Counter failedDecompositionCounter;
   private final Counter noSearchDecompositionCounter;
+
+  /** One counter per Belegstand level; anonymous, it carries no person, chat or space. */
+  private final Map<EvidenceLevel, Counter> evidenceCounters = new EnumMap<>(EvidenceLevel.class);
 
   public QueryMetrics(MeterRegistry meterRegistry) {
     this.queryTimer =
@@ -59,6 +66,14 @@ public class QueryMetrics {
         Counter.builder("opaa.query.decomposition.no-search")
             .description("Query decompositions that found nothing to search for")
             .register(meterRegistry);
+    for (EvidenceLevel level : EvidenceLevel.values()) {
+      evidenceCounters.put(
+          level,
+          Counter.builder("opaa.query.evidence")
+              .tag("level", level.name().toLowerCase(Locale.ROOT))
+              .description("Answers per Belegstand level")
+              .register(meterRegistry));
+    }
   }
 
   public Timer queryTimer() {
@@ -108,5 +123,12 @@ public class QueryMetrics {
    */
   public void recordNoSearchDecomposition() {
     noSearchDecompositionCounter.increment();
+  }
+
+  /** Counts one answer's Belegstand; {@code null} - nothing assessed - counts nowhere. */
+  public void recordEvidence(EvidenceLevel level) {
+    if (level != null) {
+      evidenceCounters.get(level).increment();
+    }
   }
 }
