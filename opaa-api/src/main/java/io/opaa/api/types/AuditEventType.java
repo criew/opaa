@@ -602,9 +602,29 @@ public enum AuditEventType {
    * a count, title, content or space.
    */
   LOCKED_ACCOUNT_CHATS_DELETED,
-  /** An administrator held the deletion of an account's chats after a lock; no reason recorded. */
+  /**
+   * An administrator requested to hold the deletion of an account's chats after a lock, or to
+   * extend a running hold; {@code after.purpose} and {@code after.extension}, never the reason.
+   */
+  LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_REQUESTED,
+  /**
+   * A second, different administrator approved a request, and the hold takes effect; {@code
+   * after.purpose} and {@code after.heldUntil}, never the reason.
+   */
   LOCKED_ACCOUNT_CHAT_CLEANUP_HELD,
-  /** An administrator lifted that hold. */
+  /** A second administrator approved the extension of a running hold; payload as for the hold. */
+  LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_EXTENDED,
+  /**
+   * A request to hold or extend was rejected or withdrawn by an administrator, or dropped by the
+   * nightly run once unanswered too long ({@code after.cause}); {@code after.purpose}.
+   */
+  LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_REJECTED,
+  /**
+   * The nightly run ended a hold whose maximum duration ran out; {@code before.purpose} and {@code
+   * before.heldUntil}. The period after the lock counts as if the hold had never been.
+   */
+  LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_EXPIRED,
+  /** An administrator lifted a hold before its end. */
   LOCKED_ACCOUNT_CHAT_CLEANUP_RESUMED,
   /**
    * An administrator issued a password-reset link; {@code after.deliveryPath} as for the

@@ -1,6 +1,7 @@
 import type {
   LocalAuthSettingsResponse,
   LocalAuthSettingsUpdateRequest,
+  LocalUserChatCleanupHoldRequest,
   LocalUserChatCleanupResponse,
   LocalUserCreateRequest,
   LocalUserCreatedResponse,
@@ -101,10 +102,43 @@ export async function getLocalUserChatCleanup(id: string): Promise<LocalUserChat
   }
 }
 
-export async function holdLocalUserChatCleanup(id: string): Promise<LocalUserChatCleanupResponse> {
+/** Files a request to hold the deletion, or to extend a running hold; a second admin approves. */
+export async function requestLocalUserChatCleanupHold(
+  id: string,
+  request: LocalUserChatCleanupHoldRequest,
+): Promise<LocalUserChatCleanupResponse> {
   try {
-    const { data } = await apiClient.put<LocalUserChatCleanupResponse>(
-      `/v1/admin/local-users/${id}/chat-cleanup/hold`,
+    const { data } = await apiClient.post<LocalUserChatCleanupResponse>(
+      `/v1/admin/local-users/${id}/chat-cleanup/hold-request`,
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Approves the pending request; the backend refuses the requesting administrator. */
+export async function approveLocalUserChatCleanupHold(
+  id: string,
+): Promise<LocalUserChatCleanupResponse> {
+  try {
+    const { data } = await apiClient.post<LocalUserChatCleanupResponse>(
+      `/v1/admin/local-users/${id}/chat-cleanup/hold-request/approve`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Rejects the pending request, or withdraws it when the caller filed it. */
+export async function rejectLocalUserChatCleanupHold(
+  id: string,
+): Promise<LocalUserChatCleanupResponse> {
+  try {
+    const { data } = await apiClient.delete<LocalUserChatCleanupResponse>(
+      `/v1/admin/local-users/${id}/chat-cleanup/hold-request`,
     )
     return data
   } catch (err) {

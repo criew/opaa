@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.DataCollectionDisclosure;
 import io.opaa.api.types.AuditIncidentScopePurpose;
+import io.opaa.api.types.ChatCleanupHoldPurpose;
 import io.opaa.compliance.ComplianceManifest.DataFlowGroup;
 import io.opaa.compliance.ComplianceManifest.SettingSource;
 import io.opaa.compliance.ComplianceManifestLoader;
@@ -12,6 +13,7 @@ import io.opaa.compliance.InstanceDisclosure;
 import io.opaa.compliance.InstanceDisclosure.CaseCount;
 import io.opaa.compliance.InstanceDisclosure.ConnectorUsage;
 import io.opaa.compliance.InstanceDisclosure.DataFlowState;
+import io.opaa.compliance.InstanceDisclosure.HoldPurposeCases;
 import io.opaa.compliance.InstanceDisclosure.IncidentScopeCases;
 import io.opaa.compliance.InstanceDisclosure.ModelProvider;
 import io.opaa.compliance.InstanceDisclosure.Protocol;
@@ -74,6 +76,15 @@ class DataCollectionDisclosureResponseMapperTest {
                             CaseCount.of(2),
                             CaseCount.of(0))),
                     CaseCount.of(1),
+                    List.of(
+                        new HoldPurposeCases(
+                            "DATA_SUBJECT_REQUEST",
+                            "Laufender Auskunfts- oder Löschantrag",
+                            CaseCount.of(3),
+                            CaseCount.of(0),
+                            CaseCount.of(0),
+                            CaseCount.of(1),
+                            CaseCount.of(0))),
                     List.of("Eine Ablehnung gibt es nicht"))));
 
     DataCollectionDisclosure response =
@@ -129,6 +140,14 @@ class DataCollectionDisclosureResponseMapperTest {
     assertThat(cases.getNotes()).containsExactly("Eine Ablehnung gibt es nicht");
     assertThat(cases.getHeldChatDeletions().getBelowThreshold()).isTrue();
     assertThat(cases.getHeldChatDeletions().getCount()).isNull();
+    assertThat(cases.getChatDeletionHolds())
+        .singleElement()
+        .satisfies(
+            hold -> {
+              assertThat(hold.getPurpose()).isEqualTo(ChatCleanupHoldPurpose.DATA_SUBJECT_REQUEST);
+              assertThat(hold.getRequested().getCount()).isEqualTo(3);
+              assertThat(hold.getRejected().getBelowThreshold()).isTrue();
+            });
     var purpose = cases.getPurposes().get(0);
     assertThat(purpose.getPurpose()).isEqualTo(AuditIncidentScopePurpose.DATA_BREACH_INVESTIGATION);
     assertThat(purpose.getLabel()).isEqualTo("Untersuchung einer Datenschutzverletzung");

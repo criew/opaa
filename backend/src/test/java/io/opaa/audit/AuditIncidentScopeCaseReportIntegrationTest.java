@@ -4,9 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.AuditIncidentScopePurpose;
+import io.opaa.api.types.ChatCleanupHoldPurpose;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.compliance.InstanceDisclosure.CaseCount;
+import io.opaa.compliance.InstanceDisclosure.HoldPurposeCases;
 import io.opaa.compliance.InstanceDisclosure.IncidentScopeCases;
 import io.opaa.compliance.InstanceDisclosure.PurposeCases;
 import io.opaa.compliance.InstanceDisclosure.ReportingPeriod;
@@ -89,6 +91,9 @@ class AuditIncidentScopeCaseReportIntegrationTest {
         organizationId);
     jdbcTemplate.update(
         "DELETE FROM audit_chat_cleanup_hold_monthly_counts WHERE organization_id = ?",
+        organizationId);
+    jdbcTemplate.update(
+        "DELETE FROM audit_chat_cleanup_hold_purpose_counts WHERE organization_id = ?",
         organizationId);
     for (UUID userId : createdUserIds) {
       userRepository.deleteById(userId);
@@ -228,6 +233,39 @@ class AuditIncidentScopeCaseReportIntegrationTest {
   }
 
   @Test
+  void theStepsOfTheHoldsCountPerPurposeAndMonthOfThePeriodOnly() {
+    holdAt("2001-03-05T10:00:00Z", 4);
+    stepAt(
+        "2001-05-05T10:00:00Z",
+        ChatCleanupHoldPurpose.DATA_SUBJECT_REQUEST,
+        ChatCleanupHoldTransition.REQUESTED,
+        3);
+    stepAt(
+        "2001-06-05T10:00:00Z",
+        ChatCleanupHoldPurpose.DATA_SUBJECT_REQUEST,
+        ChatCleanupHoldTransition.EXPIRED,
+        1);
+    stepAt(
+        "2002-01-05T10:00:00Z",
+        ChatCleanupHoldPurpose.DATA_SUBJECT_REQUEST,
+        ChatCleanupHoldTransition.REQUESTED,
+        5);
+
+    List<HoldPurposeCases> holds =
+        reportAt("2002-02-02T00:00:00Z", period("2001-01-01", "2001-12-31")).chatDeletionHolds();
+
+    assertThat(holds)
+        .extracting(HoldPurposeCases::purpose)
+        .containsExactly(
+            "AUTHORITY_OR_COURT_ORDER", "SECURITY_INCIDENT_EVIDENCE", "DATA_SUBJECT_REQUEST");
+    assertThat(holds.get(0).approved()).isEqualTo(CaseCount.of(4));
+    assertThat(holds.get(1).approved()).isEqualTo(CaseCount.of(0));
+    assertThat(holds.get(2).requested()).isEqualTo(CaseCount.of(3));
+    assertThat(holds.get(2).expired().belowThreshold()).isTrue();
+    assertThat(holds.get(2).label()).isEqualTo("Laufender Auskunfts- oder Löschantrag");
+  }
+
+  @Test
   void theCountsNameNoPersonNoReasonAndNoGrant() {
     approveAt(
         "2001-03-10T10:00:00Z",
@@ -254,6 +292,9 @@ class AuditIncidentScopeCaseReportIntegrationTest {
             "approved",
             "expired",
             "heldChatDeletions",
+            "chatDeletionHolds",
+            "extended",
+            "rejected",
             "count",
             "notes");
   }
@@ -281,7 +322,23 @@ class AuditIncidentScopeCaseReportIntegrationTest {
         new ChatCleanupHoldCounts(
             jdbcTemplate, Clock.fixed(Instant.parse(instant), ZoneOffset.UTC));
     for (int i = 0; i < times; i++) {
-      counts.countHold(organizationId);
+      counts.count(
+          organizationId,
+          ChatCleanupHoldPurpose.AUTHORITY_OR_COURT_ORDER,
+          ChatCleanupHoldTransition.APPROVED);
+    }
+  }
+
+  private void stepAt(
+      String instant,
+      ChatCleanupHoldPurpose purpose,
+      ChatCleanupHoldTransition transition,
+      int times) {
+    ChatCleanupHoldCounts counts =
+        new ChatCleanupHoldCounts(
+            jdbcTemplate, Clock.fixed(Instant.parse(instant), ZoneOffset.UTC));
+    for (int i = 0; i < times; i++) {
+      counts.count(organizationId, purpose, transition);
     }
   }
 

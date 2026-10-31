@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-23
+stand: 2026-10-31
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-13
@@ -52,7 +52,14 @@ hat, zeigt die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvol
    - dass bloße Abwesenheit (Elternzeit, Krankheit, Abordnung) kein Anlass für diese Sperre ist;
    - wie sie mit Konten eines Identitätsanbieters umgeht: Sie lassen sich in OPAA nicht sperren, für
      sie greift die Frist nicht;
-   - wer das Anhalten der Löschung je Konto veranlassen darf, etwa für ein Disziplinarverfahren;
+   - wer das Anhalten der Löschung je Konto beantragen und wer es freigeben darf. OPAA verlangt
+     einen Zweck aus fester Liste (behördliche oder gerichtliche Anordnung, Sicherung von
+     Beweismitteln nach einem Sicherheitsvorfall, laufender Auskunfts- oder Löschantrag), eine
+     Begründung und die Freigabe durch eine zweite Person der Systemverwaltung; ein
+     disziplinarischer, arbeitsrechtlicher oder leistungsbezogener Zweck ist nicht wählbar. Jede
+     Anhaltung endet nach einer Höchstdauer von selbst
+     ({{faktenblatt:voreinstellungen#opaa-chat-locked-account-cleanup-hold-max-days}}), weiter geht
+     es nur mit neuer Freigabe ({{faktenblatt:datenkatalog#chat-cleanup-holds}});
    - dass die Person bei planbarem Ausscheiden vor der Sperre eine Selbstauskunft ziehen kann; danach
      erreicht sie sie nicht mehr.
 4. **Anlässe regeln, die OPAA nicht kennt:**

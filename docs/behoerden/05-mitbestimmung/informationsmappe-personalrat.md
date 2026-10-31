@@ -1,5 +1,5 @@
 ---
-stand: 2026-10-30
+stand: 2026-10-31
 gilt-fuer: main
 erzeugung: redaktionell
 rechtsstand: 2026-10-24
@@ -99,7 +99,16 @@ anmelden, sind davon nicht betroffen.
   sperren oder zu löschen; nach einer Frist sperrt OPAA sie selbst
   ({{faktenblatt:voreinstellungen#local-auth-settings-inactive-days}}).
 - Der Personalrat erhält jährlich die Zahl der anlassbezogenen Klärungen nach Zweck und die Zahl
-  der angehaltenen Chat-Löschungen gesperrter Konten, ohne Namen.
+  der angehaltenen Chat-Löschungen gesperrter Konten, diese ebenfalls nach Zweck mit Anträgen,
+  Freigaben, Verlängerungen, Ablehnungen und Abläufen, ohne Namen.
+- Die Systemverwaltung hält die Löschung der Chats eines gesperrten Kontos nur befristet an, mit
+  Zweck aus fester Liste, Begründung und Freigabe durch eine zweite Person; ein disziplinarischer
+  Zweck ist nicht wählbar
+  ({{faktenblatt:datenkatalog#chat-cleanup-holds}},
+  {{faktenblatt:voreinstellungen#opaa-chat-locked-account-cleanup-hold-max-days}}). Antrag,
+  Freigabe, Verlängerung, Ablehnung, Ablauf und Aufheben stehen im Protokoll
+  ({{faktenblatt:protokollereignisse#locked-account-chat-cleanup-hold-requested}},
+  {{faktenblatt:protokollereignisse#locked-account-chat-cleanup-held}}).
 
 Was technisch möglich ist, steht je Datum im {{faktenblatt:datenkatalog}}, Spalte „Auswertungen“.
 Erlaubt ist nur, was die Dienstvereinbarung vereinbart.

@@ -487,6 +487,9 @@ export type LocalUserCreatedResponse = components['schemas']['LocalUserCreatedRe
 export type LocalUserUpdateRequest = components['schemas']['LocalUserUpdateRequest']
 export type LocalUserChatCleanupResponse = components['schemas']['LocalUserChatCleanupResponse']
 export type ChatCleanupAfterLockStatus = components['schemas']['ChatCleanupAfterLockStatus']
+export type ChatCleanupHoldPurpose = components['schemas']['ChatCleanupHoldPurpose']
+export type LocalUserChatCleanupHoldRequest =
+  components['schemas']['LocalUserChatCleanupHoldRequest']
 export type LocalUserLockRequest = components['schemas']['LocalUserLockRequest']
 export type LocalUserPasswordResetResponse = components['schemas']['LocalUserPasswordResetResponse']
 export type LocalUserGeneratedPasswordResponse =

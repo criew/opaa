@@ -40,14 +40,16 @@ data:
         angeheftete Chats ausgenommen. Unabhängig davon werden alle Chats eines lokalen Kontos
         365 Tage nach seiner Sperre durch die Verwaltung gelöscht, auch angeheftete; die Frist
         beginnt frühestens mit der Einführung bzw. dem Einschalten, ruht nicht, wird aber
-        ausgesetzt, solange die Verwaltung die Löschung für das Konto anhält oder das Konto in
-        einer offenen anlassbezogenen Klärung steht. Sperren wegen Inaktivität oder Fehlversuchen
+        ausgesetzt, solange eine freigegebene Anhaltung der Löschung für das Konto läuft
+        (höchstens opaa.chat.locked-account-cleanup.hold-max-days Tage je Freigabe) oder das Konto
+        in einer offenen anlassbezogenen Klärung steht. Sperren wegen Inaktivität oder Fehlversuchen
         und Konten eines Identitätsanbieters lösen sie nicht aus
       settings:
         - chat_auto_cleanup_settings.archive_after_days
         - chat_auto_cleanup_settings.delete_after_days
         - locked_account_chat_cleanup_settings.enabled
         - locked_account_chat_cleanup_settings.delete_after_days
+        - opaa.chat.locked-account-cleanup.hold-max-days
     visibility: [nur die Autorin oder der Autor]
     accessPaths: [UI, API, EXPORT, DATABASE]
     deletion: >-
@@ -68,27 +70,64 @@ data:
   - id: chat-cleanup-holds
     title: Angehaltene Löschung der Chats eines gesperrten Kontos
     purpose: >-
-      Hält die Löschung der Chats eines lokalen Kontos nach dessen Sperre an, etwa für ein
-      Disziplinarverfahren außerhalb von OPAA
+      Hält die Löschung der Chats eines lokalen Kontos nach dessen Sperre befristet an, nur für
+      einen Zweck aus fester Liste: behördliche oder gerichtliche Anordnung, Sicherung von
+      Beweismitteln nach einem Sicherheitsvorfall, laufender Auskunfts- oder Löschantrag. Ein
+      disziplinarischer, arbeitsrechtlicher oder leistungsbezogener Zweck ist nicht wählbar
     personalReference: EMPLOYEE
     tables:
       - name: chat_cleanup_holds
-        personalColumns: [user_id, held_at]
+        personalColumns: [user_id, held_at, purpose, reason, held_until]
         nonPersonalColumns: [organization_id]
         person:
           columns: [user_id]
+          excludedColumns:
+            reason: >-
+              Freitext der Verwaltung, der eine Anordnung oder ein Verfahren nennen kann, über das
+              die Person noch nicht unterrichtet werden darf; Zweck, Beginn und Ende stehen in der
+              Auskunft
+      - name: chat_cleanup_hold_requests
+        personalColumns: [user_id, purpose, reason, requested_by_user_id, requested_at]
+        nonPersonalColumns: [organization_id]
+        person:
+          columns: [user_id, requested_by_user_id]
+          excludedColumns:
+            purpose: >-
+              Ein Antrag hält nichts an; Stellung, Freigabe und Ablehnung stehen mit Zweck im
+              Protokollteil der Selbstauskunft
+            reason: Freitext wie bei der Anhaltung, nicht Teil der Auskunft
+            requested_at: Zeitpunkt der Stellung steht im Protokollteil der Selbstauskunft
     storage: Anwendungsdatenbank
     retention:
-      rule: Bis die Verwaltung die Löschung fortsetzt oder das Konto gelöscht wird
-      settings: []
+      rule: >-
+        Ein Antrag bis zur Freigabe oder Ablehnung durch die Systemverwaltung, unbeantwortet
+        höchstens 14 Tage; eine Anhaltung bis zu ihrem Ende nach höchstens
+        opaa.chat.locked-account-cleanup.hold-max-days Tagen ab Freigabe, bis die Verwaltung sie
+        vorher aufhebt oder das Konto gelöscht wird. Weiter geht es nur mit neuem Antrag und neuer
+        Freigabe
+      settings: [opaa.chat.locked-account-cleanup.hold-max-days]
     visibility: [SYSTEM_ADMIN in der Einzelansicht des Kontos]
     accessPaths: [UI, API, EXPORT, DATABASE]
-    deletion: Durch die Systemverwaltung („Löschung fortsetzen“) oder mit dem Konto
+    deletion: >-
+      Ablehnen oder Zurückziehen des Antrags, Ablauf der Anhaltung im nächtlichen Lauf, Aufheben
+      durch die Systemverwaltung („Löschung fortsetzen“) oder mit dem Konto; ein Antrag auch mit
+      dem Konto der beantragenden Person
     evaluations: >-
-      Ob und seit wann die Löschung für ein Konto angehalten ist; ohne Begründung. Keine Liste,
-      kein Filter und kein Export der angehaltenen Konten in der Oberfläche. Zahl der
-      Anhaltevorgänge je Kalendermonat ohne Person, in der Auskunft über die Datenerhebung an die
-      Personalvertretung
+      Ob, seit wann, bis wann und zu welchem Zweck die Löschung für ein Konto angehalten ist, mit
+      Begründung, nur in der Einzelansicht des Kontos. Keine Liste, kein Filter und kein Export der
+      angehaltenen Konten in der Oberfläche. Zahl der Anhaltungen je Kalendermonat sowie der
+      Anträge, Freigaben, Verlängerungen, Ablehnungen und Abläufe je Zweck und Kalendermonat ohne
+      Person, in der Auskunft über die Datenerhebung an die Personalvertretung. Die betroffene
+      Person sieht Beginn, Ende und Zweck in ihrer Selbstauskunft, die Begründung nicht
+    notes:
+      - >-
+        Vier-Augen-Prinzip: Eine Person der Systemverwaltung beantragt mit Zweck und Begründung,
+        eine zweite, andere gibt frei; erst mit der Freigabe greift die Anhaltung. Ein Antrag
+        allein hält nichts an. Aufheben und Ablehnen darf eine Person allein
+      - >-
+        Anhaltungen aus der Zeit vor der Freigabe im Vier-Augen-Prinzip haben weder Zweck noch
+        Begründung; der erste nächtliche Lauf nach dem Update gibt ihnen das Ende nach der
+        Höchstdauer, danach laufen sie wie jede andere ab
 nonPersonalTables:
   chat_locked_account_cleanup_state: [id, counting_since]
   chat_auto_cleanup_settings: [id, archive_after_days, delete_after_days, updated_at]
@@ -141,6 +180,15 @@ settings:
       - >-
         Werkseinstellung, solange die Systemverwaltung unter Administration → Datenschutz keinen
         eigenen Wert setzt
+  - key: opaa.chat.locked-account-cleanup.hold-max-days
+    source: PROPERTY
+    defaultValue: "180"
+    range: 7 bis 730 Tage
+    effect: >-
+      Längste Dauer einer freigegebenen Anhaltung der Löschung der Chats eines gesperrten Kontos;
+      danach endet sie von selbst, weiter geht es nur mit neuem Antrag und neuer Freigabe. Gilt
+      für Freigaben ab der Änderung
+    bearings: [DATA]
   - key: locked_account_chat_cleanup_settings.delete_after_days
     source: DATABASE
     defaultValue: "365"

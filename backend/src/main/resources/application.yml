@@ -222,6 +222,10 @@ opaa:
       # (docs/features/conversation-memory.md). Everything else about the note is a fixed
       # value with no addressee to reconfigure it.
       max-items: ${OPAA_CHAT_NOTE_MAX_ITEMS:10}
+    locked-account-cleanup:
+      # Longest an approved hold of the deletion of a locked account's chats runs before it ends
+      # by itself; running on needs a new request and a second administrator's approval.
+      hold-max-days: ${OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_HOLD_MAX_DAYS:180}
   # SPIKE (#1789), throwaway ahead of epic #1747 - never for production use. A message starting
   # with "@test " (case-insensitive) runs through a model-driven tool-calling loop instead of the
   # ordinary retrieval/answer path; every other message is unaffected. Off by default; the beans

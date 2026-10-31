@@ -47,6 +47,7 @@ class InstanceDisclosureAssemblerTest {
               new ReportingPeriod(LocalDate.parse("2025-01-01"), LocalDate.parse("2026-12-31")),
               List.of(),
               CaseCount.of(0),
+              List.of(),
               List.of()));
 
   private static final String API_KEY = "sk-S3CR3T-API-KEY-4711";

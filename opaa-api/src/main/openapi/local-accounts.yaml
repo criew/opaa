@@ -502,18 +502,19 @@ paths:
           type: string
           format: uuid
 
-    put:
-      operationId: holdLocalUserChatCleanup
+    delete:
+      operationId: resumeLocalUserChatCleanup
       tags: [local-account]
-      summary: Hold the deletion of a local account's chats (system admin only)
+      summary: Lift the hold on the deletion of a local account's chats (system admin only)
       description: >
-        Keeps the chats of the account from the deletion after a lock until the hold is lifted,
-        for a matter outside OPAA such as a disciplinary procedure. Audited as
-        LOCKED_ACCOUNT_CHAT_CLEANUP_HELD with no reason; holding an account already held changes
-        nothing and writes no second entry. 404 as for the read.
+        Ends a hold before its heldUntil; one administrator suffices, because lifting only lets the
+        deletion take its course. Audited as LOCKED_ACCOUNT_CHAT_CLEANUP_RESUMED; an account without
+        a hold changes nothing and writes no entry. A pending request stays and, once approved,
+        places a new hold. A period that ran out during the hold is not extended: the next nightly
+        run deletes. 404 as for the read.
       responses:
         "200":
-          description: The deletion state after the hold
+          description: The deletion state after lifting the hold
           content:
             application/json:
               schema:
@@ -523,21 +524,99 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-    delete:
-      operationId: resumeLocalUserChatCleanup
+  /api/v1/admin/local-users/{id}/chat-cleanup/hold-request:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: requestLocalUserChatCleanupHold
       tags: [local-account]
-      summary: Lift the hold on the deletion of a local account's chats (system admin only)
+      summary: Request to hold the deletion of a local account's chats (system admin only)
       description: >
-        Audited as LOCKED_ACCOUNT_CHAT_CLEANUP_RESUMED; an account without a hold changes nothing
-        and writes no entry. A period that ran out during the hold is not extended: the next
-        nightly run deletes. 404 as for the read.
+        Requests a hold, or the extension of a running hold, with a purpose from a closed list and
+        a reason. The request alone holds nothing: the hold takes effect only once a second,
+        different system administrator approves it (Vier-Augen-Prinzip) and then lasts at most
+        opaa.chat.locked-account-cleanup.hold-max-days days (180 unless configured). One request
+        per account at a time - 409 while one is pending. An unanswered request is dropped by the
+        nightly run after 14 days. Audited as LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_REQUESTED with the
+        purpose, never the reason. 404 as for the read.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocalUserChatCleanupHoldRequest"
       responses:
         "200":
-          description: The deletion state after lifting the hold
+          description: The deletion state with the pending request
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/LocalUserChatCleanupResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+    delete:
+      operationId: rejectLocalUserChatCleanupHold
+      tags: [local-account]
+      summary: Reject or withdraw a pending hold request (system admin only)
+      description: >
+        Drops the pending request; any system administrator may, the requesting one included,
+        since rejecting holds nothing. A running hold stays until its end. Audited as
+        LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_REJECTED. 404 as for the read, and when no request is
+        pending.
+      responses:
+        "200":
+          description: The deletion state after the rejection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalUserChatCleanupResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/local-users/{id}/chat-cleanup/hold-request/approve:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: approveLocalUserChatCleanupHold
+      tags: [local-account]
+      summary: Approve a pending hold request (system admin only)
+      description: >
+        A second system administrator approves the pending request; 400 when the approving
+        administrator is the requesting one (Selbstfreigabe). The hold then runs from now until
+        heldUntil, now plus the maximum duration in force; an extension replaces purpose, reason
+        and heldUntil of the running hold and keeps heldSince. Audited as
+        LOCKED_ACCOUNT_CHAT_CLEANUP_HELD, or LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_EXTENDED for an
+        extension, with purpose and heldUntil. 404 as for the read, and when no request is pending.
+      responses:
+        "200":
+          description: The deletion state after the approval
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalUserChatCleanupResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -1069,23 +1148,90 @@ components:
       type: string
       description: >
         Mirrors io.opaa.api.types.ChatCleanupAfterLockStatus: SWITCHED_OFF while the operator switched the
-        deletion off, HELD while the account is held, SCHEDULED for an account locked by the
+        deletion off, HELD while an approved hold runs for the account, SCHEDULED for an account locked by the
         administration, NOT_LOCKED for every other account - including one locked for inactivity
         or after failed sign-ins, which starts no period.
       enum: [SWITCHED_OFF, NOT_LOCKED, SCHEDULED, HELD]
 
+    ChatCleanupHoldPurpose:
+      type: string
+      description: >
+        Mirrors io.opaa.api.types.ChatCleanupHoldPurpose - a closed list that deliberately excludes
+        disziplinarische, arbeitsrechtliche und leistungsbezogene purposes by omission.
+      enum: [AUTHORITY_OR_COURT_ORDER, SECURITY_INCIDENT_EVIDENCE, DATA_SUBJECT_REQUEST]
+      example: AUTHORITY_OR_COURT_ORDER
+
+    LocalUserChatCleanupHoldRequest:
+      type: object
+      required: [purpose, reason]
+      properties:
+        purpose:
+          $ref: "#/components/schemas/ChatCleanupHoldPurpose"
+        reason:
+          type: string
+          minLength: 10
+          maxLength: 1000
+          description: The documented occasion required alongside the closed purpose.
+
+    LocalUserChatCleanupHold:
+      type: object
+      required: [purpose, reason, heldSince, heldUntil]
+      properties:
+        purpose:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ChatCleanupHoldPurpose"
+          description: >
+            Null for a hold placed before holds were approved in pairs; it runs out at heldUntil
+            like any other.
+        reason:
+          type: string
+          nullable: true
+        heldSince:
+          type: string
+          format: date-time
+        heldUntil:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            When the hold ends by itself. Null only for an old hold the nightly run has not yet
+            given its end: it sets now plus the maximum duration.
+
+    LocalUserChatCleanupPendingHold:
+      type: object
+      required: [purpose, reason, requestedAt, requestedByMe, extension]
+      properties:
+        purpose:
+          $ref: "#/components/schemas/ChatCleanupHoldPurpose"
+        reason:
+          type: string
+        requestedAt:
+          type: string
+          format: date-time
+        requestedByMe:
+          type: boolean
+          description: Whether the calling administrator made the request and so cannot approve it.
+        extension:
+          type: boolean
+          description: >
+            Whether approving it now extends a running hold rather than placing a new one.
+
     LocalUserChatCleanupResponse:
       type: object
-      required: [status, held, deleteAfterDays]
+      required: [status, held, deleteAfterDays, holdMaxDays]
       properties:
         status:
           $ref: "#/components/schemas/ChatCleanupAfterLockStatus"
         held:
           type: boolean
-          description: Whether the deletion is held for this account, independent of its lock.
+          description: Whether an approved hold runs for this account, independent of its lock.
         deleteAfterDays:
           type: integer
           description: The installation's period between the lock and the deletion, in days.
+        holdMaxDays:
+          type: integer
+          description: The longest an approved hold runs before it ends by itself, in days.
         earliestDeletionAt:
           type: string
           format: date-time
@@ -1094,3 +1240,13 @@ components:
             Set only with status SCHEDULED - the earliest moment the nightly run deletes the
             chats: the later of the lock and the moment the deletion was switched on, plus the
             period.
+        hold:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/LocalUserChatCleanupHold"
+          description: The running hold, absent without one.
+        pendingRequest:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/LocalUserChatCleanupPendingHold"
+          description: The request awaiting a second administrator, absent without one.
