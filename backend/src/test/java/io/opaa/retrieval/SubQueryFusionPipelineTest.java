@@ -113,7 +113,8 @@ class SubQueryFusionPipelineTest {
         .doesNotContainKey("doc-elfe-chunk");
     assertThat(quota.subQueriesByDocument())
         .containsEntry("doc-ginster-chunk", Set.of(1))
-        .containsEntry("doc-elfe-chunk", Set.of(2));
+        .containsEntry("doc-elfe-chunk", Set.of(2))
+        .containsEntry("doc-shared-1", Set.of(1, 2));
   }
 
   @Test

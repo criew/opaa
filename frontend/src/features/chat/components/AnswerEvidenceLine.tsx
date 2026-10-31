@@ -33,7 +33,7 @@ export default function AnswerEvidenceLine({ evidence }: { evidence: AnswerEvide
         <Box component="span" sx={visuallyHidden}>
           Belegstand:{' '}
         </Box>
-        <Box component="span" sx={{ fontWeight: 600, color }}>
+        <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
           {label}
         </Box>
         <Box component="span" sx={{ color: 'text.secondary' }}>

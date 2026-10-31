@@ -312,19 +312,6 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
    * never written), the locations and whether it was cited. Every other property of the JSON, an
    * excerpt among them, is never read.
    */
-  /** The stored Belegstand as its German level word, {@code null} without one. */
-  String evidenceOf(String evidence) {
-    if (evidence == null || evidence.isBlank()) {
-      return null;
-    }
-    return switch (json.readTree(evidence).path("level").asString("")) {
-      case "SUPPORTED" -> "belegt";
-      case "PARTIALLY_SUPPORTED" -> "teilweise belegt";
-      case "UNSUPPORTED" -> "nicht belegt";
-      default -> null;
-    };
-  }
-
   List<StoredSource> sourcesOf(String sources) {
     if (sources == null || sources.isBlank()) {
       return List.of();
@@ -350,6 +337,34 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
               source.path("cited").asBoolean(false)));
     }
     return result;
+  }
+
+  private static final JsonMapper EVIDENCE_JSON = JsonMapper.builder().build();
+
+  /**
+   * The stored Belegstand as its German level word, followed by the uncovered sub-queries it names,
+   * which rephrase the person's question; {@code null} without one or for an unknown level.
+   */
+  static String evidenceOf(String evidence) {
+    if (evidence == null || evidence.isBlank()) {
+      return null;
+    }
+    JsonNode node = EVIDENCE_JSON.readTree(evidence);
+    String level =
+        switch (node.path("level").asString("")) {
+          case "SUPPORTED" -> "belegt";
+          case "PARTIALLY_SUPPORTED" -> "teilweise belegt";
+          case "UNSUPPORTED" -> "nicht belegt";
+          default -> null;
+        };
+    if (level == null) {
+      return null;
+    }
+    List<String> uncovered = new ArrayList<>();
+    node.path("uncoveredSubQueries").forEach(query -> uncovered.add(query.asString("")));
+    return uncovered.isEmpty()
+        ? level
+        : level + " (ohne Fundstelle: " + String.join("; ", uncovered) + ")";
   }
 
   /**

@@ -22,7 +22,7 @@ public final class AnswerEvidenceAssessor {
 
   /**
    * The Belegstand, or {@code null} when there is nothing to assess: a message without anything to
-   * search for and without citations, or an empty answer.
+   * search for, or an empty answer.
    *
    * @param searchQueries the queries the retrieval ran, empty when nothing was searched
    * @param subQueriesByDocument 1-based sub-query numbers per document id
@@ -35,7 +35,7 @@ public final class AnswerEvidenceAssessor {
       List<String> searchQueries,
       Map<String, Set<Integer>> subQueriesByDocument,
       AnswerCompleteness completeness) {
-    if (completeness == AnswerCompleteness.EMPTY) {
+    if (completeness == AnswerCompleteness.EMPTY || !searchNeeded) {
       return null;
     }
     Set<String> confirmedPassages = new LinkedHashSet<>();
@@ -49,9 +49,6 @@ public final class AnswerEvidenceAssessor {
       } else {
         unconfirmed.add(passage + "|" + citation.fileName());
       }
-    }
-    if (!searchNeeded && citations.isEmpty()) {
-      return null;
     }
 
     List<String> uncovered = new ArrayList<>();

@@ -92,6 +92,11 @@ class ChatSelfDisclosureExporterIntegrationTest {
             + "{\"fileName\":\"Quelle entfernt\",\"relevanceScore\":0.5,\"matchCount\":1,"
             + "\"cited\":false}]");
 
+    jdbc.update(
+        "UPDATE chat_messages SET answer_evidence = ?::json WHERE chat_id = ? AND sequence = 2",
+        "{\"level\":\"PARTIALLY_SUPPORTED\",\"uncoveredSubQueries\":[\"Frist der Zeichnung\"]}",
+        chat);
+
     CapturingSelfDisclosureSink sink = export();
 
     assertThat(sink.records("chats"))
@@ -111,8 +116,10 @@ class ChatSelfDisclosureExporterIntegrationTest {
         .containsEntry("role", "Frage")
         .containsEntry("generatedByAi", false)
         .containsEntry("content", "Was regelt die Dienstanweisung?")
-        .containsEntry("chatTitle", "Mein Chat zur Dienstanweisung");
+        .containsEntry("chatTitle", "Mein Chat zur Dienstanweisung")
+        .containsEntry("evidence", null);
     assertThat(messages.get(1))
+        .containsEntry("evidence", "teilweise belegt (ohne Fundstelle: Frist der Zeichnung)")
         .containsEntry("role", "Antwort")
         .containsEntry("generatedByAi", true)
         .containsEntry(
@@ -206,6 +213,17 @@ class ChatSelfDisclosureExporterIntegrationTest {
         .isEqualTo("Nachricht 1 von 2 · Teil 2 von 3");
     assertThat(ChatSelfDisclosureExporter.pageOf("Abschn. Einleitung")).isNull();
     assertThat(ChatSelfDisclosureExporter.pageOf(null)).isNull();
+  }
+
+  @Test
+  void aBelegstandLeavesAsItsLevelWordAndNothingForAnUnknownOrMissingOne() {
+    assertThat(ChatSelfDisclosureExporter.evidenceOf("{\"level\":\"SUPPORTED\"}"))
+        .isEqualTo("belegt");
+    assertThat(ChatSelfDisclosureExporter.evidenceOf("{\"level\":\"UNSUPPORTED\"}"))
+        .isEqualTo("nicht belegt");
+    assertThat(ChatSelfDisclosureExporter.evidenceOf("{\"level\":\"KAPUTT\"}")).isNull();
+    assertThat(ChatSelfDisclosureExporter.evidenceOf(" ")).isNull();
+    assertThat(ChatSelfDisclosureExporter.evidenceOf(null)).isNull();
   }
 
   @Test

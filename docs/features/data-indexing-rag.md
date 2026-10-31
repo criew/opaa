@@ -191,15 +191,16 @@ nicht belegen. Belegen kann es, **worauf sich eine Antwort stützt**. An der Ant
 
 Der Belegstand folgt **fest** aus der [Belegvalidierung](#belegvalidierung) und den Teilfragen der
 Suche, ohne zweiten Modellaufruf. Eine Teilfrage gilt als gedeckt, wenn ein bestätigter Beleg auf ein
-Dokument zeigt, das die Fusion für diese Teilfrage ausgewählt hat (Erklärprotokoll der Fusion); ein
-Dokument, das mehreren Teilfragen diente, deckt alle. Kein Belegstand entsteht für eine Nachricht ohne
+Dokument zeigt, das die Suche für diese Teilfrage gefunden und die Fusion ausgewählt hat
+(Erklärprotokoll); ein Dokument, das mehreren Teilfragen diente, deckt alle, auch wenn die Quote der
+Fusion es nur einer zurechnet. Kein Belegstand entsteht für eine Nachricht ohne
 Suchbedarf und für eine leere Antwort. Er wird mit der Antwort gespeichert, steht in der API (Feld
 `evidence`) und als anonyme Metrik `opaa.query.evidence` je Stufe zur Verfügung.
 
 | Signal | genutzt | Grund |
 |---|---|---|
 | bestätigte und unbestätigte Belege | ja | deterministisch, schon im Belegfenster sichtbar |
-| Teilfrage, für die die Fusion ein Dokument ausgewählt hat | ja | macht eine ungedeckte Teilfrage sichtbar |
+| Teilfrage, für die die Suche ein ausgewähltes Dokument gefunden hat | ja | macht eine ungedeckte Teilfrage sichtbar |
 | leerer Suchbereich, kein Treffer, abgeschnittene Antwort | ja | erklären „nicht belegt" und „teilweise belegt" |
 | Fusions-, Vektor- und Rerank-Werte | nein | nicht kalibriert; Reranking und Relevanzschnitt sind im Auslieferungsstand aus, eine Stufe daraus wäre je Installation anders |
 | Selbsteinschätzung des Modells | nein | Scheingenauigkeit und zusätzliche Kosten |
