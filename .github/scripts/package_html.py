@@ -22,6 +22,7 @@ from markdown_it import MarkdownIt
 FRONT_MATTER = re.compile(r"---\n(.*?)\n---\n", re.DOTALL)
 SCHEME = re.compile(r"[a-zA-Z][a-zA-Z0-9+.-]*:")
 HREF = re.compile(r'(\bhref=")([^"]*)(")')
+EXPLICIT_ANCHOR = re.compile(r'<a\s[^>]*\bid="([^"]+)"')
 NOT_IN_SLUG = re.compile(r"[^\w\- ]")
 
 CSS = """\
@@ -191,11 +192,15 @@ def convert(path: str, text: str, files, folders: set[str],
     front_matter, body = split_front_matter(text.replace("\r\n", "\n"))
     tokens = PARSER.parse(body)
     slugger = Slugger()
+    # An explicit <a id> keeps its name alone on the page, as a heading's id would repeat it.
+    explicit = set(EXPLICIT_ANCHOR.findall(body))
     title = path
     for index, token in enumerate(tokens):
         if token.type == "heading_open":
             text_of = heading_text(tokens[index + 1])
-            token.attrSet("id", slugger.anchor(text_of))
+            anchor = slugger.anchor(text_of)
+            if anchor not in explicit:
+                token.attrSet("id", anchor)
             if token.tag == "h1" and title == path:
                 title = text_of
         elif token.type == "fence" and token.info.strip() == "mermaid" and diagrams \
