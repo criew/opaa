@@ -271,19 +271,23 @@ dataFlows:
       Der Mailserver (SMTP), den die Systemverwaltung einträgt, und im Installationsassistenten der
       Mailserver, den die einrichtende Person angibt
     data: >-
-      E-Mail-Adresse und Name der Empfängerin oder des Empfängers, Inhalt der Benachrichtigung
-      (Einladung, Kennwort, Zugangslinks, Sperre mit Sperrgrund und Hinweis auf die Löschung der
-      Chats, Freischaltung, Kontoablauf, Kontoübergabe, Zeitpunkt einer gestarteten Selbstauskunft,
-      Erinnerungen, bei der Erinnerung an die Prüfung der Zugänge nur deren Anzahl, Testmail); bei
-      der Prüfung im Assistenten nur Verbindungsaufbau und Anmeldung, eine Testmail nur an die dort
-      angegebene Adresse
+      E-Mail-Adresse und Name der Empfängerin oder des Empfängers (bei der Bestätigung einer
+      Selbstregistrierung ohne Namen), Inhalt der Benachrichtigung (Einladung, Kennwort,
+      Zugangslinks, Sperre mit Sperrgrund und bei einer Sperre durch die Systemverwaltung Hinweis auf
+      die Löschung der Chats, Freischaltung, Ablaufdatum des Kontos, Kontoübergabe, Zeitpunkt einer
+      gestarteten Selbstauskunft, Zeitpunkt der Anmeldung des Bootstrap-Kontos, Name des erzeugten
+      oder ablaufenden Zugangstokens, Name der Bibliothek bei einer ablaufenden Freigabe, bei der
+      Erinnerung an die Prüfung der Zugänge nur deren Anzahl, Testmail); bei der Prüfung im
+      Assistenten nur Verbindungsaufbau und Anmeldung, eine Testmail nur an die dort angegebene
+      Adresse
     trigger: >-
-      Einladung und Kennwortvorgänge lokaler Konten, Bestätigung einer Selbstregistrierung, Sperre und
-      Freischaltung, bevorstehender Ablauf eines Kontos, angefragte und erfolgte Kontoübergabe,
-      Erinnerung der Systemverwaltung an die Prüfung der Zugänge, Anmeldung des Bootstrap-Kontos der
-      Systemverwaltung, ablaufende Freigaben für externe KI-Werkzeuge, erzeugte und ablaufende
-      Zugangstokens, Start einer Selbstauskunft, Testmail; im Installationsassistenten die Prüfung des
-      Schritts E-Mail-Versand, nur mit dem Installations-Token und vor dem Abschluss
+      Einladung und Kennwortvorgänge lokaler Konten, Bestätigung einer Selbstregistrierung, Sperre
+      durch die Systemverwaltung oder wegen Inaktivität und Freischaltung, bevorstehender Ablauf
+      eines Kontos, angefragte und erfolgte Kontoübergabe, Erinnerung der Systemverwaltung an die
+      Prüfung der Zugänge, Anmeldung des Bootstrap-Kontos der Systemverwaltung, ablaufende Freigaben
+      für externe KI-Werkzeuge, erzeugte und ablaufende Zugangstokens, Start einer Selbstauskunft,
+      Testmail; im Installationsassistenten die Prüfung des Schritts E-Mail-Versand, nur mit dem
+      Installations-Token und vor dem Abschluss
     switchOff: >-
       Abschaltbar, Voreinstellung aus; der Abschluss der Installation schaltet den Versand nur ein,
       wenn der Schritt E-Mail-Versand geprüft und nicht übersprungen ist
