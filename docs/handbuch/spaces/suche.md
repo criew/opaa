@@ -958,6 +958,26 @@ Antworten wieder an die Stelle, sobald die Bibliothek über den
 [Pipeline-Nachzug](../arbeitsmittel/wissensbibliotheken/README.md#72-pipeline-versionen-und-nachzug)
 neu aufbereitet ist; eine ältere Antwort behält ihren Stand.
 
+**Belegstand.** Über dem Fuß jeder Antwort steht ihr Belegstand: Symbol, Stufe und ein Satz, was
+sie von der nächsthöheren Stufe trennt, etwa „Teilweise belegt · 1 Beleg nicht bestätigt". Er ist
+keine Zahl und keine Aussage darüber, ob die Antwort stimmt, sondern darüber, worauf sie sich stützt,
+und folgt fest aus den beiden Prüfungen oben und den Teilfragen der Suche (Stufe 3); Ähnlichkeitswerte
+und eine Selbsteinschätzung des Modells gehen nicht ein.
+
+| Stufe | Wann | Satz, zum Beispiel |
+|---|---|---|
+| „Belegt" | mindestens ein bestätigter Beleg, kein unbestätigter, jede Teilfrage durch einen bestätigten Beleg gedeckt, Antwort vollständig | „alle Belege bestätigt" |
+| „Teilweise belegt" | mindestens ein bestätigter Beleg, aber auch ein unbestätigter, eine Teilfrage ohne bestätigten Beleg oder eine abgebrochene Antwort | „1 Beleg nicht bestätigt", „zur Teilfrage ‚Gültigkeit Anwohnerparkausweis' keine Fundstelle", „Antwort abgebrochen" |
+| „Nicht belegt" | kein bestätigter Beleg | „keine Fundstelle im durchsuchten Bereich · vor Verwendung prüfen" |
+
+Eine Teilfrage gilt als gedeckt, wenn ein bestätigter Beleg auf ein Dokument zeigt, das die Fusion
+(Stufe 7) für diese Teilfrage ausgewählt hat. Eine Nachricht ohne Suchbedarf („Danke") und eine leere
+Antwort bekommen keinen Belegstand. Die Stufe ist immer als Wort lesbar, die Farbe des Symbols
+unterstreicht sie nur. Der Belegstand wird mit der Antwort gespeichert und zeigt beim Wiederöffnen
+eines Chats denselben Stand wie bei der Erzeugung; Antworten von vor seiner Einführung tragen keinen.
+Er bewertet die Antwort und ihre Grundlage, nie die fragende Person; außerhalb des Chats zählt nur die
+anonyme Metrik `opaa.query.evidence` je Stufe (Abschnitt „Metriken und Log").
+
 **Kopieren.** Rechts unter jeder Antwort steht „Kopieren". Ein Klick legt die Antwort als Markdown in
 die Zwischenablage, ohne Fußnotenmarken und ohne Quellenliste. Der Pfeil daneben bietet zwei
 Varianten: **„Mit Quellenangaben"** setzt jede Fußnote als Markdown-Fußnote (`[^1]`, dieselbe Nummer
@@ -1341,6 +1361,7 @@ einzelnen Menschen weiter im Rahmen.
 | `opaa.query.count` | Fragen, nach Erfolg und Fehler unterschieden |
 | `opaa.query.tokens` | verbrauchte Tokens des Chat-Modells |
 | `opaa.query.decomposition.fallback` | Rückfälle der Zerlegung, nach Ursache unterschieden |
+| `opaa.query.evidence` | Antworten je Belegstand (`supported`, `partially_supported`, `unsupported`), ohne Person, Chat oder Space |
 | `opaa.query.decomposition.no-search` | Nachrichten, in denen die Zerlegung nichts zu suchen fand; gesucht wurde mit der Rückfall-Suchanfrage, die Antwort bekam die Anweisung für Nachrichten ohne Suchbedarf |
 | `opaa.chat.search.duration` | Dauer und Anzahl der Chatsuchen (Abschnitt 7.2), ohne Merkmale — weder Suchbegriff noch Person |
 | `opaa.chat.note.extraction` | Verdichtungen der Gesprächsnotiz, nach Ausgang unterschieden: `applied`, `empty`, `failed` (Modell nicht erreichbar, Zeitüberschreitung, unparsebar), `discarded` (Space zwischenzeitlich archiviert) und `rejected` (Verdichtungs-Pool erschöpft, die Runde wurde gar nicht erst verdichtet) |
