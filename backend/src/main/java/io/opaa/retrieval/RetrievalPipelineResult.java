@@ -1,6 +1,12 @@
 package io.opaa.retrieval;
 
+import io.opaa.api.types.CandidateOutcome;
+import io.opaa.api.types.RetrievalStageName;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import org.springframework.ai.document.Document;
 
 /**
@@ -24,4 +30,37 @@ public record RetrievalPipelineResult(
     List<Document> chunks,
     List<String> searchQueries,
     RetrievalExplanation explanation,
-    boolean searchNeeded) {}
+    boolean searchNeeded) {
+
+  /**
+   * Which sub-queries (1-based, the numbering of {@link #searchQueries}) each document owes its
+   * place in the fusion's selection to, keyed by {@link ChunkGroupingKey}. Read off the {@link
+   * RetrievalStageName#RANK_FUSION} protocol: a kept candidate counts for every sub-query whose
+   * list contributed to its fused score. Empty when the fusion did not run.
+   */
+  public Map<String, Set<Integer>> subQueriesByDocument() {
+    Map<String, Integer> subQueryByLabel = new HashMap<>();
+    for (int i = 1; i <= searchQueries.size(); i++) {
+      subQueryByLabel.put(RetrievalListLabel.VECTOR_SEARCH.format(i), i);
+      subQueryByLabel.put(RetrievalListLabel.FULL_TEXT_SEARCH.format(i), i);
+    }
+    Map<String, Set<Integer>> result = new HashMap<>();
+    for (StageExplanation stage : explanation.stages()) {
+      if (stage.stage() != RetrievalStageName.RANK_FUSION) {
+        continue;
+      }
+      for (CandidateVerdict verdict : stage.verdicts()) {
+        if (verdict.outcome() != CandidateOutcome.KEPT) {
+          continue;
+        }
+        for (FusionContribution contribution : verdict.contributions()) {
+          Integer subQuery = subQueryByLabel.get(contribution.listLabel());
+          if (subQuery != null) {
+            result.computeIfAbsent(verdict.documentKey(), key -> new TreeSet<>()).add(subQuery);
+          }
+        }
+      }
+    }
+    return result;
+  }
+}

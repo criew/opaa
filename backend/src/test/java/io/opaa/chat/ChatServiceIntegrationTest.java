@@ -11,6 +11,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 
 import io.opaa.api.types.ChatRole;
+import io.opaa.api.types.EvidenceLevel;
 import io.opaa.api.types.SpaceRole;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
@@ -468,6 +469,35 @@ class ChatServiceIntegrationTest {
     assertThat(detail.getMessages().get(1).getSources()).hasSize(1);
     assertThat(detail.getMessages().get(1).getSources().getFirst().getFileName())
         .isEqualTo("bericht.pdf");
+  }
+
+  @Test
+  void appendTurnKeepsTheAnswersBelegstandOnTheAnswerOnly() {
+    UUID author = createUser();
+    UUID spaceId = createSpaceWithMember(author);
+    Chat chat = chatRepository.save(new Chat(spaceId, author, organizationA, null, true, Set.of()));
+    AnswerEvidence evidence =
+        new AnswerEvidence(
+            EvidenceLevel.PARTIALLY_SUPPORTED,
+            2,
+            1,
+            1,
+            List.of("Gültigkeit Anwohnerparkausweis"),
+            false,
+            true,
+            true);
+
+    chatService.appendTurn(
+        chat,
+        "Was kostet der Anwohnerparkausweis und wie lange gilt er?",
+        null,
+        "Er kostet 30,70 Euro.",
+        List.of(new ChatSource("gebuehren.pdf", 0.9, 1, true)),
+        evidence);
+
+    ChatConversation detail = chatService.getChat(chat.getId(), author);
+    assertThat(detail.getMessages().get(0).getEvidence()).isNull();
+    assertThat(detail.getMessages().get(1).getEvidence()).isEqualTo(evidence);
   }
 
   @Test

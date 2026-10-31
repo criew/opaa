@@ -78,6 +78,7 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
                           "Verwendeter Prompt",
                           "chat_messages." + ChatMessage.TITLE_OF_USED_COLUMN),
                       Field.of("createdAt", "Zeitpunkt", "chat_messages.created_at"),
+                      Field.of("evidence", "Belegstand", "chat_messages.answer_evidence"),
                       Field.of(
                           "sources",
                           "Fundstellen (Titel, Bibliothek, Ort)",
@@ -255,6 +256,7 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
                         message.getContent(),
                         message.getUsedPrompt() == null ? null : message.getUsedPrompt().title(),
                         message.getCreatedAt(),
+                        evidenceOf(message.getAnswerEvidence()),
                         sourcesOf(message.getSources())))
             .toList();
     Map<UUID, String> libraries = libraryNames(stored, chat.organizationId());
@@ -270,6 +272,7 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
       record.put("content", message.content());
       record.put("prompt", message.prompt());
       record.put("createdAt", message.createdAt());
+      record.put("evidence", message.evidence());
       record.put(
           "sources",
           message.sources().stream()
@@ -309,6 +312,19 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
    * never written), the locations and whether it was cited. Every other property of the JSON, an
    * excerpt among them, is never read.
    */
+  /** The stored Belegstand as its German level word, {@code null} without one. */
+  String evidenceOf(String evidence) {
+    if (evidence == null || evidence.isBlank()) {
+      return null;
+    }
+    return switch (json.readTree(evidence).path("level").asString("")) {
+      case "SUPPORTED" -> "belegt";
+      case "PARTIALLY_SUPPORTED" -> "teilweise belegt";
+      case "UNSUPPORTED" -> "nicht belegt";
+      default -> null;
+    };
+  }
+
   List<StoredSource> sourcesOf(String sources) {
     if (sources == null || sources.isBlank()) {
       return List.of();
@@ -399,6 +415,7 @@ public class ChatSelfDisclosureExporter implements SelfDisclosureExporter {
       String content,
       String prompt,
       Instant createdAt,
+      String evidence,
       List<StoredSource> sources) {}
 
   record StoredSource(String fileName, UUID documentId, List<String> locations, boolean cited) {}

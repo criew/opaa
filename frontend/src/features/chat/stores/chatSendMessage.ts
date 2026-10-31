@@ -233,6 +233,7 @@ export async function sendChatMessage(
       answerTruncated: response.metadata.answerTruncated ?? false,
       answerEmpty: response.metadata.answerEmpty ?? false,
       privateSourcesInContext: response.privateSourcesInContext,
+      ...(response.evidence ? { evidence: response.evidence } : {}),
       timestamp: new Date(),
     }
     set((state) => ({

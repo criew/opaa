@@ -104,6 +104,19 @@ class SubQueryFusionPipelineTest {
   }
 
   @Test
+  void eachSelectedDocumentIsAttributedToTheSubQueriesItWasSelectedFor() {
+    RetrievalPipelineResult pooled = run(properties(1.0, false));
+    RetrievalPipelineResult quota = run(properties(1.0, true));
+
+    assertThat(pooled.subQueriesByDocument())
+        .containsEntry("doc-shared-1", Set.of(1, 2))
+        .doesNotContainKey("doc-elfe-chunk");
+    assertThat(quota.subQueriesByDocument())
+        .containsEntry("doc-ginster-chunk", Set.of(1))
+        .containsEntry("doc-elfe-chunk", Set.of(2));
+  }
+
+  @Test
   void theFusionProtocolNamesTheContributingListsAndTheQuota() {
     RetrievalPipelineResult result = run(properties(1.0, true));
 

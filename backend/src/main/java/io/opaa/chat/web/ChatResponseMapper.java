@@ -12,6 +12,7 @@ import io.opaa.api.dto.SourceFreeze;
 import io.opaa.api.dto.SourceMetadataEntry;
 import io.opaa.api.dto.SourceReference;
 import io.opaa.api.types.ChatRole;
+import io.opaa.chat.AnswerEvidence;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatConversation;
 import io.opaa.chat.ChatListEntry;
@@ -114,12 +115,31 @@ public final class ChatResponseMapper {
             .sources(toSourceReferences(turn.getSources()));
     if (turn.getRole() == ChatRole.ASSISTANT) {
       response.privateSourcesInContext(ChatSource.anyPrivate(turn.getSources()));
+      response.evidence(toEvidence(turn.getEvidence()));
     }
     UsedPrompt usedPrompt = turn.getUsedPrompt();
     if (usedPrompt != null) {
       response.usedPromptId(usedPrompt.id()).usedPromptTitle(usedPrompt.title());
     }
     return response;
+  }
+
+  /**
+   * The Belegstand of an answer, {@code null} for none. Also used by {@code QueryResponseMapper}.
+   */
+  public static io.opaa.api.dto.AnswerEvidence toEvidence(AnswerEvidence evidence) {
+    if (evidence == null) {
+      return null;
+    }
+    return new io.opaa.api.dto.AnswerEvidence(
+        evidence.level(),
+        evidence.confirmedPassages(),
+        evidence.confirmedDocuments(),
+        evidence.unconfirmedCitations(),
+        evidence.uncoveredSubQueries(),
+        evidence.truncated(),
+        evidence.knowledgeSearched(),
+        evidence.passagesFound());
   }
 
   /** Also used by {@code QueryResponseMapper}. */

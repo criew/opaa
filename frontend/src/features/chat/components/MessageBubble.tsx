@@ -12,6 +12,7 @@ import { buildCitationIndex } from '@/shared/ui/markdown/citations'
 import { AiAnswerMark } from './AiNotice'
 import CopyAnswerButton from './CopyAnswerButton'
 import CopyQuestionButton, { QUESTION_COPY_CLASS } from './CopyQuestionButton'
+import AnswerEvidenceLine from './AnswerEvidenceLine'
 import EvidenceFooter from './EvidenceFooter'
 import MarkdownRenderer from '@/shared/ui/markdown/MarkdownRenderer'
 import SourceEvidenceDrawer from './SourceEvidenceDrawer'
@@ -225,6 +226,8 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
               <CopyQuestionButton text={message.content} />
             </Box>
           )}
+
+          {!isUser && message.evidence && <AnswerEvidenceLine evidence={message.evidence} />}
 
           {!isUser && (
             <EvidenceFooter
