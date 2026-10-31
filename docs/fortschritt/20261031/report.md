@@ -1,7 +1,7 @@
 # Zeitraumsbericht 30.09.–31.10.2026
 
 > **Bericht zum Stichtag 31.10.2026.** Er beruht auf der Fortschreibung mit Datenstand 31.10.2026
-> (`main@ANKER_KURZ`, dem Stand von `v0.1.0-rc.5`; 681 geschlossene Issues und 725 gemergte PRs im
+> (`main@39a00d1da`, dem Stand von `v0.1.0-rc.5`; 681 geschlossene Issues und 725 gemergte PRs im
 > Zeitraum — siehe [anker.md](./anker.md)). Er enthält nur das **Delta zum Stichtag 30.09.2026**;
 > den konsolidierten Stand führt [gesamtstand.md](../gesamtstand.md). Jede Aussage ist über
 > Issue- und PR-Nummer auf Code rückführbar. Wo Lieferung und Vorgang auseinanderfallen, steht die
@@ -293,5 +293,5 @@ Werkzeuge (#2173). Das Fundament für Werkzeugaufrufe (Epic #1747) und Skills al
 ---
 
 *Erstellt nach dem Verfahren in [../README.md](../README.md) (Issue #3482). Datenstand:
-`main@ANKER_KURZ`, GitHub-Abfrage vom 31.10.2026. Folgende Fortschreibungen erheben das Delta ab
+`main@39a00d1da`, GitHub-Abfrage vom 31.10.2026. Folgende Fortschreibungen erheben das Delta ab
 den Marken in [anker.md](./anker.md).*

@@ -7,7 +7,7 @@
 > Dokument ist die **einzige Quelle für den Umsetzungsstand** (Maintainer-Entscheidung,
 > 26.08.2026, #927); das frühere `docs/STATUS.md` ist entfernt.
 
-**Stand: Stichtag 31.10.2026** — Datenstand `main@ANKER_KURZ` (31.10.2026, Stand von
+**Stand: Stichtag 31.10.2026** — Datenstand `main@39a00d1da` (31.10.2026, Stand von
 `v0.1.0-rc.5`), im Repository als Tag `inventur-20261031` verankert. Belege:
 [Zeitraumsbericht 20261031](./20261031/report.md) mit den
 [Bausteinen mit Befund](./20261031/bausteine.md) für das Delta, die Zeitraumsberichte
