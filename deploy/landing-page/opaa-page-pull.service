@@ -7,6 +7,7 @@ After=network-online.target
 Type=oneshot
 User=opaa-page
 Group=opaa-page
+Environment=HOME=/var/cache/opaa-page
 ExecStart=/usr/local/bin/opaa-page-pull.sh
 NoNewPrivileges=true
 PrivateTmp=true
