@@ -103,7 +103,7 @@ class LocalTokenValidatorTest {
     assertThat(rejection.get().errorDescription()).isEqualTo("session_revoked:password_changed");
   }
 
-  // regression guard for ADR-0053, Entscheidung 6: iat is never held against a cutoff
+  // regression guard for #2959: a token without sgen is malformed, never held against a cutoff
   @Test
   void aTokenWithoutSessionGenerationIsAMalformedToken() {
     Jwt jwt =

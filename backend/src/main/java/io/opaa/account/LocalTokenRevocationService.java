@@ -94,7 +94,8 @@ public class LocalTokenRevocationService {
    * transaction ends. Every act that ends all sessions writes that row before it publishes {@link
    * LocalAccountSessionsEndedEvent}, so what the caller writes next on the session's behalf is
    * either refused here or seen by that act's listeners. {@code false} for an account without local
-   * credentials and for a call without a session.
+   * credentials and for a call without a session; {@code true} for a session without the session
+   * generation claim.
    */
   @Transactional(propagation = Propagation.MANDATORY)
   public boolean sessionEndedSince(UUID userId, Jwt session) {
