@@ -186,6 +186,13 @@ def test_a_heading_leaves_its_id_to_an_explicit_anchor_of_the_same_name() -> Non
     assert package_html.broken_links({path: text.encode("utf-8") for path, text in pages.items()}) == []
 
 
+def test_an_anchor_in_code_or_a_lookalike_attribute_leaves_the_heading_its_id() -> None:
+    pages = site({"f.md": "# Konvention\n\n`<a id=\"mail\"></a>`\n\n```html\n<a id=\"user\"></a>\n```\n\n"
+                          '<span data-id="rolle"></span>\n\n## mail\n\n## user\n\n## rolle\n'})
+
+    assert all(f'<h2 id="{name}">' in pages["f.html"] for name in ("mail", "user", "rolle"))
+
+
 def test_a_diagram_with_its_own_description_keeps_it_beside_the_source_text() -> None:
     source = "flowchart LR\n  accDescr: Beschreibung\n  A --> B\n"
     page = site({"a.md": f"# Titel\n\n```mermaid\n{source}```\n"},

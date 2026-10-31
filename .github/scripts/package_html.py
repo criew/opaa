@@ -22,7 +22,7 @@ from markdown_it import MarkdownIt
 FRONT_MATTER = re.compile(r"---\n(.*?)\n---\n", re.DOTALL)
 SCHEME = re.compile(r"[a-zA-Z][a-zA-Z0-9+.-]*:")
 HREF = re.compile(r'(\bhref=")([^"]*)(")')
-EXPLICIT_ANCHOR = re.compile(r'<a\s[^>]*\bid="([^"]+)"')
+EXPLICIT_ID = re.compile(r'(?<![\w-])id=["\']([^"\']+)["\']')
 NOT_IN_SLUG = re.compile(r"[^\w\- ]")
 
 CSS = """\
@@ -185,6 +185,18 @@ def page(path: str, title: str, body: str, files) -> str:
     )
 
 
+def explicit_ids(tokens) -> set[str]:
+    """The ids written as HTML in the Markdown tokens, outside code."""
+    found = set()
+    for token in tokens:
+        if token.type == "html_block":
+            found.update(EXPLICIT_ID.findall(token.content))
+        for child in token.children or []:
+            if child.type == "html_inline":
+                found.update(EXPLICIT_ID.findall(child.content))
+    return found
+
+
 def convert(path: str, text: str, files, folders: set[str],
             diagrams: dict[str, str] | None = None) -> tuple[str, str]:
     """The HTML page of the Markdown file `path` and its title (first level-one heading); a Mermaid
@@ -192,8 +204,8 @@ def convert(path: str, text: str, files, folders: set[str],
     front_matter, body = split_front_matter(text.replace("\r\n", "\n"))
     tokens = PARSER.parse(body)
     slugger = Slugger()
-    # An explicit <a id> keeps its name alone on the page, as a heading's id would repeat it.
-    explicit = set(EXPLICIT_ANCHOR.findall(body))
+    # A heading whose slug an id in the file's HTML already carries gets no id, so ids stay unique.
+    explicit = explicit_ids(tokens)
     title = path
     for index, token in enumerate(tokens):
         if token.type == "heading_open":
