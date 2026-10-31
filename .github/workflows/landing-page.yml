@@ -3,10 +3,7 @@ name: Landing Page
 # Veröffentlicht den Inhalt von page/ als Startseite von https://opaa.io.
 #
 # Ziel ist der Branch gh-pages, den der Webserver per Pull spiegelt (siehe
-# page/README.md), weil dort auch die Rohdaten des Tagesreports liegen,
-# aus denen dieser bei jedem Lauf sämtliche Seiten neu erzeugt. Beide
-# Workflows schreiben deshalb in denselben Branch, aber in getrennte Bereiche:
-# dieser hier das Wurzelverzeichnis, der Tagesreport ausschließlich report/.
+# page/README.md).
 
 on:
   push:
@@ -20,8 +17,8 @@ permissions:
   contents: write
 
 concurrency:
-  # Teilt die Gruppe mit dem Tagesreport: Beide committen auf gh-pages, ein
-  # paralleler Lauf würde beim Push gegeneinander laufen.
+  # Läufe committen nacheinander auf gh-pages; ein paralleler Lauf würde beim
+  # Push gegen den anderen laufen.
   group: gh-pages
   cancel-in-progress: false
 
@@ -34,7 +31,6 @@ jobs:
         with:
           sparse-checkout: |
             page
-            .github/scripts
           sparse-checkout-cone-mode: false
           path: source
           persist-credentials: false
@@ -51,21 +47,14 @@ jobs:
       - name: Seitenverzeichnis vorbereiten
         run: mkdir -p site
 
-      - name: Altes Seitenlayout überführen
-        run: bash source/.github/scripts/migrate_pages_layout.sh site
-
       - name: Landing Page übernehmen
         run: |
-          # --delete räumt entfernte Dateien der Landing Page mit weg, lässt
-          # aber alles außerhalb von page/ unangetastet: report/ gehört dem
-          # Tagesreport, .git dem Branch selbst. fortschritt/ trägt manuell
-          # direkt auf gh-pages gepushte Meilenstein-Artefakte (Demo-Video,
-          # Berichts-PDFs, #807) — zu groß fürs Quell-Repository; der
-          # Ausschluss bewahrt den Ordner vor dem --delete dieses Laufs.
+          # --delete räumt alles weg, was nicht aus page/ stammt, bis auf .git
+          # und fortschritt/: Dort liegen manuell direkt auf gh-pages gepushte
+          # Meilenstein-Artefakte (Demo-Video, Berichts-PDFs), zu groß fürs
+          # Quell-Repository.
           rsync -a --delete \
             --exclude '.git/' \
-            --exclude 'report/' \
-            --exclude '.nojekyll' \
             --exclude 'fortschritt/' \
             source/page/ site/
 
