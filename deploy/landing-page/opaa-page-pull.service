@@ -1,0 +1,31 @@
+[Unit]
+Description=Mirror the OPAA landing page from gh-pages into /var/www/opaa.io
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=opaa-page
+Group=opaa-page
+Environment=HOME=/var/cache/opaa-page
+ExecStart=/usr/local/bin/opaa-page-pull.sh
+TimeoutStartSec=5min
+UMask=0022
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+ProtectClock=true
+ProtectHostname=true
+ProtectKernelLogs=true
+SystemCallArchitectures=native
+ReadWritePaths=/var/cache/opaa-page /var/www/opaa.io

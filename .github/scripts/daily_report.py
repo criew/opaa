@@ -73,7 +73,7 @@ SEARCH_MAX_PAGES = 10
 PROMPT_MAX_ITEMS = 25
 # Ziel des Links auf die laufende Instanz. Überschreibbar, damit ein Fork oder
 # eine verschobene Umgebung keine Codeänderung erfordert.
-DEFAULT_TEST_URL = "https://opaa.ewerlin.com/chat"
+DEFAULT_TEST_URL = "https://demo.opaa.io/chat"
 
 WEEKDAYS = (
     "Montag",
@@ -1198,8 +1198,8 @@ Erzeugt am {html.escape(data["generated_at"][:16].replace("T", " um "))} Uhr ·
 def render_latest(reports: list[dict]) -> str:
     """Erzeugt eine feste Adresse, die stets zum jüngsten Report führt.
 
-    GitHub Pages liefert ausschließlich statische Dateien, eine echte
-    Weiterleitung über den Server ist also nicht möglich. Stattdessen leitet
+    Die Seite wird als statischer Spiegel ausgeliefert, der den jüngsten Tag
+    nicht kennt; eine Weiterleitung über den Server scheidet aus. Stattdessen leitet
     die Seite selbst weiter — per `meta refresh`, ergänzt um einen sichtbaren
     Link für den Fall, dass das unterbunden ist. Der Umweg über eine Kopie des
     Reports scheidet aus: an der Adresse ließe sich dann nicht ablesen,
@@ -1427,7 +1427,6 @@ def main() -> int:
     (output / "feed.xml").write_text(
         render_feed(reports, args.repo, site_url), encoding="utf-8"
     )
-    (output / ".nojekyll").write_text("", encoding="utf-8")
     print(f"Seiten erzeugt ({len(reports)} Reports).")
     return 0
 

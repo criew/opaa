@@ -43,7 +43,7 @@ lesen dürfen.
 4. **Ein Befehl installiert alles:** Compose-Profil `demo` plus Seed-Skript richten Nutzer, Spaces,
    Bibliotheken, Berechtigungen und Indizierung ein. Angemeldet wird sich über Keycloak, wie in einer
    echten Installation — daneben besteht, wie in jeder Installation, das lokale Konto der
-   Systemverwaltung. Zielplattform ist gleichgültig — lokal, opaa.ewerlin.com oder ein alternativer
+   Systemverwaltung. Zielplattform ist gleichgültig — lokal, demo.opaa.io oder ein alternativer
    Host.
 5. **E2E-Tests getrennt, Seed-Infrastruktur geteilt:** Der Seed-Mechanismus kennt zwei Datenprofile —
    `demo` (reich, darf sich weiterentwickeln) und `e2e` (minimal, eingefroren). Die Demo selbst wird nur

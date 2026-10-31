@@ -5,7 +5,7 @@ publiccodeYmlVersion: "0.4"
 
 name: OPAA
 url: "https://github.com/criew/opaa"
-landingURL: "https://github.com/criew/opaa"
+landingURL: "https://opaa.io"
 
 platforms:
   - web

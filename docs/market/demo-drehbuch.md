@@ -46,7 +46,7 @@ Die Schritte A und B wurden live durchgespielt und danach zurückgesetzt: Mitgli
 wieder aufnehmen, Keycloak-Mitgliedschaft entfernen, abgleichen, zurückgeben und erneut abgleichen.
 
 **Schritt E zusätzlich mit echtem Modell:** Am 27.09.2026 wurden die Fachfragen aus Schritt E live
-auf der Demo-Instanz opaa.ewerlin.com gestellt (Chat-Modell `claude-haiku-4-5`, Suche auf die
+auf der Demo-Instanz opaa.ewerlin.com (heute demo.opaa.io) gestellt (Chat-Modell `claude-haiku-4-5`, Suche auf die
 jeweilige Bibliothek eingeschränkt). Die beiden XLSX-Fragen (BB-3311, BB-3213), die CSV-Frage, die
 Anhang-Frage zum Auftakttermin in Nordfeld (3 von 3 Läufen) und die Frage an die Feuerwache-Anlage aus
 Schritt D lieferten korrekte, zitierte Antworten.
@@ -80,7 +80,7 @@ Die Klickwege unten benutzen diese Begriffe:
 
 - **Linke Leiste:** „Spaces“ und „Katalog“. Der Katalog ist der eine Einstieg zu Wissen und Prompts
   (#2114). Bei `demo-admin` kommt „Admin“ hinzu; auf
-  opaa.ewerlin.com meldet sich damit nur der Maintainer an (Passwort rotiert), sonst am lokalen Stack.
+  demo.opaa.io meldet sich damit nur der Maintainer an (Passwort rotiert), sonst am lokalen Stack.
   Unten sitzt der Avatar mit dem Kontomenü (Bedienhilfe „Profil und Einstellungen“) und den
   Einträgen „Einstellungen“ und „Abmelden“.
 - **Space wählen:** über „Spaces“ in der Leiste oder oben in der Space-Spalte (Feld „Space“). Ein
@@ -261,7 +261,7 @@ Die Schritte A und B ändern Rechte. Beide enden deshalb mit dem Zurücksetzen. 
 Für A und B lohnen sich zwei Browserfenster, eines davon privat, damit zwei Konten gleichzeitig
 angemeldet sind.
 
-**Auf der öffentlichen Instanz opaa.ewerlin.com** wirkt jede Rechteänderung sofort für alle
+**Auf der öffentlichen Instanz demo.opaa.io** wirkt jede Rechteänderung sofort für alle
 Besucher und bleibt bestehen; die Instanz wird nachts nur aktualisiert, nicht zurückgesetzt. Zwei
 gleichzeitige Vorführungen von Schritt A stören sich deshalb gegenseitig. Unterbleibt das
 Zurücksetzen von A, stellt nur ein erneuter Seed durch den Maintainer die Gruppenmitgliedschaft
@@ -289,7 +289,7 @@ vorführen; alle anderen nutzen dafür den lokalen Stack.
     die Mitgliedschaft in der Gruppe.
 - **Gegenprobe in der Verwaltung** (`demo-admin`, „Admin" → „Gruppen"): „Vertretung Meldewesen" hat
   die Herkunft „Intern" und in der Spalte „Verwendung" den Eintrag „1 Bibliothek · 1 Space". Auf
-  opaa.ewerlin.com nur durch den Maintainer vorführbar (das Passwort von `demo-admin` ist dort
+  demo.opaa.io nur durch den Maintainer vorführbar (das Passwort von `demo-admin` ist dort
   rotiert); sonst am lokalen Stack.
 - **Zurücksetzen:** als Maria im selben Abschnitt „Mitglieder" im Feld „Person suchen …" Thomas Klein
   wählen und „Mitglied hinzufügen" klicken.
@@ -298,7 +298,7 @@ vorführen; alle anderen nutzen dafür den lokalen Stack.
 
 ### B. Anbietergruppe aus Keycloak: Herkunft, Verzeichnisabgleich, Recht über das Verzeichnis
 
-- **Wer vorführen kann:** Auf opaa.ewerlin.com nur der Maintainer: Das Passwort von `demo-admin` ist
+- **Wer vorführen kann:** Auf demo.opaa.io nur der Maintainer: Das Passwort von `demo-admin` ist
   dort nach jedem Seed rotiert, und den Keycloak-Adminzugang hat nur er. Alle anderen führen
   Schritt B am lokalen Stack vor.
 - **Konten:** `demo-admin`, dazu `thomas.klein` zur Kontrolle und die Keycloak-Adminkonsole. Lokal
