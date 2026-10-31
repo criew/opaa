@@ -30,7 +30,7 @@ git -C "$cache_dir" clean -q -f -d -x
 
 # .nojekyll only matters to GitHub Pages and README.md describes the source tree; everything
 # else is published as is.
-rsync -a --delete --exclude '.git/' --exclude '.nojekyll' --exclude '/README.md' "$cache_dir/" "$web_root/"
+rsync -a --delete --delete-excluded --exclude '.git/' --exclude '.nojekyll' --exclude '/README.md' "$cache_dir/" "$web_root/"
 printf '%s\n' "$fetched" > "$state_file"
 
 # A shallow fetch per change piles up unreachable objects; drop them right away.
