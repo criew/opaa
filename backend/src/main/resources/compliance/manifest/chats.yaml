@@ -84,7 +84,8 @@ data:
           excludedColumns:
             reason: >-
               Freitext der Verwaltung, der eine Anordnung oder ein Verfahren nennen kann, über das
-              die Person noch nicht unterrichtet werden darf; Zweck, Beginn und Ende gehen aus
+              die Person noch nicht unterrichtet werden darf; Zweck, Beginn und Ende stehen in der
+              Auskunft
       - name: chat_cleanup_hold_requests
         personalColumns: [user_id, purpose, reason, requested_by_user_id, requested_at]
         nonPersonalColumns: [organization_id]

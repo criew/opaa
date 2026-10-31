@@ -225,7 +225,8 @@ public class LockedAccountChatCleanupService {
     Integer count =
         transactionTemplate.execute(
             status -> {
-              if (!store.lockStillDue(account.userId(), cutoff, now)) {
+              if (!store.lockStillDue(account.userId(), cutoff, now)
+                  || store.holdRunsAt(account.userId(), now)) {
                 return 0;
               }
               List<Chat> chats =

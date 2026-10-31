@@ -3,7 +3,9 @@ SET LOCAL lock_timeout = '5s';
 -- A hold of the deletion of a locked account's chats now names a purpose from a closed list, a
 -- reason and the moment it ends by itself. NULL in all three is a hold placed before this release;
 -- the nightly run gives it its end (now plus the maximum duration), so it no longer runs unbounded.
-ALTER TABLE chat_cleanup_holds ADD COLUMN purpose varchar(40);
+ALTER TABLE chat_cleanup_holds ADD COLUMN purpose varchar(40)
+    CONSTRAINT chk_chat_cleanup_holds_purpose CHECK (
+        (purpose IN ('AUTHORITY_OR_COURT_ORDER', 'SECURITY_INCIDENT_EVIDENCE', 'DATA_SUBJECT_REQUEST')));
 ALTER TABLE chat_cleanup_holds ADD COLUMN reason varchar(1000);
 ALTER TABLE chat_cleanup_holds ADD COLUMN held_until timestamp with time zone;
 

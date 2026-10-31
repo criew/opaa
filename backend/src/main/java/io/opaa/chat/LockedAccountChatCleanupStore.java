@@ -116,7 +116,9 @@ class LockedAccountChatCleanupStore {
 
   /**
    * Whether {@code userId} is still due, read under a share lock on its credentials row until the
-   * end of the transaction: an unlock or a hold waits for the deletion, or the deletion sees it.
+   * end of the transaction: an unlock waits for the deletion, or the deletion sees it. A hold only
+   * locks that row without changing it, so a hold committed while this read waited is not in its
+   * snapshot; {@link #holdRunsAt} re-reads it afterwards.
    */
   boolean lockStillDue(UUID userId, Instant cutoff, Instant now) {
     return !jdbc.queryForList(
@@ -144,6 +146,21 @@ class LockedAccountChatCleanupStore {
         UUID.class,
         userId,
         limit);
+  }
+
+  /**
+   * Whether a hold of {@code userId} runs at {@code now}, read in a statement of its own after
+   * {@link #lockStillDue}: under read committed it sees every hold committed before that lock was
+   * granted.
+   */
+  boolean holdRunsAt(UUID userId, Instant now) {
+    return Boolean.TRUE.equals(
+        jdbc.queryForObject(
+            "SELECT EXISTS (SELECT 1 FROM chat_cleanup_holds WHERE user_id = ?"
+                + " AND (held_until IS NULL OR held_until > ?))",
+            Boolean.class,
+            userId,
+            Timestamp.from(now)));
   }
 
   /** Takes the credentials row of {@code userId} for the change of its hold. */

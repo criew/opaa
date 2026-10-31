@@ -164,7 +164,9 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
                     onClick={() =>
                       void act(
                         () => approveLocalUserChatCleanupHold(user.id),
-                        `Die Löschung der Chats von ${name} ist angehalten.`,
+                        pending.extension
+                          ? `Die Anhaltung der Löschung der Chats von ${name} ist verlängert.`
+                          : `Die Löschung der Chats von ${name} ist angehalten.`,
                       )
                     }
                   >
