@@ -333,7 +333,7 @@ class LocalAuthFlowIntegrationTest {
     login(user.email(), LocalAccountFixtures.PASSWORD).andExpect(status().isUnauthorized());
     login(user.email(), NEW_PASSWORD).andExpect(status().isOk());
     assertThat(auditCount("LOCAL_PASSWORD_CHANGED")).isEqualTo(auditedBefore + 1);
-    assertThat(fixtures.credentialsOf(user).getPasswordInvalidatedBefore()).isNotNull();
+    assertThat(fixtures.credentialsOf(user).getSessionGeneration()).isPositive();
   }
 
   /**

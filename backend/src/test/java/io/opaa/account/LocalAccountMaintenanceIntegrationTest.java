@@ -140,7 +140,7 @@ class LocalAccountMaintenanceIntegrationTest {
       LocalCredentials locked = credentials.findById(idle.id()).orElseThrow();
       assertThat(locked.state(now)).isEqualTo(LocalAccountState.LOCKED);
       assertThat(locked.getLockedReason()).isEqualTo(LockReason.INACTIVITY);
-      assertThat(locked.getPasswordInvalidatedBefore()).isNotNull();
+      assertThat(locked.getSessionGeneration()).isPositive();
       assertThat(credentials.findById(recent.id()).orElseThrow().state(now))
           .isEqualTo(LocalAccountState.ACTIVE);
       assertThat(credentials.findById(neverUsedButNew.id()).orElseThrow().state(now))

@@ -36,8 +36,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * token as {@code ROTATED}, issues a successor of the same family and never moves the family's end;
  * a rotated token presented again within the grace period while its successor is unused is renewed
  * once more; any other presentation of a rotated token is a replay that revokes the whole family as
- * {@code REUSE_DETECTED}, ends every session of the account ({@code password_invalidated_before})
- * and is the one refresh event that is audited; unknown and expired tokens are simply unknown.
+ * {@code REUSE_DETECTED}, ends every session of the account (its session generation) and is the one
+ * refresh event that is audited; unknown and expired tokens are simply unknown.
  */
 @OpaaIntegrationTest
 class LocalRefreshTokenServiceIntegrationTest {
@@ -152,9 +152,7 @@ class LocalRefreshTokenServiceIntegrationTest {
     assertThat(service.findPresented(first.value()).orElseThrow().getRevocationReason())
         .isEqualTo(RevocationReason.ROTATED);
     // the replay of a family ends every session, so the account's access tokens die with it
-    assertThat(fixtures.credentialsOf(user).getPasswordInvalidatedBefore())
-        .isNotNull()
-        .isCloseTo(Instant.now(), within(Duration.ofSeconds(5)));
+    assertThat(fixtures.credentialsOf(user).getSessionGeneration()).isPositive();
     // every other family of the account dies with it - a replay ends the account's sessions ...
     LocalRefreshToken other = service.findPresented(otherFamily.value()).orElseThrow();
     assertThat(other.isActive(Instant.now())).isFalse();
@@ -196,7 +194,7 @@ class LocalRefreshTokenServiceIntegrationTest {
     assertThat(activeTokensOfFamily(first.familyId())).containsExactly(secondReload.token().id());
     assertThat(service.findPresented(otherFamily.value()).orElseThrow().isActive(Instant.now()))
         .isTrue();
-    assertThat(fixtures.credentialsOf(user).getPasswordInvalidatedBefore()).isNull();
+    assertThat(fixtures.credentialsOf(user).getSessionGeneration()).isZero();
     assertThat(auditedSessionRevocations()).isEqualTo(auditedBefore);
     // the renewed session carries on with its own token
     assertThat(service.rotate(secondReload.token().value(), null))

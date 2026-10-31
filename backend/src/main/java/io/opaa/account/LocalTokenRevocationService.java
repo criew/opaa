@@ -4,11 +4,8 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.security.LocalAuthKeyService;
-import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -26,10 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
  * any instance is refused on every instance from the next request on.
  *
  * <p>Ending every session raises {@code session_generation}, which a token carries as {@link
- * LocalAccessTokenService#SESSION_GENERATION_CLAIM}; no clock of any host takes part. Beside it the
- * cutoff {@code password_invalidated_before} is still written, the start of the <em>next</em> whole
- * second: the previous version, running next to this one during a rolling update, refuses by it,
- * and so does this version for a token the previous one minted without the claim.
+ * LocalAccessTokenService#SESSION_GENERATION_CLAIM}; no clock of any host takes part.
  */
 @Service
 public class LocalTokenRevocationService {
@@ -79,22 +73,19 @@ public class LocalTokenRevocationService {
   }
 
   /**
-   * Ends every session of the account: raises its session generation and sets the cutoff (see the
-   * class Javadoc); returns the cutoff a replacement token must not be issued before. A no-op for
-   * an account without local credentials.
+   * Ends every session of the account by raising its session generation. A no-op for an account
+   * without local credentials.
    */
   @Transactional
-  public Instant invalidateSessionsIssuedBefore(UUID userId) {
+  public void endAllSessions(UUID userId) {
     Instant now = clock.instant();
-    Instant cutoff = cutoffFor(now);
     credentials
         .findById(userId)
         .ifPresent(
             row -> {
-              row.invalidateSessionsIssuedBefore(cutoff, now);
+              row.endAllSessions(now);
               credentials.save(row);
             });
-    return cutoff;
   }
 
   /**
@@ -107,38 +98,12 @@ public class LocalTokenRevocationService {
    */
   @Transactional(propagation = Propagation.MANDATORY)
   public boolean sessionEndedSince(UUID userId, Jwt session) {
-    List<Object[]> stamp = credentials.lockSessionStamp(userId);
-    if (stamp.isEmpty() || session == null) {
+    List<Long> generation = credentials.lockSessionGeneration(userId);
+    if (generation.isEmpty() || session == null) {
       return false;
     }
-    Object generation = session.getClaim(LocalAccessTokenService.SESSION_GENERATION_CLAIM);
-    if (generation instanceof Number number) {
-      return number.longValue() != ((Number) stamp.getFirst()[0]).longValue();
-    }
-    Instant issuedAt = session.getIssuedAt();
-    return issuedAt == null || issuedBefore(issuedAt, instantOf(stamp.getFirst()[1]));
-  }
-
-  private static Instant instantOf(Object column) {
-    return switch (column) {
-      case null -> null;
-      case Instant instant -> instant;
-      case OffsetDateTime offset -> offset.toInstant();
-      case Timestamp timestamp -> timestamp.toInstant();
-      default -> throw new IllegalStateException("Unexpected cutoff type " + column.getClass());
-    };
-  }
-
-  /**
-   * Whether a token issued at {@code issuedAt} falls under a stored cutoff - only for a token
-   * without the session generation claim, minted by the previous version during a rolling update.
-   */
-  static boolean issuedBefore(Instant issuedAt, Instant cutoff) {
-    return cutoff != null && issuedAt.isBefore(cutoff);
-  }
-
-  /** The first whole second after {@code instant}. */
-  public static Instant cutoffFor(Instant instant) {
-    return instant.truncatedTo(ChronoUnit.SECONDS).plusSeconds(1);
+    return !(session.getClaim(LocalAccessTokenService.SESSION_GENERATION_CLAIM)
+            instanceof Number number)
+        || number.longValue() != generation.getFirst();
   }
 }

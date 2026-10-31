@@ -28,11 +28,11 @@ import org.springframework.security.oauth2.jwt.Jwt;
 
 /**
  * The revocation validator of the local issuer (ADR-0033, Entscheidung 8): after signature, issuer
- * and expiry it checks the {@code jti} denylist, {@code password_invalidated_before}, the derived
- * account state and the management switch - and every refusal names its reason the way the SPA
- * shows it: {@code local_accounts_disabled}, {@code account_locked} with the lock's cause, {@code
- * account_expired}, {@code session_revoked} with the revocation's cause. A structurally valid token
- * of an unknown account is refused too - the local issuer never provisions.
+ * and expiry it checks the {@code jti} denylist, the session generation, the derived account state
+ * and the management switch - and every refusal names its reason the way the SPA shows it: {@code
+ * local_accounts_disabled}, {@code account_locked} with the lock's cause, {@code account_expired},
+ * {@code session_revoked} with the revocation's cause. A structurally valid token of an unknown
+ * account is refused too - the local issuer never provisions.
  */
 class LocalTokenValidatorTest {
 
@@ -86,8 +86,8 @@ class LocalTokenValidatorTest {
   }
 
   @Test
-  void refusesATokenIssuedBeforeThePasswordInvalidationWithTheRevocationsCause() {
-    row.invalidateSessionsIssuedBefore(NOW.minusSeconds(30), NOW);
+  void refusesATokenOfAnEndedSessionGenerationWithTheRevocationsCause() {
+    row.endAllSessions(NOW);
     LocalRefreshToken revoked =
         new LocalRefreshToken(UUID.randomUUID(), user.getId(), "h", NOW.minusSeconds(40), NOW, NOW);
     revoked.revoke(RevocationReason.PASSWORD_CHANGED, NOW.minusSeconds(30));
@@ -103,27 +103,28 @@ class LocalTokenValidatorTest {
     assertThat(rejection.get().errorDescription()).isEqualTo("session_revoked:password_changed");
   }
 
-  /**
-   * The cutoff is the next whole second: a token minted in the same second as the invalidation is
-   * refused too (iat has no finer resolution), the replacement token minted at the cutoff passes.
-   */
+  // regression guard for ADR-0053, Entscheidung 6: iat is never held against a cutoff
   @Test
-  void aTokenIssuedInTheSameSecondAsTheInvalidationIsRefusedAndOneAtTheCutoffPasses() {
-    Instant invalidation = NOW.plusMillis(300);
-    row.invalidateSessionsIssuedBefore(
-        LocalTokenRevocationService.cutoffFor(invalidation), invalidation);
+  void aTokenWithoutSessionGenerationIsAMalformedToken() {
+    Jwt jwt =
+        Jwt.withTokenValue("t")
+            .header("alg", "HS256")
+            .issuer(LocalIssuer.URN)
+            .subject(user.getId().toString())
+            .jti(UUID.randomUUID().toString())
+            .issuedAt(NOW)
+            .expiresAt(NOW.plus(Duration.ofMinutes(15)))
+            .build();
 
-    assertThat(validator.rejectionFor(token(user.getId(), NOW))).isPresent();
-    assertThat(validator.rejectionFor(token(user.getId(), NOW.minusSeconds(1)))).isPresent();
-    assertThat(validator.rejectionFor(token(user.getId(), NOW.plusSeconds(1)))).isEmpty();
-    assertThat(LocalTokenRevocationService.cutoffFor(invalidation)).isEqualTo(NOW.plusSeconds(1));
+    assertThat(validator.rejectionFor(jwt))
+        .contains(new LocalTokenRejection(LocalTokenMarkers.MALFORMED_TOKEN, null));
   }
 
   // regression guard for ADR-0053, Entscheidung 6: no clock of any host decides a revocation
   @Test
   void aTokenOfAnEarlierSessionGenerationIsRefusedHoweverLateItsIat() {
     Jwt minted = token(user.getId(), NOW.plusSeconds(5), row.getSessionGeneration());
-    row.invalidateSessionsIssuedBefore(LocalTokenRevocationService.cutoffFor(NOW), NOW);
+    row.endAllSessions(NOW);
 
     assertThat(validator.rejectionFor(minted))
         .contains(new LocalTokenRejection(LocalTokenMarkers.SESSION_REVOKED, null));
@@ -131,7 +132,7 @@ class LocalTokenValidatorTest {
 
   @Test
   void aTokenOfTheCurrentSessionGenerationPassesHoweverEarlyItsIat() {
-    row.invalidateSessionsIssuedBefore(LocalTokenRevocationService.cutoffFor(NOW), NOW);
+    row.endAllSessions(NOW);
 
     Jwt minted = token(user.getId(), NOW.minusSeconds(5), row.getSessionGeneration());
 
@@ -168,7 +169,7 @@ class LocalTokenValidatorTest {
 
   @Test
   void theCauseOfARevokedSessionSkipsRoutineRotationsAndSignOuts() {
-    row.invalidateSessionsIssuedBefore(NOW, NOW);
+    row.endAllSessions(NOW);
 
     validator.rejectionFor(token(user.getId(), NOW.minusSeconds(60)));
 
@@ -251,7 +252,7 @@ class LocalTokenValidatorTest {
     when(registry.localAccountsEnabled()).thenReturn(false);
     Jwt jwt = token(user.getId(), NOW.minusSeconds(60));
     when(revocation.isDenylisted(jwt.getId())).thenReturn(true);
-    row.invalidateSessionsIssuedBefore(NOW, NOW);
+    row.endAllSessions(NOW);
     LocalRefreshToken revoked =
         new LocalRefreshToken(UUID.randomUUID(), user.getId(), "h", NOW.minusSeconds(40), NOW, NOW);
     revoked.revoke(RevocationReason.ADMIN, NOW);
@@ -348,16 +349,9 @@ class LocalTokenValidatorTest {
         .build();
   }
 
-  /** A token as the previous version mints it, without a session generation. */
+  /** A token minted before any session of the account ended (session generation 0). */
   private static Jwt token(UUID subject, Instant issuedAt) {
-    return Jwt.withTokenValue("t")
-        .header("alg", "HS256")
-        .issuer(LocalIssuer.URN)
-        .subject(subject.toString())
-        .jti(UUID.randomUUID().toString())
-        .issuedAt(issuedAt)
-        .expiresAt(issuedAt.plus(Duration.ofMinutes(15)))
-        .build();
+    return token(subject, issuedAt, 0L);
   }
 
   private static User localUser(SystemRole role) {
