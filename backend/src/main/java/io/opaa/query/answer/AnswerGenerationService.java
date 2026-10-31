@@ -7,10 +7,10 @@ import io.opaa.llm.ReasoningTextStrippingChatModel;
 import io.opaa.llm.StreamedAnswerFailures;
 import io.opaa.retrieval.ConversationNoteBlock;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -335,12 +335,14 @@ public class AnswerGenerationService {
       AnswerStreamListener listener,
       Supplier<ChatResponse> withoutStreaming) {
     StreamedAnswer answer = new StreamedAnswer();
+    long lastWrite = System.nanoTime();
     try {
       while (true) {
         Signal signal = signals.poll(IDLE_INTERVAL.toMillis(), TimeUnit.MILLISECONDS);
         if (signal == null) {
           if (answer.started) {
             listener.idle();
+            lastWrite = System.nanoTime();
           }
         } else if (signal == Signal.SHUTDOWN) {
           throw ActiveAnswerStreams.shuttingDown();
@@ -363,15 +365,24 @@ public class AnswerGenerationService {
           if (!answer.started) {
             answer.started = true;
             listener.started();
+            lastWrite = System.nanoTime();
           }
           String delta = answer.add(signal.chunk());
-          if (delta != null) {
-            answer.text.append(delta).ifPresent(change -> provisional(listener, change));
+          Optional<ProvisionalAnswerText.Change> change =
+              delta == null ? Optional.empty() : answer.text.append(delta);
+          if (change.isPresent()) {
+            provisional(listener, change.get());
+            lastWrite = System.nanoTime();
+          } else if (System.nanoTime() - lastWrite >= IDLE_INTERVAL.toNanos()) {
+            // chunks held back (a leading reasoning block) write nothing; the keep-alive and the
+            // check for a reader that went away must not wait for the block to close
+            listener.idle();
+            lastWrite = System.nanoTime();
           }
         }
       }
     } catch (IOException e) {
-      throw new UncheckedIOException(e);
+      throw new AnswerReaderGoneException(e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new IllegalStateException("Interrupted while streaming the answer", e);
@@ -382,7 +393,7 @@ public class AnswerGenerationService {
     try {
       listener.provisional(c.text(), c.replace());
     } catch (IOException e) {
-      throw new UncheckedIOException(e);
+      throw new AnswerReaderGoneException(e);
     }
   }
 

@@ -60,6 +60,12 @@ final class QueryEventStream implements AnswerStreamListener {
     out.flush();
   }
 
+  @Override
+  public void beforeKeeping() throws IOException {
+    started();
+    idle();
+  }
+
   /** The closing event of a complete turn; commits first if nothing was streamed. */
   void complete(QueryResponse queryResponse) throws IOException {
     started();

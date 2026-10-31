@@ -19,6 +19,7 @@ import io.opaa.observability.QueryMetrics;
 import io.opaa.prompt.Prompt;
 import io.opaa.prompt.PromptService;
 import io.opaa.query.answer.AnswerGenerationService;
+import io.opaa.query.answer.AnswerReaderGoneException;
 import io.opaa.query.answer.AnswerStreamListener;
 import io.opaa.query.answer.ConversationWindowMessages;
 import io.opaa.query.citation.ChatSourceAssembler;
@@ -31,6 +32,7 @@ import io.opaa.retrieval.RetrievalPipeline;
 import io.opaa.retrieval.RetrievalPipelineResult;
 import io.opaa.retrieval.context.NeighborChunkExpansion;
 import io.opaa.retrieval.search.SubQueryDecompositionStage;
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -388,6 +390,13 @@ public class QueryService {
                 // `chat` instance loaded above, is the source of truth for the title - the
                 // fallback title on a first turn, never the LLM-derived one, which is generated
                 // asynchronously after this response is built.
+                if (answerListener != null) {
+                  try {
+                    answerListener.beforeKeeping();
+                  } catch (IOException readerGone) {
+                    throw new AnswerReaderGoneException(readerGone);
+                  }
+                }
                 String chatTitle =
                     chat.map(c -> chatService.appendTurn(c, question, usedPrompt, answer, sources))
                         .orElse(null);

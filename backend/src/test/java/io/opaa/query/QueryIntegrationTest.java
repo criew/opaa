@@ -915,7 +915,49 @@ class QueryIntegrationTest {
                       @Override
                       public void idle() {}
                     }))
-        .isInstanceOf(java.io.UncheckedIOException.class);
+        .isInstanceOf(io.opaa.query.answer.AnswerReaderGoneException.class);
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM chat_messages WHERE chat_id = ?", Integer.class, chatId))
+        .isZero();
+  }
+
+  /**
+   * Without a single streamed part - here the model ends its stream empty and answers on the call
+   * without streaming - the reader is checked once more before the turn is kept.
+   */
+  @Test
+  void anUnstreamedAnswerWhoseReaderWentAwayPersistsNothing() {
+    UUID spaceId = insertSpaceWithMembership(userId);
+    UUID chatId = insertChat(spaceId, userId);
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort")))));
+    when(chatModel.stream(any(Prompt.class))).thenReturn(reactor.core.publisher.Flux.empty());
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () ->
+                queryService.query(
+                    "Erste Frage",
+                    chatId,
+                    asCaller(userId),
+                    true,
+                    List.of(),
+                    io.opaa.metadata.MetadataFilter.NONE,
+                    null,
+                    new io.opaa.query.answer.AnswerStreamListener() {
+                      @Override
+                      public void started() {}
+
+                      @Override
+                      public void provisional(String text, boolean replace) {}
+
+                      @Override
+                      public void idle() throws java.io.IOException {
+                        throw new java.io.IOException("Broken pipe");
+                      }
+                    }))
+        .isInstanceOf(io.opaa.query.answer.AnswerReaderGoneException.class);
 
     assertThat(
             jdbcTemplate.queryForObject(

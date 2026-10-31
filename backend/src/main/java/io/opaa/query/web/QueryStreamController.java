@@ -1,17 +1,17 @@
 package io.opaa.query.web;
 
-import io.opaa.api.GlobalExceptionHandler;
 import io.opaa.api.dto.QueryRequest;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.FailureDescriber;
 import io.opaa.metadata.web.MetadataFilterMapper;
 import io.opaa.query.QueryResult;
 import io.opaa.query.QueryService;
+import io.opaa.query.answer.AnswerReaderGoneException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -35,10 +35,10 @@ public class QueryStreamController {
 
   private final QueryService queryService;
   private final JsonMapper jsonMapper;
-  private final GlobalExceptionHandler exceptionHandler;
+  private final FailureDescriber exceptionHandler;
 
   public QueryStreamController(
-      QueryService queryService, JsonMapper jsonMapper, GlobalExceptionHandler exceptionHandler) {
+      QueryService queryService, JsonMapper jsonMapper, FailureDescriber exceptionHandler) {
     this.queryService = queryService;
     this.jsonMapper = jsonMapper;
     this.exceptionHandler = exceptionHandler;
@@ -65,7 +65,7 @@ public class QueryStreamController {
               MetadataFilterMapper.toDomain(request.getMetadataFilter()),
               request.getUsedPromptId(),
               events);
-    } catch (UncheckedIOException readerGone) {
+    } catch (AnswerReaderGoneException readerGone) {
       log.debug("Answer stream ended, its reader went away: {}", readerGone.getMessage());
       return;
     } catch (RuntimeException failure) {

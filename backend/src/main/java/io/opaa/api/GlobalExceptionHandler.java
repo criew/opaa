@@ -10,6 +10,7 @@ import io.opaa.api.dto.FieldError;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.BadGatewayException;
 import io.opaa.common.ConflictException;
+import io.opaa.common.FailureDescriber;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
@@ -68,7 +69,7 @@ import org.springframework.web.util.DisconnectedClientHelper;
  * ErrorBodyNegotiator}).
  */
 @RestControllerAdvice
-public class GlobalExceptionHandler {
+public class GlobalExceptionHandler implements FailureDescriber {
 
   private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
@@ -188,6 +189,7 @@ public class GlobalExceptionHandler {
    * status as a response not yet begun, without its headers. The branch runs as for a request
    * without a bound response, so that it describes instead of breaking the connection.
    */
+  @Override
   public ErrorResponse describe(Throwable failure, HttpServletRequest request) {
     RequestAttributes bound = RequestContextHolder.getRequestAttributes();
     RequestContextHolder.resetRequestAttributes();

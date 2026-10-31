@@ -17,6 +17,14 @@ public interface AnswerStreamListener {
   /** Text appended to the provisional answer, or - {@code replace} - replacing all of it. */
   void provisional(String text, boolean replace) throws IOException;
 
-  /** Nothing arrived for a while; a chance to notice that the reader went away. */
+  /** Nothing was written for a while; a chance to notice that the reader went away. */
   void idle() throws IOException;
+
+  /**
+   * The answer is complete and the turn is about to be kept - the last chance to notice that the
+   * reader went away, so that a turn it never receives is not kept either.
+   */
+  default void beforeKeeping() throws IOException {
+    idle();
+  }
 }
