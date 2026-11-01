@@ -100,7 +100,8 @@ class PermissionMatrixIntegrationTest {
           "promptId");
 
   /** Path parameters naming an object of one person. */
-  private static final Set<String> PERSON_SCOPED = Set.of("tokenId", "notificationId");
+  private static final Set<String> PERSON_SCOPED =
+      Set.of("tokenId", "notificationId", "attachmentId");
 
   /** Path parameters naming an object of one organization outside any space. */
   private static final Set<String> ORGANIZATION_SCOPED =
@@ -633,7 +634,8 @@ class PermissionMatrixIntegrationTest {
                 ownerCaller)
             .getId();
 
-    UUID chat = aChat(space, devUserRole != null ? devUser : owner, organization);
+    UUID chatAuthor = devUserRole != null ? devUser : owner;
+    UUID chat = aChat(space, chatAuthor, organization);
     UUID otherChat = aChat(space, colleague, organization);
     UUID group = aGroup(organization, owner);
     UUID grant = UUID.randomUUID();
@@ -666,8 +668,18 @@ class PermissionMatrixIntegrationTest {
     UUID event = UUID.randomUUID();
     UUID profile = UUID.randomUUID();
     UUID oauthProfile = UUID.randomUUID();
+    UUID attachment = UUID.randomUUID();
     Consumer<JdbcTemplate> seed =
         rows -> {
+          rows.update(
+              "INSERT INTO chat_attachments (id, organization_id, space_id, author_id, chat_id,"
+                  + " file_name, content_type, size_bytes, status, created_at) VALUES (?, ?, ?,"
+                  + " ?, ?, 'Probe.pdf', 'application/pdf', 1, 'READY', now())",
+              attachment,
+              organization,
+              space,
+              chatAuthor,
+              chat);
           noteItem(rows, item, chat, organization);
           noteItem(rows, otherItem, otherChat, organization);
           rows.update(
@@ -741,6 +753,7 @@ class PermissionMatrixIntegrationTest {
     ids.put("targetId", colleague.toString());
     ids.put("notificationId", notification.toString());
     ids.put("tokenId", token.toString());
+    ids.put("attachmentId", attachment.toString());
     ids.put("scopeId", scope.toString());
     ids.put("eventId", event.toString());
     ids.put("profileId", profile.toString());

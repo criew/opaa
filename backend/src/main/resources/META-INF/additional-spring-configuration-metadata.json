@@ -25,6 +25,12 @@
       "sourceType": "io.opaa.chat.web.ChatImportController"
     },
     {
+      "name": "opaa.features.chat-upload.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Feature flag of chat attachments: documents dragged into a chat question (ADR-0044).",
+      "sourceType": "io.opaa.common.Feature"
+    },
+    {
       "name": "opaa.features.external-access.enabled",
       "type": "java.lang.Boolean",
       "description": "Feature flag of external access: access tokens, library releases and the MCP server (ADR-0044).",

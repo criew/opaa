@@ -143,7 +143,10 @@ public class OrphanedOriginalCleanupService {
     store.forEachStoredLibrary(
         organizationId,
         libraryId -> {
-          if (uncounted.contains(libraryId)) {
+          // the chat attachments' area has no library row by design; its own cleanup holds it
+          // against chat_attachments
+          if (uncounted.contains(libraryId)
+              || UploadedOriginalStore.CHAT_ATTACHMENT_AREA.equals(libraryId)) {
             return;
           }
           counts[0]++;
@@ -229,6 +232,13 @@ public class OrphanedOriginalCleanupService {
    */
   public OrphanedOriginalDeletion deleteInOrphanedLibrary(
       UUID organizationId, UUID libraryId, List<String> locators) {
+    if (UploadedOriginalStore.CHAT_ATTACHMENT_AREA.equals(libraryId)) {
+      return new OrphanedOriginalDeletion(
+          List.of(),
+          requested(locators).stream()
+              .map(locator -> skip(locator, OrphanedOriginalSkipReason.NOT_IN_STORE))
+              .toList());
+    }
     if (libraryRepository.existsById(libraryId)) {
       if (libraryRepository.findById(libraryId).filter(KnowledgeLibrary::isOwnerOnly).isPresent()) {
         // a private library is unknown to the administration: answered as an empty area, untouched

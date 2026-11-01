@@ -42,8 +42,10 @@ import org.springframework.security.web.util.matcher.IpAddressMatcher;
  *     every request holds a transcription slot and costs a call of the transcription model; {@code
  *     null} takes {@link #DEFAULT_TRANSCRIPTION}
  * @param documentUpload per-endpoint limits for the upload of a document ({@code POST
- *     /api/v1/libraries/{libraryId}/documents}), one budget across all libraries: every upload
- *     takes a place in the upload processing pool of the instance; {@code null} takes {@link
+ *     /api/v1/libraries/{libraryId}/documents}), of a chat attachment ({@code POST
+ *     /api/v1/spaces/{spaceId}/chat-attachments}) and its copy into a library ({@code POST
+ *     /api/v1/chat-attachments/{attachmentId}/library-copy}), one budget for all of them: every
+ *     upload takes a place in a processing pool of the instance; {@code null} takes {@link
  *     #DEFAULT_DOCUMENT_UPLOAD}
  * @param localAuth the limits of the local sign-in and its self-service endpoints (ADR-0033,
  *     Entscheidung 9); every absent value is the ADR's default

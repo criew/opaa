@@ -942,7 +942,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
    * right-to-left override among them) and line break characters are removed, the rest is NFC; a
    * name longer than {@link #MAX_DISPLAY_FILE_NAME_LENGTH} code points is cut before its extension.
    */
-  private static String sanitizeDisplayFileName(String originalFileName) {
+  public static String sanitizeDisplayFileName(String originalFileName) {
     if (originalFileName == null || originalFileName.isBlank()) {
       return "";
     }

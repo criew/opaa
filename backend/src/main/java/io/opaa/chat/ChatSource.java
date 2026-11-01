@@ -37,6 +37,7 @@ public final class ChatSource {
   private String freezeResponsible;
   private Instant freezeAsOf;
   private boolean privateSource;
+  private boolean attachment;
 
   public ChatSource() {}
 
@@ -131,6 +132,23 @@ public final class ChatSource {
 
   public void setPrivateSource(boolean privateSource) {
     this.privateSource = privateSource;
+  }
+
+  /**
+   * Marks the source as an attachment of the chat rather than a library document; {@link
+   * #getDocumentId()} then names the attachment. Absent (false) on answers stored before.
+   */
+  public ChatSource attachment(boolean attachment) {
+    this.attachment = attachment;
+    return this;
+  }
+
+  public boolean getAttachment() {
+    return attachment;
+  }
+
+  public void setAttachment(boolean attachment) {
+    this.attachment = attachment;
   }
 
   /** Whether any of {@code sources}, cited or not, is a private source. */

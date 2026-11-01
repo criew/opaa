@@ -529,6 +529,19 @@
             }
           },
           "description": "External access: access tokens, library releases and the MCP server"
+        },
+        "chatUpload": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "description": "Documents attached to a chat question"
         }
       }
     },

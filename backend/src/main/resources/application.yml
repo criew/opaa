@@ -226,6 +226,17 @@ opaa:
       # Longest an approved hold of the deletion of a locked account's chats runs before it ends
       # by itself; running on needs a new request and a second administrator's approval.
       hold-max-days: ${OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_HOLD_MAX_DAYS:180}
+    # Documents attached to a chat question (ChatAttachmentProperties). The file size limit is
+    # opaa.upload.max-file-size; the text goes into the prompt as full text up to inline-max-chars
+    # for all attachments of a chat, above it as excerpts of at most excerpt-max-chars.
+    attachments:
+      max-per-message: ${OPAA_CHAT_ATTACHMENTS_MAX_PER_MESSAGE:10}
+      max-per-chat: ${OPAA_CHAT_ATTACHMENTS_MAX_PER_CHAT:50}
+      max-processing-per-account: ${OPAA_CHAT_ATTACHMENTS_MAX_PROCESSING_PER_ACCOUNT:4}
+      inline-max-chars: ${OPAA_CHAT_ATTACHMENTS_INLINE_MAX_CHARS:120000}
+      excerpt-max-chars: ${OPAA_CHAT_ATTACHMENTS_EXCERPT_MAX_CHARS:40000}
+      unbound-retention: ${OPAA_CHAT_ATTACHMENTS_UNBOUND_RETENTION:24h}
+      read-wait: ${OPAA_CHAT_ATTACHMENTS_READ_WAIT:8s}
   # SPIKE (#1789), throwaway ahead of epic #1747 - never for production use. A message starting
   # with "@test " (case-insensitive) runs through a model-driven tool-calling loop instead of the
   # ordinary retrieval/answer path; every other message is unaffected. Off by default; the beans
@@ -246,6 +257,8 @@ opaa:
       enabled: ${OPAA_FEATURES_SPEECH_INPUT_ENABLED:true}
     external-access:
       enabled: ${OPAA_FEATURES_EXTERNAL_ACCESS_ENABLED:true}
+    chat-upload:
+      enabled: ${OPAA_FEATURES_CHAT_UPLOAD_ENABLED:true}
   # Demo seed only: POST /api/v1/spaces/{spaceId}/chat-imports writes prepared chat transcripts
   # without a model call. The route exists only while this is true; off everywhere else.
   demo:
@@ -709,8 +722,8 @@ opaa:
       window-seconds: ${OPAA_RATE_LIMIT_TRANSCRIPTION_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_TRANSCRIPTION_GLOBAL_MAX_REQUESTS:100}
       max-requests-per-account: ${OPAA_RATE_LIMIT_TRANSCRIPTION_MAX_REQUESTS_PER_ACCOUNT:10}
-    # POST /api/v1/libraries/{libraryId}/documents, one budget across all libraries (GET on the same
-    # path is not counted). It bounds how fast one account sends uploads; a full upload pool
+    # POST /api/v1/libraries/{libraryId}/documents, the upload of a chat attachment and its copy into
+    # a library, one budget for all of them (GET on the same paths is not counted). It bounds how fast one account sends uploads; a full upload pool
     # (opaa.upload.thread-pool) is answered with 429 on its own, before anything is stored. Either
     # way the browser waits for Retry-After and goes on with the same file.
     document-upload:

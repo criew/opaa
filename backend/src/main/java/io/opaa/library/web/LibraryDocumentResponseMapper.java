@@ -18,7 +18,7 @@ import io.opaa.library.LibraryFolderChild;
  * generated response counterparts (ADR-0006: API DTOs are generated from the specification, never
  * hand-written), so a domain service never builds a generated response itself.
  */
-final class LibraryDocumentResponseMapper {
+public final class LibraryDocumentResponseMapper {
 
   private LibraryDocumentResponseMapper() {}
 
@@ -31,7 +31,8 @@ final class LibraryDocumentResponseMapper {
     return toResponse(document, null, null, null);
   }
 
-  static LibraryDocumentResponse toResponse(LibraryDocumentEntry entry) {
+  /** Also used by {@code ChatAttachmentController} for the copy of an attachment. */
+  public static LibraryDocumentResponse toResponse(LibraryDocumentEntry entry) {
     return toResponse(
         entry.document(), entry.folderPath(), entry.sourceUrl(), entry.parentFileName());
   }
