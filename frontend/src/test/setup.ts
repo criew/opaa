@@ -66,6 +66,26 @@ function clearCookies() {
 
 beforeAll(() => {
   server.listen()
+  // TEMP-DEBUG: trace note-item requests through MSW in CI
+  for (const type of [
+    'request:start',
+    'request:match',
+    'request:unhandled',
+    'request:end',
+    'response:mocked',
+    'response:bypass',
+    'unhandledException',
+  ] as const) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    server.events.on(type as any, (event: any) => {
+      const url: string = event?.request?.url ?? ''
+      if (url.includes('note-items') || url.includes('/query')) {
+        process.stderr.write(
+          `[msw-trace] ${type} ${event.request.method} ${url} ${event.response?.status ?? ''} ${event.error ?? ''}\n`,
+        )
+      }
+    })
+  }
   answerQueriesFrom(() => server.listHandlers() as RequestHandler[])
   setMockAnswerDeltas(false)
 })
