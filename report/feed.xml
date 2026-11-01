@@ -2,15 +2,26 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
   <title>OPAA — Tagesreport</title>
   <subtitle>Was sich im Projekt bewegt hat, Tag für Tag</subtitle>
-  <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
-  <link href="https://criew.github.io/opaa/report/"/>
-  <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-10-31T06:05:46Z</updated>
+  <link href="https://opaa.io/report/feed.xml" rel="self"/>
+  <link href="https://opaa.io/report/"/>
+  <id>https://opaa.io/report/</id>
+  <updated>2026-11-01T06:35:15Z</updated>
   <author><name>criew/opaa</name></author>
   <entry>
+    <title>Tagesreport Samstag, 31. Oktober 2026</title>
+    <link href="https://opaa.io/report/reports/2026-10-31.html"/>
+    <id>https://opaa.io/report/reports/2026-10-31.html</id>
+    <updated>2026-11-01T06:35:15Z</updated>
+    <summary type="text">Sonstiges:
+— Chat zeigt Antworten während das Modell sie schreibt
+— Chat-Löschung gesperrter Konten mit Zweck und Höchstdauer regelbar
+— Belegstand an Antworten ausgewiesen
+— Doppelte IDs in Faktenblättern behoben, Datenfluss mail ergänzt, Upgrade-Notes geschärft, Webauftritt auf opaa.io umgezogen</summary>
+  </entry>
+  <entry>
     <title>Tagesreport Freitag, 30. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-30.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-30.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-30.html"/>
+    <id>https://opaa.io/report/reports/2026-10-30.html</id>
     <updated>2026-10-31T06:05:46Z</updated>
     <summary type="text">feat(security): Security-Audit 2026 – Angriffsfläche systematisch prüfen und verkleinern:
 — Security-Audit abgeschlossen: 50 von 50 Tickets erledigt
@@ -32,8 +43,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Donnerstag, 29. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-29.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-29.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-29.html"/>
+    <id>https://opaa.io/report/reports/2026-10-29.html</id>
     <updated>2026-10-30T06:11:19Z</updated>
     <summary type="text">feat(security): Security-Audit 2026 – Angriffsfläche systematisch prüfen und verkleinern:
 — Gradle Dependency Verification (verification-metadata.xml) einführen
@@ -64,8 +75,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Mittwoch, 28. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-28.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-28.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-28.html"/>
+    <id>https://opaa.io/report/reports/2026-10-28.html</id>
     <updated>2026-10-29T06:11:18Z</updated>
     <summary type="text">feat: UI-Review 28.10.2026 – Oberfläche entschlacken und vereinheitlichen:
 — Seitenleiste nach Variante B mit Spaces als Liste und zuklappbaren Gruppen umgesetzt
@@ -79,8 +90,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Dienstag, 27. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-27.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-27.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-27.html"/>
+    <id>https://opaa.io/report/reports/2026-10-27.html</id>
     <updated>2026-10-28T06:01:11Z</updated>
     <summary type="text">Sonstiges:
 — Optionaler E-Mail-Versand-Schritt im Installationsassistenten umgesetzt
@@ -90,8 +101,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Montag, 26. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-26.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-26.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-26.html"/>
+    <id>https://opaa.io/report/reports/2026-10-26.html</id>
     <updated>2026-10-27T05:22:16Z</updated>
     <summary type="text">Sonstiges:
 — Eigene Freigabeliste für Modell-Endpunkte eingeführt
@@ -101,8 +112,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Sonntag, 25. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-25.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-25.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-25.html"/>
+    <id>https://opaa.io/report/reports/2026-10-25.html</id>
     <updated>2026-10-26T05:07:53Z</updated>
     <summary type="text">feat(library): Quelleinrichtung nach UI-Lab-Variante F umsetzen:
 — Quelleinrichtung nach UI-Lab-Variante F umgesetzt und gemergt
@@ -120,8 +131,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Samstag, 24. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-24.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-24.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-24.html"/>
+    <id>https://opaa.io/report/reports/2026-10-24.html</id>
     <updated>2026-10-25T05:04:19Z</updated>
     <summary type="text">feat(security): Schutz gegen Prompt-Injection aus aufgenommenen Dokumenten:
 — docs(security): Schutz gegen Prompt-Injection in Handbuch und Grundschutz-Vorlage
@@ -170,8 +181,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Freitag, 23. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-23.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-23.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-23.html"/>
+    <id>https://opaa.io/report/reports/2026-10-23.html</id>
     <updated>2026-10-24T04:53:19Z</updated>
     <summary type="text">feat: Selbstauskunft — eigene Daten als ZIP aus den Einstellungen exportieren (Stufe 1):
 — feat(auth): Erneute Anmeldung als Bestätigung vor der Selbstauskunft
@@ -213,8 +224,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Donnerstag, 22. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-22.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-22.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-22.html"/>
+    <id>https://opaa.io/report/reports/2026-10-22.html</id>
     <updated>2026-10-23T05:10:03Z</updated>
     <summary type="text">Sonstiges:
 — Übergabe sperrt Zugangsdaten vor Prüfung, verhindert Deadlock
@@ -224,8 +235,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Mittwoch, 21. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-21.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-21.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-21.html"/>
+    <id>https://opaa.io/report/reports/2026-10-21.html</id>
     <updated>2026-10-22T05:10:25Z</updated>
     <summary type="text">feat: Multiinstanzbetrieb des Backends:
 — Zwei-Instanzen-Testaufbau und Multiinstanzbetrieb abgeschlossen
@@ -238,8 +249,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Dienstag, 20. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-20.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-20.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-20.html"/>
+    <id>https://opaa.io/report/reports/2026-10-20.html</id>
     <updated>2026-10-21T05:07:21Z</updated>
     <summary type="text">feat: Multiinstanzbetrieb des Backends:
 — Mehrere Backend-Instanzen unter Helm und Docker Compose lauffähig
@@ -251,8 +262,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Montag, 19. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-19.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-19.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-19.html"/>
+    <id>https://opaa.io/report/reports/2026-10-19.html</id>
     <updated>2026-10-20T05:06:09Z</updated>
     <summary type="text">feat: Multiinstanzbetrieb des Backends:
 — Multiinstanzbetrieb als Nachfolger von ADR-0021 entschieden
@@ -264,8 +275,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Sonntag, 18. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-18.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-18.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-18.html"/>
+    <id>https://opaa.io/report/reports/2026-10-18.html</id>
     <updated>2026-10-19T05:03:42Z</updated>
     <summary type="text">Sonstiges:
 — Sichtbarer Text im zugänglichen Namen (WCAG 2.5.3) behoben
@@ -273,8 +284,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Samstag, 17. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-17.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-17.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-17.html"/>
+    <id>https://opaa.io/report/reports/2026-10-17.html</id>
     <updated>2026-10-18T04:54:41Z</updated>
     <summary type="text">feat(release): Update-Paket je Release — kumuliertes Delta, Betriebsfolgen, Attestierung, Offline-Bündel, Instanzbezug:
 — Update-Paket je Release erzeugt, angehängt und attestiert
@@ -296,8 +307,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Freitag, 16. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-16.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-16.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-16.html"/>
+    <id>https://opaa.io/report/reports/2026-10-16.html</id>
     <updated>2026-10-17T04:48:31Z</updated>
     <summary type="text">feat(compliance): Compliance-Fakten aus dem Code — Manifest, Wächter, Datenflüsse, Konfigurationsmetadaten, Datenkatalog:
 — Doppelte Überschrift in Faktenblatt Datenflüsse behoben
@@ -311,8 +322,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Donnerstag, 15. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-15.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-15.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-15.html"/>
+    <id>https://opaa.io/report/reports/2026-10-15.html</id>
     <updated>2026-10-16T04:48:43Z</updated>
     <summary type="text">feat(compliance): Compliance-Fakten aus dem Code — Manifest, Wächter, Datenflüsse, Konfigurationsmetadaten, Datenkatalog:
 — docs(features): Ist-Stand der Spezifikation „Behördenunterlagen“ nach #2548 bis #2551 nachziehen
@@ -339,8 +350,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Mittwoch, 14. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-14.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-14.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-14.html"/>
+    <id>https://opaa.io/report/reports/2026-10-14.html</id>
     <updated>2026-10-15T04:59:36Z</updated>
     <summary type="text">feat: Architektur-Review Backend 10/2026 — Befunde umsetzen, Kommentare bereinigen, ADRs neu fassen:
 — indexing.source in vier Kernpakete zerlegt
@@ -365,8 +376,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Dienstag, 13. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-13.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-13.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-13.html"/>
+    <id>https://opaa.io/report/reports/2026-10-13.html</id>
     <updated>2026-10-14T05:10:57Z</updated>
     <summary type="text">feat: Abschaltbare Features für Demo-Installationen:
 — Installationsweite Feature-Flags mit Backend-Frontend-Synchronisation umgesetzt
@@ -390,8 +401,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Montag, 12. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-12.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-12.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-12.html"/>
+    <id>https://opaa.io/report/reports/2026-10-12.html</id>
     <updated>2026-10-13T06:57:57Z</updated>
     <summary type="text">Initiales Produkthandbuch unter docs/handbuch: Indexierung, Konnektoren, Formate; offene Kapitel:
 — Entwurf-Hinweise aus 16 Handbuch-Kapiteln entfernt
@@ -408,8 +419,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Sonntag, 11. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-11.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-11.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-11.html"/>
+    <id>https://opaa.io/report/reports/2026-10-11.html</id>
     <updated>2026-10-12T06:17:40Z</updated>
     <summary type="text">feat: Datei-Konnektoren für Cloud- und Netzablagen (Google Drive, Nextcloud, SharePoint/OneDrive, SMB, Dropbox):
 — Dropbox-Konnektor fertiggestellt und gemergt
@@ -437,8 +448,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Samstag, 10. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-10.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-10.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-10.html"/>
+    <id>https://opaa.io/report/reports/2026-10-10.html</id>
     <updated>2026-10-11T06:09:26Z</updated>
     <summary type="text">feat(deploy): Kubernetes-Deployment mit Helm-Chart (Single-Instance):
 — Versionsnummern in Frontend und Backend korrigiert
@@ -460,8 +471,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Freitag, 9. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-09.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-09.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-09.html"/>
+    <id>https://opaa.io/report/reports/2026-10-09.html</id>
     <updated>2026-10-10T06:11:59Z</updated>
     <summary type="text">feat(deploy): Kubernetes-Deployment mit Helm-Chart (Single-Instance):
 — Kubernetes-Deployment mit Helm-Chart: 24 von 29 Tickets erledigt
@@ -482,8 +493,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Donnerstag, 8. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-08.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-08.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-08.html"/>
+    <id>https://opaa.io/report/reports/2026-10-08.html</id>
     <updated>2026-10-09T06:28:03Z</updated>
     <summary type="text">feat(deploy): Kubernetes-Deployment mit Helm-Chart (Single-Instance):
 — Helm-Chart-Grundgerüst für Backend und Frontend angelegt
@@ -501,8 +512,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Mittwoch, 7. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-07.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-07.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-07.html"/>
+    <id>https://opaa.io/report/reports/2026-10-07.html</id>
     <updated>2026-10-08T06:26:45Z</updated>
     <summary type="text">feat: UI-Redesign der Admin-Seiten:
 — feat(admin): UI-Politur der Seite „Anlegerechte“ – Wer darf was anlegen?
@@ -512,8 +523,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Dienstag, 6. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-06.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-06.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-06.html"/>
+    <id>https://opaa.io/report/reports/2026-10-06.html</id>
     <updated>2026-10-07T06:17:04Z</updated>
     <summary type="text">feat: Nutzerwünsche Prozesse &amp; Kommunikation aus Feedbackrunde (zur Bewertung):
 — Kurznachrichten an andere Nutzer zur Bewertung angelegt
@@ -528,8 +539,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Montag, 5. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-05.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-05.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-05.html"/>
+    <id>https://opaa.io/report/reports/2026-10-05.html</id>
     <updated>2026-10-06T06:40:45Z</updated>
     <summary type="text">feat: OAuth-Verbindungen und mehrstufige Konnektoren — Quellen-Freigabe, persönliche Konten, Konnektor-Steuerung:
 — OAuth-Verbindungen und mehrstufige Konnektoren implementiert
@@ -541,8 +552,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Sonntag, 4. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-04.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-04.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-04.html"/>
+    <id>https://opaa.io/report/reports/2026-10-04.html</id>
     <updated>2026-10-05T06:01:51Z</updated>
     <summary type="text">feat: OAuth-Verbindungen und mehrstufige Konnektoren — Quellen-Freigabe, persönliche Konten, Konnektor-Steuerung:
 — OAuth-Kern mit PKCE, Token-Speicher und Widerruf umgesetzt
@@ -559,8 +570,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Samstag, 3. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-03.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-03.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-03.html"/>
+    <id>https://opaa.io/report/reports/2026-10-03.html</id>
     <updated>2026-10-04T06:10:22Z</updated>
     <summary type="text">feat: OAuth-Verbindungen und mehrstufige Konnektoren — Quellen-Freigabe, persönliche Konten, Konnektor-Steuerung:
 — Konnektoren erhalten Ziel und Geheimnis vom Kern
@@ -580,8 +591,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Freitag, 2. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-02.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-02.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-02.html"/>
+    <id>https://opaa.io/report/reports/2026-10-02.html</id>
     <updated>2026-10-03T05:34:43Z</updated>
     <summary type="text">feat: Eine Asset-Übersicht mit öffentlich/geschlossen, Favoriten und ausdrücklicher Space-Zuordnung:
 — Katalog als einziger Einstieg mit Kacheln und Typwahl umgesetzt
@@ -596,8 +607,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Donnerstag, 1. Oktober 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-10-01.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-10-01.html</id>
+    <link href="https://opaa.io/report/reports/2026-10-01.html"/>
+    <id>https://opaa.io/report/reports/2026-10-01.html</id>
     <updated>2026-10-02T05:58:46Z</updated>
     <summary type="text">Sonstiges:
 — Demo-Seed mit 70–80 Chats und einem langen Verlauf umgesetzt
@@ -607,8 +618,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Mittwoch, 30. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-30.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-30.html</id>
+    <link href="https://opaa.io/report/reports/2026-09-30.html"/>
+    <id>https://opaa.io/report/reports/2026-09-30.html</id>
     <updated>2026-10-01T06:19:44Z</updated>
     <summary type="text">Sonstiges:
 — Ablauferinnerungs-Test bei Quartalsbeginn repariert
@@ -618,8 +629,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Dienstag, 29. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-29.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-29.html</id>
+    <link href="https://opaa.io/report/reports/2026-09-29.html"/>
+    <id>https://opaa.io/report/reports/2026-09-29.html</id>
     <updated>2026-09-30T05:48:37Z</updated>
     <summary type="text">Sonstiges:
 — Antworten und eigene Fragen mit einem Klick kopieren
@@ -629,8 +640,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Montag, 28. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-28.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-28.html</id>
+    <link href="https://opaa.io/report/reports/2026-09-28.html"/>
+    <id>https://opaa.io/report/reports/2026-09-28.html</id>
     <updated>2026-09-29T05:58:59Z</updated>
     <summary type="text">feat: Backend und Frontend modularisieren – Grenzen erzwingen, Kreise auflösen, gezielt in Module aufteilen:
 — AssetController und AuditController ins eigene web-Paket verschoben
@@ -643,8 +654,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Sonntag, 27. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-27.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-27.html</id>
+    <link href="https://opaa.io/report/reports/2026-09-27.html"/>
+    <id>https://opaa.io/report/reports/2026-09-27.html</id>
     <updated>2026-09-28T05:41:51Z</updated>
     <summary type="text">feat: Backend und Frontend modularisieren – Grenzen erzwingen, Kreise auflösen, gezielt in Module aufteilen:
 — refactor(indexing): Dokumentformate als eigenständiges Paket format herauslösen
@@ -666,8 +677,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Samstag, 26. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-26.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-26.html</id>
+    <link href="https://opaa.io/report/reports/2026-09-26.html"/>
+    <id>https://opaa.io/report/reports/2026-09-26.html</id>
     <updated>2026-09-27T05:33:03Z</updated>
     <summary type="text">feat: Backend und Frontend modularisieren – Grenzen erzwingen, Kreise auflösen, gezielt in Module aufteilen:
 — Konnektor-Schnittstelle mit Beschreibung umgesetzt
@@ -684,8 +695,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Freitag, 25. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-25.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-25.html</id>
+    <link href="https://opaa.io/report/reports/2026-09-25.html"/>
+    <id>https://opaa.io/report/reports/2026-09-25.html</id>
     <updated>2026-09-26T05:16:56Z</updated>
     <summary type="text">Sonstiges:
 — E2E-Test für Barrierefreiheit auf main fehlgeschlagen
@@ -693,8 +704,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Donnerstag, 24. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-24.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-24.html</id>
+    <link href="https://opaa.io/report/reports/2026-09-24.html"/>
+    <id>https://opaa.io/report/reports/2026-09-24.html</id>
     <updated>2026-09-25T05:11:53Z</updated>
     <summary type="text">feat: UI-Politur-Runde Oktober 2026 — Sammel-Epic:
 — Seitenleistenfarbe, Chat-Fußzeile, Eingabefeld und Chatliste poliert
@@ -715,16 +726,16 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Mittwoch, 23. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-23.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-23.html</id>
+    <link href="https://opaa.io/report/reports/2026-09-23.html"/>
+    <id>https://opaa.io/report/reports/2026-09-23.html</id>
     <updated>2026-09-24T05:09:46Z</updated>
     <summary type="text">Sonstiges:
 — Abhängigkeiten aktualisiert: ollama/ollama auf v0.34.3, AWS Java SDK auf 2.55.3</summary>
   </entry>
   <entry>
     <title>Tagesreport Dienstag, 22. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-22.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-22.html</id>
+    <link href="https://opaa.io/report/reports/2026-09-22.html"/>
+    <id>https://opaa.io/report/reports/2026-09-22.html</id>
     <updated>2026-09-23T04:58:51Z</updated>
     <summary type="text">feat: Gruppen, Rollen und Berechtigungen: Subjekte, Herkunft und Folgen für Freigaben:
 — feat(group): Mitgliederliste für Rechtevergebende — wer einer Gruppe ein Recht einräumt, sieht ihre Mitglieder (mit den vier Begrenzungen aus ADR-0036)
@@ -739,8 +750,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Montag, 21. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-21.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-21.html</id>
+    <link href="https://opaa.io/report/reports/2026-09-21.html"/>
+    <id>https://opaa.io/report/reports/2026-09-21.html</id>
     <updated>2026-09-22T05:14:30Z</updated>
     <summary type="text">feat: Gruppen, Rollen und Berechtigungen: Subjekte, Herkunft und Folgen für Freigaben:
 — Gruppen als Space-Mitglieder mit Rolle eingeführt
@@ -754,8 +765,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Sonntag, 20. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-20.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-20.html</id>
+    <link href="https://opaa.io/report/reports/2026-09-20.html"/>
+    <id>https://opaa.io/report/reports/2026-09-20.html</id>
     <updated>2026-09-21T05:15:40Z</updated>
     <summary type="text">feat: Gruppen, Rollen und Berechtigungen: Subjekte, Herkunft und Folgen für Freigaben:
 — Quellprobe und Auswahl-Endpunkte an CREATE_CONNECTOR_LIBRARY-Recht gebunden
@@ -769,8 +780,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Samstag, 19. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-19.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-19.html</id>
+    <link href="https://opaa.io/report/reports/2026-09-19.html"/>
+    <id>https://opaa.io/report/reports/2026-09-19.html</id>
     <updated>2026-09-20T05:11:01Z</updated>
     <summary type="text">feat: Gruppen, Rollen und Berechtigungen: Subjekte, Herkunft und Folgen für Freigaben:
 — Berechtigungsmodell konzeptuell durchgearbeitet und dokumentiert
@@ -784,8 +795,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Freitag, 18. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-18.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-18.html</id>
+    <link href="https://opaa.io/report/reports/2026-09-18.html"/>
+    <id>https://opaa.io/report/reports/2026-09-18.html</id>
     <updated>2026-09-19T04:52:04Z</updated>
     <summary type="text">feat: OPAA als Wissensschicht für andere KI-Werkzeuge — Zugangstokens, Such-Endpunkt und MCP-Server:
 — Fremdzugänge vollständig umgesetzt und abgenommen
@@ -809,8 +820,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Donnerstag, 17. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-17.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-17.html</id>
+    <link href="https://opaa.io/report/reports/2026-09-17.html"/>
+    <id>https://opaa.io/report/reports/2026-09-17.html</id>
     <updated>2026-09-18T04:58:49Z</updated>
     <summary type="text">feat: Multiinstanzbetrieb des Backends:
 — Gleichzeitige Verzeichnisabgleiche serialisiert
@@ -829,8 +840,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Mittwoch, 16. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-16.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-16.html</id>
+    <link href="https://opaa.io/report/reports/2026-09-16.html"/>
+    <id>https://opaa.io/report/reports/2026-09-16.html</id>
     <updated>2026-09-17T05:06:45Z</updated>
     <summary type="text">Sonstiges:
 — Antwort nach Chatwechsel an den eigenen Chat gebunden
@@ -840,8 +851,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Dienstag, 15. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-15.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-15.html</id>
+    <link href="https://opaa.io/report/reports/2026-09-15.html"/>
+    <id>https://opaa.io/report/reports/2026-09-15.html</id>
     <updated>2026-09-16T05:03:21Z</updated>
     <summary type="text">Sonstiges:
 — Baselines comic-characters und city-landmarks nach Kontextpräfix-Änderung neu vermessen
@@ -851,8 +862,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Montag, 14. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-14.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-14.html</id>
+    <link href="https://opaa.io/report/reports/2026-09-14.html"/>
+    <id>https://opaa.io/report/reports/2026-09-14.html</id>
     <updated>2026-09-15T05:07:50Z</updated>
     <summary type="text">Sonstiges:
 — Renovate-Fehler bei pnpm-Update mit anderen npm-Paketen strukturell behoben
@@ -862,8 +873,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Sonntag, 13. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-13.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-13.html</id>
+    <link href="https://opaa.io/report/reports/2026-09-13.html"/>
+    <id>https://opaa.io/report/reports/2026-09-13.html</id>
     <updated>2026-09-14T05:16:21Z</updated>
     <summary type="text">feat: Lokale Benutzerverwaltung — Konten mit Passwort, lokaler Systemverwalter und Mail-Infrastruktur:
 — Benutzerverwaltung mit Tabs Konten und Einstellungen umgesetzt
@@ -878,8 +889,8 @@ Sonstiges:
   </entry>
   <entry>
     <title>Tagesreport Samstag, 12. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-12.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-12.html</id>
+    <link href="https://opaa.io/report/reports/2026-09-12.html"/>
+    <id>https://opaa.io/report/reports/2026-09-12.html</id>
     <updated>2026-09-13T05:09:09Z</updated>
     <summary type="text">feat: Lokale Benutzerverwaltung — Konten mit Passwort, lokaler Systemverwalter und Mail-Infrastruktur:
 — Reise-Test der lokalen Anmeldung auf Sekundenauflösung des Widerrufs untersucht
@@ -894,30 +905,5 @@ Sonstiges:
 — Seite Modelle in Reiter für Chat und Einbettung gliedern geplant
 — Sekundärtext wird als Primärtext dargestellt — Farb-Prop greift nicht
 — Suche &amp; Indexierung in thematische Reiter gliedern geplant</summary>
-  </entry>
-  <entry>
-    <title>Tagesreport Freitag, 11. September 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-09-11.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-09-11.html</id>
-    <updated>2026-09-12T04:51:07Z</updated>
-    <summary type="text">feat: Gesprächsgedächtnis — Gesprächsfenster und sichtbare Gesprächsnotiz:
-— Gesprächsgedächtnis vollständig umgesetzt und gemergt
-— Gesprächsfenster kurz und wörtlich mit Suchfenster und Ankerraum
-— Gesprächsnotiz mit Verdichtung, Rendering und API
-— E2E-Tests für Gesprächsnotiz im Browser
-feat: Lokale Benutzerverwaltung — Konten mit Passwort, lokaler Systemverwalter und Mail-Infrastruktur:
-— Lokale Benutzerverwaltung mit 16 Tickets angelegt
-— ADR-0033 zur lokalen Verwaltung dokumentiert
-— ADR-0033 mit Review-Befunden überarbeitet
-feat: Upload-Originale im S3-kompatiblen Objektspeicher ablegen:
-— Upload-Originale im S3-Objektspeicher vollständig umgesetzt
-— Port für Originalablage mit Dateisystem-Adapter
-— S3-Adapter mit MinIO-Abdeckung
-— Aufräumlauf für verwaiste Originale in beiden Ablagen
-Sonstiges:
-— MinIO-Image-Quelle von Docker Hub zu quay.io gewechselt
-— Spring-Testkontexte von 23 auf vier konsolidiert
-— Pauschale Löschungen in Testklassen eingegrenzt
-— Rechtehistorie mit streng monotonen Intervallgrenzen</summary>
   </entry>
 </feed>
