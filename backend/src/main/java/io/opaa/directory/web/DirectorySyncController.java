@@ -51,13 +51,11 @@ public class DirectorySyncController {
     this.settings = settings;
   }
 
-  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping("/api/v1/admin/directory-sync/settings")
   public DirectorySyncSettingsResponse getDirectorySyncSettings(@Caller CurrentUser caller) {
     return DirectorySyncResponseMapper.toSettingsResponse(settings.current(caller));
   }
 
-  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PutMapping("/api/v1/admin/directory-sync/settings")
   public DirectorySyncSettingsResponse updateDirectorySyncSettings(
       @RequestBody DirectorySyncSettingsRequest request, @Caller CurrentUser caller) {
