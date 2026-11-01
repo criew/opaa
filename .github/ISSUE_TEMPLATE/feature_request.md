@@ -20,7 +20,7 @@ Kurze Beschreibung des Features.
 
 ## Motivation
 
-Warum wird dieses Feature benötigt? Link zur Vision, zum Epic oder zur Feature-Spezifikation in `docs/features/`.
+Warum wird dieses Feature benötigt? Link zum Epic mit seiner Spezifikation oder zur Vision.
 
 ## Umfang
 

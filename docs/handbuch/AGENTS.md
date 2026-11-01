@@ -73,7 +73,7 @@ Grenzen stehen mit Wert. Faustregeln kommen ohne den Zahlenwert eines Standards 
 - **Vom Zweck her erklären**, am besten mit einem Beispiel, bevor Einzelheiten kommen.
 - **Konzept statt Umsetzung**: kein „eine Zeile in der Dokumenttabelle", keine Klassen- oder
   Tabellennamen im Fließtext.
-- **Knapp.** Feld-für-Feld-Listen und Regeln für jeden Randfall gehören in Spezifikation und ADR.
+- **Knapp.** Feld-für-Feld-Listen und Regeln für jeden Randfall gehören in den Code und den ADR.
   Statt Felder aufzuzählen, die typischen Anlässe beschreiben.
 - **Sonderfälle nicht wiederholen**, etwa den Upload: einmal einführen, danach nur nennen, wo er
   sich unterscheidet.
@@ -89,7 +89,7 @@ Grenzen stehen mit Wert. Faustregeln kommen ohne den Zahlenwert eines Standards 
 ## Weitere Regeln
 
 - **Deutsch, Ist-Stand, keine Entstehungsgeschichte.** Warum etwas so gebaut ist, steht in
-  `docs/features/` und `docs/decisions/`.
+  `docs/decisions/`.
 - **Verweise nur innerhalb des Handbuchs.** Ausnahme ist der Hinweis auf das Repository im README.
 - **Ticketverweise nur für ausdrücklich noch nicht Gebautes**, etwa in „Was nicht gebaut ist".
 - **Konfigurierbare Werte stehen nur in Konfigurationstabellen** der Kapitel und in der

@@ -116,7 +116,7 @@ darf und mit welcher Begründung, steht dort im Detail.
 - **Issues müssen auf Deutsch verfasst werden** — ebenso Pull Requests und Dokumentation. Englisch bleibt dem Quellcode vorbehalten (Bezeichner, Dateinamen, Kommentare); Details in [AGENTS.md](AGENTS.md#projektsprache)
 - Bereitgestellte Issue-Templates für Bug-Reports und Feature-Requests verwenden
 - **Sicherheitslücken nicht als Issue melden**, sondern vertraulich über den Meldeweg in [SECURITY.md](SECURITY.md)
-- Für größere Features eine Feature-Spezifikation in `docs/features/` erstellen und vom Issue verlinken
+- Für größere Features die Spezifikation in den Body eines Epics schreiben (Vorlage [epic.md](.github/ISSUE_TEMPLATE/epic.md)); eingecheckt werden nur Code, ADRs und Handbuch
 
 ## KI-Agenten-Beitragende
 

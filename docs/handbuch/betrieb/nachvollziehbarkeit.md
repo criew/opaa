@@ -230,6 +230,75 @@ python3 .github/scripts/update_package.py operations --from v0.12.0 --to v0.17.0
 Das Delta liegt unter `backend/build/compliance/delta/`, die Betriebsfolgen unter `/tmp/betrieb/`.
 Die Vorbereitung aller übersprungenen Versionen steht dort zusammengefasst.
 
+## Die Stufenregeln
+
+Jede Änderung im Delta erhält einen **Stufenvorschlag** nach dem Stufenmodell gängiger
+IT-Rahmendienstvereinbarungen (Bagatelle / Anzeige / Zustimmung). Diese Regeln sind die **gemeinsame
+Quelle** für das Delta-Werkzeug und die Zustimmungsklassen der Muster-Dienstvereinbarung; beide
+übernehmen sie wörtlich und verweisen hierher.
+
+**Zustimmung** — wenn die Änderung mindestens eine dieser Klassen erfüllt:
+
+| Klasse | Änderung |
+|---|---|
+| Z1 | neue personenbezogene Daten oder neue Protokollereignisse |
+| Z2 | neue Sichtbarkeit: eine Rolle sieht mehr über andere Personen als vorher |
+| Z3 | neue Auswertung oder neuer Export |
+| Z4 | längere Frist |
+| Z5 | neuer externer Datenfluss oder neues Ziel eines bestehenden |
+| Z6 | geänderte KI-Einstufung |
+| Z7 | geänderte Voreinstellung mit Datenwirkung, einschließlich eines Standardmodells, das einen Datenfluss ändert |
+
+**Anzeige** — Änderungen ohne neue Datenwirkung, die Beschäftigte dennoch wahrnehmen: kürzere Frist,
+entfallene Daten, Felder, Ereignisse oder Datenflüsse, eingeschränkte Sichtbarkeit, geänderter
+System-Prompt oder geändertes Standardmodell ohne Klasse Z1–Z7.
+
+**Bagatelle** — nur nach abschließender Liste:
+
+- redaktionelle Präzisierung eines Manifest-Eintrags ohne inhaltliche Änderung
+- neuer Konfigurationsschlüssel mit der Markierung „ohne Datenwirkung“
+- neue Spalte oder Tabelle ohne Personenbezug
+
+**Im Zweifel Zustimmung.** Eine Änderung, die keiner Liste eindeutig zugeordnet werden kann, erhält
+den Vorschlag „Zustimmung“ mit dem Vermerk, warum die Zuordnung offen ist.
+
+Je Änderung nennt das Delta zusätzlich, ob das VVT anzupassen (Änderung an Zweck, Datenkategorie,
+Empfänger oder Frist), die DSFA zu überprüfen und das Sicherheitskonzept fortzuschreiben ist (neue
+Datenflüsse, Ports, Egress-Ziele, Rollen oder Protokollereignisse). Rechtsgrundlage der
+DSFA-Überprüfung ist Art. 35 Abs. 11 DSGVO, der an eine Änderung des Risikos anknüpft; dass das Delta
+sie bei jeder Änderung der Stufe Zustimmung vorschlägt, ist eine **Heuristik**, keine Ableitung aus der
+Norm. Der Kopf des Deltas sagt: Stufen und Bezüge sind Vorschläge, die Bewertung trifft die Behörde.
+
+### Zuordnung im Werkzeug
+
+Das Werkzeug wendet die Regeln so auf Änderungen am Manifest an. „Offen“ heißt: Zustimmung, weil
+sich die Klasse aus dem Manifest nicht ablesen lässt, etwa bei einer neu formulierten Beschreibung,
+die ebenso gut nur redaktionell sein kann.
+
+| Änderung im Manifest | Vorschlag | VVT | Sicherheitskonzept |
+|---|---|---|---|
+| neues Datum mit Personenbezug, neue personenbezogene Spalte, stärkerer Personenbezug | Zustimmung Z1 | ja | — |
+| neues Protokollereignis, neues Feld im Protokollsatz | Zustimmung Z1 | ja | bei neuem Ereignis |
+| neue Rolle oder Fähigkeit; weitere Rolle in Sichtbarkeit oder Lesern; neuer Zugriffsweg außer Export | Zustimmung Z2 | ja, außer beim Zugriffsweg | bei neuer Rolle |
+| neuer Zugriffsweg Export (zusammen mit einem weiteren Zugriffsweg Z2 und Z3) | Zustimmung Z3 | ja | — |
+| längere Frist (Standardwert einer Fristeinstellung) | Zustimmung Z4 | ja | — |
+| neuer Datenfluss, neues Ziel eines Datenflusses, geänderte Adresse einer Modellrolle oder eines Konnektors | Zustimmung Z5 (Adresse auch Z7) | ja | ja |
+| neue KI-Funktion; geänderte Ausgabeart, Interaktion, Bewertung von Personen, Kennzeichnung oder Prompts einer KI-Funktion | Zustimmung Z6 | — | — |
+| neue Voreinstellung (als Frist auch Z4), geänderter Standardwert oder geänderte Helm-Voreinstellung | Zustimmung Z7 | bei neuer Frist | — |
+| neu formulierte Auswertungen, Frist, Zweck, Löschweg, Sichtbarkeit, übermittelte Daten, Sicht einer Rolle; geänderte Zuordnung zur Person (Weg, Ausschluss, ausgenommene Spalte); geänderte Gruppe eines Datenflusses (Z5); neuer System-Prompt; neues Datum ohne Personenbezug und ohne Tabelle; entfallene Voreinstellung; jede andere Angabe ohne eigene Regel | Zustimmung, offen | bei Zweck, Frist, Löschweg, Sichtbarkeit, übermittelten Daten, Sicht einer Rolle | beim Weg über den Ausgangsproxy |
+| kürzere Frist, entfallene Daten, Spalten, Ereignisse, Rollen, Datenflüsse, KI-Funktionen, Prompts oder Zugriffswege, eingeschränkte Sichtbarkeit, schwächerer Personenbezug | Anzeige | außer bei Spalten ohne Personenbezug, Zugriffswegen, KI-Funktionen und Prompts | — |
+| geänderter System-Prompt (Prüfsumme), geändertes Standardmodell bei gleicher Adresse | Anzeige | — | — |
+| neue Tabelle oder Spalte ohne Personenbezug, neues Datum, dessen Tabellen keine personenbezogene Spalte haben | Bagatelle (Liste, Punkt 3: neue Spalte oder Tabelle ohne Personenbezug) | — | — |
+| nur Bezeichnung, Leerzeichen, Bereich des Eintrags oder Fundstelle eines unveränderten Prompts; gleiche Fristlänge in anderer Schreibweise (`P1Y` statt `12` Monate); neuer oder entfallener Bereich des Manifests | Bagatelle (Liste, Punkt 1: redaktionelle Präzisierung ohne inhaltliche Änderung) | — | — |
+
+Die DSFA-Überprüfung schlägt das Werkzeug bei jeder Zustimmung vor. Listen (Spalten, Rollen,
+Zugriffswege, Einstellungen, Prompts) vergleicht es ohne Reihenfolge; eine bloße Umsortierung ist keine
+Änderung. Eine Frist ist eine Einstellung, die ein Datum oder Protokollereignis als Frist nennt; ihre
+Länge vergleicht es über die Einheit des Werts oder des Schlüssels (ein Jahr 365 Tage, ein Monat ein
+Zwölftel davon), ein Wert ohne Länge oder von 0 ist offen. Punkt 2 der Bagatell-Liste (neuer
+Konfigurationsschlüssel ohne Datenwirkung) erreicht das Werkzeug nicht: Ein solcher Schlüssel steht
+nicht im Manifest und erscheint deshalb nicht im Delta.
+
 ## Ein Faktenblatt selbst erzeugen
 
 Wer den Quellcode der eingesetzten Version ausgecheckt hat, erzeugt die Blätter selbst. Gebraucht
@@ -340,7 +409,7 @@ Produkts.
 
 Der Abgleich läuft auf Dateien, ohne Zugang zur Installation und ohne Netz. Gebraucht werden ein
 Checkout des Quellcodes **im Stand der Zielversion des Deltas**, also des Tags der Version, auf die
-aktualisiert wird, und das Java-Werkzeug des Backends. Die Stufenregeln für die Änderungen der
+aktualisiert wird, und das Java-Werkzeug des Backends. Die [Stufenregeln](#die-stufenregeln) für die Änderungen der
 Dienststelle kommen aus diesem Checkout:
 
 ```bash
