@@ -2,6 +2,7 @@ package io.opaa.account;
 
 import io.opaa.compliance.InstallationWide;
 import io.opaa.compliance.NoDataImpact;
+import io.opaa.compliance.PerInstance;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -17,7 +18,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param minDuration the shortest lockout the administration may set, counted in whole minutes
  *     rounded up (default 15 minutes, at most 24 hours)
  * @param duration retired: the former fixed lockout duration; while still set it raises the
- *     shortest lockout to its value, at most 24 hours
+ *     shortest lockout to its value, at most 24 hours. Outside the fingerprint, so an instance of
+ *     the version before its retirement, which binds it with a default, admits this one
  */
 @InstallationWide
 @NoDataImpact("a protection limit against guessing")
@@ -27,6 +29,7 @@ public record LocalLockoutProperties(
     @NoDataImpact("the shortest lockout the administration may set; it keeps no data")
         Duration minDuration,
     @NoDataImpact("a retired lockout duration that only raises the shortest lockout")
+        @PerInstance("retired; only raises the shortest lockout above the shared min-duration")
         Duration duration) {
 
   public static final String MAX_ATTEMPTS_VARIABLE = "OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS";

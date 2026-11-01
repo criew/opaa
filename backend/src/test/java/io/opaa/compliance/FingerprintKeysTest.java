@@ -91,6 +91,15 @@ class FingerprintKeysTest {
         .doesNotContain("opaa.instance.heartbeat-interval", "opaa.indexing.thread-pool.core-size");
   }
 
+  // regression guard for #3504: the previous version binds the retired key with a default of
+  // 15m, this one leaves it unset; as a fingerprint key it refuses every rolling update across it.
+  @Test
+  void leavesTheRetiredLockoutDurationOut() {
+    assertThat(FINGERPRINT.keySet())
+        .doesNotContain("opaa.auth.local.lockout.duration")
+        .contains("opaa.auth.local.lockout.min-duration", "opaa.auth.local.lockout.max-attempts");
+  }
+
   @Test
   void neverNamesTheValueOfASecret() {
     assertThat(FINGERPRINT.get("opaa.auth.local.jwt-secret").secret()).isTrue();
