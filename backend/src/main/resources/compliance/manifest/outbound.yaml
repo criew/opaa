@@ -13,8 +13,9 @@ dataFlows:
       Metadatenextraktion
     trigger: >-
       Jede Chat-Anfrage, Zerlegung einer Suchanfrage, Chattitel und -notiz, Metadatenextraktion beim
-      Indizieren, Statusprüfung des Modells; bricht eine gestreamte Antwort vor dem ersten Teil ab,
-      geht dieselbe Anfrage einmal ohne Streaming erneut an das Modell
+      Indizieren, Statusprüfung des Modells; endet eine gestreamte Antwort ohne ersten Teil oder
+      lehnt das Modell die gestreamte Anfrage ab (nicht bei Netz-, Anmelde-, Last- oder
+      Serverfehlern), geht dieselbe Anfrage einmal ohne Streaming erneut an das Modell
     switchOff: >-
       Nicht abschaltbar, der Chat braucht ein Modell. Das erste Ziel legt der Schritt Chat-Modell der
       Installation fest, im Helm-Chart über bootstrap.chatModel in der Antwortdatei; danach bestimmt
@@ -55,7 +56,7 @@ dataFlows:
     trigger: >-
       Jede Suche und Chat-Anfrage bei eingeschaltetem Reranking, Statusprüfung, Verbindungstest in
       der Modellverwaltung; im Installationsassistenten die Prüfung des Schritts Rerank-Modell, nur
-      mit dem Installations-Token und vor dem Abschluss
+      mit dem Installations-Token oder beim Start aus der Antwortdatei, vor dem Abschluss
     switchOff: >-
       Abschaltbar in der Modellverwaltung, Voreinstellung aus; der Abschluss der Installation
       schaltet das Reranking nur ein, wenn der Schritt Rerank-Modell geprüft und nicht übersprungen
@@ -73,7 +74,7 @@ dataFlows:
     trigger: >-
       Spracheingabe im Chat, Statusprüfung, Verbindungstest in der Modellverwaltung; im
       Installationsassistenten die Prüfung des Schritts Transkriptionsmodell, nur mit dem
-      Installations-Token und vor dem Abschluss
+      Installations-Token oder beim Start aus der Antwortdatei, vor dem Abschluss
     switchOff: >-
       Abschaltbar in der Modellverwaltung, Voreinstellung aus; zusätzlich über das Feature-Flag der
       Spracheingabe, das auch den Schritt im Assistenten ausblendet. Der Abschluss der Installation
@@ -99,7 +100,7 @@ dataFlows:
       Installationsassistenten der Modellabruf in den Schritten Chat-, Embedding-, Rerank- und
       Transkriptionsmodell (beim Verlassen von Adresse oder Schlüssel, auf „Modelle abrufen“ und
       beim Öffnen eines gespeicherten Modellschritts) und die Prüfung des Chat-Modells, nur mit dem
-      Installations-Token und vor dem Abschluss
+      Installations-Token oder beim Start aus der Antwortdatei, vor dem Abschluss
     switchOff: >-
       Findet nur auf Handlung der Systemverwaltung oder der Person mit dem Installations-Token
       statt, im Assistenten auch beim Öffnen eines gespeicherten Modellschritts; nach dem Abschluss
@@ -255,14 +256,18 @@ dataFlows:
   - id: oidc-provider
     group: IDENTITY
     viaOutboundProxy: true
-    target: Die Identitätsanbieter (OIDC), die die Systemverwaltung einträgt
+    target: >-
+      Die Identitätsanbieter (OIDC), die die Systemverwaltung einträgt, und im
+      Installationsassistenten der Anbieter, den die einrichtende Person angibt
     data: Abruf des Discovery-Dokuments und der Signaturschlüssel
     trigger: >-
       Anmeldung über den Anbieter, Verbindungstest in der Verwaltung; im Installationsassistenten
-      die Prüfung des Schritts Anmeldeverfahren, nur mit dem Installations-Token und vor dem
-      Abschluss
+      die Prüfung des Schritts Anmeldeverfahren, nur mit dem Installations-Token oder beim Start
+      aus der Antwortdatei, vor dem Abschluss
     switchOff: Je Anbieter abschaltbar; ohne Anbieter nur lokale Anmeldung
-    settings: [oidc_providers.enabled, oidc_providers.issuer_uri, oidc_providers.jwk_set_uri]
+    settings:
+      [oidc_providers.enabled, oidc_providers.issuer_uri, oidc_providers.jwk_set_uri,
+      installation_steps.payload]
   - id: directory-sync
     group: IDENTITY
     viaOutboundProxy: true
@@ -297,7 +302,7 @@ dataFlows:
       Prüfung der Zugänge, Anmeldung des Bootstrap-Kontos der Systemverwaltung, ablaufende Freigaben
       für externe KI-Werkzeuge, erzeugte und ablaufende Zugangstokens, Start einer Selbstauskunft,
       Testmail; im Installationsassistenten die Prüfung des Schritts E-Mail-Versand, nur mit dem
-      Installations-Token und vor dem Abschluss
+      Installations-Token oder beim Start aus der Antwortdatei, vor dem Abschluss
     switchOff: >-
       Abschaltbar, Voreinstellung aus; der Abschluss der Installation schaltet den Versand nur ein,
       wenn der Schritt E-Mail-Versand geprüft und nicht übersprungen ist

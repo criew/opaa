@@ -310,8 +310,8 @@ data:
       Trennung von Systemverwaltung und Revision: Die Systemverwaltung oder der Rollen-Claim eines
       Identitätsanbieters beantragt die Rolle AUDITOR, eine Person der Revision bestätigt oder
       lehnt ab. Einzige Ausnahme: Solange die Organisation keine Revision hat, wirkt die Vergabe
-      durch die Systemverwaltung ohne Bestätigung für das eine Konto, dessen Adresse der Betrieb
-      in opaa.auth.auditor-role.first-auditor-email nennt
+      durch die Systemverwaltung ohne Bestätigung für das eine lokale Konto, dessen Adresse der
+      Betrieb in opaa.auth.auditor-role.first-auditor-email nennt
     personalReference: EMPLOYEE
     tables:
       - name: auditor_role_requests
