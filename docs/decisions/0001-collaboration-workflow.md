@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14
+Akzeptiert · zuletzt geändert 2026-11-02
 
 ## Kontext
 
@@ -42,8 +42,11 @@ der Adapter, nicht der Prozess.
 
 ### 4. Dokumentationsaufteilung
 
-GitHub-Issues für Aufgaben und Kollaboration, `docs/decisions/` für ADRs, `docs/features/` für
-Feature-Spezifikationen. Issues verlinken auf ihre Feature-Spezifikation.
+GitHub-Issues für Aufgaben und Kollaboration; die Spezifikation eines Vorhabens steht im Body seines
+Epics und wird nicht eingecheckt. Dauerhaft im Repository liegen Code (mit Tests und OpenAPI), ADRs in
+`docs/decisions/` für das Warum und das Handbuch in `docs/handbuch/` für Bedienung und Betrieb.
+Eine Spezifikation im Repository veraltet neben Code und Handbuch und wird zur dritten Kopie
+desselben Verhaltens.
 
 ### 5. Branch-Benennung
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-25
+Akzeptiert · zuletzt geändert 2026-11-02
 
 ## Kontext
 
@@ -77,7 +77,6 @@ Nachgemessen wird am PR mit `git diff --stat`.
 - ADRs halten den Endstand ohne Nachträge und ohne Änderungsverlauf, mit Status und Datum
   (`docs/decisions/README.md`). Geprüft durch `check_adr_style.sh`. Jede Modul-AGENTS.md nennt
   ihre maßgeblichen ADRs; geprüft durch `ModuleAgentsFileTest`.
-- Feature-Spezifikationen tragen einen Statuskopf. Konvention.
 
 ### 5. Akzeptierte Abweichungen
 

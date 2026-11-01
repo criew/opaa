@@ -271,9 +271,9 @@ Norm. Der Kopf des Deltas sagt: Stufen und Bezüge sind Vorschläge, die Bewertu
 
 ### Zuordnung im Werkzeug
 
-Das Werkzeug wendet die Regeln so auf Änderungen am Manifest an. „Offen“ heißt: Zustimmung, weil sich die Klasse aus
-dem Manifest nicht ablesen lässt, etwa bei einer neu formulierten Beschreibung, die ebenso gut nur
-redaktionell sein kann.
+Das Werkzeug wendet die Regeln so auf Änderungen am Manifest an. „Offen“ heißt: Zustimmung, weil
+sich die Klasse aus dem Manifest nicht ablesen lässt, etwa bei einer neu formulierten Beschreibung,
+die ebenso gut nur redaktionell sein kann.
 
 | Änderung im Manifest | Vorschlag | VVT | Sicherheitskonzept |
 |---|---|---|---|

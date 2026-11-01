@@ -26,6 +26,10 @@ Verhalten im Handbuch (`docs/handbuch/`), jede Entscheidung mit Begründung in e
 
 **Verhalten und Abläufe:** ...
 
+**Integrationspunkte:** Wie das Vorhaben mit vorhandenen Bereichen zusammenspielt.
+
+**Offene Fragen:** Was vor dem Schneiden der Sub-Issues zu klären ist; geklärt wird hier im Body fortgeschrieben.
+
 ### Wirkung auf Behördenunterlagen
 
 <!--
