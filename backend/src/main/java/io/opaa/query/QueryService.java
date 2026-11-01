@@ -469,14 +469,17 @@ public class QueryService {
                 String chatTitle =
                     chat.map(
                             c ->
-                                chatService.appendTurn(
-                                    c,
-                                    question,
-                                    usedPrompt,
-                                    answer,
-                                    sources,
-                                    evidence,
-                                    attachments.newAttachmentIds()))
+                                attachments.newAttachmentIds().isEmpty()
+                                    ? chatService.appendTurn(
+                                        c, question, usedPrompt, answer, sources, evidence)
+                                    : chatService.appendTurn(
+                                        c,
+                                        question,
+                                        usedPrompt,
+                                        answer,
+                                        sources,
+                                        evidence,
+                                        attachments.newAttachmentIds()))
                         .orElse(null);
                 // The condensation of this turn's question, off the request thread and only once
                 // the turn is durably persisted - triggered here rather than inside appendTurn so
