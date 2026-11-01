@@ -26,7 +26,7 @@ type GlobalAreaLayoutProps =
   | { title?: undefined; sections?: undefined }
 
 /**
- * The global frame (mockup 2b): right of the rail the space column falls away and a
+ * The global frame: right of the rail the space column falls away and a
  * light management surface takes over - a secondary column with title and "Global" badge where
  * an area has several pages, and the routed page as the main surface. Reused without sections
  * by the user settings and the library catalog.
@@ -62,7 +62,7 @@ export default function GlobalAreaLayout({ title, sections }: GlobalAreaLayoutPr
             bgcolor: roles.bg2,
             borderRight: { md: 1 },
             borderBottom: { xs: 1, md: 0 },
-            // Mockup 2b outlines the column edge one step stronger than the standard rule.
+            // The design outlines the column edge one step stronger than the standard rule.
             borderColor: roles.borderStrong,
             px: '12px',
             py: { xs: 1.5, md: '18px' },
@@ -109,7 +109,7 @@ export default function GlobalAreaLayout({ title, sections }: GlobalAreaLayoutPr
                     borderRadius: '6px',
                     fontSize: 12.5,
                     textDecoration: 'none',
-                    // Mockup 2b: the active entry is the raised card - page ground on the
+                    // The active entry is the raised card - page ground on the
                     // muted column, framed one step stronger; inactive entries lift to the
                     // page ground on hover.
                     color: active ? 'text.primary' : 'text.secondary',

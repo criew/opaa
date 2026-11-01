@@ -117,7 +117,7 @@ describe('LoginPage', () => {
     expect(container.querySelector('img')).toBeNull()
   })
 
-  it('renders the directory-service sign-in as the primary action (mockup 1f)', () => {
+  it('renders the directory-service sign-in as the primary action', () => {
     useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst] })
     renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
     expect(

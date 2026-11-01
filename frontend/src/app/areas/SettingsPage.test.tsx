@@ -32,7 +32,7 @@ describe('SettingsPage', () => {
     })
   })
 
-  it('renders as a global page: heading, badge and scope note (mockup 2c, #788)', () => {
+  it('renders as a global page: heading, badge and scope note (#788)', () => {
     renderPage()
 
     expect(

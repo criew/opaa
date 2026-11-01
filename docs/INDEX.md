@@ -10,7 +10,6 @@ Die Dokumentation ist nach fünf Achsen sortiert — jedes Dokument gehört zu g
 | **Vision & Plan** | [VISION.md](./VISION.md), [USE-CASES.md](./USE-CASES.md), [CONCEPTS.md](./CONCEPTS.md) | Wohin soll es gehen, in welchen Begriffen? |
 | **Spezifikation** | [`features/`](./features/) | Wie soll sich ein Bereich im Zielbild verhalten? |
 | **Entscheidungen** | [`decisions/`](./decisions/) | Was wurde verbindlich entschieden, und warum? |
-| **Ideen & Recherche** | [`discussions/`](./discussions/) | Was ist erst erörtert, noch nicht entschieden? |
 | **Stand & Nachweis** | [`fortschritt/`](./fortschritt/) | Was ist heute tatsächlich gebaut — belegt? |
 | **Handbuch** | [`handbuch/`](./handbuch/) | Wie installiere, betreibe und benutze ich das Gebaute? |
 
@@ -229,16 +228,9 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
   Rheinfurt", fiktiver Verwaltungskorpus, Bibliotheken je Konnektortyp, Demo-Nutzer mit
   Berechtigungsgrenze, Seed-Mechanismus
 
-### Ideen und Recherche
+### Gestaltung
 
-- **[`discussions/`](./discussions/)** — offene Erörterungen und Recherchen, noch nicht entschieden;
-  darunter **[`discussions/discussion-retrieval-strategien.md`](./discussions/discussion-retrieval-strategien.md)** —
-  Tech-Report zu Retrieval-/RAG-Strategien inkl. Wissensgraph/GraphRAG (Abschnitt 9, konsolidiert die
-  frühere GraphRAG-Recherche #317). Entscheidungsgrundlage, keine getroffene Entscheidung
-
-### Oberflächenentwürfe
-
-- **[`design/README.md`](./design/README.md)** — Entwürfe für Chat, Dokumentenübersicht und Einstellungen
+- **[`design/README.md`](./design/README.md)** — Gestaltungsleitlinien, Barrierefreiheit und UI-Prüfliste
 
 ### Projekt und Mitarbeit
 
@@ -255,11 +247,6 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
 - **[`entwicklung/build-und-ci.md`](./entwicklung/build-und-ci.md)** — Befehle außerhalb des täglichen
   Builds: Integrationstest-Suiten, Helm-Chart-Prüfungen, Kubernetes-Erprobungsaufbau, E2E-Suite,
   Image-Rauchtest
-
-### Überholt
-
-- **[`features/document-sharing.md`](./features/document-sharing.md)** — raumübergreifendes Dokument-Teilen.
-  Durch das Asset-Modell in Bereich C gegenstandslos, nur noch als Historie erhalten
 
 ---
 

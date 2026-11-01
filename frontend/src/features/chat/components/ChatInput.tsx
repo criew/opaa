@@ -386,7 +386,7 @@ export default function ChatInput({
           mx: 'auto',
           bgcolor: 'background.paper',
           border: 1,
-          // Mockup 1a draws the input row with the crisper gray-300 line and a hairline
+          // The design draws the input row with the crisper gray-300 line and a hairline
           // shadow.
           borderColor: theme.palette.mode === 'dark' ? darkRoles.borderStrong : gray[300],
           borderRadius: '10px',
@@ -495,7 +495,7 @@ export default function ChatInput({
       >
         <ClickAwayListener onClickAway={closeMention}>
           <Paper elevation={4} sx={{ maxHeight: 280, overflowY: 'auto' }}>
-            {/* Mockup 1h: mono eyebrow head, book icon, typed prefix in bold, and a
+            {/* Mono eyebrow head, book icon, typed prefix in bold, and a
                 type badge on the right - built to take agents as a second kind later. */}
             <Typography
               component="div"
@@ -597,7 +597,7 @@ export default function ChatInput({
       />
       {actions.pendingForm?.({ onInsert: actions.completeForm, onCancel: actions.cancelForm })}
 
-      {/* Mockup 1a: the quiet, neutral line under the input. */}
+      {/* The quiet, neutral line under the input. */}
       <Box sx={{ maxWidth: CHAT_MAX_WIDTH, mx: 'auto', mt: 0.875 }}>
         {/* The placeholder vanishes while typing; the description keeps the hint reachable. */}
         {hint && (

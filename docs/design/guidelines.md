@@ -1,9 +1,8 @@
 # Design-Guidelines
 
 Verbindliche Gestaltungsregeln der OPAA-Weboberfläche. Sie gelten für jedes UI-Issue und jeden
-Frontend-PR; Abweichungen werden im PR begründet. Quelle der Werte sind die Zielbild-Mockups
-([OPAA Mockups.html](<./OPAA Mockups.html>), Seiten 1a–1i) und die Zielbild-Beschreibung
-([redesign-prompt.md](./redesign-prompt.md)). Die technische Umsetzung als Token-Ebene und
+Frontend-PR; Abweichungen werden im PR begründet. Dieses Dokument ist die Quelle der Werte;
+die Zielbild-Beschreibung ([redesign-prompt.md](./redesign-prompt.md)) liefert den Hintergrund. Die technische Umsetzung als Token-Ebene und
 MUI-Theme ist Gegenstand von Issue #581; die Barrierefreiheits-Richtlinie
 ([accessibility.md](./accessibility.md)) ergänzt dieses Dokument um die verbindliche Prüfliste.
 
@@ -121,7 +120,7 @@ Weiß/`#B9C6D4`/`#7A8BA0`) trägt seit #1922 nur noch **den Markenblock der Anme
 (`AuthLayout.tsx`) — die Werte des früheren dunklen Schemas, auf diese eine Fläche begrenzt
 (#654). Die Seitenleiste des Space nutzt es nicht mehr (siehe 2.3).
 
-Die globale Leiste (Rail, #786, Mockup 2a) verwendet im hellen Schema das Rollenset `railRoles`
+Die globale Leiste (Rail, #786) verwendet im hellen Schema das Rollenset `railRoles`
 (Grund Navy-900, Hover Navy-800, Aktivkachel Navy-700 mit Navy-600-Rahmen, Text
 Weiß/`#99A1AB`/`#7A8BA0`) — sie ist damit die einzige dunkle Navigationsebene und hebt sich von
 allem rechts davon ab. Im dunklen Schema folgt die Rail dem Carbon-Schema; Carbon hat keine
@@ -157,7 +156,7 @@ andere Rolle.
   unter 3:1 — zulässig, weil der Zustand nicht allein über die Fläche getragen wird: die
   Textfarbe wechselt auf Weiß und `aria-current` zeichnet den Eintrag programmatisch aus
   (siehe 2.4).
-- **Der globale Verwaltungsrahmen** (#787, Mockup 2b) nutzt ausschließlich die Rollen aus 2.2:
+- **Der globale Verwaltungsrahmen** (#787) nutzt ausschließlich die Rollen aus 2.2:
   Sekundärspalte auf `bg-2`, Aktivkarte auf `bg-1` mit `border-strong`-Rahmen. Auch hier liegt
   die Zustandsfläche unter 3:1 — getragen wird der Zustand wie bei der Rail über Textfarbe,
   Schriftgewicht und `aria-current`. Das **„Global"-Badge** ist ein Etikett wie jedes andere
@@ -216,7 +215,7 @@ nachgewiesen. Details regelt die [Barrierefreiheits-Richtlinie](./accessibility.
 | Rückfall im Stapel               | Inter              | SIL Open Font License                                       |
 | Mono (Aktenzeichen, Werte, Code) | **JetBrains Mono** | SIL Open Font License                                       |
 
-Die Zielbild-Mockups verwenden „Sklow", eine Firmenschrift ohne freie Lizenz. **Sie wird nicht
+Das Zielbild verwendet „Sklow", eine Firmenschrift ohne freie Lizenz. **Sie wird nicht
 ins Repository aufgenommen.** Quicksand (#658) ist ihre freie Entsprechung — rund-geometrisch,
 einstöckiges g, monolineare Strichführung — und damit Standard der offenen Codebasis; Inter
 bleibt als Rückfall im Stapel. Eine Firmenschrift kann ein Betreiber
@@ -241,7 +240,7 @@ Feste Pixelstufen; die App nutzt im Alltag 11–30 px, die großen Stufen gehör
 | 3xl     | 36 px     | große Seitenköpfe                    |
 | 4xl–7xl | 48–104 px | Markenblock, nicht im Arbeits-UI     |
 
-Die Arbeitsflächen folgen zusätzlich dem **Feinraster aus Mockup 1a** (#658): Fließtext
+Die Arbeitsflächen folgen zusätzlich dem **Feinraster** (#658): Fließtext
 14,5 px / 1.65, UI-Listen 13 px, Metadaten 11–12,5 px, Versal-Etiketten 9,5 px / +0.12em,
 Seitentitel 27 px, Chat-Kopf 18 px. Das Theme bildet dieses Raster ab; die Skalenstufen oben
 bleiben das Vokabular für Markenmomente.
@@ -278,7 +277,7 @@ Gruppen deutlich getrennt (24–48).
 | Stufe  | Wert      | Verwendung                                    |
 | ------ | --------- | --------------------------------------------- |
 | xs     | 4 px      | kleine Chips, Tastenkürzel                    |
-| sm     | 6 px      | Schaltflächen, Menüeinträge (#658, Mockup 1a) |
+| sm     | 6 px      | Schaltflächen, Menüeinträge (#658) |
 | **md** | **10 px** | **Standard: Karten, Eingaben, Dialoge**       |
 | lg     | 16 px     | große Karten, Nachrichtenblasen               |
 | xl     | 24 px     | Bühnenflächen                                 |
@@ -441,7 +440,7 @@ Beschriftung oberhalb als eigenständiges Label (12 px, `fg-2`, 5 px Abstand —
 schwebendes Label im Feld). Das Feld liegt auf `bg-1` mit `border-strong`, Radius sm,
 Haarlinien-Schatten und Höhe 40 px — keine gefüllte Grau-Fläche; im Dunkel-Schema hebt sich
 das Feld stattdessen eine Flächenstufe ab (`bg-2`, ohne Schatten). Suchfelder tragen keine
-sichtbare Beschriftung, sondern Platzhalter plus `aria-label` (Muster: Mockup-Suchfelder).
+sichtbare Beschriftung, sondern Platzhalter plus `aria-label`.
 Hilfetext unterhalb in `fg-3`. Fokus: Rahmen 2 px in `accent`, ohne Fokusring (Ausnahme aus 4.4).
 Fehler:
 Rahmen und Meldungstext in Gefahr, Meldung programmatisch dem Feld zugeordnet
@@ -474,7 +473,7 @@ Tabellen**: Der Katalog zeigt Wissen, Prompts und künftige Asset-Arten ausschli
 (5.4, [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)); Tabellen
 bleiben Verwaltungslisten vorbehalten. Zahlen rechtsbündig in Mono, Stände
 und Metadaten in `fg-3`. Unterhalb Tablet-Breite werden breite Tabellen zu Kartenlisten
-(Muster: Mockup 1d, Issue #595).
+(Issue #595).
 
 **Filter nur, wenn er kürzt.** Ein Listenfilter erscheint erst ab 5 Einträgen und nur, wenn er die
 Liste tatsächlich kürzt; zeigt jede Wahl dieselbe Liste, entfällt er. Beispiel: „Alle · Nur mit
@@ -666,7 +665,7 @@ Belegfenster nicht — sie sind Fehlersuche, nicht Nachschlagen. Ein Klick auf e
 Belegfenster an ihrer Fundstelle und markiert sie dort (Fläche `accent` 7 %, Akzentkante links) —
 markiert wird der Beleg, nicht der Antworttext. Ein Beleg, den die Belegvalidierung nicht
 bestätigt, trägt einen dezenten Hinweis in normaler Beleg-Typografie — kein Banner, keine
-Signalfarbe (Ausgestaltung: Issues #590/#592/#1449/#3259, Mockups 1a/1i).
+Signalfarbe (Ausgestaltung: Issues #590/#592/#1449/#3259).
 
 ### 5.9 Popup-Benachrichtigungen
 
@@ -1001,5 +1000,3 @@ Konfiguration**, nicht Code (Issues #582/#583). Daraus folgt für jede Komponent
 - Änderungen an den Guidelines laufen als eigener PR mit Begründung; Wertänderungen werden mit
   der Token-Ebene (#581) synchron gehalten — die Token-Datei setzt um, dieses Dokument
   entscheidet.
-- Die abgelösten Stitch-Entwürfe (`chat-interface.html`, `document-browser.html`,
-  `system-settings.html`) sind historisch und keine Gestaltungsreferenz mehr.

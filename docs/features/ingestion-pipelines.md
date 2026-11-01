@@ -4,9 +4,9 @@
 > fortlaufend.**
 
 Diese Spezifikation führt zusammen, was in den Diskussionspapieren zu
-[Dateitypen der Verwaltung und geführter Metadaten-Anreicherung](../discussions/discussion-dateitypen-und-metadaten.md)
+Dateitypen der Verwaltung und geführter Metadaten-Anreicherung
 (welche Formate ein Verwaltungsbestand tatsächlich enthält) und im
-[Retrieval-Tech-Report](../discussions/discussion-retrieval-strategien.md), Abschnitt 5
+Retrieval-Tech-Report, Abschnitt 5
 (Chunking-Strategien und ihre Evidenz), erarbeitet wurde; die ältere Pipeline-pro-Dokumenttyp-Diskussion
 (Reader- und Splitter-Landschaft von Spring AI) ist vollständig in diese Spezifikation aufgegangen.
 
@@ -84,7 +84,7 @@ Derselbe Fehler in drei anderen Gestalten:
   Zuständigkeitsverzeichnisses eine Liste von Namen ohne Aussage darüber, wofür sie zuständig sind.
 
 Die Gegenmaßnahme ist naheliegend und in der Fachliteratur belegt (siehe
-[Tech-Report 5.2](../discussions/discussion-retrieval-strategien.md#52-strukturbasiertes-chunking-nach-überschriften-paragrafen-folien)):
+Tech-Report 5.2):
 **Nicht nach Tokens schneiden, sondern entlang der Struktur, die das Dokument selbst mitbringt** —
 Paragraf, Absatz, Überschriftenabschnitt, Folie, Tabellenblatt. Diese Struktur muss dafür allerdings
 den Parser überleben, und genau das tut sie heute nicht: Ein einziger Universal-Parser für alle
@@ -522,7 +522,7 @@ Die heutigen 1000 Token sind **gesetzt, nicht gemessen** — das steht so in
 [Stellschrauben](./data-indexing-rag.md#stellschrauben-und-ihre-wirkung). Die externe Evidenz deutet
 in eine andere Richtung (Chroma und Microsoft messen ihr Optimum bei 200–512 Token mit 10–25 %
 Überlappung, siehe
-[Tech-Report 5.1](../discussions/discussion-retrieval-strategien.md#51-fixedrecursive-chunking-basis-heute-in-opaa)),
+Tech-Report 5.1),
 aber nicht auf einem Verwaltungskorpus.
 
 Der naheliegende Satz wäre „die Chunk-Größen misst der Benchmark". Er wäre für einen Teil der
@@ -1658,7 +1658,7 @@ Aus „37,00 EUR" wird damit „Verwaltungsgebührensatzung › § 7 Gebühren f
 EUR" — der Chunk aus dem Eingangsbeispiel wird auffindbar, ohne dass ein Sprachmodell dafür gelaufen
 ist. Das ist die LLM-freie Ausbaustufe des Contextual Chunking, dessen Wirksamkeit extern belegt ist
 (siehe
-[Tech-Report 5.3](../discussions/discussion-retrieval-strategien.md#53-contextual-retrieval-anthropic)).
+Tech-Report 5.3).
 
 Der Präfix geht in Embedding **und** Volltextindex — die Anthropic-Zahlen zeigen den größeren Effekt
 gerade bei der kontextualisierten lexikalischen Seite. Er ist Teil der Chunk-Darstellung, nicht seines
@@ -1951,7 +1951,7 @@ in dem Moment, in dem der Reader das Dokument noch strukturiert vor sich hat.
 welche eine Bibliothek zusätzlich führt, wie Schlagworte entstehen, ob und wie ein geführter Assistent
 beim Anlegen einer Bibliothek ein Schema vorschlägt — das ist eine eigene, spätere Spezifikation
 (Konzeptstand:
-[discussion-dateitypen-und-metadaten.md, Abschnitt 3](../discussions/discussion-dateitypen-und-metadaten.md)).
+discussion-dateitypen-und-metadaten.md, Abschnitt 3).
 
 Hier wird nur der **Übergabepunkt** definiert:
 
@@ -2022,12 +2022,12 @@ Hier wird nur der **Übergabepunkt** definiert:
   ([arXiv:2410.13070](https://arxiv.org/abs/2410.13070)) findet keine konsistenten Gewinne bei
   erheblichen Rechenkosten, und für strukturierte Verwaltungsdokumente ist strukturbasiertes Schneiden
   ohnehin das schärfere Werkzeug (siehe
-  [Tech-Report 5.5](../discussions/discussion-retrieval-strategien.md#55-semantic-chunking--evidenz-dagegen)).
+  Tech-Report 5.5).
 - **Late Chunking** (Pooling der Chunk-Vektoren nach der Aufmerksamkeitsberechnung über das ganze
   Dokument) — fachlich attraktiv als kostenlose Alternative zum Contextual Chunking, am aktuellen Stack
   aber nicht umsetzbar: Es braucht Token-Zugriff auf den Embedder, den die OpenAI-kompatible
   Embedding-Schnittstelle wegabstrahiert (siehe
-  [Tech-Report 5.4](../discussions/discussion-retrieval-strategien.md#54-late-chunking-jina)).
+  Tech-Report 5.4).
 - **Wechsel zu LangChain4j** wegen dessen reicherer Splitter-Auswahl (Paragraph, Satz, Regex, rekursiv)
   — ein Rahmenwerkwechsel für eine Fähigkeit, die als eigene `DocumentTransformer`-Implementierung
   wenige hundert Zeilen kostet, wäre unverhältnismäßig.
@@ -2038,7 +2038,7 @@ Hier wird nur der **Übergabepunkt** definiert:
 - **XML-Fachformate** (LegalDocML.de, XJustiz, XÖV) — strukturtreues Parsen wäre hier besonders
   lohnend, lohnt sich aber erst mit einem konkreten Quellanschluss (etwa NeuRIS); ein Parser ohne
   angeschlossene Quelle hätte keinen Bestand, an dem er sich bewähren könnte (siehe
-  [discussion-dateitypen-und-metadaten.md, Abschnitt 2](../discussions/discussion-dateitypen-und-metadaten.md)).
+  discussion-dateitypen-und-metadaten.md, Abschnitt 2).
 - **Quellcode-Pipelines** (Schnitt je Funktion über Tree-Sitter oder Regex) — in den
   Diskussionspapieren als Idee vorhanden, für einen Verwaltungsbestand ohne erkennbaren Nutzungsfall.
 

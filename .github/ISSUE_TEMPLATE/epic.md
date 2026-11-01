@@ -10,7 +10,7 @@ Einleitungsabsatz: Was dieses Epic liefert und warum jetzt.
 
 ### Hintergrund
 
-Links zu den Feature-Spezifikationen in `docs/features/` und etwaigen Diskussionsdokumenten in `docs/discussions/`.
+Links zu den Feature-Spezifikationen in `docs/features/`.
 
 ### Phasen
 

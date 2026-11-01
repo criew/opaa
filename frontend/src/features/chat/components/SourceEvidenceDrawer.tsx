@@ -41,7 +41,7 @@ interface SourceEvidenceDrawerProps {
   /** Rows in {@link CitationIndex.docs} a clicked footnote points at: they are marked, and the
    *  first one is scrolled into view on opening. Empty when opened via "Belege anzeigen". */
   focusedDocIndexes?: number[]
-  /** When the answer arrived - mockup 1i's footer line. */
+  /** When the answer arrived - the footer line. */
   answeredAt: Date
   /** MessageBubble's `useDocumentPreview()` instance - the preview dialog/download snackbar it
    *  drives are rendered by MessageBubble as siblings of this Drawer, not inside it, so they

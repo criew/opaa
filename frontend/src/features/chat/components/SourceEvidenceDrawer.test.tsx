@@ -75,7 +75,7 @@ function fileNames(drawer: HTMLElement) {
     .map((el) => el.getAttribute('data-file'))
 }
 
-describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
+describe('SourceEvidenceDrawer (#592)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })

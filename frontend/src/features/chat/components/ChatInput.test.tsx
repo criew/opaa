@@ -429,7 +429,7 @@ describe('ChatInput', () => {
     expect(screen.queryByRole('option', { name: /Bauakten/ })).not.toBeInTheDocument()
   })
 
-  it('labels library suggestions with the type badge (#591, mockup 1h)', async () => {
+  it('labels library suggestions with the type badge (#591)', async () => {
     const user = userEvent.setup()
     render(<ChatInput onSend={vi.fn()} />)
     const input = screen.getByPlaceholderText(/^Nachricht eingeben …/)

@@ -8,7 +8,7 @@
 >
 > Diese Spezifikation setzt die Maintainer-Entscheidungen um, die aus Abschnitt 3 des
 > Diskussionspapiers
-> [Dateitypen der Verwaltung und geführte Metadaten-Anreicherung](../discussions/discussion-dateitypen-und-metadaten.md)
+> Dateitypen der Verwaltung und geführte Metadaten-Anreicherung
 > hervorgegangen sind — dort als Konzept mit fünf Leitplanken, hier als Festlegung. Was hier nicht
 > steht, ist nicht entschieden; das Diskussionspapier bleibt die Quelle für die dort geführte Abwägung.
 
@@ -55,7 +55,7 @@ benennen können. Für das neunte nicht:
 > **Szenario 9 — Fassungs- und Ebenenfragen.** „Galt die Regelung auch schon 2024?", Landesrecht gegen
 > Bundesrecht. Zwei deutschlandspezifische Fehlerbilder, die **keine** generische Retrieval-Strategie
 > löst. Beides sind **Metadaten-Probleme**. Wer hier nur Embeddings tuned, verliert.
-> (siehe [Tech-Report, Szenario 9](../discussions/discussion-retrieval-strategien.md))
+> (siehe Tech-Report, Szenario 9)
 
 Das ist der Grund für dieses Dokument. Hybrid-Suche und Reranking heben, was inhaltlich passt; sie
 haben keine Handhabe gegen einen Treffer, der inhaltlich perfekt passt und trotzdem falsch ist, weil

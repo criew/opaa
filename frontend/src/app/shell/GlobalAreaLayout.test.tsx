@@ -29,7 +29,7 @@ function renderArea(initialPath: string, mode: PaletteMode = 'light') {
 }
 
 describe('GlobalAreaLayout', () => {
-  it('renders the secondary column as a nav landmark with title, badge and every section (mockup 2b)', () => {
+  it('renders the secondary column as a nav landmark with title, badge and every section', () => {
     renderArea('/admin/groups')
 
     const column = screen.getByRole('navigation', { name: 'Administration' })
@@ -112,7 +112,7 @@ describe('isGlobalAreaPath', () => {
     expect(isGlobalAreaPath('/libraries/')).toBe(true)
     expect(isGlobalAreaPath('/spaces/space-1')).toBe(false)
     expect(isGlobalAreaPath('/spaces/space-1/chats/chat-1')).toBe(false)
-    // The user settings are a global area as well (mockup 2c).
+    // The user settings are a global area as well.
     expect(isGlobalAreaPath('/settings')).toBe(true)
     // The library catalog is a global area as well (Schlussnotiz Abschnitt 2).
     expect(isGlobalAreaPath('/libraries')).toBe(true)

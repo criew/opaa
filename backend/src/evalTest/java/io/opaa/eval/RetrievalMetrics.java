@@ -5,11 +5,11 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Pure ranking-metric math (Hit Rate@k, MRR, nDCG@k, Recall@k) — see
- * docs/discussions/discussion-rag-evaluation.md, section 2.1, and issue #227. No I/O, no Spring:
- * kept independent of the harness so the metric definitions can be unit-tested in isolation — see
- * {@code RetrievalMetricsTest}, run via the Docker-free {@code evalUnitTest} Gradle task (wired
- * into {@code check}), not the Docker-requiring {@code evaluateRetrieval} task.
+ * Pure ranking-metric math (Hit Rate@k, MRR, nDCG@k, Recall@k) in their standard definitions
+ * (ADR-0011). No I/O, no Spring: kept independent of the harness so the metric definitions can be
+ * unit-tested in isolation — see {@code RetrievalMetricsTest}, run via the Docker-free {@code
+ * evalUnitTest} Gradle task (wired into {@code check}), not the Docker-requiring {@code
+ * evaluateRetrieval} task.
  *
  * <p>Deliberately kept in the {@code evalTest} source set rather than {@code main}: this is
  * evaluation tooling, not something OPAA needs at runtime, and it must not ship in the production
