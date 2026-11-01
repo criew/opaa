@@ -29,8 +29,7 @@ public record LocalLockoutProperties(
     @NoDataImpact("the shortest lockout the administration may set; it keeps no data")
         Duration minDuration,
     @NoDataImpact("a retired lockout duration that only raises the shortest lockout")
-        @PerInstance(
-            "retired; the previous version binds it with a default, this one leaves it unset")
+        @PerInstance("retired; only raises the shortest lockout above the shared min-duration")
         Duration duration) {
 
   public static final String MAX_ATTEMPTS_VARIABLE = "OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS";
