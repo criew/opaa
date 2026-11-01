@@ -55,13 +55,11 @@ public class SuccessionController {
     return SuccessionResponseMapper.toResponse(successionService.counts(caller.organizationId()));
   }
 
-  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @GetMapping("/settings")
   public SuccessionSettingsResponse getSuccessionSettings(@Caller CurrentUser caller) {
     return SuccessionResponseMapper.toResponse(settings.current(caller));
   }
 
-  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PutMapping("/settings")
   public SuccessionSettingsResponse updateSuccessionSettings(
       @RequestBody SuccessionSettingsRequest request, @Caller CurrentUser caller) {
