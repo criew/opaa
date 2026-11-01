@@ -4,19 +4,26 @@ dataFlows:
   - id: chat-model
     group: MODEL
     viaOutboundProxy: true
-    target: Das systemweit aktive Chat-Modell, ein OpenAI-kompatibler Endpunkt der Systemverwaltung
+    target: >-
+      Das systemweit aktive Chat-Modell, ein OpenAI-kompatibler Endpunkt, den die Installation
+      festlegt und die Systemverwaltung später wechseln kann
     data: >-
       Frage und Gesprächsverlauf, die gefundenen Textstellen aus den Bibliotheken samt Titeln und
       System-Prompt; Chatinhalte für Titel und Notizen; Dokumenttext für die modellgestützte
       Metadatenextraktion
     trigger: >-
       Jede Chat-Anfrage, Zerlegung einer Suchanfrage, Chattitel und -notiz, Metadatenextraktion beim
-      Indizieren, Statusprüfung des Modells
+      Indizieren, Statusprüfung des Modells; bricht eine gestreamte Antwort vor dem ersten Teil ab,
+      geht dieselbe Anfrage einmal ohne Streaming erneut an das Modell
     switchOff: >-
-      Nicht abschaltbar, der Chat braucht ein Modell; das Ziel bestimmt die Systemverwaltung.
-      Voreinstellung der Anwendung ist ein lokaler Modellserver; das Helm-Chart hat keine
-      Voreinstellung und verlangt die Adresse
-    settings: [llm_models.base_url, llm_models.model_identifier, opaa.query.query-decomposition-enabled]
+      Nicht abschaltbar, der Chat braucht ein Modell. Das erste Ziel legt der Schritt Chat-Modell der
+      Installation fest, im Helm-Chart über bootstrap.chatModel in der Antwortdatei; danach bestimmt
+      es die Systemverwaltung. Wird der Schritt übersprungen, gibt es bis zum Eintrag in der
+      Modellverwaltung kein Ziel. Eine Voreinstellung (lokaler Modellserver) gibt es nur im
+      Entwicklungsprofil
+    settings:
+      [llm_models.base_url, llm_models.model_identifier, opaa.query.query-decomposition-enabled,
+      installation_steps.payload]
   - id: embedding-model
     group: MODEL
     viaOutboundProxy: true
@@ -250,7 +257,10 @@ dataFlows:
     viaOutboundProxy: true
     target: Die Identitätsanbieter (OIDC), die die Systemverwaltung einträgt
     data: Abruf des Discovery-Dokuments und der Signaturschlüssel
-    trigger: Anmeldung über den Anbieter, Verbindungstest in der Verwaltung
+    trigger: >-
+      Anmeldung über den Anbieter, Verbindungstest in der Verwaltung; im Installationsassistenten
+      die Prüfung des Schritts Anmeldeverfahren, nur mit dem Installations-Token und vor dem
+      Abschluss
     switchOff: Je Anbieter abschaltbar; ohne Anbieter nur lokale Anmeldung
     settings: [oidc_providers.enabled, oidc_providers.issuer_uri, oidc_providers.jwk_set_uri]
   - id: directory-sync
