@@ -98,16 +98,18 @@ public class ChatAttachmentCleanup {
   }
 
   int deleteUnbound(Instant now) {
-    List<ChatAttachment> expired =
-        attachmentRepository.findUnboundBefore(now.minus(properties.unboundRetention()));
-    for (ChatAttachment attachment : expired) {
-      attachmentRepository.delete(attachment);
-      attachmentService.removeOriginal(attachment);
+    Instant before = now.minus(properties.unboundRetention());
+    int deleted = 0;
+    for (ChatAttachment attachment : attachmentRepository.findUnboundBefore(before)) {
+      if (attachmentRepository.deleteIfUnboundBefore(attachment.getId(), before) == 1) {
+        attachmentService.removeOriginal(attachment);
+        deleted++;
+      }
     }
-    if (!expired.isEmpty()) {
-      log.info("Deleted {} chat attachment(s) never sent with a question", expired.size());
+    if (deleted > 0) {
+      log.info("Deleted {} chat attachment(s) never sent with a question", deleted);
     }
-    return expired.size();
+    return deleted;
   }
 
   int removeOrphanedOriginals(UUID organizationId, Instant now) {

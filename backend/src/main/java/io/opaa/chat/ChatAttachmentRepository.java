@@ -42,6 +42,16 @@ public interface ChatAttachmentRepository extends JpaRepository<ChatAttachment, 
   @Query("select a from ChatAttachment a where a.chatId is null and a.createdAt < :before")
   List<ChatAttachment> findUnboundBefore(@Param("before") Instant before);
 
+  /**
+   * Deletes {@code id} only while no question has named it and it is older than {@code before}; a
+   * binding committed meanwhile keeps it.
+   */
+  @Modifying
+  @Transactional
+  @Query(
+      "delete from ChatAttachment a where a.id = :id and a.chatId is null and a.createdAt < :before")
+  int deleteIfUnboundBefore(@Param("id") UUID id, @Param("before") Instant before);
+
   /** Attachments still being read since before {@code before}: their reading was lost. */
   @Query("select a.id from ChatAttachment a where a.status = :status and a.createdAt < :before")
   List<UUID> findIdsByStatusBefore(

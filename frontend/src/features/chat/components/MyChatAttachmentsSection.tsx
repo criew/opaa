@@ -193,7 +193,7 @@ export default function MyChatAttachmentsSection() {
       <SectionHead id="my-chat-attachments-head">Meine Uploads</SectionHead>
       <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 2 }}>
         Dateien, die Sie an Fragen im Chat angehängt haben. Ein Anhang gehört zu seinem Chat und
-        wird mit ihm gelöscht; nie gesendete Anhänge werden nach einem Tag gelöscht.
+        wird mit ihm gelöscht; nie gesendete Anhänge werden nach Ablauf ihrer Frist gelöscht.
       </Typography>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>

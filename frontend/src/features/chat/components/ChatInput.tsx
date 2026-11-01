@@ -188,7 +188,9 @@ export default function ChatInput({
   }
   const handlePaste = (e: ClipboardEvent<HTMLDivElement>) => {
     const files = Array.from(e.clipboardData?.files ?? [])
-    if (!uploadsEnabled || files.length === 0) return
+    // Office puts a picture of copied text beside the text itself: text wins over that picture.
+    const carriesText = Array.from(e.clipboardData?.types ?? []).includes('text/plain')
+    if (!uploadsEnabled || files.length === 0 || carriesText) return
     e.preventDefault()
     draft.add(files)
   }

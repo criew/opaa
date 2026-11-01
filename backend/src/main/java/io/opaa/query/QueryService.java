@@ -318,7 +318,7 @@ public class QueryService {
                 // unchanged.
                 Optional<QueryResult> toolLoopResult =
                     toolLoopQueryHandler
-                        .filter(handler -> attachments.isEmpty())
+                        .filter(handler -> attachments.attachmentIds().isEmpty())
                         .flatMap(
                             handler ->
                                 handler.handle(
@@ -340,8 +340,12 @@ public class QueryService {
                 // caller, or a chip bar emptied on purpose.
                 boolean noSpaceContext = chat.isEmpty();
                 boolean effectiveUseKnowledge = chat.map(Chat::isUseKnowledge).orElse(false);
+                // Attachments are knowledge the person brought: an answer from them is none of
+                // these three cases.
+                boolean noAttachments = attachments.isEmpty();
                 boolean noKnowledgeAssignedToSpace =
-                    searchScope.isEmpty()
+                    noAttachments
+                        && searchScope.isEmpty()
                         && chat.map(
                                 c ->
                                     !chatService.spaceHasLibraryAssociations(
@@ -353,12 +357,14 @@ public class QueryService {
                     !noSpaceContext
                         && !noKnowledgeAssignedToSpace
                         && !effectiveUseKnowledge
-                        && searchScope.isEmpty();
+                        && searchScope.isEmpty()
+                        && noAttachments;
                 boolean noKnowledgeAvailableInSpace =
                     !noKnowledgeAssignedToSpace
                         && effectiveUseKnowledge
                         && searchScope.isEmpty()
-                        && chat.isPresent();
+                        && chat.isPresent()
+                        && noAttachments;
 
                 // The decomposition LLM call only runs once there is actually something to
                 // search - an empty scope would otherwise pay for it and discard the result.

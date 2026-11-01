@@ -437,8 +437,11 @@ public class ChatAttachmentService {
     try {
       chunkStore.save(attachmentId, rows);
     } catch (RuntimeException e) {
-      // the row went away between the check and the insert: its chunks have nothing to belong to
-      log.debug("Chat attachment {} was deleted while it was read", attachmentId, e);
+      // a row deleted meanwhile is not PROCESSING anymore, so marking it failed changes nothing
+      if (attachmentRepository.existsById(attachmentId)) {
+        log.warn("Storing the text of chat attachment {} failed", attachmentId, e);
+      }
+      markFailed(attachmentId, UNREADABLE_MESSAGE);
       return;
     }
     attachmentRepository.markReady(attachmentId, chars, Instant.now(clock));

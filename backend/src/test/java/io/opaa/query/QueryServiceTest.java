@@ -955,6 +955,53 @@ class QueryServiceTest {
   }
 
   @Test
+  void anAnswerFromAttachmentsInAChatWithoutKnowledgeIsNotMarkedAsWithoutKnowledge() {
+    Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, false, Set.of());
+    UUID chatId = chat.getId();
+    UUID attachmentId = UUID.randomUUID();
+    Document passage =
+        Document.builder()
+            .text("Die Frist beträgt drei Monate.")
+            .metadata(
+                Map.of(
+                    "file_name",
+                    "Vertrag.pdf",
+                    "document_id",
+                    attachmentId.toString(),
+                    "chunk_index",
+                    0,
+                    "chat_attachment",
+                    true))
+            .build();
+    when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
+    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
+    when(chatService.effectiveLibraryScope(any(), any())).thenReturn(Set.of());
+    when(chatService.attachmentContext(chat, List.of(attachmentId), "Frist?"))
+        .thenReturn(
+            new ChatAttachmentContext(
+                List.of(passage), Set.of(attachmentId), List.of(attachmentId), false));
+    when(answerGenerationService.generateAnswer(
+            any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Drei.")))));
+
+    QueryResult response =
+        queryService.query(
+            "Frist?",
+            chatId,
+            caller,
+            true,
+            List.of(),
+            MetadataFilter.NONE,
+            null,
+            null,
+            List.of(attachmentId));
+
+    assertThat(response.metadata().answeredWithoutKnowledge()).isFalse();
+    assertThat(response.metadata().noKnowledgeAssignedToSpace()).isFalse();
+    assertThat(response.metadata().noKnowledgeAvailableInSpace()).isFalse();
+  }
+
+  @Test
   void attachmentsWithoutAnOwnChatAreRefused() {
     assertThatThrownBy(
             () ->

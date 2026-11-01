@@ -1,7 +1,5 @@
 package io.opaa.chat;
 
-import io.opaa.common.ConditionalOnFeature;
-import io.opaa.common.Feature;
 import io.opaa.instance.ScheduledRunLocks;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.context.annotation.Bean;
@@ -13,10 +11,10 @@ import org.springframework.stereotype.Component;
 /**
  * The hourly tick of {@link ChatAttachmentCleanup}, on a scheduler of its own: removing originals
  * walks the upload storage, which may be an object store. One instance runs it per hour (ADR-0053).
- * Switched off with the chat-upload feature; existing attachments then stay untouched.
+ * Runs with the chat-upload feature switched off as well: the attachments stored before still end
+ * with their chats and their retention.
  */
 @Component
-@ConditionalOnFeature(Feature.CHAT_UPLOAD)
 public class ChatAttachmentCleanupSchedule {
 
   static final String SCHEDULER = "chatAttachmentCleanupScheduler";

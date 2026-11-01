@@ -6,6 +6,7 @@ import {
   getChatAttachment,
   uploadChatAttachment,
 } from '../api/chatAttachmentApi'
+import { responseStatus } from '../stores/chatRefusals'
 
 export type DraftAttachmentPhase = 'uploading' | 'processing' | 'ready' | 'failed'
 
@@ -23,6 +24,12 @@ export interface DraftAttachment {
 
 /** How often a file still being read is asked for again. */
 export const ATTACHMENT_POLL_MS = 1500
+
+/**
+ * Uploads running at once. The server reads at most a few attachments of one account at a time
+ * and refuses more with 429, so a larger drop waits here instead of failing there.
+ */
+export const PARALLEL_UPLOADS = 3
 
 export const TOO_MANY_ATTACHMENTS_NOTE = `Höchstens ${CHAT_ATTACHMENTS_PER_MESSAGE} Anhänge je Frage.`
 
@@ -64,16 +71,60 @@ export function useChatAttachmentDraft(spaceId: string | null) {
               phase: phaseOf(attachment),
               error: attachment.failureReason ?? undefined,
             }),
-          (err: unknown) =>
-            update(item.key, {
-              phase: 'failed',
-              error: err instanceof Error ? err.message : 'Der Anhang ist nicht mehr vorhanden.',
-            }),
+          (err: unknown) => {
+            // a passing network or server failure is asked again in the next round
+            if (responseStatus(err) !== 404) return
+            update(item.key, { phase: 'failed', error: 'Der Anhang ist nicht mehr vorhanden.' })
+          },
         )
       })
     }, ATTACHMENT_POLL_MS)
     return () => clearTimeout(timer)
   }, [items, update])
+
+  const queue = useRef<Array<{ item: DraftAttachment; file: File; spaceId: string }>>([])
+  const running = useRef(0)
+  // keys removed from the draft: a queued upload is skipped, a finished one deleted again
+  const removed = useRef(new Set<string>())
+  const currentSpace = useRef(spaceId)
+  useEffect(() => {
+    currentSpace.current = spaceId
+  }, [spaceId])
+  const pump = useCallback(
+    function pumpQueue() {
+      while (running.current < PARALLEL_UPLOADS && queue.current.length > 0) {
+        const { item, file, spaceId: target } = queue.current.shift()!
+        if (removed.current.has(item.key) || target !== currentSpace.current) continue
+        running.current += 1
+        void uploadChatAttachment(target, file)
+          .then(
+            (attachment) => {
+              if (removed.current.has(item.key) || target !== currentSpace.current) {
+                // removed while it was uploading: it is not wanted anymore
+                void deleteChatAttachment(attachment.id).catch(() => {})
+                return
+              }
+              update(item.key, {
+                id: attachment.id,
+                phase: phaseOf(attachment),
+                error: attachment.failureReason ?? undefined,
+              })
+            },
+            (err: unknown) =>
+              update(item.key, {
+                phase: 'failed',
+                error:
+                  err instanceof Error ? err.message : 'Die Datei konnte nicht hochgeladen werden.',
+              }),
+          )
+          .finally(() => {
+            running.current -= 1
+            pumpQueue()
+          })
+      }
+    },
+    [update],
+  )
 
   // Attachments belong to one space; a draft does not travel along to another.
   const [seenSpaceId, setSeenSpaceId] = useState(spaceId)
@@ -96,35 +147,15 @@ export function useChatAttachmentDraft(spaceId: string | null) {
         phase: 'uploading',
       }))
       setItems((current) => [...current, ...added])
-      added.forEach((item, index) => {
-        void uploadChatAttachment(spaceId, accepted[index]).then(
-          (attachment) => {
-            if (!itemsRef.current.some((entry) => entry.key === item.key)) {
-              // removed while it was uploading: it is not wanted anymore
-              void deleteChatAttachment(attachment.id).catch(() => {})
-              return
-            }
-            const phase = phaseOf(attachment)
-            update(item.key, {
-              id: attachment.id,
-              phase,
-              error: attachment.failureReason ?? undefined,
-            })
-          },
-          (err: unknown) =>
-            update(item.key, {
-              phase: 'failed',
-              error:
-                err instanceof Error ? err.message : 'Die Datei konnte nicht hochgeladen werden.',
-            }),
-        )
-      })
+      added.forEach((item, index) => queue.current.push({ item, file: accepted[index], spaceId }))
+      pump()
     },
-    [spaceId, update],
+    [spaceId, pump],
   )
 
   const remove = useCallback((key: string) => {
     const item = itemsRef.current.find((entry) => entry.key === key)
+    removed.current.add(key)
     setItems((current) => current.filter((entry) => entry.key !== key))
     setNotice(null)
     if (item?.id) void deleteChatAttachment(item.id).catch(() => {})

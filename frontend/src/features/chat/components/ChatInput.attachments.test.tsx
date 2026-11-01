@@ -137,7 +137,28 @@ describe('ChatInput attachments', () => {
     )
 
     expect(await screen.findByText('Höchstens 10 Anhänge je Frage.')).toBeVisible()
-    expect(api.uploadChatAttachment).toHaveBeenCalledTimes(10)
+    await waitFor(() => expect(api.uploadChatAttachment).toHaveBeenCalledTimes(10))
+  })
+
+  it('uploads at most three files at once and queues the rest', async () => {
+    const pending: Array<() => void> = []
+    api.uploadChatAttachment.mockImplementation(
+      (_space: string, file: File) =>
+        new Promise<ChatAttachment>((resolve) =>
+          pending.push(() => resolve(attachment(file.name, 'READY'))),
+        ),
+    )
+    const user = userEvent.setup()
+    render(<ChatInput onSend={vi.fn()} />)
+
+    await user.upload(
+      screen.getByTestId('chat-attachment-input'),
+      Array.from({ length: 5 }, (_, index) => pdf(`Teil-${index}.pdf`)),
+    )
+    expect(api.uploadChatAttachment).toHaveBeenCalledTimes(3)
+
+    pending.shift()!()
+    await waitFor(() => expect(api.uploadChatAttachment).toHaveBeenCalledTimes(4))
   })
 
   it('gives a refused question its attachments back', async () => {
