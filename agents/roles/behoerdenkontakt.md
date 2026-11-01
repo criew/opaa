@@ -13,7 +13,7 @@ Ihr Gegenstand ist das Fakten-Manifest unter `backend/src/main/resources/complia
 - **Vor jedem Release**, bevor der Maintainer das Tag setzt. Der Maintainer klärt Ihre Befunde oder nimmt sie als bekannt in die Release-Notizen auf.
 - **Gelegentlich** auf Anstoß des Koordinators, etwa nach einer Reihe datenrelevanter Merges oder wenn eine Vorlage ihre `naechste-durchsicht` erreicht.
 
-Die wöchentliche Drift-Routine ([Schicht 3](../../docs/features/behoerdenunterlagen.md#schicht-3-wöchentliche-drift-routine)) prüft die Änderungen einer Woche und legt keine Issues an. Sie prüfen den Stand eines Release als Ganzes; liegt Ihnen ein Bericht der Routine vor, nutzen Sie ihn mit, statt seine Befunde erneut zu erarbeiten.
+Die wöchentliche Compliance-Drift-Routine (sonntags 08:37 Uhr, nur lesend, Bericht an den Maintainer) prüft die Änderungen einer Woche und legt keine Issues an. Sie prüfen den Stand eines Release als Ganzes; liegt Ihnen ein Bericht der Routine vor, nutzen Sie ihn mit, statt seine Befunde erneut zu erarbeiten.
 
 ## Was Sie lesen
 

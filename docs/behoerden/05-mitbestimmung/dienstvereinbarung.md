@@ -40,7 +40,7 @@ in eckigen Klammern sind Verhandlungssache; Schrägstriche trennen Optionen.
 - **Zu jedem Release** ein Delta mit Stufenvorschlag nach denselben Klassen wie in Nummer 15 des
   Mustertexts, dazu die Vorlage [Update-Vermerk](../09-betrieb-update/update-vermerk.md). Die Klassen
   stammen aus einer gemeinsamen Quelle, den
-  [Stufenregeln](../../features/behoerdenunterlagen.md#die-stufenregeln). Das Delta im Paket
+  [Stufenregeln](../../handbuch/betrieb/nachvollziehbarkeit.md#die-stufenregeln). Das Delta im Paket
   vergleicht mit dem vorigen finalen Release, bei einem LTS-Release zusätzlich mit der vorigen
   LTS-Linie; für einen anderen Sprung erzeugt der Betrieb es selbst
   ([Das Update-Paket eines Release](../../handbuch/betrieb/nachvollziehbarkeit.md#das-update-paket-eines-release)).

@@ -8,9 +8,46 @@ assignees: ''
 
 Einleitungsabsatz: Was dieses Epic liefert und warum jetzt.
 
-### Hintergrund
+### Spezifikation
 
-Links zu den Feature-Spezifikationen in `docs/features/` und etwaigen Diskussionsdokumenten in `docs/discussions/`.
+<!--
+Die Spezifikation lebt hier im Epic und wird nicht eingecheckt. Auf Produkt-Konzeptebene schreiben:
+Verhalten, Rollen, Abläufe, Optionen mit Abwägungen ("Option 1/2/3" + Empfehlung) — keine Klassen
+oder Dateinamen. Tabellen und ASCII-Skizzen, wo sie Klarheit schaffen. Nach dem Bau steht das
+Verhalten im Handbuch (`docs/handbuch/`), jede Entscheidung mit Begründung in einem ADR
+(`docs/decisions/`); die Abnahmekriterien unten nennen beides.
+-->
+
+**Motivation:** Welches Problem, wer hat es, warum löst OPAA es.
+
+**Kernpunkte:**
+
+1. ...
+
+**Verhalten und Abläufe:** ...
+
+### Wirkung auf Behördenunterlagen
+
+<!--
+Pflicht, wenn das Epic Verhalten oder Konfiguration festlegt. Die Punkte entsprechen dem Abschnitt
+„Wirkung auf Daten und Behördenunterlagen“ des PR-Templates, ergänzt um die KI-Einstufung; die Stufe
+folgt den Stufenregeln (docs/handbuch/betrieb/nachvollziehbarkeit.md, „Die Stufenregeln“). Bei
+Stufe Zustimmung läuft vor dem Schneiden der Sub-Issues ein Stakeholder-Review mit Personalrat und
+Betrieb (docs/AGENT-ORGANIZATION.md).
+-->
+
+- [ ] Neue oder geänderte personenbezogene Daten oder Protokollereignisse
+- [ ] Neue Sichtbarkeit: Daten werden für weitere Rollen oder Personen sichtbar
+- [ ] Neue Auswertung oder neuer Export, auch von bereits gespeicherten Daten
+- [ ] Geänderte Aufbewahrungs- oder Löschfrist
+- [ ] Neuer externer Datenfluss (neuer Dienst, neues Ziel ausgehender Verbindungen)
+- [ ] Geänderte Voreinstellung, geändertes Standardmodell oder geänderter System-Prompt
+- [ ] Geänderte KI-Einstufung (Zweck oder Einsatzbereich im Sinne der KI-Verordnung)
+- [ ] Keine Wirkung auf Daten, Sichtbarkeit, Auswertung, Datenflüsse oder Voreinstellungen
+
+**Voraussichtliche Stufe** (entfällt bei „Keine Wirkung“, im Zweifel Zustimmung): Bagatelle / Anzeige / Zustimmung
+
+**Betroffene Vorlagen in `docs/behoerden/`** (Verzeichnis oder „keine“):
 
 ### Phasen
 
@@ -42,6 +79,8 @@ sortieren.
 ### Abnahmekriterien (Epic-Ebene)
 
 - [ ] ...
+- [ ] Handbuch: betroffene Kapitel nachgezogen (oder „kein Handbuchkapitel betroffen“)
+- [ ] ADR: jede Entscheidung mit Begründung festgehalten (oder „keine Architekturentscheidung“)
 
 ### Außerhalb des Umfangs (separate Epics)
 
@@ -49,4 +88,4 @@ sortieren.
 
 ### Referenzen
 
-- `docs/features/<spec>.md`
+- ADRs, Handbuchkapitel, verwandte Epics

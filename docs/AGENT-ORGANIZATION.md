@@ -9,7 +9,7 @@ Menschen und Agenten verwenden denselben **Workflow**: dieselben Issues, dieselb
 | Rolle | Verantwortung | Läuft als |
 |---|---|---|
 | **Orchestrator** | Einziger menschenzugewandter Einstiegspunkt. Nimmt Ziele vom Maintainer entgegen, priorisiert den Backlog (Projektmanager-Rolle), delegiert Arbeit an die nachfolgenden Agenten, überwacht PRs und eskaliert nur Entscheidungen, die einen Menschen erfordern. | Hauptsitzung |
-| **Product Manager** | Verantwortlich für die funktionale Definition: hält Vision und Realität synchron (`docs/VISION.md`, `docs/fortschritt/gesamtstand.md`), schreibt Feature-Spezifikationen in `docs/features/`, erstellt und priorisiert GitHub-Issues. | Subagent `product-manager` |
+| **Product Manager** | Verantwortlich für die funktionale Definition: hält Vision und Realität synchron (`docs/VISION.md`, `docs/fortschritt/gesamtstand.md`), schreibt die Spezifikation in den Body des Epics, erstellt und priorisiert GitHub-Issues. | Subagent `product-manager` |
 | **Developer** | Implementiert ein Issue vollständig (Backend **und** Frontend) in einem isolierten Git-Worktree, auf einem `feature/<issue-id>_<desc>`-Branch, und öffnet einen PR. | Subagent `developer`, möglicherweise mehrere Instanzen parallel — eine pro Issue |
 | **Code Reviewer** | Adversariales Review jedes PRs mit frischem Kontext (keine Implementierungs-Bias): Korrektheit, ADR-Compliance, Wiederverwendung, fehlende Dokumentation. Entwirft ADRs, wenn er eine Architekturentscheidung erkennt. | Subagent `code-reviewer` |
 | **QA Engineer** | Produktqualität über das jeweilige PR-Review hinaus: alleiniger Eigentümer der E2E-Suite (implementiert die dedizierten `test(e2e)`-Issues, die zum Spezifikationszeitpunkt erstellt wurden), RAG-Antwortqualitäts-Evaluierung (Golden Dataset + Evaluatoren), Coverage-/Flakiness-Trends, Release-Bewertung. | Subagent `qa-engineer` |
@@ -18,7 +18,7 @@ Menschen und Agenten verwenden denselben **Workflow**: dieselben Issues, dieselb
 
 Neben diesen Liefer-Rollen gibt es **Stakeholder-Rollen**, die nichts herstellen, sondern bewerten — siehe [Stakeholder-Review](#stakeholder-review) —, und die Prüfrolle **Behördenkontakt** (Subagent `behoerdenkontakt`): Sie liest vor jedem Release und gelegentlich Fakten-Manifest, Faktenblätter, Update-Paket und die Vorlagen unter `docs/behoerden/` aus Sicht einer Behörde, legt Befunde als Issues an und leistet **keine verbindliche Rechtsbeobachtung und keine Rechtsberatung** — siehe [Behördenkontakt vor dem Release](#behördenkontakt-vor-dem-release).
 
-Designprinzip: Ein Agent hat eine Spur, Arbeit wird über Artefakte (Spezifikationen, Issues, PRs) statt Dialog übergeben, Schreibvorgänge sind single-threaded (Parallelität nur über *verschiedene* Issues), und der Reviewer ist immer vom Implementierer getrennt.
+Designprinzip: Ein Agent hat eine Spur, Arbeit wird über Artefakte (Epics mit Spezifikation, Issues, PRs) statt Dialog übergeben, Schreibvorgänge sind single-threaded (Parallelität nur über *verschiedene* Issues), und der Reviewer ist immer vom Implementierer getrennt.
 
 ## Stakeholder-Review
 
@@ -37,7 +37,7 @@ Die Liefer-Rollen bewerten Konzepte aus der Perspektive derer, die sie entwerfen
 
 Nach einer Konzept- oder Spezifikationsänderung von struktureller Tragweite und **bevor** der zugehörige Implementierungs-Backlog freigegeben wird. Ein Review nach der Implementierung erzeugt Nacharbeit statt Erkenntnis.
 
-Pflichtanlass ist eine Spezifikation, deren Abschnitt „Wirkung auf Behördenunterlagen“ die Stufe **Zustimmung** vorschlägt: Der Product Manager fordert das Review an, Personalrat und Betriebsverantwortlicher laufen mindestens, und die Issues werden erst danach geschnitten ([Stufenregeln](features/behoerdenunterlagen.md#die-stufenregeln)).
+Pflichtanlass ist eine Epic-Spezifikation, deren Abschnitt „Wirkung auf Behördenunterlagen“ die Stufe **Zustimmung** vorschlägt: Der Product Manager fordert das Review an, Personalrat und Betriebsverantwortlicher laufen mindestens, und die Issues werden erst danach geschnitten ([Stufenregeln](features/behoerdenunterlagen.md#die-stufenregeln)).
 
 Zweiter Pflichtanlass ist eine Änderung der Stufe **Zustimmung**, die der Behördenkontakt vor einem Release meldet ([Behördenkontakt vor dem Release](#behördenkontakt-vor-dem-release)): Geprüft werden das vor dem Tag lokal erzeugte Manifest-Delta zum vorigen finalen Release (`./gradlew complianceDelta`, Befehle im [Release-Ablauf](releases.md#wer-ein-release-anlegt)) bzw. ein Probelauf des Pakets und die Faktenblätter, mindestens durch Personalrat und Betriebsverantwortlichen.
 
@@ -72,7 +72,7 @@ Alle Adapter weisen ihren Agenten an, `AGENTS.md`, dieses Organisationsdokument 
 
 ```mermaid
 flowchart TD
-    A[Maintainer nennt ein Ziel] --> B[Product Manager:\nKlärungsfragen → Feature-Spezifikation → GitHub-Issues]
+    A[Maintainer nennt ein Ziel] --> B[Product Manager:\nKlärungsfragen → Epic mit Spezifikation → Sub-Issues]
     B --> C{Maintainer genehmigt Issues?}
     C -- anpassen --> B
     C -- ja --> D[Orchestrator verteilt einen\nDeveloper pro Issue]
@@ -85,9 +85,9 @@ flowchart TD
 ```
 
 1. **Ziel** — Der Maintainer gibt dem Orchestrator ein Ziel ("einen Confluence-Connector hinzufügen").
-2. **Definition** — Der Product Manager recherchiert Repository-Kontext, stellt seine Klärungsfragen **einmal, gebündelt, im Voraus** (durch den Orchestrator weitergeleitet), schreibt dann die Feature-Spezifikation in `docs/features/` und erstellt beschriftete GitHub-Issues, bei Stufe Zustimmung erst nach dem [Stakeholder-Review](#wann-ein-stakeholder-review-läuft).
+2. **Definition** — Der Product Manager recherchiert Repository-Kontext, stellt seine Klärungsfragen **einmal, gebündelt, im Voraus** (durch den Orchestrator weitergeleitet), schreibt dann die Spezifikation in den Body des Epics (nicht ins Repository) und erstellt beschriftete Sub-Issues, bei Stufe Zustimmung erst nach dem [Stakeholder-Review](#wann-ein-stakeholder-review-läuft).
 3. **Genehmigung** — Der Maintainer prüft die Issues, bevor die Implementierung beginnt.
-4. **Implementierung** — Für jedes genehmigte Issue arbeitet ein Entwickler-Agent in einem isolierten Worktree auf einem `feature/<issue-id>_<desc>`-Branch und öffnet einen PR unter Verwendung des PR-Templates (einschließlich KI-Agenten-Offenlegung).
+4. **Implementierung** — Für jedes genehmigte Issue arbeitet ein Entwickler-Agent in einem isolierten Worktree auf einem `feature/<issue-id>_<desc>`-Branch und öffnet einen PR unter Verwendung des PR-Templates (einschließlich KI-Agenten-Offenlegung). Was die Spezifikation festlegt, landet im selben PR an seinem dauerhaften Ort: Verhalten im Handbuch, Begründungen im ADR, Details im Code ([AGENTS.md](../AGENTS.md#was-dauerhaft-im-repository-liegt)).
 5. **Review** — Der Code Reviewer und CI agieren als Schranken. Befunde gehen zurück zum Entwickler; der PR ist nur bereit, wenn beide bestehen. Ein formales Approval in GitHub ist nicht erforderlich — die Schranke ist der Reviewer selbst, nicht der Klick darauf.
    - **Befunde werden im selben PR behoben — Folge-Issues sind die Ausnahme.** Das gilt auch für vorbestehende Defekte und benachbarte Kleinigkeiten, auf die Review oder Implementierung stoßen: Wer ohnehin an einer Stelle arbeitet, schaut links und rechts und nimmt mit, was dort liegt. Ein Folge-Issue ist nur zulässig, wenn der Befund einen sehr großen Umbau erfordert oder einen komplett anderen Scope hat. Lieber ein paar Issues weniger im Backlog als billige Korrekturen, die auf später verschoben werden.
 6. **Merge** — Gemergt wird von einem Maintainer des Projekts oder vom **Koordinator mit ausdrücklicher Maintainer-Freigabe**: Er darf reviewte PRs per `gh pr merge --auto --squash` zum Auto-Merge freigeben; GitHub merged dann selbst, sobald die Required Checks grün sind. Entwickler- und Review-Agenten mergen nie. Jede weitere Änderung dieser Richtlinie wird hier festgehalten.
@@ -114,7 +114,7 @@ Der Koordinator startet die Rolle `behoerdenkontakt` **vor jedem Release**, bevo
 
 Issues sind die Arbeitseinheit und müssen ausreichend in sich geschlossen sein, damit jeder Entwickler — Mensch oder Agent — sie aufgreifen kann. Jedes Issue enthält:
 
-- **Kontext / Warum** — Link zur Vision, zum Epic oder zur Feature-Spezifikation
+- **Kontext / Warum** — Link zum Epic mit seiner Spezifikation oder zur Vision
 - **Ziel / Ergebnis** — ein Satz, der beschreibt, was danach möglich ist
 - **Abnahmekriterien** — einzeln testbare Checkboxen; "Dokumentation aktualisiert" ist ein ständiges Kriterium für nutzerseitige oder architektonische Änderungen. Ändert das Issue sichtbares Verhalten oder Konfiguration, benennt ein Kriterium das betroffene Handbuchkapitel und den Abschnitt („`docs/handbuch/spaces/suche.md`, Stufe 8 nachgezogen") oder stellt ausdrücklich fest: „kein Handbuchkapitel betroffen"
 - **Umfang / Außerhalb des Umfangs** — explizite Grenzen
