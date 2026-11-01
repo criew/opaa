@@ -233,8 +233,9 @@ export default function App() {
                   active. */}
                 <Route path="spaces" element={<SpacesOverviewPage />} />
                 <Route path="spaces/new" element={<SpaceCreatePage />} />
-                {/* Every asset type's pages are a global area too: bare global frame, no secondary column. The catalog is
-                  their one overview (ADR-0039); the former type overviews lead into it. */}
+                {/* Every asset type's pages are a global area too: bare global frame, no secondary
+                  column. The catalog is their one overview (ADR-0039); the former type overviews
+                  lead into it. */}
                 <Route element={<GlobalAreaLayout />}>
                   <Route path="catalog" element={<CatalogPage />} />
                   <Route path="catalog/new" element={<CatalogNewPage />} />

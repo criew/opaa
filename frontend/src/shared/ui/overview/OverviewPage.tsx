@@ -278,7 +278,7 @@ const cardSx = {
 } as const
 
 /**
- * The card shell of an overview with the quiet border and hover lift . Motion stays on
+ * The card shell of an overview with the quiet border and hover lift. Motion stays on
  * transform only (guidelines 4.5). The whole card is one real link (new tab, middle click,
  * history); a card with controls of its own is an asset tile (`AssetTile`) instead.
  */

@@ -346,8 +346,8 @@ Mail-Sender ergänzt ADR-0019.
 
 ## Stakeholder-Zusagen
 
-Bewertungen aus Sicht Betrieb/Informationssicherheit und Personalrat (darin die zwölf Bedingungen
-des Personalrats für eine Zustimmung); Stand der Zusagen:
+Bewertungen aus Sicht Betrieb/Informationssicherheit und Personalrat, mit den zwölf Bedingungen
+des Personalrats für eine Zustimmung; Stand der Zusagen:
 
 | Zusage | Stand | geändert mit |
 |---|---|---|
