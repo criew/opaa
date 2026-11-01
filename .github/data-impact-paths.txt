@@ -80,6 +80,7 @@ backend/src/main/java/io/opaa/health/VectorStoreHealthIndicator.java
 deploy/helm/opaa/templates/networkpolicies.yaml
 backend/src/main/java/io/opaa/security/TargetAddressValidator.java
 backend/src/main/java/io/opaa/security/PinnedAddressResolverProvider.java
+backend/src/main/java/io/opaa/security/ResolutionPins.java
 
 # Installation: model, sign-in and mail probes, answer file, mail target allowlist
 backend/src/main/java/io/opaa/installation/**/*.java
@@ -91,6 +92,7 @@ backend/src/main/java/io/opaa/retrieval/search/VectorChunkSearch.java
 backend/src/main/java/io/opaa/retrieval/ranking/RerankStage.java
 backend/src/main/java/io/opaa/searchadmin/SearchStatusService.java
 backend/src/main/java/io/opaa/metadata/ChunkContextPrefix.java
+backend/src/main/java/io/opaa/metadata/CoreContextPrefixSettings.java
 
 # Prompts and answer generation: system prompts and their inputs
 backend/src/main/java/io/opaa/prompt/**/*.java
