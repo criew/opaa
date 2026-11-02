@@ -42,7 +42,7 @@ ab, steht das mit der Zahl der Mitglieder im Nachweisprotokoll.
 **Gut zu wissen:**
 
 - Die Systemverwaltung erscheint an einer Bibliothek mit eigenem Satz: Sie verwaltet, liest aber
-  nicht ([Rollen am Objekt](../konten-und-rechte/berechtigungen.md#4-rollen-an-einem-arbeitsmittel)).
+  nicht ([Rollen am Objekt](arbeitsmittel-teilen.md)).
 - Wer an einem vergangenen Tag Zugriff hatte, beantwortet die
   [Stichtagsauskunft](../verwalten/stichtagsauskunft.md) der Revision.
 - Warum eine Antwort ein Dokument nicht nennt, klärt die Systemverwaltung mit der

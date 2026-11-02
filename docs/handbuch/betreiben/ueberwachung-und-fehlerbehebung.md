@@ -22,7 +22,7 @@ Installation beschreibt die [Betriebsübersicht](README.md).
   Bibliotheken auch auf `DEBUG` nicht. Ausgaben eingebundener Bibliotheken auf `DEBUG`/`TRACE` und
   Datenbankfehler können Inhalte nennen: Ein Log über `INFO` wie Inhalte behandeln.
 - **Handlungen von Personen** stehen nicht im Log, sondern im Nachweis- und Revisionsprotokoll der
-  Anwendung ([Berechtigungen](../konten-und-rechte/berechtigungen.md)).
+  Anwendung ([Berechtigungen](../nachschlagen/rechte-matrix.md)).
 - **Metriken** im Prometheus-Format unter `/actuator/prometheus`, einzeln unter `/actuator/metrics`.
   Sie nennen Pfade, Bibliotheken und Last und sind deshalb ohne Anmeldung nur auf einem eigenen
   Management-Port erreichbar (`MANAGEMENT_SERVER_PORT`, unter Kubernetes `backend.managementPort`),
@@ -39,7 +39,7 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `opaa_query_tokens_total` | Token der Antwortaufrufe |
 | `opaa_indexing_documents_total` | verarbeitete Dokumente nach Ergebnis |
 | `opaa_indexing_embedding_inputs_total` | Chunks an der Eingabegrenze des Embedding-Modells, nach Ergebnis (`split`, `cut`, `unverified`; [Modelle](modell-endpunkte.md)) |
-| `opaa_indexing_suspicious_patterns_total` | verarbeitete Dokumente mit auffälligen Mustern nach Bibliothek (`library`: Kennung, für private Bibliotheken gemeinsam `private`) und Art (`class`: `INVISIBLE_CHARACTERS`, `ROLE_TOKEN`, `INSTRUCTION_PHRASE`, `DATA_URL_PLACEHOLDER`; [Wissensbibliotheken](../arbeitsmittel/wissensbibliotheken/README.md#61-ergebnis-je-dokument)) |
+| `opaa_indexing_suspicious_patterns_total` | verarbeitete Dokumente mit auffälligen Mustern nach Bibliothek (`library`: Kennung, für private Bibliotheken gemeinsam `private`) und Art (`class`: `INVISIBLE_CHARACTERS`, `ROLE_TOKEN`, `INSTRUCTION_PHRASE`, `DATA_URL_PLACEHOLDER`; [Wissensbibliotheken](../nachschlagen/wie-indexierung-arbeitet.md#laufprotokoll)) |
 | `opaa_malware_scans_total` | Virenprüfungen nach Ergebnis (`clean`, `infected`, `failed`; [Netz und Sicherheit](netz-und-sicherheit.md#virenprüfung-der-aufgenommenen-dateien)) |
 | `opaa_siem_export_total` | Ausleitung an das Sicherheitsmonitoring nach Ergebnis (`sent` je Eintrag, `failed` je gescheiterter Zustellung, `gap` je gemeldeter Lücke) |
 | `opaa_siem_export_lag_seconds` | Alter des ältesten Eintrags, der noch nicht ausgeleitet ist, `0` ohne offene Einträge; wächst der Wert stetig, hält eine offene Transaktion oder der Empfänger die Ausleitung an |
@@ -60,7 +60,7 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `hikaricp_connections_*` | Connection Pool der Datenbank |
 | `jvm_memory_used_bytes`, `jvm_memory_max_bytes` | Speicher der JVM |
 
-Weitere Metriken: [Suche](../spaces/suche.md#102-metriken-und-log); Einsammeln und Alarme unter Kubernetes:
+Weitere Metriken: [Suche](ueberwachung-und-fehlerbehebung.md); Einsammeln und Alarme unter Kubernetes:
 [Betriebsüberwachung](kubernetes.md#betriebsüberwachung).
 
 ## Ausleitung an ein Sicherheitsmonitoring
@@ -81,7 +81,7 @@ dort neben den Ereignissen anderer Fachverfahren erscheint.
   nennen. Gehört das Objekt genau einer Person (Konto, Zugangstoken, persönlicher Bereich, private
   Bibliothek, privater Prompt), fehlen Kennung und Name immer. Wer gehandelt hat, klärt nur die
   anlassbezogene Klärung in OPAA
-  ([Berechtigungen](../konten-und-rechte/berechtigungen.md#10-systemrollen-und-vollmachten)).
+  ([Berechtigungen](../verwalten/systemrollen.md)).
 - **Lesezugriff:** Eingeschaltet liest die Ausleitung das Revisionsprotokoll vollständig der Reihe
   nach, sonst nicht. Das ist neben der Revision, der Selbstauskunft und der Prüfsummenkette der
   einzige Leser.

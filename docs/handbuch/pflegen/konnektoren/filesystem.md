@@ -19,7 +19,7 @@ flowchart LR
 ```
 
 - **Anmeldung:** keine. Es gilt das, was die Kennung des Backend-Prozesses lesen darf. Ein
-  [Zugang](../../arbeitsmittel/zugaenge.md) ist nicht möglich; Zugangsdaten eines Netzlaufwerks gehören in den Mount.
+  [Zugang](../../verwalten/zugaenge.md) ist nicht möglich; Zugangsdaten eines Netzlaufwerks gehören in den Mount.
 - **Liest:** alle regulären Dateien unter dem Pfad, deren Inhalt ein unterstütztes Format ist, samt
   Unterverzeichnissen. Nicht gelesen werden versteckte Einträge, Windows-Systemordner und was die
   Ausschlussmuster treffen (Abschnitt 3).
@@ -152,7 +152,7 @@ Parameter stehen unter `opaa.indexing.filesystem.*` (`OPAA_INDEXING_FILESYSTEM_*
 | „Dateiendung passt nicht zum erkannten Inhalt (erkannt: …)" | wird trotzdem indiziert | nichts |
 | „Nicht lesbar, übersprungen" | Unterverzeichnis darf nicht betreten werden; sein Bestand bleibt | Rechte der Kennung 65532 prüfen |
 | „In der Quelle nicht mehr gefunden, entfernt" | Löscherkennung | nichts |
-| Kontingent-Meldung, „kein extrahierbarer Text", „Verarbeitung fehlgeschlagen" | wie bei jeder Quelle | Kapitel [Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md) |
+| Kontingent-Meldung, „kein extrahierbarer Text", „Verarbeitung fehlgeschlagen" | wie bei jeder Quelle | Kapitel [Wissensbibliotheken](../../nachschlagen/wie-indexierung-arbeitet.md) |
 | „Geplanter Lauf übersprungen: Indizierung läuft bereits" | Zeitplan traf einen laufenden Lauf | nichts |
 
 Eine Datei, die zwischen Aufzählung und Verarbeitung verschwindet oder gesperrt ist, erscheint als

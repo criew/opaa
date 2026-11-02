@@ -3,7 +3,7 @@
 OPAA bringt kein eigenes Sprachmodell mit, sondern ruft Modelle über Endpunkte auf, die das Haus
 festlegt — im eigenen Rechenzentrum oder bei einem Anbieter. Dieses Kapitel beschreibt, welche
 Modelle es braucht, wie sie angebunden werden und woran es liegt, wenn sie nicht antworten. Wie die
-Modelle in die Suche eingreifen, steht im Kapitel [Suche](../spaces/suche.md).
+Modelle in die Suche eingreifen, steht im Kapitel [Suche](../nachschlagen/wie-die-suche-arbeitet.md).
 
 > **Beispiel.** Ein Haus betreibt einen Modellserver im Rechenzentrum. Die Einbettung läuft dort mit
 > `bge-m3` und wird einmal bei der Installation festgelegt. Für den Chat legt die Systemverwaltung in der
@@ -250,7 +250,7 @@ Typische Werte: ein unverändert gezogenes Ollama-Modell 2.048, die Embedding-Mo
   Kontextpräfixes behalten den Zuschnitt. Kürzt der Endpunkt dort einen Chunk, behält OPAA den
   gekürzten Vektor, damit der Lauf durchläuft und die Vektorsuche umschalten kann. Das Log warnt,
   die Kennzahl zählt den Chunk als `cut`, und das Dokument wird für den
-  [Nachzug](../arbeitsmittel/wissensbibliotheken/README.md#72-pipeline-versionen-und-nachzug) vorgemerkt. Der Nachzug liest
+  [Nachzug](../verwalten/suche-und-indexierung.md#den-bestand-nachziehen) vorgemerkt. Der Nachzug liest
   es aus der Quelle neu und teilt den Chunk dabei. Nur wenn der Endpunkt den Chunk ablehnt statt
   ihn zu kürzen, scheitert das Dokument.
 - **Grenze zu hoch eingestellt:** Kürzt der Endpunkt früher als eingestellt, bemerkt OPAA das nicht.
@@ -355,7 +355,7 @@ flowchart LR
    Neueinbettung ihn gekürzt ein und merkt sein Dokument für den Nachzug vor; das Log nennt die
    Pipeline. Danach den Nachzug dieser Pipeline über die Admin-API aufrufen, mit ihrer Kennung als
    `pipelineId` und ihrer aktuellen Version als `belowVersion`, bis er `done` meldet
-   ([Pipeline-Versionen und Nachzug](../arbeitsmittel/wissensbibliotheken/README.md#72-pipeline-versionen-und-nachzug)). Er
+   ([Pipeline-Versionen und Nachzug](../verwalten/suche-und-indexierung.md#den-bestand-nachziehen)). Er
    teilt den Chunk.
 
 **Verwerfen.** Bis zum Umschalten kehrt „Wechsel verwerfen" im Reiter „Einbettung" zum bisherigen
@@ -441,7 +441,7 @@ Transkriptionsmodell](#rerank--und-transkriptionsmodell)), oder schon die
 [Installation](installation.md#schritte) übernimmt ihn aus ihrem optionalen Schritt Rerank-Modell
 und schaltet das Reranking ein. **Empfohlen ist sie überall, wo ein schneller Endpunkt zur Verfügung steht:** Sie holt
 Fundstellen, die im Kandidatenfenster liegen, aber nicht weit genug oben, nach vorn. Was die Stufe in
-der Suche tut, steht unter [Suche](../spaces/suche.md#stufe-8-reranking).
+der Suche tut, steht unter [Suche](../nachschlagen/wie-die-suche-arbeitet.md#die-stufen).
 
 Zur Wahl des Endpunkts:
 
@@ -665,7 +665,7 @@ markieren und erkennbar machen, soweit das technisch möglich ist (Art. 50 Abs. 
 Behörde, die OPAA unter eigenem Namen in Betrieb nimmt, kann selbst Anbieterin werden. Eine solche Markierung im Text setzt das Modell, nicht OPAA: OPAA schickt die
 Anfrage an einen Endpunkt und hat auf die Erzeugung keinen Zugriff.
 
-Was OPAA selbst dazu beiträgt, steht in den Kapiteln [Suche](../spaces/suche.md) und
+Was OPAA selbst dazu beiträgt, steht in den Kapiteln [Suche](../nachschlagen/wie-die-suche-arbeitet.md) und
 [Branding](../verwalten/branding.md): der Hinweis im Chat, das Kennzeichen an jeder Antwort, der Vermerk beim
 Kopierknopf und das Kennzeichnungsfeld in der Schnittstelle. Das ersetzt keine Markierung im Text.
 OPAA fügt keinem Text ein eigenes Wasserzeichen und kein signiertes Manifest hinzu.
@@ -827,7 +827,7 @@ eingerichtetes Modell deshalb nicht; sie wertet das Detail `NOT_CONFIGURED` aus 
 | „Das Umschalten auf das neue Modell läuft bereits" beim Verwerfen | Der Vektorindex für das neue Modell wird schon gebaut; den Abschluss abwarten |
 | HTTP `429` bei Probeeinbettung oder Wechsel | Die Grenze von 30 Aufrufen je Stunde ist erreicht ([Modell wechseln](#modell-wechseln), „Grenzen") |
 | Neueinbettung endet „fehlgeschlagen" | Endpunkt nicht erreichbar oder Timeout zu kurz; Log prüfen, beheben und fortsetzen. Lehnt der Endpunkt einzelne Chunks als zu lang ab, statt sie zu kürzen, scheitern deren Dokumente bei jedem Versuch. Dann die Bibliothek neu aufbauen ([Falle bei einer Neuindizierung](aktualisierung.md#was-ein-update-mit-dem-index-macht)) |
-| Log: Chunks gekürzt eingebettet, Dokument für den Nachzug vorgemerkt | Die Neueinbettung hat einen zu langen Chunk mit gekürztem Vektor geschrieben. Das Log nennt die Pipeline. Nach Abschluss deren Nachzug über die Admin-API aufrufen ([Pipeline-Versionen und Nachzug](../arbeitsmittel/wissensbibliotheken/README.md#72-pipeline-versionen-und-nachzug)); er teilt den Chunk |
+| Log: Chunks gekürzt eingebettet, Dokument für den Nachzug vorgemerkt | Die Neueinbettung hat einen zu langen Chunk mit gekürztem Vektor geschrieben. Das Log nennt die Pipeline. Nach Abschluss deren Nachzug über die Admin-API aufrufen ([Pipeline-Versionen und Nachzug](../verwalten/suche-und-indexierung.md#den-bestand-nachziehen)); er teilt den Chunk |
 | Embedding-Aufrufe brechen nach gleicher Zeit ab, Dokumente scheitern | `OPAA_OPENAI_EMBEDDING_TIMEOUT` zu kurz für Modell und Hardware |
 | Log: Chunk erreichte die Eingabegrenze und wurde geteilt | Der Chunk war für das Modell zu lang; OPAA hat ihn geteilt, nichts ist verloren. Häufen sich Teilungen, Grenze und Endpunkt prüfen ([Eingabegrenze](#eingabegrenze-des-embedding-modells)) |
 | Log: Endpunkt meldete keine Tokenzahl | Eine stille Kürzung ist nicht auszuschließen; einen Endpunkt nutzen, der die Tokenzahl meldet, oder die Zielgröße senken |

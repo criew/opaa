@@ -29,7 +29,7 @@ Docker prüft.
 ## Füllstand der Kernfelder auf diesem Korpus (Issue #1070, Teil 2)
 
 Die Eintrittsbedingung des Kernfeld-Filters verlangt einen ausgewiesenen Füllstand
-(`docs/handbuch/arbeitsmittel/wissensbibliotheken/metadaten.md`). Für den
+(`docs/handbuch/nachschlagen/metadaten.md`). Für den
 Eval-Korpus misst ihn `io.opaa.eval.VerwaltungCorpusMetadataFillLevelTest` Docker-frei: Jede
 Korpusdatei läuft durch das produktive `MarkdownDocumentFormat` und den produktiven
 `CoreMetadataExtractor` mit dem ausgelieferten Vokabular — dieselben zwei Schritte wie im

@@ -1,7 +1,7 @@
 # Format: E-Mail (EML, MSG)
 
 Pipeline `email`, Version 6. Der gemeinsame Rahmen aller Format-Pipelines steht
-im Kapitel [Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md), Abschnitt 5; der Anhangsweg dort in Abschnitt 5.7.
+im Kapitel [Wissensbibliotheken](../wie-indexierung-arbeitet.md), Abschnitt 5; der Anhangsweg dort in Abschnitt 5.7.
 
 ## 1. Zulassung
 
@@ -79,7 +79,7 @@ Am Chunk trägt die Mail-Pipeline nur Ortsangabe und Fundstellen-Anker wie jede 
 
 Die Kopfdaten selbst sind **Werte des Metadatenschemas am Dokument**, keine
 mail-eigenen Chunk-Schlüssel — dieselbe Mechanik wie bei den Kernfeldern, mit Herkunft
-„deterministisch" und Extraktionsversion (siehe [Metadaten](../../arbeitsmittel/wissensbibliotheken/metadaten.md), Abschnitt 2a):
+„deterministisch" und Extraktionsversion (siehe [Metadaten](../metadaten.md), Abschnitt 2a):
 
 | Feld | Inhalt | Filterbar |
 |---|---|---|
@@ -157,7 +157,7 @@ Schlüssel unter `opaa.indexing.mail.*`:
 | `max-attachment-bytes` | 50 MiB | je Anhang |
 
 Die Verschachtelungstiefe für Mail-in-Mail ist kein eigener Mail-Schlüssel, sondern
-die allgemeine `opaa.indexing.attachments.max-depth` (siehe [Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md)) - dieselbe
+die allgemeine `opaa.indexing.attachments.max-depth` (siehe [Wissensbibliotheken](../wie-indexierung-arbeitet.md)) - dieselbe
 Grenze gilt für jede Anhangskette, unabhängig vom Konnektor, ebenso das Budget je Ausgangsdokument
 über alle Ebenen (`opaa.indexing.attachments.max-per-root`, `max-bytes-per-root`).
 

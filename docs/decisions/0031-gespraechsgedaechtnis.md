@@ -15,7 +15,7 @@ im Kontext sind), **harte Vergessensgrenze** (eine Rahmenangabe aus Runde 1 ist 
 Der Folgefragen-Pfad war ungemessen. Bindend aus [ADR-0014](0014-produktausrichtung-oeffentliche-verwaltung.md)
 und [ADR-0068](0068-mitbestimmungsfaehigkeit.md):
 kein personenbezogener Auswertungspfad, und was eine Antwort beeinflusst, muss für die Person
-nachvollziehbar sein. Das Verhalten beschreibt das Handbuch ([Suche](../handbuch/spaces/suche.md)).
+nachvollziehbar sein. Das Verhalten beschreibt das Handbuch ([Suche](../handbuch/nachschlagen/wie-die-suche-arbeitet.md)).
 
 ## Entscheidung
 

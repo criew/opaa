@@ -22,7 +22,7 @@ flowchart LR
 ```
 
 - **Anmeldung:** keine oder HTTP Basic, eigene Zugangsdaten der Bibliothek
-  ([Zugänge](../../arbeitsmittel/zugaenge.md), „Eigene Zugangsdaten der Bibliothek"). Zugangsdaten gelten **nur für
+  ([Zugänge](../../verwalten/zugaenge.md), „Eigene Zugangsdaten der Bibliothek"). Zugangsdaten gelten **nur für
   den Ursprung des Feeds**. Ein Zugang ist möglich.
 - **Liest:** je Eintrag `title`, `link`, `description` und `pubDate`, die Detailseite und ihre
   Anlagen. Erweiterungen in fremden Namensräumen (`content:encoded`, `media:*`) werden

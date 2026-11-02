@@ -155,7 +155,7 @@ nicht entfernt und nicht als gültig behandelt. Ein Zwangs- und Verweigerungsapp
 (Verweigerung bei fehlendem Beleg, Schalter am Space, inhaltliche Deckungsprüfung) ist entschieden
 nicht gebaut: Das Modell sagt selbst, wenn es nichts gefunden hat, fehlende Belege sind im
 Belegfenster sichtbar, und der eigentliche Schaden, ein erfundener Beleg, ist durch die Validierung
-ausgeschlossen. Siehe [Suche](../handbuch/spaces/suche.md).
+ausgeschlossen. Siehe [Suche](../handbuch/nachschlagen/wie-die-suche-arbeitet.md).
 
 ### 15. Nachweis der Organisationsgrenze
 

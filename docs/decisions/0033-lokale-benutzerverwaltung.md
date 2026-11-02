@@ -286,7 +286,7 @@ Platzhalter, gebrandeter HTML-Rahmen; API mit Vorschau, Zurücksetzen und Testve
   Link. Die Bestätigungsmail nennt keinen Namen und sagt „Nicht von Ihnen? Ignorieren“. „Passwort
   vergessen“ nur mit Schalter und Basis-URL, immer `204` nach fester Frist.
   Ein abgeschalteter Fluss ist ohne Sitzung von einer unbekannten Route nicht zu unterscheiden
-  (#1592). Passwort ändern widerruft die übrigen Sitzungen. Abläufe und Fristen: [Benutzerverwaltung](../handbuch/konten-und-rechte/benutzerverwaltung.md).
+  (#1592). Passwort ändern widerruft die übrigen Sitzungen. Abläufe und Fristen: [Benutzerverwaltung](../handbuch/verwalten/konten.md).
 
 ### 12. Übergabe eines lokalen Kontos an eine Anbieteridentität — administrativ angestoßen, von der Person selbst eingelöst
 

@@ -32,10 +32,10 @@ Herkunftsdaten nach Person. Die Funktion ist nicht abgeschaltet, sondern nicht g
 gibt, kann niemand einschalten, auch nicht rückwirkend über die Daten von gestern.
 
 Zwei Wege führen zur Person. Die
-[Selbstauskunft](../handbuch/konten-und-rechte/benutzerverwaltung.md#meine-daten-die-selbstauskunft)
+[Selbstauskunft](../handbuch/arbeiten/meine-daten.md)
 steht nur der Person selbst offen; sie ist die Identität der Anfrage, kein Filter. Für Dritte gibt es
 genau einen Weg, die anlassbezogene Klärung eines Sicherheitsvorfalls
-([Berechtigungen](../handbuch/konten-und-rechte/berechtigungen.md)): Person, Zeitraum und Zweck werden
+([Berechtigungen](../handbuch/nachschlagen/rechte-matrix.md)): Person, Zeitraum und Zweck werden
 vorab festgelegt und begrenzen die Abfrage technisch, eine zweite Person der Revision gibt sie frei.
 Arbeitsrechtliche, disziplinarische und leistungsbezogene Zwecke sind nicht wählbar, und die Fälle
 zählt OPAA ohne Namen für den Bericht an die Personalvertretung. Ein Produkt ohne Aufklärung eines

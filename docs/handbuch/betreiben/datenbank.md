@@ -193,7 +193,7 @@ Neben der Vektorsuche läuft eine klassische Volltextsuche direkt in PostgreSQL,
 dieselbe Wiederherstellung, derselbe Verschlüsselungsnachweis. Der Pfad findet, woran eine
 Vektorsuche strukturell scheitert — Paragrafenverweise, Aktenzeichen, Erlassnummern, seltene
 Fachbegriffe. Wie seine Treffer mit denen der Vektorsuche zusammengeführt werden, steht im Kapitel
-[Suche](../spaces/suche.md#stufe-5-volltextsuche); scheitert die Volltextabfrage, scheitert die Frage, statt
+[Suche](../nachschlagen/wie-die-suche-arbeitet.md#die-stufen); scheitert die Volltextabfrage, scheitert die Frage, statt
 still eine halbe Suche zu liefern.
 
 ### Was zu tun ist
@@ -204,7 +204,7 @@ seinen Vektor.
 **Ändert ein Update die Bildung des Volltextindex**, liegen die betroffenen Einträge in einer älteren
 Fassung, und die Seite „Suche & Indexierung" weist die Bibliotheken mit **Nachzug ausstehend** aus.
 Der Pfad findet diese Einträge weiter, ihnen fehlen nur die Lexeme der neuen Fassung. Nachgezogen wird
-über den [Pipeline-Nachzug](../arbeitsmittel/wissensbibliotheken/README.md#72-pipeline-versionen-und-nachzug)
+über den [Pipeline-Nachzug](../verwalten/suche-und-indexierung.md#den-bestand-nachziehen)
 (`POST /api/v1/admin/indexing/pipeline-reindex`, eine Oberfläche dafür gibt es noch nicht); er erfasst
 solche Abschnitte auch dann, wenn sich an der Aufbereitung des Dokuments sonst nichts geändert hat.
 Ein Update, das ihn nötig macht, nennen die Notizen des Release.

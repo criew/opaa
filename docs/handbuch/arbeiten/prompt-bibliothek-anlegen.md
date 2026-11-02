@@ -27,7 +27,11 @@ Jeder Platzhalter im Text bekommt eine Zeile in der **Variablentabelle**: Beschr
 mehrzeiliger Text, Auswahl, Datum), Pflicht und Vorbelegung. Systemvariablen setzen das heutige
 Datum und Ihren Namen ein. Die **Vorschau** zeigt, was beim Einsetzen herauskommt.
 
-Vor dem Speichern prüft der Dialog alles auf einmal und nennt jeden Befund.
+Vor dem Speichern prüft der Dialog alles auf einmal und nennt jeden Befund. Fest gelten: Befehl aus
+Kleinbuchstaben, Ziffern und einzelnen Bindestrichen, eindeutig in der Bibliothek, höchstens 64
+Zeichen; Titel 255, Beschreibung 2000, Text 8000 Zeichen; höchstens 20 Variablen, eine Auswahl mit
+1 bis 50 Werten. `{{ aktenzeichen }}` speichert OPAA als `{{aktenzeichen}}`; jede andere Folge in
+doppelten Klammern, etwa `{{akten zeichen}}`, lehnt es ab.
 
 **Damit andere den Prompt nutzen**, braucht es zwei Dinge: ein Leserecht an der Bibliothek (Reiter
 „Freigaben“) und die Zuordnung zu ihrem Space ([Den Katalog nutzen](katalog.md#in-einem-space-verwenden)).
@@ -41,7 +45,10 @@ Vor dem Speichern prüft der Dialog alles auf einmal und nennt jeden Befund.
 | Verwalter | zusätzlich Name, Beschreibung und Rechte ändern |
 | Eigentümer | zusätzlich die Bibliothek löschen |
 
+An „Alle Konten“ geht höchstens die Rolle *Bearbeiter*.
+
 **Gut zu wissen:**
 
 - Ein Prompt ist reiner Text: Er bindet kein Wissen und wählt kein Modell.
-- Ein Text hat höchstens 8000 Zeichen und 20 Variablen.
+- Im Nachweisprotokoll stehen Anlegen, Ändern und Löschen, bei einer Änderung nur die Namen der
+  geänderten Felder, nie Titel oder Text.

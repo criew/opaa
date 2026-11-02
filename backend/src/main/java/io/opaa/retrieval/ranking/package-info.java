@@ -1,6 +1,6 @@
 /**
  * Stages 6-9: per-list selection, rank fusion, reranking and document completion - the stages that
- * merge and order what the searches found, never adding to it (docs/handbuch/spaces/suche.md,
- * Stufen 6 bis 9).
+ * merge and order what the searches found, never adding to it
+ * (docs/handbuch/nachschlagen/wie-die-suche-arbeitet.md).
  */
 package io.opaa.retrieval.ranking;

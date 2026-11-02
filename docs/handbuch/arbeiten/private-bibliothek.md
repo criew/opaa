@@ -11,14 +11,15 @@ Außer Ihnen liest niemand diese Bibliothek, auch die Systemverwaltung nicht.
 
 1. Im [Katalog](katalog.md) „Neuer Katalogeintrag“, dann „Wissen“ und die Quellart wählen.
 2. In der Zeile „Verbindung“ den Zugang mit dem Zusatz **„· privat“** wählen. Der Hinweis „nur für
-   Sie, später nicht änderbar“ gilt: Privat bleibt privat.
+   Sie, später nicht änderbar“ gilt: Privat bleibt privat. Die Zeile erscheint nur, wenn Sie auf
+   dem Zugang schon ein Konto verbunden haben.
 3. „Umfang“ und „Zeitplan“ wie bei jeder [Bibliothek](bibliothek-anlegen.md) setzen. Zugangsdaten
    und Freigaben entfallen; OPAA meldet sich mit Ihrem verbundenen Konto an.
 4. Prüfen und „Bibliothek anlegen“ wählen.
 5. Die Bibliothek einem eigenen Space zuordnen, am einfachsten dem Standard-Space.
 
 Erkennbar ist sie an der Marke **„Privat“** mit Schloss. Im Chat tragen ihre Belege den Zusatz
-„Private Quelle“; das sehen nur Sie. Andere Mitglieder eines Space sehen weder die Zuordnung noch
+„Private Quelle“, unter der Antwort steht „Private Quellen im Kontext“; das sehen nur Sie. Andere Mitglieder eines Space sehen weder die Zuordnung noch
 einen Hinweis darauf.
 
 **Wenn sie ruht**, bleibt der Bestand durchsuchbar, wird aber nicht aktualisiert. Der Reiter
@@ -34,7 +35,7 @@ einen Hinweis darauf.
 **Speicher.** Alle Ihre privaten Bibliotheken teilen sich ein Kontingent. Den Verbrauch zeigt der
 Kopf der Detailseite als „… von … privat“. Ist es voll, heißt der Zustand „Kontingent voll“; neue
 Dateien kommen dann erst wieder hinzu, wenn Platz frei wird oder die Systemverwaltung die Grenze
-erhöht.
+(ab Werk 10 GiB je Person) erhöht.
 
 ## Löschen
 
@@ -43,6 +44,7 @@ erhöht.
 
 Gelöscht werden Dokumente, Index, Originale und Zuordnungen. Belege in Ihren Chats heißen danach
 „Quelle entfernt“, der Text der Antworten bleibt. Die Dateien beim Anbieter bleiben unverändert.
+Läuft gerade eine Indexierung, trägt die Bibliothek bis zum Abschluss „Wird gelöscht“.
 
 **Gut zu wissen:**
 

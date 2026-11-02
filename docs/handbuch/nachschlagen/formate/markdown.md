@@ -1,7 +1,7 @@
 # Format: Markdown
 
 Pipeline `markdown`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines
-steht im Kapitel [Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md), Abschnitt 5.
+steht im Kapitel [Wissensbibliotheken](../wie-indexierung-arbeitet.md), Abschnitt 5.
 
 ## 1. Zulassung
 
@@ -32,7 +32,7 @@ einer eigenen, kleinen Zustandsmaschine.
 
 Zielgröße `chunk-target-characters`, größere Abschnitte werden ohne Textverlust geteilt, Abschnitte unter
 200 Zeichen unter derselben übergeordneten Überschrift zusammengelegt
-(Kapitel [Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md), Abschnitt 7.1), keine Überlappung, Überschriftenzeile am Anfang jedes Chunks.
+(Kapitel [Wissensbibliotheken](../wie-indexierung-arbeitet.md), Abschnitt 7.1), keine Überlappung, Überschriftenzeile am Anfang jedes Chunks.
 
 ## 4. Metadaten am Chunk
 

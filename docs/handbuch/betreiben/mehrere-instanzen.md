@@ -290,7 +290,7 @@ flowchart LR
 
 Auch den Termin einer Wissensbibliothek verbucht die Datenbank: Eine Bibliothek startet ihren
 geplanten Lauf nur einmal, gleich wie viele Instanzen gleichzeitig nachsehen
-([Zeitplan](../arbeitsmittel/wissensbibliotheken/README.md#42-zeitplan)).
+([Zeitplan](../pflegen/bibliothek-aktuell-halten.md#den-zeitplan-setzen)).
 
 ## Wenn eine Instanz ausfällt
 
@@ -313,7 +313,7 @@ flowchart LR
   sie ihren Fortschritt nur, solange der Lauf noch läuft und noch ihr gehört. Ist er aufgegeben,
   merkt sie das beim nächsten Schritt und hört auf, ohne etwas aus dem Bestand zu entfernen.
 - **Die Neueinbettung und das Nachfüllen übernimmt eine andere Instanz**, Läufe und Uploads werden
-  aufgegeben und lassen sich wiederholen ([Wiederanlauf nach Störungen](../arbeitsmittel/wissensbibliotheken/README.md#45-wiederanlauf-nach-störungen)).
+  aufgegeben und lassen sich wiederholen ([Wiederanlauf nach Störungen](../nachschlagen/wie-indexierung-arbeitet.md#läufe)).
 - **Arbeitsdateien** liegen je Instanz in einem eigenen Unterverzeichnis; ein Aufräumlauf entfernt
   die eigenen und die beendeter Instanzen.
 
@@ -379,7 +379,7 @@ flowchart LR
 
 **Für die Installation** zählt die Datenbank, gleich welche Instanz eine Anfrage erreicht: die
 Gesamtgrenzen der Rate-Limits (`OPAA_RATE_LIMIT_*_GLOBAL_MAX_REQUESTS`, auch die der lokalen
-Anmeldung) und der Abflussalarm der [externen KI-Werkzeuge](../spaces/fremdzugaenge.md). Zwei Instanzen lassen
+Anmeldung) und der Abflussalarm der [externen KI-Werkzeuge](../verwalten/externe-ki-werkzeuge.md). Zwei Instanzen lassen
 zusammen also genauso viele Anfragen durch wie eine; den Alarm meldet genau eine von ihnen.
 
 **Je Instanz** zählen alle übrigen Grenzen. Ihr Wert ist deshalb **die Grenze der Installation
@@ -399,7 +399,7 @@ gleichzeitig ausführen, erhält bei zwei Instanzen jede die Hälfte.
 
 Die Modellaufrufe der Metadatenextraktion folgen den Pools der Läufe und Uploads und wachsen ebenso
 mit jeder Instanz. Warum es neben der Grenze je Adresse eine je Konto gibt und wie Zugangstokens
-gezählt werden, steht unter [Suche](../spaces/suche.md#101-ratenbegrenzung).
+gezählt werden, steht unter [Suche](../nachschlagen/konfiguration.md#grenzwerte-im-überblick).
 
 Unter Docker Compose trägt man den geteilten Wert selbst in `.env.docker` ein; der Helm-Chart rechnet
 ihn aus dem Budget der Installation (`backend.installationBudgets`). Ändert sich die Zahl der

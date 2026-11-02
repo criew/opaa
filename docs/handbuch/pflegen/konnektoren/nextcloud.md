@@ -23,7 +23,7 @@ flowchart LR
 
 - **Anmeldung:** Benutzername und App-Passwort als HTTP Basic. Für eine geteilte Bibliothek sind
   das eigene Zugangsdaten der Bibliothek, für eine private Bibliothek ein verbundenes Konto der
-  Person ([Zugänge](../../arbeitsmittel/zugaenge.md), „Eigene Zugangsdaten der Bibliothek" und „Verbundenes Konto
+  Person ([Zugänge](../../verwalten/zugaenge.md), „Eigene Zugangsdaten der Bibliothek" und „Verbundenes Konto
   einer Person"). Ein Zugang ist möglich; für ein verbundenes Konto ist er nötig.
 - **Liest:** die aktuelle Fassung jeder Datei in einem unterstützten Format in einem bis fünfzig
   Ordnern, samt Unterordnern; die Anhänge von Mail-Dateien werden eigene Dokumente.
@@ -47,7 +47,7 @@ flowchart LR
    dürfen Anmeldename und Nutzer-ID abweichen; OPAA fragt die ID bei der Anmeldung ab.
 4. Die Quellart ist ab Werk nur für die Systemverwaltung freigegeben. Wer sonst Bibliotheken anlegen
    soll, bekommt „Konnektorbibliotheken anlegen" für die Quellart oder einen Zugang
-   ([Berechtigungen](../../konten-und-rechte/berechtigungen.md), „Konnektor-Freigabe").
+   ([Berechtigungen](../../nachschlagen/rechte-matrix.md), „Konnektor-Freigabe").
 5. Für private Bibliotheken einen Zugang mit der Besitzart „Person" oder „Bibliothek und Person"
    anlegen und freigeben (Abschnitt 3, „Verbundenes Konto").
 
@@ -71,14 +71,14 @@ Vorgaben für weitere Einstellungen gibt es nicht.
 ### Verbundenes Konto
 
 Über einen Zugang mit der Besitzart „Person" bindet eine Person ihre **eigene** Nextcloud an, ohne
-technischen Nutzer, und speist daraus eine [private Bibliothek](../../arbeitsmittel/wissensbibliotheken/private-bibliotheken.md).
+technischen Nutzer, und speist daraus eine [private Bibliothek](../../arbeiten/private-bibliothek.md).
 
 1. In der eigenen Nextcloud unter *Persönliche Einstellungen › Sicherheit › Geräte & Sitzungen* ein
    App-Passwort mit einem Namen wie „OPAA" erstellen; es wird nur einmal angezeigt. Das Kontopasswort
    gehört nicht in OPAA.
 2. In OPAA unter *Einstellungen › Verbundene Konten* beim Zugang „Verbinden" wählen und Benutzername
    und App-Passwort eintragen. OPAA speichert sie nur, wenn die Anmeldung gelingt
-   ([Benutzerverwaltung](../../konten-und-rechte/benutzerverwaltung.md), „Verbundene Konten").
+   ([Benutzerverwaltung](../../verwalten/konten.md), „Verbundene Konten").
 3. Im Assistenten im Schritt „Quelle einrichten" in der Zeile „Verbindung" den Zugang mit dem Zusatz
    **„privat"** wählen, dann die Ordner.
 

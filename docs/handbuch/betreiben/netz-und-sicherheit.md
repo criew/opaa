@@ -332,7 +332,7 @@ dem Backend den Weg zum Scanner öffnen.
 
 | Geheimnis | Wofür | Ohne eigenen Wert | Bei Verlust oder Wechsel |
 |---|---|---|---|
-| `OPAA_AUTH_JWT_SECRET` | lokal ausgestellte Tokens und Links (Refresh, Einladung, Rücksetzen) | im Modus `oidc` bricht der Start ab | alle lokalen Sitzungen, offenen Links und Zugangstokens [externer KI-Werkzeuge](../spaces/fremdzugaenge.md) werden ungültig — gewollt nach einer [Rücksicherung](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank) |
+| `OPAA_AUTH_JWT_SECRET` | lokal ausgestellte Tokens und Links (Refresh, Einladung, Rücksetzen) | im Modus `oidc` bricht der Start ab | alle lokalen Sitzungen, offenen Links und Zugangstokens [externer KI-Werkzeuge](../verwalten/externe-ki-werkzeuge.md) werden ungültig — gewollt nach einer [Rücksicherung](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank) |
 | `OPAA_CREDENTIALS_ENCRYPTION_KEY` | Zugangsdaten von Quellen, Zugängen und verbundenen Konten, Webhook-Geheimnisse | Speichern solcher Zugangsdaten scheitert; ein im Repository veröffentlichter Schlüssel bricht im Modus `oidc` den Start ab | Verlust: gespeicherte Werte unlesbar, neu einzutragen; Wechsel: [Schlüsselwechsel](#schlüsselwechsel) |
 | `OPAA_SETTINGS_ENCRYPTION_KEY` | Schlüssel der Modelle, SMTP-Passwort, wartende Mails | Speichern solcher Werte scheitert; ein im Repository veröffentlichter Schlüssel bricht im Modus `oidc` den Start ab | Verlust: Werte neu einzutragen ([Modelle](modell-endpunkte.md#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)), wartende Mails verworfen; Wechsel: [Schlüsselwechsel](#schlüsselwechsel) |
 | `OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS`, `OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS` | abgelöste Schlüssel während eines [Schlüsselwechsels](#schlüsselwechsel), nur zum Entschlüsseln | leer: kein Wechsel im Gang | nach dem Wechsel entfernen, getrennt aufbewahren |
@@ -458,14 +458,14 @@ steht, erreicht über die Suche das Modell.
 
 - **Fundstellen als Daten:** Die Chunks stehen im Antwort-Prompt in einem gekennzeichneten Block mit
   einer Kennung je Frage, und die Regeln davor sagen dem Modell, dass ihr Inhalt keine Anweisung ist
-  ([Suche, Antwort erzeugen](../spaces/suche.md#6-antwort-erzeugen)).
+  ([Suche, Antwort erzeugen](../nachschlagen/wie-die-suche-arbeitet.md#die-antwort)).
 - **Bereinigung beim Aufnehmen:** Unsichtbare Zeichen und Steuerzeichen der Schreibrichtung werden
   entfernt, Rollen-Markierungen der Modellformate entschärft; auffällige Muster stehen je Dokument im
   Laufprotokoll und in einer Metrik
-  ([Wissensbibliotheken, Parsen und Chunken](../arbeitsmittel/wissensbibliotheken/README.md#54-parsen-und-chunken)
-  und [Ergebnis je Dokument](../arbeitsmittel/wissensbibliotheken/README.md#61-ergebnis-je-dokument)).
+  ([Wissensbibliotheken, Parsen und Chunken](../nachschlagen/wie-indexierung-arbeitet.md#was-mit-jedem-dokument-passiert)
+  und [Ergebnis je Dokument](../nachschlagen/wie-indexierung-arbeitet.md#laufprotokoll)).
 - **MCP-Server:** Treffer für externe KI-Werkzeuge sind als Fremdinhalt gekennzeichnet
-  ([Externe KI-Werkzeuge, Der MCP-Server](../spaces/fremdzugaenge.md#der-mcp-server)).
+  ([Externe KI-Werkzeuge, Der MCP-Server](../arbeiten/ki-werkzeug-einrichten.md)).
 - **Messen:** Ein Testsatz präparierter Dokumente misst, wie leicht sich das eingesetzte Modell
   lenken lässt ([Modell gegen Prompt-Injection messen](modell-endpunkte.md#modell-gegen-prompt-injection-messen)).
 

@@ -22,7 +22,7 @@ flowchart LR
 ```
 
 - **Anmeldung:** Der Zugang meldet sich selbst an, als **Anwendung** mit Client-ID und
-  Client-Secret einer App-Registrierung im Mandanten des Betreibers ([Zugänge](../../arbeitsmittel/zugaenge.md), „Der
+  Client-Secret einer App-Registrierung im Mandanten des Betreibers ([Zugänge](../../verwalten/zugaenge.md), „Der
   Zugang meldet sich selbst an"). Ein Zugang ist **Pflicht**; die Bibliothek trägt kein Geheimnis.
 - **Konnektor-eigen:** die Anwendungsberechtigung **`Sites.Selected`**, mit der die App nur Sites
   liest, die ihr **einzeln freigegeben** sind.
@@ -58,7 +58,7 @@ flowchart LR
    „Ablaufdatum des Secrets" anlegen; „Scopes" leer lassen, OPAA fragt
    `https://graph.microsoft.com/.default`. „Anmeldung testen" prüft die Angaben.
 6. Festlegen, wer den Zugang nutzen darf; ab Werk nur die Systemverwaltung
-   ([Berechtigungen](../../konten-und-rechte/berechtigungen.md), „Konnektor-Freigabe").
+   ([Berechtigungen](../../nachschlagen/rechte-matrix.md), „Konnektor-Freigabe").
 
 Client-ID und Secret gehen nur an den Token-Endpunkt des Mandanten, das Zugriffstoken nur an
 `https://graph.microsoft.com`. Downloads leitet Graph auf eine kurzlebige Adresse von SharePoint um;
@@ -158,7 +158,7 @@ Für Ordneränderungen gilt also ein Fenster bis zum nächsten Vollabgleich; der
 
 Die Ordnerkette ab der Wurzel der Dokumentbibliothek erscheint als Ordner der Bibliothek; bei mehreren
 Dokumentbibliotheken steht ihr Name vorn. Namen, die keinen Ordner tragen können, und zu tiefe Ketten
-folgen den Regeln des Kapitels [Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md).
+folgen den Regeln des Kapitels [Wissensbibliotheken](../../nachschlagen/wie-indexierung-arbeitet.md).
 
 ## 7. Anhänge
 

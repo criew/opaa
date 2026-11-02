@@ -479,5 +479,5 @@ der Wert abstrakt, ohne die zweite bleibt er unzulässig.
 ## Weiterlesen
 
 - [VISION.md](./VISION.md) — Nordstern, Themenbereiche, Phasen
-- [Spaces](./handbuch/spaces/README.md) und [Roadmap](./ROADMAP.md) — Spaces, Assets, Verteilungsstufen
+- [Spaces](handbuch/pflegen/space-mitglieder.md) und [Roadmap](./ROADMAP.md) — Spaces, Assets, Verteilungsstufen
 - [CONCEPTS.md](./CONCEPTS.md) — Begriffe und Glossar

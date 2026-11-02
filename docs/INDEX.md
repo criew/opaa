@@ -48,7 +48,7 @@ Roadmap für die Ziele.
 
 ### A · Wissensschicht & Retrieval
 
-**[`handbuch/spaces/suche.md`](./handbuch/spaces/suche.md)** · **[Roadmap](./ROADMAP.md)** ·
+**[`handbuch/nachschlagen/wie-die-suche-arbeitet.md`](handbuch/nachschlagen/wie-die-suche-arbeitet.md)** · **[Roadmap](./ROADMAP.md)** ·
 **[ADR-0065](./decisions/0065-hybride-suche-reranking-und-diagnose.md)**
 
 Belegvalidierung, Konfidenz und Quellenbindung · hybride Suche mit Reranking · erklärbares Chunking ·
@@ -57,7 +57,7 @@ Golden Dataset · Deep Research.
 
 ### B · Wissensquellen & Konnektoren
 
-**[`handbuch/arbeitsmittel/wissensbibliotheken/README.md`](./handbuch/arbeitsmittel/wissensbibliotheken/README.md)** · **[Roadmap](./ROADMAP.md)**
+**[`handbuch/nachschlagen/wie-indexierung-arbeitet.md`](handbuch/nachschlagen/wie-indexierung-arbeitet.md)** · **[Roadmap](./ROADMAP.md)**
 
 Uploads und Konnektoren · selbst aktualisierende Wissensblöcke · Zeitpläne und ereignisbasierte
 Aktualisierung · Zielbibliothek als Rechteanker, Quellrechte nur einschränkend und nur wo ein
@@ -65,7 +65,7 @@ Quellsystem sie belastbar liefert · Zuordnung einer Quelle zu genau einer Wisse
 
 ### C · Spaces, Assets & Verteilung
 
-**[`handbuch/spaces/README.md`](./handbuch/spaces/README.md)** · **[Roadmap](./ROADMAP.md)**
+**[`handbuch/pflegen/space-mitglieder.md`](handbuch/pflegen/space-mitglieder.md)** · **[Roadmap](./ROADMAP.md)**
 
 Spaces als Arbeitsräume, Assets als eigenständige Objekte · Zuordnung als harte Grenze gegen Enthaltensein ·
 Wissensbibliotheken als Rechteanker · Verteilungsstufen und Sichtbarkeit · ein Katalog nur mit Lesbarem ·
@@ -92,7 +92,7 @@ personenbezogener Daten.
 
 ### F · Identität, Rechte & Mandanten
 
-**[`handbuch/konten-und-rechte/benutzerverwaltung.md`](./handbuch/konten-und-rechte/benutzerverwaltung.md)** · **[`handbuch/konten-und-rechte/berechtigungen.md`](./handbuch/konten-und-rechte/berechtigungen.md)** ·
+**[`handbuch/verwalten/konten.md`](handbuch/verwalten/konten.md)** · **[`handbuch/nachschlagen/rechte-matrix.md`](handbuch/nachschlagen/rechte-matrix.md)** ·
 **[Roadmap](./ROADMAP.md)**
 
 Anmeldung über den Verzeichnisdienst · Kontenlebenszyklus über SCIM · Gruppen als Rechtesubjekt ·
@@ -115,7 +115,7 @@ Sitzungskosten · Auswertung des KI-Rollouts, durchgehend aggregiert und ohne Pe
 
 ### I · Kanäle & Oberflächen
 
-**[`handbuch/spaces/suche.md`](./handbuch/spaces/suche.md)** · **[Roadmap](./ROADMAP.md)**
+**[`handbuch/nachschlagen/wie-die-suche-arbeitet.md`](handbuch/nachschlagen/wie-die-suche-arbeitet.md)** · **[Roadmap](./ROADMAP.md)**
 
 Web-Oberfläche mit Chat, Fundstellen und Dokumentenübersicht · REST-API für eigene Anbindungen · Anbindung
 an self-hosted Team-Chats · einheitliche Anmeldung und Rechte über alle Kanäle.
@@ -153,7 +153,8 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
     [`konnektoren/`](handbuch/pflegen/konnektoren/README.md)
   - Verwalten und Prüfen ([`verwalten/`](handbuch/verwalten/README.md)): eine Seite je Aufgabe der
     Systemverwaltung und der Revision
-  - Nachschlagen ([`nachschlagen/`](handbuch/nachschlagen/README.md)): Rechte-Matrix
+  - Nachschlagen ([`nachschlagen/`](handbuch/nachschlagen/README.md)): Rechte-Matrix, Glossar,
+    Konfiguration, Formate, Metadaten, wie Indexierung und Suche arbeiten
   - Betreiben ([`betreiben/`](handbuch/betreiben/README.md), Bausteine und Wegweiser) mit
     [`images-und-laufzeit.md`](handbuch/betreiben/images-und-laufzeit.md),
     [`netz-und-sicherheit.md`](handbuch/betreiben/netz-und-sicherheit.md) (Härtung),
@@ -165,21 +166,6 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
     [`konfiguration.md`](handbuch/nachschlagen/konfiguration.md) (Umgebungsvariablen, Grenzwerte),
     [`modelle.md`](handbuch/betreiben/modell-endpunkte.md),
     [`authentifizierung.md`](handbuch/betreiben/authentifizierung.md)
-  - Konten und Rechte ([`konten-und-rechte/`](handbuch/konten-und-rechte/)):
-    [`benutzerverwaltung.md`](handbuch/konten-und-rechte/benutzerverwaltung.md),
-    [`berechtigungen.md`](handbuch/konten-und-rechte/berechtigungen.md)
-  - Arbeiten in Spaces ([`spaces/`](handbuch/spaces/README.md)) mit
-    [`suche.md`](handbuch/spaces/suche.md) (Suchstrecke, Antwort, Belege, Diagnose),
-    [`fremdzugaenge.md`](handbuch/spaces/fremdzugaenge.md)
-  - Arbeitsmittel ([`arbeitsmittel/`](handbuch/arbeitsmittel/)):
-    [`katalog.md`](handbuch/arbeitsmittel/katalog.md),
-    [`wissensbibliotheken/`](handbuch/arbeitsmittel/wissensbibliotheken/README.md) mit
-    [`formate/`](handbuch/nachschlagen/formate/README.md),
-    [`metadaten.md`](handbuch/arbeitsmittel/wissensbibliotheken/metadaten.md) und
-    [`private-bibliotheken.md`](handbuch/arbeitsmittel/wissensbibliotheken/private-bibliotheken.md);
-    [`prompt-bibliotheken.md`](handbuch/arbeitsmittel/prompt-bibliotheken.md);
-    [`zugaenge.md`](handbuch/arbeitsmittel/zugaenge.md)
-  - Nachschlagen: [`glossar.md`](handbuch/nachschlagen/glossar.md)
   - Regeln für Schreibende: [`handbuch/AGENTS.md`](./handbuch/AGENTS.md)
 - **[`sbom.md`](./sbom.md)** — Software Bill of Materials: Image-Attestierungen,
   CycloneDX-CI-Artefakte für Backend und Frontend und die Lizenzprüfung der Abhängigkeiten
@@ -292,7 +278,7 @@ Den tatsächlichen Stand führt der [Gesamtstand](./fortschritt/gesamtstand.md).
 → [Gesamtstand](./fortschritt/gesamtstand.md) — und nur dort
 
 **Wie stelle ich sicher, dass niemand sieht, was er nicht sehen darf?**
-→ [Berechtigungen](./handbuch/konten-und-rechte/berechtigungen.md)
+→ [Berechtigungen](handbuch/nachschlagen/rechte-matrix.md)
 
 **Läuft OPAA ohne Internetverbindung?**
 → Ja, das ist ein vorgesehenes Szenario. Siehe
@@ -315,4 +301,4 @@ Den tatsächlichen Stand führt der [Gesamtstand](./fortschritt/gesamtstand.md).
 [Behördenunterlagen](./behoerden/README.md)
 
 **Kann ich eigene Dokumente hochladen?**
-→ Ja. Siehe [Wissensbibliotheken](./handbuch/arbeitsmittel/wissensbibliotheken/README.md)
+→ Ja. Siehe [Wissensbibliotheken](handbuch/nachschlagen/wie-indexierung-arbeitet.md)

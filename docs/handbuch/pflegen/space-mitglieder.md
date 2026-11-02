@@ -34,3 +34,4 @@ Der Wechsel wirkt sofort, ohne Rückfrage; in einem archivierten Space geht er n
 - Kuratoren und Mitglieder sehen statt der Liste nur die Größe des Space, etwa „10 Personen und
   2 Gruppen“.
 - Ein archivierter Space nimmt keine Mitglieder mehr auf; der Standard-Space bleibt immer privat.
+- Wer nicht Mitglied ist, erfährt nichts über den Space; ein Verzeichnis aller Spaces gibt es nicht.

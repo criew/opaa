@@ -38,7 +38,7 @@ beim Identitätsanbieter.
 | Mailserver | SMTP für Einladungen, Rücksetzlinks, Benachrichtigungen | nein | [E-Mail-Versand](../verwalten/e-mail.md) |
 | Quellen | angebunden über Konnektoren, etwa SMB-Freigaben, Nextcloud, Google Drive, SharePoint, Confluence, Feeds … | nein | [Konnektoren](../pflegen/konnektoren/README.md) |
 | Ausgangsproxy | der eine Weg des Backends ins Netz, wenn das Haus einen verlangt | nein | [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy) |
-| Externe KI-Werkzeuge | greifen über MCP oder API mit persönlichen Zugangstokens zu | nein, eigener Schalter | [Externe KI-Werkzeuge](../spaces/fremdzugaenge.md) |
+| Externe KI-Werkzeuge | greifen über MCP oder API mit persönlichen Zugangstokens zu | nein, eigener Schalter | [Externe KI-Werkzeuge](../verwalten/externe-ki-werkzeuge.md) |
 | Monitoring | Prometheus liest Metriken, ein Log-Sammler die Standardausgabe | nein | [Logs und Metriken](ueberwachung-und-fehlerbehebung.md#logs-und-metriken) |
 | Sicherheitsmonitoring (SIEM) | empfängt das Revisionsprotokoll ohne Pseudonyme als Syslog | nein, eigener Schalter | [Ausleitung](ueberwachung-und-fehlerbehebung.md#ausleitung-an-ein-sicherheitsmonitoring) |
 

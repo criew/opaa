@@ -19,7 +19,7 @@ flowchart LR
 ```
 
 - **Anmeldung:** mit einem **Dienstkonto-Schlüssel**. Über einen Zugang meldet sich der Zugang
-  selbst an ([Zugänge](../../arbeitsmittel/zugaenge.md), „Der Zugang meldet sich selbst an"); ohne Zugang trägt die
+  selbst an ([Zugänge](../../verwalten/zugaenge.md), „Der Zugang meldet sich selbst an"); ohne Zugang trägt die
   Bibliothek den Schlüssel als eigene Zugangsdaten. Gelesen wird mit dem Scope `drive.readonly`. Das
   Dienstkonto sieht, was mit ihm geteilt ist; mit **domänenweiter Delegation** imitiert es ein Konto
   der Domäne und sieht, was dieses sieht. Ein Zugang ist möglich und darf das imitierte Konto
@@ -66,7 +66,7 @@ Dienstkonto, das nur ihm freigegebene Daten liest, braucht keine Verifizierung d
 5. Unter **Administration → Anbindungen → Zugänge** einen Zugang für Google Drive mit der Anmeldeart
    Dienstkonto-Schlüssel anlegen, die JSON-Datei hochladen und mit „Anmeldung testen" prüfen; die
    Client-ID übernimmt OPAA aus der Datei. Die Quellart und jeder neue Zugang sind ab Werk nur für die
-   Systemverwaltung freigegeben ([Berechtigungen](../../konten-und-rechte/berechtigungen.md), „Konnektor-Freigabe").
+   Systemverwaltung freigegeben ([Berechtigungen](../../nachschlagen/rechte-matrix.md), „Konnektor-Freigabe").
 
 OPAA speichert aus der Datei nur Adresse, Kennung und privaten Schlüssel, verschlüsselt; die Anmeldung
 geht immer an `https://oauth2.googleapis.com/token`, die Abrufe an `https://www.googleapis.com`.
@@ -129,7 +129,7 @@ ist, entfernt ein Vollabgleich im selben Lauf, nach einem Änderungslauf der nä
 
 Die Ordnerkette bis zum Bereich erscheint als Ordner der Bibliothek; bei mehreren Bereichen steht der
 Name der Ablage bzw. des Ordners vorn. Namen, die keinen Ordner tragen können, und zu tiefe Ketten
-folgen den Regeln des Kapitels [Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md).
+folgen den Regeln des Kapitels [Wissensbibliotheken](../../nachschlagen/wie-indexierung-arbeitet.md).
 
 ## 7. Anhänge
 

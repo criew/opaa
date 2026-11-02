@@ -23,7 +23,7 @@ flowchart LR
 ```
 
 - **Anmeldung:** über eine **Zustimmung beim Anbieter** (OAuth) für die Bibliothek, mit einem
-  Funktionskonto ([Zugänge](../../arbeitsmittel/zugaenge.md), „Zustimmung beim Anbieter für die Bibliothek"). Ein
+  Funktionskonto ([Zugänge](../../verwalten/zugaenge.md), „Zustimmung beim Anbieter für die Bibliothek"). Ein
   Zugang ist **Pflicht**; er trägt die App des Betreibers, die Bibliothek ihre Zustimmung.
 - **Konnektor-eigen:** eine App in der **Dropbox App Console** mit „Scoped access" und den
   Berechtigungen `account_info.read`, `files.metadata.read` und `files.content.read`.
@@ -55,7 +55,7 @@ flowchart LR
    Anmeldeart OAuth und der Besitzart Bibliothek anlegen: App key als „Client-ID", App secret als
    „Client-Secret", „Scopes" leer. Die Server-Adresse ist fest.
 3. Festlegen, wer den Zugang nutzen darf; ab Werk nur die Systemverwaltung
-   ([Berechtigungen](../../konten-und-rechte/berechtigungen.md), „Konnektor-Freigabe").
+   ([Berechtigungen](../../nachschlagen/rechte-matrix.md), „Konnektor-Freigabe").
 4. Ein **eigenes Dropbox-Konto für OPAA** bereithalten. Mit ihm stimmt die verwaltende Person bei
    „Quelle verbinden" zu; die Verbindung bleibt, wenn sie ausscheidet.
 
@@ -93,7 +93,7 @@ Die Zeile „Verbindung" fragt weder Adresse noch Zugangsdaten ab. „Eigene Adr
 
 1. **Zugang** wählen, wenn mehrere zur Wahl stehen.
 2. **„Quelle verbinden"** und bei Dropbox mit dem Funktionskonto zustimmen
-   ([Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md), Abschnitt 3.3). OPAA nennt danach das Konto
+   ([Wissensbibliotheken](../../nachschlagen/wie-indexierung-arbeitet.md), Abschnitt 3.3). OPAA nennt danach das Konto
    („Verbunden als …"). Erst dann laden Ordnerauswahl und Test etwas.
 3. **„Teambereich lesen"**: aus liest die Ordner des Kontos, an die des Team-Bereichs.
 4. **Umfang**: „Alle Ordner" oder „Nur ausgewählte Ordner", Pfade wie `/Projekte`; kein Ordner
@@ -152,7 +152,7 @@ Antwort folgt ein Vollabgleich.
 Die Ordner unterhalb jedes gewählten Ordners erscheinen als Ordner der Bibliothek, der gewählte Ordner
 ist die Wurzel. Bei mehreren steht sein Name vorn, bei `/` „Dropbox". Namen, die keinen Ordner tragen
 können, und zu tiefe Ketten folgen den Regeln des Kapitels
-[Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md).
+[Wissensbibliotheken](../../nachschlagen/wie-indexierung-arbeitet.md).
 
 ## 7. Anhänge
 
@@ -178,7 +178,7 @@ Parameter stehen unter `opaa.indexing.dropbox.*` (`OPAA_INDEXING_DROPBOX_*`), ih
   und jeder Lauf endet als „unvollständig, wird fortgesetzt". Abhilfe: Budget anheben oder den Ordner
   aufteilen.
 - Ist der Pfad länger, als die Identität eines Dokuments fassen kann, wird die Datei nicht geladen
-  und bei jedem Vollabgleich als abgewiesen gemeldet ([Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md),
+  und bei jedem Vollabgleich als abgewiesen gemeldet ([Wissensbibliotheken](../../nachschlagen/wie-indexierung-arbeitet.md),
   Abschnitt 7.1).
 - **Noch nicht an einem echten Dropbox-Konto bestätigt** und auf die Dokumentation von Dropbox und ein
   Testdoppel gestützt: die Meldungen gelöschter und verschobener Ordner im Änderungsprotokoll, der

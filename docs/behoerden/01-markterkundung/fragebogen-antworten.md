@@ -25,9 +25,9 @@ nur in den Faktenblättern der jeweiligen Version.
 
 | Frage | Antwort | Nachweis |
 |---|---|---|
-| Was leistet die Software? | beantwortet Fragen aus Dokumenten der Behörde mit Fundstellen | [Belege](../../handbuch/spaces/suche.md#7-belege-prüfen-und-fundstellen-bilden) |
+| Was leistet die Software? | beantwortet Fragen aus Dokumenten der Behörde mit Fundstellen | [Belege](../../handbuch/nachschlagen/wie-die-suche-arbeitet.md#belege-prüfen) |
 | Welche Quellen und Formate? | Dateiablagen, Confluence, Objektspeicher, Feeds und weitere; Upload | [Konnektoren](../../handbuch/pflegen/konnektoren/README.md#3-die-konnektoren-im-überblick), [Formate](../../handbuch/nachschlagen/formate/README.md#zugelassene-formate) |
-| Werden Rechte der Quelle übernommen? | nein; Leserechte werden in OPAA je Bibliothek vergeben und in jeder Suche geprüft | [Berechtigungen](../../handbuch/konten-und-rechte/berechtigungen.md#1-der-aufbau-in-vier-objekten) |
+| Werden Rechte der Quelle übernommen? | nein; Leserechte werden in OPAA je Bibliothek vergeben und in jeder Suche geprüft | [Berechtigungen](../../handbuch/nachschlagen/glossar.md) |
 | Spracheingabe? | ja, mit eigenem Transkriptionsdienst | [Spracheingabe](../../handbuch/betreiben/modell-endpunkte.md#spracheingabe-einschalten) |
 
 **Betrieb und Schnittstellen**
@@ -39,7 +39,7 @@ nur in den Faktenblättern der jeweiligen Version.
 | Betrieb ohne Internet? | ja, wenn Images und Modelle im Haus stehen; ein nächtlicher Lauf ohne Weg nach außen belegt Anmeldung, Aufnahme von Dokumenten in mehreren Formaten und Antwort mit Fundstelle und erkennt Namensauflösungen und Browser-Abrufe nach außen, Verbindungen an feste IP-Adressen nur über das Log | [Betrieb ohne Internet](../../handbuch/betreiben/netz-und-sicherheit.md#betrieb-ohne-internet), {{faktenblatt:datenfluesse}} |
 | Ausfallsicherheit? | mehrere Backend-Instanzen; Update ohne Ausfall, soweit die neue Version es zulässt | [Mehrere Backend-Instanzen](../../handbuch/betreiben/mehrere-instanzen.md#update-ohne-ausfall) |
 | Anmeldung? | OIDC-Identitätsanbieter oder lokale Konten | [Authentifizierung](../../handbuch/betreiben/authentifizierung.md#anmeldewege-im-betriebsmodus-oidc) |
-| Anbindung anderer KI-Werkzeuge? | MCP-Server mit persönlichen Zugangstokens, abschaltbar | [Externe KI-Werkzeuge](../../handbuch/spaces/fremdzugaenge.md#8-was-ein-externes-ki-werkzeug-erreicht) |
+| Anbindung anderer KI-Werkzeuge? | MCP-Server mit persönlichen Zugangstokens, abschaltbar | [Externe KI-Werkzeuge](../../handbuch/arbeiten/ki-werkzeug-einrichten.md) |
 
 **Datenschutz, Sicherheit, Barrierefreiheit**
 

@@ -89,7 +89,7 @@ machbar“ mit Lückenanalyse; ob die Aufsicht es genügen lässt, ist offen.
 
 **Arbeitshilfen** für die Projektleitung:
 
-- [Handbuch, Suche](../../handbuch/spaces/suche.md): wie eine Antwort entsteht und wie man Belege prüft;
+- [Handbuch, Suche](../../handbuch/nachschlagen/wie-die-suche-arbeitet.md): wie eine Antwort entsteht und wie man Belege prüft;
   Grundlage für die Einweisung.
 - [Handbuch, Branding](../../handbuch/verwalten/branding.md): wo der eigene Name und der Hinweistext
   gepflegt werden.

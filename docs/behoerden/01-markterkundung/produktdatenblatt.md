@@ -26,10 +26,10 @@ Behörde oder eines Dienstleisters.
 
 | Merkmal | Angabe | Nachweis |
 |---|---|---|
-| Kernfunktion | Fragen in Spaces stellen, Antworten mit Fundstellen, Suche ohne Antwort | [Was OPAA ist](../../handbuch/README.md#2-was-opaa-ist), [Belege](../../handbuch/spaces/suche.md#7-belege-prüfen-und-fundstellen-bilden) |
+| Kernfunktion | Fragen in Spaces stellen, Antworten mit Fundstellen, Suche ohne Antwort | [Was OPAA ist](../../handbuch/README.md#2-was-opaa-ist), [Belege](../../handbuch/nachschlagen/wie-die-suche-arbeitet.md#belege-prüfen) |
 | Wissensbestände | Wissensbibliotheken aus angebundenen Quellen oder Upload | [Konnektoren](../../handbuch/pflegen/konnektoren/README.md#3-die-konnektoren-im-überblick), [Formate](../../handbuch/nachschlagen/formate/README.md#zugelassene-formate) |
-| Rechte | je Bibliothek und Space vergeben, in jeder Suchabfrage geprüft, mit Historie | [Berechtigungen](../../handbuch/konten-und-rechte/berechtigungen.md), {{faktenblatt:rollensicht#matrix}} |
-| Weitere Arbeitsmittel | Prompt-Bibliotheken; Zugriff externer KI-Werkzeuge, abschaltbar | [Prompt-Bibliotheken](../../handbuch/arbeitsmittel/prompt-bibliotheken.md), [Externe KI-Werkzeuge](../../handbuch/spaces/fremdzugaenge.md) |
+| Rechte | je Bibliothek und Space vergeben, in jeder Suchabfrage geprüft, mit Historie | [Berechtigungen](../../handbuch/nachschlagen/rechte-matrix.md), {{faktenblatt:rollensicht#matrix}} |
+| Weitere Arbeitsmittel | Prompt-Bibliotheken; Zugriff externer KI-Werkzeuge, abschaltbar | [Prompt-Bibliotheken](../../handbuch/arbeiten/prompt-bibliothek-anlegen.md), [Externe KI-Werkzeuge](../../handbuch/verwalten/externe-ki-werkzeuge.md) |
 | Modelle | über eine OpenAI-kompatible Schnittstelle, im eigenen Haus betreibbar | [Modelle](../../handbuch/betreiben/modell-endpunkte.md), {{faktenblatt:voreinstellungen#ki-funktionen}} |
 | Betrieb | Container-Images für Docker Compose oder Kubernetes mit Helm-Chart; eine oder mehrere Backend-Instanzen | [Bausteine](../../handbuch/betreiben/README.md#bausteine), [Mehrere Backend-Instanzen](../../handbuch/betreiben/mehrere-instanzen.md) |
 | Anmeldung | OIDC-Identitätsanbieter oder lokale Konten | [Authentifizierung](../../handbuch/betreiben/authentifizierung.md#anmeldewege-im-betriebsmodus-oidc) |

@@ -488,7 +488,7 @@ lassen.
 
 - `tests/connection-profiles.spec.ts` (#2175, Szenarien 1 und 2, Teil von Epic #2147) — Zugänge,
   Freigabe und Profilpflicht über den vollen Stack, mit der Quellart RSS-Feed gegen den
-  suite-eigenen `rss-feed`-Dienst; die Szenarien prüfen zugleich `docs/handbuch/arbeitsmittel/zugaenge.md`. Die Systemverwaltung legt unter „Administration → Anbindungen → Zugänge“ einen Zugang
+  suite-eigenen `rss-feed`-Dienst; die Szenarien prüfen zugleich `docs/handbuch/verwalten/zugaenge.md`. Die Systemverwaltung legt unter „Administration → Anbindungen → Zugänge“ einen Zugang
   „ohne Anmeldung“ an und erteilt einer Gruppe unter „Anlegerechte“ das Recht „Konnektorbibliotheken
   anlegen“ für ihn. Ein Mitglied (`dev-user`) wählt ihn im Assistenten, bekommt die Adresse aus dem
   Zugang, testet die Verbindung, indiziert und findet den Eintrag per `@`-Referenz im Chat;
@@ -508,7 +508,7 @@ lassen.
 
 - `tests/connected-accounts-private-libraries.spec.ts` (#2175, Szenarien 3 bis 5, Teil von Epic
   \#2147) — verbundene Konten und private Bibliotheken über den vollen Stack, gegen die echte
-  Nextcloud der Suite (siehe unten); die Szenarien prüfen zugleich `docs/handbuch/konten-und-rechte/benutzerverwaltung.md`,
+  Nextcloud der Suite (siehe unten); die Szenarien prüfen zugleich `docs/handbuch/verwalten/konten.md`,
   Abschnitt „Verbundene Konten“, und `private-bibliotheken.md`.
   `dev-user` verbindet unter „Einstellungen → Verbundene Konten“ ihr Nextcloud-Konto mit einem
   App-Passwort — ein falsches wird abgewiesen und nichts gespeichert, das Passwortfeld ist danach

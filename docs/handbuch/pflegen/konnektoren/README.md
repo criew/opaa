@@ -4,8 +4,8 @@ Das meiste Wissen einer Organisation liegt schon irgendwo: auf einem Netzlaufwer
 Cloud-Speicher, in einem Wiki, in einem Feed. Ein **Konnektor** bindet ein solches System an. Er
 weiß, wie es aufgezählt und gelesen wird; alles Weitere — Format erkennen, zerlegen, einbetten,
 durchsuchbar machen — ist für jede Quelle gleich und steht im Kapitel
-[Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md). Wie sich ein Konnektor beim System anmeldet und
-was die Systemverwaltung dafür vorgibt, beschreibt das Kapitel [Zugänge](../../arbeitsmittel/zugaenge.md).
+[Wissensbibliotheken](../../nachschlagen/wie-indexierung-arbeitet.md). Wie sich ein Konnektor beim System anmeldet und
+was die Systemverwaltung dafür vorgibt, beschreibt das Kapitel [Zugänge](../../verwalten/zugaenge.md).
 
 Die Konnektoren sind verschieden, folgen aber wenigen gemeinsamen Mustern: Jeder liefert dasselbe
 an die Aufnahmestrecke (Abschnitt 1), und die Dateiablagen gleichen ihre Quelle auf demselben Weg

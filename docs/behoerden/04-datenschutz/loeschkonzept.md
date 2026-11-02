@@ -40,11 +40,11 @@ hat, zeigt die [Auskunft über die Datenerhebung](../../handbuch/betreiben/nachv
    mit dem Zweck begründen (Tabelle unten).
 2. **Regel für Chats festlegen:** Chats werden nur dort automatisch gelöscht, wo ein Space das
    einschaltet; ab Werk ist es aus, im persönlichen Space entscheidet nur die Person selbst
-   ([Spaces: Chats](../../handbuch/spaces/README.md#7-chats)). Die Behörde legt fest, in welchen Spaces es
+   ([Spaces: Chats](../../handbuch/arbeiten/chats.md#automatisches-aufräumen)). Die Behörde legt fest, in welchen Spaces es
    eingeschaltet wird, etwa in allen gemeinsamen Spaces.
 3. **Chats gesperrter Konten regeln:** Nach einer Sperre durch die Verwaltung löscht OPAA die Chats
    des Kontos nach einer Frist, ab Werk eingeschaltet
-   ([Was mit den Chats eines gesperrten Kontos geschieht](../../handbuch/konten-und-rechte/benutzerverwaltung.md#was-mit-den-chats-eines-gesperrten-kontos-geschieht)).
+   ([Was mit den Chats eines gesperrten Kontos geschieht](../../handbuch/verwalten/konten.md#sperren-statt-löschen)).
    Die Behörde legt fest:
    - binnen welcher Zeit nach dem Ausscheiden das Konto in OPAA gesperrt wird; die Frist beginnt nur
      mit der Sperre durch die Verwaltung, ein schon wegen Inaktivität gesperrtes Konto sperrt die
@@ -64,9 +64,9 @@ hat, zeigt die [Auskunft über die Datenerhebung](../../handbuch/betreiben/nachv
      erreicht sie sie nicht mehr.
 4. **Anlässe regeln, die OPAA nicht kennt:**
    - Ausscheiden einer Person: wer das Konto wann sperrt; ein benutztes Konto wird meist gesperrt,
-     nicht gelöscht ([Löschen oder sperren](../../handbuch/konten-und-rechte/benutzerverwaltung.md#8-löschen-oder-sperren)).
+     nicht gelöscht ([Löschen oder sperren](../../handbuch/verwalten/konten.md#sperren-statt-löschen)).
    - Dokumente: Sie folgen ihrer Quelle
-     ([Änderungen und Löschungen](../../handbuch/arbeitsmittel/wissensbibliotheken/README.md#44-änderungen-und-löschungen)),
+     ([Änderungen und Löschungen](../../handbuch/nachschlagen/wie-indexierung-arbeitet.md#läufe)),
      ihre Fristen regelt die Behörde dort; für hochgeladene Dokumente festlegen, wer sie wann prüft.
    - Anwendungslog: die Frist festlegen, wenn sie laut Faktenblatt beim Betrieb liegt.
    - Sicherungen: Aufbewahrung festlegen und wie eine Rücksicherung mit bereits gelöschten Daten

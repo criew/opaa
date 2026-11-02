@@ -57,9 +57,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * Documents attached to a chat question (docs/handbuch/spaces/suche.md, "Dokumente an eine Frage
- * anhängen"). An attachment is checked like a library upload, its original goes into the upload
- * storage ({@link UploadedOriginalStore#CHAT_ATTACHMENT_AREA}) and its text is read on {@code
+ * Documents attached to a chat question (docs/handbuch/arbeiten/anhaengen-und-diktieren.md). An
+ * attachment is checked like a library upload, its original goes into the upload storage ({@link
+ * UploadedOriginalStore#CHAT_ATTACHMENT_AREA}) and its text is read on {@code
  * chatAttachmentExecutor} - parsed and chunked, never embedded, so it is usable seconds after the
  * drop. It belongs to its author alone: every lookup goes through the author, and neither space nor
  * system administration reaches it.

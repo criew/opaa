@@ -32,6 +32,11 @@ die Freigabe einer Quellart keinen ihrer Zugänge. Gebraucht wird sie für alles
 öffnet: anlegen, einem anderen Zugang zuordnen, vom Zugang lösen, die Adresse auf einen anderen
 Server stellen. Läufe stoppt sie nicht; das tut nur die Sperre ([Zugänge einrichten](zugaenge.md)).
 
+**Freigabe-Obergrenze.** Eine neue Konnektorbibliothek darf ab Werk an „Alle Konten“ freigegeben
+werden. Die Systemverwaltung kann das je Bibliothek im Reiter „Freigaben“ unter „Freigabe an alle
+Konten erlaubt“ entziehen; eine bestehende Freigabe an alle endet dann sofort, Rechte an Personen
+und Gruppen bleiben. Wer das nicht nach jeder Neuanlage prüfen will, schränkt das Anlegerecht ein.
+
 **Gut zu wissen:**
 
 - Wem ein Anlegerecht fehlt, dem zeigt der Katalog die Art unter „Neuer Katalogeintrag“ gar nicht.

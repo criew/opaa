@@ -17,6 +17,17 @@ nicht möglich, möglich oder Pflicht. Pflicht ist er, wo eine App-Registrierung
 ist, etwa bei SharePoint, OneDrive und Dropbox. Nur über einen Zugang mit der Besitzart „Person“
 können Personen [ein eigenes Konto verbinden](../arbeiten/konto-verbinden.md).
 
+## Vier Anmeldewege
+
+| Weg | Wer hält das Geheimnis | Beispiel |
+|---|---|---|
+| Eigene Zugangsdaten der Bibliothek | die Bibliothek: Token, Passwort oder Schlüssel eines Dienstkontos; der Zugang liefert nur Adresse und Vorgaben | Confluence, Nextcloud, Dateifreigabe, S3 |
+| Zugang meldet sich selbst an | der Zugang: Dienstkonto-Schlüssel oder App-Registrierung; was gelesen wird, legt der Anbieter fest | Google Drive, SharePoint |
+| Zustimmung beim Anbieter | die Bibliothek: „Quelle verbinden“ mit einem **Funktionskonto**, nicht dem eigenen; bleibt, wenn die Person geht | Dropbox |
+| Verbundenes Konto einer Person | die Person, für ihre [private Bibliothek](../arbeiten/private-bibliothek.md); nur sie liest sie | Nextcloud, OneDrive |
+
+Lehnt der Anbieter einen Schlüssel des Zugangs ab, zeigen alle Bibliotheken darauf „Abgelaufen“.
+
 ## Einen Zugang anlegen
 
 1. Reiter „Zugänge“, „Neuer Zugang“, Quellart wählen.
@@ -61,10 +72,17 @@ Löschen beendet die Verbindungen aller seiner Personen.
 ## Einstellungen der Anbindungen
 
 Der Reiter „Einstellungen“ gilt für die ganze Installation: Ausgangsproxy, erlaubte Linkziele,
-Speicher geteilter und privater Bibliotheken, Vollabgleich-Rhythmus je Quellart, Schwellen und
+Speicher geteilter und privater Bibliotheken (je Person ab Werk 10 GiB; die Verwaltung sieht nur
+Summen), Vollabgleich-Rhythmus je Quellart, Schwellen und
 Fristen der Verbindungen (Inaktivitätsschwelle, Löschfrist privater Bibliotheken, Warnschwelle) und
 die Aufbewahrung des Verbindungsprotokolls. Ohne eigenen Wert gilt die Werkseinstellung; jede
 Änderung wirkt ohne Neustart und steht im Revisionsprotokoll.
+
+| Schwelle | Werk | Grenzen | Wirkung |
+|---|---|---|---|
+| Inaktivitätsschwelle | 90 Tage | 30–365 | so lange ohne Anmeldung: verbundene Konten ruhen, nichts wird gelöscht; nächste Anmeldung weckt sie |
+| Löschfrist privater Bibliotheken | 30 Tage | 1–90 | so lange deaktiviert (nicht nur ruhend): private Bibliotheken werden gelöscht |
+| Warnschwelle | 10 | 1–1000 | ab so vielen abgelaufenen Konten zeigt ein Zugang „Viele Konten abgelaufen“ |
 
 **Gut zu wissen:**
 

@@ -48,7 +48,7 @@ Identitätsanbieter, Verzeichnis-Synchronisation und -Konnektoren (`directory`);
 
 ## Verweise
 
-- Handbuch: `docs/handbuch/konten-und-rechte/berechtigungen.md`, Abschnitte 3–13
+- Handbuch: `docs/handbuch/nachschlagen/rechte-matrix.md`
 
 ## Tests bei Änderungen
 
