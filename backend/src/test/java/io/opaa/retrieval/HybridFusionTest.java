@@ -40,8 +40,8 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 
 /**
- * The behaviour change of #1049 at the level it is claimed on (docs/features/hybrid-retrieval.md,
- * Arbeitspaket 3): the whole pipeline, both search paths wired, one fusion over both.
+ * The behaviour change of #1049 at the level it is claimed on (ADR-0065, Entscheidung 5): the whole
+ * pipeline, both search paths wired, one fusion over both.
  *
  * <p>Deliberately separate from {@link RetrievalPipelineTest}, which pins the structural guarantees
  * of the staged pipeline over the vector path alone and switches the lexical path off for exactly

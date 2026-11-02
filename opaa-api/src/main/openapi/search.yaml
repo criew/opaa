@@ -349,7 +349,7 @@ paths:
       tags: [search-admin]
       summary: >
         The active retrieval configuration as a read-only status display (system admin only,
-        hybrid-retrieval.md "Was die Seite anzeigt")
+        ADR-0065, Entscheidung 8)
       description: >
         Model roles, search paths and per-library index state of the caller's own organization. A
         status display, never an editor: this API has no counterpart that writes any of it. Access
@@ -372,7 +372,7 @@ paths:
       summary: The rights contexts the diagnosis can be run in (system admin only)
       description: >
         The permission profiles - a group together with the library set it may read, the default
-        context of hybrid-retrieval.md's Berechtigungs-Leitplanken (d) - plus whether the calling
+        context of ADR-0065, Entscheidung 9d - plus whether the calling
         administrator may choose the person context at all. The person context needs the separately
         granted "Sicht als" befugnis; holding SYSTEM_ADMIN confers nothing here, so the
         answer is a property of the caller and not of their role. No person is listed: the target of
@@ -394,11 +394,11 @@ paths:
       tags: [search-admin]
       summary: >
         Run a test question through the retrieval pipeline and return its explanation protocol
-        (system admin only, hybrid-retrieval.md "Das Diagnosewerkzeug")
+        (system admin only, ADR-0065, Entscheidung 8)
       description: >
         Answers "why does this document not appear?" from the pipeline's own Erklärprotokoll - not from a reconstruction: every stage in the response is one the pipeline
         actually ran, in the order it ran them. Three invariants hold, all of them Baubedingung
-        rather than Ausbaustufe (hybrid-retrieval.md, Berechtigungs-Leitplanken): the run never
+        rather than Ausbaustufe (ADR-0065, Entscheidung 9): the run never
         reads an existing chat, it answers the Jetzt-Zustand only and is no
         Zugriffshistorien-Nachweis, and it applies a permission filter like every other search - it
         sets that filter differently, it never omits it. No answer is generated; the run stops
@@ -457,7 +457,7 @@ paths:
       tags: [search-admin]
       summary: >
         Text and metadata of one stored chunk, as the retrieval pipeline sees it (system admin
-        only, hybrid-retrieval.md "Das Diagnosewerkzeug")
+        only, ADR-0065, Entscheidung 8)
       description: >
         The content behind a chunkId of a diagnosis verdict or final-selection entry - the
         chunking boundaries, context prefix and pass-through metadata the indexing pipeline
@@ -492,7 +492,7 @@ paths:
       tags: [search-admin]
       summary: >
         Every stored chunk of one document in chunk order (system admin only,
-        hybrid-retrieval.md "Das Diagnosewerkzeug")
+        ADR-0065, Entscheidung 8)
       description: >
         The document must exist and belong to the caller's own organization, otherwise 404. The
         list is what the vector store holds right now, ordered by chunk_index; chunkCount is the
@@ -1926,7 +1926,7 @@ components:
     SearchModelRole:
       type: string
       description: >
-        The model roles of the Modell-Schichtenmodell (hybrid-retrieval.md, Arbeitspaket 4):
+        The model roles of the Modell-Schichtenmodell (ADR-0065, Entscheidung 6):
         reranking sits on the same level as chat and embedding, not inside the search as a built-in
         procedure. TRANSCRIPTION turns dictated speech into text for the chat input.
       enum: [CHAT, EMBEDDING, RERANK, TRANSCRIPTION]
@@ -1981,7 +1981,7 @@ components:
         INCOMPLETE - the vector path runs, but documents are still waiting to be indexed.
         OUTDATED - the full-text path runs over every chunk, but some rows were written under an
         older content_tsv_version and lack the lexemes the current one adds until the pipeline
-        re-index has rewritten them (ADR-0028). Both states hybrid-retrieval.md demands be visible
+        re-index has rewritten them (ADR-0028). Both states ADR-0065 demands be visible
         rather than only noticeable in bad answers. SUSPENDED - the vector path answers nothing
         because the vector index was built with another embedding model and waits for its
         re-embedding.
@@ -2329,7 +2329,7 @@ components:
 
     RetrievalStage:
       type: string
-      description: The named stages of the retrieval pipeline (hybrid-retrieval.md, Arbeitspaket 1).
+      description: The named stages of the retrieval pipeline (ADR-0065, Entscheidung 1).
       enum:
         [
           SEARCH_SCOPE,

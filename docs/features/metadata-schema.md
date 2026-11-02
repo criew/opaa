@@ -20,7 +20,7 @@ und der bis #1066 im Code nicht existierte: Chunk-Metadaten waren rein technisch
 keinen Metadatenfilter.
 
 Sie ist die dritte von drei zusammengehörigen Spezifikationen und die letzte in der Kette:
-[Hybrides Retrieval](./hybrid-retrieval.md) baut die zwei Suchpfade, in denen ein Filter überhaupt
+[Hybrides Retrieval](../decisions/0065-hybride-suche-reranking-und-diagnose.md) baut die zwei Suchpfade, in denen ein Filter überhaupt
 wirken kann; [Ingestion-Pipelines](./ingestion-pipelines.md) baut die Aufnahmestrecke, in der
 Metadaten entstehen; dieses Dokument beschreibt, **welche** Metadaten das sind, **woher sie kommen**
 und **was sie im Retrieval bewirken**. **Gebaut sind bisher die Arbeitspakete 1, 2 und
@@ -904,7 +904,7 @@ zuletzt übersprungen (Zähler des letzten Aufrufs, in der Datenbank für alle I
 Label). Der Füllgrad wird bei jeder Abfrage aus `document_metadata_values` gebildet, nie
 vorberechnet; im Verwaltungskontext ist die Organisation der Rechtekontext (Beschluss 1 des
 Maintainers am Epic #1065). Die Seite „Suche & Indexierung" zeigt das in derselben Tabelle wie
-Vektor- und Volltextindex ([Was die Seite anzeigt](./hybrid-retrieval.md#was-die-seite-anzeigt)).
+Vektor- und Volltextindex ([Was die Seite anzeigt](../decisions/0065-hybride-suche-reranking-und-diagnose.md)).
 Die Füllgrad-Anzeige in der **Filter-Oberfläche** (oben) gehört zu Arbeitspaket 4 (#1070).
 Auswahl und Füllgrad-Abfrage laufen über den Index `documents (library_id, status)` (Migration 019);
 die Seite ruft Chargen zu 50 Dokumenten ab und lädt den Status nach jeder Charge neu, bricht aber nach
@@ -938,7 +938,7 @@ Dokumentinhalte an ein Modell übergibt. Er wird deshalb als eigenständig steue
   Modell warten.
 - **Die Zahl der Extraktionsaufrufe wird je Bibliothek geführt** und erscheint in derselben
   Zustandsübersicht wie der übrige Indexzustand (siehe
-  [Was die Seite anzeigt](./hybrid-retrieval.md#was-die-seite-anzeigt)). Ohne dieses Zählwerk ist die
+  [Was die Seite anzeigt](../decisions/0065-hybride-suche-reranking-und-diagnose.md)). Ohne dieses Zählwerk ist die
   einzige Rückmeldung über die Kosten dieser Fähigkeit die Rechnung des Modellanbieters.
 
 ### Umgesetzt (#1073)
@@ -1305,7 +1305,7 @@ Ein Metadatenfilter schränkt die Kandidatenmenge ein, **bevor** gerankt wird. V
 
 **Der Filter ist Teil beider Abfragen, nicht ein Nachfilter auf deren Ergebnis.** Vektorpfad und
 Volltextpfad tragen ihn identisch — dasselbe Prinzip und derselbe Grund wie beim Rechtefilter (siehe
-[Rechtefilter im Volltextpfad](./hybrid-retrieval.md#rechtefilter-im-volltextpfad)). Ein Nachfilter
+[Rechtefilter im Volltextpfad](../decisions/0065-hybride-suche-reranking-und-diagnose.md)). Ein Nachfilter
 über einer auf `fetch-k` begrenzten Trefferliste liefert je nach Verteilung ein bis null Ergebnisse,
 obwohl passende Dokumente im Bestand liegen: Der Filter hat dann nicht die Menge eingeschränkt,
 sondern das bereits gezogene Fenster leergeräumt.
@@ -1508,7 +1508,7 @@ Extraktionsversion entsteht:
   trägt die neue Fassung, der Rest die alte — ist damit ein **definierter, zulässiger
   Betriebszustand** und kein Fehler. Er MUSS je Bibliothek abfragbar sein (verarbeitet, ausstehend, fehlgeschlagen) und erscheint
   in derselben Zustandsübersicht wie der übrige Indexzustand (siehe
-  [Was die Seite anzeigt](./hybrid-retrieval.md#was-die-seite-anzeigt)). Eine Bibliothek, deren
+  [Was die Seite anzeigt](../decisions/0065-hybride-suche-reranking-und-diagnose.md)). Eine Bibliothek, deren
   Metadaten gerade umgestellt werden, ist an dieser Anzeige erkennbar — nicht nur an schwankenden
   Suchergebnissen.
 - **Wiederaufnahme ist dokumentgranular und idempotent.** Ein abgebrochener Lauf — Neustart,
@@ -1645,7 +1645,7 @@ selbst, ist das weiterhin der reguläre Pipeline-Reindex nach Regel (d). Die vie
 damit unverändert: Die Suche bleibt verfügbar (ein noch nicht neu eingebetteter Chunk bleibt gültig und
 auffindbar), der Mischzustand ist je Bibliothek abfragbar und erscheint in derselben Zustandsübersicht
 wie der übrige Indexzustand (siehe
-[Was die Seite anzeigt](./hybrid-retrieval.md#was-die-seite-anzeigt)), die Wiederaufnahme ist
+[Was die Seite anzeigt](../decisions/0065-hybride-suche-reranking-und-diagnose.md)), die Wiederaufnahme ist
 dokumentgranular und idempotent (ein zweiter Lauf über bereits verarbeitete Dokumente kostet keinen
 Einbettungsaufruf), und Anhalten ist schlicht das Ausbleiben des nächsten Aufrufs. Ein Dokument, das
 nicht verarbeitet werden kann, behält alles, was es hatte, und bleibt ausstehend — nichts wird
@@ -1718,7 +1718,7 @@ Verwaltungsansicht in den Bibliothekseinstellungen. Eine Person mit Verwaltungsr
 legt Felder an, wählt Typ und Werteliste, benennt die Wirkstelle und schaltet Schlagworte an oder aus.
 
 Das ist die Konfigurations-**Ebene 3** aus
-[Hybrides Retrieval](./hybrid-retrieval.md#konfigurations-ebenenmodell) — die einzige der drei Ebenen,
+[Hybrides Retrieval](../decisions/0065-hybride-suche-reranking-und-diagnose.md) — die einzige der drei Ebenen,
 die in eine Oberfläche gehört, und die dort benannte, aber ausgelagerte Lücke. Die Begründung gilt
 unverändert: Rechtsquellen, Besprechungsnotizen und Tabellenwerke vertragen nicht dieselbe Behandlung,
 und das entscheiden Menschen, die den Bestand kennen — nicht ein Regler für Zahlen, die niemand ohne
@@ -1780,7 +1780,7 @@ den Wert kennt.
 
 Die Zahl ist derselbe Datentyp wie der Füllstand des Volltextindex: **abfragbarer Zustand, kein
 Logeintrag** — und gehört damit in dieselbe Zustandsübersicht wie dieser (siehe
-[Was die Seite anzeigt](./hybrid-retrieval.md#was-die-seite-anzeigt)).
+[Was die Seite anzeigt](../decisions/0065-hybride-suche-reranking-und-diagnose.md)).
 
 ### Umgesetzt (#1069)
 
@@ -1974,8 +1974,8 @@ werden, deren Verhalten bei sauberen Werten bereits gemessen ist.
 
 ## Integrationspunkte
 
-- **[Hybrides Retrieval](./hybrid-retrieval.md)** — die beiden Suchpfade, in denen der Metadatenfilter
-  identisch wirkt, das [Konfigurations-Ebenenmodell](./hybrid-retrieval.md#konfigurations-ebenenmodell)
+- **[Hybrides Retrieval](../decisions/0065-hybride-suche-reranking-und-diagnose.md)** — die beiden Suchpfade, in denen der Metadatenfilter
+  identisch wirkt, das [Konfigurations-Ebenenmodell](../decisions/0065-hybride-suche-reranking-und-diagnose.md)
   (dieses Dokument füllt dessen Ebene 3) und die Zustandsübersicht, in der der Pflege-Anker erscheint.
 - **[Ingestion-Pipelines](./ingestion-pipelines.md)** — der
   [Übergabepunkt](./ingestion-pipelines.md#teil-5--übergabepunkt-an-das-metadatenschema): Die

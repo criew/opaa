@@ -12,9 +12,9 @@ import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Component;
 
 /**
- * Probes the rerank role once the application is up and reports the result
- * (docs/features/hybrid-retrieval.md, Arbeitspaket 4): a contradiction between the switch and the
- * role's configuration is logged at {@code ERROR}, so it cannot pass for a normal startup line.
+ * Probes the rerank role once the application is up and reports the result (ADR-0065, Entscheidung
+ * 6): a contradiction between the switch and the role's configuration is logged at {@code ERROR},
+ * so it cannot pass for a normal startup line.
  *
  * <p><b>The probe runs off the event thread</b>, on the role's own probe scheduler: it opens a
  * network connection, and an endpoint that accepts a connection but never answers would otherwise

@@ -49,12 +49,11 @@ Spezifikation — oder zwei, wo der Bereich zwei Fragen beantwortet.
 ### A · Wissensschicht & Retrieval
 
 **[`features/data-indexing-rag.md`](./features/data-indexing-rag.md)** ·
-**[`features/retrieval-algorithm.md`](./features/retrieval-algorithm.md)**
+**[ADR-0065](./decisions/0065-hybride-suche-reranking-und-diagnose.md)**
 
 Belegvalidierung, Konfidenz und Quellenbindung · hybride Suche mit Reranking · erklärbares Chunking ·
 Dokumentenverarbeitung von der Extraktion bis zur Vektorablage · Messbarkeit der Suchqualität gegen ein
-Golden Dataset · Deep Research. Der Ist-Stand-Ablauf des heute gebauten Retrievals (Klassen, Parameter,
-Defaults) steht separat in `retrieval-algorithm.md`.
+Golden Dataset · Deep Research.
 
 ### B · Wissensquellen & Konnektoren
 

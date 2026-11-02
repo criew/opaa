@@ -9,8 +9,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
  * Which registered stages are switched off for this installation. An Ebene-1 value in the sense of
- * docs/features/hybrid-retrieval.md#konfigurations-ebenenmodell: overridable for development and
- * for a deliberate experiment, but absent from every administration surface.
+ * ADR-0065, Entscheidung 7: overridable for development and for a deliberate experiment, but absent
+ * from every administration surface.
  *
  * <p>Not a benchmark knob: the retrieval harness rejects a non-empty set outright ({@code
  * PipelineHarnessSupport#requireMeasurableConfiguration}), because no field of a pipeline report

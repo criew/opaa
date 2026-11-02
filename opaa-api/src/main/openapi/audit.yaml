@@ -186,7 +186,7 @@ paths:
       description: >
         The reading path of the Rechtehistorie, and the counterpart of the Suchdiagnose: the
         diagnosis answers the present, this one the past, and neither replaces the other
-        (hybrid-retrieval.md, Berechtigungs-Leitplanke (b)).
+        (ADR-0065, Entscheidung 9b).
 
         Exactly one named object per query, by construction: objectType plus objectId, never a
         space-wide, unit-wide or filtered query. Without that rule an AUDITOR would assemble the

@@ -1014,7 +1014,7 @@ beantwortbar. Sie ist jetzt eine Funktion der Rolle `AUDITOR`
   begründete Vier-Augen-Vollmacht nach dem Muster des Vorfallsbereichs.
 - **Getrennt von der Suchdiagnose:** Die Diagnose beantwortet den Jetzt-Zustand, die
   Stichtagsauskunft die Vergangenheit; keines ersetzt das andere
-  ([hybrid-retrieval.md](./hybrid-retrieval.md), Berechtigungs-Leitplanke (b)).
+  ([ADR-0065](../decisions/0065-hybride-suche-reranking-und-diagnose.md), Berechtigungs-Leitplanke (b)).
 
 Die Auskunft liest die Historie, nie den heutigen Bestand: Eine seither gelöschte Gruppe erklärt
 einen Zugriff weiterhin — mit ihrer Kennung, aber **ohne Namen**, weil die Historie keinen
@@ -1309,7 +1309,7 @@ nicht als ausgeschlossen nennt, sind Teil der Auskunft.
 | `spaces` | #2991 | eigene Spaces mit Modellanweisung, Mitgliedschaften, von der Person vorgenommene Zuordnungen | — |
 | `space-membership-history` | #2991 | Intervalle der eigenen Mitgliedschaften und von der Person bewirkte Änderungen | — |
 | `diagnostic-impersonation` | #2992 | Befugnisse „Sicht als“, die die Person hält, erteilt oder widerrufen hat: Bereich, Gültigkeit, Erteilung, Widerruf | Inhaber, Erteilende und Widerrufende außer ihr nur als „andere Person“ |
-| `diagnostic-context-log` | #2992 | eigene Suchdiagnosen: Zeitpunkt, Zielart, Testfrage, Trefferzahl; **Diagnosen im Rechtekontext der Person** (`target_kind = USER`, `target_ref` = ihr Pseudonym): Zeitpunkt, handelnd „andere Person“, Trefferzahl | `justification`, auch die eigene (Begründungsfreitext); Testfrage einer Diagnose durch andere (Freitext Dritter); `permission_snapshot`, `hit_refs` (Rechte und Treffer anderer); `target_ref` als Kennung (Pseudonym). Gelesen wird nach `actor_ref` und `target_ref` mit dem Pseudonym der angemeldeten Person, ungruppiert und nie für eine andere — die einzige Ausnahme von der Zweckbindung des Diagnoseprotokolls ([Leitplanke (g)](hybrid-retrieval.md#berechtigungs-leitplanken)) |
+| `diagnostic-context-log` | #2992 | eigene Suchdiagnosen: Zeitpunkt, Zielart, Testfrage, Trefferzahl; **Diagnosen im Rechtekontext der Person** (`target_kind = USER`, `target_ref` = ihr Pseudonym): Zeitpunkt, handelnd „andere Person“, Trefferzahl | `justification`, auch die eigene (Begründungsfreitext); Testfrage einer Diagnose durch andere (Freitext Dritter); `permission_snapshot`, `hit_refs` (Rechte und Treffer anderer); `target_ref` als Kennung (Pseudonym). Gelesen wird nach `actor_ref` und `target_ref` mit dem Pseudonym der angemeldeten Person, ungruppiert und nie für eine andere — die einzige Ausnahme von der Zweckbindung des Diagnoseprotokolls ([Leitplanke (g)](../decisions/0065-hybride-suche-reranking-und-diagnose.md)) |
 
 **Ganz ausgeschlossen**, mit Hinweis in der Übersicht:
 

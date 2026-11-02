@@ -9,7 +9,7 @@ import java.util.UUID;
  *
  * <p>There is no chat id and no message id, by construction: the diagnosis is always a freshly
  * entered test question, and there is no way from this page into anyone's actual conversations
- * (docs/features/hybrid-retrieval.md, Berechtigungs-Leitplanke (a)).
+ * (ADR-0065, Entscheidung 9a).
  *
  * @param permissionProfileId the group whose rights context to use; required for {@link
  *     DiagnosisContextType#PERMISSION_PROFILE}, {@code null} otherwise.

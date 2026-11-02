@@ -53,15 +53,15 @@ Referenzvariante markiert ist. Ein neuer Vergleich ist eine neue Datei — kein 
   lexikalischen Pfad unsichtbar, und die Variante hätte einen geschmälerten lexikalischen Beitrag
   unter dem Namen der vollen hybriden Konfiguration gemessen.
 - Der Vergleich `verwaltung-reranking.json` (Issue #1050) misst die Rerank-Stufe und ihr
-  Kandidatenfenster; das Ergebnis steht in
-  [`docs/features/hybrid-retrieval.md`](../../docs/features/hybrid-retrieval.md), Arbeitspaket 4.
+  Kandidatenfenster; die Entscheidung dazu in
+  [ADR-0065](../../docs/decisions/0065-hybride-suche-reranking-und-diagnose.md), Entscheidung 6.
 - Eine Variante, die `rerankCandidateCount > 0` **ausdrücklich setzt**, wird als „nicht ausgeführt" gemeldet, solange die
   Rerank-Modellrolle des Laufs nicht nutzbar ist (Schalter aus, Rolle unbelegt oder Endpunkt
   nicht erreichbar) — sie hätte sonst die Konfiguration ohne Reranking unter dem Namen der mit
   Reranking gemessen. **Diese Prüfung wiederholt sich nach jeder Variante:** Fällt der Endpunkt
   mitten im Lauf aus, ist jede betroffene Frage auf die fusionierte Reihenfolge zurückgefallen, also
-  auf das Ergebnis der Konfiguration ohne Reranking (siehe [retrieval-algorithm.md](../../docs/features/retrieval-algorithm.md), Schritt
-  5b). Die Variante wird dann als „nicht verwertbar" gemeldet statt als Messwert. Maßgeblich ist
+  auf das Ergebnis der Konfiguration ohne Reranking. Die Variante wird dann als „nicht verwertbar"
+  gemeldet statt als Messwert. Maßgeblich ist
   dabei nicht der Rollenzustand am Ende, sondern die Zahl der Aufrufe ohne verwertbare Rangfolge
   (`RerankModelRole#degradedCallCount`) vor und nach der Variante — eine Rolle, die ausfällt und
   sich wieder fängt, sähe am Ende unauffällig aus. Ein Rerank-Vergleichslauf setzt deshalb

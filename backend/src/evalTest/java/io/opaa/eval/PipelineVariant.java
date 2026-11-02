@@ -50,9 +50,9 @@ public record PipelineVariant(
    *
    * <p>{@code rerankCandidateCount} is a field here, and it is the one this comparison exists for
    * on the rerank side: the candidate window is a measured value, not a set-and- forgotten one
-   * (docs/features/hybrid-retrieval.md, Arbeitspaket 4). {@code 0} is the reranking-off variant.
-   * Whether the rerank model role is reachable at all is not an override but a prerequisite - see
-   * {@link VariantPrerequisites}.
+   * (ADR-0065, Entscheidung 7). {@code 0} is the reranking-off variant. Whether the rerank model
+   * role is reachable at all is not an override but a prerequisite - see {@link
+   * VariantPrerequisites}.
    *
    * <p>{@code fusionMethod}, {@code fusionSubQueryQuota}, {@code fusionVectorWeight} and {@code
    * fusionGuaranteedPerList} override the fields of {@link

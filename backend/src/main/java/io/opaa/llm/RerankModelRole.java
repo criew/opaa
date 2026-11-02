@@ -20,10 +20,9 @@ import org.springframework.stereotype.Service;
 
 /**
  * The rerank model role: the single entry point for both questions anyone has about reranking -
- * "may a query use it?" and "what state is it in?" (docs/features/hybrid-retrieval.md, Arbeitspaket
- * 4). Sits on the same level as the chat role's {@link ActiveChatModelResolver} and the embedding
- * role's {@link EmbeddingInfoService}, and like them owns the whole role rather than spreading it
- * over the callers.
+ * "may a query use it?" and "what state is it in?" (ADR-0065). Sits on the same level as the chat
+ * role's {@link ActiveChatModelResolver} and the embedding role's {@link EmbeddingInfoService}, and
+ * like them owns the whole role rather than spreading it over the callers.
  *
  * <p>Switch, address, model and key are the administration's ({@link ModelRoleEndpoints}, ADR-0060,
  * Entscheidung 10) and are read on every call, so a change takes effect without a restart; timeout

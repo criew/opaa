@@ -6,8 +6,8 @@ package io.opaa.llm;
  * #toString()} never names the key or userinfo of the address.
  *
  * <p><b>{@link #enabled} is deliberately separate from the endpoint fields</b>: reranking being off
- * must be a statement, never the indistinguishable consequence of a missing address
- * (docs/features/hybrid-retrieval.md, "'Aus' muss eine Aussage sein, kein Zustand").
+ * must be a statement, never the indistinguishable consequence of a missing address (ADR-0065,
+ * Entscheidung 6).
  */
 public record RerankEndpoint(boolean enabled, String baseUrl, String model, String apiKey) {
 

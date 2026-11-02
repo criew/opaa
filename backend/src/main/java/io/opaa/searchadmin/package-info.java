@@ -1,7 +1,7 @@
 /**
  * The read-only operational view of retrieval: which model roles and search paths are active, how
  * far each library's indexes are built, and what the pipeline actually did with one test question
- * (docs/features/hybrid-retrieval.md, "Die Administrationsseite ‚Suche &amp; Indexierung'").
+ * (ADR-0065, Entscheidung 8).
  *
  * <p>This package changes no domain data. It writes protocol entries only: a diagnosis run with a
  * rights profile goes into the audit trail, a "Sicht als" run into the diagnostic protocol through

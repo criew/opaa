@@ -189,8 +189,7 @@ public record QueryProperties(
   }
 
   /**
-   * How the fusion turns the candidate lists into the selection ({@code opaa.query.fusion.*},
-   * docs/features/retrieval-algorithm.md, step 5).
+   * How the fusion turns the candidate lists into the selection ({@code opaa.query.fusion.*}).
    *
    * @param method how the lists of one sub-query are scored. Default {@link FusionMethod#RRF}:
    *     tuning-free, while the weight {@link FusionMethod#SCORE} needs has not been measured.

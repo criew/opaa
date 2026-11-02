@@ -1,10 +1,10 @@
 package io.opaa.llm;
 
 /**
- * The three distinguishable states of the rerank model role (docs/features/hybrid-retrieval.md,
- * "Was die Seite anzeigt"): deliberately switched off, switched on and usable, and switched on but
- * broken. The last one is split into two constants because the two need different remedies, but
- * both are a Störungsmeldung and never a Fußnote.
+ * The three distinguishable states of the rerank model role (ADR-0065, Entscheidung 6):
+ * deliberately switched off, switched on and usable, and switched on but broken. The last one is
+ * split into two constants because the two need different remedies, but both are a Störungsmeldung
+ * and never a Fußnote.
  */
 public enum RerankRoleState {
 

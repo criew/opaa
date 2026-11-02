@@ -32,9 +32,9 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.filter.Filter;
 
 /**
- * The lexical search stage's contract (#1048/#1049, docs/features/hybrid-retrieval.md, Arbeitspaket
- * 2 and 3): it searches only what the permission scope allows, it records everything it found in
- * the explanation protocol, and it hands its lists on as further inputs of the fusion.
+ * The lexical search stage's contract (ADR-0065): it searches only what the permission scope
+ * allows, it records everything it found in the explanation protocol, and it hands its lists on as
+ * further inputs of the fusion.
  *
  * <p>The query itself is not mocked away here in the sense that matters: whether the permission
  * filter is part of the SQL rather than applied to its result is asserted against a real database

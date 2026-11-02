@@ -172,7 +172,7 @@ paths:
         admin can add themselves to that owning group via POST /api/v1/groups/{groupId}/members,
         which makes them the library's named responsible body and lets them lift the lock alone.
         Group administration has no self-exclusion, and that stays so by decision rather than by
-        omission (docs/features/hybrid-retrieval.md, Berechtigungs-Leitplanken (e)): both steps are
+        omission (ADR-0065, Entscheidung 9e): both steps are
         audited. The library's named owner user, in contrast, is immutable.
 
         A private library stays locked for good: "Sicht als" never reaches it, locked or not, so
