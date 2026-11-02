@@ -59,7 +59,7 @@ des Chunks vor der Überlappung. Die Seitenmarker werden
 vor dem Speichern und Embedden wieder entfernt.
 
 **Dokumenteigenschaften:** nur die erste Textzeile als Titelzeile. Für `.txt` und `.doc` stehen
-dem [Metadatenschema](../metadaten.md) sonst nur Dateiname und Struktur zur Verfügung.
+dem [Metadatenschema](../../arbeitsmittel/wissensbibliotheken/metadaten.md) sonst nur Dateiname und Struktur zur Verfügung.
 
 ## 5. Scans und Fehler
 
