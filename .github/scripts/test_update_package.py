@@ -1108,10 +1108,26 @@ def test_blocks_marked_repository_only_stay_out_of_the_package(tmp_path: Path, i
         "# Behördenunterlagen\n\nEinleitung.\n\n[Update-Vermerk](09-betrieb-update/update-vermerk.md)\n")
 
 
+@pytest.mark.parametrize("text", [
+    "A\n\n<!-- nur-im-repository -->\nr\n\nBleibt\n\n<!-- nur-im-repository -->\nr\n<!-- /nur-im-repository -->\n",
+    "A\n\n<!-- /nur-im-repository -->\n",
+])
+def test_a_nested_or_unopened_repository_only_marker_fails(text: str) -> None:
+    with pytest.raises(update_package.PackageError, match="x.md:[0-9]+: .* does not pair"):
+        update_package.without_repository_notes(text, "x.md")
+
+
+def test_repository_only_markers_in_code_stay_and_paragraphs_stay_apart() -> None:
+    code = "```md\n<!-- nur-im-repository -->\nBeispiel\n<!-- /nur-im-repository -->\n```\n"
+    assert update_package.without_repository_notes(code, "x.md") == code
+    assert update_package.without_repository_notes(
+        "Text\n<!-- nur-im-repository -->\nr\n<!-- /nur-im-repository -->\nWeiter\n", "x.md") == "Text\n\nWeiter\n"
+
+
 def test_a_repository_only_marker_without_partner_fails_the_package(tmp_path: Path, inputs: dict) -> None:
     put_template(inputs, "README.md", "# Behördenunterlagen\n\n<!-- nur-im-repository -->\n> Entwicklungsstand\n")
 
-    with pytest.raises(update_package.PackageError, match="README.md: a nur-im-repository marker has no partner"):
+    with pytest.raises(update_package.PackageError, match="README.md: <!-- nur-im-repository --> has no"):
         update_package.assemble(release(), out=tmp_path / "out", **inputs)
 
 

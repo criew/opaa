@@ -27,13 +27,14 @@ opaa-update-paket-<version>.tar.gz with its .sha256 file and both SBOMs into --o
 holds the SBOMs under sbom/. Without a previous final release the delta starts from the oldest root
 commit, which has no manifest.
 The templates of docs/behoerden/ go to vorlagen/, the update note also to the top, the handbook of
-docs/handbuch/ to handbuch/, both without their blocks marked as repository only. In templates, fact sheet placeholders become links to faktenblaetter/;
-in templates and handbook, links into the package stay relative and links out of it point to the
+docs/handbuch/ to handbuch/, both without their blocks marked as repository only. In templates,
+fact sheet placeholders become links to faktenblaetter/; in templates and handbook, links into the package stay relative and links out of it point to the
 tag (of a trial: the commit) in --repository, outside code; an unknown sheet or anchor or a link to
 nothing fails the run. Beside every Markdown file lies its HTML page, with index.html as start page
 (package_html.py); a link of the HTML version to a missing file or anchor fails the run. Mermaid
-diagrams of templates, handbook and fact sheets show as SVG, drawn in Chromium by .github/tools/mermaid/ (installed like cdxgen), and a
-diagram that does not render fails the run. Links of the delta point into --repository. The axe
+diagrams of templates, handbook and fact sheets show as SVG, drawn in Chromium by
+.github/tools/mermaid/ (installed like cdxgen), and a diagram that does not render fails the run;
+fact sheet diagrams are drawn only here, as fact sheets exist only in the release run. Links of the delta point into --repository. The axe
 results of the release run (--accessibility, one directory per run, accessibility_report.py) become
 barrierefreiheit/; without them the report says the version was not checked. Dates and file
 metadata come from the commit, so the same commit yields the same files, except the date and
@@ -89,10 +90,9 @@ UPDATE_NOTE = "09-betrieb-update/update-vermerk.md"
 TEMPLATE_DIR = "vorlagen/"
 HANDBOOK_DIR = "handbuch/"
 FACT_SHEET_DIR = "faktenblaetter/"
-# A block between these two lines, each on a line of its own, speaks about the repository and is
-# left out of the package, such as the note that the repository holds the development state.
-REPOSITORY_ONLY = re.compile(r"^<!-- nur-im-repository -->\n.*?^<!-- /nur-im-repository -->\n\n*",
-                             re.M | re.S)
+# A block between these two lines, each on a line of its own outside fenced code, speaks about the
+# repository and is left out of the package, such as the note that it holds the development state.
+REPOSITORY_ONLY = ("<!-- nur-im-repository -->", "<!-- /nur-im-repository -->")
 # Rules for authors of docs/behoerden/ and docs/handbuch/, no content; excluded at their top level only.
 AUTHOR_RULES = ("AGENTS.md", "CLAUDE.md")
 MANIFEST_PATH = "backend/src/main/resources/compliance/manifest/"
@@ -1180,12 +1180,36 @@ def documents(templates: Path, handbook: Path, repository: str, ref: str,
 
 
 def without_repository_notes(text: str, source: str) -> str:
-    """`text` without its blocks marked as repository only (REPOSITORY_ONLY); a marker left
-    unpaired fails the run, so no repository note slips into the package."""
-    kept = REPOSITORY_ONLY.sub("", text)
-    if "nur-im-repository -->" in kept:
-        raise PackageError(f"{source}: a nur-im-repository marker has no partner")
-    return kept.rstrip("\n") + "\n" if kept != text else kept
+    """`text` without its blocks marked as repository only (REPOSITORY_ONLY), outside fenced code;
+    paragraphs around a block stay apart. A nested, unclosed or unopened marker fails the run, so
+    no repository note slips into the package and no package text is lost."""
+    opening, closing = REPOSITORY_ONLY
+    kept: list[str] = []
+    inside, after_block, fence = False, False, None
+    for number, line in enumerate(text.split("\n"), 1):
+        if fence is None and line.strip() in REPOSITORY_ONLY:
+            if (line.strip() == opening) == inside:
+                raise PackageError(f"{source}:{number}: {line.strip()} does not pair with a marker")
+            inside = not inside
+            after_block = True
+            continue
+        if inside:
+            continue
+        if after_block and line.strip():
+            while kept and not kept[-1].strip():
+                kept.pop()
+            if kept:
+                kept.append("")
+            after_block = False
+        marker = re.match(r" {0,3}(`{3,}|~{3,})", line)
+        if marker and (fence is None or (marker.group(1)[0] == fence[0] and len(marker.group(1)) >= len(fence))):
+            fence = marker.group(1) if fence is None else None
+        kept.append(line)
+    if inside:
+        raise PackageError(f"{source}: {opening} has no {closing}")
+    if kept == text.split("\n"):
+        return text
+    return "\n".join(kept).rstrip("\n") + "\n"
 
 
 def drawn(files: dict[str, bytes]) -> list[str]:
