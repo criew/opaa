@@ -100,7 +100,8 @@ gestuft; was „Inhalt pflegen" heißt, hängt von der Art ab.
 Die Rollen sind gestuft: Wer Verwalter ist, darf alles, was ein Bearbeiter darf. Die
 **Quellverbindung** einer Wissensbibliothek — interner Serverpfad, Quelladresse, Zugangsdaten —
 bleibt einem Bearbeiter verborgen und wird erst ab der Verwalterrolle sichtbar; sie ist
-Infrastrukturangabe, nicht Konfiguration. **Verwalten ist nicht Lesen:** Die Systemverwaltung kann
+Infrastrukturangabe, nicht Konfiguration. Die Quelladresse eines einzelnen Dokuments sehen dagegen alle,
+die es lesen dürfen. **Verwalten ist nicht Lesen:** Die Systemverwaltung kann
 jedes Arbeitsmittel verwalten, liest seinen Inhalt aber nur mit einer eigenen Rolle, einer Rolle
 über eine Gruppe oder einer Freigabe an „Alle Konten".
 

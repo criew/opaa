@@ -112,7 +112,7 @@ Sitzungskosten · Auswertung des KI-Rollouts, durchgehend aggregiert und ohne Pe
 
 ### I · Kanäle & Oberflächen
 
-**[Roadmap](./ROADMAP.md)**
+**[`handbuch/spaces/suche.md`](./handbuch/spaces/suche.md)** · **[Roadmap](./ROADMAP.md)**
 
 Web-Oberfläche mit Chat, Fundstellen und Dokumentenübersicht · REST-API für eigene Anbindungen · Anbindung
 an self-hosted Team-Chats · einheitliche Anmeldung und Rechte über alle Kanäle.

@@ -121,7 +121,7 @@ an Barrierefreiheit und Missbrauchsschutz.
 | **F** | Identität, Rechte & Mandanten | Anmeldung über den Verzeichnisdienst, Lebenszyklus der Konten, rechtebewusste Suche zur Abfragezeit | [access-control.md](./features/access-control.md) |
 | **G** | Sicherheit, Nachweis & Prüfbarkeit | Revisionssicheres Protokoll, Vollständigkeit nach DSGVO, sichere Voreinstellungen, C5-Fähigkeit, Mitbestimmungsfähigkeit | [security-and-compliance.md](./features/security-and-compliance.md) |
 | **H** | Monitoring, Kosten & Governance | Grenzen je Nutzer, Kostentransparenz, Auswertung des KI-Rollouts — aggregiert, ohne Personenbezug | [Roadmap](./ROADMAP.md) |
-| **I** | Kanäle & Oberflächen | Web-Oberfläche, REST-API, Anbindung an self-hosted Team-Chats, OPAA als belegte Wissensschicht für externe KI-Werkzeuge | [Roadmap](./ROADMAP.md) |
+| **I** | Kanäle & Oberflächen | Web-Oberfläche, REST-API, Anbindung an self-hosted Team-Chats, OPAA als belegte Wissensschicht für externe KI-Werkzeuge | [Handbuch](./handbuch/spaces/suche.md), [Roadmap](./ROADMAP.md) |
 | **J** | Betrieb & Deployment | Docker Compose, Kubernetes mit Hochverfügbarkeit, air-gapped, mandantenfähiger Betrieb durch Rechenzentren | [deployment-infrastructure.md](./features/deployment-infrastructure.md) |
 | **K** | Verwaltungs-Spezifika | Leichte Sprache und Amtssprache, Barrierefreiheit, Revisionssicherheit, Anbindung an die elektronische Akte | [Roadmap](./ROADMAP.md) |
 
