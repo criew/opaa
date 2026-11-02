@@ -45,7 +45,7 @@ jobs:
           persist-credentials: false
 
       # The path list must cover every backend file with an outgoing client, a model call, a system
-      # prompt or a retention period. Checked here on every pull request, because the report-script
+      # prompt or a retention period. Checked here on every pull request, because the ci-scripts
       # job of ci.yml runs only when .github/scripts changes.
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         if: github.event_name == 'pull_request'

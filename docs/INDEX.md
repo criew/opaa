@@ -36,9 +36,6 @@ Die Dokumentation ist nach fünf Achsen sortiert — jedes Dokument gehört zu g
 - **[CONCEPTS.md](./CONCEPTS.md)** — Glossar der tragenden Begriffe
 - **[Gesamtstand](./fortschritt/gesamtstand.md)** — inventurbelegter Umsetzungsstand; die
   Zeitraumsberichte unter [`fortschritt/`](./fortschritt/) liefern den Nachweis je Stichtag
-- **[`fortschritt/tagesreport.md`](./fortschritt/tagesreport.md)** — daneben der ticketbasierte
-  Tagestakt: täglich generierter Report über abgeschlossene Vorgänge und gemergte Pull Requests,
-  als Atom-Feed abonnierbar
 - **[decisions/0014-produktausrichtung-oeffentliche-verwaltung.md](./decisions/0014-produktausrichtung-oeffentliche-verwaltung.md)**
   — die Entscheidung, die die Ausrichtung trägt
 
