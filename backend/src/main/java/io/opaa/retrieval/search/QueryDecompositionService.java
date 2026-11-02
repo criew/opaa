@@ -181,7 +181,7 @@ public class QueryDecompositionService {
           metrics.recordPrunedDecomposition();
         }
         // Counts only, never the sub-queries themselves: they are reformulations of what the user
-        // wrote, which never goes into the application log (ADR-0068).
+        // wrote, which never goes into the application log (ADR-0068, decision 1).
         log.warn(
             "Query decomposition discarded ({}): {} of {} sub-queries have no word relation to the"
                 + " question - falling back to single-query retrieval",

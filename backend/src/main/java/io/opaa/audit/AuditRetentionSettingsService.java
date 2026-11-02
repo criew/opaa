@@ -18,10 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AuditRetentionSettingsService {
 
-  /** 1 year - the specification's non-negotiable floor. */
+  /** 1 year - the non-negotiable floor (ADR-0059). */
   public static final int MIN_RETENTION_MONTHS = 12;
 
-  /** 10 years - the specification's non-negotiable ceiling. */
+  /** 10 years - the non-negotiable ceiling (ADR-0059). */
   public static final int MAX_RETENTION_MONTHS = 120;
 
   /** The default new deployments start with. */

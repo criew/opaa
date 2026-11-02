@@ -7,7 +7,7 @@ package io.opaa.api.types;
  * carries none of {@code AUDITOR}'s read access either. Kept as a single value on the existing role
  * enum rather than a new authorization concept: the {@code hasRole(...)} mechanism {@code
  * AdminController} already uses is enough to enforce the technically separate access path the
- * specification requires for revision (the Dienststellenleitung cockpit is a distinct,
+ * ADR-0068 (decision 5) requires for revision (the Dienststellenleitung cockpit is a distinct,
  * not-yet-built feature and therefore not a role this enum needs to distinguish from yet).
  */
 public enum SystemRole {

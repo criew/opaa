@@ -7,7 +7,7 @@
  * that is enforced both at the application level and, more importantly, at the database level.
  *
  * <p>{@link io.opaa.audit.AuditQueryService} is the single funnel every read goes through - the
- * four access paths the specification allows plus the one personenbezogene exception ({@link
+ * four access paths ADR-0068 allows plus the one personenbezogene exception ({@link
  * io.opaa.audit.AuditIncidentScopeService}, the anlassbezogene Klärung under the
  * Vier-Augen-Prinzip). {@code AuditController} exposes it, restricted to {@code
  * SystemRole.AUDITOR}. The one read beside it is the person's own self-disclosure ({@link

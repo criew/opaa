@@ -18,10 +18,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 /**
- * The single funnel every audit-log read goes through - the four access paths the specification
- * allows, plus the one personenbezogene exception ({@link #byIncidentScope}) and the verification
- * of the checksum chain ({@link #verifyChain}), which returns no entry. The person's own entries
- * for her self-disclosure are read by {@link AuditLogSelfDisclosureExporter}, not here.
+ * The single funnel every audit-log read goes through - the four access paths ADR-0068 allows, plus
+ * the one personenbezogene exception ({@link #byIncidentScope}) and the verification of the
+ * checksum chain ({@link #verifyChain}), which returns no entry. The person's own entries for her
+ * self-disclosure are read by {@link AuditLogSelfDisclosureExporter}, not here.
  *
  * <p><b>Self-logging.</b> Every method is wrapped by {@link #loggedAccess}, which runs {@link
  * AuditAccessGate}: role, Anlass and bounds are enforced there rather than by {@code @PreAuthorize}

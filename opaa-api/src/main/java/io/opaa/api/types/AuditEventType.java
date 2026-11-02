@@ -77,7 +77,7 @@ public enum AuditEventType {
   GROUP_DELETED,
   /**
    * Also covers admitting an external person into a space with shared content, with the explicit
-   * confirmation the specification requires carried in the entry's {@code reason}/{@code after}.
+   * confirmation the protocol rules require carried in the entry's {@code reason}/{@code after}.
    */
   SPACE_MEMBER_ADDED,
   SPACE_MEMBER_ROLE_CHANGED,
@@ -213,7 +213,7 @@ public enum AuditEventType {
 
   // Systemeinstellungen
   GOVERNANCE_SETTINGS_CHANGED,
-  /** Includes enabling the network address field, per the specification's explicit requirement. */
+  /** The retention period of the audit log (ADR-0059, decision 2). */
   AUDIT_LOG_CONFIGURATION_CHANGED,
   /**
    * The checksum chain of one month of the audit log is complete and sealed: {@code object_id} is

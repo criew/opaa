@@ -32,7 +32,7 @@ import org.springframework.data.domain.Persistable;
  * leaves the instance the caller passed to {@link AuditLogService#record} detached.
  *
  * <p>{@code before}/{@code after} deliberately hold pre-serialized JSON text rather than a
- * structured type: the specification requires them "eng begrenzt auf das rechtlich Erhebliche", not
+ * structured type: the protocol rules require them "eng begrenzt auf das rechtlich Erhebliche", not
  * a full object dump, and what counts as relevant differs per {@link AuditEventType} - the calling
  * service decides what goes in, within the keys {@link AuditEventCatalog} lists for the type.
  *
