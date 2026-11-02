@@ -37,10 +37,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * The chat search term leaves no trace (docs/features/chat-list.md, "Datenschutz und
- * Personalvertretung"): a unique term goes through the whole HTTP path - a hit, a refusal for a
- * non-member and a validation error - with every logger that is not pinned in application.yml at
- * TRACE, and appears afterwards in no log line, no audit row and no metric.
+ * The chat search term leaves no trace (ADR-0066, Entscheidung 5): a unique term goes through the
+ * whole HTTP path - a hit, a refusal for a non-member and a validation error - with every logger
+ * that is not pinned in application.yml at TRACE, and appears afterwards in no log line, no audit
+ * row and no metric.
  */
 @OpaaIntegrationTest
 class ChatSearchPrivacyIntegrationTest {

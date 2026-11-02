@@ -597,9 +597,8 @@ public enum AuditEventType {
   LOCAL_USER_UNLOCKED,
   /**
    * The nightly run deleted chats of an account locked by the administration once the period after
-   * the lock ran out (docs/features/chat-list.md, "Löschung der Chats gesperrter Konten"). One
-   * entry per account and run; the payload names the start of the period and the lock reason, never
-   * a count, title, content or space.
+   * the lock ran out (ADR-0066, Entscheidung 8). One entry per account and run; the payload names
+   * the start of the period and the lock reason, never a count, title, content or space.
    */
   LOCKED_ACCOUNT_CHATS_DELETED,
   /**

@@ -10,10 +10,10 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 /**
- * The PDF export of a chat (docs/features/chat-list.md, "Export"). Whoever may read the chat may
- * export it - {@link ChatService#getChat}, the author only, 404 for everyone else; the export
- * closes with the branding's AI notice and product name, as a copied answer does. Timestamps are
- * printed in the zone of the application's clock.
+ * The PDF export of a chat (ADR-0066, Entscheidung 6). Whoever may read the chat may export it -
+ * {@link ChatService#getChat}, the author only, 404 for everyone else; the export closes with the
+ * branding's AI notice and product name, as a copied answer does. Timestamps are printed in the
+ * zone of the application's clock.
  */
 @Service
 public class ChatExportService {

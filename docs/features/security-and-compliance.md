@@ -264,7 +264,7 @@ ersten Stufe nicht geschrieben.
   Abmeldung, der routinemäßige Ablauf einer Sitzung und der einzelne Fehlversuch (siehe unten). In
   keinem dieser Ereignisse stehen E-Mail-Adressen, Namen, Anbieter-Subjects oder Freitext; die
   betroffene Person ist das Pseudonym in `subject_ref`
-- **Löschung der Chats gesperrter Konten** ([chat-list.md](./chat-list.md#löschung-der-chats-gesperrter-konten),
+- **Löschung der Chats gesperrter Konten** ([ADR-0066](../decisions/0066-chatliste-ablage-suche-und-bereinigung.md),
   #2997): je Konto und Lauf die Löschung mit Fristbeginn und Sperrgrund, nie mit Zahl, Titel, Inhalt
   oder Space; Antrag, Freigabe, Verlängerung, Ablehnung, Ablauf und Fortsetzen einer Anhaltung je
   Konto im Vier-Augen-Prinzip mit Zweck aus einer festen Liste und Höchstdauer (#3488); die
@@ -411,7 +411,7 @@ die zugehörige Funktion existiert — die Liste selbst bleibt geschlossen und �
 
 | Nicht protokolliert | Begründung |
 |---|---|
-| **Abfragen** — Frage, Suchbegriffe (auch die der [Chatsuche](./chat-list.md#chatsuche) über eigene Gespräche), angewandter Suchbereich, Trefferzahl | Das ist Verhalten, nicht Zugriffsänderung. In der Menge ergibt es das Tätigkeitsprofil, das die Mitbestimmung ausschließt. Die Prüfbarkeit hängt nicht daran: Die Negativfrage beantwortet die Rechtehistorie |
+| **Abfragen** — Frage, Suchbegriffe (auch die der [Chatsuche](../decisions/0066-chatliste-ablage-suche-und-bereinigung.md) über eigene Gespräche), angewandter Suchbereich, Trefferzahl | Das ist Verhalten, nicht Zugriffsänderung. In der Menge ergibt es das Tätigkeitsprofil, das die Mitbestimmung ausschließt. Die Prüfbarkeit hängt nicht daran: Die Negativfrage beantwortet die Rechtehistorie |
 | **Antwortinhalte, Zitate, Modellaufrufe** | dasselbe, zusätzlich mit Inhalten aus dem Fachverfahren |
 | **Erfolgreiche Anmeldungen und Sitzungsverläufe** | reines Anwesenheitsmerkmal, ohne Aussage über Rechte |
 | **Fehlgeschlagene Anmeldungen und abgewiesene Verbindungsversuche** | Sicherheitsereignisse, die in das zentrale Sicherheitsmonitoring gehören und nicht in das Nachweisprotokoll. Sie bleiben im Anwendungslog und erreichen das Sicherheitsmonitoring über die Log-Sammlung der Behörde, nicht über die [SIEM-Anbindung](#anbindung-an-ein-zentrales-sicherheitsmonitoring) des Protokolls. Das gilt unverändert für die lokale Anmeldung ([ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md)): Der einzelne Fehlversuch steht nur im technischen Anwendungslog (kurze Frist, keine Auswertungsoberfläche, Konto-Kennung statt Adresse); in das Nachweisprotokoll gelangt allein die daraus folgende **Kontosperre** als Zustandsänderung. Der Fehlversuchszähler eines Kontos wird weder ausgegeben noch historisiert und geht bei jeder erfolgreichen Anmeldung, jedem Zurücksetzen und jeder Entsperrung auf null |
@@ -729,7 +729,7 @@ Eine konfigurierbare Inhaltsaufbewahrung existiert nicht (der dafür vorgesehene
 als nicht geplant geschlossen). Der zuvor als Erweiterungspunkt vorbereitete `ContentRetentionProvider`
 wurde mit ihm entfernt (#817) und müsste bei Wiederaufnahme des Umfangs neu eingeführt werden.
 
-Die **automatische Chat-Bereinigung je Space** (#1923, [chat-list.md](./chat-list.md)) ändert daran
+Die **automatische Chat-Bereinigung je Space** (#1923, [ADR-0066](../decisions/0066-chatliste-ablage-suche-und-bereinigung.md)) ändert daran
 nichts, und das ist geprüft: Sie ist keine installationsweite Inhaltsaufbewahrung, sondern eine
 Höchstdauer, die nur in Spaces mit eingeschaltetem Schalter und nicht für angeheftete Chats gilt.
 Ohne sie bleiben Chats unbegrenzt erhalten, eine Aufbewahrungsdauer, mit der die Protokollfrist
@@ -741,7 +741,7 @@ kann. Protokolliert wird allein das Umlegen des Schalters, mit altem und neuem W
 neu zu bewerten.
 
 Die **Löschung der Chats gesperrter Konten** (#2997,
-[chat-list.md](./chat-list.md#löschung-der-chats-gesperrter-konten)) ist ebenfalls keine allgemeine
+[ADR-0066](../decisions/0066-chatliste-ablage-suche-und-bereinigung.md)) ist ebenfalls keine allgemeine
 Inhaltsaufbewahrung: Sie greift nur nach einer Sperre durch die Verwaltung. Anders als die
 Bereinigung je Space schreibt sie je Konto und Lauf ein Ereignis, weil die Löschung ohne Handeln
 der Person geschieht und belegbar sein muss; es nennt weder Zahl noch Inhalt und folgt der
@@ -777,7 +777,7 @@ danach jährlich als Nachweis, dass sich nichts stillschweigend verschoben hat.
 - das **Ereignis der Löschung von Chats gesperrter Konten** ausdrücklich: Zweck (allein der Nachweis
   der fristgerechten Löschung), Zugriff (`AUDITOR` über dieselben Wege wie jedes Ereignis, keine
   Zählung je Person; die Zahl gelöschter Chats steht nur gesamt im Anwendungslog) und Frist
-  (allgemeine Protokollfrist) — siehe [chat-list.md](./chat-list.md#löschung-der-chats-gesperrter-konten)
+  (allgemeine Protokollfrist) — siehe [ADR-0066](../decisions/0066-chatliste-ablage-suche-und-bereinigung.md)
 - die **Ereignisse der Selbstauskunft** ausdrücklich, weil sie zeigen, wer sein Auskunftsrecht
   wahrnimmt: Zweck (Nachweis der Erfüllung des Auskunftsrechts und Erkennung missbräuchlicher
   Abrufe), Zugriff (`AUDITOR` über die Wege nach Zeitraum, Ereignisart und Vorgang; die

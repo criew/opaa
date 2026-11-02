@@ -8,7 +8,7 @@ import io.micrometer.core.instrument.Timer;
  * Micrometer metrics of the chat package: every outcome of the Gesprächsnotiz condensation,
  * separated by {@code reason} rather than spread over several metric names, mirroring {@code
  * opaa.query.decomposition.fallback}; and the duration of the chat search, which carries no tag at
- * all - neither the term nor the person may reach a metric (docs/features/chat-list.md).
+ * all - neither the term nor the person may reach a metric (ADR-0066, Entscheidung 5).
  *
  * <p>The condensation is never retried, so its counter is the only trace a lost turn leaves - the
  * note itself looks exactly like a turn that genuinely carried no Angabe.

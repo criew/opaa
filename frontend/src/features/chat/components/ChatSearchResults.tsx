@@ -40,7 +40,7 @@ interface ChatSearchResultsProps {
 }
 
 /**
- * The hits of the chat search (docs/features/chat-list.md, "Chatsuche"): one per chat with title,
+ * The hits of the chat search (ADR-0066, Entscheidung 4): one per chat with title,
  * excerpt, place, date and the chat archive mark, paged by "Weitere laden".
  */
 export default function ChatSearchResults({ spaceId, search, onOpen }: ChatSearchResultsProps) {

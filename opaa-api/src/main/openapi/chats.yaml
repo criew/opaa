@@ -18,7 +18,7 @@ paths:
       tags: [chat]
       summary: List the current user's own active chats in this space (a chat is visible only to its author)
       description: >
-        Only the chats the caller has not archived (docs/features/chat-list.md, "Archivieren");
+        Only the chats the caller has not archived (ADR-0066, Entscheidung 3);
         the archived ones come page by page from GET /api/v1/spaces/{spaceId}/chats/archived.
       responses:
         "200":
@@ -74,7 +74,7 @@ paths:
       tags: [chat]
       summary: >
         Full-text search over the titles, questions and answers of the caller's own chats in this
-        space, archived chats included (docs/features/chat-list.md, "Chatsuche").
+        space, archived chats included (ADR-0066, Entscheidung 4).
       description: >
         The search term travels in the request body, never in the URL, so it reaches no access log
         of a reverse proxy; it is not written to the audit trail, the application log or a metric
@@ -367,7 +367,7 @@ paths:
     get:
       operationId: exportChatPdf
       tags: [chat]
-      summary: Export a chat as a PDF file (docs/features/chat-list.md, "Export")
+      summary: Export a chat as a PDF file
       description: >
         The chat's title as heading, then every question and answer in order with its timestamp,
         each answer followed by the sources it cites. Readable exactly like GET
@@ -398,7 +398,7 @@ paths:
     put:
       operationId: pinChat
       tags: [chat]
-      summary: Pin a chat for the calling person (docs/features/chat-list.md, "Anheften")
+      summary: Pin a chat for the calling person
       description: >
         A personal mark of the caller, not a change to the chat: updatedAt and every other field
         of the chat stay as they are, and pinning is allowed in an archived space too. Idempotent -
@@ -428,7 +428,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  # Chat-Archiv (docs/features/chat-list.md, "Archivieren"): a personal filing of the calling
+  # Chat-Archiv (ADR-0066, Entscheidung 3): a personal filing of the calling
   # person - not an archived space.
   /api/v1/chats/{chatId}/archive:
     parameters:

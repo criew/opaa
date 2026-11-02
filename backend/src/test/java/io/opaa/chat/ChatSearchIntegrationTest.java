@@ -29,10 +29,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The chat search against the real Flyway schema and its full-text column
- * (docs/features/chat-list.md, "Chatsuche"): what is found, how one match per chat is chosen, and
- * above all that nothing of another person's chats - not a match, not a page, not a count - ever
- * reaches the result.
+ * The chat search against the real Flyway schema and its full-text column (ADR-0066, Entscheidung
+ * 4): what is found, how one match per chat is chosen, and above all that nothing of another
+ * person's chats - not a match, not a page, not a count - ever reaches the result.
  */
 @OpaaIntegrationTest
 class ChatSearchIntegrationTest {

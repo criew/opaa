@@ -13,13 +13,13 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The automatic chat cleanup of the spaces that switched it on (docs/features/chat-list.md,
- * "Automatisches Archivieren und Löschen je Space"): archives chats without activity and deletes
- * chats that stayed archived, each after its installation-wide period as read at the start of the
- * run, never counted from before switching on; the deletion pauses while a retired variable keeps
- * longer ({@link ChatAutoCleanupSettings#pauses}), archiving runs on. Pinned chats take part in
- * neither; bringing a chat back from the archive restarts its archive period. Activity is {@code
- * chats.updated_at} and nothing else; the log names only totals, never a chat, space or person.
+ * The automatic chat cleanup of the spaces that switched it on (ADR-0066, Entscheidung 7): archives
+ * chats without activity and deletes chats that stayed archived, each after its installation-wide
+ * period as read at the start of the run, never counted from before switching on; the deletion
+ * pauses while a retired variable keeps longer ({@link ChatAutoCleanupSettings#pauses}), archiving
+ * runs on. Pinned chats take part in neither; bringing a chat back from the archive restarts its
+ * archive period. Activity is {@code chats.updated_at} and nothing else; the log names only totals,
+ * never a chat, space or person.
  */
 @Service
 public class ChatAutoCleanupService {

@@ -32,9 +32,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The chat archive as a personal filing (docs/features/chat-list.md, "Archivieren") against the
- * real Flyway schema: it moves a chat between the active list and the archive without changing the
- * chat, and it is distinct from an archived space.
+ * The chat archive as a personal filing (ADR-0066, Entscheidung 3) against the real Flyway schema:
+ * it moves a chat between the active list and the archive without changing the chat, and it is
+ * distinct from an archived space.
  */
 @OpaaIntegrationTest
 class ChatArchiveIntegrationTest {

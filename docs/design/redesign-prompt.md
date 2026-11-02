@@ -118,7 +118,7 @@ Die Seitenleiste hat damit **zwei Ebenen statt vier gleichrangiger Listen**: obe
 mit seinen Chats, unten die selteneren Wege. Der Space-Wechsel gehört an die prominenteste Stelle.
 
 **Die Chatliste bleibt auch mit Hunderten Chats beherrschbar**
-([chat-list.md](../features/chat-list.md)):
+([ADR-0066](../decisions/0066-chatliste-ablage-suche-und-bereinigung.md)):
 
 - **In der Seitenleiste** — angeheftete Chats stehen als einklappbare Gruppe oben, darunter
   „Zuletzt verwendet" mit den 15 zuletzt genutzten und „15 weitere anzeigen". Ein Filterfeld gibt

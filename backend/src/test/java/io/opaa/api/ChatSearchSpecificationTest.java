@@ -10,9 +10,9 @@ import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
 
 /**
- * The privacy-relevant shape of the chat search in the specification (docs/features/chat-list.md,
- * "Datenschutz und Personalvertretung"): the term travels in the body - as a query parameter it
- * would land in the access log of the reverse proxy - and a page carries no total.
+ * The privacy-relevant shape of the chat search in the OpenAPI specification: the term travels in
+ * the body - as a query parameter it would land in the access log of the reverse proxy (ADR-0066,
+ * Entscheidung 5) - and a page carries no total.
  */
 class ChatSearchSpecificationTest {
 

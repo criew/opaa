@@ -474,7 +474,7 @@ paths:
       summary: When the chats of a locked local account are deleted (system admin only)
       description: >
         The deletion of the chats of an account locked by the administration
-        (docs/features/chat-list.md, "Löschung der Chats gesperrter Konten") as the single view of
+        (ADR-0066, Entscheidung 8) as the single view of
         the account shows it. earliestDeletionAt is set for every account locked by the
         administration and not held, whether or not it has chats, and an open anlassbezogene
         Klärung that suspends the deletion does not change it. Only the lock by the

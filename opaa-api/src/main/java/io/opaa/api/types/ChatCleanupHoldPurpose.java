@@ -1,9 +1,9 @@
 package io.opaa.api.types;
 
 /**
- * The closed list of purposes the deletion of a locked account's chats may be held for
- * (docs/features/chat-list.md, "Anhalten der Löschung"). Mirrored by the database check constraints
- * {@code chk_chat_cleanup_holds_purpose}, {@code chk_chat_cleanup_hold_requests_purpose} and {@code
+ * The closed list of purposes the deletion of a locked account's chats may be held for (ADR-0066,
+ * Entscheidung 8). Mirrored by the database check constraints {@code
+ * chk_chat_cleanup_holds_purpose}, {@code chk_chat_cleanup_hold_requests_purpose} and {@code
  * chk_audit_chat_cleanup_hold_purpose_counts_purpose}; keep all in sync.
  *
  * <p>As with {@link AuditIncidentScopePurpose}, the exclusion of disziplinarische,

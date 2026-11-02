@@ -41,15 +41,14 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Deletes the chats of local accounts locked by the administration once the period after the lock
- * ran out (docs/features/chat-list.md, "Löschung der Chats gesperrter Konten"), and holds that
- * deletion per account: one administrator requests a hold with a purpose of a closed list, a second
- * one approves it, and it ends by itself after the maximum duration of {@link
- * LockedAccountChatCleanupHoldProperties}. A lock for inactivity or failed sign-ins starts nothing;
- * an account held or named by an open Klärung keeps its chats until that ends. One run deletes at
- * most {@link #MAX_CHATS_PER_RUN} chats in batches of their own transaction; the rest follows the
- * next night. The log names totals only, the audit one entry per account and run without a count;
- * each run also names how many accounts become due within {@link #PREVIEW}, so the operation sees a
- * wave after a mass lock in advance.
+ * ran out (ADR-0066, Entscheidung 8), and holds that deletion per account: one administrator
+ * requests a hold with a purpose of a closed list, a second one approves it, and it ends by itself
+ * after the maximum duration of {@link LockedAccountChatCleanupHoldProperties}. A lock for
+ * inactivity or failed sign-ins starts nothing; an account held or named by an open Klärung keeps
+ * its chats until that ends. One run deletes at most {@link #MAX_CHATS_PER_RUN} chats in batches of
+ * their own transaction; the rest follows the next night. The log names totals only, the audit one
+ * entry per account and run without a count; each run also names how many accounts become due
+ * within {@link #PREVIEW}, so the operation sees a wave after a mass lock in advance.
  */
 @Service
 public class LockedAccountChatCleanupService {
