@@ -42,7 +42,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 @Configuration
 @EnableConfigurationProperties({
   ChatNoteProperties.class,
-  LockedAccountChatCleanupHoldProperties.class
+  LockedAccountChatCleanupHoldProperties.class,
+  ChatAttachmentProperties.class
 })
 public class ChatConfiguration {
 
@@ -88,6 +89,26 @@ public class ChatConfiguration {
     executor.setPhase(ShutdownLifecycleConfiguration.UNRECOVERABLE_BACKGROUND_PHASE);
     executor.setRejectedExecutionHandler(
         rejectionHandler("chat note condensation", chatMetrics::recordRejectedNoteExtraction));
+    executor.initialize();
+    return executor;
+  }
+
+  /**
+   * The pool that reads chat attachments ({@link ChatAttachmentService}), separate from the upload
+   * and indexing pools so a large library run never delays the text a person just dropped into a
+   * chat. Unlike the two pools above it queues: a reading is a short local job, and a full queue is
+   * refused ({@link org.springframework.core.task.TaskRejectedException}), which the upload answers
+   * with 429 before anything stays behind. Per instance (ADR-0053).
+   */
+  @Bean
+  TaskExecutor chatAttachmentExecutor() {
+    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+    executor.setCorePoolSize(2);
+    executor.setMaxPoolSize(4);
+    executor.setQueueCapacity(20);
+    executor.setThreadNamePrefix("chat-attachment-");
+    // An interrupted reading leaves its row PROCESSING; ChatAttachmentCleanup marks it FAILED.
+    executor.setPhase(ShutdownLifecycleConfiguration.UNRECOVERABLE_BACKGROUND_PHASE);
     executor.initialize();
     return executor;
   }

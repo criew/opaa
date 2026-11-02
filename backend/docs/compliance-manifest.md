@@ -233,8 +233,8 @@ startet nur `ManifestSnapshot`, jeder Wert von außen steht nach `--end-of-optio
 JSON-Fassung zählt nur als Commit-Kennung (`ModularArchitectureTest` lässt keinen anderen Prozessstart zu). Wer einen Abschnitt oder ein Feld zum Schema
 hinzufügt, ordnet es in `StageRules` ein, der einzigen Stelle der Stufenregeln im Code, und gibt ihm in
 `ManifestDeltaRenderer` eine deutsche Bezeichnung; ein Feld ohne Regel wird „Zustimmung, Zuordnung offen“.
-Die Zuordnung steht auch in der
-[Spezifikation](../../docs/features/behoerdenunterlagen.md#zuordnung-im-werkzeug); beide Stellen ändern sich
+Die Zuordnung steht auch im
+[Handbuch](../../docs/handbuch/betrieb/nachvollziehbarkeit.md#zuordnung-im-werkzeug); beide Stellen ändern sich
 zusammen. Die Fälle sichert `ManifestDeltaTest` auf der Vorlage `src/test/resources/compliance/delta/base.yaml`.
 
 ## Grenzen

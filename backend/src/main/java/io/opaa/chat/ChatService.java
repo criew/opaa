@@ -85,6 +85,7 @@ public class ChatService {
   private final ChatFullTextSearch chatFullTextSearch;
   private final ChatMetrics chatMetrics;
   private final ChatAutoCleanupSettings chatAutoCleanup;
+  private final ChatAttachmentService attachmentService;
   private final Clock clock;
 
   public ChatService(
@@ -104,8 +105,10 @@ public class ChatService {
       ChatFullTextSearch chatFullTextSearch,
       ChatMetrics chatMetrics,
       ChatAutoCleanupSettings chatAutoCleanup,
+      ChatAttachmentService attachmentService,
       Clock clock) {
     this.chatAutoCleanup = chatAutoCleanup;
+    this.attachmentService = attachmentService;
     this.chatPersonalMarkRepository = chatPersonalMarkRepository;
     this.chatFullTextSearch = chatFullTextSearch;
     this.chatMetrics = chatMetrics;
@@ -425,6 +428,15 @@ public class ChatService {
   }
 
   /**
+   * What the attachments of {@code chat} contribute to the answer to {@code question}, with {@code
+   * newAttachmentIds} validated ({@link ChatAttachmentService#contextFor}).
+   */
+  public ChatAttachmentContext attachmentContext(
+      Chat chat, List<UUID> newAttachmentIds, String question) {
+    return attachmentService.contextFor(chat, newAttachmentIds, question);
+  }
+
+  /**
    * Verifies the chat's author still belongs to the chat's space - see this class's Javadoc for why
    * only the query path requires this and {@link #getChat}/{@link #updateChat}/{@link #deleteChat}
    * - and with {@link #getChat} the export of a chat ({@link ChatExportService}) - deliberately do
@@ -550,6 +562,23 @@ public class ChatService {
       String answer,
       List<ChatSource> sources,
       AnswerEvidence evidence) {
+    return appendTurn(chat, question, usedPrompt, answer, sources, evidence, List.of());
+  }
+
+  /**
+   * The same turn, binding {@code attachmentIds} - the attachments the question newly named - to
+   * the chat and to the question's message in the turn's own transaction. An attachment deleted
+   * since {@link #attachmentContext} read it fails the turn rather than leave it unbound.
+   */
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
+  public String appendTurn(
+      Chat chat,
+      String question,
+      UsedPrompt usedPrompt,
+      String answer,
+      List<ChatSource> sources,
+      AnswerEvidence evidence,
+      List<UUID> attachmentIds) {
     // An archived space accepts no new turn; QueryService#query checks this early, this call
     // guards a space archived in between.
     requireSpaceNotArchived(chat.getSpaceId());
@@ -570,7 +599,8 @@ public class ChatService {
                 answer,
                 serializedSources,
                 serializedEvidence,
-                derivedTitle);
+                derivedTitle,
+                attachmentIds);
         break;
       } catch (DataIntegrityViolationException e) {
         if (attempt == APPEND_TURN_MAX_ATTEMPTS) {
@@ -607,9 +637,10 @@ public class ChatService {
   }
 
   private ChatConversation toConversation(Chat chat) {
+    Map<UUID, List<ChatAttachment>> attachments = attachmentService.byMessage(chat.getId());
     List<ChatTurn> messages =
         chatMessageRepository.findByChatIdOrderBySequenceAsc(chat.getId()).stream()
-            .map(this::toTurn)
+            .map(message -> toTurn(message).withAttachments(attachments.get(message.getId())))
             .toList();
     return new ChatConversation(chat, messages, chatNoteService.points(chat.getId()));
   }

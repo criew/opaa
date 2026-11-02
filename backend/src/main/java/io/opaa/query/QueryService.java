@@ -4,6 +4,7 @@ import io.opaa.api.types.ChatNoteItemKind;
 import io.opaa.auth.CurrentUser;
 import io.opaa.chat.AnswerEvidence;
 import io.opaa.chat.Chat;
+import io.opaa.chat.ChatAttachmentContext;
 import io.opaa.chat.ChatNoteExtractionService;
 import io.opaa.chat.ChatNotePoint;
 import io.opaa.chat.ChatNoteService;
@@ -11,6 +12,7 @@ import io.opaa.chat.ChatService;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.SearchScopeResolver;
 import io.opaa.chat.UsedPrompt;
+import io.opaa.common.ValidationException;
 import io.opaa.knowledge.LibraryAccessService;
 import io.opaa.llm.AnswerCompleteness;
 import io.opaa.llm.ChatResponses;
@@ -35,6 +37,7 @@ import io.opaa.retrieval.RetrievalPipelineResult;
 import io.opaa.retrieval.context.NeighborChunkExpansion;
 import io.opaa.retrieval.search.SubQueryDecompositionStage;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -212,7 +215,37 @@ public class QueryService {
       MetadataFilter requestedMetadataFilter,
       UUID usedPromptId,
       AnswerStreamListener answerListener) {
+    return query(
+        question,
+        chatId,
+        caller,
+        useKnowledge,
+        requestedLibraryIds,
+        requestedMetadataFilter,
+        usedPromptId,
+        answerListener,
+        List.of());
+  }
+
+  /**
+   * The same query with the chat attachments {@code attachmentIds} sent along. Their passages - and
+   * those of every earlier attachment of the chat - precede the retrieved chunks and are cited like
+   * them ({@code ChatService#attachmentContext}); the attachments are bound to the chat with the
+   * turn. Naming one without a persisted chat of the caller is a 400. A turn with attachments is
+   * never taken over by the tool loop, which would not see them.
+   */
+  public QueryResult query(
+      String question,
+      UUID chatId,
+      CurrentUser caller,
+      boolean useKnowledge,
+      List<UUID> requestedLibraryIds,
+      MetadataFilter requestedMetadataFilter,
+      UUID usedPromptId,
+      AnswerStreamListener answerListener,
+      List<UUID> attachmentIds) {
     UUID currentUserId = caller.id();
+    List<UUID> requestedAttachments = attachmentIds == null ? List.of() : attachmentIds;
     return metrics
         .queryTimer()
         .record(
@@ -230,6 +263,13 @@ public class QueryService {
                 // the same guard remains the race guard for a space archived after this point.
                 chat.ifPresent(c -> chatService.requireSpaceNotArchived(c.getSpaceId()));
                 UsedPrompt usedPrompt = usedPrompt(usedPromptId, chat, caller);
+                if (chat.isEmpty() && !requestedAttachments.isEmpty()) {
+                  throw new ValidationException(
+                      "Anhänge lassen sich nur in einem eigenen Chat mitsenden");
+                }
+                ChatAttachmentContext attachments =
+                    chat.map(c -> chatService.attachmentContext(c, requestedAttachments, question))
+                        .orElse(ChatAttachmentContext.NONE);
                 // A chatId that does not resolve to an owned persisted chat (including "none
                 // given") runs ephemerally rather than being rejected, reused as the in-memory
                 // conversation-cache key when the caller supplied one, or freshly generated
@@ -277,18 +317,20 @@ public class QueryService {
                 // rights and scope just resolved above; an empty result leaves everything below
                 // unchanged.
                 Optional<QueryResult> toolLoopResult =
-                    toolLoopQueryHandler.flatMap(
-                        handler ->
-                            handler.handle(
-                                question,
-                                chat,
-                                effectiveChatId,
-                                conversationKey,
-                                notePoints,
-                                searchScope,
-                                metadataFilter,
-                                startTime,
-                                usedPrompt));
+                    toolLoopQueryHandler
+                        .filter(handler -> attachments.attachmentIds().isEmpty())
+                        .flatMap(
+                            handler ->
+                                handler.handle(
+                                    question,
+                                    chat,
+                                    effectiveChatId,
+                                    conversationKey,
+                                    notePoints,
+                                    searchScope,
+                                    metadataFilter,
+                                    startTime,
+                                    usedPrompt));
                 if (toolLoopResult.isPresent()) {
                   return toolLoopResult.get();
                 }
@@ -298,8 +340,12 @@ public class QueryService {
                 // caller, or a chip bar emptied on purpose.
                 boolean noSpaceContext = chat.isEmpty();
                 boolean effectiveUseKnowledge = chat.map(Chat::isUseKnowledge).orElse(false);
+                // Attachments are knowledge the person brought: an answer from them is none of
+                // these three cases.
+                boolean noAttachments = attachments.isEmpty();
                 boolean noKnowledgeAssignedToSpace =
-                    searchScope.isEmpty()
+                    noAttachments
+                        && searchScope.isEmpty()
                         && chat.map(
                                 c ->
                                     !chatService.spaceHasLibraryAssociations(
@@ -311,12 +357,14 @@ public class QueryService {
                     !noSpaceContext
                         && !noKnowledgeAssignedToSpace
                         && !effectiveUseKnowledge
-                        && searchScope.isEmpty();
+                        && searchScope.isEmpty()
+                        && noAttachments;
                 boolean noKnowledgeAvailableInSpace =
                     !noKnowledgeAssignedToSpace
                         && effectiveUseKnowledge
                         && searchScope.isEmpty()
-                        && chat.isPresent();
+                        && chat.isPresent()
+                        && noAttachments;
 
                 // The decomposition LLM call only runs once there is actually something to
                 // search - an empty scope would otherwise pay for it and discard the result.
@@ -340,6 +388,15 @@ public class QueryService {
                   subQueriesByDocument = retrieval.subQueriesByDocument();
                 }
 
+                // The chat's attachments come first: they are what the person put in front of the
+                // question, and a long retrieval list must not push them out of view.
+                if (!attachments.isEmpty()) {
+                  List<Document> withAttachments = new ArrayList<>(attachments.passages());
+                  withAttachments.addAll(relevantChunks);
+                  relevantChunks = withAttachments;
+                }
+                boolean searched = !searchScope.isEmpty() || !attachments.isEmpty();
+
                 // --- LLM call: the slowest step, and the reason no phase of this method
                 // carries a transaction.
                 ChatResponse chatResponse =
@@ -349,7 +406,7 @@ public class QueryService {
                             relevantChunks,
                             conversationKey,
                             noteTexts(notePoints, null),
-                            !searchScope.isEmpty(),
+                            searched,
                             searchNeeded,
                             spaceInstruction)
                         : answerGenerationService.streamAnswer(
@@ -357,7 +414,7 @@ public class QueryService {
                             relevantChunks,
                             conversationKey,
                             noteTexts(notePoints, null),
-                            !searchScope.isEmpty(),
+                            searched,
                             searchNeeded,
                             spaceInstruction,
                             answerListener);
@@ -370,6 +427,7 @@ public class QueryService {
                 List<ChatSource> sources =
                     chatSourceAssembler.assemble(
                         relevantChunks, validatedCitations, metadataFilter);
+                markAttachments(sources, attachments);
 
                 log.debug(
                     "Citations found: {} validated, {} total sources",
@@ -394,7 +452,7 @@ public class QueryService {
                 AnswerEvidence evidence =
                     AnswerEvidenceAssessor.assess(
                         validatedCitations,
-                        !searchScope.isEmpty(),
+                        searched,
                         !relevantChunks.isEmpty(),
                         searchNeeded,
                         searchQueries,
@@ -417,8 +475,17 @@ public class QueryService {
                 String chatTitle =
                     chat.map(
                             c ->
-                                chatService.appendTurn(
-                                    c, question, usedPrompt, answer, sources, evidence))
+                                attachments.newAttachmentIds().isEmpty()
+                                    ? chatService.appendTurn(
+                                        c, question, usedPrompt, answer, sources, evidence)
+                                    : chatService.appendTurn(
+                                        c,
+                                        question,
+                                        usedPrompt,
+                                        answer,
+                                        sources,
+                                        evidence,
+                                        attachments.newAttachmentIds()))
                         .orElse(null);
                 // The condensation of this turn's question, off the request thread and only once
                 // the turn is durably persisted - triggered here rather than inside appendTurn so
@@ -447,6 +514,19 @@ public class QueryService {
                 throw e;
               }
             });
+  }
+
+  /** Marks the sources that come from one of the chat's attachments. */
+  private static void markAttachments(List<ChatSource> sources, ChatAttachmentContext attachments) {
+    if (attachments.attachmentIds().isEmpty()) {
+      return;
+    }
+    for (ChatSource source : sources) {
+      if (source.getDocumentId() != null
+          && attachments.attachmentIds().contains(source.getDocumentId())) {
+        source.attachment(true);
+      }
+    }
   }
 
   /**

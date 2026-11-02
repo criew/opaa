@@ -1,4 +1,9 @@
-import type { AnswerEvidence, SearchedLibrary, SourceReference } from '@/shared/api/types'
+import type {
+  AnswerEvidence,
+  ChatAttachmentRef,
+  SearchedLibrary,
+  SourceReference,
+} from '@/shared/api/types'
 
 export type MessageRole = 'user' | 'assistant'
 
@@ -50,5 +55,7 @@ export interface ChatMessage {
    * snapshot shown as "Prompt: <title>", never a link.
    */
   usedPromptTitle?: string
+  /** On a question: the files sent along with it. */
+  attachments?: ChatAttachmentRef[]
   timestamp: Date
 }

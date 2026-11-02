@@ -1,5 +1,6 @@
 // chat
 import { chatHandlers } from '@/features/chat/mocks/chatHandlers'
+import { chatAttachmentHandlers } from '@/features/chat/mocks/chatAttachmentHandlers'
 import { queryHandlers } from '@/features/chat/mocks/queryHandlers'
 import { transcriptionHandlers } from '@/features/chat/mocks/transcriptionHandlers'
 // space
@@ -83,6 +84,7 @@ import { healthHandlers } from '@/shared/mocks/healthHandlers'
 export const handlers = [
   // chat
   ...chatHandlers,
+  ...chatAttachmentHandlers,
   ...queryHandlers,
   ...transcriptionHandlers,
   // space

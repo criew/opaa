@@ -13,8 +13,8 @@ import java.util.regex.Pattern;
  * framework service agreements (Bagatelle, Anzeige, Zustimmung) with its classes Z1 to Z7 and
  * reason, and whether the record of processing activities (VVT), the data protection impact
  * assessment (DSFA) and the security concept are concerned. This class is the only place in the
- * code that holds them; the specification states them in "Die Stufenregeln" of {@code
- * docs/features/behoerdenunterlagen.md} and maps manifest changes to them in "Zuordnung im
+ * code that holds them; the manual states them in "Die Stufenregeln" of {@code
+ * docs/handbuch/betrieb/nachvollziehbarkeit.md} and maps manifest changes to them in "Zuordnung im
  * Werkzeug". In doubt, the proposal is Zustimmung with {@link Assessment#undecided()} set.
  */
 public final class StageRules {

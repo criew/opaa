@@ -141,6 +141,15 @@ settings:
     helm:
       values: features.externalAccess.enabled
       defaultValue: "true"
+  - key: opaa.features.chat-upload.enabled
+    defaultValue: "true"
+    effect: >-
+      Dokumente lassen sich an eine Chatfrage anhängen; ihr Text geht mit den Fragen des Chats an
+      das Sprachmodell
+    bearings: [DATA, DATA_FLOW]
+    helm:
+      values: features.chatUpload.enabled
+      defaultValue: "true"
   - key: opaa.demo.chat-import.enabled
     defaultValue: "false"
     effect: Ob vorbereitete Chatverläufe ohne Modellaufruf eingespielt werden können (nur Demo)

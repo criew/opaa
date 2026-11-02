@@ -117,6 +117,7 @@ public final class ChatResponseMapper {
       response.privateSourcesInContext(ChatSource.anyPrivate(turn.getSources()));
       response.evidence(toEvidence(turn.getEvidence()));
     }
+    response.attachments(ChatAttachmentResponseMapper.toRefs(turn.getAttachments()));
     UsedPrompt usedPrompt = turn.getUsedPrompt();
     if (usedPrompt != null) {
       response.usedPromptId(usedPrompt.id()).usedPromptTitle(usedPrompt.title());
@@ -166,7 +167,8 @@ public final class ChatResponseMapper {
         .chunkLocations(toChunkLocations(source.getChunkLocations()))
         .metadata(toMetadataEntries(source.getMetadata()))
         .metadataFilterMatch(source.getMetadataFilterMatch())
-        .freeze(toFreeze(source));
+        .freeze(toFreeze(source))
+        .attachment(source.getAttachment() ? Boolean.TRUE : null);
   }
 
   /** The "Stand vom" of a source, {@code null} while it was updated when the answer was given. */

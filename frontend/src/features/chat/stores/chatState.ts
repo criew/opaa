@@ -1,6 +1,6 @@
 import type { StoreApi } from 'zustand'
 import type { ChatMessage } from '../types/chat'
-import type { ChatNoteItem, MetadataFilter } from '@/shared/api/types'
+import type { ChatAttachmentRef, ChatNoteItem, MetadataFilter } from '@/shared/api/types'
 import type { SearchScope } from './chatSettingsPersistence'
 
 /**
@@ -63,10 +63,12 @@ export interface ChatState {
    * `usedPrompt` names the prompt the question was built from. A question the server refuses (4xx,
    * including a prompt that is no longer usable) resolves to a {@link RefusedQuestion}: nothing of
    * it stays in the history, and the input gets it back to be corrected and sent again.
+   * `attachments` are the ready chat attachments sent along; the chat binds them with this turn.
    */
   sendMessage: (
     question: string,
     usedPrompt?: { id: string; title: string },
+    attachments?: ChatAttachmentRef[],
   ) => Promise<RefusedQuestion | void>
   /** Sets the chip bar back to the special @Space-Wissen chip, replacing any concrete chips. */
   setScopeAll: () => void

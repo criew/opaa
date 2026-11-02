@@ -17,6 +17,7 @@ datenkatalog#bereich-external-access
 datenkatalog#bereich-libraries
 datenkatalog#bereich-rights
 datenkatalog#bereich-spaces
+datenkatalog#chat-attachments
 datenkatalog#chat-cleanup-holds
 datenkatalog#chats
 datenkatalog#connected-accounts
@@ -317,12 +318,16 @@ voreinstellungen#opaa-auth-local-admin-refresh-token-ttl
 voreinstellungen#opaa-auth-local-admin-session-max-lifetime
 voreinstellungen#opaa-auth-local-refresh-token-ttl
 voreinstellungen#opaa-auth-local-session-max-lifetime
+voreinstellungen#opaa-chat-attachments-excerpt-max-chars
+voreinstellungen#opaa-chat-attachments-inline-max-chars
+voreinstellungen#opaa-chat-attachments-unbound-retention
 voreinstellungen#opaa-chat-locked-account-cleanup-hold-max-days
 voreinstellungen#opaa-chat-note-max-items
 voreinstellungen#opaa-demo-chat-import-enabled
 voreinstellungen#opaa-directory-sync-schedule-enabled
 voreinstellungen#opaa-external-access-max-release-days
 voreinstellungen#opaa-external-access-provider-sign-in-max-age-days
+voreinstellungen#opaa-features-chat-upload-enabled
 voreinstellungen#opaa-features-external-access-enabled
 voreinstellungen#opaa-features-metadata-enabled
 voreinstellungen#opaa-features-prompt-libraries-enabled
@@ -388,6 +393,7 @@ fristen#opaa-auth-local-admin-refresh-token-ttl
 fristen#opaa-auth-local-admin-session-max-lifetime
 fristen#opaa-auth-local-refresh-token-ttl
 fristen#opaa-auth-local-session-max-lifetime
+fristen#opaa-chat-attachments-unbound-retention
 fristen#opaa-chat-locked-account-cleanup-hold-max-days
 fristen#permission-history-retention-settings-retention-months
 fristen#protokollereignisse

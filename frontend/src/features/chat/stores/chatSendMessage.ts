@@ -1,4 +1,5 @@
 import type { ChatMessage } from '../types/chat'
+import type { ChatAttachmentRef } from '@/shared/api/types'
 import { createChat } from '../api/chatApi'
 import { streamQuery } from '../api/queryStream'
 import { useChatListStore } from './chatListStore'
@@ -43,6 +44,7 @@ export async function sendChatMessage(
   set: ChatSet,
   question: string,
   usedPrompt?: { id: string; title: string },
+  attachments: ChatAttachmentRef[] = [],
 ): Promise<RefusedQuestion | void> {
   // This call's token in the session epoch, captured before any await below. Checked
   // again before every set() that follows an await - a logout (resetAllStores) in the meantime
@@ -74,6 +76,7 @@ export async function sendChatMessage(
       role: 'user',
       content: question,
       ...(usedPrompt ? { usedPromptTitle: usedPrompt.title } : {}),
+      ...(attachments.length > 0 ? { attachments } : {}),
       timestamp: new Date(),
     },
     persistedUserTurnsBefore: sendingChatId
@@ -189,6 +192,9 @@ export async function sendChatMessage(
       usedPrompt?.id,
       {
         signal: answerAbort.signal,
+        ...(attachments.length > 0
+          ? { attachmentIds: attachments.map((attachment) => attachment.id) }
+          : {}),
         // Only the view the question was sent from shows its provisional answer.
         onProvisional: (text) => {
           if (!isStaleSessionEpoch(sessionEpoch) && isSendingViewShown()) {

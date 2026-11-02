@@ -164,6 +164,197 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/spaces/{spaceId}/chat-attachments:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: uploadChatAttachment
+      tags: [chat]
+      summary: >
+        Attach a document to a coming chat question in this space (opaa.features.chat-upload).
+        The caller must be a member of the space; an archived space accepts no attachment (409).
+      description: >
+        The file is checked like a library upload (format, content against extension, size,
+        malware scan), its original goes into the upload storage and its text is read on a pool of
+        its own, separate from library indexing. The call waits a few seconds for the reading: a
+        small document comes back READY or FAILED, a larger one PROCESSING, to be polled with
+        getChatAttachment. Nothing is embedded or indexed - the text goes into the answer prompt as
+        full text or, above a size threshold, as the excerpts that best fit the question.
+
+        The attachment belongs to its uploader alone and to no chat yet. It is bound to a chat with
+        the first question that names it in QueryRequest.attachmentIds; one never bound is deleted
+        after a day. A bound attachment lives and dies with its chat. Each chat holds at most
+        opaa.chat.attachments.max-per-chat attachments, each question names at most
+        opaa.chat.attachments.max-per-message.
+
+        **429:** past the upload rate limit (shared with library uploads), or while the caller
+        already has opaa.chat.attachments.max-processing-per-account attachments being read or
+        the reading pool of the instance is full. Nothing is stored then.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Attachment stored; status says whether its text is read yet.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatAttachment"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/chat-attachments:
+    get:
+      operationId: listMyChatAttachments
+      tags: [chat]
+      summary: >
+        The caller's own chat attachments across all chats and spaces ("Meine Uploads"), newest
+        first. A view, not a store of its own: every entry is an attachment of a chat (or one not
+        yet sent) and goes with it. Nobody else - neither space nor system administration - can
+        list another person's attachments.
+      responses:
+        "200":
+          description: The caller's attachments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatAttachment"
+
+  /api/v1/chat-attachments/{attachmentId}:
+    parameters:
+      - name: attachmentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getChatAttachment
+      tags: [chat]
+      summary: One of the caller's own attachments, e.g. to follow its reading - uploader only.
+      responses:
+        "200":
+          description: The attachment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatAttachment"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: deleteChatAttachment
+      tags: [chat]
+      summary: >
+        Delete one of the caller's own attachments with its text and original. Later questions of
+        its chat no longer see it; answers given before keep their sources by name. Uploader only.
+      responses:
+        "204":
+          description: Attachment deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/chat-attachments/{attachmentId}/content:
+    parameters:
+      - name: attachmentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getChatAttachmentContent
+      tags: [chat]
+      summary: >
+        The original file of one of the caller's own attachments, inline with its name and type -
+        uploader only. 503 while the upload storage cannot be reached.
+      responses:
+        "200":
+          description: The original file's bytes
+          content:
+            "*/*":
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/chat-attachments/{attachmentId}/library-copy:
+    parameters:
+      - name: attachmentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: copyChatAttachmentToLibrary
+      tags: [chat]
+      summary: >
+        Takes one of the caller's own attachments into a library as an ordinary upload, the
+        deliberate step from the chat to a lasting place. Everything uploadLibraryDocument
+        checks applies: the caller needs the editor role on the library, its quota and format
+        rules hold, and the copy is indexed like any upload. The attachment itself stays with its
+        chat.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatAttachmentLibraryCopyRequest"
+      responses:
+        "201":
+          description: Document row created in the library, indexing runs asynchronously.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryDocumentResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
   /api/v1/chats/{chatId}/export/pdf:
     parameters:
       - name: chatId
@@ -747,6 +938,96 @@ components:
           type: integer
           minimum: 0
 
+    ChatAttachmentStatus:
+      type: string
+      enum: [PROCESSING, READY, FAILED]
+      description: >
+        PROCESSING while the text is read, READY once it can go into an answer, FAILED when it
+        cannot (failureReason says why in German).
+
+    ChatAttachmentMode:
+      type: string
+      enum: [FULL_TEXT, EXCERPTS]
+      description: >
+        How a READY attachment goes into an answer: FULL_TEXT as a whole, EXCERPTS as the passages
+        that best fit each question, because the attachments of the chat together exceed
+        opaa.chat.attachments.inline-max-chars.
+
+    ChatAttachment:
+      type: object
+      required: [id, spaceId, fileName, sizeBytes, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        spaceId:
+          type: string
+          format: uuid
+        chatId:
+          type: string
+          format: uuid
+          nullable: true
+          description: The chat it is bound to; null until a question names it.
+        chatTitle:
+          type: string
+          nullable: true
+          description: The title of that chat, for the overview of the caller's attachments.
+        fileName:
+          type: string
+        contentType:
+          type: string
+          nullable: true
+        sizeBytes:
+          type: integer
+          format: int64
+        status:
+          $ref: "#/components/schemas/ChatAttachmentStatus"
+        failureReason:
+          type: string
+          nullable: true
+          description: Why a FAILED attachment cannot be used, in German.
+        mode:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ChatAttachmentMode"
+          description: >
+            How this attachment alone would go into an answer: EXCERPTS when its own text exceeds
+            the full-text threshold. Null unless READY.
+        createdAt:
+          type: string
+          format: date-time
+        deletionDueAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            When an attachment never sent with a question is deleted; null once it is bound to a
+            chat, whose own lifetime then applies.
+
+    ChatAttachmentRef:
+      type: object
+      required: [id, fileName]
+      description: An attachment as shown on the question it was sent with.
+      properties:
+        id:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+          nullable: true
+
+    ChatAttachmentLibraryCopyRequest:
+      type: object
+      required: [libraryId]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+          description: The library to copy the attachment into (sourceType UPLOAD).
+
     ChatMessageResponse:
       type: object
       required: [id, chatId, role, content, generatedByAi, createdAt]
@@ -800,6 +1081,14 @@ components:
           description: >
             The prompt's title as it stood when the question was sent - shown as "Prompt: <title>",
             never resolved again.
+        attachments:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/ChatAttachmentRef"
+          description: >
+            On a USER message: the attachments sent with this question that still exist. Absent
+            otherwise and while the chat-upload feature is switched off.
         createdAt:
           type: string
           format: date-time

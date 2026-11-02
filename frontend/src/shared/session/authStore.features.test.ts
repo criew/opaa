@@ -43,6 +43,7 @@ describe('authStore feature flags', () => {
       metadata: false,
       speechInput: true,
       externalAccess: true,
+      chatUpload: true,
     })
     expect(isFeatureEnabled('metadata')).toBe(false)
     expect(isFeatureEnabled('promptLibraries')).toBe(true)

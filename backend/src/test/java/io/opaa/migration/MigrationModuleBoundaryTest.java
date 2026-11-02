@@ -192,6 +192,8 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
                   "search_status_probes",
                   "chats",
                   "chat_messages",
+                  "chat_attachments",
+                  "chat_attachment_chunks",
                   "chat_library_references",
                   "chat_note_items",
                   "chat_personal_marks",

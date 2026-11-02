@@ -186,6 +186,10 @@ features:
   # administration, which is off by default.
   externalAccess:
     enabled: true
+  # Documents dragged into a chat question; false removes drop zone, attach button and the
+  # attachment endpoints. Existing attachments stay until their chat is deleted.
+  chatUpload:
+    enabled: true
 
 # Host names exempted from the address check (SSRF protection), which refuses private and
 # cluster-internal addresses by default.

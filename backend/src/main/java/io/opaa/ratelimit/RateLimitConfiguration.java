@@ -79,7 +79,9 @@ public class RateLimitConfiguration {
    * The upload into a library, keyed by the client alone and for {@code POST} only: another library
    * buys no fresh budget, and the document listing on the same path stays outside.
    */
-  static final String DOCUMENT_UPLOAD_PATTERN = "^/api/v1/libraries/[^/]+/documents$";
+  static final String DOCUMENT_UPLOAD_PATTERN =
+      "^/api/v1/(?:libraries/[^/]+/documents|spaces/[^/]+/chat-attachments"
+          + "|chat-attachments/[^/]+/library-copy)$";
 
   @Bean
   TrustedProxyClientIpResolver clientIpResolver(RateLimitProperties properties) {

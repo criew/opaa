@@ -16,10 +16,10 @@
 #   anonymous    no credential at all (oidc mode)
 # The fixture space belongs to a third person and holds her knowledge library (a folder, a document
 # with a chunk, a selection field with one value), her prompt library with a prompt, a chat of the
-# dev user while she is a member (else the owner's) and a chat of a colleague, each with a note
-# item. Beside it stand a group with a steward and a grant, the owner's and the colleague's
-# accounts, and - written per request and rolled back - a notification and an access token of the
-# caller, an audit incident scope, a diagnostic context event and a connection profile.
+# dev user while she is a member (else the owner's) with an attachment and a chat of a colleague,
+# each with a note item. Beside it stand a group with a steward and a grant, the owner's and the
+# colleague's accounts, and - written per request and rolled back - a notification and an access
+# token of the caller, an audit incident scope, a diagnostic context event and a connection profile.
 #
 # Outcomes: 401, 403 and 404 as answered; "allowed" for every other status below 500 - a 2xx as
 # much as a 400, 409 or 422, which all got past the authorization. A 5xx fails the run, except a
@@ -123,6 +123,12 @@ operations:
   listArchivedSpaceChats:                    {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   applyChatBulkAction:                       {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
   deleteChatNoteItem:                        {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  uploadChatAttachment:                      {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401}
+  listMyChatAttachments:                     {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401, note: "lists only the caller's own attachments"}
+  getChatAttachment:                         {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401, note: "the fixture attachment belongs to the dev user while she is a member, else to the owner"}
+  deleteChatAttachment:                      {systemAdmin: 404, auditor: 404, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: 404, anonymous: 401, note: "the fixture attachment belongs to the dev user while she is a member, else to the owner"}
+  getChatAttachmentContent:                  {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401, note: "the fixture attachment has no stored original, so even its author meets 404; the author check comes first and is covered by getChatAttachment"}
+  copyChatAttachmentToLibrary:               {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 401, note: "the fixture attachment has no stored original, so even its author meets 404; the author check comes first and is covered by getChatAttachment"}
   getSelfDisclosureStatus:                   {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
   createSelfDisclosureTicket:                {systemAdmin: allowed, auditor: allowed, spaceAdmin: allowed, curator: allowed, member: allowed, noRights: allowed, anonymous: 401}
   downloadSelfDisclosure:                    {systemAdmin: 404, auditor: 404, spaceAdmin: 404, curator: 404, member: 404, noRights: 404, anonymous: 404, note: "the ticket in the body is the only credential; a made-up ticket is unknown to every caller (404)"}

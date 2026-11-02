@@ -30,6 +30,7 @@ import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { downloadDocumentContent, hasOwnOriginal } from '@/features/library'
 import type { OpenableDocument } from '@/features/library'
 import { notify } from '@/shared/stores/notificationStore'
+import { downloadChatAttachment } from '../api/chatAttachmentApi'
 import { focusRingWidthPx, fontFamily } from '@/shared/theme/tokens'
 
 interface SourceEvidenceDrawerProps {
@@ -75,6 +76,8 @@ interface EvidenceDoc {
    *  sourceType (that endpoint proxies HTTP_DIRECTORY/RSS_FEED server-side). Undefined
    *  for a synthetic entry. */
   documentId?: string | null
+  /** The source is a file sent with a question of this chat, not a library document. */
+  attachment?: boolean
   sourceType?: SourceTypeKey | null
   /** The remote source URL for sourceType HTTP_DIRECTORY/RSS_FEED, mirroring
    *  LibraryDocumentResponse.sourceUrl - handed to the opener, not shown in the row. */
@@ -185,6 +188,10 @@ export default function SourceEvidenceDrawer({
     if (!doc.documentId || downloading) return
     setDownloading(doc.documentId)
     try {
+      if (doc.attachment) {
+        await downloadChatAttachment({ id: doc.documentId, fileName: doc.fileName })
+        return
+      }
       await downloadDocumentContent(doc.documentId, doc.fileName)
     } catch (err) {
       notify(
@@ -219,6 +226,7 @@ export default function SourceEvidenceDrawer({
       privateSource: doc.source?.privateSource === true,
       sourceEntryUrl: doc.source?.sourceEntryUrl,
       documentId: doc.source?.documentId,
+      attachment: doc.source?.attachment === true,
       sourceType: doc.source?.sourceType,
       sourceUrl: doc.source?.sourceUrl,
       filterMatchLabel: metadataFilterMatchLabel(shown(doc.source)),
@@ -233,6 +241,7 @@ export default function SourceEvidenceDrawer({
       privateSource: source.privateSource === true,
       sourceEntryUrl: source.sourceEntryUrl,
       documentId: source.documentId,
+      attachment: source.attachment === true,
       sourceType: source.sourceType,
       sourceUrl: source.sourceUrl,
       filterMatchLabel: metadataFilterMatchLabel(shown(source)),
@@ -471,7 +480,28 @@ export default function SourceEvidenceDrawer({
                   )}
                   {/* Every sourceType with a documentId opens via the content endpoint
                     (LibraryDetailPage#handleOpenOriginal); a synthetic entry has none. */}
-                  {doc.documentId && (
+                  {doc.attachment && (
+                    <Typography
+                      component="span"
+                      data-testid="source-attachment"
+                      sx={{ fontSize: 11.5, color: 'text.secondary', fontWeight: 600 }}
+                    >
+                      Anhang
+                    </Typography>
+                  )}
+                  {doc.documentId && doc.attachment && (
+                    <Link
+                      component="button"
+                      type="button"
+                      underline="hover"
+                      disabled={downloading === doc.documentId}
+                      onClick={() => void handleDownloadOriginal(doc)}
+                      sx={{ fontSize: 11.5 }}
+                    >
+                      Herunterladen
+                    </Link>
+                  )}
+                  {doc.documentId && !doc.attachment && (
                     <Link
                       component="button"
                       type="button"
@@ -484,18 +514,21 @@ export default function SourceEvidenceDrawer({
                   )}
                   {/* a page at the source (Confluence) has no file of its own to download */}
                   {/* an entry from before the source type was recorded may be such a page */}
-                  {doc.documentId && doc.sourceType && hasOwnOriginal(doc.sourceType) && (
-                    <Link
-                      component="button"
-                      type="button"
-                      underline="hover"
-                      disabled={downloading === doc.documentId}
-                      onClick={() => void handleDownloadOriginal(doc)}
-                      sx={{ fontSize: 11.5 }}
-                    >
-                      Herunterladen
-                    </Link>
-                  )}
+                  {doc.documentId &&
+                    !doc.attachment &&
+                    doc.sourceType &&
+                    hasOwnOriginal(doc.sourceType) && (
+                      <Link
+                        component="button"
+                        type="button"
+                        underline="hover"
+                        disabled={downloading === doc.documentId}
+                        onClick={() => void handleDownloadOriginal(doc)}
+                        sx={{ fontSize: 11.5 }}
+                      >
+                        Herunterladen
+                      </Link>
+                    )}
                 </Box>
               </Box>
             )

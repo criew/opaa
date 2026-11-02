@@ -27,6 +27,7 @@ import io.opaa.api.types.MetadataOrigin;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.chat.Chat;
+import io.opaa.chat.ChatAttachmentContext;
 import io.opaa.chat.ChatNoteExtractionService;
 import io.opaa.chat.ChatNoteService;
 import io.opaa.chat.ChatService;
@@ -38,6 +39,7 @@ import io.opaa.chat.SearchedLibraryRef;
 import io.opaa.chat.UsedPrompt;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
+import io.opaa.common.ValidationException;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.knowledge.DocumentRepository;
@@ -51,6 +53,7 @@ import io.opaa.metadata.CitationMetadataReader;
 import io.opaa.metadata.CoreMetadata;
 import io.opaa.metadata.DocumentMetadataService;
 import io.opaa.metadata.DocumentTypeVocabularyRepository;
+import io.opaa.metadata.MetadataFilter;
 import io.opaa.metadata.MetadataFilterValidator;
 import io.opaa.observability.QueryMetrics;
 import io.opaa.prompt.Prompt;
@@ -888,6 +891,131 @@ class QueryServiceTest {
     assertThat(response.metadata().model()).isEqualTo("gpt-4o");
     assertThat(response.metadata().tokenCount()).isEqualTo(300);
     assertThat(response.chatId()).isNotNull();
+  }
+
+  @Test
+  void theChatsAttachmentsAreCitedLikeChunksAndBoundWithTheTurn() {
+    Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, true, Set.of());
+    UUID chatId = chat.getId();
+    UUID attachmentId = UUID.randomUUID();
+    Document passage =
+        Document.builder()
+            .text("Die Frist beträgt drei Monate.")
+            .metadata(
+                Map.of(
+                    "file_name",
+                    "Vertrag.pdf",
+                    "document_id",
+                    attachmentId.toString(),
+                    "chunk_index",
+                    0,
+                    "chat_attachment",
+                    true))
+            .build();
+    when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
+    when(chatMemory.get(any())).thenReturn(List.of());
+    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
+    when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
+        .thenReturn(Set.of(readableLibraryId));
+    when(chatService.attachmentContext(chat, List.of(attachmentId), "Wie lang ist die Frist?"))
+        .thenReturn(
+            new ChatAttachmentContext(
+                List.of(passage), Set.of(attachmentId), List.of(attachmentId), false));
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    var answer = "Drei Monate 【source: " + attachmentId + "#0 | Vertrag.pdf】";
+    when(answerGenerationService.generateAnswer(
+            any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage(answer)))));
+
+    QueryResult response =
+        queryService.query(
+            "Wie lang ist die Frist?",
+            chatId,
+            caller,
+            true,
+            List.of(),
+            MetadataFilter.NONE,
+            null,
+            null,
+            List.of(attachmentId));
+
+    assertThat(response.sources()).hasSize(1);
+    assertThat(response.sources().getFirst().getAttachment()).isTrue();
+    assertThat(response.sources().getFirst().getCited()).isTrue();
+    assertThat(response.evidence().passagesFound()).isTrue();
+    verify(chatService)
+        .appendTurn(
+            eq(chat),
+            eq("Wie lang ist die Frist?"),
+            isNull(),
+            eq(answer),
+            any(),
+            any(),
+            eq(List.of(attachmentId)));
+  }
+
+  @Test
+  void anAnswerFromAttachmentsInAChatWithoutKnowledgeIsNotMarkedAsWithoutKnowledge() {
+    Chat chat = new Chat(UUID.randomUUID(), currentUserId, organizationId, null, false, Set.of());
+    UUID chatId = chat.getId();
+    UUID attachmentId = UUID.randomUUID();
+    Document passage =
+        Document.builder()
+            .text("Die Frist beträgt drei Monate.")
+            .metadata(
+                Map.of(
+                    "file_name",
+                    "Vertrag.pdf",
+                    "document_id",
+                    attachmentId.toString(),
+                    "chunk_index",
+                    0,
+                    "chat_attachment",
+                    true))
+            .build();
+    when(chatService.findOwnedChat(chatId, currentUserId)).thenReturn(Optional.of(chat));
+    when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
+    when(chatService.effectiveLibraryScope(any(), any())).thenReturn(Set.of());
+    when(chatService.attachmentContext(chat, List.of(attachmentId), "Frist?"))
+        .thenReturn(
+            new ChatAttachmentContext(
+                List.of(passage), Set.of(attachmentId), List.of(attachmentId), false));
+    when(answerGenerationService.generateAnswer(
+            any(), any(), any(), any(), anyBoolean(), anyBoolean(), any()))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Drei.")))));
+
+    QueryResult response =
+        queryService.query(
+            "Frist?",
+            chatId,
+            caller,
+            true,
+            List.of(),
+            MetadataFilter.NONE,
+            null,
+            null,
+            List.of(attachmentId));
+
+    assertThat(response.metadata().answeredWithoutKnowledge()).isFalse();
+    assertThat(response.metadata().noKnowledgeAssignedToSpace()).isFalse();
+    assertThat(response.metadata().noKnowledgeAvailableInSpace()).isFalse();
+  }
+
+  @Test
+  void attachmentsWithoutAnOwnChatAreRefused() {
+    assertThatThrownBy(
+            () ->
+                queryService.query(
+                    "Frage",
+                    null,
+                    caller,
+                    true,
+                    List.of(),
+                    MetadataFilter.NONE,
+                    null,
+                    null,
+                    List.of(UUID.randomUUID())))
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
