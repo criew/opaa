@@ -319,6 +319,9 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "listChatImports",
             "listSpaceChats",
             "listArchivedSpaceChats",
+            "listMyChatAttachments",
+            "getChatAttachment",
+            "getChatAttachmentContent",
             "listSpaceMembers",
             "listSpaceGroupMembers",
             "getExternalAccessSettings",
@@ -372,6 +375,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
         "deleteOrphanedLibraryOriginals",
         same("{\"libraryId\": \"{library}\", \"locators\": [\"originale/notiz.pdf\"]}"));
     probes.put("updateChat", same("{\"referencedLibraryIds\": [\"{library}\"]}"));
+    probes.put("copyChatAttachmentToLibrary", same("{\"libraryId\": \"{library}\"}"));
     probes.put(
         "createExternalAccessToken",
         same(

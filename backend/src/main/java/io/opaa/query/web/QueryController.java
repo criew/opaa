@@ -33,6 +33,8 @@ public class QueryController {
             useKnowledge,
             request.getLibraryIds(),
             MetadataFilterMapper.toDomain(request.getMetadataFilter()),
-            request.getUsedPromptId()));
+            request.getUsedPromptId(),
+            null,
+            request.getAttachmentIds()));
   }
 }

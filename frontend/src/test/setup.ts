@@ -4,6 +4,7 @@ import '@testing-library/jest-dom/vitest'
 import './jsdom-blob-stream'
 import { beforeAll, afterEach, afterAll } from 'vitest'
 import type { RequestHandler } from 'msw'
+import { Agent, setGlobalDispatcher } from 'undici'
 import { server } from './server'
 // Deliberately only the fixture module, never a store or `src/shared/api/api`: importing
 // anything that pulls in the axios instance *from this file* makes a dozen unrelated dialog tests
@@ -52,6 +53,12 @@ import { resetMockAuthConfig } from '@/shared/mocks/authFixtures'
 import { resetMockSelfServiceTokens } from '@/features/auth/mocks/localAuthFixtures'
 // installation
 import { resetMockInstallation } from '@/features/installation/mocks/installationFixtures'
+
+// jsdom's XMLHttpRequest keeps the undici dispatcher that was global when the window was created,
+// and Node's fetch uses whatever is global now - by default the same pool. A kept-alive socket of a
+// cancelled answer stream must never carry a later XHR: MSW attributes requests per connection, and
+// such a request escapes to the real network ("Network Error"). Separate pools keep them apart.
+setGlobalDispatcher(new Agent())
 
 /**
  * MSW passes a handler's `Set-Cookie` into `document.cookie`, which jsdom keeps for the whole file.

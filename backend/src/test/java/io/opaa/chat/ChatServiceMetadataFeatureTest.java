@@ -139,6 +139,7 @@ class ChatServiceMetadataFeatureTest {
         mock(ChatFullTextSearch.class),
         mock(ChatMetrics.class),
         mock(ChatAutoCleanupSettings.class),
+        mock(ChatAttachmentService.class),
         Clock.systemUTC());
   }
 }

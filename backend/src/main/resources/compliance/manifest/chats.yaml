@@ -68,6 +68,68 @@ data:
         Die Person kann einen eigenen Chat als Markdown- oder PDF-Datei herunterladen (Fragen,
         Antworten, Gesprächsnotiz, Dokumenttitel und Fundorte der Quellen); der Export wird weder
         protokolliert noch gespeichert
+  - id: chat-attachments
+    title: Anhänge an Chatfragen
+    purpose: >-
+      Dokumente, die die Person einer Chatfrage anhängt, damit die Antwort ihren Inhalt nutzt; Text
+      und Original, ohne Einbettung und ohne Aufnahme in eine Bibliothek
+    personalReference: EMPLOYEE
+    tables:
+      - name: chat_attachments
+        personalColumns: [author_id, file_name, created_at]
+        nonPersonalColumns:
+          - id
+          - organization_id
+          - space_id
+          - chat_id
+          - message_id
+          - content_type
+          - size_bytes
+          - original_locator
+          - status
+          - failure_reason
+          - text_chars
+          - processed_at
+        person:
+          columns: [author_id]
+      - name: chat_attachment_chunks
+        personalColumns: [content]
+        nonPersonalColumns: [attachment_id, chunk_index, metadata]
+        person:
+          excluded: >-
+            Dokumentinhalt, den die Person selbst angehängt hat; das Verzeichnis steht in der
+            Auskunft, das Original lädt sie selbst herunter
+    storage: >-
+      Anwendungsdatenbank (Text) und Ablage der Uploads, Dateisystem oder S3 (Original); der Text
+      geht mit jeder Frage des Chats an das Sprachmodell (Datenfluss)
+    retention:
+      rule: >-
+        Mit dem Chat, an dem der Anhang hängt (Löschung durch die Person, Bereinigung des Space,
+        Löschung nach der Sperre des Kontos), oder vorher durch die Person einzeln. Ein Anhang, der
+        nie mit einer Frage gesendet wurde, nach opaa.chat.attachments.unbound-retention
+        (Voreinstellung 24 Stunden). Das Original verschwindet mit dem Anhang, spätestens mit der
+        stündlichen Bereinigung
+      settings: [opaa.chat.attachments.unbound-retention]
+    visibility: [nur die Autorin oder der Autor]
+    accessPaths: [UI, API, EXPORT, DATABASE, STORAGE]
+    deletion: >-
+      Durch die Person einzeln (Anhang löschen, auch unter „Meine Uploads“), mit dem Chat auf jedem
+      seiner Löschwege, nach Ablauf der Frist für nie gesendete Anhänge, mit dem Space oder dem
+      Konto; das Original entfernt die stündliche Bereinigung, sobald kein Anhang mehr darauf zeigt
+    evaluations: >-
+      Übersicht „Meine Uploads“ der Person über ihre eigenen Anhänge; keine Auswertung durch
+      andere, weder Raum- noch Systemverwaltung sehen Anhänge. Kein Protokolleintrag zu Anhängen;
+      ein Fund der Virenprüfung wird ohne Dateiname und Person protokolliert
+    notes:
+      - Anhänge können Inhalte aus Fachverfahren und Personendaten Dritter enthalten
+      - >-
+        Bis opaa.chat.attachments.inline-max-chars Zeichen je Chat geht der ganze Text an das
+        Sprachmodell, darüber die zur Frage passenden Abschnitte bis
+        opaa.chat.attachments.excerpt-max-chars Zeichen
+      - >-
+        Die Person kann einen Anhang mit einem Klick als gewöhnlichen Upload in eine Bibliothek
+        übernehmen, in der sie bearbeiten darf; die Kopie folgt dann den Regeln der Bibliothek
+      - Abschaltbar mit opaa.features.chat-upload.enabled; vorhandene Anhänge bleiben dann unberührt
   - id: chat-cleanup-holds
     title: Angehaltene Löschung der Chats eines gesperrten Kontos
     purpose: >-
@@ -149,6 +211,28 @@ nonPersonalTables:
     - created_at
     - updated_at
 settings:
+  - key: opaa.chat.attachments.unbound-retention
+    source: PROPERTY
+    defaultValue: "24h"
+    range: 1 Stunde bis 7 Tage
+    effect: Löschung von Chat-Anhängen, die nie mit einer Frage gesendet wurden
+    bearings: [DATA]
+  - key: opaa.chat.attachments.inline-max-chars
+    source: PROPERTY
+    defaultValue: "120000"
+    range: mindestens 1000 Zeichen
+    effect: >-
+      Bis zu dieser Zeichenzahl aller Anhänge eines Chats geht ihr ganzer Text mit jeder Frage an
+      das Sprachmodell; darüber nur die zur Frage passenden Abschnitte
+    bearings: [DATA_FLOW]
+  - key: opaa.chat.attachments.excerpt-max-chars
+    source: PROPERTY
+    defaultValue: "40000"
+    range: mindestens 1000 Zeichen
+    effect: >-
+      Höchstzahl der Zeichen aus Anhängen, die oberhalb von opaa.chat.attachments.inline-max-chars
+      je Frage an das Sprachmodell gehen
+    bearings: [DATA_FLOW]
   - key: chat_auto_cleanup_settings.archive_after_days
     source: DATABASE
     defaultValue: "90"

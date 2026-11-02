@@ -153,6 +153,11 @@ io.opaa.api.types.CapabilitySubjectType:
   assessment: SECURITY
   readable: [ALL_ACCOUNTS, GROUP, USER]
   pending: []
+io.opaa.api.types.ChatAttachmentStatus:
+  attributes: [ChatAttachment.status]
+  assessment: STATE
+  readable: [FAILED, PROCESSING, READY]
+  pending: []
 io.opaa.api.types.ChatNoteItemKind:
   attributes: [ChatNoteItem.kind]
   assessment: STATE

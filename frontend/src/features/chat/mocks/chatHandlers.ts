@@ -12,12 +12,14 @@ import {
   resetMockChats,
 } from './chatFixtures'
 import { ensureScenarioChats, resetScenarioChats } from './chatScenarioFixtures'
+import { resetMockChatAttachments } from './chatAttachmentHandlers'
 import { currentMockScenario, scenarioLatency } from '@/shared/mocks/mockScenario'
 import type { ChatCreateRequest, ChatSearchRequest, ChatUpdateRequest } from '@/shared/api/types'
 
 export function resetChatMockState() {
   resetMockChats()
   resetScenarioChats()
+  resetMockChatAttachments()
 }
 
 export const chatHandlers = [

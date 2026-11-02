@@ -10,6 +10,9 @@ import type { ChatMessage } from '../types/chat'
 import { blue, motion } from '@/shared/theme/tokens'
 import { buildCitationIndex } from '@/shared/ui/markdown/citations'
 import { AiAnswerMark } from './AiNotice'
+import { ChatAttachmentRefs } from './ChatAttachmentChips'
+import { downloadChatAttachment } from '../api/chatAttachmentApi'
+import { notify } from '@/shared/stores/notificationStore'
 import CopyAnswerButton from './CopyAnswerButton'
 import CopyQuestionButton, { QUESTION_COPY_CLASS } from './CopyQuestionButton'
 import AnswerEvidenceLine from './AnswerEvidenceLine'
@@ -122,6 +125,19 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
               <TextSnippetOutlinedIcon aria-hidden sx={{ fontSize: 14 }} />
               Prompt: {message.usedPromptTitle}
             </Typography>
+          )}
+          {isUser && message.attachments && (
+            <ChatAttachmentRefs
+              attachments={message.attachments}
+              onOpen={(attachment) =>
+                void downloadChatAttachment(attachment).catch((err: unknown) =>
+                  notify(
+                    err instanceof Error ? err.message : 'Der Anhang konnte nicht geladen werden.',
+                    'error',
+                  ),
+                )
+              }
+            />
           )}
           {/* Mockup 1a: questions sit in a quiet blue-50 bubble with navy text; answers
               are plain running text without an avatar or a bubble around them. */}
