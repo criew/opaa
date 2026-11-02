@@ -1200,7 +1200,7 @@ Bearbeitenden vorbehalten (mindestens MANAGER-Rolle an der Bibliothek), nicht je
   bestimmte Modelle wirkt auch auf die Verarbeitung ihrer Dokumente.
 - **[Deployment und Infrastruktur](./deployment-infrastructure.md)** — Dokumentenspeicher, Netzwege zu
   Quellsystemen, Ressourcen für Indizierungsläufe.
-- **[Benutzer-Frontends](./user-frontends.md)** — Upload-Wege, Anzeige von Bestandsstand und
+- **[Benutzer-Frontends](../ROADMAP.md)** — Upload-Wege, Anzeige von Bestandsstand und
   Verarbeitungsfehlern.
 
 ---

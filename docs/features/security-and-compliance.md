@@ -20,7 +20,7 @@
 > **Abgrenzung:** Das Rechtemodell steht in
 > [Spaces, Assets & Zugangskontrolle](./spaces-and-assets.md), Anmeldung, Kontenlebenszyklus und
 > Systemverwaltung in [Identität, Rechte & Mandanten](./access-control.md), die aggregierte Auswertung in
-> [Monitoring, Kosten & Governance](./monitoring-and-governance.md). Dieses Dokument beschreibt, wie
+> [Monitoring, Kosten & Governance](../ROADMAP.md). Dieses Dokument beschreibt, wie
 > belegt wird, dass all das gewirkt hat — und wo die Grenzen dieses Belegens liegen.
 
 ## Motivation
@@ -1619,7 +1619,7 @@ sicher zu sein — er soll etwas einschalten müssen, um es nicht zu sein, und d
 - **Fehlermeldungen verraten nichts.** Nutzerseitige Meldungen nennen keine internen Pfade, Kennungen
   oder Bestandteile; die Einzelheiten gehen ins Protokoll.
 - **Grenzen sind voreingestellt**, nicht optional — Größen von Uploads, Anzahl gleichzeitiger Anfragen,
-  Verbrauchsgrenzen je Nutzer (siehe [Monitoring, Kosten & Governance](./monitoring-and-governance.md)).
+  Verbrauchsgrenzen je Nutzer (siehe [Monitoring, Kosten & Governance](../ROADMAP.md)).
 - **Passwörter liegen nie im Klartext und nie umkehrbar.** Ein Passwort eines lokalen Kontos wird
   ausschließlich als Prüfwert eines bewusst langsamen Verfahrens mit Arbeitsfaktor gespeichert, mit
   einem Präfix versehen, das das Verfahren benennt — damit ein späterer Wechsel des Verfahrens eine
@@ -1869,7 +1869,7 @@ Fristen, Schwellen und Zuständigkeiten — nicht die Frage, ob eine Überwachun
 - **Rechtemodell und Mitbestimmung:** die Datenquellen mit Personenbezug und die vollständige Liste der
   Stellschrauben → [spaces-and-assets.md](./spaces-and-assets.md)
 - **Monitoring und Governance:** die Grenze dieses Dokuments ist dort die verbindliche Vorgabe →
-  [monitoring-and-governance.md](./monitoring-and-governance.md)
+  [Roadmap](../ROADMAP.md)
 - **RAG-Engine:** der angewandte Suchbereich je Abfrage ist die Grundlage der Regressionsprüfung →
   [data-indexing-rag.md](./data-indexing-rag.md)
 - **Modelle:** die Freigabe externer Modelle ist eine sicherheitsrelevante Einstellung →
@@ -1963,5 +1963,5 @@ eine Stufe 2 wäre eine neue mitbestimmungspflichtige Änderung.
 
 - [Identität, Rechte & Mandanten](./access-control.md) — Anmeldung, Kontenlebenszyklus, Systemverwaltung
 - [Spaces, Assets & Zugangskontrolle](./spaces-and-assets.md) — Rechtemodell und Mitbestimmung im Detail
-- [Monitoring, Kosten & Governance](./monitoring-and-governance.md) — was ausgewertet werden darf
+- [Monitoring, Kosten & Governance](../ROADMAP.md) — was ausgewertet werden darf
 - [Produktvision](../VISION.md) — Einordnung in die Themenbereiche und Phasen

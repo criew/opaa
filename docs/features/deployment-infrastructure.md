@@ -287,7 +287,7 @@ Baustein daneben.
 | Dateiablage | lesender Konnektor auf freigegebene Bestände, mit Übernahme der Rechte aus dem Quellsystem |
 | Wiki | lesender Konnektor auf Seitenbestände |
 | Postfach | lesender Konnektor auf Archive, mit den Einschränkungen, die für Postfachdaten gelten |
-| Chat (Matrix-Protokoll) | Kanal für Fragen und Antworten (siehe [user-frontends.md](./user-frontends.md)) |
+| Chat (Matrix-Protokoll) | Kanal für Fragen und Antworten (siehe [Roadmap](../ROADMAP.md)) |
 | Zentrale Anmeldung | derselbe Verzeichnisdienst, dieselben Gruppen als Rechtesubjekt |
 
 Das ist eine Beschreibung von Schnittstellen, keine Empfehlung für einen Anbieter und keine Bewertung
@@ -424,7 +424,7 @@ können**. Das ist keine Betriebseinstellung, sondern eine Regel für die Entwic
 4. **Die Schnittstelle bleibt in ihrer Version stabil.** Innerhalb einer Version werden Felder
    ergänzt, nicht entfernt oder umgedeutet; eine brechende Änderung bekommt eine neue Version, und
    die alte läuft eine benannte Übergangszeit weiter. Das gilt besonders für maschinelle Zugänge, die
-   niemand kurzfristig anpassen kann (siehe [user-frontends.md](./user-frontends.md)).
+   niemand kurzfristig anpassen kann (siehe [Roadmap](../ROADMAP.md)).
 
 ---
 
@@ -652,9 +652,9 @@ hinterlassen kein Ereignis.
   Betriebs ohne Netzanbindung
 - **[data-indexing-rag.md](./data-indexing-rag.md)** — Indizierung, deren Kosten die Planung von
   Aktualisierungen bestimmen
-- **[user-frontends.md](./user-frontends.md)** — welche Kanäle in einer abgeschotteten Installation
+- **[Roadmap](../ROADMAP.md)** — welche Kanäle in einer abgeschotteten Installation
   überhaupt erreichbar sind
-- **[public-sector.md](./public-sector.md)** — Revisionssicherheit und Aufbewahrung als
+- **[Roadmap](../ROADMAP.md)** — Revisionssicherheit und Aufbewahrung als
   Betriebsanforderung
 
 ---

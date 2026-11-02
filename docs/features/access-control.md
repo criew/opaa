@@ -1952,7 +1952,7 @@ automatisch greift.
 
 - **Authentifizierung:** SSO-Anbieter und Verzeichnisdienst
 - **Benutzer-Frontends:** Rechte an jeder Schnittstelle durchsetzen →
-  [user-frontends.md](./user-frontends.md)
+  [Roadmap](../ROADMAP.md)
 - **Daten-Indizierung:** Zuordnung von Quellen zu Wissensbibliotheken →
   [data-indexing-rag.md](./data-indexing-rag.md)
 - **RAG-Engine:** Filter über die lesbaren Bibliotheken des Nutzers, als Teil der Vektorsuche
@@ -2002,5 +2002,5 @@ automatisch greift.
 - [Spaces, Assets & Zugangskontrolle](./spaces-and-assets.md) — das Rechtemodell
 - [Sicherheit, Nachweis & Prüfbarkeit](./security-and-compliance.md) — Protokoll, Rechtehistorie, DSGVO,
   C5-Fähigkeit, Mitbestimmungsfähigkeit
-- [Monitoring, Kosten & Governance](./monitoring-and-governance.md) — Grenzen, Kosten und Auswertung
+- [Monitoring, Kosten & Governance](../ROADMAP.md) — Grenzen, Kosten und Auswertung
 - [Daten-Indizierung & RAG](./data-indexing-rag.md)

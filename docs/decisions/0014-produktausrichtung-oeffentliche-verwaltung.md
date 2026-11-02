@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-02 · ergänzt durch ADR-0030 (zu Entscheidung 11) und ADR-0039 (zu Entscheidung 13)
+Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt durch ADR-0030 (zu Entscheidung 11) und ADR-0039 (zu Entscheidung 13)
 
 ## Kontext
 
@@ -101,7 +101,7 @@ nicht stillschweigend ein Ziel außerhalb des Hauses erben. Siehe
 Der Bürger-Scope (Assistent, öffentlich eingebettetes Widget) bleibt Ausblick der Phase 4. Es gibt
 dafür keine eigene Notiz, keine Anforderungsliste und nichts wird vorgezogen, auch nicht die
 Barrierefreiheit nach BITV (Phase 3). Grund: Der Ausblick steht in VISION.md und
-[public-sector.md](../features/public-sector.md#ausblick-assistent-für-bürgerinnen-und-bürger); eine
+[Roadmap](../ROADMAP.md); eine
 dritte Fassung erzeugte Pflegeaufwand und Widerspruchsrisiko ohne Nutzen.
 
 ### 10. Anbieternamen als Sachbeleg sind zulässig
@@ -132,7 +132,7 @@ ersatzlos; die REST-API bleibt der offene, aber nicht gepflegte Weg für jeden w
 Ein Chat-Kanal ist ein Zugang, der die fragende Person verlässlich auf ein OPAA-Konto abbilden muss,
 sonst umgeht er das Rechtemodell; bei einem Verbraucherdienst hängt die Identität an einer
 Telefonnummer, und jede Frage ist eine Übermittlung nach außen. Gebaut ist heute kein Chat-Kanal.
-Siehe [user-frontends.md](../features/user-frontends.md#anbindung-an-team-chats).
+Siehe [Roadmap](../ROADMAP.md).
 
 ### 13. Umfang des revisionssicheren Protokolls
 
