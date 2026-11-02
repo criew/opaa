@@ -3,10 +3,10 @@ package io.opaa.externalaccess;
 import java.util.List;
 
 /**
- * The delivered channel settings of the external access (docs/features/external-access.md, "Der
- * Schalter der Installation"). They are the seeded values of the singleton row, not a fallback
- * resolved at read time: every one of them is a policy an administrator either accepted or changed.
- * The bounds are enforced twice - here and by the table's CHECKs.
+ * The delivered channel settings of the external access (ADR-0035). They are the seeded values of
+ * the singleton row, not a fallback resolved at read time: every one of them is a policy an
+ * administrator either accepted or changed. The bounds are enforced twice - here and by the table's
+ * CHECKs.
  */
 public final class ExternalAccessDefaults {
 
@@ -16,8 +16,8 @@ public final class ExternalAccessDefaults {
   public static final int TOKEN_MAX_LIFETIME_DAYS = 90;
 
   /**
-   * Deliberately conservative and, as external-access.md says, guessed until a pilot installation
-   * has measured it once: the quota is a load brake, not a protection against mass retrieval.
+   * Deliberately conservative and guessed until a pilot installation has measured it once: the
+   * quota is a load brake, not a protection against mass retrieval.
    */
   public static final int TOKEN_RATE_LIMIT_PER_HOUR = 60;
 

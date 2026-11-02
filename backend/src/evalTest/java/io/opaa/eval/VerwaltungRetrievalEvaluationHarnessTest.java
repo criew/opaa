@@ -984,7 +984,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
           log);
     }
 
-    // 8. Mehrrunden-Messpfad (docs/features/conversation-memory.md, "Messung"): an opt-in
+    // 8. Mehrrunden-Messpfad (ADR-0031): an opt-in
     //    step, off by default — every turn costs a decomposition call and the whole dataset is
     //    measured three times. Guarded like steps 6 and 7; a run without decomposition or without
     //    a chat model reports itself as not executed instead of measuring the fallback.

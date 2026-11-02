@@ -15,9 +15,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * The quota of one access token (docs/features/external-access.md, "Kontingente und der
- * Abflussalarm"): a sliding hour window per token, its size read from the channel settings on every
- * call so a raised limit takes effect without a restart.
+ * The quota of one access token (ADR-0035): a sliding hour window per token, its size read from the
+ * channel settings on every call so a raised limit takes effect without a restart.
  *
  * <p>It stands <b>in place of</b> the limit per client address: behind a shared egress point
  * everyone shares one address, so {@code io.opaa.ratelimit.RateLimitFilter} gives back a token

@@ -30,11 +30,10 @@ import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 
 /**
- * The load-bearing invariant of the conversation window (#1486,
- * docs/features/conversation-memory.md): the same chat sends the same prompt before and after a
- * restart or a cache eviction. Both entrances into the window - the answer just generated and the
- * persisted history read back - go through {@link ConversationWindowMessages}, so a warm cache and
- * a cold one produce the identical message list.
+ * The load-bearing invariant of the conversation window (ADR-0031): the same chat sends the same
+ * prompt before and after a restart or a cache eviction. Both entrances into the window - the
+ * answer just generated and the persisted history read back - go through {@link
+ * ConversationWindowMessages}, so a warm cache and a cold one produce the identical message list.
  */
 @ExtendWith(MockitoExtension.class)
 class ConversationWindowRestartInvarianceTest {

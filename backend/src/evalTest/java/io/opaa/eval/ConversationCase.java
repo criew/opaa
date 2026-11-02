@@ -5,9 +5,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 /**
- * A multi-turn case of the conversation measurement path (issue #1484,
- * docs/features/conversation-memory.md, "Messung"): a scripted sequence of turns, each with its own
- * question, its own hand-written answer and its own expected documents.
+ * A multi-turn case of the conversation measurement path (ADR-0031): a scripted sequence of turns,
+ * each with its own question, its own hand-written answer and its own expected documents.
  *
  * <p><b>Why the answer is part of the fixture.</b> The harness generates no answers, but a
  * production conversation window contains them - a follow-up question is resolved against what was

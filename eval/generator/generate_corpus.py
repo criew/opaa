@@ -7,7 +7,7 @@ keeps only structured fact fields (explicitly excluding the free-text
 character with a YAML frontmatter of structured facts plus a short,
 generator-authored prose paragraph.
 
-Design goals (see docs/features/search-quality-evaluation.md, "Der Testkorpus",
+Design goals (see ADR-0011,
 and ADR-0011):
 
 - No sampling: the full dataset (train + test splits) is used.
@@ -79,7 +79,7 @@ while True:
     except OverflowError:
         _field_size_limit //= 10
 
-# Frontmatter field order, matching docs/features/search-quality-evaluation.md.
+# Frontmatter field order, matching ADR-0011.
 FRONTMATTER_FIELDS = [
     "id",
     "domain",

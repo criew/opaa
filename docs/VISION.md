@@ -113,7 +113,7 @@ an Barrierefreiheit und Missbrauchsschutz.
 
 | | Bereich | Worum es geht | Spezifikation |
 |---|---|---|---|
-| **A** | Wissensschicht & Retrieval | Belegvalidierung, Konfidenz, hybride Suche mit Reranking, erklärbares Chunking, Deep Research | [data-indexing-rag.md](./features/data-indexing-rag.md) · [search-quality-evaluation.md](./features/search-quality-evaluation.md) |
+| **A** | Wissensschicht & Retrieval | Belegvalidierung, Konfidenz, hybride Suche mit Reranking, erklärbares Chunking, Deep Research | [data-indexing-rag.md](./features/data-indexing-rag.md) |
 | **B** | Wissensquellen & Konnektoren | Uploads und Konnektoren, selbst aktualisierende Wissensblöcke, Zielbibliothek als Rechteanker — Quellrechte schränken sie ein, wo ein Quellsystem sie belastbar liefert | [knowledge-sources.md](./features/knowledge-sources.md) |
 | **C** | Spaces, Assets & Verteilung | Arbeitsräume, Assets mit eigenen Rechten, Verteilungsstufen, Freigabe, Versionierung, Katalog | [spaces-and-assets.md](./features/spaces-and-assets.md) |
 | **D** | Agenten, Prompts & Werkzeuge | Agenten als teilbare Pakete, geführtes Onboarding, Prüfstand, Prüfagenten, Sandbox, Werkzeuge, MCP | [agents-and-tools.md](./features/agents-and-tools.md) |

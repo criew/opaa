@@ -7,9 +7,8 @@ import java.util.List;
 
 /**
  * A single golden-dataset case, as defined in {@code eval/golden/comic-characters.json} (see
- * docs/features/search-quality-evaluation.md, "Golden Dataset"). Deliberately mirrors only the
- * fields the harness needs; unknown fields are ignored so a future field addition to the dataset
- * does not break deserialization here.
+ * ADR-0011). Deliberately mirrors only the fields the harness needs; unknown fields are ignored so
+ * a future field addition to the dataset does not break deserialization here.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record GoldenCase(

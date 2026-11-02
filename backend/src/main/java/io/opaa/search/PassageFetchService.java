@@ -11,10 +11,9 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 /**
- * The text behind one hit (docs/features/external-access.md, "Was ein externes KI-Werkzeug
- * erreicht"): by default the hit's passage with its adjoining passages and its heading path, and
- * only on an explicit request the whole extracted text of the document, capped at {@link
- * SearchProperties#fetchMaxCharacters()}.
+ * The text behind one hit (ADR-0035): by default the hit's passage with its adjoining passages and
+ * its heading path, and only on an explicit request the whole extracted text of the document,
+ * capped at {@link SearchProperties#fetchMaxCharacters()}.
  *
  * <p>Two rules point the same way and are the reason the default is not the document: an assistant
  * works with a bounded context window, where the difference between passage and document is a

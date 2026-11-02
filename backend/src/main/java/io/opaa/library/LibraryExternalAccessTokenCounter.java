@@ -4,8 +4,7 @@ import java.util.UUID;
 
 /**
  * How many personal access tokens currently carry a library in their selection - the one number the
- * release view of the responsible person shows (docs/features/external-access.md, "Was der
- * Verantwortliche sieht").
+ * release view of the responsible person shows (ADR-0035).
  *
  * <p>A number and nothing else: no names, no persons, no usage. A seam rather than a direct call
  * because the tokens live in {@code io.opaa.externalaccess.token}, which already reads this package

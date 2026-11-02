@@ -62,9 +62,9 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     always even: the window is counted in question/answer pairs, and an odd width would drop an
  *     answer away from its question.
  * @param searchWindowTurns how many of the most recent turns the sub-question decomposition sees of
- *     that window (docs/features/conversation-memory.md, "Bauteil 1"). Default 2; {@code 0} means
- *     "question only". Never more than {@code conversationWindowMessages / 2}: the search must
- *     never see more of the conversation than the answer does.
+ *     that window (ADR-0031). Default 2; {@code 0} means "question only". Never more than {@code
+ *     conversationWindowMessages / 2}: the search must never see more of the conversation than the
+ *     answer does.
  * @param fusion how {@link RetrievalStageName#RANK_FUSION} fuses the candidate lists, see {@link
  *     Fusion}.
  */

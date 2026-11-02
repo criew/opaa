@@ -12,11 +12,10 @@ import java.util.Set;
 import java.util.TreeMap;
 
 /**
- * The curation rules a multi-turn dataset must satisfy (issue #1484,
- * docs/features/conversation-memory.md, "Messung") - checked Docker-free, so a hand-edited dataset
- * fails in {@code evalUnitTest} rather than an hour into a Testcontainers run. The single-question
- * counterpart is {@link GoldenCaseCuration}, whose {@link Violation} type is reused so both
- * datasets report a finding in the same vocabulary.
+ * The curation rules a multi-turn dataset must satisfy (ADR-0031) - checked Docker-free, so a
+ * hand-edited dataset fails in {@code evalUnitTest} rather than an hour into a Testcontainers run.
+ * The single-question counterpart is {@link GoldenCaseCuration}, whose {@link Violation} type is
+ * reused so both datasets report a finding in the same vocabulary.
  *
  * <ul>
  *   <li><b>Every turn carries {@code query}, {@code answer} and {@code expected_documents}.</b> A
@@ -47,7 +46,7 @@ import java.util.TreeMap;
  */
 public final class ConversationCaseCuration {
 
-  /** docs/features/conversation-memory.md, "Fallklassen". */
+  /** The case classes of the multi-turn measurement (ADR-0031). */
   public static final List<String> CASE_CLASSES =
       List.of("anaphora_resolution", "topic_switch", "constraint_carryover", "answer_continuation");
 
@@ -66,7 +65,7 @@ public final class ConversationCaseCuration {
   /** Unchanged from {@link GoldenCaseCuration#MINIMUM_CASES_PER_CLASS} - the same rule. */
   public static final int MINIMUM_CASES_PER_CLASS = GoldenCaseCuration.MINIMUM_CASES_PER_CLASS;
 
-  /** The turn count each class is defined over (docs/features/conversation-memory.md, table). */
+  /** The turn count each class is defined over. */
   public static final Map<String, int[]> TURN_RANGE_BY_CLASS =
       Map.of(
           "anaphora_resolution", new int[] {2, 3},
@@ -134,10 +133,9 @@ public final class ConversationCaseCuration {
   /**
    * The turn a {@code topic_switch} case changes its topic in, 1-based; every earlier turn belongs
    * to the previous topic. Named in the dataset rather than derived from the expected documents,
-   * exactly as docs/features/conversation-memory.md prescribes ("Es gibt keine Erkennung"): a
-   * derivation from "shares no document with an earlier turn" would also fire on an ordinary
-   * follow-up whose answer happens to sit in a different document, and would then count the correct
-   * previous-topic document as bleed.
+   * exactly as ADR-0031 prescribes ("Es gibt keine Erkennung"): a derivation from "shares no
+   * document with an earlier turn" would also fire on an ordinary follow-up whose answer happens to
+   * sit in a different document, and would then count the correct previous-topic document as bleed.
    */
   public static final String TOPIC_SWITCH_TURN_RULE =
       "a topic_switch case names topic_switch_turn - the 1-based turn it changes topic in, at least "

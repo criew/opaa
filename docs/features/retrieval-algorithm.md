@@ -167,7 +167,7 @@ Vorher/Nachher-Messung stehen in
 **Ankerraum-Invariante (#1486).** Der Wächter ankert gegen `DecompositionContext#contextTexts()` —
 genau das Material, das dieselbe Instanz dem Modell rendert (Suchfenster, Frage und gerenderte
 Kontextbausteine), nie gegen eine getrennt gepflegte Aufzählung von Quellen. Ein künftiger
-Kontextbaustein — die `RAHMEN`-Punkte der Gesprächsnotiz, [conversation-memory.md](./conversation-memory.md),
+Kontextbaustein — die `RAHMEN`-Punkte der Gesprächsnotiz, [ADR-0031](../decisions/0031-gespraechsgedaechtnis.md),
 Bauteil 2 — erweitert damit Modellkontext und Ankerraum in einem Schritt.
 
 **Noch offen (Epic #1482, ADR-0031):** die Gesprächsnotiz selbst. Bis dahin besteht der

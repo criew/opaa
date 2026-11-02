@@ -167,7 +167,7 @@ Behauptungen brauchen einen Beleg im Repository. Diese Zuordnung hält das Mater
 | Kein personenbezogener Auswertungspfad | `docs/features/spaces-and-assets.md`, Issue #239 |
 | Betrieb im eigenen Haus | `docs/features/deployment-infrastructure.md`, `docs/handbuch/betrieb/README.md` |
 | Quelloffen unter AGPL-3.0 | `LICENSE` |
-| Suchqualität ist messbar | `docs/features/search-quality-evaluation.md` |
+| Suchqualität ist messbar | `docs/decisions/0011-search-quality-evaluation-harness.md`, `eval/README.md` |
 
 Was heute nur geplant ist, wird als geplant gekennzeichnet. Den Stand führt das Statusdokument im
 Repository; Marketing-Material übernimmt ihn, statt einen eigenen zu behaupten.

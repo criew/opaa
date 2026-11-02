@@ -2,9 +2,8 @@
 
 Die eine Quelle für die Demo-Instanz „Stadt Rheinfurt" (Epic #708): installieren, anmelden,
 vorführen — und, für alle, die die Demo selbst weiterentwickeln, Korpus-Generator und
-Seed-Mechanismus. Konzept dahinter — Behördenlandschaft, Bibliotheken, Berechtigungsmatrix, Quellen
-und Lizenzen — steht in [`docs/features/demo-instance.md`](../docs/features/demo-instance.md) und
-wird hier **nicht wiederholt**. Das ausformulierte Vorführ-Drehbuch mit acht Fragen und acht
+Seed-Mechanismus, einschließlich Bibliotheken und Berechtigungsmatrix. Herkunft und Lizenzen des
+Korpus stehen in [`corpus/SOURCE.md`](corpus/SOURCE.md). Das ausformulierte Vorführ-Drehbuch mit acht Fragen und acht
 Vorführschritten steht in
 [`docs/market/demo-drehbuch.md`](../docs/market/demo-drehbuch.md).
 
@@ -61,9 +60,6 @@ Rheinfurt-Bezug — das ist eine Folge ihrer Herkunft, kein Versehen. Die Biblio
 das auch in der Oberfläche; Herkunft und Lizenz stehen in
 [`corpus/SOURCE.md`](corpus/SOURCE.md) und
 [`corpus/THIRD-PARTY-LICENSES/`](corpus/THIRD-PARTY-LICENSES/).
-
-Begründung der Auswahl, Quellen und Lizenzen des Korpus:
-[`docs/features/demo-instance.md`](../docs/features/demo-instance.md).
 
 Über den Korpus hinaus richtet der Seed das ein, was das
 [Drehbuch](../docs/market/demo-drehbuch.md) vorführt:
@@ -429,9 +425,7 @@ nur die beiden öffentlichen und jedem Default-Space die Bibliotheken des Sachge
 Kontos (dem von Thomas zusätzlich die internen Dienstanweisungen, die er als Vertretung liest, dem
 des Demo-Admins „Formattest auf S3"). Wie ein Space ohne Wissen aussieht — Hinweis mit
 Direktlink „Wissen zuordnen" statt einer Antwort ohne Belege —, zeigt jeder neu angelegte Space
-(Drehbuch, Schritt G). Begründung der Matrix:
-[`../docs/features/demo-instance.md`, „Nutzer, Spaces und
-Berechtigungen"](../docs/features/demo-instance.md#nutzer-spaces-und-berechtigungen).
+(Drehbuch, Schritt G).
 
 **Der Vorführ-Kern:** Weil die Berechtigungsprüfung Teil der Vektorsuche ist und nicht ein
 nachgeschalteter Filter, ist ein für einen Nutzer unzugänglicher Treffer nicht nur unterdrückt,
@@ -510,9 +504,7 @@ Verantwortlicher (sie ist nicht zugleich Mitglied) und zur Verwendung freigegebe
   Leserecht. Dem Space sind neben dem, was alle vier Fachkonten lesen, die Leistungen beider
   Sachgebiete zugeordnet; jedes Mitglied der Gruppe liest davon nur die eigenen.
 
-Übersicht aller Gruppen und der mit „G" markierten Gruppenrechte:
-[`../docs/features/demo-instance.md`, „Nutzer, Spaces und
-Berechtigungen"](../docs/features/demo-instance.md#nutzer-spaces-und-berechtigungen). Der Seed
+Übersicht aller Gruppen und der mit „G" markierten Gruppenrechte: Tabellen in diesem Abschnitt und unter „Nutzerkonten". Der Seed
 entzieht keine bestehenden Rechte: Auf einer vor #2013 eingespielten Instanz behalten Selin und Thomas
 ihren eigenen Grant auf die Pressemitteilungen, bis die Demo neu aufgesetzt wird.
 
@@ -571,9 +563,7 @@ führt und welcher Space es zugeordnet hat — damit Katalog, Favoriten und die 
 Grenze ([ADR-0039](../docs/decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)) in der
 Demo sichtbar werden. „Öffentlich" heißt: freigegeben an „Alle Konten". „Geschlossen" heißt: Es
 liest nur, wer Eigentum oder eine Freigabe hat. Die Rechtematrix ändert sich dadurch nicht.
-Begründung und Matrix: [`docs/features/demo-instance.md`, „Eigentum, Sichtbarkeit, Favoriten und
-Zuordnung"](../docs/features/demo-instance.md#eigentum-sichtbarkeit-favoriten-und-zuordnung);
-vorführen: Drehbuch, Schritt H.
+Vorführen: Drehbuch, Schritt H.
 
 **Wer besitzt was, was ist öffentlich bzw. geschlossen:**
 
@@ -726,8 +716,7 @@ stillschweigend.
 
 ### Seed-Mechanismus (#712)
 
-`demo/seed/seed.py` ist der gemeinsame Seed-Mechanismus mit zwei **Datenprofilen**
-(`docs/features/demo-instance.md`, „Installation und Seed"): `demo` (dieser Rheinfurt-Korpus, Anmeldung
+`demo/seed/seed.py` ist der gemeinsame Seed-Mechanismus mit zwei **Datenprofilen**: `demo` (dieser Rheinfurt-Korpus, Anmeldung
 über Keycloak) und `e2e` (minimal, eingefroren, Anmeldung über das dev-Auth-Profil). Beide Profile
 sprechen ausschließlich die öffentliche API an — kein direkter Datenbankzugriff, keine Umgehung von
 Validierung oder Audit-Protokollierung.
@@ -759,7 +748,7 @@ Der Lauf richtet über die API ein:
    Realm meist das Dienstkonto: siehe „Realm-Änderungen in ein bestehendes Keycloak übertragen"
    unten. Das `e2e`-Profil überspringt
    den Schritt — der dev-Betriebsmodus kennt keine Anbieterzeile (ADR-0036, Entscheidung 3).
-3. **Spaces** gemäß `docs/features/demo-instance.md` — „Meldewesen & Ausweise" (Maria Weber; Selin
+3. **Spaces** gemäß Abschnitt „Nutzerkonten" — „Meldewesen & Ausweise" (Maria Weber; Selin
    Kaya kommt in Schritt 6 über die Keycloak-Gruppe „Meldewesen" hinzu), Marias eigener Space ohne
    weiteres Mitglied, „Kfz-Zulassung" (Thomas Klein), „Amtsleitung
    Bürgerbüro" (Andrea Vogt), „Dienstbesprechung Bürgerbüro" (Andrea Vogt; die Sachbearbeitung
@@ -778,7 +767,7 @@ Der Lauf richtet über die API ein:
    Zugangsdaten und die S3-Einstellungen (`sourceSettings`) direkt aus `profiles.py`,
    [ADR-0027](../docs/decisions/0027-s3-konnektor.md)). „Formattest auf S3" ist die einzige
    Bibliothek ohne jede Freigabe und ohne Space-Zuordnung — sie bleibt beim anlegenden Admin-Konto.
-5. **Freigaben und VIEWER-Rechte** exakt nach der Matrix aus `docs/features/demo-instance.md`,
+5. **Freigaben und VIEWER-Rechte** exakt nach der Matrix aus Abschnitt „Nutzerkonten",
    jeweils über die Sitzung der Eigentümerseite: die Freigabe an „Alle Konten" für Satzungen und
    Ratsinformationen, die eigenen Grants (die mit „G" und „K" markierten Gruppenrechte folgen in
    Schritt 6) sowie die 27
@@ -1284,8 +1273,6 @@ standardmäßig eine Anfrage pro IP und Minute).
 
 ## Zugehörige Dokumentation
 
-- [`docs/features/demo-instance.md`](../docs/features/demo-instance.md) — Konzept: Behördenlandschaft,
-  Bibliotheken, Formate, Quellen und Lizenzen, Rechtemodell
 - [`docs/market/demo-drehbuch.md`](../docs/market/demo-drehbuch.md) — das ausformulierte
   Vorführ-Drehbuch mit acht Fragen und acht Vorführschritten
 - [`docs/handbuch/betrieb/netz-und-sicherheit.md`](../docs/handbuch/betrieb/netz-und-sicherheit.md#härtung-für-erreichbare-deployments), Abschnitt „Härtung für erreichbare
@@ -1293,6 +1280,4 @@ standardmäßig eine Anfrage pro IP und Minute).
   einschließlich des dort separat behandelten `opaa-seed`-Clients
 - Smoke-Test gegen das `demo`-Profil — #232 (`e2e/demo-smoke/`, `pnpm run test:demo-smoke` in `e2e/`,
   siehe [`e2e/README.md`, „Demo-Smoke (#232)"](../e2e/README.md#demo-smoke-232))
-- [`docs/features/search-quality-evaluation.md`](../docs/features/search-quality-evaluation.md),
-  Abschnitt „Öffentliche Demo" — der frühere Superhelden-Korpus, durch dieses Konzept abgelöst
 - Rollout auf einen erreichbaren Host — #230

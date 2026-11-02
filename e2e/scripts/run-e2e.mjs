@@ -21,7 +21,7 @@
 //   node scripts/run-e2e.mjs --target offline      # stack without internet access, see offline.mjs
 //   node scripts/run-e2e.mjs --target installation # set-up assistant (pnpm run test:installation)
 // The "demo" target starts the Compose "demo" profile (Rheinfurt corpus,
-// Keycloak login, docs/features/demo-instance.md) with ai-stub standing in
+// Keycloak login, demo/README.md) with ai-stub standing in
 // for the chat/embedding provider, seeds it with `demo/seed/seed.py
 // --profile demo`, and runs the single Playwright spec under
 // e2e/demo-smoke/tests/ - never the regular suite under e2e/tests/. It is
@@ -326,9 +326,9 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
   })
 }
 
-// Fills the freshly started stack with test data (docs/features/demo-instance.md, "Installation
-// und Seed" - Issue #233/#232): the same seed.py both the "demo" and "e2e" Compose profiles use,
-// against this run's own backend/port - Keycloak login for "demo", the dev-auth header for "e2e".
+// Fills the freshly started stack with test data (demo/README.md - Issue #233/#232): the same
+// seed.py both the "demo" and "e2e" Compose profiles use, against this run's own backend/port -
+// Keycloak login for "demo", the dev-auth header for "e2e".
 const pythonCmd = isWindows ? 'python' : 'python3'
 const venvDir = join(e2eDir, '.venv')
 // A bare "pip install -r ..." would target whatever interpreter/site-packages "python"/"python3"

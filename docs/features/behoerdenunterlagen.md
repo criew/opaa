@@ -645,7 +645,7 @@ Normtext geprüft. Die vollständige Tabelle mit Quellen steht im ersten Komment
   Betriebsfolgen, Supportlinien nach ADR-0054
 - **[sbom.md](../sbom.md)**, **[cve-scanning.md](../cve-scanning.md)** — Nachweise, auf die
   Vergabe- und Sicherheitsvorlagen verweisen
-- **[search-quality-evaluation.md](./search-quality-evaluation.md)** — Quelle der Antwortqualität im
+- **[ADR-0011](../decisions/0011-search-quality-evaluation-harness.md)** — Quelle der Antwortqualität im
   Update-Paket und der Evaluierungswerte der Teststellung
 - **[ADR-0051](../decisions/0051-architekturvertrag-des-backends.md)** — Vorbild der Drift-Routine
 - **[AGENT-ORGANIZATION.md](../AGENT-ORGANIZATION.md)** — Rollen und Stakeholder-Review

@@ -30,8 +30,7 @@ import java.util.TreeMap;
  *       #validateStates}), with a parseable ISO date and a non-blank reason. A missing reason is
  *       exactly the "reconstructed instead of recorded" state §5 warns about.
  *   <li><b>Between one and {@link #MAXIMUM_EXPECTED_DOCUMENTS} expected documents</b> — the upper
- *       bound is the existing set-question window from docs/features/search-quality-evaluation.md,
- *       unchanged.
+ *       bound is the set-question window of the golden dataset generator.
  *   <li><b>{@code answer_span} only on single-document cases</b> — see {@link
  *       #SINGLE_DOCUMENT_ANSWER_SPAN_RULE}.
  *   <li><b>Unique ids and unique queries</b>, and every case in the domain the dataset belongs to.
@@ -65,9 +64,7 @@ public final class GoldenCaseCuration {
    */
   public static final int MINIMUM_DISTINCT_EXPECTED_SETS_PER_CLASS = 6;
 
-  /**
-   * Upper bound of the existing set-question window (docs/features/search-quality-evaluation.md).
-   */
+  /** Upper bound of the set-question window. */
   public static final int MAXIMUM_EXPECTED_DOCUMENTS = 15;
 
   /**

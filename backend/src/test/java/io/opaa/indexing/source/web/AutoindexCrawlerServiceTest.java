@@ -58,7 +58,7 @@ class AutoindexCrawlerServiceTest {
   @Test
   void derivesNameFromHrefWhenTheDisplayedNameIsTruncatedInHtmlTableLayout() {
     // (validating the Rheinfurt demo corpus - realistic, long, hyphenated file names - against
-    // this format, docs/features/demo-instance.md's own "erprobte Empfehlung") surfaced that the
+    // this format, the demo's recommended web server setup) surfaced that the
     // The fix (see derivesNameFromHrefWhenTheDisplayedNameIsTruncated above) was
     // only ever applied to the link-based layouts (parseLinkBasedLayout) - Apache's "IndexOptions
     // FancyIndexing HTMLTable" truncates the *displayed* name exactly the same way (rendered with a

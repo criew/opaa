@@ -4,8 +4,8 @@ import io.opaa.compliance.DataImpact;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * The systemwide bounds of a library's Fremdzugangsfreigabe (docs/features/external-access.md, "Die
- * Freigabe der Bibliothek") and of the access tokens of accounts of an identity provider.
+ * The systemwide bounds of a library's Fremdzugangsfreigabe (ADR-0035) and of the access tokens of
+ * accounts of an identity provider.
  *
  * @param maxReleaseDays the longest admissible Befristung. One year by default and deliberately
  *     configurable only downwards in practice - a longer bound would give back the ratchet the

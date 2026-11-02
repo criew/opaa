@@ -23,7 +23,7 @@ import type { Page } from '@playwright/test'
 // suite's own npm project. This suite's own frozen upload fixtures live under
 // demo/seed/e2e-data/test-documents/, next to demo/seed/profiles.py's E2E_PROFILE that governs
 // the same data profile - not under e2e/fixtures/, which would be a second, independent
-// way to fill an instance (see docs/features/demo-instance.md, "Installation und Seed"). The
+// way to fill an instance (see demo/README.md). The
 // repo's root .gitignore has a blanket `documents/` rule (for the bind-mounted, machine-local
 // backend/src/main/resources demo corpus path); "test-documents" does not match it, but stays
 // named that way for continuity with the file names below.

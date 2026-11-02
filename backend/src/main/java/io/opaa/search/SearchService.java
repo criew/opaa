@@ -15,8 +15,8 @@ import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Service;
 
 /**
- * Hits instead of an answer (docs/features/external-access.md): the same retrieval {@code
- * QueryService} builds its answer from, returned as passages.
+ * Hits instead of an answer (ADR-0035): the same retrieval {@code QueryService} builds its answer
+ * from, returned as passages.
  *
  * <p>The invariant of this class is what it does <em>not</em> do. It resolves no scope of its own -
  * that is {@link SearchScopeSource} -, it ranks nothing of its own - that is {@link

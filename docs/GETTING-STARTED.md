@@ -191,7 +191,7 @@ Stand und Nachweis (docs/fortschritt/)
 └── JJJJMMTT/              — Zeitraumsberichte mit Beleg-Bausteinen je Stichtag
 
 Spezifikationen (docs/features/) — je Themenbereich
-├── A  data-indexing-rag.md · search-quality-evaluation.md
+├── A  data-indexing-rag.md
 ├── B  knowledge-sources.md
 ├── C  spaces-and-assets.md
 ├── D  agents-and-tools.md

@@ -23,9 +23,9 @@ public enum AuditEventType {
    */
   ASSET_VISIBILITY_CHANGED,
   /**
-   * A library's Fremdzugangsfreigabe was set or taken back (docs/features/external-access.md#die-
-   * freigabe-der-bibliothek) - a reach field that decides about the Hausgrenze. Carries the
-   * direction and the expiry date, never a name of anyone holding a token.
+   * A library's Fremdzugangsfreigabe was set or taken back (ADR-0035) - a reach field that decides
+   * about the Hausgrenze. Carries the direction and the expiry date, never a name of anyone holding
+   * a token.
    */
   ASSET_EXTERNAL_ACCESS_CHANGED,
   /**
@@ -663,7 +663,7 @@ public enum AuditEventType {
    */
   LOCAL_USER_HANDED_OVER,
 
-  // Fremdzugaenge (ADR-0035, docs/features/external-access.md)
+  // Fremdzugaenge (ADR-0035)
   /**
    * The channel settings of the external access changed - the installation-wide switch, the token
    * lifetime ceiling, the per-token quota, the networks of the channel or the threshold of the mass

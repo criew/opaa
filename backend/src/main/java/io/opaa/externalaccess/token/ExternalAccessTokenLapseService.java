@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The one place a token stops working without anyone revoking it, and the only writer of {@code
- * API_TOKEN_EXPIRED} (ADR-0035; docs/features/external-access.md, "Lebenszyklus").
+ * API_TOKEN_EXPIRED} (ADR-0035).
  *
  * <p><b>Marker and entry go together or not at all.</b> {@code lapseRecordedAt} is what keeps the
  * entry to exactly one per token - and it is therefore also what would hide a lost entry forever: a

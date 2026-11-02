@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-26 · ergänzt ADR-0005, ADR-0033 · Entscheidung 5 umformuliert durch ADR-0039
+Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt ADR-0005, ADR-0033 · Entscheidung 5 umformuliert durch ADR-0039
 
 ## Kontext
 
@@ -10,7 +10,7 @@ Beschäftigte arbeiten in KI-Werkzeugen, die OPAA nicht kennen, und holen sich d
 über die Zwischenablage dorthin. Der Kanal, der das ablöst, ist lesend, liegt hinter drei
 Freigaben (Installationsschalter, Bibliotheksfreigabe, Token) und liefert Fundstellen statt
 erzeugter Antworten; sein **Verhalten** steht in
-[external-access.md](../features/external-access.md). Randbedingungen: OPAA wird für diesen Kanal
+das Handbuchkapitel [Externe KI-Werkzeuge](../handbuch/spaces/fremdzugaenge.md). Randbedingungen: OPAA wird für diesen Kanal
 nicht aus dem offenen Netz erreichbar gemacht (Zielclients auf dem Arbeitsplatz oder im Hausnetz,
 installationsweite Netzbeschränkung); die einzelne Abfrage wird nicht protokolliert
 (`security-and-compliance.md`); das Rechtemodell hängt an der Wissensbibliothek, und die

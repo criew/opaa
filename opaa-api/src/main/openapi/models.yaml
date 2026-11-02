@@ -223,7 +223,7 @@ paths:
       description: >
         The embedding model row of the installation, without its key. A change goes through the
         guided model change with a re-embedding, or the endpoint change of the same model
-        (ADR-0061, docs/features/embedding-model-change.md).
+        (ADR-0061).
       responses:
         "200":
           description: Current embedding configuration
@@ -974,7 +974,7 @@ components:
       type: object
       description: >
         The installed embedding model, never with its key - see
-        docs/features/embedding-model-change.md for how it changes. Without an installed model
+        ADR-0061 for how it changes. Without an installed model
         model is null and dimensions 0; the first one is set through probe and change.
       required: [provider, model, dimensions]
       properties:

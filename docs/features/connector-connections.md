@@ -77,7 +77,7 @@ Quellfreigabe dort „Quelle verbinden“, und die Konnektor-Freigabe wird als F
 
 **Abgrenzung:**
 
-- **Zugriff externer KI-Werkzeuge** ([external-access.md](./external-access.md)) ist die Gegenrichtung: OPAA als
+- **Zugriff externer KI-Werkzeuge** ([ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md)) ist die Gegenrichtung: OPAA als
   MCP-*Server* für externe KI-Werkzeuge.
 - **Anmeldung an OPAA** ([ADR-0025](../decisions/0025-mehrere-oidc-anbieter.md)): Die Token der
   OIDC-Anbieter dienen nur der Identität und werden hier nicht verwendet. Einzige mögliche
@@ -730,7 +730,7 @@ legt [ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md) fest.
 | [spaces-and-assets.md](./spaces-and-assets.md) | Freigabe-Obergrenze, Nachfolge, Space-Zuordnung; private Bibliotheken als Sonderfall |
 | [access-control.md](./access-control.md) | Fähigkeiten, Gruppen, Kontodeaktivierung, Freigabe-Obergrenze (durch die Nur-Besitzerin-Regel ergänzt), „Sicht als“ und Vorfallsbereich (ohne Zugriff auf Inhalte privater Bibliotheken) |
 | [agents-and-tools.md](./agents-and-tools.md) | MCP-Client, Zulassungsliste, Ausgangstor (Phase 2) |
-| [external-access.md](./external-access.md) | Gegenrichtung: OPAA als MCP-Server |
+| [ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md) | Gegenrichtung: OPAA als MCP-Server |
 | Epic [#2146](https://github.com/criew/opaa/issues/2146) | Datei-Konnektoren: Nextcloud (#2152), SharePoint/OneDrive (#2153), Dropbox (#2154) |
 | [#2099](https://github.com/criew/opaa/issues/2099) | Wegfall persönlicher Spaces |
 

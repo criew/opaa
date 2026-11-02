@@ -2,14 +2,14 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt durch ADR-0010, ADR-0012, ADR-0013
+Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt durch ADR-0010, ADR-0012, ADR-0013
 
 ## Kontext
 
 OPAA konnte nicht beziffern, ob eine Änderung an Chunking, Embedding-Modell, `top-k` oder
 Ähnlichkeitsschwelle das Retrieval verbessert oder verschlechtert.
 Gemessen werden sollten Hit Rate, MRR, nDCG gegen ein Golden Dataset, mit gepaarten Vergleichen;
-`docs/features/search-quality-evaluation.md` beschreibt das Vorhaben.
+Korpora, Golden Datasets und Messläufe beschreibt [`eval/README.md`](../../eval/README.md).
 Strukturell festzulegen waren die Ablage des eingefrorenen Korpus, der Aufbau des Harness (eine zweite
 Toolchain ist dauerhafte Wartungslast) und das Einbettungsmodell in der CI, von dem die Stabilität der
 Baseline abhängt.

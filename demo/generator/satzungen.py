@@ -4,7 +4,7 @@ Every satzung is a short, synthetic municipal statute in the structural style
 of real German Satzungen (§§, Geltungsbereich, Gebührenverzeichnis as
 Anlage) — content and paragraph numbers are invented for the fictional city
 of Rheinfurt, not copied from any real municipality (see
-docs/features/demo-instance.md, "Quellen und Lizenzen": kommunale Satzungen
+demo/corpus/SOURCE.md: kommunale Satzungen
 are used only as a structural template, § 5 Abs. 1 UrhG).
 
 PDFs are rendered with reportlab (see demo/generator/README.md, "Werkzeugwahl"

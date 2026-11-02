@@ -25,10 +25,7 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 
-/**
- * The search window and the fallback query of {@link SubQueryDecompositionStage} (#1486,
- * docs/features/conversation-memory.md, "Bauteil 1").
- */
+/** The search window and the fallback query of {@link SubQueryDecompositionStage} (ADR-0031). */
 class SubQueryDecompositionStageTest {
 
   private static final List<Message> THREE_TURNS =

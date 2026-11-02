@@ -462,7 +462,7 @@ wer die beiden Dokumente entfernte, verlöre dafür die Messbarkeit der Leerwert
 
 Vier weitere Klassen messen Gespräche statt Einzelfragen: seit #1485 `anaphora_resolution`,
 `topic_switch` und `constraint_carryover`, seit #1684 `answer_continuation`
-(`docs/features/conversation-memory.md`, Abschnitt „Messung"). Sie liegen in einem **eigenen** Datensatz mit **eigener** Baseline und laufen nicht im
+(ADR-0031). Sie liegen in einem **eigenen** Datensatz mit **eigener** Baseline und laufen nicht im
 `checkVerwaltungRetrievalBaseline` der Domäne mit, sondern in einem eigenen Task-Paar:
 
 ```bash
@@ -654,9 +654,9 @@ Wer die Klassenzahlen liest, liest also die Summe aus drei Änderungen (Suchfens
 Instruktionszeile), nicht aus zweien. Eine saubere Trennung kostet einen weiteren Messlauf mit
 abgeschalteter Notiz-Zeile und ist als **#1587** aufgenommen, nicht in #1490 enthalten.
 
-#### Wo die Nachmessung von der Vorhersage der Spezifikation abweicht
+#### Wo die Nachmessung von der Vorhersage abweicht
 
-`docs/features/conversation-memory.md`, Abschnitt „Reihenfolge", sagt für die Schritte 3 und 4 drei
+Die Planung des Gesprächsgedächtnisses (Epic #1482) sagte für die Schritte 3 und 4 drei
 Dinge voraus. **Eine trifft zu, zwei nicht.**
 
 - **„`anaphora_resolution` darf nicht fallen" — trifft zu.** Die Klasse steigt in allen vier
