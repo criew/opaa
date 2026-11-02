@@ -525,6 +525,11 @@ tasks.register<Test>("parserFuzzTest") {
     maxHeapSize = "1g"
     // a StackOverflowError keeps its bottom frames, where the signature finds OPAA's own code
     jvmArgs("-XX:MaxJavaStackTraceDepth=100000")
+    // without it logback logs at DEBUG to stdout, and every line travels to the Gradle daemon
+    systemProperty(
+        "logback.configurationFile",
+        layout.projectDirectory.file("src/test/resources/fuzz/logback-fuzz.xml").asFile.absolutePath,
+    )
     systemProperty(
         "opaa.fuzz.findings",
         layout.buildDirectory.dir("fuzz-findings").get().asFile.absolutePath,

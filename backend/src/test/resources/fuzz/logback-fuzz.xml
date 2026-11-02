@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Logging of the parser fuzzing JVM (parserFuzzTest): off. Mutated inputs make the parsers log an
+  error with stack trace per broken operator, gigabytes per campaign; the campaign reports through
+  its own [parser-fuzz] lines and the files under build/fuzz-findings.
+-->
+<configuration>
+  <root level="OFF"/>
+</configuration>
