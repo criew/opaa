@@ -87,6 +87,8 @@ OPAA eine **leere** Gruppe — eine Freigabe an sie erreicht niemanden.
 
 ## 4. Rollen an einem Arbeitsmittel
 
+Schritt für Schritt: [Ein Arbeitsmittel teilen](../pflegen/arbeitsmittel-teilen.md).
+
 Jedes Arbeitsmittel trägt eigene Rollen und einen Eigentümer. Die Rollen sind für alle Arten gleich
 gestuft; was „Inhalt pflegen" heißt, hängt von der Art ab.
 
@@ -307,6 +309,8 @@ für alle, ohne dass jemand darüber entschieden hätte.
 einer Gruppe.
 
 ## 7. Interne Gruppen und ihre Verantwortlichen
+
+Schritt für Schritt: [Eine Gruppe verantworten](../pflegen/gruppe-verantworten.md).
 
 Eine **interne Gruppe** ist eine Gruppe, die in OPAA selbst entsteht. Sie wird nicht von der
 Systemverwaltung gepflegt, sondern von benannten **Verantwortlichen**.

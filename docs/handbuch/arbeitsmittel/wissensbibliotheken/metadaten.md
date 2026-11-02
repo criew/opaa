@@ -393,6 +393,8 @@ Fortschritt oder 1000 Paketen von selbst ab. Über die API läuft dasselbe als w
 
 ## 7. Manuelle Pflege
 
+Schritt für Schritt: [Metadaten pflegen](../../pflegen/metadaten-pflegen.md).
+
 **Wer ein Dokument bearbeiten darf, darf seine Metadaten korrigieren:** die Rolle EDITOR an der
 Bibliothek, kein Verwaltungsrecht. Lesen genügt VIEWER.
 

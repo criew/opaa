@@ -195,8 +195,8 @@ export default function SpaceGeneralSection({
                 sx={{ justifyContent: 'space-between', alignItems: { md: 'center' } }}
               >
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  Archivieren: keine neuen Inhalte mehr, aus den Listen ausgeblendet. Umkehrbar
-                  durch die Systemverwaltung.
+                  Archivieren: keine neuen Inhalte mehr, aus den Listen ausgeblendet. Nicht
+                  umkehrbar.
                 </Typography>
                 <Button
                   variant="outlined"

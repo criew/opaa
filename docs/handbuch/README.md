@@ -9,6 +9,7 @@ erwartet läuft. Es beschreibt den gebauten Ist-Stand, nicht Zielbilder.
 | Wer | Typische Aufgaben | Einstieg |
 |---|---|---|
 | **Jedes Konto** | fragt, prüft Belege, führt Chats, legt Spaces und eigene Bibliotheken an | [Arbeiten](arbeiten/README.md), zuerst [Erste Schritte](arbeiten/erste-schritte.md) |
+| **Wer pflegt** | teilt Bibliotheken, bindet Quellen an, pflegt Metadaten, Spaces und Gruppen | [Pflegen](pflegen/README.md) |
 | **Betrieb** | installiert, aktualisiert, sichert, überwacht; konfiguriert Modelle und Grenzwerte; geht Störungen nach | [Betriebsübersicht](betrieb/README.md), dann [Docker Compose](betrieb/docker-compose.md) oder [Kubernetes](betrieb/kubernetes.md), [Netz und Sicherheit](betrieb/netz-und-sicherheit.md), [Modelle](betrieb/modelle.md), [Authentifizierung](betrieb/authentifizierung.md); danach [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md) und [Suche](spaces/suche.md) |
 | **Verwaltung** | legt Bibliotheken an, schließt Quellen an, vergibt Rechte, pflegt Metadaten, prüft Antworten mit dem Diagnosewerkzeug | [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md), die Konnektor-Kapitel, [Metadaten](arbeitsmittel/wissensbibliotheken/metadaten.md), [Suche](spaces/suche.md) Abschnitt 8 |
 
@@ -67,8 +68,9 @@ verweisen dürfen. Die Ordner folgen dem Baum.
     Space anlegen, Bibliothek und private Bibliothek anlegen, Konto verbinden, Prompts,
     Zugangstoken und KI-Werkzeug, Meine Daten
 - **Pflegen**
-  - [Pflegen](pflegen/README.md) — Aufgaben für alle mit einer Rolle an Bibliothek, Space oder
-    Gruppe
+  - [Pflegen](pflegen/README.md) — eine Seite je Aufgabe für alle mit einer Rolle an Bibliothek,
+    Space oder Gruppe: teilen, aktuell halten, Metadaten, für KI-Werkzeuge freigeben, Space-Inhalte,
+    Mitglieder und Einstellungen, Gruppe verantworten
     - [Konnektoren](pflegen/konnektoren/README.md) — alle Quellen im Überblick, je Konnektor ein
       Kapitel
 - **Betrieb**

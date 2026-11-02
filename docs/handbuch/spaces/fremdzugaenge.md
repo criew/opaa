@@ -144,6 +144,8 @@ enden ihre Tokens ebenfalls.
 
 ## 4. Die Freigabe einer Wissensbibliothek
 
+Schritt für Schritt: [Für externe KI-Werkzeuge freigeben](../pflegen/fuer-ki-werkzeuge-freigeben.md).
+
 Freigabe-Einheit ist die **Wissensbibliothek**, nicht der Space. Jede Bibliothek trägt im Reiter
 **„Freigaben"** ihrer Detailseite, Abschnitt **„Externer Zugang"**, das Merkmal „Für externe KI-Werkzeuge
 nutzbar", Standard **aus**. Setzen darf es, wer die Bibliothek verwaltet (Verwalter-Rolle), sowie
