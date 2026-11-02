@@ -501,7 +501,7 @@ Eine Liste von Favoriten ist ein Interessenprofil. Deshalb gilt, als Bedingung d
 
 - **Nur für die Person selbst abrufbar** — weder für die Systemverwaltung noch für Space-Verwaltung oder Asset-Verantwortliche.
 - **Keine Zählung** und keine Anzeige von Favoriten je Asset, auch nicht aggregiert in der [Nutzungstransparenz](#nutzungstransparenz).
-- **Kein Protokolleintrag und keine Historie.** Nicht Teil von Berichten und Exporten an Dritte; enthalten nur in der [Selbstauskunft](./security-and-compliance.md) der Person — dasselbe Muster wie die persönlichen Ordnungsmerkmale der [Chatliste](./chat-list.md).
+- **Kein Protokolleintrag und keine Historie.** Nicht Teil von Berichten und Exporten an Dritte; enthalten nur in der [Selbstauskunft](./security-and-compliance.md) der Person — dasselbe Muster wie die persönlichen Ordnungsmerkmale der [Chatliste](../decisions/0066-chatliste-ablage-suche-und-bereinigung.md).
 - **Gelöscht mit dem Konto**, ohne die Löschung zu blockieren. Ein favorisiertes Asset, das die Person nicht mehr lesen darf, erscheint nicht mehr.
 
 Gesetzt und entfernt wird ein Favorit mit `PUT` und `DELETE` auf `/api/v1/assets/{assetType}/{assetId}/favorite`; beides ist idempotent. **Setzen** verlangt Leserecht nach der Rechteformel — die Verwaltungsrolle der Systemverwaltung genügt nicht — und antwortet sonst `404` wie für eine unbekannte Kennung. **Entfernen geht immer:** Die Person löscht ihre eigene Markierung auch an einem Asset, das sie nicht mehr lesen darf. Geprüft wird dabei nichts; die Antwort ist immer `204`, auch für eine unbekannte Kennung oder einen unpassenden Typ, und verrät deshalb nichts über das Asset.
@@ -830,7 +830,7 @@ Das Datenmodell hält von Anfang an die Achsen offen, die für Mensch+KI-Gruppen
 
 **Zielbild (Epic #1482): Die Gesprächsnotiz ist Bestandteil des Chats** ([conversation-memory.md](./conversation-memory.md)): eine kleine, sichtbare, punktweise löschbare Liste von Angaben, die die Person in diesem Chat gemacht hat. Sie folgt dem Chat in allem — Löschung, Archivierung des Space (dort nur lesbar), und sobald gebaut auch Export und Kontolöschung — und ist **pro Chat, nie pro Person**: Ein chatübergreifendes Gedächtnis wäre ein systemgepflegtes Profil und ist als Produkthaltung ausgeschlossen (ADR-0031). Wird das Teilen von Chats gebaut, wird die Notiz mit dem Chat geteilt: Mitlesende sehen sie, weil sie die Antworten beeinflusst hat; ändern kann sie nur der Autor.
 
-**Die Chatliste eines Space** — Anheften, „Zuletzt verwendet", ein persönliches Chat-Archiv und die Chatsuche über eigene Gespräche — ist in [chat-list.md](./chat-list.md) spezifiziert (Epic #1762). Anheften und Archivieren sind dort Merkmale der **Person**, nicht des Chats; das Chat-Archiv ist vom [archivierten Space](#einen-space-stilllegen-archivieren-statt-löschen) streng zu unterscheiden.
+**Die Chatliste eines Space** — Anheften, „Zuletzt verwendet", ein persönliches Chat-Archiv und die Chatsuche über eigene Gespräche — ist in [ADR-0066](../decisions/0066-chatliste-ablage-suche-und-bereinigung.md) spezifiziert (Epic #1762). Anheften und Archivieren sind dort Merkmale der **Person**, nicht des Chats; das Chat-Archiv ist vom [archivierten Space](#einen-space-stilllegen-archivieren-statt-löschen) streng zu unterscheiden.
 
 #### Private Inhalte: der Hauptbestand des Systems
 
@@ -1376,4 +1376,4 @@ Gegenüber dem Kapitel [Der Katalog](#der-katalog) fehlen im Eintrag der Anwendu
 - [Monitoring, Kosten & Governance](./monitoring-and-governance.md) — Grenzen, Kosten und aggregierte Auswertung
 - [Daten-Indizierung & RAG](./data-indexing-rag.md) — Aufnahme, Chunking, Abfrageablauf
 - [Agenten, Prompts & Werkzeuge](./agents-and-tools.md) — was in einem Agenten steckt, wie er entsteht und wie er vor der Freigabe geprüft wird
-- [Chatliste eines Space](./chat-list.md) — finden, ordnen, wegräumen: Anheften, „Zuletzt verwendet", Chat-Archiv, Chatsuche
+- [Chatliste eines Space](../decisions/0066-chatliste-ablage-suche-und-bereinigung.md) — finden, ordnen, wegräumen: Anheften, „Zuletzt verwendet", Chat-Archiv, Chatsuche

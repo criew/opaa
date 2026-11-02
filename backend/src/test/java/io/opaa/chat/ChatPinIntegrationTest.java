@@ -25,9 +25,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Pinning as a personal mark (docs/features/chat-list.md, "Anheften") against the real Flyway
- * schema: it never touches the chat row, works in an archived space, and stays invisible to - and
- * unreachable for - every other person.
+ * Pinning as a personal mark (ADR-0066, Entscheidung 2) against the real Flyway schema: it never
+ * touches the chat row, works in an archived space, and stays invisible to - and unreachable for -
+ * every other person.
  */
 @OpaaIntegrationTest
 class ChatPinIntegrationTest {

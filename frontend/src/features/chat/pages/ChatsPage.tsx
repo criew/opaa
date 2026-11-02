@@ -52,8 +52,7 @@ const RESULT_VERBS: Record<ChatBulkAction, string> = {
 }
 
 /**
- * The management surface of the person's own chats in one space (docs/features/chat-list.md,
- * "Die Seite ‚Chats‘ je Space"): the active chats and the person's chat archive as tabs, in the
+ * The management surface of the person's own chats in one space (ADR-0066): the active chats and the person's chat archive as tabs, in the
  * table of the administration lists, with a row menu for single actions and multi-selection for
  * bulk ones. A click on a title opens the chat. While a term is entered, the chat search's hits
  * take the place of the tabs.

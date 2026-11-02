@@ -13,9 +13,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * The one query of the chat search (docs/features/chat-list.md, "Chatsuche"): titles and messages
- * of the chats a person may see in one space, one match per chat, by {@code ts_rank} with the
- * German configuration of {@code chat_messages.content_tsv}.
+ * The one query of the chat search (ADR-0066, Entscheidung 4): titles and messages of the chats a
+ * person may see in one space, one match per chat, by {@code ts_rank} with the German configuration
+ * of {@code chat_messages.content_tsv}.
  *
  * <p>The permission filter is the {@code visible} CTE and nothing else - every other part of the
  * query only ever reads from it, so a chat outside it is never loaded, ranked or counted. Shared

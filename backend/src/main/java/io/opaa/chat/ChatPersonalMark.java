@@ -11,11 +11,10 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * One person's own marks on one chat (docs/features/chat-list.md, "Persönliche Ordnungsmerkmale im
- * Datenmodell"). They belong to the person, never to the chat: setting one changes no field of
- * {@link Chat}, and no other person can read or set them. Written only through {@link
- * ChatPersonalMarkRepository}'s statements; {@code organization_id} is derived from the chat by a
- * database trigger and therefore not mapped here.
+ * One person's own marks on one chat (ADR-0066, Entscheidung 2). They belong to the person, never
+ * to the chat: setting one changes no field of {@link Chat}, and no other person can read or set
+ * them. Written only through {@link ChatPersonalMarkRepository}'s statements; {@code
+ * organization_id} is derived from the chat by a database trigger and therefore not mapped here.
  */
 @Entity
 @Table(name = "chat_personal_marks")

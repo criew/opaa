@@ -77,7 +77,7 @@ interface ChatListProps {
 }
 
 /**
- * A person's chats in one space (docs/features/chat-list.md, "Die Seitenleiste"): pinned chats
+ * A person's chats in one space (ADR-0066): pinned chats
  * first, then the most recently used ones in pages of {@link RECENT_PAGE_SIZE}. The full-text
  * search over every chat - archived ones included - sits behind the search button in the head
  * row; the list itself never filters.
