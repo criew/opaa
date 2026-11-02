@@ -58,7 +58,7 @@ Betrieb (docs/AGENT-ORGANIZATION.md).
 <!--
 Die Tickets selbst werden als Sub-Issues eingetragen (Seitenleiste „Create sub-issue"
 bzw. bestehendes Issue verknüpfen), nicht als Checkliste im Body. GitHub führt damit
-Status und Fortschritt selbst; der Tagesreport liest dieselbe Beziehung.
+Status und Fortschritt selbst.
 
 Sind alle Sub-Issues geschlossen, wird das Epic mit einem kurzen Abschlusskommentar
 geschlossen (Geliefertes mit PR-Verweisen, entstandene Folge-Issues) — siehe AGENTS.md,

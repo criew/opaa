@@ -188,8 +188,7 @@ Einstieg
 
 Stand und Nachweis (docs/fortschritt/)
 ├── gesamtstand.md         — was heute gebaut ist, inventurbelegt
-├── JJJJMMTT/              — Zeitraumsberichte mit Beleg-Bausteinen je Stichtag
-└── tagesreport.md         — ticketbasierter täglicher Report (opaa.io/report, Atom-Feed)
+└── JJJJMMTT/              — Zeitraumsberichte mit Beleg-Bausteinen je Stichtag
 
 Spezifikationen (docs/features/) — je Themenbereich
 ├── A  data-indexing-rag.md
