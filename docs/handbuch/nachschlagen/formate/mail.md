@@ -79,7 +79,7 @@ Am Chunk trägt die Mail-Pipeline nur Ortsangabe und Fundstellen-Anker wie jede 
 
 Die Kopfdaten selbst sind **Werte des Metadatenschemas am Dokument**, keine
 mail-eigenen Chunk-Schlüssel — dieselbe Mechanik wie bei den Kernfeldern, mit Herkunft
-„deterministisch" und Extraktionsversion (siehe [Metadaten](../../arbeitsmittel/wissensbibliotheken/metadaten.md), Abschnitt 2a):
+„deterministisch" und Extraktionsversion (siehe [Metadaten](../metadaten.md#woher-ein-wert-kommt)):
 
 | Feld | Inhalt | Filterbar |
 |---|---|---|
