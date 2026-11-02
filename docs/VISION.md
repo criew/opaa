@@ -169,35 +169,16 @@ Tiefe Anbindung an den souveränen Arbeitsplatz · behördenübergreifender Aust
 Assistent für Bürgerinnen und Bürger · Erweiterungen für Office und Browser · Anbindung an elektronische
 Akten und Dokumentenmanagement.
 
-Den tatsächlichen Umsetzungsstand gegen diese Phasen führt der [Gesamtstand](./fortschritt/gesamtstand.md).
+Den tatsächlichen Umsetzungsstand gegen diese Phasen führt der [Gesamtstand](./fortschritt/gesamtstand.md),
+die offenen Punkte je Phase die [Roadmap](./ROADMAP.md).
 
 ---
 
 ## Roadmap
 
-### Meilenstein 1 — 31.08.2026
-
-Erster datierter Meilenstein innerhalb von Phase 1, abgestimmt zwischen bugpuritz und criew. Bis dahin
-müssen stehen:
-
-1. **Komplettes UI-Redesign** mit dem Claude Design Skill. Die Benutzerführung wird für alle
-   Kernbereiche neu gedacht: Spaces, Assets (Wissensbibliotheken), Chats, Zitierung und die übrigen
-   sichtbaren Bereiche.
-2. **Anlegen von Wissensdatenbanken** — sowohl über Konnektoren mit Vorlagen (Dateisystem /
-   Netzwerkadresse, URL-Scraping) als auch über manuellen Upload von Dateien und Ordnern. Wissensquellen
-   werden per Berechtigung an Nutzer vergeben; Nutzer legen Spaces an und assoziieren damit die
-   Wissensquellen, auf die sie eine Berechtigung haben.
-3. **Testsystem mit Testdatensätzen**, die über das bisherige Superhelden-Beispielkorpus hinausgehen.
-4. **Aufstellung der bisher implementierten Leistungen** — eine Bestandsaufnahme dessen, was zum
-   Meilenstein tatsächlich steht, als Grundlage für die Abnahme und die nächste Priorisierung. Siehe
-   [Gesamtstand](./fortschritt/gesamtstand.md) für den laufend gepflegten Umsetzungsstand.
-
-**Bewusste Einschränkung für diesen Meilenstein:** Das Konzept aus Assets und Spaces wird umgesetzt, aber
-die vollständige Berechtigungsproblematik (siehe [access-control.md](./features/access-control.md)) wird
-zunächst noch nicht angegangen.
-
-**Arbeitsteilung:** bugpuritz übernimmt UI-Design und -Anpassungen, criew übernimmt Wissensbibliotheken,
-Konnektoren und die Verlinkung zu Spaces.
+Welche offenen Punkte zu welcher Phase gehören und was bewusst gestrichen ist, steht in der
+[Roadmap](./ROADMAP.md). Meilenstein 1 (31.08.2026: UI-Redesign, Wissensbibliotheken mit Konnektoren
+und Upload, Testsystem, Bestandsaufnahme) ist erreicht.
 
 ---
 
