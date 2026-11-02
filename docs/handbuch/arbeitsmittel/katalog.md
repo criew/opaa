@@ -46,27 +46,17 @@ Ein Klick auf die Kachel öffnet die Detailansicht.
 
 ## 3. Favoriten
 
-Mit dem Stern markiert eine Person ein Arbeitsmittel als Favorit; ein zweiter Druck entfernt die
-Markierung. Favoriten stehen im Katalog oben und lassen sich allein anzeigen. Sie sind eine rein
-persönliche Ordnung:
-
-- **Nur die Person selbst sieht sie.** Weder die Systemverwaltung noch die Verantwortlichen eines
-  Arbeitsmittels oder eines Space erfahren, wer was markiert hat; es gibt keine Zahl der Favoriten.
-- **Kein Nachweis.** Setzen und Entfernen erscheinen in keinem Protokoll, Bericht oder Export.
-- **Nur Lesbares.** Verliert die Person das Leserecht, verschwindet der Favorit; entfernen kann sie
-  ihre Markierung trotzdem.
-- **Mit dem Konto gelöscht.** Favoriten gehen mit dem Konto oder dem Arbeitsmittel.
+Bedienung: [Den Katalog nutzen](../arbeiten/katalog.md). Favoriten sieht nur die Person selbst; Setzen und
+Entfernen erscheinen in keinem Protokoll, Bericht oder Export, und sie gehen mit dem Konto oder dem
+Arbeitsmittel.
 
 ## 4. Ein Arbeitsmittel anlegen
 
-**„Neuer Katalogeintrag"** oben rechts im Katalog fragt zuerst „Was möchten Sie anlegen?" und
-bietet jede Art als Kachel an — **nur die Arten, für die die Person ein Anlegerecht hat** ([Berechtigungen](../konten-und-rechte/berechtigungen.md),
-Abschnitt 9). Hat sie keines, fehlt der Knopf. „Weiter" führt in den Assistenten der gewählten Art,
-den ihr Kapitel beschreibt; „Abbrechen" führt zurück in den Katalog.
-
-Jeder Assistent endet mit Eigentümer und ersten Freigaben an Personen und Gruppen. Eine Freigabe an
-„Alle Konten" wird erst am fertigen Arbeitsmittel erteilt. Konnte eine vorgemerkte Freigabe nicht
-erteilt werden, ist das Arbeitsmittel trotzdem angelegt, und ein Hinweis nennt die Empfänger.
+„Neuer Katalogeintrag“ bietet nur die Arten an, für die die Person ein Anlegerecht hat
+([Berechtigungen](../konten-und-rechte/berechtigungen.md), Abschnitt 9); die Assistenten beschreiben
+[Eine Bibliothek anlegen](../arbeiten/bibliothek-anlegen.md) und
+[Eine Prompt-Bibliothek anlegen](../arbeiten/prompt-bibliothek-anlegen.md). Eine Freigabe an „Alle Konten“
+wird erst am fertigen Arbeitsmittel erteilt.
 
 ## 5. Die Detailansicht
 
@@ -95,14 +85,7 @@ Eingaben schließt über „Abbrechen".
 
 ## 6. In einem Space verwenden
 
-Ein Space enthält genau die Arbeitsmittel, die ihm zugeordnet sind
-([Spaces](../spaces/README.md)). Zuordnen lässt sich direkt aus dem Katalog: Im
-Menü „⋯" einer Kachel, im Menü der Detailansicht und im Reiter „Zuordnungen" steht **„In Space
-verwenden"**. Es zeigt die Spaces, in denen die Person Kurator oder Administrator ist; ein Klick
-ordnet zu. „Neuen Space damit anlegen" öffnet den Space-Assistenten mit dem Arbeitsmittel als
-bereits gewähltem Inhalt. Solange die Nachfolge eines Arbeitsmittels offen ist, lässt es sich nicht
-neu zuordnen: Dann sind alle Einträge ausgegraut und nicht wählbar, und über der Liste steht der
-Grund.
+Bedienung: [Den Katalog nutzen](../arbeiten/katalog.md#in-einem-space-verwenden).
 
 Im Reiter „Zuordnungen" sehen alle Leseberechtigten, wo das Arbeitsmittel bereitsteht, aber nur so
 weit, wie der Space selbst für sie sichtbar ist. Private Spaces, zu denen eine Person nicht gehört,

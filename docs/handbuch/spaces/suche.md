@@ -100,7 +100,7 @@ Aufruf des Chat-Modells (Abschnitt 3).
 | Umfang je Chat | höchstens zehn Punkte (Abschnitt 10.3); beim Überlauf fällt der älteste Punkt weg |
 | Länge eines Punkts | höchstens 200 Zeichen, längere werden mit „…" gekürzt |
 | Wirkung | Die Suche (Stufe 3) sieht nur die Punkte mit Rahmenangaben, die Antwort (Abschnitt 6) alle. Diese Unterscheidung ist intern und wird nicht angezeigt |
-| Lebensdauer | die des Chats: mit ihm gelöscht, nur für seinen Autor abrufbar, nicht protokolliert und nicht auswertbar. Im Kopf des Chats zeigt ein Knopf die Zahl der Punkte und klappt die Liste auf, in der der Autor jeden Punkt einzeln entfernen kann, außer in einem archivierten Space; sichtbar wird die Notiz, sobald sie einen Punkt hat und der Chat drei beantwortete Runden zählt. Die Exporte des Chats enthalten sie (Abschnitt „Belege prüfen und Fundstellen bilden", Absatz „Exportieren") |
+| Lebensdauer | die des Chats: mit ihm gelöscht, nur für seinen Autor abrufbar, nicht protokolliert und nicht auswertbar. Im Kopf des Chats zeigt ein Knopf die Zahl der Punkte und klappt die Liste auf, in der der Autor jeden Punkt einzeln entfernen kann, außer in einem archivierten Space; sichtbar wird die Notiz, sobald sie einen Punkt hat und der Chat drei beantwortete Runden zählt. Die Exporte des Chats enthalten sie ([Antworten weitergeben](../arbeiten/antworten-weitergeben.md)) |
 
 Zwei Punkte sind betrieblich wichtig:
 
@@ -170,58 +170,22 @@ flowchart TB
 
 ### Frage diktieren
 
-Wo die Installation eine Spracheingabe anbietet ([Modelle](../betrieb/modelle.md#spracheingabe-einschalten)),
-steht im Eingabefeld neben „Senden" ein Mikrofon. Ohne eingerichteten Transkriptionsdienst und in
-einem Browser, der nicht aufnehmen kann, fehlt es.
-
-So geht es:
-
-1. **Mikrofon** („Spracheingabe starten") wählen. Beim ersten Mal fragt der Browser, ob die Seite
-   das Mikrofon nutzen darf.
-2. Die Frage sprechen. Die Laufzeit der Aufnahme steht neben dem Knopf.
-3. **Aufnahme beenden** wählen. Nach kurzer Verarbeitung steht der erkannte Text im Eingabefeld,
-   hinter dem, was dort schon getippt war.
-4. Den Text prüfen, bei Bedarf korrigieren und selbst senden. **Gesendet wird nie automatisch.**
-
-**Aufnahme verwerfen** beendet die Aufnahme, ohne etwas zu übertragen. Eine Aufnahme endet von
-selbst nach zwei Minuten und nach 15 Sekunden Stille; das bis dahin Gesprochene wird wie nach
-„Aufnahme beenden" erkannt. Scheitert die Übertragung am Netz, versucht OPAA es einmal erneut;
-danach steht eine Meldung unter dem Eingabefeld, und die Aufnahme ist verworfen.
-
-- **Freiwillig.** Tippen ist gleichwertig; es gibt keine Einstellung, die das Diktieren vorschreibt.
-- **Nichts wird gespeichert.** Die Aufnahme liegt nur während der Umwandlung im Arbeitsspeicher von
-  Browser und Server und wird danach verworfen. Gespeichert wird nur die Frage, die die Person
-  sendet — ohne Merkmal, ob sie diktiert oder getippt wurde.
-- **Rücksicht im Büro.** Im Mehrpersonenbüro hören andere mit, was diktiert wird. Nicht während
-  Telefonaten oder Gesprächen diktieren: Das Mikrofon nimmt auch andere Stimmen auf.
+Bedienung: [Dateien anhängen und diktieren](../arbeiten/anhaengen-und-diktieren.md#eine-frage-diktieren).
+Das Mikrofon erscheint nur, wo die Installation eine Spracheingabe anbietet
+([Modelle](../betrieb/modelle.md#spracheingabe-einschalten)) und der Browser aufnehmen kann. Die
+Aufnahme liegt nur während der Umwandlung im Arbeitsspeicher von Browser und Server; gespeichert
+wird nur die gesendete Frage, ohne Merkmal, ob sie diktiert wurde.
 
 ### Dokumente an eine Frage anhängen
 
-Wer ein Dokument mitbringt, das in keiner Bibliothek liegt — einen Bescheid, einen Entwurf, eine
-Stellungnahme —, hängt es an die Frage: per Ziehen auf das Eingabefeld, mit der **Büroklammer**
-(„Dateien anhängen“) oder durch Einfügen aus der Zwischenablage. Die Datei wird sofort hochgeladen
-und gelesen; der Chip über dem Eingabefeld zeigt „wird hochgeladen“, „wird gelesen“ oder die
-Größe, sobald sie bereitsteht. Gesendet werden kann erst, wenn alle Anhänge bereitstehen oder
-entfernt sind. Eine Datei, die sich nicht lesen lässt, bleibt mit ihrem Grund stehen, bis sie
-entfernt wird.
+Bedienung und „Meine Uploads“: [Dateien anhängen und diktieren](../arbeiten/anhaengen-und-diktieren.md#eine-datei-anhängen).
 
-- **Antwort aus dem Anhang.** Kleine Anhänge gehen im Volltext in die Antwort, sodass auch „Fasse
-  zusammen“ funktioniert; bei langen gehen die Abschnitte hinein, die die meisten Wörter der Frage
-  enthalten. Eingebettet wird nichts, ein Anhang ist deshalb ohne Wartezeit nutzbar. Der Anhang
-  steht vor den Treffern aus den Bibliotheken und wird belegt wie sie; im Belegfenster trägt er
-  die Marke „Anhang“ und lässt sich herunterladen.
-- **Gehört zum Chat.** Mit der ersten Frage wird der Anhang an den Chat gebunden und gilt auch für
-  die folgenden Fragen dieses Chats. Er wird mit dem Chat gelöscht, auch durch die automatische
-  Chat-Löschung. Ein hochgeladener, aber nie gesendeter Anhang wird nach
-  `opaa.chat.attachments.unbound-retention` gelöscht.
-- **Nur für die Person selbst.** Anhänge sieht und nutzt nur, wer sie hochgeladen hat; sie
-  erscheinen in keiner Suche anderer. Die Datei liegt im selben Speicher wie Uploads in
-  Bibliotheken (Dateisystem oder S3), die Datenbank hält nur den gelesenen Text.
-- **Meine Uploads.** Unter „Ihre Einstellungen“, Bereich „Meine Uploads“, stehen alle eigenen
-  Anhänge über alle Spaces mit ihrem Chat und ihrer Frist. Dort lassen sie sich herunterladen,
-  löschen oder mit „In Bibliothek übernehmen“ als Kopie in eine Upload-Bibliothek legen, in der
-  die Person Dokumente hochladen darf. Die Kopie folgt danach den Rechten und Fristen der
-  Bibliothek.
+- **Antwort aus dem Anhang.** Kleine Anhänge gehen im Volltext in die Antwort, bei langen die
+  Abschnitte, die die meisten Wörter der Frage enthalten. Eingebettet wird nichts. Der Anhang steht
+  vor den Treffern aus den Bibliotheken und wird belegt wie sie.
+- **Speicher und Frist.** Die Datei liegt im selben Speicher wie Uploads in Bibliotheken, die
+  Datenbank hält nur den gelesenen Text. Ein Anhang wird mit seinem Chat gelöscht, ein nie
+  gesendeter nach `opaa.chat.attachments.unbound-retention`.
 - **Grenzen.** Es gelten dieselben Formate, dieselbe Größengrenze und dieselbe Virenprüfung wie
   beim Upload in eine Bibliothek. Je Frage und je Chat ist die Zahl der Anhänge begrenzt
   (`opaa.chat.attachments.max-per-message`, `opaa.chat.attachments.max-per-chat`); wie viele
@@ -943,65 +907,13 @@ des ersten Auftretens im Antwortkontext:
 | Quelle | Quellentyp und Link zum Dokument bzw. zur Seite in der Quelle, Indexierungszeitpunkt |
 | „Stand vom …" | die Bibliothek des Dokuments wurde beim Antworten nicht aktualisiert: gesperrt, Verbindung getrennt oder Zugang entfernt. Das Datum ist ihr letzter erfolgreicher Lauf, nicht der Indexierungszeitpunkt des Dokuments; dazu stehen der Grund und die zuständige Stelle (Systemverwaltung bei einer Sperre, sonst die Verwaltenden der Bibliothek). Siehe Kapitel [Zugänge](../arbeitsmittel/zugaenge.md) |
 
-Die Fundstellen stehen im Belegfenster; unter der Antwort steht nur die Schaltfläche dorthin mit der
-Zahl der zitierten Stellen und der weiteren geprüften, nicht zitierten Dokumente. Sie trägt den
-Belegstand der Antwort (siehe unten), bei Antworten ohne Belegstand „Belege anzeigen". Fährt man mit der Maus über eine
-Fußnote im Antworttext, nennt ein Tooltip Dokument und Fundort; ein Klick öffnet das Belegfenster
-an der zugehörigen Fundstelle und markiert sie dort.
-
-Das Belegfenster heißt „Belege dieser Antwort" und hat oben nur das Suchfeld „In Belegen suchen".
-Hat die Antwort ungedeckte Teilfragen, nennt ein Block „Ohne Fundstelle" darüber ihren Wortlaut.
-Es öffnet mit den zitierten Dokumenten in der Reihenfolge ihrer Fußnoten; der Link **„Nicht
-zitierte anzeigen"** unter der Liste blendet die geprüften, nicht zitierten darunter ein, ein
-zweiter Klick wieder aus. Bei jedem Öffnen sind sie wieder ausgeblendet. Die Suche durchsucht Titel
-und Fundort aller Belege, auch der ausgeblendeten. Je Dokument
-stehen die Fußnotenziffern, der Titel, der Fundort und die Aktion **„Dokument öffnen"**; dazu, wo
-sie zutreffen, „geprüft, nicht zitiert", „Private Quelle", „Beleg nicht bestätigt", „ohne Angabe"
-und „Stand vom …". Rang, Metadaten, Indexierungszeitpunkt und die Adresse in der Quelle zeigt das
-Belegfenster nicht. Den Rang eines Dokuments zeigt nur die Diagnose der Systemadministration
-(Abschnitt [„Das Diagnosewerkzeug"](#82-das-diagnosewerkzeug)), die eine Frage erneut durch die Suche schickt.
-
-**PDF an der Fundstelle.** „Dokument öffnen" zeigt ein PDF in einem eigenen Fenster der Anwendung,
-nicht mehr in einem neuen Browser-Tab. Es öffnet auf der Seite der zitierten Stelle und hebt die
-Stelle farbig hervor, auch wenn sie über eine Seitengrenze läuft. Die Seiten stehen untereinander
-und werden durchgescrollt; die Leiste darüber nennt die aktuelle Seite, vergrößert, verkleinert und
-stellt auf Seitenbreite. Bringt das PDF ein Inhaltsverzeichnis mit, steht es links, lässt sich
-einklappen, springt per Klick an sein Kapitel und hebt das Kapitel der aktuellen Seite hervor.
-Formulare, Links und eingebettete Skripte des PDFs bleiben im Fenster ohne Wirkung. Neben dem
-Hinweis auf einen Beleg ohne gespeicherte Fundstelle (unten) sind zwei Hinweise möglich: „Das Original wurde seit der Antwort geändert …", wenn die Datei nicht mehr die ist,
-aus der die Antwort zitiert hat; „Die Fundstelle wurde im Original nicht gefunden …", wenn der
-zitierte Text auf der Seite nicht wiederzufinden ist, etwa bei einem Scan; das Fenster zeigt dann
-die Fundseite ohne Markierung. Kann die Anwendung ein PDF nicht anzeigen, sagt das Fenster das
-und bietet „Im Browser öffnen" an. Aus der Dokumentliste einer Wissensbibliothek geöffnet, beginnt dasselbe
-Fenster auf der ersten Seite.
-
-**Text und Quellseiten an der Fundstelle.** Markdown- und Textdateien öffnen wie bisher in der
-Textvorschau, scrollen aber an die zitierte Stelle und heben sie farbig hervor; ist sie nicht
-wiederzufinden, sagt die Vorschau „Die Fundstelle wurde im Dokument nicht gefunden.". Eine
-Confluence-Seite öffnet weiter an der Quelle; die Adresse trägt dabei die zitierte Stelle als
-Textfragment, sodass Chrome, Edge, Safari und Firefox dorthin scrollen und sie hervorheben. Findet
-der Browser die Stelle auf der Seite nicht, etwa weil sie seit der Indexierung geändert wurde,
-öffnet die Seite wie gewohnt oben. Bilder öffnen weiter in einem neuen Tab.
-
-**Textfassung an der Fundstelle.** Formate, die der Browser nicht anzeigen kann, also
-Office-Dokumente, Tabellen und Mails wie DOCX, PPTX, XLSX oder EML, öffnet „Dokument öffnen" als
-**Textfassung**: der Text, den OPAA beim Indexieren gewonnen hat, in der Reihenfolge des Dokuments.
-Ein Hinweis oben sagt, dass das Layout des Originals nicht wiedergegeben wird. Das Fenster öffnet an
-der zitierten Passage und hebt sie als Ganzes hervor; Text davor und danach lädt es auf Klick nach
-(„Vorherigen Text laden", „Weiteren Text laden"). Links steht die Gliederung des Dokuments, nach
-Folien, Tabellenblättern, Nachrichten oder Überschriften, je nachdem, was das Format kennt; sie
-lässt sich einklappen, springt per Klick an ihren Abschnitt und hebt den Abschnitt der Fundstelle
-hervor. Wurde das Dokument seit der Antwort neu indexiert und liest sich die Passage anders als
-zitiert, sagt das Fenster „Das Dokument wurde seit dem Zitat neu indexiert – die markierte Stelle
-kann abweichen."; gibt es die Passage nicht mehr, „Die Fundstelle ist in der Textfassung nicht mehr
-enthalten." und das Fenster beginnt am Anfang. Aus der Dokumentliste einer Wissensbibliothek
-geöffnet, beginnt die Textfassung am Anfang. Sehen kann sie nur, wer auch das Original öffnen darf.
-
-**Original herunterladen.** PDF-Fenster, Textvorschau und Textfassung tragen oben rechts neben dem
-Schließen-Kreuz einen Knopf „Original herunterladen", der die Datei unverändert speichert. Im
-Belegfenster steht neben „Dokument öffnen" der Link „Herunterladen". Eine Confluence-Seite hat keine
-eigene Datei und daher keinen Download; „Dokument öffnen" führt dort an die zitierte Stelle der
-Seite.
+Die Fundstellen stehen im Belegfenster. Wie es aussieht, wie Dokumente an der Fundstelle öffnen
+und was seine Hinweise bedeuten, steht unter [Belege prüfen](../arbeiten/belege-pruefen.md). Rang,
+Metadaten, Indexierungszeitpunkt und die Adresse in der Quelle zeigt das Belegfenster nicht; den
+Rang zeigt nur die Diagnose der Systemadministration
+(Abschnitt [„Das Diagnosewerkzeug"](#82-das-diagnosewerkzeug)). Die Textfassung eines Dokuments
+sieht nur, wer auch das Original öffnen darf. Formulare, Links und Skripte eines PDFs bleiben im
+Fenster ohne Wirkung.
 
 **Beleg ohne gespeicherte Fundstelle.** Die Stelle, an die PDF- und Textvorschau springen, wird beim
 Indexieren je Abschnitt gespeichert und mit der Antwort festgehalten. Fehlt sie, öffnet die
@@ -1036,52 +948,15 @@ eines Chats denselben Stand wie bei der Erzeugung; Antworten von vor seiner Einf
 Er bewertet die Antwort und ihre Grundlage, nie die fragende Person; außerhalb des Chats zählt nur die
 anonyme Metrik `opaa.query.evidence` je Stufe (Abschnitt „Metriken und Log").
 
-**Kopieren.** Rechts unter jeder Antwort steht „Kopieren". Ein Klick legt die Antwort als Markdown in
-die Zwischenablage, ohne Fußnotenmarken und ohne Quellenliste. Der Pfeil daneben bietet zwei
-Varianten: **„Mit Quellenangaben"** setzt jede Fußnote als Markdown-Fußnote (`[^1]`, dieselbe Nummer
-wie im Chat) und hängt die zitierten Dokumente mit Fundort als Fußnotenliste an; **„Nur Text"** gibt
-die Antwort ohne Markdown-Zeichen aus, Aufzählungen mit „•", Tabellenzeilen tabulatorgetrennt. Unter
-jeder eigenen Frage liegt ein Kopiersymbol, das die Frage unverändert übernimmt, etwa um sie in einem
-neuen Chat abgewandelt zu stellen; es erscheint beim Überfahren oder bei Tastaturfokus, auf
-Touch-Geräten immer. Ein erfolgreiches Kopieren bestätigt der Knopf selbst („Kopiert"), ein
-Screenreader sagt es an; verweigert der Browser die Zwischenablage, meldet ein Hinweis, dass von Hand
-markiert werden muss.
+**Kopieren, Vermerk und Export** beschreibt [Antworten weitergeben](../arbeiten/antworten-weitergeben.md).
+Der Vermerk beim Kopieren und im Export nennt den Hinweis zur KI-Nutzung und den Produktnamen aus dem
+Branding und das Datum, nie einen Modellnamen. Den Markdown-Export erzeugt der Browser, das PDF der
+Server; Exportieren darf nur, wer den Chat lesen darf, also seine Autorin oder sein Autor. Der Export
+wird weder protokolliert noch auf dem Server gespeichert.
 
-**Vermerk beim Kopieren.** Jede über „Kopieren" kopierte Antwort endet in allen drei Varianten mit
-einem abgesetzten Vermerk: dem Hinweis zur KI-Nutzung aus dem Branding, dem Produktnamen aus dem
-Branding und dem Datum der Antwort (TT.MM.JJJJ), etwa „Antworten werden von einer KI erzeugt … – OPAA,
-05.03.2026". Einen Modellnamen enthält der Vermerk nie. Wo der Browser es erlaubt, legen die beiden
-Markdown-Varianten die Antwort zusätzlich als formatierten Text (HTML) mit sichtbarem Fuß ab, sodass
-sie sich mit Formatierung in Textverarbeitungen einfügen lässt; dabei gelten dieselben Regeln wie im
-Chat: Bilder werden nicht übernommen (nur ihre Beschreibung und Adresse als Text), und nur erlaubte
-Linkziele bleiben anklickbar. Sonst bleibt es beim Text mit Vermerk. Der Vermerk steht nur beim Kopierknopf und in den Exporten: Text, den jemand von Hand markiert und kopiert,
-bleibt unverändert. Er ist sichtbarer Text und **keine** maschinenlesbare Kennzeichnung.
-
-**Exportieren.** Ein ganzer Chat lässt sich zur Ablage oder Weitergabe als Datei sichern: Das Menü
-eines Chats in der Chatliste und auf der Seite „Chats" bietet „Exportieren als Markdown" und
-„Exportieren als PDF"; solange das PDF entsteht, meldet ein Hinweis „Export wird erstellt …".
-Beide Dateien beginnen mit dem Titel als Überschrift, nennen Beginn des Chats
-und Exportzeitpunkt, führen die Gesprächsnotiz (Abschnitt „Frage, Chat, Suchbereich, Chunk") als eigenen Abschnitt „Gesprächsnotiz",
-sobald sie einen Punkt hat, und enthalten dann jede Frage und Antwort mit Datum und Uhrzeit. Unter jeder Antwort
-stehen ihre Quellenangaben: Jede Zitiermarke wird zur Fußnote mit Dokument und Fundort, gezählt je
-Antwort in der Reihenfolge des ersten Auftretens; zitierte Dokumente ohne Fußnote im Text folgen ohne
-Nummer, geprüfte, nicht zitierte fehlen. Am Ende steht derselbe Vermerk wie beim Kopieren, mit dem Datum des Exports.
-Die Datei heißt wie der Chat.
-
-| Format | Entsteht | Darstellung |
-|---|---|---|
-| Markdown | im Browser, aus dem gespeicherten Chat, den die Oberfläche dafür frisch lädt | Antworten mit ihrer Formatierung, Fußnoten als Markdown-Fußnoten mit der Nummer der Antwort davor (`[^2-1]` ist die erste Fußnote der zweiten Antwort); Zeiten in der Zeitzone des Browsers |
-| PDF | auf dem Server | A4 mit Seitenzahlen, Fußnoten als `[1]` je Antwort, Markdown-Zeichen zu lesbarem Text aufgelöst; Zeiten in der Zeitzone der Installation. Die Standardschriften kennen nur westeuropäische Zeichen: Unsichtbare Steuerzeichen entfallen, geschützte und schmale Leerzeichen werden zu Leerzeichen, Bindestrich- und Minuszeichen zu „-", Pfeile und Vergleichszeichen zu `->`, `<-`, `<=`, `>=` und Ähnlichem; alle übrigen Zeichen, etwa andere Schriften oder Emojis, erscheinen als „?" |
-
-Exportieren darf, wer den Chat lesen darf, also nur seine Autorin oder sein Autor, auch nach dem
-Austritt aus dem Space. Der Export wird weder protokolliert noch auf dem Server gespeichert.
-
-**Private Quellen.** Stammt ein Beleg aus einer privaten Bibliothek, trägt er im Belegfenster den Zusatz
-„Private Quelle“, auch wenn die Antwort ihn nicht zitiert; stand eine solche Quelle im Kontext, steht
-unter der Antwort die Zeile „Private Quellen im Kontext“. Beides sieht nur die Besitzerin, denn nur
-sie liest ihre privaten Bibliotheken. Die Kennzeichnung wird mit der Antwort gespeichert; wird die
-Bibliothek später gelöscht, heißt der Beleg „Quelle entfernt“. Siehe Kapitel
-[Private Bibliotheken](../arbeitsmittel/wissensbibliotheken/private-bibliotheken.md).
+**Private Quellen.** Ein Beleg aus einer privaten Bibliothek trägt „Private Quelle“, die Antwort
+gegebenenfalls „Private Quellen im Kontext“; beides sieht nur die Besitzerin. Die Kennzeichnung wird
+mit der Antwort gespeichert; wird die Bibliothek gelöscht, heißt der Beleg „Quelle entfernt“.
 
 ### 7.1 Suchen ohne Antwort
 

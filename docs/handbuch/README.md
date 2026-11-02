@@ -1,18 +1,18 @@
-# OPAA-Handbuch: Betrieb und Verwaltung
+# OPAA-Handbuch
 
-Dieses Handbuch beschreibt, wie eine OPAA-Installation betrieben und verwaltet wird: was die
-Software tut, wie sie konfiguriert wird und wo der Betrieb nachsieht, wenn etwas nicht wie erwartet
-läuft. Es beschreibt den gebauten Ist-Stand, nicht Zielbilder.
+Dieses Handbuch beschreibt OPAA für alle, die damit arbeiten, es pflegen, verwalten oder betreiben:
+was die Software tut, wie man sie bedient und einrichtet und wo man nachsieht, wenn etwas nicht wie
+erwartet läuft. Es beschreibt den gebauten Ist-Stand, nicht Zielbilder.
 
 ## 1. Für wen das Handbuch ist
 
-| Rolle | Typische Aufgaben | Einstieg |
+| Wer | Typische Aufgaben | Einstieg |
 |---|---|---|
+| **Jedes Konto** | fragt, prüft Belege, führt Chats, legt Spaces und eigene Bibliotheken an | [Arbeiten](arbeiten/README.md), zuerst [Erste Schritte](arbeiten/erste-schritte.md) |
 | **Betrieb** | installiert, aktualisiert, sichert, überwacht; konfiguriert Modelle und Grenzwerte; geht Störungen nach | [Betriebsübersicht](betrieb/README.md), dann [Docker Compose](betrieb/docker-compose.md) oder [Kubernetes](betrieb/kubernetes.md), [Netz und Sicherheit](betrieb/netz-und-sicherheit.md), [Modelle](betrieb/modelle.md), [Authentifizierung](betrieb/authentifizierung.md); danach [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md) und [Suche](spaces/suche.md) |
 | **Verwaltung** | legt Bibliotheken an, schließt Quellen an, vergibt Rechte, pflegt Metadaten, prüft Antworten mit dem Diagnosewerkzeug | [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md), die Konnektor-Kapitel, [Metadaten](arbeitsmittel/wissensbibliotheken/metadaten.md), [Suche](spaces/suche.md) Abschnitt 8 |
 
-Nicht Zielgruppe sind Entwickler und Endnutzende (die Oberfläche erklärt sich an Ort und
-Stelle). Wer das Handbuch liest, braucht das Repository nicht.
+Wer das Handbuch liest, braucht das Repository nicht.
 
 ## 2. Was OPAA ist
 
@@ -61,6 +61,11 @@ Seite nur dort, wo ein Begriff von dort gebraucht wird. Das Glossar, Berechtigun
 Konfiguration (alle Umgebungsvariablen und Grenzwerte) sind Nachschlagekapitel, auf die alle
 verweisen dürfen. Die Ordner folgen dem Baum.
 
+- **Arbeiten**
+  - [Arbeiten](arbeiten/README.md) — was jedes Konto ab Werk kann, eine Seite je Aufgabe: erste
+    Schritte, fragen, anhängen und diktieren, Belege prüfen, Antworten weitergeben, Chats, Katalog,
+    Space anlegen, Bibliothek und private Bibliothek anlegen, Konto verbinden, Prompts,
+    Zugangstoken und KI-Werkzeug, Meine Daten
 - **Betrieb**
   - [Betriebsübersicht](betrieb/README.md) — Bausteine und ihr Zusammenspiel, Zeitzone, eine
     Organisation, Wegweiser zu den Kapiteln darunter

@@ -144,108 +144,24 @@ Revisionsprotokoll als Änderung des Space mit dem Feldnamen, der Text selbst ni
 
 ## 5. Einen Space anlegen
 
-„Neuer Space" führt durch vier Schritte: **Grunddaten**, **Mitglieder**, **Inhalte** und
-**Zusammenfassung**. Nur der Name ist Pflicht; die Schritte „Mitglieder" und „Inhalte" lassen sich
-mit „Weiter" überspringen.
-
-Die **Grunddaten** sind Name, Beschreibung und der Schalter der automatischen Chat-Bereinigung. Der
-Schalter nennt die Fristen, die der Betrieb festgelegt hat; was sie bewirken, steht in
-Abschnitt 7. Jeder Space ist nur für seine Mitglieder sichtbar.
-
-Im Schritt **Mitglieder** nimmt der Assistent Personen **und** Gruppen auf, über dasselbe Suchfeld
-wie der Reiter „Mitglieder" der Einstellungen: Suche, Rolle und „Vormerken" in einer Zeile, mit
-denselben Angaben zu Gruppengröße und denselben Regeln für geschützte Gruppen ([Berechtigungen](../konten-und-rechte/berechtigungen.md), Abschnitt 8). Eine
-Gruppe gibt ihre Rolle an alle ihre Mitglieder weiter.
-
-Die **Zusammenfassung** nennt Mitglieder und Inhalte je mit einem kleinen Symbol; Gruppen tragen
-zusätzlich „Gruppe", Inhalte ihre Art im Text. Die Chat-Bereinigung erscheint nur, wenn der Schalter
-an ist, als Satz mit beiden Fristen.
-
-Im Schritt **Inhalte** stehen alle Arbeitsmittel als Kacheln, die die Person lesen darf — dieselbe Menge
-wie im Katalog, in derselben Reihenfolge. Mehrere Kacheln lassen sich zugleich wählen. Darüber
-steht dieselbe Filterzeile wie im Katalog: Suche über Name und Beschreibung, Art („Alle", „Wissen",
-„Prompts") und „Favoriten". Über „Weitere laden" steht, wie viele von wie vielen angezeigt sind. Eine Wahl bleibt bestehen,
-wenn Filter oder Suche ihre Kachel ausblenden; die Zeile unter den Kacheln nennt alles Gewählte.
-Die Kacheln zeigen, was für die Wahl zählt: Art, Stern, Name, Beschreibung und Umfang, also die
-Zahl der Dokumente oder Prompts. Dazu kommen „Privat" oder „Wird gelöscht", der Hinweis auf eine
-gesperrte Quelle und ein Zustand, der Aufmerksamkeit braucht, etwa „Aktualisierung fehlgeschlagen"
-oder „Nachfolge offen". Solange die Nachfolge offen ist, lässt sich das Arbeitsmittel nicht neu
-zuordnen: Seine Kachel ist ausgegraut, lässt sich nicht wählen und nennt den Grund „Lässt sich
-nicht neu zuordnen, solange die Nachfolge offen ist." Kommt der Assistent über „Neuen Space damit
-anlegen" mit einem solchen Arbeitsmittel, übernimmt er es nicht als gewählt; ein Hinweis im Schritt
-„Inhalte" nennt den Grund. Es ist dieselbe Kachel wie im Katalog; zuständige Stelle, „Aktualisiert am", die Zahl der Spaces
-und das Welt-Symbol stehen auf der Detailseite. Links oben steht ein Häkchen, wenn die Kachel gewählt ist, sonst ein leerer
-Kreis; der Rahmen bleibt gleich. Ein Klick auf die Kachel wählt sie oder hebt die Wahl auf; ein
-Klick auf den Stern setzt nur den eigenen Favoriten und ändert die Wahl nicht.
-
-„Space anlegen" legt den Space samt vorgemerkten Mitgliedern und allen Zuordnungen in einem Schritt
-an. Lässt sich ein Mitglied nicht aufnehmen oder ein gewähltes Arbeitsmittel nicht zuordnen, entsteht kein
-Space; der Assistent bleibt mit allen Eingaben offen und nennt den Grund. Die Aufnahme jedes
-Mitglieds steht wie beim späteren Hinzufügen im Nachweisprotokoll. Ist kein Wissen gewählt, sagt die Zusammenfassung „Kein
-Wissen zugeordnet — der Space durchsucht kein Wissen, bis Sie etwas zuordnen."
-
-Dieselbe Kachelauswahl steht im Reiter „Inhalte" der Einstellungen. Dort ist das Häkchen die
-Zuordnung selbst und wirkt sofort (Abschnitt 3); eine Zeile mit
-allem Gewählten und einen Knopf „Zuordnen" gibt es dort nicht.
+Schritt für Schritt: [Einen Space anlegen](../arbeiten/space-anlegen.md). Lässt sich ein Mitglied nicht
+aufnehmen oder ein Arbeitsmittel nicht zuordnen, entsteht kein Space; die Aufnahme jedes Mitglieds
+steht wie beim späteren Hinzufügen im Nachweisprotokoll.
 
 ## 6. Übersicht und Wechsel
 
-Die Übersicht führt alle Spaces auf, in denen Sie Mitglied sind. Ihr Kopf ist wie im
-[Katalog](../arbeitsmittel/katalog.md) aufgebaut: die Überschrift „Spaces", daneben die Zahl der
-Einträge, oben rechts „Neuer Space". Ein Suchfeld filtert über Name und Beschreibung. Die Spaces
-stehen als Kacheln; eine Tabellenansicht gibt es nicht.
-
-Eine Kachel zeigt Name, Beschreibung und die Anzahl der Chats. Ihre eigene Rolle und die Mitglieder
-stehen in den Einstellungen des Space. Ein archivierter Space ist als solcher
-gekennzeichnet und führt auf seine Übersicht statt in einen neuen Chat.
-
-Nach der Anmeldung öffnet OPAA einen **leeren Chat im zuletzt genutzten Space** — nicht den letzten
-Chat, und nicht mehr grundsätzlich den persönlichen Space. Ist der gemerkte Space nicht mehr
-zugänglich, weil er archiviert wurde, die Mitgliedschaft entzogen ist oder der Rechner zuletzt von
-jemand anderem benutzt wurde, führt der Einstieg in den persönlichen Space. Denselben Weg nimmt der
-Eintrag **„Chat"** ganz links in der globalen Leiste; er bleibt hervorgehoben, solange Sie in einem
-Space, in der Übersicht oder im Assistenten für einen neuen Space sind.
-
-Gewechselt wird in der **Seitenleiste**. Auf dem Desktop steht oben der Bereich „Spaces" mit
-**höchstens fünf Spaces** als Zeilen: ausgewählt werden die zuletzt genutzten, angezeigt der
-persönliche Space zuerst, danach nach Name, damit eine angeklickte Zeile nicht springt. Der aktive
-Space ist immer dabei und hervorgehoben; ein archivierter erscheint nur, wenn Sie ihn zuletzt
-genutzt haben, mit dem Hinweis „archiviert". Die Zahl hinter „Spaces" nennt alle Ihre nicht
-archivierten Spaces. Rechts im Kopf legt das Plus „Neuer Space" einen Space an, die Lupe öffnet die
-Übersicht mit dem Cursor im Suchfeld; die Seitenleiste bleibt dabei stehen und markiert den zuletzt
-aktiven Space. Wer in vielen Spaces Mitglied ist, findet dort den vollständigen Bestand — die
-Zeilen sind der schnelle Weg zurück, nicht das Verzeichnis. Der Bereich lässt sich zuklappen; die
-Zeile des aktiven Space bleibt dann sichtbar.
-
-Auf schmalen Bildschirmen, wo sich die Seitenleiste als Überlagerung öffnet, ist für fünf Zeilen
-kein Platz. Dort steht stattdessen das **Space-Menü** am Kopf der Seitenleiste mit denselben
-höchstens fünf Spaces, den zuletzt genutzten zuoberst, und darunter „Alle Spaces anzeigen" (wie die
-Lupe) und „Neuer Space". Es nennt unter jedem Namen die Mitglieder, wie die Reichweite eines
-Arbeitsmittels formuliert: „2 Gruppen, 3 Personen", oder „nur Sie", wenn Ihr eigenes Konto das
-einzige Mitglied ist — gleich, ob es der Standard-Space ist oder nicht. Eine Gruppe zählt als eine
-Mitgliedschaft, wie viele Personen sie auch umfasst; ihre Größe wird dort nicht genannt.
-
-Die Nutzungsreihenfolge merkt sich der Browser, nicht der Server: Sie gilt je Gerät und je Browser
-und wandert nicht mit. Gemerkt werden nur Space-Kennungen, und die Liste wird bei jedem Öffnen gegen
-die Spaces abgeglichen, die der Dienst dem angemeldeten Konto ausliefert. Melden sich zwei Personen
-nacheinander am selben Rechner an, wirkt die Reihenfolge deshalb genau in den Spaces weiter, in
-denen beide Mitglied sind — alles andere fällt heraus. Wer das nicht möchte, meldet sich in einem
-privaten Fenster an oder löscht die Browserdaten; ein Recht verschafft die Liste ohnehin nicht.
+Übersicht, Seitenleiste und Space-Menü: [Erste Schritte](../arbeiten/erste-schritte.md). Die zuletzt
+genutzten Spaces merkt sich nur der Browser, als Kennungen, abgeglichen gegen die Spaces des
+angemeldeten Kontos; ein Recht verschafft die Liste nicht.
 
 ## 7. Chats
 
-Ein **Chat** ist eine gespeicherte Unterhaltung in einem Space. Im Eingabefeld öffnet `@` die Wahl
-des Suchbereichs ([Suche](suche.md), Abschnitt 2) und `/` die Prompts des Space
-([Prompt-Bibliotheken](../arbeitsmittel/prompt-bibliotheken.md), Abschnitt 6).
+Chatliste, Archiv, Chatsuche und Export aus Sicht der Person: [Chats verwalten](../arbeiten/chats.md). Hier
+stehen die Regeln dahinter.
 
-Das **Chat-Archiv** ist eine persönliche Ablage: Wer einen Chat archiviert, nimmt ihn nur aus der
-eigenen Chatliste und findet ihn auf der Seite „Chats" des Space im Reiter „Archiv" wieder. Der Chat
-selbst ändert sich dabei nicht — Titel, letzte Aktivität, Verlauf, Suchbereich und Filter bleiben,
-und niemand sonst sieht, ob eine Person einen Chat archiviert hat. Ein archivierter Chat bleibt
-lesbar und fortsetzbar; eine eigene neue Frage darin holt ihn automatisch zurück. Archivieren löst
-eine Anheftung. Ein **archivierter Chat** ist etwas anderes als ein **archivierter Space**: Der
-Space nimmt für alle keine neuen Inhalte mehr an, auch keine Frage in einem archivierten Chat; das
-Archivieren eines Chats ist dort trotzdem möglich und ändert an der Sichtbarkeit des Space nichts.
+Das **Chat-Archiv** ist eine persönliche Ablage: Archivieren ändert den Chat nicht, und niemand
+sonst sieht, ob eine Person einen Chat archiviert hat. Ein **archivierter Chat** ist etwas anderes
+als ein **archivierter Space**: Der Space nimmt für alle keine neuen Inhalte mehr an.
 
 **Automatisches Archivieren und Löschen.** Je Space gibt es den Schalter „Inaktive Chats nach …
 Tagen archivieren und nach weiteren … Tagen löschen", ab Werk aus; er nennt die Fristen der
@@ -285,45 +201,6 @@ Konfiguration unterschreiten kann ([Suche](suche.md), Abschnitt 10.3).
 die Verwaltung gesperrt hat, nach einer eigenen Frist ab der Sperre — in jedem Space, auch im
 persönlichen, angeheftete eingeschlossen. Die Bereinigung je Space und ihre Fristen ändern daran
 nichts. Was dabei gilt, steht im Kapitel [Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md#was-mit-den-chats-eines-gesperrten-kontos-geschieht).
-
-Die **Chatliste** in der Seitenleiste zeigt zuerst die angehefteten Chats, darunter „Zuletzt
-verwendet" mit den 15 zuletzt genutzten. „15 weitere" blendet die nächsten ein, „Weniger" klappt
-wieder auf die ersten 15 zurück. Beide Gruppen lassen sich zuklappen; die Zahl hinter dem Namen
-nennt die ganze Gruppe, bei „Zuletzt verwendet" auch die noch nicht eingeblendeten Chats. Welche
-Gruppen zugeklappt sind, merkt sich der Browser, wie die Breite der Seitenleiste. Im Kopf „Chats"
-beginnt das Plus „Neuer Chat" einen Chat, in einem archivierten Space ist es gesperrt. Ein neuer
-Chat öffnet auf jedem Weg mit dem Cursor im Eingabefeld, die erste Frage lässt sich sofort
-tippen. Ein Filterfeld gibt es nicht; die Lupe daneben öffnet die Chatsuche ([Suche](suche.md), Abschnitt 7.2),
-die auch archivierte Chats findet. Jeder Eintrag hat ein
-Menü mit Umbenennen, Anheften, Archivieren, den beiden Exporten als Markdown und PDF
-([Suche](suche.md#7-belege-prüfen-und-fundstellen-bilden), Abschnitt „Belege prüfen und Fundstellen bilden", Absatz „Exportieren") und Löschen; der Titel des offenen Chats lässt sich
-zusätzlich direkt in der Kopfzeile bearbeiten (Enter speichert, Escape verwirft).
-
-Die **Seitenleiste** lässt sich auf dem Desktop am rechten Rand breiter oder schmaler ziehen; mit
-dem Griff im Fokus geht das auch mit den Pfeiltasten, Pos1 und Ende. Ein Doppelklick auf den Griff
-stellt die Standardbreite wieder her. Die gewählte Breite merkt sich der Browser, sie gilt also je
-Gerät und nicht je Konto. Auf schmalen Bildschirmen öffnet sich die Seitenleiste als
-Überlagerung in fester Breite.
-
-Das **Eingabefeld** sendet mit dem Senden-Knopf oder mit Enter. Sein Platzhalter lautet
-„Nachricht eingeben … @ für Quellen, / für Aktionen"; hat die Installation Prompt-Bibliotheken
-abgeschaltet, fehlt „/ für Aktionen"
-([Prompt-Bibliotheken](../arbeitsmittel/prompt-bibliotheken.md#9-abschalten)). Ist das Feld
-schmal, auf kleinen Bildschirmen oder bei breit gezogener Seitenleiste, steht dort nur die Kurzform
-„@ Quellen, / Aktionen". Der Platzhalter verschwindet
-beim Tippen; Screenreader lesen den Hinweis weiterhin als Beschreibung des Felds vor. Solange der
-Suchbereich des Space noch ermittelt wird, steht unter dem Feld „Suchbereich wird ermittelt …".
-
-Während eine Antwort entsteht, bleibt das Eingabefeld bedienbar: Die nächste Frage lässt sich schon
-schreiben, auch ein Prompt per `/` lässt sich einsetzen. Senden geht erst, wenn die Antwort da ist.
-Bis dahin lassen sich Suchbereich und Filter nicht ändern, und `@` öffnet keine Auswahl; der
-Platzhalter nennt deshalb nur „/ für Aktionen" (ohne Prompt-Bibliotheken nur „Nachricht
-eingeben …"). Die laufende Antwort behält den
-Suchbereich, mit dem die Frage gestellt wurde. Lehnt OPAA die laufende Frage ab, steht sie wieder
-im Eingabefeld, vor dem schon geschriebenen Text.
-
-Ein per `/` eingesetzter Prompt gehört zu seinem Space: Wechselt der Chat in einen anderen Space,
-entfällt der Chip „`Prompt: <Titel>`", der Text bleibt stehen.
 
 ## 8. Weiterführende Kapitel
 

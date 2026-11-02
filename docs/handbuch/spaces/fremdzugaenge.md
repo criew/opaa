@@ -185,30 +185,11 @@ freigegeben wird; wer sie wieder nutzen will, erzeugt ein neues Token.
 
 ## 5. Zugangstokens aus Sicht der Person
 
-*Einstellungen → Zugangstokens.* Jede Person verwaltet ihre eigenen Tokens selbst; der Betrieb wird
-dafür nicht gebraucht.
-
-**Anlegen.** Pflichtangaben sind Name, Bibliotheken und Ablaufdatum.
-
-- **Name** — der Zweck, nicht eine Nummer: „Claude Code auf dem Dienstrechner". Er ist das Einzige,
-  woran die Person in einem Jahr noch erkennt, was sie widerrufen darf. Er steht in der Tokenliste,
-  **nicht** im Nachweisprotokoll.
-- **Bibliotheken** — eine konkrete Liste, mindestens eine. Auswählbar ist nur, was die Person selbst
-  lesen darf **und** was freigegeben ist. Eine Option „alle, auch künftige" gibt es nicht, und die
-  Auswahl ist nach der Ausstellung **unveränderlich**: Eine Änderung ist ein neues Token.
-  Gewählt wird über dieselben Kacheln wie bei der Zuordnung zu einem Space: Jede wählbare Bibliothek
-  ist eine Kachel mit Art, Stern, Name, Beschreibung und dem Ende ihrer Freigabe; ein Klick, die
-  Leertaste oder Enter wählt sie aus und wieder ab, eine gewählte Kachel trägt links oben ein
-  Häkchen statt eines leeren Kreises. Der Stern
-  setzt nur den eigenen Favoriten und ändert die Auswahl nicht. Über den Kacheln steht dieselbe Filterzeile wie im
-  Katalog: eine Suche nach Name und Beschreibung, **Favoriten** (die eigenen, wie im Katalog) und
-  **Nur ausgewählte** (die Auswahl beim Einschalten; eine danach abgewählte Kachel bleibt stehen,
-  bis der Filter neu gesetzt wird). Die Filter sind unabhängige Umschalter und verbinden sich mit
-  der Suche; keiner gedrückt zeigt alle. Suche und Filter blenden nur aus und verwerfen keine
-  Auswahl; die Zeile „n ausgewählt" zählt alle gewählten Bibliotheken, auch die
-  gerade ausgeblendeten.
-- **Ablauf** — Pflicht, begrenzt durch die Höchstlaufzeit der Installation. Die Person wird vor dem
-  Ablauf per Mail erinnert (Abschnitt 15), und die eigene Liste weist rechtzeitig darauf hin.
+Anlegen, Liste und Widerruf aus Sicht der Person: [Ein Zugangstoken anlegen](../arbeiten/zugangstoken.md).
+Ein Token nennt eine feste Liste von Bibliotheken, die die Person lesen darf und die freigegeben
+sind; eine Option „alle, auch künftige“ gibt es nicht, und die Auswahl ist nach der Ausstellung
+unveränderlich. Der Ablauf ist Pflicht und durch die Höchstlaufzeit der Installation begrenzt. Der
+Name steht in der Tokenliste, **nicht** im Nachweisprotokoll.
 
 **Erzeugen verlangt eine frische Anmeldung.** Ein Token überdauert die Sitzung, in der es entsteht;
 eine kurz unbeaufsichtigte oder übernommene Sitzung soll deshalb keines anlegen können. Liegt die
@@ -226,23 +207,9 @@ Jedes erzeugte Token meldet OPAA der Person zusätzlich **per Mail** mit seinem 
 Mailversand eingeschaltet ist und das Konto eine Adresse hat — wer ein Token nicht selbst erzeugt
 hat, widerruft es und meldet sich bei der Systemverwaltung.
 
-Ist keine Bibliothek wählbar, liegt es entweder am fehlenden Lesezugriff oder an der fehlenden
-Freigabe. Beides entscheidet, wer die Bibliothek verwaltet; einen Antragsweg in der Anwendung gibt
-es bewusst nicht.
-
-**Der Wert wird genau einmal angezeigt**, unmittelbar nach dem Erzeugen, zusammen mit einem
-Kurzausschnitt für die Einrichtung. Die vollständigen Wege je Client — und zwar die, die den Wert aus
-eingecheckten Dateien heraushalten — stehen in Abschnitt 9; im Zweifel gilt dieser Abschnitt.
-Danach steht nur noch ein Präfix zur Wiedererkennung in der Liste. **Niemand kann ihn nachträglich anzeigen, auch die Systemverwaltung nicht** — ist er verloren,
-wird ein neues Token erzeugt und das alte widerrufen.
-
-**Die eigene Liste** zeigt Name, Bibliotheken, Zustand (gültig, abgelaufen, widerrufen, gesperrt),
-erstellt am, läuft ab am und *zuletzt benutzt* — jeweils nur das Datum, nie eine Uhrzeit und nie
-eine Zahl. „Zuletzt benutzt" ist die Hilfe für die Frage „darf ich das widerrufen?" und wird beim
-Widerruf und beim Ablauf gelöscht.
-
-**Widerrufen** wirkt sofort: Schon der nächste Aufruf des Werkzeugs wird abgewiesen. Ein Widerruf
-ist endgültig; ein neuer Zugang ist ein neues Token.
+**Der Wert wird genau einmal angezeigt**, danach nur ein Präfix zur Wiedererkennung. Niemand kann
+ihn nachträglich anzeigen, auch die Systemverwaltung nicht. „Zuletzt benutzt“ steht nur als Datum
+in der eigenen Liste und wird bei Widerruf und Ablauf gelöscht.
 
 Tokens lassen sich auch bei geschlossenem Kanal ansehen und widerrufen. Ein **neues** Token kann
 erst angelegt werden, wenn die Systemverwaltung den Kanal geöffnet hat — bei geschlossenem Kanal ist
@@ -411,161 +378,12 @@ Proxy, der so etwas anhängt, muss es lassen.
 
 ## 9. Einrichtung im Client
 
-Die Einrichtung braucht zwei Angaben: die Adresse `https://<host>/mcp` und den Tokenwert. Sie ist so
-knapp gehalten, dass sie ohne Betriebsunterstützung gelingt.
-
-Der Dialog, der den Tokenwert einmalig zeigt (Abschnitt 5), stellt dafür **drei fertige Ausschnitte**
-bereit, jeweils schon mit der Adresse Ihrer Installation: den Claude-Code-Befehl mit `--scope user`,
-das JSON für VS Code mit einer Eingabeaufforderung für den Wert und das JSON für Cursor mit dem
-Verweis auf eine Umgebungsvariable. Nur der Claude-Code-Befehl trägt den Wert im Klartext; die
-beiden JSON-Ausschnitte enthalten ihn bewusst nicht. Dieser Abschnitt erklärt sie und ergänzt, was
-im Dialog keinen Platz hat: wo die jeweilige Datei liegt, wie sich der Eintrag prüfen und wieder
-entfernen lässt, und welche Clients sonst noch in Frage kommen.
-
-Voraussetzungen, ohne die kein Client verbindet:
-
-1. Die Systemverwaltung hat den Kanal **eingeschaltet**.
-2. Mindestens eine Bibliothek, die Sie lesen dürfen, ist **freigegeben**.
-3. Sie haben ein gültiges **Zugangstoken** mit dieser Bibliothek (Abschnitt 5).
-4. Der Arbeitsplatz liegt in einem der **zugelassenen Netzbereiche**.
-
-> Die Ausschnitte unten wurden am **18.09.2026** gegen die Herstellerdokumentation des jeweiligen
-> Clients geprüft. Diese Werkzeuge aktualisieren sich selbst; weicht die Oberfläche ab, gilt deren
-> aktuelle Dokumentation, und dieser Abschnitt gehört nachgezogen. `<host>` ist jeweils durch die
-> Adresse Ihrer Installation zu ersetzen.
-
-### Claude Code
-
-Geprüft gegen die Claude-Code-Dokumentation, Stand 18.09.2026.
-
-```bash
-claude mcp add --transport http --scope user opaa https://<host>/mcp \
-  --header "Authorization: Bearer opaa_pat_…"
-```
-
-`--scope user` legt den Eintrag in der Benutzerkonfiguration ab und macht ihn in allen Projekten
-verfügbar. **Ohne diese Angabe** landet er im aktuellen Projekt; mit `--scope project` sogar in einer
-`.mcp.json` im Projektwurzelverzeichnis, die in die Versionsverwaltung wandert — mit dem Tokenwert
-darin (Abschnitt 7).
-
-Prüfen und wieder entfernen:
-
-```bash
-claude mcp list
-claude mcp get opaa
-claude mcp remove opaa --scope user
-```
-
-### Cursor
-
-Geprüft gegen die Cursor-Dokumentation, Stand 18.09.2026. Datei: `~/.cursor/mcp.json` für alle
-Projekte — oder `.cursor/mcp.json` im Projekt, dann jedoch ohne den Wert in der Datei.
-
-```json
-{
-  "mcpServers": {
-    "opaa": {
-      "url": "https://<host>/mcp",
-      "headers": {
-        "Authorization": "Bearer ${env:OPAA_TOKEN}"
-      }
-    }
-  }
-}
-```
-
-Cursor löst `${env:NAME}` in `url` und `headers` auf. Der Wert steht damit in einer
-Umgebungsvariablen Ihres Arbeitsplatzes und nicht in der Datei. Wer ihn unmittelbar einträgt, muss
-die Datei außerhalb der Versionsverwaltung halten.
-
-### VS Code mit Copilot
-
-Geprüft gegen die VS-Code-Dokumentation, Stand 18.09.2026. Am besten in der Benutzerkonfiguration —
-Befehlspalette, *MCP: Open User Configuration*; die Projektdatei `.vscode/mcp.json` ist zum Teilen im
-Team gedacht und wird mit eingecheckt.
-
-```json
-{
-  "inputs": [
-    {
-      "type": "promptString",
-      "id": "opaa-token",
-      "description": "OPAA-Zugangstoken",
-      "password": true
-    }
-  ],
-  "servers": {
-    "opaa": {
-      "type": "http",
-      "url": "https://<host>/mcp",
-      "headers": {
-        "Authorization": "Bearer ${input:opaa-token}"
-      }
-    }
-  }
-}
-```
-
-VS Code fragt den Wert beim ersten Start des Servers ab und legt ihn anschließend in seinem sicheren
-Speicher ab; in der Datei steht nur der Verweis. `"type": "http"` gehört dazu, damit der Eintrag
-eindeutig als entfernter Server gelesen wird.
-
-### OpenCode
-
-Geprüft gegen die OpenCode-Dokumentation, Stand 18.09.2026. Datei: `~/.config/opencode/opencode.json`
-für alle Projekte, oder `opencode.json` im Projekt.
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "mcp": {
-    "opaa": {
-      "type": "remote",
-      "url": "https://<host>/mcp",
-      "enabled": true,
-      "oauth": false,
-      "headers": {
-        "Authorization": "Bearer {env:OPAA_TOKEN}"
-      }
-    }
-  }
-}
-```
-
-**`"oauth": false` gehört hier hin.** OpenCode beginnt sonst von sich aus einen OAuth-Ablauf, sobald
-ein Server mit `401` antwortet — und genau das tut OPAA bei einem abgelaufenen oder widerrufenen
-Token. Der Kanal betreibt keinen Autorisierungsserver; ohne diese Angabe sieht die Person statt der
-klaren Ursache einen scheiternden Anmeldeversuch. `{env:OPAA_TOKEN}` hält den Wert aus der Datei
-heraus.
-
-### Ein eigenes Werkzeug anschließen
-
-Für ein eigenes Skript ist der direkte Weg meist der kürzere: dieselben drei Lesewege als REST-Aufruf
-mit demselben Kopf.
-
-```bash
-curl -s https://<host>/api/v1/search/libraries \
-  -H "Authorization: Bearer opaa_pat_…"
-
-curl -s https://<host>/api/v1/search \
-  -H "Authorization: Bearer opaa_pat_…" \
-  -H "Content-Type: application/json" \
-  -d '{"question":"Fristen bei der Anhörung"}'
-
-curl -s "https://<host>/api/v1/search/hits/<hitId>" \
-  -H "Authorization: Bearer opaa_pat_…"
-```
-
-Das Anfragefeld der Suche heißt `question` — **nicht** `query`: So heißt das Argument des
-gleichnamigen MCP-Werkzeugs, und die Verwechslung endet in einem `400`, das wie ein Tokenproblem
-aussieht. Alle weiteren Anfrage- und Antwortfelder stehen in der OpenAPI-Beschreibung der
-Installation.
-
-Wer eine MCP-Bibliothek verwenden will, richtet sie wie oben auf `https://<host>/mcp` mit dem
-`Authorization`-Kopf ein; besondere Fähigkeiten muss der Client nicht mitbringen — der Server bietet
-Werkzeuge an, keine Ressourcen, Prompts oder Vervollständigungen. Ein selbst gebauter Aufruf muss
-allerdings `Accept: application/json, text/event-stream` mitsenden; ohne beide Medientypen weist der
-Transport ihn ab, und die Abweisung sieht nach einem Tokenproblem aus.
+Die Ausschnitte für Claude Code, VS Code, Cursor, OpenCode und eigene Skripte stehen unter
+[Ein KI-Werkzeug einrichten](../arbeiten/ki-werkzeug-einrichten.md). Ein Client verbindet nur, wenn der Kanal
+eingeschaltet ist, eine lesbare Bibliothek freigegeben ist, ein gültiges Token sie enthält und der
+Arbeitsplatz in einem zugelassenen Netzbereich liegt. Der Server bietet Werkzeuge an, keine
+Ressourcen, Prompts oder Vervollständigungen; ein selbst gebauter Aufruf sendet
+`Accept: application/json, text/event-stream` mit, sonst weist der Transport ihn ab.
 
 ## 10. Kontingent und Abflussalarm
 
