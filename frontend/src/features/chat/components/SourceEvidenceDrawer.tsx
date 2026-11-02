@@ -48,6 +48,9 @@ interface SourceEvidenceDrawerProps {
    *  drives are rendered by MessageBubble as siblings of this Drawer, not inside it, so they
    *  survive the Drawer unmounting its children on close. */
   openDocument: (document: OpenableDocument) => Promise<void>
+  /** Sub-queries of the search no confirmed Beleg covers - the foot only counts them, so their
+   *  wording is listed here. */
+  uncoveredSubQueries?: string[]
 }
 
 interface EvidenceDoc {
@@ -132,6 +135,7 @@ export default function SourceEvidenceDrawer({
   focusedDocIndexes = [],
   answeredAt,
   openDocument,
+  uncoveredSubQueries = [],
 }: SourceEvidenceDrawerProps) {
   const [query, setQuery] = useState('')
   const [showUncited, setShowUncited] = useState(false)
@@ -313,6 +317,19 @@ export default function SourceEvidenceDrawer({
           <CloseIcon sx={{ fontSize: 18 }} />
         </IconButton>
       </Box>
+
+      {uncoveredSubQueries.length > 0 && (
+        <Box data-testid="uncovered-sub-queries" sx={{ px: 2.5, pt: 1.5, fontSize: 12.5 }}>
+          <Typography component="p" sx={{ fontSize: 12.5, fontWeight: 600 }}>
+            Ohne Fundstelle
+          </Typography>
+          <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 2.5, color: 'text.secondary' }}>
+            {uncoveredSubQueries.map((query) => (
+              <li key={query}>{query}</li>
+            ))}
+          </Box>
+        </Box>
+      )}
 
       <Box sx={{ px: 2.5, py: 1.5 }}>
         <TextField

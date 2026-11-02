@@ -56,6 +56,42 @@ describe('MessageBubble', () => {
     expect(line).toHaveAttribute('data-level', 'PARTIALLY_SUPPORTED')
   })
 
+  it('folds the Belegstand into the button to the Belegfenster, reason first in the count line', async () => {
+    const user = userEvent.setup()
+    render(
+      <MessageBubble
+        message={{
+          ...twoCitedMessage(),
+          evidence: {
+            level: 'PARTIALLY_SUPPORTED',
+            confirmedPassages: 2,
+            confirmedDocuments: 2,
+            unconfirmedCitations: 0,
+            uncoveredSubQueries: ['Gültigkeitsdauer Anwohnerparkausweis'],
+            truncated: false,
+            knowledgeSearched: true,
+            passagesFound: true,
+          },
+        }}
+      />,
+    )
+
+    const button = screen.getByRole('button', {
+      name: 'Belegstand: Teilweise belegt – Belege anzeigen',
+    })
+    expect(button).toHaveAttribute('data-level', 'PARTIALLY_SUPPORTED')
+    expect(screen.getAllByTestId('answer-evidence')).toHaveLength(1)
+    expect(screen.getByTestId('evidence-summary')).toHaveTextContent(
+      '1 Teilfrage ohne Fundstelle · 2 Stellen in 2 Dokumenten · 1 weitere geprüft',
+    )
+    expect(screen.queryByText(/Gültigkeitsdauer/)).not.toBeInTheDocument()
+
+    await user.click(button)
+    expect(await screen.findByTestId('uncovered-sub-queries')).toHaveTextContent(
+      'Ohne FundstelleGültigkeitsdauer Anwohnerparkausweis',
+    )
+  })
+
   it('shows no Belegstand where none was assessed', () => {
     render(
       <MessageBubble
