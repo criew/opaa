@@ -321,6 +321,7 @@
       matchManagers: ['pip_requirements'],
       matchFileNames: [
         '.github/requirements-ci.txt',
+        '.github/requirements-docs.txt',
         '.github/requirements-release.txt',
         '.github/requirements-seed.txt',
       ],

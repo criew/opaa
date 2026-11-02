@@ -1,35 +1,73 @@
 # Handbuch: Anweisungen für Schreibende
 
-Gilt für jede Änderung unter `docs/handbuch/`. Leserinnen und Leser sind Betrieb und Verwaltung,
-nicht Entwickler; das Handbuch beschreibt den gebauten Ist-Stand.
+Gilt für jede Änderung unter `docs/handbuch/`. Das Handbuch beschreibt den gebauten Ist-Stand für
+alle, die OPAA benutzen, pflegen, verwalten oder betreiben. Es ist kurz: Wer eine Aufgabe hat,
+findet sie auf einer Seite und liest sie in einem Bildschirm.
 
 ## Aufbau
 
-- **Ein Baum.** Die Gliederung steht in `README.md`, Abschnitt „Aufbau des Handbuchs". Ein neues
-  Kapitel bekommt dort seinen Platz, bevor es geschrieben wird.
-- **Die Ordner folgen dem Kapitelbaum.** Ein Elternkapitel mit Unterkapiteln ist die `README.md`
-  seines Ordners, etwa `betrieb/README.md` oder `arbeitsmittel/wissensbibliotheken/README.md`.
-  Das Glossar (`glossar.md`) steht als Nachschlagekapitel auf oberster Ebene.
-- **Allgemeines oben, Besonderes unten.** Was für alle Arbeitsmittel gilt, steht in
-  `arbeitsmittel/katalog.md` und `konten-und-rechte/berechtigungen.md`; was nur eine Art betrifft,
-  in deren Kapitel. Was einen Konnektor oder ein Format betrifft, gehört in `konnektoren/<typ>.md` bzw. `formate/<format>.md` unter
-  `arbeitsmittel/wissensbibliotheken/`, nie in das Elternkapitel.
-- **Übersichten statt Vollaufzählungen.** Alle Konnektoren bzw. Formate listen nur
-  `konnektoren/README.md` und `formate/README.md`. Andere Kapitel nennen wenige Beispiele und
-  verweisen dorthin, damit ein neuer Typ nur an einer Stelle nachzutragen ist.
+Kapitel nach Tätigkeit, nicht nach Rolle. Wer „mehr darf“, hat keine andere Rolle, sondern eine
+Rolle an einem Objekt oder eine Fähigkeit. Daraus folgen fünf Ordner:
 
-## Aufbau der Konnektor-Kapitel
+| Ordner | Für wen | Inhalt |
+|---|---|---|
+| `arbeiten/` | jedes Konto | was ab Werk jedes Konto kann: fragen, Belege prüfen, Chats, Spaces, eigene Bibliotheken, Prompts |
+| `pflegen/` | wer eine Rolle an Bibliothek, Space oder Gruppe hat | teilen, Quellen anbinden (`pflegen/konnektoren/`), Metadaten, Space pflegen, Gruppen verantworten |
+| `verwalten/` | Systemverwaltung; Prüfer im Abschnitt „Prüfen“ | Konten, Gruppen und Fähigkeiten, Modelle, Einstellungen, Protokoll |
+| `betreiben/` | IT-Betrieb | Installation, Compose, Kubernetes, Sicherung, Update, Überwachung |
+| `nachschlagen/` | alle | Rechte-Matrix, Konfigurationsreferenz, Formate (`nachschlagen/formate/`), Suche im Überblick, Glossar |
 
-Jedes Kapitel unter `konnektoren/` hat dieselben Abschnitte in dieser Reihenfolge, nummeriert von 1
-an. Ein Abschnitt, der für den Konnektor nicht zutrifft, entfällt; die Nummern folgen lückenlos.
+Jeder Ordner hat eine `README.md` mit der Liste seiner Seiten. Den Gesamtbaum führt
+`README.md`, Abschnitt „Aufbau des Handbuchs“; eine neue Seite bekommt dort ihren Platz.
+
+**Umbau:** Bis die alten Ordner `spaces/`, `konten-und-rechte/`, `arbeitsmittel/` und `betrieb/`
+aufgelöst sind, stehen sie neben den neuen. Neue Inhalte kommen nur in die neuen Ordner; wer
+eine alte Seite ändert, zieht sie bei der Gelegenheit um.
+
+## Seiten in `arbeiten/` und `pflegen/`
+
+Eine Seite ist eine Aufgabe. Der Titel ist die Aufgabe als Verb („Eine Bibliothek teilen“), nicht
+das Thema. Jede Seite hat diese Form:
+
+```markdown
+# Eine Bibliothek teilen
+
+> **Wer darf das:** Rolle *Verwalter* oder *Eigentümer* an der Bibliothek.
+> Ab Werk hat das, wer die Bibliothek angelegt hat.
+
+Ein Satz, was man danach hat.
+
+1. Schritt mit den Beschriftungen der Oberfläche in „…“
+2. Schritt
+3. Schritt
+
+**Gut zu wissen:** höchstens drei Punkte.
+```
+
+- **Wer-darf-das-Kasten:** nennt Systemrolle, Rolle am Objekt oder Fähigkeit und die Auslieferung
+  ab Werk. So bleibt die Seite richtig, wenn ein Haus Fähigkeiten anders verteilt. Dieselbe Angabe
+  steht in der Rechte-Matrix (`nachschlagen/rechte-matrix.md`); beide ändern sich zusammen.
+- **Höchstens 80 Zeilen.** Was nicht passt, ist eine zweite Aufgabe und bekommt eine eigene Seite.
+- `.github/scripts/check_handbuch.sh` prüft Kasten und Länge in der CI. Ausgenommen sind die
+  `README.md` der Ordner und `pflegen/konnektoren/`.
+
+`verwalten/` folgt derselben Form ohne feste Länge, knapp gehalten. `betreiben/` und
+`nachschlagen/` sind Referenz und dürfen lang sein, ohne Inhalte doppelt zu führen: Was Compose und
+Kubernetes gemeinsam haben, steht einmal.
+
+## Aufbau der Konnektor-Seiten
+
+Jede Seite unter `pflegen/konnektoren/` (bis zum Umzug `arbeitsmittel/wissensbibliotheken/konnektoren/`)
+hat oben den Wer-darf-das-Kasten und dann dieselben Abschnitte in dieser Reihenfolge, nummeriert
+von 1 an. Ein Abschnitt, der nicht zutrifft, entfällt; die Nummern folgen lückenlos.
 
 1. **Was der Konnektor ist** — welches System, über welche Schnittstelle (mit Version, wo bekannt),
    wie er sich anmeldet und ob ein Zugang nicht möglich, möglich oder Pflicht ist, was er liest und
-   was nicht, woran ein Dokument hängt (Identität, Beleg-Link, „Original öffnen") und dass Rechte
+   was nicht, woran ein Dokument hängt (Identität, Beleg-Link, „Original öffnen“) und dass Rechte
    nicht übernommen werden. **Pflicht ist ein Verbindungsbild** als Mermaid mit höchstens sechs
    Knoten (Wissensbibliothek → Zugang → Schnittstelle → System) und ein Satz, welchem Anmeldemuster
-   aus `arbeitsmittel/zugaenge.md`, „Wie sich OPAA bei einer Quelle anmeldet", er folgt. Das
-   Muster wird nur verwiesen; ausgeführt wird nur das Konnektor-Eigene.
+   der Seite über Zugänge er folgt. Das Muster wird nur verwiesen; ausgeführt wird nur das
+   Konnektor-Eigene.
 2. **Einrichtung** — was beim Anbieter und im Haus vorzubereiten ist, als kurze Schrittfolge.
 3. **Quellkonfiguration** — die Angaben im Formular, mit den Beschriftungen der Oberfläche,
    Verbindungstest, Besonderheiten über einen Zugang.
@@ -40,66 +78,60 @@ an. Ein Abschnitt, der für den Konnektor nicht zutrifft, entfällt; die Nummern
 7. **Ordner**
 8. **Anhänge**
 9. **Grenzen und Schutzmechanismen** — Zieladressprüfung, Größen- und Mengengrenzen, Drosselung,
-   besondere Dateien, bekannte Einschränkungen.
+   besondere Dateien, bekannte Einschränkungen. Konfigurierbare Grenzen nur mit Parameternamen.
 10. **Protokoll und Fehlerbilder** — eine Tabelle Meldung, Bedeutung, Abhilfe.
-11. **Konfiguration**
-12. **Nicht gebaut**
 
 Was mehrere Konnektoren teilen — Abgleichstand, Zieladressprüfung, der Abgleich der Dateiablagen —
-steht nur in `konnektoren/README.md`; das Kapitel verweist und nennt nur seine Abweichung.
-**Keine API-Feldnamen** wie `sourceCredentials`: Der Betrieb sieht nur die Oberfläche. Parameternamen
-der Konfiguration bleiben erlaubt. **Werte nur einmal:** „Grenzen und Schutzmechanismen" nennt die
-Grenze und ihren Parameter, den Standardwert nur „Konfiguration"; feste, nicht konfigurierbare
-Grenzen stehen mit Wert. Faustregeln kommen ohne den Zahlenwert eines Standards aus.
+steht nur in der Übersicht der Konnektoren; die Seite verweist und nennt nur ihre Abweichung.
+**Keine API-Feldnamen** wie `sourceCredentials`: Gezeigt wird die Oberfläche. Parameternamen der
+Konfiguration bleiben erlaubt, ihre Standardwerte stehen nur in der Konfigurationsreferenz.
+Format-Seiten unter `nachschlagen/formate/` folgen ihrem bisherigen gemeinsamen Aufbau.
 
 ## Verweise
 
-1. Nach unten frei: ein Kapitel auf seine Kinder.
-2. Nach oben einmal in der Einleitung, sonst nur, wo ein Begriff von dort gebraucht wird.
-3. `glossar.md`, `konten-und-rechte/berechtigungen.md` und `betrieb/konfiguration.md`
-   (Variablenliste) sind Nachschlagekapitel: Alle dürfen auf sie verweisen; sie selbst verweisen
-   zurück nur in „Weiterführende Kapitel" und dort, wo eine Zeile ihre Bedeutung erklärt.
-4. Geschwister nur bei echtem Bedarf.
-5. „Weiterführende Kapitel" nennt nur Kinder und nächste Geschwister.
-6. Lieber Kapitel und benannte Abschnitte als Abschnittsnummern; Nummern veralten bei jeder
-   Umgliederung.
-7. Das Handbuch geht als Markdown und HTML ins Update-Paket. Jeder relative Link und jeder Anker
-   muss treffen; der CI-Schritt `update_package.py links` prüft das in jedem PR, auch die Verweise
-   aus `docs/behoerden/`. Eine umbenannte Überschrift zieht deshalb alle Verweise auf sie nach.
-   Spitze Klammern im Fließtext (`<Titel>`) stehen in Backticks, sonst verschluckt sie die HTML-Fassung.
+- **Nur innerhalb des Handbuchs.** Kein Verweis auf ADRs, Spezifikationen, Issues oder Dateien
+  im Repository: Das Handbuch erklärt das Verhalten selbst. Warum etwas so gebaut ist, gehört nicht
+  hinein. `check_handbuch.sh` weist ADR-Nummern und Repository-Links ab.
+- Lieber Seiten und benannte Abschnitte als Abschnittsnummern; Nummern veralten bei jeder
+  Umgliederung.
+- Jeder relative Link und jeder Anker muss treffen. Die Website baut mit MkDocs (`mkdocs.yml` im
+  Repository-Wurzelverzeichnis) im strikten Modus; ein toter Link oder Anker lässt die CI rot
+  werden. Dasselbe prüft `update_package.py links` für das Update-Paket, auch die Verweise aus
+  `docs/behoerden/`. Eine umbenannte Überschrift zieht deshalb alle Verweise auf sie nach.
+- Spitze Klammern im Fließtext (`<Titel>`) stehen in Backticks, sonst verschluckt sie die
+  HTML-Fassung.
 
 ## Stil
 
 - **Vom Zweck her erklären**, am besten mit einem Beispiel, bevor Einzelheiten kommen.
-- **Konzept statt Umsetzung**: kein „eine Zeile in der Dokumenttabelle", keine Klassen- oder
-  Tabellennamen im Fließtext.
-- **Knapp.** Feld-für-Feld-Listen und Regeln für jeden Randfall gehören in den Code und den ADR.
-  Statt Felder aufzuzählen, die typischen Anlässe beschreiben.
-- **Sonderfälle nicht wiederholen**, etwa den Upload: einmal einführen, danach nur nennen, wo er
-  sich unterscheidet.
-- **Begriffe:** „Space", nie „Raum"; „Arbeitsmittel" für alles, was angelegt, geteilt und einem
-  Space zugeordnet wird; Oberflächentexte wörtlich in „…".
+- **Bedienung statt Umsetzung**: keine Klassen-, Tabellen- oder API-Namen im Fließtext.
+- **Knapp.** Keine Feld-für-Feld-Listen und keine Regeln für jeden Randfall; die typischen
+  Anlässe beschreiben.
+- **Keine Abschnitte** „Nicht gebaut“, „Was es hier nicht gibt“, „Weiterführende Kapitel“, „API“
+  und keine eigenen „Konfiguration“-Abschnitte: Ziele stehen in der Roadmap, Variablen in der
+  Konfigurationsreferenz, eine Seite nennt nur den Parameternamen.
+- **Begriffe:** „Space“, nie „Raum“; „Arbeitsmittel“ für alles, was angelegt, geteilt und einem
+  Space zugeordnet wird; Oberflächentexte wörtlich in „…“.
 - **Etablierte englische Fachbegriffe** aus Betrieb und Technik werden nicht eingedeutscht:
   Readiness und Liveness, Graceful Shutdown, Read-only Filesystem, Health Check, Load Balancer,
   Rolling Update, Connection Pool, Timeout, Redirect, OOM-Kill, Provenance, Log, Egress. Deutsch
-  bleibt, was die Oberfläche deutsch nennt („Ausgangsproxy", „Zielprüfung", „Netzbereiche"), und
+  bleibt, was die Oberfläche deutsch nennt („Ausgangsproxy“, „Zielprüfung“, „Netzbereiche“), und
   eingeführte Begriffe der Verwaltung wie Datenschutz oder Mitbestimmung.
-- Tabellen und Abbildungen tragen weder Nummer noch Titel; Kapitel haben kein Verzeichnis davon.
+- Tabellen und Abbildungen tragen weder Nummer noch Titel.
+- **Grafiken sind Mermaid**, mit kurzen Knoten: höchstens etwa 15 Zeichen je Zeile, mit `<br/>`
+  umbrechen. In den Knoten steht das Stichwort, die Erläuterung im Text darunter.
 
 ## Weitere Regeln
 
-- **Deutsch, Ist-Stand, keine Entstehungsgeschichte.** Warum etwas so gebaut ist, steht in
-  `docs/decisions/`.
-- **Verweise nur innerhalb des Handbuchs.** Ausnahme ist der Hinweis auf das Repository im README.
-- **Ticketverweise nur für ausdrücklich noch nicht Gebautes**, etwa in „Was nicht gebaut ist".
-- **Konfigurierbare Werte stehen nur in Konfigurationstabellen** der Kapitel und in der
-  Variablenliste in `betrieb/konfiguration.md`; Fließtext nennt Parameternamen.
-- **Grafiken sind Mermaid**, mit kurzen Knoten: höchstens etwa 15 Zeichen je Zeile, mit `<br/>`
-  umbrechen. Sonst schneidet GitHub die Beschriftung ab. In den Knoten steht das Stichwort, die
-  Erläuterung im Text darunter.
-- **„Entwurf"** am Kapitelanfang trägt ein neues oder grundlegend geändertes Kapitel: gegen den
-  Code geprüft, vom Maintainer noch nicht abgenommen. Abgenommene Kapitel tragen keinen Vermerk.
-- **Kapitel werden mit dem Code gepflegt**, im selben Pull Request wie die Verhaltensänderung.
+- **Deutsch, Ist-Stand, keine Entstehungsgeschichte.**
+- **Konfigurierbare Werte stehen nur in der Konfigurationsreferenz**; Fließtext nennt
+  Parameternamen.
+- **„Entwurf“** am Seitenanfang trägt eine neue oder grundlegend geänderte Seite: gegen den Code
+  geprüft, vom Maintainer noch nicht abgenommen. Abgenommene Seiten tragen keinen Vermerk.
+- **Seiten werden mit dem Code gepflegt**, im selben Pull Request wie die Verhaltensänderung.
 - **Verschieben oder Umbenennen** zieht alle Verweise im Repo nach, auch Code-Kommentare,
-  `AGENTS.md`-Dateien und Leser wie `demo/generator/generate_corpus.py` (liest
-  `arbeitsmittel/wissensbibliotheken/formate/README.md`, Abschnitt „Zugelassene Formate").
+  `AGENTS.md`-Dateien und Leser wie `demo/generator/generate_corpus.py` (liest die Übersicht der
+  Formate, Abschnitt „Zugelassene Formate“).
+- **Website:** `mkdocs.yml` legt Theme und Erweiterungen fest; ohne Navigationsliste folgt die
+  Navigation den Ordnern. Lokal bauen: `pip install --require-hashes -r .github/requirements-docs.txt`,
+  dann `mkdocs serve` im Repository-Wurzelverzeichnis.
