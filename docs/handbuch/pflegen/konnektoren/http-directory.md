@@ -1,7 +1,8 @@
 # Konnektor: Webverzeichnis
 
-> **Wer darf das:** anlegen, wer „Konnektorbibliotheken anlegen“ für diese Quellart oder ihren
-> Zugang hat; ab Werk jedes Konto.
+> **Wer darf das:** anlegen, wer „Konnektorbibliotheken anlegen“ für die Quellart (eigene Adresse)
+> oder für den gewählten Zugang hat. Ab Werk ist die Quellart für jedes Konto frei; ein neu
+> angelegter Zugang erst nach Freigabe durch die Systemverwaltung.
 > Quelle, Umfang und Zeitplan ändert danach, wer an der Bibliothek *Verwalter* oder *Eigentümer* ist.
 
 ## 1. Was der Konnektor ist
@@ -107,6 +108,10 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 [E-Mail](../../arbeitsmittel/wissensbibliotheken/formate/mail.md). Links in Verzeichnislisten gelten nicht als Anlagen.
 
 ## 8. Grenzen und Schutzmechanismen
+
+Parameter stehen unter `opaa.indexing.crawl.*` und `opaa.indexing.http.*`
+(`OPAA_INDEXING_CRAWL_*`, `OPAA_INDEXING_HTTP_*`), ihre Standardwerte in der
+[Konfigurationsreferenz](../../betrieb/konfiguration.md#alle-umgebungsvariablen).
 
 - **Zieladressprüfung** vor jeder Anfrage und auf jedem Redirect
   ([Konnektoren](README.md#12-zieladressprüfung)).

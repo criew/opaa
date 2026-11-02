@@ -1,7 +1,8 @@
 # Konnektor: Feed
 
-> **Wer darf das:** anlegen, wer „Konnektorbibliotheken anlegen“ für diese Quellart oder ihren
-> Zugang hat; ab Werk jedes Konto.
+> **Wer darf das:** anlegen, wer „Konnektorbibliotheken anlegen“ für die Quellart (eigene Adresse)
+> oder für den gewählten Zugang hat. Ab Werk ist die Quellart für jedes Konto frei; ein neu
+> angelegter Zugang erst nach Freigabe durch die Systemverwaltung.
 > Quelle, Umfang und Zeitplan ändert danach, wer an der Bibliothek *Verwalter* oder *Eigentümer* ist.
 
 ## 1. Was der Konnektor ist
@@ -152,6 +153,9 @@ weiter ausgepackt. Ein Fehler einer Anlage wirkt nie auf den Eintrag zurück; ha
 keinen extrahierbaren Text, werden seine Anlagen nicht indiziert.
 
 ## 7. Grenzen und Schutzmechanismen
+
+Parameter stehen unter `opaa.indexing.rss.*` (`OPAA_INDEXING_RSS_*`), ihre Standardwerte in der
+[Konfigurationsreferenz](../../betrieb/konfiguration.md#alle-umgebungsvariablen).
 
 - **Zieladressprüfung** auf Feed, Detailseite, Anlage und jedem Redirect
   ([Konnektoren](README.md#12-zieladressprüfung)).
