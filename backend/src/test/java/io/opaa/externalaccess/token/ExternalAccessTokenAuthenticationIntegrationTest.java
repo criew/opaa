@@ -245,9 +245,9 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
   }
 
   /**
-   * The chat search is reachable in a signed-in session only (ADR-0066): a token reaches no one's
-   * chats, not even its owner's. Refused by the positive list, before the space or the term is
-   * looked at.
+   * The chat search is reachable in a signed-in session only (ADR-0066, Entscheidung 4): a token
+   * reaches no one's chats, not even its owner's. Refused by the positive list, before the space or
+   * the term is looked at.
    */
   @Test
   void aValidTokenDoesNotReachTheChatSearch() throws Exception {

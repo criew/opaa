@@ -213,7 +213,7 @@ public class ChatService {
 
   /**
    * Searches the titles, questions and answers of the chats the caller may see in the space,
-   * archived ones included (ADR-0066, Entscheidung 4). Membership is required as for {@link
+   * archived ones included (ADR-0066, Entscheidungen 4 und 5). Membership is required as for {@link
    * #listChats}; no role widens the search beyond the caller's own chats. The term goes into the
    * query and nowhere else - no log line, no audit entry, no metric tag.
    *
@@ -292,8 +292,8 @@ public class ChatService {
   }
 
   /**
-   * Moves the chat into the caller's chat archive (ADR-0066, Entscheidung 3) and unpins it. Like
-   * pinning a personal mark under the same rules: the chat itself stays untouched, an archived
+   * Moves the chat into the caller's chat archive (ADR-0066, Entscheidungen 2 und 3) and unpins it.
+   * Like pinning a personal mark under the same rules: the chat itself stays untouched, an archived
    * space allows it, and a chat the caller cannot see is reported as not found.
    */
   @Transactional

@@ -12,10 +12,7 @@ fehlten Ordnung, ein Archiv, eine Suche über den Inhalt und ein Export. Außerd
 Regel unbegrenzt liegen, auch die einer ausgeschiedenen Person. Chats sind der größte und
 aussagekräftigste Teil der Daten über eine Person.
 
-Entschieden wurde in Epic #1762 (18.09.2026), für die Bereinigung je Space in #1923 (02.10.2026)
-und für die Löschung bei gesperrten Konten in #2997 (23.10.2026). Den beiden letzten ging ein
-Stakeholder-Review mit Personalrat und Betrieb voraus. Verglichen wurde mit ChatGPT, Claude, Gemini,
-Open WebUI und LibreChat.
+Gebaut wurde das in Epic #1762, die Bereinigung in #1923 und #2997.
 
 ## Entscheidung
 
@@ -70,12 +67,13 @@ noch gespeichert. Mehrere Chats oder ganze Spaces lassen sich nicht exportieren.
 
 Jeder Space hat einen Schalter, ab Werk aus. Umlegen darf ihn, wer die Stammdaten ändert. Im
 persönlichen Standard-Space darf das nur die Person selbst. Ein Standard-Space wird deshalb nie
-übertragen. Die Fristen sind systemweit und nur vom Betrieb einstellbar: Archivieren nach 90 Tagen
-ohne Aktivität, Löschen nach 365 Tagen im Archiv. Die Untergrenzen von 90 und 30 Tagen brechen
-sonst den Start ab. Aktivität ist nur der vorhandene Zeitstempel des Chats oder des Zurückholens.
-Die Fristen wirken nicht rückwirkend, angeheftete Chats sind ausgenommen. Die Mitglieder sehen die
-Fristen auf der Seite „Chats“, der archivierte Chat zeigt sein Löschdatum. Protokolliert wird nur
-das Umlegen des Schalters. Der Lauf schreibt nur Gesamtzahlen ins Anwendungslog.
+übertragen. Die Fristen sind systemweit und nur von der Systemverwaltung einstellbar: ab Werk
+Archivieren nach 90 Tagen ohne Aktivität, Löschen nach 365 Tagen im Archiv. Kürzere Fristen als 90
+und 30 Tage werden abgewiesen. Aktivität ist nur der vorhandene Zeitstempel des Chats oder des
+Zurückholens. Die Fristen wirken nicht rückwirkend, angeheftete Chats sind ausgenommen. Die
+Mitglieder sehen die Fristen auf der Seite „Chats“, der archivierte Chat zeigt sein Löschdatum.
+Protokolliert werden nur das Umlegen des Schalters und jede Änderung der Fristen. Der Lauf schreibt
+nur Gesamtzahlen ins Anwendungslog.
 
 ### 8. Löschung der Chats von der Verwaltung gesperrter Konten
 
