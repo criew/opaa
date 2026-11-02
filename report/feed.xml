@@ -5,8 +5,19 @@
   <link href="https://opaa.io/report/feed.xml" rel="self"/>
   <link href="https://opaa.io/report/"/>
   <id>https://opaa.io/report/</id>
-  <updated>2026-11-01T06:35:15Z</updated>
+  <updated>2026-11-02T06:35:15Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Sonntag, 1. November 2026</title>
+    <link href="https://opaa.io/report/reports/2026-11-01.html"/>
+    <id>https://opaa.io/report/reports/2026-11-01.html</id>
+    <updated>2026-11-02T06:35:15Z</updated>
+    <summary type="text">Sonstiges:
+— Dokumentation auf Code, ADR und Handbuch zurückschneiden, vier Phasen geplant
+— Parser-Fuzzing nächtlicher Lauf hat Befunde, Kampagne nicht beendet
+— E2E-Suite auf main fehlgeschlagen, Szenarien in Firefox betroffen
+— Rolling Update scheitert am stillgelegten Schlüssel opaa.auth.local.lockout.duration</summary>
+  </entry>
   <entry>
     <title>Tagesreport Samstag, 31. Oktober 2026</title>
     <link href="https://opaa.io/report/reports/2026-10-31.html"/>
@@ -886,24 +897,5 @@ Sonstiges:
 — Identitätsanbieter als Tabelle mit Zeilenmenü dargestellt
 — Chat-Modelle als Tabelle statt aufklappbarer Karten
 — Seite Modelle in Reiter Chat-Modelle und Einbettung gegliedert</summary>
-  </entry>
-  <entry>
-    <title>Tagesreport Samstag, 12. September 2026</title>
-    <link href="https://opaa.io/report/reports/2026-09-12.html"/>
-    <id>https://opaa.io/report/reports/2026-09-12.html</id>
-    <updated>2026-09-13T05:09:09Z</updated>
-    <summary type="text">feat: Lokale Benutzerverwaltung — Konten mit Passwort, lokaler Systemverwalter und Mail-Infrastruktur:
-— Reise-Test der lokalen Anmeldung auf Sekundenauflösung des Widerrufs untersucht
-— Zähler und Filter für Konten ohne Ablaufdatum vereinheitlicht
-— Benutzerverwaltung mit Tabs für Konten und Einstellungen geplant
-— E2E-Ziel mit lokaler Anmeldung und Handbuchkapitel auf main gemergt
-feat: Gesprächsgedächtnis — Gesprächsfenster und sichtbare Gesprächsnotiz:
-— Mehrrunden-Klassen nach Fenster und Notiz nachmessen abgeschlossen
-— Baseline neu gezogen und auf main gemergt
-Sonstiges:
-— Chat-Modelle als Tabelle mit Zeilenmenü statt Karten geplant
-— Seite Modelle in Reiter für Chat und Einbettung gliedern geplant
-— Sekundärtext wird als Primärtext dargestellt — Farb-Prop greift nicht
-— Suche &amp; Indexierung in thematische Reiter gliedern geplant</summary>
   </entry>
 </feed>
