@@ -3,7 +3,7 @@ server:
   # Honor X-Forwarded-* from the reverse proxy chain so that same-origin browser requests are
   # recognized as such behind a TLS-terminating proxy. The outer proxy MUST set X-Forwarded-Proto
   # authoritatively (overwriting any client-supplied value) - see
-  # docs/handbuch/betrieb/netz-und-sicherheit.md; a spoofed header would otherwise let a request
+  # docs/handbuch/betreiben/netz-und-sicherheit.md; a spoofed header would otherwise let a request
   # bypass the CORS check.
   forward-headers-strategy: framework
   # A stop lets requests already being handled finish instead of cutting them off; new connections
@@ -70,7 +70,7 @@ spring:
       # its Javadoc and UserServiceConcurrentDistinctUserLoginIntegrationTest, which exercises
       # exactly this scenario at this pool size). Raising this number was considered and rejected as
       # treating the symptom, not the cause. The pool belongs to one instance; several instances
-      # need max_connections for all their pools, see docs/handbuch/betrieb/datenbank.md.
+      # need max_connections for all their pools, see docs/handbuch/betreiben/datenbank.md.
       maximum-pool-size: ${OPAA_DB_POOL_SIZE:10}
       # Every unqualified name - migration DDL, JPA entities, native queries - resolves through this
       # search_path (ADR-0034). public stays behind the application schema only so an extension
@@ -438,7 +438,7 @@ opaa:
       # Requests one run may send before it ends as "unvollständig, wird fortgesetzt"; 0 disables
       # the budget. Default measured against a real Data Center (see
       # ConfluenceProperties.DEFAULT_REQUEST_BUDGET_PER_RUN and
-      # docs/handbuch/betrieb/konfiguration.md).
+      # docs/handbuch/betreiben/konfiguration.md).
       request-budget-per-run: ${OPAA_INDEXING_CONFLUENCE_REQUEST_BUDGET_PER_RUN:50000}
     # ADR-0027: bounds of the S3 access layer (io.opaa.indexing.source.s3) - own property block
     # like confluence above, see S3Properties.
@@ -826,7 +826,7 @@ opaa:
     credentials:
       # AES-256 key (Base64, 32 raw bytes) for encrypting knowledge_libraries.source_credentials at
       # rest. No default here on purpose - a real deployment must set one before storing any
-      # library's credentials; see docs/handbuch/betrieb/netz-und-sicherheit.md. The dev profile
+      # library's credentials; see docs/handbuch/betreiben/netz-und-sicherheit.md. The dev profile
       # below (not local) sets an explicitly-marked non-production default so bootRun and tests work
       # without operator setup.
       encryption-key: ${OPAA_CREDENTIALS_ENCRYPTION_KEY:}
@@ -960,7 +960,7 @@ opaa:
       # test suite (all activate "dev", see AGENTS.md) have working local-issuer keys without
       # operator setup. LocalAuthSecretGuard does not run in this profile; any deployment that does
       # not activate "dev" falls back to the (empty) base value above and must set
-      # OPAA_AUTH_JWT_SECRET itself - see docs/handbuch/betrieb/netz-und-sicherheit.md. The value
+      # OPAA_AUTH_JWT_SECRET itself - see docs/handbuch/betreiben/netz-und-sicherheit.md. The value
       # carries io.opaa.security.SecretValidator.NON_PRODUCTION_MARKER, so the "oidc" profile
       # refuses it even when copied over (SecretValidatorTest#rejectsTheShippedDevDefault).
       jwt-secret: ${OPAA_AUTH_JWT_SECRET:NICHT-FUER-DEN-PRODUKTIVBETRIEB-opaa-dev-jwt-secret-2026}
@@ -997,7 +997,7 @@ opaa:
       # every backend test (all activate "dev", see AGENTS.md) can create/rotate credentials without
       # operator setup. Any deployment that does not activate the "dev" profile falls back to the
       # (empty) base value above and must set OPAA_CREDENTIALS_ENCRYPTION_KEY itself - see
-      # docs/handbuch/betrieb/netz-und-sicherheit.md. The "oidc" profile refuses this value even
+      # docs/handbuch/betreiben/netz-und-sicherheit.md. The "oidc" profile refuses this value even
       # when copied over (io.opaa.security.PublishedEncryptionKeyGuard), as it does the next one.
       encryption-key: ${OPAA_CREDENTIALS_ENCRYPTION_KEY:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}
     settings:
@@ -1006,7 +1006,7 @@ opaa:
       # test-created model's API key without operator setup. Any deployment that does not activate
       # the "dev" profile falls back to the (empty) base value above and must set
       # OPAA_SETTINGS_ENCRYPTION_KEY itself before storing a model's API key - see
-      # docs/handbuch/betrieb/modelle.md.
+      # docs/handbuch/betreiben/modell-endpunkte.md.
       encryption-key: ${OPAA_SETTINGS_ENCRYPTION_KEY:c2V0dGluZ3NkZXZrZXkwMHNldHRpbmdzZGV2a2V5MDE=}
 
 ---

@@ -1,4 +1,4 @@
-# Modelle
+# Modelle betreiben
 
 OPAA bringt kein eigenes Sprachmodell mit, sondern ruft Modelle über Endpunkte auf, die das Haus
 festlegt — im eigenen Rechenzentrum oder bei einem Anbieter. Dieses Kapitel beschreibt, welche
@@ -93,77 +93,31 @@ Liste bewacht OPAA nicht; ein späterer Wechsel seiner Namensauflösung fällt d
 nicht auf, die Absicherung dafür bleibt die Beschränkung des ausgehenden Verkehrs des Backends auf
 Netzebene ([Netz und Sicherheit](netz-und-sicherheit.md#zielprüfung-abrufe-des-servers)).
 
-## Chat-Modelle in der Oberfläche anlegen
+## Chat-Modelle
 
-Schritt für Schritt: [Modelle verwalten](../verwalten/modelle.md).
+Anlegen, testen und aktivieren beschreibt [Modelle verwalten](../verwalten/modelle.md). Für den
+Betrieb zählt:
 
-Das Chat-Modell ist ein **verwaltetes** Modell: Unter **Administration → Modelle → Chat-Modelle** legt
-ein Systemverwalter Modelle an, bearbeitet, testet und aktiviert sie. Genau eines ist aktiv; eine
-Aktivierung oder Änderung wirkt ohne Neustart, das aktive Modell lässt sich nicht löschen.
+- **Das erste Chat-Modell** legt die Installation an (Schritt „Chat-Modell“ des Assistenten oder der
+  Antwortdatei, [Installation](installation.md)). Hat sie den Schritt übersprungen, ist kein Modell
+  aktiv, und der Chat beantwortet keine Frage, bis die Systemverwaltung eines aktiviert. Im Modus
+  `dev` ist es `phi3:mini` unter `OPAA_OPENAI_BASE_URL`, ohne Schlüssel.
+- **Den Schlüssel** verschlüsselt OPAA mit `OPAA_SETTINGS_ENCRYPTION_KEY`
+  ([Verschlüsselung](#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)). Er geht nur an
+  denselben Endpunkt (Schema, Host, Port, Pfad); eine Adresse mit Anmeldedaten wird abgelehnt.
+- **Eine interne Adresse** braucht einen Eintrag in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`
+  ([Adressprüfung](#adressprüfung-der-modelle)); der Compose-Stapel setzt `ollama:11434`.
 
-**Das erste Chat-Modell kommt aus der Installation oder aus der Modellverwaltung.** Der Schritt
-„Chat-Modell“ des Assistenten oder der Antwortdatei legt es mit Adresse, Modellname und
-Zugangsschlüssel an, prüft es mit dem Verbindungstest und aktiviert es beim Abschluss
-([Installation](installation.md)). Hat die Installation den Schritt übersprungen, ist kein Modell
-aktiv: Der Reiter sagt „Es ist noch kein Chat-Modell aktiv“, der Chat zeigt jedem einen Hinweis
-und beantwortet keine Frage. Dann hier mit „Neues Modell“ das erste anlegen und im Zeilenmenü
-aktivieren; das wirkt sofort auf allen Instanzen, ohne Neustart. Den Schlüssel
-verschlüsselt OPAA mit `OPAA_SETTINGS_ENCRYPTION_KEY`
-([Verschlüsselung](#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)).
+| Ollama läuft | Basis-Adresse |
+|---|---|
+| im Compose-Stapel | `http://ollama:11434/v1` |
+| auf dem Docker-Host, OPAA im Container | `http://host.docker.internal:11434/v1` |
+| im Kubernetes-Cluster | `http://ollama.<namespace>.svc.cluster.local:11434/v1` |
+| auf demselben Rechner, Backend ohne Container (`./gradlew bootRun`) | `http://localhost:11434/v1` |
 
-**Im Modus `dev`** richtet sich die Instanz selbst ein, mit `phi3:mini` unter `OPAA_OPENAI_BASE_URL`
-als erstem Chat-Modell, ohne Zugangsschlüssel.
-
-Das Formular führt in drei Abschnitten:
-
-1. **Endpunkt.** Das Feld „Basis-Adresse" schlägt Vorlagen vor; jede andere openai-kompatible Adresse
-   wird einfach eingetragen.
-
-   | Vorlage | Trägt ein | Hinweis |
-   |---|---|---|
-   | Ollama | `http://ollama:11434/v1` | Der Host `ollama` ist danach markiert und wird mit dem eigenen überschrieben. Host und Port brauchen einen Eintrag in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`; der Compose-Stapel setzt `ollama:11434` ([Adressprüfung der Modelle](#adressprüfung-der-modelle)). |
-   | OpenAI | `https://api.openai.com/v1` | nur mit Zugangsschlüssel |
-   | Anthropic (Claude) | `https://api.anthropic.com/v1` | nur mit Zugangsschlüssel; das Feld Temperatur leer lassen |
-
-   Typische Ollama-Adressen, je nachdem, wo Ollama vom Backend aus erreichbar ist:
-
-   | Ollama läuft | Basis-Adresse |
-   |---|---|
-   | im Compose-Stapel | `http://ollama:11434/v1` |
-   | auf dem Docker-Host, OPAA im Container | `http://host.docker.internal:11434/v1` |
-   | im Kubernetes-Cluster | `http://ollama.<namespace>.svc.cluster.local:11434/v1` |
-   | auf demselben Rechner, Backend ohne Container (`./gradlew bootRun`) | `http://localhost:11434/v1` |
-
-   Mit eingeschalteten Ausgangs-Policies braucht das Backend im Cluster eine Regel zu Port 11434
-   ([Kubernetes](kubernetes.md#networkpolicies)). Der Zugangsschlüssel ist optional; er wird
-   verschlüsselt gespeichert und nie wieder angezeigt.
-2. **Modell.** „Modelle abrufen" (oder Enter im Adressfeld) fragt den Endpunkt nach seinen Modellen
-   (`GET {Basis-Adresse}/models`). Die Wahl einer Vorlage ruft nicht von selbst ab, damit ein
-   eingetragener Schlüssel nicht an eine andere Adresse geht. Die Kennung ist danach eine
-   durchsuchbare Auswahl. Meldet der Endpunkt mehr als 500 Modelle, zeigt die Auswahl die ersten
-   500 in seiner Reihenfolge und sagt das; Kennungen über 200 Zeichen fallen weg. Hinter einem Ollama zeigt jede Zeile zusätzlich
-   Parameterzahl, Größe, Kontextlänge und Fähigkeiten (Werkzeuge, Bilder, Denkmodus); andere Server
-   liefern meist nur die Kennungen. Reine Einbettungsmodelle stehen in der Gruppe „Nicht für den Chat
-   geeignet" und sind nicht wählbar. Eine Kennung lässt sich immer von Hand eintragen, auch wenn ein
-   Anbieter die Liste mit dem Schlüssel ablehnt.
-3. **Anzeige und Antwort.** Die Wahl eines Modells belegt den Anzeigenamen mit der Kennung (ohne
-   `:latest` und Anbieterpfad). Ist das Kontextfenster bekannt, begrenzt sie die maximale
-   Antwortlänge auf die Hälfte davon, falls der Vorschlagswert nicht hineinpasst; die andere Hälfte
-   brauchen Frage, Verlauf und gefundene Textstellen. Von Hand Eingetragenes überschreibt die
-   Vorbelegung nicht. Die Temperatur bleibt ohne Eintrag leer.
-
-Nach der Wahl eines Modells läuft der **Verbindungstest** automatisch; „Verbindung testen" wiederholt
-ihn. Er schickt die eingetragene Temperatur mit, wie später der Chat. Was seine Meldungen bedeuten,
-steht unter [Fehlerbilder](#fehlerbilder).
-
-**Der gespeicherte Schlüssel geht nur an denselben Ursprung.** Wer beim Bearbeiten keinen neuen
-Schlüssel einträgt, nutzt den gespeicherten — für Verbindungstest und Abruf der Modelle nur bei einer
-Adresse mit demselben Schema, Host und Port. Bei einer anderen Adresse lehnt OPAA ab, statt den
-Schlüssel dorthin zu senden. Gespeichert bleibt er nur, solange die Adresse denselben Endpunkt nennt
-(Schema, Host, Port, Pfad); bei einem anderen lehnt OPAA das Speichern ab, bis der Schlüssel neu
-eingetragen oder „Gespeicherten Schlüssel entfernen" gewählt ist. Eine
-Adresse mit Anmeldedaten (`https://benutzer:passwort@host`) wird abgelehnt. Abruf und Ollama-Details
-haben eine kurze Zeit- und Größengrenze, damit ein langsamer Endpunkt das Formular nicht aufhält.
+Mit eingeschalteten Ausgangs-Policies braucht das Backend im Cluster eine Regel zu Port 11434
+([Kubernetes](kubernetes.md#networkpolicies)). Was die Meldungen des Verbindungstests bedeuten, steht
+unter [Fehlerbilder](#fehlerbilder).
 
 ### Temperatur und maximale Antwortlänge
 
@@ -482,8 +436,8 @@ arbeitet, nimmt OPAA keinen Endpunktwechsel an.
 ## Reranking einschalten
 
 Reranking ist ab Werk **aus**. Die Rolle braucht einen eigenen Endpunkt; die Systemverwaltung trägt
-ihn unter **Modelle → Reranking** ein ([Rerank- und Transkriptionsmodell in der
-Oberfläche](#rerank-modell-und-transkriptionsmodell-in-der-oberfläche)), oder schon die
+ihn unter **Modelle → Reranking** ein ([Rerank- und
+Transkriptionsmodell](#rerank--und-transkriptionsmodell)), oder schon die
 [Installation](installation.md#schritte) übernimmt ihn aus ihrem optionalen Schritt Rerank-Modell
 und schaltet das Reranking ein. **Empfohlen ist sie überall, wo ein schneller Endpunkt zur Verfügung steht:** Sie holt
 Fundstellen, die im Kandidatenfenster liegen, aber nicht weit genug oben, nach vorn. Was die Stufe in
@@ -527,36 +481,18 @@ Ausfall kostet die Sortierung, nie die Antwort.
 > das Timeout jedes Proxys davor ([Netzwerkzugang](netz-und-sicherheit.md#netzwerkzugang)). Sonst endet die
 > Anfrage beim Client mit `504` oder einem Verbindungsabbruch, ohne Fehler im Backend-Log.
 
-## Rerank-Modell und Transkriptionsmodell in der Oberfläche
+## Rerank- und Transkriptionsmodell
 
-Beide optionalen Rollen pflegt die Systemverwaltung unter **Modelle**, je in einem eigenen Reiter
-(„Reranking", „Spracheingabe"): Schalter, Basis-Adresse, Modell-Kennung, Zugangsschlüssel und für die
-Spracheingabe die Sprache. Ohne Eintrag gilt die Werkseinstellung: aus. Eine Änderung wirkt ohne
-Neustart auf allen Instanzen und steht mit Vorher und Nachher im Revisionsprotokoll
-(„Rerank-Modell", „Transkriptionsmodell"); der Schlüssel erscheint dort nur als gesetzt, geändert oder
-entfernt. Übernimmt die Installation das Rerank-Modell, steht der Eintrag unter ihrem Systemprozess
-„installation“.
-
-- **Zugangsschlüssel:** Er wird verschlüsselt gespeichert und nie wieder angezeigt. Ein leeres Feld
-  lässt ihn unverändert, „Gespeicherten Schlüssel entfernen" löscht ihn. Ändert sich die
-  Basis-Adresse, folgt der gespeicherte Schlüssel nicht: Er ist neu einzugeben oder zu entfernen.
-- **Adressprüfung:** Eine neue Basis-Adresse wird beim Speichern und vor jedem Verbindungstest gegen
-  die [Adressprüfung der Modelle](#adressprüfung-der-modelle) geprüft. Eine interne Adresse, etwa
-  ein Rerank-Dienst im eigenen Netz, gibt der Betrieb über `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`
-  frei.
-- **„Verbindung testen"** schickt eine Probe an den eingetragenen Endpunkt, ohne zu speichern: beim
-  Reranking eine Rerank-Anfrage mit einem Prüftext, bei der Spracheingabe `GET {Basis-Adresse}/models`
-  ohne Audio. Weiterleitungen folgt OPAA dabei nicht.
-- **Zustand:** Der Reiter zeigt, ob die Rolle aus ist, antwortet oder gestört ist, wie die Seite
-  „Suche & Indexierung".
-
+Beide Rollen pflegt die Systemverwaltung in der Oberfläche
+([Modelle verwalten](../verwalten/modelle.md#reranking-und-spracheingabe)); ab Werk sind sie aus.
+Eine interne Basis-Adresse gibt der Betrieb über `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` frei.
 Timeouts, Prüfabstand und Lastgrenzen bleiben Sache des Betriebs (`OPAA_RERANK_TIMEOUT`,
 `OPAA_RERANK_PROBE_INTERVAL`, `OPAA_TRANSCRIPTION_TIMEOUT`, `OPAA_TRANSCRIPTION_MAX_AUDIO_BYTES`,
 `OPAA_TRANSCRIPTION_MAX_CONCURRENT`, die Aufnahmen je Konto und Client unter
 `OPAA_RATE_LIMIT_TRANSCRIPTION_*`). Die früheren Variablen `OPAA_RERANK_ENABLED`,
 `OPAA_RERANK_BASE_URL`, `OPAA_RERANK_MODEL`, `OPAA_RERANK_API_KEY` und `OPAA_TRANSCRIPTION_ENABLED`,
-`_BASE_URL`, `_MODEL`, `_API_KEY`, `_LANGUAGE` liest OPAA nicht mehr und übernimmt sie auch nicht; ist
-eine noch gesetzt, warnen der Start im Log und der Reiter der Rolle.
+`_BASE_URL`, `_MODEL`, `_API_KEY`, `_LANGUAGE` liest OPAA nicht mehr; ist eine noch gesetzt, warnen
+der Start im Log und der Reiter der Rolle.
 
 ## Spracheingabe einschalten
 
@@ -564,8 +500,8 @@ Mit der Spracheingabe spricht eine Person ihre Frage ein, statt sie zu tippen: S
 beendet die Aufnahme, und der erkannte Text landet im Eingabefeld (Bedienung unter
 [Dateien anhängen und diktieren](../arbeiten/anhaengen-und-diktieren.md#eine-frage-diktieren)). Dafür braucht OPAA eine eigene Modellrolle **Transkription**, die
 Sprache in Text umwandelt. Sie ist ab Werk **aus**; ohne sie zeigt der Chat kein Mikrofon. Eingetragen wird sie unter
-**Modelle → Spracheingabe** ([Rerank- und Transkriptionsmodell in der
-Oberfläche](#rerank-modell-und-transkriptionsmodell-in-der-oberfläche)) oder schon bei der
+**Modelle → Spracheingabe** ([Rerank- und
+Transkriptionsmodell](#rerank--und-transkriptionsmodell)) oder schon bei der
 Installation im optionalen Schritt Transkriptionsmodell ([Installation](installation.md#schritte)).
 Hat der Betrieb die Funktion mit `OPAA_FEATURES_SPEECH_INPUT_ENABLED=false` abgeschaltet, lässt sich
 die Rolle unter Modelle nur vorbereiten, nicht einschalten, und die Installation bietet den Schritt
@@ -833,7 +769,7 @@ Je Rolle wirkt der Ausfall anders:
 
 | Rolle | Wirkung | Vorsorge | Wiederanlauf |
 |---|---|---|---|
-| Chat | Fragen im Chat scheitern | ein Ersatzmodell vorab anlegen und testen, nicht aktivieren ([Chat-Modelle in der Oberfläche anlegen](#chat-modelle-in-der-oberfläche-anlegen)) | Ersatzmodell aktivieren, wirkt ohne Neustart; nach dem Ausfall zurückschalten |
+| Chat | Fragen im Chat scheitern | ein Ersatzmodell vorab anlegen und testen, nicht aktivieren ([Chat-Modelle](#chat-modelle)) | Ersatzmodell aktivieren, wirkt ohne Neustart; nach dem Ausfall zurückschalten |
 | Embedding | Fragen scheitern, weil die Suche die Frage nicht einbetten kann; neue Dokumente enden als fehlgeschlagen | einen Ersatz-Endpunkt mit demselben Modell vorhalten; ein Wechsel nur des Endpunkts ist kein Modellwechsel | im Reiter „Einbettung" den Ersatz-Endpunkt eintragen, mit eigenem Schlüssel, wenn nötig; wirkt ohne Neustart ([Endpunkt wechseln](#endpunkt-wechseln)). In der Zwischenzeit fehlgeschlagene Dokumente erneut verarbeiten lassen, bei Quellen mit dem nächsten Lauf, bei Uploads mit „erneut verarbeiten". Ein anderes Modell verlangt eine Neueinbettung, bis dahin nur Volltextsuche ([Modell wechseln](#modell-wechseln)) |
 | Reranking | Suche läuft ohne Reranking, die Reihenfolge der Treffer ist schlechter | keine | von selbst, sobald der Endpunkt antwortet |
 | Transkription | Spracheingabe nicht verfügbar | keine | von selbst |
@@ -880,7 +816,7 @@ eingerichtetes Modell deshalb nicht; sie wertet das Detail `NOT_CONFIGURED` aus 
 | Indexierung und Suche antworten „Das Embedding-Modell ist noch nicht eingerichtet" | Die Installation ist nicht abgeschlossen; sie wählt das Embedding-Modell oder überspringt es ([Installation](installation.md)) |
 | Indexierung, Upload und Suche antworten „Es ist noch kein Embedding-Modell eingerichtet“, der Chat zeigt „Noch kein Embedding-Modell eingerichtet“ | Die Installation hat das Embedding-Modell übersprungen; ein regulärer Zustand, kein Fehler. Abhilfe: im Reiter „Einbettung" das erste Modell festlegen ([Erstes Modell festlegen](#erstes-modell-festlegen)). Im Modus `dev` war das Modell beim Start nicht erreichbar; das Log nennt die Adresse, und OPAA versucht es erneut |
 | Der Start schreibt „The vector table holds chunks but no embedding model is installed“, `embedding-model` und `vector-store` melden `DOWN` mit `MISSING_WITH_CHUNKS`, „Probeeinbettung“ im Reiter „Einbettung" meldet, die Vektortabelle enthalte bereits Abschnitte | Die Vektorablage hat Abschnitte, aber es gibt kein Embedding-Modell, etwa nach einer Rücksicherung, die nur einen Teil der Datenbank zurückgespielt hat. Die Abschnitte gehören zu einem Modell, das OPAA nicht mehr kennt; ein erstes Modell darüber lehnt OPAA ab. Abhilfe: die Datenbank vollständig aus derselben Sicherung zurückspielen, die auch das Embedding-Modell enthält ([Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md)), oder die Datenbank neu aufsetzen und installieren |
-| Der Chat zeigt „Noch kein Chat-Modell eingerichtet“, Fragen bekommen keine Antwort | Kein Chat-Modell ist aktiv, etwa weil die Installation den Schritt übersprungen hat; unter Modelle → Chat-Modelle eines anlegen und aktivieren ([Chat-Modelle in der Oberfläche anlegen](#chat-modelle-in-der-oberfläche-anlegen)) |
+| Der Chat zeigt „Noch kein Chat-Modell eingerichtet“, Fragen bekommen keine Antwort | Kein Chat-Modell ist aktiv, etwa weil die Installation den Schritt übersprungen hat; unter Modelle → Chat-Modelle eines anlegen und aktivieren ([Chat-Modelle](#chat-modelle)) |
 | „Index veraltet", Chat meldet „Eingeschränkte Suche" | Ein Wechsel des Embedding-Modells läuft, oder nach einer Rücksicherung passt das gespeicherte Modell nicht zum Index; den Fortschritt im Indexstatus verfolgen oder dort die Neueinbettung starten ([Modell wechseln](#modell-wechseln)) |
 | Die Probeeinbettung meldet, der Endpunkt bette anders ein, mit einer Ähnlichkeit unter 0,99 | Hinter derselben Modell-Kennung läuft eine andere Fassung oder Quantisierung; ein Endpunktwechsel taugt nicht, der Weg ist ein Modellwechsel ([Endpunkt wechseln](#endpunkt-wechseln)) |
 | „Nicht alle laufenden Instanzen haben dieselbe Version" | Ein Rolling Update läuft noch; es abschließen und den Schritt wiederholen |
@@ -904,8 +840,3 @@ eingerichtetes Modell deshalb nicht; sie wertet das Detail `NOT_CONFIGURED` aus 
 | „Die Basis-Adresse ist nicht zugelassen oder nicht erreichbar.“ mit Hinweis auf `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` | Entweder liegt der Host im eigenen Netz und fehlt in der Liste der Modelle (ein Eintrag in der Liste der Quellen genügt nicht), oder der Name lässt sich nicht auflösen, etwa wegen eines Tippfehlers. Welches von beidem, steht in der WARN-Zeile „Model address … refused“ im Log (`TargetAddressBlockedException` oder `UnknownTargetHostException`). Erst die Schreibweise prüfen, dann die Liste ([Adressprüfung der Modelle](#adressprüfung-der-modelle)) |
 | Chat oder Einbettung scheitern, Log: „answered HTTP 3xx with a redirect; redirects are not followed“ | Der Modellserver leitet weiter, etwa von `http` auf `https` oder auf einen anderen Pfad. Die Zieladresse direkt eintragen |
 | Verbindungen scheitern mit dem Status eines Proxys | [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy); ein Modellserver im eigenen Netz gehört auf seine Ausnahmeliste |
-
-## Weiterführende Kapitel
-
-- [Konfiguration](konfiguration.md) — alle `OPAA_OPENAI_*`-Variablen, die Lastgrenzen `OPAA_RERANK_*` und `OPAA_TRANSCRIPTION_*` und die Adressprüfung `OPAA_MODEL_TARGET_VALIDATION_*`
-- [Authentifizierung](authentifizierung.md)

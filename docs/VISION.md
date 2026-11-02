@@ -117,12 +117,12 @@ an Barrierefreiheit und Missbrauchsschutz.
 | **B** | Wissensquellen & Konnektoren | Uploads und Konnektoren, selbst aktualisierende Wissensblöcke, Zielbibliothek als Rechteanker — Quellrechte schränken sie ein, wo ein Quellsystem sie belastbar liefert | [Handbuch](./handbuch/arbeitsmittel/wissensbibliotheken/README.md), [Roadmap](./ROADMAP.md) |
 | **C** | Spaces, Assets & Verteilung | Arbeitsräume, Assets mit eigenen Rechten, Verteilungsstufen, Freigabe, Versionierung, Katalog | [Handbuch](./handbuch/spaces/README.md), [Roadmap](./ROADMAP.md) |
 | **D** | Agenten, Prompts & Werkzeuge | Agenten als teilbare Pakete, geführtes Onboarding, Prüfstand, Prüfagenten, Sandbox, Werkzeuge, MCP | [Roadmap](./ROADMAP.md) |
-| **E** | Modelle & zentrale Steuerung | Modellverwaltung, eigene Modelle zuerst, zentrale Vorgaben als Obergrenze, Schutz vor Weitergabe personenbezogener Daten | [Handbuch](./handbuch/betrieb/modelle.md), [Roadmap](./ROADMAP.md) |
+| **E** | Modelle & zentrale Steuerung | Modellverwaltung, eigene Modelle zuerst, zentrale Vorgaben als Obergrenze, Schutz vor Weitergabe personenbezogener Daten | [Handbuch](handbuch/betreiben/modell-endpunkte.md), [Roadmap](./ROADMAP.md) |
 | **F** | Identität, Rechte & Mandanten | Anmeldung über den Verzeichnisdienst, Lebenszyklus der Konten, rechtebewusste Suche zur Abfragezeit | [Handbuch](./handbuch/konten-und-rechte/benutzerverwaltung.md), [Roadmap](./ROADMAP.md) |
-| **G** | Sicherheit, Nachweis & Prüfbarkeit | Revisionssicheres Protokoll, Vollständigkeit nach DSGVO, sichere Voreinstellungen, C5-Fähigkeit, Mitbestimmungsfähigkeit | [Handbuch](./handbuch/betrieb/nachvollziehbarkeit.md), [ADR-0068](./decisions/0068-mitbestimmungsfaehigkeit.md) |
+| **G** | Sicherheit, Nachweis & Prüfbarkeit | Revisionssicheres Protokoll, Vollständigkeit nach DSGVO, sichere Voreinstellungen, C5-Fähigkeit, Mitbestimmungsfähigkeit | [Handbuch](handbuch/betreiben/nachvollziehbarkeit.md), [ADR-0068](./decisions/0068-mitbestimmungsfaehigkeit.md) |
 | **H** | Monitoring, Kosten & Governance | Grenzen je Nutzer, Kostentransparenz, Auswertung des KI-Rollouts — aggregiert, ohne Personenbezug | [Roadmap](./ROADMAP.md) |
 | **I** | Kanäle & Oberflächen | Web-Oberfläche, REST-API, Anbindung an self-hosted Team-Chats, OPAA als belegte Wissensschicht für externe KI-Werkzeuge | [Handbuch](./handbuch/spaces/suche.md), [Roadmap](./ROADMAP.md) |
-| **J** | Betrieb & Deployment | Docker Compose, Kubernetes mit Hochverfügbarkeit, air-gapped, mandantenfähiger Betrieb durch Rechenzentren | [Handbuch](./handbuch/betrieb/README.md), [Roadmap](./ROADMAP.md) |
+| **J** | Betrieb & Deployment | Docker Compose, Kubernetes mit Hochverfügbarkeit, air-gapped, mandantenfähiger Betrieb durch Rechenzentren | [Handbuch](handbuch/betreiben/README.md), [Roadmap](./ROADMAP.md) |
 | **K** | Verwaltungs-Spezifika | Leichte Sprache und Amtssprache, Barrierefreiheit, Revisionssicherheit, Anbindung an die elektronische Akte | [Roadmap](./ROADMAP.md) |
 
 ---

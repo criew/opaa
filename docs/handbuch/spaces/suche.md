@@ -172,7 +172,7 @@ flowchart TB
 
 Bedienung: [Dateien anhängen und diktieren](../arbeiten/anhaengen-und-diktieren.md#eine-frage-diktieren).
 Das Mikrofon erscheint nur, wo die Installation eine Spracheingabe anbietet
-([Modelle](../betrieb/modelle.md#spracheingabe-einschalten)) und der Browser aufnehmen kann. Die
+([Modelle](../betreiben/modell-endpunkte.md#spracheingabe-einschalten)) und der Browser aufnehmen kann. Die
 Aufnahme liegt nur während der Umwandlung im Arbeitsspeicher von Browser und Server; gespeichert
 wird nur die gesendete Frage, ohne Merkmal, ob sie diktiert wurde.
 
@@ -194,7 +194,7 @@ Bedienung und „Meine Uploads“: [Dateien anhängen und diktieren](../arbeiten
   Ratenbegrenzung des Dokument-Uploads.
 
 Die Installation kann Anhänge mit `OPAA_FEATURES_CHAT_UPLOAD_ENABLED=false` abschalten
-([Konfiguration](../betrieb/konfiguration.md#funktionen-abschalten)); vorhandene Anhänge bleiben
+([Konfiguration](../betreiben/konfiguration.md#funktionen-abschalten)); vorhandene Anhänge bleiben
 dann gespeichert und werden mit ihrem Chat gelöscht.
 
 ## 3. Was eine Frage nach außen kostet
@@ -367,7 +367,7 @@ Abschluss der Neueinbettung ausgesetzt: Frage und Chunks stammten sonst aus vers
 Die Stufe erscheint im Erklärprotokoll dann als nicht verfügbar, und die Volltextsuche trägt die
 Frage allein. Dasselbe gilt für eine Frage, die eine Instanz mit einem Modell einbettet, das der
 Index nicht mehr führt, etwa in dem kurzen Moment nach dem Umschalten auf einer anderen Instanz
-([Modell wechseln](../betrieb/modelle.md#modell-wechseln)).
+([Modell wechseln](../betreiben/modell-endpunkte.md#modell-wechseln)).
 
 Die Vektorsuche findet, was der Frage **in der Bedeutung** nahe ist, auch wenn kein Wort
 übereinstimmt („Parkausweis" trifft „Bewohnerparkberechtigung"). Ihre bekannte Schwäche ist der
@@ -451,7 +451,7 @@ Zwei bekannte Grenzen des Pfads:
   seltene Begriffe zu wenig gegenüber häufigen abgesetzt. Die Fusion (Stufe 7) verbraucht im
   Auslieferungsstand nur den Rang, nicht den Wert, was diese Schwäche abmildert; die Fusion nach
   Werten nimmt den `ts_rank` nur relativ zum besten Treffer seiner Liste. Einzelheiten stehen im Kapitel
-  [Deployment](../betrieb/datenbank.md#bekannte-grenze-ts_rank-ist-kein-bm25).
+  [Deployment](../betreiben/datenbank.md#bekannte-grenze-ts_rank-ist-kein-bm25).
 - Der Pfad lässt sich per Konfiguration abschalten. Er bleibt dann in der Kette, weist sich im
   Protokoll als abgeschaltet aus, und die Suche läuft rein vektoriell. Auf der Verwaltungs-Evaldomäne
   kostet das gemessen 15 Prozentpunkte Hit Rate@5.
@@ -481,7 +481,7 @@ höchsten Wert aus `lambda × Relevanz − (1 − lambda) × größte Ähnlichke
 gewählten Chunk`. Bei 1,0 ist der zweite Term null, und die Vektoren werden gar nicht erst gelesen.
 Der Default 1,0 ist eine Messentscheidung: Auf
 den Mehrthemen-Fällen der Evaluierung war reine Relevanz besser als die Vielfaltsauswahl (siehe
-[Konfiguration](../betrieb/konfiguration.md), `OPAA_QUERY_MMR_LAMBDA`). Ein Wert unter 1,0 wirkt zudem auf die
+[Konfiguration](../betreiben/konfiguration.md), `OPAA_QUERY_MMR_LAMBDA`). Ein Wert unter 1,0 wirkt zudem auf die
 Volltextlisten anders als auf die Vektorlisten, weil deren Relevanzwerte auf einer anderen Skala
 liegen; wer ihn setzt, sollte das messen.
 
@@ -544,7 +544,7 @@ Fenster nach oben; der Aufruf kostet Zeit je Frage, und ein schneller Endpunkt h
 Ein Endpunkt auf einer CPU wird nicht empfohlen. Ein gehosteter Endpunkt erhält Frage und
 Chunk-Texte; bei Behördendaten kommt deshalb nur ein Endpunkt im eigenen Netz oder ein ausdrücklich
 zulässiger Dienst in Frage. Die Wahl des Endpunkts steht im Kapitel
-[Modelle](../betrieb/modelle.md#reranking-einschalten).
+[Modelle](../betreiben/modell-endpunkte.md#reranking-einschalten).
 
 Die Rolle kennt drei Zustände, die das Protokoll und die
 Administrationsseite unterscheiden:
@@ -582,7 +582,7 @@ kann kein Reranker nach vorn holen. Die Reichweite ist `fetch-k` je Liste mal de
 also Teilfragen mal aktive Pfade; bei einer Teilfrage liefern zwei Pfade höchstens doppelt
 `fetch-k` verschiedene Kandidaten. Wer das Fenster darüber hinaus vergrößert, muss `fetch-k` mit
 anheben. Was zum Einschalten gehört, steht im Kapitel
-[Deployment](../betrieb/modelle.md#reranking-einschalten).
+[Deployment](../betreiben/modell-endpunkte.md#reranking-einschalten).
 
 ### Stufe 9: Relevanzschnitt
 
@@ -711,7 +711,7 @@ Embedding-Modell in Stufe 4 nicht, endet die Frage mit einer deutschen Fehlermel
 beim Reranking gibt es für diese beiden Rollen keinen Weiterlauf ohne sie.
 
 **Links und Bilder in der Antwort.** Ein Link ist nur zur eigenen Adresse von OPAA und zu den
-[erlaubten Linkzielen](../betrieb/netz-und-sicherheit.md#erlaubte-linkziele-in-antworten) klickbar;
+[erlaubten Linkzielen](../betreiben/netz-und-sicherheit.md#erlaubte-linkziele-in-antworten) klickbar;
 jeder andere erscheint als Text mit vollständiger Adresse. Bilder lädt die Antwort nie.
 
 **Fundstellen als Daten.** Ein Dokument kann Sätze enthalten, die wie eine Anweisung an das Modell
@@ -823,7 +823,7 @@ Kann das Modell nicht streamen, antwortet es wie früher in einem Stück. Suchpr
 Erklärungsprotokoll, Kosten und Tokens erfasst OPAA in beiden Fällen gleich. Die Schnittstelle für
 Programme (`POST /api/v1/query`) und der MCP-Server antworten weiterhin in einem Stück; der Chat
 nutzt `POST /api/v1/query/stream`. Was ein Proxy davor braucht, steht in
-[Netz und Sicherheit](../betrieb/netz-und-sicherheit.md#netzwerkzugang).
+[Netz und Sicherheit](../betreiben/netz-und-sicherheit.md#netzwerkzugang).
 
 Nach der Antwort wird die Nutzernachricht dieser Runde nebenläufig zur Gesprächsnotiz verdichtet
 (Abschnitt 2); ein daraus entstehender Punkt wirkt ab der nächsten Frage.
@@ -1284,7 +1284,7 @@ für Aufrufe, die durch die Grenze je Adresse kommen: Sie geben ihren Platz dort
 **Viele Personen hinter einer Adresse.** Hinter einem gemeinsamen Ausgang des Behördennetzes (NAT)
 oder einem Proxy teilen sich alle die Grenze je Adresse. Steht der Proxy vor dem Backend, muss
 `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` ihn nennen, sonst zählen alle Anfragen unter der Adresse des
-Proxys in einem einzigen Zähler ([Vertraute Proxys](../betrieb/netz-und-sicherheit.md#vertraute-proxys-und-client-adresse)). Reicht
+Proxys in einem einzigen Zähler ([Vertraute Proxys](../betreiben/netz-und-sicherheit.md#vertraute-proxys-und-client-adresse)). Reicht
 die Grenze je Adresse für einen NAT-Ausgang nicht, wird sie angehoben; die Grenze je Konto hält den
 einzelnen Menschen weiter im Rahmen.
 
@@ -1311,7 +1311,7 @@ oberhalb der Debug-Ebene.
 
 Alle Werte sind benchmark-gehärtete Defaults und bewusst in keiner Verwaltungsoberfläche
 einstellbar; wer sie ändert, sollte den Effekt messen. Die Schlüssel unter `opaa.query.*`, mit
-Umgebungsvariable im Kapitel [Deployment](../betrieb/konfiguration.md#alle-umgebungsvariablen):
+Umgebungsvariable im Kapitel [Deployment](../betreiben/konfiguration.md#alle-umgebungsvariablen):
 
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
@@ -1350,7 +1350,7 @@ Der Such- und Abrufweg ohne Antwort (Abschnitt 7.1) hat eigene Schlüssel unter 
 | `context-passages` | 1 | angrenzende Abschnitte je Seite beim Abruf ohne `full` (0 bis 10) |
 
 Die Ratenbegrenzung der Chatsuche (Abschnitt 10.1) steht unter `opaa.rate-limit.chat-search.*`,
-mit Umgebungsvariable im Kapitel [Deployment](../betrieb/konfiguration.md#alle-umgebungsvariablen):
+mit Umgebungsvariable im Kapitel [Deployment](../betreiben/konfiguration.md#alle-umgebungsvariablen):
 
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
@@ -1389,7 +1389,7 @@ Rest folgt in den nächsten Nächten. Werden in den nächsten 30 Tagen Konten f�
 ohne Namen im Anwendungslog (INFO „… account(s) become due within the next 30 days“), damit der
 Betrieb etwa nach einer Sammelsperre die Welle vorher sieht. Setzt eine laufende Instanz noch eine der entfallenen Variablen
 auf eine längere Frist, pausiert das Löschen, bis hier ein Wert gespeichert ist
-([Konfiguration](../betrieb/konfiguration.md#entfallene-und-veraltete-variablen)). Eine
+([Konfiguration](../betreiben/konfiguration.md#entfallene-und-veraltete-variablen)). Eine
 Verlängerung dieser Frist ist eine längere Speicherfrist und gehört in die Dienstvereinbarung:
 
 | Einstellung | Werkseinstellung | Grenzen | Wirkung |
@@ -1411,7 +1411,7 @@ entsprechen.
 ### 10.4 Was nicht gebaut ist
 
 - **BM25** im Volltextpfad. Ob der Wechsel nötig ist, wird gemessen; die Eintrittsbedingung steht
-  im Kapitel [Deployment](../betrieb/datenbank.md#bekannte-grenze-ts_rank-ist-kein-bm25).
+  im Kapitel [Deployment](../betreiben/datenbank.md#bekannte-grenze-ts_rank-ist-kein-bm25).
 - **Reranking und Vielfaltsauswahl als Default.** Beides ist gebaut und
   einschaltbar, Reranking unter Modelle → Reranking. Reranking ist ausgeliefert aus, weil es einen eigenen Endpunkt braucht, wird aber
   empfohlen, sobald ein schneller verfügbar ist (Stufe 8).
@@ -1430,7 +1430,7 @@ entsprechen.
 
 - Wie die Chunks entstehen, die hier gesucht werden: [Wissensbibliotheken](../arbeitsmittel/wissensbibliotheken/README.md)
 - Kernfelder, Filter, Kontextpräfix und Beleg-Anzeige: [Metadaten](../arbeitsmittel/wissensbibliotheken/metadaten.md)
-- Umgebungsvariablen: [Konfiguration](../betrieb/konfiguration.md); Reranking und Spracheingabe einschalten: [Modelle](../betrieb/modelle.md#reranking-einschalten);
-  Grenze des Volltextpfads: [Datenbank](../betrieb/datenbank.md#bekannte-grenze-ts_rank-ist-kein-bm25)
+- Umgebungsvariablen: [Konfiguration](../betreiben/konfiguration.md); Reranking und Spracheingabe einschalten: [Modelle](../betreiben/modell-endpunkte.md#reranking-einschalten);
+  Grenze des Volltextpfads: [Datenbank](../betreiben/datenbank.md#bekannte-grenze-ts_rank-ist-kein-bm25)
 - Wie externe KI-Werkzeuge diesen Such- und Abrufweg benutzen: [Externe KI-Werkzeuge](fremdzugaenge.md)
 - Spaces, Chats und was ihnen zugeordnet ist: [Spaces](README.md)

@@ -32,7 +32,7 @@ ist die Behörde; OPAA liefert die Fristen und Löschwege des Produkts.
 | Technisches Anwendungslog | {{faktenblatt:datenkatalog#application-log}} |
 
 Die Faktenblätter nennen die Voreinstellung der Version. Was die eigene Installation anders eingestellt
-hat, zeigt die [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation).
+hat, zeigt die [Auskunft über die Datenerhebung](../../handbuch/betreiben/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation).
 
 ## Aufgaben der Behörde
 

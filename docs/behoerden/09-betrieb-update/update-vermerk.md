@@ -97,7 +97,7 @@ gestrichen oder mit „nicht beteiligt“ vermerkt.
 
 **Arbeitshilfen** für die Projektleitung:
 
-- [Das Update-Paket eines Release](../../handbuch/betrieb/nachvollziehbarkeit.md#das-update-paket-eines-release)
+- [Das Update-Paket eines Release](../../handbuch/betreiben/nachvollziehbarkeit.md#das-update-paket-eines-release)
   im Handbuch: Inhalt des Pakets, Provenance-Prüfung, Delta für übersprungene Versionen.
-- [Aktualisierung](../../handbuch/betrieb/aktualisierung.md)
+- [Aktualisierung](../../handbuch/betreiben/aktualisierung.md)
   im Handbuch: wie der Betrieb ein Update einspielt.

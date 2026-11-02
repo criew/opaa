@@ -2,7 +2,7 @@
 # It contains insecure defaults (e.g., admin/admin and placeholder secrets)
 # and must not be used as-is for production deployments.
 # Before running this reachable from outside localhost, see
-# docs/handbuch/betrieb/docker-compose.md, section "Härtung des Compose-Stapels".
+# docs/handbuch/betreiben/docker-compose.md, section "Härtung des Compose-Stapels".
 services:
   postgres:
     image: pgvector/pgvector:pg18
@@ -50,7 +50,7 @@ services:
     # the *host* directory, so ./uploads must belong to that uid - a directory Docker creates for a
     # missing mount path belongs to root, and the first upload then fails with an
     # AccessDeniedException on /app/uploads. Setup and migration step for an existing installation:
-    # docs/handbuch/betrieb/docker-compose.md, "Nicht-root-Betrieb des Backend-Containers". Whoever
+    # docs/handbuch/betreiben/docker-compose.md, "Nicht-root-Betrieb des Backend-Containers". Whoever
     # cannot give the directory away uncomments the line below instead and names the uid it already
     # belongs to.
     # user: "1000:1000"
@@ -101,7 +101,7 @@ services:
     restart: unless-stopped
     # Loopback by default: Docker publishes ports past ufw/firewalld, and in the "dev" profile every
     # request is a system administrator. OPAA_FRONTEND_BIND_ADDRESS=0.0.0.0 opens it
-    # (docs/handbuch/betrieb/docker-compose.md, "Härtung des Compose-Stapels").
+    # (docs/handbuch/betreiben/docker-compose.md, "Härtung des Compose-Stapels").
     ports:
       - "${OPAA_FRONTEND_BIND_ADDRESS:-127.0.0.1}:${OPAA_FRONTEND_PORT:-3000}:8080"
     # A fixed address inside the subnet below, so OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS can trust
@@ -400,7 +400,7 @@ services:
   # started with `docker compose --profile ollama up`. Without the profile, this service does not
   # exist. In the dev mode (SPRING_PROFILES_ACTIVE=docker,dev) the backend's own defaults assume a
   # reachable Ollama server (application.yml, profile "docker & dev": OPAA_OPENAI_BASE_URL defaults
-  # to http://ollama:11434/v1), see docs/handbuch/betrieb/modelle.md, section "LLM-Anbieter", for the
+  # to http://ollama:11434/v1), see docs/handbuch/betreiben/modell-endpunkte.md, section "LLM-Anbieter", for the
   # alternatives (an external Ollama, host.docker.internal, or a different openai-compatible
   # provider). In the operating mode "oidc" the installation names the model addresses, for this
   # service http://ollama:11434/v1.
@@ -417,7 +417,7 @@ services:
     # service over the Compose network under its service name ("ollama"), never through a host
     # port. Uncomment to additionally reach it directly from the host (e.g. to run `ollama` CLI
     # commands against it) - bind to 127.0.0.1 only, per the port-exposure rule this repository
-    # otherwise follows (see docs/handbuch/betrieb/docker-compose.md, "Härtung des
+    # otherwise follows (see docs/handbuch/betreiben/docker-compose.md, "Härtung des
     # Compose-Stapels").
     # ports:
     #   - "127.0.0.1:11434:11434"

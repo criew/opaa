@@ -251,11 +251,3 @@ Beim Stopp nimmt das Backend keine neuen Verbindungen an und lässt laufende Anf
 - **Mails** liegen bis zur Zustellung in der Datenbank und gehen nicht verloren.
 - Bei einem Rolling Update stellt der Helm-Chart die Zeitfenster passend ein
   ([Kubernetes](kubernetes.md#mehrere-backend-instanzen)).
-
-## Weiterführende Kapitel
-
-- [Docker Compose](docker-compose.md) und [Kubernetes](kubernetes.md) — Images holen, Volumes,
-  Probes und Grenzen je Betriebsweg
-- [Netz und Sicherheit](netz-und-sicherheit.md) — Zugang über Reverse-Proxy und Frontend, Härtung
-- [Überwachung und Fehlerbehebung](ueberwachung-und-fehlerbehebung.md) — Logs, Metriken, Diagnose
-  ohne Shell

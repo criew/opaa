@@ -34,19 +34,19 @@ in eckigen Klammern sind Verhandlungssache; Schrägstriche trennen Optionen.
   {{faktenblatt:datenkatalog}}, {{faktenblatt:rollensicht}} und {{faktenblatt:datenfluesse}}, im
   Update-Paket am GitHub-Release der Version.
 - **Stand der eigenen Installation:** die
-  [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation)
+  [Auskunft über die Datenerhebung](../../handbuch/betreiben/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation)
   mit allen abweichenden Einstellungen und der Beschreibung des Protokolls (dem Auszug für die
   Personalvertretung).
 - **Zu jedem Release** ein Delta mit Stufenvorschlag nach denselben Klassen wie in Nummer 15 des
   Mustertexts, dazu die Vorlage [Update-Vermerk](../09-betrieb-update/update-vermerk.md). Die Klassen
   stammen aus einer gemeinsamen Quelle, den
-  [Stufenregeln](../../handbuch/betrieb/nachvollziehbarkeit.md#die-stufenregeln). Das Delta im Paket
+  [Stufenregeln](../../handbuch/betreiben/nachvollziehbarkeit.md#die-stufenregeln). Das Delta im Paket
   vergleicht mit dem vorigen finalen Release, bei einem LTS-Release zusätzlich mit der vorigen
   LTS-Linie; für einen anderen Sprung erzeugt der Betrieb es selbst
-  ([Das Update-Paket eines Release](../../handbuch/betrieb/nachvollziehbarkeit.md#das-update-paket-eines-release)).
+  ([Das Update-Paket eines Release](../../handbuch/betreiben/nachvollziehbarkeit.md#das-update-paket-eines-release)).
 - **Supportlinien:** Patch-Releases bringen nur Sicherheitskorrekturen und Behebungen kritischer
   Fehler, für ältere Linien über eigene Wartungsbranches
-  ([Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates)). Den
+  ([Sicherheitsupdates](../../handbuch/betreiben/releases-und-nachweise.md#sicherheitsupdates)). Den
   Schutz gibt zusätzlich die Sichtung des Deltas vor dem Einspielen.
 - Die [Informationsmappe für den Personalrat](informationsmappe-personalrat.md) erklärt all das in
   Alltagssprache.
@@ -428,7 +428,7 @@ Kopf jedes Faktenblatts und der Auskunft über die Datenerhebung.
 
 - **Supportlinien:** Jede unterstützte Linie bekommt Patch-Releases ohne neue Funktion, ältere
   Linien über eigene Wartungsbranches, und das Juni-Release ist eine LTS-Linie mit rund zwölf
-  Monaten Support ([Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates)).
+  Monaten Support ([Sicherheitsupdates](../../handbuch/betreiben/releases-und-nachweise.md#sicherheitsupdates)).
   Nummer 15 Absatz 11 bleibt für den Fall, dass eine Korrektur nur in einem Funktionsupdate
   bereitsteht, etwa nach dem Supportende der eingesetzten Linie.
 - **Zeit für den Linienwechsel:** Der Release-Kandidat eines LTS erscheint nur wenige Wochen vor dem
@@ -437,10 +437,10 @@ Kopf jedes Faktenblatts und der Auskunft über die Datenerhebung.
 - **Delta bei übersprungenen Versionen:** Das Update-Paket eines LTS-Release und seiner
   Kandidaten enthält das Delta über den ganzen Sprung von der vorigen LTS-Linie. Wer andere
   Versionen überspringt, braucht das selbst erzeugte Delta über den ganzen Sprung
-  ([Das Update-Paket eines Release](../../handbuch/betrieb/nachvollziehbarkeit.md#das-update-paket-eines-release)).
+  ([Das Update-Paket eines Release](../../handbuch/betreiben/nachvollziehbarkeit.md#das-update-paket-eines-release)).
 - Ohne „standardmäßig aus“ kann ein Funktionsupdate eine zustimmungspflichtige Funktion sofort aktiv
   mitbringen. Nummer 15 fängt das auf: Ein Funktionsupdate wartet, bis zugestimmt oder die Funktion
-  abgeschaltet ist ([Funktionen abschalten](../../handbuch/betrieb/konfiguration.md#funktionen-abschalten)).
+  abgeschaltet ist ([Funktionen abschalten](../../handbuch/betreiben/konfiguration.md#funktionen-abschalten)).
 - Das Delta misst an den Voreinstellungen. Hat die Installation eine Einstellung überschrieben,
   trifft eine Änderung sie womöglich anders; das zeigt der Vergleich mit der Auskunft über die
   Datenerhebung.

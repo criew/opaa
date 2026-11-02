@@ -82,7 +82,7 @@ Ein Ollama als Chat-Modell braucht keinen Schlüssel, auch keinen Platzhalter. E
 Abfrageparametern oder Anker weist der Lauf ab, auch bei `-Dopaa.eval.ollamaBaseUrl`. Ohne Docker
 scheitert `evaluatePromptInjection`, statt übersprungen zu werden, und ein alter Bericht wird zu
 Beginn gelöscht. Den Ablauf für Betreiber beschreibt das Handbuch
-(`docs/handbuch/betrieb/modelle.md`, „Modell gegen Prompt-Injection messen“). Bericht:
+(`docs/handbuch/betreiben/modell-endpunkte.md`, „Modell gegen Prompt-Injection messen“). Bericht:
 `build/eval-reports/prompt-injection.md` und `.json`, mit Angriffserfolgsquote gesamt, je
 Angriffsziel und je Verstecktechnik und jeder Antwort im Wortlaut.
 

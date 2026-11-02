@@ -111,7 +111,7 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 
 Parameter stehen unter `opaa.indexing.crawl.*` und `opaa.indexing.http.*`
 (`OPAA_INDEXING_CRAWL_*`, `OPAA_INDEXING_HTTP_*`), ihre Standardwerte in der
-[Konfigurationsreferenz](../../betrieb/konfiguration.md#alle-umgebungsvariablen).
+[Konfigurationsreferenz](../../betreiben/konfiguration.md#alle-umgebungsvariablen).
 
 - **Zieladressprüfung** vor jeder Anfrage und auf jedem Redirect
   ([Konnektoren](README.md#12-zieladressprüfung)).

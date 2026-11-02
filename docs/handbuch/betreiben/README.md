@@ -33,7 +33,7 @@ beim Identitätsanbieter.
 | Backend | Suche, Antwort, Indexierung, Rechte, Verwaltung | ja, eine oder mehrere Instanzen | [Backend-Laufzeitimage](images-und-laufzeit.md#backend-laufzeitimage) |
 | PostgreSQL mit pgvector | einziger Zustand: Dokumente, Vektoren, Volltext, Rechte, Chats, Protokolle | ja | [Datenbank](datenbank.md) |
 | Originalablage | Originale der Uploads, im Dateisystem (auch Netzlaufwerk) oder in einem S3-Objektspeicher wie MinIO | ja, sobald hochgeladen wird | [Originalablage](originalablage.md) |
-| Modelldienste | je Rolle ein OpenAI-kompatibler Endpunkt: Chat und Embedding (Pflicht), Reranking und Spracherkennung (optional) | Chat und Embedding | [Modelle](modelle.md) |
+| Modelldienste | je Rolle ein OpenAI-kompatibler Endpunkt: Chat und Embedding (Pflicht), Reranking und Spracherkennung (optional) | Chat und Embedding | [Modelle](modell-endpunkte.md) |
 | Identitätsanbieter | Anmeldung über OpenID Connect, etwa Keycloak; ohne ihn nur lokale Konten | nein | [Authentifizierung](authentifizierung.md) |
 | Mailserver | SMTP für Einladungen, Rücksetzlinks, Benachrichtigungen | nein | [E-Mail-Versand](../verwalten/e-mail.md) |
 | Quellen | angebunden über Konnektoren, etwa SMB-Freigaben, Nextcloud, Google Drive, SharePoint, Confluence, Feeds … | nein | [Konnektoren](../pflegen/konnektoren/README.md) |
@@ -85,8 +85,3 @@ Vorgabe ist eine Backend-Instanz; mehrere gleichrangige Instanzen gegen dieselbe
 | Logs, Metriken, Störungen | [Überwachung und Fehlerbehebung](ueberwachung-und-fehlerbehebung.md) |
 | mehrere Instanzen planen | [Mehrere Backend-Instanzen](mehrere-instanzen.md) |
 | Datenbank, Originalablage, Mailserver einrichten | [Datenbank](datenbank.md), [Originalablage](originalablage.md), [E-Mail-Versand](../verwalten/e-mail.md) |
-
-## Weiterführende Kapitel
-
-- Die Unterkapitel im [Wegweiser](#wegweiser)
-- [Konfiguration](konfiguration.md), [Modelle](modelle.md), [Authentifizierung](authentifizierung.md)

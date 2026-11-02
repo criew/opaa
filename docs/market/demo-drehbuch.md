@@ -591,7 +591,7 @@ Für die Teile 1 und 3 lohnen sich zwei Browserfenster, eines davon privat.
 - [`../../demo/README.md`](../../demo/README.md) — Installation mit einem Befehl, Nutzerkonten mit
   Passwörtern, Gruppen, Prompt-Bibliotheken und vorbereitete Chats der Demo, öffentliche Instanz,
   Korpus-Aktualisierung
-- [`../handbuch/netz-und-sicherheit.md`](../handbuch/betrieb/netz-und-sicherheit.md#härtung-für-erreichbare-deployments), Abschnitt „Härtung für erreichbare
+- [`../handbuch/netz-und-sicherheit.md`](../handbuch/betreiben/netz-und-sicherheit.md#härtung-für-erreichbare-deployments), Abschnitt „Härtung für erreichbare
   Deployments" — zwingend vor jedem über `localhost` hinaus erreichbaren Rollout dieser Demo
 - [`../../e2e/README.md`](../../e2e/README.md), Abschnitt „Demo-Smoke (#232)" — der automatisierte
   Nachweis der Frage-1-Invariante

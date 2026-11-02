@@ -168,7 +168,7 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 ## 8. Grenzen und Schutzmechanismen
 
 Parameter stehen unter `opaa.indexing.sharepoint.*` (`OPAA_INDEXING_SHAREPOINT_*`), ihre Standardwerte in der
-[Konfigurationsreferenz](../../betrieb/konfiguration.md#alle-umgebungsvariablen). Für OneDrive gelten dieselben.
+[Konfigurationsreferenz](../../betreiben/konfiguration.md#alle-umgebungsvariablen). Für OneDrive gelten dieselben.
 
 - **Obergrenzen.** Höchstens fünfzig Einträge im Umfang, einzelne Dokumentbibliotheken und Sites
   zusammen, und fünfzig Ordner je Dokumentbibliothek; beides ist fest.

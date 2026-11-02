@@ -22,13 +22,13 @@ lässt. Wie die Behörde den Reifegrad für ihr Vorhaben bewertet, entscheidet s
 
 | Merkmal | Beleg |
 |---|---|
-| Versionen | Vorab-Releases und finale Releases mit Versionsnummer, unveränderlich gebaut; solange die Hauptversion `0` ist, kann ein Funktionsrelease Handarbeit verlangen ([Versionen](../../handbuch/betrieb/releases-und-nachweise.md#versionen), [Release-Seite](https://github.com/criew/opaa/releases)) |
+| Versionen | Vorab-Releases und finale Releases mit Versionsnummer, unveränderlich gebaut; solange die Hauptversion `0` ist, kann ein Funktionsrelease Handarbeit verlangen ([Versionen](../../handbuch/betreiben/releases-und-nachweise.md#versionen), [Release-Seite](https://github.com/criew/opaa/releases)) |
 | Tests | automatische Tests von Backend und Frontend an jedem Pull Request, dazu browserbasierte End-to-End-Tests nach jeder Übernahme in den Hauptstand und nächtlich ([Build und CI](../../entwicklung/build-und-ci.md)) |
-| Suchqualität | gemessen gegen einen festen Testkorpus mit erwarteten Fundstellen; das Update-Paket nennt die Kennzahlen beider Versionen mit Messdatum ([Update-Paket](../../handbuch/betrieb/nachvollziehbarkeit.md#das-update-paket-eines-release), [Messverfahren](../../decisions/0011-search-quality-evaluation-harness.md)) |
+| Suchqualität | gemessen gegen einen festen Testkorpus mit erwarteten Fundstellen; das Update-Paket nennt die Kennzahlen beider Versionen mit Messdatum ([Update-Paket](../../handbuch/betreiben/nachvollziehbarkeit.md#das-update-paket-eines-release), [Messverfahren](../../decisions/0011-search-quality-evaluation-harness.md)) |
 | Wiederherstellung | nächtliche automatisierte Probe auf einem Testcluster ([Wiederherstellungsprobe](../09-betrieb-update/wiederherstellungsprobe.md#automatisierte-probe-im-projekt)) |
 | Barrierefreiheit | Prüfstand mit bekannten Einschränkungen ([Prüfstand](../08-nutzung/erklaerung-barrierefreiheit.md#prüfstand)) |
-| Nachvollziehbarkeit | Faktenblätter und Delta je Version, durch Prüfungen im Build mit dem Code gleich gehalten ([Was bei jeder Änderung geprüft wird](../../handbuch/betrieb/nachvollziehbarkeit.md#was-bei-jeder-änderung-geprüft-wird)) |
-| Lücken | die Handbuchkapitel nennen unter „Was nicht gebaut ist“ oder „Was es hier nicht gibt“, was fehlt, etwa in [Releases und Nachweise](../../handbuch/betrieb/releases-und-nachweise.md#was-nicht-gebaut-ist) |
+| Nachvollziehbarkeit | Faktenblätter und Delta je Version, durch Prüfungen im Build mit dem Code gleich gehalten ([Was bei jeder Änderung geprüft wird](../../handbuch/betreiben/nachvollziehbarkeit.md#was-bei-jeder-änderung-geprüft-wird)) |
+| Lücken | die [Roadmap](../../ROADMAP.md) nennt die offenen Ziele je Phase; das Handbuch beschreibt nur Gebautes |
 | Eindruck ohne eigene Daten | Demo-Instanz „Stadt Rheinfurt“ mit fiktivem Verwaltungsbestand, lokal installierbar ([Demo](../../../demo/README.md)) |
 
 **Referenzen:** Das Projekt nennt keine Behörden oder Unternehmen, die OPAA einsetzen, und keine

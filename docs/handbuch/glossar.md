@@ -30,7 +30,7 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | **Fundstellen-Anker** | Die Stelle eines Chunks maschinenlesbar: Seiten, Abschnittspfad, Folie, Blatt und Zeilen oder Nachricht, dazu je ein kurzes Zitat von Anfang und Ende; Grundlage für den Sprung an die Fundstelle |
 | **Textfassung** | Der beim Indexieren gewonnene Text eines Dokuments in Lesereihenfolge; „Dokument öffnen" zeigt ihn für Formate, die der Browser nicht anzeigen kann, an der Fundstelle |
 | **Fakten-Manifest** | Die Beschreibung im Code, welche Daten OPAA speichert, protokolliert, wem es sie zeigt, wohin es sie sendet und was voreingestellt ist; Prüfungen im Build halten sie mit dem Code gleich |
-| **Faktenblatt** | Ein aus dem Fakten-Manifest erzeugtes Dokument zu einem Thema, etwa Datenflüsse oder Fristen, mit Version und Commit im Kopf ([Nachvollziehbarkeit](betrieb/nachvollziehbarkeit.md)) |
+| **Faktenblatt** | Ein aus dem Fakten-Manifest erzeugtes Dokument zu einem Thema, etwa Datenflüsse oder Fristen, mit Version und Commit im Kopf ([Nachvollziehbarkeit](betreiben/nachvollziehbarkeit.md)) |
 | **Modellrolle** | Eine der vier Aufgaben, für die ein externes Modell konfiguriert wird: Chat, Embedding, Reranking, Transkription |
 | **Rechteprofil** | Eine Gruppe samt der Bibliotheken, die sie lesen darf; der voreingestellte Kontext des Diagnosewerkzeugs |
 | **Diagnosesperre** | Grundzustand jeder Bibliothek, der sie aus einer Diagnose im Rechtekontext einer benannten Person heraushält |

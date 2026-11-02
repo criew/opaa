@@ -2,7 +2,7 @@
 
 Was die Systemverwaltung für die ganze Installation einstellt, und was die Revision prüft. Jede
 Seite nennt oben, wer es darf. Was der Betrieb auf dem Server einstellt, steht unter
-[Betrieb](../betrieb/README.md).
+[Betrieb](../betreiben/README.md).
 
 ## Verwalten
 

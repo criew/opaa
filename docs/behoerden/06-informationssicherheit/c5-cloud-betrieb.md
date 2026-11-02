@@ -25,7 +25,7 @@ wird es nie.** Das Testat erhält der Anbieter, der OPAA betreibt.
 OPAA ist so gebaut und dokumentiert, dass ein Anbieter die Prüfung mit OPAA im Prüfumfang bestehen
 kann.
 Für Identitäten, Regelbetrieb, Kryptographie, Netz, Entwicklung, Sicherheitsvorfälle und
-Notfallvorsorge kann er das [Handbuch](../../handbuch/betrieb/README.md), die
+Notfallvorsorge kann er das [Handbuch](../../handbuch/betreiben/README.md), die
 [Sicherheitsnachweise](sicherheitsnachweise.md) und die Faktenblätter vorlegen, etwa
 {{faktenblatt:datenfluesse}} und {{faktenblatt:rollensicht}}. Kein Prüfbereich ist durch OPAA allein
 erfüllt.
@@ -35,10 +35,10 @@ erfüllt.
 1. **Testat erfragen:** Fassung, Typ 1 oder Typ 2 (Prüfung zu einem Stichtag oder über einen
    Zeitraum), Prüfzeitraum, und ob OPAA ausdrücklich im Prüfumfang liegt.
 2. **Betrieb erfragen:** eingesetzte OPAA-Version, ob ihre Linie noch unterstützt wird
-   ([Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume)) und wie schnell Sicherheitsupdates eingespielt werden; welche Modelldienste wo laufen; zugesagte Wiederherstellungszeit (RTO) und letzte Probe; wie
+   ([Supportzeiträume](../../handbuch/betreiben/releases-und-nachweise.md#linien-und-supportzeiträume)) und wie schnell Sicherheitsupdates eingespielt werden; welche Modelldienste wo laufen; zugesagte Wiederherstellungszeit (RTO) und letzte Probe; wie
    die Daten bei einem Anbieterwechsel zurückkommen.
 3. **Eigene Installation verlangen:** Eine OPAA-Installation führt genau eine Organisation
-   ([Eine Organisation](../../handbuch/betrieb/README.md#eine-organisation)); mehrere Behörden trennt nur
+   ([Eine Organisation](../../handbuch/betreiben/README.md#eine-organisation)); mehrere Behörden trennt nur
    je eine eigene Installation.
 4. **Eigenen Anteil erfüllen:** Rechte in der Anwendung vergeben, keine Inhalte über dem vereinbarten
    Schutzbedarf anbinden ([Nutzungsrichtlinie](../08-nutzung/nutzungsrichtlinie.md)), den

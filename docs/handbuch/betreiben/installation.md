@@ -4,7 +4,7 @@
 
 Eine OPAA-Instanz mit leerer Datenbank ist erst nutzbar, wenn sie eingerichtet ist: erstes Konto
 der Systemverwaltung und Anmeldeverfahren, dazu nach Wahl Chat-Modell, Embedding-Modell,
-Rerank-Modell, das Transkriptionsmodell der [Spracheingabe](modelle.md#spracheingabe-einschalten), der
+Rerank-Modell, das Transkriptionsmodell der [Spracheingabe](modell-endpunkte.md#spracheingabe-einschalten), der
 Mailserver für den [E-Mail-Versand](../verwalten/e-mail.md) und das [Branding](../verwalten/branding.md). Bis dahin steht sie im
 **Installationsmodus** und
 bietet nur die Installation an. Eingerichtet wird im Browser mit dem
@@ -91,10 +91,10 @@ Transkriptionsmodell.
 |---|---|---|---|---|
 | Erstes Konto (`FIRST_ADMIN`) | ja | E-Mail-Adresse, Anzeigename, Passwort | zustellbar geformte Adresse, nicht `admin@opaa.local`; Passwortrichtlinie | Benutzerverwaltung |
 | Anmeldeverfahren (`SIGN_IN`) | ja | nur lokale Konten, oder zusätzlich ein OIDC-Anbieter: Issuer, Client-ID, JWK-Set-Adresse | Zielprüfung, Discovery und JWK-Set erreichbar | Anbieterverwaltung |
-| Chat-Modell (`CHAT_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Temperatur, Antwortlänge | Verbindungstest wie in der Modellverwaltung | Modelle ([Chat-Modelle in der Oberfläche anlegen](modelle.md#chat-modelle-in-der-oberfläche-anlegen)) |
-| Embedding-Modell (`EMBEDDING_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Eingabegrenze | Probeeinbettung; ihr Ergebnis legt die Zahl der Dimensionen fest | Modelle, Reiter „Einbettung": erstes Modell festlegen ([Erstes Modell festlegen](modelle.md#erstes-modell-festlegen)), später mit Neueinbettung wechseln ([Modell wechseln](modelle.md#modell-wechseln)) |
-| Rerank-Modell (`RERANK_MODEL`) | nein | Adresse ohne den Pfad `/rerank`, Modellname, Zugangsschlüssel | Adressprüfung der Modelle; dieselbe Probe wie „Verbindung testen“ in der Modellverwaltung, eine Rerank-Anfrage mit einem Prüftext | Modelle, Reiter „Reranking“ ([Rerank-Modell und Transkriptionsmodell in der Oberfläche](modelle.md#rerank-modell-und-transkriptionsmodell-in-der-oberfläche)) |
-| Transkriptionsmodell (`TRANSCRIPTION_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Sprache | Probe wie „Verbindung testen“ unter Modelle → Spracheingabe, ohne Aufnahme | Modelle, Reiter „Spracheingabe“ ([Spracheingabe einschalten](modelle.md#spracheingabe-einschalten)) |
+| Chat-Modell (`CHAT_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Temperatur, Antwortlänge | Verbindungstest wie in der Modellverwaltung | Modelle ([Chat-Modelle](modell-endpunkte.md#chat-modelle)) |
+| Embedding-Modell (`EMBEDDING_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Eingabegrenze | Probeeinbettung; ihr Ergebnis legt die Zahl der Dimensionen fest | Modelle, Reiter „Einbettung": erstes Modell festlegen ([Erstes Modell festlegen](modell-endpunkte.md#erstes-modell-festlegen)), später mit Neueinbettung wechseln ([Modell wechseln](modell-endpunkte.md#modell-wechseln)) |
+| Rerank-Modell (`RERANK_MODEL`) | nein | Adresse ohne den Pfad `/rerank`, Modellname, Zugangsschlüssel | Adressprüfung der Modelle; dieselbe Probe wie „Verbindung testen“ in der Modellverwaltung, eine Rerank-Anfrage mit einem Prüftext | Modelle, Reiter „Reranking“ ([Rerank- und Transkriptionsmodell](modell-endpunkte.md#rerank--und-transkriptionsmodell)) |
+| Transkriptionsmodell (`TRANSCRIPTION_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Sprache | Probe wie „Verbindung testen“ unter Modelle → Spracheingabe, ohne Aufnahme | Modelle, Reiter „Spracheingabe“ ([Spracheingabe einschalten](modell-endpunkte.md#spracheingabe-einschalten)) |
 | E-Mail-Versand (`MAIL`) | nein | Server, Port, Verschlüsselung, Benutzername, Passwort, Absenderadresse, Absendername | Adressprüfung der Mailserver; Verbindung zum Server, mit Anmeldung, wenn ein Benutzername gesetzt ist, ohne eine Nachricht zu senden; auf Wunsch eine Testnachricht an eine angegebene Adresse | E-Mail ([E-Mail-Versand](../verwalten/e-mail.md)) |
 | Branding (`BRANDING`) | nein | Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe, Farbschema-Vorgabe; keine Bilder | Regeln der Branding-Verwaltung, ohne Verbindung | Branding ([Branding](../verwalten/branding.md)) |
 
@@ -133,7 +133,7 @@ Verbindungstest, Probeeinbettung und Probe, auch eine Adresse, die die Modellver
 gespeichert hat: Adressen in internen, Loopback- oder Link-Local-Bereichen werden abgelehnt, ohne
 dass eine Anfrage hinausgeht. Ein Modell im eigenen Netz, etwa Ollama im Compose-Stapel, gibt der
 Betrieb mit Host und Port in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST` frei (`ollama:11434`); die
-Liste der Quellen gibt kein Modell frei ([Adressprüfung der Modelle](modelle.md#adressprüfung-der-modelle)). Die Probeeinbettung folgt keiner Weiterleitung, wartet höchstens zehn Sekunden, wiederholt
+Liste der Quellen gibt kein Modell frei ([Adressprüfung der Modelle](modell-endpunkte.md#adressprüfung-der-modelle)). Die Probeeinbettung folgt keiner Weiterleitung, wartet höchstens zehn Sekunden, wiederholt
 sich nicht und liest nur eine begrenzte Antwort. Zwischen Prüfung und Anfrage löst OPAA den
 Hostnamen erneut auf; wer den Namensdienst des Modells kontrolliert, könnte die Anfrage in diesem
 Moment noch umlenken. Einen festen Endpunkt im eigenen Netz trifft das nicht.
@@ -172,7 +172,7 @@ Reranking aus, ohne Transkriptionsmodell die Spracheingabe; ist der E-Mail-Versa
 bleibt er aus; ist das Branding übersprungen oder in jedem Feld leer, gilt der
 OPAA-Standard, und der Abschluss schreibt dafür nichts. Vor dem Embedding-Modell gibt es keine
 Vektorablage; ein späterer Wechsel des Embedding-Modells läuft in der Modellverwaltung, mit
-Neueinbettung ([Modelle](modelle.md#modell-wechseln)). Danach
+Neueinbettung ([Modelle](modell-endpunkte.md#modell-wechseln)). Danach
 meldet sich die Person mit dem ersten Konto auf der regulären Anmeldeseite an, mit E-Mail-Adresse
 und Passwort; alle Instanzen übernehmen das ohne Neustart. Mit den lokalen Konten steht „Passwort
 vergessen“ an, sobald `OPAA_PUBLIC_BASE_URL` und der [E-Mail-Versand](../verwalten/e-mail.md) eingerichtet sind,
@@ -233,9 +233,9 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
   weiter“ fragt den Endpunkt nach seinen Modellen und sendet keine Aufnahme. Unter den Anbietern
   steht nur OpenAI als Cloud-Dienst; die Kachel und nach ihrer Wahl ein Hinweis sagen, dass
   Aufnahmen dann an einen externen Dienst außerhalb des Hauses gehen
-  ([Externer Anbieter](modelle.md#externer-anbieter)). Eine Bestätigung zur
+  ([Externer Anbieter](modell-endpunkte.md#externer-anbieter)). Eine Bestätigung zur
   Mitbestimmung verlangt der Schritt nicht ([Spracheingabe und
-  Mitbestimmung](modelle.md#spracheingabe-und-mitbestimmung)). Der Abschluss nennt, ob er die
+  Mitbestimmung](modell-endpunkte.md#spracheingabe-und-mitbestimmung)). Der Abschluss nennt, ob er die
   Spracheingabe einschaltet.
 - **E-Mail-Versand.** Der Schritt hat die Felder, Hinweise und Regeln von „Administration →
   E-Mail → SMTP-Zugang“. „Prüfen und weiter“ baut die Verbindung auf und meldet sich an, ohne zu
@@ -372,7 +372,7 @@ Prüfungen, alles oder nichts.
   die Antwortdatei nicht an.
 - Angaben späterer Schritte (`outboundProxy`) wertet diese Version nicht aus.
 - Ohne `maxInputTokens` gilt eine Eingabegrenze von 2.048 Tokens
-  ([Eingabegrenze des Embedding-Modells](modelle.md#eingabegrenze-des-embedding-modells)).
+  ([Eingabegrenze des Embedding-Modells](modell-endpunkte.md#eingabegrenze-des-embedding-modells)).
 
 ## Fehlerbilder
 
@@ -413,15 +413,15 @@ Fehler im Log; Anmeldung, Konten, Spaces, Bibliotheken und die Verwaltung arbeit
 
 | Fehlt | Wirkung | Abhilfe |
 |---|---|---|
-| Chat-Modell | Fragen im Chat bekommen keine Antwort; der Chat zeigt „Noch kein Chat-Modell eingerichtet“, für die Systemverwaltung mit „Chat-Modell einrichten“ | unter Modelle → Chat-Modelle ein Modell anlegen und aktivieren, ohne Neustart ([Chat-Modelle in der Oberfläche anlegen](modelle.md#chat-modelle-in-der-oberfläche-anlegen)) |
-| Embedding-Modell | keine Vektorablage: Indexierung, Upload und Suche antworten mit dem Hinweis, dass noch kein Embedding-Modell eingerichtet ist; geplante Läufe ruhen, von einer Quelle gemeldete Änderungen verfallen nach kurzer Zeit (der nächste Lauf nach dem Festlegen deckt sie ab). Fragen, die in Bibliotheken suchen, bekommen denselben Hinweis; der Chat zeigt „Noch kein Embedding-Modell eingerichtet“ | unter Modelle → Einbettung das erste Modell festlegen, ohne Neustart ([Erstes Modell festlegen](modelle.md#erstes-modell-festlegen)) |
+| Chat-Modell | Fragen im Chat bekommen keine Antwort; der Chat zeigt „Noch kein Chat-Modell eingerichtet“, für die Systemverwaltung mit „Chat-Modell einrichten“ | unter Modelle → Chat-Modelle ein Modell anlegen und aktivieren, ohne Neustart ([Chat-Modelle](modell-endpunkte.md#chat-modelle)) |
+| Embedding-Modell | keine Vektorablage: Indexierung, Upload und Suche antworten mit dem Hinweis, dass noch kein Embedding-Modell eingerichtet ist; geplante Läufe ruhen, von einer Quelle gemeldete Änderungen verfallen nach kurzer Zeit (der nächste Lauf nach dem Festlegen deckt sie ab). Fragen, die in Bibliotheken suchen, bekommen denselben Hinweis; der Chat zeigt „Noch kein Embedding-Modell eingerichtet“ | unter Modelle → Einbettung das erste Modell festlegen, ohne Neustart ([Erstes Modell festlegen](modell-endpunkte.md#erstes-modell-festlegen)) |
 
 Readiness und `/actuator/health` bleiben `UP`; die Health Groups `chat-model`, `embedding-model`
 und `vector-store` melden `UNKNOWN` mit dem Detail `NOT_CONFIGURED`. Wer Modelle überwacht, wertet
 dieses Detail aus (Health Groups mit Zugangstoken) oder mit einer angemeldeten Sitzung
 `GET /api/v1/search/availability` (`chatModelConfigured`, `embeddingModelConfigured`); eine Überwachung nur auf `DOWN` bemerkt ein nie
 eingerichtetes Modell nicht. Eine Vektortabelle mit Abschnitten, aber ohne Embedding-Modell bleibt
-ein Fehler (`DOWN`, [Fehlerbilder der Modelle](modelle.md#fehlerbilder)).
+ein Fehler (`DOWN`, [Fehlerbilder der Modelle](modell-endpunkte.md#fehlerbilder)).
 
 ## Konfiguration
 
@@ -446,8 +446,3 @@ die API jedes Modell vorab als eine Prüfung zählt, auch wenn sie die Datei dan
 10 Testnachrichten in 10 Minuten, für alle Clients zusammen; die Antwortdatei beim Start zählt bei
 keinem dieser Budgets; ohne Eintrag in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` nur die Ports 25,
 465, 587 und 2525.
-
-## Weiterführende Kapitel
-
-- [Konfiguration](konfiguration.md), [Authentifizierung](authentifizierung.md), [Modelle](modelle.md),
-  [E-Mail-Versand](../verwalten/e-mail.md), [Branding](../verwalten/branding.md)

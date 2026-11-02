@@ -46,6 +46,6 @@ Leistungs- oder Disziplinarfragen.
 - Einzelne Abfragen protokolliert OPAA nicht, weder Frage noch Treffer. Ins Nachweisprotokoll kommt,
   was die Reichweite ändert: Tokens, Freigaben, Einstellungen.
 - Hinter einem Reverse Proxy braucht die Netzbeschränkung die vertrauten Proxys des Betriebs
-  ([Vertraute Proxys](../betrieb/netz-und-sicherheit.md#vertraute-proxys-und-client-adresse)).
+  ([Vertraute Proxys](../betreiben/netz-und-sicherheit.md#vertraute-proxys-und-client-adresse)).
 - Nach einer Rücksicherung Schalter, Grenzwerte, Freigaben und gesperrte Tokens prüfen; bis dahin
   ausschalten.

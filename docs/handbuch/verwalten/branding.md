@@ -10,10 +10,10 @@ sofort für alle wirksam — ohne Neustart, ohne neues Image — und steht im Na
 gelassenes Feld bedeutet nicht „leer", sondern „der OPAA-Standard gilt wieder", und zwar je Feld:
 Wer nur ein Logo hinterlegt, behält den Produktnamen „OPAA". Texte, Akzentfarbe und
 Farbschema-Vorgabe lassen sich schon bei der Einrichtung im optionalen Schritt Branding des
-[Einrichtungs-Assistenten](../betrieb/installation.md#einrichtungs-assistent-im-browser) festlegen, mit
+[Einrichtungs-Assistenten](../betreiben/installation.md#einrichtungs-assistent-im-browser) festlegen, mit
 denselben Regeln; die Bilder nur hier. Welche Anmeldewege die Anmeldeseite
 zeigt und in welcher Reihenfolge, steht unter
-[Authentifizierung](../betrieb/authentifizierung.md#anmeldewege-im-betriebsmodus-oidc).
+[Authentifizierung](../betreiben/authentifizierung.md#anmeldewege-im-betriebsmodus-oidc).
 
 ## Regeln für die Texte
 

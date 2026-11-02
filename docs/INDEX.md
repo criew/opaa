@@ -83,7 +83,7 @@ menschlicher Freigabe.
 
 ### E · Modelle & zentrale Steuerung
 
-**[`handbuch/betrieb/modelle.md`](handbuch/betrieb/modelle.md)** · **[ADR-0067](./decisions/0067-modellanbindung-und-verwaltete-chat-modelle.md)** ·
+**[`handbuch/betreiben/modell-endpunkte.md`](handbuch/betreiben/modell-endpunkte.md)** · **[ADR-0067](./decisions/0067-modellanbindung-und-verwaltete-chat-modelle.md)** ·
 **[Roadmap](./ROADMAP.md)**
 
 Jede OpenAI-kompatible Schnittstelle · lokal betriebene Modelle als Voreinstellung · Modellverwaltung ·
@@ -100,7 +100,7 @@ Berechtigungsdurchsetzung zur Abfragezeit · Organisation als harte Mandantengre
 
 ### G · Sicherheit, Nachweis & Prüfbarkeit
 
-**[`handbuch/betrieb/nachvollziehbarkeit.md`](./handbuch/betrieb/nachvollziehbarkeit.md)** · **[ADR-0068](./decisions/0068-mitbestimmungsfaehigkeit.md)** ·
+**[`handbuch/betreiben/nachvollziehbarkeit.md`](handbuch/betreiben/nachvollziehbarkeit.md)** · **[ADR-0068](./decisions/0068-mitbestimmungsfaehigkeit.md)** ·
 **[Roadmap](./ROADMAP.md)**
 
 Revisionssicheres Protokoll · Vollständigkeit nach DSGVO einschließlich Löschrecht und Datenexport · sichere
@@ -123,8 +123,8 @@ an self-hosted Team-Chats · einheitliche Anmeldung und Rechte über alle Kanäl
 
 ### J · Betrieb & Deployment
 
-**[`handbuch/betrieb/README.md`](handbuch/betrieb/README.md)** ·
-**[`handbuch/betrieb/kubernetes.md`](handbuch/betrieb/kubernetes.md)** · **[Roadmap](./ROADMAP.md)**
+**[`handbuch/betreiben/README.md`](handbuch/betreiben/README.md)** ·
+**[`handbuch/betreiben/kubernetes.md`](handbuch/betreiben/kubernetes.md)** · **[Roadmap](./ROADMAP.md)**
 
 Docker Compose · Kubernetes mit Hochverfügbarkeit · Betrieb ohne Netzanbindung · mandantenfähiger Betrieb
 durch Rechenzentren · Konfiguration, Sicherung, Aktualisierung.
@@ -133,7 +133,7 @@ durch Rechenzentren · Konfiguration, Sicherung, Aktualisierung.
 
 **[Roadmap](./ROADMAP.md)** ·
 **[`behoerden/README.md`](./behoerden/README.md)** ·
-**[`handbuch/betrieb/nachvollziehbarkeit.md`](./handbuch/betrieb/nachvollziehbarkeit.md)**
+**[`handbuch/betreiben/nachvollziehbarkeit.md`](handbuch/betreiben/nachvollziehbarkeit.md)**
 
 Leichte Sprache und Amtssprache · Barrierefreiheit nach BITV · Revisionssicherheit im Verwaltungssinn ·
 Anbindung an die elektronische Akte und an Dokumentenmanagement · Unterlagen entlang der Behördenreise,
@@ -154,17 +154,17 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
   - Verwalten und Prüfen ([`verwalten/`](handbuch/verwalten/README.md)): eine Seite je Aufgabe der
     Systemverwaltung und der Revision
   - Nachschlagen ([`nachschlagen/`](handbuch/nachschlagen/README.md)): Rechte-Matrix
-  - Betrieb ([`betrieb/`](handbuch/betrieb/README.md), Bausteine und Wegweiser) mit
-    [`images-und-laufzeit.md`](handbuch/betrieb/images-und-laufzeit.md),
-    [`netz-und-sicherheit.md`](handbuch/betrieb/netz-und-sicherheit.md) (Härtung),
-    [`sicherung-und-wiederherstellung.md`](handbuch/betrieb/sicherung-und-wiederherstellung.md),
-    [`aktualisierung.md`](handbuch/betrieb/aktualisierung.md),
-    [`ueberwachung-und-fehlerbehebung.md`](handbuch/betrieb/ueberwachung-und-fehlerbehebung.md),
-    [`docker-compose.md`](handbuch/betrieb/docker-compose.md),
-    [`kubernetes.md`](handbuch/betrieb/kubernetes.md) (Helm-Chart),
-    [`konfiguration.md`](handbuch/betrieb/konfiguration.md) (Umgebungsvariablen, Grenzwerte),
-    [`modelle.md`](handbuch/betrieb/modelle.md),
-    [`authentifizierung.md`](handbuch/betrieb/authentifizierung.md)
+  - Betreiben ([`betreiben/`](handbuch/betreiben/README.md), Bausteine und Wegweiser) mit
+    [`images-und-laufzeit.md`](handbuch/betreiben/images-und-laufzeit.md),
+    [`netz-und-sicherheit.md`](handbuch/betreiben/netz-und-sicherheit.md) (Härtung),
+    [`sicherung-und-wiederherstellung.md`](handbuch/betreiben/sicherung-und-wiederherstellung.md),
+    [`aktualisierung.md`](handbuch/betreiben/aktualisierung.md),
+    [`ueberwachung-und-fehlerbehebung.md`](handbuch/betreiben/ueberwachung-und-fehlerbehebung.md),
+    [`docker-compose.md`](handbuch/betreiben/docker-compose.md),
+    [`kubernetes.md`](handbuch/betreiben/kubernetes.md) (Helm-Chart),
+    [`konfiguration.md`](handbuch/betreiben/konfiguration.md) (Umgebungsvariablen, Grenzwerte),
+    [`modelle.md`](handbuch/betreiben/modell-endpunkte.md),
+    [`authentifizierung.md`](handbuch/betreiben/authentifizierung.md)
   - Konten und Rechte ([`konten-und-rechte/`](handbuch/konten-und-rechte/)):
     [`benutzerverwaltung.md`](handbuch/konten-und-rechte/benutzerverwaltung.md),
     [`berechtigungen.md`](handbuch/konten-und-rechte/berechtigungen.md)
@@ -296,11 +296,11 @@ Den tatsächlichen Stand führt der [Gesamtstand](./fortschritt/gesamtstand.md).
 
 **Läuft OPAA ohne Internetverbindung?**
 → Ja, das ist ein vorgesehenes Szenario. Siehe
-[Images und Laufzeit](./handbuch/betrieb/images-und-laufzeit.md)
+[Images und Laufzeit](handbuch/betreiben/images-und-laufzeit.md)
 
 **Welche Modelle werden unterstützt?**
 → Jede OpenAI-kompatible Schnittstelle, einschließlich lokal betriebener Modelle. Siehe
-[Modelle](./handbuch/betrieb/modelle.md)
+[Modelle](handbuch/betreiben/modell-endpunkte.md)
 
 **Können mehrere Häuser dieselbe Installation nutzen?**
 → Ja, die Organisation ist die harte Mandantengrenze. Siehe

@@ -127,11 +127,3 @@ SELECT format('%I.%I', n.nspname, c.relname) AS tabelle,
 **Messung:** RTO der Probe ist `t4 − t0`, RPO `tA − tS` (im Betrieb höchstens der Abstand zweier
 Sicherungen). Größe von Datenbank und Originalen gehört zum Ergebnis; nur eine Probe mit
 Produktivmenge belegt die echte Wiederherstellungszeit. Danach Ziel und Testsicherungen löschen.
-
-## Weiterführende Kapitel
-
-- [Docker Compose](docker-compose.md#sicherung-und-wiederherstellung) und
-  [Kubernetes](kubernetes.md#sicherung-und-wiederherstellung) — die Befehle je Betriebsweg
-- [Datenbank](datenbank.md) und [Originalablage](originalablage.md#sicherung-und-wiederherstellung)
-  — was die beiden Bestände beim Sichern verlangen
-- [Aktualisierung](aktualisierung.md) — vor jedem Update sichern

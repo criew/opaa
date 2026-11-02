@@ -10,7 +10,7 @@ Diese Liste gehört vor den ersten Tag mit echten Personen, nicht danach.
 ## Klären
 
 - [ ] **Personalvertretung beteiligen.** Sie bekommt einen Testzugang und die Auskunft über die
-      Datenerhebung ([Nachvollziehbarkeit](../betrieb/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation)).
+      Datenerhebung ([Nachvollziehbarkeit](../betreiben/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation)).
 - [ ] **Externe Modellanbieter** mit dem Datenschutz klären, bevor ein solches Modell aktiv wird
       ([Modelle verwalten](modelle.md)).
 - [ ] **Spracheingabe** und **externe KI-Werkzeuge** erst nach dieser Klärung einschalten

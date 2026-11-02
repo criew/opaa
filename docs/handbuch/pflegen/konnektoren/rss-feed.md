@@ -155,7 +155,7 @@ keinen extrahierbaren Text, werden seine Anlagen nicht indiziert.
 ## 7. Grenzen und Schutzmechanismen
 
 Parameter stehen unter `opaa.indexing.rss.*` (`OPAA_INDEXING_RSS_*`), ihre Standardwerte in der
-[Konfigurationsreferenz](../../betrieb/konfiguration.md#alle-umgebungsvariablen).
+[Konfigurationsreferenz](../../betreiben/konfiguration.md#alle-umgebungsvariablen).
 
 - **Zieladressprüfung** auf Feed, Detailseite, Anlage und jedem Redirect
   ([Konnektoren](README.md#12-zieladressprüfung)).

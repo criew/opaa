@@ -251,8 +251,8 @@ format-pipelines` bleibt als zweite, von der Fenstergröße unabhängige Verteid
 zitatprüfenden Kontos bei, selbst falls eine künftige Änderung das Fenster wieder verengen sollte.
 
 Einordnung dieser vier Nutzer neben den übrigen Testkonto-Mustern des Repos (Keycloak-Realm-Nutzer,
-Quellenzugangsdaten): [`docs/handbuch/betrieb/authentifizierung.md`, Abschnitt „Testkonten im
-Überblick"](../docs/handbuch/betrieb/authentifizierung.md#testkonten-im-überblick).
+Quellenzugangsdaten): [`docs/handbuch/betreiben/authentifizierung.md`, Abschnitt „Testkonten im
+Überblick"](../docs/handbuch/betreiben/authentifizierung.md#testkonten-im-überblick).
 
 ### KI-Stub statt echtem Modell
 
@@ -559,7 +559,7 @@ lassen.
   und löscht die selbst angelegten, damit kein späterer Chat-Test in dieser Suite (insbesondere
   `space-chats.spec.ts`) auf einem hier hinterlassenen Zwischenstand sitzt. Anders als das Issue
   ursprünglich annahm, läuft im Compose-Stack dieser Suite **kein** eigener `ollama`-Dienst (siehe
-  `docs/handbuch/betrieb/konfiguration.md`, `OPAA_OLLAMA_BASE_URL` - auch der reguläre `docker-compose.yml`-Stack
+  `docs/handbuch/betreiben/konfiguration.md`, `OPAA_OLLAMA_BASE_URL` - auch der reguläre `docker-compose.yml`-Stack
   enthält keinen); der positive Verbindungstest zielt deshalb auf `ai-stub`, denselben
   OpenAI-kompatiblen Ersatz, den auch das vom Seed übernommene Modell schon verwendet.
 

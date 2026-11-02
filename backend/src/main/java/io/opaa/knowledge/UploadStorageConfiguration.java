@@ -48,7 +48,7 @@ public class UploadStorageConfiguration {
     }
     throw new IllegalStateException(
         ("Unknown storage backend \"%s\" configured for opaa.upload.store. "
-                + "Available are \"%s\" and \"%s\". See docs/handbuch/betrieb/originalablage.md.")
+                + "Available are \"%s\" and \"%s\". See docs/handbuch/betreiben/originalablage.md.")
             .formatted(
                 store,
                 FilesystemUploadedOriginalStore.STORE_NAME,

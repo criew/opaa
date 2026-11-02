@@ -413,7 +413,7 @@ Bibliothek, kein Verwaltungsrecht. Lesen genügt VIEWER.
   ist die Bibliothek, eine Sammelzuweisung teilt sich eine Korrelationsreferenz. Ein identischer
   Wert, der bereits steht, ist keine Änderung. Aus der Ereignisfolge einer Bibliothek lässt sich ihr
   manueller Stand nach einer Wiederherstellung rekonstruieren; das Verfahren steht unter
-  [Sicherung und Wiederherstellung](../../betrieb/sicherung-und-wiederherstellung.md).
+  [Sicherung und Wiederherstellung](../../betreiben/sicherung-und-wiederherstellung.md).
 
 Für Konnektorbibliotheken gilt dasselbe; der Wert hängt am Dokument, nicht an der Datei, und
 überlebt eine Neuaufnahme.
@@ -589,7 +589,7 @@ konfigurierbar.
 
 Eine Installation, die nur Fragen und Antworten zeigen soll, etwa eine Demo, kann die Metadaten
 abschalten (`OPAA_FEATURES_METADATA_ENABLED=false`, wirkt nach einem Neustart; allgemeine Regeln in
-[Konfiguration](../../betrieb/konfiguration.md#funktionen-abschalten)). Dann gilt:
+[Konfiguration](../../betreiben/konfiguration.md#funktionen-abschalten)). Dann gilt:
 
 - **Nur der Titel bleibt.** Ein neu aufgenommenes Dokument bekommt seinen Titel wie bisher; er steht
   im Beleg und im Kontextpräfix. Dokumentart, Datum/Stand, Formatfelder, Bibliotheksfelder und

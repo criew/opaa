@@ -182,17 +182,3 @@ Provenance am Image ab, darunter die genauen Basis-Images, aus denen es gebaut i
 - **Beiträge:** Wer Änderungen ins Projekt einbringen will, unterzeichnet einmalig das Contributor
   License Agreement (CLA). Ohne CLA pflegt die Behörde eine eigene Abweichung bei jedem Update
   selbst.
-
-## Was nicht gebaut ist
-
-- Eine Ablage auf openCode, der Plattform der öffentlichen Verwaltung für quelloffene Software. Das
-  Repository bringt Spiegel und Metadaten für das Softwareverzeichnis mit; eingerichtet ist die
-  Ablage nicht, weil openCode Projekte einem Träger der öffentlichen Verwaltung zuordnet
-  ([#3041](https://github.com/criew/opaa/issues/3041)). Bezugsquelle für Code, Images und
-  Update-Paket bleibt GitHub.
-
-## Weiterführende Kapitel
-
-- [Images und Laufzeit](images-und-laufzeit.md) — Images und Versionen
-- [Aktualisierung](aktualisierung.md) — Ablauf eines Updates
-- [Nachvollziehbarkeit](nachvollziehbarkeit.md) — Faktenblätter und Update-Paket im Einzelnen

@@ -28,7 +28,7 @@ nicht für den Betrieb gedacht.
 ## Installation
 
 Die Reihenfolge entspricht dem Handbuch, Kapitel „Kubernetes“, Abschnitt „Installation“
-([`docs/handbuch/betrieb/kubernetes.md`](../../../docs/handbuch/betrieb/kubernetes.md#installation)), das jeden Schritt
+([`docs/handbuch/betreiben/kubernetes.md`](../../../docs/handbuch/betreiben/kubernetes.md#installation)), das jeden Schritt
 ausführlich beschreibt.
 
 **1. Namespace anlegen**, mit Pod Security Admission auf `restricted`. Der Chart läuft ohne Ausnahme
@@ -67,7 +67,7 @@ Nur während eines Schlüsselwechsels gesetzt werden `secrets.credentialsEncrypt
 (`OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS`) und `secrets.settingsEncryptionPreviousKeys`
 (`OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS`): die abgelösten Schlüssel, durch Kommas getrennt. Sie
 entschlüsseln nur noch; das Backend verschlüsselt den Bestand mit dem neuen Schlüssel neu. Ablauf in
-[Netz und Sicherheit](../../../docs/handbuch/betrieb/netz-und-sicherheit.md#schlüsselwechsel).
+[Netz und Sicherheit](../../../docs/handbuch/betreiben/netz-und-sicherheit.md#schlüsselwechsel).
 
 **4. Werte-Datei schreiben.** `opaa-werte.yaml` braucht mindestens die Werte aus
 [`ci/minimal-values.yaml`](ci/minimal-values.yaml), mit eigenen Geheimnissen: Die Testwerte der

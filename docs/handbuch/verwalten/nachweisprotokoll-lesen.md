@@ -40,7 +40,7 @@ Systemverwaltung unter [Datenschutz einstellen](datenschutz.md) ein.
 **Gut zu wissen:**
 
 - Ob das Protokoll eines Monats unverändert ist, prüft die Revision über die Prüfsummenkette
-  ([Nachvollziehbarkeit](../betrieb/nachvollziehbarkeit.md#prüfsummenkette-und-monatssiegel)).
+  ([Nachvollziehbarkeit](../betreiben/nachvollziehbarkeit.md#prüfsummenkette-und-monatssiegel)).
 - Wer wann ein Objekt lesen durfte, sagt nicht das Protokoll, sondern die
   [Stichtagsauskunft](stichtagsauskunft.md).
 - Die Aufbewahrung beträgt ab Werk 36 Monate, durch die Systemverwaltung einstellbar von 12 bis

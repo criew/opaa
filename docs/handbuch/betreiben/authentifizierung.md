@@ -794,7 +794,3 @@ weist deshalb jedes seiner Token ab ([Tokenprüfung](#adressprüfung-und-tokenpr
 Anbieter einen Audience-Mapper (oder die gleichwertige Einstellung) am Client einrichten, der die
 Client-ID der Anbieterzeile in `aud` einträgt. Ein zusätzlicher Scope hilft nur, wenn der Anbieter
 ihn dem Client als Standard-Scope zuordnet: Die Anmeldung fordert fest `openid profile email` an.
-
-## Weiterführende Kapitel
-
-- [Modelle](modelle.md) und [Branding](../verwalten/branding.md) — die Nachbarkapitel im Betriebsteil

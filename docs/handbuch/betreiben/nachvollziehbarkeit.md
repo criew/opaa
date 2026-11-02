@@ -485,15 +485,3 @@ jedem Release. Gelesen werden sie im Update-Paket dieser Version, wo jeder Verwe
 Übersicht `docs/behoerden/README.md` (im Paket `vorlagen/README.md`) erklärt Aufbau, Kopfvermerk und
 woher das Paket kommt. Wie Entwickler das Manifest nachpflegen, steht in
 `backend/docs/compliance-manifest.md`.
-
-## Was nicht gebaut ist
-
-- Ein Messwert der Suchqualität genau für die Commits eines Release; das Update-Paket nennt die
-  Referenzwerte, die im Stand jeder Version gelten, mit ihrem Messdatum.
-- Ein Abruf der Auskunft in der Oberfläche der Verwaltung; bis dahin gilt der Abruf über die
-  Schnittstelle oben.
-- Eine Ansicht des Kettenprüfergebnisses in der Oberfläche der Revision und ein zweiter Ort für die
-  Monatssiegel außer dem Sicherheitsmonitoring; bis dahin der Abruf über die Schnittstelle.
-- Ein Offline-Bündel mit Images, Chart, SBOMs und Update-Paket für Netze ohne Internetzugang
-  ([#2557](https://github.com/criew/opaa/issues/2557)).
-
