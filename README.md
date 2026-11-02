@@ -10,18 +10,10 @@ ab; Positionierungsänderungen beginnen dort, nicht hier.
 ## Wo das landet
 
 Ausgeliefert wird unter `https://opaa.io` vom VPS des Maintainers. Gebaut wird
-weiterhin in den Branch `gh-pages`; den beschreiben zwei Workflows, die sich das
-Verzeichnis teilen:
-
-| Adresse | Inhalt | Erzeugt von |
-|---|---|---|
-| `https://opaa.io/` | diese Landing Page | `.github/workflows/landing-page.yml`, bei jeder Änderung an `page/` |
-| `https://opaa.io/report/` | täglicher Fortschrittsbericht samt Archiv, Rohdaten und Atom-Feed | `.github/workflows/daily-report.yml`, nächtlich |
-
-Beide committen auf denselben Branch und teilen sich deshalb eine
-`concurrency`-Gruppe. Die Landing-Page-Veröffentlichung räumt im
-Wurzelverzeichnis auf, lässt `report/` aber unangetastet; der Report schreibt
-ausschließlich unterhalb von `report/`.
+in den Branch `gh-pages`, den `.github/workflows/landing-page.yml` bei jeder
+Änderung an `page/` beschreibt. Neben der Landing Page liegen dort unter
+`fortschritt/` von Hand gepushte Meilenstein-Artefakte (Demo-Video,
+Berichts-PDFs), die der Workflow nicht anfasst.
 
 **Auslieferung per Pull:** GitHub schiebt nichts auf den Server. Ein Timer auf
 dem VPS holt den öffentlichen Branch `gh-pages` (`git fetch --depth 1`) und
@@ -39,5 +31,3 @@ verloren.
 
 - Testinstallation: `https://demo.opaa.io`
 - Repository: `https://github.com/criew/opaa`
-- Fortschrittsbericht: `report/` (relativ, damit die Seite auch lokal und in
-  einem Fork funktioniert)
