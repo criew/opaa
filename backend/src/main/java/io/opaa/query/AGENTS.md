@@ -46,7 +46,7 @@ Betriebssicht auf das Retrieval (`searchadmin`) und die Prompt-Bibliothek als zw
 
 ## Verweise
 
-- Handbuch: `handbuch/nachschlagen/wie-die-suche-arbeitet.md`, `handbuch/arbeiten/prompt-bibliothek-anlegen.md`; Evaluierung: `eval/README.md`
+- Handbuch: `handbuch/nachschlagen/wie-die-suche-arbeitet.md`; Evaluierung: `eval/README.md`
 
 ## Tests bei Änderungen
 
