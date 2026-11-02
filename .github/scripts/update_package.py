@@ -27,20 +27,20 @@ opaa-update-paket-<version>.tar.gz with its .sha256 file and both SBOMs into --o
 holds the SBOMs under sbom/. Without a previous final release the delta starts from the oldest root
 commit, which has no manifest.
 The templates of docs/behoerden/ go to vorlagen/, the update note also to the top, the handbook of
-docs/handbuch/ to handbuch/, both without their blocks marked as repository only. In templates,
-fact sheet placeholders become links to faktenblaetter/; in templates and handbook, links into the package stay relative and links out of it point to the
-tag (of a trial: the commit) in --repository, outside code; an unknown sheet or anchor or a link to
-nothing fails the run. Beside every Markdown file lies its HTML page, with index.html as start page
-(package_html.py); a link of the HTML version to a missing file or anchor fails the run. Mermaid
-diagrams of templates, handbook and fact sheets show as SVG, drawn in Chromium by
-.github/tools/mermaid/ (installed like cdxgen), and a diagram that does not render fails the run;
-fact sheet diagrams are drawn only here, as fact sheets exist only in the release run. Links of the delta point into --repository. The axe
-results of the release run (--accessibility, one directory per run, accessibility_report.py) become
-barrierefreiheit/; without them the report says the version was not checked. Dates and file
-metadata come from the commit, so the same commit yields the same files, except the date and
-results of the accessibility run and the diagram SVGs, whose measured sizes follow the Chrome
-version and fonts of the run (render.mjs fixes the font to the metric-compatible Arial or Liberation
-Sans).
+docs/handbuch/ to handbuch/, both without their blocks marked as repository only. In templates, fact
+sheet placeholders become links to faktenblaetter/; in templates and handbook, links into the
+package stay relative and links out of it point to the tag (of a trial: the commit) in --repository,
+outside code; an unknown sheet or anchor or a link to nothing fails the run. Beside every Markdown
+file lies its HTML page, with index.html as start page (package_html.py); a link of the HTML version
+to a missing file or anchor fails the run. Mermaid diagrams of templates, handbook and fact sheets
+show as SVG, drawn in Chromium by .github/tools/mermaid/ (installed like cdxgen), and a diagram that
+does not render fails the run; fact sheet diagrams are drawn only here, as fact sheets exist only in
+the release run. Links of the delta point into --repository. The axe results of the release run
+(--accessibility, one directory per run, accessibility_report.py) become barrierefreiheit/; without
+them the report says the version was not checked. Dates and file metadata come from the commit, so
+the same commit yields the same files, except the date and results of the accessibility run and the
+diagram SVGs, whose measured sizes follow the Chrome version and fonts of the run (render.mjs fixes
+the font to the metric-compatible Arial or Liberation Sans).
 
 `operations` writes the files of betrieb/ for any two references (default --to: HEAD): break and
 preparation, reindexing, schema migration, new ports and egress targets, answer quality. Every
