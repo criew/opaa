@@ -213,6 +213,8 @@ Anbieter die Erlaubnis beendet, und kann neu verbinden.
 
 ## 4. Wie der Bestand aktuell bleibt
 
+Schritt für Schritt: [Eine Bibliothek aktuell halten](../../pflegen/bibliothek-aktuell-halten.md).
+
 ### 4.1 Auslöser
 
 | Auslöser | Beschreibung |

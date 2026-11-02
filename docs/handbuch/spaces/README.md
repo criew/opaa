@@ -29,6 +29,8 @@ nicht, und eine Einstellung zur Sichtbarkeit eines Space deshalb auch nicht.
 
 ## 2. Mitglieder und Rollen
 
+Schritt für Schritt: [Mitglieder eines Space verwalten](../pflegen/space-mitglieder.md).
+
 | Rolle | Darf |
 |---|---|
 | **Mitglied** | Den Space betreten, eigene Chats anlegen und führen, die bereitgestellten Arbeitsmittel sehen — gefiltert auf den eigenen Zugriff |
@@ -66,6 +68,8 @@ nicht gibt. Ein Mitglied, dessen Rolle für eine Handlung nicht reicht, erfährt
 
 ## 3. Arbeitsmittel zuordnen
 
+Schritt für Schritt: [Inhalte eines Space zuordnen](../pflegen/space-inhalte.md).
+
 **Ein Arbeitsmittel in einem Space bereitzustellen ist eine Handlung im Space.** Sie setzt die
 Kuratorenrolle **im Space** und mindestens die Leserrolle **am Arbeitsmittel** voraus: Wer etwas
 bereitstellt, muss es selbst lesen dürfen. Die Bereitstellung **verschafft niemandem ein
@@ -100,6 +104,8 @@ weder Kurator noch Administrator noch Eigentümer des Space ist, sieht die zugeo
 er lesen darf, nur lesend.
 
 ## 4. Einstellungen eines Space
+
+Schritt für Schritt: [Einen Space einstellen, archivieren oder löschen](../pflegen/space-einstellungen.md).
 
 **In der Oberfläche liegt all das auf einer Seite je Space:** Das Zahnrad rechts neben dem Namen
 eines Space in der Seitenleiste öffnet sie; im schmalen Fenster steht es neben der Space-Auswahl.
