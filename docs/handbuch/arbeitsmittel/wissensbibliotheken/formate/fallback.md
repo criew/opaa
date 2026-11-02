@@ -15,7 +15,7 @@ Pipeline registriert ist:
 | Dateien, deren Format nicht lesbar war | Rückfall mit Vermerk am Chunk, dass die Formaterkennung gescheitert ist |
 
 Inhalte, die nie eine Datei waren, laufen **nicht** hier: Die Detailseiten des
-[Feed-Konnektors](../konnektoren/rss-feed.md) gehen an die [HTML-Pipeline](html.md), die
+[Feed-Konnektors](../../../pflegen/konnektoren/rss-feed.md) gehen an die [HTML-Pipeline](html.md), die
 Seiten des Confluence-Konnektors an die [Confluence-Pipeline](confluence.md).
 
 ## 2. Was gelesen wird

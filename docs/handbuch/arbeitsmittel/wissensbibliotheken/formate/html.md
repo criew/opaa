@@ -8,7 +8,7 @@ Kapitel [Wissensbibliotheken](../README.md), Abschnitt 5.
 | Inhalt | Prüfung |
 |---|---|
 | `.html`-Datei | strikt: Inhalt wird als HTML oder XHTML erkannt |
-| Feed-Detailseite | keine Formaterkennung: Der [Feed-Konnektor](../konnektoren/rss-feed.md) reduziert die Seite auf ihre Inhaltsbereiche (nach den Regeln in Abschnitt 3) und übergibt deren HTML direkt an diese Pipeline |
+| Feed-Detailseite | keine Formaterkennung: Der [Feed-Konnektor](../../../pflegen/konnektoren/rss-feed.md) reduziert die Seite auf ihre Inhaltsbereiche (nach den Regeln in Abschnitt 3) und übergibt deren HTML direkt an diese Pipeline |
 
 Eine Textdatei mit HTML-artigem Inhalt, die `.md`, `.txt`, `.csv` oder `.eml` heißt, landet
 **nicht** hier: Die Textzulassung dieser Endungen hat Vorrang, weil HTML in der

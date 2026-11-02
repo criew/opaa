@@ -2,10 +2,14 @@
 
 > **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
 
+> **Wer darf das:** wer auf einem Zugang für Personen ein [Microsoft-Konto verbunden](../../arbeiten/konto-verbinden.md)
+> hat und das Anlegerecht für diesen Zugang. Ab Werk gibt es keinen solchen Zugang; die
+> Systemverwaltung richtet ihn ein. Eine OneDrive-Bibliothek ist immer [privat](../../arbeiten/private-bibliothek.md).
+
 ## 1. Was der Konnektor ist
 
 Der Konnektor liest das **eigene OneDrive for Business einer Person** über **Microsoft Graph v1.0**
-und speist daraus ihre [private Bibliothek](../private-bibliotheken.md). Beispiel: Eine Referentin
+und speist daraus ihre [private Bibliothek](../../arbeitsmittel/wissensbibliotheken/private-bibliotheken.md). Beispiel: Eine Referentin
 verbindet ihr Dienstkonto bei Microsoft 365 mit OPAA und wählt in ihrem OneDrive den Ordner
 „Vorlagen"; danach findet sie deren Inhalt im Chat, und außer ihr niemand. OneDrive ist eine der
 [Dateiablagen](README.md#2-dateiablagen); Speicher, Abgleich und Löscherkennung teilt es mit
@@ -20,7 +24,7 @@ flowchart LR
 ```
 
 - **Anmeldung:** über das **verbundene Konto der Person** mit ihrer Zustimmung bei Microsoft
-  (OAuth, delegiert) ([Zugänge](../../zugaenge.md), „Verbundenes Konto einer Person"). Ein Zugang ist
+  (OAuth, delegiert) ([Zugänge](../../arbeitsmittel/zugaenge.md), „Verbundenes Konto einer Person"). Ein Zugang ist
   **Pflicht**; er trägt die App-Registrierung des Hauses, das verbundene Konto die Zustimmung. Eine
   geteilte Bibliothek über ein Dienstkonto gibt es nicht; OneDrive speist nur private Bibliotheken.
 - **Konnektor-eigen:** die delegierten Berechtigungen **`Files.Read`** und **`offline_access`**, keine
@@ -49,7 +53,7 @@ danach ihr eigenes Konto.
 1. **App-Registrierung.** Im Microsoft-Entra-Admin-Center „App-Registrierungen" → „Neue
    Registrierung", etwa `opaa-onedrive`, nur Konten dieses Verzeichnisses. Als Umleitungs-URI die
    Plattform **„Web"** mit `<öffentliche Adresse von OPAA>/connections/callback` eintragen
-   (`OPAA_PUBLIC_BASE_URL`, [Konfiguration](../../../betrieb/konfiguration.md#alle-umgebungsvariablen)).
+   (`OPAA_PUBLIC_BASE_URL`, [Konfiguration](../../betrieb/konfiguration.md#alle-umgebungsvariablen)).
    Anwendungs-ID (Client-ID) und Verzeichnis-ID (Mandanten-ID) notieren.
 2. **Secret.** „Zertifikate & Geheimnisse" → „Neuer geheimer Clientschlüssel"; die Spalte „Wert"
    sofort kopieren, nicht die „Geheime ID" daneben, und das Ablaufdatum notieren.
@@ -63,7 +67,7 @@ danach ihr eigenes Konto.
    Secrets" und als „Mandant" die Verzeichnis-ID oder die Domäne, etwa `contoso.onmicrosoft.com`.
    „Scopes" leer lassen; OPAA fragt `Files.Read offline_access`. Die Server-Adresse ist fest.
 5. Festlegen, wer den Zugang nutzen darf; ab Werk nur die Systemverwaltung
-   ([Berechtigungen](../../../konten-und-rechte/berechtigungen.md), „Konnektor-Freigabe").
+   ([Berechtigungen](../../konten-und-rechte/berechtigungen.md), „Konnektor-Freigabe").
 
 Als „Mandant" gehört der eigene Mandant eingetragen, nicht `common` oder `organizations`, und die
 App-Registrierung bleibt auf Konten dieses Verzeichnisses beschränkt: Sonst kann sich auch ein
@@ -78,7 +82,7 @@ nur über `https`, prüft das Ziel und sendet dorthin kein Token.
 und meldet sich bei Microsoft mit ihrem Arbeits- oder Schulkonto an; Microsoft fragt dabei immer,
 welches Konto gemeint ist. Nach der Zustimmung nennt OPAA das Konto mit der E-Mail-Adresse, die
 Graph als Besitzer des OneDrive angibt; nennt Graph keine, den Anzeigenamen oder nichts
-([Benutzerverwaltung](../../../konten-und-rechte/benutzerverwaltung.md), „Verbundene Konten").
+([Benutzerverwaltung](../../konten-und-rechte/benutzerverwaltung.md), „Verbundene Konten").
 
 ## 3. Quellkonfiguration
 
@@ -123,7 +127,7 @@ Eine andere Auswahl lässt den nächsten Lauf vollständig abgleichen.
 **Wenn das Konto nicht mehr gilt.** Lehnt Microsoft die Erneuerung des Tokens ab oder weist Graph das
 Token ab, gilt die Verbindung als **abgelaufen**: Die Person wird benachrichtigt, die Bibliothek ruht
 mit „Abgelaufen" und „Konto neu verbinden", und ihr Bestand bleibt durchsuchbar
-([Private Bibliotheken](../private-bibliotheken.md)). Eine Warnung vor dem Ablauf gibt es nicht.
+([Private Bibliotheken](../../arbeitsmittel/wissensbibliotheken/private-bibliotheken.md)). Eine Warnung vor dem Ablauf gibt es nicht.
 Ein Token ohne Berechtigung, etwa bei fehlender Administratorzustimmung, beendet dagegen nur den
 Lauf mit der Meldung zur Zustimmung; die Verbindung läuft nicht ab, und niemand wird benachrichtigt.
 Verbindet die Person ein anderes Microsoft-Konto, liest OPAA das OneDrive der Bibliothek nicht mehr:
@@ -172,14 +176,18 @@ Für Ordneränderungen gilt ein Fenster bis zum nächsten Vollabgleich; der Voll
 
 Die Ordnerkette ab der Wurzel des OneDrive erscheint als Ordner der Bibliothek. Namen, die keinen
 Ordner tragen können, und zu tiefe Ketten folgen den Regeln des Kapitels
-[Wissensbibliotheken](../README.md).
+[Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md).
 
 ## 7. Anhänge
 
 Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Grenzen des Kapitels
-[E-Mail](../formate/mail.md).
+[E-Mail](../../arbeitsmittel/wissensbibliotheken/formate/mail.md).
 
 ## 8. Grenzen und Schutzmechanismen
+
+OneDrive nutzt die Parameter von SharePoint, `opaa.indexing.sharepoint.*`
+(`OPAA_INDEXING_SHAREPOINT_*`); Standardwerte in der
+[Konfigurationsreferenz](../../betrieb/konfiguration.md#alle-umgebungsvariablen).
 
 - **Nur das eigene OneDrive.** Die Bibliothek merkt sich die Kennung ihres OneDrive. Weicht das
   OneDrive des verbundenen Kontos davon ab, ist es kein OneDrive for Business oder hat das Konto
@@ -203,7 +211,7 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 ## 9. Protokoll und Fehlerbilder
 
 Was beim Verbinden bei Microsoft scheitern kann, steht im Kapitel
-[Benutzerverwaltung](../../../konten-und-rechte/benutzerverwaltung.md), „Verbinden und neu
+[Benutzerverwaltung](../../konten-und-rechte/benutzerverwaltung.md), „Verbinden und neu
 verbinden".
 
 | Meldung | Bedeutung | Abhilfe |
@@ -226,22 +234,3 @@ verbinden".
 | „Microsoft Graph drosselt die Anfragen weiterhin" / „Die Übertragung von Microsoft Graph dauerte länger als …" | vorübergehend fehlgeschlagen; der Strom wird erneut gelesen | Zeitplan entzerren bzw. `download-timeout` anheben |
 | „Microsoft Graph nimmt den gespeicherten Stand des Änderungsprotokolls nicht mehr an" / „Das OneDrive war beim Beginn des letzten Vollabgleichs nicht erreichbar." | nächster Lauf ist ein Vollabgleich | nichts |
 | „OneDrive ist derzeit nicht erreichbar. Bitte später erneut versuchen." | „Original öffnen" gescheitert, vorübergehend | später erneut |
-
-## 10. Konfiguration
-
-OneDrive nutzt dieselben Schlüssel wie SharePoint, `opaa.indexing.sharepoint.*` mit den
-Umgebungsvariablen `OPAA_INDEXING_SHAREPOINT_*`; Standards und Wirkung stehen im Kapitel
-[SharePoint](sharepoint.md#10-konfiguration), Abschnitt „Konfiguration". Jeder Wert gilt für beide
-Konnektoren. Der Vollabgleich-Rhythmus ist keine Konfiguration, OneDrive hat dafür einen eigenen Wert
-der Quellart ([Konnektoren](README.md#14-vollabgleich-rhythmus)).
-Die Obergrenze von fünfzig Ordnern ist fest.
-
-## 11. Nicht gebaut
-
-- Private Microsoft-Konten ([#3110](https://github.com/criew/opaa/issues/3110))
-- Widerruf der Zustimmung bei Microsoft beim Trennen
-- Warnung vor dem Ablauf der Zustimmung
-- OneDrive über ein Dienstkonto für eine geteilte Bibliothek
-- Dateien, die andere mit der Person teilen
-- Nationale Clouds; die Adresse ist fest
-- Link in die OneDrive-Oberfläche

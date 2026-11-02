@@ -1,5 +1,9 @@
 # Konnektor: Windows-Dateifreigabe (SMB)
 
+> **Wer darf das:** anlegen, wer „Konnektorbibliotheken anlegen“ für diese Quellart oder ihren
+> Zugang hat; ab Werk nur die Systemverwaltung, bis sie die Quellart oder einen Zugang freigibt.
+> Quelle, Umfang und Zeitplan ändert danach, wer an der Bibliothek *Verwalter* oder *Eigentümer* ist.
+
 ## 1. Was der Konnektor ist
 
 Der Konnektor liest Ordner einer **Freigabe auf einem Windows-Dateiserver** oder einem anderen
@@ -15,7 +19,7 @@ flowchart LR
     S --> F[Freigabe<br/>und Ordner]
 ```
 
-- **Anmeldung:** eigene Zugangsdaten der Bibliothek ([Zugänge](../../zugaenge.md), „Eigene
+- **Anmeldung:** eigene Zugangsdaten der Bibliothek ([Zugänge](../../arbeitsmittel/zugaenge.md), „Eigene
   Zugangsdaten der Bibliothek"): Dienstkonto und Passwort, angemeldet mit **NTLMv2**. Kerberos gibt
   es nicht; eine Anmeldung, die der Server nur als Gast annimmt, gilt als abgelehnt. Ein Zugang ist
   möglich.
@@ -42,7 +46,7 @@ flowchart LR
 4. Auf dem Server SMB 2 oder 3 mit Signatur einschalten.
 5. Die Quellart ist ab Werk nur für die Systemverwaltung freigegeben; wer sonst Bibliotheken anlegen
    soll, bekommt „Konnektorbibliotheken anlegen" für die Quellart oder einen Zugang
-   ([Berechtigungen](../../../konten-und-rechte/berechtigungen.md), „Konnektor-Freigabe").
+   ([Berechtigungen](../../konten-und-rechte/berechtigungen.md), „Konnektor-Freigabe").
 
 ## 3. Quellkonfiguration
 
@@ -114,9 +118,12 @@ Dokument stehen der konfigurierte Ordner und der Gliederungspfad darunter.
 ## 7. Anhänge
 
 Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Grenzen des Kapitels
-[E-Mail](../formate/mail.md).
+[E-Mail](../../arbeitsmittel/wissensbibliotheken/formate/mail.md).
 
 ## 8. Grenzen und Schutzmechanismen
+
+Parameter stehen unter `opaa.indexing.smb.*` (`OPAA_INDEXING_SMB_*`), ihre Standardwerte in der
+[Konfigurationsreferenz](../../betrieb/konfiguration.md#alle-umgebungsvariablen).
 
 - **Zieladressprüfung** auf den Server ([Konnektoren](README.md#12-zieladressprüfung)). SMB geht nie
   über den Ausgangsproxy.
@@ -131,7 +138,7 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 - Ein Name mit `/`, `\`, `:` oder Steuerzeichen, den nur ein Nicht-Windows-Server liefern kann, wird
   nicht gelesen und gezählt gemeldet.
 - Ein Pfad über 2000 Zeichen oder 2676 Byte, gezählt ab `smb://`, wird wie bei jeder Quelle nicht
-  gelesen ([Wissensbibliotheken](../README.md), Abschnitt 7.1). Umlaute, Kyrillisch und
+  gelesen ([Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md), Abschnitt 7.1). Umlaute, Kyrillisch und
   Griechisch belegen zwei Byte, chinesische, japanische und koreanische Zeichen drei.
 - **Inhaltsänderung ohne neue Änderungszeit** bemerkt der Lauf nicht, wenn auch die Größe gleich
   bleibt.
@@ -161,23 +168,3 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 | „Die Verbindung zum Server „…" ist gescheitert (SMB 2 oder 3 mit Signatur erforderlich)." | nur SMB 1 oder ohne Signatur | SMB 2/3 mit Signatur einschalten |
 | „unvollständig, wird fortgesetzt" / „Der Lauf hat keine Datei neu aufgenommen …" | Budget erschöpft / reicht nicht zum Weiterkommen | nichts / `request-budget-per-run` anheben |
 | „Geltungsbereich „/…": Der Fortsetzungspunkt … beginnt neu." | Stelle aus einer anderen Fassung von OPAA; nichts wird entfernt | nichts |
-
-## 10. Konfiguration
-
-Alle Schlüssel unter `opaa.indexing.smb.*`, Umgebungsvariablen `OPAA_INDEXING_SMB_*`.
-
-| Schlüssel | Standard | Wirkung |
-|---|---|---|
-| `max-file-size-bytes` | 50 MiB | Obergrenze einer Datei, vor und während des Downloads |
-| `request-timeout` | 30 s | Timeout für den Verbindungsaufbau und je SMB-Nachricht |
-| `request-budget-per-run` | 100 000 | SMB-Nachrichten je Lauf; ein Download kostet mindestens vier, ein Ordner mindestens fünf |
-| `max-entries-per-run` | 1 000 000 | gelistete Dateien je Vollabgleich, auch über mehrere Läufe; darüber scheitert der Lauf |
-| `download-concurrency` | 2 | gleichzeitige Downloads je Lauf |
-| `list-page-size` | 1000 | Einträge, die ein Lauf auflistet, bevor er sie verarbeitet und sich die Stelle merken kann |
-
-## 11. Nicht gebaut
-
-- Kerberos; es bräuchte Kerberos-Konfiguration, einen erreichbaren KDC und eine Keytab
-- Ein- und Ausschlussmuster; heute schränken nur die Ordner ein
-- Benachrichtigungen des Servers an OPAA
-- Übernahme von Rechten aus der Freigabe

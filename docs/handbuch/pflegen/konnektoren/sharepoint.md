@@ -1,5 +1,10 @@
 # Konnektor: SharePoint
 
+> **Wer darf das:** anlegen, wer „Konnektorbibliotheken anlegen“ für den Zugang hat. Ein Zugang ist
+> Pflicht; ab Werk gibt es keinen, und ein neu angelegter ist nur für die Systemverwaltung frei, bis
+> sie ihn freigibt.
+> Quelle, Umfang und Zeitplan ändert danach, wer an der Bibliothek *Verwalter* oder *Eigentümer* ist.
+
 ## 1. Was der Konnektor ist
 
 Der Konnektor liest **Dokumentbibliotheken von SharePoint Online** über **Microsoft Graph v1.0** und
@@ -17,7 +22,7 @@ flowchart LR
 ```
 
 - **Anmeldung:** Der Zugang meldet sich selbst an, als **Anwendung** mit Client-ID und
-  Client-Secret einer App-Registrierung im Mandanten des Betreibers ([Zugänge](../../zugaenge.md), „Der
+  Client-Secret einer App-Registrierung im Mandanten des Betreibers ([Zugänge](../../arbeitsmittel/zugaenge.md), „Der
   Zugang meldet sich selbst an"). Ein Zugang ist **Pflicht**; die Bibliothek trägt kein Geheimnis.
 - **Konnektor-eigen:** die Anwendungsberechtigung **`Sites.Selected`**, mit der die App nur Sites
   liest, die ihr **einzeln freigegeben** sind.
@@ -53,7 +58,7 @@ flowchart LR
    „Ablaufdatum des Secrets" anlegen; „Scopes" leer lassen, OPAA fragt
    `https://graph.microsoft.com/.default`. „Anmeldung testen" prüft die Angaben.
 6. Festlegen, wer den Zugang nutzen darf; ab Werk nur die Systemverwaltung
-   ([Berechtigungen](../../../konten-und-rechte/berechtigungen.md), „Konnektor-Freigabe").
+   ([Berechtigungen](../../konten-und-rechte/berechtigungen.md), „Konnektor-Freigabe").
 
 Client-ID und Secret gehen nur an den Token-Endpunkt des Mandanten, das Zugriffstoken nur an
 `https://graph.microsoft.com`. Downloads leitet Graph auf eine kurzlebige Adresse von SharePoint um;
@@ -153,15 +158,20 @@ Für Ordneränderungen gilt also ein Fenster bis zum nächsten Vollabgleich; der
 
 Die Ordnerkette ab der Wurzel der Dokumentbibliothek erscheint als Ordner der Bibliothek; bei mehreren
 Dokumentbibliotheken steht ihr Name vorn. Namen, die keinen Ordner tragen können, und zu tiefe Ketten
-folgen den Regeln des Kapitels [Wissensbibliotheken](../README.md).
+folgen den Regeln des Kapitels [Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md).
 
 ## 7. Anhänge
 
 Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Grenzen des Kapitels
-[E-Mail](../formate/mail.md).
+[E-Mail](../../arbeitsmittel/wissensbibliotheken/formate/mail.md).
 
 ## 8. Grenzen und Schutzmechanismen
 
+Parameter stehen unter `opaa.indexing.sharepoint.*` (`OPAA_INDEXING_SHAREPOINT_*`), ihre Standardwerte in der
+[Konfigurationsreferenz](../../betrieb/konfiguration.md#alle-umgebungsvariablen). Für OneDrive gelten dieselben.
+
+- **Obergrenzen.** Höchstens fünfzig Einträge im Umfang, einzelne Dokumentbibliotheken und Sites
+  zusammen, und fünfzig Ordner je Dokumentbibliothek; beides ist fest.
 - **Drosselung.** Bei `429` und `503` wartet OPAA die Zeit aus `Retry-After`, höchstens
   `max-retry-wait`, und wiederholt bis zu `max-retries`-mal. Erreicht die Summe der Wartezeiten
   `max-throttle-wait-per-run`, endet der Lauf als „unvollständig, wird fortgesetzt".
@@ -222,34 +232,3 @@ Correlation-ID für eine Anfrage beim Microsoft-Support.
 | „Microsoft Graph nimmt den gespeicherten Stand des Änderungsprotokolls nicht mehr an" / „Die Dokumentbibliothek war beim Beginn des letzten Vollabgleichs nicht erreichbar" | nächster Lauf ist ein Vollabgleich | nichts |
 | „Microsoft Graph nimmt den Fortsetzungspunkt der Auflistung nicht mehr an … beginnt neu" | Auflistung dieser Dokumentbibliothek von vorn | nichts |
 | „… Der nächste Lauf setzt die Auflistung am zuletzt gesicherten Punkt fort" | Graph antwortete nicht verlässlich; der Lauf endet als Fehler | nichts |
-
-## 10. Konfiguration
-
-Alle Schlüssel unter `opaa.indexing.sharepoint.*`. Sie gelten ebenso für den Konnektor
-[OneDrive](onedrive.md).
-
-| Schlüssel | Umgebungsvariable | Standard | Wirkung |
-|---|---|---|---|
-| `page-size` | `OPAA_INDEXING_SHAREPOINT_PAGE_SIZE` | 200 | Einträge je Auflistungs- und Änderungsseite; höchstens 1000 |
-| `max-file-size-bytes` | `OPAA_INDEXING_SHAREPOINT_MAX_FILE_SIZE_BYTES` | 52428800 (50 MiB) | Obergrenze je Download, auch für „Original öffnen" |
-| `request-timeout` | `OPAA_INDEXING_SHAREPOINT_REQUEST_TIMEOUT` | 30s | Timeout je Anfrage |
-| `download-timeout` | `OPAA_INDEXING_SHAREPOINT_DOWNLOAD_TIMEOUT` | 10m | Gesamtfrist je Download; danach folgt die Datei im nächsten Lauf |
-| `max-retries` | `OPAA_INDEXING_SHAREPOINT_MAX_RETRIES` | 5 | Wiederholungen einer gedrosselten Anfrage |
-| `max-retry-wait` | `OPAA_INDEXING_SHAREPOINT_MAX_RETRY_WAIT` | 60s | längste einzelne Wartezeit |
-| `max-throttle-wait-per-run` | `OPAA_INDEXING_SHAREPOINT_MAX_THROTTLE_WAIT_PER_RUN` | 30m | Summe der Wartezeiten je Lauf |
-| `request-budget-per-run` | `OPAA_INDEXING_SHAREPOINT_REQUEST_BUDGET_PER_RUN` | 20000 | Anfragen je Lauf |
-| `max-files-per-run` | `OPAA_INDEXING_SHAREPOINT_MAX_FILES_PER_RUN` | 1000000 | gelistete Dateien je Vollabgleich, bevor der Lauf scheitert |
-| `download-concurrency` | `OPAA_INDEXING_SHAREPOINT_DOWNLOAD_CONCURRENCY` | 2 | gleichzeitige Downloads je Lauf |
-
-Die Obergrenzen von fünfzig Einträgen im Umfang (einzelne Dokumentbibliotheken und Sites mit allen
-Dokumentbibliotheken zusammen) und fünfzig Ordnern je Dokumentbibliothek sind fest.
-
-## 11. Nicht gebaut
-
-- Anmeldung im Namen einer Person für Dokumentbibliotheken; das eigene OneDrive liest der Konnektor
-  [OneDrive](onedrive.md)
-- Freigabe je Dokumentbibliothek über `Lists.SelectedOperations.Selected`
-- Nationale Clouds; die Adresse ist fest
-- Übernahme von Rechten aus SharePoint
-- Push-Benachrichtigungen über Webhooks; der Änderungslauf im Zeitplan ersetzt sie
-- Link in die SharePoint-Oberfläche

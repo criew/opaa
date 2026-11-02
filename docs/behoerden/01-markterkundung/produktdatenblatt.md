@@ -27,7 +27,7 @@ Behörde oder eines Dienstleisters.
 | Merkmal | Angabe | Nachweis |
 |---|---|---|
 | Kernfunktion | Fragen in Spaces stellen, Antworten mit Fundstellen, Suche ohne Antwort | [Was OPAA ist](../../handbuch/README.md#2-was-opaa-ist), [Belege](../../handbuch/spaces/suche.md#7-belege-prüfen-und-fundstellen-bilden) |
-| Wissensbestände | Wissensbibliotheken aus angebundenen Quellen oder Upload | [Konnektoren](../../handbuch/arbeitsmittel/wissensbibliotheken/konnektoren/README.md#3-die-konnektoren-im-überblick), [Formate](../../handbuch/arbeitsmittel/wissensbibliotheken/formate/README.md#zugelassene-formate) |
+| Wissensbestände | Wissensbibliotheken aus angebundenen Quellen oder Upload | [Konnektoren](../../handbuch/pflegen/konnektoren/README.md#3-die-konnektoren-im-überblick), [Formate](../../handbuch/arbeitsmittel/wissensbibliotheken/formate/README.md#zugelassene-formate) |
 | Rechte | je Bibliothek und Space vergeben, in jeder Suchabfrage geprüft, mit Historie | [Berechtigungen](../../handbuch/konten-und-rechte/berechtigungen.md), {{faktenblatt:rollensicht#matrix}} |
 | Weitere Arbeitsmittel | Prompt-Bibliotheken; Zugriff externer KI-Werkzeuge, abschaltbar | [Prompt-Bibliotheken](../../handbuch/arbeitsmittel/prompt-bibliotheken.md), [Externe KI-Werkzeuge](../../handbuch/spaces/fremdzugaenge.md) |
 | Modelle | über eine OpenAI-kompatible Schnittstelle, im eigenen Haus betreibbar | [Modelle](../../handbuch/betrieb/modelle.md), {{faktenblatt:voreinstellungen#ki-funktionen}} |

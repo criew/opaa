@@ -25,7 +25,7 @@ sich nach Zeitplan selbst aktuell.
 6. **Prüfen** und „Bibliothek anlegen“ wählen.
 
 Was jede Quelle beim Anbieter voraussetzt, steht auf ihrer Seite unter den
-[Konnektoren](../arbeitsmittel/wissensbibliotheken/konnektoren/README.md).
+[Konnektoren](../pflegen/konnektoren/README.md).
 
 ## Dateien hochladen
 

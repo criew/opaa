@@ -34,7 +34,7 @@ Ob eine Quellart Zugänge kennt, legt ihr Konnektor fest. Es gibt drei Fälle:
   Zugang liegt.
 
 Was für eine Quellart gilt, steht in ihrem Kapitel; die Übersicht der
-[Konnektoren](wissensbibliotheken/konnektoren/README.md) fasst es zusammen. Wo ein Zugang möglich ist, kann die
+[Konnektoren](../pflegen/konnektoren/README.md) fasst es zusammen. Wo ein Zugang möglich ist, kann die
 Systemverwaltung ihn zur Pflicht machen: **„Nur über Zugänge"** (Abschnitt 7).
 
 ## 3. Wie sich OPAA bei einer Quelle anmeldet

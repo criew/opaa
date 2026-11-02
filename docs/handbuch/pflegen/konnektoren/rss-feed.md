@@ -1,5 +1,10 @@
 # Konnektor: Feed
 
+> **Wer darf das:** anlegen, wer „Konnektorbibliotheken anlegen“ für die Quellart (eigene Adresse)
+> oder für den gewählten Zugang hat. Ab Werk ist die Quellart für jedes Konto frei; ein neu
+> angelegter Zugang erst nach Freigabe durch die Systemverwaltung.
+> Quelle, Umfang und Zeitplan ändert danach, wer an der Bibliothek *Verwalter* oder *Eigentümer* ist.
+
 ## 1. Was der Konnektor ist
 
 Der Konnektor hält eine Bibliothek mit Veröffentlichungen aktuell, die eine Website als **RSS-Feed**
@@ -17,7 +22,7 @@ flowchart LR
 ```
 
 - **Anmeldung:** keine oder HTTP Basic, eigene Zugangsdaten der Bibliothek
-  ([Zugänge](../../zugaenge.md), „Eigene Zugangsdaten der Bibliothek"). Zugangsdaten gelten **nur für
+  ([Zugänge](../../arbeitsmittel/zugaenge.md), „Eigene Zugangsdaten der Bibliothek"). Zugangsdaten gelten **nur für
   den Ursprung des Feeds**. Ein Zugang ist möglich.
 - **Liest:** je Eintrag `title`, `link`, `description` und `pubDate`, die Detailseite und ihre
   Anlagen. Erweiterungen in fremden Namensräumen (`content:encoded`, `media:*`) werden
@@ -33,7 +38,7 @@ flowchart LR
 1. Liegt der Feed im privaten Netz, seinen Hostnamen für die
    [Zieladressprüfung](README.md#12-zieladressprüfung) freigeben.
 2. Die Detailseite eines Eintrags im Browser ansehen: Trifft die Werkseinstellung des
-   Inhaltsselektors (Abschnitt „Konfiguration“) den Text nicht oder zu viel Seitenrahmen, braucht
+   Inhaltsselektors (`main, article, [role=main]`) den Text nicht oder zu viel Seitenrahmen, braucht
    die Bibliothek einen eigenen **Inhaltsselektor**.
    Hängen die Anlagen ohne Dateiendung an der Seite, wie beim Government Site Builder, braucht
    sie das **Anlagenprofil** `GSB` (Abschnitt „Anhänge“).
@@ -53,7 +58,7 @@ Zugangs. Eine Detailseite oder Anlage auf einem anderen Server ruft OPAA weiter 
 Zugangsdaten.
 
 **Umfang:** wie OPAA die Detailseiten dieses Feeds liest. Beide Angaben sind optional; leer gilt
-die Werkseinstellung (Abschnitt „Konfiguration“). Die Zeile sehen auch Lesende der Bibliothek.
+die Werkseinstellung: Inhaltsselektor `main, article, [role=main]`, Anlagenprofil `GENERIC`. Die Zeile sehen auch Lesende der Bibliothek.
 
 - „Inhaltsselektor“: ein CSS-Selektor in Jsoup-Syntax, etwa `#inhalt` oder `.artikel-text`. Jeder
   Treffer ist ein Inhaltsbereich; trifft er nichts, nimmt der Lauf die ganze Seite. Einen Selektor,
@@ -112,7 +117,7 @@ kein zurückgestellter Eintrag. Zurückgestellt wird, was beim nächsten Mal kla
 erreichbare Detailseite, eine Abweisung mit 403 oder 429. Ohne gespeicherten Zustand liefert der
 Server beim nächsten Lauf den ganzen Feed, und diese Einträge bekommen eine zweite Chance.
 
-**Detailseite.** Sie wird nach den Regeln der [HTML-Pipeline](../formate/html.md) reduziert:
+**Detailseite.** Sie wird nach den Regeln der [HTML-Pipeline](../../arbeitsmittel/wissensbibliotheken/formate/html.md) reduziert:
 Navigation, Seitenleisten, Cookie-Banner, `script`, `style` und `noscript` entfallen überall; die
 Inhaltsbereiche wählt der Inhaltsselektor der Bibliothek (Rückfall `body`); Seitenkopf und -fuß entfallen nur außerhalb davon. Das HTML geht direkt an die HTML-Pipeline
 und wird in Abschnitte geschnitten; der Titel des Eintrags ist der Kontexttitel. Bestehende Einträge,
@@ -148,6 +153,9 @@ weiter ausgepackt. Ein Fehler einer Anlage wirkt nie auf den Eintrag zurück; ha
 keinen extrahierbaren Text, werden seine Anlagen nicht indiziert.
 
 ## 7. Grenzen und Schutzmechanismen
+
+Parameter stehen unter `opaa.indexing.rss.*` (`OPAA_INDEXING_RSS_*`), ihre Standardwerte in der
+[Konfigurationsreferenz](../../betrieb/konfiguration.md#alle-umgebungsvariablen).
 
 - **Zieladressprüfung** auf Feed, Detailseite, Anlage und jedem Redirect
   ([Konnektoren](README.md#12-zieladressprüfung)).
@@ -207,37 +215,3 @@ liegt bei bis zu einer Anlagengröße je gleichzeitig verarbeiteter Anlage.
 
 Beim Nachladen von Anlagen tragen die Meldungen den Zusatz „beim Nachladen von Anlagen". Wird ein
 Lauf während eines Eintrags gestoppt, endet er mit „Lauf unterbrochen".
-
-## 9. Konfiguration
-
-| Schlüssel | Umgebungsvariable | Standard | Wirkung |
-|---|---|---|---|
-| `opaa.indexing.rss.max-entries` | `OPAA_INDEXING_RSS_MAX_ENTRIES` | 200 | Einträge je Lauf |
-| `opaa.indexing.rss.max-feed-size-bytes` | `OPAA_INDEXING_RSS_MAX_FEED_SIZE_BYTES` | 10485760 (10 MiB) | darüber scheitert der Lauf |
-| `opaa.indexing.rss.max-page-size-bytes` | `OPAA_INDEXING_RSS_MAX_PAGE_SIZE_BYTES` | 5242880 (5 MiB) | darüber entfällt der Eintrag |
-| `opaa.indexing.rss.request-delay-ms` | `OPAA_INDEXING_RSS_REQUEST_DELAY_MS` | 1000 | Wartezeit vor jeder Detailseite und Anlage; 0 schaltet ab |
-| `opaa.indexing.rss.max-attachments-per-entry` | `OPAA_INDEXING_RSS_MAX_ATTACHMENTS_PER_ENTRY` | 10 | Anlagen je Eintrag |
-| `opaa.indexing.rss.max-attachment-size-bytes` | `OPAA_INDEXING_RSS_MAX_ATTACHMENT_SIZE_BYTES` | 20971520 (20 MiB) | darüber entfällt die Anlage |
-
-`User-Agent`, 429-Wartezeit und die Grenzen je Lauf kommen aus dem gemeinsamen Block
-`opaa.indexing.http.*`, beschrieben im Kapitel [Webverzeichnis](http-directory.md#10-konfiguration).
-Die Verschachtelungstiefe der Anlagen ist allgemein (`opaa.indexing.attachments.max-depth`, im
-Kapitel [Wissensbibliotheken](../README.md)). Nicht konfigurierbar: Timeouts.
-
-Inhaltsselektor und Anlagenprofil sind Angaben je Bibliothek (Abschnitt „Quellkonfiguration“),
-ohne Vorgabe für die ganze Installation. Ohne eigene Angabe gilt die Werkseinstellung:
-
-| Angabe | Werkseinstellung |
-|---|---|
-| Inhaltsselektor | `main, article, [role=main]` |
-| Anlagenprofil | `GENERIC` |
-
-Die früheren Variablen dafür liest OPAA nicht mehr
-([Konfiguration](../../../betrieb/konfiguration.md#entfallene-und-veraltete-variablen)).
-
-## 10. Nicht gebaut
-
-- Atom-Feeds
-- Löschung anhand eines positiven Befunds, etwa einer dauerhaft fehlenden Detailseite
-- Schonzeitraum, Rechteübernahme, ereignisgesteuerte Aktualisierung, Drosselung nach wiederholtem
-  Scheitern

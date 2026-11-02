@@ -2,7 +2,7 @@
 
 Pipeline `confluence`, Version 5. Der gemeinsame Rahmen aller Format-Pipelines
 steht im Kapitel [Wissensbibliotheken](../README.md), Abschnitt 5; wie die Seiten in die Bibliothek
-gelangen, im Kapitel [Confluence](../konnektoren/confluence.md).
+gelangen, im Kapitel [Confluence](../../../pflegen/konnektoren/confluence.md).
 
 ## 1. Wann sie läuft
 

@@ -10,7 +10,7 @@ Wissensbibliotheken stehen neben anderen Arten im [Katalog](../katalog.md), etwa
 teilen, favorisieren, einem Space zuordnen —, beschreiben die Kapitel [Katalog](../katalog.md) und
 [Berechtigungen](../../konten-und-rechte/berechtigungen.md). Dieses Kapitel beschreibt,
 was das Wissen besonders macht: woher es kommt, wie es aktuell bleibt und wie OPAA ein Dokument
-liest. Tiefer gehen die Kapitel der [Konnektoren](konnektoren/README.md), der
+liest. Tiefer gehen die Kapitel der [Konnektoren](../../pflegen/konnektoren/README.md), der
 [Formate](formate/README.md) und der [Zugänge](../zugaenge.md); Abschnitt 7 bündelt, was der Betrieb
 wissen muss.
 
@@ -22,7 +22,7 @@ Eine Wissensbibliothek bezieht ihre Dokumente auf einem von zwei Wegen:
   Ein **Konnektor** bindet das System an, in dem die Dokumente liegen — etwa ein Confluence-Wiki
   oder ein Webverzeichnis —, liest es regelmäßig und hält die Bibliothek mit ihm in Einklang. Die
   Dokumente bleiben in ihrer Quelle. Wie ein Konnektor liest, hängt von der Technik des Systems ab;
-  welche es gibt, zeigt die [Übersicht der Konnektoren](konnektoren/README.md).
+  welche es gibt, zeigt die [Übersicht der Konnektoren](../../pflegen/konnektoren/README.md).
 - **Dokumente hochladen.** Wissen, das noch nirgends abgelegt ist, lädt eine Person direkt hoch.
   OPAA verarbeitet jede Datei sofort und bewahrt das Original selbst auf.
 
@@ -149,7 +149,7 @@ Im Reiter „Quelle" ändert, wer verwaltet, jede Zeile an Ort und Stelle: „Ä
 gewählt wird, wie bei SharePoint, öffnet „Ändern" gleich den Dialog, und „Übernehmen" speichert
 sofort. Jede Zeile trägt, was die Läufe über sie wissen, etwa „Anmeldung ok · zuletzt 23.10.2026"
 an der Verbindung oder „2 nicht lesbar" am Umfang. Bei Confluence und S3 folgt die Zeile
-„Live-Abgleich" mit Webhook bzw. Ereignissen ([Konnektoren](konnektoren/README.md)). Bei Quellen wie
+„Live-Abgleich" mit Webhook bzw. Ereignissen ([Konnektoren](../../pflegen/konnektoren/README.md)). Bei Quellen wie
 Confluence, S3 oder Nextcloud steht unter den Zeilen, auch für Lesende, dass alles daraus Indizierte
 für alle Leseberechtigten der Bibliothek sichtbar ist.
 
@@ -278,7 +278,7 @@ Ein Lauf kann abgeschlossen und trotzdem **unvollständig** sein: wenn er sein A
 verbraucht hat oder ein Dokument am Speicherkontingent abgelehnt wurde. Er endet dann geordnet, und
 der nächste Lauf setzt fort; ein unvollständiger Lauf entfernt nichts wegen Abwesenheit. Wie die
 Dateiablagen einen Abgleich über mehrere Läufe fortsetzen, beschreibt die Übersicht der
-[Konnektoren](konnektoren/README.md#2-dateiablagen).
+[Konnektoren](../../pflegen/konnektoren/README.md#2-dateiablagen).
 
 ### 4.4 Änderungen und Löschungen
 
@@ -292,7 +292,7 @@ Dateiablagen einen Abgleich über mehrere Läufe fortsetzen, beschreibt die Übe
 
 OPAA stellt sicher, dass nichts versehentlich gelöscht wird: Es entfernt ein Dokument nur nach
 einem Lauf, der die Quelle vollständig gelesen hat. Wann genau das bei einer Quelle der Fall ist,
-zeigt die Übersicht der [Konnektoren](konnektoren/README.md).
+zeigt die Übersicht der [Konnektoren](../../pflegen/konnektoren/README.md).
 
 ### 4.5 Wiederanlauf nach Störungen
 
@@ -379,7 +379,7 @@ der Quelle werden dagegen übernommen — oft sind es gerade sie, die Platz scha
 Dokument nicht passt, endet jeder Lauf, der es erreicht, wieder als unvollständig.
 
 Dateiablagen prüfen das Kontingent schon vor dem Download
-([Konnektoren](konnektoren/README.md#2-dateiablagen)). Was bei Confluence, beim Feed und bei
+([Konnektoren](../../pflegen/konnektoren/README.md#2-dateiablagen)). Was bei Confluence, beim Feed und bei
 E-Mails mit Anhängen eigens gilt, steht in deren Kapiteln.
 
 ### 5.3 Format erkennen
@@ -700,7 +700,7 @@ noch zu warten.
 | `stale-job-timeout` | 4h | Frist ohne Fortschritt, bis ein Lauf als verwaist gilt |
 | `thread-pool.*` | 2 / 4 / 20 | Lauf-Pool |
 | `target-validation.*` | aktiv | Zieladressprüfung für Netzquellen |
-| je Konnektor und Format, etwa `confluence.*`, `s3.*`, `nextcloud.*`, `mail.*` | siehe dort | Grenzwerte der Quelle bzw. des Formats, jeweils im Abschnitt „Konfiguration" ihres Kapitels |
+| je Konnektor und Format, etwa `confluence.*`, `s3.*`, `nextcloud.*`, `mail.*` | siehe dort | Grenzwerte der Quelle bzw. des Formats, in der [Konfigurationsreferenz](../../betrieb/konfiguration.md#alle-umgebungsvariablen) |
 
 ### 7.6 Was nicht gebaut ist
 
@@ -712,7 +712,7 @@ noch zu warten.
 
 ## 8. Weiterführende Kapitel
 
-- [Konnektoren](konnektoren/README.md): alle Quellen im Überblick und je ein Kapitel pro Konnektor;
+- [Konnektoren](../../pflegen/konnektoren/README.md): alle Quellen im Überblick und je ein Kapitel pro Konnektor;
   der gemeinsame Abgleich der Dateiablagen
 - [Zugänge](../zugaenge.md): wie sich Quellen anmelden und was die Systemverwaltung vorgibt
 - [Formate](formate/README.md): zugelassene Formate und je ein Kapitel pro Format-Pipeline

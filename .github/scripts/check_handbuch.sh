@@ -3,9 +3,9 @@
 # except AGENTS.md and CLAUDE.md, found by directory walk, so a new page is checked without a list:
 # - no reference out of the handbook to decision records: no "ADR-<digits>", no "docs/decisions",
 #   no link into the repository on GitHub (blob/tree); old pages lose their issue links on the move
-# - every page under arbeiten/ and pflegen/ except a folder's README.md and pflegen/konnektoren/
-#   carries the "Wer darf das" box (a blockquote line starting "> **Wer darf das:**") within its
-#   first ten lines and has at most 80 lines
+# - every page under arbeiten/ and pflegen/ except a folder's README.md carries the "Wer darf das"
+#   box (a blockquote line starting "> **Wer darf das:**") within its first ten lines and has at
+#   most 80 lines; connector pages under pflegen/konnektoren/ need the box but have no length limit
 # Links inside the handbook are checked by the strict MkDocs build (mkdocs.yml).
 # Errors fail the run (exit 1).
 set -euo pipefail
@@ -27,7 +27,7 @@ while IFS= read -r -d '' file; do
   done <<<"$(grep -nE 'ADR-[0-9]{4}|docs/decisions|github\.com/[^/]+/[^/]+/(blob|tree)/' "$file" | cut -c1-120 || true)"
 
   case "$rel" in
-    arbeiten/README.md | pflegen/README.md | pflegen/konnektoren/*) continue ;;
+    arbeiten/README.md | pflegen/README.md | pflegen/konnektoren/README.md) continue ;;
     arbeiten/* | pflegen/*) ;;
     *) continue ;;
   esac
@@ -37,7 +37,7 @@ while IFS= read -r -d '' file; do
     errors=$((errors + 1))
   fi
   lines=$(wc -l <"$file")
-  if [ "$lines" -gt "$max_lines" ]; then
+  if [ "${rel#pflegen/konnektoren/}" = "$rel" ] && [ "$lines" -gt "$max_lines" ]; then
     echo "::error file=$file,line=$((max_lines + 1))::Page has $lines lines, at most $max_lines allowed: one task per page, one screen."
     errors=$((errors + 1))
   fi

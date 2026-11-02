@@ -433,7 +433,7 @@ Das Backend läuft als Benutzer und Gruppe `65532`. Bei einem Bind-Mount gilt de
 3. **Jedes weitere eingehängte Verzeichnis muss für `65532` les- und betretbar sein**: `/app/documents`
    und jedes über `OPAA_INDEXING_FILESYSTEM_ALLOWLIST` freigegebene Verzeichnis. Eine eng gesetzte
    Freigabe (`root:root 0700`, ein CIFS-Mount mit `uid=0,file_mode=0600`) ist es nicht
-   ([Konnektor Dateisystem](../arbeitsmittel/wissensbibliotheken/konnektoren/filesystem.md)).
+   ([Konnektor Dateisystem](../pflegen/konnektoren/filesystem.md)).
 
 Der häufigste Fall ist der erste: Legt Docker das fehlende Verzeichnis selbst an, gehört es `root`,
 der Start meldet `UP`, und erst der erste Upload endet mit `500` und dieser Meldung:

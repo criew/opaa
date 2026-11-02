@@ -49,7 +49,8 @@ Ein Satz, was man danach hat.
   steht in der Rechte-Matrix (`nachschlagen/rechte-matrix.md`); beide ändern sich zusammen.
 - **Höchstens 80 Zeilen.** Was nicht passt, ist eine zweite Aufgabe und bekommt eine eigene Seite.
 - `.github/scripts/check_handbuch.sh` prüft Kasten und Länge in der CI. Ausgenommen sind die
-  `README.md` der Ordner und `pflegen/konnektoren/`.
+  `README.md` der Ordner; die Seiten unter `pflegen/konnektoren/` brauchen den Kasten, aber keine
+  feste Länge.
 
 `verwalten/` folgt derselben Form ohne feste Länge, knapp gehalten. `betreiben/` und
 `nachschlagen/` sind Referenz und dürfen lang sein, ohne Inhalte doppelt zu führen: Was Compose und
@@ -57,7 +58,7 @@ Kubernetes gemeinsam haben, steht einmal.
 
 ## Aufbau der Konnektor-Seiten
 
-Jede Seite unter `pflegen/konnektoren/` (bis zum Umzug `arbeitsmittel/wissensbibliotheken/konnektoren/`)
+Jede Seite unter `pflegen/konnektoren/`
 hat oben den Wer-darf-das-Kasten und dann dieselben Abschnitte in dieser Reihenfolge, nummeriert
 von 1 an. Ein Abschnitt, der nicht zutrifft, entfällt; die Nummern folgen lückenlos.
 
