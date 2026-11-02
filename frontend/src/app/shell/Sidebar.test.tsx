@@ -135,7 +135,7 @@ describe('Sidebar', () => {
     // The switcher carries the active (here: default) space's name.
     expect(screen.getByRole('button', { name: /Privater Bereich/ })).toBeInTheDocument()
     expect(screen.getByText('Chats')).toBeInTheDocument()
-    // (mockup 2a) the column is purely space-scoped: brand mark, catalog,
+    // the column is purely space-scoped: brand mark, catalog,
     // admin destinations and the user badge all live on the global rail instead.
     expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Wissensbibliotheken' })).not.toBeInTheDocument()

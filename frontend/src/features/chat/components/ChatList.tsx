@@ -67,7 +67,7 @@ function revealMoreLabel(count: number): ReactNode {
 
 interface ChatListProps {
   spaceId: string
-  /** Rendered left of the plus and search buttons, in the same row (mockup 1a's section head). */
+  /** Rendered left of the plus and search buttons, in the same row (section head). */
   header?: ReactNode
   /**
    * The space column's groups (guidelines 5.13): "Angeheftet" and "Zuletzt verwendet" fold,
@@ -311,7 +311,7 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
         key={chat.id}
         data-testid={`chat-entry-${chat.id}`}
         disablePadding
-        // Mockup 1a keeps chat rows quiet - the actions only surface on hover or
+        // The design keeps chat rows quiet - the actions only surface on hover or
         // keyboard focus. They stay in the tab order either way.
         sx={{
           '& .MuiListItemSecondaryAction-root': {
@@ -323,7 +323,7 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
         }}
         secondaryAction={
           !isRenaming && (
-            // Mockup 1a: one quiet three-dot trigger per row, the actions live in a
+            // One quiet three-dot trigger per row, the actions live in a
             // light dropdown.
             <RowMenu
               name={chatTitle(chat)}
@@ -531,7 +531,7 @@ export default function ChatList({ spaceId, header, collapsibleGroups = false }:
 
   return (
     <Box>
-      {/* Mockup 1a: section head and the actions share one baseline row. */}
+      {/* Section head and the actions share one baseline row. */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 0.5 }}>
         {header ?? <span />}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>

@@ -243,7 +243,7 @@ describe('createAppTheme', () => {
     expect(theme.palette.divider).toBe(darkRoles.border)
   })
 
-  test('the navy roles keep the mockup sidebar values for the light scheme (#654)', () => {
+  test('the navy roles keep the designed sidebar values for the light scheme (#654)', () => {
     expect(navyRoles.bg1).toBe(navy[800])
     expect(navyRoles.fg1).toBe(white)
     expect(Object.keys(navyRoles).sort()).toEqual(Object.keys(darkRoles).sort())
@@ -267,7 +267,7 @@ describe('createAppTheme', () => {
     expect(theme.palette.primary.dark).not.toBe('#7A1FA2')
   })
 
-  test('without branding the derived button states stay pixel-identical to the mockups', () => {
+  test('without branding the derived button states stay pixel-identical to the designed values', () => {
     const theme = createAppTheme('light')
 
     expect(theme.palette.primary.dark).toBe(blue[900])

@@ -7,7 +7,7 @@ interface WizardStepBarProps {
 }
 
 /**
- * The wizard step bar shared by the space and library assistants (mockups 1b/1e): a numbered
+ * The wizard step bar shared by the space and library assistants: a numbered
  * list on a hairline, the active step carrying text.primary at weight 500 with a 2px accent
  * underline overlapping the divider. Below the `sm` breakpoint only the active step shows its
  * name; the others show just their number, while the full "n · name" stays in the accessibility

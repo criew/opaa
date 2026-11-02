@@ -232,7 +232,7 @@ export default function ChatPage() {
         visuallyHidden
       />
       {(chatTitle || noteVisible || isArchivedChat || spaceInstruction) && (
-        // Mockup 1a's header bar, and the Gesprächsnotiz's place. Wrapping flex
+        // The design's header bar, and the Gesprächsnotiz's place. Wrapping flex
         // row: title and button share the first line, the note panel takes the next one.
         <Box
           ref={headerRef}

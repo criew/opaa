@@ -39,7 +39,7 @@ interface RailDestination {
 }
 
 /**
- * The global rail (mockup 2a): the always-visible first navigation level left of the
+ * The global rail: the always-visible first navigation level left of the
  * space column, one shade darker so global and space scope read apart at a glance. It carries
  * the brand emblem, the global destinations - Chat, the catalog, administration -
  * and the user's avatar with the account menu; the navy column next to it stays purely
@@ -162,7 +162,7 @@ export default function GlobalRail() {
               }}
             >
               <Icon sx={{ fontSize: 18 }} />
-              {/* Mockup 2a labels the tiles at micro size; 9.5px matches the sidebar's own
+              {/* The design labels the tiles at micro size; 9.5px matches the sidebar's own
                   micro-caption step. The icon alone would leave the tile ambiguous. */}
               <Typography component="span" sx={{ fontSize: 9.5, fontWeight: 500, lineHeight: 1 }}>
                 {destination.label}

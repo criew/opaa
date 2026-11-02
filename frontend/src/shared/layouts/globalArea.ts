@@ -1,7 +1,7 @@
 import { catalogScopePrefixes } from '../assetTypes'
 
 /**
- * Route prefixes that render inside the global frame (mockup 2b) - the navy space
+ * Route prefixes that render inside the global frame - the navy space
  * column disappears there (AppShell checks this). Every prefix must correspond to a
  * GlobalAreaLayout route in App.tsx and vice versa; the catalog and the asset types' pages come
  * from the type registry, the rest is listed here. Lives outside GlobalAreaLayout.tsx so that file

@@ -63,7 +63,7 @@ function isSettingsTab(
   return offered.some((entry) => entry.value === value)
 }
 
-/** Mockup 2c: how the account signed in, next to the address - never a technical mode name. */
+/** How the account signed in, next to the address - never a technical mode name. */
 function signInMethodLabel(mode: AuthMode | null): string | null {
   if (mode === 'oidc') return 'über Verzeichnisdienst angemeldet'
   if (mode === 'dev') return 'über Entwicklungsanmeldung angemeldet'
@@ -141,7 +141,7 @@ export default function SettingsPage() {
               <MyGroupsSection />
             ) : (
               <>
-                {/* Mockup 2c: the profile block - display only; editing name, language or picture
+                {/* The profile block - display only; editing name, language or picture
             needs backend support that does not exist yet (Abgrenzung). */}
                 {user && (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>

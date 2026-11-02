@@ -47,7 +47,7 @@ export function focusFrameStyle(color: string) {
 }
 
 /**
- * Resolves the effective accent states. Without branding, the exact sampled mockup values
+ * Resolves the effective accent states. Without branding, the exact designed values
  * apply; a configured brand color derives hover (-8%), press (-16%) and the focus ring from
  * itself instead of falling back to the blue scale (guidelines 7).
  */
@@ -93,7 +93,7 @@ export function createAppTheme(mode: PaletteMode, branding?: BrandingOverrides):
 }
 
 /**
- * The global rail's theme (mockup 2a): a step darker than the navy sidebar while the app
+ * The global rail's theme: a step darker than the navy sidebar while the app
  * is light ({@link railRoles}), the carbon dark scheme while it is dark - same rule as the
  * sidebar, one surface further left.
  */
@@ -160,7 +160,7 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
           disabled: roles.fg3,
         },
       },
-      // The fine grid below is sampled from mockup 1a's inline styles - the app surface
+      // The fine grid below is taken from the design guidelines - the app surface
       // runs deliberately smaller and denser than the token scale's headline steps.
       typography: {
         fontFamily: fontFamily.sans,
@@ -356,13 +356,13 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
         MuiOutlinedInput: {
           styleOverrides: {
             root: {
-              // Mockup field recipe: fields sit on the page surface with a hairline shadow, not on
+              // Field recipe: fields sit on the page surface with a hairline shadow, not on
               // a grey fill; the dark scheme separates through one surface step instead.
               backgroundColor: isDark ? roles.bg2 : roles.bg1,
               boxShadow: isDark ? 'none' : shadow.hairline,
               borderRadius: radius.sm,
               '& .MuiOutlinedInput-notchedOutline': {
-                // Mockup 1a draws inputs with the crisper gray-300 line.
+                // The design draws inputs with the crisper gray-300 line.
                 borderColor: isDark ? roles.borderStrong : gray[300],
               },
               '&:hover .MuiOutlinedInput-notchedOutline': {
@@ -503,7 +503,7 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
               '&:hover': {
                 backgroundColor: roles.bg2,
               },
-              // Mockup 1a: the selected space sits on the blue-50 tint.
+              // The selected space sits on the blue-50 tint.
               '&.Mui-selected': {
                 backgroundColor: isDark ? alpha(accent, 0.16) : blue[50],
               },

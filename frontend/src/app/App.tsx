@@ -233,9 +233,9 @@ export default function App() {
                   active. */}
                 <Route path="spaces" element={<SpacesOverviewPage />} />
                 <Route path="spaces/new" element={<SpaceCreatePage />} />
-                {/* Every asset type's pages are a global area too (Schlussnotiz von
-                  Mockup-Abschnitt 2): bare global frame, no secondary column. The catalog is
-                  their one overview (ADR-0039); the former type overviews lead into it. */}
+                {/* Every asset type's pages are a global area too: bare global frame, no secondary
+                  column. The catalog is their one overview (ADR-0039); the former type overviews
+                  lead into it. */}
                 <Route element={<GlobalAreaLayout />}>
                   <Route path="catalog" element={<CatalogPage />} />
                   <Route path="catalog/new" element={<CatalogNewPage />} />
@@ -266,7 +266,7 @@ export default function App() {
                     <Route path="prompts/*" element={<Navigate to={CATALOG_ROUTE} replace />} />
                   )}
                 </Route>
-                {/* Global areas render inside the frame from mockup 2b: no space
+                {/* Global areas render inside the global frame: no space
                   column, a light secondary column with the area navigation instead. */}
                 <Route element={<AdminAreaLayout />}>
                   {/* The two areas of the user page are routes, as on the mail page:
@@ -356,7 +356,7 @@ export default function App() {
                   <Route path="admin/search/:tab" element={<SearchIndexingAdminPage />} />
                   <Route path="admin/privacy" element={<PrivacySettingsPage />} />
                 </Route>
-                {/* Mockup 2c: the user settings render in the bare global frame -
+                {/* The user settings render in the bare global frame -
                   no space column, no secondary column. */}
                 {/* The audit's point-in-time report: its own area, not under
                    /admin - it belongs to the AUDITOR role, not to the system administration. */}

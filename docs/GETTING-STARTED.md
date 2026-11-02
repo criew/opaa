@@ -203,12 +203,10 @@ Spezifikationen (docs/features/) — je Themenbereich
 ├── I  user-frontends.md
 ├── J  deployment-infrastructure.md
 └── K  public-sector.md
-    (document-sharing.md ist überholt und nur als Historie erhalten)
 
 Entscheidungen und Recherche
 ├── docs/decisions/        — ADRs, darunter 0014 zur Produktausrichtung
-├── docs/discussions/      — offene Erörterungen und Recherchen (u. a. discussion-retrieval-strategien.md)
-└── docs/design/           — Oberflächenentwürfe
+└── docs/design/           — Gestaltungsleitlinien, Barrierefreiheit, UI-Prüfliste
 
 Mitarbeit
 ├── CONTRIBUTING.md        — Leitfaden für Beitragende

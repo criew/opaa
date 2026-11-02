@@ -1,7 +1,6 @@
 /**
  * Design tokens of the OPAA interface - the single source of truth for every color, type,
- * spacing, radius, shadow and motion value. Values mirror docs/design/guidelines.md, which in
- * turn is derived from the target-state mockups (docs/design/OPAA Mockups.html). Components
+ * spacing, radius, shadow and motion value. Values mirror docs/design/guidelines.md. Components
  * never reference scale values (blue, navy, gray) directly - they go through the semantic
  * roles below, so a branding override can replace the accent without touching
  * component code.
@@ -195,7 +194,7 @@ export const darkRoles: SchemeRoles = {
 }
 
 /**
- * The navy block the sidebar keeps in the light scheme (mockup 1a) - the former dark-scheme
+ * The navy block the sidebar keeps in the light scheme - the former dark-scheme
  * values, now scoped to that one surface. In the dark scheme the sidebar follows
  * {@link darkRoles} instead.
  */
@@ -221,9 +220,9 @@ export const navyRoles: SchemeRoles = {
 }
 
 /**
- * The global rail left of the space column (mockup 2a): one shade darker than the navy
+ * The global rail left of the space column: one shade darker than the navy
  * block so the two navigation levels read apart at a glance. bg2 is the hover fill, bg3 the
- * active tile (mockup: navy-800 hover, navy-700 active with a navy-600 border). In the dark
+ * active tile (navy-800 hover, navy-700 active with a navy-600 border). In the dark
  * scheme the rail follows {@link darkRoles} like the sidebar - carbon has no darker step, so
  * the separation comes from the border instead.
  */
@@ -232,7 +231,7 @@ export const railRoles: SchemeRoles = {
   bg2: navy[800],
   bg3: navy[700],
   fg1: white,
-  // Mockup 2a paints the muted labels as 60% white; roles are opaque values, so this is that
+  // The design paints the muted labels as 60% white; roles are opaque values, so this is that
   // tone composited over bg1.
   fg2: '#99A1AB',
   fg3: '#7A8BA0',
@@ -252,7 +251,7 @@ export const railRoles: SchemeRoles = {
 
 /**
  * Font stacks (guidelines 3.1). Quicksand is the free relative of the Sklow brand face the
- * mockups use (round-geometric, single-story g, SIL OFL); Inter stays in the stack as
+ * design uses (round-geometric, single-story g, SIL OFL); Inter stays in the stack as
  * fallback. Both and JetBrains Mono ship with the repo (SIL OFL); the
  * stacks deliberately end in system fonts so an operator-provided brand font can be loaded
  * in front of them later via the branding configuration.
@@ -349,7 +348,7 @@ export const badgeShape = {
  * borders and surface steps, never through shadows.
  */
 export const shadow = {
-  /** Hairline lift for resting rows that need a whisper of depth (mockup 1a input row). */
+  /** Hairline lift for resting rows that need a whisper of depth (input row). */
   hairline: '0 1px 2px rgba(1, 32, 66, 0.06)',
   /** Level 2: menus, popovers, suggestion lists. */
   floating: '0 2px 6px rgba(1, 32, 66, 0.08)',

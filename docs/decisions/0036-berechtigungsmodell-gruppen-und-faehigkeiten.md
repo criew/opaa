@@ -27,10 +27,7 @@ hatte drei Tabellen und keinen Lesepfad. Das Rechteprofil der Suchdiagnose war b
 Vorentschieden und hier nicht neu zur Wahl: Subjekte sind Nutzer und Gruppen, flach, ohne freie Rollen
 und ohne Schachtelung; die Gruppe bleibt Subjekt am Grant; Gruppen werden Space-Mitglieder mit Rolle;
 globale Berechtigungen sind Fähigkeiten, ausgeliefert an „Alle Konten"; Mandantenfähigkeit (#1442) ist
-Randbedingung. Die Abwägung mit Systemvergleich steht im Konzeptpapier
-[`discussion-berechtigungsmodell-gruppen-und-faehigkeiten.md`](../discussions/discussion-berechtigungsmodell-gruppen-und-faehigkeiten.md),
-die Stakeholder-Berichte in
-[`discussion-berechtigungsmodell-stakeholder.md`](../discussions/discussion-berechtigungsmodell-stakeholder.md).
+Randbedingung.
 
 ## Entscheidung
 
@@ -492,7 +489,7 @@ zwischen „Freigabe zurücknehmen" (Rechte bleiben wirksam) und „übertragen 
 
 ### Zusagen aus der Stakeholder-Runde
 
-Die Zusagen sind Teil der Entscheidung. Kennungen nach `discussion-berechtigungsmodell-stakeholder.md`.
+Die Zusagen sind Teil der Entscheidung. Die Kennungen stammen aus der Stakeholder-Runde zu dieser Entscheidung.
 
 | Zusage | Stand | geändert mit |
 | --- | --- | --- |

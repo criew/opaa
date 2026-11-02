@@ -1,9 +1,9 @@
 # Retrieval-Benchmark: Konfigurationen vergleichbar machen
 
 > **Status: Entwurf zur Review.** Fachliche Grundlage sind
-> [`discussion-rag-evaluation.md`](../discussions/discussion-rag-evaluation.md) (Metriken, Golden
+> `discussion-rag-evaluation.md` (Metriken, Golden
 > Dataset, Vergleichsverfahren) und
-> [`discussion-retrieval-roadmap-opaa.md`](../discussions/discussion-retrieval-roadmap-opaa.md),
+> `discussion-retrieval-roadmap-opaa.md`,
 > Phase 0 („Messbarkeit herstellen") — dort ist der Ausbau des Harness ausdrücklich als Vorbedingung
 > jeder weiteren Retrieval-Investition benannt. Diese Spezifikation setzt Phase 0 um und trifft dabei
 > die Entscheidungen, die die Discussion offengelassen hat. Die strukturellen Festlegungen des
@@ -285,7 +285,7 @@ nimmt eine Liste von Varianten entgegen, führt jede gegen dasselbe eingefrorene
 denselben eingefrorenen Korpus aus und schreibt einen Variantenbericht.
 
 Die Anforderung dahinter ist ein Grundsatz aus
-[`discussion-rag-evaluation.md`](../discussions/discussion-rag-evaluation.md) §7: **gepaart messen.**
+`discussion-rag-evaluation.md` §7: **gepaart messen.**
 Beide Konfigurationen sehen dieselben Fragen, sonst vergleicht man Datensätze statt Konfigurationen.
 Der Bericht weist Deltas deshalb nicht nur aggregiert aus, sondern auch je Frage — die interessante
 Information ist fast immer „welche fünf Fragen haben sich verschlechtert", nicht „der Mittelwert stieg
@@ -378,7 +378,7 @@ Variantenvergleich formulieren lässt. Genau das ist der Zweck des Aufbaus.
 ### Entscheidung
 
 Kein Bootstrap, keine Konfidenzintervalle, keine p-Werte. Das gilt ausdrücklich **gegen** den
-Vorschlag in [`discussion-rag-evaluation.md`](../discussions/discussion-rag-evaluation.md) §7
+Vorschlag in `discussion-rag-evaluation.md` §7
 (Paired Bootstrap, BCa-Intervalle, Sign-Flip-Permutationstest) und ist eine bewusste Vereinfachung,
 kein Übersehen.
 
@@ -995,7 +995,7 @@ rekonstruiert statt festgehalten.
 schließen soll — und keiner bleibt, wenn er sie nicht messbar schließt.**
 
 Das ist die Konkretisierung der Messpflicht aus
-[`discussion-retrieval-roadmap-opaa.md`](../discussions/discussion-retrieval-roadmap-opaa.md)
+`discussion-retrieval-roadmap-opaa.md`
 (Rahmenbedingung 4) und gilt für jeden Baustein der Phasen 1 bis 3: Reranking, BM25-Ausbau über
 `pgroonga`/`pg_search`, `pg_trgm`, Wissensgraph, Parent-Document, Embedding-Modellwechsel.
 

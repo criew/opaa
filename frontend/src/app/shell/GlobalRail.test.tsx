@@ -47,7 +47,7 @@ describe('GlobalRail', () => {
     })
   })
 
-  it('renders the global destinations as its own navigation landmark (mockup 2a)', () => {
+  it('renders the global destinations as its own navigation landmark', () => {
     renderRailAt('/spaces')
 
     const rail = screen.getByRole('navigation', { name: 'Globale Navigation' })
@@ -153,7 +153,7 @@ describe('GlobalRail', () => {
     expect(adminLink).toHaveAttribute('aria-current', 'true')
   })
 
-  it('offers Einstellungen and Abmelden behind the avatar (mockup 2a/2c)', async () => {
+  it('offers Einstellungen and Abmelden behind the avatar', async () => {
     const user = userEvent.setup()
     renderRailAt('/spaces')
 

@@ -45,7 +45,7 @@ sourceSets {
     // needs Docker (pgvector + Ollama Testcontainers), pulls a ~275 MB embedding model and indexes
     // ~1.450 corpus documents, which would slow down every `./gradlew build` for something that
     // only needs to run occasionally and by choice. See the `evaluateRetrieval` task below and
-    // docs/discussions/discussion-rag-evaluation.md.
+    // ADR-0011.
     create("evalTest") {
         java.srcDir("src/evalTest/java")
         resources.srcDir("src/evalTest/resources")
