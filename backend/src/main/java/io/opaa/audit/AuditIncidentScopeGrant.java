@@ -16,11 +16,9 @@ import java.util.UUID;
 
 /**
  * The one exception the specification names by name: the anlassbezogene Klärung of a security
- * incident
- * (docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt). A
- * grant names person ({@link #subjectUserId}), time range ({@link #scopeStart}/{@link #scopeEnd})
- * and purpose <em>in advance</em>, and only these three - not an open filter - become the technical
- * bound {@link AuditQueryService#byIncidentScope} enforces.
+ * incident. A grant names person ({@link #subjectUserId}), time range ({@link #scopeStart}/{@link
+ * #scopeEnd}) and purpose <em>in advance</em>, and only these three - not an open filter - become
+ * the technical bound {@link AuditQueryService#byIncidentScope} enforces.
  *
  * <p>Vier-Augen-Prinzip: a grant is created {@code PENDING} by one AUDITOR ({@link
  * #requestedByUserId}) and stays unusable for querying until a <em>different</em> AUDITOR calls

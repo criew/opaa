@@ -59,7 +59,7 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
    Ziele in der [Roadmap](ROADMAP.md)
 4. [Modelle](handbuch/betrieb/modelle.md) und [ADR-0067](decisions/0067-modellanbindung-und-verwaltete-chat-modelle.md) —
    Modellverwaltung, lokal betriebene Modelle; Modell-Policy als Obergrenze in der [Roadmap](ROADMAP.md)
-5. [`features/access-control.md`](./features/access-control.md) — Anmeldung, Kontenlebenszyklus, Mandanten
+5. [Authentifizierung](./handbuch/betrieb/authentifizierung.md) und [Benutzerverwaltung](./handbuch/konten-und-rechte/benutzerverwaltung.md) — Anmeldung, Kontenlebenszyklus, Mandanten
 6. [Roadmap](./ROADMAP.md) — Metriken, Grenzen,
    Kostentransparenz
 7. [Wissensbibliotheken](./handbuch/arbeitsmittel/wissensbibliotheken/README.md) und
@@ -89,11 +89,11 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 
 1. [CONCEPTS.md](./CONCEPTS.md) — Abschnitte **Sicherheit, Nachweis und Mitbestimmung** sowie
    **Berechtigungsdurchsetzung zur Abfragezeit**
-2. [`features/security-and-compliance.md`](./features/security-and-compliance.md) — **vertieft**:
-   revisionssicheres Protokoll, Vollständigkeit nach DSGVO, C5-Fähigkeit
+2. [Nachvollziehbarkeit](./handbuch/betrieb/nachvollziehbarkeit.md) und [ADR-0068](./decisions/0068-mitbestimmungsfaehigkeit.md) — **vertieft**:
+   revisionssicheres Protokoll, Vollständigkeit nach DSGVO, Mitbestimmung
 3. [Berechtigungen](./handbuch/konten-und-rechte/berechtigungen.md) — Rechtemodell; Freigabekette und
    Mitbestimmung in der [Roadmap](ROADMAP.md)
-4. [`features/access-control.md`](./features/access-control.md) — Kontenlebenszyklus, Mandantengrenze
+4. [Benutzerverwaltung](./handbuch/konten-und-rechte/benutzerverwaltung.md) — Kontenlebenszyklus, Mandantengrenze
 5. [Roadmap](./ROADMAP.md) — was ausgewertet wird
    und in welcher Aggregation
 6. [Netz und Sicherheit](handbuch/betrieb/netz-und-sicherheit.md) und
@@ -195,8 +195,8 @@ Spezifikationen (docs/features/) — je Themenbereich
 ├── C  (Ziele in ROADMAP.md)
 ├── D  (Ziele in ROADMAP.md)
 ├── E  (Ziele in ROADMAP.md)
-├── F  access-control.md
-├── G  security-and-compliance.md
+├── F  (Ziele in ROADMAP.md)
+├── G  (Ziele in ROADMAP.md)
 ├── H  (Ziele in ROADMAP.md)
 ├── I  (Ziele in ROADMAP.md)
 ├── J  (Ziele in ROADMAP.md)

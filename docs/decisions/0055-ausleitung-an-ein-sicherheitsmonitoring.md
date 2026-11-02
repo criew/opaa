@@ -2,14 +2,13 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-25
+Akzeptiert · zuletzt geändert 2026-11-02
 
 ## Kontext
 
 Behörden betreiben ihr Sicherheitsmonitoring (SIEM) zentral für viele Fachverfahren; für die
 Bundesverwaltung verlangt der Mindeststandard des BSI zur Protokollierung und Detektion die
-Anbindung. Die Spezifikation ([Sicherheit und Compliance](../features/security-and-compliance.md#anbindung-an-ein-zentrales-sicherheitsmonitoring))
-beschreibt das Ziel und begrenzt es: Was OPAA nicht nach Person gruppiert, liefert es auch nicht so
+Anbindung. Die Anforderung beschreibt das Ziel und begrenzt es: Was OPAA nicht nach Person gruppiert, liefert es auch nicht so
 aus. Das Revisionsprotokoll ist nur anfügbar, wird nur über begrenzte Abfragewege der Revision und
 die Selbstauskunft gelesen und trägt Pseudonyme handelnder und betroffener Personen
 ([ADR-0015](0015-eigentuemertrennung-protokollablage.md)). OPAA läuft mit einer oder mehreren

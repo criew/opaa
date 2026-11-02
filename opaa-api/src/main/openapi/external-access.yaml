@@ -238,7 +238,7 @@ paths:
         The Bestandsliste of every access token for SYSTEM_ADMIN - owner, name, expiry, libraries
         and state. It carries no token value, no usage count and deliberately no usage date, and it
         offers no filter, no sorting and no output by person; the only filters are over state and
-        expiry (security-and-compliance.md, "Mitbestimmungsfaehigkeit" no. 2). The order is fixed:
+        expiry (ADR-0068, decision 2). The order is fixed:
         soonest expiry first.
       parameters:
         - name: status

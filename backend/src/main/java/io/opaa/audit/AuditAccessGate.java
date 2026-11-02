@@ -106,8 +106,8 @@ public class AuditAccessGate {
   }
 
   /**
-   * "Der Anlass ist bei diesen Einträgen ein Pflichtfeld; eine Abfrage ohne Anlass wird abgewiesen"
-   * (docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt).
+   * "Der Anlass ist bei diesen Einträgen ein Pflichtfeld; eine Abfrage ohne Anlass wird
+   * abgewiesen".
    */
   private void requireReason(String reason) {
     if (reason == null || reason.isBlank()) {

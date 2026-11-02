@@ -144,7 +144,8 @@ die handelnde Person, aber ein personenbezogener Auswertungspfad ist nicht gebau
 abgeschaltet: Keine Oberfläche und keine Schnittstelle filtert, gruppiert oder sortiert nach Person;
 Abfragen beginnen an einem Objekt, einem Zeitraum oder einer Ereignisart. Aufbewahrung: Untergrenze
 ein Jahr, Voreinstellung drei, Obergrenze zehn Jahre, mit automatischer Löschung. Siehe
-[security-and-compliance.md](../features/security-and-compliance.md#revisionssicheres-protokoll).
+[ADR-0059](0059-ereignisvertrag-aufbewahrung-und-integritaet-des-revisionsprotokolls.md) und
+[ADR-0068](0068-mitbestimmungsfaehigkeit.md).
 
 ### 14. Belegbarkeit heißt deterministische Belegvalidierung
 

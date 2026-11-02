@@ -5,8 +5,7 @@ package io.opaa.api.types;
  * chk_audit_log_outcome}; keep both in sync.
  *
  * <p>The rejected action is deliberately a first-class outcome, not merely the absence of a
- * successful entry: "die abgelehnte Verwaltungsaktion ist für eine Prüfung oft die interessantere"
- * (docs/features/security-and-compliance.md#der-protokollsatz).
+ * successful entry: "die abgelehnte Verwaltungsaktion ist für eine Prüfung oft die interessantere".
  */
 public enum AuditOutcome {
   SUCCESS,

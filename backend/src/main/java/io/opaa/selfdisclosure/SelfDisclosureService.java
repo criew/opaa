@@ -58,11 +58,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The self-disclosure of the signed-in person (docs/features/security-and-compliance.md,
- * "Selbstauskunft"): status, a one-time ticket issued only after a recent sign-in, and the export
- * the browser downloads with it. The person is always the caller or the holder of the ticket, never
- * a parameter. Limits are decided in the database (ADR-0053, Entscheidung 12), the number of
- * exports streaming at once per instance by {@link SelfDisclosureRunRegistry}.
+ * The self-disclosure of the signed-in person: status, a one-time ticket issued only after a recent
+ * sign-in, and the export the browser downloads with it. The person is always the caller or the
+ * holder of the ticket, never a parameter. Limits are decided in the database (ADR-0053,
+ * Entscheidung 12), the number of exports streaming at once per instance by {@link
+ * SelfDisclosureRunRegistry}.
  */
 @Service
 @DataFlow("mail")

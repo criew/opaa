@@ -220,8 +220,7 @@ public class AssetGrantService {
               + roleLabel(request.role())
               + " zu vergeben");
     } catch (AccessDeniedException denied) {
-      // The rejected attempt to grant oneself a higher role is itself protocol-worthy
-      // (docs/features/security-and-compliance.md).
+      // The rejected attempt to grant oneself a higher role is itself protocol-worthy.
       AuditEvent.Builder deniedEntry =
           AuditEvent.builder()
               .organizationId(asset.getOrganizationId())

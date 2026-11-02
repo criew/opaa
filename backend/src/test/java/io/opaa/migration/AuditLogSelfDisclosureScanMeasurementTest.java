@@ -26,11 +26,11 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 /**
  * Measures the audit-log category of the self-disclosure without an index on {@code subject_ref}
- * (docs/features/security-and-compliance.md, "Protokoll der Selbstauskunft", threshold 30 s): on 10
- * million entries over 36 monthly partitions, and for a person with 50,000 entries in one month of
- * a partition of the same size. Run by hand only, it needs minutes and several GB of Docker disk:
- * {@code ./gradlew test --tests '*AuditLogSelfDisclosureScanMeasurementTest'
- * -Dopaa.selfdisclosure.measureAuditScan=true}. Prints data volume, run times and query plan.
+ * (threshold 30 s): on 10 million entries over 36 monthly partitions, and for a person with 50,000
+ * entries in one month of a partition of the same size. Run by hand only, it needs minutes and
+ * several GB of Docker disk: {@code ./gradlew test --tests
+ * '*AuditLogSelfDisclosureScanMeasurementTest' -Dopaa.selfdisclosure.measureAuditScan=true}. Prints
+ * data volume, run times and query plan.
  */
 @EnabledIfSystemProperty(named = "opaa.selfdisclosure.measureAuditScan", matches = "true")
 class AuditLogSelfDisclosureScanMeasurementTest extends AbstractMigrationTest {

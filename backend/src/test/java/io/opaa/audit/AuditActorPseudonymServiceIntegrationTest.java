@@ -22,8 +22,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * two #391 acceptance criteria that concern the pseudonym mapping: it is stable per user (not
  * re-minted per event), and deleting it - which happens automatically when the account itself is
  * deleted, via {@code fk_audit_actor_pseudonyms_user}'s {@code ON DELETE CASCADE} - leaves an
- * already-written {@link AuditLogEntry} unchanged
- * (docs/features/security-and-compliance.md#unveränderlichkeit-und-löschrecht).
+ * already-written {@link AuditLogEntry} unchanged.
  */
 @OpaaIntegrationTest
 class AuditActorPseudonymServiceIntegrationTest {

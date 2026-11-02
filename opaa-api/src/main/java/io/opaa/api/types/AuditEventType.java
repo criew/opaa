@@ -1,12 +1,11 @@
 package io.opaa.api.types;
 
 /**
- * The closed list of events the first protocol stage records
- * (docs/features/security-and-compliance.md#die-ereignisse-der-ersten-stufe). "Was hier nicht
- * steht, wird in der ersten Stufe nicht geschrieben" - the list is deliberately closed, not a
- * category with a free-text detail: {@code AuditLogEntry#getEventType()} (backend module) is this
- * enum, not a {@code String}. This enum is the sole write guard; there is no longer a matching
- * database check constraint, so adding a value here does not require a migration.
+ * The closed list of events the first protocol stage records. "Was hier nicht steht, wird in der
+ * ersten Stufe nicht geschrieben" - the list is deliberately closed, not a category with a
+ * free-text detail: {@code AuditLogEntry#getEventType()} (backend module) is this enum, not a
+ * {@code String}. This enum is the sole write guard; there is no longer a matching database check
+ * constraint, so adding a value here does not require a migration.
  */
 public enum AuditEventType {
 
@@ -186,9 +185,8 @@ public enum AuditEventType {
   DIRECTORY_SYNC_CHANGE_APPLIED,
   /**
    * The header entry of a directory sync run, with its outcome. For a run a person confirmed, the
-   * actor is that person and {@code reason} their stated one (security-and-compliance.md: "oberhalb
-   * der Schwelle, mit der bestätigenden Person und ihrem Anlass"); every other run is written under
-   * the directory-sync system process actor.
+   * actor is that person and {@code reason} their stated one; every other run is written under the
+   * directory-sync system process actor.
    */
   DIRECTORY_SYNC_RUN_COMPLETED,
   /**
@@ -668,8 +666,7 @@ public enum AuditEventType {
    * lifetime ceiling, the per-token quota, the networks of the channel or the threshold of the mass
    * retrieval alert; before/after of the changed keys only. The instructions text for foreign tools
    * is deliberately <em>not</em> part of this event: it changes no reach, only the wording of a
-   * request to a foreign model, and the closed list of docs/features/security-and-compliance.md
-   * does not name it.
+   * request to a foreign model, and the closed event list does not name it.
    */
   EXTERNAL_ACCESS_SETTINGS_CHANGED,
 
@@ -724,7 +721,7 @@ public enum AuditEventType {
    */
   DATA_COLLECTION_DISCLOSURE_EXPORTED,
 
-  // Selbstauskunft (docs/features/security-and-compliance.md#protokoll-der-selbstauskunft)
+  // Selbstauskunft
   /**
    * A person began the export of her self-disclosure; actor, object and subject are her own
    * account, {@code after} lists the categories, {@code correlation_ref} names the export. A start

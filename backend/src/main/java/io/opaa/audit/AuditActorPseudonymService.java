@@ -10,8 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Resolves the stable pseudonym id a caller writing an {@link AuditLogEntry} uses as {@code
  * actorRef} (or {@code subjectRef} for a {@link AuditSubjectKind#USER} subject) for a given user -
  * minted once per user and reused afterwards, not re-minted per event, so entries sharing one
- * (unnamed) actor remain recognisable as such across the log
- * (docs/features/security-and-compliance.md#der-protokollsatz).
+ * (unnamed) actor remain recognisable as such across the log.
  */
 @Service
 public class AuditActorPseudonymService {

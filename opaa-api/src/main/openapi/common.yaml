@@ -215,7 +215,7 @@ components:
       in: query
       required: true
       description: >
-        The mandatory Anlass for this access to audit_log itself (docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt):
+        The mandatory Anlass for this access to audit_log itself:
         "der Anlass ist bei diesen Einträgen ein Pflichtfeld; eine Abfrage ohne Anlass wird
         abgewiesen". A missing or blank reason is rejected with 400 - and, per the same
         specification, the rejected attempt itself is recorded with its own audit_log entry, not

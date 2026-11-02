@@ -3,11 +3,10 @@ package io.opaa.compliance;
 import java.io.IOException;
 
 /**
- * Port through which a module hands the self-disclosure of a person the rows of one category
- * (docs/features/security-and-compliance.md, "Selbstauskunft"). An implementation is a
- * {@code @Component} in the module owning the data, declares its category as {@code public static
- * final SelfDisclosureCategory CATEGORY} and returns it from {@link #category()}; there is no
- * central list.
+ * Port through which a module hands the self-disclosure of a person the rows of one category. An
+ * implementation is a {@code @Component} in the module owning the data, declares its category as
+ * {@code public static final SelfDisclosureCategory CATEGORY} and returns it from {@link
+ * #category()}; there is no central list.
  *
  * <p>Contract of {@link #export}:
  *

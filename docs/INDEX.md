@@ -92,14 +92,16 @@ personenbezogener Daten.
 
 ### F · Identität, Rechte & Mandanten
 
-**[`features/access-control.md`](./features/access-control.md)**
+**[`handbuch/konten-und-rechte/benutzerverwaltung.md`](./handbuch/konten-und-rechte/benutzerverwaltung.md)** · **[`handbuch/konten-und-rechte/berechtigungen.md`](./handbuch/konten-und-rechte/berechtigungen.md)** ·
+**[Roadmap](./ROADMAP.md)**
 
 Anmeldung über den Verzeichnisdienst · Kontenlebenszyklus über SCIM · Gruppen als Rechtesubjekt ·
 Berechtigungsdurchsetzung zur Abfragezeit · Organisation als harte Mandantengrenze.
 
 ### G · Sicherheit, Nachweis & Prüfbarkeit
 
-**[`features/security-and-compliance.md`](./features/security-and-compliance.md)**
+**[`handbuch/betrieb/nachvollziehbarkeit.md`](./handbuch/betrieb/nachvollziehbarkeit.md)** · **[ADR-0068](./decisions/0068-mitbestimmungsfaehigkeit.md)** ·
+**[Roadmap](./ROADMAP.md)**
 
 Revisionssicheres Protokoll · Vollständigkeit nach DSGVO einschließlich Löschrecht und Datenexport · sichere
 Voreinstellungen · Software-Stückliste und signierte Builds · C5-Fähigkeit · Mitbestimmungsfähigkeit.
@@ -285,8 +287,7 @@ Den tatsächlichen Stand führt der [Gesamtstand](./fortschritt/gesamtstand.md).
 → [Gesamtstand](./fortschritt/gesamtstand.md) — und nur dort
 
 **Wie stelle ich sicher, dass niemand sieht, was er nicht sehen darf?**
-→ [Berechtigungen](./handbuch/konten-und-rechte/berechtigungen.md) und
-[`features/access-control.md`](./features/access-control.md)
+→ [Berechtigungen](./handbuch/konten-und-rechte/berechtigungen.md)
 
 **Läuft OPAA ohne Internetverbindung?**
 → Ja, das ist ein vorgesehenes Szenario. Siehe
@@ -298,12 +299,11 @@ Den tatsächlichen Stand führt der [Gesamtstand](./fortschritt/gesamtstand.md).
 
 **Können mehrere Häuser dieselbe Installation nutzen?**
 → Ja, die Organisation ist die harte Mandantengrenze. Siehe
-[`features/access-control.md`](./features/access-control.md)
+[ADR-0014, Entscheidung 15](./decisions/0014-produktausrichtung-oeffentliche-verwaltung.md#15-nachweis-der-organisationsgrenze)
 
 **Was bedeutet „C5-fähig"?**
 → Auf die Prüfung des Betreibers ausgelegt, ausdrücklich **nicht** zertifiziert. Siehe
-[CONCEPTS.md](./CONCEPTS.md) und
-[`features/security-and-compliance.md`](./features/security-and-compliance.md)
+[CONCEPTS.md](./CONCEPTS.md)
 
 **Was heißt das für die Personalvertretung?**
 → [CONCEPTS.md](./CONCEPTS.md), Abschnitt „Mitbestimmungsfähigkeit", und

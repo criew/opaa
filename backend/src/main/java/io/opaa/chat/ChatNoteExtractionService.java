@@ -86,8 +86,7 @@ public class ChatNoteExtractionService {
       metrics.recordAppliedNoteExtraction();
     } catch (RuntimeException e) {
       // Covers the model call and the write alike. No content in the message: the condensed text
-      // is what the person wrote, which docs/features/security-and-compliance.md keeps out of the
-      // application log.
+      // is what the person wrote, which never goes into the application log (ADR-0068).
       metrics.recordFailedNoteExtraction();
       log.warn(
           "Chat note condensation failed for chat {} - this turn contributes no note points and is"

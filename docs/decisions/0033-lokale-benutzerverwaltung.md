@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-31 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · Entscheidung 5 teilweise ersetzt durch ADR-0060 (Entscheidung 8) · Entscheidung 9 ergänzt durch ADR-0060 (Entscheidung 17) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
+Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt ADR-0005 und ADR-0025 (ersetzt dort Entscheidung 3 teilweise) · Entscheidung 5 teilweise ersetzt durch ADR-0060 (Entscheidung 8) · Entscheidung 9 ergänzt durch ADR-0060 (Entscheidung 17) · ergänzt durch ADR-0035 (Zugangstokens) und ADR-0041 (Konto-Lebenszyklus)
 
 ## Kontext
 
@@ -18,8 +18,7 @@ Messlatte sind dessen Schwächen (`subject = username`, Klartextvergleich, kein 
 Refresh, HMAC-Secret in der Betriebskonfiguration). Was ADR-0025 für OIDC nicht
 wollte — Sitzungszustand, Token-Prägung, Refresh-Ledger, CSRF — ist für eine Passwortanmeldung
 unvermeidlich und wird nur für den lokalen Issuer eingeführt. Bindend: **kein stiller Eingriff in
-ein Konto** und **kein personenbezogener Auswertungspfad** (`access-control.md`,
-`security-and-compliance.md`). Vorbild qnop.
+ein Konto** und **kein personenbezogener Auswertungspfad** ([ADR-0068](0068-mitbestimmungsfaehigkeit.md)). Vorbild qnop.
 
 ## Entscheidung
 
@@ -264,7 +263,7 @@ Platzhalter, gebrandeter HTML-Rahmen; API mit Vorschau, Zurücksetzen und Testve
   Notanker immer (`BOOTSTRAP_ACCOUNT`). Rollen laufen über den bestehenden Rollenendpunkt; ein
   Anbieterkonto bietet nur diese Handlung. Ein abgelaufenes Konto ist `EXPIRED`, nicht gelöscht;
   `DELETE` löscht nur ein Konto ohne Assets und ohne Space außer dem persönlichen (sonst 409), bis
-  der DSGVO-Pfad aus `security-and-compliance.md` ein gemeinsamer Dienst ist.
+  der DSGVO-Pfad ein gemeinsamer Dienst ist.
 - **Kein stiller Eingriff:** Jeder Verwaltungsakt geht per Mail an die Person (`ACCOUNT_LOCKED`,
   `ACCOUNT_UNLOCKED`, `ADMIN_PASSWORD_RESET`, `ACCOUNT_EXPIRING`, `ACCOUNT_HANDOVER_*`) und steht als
   Grund im Sitzungsmarker oder `pcr`-Anlass; nur die Fehlversuch-Sperre schickt keine Mail.
@@ -353,9 +352,9 @@ des Personalrats für eine Zustimmung; Stand der Zusagen:
 |---|---|---|
 | Kein Anmeldeprotokoll je Person, nicht durch Konfiguration umkehrbar; einzige Ausnahme das Notanker-Konto (Bedingung 1) | gilt (Entscheidung 13) | — |
 | Kein stiller Eingriff: Sperre, Entsperrung, Zurücksetzen, Ablauf und Übergabe werden der Person mitgeteilt, mit Grund (Bedingung 5) | gilt (Entscheidung 11) | #1595 (`admin_action`) |
-| Systemverwalter bleiben ohne Inhaltszugriff; Kontenverwaltung und Übergabe ändern daran nichts (Bedingung 10) | gilt (`security-and-compliance.md`) | — |
+| Systemverwalter bleiben ohne Inhaltszugriff; Kontenverwaltung und Übergabe ändern daran nichts (Bedingung 10) | gilt ([ADR-0068](0068-mitbestimmungsfaehigkeit.md)) | — |
 | Persönliche Verwalterkonten statt Sammelkonto; das Notanker-Konto ist Notfallmittel (Bedingung 12, erster Teil) | gilt als Verfahren (Entscheidung 5, Handbuch); ein Produktzwang besteht nicht | #1543 |
-| Auszug für die Personalvertretung führt alle neuen Ereignisarten und Felder (Bedingung 9, Produktteil) | gilt (geschlossene Ereignisliste in `security-and-compliance.md`) | — |
+| Auszug für die Personalvertretung führt alle neuen Ereignisarten und Felder (Bedingung 9, Produktteil) | gilt (geschlossene Ereignisliste, [ADR-0059](0059-ereignisvertrag-aufbewahrung-und-integritaet-des-revisionsprotokolls.md)) | — |
 | Seed legt auf Bestandsinstallationen kein scharfes Konto an (`INVITED`) | gilt | #1534 |
 | Übergabe zweistufig, Subject aus dem Token der Person, Pflicht-Anlass, Umfangsanzeige | gilt | #1563 |
 | Notanker-Konto gegenüber Verwaltungsakten unverletzlich, Fehlversuch-Sperre gilt | gilt, erweitert (kein Rücksetzlink, kein Ablaufdatum) | #1552, #1640, #1988 |
@@ -420,5 +419,5 @@ des Personalrats für eine Zustimmung; Stand der Zusagen:
 ## Offen
 
 - MFA (TOTP) für lokale Systemverwalter als nächste Härtung.
-- Übersicht der eigenen Sitzungen für die Person selbst (`access-control.md`).
+- Übersicht der eigenen Sitzungen für die Person selbst ([Roadmap](../ROADMAP.md)).
 - Löschen eines Kontos als gemeinsamer DSGVO-Dienst für alle Konten.

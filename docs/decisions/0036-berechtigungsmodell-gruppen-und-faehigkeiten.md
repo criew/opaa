@@ -311,8 +311,8 @@ Schreibzeitpunkt nein.
   befristeten, begründeten Vier-Augen-Vollmacht nach dem Muster von `audit_incident_scope_grants`
   zulässig. Jeder Abruf ist ein Protokollereignis, auch der abgewiesene.
 - **Aufbewahrungshöchstdauer** (`PermissionHistoryRetentionSettings`, 12–120 Monate, ausgeliefert 36 —
-  dieselben Grenzen wie `chk_audit_retention_settings_months`, weil `security-and-compliance.md` die
-  Historie der Protokolllogik unterstellt); Änderungen sind Governance-Ereignisse. Sie ist Vorbedingung
+  dieselben Grenzen wie `chk_audit_retention_settings_months`, weil die Rechtehistorie
+  der Protokolllogik folgt); Änderungen sind Governance-Ereignisse. Sie ist Vorbedingung
   jeder personenbezogenen Historienquelle und des Namensschnappschusses aus Entscheidung 2. ADR-0016
   bleibt unberührt: Die Historie überlebt die Löschung des Objekts, nicht die Höchstdauer.
 - **Verfahren:** Vor dem Rollout legt die Dienststelle die Auskunft über die Datenerhebung vollständig

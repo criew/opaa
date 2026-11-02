@@ -340,7 +340,7 @@ löschen → neu anlegen) durch.
 
 **Das Muster eines `PATTERN`-Feldes wird unter einem Schrittbudget ausgewertet.** Das Verwaltungsrecht
 ist keine Vertrauensgrenze: Wer das Anlegerecht `CREATE_LIBRARY` hält — im Auslieferungszustand
-jede angemeldete Person, siehe [access-control.md](access-control.md#fähigkeiten-die-installationsweiten-anlegerechte) —
+jede angemeldete Person, siehe [Roadmap](../ROADMAP.md) —
 legt eine Bibliothek an und ist deren Eigentümerin, ein Feldmuster ist also Nutzereingabe. `java.util.regex` kennt kein Zeitlimit, deshalb
 liest der Matcher seine Eingabe über eine Zeichenfolge, die seine Schritte zählt und nach dem Budget
 abbricht — beim Setzen eines Wertes und, gegen selbst erzeugte Worst-Case-Eingaben, schon beim
@@ -1993,7 +1993,7 @@ werden, deren Verhalten bei sauberen Werten bereits gemessen ist.
   Extraktion, Schemavorschlag und **jedes aus dem Bestand abgeleitete Aggregat** laufen; das
   Bearbeitungsrecht am Dokument trägt die Metadatenkorrektur, das Verwaltungsrecht an der Bibliothek
   die Schemaänderung; der Metadatenfilter ist dem Rechtefilter nachgeordnet.
-- **[Sicherheit und Nachvollziehbarkeit](./security-and-compliance.md)** — die Protokollablage, in der
+- **[Sicherheit und Nachvollziehbarkeit](../ROADMAP.md)** — die Protokollablage, in der
   die Audit-Ereignisse manueller Metadatensetzungen landen
   ([ADR-0015](../decisions/0015-eigentuemertrennung-protokollablage.md)); aus ihr sind manuelle Werte
   nach einer Wiederherstellung rekonstruierbar.

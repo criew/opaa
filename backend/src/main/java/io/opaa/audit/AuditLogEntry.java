@@ -17,9 +17,8 @@ import java.util.UUID;
 import org.springframework.data.domain.Persistable;
 
 /**
- * One entry of the append-only audit trail (see
- * docs/features/security-and-compliance.md#der-protokollsatz): "wer, wann, was, an welchem Objekt,
- * mit welchem Ergebnis". Immutable by design - there is no update method and no setter beyond the
+ * One entry of the append-only audit trail (ADR-0059): "wer, wann, was, an welchem Objekt, mit
+ * welchem Ergebnis". Immutable by design - there is no update method and no setter beyond the
  * constructor. That is only the application-level half of "nur anfügend"; the binding half is a
  * database privilege restriction on the underlying table.
  *
@@ -39,8 +38,7 @@ import org.springframework.data.domain.Persistable;
  *
  * <p>{@code actorRef} and {@code subjectRef} (when the subject is a {@link AuditSubjectKind#USER})
  * are pseudonym ids from {@link AuditActorPseudonym}, not user ids - the whole point of keeping
- * that mapping in a separate, independently deletable table
- * (docs/features/security-and-compliance.md#unveränderlichkeit-und-löschrecht).
+ * that mapping in a separate, independently deletable table.
  */
 @Entity
 @Table(name = "audit_log")

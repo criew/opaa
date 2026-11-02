@@ -5,8 +5,7 @@ tags:
     description: >-
       Data collection disclosure of the installation: the compliance fact manifest of the running
       version joined with the effective values of the installation (ADR-0052, ADR-0053), and the
-      self-disclosure of the signed-in person (docs/features/security-and-compliance.md,
-      "Selbstauskunft"), and the retention periods of chats and of the anlassbezogene Klärung the
+      self-disclosure of the signed-in person, and the retention periods of chats and of the anlassbezogene Klärung the
       system administration holds in the database (ADR-0060, Entscheidung 1).
 paths:
   /api/v1/me/self-disclosure:

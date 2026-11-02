@@ -278,7 +278,7 @@ public final class ConversationRetrievalEvaluator {
       condensed = noteExtraction.condense(userMessage);
     } catch (RuntimeException e) {
       // Never the message or the condensed text: that is what the asking person wrote, which
-      // docs/features/security-and-compliance.md keeps out of the log. The caller records which
+      // the protocol rules keep out of the log. The caller records which
       // turn it was and the report carries the count.
       log.debug("Condensation call failed", e);
       return false;

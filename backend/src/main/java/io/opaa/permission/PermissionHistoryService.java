@@ -16,11 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
  * Records and reconstructs the permission-state history: every change to an {@link AssetGrant}, to
  * a group membership and to a {@link CapabilityGrant} is written here as a half-open interval, with
  * the operation that caused it - so a subject's reach is reconstructable at any past instant inside
- * the retention period, not only "now" (see
- * docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten). Every
- * recording method runs inside the caller's own transaction (default propagation): a grant change
- * and its history row commit or roll back together, the same as any other write this class's
- * callers already make in the same transaction.
+ * the retention period, not only "now" (ADR-0016). Every recording method runs inside the caller's
+ * own transaction (default propagation): a grant change and its history row commit or roll back
+ * together, the same as any other write this class's callers already make in the same transaction.
  *
  * <p><b>All three ways of the readable-asset formula are here</b> (ADR-0037): the organization-wide
  * reach is a grant to {@code ALL_ACCOUNTS} and is historised in the same table as the other two.

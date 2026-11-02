@@ -10,8 +10,8 @@ import java.time.Instant;
  * The single, installation-wide maximum retention period of the rights history (ADR-0036,
  * Entscheidung 8): how long a <em>closed</em> history interval is kept after it ended. {@code
  * retentionMonths} is bounded 12..120 by {@code chk_permission_history_retention_months} - the same
- * bounds as {@code chk_audit_retention_settings_months}, because
- * docs/features/security-and-compliance.md puts the history under the same logic as the protocol.
+ * bounds as {@code chk_audit_retention_settings_months}, because the history follows the same
+ * retention logic as the protocol (ADR-0059).
  *
  * <p>This is a second axis next to ADR-0016, not a replacement for it: the history still outlives
  * the deletion of the <em>object</em> it describes (library, group, grant), and its person columns

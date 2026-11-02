@@ -385,7 +385,7 @@ class SearchIntegrationTest {
         .satisfies(library -> assertThat(library.name()).isEqualTo("Such-IT-Bibliothek"));
   }
 
-  /** The promise of security-and-compliance.md: the single query leaves no trail. */
+  /** The promise of ADR-0068: the single query leaves no trail. */
   @Test
   void neitherSearchNorFetchWritesAnAuditEntry() {
     long before = auditEntries();
