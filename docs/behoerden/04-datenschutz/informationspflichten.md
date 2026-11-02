@@ -25,7 +25,7 @@ Protokoll, Sichtbarkeit, Empfänger, Fristen und KI-Funktionen. Der Text verweis
 auf sie.
 
 Abschnitt 8 nennt die Selbstauskunft: Beschäftigte laden ihre Daten selbst herunter
-([Benutzerverwaltung](../../handbuch/konten-und-rechte/benutzerverwaltung.md#meine-daten-die-selbstauskunft)).
+([Meine Daten](../../handbuch/arbeiten/meine-daten.md#eigene-daten-herunterladen)).
 Der Hinweis darin steht wörtlich so in der Oberfläche.
 
 ## Aufgaben der Behörde

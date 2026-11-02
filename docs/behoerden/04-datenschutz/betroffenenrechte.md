@@ -25,13 +25,13 @@ ist die Behörde; die oder der Datenschutzbeauftragte (DSB) berät.
   Zeilen „Spalten mit Personenbezug“ und „Zugriffsweg“.
 - Wer sie sieht: {{faktenblatt:rollensicht}}.
 - Die **Selbstauskunft**: Jede angemeldete Person lädt ihre Daten nach erneuter Anmeldung selbst als
-  ZIP herunter ([Benutzerverwaltung](../../handbuch/konten-und-rechte/benutzerverwaltung.md#meine-daten-die-selbstauskunft)).
+  ZIP herunter ([Meine Daten](../../handbuch/arbeiten/meine-daten.md#eigene-daten-herunterladen)).
   Was enthalten ist und was nicht, steht je Datum im {{faktenblatt:datenkatalog}}, Zeile „Zuordnung
   zur Person“.
 - Was jede Person außerdem einsehen kann: eigene Angaben
-  ([Benutzerverwaltung](../../handbuch/konten-und-rechte/benutzerverwaltung.md#11-was-nutzende-selbst-können)), eigene
-  Chats ([Suche in eigenen Chats](../../handbuch/spaces/suche.md#72-suche-in-eigenen-chats)), eigene
-  Zugangstokens ([Externe KI-Werkzeuge](../../handbuch/spaces/fremdzugaenge.md#5-zugangstokens-aus-sicht-der-person)).
+  ([Meine Daten](../../handbuch/arbeiten/meine-daten.md)), eigene
+  Chats ([Chats verwalten](../../handbuch/arbeiten/chats.md#einen-chat-wiederfinden)), eigene
+  Zugangstokens ([Ein Zugangstoken anlegen](../../handbuch/arbeiten/zugangstoken.md)).
 
 Nicht in der Selbstauskunft sind Daten über die Person in Dokumenten, Inhalte anlassbezogener
 Klärungen, das technische Log und Sicherungen; das stellt bei einem Antrag weiterhin die Behörde zusammen.

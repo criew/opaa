@@ -553,66 +553,19 @@ Personalvertretung zu klären ist; das Kapitel [Authentifizierung](../betrieb/au
 
 ## 11. Was Nutzende selbst können
 
-Ein lokales Konto findet in seinen eigenen Einstellungen:
-
-- **„Anlass des Kontos"** — den Anlagegrund, den die Systemverwaltung festgehalten hat.
-- **„Passwort ändern"** — mit dem aktuellen Passwort. Die eigene Sitzung bleibt bestehen, alle
-  übrigen Sitzungen des Kontos enden.
-
-Ohne Anmeldung, wenn der Fluss eingeschaltet ist:
-
-- **„Passwort vergessen"** — die Antwort ist immer dieselbe, ob es zu der Adresse ein Konto gibt oder
-  nicht. Wer keine Nachricht erhält, hat entweder kein Konto unter dieser Adresse, oder das Konto ist
-  von der Verwaltung gesperrt, abgelaufen oder noch eingeladen. In diesen Fällen hilft nur die
-  Systemverwaltung.
-- **„Konto registrieren"** — siehe Abschnitt 10.
-
-Ein Konto eines Identitätsanbieters sieht keinen dieser Punkte; sein Passwort verwaltet der Anbieter.
+Passwort ändern und die Selbstauskunft beschreibt [Meine Daten](../arbeiten/meine-daten.md). „Passwort
+vergessen“ antwortet immer gleich, ob es zu der Adresse ein Konto gibt oder nicht; wer keine
+Nachricht erhält, hat kein Konto unter der Adresse, oder es ist gesperrt, abgelaufen oder noch
+eingeladen. Ein Konto eines Identitätsanbieters sieht diese Punkte nicht.
 
 ### Meine Daten: die Selbstauskunft
 
-Jede angemeldete Person, ob mit lokalem Konto oder über einen Identitätsanbieter, lädt unter
-**Einstellungen → Meine Daten** die zu ihr gespeicherten Daten selbst herunter. Sie erhält eine
-ZIP-Datei mit einer lesbaren Übersicht und je Kategorie einer maschinenlesbaren Datei: Konto, Chats,
-Rechte, Gruppen, Spaces, verbundene Konten, Zugangstokens, Benachrichtigungen, Protokolleinträge über
-sie und weitere. Andere Personen stehen darin nur als „andere Person“. Niemand sonst kann die
-Auskunft auslösen, auch die Systemverwaltung nicht.
-
-Nicht enthalten sind Inhalte von Dokumenten und Originaldateien (eigene Uploads erscheinen nur als
-Verzeichnis), Sicherungen, das technische Log des Betriebs, Geheimnisse wie Passwörter und Tokens,
-Begründungen von Verwaltungs- und Prüfhandeln und Inhalte anlassbezogener Klärungen über die Person;
-über Letztere gibt die oder der Datenschutzbeauftragte Auskunft. Die Selbstauskunft ersetzt nicht die
-förmliche Bearbeitung eines Auskunftsantrags; ein Antrag bei der Behörde bleibt möglich. Im Bereich
-steht wörtlich:
-
-> „Diese Auskunft ist nur für Sie. Niemand darf verlangen, dass Sie sie vorlegen oder weitergeben.“
-
-So läuft ein Download:
-
-1. „Daten herunterladen“ wählen.
-2. Die Anmeldung bestätigen: ein lokales Konto mit dem Passwort, ein Konto eines
-   Identitätsanbieters mit einer erneuten Anmeldung dort; danach kehrt die Seite zu „Meine Daten“
-   zurück und setzt den Download selbst fort
-   ([Authentifizierung](../betrieb/authentifizierung.md#erneute-anmeldung-vor-sensiblen-vorgängen)).
-3. Der Browser speichert die Datei. Die Seite zeigt, dass der Download läuft, und danach das
-   Ergebnis. Ob die Datei vollständig ausgeliefert wurde, erfährt sie vom Server: Sie fragt den Stand
-   in kurzen Abständen ab und sofort, wenn man in den Tab zurückkehrt. Auch bei einem späteren Besuch
-   steht dort, wenn der letzte Download abgebrochen wurde.
-
-Mit jedem Start erhält die Person eine Benachrichtigung in OPAA und, wo Mail eingerichtet ist und
-das Konto eine Adresse hat, eine Mail. So fällt ein Download auf, den sie nicht selbst ausgelöst hat.
-
-Die **Tagesgrenze** legt fest, wie viele vollständige Downloads je Person und Kalendertag möglich
-sind. Ein abgebrochener Download zählt nicht, die Zahl der Starts je Tag ist aber begrenzt. Ist eine
-Grenze erreicht, nennt die Seite, ab wann der nächste Download möglich ist.
-
-| Meldung | Bedeutung |
-|---|---|
-| „Der Download wurde abgebrochen und nicht gezählt. Sie können es erneut versuchen.“ | Die Verbindung brach ab, der Browser hat den Download abgebrochen oder die Instanz wurde dabei beendet. Fehlt der zweite Satz, ist heute kein weiterer Start möglich. |
-| „Für heute ist kein weiterer Download möglich. Der nächste ist ab … möglich.“ | Die Tagesgrenze ist erreicht. |
-| „Starts für heute erschöpft: …“ | Der Download wurde heute zu oft abgebrochen; der nächste Versuch ist am nächsten Tag möglich. |
-| „Gerade laden viele Personen ihre Daten herunter. …“ | Die Instanz liefert gerade so viele Auskünfte aus, wie sie darf; nach einer Minute erneut versuchen. |
-| „Die Selbstauskunft ist in dieser Installation derzeit abgeschaltet. …“ | Die Systemverwaltung hat die Notabschaltung umgelegt; die Person kann die Auskunft bei der Behörde beantragen. |
+Jede angemeldete Person lädt die zu ihr gespeicherten Daten selbst herunter
+([Meine Daten](../arbeiten/meine-daten.md#eigene-daten-herunterladen)); niemand sonst kann die Auskunft
+auslösen. Nicht enthalten sind unter anderem Inhalte anlassbezogener Klärungen über die Person;
+darüber gibt die oder der Datenschutzbeauftragte Auskunft. Jeder Start wird der Person in OPAA und
+per Mail gemeldet. Die **Tagesgrenze** zählt vollständige Downloads; die Zahl der Starts je Tag ist
+zusätzlich begrenzt.
 
 **In der Administration** stellt die Systemverwaltung unter **Administration → Datenschutz** die
 Notabschaltung („Selbstauskunft anbieten“) und die Tagesgrenze ein. Beides wirkt ohne Neustart auf
@@ -648,31 +601,9 @@ erklärt nur, wozu es dient.
 
 ### Was die Seite zeigt
 
-**Ihre verbundenen Konten** — jede bestehende Verbindung der Person, auch zu einem Zugang, der für
-sie nicht mehr freigegeben ist. Je Verbindung: der Zugang und seine Quellart, der eigene Kontoname
-beim Anbieter (wie eingegeben, nur für die Person selbst sichtbar), die Anmeldeart, seit wann verbunden, die eigenen
-Bibliotheken, die die Verbindung nutzen, und der Zustand:
-
-| Anzeige | Bedeutung | Was die Person tun kann |
-|---|---|---|
-| **Verbunden** | Die Zugangsdaten sind hinterlegt und gültig | Neu verbinden (etwa nach einem Passwortwechsel beim Anbieter), Trennen |
-| **Abgelaufen** | Der Anbieter hat die Zugangsdaten abgelehnt, oder sie sind abgelaufen. Der Inhalt der Bibliotheken bleibt durchsuchbar, wird aber nicht aktualisiert | Neu verbinden, Trennen |
-| **Getrennt** | Die Zugangsdaten sind gelöscht. Die Zeile bleibt nur, solange eine private Bibliothek daran hängt; diese ruht. Statt „verbunden seit …“ steht hier nur „getrennt“ | Neu verbinden |
-| Zusatz **„Nicht mehr freigegeben“** | Die Systemverwaltung hat die Freigabe des Zugangs entzogen. Die Verbindung läuft weiter und lässt sich trennen und neu verbinden; ein neues Konto auf diesem Zugang ist nicht mehr möglich | wie oben |
-| Zusatz **„Zugang gesperrt“** | Die Systemverwaltung hat den Zugang oder seine Quellart gesperrt. Neu verbinden geht erst nach der Aufhebung | nur Trennen |
-| Zusatz **„Zustimmung endet am …“** | Bei einem Zugang mit Anmeldung beim Anbieter (OAuth) nennt der Anbieter ein Ende der Zustimmung, und es ist höchstens 14 Tage entfernt. Ist es weiter entfernt, steht „Zustimmung gültig bis …“ in der Zeile | Neu verbinden, bevor es erreicht ist |
-
-Wo es etwas zu sagen gibt, steht unter der Verbindung ein Hinweis, der die **zuständige Stelle**
-nennt und sagt, **was mit dem Inhalt geschieht**. Ein **ruhendes** Konto (lange keine Anmeldung oder
-abgeschalteter Anmeldeweg) zeigt sich nicht hier, sondern an den Bibliotheken: Mit der nächsten
-Anmeldung geht es ohne Neuverbinden weiter.
-
-**Weitere Zugänge** — die Zugänge, auf denen die Person jetzt ein Konto verbinden kann: Besitzart
-„Person“, für sie freigegeben und nicht gesperrt, je mit Quellart und Anmeldeart. Bietet in der Installation noch keine Quellart
-verbundene Konten an, sagt der Abschnitt genau das, statt auf eine fehlende Freigabe zu verweisen.
-
-**Warum fehlt mein Zugang?** — sagt, wer Zugänge anlegt und freigibt, und nennt die zuständige
-Stelle. Das ist der Weg, wenn ein Zugang fehlt; einen toten Knopf gibt es nicht.
+Die Seite und ihre Zustände aus Sicht der Person: [Ein Konto verbinden](../arbeiten/konto-verbinden.md). Ein
+**ruhendes** Konto zeigt sich nicht dort, sondern an den Bibliotheken; mit der nächsten Anmeldung
+geht es ohne Neuverbinden weiter.
 
 ### Verbinden und neu verbinden
 
@@ -718,20 +649,13 @@ Zugang), heißt sie „Verbindung getrennt“. Alle drei führen per Klick auf d
 
 ### Trennen
 
-**Trennen geht immer**, auch ohne Freigabe und bei gesperrtem Zugang, und **löscht die
-Zugangsdaten sofort**. Die Rückfrage nennt die eigenen Bibliotheken auf der Verbindung: Sie ruhen
-danach, ihr Inhalt bleibt durchsuchbar und wird nicht mehr aktualisiert, bis die Person das Konto
-wieder verbindet. Nutzt keine Bibliothek die Verbindung, verschwindet sie aus der Liste; war der
-Zugang nicht mehr freigegeben, sagt die Rückfrage, dass danach kein neues Verbinden möglich ist.
-
-Bei einer Anmeldung beim Anbieter (OAuth) zieht OPAA die Zustimmung anschließend auch beim Anbieter
-zurück, sofern er dafür einen Weg anbietet; Microsoft bietet bei OneDrive keinen, dort entzieht man
-sie selbst ([Konnektor OneDrive](../arbeitsmittel/wissensbibliotheken/konnektoren/onedrive.md#3-quellkonfiguration)). Der Rückzug läuft im Hintergrund: Trennen und Notabschaltung warten nicht auf den Anbieter. Gelingt das
-nicht, etwa weil der Anbieter nicht erreichbar ist oder OPAA gerade neu startet, bleibt die
-Zustimmung dort gültig, bis der Anbieter sie beendet, bei manchen Anbietern unbegrenzt. OPAA selbst
-hat sie dann schon gelöscht und nutzt sie nicht mehr; wer sicher gehen will, entzieht sie zusätzlich
-in den Kontoeinstellungen des Anbieters. Die Systemverwaltung sieht einen verlorenen Widerruf nur als
-Warnung im Betriebslog.
+Trennen geht immer und löscht die Zugangsdaten sofort ([Ein Konto verbinden](../arbeiten/konto-verbinden.md#trennen)).
+Bei einer Anmeldung beim Anbieter zieht OPAA die Zustimmung dort im Hintergrund zurück, sofern der
+Anbieter einen Weg bietet; Microsoft bietet bei OneDrive keinen
+([Konnektor OneDrive](../arbeitsmittel/wissensbibliotheken/konnektoren/onedrive.md#3-quellkonfiguration)).
+Gelingt der Rückzug nicht, bleibt die Zustimmung beim Anbieter gültig, bis er sie beendet; OPAA hat
+sie dann schon gelöscht. Die Systemverwaltung sieht einen verlorenen Widerruf nur als Warnung im
+Betriebslog.
 
 ### Was die Verwaltung sieht
 

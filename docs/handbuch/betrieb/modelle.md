@@ -560,7 +560,7 @@ eine noch gesetzt, warnen der Start im Log und der Reiter der Rolle.
 
 Mit der Spracheingabe spricht eine Person ihre Frage ein, statt sie zu tippen: Sie nimmt im Chat auf,
 beendet die Aufnahme, und der erkannte Text landet im Eingabefeld (Bedienung unter
-[Suche](../spaces/suche.md#frage-diktieren)). Dafür braucht OPAA eine eigene Modellrolle **Transkription**, die
+[Dateien anhängen und diktieren](../arbeiten/anhaengen-und-diktieren.md#eine-frage-diktieren)). Dafür braucht OPAA eine eigene Modellrolle **Transkription**, die
 Sprache in Text umwandelt. Sie ist ab Werk **aus**; ohne sie zeigt der Chat kein Mikrofon. Eingetragen wird sie unter
 **Modelle → Spracheingabe** ([Rerank- und Transkriptionsmodell in der
 Oberfläche](#rerank-modell-und-transkriptionsmodell-in-der-oberfläche)) oder schon bei der

@@ -77,31 +77,14 @@ der Zugriff fehlt.
 
 ### Anlegen
 
-Angelegt wird über **„Neuer Katalogeintrag"** im Katalog: Nach der Wahl der Art „Prompts" öffnet „Weiter" einen
-Assistenten mit drei Schritten ([Katalog](katalog.md), Abschnitt 4). Er verwendet dieselben
-Formularbausteine wie der Assistent einer Wissensbibliothek, schneidet sie aber anders zu: Es gibt
-keine Schritte „Quellart" und „Quelle einrichten" — eine Prompt-Bibliothek bindet kein Wissen und
-hat keine Quelle —, und Eigentümer und Rechte stehen in zwei eigenen Schritten statt zusammen in
-einem Schritt „Freigaben":
-
-1. **Stammdaten** — Name und, optional, Beschreibung.
-2. **Eigentümer** — „Mein Konto" oder „Eine Gruppe". Angeboten werden nur Gruppen, in denen die
-   anlegende Person Mitglied ist. Als persönliche Bibliothek erhält die anlegende Person die
-   Eigentümerrolle, bei einer Gruppe als Eigentümerin erhält die Gruppe die Verwalterrolle.
-   **Gruppeneigentum ist die haltbarere Wahl** für Prompts, die ein Referat gemeinsam pflegt.
-3. **Rechte** — optional vorgemerkte Rollen für **Personen und Gruppen**, die gleich nach dem
-   Anlegen erteilt werden. Den Empfänger „Alle Konten" bietet der Assistent **nicht** an; diese
-   Freigabe wird erst an der fertigen Bibliothek erteilt, im Reiter „Freigaben" unter
-   „Berechtigungen".
-
-Anlegen darf, wer das Anlegerecht **„Prompt-Bibliotheken anlegen"** hat; ausgeliefert ist es an
-„Alle Konten" ([Berechtigungen](../konten-und-rechte/berechtigungen.md), Abschnitt 9).
-Fehlt es, bietet „Neuer Katalogeintrag" im Katalog die Art „Prompts" nicht an; wer den Assistenten direkt
-aufruft, liest das fehlende Recht beim Namen. Kann eine
-vorgemerkte Rolle nicht erteilt werden, ist die Bibliothek trotzdem angelegt: Der Assistent führt
-auf ihre Detailseite, nennt in einem Hinweis die betroffenen Personen oder Gruppen, und die Rolle
-lässt sich dort im Reiter „Freigaben" unter „Berechtigungen" nachtragen. Ein zweites Anlegen
-bietet er nicht an.
+Der Assistent hat drei Schritte, Stammdaten, Eigentümer und Rechte:
+[Eine Prompt-Bibliothek anlegen](../arbeiten/prompt-bibliothek-anlegen.md). Bei einer Gruppe als Eigentümerin
+erhält die Gruppe die Verwalterrolle; angeboten werden nur Gruppen, in denen die anlegende Person
+Mitglied ist. „Alle Konten“ bietet der Assistent nicht an. Anlegen darf, wer das Anlegerecht
+**„Prompt-Bibliotheken anlegen“** hat; ausgeliefert ist es an „Alle Konten“
+([Berechtigungen](../konten-und-rechte/berechtigungen.md), Abschnitt 9). Kann eine vorgemerkte
+Rolle nicht erteilt werden, ist die Bibliothek trotzdem angelegt, und ein Hinweis nennt die
+Empfänger.
 
 ### Die Detailseite
 
@@ -155,42 +138,9 @@ Datum der letzten Änderung steht in der Detailansicht.
 
 ## 5. Prompts pflegen
 
-„Neuer Prompt" und „Bearbeiten" öffnen denselben Dialog:
-
-| Feld | Inhalt |
-|---|---|
-| **Titel** | Die Bezeichnung für Menschen |
-| **Befehl** | Folgt beim neuen Prompt dem Titel („Anhörung Bußgeld" wird `anhoerung-bussgeld`), bis er selbst geändert wird; darunter steht, wie der Prompt aufgerufen wird |
-| **Beschreibung** | Optional, wofür der Prompt gedacht ist |
-| **Text** | Die Anweisung selbst, mit Platzhaltern `{{name}}` |
-
-Unter dem Text zeigt eine Hervorhebung, was OPAA als Platzhalter liest: eigene Variablen,
-Systemvariablen und ungültige Platzhalter in je eigener Farbe, Systemvariablen zusätzlich
-gepunktet und ungültige Platzhalter gewellt unterstrichen; eine Legende darunter nennt die
-vorkommenden Arten. Feldfehler des Servers stehen mit dem Namen des Formularfelds, etwa
-„Variable „frist“ – Beschriftung“.
-
-**Die Variablentabelle folgt dem Text.** Jeder Platzhalter, der im Text steht, hat eine Zeile —
-ein neuer Platzhalter fügt sie hinzu, ein gelöschter entfernt sie. Je Variable:
-
-| Spalte | Inhalt |
-|---|---|
-| **Beschriftung** | Was beim Einsetzen über dem Eingabefeld steht; vorbelegt mit dem Namen |
-| **Typ** | Text (eine Zeile), Text (mehrere Zeilen), Auswahl oder Datum |
-| **Pflicht** | Ob beim Einsetzen ein Wert verlangt wird |
-| **Vorbelegung** | Optional; bei einer Auswahl einer der Auswahlwerte, bei einem Datum ein Kalendertag |
-| **Auswahlwerte** | Nur bei einer Auswahl: ein Wert je Zeile |
-
-**Vor dem Speichern prüft der Dialog**, was der Server ablehnen würde — ungültiger Befehl, fehlender
-Titel oder Text, ungültige Platzhalter, fehlende Beschriftung, eine Auswahl ohne Werte, eine
-Vorbelegung, die nicht passt — und nennt alle Befunde auf einmal. Was der Server danach noch
-ablehnt, etwa ein Befehl, den es in der Bibliothek schon gibt, steht mit seinem Wortlaut im selben
-Hinweisfeld.
-
-Die **Vorschau mit Beispielwerten** zeigt den Text, wie er beim Einsetzen herauskäme: mit den
-eingegebenen Beispielwerten, sonst der Vorbelegung, sonst der Beschriftung in eckigen Klammern; die
-Systemvariablen mit dem heutigen Datum und dem eigenen Namen. Beispielwerte werden nicht
-gespeichert.
+Felder, Variablen und Vorschau: [Eine Prompt-Bibliothek anlegen](../arbeiten/prompt-bibliothek-anlegen.md#einen-prompt-schreiben).
+Vor dem Speichern prüft der Dialog alles, was der Server ablehnen würde, und nennt alle Befunde auf
+einmal; Beispielwerte der Vorschau werden nicht gespeichert.
 
 **Grenzen eines Prompts** — fest, nicht konfigurierbar:
 
@@ -205,33 +155,11 @@ gespeichert.
 
 ## 6. Im Chat verwenden
 
-Im Eingabefeld des Chats öffnet ein `/` am Anfang einer Zeile die Auswahl der Prompts. Angeboten
-wird jeder Prompt aus einer Prompt-Bibliothek, die dem Space zugeordnet ist (Abschnitt 4, „In einem
-Space bereitstellen") und die die Person lesen darf, gruppiert nach Bibliothek. Eine zugeordnete
-Bibliothek, die die Person nicht lesen darf, erscheint nicht, eine lesbare, die dem Space nicht
-zugeordnet ist, ebenso wenig. Ist dem Space keine Prompt-Bibliothek zugeordnet, sagt die Auswahl
-„Diesem Space sind keine Prompts zugeordnet". Die Systemverwaltung ohne eigenes Recht sieht keine
-Prompts: Verwalten ist nicht Lesen. Weitertippen sucht in Befehl, Titel und Beschreibung.
-
-- **Ohne Variablen** steht der Text sofort im Eingabefeld.
-- **Mit Variablen** fragt ein Formular die Werte ab. Das Formular hat dieselben Felder wie die
-  Vorschau (Abschnitt 5). Pflichtfelder sperren „Einsetzen", Vorbelegungen sind eingetragen, und ein
-  Datum ohne Vorbelegung steht auf dem heutigen Tag.
-- Eingesetzt wird genau der Text, den die Vorschau zeigt: Daten als `TT.MM.JJJJ`, die
-  Systemvariablen mit dem heutigen Datum und dem eigenen Namen.
-
-Der Text bleibt bearbeitbar. Gesendet wird er erst mit Enter oder der Senden-Schaltfläche. Ein Chip
-„`Prompt: <Titel>`" am Eingabefeld markiert die Herkunft und lässt sich entfernen. Im Verlauf steht
-an der Frage „`Prompt: <Titel>`", mit dem Titel zum Zeitpunkt des Sendens, ohne Verweis auf den
-Prompt. Dieser Hinweis bleibt, wenn der Prompt später umbenannt oder gelöscht wird.
-
-Wird der Prompt nach dem Einsetzen gelöscht, das Leserecht entzogen oder die Zuordnung zum Space
-gelöst, lehnt OPAA die Frage ab; die Prüfung liegt im Backend, nicht nur in der Auswahl.
-Sie steht dann ohne Chip wieder im Eingabefeld und lässt sich ohne Prompt senden. Für die Suche und
-die Antwort macht ein Prompt keinen Unterschied ([Suche](../spaces/suche.md)).
-
-Die **Verwendung** eines Prompts wird weder protokolliert noch gezählt. Es gibt keine Auswertung,
-wer welchen Prompt wie oft verwendet hat.
+Bedienung: [Prompts verwenden](../arbeiten/prompts-verwenden.md). Angeboten wird jeder Prompt aus einer
+Prompt-Bibliothek, die dem Space zugeordnet ist und die die Person lesen darf. Wird der Prompt nach
+dem Einsetzen gelöscht, das Leserecht entzogen oder die Zuordnung gelöst, lehnt OPAA die Frage im
+Backend ab; sie steht dann ohne Chip wieder im Eingabefeld. Die **Verwendung** eines Prompts wird
+weder protokolliert noch gezählt.
 
 ## 7. Lebenszyklus: „Nachfolge offen"
 
