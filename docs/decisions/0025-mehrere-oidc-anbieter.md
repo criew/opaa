@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt ADR-0005 · Entscheidung 3 teilweise ersetzt durch ADR-0033 (Entscheidungen 4, 5) und ADR-0060 (Entscheidung 9) · Entscheidung 4 ergänzt durch ADR-0036, Entscheidungen 2 und 3 (Gruppenherkunft und Verzeichnisabgleich je Anbieter)
+Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt ADR-0005 · Entscheidung 3 teilweise ersetzt durch ADR-0033 (Entscheidungen 4, 5) und ADR-0060 (Entscheidung 9) · Entscheidung 4 ergänzt durch ADR-0036, Entscheidungen 2 und 3 (Gruppenherkunft und Verzeichnisabgleich je Anbieter)
 
 ## Kontext
 
@@ -156,7 +156,7 @@ braucht einen Frontend-Neustart; eine Organisation; der `dev`-Modus bleibt unver
 - Redirect-URI je Anbieter — jede Anleitung anbieterabhängig, ohne Gewinn.
 - Home-Realm-Discovery über die E-Mail-Domäne — zweiter Eingabeschritt vor jeder Anmeldung; nachrüstbar.
 - Indexing-Allowlist wiederverwenden oder Property „private Adressen erlauben" — koppelt Betriebsentscheidungen bzw. ist gröber als eine Allowlist.
-- Token-Austausch über den Identitätsanbieter für Quellen (Spike #2174) — trägt nur in der laufenden Sitzung; Entscheidung offen in [connector-connections.md](../features/connector-connections.md).
+- Token-Austausch über den Identitätsanbieter für Quellen (Spike #2174) — trägt nur in der laufenden Sitzung; Entscheidung offen in [Roadmap](../ROADMAP.md).
 
 ## Offen
 

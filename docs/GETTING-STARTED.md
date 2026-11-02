@@ -55,10 +55,10 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 1. [CONCEPTS.md](./CONCEPTS.md) — Abschnitte **Betrieb**, **Modelle und zentrale Steuerung**,
    **Retrieval und Belegbarkeit**
 2. [VISION.md](./VISION.md) — Abschnitt „Systemüberblick"
-3. [`features/deployment-infrastructure.md`](./features/deployment-infrastructure.md) — **vertieft**;
+3. [Roadmap](ROADMAP.md) — **vertieft**;
    ergänzend [betrieb.md](handbuch/betrieb/README.md) mit [docker-compose.md](handbuch/betrieb/docker-compose.md) und [kubernetes.md](handbuch/betrieb/kubernetes.md) für
    die vorhandene Installation
-4. [`features/llm-integration.md`](./features/llm-integration.md) — Modellverwaltung, Modell-Policy als
+4. [Roadmap](ROADMAP.md) — Modellverwaltung, Modell-Policy als
    Obergrenze, lokal betriebene Modelle
 5. [`features/access-control.md`](./features/access-control.md) — Anmeldung, Kontenlebenszyklus, Mandanten
 6. [Roadmap](./ROADMAP.md) — Metriken, Grenzen,
@@ -97,7 +97,7 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 4. [`features/access-control.md`](./features/access-control.md) — Kontenlebenszyklus, Mandantengrenze
 5. [Roadmap](./ROADMAP.md) — was ausgewertet wird
    und in welcher Aggregation
-6. [`features/deployment-infrastructure.md`](./features/deployment-infrastructure.md) — Verschlüsselung,
+6. [Roadmap](ROADMAP.md) — Verschlüsselung,
    Netztrennung, Sicherung
 7. [Gesamtstand](./fortschritt/gesamtstand.md) — was zu Bereich **G** gebaut ist und was noch fehlt,
    offen benannt
@@ -195,12 +195,12 @@ Spezifikationen (docs/features/) — je Themenbereich
 ├── B  knowledge-sources.md
 ├── C  spaces-and-assets.md
 ├── D  (Ziele in ROADMAP.md)
-├── E  llm-integration.md
+├── E  (Ziele in ROADMAP.md)
 ├── F  access-control.md
 ├── G  security-and-compliance.md
 ├── H  (Ziele in ROADMAP.md)
 ├── I  (Ziele in ROADMAP.md)
-├── J  deployment-infrastructure.md
+├── J  (Ziele in ROADMAP.md)
 └── K  (Ziele in ROADMAP.md)
 
 Entscheidungen und Recherche

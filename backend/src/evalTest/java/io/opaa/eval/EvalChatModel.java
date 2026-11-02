@@ -246,7 +246,7 @@ final class EvalChatModel {
    *
    * @param ollamaEndpoint the endpoint without the {@code /v1} suffix — the same base URL the
    *     embedding configuration uses; {@code llm_models} always stores the OpenAI-compatible
-   *     endpoint (docs/features/llm-integration.md, "Ein Anbindungsweg, nicht zwei").
+   *     endpoint (ADR-0067).
    */
   static void installAsSystemwideActiveModel(JdbcTemplate jdbcTemplate, String ollamaEndpoint) {
     refuseTemperatureWithoutExternalModel();

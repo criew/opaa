@@ -9,9 +9,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * A managed chat model (Stufe 1,
- * docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung): a row in {@code
- * llm_models}, not environment variables.
+ * A managed chat model (ADR-0067): a row in {@code llm_models}, not environment variables.
  *
  * <p><b>Exactly one row may be {@link #active} at a time</b>, enforced by the partial unique index
  * {@code ux_llm_models_single_active} - the database backstop for {@link
@@ -19,10 +17,9 @@ import java.util.UUID;
  * BrandingSettingsService}'s validation is the primary defense for {@code branding_settings}'s own
  * constraints.
  *
- * <p><b>No provider-type column</b>
- * (docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei): the connection is always the
- * OpenAI-compatible protocol. Ollama is entered via its own {@code /v1} endpoint like any other
- * target; there is deliberately no second, native code path.
+ * <p><b>No provider-type column</b>: the connection is always the OpenAI-compatible protocol.
+ * Ollama is entered via its own {@code /v1} endpoint like any other target; there is deliberately
+ * no second, native code path.
  *
  * <p><b>{@link #apiKeyCiphertext} is write-only and encrypted</b> ({@link
  * io.opaa.security.SettingsEncryptor}, AES-256-GCM, {@code OPAA_SETTINGS_ENCRYPTION_KEY}) -

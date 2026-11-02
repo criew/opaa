@@ -2,11 +2,11 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-25
+Akzeptiert · zuletzt geändert 2026-11-02
 
 ## Kontext
 
-Die Spezifikation [Behördenunterlagen](../features/behoerdenunterlagen.md#das-faktenmodell) verlangt
+Die Behördenunterlagen (Epic #2542) verlangen
 ein Fakten-Manifest als einzige Quelle für Faktenblätter, Update-Delta und Instanzexport: welche Daten
 OPAA speichert, welche Protokollereignisse entstehen, was Rollen über andere sehen, welche Fristen,
 Voreinstellungen, System-Prompts, KI-Funktionen und ausgehenden Datenflüsse es gibt. Ein Teil dieser

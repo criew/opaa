@@ -78,8 +78,7 @@ Stelle. Anbieternamen und anbieterspezifische Anleitungen kommen nicht vor. Erpr
 außerhalb des Hauses bleiben ein benannter Fall ohne echte Daten. Ein vom Projektteam betreuter Dienst
 entfällt ersatzlos. Grund: Entscheidend ist der Verantwortliche der Verarbeitung, nicht der Ort; ein
 betreuter Dienst machte das Projekt zum Betreiber mit Verfügbarkeits- und Haftungserwartung, die ein
-quelloffenes Vorhaben nicht einlöst. Siehe
-[deployment-infrastructure.md](../features/deployment-infrastructure.md).
+quelloffenes Vorhaben nicht einlöst.
 
 ### 8. Modellanbieter: lokal ist die Voreinstellung, ohne technische Sperre
 
@@ -94,7 +93,7 @@ sonst bricht der Start mit einer Meldung ab, die die fehlende Variable benennt
 (`OpenAiBaseUrlGuard`). Grund: Eine Sperre ohne die Modellvorgaben, an die sie gehört, wäre eine
 zweite Wahrheit neben der Konfiguration; und ein im Haus betriebener „openai-kompatibler“ Server darf
 nicht stillschweigend ein Ziel außerhalb des Hauses erben. Siehe
-[llm-integration.md](../features/llm-integration.md#was-heute-gilt-und-was-nicht-gebaut).
+[ADR-0067](0067-modellanbindung-und-verwaltete-chat-modelle.md).
 
 ### 9. Assistent für Bürgerinnen und Bürger bleibt Ausblick
 
@@ -122,7 +121,7 @@ nicht. Objektbasierter Speicher ist seit ADR-0030 für die Originalablage der Up
 (`opaa.upload.store: s3`), als Weg für den mandantenfähigen Rechenzentrumsbetrieb; der
 Objektspeicher-Dienst ist im Compose-Stapel über ein eigenes Profil zuschaltbar, nicht Teil des
 Einstiegs. Siehe
-[deployment-infrastructure.md](../features/deployment-infrastructure.md#speicher-backends).
+[Originalablage](../handbuch/betrieb/originalablage.md).
 
 ### 12. Chat-Kanäle: nur selbst betriebene Team-Chats
 

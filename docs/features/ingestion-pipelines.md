@@ -386,7 +386,7 @@ Option vermerkt, nicht eingeplant, und die Reihenfolge ist bewusst:
 - Betriebsform wäre **docling-serve als eigener Container im Compose-Verbund**, angesprochen über
   REST — kein Python im Java-Prozess, keine native Bibliothek im Backend-Image. Das passt zum
   bestehenden Deployment-Modell (siehe
-  [Deployment und Infrastruktur](./deployment-infrastructure.md)), kostet aber einen weiteren Dienst,
+  [Deployment und Infrastruktur](../ROADMAP.md)), kostet aber einen weiteren Dienst,
   den Betreiberinnen mitbetreiben, absichern und aktualisieren müssen.
 - **Ressourcenbedarf** nach heutiger Kenntnis: CPU-only rund 8 GB RAM je Worker, Image rund 4,4 GB.
   Für eine Einrichtung, die OPAA auf einer mittleren VM betreibt, ist das keine Nebensache.
@@ -407,7 +407,7 @@ echten Verwaltungsdokumenten — drei fachliche und eine betriebliche:
    - **Offline-Betrieb ohne Laufzeit-Download.** Modelle und Gewichte müssen im Image oder in einem
      bereitgestellten Volumen liegen; ein Dienst, der beim ersten Dokument etwas aus dem Netz nachlädt,
      ist in einer abgeschotteten Umgebung unbrauchbar (siehe
-     [Betrieb ohne Netzanbindung](./deployment-infrastructure.md#betrieb-ohne-netzanbindung)).
+     [Betrieb ohne Netzanbindung](../ROADMAP.md)).
    - **Geschlossenes Compose-Netz.** Der Dienst ist nur aus dem Backend erreichbar und veröffentlicht
      keinen Port nach außen.
    - **Authentifizierung zwischen Backend und Dienst.** Ein Konvertierungsdienst, den jeder im selben
@@ -1732,7 +1732,7 @@ Nachbesserung noch eine ehrliche Messung möglich.
 
 Deshalb trägt **jeder Chunk eine Pipeline-Version als Metadatum** — dasselbe Prinzip, aus dem das
 Einbettungsmodell gepinnt wird (siehe
-[Aktualisierung im laufenden Betrieb](./deployment-infrastructure.md#aktualisierung-im-laufenden-betrieb)),
+[Aktualisierung im laufenden Betrieb](../ROADMAP.md)),
 angewandt auf das Zerlegungsverfahren statt auf den Vektorraum. Die Version wird erhöht, wenn sich der
 Zuschnitt oder die erzeugten Struktur-Metadaten ändern; nicht bei einer Fehlerbehebung ohne Wirkung auf
 das Ergebnis.
@@ -1753,7 +1753,7 @@ Daraus folgen drei Fähigkeiten:
 
 **Das Zeitfenster ist die Auslegungsgrenze.** `deployment-infrastructure.md` setzt als Zielwert, dass
 eine vollständige Neuindizierung des Bestands in einem nächtlichen Fenster abzuschließen ist (siehe
-[Skalierung und Zielwerte](./deployment-infrastructure.md#skalierung-und-zielwerte)). Für die
+[Skalierung und Zielwerte](../ROADMAP.md)). Für die
 versionsgetriebene Neuindizierung gilt dieser Zielwert unverändert weiter — die selektive Auswahl nach
 Version arbeitet ihm zu, weil sie in aller Regel nur einen Teil des Bestands betrifft. Sollte sich bei
 der Umsetzung zeigen, dass er für einen vollständigen Verfahrenswechsel nicht haltbar ist, wird er
@@ -2008,7 +2008,7 @@ Hier wird nur der **Übergabepunkt** definiert:
   [ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md),
   [ADR-0013](../decisions/0013-fehlerkriterium-retrieval-regression.md) — Korpus, Harness, Messvertrag
   und Fehlerkriterium jeder Pipeline-Umstellung.
-- **[Deployment und Infrastruktur](./deployment-infrastructure.md)** — betrifft die Docling-Option: ein
+- **[Deployment und Infrastruktur](../ROADMAP.md)** — betrifft die Docling-Option: ein
   weiterer Container im Compose-Verbund ist eine Betriebsentscheidung, keine Bibliotheksentscheidung.
 - **[Spaces, Assets und Zugangskontrolle](./spaces-and-assets.md)** — die Bibliotheks-Kennung als
   Filterachse bleibt unverändert; keine Pipeline erzeugt einen Chunk ohne sie.

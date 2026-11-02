@@ -335,7 +335,7 @@ Neue Verwaltungsorte für Werte, die heute nur in der Konfiguration stehen:
   ist das Notanker-Konto; `OPAA_LOCAL_ADMIN_RESET` bleibt.
 - **Identitätsanbieter** ([ADR-0025](../decisions/0025-mehrere-oidc-anbieter.md)): Der erste Anbieter
   kommt aus dem Assistenten.
-- **Modelle** ([llm-integration.md](./llm-integration.md)): Alle Modellrollen in der Datenbank;
+- **Modelle** ([Roadmap](../ROADMAP.md)): Alle Modellrollen in der Datenbank;
   `vector_store` entsteht beim Abschluss. Der spätere Wechsel des Embedding-Modells:
   [ADR-0061](../decisions/0061-wechsel-des-embedding-modells.md).
 - **Mehrinstanzbetrieb** ([ADR-0053](../decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md)): Zustand in

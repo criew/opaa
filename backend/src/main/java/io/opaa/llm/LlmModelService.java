@@ -23,10 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Reads and changes the managed chat models (Stufe 1,
- * docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung) - the persistence
- * and audit layer {@code io.opaa.branding.BrandingSettingsService} is modelled after, adapted to a
- * real list of rows instead of a singleton.
+ * Reads and changes the managed chat models (ADR-0067) - the persistence and audit layer {@code
+ * io.opaa.branding.BrandingSettingsService} is modelled after, adapted to a real list of rows
+ * instead of a singleton.
  *
  * <p><b>The API key is write-only.</b> {@link #createModel} and {@link #updateModel} accept it as
  * plaintext and store only {@link SettingsEncryptor#encrypt} of it; nothing in this class ever

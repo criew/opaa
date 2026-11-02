@@ -793,7 +793,7 @@ personenbezogene Auswertung gibt, darf nicht selbst eine sein.
 aus dem Fakten-Manifest, das ein CI-Wächter gegen den Code vollständig hält; jede Änderung daran
 erscheint im Update-Paket mit Stufenvorschlag, und die Muster-Dienstvereinbarung legt den Auszug als
 statische Anlage auf eine Version fest — siehe [Behördenunterlagen und
-Update-Paket](./behoerdenunterlagen.md#das-faktenmodell).
+Update-Paket](../ROADMAP.md).
 
 ### Unveränderlichkeit und Löschrecht
 
@@ -1533,7 +1533,7 @@ Inhalte: Ausgegeben wird nur der Wert eines Schlüssels, den das Manifest als da
 jeder Abruf, auch der abgewiesene, ist ein Protokollereignis `DATA_COLLECTION_DISCLOSURE_EXPORTED`.
 Abruf und Inhalt beschreibt das Handbuch unter [Nachvollziehbarkeit](../handbuch/betrieb/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation);
 sie ist der Eingang für das Update-Delta gegen die Instanz (#2559) und für die statischen Anlagen der
-Dienstvereinbarung ([Behördenunterlagen und Update-Paket](./behoerdenunterlagen.md#instanzbezug)).
+Dienstvereinbarung ([Behördenunterlagen und Update-Paket](../ROADMAP.md)).
 Das Ergebnis der automatisierten Prüfung je Abfrageweg ist noch nicht enthalten.
 
 **Anlassbezogene Klärungen im Berichtszeitraum (#2895).** Der Abruf nimmt einen Berichtszeitraum
@@ -1873,12 +1873,12 @@ Fristen, Schwellen und Zuständigkeiten — nicht die Frage, ob eine Überwachun
 - **RAG-Engine:** der angewandte Suchbereich je Abfrage ist die Grundlage der Regressionsprüfung →
   [data-indexing-rag.md](./data-indexing-rag.md)
 - **Modelle:** die Freigabe externer Modelle ist eine sicherheitsrelevante Einstellung →
-  [llm-integration.md](./llm-integration.md)
+  [Roadmap](../ROADMAP.md)
 - **Betrieb:** Verschlüsselung ruhender Daten, Schlüsselverwaltung, Sicherung und Wiederanlauf liegen
-  beim Betreiber → [deployment-infrastructure.md](./deployment-infrastructure.md)
+  beim Betreiber → [Roadmap](../ROADMAP.md)
 - **Behördenunterlagen:** Fakten-Manifest, Update-Paket und Vorlagen für Datenschutz, Mitbestimmung und
   Informationssicherheit machen die Eigenschaften dieses Dokuments für eine Behörde je Version
-  belegbar → [behoerdenunterlagen.md](./behoerdenunterlagen.md)
+  belegbar → [Roadmap](../ROADMAP.md)
 
 ---
 

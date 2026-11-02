@@ -2,8 +2,8 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-30 · ergänzt durch [ADR-0053](0053-mehrinstanzbetrieb-aktiv-aktiv.md) und [ADR-0060](0060-schlanke-konfiguration-und-einrichtungsassistent.md) · beantwortet die offene Frage nach der Helm-Lieferung aus
-Epic #1439 und [deployment-infrastructure.md](../features/deployment-infrastructure.md)
+Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt durch [ADR-0053](0053-mehrinstanzbetrieb-aktiv-aktiv.md) und [ADR-0060](0060-schlanke-konfiguration-und-einrichtungsassistent.md) · beantwortet die offene Frage nach der Helm-Lieferung aus
+Epic #1439
 
 ## Kontext
 

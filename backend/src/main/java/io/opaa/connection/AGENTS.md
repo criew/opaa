@@ -5,7 +5,7 @@ Pakete (`io.opaa.*`): connection. Ergänzt `backend/AGENTS.md`.
 ## Zweck und Grenze
 
 Verbindungsprofile („Zugänge“), Zuordnung einer Bibliothek, Konnektor-Freigabe, Sperren, Verbindungsprotokoll,
-Token-Speicher, verbundene Konten und die Anmeldung des Zugangs (`docs/features/connector-connections.md`). Der
+Token-Speicher, verbundene Konten und die Anmeldung des Zugangs ([ADR-0041](../../../../../../../docs/decisions/0041-verbindungen-als-eigenes-modul.md)). Der
 Kern erreicht es über die Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `SourceStateLookup`.
 
 ## Invarianten und Stolpersteine

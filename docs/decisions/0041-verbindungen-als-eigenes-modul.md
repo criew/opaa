@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-25 · ergänzt [ADR-0025](0025-mehrere-oidc-anbieter.md),
+Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt [ADR-0025](0025-mehrere-oidc-anbieter.md),
 [ADR-0036](0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) und
 [ADR-0038](0038-steckbare-konnektoren.md) · ergänzt durch
 [ADR-0048](0048-oauth-kern-und-zugangs-geheimnisse.md) (OAuth-Kern und Geheimnisse des Zugangs),
@@ -11,7 +11,7 @@ Akzeptiert · zuletzt geändert 2026-10-25 · ergänzt [ADR-0025](0025-mehrere-o
 
 ## Kontext
 
-Die Spezifikation [connector-connections.md](../features/connector-connections.md) (Epic #2147)
+Epic #2147
 führt Bausteine ein, die es nicht gab: Verbindungsprofile („Zugänge“, auch ohne Konnektor als
 MCP-Server), Sperre und Profilpflicht je Konnektortyp, Verbindungen mit Besitzer Bibliothek oder
 Person (verbundenes Konto), einen verschlüsselten Token-Speicher, den OAuth-Ablauf und ein eigenes

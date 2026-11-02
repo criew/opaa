@@ -11,8 +11,7 @@ import org.springframework.core.env.Environment;
  * Verifies the single, OpenAI-compatible connection path application.yml wires: chat is fixed to
  * {@code openai}, with a default base URL that already points at a locally operated Ollama server,
  * and the embedding model is the installed one ({@code none} as autoconfiguration) - no separate,
- * native provider path exists anymore (see
- * docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei).
+ * native provider path exists anymore (ADR-0067).
  *
  * <p><b>{@code spring.ai.model.chat} selects no Spring Boot autoconfiguration for the chat {@code
  * ChatModel} bean</b> - {@code application.yml} excludes {@code OpenAiChatAutoConfiguration}
