@@ -955,7 +955,7 @@ ausdrücklich auslösbar und bei einem Wechsel des Einbettungsmodells zwingend.
 - **[Suchqualität messbar machen](../decisions/0011-search-quality-evaluation-harness.md)** — Referenzkorpus, Kennzahlen und
   Regressionsprüfung für jede Änderung an dieser Kette.
 - **[Zugangskontrolle](./access-control.md)** — Protokollierung von Abfragen, Belegen und Verweigerungen.
-- **[Benutzer-Frontends](./user-frontends.md)** — Darstellung von Fundstellen, Konfidenz und
+- **[Benutzer-Frontends](../ROADMAP.md)** — Darstellung von Fundstellen, Konfidenz und
   Chunk-Ansicht.
 
 ---
@@ -1000,7 +1000,7 @@ Idee wieder aufgemacht werden.
   erkennbaren fehlenden Beleg zu einer falschen Auskunft geführt hat.
 - Soll auch ein **Agent** seine Belege auf dieselbe Weise validieren lassen, unabhängig davon, wo er
   läuft? Fachlich naheliegend — ein Agent für Auskünfte mit Außenwirkung ist genau der Fall — und in
-  [Agenten, Prompts und Werkzeuge](./agents-and-tools.md) bereits vorausgesetzt. Erst zu entscheiden, wenn
+  [Agenten, Prompts und Werkzeuge](../ROADMAP.md) bereits vorausgesetzt. Erst zu entscheiden, wenn
   es Agenten gibt.
 - Die inhaltliche **Deckungsprüfung** (ob die zitierte Fundstelle die Aussage tatsächlich trägt, vormals
   „Stufe 2") wurde am 21.08.2026 mit derselben Begründung verworfen

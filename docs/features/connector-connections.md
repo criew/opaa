@@ -650,7 +650,7 @@ wird, steht nicht unter einem Schalter.
 **Protokolle.** Exchange wird über OAuth angebunden. Häuser ohne Exchange (Open-Xchange, Dovecot, die
 Postfächer von openDesk) erreicht ein IMAP-Konnektor mit App-Passwort nach dem Muster von Nextcloud.
 Gebaut wird dennoch nur das Protokoll, für das ein Einführungsvorhaben einen Bedarf trägt
-([public-sector.md](./public-sector.md#elektronische-akte-und-dokumentenmanagement): kein Konnektor
+([Roadmap](../ROADMAP.md): kein Konnektor
 auf Vorrat). Ein Anmeldeweg, der auf das Domänenpasswort hinausläuft, wird nicht angeboten.
 
 **Pilot ohne Konnektor.** Vor dem Bau wird der heutige Weg gemessen: Einzelnachrichten (`.msg`,
@@ -667,7 +667,7 @@ kein zweiter Verbindungsweg entsteht:
 
 - **Profiltyp „MCP-Server“:** ein Profil ohne Konnektor, mit Server-Adresse (nur Streamable HTTP,
   kein lokaler Prozess), Anmeldeart und verantwortlicher Gruppe. Das ist die Zulassungsliste aus
-  [agents-and-tools.md](./agents-and-tools.md#mcp-als-standardisierte-anbindung).
+  [Roadmap](../ROADMAP.md).
 - **Freigabe und Sperre** haben dieselbe Form wie bei jedem Profil (aus, alle, Gruppen; Sperre). Weil
   ein MCP-Profil keine Bibliothek anlegt, ist seine Freigabe nicht `CREATE_CONNECTOR_LIBRARY`,
   sondern eine Nutzungsfreigabe für das Profil; ihre Form legt das Folge-Epic zum MCP-Client fest.
@@ -729,7 +729,7 @@ legt [ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md) fest.
 | [knowledge-sources.md](./knowledge-sources.md) | Konnektoren, Zielprüfung, Zugangsdaten; Profile ersetzen die freie Adresse, wo Profilpflicht gilt |
 | [spaces-and-assets.md](./spaces-and-assets.md) | Freigabe-Obergrenze, Nachfolge, Space-Zuordnung; private Bibliotheken als Sonderfall |
 | [access-control.md](./access-control.md) | Fähigkeiten, Gruppen, Kontodeaktivierung, Freigabe-Obergrenze (durch die Nur-Besitzerin-Regel ergänzt), „Sicht als“ und Vorfallsbereich (ohne Zugriff auf Inhalte privater Bibliotheken) |
-| [agents-and-tools.md](./agents-and-tools.md) | MCP-Client, Zulassungsliste, Ausgangstor (Phase 2) |
+| [Roadmap](../ROADMAP.md) | MCP-Client, Zulassungsliste, Ausgangstor (Phase 2) |
 | [ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md) | Gegenrichtung: OPAA als MCP-Server |
 | Epic [#2146](https://github.com/criew/opaa/issues/2146) | Datei-Konnektoren: Nextcloud (#2152), SharePoint/OneDrive (#2153), Dropbox (#2154) |
 | [#2099](https://github.com/criew/opaa/issues/2099) | Wegfall persönlicher Spaces |

@@ -9,8 +9,7 @@ package io.opaa.api.types;
  * existing role enum rather than a new authorization concept: the {@code hasRole(...)} mechanism
  * {@code AdminController} already uses is enough to enforce the technically separate access path
  * the specification requires for revision (the Dienststellenleitung cockpit is a distinct,
- * not-yet-built feature per docs/features/monitoring-and-governance.md and therefore not a role
- * this enum needs to distinguish from yet).
+ * not-yet-built feature and therefore not a role this enum needs to distinguish from yet).
  */
 public enum SystemRole {
   USER,

@@ -46,7 +46,7 @@
 > **Abgrenzung:** Wie das Protokoll, die Exporte und die Mitbestimmungsfähigkeit des Produkts selbst
 > aussehen, steht in [Sicherheit, Nachweis & Prüfbarkeit](./security-and-compliance.md); die
 > Verwaltungs-Spezifika (Barrierefreiheit, Revisionssicherheit) in
-> [Verwaltungs-Spezifika](./public-sector.md); das Release-Verfahren in
+> [Verwaltungs-Spezifika](../ROADMAP.md); das Release-Verfahren in
 > [releases.md](../releases.md). Dieses Dokument beschreibt, wie aus diesen Eigenschaften **Unterlagen
 > für eine Behörde** werden, die mit jedem Release stimmen. Es ist kein Rechtsrat; alle Fundstellen
 > sind Hinweise.
@@ -639,7 +639,7 @@ Normtext geprüft. Die vollständige Tabelle mit Quellen steht im ersten Komment
   und die [Auskunft über die Datenerhebung](./security-and-compliance.md#export-und-auskunft) werden
   aus dem Manifest gespeist; die Mitbestimmungsfähigkeit ist der Inhalt, den die Dienstvereinbarung
   festschreibt; die C5-Fähigkeit trägt die Vorlage zur Informationssicherheit
-- **[public-sector.md](./public-sector.md)** — Barrierefreiheit (Erklärung zur Barrierefreiheit,
+- **[Roadmap](../ROADMAP.md)** — Barrierefreiheit (Erklärung zur Barrierefreiheit,
   #2569) und Revisionssicherheit (Anbietungspflicht an das Archiv im Löschkonzept, #2565)
 - **[releases.md](../releases.md)** — Release-Workflow, Attestierung, Upgrade-Hinweise als Quelle der
   Betriebsfolgen, Supportlinien nach ADR-0054

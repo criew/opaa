@@ -32,7 +32,7 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
    Quellenbindung**, **Belegvalidierung**, **Konfidenz**
 4. [`features/spaces-and-assets.md`](./features/spaces-and-assets.md) — wie eine gute Arbeitsweise vom
    Einzelfall zum geprüften Standard wird
-5. [`features/public-sector.md`](./features/public-sector.md) — Leichte Sprache, Amtssprache,
+5. [Roadmap](./ROADMAP.md) — Leichte Sprache, Amtssprache,
    Barrierefreiheit
 6. [Gesamtstand](./fortschritt/gesamtstand.md) — was davon heute geht
 
@@ -61,7 +61,7 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 4. [`features/llm-integration.md`](./features/llm-integration.md) — Modellverwaltung, Modell-Policy als
    Obergrenze, lokal betriebene Modelle
 5. [`features/access-control.md`](./features/access-control.md) — Anmeldung, Kontenlebenszyklus, Mandanten
-6. [`features/monitoring-and-governance.md`](./features/monitoring-and-governance.md) — Metriken, Grenzen,
+6. [Roadmap](./ROADMAP.md) — Metriken, Grenzen,
    Kostentransparenz
 7. [`features/data-indexing-rag.md`](./features/data-indexing-rag.md) und
    [`features/knowledge-sources.md`](./features/knowledge-sources.md) — was indiziert wird und wie oft
@@ -95,7 +95,7 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 3. [`features/spaces-and-assets.md`](./features/spaces-and-assets.md) — Rechtemodell, Freigabekette,
    Mitbestimmung
 4. [`features/access-control.md`](./features/access-control.md) — Kontenlebenszyklus, Mandantengrenze
-5. [`features/monitoring-and-governance.md`](./features/monitoring-and-governance.md) — was ausgewertet wird
+5. [Roadmap](./ROADMAP.md) — was ausgewertet wird
    und in welcher Aggregation
 6. [`features/deployment-infrastructure.md`](./features/deployment-infrastructure.md) — Verschlüsselung,
    Netztrennung, Sicherung
@@ -194,14 +194,14 @@ Spezifikationen (docs/features/) — je Themenbereich
 ├── A  data-indexing-rag.md
 ├── B  knowledge-sources.md
 ├── C  spaces-and-assets.md
-├── D  agents-and-tools.md
+├── D  (Ziele in ROADMAP.md)
 ├── E  llm-integration.md
 ├── F  access-control.md
 ├── G  security-and-compliance.md
-├── H  monitoring-and-governance.md
-├── I  user-frontends.md
+├── H  (Ziele in ROADMAP.md)
+├── I  (Ziele in ROADMAP.md)
 ├── J  deployment-infrastructure.md
-└── K  public-sector.md
+└── K  (Ziele in ROADMAP.md)
 
 Entscheidungen und Recherche
 ├── docs/decisions/        — ADRs, darunter 0014 zur Produktausrichtung

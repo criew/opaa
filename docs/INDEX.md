@@ -75,7 +75,7 @@ Personalvertretung. Entscheidung zu Katalog und Zuordnung:
 
 ### D · Agenten, Prompts & Werkzeuge
 
-**[`features/agents-and-tools.md`](./features/agents-and-tools.md)**
+**[Roadmap](./ROADMAP.md)**
 
 Agenten als teilbare Pakete mit Aufgabenbeschreibung · geführtes Onboarding · Agenten-Prüfstand vor der
 Freigabe · Prüfagenten · isolierte Ausführungsumgebung · Werkzeuge und MCP · schreibende Aktionen mit
@@ -105,14 +105,14 @@ Voreinstellungen · Software-Stückliste und signierte Builds · C5-Fähigkeit �
 
 ### H · Monitoring, Kosten & Governance
 
-**[`features/monitoring-and-governance.md`](./features/monitoring-and-governance.md)**
+**[Roadmap](./ROADMAP.md)**
 
 Betriebsmetriken und Gesundheitsendpunkt · Grenzen je Nutzerin und Nutzer · Transparenz über Token- und
 Sitzungskosten · Auswertung des KI-Rollouts, durchgehend aggregiert und ohne Personenbezug.
 
 ### I · Kanäle & Oberflächen
 
-**[`features/user-frontends.md`](./features/user-frontends.md)**
+**[`handbuch/spaces/suche.md`](./handbuch/spaces/suche.md)** · **[Roadmap](./ROADMAP.md)**
 
 Web-Oberfläche mit Chat, Fundstellen und Dokumentenübersicht · REST-API für eigene Anbindungen · Anbindung
 an self-hosted Team-Chats · einheitliche Anmeldung und Rechte über alle Kanäle.
@@ -129,7 +129,7 @@ durch Rechenzentren · Konfiguration, Sicherung, Aktualisierung.
 
 ### K · Verwaltungs-Spezifika
 
-**[`features/public-sector.md`](./features/public-sector.md)** ·
+**[Roadmap](./ROADMAP.md)** ·
 **[`features/behoerdenunterlagen.md`](./features/behoerdenunterlagen.md)**
 
 Leichte Sprache und Amtssprache · Barrierefreiheit nach BITV · Revisionssicherheit im Verwaltungssinn ·

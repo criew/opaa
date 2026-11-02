@@ -253,7 +253,7 @@ Verfall — also automatisches Löschen von Assets ohne Zuständigkeit — wird 
 
 Die Prompt-Bibliothek ist der zweite gebaute Asset-Typ ([#1901](https://github.com/criew/opaa/issues/1901), Epic [#1726](https://github.com/criew/opaa/issues/1726)). Sie ist ein Asset wie die Wissensbibliothek — Name, Beschreibung, Eigentümer (Person oder Gruppe), Freigabestufe, Organisation, Herkunft `LOCAL` — und liegt als Typtabelle `prompt_libraries` auf der [Asset-Schale](#die-asset-schale). Eigene Spalten hat sie vorerst keine; die Tabelle hält den Typ.
 
-**Ein Prompt** ist eine benannte, wiederverwendbare Anweisung in genau einer Prompt-Bibliothek. Er hat keine Wissensbindung, keine Werkzeuge und keine Modellwahl ([Abgrenzung zu Skill und Agent](./agents-and-tools.md#skills-und-prompt-bibliotheken)):
+**Ein Prompt** ist eine benannte, wiederverwendbare Anweisung in genau einer Prompt-Bibliothek. Er hat keine Wissensbindung, keine Werkzeuge und keine Modellwahl ([Abgrenzung zu Skill und Agent](../ROADMAP.md)):
 
 | Feld | Bedeutung |
 |---|---|
@@ -439,7 +439,7 @@ Der Freigabeweg hat vier Schritte:
 | Schritt | Wer handelt | Was entsteht |
 |---|---|---|
 | **Vorschlagen** | `MANAGER` oder `OWNER` des Assets | Eine benannte Fassung wird zur Prüfung für eine Freigabestufe eingereicht |
-| **Fachlich prüfen** | die für diese Stufe benannte prüfende Stelle | Prüfvermerk mit Ergebnis; bei Agenten gehört der Bericht des [Prüfstands](./agents-and-tools.md#agenten-prüfstand-vor-der-freigabe) zur Unterlage |
+| **Fachlich prüfen** | die für diese Stufe benannte prüfende Stelle | Prüfvermerk mit Ergebnis; bei Agenten gehört der Bericht des [Prüfstands](../ROADMAP.md) zur Unterlage |
 | **Freigeben** | dieselbe Stelle | Freigabestempel an der **Version**: wer, wann, für welche Stufe, auf welcher Prüfgrundlage |
 | **Veröffentlichen** | `MANAGER` des Assets | Grants werden gesetzt — der Schritt, der die Reichweite tatsächlich herstellt |
 
@@ -556,7 +556,7 @@ Drei Bedingungen schärfen das an der Stelle, an der es bei Assets sonst nicht t
 2. **Die Mindestgruppengröße bemisst sich an der Zahl der tatsächlich nutzenden Personen, nicht an der Größe der Organisationseinheit.** Ein Skill, den in einem Referat von vierundzwanzig nur die drei Beschäftigten eines Sachgebiets benutzen, wäre sonst eine Auswertung über drei Personen unter der Überschrift einer großen Einheit. Die Einheit ist groß genug, die Nutzergruppe ist es nicht.
 3. **Unterhalb der Schwelle wird die Zahl nicht erhoben**, nicht bloß bei der Anzeige unterdrückt.
 
-Die Verschärfung gegenüber der allgemeinen Regel in [monitoring-and-governance.md](./monitoring-and-governance.md) ist beabsichtigt und hat einen Grund im Gegenstand: Ein Asset hat oft nur eine Handvoll Nutzende, und eine Schwelle, die an der Einheit hängt, greift dort nie. Gebaut ist von dieser Schicht noch nichts — die Bedingungen gelten mit ihrem Bau.
+Die Verschärfung gegenüber der allgemeinen Regel in [Roadmap](../ROADMAP.md) ist beabsichtigt und hat einen Grund im Gegenstand: Ein Asset hat oft nur eine Handvoll Nutzende, und eine Schwelle, die an der Einheit hängt, greift dort nie. Gebaut ist von dieser Schicht noch nichts — die Bedingungen gelten mit ihrem Bau.
 
 *Phasenlage: Phase 2, gemeinsam mit dem Katalog.*
 
@@ -1373,7 +1373,7 @@ Gegenüber dem Kapitel [Der Katalog](#der-katalog) fehlen im Eintrag der Anwendu
 
 - [Identität, Rechte & Mandanten](./access-control.md) — Systemverwaltung, Anmeldung und Kontenlebenszyklus
 - [Sicherheit, Nachweis & Prüfbarkeit](./security-and-compliance.md) — Protokoll, DSGVO, C5-Fähigkeit, Mitbestimmungsfähigkeit
-- [Monitoring, Kosten & Governance](./monitoring-and-governance.md) — Grenzen, Kosten und aggregierte Auswertung
+- [Monitoring, Kosten & Governance](../ROADMAP.md) — Grenzen, Kosten und aggregierte Auswertung
 - [Daten-Indizierung & RAG](./data-indexing-rag.md) — Aufnahme, Chunking, Abfrageablauf
-- [Agenten, Prompts & Werkzeuge](./agents-and-tools.md) — was in einem Agenten steckt, wie er entsteht und wie er vor der Freigabe geprüft wird
+- [Agenten, Prompts & Werkzeuge](../ROADMAP.md) — was in einem Agenten steckt, wie er entsteht und wie er vor der Freigabe geprüft wird
 - [Chatliste eines Space](../decisions/0066-chatliste-ablage-suche-und-bereinigung.md) — finden, ordnen, wegräumen: Anheften, „Zuletzt verwendet", Chat-Archiv, Chatsuche
