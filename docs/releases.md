@@ -684,7 +684,10 @@ Anker innerhalb einer Datei und externe Links bleiben unverändert. Platzhalter 
 Code-Spans und Codeblöcken bleiben stehen, ebenso Text, der nicht aus einer Vorlage oder dem
 Handbuch stammt, etwa Titel von Pull Requests im Delta oder Upgrade-Hinweise in den
 Betriebsfolgen. Neue Vorlagen, Kapitel und Ordner unter `docs/behoerden/` und `docs/handbuch/`
-kommen ohne Änderung am Skript ins Paket. Der Link
+kommen ohne Änderung am Skript ins Paket. Was nur im Repository gilt, etwa der Hinweis auf den
+Entwicklungsstand in `docs/behoerden/README.md`, steht zwischen `<!-- nur-im-repository -->` und
+`<!-- /nur-im-repository -->`, je auf eigener Zeile außerhalb von Codeblöcken, und fehlt im Paket;
+ein verschachtelter oder unpaariger Marker bricht den Lauf ab. Der Link
 des Deltas auf die Stufenregeln zeigt auf den Commit des Release im Repository des Laufs
 (`--repository`, im Workflow `GITHUB_REPOSITORY`; an `complianceDelta` als `-Prepository`), nicht
 auf `main`.
@@ -698,7 +701,8 @@ seine `README`. Die Seiten laden nichts aus dem Internet und enthalten kein Skri
 zeichnet der Lauf vorab in einem Headless-Chromium zu SVG (`.github/tools/mermaid/render.mjs`,
 Mermaid und playwright-core aus der Lockfile daneben, ohne Netz im Browser) und bettet sie in die
 Seite ein, den Diagrammtext aufklappbar darunter; ein Diagramm, das nicht rendert, bricht den Lauf
-ab. Gezeichnet werden die Diagramme von Vorlagen, Update-Vermerk und Handbuch, in anderen Teilen wie
+ab. Gezeichnet werden die Diagramme von Vorlagen, Update-Vermerk, Handbuch und Faktenblättern
+(das Datenflussdiagramm prüft erst der Release-Lauf, weil es die Faktenblätter nur dort gibt), in anderen Teilen wie
 den Upgrade-Hinweisen bleibt ein Diagramm Code, außer es gleicht wörtlich einem gezeichneten. Jede `id` steht auf einer Seite nur einmal, sonst
 bricht der Lauf ab. Gezeichnet wird mit Google Chrome des Runners, lokal mit dem Browser aus `CHROMIUM`. Ein
 relativer Link der HTML-Fassung, dessen Datei oder Anker fehlt, bricht den Lauf ab. Prüfsummen und
