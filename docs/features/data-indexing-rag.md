@@ -39,7 +39,7 @@ Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
    ein Zwangs- und Verweigerungsapparat darüber ist bewusst nicht gebaut (siehe
    [Belegvalidierung](#belegvalidierung)).
 3. **Konfidenz wird als Belegstand ausgewiesen** — belegt, teilweise belegt, nicht belegt, mit einem
-   Satz Begründung; abgeleitet aus der Belegvalidierung, nicht aus Ähnlichkeitswerten (siehe
+   kurzen Grund; abgeleitet aus der Belegvalidierung, nicht aus Ähnlichkeitswerten (siehe
    [Konfidenz](#konfidenz)).
 4. **Gesucht wird hybrid**: Vektorsuche und Volltextsuche laufen nebeneinander, ihre Ergebnisse werden
    zusammengeführt und durch ein Reranking auf Präzision gebracht.

@@ -320,12 +320,20 @@ export default function SourceEvidenceDrawer({
 
       {uncoveredSubQueries.length > 0 && (
         <Box data-testid="uncovered-sub-queries" sx={{ px: 2.5, pt: 1.5, fontSize: 12.5 }}>
-          <Typography component="p" sx={{ fontSize: 12.5, fontWeight: 600 }}>
+          <Typography
+            id={`${messageId}-uncovered`}
+            component="h3"
+            sx={{ fontSize: 12.5, fontWeight: 600 }}
+          >
             Ohne Fundstelle
           </Typography>
-          <Box component="ul" sx={{ m: 0, mt: 0.5, pl: 2.5, color: 'text.secondary' }}>
-            {uncoveredSubQueries.map((query) => (
-              <li key={query}>{query}</li>
+          <Box
+            component="ul"
+            aria-labelledby={`${messageId}-uncovered`}
+            sx={{ m: 0, mt: 0.5, pl: 2.5, color: 'text.secondary' }}
+          >
+            {uncoveredSubQueries.map((query, i) => (
+              <li key={i}>{query}</li>
             ))}
           </Box>
         </Box>

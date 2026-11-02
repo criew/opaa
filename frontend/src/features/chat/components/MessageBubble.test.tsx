@@ -29,7 +29,7 @@ const uncitedSource = {
 }
 
 describe('MessageBubble', () => {
-  it('shows the Belegstand under an answer as word and reason, never as colour alone', () => {
+  it('shows the Belegstand of an answer without Belege as word and reason, never as colour alone', () => {
     render(
       <MessageBubble
         message={{
@@ -90,6 +90,33 @@ describe('MessageBubble', () => {
     expect(await screen.findByTestId('uncovered-sub-queries')).toHaveTextContent(
       'Ohne FundstelleGültigkeitsdauer Anwohnerparkausweis',
     )
+  })
+
+  it.each([
+    ['SUPPORTED', 'Belegt', '2 Stellen in 2 Dokumenten · 1 weitere geprüft'],
+    ['UNSUPPORTED', 'Nicht belegt', '2 Stellen in 2 Dokumenten · 1 weitere geprüft'],
+  ] as const)('adds no reason where the count line explains %s', (level, label, summary) => {
+    render(
+      <MessageBubble
+        message={{
+          ...twoCitedMessage(),
+          evidence: {
+            level,
+            confirmedPassages: 2,
+            confirmedDocuments: 2,
+            unconfirmedCitations: 0,
+            uncoveredSubQueries: [],
+            truncated: false,
+            knowledgeSearched: true,
+            passagesFound: true,
+          },
+        }}
+      />,
+    )
+    expect(
+      screen.getByRole('button', { name: `Belegstand: ${label} – Belege anzeigen` }),
+    ).toHaveTextContent(label)
+    expect(screen.getByTestId('evidence-summary').textContent).toBe(summary)
   })
 
   it('shows no Belegstand where none was assessed', () => {

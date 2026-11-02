@@ -943,12 +943,14 @@ des ersten Auftretens im Antwortkontext:
 | Quelle | Quellentyp und Link zum Dokument bzw. zur Seite in der Quelle, Indexierungszeitpunkt |
 | „Stand vom …" | die Bibliothek des Dokuments wurde beim Antworten nicht aktualisiert: gesperrt, Verbindung getrennt oder Zugang entfernt. Das Datum ist ihr letzter erfolgreicher Lauf, nicht der Indexierungszeitpunkt des Dokuments; dazu stehen der Grund und die zuständige Stelle (Systemverwaltung bei einer Sperre, sonst die Verwaltenden der Bibliothek). Siehe Kapitel [Zugänge](../arbeitsmittel/zugaenge.md) |
 
-Die Fundstellen stehen im Belegfenster; unter der Antwort steht nur „Belege anzeigen" mit der
-Zahl der zitierten Stellen und der weiteren geprüften, nicht zitierten Dokumente. Fährt man mit der Maus über eine
+Die Fundstellen stehen im Belegfenster; unter der Antwort steht nur die Schaltfläche dorthin mit der
+Zahl der zitierten Stellen und der weiteren geprüften, nicht zitierten Dokumente. Sie trägt den
+Belegstand der Antwort (siehe unten), bei Antworten ohne Belegstand „Belege anzeigen". Fährt man mit der Maus über eine
 Fußnote im Antworttext, nennt ein Tooltip Dokument und Fundort; ein Klick öffnet das Belegfenster
 an der zugehörigen Fundstelle und markiert sie dort.
 
 Das Belegfenster heißt „Belege dieser Antwort" und hat oben nur das Suchfeld „In Belegen suchen".
+Hat die Antwort ungedeckte Teilfragen, nennt ein Block „Ohne Fundstelle" darüber ihren Wortlaut.
 Es öffnet mit den zitierten Dokumenten in der Reihenfolge ihrer Fußnoten; der Link **„Nicht
 zitierte anzeigen"** unter der Liste blendet die geprüften, nicht zitierten darunter ein, ein
 zweiter Klick wieder aus. Bei jedem Öffnen sind sie wieder ausgeblendet. Die Suche durchsucht Titel
@@ -1026,8 +1028,8 @@ und eine Selbsteinschätzung des Modells gehen nicht ein.
 
 Eine Teilfrage gilt als gedeckt, wenn ein bestätigter Beleg auf ein Dokument zeigt, das die Suche
 für diese Teilfrage gefunden und die Fusion (Stufe 7) ausgewählt hat; ein Dokument, das mehreren
-Teilfragen diente, deckt alle. Ungedeckte Teilfragen werden im Fuß nur gezählt; welche es sind,
-zeigen die Fundstellen im Belegfenster. Eine Nachricht ohne Suchbedarf („Danke") und eine leere
+Teilfragen diente, deckt alle. Ungedeckte Teilfragen werden im Fuß nur gezählt; ihren Wortlaut
+nennt der Block „Ohne Fundstelle" im Belegfenster. Eine Nachricht ohne Suchbedarf („Danke") und eine leere
 Antwort bekommen keinen Belegstand. Die Stufe ist immer als Wort lesbar, die Farbe des Symbols
 unterstreicht sie nur. Der Belegstand wird mit der Antwort gespeichert und zeigt beim Wiederöffnen
 eines Chats denselben Stand wie bei der Erzeugung; Antworten von vor seiner Einführung tragen keinen.
