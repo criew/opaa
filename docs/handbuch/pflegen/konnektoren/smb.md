@@ -19,7 +19,7 @@ flowchart LR
     S --> F[Freigabe<br/>und Ordner]
 ```
 
-- **Anmeldung:** eigene Zugangsdaten der Bibliothek ([Zugänge](../../arbeitsmittel/zugaenge.md), „Eigene
+- **Anmeldung:** eigene Zugangsdaten der Bibliothek ([Zugänge](../../verwalten/zugaenge.md), „Eigene
   Zugangsdaten der Bibliothek"): Dienstkonto und Passwort, angemeldet mit **NTLMv2**. Kerberos gibt
   es nicht; eine Anmeldung, die der Server nur als Gast annimmt, gilt als abgelehnt. Ein Zugang ist
   möglich.
@@ -46,7 +46,7 @@ flowchart LR
 4. Auf dem Server SMB 2 oder 3 mit Signatur einschalten.
 5. Die Quellart ist ab Werk nur für die Systemverwaltung freigegeben; wer sonst Bibliotheken anlegen
    soll, bekommt „Konnektorbibliotheken anlegen" für die Quellart oder einen Zugang
-   ([Berechtigungen](../../konten-und-rechte/berechtigungen.md), „Konnektor-Freigabe").
+   ([Berechtigungen](../../nachschlagen/rechte-matrix.md), „Konnektor-Freigabe").
 
 ## 3. Quellkonfiguration
 
@@ -138,7 +138,7 @@ Parameter stehen unter `opaa.indexing.smb.*` (`OPAA_INDEXING_SMB_*`), ihre Stand
 - Ein Name mit `/`, `\`, `:` oder Steuerzeichen, den nur ein Nicht-Windows-Server liefern kann, wird
   nicht gelesen und gezählt gemeldet.
 - Ein Pfad über 2000 Zeichen oder 2676 Byte, gezählt ab `smb://`, wird wie bei jeder Quelle nicht
-  gelesen ([Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md), Abschnitt 7.1). Umlaute, Kyrillisch und
+  gelesen ([Wissensbibliotheken](../../nachschlagen/wie-indexierung-arbeitet.md), Abschnitt 7.1). Umlaute, Kyrillisch und
   Griechisch belegen zwei Byte, chinesische, japanische und koreanische Zeichen drei.
 - **Inhaltsänderung ohne neue Änderungszeit** bemerkt der Lauf nicht, wenn auch die Größe gleich
   bleibt.

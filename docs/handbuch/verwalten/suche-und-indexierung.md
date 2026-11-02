@@ -39,7 +39,18 @@ Verwaltenden sie lösen. Die betroffene Person sieht die Einträge zu sich.
 Im Indexstatus startet „Kernfelder nachrüsten“ den **Bestandslauf** je Bibliothek: Er ermittelt
 Titel, Dokumentart und Datum für ältere oder nach einem Update veraltete Dokumente neu, ohne neu
 einzubetten. Danach bettet der Kontextpräfix-Nachlauf Dokumente mit geändertem Präfix neu ein.
-Beide lassen sich anhalten und fortsetzen. Den Wechsel des Embedding-Modells steuern Sie unter
+Beide lassen sich anhalten und fortsetzen.
+
+Nach einem Update, das das Zerlegen eines Formats ändert, oder nach einer geänderten Chunk-Größe
+zeigt der Indexstatus „Nachzug ausstehend“. Den **Pipeline-Nachzug** stößt die Systemverwaltung
+über die Verwaltungsschnittstelle an; eine Oberfläche dafür gibt es nicht.
+`GET /api/v1/admin/indexing/pipeline-versions` nennt je Pipeline Kennung und aktuelle Version und je
+Bibliothek den Rückstand. `POST /api/v1/admin/indexing/pipeline-reindex` mit dieser Kennung als
+`pipelineId` und der Version als `belowVersion` zieht ein Paket nach; wiederholen, bis die Antwort
+`done` meldet. Nach einer geänderten Chunk-Größe gilt das für jede Pipeline außer `tika-fallback`
+und `email`. Hochgeladene Dokumente und das
+Dateisystem werden sofort neu verarbeitet, alle anderen Quellen im nächsten Lauf. Alte Chunks
+verschwinden erst, wenn die neuen da sind. Den Wechsel des Embedding-Modells steuern Sie unter
 [Modelle verwalten](modelle.md).
 
 **Gut zu wissen:**
@@ -47,4 +58,4 @@ Beide lassen sich anhalten und fortsetzen. Den Wechsel des Embedding-Modells ste
 - Die Diagnose ist kein Nachweis über vergangene Zugriffe; dafür gibt es die
   [Stichtagsauskunft](stichtagsauskunft.md).
 - Ein Zugangsschlüssel erscheint auf der Seite nie, auch nicht gekürzt.
-- Wie die Suche arbeitet, Stufe für Stufe: [Suche](../spaces/suche.md).
+- Wie die Suche arbeitet: [Wie die Suche arbeitet](../nachschlagen/wie-die-suche-arbeitet.md).

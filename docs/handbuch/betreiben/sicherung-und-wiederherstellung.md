@@ -34,7 +34,7 @@ Zustand hält: Datenbank, Originalablage und Geheimnisse. Das Kapitel gehört zu
 ### Manuelle Metadatenwerte abgleichen
 
 Jede manuelle Setzung, Änderung und Löschung eines
-[Metadatenwerts](../arbeitsmittel/wissensbibliotheken/metadaten.md#7-manuelle-pflege) schreibt das
+[Metadatenwerts](../pflegen/metadaten-pflegen.md) schreibt das
 Ereignis `DOCUMENT_METADATA_CHANGED`. Je Bibliothek:
 
 1. Ereignisse ab dem Wiederherstellungspunkt lesen: Objekttyp `KNOWLEDGE_LIBRARY`, Objekt-ID der
@@ -52,7 +52,7 @@ Ereignis `DOCUMENT_METADATA_CHANGED`. Je Bibliothek:
    Dokumente, die es nach der Rücksicherung nicht mehr gibt, werden übersprungen.
 
 Direkte `INSERT`s in `document_metadata_values` sind kein Ersatz: Sie ziehen die Chunk-Schlüssel nicht
-nach und hinterlassen kein Ereignis. Bei [privaten Bibliotheken](../arbeitsmittel/wissensbibliotheken/private-bibliotheken.md)
+nach und hinterlassen kein Ereignis. Bei [privaten Bibliotheken](../arbeiten/private-bibliothek.md)
 nennt das Ereignis nur Feld und Zustand, nicht den Wert; dort zeigt der Abgleich nur, welche Felder
 die Person neu setzen muss.
 

@@ -161,8 +161,8 @@ Behauptungen brauchen einen Beleg im Repository. Diese Zuordnung hält das Mater
 
 | Aussage | Belegt durch |
 |---|---|
-| Antworten sind an Fundstellen gebunden | `docs/handbuch/spaces/suche.md` |
-| Rechte werden zur Abfragezeit geprüft | `docs/handbuch/konten-und-rechte/berechtigungen.md` |
+| Antworten sind an Fundstellen gebunden | `docs/handbuch/nachschlagen/wie-die-suche-arbeitet.md` |
+| Rechte werden zur Abfragezeit geprüft | `docs/handbuch/nachschlagen/rechte-matrix.md` |
 | Assets sind teilbar | `docs/decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md` |
 | Kein personenbezogener Auswertungspfad | `docs/behoerden/05-mitbestimmung/`, Issue #239 |
 | Betrieb im eigenen Haus | `docs/handbuch/betreiben/README.md` |

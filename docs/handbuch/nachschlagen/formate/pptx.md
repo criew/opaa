@@ -1,7 +1,7 @@
 # Format: PowerPoint (PPTX)
 
 Pipeline `pptx`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht im
-Kapitel [Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md), Abschnitt 5.
+Kapitel [Wissensbibliotheken](../wie-indexierung-arbeitet.md), Abschnitt 5.
 
 ## 1. Zulassung
 
@@ -30,7 +30,7 @@ Aufbau eines Chunks:
 Ausgefiltert werden Foliennummer, Datum, Kopf- und Fußzeilenplatzhalter. Eine Folie über der
 Zielgröße `chunk-target-characters` wird in mehrere Chunks geteilt, jeder beginnt mit dem Folientitel und trägt die
 Ortsangabe der Folie
-(Kapitel [Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md), Abschnitt 7.1); zusammengelegt werden Folien nicht.
+(Kapitel [Wissensbibliotheken](../wie-indexierung-arbeitet.md), Abschnitt 7.1); zusammengelegt werden Folien nicht.
 
 ## 4. Metadaten am Chunk
 

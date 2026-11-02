@@ -1,5 +1,5 @@
 /**
  * Citation parsing and validation of the generated answer, and the assembly of the sources shown
- * with it (docs/handbuch/spaces/suche.md, Abschnitt 7).
+ * with it (docs/handbuch/nachschlagen/wie-die-suche-arbeitet.md).
  */
 package io.opaa.query.citation;

@@ -67,8 +67,7 @@ nicht, wer einen Wert wann geändert hat. Ebenfalls nicht dabei:
   geänderte Adresse oder ein anderer Mandant beendet die verbundenen Konten aller Personen.
 - **Die Konnektor-Freigabe**, also wer Bibliotheken einer Quellart oder eines Zugangs anlegen
   darf. Sie nennt Gruppen und Zugänge dieser Installation
-  ([Berechtigungen](../konten-und-rechte/berechtigungen.md), Abschnitt „Konnektor-Freigabe: je
-  Quellart und je Zugang“).
+  ([Anlegerechte vergeben](anlegerechte.md)).
 - **Die drei Bilder des Brandings.** Sie können größer sein, als eine Datei sein darf, und werden
   im Branding hochgeladen.
 - **Angaben einzelner Bibliotheken**, etwa Inhaltsselektor und Anlagenprofil eines Feeds. Sie

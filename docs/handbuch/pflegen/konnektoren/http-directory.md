@@ -22,7 +22,7 @@ flowchart LR
 ```
 
 - **Anmeldung:** keine oder HTTP Basic mit Benutzername und Passwort, eigene Zugangsdaten der
-  Bibliothek ([Zugänge](../../arbeitsmittel/zugaenge.md), „Eigene Zugangsdaten der Bibliothek"). Ein Zugang ist
+  Bibliothek ([Zugänge](../../verwalten/zugaenge.md), „Eigene Zugangsdaten der Bibliothek"). Ein Zugang ist
   möglich.
 - **Liest:** alle Dateien in unterstützten Formaten unter der Start-Adresse, rekursiv.
 - **Dokument:** Die Adresse der Datei ist die Identität.

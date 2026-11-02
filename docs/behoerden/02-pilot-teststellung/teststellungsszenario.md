@@ -28,8 +28,8 @@ Verantwortlich ist die Projektleitung zusammen mit dem Fachbereich.
   ([Update-Paket](../../handbuch/betreiben/nachvollziehbarkeit.md#das-update-paket-eines-release),
   [Messverfahren](../../decisions/0011-search-quality-evaluation-harness.md)).
 - **Belege und Diagnose:** jede Antwort nennt ihre Fundstellen; das Diagnosewerkzeug zeigt, warum ein
-  Dokument fehlt ([Belege](../../handbuch/spaces/suche.md#7-belege-prüfen-und-fundstellen-bilden),
-  [Typische Befunde](../../handbuch/spaces/suche.md#9-typische-befunde)).
+  Dokument fehlt ([Belege](../../handbuch/nachschlagen/wie-die-suche-arbeitet.md#belege-prüfen),
+  [Typische Befunde](../../handbuch/nachschlagen/wie-die-suche-arbeitet.md#wenn-etwas-nicht-gefunden-wird)).
 
 ## Aufgaben der Behörde
 

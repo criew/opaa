@@ -6,7 +6,7 @@
 OPAA versendet E-Mails über einen SMTP-Server, den ein Systemverwalter in der Anwendung einträgt.
 Ohne diese Einstellung versendet OPAA nichts — und meldet das als Ergebnis, statt einen Vorgang
 scheitern zu lassen: Wer ein Konto anlegt, bekommt den Einladungslink dann zur Weitergabe angezeigt.
-Wozu Mails gebraucht werden, beschreibt die [Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md); der
+Wozu Mails gebraucht werden, beschreibt die [Benutzerverwaltung](konten.md); der
 Mailserver ist einer der optionalen Bausteine der [Betriebsübersicht](../betreiben/README.md). Für Erprobung und
 Entwicklung bringt der Compose-Stapel einen Mailserver zum Abfangen mit
 ([Mailpit](../betreiben/docker-compose.md#mailpit-im-lokalen-stapel)).
@@ -99,7 +99,7 @@ löschen — der Satz ist fest, damit keine Installation mit einer Vorlage ohne 
   ausgelöste Registrierung zu ignorieren; die Anrede bleibt dort immer leer, weil der Name noch von
   irgendwem stammen kann. Eine ältere eigene Fassung dieser Vorlage auf den ausgelieferten Stand
   zurücksetzen oder entsprechend anpassen
-  ([Selbstregistrierung](../konten-und-rechte/benutzerverwaltung.md#10-selbstregistrierung)).
+  ([Selbstregistrierung](anmeldung-einstellen.md)).
 - **Der HTML-Teil trägt den Rahmen der Installation**: Produktname und Akzentfarbe aus dem Branding.
   Ein Logo wird nicht eingebettet. Wer einen eigenen HTML-Teil speichert, ersetzt den Rahmen
   vollständig.

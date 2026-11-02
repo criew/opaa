@@ -48,7 +48,7 @@ Klärungen, das technische Log und Sicherungen; das stellt bei einem Antrag weit
 | Recht | Was die Behörde in OPAA tut |
 |---|---|
 | **Auskunft** | auf die Selbstauskunft hinweisen; ergänzen, was sie nicht enthält; bei Bedarf alles nach dem Datenkatalog zusammenstellen |
-| **Berichtigung** | lokales Konto ändert die Systemverwaltung ([Benutzerverwaltung](../../handbuch/konten-und-rechte/benutzerverwaltung.md)), sonst im Identitätsanbieter |
+| **Berichtigung** | lokales Konto ändert die Systemverwaltung ([Benutzerverwaltung](../../handbuch/verwalten/konten.md)), sonst im Identitätsanbieter |
 | **Löschung** | Person löscht eigene Chats; Konto löschen oder sperren ([Pseudonymisierung im Protokoll](../../handbuch/betreiben/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll)); Dokumente in Bibliothek oder Quelle löschen; Fristen nach dem [Löschkonzept](./loeschkonzept.md) |
 | **Einschränkung** | Konto sperren; [Regel der Behörde für Dokumente] |
 | **Datenübertragbarkeit** | [prüfen, ob das Recht greift; dann aus den Wegen der Auskunft] |
@@ -83,12 +83,12 @@ Antwort am:           [Datum]          durch: [ ]
   ({{faktenblatt:datenkatalog#audit-pseudonyms}}); Klarnamen sieht die Revision nur in den Grenzen
   der {{faktenblatt:rollensicht#auditor}}. Wird das Konto gelöscht, bleibt das Protokoll unverändert,
   nur der Personenbezug entfällt
-  ([Löschen oder sperren](../../handbuch/konten-und-rechte/benutzerverwaltung.md#8-löschen-oder-sperren)).
+  ([Löschen oder sperren](../../handbuch/verwalten/konten.md#sperren-statt-löschen)).
   Ausnahme: Eine Freigabe für eine anlassbezogene Klärung, die die Person nennt, ordnet ihre
   Einträge bis zu deren Löschfrist weiter zu ({{faktenblatt:datenkatalog#audit-incident-scopes}}).
   Regelt eine [Dienstvereinbarung](../05-mitbestimmung/dienstvereinbarung.md) den Zugriff auf das Protokoll, gilt deren Verfahren.
 - **Dokumente folgen ihrer Quelle.** Wird ein Dokument dort gelöscht oder berichtigt, zieht OPAA nach
-  ([Änderungen und Löschungen](../../handbuch/arbeitsmittel/wissensbibliotheken/README.md#44-änderungen-und-löschungen)).
+  ([Änderungen und Löschungen](../../handbuch/nachschlagen/wie-indexierung-arbeitet.md#läufe)).
   Antworten in bestehenden Chats, die es zitiert haben, bleiben bis zur Löschung des Chats.
 
 ## Zum Nachlesen

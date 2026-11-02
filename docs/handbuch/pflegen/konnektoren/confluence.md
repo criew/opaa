@@ -20,7 +20,7 @@ flowchart LR
     C -.->|Webhook| B
 ```
 
-- **Anmeldung:** eigene Zugangsdaten der Bibliothek ([Zugänge](../../arbeitsmittel/zugaenge.md), „Eigene
+- **Anmeldung:** eigene Zugangsdaten der Bibliothek ([Zugänge](../../verwalten/zugaenge.md), „Eigene
   Zugangsdaten der Bibliothek"): bei Cloud E-Mail-Adresse und API-Token als HTTP Basic, bei Data
   Center ein Personal Access Token als `Bearer`. Ein Zugang ist möglich und darf die Edition
   vorgeben.

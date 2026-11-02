@@ -9,7 +9,7 @@
 ## 1. Was der Konnektor ist
 
 Der Konnektor liest das **eigene OneDrive for Business einer Person** über **Microsoft Graph v1.0**
-und speist daraus ihre [private Bibliothek](../../arbeitsmittel/wissensbibliotheken/private-bibliotheken.md). Beispiel: Eine Referentin
+und speist daraus ihre [private Bibliothek](../../arbeiten/private-bibliothek.md). Beispiel: Eine Referentin
 verbindet ihr Dienstkonto bei Microsoft 365 mit OPAA und wählt in ihrem OneDrive den Ordner
 „Vorlagen"; danach findet sie deren Inhalt im Chat, und außer ihr niemand. OneDrive ist eine der
 [Dateiablagen](README.md#2-dateiablagen); Speicher, Abgleich und Löscherkennung teilt es mit
@@ -24,7 +24,7 @@ flowchart LR
 ```
 
 - **Anmeldung:** über das **verbundene Konto der Person** mit ihrer Zustimmung bei Microsoft
-  (OAuth, delegiert) ([Zugänge](../../arbeitsmittel/zugaenge.md), „Verbundenes Konto einer Person"). Ein Zugang ist
+  (OAuth, delegiert) ([Zugänge](../../verwalten/zugaenge.md), „Verbundenes Konto einer Person"). Ein Zugang ist
   **Pflicht**; er trägt die App-Registrierung des Hauses, das verbundene Konto die Zustimmung. Eine
   geteilte Bibliothek über ein Dienstkonto gibt es nicht; OneDrive speist nur private Bibliotheken.
 - **Konnektor-eigen:** die delegierten Berechtigungen **`Files.Read`** und **`offline_access`**, keine
@@ -67,7 +67,7 @@ danach ihr eigenes Konto.
    Secrets" und als „Mandant" die Verzeichnis-ID oder die Domäne, etwa `contoso.onmicrosoft.com`.
    „Scopes" leer lassen; OPAA fragt `Files.Read offline_access`. Die Server-Adresse ist fest.
 5. Festlegen, wer den Zugang nutzen darf; ab Werk nur die Systemverwaltung
-   ([Berechtigungen](../../konten-und-rechte/berechtigungen.md), „Konnektor-Freigabe").
+   ([Berechtigungen](../../nachschlagen/rechte-matrix.md), „Konnektor-Freigabe").
 
 Als „Mandant" gehört der eigene Mandant eingetragen, nicht `common` oder `organizations`, und die
 App-Registrierung bleibt auf Konten dieses Verzeichnisses beschränkt: Sonst kann sich auch ein
@@ -82,7 +82,7 @@ nur über `https`, prüft das Ziel und sendet dorthin kein Token.
 und meldet sich bei Microsoft mit ihrem Arbeits- oder Schulkonto an; Microsoft fragt dabei immer,
 welches Konto gemeint ist. Nach der Zustimmung nennt OPAA das Konto mit der E-Mail-Adresse, die
 Graph als Besitzer des OneDrive angibt; nennt Graph keine, den Anzeigenamen oder nichts
-([Benutzerverwaltung](../../konten-und-rechte/benutzerverwaltung.md), „Verbundene Konten").
+([Benutzerverwaltung](../../verwalten/konten.md), „Verbundene Konten").
 
 ## 3. Quellkonfiguration
 
@@ -127,7 +127,7 @@ Eine andere Auswahl lässt den nächsten Lauf vollständig abgleichen.
 **Wenn das Konto nicht mehr gilt.** Lehnt Microsoft die Erneuerung des Tokens ab oder weist Graph das
 Token ab, gilt die Verbindung als **abgelaufen**: Die Person wird benachrichtigt, die Bibliothek ruht
 mit „Abgelaufen" und „Konto neu verbinden", und ihr Bestand bleibt durchsuchbar
-([Private Bibliotheken](../../arbeitsmittel/wissensbibliotheken/private-bibliotheken.md)). Eine Warnung vor dem Ablauf gibt es nicht.
+([Private Bibliotheken](../../arbeiten/private-bibliothek.md)). Eine Warnung vor dem Ablauf gibt es nicht.
 Ein Token ohne Berechtigung, etwa bei fehlender Administratorzustimmung, beendet dagegen nur den
 Lauf mit der Meldung zur Zustimmung; die Verbindung läuft nicht ab, und niemand wird benachrichtigt.
 Verbindet die Person ein anderes Microsoft-Konto, liest OPAA das OneDrive der Bibliothek nicht mehr:
@@ -176,7 +176,7 @@ Für Ordneränderungen gilt ein Fenster bis zum nächsten Vollabgleich; der Voll
 
 Die Ordnerkette ab der Wurzel des OneDrive erscheint als Ordner der Bibliothek. Namen, die keinen
 Ordner tragen können, und zu tiefe Ketten folgen den Regeln des Kapitels
-[Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md).
+[Wissensbibliotheken](../../nachschlagen/wie-indexierung-arbeitet.md).
 
 ## 7. Anhänge
 
@@ -211,7 +211,7 @@ OneDrive nutzt die Parameter von SharePoint, `opaa.indexing.sharepoint.*`
 ## 9. Protokoll und Fehlerbilder
 
 Was beim Verbinden bei Microsoft scheitern kann, steht im Kapitel
-[Benutzerverwaltung](../../konten-und-rechte/benutzerverwaltung.md), „Verbinden und neu
+[Benutzerverwaltung](../../verwalten/konten.md), „Verbinden und neu
 verbinden".
 
 | Meldung | Bedeutung | Abhilfe |

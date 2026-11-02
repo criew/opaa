@@ -1,5 +1,5 @@
 /**
  * Answer generation over the selected chunks and the bounded conversation memory it reads and
- * writes (docs/handbuch/spaces/suche.md, Abschnitt 6).
+ * writes (docs/handbuch/nachschlagen/wie-die-suche-arbeitet.md).
  */
 package io.opaa.query.answer;

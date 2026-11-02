@@ -34,8 +34,8 @@ import org.junit.jupiter.api.Test;
  * Values a model or a person extracted from a document are content, not configuration: the
  * per-document field view and the Stichprobe ask the content check of the asset shell ({@link
  * AssetAuthorization#requireContentRole}), which a system administrator without a grant fails,
- * while the aggregated Extraktionsgüte stays with the administration (handbook berechtigungen.md,
- * section 10).
+ * while the aggregated Extraktionsgüte stays with the administration (handbook
+ * nachschlagen/metadaten.md).
  */
 class MetadataContentReadTest {
 

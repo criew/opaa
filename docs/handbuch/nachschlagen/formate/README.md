@@ -2,7 +2,7 @@
 
 Welche Dateiformate OPAA aufnimmt, welche Format-Pipeline sie verarbeitet und welche Formate
 bewusst nicht zugelassen sind. Wie ein Dokument die Aufnahmestrecke durchläuft, beschreibt das
-Kapitel [Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md).
+Kapitel [Wissensbibliotheken](../wie-indexierung-arbeitet.md).
 
 ## Zugelassene Formate
 

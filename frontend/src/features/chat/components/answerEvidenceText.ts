@@ -12,7 +12,7 @@ function plural(count: number, one: string, many: string): string {
 }
 
 /**
- * Level word and reason of a Belegstand (docs/handbuch/spaces/suche.md, Abschnitt 7). The reason
+ * Level word and reason of a Belegstand (docs/handbuch/nachschlagen/wie-die-suche-arbeitet.md). The reason
  * names what keeps an answer from the level above, never a score; uncovered sub-queries are only
  * counted - their wording stays in the Belegfenster.
  */

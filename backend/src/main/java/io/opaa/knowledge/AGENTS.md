@@ -48,7 +48,7 @@ die verwalteten Chat-Modelle (`llm`), Health-Indikatoren (`health`) und die Inst
 
 ## Verweise
 
-- Handbuch: `arbeitsmittel/wissensbibliotheken/README.md`, `arbeitsmittel/wissensbibliotheken/metadaten.md`
+- Handbuch: `nachschlagen/wie-indexierung-arbeitet.md`, `nachschlagen/metadaten.md`
 
 ## Tests bei Änderungen
 

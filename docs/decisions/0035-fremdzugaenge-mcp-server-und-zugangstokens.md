@@ -10,7 +10,7 @@ Beschäftigte arbeiten in KI-Werkzeugen, die OPAA nicht kennen, und holen sich d
 über die Zwischenablage dorthin. Der Kanal, der das ablöst, ist lesend, liegt hinter drei
 Freigaben (Installationsschalter, Bibliotheksfreigabe, Token) und liefert Fundstellen statt
 erzeugter Antworten; sein **Verhalten** steht in
-das Handbuchkapitel [Externe KI-Werkzeuge](../handbuch/spaces/fremdzugaenge.md). Randbedingungen: OPAA wird für diesen Kanal
+das Handbuchkapitel [Externe KI-Werkzeuge](../handbuch/verwalten/externe-ki-werkzeuge.md). Randbedingungen: OPAA wird für diesen Kanal
 nicht aus dem offenen Netz erreichbar gemacht (Zielclients auf dem Arbeitsplatz oder im Hausnetz,
 installationsweite Netzbeschränkung); die einzelne Abfrage wird nicht protokolliert
 ([ADR-0059](0059-ereignisvertrag-aufbewahrung-und-integritaet-des-revisionsprotokolls.md)); das Rechtemodell hängt an der Wissensbibliothek, und die
@@ -137,7 +137,7 @@ Weil es einen Server gibt, fallen bei einem Bruch alle Fremdzugänge des Hauses 
   MCP-Lebenszyklus-Richtlinie; unterschritten nur bei einer Sicherheitslücke, mit Ankündigung.
 - **d) Fassungswache:** Eine benannte Rolle (Maintainer oder Benannter) prüft vierteljährlich
   Spezifikationsstand und Abkündigungsliste, die Fassungsliste der Bibliothek und das
-  Konfigurationsformat der Client-Anleitungen im [Handbuch](../handbuch/spaces/fremdzugaenge.md); das
+  Konfigurationsformat der Client-Anleitungen im [Handbuch](../handbuch/verwalten/externe-ki-werkzeuge.md); das
   Ergebnis wird festgehalten. Renovate leistet das nicht; ein Versionssprung des MCP-Starters ist
   kein gewöhnliches Update und gehört in `renovate.json5` in eine Regel ohne Auto-Merge.
 

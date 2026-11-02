@@ -26,9 +26,9 @@ import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Component;
 
 /**
- * The {@link RetrievalStageName#RERANK} stage (docs/handbuch/spaces/suche.md, Stufe 8): re-scores
- * the fused candidate window with the rerank model role and cuts it back to {@link
- * QueryProperties#topK}.
+ * The {@link RetrievalStageName#RERANK} stage
+ * (docs/handbuch/nachschlagen/wie-die-suche-arbeitet.md): re-scores the fused candidate window with
+ * the rerank model role and cuts it back to {@link QueryProperties#topK}.
  *
  * <p>No path passes on more than {@code top-k} chunks: the fusion widens its budget only while
  * reranking is active, so every {@code identity(...)} path is already capped and only the path

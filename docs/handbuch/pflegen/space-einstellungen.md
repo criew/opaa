@@ -31,5 +31,8 @@ Chats gehören ihren Autoren. Ein Space mit Chats lässt sich deshalb nur archiv
 
 - Im Standard-Space ist Ihre Anweisung eine persönliche Daueranweisung; archivieren und löschen
   lässt er sich nicht.
+- Die Anweisung hat höchstens 1000 Zeichen und wirkt ab der nächsten Frage, auch in älteren Chats,
+  nur auf die Antwort, nicht auf die Suche. Die Zitierregeln hebt sie nicht auf; eine Sprachvorgabe
+  darin geht „Deutsch“ vor, ein anderer Wunsch der fragenden Person im Gespräch geht ihr vor.
 - Die Systemverwaltung ändert Name und Beschreibung, aber nicht die Anweisung.
 - Jede Änderung der Anweisung steht im Revisionsprotokoll, der Text selbst nicht.

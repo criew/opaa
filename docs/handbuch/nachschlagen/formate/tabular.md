@@ -1,7 +1,7 @@
 # Format: Tabellen (XLSX, CSV, ODS)
 
 Pipeline `tabular`, Version 5. Der gemeinsame Rahmen aller Format-Pipelines steht
-im Kapitel [Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md), Abschnitt 5.
+im Kapitel [Wissensbibliotheken](../wie-indexierung-arbeitet.md), Abschnitt 5.
 
 ## 1. Zulassung
 
@@ -97,7 +97,7 @@ Schlüssel unter `opaa.indexing.tabular.*`:
 
 Fest und nicht konfigurierbar, weil sie den Zuschnitt beschreiben und kein Sicherheitslimit
 sind: 50 Zeilen je Chunk. Die Zielgröße in Zeichen ist dagegen `chunk-target-characters`,
-gemeinsam für alle Formate (Kapitel [Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md),
+gemeinsam für alle Formate (Kapitel [Wissensbibliotheken](../wie-indexierung-arbeitet.md),
 Abschnitt 7.5). Für XLSX und CSV gelten zusätzlich die gemeinsamen Grenzen für Text und, bei
 XLSX, für die entpackte Größe ([Grenzen beim Lesen](README.md#grenzen-beim-lesen)). Der ODS-Leser
 verarbeitet keine externen XML-Entitäten.

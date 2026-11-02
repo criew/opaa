@@ -34,7 +34,9 @@ Reiter für den Inhalt, für „Freigaben“ mit der Zeile „Herleitung“ („
 Oder „Neuen Space damit anlegen“: Der [Space-Assistent](space-anlegen.md) öffnet mit dem
 Arbeitsmittel als gewähltem Inhalt.
 
-Gelöst wird eine Zuordnung im Reiter „Zuordnungen“ über „Aus Space lösen“.
+Gelöst wird eine Zuordnung im Reiter „Zuordnungen“ über „Aus Space lösen“, von der Verwaltung des
+Arbeitsmittels oder von Kuratoren und Administratoren des Space. Private Spaces, zu denen Sie nicht
+gehören, zählt der Reiter nur („+ 2 weitere Spaces, die Sie nicht sehen dürfen“).
 
 ## Ein Arbeitsmittel anlegen
 

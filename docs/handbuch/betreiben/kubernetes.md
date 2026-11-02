@@ -425,7 +425,7 @@ dabei `UP`. Zwei Wege führen hinaus:
 
 Die Anmeldung läuft danach über `<publicBaseUrl>/login` mit dem ersten Konto; der Abschluss hat die
 lokale Benutzerverwaltung eingeschaltet. Den Weg für Systemverwalter bei abgeschalteter Verwaltung
-beschreibt die [Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md#1-wann-diese-verwaltung-gebraucht-wird). Was dann zu tun
+beschreibt die [Benutzerverwaltung](../verwalten/konten.md). Was dann zu tun
 ist (persönliche Verwalterkonten anlegen, Notanker versiegeln), steht unter
 [Erststart und Systemverwalter-Konto](authentifizierung.md#erststart-und-systemverwalter-konto). Nach
 dem Abschluss gehören das Passwort (`secrets.initialAdminPassword` bzw. der Schlüssel
@@ -682,11 +682,11 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 
 | Wert | Vorgabe | Setzt | Wirkung |
 |---|---|---|---|
-| `features.promptLibraries.enabled` | `true` | `OPAA_FEATURES_PROMPT_LIBRARIES_ENABLED` | `false` schaltet die Prompt-Bibliotheken ab (siehe [Prompt-Bibliotheken](../arbeitsmittel/prompt-bibliotheken.md#9-abschalten)) |
+| `features.promptLibraries.enabled` | `true` | `OPAA_FEATURES_PROMPT_LIBRARIES_ENABLED` | `false` schaltet die Prompt-Bibliotheken ab (siehe [Prompt-Bibliotheken](../nachschlagen/konfiguration.md#funktionen-abschalten)) |
 | `features.metadata.enabled` | `true` | `OPAA_FEATURES_METADATA_ENABLED` | Schalter für die Metadaten von Dokumenten und Bibliotheken; `false` lässt nur den Titel eines Dokuments übrig |
 | `features.speechInput.enabled` | `true` | `OPAA_FEATURES_SPEECH_INPUT_ENABLED` | `false` schaltet die Spracheingabe im Chat ab, auch mit eingetragenem Transkriptionsdienst |
-| `features.externalAccess.enabled` | `true` | `OPAA_FEATURES_EXTERNAL_ACCESS_ENABLED` | `false` schaltet den Zugriff externer KI-Werkzeuge samt MCP-Server unter `/mcp` ab (siehe [Externe KI-Werkzeuge](../spaces/fremdzugaenge.md#externe-ki-werkzeuge-ganz-abschalten)); an, öffnet erst der Schalter der Verwaltung den Kanal |
-| `features.chatUpload.enabled` | `true` | `OPAA_FEATURES_CHAT_UPLOAD_ENABLED` | `false` schaltet Dateianhänge im Chat und „Meine Uploads“ ab (siehe [Suche](../spaces/suche.md#dokumente-an-eine-frage-anhängen)) |
+| `features.externalAccess.enabled` | `true` | `OPAA_FEATURES_EXTERNAL_ACCESS_ENABLED` | `false` schaltet den Zugriff externer KI-Werkzeuge samt MCP-Server unter `/mcp` ab (siehe [Externe KI-Werkzeuge](../nachschlagen/konfiguration.md#funktionen-abschalten)); an, öffnet erst der Schalter der Verwaltung den Kanal |
+| `features.chatUpload.enabled` | `true` | `OPAA_FEATURES_CHAT_UPLOAD_ENABLED` | `false` schaltet Dateianhänge im Chat und „Meine Uploads“ ab (siehe [Anhängen und diktieren](../arbeiten/anhaengen-und-diktieren.md)) |
 
 Ein Schalter setzt die Variable `OPAA_FEATURES_<NAME>_ENABLED`, der Name in Großbuchstaben mit
 Unterstrichen. Wie überall lehnt `values.schema.json` einen unbekannten Namen ab, etwa einen
@@ -923,7 +923,7 @@ Images ihre aktualisierten öffentlichen CAs mit. Der Handgriff aus
 ### Identitätsanbieter
 
 Ohne `bootstrap.oidc` melden sich Personen mit lokalen Konten an
-([Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md)). Das Protokoll nennt dann bei jedem Start auf Stufe
+([Benutzerverwaltung](../verwalten/konten.md)). Das Protokoll nennt dann bei jedem Start auf Stufe
 `INFO`, dass kein Identitätsanbieter konfiguriert ist und die Anmeldung nur mit lokalen Konten
 geht.
 
@@ -995,7 +995,7 @@ Weiteres zur Anbindung, zur Anbieterverwaltung und zum Verzeichnisabgleich steht
 | Datenbank, Originalablage, Einbettung, Reranking, Proxy-Kette, CSP-Ergänzungen, Timeouts | Bereitstellungswerte | Werte; wirken bei jedem `helm upgrade` |
 | erster Identitätsanbieter | Antwortdatei | `bootstrap.oidc`; danach Administration → Benutzer → Anbieter |
 | erstes Chat-Modell samt Schlüssel | Antwortdatei | `bootstrap.chatModel` und `installation-chat-api-key`; danach die Modellverwaltung ([LLM-Anbieter](modell-endpunkte.md#llm-anbieter)) |
-| erster Systemverwalter | Antwortdatei | `bootstrap.initialAdmin` und `installation-admin-password`; danach [Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md) |
+| erster Systemverwalter | Antwortdatei | `bootstrap.initialAdmin` und `installation-admin-password`; danach [Benutzerverwaltung](../verwalten/konten.md) |
 | Mailserver, weitere Anbieter, Verzeichnisabgleich, Zugriff externer KI-Werkzeuge | Verwaltungseinstellungen | keine Werte; nur in der Oberfläche |
 
 **Eine geänderte Werte-Datei ändert an der Antwortdatei nichts mehr.** Nach dem Abschluss der
