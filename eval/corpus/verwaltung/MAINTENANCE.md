@@ -654,9 +654,9 @@ Wer die Klassenzahlen liest, liest also die Summe aus drei Änderungen (Suchfens
 Instruktionszeile), nicht aus zweien. Eine saubere Trennung kostet einen weiteren Messlauf mit
 abgeschalteter Notiz-Zeile und ist als **#1587** aufgenommen, nicht in #1490 enthalten.
 
-#### Wo die Nachmessung von der Vorhersage der Spezifikation abweicht
+#### Wo die Nachmessung von der Vorhersage abweicht
 
-Die frühere Spezifikation zum Gesprächsgedächtnis sagte für die Schritte 3 und 4 drei
+Die Planung des Gesprächsgedächtnisses (Epic #1482) sagte für die Schritte 3 und 4 drei
 Dinge voraus. **Eine trifft zu, zwei nicht.**
 
 - **„`anaphora_resolution` darf nicht fallen" — trifft zu.** Die Klasse steigt in allen vier

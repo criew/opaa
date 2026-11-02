@@ -219,8 +219,8 @@ opaa:
     note:
       # Points the Gespraechsnotiz of one chat keeps at most; appending beyond it drops the
       # oldest point. Ebene-1 benchmark value, only judgeable with the multi-turn harness
-      # (ADR-0031). Everything else about the note is a fixed
-      # value with no addressee to reconfigure it.
+      # (ADR-0031). Everything else about the note is a fixed value with no addressee to
+      # reconfigure it.
       max-items: ${OPAA_CHAT_NOTE_MAX_ITEMS:10}
     locked-account-cleanup:
       # Longest an approved hold of the deletion of a locked account's chats runs before it ends

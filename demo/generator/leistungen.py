@@ -1,8 +1,5 @@
 """Builds the "Leistungen Meldewesen & Ausweise" (.md + one .csv) and "Leistungen
 Kfz-Zulassung" (.md + .txt) documents from the transformed LHM source files.
-
-See demo/README.md, table "Behördenlandschaft, Bibliotheken
-und Formate", for the target library/format split.
 """
 
 from __future__ import annotations

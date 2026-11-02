@@ -492,7 +492,7 @@ def generate_entity_description(entities: list[Entity]) -> list[Candidate]:
 #
 # "Which {alignment} characters created by {creator} can {superpower}?" — all
 # matching documents are the ground truth. Kept only if the result window is
-# [2, 15] documents (ADR-0011).
+# [2, 15] documents.
 
 ALIGNMENTS = ["Good", "Bad", "Neutral"]
 TOP_CREATORS = ["Marvel Comics", "DC Comics", "Shueisha", "Dark Horse Comics", "Lego"]

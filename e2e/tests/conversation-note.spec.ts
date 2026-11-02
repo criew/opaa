@@ -12,7 +12,7 @@ import type { Locator, Page, TestInfo } from '@playwright/test'
 /**
  * Covers test(e2e) #1489 (T7 of Epic #1482): the Gesprächsnotiz in the browser - its display
  * threshold, removing a point, and what only a real rendering engine can show
- * (ADR-0031, and ADR-0031).
+ * (ADR-0031).
  *
  * **Deterministic condensation.** Note points come from a model call. The suite's KI stub
  * (e2e/ai-stub/server.mjs) recognises io.opaa.chat.ChatNoteExtractionService's prompt and answers

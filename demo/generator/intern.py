@@ -1,9 +1,9 @@
 """Data and DOCX/PDF/PPTX/EML rendering for the "Interne Dienstanweisungen
-Meldewesen" library (UPLOAD connector, see demo/README.md).
+Meldewesen" library (UPLOAD connector).
 
 This is the one library the concept's demo script relies on being visible to
 Meldewesen staff (Maria) but invisible to Kfz staff (Thomas) — see
-"Berechtigungs-Doppelfrage" in demo/README.md. The rule about
+the demo script, docs/market/demo-drehbuch.md. The rule about
 suspected forged identity documents below exists nowhere in the public
 Leistungen library on purpose.
 

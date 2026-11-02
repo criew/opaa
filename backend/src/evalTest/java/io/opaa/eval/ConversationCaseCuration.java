@@ -65,7 +65,7 @@ public final class ConversationCaseCuration {
   /** Unchanged from {@link GoldenCaseCuration#MINIMUM_CASES_PER_CLASS} - the same rule. */
   public static final int MINIMUM_CASES_PER_CLASS = GoldenCaseCuration.MINIMUM_CASES_PER_CLASS;
 
-  /** The turn count each class is defined over (ADR-0031, table). */
+  /** The turn count each class is defined over. */
   public static final Map<String, int[]> TURN_RANGE_BY_CLASS =
       Map.of(
           "anaphora_resolution", new int[] {2, 3},

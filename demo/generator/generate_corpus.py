@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Deterministic generator for the Rheinfurt demo corpus.
 
-Builds all seven demo libraries described in
-demo/README.md ("Behördenlandschaft, Bibliotheken und
-Formate") under demo/corpus/:
+Builds all seven demo libraries (see demo/README.md, "Was die Demo zeigt")
+under demo/corpus/:
 
 - leistungen-meldewesen-ausweise/  (.md, one .csv) — rewritten LHM source, one synthetic table
 - leistungen-kfz-zulassung/        (.md, .txt)     — rewritten LHM source

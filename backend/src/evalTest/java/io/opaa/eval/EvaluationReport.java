@@ -243,9 +243,9 @@ public record EvaluationReport(
   }
 
   /**
-   * Calibration notes (see ADR-0011 review history): the case count overstates the number of
-   * independent observations because several cases share an expected-document set (e.g. every
-   * crosslingual case is a German twin of an English one, by construction of the generator).
+   * Calibration notes: the case count overstates the number of independent observations because
+   * several cases share an expected-document set (e.g. every crosslingual case is a German twin of
+   * an English one, by construction of the generator).
    */
   public record DatasetNotes(int caseCount, int distinctExpectedDocumentSets, String note) {}
 

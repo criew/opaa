@@ -16,8 +16,8 @@ public final class ExternalAccessDefaults {
   public static final int TOKEN_MAX_LIFETIME_DAYS = 90;
 
   /**
-   * Deliberately conservative and, as ADR-0035 says, guessed until a pilot installation has
-   * measured it once: the quota is a load brake, not a protection against mass retrieval.
+   * Deliberately conservative and guessed until a pilot installation has measured it once: the
+   * quota is a load brake, not a protection against mass retrieval.
    */
   public static final int TOKEN_RATE_LIMIT_PER_HOUR = 60;
 

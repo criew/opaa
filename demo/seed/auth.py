@@ -1,8 +1,7 @@
 """Authentication providers for the seed script.
 
 Both data profiles ("demo" and "e2e") share the same seed mechanism - only how a session for a
-given user is obtained differs, exactly the split demo/README.md draws under
-"Installation und Seed": "Geteilt sind die Daten, nicht die Nutzerbereitstellung."
+given user is obtained differs: the data is shared, the user provisioning is not.
 
 - DevHeaderAuth: the "e2e" (and any local dev) profile authenticates every request as one of the
   users configured under opaa.auth.dev.users, selected per request via the X-OPAA-Dev-User header

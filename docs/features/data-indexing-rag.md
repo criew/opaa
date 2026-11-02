@@ -420,7 +420,7 @@ unparsebare Antwort), fällt die Suche auf das Verhalten vor #923 zurück — ei
 `buildSearchQuery`-Logik (Frage, ggf. um eine Nutzerfrage aus dem Verlauf ergänzt) — nie auf einen
 Fehler für den Nutzer, höchstens die alte Suchqualität. Seit #1486 ist das die **letzte** Nutzerfrage
 des Suchfensters statt der ersten des Chats; siehe
-[ADR-0031](../decisions/0031-gespraechsgedaechtnis.md), Bauteil 1.
+[ADR-0031](../decisions/0031-gespraechsgedaechtnis.md).
 
 **Nachricht ohne Suchbedarf (#1684):** Ein Wunsch zur Antwortform, eine Angabe zur Person oder ein
 Dank hat nichts zu suchen. Das Modell antwortet dann mit einem Signalwort. Gesucht wird trotzdem, mit
@@ -458,7 +458,7 @@ Umgekehrt übersieht er eine degenerierte Ausgabe, sobald sein Ankerraum zufäll
 enthält; im Mehrturn-Fall ist er deshalb am schwächsten, weil auch Assistenzantworten Anker liefern.
 Der Ankerraum ist seit #1486 **genau der Zerlegungskontext** (Frage und Suchfenster, nicht mehr der
 ganze Verlauf) — die Invariante steht in
-[ADR-0031](../decisions/0031-gespraechsgedaechtnis.md), Bauteil 1. Ganz aus schaltet er sich nur in zwei
+[ADR-0031](../decisions/0031-gespraechsgedaechtnis.md). Ganz aus schaltet er sich nur in zwei
 Fällen: wenn dieser Kontext insgesamt höchstens ein Wort ab vier Zeichen ergibt — dann gibt es nichts, worauf sich
 beziehen ließe —, und bei einer Schrift ohne Wortgrenzen (Chinesisch, Japanisch, Thai), erkannt
 daran, dass die Frage zu einem einzigen Wort über ihre gesamte Länge zerfällt. Eine kurze Folgefrage

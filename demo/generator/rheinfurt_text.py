@@ -143,7 +143,7 @@ ALLOWED_STREET_NAMES: frozenset[str] = frozenset(
 
 # A handful of Beglaubigung ("certification") source documents mention, in
 # passing, that fishing licences are certified by a different authority.
-# demo/README.md requires that NO document anywhere in this
+# The demo script requires that NO document anywhere in this
 # corpus touches the topic "Fischereierlaubnis" (the demo script's
 # deliberately unanswerable question), so this passing mention is scrubbed
 # rather than merely rewritten to Rheinfurt.
