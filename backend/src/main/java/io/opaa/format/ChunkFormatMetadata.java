@@ -1,10 +1,10 @@
 package io.opaa.format;
 
 /**
- * The two chunk metadata keys carrying the version of the verfahren that produced a chunk
- * (ingestion-pipelines.md, Querschnittsregel (d)). Written by {@code
- * DocumentIngestService#storeChunks} onto every chunk and read back by {@code
- * io.opaa.indexing.maintenance.PipelineReindexService} to select "every chunk below version N".
+ * The two chunk metadata keys carrying the version of the verfahren that produced a chunk (the
+ * format chapter of the Handbuch). Written by {@code DocumentIngestService#storeChunks} onto every
+ * chunk and read back by {@code io.opaa.indexing.maintenance.PipelineReindexService} to select
+ * "every chunk below version N".
  *
  * <p>Deliberately chunk metadata rather than a column of {@code vector_store}, whose shape follows
  * Spring AI's PgVectorStore: a value that is definitionally a property of the chunk belongs on the

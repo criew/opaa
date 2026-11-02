@@ -26,7 +26,7 @@ import java.util.regex.Pattern;
 import org.springframework.ai.document.Document;
 
 /**
- * The Markdown pipeline (ingestion-pipelines.md, Teil 2): cuts along ATX headings level 1-3 via
+ * The Markdown pipeline (the format chapter of the Handbuch): cuts along ATX headings level 1-3 via
  * {@link HeadingSectionSplitter}, recognizing a heading line only outside a fenced code block, so a
  * commented-out {@code #} line in an embedded snippet is not cut on.
  *

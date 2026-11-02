@@ -22,9 +22,9 @@ import org.junit.jupiter.api.io.TempDir;
 import org.xml.sax.helpers.DefaultHandler;
 
 /**
- * The ODP pipeline (ingestion-pipelines.md Teil 3 Punkt 2: "eine Folie = ein Chunk"): mirrors
- * PptxDocumentFormatTest for the per-slide chunking rules, plus the ODS-style XXE/zip-bomb guards
- * {@code TabularDocumentFormatTest} exercises for its own {@code content.xml} reader.
+ * The ODP pipeline (the format chapter of the Handbuch): mirrors PptxDocumentFormatTest for the
+ * per-slide chunking rules, plus the ODS-style XXE/zip-bomb guards {@code
+ * TabularDocumentFormatTest} exercises for its own {@code content.xml} reader.
  */
 class OdpDocumentFormatTest {
 

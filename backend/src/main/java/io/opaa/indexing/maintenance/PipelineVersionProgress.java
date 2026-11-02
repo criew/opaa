@@ -4,7 +4,7 @@ import io.opaa.format.ChunkFormatMetadata;
 import java.util.UUID;
 
 /**
- * The pipeline-version fill state of one knowledge library (docs/features/ingestion-pipelines.md,
+ * The pipeline-version fill state of one knowledge library (the format chapter of the Handbuch,
  * cross-cutting rule (d): resumable, with progress queryable per library).
  *
  * @param totalChunks every chunk of this library in the vector store

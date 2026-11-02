@@ -16,11 +16,10 @@ import org.springframework.context.ApplicationContext;
  * Pins the routing matrix {@link DocumentFormatRegistry} actually resolves in a real, fully
  * Spring-wired {@link ApplicationContext} - every {@link DocumentFormat} bean {@link
  * io.opaa.format.config.FormatConfiguration} registers, not the hand-picked fakes {@link
- * DocumentFormatRegistryTest} uses to cover the routing algorithm itself
- * (docs/features/ingestion-pipelines.md, Teil 1). A bean wiring mistake (a pipeline never
- * registered, or registered under the wrong format) would otherwise only surface as a behavioural
- * change in an end-to-end indexing test, not as a routing assertion of its own. Reuses
- * {@code @OpaaIntegrationTest} verbatim - no class-local
+ * DocumentFormatRegistryTest} uses to cover the routing algorithm itself (the format chapter of the
+ * Handbuch). A bean wiring mistake (a pipeline never registered, or registered under the wrong
+ * format) would otherwise only surface as a behavioural change in an end-to-end indexing test, not
+ * as a routing assertion of its own. Reuses {@code @OpaaIntegrationTest} verbatim - no class-local
  * {@code @DynamicPropertySource}/{@code @Import}/{@code @MockitoBean} - so this class shares the
  * cached context with every other class carrying that same signature (AGENTS.md,
  * Spring-Testkontexte).

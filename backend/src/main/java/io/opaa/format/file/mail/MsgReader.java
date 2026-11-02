@@ -22,9 +22,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Reads an Outlook MSG message's Kopfdaten, body and attachments via POI's HSMF module
- * (ingestion-pipelines.md, Teil 3, Punkt 5) - the same split {@link EmlReader} makes for EML, over
- * the MAPI-native reader instead of Tika's flattening one.
+ * Reads an Outlook MSG message's Kopfdaten, body and attachments via POI's HSMF module (the format
+ * chapter of the Handbuch) - the same split {@link EmlReader} makes for EML, over the MAPI-native
+ * reader instead of Tika's flattening one.
  *
  * <p>Attachment size bounding is best-effort: {@link MAPIMessage} loads the whole compound file
  * into memory first, so an oversized attachment is skipped post-hoc and {@link

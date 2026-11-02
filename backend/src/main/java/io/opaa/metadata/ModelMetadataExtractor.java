@@ -30,9 +30,9 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 /**
- * Step 2 of the extraction order (metadata-schema.md, "Die Reihenfolge"): one call per document to
- * the systemwide chat role for the unscharfe fields the deterministic step left empty and for the
- * freie Schlagworte, each only when the library switched it on.
+ * Step 2 of the extraction order (ADR-0024): one call per document to the systemwide chat role for
+ * the unscharfe fields the deterministic step left empty and for the freie Schlagworte, each only
+ * when the library switched it on.
  *
  * <p>A value is stored only at {@link #CONFIDENCE_THRESHOLD} or above <b>and</b> as a code of the
  * offered list; a field that already carries a row is never asked about, so no manual correction is
@@ -355,7 +355,7 @@ public class ModelMetadataExtractor {
   /**
    * The unscharfe fields of {@code library} that {@code document} carries no row for: the Kernfeld
    * Dokumentart and the library's own SELECT fields. Titel, Datum/Stand and a PATTERN field are
-   * deterministic or nothing and are never asked about (metadata-schema.md, Schritt 2).
+   * deterministic or nothing and are never asked about (ADR-0024).
    */
   private List<ModelExtractionField> emptyUnsharpFieldsOf(
       Document document, KnowledgeLibrary library) {

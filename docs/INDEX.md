@@ -8,7 +8,7 @@ Die Dokumentation ist nach fünf Achsen sortiert — jedes Dokument gehört zu g
 | Achse | Ort | Frage, die sie beantwortet |
 |---|---|---|
 | **Vision & Plan** | [VISION.md](./VISION.md), [ROADMAP.md](./ROADMAP.md), [USE-CASES.md](./USE-CASES.md), [CONCEPTS.md](./CONCEPTS.md) | Wohin soll es gehen, in welchen Begriffen? |
-| **Spezifikation** | im Epic (GitHub); [`features/`](./features/) im Abbau | Wie soll sich ein Bereich im Zielbild verhalten? |
+| **Spezifikation** | im Epic (GitHub), offene Ziele in der [Roadmap](./ROADMAP.md) | Wie soll sich ein Bereich im Zielbild verhalten? |
 | **Entscheidungen** | [`decisions/`](./decisions/) | Was wurde verbindlich entschieden, und warum? |
 | **Stand & Nachweis** | [`fortschritt/`](./fortschritt/) | Was ist heute tatsächlich gebaut — belegt? |
 | **Handbuch** | [`handbuch/`](./handbuch/) | Wie installiere, betreibe und benutze ich das Gebaute? |

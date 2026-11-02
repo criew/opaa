@@ -44,7 +44,7 @@ interface Props {
 }
 
 /**
- * The "Metadatenfelder" section of a library's settings (metadata-schema.md Teil V): the
+ * The "Metadatenfelder" section of a library's settings (ADR-0024): the
  * library's own fields with their Wirkstellen and value lists, and the two operations the
  * specification guards - a field is only accepted with a retrieval effect, and a value is only
  * removed together with a confirmed mapping whose Folgekosten stand beforehand.

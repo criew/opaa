@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt durch ADR-0013 (Fehlerkriterium) und
+Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt durch ADR-0013 (Fehlerkriterium) und
 ADR-0026 Entscheidung 5 (Konfidenzschwelle der Metadaten-Extraktion) · präzisiert ADR-0011
 
 ## Kontext
@@ -19,7 +19,7 @@ Dieses ADR ist der Katalog dieses Messvertrags: je Messpfad die Metrikdefinition
 geprüften Festpunkte mit ihrem heutigen Wert, und die Versionszählung, die eine Baseline einem
 Vertragsstand zuordnet. Das Fehlerkriterium, nach dem ein Lauf gegen seine Baseline besteht oder
 fällt, steht in ADR-0013; die Baseline-Dateien und ihr Pflegeverfahren in `eval/baseline/README.md`;
-die Fallklassen und Zustandsfelder der Datensätze in `docs/features/retrieval-benchmark.md`.
+die Fallklassen und Zustandsfelder der Datensätze in `docs/decisions/0012-messvertrag-retrieval-harness.md`.
 
 ## Entscheidung
 
@@ -342,7 +342,7 @@ Eigenes Task-Paar `evaluate<Domäne>Conversations`/`check<Domäne>ConversationBa
 desselben Harness-Laufs (Entscheidung 48): Die Task setzt Zerlegung und `opaa.eval.runConversations`
 selbst, weil die Einzelfragen-Baselines derselben Domäne ohne Zerlegung gezogen sind; der
 Einzelfragen-Pipeline-Pfad wird in diesem Lauf nicht gemessen (Entscheidung 60). Mehrfachlauf-Regel
-(`MehrfachlaufRule`, `docs/features/retrieval-benchmark.md` §3): drei Läufe, der Median nach nDCG@20
+(`MehrfachlaufRule`, `docs/decisions/0012-messvertrag-retrieval-harness.md`): drei Läufe, der Median nach nDCG@20
 vertritt die Messung; der Bericht führt Streubereich, Runden mit abweichender Zerlegung und je Runde
 Notizpunkte und Teilfragen (Entscheidung 51). Fehlt Zerlegung, Chat-Modell oder Datensatz: „nicht
 ausgeführt“. Eigener CI-Job `conversations` (`.github/workflows/retrieval-regression.yml`, Budget
@@ -410,7 +410,7 @@ Ist-Zustand ist der festgeschriebene Stand; `ExpectedStateAudit` meldet nur Abwe
 in beiden Richtungen. „Gelöst“: alle erwarteten Dokumente im Fenster **und** ein erwartetes auf
 Rang 1, am Fenster des Pfads. Ein ohne den Mechanismus seiner Klasse gelöster Fall ist `solved` mit
 dem Präfix `Ohne geprüften Mechanismus: ` (nur auf `solved`, nur als exakter Anfang; Zuordnung in
-`docs/features/retrieval-benchmark.md` §5). Der Mehrrunden-Datensatz bleibt flach (Entscheidung 43).
+`docs/decisions/0012-messvertrag-retrieval-harness.md`). Der Mehrrunden-Datensatz bleibt flach (Entscheidung 43).
 Das Audit berechnet keine Metrik und lässt keinen Lauf fehlschlagen; Zustandspflege bewegt keine
 Vertragsversion, nur `goldenDatasetSha256` der betroffenen Baselines (Entscheidung 53).
 
@@ -490,7 +490,7 @@ benennt, welche Pipeline sich bewegt hat. Alle registrierten, nicht nur die vom 
 damit ein Routing-Fehler sichtbar wird. Kein Harness-Guard: Der Wert wird aus der verdrahteten
 Registry gelesen und ist für jeden Lauf korrekt. Die drei Korpora sind Markdown und laufen seit
 #1103 über `MarkdownDocumentFormat` (Schnitt an Überschriften, Frontmatter am Dateianfang
-verworfen; Entscheidungen 24, 25, Regeln in `docs/features/ingestion-pipelines.md`).
+verworfen; Entscheidungen 24, 25, Regeln in `docs/handbuch/arbeitsmittel/wissensbibliotheken/formate/README.md`).
 
 #### 57. `contextPrefixFingerprint`
 
@@ -592,7 +592,7 @@ bewusste Neumessung; wer einen neuen Zweig einführt, ergänzt ein Beispiel. `Co
 
 - Welches Chat-Modell der Einzelfragen-Pipeline-Pfad mit aktiver Zerlegung messen soll; die
   Entscheidung erhöht die Pipeline-Version und zieht die Pipeline-Baselines neu
-  (`docs/features/retrieval-benchmark.md`, „Offene Punkte“).
+  (`docs/decisions/0012-messvertrag-retrieval-harness.md`).
 - Wechsel der Harnesse auf `bge-m3`, das Vorgabemodell des Produkts.
 - Wiederaufnahme der Rangreserve als Kriterium nur unter der in „Berichtsgrößen ohne
   Vertragscharakter“ genannten Bedingung.

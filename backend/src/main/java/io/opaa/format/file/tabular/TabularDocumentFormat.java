@@ -49,11 +49,10 @@ import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
 /**
- * The XLSX/CSV/ODS pipeline (docs/features/ingestion-pipelines.md, Teil 3, Punkt 3): keeps the
- * table structure instead of flattening it into prose like Tika does. Reads blatt- and zellenweise
- * over Apache POI (XLSX), a direct read of the ODF XML (ODS, see {@link #readOds} - POI cannot read
- * OpenDocument), or a delimiter-detecting CSV parser, and cuts along logical row groups instead of
- * tokens.
+ * The XLSX/CSV/ODS pipeline (the format chapter of the Handbuch): keeps the table structure instead
+ * of flattening it into prose like Tika does. Reads blatt- and zellenweise over Apache POI (XLSX),
+ * a direct read of the ODF XML (ODS, see {@link #readOds} - POI cannot read OpenDocument), or a
+ * delimiter-detecting CSV parser, and cuts along logical row groups instead of tokens.
  *
  * <p>Every chunk repeats its column headers plus a "Blatt: … · Tabelle: …" structural-context line,
  * baked into the chunk's own text since only a fixed, generic metadata set survives into the stored
@@ -68,7 +67,7 @@ public class TabularDocumentFormat implements DocumentFormat {
 
   /**
    * Rows of data grouped per chunk, the repeated header not counting against it - <b>gesetzt, nicht
-   * gemessen</b> (ingestion-pipelines.md, "Chunk-Größen"): there are no spreadsheets with curated
+   * gemessen</b> (the format chapter of the Handbuch): there are no spreadsheets with curated
    * ground truth to measure this value against. 50 splits a medium-sized fee or responsibility
    * table into chunks that are still readable and citable.
    */
@@ -602,7 +601,7 @@ public class TabularDocumentFormat implements DocumentFormat {
    * Shared header/data-row detection for all three readers: the first non-blank row is the header,
    * every following one is data, and a table without a non-blank row contributes no chunk. Exactly
    * one non-blank row is always content, in a chunk of its own - treating it as an empty header
-   * would drop real content (ingestion-pipelines.md, Teil 3, Punkt 3).
+   * would drop real content (the format chapter of the Handbuch).
    *
    * @param sheetName the sheet name, or {@code null} for CSV, forwarded unchanged
    * @param tableName see {@link #buildChunks}

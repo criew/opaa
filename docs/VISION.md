@@ -111,7 +111,7 @@ an Barrierefreiheit und Missbrauchsschutz.
 
 ## Die elf Themenbereiche
 
-| | Bereich | Worum es geht | Spezifikation |
+| | Bereich | Worum es geht | Dokumentation |
 |---|---|---|---|
 | **A** | Wissensschicht & Retrieval | Belegvalidierung, Konfidenz, hybride Suche mit Reranking, erklärbares Chunking, Deep Research | [Handbuch](./handbuch/spaces/suche.md), [Roadmap](./ROADMAP.md) |
 | **B** | Wissensquellen & Konnektoren | Uploads und Konnektoren, selbst aktualisierende Wissensblöcke, Zielbibliothek als Rechteanker — Quellrechte schränken sie ein, wo ein Quellsystem sie belastbar liefert | [Handbuch](./handbuch/arbeitsmittel/wissensbibliotheken/README.md), [Roadmap](./ROADMAP.md) |

@@ -11,11 +11,11 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * A filter on the filterable schema fields (metadata-schema.md Wirkstelle 1): a set of Dokumentart
- * codes, an inclusive Datum/Stand window, conditions on library fields and conditions on the
- * filterable format fields. The title is not filterable, a display field like the Betreff is not,
- * and free keywords never are - so these four are the whole vocabulary of a metadata filter. {@link
- * #NONE} is the absence of any condition.
+ * A filter on the filterable schema fields (ADR-0024): a set of Dokumentart codes, an inclusive
+ * Datum/Stand window, conditions on library fields and conditions on the filterable format fields.
+ * The title is not filterable, a display field like the Betreff is not, and free keywords never are
+ * - so these four are the whole vocabulary of a metadata filter. {@link #NONE} is the absence of
+ * any condition.
  *
  * <p><b>Date semantics.</b> A stored value covers the whole span its {@link DatePrecision} leaves
  * open (YEAR 2024 is 2024-01-01..2024-12-31) and matches when that span overlaps the window. Since

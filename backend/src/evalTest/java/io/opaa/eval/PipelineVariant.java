@@ -3,10 +3,9 @@ package io.opaa.eval;
 import io.opaa.retrieval.FusionMethod;
 
 /**
- * A named, versioned pipeline-path configuration used as a Variantenvergleich subject
- * (docs/features/retrieval-benchmark.md §2, "Anforderungen an die Umsetzung"). Data, not code: a
- * new comparison is a new entry in a JSON file under {@code eval/variants/}, never a new Java class
- * or test method — see {@link VariantComparisonDataset}.
+ * A named, versioned pipeline-path configuration used as a Variantenvergleich subject (ADR-0012).
+ * Data, not code: a new comparison is a new entry in a JSON file under {@code eval/variants/},
+ * never a new Java class or test method — see {@link VariantComparisonDataset}.
  *
  * <p><b>Deliberately no {@code @JsonIgnoreProperties(ignoreUnknown = true)}</b> here, on {@link
  * QueryOverrides} or on {@link VariantComparison}: every field this schema recognizes is
@@ -44,9 +43,8 @@ public record PipelineVariant(
    * Partial override of {@link io.opaa.retrieval.QueryProperties}. Every field is nullable/boxed:
    * {@code null} means "inherit the production value", not zero. {@code topK} is deliberately not a
    * field here — the pipeline path's metric component names ({@code hitRateAt5}, {@code ndcgAt20},
-   * …) are pinned to the production window (docs/features/retrieval-benchmark.md §1, "Folgen für
-   * Messvertrag und Baselines", 4.), and a variant that changed it would need a new window and new
-   * component names, not a silently relabeled report.
+   * …) are pinned to the production window (ADR-0012, 4.), and a variant that changed it would need
+   * a new window and new component names, not a silently relabeled report.
    *
    * <p>{@code rerankCandidateCount} is a field here, and it is the one this comparison exists for
    * on the rerank side: the candidate window is a measured value, not a set-and- forgotten one

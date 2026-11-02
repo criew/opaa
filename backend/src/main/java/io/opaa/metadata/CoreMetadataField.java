@@ -1,10 +1,9 @@
 package io.opaa.metadata;
 
 /**
- * The three built-in core fields (metadata-schema.md, Teil II (a)), their persisted {@code
- * field_key} and the German label every display of the field uses. A library-defined field gets its
- * own key namespace beside these; the keys here are pinned by {@code
- * chk_document_metadata_values_core_field_type}.
+ * The three built-in core fields (ADR-0024), their persisted {@code field_key} and the German label
+ * every display of the field uses. A library-defined field gets its own key namespace beside these;
+ * the keys here are pinned by {@code chk_document_metadata_values_core_field_type}.
  */
 public enum CoreMetadataField {
   TITLE("title", "Titel"),

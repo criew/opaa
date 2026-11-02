@@ -39,9 +39,9 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.ai.document.Document;
 
 /**
- * The PDF pipeline (ingestion-pipelines.md, Teil 1's parsing table and Teil 2): when the catalog
- * carries an outline, the cut follows it (every level, not just three); a document without a
- * resolvable outline falls back to one chunk per page.
+ * The PDF pipeline (the format chapter of the Handbuch): when the catalog carries an outline, the
+ * cut follows it (every level, not just three); a document without a resolvable outline falls back
+ * to one chunk per page.
  */
 class PdfDocumentFormatTest {
 

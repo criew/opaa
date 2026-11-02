@@ -34,9 +34,9 @@ import org.springframework.ai.document.Document;
 import org.xml.sax.helpers.DefaultHandler;
 
 /**
- * The XLSX/CSV/ODS pipeline (ingestion-pipelines.md Teil 3, Punkt 3): tabular structure - not
- * flattened prose - survives the cut, headers repeat in every chunk, and blatt/tabelle show up as
- * structural context.
+ * The XLSX/CSV/ODS pipeline (the format chapter of the Handbuch): tabular structure - not flattened
+ * prose - survives the cut, headers repeat in every chunk, and blatt/tabelle show up as structural
+ * context.
  */
 class TabularDocumentFormatTest {
 

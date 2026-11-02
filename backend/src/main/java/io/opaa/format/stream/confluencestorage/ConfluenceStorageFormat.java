@@ -17,10 +17,9 @@ import org.springframework.ai.document.Document;
 
 /**
  * Turns a Confluence page's storage-format body (XHTML with {@code ac:}/{@code ri:} macro elements,
- * identical for Cloud and Data Center) into heading-section chunks (ADR-0023;
- * ingestion-pipelines.md, Teil 3, Punkt 6). Not a file format: it admits nothing and claims no
- * extension - both defaults of {@code DocumentFormat} - and is invoked by {@code
- * DocumentIngestService#ingest} directly.
+ * identical for Cloud and Data Center) into heading-section chunks (ADR-0023; the format chapter of
+ * the Handbuch). Not a file format: it admits nothing and claims no extension - both defaults of
+ * {@code DocumentFormat} - and is invoked by {@code DocumentIngestService#ingest} directly.
  *
  * <p>The XHTML itself is read by the shared {@link XhtmlEventBuilder}; {@link
  * ConfluenceElementRule} adds the macro elements on top, with {@link ConfluenceMacroRules} deciding

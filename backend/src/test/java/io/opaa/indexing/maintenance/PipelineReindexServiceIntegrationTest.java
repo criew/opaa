@@ -67,9 +67,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The selective re-index by pipeline version (ingestion-pipelines.md cross-cutting rule (d)): every
- * chunk below version N of one pipeline must be triggerable, resumable, and its progress queryable
- * per library.
+ * The selective re-index by pipeline version (the format chapter of the Handbuch cross-cutting rule
+ * (d)): every chunk below version N of one pipeline must be triggerable, resumable, and its
+ * progress queryable per library.
  *
  * <p>Chunks are seeded directly through {@link VectorStore#add} without the pipeline metadata -
  * that is exactly the state of every chunk written before the abstraction existed, the corpus the

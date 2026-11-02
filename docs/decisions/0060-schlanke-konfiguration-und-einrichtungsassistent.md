@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-29 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md), [ADR-0063](0063-bindung-gepruefter-namen-gegen-dns-rebinding.md)
+Akzeptiert · zuletzt geändert 2026-11-02 · ersetzt Entscheidung 3 von ADR-0025 teilweise (Übernahme des ersten Anbieters aus der Umgebung) · ersetzt Entscheidung 5 von ADR-0033 teilweise (Anlage des Erstadministrators aus der Umgebung) · ergänzt ADR-0042 und ADR-0053 · ergänzt durch [ADR-0061](0061-wechsel-des-embedding-modells.md), [ADR-0063](0063-bindung-gepruefter-namen-gegen-dns-rebinding.md)
 
 ## Kontext
 
@@ -19,8 +19,7 @@ Migration, die `vector_store` anlegt. Das Schema entsteht damit, bevor jemand ei
 gewählt hat. Die Erstinstallation verlangt eine `.env` mit Startwerten, deren Wirkung nach dem
 ersten Start endet.
 
-Bestandsaufnahme der 371 Variablen und Ablauf des Assistenten:
-[Spezifikation](../features/installation-and-settings.md). Issue #3160.
+Bestandsaufnahme der 371 Variablen und Ablauf des Assistenten: Issue #3160.
 
 ## Entscheidung
 

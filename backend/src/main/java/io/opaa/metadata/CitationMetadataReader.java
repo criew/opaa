@@ -17,11 +17,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The non-core half of a Beleg (metadata-schema.md Wirkstelle 3): per document, its format field
- * values (a mail's Absender, An, Betreff) followed by the values of every field of its library, in
- * the library's field order ({@code sort_order}, then field key). An empty field produces no entry
- * at all. The Beleg goes only to external AI tools (search interface, MCP); the own chat shows no
- * metadata in it.
+ * The non-core half of a Beleg (ADR-0024): per document, its format field values (a mail's
+ * Absender, An, Betreff) followed by the values of every field of its library, in the library's
+ * field order ({@code sort_order}, then field key). An empty field produces no entry at all. The
+ * Beleg goes only to external AI tools (search interface, MCP); the own chat shows no metadata in
+ * it.
  *
  * <p>With the metadata feature off (ADR-0044) no document has an entry: the stored values stay, but
  * no Beleg shows them.

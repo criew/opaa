@@ -37,11 +37,11 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * The Nachlauf that brings a library's chunks onto their current Kontextpräfix (metadata-schema.md,
- * "Nachlauf im Betrieb"). Its selection is the document-level prefix stamp: a document whose {@code
- * context_prefix_stamp} is cleared waits for the run, and it is cleared by exactly the changes that
- * alter that document's prefix - so the number the Folgekosten preview shows and the number this
- * run processes are the same set.
+ * The Nachlauf that brings a library's chunks onto their current Kontextpräfix (ADR-0024). Its
+ * selection is the document-level prefix stamp: a document whose {@code context_prefix_stamp} is
+ * cleared waits for the run, and it is cleared by exactly the changes that alter that document's
+ * prefix - so the number the Folgekosten preview shows and the number this run processes are the
+ * same set.
  *
  * <p>The processing unit is one document, and it keeps its chunks: they are re-embedded in place
  * under their own ids with the new prefix, vector row and {@code chunk_full_text} together, without

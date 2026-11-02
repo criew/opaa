@@ -4461,7 +4461,7 @@ describe('LibraryDetailPage', () => {
     })
   })
 
-  // metadata-schema.md, "Der Pflege-Anker": the fill of every field has one place, the
+  // ADR-0024: the fill of every field has one place, the
   // „Füllgrad“ of the Reiter „Metadaten“, and leads to exactly the documents without a value
   it('shows the Füllgrad per field and opens exactly those documents from it', async () => {
     server.use(

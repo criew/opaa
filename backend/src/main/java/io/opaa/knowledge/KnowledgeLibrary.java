@@ -218,17 +218,16 @@ public class KnowledgeLibrary extends Asset {
   private boolean diagnosticsLocked = true;
 
   /**
-   * Whether the model-backed extraction (metadata-schema.md, Schritt 2) runs for this library. Off
-   * by default: with an externally operated chat model it makes every ingested document leave the
-   * house without a person triggering it.
+   * Whether the model-backed extraction (ADR-0024) runs for this library. Off by default: with an
+   * externally operated chat model it makes every ingested document leave the house without a
+   * person triggering it.
    */
   @Column(name = "model_extraction_enabled", nullable = false)
   private boolean modelExtractionEnabled = false;
 
   /**
-   * Whether the model assigns freie Schlagworte to this library's documents (metadata-schema.md,
-   * Teil II (c)). Off by default, and subject to the same Abfluss as {@link
-   * #modelExtractionEnabled}.
+   * Whether the model assigns freie Schlagworte to this library's documents (ADR-0024). Off by
+   * default, and subject to the same Abfluss as {@link #modelExtractionEnabled}.
    */
   @Column(name = "keywords_enabled", nullable = false)
   private boolean keywordsEnabled = false;

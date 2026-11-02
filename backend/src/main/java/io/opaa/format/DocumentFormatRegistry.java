@@ -13,8 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Routes an admitted document to the {@link DocumentFormat} responsible for its format
- * (ingestion-pipelines.md, Teil 1).
+ * Routes an admitted document to the {@link DocumentFormat} responsible for its format (the format
+ * chapter of the Handbuch).
  *
  * <p>Routing follows the detected content, not the file extension - the same question {@link
  * SupportedDocumentFormats#decideForFileName} already answers for admission, so the text-tolerant

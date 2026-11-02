@@ -942,7 +942,7 @@ class DocumentIngestServiceTest {
       assertThat(metadata)
           .containsEntry("organization_id", targetLibrary.getOrganizationId().toString());
       assertThat(metadata).containsEntry(ChunkMetadataKeys.LOCATION_METADATA_KEY, "S. 2");
-      // ingestion-pipelines.md, Querschnittsregel (d): every chunk names the verfahren that
+      // the format chapter of the Handbuch): every chunk names the verfahren that
       // produced it and the routing key actually used.
       assertThat(metadata)
           .containsEntry(ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY, TikaFallbackFormat.ID)

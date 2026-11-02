@@ -14,7 +14,7 @@ import java.util.UUID;
 
 /**
  * Runs every variant of a {@link VariantComparison} and assembles the {@link VariantReport} (issue
- * #1041, docs/features/retrieval-benchmark.md §2).
+ * #1041, ADR-0012).
  */
 public final class VariantComparisonRunner {
 
@@ -65,8 +65,7 @@ public final class VariantComparisonRunner {
               + "' konnte nicht ausgeführt werden ("
               + referenceOutcome.skipReason()
               + ") — jedes Delta dieses Berichts ist gegen sie gepaart, ein Bericht ohne sie ist "
-              + "sinnlos. Voraussetzungen der Referenzvariante prüfen (docs/features/"
-              + "retrieval-benchmark.md, Abschnitt 2).");
+              + "sinnlos. Voraussetzungen der Referenzvariante prüfen (ADR-0012).");
     }
 
     List<VariantReport.VariantComparisonAgainstReference> comparisons = new ArrayList<>();
@@ -123,7 +122,7 @@ public final class VariantComparisonRunner {
                 + "' hat den Fall '"
                 + caseResult.id()
                 + "' ausgewertet, den die Referenzvariante nicht kennt — beide müssen dasselbe "
-                + "Golden Dataset sehen (docs/features/retrieval-benchmark.md, Abschnitt 2).");
+                + "Golden Dataset sehen (ADR-0012).");
       }
       caseDeltas.add(
           new VariantReport.CaseDelta(

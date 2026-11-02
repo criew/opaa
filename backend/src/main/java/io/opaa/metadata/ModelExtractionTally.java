@@ -5,8 +5,8 @@ import java.util.List;
 
 /**
  * What one model call did, collected while it is evaluated and written to the Zählwerk in one step
- * (metadata-schema.md). Mutable on purpose - it is filled by the single thread that made the call
- * and never shared.
+ * (ADR-0024). Mutable on purpose - it is filled by the single thread that made the call and never
+ * shared.
  */
 public final class ModelExtractionTally {
 

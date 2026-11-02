@@ -8,8 +8,8 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * The core-metadata extraction state of one library (metadata-schema.md, "Nachlauf im Betrieb"),
- * computed at query time over its {@code INDEXED} documents: how many carry the current {@link
+ * The core-metadata extraction state of one library (ADR-0024), computed at query time over its
+ * {@code INDEXED} documents: how many carry the current {@link
  * CoreMetadataExtractor#EXTRACTION_VERSION}, how many are still pending, and the Füllgrad per core
  * field. A pending document is a defined, permitted state - the search keeps running over it with
  * its old fields.

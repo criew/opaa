@@ -6,7 +6,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * The thread-splitting heuristic (ingestion-pipelines.md Teil 3, Punkt 5: "Ein Thread ist kein
+ * The thread-splitting heuristic (the format chapter of the Handbuch, Punkt 5: "Ein Thread ist kein
  * Dokument, sondern eine Folge von Dokumenten").
  */
 class MailThreadSplitterTest {

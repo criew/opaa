@@ -589,8 +589,7 @@ components:
           allOf:
             - $ref: "#/components/schemas/MetadataFilter"
           description: >
-            The core-field filter for this query (docs/features/metadata-schema.md,
-            Wirkstelle 1), applied inside both search paths before ranking and always subordinate
+            The core-field filter for this query (ADR-0024), applied inside both search paths before ranking and always subordinate
             to the permission filter. Ignored when chatId names a chat the caller authored - that
             chat's own persisted metadataFilter applies instead, exactly like its search scope.
             Absent or empty: no metadata filter. Ignored entirely while the installation has
@@ -1302,7 +1301,7 @@ components:
       type: object
       required: [fieldKey, label, value, displayValue, origin]
       description: >-
-        One metadata value of a cited document (docs/features/metadata-schema.md, Wirkstelle 3),
+        One metadata value of a cited document (ADR-0024),
         self-describing so a client renders it without field knowledge: the German label, the
         display text, the machine-readable value and the value's origin.
       properties:
@@ -1350,8 +1349,7 @@ components:
       type: object
       additionalProperties: false
       description: >-
-        A filter on the filterable schema fields (docs/features/metadata-schema.md,
-        Wirkstelle 1): the core fields Dokumentart and Datum/Stand, a library's own fields and the
+        A filter on the filterable schema fields (ADR-0024): the core fields Dokumentart and Datum/Stand, a library's own fields and the
         filterable format fields. The title is not filterable, a display field like a mail's Betreff
         is not, and free keywords never are; a request naming any other field is rejected with 400. Every condition is
         applied inside both search paths, AND-ed to the permission filter, so a filter can narrow
@@ -1486,8 +1484,7 @@ components:
       required: [fieldKey, label, filledDocuments, totalDocuments, fillShare, threshold, offered]
       description: >-
         The Füllstand of one filterable core field in the caller's search scope, and whether the
-        filter interface offers the field (metadata-schema.md, "Eintrittsbedingung für den
-        Kernfeld-Filter").
+        filter interface offers the field (ADR-0024).
       properties:
         fieldKey:
           type: string
@@ -1544,7 +1541,7 @@ components:
         Füllstand per field with the entry condition, the Dokumentart values occurring in that
         scope and the span of the Datum/Stand values. Built in the rights context of the caller
         over the libraries the next question would search; never a global aggregate
-        (metadata-schema.md, Rechte-Invariante). May be served from a per-person cache keyed by
+        (ADR-0024, Rechte-Invariante). May be served from a per-person cache keyed by
         person and scope, discarded on every rights change of that person.
       properties:
         totalDocuments:
@@ -1588,7 +1585,7 @@ components:
       required:
         [totalDocuments, currentDocuments, pendingDocuments, lastSkippedDocuments, complete]
       description: >
-        The Kontextpraefix state of one library (metadata-schema.md "Nachlauf im Betrieb"):
+        The Kontextpraefix state of one library (ADR-0024):
         the defined, permitted Mischzustand of a library whose prefix is being changed -
         verarbeitet, ausstehend, fehlgeschlagen. The search stays available over both halves.
       properties:
@@ -1697,7 +1694,7 @@ components:
         not the whole scope: the field exists only there, and measuring it against libraries that
         cannot carry it would keep a well-maintained field of a small library permanently below the
         threshold. The listed values are the ones documents in the caller's rights context actually
-        carry - not the configured list (metadata-schema.md, Rechte-Invariante).
+        carry - not the configured list (ADR-0024, Rechte-Invariante).
       properties:
         libraryId:
           type: string
@@ -1864,8 +1861,7 @@ components:
     MetadataBackfillStatusResponse:
       type: object
       description: >
-        The core-metadata extraction state of one library (metadata-schema.md "Nachlauf im
-        Betrieb"): how much of its indexed bestand carries the current extraction version, how much
+        The core-metadata extraction state of one library (ADR-0024): how much of its indexed bestand carries the current extraction version, how much
         is still pending, and the Füllgrad per core field. Pending documents are a defined,
         permitted operating state - the search keeps running over them with their old fields.
       required:
@@ -2107,8 +2103,7 @@ components:
       type: object
       required: [pendingChanges, pendingDocuments, lastSkippedDocuments]
       description: >
-        The running value mappings and field deletions of one library (metadata-schema.md
-        "Nachlauf im Betrieb"). A library in this state carries a defined Mischzustand: every
+        The running value mappings and field deletions of one library (ADR-0024). A library in this state carries a defined Mischzustand: every
         document keeps a value the schema still lists until its turn comes. The run is driven from
         the library's own settings by whoever holds the management right, not from this page.
       properties:

@@ -5,10 +5,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * One field the model is asked about, with the closed value list it may answer from
- * (metadata-schema.md, Schritt 2): only unscharfe fields appear here - the Kernfeld Dokumentart and
- * a library's own SELECT fields. Titel, Datum and a PATTERN field never do; they are either
- * deterministic or nothing.
+ * One field the model is asked about, with the closed value list it may answer from (ADR-0024):
+ * only unscharfe fields appear here - the Kernfeld Dokumentart and a library's own SELECT fields.
+ * Titel, Datum and a PATTERN field never do; they are either deterministic or nothing.
  *
  * @param options the offered codes with their German labels; an answer outside them is discarded
  */

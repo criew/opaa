@@ -21,7 +21,7 @@ import org.jsoup.nodes.Element;
 import org.springframework.ai.document.Document;
 
 /**
- * The HTML pipeline (ingestion-pipelines.md, Teil 3, Punkt 4): strips the page chrome via {@link
+ * The HTML pipeline (the format chapter of the Handbuch): strips the page chrome via {@link
  * HtmlContentRoots}, reads each content root through the shared {@link XhtmlEventBuilder} and cuts
  * along h1-h3 via {@link HeadingSectionSplitter}. Claims {@code .html} files and is named by id for
  * content that never was a file - a feed entry's detail page, handed over as the HTML of its
@@ -79,7 +79,7 @@ public class HtmlDocumentFormat implements DocumentFormat {
   /**
    * HTML has a distinctive enough signature (DOCTYPE/{@code <html>} tag) that Tika tells it apart
    * from plain text; the XHTML variant means the same format here, mirroring {@code
-   * DetailPageExtractor}'s own {@code isHtmlContentType} (ingestion-pipelines.md, Teil 3, Punkt 4).
+   * DetailPageExtractor}'s own {@code isHtmlContentType} (the format chapter of the Handbuch).
    */
   @Override
   public Set<FormatAdmission> admittedFormats() {

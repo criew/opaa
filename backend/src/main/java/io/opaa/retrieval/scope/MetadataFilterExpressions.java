@@ -23,9 +23,9 @@ import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
  * (doc_type in selected OR doc_type absent) AND (doc_date within window OR doc_date absent)}, the
  * window widened to the span a stored value's precision leaves open.
  *
- * <p>"Absent" is the Leerwert rule (metadata-schema.md). The pgvector converter knows no {@code IS
- * NULL}, so both forms express absence as {@code NOT IN} over the complete set of values the key
- * can carry; parity rests on that set being closed - a value outside it reads as "absent".
+ * <p>"Absent" is the Leerwert rule (ADR-0024). The pgvector converter knows no {@code IS NULL}, so
+ * both forms express absence as {@code NOT IN} over the complete set of values the key can carry;
+ * parity rests on that set being closed - a value outside it reads as "absent".
  *
  * <p>Brackets are explicit: the converter parenthesises only a {@link Filter.Group}, and jsonpath
  * binds {@code &&} tighter than {@code ||}, so every OR-composed condition is grouped before it

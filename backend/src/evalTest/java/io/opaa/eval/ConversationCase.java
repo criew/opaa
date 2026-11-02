@@ -18,8 +18,8 @@ import java.util.List;
  * <p>A case is solved when <b>every</b> one of its turns is solved under the existing criterion
  * ({@link ExpectedStateAudit#isSolved}), or - for a turn without search - when nothing was
  * searched; the state fields describe the case, never a single turn. They stay flat: this dataset
- * is measured on the pipeline path only, so its one declared state is that path's state
- * (docs/features/retrieval-benchmark.md §5, Einpfad-Regel).
+ * is measured on the pipeline path only, so its one declared state is that path's state (ADR-0012,
+ * Einpfad-Regel).
  *
  * @param topicSwitchTurn the 1-based turn a {@code topic_switch} case changes its topic in, {@code
  *     null} for every other class - see {@link ConversationCaseCuration#TOPIC_SWITCH_TURN_RULE}.

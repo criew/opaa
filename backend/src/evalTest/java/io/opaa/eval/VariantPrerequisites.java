@@ -4,11 +4,11 @@ import io.opaa.retrieval.QueryProperties;
 import java.util.Optional;
 
 /**
- * Decides whether a {@link PipelineVariant} can actually be measured (issue #1041,
- * docs/features/retrieval-benchmark.md §2: "Varianten mit nicht erfüllten Voraussetzungen werden
- * übersprungen, nicht stillschweigend degradiert"). A variant with an unmet prerequisite is never
- * run — {@link VariantRunner} reports it as skipped instead of measuring a configuration that would
- * silently fall back to something other than what its name promises.
+ * Decides whether a {@link PipelineVariant} can actually be measured (issue #1041, ADR-0012:
+ * "Varianten mit nicht erfüllten Voraussetzungen werden übersprungen, nicht stillschweigend
+ * degradiert"). A variant with an unmet prerequisite is never run — {@link VariantRunner} reports
+ * it as skipped instead of measuring a configuration that would silently fall back to something
+ * other than what its name promises.
  */
 final class VariantPrerequisites {
 
@@ -34,7 +34,7 @@ final class VariantPrerequisites {
       return Optional.of(
           "Diese Variante deklariert requiresReindex=true (Embedding-Modell- oder "
               + "Chunking-Änderung), aber diese Variantenmechanik führt noch keinen Reindex je "
-              + "Variante aus (docs/features/retrieval-benchmark.md, Umsetzungsschnitt Schritt B) — "
+              + "Variante aus (ADR-0012) — "
               + "sie misst ausschließlich Query-Parameter-Varianten auf dem bereits indizierten "
               + "Korpus.");
     }

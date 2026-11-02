@@ -32,12 +32,12 @@ import org.springframework.stereotype.Service;
 
 /**
  * The Füllstand and the offered values of the filterable core fields for one person's search scope
- * (metadata-schema.md "Eintrittsbedingung für den Kernfeld-Filter"): the scope is resolved by the
- * same {@link SearchScopeResolver} a query uses - from the chat's own settings, or for a chat not
- * yet created from its space and the chip bar's {@code useKnowledge}/{@code libraryIds}, always
- * narrowed to what is associated and readable - and every number is counted over that scope only.
- * Without a chat and a space the scope is empty, like the question's. No aggregate here ever
- * exceeds the rights context of the asking person; the cache in front keeps the same key.
+ * (ADR-0024): the scope is resolved by the same {@link SearchScopeResolver} a query uses - from the
+ * chat's own settings, or for a chat not yet created from its space and the chip bar's {@code
+ * useKnowledge}/{@code libraryIds}, always narrowed to what is associated and readable - and every
+ * number is counted over that scope only. Without a chat and a space the scope is empty, like the
+ * question's. No aggregate here ever exceeds the rights context of the asking person; the cache in
+ * front keeps the same key.
  */
 @Service
 public class MetadataFilterOptionsService {
@@ -156,8 +156,8 @@ public class MetadataFilterOptionsService {
   /**
    * The filterable library fields of the scope. Every figure is counted over the field's own
    * library within the scope, and the listed values are the ones the caller's documents actually
-   * carry - never the configured list, which a client reads from the library's schema
-   * (metadata-schema.md, Rechte-Invariante).
+   * carry - never the configured list, which a client reads from the library's schema (ADR-0024,
+   * Rechte-Invariante).
    */
   private List<MetadataFilterOptions.LibraryFieldOption> libraryFields(Set<UUID> scope) {
     Map<UUID, List<LibraryMetadataFieldDefinition>> byLibrary =
@@ -233,7 +233,7 @@ public class MetadataFilterOptionsService {
 
   /**
    * The filterable format fields with the values occurring in the scope - the addresses the asking
-   * person's own documents carry, never a global list (metadata-schema.md, Rechte-Invariante).
+   * person's own documents carry, never a global list (ADR-0024, Rechte-Invariante).
    */
   private List<MetadataFilterOptions.FormatFieldOption> formatFields(
       Set<UUID> scope, long total, Map<String, Long> filledByFieldKey) {

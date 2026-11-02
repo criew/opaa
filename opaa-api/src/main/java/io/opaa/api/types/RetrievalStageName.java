@@ -25,11 +25,11 @@ public enum RetrievalStageName {
 
   /**
    * Carries the caller-supplied core-field filter into the run - the Dokumentart set and the
-   * Datum/Stand window (metadata-schema.md Wirkstelle 1) - in the vector-path form and the domain
-   * form the lexical path translates to SQL. Both search stages AND it to the permission filter
-   * from {@link #SEARCH_SCOPE} inside the query, before ranking, never on a result, so the filter
-   * narrows the readable set and can never widen it. A document without a value for a filtered
-   * field is kept ("Leerwerte schließen nicht aus").
+   * Datum/Stand window (ADR-0024) - in the vector-path form and the domain form the lexical path
+   * translates to SQL. Both search stages AND it to the permission filter from {@link
+   * #SEARCH_SCOPE} inside the query, before ranking, never on a result, so the filter narrows the
+   * readable set and can never widen it. A document without a value for a filtered field is kept
+   * ("Leerwerte schließen nicht aus").
    *
    * <p>Switched off, the searches run unfiltered whatever the caller asked for; the protocol says
    * so.

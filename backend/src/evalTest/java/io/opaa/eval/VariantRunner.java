@@ -11,18 +11,17 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 /**
- * Measures one {@link PipelineVariant} against the golden dataset
- * (docs/features/retrieval-benchmark.md §2). Reuses the production pipeline path exactly as the
- * single-configuration measurement ({@link PipelineHarnessSupport}) does — a variant is a different
- * {@link QueryProperties}, wrapped in its own {@link RetrievalContextFactory} and handed into the
- * same {@link RetrievalPipeline}, never a reimplementation of retrieval steps 2 to 6.
+ * Measures one {@link PipelineVariant} against the golden dataset (ADR-0012). Reuses the production
+ * pipeline path exactly as the single-configuration measurement ({@link PipelineHarnessSupport})
+ * does — a variant is a different {@link QueryProperties}, wrapped in its own {@link
+ * RetrievalContextFactory} and handed into the same {@link RetrievalPipeline}, never a
+ * reimplementation of retrieval steps 2 to 6.
  *
- * <p><b>Mehrfachlauf-Regel</b> (docs/features/retrieval-benchmark.md §3, "Was stattdessen gilt",
- * 2.–3.): a variant whose effective {@code queryDecompositionEnabled} is {@code true} has an LLM
- * component and is therefore not deterministic — it runs {@link
- * MultiRunAggregator#DECOMPOSITION_RUN_COUNT} times and its outcome carries a {@link
- * MultiRunSummary}. Every other variant runs exactly once, as before this issue; a second run would
- * report the identical numbers, which is itself the tested invariant (see {@code
+ * <p><b>Mehrfachlauf-Regel</b> (ADR-0012, 2.–3.): a variant whose effective {@code
+ * queryDecompositionEnabled} is {@code true} has an LLM component and is therefore not
+ * deterministic — it runs {@link MultiRunAggregator#DECOMPOSITION_RUN_COUNT} times and its outcome
+ * carries a {@link MultiRunSummary}. Every other variant runs exactly once, as before this issue; a
+ * second run would report the identical numbers, which is itself the tested invariant (see {@code
  * PipelineHarnessSupport}/{@code RetrievalEvaluationHarnessTest}'s bit-identical-run evidence,
  * ADR-0013, Konsequenzen), not a reason to spend the wall-clock time confirming it again on every
  * variant comparison.

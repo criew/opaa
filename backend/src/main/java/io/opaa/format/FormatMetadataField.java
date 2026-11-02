@@ -6,10 +6,10 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * The built-in format fields (metadata-schema.md, Teil II (c) "Formatfelder"): schema fields only
- * certain pipelines can fill, because only certain formats declare them. A value is read verbatim
- * from the document and therefore always {@code DETERMINISTIC}; the value rows live in {@code
- * document_metadata_values} under the {@code fmt:} namespace, beside the core and library fields.
+ * The built-in format fields (ADR-0024): schema fields only certain pipelines can fill, because
+ * only certain formats declare them. A value is read verbatim from the document and therefore
+ * always {@code DETERMINISTIC}; the value rows live in {@code document_metadata_values} under the
+ * {@code fmt:} namespace, beside the core and library fields.
  *
  * <p>Only a field with {@link #isFilterable()} rides on the chunks and can appear in a {@code
  * MetadataFilter}; the others reach the Beleg alone. A filterable field's value is an identifier

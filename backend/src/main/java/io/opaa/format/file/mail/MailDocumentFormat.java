@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 
 /**
- * The EML/MSG pipeline (ingestion-pipelines.md, Teil 3, Punkt 5): separates Kopfdaten, body and
+ * The EML/MSG pipeline (the format chapter of the Handbuch): separates Kopfdaten, body and
  * attachment text, which Tika's native parse flattens into one block. Kopfdaten land as values of
  * the built-in format fields ({@link FormatMetadataField}) on the document and as German-labeled
  * context lines prepended to the first body text <b>before</b> chunking, so an unbounded {@code An}
@@ -201,7 +201,7 @@ public class MailDocumentFormat implements DocumentFormat {
 
   /**
    * Betreff as the title, the Date header as the document's own date (ADR-0024) and the Kopfdaten
-   * as format field values (metadata-schema.md, Teil II (c)).
+   * as format field values (ADR-0024).
    */
   @Override
   public DocumentProperties readProperties(DocumentFormatSource source) {

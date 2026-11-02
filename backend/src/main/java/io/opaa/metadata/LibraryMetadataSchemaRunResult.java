@@ -5,9 +5,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * What one Charge of a library's pending schema changes did and what is left (metadata-schema.md,
- * "Nachlauf im Betrieb"): verarbeitet, ausstehend, fehlgeschlagen. A skipped document is unchanged
- * and stays pending - nothing is destroyed before its replacement exists.
+ * What one Charge of a library's pending schema changes did and what is left (ADR-0024):
+ * verarbeitet, ausstehend, fehlgeschlagen. A skipped document is unchanged and stays pending -
+ * nothing is destroyed before its replacement exists.
  */
 public record LibraryMetadataSchemaRunResult(
     long processedDocuments,

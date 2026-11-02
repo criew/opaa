@@ -9,7 +9,7 @@ import java.util.Map;
 /**
  * The effective core fields of one document as the Beleg and the chunk metadata see them: every
  * field nullable, each with the origin of its value. A {@code NOT_DETERMINABLE} row reads as empty
- * here (metadata-schema.md: for filter and Beleg it behaves like a Leerwert).
+ * here (ADR-0024: for filter and Beleg it behaves like a Leerwert).
  */
 public record CoreMetadata(
     String title,

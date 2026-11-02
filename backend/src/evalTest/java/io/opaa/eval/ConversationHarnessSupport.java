@@ -182,7 +182,7 @@ public final class ConversationHarnessSupport {
               requestedNoteCap);
       ConversationRetrievalEvaluator.NoteExtraction noteExtraction =
           noteExtractionFor(memoryProfile, chatNoteExtractionService);
-      // Mehrfachlauf-Regel (docs/features/retrieval-benchmark.md §3), through the shared rule: this
+      // Mehrfachlauf-Regel (ADR-0012), through the shared rule: this
       // path always decomposes and is therefore never deterministic. It carries the highest LLM
       // share of the three paths - one decomposition call per *turn*, not per case - so the spread
       // and the deviation count are not decoration here but the statement about how stable the

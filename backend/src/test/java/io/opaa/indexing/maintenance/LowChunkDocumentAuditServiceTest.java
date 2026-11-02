@@ -23,7 +23,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 /**
- * Unit coverage of the one-time inventory check from ingestion-pipelines.md, Teil 3, Punkt 1
+ * Unit coverage of the one-time inventory check from the format chapter of the Handbuch, Punkt 1
  * "Scan-Erkennung und Bestandsprüfung": finding already-INDEXED documents of one organization with
  * null or auffällig wenigen Chunks, paged and carrying their library's name.
  */

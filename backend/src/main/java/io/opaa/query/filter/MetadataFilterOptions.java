@@ -11,7 +11,7 @@ import java.util.UUID;
  * What the filter interface needs for one person and one search scope: the Füllstand per filterable
  * core field with the entry condition applied, the Dokumentart values occurring in that scope and
  * the span of its Datum/Stand values. Built in the rights context of the asking person over the
- * libraries the next question would search - never a global aggregate (metadata-schema.md,
+ * libraries the next question would search - never a global aggregate (ADR-0024,
  * Rechte-Invariante).
  *
  * @param totalDocuments indexed documents of the scope, the base of every share.

@@ -284,7 +284,7 @@ export function describeEvidenceSummary(citations: CitationIndex): string | unde
 
 /**
  * The mark of a hit the Leerwert rule kept - "ohne Angabe" - for a source whose document
- * carried no value for a filtered field (metadata-schema.md, "Leerwerte schließen nicht aus").
+ * carried no value for a filtered field (ADR-0024).
  * Undefined without an active filter and for a source that matched on every filtered field, so
  * the mark only ever appears where it makes a statement.
  */

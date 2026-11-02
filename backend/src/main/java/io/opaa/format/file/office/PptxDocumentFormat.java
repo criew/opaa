@@ -31,11 +31,11 @@ import org.apache.poi.xslf.usermodel.XSLFTextShape;
 import org.springframework.ai.document.Document;
 
 /**
- * The PPTX pipeline (ingestion-pipelines.md, Teil 2: eine Folie = ein Chunk), reading through POI's
- * {@link XMLSlideShow}, since no framework returns a per-slide document and Tika flattens every
- * slide into one block. Every slide with text becomes exactly one chunk, a heading-only slide
- * included, so the slide numbering a citation relies on stays contiguous; a presentation whose
- * slides carry no text at all is rejected as {@code NO_EXTRACTABLE_TEXT}.
+ * The PPTX pipeline (the format chapter of the Handbuch), reading through POI's {@link
+ * XMLSlideShow}, since no framework returns a per-slide document and Tika flattens every slide into
+ * one block. Every slide with text becomes exactly one chunk, a heading-only slide included, so the
+ * slide numbering a citation relies on stays contiguous; a presentation whose slides carry no text
+ * at all is rejected as {@code NO_EXTRACTABLE_TEXT}.
  *
  * <p>The title placeholder becomes the chunk's leading line and its {@link
  * ChunkMetadataKeys#LOCATION_METADATA_KEY location}, every other shape's text follows in shape

@@ -336,7 +336,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
     // drawn with decomposition off, because the shipped decomposition-on configuration costs one
     // chat call per query and, under the Mehrfachlauf-Regel, three runs of the whole pipeline path
     // — more than the nightly budget carries (see EvalQueryDecomposition and
-    // docs/features/retrieval-benchmark.md, "Offene Punkte" 3). Every other query parameter stays
+    // ADR-0012). Every other query parameter stays
     // at its production default and is read from the running context.
     registry.add(
         "opaa.query.query-decomposition-enabled", EvalQueryDecomposition::requestedForThisRun);
@@ -919,7 +919,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
         ExplanationDump.fromSystemProperty(() -> VectorStoreChunkKeys.fromStore(jdbcTemplate)),
         log);
 
-    // 7. Variant comparison (#1041/#1049, docs/features/retrieval-benchmark.md §2): an opt-in step,
+    // 7. Variant comparison (#1041/#1049, ADR-0012): an opt-in step,
     //    off by default so a normal harness/baseline run is unaffected. Guarded like step 6 — a
     //    failure here must not cost the raw-vector path its baseline verdict.
     if (VariantComparisonStep.isRequested()) {

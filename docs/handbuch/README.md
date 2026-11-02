@@ -11,8 +11,8 @@ läuft. Es beschreibt den gebauten Ist-Stand, nicht Zielbilder.
 | **Betrieb** | installiert, aktualisiert, sichert, überwacht; konfiguriert Modelle und Grenzwerte; geht Störungen nach | [Betriebsübersicht](betrieb/README.md), dann [Docker Compose](betrieb/docker-compose.md) oder [Kubernetes](betrieb/kubernetes.md), [Netz und Sicherheit](betrieb/netz-und-sicherheit.md), [Modelle](betrieb/modelle.md), [Authentifizierung](betrieb/authentifizierung.md); danach [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md) und [Suche](spaces/suche.md) |
 | **Verwaltung** | legt Bibliotheken an, schließt Quellen an, vergibt Rechte, pflegt Metadaten, prüft Antworten mit dem Diagnosewerkzeug | [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md), die Konnektor-Kapitel, [Metadaten](arbeitsmittel/wissensbibliotheken/metadaten.md), [Suche](spaces/suche.md) Abschnitt 8 |
 
-Nicht Zielgruppe sind Entwickler (Spezifikationen und Entscheidungen liegen im Repository unter
-`docs/features/` und `docs/decisions/`) und Endnutzende (die Oberfläche erklärt sich an Ort und
+Nicht Zielgruppe sind Entwickler (Entscheidungen liegen im Repository unter `docs/decisions/`,
+Spezifikationen in den Epics auf GitHub) und Endnutzende (die Oberfläche erklärt sich an Ort und
 Stelle). Wer das Handbuch liest, braucht das Repository nicht.
 
 ## 2. Was OPAA ist

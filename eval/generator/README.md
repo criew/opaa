@@ -16,7 +16,7 @@ python eval/generator/generate_prompt_injection_corpus.py
 Erzeugt den Evaluierungskorpus unter `eval/corpus/verwaltung/` — vollständig synthetisch, ohne
 Fremdquelle (siehe [`../corpus/verwaltung/SOURCE.md`](../corpus/verwaltung/SOURCE.md)). Details
 zum Gesamtvorhaben stehen in
-[`docs/features/retrieval-benchmark.md`](../../docs/features/retrieval-benchmark.md), Abschnitt 4
+[Roadmap](../../docs/ROADMAP.md), Abschnitt 4
 „Verwaltungs-Evaldomäne".
 
 ```bash

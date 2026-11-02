@@ -518,8 +518,7 @@ jobs:
             task: checkVerwaltungConversationBaseline
             # Der teuerste Messpfad des Projekts: 83 Runden je Messung, je Runde ein Aufruf des
             # Chat-Modells für die Zerlegung und einer für die Gesprächsnotiz, und die
-            # Mehrfachlauf-Regel verlangt drei Messungen (docs/features/retrieval-benchmark.md,
-            # Abschnitt 3). Auf einer Entwicklermaschine (CPU/Testcontainer) dauert eine Messung
+            # Mehrfachlauf-Regel verlangt drei Messungen (ADR-0012). Auf einer Entwicklermaschine (CPU/Testcontainer) dauert eine Messung
             # 14-29 Minuten, der ganze Task-Lauf einschließlich Indizierung und
             # Einzelfragen-Teil rund 52 Minuten. Der Einzelfragen-Teil ist hier nur die
             # Rohvektor-Messung: Die Pipeline-Messung der Einzelfragen lässt der Harness aus, weil

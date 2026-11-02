@@ -16,9 +16,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * The chat model the pipeline measurement path uses for Teilfragen-Zerlegung (issue #1085,
- * docs/features/retrieval-benchmark.md, "Offene Punkte" 3): a small local Instruct model served by
- * the same Ollama endpoint the embedding model comes from, pinned by tag <b>and</b> content digest
- * like the embedding model (ADR-0011, Entscheidung 4) and run at temperature 0.
+ * ADR-0012): a small local Instruct model served by the same Ollama endpoint the embedding model
+ * comes from, pinned by tag <b>and</b> content digest like the embedding model (ADR-0011,
+ * Entscheidung 4) and run at temperature 0.
  *
  * <p><b>Wired through the production path, not around it.</b> {@code QueryDecompositionService}
  * resolves its {@code ChatClient} from the systemwide active row in {@code llm_models} via {@code

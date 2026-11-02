@@ -1,5 +1,5 @@
 /**
- * The Tika fallback format (docs/features/ingestion-pipelines.md): claims no extension for routing
+ * The Tika fallback format (the format chapter of the Handbuch): claims no extension for routing
  * and handles every admitted document no other file format claimed. Registering a new format must
  * therefore never change what this one produces for a format it does not claim.
  *

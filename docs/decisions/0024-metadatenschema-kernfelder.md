@@ -2,11 +2,11 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-28 · ergänzt durch ADR-0026 (Kontextpräfix, modellgestützte Extraktion)
+Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt durch ADR-0026 (Kontextpräfix, modellgestützte Extraktion)
 
 ## Kontext
 
-[metadata-schema.md](../features/metadata-schema.md) legt fest, **welche** Metadaten es gibt
+Das [Handbuch](../handbuch/arbeitsmittel/wissensbibliotheken/metadaten.md) beschreibt, **welche** Metadaten es gibt
 (Kernfelder Titel, Dokumentart, Datum/Stand; Bibliotheksfelder; Schlagworte), **woher** sie kommen
 (deterministisch, dann Modell, dann leer) und **was sie bewirken** (Filter, Kontextpräfix, Beleg).
 Vor #1066 existierte davon nichts im Code: Chunk-Metadaten waren rein technisch, und es gab keinen
@@ -66,7 +66,7 @@ Neu-Chunking und Neu-Einbetten; beide Suchpfade tragen dieselbe Bedingung.
 liefern über `DocumentProperties` nur, was ihr Format selbst erklärt, und über
 `DocumentFormat#readProperties` dieselben Rohquellen ohne Chunking — der Baustein des Bestandslaufs.
 Die Quellenreihenfolge je Feld und ihre Fassung (`CoreMetadataExtractor.EXTRACTION_VERSION`) steht
-in [metadata-schema.md](../features/metadata-schema.md), Abschnitte „Umgesetzt"; die Regeln dieses
+im [Handbuch](../handbuch/arbeitsmittel/wissensbibliotheken/metadaten.md); die Regeln dieses
 ADR gelten für jede Fassung: exakte Abbildung gegen das Vokabular, kein Wert außerhalb davon (eine
 Frontmatter-Deklaration außerhalb des Vokabulars lässt das Feld leer und fällt nicht durch, zwei
 verschiedene Codes im Dateinamen ebenso), ein unmögliches Datum wird übersprungen, ein nacktes Jahr

@@ -1,5 +1,5 @@
 /**
- * The DOCX/PPTX/ODT/ODP file formats (docs/features/ingestion-pipelines.md). ODT/ODP mirror their
+ * The DOCX/PPTX/ODT/ODP file formats (the format chapter of the Handbuch). ODT/ODP mirror their
  * DOCX/PPTX counterparts' cut but read {@code content.xml} directly through a hardened SAX parser
  * ({@link io.opaa.format.file.office.OdfPackage}) rather than Apache POI, which never reads
  * OpenDocument. {@link io.opaa.format.file.office.OdfPackage} is the only type here made public

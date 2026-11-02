@@ -8,8 +8,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * DoS-hardening limits {@link MailDocumentFormat} applies to an EML/MSG message - memory-safety
- * ceilings, not part of the Zuschnitt itself (docs/features/ingestion-pipelines.md,
- * Querschnittsregel c).
+ * ceilings, not part of the Zuschnitt itself (the format chapter of the Handbuch).
  *
  * <p>{@link #maxAttachmentBytes} bounds disk and downstream processing, not the in-memory parse
  * itself: both readers build their whole DOM before this pipeline's own code ever runs, so {@link

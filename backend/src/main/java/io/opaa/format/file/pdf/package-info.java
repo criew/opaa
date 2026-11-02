@@ -1,2 +1,2 @@
-/** The PDF file format (docs/features/ingestion-pipelines.md). */
+/** The PDF file format (the format chapter of the Handbuch). */
 package io.opaa.format.file.pdf;

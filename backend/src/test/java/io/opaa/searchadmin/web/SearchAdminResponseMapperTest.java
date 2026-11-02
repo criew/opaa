@@ -241,7 +241,7 @@ class SearchAdminResponseMapperTest {
 
     assertThat(response.getLibraryId()).isEqualTo(LIBRARY_ID);
     // The core-metadata extraction state travels with the library row, so the page shows it in the
-    // same table as the rest of the index state (metadata-schema.md, "Nachlauf im Betrieb").
+    // same table as the rest of the index state (ADR-0024).
     MetadataBackfillStatusResponse backfill = response.getMetadataBackfill();
     assertThat(backfill.getExtractionVersion()).isEqualTo(CoreMetadataExtractor.EXTRACTION_VERSION);
     assertThat(backfill.getTotalDocuments()).isEqualTo(10);
@@ -265,7 +265,7 @@ class SearchAdminResponseMapperTest {
             tuple("document_type", "Dokumentart", 4L, 0.4d, 2L, 4L, 0.4d),
             tuple("document_date", "Datum/Stand", 6L, 0.6d, 0L, 4L, 0.4d));
     // The Kontextpraefix Mischzustand travels in the same row: verarbeitet, ausstehend,
-    // fehlgeschlagen (metadata-schema.md, "Nachlauf im Betrieb").
+    // fehlgeschlagen (ADR-0024).
     var rerun = response.getContextPrefixRerun();
     assertThat(rerun.getTotalDocuments()).isEqualTo(10);
     assertThat(rerun.getCurrentDocuments()).isEqualTo(7);

@@ -1,5 +1,5 @@
 /**
- * How a document is turned into chunks, per format (ingestion-pipelines.md). A {@link
+ * How a document is turned into chunks, per format (the format chapter of the Handbuch). A {@link
  * io.opaa.format.DocumentFormat} owns reader, splitter, chunk size and metadata enrichment for one
  * format; every chunk carries its {@code id}/{@code version} ({@link
  * io.opaa.format.ChunkFormatMetadata}), raised only when a cut changes. Both are persisted on every

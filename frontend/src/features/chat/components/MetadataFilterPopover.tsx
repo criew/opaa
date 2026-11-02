@@ -73,7 +73,7 @@ function isEmptyCondition(condition: MetadataFilterLibraryFieldCondition): boole
 /**
  * the filter popover next to the chip bar. Per filterable core field it shows the
  * Füllstand in the person's own search scope and offers the field only above the committed
- * threshold (metadata-schema.md, "Eintrittsbedingung für den Kernfeld-Filter"); the Dokumentart
+ * threshold (ADR-0024); the Dokumentart
  * choices are the values that actually occur in that scope, never the whole vocabulary. Nothing is
  * derived from the question - the person sets the filter, and it sticks to the chat.
  */

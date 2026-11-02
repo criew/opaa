@@ -34,7 +34,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.ai.document.Document;
 
 /**
- * The EML/MSG pipeline (ingestion-pipelines.md Teil 3, Punkt 5): Kopfdaten land as chunk metadata
+ * The EML/MSG pipeline (the format chapter of the Handbuch): Kopfdaten land as chunk metadata
  * rather than chunk text, one chunk per message (or per thread segment). An attachment is never
  * recursively processed by this class (ADR-0022, Entscheidung 10) - it is reported via {@link
  * DocumentFormatResult#discoveredAttachments()} instead, for the generalized attachment path

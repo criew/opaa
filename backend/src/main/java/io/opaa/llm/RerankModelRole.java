@@ -36,7 +36,7 @@ import org.springframework.stereotype.Service;
  * <p><b>A call that came back without a ranking is counted, not only remembered</b> ({@link
  * #degradedCallCount()}). The last known state alone cannot answer "did reranking work throughout
  * this measurement?": an endpoint that fails and recovers looks {@link RerankRoleState#READY}
- * afterwards (docs/features/retrieval-benchmark.md §2).
+ * afterwards (ADR-0012).
  *
  * <p><b>Neither {@link #currentStatus()} nor {@link #usable()} ever probes.</b> Both answer from
  * the stored endpoint and the last known endpoint state. The state is kept current by every real

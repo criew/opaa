@@ -15,11 +15,10 @@ import org.springframework.stereotype.Component;
 
 /**
  * How long embedding one chunk takes on this installation - the rate behind "4.812 Chunks, rund 40
- * Minuten" (metadata-schema.md, "Der Reindex-Preis, ehrlich ausgewiesen"). Contract: the measured
- * mean of the embedding calls every instance of the installation has actually made with the
- * configured model once {@link #MIN_MEASURED_CHUNKS} of them exist, the configured {@code
- * opaa.indexing.embedding-rate-estimate} before that - a fresh installation must still be able to
- * name a number.
+ * Minuten" (ADR-0024). Contract: the measured mean of the embedding calls every instance of the
+ * installation has actually made with the configured model once {@link #MIN_MEASURED_CHUNKS} of
+ * them exist, the configured {@code opaa.indexing.embedding-rate-estimate} before that - a fresh
+ * installation must still be able to name a number.
  *
  * <p>The measurements are summed in {@link EmbeddingRateMeasurements} (ADR-0053, Entscheidung 12),
  * so every instance names the same duration. This process adds its own in portions of {@link

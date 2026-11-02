@@ -22,7 +22,7 @@ import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
 /**
- * The ODT pipeline (ingestion-pipelines.md, Teil 3, Punkt 2) - the ODT counterpart of {@link
+ * The ODT pipeline (the format chapter of the Handbuch) - the ODT counterpart of {@link
  * DocxDocumentFormat}, reading {@code content.xml} through the hardened SAX parser {@link
  * OdfPackage}, since POI never reads OpenDocument. Heading level comes from {@code text:h}'s {@code
  * text:outline-level}; cutting stops at {@link #MAX_CUTTING_LEVEL}. A table becomes one text block,

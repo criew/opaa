@@ -11,9 +11,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * file.
  *
  * <p>Deliberately separate from the Zuschnitt itself ({@code MAX_ROWS_PER_CHUNK} and the shared
- * target size, docs/features/ingestion-pipelines.md, Querschnittsregel c - "kein
- * Konfigurationsknopf in der Oberfläche"): the limits here are memory-safety ceilings, the same
- * kind of operator-tunable limit a connector's own {@code max-*-bytes} fields already are.
+ * target size, the format chapter of the Handbuch, Querschnittsregel c - "kein Konfigurationsknopf
+ * in der Oberfläche"): the limits here are memory-safety ceilings, the same kind of
+ * operator-tunable limit a connector's own {@code max-*-bytes} fields already are.
  *
  * @param maxRowColumns the maximum number of columns read from a single row, for XLSX and ODS alike
  *     - a defensive ceiling against a pathologically wide sheet (real spreadsheets rarely exceed a

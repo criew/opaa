@@ -25,7 +25,7 @@ interface MetadataExtractionSettingsSectionProps {
   canManage: boolean
 }
 
-// metadata-schema.md, "Die modellgestützte Extraktion im Betrieb": the two switches of step
+// ADR-0024: the two switches of step
 // 2, both off by default, with the Datenschutzhinweis that names the Abfluss, plus the
 // Extraktionsgüte the Handauswertung is measured against.
 export default function MetadataExtractionSettingsSection({

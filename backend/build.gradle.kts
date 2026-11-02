@@ -375,7 +375,7 @@ registerEvalDomain(
 )
 
 // verwaltung domain: third domain, the one that carries the five named Golden-Fall-Klassen of
-// docs/features/retrieval-benchmark.md §5. Both paths are gated from the start — this domain's
+// ADR-0012. Both paths are gated from the start — this domain's
 // raw-vector and pipeline baselines were drawn in the same run, so neither path needs the ungated
 // interim state city-landmarks is still in.
 registerEvalDomain(

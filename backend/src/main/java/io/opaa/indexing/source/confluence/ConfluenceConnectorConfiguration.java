@@ -38,7 +38,7 @@ public class ConfluenceConnectorConfiguration {
   }
 
   /**
-   * Confluence page pipeline (ingestion-pipelines.md, Teil 3, Punkt 6) - claims no format, {@code
+   * Confluence page pipeline (the format chapter of the Handbuch) - claims no format, {@code
    * DocumentIngestService#ingest} looks it up by id. Registered with the connector whose pages it
    * cuts.
    */

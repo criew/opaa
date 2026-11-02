@@ -60,9 +60,9 @@ public class FormatConfiguration {
   }
 
   /**
-   * The fallback pipeline (docs/features/ingestion-pipelines.md, Teil 1) - declared as its concrete
-   * type, not as {@link DocumentFormat}, so {@link #documentPipelineRegistry} can ask for exactly
-   * this one by type while still receiving every pipeline in its {@code List} parameter.
+   * The fallback pipeline (the format chapter of the Handbuch) - declared as its concrete type, not
+   * as {@link DocumentFormat}, so {@link #documentPipelineRegistry} can ask for exactly this one by
+   * type while still receiving every pipeline in its {@code List} parameter.
    */
   @Bean
   TikaFallbackFormat tikaFallbackPipeline(
@@ -72,9 +72,9 @@ public class FormatConfiguration {
 
   // Every pipeline below is an ordinary DocumentFormat bean, picked up by
   // documentPipelineRegistry without that method changing shape - the open-closed criterion of
-  // docs/features/ingestion-pipelines.md, Teil 1.
+  // the pipeline abstraction.
 
-  /** XLSX/CSV/ODS pipeline (ingestion-pipelines.md, Teil 3, Punkt 3). */
+  /** XLSX/CSV/ODS pipeline (the format chapter of the Handbuch). */
   @Bean
   TabularDocumentFormat tabularDocumentPipeline(
       TabularProperties tabularProperties,
@@ -83,7 +83,7 @@ public class FormatConfiguration {
     return new TabularDocumentFormat(tabularProperties, headingSectionSplitter, parserLimits);
   }
 
-  /** HTML pipeline (ingestion-pipelines.md, Teil 3, Punkt 4). */
+  /** HTML pipeline (the format chapter of the Handbuch). */
   @Bean
   HtmlDocumentFormat htmlDocumentPipeline(
       HeadingSectionSplitter headingSectionSplitter, ParserLimitProperties parserLimits) {
@@ -91,7 +91,7 @@ public class FormatConfiguration {
   }
 
   /**
-   * Markdown pipeline (ingestion-pipelines.md, Teil 2). Its heading-aware cut changes the eval
+   * Markdown pipeline (the format chapter of the Handbuch). Its heading-aware cut changes the eval
    * measurement contract, because the eval corpus is entirely Markdown - see {@link
    * MarkdownDocumentFormat}.
    */
@@ -101,28 +101,28 @@ public class FormatConfiguration {
     return new MarkdownDocumentFormat(headingSectionSplitter, parserLimits);
   }
 
-  /** DOCX pipeline (ingestion-pipelines.md, Teil 2). */
+  /** DOCX pipeline (the format chapter of the Handbuch). */
   @Bean
   DocxDocumentFormat docxDocumentPipeline(
       HeadingSectionSplitter headingSectionSplitter, ParserLimitProperties parserLimits) {
     return new DocxDocumentFormat(headingSectionSplitter, parserLimits);
   }
 
-  /** PPTX pipeline (ingestion-pipelines.md, Teil 2). */
+  /** PPTX pipeline (the format chapter of the Handbuch). */
   @Bean
   PptxDocumentFormat pptxDocumentPipeline(
       HeadingSectionSplitter headingSectionSplitter, ParserLimitProperties parserLimits) {
     return new PptxDocumentFormat(headingSectionSplitter, parserLimits);
   }
 
-  /** ODT pipeline (ingestion-pipelines.md, Teil 3, Punkt 2). */
+  /** ODT pipeline (the format chapter of the Handbuch). */
   @Bean
   OdtDocumentFormat odtDocumentPipeline(
       OdfProperties odfProperties, HeadingSectionSplitter headingSectionSplitter) {
     return new OdtDocumentFormat(odfProperties, headingSectionSplitter);
   }
 
-  /** ODP pipeline (ingestion-pipelines.md, Teil 3, Punkt 2). */
+  /** ODP pipeline (the format chapter of the Handbuch). */
   @Bean
   OdpDocumentFormat odpDocumentPipeline(
       OdfProperties odfProperties, HeadingSectionSplitter headingSectionSplitter) {
@@ -130,8 +130,8 @@ public class FormatConfiguration {
   }
 
   /**
-   * PDF pipeline (ingestion-pipelines.md, Teil 1 and Teil 2). Answers the scan-detection guard from
-   * its own PDFBox extraction rather than needing {@link DocumentService}.
+   * PDF pipeline (the format chapter of the Handbuch). Answers the scan-detection guard from its
+   * own PDFBox extraction rather than needing {@link DocumentService}.
    */
   @Bean
   PdfDocumentFormat pdfDocumentPipeline(
@@ -140,9 +140,8 @@ public class FormatConfiguration {
   }
 
   /**
-   * EML/MSG pipeline (ingestion-pipelines.md, Teil 3, Punkt 5). It never recurses into a
-   * sub-pipeline itself (ADR-0022, Entscheidung 10) and therefore needs no {@link
-   * DocumentFormatRegistry}.
+   * EML/MSG pipeline (the format chapter of the Handbuch). It never recurses into a sub-pipeline
+   * itself (ADR-0022, Entscheidung 10) and therefore needs no {@link DocumentFormatRegistry}.
    */
   @Bean
   MailDocumentFormat mailDocumentPipeline(
@@ -156,7 +155,7 @@ public class FormatConfiguration {
   /**
    * Populated from every {@link DocumentFormat} bean Spring finds - a new format becomes reachable
    * by adding one more pipeline bean, never by editing this method or {@code DocumentIngestService}
-   * (the open-closed criterion of docs/features/ingestion-pipelines.md, Teil 1).
+   * (the open-closed criterion of the format chapter of the Handbuch).
    */
   @Bean
   DocumentFormatRegistry documentPipelineRegistry(

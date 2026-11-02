@@ -1,2 +1,2 @@
-/** The XLSX/CSV/ODS file format (docs/features/ingestion-pipelines.md). */
+/** The XLSX/CSV/ODS file format (the format chapter of the Handbuch). */
 package io.opaa.format.file.tabular;

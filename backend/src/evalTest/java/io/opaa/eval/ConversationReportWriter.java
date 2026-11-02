@@ -169,7 +169,7 @@ public final class ConversationReportWriter {
     sb.append(
         multiRunSummary == null
             ? "Einfachmessung — die Mehrfachlauf-Regel greift nur bei aktiver "
-                + "Teilfragen-Zerlegung (docs/features/retrieval-benchmark.md, Abschnitt 3).\n\n"
+                + "Teilfragen-Zerlegung (ADR-0012).\n\n"
             : "```\n" + MehrfachlaufRule.render(multiRunSummary) + "\n```\n\n");
 
     sb.append("### Je Fallklasse (Runden)\n\n");

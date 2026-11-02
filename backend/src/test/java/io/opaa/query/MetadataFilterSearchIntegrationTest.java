@@ -78,11 +78,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The core-field filter in both search paths against a real PostgreSQL (metadata-schema.md
- * Wirkstelle 1): the values come from the production ingest, the vector filter runs inside {@code
- * similaritySearch}, the lexical filter inside the full-text SQL - nothing the assertions are about
- * is mocked. The fake embedding model embeds every text identically, so the vector path returns
- * every chunk the filter lets through; what differs between runs is the filter alone.
+ * The core-field filter in both search paths against a real PostgreSQL (ADR-0024): the values come
+ * from the production ingest, the vector filter runs inside {@code similaritySearch}, the lexical
+ * filter inside the full-text SQL - nothing the assertions are about is mocked. The fake embedding
+ * model embeds every text identically, so the vector path returns every chunk the filter lets
+ * through; what differs between runs is the filter alone.
  */
 @OpaaMockedChatModelIntegrationTest
 class MetadataFilterSearchIntegrationTest {

@@ -22,7 +22,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.xml.sax.helpers.DefaultHandler;
 
 /**
- * The ODT pipeline (ingestion-pipelines.md Teil 3 Punkt 2): the cut follows {@code text:h}'s own
+ * The ODT pipeline (the format chapter of the Handbuch): the cut follows {@code text:h}'s own
  * {@code text:outline-level}, mirroring DocxDocumentFormatTest for the same section-building rules,
  * plus the ODS-style XXE/zip-bomb guards {@code TabularDocumentFormatTest} exercises for its own
  * {@code content.xml} reader.

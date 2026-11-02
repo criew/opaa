@@ -13,9 +13,9 @@ import java.util.UUID;
 import org.slf4j.Logger;
 
 /**
- * The opt-in Variantenvergleich step of a harness run (docs/features/retrieval-benchmark.md §2), in
- * one place instead of copied into each domain harness — the same split {@link
- * PipelineHarnessSupport} makes for the pipeline measurement path.
+ * The opt-in Variantenvergleich step of a harness run (ADR-0012), in one place instead of copied
+ * into each domain harness — the same split {@link PipelineHarnessSupport} makes for the pipeline
+ * measurement path.
  *
  * <p>Runs at the very end of a harness run, on the corpus that run has already indexed and
  * manifest-verified: a variant costs a second pass of queries, never a second indexing run. Every

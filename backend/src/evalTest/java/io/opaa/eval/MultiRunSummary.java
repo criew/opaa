@@ -4,9 +4,9 @@ import java.util.List;
 
 /**
  * Statistics over the repeated runs of one LLM-behaftete {@link PipelineVariant} (issue #1044,
- * docs/features/retrieval-benchmark.md §3, "Was stattdessen gilt", 2.). Attached to a {@link
- * VariantOutcome} only for a variant whose effective {@code queryDecompositionEnabled} is {@code
- * true} — a variant without an LLM component runs once and never carries this.
+ * ADR-0012). Attached to a {@link VariantOutcome} only for a variant whose effective {@code
+ * queryDecompositionEnabled} is {@code true} — a variant without an LLM component runs once and
+ * never carries this.
  *
  * <p>{@link MultiRunAggregator#summarize} is the only producer; see its Javadoc for the "median
  * run" choice this record's {@code report()}-facing {@link VariantOutcome} relies on.

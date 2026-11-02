@@ -141,8 +141,8 @@ public final class FullTextIdentifiers {
               + "(\\d{1,6}\\s*[-/]\\s*\\d{1,6}(?:\\s*[-/]\\s*\\d{1,6})?)");
 
   /**
-   * An email address (ingestion-pipelines.md, Querschnittsregel (a)). PostgreSQL keeps one as a
-   * single {@code email} token already; the gap is on the question side, where {@code
+   * An email address (the format chapter of the Handbuch). PostgreSQL keeps one as a single {@code
+   * email} token already; the gap is on the question side, where {@code
    * FullTextChunkSearch#wordTokens} splits it at every non-alphanumeric character. Local part and
    * domain are ASCII-only, so an umlaut ends the match early - a missed address, never a false
    * positive, and symmetric because both sides apply this same pattern. The runs are capped near

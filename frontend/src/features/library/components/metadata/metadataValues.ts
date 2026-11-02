@@ -5,7 +5,7 @@ import type {
 } from '@/shared/api/types'
 import { datePrecisionLabel } from './metadataLabels'
 
-// The three core fields a person may set by hand (metadata-schema.md, Teil II (a)); the keys
+// The three core fields a person may set by hand (ADR-0024); the keys
 // mirror CoreMetadataField in the backend.
 export const CORE_METADATA_FIELDS: { key: string; label: string }[] = [
   { key: 'title', label: 'Titel' },

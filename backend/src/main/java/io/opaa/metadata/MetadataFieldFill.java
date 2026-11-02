@@ -6,8 +6,7 @@ package io.opaa.metadata;
  * missingShare} - the Pflege-Anker in a library's settings and the Zustandsübersicht of the
  * organization say the same thing about the same field and must not be able to drift apart. The
  * bestand it is measured over is the caller's scope: one library in the person's rights context, or
- * the organization's libraries in the administrative context (metadata-schema.md,
- * Rechte-Invariante).
+ * the organization's libraries in the administrative context (ADR-0024, Rechte-Invariante).
  *
  * @param totalDocuments indexed documents of the scope - the base of both shares
  * @param filledDocuments documents carrying a {@code SET} value

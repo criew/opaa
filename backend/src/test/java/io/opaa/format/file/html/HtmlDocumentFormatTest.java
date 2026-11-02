@@ -18,11 +18,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * The HTML pipeline (ingestion-pipelines.md Teil 3, Punkt 4): boilerplate outside the chosen
- * content area never reaches a chunk, the cut follows h1-h3 with every chunk carrying its heading
- * path (in text and metadata alike), tables and lists keep their structure through the shared
- * {@code XhtmlEventBuilder}, and an oversized section is split further at block boundaries rather
- * than growing a single chunk without bound.
+ * The HTML pipeline (the format chapter of the Handbuch): boilerplate outside the chosen content
+ * area never reaches a chunk, the cut follows h1-h3 with every chunk carrying its heading path (in
+ * text and metadata alike), tables and lists keep their structure through the shared {@code
+ * XhtmlEventBuilder}, and an oversized section is split further at block boundaries rather than
+ * growing a single chunk without bound.
  */
 class HtmlDocumentFormatTest {
 

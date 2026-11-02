@@ -136,8 +136,8 @@ public class DocumentMetadataValue {
   }
 
   /**
-   * A model-derived row for {@code field} (metadata-schema.md, step 2); the value is set via {@code
-   * assign*}. Kept by the deterministic extraction unless it finds a real value for the field.
+   * A model-derived row for {@code field} (ADR-0024, step 2); the value is set via {@code assign*}.
+   * Kept by the deterministic extraction unless it finds a real value for the field.
    */
   public static DocumentMetadataValue derived(
       UUID documentId,

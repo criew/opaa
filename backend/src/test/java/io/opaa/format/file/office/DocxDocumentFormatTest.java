@@ -30,8 +30,8 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSimpleField;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STFldCharType;
 
 /**
- * The DOCX pipeline (ingestion-pipelines.md Teil 2): the cut follows heading levels taken from a
- * paragraph's own formatting (built-in style or direct outline level), mirroring
+ * The DOCX pipeline (the format chapter of the Handbuch): the cut follows heading levels taken from
+ * a paragraph's own formatting (built-in style or direct outline level), mirroring
  * MarkdownDocumentFormatTest/HtmlDocumentFormatTest for the same section-building rules.
  */
 class DocxDocumentFormatTest {

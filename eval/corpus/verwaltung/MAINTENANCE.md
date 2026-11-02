@@ -1,6 +1,6 @@
 # Pflege der Domäne `verwaltung`
 
-Beantwortet die drei Fragen, die `docs/features/retrieval-benchmark.md` (Abschnitt 5,
+Beantwortet die drei Fragen, die `docs/decisions/0012-messvertrag-retrieval-harness.md` (Abschnitt 5,
 „Zustandsfelder: ungelöste Fälle bleiben ungelöst benannt") für jede Domäne mit neuen
 Golden-Fall-Klassen verbindlich verlangt: wer welchen Teil pflegt, wie eine Baseline-Neuziehung
 abläuft und woran sie erkennbar bewusst war, und welche Fälle derzeit als `known_gap` geführt
@@ -29,7 +29,7 @@ Docker prüft.
 ## Füllstand der Kernfelder auf diesem Korpus (Issue #1070, Teil 2)
 
 Die Eintrittsbedingung des Kernfeld-Filters verlangt einen ausgewiesenen Füllstand
-(`docs/features/metadata-schema.md`, „Eintrittsbedingung für den Kernfeld-Filter"). Für den
+(`docs/handbuch/arbeitsmittel/wissensbibliotheken/metadaten.md`). Für den
 Eval-Korpus misst ihn `io.opaa.eval.VerwaltungCorpusMetadataFillLevelTest` Docker-frei: Jede
 Korpusdatei läuft durch das produktive `MarkdownDocumentFormat` und den produktiven
 `CoreMetadataExtractor` mit dem ausgelieferten Vokabular — dieselben zwei Schritte wie im
@@ -171,7 +171,7 @@ auf einem Pfad genau dann, wenn er dort heute gelöst ist, obwohl der Mechanismu
 in diesem Pfad in dieser Messung nicht vorhanden oder abgeschaltet ist. Wirkt der Mechanismus im
 Pfad, bleibt der Grund ohne Präfix; ob er zu genau diesem Treffer beiträgt, wird nicht je Fall
 bewertet. Die Zuordnung Fallklasse → Mechanismus → Pfade steht als Tabelle in
-`docs/features/retrieval-benchmark.md`, Abschnitt 5 (Umsetzungsstand). Für diese Domäne:
+`docs/decisions/0012-messvertrag-retrieval-harness.md`). Für diese Domäne:
 
 | Fallklasse | Mechanismus | vorhanden |
 |---|---|---|
@@ -268,7 +268,7 @@ davor.
 Fälle löst nur der Pipeline-Pfad; sie bleiben `known_gap` und haben ihre Pfad-Asymmetrie damals
 als erwartete Abweichung nachgezogen bekommen (seit #1658 entfallen, siehe oben). Das ist der Zweck dieser Domäne, kein
 Mangel: „Ein Fall, den heute keine Variante löst, ist der wertvollste im Datensatz"
-(`docs/features/retrieval-benchmark.md`, Abschnitt 4). Die Begründung steht je Fall und Pfad im
+(`docs/decisions/0012-messvertrag-retrieval-harness.md`). Die Begründung steht je Fall und Pfad im
 Feld `expected_state.<pfad>.reason`; die Tabellen unten führen zusätzlich das gemessene Symptom.
 
 | Klasse | Fälle | `known_gap` Rohvektor | `known_gap` Pipeline | fehlender Baustein |
@@ -487,7 +487,7 @@ GitHub-Runner dauerte er damit 66 Minuten (Lauf 34996240329). Vorher, mit dieser
 **Einpfad-Regel.** Für diese vier Klassen gilt „gelöst" auf dem **Pipeline-Pfad allein**, nicht wie
 sonst auf beiden: Der Rohvektor-Pfad misst `similaritySearch` direkt und kennt weder Gesprächsverlauf
 noch Zerlegung, ein Mehrrunden-Fall kann dort konstruktionsbedingt nicht laufen
-(`docs/features/retrieval-benchmark.md`, Abschnitt 5). Die Einpfadigkeit ist eine Eigenschaft des
+(`docs/decisions/0012-messvertrag-retrieval-harness.md`). Die Einpfadigkeit ist eine Eigenschaft des
 Datensatzes und steht deshalb einmal je Bericht (`singlePathNote`), nicht am Fall. Die
 Zustandsfelder dieses Datensatzes bleiben deshalb flach (`expected_state`, `expected_state_since`,
 `expected_state_reason`): Sie beschreiben den einen gemessenen Pfad, einen zweiten Eintrag gäbe es
@@ -865,7 +865,7 @@ lediglich die scheiternde Runde von 4 auf 3. Die Rundenmetriken sind uneinheitli
 **Die vier gewonnenen Fälle gehören nicht in `expected_state`.** Das Zustands-Audit des C-Laufs
 meldet sie als `unexpectedlySolved`; der Datensatz beschreibt aber den Produktionspfad, und der ist
 Lauf D. Ein Ablationslauf darf weder eine Baseline noch ein Zustandsfeld setzen
-(`docs/features/retrieval-benchmark.md`, Abschnitt 5).
+(`docs/decisions/0012-messvertrag-retrieval-harness.md`).
 
 **Der Mechanismus: der Notizpunkt entgleist die Teilfrage.** Die Notiz verfehlt die Rahmenangabe
 nicht nur, sie schadet aktiv. In den drei gewonnenen `constraint_carryover`-Fällen steht in der
@@ -1405,7 +1405,7 @@ Mechanismus (siehe „Keine Ausnahmen mehr“ oben).
 ## Overfitting-Risiko
 
 Siehe [`SOURCE.md`](SOURCE.md), Abschnitt „Overfitting-Risiko", und
-`docs/features/retrieval-benchmark.md`, Abschnitt 4, „Ehrliche Einschränkung:
+`docs/decisions/0012-messvertrag-retrieval-harness.md`, „Ehrliche Einschränkung:
 Benchmark-Overfitting". Kurzfassung: Diese Domäne hat keine echten Nutzerfragen; jedes Ergebnis
 auf ihr ist eine Aussage über konstruierte Annahmen, nicht über echte Verwaltungsanfragen, bis
 eine Stichprobe echter (anonymisierter) Anfragen aus einem Pilotbetrieb nachgezogen wird.

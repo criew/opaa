@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt ADR-0012 · ergänzt durch ADR-0012 Entscheidung 19
+Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt ADR-0012 · ergänzt durch ADR-0012 Entscheidung 19
 (Anker des Pipeline- und Mehrrunden-Pfads)
 
 ## Kontext
@@ -131,6 +131,9 @@ allein auf der Aufmerksamkeit des Reviewers.
   genau die zu schützenden Paare.
 - `language:de` durch weitere Sprachen oder Domänen von `crosslingual` unterscheidbar machen — ein
   eigenes Vorhaben mit neuem Korpus und neuer Baseline.
+- Bootstrap, Konfidenzintervalle und p-Werte — der Lauf ist deterministisch (eingefrorener Korpus, gepinntes
+  Modell, feste CPU-Variante); ein Intervall beziffert dort eine Streuung, die es nicht gibt. Nur Varianten mit
+  LLM-Anteil laufen dreimal und vergleichen den Median (ADR-0012); Berichte nennen Deltas, keine Signifikanz.
 - Baseline-Diff nur beim Label `evaluation` — ein PR ohne Label hätte keinen Hinweis erzeugt.
 
 ## Offen

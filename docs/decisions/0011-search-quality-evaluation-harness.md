@@ -53,7 +53,7 @@ eine aktive Zeile in `llm_models` und `ActiveChatModelResolver` wie jede echte A
 ist die Baseline-Stabilität: Ein gehostetes Modell kann still geändert werden, ein festgenageltes
 lokales nicht; dazu kommt, dass Forks kein Secret haben. Temperatur 0 macht die Zerlegung nicht
 deterministisch; ein zerlegender Lauf ist eine zweite, benannte Messung, kein Ersatz für die
-deterministische Baseline (`docs/features/retrieval-benchmark.md`, Mehrfachlauf-Regel).
+deterministische Baseline (`docs/decisions/0012-messvertrag-retrieval-harness.md`, Mehrfachlauf-Regel).
 
 ### 5. Regressionsjob nicht bei jedem Pull Request
 

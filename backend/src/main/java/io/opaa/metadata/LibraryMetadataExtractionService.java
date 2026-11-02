@@ -24,7 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
  * The operator's side of the model-backed extraction: the two switches, the Extraktionsgüte and the
  * Stichproben-Export. Changing a switch is a schema decision and needs the management right at the
  * library; reading the Güte needs no more than the right to read it, exactly like the Pflege-Anker.
- * Every figure is counted when asked, over the one library the caller may read (metadata-schema.md,
+ * Every figure is counted when asked, over the one library the caller may read (ADR-0024,
  * Rechte-Invariante).
  */
 @Service

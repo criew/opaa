@@ -25,7 +25,7 @@ public record EvaluationReport(
     // Whether every applicable answer_span actually resolved to a chunk of one of its
     // expected_documents — see AnswerSpanResolutionResult's Javadoc.
     AnswerSpanResolutionResult answerSpanResolution,
-    // docs/features/retrieval-benchmark.md §5 "Zustandsfelder": declared vs. measured case state
+    // ADR-0012: declared vs. measured case state
     // (expected_state.raw_vector). Null if no case declares a state, i.e. absent, not clean.
     ExpectedStateAudit.Result expectedStateAudit,
     // Issue #1070 (Teil 2): whether the core-field filter itself worked, in its two error
