@@ -30,7 +30,7 @@ Installation beschreibt die [Betriebsübersicht](README.md).
   Actuator-Pfade auf dem API-Port nicht. Ohne ihn liegen sie auf dem API-Port, und die Metriken
   antworten dort nur mit Anmeldung. Der Helm-Chart richtet den Management-Port ein; unter Docker
   Compose läuft der Actuator auf dem API-Port, wer dort Metriken einsammeln will, setzt
-  `MANAGEMENT_SERVER_PORT` ([Konfiguration](konfiguration.md)):
+  `MANAGEMENT_SERVER_PORT` ([Konfiguration](../nachschlagen/konfiguration.md)):
 
 | Metrik | Bedeutung |
 |---|---|
@@ -164,7 +164,7 @@ diese Anfrage ermittelt (`clientAddress`). Steht dort die Adresse des Proxys, fe
 
 | Bild | Wo weiter |
 |---|---|
-| Start bricht ab und nennt eine Variable | [Konfiguration](konfiguration.md); bei `OPAA_AUTH_JWT_SECRET` [Authentifizierung](authentifizierung.md#das-backend-startet-nicht-und-nennt-opaa_auth_jwt_secret) |
+| Start bricht ab und nennt eine Variable | [Konfiguration](../nachschlagen/konfiguration.md); bei `OPAA_AUTH_JWT_SECRET` [Authentifizierung](authentifizierung.md#das-backend-startet-nicht-und-nennt-opaa_auth_jwt_secret) |
 | Start bricht mit Hinweis auf pgvector, Schema oder Migration ab | [Datenbank](datenbank.md) |
 | Start bricht mit `refuses to start` ab | [Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck) |
 | Readiness meldet `DOWN` | Datenbank, Connection Pool ([Readiness und Liveness](images-und-laufzeit.md#readiness-und-liveness)) |

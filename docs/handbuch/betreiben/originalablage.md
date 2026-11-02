@@ -104,7 +104,7 @@ zurück; gegen ein versehentliches Löschen in der Oberfläche hilft nur die
 Versionierung nur ausgesetzt ist — braucht der Zugangsschlüssel zusätzlich `s3:ListBucketVersions`
 und `s3:DeleteObjectVersion`. Für einen Bucket, der nie versioniert war, genügt statt dieser beiden
 `s3:GetBucketVersioning`: Damit stellt OPAA fest, dass es keine älteren Versionen geben kann. Die
-Liste aller Rechte steht bei `OPAA_UPLOAD_S3_ACCESS_KEY` in der [Variablenliste](konfiguration.md).
+Liste aller Rechte steht bei `OPAA_UPLOAD_S3_ACCESS_KEY` in der [Variablenliste](../nachschlagen/konfiguration.md).
 **Beim Update** auf diesen Stand die Richtlinie des Zugangsschlüssels um die passenden Rechte
 ergänzen; sonst schließt das Löschen privater Bibliotheken nicht ab (siehe unten).
 

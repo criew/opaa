@@ -48,7 +48,7 @@ flowchart LR
    Dropbox" („App folder" sähe nur einen eigenen Ordner). Unter „Permissions" die drei
    Berechtigungen oben setzen; schreibende braucht OPAA nicht. Unter „Settings" bei „Redirect URIs"
    `<öffentliche Adresse von OPAA>/connections/callback` eintragen (`OPAA_PUBLIC_BASE_URL`,
-   [Konfiguration](../../betreiben/konfiguration.md#alle-umgebungsvariablen)). „App key" und „App secret"
+   [Konfiguration](../../nachschlagen/konfiguration.md#alle-umgebungsvariablen)). „App key" und „App secret"
    notieren. Für mehr als wenige Konten gibt Dropbox die App nach einem Antrag für den
    Produktivbetrieb frei.
 2. **Zugang.** Unter **Administration → Anbindungen → Zugänge** einen Zugang für Dropbox mit der
@@ -157,12 +157,12 @@ können, und zu tiefe Ketten folgen den Regeln des Kapitels
 ## 7. Anhänge
 
 Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Grenzen des Kapitels
-[E-Mail](../../arbeitsmittel/wissensbibliotheken/formate/mail.md).
+[E-Mail](../../nachschlagen/formate/mail.md).
 
 ## 8. Grenzen und Schutzmechanismen
 
 Parameter stehen unter `opaa.indexing.dropbox.*` (`OPAA_INDEXING_DROPBOX_*`), ihre Standardwerte in der
-[Konfigurationsreferenz](../../betreiben/konfiguration.md#alle-umgebungsvariablen).
+[Konfigurationsreferenz](../../nachschlagen/konfiguration.md#alle-umgebungsvariablen).
 
 - **Drosselung.** Bei `429` wartet OPAA die Zeit aus `Retry-After`, höchstens `max-retry-wait`, und
   wiederholt bis zu `max-retries`-mal.

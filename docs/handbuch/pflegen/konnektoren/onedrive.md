@@ -53,7 +53,7 @@ danach ihr eigenes Konto.
 1. **App-Registrierung.** Im Microsoft-Entra-Admin-Center „App-Registrierungen" → „Neue
    Registrierung", etwa `opaa-onedrive`, nur Konten dieses Verzeichnisses. Als Umleitungs-URI die
    Plattform **„Web"** mit `<öffentliche Adresse von OPAA>/connections/callback` eintragen
-   (`OPAA_PUBLIC_BASE_URL`, [Konfiguration](../../betreiben/konfiguration.md#alle-umgebungsvariablen)).
+   (`OPAA_PUBLIC_BASE_URL`, [Konfiguration](../../nachschlagen/konfiguration.md#alle-umgebungsvariablen)).
    Anwendungs-ID (Client-ID) und Verzeichnis-ID (Mandanten-ID) notieren.
 2. **Secret.** „Zertifikate & Geheimnisse" → „Neuer geheimer Clientschlüssel"; die Spalte „Wert"
    sofort kopieren, nicht die „Geheime ID" daneben, und das Ablaufdatum notieren.
@@ -181,13 +181,13 @@ Ordner tragen können, und zu tiefe Ketten folgen den Regeln des Kapitels
 ## 7. Anhänge
 
 Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Grenzen des Kapitels
-[E-Mail](../../arbeitsmittel/wissensbibliotheken/formate/mail.md).
+[E-Mail](../../nachschlagen/formate/mail.md).
 
 ## 8. Grenzen und Schutzmechanismen
 
 OneDrive nutzt die Parameter von SharePoint, `opaa.indexing.sharepoint.*`
 (`OPAA_INDEXING_SHAREPOINT_*`); Standardwerte in der
-[Konfigurationsreferenz](../../betreiben/konfiguration.md#alle-umgebungsvariablen).
+[Konfigurationsreferenz](../../nachschlagen/konfiguration.md#alle-umgebungsvariablen).
 
 - **Nur das eigene OneDrive.** Die Bibliothek merkt sich die Kennung ihres OneDrive. Weicht das
   OneDrive des verbundenen Kontos davon ab, ist es kein OneDrive for Business oder hat das Konto

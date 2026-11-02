@@ -117,7 +117,7 @@ kein zurückgestellter Eintrag. Zurückgestellt wird, was beim nächsten Mal kla
 erreichbare Detailseite, eine Abweisung mit 403 oder 429. Ohne gespeicherten Zustand liefert der
 Server beim nächsten Lauf den ganzen Feed, und diese Einträge bekommen eine zweite Chance.
 
-**Detailseite.** Sie wird nach den Regeln der [HTML-Pipeline](../../arbeitsmittel/wissensbibliotheken/formate/html.md) reduziert:
+**Detailseite.** Sie wird nach den Regeln der [HTML-Pipeline](../../nachschlagen/formate/html.md) reduziert:
 Navigation, Seitenleisten, Cookie-Banner, `script`, `style` und `noscript` entfallen überall; die
 Inhaltsbereiche wählt der Inhaltsselektor der Bibliothek (Rückfall `body`); Seitenkopf und -fuß entfallen nur außerhalb davon. Das HTML geht direkt an die HTML-Pipeline
 und wird in Abschnitte geschnitten; der Titel des Eintrags ist der Kontexttitel. Bestehende Einträge,
@@ -155,7 +155,7 @@ keinen extrahierbaren Text, werden seine Anlagen nicht indiziert.
 ## 7. Grenzen und Schutzmechanismen
 
 Parameter stehen unter `opaa.indexing.rss.*` (`OPAA_INDEXING_RSS_*`), ihre Standardwerte in der
-[Konfigurationsreferenz](../../betreiben/konfiguration.md#alle-umgebungsvariablen).
+[Konfigurationsreferenz](../../nachschlagen/konfiguration.md#alle-umgebungsvariablen).
 
 - **Zieladressprüfung** auf Feed, Detailseite, Anlage und jedem Redirect
   ([Konnektoren](README.md#12-zieladressprüfung)).

@@ -98,7 +98,7 @@ darüber nutzen es, nie umgekehrt.
 Es gibt kein Migrationsskript und keinen selbsttätigen Start. Die Versionsnummer des Mail-Formats
 wurde erhöht; alte, noch verschachtelte Mail-Chunks sind über die Version am Chunk erkennbar und
 werden von der Betreiberin über die vorhandene Pipeline-Nachzugsmechanik
-(`docs/handbuch/arbeitsmittel/wissensbibliotheken/formate/README.md`) selektiv neu erzeugt. Ein gemischter Bestand ist
+(`docs/handbuch/nachschlagen/formate/README.md`) selektiv neu erzeugt. Ein gemischter Bestand ist
 zulässig; der von der Betreiberin gewählte Zeitpunkt ist mehr wert als erzwungene Einheitlichkeit.
 
 ### 10. Das Mail-Format verarbeitet Anhänge nicht mehr selbst
@@ -131,7 +131,7 @@ offener Antworten; das tut das Rate-Limit des Endpunkts.
   Quote und Änderungserkennung dokumentweit und hält zwei Anhangsmodelle.
 - `ON DELETE CASCADE` auf `parent_document_id` — hinterließe verwaiste Chunks.
 - Bytes-Cache für wiederholte Anhangsabrufe — zweiter Speicherort mit doppelter Quotenzählung
-  (Begründung in `docs/handbuch/arbeitsmittel/wissensbibliotheken/formate/README.md`).
+  (Begründung in `docs/handbuch/nachschlagen/formate/README.md`).
 
 ## Offen
 

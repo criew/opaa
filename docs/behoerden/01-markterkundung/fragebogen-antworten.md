@@ -26,7 +26,7 @@ nur in den Faktenblättern der jeweiligen Version.
 | Frage | Antwort | Nachweis |
 |---|---|---|
 | Was leistet die Software? | beantwortet Fragen aus Dokumenten der Behörde mit Fundstellen | [Belege](../../handbuch/spaces/suche.md#7-belege-prüfen-und-fundstellen-bilden) |
-| Welche Quellen und Formate? | Dateiablagen, Confluence, Objektspeicher, Feeds und weitere; Upload | [Konnektoren](../../handbuch/pflegen/konnektoren/README.md#3-die-konnektoren-im-überblick), [Formate](../../handbuch/arbeitsmittel/wissensbibliotheken/formate/README.md#zugelassene-formate) |
+| Welche Quellen und Formate? | Dateiablagen, Confluence, Objektspeicher, Feeds und weitere; Upload | [Konnektoren](../../handbuch/pflegen/konnektoren/README.md#3-die-konnektoren-im-überblick), [Formate](../../handbuch/nachschlagen/formate/README.md#zugelassene-formate) |
 | Werden Rechte der Quelle übernommen? | nein; Leserechte werden in OPAA je Bibliothek vergeben und in jeder Suche geprüft | [Berechtigungen](../../handbuch/konten-und-rechte/berechtigungen.md#1-der-aufbau-in-vier-objekten) |
 | Spracheingabe? | ja, mit eigenem Transkriptionsdienst | [Spracheingabe](../../handbuch/betreiben/modell-endpunkte.md#spracheingabe-einschalten) |
 

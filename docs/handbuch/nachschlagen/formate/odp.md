@@ -1,7 +1,7 @@
 # Format: OpenDocument Präsentation (ODP)
 
 Pipeline `odp`, Version 5. Der gemeinsame Rahmen aller Format-Pipelines steht im
-Kapitel [Wissensbibliotheken](../README.md), Abschnitt 5. Das Verhalten entspricht weitgehend dem von
+Kapitel [Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md), Abschnitt 5. Das Verhalten entspricht weitgehend dem von
 [PowerPoint](pptx.md); hier stehen die Unterschiede.
 
 ## 1. Zulassung
@@ -33,7 +33,7 @@ Absätze aller Masterseiten, dedupliziert, als **ein** führender Chunk mit der 
 steht, wird so einmal gefunden.
 
 Eine Folie über der Zielgröße `chunk-target-characters` wird in mehrere Chunks geteilt, jeder beginnt mit dem
-Folientitel und trägt die Ortsangabe der Folie (Kapitel [Wissensbibliotheken](../README.md), Abschnitt 7.1); keine Zusammenlegung, keine
+Folientitel und trägt die Ortsangabe der Folie (Kapitel [Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md), Abschnitt 7.1); keine Zusammenlegung, keine
 Überlappung.
 
 ## 4. Metadaten am Chunk

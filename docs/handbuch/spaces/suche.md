@@ -194,7 +194,7 @@ Bedienung und „Meine Uploads“: [Dateien anhängen und diktieren](../arbeiten
   Ratenbegrenzung des Dokument-Uploads.
 
 Die Installation kann Anhänge mit `OPAA_FEATURES_CHAT_UPLOAD_ENABLED=false` abschalten
-([Konfiguration](../betreiben/konfiguration.md#funktionen-abschalten)); vorhandene Anhänge bleiben
+([Konfiguration](../nachschlagen/konfiguration.md#funktionen-abschalten)); vorhandene Anhänge bleiben
 dann gespeichert und werden mit ihrem Chat gelöscht.
 
 ## 3. Was eine Frage nach außen kostet
@@ -481,7 +481,7 @@ höchsten Wert aus `lambda × Relevanz − (1 − lambda) × größte Ähnlichke
 gewählten Chunk`. Bei 1,0 ist der zweite Term null, und die Vektoren werden gar nicht erst gelesen.
 Der Default 1,0 ist eine Messentscheidung: Auf
 den Mehrthemen-Fällen der Evaluierung war reine Relevanz besser als die Vielfaltsauswahl (siehe
-[Konfiguration](../betreiben/konfiguration.md), `OPAA_QUERY_MMR_LAMBDA`). Ein Wert unter 1,0 wirkt zudem auf die
+[Konfiguration](../nachschlagen/konfiguration.md), `OPAA_QUERY_MMR_LAMBDA`). Ein Wert unter 1,0 wirkt zudem auf die
 Volltextlisten anders als auf die Vektorlisten, weil deren Relevanzwerte auf einer anderen Skala
 liegen; wer ihn setzt, sollte das messen.
 
@@ -1311,7 +1311,7 @@ oberhalb der Debug-Ebene.
 
 Alle Werte sind benchmark-gehärtete Defaults und bewusst in keiner Verwaltungsoberfläche
 einstellbar; wer sie ändert, sollte den Effekt messen. Die Schlüssel unter `opaa.query.*`, mit
-Umgebungsvariable im Kapitel [Deployment](../betreiben/konfiguration.md#alle-umgebungsvariablen):
+Umgebungsvariable im Kapitel [Deployment](../nachschlagen/konfiguration.md#alle-umgebungsvariablen):
 
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
@@ -1350,7 +1350,7 @@ Der Such- und Abrufweg ohne Antwort (Abschnitt 7.1) hat eigene Schlüssel unter 
 | `context-passages` | 1 | angrenzende Abschnitte je Seite beim Abruf ohne `full` (0 bis 10) |
 
 Die Ratenbegrenzung der Chatsuche (Abschnitt 10.1) steht unter `opaa.rate-limit.chat-search.*`,
-mit Umgebungsvariable im Kapitel [Deployment](../betreiben/konfiguration.md#alle-umgebungsvariablen):
+mit Umgebungsvariable im Kapitel [Deployment](../nachschlagen/konfiguration.md#alle-umgebungsvariablen):
 
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
@@ -1389,7 +1389,7 @@ Rest folgt in den nächsten Nächten. Werden in den nächsten 30 Tagen Konten f�
 ohne Namen im Anwendungslog (INFO „… account(s) become due within the next 30 days“), damit der
 Betrieb etwa nach einer Sammelsperre die Welle vorher sieht. Setzt eine laufende Instanz noch eine der entfallenen Variablen
 auf eine längere Frist, pausiert das Löschen, bis hier ein Wert gespeichert ist
-([Konfiguration](../betreiben/konfiguration.md#entfallene-und-veraltete-variablen)). Eine
+([Konfiguration](../nachschlagen/konfiguration.md#entfallene-und-veraltete-variablen)). Eine
 Verlängerung dieser Frist ist eine längere Speicherfrist und gehört in die Dienstvereinbarung:
 
 | Einstellung | Werkseinstellung | Grenzen | Wirkung |
@@ -1430,7 +1430,7 @@ entsprechen.
 
 - Wie die Chunks entstehen, die hier gesucht werden: [Wissensbibliotheken](../arbeitsmittel/wissensbibliotheken/README.md)
 - Kernfelder, Filter, Kontextpräfix und Beleg-Anzeige: [Metadaten](../arbeitsmittel/wissensbibliotheken/metadaten.md)
-- Umgebungsvariablen: [Konfiguration](../betreiben/konfiguration.md); Reranking und Spracheingabe einschalten: [Modelle](../betreiben/modell-endpunkte.md#reranking-einschalten);
+- Umgebungsvariablen: [Konfiguration](../nachschlagen/konfiguration.md); Reranking und Spracheingabe einschalten: [Modelle](../betreiben/modell-endpunkte.md#reranking-einschalten);
   Grenze des Volltextpfads: [Datenbank](../betreiben/datenbank.md#bekannte-grenze-ts_rank-ist-kein-bm25)
 - Wie externe KI-Werkzeuge diesen Such- und Abrufweg benutzen: [Externe KI-Werkzeuge](fremdzugaenge.md)
 - Spaces, Chats und was ihnen zugeordnet ist: [Spaces](README.md)

@@ -440,7 +440,7 @@ Kopf jedes Faktenblatts und der Auskunft über die Datenerhebung.
   ([Das Update-Paket eines Release](../../handbuch/betreiben/nachvollziehbarkeit.md#das-update-paket-eines-release)).
 - Ohne „standardmäßig aus“ kann ein Funktionsupdate eine zustimmungspflichtige Funktion sofort aktiv
   mitbringen. Nummer 15 fängt das auf: Ein Funktionsupdate wartet, bis zugestimmt oder die Funktion
-  abgeschaltet ist ([Funktionen abschalten](../../handbuch/betreiben/konfiguration.md#funktionen-abschalten)).
+  abgeschaltet ist ([Funktionen abschalten](../../handbuch/nachschlagen/konfiguration.md#funktionen-abschalten)).
 - Das Delta misst an den Voreinstellungen. Hat die Installation eine Einstellung überschrieben,
   trifft eine Änderung sie womöglich anders; das zeigt der Vergleich mit der Auskunft über die
   Datenerhebung.

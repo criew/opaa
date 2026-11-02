@@ -25,7 +25,7 @@ verhandelt wird.
   verweist auf das passende Blatt.
 - Die [Auskunft über die Datenerhebung](../../handbuch/betreiben/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation)
   der eigenen Installation mit dem Auszug für die Personalvertretung.
-- Das [Glossar](../../handbuch/glossar.md) im Handbuch.
+- Das [Glossar](../../handbuch/nachschlagen/glossar.md) im Handbuch.
 
 ## Aufgaben der Behörde
 
@@ -153,7 +153,7 @@ eingestellt hat, in der Auskunft über die Datenerhebung.
 - Manche Funktionen lassen sich für die ganze Installation abschalten, etwa die Spracheingabe. Eine
   abgeschaltete Funktion verschwindet aus Oberfläche und Schnittstelle; ihre Daten bleiben
   unverändert liegen und werden nur nicht mehr beachtet. Wird sie wieder eingeschaltet, ist der
-  frühere Stand wieder da ([Funktionen abschalten](../../handbuch/betreiben/konfiguration.md#funktionen-abschalten)).
+  frühere Stand wieder da ([Funktionen abschalten](../../handbuch/nachschlagen/konfiguration.md#funktionen-abschalten)).
 - Was schaltbar ist und wie es voreingestellt ist, steht in {{faktenblatt:voreinstellungen}}.
 - Die Selbstauskunft hat statt eines Schalters eine Notabschaltung
   ({{faktenblatt:voreinstellungen#self-disclosure-settings-enabled}}); jede Änderung steht im

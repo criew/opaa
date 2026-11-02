@@ -229,7 +229,7 @@ Konten").
   `ADMIN_NETWORK_REQUIRED`, nur die Abmeldung bleibt offen).
 - **Kein Geheimnis im Log** außer dem Einmalpasswort des Seeds (`LocalAuthLogPrivacyIntegrationTest`).
 
-Werte und Diagnose: [Konfiguration](../handbuch/betreiben/konfiguration.md),
+Werte und Diagnose: [Konfiguration](../handbuch/nachschlagen/konfiguration.md),
 [Vertraute Proxys](../handbuch/betreiben/netz-und-sicherheit.md#vertraute-proxys-und-client-adresse).
 
 ### 10. Mail-Infrastruktur: SMTP in den Systemeinstellungen, Vorlagen mit Code-Standards, Ergebnis statt Exception, sichtbares Scheitern

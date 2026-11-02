@@ -1,7 +1,7 @@
 # Format: PDF
 
 Pipeline `pdf`, Version 6. Der gemeinsame Rahmen aller Format-Pipelines steht im
-Kapitel [Wissensbibliotheken](../README.md), Abschnitt 5.
+Kapitel [Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md), Abschnitt 5.
 
 ## 1. Zulassung
 
@@ -45,8 +45,8 @@ dieser Überschriften in Abschnitte geschnitten:
 
 - Zielgröße `chunk-target-characters`; aufeinanderfolgende Abschnitte unter 200 Zeichen werden unter
   derselben übergeordneten Überschrift bis dahin zusammengelegt (Kapitel
-  [Wissensbibliotheken](../README.md), Abschnitt 7.1), größere geteilt, ohne Text zu verlieren. Ein Abschnitt, der über viele Seiten ohne Lesezeichen läuft,
-  wird an Zeilen- und Satzgrenzen geteilt (Kapitel [Wissensbibliotheken](../README.md), Abschnitt 7.1).
+  [Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md), Abschnitt 7.1), größere geteilt, ohne Text zu verlieren. Ein Abschnitt, der über viele Seiten ohne Lesezeichen läuft,
+  wird an Zeilen- und Satzgrenzen geteilt (Kapitel [Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md), Abschnitt 7.1).
 - Die Überschriftenzeile steht am Anfang jedes Chunks, auch bei jedem Teilstück eines geteilten
   Abschnitts, und jedes Teilstück trägt die Ortsangabe des Abschnitts.
 - Zeigen mehrere Lesezeichen auf dieselbe Seite, wird der Seitentext anhand der

@@ -520,7 +520,7 @@ Die Rechnung steht unter [Verbindungen bei mehreren Instanzen](datenbank.md#verb
 
 ## Konfiguration
 
-Die Werte und Vorgaben stehen in der [Konfiguration](konfiguration.md).
+Die Werte und Vorgaben stehen in der [Konfiguration](../nachschlagen/konfiguration.md).
 
 | Parameter | Wirkung |
 |---|---|

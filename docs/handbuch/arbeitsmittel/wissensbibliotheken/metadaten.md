@@ -589,7 +589,7 @@ konfigurierbar.
 
 Eine Installation, die nur Fragen und Antworten zeigen soll, etwa eine Demo, kann die Metadaten
 abschalten (`OPAA_FEATURES_METADATA_ENABLED=false`, wirkt nach einem Neustart; allgemeine Regeln in
-[Konfiguration](../../betreiben/konfiguration.md#funktionen-abschalten)). Dann gilt:
+[Konfiguration](../../nachschlagen/konfiguration.md#funktionen-abschalten)). Dann gilt:
 
 - **Nur der Titel bleibt.** Ein neu aufgenommenes Dokument bekommt seinen Titel wie bisher; er steht
   im Beleg und im Kontextpräfix. Dokumentart, Datum/Stand, Formatfelder, Bibliotheksfelder und

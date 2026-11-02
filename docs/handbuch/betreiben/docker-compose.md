@@ -6,7 +6,7 @@ und einen Mailserver zum Abfangen. Er ist für Entwicklung, Erprobung und kleine
 gedacht; seine Vorgaben sind bequem und **nicht** gehärtet. Was für jeden Betriebsweg gilt — Images,
 Probes, Härtung, Schlüssel, Sicherung, Aktualisierung —, steht in der
 [Betriebsübersicht](README.md) und ihren Kapiteln, die Bedeutung jeder Variable in der
-[Konfiguration](konfiguration.md).
+[Konfiguration](../nachschlagen/konfiguration.md).
 
 ## Schnellstart
 
@@ -119,7 +119,7 @@ auf `80`.
 ## Konfiguration mit `.env.docker`
 
 Die Dienste lesen ihre Umgebung aus `.env.docker` (`env_file`); alle Optionen mit Beschreibung stehen
-in `.env.docker.example`, die Bedeutung jeder Variable in der [Konfiguration](konfiguration.md).
+in `.env.docker.example`, die Bedeutung jeder Variable in der [Konfiguration](../nachschlagen/konfiguration.md).
 
 - **Zwei Vorlagen, zwei Zwecke.** `.env.example` ist auf `./gradlew bootRun` auf dem Host
   zugeschnitten (Datenbank auf `localhost`, CORS auf den Vite-Dev-Server `:5173`).
@@ -130,7 +130,7 @@ in `.env.docker.example`, die Bedeutung jeder Variable in der [Konfiguration](ko
   Projektverzeichnis von selbst, aber nur für die Platzhalter in `docker-compose.yml` selbst — Ports,
   Bind-Mounts, die Auswahl der `env_file`, die Zugangsdaten mitgelieferter Dienste. Solche Werte
   wirken nur aus der Shell-Umgebung oder einer `.env`, nie aus `.env.docker`; die
-  [Konfiguration](konfiguration.md#alle-umgebungsvariablen) kennzeichnet sie. Wer eine `.env` für die
+  [Konfiguration](../nachschlagen/konfiguration.md#alle-umgebungsvariablen) kennzeichnet sie. Wer eine `.env` für die
   lokale Entwicklung hat, achtet darauf, dass Ports und Datenbankzugang nicht kollidieren.
 - **Änderungen wirken erst mit neuem Container:** `docker compose up -d <service>`, nicht `restart` —
   `restart` verwendet den vorhandenen Container samt alter Umgebung erneut.
@@ -771,7 +771,7 @@ docker compose exec postgres psql -U opaa -d opaa -tAc \
 5. Bibliotheken neu anlegen und indizieren.
 
 Variablen, die seit älteren Ständen entfallen sind, nennt die
-[Konfiguration](konfiguration.md#entfallene-und-veraltete-variablen); eine übernommene `.env.docker`
+[Konfiguration](../nachschlagen/konfiguration.md#entfallene-und-veraltete-variablen); eine übernommene `.env.docker`
 wird daraufhin geprüft.
 
 ## Fehlerbehebung

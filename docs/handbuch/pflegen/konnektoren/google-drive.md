@@ -134,12 +134,12 @@ folgen den Regeln des Kapitels [Wissensbibliotheken](../../arbeitsmittel/wissens
 ## 7. Anhänge
 
 Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Grenzen des Kapitels
-[E-Mail](../../arbeitsmittel/wissensbibliotheken/formate/mail.md).
+[E-Mail](../../nachschlagen/formate/mail.md).
 
 ## 8. Grenzen und Schutzmechanismen
 
 Parameter stehen unter `opaa.indexing.google-drive.*` (`OPAA_INDEXING_GOOGLE_DRIVE_*`), ihre Standardwerte in der
-[Konfigurationsreferenz](../../betreiben/konfiguration.md#alle-umgebungsvariablen).
+[Konfigurationsreferenz](../../nachschlagen/konfiguration.md#alle-umgebungsvariablen).
 
 - **Kontingente.** Google zählt Einheiten je Projekt und Nutzer, OPAA Anfragen je Lauf. Bei `429`
   oder `403 rateLimitExceeded`/`userRateLimitExceeded` wartet OPAA mit wachsendem Abstand und

@@ -141,12 +141,12 @@ Dokument stehen der konfigurierte Ordner und der Gliederungspfad darunter.
 ## 7. Anhänge
 
 Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Grenzen des Kapitels
-[E-Mail](../../arbeitsmittel/wissensbibliotheken/formate/mail.md).
+[E-Mail](../../nachschlagen/formate/mail.md).
 
 ## 8. Grenzen und Schutzmechanismen
 
 Parameter stehen unter `opaa.indexing.nextcloud.*` (`OPAA_INDEXING_NEXTCLOUD_*`), ihre Standardwerte in der
-[Konfigurationsreferenz](../../betreiben/konfiguration.md#alle-umgebungsvariablen).
+[Konfigurationsreferenz](../../nachschlagen/konfiguration.md#alle-umgebungsvariablen).
 
 - **Zieladressprüfung** ([Konnektoren](README.md#12-zieladressprüfung)). Nennt die Nextcloud eine
   Adresse außerhalb ihrer eigenen Dateien, schickt OPAA dorthin keine Zugangsdaten.

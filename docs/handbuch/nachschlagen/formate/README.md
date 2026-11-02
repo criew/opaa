@@ -2,7 +2,7 @@
 
 Welche Dateiformate OPAA aufnimmt, welche Format-Pipeline sie verarbeitet und welche Formate
 bewusst nicht zugelassen sind. Wie ein Dokument die Aufnahmestrecke durchläuft, beschreibt das
-Kapitel [Wissensbibliotheken](../README.md).
+Kapitel [Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md).
 
 ## Zugelassene Formate
 
@@ -109,7 +109,7 @@ OpenDocument-Formate haben eigene Grenzen in ihren Kapiteln, E-Mails in [E-Mail]
 
 Läuft das Backend trotzdem einmal in einen Speichermangel, beendet es sich und wird neu gestartet,
 statt in einem ungewissen Zustand weiterzuarbeiten
-([Images und Laufzeit](../../../betreiben/images-und-laufzeit.md#speicher-und-container-grenzen)).
+([Images und Laufzeit](../../betreiben/images-und-laufzeit.md#speicher-und-container-grenzen)).
 
 Schlüssel unter `opaa.indexing.parser-limits.*`, Umgebungsvariablen
 `OPAA_INDEXING_PARSER_LIMITS_*`:
@@ -144,4 +144,4 @@ Abgewiesene Dateien werden gezählt und im Laufprotokoll namentlich als „Forma
 geführt; bei der Löscherkennung gelten sie als vorhanden.
 
 Die Formatprüfung erkennt keinen Schadcode. Dafür kann der Betrieb eine Virenprüfung einschalten, die
-jede Datei vor dem Lesen prüft ([Netz und Sicherheit](../../../betreiben/netz-und-sicherheit.md#virenprüfung-der-aufgenommenen-dateien)).
+jede Datei vor dem Lesen prüft ([Netz und Sicherheit](../../betreiben/netz-und-sicherheit.md#virenprüfung-der-aufgenommenen-dateien)).

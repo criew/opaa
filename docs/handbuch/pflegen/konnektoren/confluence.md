@@ -10,7 +10,7 @@
 Der Konnektor liest **Seiten und Anhänge ausgewählter Spaces** einer Confluence-Instanz, Cloud oder
 Data Center. Er spricht die **Confluence-REST-API**: bei Cloud die Version 2 (`/wiki/api/v2`) und für
 die Änderungssuche die CQL-Suche der Version 1, bei Data Center die Version 1 (`/rest/api`). Die
-Aufbereitung des Seiteninhalts beschreibt das Kapitel [Confluence-Seite](../../arbeitsmittel/wissensbibliotheken/formate/confluence.md).
+Aufbereitung des Seiteninhalts beschreibt das Kapitel [Confluence-Seite](../../nachschlagen/formate/confluence.md).
 
 ```mermaid
 flowchart LR
@@ -209,7 +209,7 @@ Eine Seite ohne Text bekommt kein eigenes Dokument; ihre Anhänge werden trotzde
 ## 9. Grenzen und Schutzmechanismen
 
 Parameter stehen unter `opaa.indexing.confluence.*` (`OPAA_INDEXING_CONFLUENCE_*`), ihre Standardwerte in der
-[Konfigurationsreferenz](../../betreiben/konfiguration.md#alle-umgebungsvariablen).
+[Konfigurationsreferenz](../../nachschlagen/konfiguration.md#alle-umgebungsvariablen).
 
 - **Zieladressprüfung** für Läufe, Verbindungstest und jeden Redirect
   ([Konnektoren](README.md#12-zieladressprüfung)).

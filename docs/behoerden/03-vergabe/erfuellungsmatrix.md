@@ -38,7 +38,7 @@ Faktenblatt.
 | F-01 | ja | [Belege prüfen und Fundstellen bilden](../../handbuch/spaces/suche.md#7-belege-prüfen-und-fundstellen-bilden) | Handbuch |
 | F-02 | teilweise; Rechte der Quelle werden nicht übernommen, Leserechte werden je Bibliothek in OPAA vergeben und wirken in jeder Suchabfrage | [Aufbau der Berechtigungen](../../handbuch/konten-und-rechte/berechtigungen.md#1-der-aufbau-in-vier-objekten), {{faktenblatt:rollensicht#matrix}} | Handbuch, Faktenblatt |
 | F-03 | je nach Liste der Behörde | [Konnektoren im Überblick](../../handbuch/pflegen/konnektoren/README.md#3-die-konnektoren-im-überblick); Verbindungen je Quelle in {{faktenblatt:datenfluesse}} | Handbuch, Faktenblatt |
-| F-04 | ja | [Zugelassene Formate](../../handbuch/arbeitsmittel/wissensbibliotheken/formate/README.md#zugelassene-formate) | Handbuch |
+| F-04 | ja | [Zugelassene Formate](../../handbuch/nachschlagen/formate/README.md#zugelassene-formate) | Handbuch |
 | F-05 | ja | [Suchen ohne Antwort](../../handbuch/spaces/suche.md#71-suchen-ohne-antwort) | Handbuch |
 | F-06 | ja | [Spracheingabe einschalten](../../handbuch/betreiben/modell-endpunkte.md#spracheingabe-einschalten), [Endpunkt im Haus](../../handbuch/betreiben/modell-endpunkte.md#vorhandenen-endpunkt-im-haus-eintragen), {{faktenblatt:voreinstellungen#ki-funktion-speech-transcription}} | Handbuch, Konfiguration, Faktenblatt |
 | F-07 | ja | [Was ein externes KI-Werkzeug erreicht](../../handbuch/spaces/fremdzugaenge.md#8-was-ein-externes-ki-werkzeug-erreicht), [Externe KI-Werkzeuge abschalten](../../handbuch/spaces/fremdzugaenge.md#externe-ki-werkzeuge-ganz-abschalten), [Ein KI-Werkzeug einrichten](../../handbuch/arbeiten/ki-werkzeug-einrichten.md) | Handbuch, Konfiguration |

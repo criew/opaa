@@ -286,7 +286,7 @@ erneut, erst wenn er die Rolle zwischenzeitlich nicht mehr genannt hat.
 
 Ohne eine Person der Revision kann niemand bestätigen. Die erste ist deshalb immer ein **lokales
 Konto** unter der Adresse, die der Betrieb als `OPAA_AUTH_FIRST_AUDITOR_EMAIL` hinterlegt hat
-([Variablenliste](../betreiben/konfiguration.md)); die Systemverwaltung legt es an und wählt die Rolle.
+([Variablenliste](../nachschlagen/konfiguration.md)); die Systemverwaltung legt es an und wählt die Rolle.
 Den Link, mit dem die Person ihr Passwort setzt, schreibt OPAA dann einmalig ins Server-Log — er
 erreicht also den Betrieb, nicht die Systemverwaltung, und der Betrieb übergibt ihn der Person. Für
 jedes andere Konto, und für jedes Konto eines Identitätsanbieters, lehnt OPAA die Vergabe ab, solange
@@ -410,7 +410,7 @@ Konto und der persönliche Space bleiben.
   verfällt er nach 14 Tagen.
 - **Ende der Anhaltung:** Der Dialog zeigt Zweck, Begründung, Ende und Restlaufzeit. Die Anhaltung
   endet nach einer Höchstdauer von selbst (`OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_HOLD_MAX_DAYS`, Kapitel
-  [Konfiguration](../betreiben/konfiguration.md)); weiter geht es nur mit „Verlängerung beantragen“ und
+  [Konfiguration](../nachschlagen/konfiguration.md)); weiter geht es nur mit „Verlängerung beantragen“ und
   einer neuen Freigabe. „Löschung fortsetzen“ hebt sie vorher auf, das darf eine Person allein. Ist
   die Frist nach der Sperre beim Ende schon abgelaufen, löscht die nächste Nacht. Anhaltungen aus
   einer Version vor dem Vier-Augen-Prinzip haben keinen Zweck; die erste Nacht nach dem Update gibt
@@ -513,7 +513,7 @@ Person, sie wird nirgends eingegeben.
 > Anfragebudget je Client-Adresse — und eine Behörde sitzt in der Regel mit allen Arbeitsplätzen
 > hinter einer Adresse, je Person fallen zwei Aufrufe an. Wer eine ganze Abteilung an einem
 > Vormittag umstellt, hebt das Budget vorübergehend an; die Vorgabe und die beiden Variablen stehen
-> in der [Konfiguration](../betreiben/konfiguration.md#alle-umgebungsvariablen). Eine überschrittene Grenze ist
+> in der [Konfiguration](../nachschlagen/konfiguration.md#alle-umgebungsvariablen). Eine überschrittene Grenze ist
 > keine verbrauchte Übergabe: Der Link bleibt gültig, die Person versucht es nach der genannten
 > Wartezeit erneut.
 
@@ -589,7 +589,7 @@ Nachweisprotokoll, das nur die Revision liest
 | Tagesgrenze | 1 vollständiger Download je Person und Tag | 1 bis 10; Starts je Tag höchstens Tagesgrenze plus 4 |
 
 Gleichzeitige Auskünfte je Instanz und Höchstdauer einer Auskunft stehen in der
-[Variablenliste](../betreiben/konfiguration.md).
+[Variablenliste](../nachschlagen/konfiguration.md).
 
 ## 12. Verbundene Konten
 

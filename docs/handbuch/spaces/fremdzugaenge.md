@@ -112,7 +112,7 @@ nicht. Eine Einschränkung je Token gibt es bewusst nicht.
 > wird die Adresse aus der Trusted-Proxy-Auflösung: `X-Forwarded-For` zählt nur, wenn die Verbindung
 > selbst aus einem dort eingetragenen Netz kommt. Ist die Liste leer, prüft die Netzbeschränkung die
 > Adresse des Proxys — die im Hausnetz liegt und damit **jeden** Aufrufer durchlässt. Siehe
-> [Deployment](../betreiben/konfiguration.md#alle-umgebungsvariablen).
+> [Deployment](../nachschlagen/konfiguration.md#alle-umgebungsvariablen).
 
 **Der Einleitungstext** wird im selben Panel gepflegt; ein Vorgabetext ist gesetzt und für die
 meisten Häuser ausreichend. Er sagt dem fremden Modell, wann es den Kanal in Betracht ziehen soll,
@@ -127,7 +127,7 @@ Panel schon.
 Über dem Schalter steht eine Entscheidung des Betriebs: Eine Installation kann den Zugriff externer
 KI-Werkzeuge ganz abschalten, etwa für eine Demo oder bis die Beteiligung der Personalvertretung geklärt ist
 (`OPAA_FEATURES_EXTERNAL_ACCESS_ENABLED=false`, siehe
-[Konfiguration](../betreiben/konfiguration.md#funktionen-abschalten)). Offen ist der Kanal nur, wenn die Funktion
+[Konfiguration](../nachschlagen/konfiguration.md#funktionen-abschalten)). Offen ist der Kanal nur, wenn die Funktion
 an **und** der Schalter eingeschaltet ist. Ist die Funktion aus,
 
 - erwähnt die Oberfläche externe KI-Werkzeuge nirgends, auch nicht für die Systemverwaltung: Es gibt keinen
@@ -614,7 +614,7 @@ Eine leere Netzbereichsliste weist **jeden** Aufruf ab: Die Prüfung versagt ges
 Namensauflösung findet dabei nicht statt.
 
 **Umgebungsvariablen**, gesetzt beim Start des Backends (siehe
-[Deployment](../betreiben/konfiguration.md#alle-umgebungsvariablen)):
+[Deployment](../nachschlagen/konfiguration.md#alle-umgebungsvariablen)):
 
 | Variable | Standard | Wirkung |
 |---|---|---|
@@ -645,7 +645,7 @@ erinnert zu werden.
 ## 16. Weiterführende Kapitel
 
 - Der Such- und Abrufweg, den die Werkzeuge benutzen: [Suche](suche.md), Abschnitte 7.1 und 10.3
-- Anmeldeverfahren: [Authentifizierung](../betreiben/authentifizierung.md); Umgebungsvariablen: [Konfiguration](../betreiben/konfiguration.md); Reverse Proxy: [Netz und Sicherheit](../betreiben/netz-und-sicherheit.md); Rücksicherung: [Sicherung und Wiederherstellung](../betreiben/sicherung-und-wiederherstellung.md)
+- Anmeldeverfahren: [Authentifizierung](../betreiben/authentifizierung.md); Umgebungsvariablen: [Konfiguration](../nachschlagen/konfiguration.md); Reverse Proxy: [Netz und Sicherheit](../betreiben/netz-und-sicherheit.md); Rücksicherung: [Sicherung und Wiederherstellung](../betreiben/sicherung-und-wiederherstellung.md)
 - Konten sperren, übergeben und löschen — und was das mit Tokens macht:
   [Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md)
 - Welche Bestände es überhaupt gibt und wie sie entstehen: [Wissensbibliotheken](../arbeitsmittel/wissensbibliotheken/README.md)

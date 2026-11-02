@@ -47,7 +47,7 @@ Ratenbegrenzung, Metriken, Quellzugriff (HTTP), Ausgangsproxy, S3, Graph-Client,
 
 ## Verweise
 
-- Handbuch: `docs/handbuch/betreiben/netz-und-sicherheit.md`; `docs/handbuch/betreiben/konfiguration.md`
+- Handbuch: `docs/handbuch/betreiben/netz-und-sicherheit.md`; `docs/handbuch/nachschlagen/konfiguration.md`
 
 ## Tests bei Änderungen
 

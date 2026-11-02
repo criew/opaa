@@ -89,4 +89,4 @@ einem Rückweg sind die gespeicherten Geheimnisse für sie unlesbar, die Oberfl�
 Die Aufbewahrungsfristen der Chats und der anlassbezogenen Klärungen stehen in der Datenbank. Eine
 ältere Version liest sie dort nicht und löscht nach ihren eigenen Vorgaben oder nach den dann
 gesetzten Umgebungsvariablen. Vor einem Rückweg die Variablen wieder auf die gewünschten Werte
-setzen ([Konfiguration](konfiguration.md#entfallene-und-veraltete-variablen)).
+setzen ([Konfiguration](../nachschlagen/konfiguration.md#entfallene-und-veraltete-variablen)).

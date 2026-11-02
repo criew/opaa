@@ -107,7 +107,6 @@ verweisen dürfen. Die Ordner folgen dem Baum.
     - [Datenbank](betreiben/datenbank.md) — PostgreSQL und pgvector, eigenes Schema, Volltextindex
     - [Originalablage](betreiben/originalablage.md) — wo die Originale der Uploads liegen, Sicherung,
       Umstellung
-  - [Konfiguration](betreiben/konfiguration.md) — alle Umgebungsvariablen, Grenzwerte im Überblick
   - [Modelle betreiben](betreiben/modell-endpunkte.md) — Chat, Embedding, Reranking, Transkription (Spracheingabe),
     Modellverwaltung, Fehlerbilder
   - [Authentifizierung](betreiben/authentifizierung.md) — Betriebsmodi, Identitätsanbieter und
@@ -134,8 +133,6 @@ verweisen dürfen. Die Ordner folgen dem Baum.
     Detailansicht, in einem Space verwenden
   - [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md) — Quelle anbinden oder
     hochladen, aktuell halten, wie ein Dokument gelesen wird
-    - [Formate](arbeitsmittel/wissensbibliotheken/formate/README.md) — zugelassene Formate, je
-      Format ein Kapitel
     - [Metadaten](arbeitsmittel/wissensbibliotheken/metadaten.md) — Kernfelder, Bibliotheksfelder,
       Wirkung in Filter und Beleg
     - [Private Bibliotheken](arbeitsmittel/wissensbibliotheken/private-bibliotheken.md) —
@@ -146,7 +143,10 @@ verweisen dürfen. Die Ordner folgen dem Baum.
 - **Nachschlagen**
   - [Nachschlagen](nachschlagen/README.md) — [Rechte-Matrix](nachschlagen/rechte-matrix.md): wer
     welche Tätigkeit darf
-  - [Glossar](glossar.md) — Begriffe, die in allen Kapiteln in genau einer Bedeutung verwendet
+  - [Konfiguration](nachschlagen/konfiguration.md) — alle Umgebungsvariablen, Grenzwerte im Überblick
+  - [Formate](nachschlagen/formate/README.md) — zugelassene Formate, je
+    Format ein Kapitel
+  - [Glossar](nachschlagen/glossar.md) — Begriffe, die in allen Kapiteln in genau einer Bedeutung verwendet
     werden
 
 ## 4. Lesewege nach Anlass
@@ -174,7 +174,7 @@ verweisen dürfen. Die Ordner folgen dem Baum.
 | Sichern und wiederherstellen | [Sicherung und Wiederherstellung](betreiben/sicherung-und-wiederherstellung.md) → Kapitel des Betriebswegs → [Authentifizierung](betreiben/authentifizierung.md): „Nacharbeit nach einer Rücksicherung" |
 | Ein Modell anbinden oder wechseln | [Modelle verwalten](verwalten/modelle.md) → [Modelle betreiben](betreiben/modell-endpunkte.md) |
 | Einen Identitätsanbieter anbinden | [Authentifizierung](betreiben/authentifizierung.md): „OIDC (Keycloak)" → [Berechtigungen](konten-und-rechte/berechtigungen.md): „Woher Gruppen kommen" |
-| Eine Grenze greift, etwa `429` oder eine zu große Datei | [Konfiguration](betreiben/konfiguration.md): „Grenzwerte im Überblick" |
+| Eine Grenze greift, etwa `429` oder eine zu große Datei | [Konfiguration](nachschlagen/konfiguration.md): „Grenzwerte im Überblick" |
 | Datenschutz, Personalrat oder Informationssicherheit fragen, welche Daten anfallen und wohin sie gehen | [Nachvollziehbarkeit](betreiben/nachvollziehbarkeit.md) |
 | Beschaffung oder Informationssicherheit fragen nach Sicherheitsupdates, SBOM, Provenance oder Lizenz | [Releases und Nachweise](betreiben/releases-und-nachweise.md) |
 | Die Installation zeigt eine Störung | [Überwachung und Fehlerbehebung](betreiben/ueberwachung-und-fehlerbehebung.md): „Fehlerbehebung", „Logs und Metriken" |

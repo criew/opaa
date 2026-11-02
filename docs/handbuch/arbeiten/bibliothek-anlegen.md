@@ -34,7 +34,7 @@ Was jede Quelle beim Anbieter voraussetzt, steht auf ihrer Seite unter den
 3. Warten, bis der Zustand im Kopf „Hochgeladen“ zeigt. Abgelehnte Dateien nennt eine Meldung mit
    Grund.
 
-Welche Dateiarten OPAA liest: [Formate](../arbeitsmittel/wissensbibliotheken/formate/README.md).
+Welche Dateiarten OPAA liest: [Formate](../nachschlagen/formate/README.md).
 
 **Nach dem Anlegen** zeigt die Detailansicht „Nächste Schritte“, etwa „In Space verwenden“ und
 „Dateien hochladen“. Erst wenn die Bibliothek einem Space zugeordnet ist, sucht der Chat darin
