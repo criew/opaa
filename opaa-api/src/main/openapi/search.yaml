@@ -597,6 +597,19 @@ components:
             Absent or empty: no metadata filter. Ignored entirely while the installation has
             switched metadata off (ADR-0044): no condition applies and an unknown code is no error
             then.
+        attachmentIds:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            format: uuid
+          description: >
+            Chat attachments (uploadChatAttachment) sent with this question. Requires chatId to
+            name a chat the caller authored, in the attachments' space; each must be the caller's
+            own, READY and not bound to another chat - otherwise 400 and nothing is persisted. They
+            are bound to the chat with this turn and, like every earlier attachment of the chat, go
+            into this and every later answer. 400 as well while the chat-upload feature is
+            switched off.
         usedPromptId:
           type: string
           format: uuid
@@ -724,6 +737,13 @@ components:
       type: object
       required: [fileName, relevanceScore, matchCount, cited, privateSource]
       properties:
+        attachment:
+          type: boolean
+          nullable: true
+          description: >
+            True when the source is an attachment of the chat rather than a library document;
+            documentId then names the attachment (getChatAttachmentContent). Absent (false) on
+            answers stored before attachments existed.
         freeze:
           nullable: true
           description: >

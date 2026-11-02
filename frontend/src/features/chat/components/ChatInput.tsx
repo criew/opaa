@@ -1,4 +1,4 @@
-import type { ChangeEvent, KeyboardEvent } from 'react'
+import type { ChangeEvent, ClipboardEvent, DragEvent, KeyboardEvent } from 'react'
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import List from '@mui/material/List'
@@ -13,16 +13,21 @@ import IconButton from '@mui/material/IconButton'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import AllInclusiveIcon from '@mui/icons-material/AllInclusive'
+import AttachFileIcon from '@mui/icons-material/AttachFile'
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import SendIcon from '@mui/icons-material/Send'
 import StopIcon from '@mui/icons-material/Stop'
 import { CHAT_MAX_WIDTH, focusFrameStyle } from '@/shared/theme/theme'
+import type { ChatAttachmentRef } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
+import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { ARRIVAL_FOCUS_ATTRIBUTE } from '@/shared/ui/a11y/routeFocus'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import { QUESTION_MAX_LENGTH, useChatStore } from '../stores/chatStore'
 import { SpaceKnowledgeNotice } from '@/features/space'
+import { useChatAttachmentDraft } from '../hooks/useChatAttachmentDraft'
 import { AiNotice } from './AiNotice'
+import { ChatAttachmentDraftChips } from './ChatAttachmentChips'
 import ChatActionMenu from './ChatActionMenu'
 import ChatScopeChipBar from './ChatScopeChipBar'
 import DictationControl from './DictationControl'
@@ -55,10 +60,14 @@ export interface SendOutcome {
 }
 
 interface ChatInputProps {
-  /** `usedPrompt` is the prompt the message was built from, absent when none is marked. */
+  /**
+   * `usedPrompt` is the prompt the message was built from, absent when none is marked;
+   * `attachments` are the ready files sent along, absent when there are none.
+   */
   onSend: (
     message: string,
     usedPrompt?: ChatActionMark,
+    attachments?: ChatAttachmentRef[],
   ) => void | SendOutcome | Promise<void | SendOutcome>
   /** Locks the whole input, typing included. */
   disabled?: boolean
@@ -153,6 +162,43 @@ export default function ChatInput({
   })
   const hint = inputHint(answerPending, actions.enabled)
 
+  // Files dropped, pasted or picked go up at once and are read while the question is written;
+  // the question waits until every one of them is ready or removed.
+  const uploadsEnabled = useFeatureEnabled('chatUpload') && actionSpaceId !== null
+  const draft = useChatAttachmentDraft(uploadsEnabled ? actionSpaceId : null)
+  const attachmentsPending = draft.busy || draft.blocked
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [dragActive, setDragActive] = useState(false)
+  const carriesFiles = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes('Files')
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    if (!uploadsEnabled || disabled || !carriesFiles(e)) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+    if (!dragActive) setDragActive(true)
+  }
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+    setDragActive(false)
+  }
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    if (!uploadsEnabled || disabled || !carriesFiles(e)) return
+    e.preventDefault()
+    setDragActive(false)
+    draft.add(Array.from(e.dataTransfer.files))
+  }
+  const handlePaste = (e: ClipboardEvent<HTMLDivElement>) => {
+    const files = Array.from(e.clipboardData?.files ?? [])
+    // Office puts a picture of copied text beside the text itself: text wins over that picture.
+    const carriesText = Array.from(e.clipboardData?.types ?? []).includes('text/plain')
+    if (!uploadsEnabled || files.length === 0 || carriesText) return
+    e.preventDefault()
+    draft.add(files)
+  }
+  const handleFilesPicked = (e: ChangeEvent<HTMLInputElement>) => {
+    draft.add(Array.from(e.target.files ?? []))
+    e.target.value = ''
+  }
+
   // Adjusted during render (not in an effect) so the input already shows the text when it paints.
   const [seenReturned, setSeenReturned] = useState<SendOutcome | null>(null)
   const [returnedTaken, setReturnedTaken] = useState(false)
@@ -229,14 +275,27 @@ export default function ChatInput({
 
   const handleSend = () => {
     const trimmed = value.trim()
-    if (sendLocked || !trimmed || trimmed.length > QUESTION_MAX_LENGTH || actions.isInserting)
+    if (
+      sendLocked ||
+      !trimmed ||
+      trimmed.length > QUESTION_MAX_LENGTH ||
+      actions.isInserting ||
+      attachmentsPending
+    )
       return
     // Only a mark its source sends as the prompt reaches the question; any other stays a chip.
     const selected = actions.selected
-    const outcome =
+    const mark =
       selected?.source.sendsMarkAsUsedPrompt === true
-        ? onSend(trimmed, { id: selected.mark.id, title: selected.mark.title })
-        : onSend(trimmed)
+        ? { id: selected.mark.id, title: selected.mark.title }
+        : undefined
+    const attachments = draft.take()
+    const outcome =
+      attachments.length > 0
+        ? onSend(trimmed, mark, attachments)
+        : mark
+          ? onSend(trimmed, mark)
+          : onSend(trimmed)
     setValue('')
     resetMention()
     actions.reset()
@@ -247,7 +306,8 @@ export default function ChatInput({
     void Promise.resolve(outcome).then((result) => {
       const restoreDraft = result?.restoreDraft
       if (!restoreDraft || !inputRef.current) return
-      setValue((draft) => withRestoredQuestion(restoreDraft, draft))
+      setValue((current) => withRestoredQuestion(restoreDraft, current))
+      draft.restore(attachments)
       result.onRestored?.()
     })
   }
@@ -349,7 +409,12 @@ export default function ChatInput({
       : undefined
 
   return (
-    <Box sx={{ flexShrink: 0, p: 2, bgcolor: 'background.default' }}>
+    <Box
+      sx={{ flexShrink: 0, p: 2, bgcolor: 'background.default' }}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       {knowledgeGap && chatSpaceId && (
         <Box sx={{ maxWidth: CHAT_MAX_WIDTH, mx: 'auto', mb: 1 }}>
           <SpaceKnowledgeNotice spaceId={chatSpaceId} gap={knowledgeGap} role={spaceRole} />
@@ -375,6 +440,12 @@ export default function ChatInput({
         onRemoveDocumentTypeFilter={removeDocumentTypeFilter}
         onRemoveDateFilter={removeDateFilter}
       />
+      <ChatAttachmentDraftChips
+        items={draft.items}
+        notice={draft.notice}
+        onRemove={draft.remove}
+        disabled={disabled}
+      />
 
       <Box
         ref={setInputBoxEl}
@@ -386,7 +457,7 @@ export default function ChatInput({
           mx: 'auto',
           bgcolor: 'background.paper',
           border: 1,
-          // Mockup 1a draws the input row with the crisper gray-300 line and a hairline
+          // The design draws the input row with the crisper gray-300 line and a hairline
           // shadow.
           borderColor: theme.palette.mode === 'dark' ? darkRoles.borderStrong : gray[300],
           borderRadius: '10px',
@@ -396,6 +467,11 @@ export default function ChatInput({
           // The message field itself is borderless; the row's frame carries its focus - only
           // the field's, a focused button of the row shows its own ring instead.
           '&:has(textarea:focus)': focusFrameStyle(theme.palette.primary.main),
+          ...(dragActive && {
+            borderStyle: 'dashed',
+            borderColor: theme.palette.primary.main,
+            bgcolor: alpha(theme.palette.primary.main, 0.06),
+          }),
         })}
       >
         <TextField
@@ -407,6 +483,7 @@ export default function ChatInput({
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           disabled={disabled}
           inputRef={inputRef}
           variant="standard"
@@ -444,6 +521,26 @@ export default function ChatInput({
             '& textarea::placeholder': { color: 'text.secondary', opacity: 1 },
           }}
         />
+        {uploadsEnabled && (
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              hidden
+              data-testid="chat-attachment-input"
+              onChange={handleFilesPicked}
+            />
+            <IconButton
+              onClick={() => fileInputRef.current?.click()}
+              disabled={disabled}
+              aria-label="Dateien anhängen"
+              sx={{ alignSelf: 'flex-end', p: 1, color: 'text.secondary' }}
+            >
+              <AttachFileIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </>
+        )}
         <DictationControl
           onText={appendDictatedText}
           onError={setDictationError}
@@ -470,7 +567,13 @@ export default function ChatInput({
         <IconButton
           color="primary"
           onClick={handleSend}
-          disabled={sendLocked || !value.trim() || questionTooLong || actions.isInserting}
+          disabled={
+            sendLocked ||
+            !value.trim() ||
+            questionTooLong ||
+            actions.isInserting ||
+            attachmentsPending
+          }
           aria-label="Senden"
           sx={{
             alignSelf: 'flex-end',
@@ -495,7 +598,7 @@ export default function ChatInput({
       >
         <ClickAwayListener onClickAway={closeMention}>
           <Paper elevation={4} sx={{ maxHeight: 280, overflowY: 'auto' }}>
-            {/* Mockup 1h: mono eyebrow head, book icon, typed prefix in bold, and a
+            {/* Mono eyebrow head, book icon, typed prefix in bold, and a
                 type badge on the right - built to take agents as a second kind later. */}
             <Typography
               component="div"
@@ -597,7 +700,7 @@ export default function ChatInput({
       />
       {actions.pendingForm?.({ onInsert: actions.completeForm, onCancel: actions.cancelForm })}
 
-      {/* Mockup 1a: the quiet, neutral line under the input. */}
+      {/* The quiet, neutral line under the input. */}
       <Box sx={{ maxWidth: CHAT_MAX_WIDTH, mx: 'auto', mt: 0.875 }}>
         {/* The placeholder vanishes while typing; the description keeps the hint reachable. */}
         {hint && (

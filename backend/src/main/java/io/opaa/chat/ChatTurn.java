@@ -23,6 +23,7 @@ public final class ChatTurn {
   private final UsedPrompt usedPrompt;
   private final Instant createdAt;
   private final AnswerEvidence evidence;
+  private final List<ChatAttachment> attachments;
 
   public ChatTurn(
       UUID id,
@@ -54,6 +55,20 @@ public final class ChatTurn {
       UsedPrompt usedPrompt,
       Instant createdAt,
       AnswerEvidence evidence) {
+    this(id, chatId, role, content, sources, usedPrompt, createdAt, evidence, List.of());
+  }
+
+  private ChatTurn(
+      UUID id,
+      UUID chatId,
+      ChatRole role,
+      String content,
+      List<ChatSource> sources,
+      UsedPrompt usedPrompt,
+      Instant createdAt,
+      AnswerEvidence evidence,
+      List<ChatAttachment> attachments) {
+    this.attachments = attachments == null ? List.of() : List.copyOf(attachments);
     this.evidence = evidence;
     this.id = id;
     this.chatId = chatId;
@@ -96,5 +111,19 @@ public final class ChatTurn {
   /** The Belegstand of an answer, or {@code null}. */
   public AnswerEvidence getEvidence() {
     return evidence;
+  }
+
+  /** The attachments sent with this question that still exist; empty otherwise. */
+  public List<ChatAttachment> getAttachments() {
+    return attachments;
+  }
+
+  /** This turn with {@code attachments} ({@code null}: none). */
+  public ChatTurn withAttachments(List<ChatAttachment> attachments) {
+    if (attachments == null || attachments.isEmpty()) {
+      return this;
+    }
+    return new ChatTurn(
+        id, chatId, role, content, sources, usedPrompt, createdAt, evidence, attachments);
   }
 }

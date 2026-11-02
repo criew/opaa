@@ -29,20 +29,31 @@ import { OwnExternalAccessTokensSection } from '@/features/external-access'
 import { MyGroupsSection } from '@/features/group'
 import { ConnectedAccountsSection } from '@/features/connection'
 import { MyDataSection } from '@/features/compliance'
+import { MyChatAttachmentsSection } from '@/features/chat'
 
-export type SettingsTab = 'general' | 'groups' | 'tokens' | 'accounts' | 'data'
+export type SettingsTab = 'general' | 'groups' | 'tokens' | 'accounts' | 'uploads' | 'data'
 
 const tabs: Array<{ value: SettingsTab; label: string }> = [
   { value: 'general', label: 'Allgemein' },
   { value: 'groups', label: 'Meine Gruppen' },
   { value: 'tokens', label: 'Zugangstokens' },
   { value: 'accounts', label: 'Verbundene Konten' },
+  { value: 'uploads', label: 'Meine Uploads' },
   { value: 'data', label: 'Meine Daten' },
 ]
 
-/** The tabs the installation offers: switched off (ADR-0044), the access tokens have none. */
-function offeredTabs(externalAccess: boolean): Array<{ value: SettingsTab; label: string }> {
-  return externalAccess ? tabs : tabs.filter((entry) => entry.value !== 'tokens')
+/**
+ * The tabs the installation offers: switched off (ADR-0044), the access tokens and the chat
+ * attachments have none.
+ */
+function offeredTabs(
+  externalAccess: boolean,
+  chatUpload: boolean,
+): Array<{ value: SettingsTab; label: string }> {
+  return tabs.filter(
+    (entry) =>
+      (externalAccess || entry.value !== 'tokens') && (chatUpload || entry.value !== 'uploads'),
+  )
 }
 
 function isSettingsTab(
@@ -52,7 +63,7 @@ function isSettingsTab(
   return offered.some((entry) => entry.value === value)
 }
 
-/** Mockup 2c: how the account signed in, next to the address - never a technical mode name. */
+/** How the account signed in, next to the address - never a technical mode name. */
 function signInMethodLabel(mode: AuthMode | null): string | null {
   if (mode === 'oidc') return 'über Verzeichnisdienst angemeldet'
   if (mode === 'dev') return 'über Entwicklungsanmeldung angemeldet'
@@ -78,7 +89,7 @@ export default function SettingsPage() {
   const authMode = useAuthStore((s) => s.mode)
   const sessionKind = useAuthStore((s) => s.sessionKind)
   const isSystemAdmin = user?.systemRole === 'SYSTEM_ADMIN'
-  const offered = offeredTabs(useFeatureEnabled('externalAccess'))
+  const offered = offeredTabs(useFeatureEnabled('externalAccess'), useFeatureEnabled('chatUpload'))
   // ADR-0033, Entscheidung 11: the creation reason belongs to the person's own self-disclosure -
   // an account of an identity provider has none, and the block then stays away entirely.
   const createdReason = user?.createdReason?.trim() || null
@@ -122,13 +133,15 @@ export default function SettingsPage() {
               <OwnExternalAccessTokensSection />
             ) : value === 'data' ? (
               <MyDataSection />
+            ) : value === 'uploads' ? (
+              <MyChatAttachmentsSection />
             ) : value === 'accounts' ? (
               <ConnectedAccountsSection />
             ) : value === 'groups' ? (
               <MyGroupsSection />
             ) : (
               <>
-                {/* Mockup 2c: the profile block - display only; editing name, language or picture
+                {/* The profile block - display only; editing name, language or picture
             needs backend support that does not exist yet (Abgrenzung). */}
                 {user && (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>

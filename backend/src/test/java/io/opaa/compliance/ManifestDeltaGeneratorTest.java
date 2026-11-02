@@ -125,7 +125,7 @@ class ManifestDeltaGeneratorTest {
     String rules =
         "https://github.com/criew/opaa/blob/"
             + newer
-            + "/docs/features/behoerdenunterlagen.md#die-stufenregeln";
+            + "/docs/handbuch/betrieb/nachvollziehbarkeit.md#die-stufenregeln";
     assertThat(Files.readString(out.resolve(ManifestDeltaGenerator.MARKDOWN_FILE)))
         .contains("[Stufenregeln](" + rules + ")")
         .doesNotContain("/blob/main/");
@@ -156,7 +156,7 @@ class ManifestDeltaGeneratorTest {
         .isEqualTo(
             "https://github.com/example/opaa-fork/blob/"
                 + newer
-                + "/docs/features/behoerdenunterlagen.md#die-stufenregeln");
+                + "/docs/handbuch/betrieb/nachvollziehbarkeit.md#die-stufenregeln");
   }
 
   @Test

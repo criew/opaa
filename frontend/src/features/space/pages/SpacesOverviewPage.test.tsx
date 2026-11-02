@@ -39,7 +39,7 @@ const team = {
   updatedAt: '2026-03-01T10:00:00Z',
 }
 
-describe('SpacesOverviewPage (#593, Mockup 1c)', () => {
+describe('SpacesOverviewPage (#593)', () => {
   beforeEach(() => {
     window.localStorage.clear()
     useSpaceStore.setState({ spaces: [personal, team], isLoadingList: false, error: null })

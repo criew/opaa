@@ -8,8 +8,8 @@ Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt durch ADR-0010, ADR-0012,
 
 OPAA konnte nicht beziffern, ob eine Änderung an Chunking, Embedding-Modell, `top-k` oder
 Ähnlichkeitsschwelle das Retrieval verbessert oder verschlechtert.
-`docs/discussions/discussion-rag-evaluation.md` klärte, was gemessen wird (Hit Rate, MRR, nDCG, Golden
-Dataset, gepaarte Vergleiche); `docs/features/search-quality-evaluation.md` beschreibt das Vorhaben.
+Gemessen werden sollten Hit Rate, MRR, nDCG gegen ein Golden Dataset, mit gepaarten Vergleichen;
+`docs/features/search-quality-evaluation.md` beschreibt das Vorhaben.
 Strukturell festzulegen waren die Ablage des eingefrorenen Korpus, der Aufbau des Harness (eine zweite
 Toolchain ist dauerhafte Wartungslast) und das Einbettungsmodell in der CI, von dem die Stabilität der
 Baseline abhängt.

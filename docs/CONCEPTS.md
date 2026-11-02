@@ -764,8 +764,7 @@ Ein Bestand, der an mehreren Stellen gebraucht wird, wird nicht kopiert: Dieselb
 Gruppen freigegeben. Eine Fassung, eine Pflegestelle, keine Vervielfachung von Chunks.
 
 **Stand:** Durch das Asset-Modell gelöst. Das frühere Konzept eines raumübergreifenden Dokument-Teilens samt
-seiner offenen Sicherheitsfragen ist gegenstandslos — siehe
-[Dokument-Teilen](./features/document-sharing.md) (überholt).
+seiner offenen Sicherheitsfragen ist gegenstandslos.
 
 ---
 
@@ -1056,8 +1055,7 @@ Vorgang 32.1-114/2025
   └── betrifft: Widerspruch
 ```
 
-**Stand in OPAA:** als Ergänzung des Vektor-Retrievals in Phase 3 vorgesehen, nicht im Fundament. Die
-Recherchegrundlage steht in [discussion-retrieval-strategien.md, Abschnitt 9](./discussions/discussion-retrieval-strategien.md).
+**Stand in OPAA:** als Ergänzung des Vektor-Retrievals in Phase 3 vorgesehen, nicht im Fundament.
 
 ---
 

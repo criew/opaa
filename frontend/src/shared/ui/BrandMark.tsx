@@ -9,10 +9,10 @@ interface BrandMarkProps {
   showClaim?: boolean
   /** Typography variant of the product name - sidebar, sign-in card and brand panel differ here. */
   variant?: 'h6' | 'h5' | 'h4'
-  /** 'vertical' stacks logo, name and claim centered - the sign-in card's block (mockup 1f). */
+  /** 'vertical' stacks logo, name and claim centered - the sign-in card's block. */
   orientation?: 'horizontal' | 'vertical'
   /**
-   * Logo emblem alone, no product name - the 64px global rail (mockup 2a) has no room
+   * Logo emblem alone, no product name - the 64px global rail has no room
    * for text, and its `nav` landmark already names the region for assistive tech.
    */
   logoOnly?: boolean
@@ -74,7 +74,7 @@ export default function BrandMark({
             }}
           />
         ) : (
-          // The OPAA standard mark from mockup 1a: accent-stroked squircle, document lines in
+          // The OPAA standard mark: accent-stroked squircle, document lines in
           // the surrounding text color so it works on navy and on white alike.
           <Box
             component="svg"

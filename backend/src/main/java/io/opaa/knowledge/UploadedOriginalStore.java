@@ -2,6 +2,7 @@ package io.opaa.knowledge;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Optional;
@@ -30,6 +31,14 @@ import java.util.function.Function;
  * parent's original.
  */
 public interface UploadedOriginalStore {
+
+  /**
+   * The storage area of chat attachments ({@code io.opaa.chat.ChatAttachmentService}) inside each
+   * organization's storage: no library row names it, so the orphan cleanup of libraries never lists
+   * or removes it; the chat attachments' own cleanup holds its originals against their rows.
+   */
+  UUID CHAT_ATTACHMENT_AREA =
+      UUID.nameUUIDFromBytes("opaa-chat-attachments".getBytes(StandardCharsets.UTF_8));
 
   /**
    * Takes {@code bytes} for a new original of {@code libraryId}, which belongs to {@code

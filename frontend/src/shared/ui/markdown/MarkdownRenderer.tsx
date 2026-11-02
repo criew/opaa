@@ -89,8 +89,8 @@ function CitationTooltipContent({ citations }: { citations: ResolvedCitation[] }
   )
 }
 
-/** Adjacent citations render as one group; contiguous number runs compress to a range ("1–3",
- *  mockup 1a/1i) so back-to-back markers stay readable. */
+/** Adjacent citations render as one group; contiguous number runs compress to a range ("1–3")
+ * so back-to-back markers stay readable. */
 function renderCitationGroup(
   group: ResolvedCitation[],
   key: string,

@@ -195,6 +195,44 @@ danach steht eine Meldung unter dem Eingabefeld, und die Aufnahme ist verworfen.
 - **Rücksicht im Büro.** Im Mehrpersonenbüro hören andere mit, was diktiert wird. Nicht während
   Telefonaten oder Gesprächen diktieren: Das Mikrofon nimmt auch andere Stimmen auf.
 
+### Dokumente an eine Frage anhängen
+
+Wer ein Dokument mitbringt, das in keiner Bibliothek liegt — einen Bescheid, einen Entwurf, eine
+Stellungnahme —, hängt es an die Frage: per Ziehen auf das Eingabefeld, mit der **Büroklammer**
+(„Dateien anhängen“) oder durch Einfügen aus der Zwischenablage. Die Datei wird sofort hochgeladen
+und gelesen; der Chip über dem Eingabefeld zeigt „wird hochgeladen“, „wird gelesen“ oder die
+Größe, sobald sie bereitsteht. Gesendet werden kann erst, wenn alle Anhänge bereitstehen oder
+entfernt sind. Eine Datei, die sich nicht lesen lässt, bleibt mit ihrem Grund stehen, bis sie
+entfernt wird.
+
+- **Antwort aus dem Anhang.** Kleine Anhänge gehen im Volltext in die Antwort, sodass auch „Fasse
+  zusammen“ funktioniert; bei langen gehen die Abschnitte hinein, die die meisten Wörter der Frage
+  enthalten. Eingebettet wird nichts, ein Anhang ist deshalb ohne Wartezeit nutzbar. Der Anhang
+  steht vor den Treffern aus den Bibliotheken und wird belegt wie sie; im Belegfenster trägt er
+  die Marke „Anhang“ und lässt sich herunterladen.
+- **Gehört zum Chat.** Mit der ersten Frage wird der Anhang an den Chat gebunden und gilt auch für
+  die folgenden Fragen dieses Chats. Er wird mit dem Chat gelöscht, auch durch die automatische
+  Chat-Löschung. Ein hochgeladener, aber nie gesendeter Anhang wird nach
+  `opaa.chat.attachments.unbound-retention` gelöscht.
+- **Nur für die Person selbst.** Anhänge sieht und nutzt nur, wer sie hochgeladen hat; sie
+  erscheinen in keiner Suche anderer. Die Datei liegt im selben Speicher wie Uploads in
+  Bibliotheken (Dateisystem oder S3), die Datenbank hält nur den gelesenen Text.
+- **Meine Uploads.** Unter „Ihre Einstellungen“, Bereich „Meine Uploads“, stehen alle eigenen
+  Anhänge über alle Spaces mit ihrem Chat und ihrer Frist. Dort lassen sie sich herunterladen,
+  löschen oder mit „In Bibliothek übernehmen“ als Kopie in eine Upload-Bibliothek legen, in der
+  die Person Dokumente hochladen darf. Die Kopie folgt danach den Rechten und Fristen der
+  Bibliothek.
+- **Grenzen.** Es gelten dieselben Formate, dieselbe Größengrenze und dieselbe Virenprüfung wie
+  beim Upload in eine Bibliothek. Je Frage und je Chat ist die Zahl der Anhänge begrenzt
+  (`opaa.chat.attachments.max-per-message`, `opaa.chat.attachments.max-per-chat`); wie viele
+  Anhänge eines Kontos gleichzeitig gelesen werden, begrenzt
+  `opaa.chat.attachments.max-processing-per-account`. Hochladen und Übernehmen zählen gegen die
+  Ratenbegrenzung des Dokument-Uploads.
+
+Die Installation kann Anhänge mit `OPAA_FEATURES_CHAT_UPLOAD_ENABLED=false` abschalten
+([Konfiguration](../betrieb/konfiguration.md#funktionen-abschalten)); vorhandene Anhänge bleiben
+dann gespeichert und werden mit ihrem Chat gelöscht.
+
 ## 3. Was eine Frage nach außen kostet
 
 Die Pipeline läuft im Backend-Prozess und in der Datenbank. Nach außen ruft sie nur die

@@ -60,7 +60,7 @@ function SpaceCard({ space }: { space: SpaceListResponse }) {
   )
 }
 
-/** The Spaces overview (mockup 1c) on the shared overview frame. */
+/** The Spaces overview on the shared overview frame. */
 export default function SpacesOverviewPage() {
   const navigate = useNavigate()
   const spaces = useSpaceStore((s) => s.spaces)

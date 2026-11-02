@@ -232,7 +232,7 @@ export default function ChatPage() {
         visuallyHidden
       />
       {(chatTitle || noteVisible || isArchivedChat || spaceInstruction) && (
-        // Mockup 1a's header bar, and the Gesprächsnotiz's place. Wrapping flex
+        // The design's header bar, and the Gesprächsnotiz's place. Wrapping flex
         // row: title and button share the first line, the note panel takes the next one.
         <Box
           ref={headerRef}
@@ -367,7 +367,11 @@ export default function ChatPage() {
       />
       <SearchAvailabilityNotice />
       <ChatInput
-        onSend={(message, usedPrompt) => sendMessage(message, usedPrompt)}
+        onSend={(message, usedPrompt, attachments) =>
+          attachments
+            ? sendMessage(message, usedPrompt, attachments)
+            : sendMessage(message, usedPrompt)
+        }
         answerPending={isLoading}
         onCancelAnswer={cancelAnswer}
         returnedQuestion={returnedQuestionForView}

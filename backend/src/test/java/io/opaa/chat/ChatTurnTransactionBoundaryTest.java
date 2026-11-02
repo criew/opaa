@@ -3,6 +3,7 @@ package io.opaa.chat;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Method;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -72,7 +73,8 @@ class ChatTurnTransactionBoundaryTest {
             String.class,
             String.class,
             String.class,
-            String.class);
+            String.class,
+            Collection.class);
 
     Transactional annotation = writeTurnOnce.getAnnotation(Transactional.class);
     assertThat(annotation).isNotNull();

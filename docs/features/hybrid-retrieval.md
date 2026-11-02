@@ -7,8 +7,8 @@
 > [Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md).
 >
 > Diese Spezifikation setzt die Maintainer-Entscheidungen um, die aus den Recherchedokumenten
-> [Retrieval-Strategien (Tech-Report)](../discussions/discussion-retrieval-strategien.md) und
-> [Retrieval-Roadmap](../discussions/discussion-retrieval-roadmap-opaa.md) hervorgegangen sind — im
+> Retrieval-Strategien (Tech-Report) und
+> Retrieval-Roadmap hervorgegangen sind — im
 > Wesentlichen deren **Phase 1**. Die dort offen gelassenen Fragen (Aufhebung der #938-Zurückstellung,
 > GPU-Annahme, Suchspeicher) sind entschieden und stehen unten als Festlegung, nicht als Abwägung. Was
 > hier nicht steht, ist damit nicht entschieden; die Roadmap bleibt die Quelle für die späteren Phasen.
@@ -1242,7 +1242,7 @@ erheblichen Teil der Zielinstallationen unbrauchbar (siehe
 Festlegungen. Rechtsquellen, Besprechungsnotizen und Tabellenwerke vertragen nicht dieselbe Behandlung —
 das ist fachlich richtig und wird von Menschen entschieden, die den Bestand kennen. **Diese Ebene gehört
 in eine eigene Spezifikation** (Konzept und Leitplanken in
-[discussion-dateitypen-und-metadaten.md](../discussions/discussion-dateitypen-und-metadaten.md)) und wird
+discussion-dateitypen-und-metadaten.md) und wird
 hier nur benannt, damit die Ebenenaufteilung vollständig ist.
 
 ### Was daraus für diese Spezifikation folgt
@@ -1859,7 +1859,7 @@ des Pakets:
 ## Bewusst nicht gebaut
 
 Jede Zeile ist eine Entscheidung, keine Auslassung. Ausführliche Begründungen mit Quellen stehen in
-[discussion-retrieval-roadmap-opaa.md](../discussions/discussion-retrieval-roadmap-opaa.md#bewusst-nicht-verfolgen).
+discussion-retrieval-roadmap-opaa.md.
 
 - **Zweite Suchengine (OpenSearch, Elasticsearch, Vespa) als Teil dieser Umsetzung.** Sie steht als
   [Eskalationsstufe 2](#eskalationsstufen-mit-eintrittsbedingung) unter einer gemessenen

@@ -11,13 +11,25 @@ Die Projektsprache ist **Deutsch**. Englisch bleibt ausschließlich dem Quellcod
 
 **Deutsch:**
 - GitHub-Issues, Pull Requests (Titel und Beschreibung), Commit-Beschreibung und -Body (Typ und Scope bleiben englisch: `feat(workspace): Rollenverwaltung ergänzen`)
-- Dokumentation (`README.md`, `docs/`, ADRs, Feature-Spezifikationen) und Templates unter `.github/`
+- Dokumentation (`README.md`, `docs/`, ADRs, Handbuch), Spezifikationen in Epics und Templates unter `.github/`
 - Alle in der Anwendung sichtbaren Texte — Frontend-UI, `aria-label`-Attribute und nutzerseitige API-Fehlermeldungen
 
 **Englisch:**
 - Bezeichner im Quellcode (auch CSS-Klassen), Datei- und Verzeichnisnamen, Code-Kommentare, Labels und Branch-Namen
 - Log-Ausgaben und entwicklerseitige Exception-Messages
 - Technische Konstanten, Enum-Werte, API-Feldnamen und die OpenAPI-Spezifikation
+
+## Was dauerhaft im Repository liegt
+
+Am Ende einer Arbeit stehen genau drei Ergebnisse, jedes beantwortet eine Frage:
+
+| Ergebnis | Frage | Ort |
+|---|---|---|
+| Code mit Tests und OpenAPI | Wie genau funktioniert es? | `backend/`, `frontend/`, `opaa-api/`, `e2e/` |
+| ADR | Warum ist es so gebaut und nicht anders? | `docs/decisions/` |
+| Handbuch | Wie benutzt, verwaltet und betreibt man es? | `docs/handbuch/` |
+
+**Spezifikationen leben im Epic** (Body des GitHub-Epics oder Issues) und werden nicht eingecheckt. Ist das Epic gebaut, ist das Verhalten im Handbuch, das Warum im ADR und das Detail im Code festgehalten; das Epic bleibt als Entstehungsnachweis. `docs/features/` wird abgebaut (Epic #3512): dort keine neuen Dateien anlegen und bestehende nicht ausbauen.
 
 ## Architektur
 
@@ -156,7 +168,7 @@ Vor dem **ersten Push eines PRs** müssen lokal bestehen: Backend-Formatierung, 
 
 - `docs/AGENT-ORGANIZATION.md` — Agenten-Rollen, Idee-bis-Merge-Workflow und Kollaborationsregeln
 - `docs/decisions/` — Architecture Decision Records (ADRs), u. a. [ADR-0053](docs/decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md) zum Betrieb mit einer oder mehreren Backend-Instanzen. Regeln und Vorlage in [docs/decisions/README.md](docs/decisions/README.md): ein ADR hält den gültigen Endstand fest und wird bei Änderungen im Kerntext fortgeschrieben, keine Nachträge; Status von der ersten Fassung an „Akzeptiert · zuletzt geändert <Datum>“, der Merge des einführenden PRs ist die Zustimmung — **vor jeder Änderung an einem ADR lesen**
-- `docs/features/` — Feature-Spezifikationen
+- `docs/features/` — Feature-Spezifikationen im Abbau (Epic #3512); nur noch lesen, nicht erweitern
 - `docs/behoerden/` — Unterlagen für Behörden entlang des Einführungswegs (redaktionelle Vorlagen); Aufbau, Kopfvermerk, Haftungshinweis, Faktenblatt-Platzhalter und Regeln in `docs/behoerden/AGENTS.md`, geprüft durch `.github/scripts/check_behoerden_headers.sh` — vor jeder Änderung dort lesen
 - `docs/handbuch/` — Produkthandbuch des gebauten Ist-Stands (Kapitelbaum in `docs/handbuch/README.md`, Abschnitt „Aufbau des Handbuchs"; Ordner nach dem Kapitelbaum: `betrieb/`, `konten-und-rechte/`, `spaces/`, `arbeitsmittel/`, Konnektoren und Formate je mit Übersicht unter `arbeitsmittel/wissensbibliotheken/konnektoren/` und `…/formate/`, Begriffe in `glossar.md`); Regeln für Aufbau, Verweise und Stil in `docs/handbuch/AGENTS.md` — vor jeder Änderung am Handbuch lesen
 - `backend/AGENTS.md` — Backend-Konventionen (Abhängigkeitsverwaltung, API-/Mapper-Regeln, logische Module und Schichtung, Spring-Testkontexte, Datenbankmigrationen), Nachschlagewissen dazu unter `backend/docs/` (Register des prozesslokalen Zustands, Testkontexte, Migrationen); `backend/` ist zugleich Gradle-Root des Multi-Modul-Builds. Je logischem Modul ergänzt eine kurze `AGENTS.md` im Hauptpaket unter `backend/src/main/java/io/opaa/` die Regeln des Moduls (Übersicht in `backend/AGENTS.md`)

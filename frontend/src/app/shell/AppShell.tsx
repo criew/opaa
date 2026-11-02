@@ -28,7 +28,7 @@ export default function AppShell() {
   // The marker stays in its history entry; back/forward to that entry is a page change again.
   const keepFocus = useNavigationType() !== NavigationType.Pop && keepsFocus(locationState)
   const previousPathname = useRef(pathname)
-  // Mockup 2b: global areas drop the space column; the rail and the area's own light
+  // Global areas drop the space column; the rail and the area's own light
   // frame carry the navigation there.
   const isGlobalArea = isGlobalAreaPath(pathname)
 

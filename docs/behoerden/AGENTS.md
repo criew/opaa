@@ -167,7 +167,9 @@ Die Vorlagen gehen davon aus, dass sie im Update-Paket der eingesetzten Version 
 erklären deshalb nicht, wo Faktenblätter, Handbuch oder Paket liegen, dass die Faktenblätter der
 Version beizulegen sind oder wofür ein Platzhalter steht; ein Verweis lautet schlicht „steht im
 {{faktenblatt:datenkatalog}}“. Woher das Paket kommt, erklärt nur die [README](README.md), oben mit
-dem Hinweis, dass die Fassung im Repository der Entwicklungsstand ist.
+dem Hinweis, dass die Fassung im Repository der Entwicklungsstand ist. Beides steht zwischen
+`<!-- nur-im-repository -->` und `<!-- /nur-im-repository -->`, je auf eigener Zeile; der Release-Lauf
+lässt solche Blöcke im Paket weg, ein Marker ohne Gegenstück lässt ihn scheitern.
 
 ### Amtliche Muster verlinken statt nachbauen
 

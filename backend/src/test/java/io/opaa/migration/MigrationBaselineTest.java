@@ -225,6 +225,8 @@ class MigrationBaselineTest extends AbstractBaselineTest {
             "space_memberships",
             "spaces",
             // assistant
+            "chat_attachment_chunks",
+            "chat_attachments",
             "chat_cleanup_hold_requests",
             "chat_cleanup_holds",
             "chat_library_references",

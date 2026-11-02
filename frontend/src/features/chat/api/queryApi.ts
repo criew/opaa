@@ -8,6 +8,7 @@ export async function sendQuery(
   libraryIds?: string[],
   metadataFilter?: MetadataFilter | null,
   usedPromptId?: string,
+  attachmentIds?: string[],
 ): Promise<QueryResponse> {
   try {
     const request = queryRequest(
@@ -17,6 +18,7 @@ export async function sendQuery(
       libraryIds,
       metadataFilter,
       usedPromptId,
+      attachmentIds,
     )
     const { data } = await client.post<QueryResponse>('/v1/query', request)
     return data
@@ -30,7 +32,7 @@ export async function sendQuery(
  * - the backend ignores it otherwise, so omitting it keeps the request honest about what it does.
  * When chatId names a chat the caller authored, useKnowledge/libraryIds are ignored server-side in
  * favour of the chat's own settings; metadataFilter follows the same rule, so it is only sent for
- * an ephemeral query.
+ * an ephemeral query. attachmentIds names the chat attachments sent with this question.
  */
 export function queryRequest(
   question: string,
@@ -39,6 +41,7 @@ export function queryRequest(
   libraryIds?: string[],
   metadataFilter?: MetadataFilter | null,
   usedPromptId?: string,
+  attachmentIds?: string[],
 ): QueryRequest {
   return {
     question,
@@ -47,6 +50,7 @@ export function queryRequest(
     ...(useKnowledge ? {} : { libraryIds }),
     ...(metadataFilter && !isEmptyMetadataFilter(metadataFilter) ? { metadataFilter } : {}),
     ...(usedPromptId ? { usedPromptId } : {}),
+    ...(attachmentIds && attachmentIds.length > 0 ? { attachmentIds } : {}),
   }
 }
 

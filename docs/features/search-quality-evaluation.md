@@ -10,7 +10,7 @@
 OPAA kann heute nicht beantworten, ob eine Änderung an Chunking, Embedding-Modell, `top-k` oder
 Ähnlichkeitsschwelle die Suche besser oder schlechter macht. Jede Pipeline-Änderung ist damit ein
 Blindflug: Sie wird nach Gefühl bewertet und Regressionen fallen erst auf, wenn ein Nutzer sich
-beschwert. `docs/discussions/discussion-rag-evaluation.md` hat die Theorie dazu vollständig geklärt
+beschwert. Das Diskussionspapier zur RAG-Evaluierung hat die Theorie dazu vollständig geklärt
 (Golden Dataset, Hit Rate/MRR/nDCG, Spring-AI-Evaluatoren, Paired Bootstrap, RAGAS-Sidecar); was
 fehlt, ist ein konkreter Korpus und ein Harness, das die dort beschriebenen Phasen 1 und 2 umsetzt.
 
@@ -543,11 +543,11 @@ Phase 1 und 2 sind der Gegenstand der jetzt erstellten Issues.
 
 ## Integrationspunkte
 
-- `docs/discussions/discussion-rag-evaluation.md` — Metriken, Frameworks, statistische Verfahren.
+- Diskussionspapier zur RAG-Evaluierung — Metriken, Frameworks, statistische Verfahren.
   Diese Spezifikation wiederholt sie nicht, sondern setzt Phase 1 und 2 daraus um.
 - `docs/features/data-indexing-rag.md` — die Pipeline, die hier gemessen wird.
 - `docs/features/deployment-infrastructure.md` — der Compose-Stack, den die Demo erweitert.
-- `docs/discussions/discussion-retrieval-strategien.md` (Abschnitt 9, GraphRAG) — die Tier-Domäne mit
+- Tech-Report Retrieval-Strategien (Abschnitt 9, GraphRAG) — die Tier-Domäne mit
   ihrer Taxonomie ist der natürliche Testfall, falls GraphRAG evaluiert wird.
 - Issues #115 und #117 — Voraussetzung für die Multi-Tenancy-Demonstration.
 - `docs/handbuch/betrieb/docker-compose.md` — beschreibt die bestehende öffentliche Instanz `opaa.ewerlin.com` (heute `demo.opaa.io`) noch

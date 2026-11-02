@@ -23,7 +23,7 @@ vi.mock('react-router', async () => {
 
 const mockCreateNewSpace = vi.fn(async () => 'space-neu')
 
-describe('SpaceCreatePage (#594, Mockup 1b)', () => {
+describe('SpaceCreatePage (#594)', () => {
   beforeEach(() => {
     mockLocationState = null
     mockNavigate.mockReset()

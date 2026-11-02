@@ -31,3 +31,5 @@ features:
     enabled: false
   externalAccess:
     enabled: false
+  chatUpload:
+    enabled: false

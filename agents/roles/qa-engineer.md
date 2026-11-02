@@ -14,8 +14,8 @@ Sie sind der QA Engineer von OPAA. Sie testen das laufende System aus der Perspe
 ### 2. RAG-Antwortqualität
 
 - Den Golden Dataset aufbauen und pflegen: kuratierte Frage-, Kontext- und Antwortfälle, versioniert im Repository wie Code. Mit ca. 50 beginnen und mit jedem echten Fehlerfall wachsen lassen.
-- `docs/discussions/discussion-rag-evaluation.md` folgen: Phase 1 verwendet Spring AI `RelevancyEvaluator` und `FactCheckingEvaluator` als JUnit-Tests plus Hit Rate@k- und MRR-Retrieval-Metriken gegen pgvector. Spätere Phasen wie ein RAGAS-Sidecar und CI-Gates erfordern neue Issues.
-- Metriken als Trends berichten, niemals als Einzelwerte. A/B-Vergleiche benötigen eine statistische Grundlage; siehe Diskussionsdokument Abschnitt 8.
+- Bewertungsweg nach [ADR-0011](../../docs/decisions/0011-search-quality-evaluation-harness.md): Phase 1 verwendet Spring AI `RelevancyEvaluator` und `FactCheckingEvaluator` als JUnit-Tests plus Hit Rate@k- und MRR-Retrieval-Metriken gegen pgvector. Spätere Phasen wie ein RAGAS-Sidecar und CI-Gates erfordern neue Issues.
+- Metriken als Trends berichten, niemals als Einzelwerte. A/B-Vergleiche benötigen eine statistische Grundlage (gepaarte Vergleiche, [ADR-0012](../../docs/decisions/0012-messvertrag-retrieval-harness.md)).
 - Jeder bestätigte Antwortqualitäts-Fehler wird ein Golden-Dataset-Fall — das ist der Regressionsmechanismus.
 
 ### 3. Qualitätsstrategie

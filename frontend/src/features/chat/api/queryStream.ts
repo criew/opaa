@@ -12,6 +12,8 @@ export interface StreamQueryOptions {
   /** The provisional answer so far - unvalidated, citation markers included. */
   onProvisional: (text: string) => void
   signal?: AbortSignal
+  /** The chat attachments sent with this question. */
+  attachmentIds?: string[]
 }
 
 export const STREAM_BROKEN_MESSAGE =
@@ -59,6 +61,7 @@ export async function streamQuery(
     libraryIds,
     metadataFilter,
     usedPromptId,
+    options.attachmentIds,
   )
   let response: AxiosResponse<ReadableStream<Uint8Array>>
   try {
@@ -72,7 +75,15 @@ export async function streamQuery(
     if (isCancel(err)) throw err
     const status = isAxiosError(err) ? err.response?.status : undefined
     if (status === 404 || status === 405) {
-      return sendQuery(question, chatId, useKnowledge, libraryIds, metadataFilter, usedPromptId)
+      return sendQuery(
+        question,
+        chatId,
+        useKnowledge,
+        libraryIds,
+        metadataFilter,
+        usedPromptId,
+        options.attachmentIds,
+      )
     }
     normalizeError(err)
   }

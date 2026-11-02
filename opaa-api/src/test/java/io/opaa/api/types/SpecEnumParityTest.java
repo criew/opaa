@@ -85,6 +85,8 @@ class SpecEnumParityTest {
         Arguments.of("DatePrecision", DatePrecision.values()),
         Arguments.of("MetadataFilterMatch", MetadataFilterMatch.values()),
         Arguments.of("EvidenceLevel", EvidenceLevel.values()),
+        Arguments.of("ChatAttachmentStatus", ChatAttachmentStatus.values()),
+        Arguments.of("ChatAttachmentMode", ChatAttachmentMode.values()),
         Arguments.of("RetrievalStage", RetrievalStageName.values()),
         Arguments.of("SearchModelRole", ModelRole.values()),
         Arguments.of("SearchModelRoleState", ModelRoleCondition.values()),

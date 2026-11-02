@@ -26,6 +26,7 @@ export function toChatMessage(message: ChatMessageResponse): ChatMessage {
       indexedAt: source.indexedAt ?? null,
     })),
     ...(message.usedPromptTitle ? { usedPromptTitle: message.usedPromptTitle } : {}),
+    ...(message.attachments?.length ? { attachments: message.attachments } : {}),
     ...(message.privateSourcesInContext ? { privateSourcesInContext: true } : {}),
     ...(message.evidence ? { evidence: message.evidence } : {}),
     timestamp: new Date(message.createdAt),

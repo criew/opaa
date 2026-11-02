@@ -1,4 +1,9 @@
-import type { AnswerEvidence, SearchedLibrary, SourceReference } from '@/shared/api/types'
+import type {
+  AnswerEvidence,
+  ChatAttachmentRef,
+  SearchedLibrary,
+  SourceReference,
+} from '@/shared/api/types'
 
 export type MessageRole = 'user' | 'assistant'
 
@@ -27,7 +32,7 @@ export interface ChatMessage {
   noKnowledgeAvailableInSpace?: boolean
   /**
    * The libraries the vector search actually ran against (QueryMetadata#searchedLibraries)
-   * - mockup 1a's "Durchsucht wurden: …" line under an answer that cites nothing. Only known for
+   * - the "Durchsucht wurden: …" line under an answer that cites nothing. Only known for
    * answers of this session; persisted history does not carry it.
    */
   searchedLibraries?: SearchedLibrary[]
@@ -50,5 +55,7 @@ export interface ChatMessage {
    * snapshot shown as "Prompt: <title>", never a link.
    */
   usedPromptTitle?: string
+  /** On a question: the files sent along with it. */
+  attachments?: ChatAttachmentRef[]
   timestamp: Date
 }
