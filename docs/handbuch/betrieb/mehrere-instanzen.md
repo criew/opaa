@@ -357,7 +357,7 @@ Eine Ausnahme sind „Passwort vergessen“ und die Selbstregistrierung: Ihre Be
 wartet zunächst im Speicher der Instanz, nur Millisekunden lang. Stoppt die Instanz genau dann, geht
 die Anfrage verloren, und wer keine Mail bekommt, fragt erneut (Betriebsübersicht, „Sanftes
 Herunterfahren“). Wiederholungen, Verschlüsselung und die Mails, die OPAA sofort versendet,
-beschreibt [E-Mail-Versand](e-mail.md#zustellung-über-die-warteschlange).
+beschreibt [E-Mail-Versand](../verwalten/e-mail.md#zustellung-über-die-warteschlange).
 
 ## Grenzen und Budgets
 

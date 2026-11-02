@@ -53,7 +53,7 @@ Die Anmeldeseite zeigt oben die Maske für Konten dieser Installation — sofern
 Benutzerverwaltung eingeschaltet ist —, darunter die Identitätsanbieter, einer je Zeile, in der
 Reihenfolge der Anbieterverwaltung. Ist die lokale Benutzerverwaltung aus, steht am Fuß der Seite der
 Verweis „Anmeldung für die Systemverwaltung" auf `/login/system`. Wie Produktname und Bilder der
-Anmeldeseite festgelegt werden, steht im Kapitel [Branding](branding.md).
+Anmeldeseite festgelegt werden, steht im Kapitel [Branding](../verwalten/branding.md).
 
 **Anmeldung ohne Klick.** Hat jemand beim vorgeschlagenen Anbieter — zuletzt verwendet, sonst
 Standard, sonst der erste — noch eine laufende Sitzung, erreicht er die Anwendung ohne Klick: OPAA
@@ -557,14 +557,14 @@ steht im Kapitel [Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md
   dieses Auszugs zusätzlich zur vierteljährlichen Kontenprüfung
   ([Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md#6-die-liste-und-die-auflagenprüfung)).
 - **Einladungen und Rücksetzlinks brauchen Mail und eine öffentliche Adresse**
-  (`OPAA_PUBLIC_BASE_URL`, [E-Mail-Versand](e-mail.md)). Ohne beides zeigt OPAA den Link zur Übergabe
+  (`OPAA_PUBLIC_BASE_URL`, [E-Mail-Versand](../verwalten/e-mail.md)). Ohne beides zeigt OPAA den Link zur Übergabe
   an, und „Passwort vergessen" und Selbstregistrierung lassen sich nicht einschalten.
 - **Bei der Selbstregistrierung legt erst der Bestätigungslink Name und Passwort fest.** Wer eine
   fremde Adresse der erlaubten Domänen zuerst registriert, bestimmt damit weder Passwort noch Namen
   und erhält keinen Zugang; die Bestätigungsmail nennt keinen Namen und bittet, eine nicht selbst
   ausgelöste Registrierung zu ignorieren
   ([Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md#10-selbstregistrierung)). Eine
-  eigene Fassung dieser Mailvorlage passt sich nicht von selbst an ([E-Mail-Versand](e-mail.md#vorlagen)).
+  eigene Fassung dieser Mailvorlage passt sich nicht von selbst an ([E-Mail-Versand](../verwalten/e-mail.md#vorlagen)).
 - **Es gibt keinen zweiten Faktor.** Bis dahin gleichen aus: die Netzbeschränkung
   `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` (lokale Systemverwalter nur aus den genannten Netzen — bei der
   Anmeldung, beim Verlängern der Sitzung und bei jeder Anfrage; leer heißt ohne Beschränkung),
@@ -797,4 +797,4 @@ ihn dem Client als Standard-Scope zuordnet: Die Anmeldung fordert fest `openid p
 
 ## Weiterführende Kapitel
 
-- [Modelle](modelle.md) und [Branding](branding.md) — die Nachbarkapitel im Betriebsteil
+- [Modelle](modelle.md) und [Branding](../verwalten/branding.md) — die Nachbarkapitel im Betriebsteil

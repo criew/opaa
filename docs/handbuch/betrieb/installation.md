@@ -5,7 +5,7 @@
 Eine OPAA-Instanz mit leerer Datenbank ist erst nutzbar, wenn sie eingerichtet ist: erstes Konto
 der Systemverwaltung und Anmeldeverfahren, dazu nach Wahl Chat-Modell, Embedding-Modell,
 Rerank-Modell, das Transkriptionsmodell der [Spracheingabe](modelle.md#spracheingabe-einschalten), der
-Mailserver für den [E-Mail-Versand](e-mail.md) und das [Branding](branding.md). Bis dahin steht sie im
+Mailserver für den [E-Mail-Versand](../verwalten/e-mail.md) und das [Branding](../verwalten/branding.md). Bis dahin steht sie im
 **Installationsmodus** und
 bietet nur die Installation an. Eingerichtet wird im Browser mit dem
 [Einrichtungs-Assistenten](#einrichtungs-assistent-im-browser), über die Installations-API Schritt
@@ -95,8 +95,8 @@ Transkriptionsmodell.
 | Embedding-Modell (`EMBEDDING_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Eingabegrenze | Probeeinbettung; ihr Ergebnis legt die Zahl der Dimensionen fest | Modelle, Reiter „Einbettung": erstes Modell festlegen ([Erstes Modell festlegen](modelle.md#erstes-modell-festlegen)), später mit Neueinbettung wechseln ([Modell wechseln](modelle.md#modell-wechseln)) |
 | Rerank-Modell (`RERANK_MODEL`) | nein | Adresse ohne den Pfad `/rerank`, Modellname, Zugangsschlüssel | Adressprüfung der Modelle; dieselbe Probe wie „Verbindung testen“ in der Modellverwaltung, eine Rerank-Anfrage mit einem Prüftext | Modelle, Reiter „Reranking“ ([Rerank-Modell und Transkriptionsmodell in der Oberfläche](modelle.md#rerank-modell-und-transkriptionsmodell-in-der-oberfläche)) |
 | Transkriptionsmodell (`TRANSCRIPTION_MODEL`) | nein | Adresse, Modellname, Zugangsschlüssel, Sprache | Probe wie „Verbindung testen“ unter Modelle → Spracheingabe, ohne Aufnahme | Modelle, Reiter „Spracheingabe“ ([Spracheingabe einschalten](modelle.md#spracheingabe-einschalten)) |
-| E-Mail-Versand (`MAIL`) | nein | Server, Port, Verschlüsselung, Benutzername, Passwort, Absenderadresse, Absendername | Adressprüfung der Mailserver; Verbindung zum Server, mit Anmeldung, wenn ein Benutzername gesetzt ist, ohne eine Nachricht zu senden; auf Wunsch eine Testnachricht an eine angegebene Adresse | E-Mail ([E-Mail-Versand](e-mail.md)) |
-| Branding (`BRANDING`) | nein | Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe, Farbschema-Vorgabe; keine Bilder | Regeln der Branding-Verwaltung, ohne Verbindung | Branding ([Branding](branding.md)) |
+| E-Mail-Versand (`MAIL`) | nein | Server, Port, Verschlüsselung, Benutzername, Passwort, Absenderadresse, Absendername | Adressprüfung der Mailserver; Verbindung zum Server, mit Anmeldung, wenn ein Benutzername gesetzt ist, ohne eine Nachricht zu senden; auf Wunsch eine Testnachricht an eine angegebene Adresse | E-Mail ([E-Mail-Versand](../verwalten/e-mail.md)) |
+| Branding (`BRANDING`) | nein | Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe, Farbschema-Vorgabe; keine Bilder | Regeln der Branding-Verwaltung, ohne Verbindung | Branding ([Branding](../verwalten/branding.md)) |
 
 ```bash
 TOKEN=...   # aus dem Log oder OPAA_INSTALLATION_TOKEN
@@ -151,7 +151,7 @@ Adressprüfung statt. Eine gescheiterte Prüfung nennt nur, ob der Server nicht 
 Verschlüsselung scheiterte, die Anmeldung abgelehnt wurde oder er nicht wie ein Mailserver antwortet;
 die genaue Ursache steht im Log (WARN „Installation mail check failed“), ohne Passwort. Die Prüfung
 wartet höchstens so lange, wie `OPAA_MAIL_CONNECT_TIMEOUT`, `OPAA_MAIL_READ_TIMEOUT` und
-`OPAA_MAIL_WRITE_TIMEOUT` erlauben ([E-Mail-Versand](e-mail.md)); Prüfungen und Testnachrichten
+`OPAA_MAIL_WRITE_TIMEOUT` erlauben ([E-Mail-Versand](../verwalten/e-mail.md)); Prüfungen und Testnachrichten
 sind je Instanz begrenzt.
 
 **Der Abschluss** gelingt, wenn jeder Pflichtschritt und jeder gespeicherte optionale Schritt
@@ -175,7 +175,7 @@ Vektorablage; ein späterer Wechsel des Embedding-Modells läuft in der Modellve
 Neueinbettung ([Modelle](modelle.md#modell-wechseln)). Danach
 meldet sich die Person mit dem ersten Konto auf der regulären Anmeldeseite an, mit E-Mail-Adresse
 und Passwort; alle Instanzen übernehmen das ohne Neustart. Mit den lokalen Konten steht „Passwort
-vergessen“ an, sobald `OPAA_PUBLIC_BASE_URL` und der [E-Mail-Versand](e-mail.md) eingerichtet sind,
+vergessen“ an, sobald `OPAA_PUBLIC_BASE_URL` und der [E-Mail-Versand](../verwalten/e-mail.md) eingerichtet sind,
 auch für das erste Konto über dessen Postfach. Für dieses Konto deshalb ein Funktionspostfach der IT
 wählen; wer den Rücksetzweg nicht will, schaltet ihn in der
 [Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md) ab. Jeder Schritt, jede Prüfung,
@@ -250,13 +250,13 @@ zeigt er keinen Schritt und keinen gespeicherten Wert.
   gesendet.“ (ohne Benutzername „Die Verbindung zum Mailserver ist gelungen. …“) oder „… Die
   Testnachricht wurde dem Mailserver übergeben.“, ohne die Adresse. Der
   Abschluss nennt außerdem, ob er den Versand und das Reranking einschaltet.
-- **Branding.** Der Schritt hat die Felder, Hinweise und Regeln von „Administration → Branding“,
+- **Branding.** Der Schritt hat die Felder, Hinweise und Regeln von „Administration → Allgemein & Branding“,
   dazu dessen Kontrastwarnung der Akzentfarbe, die warnt, aber nicht sperrt, und die Vorschau von
   Produktname, Claim und Akzentfarbe im hellen und im dunklen Farbschema. Ein leeres Feld zeigt den
   OPAA-Standard, „Hinweis auf Standard zurücksetzen“ stellt den Standardtext des Hinweises zur
   KI-Nutzung wieder her, abschalten lässt er sich nicht. Logo, Logo der Anmeldeseite und
   Hintergrundbild nimmt der Assistent nicht an; sie lädt die Systemverwaltung nach der Installation
-  unter „Administration → Branding“ hoch, bis dahin gelten die Bilder von OPAA.
+  unter „Administration → Allgemein & Branding“ hoch, bis dahin gelten die Bilder von OPAA.
 - **Geheimnisse** zeigt der Assistent nie wieder an, nur als „Gesetzt“ mit „Ersetzen“; einen
   gespeicherten API-Schlüssel entfernt „Gespeicherten Schlüssel entfernen“, ein gespeichertes
   Passwort des Mailservers „Gespeichertes Passwort löschen“. Wer das erste Konto
@@ -385,10 +385,10 @@ Prüfungen, alles oder nichts.
 | `400` am Feld Server „Der Mailserver ist nicht zugelassen oder nicht erreichbar …“ | der Mailserver liegt in einem gesperrten Bereich, oder sein Name lässt sich nicht auflösen; welches von beidem, nennt die WARN-Zeile „Mail server … refused“ im Log | Schreibweise prüfen, dann `host:port` in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` freigeben, oder den Schritt überspringen und den Server später in der Verwaltung eintragen |
 | `400` am Feld Port „Im Assistenten sind die Ports 25, 465, 587 und 2525 zugelassen …“ | ein anderer Port ohne Eintrag mit genau diesem `host:port` | Port prüfen, oder `host:port` in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` eintragen |
 | `400` am Feld Server, Absenderadresse, Passwort oder Testnachricht | Leer- oder Steuerzeichen im Server; mehr als ein Postfach in einer Adresse (`,` `;` `<` `>` `"`); `***` als Passwort, das in der Verwaltung „unverändert“ bedeutet | Eingabe korrigieren |
-| `400` am Feld Produktname, Claim, Hinweis zur KI-Nutzung oder Primärfarbe | zu lang, Steuerzeichen (auch zur Schreibrichtung), Zeilenumbruch oder ein nicht darstellbares Zeichen, oder eine Farbe, die kein sechsstelliger Hex-Wert mit `#` ist; dieselben Regeln wie unter „Administration → Branding“ | Eingabe korrigieren, das Feld leeren für den OPAA-Standard oder den Schritt überspringen |
+| `400` am Feld Produktname, Claim, Hinweis zur KI-Nutzung oder Primärfarbe | zu lang, Steuerzeichen (auch zur Schreibrichtung), Zeilenumbruch oder ein nicht darstellbares Zeichen, oder eine Farbe, die kein sechsstelliger Hex-Wert mit `#` ist; dieselben Regeln wie unter „Administration → Allgemein & Branding“ | Eingabe korrigieren, das Feld leeren für den OPAA-Standard oder den Schritt überspringen |
 | `400` am Feld Passwort „Server, Port, Zugangsname oder Verschlüsselung ändern sich …“ | das gespeicherte Passwort des Mailservers folgt keinem neuen Ziel | Passwort neu eingeben oder löschen |
 | Prüfung des E-Mail-Versands „Der Mailserver ist nicht erreichbar …“ | falscher Server oder Port, Name nicht auflösbar, Verbindung abgelehnt oder Timeout beim Verbindungsaufbau | Server und Port prüfen, im Compose-Stapel den Servicenamen verwenden |
-| Prüfung „Die verschlüsselte Verbindung zum Mailserver ist fehlgeschlagen …“ | STARTTLS nicht angeboten, TLS-Handshake gescheitert oder das Zertifikat nennt den eingetragenen Server nicht | Verschlüsselung passend zum Port wählen ([Fehlerbilder des E-Mail-Versands](e-mail.md#fehlerbilder)) |
+| Prüfung „Die verschlüsselte Verbindung zum Mailserver ist fehlgeschlagen …“ | STARTTLS nicht angeboten, TLS-Handshake gescheitert oder das Zertifikat nennt den eingetragenen Server nicht | Verschlüsselung passend zum Port wählen ([Fehlerbilder des E-Mail-Versands](../verwalten/e-mail.md#fehlerbilder)) |
 | Prüfung „Der Mailserver hat die Anmeldung abgelehnt …“ | Benutzername oder Passwort falsch | Zugangsdaten neu eintragen |
 | Prüfung „Der Server antwortet nicht wie ein Mailserver …“ | unter Server und Port läuft kein SMTP-Dienst, oder er antwortet nicht in der Wartezeit | Port und Verschlüsselung prüfen; die Ursache nennt die WARN-Zeile „Installation mail check failed“ |
 | Prüfung „… Der Mailserver hat die Testnachricht nicht angenommen.“ | die Verbindung gelang, der Server lehnte die Nachricht ab, etwa den Absender oder den Empfänger | Absenderadresse und Empfänger prüfen; die Ursache nennt die WARN-Zeile „Installation test message refused“ |
@@ -450,4 +450,4 @@ keinem dieser Budgets; ohne Eintrag in `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST`
 ## Weiterführende Kapitel
 
 - [Konfiguration](konfiguration.md), [Authentifizierung](authentifizierung.md), [Modelle](modelle.md),
-  [E-Mail-Versand](e-mail.md), [Branding](branding.md)
+  [E-Mail-Versand](../verwalten/e-mail.md), [Branding](../verwalten/branding.md)

@@ -11,7 +11,8 @@ erwartet läuft. Es beschreibt den gebauten Ist-Stand, nicht Zielbilder.
 | **Jedes Konto** | fragt, prüft Belege, führt Chats, legt Spaces und eigene Bibliotheken an | [Arbeiten](arbeiten/README.md), zuerst [Erste Schritte](arbeiten/erste-schritte.md) |
 | **Wer pflegt** | teilt Bibliotheken, bindet Quellen an, pflegt Metadaten, Spaces und Gruppen | [Pflegen](pflegen/README.md) |
 | **Betrieb** | installiert, aktualisiert, sichert, überwacht; konfiguriert Modelle und Grenzwerte; geht Störungen nach | [Betriebsübersicht](betrieb/README.md), dann [Docker Compose](betrieb/docker-compose.md) oder [Kubernetes](betrieb/kubernetes.md), [Netz und Sicherheit](betrieb/netz-und-sicherheit.md), [Modelle](betrieb/modelle.md), [Authentifizierung](betrieb/authentifizierung.md); danach [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md) und [Suche](spaces/suche.md) |
-| **Verwaltung** | legt Bibliotheken an, schließt Quellen an, vergibt Rechte, pflegt Metadaten, prüft Antworten mit dem Diagnosewerkzeug | [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md), die Konnektor-Kapitel, [Metadaten](arbeitsmittel/wissensbibliotheken/metadaten.md), [Suche](spaces/suche.md) Abschnitt 8 |
+| **Systemverwaltung** | verwaltet Konten, Gruppen, Anlegerechte, Zugänge, Modelle und Fristen, geht fehlenden Treffern nach | [Verwalten](verwalten/README.md), zuerst [Die Einführung vorbereiten](verwalten/einfuehrung.md) |
+| **Revision** | erstellt Stichtagsauskünfte, liest Nachweis- und Verbindungsprotokoll | [Verwalten](verwalten/README.md#prüfen) |
 
 Wer das Handbuch liest, braucht das Repository nicht.
 
@@ -70,9 +71,16 @@ verweisen dürfen. Die Ordner folgen dem Baum.
 - **Pflegen**
   - [Pflegen](pflegen/README.md) — eine Seite je Aufgabe für alle mit einer Rolle an Bibliothek,
     Space oder Gruppe: teilen, aktuell halten, Metadaten, für KI-Werkzeuge freigeben, Space-Inhalte,
-    Mitglieder und Einstellungen, Gruppe verantworten
+    Mitglieder und Einstellungen, interne Gruppe pflegen
     - [Konnektoren](pflegen/konnektoren/README.md) — alle Quellen im Überblick, je Konnektor ein
       Kapitel
+    - [Zugriff nachvollziehen](pflegen/zugriff-nachvollziehen.md) — Herleitung, Mitglieder einer
+      Gruppe
+- **Verwalten und Prüfen**
+  - [Verwalten](verwalten/README.md) — eine Seite je Aufgabe der Systemverwaltung: Einführung,
+    Konten, Anmeldung, Systemrollen, Gruppen, Anlegerechte, Ausscheiden, Zugänge, Modelle, Suche und
+    Indexierung, externe KI-Werkzeuge, Datenschutz, Branding, E-Mail, Einstellungen übertragen;
+    für die Revision Stichtagsauskunft, Nachweis- und Verbindungsprotokoll
 - **Betrieb**
   - [Betriebsübersicht](betrieb/README.md) — Bausteine und ihr Zusammenspiel, Zeitzone, eine
     Organisation, Wegweiser zu den Kapiteln darunter
@@ -99,15 +107,11 @@ verweisen dürfen. Die Ordner folgen dem Baum.
     - [Datenbank](betrieb/datenbank.md) — PostgreSQL und pgvector, eigenes Schema, Volltextindex
     - [Originalablage](betrieb/originalablage.md) — wo die Originale der Uploads liegen, Sicherung,
       Umstellung
-    - [E-Mail-Versand](betrieb/e-mail.md) — Mailserver, Vorlagen, Fehlerbilder
   - [Konfiguration](betrieb/konfiguration.md) — alle Umgebungsvariablen, Grenzwerte im Überblick
   - [Modelle](betrieb/modelle.md) — Chat, Embedding, Reranking, Transkription (Spracheingabe),
     Modellverwaltung, Fehlerbilder
   - [Authentifizierung](betrieb/authentifizierung.md) — Betriebsmodi, Identitätsanbieter und
     Verzeichnisabgleich, Härtung des Keycloak, Erststart, Notfallprozedur, Testkonten
-  - [Branding](betrieb/branding.md) — Produktname, Farben und Bilder der Installation
-  - [Einstellungen übertragen](betrieb/einstellungen-uebertragen.md) — Einstellungen der Verwaltung
-    exportieren und importieren, Nachweis jeder Änderung im Revisionsprotokoll
   - [Nachvollziehbarkeit](betrieb/nachvollziehbarkeit.md) — was OPAA aus dem Code nachweist:
     Faktenblätter, wo sie liegen, das Update-Paket eines Release, wie man sie erzeugt, die Auskunft
     über die Datenerhebung einer Installation, was bei jeder Änderung geprüft wird
@@ -140,6 +144,8 @@ verweisen dürfen. Die Ordner folgen dem Baum.
     einsetzen
   - [Zugänge](arbeitsmittel/zugaenge.md) — technische Zugänge der Systemverwaltung zu Quellen
 - **Nachschlagen**
+  - [Nachschlagen](nachschlagen/README.md) — [Rechte-Matrix](nachschlagen/rechte-matrix.md): wer
+    welche Tätigkeit darf
   - [Glossar](glossar.md) — Begriffe, die in allen Kapiteln in genau einer Bedeutung verwendet
     werden
 
@@ -150,23 +156,23 @@ verweisen dürfen. Die Ordner folgen dem Baum.
 | Erste Installation | [Betriebsübersicht](betrieb/README.md) → [Docker Compose](betrieb/docker-compose.md): „Schnellstart" → [Installation](betrieb/installation.md) → [Authentifizierung](betrieb/authentifizierung.md): „Erststart und Systemverwalter-Konto" → [Netz und Sicherheit](betrieb/netz-und-sicherheit.md): „Härtung für erreichbare Deployments" → [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md) |
 | Erste Installation unter Kubernetes | [Kubernetes](betrieb/kubernetes.md): „Voraussetzungen", „Installation", „Netz und Sicherheit" → [Authentifizierung](betrieb/authentifizierung.md): „Erststart und Systemverwalter-Konto" |
 | OPAA unter Kubernetes vorführen | [Kubernetes](betrieb/kubernetes.md): „Erprobung mit dem Beispiel-Setup" |
-| Konten anlegen oder entziehen | [Benutzerverwaltung](konten-und-rechte/benutzerverwaltung.md) → [E-Mail-Versand](betrieb/e-mail.md), falls Einladungen per Mail gehen |
+| Konten anlegen oder entziehen | [Lokale Konten verwalten](verwalten/konten.md) → [E-Mail-Versand](verwalten/e-mail.md), falls Einladungen per Mail gehen |
 | Niemand kommt mehr herein | [Authentifizierung](betrieb/authentifizierung.md): „Notfallprozedur: wieder hereinkommen" → [Benutzerverwaltung](konten-und-rechte/benutzerverwaltung.md) |
 | Einen Space für ein Team einrichten | [Spaces](spaces/README.md) → [Katalog](arbeitsmittel/katalog.md) |
 | Rechte vergeben, Gruppen nutzen | [Berechtigungen](konten-und-rechte/berechtigungen.md) |
-| Eine Person scheidet aus, ein Referat wird aufgelöst | [Berechtigungen](konten-und-rechte/berechtigungen.md): „Lebenszyklus" → [Benutzerverwaltung](konten-und-rechte/benutzerverwaltung.md) |
-| „Wer durfte das am 3. März lesen?" | [Berechtigungen](konten-und-rechte/berechtigungen.md): „Nachweis: Rechtehistorie und Stichtagsauskunft" |
-| Eine neue Quelle anschließen | [Konnektoren](pflegen/konnektoren/README.md) → Kapitel des Konnektors → bei Bedarf [Zugänge](arbeitsmittel/zugaenge.md) |
+| Eine Person scheidet aus, ein Referat wird aufgelöst | [Ausscheiden und Nachfolge regeln](verwalten/ausscheiden.md) |
+| „Wer durfte das am 3. März lesen?" | [Eine Stichtagsauskunft erstellen](verwalten/stichtagsauskunft.md) |
+| Eine neue Quelle anschließen | [Konnektoren](pflegen/konnektoren/README.md) → Kapitel des Konnektors → bei Bedarf [Zugänge einrichten](verwalten/zugaenge.md) |
 | Dokumente fehlen oder sind veraltet | [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md): „Protokoll und Fehler" → Laufprotokoll der Bibliothek → Kapitel des Formats |
-| Eine Antwort ist schlecht | [Suche](spaces/suche.md): „Diagnose" und „Typische Befunde" → je nach Befund [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md) oder [Metadaten](arbeitsmittel/wissensbibliotheken/metadaten.md) |
+| Eine Antwort ist schlecht | [Suche und Indexierung überwachen](verwalten/suche-und-indexierung.md) → [Suche](spaces/suche.md): „Diagnose" und „Typische Befunde" → je nach Befund [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md) oder [Metadaten](arbeitsmittel/wissensbibliotheken/metadaten.md) |
 | Ein Update steht an | [Aktualisierung](betrieb/aktualisierung.md) → [Docker Compose](betrieb/docker-compose.md) bzw. [Kubernetes](betrieb/kubernetes.md): „Aktualisierung …" |
 | Mehrere Backend-Instanzen planen oder einrichten | [Mehrere Backend-Instanzen](betrieb/mehrere-instanzen.md) → [Docker Compose](betrieb/docker-compose.md) bzw. [Kubernetes](betrieb/kubernetes.md): „Mehrere Backend-Instanzen" → [Datenbank](betrieb/datenbank.md): „Verbindungen bei mehreren Instanzen" |
 | Formulierungshilfen für ein Referat bereitstellen | [Prompt-Bibliotheken](arbeitsmittel/prompt-bibliotheken.md) → [Spaces](spaces/README.md) |
-| Ein externes KI-Werkzeug anschließen | [Externe KI-Werkzeuge](spaces/fremdzugaenge.md) |
+| Ein externes KI-Werkzeug anschließen | [Externe KI-Werkzeuge zulassen](verwalten/externe-ki-werkzeuge.md) → [Ein Zugangstoken anlegen](arbeiten/zugangstoken.md) |
 | Postfächer anbinden wollen | [Berechtigungen](konten-und-rechte/berechtigungen.md): „Prüfliste vor einem Postfach-Konnektor" → [Private Bibliotheken](arbeitsmittel/wissensbibliotheken/private-bibliotheken.md) |
 | Originalablage wählen, sichern oder umstellen | [Originalablage](betrieb/originalablage.md) |
 | Sichern und wiederherstellen | [Sicherung und Wiederherstellung](betrieb/sicherung-und-wiederherstellung.md) → Kapitel des Betriebswegs → [Authentifizierung](betrieb/authentifizierung.md): „Nacharbeit nach einer Rücksicherung" |
-| Ein Modell anbinden oder wechseln | [Modelle](betrieb/modelle.md) |
+| Ein Modell anbinden oder wechseln | [Modelle verwalten](verwalten/modelle.md) → [Modelle](betrieb/modelle.md) für den Betrieb |
 | Einen Identitätsanbieter anbinden | [Authentifizierung](betrieb/authentifizierung.md): „OIDC (Keycloak)" → [Berechtigungen](konten-und-rechte/berechtigungen.md): „Woher Gruppen kommen" |
 | Eine Grenze greift, etwa `429` oder eine zu große Datei | [Konfiguration](betrieb/konfiguration.md): „Grenzwerte im Überblick" |
 | Datenschutz, Personalrat oder Informationssicherheit fragen, welche Daten anfallen und wohin sie gehen | [Nachvollziehbarkeit](betrieb/nachvollziehbarkeit.md) |

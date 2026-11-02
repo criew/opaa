@@ -13,4 +13,5 @@ Jede Seite nennt oben, wer es darf.
 | Bibliotheken und Prompts einem Space zuordnen | [Inhalte eines Space zuordnen](space-inhalte.md) |
 | Mitglieder, Rollen und Eigentümer eines Space | [Mitglieder eines Space verwalten](space-mitglieder.md) |
 | Anweisung, Aufräumen, Archivieren, Löschen | [Einen Space einstellen](space-einstellungen.md) |
-| Eine eigene Gruppe führen | [Eine Gruppe verantworten](gruppe-verantworten.md) |
+| Eine eigene Gruppe führen | [Eine interne Gruppe pflegen](gruppe-pflegen.md) |
+| Wer hat warum Zugriff, wer ist in einer Gruppe? | [Zugriff nachvollziehen](zugriff-nachvollziehen.md) |

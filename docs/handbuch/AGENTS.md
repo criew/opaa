@@ -12,7 +12,7 @@ Rolle an einem Objekt oder eine Fähigkeit. Daraus folgen fünf Ordner:
 | Ordner | Für wen | Inhalt |
 |---|---|---|
 | `arbeiten/` | jedes Konto | was ab Werk jedes Konto kann: fragen, Belege prüfen, Chats, Spaces, eigene Bibliotheken, Prompts |
-| `pflegen/` | wer eine Rolle an Bibliothek, Space oder Gruppe hat | teilen, Quellen anbinden (`pflegen/konnektoren/`), Metadaten, Space pflegen, Gruppen verantworten |
+| `pflegen/` | wer eine Rolle an Bibliothek, Space oder Gruppe hat | teilen, Quellen anbinden (`pflegen/konnektoren/`), Metadaten, Space pflegen, interne Gruppen pflegen |
 | `verwalten/` | Systemverwaltung; Prüfer im Abschnitt „Prüfen“ | Konten, Gruppen und Fähigkeiten, Modelle, Einstellungen, Protokoll |
 | `betreiben/` | IT-Betrieb | Installation, Compose, Kubernetes, Sicherung, Update, Überwachung |
 | `nachschlagen/` | alle | Rechte-Matrix, Konfigurationsreferenz, Formate (`nachschlagen/formate/`), Suche im Überblick, Glossar |
@@ -49,8 +49,8 @@ Ein Satz, was man danach hat.
   steht in der Rechte-Matrix (`nachschlagen/rechte-matrix.md`); beide ändern sich zusammen.
 - **Höchstens 80 Zeilen.** Was nicht passt, ist eine zweite Aufgabe und bekommt eine eigene Seite.
 - `.github/scripts/check_handbuch.sh` prüft Kasten und Länge in der CI. Ausgenommen sind die
-  `README.md` der Ordner; die Seiten unter `pflegen/konnektoren/` brauchen den Kasten, aber keine
-  feste Länge.
+  `README.md` der Ordner; die Seiten unter `pflegen/konnektoren/` und `verwalten/` brauchen den
+  Kasten, aber keine feste Länge.
 
 `verwalten/` folgt derselben Form ohne feste Länge, knapp gehalten. `betreiben/` und
 `nachschlagen/` sind Referenz und dürfen lang sein, ohne Inhalte doppelt zu führen: Was Compose und

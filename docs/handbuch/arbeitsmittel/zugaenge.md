@@ -120,6 +120,8 @@ flowchart LR
 
 ## 5. Einen Zugang einrichten
 
+Schritt für Schritt: [Zugänge einrichten](../verwalten/zugaenge.md).
+
 Zugänge pflegt die Systemverwaltung unter **Administration → Anbindungen → Zugänge**.
 
 1. **„Neuer Zugang"** fragt zuerst die Quellart ab; das Formular zeigt danach nur, was diese

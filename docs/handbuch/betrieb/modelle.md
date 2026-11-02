@@ -95,6 +95,8 @@ Netzebene ([Netz und Sicherheit](netz-und-sicherheit.md#zielprüfung-abrufe-des-
 
 ## Chat-Modelle in der Oberfläche anlegen
 
+Schritt für Schritt: [Modelle verwalten](../verwalten/modelle.md).
+
 Das Chat-Modell ist ein **verwaltetes** Modell: Unter **Administration → Modelle → Chat-Modelle** legt
 ein Systemverwalter Modelle an, bearbeitet, testet und aktiviert sie. Genau eines ist aktiv; eine
 Aktivierung oder Änderung wirkt ohne Neustart, das aktive Modell lässt sich nicht löschen.
@@ -726,7 +728,7 @@ Behörde, die OPAA unter eigenem Namen in Betrieb nimmt, kann selbst Anbieterin 
 Anfrage an einen Endpunkt und hat auf die Erzeugung keinen Zugriff.
 
 Was OPAA selbst dazu beiträgt, steht in den Kapiteln [Suche](../spaces/suche.md) und
-[Branding](branding.md): der Hinweis im Chat, das Kennzeichen an jeder Antwort, der Vermerk beim
+[Branding](../verwalten/branding.md): der Hinweis im Chat, das Kennzeichen an jeder Antwort, der Vermerk beim
 Kopierknopf und das Kennzeichnungsfeld in der Schnittstelle. Das ersetzt keine Markierung im Text.
 OPAA fügt keinem Text ein eigenes Wasserzeichen und kein signiertes Manifest hinzu.
 

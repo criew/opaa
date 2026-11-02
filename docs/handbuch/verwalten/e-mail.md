@@ -1,12 +1,15 @@
 # E-Mail-Versand (SMTP)
 
+> **Wer darf das:** Mailserver und Vorlagen die Systemverwaltung, unter „Administration → E-Mail“;
+> die öffentliche Adresse der Betrieb. Ab Werk ist der Versand aus.
+
 OPAA versendet E-Mails über einen SMTP-Server, den ein Systemverwalter in der Anwendung einträgt.
 Ohne diese Einstellung versendet OPAA nichts — und meldet das als Ergebnis, statt einen Vorgang
 scheitern zu lassen: Wer ein Konto anlegt, bekommt den Einladungslink dann zur Weitergabe angezeigt.
 Wozu Mails gebraucht werden, beschreibt die [Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md); der
-Mailserver ist einer der optionalen Bausteine der [Betriebsübersicht](README.md). Für Erprobung und
+Mailserver ist einer der optionalen Bausteine der [Betriebsübersicht](../betrieb/README.md). Für Erprobung und
 Entwicklung bringt der Compose-Stapel einen Mailserver zum Abfangen mit
-([Mailpit](docker-compose.md#mailpit-im-lokalen-stapel)).
+([Mailpit](../betrieb/docker-compose.md#mailpit-im-lokalen-stapel)).
 
 Zwei Dinge werden getrennt gehalten:
 
@@ -14,7 +17,7 @@ Zwei Dinge werden getrennt gehalten:
   und Absender stehen in der Oberfläche unter „Administration → E-Mail → SMTP-Zugang" und wirken
   ohne Neustart. Das Passwort liegt verschlüsselt in der Datenbank, erscheint in keiner Antwort und
   in keinem Protokoll. Wer den Mailserver schon bei der Einrichtung kennt, trägt ihn im optionalen
-  Schritt „E-Mail-Versand“ der [Installation](installation.md#schritte) ein; der Abschluss übernimmt
+  Schritt „E-Mail-Versand“ der [Installation](../betrieb/installation.md#schritte) ein; der Abschluss übernimmt
   ihn mit denselben Regeln und schaltet den Versand ein. Übersprungen bleibt der Versand aus.
 - **Die öffentliche Adresse ist eine Bereitstellungsentscheidung.** `OPAA_PUBLIC_BASE_URL` steht in
   der Umgebung, nicht in der Oberfläche. Jeder Link in einer E-Mail wird daraus gebildet; die
@@ -37,13 +40,13 @@ Zwei Dinge werden getrennt gehalten:
 | Feld | Bedeutung |
 |---|---|
 | Versand aktiv | Hauptschalter. Aus bedeutet: OPAA versendet nichts und meldet jeden Versand als übersprungen |
-| Server, Port | Adresse des Mailservers. In der Verwaltung findet keine Adressprüfung statt — ein interner Mailserver ist der Regelfall, und die Einstellung ist Systemverwaltern vorbehalten. Der Schritt E-Mail-Versand der Installation, den nur das Installations-Token schützt, prüft dagegen und lässt einen internen Mailserver nur über `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` zu ([Adressprüfung der Mailserver](installation.md#schritte)) |
+| Server, Port | Adresse des Mailservers. In der Verwaltung findet keine Adressprüfung statt — ein interner Mailserver ist der Regelfall, und die Einstellung ist Systemverwaltern vorbehalten. Der Schritt E-Mail-Versand der Installation, den nur das Installations-Token schützt, prüft dagegen und lässt einen internen Mailserver nur über `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST` zu ([Adressprüfung der Mailserver](../betrieb/installation.md#schritte)) |
 | Verschlüsselung | `STARTTLS` verlangt die Aufwertung der Verbindung und bricht ab, wenn der Server sie nicht anbietet; `SSL` verschlüsselt ab dem ersten Byte; `NONE` überträgt unverschlüsselt und ist nur für einen Mailserver im selben vertrauenswürdigen Netz vertretbar. Bei `STARTTLS` und `SSL` muss der eingetragene Server im Zertifikat des Mailservers stehen; eine IP-Adresse oder ein interner Alias, den das Zertifikat nicht nennt, lässt den Versand scheitern |
 | Benutzername, Passwort | Leerer Benutzername bedeutet: Verbindung ohne Anmeldung. Das Passwort wird verschlüsselt gespeichert und in Antworten als `***` angezeigt; wer `***` zurückschickt, lässt es unverändert, ein leeres Feld löscht es. Ändern sich Server, Port, Benutzername oder Verschlüsselung, geht das gespeicherte Passwort nicht mit: Es ist neu einzugeben oder zu löschen, sonst lehnt OPAA das Speichern ab |
 | Absenderadresse, Absendername | Stehen als Absender in jeder Nachricht |
 
 Das SMTP-Passwort schützt `OPAA_SETTINGS_ENCRYPTION_KEY`, derselbe Schlüssel wie die Zugangsschlüssel
-der Chat-Modelle ([Schlüssel und Geheimnisse](netz-und-sicherheit.md#schlüssel-und-geheimnisse)).
+der Chat-Modelle ([Schlüssel und Geheimnisse](../betrieb/netz-und-sicherheit.md#schlüssel-und-geheimnisse)).
 Ohne gültigen Schlüssel schlägt das Speichern eines Passworts fehl; der Start bricht nicht ab.
 
 ## Zustellung über die Warteschlange

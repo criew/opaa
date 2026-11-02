@@ -70,6 +70,8 @@ auch die Systemverwaltung sieht.
 
 ## 3. Der Schalter der Installation
 
+Schritt für Schritt: [Externe KI-Werkzeuge zulassen](../verwalten/externe-ki-werkzeuge.md).
+
 *Administration → Anbindungen → Externe KI-Werkzeuge.* Der Reiter gehört der Systemverwaltung und
 gilt für die ganze Installation. Oben steht der gespeicherte Zustand mit Datum und handelnder Person
 der letzten Änderung; ist der Kanal offen, steht daneben **Ausschalten** — der Notaus, mit Rückfrage
@@ -159,7 +161,7 @@ wer den Bestand verantwortet.
 
 - Ein täglicher Lauf verschickt die **Wiedervorlage per Mail** und lässt danach die fälligen
   Freigaben erlöschen. Der Vorlauf steht in Abschnitt 15; ohne eingerichteten Mailversand
-  ([Deployment](../betrieb/e-mail.md)) erlischt die Freigabe trotzdem, nur
+  ([Deployment](../verwalten/e-mail.md)) erlischt die Freigabe trotzdem, nur
   unangekündigt. **Empfänger ist genau eine Person: wer die Freigabe zuletzt gesetzt hat.** Ist
   dieses Konto entfallen, tritt die Eigentümerin der Bibliothek an ihre Stelle — gehört die
   Bibliothek jedoch einer Gruppe, unterbleibt die Wiedervorlage und wird nur im Anwendungslog
@@ -186,6 +188,8 @@ angefasst werden müssen. Die betroffene Auswahl bleibt im Token gespeichert und
 freigegeben wird; wer sie wieder nutzen will, erzeugt ein neues Token.
 
 ## 5. Zugangstokens aus Sicht der Person
+
+Schritt für Schritt: [Ein Zugangstoken anlegen](../arbeiten/zugangstoken.md).
 
 Anlegen, Liste und Widerruf aus Sicht der Person: [Ein Zugangstoken anlegen](../arbeiten/zugangstoken.md).
 Ein Token nennt eine feste Liste von Bibliotheken, die die Person lesen darf und die freigegeben

@@ -50,7 +50,7 @@ Summe der Antworten.
 2. **Weitere Ziele prüfen:** jedes Ziel aus dem Faktenblatt Datenflüsse, das die eigene Installation
    nutzt, etwa ein Identitätsanbieter in der Cloud
    ([Authentifizierung](../../handbuch/betrieb/authentifizierung.md)), ein externer E-Mail-Dienst
-   ([E-Mail-Versand](../../handbuch/betrieb/e-mail.md)), externe KI-Werkzeuge, die Inhalte an eigene
+   ([E-Mail-Versand](../../handbuch/verwalten/e-mail.md)), externe KI-Werkzeuge, die Inhalte an eigene
    Modellanbieter weitergeben ([Externe KI-Werkzeuge](../../handbuch/spaces/fremdzugaenge.md)), oder ein
    Ausgangsproxy eines Dritten ([Ausgangsproxy](../../handbuch/betrieb/netz-und-sicherheit.md#ausgangsproxy)).
 3. **Verträge schließen** mit dem eigenen Muster oder den Standardvertragsklauseln der EU-Kommission.

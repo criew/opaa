@@ -435,7 +435,7 @@ startet auch ohne die Dateien.
 
 ### 8. Nach der Ersteinrichtung
 
-- **In der Oberfläche einrichten:** Mailserver ([E-Mail-Versand](e-mail.md)), sofern nicht schon im
+- **In der Oberfläche einrichten:** Mailserver ([E-Mail-Versand](../verwalten/e-mail.md)), sofern nicht schon im
   Assistenten eingetragen,
   weitere Identitätsanbieter, weitere Chat-Modelle, Verzeichnisabgleich und der Zugriff externer KI-Werkzeuge.
 - **Client-Adresse richtigstellen:** `trustedProxyCidrs` und die Eingangs-Policy des Frontends setzen
@@ -559,7 +559,7 @@ examples/kubernetes-trial/trial.sh down
 - **Bucket vorab.** OPAA legt keinen Bucket an; im Beispiel-Setup tut das ein Job beim Aufbau.
 - **Mailserver in der Oberfläche.** Das Beispiel-Setup setzt `bootstrap.mail` nicht und trägt ihn
   über die Schnittstelle ein, wie es die Systemverwaltung in der Oberfläche täte
-  ([E-Mail-Versand](e-mail.md)).
+  ([E-Mail-Versand](../verwalten/e-mail.md)).
 
 ## Geheimnisse
 

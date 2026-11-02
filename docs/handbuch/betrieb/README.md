@@ -35,7 +35,7 @@ beim Identitätsanbieter.
 | Originalablage | Originale der Uploads, im Dateisystem (auch Netzlaufwerk) oder in einem S3-Objektspeicher wie MinIO | ja, sobald hochgeladen wird | [Originalablage](originalablage.md) |
 | Modelldienste | je Rolle ein OpenAI-kompatibler Endpunkt: Chat und Embedding (Pflicht), Reranking und Spracherkennung (optional) | Chat und Embedding | [Modelle](modelle.md) |
 | Identitätsanbieter | Anmeldung über OpenID Connect, etwa Keycloak; ohne ihn nur lokale Konten | nein | [Authentifizierung](authentifizierung.md) |
-| Mailserver | SMTP für Einladungen, Rücksetzlinks, Benachrichtigungen | nein | [E-Mail-Versand](e-mail.md) |
+| Mailserver | SMTP für Einladungen, Rücksetzlinks, Benachrichtigungen | nein | [E-Mail-Versand](../verwalten/e-mail.md) |
 | Quellen | angebunden über Konnektoren, etwa SMB-Freigaben, Nextcloud, Google Drive, SharePoint, Confluence, Feeds … | nein | [Konnektoren](../pflegen/konnektoren/README.md) |
 | Ausgangsproxy | der eine Weg des Backends ins Netz, wenn das Haus einen verlangt | nein | [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy) |
 | Externe KI-Werkzeuge | greifen über MCP oder API mit persönlichen Zugangstokens zu | nein, eigener Schalter | [Externe KI-Werkzeuge](../spaces/fremdzugaenge.md) |
@@ -84,7 +84,7 @@ Vorgabe ist eine Backend-Instanz; mehrere gleichrangige Instanzen gegen dieselbe
 | auf eine neue Version gehen | [Aktualisierung](aktualisierung.md) |
 | Logs, Metriken, Störungen | [Überwachung und Fehlerbehebung](ueberwachung-und-fehlerbehebung.md) |
 | mehrere Instanzen planen | [Mehrere Backend-Instanzen](mehrere-instanzen.md) |
-| Datenbank, Originalablage, Mailserver einrichten | [Datenbank](datenbank.md), [Originalablage](originalablage.md), [E-Mail-Versand](e-mail.md) |
+| Datenbank, Originalablage, Mailserver einrichten | [Datenbank](datenbank.md), [Originalablage](originalablage.md), [E-Mail-Versand](../verwalten/e-mail.md) |
 
 ## Weiterführende Kapitel
 

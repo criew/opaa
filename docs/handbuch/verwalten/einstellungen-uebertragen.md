@@ -2,6 +2,8 @@
 
 > **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
 
+> **Wer darf das:** die Systemverwaltung, unter „Administration → Einstellungen übertragen“.
+
 Die Einstellungen der Verwaltung liegen in der Datenbank, nicht in der Konfiguration. Wer eine
 Testinstallation mit der Produktion vergleichen oder eine neue Installation wie eine bestehende
 einrichten will, exportiert sie deshalb als Datei und importiert sie dort. Beispiel: Die
@@ -128,25 +130,3 @@ etwas ändert, schreibt zusätzlich einen eigenen Eintrag mit den geänderten Be
 | Prüfungen und Importe zusammen | 30 je Stunde, für die ganze Installation |
 
 Die Grenzen sind fest und nicht konfigurierbar.
-
-## Über die API
-
-```bash
-# Export, mit dem Zugangstoken einer Systemverwalterin
-curl -H "Authorization: Bearer $TOKEN" http://localhost:8081/api/v1/system/settings/export \
-  > opaa-einstellungen.json
-
-# Prüfen, ohne etwas zu ändern
-curl -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  --data @opaa-einstellungen.json http://localhost:8081/api/v1/system/settings/import/preview
-
-# Übernehmen
-curl -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  --data @opaa-einstellungen.json http://localhost:8081/api/v1/system/settings/import
-```
-
-## Weiterführende Kapitel
-
-- [Branding](branding.md)
-- [E-Mail-Versand](e-mail.md)
-- [Konfiguration](konfiguration.md)
