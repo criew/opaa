@@ -488,9 +488,7 @@ public class SpaceService {
         SuccessionObjectType.SPACE, space.getId(), "Die Aufnahme eines neuen Mitglieds");
     requireMembershipChangeable(space, caller);
     // An archived space accepts no new content, and a new member is new content in the sense the
-    // specification means - see docs/features/spaces-and-assets.md#einen-
-    // space-stilllegen-archivieren-statt-löschen ("keine neuen Chats, Nachrichten, Umbenennungen
-    // oder Mitglieder").
+    // archive rule means: no new chats, messages, renames or members.
     requireNotArchived(space);
     if (membershipOf(space, subject) != null) {
       throw new ConflictException(
@@ -820,9 +818,8 @@ public class SpaceService {
           "Nur der Eigentümer oder ein Systemadministrator kann einen Space löschen");
     }
 
-    // Chats are composition, not association - docs/features/spaces-and-assets.md#chats-
-    // sind-vor-fremder-löschung-geschützt says a chat "bleibt für seinen Autor und im Nachweis
-    // erhalten", so deleting the space they live in must not silently destroy them.
+    // Chats are composition, not association - a chat stays for its author and in the audit
+    // record, so deleting the space they live in must not silently destroy them.
     // fk_chats_space_organization is ON DELETE RESTRICT (composite
     // 047) and would reject this anyway, but a raw constraint violation surfaces as an opaque 500 -
     // this check turns it into an understandable 409 instead.
@@ -856,17 +853,17 @@ public class SpaceService {
   }
 
   /**
-   * Archives a space (docs/features/spaces-and-assets.md#einen-space-stilllegen-archivieren-statt-
-   * löschen) - the maintainer-decided way out of a space that {@code fk_chats_space_organization}
-   * (ON DELETE RESTRICT) makes permanently undeletable because it still contains a chat authored by
-   * someone other than the space owner, who cannot even see - let alone delete - that chat
-   * themselves. Archiving does not remove that guard or change {@link #deleteSpace}'s behaviour: a
-   * real delete remains possible once every chat is actually gone. What it does instead is stop the
-   * space from accepting new content ({@code ChatService#createChat}, {@code
-   * ChatService#appendTurn}, {@code ChatService#updateChat} and {@link #addMember} all reject with
-   * 409) and hide it from {@link #listSpaces} for members without a chat of their own in it - but
-   * never for the owner or a system admin, since there is no unarchive endpoint - while every chat,
-   * including ones the owner cannot see, stays fully readable for its author.
+   * Archives a space - the maintainer-decided way out of a space that {@code
+   * fk_chats_space_organization} (ON DELETE RESTRICT) makes permanently undeletable because it
+   * still contains a chat authored by someone other than the space owner, who cannot even see - let
+   * alone delete - that chat themselves. Archiving does not remove that guard or change {@link
+   * #deleteSpace}'s behaviour: a real delete remains possible once every chat is actually gone.
+   * What it does instead is stop the space from accepting new content ({@code
+   * ChatService#createChat}, {@code ChatService#appendTurn}, {@code ChatService#updateChat} and
+   * {@link #addMember} all reject with 409) and hide it from {@link #listSpaces} for members
+   * without a chat of their own in it - but never for the owner or a system admin, since there is
+   * no unarchive endpoint - while every chat, including ones the owner cannot see, stays fully
+   * readable for its author.
    *
    * <p>Same permission bar as {@link #deleteSpace}: owner or system admin, and the default space
    * cannot be archived either, for the same reason it cannot be deleted - it is not this user's to
@@ -1087,8 +1084,7 @@ public class SpaceService {
   /**
    * "kein neuer Inhalt" is not only "no new chats" (already enforced by {@code
    * ChatService#createChat}) - it also covers adding a new member, which is why this is called from
-   * {@link #addMember} too. See docs/features/spaces-and-assets.md#einen-space-
-   * stilllegen-archivieren-statt-löschen.
+   * {@link #addMember} too.
    */
   private void requireNotArchived(Space space) {
     if (space.isArchived()) {

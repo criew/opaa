@@ -227,8 +227,7 @@ class FilesystemFolderMappingIntegrationTest {
     // subdirectory,
     // but folder_id is still NULL (the state every earlier document is in). The next run must
     // not touch its content (same checksum, still INDEXED - a real re-index would be a regression
-    // here) but must backfill folder_id, per docs/features/knowledge-sources.md's "Ordner in
-    // FILESYSTEM-Bibliotheken".
+    // here) but must backfill folder_id (ADR-0020).
     Files.createDirectories(classTempDir.resolve("Archiv/2025"));
     Path file = classTempDir.resolve("Archiv/2025/protokoll.txt");
     Files.writeString(file, "Protokoll aus 2025.");

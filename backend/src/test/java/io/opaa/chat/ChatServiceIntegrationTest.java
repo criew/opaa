@@ -184,8 +184,7 @@ class ChatServiceIntegrationTest {
 
   @Test
   void creatingAChatInAnArchivedSpaceIsRejected() {
-    // An archived space accepts no new content - docs/features/spaces-and-assets.md#einen-
-    // space-stilllegen-archivieren-statt-löschen.
+    // An archived space accepts no new content.
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
     Space space = spaceRepository.findById(spaceId).orElseThrow();

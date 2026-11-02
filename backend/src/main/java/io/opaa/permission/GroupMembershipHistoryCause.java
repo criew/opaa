@@ -5,10 +5,9 @@ package io.opaa.permission;
  * database check constraint {@code chk_group_membership_history_cause} (baseline).
  *
  * <p>The directory-sync causes exist separately from the manual ones because a synchronisation run
- * has no acting user and is, per
- * docs/features/spaces-and-assets.md#verzeichnissynchronisation-als-rechteereignis, "ein
- * Massen-Rechteentzug ohne menschlichen Entscheidungspunkt" - a distinction worth keeping in the
- * history even though both pairs otherwise mean the same thing (a membership starting or ending).
+ * has no acting user and is a mass revocation without a human decision point - a distinction worth
+ * keeping in the history even though both pairs otherwise mean the same thing (a membership
+ * starting or ending).
  */
 public enum GroupMembershipHistoryCause {
   /** A user was added to a group through {@code GroupService#addMember}. */

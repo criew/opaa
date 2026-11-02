@@ -46,7 +46,7 @@ let latestRequest = 0
 let reorderedSinceLoad = false
 
 /**
- * The catalog as the server pages it (docs/features/spaces-and-assets.md#der-katalog). Search and
+ * The catalog as the server pages it. Search and
  * type filter are server parameters, so a changed filter always starts again at the first page.
  */
 export const useCatalogStore = create<CatalogState>((set, get) => {

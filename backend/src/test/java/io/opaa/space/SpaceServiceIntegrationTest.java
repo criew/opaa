@@ -322,8 +322,8 @@ class SpaceServiceIntegrationTest {
 
   @Test
   void spaceWithAChatCannotBeDeleted() {
-    // docs/features/spaces-and-assets.md#chats-sind-vor-fremder- löschung-geschützt - a chat
-    // must survive its space being deleted, so the space itself must not be deletable while it
+    // A chat must survive its space being deleted, so the space itself must not be deletable while
+    // it
     // still contains one.
     UUID owner = createUser(organizationA);
     Space space = new Space("Company", "Company docs", false, owner, organizationA);

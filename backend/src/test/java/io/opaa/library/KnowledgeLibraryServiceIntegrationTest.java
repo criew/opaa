@@ -2160,8 +2160,8 @@ class KnowledgeLibraryServiceIntegrationTest {
   @Test
   void spaceMembershipAloneGrantsNoAccessToAnyLibraryNotEvenAsSpaceAdmin() {
     // #202 acceptance criteria, explicit negative test: "Space membership
-    // alone grants no access to any library." docs/features/spaces-and-assets.md is explicit that
-    // space associations do not appear in the readableLibraries formula at all - this proves it
+    // alone grants no access to any library." Space associations do not appear in the
+    // readableLibraries formula at all - this proves it
     // end to end against the real SpaceService, not just by the absence of wiring between the two
     // packages. spaceAdmin becomes the space's ADMIN (the highest space role, able to manage
     // members and settings) purely by creating it - full space authority, zero library authority.

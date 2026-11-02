@@ -258,7 +258,7 @@ Der **Space-Kontext** im Profil ist gebaut (#1835: `spaceId` im Diagnose-Request
 4. Profil-Läufe mit Space-Kontext werden protokolliert, eine Zeile je Lauf.
 5. `SYSTEM_ADMIN`-Vorbehalt wie oben.
 
-Die Mindestgruppengröße ist ein anderes Maß als das der Nutzungstransparenz in `spaces-and-assets.md`:
+Die Mindestgruppengröße ist ein anderes Maß als das der Nutzungstransparenz:
 Für ein Rechteprofil zählt der Rechtekontext, nicht die Nutzung.
 
 ### 8. Rechtehistorie, Stichtagsauskunft und Aufbewahrung

@@ -2,13 +2,13 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-02 · ergänzt durch ADR-0033 (Entscheidung 10) und ADR-0039
+Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt durch ADR-0033 (Entscheidung 10) und ADR-0039
 
 ## Kontext
 
-Die Spezifikation verlangt, dass der Eigentümer eines Assets aktiv benachrichtigt wird, wenn es in
+Verlangt ist, dass der Eigentümer eines Assets aktiv benachrichtigt wird, wenn es in
 einem Space bereitgestellt wird, dessen Mitglieder nicht alle Lesezugriff darauf haben, ohne
-Zustimmungspflicht ([spaces-and-assets.md](../features/spaces-and-assets.md#assets-in-einen-space-assoziieren)).
+Zustimmungspflicht.
 Dafür gab es keine Infrastruktur: kein Modell, keine Ablage,
 keine Anzeige. Weitere Zusagen derselben Art standen bereits in der Spezifikation (Erweiterung des
 Leserkreises, neue Version eines Originals, Prüfaufforderungen), was ein gemeinsames In-App-Postfach

@@ -1,8 +1,7 @@
 import type { PromptVariable, PromptVariableType } from '@/shared/api/types'
 
 /**
- * The variable syntax of a prompt text, mirroring the backend's `PromptTemplate`
- * (docs/features/spaces-and-assets.md#prompt-bibliothek): a placeholder is `{{name}}` - a letter
+ * The variable syntax of a prompt text, mirroring the backend's `PromptTemplate`: a placeholder is `{{name}}` - a letter
  * first, then letters, digits and underscores; blanks inside the braces are tolerated and a system
  * variable is recognised in any case, both normalised by the server on saving. Any other `{{…}}`
  * is invalid rather than text. The client checks are a courtesy before saving; the server decides.

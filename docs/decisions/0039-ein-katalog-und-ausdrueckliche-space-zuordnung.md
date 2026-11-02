@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ändert [ADR-0037](0037-reichweite-als-freigabe-an-alle.md)
+Akzeptiert · zuletzt geändert 2026-11-02 · ändert [ADR-0037](0037-reichweite-als-freigabe-an-alle.md)
 (Entscheidung 4 und die `listed`-Teile von 5, 6, 7 und 9),
 [ADR-0036](0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) (Entscheidung 9, Begründung) und
 [ADR-0035](0035-fremdzugaenge-mcp-server-und-zugangstokens.md) (Entscheidung 5, Gleichheitszusage)
@@ -77,7 +77,7 @@ lesbar ist, serverseitig durchgesetzt (`SpaceAssetAssociationService`):
 - Der Strikt-Modus entfällt samt der nie gebauten Bestandteile (strikt-only, Aufrufverweigerung,
   Ablehnung einer Mitgliederaufnahme, „Voraussetzung verletzt"); gegen das Ableitungsleck bleiben
   Herkunftsverfolgung, Hinweis im Teilen-Dialog, rechtegeprüfte Sprungmarken und Benachrichtigung des
-  Eigentümers (`spaces-and-assets.md`).
+  Eigentümers.
 - Die Zuordnung gewährt keinen Zugriff: Zuordnen darf, wer `CURATOR` ist und das Asset lesen kann;
   jedes Mitglied sieht nur die für es lesbaren Zuordnungen. Sie wird nicht historisiert; was ein Chat
   durchsucht hat, wird nicht protokolliert.

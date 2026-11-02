@@ -43,12 +43,12 @@ Die Dokumentation ist nach fünf Achsen sortiert — jedes Dokument gehört zu g
 
 ## Die elf Themenbereiche
 
-Die Gliederung folgt [VISION.md](./VISION.md). Zu jedem Bereich gehört genau eine zuständige
-Spezifikation — oder zwei, wo der Bereich zwei Fragen beantwortet.
+Die Gliederung folgt [VISION.md](./VISION.md). Je Bereich stehen Handbuch oder ADR für das Gebaute und die
+Roadmap für die Ziele.
 
 ### A · Wissensschicht & Retrieval
 
-**[`features/data-indexing-rag.md`](./features/data-indexing-rag.md)** ·
+**[`handbuch/spaces/suche.md`](./handbuch/spaces/suche.md)** · **[Roadmap](./ROADMAP.md)** ·
 **[ADR-0065](./decisions/0065-hybride-suche-reranking-und-diagnose.md)**
 
 Belegvalidierung, Konfidenz und Quellenbindung · hybride Suche mit Reranking · erklärbares Chunking ·
@@ -57,7 +57,7 @@ Golden Dataset · Deep Research.
 
 ### B · Wissensquellen & Konnektoren
 
-**[`features/knowledge-sources.md`](./features/knowledge-sources.md)**
+**[`handbuch/arbeitsmittel/wissensbibliotheken/README.md`](./handbuch/arbeitsmittel/wissensbibliotheken/README.md)** · **[Roadmap](./ROADMAP.md)**
 
 Uploads und Konnektoren · selbst aktualisierende Wissensblöcke · Zeitpläne und ereignisbasierte
 Aktualisierung · Zielbibliothek als Rechteanker, Quellrechte nur einschränkend und nur wo ein
@@ -65,7 +65,7 @@ Quellsystem sie belastbar liefert · Zuordnung einer Quelle zu genau einer Wisse
 
 ### C · Spaces, Assets & Verteilung
 
-**[`features/spaces-and-assets.md`](./features/spaces-and-assets.md)**
+**[`handbuch/spaces/README.md`](./handbuch/spaces/README.md)** · **[Roadmap](./ROADMAP.md)**
 
 Spaces als Arbeitsräume, Assets als eigenständige Objekte · Zuordnung als harte Grenze gegen Enthaltensein ·
 Wissensbibliotheken als Rechteanker · Verteilungsstufen und Sichtbarkeit · ein Katalog nur mit Lesbarem ·
@@ -285,7 +285,7 @@ Den tatsächlichen Stand führt der [Gesamtstand](./fortschritt/gesamtstand.md).
 → [Gesamtstand](./fortschritt/gesamtstand.md) — und nur dort
 
 **Wie stelle ich sicher, dass niemand sieht, was er nicht sehen darf?**
-→ [`features/spaces-and-assets.md`](./features/spaces-and-assets.md) und
+→ [Berechtigungen](./handbuch/konten-und-rechte/berechtigungen.md) und
 [`features/access-control.md`](./features/access-control.md)
 
 **Läuft OPAA ohne Internetverbindung?**
@@ -307,8 +307,7 @@ Den tatsächlichen Stand führt der [Gesamtstand](./fortschritt/gesamtstand.md).
 
 **Was heißt das für die Personalvertretung?**
 → [CONCEPTS.md](./CONCEPTS.md), Abschnitt „Mitbestimmungsfähigkeit", und
-[`features/spaces-and-assets.md`](./features/spaces-and-assets.md)
+[Behördenunterlagen](./behoerden/README.md)
 
 **Kann ich eigene Dokumente hochladen?**
-→ Ja. Siehe [`features/knowledge-sources.md`](./features/knowledge-sources.md) und
-[`features/data-indexing-rag.md`](./features/data-indexing-rag.md)
+→ Ja. Siehe [Wissensbibliotheken](./handbuch/arbeitsmittel/wissensbibliotheken/README.md)

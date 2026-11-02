@@ -34,9 +34,7 @@ function canManageMembers(role: SpaceRole | undefined): boolean {
   return role === 'ADMIN'
 }
 
-// A CURATOR may associate and detach assets, one level below ADMIN's member management -
-// docs/features/spaces-and-assets.md#space-rollen ("CURATOR: zusätzlich Assets assoziieren und
-// lösen").
+// A CURATOR may associate and detach assets, one level below ADMIN's member management.
 function canManageAssets(role: SpaceRole | undefined, isOwner: boolean): boolean {
   return role === 'CURATOR' || role === 'ADMIN' || isOwner
 }

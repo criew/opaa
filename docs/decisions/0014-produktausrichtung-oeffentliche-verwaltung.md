@@ -67,8 +67,7 @@ zugesagt, nicht geprüft und nicht dokumentiert. Ein Wechsel bleibt über die po
 Rahmenwerks technisch möglich, ist aber kein Angebot. Grund: Wer im Behördenrechenzentrum betreibt,
 wählt die Datenbank in der Regel nicht selbst; jede zugesagte Variante kostet dauerhaft
 Integrationstest, Betriebsleitfaden und Unterstützung. Grenzen von pgvector bei sehr großen Beständen
-sind ein bekannter Punkt (ADR-0002) und ergäben eine neue Entscheidung. Siehe
-[data-indexing-rag.md](../features/data-indexing-rag.md#der-vektorspeicher-postgresql-mit-pgvector-und-sonst-keiner).
+sind ein bekannter Punkt (ADR-0002) und ergäben eine neue Entscheidung.
 
 ### 7. Kein Cloud-Betriebsmodell, kein betreuter Dienst
 
@@ -155,7 +154,7 @@ nicht entfernt und nicht als gültig behandelt. Ein Zwangs- und Verweigerungsapp
 (Verweigerung bei fehlendem Beleg, Schalter am Space, inhaltliche Deckungsprüfung) ist entschieden
 nicht gebaut: Das Modell sagt selbst, wenn es nichts gefunden hat, fehlende Belege sind im
 Belegfenster sichtbar, und der eigentliche Schaden, ein erfundener Beleg, ist durch die Validierung
-ausgeschlossen. Siehe [data-indexing-rag.md](../features/data-indexing-rag.md#belegvalidierung).
+ausgeschlossen. Siehe [Suche](../handbuch/spaces/suche.md).
 
 ### 15. Nachweis der Organisationsgrenze
 
@@ -164,7 +163,7 @@ Prüflauf gegen das tatsächliche Schema, der verlangt, dass jede Tabelle mit Or
 ihre Verweise auf organisationsgebundene Objekte zusammengesetzt führt. Der Prüflauf schließt die
 Fehlerklasse statt des Einzelfalls. Die beidseitige Absicherung auf Datenbankebene (#289) und die
 Durchsetzung im Verwaltungspfad (#271) waren Voraussetzung für eine zweite Organisation und sind
-gebaut. Siehe [spaces-and-assets.md](../features/spaces-and-assets.md#wie-die-grenze-gehalten-wird).
+gebaut.
 
 ## Konsequenzen
 

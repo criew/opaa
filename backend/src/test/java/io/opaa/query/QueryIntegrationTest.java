@@ -707,9 +707,8 @@ class QueryIntegrationTest {
   }
 
   /**
-   * #923's guard for the multi-sub-query path
-   * (docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit): the same
-   * 250-unauthorized-vs-23 authorized setup as {@link
+   * #923's guard for the multi-sub-query path: the same 250-unauthorized-vs-23 authorized setup as
+   * {@link
    * #queryOnlyReturnsChunksFromTheGrantedLibraryEvenWhenUnauthorizedChunksWouldOutscoreThem}, but
    * with query decomposition forced to two sub-queries (a two-line decomposition response) so every
    * one of {@code VectorSearchStage}'s per-sub-query {@code similaritySearch} calls - not only the

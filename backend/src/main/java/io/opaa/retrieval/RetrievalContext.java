@@ -11,8 +11,7 @@ import org.springframework.ai.chat.messages.Message;
  * The immutable input of one retrieval run: question, conversation history, search scope, metadata
  * filter and the parameters every stage reads. No stage can change any of it - that is why it is a
  * separate value from {@link RetrievalState}: the permission scope a run was started with is the
- * scope every one of its searches applies
- * (docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit).
+ * scope every one of its searches applies.
  *
  * <p>{@code searchScope} is taken as given; this type resolves no permissions of its own. {@code
  * conversationNote} holds the {@code RAHMEN} points of the chat's Gesprächsnotiz as plain texts -

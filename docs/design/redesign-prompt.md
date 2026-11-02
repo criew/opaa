@@ -71,7 +71,7 @@ einem Thema. Man wechselt zwischen ihnen, **benennt und benennt sie um**. Ein Ch
 zu seinem Space und wandert nicht.
 
 **Ein Chat entsteht privat und wird erst durch bewusstes Teilen für die Mitglieder des Space
-sichtbar** — so wie es `docs/features/spaces-and-assets.md` festlegt. Die Chatliste muss deshalb auf
+sichtbar** — so wie es das Space-Modell festlegt. Die Chatliste muss deshalb auf
 einen Blick zeigen, was nur man selbst sieht und was geteilt ist. Der persönliche Space bleibt der
 Ort für Vorhaben, die gar keinen Team-Bezug haben.
 
@@ -346,8 +346,8 @@ gestalterischen Entscheidung. **Es besteht keine Bindung daran.**
 
 ## 8 · Verhältnis zur Spezifikation: Sichtbarkeit von Chats
 
-Eine frühere Fassung dieses Zielbilds wich an einer Stelle bewusst von
-`docs/features/spaces-and-assets.md` ab: Sie zeigte jeden Chat allen Mitgliedern des Space und
+Eine frühere Fassung dieses Zielbilds wich an einer Stelle bewusst vom
+Space-Modell ab: Sie zeigte jeden Chat allen Mitgliedern des Space und
 verlegte den Denkraum für unfertige Überlegungen in den persönlichen Space. **Diese Abweichung ist
 zurückgenommen** (Richtung des Maintainers vom 18.09.2026): Es gilt die Spezifikation — ein Chat und
 ein Artefakt entstehen privat und werden erst durch Teilen space-sichtbar. Der Grund wiegt mit den

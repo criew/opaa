@@ -709,10 +709,9 @@ class SpaceAssetAssociationServiceIntegrationTest {
   }
 
   /**
-   * Nur die Mitglieder eines Space wissen von ihm (docs/features/spaces-and-assets.md,
-   * „Space-Sichtbarkeit"). Unterhalb von MANAGER wird eine Zuordnung in einen fremden Space deshalb
-   * nicht benannt, sondern nur gezählt - auch für einen EDITOR, der die Schwelle `canManage`
-   * ebenfalls nicht erreicht.
+   * Nur die Mitglieder eines Space wissen von ihm. Unterhalb von MANAGER wird eine Zuordnung in
+   * einen fremden Space deshalb nicht benannt, sondern nur gezählt - auch für einen EDITOR, der die
+   * Schwelle `canManage` ebenfalls nicht erreicht.
    */
   @Test
   void aSpaceIsOnlyCountedForNonMembersBelowManagerAndNamedFromManagerOn() {

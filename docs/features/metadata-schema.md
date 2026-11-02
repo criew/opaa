@@ -13,8 +13,8 @@
 > steht, ist nicht entschieden; das Diskussionspapier bleibt die Quelle für die dort geführte Abwägung.
 
 **Themenbereich A** der [Produktvision](../VISION.md). Diese Spezifikation ist der Umsetzungsschnitt
-eines Punkts, den [Wissensschicht und Retrieval](./data-indexing-rag.md) als Zielbild bereits benennt —
-[Extraktion von Dokumentmetadaten](./data-indexing-rag.md#extraktion-von-dokumentmetadaten--phase-2) —
+eines Punkts, den [Wissensschicht und Retrieval](../ROADMAP.md) als Zielbild bereits benennt —
+[Extraktion von Dokumentmetadaten](../ROADMAP.md) —
 und der bis #1066 im Code nicht existierte: Chunk-Metadaten waren rein technisch (`document_id`,
 `chunk_index`, `file_name`, `library_id`, `organization_id`, `location`), und es gibt in der Suche
 keinen Metadatenfilter.
@@ -1088,7 +1088,7 @@ trägt **jeder befüllte Wert** verbindlich:
 
 Daraus folgen drei Fähigkeiten, die ohne die Angabe nicht existieren: Ein abgeleiteter Wert ist in
 der Oberfläche **als abgeleitet gekennzeichnet** (die Zusage aus
-[Extraktion von Dokumentmetadaten](./data-indexing-rag.md#extraktion-von-dokumentmetadaten--phase-2));
+[Extraktion von Dokumentmetadaten](../ROADMAP.md));
 eine verbesserte Extraktion kann gezielt **nur die abgeleiteten Werte** neu erzeugen und lässt
 manuelle Korrekturen unberührt; und die Frage „wie gut ist unsere Extraktion eigentlich" wird
 beantwortbar, weil abgeleitete und korrigierte Werte unterscheidbar sind.
@@ -1236,7 +1236,7 @@ Zählern und abgewiesenen Dokumenten. Für Konnektorbibliotheken gilt dasselbe �
 Dokument, nicht an der Datei.
 
 Zwei Regeln, die aus dem Rechtemodell folgen und nicht verhandelbar sind (Grundsatz siehe
-[Durchsetzung zur Abfragezeit](./spaces-and-assets.md#durchsetzung-zur-abfragezeit)):
+[Durchsetzung zur Abfragezeit](../ROADMAP.md)):
 
 - **Extraktion und Schemavorschlag laufen nur über Dokumente, die die anlegende Person lesen darf.**
   Eine Stichprobe, die den ganzen Bestand sichtet, wäre ein Leseweg an der Berechtigung vorbei —
@@ -1271,7 +1271,7 @@ an die Person **und** ihren Rechtestand gebunden und MUSS bei jeder Rechteänder
 betrifft, verworfen werden. Ein bibliotheks- oder organisationsweiter Zwischenspeicher bleibt
 ausgeschlossen: Ein Zwischenspeicher, der Rechte nicht abbildet, ist an dieser Stelle dasselbe Leck
 wie bei der
-[Antwort-Zwischenspeicherung](./data-indexing-rag.md#zwischenspeicherung-wiederkehrender-fragen--offen-keine-phase).
+[Antwort-Zwischenspeicherung](../ROADMAP.md).
 
 ## Abgrenzung zu den Struktur-Metadaten der Aufnahmestrecke
 
@@ -1705,7 +1705,7 @@ Drei Regeln:
   Fassungsangabe, die aus einem Modellaufruf stammt, darf nicht wie eine gelesene aussehen.
 - **`location` bleibt die Fundstellenangabe.** Metadaten ergänzen den Beleg, sie ersetzen seine
   Fundstelle nicht (siehe [Ingestion-Pipelines, Teil 5](./ingestion-pipelines.md#teil-5--übergabepunkt-an-das-metadatenschema)).
-  Die [Belegvalidierung](./data-indexing-rag.md#belegvalidierung) gilt unverändert.
+  Die [Belegvalidierung](../ROADMAP.md) gilt unverändert.
 
 ---
 
@@ -1985,11 +1985,11 @@ werden, deren Verhalten bei sauberen Werten bereits gemessen ist.
   Abnahmegrundlage; Messvertrag und Fehlerkriterium gelten unverändert
   ([ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md),
   [ADR-0013](../decisions/0013-fehlerkriterium-retrieval-regression.md)).
-- **[Wissensschicht und Retrieval](./data-indexing-rag.md)** — Zielbild der
-  [Metadaten-Extraktion](./data-indexing-rag.md#extraktion-von-dokumentmetadaten--phase-2), die
-  [Filterachse](./data-indexing-rag.md#speicherung-und-filterachse) und der
-  [Belegvalidierung](./data-indexing-rag.md#belegvalidierung), an dem die Beleg-Anzeige hängt.
-- **[Spaces, Assets und Zugangskontrolle](./spaces-and-assets.md)** — der Rechtekontext, in dem
+- **[Wissensschicht und Retrieval](../ROADMAP.md)** — Zielbild der
+  [Metadaten-Extraktion](../ROADMAP.md), die
+  [Filterachse](../ROADMAP.md) und der
+  [Belegvalidierung](../ROADMAP.md), an dem die Beleg-Anzeige hängt.
+- **[Spaces, Assets und Zugangskontrolle](../ROADMAP.md)** — der Rechtekontext, in dem
   Extraktion, Schemavorschlag und **jedes aus dem Bestand abgeleitete Aggregat** laufen; das
   Bearbeitungsrecht am Dokument trägt die Metadatenkorrektur, das Verwaltungsrecht an der Bibliothek
   die Schemaänderung; der Metadatenfilter ist dem Rechtefilter nachgeordnet.
@@ -1997,8 +1997,8 @@ werden, deren Verhalten bei sauberen Werten bereits gemessen ist.
   die Audit-Ereignisse manueller Metadatensetzungen landen
   ([ADR-0015](../decisions/0015-eigentuemertrennung-protokollablage.md)); aus ihr sind manuelle Werte
   nach einer Wiederherstellung rekonstruierbar.
-- **[Wissensquellen und Konnektoren](./knowledge-sources.md)** — der
-  [Lebenszyklus der Dokumente](./knowledge-sources.md#lebenszyklus-der-dokumente); Gültigkeitszustände
+- **[Wissensquellen und Konnektoren](../ROADMAP.md)** — der
+  [Lebenszyklus der Dokumente](../ROADMAP.md); Gültigkeitszustände
   („aktiv", „archiviert", „abgelaufen") sind eine eigene Achse und werden **nicht** in ein Metadatenfeld
   dieses Schemas dupliziert.
 - **[Modelle und zentrale Steuerung](../ROADMAP.md)** — die modellgestützte Extraktion nutzt
@@ -2094,7 +2094,7 @@ Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung ents
   Bedingung.
 - **Wie verhalten sich Fassungen zu den Gültigkeitszuständen des Dokumentlebenszyklus?**
   „archiviert"/„abgelaufen" (siehe
-  [Ablauf und Archivierung](./data-indexing-rag.md#ablauf-und-archivierung-von-dokumenten--phase-2))
+  [Ablauf und Archivierung](../ROADMAP.md))
   und ein Metadatenfeld `Fassung` beschreiben überlappende Sachverhalte auf zwei Achsen. Dass der
   Zustand **nicht** in ein Schemafeld dupliziert wird, ist entschieden; wie beide in derselben Abfrage
   zusammenwirken — insbesondere ob eine Fassungsfrage abgelaufene Dokumente erreichen darf — ist es

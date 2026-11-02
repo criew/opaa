@@ -82,10 +82,9 @@ class FullTextChunkSearchIntegrationTest {
   }
 
   /**
-   * The readable-library filter is part of the query
-   * (docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit). The forbidden chunk is the
-   * <em>better</em> match for the question, so a path that filtered afterwards - or not at all -
-   * would return it here.
+   * The readable-library filter is part of the query. The forbidden chunk is the <em>better</em>
+   * match for the question, so a path that filtered afterwards - or not at all - would return it
+   * here.
    */
   @Test
   void aChunkOutsideTheReadableLibrariesIsNeverReturned() {

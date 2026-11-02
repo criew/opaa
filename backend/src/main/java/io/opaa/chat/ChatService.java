@@ -43,13 +43,12 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Chats as persistent, space-owned objects (docs/features/spaces-and-assets.md#chats). A chat is
- * visible only to its author, never to an admin ({@link ChatRepository#findByIdAndAuthorId}); the
- * author keeps reading, renaming, exporting and deleting it after leaving the space, but querying
- * needs membership ({@link #requireStillSpaceMember}). Public methods take and return domain types
- * only. {@link #appendTurn} runs without a transaction; only {@link
- * ChatMessageWriter#writeTurnOnce} opens one per attempt, so no caller's transaction holds a second
- * connection.
+ * Chats as persistent, space-owned objects. A chat is visible only to its author, never to an admin
+ * ({@link ChatRepository#findByIdAndAuthorId}); the author keeps reading, renaming, exporting and
+ * deleting it after leaving the space, but querying needs membership ({@link
+ * #requireStillSpaceMember}). Public methods take and return domain types only. {@link #appendTurn}
+ * runs without a transaction; only {@link ChatMessageWriter#writeTurnOnce} opens one per attempt,
+ * so no caller's transaction holds a second connection.
  */
 @Service
 public class ChatService {
@@ -130,8 +129,7 @@ public class ChatService {
   @Transactional
   public ChatConversation createChat(UUID spaceId, UUID authorId, ChatCreation creation) {
     Space space = requireMembership(spaceId, authorId);
-    // An archived space accepts no new content - see docs/features/spaces-and-assets.md#
-    // einen-space-stilllegen-archivieren-statt-löschen.
+    // An archived space accepts no new content.
     if (space.isArchived()) {
       throw new ConflictException("Der Space ist archiviert und lässt keine neuen Chats mehr zu");
     }

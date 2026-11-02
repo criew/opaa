@@ -7,7 +7,7 @@
 > Behörde keinen Sinn. Feinschliff an Sitzungsverwaltung und Rezertifizierung folgt in Phase 2.
 
 > **Abgrenzung:** Das Space-, Asset- und Rechtemodell ist in
-> [Spaces, Assets & Zugangskontrolle](./spaces-and-assets.md) beschrieben und entschieden und wird hier
+> [Spaces, Assets & Zugangskontrolle](../ROADMAP.md) beschrieben und entschieden und wird hier
 > **nicht wiederholt**. Die Sicherheits-, Nachweis- und Prüfbarkeitsthemen — revisionssicheres
 > Protokoll, Rechtehistorie, DSGVO-Vollständigkeit, C5-Fähigkeit, Mitbestimmungsfähigkeit — stehen in
 > [Sicherheit, Nachweis & Prüfbarkeit](./security-and-compliance.md). Dieses Dokument behandelt
@@ -21,7 +21,7 @@ fachbereichsbezogene Dokumentation, besonders geschützte Bestände und Unterlag
 zugänglich sind.
 
 Wer was sehen darf, regelt das Rechtemodell in
-[Spaces, Assets & Zugangskontrolle](./spaces-and-assets.md). Wer das System verwaltet, woher Identitäten
+[Spaces, Assets & Zugangskontrolle](../ROADMAP.md). Wer das System verwaltet, woher Identitäten
 kommen, wie sie entstehen und wie sie wieder verschwinden, regelt dieses Dokument. Der Lebenszyklus ist
 dabei der sicherheitskritische Teil: Ein Konto, das nach dem Ausscheiden weiterbesteht, ist ein
 Zugangsweg, den niemand mehr beobachtet.
@@ -33,7 +33,7 @@ Zugangsweg, den niemand mehr beobachtet.
 Die Zugangskontrolle in OPAA hat vier Schichten:
 
 1. **Asset-Rechte** — wer auf Wissensbibliotheken, Agenten und Prompt-Bibliotheken zugreift →
-   [Spaces, Assets & Zugangskontrolle](./spaces-and-assets.md)
+   [Spaces, Assets & Zugangskontrolle](../ROADMAP.md)
 2. **Space-Rollen** — wer in einem Arbeitsraum mitarbeitet, kuratiert und verwaltet → ebenda
 3. **Systemverwaltung und Revision** — wer das System als Ganzes verwaltet, wer das Protokoll
    auswerten darf und welche beiden Befugnisse neben den Rollen stehen → dieses Dokument
@@ -233,7 +233,7 @@ Entscheidung 5, die damit ADR-0018, Entscheidung 6 ablöst.
 | `CREATE_LIBRARY` | eine Bibliothek für Uploads anlegen | Alle Konten |
 | `CREATE_CONNECTOR_LIBRARY` | eine Bibliothek mit Konnektor anlegen (Dateisystem, Webverzeichnis, Feed, Confluence, S3) | Alle Konten |
 | `CREATE_INTERNAL_GROUP` | eine interne Gruppe anlegen | niemanden |
-| `CREATE_PROMPT_LIBRARY` | eine [Prompt-Bibliothek](./spaces-and-assets.md#prompt-bibliothek) anlegen (#1901) | Alle Konten |
+| `CREATE_PROMPT_LIBRARY` | eine [Prompt-Bibliothek](../ROADMAP.md) anlegen (#1901) | Alle Konten |
 
 > **`CREATE_INTERNAL_GROUP` wirkt seit #1814.** Wer sie hält, legt eine interne Gruppe an und wird
 > deren erster Verantwortlicher — ohne Systemrolle und ohne Ticket. Die Verwaltungsübersicht nennt
@@ -309,7 +309,7 @@ Systemverwaltung.
 
 Ein Administrator darf also jede Bibliothek verwalten, ruft in einem Chat aber nur aus denen ab, die ihm
 tatsächlich zugestanden wurden (die Formel steht unter
-[Rechte an einem Asset erhalten](./spaces-and-assets.md#rechte-an-einem-asset-erhalten)). Die Asymmetrie
+[Rechte an einem Asset erhalten](../ROADMAP.md)). Die Asymmetrie
 zeigt damit dort in die sichere Richtung, wo es auf die Antwort ankommt: Nichts, was ein Administrator in
 einer Antwort zu lesen bekommt, kann aus einer Bibliothek stammen, auf die er keinen Grant hat — und
 seit #1828 gilt derselbe Satz für den einzelnen Inhalt, Original wie gespeicherter Chunk: Der
@@ -342,7 +342,7 @@ Sie wirkt aber erst, **nachdem** sie gesetzt wurde:
   Konnektorbibliothek — keine
   Gruppengrößen-Schwelle für Grants (eine frühere Fassung dieses Abschnitts sah eine solche Schwelle
   vor; sie entfällt ersatzlos, mit derselben Begründung wie die gestrichene Größenschwelle bei Grants
-  im Allgemeinen, siehe [spaces-and-assets.md](./spaces-and-assets.md#freigabe-an-eine-gruppe-braucht-keine-zustimmung)),
+  im Allgemeinen, siehe [Roadmap](../ROADMAP.md)),
   ohne die Freigabe für externe KI-Werkzeuge ([ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md)
   hält fest, warum diese trotz einer früheren, anderslautenden Absicht außen vor bleibt), und ohne
   erteilte Rechte an **Personen und Gruppen** — ein bestehender Grant an eine benannte Person oder
@@ -1236,7 +1236,7 @@ Abgleichmodus mit dem Zeitpunkt des Laufs.
    Anbieter entstehen bei der ersten Anmeldung über diesen Anbieter — mit eigener Identität
    `(Issuer, Subject)`, ohne Verzeichnisgruppen und ohne Erstadministrator-Regel.
 2. **Erste Anmeldung.** Der Standard-Space (`isDefault`) entsteht dabei; eine Wissensbibliothek legt die Person
-   bei Bedarf selbst an (siehe [Wissensquellen](./knowledge-sources.md)). Ein Anlaufbestand an
+   bei Bedarf selbst an (siehe [Wissensquellen](../ROADMAP.md)). Ein Anlaufbestand an
    Assets ergibt sich aus den Gruppen der Person — sichtbar im Katalog, im Chat nutzbar erst nach
    der Zuordnung zu einem Space; auch der Standard-Space startet ohne Zuordnung
    ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)).
@@ -1298,7 +1298,7 @@ gar nicht mehr meldet**, wird beim nächsten Lauf gesperrt. Dabei gilt:
 
 Die übernommenen **Gruppen sind Rechtesubjekt**: Rechte an Assets werden an Nutzer oder an Gruppen
 vergeben, und die Verteilungsstufe „Fachbereich" ist ein Grant an die Abteilungs- oder Amts-Gruppe.
-Details im [Rechtemodell](./spaces-and-assets.md#gruppen-als-rechtesubjekt).
+Details im [Rechtemodell](../ROADMAP.md).
 
 Daraus folgt eine Festlegung, die leicht übersehen wird: Ein Synchronisationslauf ist **keine technische
 Wartungsroutine, sondern eine Rechteänderung im laufenden Betrieb**. Eine einzige geänderte
@@ -1954,7 +1954,7 @@ automatisch greift.
 - **Benutzer-Frontends:** Rechte an jeder Schnittstelle durchsetzen →
   [Roadmap](../ROADMAP.md)
 - **Daten-Indizierung:** Zuordnung von Quellen zu Wissensbibliotheken →
-  [data-indexing-rag.md](./data-indexing-rag.md)
+  [Roadmap](../ROADMAP.md)
 - **RAG-Engine:** Filter über die lesbaren Bibliotheken des Nutzers, als Teil der Vektorsuche
 - **Externe KI-Werkzeuge:** Zugangstokens und MCP-Server als Ausschnitt bestehender Leserechte, mit eigener
   Freigabe je Bibliothek → [ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md)
@@ -1999,8 +1999,8 @@ automatisch greift.
 
 ## Verwandte Dokumente
 
-- [Spaces, Assets & Zugangskontrolle](./spaces-and-assets.md) — das Rechtemodell
+- [Spaces, Assets & Zugangskontrolle](../ROADMAP.md) — das Rechtemodell
 - [Sicherheit, Nachweis & Prüfbarkeit](./security-and-compliance.md) — Protokoll, Rechtehistorie, DSGVO,
   C5-Fähigkeit, Mitbestimmungsfähigkeit
 - [Monitoring, Kosten & Governance](../ROADMAP.md) — Grenzen, Kosten und Auswertung
-- [Daten-Indizierung & RAG](./data-indexing-rag.md)
+- [Daten-Indizierung & RAG](../ROADMAP.md)

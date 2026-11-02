@@ -44,8 +44,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Manages {@link SpaceAssetAssociation}s - the pure-curation link between a {@link Space} and an
- * asset of any type (docs/features/spaces-and-assets.md#assets-in-einen-space- assoziieren). Every
- * mutating method reads {@link Space#getMemberships()} through {@link
+ * asset of any type. Every mutating method reads {@link Space#getMemberships()} through {@link
  * SpaceRepository#findByIdWithMemberships}, mirroring {@code SpaceService}'s own loading pattern.
  *
  * <p><b>The association changes no one's effective permissions</b> - this class never writes an
@@ -331,7 +330,7 @@ public class SpaceAssetAssociationService {
    * <p>Below MANAGER the answer carries the space and nothing else - neither the reader circle nor
    * the creator is resolved - and an association in a space the caller is no member of is not named
    * at all, only counted in {@link AssetSpaceLinks#hiddenCount}: only the members of a space know
-   * it exists (docs/features/spaces-and-assets.md, "Space-Sichtbarkeit").
+   * it exists.
    */
   public AssetSpaceLinks listForAsset(AssetType assetType, UUID assetId, CurrentUser caller) {
     Asset asset = assetAuthorization.load(assetType, assetId, caller.organizationId());

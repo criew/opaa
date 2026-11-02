@@ -57,9 +57,7 @@ import org.springframework.stereotype.Service;
  * the source rows built.
  *
  * <p>A query always reads with the calling user's own rights - no system-admin bypass, no second
- * rights context
- * (docs/features/spaces-and-assets.md#ein-agent-liest-immer-mit-den-rechten-des-nutzers) - and the
- * permission filter is part of every search query itself, the {@code
+ * rights context - and the permission filter is part of every search query itself, the {@code
  * VectorChunkSearch#similaritySearch} call and the full-text query alike, never a post-filter, so
  * an unauthorized chunk is never loaded or ranked. An empty search scope short-circuits to answer
  * generation with zero chunks, the same path a genuinely empty result takes, so the answer cannot

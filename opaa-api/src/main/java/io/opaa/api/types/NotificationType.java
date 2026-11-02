@@ -9,9 +9,8 @@ package io.opaa.api.types;
 public enum NotificationType {
   /**
    * An asset of any type was associated into a space whose members do not all already have read
-   * access to it (docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren -
-   * "Benachrichtigung statt Zustimmung"). Sent to the asset's owner - every member of the owning
-   * group, if group-owned - once per owner and request, naming every such asset of theirs.
+   * access to it (notification instead of consent). Sent to the asset's owner - every member of the
+   * owning group, if group-owned - once per owner and request, naming every such asset of theirs.
    */
   ASSET_ASSOCIATED_TO_MIXED_SPACE,
 

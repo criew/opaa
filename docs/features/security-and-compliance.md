@@ -18,7 +18,7 @@
 > Rückkehr in den Tab.
 
 > **Abgrenzung:** Das Rechtemodell steht in
-> [Spaces, Assets & Zugangskontrolle](./spaces-and-assets.md), Anmeldung, Kontenlebenszyklus und
+> [Spaces, Assets & Zugangskontrolle](../ROADMAP.md), Anmeldung, Kontenlebenszyklus und
 > Systemverwaltung in [Identität, Rechte & Mandanten](./access-control.md), die aggregierte Auswertung in
 > [Monitoring, Kosten & Governance](../ROADMAP.md). Dieses Dokument beschreibt, wie
 > belegt wird, dass all das gewirkt hat — und wo die Grenzen dieses Belegens liegen.
@@ -224,7 +224,7 @@ ersten Stufe nicht geschrieben.
 - Anlegen, Ändern und Löschen von Spaces, Wissensbibliotheken und Gruppen
 - Anlegen, Ändern und Löschen von **Prompt-Bibliotheken und Prompts** — beim Prompt nur die
   Namen der geänderten Felder, nie Titel oder Text; die **Verwendung** eines Prompts erzeugt keinen
-  Eintrag ([spaces-and-assets.md](./spaces-and-assets.md#protokoll))
+  Eintrag ([Roadmap](../ROADMAP.md))
 - Aufnahme, Rollenänderung und Entfernen von Space-Mitgliedern; die Aufnahme **externer** Personen in
   einen Space mit geteilten Inhalten zusätzlich mit der ausdrücklichen Bestätigung im Eintrag
 - Aufnahme und Entfernen von Gruppenmitgliedern; Auflösung einer Gruppe
@@ -1753,7 +1753,7 @@ der ersten Zeile Nutzung anhalten kann.
 
 Die ausführliche Begründung, die drei Datenquellen mit Personenbezug und die vollständige Liste der
 Stellschrauben stehen in
-[Spaces, Assets & Zugangskontrolle](./spaces-and-assets.md#mitbestimmung-und-personalvertretung). Hier
+[Spaces, Assets & Zugangskontrolle](../ROADMAP.md). Hier
 stehen die fünf Eigenschaften, die das Produkt dafür tragen muss.
 
 ### 1. Sichtbarkeit ist eine Handlung, keine Automatik
@@ -1826,7 +1826,7 @@ folgt aus dem tatsächlichen Zuschnitt der Einheiten und gehört in die Dienstve
 Auswertung **je Asset** gilt eine strengere Fassung, weil ein Asset oft nur eine Handvoll Nutzende hat:
 Voreinstellung „aus", Schalter an der **Erhebung** statt an der Anzeige, und die Schwelle bemisst sich an
 der Zahl der nutzenden Personen — unterhalb davon wird nicht erhoben (siehe
-[spaces-and-assets.md](./spaces-and-assets.md#nutzungstransparenz)).
+[Roadmap](../ROADMAP.md)).
 
 ### 4. Aufbewahrung mit Ober- und Untergrenze
 
@@ -1867,11 +1867,11 @@ Fristen, Schwellen und Zuständigkeiten — nicht die Frage, ob eine Überwachun
 - **Identität und Kontenlebenszyklus:** jede Rechte- und Kontenänderung erzeugt einen Protokolleintrag →
   [access-control.md](./access-control.md)
 - **Rechtemodell und Mitbestimmung:** die Datenquellen mit Personenbezug und die vollständige Liste der
-  Stellschrauben → [spaces-and-assets.md](./spaces-and-assets.md)
+  Stellschrauben → [Roadmap](../ROADMAP.md)
 - **Monitoring und Governance:** die Grenze dieses Dokuments ist dort die verbindliche Vorgabe →
   [Roadmap](../ROADMAP.md)
 - **RAG-Engine:** der angewandte Suchbereich je Abfrage ist die Grundlage der Regressionsprüfung →
-  [data-indexing-rag.md](./data-indexing-rag.md)
+  [Roadmap](../ROADMAP.md)
 - **Modelle:** die Freigabe externer Modelle ist eine sicherheitsrelevante Einstellung →
   [Roadmap](../ROADMAP.md)
 - **Betrieb:** Verschlüsselung ruhender Daten, Schlüsselverwaltung, Sicherung und Wiederanlauf liegen
@@ -1962,6 +1962,6 @@ eine Stufe 2 wäre eine neue mitbestimmungspflichtige Änderung.
 ## Verwandte Dokumente
 
 - [Identität, Rechte & Mandanten](./access-control.md) — Anmeldung, Kontenlebenszyklus, Systemverwaltung
-- [Spaces, Assets & Zugangskontrolle](./spaces-and-assets.md) — Rechtemodell und Mitbestimmung im Detail
+- [Spaces, Assets & Zugangskontrolle](../ROADMAP.md) — Rechtemodell und Mitbestimmung im Detail
 - [Monitoring, Kosten & Governance](../ROADMAP.md) — was ausgewertet werden darf
 - [Produktvision](../VISION.md) — Einordnung in die Themenbereiche und Phasen

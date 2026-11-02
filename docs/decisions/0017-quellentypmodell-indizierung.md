@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-09-26 · Entscheidung 1 ersetzt durch ADR-0038 Entscheidung 1, Entscheidung 4 ersetzt durch ADR-0018 Entscheidung 2 · ergänzt durch ADR-0023 (Entscheidung 4) und ADR-0027 (Entscheidung 3)
+Akzeptiert · zuletzt geändert 2026-11-02 · Entscheidung 1 ersetzt durch ADR-0038 Entscheidung 1, Entscheidung 4 ersetzt durch ADR-0018 Entscheidung 2 · ergänzt durch ADR-0023 (Entscheidung 4) und ADR-0027 (Entscheidung 3)
 
 ## Kontext
 
@@ -58,11 +58,10 @@ Dokument in einem vollständig auflistenden Lauf, wird es aus dem Index genommen
 Lauf ist Abwesenheit keine Aussage, Löschung braucht dort einen positiven Befund der Quelle, den der
 jeweilige Konnektor-ADR benennt (ADR-0023 Entscheidung 4, ADR-0027 Entscheidung 3), oder einen
 ausdrücklichen Ausschluss durch eine Person
-([Lebenszyklus der Dokumente](../features/knowledge-sources.md#lebenszyklus-der-dokumente)). Hochgeladene
+(Ausschluss nach [Roadmap](../ROADMAP.md)). Hochgeladene
 Dokumente entstehen außerhalb jedes Laufs und werden nie durch Abwesenheit gelöscht. Der Vergleich
 läuft je Quelle, nie bibliotheksweit; da eine Bibliothek genau eine Quelle hat (ADR-0018), fällt
-beides zusammen. Die Zielsemantik steht in
-[knowledge-sources.md](../features/knowledge-sources.md#selbst-aktualisierende-wissensblöcke).
+beides zusammen.
 
 ## Konsequenzen
 

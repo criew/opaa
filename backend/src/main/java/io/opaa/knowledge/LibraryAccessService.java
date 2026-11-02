@@ -69,10 +69,10 @@ public class LibraryAccessService {
   }
 
   /**
-   * Every library id readable by the user in {@code organizationId} - exactly the formula of
-   * docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten, with no system-admin bypass:
-   * the search always reads with the calling user's own rights. An admin may administer every
-   * library but retrieves only from those the formula grants them.
+   * Every library id readable by the user in {@code organizationId} - exactly the grant formula of
+   * {@code AssetAccessService}, with no system-admin bypass: the search always reads with the
+   * calling user's own rights. An admin may administer every library but retrieves only from those
+   * the formula grants them.
    */
   public Set<UUID> readableLibraryIds(UUID userId, UUID organizationId) {
     return assetAccessService.readableAssetIds(KnowledgeLibrary.ASSET_TYPE, userId, organizationId);

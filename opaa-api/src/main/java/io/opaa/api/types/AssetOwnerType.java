@@ -6,9 +6,8 @@ package io.opaa.api.types;
  * <ul>
  *   <li>{@link #USER} - owned by a single person; {@code ownerId} references {@code users.id}.
  *   <li>{@link #GROUP} - owned by a group (see {@code io.opaa.group.Group}), the recommended
- *       default for centrally maintained libraries so responsibility survives staff turnover (see
- *       docs/features/spaces-and-assets.md#eigentümerschaft-und-verwaisung); {@code ownerId}
- *       references {@code groups.id}.
+ *       default for centrally maintained libraries so responsibility survives staff turnover;
+ *       {@code ownerId} references {@code groups.id}.
  * </ul>
  *
  * <p>There is no third kind: every library has a real owner (migration {@code

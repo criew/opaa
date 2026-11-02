@@ -116,8 +116,7 @@ Vision.
 
 Zulässig ist die Nennung als **nachprüfbarer Sachbeleg**. Stellt ein Dokument eine technische Behauptung
 über ein fremdes System auf, die den eigenen Entwurf trägt, gehört der Name zum Beleg: Anonymisiert wäre
-die Aussage nicht mehr nachprüfbar und damit wertlos. So belegt die Vorbild-Analyse in
-[features/spaces-and-assets.md](../features/spaces-and-assets.md#wie-andere-systeme-container-und-geteiltes-objekt-zueinander-stellen),
+die Aussage nicht mehr nachprüfbar und damit wertlos. So belegte die Vorbild-Analyse zum Space-Modell,
 dass die gewählte Rechtekonstruktion in keinem der untersuchten Systeme ein Vorbild hat — genau das
 verhindert, dass ein entschiedener Punkt in einem halben Jahr als neue Idee wiederkommt. Ebenfalls
 zulässig sind Namen als **Arbeitsanweisung an eine interne Rolle**, etwa als Startpunkt einer Recherche
@@ -161,10 +160,10 @@ Behauptungen brauchen einen Beleg im Repository. Diese Zuordnung hält das Mater
 
 | Aussage | Belegt durch |
 |---|---|
-| Antworten sind an Fundstellen gebunden | `docs/features/data-indexing-rag.md` |
-| Rechte werden zur Abfragezeit geprüft | `docs/features/spaces-and-assets.md` |
-| Assets sind teilbar und versionierbar | `docs/features/spaces-and-assets.md` |
-| Kein personenbezogener Auswertungspfad | `docs/features/spaces-and-assets.md`, Issue #239 |
+| Antworten sind an Fundstellen gebunden | `docs/handbuch/spaces/suche.md` |
+| Rechte werden zur Abfragezeit geprüft | `docs/handbuch/konten-und-rechte/berechtigungen.md` |
+| Assets sind teilbar | `docs/decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md` |
+| Kein personenbezogener Auswertungspfad | `docs/behoerden/05-mitbestimmung/`, Issue #239 |
 | Betrieb im eigenen Haus | `docs/handbuch/betrieb/README.md` |
 | Quelloffen unter AGPL-3.0 | `LICENSE` |
 | Suchqualität ist messbar | `docs/decisions/0011-search-quality-evaluation-harness.md`, `eval/README.md` |
