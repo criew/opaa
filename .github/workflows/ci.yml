@@ -193,6 +193,12 @@ jobs:
             adrs:
               - 'docs/decisions/**'
               - '.github/scripts/check_adr_style.sh'
+            # Step-level filter of the handbook site build below, not a job output.
+            handbook:
+              - 'docs/handbuch/**'
+              - 'mkdocs.yml'
+              - '.github/requirements-docs.txt'
+              - '.github/workflows/ci.yml'
             # Step-level filter of the diagram check below, not a job output.
             diagrams:
               - 'docs/behoerden/**'
@@ -310,6 +316,20 @@ jobs:
       # Unfiltered for the same reason as the check above.
       - name: Verweise von Vorlagen und Handbuch im Update-Paket prüfen
         run: python .github/scripts/update_package.py links
+
+      # Page rules of docs/handbuch/AGENTS.md: no reference to decision records, and every task page
+      # under arbeiten/ and pflegen/ has its "Wer darf das" box and fits one screen.
+      - name: Seitenregeln des Handbuchs prüfen
+        run: .github/scripts/check_handbuch.sh
+
+      # The handbook site as published (mkdocs.yml, strict): a dead link or anchor fails here. Its
+      # own virtual environment keeps the pinned site packages apart from the update package's.
+      - name: Handbuch-Website bauen
+        if: github.event_name != 'pull_request' || steps.filter.outputs.handbook == 'true'
+        run: |
+          python -m venv "$RUNNER_TEMP/mkdocs"
+          "$RUNNER_TEMP/mkdocs/bin/pip" install --require-hashes --no-deps --only-binary=:all: --no-binary=pyyaml -r .github/requirements-docs.txt
+          NO_MKDOCS_2_WARNING=1 "$RUNNER_TEMP/mkdocs/bin/mkdocs" build --strict
 
       # Every Mermaid diagram of docs/behoerden and docs/handbuch renders to SVG as in the release
       # run (Mermaid from .github/tools/mermaid, the runner's Google Chrome); a diagram that does

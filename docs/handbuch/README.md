@@ -11,8 +11,7 @@ läuft. Es beschreibt den gebauten Ist-Stand, nicht Zielbilder.
 | **Betrieb** | installiert, aktualisiert, sichert, überwacht; konfiguriert Modelle und Grenzwerte; geht Störungen nach | [Betriebsübersicht](betrieb/README.md), dann [Docker Compose](betrieb/docker-compose.md) oder [Kubernetes](betrieb/kubernetes.md), [Netz und Sicherheit](betrieb/netz-und-sicherheit.md), [Modelle](betrieb/modelle.md), [Authentifizierung](betrieb/authentifizierung.md); danach [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md) und [Suche](spaces/suche.md) |
 | **Verwaltung** | legt Bibliotheken an, schließt Quellen an, vergibt Rechte, pflegt Metadaten, prüft Antworten mit dem Diagnosewerkzeug | [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md), die Konnektor-Kapitel, [Metadaten](arbeitsmittel/wissensbibliotheken/metadaten.md), [Suche](spaces/suche.md) Abschnitt 8 |
 
-Nicht Zielgruppe sind Entwickler (Entscheidungen liegen im Repository unter `docs/decisions/`,
-Spezifikationen in den Epics auf GitHub) und Endnutzende (die Oberfläche erklärt sich an Ort und
+Nicht Zielgruppe sind Entwickler und Endnutzende (die Oberfläche erklärt sich an Ort und
 Stelle). Wer das Handbuch liest, braucht das Repository nicht.
 
 ## 2. Was OPAA ist
@@ -163,7 +162,3 @@ verweisen dürfen. Die Ordner folgen dem Baum.
 | Datenschutz, Personalrat oder Informationssicherheit fragen, welche Daten anfallen und wohin sie gehen | [Nachvollziehbarkeit](betrieb/nachvollziehbarkeit.md) |
 | Beschaffung oder Informationssicherheit fragen nach Sicherheitsupdates, SBOM, Provenance oder Lizenz | [Releases und Nachweise](betrieb/releases-und-nachweise.md) |
 | Die Installation zeigt eine Störung | [Überwachung und Fehlerbehebung](betrieb/ueberwachung-und-fehlerbehebung.md): „Fehlerbehebung", „Logs und Metriken" |
-
-## 5. Für Schreibende
-
-Wie Kapitel aufgebaut, verknüpft und geschrieben werden, steht in [AGENTS.md](AGENTS.md).

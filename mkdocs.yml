@@ -1,0 +1,54 @@
+# Site build of the product handbook; docs/handbuch/ is the only source. CI builds it strictly
+# to catch dead links and anchors.
+site_name: OPAA-Handbuch
+docs_dir: docs/handbuch
+site_dir: build/handbuch-site
+use_directory_urls: false
+strict: true
+exclude_docs: |
+  AGENTS.md
+  CLAUDE.md
+theme:
+  name: material
+  language: de
+  features:
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - search.highlight
+    - content.code.copy
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-4
+        name: Dunkles Farbschema
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-7
+        name: Helles Farbschema
+plugins:
+  - search:
+      lang: de
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+validation:
+  links:
+    not_found: warn
+    absolute_links: warn
+    unrecognized_links: warn
+    anchors: warn
