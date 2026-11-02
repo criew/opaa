@@ -157,7 +157,7 @@ entscheidet der Betrieb und nicht die Anwendung. Seit
 Weg, über den sehr wohl die Anwendung entscheidet: `opaa.upload.store=s3` legt dieselben Originale
 als Objekte in einem S3-kompatiblen Speicher ab, weil diese Ablage — anders als jedes Quellenverzeichnis —
 der Anwendung gehört (siehe
-[Deployment und Infrastruktur](./deployment-infrastructure.md#speicher-backends)). Getrennt vom
+[Deployment und Infrastruktur](../ROADMAP.md)). Getrennt vom
 Indizierungsverzeichnis deshalb, weil `DELETE .../documents/{documentId}` nur Dateien löscht, die es
 selbst dorthin geschrieben hat — ein hochgeladenes Dokument darf verschwinden, ein vom Betrieb
 gepflegter Bestand nicht.
@@ -384,7 +384,7 @@ Konfiguration lebt, in [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bi
 
 Eine Bibliothek vom Typ `FILESYSTEM` liest ein Verzeichnis, das der Betrieb dem OPAA-Server zugänglich
 gemacht hat — ein lokaler Pfad oder ein eingehängtes Netzlaufwerk, siehe [Deployment und
-Infrastruktur](./deployment-infrastructure.md#speicher-backends). Der Pfad wird bei der Anlage
+Infrastruktur](../ROADMAP.md). Der Pfad wird bei der Anlage
 angegeben und ist Teil der Bibliothekskonfiguration; ein bibliotheksweiter Fallback auf einen einzigen,
 global konfigurierten Pfad (wie er vor ADR-0018 bestand) entfällt.
 
@@ -827,7 +827,7 @@ keinen Automatismus, der von der einen in die andere führt.
 
 | Stufe | Was möglich ist | Freigabe |
 |---|---|---|
-| **Lesend** | Bestände abholen, indizieren, aktuell halten | Anlage durch jede Person mit dem Anlegerecht `CREATE_CONNECTOR_LIBRARY` bzw. der Freigabe je Konnektortyp oder Zugang ([ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), [connector-connections.md](./connector-connections.md)); private Bibliotheken legt die Person über ihr verbundenes Konto selbst an |
+| **Lesend** | Bestände abholen, indizieren, aktuell halten | Anlage durch jede Person mit dem Anlegerecht `CREATE_CONNECTOR_LIBRARY` bzw. der Freigabe je Konnektortyp oder Zugang ([ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), [Roadmap](../ROADMAP.md)); private Bibliotheken legt die Person über ihr verbundenes Konto selbst an |
 | **Schreibend** | im Quellsystem etwas anlegen oder ändern — Vorgang eröffnen, Vermerk ablegen, Antwortentwurf hinterlegen | ausdrückliche Freischaltung je Integration **und** je Aktionsart, zusätzlich menschliche Freigabe im Einzelfall |
 
 **Lesen ist folgenlos, Schreiben nicht.** Ein Lesefehler erzeugt einen schlechten Treffer; ein
@@ -1196,9 +1196,9 @@ Bearbeitenden vorbehalten (mindestens MANAGER-Rolle an der Bibliothek), nicht je
   Rechteanker, Obergrenze der Freigabe, Bereitstellung desselben Bestands an mehreren Stellen.
 - **[Zugangskontrolle](./access-control.md)** — Zugangsdaten und Dienstkonten, Protokollpflicht,
   Löschverlangen, Trennung von Konnektor- und Upload-Dokumenten.
-- **[Modelle und zentrale Steuerung](./llm-integration.md)** — die Beschränkung einer Bibliothek auf
+- **[Modelle und zentrale Steuerung](../ROADMAP.md)** — die Beschränkung einer Bibliothek auf
   bestimmte Modelle wirkt auch auf die Verarbeitung ihrer Dokumente.
-- **[Deployment und Infrastruktur](./deployment-infrastructure.md)** — Dokumentenspeicher, Netzwege zu
+- **[Deployment und Infrastruktur](../ROADMAP.md)** — Dokumentenspeicher, Netzwege zu
   Quellsystemen, Ressourcen für Indizierungsläufe.
 - **[Benutzer-Frontends](../ROADMAP.md)** — Upload-Wege, Anzeige von Bestandsstand und
   Verarbeitungsfehlern.

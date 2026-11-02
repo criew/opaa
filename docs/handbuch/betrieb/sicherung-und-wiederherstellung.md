@@ -27,6 +27,34 @@ Zustand hält: Datenbank, Originalablage und Geheimnisse. Das Kapitel gehört zu
 - **Nach jeder Rücksicherung** dieselben Verschlüsselungsschlüssel, aber ein neues
   `OPAA_AUTH_JWT_SECRET`
   ([Nacharbeit](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank)).
+- **Von Hand gesetzte Metadaten abgleichen**, wenn die Datenbank auf einen älteren Stand zurückgeht
+  als das Revisionsprotokoll. Nur diese Werte erzeugt kein erneuter Lauf; liegt das Protokoll in
+  derselben Sicherung, ist nichts zu tun. Ablauf im folgenden Abschnitt.
+
+### Manuelle Metadatenwerte abgleichen
+
+Jede manuelle Setzung, Änderung und Löschung eines
+[Metadatenwerts](../arbeitsmittel/wissensbibliotheken/metadaten.md#7-manuelle-pflege) schreibt das
+Ereignis `DOCUMENT_METADATA_CHANGED`. Je Bibliothek:
+
+1. Ereignisse ab dem Wiederherstellungspunkt lesen: Objekttyp `KNOWLEDGE_LIBRARY`, Objekt-ID der
+   Bibliothek, über
+   `GET /api/v1/audit/events/by-object?objectType=KNOWLEDGE_LIBRARY&objectId=…&from=…&to=…&reason=…`
+   (Rolle `AUDITOR`, höchstens 92 Tage je Abfrage, der Zugriff wird protokolliert) oder per SQL auf
+   `audit_log`.
+2. In Aufzeichnungsreihenfolge (`recorded_at`, dann `event_id`) den letzten Zustand je Dokument und
+   Feld bestimmen. `after` trägt den Zielzustand (`documentId`, `fieldKey`, `state` `SET` mit `value`
+   und gegebenenfalls `datePrecision`, `NOT_DETERMINABLE` oder `EMPTY`); `before` dient nur zur
+   Plausibilisierung.
+3. Anwenden über die Korrektur-API
+   `PUT /api/v1/libraries/{libraryId}/documents/{documentId}/metadata/{fieldKey}` bei `SET` und
+   `NOT_DETERMINABLE` (dann ohne Wert), `DELETE` bei `EMPTY`, als Person mit Bearbeitungsrecht. Der Abgleich erzeugt so selbst Ereignisse.
+   Dokumente, die es nach der Rücksicherung nicht mehr gibt, werden übersprungen.
+
+Direkte `INSERT`s in `document_metadata_values` sind kein Ersatz: Sie ziehen die Chunk-Schlüssel nicht
+nach und hinterlassen kein Ereignis. Bei [privaten Bibliotheken](../arbeitsmittel/wissensbibliotheken/private-bibliotheken.md)
+nennt das Ereignis nur Feld und Zustand, nicht den Wert; dort zeigt der Abgleich nur, welche Felder
+die Person neu setzen muss.
 
 ## Wiederherstellungsprobe
 

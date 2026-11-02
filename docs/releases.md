@@ -118,7 +118,7 @@ standardmäßig ausgeschaltet; sie werden sichtbar gemacht.
   ob personenbezogene Daten oder Protokollereignisse, Sichtbarkeit, Auswertungen oder Exporte,
   Fristen, externe Datenflüsse, Voreinstellungen, das Standardmodell, System-Prompts oder die
   KI-Einstufung (Zustimmungsklasse Z6 in
-  [behoerdenunterlagen.md](features/behoerdenunterlagen.md)) neu sind oder sich ändern. Trifft etwas zu, beschreibt ein Satz in Alltagssprache die Wirkung, und der PR
+  [Nachvollziehbarkeit](handbuch/betrieb/nachvollziehbarkeit.md)) neu sind oder sich ändern. Trifft etwas zu, beschreibt ein Satz in Alltagssprache die Wirkung, und der PR
   bekommt das Label `data-impact`. Wer den PR anlegt, setzt es.
 - **In der CI:** Der Workflow `.github/workflows/data-impact.yml` läuft bei jedem PR und erneut,
   wenn sich Labels oder Beschreibung ändern. Er schlägt fehl, wenn die Beschreibung eine Wirkung
@@ -606,7 +606,7 @@ Regeln:
 
 Zu jedem Release, auch zu einem Vorab-Release, erzeugt der Job `update-package` das Update-Paket,
 mit dem eine Behörde ein Update gegenüber Datenschutz, Personalvertretung und
-Informationssicherheit verantwortet ([Spezifikation](features/behoerdenunterlagen.md#das-update-paket)).
+Informationssicherheit verantwortet ([Nachvollziehbarkeit](handbuch/betrieb/nachvollziehbarkeit.md)).
 Die Logik steht in `.github/scripts/update_package.py`, der Workflow ruft nur auf. Das Archiv
 `opaa-update-paket-X.Y.Z.tar.gz` enthält unter `opaa-update-paket-X.Y.Z/`:
 
@@ -614,7 +614,7 @@ Die Logik steht in `.github/scripts/update_package.py`, der Workflow ruft nur au
 |---|---|
 | `LIESMICH.md` | Version, Commit, Vergleichsstände und für wen sie gelten, Prüfbefehle, der Abgleich mit der eigenen Installation ([Handbuch](handbuch/betrieb/nachvollziehbarkeit.md#abgleich-eines-updates-mit-der-installation)) |
 | `faktenblaetter/` | die Faktenblätter der Version mit `faktenblaetter.json` (`./gradlew complianceDocs -PopaaVersion=X.Y.Z`) |
-| `delta/manifest-delta.md`, `delta/manifest-delta.json` | das [kumulierte Delta](features/behoerdenunterlagen.md#das-kumulierte-delta) zum vorigen finalen Release mit Stufenvorschlägen und den PRs mit `data-impact` dazwischen |
+| `delta/manifest-delta.md`, `delta/manifest-delta.json` | das kumulierte Delta zum vorigen finalen Release mit Stufenvorschlägen und den PRs mit `data-impact` dazwischen |
 | `betrieb/betriebsfolgen.md`, `betrieb/antwortqualitaet.md` | [Betriebsfolgen und Antwortqualität](#betriebsfolgen-und-antwortqualität) für dasselbe Intervall |
 | `delta-lts/manifest-delta.md`, `delta-lts/manifest-delta.json`, `betrieb-lts/` | nur bei einem LTS-Release und seinen Kandidaten: Delta, Betriebsfolgen und Antwortqualität gegenüber dem jüngsten Release der vorigen LTS-Linie ([zweiter Vergleich](#update-paket)) |
 | `barrierefreiheit/pruefbericht.md`, `barrierefreiheit/axe-ergebnisse.json` | der [Prüfbericht Barrierefreiheit](#prüfbericht-barrierefreiheit) der Version und seine Einzelergebnisse |

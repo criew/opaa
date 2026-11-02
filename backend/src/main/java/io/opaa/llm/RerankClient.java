@@ -31,9 +31,9 @@ import tools.jackson.databind.ObjectMapper;
 
 /**
  * Talks to a rerank endpoint over the one connection path this project supports for model roles
- * (docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei): {@code POST {baseUrl}/rerank},
- * the endpoint vLLM, Text Embeddings Inference, Infinity, Jina, Cohere and Voyage all serve. There
- * is no provider switch, exactly as for chat and embedding.
+ * (ADR-0067): {@code POST {baseUrl}/rerank}, the endpoint vLLM, Text Embeddings Inference,
+ * Infinity, Jina, Cohere and Voyage all serve. There is no provider switch, exactly as for chat and
+ * embedding.
  *
  * <p><b>Two request spellings, negotiated once.</b> The same endpoint is served with two field
  * namings: {@code {model, query, documents}} (Cohere, Jina, vLLM, Infinity) and {@code {query,

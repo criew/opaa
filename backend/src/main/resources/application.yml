@@ -91,7 +91,7 @@ spring:
   ai:
     # A single connection path for both functions - the OpenAI-compatible protocol. Ollama speaks it
     # too (under its own /v1 endpoint), which is why there is no separate "ollama" provider anymore
-    # - see docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei. The value is fixed, not
+    # - see ADR-0067. The value is fixed, not
     # driven by an environment variable: with the native Ollama starter gone, "openai" is the only
     # autoconfiguration Spring AI can wire here.
     # The embedding model is no autoconfiguration either: it is the row of embedding_model, chosen
@@ -836,8 +836,7 @@ opaa:
       previous-keys: ${OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS:}
     settings:
       # AES-256 key (Base64, 32 raw bytes) for io.opaa.security.SettingsEncryptor - encrypts
-      # llm_models.api_key_ciphertext at rest
-      # (docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung). A
+      # llm_models.api_key_ciphertext at rest. A
       # deliberately separate key from OPAA_CREDENTIALS_ENCRYPTION_KEY above: the two protect
       # different kinds of secret (a knowledge library's source credentials vs. a managed model's
       # API key) with no reason to share a key or its rotation schedule. Validated lazily, on first

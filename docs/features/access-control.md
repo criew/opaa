@@ -1958,11 +1958,11 @@ automatisch greift.
 - **RAG-Engine:** Filter über die lesbaren Bibliotheken des Nutzers, als Teil der Vektorsuche
 - **Externe KI-Werkzeuge:** Zugangstokens und MCP-Server als Ausschnitt bestehender Leserechte, mit eigener
   Freigabe je Bibliothek → [ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md)
-- **Modelle:** zentrale Vorgaben gelten je Organisation → [llm-integration.md](./llm-integration.md)
+- **Modelle:** zentrale Vorgaben gelten je Organisation → [Roadmap](../ROADMAP.md)
 - **Sicherheit und Nachweis:** jede Rechte- und Kontenänderung erzeugt einen Protokolleintrag →
   [security-and-compliance.md](./security-and-compliance.md)
 - **Betrieb:** Nutzer- und Gruppendaten aus dem Verzeichnis →
-  [deployment-infrastructure.md](./deployment-infrastructure.md)
+  [Roadmap](../ROADMAP.md)
 
 ---
 

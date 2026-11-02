@@ -1,8 +1,8 @@
 package io.opaa.api.types;
 
 /**
- * How a connection signs in at its source (docs/features/connector-connections.md, "Anmeldearten").
- * A connector reports the methods it offers; a profile picks one of them.
+ * How a connection signs in at its source. A connector reports the methods it offers; a profile
+ * picks one of them.
  */
 public enum ConnectionAuthMethod {
   /** Anonymous access, no secret at all. */

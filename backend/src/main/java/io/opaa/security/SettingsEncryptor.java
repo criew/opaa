@@ -56,9 +56,8 @@ public class SettingsEncryptor {
 
   /**
    * Encrypts {@code plaintext} for the row of {@code binding}, or returns {@code null} if blank (an
-   * API key is optional, see {@code
-   * docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei}). Two calls with the same
-   * plaintext produce different ciphertexts, because each call draws its own random IV.
+   * API key is optional, see ADR-0067). Two calls with the same plaintext produce different
+   * ciphertexts, because each call draws its own random IV.
    */
   public String encrypt(String plaintext, CipherBinding binding) {
     if (!StringUtils.hasText(plaintext)) {

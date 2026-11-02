@@ -33,10 +33,9 @@ import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 
 /**
- * Generates the RAG answer against the systemwide active chat model
- * (docs/features/llm-integration.md), resolved fresh on every call via {@link
- * ActiveChatModelResolver} rather than built once in the constructor - the only way an activation
- * through the admin API takes effect without a restart.
+ * Generates the RAG answer against the systemwide active chat model, resolved fresh on every call
+ * via {@link ActiveChatModelResolver} rather than built once in the constructor - the only way an
+ * activation through the admin API takes effect without a restart.
  *
  * <p>With no active model {@link ActiveChatModelResolver#resolveChatClient()} throws {@code
  * io.opaa.llm.NoActiveChatModelException}, which propagates like any other domain error and reaches
@@ -205,9 +204,8 @@ public class AnswerGenerationService {
    * Generates the answer, with the chat's Gesprächsnotiz: <b>all</b> of its points, unlike the
    * sub-question decomposition, which only sees the {@code RAHMEN} ones - a Darstellungswunsch is
    * noise for the search and the whole point for the answer. Rendered as its own block between the
-   * citation rules and the passages, the fifth part of the call (docs/features/llm-integration.md,
-   * "Übergabe der Passagen"); without a point there is no block. See {@link #CONTEXT_SECTION} for
-   * why it must not follow the passages.
+   * citation rules and the passages, the fifth part of the call; without a point there is no block.
+   * See {@link #CONTEXT_SECTION} for why it must not follow the passages.
    *
    * <p>The instruction of the chat's space comes first after the fixed rules, as its own block
    * ({@link SpaceInstructionBlock}), so the note - the current wishes of the asking person -

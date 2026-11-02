@@ -10,7 +10,6 @@ paths:
       tags: [model]
       summary: List managed chat models (system admin only)
       description: >
-        Stufe 1 (docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung).
         Never carries an apiKey value - only apiKeySet, whether one is stored.
       responses:
         "200":
@@ -514,8 +513,8 @@ components:
     LlmModelResponse:
       type: object
       description: >
-        A managed chat model (Stufe 1). Never carries the API key itself, even redacted -
-        only apiKeySet, whether one is stored (docs/features/llm-integration.md#stufe-1-verwaltete-chat-modelle-in-umsetzung).
+        A managed chat model. Never carries the API key itself, even redacted -
+        only apiKeySet, whether one is stored.
       required:
         [
           id,
@@ -570,7 +569,7 @@ components:
         Used for both create and update. On update, apiKey follows the same three-way convention
         BrandingUpdateRequest already uses: omitted (null) leaves the stored key unchanged, an
         empty string clears it, any other value replaces it. On create, an omitted or empty apiKey
-        simply means no key is stored - the key is optional (docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei),
+        simply means no key is stored - the key is optional,
         since a locally operated endpoint regularly requires no authentication at all.
       required: [displayName, baseUrl, modelIdentifier, maxTokens]
       properties:

@@ -6,8 +6,7 @@ import java.net.URISyntaxException;
 /**
  * The shared handling of an operator-entered base address, for every model role alike. An address
  * carrying userinfo ({@code https://user:secret@host/v1}) is rejected, never stripped; appending a
- * path tolerates a trailing slash without doubling it and keeps any query string last (see
- * docs/features/llm-integration.md for the reasoning behind both).
+ * path tolerates a trailing slash without doubling it and keeps any query string last (ADR-0067).
  */
 public final class ModelEndpointUri {
 

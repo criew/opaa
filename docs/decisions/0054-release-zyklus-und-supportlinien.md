@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-24
+Akzeptiert · zuletzt geändert 2026-11-02
 
 ## Kontext
 
@@ -10,7 +10,7 @@ Bisher entstehen Releases nur von Commits auf `main`, und nur das jüngste Relea
 Sicherheitskorrekturen. Ein Fix im Code erscheint deshalb zusammen mit allen neuen Funktionen seit
 dem letzten Release, sobald `main` eine trägt. Eine Behörde kann so kein Sicherheitsupdate sofort
 einspielen, ohne zugleich beteiligungspflichtige Änderungen zu übernehmen; neue Funktionen kommen
-nicht standardmäßig ausgeschaltet (Beschluss 1 in [Behördenunterlagen](../features/behoerdenunterlagen.md#beschlüsse-des-maintainers-13102026)).
+nicht standardmäßig ausgeschaltet (Beschluss des Maintainers vom 13.10.2026, Epic #2542).
 Die Muster-Dienstvereinbarung, Pflegeverträge nach EVB-IT und Markterkundungen brauchen feste
 Supportzeiträume (Beschluss 2, #2575).
 

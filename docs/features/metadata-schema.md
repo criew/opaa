@@ -921,7 +921,7 @@ Dokumentinhalte an ein Modell übergibt. Er wird deshalb als eigenständig steue
   liefert. Der Regelfall ist der ausgeschaltete Zustand — eingeschaltet wird, wo jemand den Nutzen für
   diesen Bestand benennen kann.
 - **Sie benutzt die zentral gesteuerte Chat-Rolle** des Schichtenmodells (siehe
-  [Modelle und zentrale Steuerung](./llm-integration.md)) und verlangt keine eigene Modellrolle. Wer
+  [Modelle und zentrale Steuerung](../ROADMAP.md)) und verlangt keine eigene Modellrolle. Wer
   diese Rolle auf ein lokal betriebenes Modell legt, betreibt die Extraktion vollständig ohne
   ausgehende Verbindung; die Fähigkeit ist damit auch in einer abgeschotteten Installation nutzbar.
 - **Bei einem extern betriebenen Modell erzeugt sie einen neuen, dauerhaften Abfluss von
@@ -1223,7 +1223,7 @@ Korrelationsreferenz an; die subjektbezogene Variante weist sie weiterhin zurüc
 **Wiederherstellbarkeit.** Aus der Ereignisfolge einer Bibliothek lässt sich ihr manueller Stand
 rekonstruieren (Test: Wiedereinspielen der `after`-Nutzlasten in Aufzeichnungsreihenfolge ergibt
 genau die `MANUAL`-Zeilen). Das Wiederherstellungs-Runbook in
-[Betrieb und Infrastruktur](./deployment-infrastructure.md#manuelle-metadatenwerte-nach-einem-restore-abgleichen)
+[Betrieb und Infrastruktur](../ROADMAP.md)
 benennt den Abgleichschritt.
 
 **Oberfläche.** In der Dokumentliste der Bibliothek klappt „Metadaten von … anzeigen" je Dokument die
@@ -2001,7 +2001,7 @@ werden, deren Verhalten bei sauberen Werten bereits gemessen ist.
   [Lebenszyklus der Dokumente](./knowledge-sources.md#lebenszyklus-der-dokumente); Gültigkeitszustände
   („aktiv", „archiviert", „abgelaufen") sind eine eigene Achse und werden **nicht** in ein Metadatenfeld
   dieses Schemas dupliziert.
-- **[Modelle und zentrale Steuerung](./llm-integration.md)** — die modellgestützte Extraktion nutzt
+- **[Modelle und zentrale Steuerung](../ROADMAP.md)** — die modellgestützte Extraktion nutzt
   die Chat-Rolle des Schichtenmodells und erbt dessen Zusagen; sie verlangt keine eigene Modellrolle,
   ist je Bibliothek abschaltbar und bei einem lokal betriebenen Modell ohne ausgehende Verbindung
   nutzbar.

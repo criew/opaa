@@ -741,7 +741,7 @@ Originale. Sie gehört der Anwendung statt einer Quelle und ist deshalb als einz
   Originalablage der Uploads** und dort zuschaltbar. Quelldokumente einer Dateisystem-Bibliothek
   bleiben beim Verzeichnis; ein S3-Bucket als *Quelle* ist stattdessen der S3-Konnektor
 
-Näheres in [Betrieb & Deployment](./features/deployment-infrastructure.md#speicher-backends).
+Näheres in [Originalablage](handbuch/betrieb/originalablage.md).
 
 ---
 
@@ -963,7 +963,7 @@ Schulung außerhalb des eigenen Hauses — unter der Bedingung, dass dort keine 
   Infrastruktur bereit, gefüllt mit synthetischen Vorgängen. Für den Wirkbetrieb wandert dieselbe
   Installation anschließend ins Rechenzentrum des Landes.
 
-Siehe [Betrieb & Deployment](./features/deployment-infrastructure.md).
+Siehe [ADR-0014, Entscheidung 7](decisions/0014-produktausrichtung-oeffentliche-verwaltung.md#7-kein-cloud-betriebsmodell-kein-betreuter-dienst).
 
 ---
 

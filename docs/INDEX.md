@@ -83,7 +83,8 @@ menschlicher Freigabe.
 
 ### E · Modelle & zentrale Steuerung
 
-**[`features/llm-integration.md`](./features/llm-integration.md)**
+**[`handbuch/betrieb/modelle.md`](handbuch/betrieb/modelle.md)** · **[ADR-0067](./decisions/0067-modellanbindung-und-verwaltete-chat-modelle.md)** ·
+**[Roadmap](./ROADMAP.md)**
 
 Jede OpenAI-kompatible Schnittstelle · lokal betriebene Modelle als Voreinstellung · Modellverwaltung ·
 Modell-Policy als Obergrenze · Beschränkungen, die an den Daten hängen · Schutz vor Weitergabe
@@ -120,9 +121,8 @@ an self-hosted Team-Chats · einheitliche Anmeldung und Rechte über alle Kanäl
 
 ### J · Betrieb & Deployment
 
-**[`features/deployment-infrastructure.md`](./features/deployment-infrastructure.md)** ·
-ergänzend **[`handbuch/betrieb/README.md`](handbuch/betrieb/README.md)** und
-**[`handbuch/betrieb/kubernetes.md`](handbuch/betrieb/kubernetes.md)**
+**[`handbuch/betrieb/README.md`](handbuch/betrieb/README.md)** ·
+**[`handbuch/betrieb/kubernetes.md`](handbuch/betrieb/kubernetes.md)** · **[Roadmap](./ROADMAP.md)**
 
 Docker Compose · Kubernetes mit Hochverfügbarkeit · Betrieb ohne Netzanbindung · mandantenfähiger Betrieb
 durch Rechenzentren · Konfiguration, Sicherung, Aktualisierung.
@@ -130,7 +130,8 @@ durch Rechenzentren · Konfiguration, Sicherung, Aktualisierung.
 ### K · Verwaltungs-Spezifika
 
 **[Roadmap](./ROADMAP.md)** ·
-**[`features/behoerdenunterlagen.md`](./features/behoerdenunterlagen.md)**
+**[`behoerden/README.md`](./behoerden/README.md)** ·
+**[`handbuch/betrieb/nachvollziehbarkeit.md`](./handbuch/betrieb/nachvollziehbarkeit.md)**
 
 Leichte Sprache und Amtssprache · Barrierefreiheit nach BITV · Revisionssicherheit im Verwaltungssinn ·
 Anbindung an die elektronische Akte und an Dokumentenmanagement · Unterlagen entlang der Behördenreise,
@@ -289,11 +290,11 @@ Den tatsächlichen Stand führt der [Gesamtstand](./fortschritt/gesamtstand.md).
 
 **Läuft OPAA ohne Internetverbindung?**
 → Ja, das ist ein vorgesehenes Szenario. Siehe
-[`features/deployment-infrastructure.md`](./features/deployment-infrastructure.md)
+[Images und Laufzeit](./handbuch/betrieb/images-und-laufzeit.md)
 
 **Welche Modelle werden unterstützt?**
 → Jede OpenAI-kompatible Schnittstelle, einschließlich lokal betriebener Modelle. Siehe
-[`features/llm-integration.md`](./features/llm-integration.md)
+[Modelle](./handbuch/betrieb/modelle.md)
 
 **Können mehrere Häuser dieselbe Installation nutzen?**
 → Ja, die Organisation ist die harte Mandantengrenze. Siehe

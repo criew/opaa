@@ -21,7 +21,7 @@ Aussage? Wie sicher ist der Treffer? Und was ist zu tun, wenn nichts Belastbares
 Dieses Dokument beschreibt, wie aus indizierten Dokumenten belegte Antworten werden. **Woher die
 Dokumente kommen**, steht in [Wissensquellen und Konnektoren](./knowledge-sources.md); **wer sie sehen
 darf**, in [Spaces, Assets und Zugangskontrolle](./spaces-and-assets.md); **welches Modell antwortet**,
-in [Modelle und zentrale Steuerung](./llm-integration.md).
+in [Modelle und zentrale Steuerung](../ROADMAP.md).
 
 **Lesehinweis zum Umsetzungsstand.** Diese Spezifikation beschreibt überwiegend das Zielbild. Wo sie
 bereits ausgelieferte Funktionalität beschreibt, ist das ausdrücklich mit **(gebaut)** gekennzeichnet.
@@ -288,7 +288,7 @@ jüngste Datei.
 Mit der Auswahl endet die Zuständigkeit dieses Dokuments. **Wie** die ausgewählten Passagen an das
 Modell übergeben werden — mit welchem Kopf je Passage, in welcher Form die Belege zurückkommen und was
 bei Überschreitung der Kontextgrenze entfällt — ist eine Eigenschaft des Modellaufrufs und steht in
-[Modelle und zentrale Steuerung](./llm-integration.md#übergabe-der-passagen-und-form-der-antwort). Diese
+[Modelle und zentrale Steuerung](../ROADMAP.md). Diese
 Übergabe ist die Nahtstelle, an der die Belegprüfung ansetzt.
 
 ### Stellschrauben und ihre Wirkung
@@ -725,7 +725,7 @@ kommen in Verwaltungsvorgängen regelmäßig vor. OPAA behandelt sie zweistufig:
 Diese Abhängigkeit wird ausdrücklich benannt statt kaschiert. Wo ein Haus nur lokale Modelle ohne
 Bildverständnis betreibt, entfällt die Fähigkeit — sie wird nicht durch einen Cloud-Aufruf ersetzt, denn
 das wäre genau die Umgehung, die die Modellvorgaben verhindern sollen (siehe
-[Modelle und zentrale Steuerung](./llm-integration.md)).
+[Modelle und zentrale Steuerung](../ROADMAP.md)).
 
 Daraus folgen drei Regeln:
 
@@ -879,7 +879,7 @@ Messung ein Zahlenwert ohne Bezugsgröße.
 | Gesamte Retrieval-Zeit bis zur Übergabe an das Antwortmodell | unter 1 Sekunde |
 
 Die Zeit des Antwortmodells ist darin **nicht** enthalten; sie hängt am eingesetzten Modell und wird in
-[Modelle und zentrale Steuerung](./llm-integration.md) behandelt. Die Rechteprüfung erzeugt keinen
+[Modelle und zentrale Steuerung](../ROADMAP.md) behandelt. Die Rechteprüfung erzeugt keinen
 eigenen Abschnitt in dieser Rechnung, weil sie als Filter in der Suche selbst sitzt.
 
 ### Indizierungsdurchsatz
@@ -950,7 +950,7 @@ ausdrücklich auslösbar und bei einem Wechsel des Einbettungsmodells zwingend.
   und Lebenszyklus; dieses Dokument setzt beim eingehenden Dokument an.
 - **[Spaces, Assets und Zugangskontrolle](./spaces-and-assets.md)** — Wissensbibliothek als Filterachse,
   Suchbereich je Chatart, Durchsetzung zur Abfragezeit, Umgang mit geteilten Ergebnissen.
-- **[Modelle und zentrale Steuerung](./llm-integration.md)** — Einbettungs-, Rerank- und Antwortmodell,
+- **[Modelle und zentrale Steuerung](../ROADMAP.md)** — Einbettungs-, Rerank- und Antwortmodell,
   Modellvorgaben als Obergrenze, Fähigkeitsabhängigkeit des Bildverständnisses.
 - **[Suchqualität messbar machen](../decisions/0011-search-quality-evaluation-harness.md)** — Referenzkorpus, Kennzahlen und
   Regressionsprüfung für jede Änderung an dieser Kette.
