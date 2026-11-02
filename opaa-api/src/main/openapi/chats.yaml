@@ -583,9 +583,8 @@ paths:
       description: >
         Immediate and without a confirmation step: the point stops reaching the prompts with the
         next question. It is deliberately not blocked for the future - if the person states the
-        same thing again, the condensation may create it again (docs/features/conversation-memory.md,
-        "Zustand und Bedienung"). A point that does not belong to this chat, or a chat the caller
-        does not author, both answer 404.
+        same thing again, the condensation may create it again (ADR-0031). A point that does not
+        belong to this chat, or a chat the caller does not author, both answer 404.
       responses:
         "204":
           description: Note point removed
@@ -613,7 +612,7 @@ components:
       type: string
       description: >
         What a Gesprächsnotiz point says about the asking person, and therefore which prompt it
-        reaches (docs/features/conversation-memory.md, "Bauteil 2"): RAHMEN (role, responsibility,
+        reaches (ADR-0031): RAHMEN (role, responsibility,
         place, period, version, organization, decision) reaches the sub-question decomposition and
         the answer, ANTWORTFORM (wishes about presentation) only the answer. Delivered so a client
         can reason about it; the Oberfläche deliberately does not show it, and it is not

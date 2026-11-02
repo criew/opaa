@@ -16,10 +16,9 @@ import org.springframework.stereotype.Service;
 
 /**
  * Condenses the user message of a finished turn into zero to {@link
- * ChatNoteExtraction#MAX_POINTS_PER_TURN} Gesprächsnotiz points
- * (docs/features/conversation-memory.md, "Bauteil 2"), built on the same blueprint as {@link
- * ChatTitleGenerationService}: off the request thread, on the systemwide active chat model resolved
- * fresh per call, parsed defensively, and never surfacing a failure to anyone.
+ * ChatNoteExtraction#MAX_POINTS_PER_TURN} Gesprächsnotiz points (ADR-0031), built on the same
+ * blueprint as {@link ChatTitleGenerationService}: off the request thread, on the systemwide active
+ * chat model resolved fresh per call, parsed defensively, and never surfacing a failure to anyone.
  *
  * <p><b>Only user messages, never answers.</b> A point derived from an answer would be an unsourced
  * claim in a system prompt that no Belegprüfung can reach anymore (ADR-0031, "Verworfene

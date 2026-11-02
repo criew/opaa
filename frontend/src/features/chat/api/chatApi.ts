@@ -182,7 +182,7 @@ export async function applyChatBulkAction(
 /**
  * Removes one point of a chat's Gesprächsnotiz. Immediate and without a confirmation step;
  * the point is not blocked for the future - the condensation may create it again if the person
- * states the same thing again (docs/features/conversation-memory.md, "Zustand und Bedienung").
+ * states the same thing again (ADR-0031).
  */
 export async function deleteChatNoteItem(chatId: string, itemId: string): Promise<void> {
   try {

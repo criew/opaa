@@ -1,5 +1,5 @@
 """Data and rendering for the "Ratsinformationen Stadt Rheinfurt" library (S3 connector, see
-docs/features/demo-instance.md and
+demo/README.md and
 docs/handbuch/arbeitsmittel/wissensbibliotheken/konnektoren/s3.md).
 
 Council minutes (Niederschriften, .md) and decision papers (Beschlussvorlagen, .txt) of the

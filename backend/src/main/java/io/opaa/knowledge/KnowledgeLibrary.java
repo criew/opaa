@@ -84,9 +84,8 @@ public class KnowledgeLibrary extends Asset {
 
   /**
    * The reach field beside the grants: whether this library may be used through a Fremdzugang, and
-   * where it may not, why not (docs/features/external-access.md). {@code NEVER_SET} for every new
-   * and every pre-existing library - a Bestand never leaves the house because nobody decided it
-   * should.
+   * where it may not, why not (ADR-0035). {@code NEVER_SET} for every new and every pre-existing
+   * library - a Bestand never leaves the house because nobody decided it should.
    */
   @Enumerated(EnumType.STRING)
   @Column(name = "external_access_state", nullable = false, length = 20)

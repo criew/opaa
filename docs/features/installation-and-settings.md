@@ -116,7 +116,7 @@ OPAA_INSTALLATION_ANSWER_FILE=/run/opaa/installation.json               # option
 | Erstes Konto | ja | E-Mail-Adresse, Anzeigename, Passwort nach der Passwortregel | Adresse zustellbar formatiert, nicht `admin@opaa.local` | Benutzer (Notanker-Konto, ADR-0033) |
 | Anmeldeverfahren | ja | nur lokale Konten, oder zusätzlich ein OIDC-Anbieter: Issuer, Client-ID, JWK-Set-Adresse | Discovery und JWK-Set erreichbar, Adressprüfung | Identitätsanbieter |
 | Chat-Modell | optional | Adresse, Modellname, Schlüssel, Temperatur, Antwortlänge | Verbindungstest wie in der Modellverwaltung | Modelle |
-| Embedding-Modell | optional | Adresse, Modellname, Schlüssel, Eingabegrenze | Probeeinbettung; legt die Vektordimension fest | Modelle → Embedding: Modellwechsel mit Neueinbettung, Endpunktwechsel ohne ([Wechsel des Embedding-Modells](./embedding-model-change.md)) |
+| Embedding-Modell | optional | Adresse, Modellname, Schlüssel, Eingabegrenze | Probeeinbettung; legt die Vektordimension fest | Modelle → Embedding: Modellwechsel mit Neueinbettung, Endpunktwechsel ohne ([Wechsel des Embedding-Modells](../decisions/0061-wechsel-des-embedding-modells.md)) |
 | Rerank-Modell | optional | Adresse ohne `/rerank`, Modellname, Schlüssel (Regeln der Modellverwaltung) | Adressprüfung; dieselbe Rerank-Probe wie „Verbindung testen“ der Modellverwaltung; der Abschluss schaltet das Reranking ein | Modelle → Reranking |
 | Transkriptionsmodell (nur mit `OPAA_FEATURES_SPEECH_INPUT_ENABLED`) | optional | Adresse, Modellname, Schlüssel, Sprache (Regeln der Modellverwaltung) | Probe der Modellverwaltung (`GET {Basis-Adresse}/models`, keine Aufnahme), Adressprüfung der Modelle; ohne Bestätigung der Mitbestimmung (ADR-0060, Entscheidung 16) | Modelle → Spracheingabe |
 | Ausgangsproxy | optional; Pflicht, wenn ohne ihn kein Modell erreichbar ist | Proxy-Adresse, Ausnahmeliste | Verbindungstest der Modelle über den Proxy | Anbindungen → Einstellungen |
@@ -337,7 +337,7 @@ Neue Verwaltungsorte für Werte, die heute nur in der Konfiguration stehen:
   kommt aus dem Assistenten.
 - **Modelle** ([llm-integration.md](./llm-integration.md)): Alle Modellrollen in der Datenbank;
   `vector_store` entsteht beim Abschluss. Der spätere Wechsel des Embedding-Modells:
-  [embedding-model-change.md](./embedding-model-change.md).
+  [ADR-0061](../decisions/0061-wechsel-des-embedding-modells.md).
 - **Mehrinstanzbetrieb** ([ADR-0053](../decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md)): Zustand in
   der Datenbank, Abschluss und Antwortdatei unter Advisory-Lock.
 - **Helm** ([ADR-0042](../decisions/0042-kubernetes-lieferung-mit-helm.md)): `bootstrap` wird zur

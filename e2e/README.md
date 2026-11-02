@@ -76,7 +76,7 @@ Bausteine (z. B. Seiten-Interaktionen) gehören nach `fixtures/`. `fixtures/libr
 nur noch echte Playwright-Fixtures (Anmeldung, Chat-Bausteine, Barrierefreiheit) — die frühere
 eigene Testdatenbereitstellung dieser Suite (`e2e/fixtures/rss-feed/`, `e2e/fixtures/test-documents/`)
 ist abgelöst: Beide leben jetzt unter [`demo/seed/e2e-data/`](../demo/seed/), Teil des gemeinsamen
-Seed-Mechanismus (`docs/features/demo-instance.md`, „Installation und Seed") statt eines zweiten,
+Seed-Mechanismus ([`demo/README.md`](../demo/README.md), „Seed-Mechanismus") statt eines zweiten,
 unabhängigen Befüllungswegs. Siehe „Lokal ausführen" unten, Schritt 3, für Details, was der Seed
 tatsächlich anlegt und was weiterhin einzelne Szenarien selbst über die Oberfläche einrichten.
 
@@ -653,7 +653,7 @@ lassen.
   von der Rollenprüfung kommt und nicht von der Validierung.
 
 - `tests/conversation-note.spec.ts` (#1489, T7 von Epic #1482) — die Gesprächsnotiz über den
-  vollen Stack (`docs/features/conversation-memory.md`, „Oberfläche", ADR-0031): Ein Chat mit einer
+  vollen Stack (ADR-0031): Ein Chat mit einer
   Rahmenangabe in Runde 1 zeigt nach Runde 2 **keine** Schaltfläche und nach Runde 3
   „Gesprächsnotiz · 1", zugeklappt; das aufgeklappte Panel nennt den Punkt. Ein Punkt wird entfernt,
   die Zahl sinkt, und nach einem Neuladen ist er fort (das Panel wieder zugeklappt — Aufklappen ist
@@ -714,7 +714,7 @@ lassen.
   Standard-Space zu, denn die `@`-Referenz bietet nur Bibliotheken des Space an.
 
 - `tests/external-access.spec.ts` (#1723, Teil von Epic #1715) — der Zugriff externer KI-Werkzeuge über
-  den vollen Stack (`docs/features/external-access.md`, ADR-0035): der Weg von der Freigabe über das
+  den vollen Stack (ADR-0035): der Weg von der Freigabe über das
   Zugangstoken bis zum Treffer, und die Gegenprobe zu jedem der vier Faktoren der effektiven Sicht.
   Die Systemverwaltung schaltet den Kanal ein, eine Bibliotheksverantwortliche gibt ihre Bibliothek
   befristet frei, die Person erzeugt dafür ein Token — und ein MCP-Aufruf gegen den laufenden Stack
@@ -826,7 +826,7 @@ lassen.
 ## Demo-Smoke (#232)
 
 Ein separater, eigenständig startbarer Lauf gegen das Compose-Profil `demo`
-(`docs/features/demo-instance.md`) — bewusst **kein** Teil dieser Suite oder von `pnpm test`: Die
+([`demo/README.md`](../demo/README.md)) — bewusst **kein** Teil dieser Suite oder von `pnpm test`: Die
 Erstindizierung des Rheinfurt-Korpus (~150–300 Dokumente über vier Bibliotheken plus 27 Uploads)
 dauert deutlich länger als der minimale `e2e`-Datenprofil-Seed oben, selbst mit `ai-stub` als
 deterministischem Modell. Zuletzt gemessene Laufzeit (Issue #232s eigenes Abnahmekriterium „Die

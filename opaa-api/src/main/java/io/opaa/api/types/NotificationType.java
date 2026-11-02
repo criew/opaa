@@ -16,10 +16,10 @@ public enum NotificationType {
   ASSET_ASSOCIATED_TO_MIXED_SPACE,
 
   /**
-   * The external-access channel exceeded the mass-retrieval threshold
-   * (docs/features/external-access.md - "Kontingente und der Abflussalarm"). Sent to every system
-   * administrator of the organization, exactly once per cooldown, and never written to the audit
-   * trail: the alert is a security event, only the suspension that may follow it is a state change.
+   * The external-access channel exceeded the mass-retrieval threshold (ADR-0035). Sent to every
+   * system administrator of the organization, exactly once per cooldown, and never written to the
+   * audit trail: the alert is a security event, only the suspension that may follow it is a state
+   * change.
    */
   EXTERNAL_ACCESS_MASS_RETRIEVAL,
 

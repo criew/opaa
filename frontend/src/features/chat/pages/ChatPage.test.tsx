@@ -101,7 +101,7 @@ describe('ChatPage', () => {
     )
 
     expect(
-      screen.getAllByRole('button', { name: 'Belege anzeigen' }).length,
+      screen.getAllByRole('button', { name: /Belege anzeigen/ }).length,
     ).toBeGreaterThanOrEqual(1)
     expect(useChatStore.getState().chatId).toBeTruthy()
     // The URL is replaced to point at the now-persisted chat, so a reload restores it.

@@ -9,8 +9,7 @@ import org.springframework.ai.chat.messages.UserMessage;
 
 /**
  * Everything one decomposition call hands the model besides its fixed instruction: the question,
- * the search window of the conversation, and any rendered context block
- * (docs/features/conversation-memory.md, "Bauteil 1").
+ * the search window of the conversation, and any rendered context block (ADR-0031).
  *
  * <p><b>Anchor-space invariant.</b> A context building block reaches the model and the anchor space
  * of {@code QueryDecompositionService}'s safety belt in <em>one</em> step - {@link

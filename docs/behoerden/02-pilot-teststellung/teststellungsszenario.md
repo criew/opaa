@@ -26,7 +26,7 @@ Verantwortlich ist die Projektleitung zusammen mit dem Fachbereich.
 - **Referenzwerte der Suchqualität:** im Update-Paket unter `betrieb/antwortqualitaet.md` die Werte,
   die im Stand der Version gelten, gemessen gegen den Testkorpus des Projekts, mit Messdatum
   ([Update-Paket](../../handbuch/betrieb/nachvollziehbarkeit.md#das-update-paket-eines-release),
-  [Messverfahren](../../features/search-quality-evaluation.md)).
+  [Messverfahren](../../decisions/0011-search-quality-evaluation-harness.md)).
 - **Belege und Diagnose:** jede Antwort nennt ihre Fundstellen; das Diagnosewerkzeug zeigt, warum ein
   Dokument fehlt ([Belege](../../handbuch/spaces/suche.md#7-belege-prüfen-und-fundstellen-bilden),
   [Typische Befunde](../../handbuch/spaces/suche.md#9-typische-befunde)).

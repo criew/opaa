@@ -557,9 +557,8 @@ public class QueryService {
 
   /**
    * The note's point texts, optionally narrowed to one kind: {@link ChatNoteItemKind#RAHMEN} for
-   * the sub-question decomposition, {@code null} for the answer, which sees every point
-   * (docs/features/conversation-memory.md, "Wie die Notiz ins Modell kommt"). Empty outside a
-   * persisted chat.
+   * the sub-question decomposition, {@code null} for the answer, which sees every point (ADR-0031).
+   * Empty outside a persisted chat.
    */
   private static List<String> noteTexts(List<ChatNotePoint> points, ChatNoteItemKind onlyKind) {
     if (points == null) {

@@ -45,7 +45,7 @@ function removalAnnouncement(remaining: number): string {
  * The Gesprächsnotiz in the chat's header: a button carrying the number of points and a
  * collapsible panel listing them, each removable on the spot. The kind of a point (RAHMEN /
  * ANTWORTFORM) is an internal distinction and deliberately not shown; there is no editing, no
- * adding and no "remove all" (docs/features/conversation-memory.md, "Oberfläche").
+ * adding and no "remove all" (ADR-0031).
  *
  * Expanding is session state only - a reload starts collapsed again.
  */

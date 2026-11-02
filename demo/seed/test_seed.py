@@ -360,7 +360,7 @@ def readers(library_name: str) -> set[str]:
 
 
 def effective_readers(library_name: str) -> set[str]:
-    """The rows of the matrix in docs/features/demo-instance.md: the four fach accounts only."""
+    """The rows of the matrix in demo/README.md: the four fach accounts only."""
     return readers(library_name) - {"admin"}
 
 
@@ -416,7 +416,7 @@ def test_vertretung_meldewesen_stays_unchanged() -> None:
 
 
 def test_effective_read_matrix_matches_docs_features_demo_instance() -> None:
-    """The matrix of docs/features/demo-instance.md, groups included: which fach account reads
+    """The matrix of demo/README.md, groups included: which fach account reads
     which library, no matter whether directly or through a group."""
     expected = {
         "Leistungen Meldewesen & Ausweise": {"maria", "selin", "andrea"},

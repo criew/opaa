@@ -1,9 +1,8 @@
 /**
- * The personal access tokens of the external-access channel (ADR-0035, Entscheidung 2;
- * docs/features/external-access.md, "Zugangstokens"). A token is an opaque random value with a
- * fixed prefix, stored only as an HMAC lookup hash under the fourth purpose of {@code
- * io.opaa.security.LocalAuthKeyService}; it is bound to a person, to an immutable selection of
- * knowledge libraries and to a mandatory expiry.
+ * The personal access tokens of the external-access channel (ADR-0035, Entscheidung 2). A token is
+ * an opaque random value with a fixed prefix, stored only as an HMAC lookup hash under the fourth
+ * purpose of {@code io.opaa.security.LocalAuthKeyService}; it is bound to a person, to an immutable
+ * selection of knowledge libraries and to a mandatory expiry.
  *
  * <p>The effective view of a token is computed per call and never frozen into it: rights of the
  * person, release of the library, selection of the token and the installation switch - see {@link

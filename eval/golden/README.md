@@ -297,9 +297,7 @@ zeitbedingte Vereinfachung dieser ersten Fassung, keine grundsätzliche Schema-E
 
 Das Golden Dataset für die Domäne `comic-characters` (Issue #226, gemergt in PR #273; erste Runde
 Review-Nachziehbedarf in Issue #274/PR #277, gemergt; zweite Runde — Sentinel-Feldbezogenheit und
-Ground-Truth-Fingerabdruck — in Issue #282, dieser Stand). Spezifikation in
-[`docs/features/search-quality-evaluation.md`](../../docs/features/search-quality-evaluation.md),
-Abschnitt „Golden Dataset"; [ADR-0011](../../docs/decisions/0011-search-quality-evaluation-harness.md).
+Ground-Truth-Fingerabdruck — in Issue #282, dieser Stand). Begründung in [ADR-0011](../../docs/decisions/0011-search-quality-evaluation-harness.md).
 Es ist die Ground Truth für den Retrieval-Regressionstest aus #227.
 
 ## Dateien

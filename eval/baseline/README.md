@@ -701,7 +701,7 @@ Dasselbe Verfahren wie unten, mit zwei Präzisierungen:
 ## Besonderheiten der Mehrrunden-Baseline (Issues #1484/#1485/#1490)
 
 `pipeline-verwaltung-conversations.json` ist die Baseline des dritten Messpfads
-(`docs/features/conversation-memory.md`, Abschnitt „Messung"). **Erstmals gezogen mit Issue #1485**
+(ADR-0031). **Erstmals gezogen mit Issue #1485**
 aus einem CPU-Testcontainer-Lauf vom 2026-09-11 gegen die dort erstkuratierten 27 Fälle mit 83
 Runden; Typ (`ConversationBaseline`) und Vergleich (`ConversationBaselineComparator`) stammen aus
 #1484. Die heute committeten Zahlen stammen aus der Neuziehung in #1652 (siehe unten).

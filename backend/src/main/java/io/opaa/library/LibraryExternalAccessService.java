@@ -25,8 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Sets, takes back and reads a library's Freigabe für Fremdzugänge
- * (docs/features/external-access.md, "Die Freigabe der Bibliothek").
+ * Sets, takes back and reads a library's Freigabe für Fremdzugänge (ADR-0035).
  *
  * <p>Two rules this class exists for. <b>Who may set it:</b> whoever may hand out read access to
  * the library - {@link AssetRole#MANAGER} and above, which includes the system administration

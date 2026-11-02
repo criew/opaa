@@ -2,11 +2,11 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt durch ADR-0012
+Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt durch ADR-0012
 
 ## Kontext
 
-Der Evaluierungskorpus `comic-characters` (ADR-0011, `docs/features/search-quality-evaluation.md`)
+Der Evaluierungskorpus `comic-characters` (ADR-0011)
 beruht auf einer Invariante: Ein generiertes Dokument ergibt beim Indizieren genau einen Chunk. Nur so
 ist ein Treffer eindeutig einer Entität zuordenbar, die Voraussetzung für die Ground Truth des Golden
 Dataset und für Hit Rate, MRR und nDCG. Die Invariante koppelt den Python-Generator unter

@@ -11,11 +11,11 @@ import java.util.Set;
  * persistent path applies it to database rows, the multi-turn evaluation harness to an in-memory
  * list, and both must behave identically or the harness measures a note production never builds.
  *
- * <p>Two rules, both from docs/features/conversation-memory.md, "Lebenszyklus": a candidate equal
- * to a point the note <em>currently</em> holds - ignoring case and punctuation - is not appended
- * again, and the note never grows past its cap, the oldest point falling out first. Deliberately
- * checked against the current list only, never against removed points: a removed point is not
- * blocked for the future (the decided Löschsemantik), and the person removes it again.
+ * <p>Two rules, both from ADR-0031: a candidate equal to a point the note <em>currently</em> holds
+ * - ignoring case and punctuation - is not appended again, and the note never grows past its cap,
+ * the oldest point falling out first. Deliberately checked against the current list only, never
+ * against removed points: a removed point is not blocked for the future (the decided
+ * Löschsemantik), and the person removes it again.
  */
 public final class ChatNoteList {
 

@@ -10,9 +10,8 @@ import org.springframework.ai.chat.messages.UserMessage;
 
 /**
  * The three conversation-memory dimensions a multi-turn run is measured under (issue #1484,
- * docs/features/conversation-memory.md, "Konfiguration: Ebenenzuordnung") - fixed points of every
- * conversation report and baseline, because each of them moves what the decomposition sees and
- * therefore what the numbers mean.
+ * ADR-0031) - fixed points of every conversation report and baseline, because each of them moves
+ * what the decomposition sees and therefore what the numbers mean.
  *
  * @param windowMessages the width of the conversation window in messages, <b>measured</b> from the
  *     production {@link ChatMemory} bean rather than read from a constant - see {@link

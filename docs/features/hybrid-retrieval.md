@@ -1841,7 +1841,7 @@ des Pakets:
   protokollierte Änderungen.
 - **[Spaces, Assets und Zugangskontrolle](./spaces-and-assets.md)** — der Rechtefilter, den der
   Volltextpfad identisch trägt, und die Privatheit der Chats, an der die Diagnose-Leitplanke (a) hängt.
-- **[Suchqualität messbar machen](./search-quality-evaluation.md)** und
+- **[Suchqualität messbar machen](../decisions/0011-search-quality-evaluation-harness.md)** und
   **[Suchqualitäts-Benchmark](./retrieval-benchmark.md)** — Messaufbau, Korpora und
   Abnahmekriterien für jedes Arbeitspaket.
 - **[Zugangskontrolle](./access-control.md)** — Protokollierung der Diagnose im fremden Rechtekontext,

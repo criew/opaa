@@ -15,7 +15,6 @@ import { downloadChatAttachment } from '../api/chatAttachmentApi'
 import { notify } from '@/shared/stores/notificationStore'
 import CopyAnswerButton from './CopyAnswerButton'
 import CopyQuestionButton, { QUESTION_COPY_CLASS } from './CopyQuestionButton'
-import AnswerEvidenceLine from './AnswerEvidenceLine'
 import EvidenceFooter from './EvidenceFooter'
 import MarkdownRenderer from '@/shared/ui/markdown/MarkdownRenderer'
 import SourceEvidenceDrawer from './SourceEvidenceDrawer'
@@ -243,12 +242,11 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             </Box>
           )}
 
-          {!isUser && message.evidence && <AnswerEvidenceLine evidence={message.evidence} />}
-
           {!isUser && (
             <EvidenceFooter
               citations={citations}
               onOpen={openAllEvidence}
+              evidence={message.evidence}
               actions={
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   {message.generatedByAi !== false && <AiAnswerMark />}
@@ -270,6 +268,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
               focusedDocIndexes={focusedDocIndexes}
               answeredAt={message.timestamp}
               openDocument={documentPreview.openDocument}
+              uncoveredSubQueries={message.evidence?.uncoveredSubQueries}
             />
           )}
 

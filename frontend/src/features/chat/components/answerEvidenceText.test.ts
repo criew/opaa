@@ -17,7 +17,7 @@ describe('describeAnswerEvidence', () => {
   it('names a supported answer without a score', () => {
     expect(describeAnswerEvidence(base)).toEqual({
       label: 'Belegt',
-      reason: 'alle Belege bestätigt',
+      reason: '',
     })
   })
 
@@ -32,25 +32,24 @@ describe('describeAnswerEvidence', () => {
       }),
     ).toEqual({
       label: 'Teilweise belegt',
-      reason:
-        '1 Beleg nicht bestätigt · zur Teilfrage „Gültigkeitsdauer Anwohnerparkausweis“ keine Fundstelle · Antwort abgebrochen',
+      reason: '1 Beleg nicht bestätigt · 1 Teilfrage ohne Fundstelle · Antwort abgebrochen',
     })
   })
 
-  it('counts instead of naming more than two uncovered sub-queries', () => {
+  it('counts uncovered sub-queries instead of naming them', () => {
     const { reason } = describeAnswerEvidence({
       ...base,
       level: 'PARTIALLY_SUPPORTED',
       uncoveredSubQueries: ['a', 'b', 'c'],
     })
-    expect(reason).toBe('zu 3 Teilfragen keine Fundstelle')
+    expect(reason).toBe('3 Teilfragen ohne Fundstelle')
   })
 
   it.each([
     [{ knowledgeSearched: false, passagesFound: false }, 'kein Wissen durchsucht'],
     [{ passagesFound: false }, 'keine Fundstelle im durchsuchten Bereich'],
     [{ unconfirmedCitations: 2 }, 'kein Beleg bestätigt'],
-    [{}, 'die Antwort nennt keine Fundstelle'],
+    [{}, ''],
   ])('says why an answer is unsupported (%o)', (overrides, why) => {
     expect(
       describeAnswerEvidence({
@@ -60,6 +59,6 @@ describe('describeAnswerEvidence', () => {
         confirmedDocuments: 0,
         ...overrides,
       }),
-    ).toEqual({ label: 'Nicht belegt', reason: `${why} · vor Verwendung prüfen` })
+    ).toEqual({ label: 'Nicht belegt', reason: why })
   })
 })

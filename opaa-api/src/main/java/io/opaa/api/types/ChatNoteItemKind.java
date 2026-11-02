@@ -2,7 +2,7 @@ package io.opaa.api.types;
 
 /**
  * What a Gesprächsnotiz point says about the asking person, and therefore which prompt it reaches
- * (docs/features/conversation-memory.md, "Bauteil 2").
+ * (ADR-0031).
  *
  * <p>An internal distinction, not a taxonomy for the person: it is delivered over the API so a
  * client can reason about it, but the Oberfläche does not show it. A point whose kind the
