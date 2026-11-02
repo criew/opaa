@@ -129,7 +129,11 @@ Format-Seiten unter `nachschlagen/formate/` folgen ihrem bisherigen gemeinsamen 
 - **Seiten werden mit dem Code gepflegt**, im selben Pull Request wie die Verhaltensänderung.
 - **Verschieben oder Umbenennen** zieht alle Verweise im Repo nach, auch Code-Kommentare,
   `AGENTS.md`-Dateien und Leser wie `demo/generator/generate_corpus.py` (liest die Übersicht der
-  Formate, Abschnitt „Zugelassene Formate“).
+  Formate, Abschnitt „Zugelassene Formate“) und die Zuordnung Ansicht → Seite hinter dem „?“ der
+  App (`frontend/src/app/shell/handbookLink.ts`, ihr Test prüft jede genannte Seite).
 - **Website:** `mkdocs.yml` legt Theme und Erweiterungen fest; ohne Navigationsliste folgt die
   Navigation den Ordnern. Lokal bauen: `pip install --require-hashes -r .github/requirements-docs.txt`,
-  dann `mkdocs serve` im Repository-Wurzelverzeichnis.
+  dann `mkdocs serve` im Repository-Wurzelverzeichnis. Veröffentlicht wird über
+  `.github/workflows/landing-page.yml` unter `https://opaa.io/handbuch/` (Stand von `main`) und
+  `https://opaa.io/handbuch/v<Version>/` (je Release-Tag); das „?“ der App verlinkt die Fassung
+  ihrer Version.

@@ -101,9 +101,11 @@ jobs:
             # The frontend build regenerates its API types from the OpenAPI
             # fragments under opaa-api/ on every pnpm run build/test (ADR-0006),
             # so a spec-only change must also run the frontend job. Both jobs run the license check,
-            # so a change to its policy files or script runs both.
+            # so a change to its policy files or script runs both. handbookLink.test.ts reads the page
+            # names under docs/handbuch, so moving a handbook page runs the frontend job too.
             frontend:
               - 'frontend/**'
+              - 'docs/handbuch/**'
               - 'opaa-api/src/main/openapi/**'
               - '.github/licenses/**'
               - '.github/scripts/check_licenses.py'

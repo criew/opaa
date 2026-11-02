@@ -75,7 +75,11 @@ describe('GlobalRail', () => {
   it('has exactly one entry for assets, the catalog, right after Chat', () => {
     renderRailAt('/catalog')
 
-    const labels = screen.getAllByRole('link').map((link) => link.textContent)
+    // The handbook link next to the bell is an icon without text, not a destination.
+    const labels = screen
+      .getAllByRole('link')
+      .map((link) => link.textContent)
+      .filter(Boolean)
     expect(labels).toEqual(['Chat', 'Katalog'])
     expect(screen.getByRole('link', { name: 'Katalog' })).toHaveAttribute('aria-current', 'page')
   })
@@ -84,6 +88,15 @@ describe('GlobalRail', () => {
     renderRailAt('/spaces')
 
     expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
+  })
+
+  it('links the handbook page of the current view in a new window', () => {
+    renderRailAt('/spaces/space-1/settings/members')
+
+    const help = screen.getByRole('link', { name: /Handbuch zu dieser Ansicht/ })
+    expect(help).toHaveAttribute('href', 'https://opaa.io/handbuch/pflegen/space-mitglieder.html')
+    expect(help).toHaveAttribute('target', '_blank')
+    expect(help).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
   it('marks the exact destination with aria-current="page"', () => {

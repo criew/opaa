@@ -2,12 +2,15 @@ import { useMemo, useState } from 'react'
 import Avatar from '@mui/material/Avatar'
 import Box from '@mui/material/Box'
 import ButtonBase from '@mui/material/ButtonBase'
+import IconButton from '@mui/material/IconButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { ThemeProvider, useTheme } from '@mui/material/styles'
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutlineOutlined'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutlineOutlined'
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import LogoutIcon from '@mui/icons-material/Logout'
@@ -16,6 +19,7 @@ import SettingsIcon from '@mui/icons-material/Settings'
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router'
 import AboutDialog from './AboutDialog'
+import { handbookUrl } from './handbookLink'
 import BrandMark from '@/shared/ui/BrandMark'
 import { NotificationBell } from '@/features/notification'
 import { useAuthStore } from '@/shared/session/authStore'
@@ -172,6 +176,18 @@ export default function GlobalRail() {
         })}
 
         <Box sx={{ flexGrow: 1 }} />
+
+        <Tooltip title="Handbuch" placement="right">
+          <IconButton
+            component="a"
+            href={handbookUrl(location.pathname, __OPAA_VERSION__)}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Handbuch zu dieser Ansicht (öffnet in neuem Fenster)"
+          >
+            <HelpOutlineIcon />
+          </IconButton>
+        </Tooltip>
 
         <NotificationBell />
 
