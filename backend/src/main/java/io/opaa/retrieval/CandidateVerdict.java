@@ -8,7 +8,7 @@ import org.springframework.ai.document.Document;
 
 /**
  * What one stage did to one candidate, and why - the smallest unit of the explanation protocol
- * (docs/handbuch/nachschlagen/wie-die-suche-arbeitet.md).
+ * (docs/handbuch/verwalten/suche-und-indexierung.md).
  *
  * @param chunkId the candidate's chunk id ({@link Document#getId()}), the key every stage's
  *     verdicts can be joined on to follow one candidate through the whole run.

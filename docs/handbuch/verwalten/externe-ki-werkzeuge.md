@@ -67,7 +67,7 @@ Einzelne Abfragen stehen in keinem Log; die Ursache steht in der Antwort, beim M
 | `401 network_not_allowed` | Aufruf außerhalb der Netzbereiche, oder Proxy ohne Eintrag | Netz oder vertraute Proxys prüfen |
 | `503` oder `401 channel_closed` | Kanal ausgeschaltet | einschalten |
 | `404` am MCP-Server | Kanal aus und kein gültiges Token, oder falsche Adresse (`/mcp`) | mit gültigem Token wiederholen |
-| `429` | Anfragen je Stunde erschöpft | warten oder Grenze anheben |
+| `429`, am MCP-Server Fehler `-32000` oder ein Ergebnis mit „Kontingent“ | Anfragen je Token und Stunde erschöpft (schon das Verbinden zählt); bei Suche und Trefferabruf auch die Grenze je Konto oder der Suche insgesamt | warten, bei Bedarf Grenze anheben |
 | Bibliothek fehlt in den Treffern | Leserecht, Freigabe oder Token-Auswahl fehlt | Freigabe erneuern, neues Token |
 | HTML statt JSON | Reverse Proxy reicht `/mcp` nicht durch | Proxy-Regel |
 

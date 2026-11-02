@@ -28,7 +28,7 @@ flowchart LR
 | Fusion | führt beide Listen nach Rang zusammen; wer in beiden steht, gewinnt |
 | Reranking | ein eigenes Modell liest Frage und Chunk zusammen und ordnet neu. Ab Werk aus, weil es einen eigenen Endpunkt braucht |
 | Relevanzschnitt | schneidet schwache Treffer ab, wenn eingeschaltet |
-| Vervollständigung | holt zu einem schon gefundenen Dokument den passenden Detail-Chunk nach |
+| Vervollständigung | holt zu einem schon gefundenen Dokument weitere Chunks nach. Ab Werk aus; den Zusammenhang liefern die Nachbar-Chunks |
 
 Vor der Antwort bekommt jeder Treffer seine **Nachbar-Chunks** dazu, damit eine Tabelle oder
 Aufzählung an einer Chunk-Grenze nicht abreißt.

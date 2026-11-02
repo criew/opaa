@@ -57,10 +57,17 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `opaa_self_disclosure_exports_total` | Selbstauskünfte nach Ergebnis (`started`, `completed`, `aborted`) und Abbruchgrund; viele Abbrüche deuten auf Proxy oder Timeout |
 | `opaa_self_disclosure_refused_total` | abgewiesene Selbstauskünfte nach Grund (`reason`) |
 | `opaa_self_disclosure_duration_seconds_*`, `opaa_self_disclosure_size_bytes_*`, `opaa_self_disclosure_running` | Dauer, Größe und laufende Selbstauskünfte dieser Instanz, ohne Bezug auf eine Person |
+| `opaa_query_duration_seconds_*`, `opaa_query_count_total`, `opaa_query_tokens_total` | Dauer je Frage, Fragen nach Erfolg und Fehler, verbrauchte Tokens des Chat-Modells |
+| `opaa_query_decomposition_fallback_total`, `opaa_query_decomposition_no_search_total` | Rückfälle der Teilfragen-Zerlegung nach Ursache; Nachrichten, in denen nichts zu suchen war |
+| `opaa_query_evidence_total` | Antworten je Belegstand (`supported`, `partially_supported`, `unsupported`), ohne Person, Chat oder Space |
+| `opaa_chat_search_duration_seconds_*` | Dauer und Anzahl der Chatsuchen, ohne Suchbegriff und Person |
+| `opaa_chat_note_extraction_total` | Verdichtungen der Gesprächsnotiz nach Ausgang (`applied`, `empty`, `failed`, `discarded`, `rejected`) |
 | `hikaricp_connections_*` | Connection Pool der Datenbank |
 | `jvm_memory_used_bytes`, `jvm_memory_max_bytes` | Speicher der JVM |
 
-Weitere Metriken: [Suche](ueberwachung-und-fehlerbehebung.md); Einsammeln und Alarme unter Kubernetes:
+Fragetext, Suchanfragen und Antwort stehen in keiner Logzeile oberhalb der Debug-Ebene. Rückfall der
+Zerlegung und gescheiterte Verdichtung der Gesprächsnotiz gehen als Warnung ohne Inhalt ins Log,
+unbestätigte Belege je Antwort nur als Anzahl auf Info-Ebene. Einsammeln und Alarme unter Kubernetes:
 [Betriebsüberwachung](kubernetes.md#betriebsüberwachung).
 
 ## Ausleitung an ein Sicherheitsmonitoring

@@ -149,7 +149,7 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     await expect(profilePanel).toContainText(SERVER_URL)
     await expect(profilePanel).toContainText('Ohne Anmeldung')
     // Freigabe = Anlegerecht „Konnektorbibliotheken anlegen“ für den Zugang (Handbuch: zugaenge.md,
-    // „Einen Zugang einrichten“). Ein neuer Zugang ist für niemanden außer der Systemverwaltung frei.
+    // „Einen Zugang anlegen“). Ein neuer Zugang ist für niemanden außer der Systemverwaltung frei.
     await expect(profilePanel).toContainText('Noch für niemanden freigegeben')
     await profilePanel.getByRole('button', { name: 'Festlegen, wer ihn nutzen darf' }).click()
     await profilePanel.getByLabel('Nur bestimmte Gruppen und Personen').click()

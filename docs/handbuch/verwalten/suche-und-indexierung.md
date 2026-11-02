@@ -43,8 +43,12 @@ Beide lassen sich anhalten und fortsetzen.
 
 Nach einem Update, das das Zerlegen eines Formats ändert, oder nach einer geänderten Chunk-Größe
 zeigt der Indexstatus „Nachzug ausstehend“. Den **Pipeline-Nachzug** stößt die Systemverwaltung
-über die Verwaltungsschnittstelle an (`/api/v1/admin/indexing/pipeline-reindex`, je Pipeline,
-paketweise, bis „done“); eine Oberfläche dafür gibt es nicht. Hochgeladene Dokumente und das
+über die Verwaltungsschnittstelle an; eine Oberfläche dafür gibt es nicht.
+`GET /api/v1/admin/indexing/pipeline-versions` nennt je Pipeline Kennung und aktuelle Version und je
+Bibliothek den Rückstand. `POST /api/v1/admin/indexing/pipeline-reindex` mit dieser Kennung als
+`pipelineId` und der Version als `belowVersion` zieht ein Paket nach; wiederholen, bis die Antwort
+`done` meldet. Nach einer geänderten Chunk-Größe gilt das für jede Pipeline außer `tika-fallback`
+und `email`. Hochgeladene Dokumente und das
 Dateisystem werden sofort neu verarbeitet, alle anderen Quellen im nächsten Lauf. Alte Chunks
 verschwinden erst, wenn die neuen da sind. Den Wechsel des Embedding-Modells steuern Sie unter
 [Modelle verwalten](modelle.md).

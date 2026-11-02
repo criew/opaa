@@ -24,7 +24,8 @@ Meldung der Quelle (etwa ein Confluence-Webhook). Je Bibliothek läuft höchsten
 |---|---|
 | unverändert (gleiche Prüfsumme) | übersprungen; darum sind Folgeläufe schnell |
 | geändert | neu verarbeitet, das Dokument behält seine Identität, Belege in Chats bleiben gültig |
-| verschwunden | entfernt, aber nur nach einem Lauf, der die Quelle vollständig gelesen hat |
+| umbenannt oder verschoben | je nach Quelle neues Dokument oder dasselbe an neuem Ort |
+| verschwunden | entfernt nach einem Lauf, der die Quelle vollständig gelesen hat, oder sofort, wenn die Quelle die Löschung selbst meldet |
 | nicht erreichbar | **nichts** wird entfernt |
 
 Ein einzelnes kaputtes Dokument bricht den Lauf nicht ab; es wird übersprungen und protokolliert.
@@ -51,10 +52,21 @@ fertig war, bleibt indiziert.
 - **Eingescannte PDFs** ohne Textebene werden als „kein extrahierbarer Text“ abgewiesen; eine
   Texterkennung gibt es nicht.
 
+## Feste Grenzen
+
+| Grenze | Wert | Wirkung |
+|---|---|---|
+| Ort in der Quelle | 2000 Zeichen bzw. 2676 Byte | darüber wird das Dokument abgewiesen |
+| Chunk | Zielgröße einstellbar (ab Werk 4000 Zeichen), höchstens 8000 Zeichen | Abschnitte unter 200 Zeichen werden zusammengelegt |
+| Eingabe des Embedding-Modells | 8191 Tokens abzüglich 10 % | ein Chunk darüber lässt das ganze Dokument scheitern |
+| Kennungen je Chunk | 64 | weitere werden nicht gespeichert |
+| Laufprotokoll | 500 Einträge je Lauf, zehn Läufe je Bibliothek | darüber nur gezählt bzw. gelöscht |
+
 ## Speicherkontingent
 
-Jede Bibliothek hat ein Kontingent (Obergrenze des Betriebs, ab Werk 10 GiB; darunter ein
-hausweiter Wert der Systemverwaltung). Gezählt wird nur Zuwachs. Senken löscht nichts: Die
+Jede Bibliothek hat ein Kontingent: die Obergrenze des Betriebs, ab Werk 10 GiB, für geteilte
+Bibliotheken darunter ein hausweiter Wert der Systemverwaltung. Private Bibliotheken teilen sich
+zusätzlich ein Kontingent je Person. Gezählt wird nur Zuwachs. Senken löscht nichts: Die
 Bibliothek nimmt nur nichts mehr auf, was sie wachsen lässt.
 
 ## Laufprotokoll

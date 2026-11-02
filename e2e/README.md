@@ -508,8 +508,8 @@ lassen.
 
 - `tests/connected-accounts-private-libraries.spec.ts` (#2175, Szenarien 3 bis 5, Teil von Epic
   \#2147) — verbundene Konten und private Bibliotheken über den vollen Stack, gegen die echte
-  Nextcloud der Suite (siehe unten); die Szenarien prüfen zugleich `docs/handbuch/verwalten/konten.md`,
-  Abschnitt „Verbundene Konten“, und `private-bibliotheken.md`.
+  Nextcloud der Suite (siehe unten); die Szenarien prüfen zugleich `docs/handbuch/arbeiten/konto-verbinden.md`
+  und `docs/handbuch/arbeiten/private-bibliothek.md`.
   `dev-user` verbindet unter „Einstellungen → Verbundene Konten“ ihr Nextcloud-Konto mit einem
   App-Passwort — ein falsches wird abgewiesen und nichts gespeichert, das Passwortfeld ist danach
   leer — und legt im Assistenten über „Über mein verbundenes Konto“ eine private Bibliothek an (kein

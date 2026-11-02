@@ -49,7 +49,7 @@ Branding, Mail, Benachrichtigungen, Selbstauskunft (`SelfDisclosureExporter`), E
 
 ## Verweise
 
-- Handbuch (`docs/handbuch/`): `benutzerverwaltung.md`; `authentifizierung.md`, `branding.md`, `e-mail.md`
+- Handbuch (`docs/handbuch/`): `verwalten/konten.md`; `betreiben/authentifizierung.md`, `branding.md`, `e-mail.md`
 
 ## Tests bei Änderungen
 

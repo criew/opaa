@@ -22,8 +22,8 @@ Vorgabewerte, und ein Dokument ohne Wert schließt kein Filter aus; im Beleg hei
 weit, nie zu eng. Das Änderungsdatum einer Datei zählt nicht als Stand.
 
 **Vokabular der Dokumentart:** Satzung/Ordnung, Dienstanweisung, Vermerk, Protokoll,
-Bescheid-Vorlage, Formular, Gebührenverzeichnis, Präsentation, Sonstiges. Ein Wert außerhalb dieser
-Liste lässt sich nicht speichern.
+Bescheid-Vorlage, Formular, Gebührenverzeichnis, Präsentation, Sonstiges. Der Betrieb kann die Liste
+je Installation in der Datenbank erweitern; ein Wert außerhalb der Liste lässt sich nicht speichern.
 
 ## Woher ein Wert kommt
 

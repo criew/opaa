@@ -48,7 +48,8 @@ Identitätsanbieter, Verzeichnis-Synchronisation und -Konnektoren (`directory`);
 
 ## Verweise
 
-- Handbuch: `docs/handbuch/nachschlagen/rechte-matrix.md`
+- Handbuch: `docs/handbuch/nachschlagen/rechte-matrix.md`; `verwalten/gruppen.md`, `ausscheiden.md`,
+  `stichtagsauskunft.md`
 
 ## Tests bei Änderungen
 
