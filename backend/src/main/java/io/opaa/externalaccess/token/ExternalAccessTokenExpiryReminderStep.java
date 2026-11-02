@@ -27,9 +27,9 @@ import org.springframework.transaction.support.TransactionOperations;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The reminder before a token expires (docs/features/external-access.md, "Eigenschaften"): every
- * live token whose expiry falls on the calendar day {@code n} days after the day of the run gets a
- * mail, for each configured lead time - 14 and 3 days by default.
+ * The reminder before a token expires (ADR-0035): every live token whose expiry falls on the
+ * calendar day {@code n} days after the day of the run gets a mail, for each configured lead time -
+ * 14 and 3 days by default.
  *
  * <p>Without it every token dies silently and the failure lands as a ticket with an operator who
  * cannot do anything about it: only the person can issue a new one, and an expired token cannot be

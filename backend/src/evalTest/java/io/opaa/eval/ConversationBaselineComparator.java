@@ -123,7 +123,7 @@ public final class ConversationBaselineComparator {
         String.valueOf(report.conversationMeasurementContractVersion()));
     PipelineBaselineComparator.addPipelineFixedPointMismatches(
         mismatches, fixedPoints.pipeline(), cfg.pipeline());
-    // docs/features/conversation-memory.md: each of the three moves what the decomposition sees.
+    // ADR-0031: each of the three moves what the decomposition sees.
     addIfDiffers(
         mismatches,
         "conversationWindowMessages",

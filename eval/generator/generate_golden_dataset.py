@@ -7,7 +7,7 @@ frontmatter is the ground truth: every query's `expected_documents` is
 computed by filtering the parsed frontmatter fields, never guessed by an LLM
 and never hand-typed against a document the author merely skimmed.
 
-Design goals (docs/features/search-quality-evaluation.md, "Golden Dataset";
+Design goals (ADR-0011;
 ADR-0011):
 
 - Deterministic: candidates are built by iterating entities and fixed
@@ -31,8 +31,7 @@ ADR-0011):
   address list).
 - Filter/range categories (`multi_attribute_filter`, `numeric_range`) keep
   only candidates whose result set has between 2 and 15 documents
-  (docs/features/search-quality-evaluation.md, "Ableitung aus dem
-  Frontmatter"; issue acceptance criteria).
+  (ADR-0011; issue acceptance criteria).
 - All free-text comparisons (`entity_description`'s uniqueness check,
   `multi_attribute_filter`'s alignment/creator/ability match) are
   case-insensitive (`_ci_eq`/`_ci_in`), because the corpus carries some
@@ -493,7 +492,7 @@ def generate_entity_description(entities: list[Entity]) -> list[Candidate]:
 #
 # "Which {alignment} characters created by {creator} can {superpower}?" — all
 # matching documents are the ground truth. Kept only if the result window is
-# [2, 15] documents (docs/features/search-quality-evaluation.md).
+# [2, 15] documents (ADR-0011).
 
 ALIGNMENTS = ["Good", "Bad", "Neutral"]
 TOP_CREATORS = ["Marvel Comics", "DC Comics", "Shueisha", "Dark Horse Comics", "Lego"]
@@ -601,7 +600,7 @@ BELOW_THRESHOLDS_BY_ATTRIBUTE = {
 # "no value here", which happens to parse as something numeric-shaped (or,
 # for `overall_score`, as the literal string "∞"). Two properties this rule
 # always has, independent of the domain (this generalizes beyond
-# comic-characters — docs/features/search-quality-evaluation.md tracks a
+# comic-characters — ADR-0011 tracks a
 # sentinel table per domain and per numerically-used field, "keine" included
 # as an explicit, checked answer, not an implicit default):
 #
@@ -745,7 +744,7 @@ def generate_numeric_range(entities: list[Entity]) -> list[Candidate]:
 #
 # A German-phrased question against the English-language corpus, reusing an
 # already-validated candidate from one of the four categories above so the
-# ground truth is "wie oben" (docs/features/search-quality-evaluation.md)
+# ground truth is "wie oben" (ADR-0011)
 # rather than independently derived. Translations below are hand-written
 # templates driven by each source candidate's structured `meta`, not
 # machine-translated and not string-parsed out of the human-readable `note`
@@ -919,7 +918,7 @@ def _german_attribute_label(score_field: str) -> str:
 # --- Curation ------------------------------------------------------------
 #
 # "Vollautomatisch generierte Fälle sind ein Silver Dataset" (issue #226 /
-# docs/features/search-quality-evaluation.md, "Kuratierung"): the generators
+# ADR-0011): the generators
 # above already apply every *automatic* filter this issue mandates
 # (contamination-length guards, the sentinel rule, the [2, 15] filter-result
 # window, entity_description/filter uniqueness under case-insensitive

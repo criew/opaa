@@ -14,8 +14,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Deletes the mass-retrieval alerts of {@link ExternalAccessMassRetrievalAlarm} after a short,
- * fixed period - read or unread (docs/features/external-access.md, "Kontingente und der
- * Abflussalarm").
+ * fixed period - read or unread (ADR-0035).
  *
  * <p>This closes the one gap between the alert and the specification's promise. The count itself
  * lives in memory and is gone with its window, but the message has to be persisted or nobody would

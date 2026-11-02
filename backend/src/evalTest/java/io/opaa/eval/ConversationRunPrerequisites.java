@@ -5,8 +5,7 @@ import java.util.Optional;
 
 /**
  * Decides whether a multi-turn run can measure what it would claim to measure (issue #1484,
- * docs/features/conversation-memory.md, "Messung": <i>„Ohne aktives Chat-Modell wird der Lauf als
- * ‚nicht ausgeführt' gemeldet"</i>).
+ * ADR-0031: <i>„Ohne aktives Chat-Modell wird der Lauf als ‚nicht ausgeführt' gemeldet"</i>).
  *
  * <p><b>Reports rather than throws, and never measures instead.</b> A missing chat model or a
  * switched-off decomposition does not make this path score worse - it makes it measure a different

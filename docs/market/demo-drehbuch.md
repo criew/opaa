@@ -7,9 +7,8 @@ zentrale Botschaft **Belegbarkeit**, live erlebbar: Zwei Nutzer stellen dieselbe
 unterschiedliche, jeweils belegte Antworten (Frage 5). Wer das Recht dahinter vergibt und wieder
 nimmt, zeigen die Schritte A und B.
 
-Konzept, Behördenlandschaft, Bibliotheken und Rechtematrix hinter diesem Drehbuch stehen in
-[`../features/demo-instance.md`](../features/demo-instance.md) und werden hier **nicht wiederholt**.
-Installation, Nutzerkonten und Passwörter stehen in [`../../demo/README.md`](../../demo/README.md).
+Bibliotheken, Rechtematrix, Installation, Nutzerkonten und Passwörter stehen in
+[`../../demo/README.md`](../../demo/README.md) und werden hier **nicht wiederholt**.
 
 **Invariante: Frage 1 ist garantiert beantwortbar.** Issue #711 stellt sicher, dass der Rheinfurt-Korpus
 für die Gebührenfrage (Frage 1 unten) immer einen Treffer liefert; `e2e/demo-smoke` prüft diese
@@ -510,7 +509,7 @@ Drei Fragen, die sich nur aus einem Nicht-Text-Format beantworten lassen (#2028)
 
 Wem welches Asset gehört, was öffentlich ist, wer welche Favoriten hat und welcher Space was
 zugeordnet hat, steht als Übersicht in
-[`../features/demo-instance.md`](../features/demo-instance.md#eigentum-sichtbarkeit-favoriten-und-zuordnung).
+[`../../demo/README.md`](../../demo/README.md), Abschnitt „Eigentum, Sichtbarkeit, Favoriten und Zuordnung".
 
 **Stand der Oberfläche:** Die Kachel nennt die zuständige Stelle mit Personen- oder Gruppensymbol
 und trägt ein Welt-Symbol, wenn das Asset an alle Konten freigegeben ist; die Filterzeile ist Suche →
@@ -592,8 +591,6 @@ Für die Teile 1 und 3 lohnen sich zwei Browserfenster, eines davon privat.
 - [`../../demo/README.md`](../../demo/README.md) — Installation mit einem Befehl, Nutzerkonten mit
   Passwörtern, Gruppen, Prompt-Bibliotheken und vorbereitete Chats der Demo, öffentliche Instanz,
   Korpus-Aktualisierung
-- [`../features/demo-instance.md`](../features/demo-instance.md) — Konzept: Behördenlandschaft,
-  Bibliotheken, Formate, Quellen und Lizenzen, Rechtemodell mit internen und Keycloak-Gruppen
 - [`../handbuch/netz-und-sicherheit.md`](../handbuch/betrieb/netz-und-sicherheit.md#härtung-für-erreichbare-deployments), Abschnitt „Härtung für erreichbare
   Deployments" — zwingend vor jedem über `localhost` hinaus erreichbaren Rollout dieser Demo
 - [`../../e2e/README.md`](../../e2e/README.md), Abschnitt „Demo-Smoke (#232)" — der automatisierte

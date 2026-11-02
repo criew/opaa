@@ -219,7 +219,7 @@ opaa:
     note:
       # Points the Gespraechsnotiz of one chat keeps at most; appending beyond it drops the
       # oldest point. Ebene-1 benchmark value, only judgeable with the multi-turn harness
-      # (docs/features/conversation-memory.md). Everything else about the note is a fixed
+      # (ADR-0031). Everything else about the note is a fixed
       # value with no addressee to reconfigure it.
       max-items: ${OPAA_CHAT_NOTE_MAX_ITEMS:10}
     locked-account-cleanup:
@@ -299,7 +299,7 @@ opaa:
     # The conversation window (messages the chat memory keeps, always even) and how many of its
     # most recent turns the sub-question decomposition sees - the search never sees more of the
     # conversation than the answer. Ebene-1 benchmark values, only judgeable with the multi-turn
-    # harness (docs/features/conversation-memory.md).
+    # harness (ADR-0031).
     conversation-window-messages: ${OPAA_QUERY_CONVERSATION_WINDOW_MESSAGES:20}
     search-window-turns: ${OPAA_QUERY_SEARCH_WINDOW_TURNS:2}
     # How many HNSW index entries one vector search may visit to fill fetch-k within its filter

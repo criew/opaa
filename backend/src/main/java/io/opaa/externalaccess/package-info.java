@@ -1,8 +1,7 @@
 /**
- * The channel settings of the external access (ADR-0035, docs/features/external-access.md): the
- * installation-wide switch - default off and at the same time the emergency stop -, the token
- * lifetime ceiling, the per-token quota, the networks of the channel and the instructions text
- * handed to a foreign tool.
+ * The channel settings of the external access (ADR-0035): the installation-wide switch - default
+ * off and at the same time the emergency stop -, the token lifetime ceiling, the per-token quota,
+ * the networks of the channel and the instructions text handed to a foreign tool.
  *
  * <p>{@link io.opaa.externalaccess.ExternalAccessSettingsService} is the single entry point: it
  * validates a change, audits everything but the instructions text, and answers the per-call reads

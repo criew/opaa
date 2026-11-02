@@ -13,10 +13,9 @@ import org.springframework.stereotype.Component;
 
 /**
  * Ends the access tokens of a person whose access itself ended - a locked account, a redeemed
- * handover (ADR-0035; docs/features/external-access.md, "Lebenszyklus": "Ein Token folgt dem
- * Lebenszyklus seiner Person") - and of a local account whose sessions all ended because its
- * credentials or a session may be in someone else's hands: a token issued from a taken-over session
- * would otherwise outlive the clean-up.
+ * handover (ADR-0035: "Ein Token folgt dem Lebenszyklus seiner Person") - and of a local account
+ * whose sessions all ended because its credentials or a session may be in someone else's hands: a
+ * token issued from a taken-over session would otherwise outlive the clean-up.
  *
  * <p>After a lock or a handover the tokens are already refused per call by {@code
  * ExternalAccessTokenAuthenticator}; there this listener is the other half of the promise - without

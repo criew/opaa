@@ -229,7 +229,7 @@ Zwischen Entwurf und Freigabe steht ein **automatisierter Prüflauf** — die te
 
 **1 · Sicherheit und Robustheit.** Hält der Agent Manipulationsversuchen stand? Geprüft wird insbesondere die **Prompt-Injection aus eingebetteten Dokumenten**: Ein Schriftsatz, ein Antrag oder eine hochgeladene Tabelle kann Anweisungen enthalten, die an den Agenten gerichtet sind, ohne dass ein Mensch sie so wahrnimmt. Weiter: Gibt er interne Anweisungen preis, versucht er Wissen außerhalb seiner Berechtigung zu ziehen, lässt er sich zur Umgehung seiner Grenzen überreden?
 
-**2 · Fachliche Richtigkeit.** Antworten auf **Referenzfälle mit bekannter richtiger Lösung**. Das ist derselbe Gedanke wie bei der Messung der Retrieval-Qualität, nur eine Ebene höher — nicht „findet die Suche die richtige Stelle", sondern „zieht der Agent daraus den richtigen Schluss". Der Messrahmen ist in [search-quality-evaluation.md](./search-quality-evaluation.md) beschrieben.
+**2 · Fachliche Richtigkeit.** Antworten auf **Referenzfälle mit bekannter richtiger Lösung**. Das ist derselbe Gedanke wie bei der Messung der Retrieval-Qualität, nur eine Ebene höher — nicht „findet die Suche die richtige Stelle", sondern „zieht der Agent daraus den richtigen Schluss". Der Messrahmen ist in [ADR-0011](../decisions/0011-search-quality-evaluation-harness.md) beschrieben.
 
 **3 · Belegtreue.** Führt jede tragende Aussage einen Beleg, der die Belegvalidierung besteht? Sagt er **„nicht feststellbar"**, wo nichts belegt ist, statt eine plausible Antwort zu formulieren? Geprüft wird beides: das unbelegte Ausweichen und das falsche Zitat — eine Fundstelle, die die Aussage nicht trägt.
 
@@ -381,7 +381,7 @@ Ein Werkzeug nützt nur, wenn das Modell es aufruft — und zwar mit den richtig
 - **Die Angabe kennt drei Werte, nicht zwei:** *ungeprüft* (Vorgabe; verhält sich wie „nicht fähig"), *fähig*, *nicht fähig*. Ein einzelner Schalter könnte „nie gesetzt" nicht von „geprüft, kann es nicht" unterscheiden — und genau das ist die Frage im Betrieb: Muss ich das noch prüfen, oder hat es schon jemand getan?
 - **Die Angabe gilt einer Kombination, nicht einem Modell.** Werkzeugfähigkeit hängt an Modell, Quantisierung, Laufzeit und deren Konfiguration. Die Angabe trägt deshalb **Datum und Grundlage** — *gemessen*, mit Verweis auf den Messlauf, oder *manuell gesetzt* — und lautet sinngemäß „für diesen Endpunkt und diese Laufzeit geprüft". Aussagekräftig ist, wie geprüft wurde, nicht wer: Das Feld führt weder Personen- noch Gruppennamen. Eine Änderung von Endpunkt oder Modellkennung setzt sie auf *ungeprüft* zurück; ausgelieferte Modellzeilen starten auf *ungeprüft*. Sonst entsteht der stille Fehlbetrieb auf dem zweiten Weg: Nach einem Laufzeit-Update verliert die Installation Werkzeugaufrufe, das Feld steht weiter auf „fähig", nichts wird abgelehnt, und im Fachreferat heißt es, die Antworten seien schlechter geworden.
 - **Das Handbuch führt die geprüften Kombinationen** — Modell, Quantisierung, Laufzeit, Version, Datum, Ergebnis je Fallklasse. Das ist die Unterlage für die Frage, warum eine Installation dieses und nicht jenes Modell betreibt.
-- **Die Eigenschaft wird gemessen, nicht behauptet.** Für die Suchqualität gibt es einen Messrahmen mit festen Fällen ([search-quality-evaluation.md](./search-quality-evaluation.md)); für den Werkzeugaufruf braucht es denselben Gedanken auf eigener Fallbasis: Ruft das Modell auf, wenn es soll? Lässt es den Aufruf, wenn nicht? Sind die Argumente gültig? Erfindet es Werkzeuge, die es nicht gibt? Hält es die Obergrenze ein? Ohne diese Messung ist die Fähigkeit eine Herstellerangabe.
+- **Die Eigenschaft wird gemessen, nicht behauptet.** Für die Suchqualität gibt es einen Messrahmen mit festen Fällen ([ADR-0011](../decisions/0011-search-quality-evaluation-harness.md)); für den Werkzeugaufruf braucht es denselben Gedanken auf eigener Fallbasis: Ruft das Modell auf, wenn es soll? Lässt es den Aufruf, wenn nicht? Sind die Argumente gültig? Erfindet es Werkzeuge, die es nicht gibt? Hält es die Obergrenze ein? Ohne diese Messung ist die Fähigkeit eine Herstellerangabe.
 - **Betriebsbedingungen gehören zur Eigenschaft.** Eine zu klein gewählte Kontextlänge schneidet die Werkzeugbeschreibungen ab, ohne dass es auffällt, und manche Bedienweisen verlieren Werkzeugaufrufe, während die Antwort im Fluss ausgegeben wird. Beides sind Betriebsfehler mit dem Anschein eines unfähigen Modells — die Störungssuche muss sie benennen können.
 
 ### Werkzeug-Audit: drei Bestände, die nicht verwechselt werden dürfen
@@ -497,13 +497,13 @@ Werkzeuge und Fremdsysteme werden über das **Model Context Protocol (MCP)** ang
 **Abgrenzung der Richtung.** Dieses Kapitel beschreibt OPAA als MCP-**Client**: Ein Agent von OPAA
 ruft ein fremdes Werkzeug auf. Das bleibt Phase 2. Die **Gegenrichtung** — OPAA als MCP-**Server**,
 den ein externes KI-Werkzeug als Wissensquelle anspricht — ist am 18.09.2026 entschieden und in
-[external-access.md](./external-access.md) beschrieben. Die beiden Richtungen teilen nur den
+[ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md) beschrieben. Die beiden Richtungen teilen nur den
 Protokollnamen: Die Client-Richtung führt Daten aus OPAA heraus in ein Werkzeug, das handelt; die
 Server-Richtung liefert Fundstellen an ein Werkzeug, das fragt. Entscheidungen der einen Richtung
 gelten nicht automatisch für die andere. Die Server-Richtung ist inzwischen **gebaut** — Schalter,
 Bibliotheksfreigabe, persönliche Zugangstokens, Such- und Abrufweg und der MCP-Server unter `/mcp`;
 wer sie betreiben oder anschließen will, findet beides in
-[external-access.md](./external-access.md) und im Handbuchkapitel „Externe KI-Werkzeuge".
+[ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md) und im Handbuchkapitel „Externe KI-Werkzeuge".
 
 **Nur über gesicherte Netzverbindungen, und nur von einer Zulassungsliste.** Welche fremden Werkzeugserver überhaupt in Frage kommen, entscheidet die **Systemverwaltung** und hinterlegt es in einer Zulassungsliste; ein Agenten- oder Skill-Autor wählt aus dieser Liste aus, er erweitert sie nicht. Der Grund ist derselbe, aus dem die Zielprüfung der Konnektoren existiert: Ein Werkzeug, dessen Adresse jemand frei eintragen darf, ist ein Weg nach draußen, den niemand beschlossen hat. Zugangsdaten liegen verschlüsselt in der Anwendung, nie in einer Werkzeugbeschreibung. Anbindungen, die einen lokalen Prozess starten, sind ausgeschlossen — „der Nutzer darf das Kommando festlegen" ist keine Einstellmöglichkeit, sondern eine Ausführungslücke.
 
@@ -577,9 +577,9 @@ Fachverfahren, Vorgangsbearbeitung und elektronische Akte sind die Systeme, in d
 |---|---|
 | [spaces-and-assets.md](./spaces-and-assets.md) | Rechte an Agenten, Freigabekette für das Wissen, Verteilungsstufen, Katalog, Versionierung, Freigabeweg, Export und Import — **das Leitdokument** |
 | [access-control.md](./access-control.md) | Identität, Gruppen, Systemverwaltung, Protokollierung |
-| [external-access.md](./external-access.md) | Die **Gegenrichtung**: OPAA als MCP-Server für externe KI-Werkzeuge, mit Zugangstokens, Bibliotheksfreigabe und Installationsschalter. Nicht Gegenstand dieses Dokuments |
+| [ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md) | Die **Gegenrichtung**: OPAA als MCP-Server für externe KI-Werkzeuge, mit Zugangstokens, Bibliotheksfreigabe und Installationsschalter. Nicht Gegenstand dieses Dokuments |
 | [data-indexing-rag.md](./data-indexing-rag.md) | Abfrageablauf, Quellenbindung und Belegvalidierung, auf denen Belegtreue und Prüfagenten aufsetzen |
-| [search-quality-evaluation.md](./search-quality-evaluation.md) | Messrahmen für Referenzfälle, den der Prüfstand auf Agentenebene weiterverwendet |
+| [ADR-0011](../decisions/0011-search-quality-evaluation-harness.md) | Messrahmen für Referenzfälle, den der Prüfstand auf Agentenebene weiterverwendet |
 | [llm-integration.md](./llm-integration.md) | Modellwahl und zentrale Vorgaben als Obergrenze für die Modellwahl eines Agenten; die Fähigkeiten eines Modelleintrags, darunter „Werkzeugaufrufe"; und die harte Regel, dass der **Systemvorspann nicht über den Chat änderbar** ist — Skills und Agenten setzen ihre Blöcke daneben, sie ersetzen ihn nicht |
 | [security-and-compliance.md](./security-and-compliance.md) | Die **geschlossene Liste** der Protokollereignisse. Ein nachweispflichtiger Werkzeugaufruf braucht dort einen Eintrag, bevor er geschrieben werden darf; die Nichtprotokollierung von Abfragen gilt auch für Suchaufrufe eines Werkzeugs |
 | [VISION.md](../VISION.md) · [USE-CASES.md](../USE-CASES.md) | Einordnung in die Themenbereiche und Anwendungsfälle im Alltag |

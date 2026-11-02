@@ -1,10 +1,10 @@
 """Data and RSS/HTML rendering for the "Pressemitteilungen Stadt Rheinfurt"
-library (RSS_FEED connector, see docs/features/demo-instance.md).
+library (RSS_FEED connector, see demo/README.md).
 
 Style is inspired by the press releases of the City of Cologne
 (offenedaten-koeln.de, DL-DE-BY-2.0) and the RSS feed structure of the City
 of Düsseldorf — used only as a stylistic/structural template, no text is
-copied (see docs/features/demo-instance.md, "Quellen und Lizenzen").
+copied (see demo/README.md).
 
 All dates are fixed literals, not wall-clock timestamps, so the feed and its
 detail pages are byte-identical across generator runs.

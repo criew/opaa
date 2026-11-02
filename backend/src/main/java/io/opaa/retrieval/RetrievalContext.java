@@ -16,13 +16,13 @@ import org.springframework.ai.chat.messages.Message;
  *
  * <p>{@code searchScope} is taken as given; this type resolves no permissions of its own. {@code
  * conversationNote} holds the {@code RAHMEN} points of the chat's Gesprächsnotiz as plain texts -
- * already filtered by kind, because only that kind reaches the search
- * (docs/features/conversation-memory.md, "Bauteil 2"); empty outside a persisted chat. {@code
- * metadataFilter} is the filter the asking person or the chat set, never derived from the question.
- * {@code queryProperties} and {@code rerankAvailability} travel here rather than being injected, so
- * one instance serves several parameter sets and every stage of a run sees the same rerank answer -
- * deciding it per stage would let the fusion widen its budget for a reranker the rerank stage then
- * finds unavailable. Every construction must state the availability; no constructor fills it in.
+ * already filtered by kind, because only that kind reaches the search (ADR-0031); empty outside a
+ * persisted chat. {@code metadataFilter} is the filter the asking person or the chat set, never
+ * derived from the question. {@code queryProperties} and {@code rerankAvailability} travel here
+ * rather than being injected, so one instance serves several parameter sets and every stage of a
+ * run sees the same rerank answer - deciding it per stage would let the fusion widen its budget for
+ * a reranker the rerank stage then finds unavailable. Every construction must state the
+ * availability; no constructor fills it in.
  */
 public record RetrievalContext(
     String question,

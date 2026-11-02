@@ -490,7 +490,7 @@ aus dem privaten Arbeitsbereich.
   Risiko, etwas nicht wiederzufinden, und unterbliebe.
 - **Kein Durchgriff.** Weder Space- noch System-Admins können fremde Chats durchsuchen; es gibt dafür
   keinen Parameter und keine Rolle. Die Suche ist nur in der angemeldeten Sitzung erreichbar, nicht über
-  persönliche Zugangstokens und nicht über den MCP-Server für [externe KI-Werkzeuge](./external-access.md).
+  persönliche Zugangstokens und nicht über den MCP-Server für [externe KI-Werkzeuge](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md).
 
 ### Bedienung
 
@@ -515,7 +515,7 @@ eines Chats in der Seitenleiste und auf der Seite „Chats" bietet dafür „Exp
 „Exportieren als PDF".
 
 - **Inhalt beider Formate:** der Titel als Überschrift, Beginn des Chats und Exportzeitpunkt, dann
-  die [Gesprächsnotiz](./conversation-memory.md) als eigener Abschnitt „Gesprächsnotiz", sobald sie
+  die [Gesprächsnotiz](../decisions/0031-gespraechsgedaechtnis.md) als eigener Abschnitt „Gesprächsnotiz", sobald sie
   einen Punkt hat (wie in der Oberfläche am Kopf des Chats; im Export auch dann, wenn die Oberfläche
   sie in den ersten beiden Runden noch nicht zeigt), dann jede Frage und Antwort in ihrer
   Reihenfolge mit Datum und Uhrzeit. Unter jeder Antwort stehen ihre
@@ -671,8 +671,8 @@ Handbuch und E2E-Abdeckung gehören in jede Phase, nicht gesammelt ans Ende.
   derselben Art (je Person und Chat) und passt in das hier festgelegte Modell.
 - **[security-and-compliance.md](./security-and-compliance.md#was-ausdrücklich-nicht-protokolliert-wird)** —
   Suchbegriffe sind Abfragen und werden nicht protokolliert.
-- **[external-access.md](./external-access.md)** — die Chatsuche ist kein Zugriffsweg für externe KI-Werkzeuge.
-- **[conversation-memory.md](./conversation-memory.md)** — die Gesprächsnotiz folgt dem Chat, wird aber
+- **[ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md)** — die Chatsuche ist kein Zugriffsweg für externe KI-Werkzeuge.
+- **[ADR-0031](../decisions/0031-gespraechsgedaechtnis.md)** — die Gesprächsnotiz folgt dem Chat, wird aber
   nicht durchsucht.
 - **Benachrichtigungssystem (#1297)** — das Postfach verweist auf Chats; ein Verweis auf einen
   archivierten Chat öffnet ihn wie jeder andere.

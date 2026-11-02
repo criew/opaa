@@ -11,8 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Removes dead token rows once the installation's audit retention has run out over them
- * (docs/features/external-access.md, "Was von einem Token uebrig bleibt").
+ * Removes dead token rows once the installation's audit retention has run out over them (ADR-0035).
  *
  * <p>The frist is <b>coupled to the audit retention, not chosen</b>, and the coupling is
  * two-directional on purpose. Not earlier: a row that disappears before the entry that proves it

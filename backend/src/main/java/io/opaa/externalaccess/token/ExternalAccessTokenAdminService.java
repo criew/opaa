@@ -25,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The Bestandsliste of every access token and the two blocking levers of the Systemverwaltung
- * (ADR-0035, Entscheidung 2; docs/features/external-access.md, "Zugangstokens").
+ * (ADR-0035, Entscheidung 2).
  *
  * <p>What this class deliberately cannot do is as much its contract as what it can: it never
  * returns a token value, never a usage count and never a usage date, and it offers no filter, no

@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * The daily pass that lets {@link ExternalAccessTokenLapseService} record every token which has
- * stopped working (ADR-0035; docs/features/external-access.md, "Lebenszyklus").
+ * stopped working (ADR-0035).
  *
  * <p>Why this exists at all: with a mandatory expiry of at most 90 days, <b>the ordinary end of a
  * token is the expiry, not the revocation</b>. An access that ends without an entry is the same gap

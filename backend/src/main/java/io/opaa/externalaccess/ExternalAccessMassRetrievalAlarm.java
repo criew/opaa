@@ -20,10 +20,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.TransactionException;
 
 /**
- * The mass-retrieval alert of the external-access channel (docs/features/external-access.md,
- * "Kontingente und der Abflussalarm"): counts the retrievals of the <b>whole channel</b> in a
- * sliding window and, when the threshold from the channel settings is exceeded, raises exactly one
- * message to the system administration plus one line in the technical application log.
+ * The mass-retrieval alert of the external-access channel (ADR-0035): counts the retrievals of the
+ * <b>whole channel</b> in a sliding window and, when the threshold from the channel settings is
+ * exceeded, raises exactly one message to the system administration plus one line in the technical
+ * application log.
  *
  * <p>What it deliberately is not. The count is <b>one counter of the whole installation</b> in
  * {@link InstallationCounters} (ADR-0053, Entscheidung 12): one row for the channel, with the

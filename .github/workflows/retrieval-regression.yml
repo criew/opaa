@@ -1,9 +1,9 @@
 name: Retrieval-Regression
 
-# Bewusst NICHT bei jedem Pull Request (siehe docs/features/search-quality-evaluation.md,
-# "Auslösung", und ADR-0011, Entscheidung 5): der Lauf zieht ein Ollama-Modell und indiziert rund
-# 1.450 Dokumente über die echte Chunking-/Embedding-Pipeline, das dauert mehrere Minuten selbst mit
-# warmem Modell-Cache (siehe eval/README.md) und würde jeden PR-Push unnötig verlangsamen.
+# Bewusst NICHT bei jedem Pull Request (siehe ADR-0011, Entscheidung 5): der Lauf zieht ein
+# Ollama-Modell und indiziert rund 1.450 Dokumente über die echte Chunking-/Embedding-Pipeline, das
+# dauert mehrere Minuten selbst mit warmem Modell-Cache (siehe eval/README.md) und würde jeden
+# PR-Push unnötig verlangsamen.
 on:
   schedule:
     # Post-merge QA loop, wie in .github/workflows/e2e.yml — ein anderer Zeitpunkt (2:11 statt

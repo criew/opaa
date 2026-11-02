@@ -239,7 +239,7 @@ Zweifel gilt dort die Fassung, nicht hier.
 - **Modelle:** Verbrauchs- und Kostendaten je Modell tragen die zentrale Modellvorgabe →
   [llm-integration.md](./llm-integration.md)
 - **Suchqualität:** Treffer- und Belegquoten sind die fachliche Ergänzung der Nutzungszahlen →
-  [search-quality-evaluation.md](./search-quality-evaluation.md)
+  [ADR-0011](../decisions/0011-search-quality-evaluation-harness.md)
 - **Betrieb:** Betriebskennzahlen gehören in die vorhandene Überwachung des Rechenzentrums →
   [deployment-infrastructure.md](./deployment-infrastructure.md)
 

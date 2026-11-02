@@ -192,7 +192,7 @@ Stand und Nachweis (docs/fortschritt/)
 └── tagesreport.md         — ticketbasierter täglicher Report (opaa.io/report, Atom-Feed)
 
 Spezifikationen (docs/features/) — je Themenbereich
-├── A  data-indexing-rag.md · search-quality-evaluation.md
+├── A  data-indexing-rag.md
 ├── B  knowledge-sources.md
 ├── C  spaces-and-assets.md
 ├── D  agents-and-tools.md

@@ -420,7 +420,7 @@ unparsebare Antwort), fällt die Suche auf das Verhalten vor #923 zurück — ei
 `buildSearchQuery`-Logik (Frage, ggf. um eine Nutzerfrage aus dem Verlauf ergänzt) — nie auf einen
 Fehler für den Nutzer, höchstens die alte Suchqualität. Seit #1486 ist das die **letzte** Nutzerfrage
 des Suchfensters statt der ersten des Chats; siehe
-[conversation-memory.md](./conversation-memory.md), Bauteil 1.
+[ADR-0031](../decisions/0031-gespraechsgedaechtnis.md), Bauteil 1.
 
 **Nachricht ohne Suchbedarf (#1684):** Ein Wunsch zur Antwortform, eine Angabe zur Person oder ein
 Dank hat nichts zu suchen. Das Modell antwortet dann mit einem Signalwort. Gesucht wird trotzdem, mit
@@ -428,7 +428,7 @@ der `buildSearchQuery`-Suchanfrage des Rückfalls, und die Antwort wird angewies
 Nachricht einzugehen, statt „nichts gefunden" zu melden. Das Signalwort schaltet die Suche bewusst
 nicht ab: Folgefragen ohne Fragezeichen werden oft genug für Nachrichten ohne Suchbedarf gehalten,
 dass eine ausgelassene Suche Fragen ohne Beleg ließe (Abwägung in
-[conversation-memory.md](./conversation-memory.md)). Frage und Suchfenster erreichen das
+[ADR-0031](../decisions/0031-gespraechsgedaechtnis.md)). Frage und Suchfenster erreichen das
 Modell seit demselben Issue als beschrifteter Textblock in einer Nutzernachricht: Als
 Chat-Nachrichten gelesen setzte das Modell den Verlauf fort und gab Antwortsätze als Suchanfragen
 zurück.
@@ -458,7 +458,7 @@ Umgekehrt übersieht er eine degenerierte Ausgabe, sobald sein Ankerraum zufäll
 enthält; im Mehrturn-Fall ist er deshalb am schwächsten, weil auch Assistenzantworten Anker liefern.
 Der Ankerraum ist seit #1486 **genau der Zerlegungskontext** (Frage und Suchfenster, nicht mehr der
 ganze Verlauf) — die Invariante steht in
-[conversation-memory.md](./conversation-memory.md), Bauteil 1. Ganz aus schaltet er sich nur in zwei
+[ADR-0031](../decisions/0031-gespraechsgedaechtnis.md), Bauteil 1. Ganz aus schaltet er sich nur in zwei
 Fällen: wenn dieser Kontext insgesamt höchstens ein Wort ab vier Zeichen ergibt — dann gibt es nichts, worauf sich
 beziehen ließe —, und bei einer Schrift ohne Wortgrenzen (Chinesisch, Japanisch, Thai), erkannt
 daran, dass die Frage zu einem einzigen Wort über ihre gesamte Länge zerfällt. Eine kurze Folgefrage
@@ -772,7 +772,7 @@ Merkmale:
 Ob eine Änderung an Chunking, Modell oder Reranking die Suche besser macht, ist ohne Messung nicht
 entscheidbar. Der Messaufbau — Referenzkorpus, Golden Dataset, Kennzahlen und das Fehlerkriterium in der
 Bauprüfung — ist eigenständig beschrieben in
-[Suchqualität messbar machen](./search-quality-evaluation.md) und in den ADRs
+[Suchqualität messbar machen](../decisions/0011-search-quality-evaluation-harness.md) und in den ADRs
 [0011](../decisions/0011-search-quality-evaluation-harness.md),
 [0012](../decisions/0012-messvertrag-retrieval-harness.md) und
 [0013](../decisions/0013-fehlerkriterium-retrieval-regression.md).
@@ -951,7 +951,7 @@ ausdrücklich auslösbar und bei einem Wechsel des Einbettungsmodells zwingend.
   Suchbereich je Chatart, Durchsetzung zur Abfragezeit, Umgang mit geteilten Ergebnissen.
 - **[Modelle und zentrale Steuerung](./llm-integration.md)** — Einbettungs-, Rerank- und Antwortmodell,
   Modellvorgaben als Obergrenze, Fähigkeitsabhängigkeit des Bildverständnisses.
-- **[Suchqualität messbar machen](./search-quality-evaluation.md)** — Referenzkorpus, Kennzahlen und
+- **[Suchqualität messbar machen](../decisions/0011-search-quality-evaluation-harness.md)** — Referenzkorpus, Kennzahlen und
   Regressionsprüfung für jede Änderung an dieser Kette.
 - **[Zugangskontrolle](./access-control.md)** — Protokollierung von Abfragen, Belegen und Verweigerungen.
 - **[Benutzer-Frontends](./user-frontends.md)** — Darstellung von Fundstellen, Konfidenz und

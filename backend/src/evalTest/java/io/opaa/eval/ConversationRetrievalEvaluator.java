@@ -28,7 +28,7 @@ import org.springframework.ai.chat.messages.UserMessage;
 
 /**
  * Runs a multi-turn dataset turn by turn and assembles a {@link ConversationEvaluationReport}
- * (docs/features/conversation-memory.md, "Messung").
+ * (ADR-0031).
  *
  * <p><b>The conversation window is built by the production memory, not by this class.</b> Every
  * turn is appended to the {@link ChatMemory} bean a chat request uses - the question as a {@code

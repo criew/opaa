@@ -39,9 +39,9 @@ import org.springframework.stereotype.Component;
  *
  * <p><b>The search window is cut here, not before the run.</b> A {@link RetrievalContext} carries
  * the whole conversation window; this stage narrows it to {@link QueryProperties#searchWindowTurns}
- * turns for the decomposition and for the fallback (docs/features/conversation-memory.md, "Bauteil
- * 1"). Cutting it in the caller instead would leave every other entry point into the pipeline - the
- * administration's diagnosis, the evaluation harness - searching on a window production never uses.
+ * turns for the decomposition and for the fallback (ADR-0031). Cutting it in the caller instead
+ * would leave every other entry point into the pipeline - the administration's diagnosis, the
+ * evaluation harness - searching on a window production never uses.
  */
 @Component
 public class SubQueryDecompositionStage implements RetrievalStage {

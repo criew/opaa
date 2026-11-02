@@ -83,7 +83,7 @@ class ExternalAccessMassRetrievalAlarmTest {
             body.capture());
     // The token id is what makes the alert actionable; it is the only identifier in the message.
     // The measured value is deliberately absent - a sequence of kept messages carrying it would be
-    // a usage curve per token, which is what external-access.md rules out.
+    // a usage curve per token, which is what ADR-0035 rules out.
     assertThat(body.getValue())
         .contains(token.toString())
         .contains(String.valueOf(ExternalAccessAlertRetention.RETENTION.toDays()))

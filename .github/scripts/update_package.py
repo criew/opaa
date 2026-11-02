@@ -723,7 +723,7 @@ def quality(sides: tuple[dict, dict], previous: Side, current: Side) -> str:
         " Release.",
         "",
         f"Quelle: `{BASELINES}*.json` in {where(previous)} und {where(current)}, Gruppe `overall`;"
-        " Verfahren in `docs/features/search-quality-evaluation.md`, Lauf"
+        " Verfahren in ADR-0011, Lauf"
         " `.github/workflows/retrieval-regression.yml`.",
         "",
     ]
