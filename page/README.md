@@ -14,7 +14,8 @@ in den Branch `gh-pages`, den `.github/workflows/landing-page.yml` bei jeder
 Änderung an `page/` beschreibt. Derselbe Workflow baut das Handbuch
 (`docs/handbuch/`, `mkdocs.yml`) nach `handbuch/`, bei jedem Release-Tag
 zusätzlich nach `handbuch/<Tag>/`; diese Fassungen bleiben stehen und sind das
-Ziel des „?“ in der App. Neben der Landing Page liegen dort unter
+Ziel des „?“ in der App. Fehlt eine Fassung, holt ein manueller Lauf
+des Workflows auf dem Tag sie nach. Neben der Landing Page liegen dort unter
 `fortschritt/` von Hand gepushte Meilenstein-Artefakte (Demo-Video,
 Berichts-PDFs), die der Workflow nicht anfasst.
 

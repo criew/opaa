@@ -223,8 +223,9 @@ und `http.proxyHost` wertet OPAA nicht aus.
 OPAA ist dafür gebaut, in einem Netz ohne Internetzugang zu laufen, wenn alles, was es braucht, im
 Haus steht: Anmeldung, Aufnahme von Dokumenten, Fragen mit Antwort und Fundstelle. Die Oberfläche
 lädt Schriften, Skripte und Bilder von der eigenen Installation. Die eingebaute Bibliothek für
-Datenbankmigrationen (Flyway) sendet nichts an ihren Hersteller. Was davon belegt ist,
-nennen Nachweis und Grenzen unten.
+Datenbankmigrationen (Flyway) sendet nichts an ihren Hersteller. Einzig das „?“ der Oberfläche
+öffnet auf Klick das Handbuch auf `opaa.io`, ohne die Adresse der Installation mitzusenden; ohne
+Internet bleibt nur diese Seite leer. Was davon belegt ist, nennen Nachweis und Grenzen unten.
 
 **Voraussetzungen:**
 

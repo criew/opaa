@@ -23,9 +23,11 @@ permissions:
   contents: read
 
 concurrency:
-  # Läufe committen nacheinander auf gh-pages; ein paralleler Lauf würde beim
-  # Push gegen den anderen laufen.
-  group: gh-pages
+  # Läufe von main warten aufeinander. Ein Tag-Lauf hat seine eigene Gruppe:
+  # GitHub hält je Gruppe nur einen wartenden Lauf, ein späterer main-Lauf
+  # würde einen wartenden Tag-Lauf sonst verdrängen. Gegen den gleichzeitigen
+  # Push schreibt jeder Lauf nur sein Verzeichnis und wiederholt den Push.
+  group: gh-pages-${{ github.ref_type == 'tag' && github.ref_name || 'main' }}
   cancel-in-progress: false
 
 jobs:
@@ -42,13 +44,17 @@ jobs:
           REF_NAME: ${{ github.ref_name }}
         run: |
           if [ "$REF_TYPE" = "tag" ]; then
-            if ! printf '%s' "$REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            # The tag form of deploy/helm/ci/release-version.sh.
+            if ! printf '%s' "$REF_NAME" | grep -Eq '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$'; then
               echo "Tag '$REF_NAME' ist keine Release-Version vX.Y.Z[-<pre>]." >&2
               exit 1
             fi
             echo "dir=handbuch/$REF_NAME" >> "$GITHUB_OUTPUT"
-          else
+          elif [ "$REF_NAME" = "main" ]; then
             echo "dir=handbuch" >> "$GITHUB_OUTPUT"
+          else
+            echo "Veröffentlicht wird nur von main oder einem Release-Tag, nicht von '$REF_NAME'." >&2
+            exit 1
           fi
 
       - name: Handbuch auschecken
@@ -154,4 +160,11 @@ jobs:
             exit 0
           fi
           git commit -m "docs(page): Landing Page und Handbuch aktualisieren"
-          git push origin gh-pages
+          for attempt in 1 2 3; do
+            if git push origin gh-pages; then exit 0; fi
+            sleep $((attempt * 5))
+            # The checkout is shallow; 50 commits reach back past the base of this run.
+            git fetch -q --depth 50 origin gh-pages
+            git rebase -q FETCH_HEAD
+          done
+          exit 1

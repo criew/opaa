@@ -6,6 +6,7 @@ export const HANDBOOK_BASE_URL = 'https://opaa.io/handbuch/'
  * (docs/handbuch/<page>.md becomes <page>.html); a view without an entry opens the start page.
  */
 const HANDBOOK_PAGES: ReadonlyArray<readonly [RegExp, string]> = [
+  [/^\/spaces$/, 'arbeiten/erste-schritte.html'],
   [/^\/spaces\/new$/, 'arbeiten/space-anlegen.html'],
   [/^\/spaces\/[^/]+\/settings\/members$/, 'pflegen/space-mitglieder.html'],
   [/^\/spaces\/[^/]+\/settings\/content$/, 'pflegen/space-inhalte.html'],
@@ -21,6 +22,9 @@ const HANDBOOK_PAGES: ReadonlyArray<readonly [RegExp, string]> = [
   [/^\/settings\/tokens$/, 'arbeiten/zugangstoken.html'],
   [/^\/settings\/accounts$/, 'arbeiten/konto-verbinden.html'],
   [/^\/settings\/data$/, 'arbeiten/meine-daten.html'],
+  [/^\/settings\/groups$/, 'pflegen/gruppe-pflegen.html'],
+  [/^\/settings\/uploads$/, 'arbeiten/anhaengen-und-diktieren.html'],
+  [/^\/settings(\/general)?$/, 'arbeiten/erste-schritte.html'],
   [/^\/admin\/users(\/|$)/, 'verwalten/konten.html'],
   [/^\/admin\/(groups|directory-sync)(\/|$)/, 'verwalten/gruppen.html'],
   [/^\/admin\/identity-providers(\/|$)/, 'verwalten/anmeldung-einstellen.html'],
@@ -44,10 +48,10 @@ const HANDBOOK_PAGES: ReadonlyArray<readonly [RegExp, string]> = [
 
 /**
  * The handbook version that belongs to a build: a release (X.Y.Z[-<pre>]) has its own, every
- * other build - development, main images with +<commit> - the current state of main.
+ * other build - 0.0.0-* for development, smoke tests and main images - the current state of main.
  */
 export function handbookVersionPath(version: string): string {
-  return /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(version) && !version.startsWith('0.0.0-dev')
+  return /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(version) && !version.startsWith('0.0.0-')
     ? `v${version}/`
     : ''
 }

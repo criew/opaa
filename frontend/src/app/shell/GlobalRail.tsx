@@ -6,6 +6,7 @@ import IconButton from '@mui/material/IconButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { ThemeProvider, useTheme } from '@mui/material/styles'
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutlineOutlined'
@@ -176,15 +177,17 @@ export default function GlobalRail() {
 
         <Box sx={{ flexGrow: 1 }} />
 
-        <IconButton
-          component="a"
-          href={handbookUrl(location.pathname, __OPAA_VERSION__)}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Handbuch zu dieser Ansicht (öffnet in neuem Fenster)"
-        >
-          <HelpOutlineIcon />
-        </IconButton>
+        <Tooltip title="Handbuch" placement="right">
+          <IconButton
+            component="a"
+            href={handbookUrl(location.pathname, __OPAA_VERSION__)}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Handbuch zu dieser Ansicht (öffnet in neuem Fenster)"
+          >
+            <HelpOutlineIcon />
+          </IconButton>
+        </Tooltip>
 
         <NotificationBell />
 

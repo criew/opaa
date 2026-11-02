@@ -26,6 +26,15 @@ describe('handbookLink', () => {
     expect(handbookUrl('/admin/connections/access', '0.0.0-dev')).toBe(
       'https://opaa.io/handbuch/verwalten/zugaenge.html',
     )
+    expect(handbookUrl('/settings/uploads', '0.0.0-dev')).toBe(
+      'https://opaa.io/handbuch/arbeiten/anhaengen-und-diktieren.html',
+    )
+    expect(handbookUrl('/settings/groups', '0.0.0-dev')).toBe(
+      'https://opaa.io/handbuch/pflegen/gruppe-pflegen.html',
+    )
+    expect(handbookUrl('/spaces', '0.0.0-dev')).toBe(
+      'https://opaa.io/handbuch/arbeiten/erste-schritte.html',
+    )
     expect(handbookUrl('/unbekannt', '0.0.0-dev')).toBe('https://opaa.io/handbuch/index.html')
   })
 
@@ -35,5 +44,6 @@ describe('handbookLink', () => {
     expect(handbookVersionPath('0.0.0-dev')).toBe('')
     expect(handbookVersionPath('0.0.0-dev+abc1234')).toBe('')
     expect(handbookVersionPath('0.0.0-smoke.1+ci.7')).toBe('')
+    expect(handbookVersionPath('0.0.0-smoke.1')).toBe('')
   })
 })
