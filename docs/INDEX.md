@@ -151,6 +151,9 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
   - Arbeiten ([`arbeiten/`](handbuch/arbeiten/README.md)): eine Seite je Aufgabe für jedes Konto
   - Pflegen ([`pflegen/`](handbuch/pflegen/README.md)): eine Seite je Aufgabe, dazu
     [`konnektoren/`](handbuch/pflegen/konnektoren/README.md)
+  - Verwalten und Prüfen ([`verwalten/`](handbuch/verwalten/README.md)): eine Seite je Aufgabe der
+    Systemverwaltung und der Revision
+  - Nachschlagen ([`nachschlagen/`](handbuch/nachschlagen/README.md)): Rechte-Matrix
   - Betrieb ([`betrieb/`](handbuch/betrieb/README.md), Bausteine und Wegweiser) mit
     [`images-und-laufzeit.md`](handbuch/betrieb/images-und-laufzeit.md),
     [`netz-und-sicherheit.md`](handbuch/betrieb/netz-und-sicherheit.md) (Härtung),

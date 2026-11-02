@@ -234,6 +234,8 @@ Kapitel [Spaces](../spaces/README.md).
 
 ## 6. Woher Gruppen kommen
 
+Schritt für Schritt: [Gruppen verwalten](../verwalten/gruppen.md).
+
 Jede Gruppe hat genau eine Herkunft, und sie steht als Zusatz neben dem Namen — nie im Namen selbst:
 „Referat 50 · Verzeichnis Haus A · /Haus/Abteilung 5 · 23 Mitglieder".
 
@@ -310,7 +312,7 @@ einer Gruppe.
 
 ## 7. Interne Gruppen und ihre Verantwortlichen
 
-Schritt für Schritt: [Eine Gruppe verantworten](../pflegen/gruppe-verantworten.md).
+Schritt für Schritt: [Eine interne Gruppe pflegen](../pflegen/gruppe-pflegen.md).
 
 Eine **interne Gruppe** ist eine Gruppe, die in OPAA selbst entsteht. Sie wird nicht von der
 Systemverwaltung gepflegt, sondern von benannten **Verantwortlichen**.
@@ -499,6 +501,8 @@ Systemrolle trägt, erzeugt keinen Eintrag: Er liest, wen er selbst hereingeholt
 wann, steht ohnehin an der Freigabe.
 ## 9. Anlegerechte
 
+Schritt für Schritt: [Anlegerechte vergeben](../verwalten/anlegerechte.md).
+
 **Anlegerechte** entscheiden installationsweit, wer etwas anlegen darf. Sie gelten für alle Konten,
 gleich ob lokal oder aus einem Identitätsanbieter, und werden an eine Person, eine Gruppe oder an
 **„Alle Konten"** vergeben.
@@ -607,6 +611,8 @@ in der Rechtehistorie festgehalten.
 
 ## 10. Systemrollen und Vollmachten
 
+Schritt für Schritt: [Systemrollen vergeben](../verwalten/systemrollen.md).
+
 **Die Systemverwaltung liest in der Suche nichts, was ihr nicht freigegeben ist — verwaltet aber
 jedes Arbeitsmittel.** Beide Sätze gelten gleichzeitig, und sie widersprechen sich nicht: Der
 Rechtefilter der Suche kennt keine Ausnahme für die Systemrolle, die Verwaltung der Arbeitsmittel
@@ -668,6 +674,8 @@ sich deren Protokolleinträge damit bis zu ihrer Löschung weiter der Person zuo
 
 ## 11. „Warum sehe ich das?" — die Herleitung
 
+Schritt für Schritt: [Zugriff nachvollziehen](../pflegen/zugriff-nachvollziehen.md).
+
 Für jedes Arbeitsmittel und jeden Space, die eine Person sieht, zeigt die Oberfläche ihr **den eigenen
 Weg** zur wirksamen Rolle — ohne Vollmacht, ohne Protokolleintrag, und **ohne die Mitglieder einer
 Gruppe offenzulegen**. Die Herleitung steht auf der Detailseite des Arbeitsmittels und am Space.
@@ -706,6 +714,8 @@ Gruppe" und wirkte im Space genau eine solche Gruppe, wäre sie benannt. **Die e
 bleibt immer vollständig.**
 
 ## 12. Nachweis: Rechtehistorie und Stichtagsauskunft
+
+Schritt für Schritt: [Eine Stichtagsauskunft erstellen](../verwalten/stichtagsauskunft.md), [Das Verbindungsprotokoll lesen](../verwalten/verbindungsprotokoll.md).
 
 **Nachweisprotokoll und Rechtehistorie sind zwei verschiedene Bestände.** Ein Protokolleintrag sagt,
 **dass** jemand etwas getan hat. Eine Historienzeile sagt, **in welchem Zeitraum** ein Recht galt —
@@ -839,6 +849,8 @@ sofort gilt (Verlängerung); eine Frist außerhalb der Grenzen nimmt die Maske n
 Systemverwaltung das Protokoll dort nicht.
 
 ## 13. Lebenszyklus: Ausscheiden, Übertragung, „Nachfolge offen"
+
+Schritt für Schritt: [Ausscheiden und Nachfolge regeln](../verwalten/ausscheiden.md).
 
 ### 13.1 Kontosperre aus dem Verzeichnis
 
@@ -1074,6 +1086,8 @@ eingebaut.
 | Gültigkeit einer Übertragungsvorschau | **30 Minuten** | fest | Danach wird gegen einen frischen Stand neu gerechnet, statt eine alte Vorschau anzuwenden |
 
 ## 16. Vor der Einführung
+
+Schritt für Schritt: [Die Einführung vorbereiten](../verwalten/einfuehrung.md).
 
 Drei Dinge gehören vor die Inbetriebnahme, nicht danach:
 

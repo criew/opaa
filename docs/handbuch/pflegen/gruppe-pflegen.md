@@ -1,4 +1,4 @@
-# Eine Gruppe verantworten
+# Eine interne Gruppe pflegen
 
 > **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
 

@@ -5,7 +5,7 @@ OPAA selbst führt. Konten, die über einen Identitätsanbieter entstehen, werde
 sie herkommen; in der Kontenliste stehen sie mit ihrer Herkunft und ihrer Rolle, aber ohne
 Zustand und Ablauf — was sich an ihnen ändern lässt, sagen die Abschnitte 6 und 7.
 Einrichtung des Anmeldewegs und Erststart stehen im Kapitel [Authentifizierung](../betrieb/authentifizierung.md),
-der E-Mail-Versand unter [E-Mail-Versand](../betrieb/e-mail.md); hier geht es um die täglichen Abläufe.
+der E-Mail-Versand unter [E-Mail-Versand](../verwalten/e-mail.md); hier geht es um die täglichen Abläufe.
 Abschnitt 12, „Verbundene Konten“, gilt für jedes Konto, auch für Konten eines
 Identitätsanbieters.
 
@@ -52,6 +52,8 @@ flowchart LR
 
 ## 2. Ein Konto anlegen
 
+Schritt für Schritt: [Lokale Konten verwalten](../verwalten/konten.md).
+
 „Konto anlegen" fragt fünf Dinge ab: **E-Mail-Adresse** (sie ist die Anmeldekennung), **Anzeigename**,
 **Rolle**, **Ablaufdatum** und **Anlagegrund**. Die letzten beiden sind keine Formalität — siehe
 Abschnitt 3.
@@ -85,7 +87,7 @@ Zwei Dinge sind dabei wichtig:
   unterscheidbar.
 - **Ohne öffentliche Adresse der Installation ist der Link ein Pfad.** Er beginnt dann mit `/` und
   braucht die Adresse der Installation davor. Das Fenster sagt das; wie die Adresse gesetzt wird,
-  steht im Kapitel [E-Mail-Versand](../betrieb/e-mail.md).
+  steht im Kapitel [E-Mail-Versand](../verwalten/e-mail.md).
 
 Ein Link ist **einmal** einlösbar, und ein neuer macht einen älteren ungültig. Die Seite, auf die er
 führt, entfernt ihn sofort aus der Adresszeile — ein Neuladen hilft deshalb nicht weiter, die Person
@@ -232,6 +234,8 @@ Systemverwalterkonten sind von keiner dieser Regeln ausgenommen; einzig in der Z
 Wiedervorlage bleibt das Notanker-Konto außen vor, weil es unbefristet bleiben soll.
 
 ## 7. Rollen
+
+Schritt für Schritt: [Systemrollen vergeben](../verwalten/systemrollen.md).
 
 Die Rolle entscheidet, was ein Konto in der ganzen Anwendung darf; die Rechte an einzelnen Spaces und
 Bibliotheken werden dort vergeben, nicht hier.
@@ -461,6 +465,8 @@ zurücknehmen — nur in diese Richtung: „Entsperren" im Zeilenmenü, „Kein 
 
 ## 9. Ein Konto an einen Identitätsanbieter übergeben
 
+Schritt für Schritt: [Ein Konto an einen Identitätsanbieter übergeben](../verwalten/konto-uebergeben.md).
+
 Stellt eine Installation, die mit lokalen Konten angefangen hat, später auf einen Identitätsanbieter
 um, soll niemand von vorn beginnen: Spaces, Mitgliedschaften und Rolle hängen am Konto, nicht am
 Passwort. Dafür gibt es die **Übergabe** — den einzigen Weg, auf dem ein Konto seine Identität
@@ -517,6 +523,8 @@ Person, sie wird nirgends eingegeben.
 > Einlöseseite.
 
 ## 10. Selbstregistrierung
+
+Schritt für Schritt: [Anmeldung einstellen](../verwalten/anmeldung-einstellen.md).
 
 Selbstregistrierung ist **aus** und wirkt nur mit einer **nichtleeren Liste zulässiger
 Adressdomänen**. Eine leere Liste bedeutet „niemand kann sich registrieren" — nicht „alle". Die

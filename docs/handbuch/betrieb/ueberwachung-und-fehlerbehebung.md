@@ -171,7 +171,7 @@ diese Anfrage ermittelt (`clientAddress`). Steht dort die Adresse des Proxys, fe
 | Indexierung oder Chat schlagen fehl | [Modelle](modelle.md#fehlerbilder) |
 | Niemand kommt herein, Anmeldung mit `429` | [Authentifizierung](authentifizierung.md#fehlerbehebung) |
 | Originale lassen sich nicht abrufen oder hochladen | [Originalablage](originalablage.md#wenn-etwas-nicht-stimmt) |
-| Mails kommen nicht an | [E-Mail-Versand](e-mail.md#fehlerbilder) |
+| Mails kommen nicht an | [E-Mail-Versand](../verwalten/e-mail.md#fehlerbilder) |
 | Im SIEM kommt nichts an, Log meldet `SIEM export … failed` | Adresse, Port, TLS-Vertrauen des Empfängers ([Ausleitung an ein Sicherheitsmonitoring](#ausleitung-an-ein-sicherheitsmonitoring)) |
 | Lange Antworten enden mit `504` | Timeouts von Frontend und Proxy ([Netzwerkzugang](netz-und-sicherheit.md#netzwerkzugang)) |
 | Verbindungen nach außen scheitern mit Proxy-Status | [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy) |

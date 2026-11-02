@@ -330,7 +330,7 @@ docker compose --profile mail up -d mailpit
 
 Die abgefangenen Nachrichten liegen unter `http://localhost:8025`. Unter „Administration → E-Mail →
 SMTP-Zugang" einzutragen: Server `mailpit`, Port `1025`, Verschlüsselung `NONE`, keine Zugangsdaten
-([E-Mail-Versand](e-mail.md)). Dieselben Angaben nimmt auch der Schritt E-Mail-Versand des
+([E-Mail-Versand](../verwalten/e-mail.md)). Dieselben Angaben nimmt auch der Schritt E-Mail-Versand des
 Einrichtungs-Assistenten an, wenn `OPAA_INSTALLATION_MAIL_TARGET_ALLOWLIST=mailpit:1025` in
 `.env.docker` steht ([Installation](installation.md#schritte)).
 
@@ -704,7 +704,7 @@ ohne Punkt 7 nicht mehr von anderen Rechnern:
    gilt die Anmeldegrenze für das ganze Haus ([Vertraute Proxys](netz-und-sicherheit.md#vertraute-proxys-und-client-adresse)).
 4. **`OPAA_PUBLIC_BASE_URL` setzen** — empfohlen, Pflicht für Einladungen per Mail und für Zugänge
    mit Anmeldeart OAuth: Sie steht in jedem Link einer Mail und bildet die Rücksprungadresse
-   `{OPAA_PUBLIC_BASE_URL}/connections/callback` ([E-Mail-Versand](e-mail.md)).
+   `{OPAA_PUBLIC_BASE_URL}/connections/callback` ([E-Mail-Versand](../verwalten/e-mail.md)).
 5. **`uploads/` der Kennung `65532` übergeben**, solange die Originale im Dateisystem liegen:
    `sudo chown -R 65532:65532 uploads`. Ebenfalls prüfen: ob `documents/`, jedes über
    `OPAA_INDEXING_FILESYSTEM_ALLOWLIST` freigegebene Verzeichnis und ein eigenes Temp-Verzeichnis für

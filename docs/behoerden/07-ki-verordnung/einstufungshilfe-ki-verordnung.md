@@ -91,7 +91,7 @@ machbar“ mit Lückenanalyse; ob die Aufsicht es genügen lässt, ist offen.
 
 - [Handbuch, Suche](../../handbuch/spaces/suche.md): wie eine Antwort entsteht und wie man Belege prüft;
   Grundlage für die Einweisung.
-- [Handbuch, Branding](../../handbuch/betrieb/branding.md): wo der eigene Name und der Hinweistext
+- [Handbuch, Branding](../../handbuch/verwalten/branding.md): wo der eigene Name und der Hinweistext
   gepflegt werden.
 - [Handbuch, Modelle](../../handbuch/betrieb/modelle.md#kennzeichnung-erzeugter-texte): was die
   Markierung erzeugter Texte vom Modell abhängig macht.

@@ -836,7 +836,7 @@ persistiert — die Antwort im Fenster ohne ihre Zitiermarken, der gespeicherte 
 **Hinweis und Kennzeichen im Chat.** Dass Antworten von einer KI stammen, sagt der Chat an drei
 Stellen: im leeren Chat deutlich vor der ersten Frage, als dauerhafte Zeile unter dem Eingabefeld und
 als Kennzeichen „KI-erzeugt" im Fuß jeder Antwort, auch bei Antworten in älteren Chats. Der Text der
-ersten beiden Stellen ist der Hinweis zur KI-Nutzung aus dem [Branding](../betrieb/branding.md); er lässt
+ersten beiden Stellen ist der Hinweis zur KI-Nutzung aus dem [Branding](../verwalten/branding.md); er lässt
 sich ändern, aber nicht abschalten. Screenreader lesen Hinweis und Kennzeichen vor.
 
 **Kennzeichnung als KI-erzeugt.** Jede erzeugte Antwort trägt in der Schnittstelle das Feld
@@ -1058,6 +1058,8 @@ Logger von Spring, Hibernate Validator oder des PostgreSQL-Treibers zur Diagnose
 stehen fest auf `INFO`.
 
 ## 8. Diagnose: warum sieht eine Person ein Dokument nicht?
+
+Schritt für Schritt: [Suche und Indexierung überwachen](../verwalten/suche-und-indexierung.md).
 
 Das ist die Frage, die im Betrieb tatsächlich gestellt wird, und sie hat zwei völlig verschiedene
 Antworten mit zwei verschiedenen Abhilfen:
