@@ -136,12 +136,12 @@ gehört in die erste Phase — ohne sie ergibt ein Start in einer Behörde keine
 
 *Eine Behörde kann ihr Wissen befragbar, belegt und nachweisbar nutzen.*
 
-Retrieval mit geprüften Belegen, Konfidenz und Quellenbindung · hybride Suche mit Reranking · erklärbares
-Chunking · Messbarkeit der Suchqualität · Uploads und lesende Konnektoren · Spaces, persönlicher Space und
+Retrieval mit geprüften Belegen, Belegstand und Quellenbindung · hybride Suche mit Reranking ·
+Messbarkeit der Suchqualität · Uploads und lesende Konnektoren · Spaces, persönlicher Space und
 Wissensbibliotheken als eigene Objekte · Gruppen aus dem Verzeichnisdienst als Rechtesubjekt ·
-Organisation als harte Mandantengrenze · Textwerkzeuge einschließlich Leichter Sprache · eigene Modelle
-mit zentralen Vorgaben · Anmeldung, Kontenlebenszyklus und rechtebewusste Suche · revisionssicheres
-Protokoll und Vollständigkeit nach DSGVO · Web-Oberfläche und REST-API · Betrieb bis air-gapped.
+Organisation als harte Mandantengrenze · eigene Modelle · Anmeldung, Kontenlebenszyklus und
+rechtebewusste Suche · revisionssicheres Protokoll und Vollständigkeit nach DSGVO · Web-Oberfläche und
+REST-API · Betrieb bis air-gapped.
 
 ### Phase 2 — Agenten, Werkzeuge und teilbare Assets
 
@@ -150,24 +150,25 @@ Protokoll und Vollständigkeit nach DSGVO · Web-Oberfläche und REST-API · Bet
 Agenten und Skills als teilbare Pakete · geführtes Agenten-Onboarding · Prüfstand vor der Freigabe ·
 Prüfagenten für kritische Vorgänge · isolierte Ausführungsumgebung für Dateiverarbeitung, Auswertungen,
 Texterkennung, Transkription und Diagramme · Deep Research · schreibende Integrationen mit menschlicher
-Freigabe · MCP · Asset-Katalog mit Export und Import · OPAA als Wissensschicht für externe KI-Werkzeuge,
-erreichbar über persönliche Zugangstokens und einen MCP-Server · Auswertung von Nutzung und Kosten.
+Freigabe · MCP · Textwerkzeuge einschließlich Leichter Sprache · zentrale Modellvorgaben · erklärbares
+Chunking · Barrierefreiheits-Audit · OPAA als Wissensschicht für externe KI-Werkzeuge, erreichbar über
+persönliche Zugangstokens und einen MCP-Server · Auswertung von Nutzung und Kosten.
 
 ### Phase 3 — Kollaboration und organisationsweiter Rollout
 
 *Teams arbeiten gemeinsam; geprüfte Assets werden in die ganze Organisation verteilt.*
 
 Gemeinsame Räume für Menschen und KI · Freigabe- und Prüfworkflow, Versionierung, organisationsweiter
-Katalog · Vorlagenkatalog nach Fachbereich · Anbindung an self-hosted Team-Chats · Barrierefreiheit nach
-BITV · Feinschliff der Amtssprache · Wissensgraph als Ergänzung des Vektor-Retrievals.
+Katalog mit Export und Import · Vorlagenkatalog nach Fachbereich · Feinschliff der Amtssprache.
 
 ### Phase 4 — Ökosystem und Ausblick
 
 *Reichweite, Skalierung, neue Nutzerkreise — bedarfsgetrieben, nicht fest eingeplant.*
 
-Tiefe Anbindung an den souveränen Arbeitsplatz · behördenübergreifender Austausch geprüfter Assets ·
-Assistent für Bürgerinnen und Bürger · Erweiterungen für Office und Browser · Anbindung an elektronische
-Akten und Dokumentenmanagement.
+Tiefe Anbindung an den souveränen Arbeitsplatz · Anbindung an self-hosted Team-Chats · Wissensgraph als
+Ergänzung des Vektor-Retrievals · mehrere Organisationen in einer Installation · behördenübergreifender
+Austausch geprüfter Assets · Assistent für Bürgerinnen und Bürger · Erweiterungen für Office und Browser
+· Anbindung an elektronische Akten und Dokumentenmanagement.
 
 Den tatsächlichen Umsetzungsstand gegen diese Phasen führt der [Gesamtstand](./fortschritt/gesamtstand.md),
 die offenen Punkte je Phase die [Roadmap](./ROADMAP.md).

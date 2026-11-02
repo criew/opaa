@@ -35,7 +35,7 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
 ### J · Betrieb & Deployment
 
 - **Erprobung auf einem produktiven Cluster und erstes finales Release `v0.1.0`** — bisher k3d und kind.
- 
+
 - **Hardware- und Größenprofile (Sizing)** — Auslegung je Installationsgröße; trägt auch die
   Reranking-Empfehlung (A). _(Epic #3492)_
 
@@ -69,7 +69,7 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
   Geschwister-Chunks über Teilfragen nicht rangfair; Komposita-Zerlegung (ispell oder Decompounder) erst
   nach Messung. _(⚑ (Komposita))_
 - **Suchparameter je Bibliothek oder installationsweit; Feinabstimmung in der Verwaltung** — Chunkgröße,
-  Überlappung, `top-k`, Schwellen heute als Expertenvariablen (Gruppe F) in der Konfiguration. ⚑
+  Überlappung, `top-k`, Schwellen heute als Expertenvariablen in der Konfiguration. ⚑
 - **Gesprächsgedächtnis: Qualitätsgewinn belegen** — gebaut, Nutzen mit dem Eval-Modell nicht belegt.
 
 ### B · Wissensquellen & Konnektoren
@@ -78,12 +78,12 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
   hinterlegen; Freischaltung je Integration und Aktionsart, eigene Schreib-Zugangsdaten, menschliche
   Bestätigung im Einzelfall.
 - **Löschverlangen nach Datenschutzrecht** — Löschung greift auf Chunks, Einbettungen, Extrakte und
-  Vorschauen durch (siehe G).
+  Vorschauen durch (siehe Phase 1, Löschrecht nach DSGVO).
 - **Live-Abfrage verbundener Konten und Token-Austausch** — Quellen im Chat ohne Indexierung abfragen;
   Token Exchange (RFC 8693) als fünfte Anmeldeart nur für den Live-Zugriff, Machbarkeit belegt (Spike
   #2174). _(#1747 · ⚑)_
-- **Schutz gegen Prompt-Injection für alle Fremdtext-Quellen** — Pflicht des Postfach-Schutzes auch für
-  Web und RSS? ⚑
+- **Schutz gegen Prompt-Injection für alle Fremdtext-Quellen** — offen, ob die Pflicht des Postfach-Schutzes
+  auch für Web und RSS gilt. ⚑
 - **Strukturfragen zu Bibliotheken** — mehrere Quellen desselben Typs je Bibliothek, Zwischenspeicherung
   von Quelldokumenten für Belegsprünge, Entfernen hinterlegter Zugangsdaten, Massenübernahme aus lokalem
   Laufwerk, Abschätzung großer Erstläufe. ⚑
@@ -156,7 +156,7 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
 ### G · Sicherheit, Nachweis & Prüfbarkeit
 
 - **C5-Nachweispaket** — Verantwortungsmatrix Produkt/Betreiber, Härtungsleitfaden mit
-  Referenzkonfiguration, reproduzierbare Builds; im Repo nicht gefunden.
+  Referenzkonfiguration, reproduzierbare Builds; bisher nicht vorhanden.
 - **Unabhängige Sicherheitsprüfung** — ab wann und in welchem Umfang. ⚑
 - **Durchsetzung getrennter Auswertungswege und Umfangsbegrenzung der anlassbezogenen Klärung** —
   Rollen, Endpunkte oder Bestände; technische Erzwingung der vorab festgelegten Grenze; Netzadresse im
@@ -227,8 +227,8 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
 
 - **Versionierung von Assets** — Grundlage für Freigabeweg, Abkömmlinge und Drift-Anzeige.
 - **Freigabe- und Prüfworkflow** — vorschlagen, prüfen, freigeben, veröffentlichen; Freigabestand im
-  Katalog; Governance-Arbeitsliste. Wer prüft, wenn eine Behörde keine Stelle benennt, und Fristen sind
-  offen. _(⚑ (Prüfstelle, Fristen))_
+  Katalog; Governance-Arbeitsliste. Offen sind die Prüfstelle, wenn eine Behörde keine
+  benennt, und die Fristen. _(⚑ (Prüfstelle, Fristen))_
 - **Parameter, Abkömmlinge und Drift-Schutz** — typisierte Parameter statt Fork; gekennzeichnete
   Abkömmlinge mit Versionsstand, Benachrichtigung und (zurückgestellt) Prüfaufforderung mit Frist.
 - **Rückruf durch Deaktivieren** — Asset deaktivieren statt löschen, mit Begründungspflicht und
@@ -263,7 +263,7 @@ angegangen wird. ⚑ markiert eine offene Entscheidung, die vor dem Bau fällt.
 
 - **Feinschliff der Amtssprache**
 - **Zuordenbarkeit der Fassung bei Auskünften** — welche Agentenfassung, Modellvorgabe und welcher
-  Wissensstand einer Antwort zugrunde lagen (hängt an Versionierung und Fassungsfolge).
+  Wissensstand einer Antwort zugrunde lagen (hängt an der Versionierung).
 
 ## Phase 4 — Ökosystem und Ausblick
 
