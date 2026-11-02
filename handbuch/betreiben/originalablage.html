@@ -1,0 +1,4265 @@
+
+<!doctype html>
+<html lang="de" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="netz-und-sicherheit.html">
+      
+      
+        <link rel="next" href="releases-und-nachweise.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+    
+    
+      
+        <title>Originalablage - OPAA-Handbuch</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#originalablage" class="md-skip">
+          Zum Inhalt
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
+    <a href="../index.html" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            OPAA-Handbuch
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Originalablage
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Dunkles Farbschema"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dunkles Farbschema" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Helles Farbschema"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Helles Farbschema" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Suche" placeholder="Suche" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Suche">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Zurücksetzen" aria-label="Zurücksetzen" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Suche wird initialisiert
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    OPAA-Handbuch
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OPAA-Handbuch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../arbeiten/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Arbeiten
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Arbeiten
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../arbeiten/anhaengen-und-diktieren.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dateien anhängen und diktieren
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../arbeiten/antworten-weitergeben.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Antworten weitergeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../arbeiten/belege-pruefen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Belege prüfen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../arbeiten/bibliothek-anlegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eine Bibliothek anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../arbeiten/chats.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chats verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../arbeiten/erste-schritte.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Erste Schritte
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../arbeiten/fragen-stellen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fragen stellen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../arbeiten/katalog.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Den Katalog nutzen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../arbeiten/ki-werkzeug-einrichten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ein KI-Werkzeug einrichten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../arbeiten/konto-verbinden.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ein Konto verbinden
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../arbeiten/meine-daten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eigene Daten herunterladen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../arbeiten/private-bibliothek.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eine private Bibliothek anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../arbeiten/prompt-bibliothek-anlegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eine Prompt-Bibliothek anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../arbeiten/prompts-verwenden.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prompts verwenden
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../arbeiten/space-anlegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Einen Space anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../arbeiten/zugangstoken.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ein Zugangstoken anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Betreiben
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Betreiben
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="aktualisierung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Aktualisierung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="authentifizierung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentifizierung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="datenbank.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Datenbank
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="docker-compose.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker Compose
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="images-und-laufzeit.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Images und Laufzeit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="installation.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="kubernetes.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kubernetes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mehrere-instanzen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mehrere Backend-Instanzen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="modell-endpunkte.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modelle betreiben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="nachvollziehbarkeit.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nachvollziehbarkeit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="netz-und-sicherheit.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Netz und Sicherheit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Originalablage
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="originalablage.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Originalablage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Inhaltsverzeichnis">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Inhaltsverzeichnis
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#die-drei-wege" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Die drei Wege
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#auswahl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auswahl
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#was-im-objektspeicher-liegt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Was im Objektspeicher liegt
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sicherung-und-wiederherstellung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sicherung und Wiederherstellung
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verwaiste-originale-aufräumen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verwaiste Originale aufräumen
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Verwaiste Originale aufräumen">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#originale-einer-vorhandenen-bibliothek" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Originale einer vorhandenen Bibliothek
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#originale-gelöschter-bibliotheken" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Originale gelöschter Bibliotheken
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#eine-laufende-installation-auf-den-objektspeicher-umstellen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Eine laufende Installation auf den Objektspeicher umstellen
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#der-rückweg-vom-objektspeicher-zurück-auf-das-dateisystem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Der Rückweg: vom Objektspeicher zurück auf das Dateisystem
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wenn-etwas-nicht-stimmt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wenn etwas nicht stimmt
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="releases-und-nachweise.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releases und Nachweise
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="sicherung-und-wiederherstellung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sicherung und Wiederherstellung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="ueberwachung-und-fehlerbehebung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Überwachung und Fehlerbehebung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../nachschlagen/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nachschlagen
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Nachschlagen
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nachschlagen/glossar.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glossar
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nachschlagen/konfiguration.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konfiguration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nachschlagen/metadaten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metadaten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nachschlagen/rechte-matrix.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rechte-Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nachschlagen/wie-die-suche-arbeitet.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Wie die Suche arbeitet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nachschlagen/wie-indexierung-arbeitet.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Wie die Indexierung arbeitet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../nachschlagen/formate/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Formate
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Formate
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nachschlagen/formate/confluence.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Confluence-Seite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nachschlagen/formate/docx.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Word (DOCX)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nachschlagen/formate/fallback.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Auffang-Pipeline (TXT, DOC)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nachschlagen/formate/html.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: HTML
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nachschlagen/formate/mail.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: E-Mail (EML, MSG)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nachschlagen/formate/markdown.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Markdown
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nachschlagen/formate/odp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: OpenDocument Präsentation (ODP)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nachschlagen/formate/odt.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: OpenDocument Text (ODT)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nachschlagen/formate/pdf.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: PDF
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nachschlagen/formate/pptx.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: PowerPoint (PPTX)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nachschlagen/formate/tabular.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Tabellen (XLSX, CSV, ODS)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../pflegen/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pflegen
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Pflegen
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pflegen/arbeitsmittel-teilen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ein Arbeitsmittel teilen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pflegen/bibliothek-aktuell-halten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eine Bibliothek aktuell halten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pflegen/fuer-ki-werkzeuge-freigeben.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Für externe KI-Werkzeuge freigeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pflegen/gruppe-pflegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eine interne Gruppe pflegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pflegen/gruppe-verantworten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eine Gruppe verantworten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pflegen/metadaten-pflegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metadaten pflegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pflegen/space-einstellungen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Einen Space einstellen, archivieren oder löschen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pflegen/space-inhalte.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Inhalte eines Space zuordnen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pflegen/space-mitglieder.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mitglieder eines Space verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pflegen/zugriff-nachvollziehen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nachvollziehen, wer warum Zugriff hat
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_12" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../pflegen/konnektoren/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektoren
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_12" id="__nav_5_12_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Konnektoren
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pflegen/konnektoren/confluence.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Confluence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pflegen/konnektoren/dropbox.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Dropbox
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pflegen/konnektoren/filesystem.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Verzeichnis im Dateisystem
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pflegen/konnektoren/google-drive.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Google Drive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pflegen/konnektoren/http-directory.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Webverzeichnis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pflegen/konnektoren/nextcloud.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Nextcloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pflegen/konnektoren/onedrive.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: OneDrive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pflegen/konnektoren/rss-feed.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Feed
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pflegen/konnektoren/s3.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: S3-Objektspeicher
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pflegen/konnektoren/sharepoint.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: SharePoint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pflegen/konnektoren/smb.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Windows-Dateifreigabe (SMB)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../verwalten/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Verwalten
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Verwalten
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../verwalten/anlegerechte.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Anlegerechte vergeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../verwalten/anmeldung-einstellen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Anmeldung einstellen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../verwalten/ausscheiden.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ausscheiden und Nachfolge regeln
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../verwalten/branding.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Branding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../verwalten/datenschutz.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Datenschutz einstellen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../verwalten/e-mail.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E-Mail-Versand (SMTP)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../verwalten/einfuehrung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Die Einführung vorbereiten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../verwalten/einstellungen-uebertragen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Einstellungen übertragen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../verwalten/externe-ki-werkzeuge.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Externe KI-Werkzeuge zulassen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../verwalten/gruppen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gruppen verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../verwalten/konten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lokale Konten verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../verwalten/konto-uebergeben.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ein Konto an einen Identitätsanbieter übergeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../verwalten/modelle.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modelle verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../verwalten/nachweisprotokoll-lesen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Das Nachweisprotokoll lesen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../verwalten/stichtagsauskunft.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eine Stichtagsauskunft erstellen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../verwalten/suche-und-indexierung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Suche und Indexierung überwachen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../verwalten/systemrollen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systemrollen vergeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../verwalten/verbindungsprotokoll.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Das Verbindungsprotokoll lesen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../verwalten/zugaenge.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zugänge einrichten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Inhaltsverzeichnis">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Inhaltsverzeichnis
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#die-drei-wege" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Die drei Wege
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#auswahl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auswahl
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#was-im-objektspeicher-liegt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Was im Objektspeicher liegt
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sicherung-und-wiederherstellung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sicherung und Wiederherstellung
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verwaiste-originale-aufräumen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verwaiste Originale aufräumen
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Verwaiste Originale aufräumen">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#originale-einer-vorhandenen-bibliothek" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Originale einer vorhandenen Bibliothek
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#originale-gelöschter-bibliotheken" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Originale gelöschter Bibliotheken
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#eine-laufende-installation-auf-den-objektspeicher-umstellen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Eine laufende Installation auf den Objektspeicher umstellen
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#der-rückweg-vom-objektspeicher-zurück-auf-das-dateisystem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Der Rückweg: vom Objektspeicher zurück auf das Dateisystem
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wenn-etwas-nicht-stimmt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wenn etwas nicht stimmt
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="originalablage">Originalablage<a class="headerlink" href="#originalablage" title="Permanent link">&para;</a></h1>
+<p>Ein hochgeladenes Dokument wird nicht nur indiziert — sein <strong>Original</strong> bleibt greifbar, damit aus
+einer Fundstelle die Datei wird, die ein Prüfer in die Hand nehmen kann. Die Originalablage ist der
+Ort, an dem diese Dateien liegen. Sie gehört der Anwendung: OPAA schreibt, ersetzt und löscht dort,
+und nur dort.</p>
+<p>Betroffen sind ausschließlich <strong>Uploads</strong>. Dokumente, die über einen Konnektor hereinkommen, bleiben
+Eigentum ihrer Quelle; OPAA liest sie dort und legt keine Kopie an. Wer die Originalablage
+umstellt, ändert nichts an Verzeichnissen, Webverzeichnissen, Feeds, Confluence-Instanzen oder
+S3-Quellen einer Bibliothek.</p>
+<p>Jede Dokumentzeile in der Datenbank trägt den <strong>Verweis</strong> auf ihr Original. Beim Verzeichnisweg ist
+das ein Dateipfad, beim Objektspeicher eine Adresse der Form <code>s3://&lt;Bucket&gt;/&lt;Schlüssel&gt;</code>. Dieser
+Verweis und die Bytes sind zwei Dinge: Wer das eine ohne das andere umzieht, hat eine Installation,
+die auf nicht vorhandene Originale zeigt.</p>
+<p>Welche Rolle die Originalablage neben der Datenbank spielt, steht in der
+<a href="index.html">Betriebsübersicht</a>; einen Objektspeicher zum Erproben bringt der
+<a href="docker-compose.html#der-mitgelieferte-objektspeicher-im-compose-stapel">Compose-Stapel</a> mit.</p>
+<h2 id="die-drei-wege">Die drei Wege<a class="headerlink" href="#die-drei-wege" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Weg</th>
+<th>Wofür</th>
+<th>Was der Betrieb tut</th>
+<th>Grenzen</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Verzeichnis</strong></td>
+<td>kleine Installationen, Erprobung, Betrieb ohne Netzanbindung</td>
+<td>Ein Verzeichnis bereitstellen und einhängen (<code>OPAA_UPLOAD_STORAGE_PATH_HOST</code> auf <code>/app/uploads</code>)</td>
+<td>Wächst mit dem Volume des Wirtsystems; ohne eingehängtes Verzeichnis ist der Bestand beim Neuaufsetzen des Containers weg</td>
+</tr>
+<tr>
+<td><strong>Netzlaufwerk</strong></td>
+<td>Häuser, deren Bestände ohnehin auf einem Dateiserver liegen</td>
+<td>Die Freigabe (SMB/NFS) auf genau dieses Verzeichnis einhängen; in OPAA nichts weiter zu konfigurieren</td>
+<td>Rechte des Dienstkontos auf der Freigabe; ein Verbindungsabbruch erscheint als Ein-/Ausgabefehler, nicht als „Datei fehlt". <strong><code>chown</code> wirkt auf einem CIFS/SMB-Mount nicht</strong> — das Schreibrecht der Kennung 65532 kommt dort aus den Mount-Optionen (<code>uid=65532,gid=65532</code>) oder über den <code>user:</code>-Eintrag, siehe <a href="docker-compose.html#nicht-root-betrieb-des-backend-containers">„Nicht-root-Betrieb des Backend-Containers"</a></td>
+</tr>
+<tr>
+<td><strong>Objektspeicher</strong></td>
+<td>Rechenzentrumsbetrieb, große Bestände, Verschlüsselung und Versionierung aus dem Speicher</td>
+<td><code>OPAA_UPLOAD_STORE=s3</code> und die <code>OPAA_UPLOAD_S3_*</code>-Variablen setzen; Bucket vorher anlegen</td>
+<td>Keine Bereichsanfragen beim Download (kein Fortsetzen eines abgebrochenen Downloads); zusätzlicher Platzbedarf für Zwischendateien; ein zweites Sicherungsziel</td>
+</tr>
+</tbody>
+</table>
+<p>Die ersten beiden Wege sind für die Anwendung <strong>derselbe</strong> Weg: Sie sieht ein Verzeichnis und weiß
+nicht, was darunterliegt. Nur der Objektspeicher ist eine andere Ablage — und nur er verlangt eine
+Umstellung, wenn ein Bestand schon existiert.</p>
+<h2 id="auswahl">Auswahl<a class="headerlink" href="#auswahl" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Ein Haus, eine Installation, überschaubarer Bestand</strong> → Verzeichnis. Das ist die Voreinstellung;
+  wer nichts konfiguriert, bekommt sie.</li>
+<li><strong>Die Dateien sollen dort liegen, wo die übrigen Bestände des Hauses liegen</strong> → Netzlaufwerk.
+  Kein Umstellen, kein zweites Sicherungsziel, kein zusätzlicher Dienst.</li>
+<li><strong>Der Bestand soll unabhängig vom Volume einer Maschine wachsen, oder Verschlüsselung ruhender
+  Daten, Versionierung, Aufbewahrungsregeln und Replikation sollen aus dem Speichersystem
+  kommen</strong> → Objektspeicher.</li>
+</ul>
+<p>Drei Eigenschaften des Objektspeicherwegs gehören in die Entscheidung, weil sie sich nicht
+konfigurieren lassen:</p>
+<ul>
+<li><strong>Fehlende Konfiguration bricht den Start ab</strong>, ein nicht erreichbarer Speicher nicht. Fehlt bei
+  <code>OPAA_UPLOAD_STORE=s3</code> der Endpunkt, der Bucket oder ein Zugangsschlüssel, endet der Start mit
+  einer Meldung, die die fehlende Variable nennt. Ist der Speicher dagegen nur gerade nicht
+  erreichbar, läuft die Installation weiter: Chat, Suche und alles bereits Indizierte funktionieren
+  ohne ihn, und der Zustand erscheint in einer eigenen Health Group
+  (<code>GET /actuator/health/upload-store</code>), bewusst nicht im Gesamtstatus — sonst nähme ein gestörter
+  Speicher die Instanz aus dem Load Balancing, obwohl sie Fragen beantworten kann. Mit
+  <code>OPAA_UPLOAD_STORE=filesystem</code> gibt es diese Gruppe nicht; der Endpunkt antwortet dann mit
+  „nicht gefunden". Beim Start prüft die Anwendung den Speicher einmal und protokolliert eine
+  Warnung, wenn er nicht benutzbar ist — ein nicht erreichbarer Endpunkt, ein fehlender Bucket und
+  abgelehnte Zugangsdaten fallen dabei alle auf, bevor der erste Upload es tut.</li>
+<li><strong>Der Abruf eines Originals unterscheidet zwei Fälle.</strong> Ist der Speicher nicht erreichbar,
+  antwortet der Abruf mit „Dienst nicht verfügbar" und einer Meldung; ist das Objekt nicht
+  vorhanden, antwortet er wie bisher mit „nicht gefunden" — ununterscheidbar von einem fremden oder
+  unbekannten Dokument, damit der Abruf keine Auskunft über fremde Bestände gibt. <strong>Der Upload
+  antwortet auf dieselbe Störung gleich</strong> („Dienst nicht verfügbar", später erneut versuchen), statt
+  einen Anwendungsfehler zu melden; von dem gescheiterten Versuch bleibt weder eine Datei noch eine
+  neue Dokumentzeile zurück. Woran es lag — auch ein Zugangsschlüssel ohne Schreibrecht — steht im
+  Log; die Health Group sieht nur die Leserichtung.</li>
+<li><strong>Zwischendateien brauchen Platz, und zwar auf zwei Dateisystemen.</strong> Jeder Upload wird zunächst
+  als Arbeitsdatei abgelegt und erst danach in den Bucket geschrieben; ein Nachzug, ein
+  Metadatenlauf oder das Öffnen eines Anhangs holt sich eine lokale Kopie für die Dauer der Aktion.
+  Dazu kommt im Temp-Verzeichnis der Anwendung der Zwischenspeicher jeder eingehenden Datei. Die
+  Rechnung und die beiden Verzeichnisse stehen bei <code>OPAA_UPLOAD_S3_TEMP_DIRECTORY</code> in der
+  Variablenliste.</li>
+</ul>
+<h2 id="was-im-objektspeicher-liegt">Was im Objektspeicher liegt<a class="headerlink" href="#was-im-objektspeicher-liegt" title="Permanent link">&para;</a></h2>
+<p>Ein Bucket, ein Objekt je hochgeladenem Dokument. Der Schlüssel ist
+<code>&lt;Präfix&gt;&lt;Organisations-ID&gt;/&lt;Bibliotheks-ID&gt;/&lt;Zufallsname&gt;&lt;Endung&gt;</code> — <strong>dieselbe Struktur wie auf
+der Platte</strong>, dort <code>&lt;Pfad&gt;/&lt;Organisations-ID&gt;/&lt;Bibliotheks-ID&gt;/&lt;Zufallsname&gt;&lt;Endung&gt;</code>. Das Präfix
+ist leer, solange <code>OPAA_UPLOAD_S3_KEY_PREFIX</code> nichts anderes sagt; es trennt mehrere Installationen,
+die sich einen Bucket teilen.</p>
+<p><strong>Warum die Organisation im Schlüssel steht.</strong> Damit trägt jedes abgelegte Original seine
+Zugehörigkeit bei sich, statt sie nur in der Datenbank zu haben. Wer in einen Bucket schaut, sieht
+an jedem Objekt, zu welchem Haus es gehört — auch dann, wenn die zugehörige Bibliothek längst
+gelöscht ist und die Dokumentzeile nicht mehr existiert. Der Zugriff prüft beide Ebenen: Ein
+Verweis, dessen Organisations- oder Bibliotheksteil nicht zum abgerufenen Dokument passt, antwortet
+mit „nicht gefunden" — ununterscheidbar von einem unbekannten Dokument.</p>
+<p>Der Bucket <strong>muss vorhanden sein</strong> — OPAA legt keinen an. Ordner darin legt OPAA ebenfalls nicht an:
+Objektspeicher kennt keine, der Schrägstrich im Schlüssel ist Teil des Namens.</p>
+<p><strong>Was OPAA am Bucket nicht tut</strong>, und was deshalb der Betrieb dort einstellt: Verschlüsselung
+ruhender Daten, Versionierung, Aufbewahrungs- und Lebenszyklusregeln, Replikation. OPAA setzt keine
+Verschlüsselungskopfzeilen und verwaltet keine Schlüssel. <strong>Empfohlen sind Verschlüsselung ruhender
+Daten und Versionierung</strong>: Versionierung schützt vor einem Überschreiben und vor einem
+fehlgeleiteten Kopierkommando bei der Umstellung.</p>
+<p><strong>Löschen entfernt alle Versionen.</strong> Löscht OPAA ein Original — ein Dokument, eine Bibliothek, ein
+verwaistes Original, eine private Bibliothek —, entfernt es jede Version des Schlüssels und jeden
+Löschmarker einzeln. Ein versionierter Bucket behält von einem gelöschten Original also nichts
+zurück; gegen ein versehentliches Löschen in der Oberfläche hilft nur die
+<a href="#sicherung-und-wiederherstellung">Sicherung</a>, nicht die Versionierung.</p>
+<p><strong>Rechte für das Löschen von Versionen.</strong> Für einen versionierten Bucket — auch einen, dessen
+Versionierung nur ausgesetzt ist — braucht der Zugangsschlüssel zusätzlich <code>s3:ListBucketVersions</code>
+und <code>s3:DeleteObjectVersion</code>. Für einen Bucket, der nie versioniert war, genügt statt dieser beiden
+<code>s3:GetBucketVersioning</code>: Damit stellt OPAA fest, dass es keine älteren Versionen geben kann. Die
+Liste aller Rechte steht bei <code>OPAA_UPLOAD_S3_ACCESS_KEY</code> in der <a href="../nachschlagen/konfiguration.html">Variablenliste</a>.
+<strong>Beim Update</strong> auf diesen Stand die Richtlinie des Zugangsschlüssels um die passenden Rechte
+ergänzen; sonst schließt das Löschen privater Bibliotheken nicht ab (siehe unten).</p>
+<ul>
+<li><strong>Fehlen die Rechte</strong>, löscht OPAA nur die aktuelle Version; in einem versionierten Bucket bleibt
+  das Original dann als ältere Version liegen. Das Löschen einer privaten Bibliothek prüft auch die
+  Versionen und gilt erst als erledigt, wenn dort nachweislich nichts mehr liegt. Kann OPAA weder
+  die Versionen auflisten noch bestätigen, dass der Bucket nie versioniert war, bleibt die
+  Bibliothek zur Löschung vorgemerkt, und jeder Lauf versucht es erneut.</li>
+<li><strong>Die Startprüfung</strong> versucht einmal, Versionen aufzulisten. Gelingt das nicht, protokolliert sie
+  eine Warnung, die <code>s3:ListBucketVersions</code> und <code>s3:DeleteObjectVersion</code> nennt — oder, bei einem nie
+  versionierten Bucket, einen Hinweis, diese Rechte vor dem Einschalten der Versionierung zu
+  ergänzen. Ob <code>s3:DeleteObjectVersion</code> vorhanden ist, prüft sie nicht; ein fehlendes Löschrecht
+  zeigt sich erst beim Löschen im Log.</li>
+<li><strong>Ein Speicher ohne Versionsschnittstelle</strong> (Antwort <code>NotImplemented</code>) löscht mit einem einfachen
+  Löschaufruf und gilt als ohne Versionen, solange er nicht selbst meldet, dass die Versionierung
+  eingeschaltet ist. Verweigert ein Speicher dagegen die Auflistung der Versionen, genügt es nicht,
+  dass er den Versionierungsstatus nicht kennt; die Löschung einer privaten Bibliothek schließt
+  dann erst mit den Rechten ab.</li>
+<li><strong>Ablaufregel für ältere Versionen.</strong> Als zweite Sicherung, etwa für Reste aus Löschungen vor
+  dieser Version oder ohne die Rechte, empfiehlt sich am Bucket eine Lebenszyklusregel, die nicht
+  aktuelle Versionen nach einer Frist und verwaiste Löschmarker entfernt
+  (<code>NoncurrentVersionExpiration</code>, <code>ExpiredObjectDeleteMarker</code>). Die Frist ist die Zeit, die ein
+  gelöschtes Original im Speicher noch wiederherstellbar bleibt.</li>
+<li><strong>Aufbewahrungssperren</strong> (Object Lock, WORM) verhindern das Löschen einer Version. Für diesen
+  Bucket sind sie ungeeignet: Ein Löschen scheitert dann, und das Löschen einer privaten Bibliothek
+  schließt nicht ab.</li>
+</ul>
+<p><strong>Wie ein Prüfer ein Original wiederfindet.</strong> Der Weg führt über die Dokumentzeile, nicht über den
+Dateinamen — im Bucket steht ein Zufallsname:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>postgres<span class="w"> </span>psql<span class="w"> </span>-U<span class="w"> </span>opaa<span class="w"> </span>-d<span class="w"> </span>opaa<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-c<span class="w"> </span><span class="s2">"SELECT file_name, file_path FROM documents WHERE file_name = 'Bescheid.pdf';"</span>
+</code></pre></div>
+<p><code>file_path</code> nennt Bucket und Schlüssel. Damit lässt sich das Objekt in der Konsole des
+Objektspeichers ansehen (Host-Port siehe <a href="docker-compose.html#services">Services</a>, Pfad <code>/rustfs/console/</code>) oder mit dem
+Kommandozeilenwerkzeug des Speichers herausholen, etwa <code>aws s3 cp</code>. Der Weg über die Oberfläche
+bleibt der einfachere: Die Fundstelle unter einer Antwort führt zum Dokument, und dessen Original
+lädt sich dort herunter.</p>
+<p><strong>Der umgekehrte Weg funktioniert ebenfalls</strong>, und dafür ist das zusätzliche Segment da: Wer im
+Bucket auf ein Objekt stößt, liest an seinem Schlüssel ab, zu welcher Organisation und zu welcher
+Bibliothek es gehört — das erste Segment hinter dem Präfix ist die Organisations-ID, das zweite die
+Bibliotheks-ID. Beide lassen sich nachschlagen, ohne dass ein Verweis in der Datenbank dafür
+gebraucht wird:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>postgres<span class="w"> </span>psql<span class="w"> </span>-U<span class="w"> </span>opaa<span class="w"> </span>-d<span class="w"> </span>opaa<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-c<span class="w"> </span><span class="s2">"SELECT o.name AS organisation, l.name AS bibliothek</span>
+<span class="s2">        FROM knowledge_libraries l JOIN organizations o ON o.id = l.organization_id</span>
+<span class="s2">       WHERE l.id = '&lt;Bibliotheks-ID aus dem Schlüssel&gt;';"</span>
+</code></pre></div>
+<p>Liefert die Abfrage keine Zeile, ist die Bibliothek gelöscht — die Organisation steht dann trotzdem
+noch im Schlüssel selbst. Für die Platte gilt dasselbe, dort sind es die beiden Ordnerebenen
+unterhalb des Upload-Verzeichnisses.</p>
+<blockquote>
+<p>In allen <code>psql</code>-Aufrufen dieses Kapitels steht <code>opaa</code> für den konfigurierten Datenbankbenutzer
+(<code>OPAA_DB_USERNAME</code>, Voreinstellung <code>opaa</code>) und für die Datenbank. Wer ein eigenes Konto
+eingerichtet hat, setzt es ein — sonst antwortet <code>psql</code> mit <code>FATAL: role "opaa" does not exist</code>,
+und zwar auch mitten in der Umstellung. Bei einem eigenen Schema (<code>OPAA_DB_SCHEMA</code>) gehört
+<code>PGOPTIONS='-c search_path=&lt;schema&gt;'</code> vor den Aufruf, sonst antwortet <code>psql</code> mit
+<code>relation "documents" does not exist</code>.</p>
+</blockquote>
+<p><strong>Anhänge sind die Ausnahme.</strong> Eine E-Mail mit Anhängen wird zu mehreren Dokumentzeilen: die Mail
+selbst und je ein Dokument pro Anhang. Nur die Mail liegt als Objekt im Speicher; der Verweis der
+Anhangzeilen ist zusammengesetzt aus dem Verweis der Mail, einer laufenden Nummer und dem
+Dateinamen des Anhangs. Der Anhang wird beim Abruf aus der Mail herausgelöst. Das ist der Grund,
+warum die Umstellung unten den Verweis <strong>ersetzt</strong> statt ihn neu zu bilden — die Anhangzeilen
+wandern dabei ohne Sonderbehandlung mit.</p>
+<h2 id="sicherung-und-wiederherstellung">Sicherung und Wiederherstellung<a class="headerlink" href="#sicherung-und-wiederherstellung" title="Permanent link">&para;</a></h2>
+<p>Beim Verzeichnisweg gibt es zwei Sicherungsziele: die Datenbank und das Upload-Verzeichnis. Beim
+Objektspeicher ebenfalls zwei: die Datenbank und der Bucket. In beiden Fällen gilt dieselbe
+Reihenfolge.</p>
+<p><strong>Zeile und Bytes gehören zusammen, fallen aber nicht gemeinsam an.</strong> Wird während des
+Sicherungslaufs hochgeladen oder gelöscht, driften die beiden Ziele um die Dauer des Laufs
+auseinander. Wer einen genau zusammenpassenden Stand braucht, hält die Uploads für die Dauer an
+(Backend stoppen). Sonst gilt: <strong>erst die Datenbank sichern, dann die Originale.</strong> Ein in der
+Zwischenzeit hochgeladenes Dokument ist dann ein Objekt ohne Zeile — verwaist, kostet Speicherplatz
+und stört sonst nichts; eingesammelt wird es von <a href="#verwaiste-originale-aufräumen">„Verwaiste Originale
+aufräumen"</a>, dem nächsten Abschnitt. In der anderen Reihenfolge wäre
+es eine Zeile ohne Bytes, und die ist im Betrieb ein Fehlerbild.</p>
+<p><strong>Wiederherstellen dagegen umgekehrt: erst die Originale, dann die Datenbank.</strong> Sonst zeigen die
+Zeilen auf Objekte, die es noch nicht gibt — jeder Abruf eines Originals scheitert, bis die Kopie
+durch ist, und das sieht für die Dauer der Wiederherstellung nach Datenverlust aus.</p>
+<p><strong>Bei der Dateisystem-Ablage danach das Eigentum zurückgeben.</strong> Was von außen in <code>uploads/</code>
+eingespielt wird — ein als <code>root</code> entpacktes Archiv, ein <code>rsync</code> von einem Sicherungsserver, ein
+<code>docker cp</code> —, gehört anschließend dem einspielenden Konto und nicht mehr <code>65532</code>. Das Backend
+startet dann zwar und liefert jedes Original aus, aber der nächste Upload scheitert. Ein
+abschließendes <code>sudo chown -R 65532:65532 uploads</code> schließt das ab (siehe <a href="docker-compose.html#nicht-root-betrieb-des-backend-containers">„Nicht-root-Betrieb des
+Backend-Containers"</a>).</p>
+<p>Zu sichern ist außerdem die Konfiguration. Ein Verweis in der Datenbank nennt Bucket und Schlüssel,
+aber nicht, an welchem Endpunkt dieser Bucket liegt; ohne die <code>OPAA_UPLOAD_S3_*</code>-Werte ist nach
+einem Ausfall des Wirtsystems nicht mehr abzuleiten, worauf die Installation gezeigt hat.</p>
+<h2 id="verwaiste-originale-aufräumen">Verwaiste Originale aufräumen<a class="headerlink" href="#verwaiste-originale-aufräumen" title="Permanent link">&para;</a></h2>
+<p>Ein verwaistes Original ist eine abgelegte Datei beziehungsweise ein abgelegtes Objekt, auf das keine
+Zeile mehr zeigt: ein fehlgeschlagenes Löschen, ein zwischen Ablegen und Eintragen abgebrochener
+Upload, ein zurückgespielter Datenbankstand — und der planmäßige Fall aus dem Abschnitt darüber, ein
+Upload während des Sicherungslaufs. Auf der Platte fällt so etwas beim Hineinschauen auf, in einem
+Bucket sieht niemand nach.</p>
+<p>Zwei Läufe räumen es auf, beide <code>SYSTEM_ADMIN</code>, beide in zwei Schritten — melden und löschen sind
+bewusst getrennt, damit ein Fehler in der Zuordnung nicht unumkehrbar wird. Der erste arbeitet <strong>je
+Bibliothek</strong> und hält deren Ablage gegen deren Dokumentzeilen; er ist der Regelfall. Der zweite
+arbeitet <strong>je Organisation</strong> und findet, was der erste nicht erreichen kann: die Ablage einer
+Bibliothek, die es nicht mehr gibt. Beide bleiben in der Organisation des Aufrufers.</p>
+<h3 id="originale-einer-vorhandenen-bibliothek">Originale einer vorhandenen Bibliothek<a class="headerlink" href="#originale-einer-vorhandenen-bibliothek" title="Permanent link">&para;</a></h3>
+<p>Erster Schritt: melden, ohne etwas anzufassen.</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8081/api/v1/admin/upload-store/orphan-originals/report<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer &lt;token&gt;"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"libraryId": "&lt;Bibliotheks-ID&gt;"}'</span>
+</code></pre></div>
+<p>Die Antwort nennt zu jedem gefundenen Original seinen <code>locator</code> (genau den Wert, den <code>file_path</code>
+einer Zeile trüge), Änderungszeit und Größe, dazu <code>orphanCount</code> (alle Funde), <code>scannedCount</code> (alle
+angesehenen Originale), <code>referencedCount</code> (davon die, auf die eine Zeile zeigt) und
+<code>withinGracePeriodCount</code> (zu junge, die der Lauf nicht anfasst). Optional hebt <code>minimumAgeMinutes</code>
+die Schonfrist für diesen Aufruf an — unterschreiten lässt sie sich nicht.</p>
+<p><strong>Der erste Blick gilt <code>referencedCount</code>.</strong> Meldet der Bericht abgelegte Originale, aber <code>0</code>
+referenzierte, haben Zeilen und Ablage den Bezug zueinander verloren — dann ist der Bericht kein
+Aufräumauftrag, sondern ein Befund (siehe den letzten Punkt unten).</p>
+<p>Zweiter Schritt: die geprüften Locator löschen, und nur diese.</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8081/api/v1/admin/upload-store/orphan-originals/delete<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer &lt;token&gt;"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"libraryId": "&lt;Bibliotheks-ID&gt;", "locators": ["&lt;locator aus dem Bericht&gt;"]}'</span>
+</code></pre></div>
+<p>Zeilen und Ablage werden zu Beginn des Aufrufs einmal gelesen, und jeder genannte Locator wird
+gegen diesen Stand geprüft: Wo eine Zeile darauf zeigt, wo die Schonfrist noch läuft oder wo die
+Ablage nichts hält, steht der Locator mit seinem Grund unter <code>skipped</code> statt unter <code>deleted</code>. Wird
+die Ablage mitten im Lauf unerreichbar, gilt das für die restlichen Locator als fehlgeschlagene
+Entfernung (<code>DELETE_FAILED</code>) — der Aufruf bricht nicht ab, damit die Antwort und der
+Prüfprotokoll-Eintrag weiterhin benennen, was tatsächlich entfernt wurde. Jeder Löschaufruf
+hinterlässt genau einen Eintrag im Prüfprotokoll, auch ein abgelehnter; der Melde-Aufruf hinterlässt
+keinen.</p>
+<p>Drei Dinge sind im Betrieb wichtig:</p>
+<ul>
+<li><strong>Schonfrist.</strong> Ein Original, das jünger ist als <code>OPAA_UPLOAD_ORPHAN_GRACE_MINUTES</code>, wird weder
+  gemeldet noch gelöscht — ein Upload, dessen Zeile gerade entsteht, ist kein verwaistes Original.</li>
+<li><strong><code>truncated: true</code> heißt: zweiter Durchgang nötig.</strong> Ein Bericht listet nur einen Ausschnitt der
+  Funde, zählt in <code>orphanCount</code> aber alle. Nach dem Löschen des gelisteten Ausschnitts denselben
+  Bericht erneut abrufen, bis <code>truncated</code> auf <code>false</code> steht.</li>
+<li><strong>Nach einer Umstellung der Ablage meldet der erste Bericht alles.</strong> Wurden die Bytes umgezogen,
+  aber die Verweise nicht umgeschrieben, gilt der gesamte Bestand als verwaist — erkennbar an
+  <code>referencedCount: 0</code>. Das ist das Signal, die
+  <a href="#eine-laufende-installation-auf-den-objektspeicher-umstellen">Umstellung</a> zu prüfen — nicht, zu
+  löschen.</li>
+</ul>
+<p>Was der Lauf <strong>nicht</strong> sieht: alles, was tiefer liegt als die Ebene der Bibliothek. Die Ablage legt
+dort nie etwas an; was ein anderer Schreiber unter demselben Präfix abgelegt hat, wird deshalb weder
+gemeldet noch je gelöscht. Ebenso wenig erreicht dieser Lauf die Originale einer bereits gelöschten
+Bibliothek — er arbeitet je Bibliothek, und ohne deren Zeile antwortet er mit „nicht gefunden".
+Dafür gibt es den zweiten Lauf.</p>
+<h3 id="originale-gelöschter-bibliotheken">Originale gelöschter Bibliotheken<a class="headerlink" href="#originale-gelöschter-bibliotheken" title="Permanent link">&para;</a></h3>
+<p>Schlägt das Löschen eines Originals fehl und wird die Bibliothek danach entfernt, bleiben Bytes
+zurück, die über keine Bibliothek mehr ansprechbar sind. Der zweite Lauf setzt deshalb nicht an der
+Bibliothek an, sondern an der Ablage: Er sieht auf der Ebene <strong>unter der eigenen Organisation</strong> nach
+und meldet jeden Bibliotheks-Ordner, zu dem es keine Bibliothekszeile mehr gibt. Die Organisation
+kommt vom Aufrufer und steht im Schlüssel selbst — deshalb braucht dieser Lauf
+keine einzige Datenbankzeile, um die Mandantengrenze zu ziehen.</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8081/api/v1/admin/upload-store/orphan-libraries/report<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer &lt;token&gt;"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">'{}'</span>
+</code></pre></div>
+<p>Die Antwort nennt je gemeldetem Ordner seine <code>libraryId</code>, die enthaltenen Originale mit <code>locator</code>,
+Änderungszeit und Größe, dazu <code>orphanCount</code>, <code>scannedCount</code>, <code>withinGracePeriodCount</code> und
+<code>totalSize</code> (die Bytes, die das Löschen freigäbe). Auf Berichtsebene stehen <code>libraryCount</code> (alle
+gefundenen Ordner ohne Zeile), <code>scannedLibraryCount</code> (alle Ordner der Organisation),
+<code>knownLibraryCount</code> (davon die mit Zeile) und <code>truncated</code>. <code>minimumAgeMinutes</code> hebt auch hier die
+Schonfrist für diesen Aufruf an.</p>
+<p><strong>Der erste Blick gilt <code>knownLibraryCount</code>, und hier noch strenger als beim ersten Lauf.</strong> Meldet
+der Bericht Ordner, aber <code>0</code> bekannte, ist das kein Aufräumauftrag, sondern ein Befund: Dann zeigen
+<code>OPAA_UPLOAD_STORAGE_PATH</code> beziehungsweise <code>OPAA_UPLOAD_S3_BUCKET</code>/<code>OPAA_UPLOAD_S3_KEY_PREFIX</code>
+vermutlich auf den Bereich einer anderen Installation — dort ist jeder Ordner „ohne Zeile", und der
+Löschendpunkt würde ihren gesamten Bestand in 500er-Schritten entfernen. Erst die Konfiguration
+prüfen, dann löschen.</p>
+<p>Gelöscht wird wie beim ersten Lauf: ausdrücklich genannte Locator, höchstens 500 je Aufruf.</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8081/api/v1/admin/upload-store/orphan-libraries/delete<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer &lt;token&gt;"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"libraryId": "&lt;libraryId aus dem Bericht&gt;", "locators": ["&lt;locator aus dem Bericht&gt;"]}'</span>
+</code></pre></div>
+<p>Vier Dinge unterscheiden diesen Lauf vom ersten:</p>
+<ul>
+<li><strong>Er fasst nichts an, wozu es eine Bibliothekszeile gibt</strong> — auch keine aus einer anderen
+  Organisation. Nennt der Löschaufruf eine <code>libraryId</code>, die es noch gibt, wird er mit einer Meldung
+  abgewiesen und nichts entfernt; für eine existierende Bibliothek ist der erste Lauf zuständig.</li>
+<li><strong>Die Schonfrist zählt ab dem Schreiben des Originals, nicht ab dem Löschen der Bibliothek.</strong>
+  Gemessen wird die Änderungszeit der Datei beziehungsweise des Objekts — genau wie beim ersten
+  Lauf. Ein im Juni hochgeladenes Original, dessen Bibliothek heute gelöscht wurde, steht deshalb
+  sofort unter <code>orphanCount</code> und ist sofort löschbar; nur ein eben erst geschriebenes erscheint
+  unter <code>withinGracePeriodCount</code>. <strong>Das Löschen einer Bibliothek eröffnet kein Zeitfenster, in dem
+  sich ihre Originale noch zurückholen ließen</strong> — wer eine Bibliothek versehentlich gelöscht hat,
+  findet ihre Originale nur in der Sicherung wieder.</li>
+<li><strong>Ein leerer Bibliotheks-Ordner wird nicht gemeldet.</strong> Der Lauf entfernt Originale, keine Ordner;
+  ein leer gewordenes Verzeichnis auf der Platte stünde sonst in jedem künftigen Bericht. In einem
+  Objektspeicher gibt es den Fall nicht — dort ist ein Präfix ohne Objekte nicht vorhanden.</li>
+<li><strong>Die oberste Ebene erreicht er nicht.</strong> Ein Eintrag direkt unter dem Upload-Pfad beziehungsweise
+  dem Schlüsselpräfix ist eine Organisation; zu welcher Organisation ein Eintrag gehörte, der keine
+  ist, steht nirgends mehr, und ein Lauf innerhalb einer Organisation darf ihn deshalb weder melden
+  noch löschen. Ein solcher Eintrag stammt nicht von OPAA; er findet sich im Abgleich mit
+  <code>SELECT id FROM organizations;</code> und wird von Hand entfernt.</li>
+</ul>
+<h2 id="eine-laufende-installation-auf-den-objektspeicher-umstellen">Eine laufende Installation auf den Objektspeicher umstellen<a class="headerlink" href="#eine-laufende-installation-auf-den-objektspeicher-umstellen" title="Permanent link">&para;</a></h2>
+<p>Die Umstellung ist ein <strong>Wartungsfenster</strong>, kein laufender Betriebszustand: Bytes kopieren, dann die
+Verweise in der Datenbank umschreiben, dann umschalten. Es gibt bewusst keinen Zustand, in dem beide
+Ablagen gleichzeitig gelesen werden — eine unvollständige Kopie soll auffallen, nicht aufgefangen
+werden.</p>
+<p>Vorher: einen Datenbank-Dump ziehen und den Bucket bereitstellen (mit dem mitgelieferten Dienst legt
+ihn <code>upload-store-init</code> an).</p>
+<p><strong>1. Uploads anhalten.</strong> Das Backend stoppen, damit während des Kopierens keine neue Datei
+dazukommt:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>stop<span class="w"> </span>backend
+</code></pre></div>
+<p><strong>2. Objektspeicher starten</strong> (nur beim mitgelieferten Dienst; ein hauseigener Speicher läuft schon):</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>--profile<span class="w"> </span>upload-s3<span class="w"> </span>up<span class="w"> </span>-d<span class="w"> </span>upload-store<span class="w"> </span>upload-store-init
+</code></pre></div>
+<p><strong>3. Bytes kopieren.</strong> Die Verzeichnisstruktur wandert unverändert in den Bucket — ein Unterordner
+je Organisation, darin einer je Bibliothek. Mit dem mitgelieferten Dienst genügt ein
+Wegwerf-Container, der das Upload-Verzeichnis und den Speicher gleichzeitig sieht:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>--profile<span class="w"> </span>upload-s3<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-v<span class="w"> </span>./uploads:/uploads:ro<span class="w"> </span>upload-store-init<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"mc alias set store http://upload-store:9000 &lt;zugangsschlüssel&gt; '&lt;geheimer schlüssel&gt;' &amp;&amp;</span>
+<span class="s2">   mc mirror /uploads store/&lt;bucket&gt; &amp;&amp;</span>
+<span class="s2">   mc ls --recursive store/&lt;bucket&gt;"</span>
+</code></pre></div>
+<p><code>./uploads</code> ist dabei das Verzeichnis, das der Stapel in den Backend-Container einhängt; wurde es
+über <code>OPAA_UPLOAD_STORAGE_PATH_HOST</code> verlegt, steht dort der verlegte Pfad. Gegen einen hauseigenen
+Speicher tut es dasselbe vom Host aus, etwa <code>aws s3 sync ./uploads s3://&lt;bucket&gt;/</code> oder
+<code>mc mirror ./uploads &lt;alias&gt;/&lt;bucket&gt;</code>. Ist ein Schlüsselpräfix konfiguriert, ist das Ziel
+<code>&lt;bucket&gt;/&lt;präfix&gt;</code> statt <code>&lt;bucket&gt;</code>.</p>
+<p>Die abschließende Auflistung ist die Probe: So viele Objekte wie Dateien. Der Schritt ist
+wiederholbar — kopiert wird nur, was im Ziel fehlt.</p>
+<p><strong>4. Zählen, was umzuschreiben ist.</strong> Der zu ersetzende Präfix ist installationsabhängig — im
+Container <code>/app/uploads/</code>, bei einem Betrieb ohne Container der dort konfigurierte absolute Pfad.
+Die Zählabfrage zeigt, ob er stimmt: Beide Zahlen müssen gleich sein.</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>postgres<span class="w"> </span>psql<span class="w"> </span>-U<span class="w"> </span>opaa<span class="w"> </span>-d<span class="w"> </span>opaa<span class="w"> </span>-c<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"SELECT count(*) AS zeilen,</span>
+<span class="s2">          count(*) FILTER (WHERE file_path LIKE '/app/uploads/%') AS mit_praefix</span>
+<span class="s2">     FROM documents WHERE source_type = 'UPLOAD';"</span>
+</code></pre></div>
+<p><strong>5. Verweise umschreiben.</strong> Eine Präfixersetzung, kein Neubilden des Werts — dadurch wandern die
+Anhangzeilen ohne Sonderfall mit:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>postgres<span class="w"> </span>psql<span class="w"> </span>-U<span class="w"> </span>opaa<span class="w"> </span>-d<span class="w"> </span>opaa<span class="w"> </span>-c<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"UPDATE documents</span>
+<span class="s2">      SET file_path = replace(file_path, '/app/uploads/', 's3://&lt;bucket&gt;/')</span>
+<span class="s2">    WHERE source_type = 'UPLOAD' AND file_path LIKE '/app/uploads/%';"</span>
+</code></pre></div>
+<p>Die Zahl der geänderten Zeilen muss der Zählabfrage aus Schritt 4 entsprechen. Mit Schlüsselpräfix
+lautet das Ziel <code>s3://&lt;bucket&gt;/&lt;präfix&gt;</code>.</p>
+<p><strong>6. Umschalten und starten.</strong> In <code>.env.docker</code> die Ablage auf den Objektspeicher stellen und die
+<code>OPAA_UPLOAD_S3_*</code>-Werte eintragen, dann:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d<span class="w"> </span>backend
+</code></pre></div>
+<p><strong>7. Prüfen.</strong> Vier Proben, in dieser Reihenfolge. Die ersten beiden von der Kommandozeile:</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>http://localhost:8081/actuator/health/upload-store<span class="w">   </span><span class="c1"># Endpunkt und Bucket, Status UP</span>
+docker<span class="w"> </span>compose<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>postgres<span class="w"> </span>psql<span class="w"> </span>-U<span class="w"> </span>opaa<span class="w"> </span>-d<span class="w"> </span>opaa<span class="w"> </span>-c<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"SELECT file_name, file_path FROM documents WHERE source_type = 'UPLOAD' LIMIT 5;"</span>
+</code></pre></div>
+<p>Endpunkt, Bucket und im Störungsfall der Grund erscheinen dabei nur einem angemeldeten Aufrufer —
+in einem OIDC-Deployment antwortet ein anonymes <code>curl</code> nur mit dem Status, wie unter
+<a href="ueberwachung-und-fehlerbehebung.html#diagnose-ohne-shell">„Diagnose ohne Shell"</a> beschrieben.</p>
+<p>Die dritte ist die eigentliche: In der Oberfläche ein Dokument öffnen und sein Original
+herunterladen — am besten eine E-Mail mit Anhang und den Anhang gleich mit, weil daran sichtbar
+wird, dass auch die zusammengesetzten Verweise noch stimmen. Die vierte prüft den Schreibweg: eine
+neue Datei hochladen und nachsehen, dass sie als Objekt im Bucket ankommt.</p>
+<p><strong>Das alte Verzeichnis bleibt zunächst stehen.</strong> Es ist der Rückweg, solange die Proben nicht durch
+sind. Wer es entfernt, tut das erst nach einem erfolgreichen Sicherungslauf der neuen Ablage.</p>
+<h2 id="der-rückweg-vom-objektspeicher-zurück-auf-das-dateisystem">Der Rückweg: vom Objektspeicher zurück auf das Dateisystem<a class="headerlink" href="#der-rückweg-vom-objektspeicher-zurück-auf-das-dateisystem" title="Permanent link">&para;</a></h2>
+<p>Dieselben Schritte in umgekehrter Richtung.</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>stop<span class="w"> </span>backend
+
+docker<span class="w"> </span>compose<span class="w"> </span>--profile<span class="w"> </span>upload-s3<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-v<span class="w"> </span>./uploads:/uploads<span class="w"> </span>upload-store-init<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"mc alias set store http://upload-store:9000 &lt;zugangsschlüssel&gt; '&lt;geheimer schlüssel&gt;' &amp;&amp;</span>
+<span class="s2">   mc mirror --overwrite store/&lt;bucket&gt; /uploads"</span>
+
+docker<span class="w"> </span>compose<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>postgres<span class="w"> </span>psql<span class="w"> </span>-U<span class="w"> </span>opaa<span class="w"> </span>-d<span class="w"> </span>opaa<span class="w"> </span>-c<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"UPDATE documents</span>
+<span class="s2">      SET file_path = replace(file_path, 's3://&lt;bucket&gt;/', '/app/uploads/')</span>
+<span class="s2">    WHERE source_type = 'UPLOAD' AND file_path LIKE 's3://&lt;bucket&gt;/%';"</span>
+
+sudo<span class="w"> </span>chown<span class="w"> </span>-R<span class="w"> </span><span class="m">65532</span>:65532<span class="w"> </span>uploads
+</code></pre></div>
+<p>Danach in <code>.env.docker</code> die Ablage zurück auf das Dateisystem stellen und das Backend starten.</p>
+<p>Die letzte Zeile ist keine Formsache: Der Kopierschritt läuft in einem Container ohne <code>user:</code>, also
+als <code>root</code>, und alle zurückgespielten Organisations- und Bibliotheksordner gehören danach <code>root</code>.
+Ohne sie sieht alles richtig aus — der Start ist grün, jedes Original lässt sich herunterladen (die
+Dateien sind <code>0644</code>) —, aber der erste Upload in eine <strong>bestehende</strong> Bibliothek und jedes Löschen
+eines Originals scheitern mit <code>AccessDeniedException</code> (siehe <a href="docker-compose.html#nicht-root-betrieb-des-backend-containers">„Nicht-root-Betrieb des
+Backend-Containers"</a>).</p>
+<p>Drei Unterschiede zum Hinweg:</p>
+<ul>
+<li><strong>Ein Schlüsselpräfix gehört in beide Befehle</strong>, und zwar in die Quelle des Kopierens und in den
+  zu ersetzenden Wert. Das Verzeichnis muss danach wieder unmittelbar die Unterordner der
+  Organisationen enthalten — liegt darunter erst noch ein Ordner mit dem Namen des Präfixes, gilt
+  keine Datei mehr als zur Bibliothek gehörend und <strong>jedes</strong> Original antwortet mit „nicht
+  gefunden". Mit Präfix lauten die beiden Zeilen deshalb
+  <code>mc mirror --overwrite store/&lt;bucket&gt;/&lt;präfix&gt; /uploads</code> und
+  <code>replace(file_path, 's3://&lt;bucket&gt;/&lt;präfix&gt;', '/app/uploads/')</code> mit
+  <code>LIKE 's3://&lt;bucket&gt;/&lt;präfix&gt;%'</code>.</li>
+<li><strong><code>--overwrite</code> ist nötig</strong>, wenn das alte Verzeichnis noch steht. Ohne diesen Schalter überträgt
+  <code>mc mirror</code> zwar alles Fehlende, meldet aber für jede bereits vorhandene Datei einen Fehlschlag —
+  und <strong>endet trotzdem mit dem Rückgabewert <code>0</code></strong>. Eine Skriptierung bemerkt den Unterschied
+  deshalb nicht. In ein leeres Verzeichnis kopiert der Befehl auch ohne den Schalter.</li>
+<li><strong>Der Bestand ist größer als beim Hinweg.</strong> Alles, was seit der Umstellung hochgeladen wurde,
+  liegt nur im Bucket. Die Zählabfrage aus Schritt 4 gehört deshalb auch hier davor, mit
+  <code>s3://&lt;bucket&gt;/%</code> als Muster.</li>
+</ul>
+<h2 id="wenn-etwas-nicht-stimmt">Wenn etwas nicht stimmt<a class="headerlink" href="#wenn-etwas-nicht-stimmt" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Bild</th>
+<th>Wahrscheinliche Ursache</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Alle Originale antworten mit „nicht gefunden", die Suche funktioniert</td>
+<td>Die Verweise wurden nicht umgeschrieben, oder Bucket bzw. Schlüsselpräfix in der Konfiguration passen nicht zu dem, was in den Verweisen steht. Nach einem Rückweg mit Schlüsselpräfix kommt eine dritte Ursache dazu: Die Dateien liegen dann eine Ebene zu tief, unter einem Ordner mit dem Namen des Präfixes</td>
+</tr>
+<tr>
+<td>Einzelne Originale fehlen, andere nicht</td>
+<td>Die Kopie war unvollständig — Kopierschritt wiederholen, er überträgt nur, was fehlt</td>
+</tr>
+<tr>
+<td>Jeder Abruf antwortet mit „Dienst nicht verfügbar", die Health Group steht auf <code>DOWN</code></td>
+<td>Der Objektspeicher ist nicht erreichbar; die Gruppe nennt den Grund</td>
+</tr>
+<tr>
+<td>Der Start bricht mit einer Meldung über eine fehlende Variable ab</td>
+<td><code>OPAA_UPLOAD_STORE=s3</code> ohne Endpunkt, Bucket oder Zugangsschlüssel</td>
+</tr>
+<tr>
+<td>Die Health Group antwortet mit „nicht gefunden"</td>
+<td>Es ist der Verzeichnisweg konfiguriert; die Gruppe gibt es nur beim Objektspeicher</td>
+</tr>
+<tr>
+<td>Uploads scheitern mit „Dienst nicht verfügbar", der Speicher ist erreichbar</td>
+<td>Der Bucket fehlt oder der Zugangsschlüssel darf nicht schreiben — die Anwendung meldet beides wie eine Störung des Speichers. Den Grund nennt das <strong>Log</strong>, mit Bucket und fehlender Berechtigung (etwa <code>s3:PutObject</code>). Ein fehlender Bucket fällt auch der Health Group auf (<code>DOWN</code>); ein reiner Schreibrechte-Fehler nicht — ihre Sondierung prüft nur die Leserichtung und bleibt dann auf <code>UP</code></td>
+</tr>
+<tr>
+<td>Eine private Bibliothek bleibt „Wird gelöscht", das Log meldet, dass der Speicher die Versionen nicht auflisten konnte</td>
+<td>Dem Zugangsschlüssel fehlen die Rechte für Versionen: bei einem versionierten Bucket <code>s3:ListBucketVersions</code> und <code>s3:DeleteObjectVersion</code>, bei einem nie versionierten wenigstens <code>s3:GetBucketVersioning</code> (<a href="#was-im-objektspeicher-liegt">Rechte für das Löschen von Versionen</a>). Nach dem Ergänzen schließt der nächste Lauf die Löschung ab</td>
+</tr>
+<tr>
+<td><code>docker cp … /app/uploads</code> liefert ein leeres Verzeichnis</td>
+<td>Die Originale liegen im Objektspeicher, nicht im Container</td>
+</tr>
+<tr>
+<td>Der Bericht über verwaiste Originale meldet den gesamten Bestand, <code>referencedCount</code> ist <code>0</code></td>
+<td>Zeilen und Ablage passen nicht zueinander — meist eine Umstellung, bei der die Bytes kopiert, die Verweise aber nicht umgeschrieben wurden. Nichts löschen, bevor das geklärt ist</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Zurück zum Seitenanfang
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.indexes", "navigation.top", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "In Zwischenablage kopiert", "clipboard.copy": "In Zwischenablage kopieren", "search.result.more.one": "1 weiteres Suchergebnis auf dieser Seite", "search.result.more.other": "# weitere Suchergebnisse auf dieser Seite", "search.result.none": "Keine Suchergebnisse", "search.result.one": "1 Suchergebnis", "search.result.other": "# Suchergebnisse", "search.result.placeholder": "Suchbegriff eingeben", "search.result.term.missing": "Es fehlt", "select.version": "Version ausw\u00e4hlen"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
+      
+    
+  </body>
+</html>

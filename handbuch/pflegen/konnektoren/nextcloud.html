@@ -1,0 +1,4025 @@
+
+<!doctype html>
+<html lang="de" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="http-directory.html">
+      
+      
+        <link rel="next" href="onedrive.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+    
+    
+      
+        <title>Konnektor: Nextcloud - OPAA-Handbuch</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#konnektor-nextcloud" class="md-skip">
+          Zum Inhalt
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Kopfzeile">
+    <a href="../../index.html" title="OPAA-Handbuch" class="md-header__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            OPAA-Handbuch
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Konnektor: Nextcloud
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Dunkles Farbschema"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dunkles Farbschema" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Helles Farbschema"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Helles Farbschema" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Suche" placeholder="Suche" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Suche">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Zurücksetzen" aria-label="Zurücksetzen" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Suche wird initialisiert
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../index.html" title="OPAA-Handbuch" class="md-nav__button md-logo" aria-label="OPAA-Handbuch" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    OPAA-Handbuch
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OPAA-Handbuch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../arbeiten/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Arbeiten
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Arbeiten
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../arbeiten/anhaengen-und-diktieren.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dateien anhängen und diktieren
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../arbeiten/antworten-weitergeben.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Antworten weitergeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../arbeiten/belege-pruefen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Belege prüfen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../arbeiten/bibliothek-anlegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eine Bibliothek anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../arbeiten/chats.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chats verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../arbeiten/erste-schritte.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Erste Schritte
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../arbeiten/fragen-stellen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fragen stellen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../arbeiten/katalog.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Den Katalog nutzen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../arbeiten/ki-werkzeug-einrichten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ein KI-Werkzeug einrichten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../arbeiten/konto-verbinden.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ein Konto verbinden
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../arbeiten/meine-daten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eigene Daten herunterladen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../arbeiten/private-bibliothek.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eine private Bibliothek anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../arbeiten/prompt-bibliothek-anlegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eine Prompt-Bibliothek anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../arbeiten/prompts-verwenden.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prompts verwenden
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../arbeiten/space-anlegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Einen Space anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../arbeiten/zugangstoken.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ein Zugangstoken anlegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../betreiben/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Betreiben
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Betreiben
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../betreiben/aktualisierung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Aktualisierung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../betreiben/authentifizierung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentifizierung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../betreiben/datenbank.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Datenbank
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../betreiben/docker-compose.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker Compose
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../betreiben/images-und-laufzeit.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Images und Laufzeit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../betreiben/installation.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../betreiben/kubernetes.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Kubernetes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../betreiben/mehrere-instanzen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mehrere Backend-Instanzen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../betreiben/modell-endpunkte.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modelle betreiben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../betreiben/nachvollziehbarkeit.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nachvollziehbarkeit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../betreiben/netz-und-sicherheit.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Netz und Sicherheit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../betreiben/originalablage.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Originalablage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../betreiben/releases-und-nachweise.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releases und Nachweise
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../betreiben/sicherung-und-wiederherstellung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sicherung und Wiederherstellung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../betreiben/ueberwachung-und-fehlerbehebung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Überwachung und Fehlerbehebung
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../nachschlagen/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nachschlagen
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Nachschlagen
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nachschlagen/glossar.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glossar
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nachschlagen/konfiguration.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konfiguration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nachschlagen/metadaten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metadaten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nachschlagen/rechte-matrix.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rechte-Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nachschlagen/wie-die-suche-arbeitet.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Wie die Suche arbeitet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nachschlagen/wie-indexierung-arbeitet.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Wie die Indexierung arbeitet
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../nachschlagen/formate/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Formate
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Formate
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nachschlagen/formate/confluence.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Confluence-Seite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nachschlagen/formate/docx.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Word (DOCX)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nachschlagen/formate/fallback.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Auffang-Pipeline (TXT, DOC)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nachschlagen/formate/html.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: HTML
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nachschlagen/formate/mail.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: E-Mail (EML, MSG)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nachschlagen/formate/markdown.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Markdown
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nachschlagen/formate/odp.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: OpenDocument Präsentation (ODP)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nachschlagen/formate/odt.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: OpenDocument Text (ODT)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nachschlagen/formate/pdf.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: PDF
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nachschlagen/formate/pptx.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: PowerPoint (PPTX)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../nachschlagen/formate/tabular.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Format: Tabellen (XLSX, CSV, ODS)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pflegen
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Pflegen
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../arbeitsmittel-teilen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ein Arbeitsmittel teilen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bibliothek-aktuell-halten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eine Bibliothek aktuell halten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../fuer-ki-werkzeuge-freigeben.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Für externe KI-Werkzeuge freigeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gruppe-pflegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eine interne Gruppe pflegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gruppe-verantworten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eine Gruppe verantworten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metadaten-pflegen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metadaten pflegen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../space-einstellungen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Einen Space einstellen, archivieren oder löschen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../space-inhalte.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Inhalte eines Space zuordnen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../space-mitglieder.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mitglieder eines Space verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../zugriff-nachvollziehen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nachvollziehen, wer warum Zugriff hat
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_12" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektoren
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_12" id="__nav_5_12_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_12_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Konnektoren
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="confluence.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Confluence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="dropbox.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Dropbox
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="filesystem.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Verzeichnis im Dateisystem
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="google-drive.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Google Drive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="http-directory.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Webverzeichnis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Nextcloud
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="nextcloud.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Nextcloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Inhaltsverzeichnis">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Inhaltsverzeichnis
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-was-der-konnektor-ist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Was der Konnektor ist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-einrichtung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Einrichtung
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-quellkonfiguration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Quellkonfiguration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Quellkonfiguration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#verbundenes-konto" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verbundenes Konto
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-betriebsarten-und-änderungserkennung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Betriebsarten und Änderungserkennung
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-löscherkennung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Löscherkennung
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-ordner" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Ordner
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-anhänge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Anhänge
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-grenzen-und-schutzmechanismen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Grenzen und Schutzmechanismen
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-protokoll-und-fehlerbilder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Protokoll und Fehlerbilder
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="onedrive.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: OneDrive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="rss-feed.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Feed
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="s3.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: S3-Objektspeicher
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="sharepoint.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: SharePoint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="smb.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Konnektor: Windows-Dateifreigabe (SMB)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../verwalten/index.html" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Verwalten
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_6" id="__nav_6_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Verwalten
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../verwalten/anlegerechte.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Anlegerechte vergeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../verwalten/anmeldung-einstellen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Anmeldung einstellen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../verwalten/ausscheiden.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ausscheiden und Nachfolge regeln
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../verwalten/branding.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Branding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../verwalten/datenschutz.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Datenschutz einstellen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../verwalten/e-mail.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E-Mail-Versand (SMTP)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../verwalten/einfuehrung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Die Einführung vorbereiten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../verwalten/einstellungen-uebertragen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Einstellungen übertragen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../verwalten/externe-ki-werkzeuge.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Externe KI-Werkzeuge zulassen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../verwalten/gruppen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gruppen verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../verwalten/konten.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lokale Konten verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../verwalten/konto-uebergeben.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ein Konto an einen Identitätsanbieter übergeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../verwalten/modelle.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modelle verwalten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../verwalten/nachweisprotokoll-lesen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Das Nachweisprotokoll lesen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../verwalten/stichtagsauskunft.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eine Stichtagsauskunft erstellen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../verwalten/suche-und-indexierung.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Suche und Indexierung überwachen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../verwalten/systemrollen.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systemrollen vergeben
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../verwalten/verbindungsprotokoll.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Das Verbindungsprotokoll lesen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../verwalten/zugaenge.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zugänge einrichten
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Inhaltsverzeichnis">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Inhaltsverzeichnis
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-was-der-konnektor-ist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Was der Konnektor ist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-einrichtung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Einrichtung
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-quellkonfiguration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Quellkonfiguration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Quellkonfiguration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#verbundenes-konto" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verbundenes Konto
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-betriebsarten-und-änderungserkennung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Betriebsarten und Änderungserkennung
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-löscherkennung" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Löscherkennung
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-ordner" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Ordner
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-anhänge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Anhänge
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-grenzen-und-schutzmechanismen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Grenzen und Schutzmechanismen
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-protokoll-und-fehlerbilder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Protokoll und Fehlerbilder
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="konnektor-nextcloud">Konnektor: Nextcloud<a class="headerlink" href="#konnektor-nextcloud" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Wer darf das:</strong> anlegen, wer „Konnektorbibliotheken anlegen“ für diese Quellart oder ihren
+Zugang hat; ab Werk nur die Systemverwaltung, bis sie die Quellart oder einen Zugang freigibt.
+Quelle, Umfang und Zeitplan ändert danach, wer an der Bibliothek <em>Verwalter</em> oder <em>Eigentümer</em> ist.
+Eine <a href="../../arbeiten/private-bibliothek.html">private Bibliothek</a> über ein verbundenes Konto hat
+keine Rollen; sie gehört allein ihrer Besitzerin.</p>
+</blockquote>
+<h2 id="1-was-der-konnektor-ist">1. Was der Konnektor ist<a class="headerlink" href="#1-was-der-konnektor-ist" title="Permanent link">&para;</a></h2>
+<p>Der Konnektor liest <strong>Ordner eines Nextcloud-Nutzers</strong>, auch die Dateiablage von openDesk und
+ownCloud 10. Er spricht <strong>WebDAV</strong> (<code>PROPFIND</code> auf <code>/remote.php/dav/files/&lt;Nutzer&gt;</code>) und sieht, was
+der Nutzer sieht: eigene Ordner, <strong>Freigaben an ihn</strong> und <strong>Gruppenordner</strong>, so wie sie in seinem
+Dateibaum erscheinen. Nextcloud ist eine der <a href="index.html#2-dateiablagen">Dateiablagen</a>; was alle
+Dateiablagen teilen, steht dort.</p>
+<pre class="mermaid"><code>flowchart LR
+    B[Wissens-&lt;br/&gt;bibliothek] -.-&gt; Z[Zugang&lt;br/&gt;optional]
+    B --&gt;|WebDAV,&lt;br/&gt;App-Passwort| N[Nextcloud]
+    N --&gt; T[technischer&lt;br/&gt;Nutzer oder&lt;br/&gt;eigenes Konto]</code></pre>
+<ul>
+<li><strong>Anmeldung:</strong> Benutzername und App-Passwort als HTTP Basic. Für eine geteilte Bibliothek sind
+  das eigene Zugangsdaten der Bibliothek, für eine private Bibliothek ein verbundenes Konto der
+  Person (<a href="../../verwalten/zugaenge.html">Zugänge</a>, „Eigene Zugangsdaten der Bibliothek" und „Verbundenes Konto
+  einer Person"). Ein Zugang ist möglich; für ein verbundenes Konto ist er nötig.</li>
+<li><strong>Liest:</strong> die aktuelle Fassung jeder Datei in einem unterstützten Format in einem bis fünfzig
+  Ordnern, samt Unterordnern; die Anhänge von Mail-Dateien werden eigene Dokumente.</li>
+<li><strong>Dokument:</strong> Die Datei-ID der Nextcloud ist die Identität. <strong>Umbenennen und Verschieben</strong> behalten
+  das Dokument; die Datei wird einmal neu geladen, aber bei gleichem Inhalt nicht neu verarbeitet.
+  Der <strong>Beleg-Link</strong> <code>&lt;Nextcloud&gt;/index.php/f/&lt;Datei-ID&gt;</code> öffnet die Datei in der Weboberfläche nach
+  deren eigener Anmeldung. <strong>„Original öffnen"</strong> lädt sie durch OPAA, von dem Ort, den der letzte
+  Lauf gespeichert hat; eine seither verschobene Datei liefert bis zum nächsten Lauf kein Original.</li>
+<li><strong>Rechte</strong> aus der Nextcloud übernimmt OPAA nicht: Was das Konto in den Ordnern lesen kann, sehen
+  alle Leseberechtigten der Bibliothek.</li>
+</ul>
+<h2 id="2-einrichtung">2. Einrichtung<a class="headerlink" href="#2-einrichtung" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Nextcloud im privaten Netz: ihren Hostnamen für die
+   <a href="index.html#12-zieladressprüfung">Zieladressprüfung</a> freigeben.</li>
+<li>Einen <strong>technischen Nutzer</strong> anlegen, kein persönliches Konto. Er braucht nur Leserechte; OPAA
+   schreibt nie. Ordner kommen über <strong>Freigaben</strong> (Lesen genügt) oder als <strong>Gruppenordner</strong> zu ihm.
+   Eine Freigabe mit gesperrtem Herunterladen hält OPAA nicht zuverlässig ab.</li>
+<li>Für ihn ein <strong>App-Passwort</strong> erzeugen: <em>Persönliche Einstellungen › Sicherheit › Geräte &amp;
+   Sitzungen</em> oder <code>occ user:auth-tokens:add &lt;nutzer&gt;</code>. Es lässt sich einzeln widerrufen. Unter LDAP
+   dürfen Anmeldename und Nutzer-ID abweichen; OPAA fragt die ID bei der Anmeldung ab.</li>
+<li>Die Quellart ist ab Werk nur für die Systemverwaltung freigegeben. Wer sonst Bibliotheken anlegen
+   soll, bekommt „Konnektorbibliotheken anlegen" für die Quellart oder einen Zugang
+   (<a href="../../nachschlagen/rechte-matrix.html">Berechtigungen</a>, „Konnektor-Freigabe").</li>
+<li>Für private Bibliotheken einen Zugang mit der Besitzart „Person" oder „Bibliothek und Person"
+   anlegen und freigeben (Abschnitt 3, „Verbundenes Konto").</li>
+</ol>
+<h2 id="3-quellkonfiguration">3. Quellkonfiguration<a class="headerlink" href="#3-quellkonfiguration" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Angabe</th>
+<th>Bedeutung</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>„Adresse"</td>
+<td><code>http(s)://host[:port][/pfad]</code>; eine eingefügte WebDAV-Adresse wird auf die Instanzadresse gekürzt</td>
+</tr>
+<tr>
+<td>„Benutzername", „App-Passwort"</td>
+<td>Benutzername des technischen Nutzers ohne Doppelpunkt und App-Passwort; gehen nur an diese Adresse, eine geänderte Adresse verlangt sie neu</td>
+</tr>
+<tr>
+<td>„Ordner"</td>
+<td>in der Zeile „Umfang": „Alle Ordner" liest alles, „Nur ausgewählte Ordner" ein bis fünfzig Pfade, wie der Nutzer sie sieht, etwa <code>/Projekte</code>. Ordner dürfen sich nicht überschneiden; kein Komma, kein <code>.</code> oder <code>..</code></td>
+</tr>
+</tbody>
+</table>
+<p>Die Auswahl zeigt die Ordner des Nutzers Ebene für Ebene; Pfade lassen sich auch über „Von Hand
+eintragen …" angeben. Der Verbindungstest meldet sich an und prüft jeden Ordner. Die Ordner stehen
+unter „Umfang" für alle Leseberechtigten. Eine geänderte Ordnerliste lässt den nächsten Lauf alles
+listen.</p>
+<p><strong>Über einen Zugang:</strong> Er gibt die Server-Adresse vor. Bei der Besitzart
+„Bibliothek" tragen die Verwaltenden Benutzername und App-Passwort des technischen Nutzers ein;
+Vorgaben für weitere Einstellungen gibt es nicht.</p>
+<h3 id="verbundenes-konto">Verbundenes Konto<a class="headerlink" href="#verbundenes-konto" title="Permanent link">&para;</a></h3>
+<p>Über einen Zugang mit der Besitzart „Person" bindet eine Person ihre <strong>eigene</strong> Nextcloud an, ohne
+technischen Nutzer, und speist daraus eine <a href="../../arbeiten/private-bibliothek.html">private Bibliothek</a>.</p>
+<ol>
+<li>In der eigenen Nextcloud unter <em>Persönliche Einstellungen › Sicherheit › Geräte &amp; Sitzungen</em> ein
+   App-Passwort mit einem Namen wie „OPAA" erstellen; es wird nur einmal angezeigt. Das Kontopasswort
+   gehört nicht in OPAA.</li>
+<li>In OPAA unter <em>Einstellungen › Verbundene Konten</em> beim Zugang „Verbinden" wählen und Benutzername
+   und App-Passwort eintragen. OPAA speichert sie nur, wenn die Anmeldung gelingt
+   (<a href="../../verwalten/konten.html">Benutzerverwaltung</a>, „Verbundene Konten").</li>
+<li>Im Assistenten im Schritt „Quelle einrichten" in der Zeile „Verbindung" den Zugang mit dem Zusatz
+   <strong>„privat"</strong> wählen, dann die Ordner.</li>
+</ol>
+<p>Lehnt die Nextcloud das App-Passwort ab, gilt die Verbindung als <strong>abgelaufen</strong>; die Person wird
+benachrichtigt, die Bibliothek zeigt „Abgelaufen" mit „Konto neu verbinden", und ihr Bestand bleibt
+durchsuchbar. Die Verwaltung sieht am Zugang nur die Zahl verbundener und abgelaufener Konten, kleine
+Zahlen als „weniger als N"; Verbinden und Trennen stehen pseudonym im Verbindungsprotokoll. Auch die
+Betriebslogs nennen von einer privaten Bibliothek nur ihre Kennung.</p>
+<h2 id="4-betriebsarten-und-änderungserkennung">4. Betriebsarten und Änderungserkennung<a class="headerlink" href="#4-betriebsarten-und-änderungserkennung" title="Permanent link">&para;</a></h2>
+<p>Jeder Lauf ist ein <strong>Vollabgleich</strong>; Nextcloud kennt für Dateien kein Änderungsprotokoll. Der Lauf
+steigt aber nur in Ordner ab, deren Prüfsumme sich geändert hat.</p>
+<pre class="mermaid"><code>flowchart LR
+    B[je Ordner&lt;br/&gt;PROPFIND,&lt;br/&gt;Tiefe 1] --&gt; C{Prüfsumme&lt;br/&gt;des Ordners&lt;br/&gt;wie zuletzt?}
+    C -- ja --&gt; K[gilt samt&lt;br/&gt;Inhalt als&lt;br/&gt;vorhanden]
+    C -- nein --&gt; D{Datei&lt;br/&gt;unverändert,&lt;br/&gt;selber Ort?}
+    D -- ja --&gt; S[übersprungen]
+    D -- nein --&gt; F[laden]</code></pre>
+<p><strong>Unveränderte Ordner.</strong> Nextcloud ändert die Prüfsumme (ETag) eines Ordners, sobald sich darin oder
+darunter etwas ändert, bis zur Wurzel, auch bei Freigaben und Gruppenordnern. OPAA merkt sich nach
+jedem vollständigen Lauf die Prüfsumme jedes Ordners; ein Ordner mit gleicher Prüfsumme wird nicht
+gelistet. Ein unveränderter Ordner kostet so eine Anfrage, dazu eine für die Anmeldung. Wieder
+gelistet wird ein Ordner, der sich geändert hat, umbenannt oder verschoben wurde oder in dem beim
+letzten Lauf etwas nicht geladen oder aufgenommen werden konnte oder in OPAA gelöscht wurde. Den
+ganzen Baum listet ein Lauf nach einer Änderung von Größengrenze, Formaten, Adresse oder Ordnern,
+einmal nach einem Update, das die Grundlage ändert, und spätestens nach dem
+<a href="index.html#14-vollabgleich-rhythmus">Vollabgleich-Rhythmus</a> von Nextcloud — das fängt Änderungen ab,
+die Nextcloud nicht weiterträgt, etwa auf externem Speicher.</p>
+<p><strong>Über mehrere Läufe.</strong> Die Ordner werden in Namensreihenfolge abgearbeitet. Reicht das Budget nicht,
+endet der Lauf als „unvollständig, wird fortgesetzt", und der nächste setzt an der gemerkten Stelle
+fort (<a href="index.html#22-ein-vollabgleich-über-mehrere-läufe">Konnektoren</a>). Ein Lauf, der an einem Fehler
+scheitert, ändert die Stelle nicht. Die Obergrenze <code>max-entries-per-run</code> gilt für den ganzen Abgleich.</p>
+<h2 id="5-löscherkennung">5. Löscherkennung<a class="headerlink" href="#5-löscherkennung" title="Permanent link">&para;</a></h2>
+<p>Entfernt wird nur nach einem Lauf, der <strong>allein</strong> alle Ordner gelistet oder über ihre Prüfsumme
+bestätigt hat (<a href="index.html#23-wann-eine-gelöschte-datei-als-nachgewiesen-gilt">Konnektoren</a>). Ein
+Abgleich über mehrere Läufe entfernt nichts, merkt sich aber die Prüfsummen; der nächste Lauf steigt
+dann nur in geänderte Ordner ab, passt meist in ein Budget und entfernt, was fehlt. Ändert sich die
+Nextcloud so schnell, dass kein Lauf mehr alles allein bestätigt, wird weiter aufgenommen, aber nicht
+entfernt.</p>
+<p>Ein Ordner, der dauerhaft nicht gelistet werden kann (gelöscht, Freigabe entzogen), macht seinen
+Bereich unvollständig: Neue und geänderte Dateien kommen weiter an, entfernt wird nichts, bis der
+Ordner wieder listbar ist oder aus der Bibliothek genommen wird. In diesem Zustand listet jeder Lauf
+den ganzen Baum, sobald die gemerkten Prüfsummen älter als der Vollabgleich-Rhythmus sind.</p>
+<h2 id="6-ordner">6. Ordner<a class="headerlink" href="#6-ordner" title="Permanent link">&para;</a></h2>
+<p>Die Ordner unterhalb der konfigurierten Ordner erscheinen als schreibgeschützte Ordner. Bei einem
+konfigurierten Ordner ist er die Wurzel, bei mehreren beginnt jede Kette mit seinen Pfadsegmenten. Am
+Dokument stehen der konfigurierte Ordner und der Gliederungspfad darunter.</p>
+<h2 id="7-anhänge">7. Anhänge<a class="headerlink" href="#7-anhänge" title="Permanent link">&para;</a></h2>
+<p>Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Grenzen des Kapitels
+<a href="../../nachschlagen/formate/mail.html">E-Mail</a>.</p>
+<h2 id="8-grenzen-und-schutzmechanismen">8. Grenzen und Schutzmechanismen<a class="headerlink" href="#8-grenzen-und-schutzmechanismen" title="Permanent link">&para;</a></h2>
+<p>Parameter stehen unter <code>opaa.indexing.nextcloud.*</code> (<code>OPAA_INDEXING_NEXTCLOUD_*</code>), ihre Standardwerte in der
+<a href="../../nachschlagen/konfiguration.html#alle-umgebungsvariablen">Konfigurationsreferenz</a>.</p>
+<ul>
+<li><strong>Zieladressprüfung</strong> (<a href="index.html#12-zieladressprüfung">Konnektoren</a>). Nennt die Nextcloud eine
+  Adresse außerhalb ihrer eigenen Dateien, schickt OPAA dorthin keine Zugangsdaten.</li>
+<li>Eine Ratenbegrenzung (<code>429</code>) wartet OPAA ab und wiederholt.</li>
+<li>Ein Ordner mit sehr vielen Einträgen kann die Grenze einer Auflistungsantwort
+  (<code>max-response-bytes</code>) überschreiten und gilt dann als nicht auflistbar.</li>
+<li><strong>ownCloud 10</strong> spricht dasselbe WebDAV; von Hand geprüft mit 10.15 (Anmeldung, Datei-ID,
+  Ordner-Prüfsummen, Beleg-Link), ohne automatische Testreihe. Eine ownCloud-10-Bibliothek legt man
+  als Nextcloud an. <strong>ownCloud Infinite Scale</strong> nutzt eine andere Schnittstelle und wird nicht
+  unterstützt.</li>
+</ul>
+<h2 id="9-protokoll-und-fehlerbilder">9. Protokoll und Fehlerbilder<a class="headerlink" href="#9-protokoll-und-fehlerbilder" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Meldung</th>
+<th>Bedeutung</th>
+<th>Abhilfe</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>„TLS-Verbindung zu … fehlgeschlagen. Das Zertifikat des Servers wird nicht anerkannt …"</td>
+<td>Zertifikat einer hauseigenen Zertifizierungsstelle oder auf einen anderen Namen</td>
+<td>Zertifizierungsstelle ergänzen (<a href="index.html#13-zertifikatsprüfung">Zertifikatsprüfung</a>)</td>
+</tr>
+<tr>
+<td>„Nextcloud hat Benutzername oder App-Passwort abgelehnt (HTTP 401)."</td>
+<td>Zugangsdaten falsch oder widerrufen; der Bestand bleibt. Bei einer privaten Bibliothek gilt die Verbindung als abgelaufen</td>
+<td>neues App-Passwort eintragen bzw. neu verbinden</td>
+</tr>
+<tr>
+<td>„Geltungsbereich „/…": Nextcloud kennt den Ordner „/…" nicht (HTTP 404)."</td>
+<td>Ordner gelöscht, umbenannt oder Freigabe entzogen; nichts wird entfernt. Ein umbenannter Unterordner ist im nächsten Lauf unter neuem Namen da</td>
+<td>konfigurierten Ordner anpassen oder Freigabe wiederherstellen</td>
+</tr>
+<tr>
+<td>„Nextcloud nannte für … eine Adresse außerhalb der Instanz"</td>
+<td>keine Zugangsdaten dorthin; die Datei behält ihre Fassung, ein Ordner macht seinen Bereich unvollständig</td>
+<td>Proxy oder Umschreibregeln prüfen</td>
+</tr>
+<tr>
+<td>„Keine Leseberechtigung für … (HTTP 403)."</td>
+<td>die Datei behält ihre Fassung</td>
+<td>Freigabe prüfen</td>
+</tr>
+<tr>
+<td>„Nextcloud kann die Datei … derzeit nicht öffnen (HTTP 503)."</td>
+<td>gelistet, aber nicht lesbar; der Ordner wird erneut geprüft</td>
+<td>Speicher der Nextcloud prüfen</td>
+</tr>
+<tr>
+<td>„Unter … antwortet … kein WebDAV einer Nextcloud"</td>
+<td>falsche Adresse oder vorgeschaltetes Anmeldeportal</td>
+<td>Adresse prüfen</td>
+</tr>
+<tr>
+<td>„… überschreitet … Bytes (opaa.indexing.nextcloud.max-response-bytes)"</td>
+<td>Ordner zu groß für eine Antwort</td>
+<td>Grenze anheben oder Ordner aufteilen</td>
+</tr>
+<tr>
+<td>„unvollständig, wird fortgesetzt"</td>
+<td>Budget erschöpft; auch der Lauf, der einen Abgleich über mehrere Läufe abschließt</td>
+<td>nichts; dauerhaft: Budget anheben</td>
+</tr>
+<tr>
+<td>„Vollabgleich über mehrere Läufe abgeschlossen; in der Quelle gelöschte Dateien entfernt erst ein Lauf, der alle Geltungsbereiche allein auflistet"</td>
+<td>nichts entfernt</td>
+<td>kommt sie bei jedem Lauf: Budget anheben</td>
+</tr>
+<tr>
+<td>„Der Lauf hat keine Datei neu aufgenommen. Budget anheben …"</td>
+<td>die Kette kommt nicht voran</td>
+<td><code>request-budget-per-run</code> anheben</td>
+</tr>
+<tr>
+<td>„Geltungsbereich „/…": Der Fortsetzungspunkt … Die Auflistung dieses Geltungsbereichs beginnt neu."</td>
+<td>die gemerkte Stelle passt nicht mehr; nichts wird entfernt. Zweimal hintereinander: der Bereich gilt in diesem Lauf als nicht auflistbar</td>
+<td>nichts</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Zurück zum Seitenanfang
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.indexes", "navigation.top", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "In Zwischenablage kopiert", "clipboard.copy": "In Zwischenablage kopieren", "search.result.more.one": "1 weiteres Suchergebnis auf dieser Seite", "search.result.more.other": "# weitere Suchergebnisse auf dieser Seite", "search.result.none": "Keine Suchergebnisse", "search.result.one": "1 Suchergebnis", "search.result.other": "# Suchergebnisse", "search.result.placeholder": "Suchbegriff eingeben", "search.result.term.missing": "Es fehlt", "select.version": "Version ausw\u00e4hlen"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
+      
+    
+  </body>
+</html>
