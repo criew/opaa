@@ -1,7 +1,10 @@
 # Ein KI-Werkzeug einrichten
 
+> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
+
 > **Wer darf das:** wer ein gültiges [Zugangstoken](zugangstoken.md) hat und an einem Arbeitsplatz
-> in den zugelassenen Netzbereichen sitzt.
+> in den zugelassenen Netzbereichen sitzt. Ab Werk sind externe KI-Werkzeuge abgeschaltet; die
+> Systemverwaltung schaltet sie ein.
 
 Ihr KI-Werkzeug sucht danach über den MCP-Server von OPAA in Ihren Bibliotheken. Sie brauchen zwei
 Angaben: die Adresse `https://<host>/mcp` und den Tokenwert. Der Dialog nach dem Erzeugen des Tokens
@@ -58,6 +61,8 @@ Das Feld heißt `question`, nicht `query`.
 
 **Gut zu wissen:**
 
+- Projektdateien wie `.vscode/mcp.json`, `.cursor/mcp.json` oder ein `opencode.json` im Projekt
+  wandern in die Versionsverwaltung: den Wert dort nie eintragen.
 - Die Ausschnitte wurden am 18.09.2026 gegen die Herstellerdokumentation geprüft; diese Werkzeuge
   ändern sich, im Zweifel gilt deren Dokumentation.
 - Verbindet nichts, fehlt meist eine der Voraussetzungen: Kanal eingeschaltet, Bibliothek

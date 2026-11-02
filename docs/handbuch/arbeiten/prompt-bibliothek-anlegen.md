@@ -1,5 +1,7 @@
 # Eine Prompt-Bibliothek anlegen
 
+> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
+
 > **Wer darf das:** wer das Anlegerecht „Prompt-Bibliotheken anlegen“ hat; ab Werk jedes Konto.
 > Prompts schreiben darf danach, wer an der Bibliothek mindestens *Bearbeiter* ist.
 

@@ -1,7 +1,10 @@
 # Ein Konto verbinden
 
+> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
+
 > **Wer darf das:** jedes Konto, auf Zugängen für Personen, die die Systemverwaltung für Sie
-> freigegeben hat. Von den mitgelieferten Quellen bieten das Nextcloud und OneDrive.
+> freigegeben hat; ab Werk gibt es keinen. Von den mitgelieferten Quellen bieten das Nextcloud und
+> OneDrive.
 
 Sie hinterlegen Ihre eigenen Zugangsdaten für einen Anbieter. OPAA nutzt sie nur für Ihre
 [privaten Bibliotheken](private-bibliothek.md). Das Verbinden ist freiwillig; ohne verbundenes Konto

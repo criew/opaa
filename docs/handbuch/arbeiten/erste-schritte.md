@@ -1,5 +1,7 @@
 # Erste Schritte
 
+> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
+
 > **Wer darf das:** jedes Konto.
 
 Nach dieser Seite wissen Sie, wo Sie fragen, wo Ihre Chats liegen und wie Sie zwischen Spaces

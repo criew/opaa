@@ -1,12 +1,16 @@
 # Eine Bibliothek anlegen
 
+> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
+
 > **Wer darf das:** wer das Anlegerecht „Bibliotheken für Uploads anlegen“ hat, für eine Quelle
-> „Konnektorbibliotheken anlegen“ für deren Quellart oder Zugang. Ab Werk haben beide jedes Konto.
+> „Konnektorbibliotheken anlegen“ für deren Quellart oder Zugang. Ab Werk hat jedes Konto das
+> Upload-Recht und das Recht für Dateisystem, Webverzeichnis, RSS-Feed, Confluence und S3; jede
+> weitere Quellart und jeder Zugang ist erst nach Freigabe durch die Systemverwaltung wählbar.
 
 Sie haben danach eine Wissensbibliothek, deren Dokumente in Ihren Spaces durchsucht werden.
 
 **Upload oder Quelle?** Eine **Upload-Bibliothek** nimmt Dateien auf, die Sie hochladen. Eine
-**Konnektorbibliothek** liest eine Quelle wie Confluence, Nextcloud oder einen Dateiserver und hält
+**Konnektorbibliothek** liest eine Quelle wie Confluence oder einen S3-Speicher und hält
 sich nach Zeitplan selbst aktuell.
 
 1. Im [Katalog](katalog.md) „Neuer Katalogeintrag“ wählen, dann „Wissen“ und „Weiter“.

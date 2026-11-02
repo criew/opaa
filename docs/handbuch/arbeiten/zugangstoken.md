@@ -1,5 +1,7 @@
 # Ein Zugangstoken anlegen
 
+> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
+
 > **Wer darf das:** jedes Konto, sobald die Systemverwaltung externe KI-Werkzeuge eingeschaltet hat.
 > Wählbar sind nur Bibliotheken, die Sie lesen dürfen und die für externe KI-Werkzeuge freigegeben
 > sind.
@@ -8,7 +10,7 @@ Ein externes KI-Werkzeug, etwa Claude Code oder Copilot, holt sich danach Fundst
 Bibliotheken. Es bekommt nur Fundstellen, keine Antworten von OPAA, und nie mehr, als Sie selbst
 lesen dürfen.
 
-1. „Einstellungen“, dann „Zugangstokens“ öffnen und ein neues Token anlegen.
+1. „Einstellungen“, dann „Zugangstokens“ öffnen und „Token erzeugen“ wählen.
 2. **Name:** den Zweck, etwa „Claude Code auf dem Dienstrechner“. Daran erkennen Sie später, was Sie
    widerrufen.
 3. **Bibliotheken:** mindestens eine Kachel wählen. Die Auswahl lässt sich später nicht ändern;
@@ -30,7 +32,7 @@ externe KI-Werkzeuge. Beides entscheidet, wer die Bibliothek verwaltet.
 
 **Gut zu wissen:**
 
-- OPAA meldet jedes neue Token per Mail. Haben Sie es nicht selbst erzeugt: widerrufen und die
+- Ändern Sie Ihr Passwort, enden auch alle Ihre Zugangstokens.
+- Wo Mail eingerichtet ist, meldet OPAA jedes neue Token per Mail. Haben Sie es nicht selbst erzeugt: widerrufen und die
   Systemverwaltung informieren.
-- Vor dem Ablauf erinnert eine Mail.
 - Der Wert gehört in keine Datei, die in eine Versionsverwaltung wandert.

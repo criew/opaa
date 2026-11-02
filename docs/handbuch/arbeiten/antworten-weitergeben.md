@@ -1,5 +1,7 @@
 # Antworten weitergeben
 
+> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
+
 > **Wer darf das:** wer den Chat führt. Einen Chat exportieren kann nur seine Autorin oder sein
 > Autor, auch nach dem Austritt aus dem Space.
 

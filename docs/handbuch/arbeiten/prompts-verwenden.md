@@ -1,5 +1,7 @@
 # Prompts verwenden
 
+> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
+
 > **Wer darf das:** jedes Mitglied eines Space, für Prompts aus Prompt-Bibliotheken, die dem Space
 > zugeordnet sind und die Sie lesen dürfen.
 

@@ -1,5 +1,7 @@
 # Belege prüfen
 
+> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
+
 > **Wer darf das:** wer die Antwort sieht, also wer den Chat führt. Ein Beleg öffnet nur Dokumente,
 > die Sie lesen dürfen.
 
@@ -16,12 +18,12 @@ Sie sehen, auf welche Stellen sich eine Antwort stützt, und öffnen sie im Orig
 
 | Stufe | Bedeutung |
 |---|---|
-| „Belegt“ | jede Aussage mit einem bestätigten Beleg, jede Teilfrage gedeckt |
+| „Belegt“ | nur bestätigte Belege, jede Teilfrage gedeckt, Antwort vollständig |
 | „Teilweise belegt“ | auch unbestätigte Belege, eine Teilfrage ohne Fundstelle oder eine abgebrochene Antwort; der Grund steht daneben |
 | „Nicht belegt“ | kein bestätigter Beleg |
 
 OPAA glaubt dem Modell die Belege nicht, sondern prüft jeden: Hat die Antwort das zitierte Dokument
-tatsächlich gesehen, und stimmen Beträge, Daten und Paragrafen im Satz mit dem Dokument überein? Ein
+tatsächlich gesehen, und widerspricht ein Betrag, Datum oder Paragraf im Satz dem Dokument? Ein
 Beleg, der durchfällt, heißt **„Beleg nicht bestätigt“** und trägt ein Warnsymbol. Teilfragen ohne
 Fundstelle nennt der Block „Ohne Fundstelle“ oben im Belegfenster mit Wortlaut.
 
@@ -40,7 +42,7 @@ Fundstelle nennt der Block „Ohne Fundstelle“ oben im Belegfenster mit Wortla
 | Hinweis | Bedeutung |
 |---|---|
 | „geprüft, nicht zitiert“ | lag der Antwort vor, wurde aber nicht verwendet |
-| „Stand vom …“ | die Bibliothek wurde zuletzt an diesem Tag aktualisiert; der Grund und die zuständige Stelle stehen dabei |
+| „Stand vom …“ | die Bibliothek wird derzeit nicht aktualisiert; das Datum ist ihr letzter erfolgreicher Lauf, Grund und zuständige Stelle stehen dabei |
 | „ohne Angabe“ | gefunden unter einem Filter, obwohl das Dokument das gefilterte Feld nicht hat |
 | „Private Quelle“ | stammt aus Ihrer [privaten Bibliothek](private-bibliothek.md); nur Sie sehen das |
 | „Das Original wurde seit der Antwort geändert …“ | die Datei ist nicht mehr die zitierte Fassung |

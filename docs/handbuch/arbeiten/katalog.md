@@ -1,5 +1,7 @@
 # Den Katalog nutzen
 
+> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
+
 > **Wer darf das:** jedes Konto sieht die Arbeitsmittel, die es lesen darf. Zuordnen darf, wer in
 > einem Space Kurator oder Administrator ist.
 
@@ -22,7 +24,7 @@ sich allein anzeigen. Sie sind rein persönlich: Niemand sonst erfährt, was Sie
 
 **Die Detailansicht** zeigt oben Art, Ihre Rolle, Umfang, die Spaces, in denen das Arbeitsmittel
 bereitsteht, die zuständige Stelle und den Zustand, etwa „Aktuell · 23.10.2026“. Darunter liegen
-Reiter für den Inhalt, für „Freigaben“ mit „Warum sehe ich das?“ und für „Zuordnungen“.
+Reiter für den Inhalt, für „Freigaben“ mit der Zeile „Herleitung“ („Anzeigen“: Ihr Weg zu Ihrer Rolle) und für „Zuordnungen“.
 
 ## In einem Space verwenden
 

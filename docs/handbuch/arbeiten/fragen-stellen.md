@@ -1,5 +1,7 @@
 # Fragen stellen
 
+> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
+
 > **Wer darf das:** jedes Mitglied eines Space. Gesucht wird nur in Bibliotheken, die dem Space
 > zugeordnet sind und die Sie lesen dürfen.
 
@@ -30,7 +32,7 @@ und wird nicht mehr durchsucht.
 abbrechen“. Die Runde wird dann nicht gespeichert, und Ihre Frage steht wieder im Eingabefeld. Die
 nächste Frage können Sie schon tippen, während die Antwort entsteht; senden geht erst danach.
 
-**Rückfragen im selben Chat.** Der Chat kennt die letzten zehn Runden. „Und wie ist es beim
+**Rückfragen im selben Chat.** Der Chat kennt ab Werk die letzten zehn Runden. „Und wie ist es beim
 Parkausweis?“ versteht er also im Zusammenhang. Für ein neues Thema ist ein neuer Chat besser.
 
 **Gesprächsnotiz.** Angaben, die über die zehn Runden hinaus gelten sollen, etwa Ihre Rolle,
@@ -42,7 +44,7 @@ einzelne Punkte. Die Notiz entsteht nur aus Ihren Fragen, nie aus Antworten, und
 
 | Hinweis | Abhilfe |
 |---|---|
-| „Diesem Space ist kein Wissen zugeordnet.“ | Wer den Space kuratiert, ordnet Wissen zu; Kuratoren sehen dazu „Wissen zuordnen“ |
+| „Diesem Space ist kein Wissen zugeordnet.“ | Kuratoren und Administratoren des Space ordnen Wissen zu; sie sehen dazu „Wissen zuordnen“ |
 | „In diesem Space ist für Sie derzeit kein Wissen verfügbar.“ | Sie dürfen keine der Bibliotheken lesen; das Leserecht vergibt, wer die Bibliothek verwaltet |
 
 **Gut zu wissen:**

@@ -20,4 +20,4 @@ Space oder eine Gruppe für andere pflegt, findet das unter Pflegen.
 | Einen Prompt im Chat einsetzen | [Prompts verwenden](prompts-verwenden.md) |
 | Eigene Prompts für sich und andere schreiben | [Eine Prompt-Bibliothek anlegen](prompt-bibliothek-anlegen.md) |
 | Ein externes KI-Werkzeug an OPAA anschließen | [Ein Zugangstoken anlegen](zugangstoken.md) und [Ein KI-Werkzeug einrichten](ki-werkzeug-einrichten.md) |
-| Passwort ändern, eigene Daten herunterladen | [Meine Daten](meine-daten.md) |
+| Passwort ändern, eigene Daten herunterladen | [Eigene Daten herunterladen](meine-daten.md) |

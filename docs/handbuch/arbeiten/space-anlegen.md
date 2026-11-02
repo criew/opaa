@@ -1,5 +1,7 @@
 # Einen Space anlegen
 
+> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
+
 > **Wer darf das:** wer das Anlegerecht „Spaces anlegen“ hat. Ab Werk hat es jedes Konto.
 
 Sie haben danach einen Space, in dem eine Gruppe mit denselben Bibliotheken und Prompts arbeitet.

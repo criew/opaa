@@ -1,7 +1,10 @@
 # Dateien anhängen und diktieren
 
-> **Wer darf das:** jedes Mitglied eines Space, sofern die Installation Anhänge und Spracheingabe
-> anbietet. Fehlt die Büroklammer oder das Mikrofon, ist die Funktion abgeschaltet.
+> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
+
+> **Wer darf das:** jedes Mitglied eines Space. Anhänge sind ab Werk an, die Spracheingabe braucht
+> einen Transkriptionsdienst, den die Installation einrichtet. Fehlt Büroklammer oder Mikrofon,
+> ist die Funktion abgeschaltet.
 
 Sie bringen ein Dokument mit, das in keiner Bibliothek liegt, oder sprechen die Frage statt sie zu
 tippen.
