@@ -58,7 +58,7 @@ Dokument in einem vollständig auflistenden Lauf, wird es aus dem Index genommen
 Lauf ist Abwesenheit keine Aussage, Löschung braucht dort einen positiven Befund der Quelle, den der
 jeweilige Konnektor-ADR benennt (ADR-0023 Entscheidung 4, ADR-0027 Entscheidung 3), oder einen
 ausdrücklichen Ausschluss durch eine Person
-(Ausschluss nach [Roadmap](../ROADMAP.md)). Hochgeladene
+(noch nicht gebaut, siehe [Roadmap](../ROADMAP.md)). Hochgeladene
 Dokumente entstehen außerhalb jedes Laufs und werden nie durch Abwesenheit gelöscht. Der Vergleich
 läuft je Quelle, nie bibliotheksweit; da eine Bibliothek genau eine Quelle hat (ADR-0018), fällt
 beides zusammen.

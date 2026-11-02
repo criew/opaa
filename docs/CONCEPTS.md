@@ -506,7 +506,7 @@ inhaltlich nichts zu tun hat, und die Prüfung lässt das durch.
 antwortet — früher unter dem Namen Zitierzwang geführt —, war vorgesehen und ist am 21.08.2026
 entschieden nicht gebaut worden; siehe
 [ADR-0014](./decisions/0014-produktausrichtung-oeffentliche-verwaltung.md) und
-[Roadmap](ROADMAP.md).
+[Suche](./handbuch/spaces/suche.md#7-belege-prüfen-und-fundstellen-bilden).
 
 - **Beispiel:** Ein Agent für Bescheidentwürfe antwortet zur Frage nach einer Härtefallregel, die im
   indizierten Bestand nicht vorkommt, dass sich dazu nichts feststellen lässt — das tut das Modell von

@@ -116,7 +116,8 @@ Vision.
 
 Zulässig ist die Nennung als **nachprüfbarer Sachbeleg**. Stellt ein Dokument eine technische Behauptung
 über ein fremdes System auf, die den eigenen Entwurf trägt, gehört der Name zum Beleg: Anonymisiert wäre
-die Aussage nicht mehr nachprüfbar und damit wertlos. So belegte die Vorbild-Analyse zum Space-Modell,
+die Aussage nicht mehr nachprüfbar und damit wertlos. So belegt die Vorbild-Analyse in
+[ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md#verworfene-alternativen),
 dass die gewählte Rechtekonstruktion in keinem der untersuchten Systeme ein Vorbild hat — genau das
 verhindert, dass ein entschiedener Punkt in einem halben Jahr als neue Idee wiederkommt. Ebenfalls
 zulässig sind Namen als **Arbeitsanweisung an eine interne Rolle**, etwa als Startpunkt einer Recherche

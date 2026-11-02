@@ -323,8 +323,7 @@ class SpaceServiceIntegrationTest {
   @Test
   void spaceWithAChatCannotBeDeleted() {
     // A chat must survive its space being deleted, so the space itself must not be deletable while
-    // it
-    // still contains one.
+    // it still contains one.
     UUID owner = createUser(organizationA);
     Space space = new Space("Company", "Company docs", false, owner, organizationA);
     space.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));

@@ -138,6 +138,11 @@ Asset-Typen; ein Vorschlag „weiteres Wissen zuordnen" bei leerer Suche.
 - Übergangsregel nur für den persönlichen Space — persönliche und gemeinsame Spaces suchten wieder verschieden.
 - Fremdzugangs-Tokens an einen Space binden — bände den Kanal an einen Raum, dessen Zuordnung sich ohne Wissen des Tokens ändert.
 - Kachel mit Sichtbarkeits-Etikett, Rolle, Sortierauswahl und Filter „aus meinen Gruppen" (#2129) — selten gesuchte Fragen, lange Kachel.
+- Bestätigung des Space-`CURATOR` bei einer Zuordnung, die nicht alle Mitglieder lesen dürfen — die Zuordnung setzt niemanden etwas aus; sichtbar wird ein Ergebnis erst durch Teilen. Deshalb Benachrichtigung des Eigentümers statt Zustimmung.
+- Dauerhafte Kennzeichnung gemischter Spaces — Leserkreise fallen in einer Behörde fast nie zusammen; ein Warnzeichen an fast jedem Space informiert über nichts.
+- Zitate beim Lesen nach den Rechten des Lesenden schwärzen — unvollständig, weil die Aussage des Antworttexts bleibt; zerstört den gemeinsamen Verlauf und verlagert die Prüfung auf jeden Lesevorgang.
+- Chats und Artefakte als Asset-Typen — falsche Kardinalität (viele, wegwerfbar), Komposition statt Zuordnung (genau ein Space), und die Chats eines Space wären für seine Mitglieder unsichtbar.
+- Ein Objekt in mehreren rechtetragenden Containern — keines der untersuchten Vorbilder (Confluence, Notion, Langdock, Glean) kennt das; dort trägt genau ein Container Rechte oder keiner. Deshalb trägt das Asset die Rechte, der Space nur die Zuordnung.
 
 ## Offen
 

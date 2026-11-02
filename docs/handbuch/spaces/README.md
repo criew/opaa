@@ -129,6 +129,12 @@ Systemverwaltung nicht. Deshalb lässt sich ein Standard-Space auch nicht übert
 anlegen", der Systemverwaltung nur „Der Standard-Space ist privat." Den Gefahrenbereich sieht nur der Eigentümer, und nicht im eigenen Standard-Space: Der lässt sich weder
 archivieren noch löschen.
 
+**Löschen geht nur ohne Chats.** Enthält ein Space noch Chats, auch solche, die der Eigentümer nicht
+sieht, lehnt OPAA das Löschen ab; Chats bleiben ihren Autoren erhalten. Der Weg hinaus ist
+„Space archivieren": Der Space nimmt dann keine neuen Inhalte und Mitglieder mehr an, verschwindet aus
+der Liste der Mitglieder ohne eigenen Chat darin und bleibt für Eigentümer, Systemverwaltung und die
+eigenen Chats der Mitglieder lesbar. Zurückholen lässt sich ein archivierter Space nicht.
+
 **Die Anweisung an das Modell setzt und ändert nur, wer im Space die Rolle Administrator hat** —
 direkt, über eine Gruppe oder als Eigentümer. Kuratoren und Mitglieder lesen sie in den Stammdaten,
 und die Systemverwaltung ändert sie ohne diese Rolle nicht; Name und Beschreibung ändert sie

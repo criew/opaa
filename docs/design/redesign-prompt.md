@@ -349,7 +349,7 @@ gestalterischen Entscheidung. **Es besteht keine Bindung daran.**
 Eine frühere Fassung dieses Zielbilds wich an einer Stelle bewusst vom
 Space-Modell ab: Sie zeigte jeden Chat allen Mitgliedern des Space und
 verlegte den Denkraum für unfertige Überlegungen in den persönlichen Space. **Diese Abweichung ist
-zurückgenommen** (Richtung des Maintainers vom 18.09.2026): Es gilt die Spezifikation — ein Chat und
+zurückgenommen** (Richtung des Maintainers vom 18.09.2026): Es gilt das Space-Modell — ein Chat und
 ein Artefakt entstehen privat und werden erst durch Teilen space-sichtbar. Der Grund wiegt mit den
 agentischen Funktionen schwerer als zuvor: Das Ergebnis eines Agentenlaufs, ein erzeugtes Artefakt
 oder ein Prüfbericht zu einem Vorgang darf nicht allein deshalb für ein ganzes Team sichtbar sein,
