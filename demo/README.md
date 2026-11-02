@@ -170,7 +170,7 @@ Herkunft und Zwang jeder einzelnen Variable:
   Frontend-Container liest die Variable beim Start (`frontend/nginx.conf`, `envsubst`-Template); ein
   Rebuild ist dafür nicht nötig, ein Neustart des `frontend`-Containers genügt. Ohne diese Zeile
   bleibt der Hinweis aus (Image-Default `false`) — das ist der richtige Zustand für jede
-  Nicht-Demo-Installation, siehe [`../docs/handbuch/betreiben/konfiguration.md`](../docs/handbuch/betreiben/konfiguration.md#alle-umgebungsvariablen),
+  Nicht-Demo-Installation, siehe [`../docs/handbuch/nachschlagen/konfiguration.md`](../docs/handbuch/nachschlagen/konfiguration.md#alle-umgebungsvariablen),
   Variablentabelle.
 - Das Embedding-Modell und seine Dimension legt die Antwortdatei fest; die Dimension ermittelt die
   Probeeinbettung bei der Installation (`bge-m3`: 1024). Ein anderes Embedding-Modell gehört vor dem
@@ -1053,7 +1053,7 @@ Demo-Konten) und mit dem Rheinfurt-Korpus samt Seed-Profil `demo` befüllt.
   Pfad **`/idp`** eingehängt — ausdrücklich **nicht** unter `/auth`, weil das Frontend
   `/auth/callback` selbst als OIDC-Redirect verwendet und die beiden sich sonst überlagern. Dieser
   Host-nginx braucht **zusätzlich** zum `client_max_body_size` im Frontend-Container-nginx (siehe
-  `OPAA_UPLOAD_MAX_FILE_SIZE` in [`../docs/handbuch/betreiben/konfiguration.md`](../docs/handbuch/betreiben/konfiguration.md#alle-umgebungsvariablen))
+  `OPAA_UPLOAD_MAX_FILE_SIZE` in [`../docs/handbuch/nachschlagen/konfiguration.md`](../docs/handbuch/nachschlagen/konfiguration.md#alle-umgebungsvariablen))
   ein ausreichendes eigenes `client_max_body_size` — sein Default liegt ebenfalls bei nur 1 MB und
   würde Uploads sonst schon vor dem Frontend-Container abweisen. Zusätzlich zu
   `postgres`/`backend`/`frontend`/`keycloak` laufen in der Instanz-Compose die beiden schlanken

@@ -9,7 +9,7 @@ Dieses Kapitel beschreibt, was unter Kubernetes anders ist und welcher Wert des 
 Einstellung setzt. Was für beide Betriebswege gleich gilt — Laufzeitimages, Probes, Härtung,
 Sicherung, Logs und Metriken, was ein Update mit dem Index macht —, steht in der
 [Betriebsübersicht](README.md) und ihren Kapiteln; die Bedeutung der Umgebungsvariablen in der
-[Konfiguration](konfiguration.md), Anmeldung und Erststart unter
+[Konfiguration](../nachschlagen/konfiguration.md), Anmeldung und Erststart unter
 [Authentifizierung](authentifizierung.md), Datenbank und Originalablage in ihren Kapiteln. Dieses
 Kapitel verweist an der jeweiligen Stelle dorthin.
 
@@ -630,7 +630,7 @@ OPAA kennt drei Arten von Konfiguration. Der Chart behandelt sie unterschiedlich
 
 Die folgenden Tabellen nennen jeden Wert des Charts mit seiner Vorgabe und der Umgebungsvariablen, die
 er setzt. Bedeutung und Wertebereich der Variablen stehen in der
-[Variablenliste](konfiguration.md#alle-umgebungsvariablen) der Konfiguration. `values.schema.json`
+[Variablenliste](../nachschlagen/konfiguration.md#alle-umgebungsvariablen) der Konfiguration. `values.schema.json`
 prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 
 ### Allgemein
@@ -691,7 +691,7 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 Ein Schalter setzt die Variable `OPAA_FEATURES_<NAME>_ENABLED`, der Name in Großbuchstaben mit
 Unterstrichen. Wie überall lehnt `values.schema.json` einen unbekannten Namen ab, etwa einen
 Tippfehler; eine Funktion ohne Eintrag bleibt an. Was das Abschalten bewirkt, beschreibt die
-Konfiguration unter [„Funktionen abschalten"](konfiguration.md#funktionen-abschalten).
+Konfiguration unter [„Funktionen abschalten"](../nachschlagen/konfiguration.md#funktionen-abschalten).
 
 ### Originalablage, Dateisystem-Quellen und Zertifikate
 

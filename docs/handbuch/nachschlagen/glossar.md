@@ -10,9 +10,9 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | **Katalog** | Der eine Einstieg der Hauptnavigation für Arbeitsmittel jeder Art, nur als Kacheln: genau die, die die Person lesen darf; was sie nicht lesen darf, erscheint dort nicht. Über „Neuer Katalogeintrag" beginnt dort das Anlegen mit der Wahl der Art |
 | **Prompt** | Eine benannte, wiederverwendbare Anweisung in genau einer Prompt-Bibliothek, mit Titel, Befehl (`/name`), Text und Variablen |
 | **Variable** | Eine Stelle im Text eines Prompts, geschrieben als `{{name}}`, die beim Einsetzen gefüllt wird; `{{CURRENT_DATE}}` und `{{USER_NAME}}` füllt OPAA selbst |
-| **Quelle** | Woher eine Bibliothek ihre Dokumente bezieht: Upload oder eine angebundene Quelle mit Konnektor, etwa Confluence oder ein Webverzeichnis ([Konnektoren](pflegen/konnektoren/README.md)) |
+| **Quelle** | Woher eine Bibliothek ihre Dokumente bezieht: Upload oder eine angebundene Quelle mit Konnektor, etwa Confluence oder ein Webverzeichnis ([Konnektoren](../pflegen/konnektoren/README.md)) |
 | **Konnektor** | Der Teil der Indexierung, der die Eigenheiten eines Quellentyps kennt: Aufzählen, Abrufen, Betriebsarten |
-| **Zugang** | Eine von der Systemverwaltung angelegte, benannte Anbindung an ein Quellsystem (etwa „Microsoft 365 Rheinfurt“) mit Adresse und Vorgaben, oft auch App-Registrierung; nutzen darf ihn, wem er freigegeben ist. Wer eine Bibliothek anlegt, wählt ihn nur noch aus ([Zugänge](arbeitsmittel/zugaenge.md)) |
+| **Zugang** | Eine von der Systemverwaltung angelegte, benannte Anbindung an ein Quellsystem (etwa „Microsoft 365 Rheinfurt“) mit Adresse und Vorgaben, oft auch App-Registrierung; nutzen darf ihn, wem er freigegeben ist. Wer eine Bibliothek anlegt, wählt ihn nur noch aus ([Zugänge](../arbeitsmittel/zugaenge.md)) |
 | **Indexierungslauf** (Lauf) | Ein Durchgang über die Quelle einer Bibliothek mit Status, Zählern und Protokoll |
 | **Betriebsart** | Ob ein Lauf die Quelle vollständig auflistet (und Verschwundenes entfernen darf) oder nur ergänzt |
 | **Dokument** | Eine Datei, Seite oder ein Eintrag der Quelle, so wie OPAA ihn kennt; identifiziert über Bibliothek und Ort in der Quelle. Anhänge sind eigene Dokumente mit Verweis auf das Elterndokument |
@@ -26,11 +26,11 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | **Suchbereich** | Die Bibliotheken, in denen eine Frage sucht; steht in der Chip-Leiste des Chats (Standard `@Space-Wissen`) und ist nie weiter als Zuordnung und Leserechte |
 | **Fundstelle** (Beleg) | Eine Quellenangabe zu einer Antwort, eine je Dokument; das Belegfenster zeigt Titel und Ortsangabe, die Ausgabe für externe KI-Werkzeuge zusätzlich Rang und Metadaten |
 | **Ortsangabe** | Die Stelle eines Chunks im Dokument, etwa „S. 3 · Abschn. Fristen" |
-| **Belegstand** | Die Stufe im Fuß einer Antwort, wie weit sie sich auf bestätigte Belege stützt: „Belegt", „Teilweise belegt" oder „Nicht belegt", mit einem kurzen Grund; keine Zahl und kein Urteil über die Richtigkeit ([Suche](spaces/suche.md)) |
+| **Belegstand** | Die Stufe im Fuß einer Antwort, wie weit sie sich auf bestätigte Belege stützt: „Belegt", „Teilweise belegt" oder „Nicht belegt", mit einem kurzen Grund; keine Zahl und kein Urteil über die Richtigkeit ([Suche](../spaces/suche.md)) |
 | **Fundstellen-Anker** | Die Stelle eines Chunks maschinenlesbar: Seiten, Abschnittspfad, Folie, Blatt und Zeilen oder Nachricht, dazu je ein kurzes Zitat von Anfang und Ende; Grundlage für den Sprung an die Fundstelle |
 | **Textfassung** | Der beim Indexieren gewonnene Text eines Dokuments in Lesereihenfolge; „Dokument öffnen" zeigt ihn für Formate, die der Browser nicht anzeigen kann, an der Fundstelle |
 | **Fakten-Manifest** | Die Beschreibung im Code, welche Daten OPAA speichert, protokolliert, wem es sie zeigt, wohin es sie sendet und was voreingestellt ist; Prüfungen im Build halten sie mit dem Code gleich |
-| **Faktenblatt** | Ein aus dem Fakten-Manifest erzeugtes Dokument zu einem Thema, etwa Datenflüsse oder Fristen, mit Version und Commit im Kopf ([Nachvollziehbarkeit](betreiben/nachvollziehbarkeit.md)) |
+| **Faktenblatt** | Ein aus dem Fakten-Manifest erzeugtes Dokument zu einem Thema, etwa Datenflüsse oder Fristen, mit Version und Commit im Kopf ([Nachvollziehbarkeit](../betreiben/nachvollziehbarkeit.md)) |
 | **Modellrolle** | Eine der vier Aufgaben, für die ein externes Modell konfiguriert wird: Chat, Embedding, Reranking, Transkription |
 | **Rechteprofil** | Eine Gruppe samt der Bibliotheken, die sie lesen darf; der voreingestellte Kontext des Diagnosewerkzeugs |
 | **Diagnosesperre** | Grundzustand jeder Bibliothek, der sie aus einer Diagnose im Rechtekontext einer benannten Person heraushält |

@@ -1,8 +1,8 @@
 # Format: Confluence-Seite
 
 Pipeline `confluence`, Version 5. Der gemeinsame Rahmen aller Format-Pipelines
-steht im Kapitel [Wissensbibliotheken](../README.md), Abschnitt 5; wie die Seiten in die Bibliothek
-gelangen, im Kapitel [Confluence](../../../pflegen/konnektoren/confluence.md).
+steht im Kapitel [Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md), Abschnitt 5; wie die Seiten in die Bibliothek
+gelangen, im Kapitel [Confluence](../../pflegen/konnektoren/confluence.md).
 
 ## 1. Wann sie läuft
 
@@ -72,7 +72,7 @@ flowchart TB
 Zielgröße ist `chunk-target-characters`, größere Abschnitte werden ohne
 Textverlust geteilt, Abschnitte unter 200 Zeichen unter derselben übergeordneten Überschrift
 zusammengelegt, dieselben Regeln wie bei den anderen überschriftengetriebenen Pipelines
-(Kapitel [Wissensbibliotheken](../README.md), Abschnitt 7.1).
+(Kapitel [Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md), Abschnitt 7.1).
 
 ## 4. Metadaten am Chunk
 
@@ -88,7 +88,7 @@ Space und Gliederungspfad stehen nicht im Seitenkörper; der Konnektor kennt sie
 das Dokument und an jeden Chunk. Der **Kontexttitel** für das Embedding ist der Ort der Seite im
 Space, Gliederungspfad plus Titel („Handbuch / Kapitel 1 / Abschnitt 1.1"), nicht nur der Titel.
 
-**Dokumenteigenschaften** für das [Metadatenschema](../metadaten.md): der Seitentitel als Titel und der
+**Dokumenteigenschaften** für das [Metadatenschema](../../arbeitsmittel/wissensbibliotheken/metadaten.md): der Seitentitel als Titel und der
 Zeitpunkt der aktuellen Seitenversion als Änderungsdatum — daraus wird **Datum/Stand** ermittelt.
 Der Seitentitel gilt dabei **nicht** als Dateiname: Weder seine Wörter liefern die Dokumentart noch
 eine Jahreszahl darin den Stand — „Gebührensatzung 2024" ist die Überschrift einer Wiki-Seite über

@@ -2,7 +2,7 @@
 
 Dieses Kapitel beschreibt die Bausteine einer OPAA-Installation und führt zu den Kapiteln, die für
 jeden Betriebsweg gleich gelten. Die Einrichtung beschreiben [Docker Compose](docker-compose.md) und
-[Kubernetes](kubernetes.md), jede Umgebungsvariable die [Konfiguration](konfiguration.md).
+[Kubernetes](kubernetes.md), jede Umgebungsvariable die [Konfiguration](../nachschlagen/konfiguration.md).
 
 ## Bausteine
 

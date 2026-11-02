@@ -170,7 +170,7 @@ Zugangsschlüssel gespeichert ist; dort läuft auch jeder Wechsel.
 
 `OPAA_OPENAI_EMBEDDING_*` und `OPAA_PGVECTOR_DIMENSIONS` gibt es nicht mehr, und keine Installation
 übernimmt ihr Modell aus der Umgebung: Das Update von `v0.1.0-rc.4` setzt die Datenbank ohnehin neu
-auf ([Konfiguration](konfiguration.md#entfallene-und-veraltete-variablen)). Den Zugangsschlüssel
+auf ([Konfiguration](../nachschlagen/konfiguration.md#entfallene-und-veraltete-variablen)). Den Zugangsschlüssel
 verschlüsselt OPAA mit `OPAA_SETTINGS_ENCRYPTION_KEY`. **Im Modus `dev`** richtet sich die Instanz
 mit `bge-m3` unter `OPAA_OPENAI_BASE_URL` selbst ein, ohne Zugangsschlüssel.
 
@@ -396,7 +396,7 @@ nach dem anderen ab; wie viele Chunks ein Aufruf trägt, begrenzt allein das Tok
 Aufrufs. Für ein großes Modell auf einer CPU wirkt deshalb nur eine längere
 `OPAA_OPENAI_EMBEDDING_TIMEOUT`. Für die Indexierung neuer Dokumente mit demselben Modell helfen
 zusätzlich eine kleinere `OPAA_INDEXING_BATCH_SIZE`, `OPAA_INDEXING_EMBEDDING_CONCURRENCY` von 1 und
-eine längere `OPAA_INDEXING_STALE_JOB_TIMEOUT` ([Konfiguration](konfiguration.md)). Wie lang ein
+eine längere `OPAA_INDEXING_STALE_JOB_TIMEOUT` ([Konfiguration](../nachschlagen/konfiguration.md)). Wie lang ein
 Chunk für das neue Modell sein darf, steht unter
 [Eingabegrenze des Embedding-Modells](#eingabegrenze-des-embedding-modells).
 
@@ -832,7 +832,7 @@ eingerichtetes Modell deshalb nicht; sie wertet das Detail `NOT_CONFIGURED` aus 
 | Log: Chunk erreichte die Eingabegrenze und wurde geteilt | Der Chunk war für das Modell zu lang; OPAA hat ihn geteilt, nichts ist verloren. Häufen sich Teilungen, Grenze und Endpunkt prüfen ([Eingabegrenze](#eingabegrenze-des-embedding-modells)) |
 | Log: Endpunkt meldete keine Tokenzahl | Eine stille Kürzung ist nicht auszuschließen; einen Endpunkt nutzen, der die Tokenzahl meldet, oder die Zielgröße senken |
 | Dokumente enden mit `FAILED`, Fragen scheitern, alles andere läuft | Modellserver nicht erreichbar oder Modell nicht geladen; unter Compose mit Profil `ollama` zuerst `docker compose logs ollama-pull` |
-| Nach einem Update scheitert die Einbettung | Eine entfallene Variable steht noch in der Umgebung ([Konfiguration](konfiguration.md#entfallene-und-veraltete-variablen)) |
+| Nach einem Update scheitert die Einbettung | Eine entfallene Variable steht noch in der Umgebung ([Konfiguration](../nachschlagen/konfiguration.md#entfallene-und-veraltete-variablen)) |
 | Verbindungsfehler gegen vLLM | HTTP/1.1-Modus fehlt ([vLLM](#vllm--openai-kompatible-server)) |
 | Reranking „nicht verfügbar" | Endpunkt nicht erreichbar oder Zeitbudget überschritten; die Suche lief ohne Reranking |
 | Kein Mikrofon im Chat, obwohl die Spracheingabe eingeschaltet ist | Zustand unter Modelle → Spracheingabe oder Rolle „Transkription" auf „Suche & Indexierung" prüfen: Endpunkt oder Modell fehlen, oder `GET {Basis-Adresse}/models` antwortet nicht. Der Browser muss außerdem aufnehmen dürfen; ohne HTTPS bieten Browser kein Mikrofon an |

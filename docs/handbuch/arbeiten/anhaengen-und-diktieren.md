@@ -25,7 +25,7 @@ mit Chat und Frist. Dort laden Sie sie herunter, löschen sie oder legen mit „
 übernehmen“ eine Kopie in eine Bibliothek, in die Sie hochladen dürfen. Die Kopie folgt dann den
 Rechten der Bibliothek.
 
-Es gelten dieselben [Formate](../arbeitsmittel/wissensbibliotheken/formate/README.md), Größengrenze
+Es gelten dieselben [Formate](../nachschlagen/formate/README.md), Größengrenze
 und Virenprüfung wie beim Hochladen in eine Bibliothek. Die Zahl der Anhänge je Frage und je Chat ist
 begrenzt.
 

@@ -118,12 +118,12 @@ Dokument stehen der konfigurierte Ordner und der Gliederungspfad darunter.
 ## 7. Anhänge
 
 Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Grenzen des Kapitels
-[E-Mail](../../arbeitsmittel/wissensbibliotheken/formate/mail.md).
+[E-Mail](../../nachschlagen/formate/mail.md).
 
 ## 8. Grenzen und Schutzmechanismen
 
 Parameter stehen unter `opaa.indexing.smb.*` (`OPAA_INDEXING_SMB_*`), ihre Standardwerte in der
-[Konfigurationsreferenz](../../betreiben/konfiguration.md#alle-umgebungsvariablen).
+[Konfigurationsreferenz](../../nachschlagen/konfiguration.md#alle-umgebungsvariablen).
 
 - **Zieladressprüfung** auf den Server ([Konnektoren](README.md#12-zieladressprüfung)). SMB geht nie
   über den Ausgangsproxy.

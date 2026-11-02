@@ -264,7 +264,7 @@ Zeilen mit Handlungsbedarf sind farbig markiert; ab sechs Anbietern lässt sich 
 eingrenzen und durchsuchen. **Details** bzw. **Entscheiden** öffnet ein Seitenpanel mit dem
 ausstehenden Plan (falls einer wartet), dem letzten Lauf samt „Trockenlauf" und „Jetzt abgleichen",
 dem Zeitplan (Schalter und Intervall, voreingestellt **aus**; Vorgabe und Grenzen des Intervalls
-in der [Konfiguration](konfiguration.md#grenzwerte-im-überblick)), dem
+in der [Konfiguration](../nachschlagen/konfiguration.md#grenzwerte-im-überblick)), dem
 Verzeichniszugang und einem Verweis auf die Arbeitsliste der Gruppen. Ein Update schaltet nirgends
 einen Abgleich ein, der vorher nicht lief.
 
@@ -477,7 +477,7 @@ kcadm.sh create clients/<id-des-clients-opaa-seed>/protocol-mappers/models -r op
 
 OPAA kann vor einem Vorgang verlangen, dass die Person ihre Identität gerade eben bestätigt hat, damit
 ein nicht gesperrter Arbeitsplatz dafür nicht genügt. Die Bestätigung gilt für kurze Zeit
-(`OPAA_AUTH_RECENT_LOGIN_MAX_AGE` in der [Variablenliste](konfiguration.md)), danach wird wieder
+(`OPAA_AUTH_RECENT_LOGIN_MAX_AGE` in der [Variablenliste](../nachschlagen/konfiguration.md)), danach wird wieder
 gefragt. Verlangt wird sie vor dem Download der eigenen Daten
 ([Selbstauskunft](../konten-und-rechte/benutzerverwaltung.md#meine-daten-die-selbstauskunft)), vor
 dem Erzeugen eines Zugangstokens für [externe KI-Werkzeuge](../spaces/fremdzugaenge.md),

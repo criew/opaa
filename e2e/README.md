@@ -559,7 +559,7 @@ lassen.
   und löscht die selbst angelegten, damit kein späterer Chat-Test in dieser Suite (insbesondere
   `space-chats.spec.ts`) auf einem hier hinterlassenen Zwischenstand sitzt. Anders als das Issue
   ursprünglich annahm, läuft im Compose-Stack dieser Suite **kein** eigener `ollama`-Dienst (siehe
-  `docs/handbuch/betreiben/konfiguration.md`, `OPAA_OLLAMA_BASE_URL` - auch der reguläre `docker-compose.yml`-Stack
+  `docs/handbuch/nachschlagen/konfiguration.md`, `OPAA_OLLAMA_BASE_URL` - auch der reguläre `docker-compose.yml`-Stack
   enthält keinen); der positive Verbindungstest zielt deshalb auf `ai-stub`, denselben
   OpenAI-kompatiblen Ersatz, den auch das vom Seed übernommene Modell schon verwendet.
 

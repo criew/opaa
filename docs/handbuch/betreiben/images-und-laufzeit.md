@@ -187,7 +187,7 @@ Image, Exit-Code `3`, im Log `Terminating due to java.lang.OutOfMemoryError`), s
 beschädigten Warteschlangen und Sperren weiterzulaufen. Docker Compose (`restart: unless-stopped`)
 und Kubernetes starten es neu. Wiederholt sich das bei derselben Datei, liegt meist ein sehr großes
 Dokument vor; dann den Heap vergrößern oder die
-[Grenzen beim Lesen](../arbeitsmittel/wissensbibliotheken/formate/README.md#grenzen-beim-lesen)
+[Grenzen beim Lesen](../nachschlagen/formate/README.md#grenzen-beim-lesen)
 senken.
 
 ## Frontend-Laufzeitimage

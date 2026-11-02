@@ -1066,7 +1066,7 @@ Kapitel [Suche](../spaces/suche.md), Abschnitt 8.
 ## 15. Konfiguration
 
 Drei der Größen sind Umgebungsvariablen und stehen mit ihrer vollständigen Beschreibung in der
-[Konfiguration](../betreiben/konfiguration.md#alle-umgebungsvariablen); das Abgleichintervall ist eine Einstellung
+[Konfiguration](../nachschlagen/konfiguration.md#alle-umgebungsvariablen); das Abgleichintervall ist eine Einstellung
 der Anbieterzeile, fünf sind Verwaltungseinstellungen, und die beiden letzten Werte sind fest
 eingebaut.
 
@@ -1214,7 +1214,7 @@ Postfächer.
 ## 18. Weiterführende Kapitel
 
 - Anmeldewege, Anbieterverwaltung, Verzeichnisabgleich, Keycloak als Verzeichnis und die
-  Variablenliste: [Authentifizierung](../betreiben/authentifizierung.md), [Konfiguration](../betreiben/konfiguration.md)
+  Variablenliste: [Authentifizierung](../betreiben/authentifizierung.md), [Konfiguration](../nachschlagen/konfiguration.md)
 - Lokale Konten, Systemrollen und ihre Fristen: [Benutzerverwaltung](benutzerverwaltung.md)
 - Rechtefilter, Suchdiagnose, Diagnosesperre und die Aufbewahrung der Rechtehistorie:
   [Suche](../spaces/suche.md)

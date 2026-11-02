@@ -81,7 +81,7 @@ unter `budgetViolations`. Die Grenzwerte stehen zugleich in `BUDGETS` in
 18. **Keine Redundanz:** „Sind Sie sicher?“, „nicht rückgängig“ und „dauerhaft und unwiderruflich“
     werden ein Satz. – Sicht
 19. **Begriffsregel** (eigener Begriff oder Herstellerbegriff): [guidelines.md](./guidelines.md), 6,
-    und das [Glossar](../handbuch/glossar.md). – Sicht über alle Arten einer Variante
+    und das [Glossar](../handbuch/nachschlagen/glossar.md). – Sicht über alle Arten einer Variante
 
 ## Große Mengen
 

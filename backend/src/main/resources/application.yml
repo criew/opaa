@@ -438,7 +438,7 @@ opaa:
       # Requests one run may send before it ends as "unvollständig, wird fortgesetzt"; 0 disables
       # the budget. Default measured against a real Data Center (see
       # ConfluenceProperties.DEFAULT_REQUEST_BUDGET_PER_RUN and
-      # docs/handbuch/betreiben/konfiguration.md).
+      # docs/handbuch/nachschlagen/konfiguration.md).
       request-budget-per-run: ${OPAA_INDEXING_CONFLUENCE_REQUEST_BUDGET_PER_RUN:50000}
     # ADR-0027: bounds of the S3 access layer (io.opaa.indexing.source.s3) - own property block
     # like confluence above, see S3Properties.

@@ -162,7 +162,7 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
     [`ueberwachung-und-fehlerbehebung.md`](handbuch/betreiben/ueberwachung-und-fehlerbehebung.md),
     [`docker-compose.md`](handbuch/betreiben/docker-compose.md),
     [`kubernetes.md`](handbuch/betreiben/kubernetes.md) (Helm-Chart),
-    [`konfiguration.md`](handbuch/betreiben/konfiguration.md) (Umgebungsvariablen, Grenzwerte),
+    [`konfiguration.md`](handbuch/nachschlagen/konfiguration.md) (Umgebungsvariablen, Grenzwerte),
     [`modelle.md`](handbuch/betreiben/modell-endpunkte.md),
     [`authentifizierung.md`](handbuch/betreiben/authentifizierung.md)
   - Konten und Rechte ([`konten-und-rechte/`](handbuch/konten-und-rechte/)):
@@ -174,12 +174,12 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
   - Arbeitsmittel ([`arbeitsmittel/`](handbuch/arbeitsmittel/)):
     [`katalog.md`](handbuch/arbeitsmittel/katalog.md),
     [`wissensbibliotheken/`](handbuch/arbeitsmittel/wissensbibliotheken/README.md) mit
-    [`formate/`](handbuch/arbeitsmittel/wissensbibliotheken/formate/README.md),
+    [`formate/`](handbuch/nachschlagen/formate/README.md),
     [`metadaten.md`](handbuch/arbeitsmittel/wissensbibliotheken/metadaten.md) und
     [`private-bibliotheken.md`](handbuch/arbeitsmittel/wissensbibliotheken/private-bibliotheken.md);
     [`prompt-bibliotheken.md`](handbuch/arbeitsmittel/prompt-bibliotheken.md);
     [`zugaenge.md`](handbuch/arbeitsmittel/zugaenge.md)
-  - Nachschlagen: [`glossar.md`](handbuch/glossar.md)
+  - Nachschlagen: [`glossar.md`](handbuch/nachschlagen/glossar.md)
   - Regeln für Schreibende: [`handbuch/AGENTS.md`](./handbuch/AGENTS.md)
 - **[`sbom.md`](./sbom.md)** — Software Bill of Materials: Image-Attestierungen,
   CycloneDX-CI-Artefakte für Backend und Frontend und die Lizenzprüfung der Abhängigkeiten

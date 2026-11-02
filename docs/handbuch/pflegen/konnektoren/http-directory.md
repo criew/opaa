@@ -105,13 +105,13 @@ Wurzel, mit einer Warnung im Log. Ein Anhang liegt im Ordner seiner Mail.
 ## 7. Anhänge
 
 Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Grenzen des Kapitels
-[E-Mail](../../arbeitsmittel/wissensbibliotheken/formate/mail.md). Links in Verzeichnislisten gelten nicht als Anlagen.
+[E-Mail](../../nachschlagen/formate/mail.md). Links in Verzeichnislisten gelten nicht als Anlagen.
 
 ## 8. Grenzen und Schutzmechanismen
 
 Parameter stehen unter `opaa.indexing.crawl.*` und `opaa.indexing.http.*`
 (`OPAA_INDEXING_CRAWL_*`, `OPAA_INDEXING_HTTP_*`), ihre Standardwerte in der
-[Konfigurationsreferenz](../../betreiben/konfiguration.md#alle-umgebungsvariablen).
+[Konfigurationsreferenz](../../nachschlagen/konfiguration.md#alle-umgebungsvariablen).
 
 - **Zieladressprüfung** vor jeder Anfrage und auf jedem Redirect
   ([Konnektoren](README.md#12-zieladressprüfung)).

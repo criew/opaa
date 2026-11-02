@@ -119,14 +119,14 @@ darstellen; die Dateien darunter landen in der Wurzel, mit einer Warnung im Log.
 ## 7. Anhänge
 
 Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Grenzen des Kapitels
-[E-Mail](../../arbeitsmittel/wissensbibliotheken/formate/mail.md). Eine unveränderte Mail wird nicht neu ausgepackt; ein früher
+[E-Mail](../../nachschlagen/formate/mail.md). Eine unveränderte Mail wird nicht neu ausgepackt; ein früher
 gescheiterter Anhang wird erst wieder versucht, wenn sich die Mail ändert oder ein Pipeline-Nachzug
 angestoßen wird.
 
 ## 8. Grenzen und Schutzmechanismen
 
 Parameter stehen unter `opaa.indexing.filesystem.*` (`OPAA_INDEXING_FILESYSTEM_*`), ihre Standardwerte in der
-[Konfigurationsreferenz](../../betreiben/konfiguration.md#alle-umgebungsvariablen).
+[Konfigurationsreferenz](../../nachschlagen/konfiguration.md#alle-umgebungsvariablen).
 
 - **Freigabeliste.** Der Pfad wird normalisiert und muss mit einem Basisverzeichnis beginnen; ein
   `../` bricht nicht aus. Geprüft wird beim Speichern und bei jedem Lauf: Wird die Liste verengt,

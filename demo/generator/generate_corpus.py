@@ -88,7 +88,7 @@ PRESERVED_FILES = {
 }
 
 HANDBOOK_FORMAT_CHAPTER = (
-    REPO_ROOT / "docs/handbuch/arbeitsmittel/wissensbibliotheken/formate/README.md"
+    REPO_ROOT / "docs/handbuch/nachschlagen/formate/README.md"
 )
 _HANDBOOK_SECTION = "## Zugelassene Formate"
 _HANDBOOK_EXTENSION_ROW = re.compile(r"^\|\s*`(\.[a-z0-9]+)`\s*\|")
@@ -99,7 +99,7 @@ _MINIMUM_ADMITTED_EXTENSIONS = 10
 
 def admitted_extensions() -> list[str]:
     """Every extension the format overview
-    docs/handbuch/arbeitsmittel/wissensbibliotheken/formate/README.md admits, read from that table
+    docs/handbuch/nachschlagen/formate/README.md admits, read from that table
     rather than copied here - a fifteenth format must never leave SOURCE.md claiming full coverage.
     Rows without an extension in the first column (Feed-Detailseite, Confluence-Seite) are no file
     extension and are skipped.

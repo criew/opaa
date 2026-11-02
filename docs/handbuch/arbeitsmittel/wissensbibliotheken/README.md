@@ -11,7 +11,7 @@ teilen, favorisieren, einem Space zuordnen —, beschreiben die Kapitel [Katalog
 [Berechtigungen](../../konten-und-rechte/berechtigungen.md). Dieses Kapitel beschreibt,
 was das Wissen besonders macht: woher es kommt, wie es aktuell bleibt und wie OPAA ein Dokument
 liest. Tiefer gehen die Kapitel der [Konnektoren](../../pflegen/konnektoren/README.md), der
-[Formate](formate/README.md) und der [Zugänge](../zugaenge.md); Abschnitt 7 bündelt, was der Betrieb
+[Formate](../../nachschlagen/formate/README.md) und der [Zugänge](../zugaenge.md); Abschnitt 7 bündelt, was der Betrieb
 wissen muss.
 
 ## 1. Woher das Wissen kommt
@@ -391,7 +391,7 @@ Word-Datei wird als Word-Datei verarbeitet, mit dem Protokollvermerk „Formatab
 Format gibt es genau eine **Format-Pipeline**, für Unbekanntes und Strukturloses eine
 Auffang-Pipeline. Zugelassen sind grob Text und Markdown, PDF, die Office-Formate von Microsoft und
 OpenDocument, Tabellen, HTML und E-Mails. Welche Endungen genau, welche Pipeline sie bedient und was
-bewusst nicht aufgenommen wird, steht in der Übersicht der [Formate](formate/README.md).
+bewusst nicht aufgenommen wird, steht in der Übersicht der [Formate](../../nachschlagen/formate/README.md).
 
 ### 5.4 Parsen und Chunken
 
@@ -678,7 +678,7 @@ Ein Konto belegt je Instanz höchstens einen Teil der Plätze, standardmäßig e
 ebenfalls 429, während andere Konten weiter Plätze bekommen. Ein Rate-Limit bremst außerdem, wie
 schnell ein Konto Dateien schickt. In allen Fällen wartet die
 Oberfläche die genannte Zeit ab und lädt dieselbe Datei erneut hoch, ein Ordner-Upload läuft
-langsamer weiter ([Konfiguration](../../betreiben/konfiguration.md)). Während der Wartezeit zeigt die
+langsamer weiter ([Konfiguration](../../nachschlagen/konfiguration.md)). Während der Wartezeit zeigt die
 Bibliotheksseite einen Hinweis mit der Zahl der Sekunden. Nach insgesamt fünf Minuten Wartezeit gilt
 die Datei als abgelehnt. Wer die Seite verlässt, beendet nur das Warten: Die gerade wartende Datei
 gilt als abgelehnt, die übrigen Dateien werden weiter hochgeladen, ohne bei einer erneuten Ablehnung
@@ -702,7 +702,7 @@ noch zu warten.
 | `stale-job-timeout` | 4h | Frist ohne Fortschritt, bis ein Lauf als verwaist gilt |
 | `thread-pool.*` | 2 / 4 / 20 | Lauf-Pool |
 | `target-validation.*` | aktiv | Zieladressprüfung für Netzquellen |
-| je Konnektor und Format, etwa `confluence.*`, `s3.*`, `nextcloud.*`, `mail.*` | siehe dort | Grenzwerte der Quelle bzw. des Formats, in der [Konfigurationsreferenz](../../betreiben/konfiguration.md#alle-umgebungsvariablen) |
+| je Konnektor und Format, etwa `confluence.*`, `s3.*`, `nextcloud.*`, `mail.*` | siehe dort | Grenzwerte der Quelle bzw. des Formats, in der [Konfigurationsreferenz](../../nachschlagen/konfiguration.md#alle-umgebungsvariablen) |
 
 ### 7.6 Was nicht gebaut ist
 
@@ -717,7 +717,7 @@ noch zu warten.
 - [Konnektoren](../../pflegen/konnektoren/README.md): alle Quellen im Überblick und je ein Kapitel pro Konnektor;
   der gemeinsame Abgleich der Dateiablagen
 - [Zugänge](../zugaenge.md): wie sich Quellen anmelden und was die Systemverwaltung vorgibt
-- [Formate](formate/README.md): zugelassene Formate und je ein Kapitel pro Format-Pipeline
+- [Formate](../../nachschlagen/formate/README.md): zugelassene Formate und je ein Kapitel pro Format-Pipeline
 - [Suche](../../spaces/suche.md): wie das Wissen im Chat genutzt wird, von der Frage bis zur belegten Antwort
 - [Metadaten](metadaten.md): Kernfelder, ihre Ermittlung und Wirkung in der Suche
 - [Private Bibliotheken](private-bibliotheken.md): Bibliotheken aus dem verbundenen Konto einer Person
