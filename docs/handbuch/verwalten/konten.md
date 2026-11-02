@@ -12,8 +12,8 @@ in derselben Liste, ihren Lebenszyklus führt aber der Anbieter; hier lässt sic
 
 **Läuft ein Identitätsanbieter, die lokale Verwaltung abschalten**, sobald er steht (Reiter
 „Einstellungen“, Karte „Lokale Anmeldung“). Jedes lokale Konto ist ein Zugang, den kein Austritt
-im Haus automatisch entzieht. Das Notanker-Konto bleibt auch dann anmeldefähig. Wer neben dem
-Anbieter mit einem lokalen Konto hereinmuss, öffnet `/login/system`.
+im Haus automatisch entzieht. Abgeschaltet melden sich nur noch lokale Systemverwalter an, über
+`/login/system`.
 
 ## Ein Konto anlegen
 

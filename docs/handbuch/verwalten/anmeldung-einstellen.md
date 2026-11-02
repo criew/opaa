@@ -7,7 +7,8 @@
 
 Die Karte legt fest, was für alle lokalen Konten gilt. Jede Änderung wirkt ab der nächsten Anwendung,
 nicht rückwirkend auf bestehende Passwörter, und steht im Nachweisprotokoll. Identitätsanbieter und
-Verzeichnisabgleich richtet der Betrieb ein ([Authentifizierung](../betrieb/authentifizierung.md#anbieterverwaltung)).
+Verzeichnisabgleich richtet die Systemverwaltung unter „Administration → Identitätsanbieter“ und
+„Administration → Verzeichnisabgleich“ ein ([Authentifizierung](../betrieb/authentifizierung.md#anbieterverwaltung)).
 
 | Einstellung | Grenzen |
 |---|---|

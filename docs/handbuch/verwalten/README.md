@@ -11,7 +11,7 @@ Seite nennt oben, wer es darf. Was der Betrieb auf dem Server einstellt, steht u
 | Vor dem ersten Tag: was zu klären und einzustellen ist | [Die Einführung vorbereiten](einfuehrung.md) |
 | Name, Logo, Farben, Anmeldeseite | [Branding](branding.md) |
 | Konten anlegen, sperren, zurücksetzen | [Lokale Konten verwalten](konten.md) |
-| Identitätsanbieter, lokale Anmeldung, Selbstregistrierung | [Anmeldung einstellen](anmeldung-einstellen.md) |
+| Lokale Anmeldung, Selbstregistrierung, Verweis auf Identitätsanbieter | [Anmeldung einstellen](anmeldung-einstellen.md) |
 | Ein lokales Konto an den Identitätsanbieter übergeben | [Ein Konto übergeben](konto-uebergeben.md) |
 | Systemverwaltung und Revision vergeben | [Systemrollen vergeben](systemrollen.md) |
 | Gruppen aus dem Verzeichnis und interne Gruppen | [Gruppen verwalten](gruppen.md) |

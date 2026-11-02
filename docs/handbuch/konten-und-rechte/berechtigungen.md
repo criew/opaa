@@ -1095,10 +1095,10 @@ Drei Dinge gehören vor die Inbetriebnahme, nicht danach:
   beschreibt: Rechtehistorie, Kontozustandshistorie und Nachfolgevorgänge. Die
   Personalvertretung erhält einen **Testzugang**, um die Zusagen dieses Kapitels nachzuvollziehen.
 - **Änderungen an den vier Größen, die den Schutz tragen, sind Governance-Ereignisse** — mit einem
-  Unterschied im Nachweis, den dieses Kapitel ausspricht: Die **Aufbewahrungsfristen** und das
-  **Abgleichintervall eines Anbieters** sind Verwaltungseinstellungen und stehen mit jeder Änderung
-  im Nachweisprotokoll, für die Personalvertretung nachlesbar. **Mindestgruppengröße und
-  Plausibilitätsschwelle** sind dagegen Umgebungsvariablen: Sie werden beim Start gelesen, eine
+  Unterschied im Nachweis, den dieses Kapitel ausspricht: Die **Aufbewahrungsfristen**, das
+  **Abgleichintervall eines Anbieters** und die **Plausibilitätsschwelle** sind
+  Verwaltungseinstellungen und stehen mit jeder Änderung im Nachweisprotokoll, für die
+  Personalvertretung nachlesbar. Die **Mindestgruppengröße** ist dagegen eine Umgebungsvariable: Sie wird beim Start gelesen, eine
   Änderung wirkt erst mit dem Neustart und **erzeugt keinen Protokolleintrag**. Für sie trägt der
   organisatorische Weg — die Änderung wird wie ein Governance-Ereignis behandelt und dokumentiert,
   nachweisbar ist sie nur über die Konfiguration der Installation.

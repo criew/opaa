@@ -3,8 +3,8 @@
 # except AGENTS.md and CLAUDE.md, found by directory walk, so a new page is checked without a list:
 # - no reference out of the handbook to decision records: no "ADR-<digits>", no "docs/decisions",
 #   no link into the repository on GitHub (blob/tree); old pages lose their issue links on the move
-# - every page under arbeiten/ and pflegen/ except a folder's README.md carries the "Wer darf das"
-#   box (a blockquote line starting "> **Wer darf das:**") within its first ten lines and has at
+# - every page under arbeiten/, pflegen/ and verwalten/ except a folder's README.md carries the
+#   "Wer darf das" box (a blockquote line starting "> **Wer darf das:**") within its first ten lines and has at
 #   most 80 lines; connector pages under pflegen/konnektoren/ and pages under verwalten/ need the
 #   box but have no length limit
 # Links inside the handbook are checked by the strict MkDocs build (mkdocs.yml).

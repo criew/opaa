@@ -31,7 +31,7 @@ verlinkten Seite. „—“ heißt: keine Voraussetzung in dieser Spalte.
 | [Mitglieder eines Space verwalten](../pflegen/space-mitglieder.md) | — | *Administrator* oder Eigentümer | — | wer angelegt hat |
 | [Einen Space einstellen](../pflegen/space-einstellungen.md) | archivieren, löschen auch Systemverwaltung | *Administrator*; archivieren, löschen Eigentümer | — | wer angelegt hat |
 | [Eine interne Gruppe pflegen](../pflegen/gruppe-pflegen.md) | oder Systemverwaltung | *Verantwortliche* | „Interne Gruppen anlegen“ | nur Systemverwaltung |
-| [Zugriff nachvollziehen](../pflegen/zugriff-nachvollziehen.md) | — | eigener Weg: Zugriff; andere: *Administrator* im Space | — | ja |
+| [Zugriff nachvollziehen](../pflegen/zugriff-nachvollziehen.md) | — | eigener Weg: Zugriff; andere: *Administrator* oder Eigentümer im Space; Gruppenmitglieder ab *Verwalter* | — | ja |
 
 ## Verwalten
 
@@ -40,10 +40,11 @@ verlinkten Seite. „—“ heißt: keine Voraussetzung in dieser Spalte.
 | [Konten](../verwalten/konten.md), [Anmeldung](../verwalten/anmeldung-einstellen.md), [Konto übergeben](../verwalten/konto-uebergeben.md) | Systemverwaltung | „Administration → Benutzer“ | Selbstregistrierung aus |
 | [Systemrollen vergeben](../verwalten/systemrollen.md) | Systemverwaltung; Revision bestätigt die Revision | „Administration → Benutzer“, „Revision → Rollenanträge“ | Rolle *Nutzer* |
 | [Gruppen verwalten](../verwalten/gruppen.md) | Systemverwaltung | „Administration → Gruppen“ | — |
+| Identitätsanbieter und Verzeichnisabgleich ([Anmeldung einstellen](../verwalten/anmeldung-einstellen.md)) | Systemverwaltung | „Administration → Identitätsanbieter“, „Administration → Verzeichnisabgleich“ | keiner |
 | [Anlegerechte vergeben](../verwalten/anlegerechte.md) | Systemverwaltung | „Administration → Anlegerechte“ | siehe Seite |
 | [Ausscheiden und Nachfolge](../verwalten/ausscheiden.md) | Systemverwaltung; eigenes Eigentum jede Person | „Administration → Ohne Zuständigkeit“ | — |
 | [Zugänge einrichten](../verwalten/zugaenge.md) | Systemverwaltung | „Administration → Anbindungen“ | kein Zugang |
-| [Externe KI-Werkzeuge zulassen](../verwalten/externe-ki-werkzeuge.md) | Systemverwaltung | „Anbindungen → Externe KI-Werkzeuge“ | aus |
+| [Externe KI-Werkzeuge zulassen](../verwalten/externe-ki-werkzeuge.md) | Systemverwaltung | „Administration → Anbindungen“, Reiter „Externe KI-Werkzeuge“ | aus |
 | [Modelle verwalten](../verwalten/modelle.md) | Systemverwaltung | „Administration → Modelle“ | Reranking, Spracheingabe aus |
 | [Suche und Indexierung](../verwalten/suche-und-indexierung.md) | Systemverwaltung; „Sicht als“ nur mit Befugnis | „Administration → Suche & Indexierung“ | keine Befugnis |
 | [Datenschutz einstellen](../verwalten/datenschutz.md) | Systemverwaltung | „Administration → Datenschutz“ | siehe Seite |

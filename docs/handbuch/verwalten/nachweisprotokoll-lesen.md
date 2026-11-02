@@ -43,5 +43,5 @@ Systemverwaltung unter [Datenschutz einstellen](datenschutz.md) ein.
   ([Nachvollziehbarkeit](../betrieb/nachvollziehbarkeit.md#prüfsummenkette-und-monatssiegel)).
 - Wer wann ein Objekt lesen durfte, sagt nicht das Protokoll, sondern die
   [Stichtagsauskunft](stichtagsauskunft.md).
-- Die Aufbewahrung beträgt ab Werk 36 Monate, einstellbar von 12 bis 120 Monaten, heute nur über
-  die Programmierschnittstelle.
+- Die Aufbewahrung beträgt ab Werk 36 Monate, durch die Systemverwaltung einstellbar von 12 bis
+  120 Monaten, heute nur per Import unter [Einstellungen übertragen](einstellungen-uebertragen.md).

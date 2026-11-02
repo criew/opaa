@@ -42,6 +42,5 @@ Anmeldedaten eines Identitätsanbieters meldet OPAA allen Personen der Revision.
 
 **Gut zu wissen:**
 
-- Wer eine Systemrolle vergibt, bestätigt vorher seine Anmeldung, wenn sie länger zurückliegt.
 - Dem letzten anmeldefähigen Systemverwalter lässt sich die Rolle nicht entziehen.
 - Eine Systemrolle hat keine Rechtehistorie; ihre Änderungen stehen im Nachweisprotokoll.

@@ -3,16 +3,18 @@
 > **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
 
 > **Wer darf das:** den eigenen Weg sieht jede Person mit Zugriff. Den Weg anderer in einem Space
-> sehen dessen *Administratoren* und sein Eigentümer. Die Mitglieder einer Gruppe sieht, wer sie am
-> Objekt berechtigt hat, und nur bei einer Gruppe, die zur Verwendung freigegeben ist.
+> sehen dessen *Administratoren* und sein Eigentümer. Die Mitglieder einer Gruppe sieht, wer am
+> Objekt Freigaben verwaltet (ab *Verwalter*; im Space *Administrator* oder Eigentümer), nur bei einer
+> zur Verwendung freigegebenen und nie bei einer geschützten Gruppe.
 
 ## Der eigene Weg
 
 Auf der Detailseite einer Bibliothek (Reiter „Freigaben“) oder einer Prompt-Bibliothek steht die
-Zeile **„Herleitung“**; „Anzeigen“ öffnet sie, „Schließen“ klappt sie zu.
+Zeile **„Herleitung“**; „Anzeigen“ öffnet sie, „Schließen“ klappt sie zu. Im Space öffnet
+**„Warum sehe ich diesen Space?“** dasselbe.
 
 ```
-Maria Weber ist Administrator in diesem Space.
+Sie sind Administrator in diesem Space.
   Direkt aufgenommen: Kurator
   Über die Gruppe Meldewesen: Administrator
 Es gilt die höhere Rolle.

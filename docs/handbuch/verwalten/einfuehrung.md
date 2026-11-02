@@ -3,7 +3,7 @@
 > **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
 
 > **Wer darf das:** die Systemverwaltung, zusammen mit Datenschutz und Personalvertretung. Ab Werk
-> ist alles, was Personen betrifft, entweder aus oder auf den engsten Wert gestellt.
+> ist vieles zurückhaltend eingestellt; prüfen Sie trotzdem jeden Wert.
 
 Diese Liste gehört vor den ersten Tag mit echten Personen, nicht danach.
 
@@ -25,15 +25,16 @@ Diese Liste gehört vor den ersten Tag mit echten Personen, nicht danach.
 - [ ] **Identitätsanbieter** anbinden, danach lokale Konten abschalten und die Selbstregistrierung
       aus lassen ([Anmeldung einstellen](anmeldung-einstellen.md)).
 - [ ] **Fristen** prüfen ([Datenschutz einstellen](datenschutz.md)).
+- [ ] **Plausibilitätsschwelle** des Verzeichnisabgleichs festlegen, unter „Administration →
+      Verzeichnisabgleich“ ([Gruppen verwalten](gruppen.md)).
 - [ ] **Zugänge** anlegen und freigeben ([Zugänge einrichten](zugaenge.md)).
 - [ ] **Die erste Person der Revision** einrichten ([Systemrollen vergeben](systemrollen.md#die-rolle-revision)).
 
-## Die zwei Schutzgrößen des Betriebs
+## Die Schutzgröße des Betriebs
 
-**Mindestgruppengröße** und **Plausibilitätsschwelle** stellt der Betrieb über Umgebungsvariablen
-ein. Eine Änderung wirkt erst mit dem Neustart und **steht nicht im Nachweisprotokoll**. Behandeln
-Sie sie deshalb wie eine Änderung an der Dienstvereinbarung: vorher absprechen, nachher
-dokumentieren. Alle anderen Fristen und Schalter sind Verwaltungseinstellungen und stehen mit jeder
+Die **Mindestgruppengröße** stellt der Betrieb über eine Umgebungsvariable ein. Eine Änderung wirkt
+erst mit dem Neustart und **steht nicht im Nachweisprotokoll**. Behandeln Sie sie deshalb wie eine
+Änderung an der Dienstvereinbarung: vorher absprechen, nachher dokumentieren. Alle anderen Fristen und Schalter sind Verwaltungseinstellungen und stehen mit jeder
 Änderung im Protokoll.
 
 **Gut zu wissen:**
