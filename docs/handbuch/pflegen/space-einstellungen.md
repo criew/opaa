@@ -2,8 +2,9 @@
 
 > **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
 
-> **Wer darf das:** Stammdaten und Anweisung ändert die Rolle *Administrator* im Space;
-> archivieren und löschen nur der Eigentümer. Ab Werk ist das, wer den Space angelegt hat.
+> **Wer darf das:** Stammdaten und Anweisung ändert die Rolle *Administrator* im Space oder sein
+> Eigentümer; archivieren und löschen der Eigentümer und die Systemverwaltung. Ab Werk ist das, wer
+> den Space angelegt hat.
 
 Sie geben dem Space einen klaren Namen, eine Anweisung an das Modell und räumen ihn am Ende auf.
 
@@ -22,7 +23,7 @@ Unten in den Stammdaten steht der **Gefahrenbereich**.
 | Aktion | Wirkung |
 |---|---|
 | „Space archivieren“ | keine neuen Fragen, Inhalte und Mitglieder mehr; lesbar bleibt er für den Eigentümer, die Systemverwaltung und die eigenen Chats der Mitglieder. Zurückholen geht nicht |
-| „Space löschen“ | nur ohne Chats, auch ohne solche, die Sie nicht sehen; sonst lehnt OPAA ab |
+| „Space löschen“ | nur ohne Chats, auch ohne solche, die Sie nicht sehen; sonst lehnt OPAA ab. Nicht umkehrbar; Mitgliedschaften und Zuordnungen gehen verloren |
 
 Chats gehören ihren Autoren. Ein Space mit Chats lässt sich deshalb nur archivieren.
 

@@ -24,13 +24,14 @@ als offen.
 ## Ein eigenes Feld anlegen
 
 1. Reiter „Metadaten“, Abschnitt „Felder“, „Feld anlegen“.
-2. Name und Typ wählen: **Auswahl** (Werteliste), **Datum** oder **Kennung** (Muster wie
-   `^RF-[A-Z]+-[0-9]+$`).
-3. Festlegen, ob das Feld filtert oder im Kontextpräfix wirkt. Ein Feld, das keins von beiden tut,
-   nimmt OPAA nicht an.
+2. „Feldschlüssel“, „Feldname“ und „Typ“ wählen: **Auswahl** (Werteliste), **Datum** oder
+   **Kennung** (Muster wie `^RF-[A-Z]+-[0-9]+$`).
+3. „Wirkt im Filter“ und/oder „Wirkt im Kontextpräfix“ ankreuzen; eins von beiden ist Pflicht. Im
+   Kontextpräfix steht der Wert vor jedem Textabschnitt, sodass die Suche ihn auch ohne Filter findet.
 
 Höchstens fünf eigene Felder je Bibliothek. Einen benutzten Listenwert entfernen Sie, indem Sie ihn
-auf einen anderen Wert oder „leer“ abbilden; vorher nennt OPAA, wie viele Dokumente das betrifft.
+auf einen anderen Wert oder „leer“ abbilden. Ein Feld löschen entfernt seine Werte an allen
+Dokumenten. In beiden Fällen nennt OPAA vorher, wie viele Dokumente das betrifft.
 
 **Gut zu wissen:**
 

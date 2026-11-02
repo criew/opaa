@@ -25,6 +25,7 @@ Menü der Zeile zeigt den Weg.
 
 Im Menü „⋯“ eines Administrator-Mitglieds „Zum Eigentümer machen“ wählen. Das darf jedes
 Administrator-Mitglied, das eine Person ist, auch für sich selbst. Das neue Konto muss aktiv sein.
+Der Wechsel wirkt sofort, ohne Rückfrage; in einem archivierten Space geht er nicht mehr.
 
 **Gut zu wissen:**
 

@@ -2,15 +2,16 @@
 
 > **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
 
-> **Wer darf das:** Rolle *Verwalter* oder *Eigentümer* an der Bibliothek. Ab Werk hat das, wer
-> sie angelegt hat; bei einer Gruppe als Eigentümerin deren Mitglieder als *Verwalter*.
+> **Wer darf das:** Rolle *Verwalter* oder *Eigentümer* an der Bibliothek, übergeben nur als
+> *Eigentümer*. Ab Werk hat das, wer sie angelegt hat; bei einer Gruppe als Eigentümerin deren
+> Mitglieder als *Verwalter*.
 
 Andere Personen oder Gruppen lesen oder pflegen danach Ihre Wissens- oder Prompt-Bibliothek.
 
 1. Die Detailseite öffnen, Reiter „Freigaben“.
 2. Unter „Berechtigungen“ „Freigeben“ wählen.
-3. Person, Gruppe oder „Alle Konten“ suchen, Rolle wählen, bei Bedarf ein Ablaufdatum setzen.
-4. Speichern. Bei „Alle Konten“ fragt OPAA zurück und nennt die Reichweite.
+3. Person, Gruppe oder „Alle Konten“ suchen, Rolle wählen, bei Bedarf „Befristung (optional)“ setzen.
+4. „Freigeben“. Bei „Alle Konten“ fragt OPAA zurück und nennt die Reichweite.
 
 **Die Rollen** sind gestuft; jede darf, was die vorige darf:
 
@@ -31,15 +32,18 @@ damit nicht.
 
 ## Das Eigentum übergeben
 
-Unter „Eigentümer“ „Übergeben“ wählen, Person oder Gruppe suchen, bestätigen. Die Eigentümerrolle
-geht mit. **Eine Gruppe ist die haltbarere Eigentümerin:** Sie übersteht den Weggang einzelner
-Personen.
+Unter „Eigentümer“ „Übergeben“ wählen, Person oder Gruppe suchen, bestätigen. Das wirkt sofort,
+und **Sie verlieren Ihre eigene Rolle**, wenn sie Ihnen nicht gesondert erteilt ist.
+
+**Eine Gruppe ist die haltbarere Eigentümerin:** Sie übersteht den Weggang einzelner Personen. Sie
+erhält die Rolle *Verwalter*; die Eigentümerrolle selbst bleibt an Personen gebunden. Übergeben
+können Sie nur an eine Gruppe, der Sie angehören, und nur mit unbefristeter Verwaltung. Löschen und
+erneut übergeben braucht danach eine eigens erteilte Eigentümerrolle oder die Systemverwaltung.
 
 **Gut zu wissen:**
 
-- Wer eine Freigabe erhält, sieht das Arbeitsmittel sofort im Katalog; wer nichts darf, sieht es
-  nirgends.
+- Wer eine Freigabe erhält, sieht das Arbeitsmittel sofort im Katalog. „Herleitung“ im Reiter
+  zeigt, über welchen Weg Sie selbst Ihre Rolle haben.
 - Jede Freigabe, jeder Entzug und jede Übergabe steht im Nachweisprotokoll und in der
   Rechtehistorie.
-- „Herleitung“ im selben Reiter zeigt mit „Anzeigen“, über welchen Weg Sie selbst Ihre Rolle haben.
 - Eine private Bibliothek lässt sich nicht teilen.

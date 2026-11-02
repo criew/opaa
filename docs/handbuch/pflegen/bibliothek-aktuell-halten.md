@@ -3,7 +3,7 @@
 > **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
 
 > **Wer darf das:** „Jetzt indizieren“, Dokumente hochladen und löschen ab der Rolle *Bearbeiter*;
-> Zeitplan, Quelle und Läufe ab *Verwalter*. Ab Werk hat beides, wer die Bibliothek angelegt hat.
+> Zeitplan, Verbindung und Laufprotokoll ab *Verwalter*. Ab Werk hat beides, wer die Bibliothek angelegt hat.
 
 Sie sorgen dafür, dass die Suche den aktuellen Stand der Quelle findet, und beheben, was einen Lauf
 aufhält.
@@ -20,18 +20,22 @@ Die Uhrzeit gilt in der Zeitzone des Servers.
 ## Sofort aktualisieren
 
 „Jetzt indizieren“ im Kopf der Detailseite startet einen Lauf. Wo die Quelle es kennt, liest
-„Vollabgleich starten“ alles neu und erkennt dabei auch Gelöschtes. Je Bibliothek läuft höchstens
-ein Lauf.
+„Vollabgleich starten“ alles neu und erkennt dabei auch Gelöschtes: als Verwalter über den Läufen im
+Reiter „Quelle“, als Bearbeiter im Menü „Weitere Aktionen“. Je Bibliothek läuft höchstens ein Lauf.
+
+Ohne angebundene Quelle laden Sie Dokumente im Reiter „Dokumente“ hoch und löschen sie dort. Mit
+Quelle gibt es kein Löschen einzelner Dokumente; was in der Quelle fehlt, entfernt der Abgleich.
 
 ## Den Zustand lesen
 
 Der Kopf zeigt ein Wort, etwa „Aktuell · 23.10.2026“, „Läuft · 40 %“ oder „Teilweise
-fehlgeschlagen · 3 Fehler“. Ein Klick führt zur Ursache. Unter „Läufe“ im Reiter „Quelle“ klappt
+fehlgeschlagen · 3 Fehler“. Als Verwalter führt ein Klick zur Ursache; unter „Läufe“ im Reiter „Quelle“ klappt
 jeder Lauf seine Fundorte je Kategorie auf.
 
 | Meldung | Was Sie tun |
 |---|---|
-| „Verbindung getrennt“ | Zugangsdaten in der Zeile „Verbindung“ neu eintragen |
+| „Verbindung getrennt“ | Zugangsdaten in der Zeile „Verbindung“ neu eintragen; meldet sich der Zugang selbst an, die Systemverwaltung fragen |
+| „… ist nur noch über Zugänge nutzbar …“ | die Bibliothek einem Zugang zuordnen |
 | „Nicht verbunden“, „Abgelaufen: Die Verbindung der Quelle …“ | Quelle neu verbinden |
 | „Zugang entfernt“ | einen anderen Zugang zuordnen |
 | „Die Adresse der Bibliothek liegt nicht unter …“ | Adresse an den Zugang anpassen |

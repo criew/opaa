@@ -3,17 +3,20 @@
 > **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
 
 > **Wer darf das:** anlegen, wer das Anlegerecht „Interne Gruppen anlegen“ hat; ab Werk niemand
-> außer der Systemverwaltung. Pflegen dürfen die benannten *Verantwortlichen* einer Gruppe.
+> außer der Systemverwaltung. Pflegen dürfen die benannten *Verantwortlichen* einer Gruppe und die
+> Systemverwaltung.
 
 Sie führen eine Gruppe wie „Projekt Bauleitplanung“, der andere dann Bibliotheken freigeben und die
 sie in Spaces aufnehmen.
 
 1. „Einstellungen“, dann „Meine Gruppen“, „Gruppe anlegen“.
-2. Name, Beschreibung und weitere Verantwortliche eintragen. Sie selbst sind verantwortlich, aber
-   nicht automatisch Mitglied.
+2. Name, Beschreibung und weitere Verantwortliche eintragen und **„Zur Verwendung freigegeben“**
+   einschalten (später auch über „Bearbeiten“). Erst dann finden andere die Gruppe beim Freigeben
+   und beim Aufnehmen in einen Space. Sie selbst sind verantwortlich, aber nicht automatisch Mitglied.
 3. Mitglieder über „Person suchen“ und „Hinzufügen“ aufnehmen; nur Konten des eigenen Hauses.
-4. **„Zur Verwendung freigegeben“** einschalten. Erst dann finden andere die Gruppe beim Freigeben
-   und beim Aufnehmen in einen Space.
+
+Die Verwendungsfreigabe zurückzunehmen nimmt die Gruppe nur aus der Auswahl; ihre bestehenden Rechte
+wirken weiter.
 
 **Vorübergehend deaktivieren** (Bereich „Wirkung“): Die Gruppe wirkt dann für niemanden, alle ihre
 Rechte ruhen, gespeichert bleibt alles. „Reaktivieren“ stellt den Stand wieder her. Die Bestätigung
