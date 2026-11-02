@@ -91,7 +91,8 @@ Format-Seiten unter `nachschlagen/formate/` folgen ihrem bisherigen gemeinsamen 
 
 - **Nur innerhalb des Handbuchs.** Kein Verweis auf ADRs, Spezifikationen, Issues oder Dateien
   im Repository: Das Handbuch erklärt das Verhalten selbst. Warum etwas so gebaut ist, gehört nicht
-  hinein. `check_handbuch.sh` weist ADR-Nummern und Repository-Links ab.
+  hinein. `check_handbuch.sh` weist ADR-Nummern und Repository-Links ab; Issue-Verweise der alten
+  Seiten fallen beim Umzug weg.
 - Lieber Seiten und benannte Abschnitte als Abschnittsnummern; Nummern veralten bei jeder
   Umgliederung.
 - Jeder relative Link und jeder Anker muss treffen. Die Website baut mit MkDocs (`mkdocs.yml` im

@@ -1,5 +1,5 @@
-# Site build of the product handbook. docs/handbuch/ is the only source; the output goes to
-# opaa.io/handbuch/ and, as static HTML, into the update package.
+# Site build of the product handbook; docs/handbuch/ is the only source. CI builds it strictly
+# to catch dead links and anchors.
 site_name: OPAA-Handbuch
 docs_dir: docs/handbuch
 site_dir: build/handbuch-site

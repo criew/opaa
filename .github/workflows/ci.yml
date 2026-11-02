@@ -328,7 +328,7 @@ jobs:
         if: github.event_name != 'pull_request' || steps.filter.outputs.handbook == 'true'
         run: |
           python -m venv "$RUNNER_TEMP/mkdocs"
-          "$RUNNER_TEMP/mkdocs/bin/pip" install --require-hashes --no-deps -r .github/requirements-docs.txt
+          "$RUNNER_TEMP/mkdocs/bin/pip" install --require-hashes --no-deps --only-binary=:all: --no-binary=pyyaml -r .github/requirements-docs.txt
           NO_MKDOCS_2_WARNING=1 "$RUNNER_TEMP/mkdocs/bin/mkdocs" build --strict
 
       # Every Mermaid diagram of docs/behoerden and docs/handbuch renders to SVG as in the release

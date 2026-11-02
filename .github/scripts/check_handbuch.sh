@@ -2,7 +2,7 @@
 # Checks the page rules of docs/handbuch/AGENTS.md on every Markdown file under docs/handbuch/
 # except AGENTS.md and CLAUDE.md, found by directory walk, so a new page is checked without a list:
 # - no reference out of the handbook to decision records: no "ADR-<digits>", no "docs/decisions",
-#   no link into the repository on GitHub (blob/tree); issue links stay allowed
+#   no link into the repository on GitHub (blob/tree); old pages lose their issue links on the move
 # - every page under arbeiten/ and pflegen/ except a folder's README.md and pflegen/konnektoren/
 #   carries the "Wer darf das" box (a blockquote line starting "> **Wer darf das:**") within its
 #   first ten lines and has at most 80 lines
