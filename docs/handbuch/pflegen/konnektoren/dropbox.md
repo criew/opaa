@@ -1,5 +1,9 @@
 # Konnektor: Dropbox
 
+> **Wer darf das:** anlegen, wer „Konnektorbibliotheken anlegen“ für diese Quellart oder ihren
+> Zugang hat; ab Werk nur die Systemverwaltung, bis sie die Quellart oder einen Zugang freigibt.
+> Quelle, Umfang und Zeitplan ändert danach, wer an der Bibliothek *Verwalter* oder *Eigentümer* ist.
+
 ## 1. Was der Konnektor ist
 
 Der Konnektor liest **Ordner eines Dropbox-Kontos**, auf Wunsch auch den **Team-Bereich** eines
@@ -18,7 +22,7 @@ flowchart LR
 ```
 
 - **Anmeldung:** über eine **Zustimmung beim Anbieter** (OAuth) für die Bibliothek, mit einem
-  Funktionskonto ([Zugänge](../../zugaenge.md), „Zustimmung beim Anbieter für die Bibliothek"). Ein
+  Funktionskonto ([Zugänge](../../arbeitsmittel/zugaenge.md), „Zustimmung beim Anbieter für die Bibliothek"). Ein
   Zugang ist **Pflicht**; er trägt die App des Betreibers, die Bibliothek ihre Zustimmung.
 - **Konnektor-eigen:** eine App in der **Dropbox App Console** mit „Scoped access" und den
   Berechtigungen `account_info.read`, `files.metadata.read` und `files.content.read`.
@@ -43,14 +47,14 @@ flowchart LR
    Dropbox" („App folder" sähe nur einen eigenen Ordner). Unter „Permissions" die drei
    Berechtigungen oben setzen; schreibende braucht OPAA nicht. Unter „Settings" bei „Redirect URIs"
    `<öffentliche Adresse von OPAA>/connections/callback` eintragen (`OPAA_PUBLIC_BASE_URL`,
-   [Konfiguration](../../../betrieb/konfiguration.md#alle-umgebungsvariablen)). „App key" und „App secret"
+   [Konfiguration](../../betrieb/konfiguration.md#alle-umgebungsvariablen)). „App key" und „App secret"
    notieren. Für mehr als wenige Konten gibt Dropbox die App nach einem Antrag für den
    Produktivbetrieb frei.
 2. **Zugang.** Unter **Administration → Anbindungen → Zugänge** einen Zugang für Dropbox mit der
    Anmeldeart OAuth und der Besitzart Bibliothek anlegen: App key als „Client-ID", App secret als
    „Client-Secret", „Scopes" leer. Die Server-Adresse ist fest.
 3. Festlegen, wer den Zugang nutzen darf; ab Werk nur die Systemverwaltung
-   ([Berechtigungen](../../../konten-und-rechte/berechtigungen.md), „Konnektor-Freigabe").
+   ([Berechtigungen](../../konten-und-rechte/berechtigungen.md), „Konnektor-Freigabe").
 4. Ein **eigenes Dropbox-Konto für OPAA** bereithalten. Mit ihm stimmt die verwaltende Person bei
    „Quelle verbinden" zu; die Verbindung bleibt, wenn sie ausscheidet.
 
@@ -88,7 +92,7 @@ Die Zeile „Verbindung" fragt weder Adresse noch Zugangsdaten ab. „Eigene Adr
 
 1. **Zugang** wählen, wenn mehrere zur Wahl stehen.
 2. **„Quelle verbinden"** und bei Dropbox mit dem Funktionskonto zustimmen
-   ([Wissensbibliotheken](../README.md), Abschnitt 3.3). OPAA nennt danach das Konto
+   ([Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md), Abschnitt 3.3). OPAA nennt danach das Konto
    („Verbunden als …"). Erst dann laden Ordnerauswahl und Test etwas.
 3. **„Teambereich lesen"**: aus liest die Ordner des Kontos, an die des Team-Bereichs.
 4. **Umfang**: „Alle Ordner" oder „Nur ausgewählte Ordner", Pfade wie `/Projekte`; kein Ordner
@@ -147,12 +151,12 @@ Antwort folgt ein Vollabgleich.
 Die Ordner unterhalb jedes gewählten Ordners erscheinen als Ordner der Bibliothek, der gewählte Ordner
 ist die Wurzel. Bei mehreren steht sein Name vorn, bei `/` „Dropbox". Namen, die keinen Ordner tragen
 können, und zu tiefe Ketten folgen den Regeln des Kapitels
-[Wissensbibliotheken](../README.md).
+[Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md).
 
 ## 7. Anhänge
 
 Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Grenzen des Kapitels
-[E-Mail](../formate/mail.md).
+[E-Mail](../../arbeitsmittel/wissensbibliotheken/formate/mail.md).
 
 ## 8. Grenzen und Schutzmechanismen
 
@@ -170,7 +174,7 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
   und jeder Lauf endet als „unvollständig, wird fortgesetzt". Abhilfe: Budget anheben oder den Ordner
   aufteilen.
 - Ist der Pfad länger, als die Identität eines Dokuments fassen kann, wird die Datei nicht geladen
-  und bei jedem Vollabgleich als abgewiesen gemeldet ([Wissensbibliotheken](../README.md),
+  und bei jedem Vollabgleich als abgewiesen gemeldet ([Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md),
   Abschnitt 7.1).
 - **Noch nicht an einem echten Dropbox-Konto bestätigt** und auf die Dokumentation von Dropbox und ein
   Testdoppel gestützt: die Meldungen gelöschter und verschobener Ordner im Änderungsprotokoll, der
@@ -201,32 +205,3 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 | „Dropbox drosselt die Anfragen weiterhin" | nach allen Wiederholungen; der Strom wird erneut gelesen | Zeitplan entzerren |
 | „Die Übertragung von Dropbox dauerte länger als …" | über `download-timeout`; folgt im nächsten Lauf | Frist anheben |
 | „Dropbox nimmt den gespeicherten Stand des Änderungsprotokolls nicht mehr an." / „Der Ordner „…" war beim Beginn des letzten Vollabgleichs nicht erreichbar." | nächster Lauf ist ein Vollabgleich | nichts |
-
-## 10. Konfiguration
-
-Alle Schlüssel unter `opaa.indexing.dropbox.*`.
-
-| Schlüssel | Umgebungsvariable | Standard | Wirkung |
-|---|---|---|---|
-| `page-size` | `OPAA_INDEXING_DROPBOX_PAGE_SIZE` | 2000 | Einträge je Auflistungs- und Änderungsseite; höchstens 2000 |
-| `max-file-size-bytes` | `OPAA_INDEXING_DROPBOX_MAX_FILE_SIZE_BYTES` | 52428800 (50 MiB) | Obergrenze je Download oder Export, auch für „Original öffnen" |
-| `request-timeout` | `OPAA_INDEXING_DROPBOX_REQUEST_TIMEOUT` | 30s | Timeout je Anfrage |
-| `download-timeout` | `OPAA_INDEXING_DROPBOX_DOWNLOAD_TIMEOUT` | 10m | Gesamtfrist je Download oder Export |
-| `max-retries` | `OPAA_INDEXING_DROPBOX_MAX_RETRIES` | 5 | Wiederholungen einer gedrosselten Anfrage |
-| `max-retry-wait` | `OPAA_INDEXING_DROPBOX_MAX_RETRY_WAIT` | 5m | längste einzelne Wartezeit |
-| `request-budget-per-run` | `OPAA_INDEXING_DROPBOX_REQUEST_BUDGET_PER_RUN` | 20000 | Anfragen je Lauf |
-| `max-files-per-run` | `OPAA_INDEXING_DROPBOX_MAX_FILES_PER_RUN` | 1000000 | gelistete Dateien je Vollabgleich, bevor der Lauf scheitert |
-| `download-concurrency` | `OPAA_INDEXING_DROPBOX_DOWNLOAD_CONCURRENCY` | 2 | gleichzeitige Downloads je Lauf |
-| `api-base`, `content-base`, `authorization-endpoint`, `token-endpoint`, `revocation-endpoint` | `OPAA_INDEXING_DROPBOX_API_BASE` usw. | die Adressen von Dropbox | nur für einen Ersatzserver in Tests |
-
-Die Obergrenze von fünfzig Ordnern je Bibliothek ist fest.
-
-## 11. Nicht gebaut
-
-- Mitgliederordner, geteilte Ordner und App-Ordner über eine Team-App (Lesen im Namen beliebiger
-  Mitglieder)
-- Unterordner eines Team-Ordners als eigener Umfang
-- Persönliche Verbindung und private Bibliotheken
-- Übernahme von Rechten aus Dropbox
-- Push-Benachrichtigungen über Webhooks; der Änderungslauf im Zeitplan ersetzt sie
-- Fortsetzungspunkt innerhalb eines Ordners

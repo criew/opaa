@@ -592,8 +592,8 @@ Person; deren Inhalt ist, was sie beim Anbieter selbst sehen darf. Einen Zugang,
 Konten verbinden können, legt die Systemverwaltung mit der Besitzart „Person“ oder „Bibliothek und
 Person“ an und gibt ihn frei ([Zugänge](../arbeitsmittel/zugaenge.md)). Von den mitgelieferten
 Konnektoren lassen **Nextcloud** und **OneDrive** die Besitzart „Person“ zu; bei Nextcloud verbindet die
-Person ein eigenes App-Passwort ([Konnektor Nextcloud](../arbeitsmittel/wissensbibliotheken/konnektoren/nextcloud.md), „Verbundenes Konto“),
-bei OneDrive meldet sie sich bei Microsoft an ([Konnektor OneDrive](../arbeitsmittel/wissensbibliotheken/konnektoren/onedrive.md)).
+Person ein eigenes App-Passwort ([Konnektor Nextcloud](../pflegen/konnektoren/nextcloud.md), „Verbundenes Konto“),
+bei OneDrive meldet sie sich bei Microsoft an ([Konnektor OneDrive](../pflegen/konnektoren/onedrive.md)).
 
 **Das Verbinden ist freiwillig.** Niemand muss ein Konto verbinden, und ein Verzicht hat keine
 Nachteile: Nichts in OPAA setzt ein verbundenes Konto voraus oder fordert dazu auf. Auch diese Seite
@@ -652,7 +652,7 @@ Zugang), heißt sie „Verbindung getrennt“. Alle drei führen per Klick auf d
 Trennen geht immer und löscht die Zugangsdaten sofort ([Ein Konto verbinden](../arbeiten/konto-verbinden.md#trennen)).
 Bei einer Anmeldung beim Anbieter zieht OPAA die Zustimmung dort im Hintergrund zurück, sofern der
 Anbieter einen Weg bietet; Microsoft bietet bei OneDrive keinen
-([Konnektor OneDrive](../arbeitsmittel/wissensbibliotheken/konnektoren/onedrive.md#3-quellkonfiguration)).
+([Konnektor OneDrive](../pflegen/konnektoren/onedrive.md#3-quellkonfiguration)).
 Gelingt der Rückzug nicht, bleibt die Zustimmung beim Anbieter gültig, bis er sie beendet; OPAA hat
 sie dann schon gelöscht. Die Systemverwaltung sieht einen verlorenen Widerruf nur als Warnung im
 Betriebslog.

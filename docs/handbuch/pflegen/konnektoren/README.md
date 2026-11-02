@@ -4,8 +4,8 @@ Das meiste Wissen einer Organisation liegt schon irgendwo: auf einem Netzlaufwer
 Cloud-Speicher, in einem Wiki, in einem Feed. Ein **Konnektor** bindet ein solches System an. Er
 weiß, wie es aufgezählt und gelesen wird; alles Weitere — Format erkennen, zerlegen, einbetten,
 durchsuchbar machen — ist für jede Quelle gleich und steht im Kapitel
-[Wissensbibliotheken](../README.md). Wie sich ein Konnektor beim System anmeldet und
-was die Systemverwaltung dafür vorgibt, beschreibt das Kapitel [Zugänge](../../zugaenge.md).
+[Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md). Wie sich ein Konnektor beim System anmeldet und
+was die Systemverwaltung dafür vorgibt, beschreibt das Kapitel [Zugänge](../../arbeitsmittel/zugaenge.md).
 
 Die Konnektoren sind verschieden, folgen aber wenigen gemeinsamen Mustern: Jeder liefert dasselbe
 an die Aufnahmestrecke (Abschnitt 1), und die Dateiablagen gleichen ihre Quelle auf demselben Weg
@@ -75,7 +75,7 @@ Abgelehnt werden
   169.254.169.254, private Netze, Carrier-Grade NAT, Multicast, reservierte Bereiche und ihre
   IPv6-Entsprechungen,
 - Hostnamen, die sich nicht auflösen lassen, außer die Verbindung geht über den
-  [Ausgangsproxy](../../../betrieb/netz-und-sicherheit.md#ausgangsproxy), der den Namen dann selbst auflöst.
+  [Ausgangsproxy](../../betrieb/netz-und-sicherheit.md#ausgangsproxy), der den Namen dann selbst auflöst.
 
 Geprüft wird jede aufgelöste Adresse des Ziels, nie der Ausgangsproxy; dessen Ausnahmeliste ist keine
 Freigabe. Eine Quelle im Hausnetz — ein Confluence Data Center, ein MinIO, eine Nextcloud, ein
@@ -102,7 +102,7 @@ Adressen, auch wenn der Namensdienst zwischen Prüfung und Verbindung eine inter
 öffentliche Adresse kommt spätestens nach dem Cache der JVM (30 Sekunden) bzw. nach der
 Wiederverwendung einer Antwort durch die Prüfung (5 Sekunden) an. Zertifikat und SNI prüft TLS weiter
 gegen den Namen. Wie lange die Bindung hält und was hinter dem Ausgangsproxy gilt, steht in
-[Netz und Sicherheit](../../../betrieb/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers).
+[Netz und Sicherheit](../../betrieb/netz-und-sicherheit.md#zielprüfung-abrufe-des-servers).
 
 ### 1.3 Zertifikatsprüfung
 
@@ -112,8 +112,8 @@ könnte sich jeder Server im Netz als die Quelle ausgeben, Zugangsdaten abgreife
 unterschieben.
 
 Ein Server mit einem Zertifikat der hauseigenen Zertifizierungsstelle wird erst erreichbar, wenn der
-Betrieb diese Stelle ergänzt hat: [Eigene interne CA ergänzen](../../../betrieb/docker-compose.md#eigene-interne-ca-ergänzen),
-unter Kubernetes [Eigene Zertifizierungsstelle](../../../betrieb/kubernetes.md#eigene-zertifizierungsstelle). Bis
+Betrieb diese Stelle ergänzt hat: [Eigene interne CA ergänzen](../../betrieb/docker-compose.md#eigene-interne-ca-ergänzen),
+unter Kubernetes [Eigene Zertifizierungsstelle](../../betrieb/kubernetes.md#eigene-zertifizierungsstelle). Bis
 dahin melden Verbindungstest und Lauf „Das Zertifikat des Servers wird nicht anerkannt: Es stammt von
 einer unbekannten Zertifizierungsstelle oder passt nicht zur Adresse. …". Dieselbe Meldung erscheint,
 wenn das Zertifikat auf einen anderen Namen ausgestellt ist als die Adresse der Quelle.

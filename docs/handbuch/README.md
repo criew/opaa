@@ -66,6 +66,11 @@ verweisen dürfen. Die Ordner folgen dem Baum.
     Schritte, fragen, anhängen und diktieren, Belege prüfen, Antworten weitergeben, Chats, Katalog,
     Space anlegen, Bibliothek und private Bibliothek anlegen, Konto verbinden, Prompts,
     Zugangstoken und KI-Werkzeug, Meine Daten
+- **Pflegen**
+  - [Pflegen](pflegen/README.md) — Aufgaben für alle mit einer Rolle an Bibliothek, Space oder
+    Gruppe
+    - [Konnektoren](pflegen/konnektoren/README.md) — alle Quellen im Überblick, je Konnektor ein
+      Kapitel
 - **Betrieb**
   - [Betriebsübersicht](betrieb/README.md) — Bausteine und ihr Zusammenspiel, Zeitzone, eine
     Organisation, Wegweiser zu den Kapiteln darunter
@@ -123,8 +128,6 @@ verweisen dürfen. Die Ordner folgen dem Baum.
     Detailansicht, in einem Space verwenden
   - [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md) — Quelle anbinden oder
     hochladen, aktuell halten, wie ein Dokument gelesen wird
-    - [Konnektoren](arbeitsmittel/wissensbibliotheken/konnektoren/README.md) — alle Quellen im
-      Überblick, je Konnektor ein Kapitel
     - [Formate](arbeitsmittel/wissensbibliotheken/formate/README.md) — zugelassene Formate, je
       Format ein Kapitel
     - [Metadaten](arbeitsmittel/wissensbibliotheken/metadaten.md) — Kernfelder, Bibliotheksfelder,
@@ -151,7 +154,7 @@ verweisen dürfen. Die Ordner folgen dem Baum.
 | Rechte vergeben, Gruppen nutzen | [Berechtigungen](konten-und-rechte/berechtigungen.md) |
 | Eine Person scheidet aus, ein Referat wird aufgelöst | [Berechtigungen](konten-und-rechte/berechtigungen.md): „Lebenszyklus" → [Benutzerverwaltung](konten-und-rechte/benutzerverwaltung.md) |
 | „Wer durfte das am 3. März lesen?" | [Berechtigungen](konten-und-rechte/berechtigungen.md): „Nachweis: Rechtehistorie und Stichtagsauskunft" |
-| Eine neue Quelle anschließen | [Konnektoren](arbeitsmittel/wissensbibliotheken/konnektoren/README.md) → Kapitel des Konnektors → bei Bedarf [Zugänge](arbeitsmittel/zugaenge.md) |
+| Eine neue Quelle anschließen | [Konnektoren](pflegen/konnektoren/README.md) → Kapitel des Konnektors → bei Bedarf [Zugänge](arbeitsmittel/zugaenge.md) |
 | Dokumente fehlen oder sind veraltet | [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md): „Protokoll und Fehler" → Laufprotokoll der Bibliothek → Kapitel des Formats |
 | Eine Antwort ist schlecht | [Suche](spaces/suche.md): „Diagnose" und „Typische Befunde" → je nach Befund [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md) oder [Metadaten](arbeitsmittel/wissensbibliotheken/metadaten.md) |
 | Ein Update steht an | [Aktualisierung](betrieb/aktualisierung.md) → [Docker Compose](betrieb/docker-compose.md) bzw. [Kubernetes](betrieb/kubernetes.md): „Aktualisierung …" |

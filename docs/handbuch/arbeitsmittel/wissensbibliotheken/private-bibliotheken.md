@@ -4,8 +4,8 @@ Eine **private Bibliothek** speist sich aus dem verbundenen Konto ihrer Besitzer
 für Personen (Kapitel [Zugänge](../zugaenge.md)). Ihr Inhalt ist, was die Person
 beim Anbieter selbst sieht, und außer ihr liest ihn niemand. Anlegen lässt sie sich mit einem Konnektor,
 der die Besitzart „Person“ anbietet; von den mitgelieferten sind das Nextcloud
-([Konnektor Nextcloud](konnektoren/nextcloud.md), „Verbundenes Konto“) und
-[OneDrive](konnektoren/onedrive.md).
+([Konnektor Nextcloud](../../pflegen/konnektoren/nextcloud.md), „Verbundenes Konto“) und
+[OneDrive](../../pflegen/konnektoren/onedrive.md).
 
 **Anlegen.** Die Person wählt beim Anlegen „privat“; bei einem Zugang, der Bibliotheken
 und Personen zulässt, entscheidet allein diese Wahl, und sie bleibt für immer. Im Assistenten steht

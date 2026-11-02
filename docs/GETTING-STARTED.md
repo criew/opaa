@@ -63,7 +63,7 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 6. [Roadmap](./ROADMAP.md) — Metriken, Grenzen,
    Kostentransparenz
 7. [Wissensbibliotheken](./handbuch/arbeitsmittel/wissensbibliotheken/README.md) und
-   [Konnektoren](./handbuch/arbeitsmittel/wissensbibliotheken/konnektoren/README.md) — was indiziert wird und wie oft
+   [Konnektoren](handbuch/pflegen/konnektoren/README.md) — was indiziert wird und wie oft
 8. [Gesamtstand](./fortschritt/gesamtstand.md) — der ehrliche Stand, belegt über die Inventur
 
 **Worauf es dabei ankommt:**

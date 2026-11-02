@@ -1,5 +1,9 @@
 # Konnektor: Webverzeichnis
 
+> **Wer darf das:** anlegen, wer „Konnektorbibliotheken anlegen“ für diese Quellart oder ihren
+> Zugang hat; ab Werk jedes Konto.
+> Quelle, Umfang und Zeitplan ändert danach, wer an der Bibliothek *Verwalter* oder *Eigentümer* ist.
+
 ## 1. Was der Konnektor ist
 
 Der Konnektor liest eine **automatisch erzeugte Verzeichnisliste**, wie sie ein Webserver für einen
@@ -17,7 +21,7 @@ flowchart LR
 ```
 
 - **Anmeldung:** keine oder HTTP Basic mit Benutzername und Passwort, eigene Zugangsdaten der
-  Bibliothek ([Zugänge](../../zugaenge.md), „Eigene Zugangsdaten der Bibliothek"). Ein Zugang ist
+  Bibliothek ([Zugänge](../../arbeitsmittel/zugaenge.md), „Eigene Zugangsdaten der Bibliothek"). Ein Zugang ist
   möglich.
 - **Liest:** alle Dateien in unterstützten Formaten unter der Start-Adresse, rekursiv.
 - **Dokument:** Die Adresse der Datei ist die Identität.
@@ -100,7 +104,7 @@ Wurzel, mit einer Warnung im Log. Ein Anhang liegt im Ordner seiner Mail.
 ## 7. Anhänge
 
 Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Grenzen des Kapitels
-[E-Mail](../formate/mail.md). Links in Verzeichnislisten gelten nicht als Anlagen.
+[E-Mail](../../arbeitsmittel/wissensbibliotheken/formate/mail.md). Links in Verzeichnislisten gelten nicht als Anlagen.
 
 ## 8. Grenzen und Schutzmechanismen
 
@@ -153,28 +157,3 @@ komprimierte Inhalte liegen in den Formaten.
 Eine Wartungsseite mit HTTP 200 enthält keine Verzeichnisliste: Der Lauf endet erfolgreich mit null
 Einträgen und entfernt nichts. Wird ein Lauf während einer Datei gestoppt, endet er mit „Lauf
 unterbrochen", ohne die Datei als Fehler zu zählen.
-
-## 10. Konfiguration
-
-| Schlüssel | Umgebungsvariable | Standard | Wirkung |
-|---|---|---|---|
-| `opaa.indexing.crawl.max-depth` | `OPAA_INDEXING_CRAWL_MAX_DEPTH` | 10 | Verzeichnistiefe, Wurzel ist 0; 0 bedeutet Standard |
-| `opaa.indexing.crawl.max-entries` | `OPAA_INDEXING_CRAWL_MAX_ENTRIES` | 50000 | Dateien und besuchte Verzeichnisse zusammen |
-| `opaa.indexing.crawl.max-file-size-bytes` | `OPAA_INDEXING_CRAWL_MAX_FILE_SIZE_BYTES` | 104857600 (100 MiB) | Obergrenze je Datei |
-| `opaa.indexing.http.user-agent` | `OPAA_INDEXING_HTTP_USER_AGENT` | `OPAA-Indexer/1.0` | `User-Agent`, gemeinsam mit Feed und Confluence; wahrheitsgemäß, keine Browser-Imitation |
-| `opaa.indexing.http.max-rate-limit-retries` | `OPAA_INDEXING_HTTP_MAX_RATE_LIMIT_RETRIES` | 6 | aufeinanderfolgende 429-Antworten, die eine Anfrage abwartet |
-| `opaa.indexing.http.max-retry-after` | `OPAA_INDEXING_HTTP_MAX_RETRY_AFTER` | 2m | Obergrenze einer Wartezeit aus `Retry-After`; ohne Header fünf Sekunden |
-| `opaa.indexing.http.request-budget-per-run` | `OPAA_INDEXING_HTTP_REQUEST_BUDGET_PER_RUN` | 0 (unbegrenzt) | Anfragen je Lauf einschließlich Wiederholungen, gemeinsam mit dem Feed |
-| `opaa.indexing.http.max-rate-limit-wait-per-run` | `OPAA_INDEXING_HTTP_MAX_RATE_LIMIT_WAIT_PER_RUN` | 15m | Summe der 429-Wartezeiten je Lauf, gemeinsam mit dem Feed |
-
-Nicht konfigurierbar: Verzeichnisseiten-Grenze, Timeouts, Zahl der Redirects. Zugangsdaten
-verschlüsselt der Schlüssel aus `OPAA_CREDENTIALS_ENCRYPTION_KEY`; die Zieladressprüfung steht in der
-[Übersicht](README.md#12-zieladressprüfung).
-
-## 11. Nicht gebaut
-
-- Wartezeit zwischen Anfragen; die gibt es nur beim Feed
-- Wiederholungen über die 429-Wartezeit hinaus
-- Bedingte Anfragen mit ETag oder If-Modified-Since
-- Schonzeitraum, Rechteübernahme, ereignisgesteuerte Aktualisierung, Drosselung nach wiederholtem
-  Scheitern

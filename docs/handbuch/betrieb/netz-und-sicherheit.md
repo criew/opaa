@@ -442,7 +442,7 @@ Ablage landet.
 **Als fremd gilt jeder Inhalt, den nicht das Haus selbst verantwortet:** Feeds und Webseiten,
 E-Mail-Dateien, Wikis wie Confluence (jede Person mit Bearbeitungsrecht im Wiki), geteilte Ablagen
 wie SMB-Freigaben oder SharePoint und Uploads; alle Quellen nennt die
-[Übersicht der Konnektoren](../arbeitsmittel/wissensbibliotheken/konnektoren/README.md). Was dort
+[Übersicht der Konnektoren](../pflegen/konnektoren/README.md). Was dort
 steht, erreicht über die Suche das Modell.
 
 **Was unabhängig vom Modell wirkt:**

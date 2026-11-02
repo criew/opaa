@@ -1,5 +1,9 @@
 # Konnektor: Google Drive
 
+> **Wer darf das:** anlegen, wer „Konnektorbibliotheken anlegen“ für diese Quellart oder ihren
+> Zugang hat; ab Werk nur die Systemverwaltung, bis sie die Quellart oder einen Zugang freigibt.
+> Quelle, Umfang und Zeitplan ändert danach, wer an der Bibliothek *Verwalter* oder *Eigentümer* ist.
+
 ## 1. Was der Konnektor ist
 
 Der Konnektor liest **geteilte Ablagen und Ordner eines Google-Workspace-Mandanten** über die
@@ -15,7 +19,7 @@ flowchart LR
 ```
 
 - **Anmeldung:** mit einem **Dienstkonto-Schlüssel**. Über einen Zugang meldet sich der Zugang
-  selbst an ([Zugänge](../../zugaenge.md), „Der Zugang meldet sich selbst an"); ohne Zugang trägt die
+  selbst an ([Zugänge](../../arbeitsmittel/zugaenge.md), „Der Zugang meldet sich selbst an"); ohne Zugang trägt die
   Bibliothek den Schlüssel als eigene Zugangsdaten. Gelesen wird mit dem Scope `drive.readonly`. Das
   Dienstkonto sieht, was mit ihm geteilt ist; mit **domänenweiter Delegation** imitiert es ein Konto
   der Domäne und sieht, was dieses sieht. Ein Zugang ist möglich und darf das imitierte Konto
@@ -62,7 +66,7 @@ Dienstkonto, das nur ihm freigegebene Daten liest, braucht keine Verifizierung d
 5. Unter **Administration → Anbindungen → Zugänge** einen Zugang für Google Drive mit der Anmeldeart
    Dienstkonto-Schlüssel anlegen, die JSON-Datei hochladen und mit „Anmeldung testen" prüfen; die
    Client-ID übernimmt OPAA aus der Datei. Die Quellart und jeder neue Zugang sind ab Werk nur für die
-   Systemverwaltung freigegeben ([Berechtigungen](../../../konten-und-rechte/berechtigungen.md), „Konnektor-Freigabe").
+   Systemverwaltung freigegeben ([Berechtigungen](../../konten-und-rechte/berechtigungen.md), „Konnektor-Freigabe").
 
 OPAA speichert aus der Datei nur Adresse, Kennung und privaten Schlüssel, verschlüsselt; die Anmeldung
 geht immer an `https://oauth2.googleapis.com/token`, die Abrufe an `https://www.googleapis.com`.
@@ -125,12 +129,12 @@ ist, entfernt ein Vollabgleich im selben Lauf, nach einem Änderungslauf der nä
 
 Die Ordnerkette bis zum Bereich erscheint als Ordner der Bibliothek; bei mehreren Bereichen steht der
 Name der Ablage bzw. des Ordners vorn. Namen, die keinen Ordner tragen können, und zu tiefe Ketten
-folgen den Regeln des Kapitels [Wissensbibliotheken](../README.md).
+folgen den Regeln des Kapitels [Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md).
 
 ## 7. Anhänge
 
 Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Grenzen des Kapitels
-[E-Mail](../formate/mail.md).
+[E-Mail](../../arbeitsmittel/wissensbibliotheken/formate/mail.md).
 
 ## 8. Grenzen und Schutzmechanismen
 
@@ -190,28 +194,3 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 | „Google Drive drosselt die Anfragen weiterhin" | nach allen Wiederholungen; der Strom wird erneut gelesen | Zeitplan entzerren |
 | „Das Tageskontingent der Drive-API ist erschöpft" | Lauf beendet | abwarten, Kontingent prüfen |
 | „Google Drive nimmt den gespeicherten Stand des Änderungsprotokolls nicht mehr an" | nächster Lauf ist ein Vollabgleich | nichts |
-
-## 10. Konfiguration
-
-Alle Schlüssel unter `opaa.indexing.google-drive.*`.
-
-| Schlüssel | Umgebungsvariable | Standard | Wirkung |
-|---|---|---|---|
-| `page-size` | `OPAA_INDEXING_GOOGLE_DRIVE_PAGE_SIZE` | 1000 | Einträge je Auflistungs- und Änderungsseite; höchstens 1000 |
-| `max-file-size-bytes` | `OPAA_INDEXING_GOOGLE_DRIVE_MAX_FILE_SIZE_BYTES` | 52428800 (50 MiB) | Obergrenze je Download oder Export |
-| `request-timeout` | `OPAA_INDEXING_GOOGLE_DRIVE_REQUEST_TIMEOUT` | 30s | Timeout je Anfrage |
-| `download-timeout` | `OPAA_INDEXING_GOOGLE_DRIVE_DOWNLOAD_TIMEOUT` | 10m | Gesamtfrist je Download oder Export; danach folgt die Datei im nächsten Lauf |
-| `max-retries` | `OPAA_INDEXING_GOOGLE_DRIVE_MAX_RETRIES` | 5 | Wiederholungen einer gedrosselten Anfrage |
-| `retry-backoff` | `OPAA_INDEXING_GOOGLE_DRIVE_RETRY_BACKOFF` | 1s | Basis des wachsenden Abstands |
-| `request-budget-per-run` | `OPAA_INDEXING_GOOGLE_DRIVE_REQUEST_BUDGET_PER_RUN` | 20000 | Anfragen je Lauf |
-| `max-files-per-run` | `OPAA_INDEXING_GOOGLE_DRIVE_MAX_FILES_PER_RUN` | 1000000 | gelistete Dateien je Vollabgleich, bevor der Lauf scheitert |
-| `download-concurrency` | `OPAA_INDEXING_GOOGLE_DRIVE_DOWNLOAD_CONCURRENCY` | 2 | gleichzeitige Downloads je Lauf |
-
-Die Obergrenze von fünfzig Bereichen ist fest.
-
-## 11. Nicht gebaut
-
-- Push-Benachrichtigungen (`changes.watch`); der Änderungslauf im Zeitplan ersetzt sie
-- Persönliche Ablagen über verbundene Konten
-- Export über die Exportgrenze von Google hinaus
-- Übernahme von Rechten aus Drive

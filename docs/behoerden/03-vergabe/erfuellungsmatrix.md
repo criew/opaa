@@ -37,7 +37,7 @@ Faktenblatt.
 |---|---|---|---|
 | F-01 | ja | [Belege prüfen und Fundstellen bilden](../../handbuch/spaces/suche.md#7-belege-prüfen-und-fundstellen-bilden) | Handbuch |
 | F-02 | teilweise; Rechte der Quelle werden nicht übernommen, Leserechte werden je Bibliothek in OPAA vergeben und wirken in jeder Suchabfrage | [Aufbau der Berechtigungen](../../handbuch/konten-und-rechte/berechtigungen.md#1-der-aufbau-in-vier-objekten), {{faktenblatt:rollensicht#matrix}} | Handbuch, Faktenblatt |
-| F-03 | je nach Liste der Behörde | [Konnektoren im Überblick](../../handbuch/arbeitsmittel/wissensbibliotheken/konnektoren/README.md#3-die-konnektoren-im-überblick); Verbindungen je Quelle in {{faktenblatt:datenfluesse}} | Handbuch, Faktenblatt |
+| F-03 | je nach Liste der Behörde | [Konnektoren im Überblick](../../handbuch/pflegen/konnektoren/README.md#3-die-konnektoren-im-überblick); Verbindungen je Quelle in {{faktenblatt:datenfluesse}} | Handbuch, Faktenblatt |
 | F-04 | ja | [Zugelassene Formate](../../handbuch/arbeitsmittel/wissensbibliotheken/formate/README.md#zugelassene-formate) | Handbuch |
 | F-05 | ja | [Suchen ohne Antwort](../../handbuch/spaces/suche.md#71-suchen-ohne-antwort) | Handbuch |
 | F-06 | ja | [Spracheingabe einschalten](../../handbuch/betrieb/modelle.md#spracheingabe-einschalten), [Endpunkt im Haus](../../handbuch/betrieb/modelle.md#vorhandenen-endpunkt-im-haus-eintragen), {{faktenblatt:voreinstellungen#ki-funktion-speech-transcription}} | Handbuch, Konfiguration, Faktenblatt |
@@ -107,7 +107,7 @@ Faktenblatt.
 
 | Nr. | Erfüllung | Grundlage aus dem Projekt | Art |
 |---|---|---|---|
-| L-01 | Dienstleister | [Kubernetes-Installation](../../handbuch/betrieb/kubernetes.md#installation), [Authentifizierung](../../handbuch/betrieb/authentifizierung.md), [Konnektoren](../../handbuch/arbeitsmittel/wissensbibliotheken/konnektoren/README.md) | Handbuch |
+| L-01 | Dienstleister | [Kubernetes-Installation](../../handbuch/betrieb/kubernetes.md#installation), [Authentifizierung](../../handbuch/betrieb/authentifizierung.md), [Konnektoren](../../handbuch/pflegen/konnektoren/README.md) | Handbuch |
 | L-02 | Dienstleister | [Notfallkonzept](../09-betrieb-update/notfallkonzept.md), [Mehrere Backend-Instanzen](../../handbuch/betrieb/mehrere-instanzen.md) | Projektunterlage, Handbuch |
 | L-03 | Dienstleister; Patch-Releases einer Linie bringen keine neue Funktion, das LTS wechselt einmal im Jahr | [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume), [Unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen), [Update-Paket](../../handbuch/betrieb/releases-und-nachweise.md#das-update-paket) | Projektunterlage, Handbuch |
 | L-04 | Dienstleister; das Projekt sagt keine Reaktionszeiten zu | [Ablauf bei Sicherheitslücken](../../../SECURITY.md#ablauf) | Projektunterlage |

@@ -1,11 +1,15 @@
 # Konnektor: Confluence
 
+> **Wer darf das:** anlegen, wer „Konnektorbibliotheken anlegen“ für diese Quellart oder ihren
+> Zugang hat; ab Werk jedes Konto.
+> Quelle, Umfang und Zeitplan ändert danach, wer an der Bibliothek *Verwalter* oder *Eigentümer* ist.
+
 ## 1. Was der Konnektor ist
 
 Der Konnektor liest **Seiten und Anhänge ausgewählter Spaces** einer Confluence-Instanz, Cloud oder
 Data Center. Er spricht die **Confluence-REST-API**: bei Cloud die Version 2 (`/wiki/api/v2`) und für
 die Änderungssuche die CQL-Suche der Version 1, bei Data Center die Version 1 (`/rest/api`). Die
-Aufbereitung des Seiteninhalts beschreibt das Kapitel [Confluence-Seite](../formate/confluence.md).
+Aufbereitung des Seiteninhalts beschreibt das Kapitel [Confluence-Seite](../../arbeitsmittel/wissensbibliotheken/formate/confluence.md).
 
 ```mermaid
 flowchart LR
@@ -15,7 +19,7 @@ flowchart LR
     C -.->|Webhook| B
 ```
 
-- **Anmeldung:** eigene Zugangsdaten der Bibliothek ([Zugänge](../../zugaenge.md), „Eigene
+- **Anmeldung:** eigene Zugangsdaten der Bibliothek ([Zugänge](../../arbeitsmittel/zugaenge.md), „Eigene
   Zugangsdaten der Bibliothek"): bei Cloud E-Mail-Adresse und API-Token als HTTP Basic, bei Data
   Center ein Personal Access Token als `Bearer`. Ein Zugang ist möglich und darf die Edition
   vorgeben.
@@ -134,7 +138,7 @@ alte Geheimnis gilt sofort nicht mehr, und das neue muss in Confluence nachgetra
 gehen Benachrichtigungen still verloren, und nur der Vollabgleich fängt die Änderungen auf.
 „Webhook entfernen" schließt den Eingang. Der Eingang muss von Confluence aus erreichbar sein, über
 TLS; der vorgelagerte Proxy muss `X-Forwarded-For` setzen
-([Vertraute Proxys](../../../betrieb/netz-und-sicherheit.md#vertraute-proxys-und-client-adresse)), sonst greift die Ratenbegrenzung je Client nicht.
+([Vertraute Proxys](../../betrieb/netz-und-sicherheit.md#vertraute-proxys-und-client-adresse)), sonst greift die Ratenbegrenzung je Client nicht.
 
 - **Data Center:** Administration → Webhooks → Webhook erstellen; Adresse und Geheimnis aus OPAA.
   Confluence signiert jede Nachricht (`X-Hub-Signature`), OPAA prüft sie. Ereignisse: Seite
@@ -255,40 +259,3 @@ fest 30 s Verbindungsaufbau und 120 s bis zur Antwort eines Anhangs. Makros, der
 Die Laufhistorie zeigt aufgeklappt eine Kennzahlenzeile, etwa „1842 Anfragen an die Quelle · 3-mal
 gedrosselt (95 s gewartet) · Anhänge: 120 indiziert, 800 übersprungen, 2 fehlgeschlagen · Dauer 42 min
 10 s". Liegt ein Vollabgleich regelmäßig nah am Budget, ist die Auswahl für einen Lauf zu groß.
-
-## 11. Konfiguration
-
-Alle Schlüssel unter `opaa.indexing.confluence.*`, Umgebungsvariablen `OPAA_INDEXING_CONFLUENCE_*`.
-
-| Schlüssel | Standard | Wirkung |
-|---|---|---|
-| `page-size` | 100 | Seitengröße jeder Auflistung; Cloud kappt bei 250, Data Center bei 200 |
-| `request-timeout` | 30s | Timeout je JSON-Anfrage |
-| `detection-timeout` | 10s | Timeout je Sonde der Editionserkennung |
-| `max-rate-limit-retries` | 6 | aufeinanderfolgende 429-Antworten, die eine Anfrage abwartet |
-| `max-retry-after` | 2m | Obergrenze einer Wartezeit aus `Retry-After`; ohne Header fünf Sekunden |
-| `max-response-bytes` | 10485760 (10 MiB) | Obergrenze je JSON-Antwort |
-| `max-attachment-size-bytes` | 20971520 (20 MiB) | Obergrenze je Anhang |
-| `max-listing-pages` | 500 | Seiten je Auflistung, bevor sie abgebrochen wird |
-| `incremental-overlap` | 10m | Überlappung des Änderungsfensters nach hinten |
-| `request-budget-per-run` | 50000 | Anfragen je Lauf; `0` schaltet das Budget ab |
-
-Der Webhook-Eingang teilt sich die Werte mit den S3-Ereignissen (`opaa.indexing.events.*`):
-
-| Schlüssel | Standard | Wirkung |
-|---|---|---|
-| `events.debounce` | 5s | Sammelzeit je Bibliothek |
-| `events.max-pending-keys` | 500 | darüber ein gewöhnlicher Lauf statt Einzelabrufen |
-| `events.max-deferrals` | 120 | Wartezyklen, bevor ein Stapel verworfen wird (zehn Minuten) |
-
-Dazu die Ratenbegrenzung des Eingangs (`OPAA_RATE_LIMIT_WEBHOOK_*`,
-[Konfiguration](../../../betrieb/konfiguration.md#alle-umgebungsvariablen));
-der `User-Agent` kommt aus `opaa.indexing.http.user-agent`.
-
-## 12. Nicht gebaut
-
-- Abbildung von Confluence-Rechten auf OPAA-Rechte
-- Blogbeiträge, Kommentare, Whiteboards, Datenbanken
-- Ordner entlang der Seitenhierarchie
-- Schutz gegen wieder eingespielte Nachrichten und Ergebnisrückmeldung für Webhooks
-- Koordination des Ratenbudgets über mehrere Bibliotheken derselben Instanz

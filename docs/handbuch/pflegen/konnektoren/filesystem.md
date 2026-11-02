@@ -1,5 +1,9 @@
 # Konnektor: Verzeichnis im Dateisystem
 
+> **Wer darf das:** anlegen, wer „Konnektorbibliotheken anlegen“ für diese Quellart oder ihren
+> Zugang hat; ab Werk jedes Konto.
+> Quelle, Umfang und Zeitplan ändert danach, wer an der Bibliothek *Verwalter* oder *Eigentümer* ist.
+
 ## 1. Was der Konnektor ist
 
 Der Konnektor liest ein Verzeichnis, das der Backend-Prozess als **lokalen Pfad** sieht: ein
@@ -15,7 +19,7 @@ flowchart LR
 ```
 
 - **Anmeldung:** keine. Es gilt das, was die Kennung des Backend-Prozesses lesen darf. Ein
-  [Zugang](../../zugaenge.md) ist nicht möglich; Zugangsdaten eines Netzlaufwerks gehören in den Mount.
+  [Zugang](../../arbeitsmittel/zugaenge.md) ist nicht möglich; Zugangsdaten eines Netzlaufwerks gehören in den Mount.
 - **Liest:** alle regulären Dateien unter dem Pfad, deren Inhalt ein unterstütztes Format ist, samt
   Unterverzeichnissen. Nicht gelesen werden versteckte Einträge, Windows-Systemordner und was die
   Ausschlussmuster treffen (Abschnitt 3).
@@ -34,7 +38,7 @@ flowchart LR
    dürfen: über die Rechte für „andere" (`chmod -R o+rX`), eine gemeinsame Gruppe oder auf einem
    Netzlaufwerk über die Mount-Optionen (`uid=65532,gid=65532`). Ein `chown` ist der falsche Weg,
    wenn ein Fachverfahren das Verzeichnis befüllt: Es nähme dem Schreiber die Rechte. Einzelheiten
-   unter [Nicht-root-Betrieb des Backend-Containers](../../../betrieb/docker-compose.md#nicht-root-betrieb-des-backend-containers).
+   unter [Nicht-root-Betrieb des Backend-Containers](../../betrieb/docker-compose.md#nicht-root-betrieb-des-backend-containers).
 4. **Freigegebene Verzeichnisse vor Endnutzenden schützen.** Die Freigabeprüfung löst symbolische
    Links nicht auf; ein Link nach außen würde beim Lesen verfolgt (Abschnitt 8).
 5. Den Bibliotheksverwaltenden die freigegebenen Verzeichnisse nennen; die Oberfläche zeigt sie nicht.
@@ -115,7 +119,7 @@ darstellen; die Dateien darunter landen in der Wurzel, mit einer Warnung im Log.
 ## 7. Anhänge
 
 Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Grenzen des Kapitels
-[E-Mail](../formate/mail.md). Eine unveränderte Mail wird nicht neu ausgepackt; ein früher
+[E-Mail](../../arbeitsmittel/wissensbibliotheken/formate/mail.md). Eine unveränderte Mail wird nicht neu ausgepackt; ein früher
 gescheiterter Anhang wird erst wieder versucht, wenn sich die Mail ändert oder ein Pipeline-Nachzug
 angestoßen wird.
 
@@ -145,27 +149,8 @@ angestoßen wird.
 | „Dateiendung passt nicht zum erkannten Inhalt (erkannt: …)" | wird trotzdem indiziert | nichts |
 | „Nicht lesbar, übersprungen" | Unterverzeichnis darf nicht betreten werden; sein Bestand bleibt | Rechte der Kennung 65532 prüfen |
 | „In der Quelle nicht mehr gefunden, entfernt" | Löscherkennung | nichts |
-| Kontingent-Meldung, „kein extrahierbarer Text", „Verarbeitung fehlgeschlagen" | wie bei jeder Quelle | Kapitel [Wissensbibliotheken](../README.md) |
+| Kontingent-Meldung, „kein extrahierbarer Text", „Verarbeitung fehlgeschlagen" | wie bei jeder Quelle | Kapitel [Wissensbibliotheken](../../arbeitsmittel/wissensbibliotheken/README.md) |
 | „Geplanter Lauf übersprungen: Indizierung läuft bereits" | Zeitplan traf einen laufenden Lauf | nichts |
 
 Eine Datei, die zwischen Aufzählung und Verarbeitung verschwindet oder gesperrt ist, erscheint als
 „Format nicht unterstützt" oder „Fehler"; der Lauf geht weiter.
-
-## 10. Konfiguration
-
-| Schlüssel | Umgebungsvariable | Standard | Wirkung |
-|---|---|---|---|
-| `opaa.indexing.filesystem.allowlist` | `OPAA_INDEXING_FILESYSTEM_ALLOWLIST` | leer | kommagetrennte absolute Basisverzeichnisse; leer schaltet den Konnektor ab |
-
-Thread-Pool, Kontingent, Zerlegung und Einbettung gelten für alle Quellen und stehen im Kapitel
-[Wissensbibliotheken](../README.md).
-
-## 11. Nicht gebaut
-
-- Einschlussmuster
-- Abschalten der Standardausschlüsse
-- Übernahme von Zugriffsrechten aus dem Dateisystem
-- Schonzeitraum, in dem eine Quelle nicht gelesen wird
-- Automatische Drosselung des Zeitplans nach wiederholtem Scheitern; sichtbar ist nur das
-  Warnbanner nach zwei fehlgeschlagenen geplanten Läufen
-- Aktualisierung durch Dateisystem-Benachrichtigungen

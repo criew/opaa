@@ -149,6 +149,8 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
 - **[`handbuch/README.md`](./handbuch/README.md)** — Einstieg: was OPAA ist, der Kapitelbaum,
   Lesewege nach Anlass. Die Ordner folgen dem Kapitelbaum; die Kapitel im Einzelnen:
   - Arbeiten ([`arbeiten/`](handbuch/arbeiten/README.md)): eine Seite je Aufgabe für jedes Konto
+  - Pflegen ([`pflegen/`](handbuch/pflegen/README.md)) mit
+    [`konnektoren/`](handbuch/pflegen/konnektoren/README.md)
   - Betrieb ([`betrieb/`](handbuch/betrieb/README.md), Bausteine und Wegweiser) mit
     [`images-und-laufzeit.md`](handbuch/betrieb/images-und-laufzeit.md),
     [`netz-und-sicherheit.md`](handbuch/betrieb/netz-und-sicherheit.md) (Härtung),
@@ -169,7 +171,6 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
   - Arbeitsmittel ([`arbeitsmittel/`](handbuch/arbeitsmittel/)):
     [`katalog.md`](handbuch/arbeitsmittel/katalog.md),
     [`wissensbibliotheken/`](handbuch/arbeitsmittel/wissensbibliotheken/README.md) mit
-    [`konnektoren/`](handbuch/arbeitsmittel/wissensbibliotheken/konnektoren/README.md),
     [`formate/`](handbuch/arbeitsmittel/wissensbibliotheken/formate/README.md),
     [`metadaten.md`](handbuch/arbeitsmittel/wissensbibliotheken/metadaten.md) und
     [`private-bibliotheken.md`](handbuch/arbeitsmittel/wissensbibliotheken/private-bibliotheken.md);
