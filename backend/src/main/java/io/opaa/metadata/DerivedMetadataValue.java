@@ -3,7 +3,7 @@ package io.opaa.metadata;
 import java.util.UUID;
 
 /**
- * One value the model-backed extraction accepted (ADR-0024): already checked against the offered
+ * One value the model-backed extraction accepted (ADR-0026): already checked against the offered
  * vocabulary and the confidence threshold, so storing it is the only step left.
  *
  * @param libraryValueId the chosen list entry of a library SELECT field, {@code null} for the

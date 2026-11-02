@@ -218,7 +218,7 @@ public class KnowledgeLibrary extends Asset {
   private boolean diagnosticsLocked = true;
 
   /**
-   * Whether the model-backed extraction (ADR-0024) runs for this library. Off by default: with an
+   * Whether the model-backed extraction (ADR-0026) runs for this library. Off by default: with an
    * externally operated chat model it makes every ingested document leave the house without a
    * person triggering it.
    */
@@ -226,7 +226,7 @@ public class KnowledgeLibrary extends Asset {
   private boolean modelExtractionEnabled = false;
 
   /**
-   * Whether the model assigns freie Schlagworte to this library's documents (ADR-0024). Off by
+   * Whether the model assigns freie Schlagworte to this library's documents (ADR-0026). Off by
    * default, and subject to the same Abfluss as {@link #modelExtractionEnabled}.
    */
   @Column(name = "keywords_enabled", nullable = false)

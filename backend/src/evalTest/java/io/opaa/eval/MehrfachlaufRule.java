@@ -6,10 +6,11 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
- * The Mehrfachlauf-Regel itself (ADR-0012, 2.–3.), in one place for every caller that measures the
- * pipeline: a configuration with active Teilfragen-Zerlegung has an LLM component and is therefore
- * not deterministic — it is measured {@link MultiRunAggregator#DECOMPOSITION_RUN_COUNT} times and
- * represented by its median run. Every other configuration is measured exactly once.
+ * The Mehrfachlauf-Regel itself (ADR-0012, Entscheidung 42), in one place for every caller that
+ * measures the pipeline: a configuration with active Teilfragen-Zerlegung has an LLM component and
+ * is therefore not deterministic — it is measured {@link
+ * MultiRunAggregator#DECOMPOSITION_RUN_COUNT} times and represented by its median run. Every other
+ * configuration is measured exactly once.
  *
  * <p>Shared by {@link VariantRunner}, the single-configuration pipeline path ({@link
  * PipelineHarnessSupport#runAndWriteGuarded}) and the Referenzvarianten-Selbstprüfung ({@link

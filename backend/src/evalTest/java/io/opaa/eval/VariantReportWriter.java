@@ -99,9 +99,9 @@ public final class VariantReportWriter {
   }
 
   /**
-   * The Mehrfachlauf-Regel's own reporting requirement (issue #1044, ADR-0012): minimum, median and
-   * maximum per metric, plus the deviation count that is "die eigentliche Kennzahl der
-   * Instabilität" — never a significance claim, only the three numbers and a count.
+   * The Mehrfachlauf-Regel's own reporting requirement (ADR-0012): minimum, median and maximum per
+   * metric, plus the deviation count that is "die eigentliche Kennzahl der Instabilität" — never a
+   * significance claim, only the three numbers and a count.
    */
   private static String renderMultiRun(MultiRunSummary summary) {
     StringBuilder sb = new StringBuilder();

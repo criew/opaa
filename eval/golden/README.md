@@ -77,8 +77,7 @@ aus einem Messlauf wieder eintragen — die Generatoren kennen sie nicht.
 ist der Ist-Zustand aus dem nächtlichen Lauf vom 14.09.2026. Seit #1657 nennt jeder
 `known_gap`-Grund beider Datensätze zuerst den fehlenden Baustein und danach das Symptom aus einem
 CPU-Testcontainer-Lauf auf dem Stand nach #1341. Wiederholt sich ein Baustein, ist die Formulierung
-einheitlich. Die Zuordnung Baustein → Fälle je Pfad steht in
-[Roadmap](../../docs/ROADMAP.md) §5.
+einheitlich.
 
 **Wann ein Fall auf einem Pfad als `solved` gilt** (`io.opaa.eval.ExpectedStateAudit#isSolved`):
 alle erwarteten Dokumente im Fenster dieses Pfads **und** ein erwartetes Dokument auf Rang 1. Die

@@ -17,7 +17,7 @@ import org.springframework.ai.document.Document;
 
 /**
  * Builds the Kontextpräfix every chunk of a document carries into embedding and full-text index
- * (ADR-0024): {@code Titel › Fassung 2026 › § 7 Gebühren}. The segments are title, the
+ * (ADR-0026): {@code Titel › Fassung 2026 › § 7 Gebühren}. The segments are title, the
  * prefix-effective metadata values in schema order and the chunk's own Strukturkontext; a blank
  * segment is left out entirely, and a prefix without any segment does not exist. The prefix is part
  * of the chunk's presentation, never of its stored text - the quoted excerpt in a Beleg stays the

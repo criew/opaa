@@ -180,14 +180,14 @@ public class DocumentMetadataService {
               });
     }
     // A Format field carries no Kontextpraefix-Wirkstelle: nobody defines it, so nobody chose one,
-    // and the Wirkstelle is never a default (ADR-0024, Wirkung).
+    // and the Wirkstelle is never a default (ADR-0024).
     KnowledgeLibrary library =
         document.getLibraryId() == null
             ? null
             : libraryRepository.findById(document.getLibraryId()).orElse(null);
     List<String> prefixValues = new ArrayList<>();
     // The freie Schlagworte ride in the Kontextpraefix like every other prefix-effective value
-    // (ADR-0024): one segment, hashed into the Abdruck with the rest, so a
+    // (ADR-0026): one segment, hashed into the Abdruck with the rest, so a
     // changed keyword set hands the document to the Nachlauf exactly like a changed field value -
     // and reaches the full-text index through the same formatter, never through a key a filter
     // could name.
@@ -418,7 +418,7 @@ public class DocumentMetadataService {
   }
 
   /**
-   * Stores the values the model-backed extraction accepted (ADR-0024) and rewrites the document's
+   * Stores the values the model-backed extraction accepted (ADR-0026) and rewrites the document's
    * filterable chunk keys in the same transaction. A field that already carries a row - of any
    * origin - is skipped: step 2 only ever fills what step 1 left empty, and a manual correction is
    * never overwritten. Returns the effective chunk metadata afterwards.
@@ -463,7 +463,7 @@ public class DocumentMetadataService {
 
   /**
    * Hands {@code documentId} to the Kontextpraefix-Nachlauf when its prefix changed - the entry
-   * point of the model step, whose freie Schlagworte are a prefix segment (ADR-0024). During the
+   * point of the model step, whose freie Schlagworte are a prefix segment (ADR-0026). During the
    * ingest this is a no-op in effect: the chunks are written afterwards and record their own
    * Abdruck.
    */
@@ -555,7 +555,7 @@ public class DocumentMetadataService {
 
   /**
    * Hands {@code documentId} to the Kontextpraefix-Nachlauf when its prefix actually changed
-   * (ADR-0024) - compared, not guessed from the field: the stored Abdruck against the one this
+   * (ADR-0026) - compared, not guessed from the field: the stored Abdruck against the one this
    * document's values would produce now. Re-embedding stays an explicit release, never a side
    * effect of a value change; a field that only filters or only appears in the Beleg leaves the
    * Abdruck alone because it does not enter it.

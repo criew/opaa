@@ -15,7 +15,7 @@ import org.springframework.ai.document.Document;
 
 /**
  * Cuts a flat sequence of heading/paragraph events into chunks along the heading path in effect at
- * each cut (the format chapter of the Handbuch, DOCX ... | Überschriftenabschnitt").
+ * each cut (see the format chapter of the Handbuch).
  *
  * <p>No text is ever dropped for size: a block beyond the {@linkplain #softChunkCharLimit() target
  * size} is cut into parts by {@link BoundarySplitter}, each part a chunk of its own under the same

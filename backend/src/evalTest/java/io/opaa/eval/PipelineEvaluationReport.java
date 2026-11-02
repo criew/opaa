@@ -6,10 +6,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Machine-readable report of the pipeline measurement path (issue #1039, ADR-0012): the result of
- * running every golden case through the same chain a real request takes — sub-question
- * decomposition, one vector search per sub-question, MMR, Reciprocal Rank Fusion, document
- * completion — and stopping before answer generation.
+ * Machine-readable report of the pipeline measurement path (ADR-0012): the result of running every
+ * golden case through the same chain a real request takes — sub-question decomposition, one vector
+ * search per sub-question, MMR, Reciprocal Rank Fusion, document completion — and stopping before
+ * answer generation.
  *
  * <p>Deliberately a separate type from {@link EvaluationReport}, written to a separate file, with
  * its own contract version: the two paths measure different things, are not interconvertible, and a
@@ -278,8 +278,8 @@ public record PipelineEvaluationReport(
    * @param subQueries the search queries decomposition (or its single-query fallback) produced for
    *     this case in this run — see {@link
    *     io.opaa.retrieval.RetrievalPipelineResult#searchQueries()}. Recorded on every run, not only
-   *     decomposition-enabled ones, so a multi-run comparison (issue #1044, ADR-0012) can tell
-   *     whether decomposition produced a different sub-query set for the same question across runs.
+   *     decomposition-enabled ones, so a multi-run comparison (ADR-0012) can tell whether
+   *     decomposition produced a different sub-query set for the same question across runs.
    */
   public record PipelineQueryResult(
       String id,

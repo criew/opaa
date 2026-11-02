@@ -1,9 +1,9 @@
 package io.opaa.metadata;
 
 /**
- * Where the values of one field over one library came from (ADR-0024, Punkt 3). The four counts and
- * the empty rest are what distinguishes a weak filter from a weak extraction - a retrieval result
- * alone cannot.
+ * Where the values of one field over one library came from (ADR-0024). The four counts and the
+ * empty rest are what distinguishes a weak filter from a weak extraction - a retrieval result alone
+ * cannot.
  */
 public record MetadataFieldQuality(
     String fieldKey,

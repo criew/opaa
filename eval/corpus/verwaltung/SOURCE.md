@@ -161,8 +161,7 @@ beschrieben.
 
 ## Overfitting-Risiko
 
-Siehe `docs/decisions/0012-messvertrag-retrieval-harness.md`, „Ehrliche Einschränkung:
-Benchmark-Overfitting" — die dortige Einschränkung gilt unverändert für diesen Korpus: Es gibt für
+Ehrliche Einschränkung (Benchmark-Overfitting): Es gibt für
 diese Domäne keine echten Nutzerfragen, die Golden-Fälle (Issue-Folge zu #1042) werden von
 denselben Personen erdacht, die Korpus und Pipeline bauen. Ein Verfahren, das auf dieser Domäne
 gewinnt, gewinnt nachweislich gegen die hier konstruierten Annahmen über Verwaltungsanfragen —

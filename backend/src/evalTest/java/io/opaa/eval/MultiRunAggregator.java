@@ -8,16 +8,16 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Turns repeated pipeline runs into a {@link MultiRunSummary} (issue #1044, ADR-0012). Called only
- * through {@link MehrfachlaufRule}, which is where the "once or three times" decision itself lives;
- * kept as its own, Docker-free unit so the aggregation math is exercised without a real pipeline
- * (see {@code MultiRunAggregatorTest}).
+ * Turns repeated pipeline runs into a {@link MultiRunSummary} (ADR-0012). Called only through
+ * {@link MehrfachlaufRule}, which is where the "once or three times" decision itself lives; kept as
+ * its own, Docker-free unit so the aggregation math is exercised without a real pipeline (see
+ * {@code MultiRunAggregatorTest}).
  */
 final class MultiRunAggregator {
 
   /**
-   * "Solche Varianten laufen dreimal" (ADR-0012, 2.) — not a tunable, a specification decision. A
-   * different number is a specification change, not a configuration change.
+   * "Solche Varianten laufen dreimal" (ADR-0012, Entscheidung 42) — not a tunable, a specification
+   * decision. A different number is a specification change, not a configuration change.
    */
   static final int DECOMPOSITION_RUN_COUNT = 3;
 

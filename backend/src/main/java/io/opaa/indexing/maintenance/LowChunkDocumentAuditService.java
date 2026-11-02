@@ -24,8 +24,7 @@ public class LowChunkDocumentAuditService {
 
   /**
    * Default threshold: only the unambiguous zero-chunk anomaly. A higher, unmeasured "auffällig
-   * wenige" threshold is left to the caller (see the format chapter of the Handbuch own "gesetzt,
-   * nicht gemessen" rule for unmeasured chunk-size values).
+   * wenige" threshold is left to the caller.
    */
   public static final int DEFAULT_CHUNK_COUNT_THRESHOLD = 0;
 

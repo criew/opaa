@@ -4,11 +4,11 @@ import io.opaa.retrieval.QueryProperties;
 import java.util.Optional;
 
 /**
- * Decides whether a {@link PipelineVariant} can actually be measured (issue #1041, ADR-0012:
- * "Varianten mit nicht erfüllten Voraussetzungen werden übersprungen, nicht stillschweigend
- * degradiert"). A variant with an unmet prerequisite is never run — {@link VariantRunner} reports
- * it as skipped instead of measuring a configuration that would silently fall back to something
- * other than what its name promises.
+ * Decides whether a {@link PipelineVariant} can actually be measured (ADR-0012: "Varianten mit
+ * nicht erfüllten Voraussetzungen werden übersprungen, nicht stillschweigend degradiert"). A
+ * variant with an unmet prerequisite is never run — {@link VariantRunner} reports it as skipped
+ * instead of measuring a configuration that would silently fall back to something other than what
+ * its name promises.
  */
 final class VariantPrerequisites {
 

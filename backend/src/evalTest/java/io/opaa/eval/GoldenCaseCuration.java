@@ -90,9 +90,9 @@ public final class GoldenCaseCuration {
           "metadata_filter");
 
   /**
-   * The decision on ADR-0012 open point 4 ("{@code answer_span} bei Fallklassen mit mehreren
-   * Zieldokumenten je Dokument oder je Fall"), taken in issue #1043 and recorded in ADR-0012,
-   * Entscheidung 21: <b>per case, and only where the case has exactly one expected document.</b>
+   * The decision on ("{@code answer_span} bei Fallklassen mit mehreren Zieldokumenten je Dokument
+   * oder je Fall"), taken in issue #1043 and recorded in ADR-0012, Entscheidung 21: <b>per case,
+   * and only where the case has exactly one expected document.</b>
    *
    * <p>A single span on a case whose answer is spread over two documents would measure one half of
    * that answer and report it as the case's chunk-level result — a case the document-level metrics

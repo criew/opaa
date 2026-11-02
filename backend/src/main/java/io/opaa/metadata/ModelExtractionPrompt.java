@@ -3,7 +3,7 @@ package io.opaa.metadata;
 import java.util.List;
 
 /**
- * Builds the one prompt of the model-backed extraction (ADR-0024): the offered fields with their
+ * Builds the one prompt of the model-backed extraction (ADR-0026): the offered fields with their
  * codes and labels, the instruction to answer with a code or {@code null}, and the document's
  * Titelzeile plus a capped beginning of its text. The answer format it asks for is what {@link
  * ModelExtractionAnswer#parse} reads.

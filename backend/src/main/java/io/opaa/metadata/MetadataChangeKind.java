@@ -3,7 +3,7 @@ package io.opaa.metadata;
 import java.util.Optional;
 
 /**
- * The planned schema change whose Folgekosten are asked for before it is saved (ADR-0024). The
+ * The planned schema change whose Folgekosten are asked for before it is saved (ADR-0026). The
  * domain twin of the API's {@code MetadataChangeKind}, so no service reads a generated DTO type.
  */
 public enum MetadataChangeKind {

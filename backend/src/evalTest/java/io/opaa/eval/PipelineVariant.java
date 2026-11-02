@@ -43,8 +43,8 @@ public record PipelineVariant(
    * Partial override of {@link io.opaa.retrieval.QueryProperties}. Every field is nullable/boxed:
    * {@code null} means "inherit the production value", not zero. {@code topK} is deliberately not a
    * field here — the pipeline path's metric component names ({@code hitRateAt5}, {@code ndcgAt20},
-   * …) are pinned to the production window (ADR-0012, 4.), and a variant that changed it would need
-   * a new window and new component names, not a silently relabeled report.
+   * …) are pinned to the production window (ADR-0012), and a variant that changed it would need a
+   * new window and new component names, not a silently relabeled report.
    *
    * <p>{@code rerankCandidateCount} is a field here, and it is the one this comparison exists for
    * on the rerank side: the candidate window is a measured value, not a set-and- forgotten one

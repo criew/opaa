@@ -825,9 +825,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
                 + "die Zahl unabhängiger Beobachtungen; die Toleranzformel aus ADR-0013 rechnet "
                 + "ohnehin mit distinctExpectedDocumentSets statt mit n. Alle Fragen sind auf "
                 + "Deutsch: ein Sprachvergleich ist in dieser Domäne nicht vorgesehen. Die Fälle "
-                + "sind konstruiert, nicht aus echten Nutzeranfragen gewonnen — siehe "
-                + "ADR-0012, \"Ehrliche Einschränkung: "
-                + "Benchmark-Overfitting\".");
+                + "sind konstruiert, nicht aus echten Nutzeranfragen gewonnen.");
 
     // The pipeline registry DocumentIngestService actually routed through while indexing
     // this corpus, not a second, potentially drifting re-derivation.

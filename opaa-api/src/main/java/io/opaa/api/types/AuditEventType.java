@@ -290,9 +290,9 @@ public enum AuditEventType {
    */
   PERMISSION_TRANSFER_EXECUTED,
   /**
-   * A selective re-index of the chunk bestand by ingestion pipeline version was triggered (the
-   * format chapter of the Handbuch, cross-cutting rule (d)). Recorded per triggering call, not per
-   * document: the call is the administrative decision, the documents are its effect.
+   * A selective re-index of the chunk bestand by ingestion pipeline version was triggered. Recorded
+   * per triggering call, not per document: the call is the administrative decision, the documents
+   * are its effect.
    */
   INDEXING_PIPELINE_REINDEX_TRIGGERED,
   /**

@@ -1,5 +1,5 @@
 /**
- * The document metadata schema (ADR-0024, ADR-0024): the three core fields Titel, Dokumentart and
+ * The document metadata schema (ADR-0024, ADR-0026): the three core fields Titel, Dokumentart and
  * Datum/Stand, stored per document with the origin of every value, plus the deterministic
  * extraction that fills them from what a {@link io.opaa.format.DocumentFormat} declares in {@link
  * io.opaa.format.DocumentProperties}. Interpretation happens only in {@link

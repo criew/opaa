@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
  * share of the library's indexed bestand, for the three core fields and for the library's own
  * fields alike. Reading it needs no more than the right to read the library ({@link
  * AssetRole#VIEWER}) - whoever knows the bestand should see its gaps, while correcting a value
- * keeps the editing right of .
+ * keeps the editing right of {@link AssetRole#EDITOR}.
  *
  * <p>Every figure is counted when asked through {@link MetadataFillCounter}, over exactly the
  * library the caller may read, and nothing is stored or cached: an aggregate over documents only

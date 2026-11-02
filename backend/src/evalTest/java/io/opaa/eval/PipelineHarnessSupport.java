@@ -194,11 +194,11 @@ public final class PipelineHarnessSupport {
 
   /**
    * Runs the pipeline measurement path and returns its report, without writing or logging it — the
-   * half of {@link #runAndWriteGuarded} that a variant comparison (issue #1041, ADR-0012) reuses
-   * for its reference variant's self-check: the reference variant's own report (computed through
-   * {@link VariantRunner}, a second, independent call into this same measurement) must equal, field
-   * for field, what this method computes for the unmodified production configuration in the very
-   * same harness run.
+   * half of {@link #runAndWriteGuarded} that a variant comparison (ADR-0012) reuses for its
+   * reference variant's self-check: the reference variant's own report (computed through {@link
+   * VariantRunner}, a second, independent call into this same measurement) must equal, field for
+   * field, what this method computes for the unmodified production configuration in the very same
+   * harness run.
    *
    * <p>The report's fixed points are read from {@code contextFactory}'s own {@link QueryProperties}
    * - the parameter set every measured run actually carried, so the report can never describe a

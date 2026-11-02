@@ -30,7 +30,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 /**
- * Step 2 of the extraction order (ADR-0024): one call per document to the systemwide chat role for
+ * Step 2 of the extraction order (ADR-0026): one call per document to the systemwide chat role for
  * the unscharfe fields the deterministic step left empty and for the freie Schlagworte, each only
  * when the library switched it on.
  *
@@ -355,7 +355,7 @@ public class ModelMetadataExtractor {
   /**
    * The unscharfe fields of {@code library} that {@code document} carries no row for: the Kernfeld
    * Dokumentart and the library's own SELECT fields. Titel, Datum/Stand and a PATTERN field are
-   * deterministic or nothing and are never asked about (ADR-0024).
+   * deterministic or nothing and are never asked about (ADR-0026).
    */
   private List<ModelExtractionField> emptyUnsharpFieldsOf(
       Document document, KnowledgeLibrary library) {

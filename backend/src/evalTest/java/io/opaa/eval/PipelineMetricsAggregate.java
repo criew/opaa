@@ -11,9 +11,9 @@ import java.util.TreeSet;
 import java.util.function.Function;
 
 /**
- * Group aggregate of the pipeline measurement path (issue #1039, ADR-0012) — the counterpart of
- * {@link MetricsAggregate} for the path that measures through the production query pipeline instead
- * of {@code VectorStore.similaritySearch} directly.
+ * Group aggregate of the pipeline measurement path (ADR-0012) — the counterpart of {@link
+ * MetricsAggregate} for the path that measures through the production query pipeline instead of
+ * {@code VectorStore.similaritySearch} directly.
  *
  * <p><b>Every component name carries its own window on purpose.</b> The two paths measure at
  * different windows — {@code documentTopK=10} for the raw-vector path, the production {@code

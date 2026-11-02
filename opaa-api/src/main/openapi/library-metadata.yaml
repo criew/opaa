@@ -22,7 +22,7 @@ paths:
         of the bestand. Only the empty state counts; a field marked "kein Wert ermittelbar" is
         done, which is what lets the number reach zero. The figures are counted on every request in
         the rights context of the asking person and never precomputed or cached
-        (ADR-0024, Rechte-Invariante) - reading needs VIEWER on the library, correcting a
+        (ADR-0024) - reading needs VIEWER on the library, correcting a
         value needs EDITOR. GET
         /api/v1/libraries/{libraryId}/documents?missingMetadataField=... lists exactly the counted
         documents. A library of another organization or one the caller holds no right on is absent
@@ -203,7 +203,7 @@ paths:
         The controlled Dokumentart vocabulary (ADR-0024, Entscheidung 3) in display order - the
         choice list a client offers when a person sets the field. Schema, not an aggregate over
         documents: the list exists independently of any document and is visible to every
-        authenticated user (ADR-0024, Rechte-Invariante: "Die konfigurierte Werteliste
+        authenticated user (ADR-0024: "Die konfigurierte Werteliste
         ... ist von dieser Regel ausgenommen").
       responses:
         "200":
@@ -226,7 +226,7 @@ paths:
       operationId: getLibraryMetadataExtractionSettings
       tags: [library-metadata]
       summary: >
-        The two model-backed extraction switches of a library (ADR-0024), both off by default, together with the chat role
+        The two model-backed extraction switches of a library (ADR-0026), both off by default, together with the chat role
         the extraction would use - Basis-Adresse and Modell-Kennung, never an access key. The
         endpoint the Datenschutzhinweis at the switch is built from: with an externally operated
         model, every ingested document leaves the house without a person triggering it. Requires
@@ -281,12 +281,11 @@ paths:
       operationId: getLibraryMetadataQuality
       tags: [library-metadata]
       summary: >
-        The Extraktionsgüte of a library (ADR-0024, Punkt
-        3): per field the share of deterministically filled, model-filled, manually set, empty and
+        The Extraktionsgüte of a library (ADR-0024): per field the share of deterministically filled, model-filled, manually set, empty and
         "kein Wert ermittelbar" documents, plus the Zählwerk of the model-backed extraction. Without
         it, a weak filter result cannot be told apart from a weak extraction. Counted on every
         request in the rights context of the asking person and never precomputed or cached
-        (ADR-0024, Rechte-Invariante); reading needs VIEWER on the library.
+        (ADR-0024); reading needs VIEWER on the library.
       responses:
         "200":
           description: The extraction quality per field
@@ -785,7 +784,7 @@ paths:
       operationId: getMetadataChangeImpact
       tags: [library-metadata]
       summary: >
-        The Folgekosten of a planned schema change before it is saved (ADR-0024): affected documents and
+        The Folgekosten of a planned schema change before it is saved (ADR-0026): affected documents and
         chunks, the resulting number of embedding calls and the expected runtime. Concrete
         numbers, not a general warning. Requires the management right at the library.
       responses:
@@ -1091,7 +1090,7 @@ components:
       description: >-
         The Pflege-Anker of one library, one entry per core field in schema order. Built at
         query time in the rights context of the asking person and never precomputed or cached
-        (ADR-0024, Rechte-Invariante).
+        (ADR-0024).
       required: [libraryId, totalDocuments, fields]
       properties:
         libraryId:
@@ -1169,7 +1168,7 @@ components:
     MetadataModelExtractionStatsResponse:
       type: object
       description: >-
-        The Zählwerk of the model-backed extraction of one library (ADR-0024). Without it, the only feedback about
+        The Zählwerk of the model-backed extraction of one library (ADR-0026). Without it, the only feedback about
         the cost of this capability is the model provider's invoice.
       required:
         [
@@ -1274,7 +1273,7 @@ components:
       description: >-
         The extraction quality of one library, one entry per field in schema order, plus the
         Zählwerk of the model-backed extraction. Built at query time in the rights context
-        of the asking person and never cached (ADR-0024, Rechte-Invariante).
+        of the asking person and never cached (ADR-0024).
       required:
         [
           libraryId,
@@ -1382,8 +1381,7 @@ components:
     LibraryMetadataFieldType:
       type: string
       description: >-
-        The type of a library metadata field (ADR-0024)
-        "Kontrolliertes Vokabular statt Freitext"): SELECT - a choice from the field's own value
+        The type of a library metadata field (ADR-0024): SELECT - a choice from the field's own value
         list; DATE - a year or date with the same precision semantics as the Kernfeld Datum/Stand;
         PATTERN - an identifier checked against the regular expression the field definition
         carries. There is deliberately no free-text type: free text is a keyword with the
@@ -1647,7 +1645,7 @@ components:
     MetadataChangeKind:
       type: string
       description: >-
-        The planned schema change whose Folgekosten are being asked for (ADR-0024, Kostentabelle): FIELD_ADDED - a new field is defined, which no document
+        The planned schema change whose Folgekosten are being asked for (ADR-0026): FIELD_ADDED - a new field is defined, which no document
         carries a value for yet; CONTEXT_PREFIX_ENABLED / CONTEXT_PREFIX_DISABLED - the
         Kontextpraefix-Wirkstelle of the field is switched on or off; FIELD_REMOVED - the field is
         deleted with everything hanging on it; VALUE_REMOVED - a value of the list is removed with
@@ -1711,7 +1709,7 @@ components:
           type: boolean
           description: >-
             Whether the change makes re-embedding necessary at all. False for a pure filter or
-            Beleg field and for extending a value list - the two rows of the Kostentabelle that
+            Beleg field and for extending a value list - the two change kinds that
             cost nothing.
         rateSource:
           $ref: "#/components/schemas/EmbeddingRateSource"

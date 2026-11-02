@@ -349,10 +349,10 @@ class FullTextIdentifiersTest {
   }
 
   /**
-   * Querschnittsregel (a): an email address survives as one lexeme, symmetric between a chunk's
-   * text ("...Kontakt: max.mustermann@example.org...") and a question naming the same address bare
-   * - the property {@link #theSameFileNumberYieldsTheSameLexemeInAChunkAndInAQuestion} already pins
-   * for file numbers.
+   * An email address survives as one lexeme, symmetric between a chunk's text ("...Kontakt:
+   * max.mustermann@example.org...") and a question naming the same address bare - the property
+   * {@link #theSameFileNumberYieldsTheSameLexemeInAChunkAndInAQuestion} already pins for file
+   * numbers.
    */
   @Test
   void anEmailAddressSurvivesAsOneLexeme() {

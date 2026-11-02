@@ -8,8 +8,8 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
- * Docker-free unit tests for the Mehrfachlauf-Regel's aggregation math (issue #1044, ADR-0012), run
- * via {@code evalUnitTest}.
+ * Docker-free unit tests for the Mehrfachlauf-Regel's aggregation math (ADR-0012), run via {@code
+ * evalUnitTest}.
  */
 class MultiRunAggregatorTest {
 

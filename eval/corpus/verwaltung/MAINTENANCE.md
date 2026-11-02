@@ -1404,8 +1404,6 @@ Mechanismus (siehe „Keine Ausnahmen mehr“ oben).
 
 ## Overfitting-Risiko
 
-Siehe [`SOURCE.md`](SOURCE.md), Abschnitt „Overfitting-Risiko", und
-`docs/decisions/0012-messvertrag-retrieval-harness.md`, „Ehrliche Einschränkung:
-Benchmark-Overfitting". Kurzfassung: Diese Domäne hat keine echten Nutzerfragen; jedes Ergebnis
+Siehe [`SOURCE.md`](SOURCE.md), Abschnitt „Overfitting-Risiko",. Kurzfassung: Diese Domäne hat keine echten Nutzerfragen; jedes Ergebnis
 auf ihr ist eine Aussage über konstruierte Annahmen, nicht über echte Verwaltungsanfragen, bis
 eine Stichprobe echter (anonymisierter) Anfragen aus einem Pilotbetrieb nachgezogen wird.

@@ -20,8 +20,7 @@ import org.junit.jupiter.api.Test;
  * CityLandmarksChunkSizeDryRunTest} for the third eval domain. Used during corpus generation to
  * verify the domain's "at least 3 chunks per document" property (ADR-0010, Entscheidung 3,
  * ADR-0012) before a golden dataset and a full {@code EvalDomainConfig} registration exist for this
- * domain (issue #1042 is corpus-only; golden dataset and baseline are a separate, later issue per
- * the Umsetzungsschnitt in ADR-0012).
+ * domain (issue #1042 is corpus-only; golden dataset and baseline are a separate, later issue).
  */
 class VerwaltungChunkSizeDryRunTest {
 

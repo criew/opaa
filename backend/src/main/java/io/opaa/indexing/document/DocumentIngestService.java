@@ -1212,8 +1212,8 @@ public class DocumentIngestService {
       if (chunkingFingerprint != null) {
         metadata.put(ChunkFormatMetadata.CHUNKING_FINGERPRINT_METADATA_KEY, chunkingFingerprint);
       }
-      // The routing key actually used (the format chapter of the Handbuch, Querschnittsregel
-      // (d)) - what lets a later pipeline-version check compare exactly instead of
+      // The routing key actually used - what lets a later pipeline-version check compare exactly
+      // instead of
       // re-guessing a document's format from its file name.
       routingExtension.ifPresent(
           extension -> metadata.put(ChunkFormatMetadata.ROUTING_EXTENSION_METADATA_KEY, extension));
