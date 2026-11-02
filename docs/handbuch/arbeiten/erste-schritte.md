@@ -33,6 +33,8 @@ Spaces stehen dort im Space-Menü an ihrem Kopf.
 Der Eintrag **„Chat“** ganz links in der globalen Leiste führt jederzeit in einen leeren Chat im
 zuletzt genutzten Space. Der **Katalog** daneben zeigt alle Arbeitsmittel, die Sie lesen dürfen
 ([Den Katalog nutzen](katalog.md)).
+Das **„?“** unten in der globalen Leiste öffnet in einem neuen Fenster die Handbuchseite zur
+Ansicht, in der Sie gerade sind.
 
 **Gut zu wissen:**
 

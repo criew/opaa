@@ -1,6 +1,8 @@
 name: Landing Page
 
-# Veröffentlicht den Inhalt von page/ als Startseite von https://opaa.io.
+# Veröffentlicht den Inhalt von page/ als Startseite von https://opaa.io und das
+# Handbuch unter https://opaa.io/handbuch/: der Stand von main unter handbuch/,
+# jedes Release unter handbuch/<Tag>/ (Pfadfilter gelten nicht für Tags).
 #
 # Ziel ist der Branch gh-pages, den der Webserver per Pull spiegelt (siehe
 # page/README.md).
@@ -8,13 +10,17 @@ name: Landing Page
 on:
   push:
     branches: [main]
+    tags: ['v*']
     paths:
       - "page/**"
+      - "docs/handbuch/**"
+      - "mkdocs.yml"
+      - ".github/requirements-docs.txt"
       - ".github/workflows/landing-page.yml"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   # Läufe committen nacheinander auf gh-pages; ein paralleler Lauf würde beim
@@ -23,10 +29,63 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
+  # Builds the handbook without write access; only the publish job holds a token that can push.
+  handbook:
     runs-on: ubuntu-latest
+    outputs:
+      target: ${{ steps.target.outputs.dir }}
+    steps:
+      - name: Ziel des Handbuchs bestimmen
+        id: target
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$REF_TYPE" = "tag" ]; then
+            if ! printf '%s' "$REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+              echo "Tag '$REF_NAME' ist keine Release-Version vX.Y.Z[-<pre>]." >&2
+              exit 1
+            fi
+            echo "dir=handbuch/$REF_NAME" >> "$GITHUB_OUTPUT"
+          else
+            echo "dir=handbuch" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Handbuch auschecken
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: |
+            docs/handbuch
+            mkdocs.yml
+            .github/requirements-docs.txt
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.15'
+
+      - name: Handbuch-Website bauen
+        run: |
+          python -m venv "$RUNNER_TEMP/mkdocs"
+          "$RUNNER_TEMP/mkdocs/bin/pip" install --require-hashes --no-deps --only-binary=:all: --no-binary=pyyaml -r .github/requirements-docs.txt
+          NO_MKDOCS_2_WARNING=1 "$RUNNER_TEMP/mkdocs/bin/mkdocs" build --strict
+
+      - name: Handbuch-Website ablegen
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: handbuch-site
+          path: build/handbuch-site/
+          retention-days: 1
+
+  publish:
+    needs: handbook
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Landing Page auschecken
+        if: github.ref_type != 'tag'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: |
@@ -47,16 +106,33 @@ jobs:
       - name: Seitenverzeichnis vorbereiten
         run: mkdir -p site
 
+      - name: Handbuch-Website holen
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: handbuch-site
+          path: handbook
+
       - name: Landing Page übernehmen
+        if: github.ref_type != 'tag'
         run: |
-          # --delete räumt alles weg, was nicht aus page/ stammt, bis auf .git
-          # und fortschritt/: Dort liegen manuell direkt auf gh-pages gepushte
-          # Meilenstein-Artefakte (Demo-Video, Berichts-PDFs), zu groß fürs
-          # Quell-Repository.
+          # --delete räumt alles weg, was nicht aus page/ stammt, bis auf .git,
+          # handbuch/ (nächster Schritt) und fortschritt/: Dort liegen manuell
+          # direkt auf gh-pages gepushte Meilenstein-Artefakte (Demo-Video,
+          # Berichts-PDFs), zu groß fürs Quell-Repository.
           rsync -a --delete \
             --exclude '.git/' \
+            --exclude '/handbuch/' \
             --exclude 'fortschritt/' \
             source/page/ site/
+
+      - name: Handbuch übernehmen
+        env:
+          TARGET: ${{ needs.handbook.outputs.target }}
+        run: |
+          # Der Stand von main lässt die Release-Fassungen unter handbuch/v*/
+          # stehen; eine Release-Fassung schreibt nur der Lauf ihres Tags.
+          mkdir -p "site/$TARGET"
+          rsync -a --delete --exclude '/v[0-9]*/' handbook/ "site/$TARGET/"
 
       - name: Seite veröffentlichen
         working-directory: site
@@ -77,5 +153,5 @@ jobs:
             echo "Keine Änderungen zu veröffentlichen."
             exit 0
           fi
-          git commit -m "docs(page): Landing Page aktualisieren"
+          git commit -m "docs(page): Landing Page und Handbuch aktualisieren"
           git push origin gh-pages
