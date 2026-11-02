@@ -1518,8 +1518,8 @@ müssen dort deshalb unverändert liegen. Wer External Secrets, Sealed Secrets o
 ändert den Wert dort.
 
 **Vor dem Einspielen der Datenbank** müssen `vector` und die Rolle `opaa_audit_owner` auf dem Ziel
-existieren ([Voraussetzungen einer eigenen PostgreSQL](datenbank.md#voraussetzungen-einer-eigenen-postgresql));
-wiederhergestellt wird mit einem Konto, das Eigentümer setzen darf.
+existieren ([Voraussetzungen einer eigenen PostgreSQL](datenbank.md#voraussetzungen-einer-eigenen-postgresql)),
+sonst bricht sie mit `role "opaa_audit_owner" does not exist` ab; wiederhergestellt wird mit einem Konto, das Eigentümer setzen darf.
 
 **Wiederherstellung auf einem neuen Cluster.** Der Claim `opaa-uploads` entsteht erst mit dem Chart.
 Deshalb wird der Chart zuerst mit angehaltenem Backend installiert:

@@ -491,8 +491,10 @@ Timeouts, Prüfabstand und Lastgrenzen bleiben Sache des Betriebs (`OPAA_RERANK_
 `OPAA_TRANSCRIPTION_MAX_CONCURRENT`, die Aufnahmen je Konto und Client unter
 `OPAA_RATE_LIMIT_TRANSCRIPTION_*`). Die früheren Variablen `OPAA_RERANK_ENABLED`,
 `OPAA_RERANK_BASE_URL`, `OPAA_RERANK_MODEL`, `OPAA_RERANK_API_KEY` und `OPAA_TRANSCRIPTION_ENABLED`,
-`_BASE_URL`, `_MODEL`, `_API_KEY`, `_LANGUAGE` liest OPAA nicht mehr; ist eine noch gesetzt, warnen
-der Start im Log und der Reiter der Rolle.
+`_BASE_URL`, `_MODEL`, `_API_KEY`, `_LANGUAGE` liest OPAA nicht mehr und übernimmt sie auch nicht;
+ist eine noch gesetzt, warnen der Start im Log und der Reiter der Rolle. Jede Änderung an beiden
+Rollen steht mit Vorher und Nachher im Revisionsprotokoll („Rerank-Modell“, „Transkriptionsmodell“),
+der Schlüssel nur als gesetzt, geändert oder entfernt.
 
 ## Spracheingabe einschalten
 

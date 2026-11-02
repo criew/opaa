@@ -13,7 +13,7 @@ Zustand hält: Datenbank, Originalablage und Geheimnisse. Das Kapitel gehört zu
 |---|---|
 | Datenbank | `pg_dump` oder die Sicherung des Datenbankbetriebs |
 | Originalablage | Kopie, Snapshots oder Replikation; die Versionierung des Buckets nicht, denn ein Löschen in OPAA entfernt alle Versionen ([Originalablage](originalablage.md#was-im-objektspeicher-liegt)) |
-| Geheimnisse | Kopie außerhalb der Installation |
+| Geheimnisse | Kopie außerhalb der Installation, vor allem `OPAA_CREDENTIALS_ENCRYPTION_KEY`, `OPAA_SETTINGS_ENCRYPTION_KEY` und `OPAA_AUTH_JWT_SECRET` |
 | Konfiguration (`.env.docker` bzw. Werte-Datei) | Versionsverwaltung |
 
 - **Reihenfolge:** erst Datenbank, dann Originale sichern; umgekehrt wiederherstellen

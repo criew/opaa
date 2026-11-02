@@ -36,8 +36,8 @@ Zitate von Anwenderinnen und Anwendern.
 
 ## Aufgaben der Behörde
 
-1. **Muss-Anforderungen gegen die Lücken halten:** „Was nicht gebaut ist“ in den betroffenen
-   Kapiteln lesen.
+1. **Muss-Anforderungen gegen die Lücken halten:** die [Roadmap](../../ROADMAP.md) lesen; das
+   Handbuch beschreibt nur Gebautes.
 2. **Reifegrad selbst prüfen** in einer Teststellung mit eigenen Dokumenten und vorab festgelegten
    Kriterien.
 3. **Referenzen bei Dienstleistern erfragen,** die OPAA anbieten, und im Austausch mit anderen
