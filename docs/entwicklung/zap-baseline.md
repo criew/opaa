@@ -84,7 +84,7 @@ rules:
 
 `.github/scripts/zap_rules.py` prüft die Datei (`check`), erzeugt daraus ZAPs Regeldatei
 (`render`) und bewertet den Bericht (`summary`); `test_zap_rules.py` hält das Verhalten und die
-Anbindung an Workflow und Renovate fest und läuft im Job `report-script` von `ci.yml`.
+Anbindung an Workflow und Renovate fest und läuft im Job `ci-scripts` von `ci.yml`.
 
 **Neue ZAP-Version.** Renovate schlägt neue Release-Tags `X.Y.Z` als PR vor, ohne Auto-Merge;
 der Scan läuft in diesem PR. Bringt die Version neue Regeln mit neuen Befunden, werden sie im
