@@ -10,7 +10,7 @@ erwartet läuft. Es beschreibt den gebauten Ist-Stand, nicht Zielbilder.
 |---|---|---|
 | **Jedes Konto** | fragt, prüft Belege, führt Chats, legt Spaces und eigene Bibliotheken an | [Arbeiten](arbeiten/README.md), zuerst [Erste Schritte](arbeiten/erste-schritte.md) |
 | **Wer pflegt** | teilt Bibliotheken, bindet Quellen an, pflegt Metadaten, Spaces und Gruppen | [Pflegen](pflegen/README.md) |
-| **Betrieb** | installiert, aktualisiert, sichert, überwacht; konfiguriert Modelle und Grenzwerte; geht Störungen nach | [Betriebsübersicht](betrieb/README.md), dann [Docker Compose](betrieb/docker-compose.md) oder [Kubernetes](betrieb/kubernetes.md), [Netz und Sicherheit](betrieb/netz-und-sicherheit.md), [Modelle](betrieb/modelle.md), [Authentifizierung](betrieb/authentifizierung.md); danach [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md) und [Suche](spaces/suche.md) |
+| **Betrieb** | installiert, aktualisiert, sichert, überwacht; konfiguriert Modelle und Grenzwerte; geht Störungen nach | [Betriebsübersicht](betreiben/README.md), dann [Docker Compose](betreiben/docker-compose.md) oder [Kubernetes](betreiben/kubernetes.md), [Netz und Sicherheit](betreiben/netz-und-sicherheit.md), [Modelle betreiben](betreiben/modell-endpunkte.md), [Authentifizierung](betreiben/authentifizierung.md); danach [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md) und [Suche](spaces/suche.md) |
 | **Systemverwaltung** | verwaltet Konten, Gruppen, Anlegerechte, Zugänge, Modelle und Fristen, geht fehlenden Treffern nach | [Verwalten](verwalten/README.md), zuerst [Die Einführung vorbereiten](verwalten/einfuehrung.md) |
 | **Revision** | erstellt Stichtagsauskünfte, liest Nachweis- und Verbindungsprotokoll | [Verwalten](verwalten/README.md#prüfen) |
 
@@ -48,7 +48,7 @@ Betrieb:
 - **Die Datenbank ist die einzige Wahrheit.** Dokumente, Chunks samt Vektoren, Volltext,
   Metadaten, Protokolle, Chats: alles liegt in PostgreSQL. Daneben steht genau ein zweiter Bestand:
   die Originale der hochgeladenen Dokumente. Eine Sicherung umfasst deshalb beides — die Datenbank
-  und die [Originalablage](betrieb/originalablage.md).
+  und die [Originalablage](betreiben/originalablage.md).
 - **Instanzen stimmen sich über die Datenbank ab.** Eine Instanz genügt; mehrere teilen sich
   Anfragen, Läufe und Zeitpläne, überstehen den Ausfall einer von ihnen und lassen sich nacheinander
   aktualisieren, ohne dass die Oberfläche ausfällt. Eine weitere Infrastruktur brauchen sie nicht.
@@ -81,41 +81,41 @@ verweisen dürfen. Die Ordner folgen dem Baum.
     Konten, Anmeldung, Systemrollen, Gruppen, Anlegerechte, Ausscheiden, Zugänge, Modelle, Suche und
     Indexierung, externe KI-Werkzeuge, Datenschutz, Branding, E-Mail, Einstellungen übertragen;
     für die Revision Stichtagsauskunft, Nachweis- und Verbindungsprotokoll
-- **Betrieb**
-  - [Betriebsübersicht](betrieb/README.md) — Bausteine und ihr Zusammenspiel, Zeitzone, eine
+- **Betreiben**
+  - [Betriebsübersicht](betreiben/README.md) — Bausteine und ihr Zusammenspiel, Zeitzone, eine
     Organisation, Wegweiser zu den Kapiteln darunter
-    - [Docker Compose](betrieb/docker-compose.md) — Schnellstart, Services, `.env.docker`, Ollama,
+    - [Docker Compose](betreiben/docker-compose.md) — Schnellstart, Services, `.env.docker`, Ollama,
       Objektspeicher und Mailpit im Stapel, Aktualisierung
-    - [Kubernetes](betrieb/kubernetes.md) — Betrieb mit dem Helm-Chart
-    - [Installation](betrieb/installation.md) — Installationsmodus, Installations-Token, Schritte,
+    - [Kubernetes](betreiben/kubernetes.md) — Betrieb mit dem Helm-Chart
+    - [Installation](betreiben/installation.md) — Installationsmodus, Installations-Token, Schritte,
       Einrichtungs-Assistent im Browser, Antwortdatei
-    - [Images und Laufzeit](betrieb/images-und-laufzeit.md) — Images und Versionen, Laufzeitimages
+    - [Images und Laufzeit](betreiben/images-und-laufzeit.md) — Images und Versionen, Laufzeitimages
       von Backend und Frontend, Speicher und Container-Grenzen, Readiness und Liveness, Graceful
       Shutdown
-    - [Netz und Sicherheit](betrieb/netz-und-sicherheit.md) — Netzwerkzugang, Sicherheits-Header,
+    - [Netz und Sicherheit](betreiben/netz-und-sicherheit.md) — Netzwerkzugang, Sicherheits-Header,
       Härtung, vertraute Proxys, Zielprüfung, Ausgangsproxy, Betrieb ohne Internet, Virenprüfung,
       Schlüssel und Geheimnisse
-    - [Sicherung und Wiederherstellung](betrieb/sicherung-und-wiederherstellung.md) — was gesichert
+    - [Sicherung und Wiederherstellung](betreiben/sicherung-und-wiederherstellung.md) — was gesichert
       wird, Zurückspielen, Wiederherstellungsprobe
-    - [Aktualisierung](betrieb/aktualisierung.md) — Ablauf eines Updates, was ein Update mit dem
+    - [Aktualisierung](betreiben/aktualisierung.md) — Ablauf eines Updates, was ein Update mit dem
       Index macht
-    - [Überwachung und Fehlerbehebung](betrieb/ueberwachung-und-fehlerbehebung.md) — Logs und
+    - [Überwachung und Fehlerbehebung](betreiben/ueberwachung-und-fehlerbehebung.md) — Logs und
       Metriken, Ausleitung an ein Sicherheitsmonitoring, Diagnose ohne Shell, Fehlerbehebung
-    - [Mehrere Backend-Instanzen](betrieb/mehrere-instanzen.md) — wie mehrere Instanzen
+    - [Mehrere Backend-Instanzen](betreiben/mehrere-instanzen.md) — wie mehrere Instanzen
       zusammenarbeiten: Abstimmung über die Datenbank, Instanzregister, Konfigurationsabdruck,
       Grenzen je Instanz, Update ohne Ausfall
-    - [Datenbank](betrieb/datenbank.md) — PostgreSQL und pgvector, eigenes Schema, Volltextindex
-    - [Originalablage](betrieb/originalablage.md) — wo die Originale der Uploads liegen, Sicherung,
+    - [Datenbank](betreiben/datenbank.md) — PostgreSQL und pgvector, eigenes Schema, Volltextindex
+    - [Originalablage](betreiben/originalablage.md) — wo die Originale der Uploads liegen, Sicherung,
       Umstellung
-  - [Konfiguration](betrieb/konfiguration.md) — alle Umgebungsvariablen, Grenzwerte im Überblick
-  - [Modelle](betrieb/modelle.md) — Chat, Embedding, Reranking, Transkription (Spracheingabe),
+  - [Konfiguration](betreiben/konfiguration.md) — alle Umgebungsvariablen, Grenzwerte im Überblick
+  - [Modelle betreiben](betreiben/modell-endpunkte.md) — Chat, Embedding, Reranking, Transkription (Spracheingabe),
     Modellverwaltung, Fehlerbilder
-  - [Authentifizierung](betrieb/authentifizierung.md) — Betriebsmodi, Identitätsanbieter und
+  - [Authentifizierung](betreiben/authentifizierung.md) — Betriebsmodi, Identitätsanbieter und
     Verzeichnisabgleich, Härtung des Keycloak, Erststart, Notfallprozedur, Testkonten
-  - [Nachvollziehbarkeit](betrieb/nachvollziehbarkeit.md) — was OPAA aus dem Code nachweist:
+  - [Nachvollziehbarkeit](betreiben/nachvollziehbarkeit.md) — was OPAA aus dem Code nachweist:
     Faktenblätter, wo sie liegen, das Update-Paket eines Release, wie man sie erzeugt, die Auskunft
     über die Datenerhebung einer Installation, was bei jeder Änderung geprüft wird
-  - [Releases und Nachweise](betrieb/releases-und-nachweise.md) — Versionen, Sicherheitsupdates, was
+  - [Releases und Nachweise](betreiben/releases-und-nachweise.md) — Versionen, Sicherheitsupdates, was
     ein Release liefert, Update-Paket prüfen, SBOM und Provenance, Schwachstellen, Lizenz und CLA
 - **Konten und Rechte**
   - [Benutzerverwaltung](konten-und-rechte/benutzerverwaltung.md) — lokale Konten, Rollen und
@@ -153,11 +153,11 @@ verweisen dürfen. Die Ordner folgen dem Baum.
 
 | Anlass | Reihenfolge |
 |---|---|
-| Erste Installation | [Betriebsübersicht](betrieb/README.md) → [Docker Compose](betrieb/docker-compose.md): „Schnellstart" → [Installation](betrieb/installation.md) → [Authentifizierung](betrieb/authentifizierung.md): „Erststart und Systemverwalter-Konto" → [Netz und Sicherheit](betrieb/netz-und-sicherheit.md): „Härtung für erreichbare Deployments" → [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md) |
-| Erste Installation unter Kubernetes | [Kubernetes](betrieb/kubernetes.md): „Voraussetzungen", „Installation", „Netz und Sicherheit" → [Authentifizierung](betrieb/authentifizierung.md): „Erststart und Systemverwalter-Konto" |
-| OPAA unter Kubernetes vorführen | [Kubernetes](betrieb/kubernetes.md): „Erprobung mit dem Beispiel-Setup" |
+| Erste Installation | [Betriebsübersicht](betreiben/README.md) → [Docker Compose](betreiben/docker-compose.md): „Schnellstart" → [Installation](betreiben/installation.md) → [Authentifizierung](betreiben/authentifizierung.md): „Erststart und Systemverwalter-Konto" → [Netz und Sicherheit](betreiben/netz-und-sicherheit.md): „Härtung für erreichbare Deployments" → [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md) |
+| Erste Installation unter Kubernetes | [Kubernetes](betreiben/kubernetes.md): „Voraussetzungen", „Installation", „Netz und Sicherheit" → [Authentifizierung](betreiben/authentifizierung.md): „Erststart und Systemverwalter-Konto" |
+| OPAA unter Kubernetes vorführen | [Kubernetes](betreiben/kubernetes.md): „Erprobung mit dem Beispiel-Setup" |
 | Konten anlegen oder entziehen | [Lokale Konten verwalten](verwalten/konten.md) → [E-Mail-Versand](verwalten/e-mail.md), falls Einladungen per Mail gehen |
-| Niemand kommt mehr herein | [Authentifizierung](betrieb/authentifizierung.md): „Notfallprozedur: wieder hereinkommen" → [Benutzerverwaltung](konten-und-rechte/benutzerverwaltung.md) |
+| Niemand kommt mehr herein | [Authentifizierung](betreiben/authentifizierung.md): „Notfallprozedur: wieder hereinkommen" → [Benutzerverwaltung](konten-und-rechte/benutzerverwaltung.md) |
 | Einen Space für ein Team einrichten | [Spaces](spaces/README.md) → [Katalog](arbeitsmittel/katalog.md) |
 | Rechte vergeben, Gruppen nutzen | [Berechtigungen](konten-und-rechte/berechtigungen.md) |
 | Eine Person scheidet aus, ein Referat wird aufgelöst | [Ausscheiden und Nachfolge regeln](verwalten/ausscheiden.md) |
@@ -165,16 +165,16 @@ verweisen dürfen. Die Ordner folgen dem Baum.
 | Eine neue Quelle anschließen | [Konnektoren](pflegen/konnektoren/README.md) → Kapitel des Konnektors → bei Bedarf [Zugänge einrichten](verwalten/zugaenge.md) |
 | Dokumente fehlen oder sind veraltet | [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md): „Protokoll und Fehler" → Laufprotokoll der Bibliothek → Kapitel des Formats |
 | Eine Antwort ist schlecht | [Suche und Indexierung überwachen](verwalten/suche-und-indexierung.md) → [Suche](spaces/suche.md): „Diagnose" und „Typische Befunde" → je nach Befund [Wissensbibliotheken](arbeitsmittel/wissensbibliotheken/README.md) oder [Metadaten](arbeitsmittel/wissensbibliotheken/metadaten.md) |
-| Ein Update steht an | [Aktualisierung](betrieb/aktualisierung.md) → [Docker Compose](betrieb/docker-compose.md) bzw. [Kubernetes](betrieb/kubernetes.md): „Aktualisierung …" |
-| Mehrere Backend-Instanzen planen oder einrichten | [Mehrere Backend-Instanzen](betrieb/mehrere-instanzen.md) → [Docker Compose](betrieb/docker-compose.md) bzw. [Kubernetes](betrieb/kubernetes.md): „Mehrere Backend-Instanzen" → [Datenbank](betrieb/datenbank.md): „Verbindungen bei mehreren Instanzen" |
+| Ein Update steht an | [Aktualisierung](betreiben/aktualisierung.md) → [Docker Compose](betreiben/docker-compose.md) bzw. [Kubernetes](betreiben/kubernetes.md): „Aktualisierung …" |
+| Mehrere Backend-Instanzen planen oder einrichten | [Mehrere Backend-Instanzen](betreiben/mehrere-instanzen.md) → [Docker Compose](betreiben/docker-compose.md) bzw. [Kubernetes](betreiben/kubernetes.md): „Mehrere Backend-Instanzen" → [Datenbank](betreiben/datenbank.md): „Verbindungen bei mehreren Instanzen" |
 | Formulierungshilfen für ein Referat bereitstellen | [Prompt-Bibliotheken](arbeitsmittel/prompt-bibliotheken.md) → [Spaces](spaces/README.md) |
 | Ein externes KI-Werkzeug anschließen | [Externe KI-Werkzeuge zulassen](verwalten/externe-ki-werkzeuge.md) → [Ein Zugangstoken anlegen](arbeiten/zugangstoken.md) |
 | Postfächer anbinden wollen | [Berechtigungen](konten-und-rechte/berechtigungen.md): „Prüfliste vor einem Postfach-Konnektor" → [Private Bibliotheken](arbeitsmittel/wissensbibliotheken/private-bibliotheken.md) |
-| Originalablage wählen, sichern oder umstellen | [Originalablage](betrieb/originalablage.md) |
-| Sichern und wiederherstellen | [Sicherung und Wiederherstellung](betrieb/sicherung-und-wiederherstellung.md) → Kapitel des Betriebswegs → [Authentifizierung](betrieb/authentifizierung.md): „Nacharbeit nach einer Rücksicherung" |
-| Ein Modell anbinden oder wechseln | [Modelle verwalten](verwalten/modelle.md) → [Modelle](betrieb/modelle.md) für den Betrieb |
-| Einen Identitätsanbieter anbinden | [Authentifizierung](betrieb/authentifizierung.md): „OIDC (Keycloak)" → [Berechtigungen](konten-und-rechte/berechtigungen.md): „Woher Gruppen kommen" |
-| Eine Grenze greift, etwa `429` oder eine zu große Datei | [Konfiguration](betrieb/konfiguration.md): „Grenzwerte im Überblick" |
-| Datenschutz, Personalrat oder Informationssicherheit fragen, welche Daten anfallen und wohin sie gehen | [Nachvollziehbarkeit](betrieb/nachvollziehbarkeit.md) |
-| Beschaffung oder Informationssicherheit fragen nach Sicherheitsupdates, SBOM, Provenance oder Lizenz | [Releases und Nachweise](betrieb/releases-und-nachweise.md) |
-| Die Installation zeigt eine Störung | [Überwachung und Fehlerbehebung](betrieb/ueberwachung-und-fehlerbehebung.md): „Fehlerbehebung", „Logs und Metriken" |
+| Originalablage wählen, sichern oder umstellen | [Originalablage](betreiben/originalablage.md) |
+| Sichern und wiederherstellen | [Sicherung und Wiederherstellung](betreiben/sicherung-und-wiederherstellung.md) → Kapitel des Betriebswegs → [Authentifizierung](betreiben/authentifizierung.md): „Nacharbeit nach einer Rücksicherung" |
+| Ein Modell anbinden oder wechseln | [Modelle verwalten](verwalten/modelle.md) → [Modelle betreiben](betreiben/modell-endpunkte.md) |
+| Einen Identitätsanbieter anbinden | [Authentifizierung](betreiben/authentifizierung.md): „OIDC (Keycloak)" → [Berechtigungen](konten-und-rechte/berechtigungen.md): „Woher Gruppen kommen" |
+| Eine Grenze greift, etwa `429` oder eine zu große Datei | [Konfiguration](betreiben/konfiguration.md): „Grenzwerte im Überblick" |
+| Datenschutz, Personalrat oder Informationssicherheit fragen, welche Daten anfallen und wohin sie gehen | [Nachvollziehbarkeit](betreiben/nachvollziehbarkeit.md) |
+| Beschaffung oder Informationssicherheit fragen nach Sicherheitsupdates, SBOM, Provenance oder Lizenz | [Releases und Nachweise](betreiben/releases-und-nachweise.md) |
+| Die Installation zeigt eine Störung | [Überwachung und Fehlerbehebung](betreiben/ueberwachung-und-fehlerbehebung.md): „Fehlerbehebung", „Logs und Metriken" |

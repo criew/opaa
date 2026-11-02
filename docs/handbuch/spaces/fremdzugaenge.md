@@ -112,7 +112,7 @@ nicht. Eine Einschränkung je Token gibt es bewusst nicht.
 > wird die Adresse aus der Trusted-Proxy-Auflösung: `X-Forwarded-For` zählt nur, wenn die Verbindung
 > selbst aus einem dort eingetragenen Netz kommt. Ist die Liste leer, prüft die Netzbeschränkung die
 > Adresse des Proxys — die im Hausnetz liegt und damit **jeden** Aufrufer durchlässt. Siehe
-> [Deployment](../betrieb/konfiguration.md#alle-umgebungsvariablen).
+> [Deployment](../betreiben/konfiguration.md#alle-umgebungsvariablen).
 
 **Der Einleitungstext** wird im selben Panel gepflegt; ein Vorgabetext ist gesetzt und für die
 meisten Häuser ausreichend. Er sagt dem fremden Modell, wann es den Kanal in Betracht ziehen soll,
@@ -127,7 +127,7 @@ Panel schon.
 Über dem Schalter steht eine Entscheidung des Betriebs: Eine Installation kann den Zugriff externer
 KI-Werkzeuge ganz abschalten, etwa für eine Demo oder bis die Beteiligung der Personalvertretung geklärt ist
 (`OPAA_FEATURES_EXTERNAL_ACCESS_ENABLED=false`, siehe
-[Konfiguration](../betrieb/konfiguration.md#funktionen-abschalten)). Offen ist der Kanal nur, wenn die Funktion
+[Konfiguration](../betreiben/konfiguration.md#funktionen-abschalten)). Offen ist der Kanal nur, wenn die Funktion
 an **und** der Schalter eingeschaltet ist. Ist die Funktion aus,
 
 - erwähnt die Oberfläche externe KI-Werkzeuge nirgends, auch nicht für die Systemverwaltung: Es gibt keinen
@@ -201,7 +201,7 @@ Name steht in der Tokenliste, **nicht** im Nachweisprotokoll.
 eine kurz unbeaufsichtigte oder übernommene Sitzung soll deshalb keines anlegen können. Liegt die
 Anmeldung länger zurück, fragt OPAA vor dem Erzeugen erneut nach dem Passwort oder leitet zum
 Anmeldedienst weiter ([Erneute Anmeldung vor sensiblen
-Vorgängen](../betrieb/authentifizierung.md#erneute-anmeldung-vor-sensiblen-vorgängen)). Nach der
+Vorgängen](../betreiben/authentifizierung.md#erneute-anmeldung-vor-sensiblen-vorgängen)). Nach der
 Weiterleitung zum Anmeldedienst öffnet sich der Dialog wieder leer. **Ein Identitätsanbieter, der den
 Anmeldezeitpunkt (`auth_time`) nicht ins Zugangstoken schreibt — das betrifft je nach Einrichtung etwa
 Microsoft Entra ID —, lässt kein Erzeugen zu**; die Person sieht dann den Hinweis, dass ihr
@@ -539,7 +539,7 @@ beantworten sich gleich, damit der Kanal nie bestätigt, dass ein Token existier
 | `429` mit Wartehinweis (REST) — oder am MCP-Endpunkt eine Fehlerantwort mit dem Code `-32000` bzw. ein Werkzeugergebnis mit dem Wort „Kontingent" | Kontingent des Tokens erschöpft — meist ein Skript in einer Schleife. An Suche und Trefferabruf kann es auch die Grenze je Token oder aller Tokens der Person (`OPAA_RATE_LIMIT_SEARCH_MAX_REQUESTS_PER_ACCOUNT`), die Grenze der Netzadresse, solange sie vor der Anmeldung schon voll ist (`scope=client`), oder die gemeinsame Grenze der Suche sein (`OPAA_RATE_LIMIT_SEARCH_GLOBAL_MAX_REQUESTS`, [Suche](suche.md#101-ratenbegrenzung)): Das Kontingent nennt eine Wartezeit von bis zu einer Stunde, diese Grenzen von höchstens einer Minute; die Metrik `opaa.rate_limit.rejected` zählt sie mit `limit=search` und `scope=token` bzw. `scope=global`. **Am MCP-Endpunkt ist das keine `429`**: Die Ablehnung kommt als Protokollfehler bzw. als Fehlerergebnis des Werkzeugs zurück, damit das fremde Modell damit umgehen kann. Schon das Verbinden zählt (Abschnitt 10) — ein Client, der sich in Schleife neu verbindet, kann das Kontingent allein damit ausschöpfen | Werkzeug drosseln; notfalls das Kontingent der Installation anheben (Abschnitt 15) |
 | `403` bei einem Aufruf, der bis gestern lief | Ein Proxy hängt der Adresse etwas an (`/mcp;x=1`); solche Pfade weist die Anwendung ab, bevor sie den Endpunkt erreichen | Proxy-Regel bereinigen. Eine prozentkodierte Schreibweise (`/%6Dcp`) ist dagegen unschädlich — sie wird wie `/mcp` behandelt |
 | Der Client meldet „MCP server failed" o. ä., **alle** externen KI-Werkzeuge des Hauses zugleich | **Fassungsbruch** nach einem Client- oder Server-Update — siehe unten |
-| Die Antwort ist **HTML** statt JSON — etwa eine Seite der Anwendung oder `405` mit HTML-Rumpf | Ein vorgelagerter Reverse-Proxy reicht `/mcp` nicht an OPAA durch, sondern beantwortet den Pfad mit der Auslieferung der Oberfläche. Der Endpunkt selbst antwortet immer als JSON | Die Proxy-Regel um `/mcp` ergänzen — sie muss den Pfad genauso weiterreichen wie `/` ([Netzwerkzugang](../betrieb/netz-und-sicherheit.md#netzwerkzugang)) |
+| Die Antwort ist **HTML** statt JSON — etwa eine Seite der Anwendung oder `405` mit HTML-Rumpf | Ein vorgelagerter Reverse-Proxy reicht `/mcp` nicht an OPAA durch, sondern beantwortet den Pfad mit der Auslieferung der Oberfläche. Der Endpunkt selbst antwortet immer als JSON | Die Proxy-Regel um `/mcp` ergänzen — sie muss den Pfad genauso weiterreichen wie `/` ([Netzwerkzugang](../betreiben/netz-und-sicherheit.md#netzwerkzugang)) |
 | Der Client startet einen Anmelde- oder OAuth-Ablauf statt die Ursache zu zeigen | Der Client hat auf `401` mit einer OAuth-Erkennung reagiert | Im Client OAuth abschalten (bei OpenCode `"oauth": false`, Abschnitt 9) und die eigentliche Ursache aus der `reason`-Angabe lesen |
 | Es lässt sich kein neues Token anlegen, keine Bibliothek ist wählbar | Kanal geschlossen, oder es ist keine der lesbaren Bibliotheken freigegeben | Abschnitt 3 bzw. 4 |
 
@@ -572,7 +572,7 @@ Arbeitsplatz.
 Schalter, Freigaben und Tokens sind Zeilen in der Datenbank. Eine Rücksicherung rollt sie
 **gemeinsam** zurück — einschließlich eines Notaus und gesperrter Tokens — und das Protokoll, das
 beides belegen würde, gleich mit. Nach jeder Wiederherstellung deshalb, zusätzlich zur allgemeinen
-Nacharbeit ([Deployment](../betrieb/authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank)):
+Nacharbeit ([Deployment](../betreiben/authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank)):
 
 1. **Schalterzustand prüfen.** *Administration → Anbindungen → Externe KI-Werkzeuge*: Steht der
    Schalter so, wie er zuletzt stand? Der Reiter zeigt Zeitpunkt und handelnde Person der letzten
@@ -614,7 +614,7 @@ Eine leere Netzbereichsliste weist **jeden** Aufruf ab: Die Prüfung versagt ges
 Namensauflösung findet dabei nicht statt.
 
 **Umgebungsvariablen**, gesetzt beim Start des Backends (siehe
-[Deployment](../betrieb/konfiguration.md#alle-umgebungsvariablen)):
+[Deployment](../betreiben/konfiguration.md#alle-umgebungsvariablen)):
 
 | Variable | Standard | Wirkung |
 |---|---|---|
@@ -645,7 +645,7 @@ erinnert zu werden.
 ## 16. Weiterführende Kapitel
 
 - Der Such- und Abrufweg, den die Werkzeuge benutzen: [Suche](suche.md), Abschnitte 7.1 und 10.3
-- Anmeldeverfahren: [Authentifizierung](../betrieb/authentifizierung.md); Umgebungsvariablen: [Konfiguration](../betrieb/konfiguration.md); Reverse Proxy: [Netz und Sicherheit](../betrieb/netz-und-sicherheit.md); Rücksicherung: [Sicherung und Wiederherstellung](../betrieb/sicherung-und-wiederherstellung.md)
+- Anmeldeverfahren: [Authentifizierung](../betreiben/authentifizierung.md); Umgebungsvariablen: [Konfiguration](../betreiben/konfiguration.md); Reverse Proxy: [Netz und Sicherheit](../betreiben/netz-und-sicherheit.md); Rücksicherung: [Sicherung und Wiederherstellung](../betreiben/sicherung-und-wiederherstellung.md)
 - Konten sperren, übergeben und löschen — und was das mit Tokens macht:
   [Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md)
 - Welche Bestände es überhaupt gibt und wie sie entstehen: [Wissensbibliotheken](../arbeitsmittel/wissensbibliotheken/README.md)

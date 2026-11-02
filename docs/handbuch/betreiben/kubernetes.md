@@ -148,7 +148,7 @@ an; alle Pods erreicht `-l app.kubernetes.io/component=backend`, für Protokolle
 | Eingang | ein Ingress-Controller oder eine Gateway-API-Implementierung mit einem Gateway; ein DNS-Name und ein Zertifikat, etwa über cert-manager |
 | Datenbank | PostgreSQL mit pgvector 0.8.0 oder neuer, vom Cluster aus erreichbar, mit einer Datenbank und einem Konto für OPAA; Vorbereitung siehe [Voraussetzungen einer eigenen PostgreSQL](datenbank.md#voraussetzungen-einer-eigenen-postgresql) |
 | Originalablage | ein vorher angelegter Bucket in einem S3-kompatiblen Objektspeicher mit Zugangs- und Geheimschlüssel, oder eine StorageClass für ein Volume mit `ReadWriteOnce` |
-| Modelle | ein OpenAI-kompatibler Endpunkt für die Einbettung und einer für den Chat, wahlweise im Cluster; optional ein Rerank-Endpunkt (siehe [LLM-Anbieter](modelle.md#llm-anbieter)) |
+| Modelle | ein OpenAI-kompatibler Endpunkt für die Einbettung und einer für den Chat, wahlweise im Cluster; optional ein Rerank-Endpunkt (siehe [LLM-Anbieter](modell-endpunkte.md#llm-anbieter)) |
 | Identitätsanbieter | optional ein OIDC-Anbieter mit einem öffentlichen Client; ohne ihn melden sich Personen mit lokalen Konten an |
 | Mailserver | optional; in der Antwortdatei (`bootstrap.mail`), im Einrichtungs-Assistenten (ein Server im Cluster-Netz braucht dann `installationMailTargetAllowlist`) oder nach der Installation in der Oberfläche |
 | Postfach | eine zustellbare Adresse für das erste Systemverwalter-Konto, am besten ein Funktionspostfach der IT |
@@ -282,13 +282,13 @@ ingress:
 - Die Dimension des Embedding-Modells ermittelt die Probeeinbettung der Installation; einstellen
   muss sie niemand. `embedding.dimensions` ist ohne Wirkung und wird nur noch angenommen, damit
   ältere Werte-Dateien weiter rendern. Ein späterer Wechsel des Modells läuft in der Modellverwaltung,
-  mit Neueinbettung ([Modell wechseln](modelle.md#modell-wechseln)).
+  mit Neueinbettung ([Modell wechseln](modell-endpunkte.md#modell-wechseln)).
 - **Interne Modell-Hosts** gehören mit Port in `targetValidation.modelAllowlist`, etwa
   `ollama.ai.svc.cluster.local:11434`, nicht in die Liste der Quellen. Host und Port von
   `bootstrap.chatModel.baseUrl` und `embedding.baseUrl` trägt der Chart selbst und dauerhaft ein,
   auch nach der Installation; die Freigabe gilt dann für jede Modellrolle auf diesem Host und Port.
   Nötig ist ein Eintrag für Modelle auf anderen Hosts, die die Verwaltung später anlegt, etwa Rerank-
-  und Transkriptionsmodell ([Adressprüfung der Modelle](modelle.md#adressprüfung-der-modelle)).
+  und Transkriptionsmodell ([Adressprüfung der Modelle](modell-endpunkte.md#adressprüfung-der-modelle)).
 - `bootstrap.*` ist die **Antwortdatei** der [Installation](installation.md): Mit
   `bootstrap.initialAdmin.email` rendert der Chart sie, und der erste Start richtet OPAA daraus ein
   (siehe [7. Installation und erste Anmeldung](#7-installation-und-erste-anmeldung)). Ohne die
@@ -667,8 +667,8 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 | `embedding.baseUrl` | leer, Pflicht mit Antwortdatei | `embeddingModel.baseUrl` der Antwortdatei | OpenAI-kompatibler Einbettungs-Endpunkt; die Installation prüft ihn mit einer Probeeinbettung, danach ändert der Wert nichts mehr |
 | `embedding.model` | leer, Pflicht mit Antwortdatei | `embeddingModel.model` | Einbettungsmodell; die Probeeinbettung ergibt seine Dimension |
 | `embedding.dimensions` | leer | — | ohne Wirkung; nur noch angenommen, damit Werte-Dateien bis `v0.1.0-rc.4` weiter rendern |
-| `embedding.timeout` | leer (Vorgabe der Anwendung) | `OPAA_OPENAI_EMBEDDING_TIMEOUT` | Höchstdauer eines Embedding-Aufrufs; ein großes Modell auf einer CPU braucht mehr ([Modell wechseln](modelle.md#modell-wechseln)) |
-| `embedding.maxInputTokens` | leer (Vorgabe der Anwendung) | `embeddingModel.maxInputTokens` | Eingabegrenze des Endpunkts in Tokens ([Eingabegrenze des Embedding-Modells](modelle.md#eingabegrenze-des-embedding-modells)) |
+| `embedding.timeout` | leer (Vorgabe der Anwendung) | `OPAA_OPENAI_EMBEDDING_TIMEOUT` | Höchstdauer eines Embedding-Aufrufs; ein großes Modell auf einer CPU braucht mehr ([Modell wechseln](modell-endpunkte.md#modell-wechseln)) |
+| `embedding.maxInputTokens` | leer (Vorgabe der Anwendung) | `embeddingModel.maxInputTokens` | Eingabegrenze des Endpunkts in Tokens ([Eingabegrenze des Embedding-Modells](modell-endpunkte.md#eingabegrenze-des-embedding-modells)) |
 | `embedding.apiKeyInSecret` | `false` | `embeddingModel.apiKeyFile` | Schlüssel des Embedding-Modells aus dem Secret (Schlüssel `installation-embedding-api-key`) |
 | `rerank.timeout` | leer (Vorgabe der Anwendung) | `OPAA_RERANK_TIMEOUT` | Zeitbudget eines Rerank-Aufrufs, etwa `120s`; wer es anhebt, hebt `frontend.backendReadTimeout` mit an |
 | `rerank.probeInterval` | leer (Vorgabe der Anwendung) | `OPAA_RERANK_PROBE_INTERVAL` | Abstand der Erreichbarkeitsprüfung ohne Fragen; bei einem bezahlten Endpunkt groß wählen, etwa `24h` |
@@ -994,7 +994,7 @@ Weiteres zur Anbindung, zur Anbieterverwaltung und zum Verzeichnisabgleich steht
 |---|---|---|
 | Datenbank, Originalablage, Einbettung, Reranking, Proxy-Kette, CSP-Ergänzungen, Timeouts | Bereitstellungswerte | Werte; wirken bei jedem `helm upgrade` |
 | erster Identitätsanbieter | Antwortdatei | `bootstrap.oidc`; danach Administration → Benutzer → Anbieter |
-| erstes Chat-Modell samt Schlüssel | Antwortdatei | `bootstrap.chatModel` und `installation-chat-api-key`; danach die Modellverwaltung ([LLM-Anbieter](modelle.md#llm-anbieter)) |
+| erstes Chat-Modell samt Schlüssel | Antwortdatei | `bootstrap.chatModel` und `installation-chat-api-key`; danach die Modellverwaltung ([LLM-Anbieter](modell-endpunkte.md#llm-anbieter)) |
 | erster Systemverwalter | Antwortdatei | `bootstrap.initialAdmin` und `installation-admin-password`; danach [Benutzerverwaltung](../konten-und-rechte/benutzerverwaltung.md) |
 | Mailserver, weitere Anbieter, Verzeichnisabgleich, Zugriff externer KI-Werkzeuge | Verwaltungseinstellungen | keine Werte; nur in der Oberfläche |
 
@@ -1002,7 +1002,7 @@ Weiteres zur Anbindung, zur Anbieterverwaltung und zum Verzeichnisabgleich steht
 Installation führt die Datenbank; ein GitOps-Werkzeug kann Anbieter, Modelle und Mailserver nicht
 nachführen. Das gilt auch für das Embedding-Modell: Ein Wechsel läuft in der Modellverwaltung mit
 einer Neueinbettung des Bestands, ein anderer Endpunkt desselben Modells ohne (siehe
-[Modell wechseln](modelle.md#modell-wechseln)).
+[Modell wechseln](modell-endpunkte.md#modell-wechseln)).
 
 **Notfallzugang.** Kommt niemand mehr herein, stellt `OPAA_LOCAL_ADMIN_RESET=force` beim nächsten
 Start einen anmeldefähigen lokalen Systemverwalter her; hat die Installation kein Notanker-Konto,
@@ -1048,11 +1048,11 @@ targetValidation:
 Die Installation prüft die Adressen der Modelle gegen `targetValidation.modelAllowlist`; Host und
 Port beider Modelle der Antwortdatei trägt der Chart selbst ein, der Eintrag gibt denselben Server
 für Modelle frei, die die Verwaltung später anlegt. Ein Ziel der Konnektoren wird er dadurch nicht
-([Adressprüfung der Modelle](modelle.md#adressprüfung-der-modelle)).
+([Adressprüfung der Modelle](modell-endpunkte.md#adressprüfung-der-modelle)).
 
 Ein unverändert gezogenes Modell nimmt 2.048 Tokens auf, dazu passt die Vorgabe von
 `embedding.maxInputTokens`. Wer `bge-m3` per Modelfile mit 8.192 Tokens anlegt, setzt
-`maxInputTokens: 8192` ([Eingabegrenze des Embedding-Modells](modelle.md#eingabegrenze-des-embedding-modells)).
+`maxInputTokens: 8192` ([Eingabegrenze des Embedding-Modells](modell-endpunkte.md#eingabegrenze-des-embedding-modells)).
 
 Mit eingeschalteten Egress-Policies braucht das Backend eine Regel zum Namespace des Modellservers
 (siehe [NetworkPolicies](#networkpolicies)).
@@ -1428,22 +1428,12 @@ der nächste Start führt sie erneut aus; eine Sperre bleibt dabei nicht stehen.
 
 ## Sicherung und Wiederherstellung
 
-| Bestandteil | Wo | Gesichert durch |
-|---|---|---|
-| Datenbank: Dokumente, Chunks samt Vektoren, Volltext, Metadaten, Rechte, Chats, Protokolle | externe PostgreSQL | Sicherung des Datenbankbetriebs, etwa `pg_dump` oder die Sicherung eines Operators |
-| Originale der Uploads | Bucket oder Volume `opaa-uploads` | Replikation oder Sicherung des Objektspeichers, Snapshots des Volumes oder eine Dateikopie; die Versionierung des Buckets nicht, denn ein Löschen in OPAA entfernt alle Versionen |
-| Geheimnisse | Secret `opaa-secrets` | Kopie außerhalb des Clusters, vor allem `OPAA_CREDENTIALS_ENCRYPTION_KEY`, `OPAA_SETTINGS_ENCRYPTION_KEY` und `OPAA_AUTH_JWT_SECRET` |
-| Konfiguration | Werte-Datei | Versionsverwaltung; sie nennt auch Endpunkt und Bucket, auf die die Verweise in der Datenbank zeigen |
-
-Nicht zu sichern sind die Pods, `/tmp` und das Frontend. Die Erprobungsdatenbank sichert der Chart
-nicht; wer sie vor einem Upgrade von Hand sichern will, folgt
-[Erprobungsdatenbank sichern](#erprobungsdatenbank-sichern).
-
-**Reihenfolge.** Erst die Datenbank sichern, dann die Originale; wiederherstellen umgekehrt, erst die
-Originale, dann die Datenbank. Die Begründung steht unter
-[Sicherung und Wiederherstellung](originalablage.md#sicherung-und-wiederherstellung) im Kapitel
-Originalablage. Einen genau zusammenpassenden Stand ergibt eine Sicherung bei
-angehaltenem Backend (`backend.replicas: 0` oder `kubectl scale`).
+Was zu sichern ist, in welcher Reihenfolge und was nach einer Rücksicherung gilt, steht unter
+[Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md). Im Cluster liegt die Datenbank
+in der externen PostgreSQL, die Originale im Bucket oder im Volume `opaa-uploads`, die Geheimnisse im
+Secret `opaa-secrets`, die Konfiguration in der Werte-Datei. Die Erprobungsdatenbank sichert der
+Chart nicht ([Erprobungsdatenbank sichern](#erprobungsdatenbank-sichern)). Angehalten wird das
+Backend mit `backend.replicas: 0` oder `kubectl scale`.
 
 **Originale auf einem Volume kopieren.** Das Backend-Image hat weder Shell noch `tar`. Die Kopie
 macht ein eigener Pod, der den Claim einhängt und im Namespace unter `restricted` zulässig ist. Bei
@@ -1527,12 +1517,9 @@ cd ..
 müssen dort deshalb unverändert liegen. Wer External Secrets, Sealed Secrets oder Vault verwendet,
 ändert den Wert dort.
 
-**Was eine Datenbanksicherung nicht enthält.** `pg_dump` sichert eine Datenbank, nicht die Rollen der
-PostgreSQL-Instanz. Auf dem Ziel müssen die Erweiterung `vector` und die Rolle `opaa_audit_owner`
-vorher existieren (siehe [Voraussetzungen einer eigenen PostgreSQL](datenbank.md#voraussetzungen-einer-eigenen-postgresql));
-sonst bricht die Wiederherstellung mit `role "opaa_audit_owner" does not exist` ab. Wiederhergestellt
-wird mit einem Konto, das Eigentümer setzen darf, damit die Protokolltabellen `opaa_audit_owner`
-gehören.
+**Vor dem Einspielen der Datenbank** müssen `vector` und die Rolle `opaa_audit_owner` auf dem Ziel
+existieren ([Voraussetzungen einer eigenen PostgreSQL](datenbank.md#voraussetzungen-einer-eigenen-postgresql)),
+sonst bricht sie mit `role "opaa_audit_owner" does not exist` ab; wiederhergestellt wird mit einem Konto, das Eigentümer setzen darf.
 
 **Wiederherstellung auf einem neuen Cluster.** Der Claim `opaa-uploads` entsteht erst mit dem Chart.
 Deshalb wird der Chart zuerst mit angehaltenem Backend installiert:
@@ -1554,12 +1541,9 @@ selbst anlegt und mit `uploads.persistence.existingClaim` übergibt, kann die Or
 Installation zurückspielen; Schritt 2 entfällt dann, der Chart wird gleich mit einer Instanz
 installiert, sobald auch die Datenbank zurückgespielt ist.
 
-**Nach jeder Rücksicherung der Datenbank** gehört die
-[Nacharbeit nach einer Rücksicherung der Datenbank](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank)
-dazu: `OPAA_AUTH_JWT_SECRET` im Secret ersetzen, bevor das Backend auf der zurückgespielten Datenbank
-startet, und die Sperren der Zwischenzeit erneut setzen. `OPAA_CREDENTIALS_ENCRYPTION_KEY` und
-`OPAA_SETTINGS_ENCRYPTION_KEY` bleiben dieselben, sonst sind die gespeicherten Geheimnisse unlesbar. Ist der Zugriff externer KI-Werkzeuge eingeschaltet, folgt die Prüfliste aus
-[Externe KI-Werkzeuge](../spaces/fremdzugaenge.md).
+**Nach jeder Rücksicherung** gilt die
+[Nacharbeit nach einer Rücksicherung](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank):
+neues `OPAA_AUTH_JWT_SECRET`, dieselben Verschlüsselungsschlüssel.
 
 **Im Projekt geprüft.** Eine automatische Wiederherstellungsprobe auf einem Testcluster läuft
 nächtlich und bei Änderungen an Chart oder Images: Sicherung von Erprobungsdatenbank und Originalen
@@ -1842,9 +1826,3 @@ curl -s http://localhost:8081/actuator/health/readiness
 | Uploads antworten „Dienst nicht verfügbar" | Objektspeicher nicht erreichbar, Bucket fehlt oder fehlendes Schreibrecht; mit Egress-Policies auch eine fehlende Regel. Weiter unter [Wenn etwas nicht stimmt](originalablage.md#wenn-etwas-nicht-stimmt) |
 | Eine Quelle mit interner Adresse wird abgelehnt | Ihr Hostname fehlt in `targetValidation.indexingAllowlist` |
 | Eine Dateisystem-Bibliothek findet ihr Verzeichnis nicht | Der Pfad liegt nicht unter einem `mountPath` aus `filesystemSources` |
-
-## Was nicht gebaut ist
-
-- **Automatisches Skalieren des Backends.** Die Zahl der Pods ist ein fester Wert.
-- **Ein Operator, eine Kustomize-Basis oder plattformspezifische Pakete** wie OpenShift-Templates.
-- **Eine produktive Datenbank im Release.** Die Erprobungsdatenbank ersetzt keinen Datenbankbetrieb.

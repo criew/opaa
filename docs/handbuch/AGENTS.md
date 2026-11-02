@@ -20,7 +20,7 @@ Rolle an einem Objekt oder eine Fähigkeit. Daraus folgen fünf Ordner:
 Jeder Ordner hat eine `README.md` mit der Liste seiner Seiten. Den Gesamtbaum führt
 `README.md`, Abschnitt „Aufbau des Handbuchs“; eine neue Seite bekommt dort ihren Platz.
 
-**Umbau:** Bis die alten Ordner `spaces/`, `konten-und-rechte/`, `arbeitsmittel/` und `betrieb/`
+**Umbau:** Bis die alten Ordner `spaces/`, `konten-und-rechte/` und `arbeitsmittel/`
 aufgelöst sind, stehen sie neben den neuen. Neue Inhalte kommen nur in die neuen Ordner; wer
 eine alte Seite ändert, zieht sie bei der Gelegenheit um.
 

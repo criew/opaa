@@ -61,7 +61,7 @@ Nutzung und hat keinen Export.
 Das Konto aus dem Erststart ist der Weg zurück in eine ausgesperrte Installation. Es lässt sich
 weder sperren noch löschen, befristen, herabstufen oder übergeben, und die Verwaltung kann ihm kein
 Passwort setzen. Sein Passwort ändert es selbst; ohne Anmeldung hilft nur die
-[Notfallprozedur](../betrieb/authentifizierung.md#notfallprozedur-wieder-hereinkommen). Auch das
+[Notfallprozedur](../betreiben/authentifizierung.md#notfallprozedur-wieder-hereinkommen). Auch das
 **letzte anmeldefähige Systemverwalterkonto** lässt sich nicht sperren, befristen, herabstufen
 oder löschen.
 

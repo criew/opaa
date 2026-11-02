@@ -741,7 +741,7 @@ Originale. Sie gehört der Anwendung statt einer Quelle und ist deshalb als einz
   Originalablage der Uploads** und dort zuschaltbar. Quelldokumente einer Dateisystem-Bibliothek
   bleiben beim Verzeichnis; ein S3-Bucket als *Quelle* ist stattdessen der S3-Konnektor
 
-Näheres in [Originalablage](handbuch/betrieb/originalablage.md).
+Näheres in [Originalablage](handbuch/betreiben/originalablage.md).
 
 ---
 

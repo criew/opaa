@@ -19,7 +19,7 @@ stößt bei sehr großen Beständen im Bereich von Millionen Vektoren an Grenzen
 - **Die Vektortabelle** legt nicht die Migration an, sondern der Abschluss der Installation, mit
   der Dimension, die die Probeeinbettung des Embedding-Modells ergibt. Eine bestehende Installation
   behält ihre Vektortabelle. Nach einem Wechsel des Embedding-Modells stellt die Neueinbettung sie
-  auf die neue Dimension um ([Modelle](modelle.md#modell-wechseln)); bis dahin stehen alte und neue
+  auf die neue Dimension um ([Modelle](modell-endpunkte.md#modell-wechseln)); bis dahin stehen alte und neue
   Vektoren nebeneinander, und den Platz der alten gibt PostgreSQL erst frei, wenn die Zeilen neu
   geschrieben werden.
 - **Die Distanzfunktion** (`OPAA_PGVECTOR_DISTANCE_TYPE`) bestimmt, wofür der Vektorindex beim
@@ -47,7 +47,7 @@ CREATE INDEX CONCURRENTLY <index> ON <schema>.vector_store USING hnsw (embedding
   Schreibzugriffe auf die Tabelle, bei großen Beständen lange. Mit dem Zusatz dauert er länger,
   sperrt aber nicht; die beiden Befehle laufen außerhalb einer Transaktion.
 - **Während einer Neueinbettung** nach einem Wechsel des Embedding-Modells
-  ([Modelle](modelle.md#modell-wechseln)) gibt es einen zweiten Index, `embedding_next_vector_index`
+  ([Modelle](modell-endpunkte.md#modell-wechseln)) gibt es einen zweiten Index, `embedding_next_vector_index`
   auf der Spalte `embedding_next`. Er kann ebenso betroffen sein und wird auf dieselbe Weise neu
   gebaut, mit `embedding_next` statt `embedding`. Die Meldung nennt je Start einen Index; passt
   danach ein weiterer nicht, nennt ihn der nächste Start.
@@ -101,7 +101,7 @@ PostgreSQL in diesem Fall verloren ginge:
     The PostgreSQL server has the pgvector extension not installed; the schema migration of OPAA needs it (CREATE EXTENSION vector).
 
     Action:
-    Install pgvector 0.8.0 or later on the database server - e.g. the image pgvector/pgvector or the package postgresql-<version>-pgvector - and start OPAA again. See docs/handbuch/betrieb/datenbank.md, section "Voraussetzungen einer eigenen PostgreSQL".
+    Install pgvector 0.8.0 or later on the database server - e.g. the image pgvector/pgvector or the package postgresql-<version>-pgvector - and start OPAA again. See docs/handbuch/betreiben/datenbank.md, section "Voraussetzungen einer eigenen PostgreSQL".
 ```
 
 ## Eigenes Datenbankschema

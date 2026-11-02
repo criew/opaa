@@ -4,7 +4,7 @@ Dieses Kapitel beschreibt die Verwaltung **lokaler Konten** — derjenigen Konte
 OPAA selbst führt. Konten, die über einen Identitätsanbieter entstehen, werden dort verwaltet, wo
 sie herkommen; in der Kontenliste stehen sie mit ihrer Herkunft und ihrer Rolle, aber ohne
 Zustand und Ablauf — was sich an ihnen ändern lässt, sagen die Abschnitte 6 und 7.
-Einrichtung des Anmeldewegs und Erststart stehen im Kapitel [Authentifizierung](../betrieb/authentifizierung.md),
+Einrichtung des Anmeldewegs und Erststart stehen im Kapitel [Authentifizierung](../betreiben/authentifizierung.md),
 der E-Mail-Versand unter [E-Mail-Versand](../verwalten/e-mail.md); hier geht es um die täglichen Abläufe.
 Abschnitt 12, „Verbundene Konten“, gilt für jedes Konto, auch für Konten eines
 Identitätsanbieters.
@@ -20,7 +20,7 @@ ein. Zwei Lagen brauchen sie:
   hereinkommt, ist immer ein lokales Konto. Es bleibt anmeldefähig, auch wenn die Verwaltung
   regulärer lokaler Konten aus ist.
 
-Läuft ein Identitätsanbieter, empfiehlt das Kapitel [Authentifizierung](../betrieb/authentifizierung.md#lokale-benutzerverwaltung), die Verwaltung
+Läuft ein Identitätsanbieter, empfiehlt das Kapitel [Authentifizierung](../betreiben/authentifizierung.md#lokale-benutzerverwaltung), die Verwaltung
 **nach der Einrichtung abzuschalten**: Lokale Konten laufen an den Ein- und Austrittsprozessen des Hauses
 vorbei, und jedes von ihnen ist ein Zugang, den niemand automatisch entzieht. Die Gegenmittel dazu
 stehen in Abschnitt 6.
@@ -255,12 +255,12 @@ derselbe Schutz: Dem letzten anmeldefähigen Systemverwalter lässt sich die Rol
 **Eine Rolle ändert nur, wer sich gerade angemeldet hat.** Wer einem Konto eine andere Systemrolle
 gibt — über „Rolle ändern …", im Dialog „Bearbeiten" oder schon beim Anlegen mit einer anderen Rolle
 als „Nutzer" —, bestätigt vorher seine Anmeldung, wenn sie länger zurückliegt
-([Erneute Anmeldung vor sensiblen Vorgängen](../betrieb/authentifizierung.md#erneute-anmeldung-vor-sensiblen-vorgängen)).
+([Erneute Anmeldung vor sensiblen Vorgängen](../betreiben/authentifizierung.md#erneute-anmeldung-vor-sensiblen-vorgängen)).
 Dasselbe gilt für alles, womit ein lokales Konto der Systemverwaltung oder der Revision in andere
 Hände kommen könnte: eine neue E-Mail-Adresse, „Rücksetz-Link per E-Mail", „Passwort erzeugen" und
 „An Identitätsanbieter übergeben". Bei einem Identitätsanbieter verlangen die Rollenzuordnung und
 alles, was bestimmt, wessen Anmeldung zählt — Issuer-URI, Client-ID, JWK-Set-URI, E-Mail-Claim und
-Gruppen-Claim —, dieselbe Bestätigung ([Authentifizierung](../betrieb/authentifizierung.md)). Eine
+Gruppen-Claim —, dieselbe Bestätigung ([Authentifizierung](../betreiben/authentifizierung.md)). Eine
 offen gelassene oder entwendete Sitzung genügt so nicht, um Verwaltungsrechte weiterzugeben, ein
 solches Konto zu übernehmen oder Anmeldungen eines fremden Dienstes gelten zu lassen. Die übrigen
 Angaben eines Kontos und alle Handlungen an Konten mit der Rolle „Nutzer" gehen ohne Bestätigung.
@@ -286,7 +286,7 @@ erneut, erst wenn er die Rolle zwischenzeitlich nicht mehr genannt hat.
 
 Ohne eine Person der Revision kann niemand bestätigen. Die erste ist deshalb immer ein **lokales
 Konto** unter der Adresse, die der Betrieb als `OPAA_AUTH_FIRST_AUDITOR_EMAIL` hinterlegt hat
-([Variablenliste](../betrieb/konfiguration.md)); die Systemverwaltung legt es an und wählt die Rolle.
+([Variablenliste](../betreiben/konfiguration.md)); die Systemverwaltung legt es an und wählt die Rolle.
 Den Link, mit dem die Person ihr Passwort setzt, schreibt OPAA dann einmalig ins Server-Log — er
 erreicht also den Betrieb, nicht die Systemverwaltung, und der Betrieb übergibt ihn der Person. Für
 jedes andere Konto, und für jedes Konto eines Identitätsanbieters, lehnt OPAA die Vergabe ab, solange
@@ -318,7 +318,7 @@ stehen im Nachweisprotokoll.
 
 Systemverwalterkonten sind **persönliche** Konten, je Person eines — keine Sammelkonten. Das
 Notanker-Konto, das der Erststart anlegt, ist davon ausgenommen und kein Arbeitskonto; wofür es
-gedacht ist und welche Auflagen dafür gelten, steht im Kapitel [Authentifizierung](../betrieb/authentifizierung.md#erststart-und-systemverwalter-konto).
+gedacht ist und welche Auflagen dafür gelten, steht im Kapitel [Authentifizierung](../betreiben/authentifizierung.md#erststart-und-systemverwalter-konto).
 
 ### Anlegerechte
 
@@ -410,7 +410,7 @@ Konto und der persönliche Space bleiben.
   verfällt er nach 14 Tagen.
 - **Ende der Anhaltung:** Der Dialog zeigt Zweck, Begründung, Ende und Restlaufzeit. Die Anhaltung
   endet nach einer Höchstdauer von selbst (`OPAA_CHAT_LOCKED_ACCOUNT_CLEANUP_HOLD_MAX_DAYS`, Kapitel
-  [Konfiguration](../betrieb/konfiguration.md)); weiter geht es nur mit „Verlängerung beantragen“ und
+  [Konfiguration](../betreiben/konfiguration.md)); weiter geht es nur mit „Verlängerung beantragen“ und
   einer neuen Freigabe. „Löschung fortsetzen“ hebt sie vorher auf, das darf eine Person allein. Ist
   die Frist nach der Sperre beim Ende schon abgelaufen, löscht die nächste Nacht. Anhaltungen aus
   einer Version vor dem Vier-Augen-Prinzip haben keinen Zweck; die erste Nacht nach dem Update gibt
@@ -419,7 +419,7 @@ Konto und der persönliche Space bleiben.
   Nachweisprotokoll mit dem Zweck, nie mit der Begründung. Die Person sieht Zweck, Beginn und Ende
   in ihrer Selbstauskunft, die Begründung nicht. Wie oft im Monat und zu welchem Zweck angehalten
   wurde, zählt OPAA ohne Person für die
-  [Auskunft über die Datenerhebung](../betrieb/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation).
+  [Auskunft über die Datenerhebung](../betreiben/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation).
 - **Anlassbezogene Klärung:** Steht das Konto in einem offenen Antrag oder einer noch nutzbaren
   Freigabe, wird nicht gelöscht; danach holt die nächste Nacht nach. Am angezeigten Datum ändert das
   nichts.
@@ -455,7 +455,7 @@ erfährt. Die Oberfläche bietet diese Handlungen an ihm gar nicht erst an: „S
 Grund, im Bearbeiten-Dialog sind Rolle und Ablaufdatum nicht änderbar. Name, Adresse und
 Anlagegrund lassen sich wie bei jedem Konto pflegen. Sein Passwort ändert das Konto nach der
 Anmeldung selbst; ohne Anmeldung setzt es nur die Notfallprozedur aus dem Kapitel
-[Authentifizierung](../betrieb/authentifizierung.md#notfallprozedur-wieder-hereinkommen) neu. Von der
+[Authentifizierung](../betreiben/authentifizierung.md#notfallprozedur-wieder-hereinkommen) neu. Von der
 Sperre nach Inaktivität ist es ausgenommen; neu treffen kann es nur noch die Fehlversuch-Sperre
 (Abschnitt „Regeln und Fristen").
 
@@ -506,14 +506,14 @@ Person, sie wird nirgends eingegeben.
 | Die Person meldet sich bei einem anderen Anbieter an | Abgelehnt. Die Übergabe gilt für den Anbieter, den der Anstoß genannt hat. |
 | Das Konto ist inzwischen gesperrt oder abgelaufen | Abgelehnt, mit derselben Antwort wie ein ungültiger Link. Eine Übergabe hebt weder eine Sperre noch ein Ablaufdatum auf: Wer zwischen Anstoß und Einlösung ausscheidet, kommt über den Link nicht zurück herein. Eine Sperre nach Fehlversuchen ist davon ausgenommen — sie endet von selbst. |
 | Die Systemverwaltung hat das Konto inzwischen geändert | Ein Adresswechsel, eine Sperre und ein erzeugtes Passwort schließen den offenen Übergabe-Link — wie sie einen Einladungs- oder Rücksetzlink schließen. Die Übergabe wird dann neu angestoßen. |
-| Der Identitätsanbieter wurde gelöscht | Mit der Anbieterzeile verschwinden alle für sie vorbereiteten Übergaben. Die Links laufen ins Leere und werden nach dem Anlegen des neuen Anbieters neu angestoßen. Zu löschen ist ein Anbieter allerdings nur, solange keine seiner Gruppen noch eine Berechtigung trägt oder Eigentümerin eines Objekts ist — sonst antwortet OPAA mit 409 und nennt die Zahlen (siehe [Deployment](../betrieb/authentifizierung.md#oidc-keycloak)). |
+| Der Identitätsanbieter wurde gelöscht | Mit der Anbieterzeile verschwinden alle für sie vorbereiteten Übergaben. Die Links laufen ins Leere und werden nach dem Anlegen des neuen Anbieters neu angestoßen. Zu löschen ist ein Anbieter allerdings nur, solange keine seiner Gruppen noch eine Berechtigung trägt oder Eigentümerin eines Objekts ist — sonst antwortet OPAA mit 409 und nennt die Zahlen (siehe [Deployment](../betreiben/authentifizierung.md#oidc-keycloak)). |
 | Der Link ist abgelaufen, verbraucht oder unbekannt | Dieselbe Antwort für alle drei: Der Link ist nicht mehr gültig. Die Systemverwaltung stößt die Übergabe dann erneut an. |
 
 > **Bei einer Sammelumstellung an die Grenze denken.** Vorschau und Einlösung teilen sich ein
 > Anfragebudget je Client-Adresse — und eine Behörde sitzt in der Regel mit allen Arbeitsplätzen
 > hinter einer Adresse, je Person fallen zwei Aufrufe an. Wer eine ganze Abteilung an einem
 > Vormittag umstellt, hebt das Budget vorübergehend an; die Vorgabe und die beiden Variablen stehen
-> in der [Konfiguration](../betrieb/konfiguration.md#alle-umgebungsvariablen). Eine überschrittene Grenze ist
+> in der [Konfiguration](../betreiben/konfiguration.md#alle-umgebungsvariablen). Eine überschrittene Grenze ist
 > keine verbrauchte Übergabe: Der Link bleibt gültig, die Person versucht es nach der genannten
 > Wartezeit erneut.
 
@@ -557,7 +557,7 @@ Drei Eigenschaften, die im Alltag auffallen:
   nicht, der Bestätigungslink bleibt deshalb gültig.
 
 Das Einschalten der Selbstregistrierung ist ein Punkt, der vor der Inbetriebnahme mit der
-Personalvertretung zu klären ist; das Kapitel [Authentifizierung](../betrieb/authentifizierung.md#lokale-benutzerverwaltung) führt die Punkte auf.
+Personalvertretung zu klären ist; das Kapitel [Authentifizierung](../betreiben/authentifizierung.md#lokale-benutzerverwaltung) führt die Punkte auf.
 
 ## 11. Was Nutzende selbst können
 
@@ -581,7 +581,7 @@ allen Instanzen, ein laufender Download läuft zu Ende, und jede Änderung steht
 Wann eine Person zuletzt ihre Daten heruntergeladen hat, zeigt keine Konten- oder
 Einstellungsansicht der Verwaltung. Start und Ende jedes Downloads stehen pseudonymisiert im
 Nachweisprotokoll, das nur die Revision liest
-([Nachvollziehbarkeit](../betrieb/nachvollziehbarkeit.md#was-opaa-automatisch-nachweist)).
+([Nachvollziehbarkeit](../betreiben/nachvollziehbarkeit.md#was-opaa-automatisch-nachweist)).
 
 | Einstellung | Vorgabe | Grenzen |
 |---|---|---|
@@ -589,7 +589,7 @@ Nachweisprotokoll, das nur die Revision liest
 | Tagesgrenze | 1 vollständiger Download je Person und Tag | 1 bis 10; Starts je Tag höchstens Tagesgrenze plus 4 |
 
 Gleichzeitige Auskünfte je Instanz und Höchstdauer einer Auskunft stehen in der
-[Variablenliste](../betrieb/konfiguration.md).
+[Variablenliste](../betreiben/konfiguration.md).
 
 ## 12. Verbundene Konten
 
@@ -627,7 +627,7 @@ der zuletzt eingegebene Benutzername vorbelegt.
 | „Dieser Zugang ist für Sie nicht freigegeben …“ | Ein neues Konto auf einem Zugang ohne Freigabe |
 | „Der Zugang ist gesperrt …“ | Zugang oder Quellart sind gesperrt; Trennen geht weiterhin |
 | „Der Zugang … wurde geändert, während Sie sich angemeldet haben …“ | Die Systemverwaltung hat den Zugang während der Anmeldung geändert oder entfernt; nichts wurde gespeichert, erneut verbinden |
-| „… keine Zugangsdaten speichern kann …“ | Der Installation fehlt der Schlüssel für Zugangsdaten ([Zugangsdaten-Verschlüsselung](../betrieb/netz-und-sicherheit.md#zugangsdaten-verschlüsselung)); zuständig ist die Systemverwaltung |
+| „… keine Zugangsdaten speichern kann …“ | Der Installation fehlt der Schlüssel für Zugangsdaten ([Zugangsdaten-Verschlüsselung](../betreiben/netz-und-sicherheit.md#zugangsdaten-verschlüsselung)); zuständig ist die Systemverwaltung |
 
 **Anmeldung beim Anbieter (OAuth).** Bei einem Zugang dieser Anmeldeart gibt es kein Formular:
 „Verbinden“ bzw. „Neu verbinden“ fragt nach, sagt, dass es zum Anbieter weitergeht und was im
@@ -790,7 +790,7 @@ Konten gelten. Sie wirken ab der nächsten Anwendung, nicht rückwirkend auf bes
 | Dauer der Sperre (Minuten) | Wie lange diese Sperre dauert; weitere Versuche verlängern sie nicht | `OPAA_AUTH_LOCAL_LOCKOUT_MIN_DURATION` bis 1440 Minuten; Werkseinstellung 15 Minuten |
 
 Die **Sperre nach Fehlversuchen** lässt sich nicht abschalten: Die Grenzen setzt der Betrieb in der
-Konfiguration ([Authentifizierung](../betrieb/authentifizierung.md#lokale-benutzerverwaltung)). Ab
+Konfiguration ([Authentifizierung](../betreiben/authentifizierung.md#lokale-benutzerverwaltung)). Ab
 Werk liegen sie auf der Werkseinstellung, die Verwaltung kann die Sperre dann nur verschärfen; die
 Karte sagt das. Lockern geht erst, wenn der Betrieb die Grenzen bewusst weiter setzt.
 Solange die Verwaltung keinen eigenen Wert speichert, gilt die Werkseinstellung, und das Feld sagt
@@ -805,7 +805,7 @@ Notanker-Konto der Systemverwaltung: Wer seine Adresse kennt, kann es mit falsch
 lange sperren. Schutz bietet `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS`, weil Versuche von außerhalb dieser
 Netze nicht zählen. Ist es gesperrt, hebt eine andere Systemverwaltung die Sperre mit „Entsperren"
 auf, oder der Betrieb stellt es mit `OPAA_LOCAL_ADMIN_RESET=force` wieder her
-([Notfallprozedur](../betrieb/authentifizierung.md#notfallprozedur-wieder-hereinkommen)).
+([Notfallprozedur](../betreiben/authentifizierung.md#notfallprozedur-wieder-hereinkommen)).
 
 Die **Passwortrichtlinie** selbst ist knapp und bewusst ohne Komplexitätsregeln: mindestens die
 eingestellte Länge, höchstens 64 Zeichen, nicht gleich der eigenen E-Mail-Adresse und nicht auf der
@@ -820,7 +820,7 @@ nicht. Die Eingabemasken zeigen die Regel an und bieten „Sicheres Passwort erz
 
 - **Keinen zweiten Faktor.** Lokale Konten melden sich mit Adresse und Passwort an. Für lokale
   Systemverwalterkonten lässt sich stattdessen der Zugang auf bestimmte Netze begrenzen; das Kapitel
-  [Authentifizierung](../betrieb/authentifizierung.md#lokale-benutzerverwaltung) beschreibt, wie.
+  [Authentifizierung](../betreiben/authentifizierung.md#lokale-benutzerverwaltung) beschreibt, wie.
 - **Keine Verwaltung des Lebenszyklus der Konten eines Identitätsanbieters.** Sperren, Befristen
   und Löschen erfolgen beim Anbieter; hier sind diese Konten mit Herkunft und Rolle sichtbar, und
   nur die Rolle lässt sich ändern.

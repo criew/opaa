@@ -232,7 +232,7 @@ nennen Nachweis und Grenzen unten.
   des Charts) in eine interne Registry übernehmen oder auf den Hosts laden. Ein Start ohne
   Internet darf kein Image mehr nachladen.
 - **Modelle im Haus:** Chat- und Embedding-Modell, bei Bedarf Reranking und Transkription, laufen
-  auf einem Modellserver im Netz der Installation ([Modelle](modelle.md)); seine Modellgewichte
+  auf einem Modellserver im Netz der Installation ([Modelle](modell-endpunkte.md)); seine Modellgewichte
   werden vorab dort abgelegt.
 - **Anmeldung im Haus:** ein Identitätsanbieter im eigenen Netz oder die lokale Anmeldung
   ([Authentifizierung](authentifizierung.md)).
@@ -334,7 +334,7 @@ dem Backend den Weg zum Scanner öffnen.
 |---|---|---|---|
 | `OPAA_AUTH_JWT_SECRET` | lokal ausgestellte Tokens und Links (Refresh, Einladung, Rücksetzen) | im Modus `oidc` bricht der Start ab | alle lokalen Sitzungen, offenen Links und Zugangstokens [externer KI-Werkzeuge](../spaces/fremdzugaenge.md) werden ungültig — gewollt nach einer [Rücksicherung](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank) |
 | `OPAA_CREDENTIALS_ENCRYPTION_KEY` | Zugangsdaten von Quellen, Zugängen und verbundenen Konten, Webhook-Geheimnisse | Speichern solcher Zugangsdaten scheitert; ein im Repository veröffentlichter Schlüssel bricht im Modus `oidc` den Start ab | Verlust: gespeicherte Werte unlesbar, neu einzutragen; Wechsel: [Schlüsselwechsel](#schlüsselwechsel) |
-| `OPAA_SETTINGS_ENCRYPTION_KEY` | Schlüssel der Modelle, SMTP-Passwort, wartende Mails | Speichern solcher Werte scheitert; ein im Repository veröffentlichter Schlüssel bricht im Modus `oidc` den Start ab | Verlust: Werte neu einzutragen ([Modelle](modelle.md#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)), wartende Mails verworfen; Wechsel: [Schlüsselwechsel](#schlüsselwechsel) |
+| `OPAA_SETTINGS_ENCRYPTION_KEY` | Schlüssel der Modelle, SMTP-Passwort, wartende Mails | Speichern solcher Werte scheitert; ein im Repository veröffentlichter Schlüssel bricht im Modus `oidc` den Start ab | Verlust: Werte neu einzutragen ([Modelle](modell-endpunkte.md#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)), wartende Mails verworfen; Wechsel: [Schlüsselwechsel](#schlüsselwechsel) |
 | `OPAA_CREDENTIALS_ENCRYPTION_PREVIOUS_KEYS`, `OPAA_SETTINGS_ENCRYPTION_PREVIOUS_KEYS` | abgelöste Schlüssel während eines [Schlüsselwechsels](#schlüsselwechsel), nur zum Entschlüsseln | leer: kein Wechsel im Gang | nach dem Wechsel entfernen, getrennt aufbewahren |
 | `OPAA_DB_USERNAME`, `OPAA_DB_PASSWORD` | Datenbankkonto | Vorgabe `opaa`/`opaa`, nur Entwicklung | vor dem ersten Start setzen |
 
@@ -467,7 +467,7 @@ steht, erreicht über die Suche das Modell.
 - **MCP-Server:** Treffer für externe KI-Werkzeuge sind als Fremdinhalt gekennzeichnet
   ([Externe KI-Werkzeuge, Der MCP-Server](../spaces/fremdzugaenge.md#der-mcp-server)).
 - **Messen:** Ein Testsatz präparierter Dokumente misst, wie leicht sich das eingesetzte Modell
-  lenken lässt ([Modell gegen Prompt-Injection messen](modelle.md#modell-gegen-prompt-injection-messen)).
+  lenken lässt ([Modell gegen Prompt-Injection messen](modell-endpunkte.md#modell-gegen-prompt-injection-messen)).
 
 **Was nicht gebaut ist:** Eine vollständige Erkennung gibt es nicht, und kein Sprachmodell trennt
 Anweisung und Inhalt zuverlässig. Gemessen mit dem Testsatz hat die Kennzeichnung als Daten die
@@ -480,12 +480,3 @@ nur unsichtbare Zeichen. Ein vorgeschaltetes Klassifikationsmodell gibt es nicht
 **Was beim Haus bleibt:** nur geprüfte Quellen anbinden, Schreibrechte an den Quellen begrenzen, die
 erlaubten Linkziele pflegen, das Modell anhand der Messung wählen und Antworten als Entwurf
 behandeln, der vor einer Entscheidung an den Belegen geprüft wird.
-
-## Weiterführende Kapitel
-
-- [Images und Laufzeit](images-und-laufzeit.md) — was die Container selbst mitbringen: ohne Root,
-  Read-only Filesystem, Probes
-- [Sicherung und Wiederherstellung](sicherung-und-wiederherstellung.md) — die Schlüssel getrennt von
-  der Datenbank sichern
-- [Docker Compose](docker-compose.md#härtung-des-compose-stapels) und
-  [Kubernetes](kubernetes.md#netz-und-sicherheit) — Härtung je Betriebsweg

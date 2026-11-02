@@ -23,10 +23,10 @@ Dienstleister, braucht es in der Regel einen Vertrag zur Auftragsverarbeitung (A
 - **Wo Daten liegen:** Speicherort und Löschmechanismus je Datum im {{faktenblatt:datenkatalog}};
   Datenbank und Originalablage als die beiden Bestände
   ([Was OPAA ist](../../handbuch/README.md#2-was-opaa-ist),
-  [Sicherung](../../handbuch/betrieb/sicherung-und-wiederherstellung.md#sicherung)).
+  [Sicherung](../../handbuch/betreiben/sicherung-und-wiederherstellung.md#sicherung)).
 - **Wohin Daten gehen:** {{faktenblatt:datenfluesse}}.
 - **Wie die Installation eingestellt ist:** die
-  [Auskunft über die Datenerhebung](../../handbuch/betrieb/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation).
+  [Auskunft über die Datenerhebung](../../handbuch/betreiben/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation).
 
 ## Aufgaben der Behörde
 

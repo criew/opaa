@@ -13,7 +13,7 @@ Zustand hält: Datenbank, Originalablage und Geheimnisse. Das Kapitel gehört zu
 |---|---|
 | Datenbank | `pg_dump` oder die Sicherung des Datenbankbetriebs |
 | Originalablage | Kopie, Snapshots oder Replikation; die Versionierung des Buckets nicht, denn ein Löschen in OPAA entfernt alle Versionen ([Originalablage](originalablage.md#was-im-objektspeicher-liegt)) |
-| Geheimnisse | Kopie außerhalb der Installation |
+| Geheimnisse | Kopie außerhalb der Installation, vor allem `OPAA_CREDENTIALS_ENCRYPTION_KEY`, `OPAA_SETTINGS_ENCRYPTION_KEY` und `OPAA_AUTH_JWT_SECRET` |
 | Konfiguration (`.env.docker` bzw. Werte-Datei) | Versionsverwaltung |
 
 - **Reihenfolge:** erst Datenbank, dann Originale sichern; umgekehrt wiederherstellen
@@ -127,11 +127,3 @@ SELECT format('%I.%I', n.nspname, c.relname) AS tabelle,
 **Messung:** RTO der Probe ist `t4 − t0`, RPO `tA − tS` (im Betrieb höchstens der Abstand zweier
 Sicherungen). Größe von Datenbank und Originalen gehört zum Ergebnis; nur eine Probe mit
 Produktivmenge belegt die echte Wiederherstellungszeit. Danach Ziel und Testsicherungen löschen.
-
-## Weiterführende Kapitel
-
-- [Docker Compose](docker-compose.md#sicherung-und-wiederherstellung) und
-  [Kubernetes](kubernetes.md#sicherung-und-wiederherstellung) — die Befehle je Betriebsweg
-- [Datenbank](datenbank.md) und [Originalablage](originalablage.md#sicherung-und-wiederherstellung)
-  — was die beiden Bestände beim Sichern verlangen
-- [Aktualisierung](aktualisierung.md) — vor jedem Update sichern

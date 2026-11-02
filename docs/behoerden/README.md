@@ -51,7 +51,7 @@ nicht rechtlich geprüft ist.
 ## Wo man die Vorlagen liest
 
 Die Vorlagen gehen davon aus, dass sie im
-[Update-Paket](../handbuch/betrieb/releases-und-nachweise.md#das-update-paket) der eingesetzten
+[Update-Paket](../handbuch/betreiben/releases-und-nachweise.md#das-update-paket) der eingesetzten
 Version gelesen werden. Es hängt an der GitHub-Seite der Version (Releases) als
 `opaa-update-paket-X.Y.Z.tar.gz`. Nach dem Entpacken öffnet `index.html` alles im Browser, auch ohne
 Internetzugang: die Vorlagen, das Handbuch und die Faktenblätter dieser Version, untereinander

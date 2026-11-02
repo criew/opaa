@@ -26,6 +26,6 @@ Hervorhebung „lange offen“ unter [Ausscheiden und Nachfolge](ausscheiden.md)
 
 - Wann eine Person zuletzt ihre Daten geladen hat, zeigt keine Ansicht der Verwaltung.
 - Die Auskunft über die Datenerhebung dieser Installation, etwa für den Personalrat, beschreibt
-  [Nachvollziehbarkeit](../betrieb/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation).
+  [Nachvollziehbarkeit](../betreiben/nachvollziehbarkeit.md#auskunft-über-die-datenerhebung-einer-installation).
 - Alle Fristen lassen sich mit [Einstellungen übertragen](einstellungen-uebertragen.md) in eine
   andere Installation mitnehmen.

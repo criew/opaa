@@ -8,7 +8,7 @@
 Die Karte legt fest, was für alle lokalen Konten gilt. Jede Änderung wirkt ab der nächsten Anwendung,
 nicht rückwirkend auf bestehende Passwörter, und steht im Nachweisprotokoll. Identitätsanbieter und
 Verzeichnisabgleich richtet die Systemverwaltung unter „Administration → Identitätsanbieter“ und
-„Administration → Verzeichnisabgleich“ ein ([Authentifizierung](../betrieb/authentifizierung.md#anbieterverwaltung)).
+„Administration → Verzeichnisabgleich“ ein ([Authentifizierung](../betreiben/authentifizierung.md#anbieterverwaltung)).
 
 | Einstellung | Grenzen |
 |---|---|
@@ -24,7 +24,7 @@ Verzeichnisabgleich richtet die Systemverwaltung unter „Administration → Ide
 **Fehlversuch-Sperre:** Ab Werk lässt sie sich nur verschärfen; lockern geht erst, wenn der Betrieb
 die Grenzen weiter setzt. Sehr strenge Werte treffen auch das Notanker-Konto: Wer seine Adresse
 kennt, sperrt es mit falschen Passwörtern. Dagegen hilft die Begrenzung lokaler Systemverwalter auf
-bestimmte Netze ([Authentifizierung](../betrieb/authentifizierung.md#lokale-benutzerverwaltung)).
+bestimmte Netze ([Authentifizierung](../betreiben/authentifizierung.md#lokale-benutzerverwaltung)).
 
 **Passwortregel:** mindestens die eingestellte Länge, höchstens 64 Zeichen, nicht die eigene Adresse
 und nicht auf der Liste häufiger Passwörter. Keine Komplexitätsregeln, kein erzwungener Wechsel.

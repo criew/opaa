@@ -66,17 +66,17 @@ def test_explicit_anchors_and_links_to_them_keep_working() -> None:
         "faktenblaetter/fristen.md": '# Fristen\n\n| <a id="audit-retention"></a>`audit` |\n',
         "vorlagen/04-datenschutz/loeschkonzept.md":
             "# Löschkonzept\n\n[Frist](../../faktenblaetter/fristen.md#audit-retention),"
-            " [Handbuch](../../handbuch/betrieb/nachvollziehbarkeit.md#wo-die-faktenblätter-liegen),"
+            " [Handbuch](../../handbuch/betreiben/nachvollziehbarkeit.md#wo-die-faktenblätter-liegen),"
             " [Ordner](./), [Handbuch-Ordner](../../handbuch/), [hier](#löschkonzept),"
             " [DSGVO](https://eur-lex.europa.eu/eli/reg/2016/679/oj/deu)\n",
         "vorlagen/04-datenschutz/README.md": "# Datenschutz\n",
         "handbuch/README.md": "# Handbuch\n",
-        "handbuch/betrieb/nachvollziehbarkeit.md": "# Nachvollziehbarkeit\n\n## Wo die Faktenblätter liegen\n",
+        "handbuch/betreiben/nachvollziehbarkeit.md": "# Nachvollziehbarkeit\n\n## Wo die Faktenblätter liegen\n",
     })
 
     page = pages["vorlagen/04-datenschutz/loeschkonzept.html"]
     assert 'href="../../faktenblaetter/fristen.html#audit-retention"' in page
-    assert 'href="../../handbuch/betrieb/nachvollziehbarkeit.html#wo-die-faktenbl' in page
+    assert 'href="../../handbuch/betreiben/nachvollziehbarkeit.html#wo-die-faktenbl' in page
     assert 'href="./README.html"' in page
     assert 'href="../../handbuch/README.html"' in page
     assert 'href="https://eur-lex.europa.eu/eli/reg/2016/679/oj/deu"' in page

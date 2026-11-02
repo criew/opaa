@@ -118,7 +118,7 @@ nicht. Objektbasierter Speicher ist seit ADR-0030 für die Originalablage der Up
 (`opaa.upload.store: s3`), als Weg für den mandantenfähigen Rechenzentrumsbetrieb; der
 Objektspeicher-Dienst ist im Compose-Stapel über ein eigenes Profil zuschaltbar, nicht Teil des
 Einstiegs. Siehe
-[Originalablage](../handbuch/betrieb/originalablage.md).
+[Originalablage](../handbuch/betreiben/originalablage.md).
 
 ### 12. Chat-Kanäle: nur selbst betriebene Team-Chats
 

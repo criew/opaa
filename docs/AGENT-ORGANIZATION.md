@@ -37,7 +37,7 @@ Die Liefer-Rollen bewerten Konzepte aus der Perspektive derer, die sie entwerfen
 
 Nach einer Konzept- oder Spezifikationsänderung von struktureller Tragweite und **bevor** der zugehörige Implementierungs-Backlog freigegeben wird. Ein Review nach der Implementierung erzeugt Nacharbeit statt Erkenntnis.
 
-Pflichtanlass ist eine Epic-Spezifikation, deren Abschnitt „Wirkung auf Behördenunterlagen“ die Stufe **Zustimmung** vorschlägt: Der Product Manager fordert das Review an, Personalrat und Betriebsverantwortlicher laufen mindestens, und die Issues werden erst danach geschnitten ([Stufenregeln](handbuch/betrieb/nachvollziehbarkeit.md#die-stufenregeln)).
+Pflichtanlass ist eine Epic-Spezifikation, deren Abschnitt „Wirkung auf Behördenunterlagen“ die Stufe **Zustimmung** vorschlägt: Der Product Manager fordert das Review an, Personalrat und Betriebsverantwortlicher laufen mindestens, und die Issues werden erst danach geschnitten ([Stufenregeln](handbuch/betreiben/nachvollziehbarkeit.md#die-stufenregeln)).
 
 Zweiter Pflichtanlass ist eine Änderung der Stufe **Zustimmung**, die der Behördenkontakt vor einem Release meldet ([Behördenkontakt vor dem Release](#behördenkontakt-vor-dem-release)): Geprüft werden das vor dem Tag lokal erzeugte Manifest-Delta zum vorigen finalen Release (`./gradlew complianceDelta`, Befehle im [Release-Ablauf](releases.md#wer-ein-release-anlegt)) bzw. ein Probelauf des Pakets und die Faktenblätter, mindestens durch Personalrat und Betriebsverantwortlichen.
 

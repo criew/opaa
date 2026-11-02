@@ -38,7 +38,7 @@ Installation beschreibt die [Betriebsübersicht](README.md).
 | `opaa_query_duration_seconds_*`, `opaa_query_count_total` | Dauer und Zahl der Chat-Fragen |
 | `opaa_query_tokens_total` | Token der Antwortaufrufe |
 | `opaa_indexing_documents_total` | verarbeitete Dokumente nach Ergebnis |
-| `opaa_indexing_embedding_inputs_total` | Chunks an der Eingabegrenze des Embedding-Modells, nach Ergebnis (`split`, `cut`, `unverified`; [Modelle](modelle.md)) |
+| `opaa_indexing_embedding_inputs_total` | Chunks an der Eingabegrenze des Embedding-Modells, nach Ergebnis (`split`, `cut`, `unverified`; [Modelle](modell-endpunkte.md)) |
 | `opaa_indexing_suspicious_patterns_total` | verarbeitete Dokumente mit auffälligen Mustern nach Bibliothek (`library`: Kennung, für private Bibliotheken gemeinsam `private`) und Art (`class`: `INVISIBLE_CHARACTERS`, `ROLE_TOKEN`, `INSTRUCTION_PHRASE`, `DATA_URL_PLACEHOLDER`; [Wissensbibliotheken](../arbeitsmittel/wissensbibliotheken/README.md#61-ergebnis-je-dokument)) |
 | `opaa_malware_scans_total` | Virenprüfungen nach Ergebnis (`clean`, `infected`, `failed`; [Netz und Sicherheit](netz-und-sicherheit.md#virenprüfung-der-aufgenommenen-dateien)) |
 | `opaa_siem_export_total` | Ausleitung an das Sicherheitsmonitoring nach Ergebnis (`sent` je Eintrag, `failed` je gescheiterter Zustellung, `gap` je gemeldeter Lücke) |
@@ -168,7 +168,7 @@ diese Anfrage ermittelt (`clientAddress`). Steht dort die Adresse des Proxys, fe
 | Start bricht mit Hinweis auf pgvector, Schema oder Migration ab | [Datenbank](datenbank.md) |
 | Start bricht mit `refuses to start` ab | [Konfigurationsabdruck](mehrere-instanzen.md#gleiche-konfiguration-der-konfigurationsabdruck) |
 | Readiness meldet `DOWN` | Datenbank, Connection Pool ([Readiness und Liveness](images-und-laufzeit.md#readiness-und-liveness)) |
-| Indexierung oder Chat schlagen fehl | [Modelle](modelle.md#fehlerbilder) |
+| Indexierung oder Chat schlagen fehl | [Modelle](modell-endpunkte.md#fehlerbilder) |
 | Niemand kommt herein, Anmeldung mit `429` | [Authentifizierung](authentifizierung.md#fehlerbehebung) |
 | Originale lassen sich nicht abrufen oder hochladen | [Originalablage](originalablage.md#wenn-etwas-nicht-stimmt) |
 | Mails kommen nicht an | [E-Mail-Versand](../verwalten/e-mail.md#fehlerbilder) |
@@ -176,10 +176,3 @@ diese Anfrage ermittelt (`clientAddress`). Steht dort die Adresse des Proxys, fe
 | Lange Antworten enden mit `504` | Timeouts von Frontend und Proxy ([Netzwerkzugang](netz-und-sicherheit.md#netzwerkzugang)) |
 | Verbindungen nach außen scheitern mit Proxy-Status | [Ausgangsproxy](netz-und-sicherheit.md#ausgangsproxy) |
 | Container- oder Pod-Fehlerbilder | [Docker Compose](docker-compose.md#fehlerbehebung), [Kubernetes](kubernetes.md#fehlersuche) |
-
-## Weiterführende Kapitel
-
-- [Aktualisierung](aktualisierung.md) — nach einem Update prüfen, was läuft
-- [Mehrere Backend-Instanzen](mehrere-instanzen.md) — Instanzregister und Konfigurationsabdruck
-- [Images und Laufzeit](images-und-laufzeit.md) — Readiness und Liveness, Speichergrenzen
-- [Kubernetes](kubernetes.md#betriebsüberwachung) — Metriken einsammeln und Alarme

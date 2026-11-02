@@ -25,7 +25,7 @@ Verantwortlich ist die Projektleitung zusammen mit dem Fachbereich.
   Verwaltungsbestand.
 - **Referenzwerte der Suchqualität:** im Update-Paket unter `betrieb/antwortqualitaet.md` die Werte,
   die im Stand der Version gelten, gemessen gegen den Testkorpus des Projekts, mit Messdatum
-  ([Update-Paket](../../handbuch/betrieb/nachvollziehbarkeit.md#das-update-paket-eines-release),
+  ([Update-Paket](../../handbuch/betreiben/nachvollziehbarkeit.md#das-update-paket-eines-release),
   [Messverfahren](../../decisions/0011-search-quality-evaluation-harness.md)).
 - **Belege und Diagnose:** jede Antwort nennt ihre Fundstellen; das Diagnosewerkzeug zeigt, warum ein
   Dokument fehlt ([Belege](../../handbuch/spaces/suche.md#7-belege-prüfen-und-fundstellen-bilden),
@@ -83,6 +83,6 @@ Festgelegt durch:    [Name, Funktion]          am: [TT.MM.JJJJ, vor dem Start]
 
 **Arbeitshilfen** für die Projektleitung:
 
-- [Modelle](../../handbuch/betrieb/modelle.md): Chat, Embedding und Reranking einrichten.
+- [Modelle](../../handbuch/betreiben/modell-endpunkte.md): Chat, Embedding und Reranking einrichten.
 - [Teststellungsvereinbarung](teststellungsvereinbarung.md): Rahmen, wenn ein Dienstleister die
   Teststellung betreibt.

@@ -61,7 +61,7 @@ docker compose up --build
 Auf dem Server müssen die Modelle der Installation vorliegen, im Modus `dev` die der Vorgabe:
 `ollama pull bge-m3` und `ollama pull phi3:mini`. Die Eingabegrenze 8192 gehört nur dann zum
 Embedding-Modell, wenn `bge-m3` dort per Modelfile mit dieser Grenze angelegt ist
-([Eingabegrenze des Embedding-Modells](modelle.md#eingabegrenze-des-embedding-modells)).
+([Eingabegrenze des Embedding-Modells](modell-endpunkte.md#eingabegrenze-des-embedding-modells)).
 
 Ohne erreichbaren Server startet der Stapel, aber Indexierung und Fragen schlagen fehl. Danach ist
 die Oberfläche unter `http://localhost:3000` erreichbar, die API unter `http://localhost:8081/api`,
@@ -156,7 +156,7 @@ OPAA_DB_PASSWORD=opaa
 
 Chat- und Embedding-Modell stehen nicht in `.env.docker`: Beide legt die
 [Installation](installation.md) fest, die Dimension des Embedding-Modells ermittelt ihre
-Probeeinbettung ([Modelle](modelle.md#embedding)). Im Modus `dev` gelten `phi3:mini` und `bge-m3`
+Probeeinbettung ([Modelle](modell-endpunkte.md#embedding)). Im Modus `dev` gelten `phi3:mini` und `bge-m3`
 unter `OPAA_OPENAI_BASE_URL`.
 
 ## Installation im Compose-Stapel
@@ -190,7 +190,7 @@ sudo chown 65532:65532 installation/admin-password && sudo chmod 0400 installati
 In `.env.docker` die Zeile `OPAA_INSTALLATION_ANSWER_FILE=/run/opaa/installation/installation.json`
 einkommentieren und den Stapel starten. Die Installation prüft die Adressen der Modelle; das Ollama
 des Stapels braucht `ollama:11434` in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`, wie es
-`.env.docker.example` setzt ([Adressprüfung der Modelle](modelle.md#adressprüfung-der-modelle)),
+`.env.docker.example` setzt ([Adressprüfung der Modelle](modell-endpunkte.md#adressprüfung-der-modelle)),
 nicht in der Liste der Quellen.
 Das Passwort steht nie in der JSON-Datei, sondern nur in der
 Datei, auf die `passwordFile` zeigt; Zugangsschlüssel der Modelle ebenso über `apiKeyFile`. Das
@@ -260,9 +260,9 @@ docker compose --profile ollama up --build
   bindet, falls aktiviert, nur an `127.0.0.1`.
 - **`ollama-pull`** zieht `bge-m3` (Einbettung) und `phi3:mini` (Chat) und beendet sich. Beide sind
   nötig: `phi3:mini` wird beim ersten Start zum aktiven Chat-Modell
-  ([Modelle](modelle.md#llm-anbieter)), ohne es scheitert die erste Frage. `bge-m3` legt der Schritt
+  ([Modelle](modell-endpunkte.md#llm-anbieter)), ohne es scheitert die erste Frage. `bge-m3` legt der Schritt
   danach unter demselben Namen mit einer Eingabegrenze von 8.192 Tokens neu an, damit jeder Chunk
-  ungekürzt eingebettet wird ([Eingabegrenze](modelle.md#eingabegrenze-des-embedding-modells)).
+  ungekürzt eingebettet wird ([Eingabegrenze](modell-endpunkte.md#eingabegrenze-des-embedding-modells)).
   Dazu gehört die Eingabegrenze 8192 beim Embedding-Modell der Installation aus Weg A.
   Wer stattdessen `nomic-embed-text` nutzt, zieht es mit
   `docker compose --profile ollama exec ollama ollama pull nomic-embed-text`, nennt es in der
@@ -271,7 +271,7 @@ docker compose --profile ollama up --build
 **Platz und Zeit.** Die Modelle laden beim ersten Start rund 3,3 GiB herunter (`phi3:mini` rund
 2,2 GiB, `bge-m3` rund 1,1 GiB, komprimiert), das Image selbst ist mit rund 3,4 GB (amd64) noch
 größer. Beim Einbetten braucht `bge-m3` mehrere Gigabyte Arbeitsspeicher
-([Welches Embedding-Modell](modelle.md#welches-embedding-modell)). Den Fortschritt zeigt `docker compose logs -f ollama-pull`. Der Stapel ist nutzbar,
+([Welches Embedding-Modell](modell-endpunkte.md#welches-embedding-modell)). Den Fortschritt zeigt `docker compose logs -f ollama-pull`. Der Stapel ist nutzbar,
 sobald `ollama` gesund ist; bis beide Modelle vorliegen, können Indexierung und Fragen scheitern.
 
 **Fehlgeschlagener Download.** Scheitert `ollama-pull` (Registry nicht erreichbar, Platte voll),
@@ -696,7 +696,7 @@ ohne Punkt 7 nicht mehr von anderen Rechnern:
    Liegt ein Anbieter auf einer internen Adresse, etwa ein Keycloak im Stapel, gehören dessen Host und
    Port in `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST`; bisher gab die Adresse aus `OPAA_OIDC_*` sie frei.
    Interne Modell-Hosts gehören mit Port in `OPAA_MODEL_TARGET_VALIDATION_ALLOWLIST`, nicht in die
-   Liste der Quellen ([Adressprüfung der Modelle](modelle.md#adressprüfung-der-modelle)).
+   Liste der Quellen ([Adressprüfung der Modelle](modell-endpunkte.md#adressprüfung-der-modelle)).
    Ein Update von `v0.1.0-rc.4` setzt die Datenbank neu auf (Release-Notizen) und installiert danach
    über Antwortdatei oder Assistent.
 3. **`OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` setzen**, sobald ein Proxy vor dem Backend steht — und der

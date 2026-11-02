@@ -469,7 +469,7 @@ Sicherung.
 **Wechsel des Embedding-Modells.** Während eines Updates lehnt OPAA Wechsel, Verwerfen und
 Endpunktwechsel des Embedding-Modells ab: Alle laufenden Instanzen müssen dieselbe Version haben,
 zwei Builds derselben Version gelten dabei als gleich. Umgekehrt gehört ein Rückweg auf die vorige
-Version nicht in die Zeit eines laufenden Wechsels ([Modell wechseln](modelle.md#modell-wechseln)).
+Version nicht in die Zeit eines laufenden Wechsels ([Modell wechseln](modell-endpunkte.md#modell-wechseln)).
 
 ## Docker Compose und Kubernetes
 
@@ -531,10 +531,3 @@ Die Werte und Vorgaben stehen in der [Konfiguration](konfiguration.md).
 | `OPAA_DB_POOL_SIZE` | Verbindungen im Pool einer Instanz |
 | `OPAA_SHUTDOWN_TIMEOUT` | Zeitfenster für laufende Anfragen beim Stopp |
 | `TZ` | Zeitzone; Teil des Konfigurationsabdrucks |
-
-## Weiterführende Kapitel
-
-- [Docker Compose](docker-compose.md#mehrere-backend-instanzen) und
-  [Kubernetes](kubernetes.md#mehrere-backend-instanzen) — mehrere Instanzen einrichten und
-  aktualisieren
-- [Datenbank](datenbank.md) — Migration als eigener Schritt, Verbindungen bei mehreren Instanzen

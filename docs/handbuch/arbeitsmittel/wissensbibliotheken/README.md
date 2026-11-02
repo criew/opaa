@@ -304,7 +304,7 @@ Ein hängender Lauf würde seine Bibliothek dauerhaft blockieren. Zwei Aufräume
   Ausfall der ausführenden Instanz abgebrochen" beendet: beim Start des Backends und danach
   minütlich. Eine geordnet beendete Instanz gilt sofort als beendet, eine abgestürzte erst, wenn ihr
   Lebenszeichen länger als `OPAA_INSTANCE_DEAD_AFTER` ausbleibt
-  ([Das Instanzregister](../../betrieb/mehrere-instanzen.md#das-instanzregister)). Läufe einer laufenden Instanz bleiben, gleich wann
+  ([Das Instanzregister](../../betreiben/mehrere-instanzen.md#das-instanzregister)). Läufe einer laufenden Instanz bleiben, gleich wann
   sie begonnen haben.
 - **Regelmäßig** werden Läufe beendet, die länger als eine Frist (`stale-job-timeout`) keinen
   Fortschritt gemeldet haben. Maßgeblich ist der letzte Fortschritt, nicht der Start: Ein großer
@@ -509,7 +509,7 @@ eine eigene Obergrenze je Lauf, damit sie Fehler und Ablehnungen nicht aus dem P
 darüber hinaus fasst eine Zeile am Ende des Laufs zusammen, wie viele weitere Dokumente betroffen
 sind. Ein Upload hat kein Laufprotokoll; dort erscheint der Befund nur in Log und Metrik. Die Metrik
 zählt je Bibliothek und Art die Dokumente mit Treffer, private Bibliotheken gemeinsam unter einem
-Wert ([Überwachung](../../betrieb/ueberwachung-und-fehlerbehebung.md#logs-und-metriken)).
+Wert ([Überwachung](../../betreiben/ueberwachung-und-fehlerbehebung.md#logs-und-metriken)).
 
 ### 6.2 Laufprotokoll
 
@@ -658,7 +658,7 @@ ihn angenommen hat, und wird erst aufgegeben, wenn diese beendet ist („Wiedera
 Störungen"); der Neustart einer anderen Instanz berührt ihn nicht. Einen Termin des Zeitplans löst
 genau eine Instanz aus. Die Thread-Pools gelten je Instanz: Mehr Instanzen nehmen mehr Läufe und
 Uploads gleichzeitig an, die Pools der Einbettung teilen ihr Budget durch die Zahl der Instanzen
-([Grenzen und Budgets](../../betrieb/mehrere-instanzen.md#grenzen-und-budgets)).
+([Grenzen und Budgets](../../betreiben/mehrere-instanzen.md#grenzen-und-budgets)).
 Die Aufnahmestrecke braucht keine eigene Worker-Komponente; alles, was sie erzeugt — Dokumente,
 Chunks samt Vektoren, Volltext, Protokolle —, liegt in PostgreSQL, und eine Sicherung der Datenbank
 ist eine Sicherung des Index.
@@ -678,7 +678,7 @@ Ein Konto belegt je Instanz höchstens einen Teil der Plätze, standardmäßig e
 ebenfalls 429, während andere Konten weiter Plätze bekommen. Ein Rate-Limit bremst außerdem, wie
 schnell ein Konto Dateien schickt. In allen Fällen wartet die
 Oberfläche die genannte Zeit ab und lädt dieselbe Datei erneut hoch, ein Ordner-Upload läuft
-langsamer weiter ([Konfiguration](../../betrieb/konfiguration.md)). Während der Wartezeit zeigt die
+langsamer weiter ([Konfiguration](../../betreiben/konfiguration.md)). Während der Wartezeit zeigt die
 Bibliotheksseite einen Hinweis mit der Zahl der Sekunden. Nach insgesamt fünf Minuten Wartezeit gilt
 die Datei als abgelehnt. Wer die Seite verlässt, beendet nur das Warten: Die gerade wartende Datei
 gilt als abgelehnt, die übrigen Dateien werden weiter hochgeladen, ohne bei einer erneuten Ablehnung
@@ -702,7 +702,7 @@ noch zu warten.
 | `stale-job-timeout` | 4h | Frist ohne Fortschritt, bis ein Lauf als verwaist gilt |
 | `thread-pool.*` | 2 / 4 / 20 | Lauf-Pool |
 | `target-validation.*` | aktiv | Zieladressprüfung für Netzquellen |
-| je Konnektor und Format, etwa `confluence.*`, `s3.*`, `nextcloud.*`, `mail.*` | siehe dort | Grenzwerte der Quelle bzw. des Formats, in der [Konfigurationsreferenz](../../betrieb/konfiguration.md#alle-umgebungsvariablen) |
+| je Konnektor und Format, etwa `confluence.*`, `s3.*`, `nextcloud.*`, `mail.*` | siehe dort | Grenzwerte der Quelle bzw. des Formats, in der [Konfigurationsreferenz](../../betreiben/konfiguration.md#alle-umgebungsvariablen) |
 
 ### 7.6 Was nicht gebaut ist
 

@@ -48,10 +48,10 @@ Version wird vor dem Start festgelegt und bleibt während der Erprobung gleich.
 
 | Frage | Wo die Antwort steht | geklärt |
 |---|---|---|
-| Wo läuft die Erprobung, wer betreibt sie? | [Bausteine](../../handbuch/betrieb/README.md#bausteine) | [ ] |
-| Ist die Installation gehärtet und nur im vorgesehenen Netz erreichbar? | [Härtung](../../handbuch/betrieb/netz-und-sicherheit.md#härtung-für-erreichbare-deployments) | [ ] |
+| Wo läuft die Erprobung, wer betreibt sie? | [Bausteine](../../handbuch/betreiben/README.md#bausteine) | [ ] |
+| Ist die Installation gehärtet und nur im vorgesehenen Netz erreichbar? | [Härtung](../../handbuch/betreiben/netz-und-sicherheit.md#härtung-für-erreichbare-deployments) | [ ] |
 | Welche Verbindungen nach außen sind nötig? | {{faktenblatt:datenfluesse}} | [ ] |
-| Erhält die Version Sicherheitsupdates? | [Versionen](../../handbuch/betrieb/releases-und-nachweise.md#versionen); Vorab-Releases nicht | [ ] |
+| Erhält die Version Sicherheitsupdates? | [Versionen](../../handbuch/betreiben/releases-und-nachweise.md#versionen); Vorab-Releases nicht | [ ] |
 | Wer meldet und behebt einen Sicherheitsvorfall? | [Sicherheitsnachweise](../06-informationssicherheit/sicherheitsnachweise.md) | [ ] |
 
 ## Personalvertretung
@@ -59,7 +59,7 @@ Version wird vor dem Start festgelegt und bleibt während der Erprobung gleich.
 | Frage | Wo die Antwort steht | geklärt |
 |---|---|---|
 | Wer nimmt teil, freiwillig, wie lange? | [Pilot-Vereinbarung](pilot-vereinbarung.md) | [ ] |
-| Was wird über die Teilnehmenden protokolliert? | {{faktenblatt:protokollereignisse}}, [Pseudonymisierung](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll) | [ ] |
+| Was wird über die Teilnehmenden protokolliert? | {{faktenblatt:protokollereignisse}}, [Pseudonymisierung](../../handbuch/betreiben/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll) | [ ] |
 | Wer sieht was über andere? | {{faktenblatt:rollensicht#matrix}}, [Informationsmappe](../05-mitbestimmung/informationsmappe-personalrat.md) | [ ] |
 | Welche Auswertungen wären möglich, welche sind ausgeschlossen? | Zeile „Mögliche Auswertungen“ im {{faktenblatt:datenkatalog}}, [Pilot-Vereinbarung](pilot-vereinbarung.md) | [ ] |
 | Was geschieht mit den Daten nach dem Ende? | [Pilot-Vereinbarung](pilot-vereinbarung.md) | [ ] |

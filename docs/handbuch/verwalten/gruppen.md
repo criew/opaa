@@ -20,7 +20,7 @@ Abteilung, die im Verzeichnis nur Untergruppen hat, ist in OPAA leer.
 Für ein Haus mit gepflegtem Verzeichnis ist der **Verzeichnisabgleich** der empfohlene Weg: Nur er
 sperrt Konten ausgeschiedener Personen von selbst und hält eine Plausibilitätsschwelle gegen
 Massenentzug. Die Systemverwaltung richtet ihn unter „Administration → Verzeichnisabgleich“ ein
-([Verzeichnisabgleich](../betrieb/authentifizierung.md#verzeichnisabgleich-je-anbieter)). Im
+([Verzeichnisabgleich](../betreiben/authentifizierung.md#verzeichnisabgleich-je-anbieter)). Im
 Claim-Betrieb ist eine Umbenennung beim Anbieter ein stiller Gruppenwechsel: Freigaben an der alten
 Gruppe erreichen niemanden mehr.
 

@@ -23,7 +23,7 @@ bewertet die Behörde mit ihrer oder ihrem Datenschutzbeauftragten (DSB).
 ## Was OPAA liefert
 
 Welche Daten an welches Ziel gehen, steht im {{faktenblatt:datenfluesse#datenfluesse}}. Welche Modelle wofür eingesetzt werden, beschreibt das Handbuch unter
-[Modelle](../../handbuch/betrieb/modelle.md#vier-modellrollen), welche Quellen Cloud-Dienste sind, unter
+[Modelle](../../handbuch/betreiben/modell-endpunkte.md#vier-modellrollen), welche Quellen Cloud-Dienste sind, unter
 [Konnektoren im Überblick](../../handbuch/pflegen/konnektoren/README.md#3-die-konnektoren-im-überblick).
 
 ## Die Matrix
@@ -49,10 +49,10 @@ Summe der Antworten.
 1. **Einordnen:** je Frage eine Antwort wählen und die Partner ablesen.
 2. **Weitere Ziele prüfen:** jedes Ziel aus dem Faktenblatt Datenflüsse, das die eigene Installation
    nutzt, etwa ein Identitätsanbieter in der Cloud
-   ([Authentifizierung](../../handbuch/betrieb/authentifizierung.md)), ein externer E-Mail-Dienst
+   ([Authentifizierung](../../handbuch/betreiben/authentifizierung.md)), ein externer E-Mail-Dienst
    ([E-Mail-Versand](../../handbuch/verwalten/e-mail.md)), externe KI-Werkzeuge, die Inhalte an eigene
    Modellanbieter weitergeben ([Externe KI-Werkzeuge](../../handbuch/spaces/fremdzugaenge.md)), oder ein
-   Ausgangsproxy eines Dritten ([Ausgangsproxy](../../handbuch/betrieb/netz-und-sicherheit.md#ausgangsproxy)).
+   Ausgangsproxy eines Dritten ([Ausgangsproxy](../../handbuch/betreiben/netz-und-sicherheit.md#ausgangsproxy)).
 3. **Verträge schließen** mit dem eigenen Muster oder den Standardvertragsklauseln der EU-Kommission.
 4. **Bei jedem Update nachprüfen:** Ändert ein Update die Datenflüsse, weist das Update-Paket das aus.
 

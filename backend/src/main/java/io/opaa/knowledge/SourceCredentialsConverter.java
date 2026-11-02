@@ -24,10 +24,10 @@ import jakarta.persistence.Converter;
  * <p><b>Read failures fail soft, write failures fail hard:</b> loading never decrypts, so a single
  * row whose credentials can no longer be decrypted (key lost, corrupted value) never takes a read
  * down - that would also break the one repair path ({@code PATCH /api/v1/libraries/{id}} setting
- * new credentials) documented in {@code docs/handbuch/betrieb/netz-und-sicherheit.md}, which loads
- * the same row first. The getter reads such a value as absent and logs it. Writing a new value
- * fails hard: silently dropping credentials on write would be far worse than a clear {@code 503}. A
- * loaded value is written back exactly as stored, and {@code KnowledgeLibrary} carries
+ * new credentials) documented in {@code docs/handbuch/betreiben/netz-und-sicherheit.md}, which
+ * loads the same row first. The getter reads such a value as absent and logs it. Writing a new
+ * value fails hard: silently dropping credentials on write would be far worse than a clear {@code
+ * 503}. A loaded value is written back exactly as stored, and {@code KnowledgeLibrary} carries
  * {@code @DynamicUpdate}, so an unrelated change leaves the ciphertext readable once the key
  * returns.
  */

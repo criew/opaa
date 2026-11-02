@@ -7,7 +7,7 @@
 
 OPAA bringt kein Sprachmodell mit, sondern ruft Modelle an Endpunkten auf, die das Haus festlegt.
 Welche Adressen erlaubt sind und wie ein Modellserver betrieben wird, regelt der Betrieb
-([Modelle](../betrieb/modelle.md)).
+([Modelle](../betreiben/modell-endpunkte.md)).
 
 | Reiter | Rolle | Wechsel |
 |---|---|---|

@@ -35,7 +35,7 @@ Verhalten im Handbuch (`docs/handbuch/`), jede Entscheidung mit Begründung in e
 <!--
 Pflicht, wenn das Epic Verhalten oder Konfiguration festlegt. Die Punkte entsprechen dem Abschnitt
 „Wirkung auf Daten und Behördenunterlagen“ des PR-Templates, ergänzt um die KI-Einstufung; die Stufe
-folgt den Stufenregeln (docs/handbuch/betrieb/nachvollziehbarkeit.md, „Die Stufenregeln“). Bei
+folgt den Stufenregeln (docs/handbuch/betreiben/nachvollziehbarkeit.md, „Die Stufenregeln“). Bei
 Stufe Zustimmung läuft vor dem Schneiden der Sub-Issues ein Stakeholder-Review mit Personalrat und
 Betrieb (docs/AGENT-ORGANIZATION.md).
 -->

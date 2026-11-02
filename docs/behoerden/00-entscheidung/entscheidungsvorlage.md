@@ -24,9 +24,9 @@ standardisierten Wirtschaftlichkeitsbetrachtung für IT-Vorhaben.
 | Frage der Hausleitung | Quelle |
 |---|---|
 | Was leistet OPAA? | [Produktdatenblatt](../01-markterkundung/produktdatenblatt.md), [Was OPAA ist](../../handbuch/README.md#2-was-opaa-ist) |
-| Was braucht der Betrieb? | [Bausteine](../../handbuch/betrieb/README.md#bausteine), [Modelle](../../handbuch/betrieb/modelle.md) |
+| Was braucht der Betrieb? | [Bausteine](../../handbuch/betreiben/README.md#bausteine), [Modelle](../../handbuch/betreiben/modell-endpunkte.md) |
 | Welche Daten verlassen das Haus? | {{faktenblatt:datenfluesse}} |
-| Wie lange gibt es Sicherheitsupdates? | [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume) |
+| Wie lange gibt es Sicherheitsupdates? | [Linien und Supportzeiträume](../../handbuch/betreiben/releases-und-nachweise.md#linien-und-supportzeiträume) |
 | Wer steht hinter dem Projekt? | [Projektstatus](../01-markterkundung/projektstatus.md) |
 | Was kostet die Lizenz? | nichts; [Lizenz](../01-markterkundung/lizenz.md) |
 
@@ -61,7 +61,7 @@ Größe der Bestände, Modellgröße, Tagessatz oder Abschreibungsdauer.
 |---|---|---|
 | Antworten taugen für die eigenen Bestände nicht | Teststellung mit eigenen Dokumenten und vorab festgelegten Kriterien | [ ] |
 | Daten gehen an einen externen Modellanbieter | Modelle im eigenen Haus; Ziele je Version in {{faktenblatt:datenfluesse}} | [ ] |
-| Kontrolle von Leistung und Verhalten | [pseudonymisiertes Protokoll](../../handbuch/betrieb/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll), Dienstvereinbarung | [ ] |
+| Kontrolle von Leistung und Verhalten | [pseudonymisiertes Protokoll](../../handbuch/betreiben/nachvollziehbarkeit.md#pseudonymisierung-im-protokoll), Dienstvereinbarung | [ ] |
 | Kein Hersteller mit vertraglicher Zusage | Dienstleister oder Eigenbetrieb; [Projektstatus](../01-markterkundung/projektstatus.md) | [ ] |
 | Sicherheitslücken | Patch-Releases je unterstützter Linie, ältere Linien über eigene Wartungsbranches, nächtlicher Schwachstellen-Scan jeder Linie; [Sicherheitsnachweise](../06-informationssicherheit/sicherheitsnachweise.md) | [ ] |
 | Updates ändern Daten oder Voreinstellungen | [Update-Vermerk](../09-betrieb-update/update-vermerk.md) je Update | [ ] |

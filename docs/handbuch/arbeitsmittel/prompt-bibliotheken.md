@@ -186,7 +186,7 @@ Eigentum und Nachfolge protokolliert und historisiert OPAA wie bei jeder Wissens
 
 Eine Installation kann Prompt-Bibliotheken ganz abschalten, etwa für eine Demo, die nur Fragen und
 Antworten zeigen soll (`OPAA_FEATURES_PROMPT_LIBRARIES_ENABLED=false`, siehe
-[Konfiguration](../betrieb/konfiguration.md#funktionen-abschalten)). Danach erwähnt die Oberfläche sie im Arbeitsalltag nicht mehr:
+[Konfiguration](../betreiben/konfiguration.md#funktionen-abschalten)). Danach erwähnt die Oberfläche sie im Arbeitsalltag nicht mehr:
 
 - Der Katalog zeigt keine Prompt-Bibliothek und keinen Typfilter „Prompts", „Neuer Katalogeintrag" bietet nur noch
   Wissen an, und das Anlegerecht „Prompt-Bibliotheken anlegen" fehlt in der Übersicht der

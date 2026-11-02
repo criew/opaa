@@ -50,11 +50,11 @@ Lizenzübersicht ([Tabelle unten](#programmstände-sbom-und-supportzeiträume)).
 
 | Thema | Was OPAA liefert | Fundstelle |
 |---|---|---|
-| Programmstand | Jede Version ist unveränderlich benannt (`X.Y.Z`); Images und Chart einer Version werden nie überschrieben | [Was ein Release liefert](../../handbuch/betrieb/releases-und-nachweise.md#was-ein-release-liefert), [Versionen](../../handbuch/betrieb/releases-und-nachweise.md#versionen) |
-| SBOM | Je Image und Architektur eine SBOM-Attestierung, auch für Release-Images; zusätzlich je Release eine CycloneDX-SBOM für Backend und Frontend am GitHub-Release und im Update-Paket | [Provenance und Software-Stückliste](../../handbuch/betrieb/releases-und-nachweise.md#provenance-und-software-stückliste) |
-| Lizenzen der Abhängigkeiten | Lizenzübersicht im Update-Paket jeder Version | [Lizenzprüfung](../../handbuch/betrieb/releases-und-nachweise.md#lizenzen), [Update-Paket](../../handbuch/betrieb/releases-und-nachweise.md#das-update-paket) |
-| Sicherheitskorrekturen und Behebungen kritischer Fehler | Patch-Releases ohne neue Funktion für jede unterstützte Linie: LTS-Linie (Juni-Release) rund 12 Monate, normale Linie bis einen Monat nach dem nächsten Release; Supportende in den Release-Notizen | [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume), [Unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen) |
-| Änderungen zwischen Programmständen | Delta der Datenwirkung zum vorigen Release | [Update-Paket](../../handbuch/betrieb/releases-und-nachweise.md#das-update-paket), [Update-Vermerk](../09-betrieb-update/update-vermerk.md) |
+| Programmstand | Jede Version ist unveränderlich benannt (`X.Y.Z`); Images und Chart einer Version werden nie überschrieben | [Was ein Release liefert](../../handbuch/betreiben/releases-und-nachweise.md#was-ein-release-liefert), [Versionen](../../handbuch/betreiben/releases-und-nachweise.md#versionen) |
+| SBOM | Je Image und Architektur eine SBOM-Attestierung, auch für Release-Images; zusätzlich je Release eine CycloneDX-SBOM für Backend und Frontend am GitHub-Release und im Update-Paket | [Provenance und Software-Stückliste](../../handbuch/betreiben/releases-und-nachweise.md#provenance-und-software-stückliste) |
+| Lizenzen der Abhängigkeiten | Lizenzübersicht im Update-Paket jeder Version | [Lizenzprüfung](../../handbuch/betreiben/releases-und-nachweise.md#lizenzen), [Update-Paket](../../handbuch/betreiben/releases-und-nachweise.md#das-update-paket) |
+| Sicherheitskorrekturen und Behebungen kritischer Fehler | Patch-Releases ohne neue Funktion für jede unterstützte Linie: LTS-Linie (Juni-Release) rund 12 Monate, normale Linie bis einen Monat nach dem nächsten Release; Supportende in den Release-Notizen | [Linien und Supportzeiträume](../../handbuch/betreiben/releases-und-nachweise.md#linien-und-supportzeiträume), [Unterstützte Versionen](../../../SECURITY.md#unterstützte-versionen) |
+| Änderungen zwischen Programmständen | Delta der Datenwirkung zum vorigen Release | [Update-Paket](../../handbuch/betreiben/releases-und-nachweise.md#das-update-paket), [Update-Vermerk](../09-betrieb-update/update-vermerk.md) |
 
 ## Gut zu wissen
 

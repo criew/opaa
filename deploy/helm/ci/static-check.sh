@@ -364,10 +364,10 @@ mkdir -p "$work_dir/upgrade-notes"
 release_notes="$(UPGRADE_NOTES_DIR="$work_dir/upgrade-notes" deploy/helm/ci/release-notes.sh criew/opaa v1.2.3-rc.1)"
 for expected in "kubectl create namespace opaa" "pod-security.kubernetes.io/enforce=restricted" \
   "pod-security.kubernetes.io/warn=restricted" "--version 1.2.3-rc.1" \
-  "blob/v1.2.3-rc.1/docs/handbuch/betrieb/kubernetes.md#installation" \
+  "blob/v1.2.3-rc.1/docs/handbuch/betreiben/kubernetes.md#installation" \
   "**Vorbereitung für Bestandsinstallationen**" "Keine Vorbereitung nötig." \
-  "blob/v1.2.3-rc.1/docs/handbuch/betrieb/kubernetes.md#aktualisierung-und-rückweg" \
-  "blob/v1.2.3-rc.1/docs/handbuch/betrieb/docker-compose.md#vorbereitungsschritte-für-bestandsinstallationen" \
+  "blob/v1.2.3-rc.1/docs/handbuch/betreiben/kubernetes.md#aktualisierung-und-rückweg" \
+  "blob/v1.2.3-rc.1/docs/handbuch/betreiben/docker-compose.md#vorbereitungsschritte-für-bestandsinstallationen" \
   "\`opaa-update-paket-1.2.3-rc.1.tar.gz\`" \
   "gh attestation verify opaa-update-paket-1.2.3-rc.1.tar.gz --repo criew/opaa" \
   "gh attestation verify oci://ghcr.io/criew/opaa-backend:1.2.3-rc.1 --repo criew/opaa" \

@@ -24,10 +24,10 @@ Ob die Bedingungen zum eigenen Vorhaben passen, prüft die Rechtsabteilung der B
 |---|---|---|
 | Lizenz von OPAA | AGPL-3.0, kein Lizenzentgelt, vollständiger Quellcode öffentlich | [`LICENSE`](../../../LICENSE) |
 | Nutzen und Ändern | erlaubt, auch ohne Rückfrage beim Projekt | [`LICENSE`](../../../LICENSE) |
-| Pflicht bei Bereitstellung über ein Netz | wer eine veränderte Fassung anderen über ein Netz bereitstellt, bietet deren Quellcode an | [Lizenzen](../../handbuch/betrieb/releases-und-nachweise.md#lizenzen) |
-| Lizenzen der Abhängigkeiten | nur mit der GPLv3 verträgliche Lizenzen oder begründete Ausnahmen; die CI prüft das bei jeder Änderung | [Was bei jeder Änderung geprüft wird](../../handbuch/betrieb/nachvollziehbarkeit.md#was-bei-jeder-änderung-geprüft-wird) |
-| Lizenzübersicht je Version | im Update-Paket unter `lizenzen/` | [Das Update-Paket](../../handbuch/betrieb/releases-und-nachweise.md#das-update-paket) |
-| Software-Stückliste (SBOM) | je Image und je Ökosystem, mit Provenance | [Provenance und Software-Stückliste](../../handbuch/betrieb/releases-und-nachweise.md#provenance-und-software-stückliste) |
+| Pflicht bei Bereitstellung über ein Netz | wer eine veränderte Fassung anderen über ein Netz bereitstellt, bietet deren Quellcode an | [Lizenzen](../../handbuch/betreiben/releases-und-nachweise.md#lizenzen) |
+| Lizenzen der Abhängigkeiten | nur mit der GPLv3 verträgliche Lizenzen oder begründete Ausnahmen; die CI prüft das bei jeder Änderung | [Was bei jeder Änderung geprüft wird](../../handbuch/betreiben/nachvollziehbarkeit.md#was-bei-jeder-änderung-geprüft-wird) |
+| Lizenzübersicht je Version | im Update-Paket unter `lizenzen/` | [Das Update-Paket](../../handbuch/betreiben/releases-und-nachweise.md#das-update-paket) |
+| Software-Stückliste (SBOM) | je Image und je Ökosystem, mit Provenance | [Provenance und Software-Stückliste](../../handbuch/betreiben/releases-und-nachweise.md#provenance-und-software-stückliste) |
 | Beiträge ins Projekt | nach unterzeichnetem Contributor License Agreement (CLA) | [`CLA.md`](../../../CLA.md) |
 
 ## Aufgaben der Behörde

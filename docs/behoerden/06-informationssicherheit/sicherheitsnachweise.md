@@ -21,13 +21,13 @@ Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizi
 
 | Nachweis | Was er belegt | Wo er steht |
 |---|---|---|
-| Härtung | welche Maßnahmen zwingend sind, je Betriebsweg | [Härtung](../../handbuch/betrieb/netz-und-sicherheit.md#härtung-für-erreichbare-deployments), [Docker Compose](../../handbuch/betrieb/docker-compose.md#härtung-des-compose-stapels), [Kubernetes](../../handbuch/betrieb/kubernetes.md#netz-und-sicherheit), [Keycloak](../../handbuch/betrieb/authentifizierung.md#härtung-des-mitgelieferten-keycloak); Voreinstellungen in {{faktenblatt:voreinstellungen}} |
-| Protokollierung | Log, Nachweisprotokoll über Handlungen von Personen, Metriken und Alarme | [Logs und Metriken](../../handbuch/betrieb/ueberwachung-und-fehlerbehebung.md#logs-und-metriken), {{faktenblatt:protokollereignisse}}, {{faktenblatt:fristen}} |
-| Integrität des Revisionsprotokolls | Prüfsummenkette je Protokollmonat mit Siegel, das an das Sicherheitsmonitoring geht; Prüfweg der Revision je Monat ohne Datenbankzugang | [Prüfsummenkette und Monatssiegel](../../handbuch/betrieb/nachvollziehbarkeit.md#prüfsummenkette-und-monatssiegel), {{faktenblatt:protokollereignisse#audit-log-month-sealed}} |
-| Software-Stückliste (SBOM) | woraus jedes Image besteht, Provenance, Lizenzprüfung | [Provenance und Software-Stückliste](../../handbuch/betrieb/releases-und-nachweise.md#provenance-und-software-stückliste), [Was ein Release liefert](../../handbuch/betrieb/releases-und-nachweise.md#was-ein-release-liefert) |
-| Prüfung des Codes | Review jeder Änderung vor dem Merge, automatische Prüfungen in jedem Pull Request, wöchentliche Prüfung der Änderungen, Tiefen-Audit zweimal im Jahr und bei Anlass; bisher keine Prüfung durch Dritte | [Wie das Projekt seinen Code prüft](../../../SECURITY.md#wie-das-projekt-seinen-code-prüft), [Prüfrhythmus](../../security-pruefung.md#prüfrhythmus), [Schwachstellen](../../handbuch/betrieb/releases-und-nachweise.md#schwachstellen) |
-| Schwachstellen | Erkennung in Abhängigkeiten und Images, Reaktionszeiten nach Schwere | [Schwachstellen](../../handbuch/betrieb/releases-und-nachweise.md#schwachstellen), [`SECURITY.md`](../../../SECURITY.md#ablauf) |
-| Sicherheitsupdates | Patch-Releases je unterstützter Linie, Supportzeiträume, veröffentlichte Lücken | [Sicherheitsupdates](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates), [Linien und Supportzeiträume](../../handbuch/betrieb/releases-und-nachweise.md#linien-und-supportzeiträume), [Security Advisories](https://github.com/criew/opaa/security/advisories) |
+| Härtung | welche Maßnahmen zwingend sind, je Betriebsweg | [Härtung](../../handbuch/betreiben/netz-und-sicherheit.md#härtung-für-erreichbare-deployments), [Docker Compose](../../handbuch/betreiben/docker-compose.md#härtung-des-compose-stapels), [Kubernetes](../../handbuch/betreiben/kubernetes.md#netz-und-sicherheit), [Keycloak](../../handbuch/betreiben/authentifizierung.md#härtung-des-mitgelieferten-keycloak); Voreinstellungen in {{faktenblatt:voreinstellungen}} |
+| Protokollierung | Log, Nachweisprotokoll über Handlungen von Personen, Metriken und Alarme | [Logs und Metriken](../../handbuch/betreiben/ueberwachung-und-fehlerbehebung.md#logs-und-metriken), {{faktenblatt:protokollereignisse}}, {{faktenblatt:fristen}} |
+| Integrität des Revisionsprotokolls | Prüfsummenkette je Protokollmonat mit Siegel, das an das Sicherheitsmonitoring geht; Prüfweg der Revision je Monat ohne Datenbankzugang | [Prüfsummenkette und Monatssiegel](../../handbuch/betreiben/nachvollziehbarkeit.md#prüfsummenkette-und-monatssiegel), {{faktenblatt:protokollereignisse#audit-log-month-sealed}} |
+| Software-Stückliste (SBOM) | woraus jedes Image besteht, Provenance, Lizenzprüfung | [Provenance und Software-Stückliste](../../handbuch/betreiben/releases-und-nachweise.md#provenance-und-software-stückliste), [Was ein Release liefert](../../handbuch/betreiben/releases-und-nachweise.md#was-ein-release-liefert) |
+| Prüfung des Codes | Review jeder Änderung vor dem Merge, automatische Prüfungen in jedem Pull Request, wöchentliche Prüfung der Änderungen, Tiefen-Audit zweimal im Jahr und bei Anlass; bisher keine Prüfung durch Dritte | [Wie das Projekt seinen Code prüft](../../../SECURITY.md#wie-das-projekt-seinen-code-prüft), [Prüfrhythmus](../../security-pruefung.md#prüfrhythmus), [Schwachstellen](../../handbuch/betreiben/releases-und-nachweise.md#schwachstellen) |
+| Schwachstellen | Erkennung in Abhängigkeiten und Images, Reaktionszeiten nach Schwere | [Schwachstellen](../../handbuch/betreiben/releases-und-nachweise.md#schwachstellen), [`SECURITY.md`](../../../SECURITY.md#ablauf) |
+| Sicherheitsupdates | Patch-Releases je unterstützter Linie, Supportzeiträume, veröffentlichte Lücken | [Sicherheitsupdates](../../handbuch/betreiben/releases-und-nachweise.md#sicherheitsupdates), [Linien und Supportzeiträume](../../handbuch/betreiben/releases-und-nachweise.md#linien-und-supportzeiträume), [Security Advisories](https://github.com/criew/opaa/security/advisories) |
 | Pflichten des Projekts | Rolle nach dem Cyber Resilience Act | [Rollenklärung](rollenklaerung-cra.md) |
 
 ## Aufgaben der Behörde
@@ -53,10 +53,10 @@ Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizi
 - Ältere Linien bekommen Korrekturen über eigene Wartungsbranches; der Schwachstellen-Scan prüft
   `main` und das jüngste Patch-Release jeder unterstützten Linie.
 - Schreibt das Log ausführlicher als auf Stufe `INFO`, kann es Inhalte enthalten und
-  ist entsprechend zu schützen ([Logs und Metriken](../../handbuch/betrieb/ueberwachung-und-fehlerbehebung.md#logs-und-metriken)).
+  ist entsprechend zu schützen ([Logs und Metriken](../../handbuch/betreiben/ueberwachung-und-fehlerbehebung.md#logs-und-metriken)).
 - Das Nachweisprotokoll lässt sich an ein zentrales Sicherheitsmonitoring ausleiten, als Syslog mit
   CEF und ohne Pseudonyme; fehlgeschlagene Anmeldungen und ähnliche Ereignisse stehen nur im Log
-  ([Ausleitung](../../handbuch/betrieb/ueberwachung-und-fehlerbehebung.md#ausleitung-an-ein-sicherheitsmonitoring)).
+  ([Ausleitung](../../handbuch/betreiben/ueberwachung-und-fehlerbehebung.md#ausleitung-an-ein-sicherheitsmonitoring)).
 
 ## Zum Nachlesen
 
@@ -64,7 +64,7 @@ Code. Die Nachweise belegen das Verfahren des Projekts, sie sind keine Zertifizi
 
 - [`SECURITY.md`](../../../SECURITY.md): Meldeweg, unterstützte Versionen und Ablauf bis zur
   Veröffentlichung einer Lücke.
-- [Releases und Nachweise](../../handbuch/betrieb/releases-und-nachweise.md#sicherheitsupdates): wie schnell das Projekt
+- [Releases und Nachweise](../../handbuch/betreiben/releases-und-nachweise.md#sicherheitsupdates): wie schnell das Projekt
   auf Befunde des eigenen Scans reagiert.
 
 **Rechtsgrundlagen:**

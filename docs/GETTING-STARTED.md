@@ -55,11 +55,11 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 1. [CONCEPTS.md](./CONCEPTS.md) — Abschnitte **Betrieb**, **Modelle und zentrale Steuerung**,
    **Retrieval und Belegbarkeit**
 2. [VISION.md](./VISION.md) — Abschnitt „Systemüberblick"
-3. [Betrieb](handbuch/betrieb/README.md) mit [docker-compose.md](handbuch/betrieb/docker-compose.md) und [kubernetes.md](handbuch/betrieb/kubernetes.md) — **vertieft**;
+3. [Betrieb](handbuch/betreiben/README.md) mit [docker-compose.md](handbuch/betreiben/docker-compose.md) und [kubernetes.md](handbuch/betreiben/kubernetes.md) — **vertieft**;
    Ziele in der [Roadmap](ROADMAP.md)
-4. [Modelle](handbuch/betrieb/modelle.md) und [ADR-0067](decisions/0067-modellanbindung-und-verwaltete-chat-modelle.md) —
+4. [Modelle](handbuch/betreiben/modell-endpunkte.md) und [ADR-0067](decisions/0067-modellanbindung-und-verwaltete-chat-modelle.md) —
    Modellverwaltung, lokal betriebene Modelle; Modell-Policy als Obergrenze in der [Roadmap](ROADMAP.md)
-5. [Authentifizierung](./handbuch/betrieb/authentifizierung.md) und [Benutzerverwaltung](./handbuch/konten-und-rechte/benutzerverwaltung.md) — Anmeldung, Kontenlebenszyklus, Mandanten
+5. [Authentifizierung](handbuch/betreiben/authentifizierung.md) und [Benutzerverwaltung](./handbuch/konten-und-rechte/benutzerverwaltung.md) — Anmeldung, Kontenlebenszyklus, Mandanten
 6. [Roadmap](./ROADMAP.md) — Metriken, Grenzen,
    Kostentransparenz
 7. [Wissensbibliotheken](./handbuch/arbeitsmittel/wissensbibliotheken/README.md) und
@@ -89,15 +89,15 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 
 1. [CONCEPTS.md](./CONCEPTS.md) — Abschnitte **Sicherheit, Nachweis und Mitbestimmung** sowie
    **Berechtigungsdurchsetzung zur Abfragezeit**
-2. [Nachvollziehbarkeit](./handbuch/betrieb/nachvollziehbarkeit.md) und [ADR-0068](./decisions/0068-mitbestimmungsfaehigkeit.md) — **vertieft**:
+2. [Nachvollziehbarkeit](handbuch/betreiben/nachvollziehbarkeit.md) und [ADR-0068](./decisions/0068-mitbestimmungsfaehigkeit.md) — **vertieft**:
    revisionssicheres Protokoll, Vollständigkeit nach DSGVO, Mitbestimmung
 3. [Berechtigungen](./handbuch/konten-und-rechte/berechtigungen.md) — Rechtemodell; Freigabekette und
    Mitbestimmung in der [Roadmap](ROADMAP.md)
 4. [Benutzerverwaltung](./handbuch/konten-und-rechte/benutzerverwaltung.md) — Kontenlebenszyklus, Mandantengrenze
 5. [Roadmap](./ROADMAP.md) — was ausgewertet wird
    und in welcher Aggregation
-6. [Netz und Sicherheit](handbuch/betrieb/netz-und-sicherheit.md) und
-   [Sicherung](handbuch/betrieb/sicherung-und-wiederherstellung.md) — Verschlüsselung, Netztrennung, Sicherung
+6. [Netz und Sicherheit](handbuch/betreiben/netz-und-sicherheit.md) und
+   [Sicherung](handbuch/betreiben/sicherung-und-wiederherstellung.md) — Verschlüsselung, Netztrennung, Sicherung
 7. [Gesamtstand](./fortschritt/gesamtstand.md) — was zu Bereich **G** gebaut ist und was noch fehlt,
    offen benannt
 

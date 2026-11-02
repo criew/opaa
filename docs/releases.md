@@ -5,7 +5,7 @@ Helm-Chart in GHCR mit derselben Versionsnummer und ein GitHub-Release mit der �
 Daneben gibt es weiter den beweglichen Stand `main`, der jedem Merge folgt. Wer reproduzierbar
 betreiben will, pinnt eine Version.
 
-Für Betreiber und Behörden zusammengefasst: [Handbuch, Releases und Nachweise](handbuch/betrieb/releases-und-nachweise.md).
+Für Betreiber und Behörden zusammengefasst: [Handbuch, Releases und Nachweise](handbuch/betreiben/releases-und-nachweise.md).
 
 ## Was ein Release erzeugt
 
@@ -62,7 +62,7 @@ gh attestation verify opaa-frontend-X.Y.Z.cdx.json --repo criew/opaa \
 Dieselben Befehle stehen mit der konkreten Version in den Release-Notizen.
 
 Installiert wird der Chart ohne Checkout des Repositories, in der Reihenfolge des Handbuchs
-([Kubernetes, Installation](handbuch/betrieb/kubernetes.md#installation)): zuerst der Namespace mit den
+([Kubernetes, Installation](handbuch/betreiben/kubernetes.md#installation)): zuerst der Namespace mit den
 Labels für Pod Security `restricted`, dann Datenbank, Geheimnisse und Werte-Datei, zuletzt der
 Chart. Was in die Werte-Datei gehört, beschreibt die [Chart-README](../deploy/helm/opaa/README.md):
 
@@ -118,7 +118,7 @@ standardmäßig ausgeschaltet; sie werden sichtbar gemacht.
   ob personenbezogene Daten oder Protokollereignisse, Sichtbarkeit, Auswertungen oder Exporte,
   Fristen, externe Datenflüsse, Voreinstellungen, das Standardmodell, System-Prompts oder die
   KI-Einstufung (Zustimmungsklasse Z6 in
-  [Nachvollziehbarkeit](handbuch/betrieb/nachvollziehbarkeit.md)) neu sind oder sich ändern. Trifft etwas zu, beschreibt ein Satz in Alltagssprache die Wirkung, und der PR
+  [Nachvollziehbarkeit](handbuch/betreiben/nachvollziehbarkeit.md)) neu sind oder sich ändern. Trifft etwas zu, beschreibt ein Satz in Alltagssprache die Wirkung, und der PR
   bekommt das Label `data-impact`. Wer den PR anlegt, setzt es.
 - **In der CI:** Der Workflow `.github/workflows/data-impact.yml` läuft bei jedem PR und erneut,
   wenn sich Labels oder Beschreibung ändern. Er schlägt fehl, wenn die Beschreibung eine Wirkung
@@ -556,8 +556,8 @@ Die Notizen jedes Release enthalten den Abschnitt **Vorbereitung für Bestandsin
 | die Datei, aber leer, als symbolischer Link oder mit einem nicht geschlossenen Codeblock (ungerade Zahl von Zeilen mit ```` ``` ````) | ebenfalls kein Release |
 
 Darunter verlinken die Notizen in beiden Fällen den Ablauf der Aktualisierung im Handbuch im Stand
-des Tags: für Kubernetes [Aktualisierung und Rückweg](handbuch/betrieb/kubernetes.md#aktualisierung-und-rückweg),
-für Docker Compose [Vorbereitungsschritte für Bestandsinstallationen](handbuch/betrieb/docker-compose.md#vorbereitungsschritte-für-bestandsinstallationen).
+des Tags: für Kubernetes [Aktualisierung und Rückweg](handbuch/betreiben/kubernetes.md#aktualisierung-und-rückweg),
+für Docker Compose [Vorbereitungsschritte für Bestandsinstallationen](handbuch/betreiben/docker-compose.md#vorbereitungsschritte-für-bestandsinstallationen).
 
 Die Datei nennt, was eine Bestandsinstallation **vor** dem Update erledigen muss, getrennt nach
 Kubernetes und Docker Compose, und verweist für Einzelheiten auf das Kapitel des Handbuchs. Was
@@ -606,13 +606,13 @@ Regeln:
 
 Zu jedem Release, auch zu einem Vorab-Release, erzeugt der Job `update-package` das Update-Paket,
 mit dem eine Behörde ein Update gegenüber Datenschutz, Personalvertretung und
-Informationssicherheit verantwortet ([Nachvollziehbarkeit](handbuch/betrieb/nachvollziehbarkeit.md)).
+Informationssicherheit verantwortet ([Nachvollziehbarkeit](handbuch/betreiben/nachvollziehbarkeit.md)).
 Die Logik steht in `.github/scripts/update_package.py`, der Workflow ruft nur auf. Das Archiv
 `opaa-update-paket-X.Y.Z.tar.gz` enthält unter `opaa-update-paket-X.Y.Z/`:
 
 | Datei | Inhalt |
 |---|---|
-| `LIESMICH.md` | Version, Commit, Vergleichsstände und für wen sie gelten, Prüfbefehle, der Abgleich mit der eigenen Installation ([Handbuch](handbuch/betrieb/nachvollziehbarkeit.md#abgleich-eines-updates-mit-der-installation)) |
+| `LIESMICH.md` | Version, Commit, Vergleichsstände und für wen sie gelten, Prüfbefehle, der Abgleich mit der eigenen Installation ([Handbuch](handbuch/betreiben/nachvollziehbarkeit.md#abgleich-eines-updates-mit-der-installation)) |
 | `faktenblaetter/` | die Faktenblätter der Version mit `faktenblaetter.json` (`./gradlew complianceDocs -PopaaVersion=X.Y.Z`) |
 | `delta/manifest-delta.md`, `delta/manifest-delta.json` | das kumulierte Delta zum vorigen finalen Release mit Stufenvorschlägen und den PRs mit `data-impact` dazwischen |
 | `betrieb/betriebsfolgen.md`, `betrieb/antwortqualitaet.md` | [Betriebsfolgen und Antwortqualität](#betriebsfolgen-und-antwortqualität) für dasselbe Intervall |
@@ -902,7 +902,7 @@ GHCR:
   zu entscheiden, etwa ein Archiv je Architektur.
 
 **Prüfung ohne Netz.** Sie steht für Betreiber im Handbuch
-([Images und Laufzeit](handbuch/betrieb/images-und-laufzeit.md#installation-ohne-internetzugang)):
+([Images und Laufzeit](handbuch/betreiben/images-und-laufzeit.md#installation-ohne-internetzugang)):
 
 1. Vertrauensanker je Release vorab holen (`gh attestation trusted-root`).
 2. Das Archiv vor dem Entpacken gegen `opaa-offline-X.Y.Z.tar.sigstore.json` prüfen, mit
@@ -962,7 +962,7 @@ nennt in `oldest-compatible-version` die älteste Version, neben der der Bau lau
 ([ADR-0053](decisions/0053-mehrinstanzbetrieb-aktiv-aktiv.md), Entscheidung 4). Leer heißt: nur neben
 sich selbst. Das Release trägt dort das unmittelbar vorige Release ein; an einer Versionsgrenze ohne
 Rolling Update bleibt es leer. Bis zum ersten Release, das den Wert setzt, laufen nur Stände derselben
-Version nebeneinander ([Handbuch, Update ohne Ausfall](handbuch/betrieb/mehrere-instanzen.md#update-ohne-ausfall)).
+Version nebeneinander ([Handbuch, Update ohne Ausfall](handbuch/betreiben/mehrere-instanzen.md#update-ohne-ausfall)).
 
 Ein finales `X.Y.0` entsteht auf `main` und eröffnet eine Linie, die Patch-Releases `X.Y.Z` bis
 zu ihrem Supportende bekommt ([Supportlinien](#supportlinien)). Eine ältere Linie wird also
