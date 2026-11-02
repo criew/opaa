@@ -3,6 +3,8 @@
 > **Wer darf das:** anlegen, wer „Konnektorbibliotheken anlegen“ für diese Quellart oder ihren
 > Zugang hat; ab Werk nur die Systemverwaltung, bis sie die Quellart oder einen Zugang freigibt.
 > Quelle, Umfang und Zeitplan ändert danach, wer an der Bibliothek *Verwalter* oder *Eigentümer* ist.
+> Eine [private Bibliothek](../../arbeiten/private-bibliothek.md) über ein verbundenes Konto hat
+> keine Rollen; sie gehört allein ihrer Besitzerin.
 
 ## 1. Was der Konnektor ist
 
@@ -142,6 +144,9 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 [E-Mail](../../arbeitsmittel/wissensbibliotheken/formate/mail.md).
 
 ## 8. Grenzen und Schutzmechanismen
+
+Parameter stehen unter `opaa.indexing.nextcloud.*` (`OPAA_INDEXING_NEXTCLOUD_*`), ihre Standardwerte in der
+[Konfigurationsreferenz](../../betrieb/konfiguration.md#alle-umgebungsvariablen).
 
 - **Zieladressprüfung** ([Konnektoren](README.md#12-zieladressprüfung)). Nennt die Nextcloud eine
   Adresse außerhalb ihrer eigenen Dateien, schickt OPAA dorthin keine Zugangsdaten.

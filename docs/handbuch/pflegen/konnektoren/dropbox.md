@@ -1,7 +1,8 @@
 # Konnektor: Dropbox
 
-> **Wer darf das:** anlegen, wer „Konnektorbibliotheken anlegen“ für diese Quellart oder ihren
-> Zugang hat; ab Werk nur die Systemverwaltung, bis sie die Quellart oder einen Zugang freigibt.
+> **Wer darf das:** anlegen, wer „Konnektorbibliotheken anlegen“ für den Zugang hat. Ein Zugang ist
+> Pflicht; ab Werk gibt es keinen, und ein neu angelegter ist nur für die Systemverwaltung frei, bis
+> sie ihn freigibt.
 > Quelle, Umfang und Zeitplan ändert danach, wer an der Bibliothek *Verwalter* oder *Eigentümer* ist.
 
 ## 1. Was der Konnektor ist
@@ -159,6 +160,9 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 [E-Mail](../../arbeitsmittel/wissensbibliotheken/formate/mail.md).
 
 ## 8. Grenzen und Schutzmechanismen
+
+Parameter stehen unter `opaa.indexing.dropbox.*` (`OPAA_INDEXING_DROPBOX_*`), ihre Standardwerte in der
+[Konfigurationsreferenz](../../betrieb/konfiguration.md#alle-umgebungsvariablen).
 
 - **Drosselung.** Bei `429` wartet OPAA die Zeit aus `Retry-After`, höchstens `max-retry-wait`, und
   wiederholt bis zu `max-retries`-mal.

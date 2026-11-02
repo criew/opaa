@@ -2,9 +2,9 @@
 
 > **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
 
-> **Wer darf das:** jedes Konto mit [verbundenem Microsoft-Konto](../../arbeiten/konto-verbinden.md)
-> auf einem Zugang für Personen, den die Systemverwaltung eingerichtet und freigegeben hat; ab Werk
-> gibt es keinen. Eine OneDrive-Bibliothek ist immer [privat](../../arbeiten/private-bibliothek.md).
+> **Wer darf das:** wer auf einem Zugang für Personen ein [Microsoft-Konto verbunden](../../arbeiten/konto-verbinden.md)
+> hat und das Anlegerecht für diesen Zugang. Ab Werk gibt es keinen solchen Zugang; die
+> Systemverwaltung richtet ihn ein. Eine OneDrive-Bibliothek ist immer [privat](../../arbeiten/private-bibliothek.md).
 
 ## 1. Was der Konnektor ist
 
@@ -184,6 +184,10 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 [E-Mail](../../arbeitsmittel/wissensbibliotheken/formate/mail.md).
 
 ## 8. Grenzen und Schutzmechanismen
+
+OneDrive nutzt die Parameter von SharePoint, `opaa.indexing.sharepoint.*`
+(`OPAA_INDEXING_SHAREPOINT_*`); Standardwerte in der
+[Konfigurationsreferenz](../../betrieb/konfiguration.md#alle-umgebungsvariablen).
 
 - **Nur das eigene OneDrive.** Die Bibliothek merkt sich die Kennung ihres OneDrive. Weicht das
   OneDrive des verbundenen Kontos davon ab, ist es kein OneDrive for Business oder hat das Konto

@@ -1,7 +1,7 @@
 # Konnektor: Verzeichnis im Dateisystem
 
-> **Wer darf das:** anlegen, wer „Konnektorbibliotheken anlegen“ für diese Quellart oder ihren
-> Zugang hat; ab Werk jedes Konto.
+> **Wer darf das:** anlegen, wer „Konnektorbibliotheken anlegen“ für die Quellart Dateisystem hat;
+> ab Werk jedes Konto, sobald der Betrieb Basisverzeichnisse freigegeben hat (ab Werk keine).
 > Quelle, Umfang und Zeitplan ändert danach, wer an der Bibliothek *Verwalter* oder *Eigentümer* ist.
 
 ## 1. Was der Konnektor ist
@@ -124,6 +124,9 @@ gescheiterter Anhang wird erst wieder versucht, wenn sich die Mail ändert oder 
 angestoßen wird.
 
 ## 8. Grenzen und Schutzmechanismen
+
+Parameter stehen unter `opaa.indexing.filesystem.*` (`OPAA_INDEXING_FILESYSTEM_*`), ihre Standardwerte in der
+[Konfigurationsreferenz](../../betrieb/konfiguration.md#alle-umgebungsvariablen).
 
 - **Freigabeliste.** Der Pfad wird normalisiert und muss mit einem Basisverzeichnis beginnen; ein
   `../` bricht nicht aus. Geprüft wird beim Speichern und bei jedem Lauf: Wird die Liste verengt,
