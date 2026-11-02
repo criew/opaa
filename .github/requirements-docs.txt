@@ -1,6 +1,7 @@
 # Python packages of the handbook site build (mkdocs.yml): every package with all its dependencies,
 # each pinned with the hashes of all its files, installed with --require-hashes. Generated with
-# uv pip compile --universal --generate-hashes from mkdocs and mkdocs-material. Renovate maintains
+# uv pip compile --universal --generate-hashes from mkdocs and mkdocs-material. Only PyYAML builds
+# from its sdist, because it has no wheel for every Python the jobs use. Renovate maintains
 # versions and hashes.
 babel==2.18.0 \
     --hash=sha256:b80b99a14bd085fcacfa15c9165f651fbb3406e66cc603abf11c5750937c992d \
