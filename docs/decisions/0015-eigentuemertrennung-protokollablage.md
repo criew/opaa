@@ -2,12 +2,12 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-04 · ergänzt durch ADR-0041 (Entscheidung 7)
+Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt durch ADR-0041 (Entscheidung 7)
 
 ## Kontext
 
 Das revisionssichere Protokoll `audit_log` (ADR-0014 Entscheidung 13,
-[security-and-compliance.md](../features/security-and-compliance.md#der-sicherheitsgrad-der-ersten-stufe-einfaches-anfügen))
+[ADR-0059](0059-ereignisvertrag-aufbewahrung-und-integritaet-des-revisionsprotokolls.md))
 verlangt, dass das Anwendungskonto nur anfügen und lesen kann und keine Rechte am Schema der Tabelle
 hat, auch nicht über eine eingeschleuste Anweisung. Ein bloßes
 `REVOKE`/`GRANT` gegen das Anwendungskonto reicht dafür nicht: Wer eine Tabelle **besitzt**, kann

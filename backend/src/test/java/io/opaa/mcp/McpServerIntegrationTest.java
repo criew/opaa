@@ -642,7 +642,7 @@ class McpServerIntegrationTest {
         administratorId);
   }
 
-  /** The promise of security-and-compliance.md: the single query leaves no trail. */
+  /** The promise of ADR-0059 (decision 1): the single query leaves no trail. */
   @Test
   void noToolCallWritesAnAuditEntry() {
     long before = auditEntriesOfThisPerson();

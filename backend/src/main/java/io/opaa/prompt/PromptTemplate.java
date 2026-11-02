@@ -13,13 +13,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * The variable syntax of a prompt text and the rules its definitions follow
- * (docs/features/spaces-and-assets.md#prompt-bibliothek). A placeholder is {@code {{name}}}, a name
- * of letters, digits and underscores starting with a letter; blanks inside the braces are tolerated
- * and {@link #normalize} removes them, and a system variable is recognised in any case and stored
- * in its canonical form. Any other {@code {{...}}} is refused rather than left as text. The text
- * and the definitions must agree in both directions; the {@link #SYSTEM_VARIABLES} are resolved on
- * insertion and never defined.
+ * The variable syntax of a prompt text and the rules its definitions follow. A placeholder is
+ * {@code {{name}}}, a name of letters, digits and underscores starting with a letter; blanks inside
+ * the braces are tolerated and {@link #normalize} removes them, and a system variable is recognised
+ * in any case and stored in its canonical form. Any other {@code {{...}}} is refused rather than
+ * left as text. The text and the definitions must agree in both directions; the {@link
+ * #SYSTEM_VARIABLES} are resolved on insertion and never defined.
  */
 public final class PromptTemplate {
 

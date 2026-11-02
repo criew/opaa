@@ -25,8 +25,7 @@ interface SpaceContentSectionProps {
 /**
  * The tab "Inhalte" of the space settings: every asset type in one tile list, a check mark meaning
  * "associated with this space". A check mark takes effect at once; a failed request springs it
- * back. The association grants nobody access
- * (docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren). Mounted per space: its
+ * back. The association grants nobody access. Mounted per space: its
  * pending changes, notices and remembered tiles never carry over to another one.
  */
 export default function SpaceContentSection({ spaceId, canManage }: SpaceContentSectionProps) {

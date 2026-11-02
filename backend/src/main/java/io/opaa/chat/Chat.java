@@ -23,11 +23,10 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
- * A persistent, space-owned chat (docs/features/spaces-and-assets.md#chats). Composition, not
- * association: {@link #spaceId} is set once at construction and never changes - a chat cannot be
- * moved to another space. Visible only to {@link #authorId}; not even a space or system admin may
- * read it while {@link #status} is {@link ChatStatus#PRIVATE} - the only value that currently
- * exists, see that enum's Javadoc.
+ * A persistent, space-owned chat. Composition, not association: {@link #spaceId} is set once at
+ * construction and never changes - a chat cannot be moved to another space. Visible only to {@link
+ * #authorId}; not even a space or system admin may read it while {@link #status} is {@link
+ * ChatStatus#PRIVATE} - the only value that currently exists, see that enum's Javadoc.
  *
  * <p><b>{@link #title}/{@link #titleSource}/{@link #updatedAt} are never mutated on an instance
  * loaded long before the write, then written back with a full {@code chatRepository.save(chat)}

@@ -43,12 +43,12 @@ Die Dokumentation ist nach fünf Achsen sortiert — jedes Dokument gehört zu g
 
 ## Die elf Themenbereiche
 
-Die Gliederung folgt [VISION.md](./VISION.md). Zu jedem Bereich gehört genau eine zuständige
-Spezifikation — oder zwei, wo der Bereich zwei Fragen beantwortet.
+Die Gliederung folgt [VISION.md](./VISION.md). Je Bereich stehen Handbuch oder ADR für das Gebaute und die
+Roadmap für die Ziele.
 
 ### A · Wissensschicht & Retrieval
 
-**[`features/data-indexing-rag.md`](./features/data-indexing-rag.md)** ·
+**[`handbuch/spaces/suche.md`](./handbuch/spaces/suche.md)** · **[Roadmap](./ROADMAP.md)** ·
 **[ADR-0065](./decisions/0065-hybride-suche-reranking-und-diagnose.md)**
 
 Belegvalidierung, Konfidenz und Quellenbindung · hybride Suche mit Reranking · erklärbares Chunking ·
@@ -57,7 +57,7 @@ Golden Dataset · Deep Research.
 
 ### B · Wissensquellen & Konnektoren
 
-**[`features/knowledge-sources.md`](./features/knowledge-sources.md)**
+**[`handbuch/arbeitsmittel/wissensbibliotheken/README.md`](./handbuch/arbeitsmittel/wissensbibliotheken/README.md)** · **[Roadmap](./ROADMAP.md)**
 
 Uploads und Konnektoren · selbst aktualisierende Wissensblöcke · Zeitpläne und ereignisbasierte
 Aktualisierung · Zielbibliothek als Rechteanker, Quellrechte nur einschränkend und nur wo ein
@@ -65,7 +65,7 @@ Quellsystem sie belastbar liefert · Zuordnung einer Quelle zu genau einer Wisse
 
 ### C · Spaces, Assets & Verteilung
 
-**[`features/spaces-and-assets.md`](./features/spaces-and-assets.md)**
+**[`handbuch/spaces/README.md`](./handbuch/spaces/README.md)** · **[Roadmap](./ROADMAP.md)**
 
 Spaces als Arbeitsräume, Assets als eigenständige Objekte · Zuordnung als harte Grenze gegen Enthaltensein ·
 Wissensbibliotheken als Rechteanker · Verteilungsstufen und Sichtbarkeit · ein Katalog nur mit Lesbarem ·
@@ -92,14 +92,16 @@ personenbezogener Daten.
 
 ### F · Identität, Rechte & Mandanten
 
-**[`features/access-control.md`](./features/access-control.md)**
+**[`handbuch/konten-und-rechte/benutzerverwaltung.md`](./handbuch/konten-und-rechte/benutzerverwaltung.md)** · **[`handbuch/konten-und-rechte/berechtigungen.md`](./handbuch/konten-und-rechte/berechtigungen.md)** ·
+**[Roadmap](./ROADMAP.md)**
 
 Anmeldung über den Verzeichnisdienst · Kontenlebenszyklus über SCIM · Gruppen als Rechtesubjekt ·
 Berechtigungsdurchsetzung zur Abfragezeit · Organisation als harte Mandantengrenze.
 
 ### G · Sicherheit, Nachweis & Prüfbarkeit
 
-**[`features/security-and-compliance.md`](./features/security-and-compliance.md)**
+**[`handbuch/betrieb/nachvollziehbarkeit.md`](./handbuch/betrieb/nachvollziehbarkeit.md)** · **[ADR-0068](./decisions/0068-mitbestimmungsfaehigkeit.md)** ·
+**[Roadmap](./ROADMAP.md)**
 
 Revisionssicheres Protokoll · Vollständigkeit nach DSGVO einschließlich Löschrecht und Datenexport · sichere
 Voreinstellungen · Software-Stückliste und signierte Builds · C5-Fähigkeit · Mitbestimmungsfähigkeit.
@@ -285,8 +287,7 @@ Den tatsächlichen Stand führt der [Gesamtstand](./fortschritt/gesamtstand.md).
 → [Gesamtstand](./fortschritt/gesamtstand.md) — und nur dort
 
 **Wie stelle ich sicher, dass niemand sieht, was er nicht sehen darf?**
-→ [`features/spaces-and-assets.md`](./features/spaces-and-assets.md) und
-[`features/access-control.md`](./features/access-control.md)
+→ [Berechtigungen](./handbuch/konten-und-rechte/berechtigungen.md)
 
 **Läuft OPAA ohne Internetverbindung?**
 → Ja, das ist ein vorgesehenes Szenario. Siehe
@@ -298,17 +299,15 @@ Den tatsächlichen Stand führt der [Gesamtstand](./fortschritt/gesamtstand.md).
 
 **Können mehrere Häuser dieselbe Installation nutzen?**
 → Ja, die Organisation ist die harte Mandantengrenze. Siehe
-[`features/access-control.md`](./features/access-control.md)
+[ADR-0014, Entscheidung 15](./decisions/0014-produktausrichtung-oeffentliche-verwaltung.md#15-nachweis-der-organisationsgrenze)
 
 **Was bedeutet „C5-fähig"?**
 → Auf die Prüfung des Betreibers ausgelegt, ausdrücklich **nicht** zertifiziert. Siehe
-[CONCEPTS.md](./CONCEPTS.md) und
-[`features/security-and-compliance.md`](./features/security-and-compliance.md)
+[CONCEPTS.md](./CONCEPTS.md)
 
 **Was heißt das für die Personalvertretung?**
 → [CONCEPTS.md](./CONCEPTS.md), Abschnitt „Mitbestimmungsfähigkeit", und
-[`features/spaces-and-assets.md`](./features/spaces-and-assets.md)
+[Behördenunterlagen](./behoerden/README.md)
 
 **Kann ich eigene Dokumente hochladen?**
-→ Ja. Siehe [`features/knowledge-sources.md`](./features/knowledge-sources.md) und
-[`features/data-indexing-rag.md`](./features/data-indexing-rag.md)
+→ Ja. Siehe [Wissensbibliotheken](./handbuch/arbeitsmittel/wissensbibliotheken/README.md)

@@ -614,8 +614,7 @@ components:
           format: uuid
           nullable: true
           description: >
-            The prompt the question was built from
-            (docs/features/spaces-and-assets.md#prompt-im-chat). The client resolves the prompt's
+            The prompt the question was built from. The client resolves the prompt's
             text and variables itself and sends the finished question; the server only checks that
             the caller may read the prompt's library and that the library is associated with the
             space of the named chat (403 otherwise, also without a persisted chat), and keeps the

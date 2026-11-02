@@ -104,7 +104,7 @@ function TokenMenu({
  *
  * It carries **no** usage date and offers **no** filter by person: a table filterable by
  * person with a usage date would be the person-related evaluation path whose
- * non-existence security-and-compliance.md promises. A revocation decision does not need it -
+ * non-existence ADR-0068 promises. A revocation decision does not need it -
  * revocation happens because of an incident or an account life cycle.
  *
  * The revocation per person is therefore an action on a row and not an evaluation: it writes

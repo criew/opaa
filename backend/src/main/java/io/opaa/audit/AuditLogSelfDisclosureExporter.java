@@ -38,9 +38,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * <p>No pseudonym, no {@code reason} and no other person leaves: actor, subject and account object
  * go out as "Sie", "andere Person" or "System", a label of another account is dropped, {@code
  * before}/{@code after} pass {@link AuditSelfDisclosurePayload}. Read month by month: one scan of
- * the window for the ids of the person's entries ({@code subject_ref} has no index on purpose,
- * docs/features/security-and-compliance.md, "Protokoll der Selbstauskunft"), then the rows in pages
- * of {@link #PAGE_SIZE} by primary key, each read in a short read-only transaction.
+ * the window for the ids of the person's entries ({@code subject_ref} has no index on purpose),
+ * then the rows in pages of {@link #PAGE_SIZE} by primary key, each read in a short read-only
+ * transaction.
  */
 @Component
 public class AuditLogSelfDisclosureExporter implements SelfDisclosureExporter {

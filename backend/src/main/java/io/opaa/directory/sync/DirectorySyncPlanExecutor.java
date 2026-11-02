@@ -187,7 +187,7 @@ class DirectorySyncPlanExecutor {
     UUID organizationId = target.organizationId();
     // One correlation id per run, shared by the header entry below and, if the run actually applies
     // anything, by every DIRECTORY_SYNC_CHANGE_APPLIED entry applyPlan writes - "verbunden ueber
-    // correlation_ref" (docs/features/security-and-compliance.md).
+    // correlation_ref".
     UUID correlationRef = UUID.randomUUID();
     List<Group> existingOrgUnits =
         groupRepository.findByOrganizationIdAndProviderIdAndKindOrgUnit(
@@ -428,9 +428,8 @@ class DirectorySyncPlanExecutor {
             .outcome(toAuditOutcome(outcome))
             .reason(reason == null ? message : message + " Anlass: " + reason)
             .correlationRef(correlationRef.toString());
-    // "oberhalb der Schwelle, mit der bestaetigenden Person und ihrem Anlass"
-    // (security-and-compliance.md): a confirmed run is a person's decision, every other run is
-    // the system process acting on its own.
+    // Above the threshold, with the confirming person and their reason: a confirmed run is a
+    // person's decision, every other run is the system process acting on its own.
     if (actorUserId == null) {
       auditEventRecorder.recordSystemProcessAction(event.actorRef(DIRECTORY_SYNC_ACTOR).build());
     } else {

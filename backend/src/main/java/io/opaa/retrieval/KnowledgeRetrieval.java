@@ -16,10 +16,8 @@ import org.springframework.stereotype.Component;
  * same fusion, the same reranking and the same permission filter - a second ranking path would be a
  * second quality truth that nobody maintains (ADR-0035).
  *
- * <p>{@code searchScope} is taken as given
- * (docs/features/spaces-and-assets.md#ein-agent-liest-immer-mit-den-rechten-des-nutzers); resolving
- * it stays with the caller, which is what lets the query take a chat's own settings and the search
- * take the effective view of a request.
+ * <p>{@code searchScope} is taken as given; resolving it stays with the caller, which is what lets
+ * the query take a chat's own settings and the search take the effective view of a request.
  */
 @Component
 public class KnowledgeRetrieval {

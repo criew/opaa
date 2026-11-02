@@ -13,7 +13,7 @@ Sicherheitsgurt ankerte gegen den Verlauf, nach einem Themenwechsel legitimierte
 weiterhin Teilfragen), **Zitatwiederholung** (Marken für Dokumente, die in der aktuellen Runde nicht
 im Kontext sind), **harte Vergessensgrenze** (eine Rahmenangabe aus Runde 1 ist in Runde 12 weg).
 Der Folgefragen-Pfad war ungemessen. Bindend aus [ADR-0014](0014-produktausrichtung-oeffentliche-verwaltung.md)
-und [security-and-compliance.md](../features/security-and-compliance.md#mitbestimmungsfähigkeit):
+und [ADR-0068](0068-mitbestimmungsfaehigkeit.md):
 kein personenbezogener Auswertungspfad, und was eine Antwort beeinflusst, muss für die Person
 nachvollziehbar sein. Das Verhalten beschreibt das Handbuch ([Suche](../handbuch/spaces/suche.md)).
 

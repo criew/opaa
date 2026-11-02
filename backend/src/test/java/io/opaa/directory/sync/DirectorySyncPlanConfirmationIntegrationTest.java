@@ -225,8 +225,8 @@ class DirectorySyncPlanConfirmationIntegrationTest {
     assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
     assertThat(membershipRepository.findByGroupId(group.getId())).hasSize(1);
     assertThat(directorySyncService.getPendingPlan(ORGANIZATION_ID, provider.getId())).isEmpty();
-    // "oberhalb der Schwelle, mit der bestaetigenden Person und ihrem Anlass"
-    // (security-and-compliance.md): the header entry of a confirmed run names both. The actor is
+    // Above the threshold, with the confirming person and their reason: the header entry of a
+    // confirmed run names both. The actor is
     // asserted, not only the reason - a run recorded under the system process actor would carry
     // the same reason and say nobody decided it.
     assertThat(actorsOf(AuditEventType.DIRECTORY_SYNC_RUN_COMPLETED, "%Reorganisation zum 01.10.%"))

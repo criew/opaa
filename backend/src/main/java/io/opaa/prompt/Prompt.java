@@ -14,10 +14,10 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
- * A named, reusable instruction in exactly one {@link PromptLibrary}
- * (docs/features/spaces-and-assets.md#prompt-bibliothek). {@link #name} is unique within the
- * library ({@code uk_prompts_library_name}) and is what the slash command names; the text and its
- * variables are only ever stored together, as {@link PromptTemplate#validate} accepted them.
+ * A named, reusable instruction in exactly one {@link PromptLibrary}. {@link #name} is unique
+ * within the library ({@code uk_prompts_library_name}) and is what the slash command names; the
+ * text and its variables are only ever stored together, as {@link PromptTemplate#validate} accepted
+ * them.
  */
 @Entity
 @Table(name = "prompts")

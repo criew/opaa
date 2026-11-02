@@ -146,8 +146,7 @@ public class Space {
   }
 
   /**
-   * Marks the space archived (docs/features/spaces-and-assets.md#einen-space-stilllegen-
-   * archivieren-statt-löschen) - idempotent, since re-archiving an already archived space is not an
+   * Marks the space archived - idempotent, since re-archiving an already archived space is not an
    * error.
    */
   public void archive() {
@@ -160,8 +159,7 @@ public class Space {
 
   /**
    * Whether this is the space created automatically on the user's first login. Exactly one per user
-   * and not deletable; in every other respect an ordinary space - see
-   * docs/features/spaces-and-assets.md#es-gibt-nur-eine-art-von-space.
+   * and not deletable; in every other respect an ordinary space.
    */
   public boolean isDefault() {
     return isDefault;

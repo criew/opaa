@@ -5,7 +5,7 @@ tags:
     description: Audit trail, point-in-time access and incident scopes.
 paths:
   # Exactly four revision access paths, each with a mandatory time range and a bounded
-  # result set - see docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt.
+  # result set.
   # There is deliberately no `actor`/`actorRef` query parameter on any of them and no `sort`
   # parameter at all, and no response names a person (see AuditEventResponse): a person's
   # reference in an answer could be chained over overlapping answers into a lasting one.
@@ -638,8 +638,7 @@ components:
             once to the confirming auditor, who hands it to the person; never stored in readable
             form or answered again. Null for an account of an identity provider.
 
-    # Audit revision access path. See
-    # docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt.
+    # Audit revision access path.
     AuditActorKind:
       type: string
       description: Mirrors io.opaa.api.types.ActorKind. Output-only field, never a filter/sort key.

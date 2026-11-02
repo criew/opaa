@@ -15,7 +15,7 @@ export interface CatalogQuery {
 }
 
 /**
- * The catalog across every asset type (docs/features/spaces-and-assets.md#der-katalog): what the
+ * The catalog across every asset type: what the
  * caller may read, favorites first, then by name. Search, filter and paging run on the server.
  */
 export async function getCatalog(query: CatalogQuery): Promise<CatalogPageResponse> {

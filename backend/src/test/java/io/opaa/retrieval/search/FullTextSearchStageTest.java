@@ -123,10 +123,7 @@ class FullTextSearchStageTest {
         .containsExactly(expected);
   }
 
-  /**
-   * No search stage runs before the stage that establishes the filter
-   * (docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit).
-   */
+  /** No search stage runs before the stage that establishes the filter. */
   @Test
   void refusesToRunWithoutAPermissionFilter() {
     assertThatThrownBy(
@@ -137,8 +134,7 @@ class FullTextSearchStageTest {
   }
 
   /**
-   * Exactly the permission scope reaches the query - no library beyond it
-   * (docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit) and none of it held back
+   * Exactly the permission scope reaches the query - no library beyond it and none of it held back
    * either: the full-text row is written with the vector row, so there is no scoped library the
    * lexical path has to leave out.
    */

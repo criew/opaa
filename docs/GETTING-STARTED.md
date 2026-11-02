@@ -30,7 +30,7 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 2. [USE-CASES.md](./USE-CASES.md) — die Abläufe, um die es geht
 3. [CONCEPTS.md](./CONCEPTS.md) — nur die Abschnitte **Belegbarkeit**, **Verteilbarkeit**, **Fundstelle und
    Quellenbindung**, **Belegvalidierung**, **Konfidenz**
-4. [`features/spaces-and-assets.md`](./features/spaces-and-assets.md) — wie eine gute Arbeitsweise vom
+4. [Roadmap](ROADMAP.md), Bereich C — wie eine gute Arbeitsweise vom
    Einzelfall zum geprüften Standard wird
 5. [Roadmap](./ROADMAP.md) — Leichte Sprache, Amtssprache,
    Barrierefreiheit
@@ -59,11 +59,11 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
    Ziele in der [Roadmap](ROADMAP.md)
 4. [Modelle](handbuch/betrieb/modelle.md) und [ADR-0067](decisions/0067-modellanbindung-und-verwaltete-chat-modelle.md) —
    Modellverwaltung, lokal betriebene Modelle; Modell-Policy als Obergrenze in der [Roadmap](ROADMAP.md)
-5. [`features/access-control.md`](./features/access-control.md) — Anmeldung, Kontenlebenszyklus, Mandanten
+5. [Authentifizierung](./handbuch/betrieb/authentifizierung.md) und [Benutzerverwaltung](./handbuch/konten-und-rechte/benutzerverwaltung.md) — Anmeldung, Kontenlebenszyklus, Mandanten
 6. [Roadmap](./ROADMAP.md) — Metriken, Grenzen,
    Kostentransparenz
-7. [`features/data-indexing-rag.md`](./features/data-indexing-rag.md) und
-   [`features/knowledge-sources.md`](./features/knowledge-sources.md) — was indiziert wird und wie oft
+7. [Wissensbibliotheken](./handbuch/arbeitsmittel/wissensbibliotheken/README.md) und
+   [Konnektoren](./handbuch/arbeitsmittel/wissensbibliotheken/konnektoren/README.md) — was indiziert wird und wie oft
 8. [Gesamtstand](./fortschritt/gesamtstand.md) — der ehrliche Stand, belegt über die Inventur
 
 **Worauf es dabei ankommt:**
@@ -89,11 +89,11 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 
 1. [CONCEPTS.md](./CONCEPTS.md) — Abschnitte **Sicherheit, Nachweis und Mitbestimmung** sowie
    **Berechtigungsdurchsetzung zur Abfragezeit**
-2. [`features/security-and-compliance.md`](./features/security-and-compliance.md) — **vertieft**:
-   revisionssicheres Protokoll, Vollständigkeit nach DSGVO, C5-Fähigkeit
-3. [`features/spaces-and-assets.md`](./features/spaces-and-assets.md) — Rechtemodell, Freigabekette,
-   Mitbestimmung
-4. [`features/access-control.md`](./features/access-control.md) — Kontenlebenszyklus, Mandantengrenze
+2. [Nachvollziehbarkeit](./handbuch/betrieb/nachvollziehbarkeit.md) und [ADR-0068](./decisions/0068-mitbestimmungsfaehigkeit.md) — **vertieft**:
+   revisionssicheres Protokoll, Vollständigkeit nach DSGVO, Mitbestimmung
+3. [Berechtigungen](./handbuch/konten-und-rechte/berechtigungen.md) — Rechtemodell; Freigabekette und
+   Mitbestimmung in der [Roadmap](ROADMAP.md)
+4. [Benutzerverwaltung](./handbuch/konten-und-rechte/benutzerverwaltung.md) — Kontenlebenszyklus, Mandantengrenze
 5. [Roadmap](./ROADMAP.md) — was ausgewertet wird
    und in welcher Aggregation
 6. [Netz und Sicherheit](handbuch/betrieb/netz-und-sicherheit.md) und
@@ -190,13 +190,13 @@ Stand und Nachweis (docs/fortschritt/)
 └── JJJJMMTT/              — Zeitraumsberichte mit Beleg-Bausteinen je Stichtag
 
 Spezifikationen (docs/features/) — je Themenbereich
-├── A  data-indexing-rag.md
-├── B  knowledge-sources.md
-├── C  spaces-and-assets.md
+├── A  (Ziele in ROADMAP.md)
+├── B  (Ziele in ROADMAP.md)
+├── C  (Ziele in ROADMAP.md)
 ├── D  (Ziele in ROADMAP.md)
 ├── E  (Ziele in ROADMAP.md)
-├── F  access-control.md
-├── G  security-and-compliance.md
+├── F  (Ziele in ROADMAP.md)
+├── G  (Ziele in ROADMAP.md)
 ├── H  (Ziele in ROADMAP.md)
 ├── I  (Ziele in ROADMAP.md)
 ├── J  (Ziele in ROADMAP.md)

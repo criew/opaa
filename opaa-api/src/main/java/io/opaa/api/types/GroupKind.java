@@ -4,7 +4,7 @@ package io.opaa.api.types;
  * What a group is for, where its membership comes from, and who may edit it. The kind never decides
  * what a grant to the group is worth - a grant is issued by an asset's {@code MANAGER} alone, for
  * every kind alike, and needs neither approval from the group's side nor stays below a size
- * threshold (docs/features/spaces-and-assets.md#freigabe-an-eine-gruppe-braucht-keine-zustimmung).
+ * threshold.
  *
  * <ul>
  *   <li>{@link #ORG_UNIT} - synchronised from the directory (department, division, agency), the

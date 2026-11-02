@@ -161,8 +161,7 @@ paths:
         Archive a space (owner or system admin only). An archived space accepts no new
         chats, is hidden from listSpaces for members without a chat of their own in it, and stays
         fully readable for its members' own chats. Idempotent: archiving an already-archived space
-        just returns its current state. See docs/features/spaces-and-assets.md#archivieren-statt-
-        löschen.
+        just returns its current state.
       responses:
         "200":
           description: Space archived
@@ -557,8 +556,7 @@ components:
           description: >
             An archived space accepts no new content (chats, messages, renames, members) and
             is left out of this list for members who have no chat of their own in it and are
-            neither the owner nor a system admin - see
-            docs/features/spaces-and-assets.md#einen-space-stilllegen-archivieren-statt-löschen.
+            neither the owner nor a system admin.
           example: false
         memberCount:
           type: integer
@@ -730,8 +728,6 @@ components:
           type: boolean
           description: >
             An archived space accepts no new content (chats, messages, renames, members).
-            See docs/features/spaces-and-assets.md#einen-space-stilllegen-archivieren-statt-
-            löschen.
           example: false
         ownerId:
           type: string

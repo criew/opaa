@@ -8,11 +8,11 @@ import java.util.List;
 
 /**
  * The description of the audit log for the staff council ("Auszug für die Personalvertretung",
- * docs/features/security-and-compliance.md): every column of {@code audit_log} with granularity,
- * purpose and retention, the query paths {@link AuditQueryService} offers with the bounds of {@link
- * AuditAccessGate}, the self-disclosure of the person herself ({@link
- * AuditLogSelfDisclosureExporter}), and the paths that deliberately do not exist. A new column of
- * {@code audit_log} or a new query path changes this list in the same change.
+ * ADR-0068): every column of {@code audit_log} with granularity, purpose and retention, the query
+ * paths {@link AuditQueryService} offers with the bounds of {@link AuditAccessGate}, the
+ * self-disclosure of the person herself ({@link AuditLogSelfDisclosureExporter}), and the paths
+ * that deliberately do not exist. A new column of {@code audit_log} or a new query path changes
+ * this list in the same change.
  */
 final class AuditProtocolDescription {
 

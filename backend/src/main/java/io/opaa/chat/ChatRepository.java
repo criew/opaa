@@ -40,8 +40,7 @@ public interface ChatRepository extends JpaRepository<Chat, UUID> {
 
   /**
    * Used by {@code SpaceService#deleteSpace} to reject the delete with a clear 409 before it ever
-   * reaches {@code fk_chats_space_organization} (ON DELETE RESTRICT) - see
-   * docs/features/spaces-and-assets.md#chats-sind-vor-fremder-löschung-geschützt.
+   * reaches {@code fk_chats_space_organization} (ON DELETE RESTRICT).
    */
   boolean existsBySpaceId(UUID spaceId);
 

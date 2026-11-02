@@ -19,8 +19,7 @@ import org.springframework.stereotype.Component;
 /**
  * The {@link RetrievalStageName#SEARCH_SCOPE} stage: turns the search scope the caller resolved
  * into the {@code library_id IN (...)} filter every search stage passes straight into {@code
- * VectorChunkSearch#similaritySearch} - never a filter applied to a search result afterwards
- * (docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit).
+ * VectorChunkSearch#similaritySearch} - never a filter applied to a search result afterwards.
  *
  * <p>Resolves no permissions of its own: which libraries the acting user may read is decided before
  * the pipeline starts; this stage only carries that decision into every search, and is therefore

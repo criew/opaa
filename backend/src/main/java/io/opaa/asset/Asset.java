@@ -25,10 +25,10 @@ import java.util.UUID;
 import org.hibernate.annotations.DynamicUpdate;
 
 /**
- * The asset shell (docs/features/spaces-and-assets.md#assets): everything an asset has regardless
- * of its type - name, description, one owner, origin and creator. A type adds its own table and
- * entity by extending this class ({@code JOINED}: the type row shares the shell's id); an asset
- * whose type maps no entity of its own loads as a plain {@code Asset}.
+ * The asset shell: everything an asset has regardless of its type - name, description, one owner,
+ * origin and creator. A type adds its own table and entity by extending this class ({@code JOINED}:
+ * the type row shares the shell's id); an asset whose type maps no entity of its own loads as a
+ * plain {@code Asset}.
  *
  * <p><b>How far the asset reaches is not a field here</b> (ADR-0037): it follows from the grants
  * alone, "Alle Konten" included. Whoever may not read an asset does not see it at all.

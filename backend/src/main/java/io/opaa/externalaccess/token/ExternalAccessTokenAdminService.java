@@ -29,12 +29,11 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>What this class deliberately cannot do is as much its contract as what it can: it never
  * returns a token value, never a usage count and never a usage date, and it offers no filter, no
- * sorting and no output by person. The promise in {@code security-and-compliance.md}
- * ("Mitbestimmungsfaehigkeit" no. 2) is that no surface filters, groups or sorts usage data by
- * person - a list filterable by person that carried a usage date would be exactly that. For the
- * decision this list serves, the value is not needed: blocking follows an incident or an account
- * lifecycle, never disuse. Filtering is therefore over state and expiry only, and the order is
- * fixed at "soonest expiry first".
+ * sorting and no output by person. The promise of ADR-0068 (decision 2) is that no surface filters,
+ * groups or sorts usage data by person - a list filterable by person that carried a usage date
+ * would be exactly that. For the decision this list serves, the value is not needed: blocking
+ * follows an incident or an account lifecycle, never disuse. Filtering is therefore over state and
+ * expiry only, and the order is fixed at "soonest expiry first".
  *
  * <p>The Sperre je Person is a write taking an owner id, not a filter over the list.
  */

@@ -62,8 +62,7 @@ public class RetrievalPipeline {
   /**
    * Runs every registered stage in order and returns the selection together with the complete
    * explanation protocol. {@code context.searchScope()} is taken as given: this method applies it
-   * as the {@code library_id} filter of every search but resolves no permissions of its own
-   * (docs/features/spaces-and-assets.md#ein-agent-liest-immer-mit-den-rechten-des-nutzers). Once a
+   * as the {@code library_id} filter of every search but resolves no permissions of its own. Once a
    * stage halts the run, the remaining stages are recorded as not reached instead of being
    * executed.
    */

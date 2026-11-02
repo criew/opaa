@@ -358,8 +358,8 @@ class QueryDecompositionServiceTest {
   }
 
   /**
-   * Regression guard for #1254: docs/features/security-and-compliance.md keeps questions and search
-   * terms out of the application log. The fallback must therefore be countable, not readable.
+   * Regression guard for #1254: questions and search terms stay out of the application log. The
+   * fallback must therefore be countable, not readable.
    */
   @Test
   void theFallbackLogsCountsButNoUserContent() {

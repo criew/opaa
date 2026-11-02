@@ -10,7 +10,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.ConstructorBinding;
 
 /**
- * Configuration for the REST document upload endpoint (docs/features/knowledge-sources.md#upload).
+ * Configuration for the REST document upload endpoint.
  *
  * @param storagePath filesystem path where uploaded files are stored, as {@code
  *     <storagePath>/<organizationId>/<libraryId>/<uuid><extension>} so files of different tenants

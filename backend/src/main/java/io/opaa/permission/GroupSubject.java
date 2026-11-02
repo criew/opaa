@@ -7,10 +7,9 @@ import java.util.UUID;
  * A group seen through {@link GroupSubjectDirectory}: exactly the properties a grant path decides
  * on - the organization it belongs to, the name a response shows, and the three reasons it may be
  * no effective group. A dissolved group keeps its existing grants but may not receive a new or
- * updated one (docs/features/spaces-and-assets.md#reorganisation-umbenennung-zusammenlegung); the
- * same holds for a group whose identity provider is switched off (ADR-0036, Entscheidung 2) -
- * otherwise a release to it would reach nobody and then, with the provider switched back on,
- * everybody at once without a second decision.
+ * updated one; the same holds for a group whose identity provider is switched off (ADR-0036,
+ * Entscheidung 2) - otherwise a release to it would reach nobody and then, with the provider
+ * switched back on, everybody at once without a second decision.
  *
  * <p>{@code unmaintained} is the third: a token group of a provider that has since switched to the
  * directory run (ADR-0036 Entscheidung 3). Its membership is frozen - the change of mechanism

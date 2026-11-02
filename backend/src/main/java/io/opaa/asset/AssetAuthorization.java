@@ -17,10 +17,10 @@ import org.springframework.stereotype.Component;
 /**
  * The role a person holds on one asset for <b>administering</b> it: the rights formula of {@link
  * AssetAccessService} plus the one floor administration adds - a system administrator counts as
- * {@link AssetRole#OWNER} (docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten). The
- * floor never reaches the search: {@link AssetAccessService#readableAssetIds} knows no such branch,
- * so administering an asset is never reading it. An {@link Asset#isOwnerOnly() owner-only} asset
- * has no such floor: the administration reaches it only as its owner.
+ * {@link AssetRole#OWNER}. The floor never reaches the search: {@link
+ * AssetAccessService#readableAssetIds} knows no such branch, so administering an asset is never
+ * reading it. An {@link Asset#isOwnerOnly() owner-only} asset has no such floor: the administration
+ * reaches it only as its owner.
  */
 @Component
 public class AssetAuthorization {

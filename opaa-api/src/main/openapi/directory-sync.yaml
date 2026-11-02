@@ -815,7 +815,7 @@ components:
       description: >
         The confirming or discarding person's own reason. Mandatory because the audit trail of a
         run above the threshold names "the confirming person and their reason"
-        (security-and-compliance.md, closed event list).
+        (closed event list).
       properties:
         reason:
           type: string

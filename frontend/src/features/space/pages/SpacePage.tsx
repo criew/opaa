@@ -69,9 +69,8 @@ export default function SpacePage({ renderChats }: SpacePageProps) {
   // "Die UI erklärt einmal, sichtbar, warum die Liste je Mitglied unterschiedlich sein kann" -
   // a dismissible hint, shown once per browser rather than every
   // visit, since a permanent warning banner on something that is by design (not an error) would
-  // itself become the "warning sign attached to nearly every space" the spec explicitly rejects
-  // for the mixed-audience case (docs/features/spaces-and-assets.md#geprüfte-und-verworfene-
-  // alternativen).
+  // itself become the "warning sign attached to nearly every space" ADR-0039 rejects for the
+  // mixed-audience case.
   const [libraryHintDismissed, setLibraryHintDismissed] = useState(
     () => window.localStorage.getItem('opaa.space-library-hint-dismissed') === 'true',
   )

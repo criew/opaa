@@ -609,8 +609,7 @@ class AuditQueryServiceIntegrationTest {
 
   /**
    * "Der Anlass ist bei diesen Einträgen ein Pflichtfeld; eine Abfrage ohne Anlass wird abgewiesen"
-   * (docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt) - and
-   * the rejection is itself logged, exactly like every other denied attempt.
+   * - and the rejection is itself logged, exactly like every other denied attempt.
    */
   @Test
   void aMissingReasonIsRejectedAndTheRejectionIsLogged() {
@@ -717,8 +716,7 @@ class AuditQueryServiceIntegrationTest {
    * Not a special store: the #394 self-log entries are ordinary {@code audit_log} rows, so an
    * AUDITOR reading them back (e.g. via {@code by-event-type=AUDIT_LOG_ACCESSED}) goes through the
    * exact same funnel and creates one more entry, on top of the ones already there - "wer ein
-   * Protokoll führen will, das den Blick ins Protokoll ausnimmt, führt keines"
-   * (docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt).
+   * Protokoll führen will, das den Blick ins Protokoll ausnimmt, führt keines".
    */
   @Test
   void queryingTheSelfLogEntriesThemselvesCreatesAnotherOne() {

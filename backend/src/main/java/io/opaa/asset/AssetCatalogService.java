@@ -25,13 +25,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The catalog (docs/features/spaces-and-assets.md#der-katalog): exactly the assets a person may
- * read by {@link AssetAccessService#readableAssets}, over every active type and within the person's
- * organization - one query on the shell, paged, searched and ordered in SQL. Every filter narrows
- * the readable set before the query, so no entry and no count ever includes an unreadable asset;
- * the administration's floor never counts here. What a page shows beyond the shell comes in grouped
- * queries per type present on it. The order is fixed: the caller's own favorites first, then by
- * name; no other person's mark is read.
+ * The catalog: exactly the assets a person may read by {@link AssetAccessService#readableAssets},
+ * over every active type and within the person's organization - one query on the shell, paged,
+ * searched and ordered in SQL. Every filter narrows the readable set before the query, so no entry
+ * and no count ever includes an unreadable asset; the administration's floor never counts here.
+ * What a page shows beyond the shell comes in grouped queries per type present on it. The order is
+ * fixed: the caller's own favorites first, then by name; no other person's mark is read.
  */
 @Service
 @Transactional(readOnly = true)

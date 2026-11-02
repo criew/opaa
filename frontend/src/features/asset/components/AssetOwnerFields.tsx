@@ -22,7 +22,7 @@ interface AssetOwnerFieldsProps {
 
 /**
  * The owner of a new asset: the creating person or one of their groups. A group owner survives
- * a change of staff (docs/features/spaces-and-assets.md#eigentümerschaft-und-verwaisung); only a
+ * a change of staff; only a
  * member may choose a group, so the choice offers the caller's own groups only.
  */
 export default function AssetOwnerFields({

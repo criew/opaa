@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
  * The bar and the bounds every revision access passes: the AUDITOR role, the mandatory Anlass, the
  * bounded time range and the bounded paging - enforced here rather than by {@code @PreAuthorize},
  * because a 403 thrown by a security interceptor would run before the funnel and so be invisible to
- * the entry the specification requires for the rejected attempt too. The entry itself is written by
+ * the entry the protocol rules require for the rejected attempt too. The entry itself is written by
  * the caller's {@code logEntry}, exactly once per call: {@link AuditQueryService} writes it against
  * {@code audit_log}, the Stichtagsauskunft against the queried object.
  */
@@ -106,8 +106,8 @@ public class AuditAccessGate {
   }
 
   /**
-   * "Der Anlass ist bei diesen Einträgen ein Pflichtfeld; eine Abfrage ohne Anlass wird abgewiesen"
-   * (docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt).
+   * "Der Anlass ist bei diesen Einträgen ein Pflichtfeld; eine Abfrage ohne Anlass wird
+   * abgewiesen".
    */
   private void requireReason(String reason) {
     if (reason == null || reason.isBlank()) {

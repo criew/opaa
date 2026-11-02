@@ -91,7 +91,7 @@ paths:
         RecentLoginRequired) before anything is checked or written.
 
         The AUDITOR role is never granted by the system administration alone
-        (docs/features/access-control.md, Trennung von Systemverwaltung und Revision). While the
+        (separation of system administration and audit). While the
         organization has an auditor, the call opens a request instead, answers 202 with the role
         unchanged and tells every auditor; an auditor confirms or declines it under
         /api/v1/audit/auditor-role-requests. Without an auditor, only the local account whose

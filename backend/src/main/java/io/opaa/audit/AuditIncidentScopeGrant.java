@@ -15,10 +15,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * The one exception the specification names by name: the anlassbezogene Klärung of a security
- * incident
- * (docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt). A
- * grant names person ({@link #subjectUserId}), time range ({@link #scopeStart}/{@link #scopeEnd})
+ * The one exception ADR-0068 (decision 2) names: the anlassbezogene Klärung of a security incident.
+ * A grant names person ({@link #subjectUserId}), time range ({@link #scopeStart}/{@link #scopeEnd})
  * and purpose <em>in advance</em>, and only these three - not an open filter - become the technical
  * bound {@link AuditQueryService#byIncidentScope} enforces.
  *

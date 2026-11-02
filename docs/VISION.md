@@ -113,13 +113,13 @@ an Barrierefreiheit und Missbrauchsschutz.
 
 | | Bereich | Worum es geht | Spezifikation |
 |---|---|---|---|
-| **A** | Wissensschicht & Retrieval | Belegvalidierung, Konfidenz, hybride Suche mit Reranking, erklärbares Chunking, Deep Research | [data-indexing-rag.md](./features/data-indexing-rag.md) |
-| **B** | Wissensquellen & Konnektoren | Uploads und Konnektoren, selbst aktualisierende Wissensblöcke, Zielbibliothek als Rechteanker — Quellrechte schränken sie ein, wo ein Quellsystem sie belastbar liefert | [knowledge-sources.md](./features/knowledge-sources.md) |
-| **C** | Spaces, Assets & Verteilung | Arbeitsräume, Assets mit eigenen Rechten, Verteilungsstufen, Freigabe, Versionierung, Katalog | [spaces-and-assets.md](./features/spaces-and-assets.md) |
+| **A** | Wissensschicht & Retrieval | Belegvalidierung, Konfidenz, hybride Suche mit Reranking, erklärbares Chunking, Deep Research | [Handbuch](./handbuch/spaces/suche.md), [Roadmap](./ROADMAP.md) |
+| **B** | Wissensquellen & Konnektoren | Uploads und Konnektoren, selbst aktualisierende Wissensblöcke, Zielbibliothek als Rechteanker — Quellrechte schränken sie ein, wo ein Quellsystem sie belastbar liefert | [Handbuch](./handbuch/arbeitsmittel/wissensbibliotheken/README.md), [Roadmap](./ROADMAP.md) |
+| **C** | Spaces, Assets & Verteilung | Arbeitsräume, Assets mit eigenen Rechten, Verteilungsstufen, Freigabe, Versionierung, Katalog | [Handbuch](./handbuch/spaces/README.md), [Roadmap](./ROADMAP.md) |
 | **D** | Agenten, Prompts & Werkzeuge | Agenten als teilbare Pakete, geführtes Onboarding, Prüfstand, Prüfagenten, Sandbox, Werkzeuge, MCP | [Roadmap](./ROADMAP.md) |
 | **E** | Modelle & zentrale Steuerung | Modellverwaltung, eigene Modelle zuerst, zentrale Vorgaben als Obergrenze, Schutz vor Weitergabe personenbezogener Daten | [Handbuch](./handbuch/betrieb/modelle.md), [Roadmap](./ROADMAP.md) |
-| **F** | Identität, Rechte & Mandanten | Anmeldung über den Verzeichnisdienst, Lebenszyklus der Konten, rechtebewusste Suche zur Abfragezeit | [access-control.md](./features/access-control.md) |
-| **G** | Sicherheit, Nachweis & Prüfbarkeit | Revisionssicheres Protokoll, Vollständigkeit nach DSGVO, sichere Voreinstellungen, C5-Fähigkeit, Mitbestimmungsfähigkeit | [security-and-compliance.md](./features/security-and-compliance.md) |
+| **F** | Identität, Rechte & Mandanten | Anmeldung über den Verzeichnisdienst, Lebenszyklus der Konten, rechtebewusste Suche zur Abfragezeit | [Handbuch](./handbuch/konten-und-rechte/benutzerverwaltung.md), [Roadmap](./ROADMAP.md) |
+| **G** | Sicherheit, Nachweis & Prüfbarkeit | Revisionssicheres Protokoll, Vollständigkeit nach DSGVO, sichere Voreinstellungen, C5-Fähigkeit, Mitbestimmungsfähigkeit | [Handbuch](./handbuch/betrieb/nachvollziehbarkeit.md), [ADR-0068](./decisions/0068-mitbestimmungsfaehigkeit.md) |
 | **H** | Monitoring, Kosten & Governance | Grenzen je Nutzer, Kostentransparenz, Auswertung des KI-Rollouts — aggregiert, ohne Personenbezug | [Roadmap](./ROADMAP.md) |
 | **I** | Kanäle & Oberflächen | Web-Oberfläche, REST-API, Anbindung an self-hosted Team-Chats, OPAA als belegte Wissensschicht für externe KI-Werkzeuge | [Handbuch](./handbuch/spaces/suche.md), [Roadmap](./ROADMAP.md) |
 | **J** | Betrieb & Deployment | Docker Compose, Kubernetes mit Hochverfügbarkeit, air-gapped, mandantenfähiger Betrieb durch Rechenzentren | [Handbuch](./handbuch/betrieb/README.md), [Roadmap](./ROADMAP.md) |
@@ -344,7 +344,7 @@ OPAA im Prüfumfang besteht.
 OPAA erzeugt Daten mit Personenbezug, und ein Rollout beginnt in aller Regel nicht ohne
 Dienstvereinbarung. Sichtbarkeit ist deshalb eine Handlung und keine Automatik, es gibt keinen
 personenbezogenen Auswertungspfad und keine Ranglisten, und Auswertungen sind aggregiert. Details in
-[spaces-and-assets.md](./features/spaces-and-assets.md).
+[Mitbestimmung](./behoerden/05-mitbestimmung/).
 
 **Welche Modelle werden unterstützt?**
 Jede OpenAI-kompatible Schnittstelle, einschließlich lokal betriebener Modelle. Die Auswahl ist eine

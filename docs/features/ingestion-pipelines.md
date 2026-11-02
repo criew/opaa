@@ -12,8 +12,8 @@ Retrieval-Tech-Report, Abschnitt 5
 
 Sie beschreibt die **Aufnahmestrecke**: was zwischen „eine Datei liegt vor" und „ihre Inhalte sind
 im Index" passiert. Woher die Dateien kommen, steht in
-[Wissensquellen und Konnektoren](./knowledge-sources.md); was mit den Chunks zur Abfragezeit
-geschieht, in [Wissensschicht und Retrieval](./data-indexing-rag.md) und
+[Wissensquellen und Konnektoren](../ROADMAP.md); was mit den Chunks zur Abfragezeit
+geschieht, in [Wissensschicht und Retrieval](../ROADMAP.md) und
 [ADR-0065](../decisions/0065-hybride-suche-reranking-und-diagnose.md).
 
 ---
@@ -163,7 +163,7 @@ per Tika **erkannte Inhalt**, nicht die Dateiendung — dasselbe Muster, das die
 verwendet, und aus demselben Grund: In gewachsenen Ablagen tragen Dateien routinemäßig die falsche
 Endung. Die bestehende Sonderregel für Markdown und Klartext (Inhalt *und* Endung müssen passen, weil
 sich beide Typen am Inhalt allein nicht unterscheiden lassen, siehe
-[Welche Dateien OPAA verarbeitet](./data-indexing-rag.md#welche-dateien-opaa-verarbeitet)) gilt für
+[Welche Dateien OPAA verarbeitet](../ROADMAP.md)) gilt für
 das Routing unverändert weiter: Sie entscheidet zugleich, ob die Markdown- oder die Klartext-Pipeline
 greift.
 
@@ -519,7 +519,7 @@ Mehrrunden-Pfad 6 → 7).
 
 Die heutigen 1000 Token sind **gesetzt, nicht gemessen** — das steht so in
 [ADR-0010](../decisions/0010-ein-chunk-invariante-evaluierungskorpus.md) und in den
-[Stellschrauben](./data-indexing-rag.md#stellschrauben-und-ihre-wirkung). Die externe Evidenz deutet
+[Stellschrauben](../ROADMAP.md). Die externe Evidenz deutet
 in eine andere Richtung (Chroma und Microsoft messen ihr Optimum bei 200–512 Token mit 10–25 %
 Überlappung, siehe
 Tech-Report 5.1),
@@ -1041,7 +1041,7 @@ ODS-Dokumente.
 
 Intranet-Seiten, Government-Site-Builder-Auftritte, Ratsinformationssysteme. Heute nur mittelbar über
 den Feed-Weg erreichbar, der bereits extrahierten Artikeltext liefert (siehe
-[Wissensquellen](./knowledge-sources.md)).
+[Wissensquellen](../ROADMAP.md)).
 
 **Kernproblem ist Boilerplate.** Eine HTML-Seite besteht zu erheblichen Teilen aus Navigation,
 Fußzeile, Cookie-Hinweis und Seitenleiste. Tika liefert das alles als Inhalt mit; das Ergebnis sind
@@ -1206,7 +1206,7 @@ Die Pipeline trennt drei Dinge:
 
 Die Rechte- und Herkunftsfrage von Anhängen (welche Bibliothek, welche Fundstellenangabe, welcher
 Beleg) folgt dabei den bestehenden Regeln des Anlagenwegs, siehe
-[Wissensquellen und Konnektoren](./knowledge-sources.md).
+[Wissensquellen und Konnektoren](../ROADMAP.md).
 
 #### Umgesetzt (#1060)
 
@@ -1623,7 +1623,7 @@ eigenen Optionen, nicht als stiller Rückfall auf Tesseract.
 **Drittens: OCR-Text wird als OCR-Text gekennzeichnet.** Aus Texterkennung gewonnener Inhalt ist
 unsicherer als digital erzeugter; niedrige Erkennungskonfidenz gehört als Warnhinweis an den Beleg.
 Das schließt an die bestehende Regel für Handschriftliches an (siehe
-[Bild- und Handschriftenverständnis](./data-indexing-rag.md#bild--und-handschriftenverständnis)).
+[Bild- und Handschriftenverständnis](../ROADMAP.md)).
 TIFF, PNG und JPEG als Einzelscans fallen unter dasselbe Epic; die Abweisungsregel für sie gilt bereits
 mit Punkt 1 der Umsetzungsreihenfolge.
 
@@ -1716,7 +1716,7 @@ strukturlose Texte bestehen; sie hören nur auf, für **alles** zu gelten.
 
 Die weitergehende Frage, ob eine Wissensbibliothek eine eigene Festlegung bekommen soll (Rechtsquellen
 und Besprechungsnotizen vertragen nicht dieselbe Zerlegung), bleibt offen und steht unverändert in
-[Wissensschicht und Retrieval](./data-indexing-rag.md#offene-fragen--zukünftige-erweiterungen). Die
+[Wissensschicht und Retrieval](../ROADMAP.md). Die
 Typ-Pipeline entschärft sie, weil sie den größten Teil des Unterschieds bereits über den Dokumenttyp
 auffängt.
 
@@ -1991,7 +1991,7 @@ Hier wird nur der **Übergabepunkt** definiert:
 
 ## Integrationspunkte
 
-- **[Wissensschicht und Retrieval](./data-indexing-rag.md)** — Zielbild der Formaterkennung, Tabelle
+- **[Wissensschicht und Retrieval](../ROADMAP.md)** — Zielbild der Formaterkennung, Tabelle
   der verarbeiteten Dateien, erklärbares Chunking, Stellschrauben. Dieses Dokument konkretisiert die
   dortige Aufnahmestrecke; die Parameterwerte selbst bleiben dort geführt.
 - **[ADR-0065](../decisions/0065-hybride-suche-reranking-und-diagnose.md)** — was mit den erzeugten Chunks zur
@@ -2000,7 +2000,7 @@ Hier wird nur der **Übergabepunkt** definiert:
   die Typ-Pipeline mitbefüllt, und der Konfigurations-Querschnitt, aus dem Regel (c) stammt.
 - **[Retrieval-Benchmark](./retrieval-benchmark.md)** — das Verfahren, das die
   typspezifischen Chunk-Größen misst und die Baseline führt.
-- **[Wissensquellen und Konnektoren](./knowledge-sources.md)** — liefert die Dateien; die
+- **[Wissensquellen und Konnektoren](../ROADMAP.md)** — liefert die Dateien; die
   Zulassungsliste gilt für alle dateibasierten Aufnahmewege gleichermaßen.
 - **[Suchqualität messbar machen](../decisions/0011-search-quality-evaluation-harness.md)**,
   [ADR-0010](../decisions/0010-ein-chunk-invariante-evaluierungskorpus.md),
@@ -2010,7 +2010,7 @@ Hier wird nur der **Übergabepunkt** definiert:
   und Fehlerkriterium jeder Pipeline-Umstellung.
 - **[Deployment und Infrastruktur](../ROADMAP.md)** — betrifft die Docling-Option: ein
   weiterer Container im Compose-Verbund ist eine Betriebsentscheidung, keine Bibliotheksentscheidung.
-- **[Spaces, Assets und Zugangskontrolle](./spaces-and-assets.md)** — die Bibliotheks-Kennung als
+- **[Spaces, Assets und Zugangskontrolle](../ROADMAP.md)** — die Bibliotheks-Kennung als
   Filterachse bleibt unverändert; keine Pipeline erzeugt einen Chunk ohne sie.
 
 ---

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-09-04
+Akzeptiert · zuletzt geändert 2026-11-02
 
 ## Kontext
 
@@ -43,7 +43,7 @@ Bibliotheken an.
 
 Die Suche filtert nur nach Bibliothek. Ein Ordner-Filter bräuchte einen Chunk-Metadaten-Schlüssel und
 eine Re-Indexierung; das ist eine Ausbaustufe bei konkretem Bedarf. Die Trefferanzeige zeigt den
-Ordnerpfad zur Einordnung ([knowledge-sources.md](../features/knowledge-sources.md)).
+Ordnerpfad zur Einordnung.
 
 ### 5. Ordner mit Inhalt löschen heißt Dokumente löschen, durch den Service
 

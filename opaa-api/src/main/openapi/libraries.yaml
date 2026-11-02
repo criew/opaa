@@ -2069,8 +2069,8 @@ components:
           $ref: "#/components/schemas/AssetReachResponse"
         myRole:
           description: >
-            The effective role you hold on this library, per the formula in
-            docs/features/spaces-and-assets.md#rechte-an-einem-asset-erhalten. Always at least
+            The effective role you hold on this library, from direct, group and
+            all-accounts grants. Always at least
             VIEWER, since anything less would exclude the library from this list altogether.
             Never bypassed to OWNER for a system admin, unlike myRole on the single-library
             response (GET/PUT /api/v1/libraries/{libraryId}): a library reachable only by

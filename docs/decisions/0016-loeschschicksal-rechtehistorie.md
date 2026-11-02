@@ -2,14 +2,14 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-21 · ergänzt durch ADR-0036 (Entscheidung 8) und ADR-0039 (Entscheidung 3)
+Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt durch ADR-0036 (Entscheidung 8) und ADR-0039 (Entscheidung 3)
 
 ## Kontext
 
 Die Rechtehistorie hält Grants, Gruppenmitgliedschaften und Reichweite als Zeitintervalle, damit die
 Rechtemenge einer Person zu einem Stichtag rekonstruierbar ist, auch die Negativfrage „hatte Person X
 am Tag Y keinen Zugriff auf Z?“
-([security-and-compliance.md](../features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten)).
+([Berechtigungen](../handbuch/konten-und-rechte/berechtigungen.md)).
 Fremdschlüssel mit `ON DELETE CASCADE` auf die historisierten Fachobjekte und auf die betroffene
 Person hätten genau das zerstört: Eine Gruppenlöschung nach dem Widerruf ihres Grants hätte die
 geschlossenen Intervalle mitgelöscht und eine Stichtagsanfrage für den März fälschlich mit „nicht

@@ -11,11 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The asset half of the permission history: the {@link AssetVisibilityHistory} intervals of the
- * release for Fremdzugaenge (see
- * docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten). Who may
- * read the asset is not here - that follows from the grants alone and is historised with them
- * (ADR-0037). Both tables take their interval boundaries from the one {@link
- * PermissionHistoryClock}, so the interval contract holds across them.
+ * release for Fremdzugaenge (ADR-0016). Who may read the asset is not here - that follows from the
+ * grants alone and is historised with them (ADR-0037). Both tables take their interval boundaries
+ * from the one {@link PermissionHistoryClock}, so the interval contract holds across them.
  *
  * <p>Every recording method runs inside the caller's own transaction (default propagation): a
  * change and its history row commit or roll back together.

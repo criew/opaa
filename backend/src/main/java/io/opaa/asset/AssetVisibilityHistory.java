@@ -16,12 +16,10 @@ import java.util.UUID;
 
 /**
  * A half-open interval {@code [validFrom, validTo)} recording one state of an asset's release for
- * Fremdzugaenge (see
- * docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten). Who may
- * read the asset follows from the grants alone, and their history lives in {@code
- * asset_grant_history} (ADR-0037 Entscheidung 7). {@code validTo == null} is the current state.
- * Written and closed exclusively by {@link AssetVisibilityHistoryService}; a type without
- * Fremdzugang carries {@code NEVER_SET}.
+ * Fremdzugaenge (ADR-0016). Who may read the asset follows from the grants alone, and their history
+ * lives in {@code asset_grant_history} (ADR-0037 Entscheidung 7). {@code validTo == null} is the
+ * current state. Written and closed exclusively by {@link AssetVisibilityHistoryService}; a type
+ * without Fremdzugang carries {@code NEVER_SET}.
  */
 @Entity
 @Table(name = "asset_visibility_history")

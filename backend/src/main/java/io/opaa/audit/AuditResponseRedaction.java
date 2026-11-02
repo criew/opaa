@@ -12,8 +12,7 @@ import tools.jackson.databind.node.ObjectNode;
  * What a revision response leaves out: every reference to a person. Not the stored pseudonym and no
  * per-response substitute either - two overlapping answers share event ids and times, so any
  * reference that names a person within an answer could be chained from answer to answer into a
- * lasting one
- * (docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt).
+ * lasting one.
  *
  * <p>Left out are the actor (unless a system process, whose label names no person), a {@code USER}
  * subject, the object id of a {@code USER_ACCOUNT} object and the payload keys of {@link

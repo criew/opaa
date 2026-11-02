@@ -13,7 +13,7 @@ erzeugter Antworten; sein **Verhalten** steht in
 das Handbuchkapitel [Externe KI-Werkzeuge](../handbuch/spaces/fremdzugaenge.md). Randbedingungen: OPAA wird für diesen Kanal
 nicht aus dem offenen Netz erreichbar gemacht (Zielclients auf dem Arbeitsplatz oder im Hausnetz,
 installationsweite Netzbeschränkung); die einzelne Abfrage wird nicht protokolliert
-(`security-and-compliance.md`); das Rechtemodell hängt an der Wissensbibliothek, und die
+([ADR-0059](0059-ereignisvertrag-aufbewahrung-und-integritaet-des-revisionsprotokolls.md)); das Rechtemodell hängt an der Wissensbibliothek, und die
 Rechtehistorie historisiert Reichweitenfelder als Intervalle. Die MCP-Spezifikation `2026-07-28`
 handelt die Fassung je Anfrage aus und kündigt den HTTP+SSE-Transport und die dynamische
 Client-Registrierung ab; die eingesetzte Bibliothek (Spring AI, `mcp-core`) spricht nur die

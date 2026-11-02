@@ -10,22 +10,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Reads and changes the single, system-wide audit retention period
- * (docs/features/security-and-compliance.md#aufbewahrung). This is the only path in this codebase
- * that writes {@link AuditRetentionSettings#getRetentionMonths()} - the database grant backs that
- * up: the application account has no write access to {@code audit_retention_settings.last_cutoff},
- * and this class never touches it.
+ * Reads and changes the single, system-wide audit retention period. This is the only path in this
+ * codebase that writes {@link AuditRetentionSettings#getRetentionMonths()} - the database grant
+ * backs that up: the application account has no write access to {@code
+ * audit_retention_settings.last_cutoff}, and this class never touches it.
  */
 @Service
 public class AuditRetentionSettingsService {
 
-  /**
-   * 1 year - the specification's non-negotiable floor
-   * (docs/features/security-and-compliance.md#aufbewahrung).
-   */
+  /** 1 year - the non-negotiable floor (ADR-0059). */
   public static final int MIN_RETENTION_MONTHS = 12;
 
-  /** 10 years - the specification's non-negotiable ceiling. */
+  /** 10 years - the non-negotiable ceiling (ADR-0059). */
   public static final int MAX_RETENTION_MONTHS = 120;
 
   /** The default new deployments start with. */

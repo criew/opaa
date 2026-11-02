@@ -266,8 +266,7 @@ public record RetrievalState(
 
   /**
    * The filter a search stage must apply, or an {@link IllegalStateException} - a search without a
-   * permission filter is not a degraded mode this pipeline has
-   * (docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit).
+   * permission filter is not a degraded mode this pipeline has.
    */
   public Filter.Expression requiredLibraryFilter() {
     if (libraryFilter == null) {

@@ -2,12 +2,12 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-25
+Akzeptiert · zuletzt geändert 2026-11-02
 
 ## Kontext
 
 Das Revisionsprotokoll (`audit_log`) hält fest, was Zugriff verändert oder Verwaltungshandeln ist
-([Sicherheit und Compliance](../features/security-and-compliance.md#revisionssicheres-protokoll)).
+([Nachvollziehbarkeit](../handbuch/betrieb/nachvollziehbarkeit.md)).
 Die Ablage gehört der Rolle `opaa_audit_owner`, das Anwendungskonto fügt an und liest, entfernt wird
 nur eine abgelaufene Monatspartition ([ADR-0015](0015-eigentuemertrennung-protokollablage.md)); die
 Ausleitung an ein Sicherheitsmonitoring sendet die Einträge ohne Pseudonyme
@@ -36,7 +36,7 @@ nicht darin. Die geschlossene Liste ist `AuditEventType`; jede Art ist im Regist
 persistierten Aufzählungen als lesbar geführt, trägt im Fakten-Manifest (`audit-log.yaml`) Anlass
 und Felder, im Katalog `AuditEventCatalog` die erlaubten Schlüssel von `before`/`after` und in
 `AuditSelfDisclosurePayload` die Schlüssel der Selbstauskunft, sonst scheitert der Build. Jeder Satz
-trägt die Felder des Protokollsatzes der Spezifikation und die Version des Katalogs
+trägt die Felder des Protokollsatzes (`AuditProtocolDescription`) und die Version des Katalogs
 (`schema_version`); `event_id` vergibt der Schreiber beim Anlegen des Satzes, `recorded_at`
 stammt von der Datenbankuhr und wird in der Transaktion gestempelt, die den Satz einfügt.
 

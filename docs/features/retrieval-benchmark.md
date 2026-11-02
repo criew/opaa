@@ -1124,7 +1124,7 @@ Eintrittsbedingung aus Abschnitt 6 für die Roadmap-Phase 1 tatsächlich prüfba
   Spezifikation erweitert ihn, ersetzt ihn nicht.
 - [ADR-0065](../decisions/0065-hybride-suche-reranking-und-diagnose.md) — die Pipeline, durch die der neue Messpfad
   läuft; die Stufen sind dort benannt, ihre Parameter stehen im Code.
-- [`data-indexing-rag.md`](./data-indexing-rag.md) — Zielbild und Stellschrauben-Tabelle; jede
+- [Roadmap](../ROADMAP.md) — Zielbild und Stellschrauben-Tabelle; jede
   Variante bezieht sich auf dort dokumentierte Parameter.
 - [ADR-0065](../decisions/0065-hybride-suche-reranking-und-diagnose.md) — der erste Abnehmer dieses Benchmarks: Dort stehen
   die Eintrittsbedingungen der Eskalationsstufen mitsamt Schwellenwert und das Arbeitspaket

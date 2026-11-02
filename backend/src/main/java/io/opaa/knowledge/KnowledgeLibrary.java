@@ -28,13 +28,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The first asset type (see docs/features/spaces-and-assets.md#assets): a document container on the
- * asset shell. Name, owner and release level are the shell's ({@link Asset}, table {@code assets});
- * this entity and its table {@code knowledge_libraries} carry only what a library alone has - its
- * single quellentyp and quellkonfiguration (ADR-0018), the share cap, the release for
- * Fremdzugaenge, the schedule and the index and metadata switches. A document belongs to exactly
- * one library; a library can be associated with any number of spaces without that association
- * granting any access.
+ * The first asset type: a document container on the asset shell. Name, owner and release level are
+ * the shell's ({@link Asset}, table {@code assets}); this entity and its table {@code
+ * knowledge_libraries} carry only what a library alone has - its single quellentyp and
+ * quellkonfiguration (ADR-0018), the share cap, the release for Fremdzugaenge, the schedule and the
+ * index and metadata switches. A document belongs to exactly one library; a library can be
+ * associated with any number of spaces without that association granting any access.
  *
  * <p><b>{@code @DynamicUpdate} is part of the contract, not a tuning knob</b>: {@link
  * #sourceCredentials} and {@link #webhookSecret} read as {@code null} while their key is missing

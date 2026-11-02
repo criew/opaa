@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt durch ADR-0023, ADR-0027, ADR-0036 (Entscheidung 6), ADR-0038, ADR-0039, ADR-0041, ADR-0063, ADR-0064
+Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt durch ADR-0023, ADR-0027, ADR-0036 (Entscheidung 6), ADR-0038, ADR-0039, ADR-0041, ADR-0063, ADR-0064
 
 ## Kontext
 
@@ -60,7 +60,7 @@ Eine `UPLOAD`-Bibliothek lässt sich nicht löschen, solange sie Dokumente enth�
 einen kuratierten Bestand. Eine lauf-basierte Bibliothek nimmt beim Löschen ihren Bestand mit
 (Dokumentzeilen, Chunks, Ordner), nach ausdrücklicher Bestätigung und mit Protokolleintrag, weil eine
 Einzellöschung dort wirkungslos ist, solange der Ausschluss-Mechanismus aus
-[knowledge-sources.md](../features/knowledge-sources.md#lebenszyklus-der-dokumente) nicht gebaut
+[Roadmap](../ROADMAP.md) nicht gebaut
 ist: Der nächste Lauf nähme das Dokument wieder auf.
 
 ### 6. Anlage über Fähigkeiten; Allowlist und Zieladressprüfung sichern unabhängig davon

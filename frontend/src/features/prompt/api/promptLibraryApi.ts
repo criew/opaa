@@ -9,7 +9,7 @@ import type {
 import { apiClient, normalizeError } from '@/shared/api/api'
 
 /**
- * The prompt library endpoints (docs/features/spaces-and-assets.md#prompt-bibliothek). Rights,
+ * The prompt library endpoints. Rights,
  * derivation and space association of a prompt library go through the asset-shell functions in
  * `assetApi.ts` with `assetType = 'PROMPT_LIBRARY'` - there is no type-specific rights path.
  */
