@@ -14,7 +14,7 @@ Sie beschreibt die **Aufnahmestrecke**: was zwischen „eine Datei liegt vor" un
 im Index" passiert. Woher die Dateien kommen, steht in
 [Wissensquellen und Konnektoren](./knowledge-sources.md); was mit den Chunks zur Abfragezeit
 geschieht, in [Wissensschicht und Retrieval](./data-indexing-rag.md) und
-[Retrieval-Algorithmus (Ist-Stand)](../decisions/0065-hybride-suche-reranking-und-diagnose.md).
+[ADR-0065](../decisions/0065-hybride-suche-reranking-und-diagnose.md).
 
 ---
 
@@ -1994,7 +1994,7 @@ Hier wird nur der **Übergabepunkt** definiert:
 - **[Wissensschicht und Retrieval](./data-indexing-rag.md)** — Zielbild der Formaterkennung, Tabelle
   der verarbeiteten Dateien, erklärbares Chunking, Stellschrauben. Dieses Dokument konkretisiert die
   dortige Aufnahmestrecke; die Parameterwerte selbst bleiben dort geführt.
-- **[Retrieval-Algorithmus (Ist-Stand)](../decisions/0065-hybride-suche-reranking-und-diagnose.md)** — was mit den erzeugten Chunks zur
+- **[ADR-0065](../decisions/0065-hybride-suche-reranking-und-diagnose.md)** — was mit den erzeugten Chunks zur
   Abfragezeit geschieht.
 - **[Hybrides Retrieval](../decisions/0065-hybride-suche-reranking-und-diagnose.md)** — der lexikalische Pfad, den
   die Typ-Pipeline mitbefüllt, und der Konfigurations-Querschnitt, aus dem Regel (c) stammt.

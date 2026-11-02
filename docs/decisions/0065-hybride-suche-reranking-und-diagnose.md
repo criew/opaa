@@ -21,7 +21,7 @@ jede Auswertung über Personen: Sie musste vor dem Bau geregelt sein, nicht dana
 ### 1. Benannte Stufen mit Erklärprotokoll
 
 Die Suche ist eine Pipeline aus benannten Stufen (Scope, Zerlegung, Vektor, Volltext, Fusion,
-Reranking, Relevanzschnitt, Vervollständigung). Jede Stufe liefert neben ihrem Ergebnis ein
+Reranking, MMR, Relevanzschnitt, Vervollständigung). Jede Stufe liefert neben ihrem Ergebnis ein
 Erklärprotokoll; es wird immer erzeugt und nur in der Diagnose ausgewertet. Einzelne Stufen sind
 über `opaa.query.pipeline.disabled-stages` abschaltbar. Ohne diese Zerlegung ist weder eine Stufe
 einzeln messbar noch eine Fundstelle erklärbar.
@@ -43,7 +43,7 @@ nur ein Chunk die Zeichenfolge enthält. Weitere Stufen haben eine gemessene Ein
 | Stufe | Was | Eintrittsbedingung |
 |---|---|---|
 | 0 (gebaut) | `tsvector`/`german`, GIN, Kennungsschutz | — |
-| 1 | BM25-Erweiterung im selben PostgreSQL (pgroonga oder pg_search) | `compound_word` oder `exact_identifier` bleibt je Gruppe unter Hit Rate@5 = 0,80, obwohl der Rohvektor-Pfad den Kandidaten im Fenster hat |
+| 1 | BM25-Erweiterung im selben PostgreSQL (pgroonga oder pg_search) | `compound_word` oder `exact_identifier` bleibt je Gruppe mit aktivem Kennungsschutz und aktivem Reranker unter Hit Rate@5 = 0,80, obwohl der Rohvektor-Pfad den Kandidaten im Fenster hat |
 | 2 | externe Suchengine neben PostgreSQL | Stufe 1 gemessen unzureichend oder Last mit PostgreSQL nachweislich nicht tragbar |
 
 Die Schwelle 0,80 stand vor dem ersten Variantenvergleich fest. Kompositazerlegung wird ebenfalls
@@ -60,8 +60,8 @@ eine echte Datenbank.
 
 Vektor- und Volltexttreffer werden mit RRF ohne Gewichte zusammengeführt. RRF braucht
 keine vergleichbaren Scores und keine Abstimmung. Eine Gewichtung kommt erst mit einer
-Messgrundlage, die sie trägt. Gemessen hob die Fusion in der Verwaltungsdomäne die Hit Rate@5 von
-0,78 auf 0,94, ohne Verschlechterung in einer Fallgruppe.
+Messgrundlage, die sie trägt. Den Ausschlag gab die Messung in der Verwaltungsdomäne: Die Fusion
+verbesserte die Trefferquote, ohne eine Fallgruppe zu verschlechtern.
 
 ### 6. Reranking als Modellrolle, Voreinstellung aus
 
@@ -97,14 +97,20 @@ Erklärprotokoll je Stufe.
 - **(b)** Sie zeigt den Jetzt-Zustand. Ein Zugriffshistorien-Nachweis ist sie nicht.
 - **(c)** „Sicht als“ ist eine eigene Befugnis. Sie wird einzeln vergeben, nicht aus der
   Administratorrolle abgeleitet. Sie hat einen Geltungsbereich (eine Anbietergruppe) und eine
-  Frist. Bei Erteilung und bei jeder Nutzung muss die Mindestgruppengröße erfüllt sein, sonst ist
-  sie nicht nutzbar.
+  Frist von höchstens 12 Monaten je Erteilung; eine Anschlusserteilung ist zulässig. Bei Erteilung
+  und bei jeder Nutzung muss die Mindestgruppengröße erfüllt sein, sonst ist sie nicht nutzbar.
+  Die Auswertung des Protokolls ist davon getrennt (Rolle `AUDITOR`); keine der beiden Befugnisse
+  schließt die andere ein.
 - **(d)** Voreinstellung ist ein Rechteprofil. Der Kontext einer konkreten Person ist die Ausnahme
   und braucht eine Freitextbegründung.
-- **(e)** Bibliotheken lassen sich für die Diagnose sperren. Personalvertretung,
-  Schwerbehindertenvertretung, Gleichstellung und Personalvorgänge sind ab Werk gesperrt. Die
-  Sperre setzt und löst die zuständige Stelle selbst. Die Auskunft über die Sperre hängt am
-  Bestand, nie an den Rechten der Zielperson.
+- **(e)** Jede Bibliothek ist ab Werk für die Diagnose im Personenkontext gesperrt; das gilt
+  besonders für Personalvertretung, Schwerbehindertenvertretung, Gleichstellung und
+  Personalvorgänge. Die Sperre löst nur die zuständige Stelle: eine Person mit `OWNER`-Recht, das
+  sie sich nicht selbst erteilt hat, oder ein Mitglied der besitzenden Gruppe. Die
+  Systemverwaltung kann sich in eine besitzende Gruppe ohne Verzeichnisbindung aufnehmen und so
+  zur zuständigen Stelle werden; dieser Weg bleibt bewusst offen und ist protokolliert. Läufe mit
+  einem Rechteprofil berührt die Sperre nicht. Die Auskunft über die Sperre hängt am Bestand, nie
+  an den Rechten der Zielperson.
 - **(f)** Jede Diagnose im Personenkontext erzeugt einen Protokolleintrag (ADR-0015): ausführende
   Person, Zielperson, Zeitpunkt, Testfrage, Kennungen der Fundstellen, Rechte-Snapshot und
   Begründung. Läufe mit einem Rechteprofil werden nicht protokolliert, weil sie keine Aussage über

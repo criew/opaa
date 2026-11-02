@@ -81,8 +81,8 @@ Sammlung von Umgebungsvariablen, damit ein Messergebnis auch ein Jahr später no
 Der bestehende Harness misst `VectorStore.similaritySearch` direkt (siehe
 [`eval/README.md`](../../eval/README.md), „Was der Lauf tut", Schritt 4). Er läuft damit an vier
 Schritten vorbei, die in der Produktion zwischen Frage und Trefferliste stehen — Teilfragen-Zerlegung,
-MMR-Auswahl, Reciprocal Rank Fusion und Dokument-Vervollständigung (Ablauf und Parameter je Schritt:
-[ADR-0065](../decisions/0065-hybride-suche-reranking-und-diagnose.md), Teil 1). Drei Folgen:
+MMR-Auswahl, Reciprocal Rank Fusion und Dokument-Vervollständigung (Stufen:
+[ADR-0065](../decisions/0065-hybride-suche-reranking-und-diagnose.md), Entscheidung 1). Drei Folgen:
 
 1. **Gemessen wird nicht, was Nutzer erleben.** Eine Änderung an RRF, MMR oder der
    Dokument-Vervollständigung ist für den heutigen Harness unsichtbar. #932 und #935 haben genau
@@ -120,7 +120,7 @@ Vom Maintainer entschieden; die Abschnitte darunter führen sie aus.
 > **Umsetzungsstand (Issue #1039, 08/2026):** Der Messpfad ist gebaut. `QueryService` bot mit
 > `retrieveRelevantChunksInGivenScope(question, history, searchScope)` die Schritte 2–6 als eigenen Einstieg an
 > (seit #1455 ersetzt durch `RetrievalContextFactory#contextFor` + `RetrievalPipeline#run`, siehe
-> [Retrieval-Algorithmus](../decisions/0065-hybride-suche-reranking-und-diagnose.md));
+> [ADR-0065](../decisions/0065-hybride-suche-reranking-und-diagnose.md));
 > `io.opaa.eval.PipelineHarnessSupport` fährt darüber beide Domänen im selben Harness-Lauf und
 > schreibt `build/eval-reports/pipeline-metrics-<domäne>.json` mit fenstertragenden Feldnamen
 > (`hitRateAt5`, `mrrAt8`, `ndcgAt8`, `recallAt8`). Fortgeschrieben ist der Messvertrag in
@@ -170,7 +170,7 @@ Vom Maintainer entschieden; die Abschnitte darunter führen sie aus.
 ### Was gemessen wird
 
 Ein zweiter Messpfad ruft dieselbe Kette auf, die eine echte Anfrage durchläuft — bis
-einschließlich Schritt 6 aus [ADR-0065](../decisions/0065-hybride-suche-reranking-und-diagnose.md).
+zur fertigen Trefferliste.
 Schritt 7 (Antwortgenerierung, Zitatvalidierung, Quellen-Mapping) bleibt außen vor: Er ist kein
 Retrieval, kostet ein Vielfaches an Laufzeit und Modellzugriff und wäre mit den vier Ranking-Metriken
 ohnehin nicht bewertbar.
@@ -713,8 +713,7 @@ bestehenden Golden Dataset macht dessen Baseline ungültig und erfordert einen b
 Das Dokument enthält den Anfragebegriff **wörtlich**, wird von der Vektorsuche aber trotzdem nicht
 gefunden, weil sein Embedding thematisch anders liegt. Der belegte Produktionsfall: § 3 der
 Verwaltungsgebührensatzung enthält „Befreiung" und „Bedürftigkeit" im Klartext und rankt für die
-passende Frage auf Rang 50 hinter thematisch fremder Konkurrenz (Diagnose in #938, zusammengefasst in
-[ADR-0065](../decisions/0065-hybride-suche-reranking-und-diagnose.md)).
+passende Frage auf Rang 50 hinter thematisch fremder Konkurrenz (Diagnose in #938).
 
 *Konstruktion:* Ein kurzer, fachsprachlicher Absatz mit dem Anfragebegriff, eingebettet in ein
 Dokument, dessen Gesamtthema woanders liegt — plus mehrere thematisch nahe, aber sachlich falsche
@@ -1124,7 +1123,7 @@ Eintrittsbedingung aus Abschnitt 6 für die Roadmap-Phase 1 tatsächlich prüfba
 - [`search-quality-evaluation.md`](./search-quality-evaluation.md) — der bestehende Harness; diese
   Spezifikation erweitert ihn, ersetzt ihn nicht.
 - [ADR-0065](../decisions/0065-hybride-suche-reranking-und-diagnose.md) — die Pipeline, durch die der neue Messpfad
-  läuft; Parameter und Schrittreihenfolge sind dort maßgeblich.
+  läuft; die Stufen sind dort benannt, ihre Parameter stehen im Code.
 - [`data-indexing-rag.md`](./data-indexing-rag.md) — Zielbild und Stellschrauben-Tabelle; jede
   Variante bezieht sich auf dort dokumentierte Parameter.
 - [ADR-0065](../decisions/0065-hybride-suche-reranking-und-diagnose.md) — der erste Abnehmer dieses Benchmarks: Dort stehen

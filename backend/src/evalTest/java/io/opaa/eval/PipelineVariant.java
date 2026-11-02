@@ -50,7 +50,7 @@ public record PipelineVariant(
    *
    * <p>{@code rerankCandidateCount} is a field here, and it is the one this comparison exists for
    * on the rerank side: the candidate window is a measured value, not a set-and- forgotten one
-   * (ADR-0065, Entscheidung 6). {@code 0} is the reranking-off variant. Whether the rerank model
+   * (ADR-0065, Entscheidung 7). {@code 0} is the reranking-off variant. Whether the rerank model
    * role is reachable at all is not an override but a prerequisite - see {@link
    * VariantPrerequisites}.
    *

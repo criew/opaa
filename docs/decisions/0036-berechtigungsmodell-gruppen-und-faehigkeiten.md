@@ -3,8 +3,9 @@
 ## Status
 
 Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt durch [ADR-0037](0037-reichweite-als-freigabe-an-alle.md),
-[ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) und
-[ADR-0041](0041-verbindungen-als-eigenes-modul.md) · ersetzt Entscheidung 6 von
+[ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md),
+[ADR-0041](0041-verbindungen-als-eigenes-modul.md) und
+[ADR-0065](0065-hybride-suche-reranking-und-diagnose.md) · ersetzt Entscheidung 6 von
 [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md) · präzisiert ADR-0016 (Entscheidung 8),
 ADR-0025 (Entscheidungen 2 und 3) und ADR-0033 (Entscheidung 2)
 

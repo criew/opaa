@@ -190,8 +190,7 @@ public final class FullTextIdentifiers {
   /**
    * The lexemes of one text, split by how much they say. {@code wordForms} maps those lexemes of
    * {@code all} that came only from an {@link #UPPERCASE_WORD} - a word, not a structure - to the
-   * word as first written; the query path weighs them by how common they are in the search scope
-   * (ADR-0065, Entscheidung 2).
+   * word as first written; the query path weighs them by how common they are in the search scope.
    */
   public record Lexemes(List<String> all, Map<String, String> wordForms) {
     public Lexemes {

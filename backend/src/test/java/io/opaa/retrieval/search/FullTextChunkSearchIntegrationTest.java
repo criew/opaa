@@ -20,11 +20,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The lexical search path against a real PostgreSQL (ADR-0065, Entscheidung 2). Nothing here is
+ * The lexical search path against a real PostgreSQL (ADR-0065, Entscheidung 4). Nothing here is
  * mocked away that the assertions are about: the {@code tsvector} is built by the production write
- * path, the query is the production query, and the permission filter is enforced by the database -
- * the specification demands exactly that ("Der Filter wird in einem Test abgesichert, der ihn
- * tatsächlich ausführt. Ein Test, der den Volltextpfad mockt, prüft den Filter nicht").
+ * path, the query is the production query, and the permission filter is enforced by the database. A
+ * test that mocked the full-text path would not check the filter.
  *
  * <p>Chunks are written through {@link VectorChunkStore#addChunks} - the production write path,
  * which fills {@code vector_store} and {@code chunk_full_text} in one transaction - so what is

@@ -200,8 +200,8 @@ public class SearchDiagnosisService {
    * The person context, and the only place it is produced: the search scope comes from {@link
    * ForeignDiagnosticContextService#execute} instead of from this service's own resolution, so
    * befugnis, mandatory justification, subtraction of diagnosegesperrte libraries and the protocol
-   * entry cannot be reached around (Leitplanken (c)-(f) and the Klarstellung zu (e) in ADR-0065).
-   * The result is handed back to the caller and stored nowhere (Leitplanke (j)).
+   * entry cannot be reached around (ADR-0065, Leitplanken (c)-(f)). The result is handed back to
+   * the caller and stored nowhere (Leitplanke (j)).
    */
   private SearchDiagnosis diagnoseAsPerson(CurrentUser caller, DiagnosisQuery query) {
     if (query.permissionProfileId() != null) {
