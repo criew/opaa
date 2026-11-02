@@ -8,10 +8,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * Writes/deletes rows in {@code chunk_full_text} (docs/features/hybrid-retrieval.md, "Arbeitspaket
- * 2a") - the lexical-search counterpart of {@link VectorChunkStore}'s {@code vector_store} writes.
- * A dedicated table without foreign keys, mirroring {@code vector_store} (knowledge migration,
- * {@code db/migration/knowledge/}).
+ * Writes/deletes rows in {@code chunk_full_text} (ADR-0065) - the lexical-search counterpart of
+ * {@link VectorChunkStore}'s {@code vector_store} writes. A dedicated table without foreign keys,
+ * mirroring {@code vector_store} (knowledge migration, {@code db/migration/knowledge/}).
  *
  * <p>Never called directly by {@link io.opaa.indexing.document.DocumentIngestService} - {@link
  * VectorChunkStore} owns both writes (see {@link VectorChunkStore#addChunks}) so a chunk can never
@@ -24,10 +23,10 @@ public class FullTextChunkStore {
 
   /**
    * The PostgreSQL text-search configuration every {@code content_tsv} value is built with
-   * (docs/features/hybrid-retrieval.md, "Arbeitspaket 2"). Public so the lexical search path builds
-   * a matching {@code to_tsquery} call instead of hardcoding {@code "german"} independently, which
-   * would be exactly the kind of drift that silently breaks matching. No compound splitting is
-   * layered on top: the specification makes that an outcome of the benchmark, not a precaution.
+   * (ADR-0065, Entscheidung 2). Public so the lexical search path builds a matching {@code
+   * to_tsquery} call instead of hardcoding {@code "german"} independently, which would be exactly
+   * the kind of drift that silently breaks matching. No compound splitting is layered on top: the
+   * specification makes that an outcome of the benchmark, not a precaution.
    */
   public static final String TEXT_SEARCH_CONFIGURATION = "german";
 

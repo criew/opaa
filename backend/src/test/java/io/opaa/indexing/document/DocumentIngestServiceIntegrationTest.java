@@ -151,10 +151,10 @@ class DocumentIngestServiceIntegrationTest {
   }
 
   /**
-   * docs/features/hybrid-retrieval.md, "Arbeitspaket 2" ("Der Volltextindex entsteht beim Schreiben
-   * des Chunks, in derselben Transaktion wie Text und Vektor"): a newly written chunk always gets
-   * both rows, never one without the other, and the full-text row is actually searchable through
-   * the GIN index, not merely present.
+   * ADR-0065, Entscheidung 2 ("Der Volltextindex entsteht beim Schreiben des Chunks, in derselben
+   * Transaktion wie Text und Vektor"): a newly written chunk always gets both rows, never one
+   * without the other, and the full-text row is actually searchable through the GIN index, not
+   * merely present.
    */
   @Test
   void everyNewlyWrittenChunkAlsoGetsItsFullTextRowInTheSameWrite() throws IOException {

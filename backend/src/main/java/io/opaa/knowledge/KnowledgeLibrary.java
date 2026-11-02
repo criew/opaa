@@ -204,10 +204,10 @@ public class KnowledgeLibrary extends Asset {
   private String scheduleBookedCron;
 
   /**
-   * Diagnosesperre (docs/features/hybrid-retrieval.md, Leitplanke (e)): while {@code true}, a
-   * search diagnosis in a <em>foreign</em> rights context ("Sicht als") yields nothing from this
-   * library - no hits, no titles, no counts. It says nothing about ordinary access; reading,
-   * searching and answering in one's own context are unaffected.
+   * Diagnosesperre (ADR-0065, Entscheidung 9e): while {@code true}, a search diagnosis in a
+   * <em>foreign</em> rights context ("Sicht als") yields nothing from this library - no hits, no
+   * titles, no counts. It says nothing about ordinary access; reading, searching and answering in
+   * one's own context are unaffected.
    *
    * <p>Initialised {@code true}, and the column defaults to {@code true} for every pre-existing
    * row: the leitplanke requires Bestaende of Personalvertretung, Schwerbehindertenvertretung,

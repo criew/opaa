@@ -14,7 +14,7 @@ Sie beschreibt die **Aufnahmestrecke**: was zwischen „eine Datei liegt vor" un
 im Index" passiert. Woher die Dateien kommen, steht in
 [Wissensquellen und Konnektoren](./knowledge-sources.md); was mit den Chunks zur Abfragezeit
 geschieht, in [Wissensschicht und Retrieval](./data-indexing-rag.md) und
-[Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md).
+[Retrieval-Algorithmus (Ist-Stand)](../decisions/0065-hybride-suche-reranking-und-diagnose.md).
 
 ---
 
@@ -790,7 +790,7 @@ Bibliothek — mit Dateiname, Größe und Chunk-Zahl, damit die zuständige Stel
 ihnen geschieht.
 
 Diese Kennzahl bleibt anschließend **dauerhaft auf der Administrationsseite** stehen (siehe
-[Hybrides Retrieval](./hybrid-retrieval.md#was-die-seite-anzeigt), Indexstatus je Bibliothek). Eine
+[Hybrides Retrieval](../decisions/0065-hybride-suche-reranking-und-diagnose.md), Indexstatus je Bibliothek). Eine
 einmalige Bereinigung, die den Zustand nicht sichtbar hält, wiederholt das Problem beim nächsten
 Import; „null Chunks trotz erfolgreicher Aufnahme" ist ein Betriebszustand und gehört dorthin, wo
 Betriebszustände stehen.
@@ -1645,7 +1645,7 @@ trennt — ebenso wenig „max.mustermann@example.org" (#1130).
 Die Typ-Pipeline ist der Ort, an dem der Text entsteht, der in **beide** Indizes geht — Vektorindex
 und Volltextindex. Sie befüllt deshalb beide, und die Kennungen gehen dabei in exakte Felder statt
 durch die Analysekette. Wie die lexikalische Seite arbeitet und wie beide Listen zusammengeführt
-werden, steht in [Hybrides Retrieval](./hybrid-retrieval.md); hier zählt nur die Schnittstelle: **Die Aufnahmestrecke schuldet dem lexikalischen
+werden, steht in [Hybrides Retrieval](../decisions/0065-hybride-suche-reranking-und-diagnose.md); hier zählt nur die Schnittstelle: **Die Aufnahmestrecke schuldet dem lexikalischen
 Pfad einen Text, in dem Kennungen intakt sind.**
 
 ### (b) Jeder Chunk trägt seinen Strukturkontext
@@ -1710,7 +1710,7 @@ liefern, nicht jede Installation einzeln.
 
 Damit fällt diese Größe in die Konfigurations-Ebene 1 (projektseitig gesetzt, betreiberseitig nicht
 angeboten) im Sinne des Konfigurations-Querschnitts in
-[Hybrides Retrieval](./hybrid-retrieval.md). Die globalen
+[Hybrides Retrieval](../decisions/0065-hybride-suche-reranking-und-diagnose.md). Die globalen
 `opaa.indexing.chunk-size`/`-overlap`-Eigenschaften bleiben als Fallback für die Tika-Pipeline und für
 strukturlose Texte bestehen; sie hören nur auf, für **alles** zu gelten.
 
@@ -1744,7 +1744,7 @@ Daraus folgen drei Fähigkeiten:
   zwischen einer Umstellung, die über Nacht läuft, und einer, die niemand auslöst.
 - **Wiederaufnehmbarkeit mit Fortschritt je Bibliothek.** Der Lauf darf abbrechen und fortsetzen; sein
   Stand ist je Bibliothek abfragbar — dieselbe Anforderung wie an den Füllstand des Volltextindex in
-  [Hybrides Retrieval](./hybrid-retrieval.md#arbeitspaket-2a-volltextspalte-index-und-füllstand), und aus demselben
+  [Hybrides Retrieval](../decisions/0065-hybride-suche-reranking-und-diagnose.md), und aus demselben
   Grund: Ein Lauf über den ganzen Bestand, der nur ganz oder gar nicht kann, wird im Betrieb nicht
   gefahren.
 - **Ehrliche Messung.** Ein Vergleich, der versehentlich über gemischte Verfahrensstände läuft, misst
@@ -1994,9 +1994,9 @@ Hier wird nur der **Übergabepunkt** definiert:
 - **[Wissensschicht und Retrieval](./data-indexing-rag.md)** — Zielbild der Formaterkennung, Tabelle
   der verarbeiteten Dateien, erklärbares Chunking, Stellschrauben. Dieses Dokument konkretisiert die
   dortige Aufnahmestrecke; die Parameterwerte selbst bleiben dort geführt.
-- **[Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md)** — was mit den erzeugten Chunks zur
+- **[Retrieval-Algorithmus (Ist-Stand)](../decisions/0065-hybride-suche-reranking-und-diagnose.md)** — was mit den erzeugten Chunks zur
   Abfragezeit geschieht.
-- **[Hybrides Retrieval](./hybrid-retrieval.md)** — der lexikalische Pfad, den
+- **[Hybrides Retrieval](../decisions/0065-hybride-suche-reranking-und-diagnose.md)** — der lexikalische Pfad, den
   die Typ-Pipeline mitbefüllt, und der Konfigurations-Querschnitt, aus dem Regel (c) stammt.
 - **[Retrieval-Benchmark](./retrieval-benchmark.md)** — das Verfahren, das die
   typspezifischen Chunk-Größen misst und die Baseline führt.

@@ -57,8 +57,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
- * Assembles the read-only status of retrieval for one organization
- * (docs/features/hybrid-retrieval.md, "Was die Seite anzeigt").
+ * Assembles the read-only status of retrieval for one organization (ADR-0065, Entscheidung 8).
  *
  * <p><b>Read-only by construction.</b> This service has no method that changes anything, and the
  * records it returns carry no access key in any form.

@@ -2345,7 +2345,7 @@ components:
           type: boolean
           description: >
             Whether this library is diagnosegesperrt (Leitplanke (e) of
-            docs/features/hybrid-retrieval.md) - the read path for the state that
+            ADR-0065) - the read path for the state that
             PUT /api/v1/libraries/{libraryId}/diagnostics-lock sets, which until now was visible
             only in that endpoint's own response, immediately after setting it. Every library
             starts locked, including every pre-existing one, so a client renders this value rather

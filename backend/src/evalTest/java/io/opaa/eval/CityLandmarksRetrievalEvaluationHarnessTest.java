@@ -881,7 +881,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
     System.out.println("Report written to " + reportFile.toAbsolutePath());
 
     // 6. Second measurement path: the same golden cases, the same index, but through the
-    //    production query pipeline (steps 2 to 6 of docs/features/retrieval-algorithm.md) instead
+    //    production query pipeline (from decomposition to document completion) instead
     //    of similaritySearch directly. Runs after — never instead of — the raw-vector path above,
     //    whose numbers, report file and baseline are untouched by this block, and guarded so a
     //    failure here cannot fail this test and thereby rob the nightly job of its raw-vector

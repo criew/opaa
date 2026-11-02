@@ -11,7 +11,7 @@ interface DiagnosticsLockControlProps {
   onDismissError: () => void
 }
 
-// Renders the Diagnosesperre state (docs/features/hybrid-retrieval.md, Leitplanke (e)) -
+// Renders the Diagnosesperre state (ADR-0065, Entscheidung 9e) -
 // visible to everyone who may read the library (see LibraryResponse#diagnosticsLocked), but only
 // togglable by the responsible body itself. The 403 a caller without that standing gets back from
 // PUT .../diagnostics-lock is shown verbatim (see normalizeError) - it already names, in German,

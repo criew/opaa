@@ -3,8 +3,7 @@ package io.opaa.retrieval;
 import io.opaa.api.types.RetrievalStageName;
 
 /**
- * How {@link RetrievalStageName#RANK_FUSION} turns candidate lists into one score per candidate
- * (docs/features/retrieval-algorithm.md, step 5).
+ * How {@link RetrievalStageName#RANK_FUSION} turns candidate lists into one score per candidate.
  */
 public enum FusionMethod {
 

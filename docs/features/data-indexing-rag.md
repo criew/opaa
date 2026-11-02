@@ -231,9 +231,9 @@ Trefferqualität beruht hätte, sind nicht kalibriert und ohne Reranking nicht v
 > darunter ist seit #1050 als Modellrolle gebaut, aber per Voreinstellung abgeschaltet: Ohne
 > eingeschaltetes und eingetragenes Rerank-Modell (Modelle → Reranking) geht die zusammengeführte
 > Liste weiterhin ohne zweite Bewertungsstufe in die Antwort. Der gebaute Ablauf steht in
-> [Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md), die Begründung und die gemessene
-> Wirkung in [Hybride Suche mit Reranking](./hybrid-retrieval.md#arbeitspaket-3-fusion) und
-> [Arbeitspaket 4](./hybrid-retrieval.md#arbeitspaket-4-reranking-als-modellrolle).
+> [Retrieval-Algorithmus (Ist-Stand)](../decisions/0065-hybride-suche-reranking-und-diagnose.md), die Begründung und die gemessene
+> Wirkung in [Hybride Suche mit Reranking](../decisions/0065-hybride-suche-reranking-und-diagnose.md) und
+> [Arbeitspaket 4](../decisions/0065-hybride-suche-reranking-und-diagnose.md).
 
 Vektorsuche und Volltextsuche haben komplementäre Schwächen, und beide fallen in der Verwaltung ins
 Gewicht:
@@ -529,7 +529,7 @@ Das Gesamtbudget bleibt `top-k`, unverändert gegenüber dem Stand vor #932.
 
 **Der komplette, aktuelle Ablauf einer Anfrage — jeder Schritt mit Klasse, Parametern und Defaults, samt
 beider Verdrängungsstufen dieses Abschnitts — steht in
-[Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md#6-dokument-vervollständigung).** Dieser
+[Retrieval-Algorithmus (Ist-Stand)](../decisions/0065-hybride-suche-reranking-und-diagnose.md).** Dieser
 Abschnitt und die Stellschrauben-Tabelle bleiben die Quelle der Wahrheit für die Parameter selbst; das
 verlinkte Dokument ordnet sie in den Ablauf ein.
 
@@ -942,7 +942,7 @@ ausdrücklich auslösbar und bei einem Wechsel des Einbettungsmodells zwingend.
 
 ## Integrationspunkte
 
-- **[Retrieval-Algorithmus (Ist-Stand)](./retrieval-algorithm.md)** — der komplette, nummerierte Ablauf
+- **[Retrieval-Algorithmus (Ist-Stand)](../decisions/0065-hybride-suche-reranking-und-diagnose.md)** — der komplette, nummerierte Ablauf
   einer Anfrage mit Klassen, Parametern und Defaults, sowie mögliche Verbesserungen; dieses Dokument
   bleibt die Quelle der Wahrheit für Vision und Parameterwerte selbst.
 - **[Wissensquellen und Konnektoren](./knowledge-sources.md)** — liefert die Dokumente, bestimmt Zeitpläne

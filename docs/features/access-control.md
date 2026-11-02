@@ -92,7 +92,7 @@ sind Alternativen, nicht Stufen.
 - und das **Gesamtprotokoll der Suchdiagnosen**: Zeitraumabfrage und Einzelsatzansicht des
   Diagnose-Protokolls stehen ebenfalls allein `AUDITOR` offen, je mit Pflicht-Anlass und eigenem
   Protokolleintrag auch für den abgewiesenen Abruf (siehe
-  [Berechtigungs-Leitplanken](./hybrid-retrieval.md#berechtigungs-leitplanken), Leitplanke (h)).
+  [Berechtigungs-Leitplanken](../decisions/0065-hybride-suche-reranking-und-diagnose.md), Leitplanke (h)).
 
 Sie trägt keine einzige der oben aufgezählten Verwaltungsbefugnisse.
 
@@ -217,7 +217,7 @@ Im Einzelnen:
   erreicht diesen Weg gar nicht.
 - **Zueinander:** Wer diagnostiziert, wertet nicht das Protokoll aus, in dem seine Diagnose steht. Die
   Begründung steht bei den
-  [Berechtigungs-Leitplanken](./hybrid-retrieval.md#berechtigungs-leitplanken), Leitplanke (c).
+  [Berechtigungs-Leitplanken](../decisions/0065-hybride-suche-reranking-und-diagnose.md), Leitplanke (c).
 
 ### Fähigkeiten: die installationsweiten Anlegerechte
 
@@ -1465,7 +1465,7 @@ Systemverwaltung, auch bei einer geschützten Gruppe:
 
 **Geschützte Gruppen.** Für die Gruppen der Personalvertretung, der Schwerbehindertenvertretung, der
 Gleichstellung und für Personalvorgänge gilt dieselbe Sonderstellung wie für die entsprechenden
-Bibliotheken ([hybrid-retrieval.md](./hybrid-retrieval.md#berechtigungs-leitplanken), Leitplanke
+Bibliotheken ([ADR-0065](../decisions/0065-hybride-suche-reranking-und-diagnose.md), Leitplanke
 (e)). **Über den Schutz entscheidet die Systemverwaltung** — für interne und für Anbietergruppen
 gleichermaßen (ADR-0036, Entscheidung 9). Sie setzt und löst das
 Kennzeichen über `PUT /api/v1/groups/{groupId}/protection`; jede Änderung ist ein Audit-Ereignis

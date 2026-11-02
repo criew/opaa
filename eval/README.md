@@ -392,9 +392,8 @@ also ohne zweiten Indizierungslauf:
    (`RetrievalContextFactory#contextFor` + `RetrievalPipeline#run`, derselbe Einstieg, den auch das
    Diagnosewerkzeug nutzt), also durch **dieselbe Kette, die eine echte Anfrage durchläuft** —
    Teilfragen-Zerlegung, Vektorsuche je Teilfrage, MMR, Reciprocal Rank Fusion,
-   Dokument-Vervollständigung (Schritte 2 bis 6 aus
-   [`docs/features/retrieval-algorithm.md`](../docs/features/retrieval-algorithm.md)). Die
-   Antwortgenerierung (Schritt 7) bleibt außen vor: Sie ist kein Retrieval und mit Ranking-Metriken
+   Dokument-Vervollständigung. Die
+   Antwortgenerierung bleibt außen vor: Sie ist kein Retrieval und mit Ranking-Metriken
    nicht bewertbar.
 
 Die beiden Pfade messen **unterschiedliche Dinge und sind nicht ineinander umrechenbar**:

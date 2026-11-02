@@ -4,11 +4,11 @@ import io.opaa.indexing.chunk.FullTextChunkStore;
 import java.util.UUID;
 
 /**
- * The full-text index fill state of one library (docs/features/hybrid-retrieval.md, "Arbeitspaket
- * 2a"). A chunk's {@code chunk_full_text} row is written in the same transaction as its vector row,
- * so the only state that can lag behind is the <em>version</em> of a row: {@code outdatedChunks}
- * counts the rows that are not at {@link FullTextChunkStore#CURRENT_TSV_VERSION}, which the lexical
- * path still finds (ADR-0028) and which only the pipeline re-index brings up to date.
+ * The full-text index fill state of one library (ADR-0065). A chunk's {@code chunk_full_text} row
+ * is written in the same transaction as its vector row, so the only state that can lag behind is
+ * the <em>version</em> of a row: {@code outdatedChunks} counts the rows that are not at {@link
+ * FullTextChunkStore#CURRENT_TSV_VERSION}, which the lexical path still finds (ADR-0028) and which
+ * only the pipeline re-index brings up to date.
  *
  * <p>"Not at" rather than "below": the re-index selects by the same equality test, so a row left
  * above the current version by a rollback converges through the same run instead of sitting in a

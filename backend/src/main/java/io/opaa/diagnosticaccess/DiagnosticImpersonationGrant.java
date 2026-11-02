@@ -8,11 +8,11 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * One grant of the "Sicht als" befugnis (docs/features/hybrid-retrieval.md, Leitplanke (c)): always
- * bound to exactly one holder, one Organisationseinheit ({@code scopeGroupId}, a group of kind
- * {@code ORG_UNIT}) and one validity window. Both are mandatory columns, so an unbounded, scopeless
- * permanent right cannot exist as a row - see {@code chk_diagnostic_impersonation_grants_validity},
- * which additionally caps the window at twelve months.
+ * One grant of the "Sicht als" befugnis (ADR-0065, Entscheidung 9c): always bound to exactly one
+ * holder, one Organisationseinheit ({@code scopeGroupId}, a group of kind {@code ORG_UNIT}) and one
+ * validity window. Both are mandatory columns, so an unbounded, scopeless permanent right cannot
+ * exist as a row - see {@code chk_diagnostic_impersonation_grants_validity}, which additionally
+ * caps the window at twelve months.
  *
  * <p>Deliberately not a value on {@code users.system_role}: the befugnis must be grantable on its
  * own and must never be implied by {@code SYSTEM_ADMIN}.

@@ -16,8 +16,7 @@ import org.springframework.ai.document.Document;
 
 /**
  * {@link CandidateFusion}: rank or score fusion, pooled over all sub-queries or with a quota per
- * sub-query (docs/features/retrieval-algorithm.md, step 5). The budget on top belongs to {@link
- * RankFusionStage}.
+ * sub-query. The budget on top belongs to {@link RankFusionStage}.
  */
 class CandidateFusionTest {
 

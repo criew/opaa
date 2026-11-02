@@ -31,11 +31,11 @@ import org.slf4j.Logger;
  * pipeline path costs a second pass of queries, never a second indexing run, and therefore measures
  * against provably the same index the raw-vector path just measured.
  *
- * <p><b>What is measured</b> (docs/features/retrieval-benchmark.md §1): steps 2 to 6 of
- * docs/features/retrieval-algorithm.md — decomposition, one vector search per sub-question, MMR,
- * Reciprocal Rank Fusion, document completion. Step 7 (answer generation, citation validation,
- * source mapping) is out of scope: it is not retrieval and is not expressible in ranking metrics.
- * Step 1 (scope determination) is out of scope too — see {@link #SEARCH_SCOPE_NOTE}.
+ * <p><b>What is measured</b> (docs/features/retrieval-benchmark.md §1): steps 2 to 6 of the
+ * retrieval pipeline — decomposition, one vector search per sub-question, MMR, Reciprocal Rank
+ * Fusion, document completion. Step 7 (answer generation, citation validation, source mapping) is
+ * out of scope: it is not retrieval and is not expressible in ranking metrics. Step 1 (scope
+ * determination) is out of scope too — see {@link #SEARCH_SCOPE_NOTE}.
  *
  * <p><b>Production configuration, thresholds included.</b> Every parameter comes from the running
  * {@link QueryProperties}; unlike the raw-vector path (ADR-0012 decision 3), the similarity
@@ -305,14 +305,14 @@ public final class PipelineHarnessSupport {
    *       direction: the committed baseline is the shipped configuration, and that one does not
    *       rerank. A rerank run belongs in the Variantenvergleich, whose candidate-window overrides
    *       are exactly what issue #1050 has to measure.
-   *   <li><b>The lexical search path must be switched on</b> (the Auflage recorded in
-   *       docs/features/hybrid-retrieval.md, Arbeitspaket 2). Since it feeds the fusion, {@code
-   *       opaa.query.full-text-search-enabled} moves the selection; the committed pipeline baseline
-   *       describes the shipped hybrid configuration, and a run that quietly measured the
-   *       vector-only one would be judged against it as a code regression. The vector-only
-   *       measurement is not forbidden — it is a named variant of the Variantenvergleich ({@link
-   *       VariantRunner}, which measures deliberately labelled configurations and writes no
-   *       baseline), and its value is a fixed point of every report either way.
+   *   <li><b>The lexical search path must be switched on</b> (the Auflage recorded in ADR-0065,
+   *       Entscheidung 2). Since it feeds the fusion, {@code opaa.query.full-text-search-enabled}
+   *       moves the selection; the committed pipeline baseline describes the shipped hybrid
+   *       configuration, and a run that quietly measured the vector-only one would be judged
+   *       against it as a code regression. The vector-only measurement is not forbidden — it is a
+   *       named variant of the Variantenvergleich ({@link VariantRunner}, which measures
+   *       deliberately labelled configurations and writes no baseline), and its value is a fixed
+   *       point of every report either way.
    * </ul>
    */
   public static void requireMeasurableConfiguration(

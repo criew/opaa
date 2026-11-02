@@ -29,8 +29,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Grants, revokes and evaluates the "Sicht als" befugnis (docs/features/hybrid-retrieval.md,
- * Leitplanke (c)). Two properties this class exists to keep:
+ * Grants, revokes and evaluates the "Sicht als" befugnis (ADR-0065, Entscheidung 9c). Two
+ * properties this class exists to keep:
  *
  * <ul>
  *   <li>Holding {@code SYSTEM_ADMIN} confers nothing here. An administrator may <em>grant</em> the

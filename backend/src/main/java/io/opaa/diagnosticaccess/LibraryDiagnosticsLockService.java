@@ -41,7 +41,7 @@ import org.springframework.transaction.annotation.Transactional;
  *       {@code SYSTEM_ADMIN}, with no self-exclusion), thereby becoming the library's named
  *       responsible body, and lift the lock alone - see {@link
  *       LibraryAccessService#holdsIndependentOwnerRole}. This path stays open by decision, not by
- *       omission: docs/features/hybrid-retrieval.md, Berechtigungs-Leitplanken (e).
+ *       omission: ADR-0065, Entscheidung 9e.
  * </ul>
  */
 @Service

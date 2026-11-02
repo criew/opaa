@@ -5,9 +5,9 @@ import java.util.Locale;
 /**
  * Every note template a retrieval stage can put into {@link StageExplanation#notes()}, closed over
  * this enum instead of scattered string literals in the stages. Notes stay a free technical field
- * by contract (docs/features/retrieval-algorithm.md) - this enum does not turn them into an API
- * vocabulary, it only makes the set of sentences the backend can produce enumerable, so {@code
- * RetrievalNoteTest} can hold it against the German translation inventory in {@code
+ * by contract - this enum does not turn them into an API vocabulary, it only makes the set of
+ * sentences the backend can produce enumerable, so {@code RetrievalNoteTest} can hold it against
+ * the German translation inventory in {@code
  * frontend/src/features/search-admin/utils/retrievalProtocolText.test.ts} and fail loudly when the
  * two drift apart.
  */

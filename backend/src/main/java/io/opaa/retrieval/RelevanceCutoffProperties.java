@@ -8,8 +8,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
  * How {@link RetrievalStageName#RELEVANCE_CUTOFF} sizes the selection ({@code
- * opaa.query.relevance-cutoff.*}, docs/features/retrieval-algorithm.md, step 5c). Ebene-1 values.
- * {@link QueryProperties#topK} stays the upper bound in every mode: the cutoff only removes.
+ * opaa.query.relevance-cutoff.*}). Ebene-1 values. {@link QueryProperties#topK} stays the upper
+ * bound in every mode: the cutoff only removes.
  *
  * @param mode {@link Mode#FIXED} keeps the selection as fusion or reranking left it; {@link
  *     Mode#RELATIVE} and {@link Mode#KNEE} cut it by score. Default {@link Mode#FIXED}.

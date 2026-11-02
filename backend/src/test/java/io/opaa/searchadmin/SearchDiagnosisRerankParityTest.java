@@ -39,9 +39,8 @@ import org.springframework.ai.vectorstore.SearchRequest;
 
 /**
  * The administration's diagnosis must run the retrieval a chat query runs, reranking included
- * (docs/features/hybrid-retrieval.md, "Das Diagnosewerkzeug"): the tool exists to answer "why these
- * findings?", and a run that skipped a stage the real search performs would answer it about
- * findings nobody ever got.
+ * (ADR-0065, Entscheidung 8): the tool exists to answer "why these findings?", and a run that
+ * skipped a stage the real search performs would answer it about findings nobody ever got.
  *
  * <p>Runs the real pipeline ({@link RetrievalPipelineTestSupport}) with only the search source and
  * the rerank endpoint stubbed - a test against a mocked pipeline could not tell whether the context

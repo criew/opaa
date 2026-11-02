@@ -9,11 +9,10 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * The curated pattern list of the identifier protection (docs/features/hybrid-retrieval.md, "Die
- * deutschen Besonderheiten"). The load-bearing property this class pins is that two neighbouring
- * identifiers never collapse into one lexeme - "§ 34" and "§ 35" are the specification's own
- * example, and a chain that loses that distinction makes the whole lexical path worthless for its
- * main purpose.
+ * The curated pattern list of the identifier protection (ADR-0065, Entscheidung 2). The
+ * load-bearing property this class pins is that two neighbouring identifiers never collapse into
+ * one lexeme - "§ 34" and "§ 35" are the specification's own example, and a chain that loses that
+ * distinction makes the whole lexical path worthless for its main purpose.
  */
 class FullTextIdentifiersTest {
 

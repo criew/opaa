@@ -54,7 +54,7 @@ import org.springframework.stereotype.Service;
 
 /**
  * Runs one test question through the real retrieval pipeline and hands on its explanation protocol
- * (docs/features/hybrid-retrieval.md, "Das Diagnosewerkzeug").
+ * (ADR-0065, Entscheidung 8).
  *
  * <p>Three properties of this service are Baubedingung, not Ausbaustufe:
  *
@@ -200,9 +200,8 @@ public class SearchDiagnosisService {
    * The person context, and the only place it is produced: the search scope comes from {@link
    * ForeignDiagnosticContextService#execute} instead of from this service's own resolution, so
    * befugnis, mandatory justification, subtraction of diagnosegesperrte libraries and the protocol
-   * entry cannot be reached around (Leitplanken (c)-(f) and the Klarstellung zu (e) in
-   * docs/features/hybrid-retrieval.md). The result is handed back to the caller and stored nowhere
-   * (Leitplanke (j)).
+   * entry cannot be reached around (Leitplanken (c)-(f) and the Klarstellung zu (e) in ADR-0065).
+   * The result is handed back to the caller and stored nowhere (Leitplanke (j)).
    */
   private SearchDiagnosis diagnoseAsPerson(CurrentUser caller, DiagnosisQuery query) {
     if (query.permissionProfileId() != null) {

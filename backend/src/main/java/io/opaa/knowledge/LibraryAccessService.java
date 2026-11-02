@@ -117,8 +117,8 @@ public class LibraryAccessService {
    *
    * <p><b>The named-owner exception is only half closed, and the open half is administratively
    * reachable:</b> membership in an owning {@code AD_HOC} group is editable by a system
-   * administrator. That path stays open by decision (docs/features/hybrid-retrieval.md,
-   * Berechtigungs-Leitplanken (e)); closing it would be a change to group administration.
+   * administrator. That path stays open by decision; closing it would be a change to group
+   * administration.
    */
   public boolean holdsIndependentOwnerRole(KnowledgeLibrary library, UUID userId) {
     Set<UUID> groupIds = assetAccessService.groupIdsForUser(userId);
@@ -131,7 +131,7 @@ public class LibraryAccessService {
 
   /**
    * Every library id a <b>permission profile</b> may read - the search scope the administration's
-   * diagnosis runs a Rechteprofil in (docs/features/hybrid-retrieval.md).
+   * diagnosis runs a Rechteprofil in (ADR-0065).
    */
   public Set<UUID> readableLibraryIdsForGroup(UUID groupId, UUID organizationId) {
     return assetAccessService.readableAssetIdsForGroup(

@@ -30,10 +30,9 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 
 /**
- * The quota per sub-query through the whole pipeline (docs/features/retrieval-algorithm.md, step
- * 5): the leader of each sub-query reaches the selection although chunks the sub-queries share
- * collect more rank contributions, and the fusion's protocol says which list a candidate owes its
- * place to.
+ * The quota per sub-query through the whole pipeline: the leader of each sub-query reaches the
+ * selection although chunks the sub-queries share collect more rank contributions, and the fusion's
+ * protocol says which list a candidate owes its place to.
  */
 class SubQueryFusionPipelineTest {
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-29 · ergänzt durch [ADR-0037](0037-reichweite-als-freigabe-an-alle.md),
+Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt durch [ADR-0037](0037-reichweite-als-freigabe-an-alle.md),
 [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) und
 [ADR-0041](0041-verbindungen-als-eigenes-modul.md) · ersetzt Entscheidung 6 von
 [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md) · präzisiert ADR-0016 (Entscheidung 8),
@@ -243,8 +243,7 @@ Vorgänge unterliegen der Aufbewahrungsfrist des Protokolls, nicht der Rechtehis
 
 Das Rechteprofil der Suchdiagnose bleibt eine Gruppe, mit derselben Herkunftsanzeige und
 Sichtbarkeitsregel wie die Subjekt-Auswahl (Entscheidung 9). Die Suchdiagnose bleibt `SYSTEM_ADMIN`
-vorbehalten; wird sie je geöffnet, schaltet dieselbe Änderung die Diagnosesperre (Leitplanke (e) in
-`hybrid-retrieval.md`) auch für Profil-Läufe scharf. Leitplanke (b) bleibt: Die Diagnose ist kein
+vorbehalten; wird sie je geöffnet, schaltet dieselbe Änderung die Diagnosesperre (ADR-0065, Entscheidung 9e) auch für Profil-Läufe scharf. ADR-0065, Entscheidung 9b bleibt: Die Diagnose ist kein
 Zugriffshistorien-Nachweis.
 
 Der **Space-Kontext** im Profil ist gebaut (#1835: `spaceId` im Diagnose-Request,

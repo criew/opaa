@@ -39,9 +39,8 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 
 /**
- * Reranking at the level it is claimed on (docs/features/hybrid-retrieval.md, Arbeitspaket 4): the
- * whole pipeline as {@link RetrievalConfiguration} wires it, with the rerank stage between fusion
- * and document completion.
+ * Reranking at the level it is claimed on (ADR-0065, Entscheidung 6): the whole pipeline as {@link
+ * RetrievalConfiguration} wires it, with the rerank stage between fusion and document completion.
  *
  * <p>The budget hand-off is what these tests pin. Fusion keeps the rerank candidate window instead
  * of {@code top-k} while reranking runs, and the rerank stage cuts back to {@code top-k} - so the

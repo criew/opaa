@@ -13,9 +13,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * The queryable full-text index fill state (docs/features/hybrid-retrieval.md, "Arbeitspaket 2a"),
- * behind the administration page's index status. Read-only counterpart of {@link
- * FullTextChunkStore}.
+ * The queryable full-text index fill state (ADR-0065, Entscheidung 2), behind the administration
+ * page's index status. Read-only counterpart of {@link FullTextChunkStore}.
  *
  * <p>A row is counted as indexed only at {@link FullTextChunkStore#CURRENT_TSV_VERSION} and as
  * outdated at any other version: it lacks the lexemes the current version adds, so counting it as

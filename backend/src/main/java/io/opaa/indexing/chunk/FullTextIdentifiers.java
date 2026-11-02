@@ -14,11 +14,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * The curated pattern list behind the lexical path's identifier protection
- * (docs/features/hybrid-retrieval.md, "Die deutschen Besonderheiten"): paragraph references, file
- * numbers, Erlass-/Drucksachen numbers, email addresses and technical field names become
- * <b>undecomposed lexemes</b>, so "§ 34" and "§ 35" stay distinguishable under stemming. Write and
- * query path call this same method, or the two sides would build different lexemes and never match.
+ * The curated pattern list behind the lexical path's identifier protection (ADR-0065, Entscheidung
+ * 2): paragraph references, file numbers, Erlass-/Drucksachen numbers, email addresses and
+ * technical field names become <b>undecomposed lexemes</b>, so "§ 34" and "§ 35" stay
+ * distinguishable under stemming. Write and query path call this same method, or the two sides
+ * would build different lexemes and never match.
  *
  * <p>Every lexeme is lowercase ASCII alphanumeric with an {@code x…} type prefix, so it can neither
  * collide with a stemmer lexeme nor carry an operator into {@code to_tsquery}. Every keyword-led
@@ -191,7 +191,7 @@ public final class FullTextIdentifiers {
    * The lexemes of one text, split by how much they say. {@code wordForms} maps those lexemes of
    * {@code all} that came only from an {@link #UPPERCASE_WORD} - a word, not a structure - to the
    * word as first written; the query path weighs them by how common they are in the search scope
-   * (docs/features/hybrid-retrieval.md, "Die deutschen Besonderheiten").
+   * (ADR-0065, Entscheidung 2).
    */
   public record Lexemes(List<String> all, Map<String, String> wordForms) {
     public Lexemes {
