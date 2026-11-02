@@ -654,7 +654,7 @@ jobs:
           path: backend/build/reports/tests/
           retention-days: 14
 
-  report-script:
+  ci-scripts:
     needs: changes
     if: github.event_name != 'pull_request' || needs.changes.outputs.scripts == 'true'
     runs-on: ubuntu-latest
@@ -674,8 +674,7 @@ jobs:
         run: |
           pip install --require-hashes --only-binary=:all: --no-deps -r .github/requirements-release.txt
 
-      # Der Tagesreport läuft nur nachts; ein Fehler fiele sonst erst dann auf.
-      # Die Selbstprobe des Corepack-Guards liegt daneben, weil dessen CI-Lauf nur
+      # Die Selbstprobe des Corepack-Guards liegt hier, weil dessen CI-Lauf nur
       # den grünen Zweig ausübt. Ebenso der :main-Filter von publish-images.yml,
       # der nur auf main läuft, nie in einem PR.
       - name: Test

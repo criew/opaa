@@ -314,17 +314,15 @@
       addLabels: ['demo'],
     },
     // pytest der Skript- und Seed-Tests in der CI, die Pakete des Update-Pakets
-    // (requirements-release.txt), des Seeds im axe-Lauf (requirements-seed.txt) und des
-    // Tagesreports (requirements-report.txt), mit Hashes, die der Manager beim Bump mitzieht.
-    // report-script, seed-script und Datenwirkung sind keine Required Checks, den Tagesreport prüft
-    // gar kein PR-Lauf; ein Bump mergt deshalb nicht automatisch, sondern wartet auf ihr Ergebnis.
+    // (requirements-release.txt) und des Seeds im axe-Lauf (requirements-seed.txt), mit Hashes,
+    // die der Manager beim Bump mitzieht. ci-scripts, seed-script und Datenwirkung sind keine
+    // Required Checks; ein Bump mergt deshalb nicht automatisch, sondern wartet auf ihr Ergebnis.
     {
       matchManagers: ['pip_requirements'],
       matchFileNames: [
         '.github/requirements-ci.txt',
         '.github/requirements-release.txt',
         '.github/requirements-seed.txt',
-        '.github/requirements-report.txt',
       ],
       addLabels: ['ci'],
       automerge: false,

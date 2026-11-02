@@ -1,6 +1,6 @@
 # Auslieferung von opaa.io
 
-Der VPS spiegelt den öffentlichen Branch `gh-pages` (Landing Page und Tagesreport) per Pull in
+Der VPS spiegelt den öffentlichen Branch `gh-pages` (Landing Page und Meilenstein-Artefakte) per Pull in
 sein Webverzeichnis, siehe [`page/README.md`](../../page/README.md#wo-das-landet). Hier liegen
 die Dateien dafür; Zugangsdaten braucht keine davon.
 

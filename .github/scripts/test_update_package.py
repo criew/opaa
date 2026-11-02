@@ -832,7 +832,7 @@ def test_every_pull_request_checks_the_links_the_package_would_refuse() -> None:
     assert RELEASE_INSTALL in body
     assert body.index(RELEASE_INSTALL) < body.index("update_package.py links")
     assert "if:" not in step.rsplit("- name:", 1)[1]
-    assert RELEASE_INSTALL in ci_job("report-script")
+    assert RELEASE_INSTALL in ci_job("ci-scripts")
 
 
 def test_the_link_check_finds_what_would_stop_the_package(inputs: dict) -> None:
