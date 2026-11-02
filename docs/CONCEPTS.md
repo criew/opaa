@@ -527,11 +527,11 @@ Stufen aus, damit sichtbar ist, ob die Auskunft belegt ist oder nachgeprüft geh
 
 Der Belegstand ist keine Zahl und keine Wahrscheinlichkeit, dass die Antwort stimmt. Er folgt fest aus
 der [Belegvalidierung](#belegvalidierung) und den Teilfragen der Suche, ohne Ähnlichkeitswerte und ohne
-Selbsteinschätzung des Modells; ein Satz nennt, was die Antwort von der nächsthöheren Stufe trennt.
+Selbsteinschätzung des Modells; ein kurzer Grund nennt, was die Antwort von der nächsthöheren Stufe trennt.
 
 - **Beispiel:** Eine Frage nach Kosten und Gültigkeit eines Anwohnerparkausweises erscheint als
-  „Teilweise belegt · zur Teilfrage ‚Gültigkeit Anwohnerparkausweis' keine Fundstelle". Die
-  Sachbearbeitung sieht, welcher Teil der Auskunft ungedeckt ist, und klärt ihn vor der Verwendung.
+  „Teilweise belegt · 1 Teilfrage ohne Fundstelle". Im Belegfenster sieht die Sachbearbeitung,
+  welcher Teil der Auskunft ungedeckt ist, und klärt ihn vor der Verwendung.
 
 ---
 
@@ -1075,7 +1075,7 @@ Vorgang 32.1-114/2025
 | **Fundstelle** | Der Nachweis in der Antwort | „Dienstanweisung 12/2024, Abschnitt 4.2" |
 | **Quellenbindung** | Jede Aussage an ihre Textstelle gebunden | Sprung in den Absatz, nicht auf die Datei |
 | **Belegvalidierung** | Jeder Beleg wird gegen die abgerufenen Fundstellen geprüft | Ein Beleg, der auf nichts zeigt, erscheint als nicht bestätigt |
-| **Konfidenz** | Wie belastbar die Grundlage ist, als Belegstand in drei Stufen | „Nicht belegt · vor Verwendung prüfen" |
+| **Konfidenz** | Wie belastbar die Grundlage ist, als Belegstand in drei Stufen | „Nicht belegt · kein Beleg bestätigt" |
 | **Space** | Thematischer Arbeitsraum, flach; trägt Chats und Artefakte | „Bauleitplanung" |
 | **Suchbereich eines Chats** | Gesteuert am Chat über die Chip-Leiste (@Space-Wissen, konkrete @-Referenzen, leere Leiste), nicht per Anfrage; nie über die Zuordnung des Space hinaus | `@Rechtsquellen-Denkmalschutz` ersetzt @Space-Wissen und schränkt auf eine Bibliothek ein |
 | **@Space-Wissen** | Vorbelegter Chip: das dem Space zugeordnete, für die Person lesbare Wissen | Space ohne Zuordnung → Hinweis „Wissen zuordnen" statt Suche |

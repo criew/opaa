@@ -39,7 +39,7 @@ Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
    ein Zwangs- und Verweigerungsapparat darüber ist bewusst nicht gebaut (siehe
    [Belegvalidierung](#belegvalidierung)).
 3. **Konfidenz wird als Belegstand ausgewiesen** — belegt, teilweise belegt, nicht belegt, mit einem
-   Satz Begründung; abgeleitet aus der Belegvalidierung, nicht aus Ähnlichkeitswerten (siehe
+   kurzen Grund; abgeleitet aus der Belegvalidierung, nicht aus Ähnlichkeitswerten (siehe
    [Konfidenz](#konfidenz)).
 4. **Gesucht wird hybrid**: Vektorsuche und Volltextsuche laufen nebeneinander, ihre Ergebnisse werden
    zusammengeführt und durch ein Reranking auf Präzision gebracht.
@@ -183,11 +183,11 @@ beantwortet. „0,73" tut das nicht, und eine Wahrscheinlichkeit, dass die Antwo
 nicht belegen. Belegen kann es, **worauf sich eine Antwort stützt**. An der Antwort steht deshalb ein
 **Belegstand** in drei Stufen, an der Oberfläche bewusst nicht „Konfidenz" genannt:
 
-| Stufe | Bedingung | Satz (Beispiel) |
+| Stufe | Bedingung | Grund (Beispiel) |
 |---|---|---|
-| Belegt | mindestens ein bestätigter Beleg, kein unbestätigter, jede Teilfrage gedeckt, Antwort vollständig | „alle Belege bestätigt" |
-| Teilweise belegt | mindestens ein bestätigter Beleg, aber unbestätigter Beleg, ungedeckte Teilfrage oder abgebrochene Antwort | „1 Beleg nicht bestätigt" · „zur Teilfrage ‚…' keine Fundstelle" · „Antwort abgebrochen" |
-| Nicht belegt | kein bestätigter Beleg | „keine Fundstelle im durchsuchten Bereich · vor Verwendung prüfen" |
+| Belegt | mindestens ein bestätigter Beleg, kein unbestätigter, jede Teilfrage gedeckt, Antwort vollständig | keiner |
+| Teilweise belegt | mindestens ein bestätigter Beleg, aber unbestätigter Beleg, ungedeckte Teilfrage oder abgebrochene Antwort | „1 Beleg nicht bestätigt" · „1 Teilfrage ohne Fundstelle" · „Antwort abgebrochen" |
+| Nicht belegt | kein bestätigter Beleg | „kein Beleg bestätigt" · „keine Fundstelle im durchsuchten Bereich" |
 
 Der Belegstand folgt **fest** aus der [Belegvalidierung](#belegvalidierung) und den Teilfragen der
 Suche, ohne zweiten Modellaufruf. Eine Teilfrage gilt als gedeckt, wenn ein bestätigter Beleg auf ein
@@ -206,10 +206,13 @@ Suchbedarf und für eine leere Antwort. Er wird mit der Antwort gespeichert, ste
 | Selbsteinschätzung des Modells | nein | Scheingenauigkeit und zusätzliche Kosten |
 | Widerspruch zwischen Fundstellen | nein | deterministisch nicht zuverlässig erkennbar |
 
-**Darstellung.** Eine Zeile über dem Fuß der Antwort: Symbol, Stufenwort und Satz. Die Stufe ist immer
-als Wort lesbar, das Symbol in der Signalfarbe unterstreicht sie nur; die Zahl der Stellen und
-Dokumente nennt weiter die Zeile neben „Belege anzeigen". Der Belegstand bewertet die Antwort und den
-Datenbestand, nie eine Person.
+**Darstellung.** Keine eigene Zeile, sondern der Fuß der Antwort: Symbol und Stufenwort stehen auf
+der Schaltfläche zum Belegfenster (statt „Belege anzeigen"), der Grund vor der Zahl der Stellen und
+Dokumente daneben, etwa „Teilweise belegt → · 1 Teilfrage ohne Fundstelle · 2 Stellen in
+1 Dokument". Wo die Zahl der Stellen die Stufe schon erklärt („7 geprüft, keine zitiert"), entfällt
+der Grund. Ungedeckte Teilfragen werden nur gezählt, ihr Wortlaut steht im Belegfenster. Die Stufe ist
+immer als Wort lesbar, das Symbol in der Signalfarbe unterstreicht sie nur. Der Belegstand bewertet die
+Antwort und den Datenbestand, nie eine Person.
 
 **Einordnung.** Gängige generative Assistenten zeigen an der Antwort nur Quellen und einen pauschalen
 Hinweis, dass KI Fehler machen kann; Stufen oder Zahlen gibt es dort nur bei Suchdiensten für

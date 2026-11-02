@@ -114,7 +114,7 @@ statt still herunterzuladen, jedes andere Format zeigt beim Download eine Snackb
 Oberflächen teilten sich dafür in `MessageBubble.tsx` eine einzige `useDocumentPreview()`-Instanz;
 Dialog und Snackbar hängen dadurch nicht am Lebenszyklus des Belegfensters, das seine Kindelemente
 beim Schließen abbaut. Seit #1449 entfällt der Fundstellenblock unter der Antwort: Dort steht nur
-noch „Belege anzeigen" mit einer Zählzeile, alle Fundstellen stehen im Belegfenster
+noch „Belege anzeigen" (mit Belegstand: dessen Stufe, siehe #3491) mit einer Zählzeile, alle Fundstellen stehen im Belegfenster
 (`SourceEvidenceDrawer.tsx`), und ein Klick auf eine Fußnote öffnet es an der zugehörigen
 Fundstelle und markiert sie dort. Seit #3259 öffnet das Belegfenster mit den zitierten Belegen; die
 geprüften, nicht zitierten blendet der Link „Nicht zitierte anzeigen" (Disclosure-Muster mit fester
