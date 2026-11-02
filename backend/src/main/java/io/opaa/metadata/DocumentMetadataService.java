@@ -180,15 +180,14 @@ public class DocumentMetadataService {
               });
     }
     // A Format field carries no Kontextpraefix-Wirkstelle: nobody defines it, so nobody chose one,
-    // and the Wirkstelle is never a default (metadata-schema.md, "Formatfelder der
-    // Aufnahmestrecke", Wirkung).
+    // and the Wirkstelle is never a default (ADR-0024).
     KnowledgeLibrary library =
         document.getLibraryId() == null
             ? null
             : libraryRepository.findById(document.getLibraryId()).orElse(null);
     List<String> prefixValues = new ArrayList<>();
     // The freie Schlagworte ride in the Kontextpraefix like every other prefix-effective value
-    // (metadata-schema.md, Teil II (c)): one segment, hashed into the Abdruck with the rest, so a
+    // (ADR-0026): one segment, hashed into the Abdruck with the rest, so a
     // changed keyword set hands the document to the Nachlauf exactly like a changed field value -
     // and reaches the full-text index through the same formatter, never through a key a filter
     // could name.
@@ -358,10 +357,10 @@ public class DocumentMetadataService {
   }
 
   /**
-   * The format fields (metadata-schema.md, Teil II (c)) of the document: whatever the pipeline read
-   * verbatim out of the format, stored as deterministic text values under {@code fmt:<key>}. A
-   * field the format does not declare loses its deterministic row; a manual row stays untouched,
-   * exactly like a core field.
+   * The format fields (ADR-0024) of the document: whatever the pipeline read verbatim out of the
+   * format, stored as deterministic text values under {@code fmt:<key>}. A field the format does
+   * not declare loses its deterministic row; a manual row stays untouched, exactly like a core
+   * field.
    */
   private void reconcileFormatFields(
       UUID documentId, DocumentProperties properties, Map<String, DocumentMetadataValue> existing) {
@@ -419,10 +418,10 @@ public class DocumentMetadataService {
   }
 
   /**
-   * Stores the values the model-backed extraction accepted (metadata-schema.md, Schritt 2) and
-   * rewrites the document's filterable chunk keys in the same transaction. A field that already
-   * carries a row - of any origin - is skipped: step 2 only ever fills what step 1 left empty, and
-   * a manual correction is never overwritten. Returns the effective chunk metadata afterwards.
+   * Stores the values the model-backed extraction accepted (ADR-0026) and rewrites the document's
+   * filterable chunk keys in the same transaction. A field that already carries a row - of any
+   * origin - is skipped: step 2 only ever fills what step 1 left empty, and a manual correction is
+   * never overwritten. Returns the effective chunk metadata afterwards.
    *
    * <p>A row written here carries {@link ModelMetadataExtractor#EXTRACTION_VERSION}, never the
    * deterministic step's: the version names the producer of the value, so raising step 1 must not
@@ -464,9 +463,9 @@ public class DocumentMetadataService {
 
   /**
    * Hands {@code documentId} to the Kontextpraefix-Nachlauf when its prefix changed - the entry
-   * point of the model step, whose freie Schlagworte are a prefix segment (metadata-schema.md, Teil
-   * II (c)). During the ingest this is a no-op in effect: the chunks are written afterwards and
-   * record their own Abdruck.
+   * point of the model step, whose freie Schlagworte are a prefix segment (ADR-0026). During the
+   * ingest this is a no-op in effect: the chunks are written afterwards and record their own
+   * Abdruck.
    */
   public void markContextPrefixStale(UUID documentId) {
     transactionTemplate.executeWithoutResult(status -> markContextPrefixStaleIfChanged(documentId));
@@ -556,10 +555,10 @@ public class DocumentMetadataService {
 
   /**
    * Hands {@code documentId} to the Kontextpraefix-Nachlauf when its prefix actually changed
-   * (metadata-schema.md, "Nachlauf im Betrieb") - compared, not guessed from the field: the stored
-   * Abdruck against the one this document's values would produce now. Re-embedding stays an
-   * explicit release, never a side effect of a value change; a field that only filters or only
-   * appears in the Beleg leaves the Abdruck alone because it does not enter it.
+   * (ADR-0026) - compared, not guessed from the field: the stored Abdruck against the one this
+   * document's values would produce now. Re-embedding stays an explicit release, never a side
+   * effect of a value change; a field that only filters or only appears in the Beleg leaves the
+   * Abdruck alone because it does not enter it.
    */
   private void markContextPrefixStaleIfChanged(UUID documentId) {
     Document document = documentRepository.findById(documentId).orElse(null);

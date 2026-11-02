@@ -26,7 +26,7 @@ public interface DocumentMetadataValueRepository
 
   /**
    * How many documents carry {@code libraryValueId} - the Folgekosten a person sees <b>before</b>
-   * confirming a value mapping (metadata-schema.md "Kontrolliertes Vokabular statt Freitext").
+   * confirming a value mapping (ADR-0024).
    */
   long countByLibraryValueId(UUID libraryValueId);
 
@@ -110,8 +110,8 @@ public interface DocumentMetadataValueRepository
 
   /**
    * Per field, origin and state over one library's documents in {@code status} - the Extraktions-
-   * güte (metadata-schema.md, "Messung und Abnahme", Punkt 3). The Füllstand count cannot answer
-   * this: it deliberately knows nothing about where a value came from.
+   * güte (ADR-0024). The Füllstand count cannot answer this: it deliberately knows nothing about
+   * where a value came from.
    */
   @Query(
       "select v.fieldKey as fieldKey, v.origin as origin, v.state as state,"
@@ -156,7 +156,7 @@ public interface DocumentMetadataValueRepository
   /**
    * Per field and state over a whole search scope at once - the Füllstand the filter interface
    * shows, built over exactly the libraries the asking person's next question would search. Never
-   * precomputed (metadata-schema.md, Rechte-Invariante).
+   * precomputed (ADR-0024, Rechte-Invariante).
    */
   @Query(
       "select v.fieldKey as fieldKey, v.state as state, count(v) as documentCount"

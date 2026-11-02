@@ -81,8 +81,7 @@ import org.testcontainers.utility.DockerImageName;
  * then runs every case from {@code eval/golden/comic-characters.json} directly against {@link
  * VectorStore#similaritySearch}. No LLM — retrieval-only, per ADR-0011 decision 3.
  *
- * <p><b>Two measurement paths</b> (docs/features/retrieval-benchmark.md §1), on the same index, in
- * this order:
+ * <p><b>Two measurement paths</b> (ADR-0012), on the same index, in this order:
  *
  * <ol>
  *   <li>the <b>raw-vector path</b> described above — unchanged in every observable way, still the
@@ -333,7 +332,7 @@ class RetrievalEvaluationHarnessTest {
     // drawn with decomposition off, because the shipped decomposition-on configuration costs one
     // chat call per query and, under the Mehrfachlauf-Regel, three runs of the whole pipeline path
     // — more than the nightly budget carries (see EvalQueryDecomposition and
-    // docs/features/retrieval-benchmark.md, "Offene Punkte" 3). Every other query parameter stays
+    // ADR-0012). Every other query parameter stays
     // at its production default and is read from the running context.
     registry.add(
         "opaa.query.query-decomposition-enabled", EvalQueryDecomposition::requestedForThisRun);
@@ -920,7 +919,7 @@ class RetrievalEvaluationHarnessTest {
         ExplanationDump.fromSystemProperty(() -> VectorStoreChunkKeys.fromStore(jdbcTemplate)),
         log);
 
-    // 7. Variant comparison (docs/features/retrieval-benchmark.md §2): an opt-in step,
+    // 7. Variant comparison (ADR-0012): an opt-in step,
     //    off by default so a normal evaluateRetrieval/checkRetrievalBaseline run is unaffected —
     //    see eval/variants/README.md for how to opt in and how to point at a different comparison
     //    file without any code change (issue #1041 acceptance criteria). Guarded like step 6 (see

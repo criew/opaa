@@ -711,7 +711,7 @@ components:
     InstallationAnswers:
       type: object
       description: >
-        All values of the answer file in one request (docs/features/installation-and-settings.md).
+        All values of the answer file in one request (ADR-0060).
         Over this API the secrets travel in the body, as in the single steps; a reference to a file
         on the backend (passwordFile, apiKeyFile) is accepted only in the file read at start-up, so
         that the API cannot read files of the backend. chatModel, embeddingModel, rerankModel, mail

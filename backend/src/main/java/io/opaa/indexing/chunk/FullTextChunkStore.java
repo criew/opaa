@@ -67,11 +67,11 @@ public class FullTextChunkStore {
    * make {@code setweight} a no-op; {@code ON CONFLICT DO UPDATE} brings an older row up to date.
    *
    * <p>Indexes the chunk's {@code EMBED} form, not its raw text: the Kontextpraefix goes into
-   * embedding <b>and</b> full-text index (metadata-schema.md, Wirkstelle 2), and reading it off the
-   * same formatter the embedding uses is what keeps the two from drifting apart. A chunk still
-   * carrying Spring AI's default formatter is indexed by its raw text instead - that formatter
-   * would spell every metadata key into {@code content_tsv}, and a caller who forgot to set one
-   * must not silently poison the lexical index.
+   * embedding <b>and</b> full-text index (ADR-0024), and reading it off the same formatter the
+   * embedding uses is what keeps the two from drifting apart. A chunk still carrying Spring AI's
+   * default formatter is indexed by its raw text instead - that formatter would spell every
+   * metadata key into {@code content_tsv}, and a caller who forgot to set one must not silently
+   * poison the lexical index.
    */
   void indexChunks(List<org.springframework.ai.document.Document> chunks) {
     if (chunks.isEmpty()) {

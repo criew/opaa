@@ -6,10 +6,9 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * A declarative, gepaarte Variantenvergleich (docs/features/retrieval-benchmark.md §2): a named set
- * of {@link PipelineVariant}s, all measured against the same golden dataset and the same,
- * already-indexed corpus, with one of them designated the reference variant every other variant's
- * delta is computed against.
+ * A declarative, gepaarte Variantenvergleich (ADR-0012): a named set of {@link PipelineVariant}s,
+ * all measured against the same golden dataset and the same, already-indexed corpus, with one of
+ * them designated the reference variant every other variant's delta is computed against.
  *
  * <p><b>Deliberately no {@code @JsonIgnoreProperties(ignoreUnknown = true)}</b> — see {@link
  * PipelineVariant}'s Javadoc for why a typo in a hand-authored comparison file must fail the load

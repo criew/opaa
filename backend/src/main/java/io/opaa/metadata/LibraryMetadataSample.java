@@ -5,7 +5,7 @@ import java.util.UUID;
 
 /**
  * The Stichproben-Export of one library, ordered by document id so a repeat run examines the same
- * documents (metadata-schema.md, "Messung und Abnahme", Punkt 3).
+ * documents (ADR-0024).
  *
  * @param size the requested size; {@code documents} is shorter when the library holds fewer
  */

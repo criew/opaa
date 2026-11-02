@@ -8,17 +8,16 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Turns repeated pipeline runs into a {@link MultiRunSummary} (issue #1044,
- * docs/features/retrieval-benchmark.md §3). Called only through {@link MehrfachlaufRule}, which is
- * where the "once or three times" decision itself lives; kept as its own, Docker-free unit so the
- * aggregation math is exercised without a real pipeline (see {@code MultiRunAggregatorTest}).
+ * Turns repeated pipeline runs into a {@link MultiRunSummary} (ADR-0012). Called only through
+ * {@link MehrfachlaufRule}, which is where the "once or three times" decision itself lives; kept as
+ * its own, Docker-free unit so the aggregation math is exercised without a real pipeline (see
+ * {@code MultiRunAggregatorTest}).
  */
 final class MultiRunAggregator {
 
   /**
-   * "Solche Varianten laufen dreimal" (docs/features/retrieval-benchmark.md §3, "Was stattdessen
-   * gilt", 2.) — not a tunable, a specification decision. A different number is a specification
-   * change, not a configuration change.
+   * "Solche Varianten laufen dreimal" (ADR-0012, Entscheidung 42) — not a tunable, a specification
+   * decision. A different number is a specification change, not a configuration change.
    */
   static final int DECOMPOSITION_RUN_COUNT = 3;
 
@@ -120,15 +119,15 @@ final class MultiRunAggregator {
                         + caseId
                         + "' appears in one multi-run report but not another — every run of the"
                         + " same variant must evaluate the identical golden dataset"
-                        + " (docs/features/retrieval-benchmark.md, Abschnitt 2, \"gepaart"
+                        + " (ADR-0012, \"gepaart"
                         + " messen\")."));
   }
 
   /**
    * The run whose nDCG@20 is the median value — nDCG@20 is the finest-grained of the four metrics
-   * (docs/features/retrieval-benchmark.md, Teil 0), so it is the tie-breaking choice among the four
-   * possible "median run" candidates when the odd-length {@link #DECOMPOSITION_RUN_COUNT} runs
-   * don't already agree on which run is the middle one for every metric at once.
+   * (ADR-0012), so it is the tie-breaking choice among the four possible "median run" candidates
+   * when the odd-length {@link #DECOMPOSITION_RUN_COUNT} runs don't already agree on which run is
+   * the middle one for every metric at once.
    */
   private static int medianIndexByNdcg(List<Double> ndcgAt20) {
     List<Integer> indicesByValue = new ArrayList<>();

@@ -25,10 +25,10 @@ import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
 /**
- * The ODP pipeline (ingestion-pipelines.md, Teil 3, Punkt 2: eine Folie = ein Chunk) - the ODP
- * counterpart of {@link PptxDocumentFormat}, reading {@code content.xml} through the hardened SAX
- * parser {@link OdfPackage}, since POI never reads OpenDocument. Every {@code draw:page} with text
- * becomes one chunk, a {@code presentation:class} of {@code "title"} its leading line and {@link
+ * The ODP pipeline (the format chapter of the Handbuch) - the ODP counterpart of {@link
+ * PptxDocumentFormat}, reading {@code content.xml} through the hardened SAX parser {@link
+ * OdfPackage}, since POI never reads OpenDocument. Every {@code draw:page} with text becomes one
+ * chunk, a {@code presentation:class} of {@code "title"} its leading line and {@link
  * ChunkMetadataKeys#LOCATION_METADATA_KEY location}, notes a final labeled paragraph.
  *
  * <p>{@code styles.xml}'s master page text becomes one deduplicated leading chunk (see {@link

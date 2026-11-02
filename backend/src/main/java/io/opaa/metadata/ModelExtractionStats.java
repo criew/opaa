@@ -4,10 +4,9 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * The Zählwerk of the model-backed extraction of one library (metadata-schema.md, "Die Zahl der
- * Extraktionsaufrufe wird je Bibliothek geführt"). Without it, the only feedback about the cost of
- * this capability is the model provider's invoice - and the only feedback about the threshold is
- * the absence of values nobody can explain.
+ * The Zählwerk of the model-backed extraction of one library (ADR-0026). Without it, the only
+ * feedback about the cost of this capability is the model provider's invoice - and the only
+ * feedback about the threshold is the absence of values nobody can explain.
  */
 public record ModelExtractionStats(
     UUID libraryId,

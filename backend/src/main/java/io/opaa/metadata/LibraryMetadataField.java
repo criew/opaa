@@ -11,11 +11,11 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * One field a library defines beside the built-in core fields (metadata-schema.md Teil II (b)): its
- * stable key, German label, type and the Wirkstellen it serves. The Aufnahmeregel is an invariant
- * of this entity and of the table beneath it - a field that serves neither the filter nor the
- * Kontextpräfix does not exist. Every set value of a field travels with a Beleg to external AI
- * tools, in {@link #getSortOrder()} order ({@link CitationMetadataReader}).
+ * One field a library defines beside the built-in core fields (ADR-0024): its stable key, German
+ * label, type and the Wirkstellen it serves. The Aufnahmeregel is an invariant of this entity and
+ * of the table beneath it - a field that serves neither the filter nor the Kontextpräfix does not
+ * exist. Every set value of a field travels with a Beleg to external AI tools, in {@link
+ * #getSortOrder()} order ({@link CitationMetadataReader}).
  */
 @Entity
 @Table(name = "library_metadata_fields")

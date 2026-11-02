@@ -17,12 +17,12 @@ paths:
       operationId: getLibraryMetadataMaintenance
       tags: [library-metadata]
       summary: >
-        The Pflege-Anker of a library (metadata-schema.md "Der Pflege-Anker"): per core
+        The Pflege-Anker of a library (ADR-0024): per core
         field, how many of the library's indexed documents have no value - absolute and as a share
         of the bestand. Only the empty state counts; a field marked "kein Wert ermittelbar" is
         done, which is what lets the number reach zero. The figures are counted on every request in
         the rights context of the asking person and never precomputed or cached
-        (metadata-schema.md, Rechte-Invariante) - reading needs VIEWER on the library, correcting a
+        (ADR-0024) - reading needs VIEWER on the library, correcting a
         value needs EDITOR. GET
         /api/v1/libraries/{libraryId}/documents?missingMetadataField=... lists exactly the counted
         documents. A library of another organization or one the caller holds no right on is absent
@@ -59,7 +59,7 @@ paths:
       tags: [library-metadata]
       summary: >
         The core metadata fields of one document with the provenance of every value
-        (docs/features/metadata-schema.md, "Jeder Wert trägt seine Herkunft"). Every core
+        (ADR-0024). Every core
         field is listed, an empty one with value null. The values come from the document's
         content, so reading them needs the content right (VIEWER or above by a grant or the
         organization-wide release): a system administrator who reaches the library only through
@@ -104,8 +104,7 @@ paths:
       operationId: setDocumentMetadataValue
       tags: [library-metadata]
       summary: >
-        Set or change one core field of a document by hand (metadata-schema.md "Manuelle
-        Korrektur ist Teil des ersten Schnitts"). The stored value carries origin MANUAL, the
+        Set or change one core field of a document by hand (ADR-0024). The stored value carries origin MANUAL, the
         calling person as actor and the time of the call; no automatic extraction ever overwrites
         it afterwards. The filterable keys on the document's chunks are rewritten in the same
         transaction, without re-embedding. Requires the right to edit the library's documents
@@ -169,7 +168,7 @@ paths:
       operationId: bulkSetDocumentMetadata
       tags: [library-metadata]
       summary: >
-        Set one field to one value on a chosen set of this library's documents (metadata-schema.md "Sammelzuweisung auf einer Auswahl"). Same right and same validation as
+        Set one field to one value on a chosen set of this library's documents (ADR-0024). Same right and same validation as
         the single-document PUT; every document gets its own MANUAL value, its own chunk rewrite
         and its own audit event with old and new value - the events of one call share a
         correlationRef, returned in the response. An id that is not a document of this library
@@ -204,7 +203,7 @@ paths:
         The controlled Dokumentart vocabulary (ADR-0024, Entscheidung 3) in display order - the
         choice list a client offers when a person sets the field. Schema, not an aggregate over
         documents: the list exists independently of any document and is visible to every
-        authenticated user (metadata-schema.md, Rechte-Invariante: "Die konfigurierte Werteliste
+        authenticated user (ADR-0024: "Die konfigurierte Werteliste
         ... ist von dieser Regel ausgenommen").
       responses:
         "200":
@@ -227,8 +226,7 @@ paths:
       operationId: getLibraryMetadataExtractionSettings
       tags: [library-metadata]
       summary: >
-        The two model-backed extraction switches of a library (metadata-schema.md "Die
-        modellgestützte Extraktion im Betrieb"), both off by default, together with the chat role
+        The two model-backed extraction switches of a library (ADR-0026), both off by default, together with the chat role
         the extraction would use - Basis-Adresse and Modell-Kennung, never an access key. The
         endpoint the Datenschutzhinweis at the switch is built from: with an externally operated
         model, every ingested document leaves the house without a person triggering it. Requires
@@ -283,12 +281,11 @@ paths:
       operationId: getLibraryMetadataQuality
       tags: [library-metadata]
       summary: >
-        The Extraktionsgüte of a library (metadata-schema.md "Messung und Abnahme", Punkt
-        3): per field the share of deterministically filled, model-filled, manually set, empty and
+        The Extraktionsgüte of a library (ADR-0024): per field the share of deterministically filled, model-filled, manually set, empty and
         "kein Wert ermittelbar" documents, plus the Zählwerk of the model-backed extraction. Without
         it, a weak filter result cannot be told apart from a weak extraction. Counted on every
         request in the rights context of the asking person and never precomputed or cached
-        (metadata-schema.md, Rechte-Invariante); reading needs VIEWER on the library.
+        (ADR-0024); reading needs VIEWER on the library.
       responses:
         "200":
           description: The extraction quality per field
@@ -354,7 +351,7 @@ paths:
       operationId: listLibraryMetadataFields
       tags: [library-metadata]
       summary: >
-        The library's own metadata fields with their configured value lists (metadata-schema.md Teil II (b)). Schema, not an aggregate over documents: the list exists
+        The library's own metadata fields with their configured value lists (ADR-0024). Schema, not an aggregate over documents: the list exists
         whether or not a document carries a value and is readable by everyone who may use the
         library (VIEWER or above) - which is exactly why a value list must not carry
         schutzbedürftige Bezeichnungen. A library with no own fields is the normal case and
@@ -539,8 +536,7 @@ paths:
       operationId: addLibraryMetadataFieldValue
       tags: [library-metadata]
       summary: >
-        Adds one entry to a SELECT field's value list (metadata-schema.md "Kontrolliertes
-        Vokabular statt Freitext"). Extending a list is always possible, has no Rückwirkung on any
+        Adds one entry to a SELECT field's value list (ADR-0024). Extending a list is always possible, has no Rückwirkung on any
         stored value and needs no Nachlauf - unlike removing an entry. Requires the management
         right; a field that is not a SELECT field and a code already in the list are rejected.
       requestBody:
@@ -635,7 +631,7 @@ paths:
       tags: [library-metadata]
       summary: >
         How many documents carry this value - the number that stands before the confirmation of a
-        mapping (metadata-schema.md: "Die Zahl der betroffenen Dokumente steht vor der Bestätigung
+        mapping (ADR-0024: "Die Zahl der betroffenen Dokumente steht vor der Bestätigung
         fest"). Readable with VIEWER, since it is the number a confirmation dialog shows; like
         the change impact it is a cost of the schema maintenance and therefore also open to the
         system administration, which manages every library.
@@ -675,7 +671,7 @@ paths:
       tags: [library-metadata]
       summary: >
         Removes a value from the list together with the confirmed mapping of every document that
-        carries it (metadata-schema.md "Kontrolliertes Vokabular statt Freitext"):
+        carries it (ADR-0024):
         onto another value of the same list, or - with targetCode null - onto "leer". There is no
         way to remove a value without a mapping, which is what makes the state "Dokument trägt
         einen Wert, den es im Schema nicht mehr gibt" unreachable; the database enforces the same
@@ -726,8 +722,7 @@ paths:
       operationId: runLibraryMetadataSchemaChanges
       tags: [library-metadata]
       summary: >
-        One Charge of the library's pending schema changes (metadata-schema.md "Nachlauf im
-        Betrieb"): the documents that still carry a retired list value or a value of a retired
+        One Charge of the library's pending schema changes (ADR-0024): the documents that still carry a retired list value or a value of a retired
         field are rewritten, each in its own transaction with its own audit event, and a change
         whose last document is done removes its list entry or its field. Resumable and idempotent
         per document - a Charge over documents already rewritten does nothing - and pausing is not
@@ -789,7 +784,7 @@ paths:
       operationId: getMetadataChangeImpact
       tags: [library-metadata]
       summary: >
-        The Folgekosten of a planned schema change before it is saved (metadata-schema.md "Der Reindex-Preis, ehrlich ausgewiesen"): affected documents and
+        The Folgekosten of a planned schema change before it is saved (ADR-0026): affected documents and
         chunks, the resulting number of embedding calls and the expected runtime. Concrete
         numbers, not a general warning. Requires the management right at the library.
       responses:
@@ -848,8 +843,7 @@ components:
     MetadataOrigin:
       type: string
       description: >-
-        Where a document metadata value came from (docs/features/metadata-schema.md, "Jeder Wert
-        trägt seine Herkunft"): DETERMINISTIC from a parser/regex rule, DERIVED from a model call,
+        Where a document metadata value came from (ADR-0024): DETERMINISTIC from a parser/regex rule, DERIVED from a model call,
         MANUAL set by a person. A client marks DERIVED values as such wherever the value orders an
         answer's evidence.
       enum: [DETERMINISTIC, DERIVED, MANUAL]
@@ -909,8 +903,7 @@ components:
     MetadataFieldState:
       type: string
       description: >-
-        The three states a core field of a document can be in (metadata-schema.md "Kein Wert
-        ermittelbar ist ein dritter Zustand"): EMPTY (not yet established - the open rest the
+        The three states a core field of a document can be in (ADR-0024): EMPTY (not yet established - the open rest the
         Pflege-Anker counts), SET (a value is present) and NOT_DETERMINABLE (a person established
         there is none). NOT_DETERMINABLE behaves like EMPTY for filters and the Beleg-Anzeige, but
         is done, not open.
@@ -920,7 +913,7 @@ components:
       type: object
       required: [fieldKey, label, state]
       description: >-
-        One core field of a document with everything metadata-schema.md demands a value to carry
+        One core field of a document with everything ADR-0024 demands a value to carry
         ("Jeder Wert trägt seine Herkunft"). An empty field has value, displayValue and origin
         null; so does a NOT_DETERMINABLE one, which state tells apart from it.
       properties:
@@ -1049,8 +1042,7 @@ components:
     MetadataFieldMaintenanceResponse:
       type: object
       description: >-
-        The Pflege-Anker of one core field in one library (metadata-schema.md "Der
-        Pflege-Anker"): how many of the library's indexed documents still have no value for it -
+        The Pflege-Anker of one core field in one library (ADR-0024): how many of the library's indexed documents still have no value for it -
         absolute and as a share, both side by side, because "120 ohne Wert" means something
         different at 130 than at 12.000 documents. documentsWithoutValue counts only the empty
         state: a field marked "kein Wert ermittelbar" is done, which is what lets the number reach
@@ -1098,7 +1090,7 @@ components:
       description: >-
         The Pflege-Anker of one library, one entry per core field in schema order. Built at
         query time in the rights context of the asking person and never precomputed or cached
-        (metadata-schema.md, Rechte-Invariante).
+        (ADR-0024).
       required: [libraryId, totalDocuments, fields]
       properties:
         libraryId:
@@ -1176,8 +1168,7 @@ components:
     MetadataModelExtractionStatsResponse:
       type: object
       description: >-
-        The Zählwerk of the model-backed extraction of one library (metadata-schema.md "Die
-        Zahl der Extraktionsaufrufe wird je Bibliothek geführt"). Without it, the only feedback about
+        The Zählwerk of the model-backed extraction of one library (ADR-0026). Without it, the only feedback about
         the cost of this capability is the model provider's invoice.
       required:
         [
@@ -1282,7 +1273,7 @@ components:
       description: >-
         The extraction quality of one library, one entry per field in schema order, plus the
         Zählwerk of the model-backed extraction. Built at query time in the rights context
-        of the asking person and never cached (metadata-schema.md, Rechte-Invariante).
+        of the asking person and never cached (ADR-0024).
       required:
         [
           libraryId,
@@ -1390,8 +1381,7 @@ components:
     LibraryMetadataFieldType:
       type: string
       description: >-
-        The type of a library metadata field (docs/features/metadata-schema.md, Teil II (b)
-        "Kontrolliertes Vokabular statt Freitext"): SELECT - a choice from the field's own value
+        The type of a library metadata field (ADR-0024): SELECT - a choice from the field's own value
         list; DATE - a year or date with the same precision semantics as the Kernfeld Datum/Stand;
         PATTERN - an identifier checked against the regular expression the field definition
         carries. There is deliberately no free-text type: free text is a keyword with the
@@ -1655,7 +1645,7 @@ components:
     MetadataChangeKind:
       type: string
       description: >-
-        The planned schema change whose Folgekosten are being asked for (metadata-schema.md, Kostentabelle): FIELD_ADDED - a new field is defined, which no document
+        The planned schema change whose Folgekosten are being asked for (ADR-0026): FIELD_ADDED - a new field is defined, which no document
         carries a value for yet; CONTEXT_PREFIX_ENABLED / CONTEXT_PREFIX_DISABLED - the
         Kontextpraefix-Wirkstelle of the field is switched on or off; FIELD_REMOVED - the field is
         deleted with everything hanging on it; VALUE_REMOVED - a value of the list is removed with
@@ -1719,7 +1709,7 @@ components:
           type: boolean
           description: >-
             Whether the change makes re-embedding necessary at all. False for a pure filter or
-            Beleg field and for extending a value list - the two rows of the Kostentabelle that
+            Beleg field and for extending a value list - the two change kinds that
             cost nothing.
         rateSource:
           $ref: "#/components/schemas/EmbeddingRateSource"

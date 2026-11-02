@@ -52,9 +52,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * The Füllstand of the filter interface is built in the rights context of the asking person (#1070,
- * metadata-schema.md Rechte-Invariante): two persons with different readable libraries see
- * different numbers and different value lists over the same bestand, and the per-person cache is
- * discarded on every rights change - a grant, a group membership - through the real write paths.
+ * ADR-0024 Rechte-Invariante): two persons with different readable libraries see different numbers
+ * and different value lists over the same bestand, and the per-person cache is discarded on every
+ * rights change - a grant, a group membership - through the real write paths.
  */
 @OpaaIntegrationTest
 class MetadataFilterOptionsServiceIntegrationTest {

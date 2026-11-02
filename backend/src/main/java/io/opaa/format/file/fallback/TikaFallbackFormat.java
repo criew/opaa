@@ -18,12 +18,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 
 /**
- * The universal fallback pipeline (docs/features/ingestion-pipelines.md, Teil 1): Tika reader plus
- * the token splitter with the globally configured {@code opaa.indexing.chunk-size}/{@code
- * -overlap}. It claims no format ({@link #handledFormats()} is empty) and handles everything no
- * specialized pipeline claimed.
+ * The universal fallback pipeline (the format chapter of the Handbuch): Tika reader plus the token
+ * splitter with the globally configured {@code opaa.indexing.chunk-size}/{@code -overlap}. It
+ * claims no format ({@link #handledFormats()} is empty) and handles everything no specialized
+ * pipeline claimed.
  *
- * <p>Its chunk size is <b>gesetzt, nicht gemessen</b> (ingestion-pipelines.md, "Chunk-Größen"): the
+ * <p>Its chunk size is <b>gesetzt, nicht gemessen</b> (the format chapter of the Handbuch): the
  * 1000/100-token default {@code ChunkingService} applies globally, not a value measured against a
  * verwaltungs-corpus.
  */

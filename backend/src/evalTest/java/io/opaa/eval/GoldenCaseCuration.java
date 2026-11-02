@@ -13,9 +13,9 @@ import java.util.Set;
 import java.util.TreeMap;
 
 /**
- * The curation rules a golden dataset with the new case classes must satisfy
- * (docs/features/retrieval-benchmark.md §5) — checked Docker-free, so a hand-edited dataset fails
- * in {@code evalUnitTest} rather than an hour into a Testcontainers run.
+ * The curation rules a golden dataset with the new case classes must satisfy (ADR-0012) — checked
+ * Docker-free, so a hand-edited dataset fails in {@code evalUnitTest} rather than an hour into a
+ * Testcontainers run.
  *
  * <p>The rules are the specification's, not this class's invention:
  *
@@ -45,7 +45,7 @@ import java.util.TreeMap;
  */
 public final class GoldenCaseCuration {
 
-  /** docs/features/retrieval-benchmark.md §5, "Gemeinsame Regeln". */
+  /** ADR-0012. */
   public static final int MINIMUM_CASES_PER_CLASS = 8;
 
   /**
@@ -69,7 +69,7 @@ public final class GoldenCaseCuration {
 
   /**
    * Fixed start of the reason of a solved path state whose hit is not attributable to the mechanism
-   * its case class measures (docs/features/retrieval-benchmark.md §5).
+   * its case class measures (ADR-0012).
    */
   public static final String WITHOUT_MECHANISM_PREFIX = "Ohne geprüften Mechanismus: ";
 
@@ -80,10 +80,7 @@ public final class GoldenCaseCuration {
           + WITHOUT_MECHANISM_PREFIX.strip()
           + "' is allowed only as the exact start of a solved state's reason";
 
-  /**
-   * The five case classes of docs/features/retrieval-benchmark.md §5, in the order the
-   * specification introduces them.
-   */
+  /** The five case classes of ADR-0012, in the order the specification introduces them. */
   public static final List<String> CASE_CLASSES =
       List.of(
           "literal_term_weak_embedding",
@@ -93,10 +90,9 @@ public final class GoldenCaseCuration {
           "metadata_filter");
 
   /**
-   * The decision on docs/features/retrieval-benchmark.md's open point 4 ("{@code answer_span} bei
-   * Fallklassen mit mehreren Zieldokumenten je Dokument oder je Fall"), taken in issue #1043 and
-   * recorded in ADR-0012, Entscheidung 21: <b>per case, and only where the case has exactly one
-   * expected document.</b>
+   * The decision on ("{@code answer_span} bei Fallklassen mit mehreren Zieldokumenten je Dokument
+   * oder je Fall"), taken in issue #1043 and recorded in ADR-0012, Entscheidung 21: <b>per case,
+   * and only where the case has exactly one expected document.</b>
    *
    * <p>A single span on a case whose answer is spread over two documents would measure one half of
    * that answer and report it as the case's chunk-level result — a case the document-level metrics
@@ -104,9 +100,9 @@ public final class GoldenCaseCuration {
    * is the other consistent option, but it is a new metric (an aggregate over documents within a
    * case), needs its own definition of "hit" and a pipeline/raw-vector contract version bump, and
    * no measurement needs it today: the chunk-level family exists for chunking comparisons
-   * (docs/features/retrieval-benchmark.md §2), which single-document cases already serve. The rule
-   * matches what {@code city-landmarks} already does in practice (no {@code answer_span} on {@code
-   * multi_city}/{@code multi_topic}); this class turns that practice into a checked rule.
+   * (ADR-0012), which single-document cases already serve. The rule matches what {@code
+   * city-landmarks} already does in practice (no {@code answer_span} on {@code multi_city}/{@code
+   * multi_topic}); this class turns that practice into a checked rule.
    */
   public static final String SINGLE_DOCUMENT_ANSWER_SPAN_RULE =
       "answer_span is defined per case and only for cases with exactly one expected document "

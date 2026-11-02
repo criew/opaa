@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Reads an EML message's Kopfdaten, body and attachments via {@code org.apache.james.mime4j.dom}
- * (ingestion-pipelines.md, Teil 3, Punkt 5) - the split Tika's own RFC822 parser does not make. The
+ * (the format chapter of the Handbuch) - the split Tika's own RFC822 parser does not make. The
  * first {@code text/plain} part is the body, a lone {@code text/html} alternative only if none
  * exists; every other leaf part is an attachment, and a nested {@code message/rfc822} is
  * re-serialized and read again one recursion level deeper.

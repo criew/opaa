@@ -30,13 +30,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Manual correction of a document's schema fields (metadata-schema.md "Manuelle Korrektur ist Teil
- * des ersten Schnitts"): rights, validation and the audit event around {@link
- * DocumentMetadataService}'s row writes. Whoever may edit the library's documents ({@link
- * AssetRole#EDITOR}) may correct their metadata - no management right; changing the <em>schema</em>
- * needs it and lives in {@link LibraryMetadataFieldService}. Every change writes one {@code
- * DOCUMENT_METADATA_CHANGED} event per document and field with old and new value, so the manual
- * values of a library can be rebuilt from the audit log after a restore.
+ * Manual correction of a document's schema fields (ADR-0024): rights, validation and the audit
+ * event around {@link DocumentMetadataService}'s row writes. Whoever may edit the library's
+ * documents ({@link AssetRole#EDITOR}) may correct their metadata - no management right; changing
+ * the <em>schema</em> needs it and lives in {@link LibraryMetadataFieldService}. Every change
+ * writes one {@code DOCUMENT_METADATA_CHANGED} event per document and field with old and new value,
+ * so the manual values of a library can be rebuilt from the audit log after a restore.
  */
 @Service
 public class DocumentMetadataCorrectionService {
@@ -82,7 +81,7 @@ public class DocumentMetadataCorrectionService {
 
   /**
    * The Dokumentart vocabulary in display order - schema, not an aggregate over documents, hence
-   * visible to every authenticated person (metadata-schema.md, Rechte-Invariante).
+   * visible to every authenticated person (ADR-0024, Rechte-Invariante).
    */
   @Transactional(readOnly = true)
   public List<DocumentTypeVocabularyEntry> vocabulary() {

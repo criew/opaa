@@ -18,7 +18,7 @@ Registerbruch zur Bürgersprache — lässt sich nicht aus einem offen lizenzier
 Rohdatensatz mit der hier benötigten Fallklassen-Struktur (wörtlich auffindbare, aber
 embeddingschwache Passagen; konfusionsfähige Kennungen; Fassungspaare; eine
 Multi-Hop-Vertretungskette) gewinnen — sie wird deshalb konstruiert, nicht kuratiert (siehe
-`docs/features/retrieval-benchmark.md`, Abschnitt 4, „Enthält die Fehlerbilder, die gemessen
+`docs/decisions/0012-messvertrag-retrieval-harness.md`, „Enthält die Fehlerbilder, die gemessen
 werden sollen, konstruktiv statt zufällig"). `SOURCE.md` folgt dennoch derselben Konvention wie
 bei den beiden anderen Domänen, damit die Herkunft jeder Domäne an derselben Stelle nachschlagbar
 bleibt — die Antwort ist hier "keine Fremdquelle", nicht "unbekannt".
@@ -47,7 +47,7 @@ sha256sum -c MANIFEST.sha256
 
 ## Dokumenttypen und Fallklassen-Bezug
 
-| Dokumentart (`dokumentart`) | Anzahl | Trägt vor allem Fallklasse (siehe `retrieval-benchmark.md`, Abschnitt 5) |
+| Dokumentart (`dokumentart`) | Anzahl | Trägt vor allem Fallklasse (siehe `docs/decisions/0012-messvertrag-retrieval-harness.md`) |
 |---|---|---|
 | `satzung` | 15 (10 Ämter, 5 davon als Fassungspaar 2023/2024) | (a) `literal_term_weak_embedding` — **nur die Kämmerei-Satzung** (`verwaltung-0038_verwaltungsgebuehrensatzung.md`) trägt § 3 „Gebührenbefreiung wegen Bedürftigkeit"; die übrigen 14 Satzungen haben an § 3 den thematisch nahen, aber begriffsfreien Konkurrenzparagraphen „Auskunftsrecht und Akteneinsicht" (`paragraph_auskunftsrecht`); (b) `exact_identifier` über § 3 vs. § 13; (c) `compound_word` über die Satzungstitel; (e) `metadata_filter` über die Fassungspaare |
 | `gebuehrenordnung` | 10 (ein Dokument je Amt) | (a) — nur die Kämmerei-Gebührenordnung nennt „Gebührenbefreiung wegen Bedürftigkeit"; (c); alle referenzieren generisch § 3/§ 13 der zugehörigen Satzung |
@@ -161,8 +161,7 @@ beschrieben.
 
 ## Overfitting-Risiko
 
-Siehe `docs/features/retrieval-benchmark.md`, Abschnitt 4, „Ehrliche Einschränkung:
-Benchmark-Overfitting" — die dortige Einschränkung gilt unverändert für diesen Korpus: Es gibt für
+Ehrliche Einschränkung (Benchmark-Overfitting): Es gibt für
 diese Domäne keine echten Nutzerfragen, die Golden-Fälle (Issue-Folge zu #1042) werden von
 denselben Personen erdacht, die Korpus und Pipeline bauen. Ein Verfahren, das auf dieser Domäne
 gewinnt, gewinnt nachweislich gegen die hier konstruierten Annahmen über Verwaltungsanfragen —

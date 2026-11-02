@@ -36,11 +36,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The selective re-index by pipeline version (ingestion-pipelines.md, Querschnittsregel (d)): every
- * chunk below version N of one pipeline, triggerable, resumable, with progress queryable per
- * library. Also the only repair path for a chunk whose {@code chunk_full_text} row is missing or
- * older than {@link FullTextChunkStore#CURRENT_TSV_VERSION}, at the price of re-embedding, and for
- * a chunk cut under another chunking configuration than its pipeline's current one ({@link
+ * The selective re-index by pipeline version (the format chapter of the Handbuch): every chunk
+ * below version N of one pipeline, triggerable, resumable, with progress queryable per library.
+ * Also the only repair path for a chunk whose {@code chunk_full_text} row is missing or older than
+ * {@link FullTextChunkStore#CURRENT_TSV_VERSION}, at the price of re-embedding, and for a chunk cut
+ * under another chunking configuration than its pipeline's current one ({@link
  * DocumentFormat#cutUnderOtherConfiguration}), such as a changed target size.
  *
  * <p>Resumable by construction - the remaining work is re-derived from the chunk metadata - and
@@ -377,7 +377,7 @@ public class PipelineReindexService {
   /**
    * Re-runs the current pipeline over {@code document}'s file {@code file} and replaces its chunks
    * under the same row id, so citations survive. A document that cannot be re-chunked keeps its
-   * chunks and its {@code INDEXED} row (ingestion-pipelines.md, "Übergabepunkt") - that is {@link
+   * chunks and its {@code INDEXED} row (the format chapter of the Handbuch) - that is {@link
    * DocumentIngest.Builder#reindex}'s contract, and a failure is reported as "not re-indexed".
    *
    * @return whether the document was actually re-indexed

@@ -10,11 +10,10 @@ package io.opaa.eval;
  * worse than no report, so it is dropped rather than published with a caveat.
  *
  * @param report for a single-run variant, that run's report; for a variant with an LLM component
- *     (docs/features/retrieval-benchmark.md §3), the <b>median run</b> among the repeated runs
- *     {@link #multiRun} summarizes — see {@link MultiRunSummary}'s Javadoc for why the median run,
- *     not an average, is what every other field of this outcome (worst queries, per-case deltas,
- *     run configuration) is drawn from. {@code null} exactly when {@link #executed} is {@code
- *     false}.
+ *     (ADR-0012), the <b>median run</b> among the repeated runs {@link #multiRun} summarizes — see
+ *     {@link MultiRunSummary}'s Javadoc for why the median run, not an average, is what every other
+ *     field of this outcome (worst queries, per-case deltas, run configuration) is drawn from.
+ *     {@code null} exactly when {@link #executed} is {@code false}.
  * @param multiRun {@code null} for a skipped variant and for a variant without an LLM component (it
  *     ran exactly once, nothing to aggregate); the aggregated min/median/max spread and the
  *     decomposition-deviation count otherwise.

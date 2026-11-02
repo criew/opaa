@@ -4,8 +4,8 @@ import io.opaa.format.ChunkFormatMetadata;
 import java.util.UUID;
 
 /**
- * The pipeline-version fill state of one knowledge library (docs/features/ingestion-pipelines.md,
- * cross-cutting rule (d): resumable, with progress queryable per library).
+ * The pipeline-version fill state of one knowledge library (resumable, with progress queryable per
+ * library).
  *
  * @param totalChunks every chunk of this library in the vector store
  * @param currentVersionChunks chunks produced by the current version of the pipeline named on them,

@@ -1,7 +1,6 @@
 import type { DatePrecision, MetadataOrigin } from '@/shared/api/types'
 
-// Provenance of a document metadata value (metadata-schema.md, "Jeder Wert trägt seine
-// Herkunft") - a DERIVED value is always marked as such in the UI.
+// Provenance of a document metadata value (ADR-0024) - a DERIVED value is always marked as such in the UI.
 const metadataOriginLabels: Record<MetadataOrigin, string> = {
   DETERMINISTIC: 'automatisch ermittelt',
   DERIVED: 'abgeleitet',

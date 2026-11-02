@@ -15,8 +15,7 @@ import org.springframework.ai.document.Document;
 
 /**
  * Cuts a flat sequence of heading/paragraph events into chunks along the heading path in effect at
- * each cut (docs/features/ingestion-pipelines.md, Teil 2: "Markdown, DOCX ... |
- * Überschriftenabschnitt").
+ * each cut (see the format chapter of the Handbuch).
  *
  * <p>No text is ever dropped for size: a block beyond the {@linkplain #softChunkCharLimit() target
  * size} is cut into parts by {@link BoundarySplitter}, each part a chunk of its own under the same
@@ -35,7 +34,7 @@ public final class HeadingSectionSplitter {
 
   /**
    * Default target size in characters a section's body text is grouped into before another chunk
-   * starts. <b>Gesetzt, nicht gemessen</b> (ingestion-pipelines.md, "Chunk-Größen").
+   * starts. <b>Gesetzt, nicht gemessen</b> (the format chapter of the Handbuch).
    */
   public static final int DEFAULT_SOFT_CHUNK_CHAR_LIMIT = 4_000;
 
@@ -56,9 +55,9 @@ public final class HeadingSectionSplitter {
 
   /**
    * A section whose own title and body together stay below this many characters is a tiny chunk and
-   * combined with its tiny neighbours. <b>Gemessen</b> against the verwaltung domain
-   * (ingestion-pipelines.md, "Kleinstchunks"): at 500 a single § was no longer retrievable on its
-   * own. Absolute, not a share of the target size: it describes a single §, not the chunk.
+   * combined with its tiny neighbours. <b>Gemessen</b> against the verwaltung domain (the format
+   * chapter of the Handbuch): at 500 a single § was no longer retrievable on its own. Absolute, not
+   * a share of the target size: it describes a single §, not the chunk.
    */
   public static final int SMALL_SECTION_CHAR_LIMIT = 200;
 

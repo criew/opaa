@@ -9,7 +9,7 @@ import java.util.TreeMap;
 
 /**
  * Compares each case's committed state for one measurement path against what that path just
- * measured (docs/features/retrieval-benchmark.md §5, "Zustandsfelder").
+ * measured (ADR-0012).
  *
  * <p>The baseline diff answers "did the numbers move"; it cannot tell a known gap from a regression
  * and turns a {@code known_gap} case a new building block has solved into an unremarked
@@ -228,7 +228,7 @@ public final class ExpectedStateAudit {
                 + result.unexpectedlySolved()
                 + " — kein stillschweigender Baseline-Gewinn: "
                 + fieldsToMaintain(result.stateField(), "")
-                + " bewusst nachziehen (docs/features/retrieval-benchmark.md §5).\n");
+                + " bewusst nachziehen (ADR-0012).\n");
       }
       if (!result.unexpectedlyUnsolved().isEmpty()) {
         sb.append(
@@ -285,7 +285,7 @@ public final class ExpectedStateAudit {
                 + inlineCode(result.unexpectedlySolved())
                 + ". Kein stillschweigender Baseline-Gewinn — "
                 + fieldsToMaintain(result.stateField(), "`")
-                + " bewusst nachziehen (`docs/features/retrieval-benchmark.md` §5).\n\n");
+                + " bewusst nachziehen (ADR-0012).\n\n");
       }
       if (!result.unexpectedlyUnsolved().isEmpty()) {
         sb.append(

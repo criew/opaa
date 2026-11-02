@@ -11,12 +11,12 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * One running schema change of a library (metadata-schema.md, "Nachlauf im Betrieb"): a list value
- * being mapped onto another one or onto "leer", or a field being deleted. The row exists exactly
- * while the change runs and is what retires its subject: no document may be given a retired value
- * or a value of a retired field, while every document that already carries one keeps a value the
- * schema still lists - which is what makes "Dokument trägt einen Wert, den es im Schema nicht mehr
- * gibt" unreachable even during the run.
+ * One running schema change of a library (ADR-0024): a list value being mapped onto another one or
+ * onto "leer", or a field being deleted. The row exists exactly while the change runs and is what
+ * retires its subject: no document may be given a retired value or a value of a retired field,
+ * while every document that already carries one keeps a value the schema still lists - which is
+ * what makes "Dokument trägt einen Wert, den es im Schema nicht mehr gibt" unreachable even during
+ * the run.
  *
  * <p>The {@link #getCorrelationRef()} is drawn once, at the confirmation, so every audit event of
  * the change reads back from the audit log as one operation across all of its Chargen.

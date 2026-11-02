@@ -10,7 +10,7 @@ paths:
       tags: [indexing]
       summary: >
         The one-time inventory check for scan-PDF fallout (system admin only,
-        ingestion-pipelines.md Teil 3 Punkt 1 "Scan-Erkennung und Bestandsprüfung")
+        the format chapter of the Handbuch)
       description: >
         Every INDEXED document of the caller's own organization whose chunkCount is at or below
         chunkCountThreshold - the bestand a scan PDF could have silently landed in before ingest-time
@@ -26,8 +26,7 @@ paths:
           description: >
             Flags a document whose chunkCount is at or below this value. Default 0 - the unambiguous
             anomaly this issue's own bug produces. Raising it also catches "auffällig wenige" chunks,
-            a judgement call with no measured threshold (see ingestion-pipelines.md's "gesetzt, nicht
-            gemessen" rule for chunk sizes) - left to the caller rather than guessed here.
+            a judgement call with no measured threshold (see the format chapter of the Handbuch rule for chunk sizes) - left to the caller rather than guessed here.
           schema:
             type: integer
             minimum: 0
@@ -66,7 +65,7 @@ paths:
       operationId: getPipelineVersionStatus
       tags: [indexing]
       summary: >
-        Which ingestion pipeline versions the chunk bestand was produced with (system admin only, ingestion-pipelines.md Querschnittsregel (d))
+        Which ingestion pipeline versions the chunk bestand was produced with (system admin only, the format chapter of the Handbuch)
       description: >
         The registered pipelines with their current versions, plus the fill state per library of the
         caller's own organization: how many chunks were produced by the current version of the
@@ -137,8 +136,7 @@ paths:
       tags: [indexing]
       summary: >
         Re-extract the core metadata fields of one batch of a library's Altbestand from the
-        original files (system admin only, metadata-schema.md "Deterministischer
-        Bestandslauf")
+        original files (system admin only, ADR-0024)
       description: >
         Processes at most batchSize INDEXED documents of libraryId (which must belong to the
         caller's own organization and be no private library, otherwise 404) whose metadata_extraction_version is missing or
@@ -177,7 +175,7 @@ paths:
       tags: [indexing]
       summary: >
         Re-embed one batch of a library's documents under the current Kontextpräfix (system admin
-        only, metadata-schema.md "Nachlauf im Betrieb")
+        only, ADR-0024)
       description: >
         Processes at most batchSize INDEXED documents of libraryId (which must belong to the
         caller's own organization and be no private library, otherwise 404) whose context-prefix stamp was cleared - the
@@ -1103,7 +1101,7 @@ components:
         id:
           type: string
           description: >
-            The pipeline's stable identity, persisted on every chunk it produced (ingestion-pipelines.md Querschnittsregel (d)) - the value to pass as
+            The pipeline's stable identity, persisted on every chunk it produced (the format chapter of the Handbuch) - the value to pass as
             PipelineReindexRequest.pipelineId.
           example: tika-fallback
         currentVersion:

@@ -67,9 +67,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The selective re-index by pipeline version (ingestion-pipelines.md cross-cutting rule (d)): every
- * chunk below version N of one pipeline must be triggerable, resumable, and its progress queryable
- * per library.
+ * The selective re-index by pipeline version . Every chunk below version N of one pipeline must be
+ * triggerable, resumable, and its progress queryable per library.
  *
  * <p>Chunks are seeded directly through {@link VectorStore#add} without the pipeline metadata -
  * that is exactly the state of every chunk written before the abstraction existed, the corpus the
@@ -1022,7 +1021,7 @@ class PipelineReindexServiceIntegrationTest {
 
   @Test
   void aConfluencePageIsMarkedForItsNextRunAndLosesItsVersionMarker() {
-    // Querschnittsregel (d): a Confluence page has no local file to re-read, like an RSS
+    // A Confluence page has no local file to re-read, like an RSS
     // entry or a crawled file - so a pipeline version bump hands it to the next run, and clearing
     // the version marker is what makes the executor's pre-fetch check see "changed".
     Document document =

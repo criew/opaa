@@ -16,11 +16,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 /**
- * The self-disclosure reads only in the person's own context (docs/features/security-and-
- * compliance.md, "Nur für die Person selbst"): a diagnosis in a foreign rights context ("Sicht
- * als") is one call of {@code ForeignDiagnosticContextService}, not a state of the request, so the
- * guarantee is structural - nothing of the diagnosis reaches the self-disclosure, and no operation
- * of it takes a parameter naming a person.
+ * The self-disclosure reads only in the person's own context: a diagnosis in a foreign rights
+ * context ("Sicht als") is one call of {@code ForeignDiagnosticContextService}, not a state of the
+ * request, so the guarantee is structural - nothing of the diagnosis reaches the self-disclosure,
+ * and no operation of it takes a parameter naming a person.
  */
 class SelfDisclosureStructureTest {
 

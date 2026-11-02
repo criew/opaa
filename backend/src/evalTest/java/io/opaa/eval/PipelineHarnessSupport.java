@@ -31,11 +31,11 @@ import org.slf4j.Logger;
  * pipeline path costs a second pass of queries, never a second indexing run, and therefore measures
  * against provably the same index the raw-vector path just measured.
  *
- * <p><b>What is measured</b> (docs/features/retrieval-benchmark.md §1): the retrieval pipeline up
- * to the hit list — decomposition, one vector search per sub-question, MMR, Reciprocal Rank Fusion,
- * document completion. Answer generation (with citation validation and source mapping) is out of
- * scope: it is not retrieval and is not expressible in ranking metrics. Scope determination is out
- * of scope too — see {@link #SEARCH_SCOPE_NOTE}.
+ * <p><b>What is measured</b> (ADR-0012): the retrieval pipeline up to the hit list — decomposition,
+ * one vector search per sub-question, MMR, Reciprocal Rank Fusion, document completion. Answer
+ * generation (with citation validation and source mapping) is out of scope: it is not retrieval and
+ * is not expressible in ranking metrics. Scope determination is out of scope too — see {@link
+ * #SEARCH_SCOPE_NOTE}.
  *
  * <p><b>Production configuration, thresholds included.</b> Every parameter comes from the running
  * {@link QueryProperties}; unlike the raw-vector path (ADR-0012 decision 3), the similarity
@@ -54,7 +54,7 @@ public final class PipelineHarnessSupport {
   public static final String SEARCH_SCOPE_NOTE =
       "Fester, vollständiger Suchbereich: genau die eine Eval-Bibliothek, die den gesamten "
           + "verifizierten Korpus enthält. Die Rechtedurchsetzung aus Schritt 1 der Pipeline ist "
-          + "ausdrücklich nicht Messgegenstand (docs/features/retrieval-benchmark.md, Abschnitt 1).";
+          + "ausdrücklich nicht Messgegenstand (ADR-0012).";
 
   private static final String SIMILARITY_THRESHOLD_NOTE =
       "Die Produktionsschwelle wurde in jeder Suche dieses Laufs tatsächlich angewandt, nicht nur "
@@ -194,11 +194,11 @@ public final class PipelineHarnessSupport {
 
   /**
    * Runs the pipeline measurement path and returns its report, without writing or logging it — the
-   * half of {@link #runAndWriteGuarded} that a variant comparison (issue #1041,
-   * docs/features/retrieval-benchmark.md §2) reuses for its reference variant's self-check: the
-   * reference variant's own report (computed through {@link VariantRunner}, a second, independent
-   * call into this same measurement) must equal, field for field, what this method computes for the
-   * unmodified production configuration in the very same harness run.
+   * half of {@link #runAndWriteGuarded} that a variant comparison (ADR-0012) reuses for its
+   * reference variant's self-check: the reference variant's own report (computed through {@link
+   * VariantRunner}, a second, independent call into this same measurement) must equal, field for
+   * field, what this method computes for the unmodified production configuration in the very same
+   * harness run.
    *
    * <p>The report's fixed points are read from {@code contextFactory}'s own {@link QueryProperties}
    * - the parameter set every measured run actually carried, so the report can never describe a

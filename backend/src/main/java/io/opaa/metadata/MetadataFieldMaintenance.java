@@ -1,11 +1,11 @@
 package io.opaa.metadata;
 
 /**
- * The Pflege-Anker of one field in one library (metadata-schema.md "Der Pflege-Anker"): how many
- * indexed documents carry no row for the field at all - "leer", the open rest - beside the two
- * states that are done, {@code SET} and {@code NOT_DETERMINABLE}. Core fields and library fields
- * appear here alike; a library field's {@code fieldKey} carries its {@code lib:} namespace, so the
- * key is the same one every other operation on that field uses.
+ * The Pflege-Anker of one field in one library (ADR-0024): how many indexed documents carry no row
+ * for the field at all - "leer", the open rest - beside the two states that are done, {@code SET}
+ * and {@code NOT_DETERMINABLE}. Core fields and library fields appear here alike; a library field's
+ * {@code fieldKey} carries its {@code lib:} namespace, so the key is the same one every other
+ * operation on that field uses.
  *
  * <p>The counts themselves live in {@link MetadataFieldFill} - the one definition the
  * Zustandsübersicht shares.

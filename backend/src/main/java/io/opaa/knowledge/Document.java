@@ -162,10 +162,10 @@ public class Document {
   private Integer metadataExtractionVersion;
 
   /**
-   * The extraction version whose model-backed value extraction (metadata-schema.md, Schritt 2) last
-   * ran over this document, or {@code null} when it never did - the drain marker of the
-   * Bestandslauf for that capability, so switching it on hands the Altbestand to it exactly once.
-   * Written only through {@link DocumentRepository#updateModelExtractionVersion}.
+   * The extraction version whose model-backed value extraction (ADR-0026) last ran over this
+   * document, or {@code null} when it never did - the drain marker of the Bestandslauf for that
+   * capability, so switching it on hands the Altbestand to it exactly once. Written only through
+   * {@link DocumentRepository#updateModelExtractionVersion}.
    */
   @Column(name = "model_extraction_version", insertable = false, updatable = false)
   private Integer modelExtractionVersion;

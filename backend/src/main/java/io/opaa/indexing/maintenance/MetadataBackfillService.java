@@ -42,11 +42,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 /**
- * The deterministic core-metadata backfill over a library's Altbestand (metadata-schema.md,
- * "Deterministischer Bestandslauf"; ADR-0024): every {@code INDEXED} document whose {@code
- * metadata_extraction_version} is missing or below {@link CoreMetadataExtractor#EXTRACTION_VERSION}
- * is re-read from its original through {@link DocumentMetadataService#reextractFromFile} - no
- * re-chunking, no embedding, no model call.
+ * The deterministic core-metadata backfill over a library's Altbestand (ADR-0024): every {@code
+ * INDEXED} document whose {@code metadata_extraction_version} is missing or below {@link
+ * CoreMetadataExtractor#EXTRACTION_VERSION} is re-read from its original through {@link
+ * DocumentMetadataService#reextractFromFile} - no re-chunking, no embedding, no model call.
  *
  * <p>Resumable by construction, like {@link io.opaa.indexing.maintenance.PipelineReindexService}:
  * the remaining work is re-derived on every call, and an unadvanceable document is scanned past by

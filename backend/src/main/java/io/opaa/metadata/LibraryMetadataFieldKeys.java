@@ -32,7 +32,7 @@ public final class LibraryMetadataFieldKeys {
    * paths express "no value" as NOT IN over a <b>closed</b> value set, because the pgvector filter
    * converter knows no IS NULL; the value of a SELECT or PATTERN field is not a closed set at query
    * time, so the presence marker is - it has exactly one value, and its absence on a chunk is the
-   * Leerwert of the field (metadata-schema.md, "Leerwerte schliessen nicht aus").
+   * Leerwert of the field (ADR-0024).
    */
   public static final String PRESENCE_CHUNK_KEY_PREFIX = "lfs_";
 

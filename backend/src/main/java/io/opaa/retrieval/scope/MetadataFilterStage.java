@@ -20,11 +20,11 @@ import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.stereotype.Component;
 
 /**
- * The {@link RetrievalStageName#METADATA_FILTER} stage (metadata-schema.md Wirkstelle 1):
- * translates {@link RetrievalContext#metadataFilter()} once into the vector-path expression and
- * hands both forms on in the state, so {@link VectorSearchStage} and {@link FullTextSearchStage}
- * apply the identical condition inside their queries. It touches nothing {@link SearchScopeStage}
- * established: the permission filter stays the outer condition.
+ * The {@link RetrievalStageName#METADATA_FILTER} stage (ADR-0024): translates {@link
+ * RetrievalContext#metadataFilter()} once into the vector-path expression and hands both forms on
+ * in the state, so {@link VectorSearchStage} and {@link FullTextSearchStage} apply the identical
+ * condition inside their queries. It touches nothing {@link SearchScopeStage} established: the
+ * permission filter stays the outer condition.
  *
  * <p>The Dokumentart vocabulary is read once per run - never per sub-query or per path - because
  * both forms express "no value" as NOT IN over the complete value set (see {@link

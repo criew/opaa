@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-08
+Akzeptiert · zuletzt geändert 2026-11-02
 
 ## Kontext
 
@@ -13,8 +13,7 @@ Kontextpräfix, technische Feld- und Elementnamen). Drei Verbraucher: der Fülls
 (`FullTextIndexFillStateService`), die Reindex-Auswahl (`PipelineReindexService`) und der Suchpfad
 (`FullTextChunkSearch`), der bis #1346 nur Zeilen der aktuellen Fassung las. Damit war nach jedem
 Deployment einer Anhebung der gesamte Volltextindex für den lexikalischen Pfad unsichtbar, bis der
-Pipeline-Nachzug jede Bibliothek neu geschrieben hatte — im Widerspruch zur Zusage in
-[metadata-schema.md](../features/metadata-schema.md), „Nachlauf im Betrieb", dass die Suche während
+Pipeline-Nachzug jede Bibliothek neu geschrieben hatte — im Widerspruch zur Zusage, dass die Suche während
 des Nachlaufs verfügbar bleibt. Tragend: Je Chunk gibt es genau eine Zeile (Upsert auf `chunk_id`),
 der Versionsfilter dedupliziert also nichts; und der Rechtefilter (`library_id = ANY(?)`) ist
 versionsunabhängig.

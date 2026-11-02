@@ -23,12 +23,12 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * The per-person cache of {@link MetadataFilterOptions} the specification explicitly allows
- * (metadata-schema.md, Rechte-Invariante): keyed by the person <em>and</em> the search scope her
- * rights resolved to, so an entry can only ever be served for exactly the libraries it was built
- * over; discarded on every rights change that touches the person - a grant on a library, a
- * library's visibility, a group membership - through the same events and hooks the rights caches
- * themselves react to. Time-based expiry is the bound on staleness of the bestand itself (new
- * documents, corrected values), not the correctness mechanism for rights.
+ * (ADR-0024, Rechte-Invariante): keyed by the person <em>and</em> the search scope her rights
+ * resolved to, so an entry can only ever be served for exactly the libraries it was built over;
+ * discarded on every rights change that touches the person - a grant on a library, a library's
+ * visibility, a group membership - through the same events and hooks the rights caches themselves
+ * react to. Time-based expiry is the bound on staleness of the bestand itself (new documents,
+ * corrected values), not the correctness mechanism for rights.
  *
  * <p>Bound to the {@link InvalidationBus} (ADR-0053, Entscheidung 5): a rights change on any
  * instance empties it on every instance through the triggers of the rights tables, and the events

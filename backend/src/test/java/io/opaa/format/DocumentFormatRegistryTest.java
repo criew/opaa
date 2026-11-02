@@ -11,7 +11,7 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /**
- * The routing contract of {@link DocumentFormatRegistry} (ingestion-pipelines.md Teil 1): the
+ * The routing contract of {@link DocumentFormatRegistry} (the format chapter of the Handbuch): the
  * pipeline follows the <em>detected content</em>, the Markdown/Klartext special rule (content and
  * extension) still applies, and everything without its own pipeline keeps going through the Tika
  * fallback - which is what makes the abstraction verhaltensneutral for the existing bestand.

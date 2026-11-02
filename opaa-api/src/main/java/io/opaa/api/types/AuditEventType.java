@@ -290,21 +290,21 @@ public enum AuditEventType {
    */
   PERMISSION_TRANSFER_EXECUTED,
   /**
-   * A selective re-index of the chunk bestand by ingestion pipeline version was triggered
-   * (docs/features/ingestion-pipelines.md, cross-cutting rule (d)). Recorded per triggering call,
-   * not per document: the call is the administrative decision, the documents are its effect.
+   * A selective re-index of the chunk bestand by ingestion pipeline version was triggered. Recorded
+   * per triggering call, not per document: the call is the administrative decision, the documents
+   * are its effect.
    */
   INDEXING_PIPELINE_REINDEX_TRIGGERED,
   /**
-   * A deterministic core-metadata backfill over a library's Altbestand was triggered
-   * (docs/features/metadata-schema.md, "Deterministischer Bestandslauf"). Recorded per triggering
-   * call, not per document, mirroring {@link #INDEXING_PIPELINE_REINDEX_TRIGGERED}.
+   * A deterministic core-metadata backfill over a library's Altbestand was triggered (ADR-0024).
+   * Recorded per triggering call, not per document, mirroring {@link
+   * #INDEXING_PIPELINE_REINDEX_TRIGGERED}.
    */
   INDEXING_METADATA_BACKFILL_TRIGGERED,
   /**
    * A Nachlauf re-embedding a library's chunks under the current Kontextpraefix was triggered
-   * (docs/features/metadata-schema.md, "Nachlauf im Betrieb"). Recorded per triggering call, not
-   * per document, mirroring {@link #INDEXING_METADATA_BACKFILL_TRIGGERED}.
+   * (ADR-0024). Recorded per triggering call, not per document, mirroring {@link
+   * #INDEXING_METADATA_BACKFILL_TRIGGERED}.
    */
   INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED,
   /**
@@ -352,9 +352,8 @@ public enum AuditEventType {
    */
   MALWARE_DETECTED,
   /**
-   * A person set, changed or removed a core metadata value of a document by hand
-   * (docs/features/metadata-schema.md, "Manuelle Setzungen sind protokollpflichtig"). One entry per
-   * document and field, carrying the old and the new value - also for every document of a
+   * A person set, changed or removed a core metadata value of a document by hand (ADR-0024). One
+   * entry per document and field, carrying the old and the new value - also for every document of a
    * Sammelzuweisung, whose entries share a {@code correlationRef}. The object is the library the
    * document belongs to; the document itself is named in the payload, so every manual value of a
    * library can be read back through the object access path after a restore.

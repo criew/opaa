@@ -187,12 +187,12 @@ public class DocumentIngestService {
    * Takes one document into its library: checksum, find or create the row, run the pipeline,
    * exchange the chunks. A changed document is updated in place under the same id - an attachment's
    * {@code parent_document_id} points at it - and its previous chunks are removed only once the new
-   * version has parsed and chunked (ingestion-pipelines.md, "Übergabepunkt"). Every status
-   * transition after the row's own save is a conditional {@code UPDATE}, so a row deleted meanwhile
-   * is never re-inserted; not {@code @Transactional}, so that row stays visible to the attachment
-   * path and to a concurrent delete while chunks are embedded. A non-{@code null} {@code
-   * attachmentAccess} turns every discovered attachment into a child {@code Document} (ADR-0022).
-   * The quota check and the save of the row it admits run under the library's {@link
+   * version has parsed and chunked (the format chapter of the Handbuch). Every status transition
+   * after the row's own save is a conditional {@code UPDATE}, so a row deleted meanwhile is never
+   * re-inserted; not {@code @Transactional}, so that row stays visible to the attachment path and
+   * to a concurrent delete while chunks are embedded. A non-{@code null} {@code attachmentAccess}
+   * turns every discovered attachment into a child {@code Document} (ADR-0022). The quota check and
+   * the save of the row it admits run under the library's {@link
    * LibraryStorageQuotaService#holdIntake}. A source document one of whose attachments a storage
    * quota rejected is stored without checksum and change marker, so the next run reads it again; it
    * is then measured by what it adds beyond its stored footprint ({@link #storedFootprint}), so the
@@ -771,7 +771,7 @@ public class DocumentIngestService {
   /**
    * Removes a replaced document's chunks on the outcomes where the new version is legitimately
    * empty: "parsed and empty" is a statement about the new content, so the old chunks must not
-   * survive it (ingestion-pipelines.md, "Übergabepunkt").
+   * survive it (the format chapter of the Handbuch).
    */
   private void deletePreviousChunks(boolean replacingExistingChunks, UUID documentId) {
     if (replacingExistingChunks) {
@@ -1021,8 +1021,8 @@ public class DocumentIngestService {
    * Enriches {@code chunks} with permission-filter and citation metadata and puts each chunk's
    * Kontextpraefix onto the embedding input only - applied by {@link ChunkContextPrefix#applyTo}
    * from the Kernfeld Titel, the document's prefix-effective values and the chunk's Strukturkontext
-   * (metadata-schema.md, Wirkstelle 2). Records afterwards which prefix the chunks were written
-   * with, so the Nachlauf knows what is current.
+   * (ADR-0024). Records afterwards which prefix the chunks were written with, so the Nachlauf knows
+   * what is current.
    *
    * @param contextTitle the fallback title, or {@code null} if this document type never gets a
    *     prefix at all (see {@link #contextTitleFor}). The Kernfeld Titel takes precedence over it
@@ -1202,8 +1202,8 @@ public class DocumentIngestService {
       metadata.put("file_name", document.getFileName());
       metadata.put(VectorChunkStore.LIBRARY_ID_METADATA_KEY, document.getLibraryId().toString());
       metadata.put("organization_id", document.getOrganizationId().toString());
-      // The verfahren that produced this chunk (ingestion-pipelines.md,
-      // Querschnittsregel (d)) - what makes a mixed bestand after a pipeline change
+      // The verfahren that produced this chunk (the format chapter of the Handbuch) - what makes a
+      // mixed bestand after a pipeline change
       // feststellbar and selectively re-indexable at all.
       metadata.put(ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY, pipeline.id());
       metadata.put(ChunkFormatMetadata.PIPELINE_VERSION_METADATA_KEY, (int) pipeline.version());
@@ -1212,8 +1212,8 @@ public class DocumentIngestService {
       if (chunkingFingerprint != null) {
         metadata.put(ChunkFormatMetadata.CHUNKING_FINGERPRINT_METADATA_KEY, chunkingFingerprint);
       }
-      // The routing key actually used (ingestion-pipelines.md, Querschnittsregel
-      // (d)) - what lets a later pipeline-version check compare exactly instead of
+      // The routing key actually used - what lets a later pipeline-version check compare exactly
+      // instead of
       // re-guessing a document's format from its file name.
       routingExtension.ifPresent(
           extension -> metadata.put(ChunkFormatMetadata.ROUTING_EXTENSION_METADATA_KEY, extension));
@@ -1224,7 +1224,7 @@ public class DocumentIngestService {
       // not a format one) - present on every chunk whenever the source declared one.
       metadata.putAll(sourceContextValues);
       // The registry-wide declared passthrough keys - e.g. the chunk's Fundort, or a
-      // message's Kopfdaten (ingestion-pipelines.md, Teil 3, Punkt 5) - copied only
+      // message's Kopfdaten (the format chapter of the Handbuch) - copied only
       // when this chunk actually carries them, and never for a key already written
       // above: those are this class's own bookkeeping, not a pipeline's to set.
       for (String passthroughKey : passthroughKeys) {

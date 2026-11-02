@@ -5,8 +5,7 @@ import java.util.List;
 
 /**
  * What a person states when defining a library field. {@code filter} and {@code contextPrefix} are
- * the two retrieval effects, at least one of which must be named - the Aufnahmeregel of
- * metadata-schema.md.
+ * the two retrieval effects, at least one of which must be named - the Aufnahmeregel of ADR-0024.
  *
  * @param valuePattern required for {@link LibraryMetadataFieldType#PATTERN}, rejected otherwise
  * @param values the initial value list of a SELECT field, rejected for the other two types

@@ -5,11 +5,10 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 /**
- * Splits an email body into its individual messages when it carries a quoted reply chain
- * (docs/features/ingestion-pipelines.md, Teil 3, Punkt 5: "Ein Thread ist kein Dokument, sondern
- * eine Folge von Dokumenten").
+ * Splits an email body into its individual messages when it carries a quoted reply chain (a thread
+ * is not one document but a sequence of documents).
  *
- * <p><b>Gesetzt, nicht gemessen</b> (ingestion-pipelines.md, "Chunk-Größen"): the three separator
+ * <p><b>Gesetzt, nicht gemessen</b> (the format chapter of the Handbuch): the three separator
  * patterns below cover the quoting conventions Outlook, Thunderbird and Gmail generate in German
  * and English plain-text replies - not every mail client's every locale. A body whose quoting style
  * this does not recognize is kept as a single message rather than mis-split; a false negative (an

@@ -30,10 +30,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * The PPTX pipeline (ingestion-pipelines.md Teil 2: "PPTX | Eine Folie = ein Chunk"): every slide
- * with text becomes exactly one chunk, carrying its title and slide number as location; a blank
- * slide alongside others still yields a (near-empty) chunk, but a presentation where no slide
- * carries any text at all is rejected as NO_EXTRACTABLE_TEXT rather than silently indexed.
+ * The PPTX pipeline (the format chapter of the Handbuch): every slide with text becomes exactly one
+ * chunk, carrying its title and slide number as location; a blank slide alongside others still
+ * yields a (near-empty) chunk, but a presentation where no slide carries any text at all is
+ * rejected as NO_EXTRACTABLE_TEXT rather than silently indexed.
  */
 class PptxDocumentFormatTest {
 

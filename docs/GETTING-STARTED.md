@@ -189,18 +189,9 @@ Stand und Nachweis (docs/fortschritt/)
 ├── gesamtstand.md         — was heute gebaut ist, inventurbelegt
 └── JJJJMMTT/              — Zeitraumsberichte mit Beleg-Bausteinen je Stichtag
 
-Spezifikationen (docs/features/) — je Themenbereich
-├── A  (Ziele in ROADMAP.md)
-├── B  (Ziele in ROADMAP.md)
-├── C  (Ziele in ROADMAP.md)
-├── D  (Ziele in ROADMAP.md)
-├── E  (Ziele in ROADMAP.md)
-├── F  (Ziele in ROADMAP.md)
-├── G  (Ziele in ROADMAP.md)
-├── H  (Ziele in ROADMAP.md)
-├── I  (Ziele in ROADMAP.md)
-├── J  (Ziele in ROADMAP.md)
-└── K  (Ziele in ROADMAP.md)
+Ziele und Handbuch
+├── docs/ROADMAP.md        — offene Ziele je Phase, Themenbereiche A–K
+└── docs/handbuch/         — wie man das Gebaute benutzt, verwaltet und betreibt
 
 Entscheidungen und Recherche
 ├── docs/decisions/        — ADRs, darunter 0014 zur Produktausrichtung

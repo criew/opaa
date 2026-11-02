@@ -49,7 +49,7 @@ Phase 2 vorgesehenen weiteren Domänen (Filme, Reiseziele, Tiere) sind gestriche
 Entscheidung vom 21.08.2026, Issue #234) — Begründung siehe Issue #234.
 
 Eine dritte Domäne, **Verwaltung** (Issues #1042/#1043, Abschnitte 4 und 5 von
-`docs/features/retrieval-benchmark.md`), misst deutschsprachige Amtssprache an einem vollständig
+`docs/decisions/0012-messvertrag-retrieval-harness.md`), misst deutschsprachige Amtssprache an einem vollständig
 synthetischen Korpus (Satzungen, Gebührenordnungen, Dienstanweisungen, Formularhinweise sowie eine
 organisationsweite Vertretungsregelung und einen Geschäftsverteilungsplan). Sie ist die erste
 Domäne, die nicht Abdeckung, sondern **benannte Fehlerbilder** misst: Ihre 49 Golden-Fälle tragen
@@ -195,8 +195,7 @@ Ein solcher Lauf ist eine bewusste Einzelmessung, **nicht** mit der committeten 
 vergleichbar: Seine Festpunkte (`queryDecompositionEnabled`, `chatModel`) unterscheiden sich, was
 `PipelineBaselineComparator` als unvergleichbare Baseline meldet und nicht als Regression. Er
 kostet außerdem einen Chat-Aufruf je Anfrage und läuft nach der Mehrfachlauf-Regel dreimal — auf
-CPU rund 1,5 s je Aufruf gemessen, unter hoher Last bis ~10 s (siehe
-`docs/features/retrieval-benchmark.md`, „Offene Punkte" 3).
+CPU rund 1,5 s je Aufruf gemessen, unter hoher Last bis ~10 s (ADR-0012).
 
 ### CPU statt GPU
 
@@ -420,9 +419,7 @@ Weitere Festlegungen des Pipeline-Pfads:
 - **Teilfragen-Zerlegung ist abgeschaltet** (`query-decomposition-enabled=false`), weil der
   Harness-Kontext kein aktives Chat-Modell hat. Der Harness bricht ab, statt mit eingeschalteter
   Zerlegung stillschweigend auf Einzelanfragen-Retrieval zurückzufallen und das Ergebnis als „mit
-  Zerlegung" auszuweisen. Welches Modell hier künftig laufen soll, ist offen (siehe
-  [`docs/features/retrieval-benchmark.md`](../docs/features/retrieval-benchmark.md), „Offene
-  Punkte" 3).
+  Zerlegung" auszuweisen. Welches Modell hier künftig laufen soll, ist offen (siehe [Roadmap](../docs/ROADMAP.md)).
 - **Alle übrigen Parameter kommen aus der Produktionskonfiguration** und werden zur Laufzeit
   gelesen: `fetch-k`, `top-k`, `similarity-threshold`, `max-chunks-per-document`, `mmr-lambda`,
   `max-sub-queries`, seit Issue #2386 auch `fusion.*` und `relevance-cutoff.*`. Ein geändertes
@@ -507,7 +504,7 @@ Der Bericht (`build/eval-reports/variant-report-<comparisonName>.json`, nicht co
 jede Variante entweder ein `PipelineEvaluationReport` (ausgeführt) oder einen Skip-Grund (nicht
 ausgeführt — Reindex-Voraussetzung nicht erfüllt oder Teilfragen-Zerlegung ohne Chat-Modell) aus,
 plus für jede ausgeführte, nicht-referenzielle Variante ein Delta gegen die Referenzvariante,
-aggregiert **und** je Golden-Fall (docs/features/retrieval-benchmark.md, Abschnitt 2, „gepaarte
+aggregiert **und** je Golden-Fall (`docs/decisions/0012-messvertrag-retrieval-harness.md`, Abschnitt 2, „gepaarte
 Messung"). Die Referenzvariante (keine Parameteränderung) wird zusätzlich gegen einen zweiten,
 unabhängigen direkten Pipeline-Aufruf desselben Laufs geprüft — bitgleiche Zahlen sind eine
 harte Assertion, keine Beobachtung (Referenzvarianten-Selbstprüfung).
@@ -625,7 +622,7 @@ der **Bleed-Zahl**: wie viele Dokumente des Vorthemas in der vom Fall benannten 
 (`topic_switch_turn`) eines `topic_switch`-Falls noch im Fenster standen.
 
 Der Bericht führt außerdem `singlePathNote`: Mehrrunden-Fälle laufen konstruktionsbedingt nur über
-diesen Pfad (Einpfad-Regel, `docs/features/retrieval-benchmark.md`, Abschnitt 5). Das ist eine
+diesen Pfad (Einpfad-Regel, `docs/decisions/0012-messvertrag-retrieval-harness.md`, Abschnitt 5). Das ist eine
 Eigenschaft des Datensatzes und steht deshalb einmal je Bericht, nicht am Fall; die Zustandsfelder
 dieses Datensatzes bleiben flach und beschreiben den einen gemessenen Pfad (#1658).
 

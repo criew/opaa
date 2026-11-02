@@ -5,8 +5,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * One ingestion pipeline (ingestion-pipelines.md, Teil 1): reader, splitter, metadata enrichment
- * and chunk size for one class of documents, behind a single call.
+ * One ingestion pipeline (the format chapter of the Handbuch): reader, splitter, metadata
+ * enrichment and chunk size for one class of documents, behind a single call.
  *
  * <p>Open-closed is the acceptance criterion: adding a format means adding an implementation and
  * registering it as a bean, with nothing in {@link DocumentFormatRegistry}, {@code

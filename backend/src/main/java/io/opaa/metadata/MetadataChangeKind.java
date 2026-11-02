@@ -3,9 +3,8 @@ package io.opaa.metadata;
 import java.util.Optional;
 
 /**
- * The planned schema change whose Folgekosten are asked for before it is saved (metadata-schema.md,
- * "Der Reindex-Preis, ehrlich ausgewiesen"). The domain twin of the API's {@code
- * MetadataChangeKind}, so no service reads a generated DTO type.
+ * The planned schema change whose Folgekosten are asked for before it is saved (ADR-0026). The
+ * domain twin of the API's {@code MetadataChangeKind}, so no service reads a generated DTO type.
  */
 public enum MetadataChangeKind {
   /** A new field is defined - no document carries a value for it yet, so nothing changes today. */

@@ -4,8 +4,8 @@ import java.util.Set;
 
 /**
  * The rule set per macro class (ADR-0023) - the one place that decides what of a Confluence macro
- * becomes indexed text. Documented in docs/features/ingestion-pipelines.md, Teil 3, Punkt 6; every
- * class has a test in {@code ConfluenceStorageFormatTest}.
+ * becomes indexed text. Documented in the format chapter of the Handbuch; every class has a test in
+ * {@code ConfluenceStorageFormatTest}.
  *
  * <p>The dividing line is <em>where the content lives</em>: text an author typed into the page (a
  * note, a panel, an expand, a code block) is page content and stays; what Confluence assembles at

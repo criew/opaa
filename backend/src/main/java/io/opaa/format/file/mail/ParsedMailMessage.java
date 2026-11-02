@@ -5,8 +5,7 @@ import java.util.List;
 
 /**
  * The Kopfdaten and body {@link EmlReader}/{@link MsgReader} extract from one EML/MSG message,
- * before {@link MailDocumentFormat} turns it into chunks (docs/features/ingestion-pipelines.md,
- * Teil 3, Punkt 5).
+ * before {@link MailDocumentFormat} turns it into chunks (the format chapter of the Handbuch).
  *
  * @param subject the message's Betreff, or {@code null} if it carries none
  * @param from a rendered "Display Name &lt;address&gt;" (or the address alone), or {@code null}

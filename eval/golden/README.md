@@ -14,7 +14,7 @@ Von Hand nicht bearbeiten; Änderungen gehen über den Generator.
 `verwaltung.json` — 49 kuratierte, deutschsprachige Fälle über
 [`eval/corpus/verwaltung/`](../corpus/verwaltung/). Anders als die beiden anderen Datasets misst
 dieses keine Abdeckung, sondern **fünf benannte Fehlerbilder**
-(`docs/features/retrieval-benchmark.md`, Abschnitt 5). Jeder Fall trägt seine Klasse als
+(`docs/decisions/0012-messvertrag-retrieval-harness.md`, Abschnitt 5). Jeder Fall trägt seine Klasse als
 `category`, sodass beide Messpfade sie als eigene Gruppe auswerten und jede Baseline sie einzeln
 absichert.
 
@@ -77,8 +77,7 @@ aus einem Messlauf wieder eintragen — die Generatoren kennen sie nicht.
 ist der Ist-Zustand aus dem nächtlichen Lauf vom 14.09.2026. Seit #1657 nennt jeder
 `known_gap`-Grund beider Datensätze zuerst den fehlenden Baustein und danach das Symptom aus einem
 CPU-Testcontainer-Lauf auf dem Stand nach #1341. Wiederholt sich ein Baustein, ist die Formulierung
-einheitlich. Die Zuordnung Baustein → Fälle je Pfad steht in
-[`docs/features/retrieval-benchmark.md`](../../docs/features/retrieval-benchmark.md) §5.
+einheitlich.
 
 **Wann ein Fall auf einem Pfad als `solved` gilt** (`io.opaa.eval.ExpectedStateAudit#isSolved`):
 alle erwarteten Dokumente im Fenster dieses Pfads **und** ein erwartetes Dokument auf Rang 1. Die
@@ -143,7 +142,7 @@ Gesamtwert aus beiden Richtungen verschwiege, welche der beiden gerade schieflie
 
 ### `answer_span` bei mehreren Zieldokumenten — entschieden (offener Punkt 4)
 
-`docs/features/retrieval-benchmark.md` ließ offen, ob die Chunkebenen-Metrik bei Fällen mit mehreren
+`docs/decisions/0012-messvertrag-retrieval-harness.md` ließ offen, ob die Chunkebenen-Metrik bei Fällen mit mehreren
 Zieldokumenten **je Dokument** oder **je Fall** gebildet wird. Entschieden mit diesem Datensatz:
 **je Fall — und nur für Fälle mit genau einem erwarteten Dokument.** 27 der 49 Fälle tragen deshalb
 einen `answer_span`, die 22 mehrdokumentigen keinen. Begründung, Alternative und Durchsetzung stehen
@@ -187,7 +186,7 @@ den Fall reproduzierbar.
 ```
 
 **Die Einpfadigkeit steht am Datensatz, nicht am Fall.** Nach der Einpfad-Regel aus
-`docs/features/retrieval-benchmark.md`, Abschnitt 5, kann ein Mehrrunden-Fall konstruktionsbedingt
+`docs/decisions/0012-messvertrag-retrieval-harness.md`, Abschnitt 5, kann ein Mehrrunden-Fall konstruktionsbedingt
 nur auf dem Pipeline-Pfad laufen — der
 Rohvektor-Pfad misst `similaritySearch` direkt und kennt weder Verlauf noch Zerlegung. Diese
 Eigenschaft gilt für jeden Fall des Datensatzes gleichermaßen und wird deshalb **einmal je Bericht**

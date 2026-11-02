@@ -127,7 +127,7 @@ class SupportedDocumentFormatsTest {
 
   @Test
   void decideForFileNameAcceptsOdfContentRegardlessOfExtension() {
-    // Routing (ingestion-pipelines.md, Teil 3, Punkt 2): ODT is admitted purely from its detected
+    // Routing (the format chapter of the Handbuch): ODT is admitted purely from its detected
     // content, exactly like DOCX - the file's own extension only decides the mismatch flag.
     var decision =
         supportedFormats.decideForFileName(
@@ -419,7 +419,7 @@ class SupportedDocumentFormatsTest {
 
   @Test
   void decideForFileNameAcceptsHtmlContentRegardlessOfExtension() {
-    // Routing (ingestion-pipelines.md, Teil 3, Punkt 4): HTML is admitted purely from its detected
+    // Routing (the format chapter of the Handbuch): HTML is admitted purely from its detected
     // content, exactly like PDF/DOCX - the file's own extension only decides the mismatch flag.
     var decision = supportedFormats.decideForFileName("seite.htm", "text/html");
 
@@ -448,7 +448,7 @@ class SupportedDocumentFormatsTest {
     // <div>/<h1> is detected as text/html, not text/plain - confirmed empirically against the
     // real Tika detector below, not assumed from a literal mime string. Without the fix, the
     // strict (HTML) branch would win over the Markdown/Klartext/CSV special rule
-    // (ingestion-pipelines.md, Teil 1, "gilt für das Routing unverändert weiter"), silently
+    // (the format chapter of the Handbuch), silently
     // routing the file to HtmlDocumentFormat with no FORMAT_MISMATCH ever reported (the
     // content passing contentMatchesExtension(".md", "text/html") means the strict branch's own
     // mismatch check comes out false too).

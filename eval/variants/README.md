@@ -1,8 +1,7 @@
 # Variantenvergleiche
 
 Deklarative Konfigurationsvergleiche für den Pipeline-Messpfad (issue #1041,
-[`docs/features/retrieval-benchmark.md`](../../docs/features/retrieval-benchmark.md), Abschnitt 2
-„Benannte Pipeline-Varianten“). Eine Datei hier ist ein **Variantenvergleich**: ein Name, eine
+[ADR-0012](../../docs/decisions/0012-messvertrag-retrieval-harness.md)). Eine Datei hier ist ein **Variantenvergleich**: ein Name, eine
 Domäne (siehe `eval/corpus/`) und eine Liste benannter Varianten, von denen eine als
 Referenzvariante markiert ist. Ein neuer Vergleich ist eine neue Datei — kein neuer Java-Code.
 
@@ -41,7 +40,7 @@ Referenzvariante markiert ist. Ein neuer Vergleich ist eine neue Datei — kein 
   `fusionSubQueryQuota` und `fusionVectorWeight` (seit Issue #2619), `fusionGuaranteedPerList`
   (seit Issue #2634; `0` schaltet die fest übernommenen Spitzentreffer ab). `topK` ist bewusst kein
   Feld — die Metriknamen des Pipeline-Pfads (`hitRateAt5`, `ndcgAt20`, …) sind an das
-  Produktionsfenster gebunden (siehe `retrieval-benchmark.md`, Abschnitt 1).
+  Produktionsfenster gebunden (siehe `docs/decisions/0012-messvertrag-retrieval-harness.md`, Abschnitt 1).
 - Der Vergleich `verwaltung-fusion.json` (Issues #2619, #2634) misst Quote je Teilfrage, Wertefusion
   und fest übernommene Spitzentreffer je Liste, einzeln und kombiniert. Die Quote wirkt nur bei mehreren Teilfragen; der Vergleich ist deshalb mit
   `-Dopaa.eval.queryDecomposition=true` zu fahren, ohne Zerlegung unterscheiden sich nur die
@@ -83,8 +82,7 @@ Referenzvariante markiert ist. Ein neuer Vergleich ist eine neue Datei — kein 
 
 ## Mehrfachlauf-Regel für Varianten mit LLM-Anteil
 
-Issue #1044, [`docs/features/retrieval-benchmark.md`](../../docs/features/retrieval-benchmark.md),
-Abschnitt 3 „Schlanke Statistik": Eine Variante mit effektiv aktivierter Teilfragen-Zerlegung ist
+Issue #1044, [ADR-0012](../../docs/decisions/0012-messvertrag-retrieval-harness.md), Entscheidung 42: Eine Variante mit effektiv aktivierter Teilfragen-Zerlegung ist
 nichtdeterministisch und läuft deshalb dreimal statt einmal (`io.opaa.eval.VariantRunner`,
 `io.opaa.eval.MultiRunAggregator`). Der Bericht führt je Metrik Minimum, Median und Maximum sowie
 die Zahl der Golden-Fälle, bei denen sich die von der Zerlegung erzeugten Teilfragen zwischen den
@@ -102,8 +100,7 @@ und für den direkten Vergleichslauf der Selbstprüfung unten. Docker-frei bleib
 Variantenvergleiche laufen **nicht** im nächtlichen Regressionsjob
 (`.github/workflows/retrieval-regression.yml`) — nur die beiden Regressionspfade (Rohvektor,
 Pipeline) tun das, mit fester, committeter Baseline. Diese Aufteilung ist mit Issue #1044 anhand
-gemessener Laufzeiten des nächtlichen Jobs bewusst getroffen worden (Details:
-`docs/features/retrieval-benchmark.md`, „Offene Punkte" 2): Der `city-landmarks`-Regressionslauf
+gemessener Laufzeiten des nächtlichen Jobs bewusst getroffen worden (ADR-0012, Entscheidung 42): Der `city-landmarks`-Regressionslauf
 nutzt im ungünstigsten beobachteten Fall bereits rund drei Viertel seines Zeitbudgets, und ein
 Variantenvergleich mit mehreren Varianten — dazu die Verdreifachung jeder Zerlegungsvariante durch
 die Mehrfachlauf-Regel — würde dieses Budget beliebig vervielfachen. Ein Variantenvergleich läuft
@@ -135,7 +132,7 @@ Codeänderung auslösbar: eine neue JSON-Datei hier, dieselbe Kommandozeile mit 
 
 Der Bericht wird nach `build/eval-reports/variant-report-<comparisonName>.json` geschrieben und
 zusätzlich als lesbare Zusammenfassung auf der Konsole ausgegeben — ein Artefakt, kein
-committetes Ergebnis (siehe `docs/features/retrieval-benchmark.md`, Abschnitt 2, „Der Bericht ist
+committetes Ergebnis (siehe `docs/decisions/0012-messvertrag-retrieval-harness.md`, Abschnitt 2, „Der Bericht ist
 ein Artefakt, keine Baseline").
 
 ### Wirkungsnachweis der Teilfragen-Zerlegung (Issue #1085)
@@ -179,7 +176,7 @@ auffällt (Abnahmekriterium des Issues).
 
 **Beide Seiten folgen der Mehrfachlauf-Regel** (Issue #1085). Zerlegt die gemessene Konfiguration
 selbst (`opaa.query.query-decomposition-enabled=true`), ist die Referenzvariante nach
-[`retrieval-benchmark.md`](../../docs/features/retrieval-benchmark.md) Abschnitt 3 der Median aus
+ADR-0012, Entscheidung 42, der Median aus
 drei Läufen — ein einzelner Direktaufruf könnte dazu strukturell nie bitgleich sein, egal wie stabil
 das Chat-Modell ist. `ReferenceVariantSelfCheck` misst deshalb auch direkt dreimal und vergleicht
 Median gegen Median. Schlägt der Vergleich trotzdem fehl, nennt die Fehlermeldung die

@@ -13,11 +13,10 @@ import java.util.TreeMap;
 
 /**
  * The raw, uninterpreted sources a {@link DocumentFormat} can hand to the core metadata extraction
- * (docs/features/metadata-schema.md, Teil III; ADR-0024): what the file format itself declares
- * about the document. A pipeline fills what it has cheaply at hand and never interprets - every
- * rule that turns these into a Titel, Dokumentart or Datum/Stand lives in {@code
- * io.opaa.metadata.CoreMetadataExtractor}. Blank strings normalize to {@code null}; {@code
- * frontmatter} keys are lower-cased.
+ * (ADR-0024): what the file format itself declares about the document. A pipeline fills what it has
+ * cheaply at hand and never interprets - every rule that turns these into a Titel, Dokumentart or
+ * Datum/Stand lives in {@code io.opaa.metadata.CoreMetadataExtractor}. Blank strings normalize to
+ * {@code null}; {@code frontmatter} keys are lower-cased.
  *
  * @param title the format's own title property (PDF Info Title, OOXML/ODF dc:title, HTML title)
  * @param createdAt the format's creation date property

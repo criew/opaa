@@ -39,11 +39,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 
 /**
- * The DOCX pipeline (ingestion-pipelines.md, Teil 2), reading {@code .docx} through POI's {@link
- * XWPFDocument} rather than Tika, whose flattened extraction discards the heading levels this
- * pipeline cuts on. Heading level comes from a built-in Word heading style (English or localized)
- * or its own {@code w:outlineLvl}; cutting stops at {@link #MAX_CUTTING_LEVEL}, a table becomes one
- * text block, and the legacy binary {@code .doc} stays with the Tika fallback.
+ * The DOCX pipeline (the format chapter of the Handbuch), reading {@code .docx} through POI's
+ * {@link XWPFDocument} rather than Tika, whose flattened extraction discards the heading levels
+ * this pipeline cuts on. Heading level comes from a built-in Word heading style (English or
+ * localized) or its own {@code w:outlineLvl}; cutting stops at {@link #MAX_CUTTING_LEVEL}, a table
+ * becomes one text block, and the legacy binary {@code .doc} stays with the Tika fallback.
  *
  * <p>Every header/footer part becomes one deduplicated leading chunk (see {@link
  * RepeatingHeaderChunk}), since none is part of {@link XWPFDocument#getBodyElements()}; a field's

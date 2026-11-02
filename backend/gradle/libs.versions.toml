@@ -55,8 +55,7 @@ pgvector = "0.1.6"
 # explicitly because io.opaa now calls okhttp3 directly. Must stay on the version spring-ai-openai
 # resolves to (`./gradlew dependencyInsight --dependency okhttp`), not a newer major line.
 okhttp = "4.12.0"
-# XLSX reader for io.opaa.format.file.tabular.TabularDocumentFormat (docs/features/ingestion-pipelines.md,
-# Teil 3, Punkt 3 - "erhaltene Tabellenstruktur"). Already on the classpath transitively via
+# XLSX reader for io.opaa.format.file.tabular.TabularDocumentFormat (the format chapter of the Handbuch). Already on the classpath transitively via
 # spring-ai-tika-document-reader's tika-parsers-standard-package; declared explicitly because this
 # module now reads workbooks directly through org.apache.poi.ss.usermodel instead of only through
 # Tika's own extraction. Version pinned to what that transitive dependency resolves to today
@@ -78,8 +77,7 @@ poi-scratchpad = "5.5.1"
 # directly through org.apache.james.mime4j.dom rather than only through Tika's own extraction.
 # Version pinned to what that transitive dependency resolves to today (`./gradlew dependencies`).
 mime4j = "0.8.15"
-# PDF outline/page reader for io.opaa.format.file.pdf.PdfDocumentFormat (docs/features/ingestion-pipelines.md,
-# Teil 3 - "gliederungsbewusster PDF-Pfad"). Already on the classpath transitively via
+# PDF outline/page reader for io.opaa.format.file.pdf.PdfDocumentFormat (the format chapter of the Handbuch). Already on the classpath transitively via
 # spring-ai-tika-document-reader's tika-parser-pdf-module; declared explicitly because this module now
 # reads the PDF catalog (bookmarks) and page text directly through org.apache.pdfbox rather than only
 # through Tika's own extraction. Version pinned to what that transitive dependency resolves to today

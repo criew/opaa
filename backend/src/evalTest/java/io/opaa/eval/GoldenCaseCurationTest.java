@@ -69,10 +69,7 @@ class GoldenCaseCurationTest {
             verwaltungCases(), EvalDomainConfig.VERWALTUNG.name(), corpusFileNames());
 
     assertThat(violations)
-        .as(
-            "eval/golden/verwaltung.json violates curation rules of "
-                + "docs/features/retrieval-benchmark.md §5: %s",
-            violations)
+        .as("eval/golden/verwaltung.json violates curation rules of " + "ADR-0012: %s", violations)
         .isEmpty();
   }
 

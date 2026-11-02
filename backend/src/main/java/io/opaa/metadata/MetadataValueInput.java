@@ -50,7 +50,7 @@ public record MetadataValueInput(
 
   /**
    * "Eine Person hat festgestellt, dass es keinen gibt" - set by hand for any core field, without a
-   * value (metadata-schema.md, "Kein Wert ermittelbar ist ein dritter Zustand").
+   * value (ADR-0024).
    */
   public static MetadataValueInput notDeterminable() {
     return new MetadataValueInput(

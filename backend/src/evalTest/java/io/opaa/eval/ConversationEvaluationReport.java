@@ -99,16 +99,16 @@ public record ConversationEvaluationReport(
   public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 11;
 
   /**
-   * The Einpfad-Regel of docs/features/retrieval-benchmark.md §5, recorded <b>once per report</b>:
-   * a multi-turn case can only ever run on the pipeline path - the raw-vector path searches
-   * directly and knows neither conversation history nor decomposition. The dataset's one flat state
-   * per case is therefore that path's state; a property of the measurement setup, not of a case.
+   * The Einpfad-Regel of ADR-0012, recorded <b>once per report</b>: a multi-turn case can only ever
+   * run on the pipeline path - the raw-vector path searches directly and knows neither conversation
+   * history nor decomposition. The dataset's one flat state per case is therefore that path's
+   * state; a property of the measurement setup, not of a case.
    */
   public static final String SINGLE_PATH_NOTE =
       "Einpfad-Messung: Mehrrunden-Fälle laufen konstruktionsbedingt nur über den Pipeline-Pfad — "
           + "der Rohvektor-Pfad kennt weder Gesprächsverlauf noch Teilfragen-Zerlegung. Der "
           + "deklarierte Zustand eines Falls (expected_state) ist deshalb der Zustand dieses Pfads "
-          + "(docs/features/retrieval-benchmark.md, Abschnitt 5, Einpfad-Regel). Die Einpfadigkeit "
+          + "(ADR-0012, Einpfad-Regel). Die Einpfadigkeit "
           + "ist eine Eigenschaft dieses Datensatzes, nicht des einzelnen Falls.";
 
   /**

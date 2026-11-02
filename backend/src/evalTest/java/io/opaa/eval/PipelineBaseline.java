@@ -16,8 +16,8 @@ import tools.jackson.databind.json.JsonMapper;
  * paths measure at different windows (@10 without a similarity threshold vs. @20 with it applied),
  * are not interconvertible, and carry independently counted contract versions (ADR-0012,
  * Entscheidung 16). Sharing a schema would make it possible for a pipeline re-measurement to be
- * written over a raw-vector baseline — the one outcome {@code docs/features/retrieval-benchmark.md}
- * §1 rules out before any code is written.
+ * written over a raw-vector baseline — the one outcome ADR-0012 rules out before any code is
+ * written.
  *
  * <p>See {@code eval/baseline/README.md} for the update procedure; the tolerance formula and the
  * error criterion are ADR-0013's, unchanged and literally shared with the raw-vector path (see

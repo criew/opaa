@@ -27,9 +27,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The schema configuration of a library's own metadata fields (metadata-schema.md Teil II (b) and
- * Teil V "Der erste Schnitt"). Two rules of the specification live here and are what this service
- * exists for:
+ * The schema configuration of a library's own metadata fields (ADR-0024). Two rules live here and
+ * are what this service exists for:
  *
  * <ul>
  *   <li><b>Aufnahmeregel</b> - a field is only accepted when it serves the filter or the
@@ -42,10 +41,10 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p><b>Rights.</b> Changing the schema needs the management right at the library ({@link
  * AssetRole#MANAGER}) - the same bar as changing the library's other settings - while setting a
- * value stays at the editing right of . Reading the schema, including the configured value lists,
- * needs only {@link AssetRole#VIEWER}: the list is schema, not an aggregate over documents
- * (metadata-schema.md, Rechte-Invariante), which is also why a value list must never carry
- * schutzbedürftige Bezeichnungen.
+ * value stays at the editing right of {@link AssetRole#EDITOR}. Reading the schema, including the
+ * configured value lists, needs only {@link AssetRole#VIEWER}: the list is schema, not an aggregate
+ * over documents (ADR-0024), which is also why a value list must never carry schutzbedürftige
+ * Bezeichnungen.
  *
  * <p><b>Kontextpräfix.</b> A change to a prefix-effective field raises the library's context-prefix
  * version and thereby hands its whole indexed bestand to the Nachlauf ({@code
@@ -71,7 +70,7 @@ public class LibraryMetadataFieldService {
   /**
    * The correlationRef prefix of the audit events a field deletion writes - one per document, so
    * the manual values of a library stay reconstructible from the audit bestand even after the field
-   * that carried them is gone (metadata-schema.md, "Manuelle Setzungen sind protokollpflichtig").
+   * that carried them is gone (ADR-0024).
    */
   static final String DELETE_CORRELATION_PREFIX =
       LibraryMetadataSchemaChangeService.DELETE_CORRELATION_PREFIX;
@@ -410,9 +409,9 @@ public class LibraryMetadataFieldService {
 
   /**
    * How many documents carry {@code code} - the Folgekosten that stand <b>before</b> the
-   * confirmation of a mapping (metadata-schema.md: "Die Zahl der betroffenen Dokumente steht vor
-   * der Bestätigung fest"). A cost of the schema maintenance like {@link #changeImpact}, hence open
-   * to the administration as well, not only to the content right.
+   * confirmation of a mapping (ADR-0024: "Die Zahl der betroffenen Dokumente steht vor der
+   * Bestätigung fest"). A cost of the schema maintenance like {@link #changeImpact}, hence open to
+   * the administration as well, not only to the content right.
    */
   @Transactional(readOnly = true)
   public long valueUsage(UUID libraryId, String fieldKey, String code, CurrentUser caller) {
@@ -508,11 +507,10 @@ public class LibraryMetadataFieldService {
   }
 
   /**
-   * The Folgekosten of a planned change to {@code fieldKey} (metadata-schema.md, "Der
-   * Reindex-Preis, ehrlich ausgewiesen"): affected documents and chunks, the embedding calls that
-   * follows and the expected runtime. Read-only - asking costs nothing and changes nothing. {@code
-   * fieldKey} names either a core field or one of the library's own fields; the management right is
-   * the same bar the change itself needs.
+   * The Folgekosten of a planned change to {@code fieldKey} (ADR-0026): affected documents and
+   * chunks, the embedding calls that follows and the expected runtime. Read-only - asking costs
+   * nothing and changes nothing. {@code fieldKey} names either a core field or one of the library's
+   * own fields; the management right is the same bar the change itself needs.
    */
   @Transactional(readOnly = true)
   public MetadataChangeImpact changeImpact(
@@ -520,7 +518,7 @@ public class LibraryMetadataFieldService {
     KnowledgeLibrary library = requireLibrary(libraryId, caller, AssetRole.MANAGER);
     if (kind == MetadataChangeKind.VALUE_ADDED || kind == MetadataChangeKind.FIELD_ADDED) {
       // Extending a list has no rueckwirkung on a stored value, and a field that does not exist yet
-      // carries none - the two rows of the Kostentabelle that are free whatever the Wirkstellen
+      // carries none - the two change kinds that are free whatever the Wirkstellen
       // are.
       // A new field starts costing only once values reach it, one document at a time.
       return MetadataChangeImpact.free(embeddingRateEstimator.rateSource());

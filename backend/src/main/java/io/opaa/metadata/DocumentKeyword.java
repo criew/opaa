@@ -8,16 +8,16 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * One freies Schlagwort of one document (metadata-schema.md, Teil II (c)). Deliberately its own
- * table rather than a row in {@code document_metadata_values}: every row there is a typisiertes
- * Feld a filter may name, and a Schlagwort must never become one. It reaches the full-text index
- * and the Kontextpräfix, never a filter, a facet, a Beleg or a Bibliotheksfeld.
+ * One freies Schlagwort of one document (ADR-0026). Deliberately its own table rather than a row in
+ * {@code document_metadata_values}: every row there is a typisiertes Feld a filter may name, and a
+ * Schlagwort must never become one. It reaches the full-text index and the Kontextpräfix, never a
+ * filter, a facet, a Beleg or a Bibliotheksfeld.
  */
 @Entity
 @Table(name = "document_keywords")
 public class DocumentKeyword {
 
-  /** The cap per document and the cap per keyword (metadata-schema.md; Maintainer 05.09.2026). */
+  /** The cap per document and the cap per keyword (ADR-0026; Maintainer 05.09.2026). */
   public static final int MAX_KEYWORDS_PER_DOCUMENT = 5;
 
   public static final int MAX_KEYWORD_LENGTH = 40;

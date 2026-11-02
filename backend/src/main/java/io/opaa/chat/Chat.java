@@ -105,8 +105,7 @@ public class Chat {
   /**
    * The chat's sticky core-field filter as {@link MetadataFilterJson} writes it; {@code null} for
    * no filter. Applied to every question of this chat next to the search scope above - the Kontext
-   * der Unterhaltung the specification names as one of the two sources of a filter
-   * (metadata-schema.md, Wirkstelle 1).
+   * der Unterhaltung the specification names as one of the two sources of a filter (ADR-0024).
    */
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(name = "metadata_filter", columnDefinition = "jsonb")

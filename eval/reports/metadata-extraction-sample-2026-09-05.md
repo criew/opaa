@@ -4,7 +4,7 @@
 **Epic:** [#1065](https://github.com/criew/opaa/issues/1065)
 
 Diese Auswertung löst den dritten Punkt aus „Messung und Abnahme" der
-[Metadatenschema-Spezifikation](../../docs/features/metadata-schema.md#messung-und-abnahme) ein:
+damaligen Metadatenschema-Spezifikation ([ADR-0026](../../docs/decisions/0026-kontextpraefix-abdruck-und-modellgestuetzte-extraktion.md)) ein:
 100 Dokumente, von Hand ausgewertet, je Feld erfasster Wert gegen den am Dokument abgelesenen Wert,
 mit getrennten Fehlerarten „falscher Wert" und „fehlender Wert trotz vorhandener Angabe".
 

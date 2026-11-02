@@ -35,13 +35,13 @@ import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlin
 import org.springframework.ai.document.Document;
 
 /**
- * The PDF pipeline (ingestion-pipelines.md, Teil 1), reading through PDFBox rather than Spring AI's
- * PDF readers, which are absent from this classpath. With a resolvable outline every entry becomes
- * a heading of its own nesting level, cut without a depth cap - a legal text commonly nests § and
- * Absatz as two separately citable levels - and several entries on one page split that page's text
- * between their titles. Without an outline, chunking falls back to one chunk per non-blank page.
- * Either way every chunk's anchor names its pages; along the outline {@link PdfPageLocator} finds
- * them again.
+ * The PDF pipeline (the format chapter of the Handbuch), reading through PDFBox rather than Spring
+ * AI's PDF readers, which are absent from this classpath. With a resolvable outline every entry
+ * becomes a heading of its own nesting level, cut without a depth cap - a legal text commonly nests
+ * § and Absatz as two separately citable levels - and several entries on one page split that page's
+ * text between their titles. Without an outline, chunking falls back to one chunk per non-blank
+ * page. Either way every chunk's anchor names its pages; along the outline {@link PdfPageLocator}
+ * finds them again.
  *
  * <p>Every page's text is extracted exactly once, into {@link PdfContent}; a page range is the
  * concatenation of its pages. A table enclosed by a complete ruled grid is written one line per

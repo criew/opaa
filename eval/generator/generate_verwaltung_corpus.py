@@ -6,10 +6,9 @@ Gebührenordnungen, Dienstanweisungen, Formularhinweise, sowie zwei organisation
 Dokumente) for the fictional municipality "Kalkstadt" — deliberately a different, invented
 place than the demo corpus's "Rheinfurt" (`demo/corpus/`), so a cosmetic demo-document
 improvement never forces a re-freeze of this measurement corpus and vice versa (see
-docs/features/retrieval-benchmark.md, Abschnitt 4 "Verwaltungs-Evaldomäne", "Getrennt von der
-Demo").
+ADR-0012).
 
-Design goals (see docs/features/retrieval-benchmark.md, Abschnitt 4):
+Design goals (see ADR-0012):
 
 - Deutschsprachig, Amtssprache, mit einem bewussten Registerunterschied zur Bürgersprache
   (jedes Dokument mit einer Gebührenbefreiungsregel formuliert die Alltagsfrage aus, die ein

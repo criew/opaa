@@ -17,11 +17,11 @@ import org.springframework.ai.document.Document;
 
 /**
  * Builds the Kontextpräfix every chunk of a document carries into embedding and full-text index
- * (metadata-schema.md, Wirkstelle 2): {@code Titel › Fassung 2026 › § 7 Gebühren}. The segments are
- * title, the prefix-effective metadata values in schema order and the chunk's own Strukturkontext;
- * a blank segment is left out entirely, and a prefix without any segment does not exist. The prefix
- * is part of the chunk's presentation, never of its stored text - the quoted excerpt in a Beleg
- * stays the original wording.
+ * (ADR-0026): {@code Titel › Fassung 2026 › § 7 Gebühren}. The segments are title, the
+ * prefix-effective metadata values in schema order and the chunk's own Strukturkontext; a blank
+ * segment is left out entirely, and a prefix without any segment does not exist. The prefix is part
+ * of the chunk's presentation, never of its stored text - the quoted excerpt in a Beleg stays the
+ * original wording.
  *
  * <p>{@link #applyTo} is the single gate both writing paths go through, so a document re-embedded
  * by the Nachlauf carries the same indexed text as one freshly ingested; {@link #stampOf} is the
@@ -47,9 +47,9 @@ public final class ChunkContextPrefix {
   private ChunkContextPrefix() {}
 
   /**
-   * The ingest's own prefix title (ingestion-pipelines.md, Querschnittsregel (b)): a file name is
-   * humanized by {@link ChunkContextTitle}; a synthetic name is the declared title verbatim behind
-   * its hierarchy path, and {@code null} without a title - a URL fallback would share a prefix.
+   * The ingest's own prefix title (the format chapter of the Handbuch): a file name is humanized by
+   * {@link ChunkContextTitle}; a synthetic name is the declared title verbatim behind its hierarchy
+   * path, and {@code null} without a title - a URL fallback would share a prefix.
    */
   public static String ingestTitle(
       boolean syntheticName, String fileName, String declaredTitle, SourceDocumentContext context) {

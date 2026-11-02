@@ -11,9 +11,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 /**
- * The deterministic rules of metadata-schema.md, Teil III step 1: file-name conventions, German
- * date notations, the vocabulary boundary and the title source order - every case pinned against
- * the delivered vocabulary, no model, no similarity.
+ * The deterministic rules of ADR-0024, German date notations, the vocabulary boundary and the title
+ * source order - every case pinned against the delivered vocabulary, no model, no similarity.
  */
 class CoreMetadataExtractorTest {
 

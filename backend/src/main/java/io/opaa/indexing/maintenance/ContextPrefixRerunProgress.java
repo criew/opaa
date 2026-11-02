@@ -3,10 +3,10 @@ package io.opaa.indexing.maintenance;
 import java.util.UUID;
 
 /**
- * The Kontextpräfix state of one library (metadata-schema.md, "Nachlauf im Betrieb"), computed at
- * query time over its {@code INDEXED} documents. The Mischzustand it describes - part of the
- * bestand on the new prefix, the rest on the old - is a defined, permitted operating state, not a
- * fault: the search stays available over both halves.
+ * The Kontextpräfix state of one library (ADR-0026), computed at query time over its {@code
+ * INDEXED} documents. The Mischzustand it describes - part of the bestand on the new prefix, the
+ * rest on the old - is a defined, permitted operating state, not a fault: the search stays
+ * available over both halves.
  *
  * @param pendingDocuments documents whose prefix stamp was cleared by a change to their own prefix,
  *     plus the bestand that never carried one

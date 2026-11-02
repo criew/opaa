@@ -98,13 +98,12 @@ import org.testcontainers.utility.DockerImageName;
  * ein, ohne die bestehende Struktur umzubauen" — the two existing domains' baselines and CI
  * behaviour stay untouched by this domain's arrival.
  *
- * <p><b>What this domain adds beyond a third corpus</b> (docs/features/retrieval-benchmark.md §5):
- * its golden cases carry the five named case classes as their {@code category} — so both reports'
- * {@code byCategory} groups are the per-class evaluation the specification asks for — and the state
- * fields under {@code expected_state} (state, date and reason per measurement path), audited per
- * run and per path by {@link ExpectedStateAudit}. The curation rules themselves are checked
- * Docker-free by {@code GoldenCaseCurationTest}, not here: a violated rule must not cost an hour of
- * indexing to discover.
+ * <p><b>What this domain adds beyond a third corpus</b> (ADR-0012): its golden cases carry the five
+ * named case classes as their {@code category} — so both reports' {@code byCategory} groups are the
+ * per-class evaluation the specification asks for — and the state fields under {@code
+ * expected_state} (state, date and reason per measurement path), audited per run and per path by
+ * {@link ExpectedStateAudit}. The curation rules themselves are checked Docker-free by {@code
+ * GoldenCaseCurationTest}, not here: a violated rule must not cost an hour of indexing to discover.
  *
  * <p>Also carries out the domain's chunk-count invariant check ADR-0010 assigns to this harness
  * (see {@link ChunkCountExpectation}) — for {@code verwaltung} that is the Mehr-Chunk-Invariante
@@ -347,7 +346,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
     // drawn with decomposition off, because the shipped decomposition-on configuration costs one
     // chat call per query and, under the Mehrfachlauf-Regel, three runs of the whole pipeline path
     // — more than the nightly budget carries (see EvalQueryDecomposition and
-    // docs/features/retrieval-benchmark.md, "Offene Punkte" 3). Every other query parameter stays
+    // ADR-0012). Every other query parameter stays
     // at its production default and is read from the running context.
     registry.add(
         "opaa.query.query-decomposition-enabled", EvalQueryDecomposition::requestedForThisRun);
@@ -826,9 +825,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
                 + "die Zahl unabhängiger Beobachtungen; die Toleranzformel aus ADR-0013 rechnet "
                 + "ohnehin mit distinctExpectedDocumentSets statt mit n. Alle Fragen sind auf "
                 + "Deutsch: ein Sprachvergleich ist in dieser Domäne nicht vorgesehen. Die Fälle "
-                + "sind konstruiert, nicht aus echten Nutzeranfragen gewonnen — siehe "
-                + "docs/features/retrieval-benchmark.md, Abschnitt 4, \"Ehrliche Einschränkung: "
-                + "Benchmark-Overfitting\".");
+                + "sind konstruiert, nicht aus echten Nutzeranfragen gewonnen.");
 
     // The pipeline registry DocumentIngestService actually routed through while indexing
     // this corpus, not a second, potentially drifting re-derivation.
@@ -949,7 +946,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
           log);
     }
 
-    // 7. Variant comparison (#1041/#1049, docs/features/retrieval-benchmark.md §2): an opt-in step,
+    // 7. Variant comparison (#1041/#1049, ADR-0012): an opt-in step,
     //    off by default so a normal harness/baseline run is unaffected. Guarded like step 6 — a
     //    failure here must not cost the raw-vector path its baseline verdict.
     if (VariantComparisonStep.isRequested()) {
