@@ -314,9 +314,10 @@ def test_the_readme_names_version_previous_release_and_the_verification(tmp_path
             " --source-ref refs/tags/v1.2.3\n") in text
     assert "-PtoRef=v1.2.3" in text
     assert "Probelauf" not in text
-    assert "| `betrieb/betriebsfolgen.md` |" in text
-    assert "| `betrieb/antwortqualitaet.md` |" in text
-    assert "| `sbom/` |" in text
+    assert "| [`betrieb/betriebsfolgen.md`](betrieb/betriebsfolgen.md) |" in text
+    assert "| [`betrieb/antwortqualitaet.md`](betrieb/antwortqualitaet.md) |" in text
+    assert "| [`sbom/`](index.html#nachweise) |" in text
+    assert "[`opaa-backend-1.2.3.cdx.json`](sbom/opaa-backend-1.2.3.cdx.json)" in text
     assert "update_package.py operations --from <älteres Tag> --to v1.2.3" in text
     assert "Betriebsfolgen (Bruch" not in text
     assert "./gradlew complianceInstanceMatch -Pdelta=<Paket>/delta/manifest-delta.json" in text
@@ -598,12 +599,13 @@ def test_no_relative_link_in_the_package_points_nowhere(tmp_path: Path, inputs: 
     archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
 
     files = package_markdown(archive)
-    directories = {posixpath.dirname(p) for p in files}
+    every = package_files(archive)
+    directories = {posixpath.dirname(p) for p in every}
     targets = relative_targets(files)
     assert ("vorlagen/04-datenschutz/loeschkonzept.md", "../README.md") in targets
     for path, target in targets:
         resolved = posixpath.normpath(posixpath.join(posixpath.dirname(path), target))
-        assert resolved in files or resolved in directories, (path, target)
+        assert resolved in every or resolved in directories, (path, target)
 
 
 @pytest.mark.parametrize("link", [
@@ -781,8 +783,22 @@ def test_the_readme_names_the_handbook_and_the_html_start_page(tmp_path: Path, i
     archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
 
     text = read(archive, "opaa-update-paket-1.2.3/LIESMICH.md").decode()
-    assert "`index.html`" in text
+    assert "[`index.html`](index.html)" in text
     assert "| [`handbuch/`](handbuch/README.md) |" in text
+
+
+def test_every_entry_of_the_readme_table_is_a_link_that_resolves_in_the_html_version(
+        tmp_path: Path, inputs: dict) -> None:
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    files = package_files(archive)
+    rows = [line for line in files["LIESMICH.md"].splitlines()
+            if line.startswith("| ") and not line.startswith(("| Datei", "|---"))]
+    assert rows and all(row.startswith("| [`") for row in rows), rows
+    page = files["LIESMICH.html"]
+    for target in ("delta/manifest-delta.html", "delta/manifest-delta.json", "update-vermerk.html",
+                   "faktenblaetter/faktenblaetter.json", "index.html#faktenblaetter", "SHA256SUMS"):
+        assert f'href="{target}"' in page, target
 
 
 RELEASE_INSTALL = "pip install --require-hashes --only-binary=:all: --no-deps -r .github/requirements-release.txt"
@@ -1057,13 +1073,46 @@ def test_every_pull_request_on_templates_or_handbook_renders_their_diagrams() ->
     assert "steps.filter.outputs.diagrams" in body
 
 
-def test_only_templates_update_note_and_handbook_get_drawn_diagrams() -> None:
+def test_only_templates_update_note_handbook_and_fact_sheets_get_drawn_diagrams() -> None:
     block = b"# T\n\n```mermaid\nflowchart LR\n  A --> B\n```\n"
     other = b"# T\n\n```mermaid\nflowchart LR\n  X --> Y\n```\n"
 
     assert update_package.drawn({"vorlagen/a.md": block, "handbuch/b.md": block, "update-vermerk.md": block,
+                                 "faktenblaetter/datenfluesse.md": block,
                                  "betrieb/betriebsfolgen.md": other, "delta/manifest-delta.md": other}) == [
         "flowchart LR\n  A --> B\n"]
+
+
+def test_the_data_flow_diagram_of_a_fact_sheet_shows_as_svg(tmp_path: Path, inputs: dict) -> None:
+    source = "flowchart LR\n  Nutzer --> OPAA\n"
+    (inputs["fact_sheets"] / "datenfluesse.md").write_text(
+        f"# Faktenblatt: Datenflüsse\n\n```mermaid\n{source}```\n", encoding="utf-8")
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs,
+                                      diagrams=lambda sources: {s: '<svg id="fluss"></svg>' for s in sources})
+
+    page = package_files(archive)["faktenblaetter/datenfluesse.html"]
+    assert ' id="fluss"></svg></figure>' in page
+
+
+def test_blocks_marked_repository_only_stay_out_of_the_package(tmp_path: Path, inputs: dict) -> None:
+    put_template(inputs, "README.md",
+                 "# Behördenunterlagen\n\n<!-- nur-im-repository -->\n> Entwicklungsstand, siehe"
+                 " [unten](#wo-man-liest).\n<!-- /nur-im-repository -->\n\nEinleitung.\n\n"
+                 "[Update-Vermerk](09-betrieb-update/update-vermerk.md)\n\n"
+                 "<!-- nur-im-repository -->\n## Wo man liest\n\nIm Paket.\n<!-- /nur-im-repository -->\n")
+
+    archive = update_package.assemble(release(), out=tmp_path / "out", **inputs)
+
+    assert package_markdown(archive)["vorlagen/README.md"] == (
+        "# Behördenunterlagen\n\nEinleitung.\n\n[Update-Vermerk](09-betrieb-update/update-vermerk.md)\n")
+
+
+def test_a_repository_only_marker_without_partner_fails_the_package(tmp_path: Path, inputs: dict) -> None:
+    put_template(inputs, "README.md", "# Behördenunterlagen\n\n<!-- nur-im-repository -->\n> Entwicklungsstand\n")
+
+    with pytest.raises(update_package.PackageError, match="README.md: a nur-im-repository marker has no partner"):
+        update_package.assemble(release(), out=tmp_path / "out", **inputs)
 
 
 def test_an_id_twice_on_one_page_fails_the_package(tmp_path: Path, inputs: dict) -> None:
@@ -1691,7 +1740,8 @@ def test_an_lts_package_holds_both_comparisons_apart(tmp_path: Path, inputs: dic
     assert read(archive, root + "delta-lts/manifest-delta.md") == b"# Delta LTS\n"
     text = read(archive, root + "LIESMICH.md").decode()
     assert "vorgaenger-lts: v1.2.7\n" in text
-    assert "| `delta-lts/manifest-delta.md` |" in text and "| `betrieb-lts/betriebsfolgen.md` |" in text
+    assert ("| [`delta-lts/manifest-delta.md`](delta-lts/manifest-delta.md) |" in text
+            and "| [`betrieb-lts/betriebsfolgen.md`](betrieb-lts/betriebsfolgen.md) |" in text)
     assert "v1.2.7" in section(text, "Welcher Vergleich für wen")
     assert "v1.3.0" in section(text, "Welcher Vergleich für wen")
 

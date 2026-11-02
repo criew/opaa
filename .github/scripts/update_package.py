@@ -27,12 +27,12 @@ opaa-update-paket-<version>.tar.gz with its .sha256 file and both SBOMs into --o
 holds the SBOMs under sbom/. Without a previous final release the delta starts from the oldest root
 commit, which has no manifest.
 The templates of docs/behoerden/ go to vorlagen/, the update note also to the top, the handbook of
-docs/handbuch/ to handbuch/. In templates, fact sheet placeholders become links to faktenblaetter/;
+docs/handbuch/ to handbuch/, both without their blocks marked as repository only. In templates, fact sheet placeholders become links to faktenblaetter/;
 in templates and handbook, links into the package stay relative and links out of it point to the
 tag (of a trial: the commit) in --repository, outside code; an unknown sheet or anchor or a link to
 nothing fails the run. Beside every Markdown file lies its HTML page, with index.html as start page
 (package_html.py); a link of the HTML version to a missing file or anchor fails the run. Mermaid
-diagrams show as SVG, drawn in Chromium by .github/tools/mermaid/ (installed like cdxgen), and a
+diagrams of templates, handbook and fact sheets show as SVG, drawn in Chromium by .github/tools/mermaid/ (installed like cdxgen), and a
 diagram that does not render fails the run. Links of the delta point into --repository. The axe
 results of the release run (--accessibility, one directory per run, accessibility_report.py) become
 barrierefreiheit/; without them the report says the version was not checked. Dates and file
@@ -88,6 +88,11 @@ HANDBOOK = ROOT / "docs" / "handbuch"
 UPDATE_NOTE = "09-betrieb-update/update-vermerk.md"
 TEMPLATE_DIR = "vorlagen/"
 HANDBOOK_DIR = "handbuch/"
+FACT_SHEET_DIR = "faktenblaetter/"
+# A block between these two lines, each on a line of its own, speaks about the repository and is
+# left out of the package, such as the note that the repository holds the development state.
+REPOSITORY_ONLY = re.compile(r"^<!-- nur-im-repository -->\n.*?^<!-- /nur-im-repository -->\n\n*",
+                             re.M | re.S)
 # Rules for authors of docs/behoerden/ and docs/handbuch/, no content; excluded at their top level only.
 AUTHOR_RULES = ("AGENTS.md", "CLAUDE.md")
 MANIFEST_PATH = "backend/src/main/resources/compliance/manifest/"
@@ -819,6 +824,11 @@ class Release:
     lts_previous_commit: str | None = None
 
 
+def ref(name: str, target: str | None = None) -> str:
+    """A table entry of the readme: `name` as code, linked to `target` (default: `name`) in the package."""
+    return f"[`{name}`]({target or name})"
+
+
 def readme(release: Release) -> str:
     name = PREFIX + release.version
     target = release.commit if release.trial else release.tag
@@ -860,42 +870,45 @@ def readme(release: Release) -> str:
     )
     lines += [
         "",
-        "Zum Lesen im Browser `index.html` öffnen: Neben jeder Markdown-Datei liegt dieselbe Seite als"
-        " HTML, alle Verweise innerhalb des Pakets funktionieren ohne Internetzugang. Die Markdown-Dateien"
-        " dienen zum Weiterbearbeiten und Vergleichen.",
+        "Zum Lesen [`index.html`](index.html) im Browser öffnen, auch ohne Internetzugang. Die"
+        " Markdown-Dateien dienen zum Weiterbearbeiten.",
         "",
         "| Datei | Inhalt |",
         "|---|---|",
-        "| `index.html` | Startseite der HTML-Fassung |",
-        "| `delta/manifest-delta.md` | Änderungen der Fakten mit Stufenvorschlag, Bezug zu VVT, DSFA"
+        f"| {ref('index.html')} | Startseite der HTML-Fassung |",
+        f"| {ref('delta/manifest-delta.md')} | Änderungen der Fakten mit Stufenvorschlag, Bezug zu VVT, DSFA"
         " und Sicherheitskonzept und den als datenrelevant gekennzeichneten Pull Requests |",
-        "| `delta/manifest-delta.json` | dieselben Änderungen einzeln, für Werkzeuge |",
-        "| `betrieb/betriebsfolgen.md` | Bruch und Vorbereitung, Neuindizierung, Schemamigration, neue"
+        f"| {ref('delta/manifest-delta.json')} | dieselben Änderungen einzeln, für Werkzeuge |",
+        f"| {ref('betrieb/betriebsfolgen.md')} | Bruch und Vorbereitung, Neuindizierung, Schemamigration, neue"
         " Ports und Egress-Ziele, je mit Quelle |",
-        "| `betrieb/antwortqualitaet.md` | Kennzahlen der Retrieval-Regression beider Versionen mit"
+        f"| {ref('betrieb/antwortqualitaet.md')} | Kennzahlen der Retrieval-Regression beider Versionen mit"
         " Messdatum; fehlende Werte stehen als „nicht gemessen“ da |",
         *([
-            f"| `{LTS_DELTA_DIR}manifest-delta.md` | wie `delta/manifest-delta.md`, aber gegenüber"
+            f"| {ref(LTS_DELTA_DIR + 'manifest-delta.md')} | wie `delta/manifest-delta.md`, aber gegenüber"
             f" {release.lts_previous}, dem jüngsten Release der vorigen LTS-Linie |",
-            f"| `{LTS_DELTA_DIR}manifest-delta.json` | dieselben Änderungen einzeln, für Werkzeuge |",
-            f"| `{LTS_OPERATIONS_DIR}betriebsfolgen.md` | Betriebsfolgen gegenüber {release.lts_previous} |",
-            f"| `{LTS_OPERATIONS_DIR}antwortqualitaet.md` | Antwortqualität gegenüber {release.lts_previous} |",
+            f"| {ref(LTS_DELTA_DIR + 'manifest-delta.json')} | dieselben Änderungen einzeln, für Werkzeuge |",
+            f"| {ref(LTS_OPERATIONS_DIR + 'betriebsfolgen.md')} | Betriebsfolgen gegenüber {release.lts_previous} |",
+            f"| {ref(LTS_OPERATIONS_DIR + 'antwortqualitaet.md')} | Antwortqualität gegenüber"
+            f" {release.lts_previous} |",
         ] if release.lts_previous else []),
-        "| `faktenblaetter/` | die Faktenblätter dieser Version und `faktenblaetter.json` |",
-        "| `barrierefreiheit/pruefbericht.md` | Prüfbericht der automatisierten Barrierefreiheitsprüfung"
+        f"| {ref('faktenblaetter/', 'index.html#faktenblaetter')} | die Faktenblätter dieser Version und"
+        f" {ref('faktenblaetter.json', 'faktenblaetter/faktenblaetter.json')} |",
+        f"| {ref('barrierefreiheit/pruefbericht.md')} | Prüfbericht der automatisierten Barrierefreiheitsprüfung"
         " mit axe-core an dieser Version: geprüfte Seiten und Zustände je im Farbschema ihres Szenarios,"
         " ein Teil davon in beiden, und welche Zustände nur in einem; dazu Regeln und Befunde |",
-        "| `lizenzen/` | Lizenzübersicht der ausgelieferten Abhängigkeiten von Backend und Frontend |",
-        f"| `{SBOM_DIR}` | Stücklisten (SBOM, CycloneDX) der ausgelieferten Abhängigkeiten,"
-        f" `{sbom_name('backend', release)}` und `{sbom_name('frontend', release)}`;"
+        f"| {ref('lizenzen/', 'index.html#nachweise')} | Lizenzübersicht der ausgelieferten Abhängigkeiten"
+        " von Backend und Frontend |",
+        f"| {ref(SBOM_DIR, 'index.html#nachweise')} | Stücklisten (SBOM, CycloneDX) der ausgelieferten"
+        f" Abhängigkeiten, {ref(sbom_name('backend', release), SBOM_DIR + sbom_name('backend', release))}"
+        f" und {ref(sbom_name('frontend', release), SBOM_DIR + sbom_name('frontend', release))};"
         " dieselben Dateien hängen am GitHub-Release |",
-        "| `update-vermerk.md` | Vorlage für den Update-Vermerk der Behörde |",
-        "| [`vorlagen/`](vorlagen/README.md) | alle Vorlagen für Behörden mit ihren Ordnerübersichten;"
-        " Faktenblatt-Verweise führen auf `faktenblaetter/`, Handbuch-Verweise auf `handbuch/`, andere"
-        " Verweise ins Repository auf den Stand dieser Version |",
-        f"| [`{HANDBOOK_DIR}`]({HANDBOOK_DIR}README.md) | das Handbuch dieser Version; Verweise auf andere"
+        f"| {ref('update-vermerk.md')} | Vorlage für den Update-Vermerk der Behörde |",
+        f"| {ref(TEMPLATE_DIR, TEMPLATE_DIR + 'README.md')} | alle Vorlagen für Behörden mit ihren"
+        " Ordnerübersichten; Faktenblatt-Verweise führen auf `faktenblaetter/`, Handbuch-Verweise auf"
+        " `handbuch/`, andere Verweise ins Repository auf den Stand dieser Version |",
+        f"| {ref(HANDBOOK_DIR, HANDBOOK_DIR + 'README.md')} | das Handbuch dieser Version; Verweise auf andere"
         " Dokumentation führen auf deren Stand in dieser Version |",
-        "| `SHA256SUMS` | Prüfsummen aller Dateien des Pakets |",
+        f"| {ref('SHA256SUMS')} | Prüfsummen aller Dateien des Pakets |",
         "",
         *([
             "## Welcher Vergleich für wen",
@@ -1158,7 +1171,7 @@ def documents(templates: Path, handbook: Path, repository: str, ref: str,
     links = Links(checkout, packaged, repository, ref)
     files: dict[str, bytes] = {}
     for source, path in [*packaged.items(), (note, "update-vermerk.md")]:
-        text = sources[source].read_bytes().decode("utf-8")
+        text = without_repository_notes(sources[source].read_bytes().decode("utf-8"), source)
         rendered = (render_template(text, source, path, sheets, links)
                     if sheets is not None and not path.startswith(HANDBOOK_DIR)
                     else outside_code(text, relative_links(source, path, links)))
@@ -1166,14 +1179,23 @@ def documents(templates: Path, handbook: Path, repository: str, ref: str,
     return files
 
 
+def without_repository_notes(text: str, source: str) -> str:
+    """`text` without its blocks marked as repository only (REPOSITORY_ONLY); a marker left
+    unpaired fails the run, so no repository note slips into the package."""
+    kept = REPOSITORY_ONLY.sub("", text)
+    if "nur-im-repository -->" in kept:
+        raise PackageError(f"{source}: a nur-im-repository marker has no partner")
+    return kept.rstrip("\n") + "\n" if kept != text else kept
+
+
 def drawn(files: dict[str, bytes]) -> list[str]:
-    """The Mermaid sources of templates, update note and handbook in the package `files`, the
-    diagrams the package shows as SVG and CI renders; elsewhere, such as in upgrade notes, a
-    diagram stays code."""
+    """The Mermaid sources of templates, update note, handbook and fact sheets in the package
+    `files`, the diagrams the package shows as SVG; elsewhere, such as in upgrade notes, a diagram
+    stays code."""
     from package_html import mermaid_sources
 
     return mermaid_sources({path: content for path, content in files.items()
-                            if path.startswith((TEMPLATE_DIR, HANDBOOK_DIR))
+                            if path.startswith((TEMPLATE_DIR, HANDBOOK_DIR, FACT_SHEET_DIR))
                             or path == "update-vermerk.md"})
 
 

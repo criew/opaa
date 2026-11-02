@@ -1,7 +1,9 @@
 # Unterlagen für Behörden
 
+<!-- nur-im-repository -->
 > Die Fassung im Repository ist der Entwicklungsstand. Für eine Installation gelten die Vorlagen im
 > Update-Paket der eingesetzten Version, siehe [Wo man die Vorlagen liest](#wo-man-die-vorlagen-liest).
+<!-- /nur-im-repository -->
 
 Dieser Ordner enthält Vorlagen für die Einführung und den Betrieb von OPAA in einer Behörde, geordnet
 nach dem Einführungsweg.
@@ -45,6 +47,7 @@ welche Aufgaben bei der Behörde liegen und am Ende Arbeitshilfen und Rechtsgrun
 Datei steht, wann sie zuletzt durchgesehen wurde, auf welchem Rechtsstand sie beruht und dass sie
 nicht rechtlich geprüft ist.
 
+<!-- nur-im-repository -->
 ## Wo man die Vorlagen liest
 
 Die Vorlagen gehen davon aus, dass sie im
@@ -59,4 +62,4 @@ sieht, was protokolliert wird, welche Daten das Haus verlassen, welche Fristen u
 gelten. Sie stimmen deshalb immer mit der Version überein, und die Vorlagen nennen keine Werte
 selbst, sondern verweisen auf sie. Im Repository stehen an diesen Stellen Platzhalter wie
 `{{faktenblatt:datenkatalog}}`, im Paket Links.
-
+<!-- /nur-im-repository -->
