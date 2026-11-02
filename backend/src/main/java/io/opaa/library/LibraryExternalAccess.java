@@ -11,8 +11,8 @@ import java.util.UUID;
  *
  * @param setByDisplayName {@code null} when the account no longer exists; the binding,
  *     pseudonymised record of the act is the audit entry, never this field
- * @param tokenCount a number, never names, persons or usage (docs/features/external-access.md, "Was
- *     der Verantwortliche sieht"). Always {@code 0} until the tokens exist
+ * @param tokenCount a number, never names, persons or usage (ADR-0035). Always {@code 0} until the
+ *     tokens exist
  * @param maxReleaseDays the systemwide upper bound of a Befristung, so a client can offer the
  *     latest admissible date instead of hard-coding one
  */

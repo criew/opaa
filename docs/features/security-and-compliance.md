@@ -214,7 +214,7 @@ ersten Stufe nicht geschrieben.
   wird als solcher protokolliert; ein eigenes Auffindbarkeitsfeld (`listed`) gibt es seit
   [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) nicht mehr
 - Setzen, Zurücknehmen, Erlöschen und Aussetzen der **Freigabe einer Wissensbibliothek für
-  externe KI-Werkzeuge** ([external-access.md](./external-access.md#die-freigabe-der-bibliothek)) — sie ist
+  externe KI-Werkzeuge** ([ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md)) — sie ist
   das verbliebene Reichweitenfeld neben den Grants und entscheidet zusätzlich über die Hausgrenze;
   beim Erlöschen mit dem Anlass (Fristablauf, gesenkte Freigabe-Obergrenze)
 - Aussetzen von Grants durch eine nachträglich gesenkte Freigabe-Obergrenze
@@ -288,7 +288,7 @@ ersten Stufe nicht geschrieben.
   zusätzlich angezeigt
 - Modellvorgaben und die Freigabe externer Modelle
 - Die Freigabe-Obergrenze konnektor-gespeister Bibliotheken
-- **Die Einstellungen für externe KI-Werkzeuge** ([external-access.md](./external-access.md#der-schalter-der-installation)):
+- **Die Einstellungen für externe KI-Werkzeuge** ([ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md)):
   Ein- und Ausschalten des Kanals, Ablauf-Obergrenze für Zugangstokens, Kontingent je Token,
   Netzbereiche des Kanals und die Schwelle des Abflussalarms. Sie stehen aus demselben Grund hier
   wie die Freigabe-Obergrenze: Sie entscheiden über die Reichweite eines Bestands, nicht über
@@ -415,7 +415,7 @@ die zugehörige Funktion existiert — die Liste selbst bleibt geschlossen und �
 | **Antwortinhalte, Zitate, Modellaufrufe** | dasselbe, zusätzlich mit Inhalten aus dem Fachverfahren |
 | **Erfolgreiche Anmeldungen und Sitzungsverläufe** | reines Anwesenheitsmerkmal, ohne Aussage über Rechte |
 | **Fehlgeschlagene Anmeldungen und abgewiesene Verbindungsversuche** | Sicherheitsereignisse, die in das zentrale Sicherheitsmonitoring gehören und nicht in das Nachweisprotokoll. Sie bleiben im Anwendungslog und erreichen das Sicherheitsmonitoring über die Log-Sammlung der Behörde, nicht über die [SIEM-Anbindung](#anbindung-an-ein-zentrales-sicherheitsmonitoring) des Protokolls. Das gilt unverändert für die lokale Anmeldung ([ADR-0033](../decisions/0033-lokale-benutzerverwaltung.md)): Der einzelne Fehlversuch steht nur im technischen Anwendungslog (kurze Frist, keine Auswertungsoberfläche, Konto-Kennung statt Adresse); in das Nachweisprotokoll gelangt allein die daraus folgende **Kontosperre** als Zustandsänderung. Der Fehlversuchszähler eines Kontos wird weder ausgegeben noch historisiert und geht bei jeder erfolgreichen Anmeldung, jedem Zurücksetzen und jeder Entsperrung auf null |
-| **Der Schwellenwertalarm des Zugriffswegs für externe KI-Werkzeuge** | Dasselbe Muster wie eine Zeile höher: Er ist ein Sicherheitsereignis, keine Zugriffsänderung. Die Überschreitung erzeugt eine Meldung an die Systemverwaltung und einen Eintrag im technischen Anwendungslog (kurze Frist, keine Auswertungsoberfläche); der Zähler lebt nur im Arbeitsspeicher und wird nicht historisiert. In das Nachweisprotokoll gelangt allein die daraus folgende **Sperre des Tokens** als Zustandsänderung. Einzelheiten: [external-access.md](./external-access.md#kontingente-und-der-abflussalarm) |
+| **Der Schwellenwertalarm des Zugriffswegs für externe KI-Werkzeuge** | Dasselbe Muster wie eine Zeile höher: Er ist ein Sicherheitsereignis, keine Zugriffsänderung. Die Überschreitung erzeugt eine Meldung an die Systemverwaltung und einen Eintrag im technischen Anwendungslog (kurze Frist, keine Auswertungsoberfläche); der Zähler lebt nur im Arbeitsspeicher und wird nicht historisiert. In das Nachweisprotokoll gelangt allein die daraus folgende **Sperre des Tokens** als Zustandsänderung. Einzelheiten: [ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md) |
 | **Lesezugriffe auf Dokumente und Chats** | Verhalten; wer worauf zugreifen **durfte**, belegt die Rechtehistorie. Der Export der Selbstauskunft ist kein Lesezugriff in diesem Sinn: Er wird als Ganzes festgehalten, nie je Chat oder Dokument |
 | **Favoriten an Assets** — Setzen, Entfernen, Bestand | Persönliche Ordnung, keine Zugriffsänderung; in der Menge ein Interessenprofil. Favoriten werden weder protokolliert noch historisiert, nicht gezählt und sind für niemanden außer der Person selbst abrufbar; exportiert werden sie nur in ihrer Selbstauskunft, und als personenbeziehbares Feld gehören sie in die Auskunft über die Datenerhebung ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), Entscheidung 7) |
 
@@ -848,7 +848,7 @@ schwierigere, und ein Ereignisprotokoll kann sie nicht beantworten, solange es L
 Deshalb werden **alle Quellen historisiert**: Grants — Empfänger Person, Gruppe **und „Alle
 Beschäftigten"** —, Gruppenmitgliedschaften und das verbleibende Reichweitenfeld am Asset (die
 Freigabe einer Wissensbibliothek für externe KI-Werkzeuge, siehe
-[external-access.md](./external-access.md#die-freigabe-der-bibliothek); `listed` entfällt mit
+[ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md); `listed` entfällt mit
 [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md) samt seiner
 Intervalle). Die Space-Zuordnung wird nicht historisiert: Sie gewährt keinen Zugriff. Zu jedem Zeitpunkt ist
 rekonstruierbar, wer welche Rechte hatte, seit wann und aufgrund welchen Vorgangs.
@@ -1094,7 +1094,7 @@ Protokollzeitraums. **Aussetzen** ist im Modell vorgesehen (Zustand `SUSPENDED`)
 von nichts gesetzt: [#797](https://github.com/criew/opaa/issues/797) hat die Freigabe-Obergrenze
 konnektor-gespeister Bibliotheken ausdrücklich auf die Freigabe an „Alle Konten" (bis ADR-0039
 zusätzlich auf `listed`) begrenzt und lässt die
-Freigabe für externe KI-Werkzeuge unberührt (siehe [external-access.md](./external-access.md#die-freigabe-ist-ein-reichweitenfeld-und-wird-wie-eines-behandelt)).
+Freigabe für externe KI-Werkzeuge unberührt (siehe [ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md)).
 
 **Auflösung der Intervallgrenzen (#1497, [ADR-0032](../decisions/0032-zeitquelle-rechtehistorie.md)):**
 Aufeinanderfolgende Zustandsintervalle desselben Objekts haben streng aufsteigende Grenzen — auch dann,

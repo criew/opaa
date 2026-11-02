@@ -1,7 +1,6 @@
 # Evaluierungskorpus
 
 Enthält die Testkorpora für die Suchqualitäts-Evaluierung (siehe
-[`docs/features/search-quality-evaluation.md`](../docs/features/search-quality-evaluation.md) und
 [ADR-0011](../docs/decisions/0011-search-quality-evaluation-harness.md)). Dieses Verzeichnis liegt
 bewusst außerhalb des Gradle-Builds und der CI — die Generatoren laufen nur bei bewussten
 Korpus-Änderungen, nie automatisch.
@@ -47,8 +46,7 @@ eval/
 Aktuell umgesetzt: die Domänen **Comichelden** (Issue #225/#226, einchunkig) und **Sehenswürdigkeiten
 in europäischen Großstädten** (Issue #234, bewusst mehrchunkig, deutschsprachig). Die ursprünglich für
 Phase 2 vorgesehenen weiteren Domänen (Filme, Reiseziele, Tiere) sind gestrichen (Maintainer-
-Entscheidung vom 21.08.2026, Issue #234) — Begründung siehe
-`docs/features/search-quality-evaluation.md`, Abschnitt „Domänen und was sie prüfen sollen".
+Entscheidung vom 21.08.2026, Issue #234) — Begründung siehe Issue #234.
 
 Eine dritte Domäne, **Verwaltung** (Issues #1042/#1043, Abschnitte 4 und 5 von
 `docs/features/retrieval-benchmark.md`), misst deutschsprachige Amtssprache an einem vollständig
@@ -519,8 +517,7 @@ harte Assertion, keine Beobachtung (Referenzvarianten-Selbstprüfung).
 Ein vierter, **standardmäßig abgeschalteter** Schritt am Ende desselben Testlaufs misst
 Mehrrunden-Fälle — Gespräche statt Einzelfragen — gegen dasselbe, bereits indizierte Korpus.
 Datensatz: `eval/golden/<domäne>-conversations.json` (siehe
-[`eval/golden/README.md`](golden/README.md)); Spezifikation: `docs/features/conversation-memory.md`,
-Abschnitt „Messung".
+[`eval/golden/README.md`](golden/README.md)); Begründung: [ADR-0031](../docs/decisions/0031-gespraechsgedaechtnis.md).
 
 ```bash
 # Messung und Baseline-Vergleich in einem Aufruf (Issue #1553) — die Task setzt beide

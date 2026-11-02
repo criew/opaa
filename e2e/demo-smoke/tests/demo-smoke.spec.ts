@@ -11,17 +11,16 @@ import {
 /**
  * The one smoke test against the "demo" Compose profile (Issue #232, Epic #708). Not part of the
  * regular suite under e2e/tests/ - see e2e/demo-smoke/playwright.config.ts and
- * scripts/run-e2e.mjs's own module doc for why, and demo/README.md/docs/features/demo-instance.md
+ * scripts/run-e2e.mjs's own module doc for why, and demo/README.md
  * for the "demo" profile and its seed itself.
  *
  * Few scenarios by design, per the issue's own acceptance criteria: the first proves the chain
  * Compose -> Seed -> Keycloak login -> connectors -> search works end to end, nothing about the
  * Rheinfurt corpus's actual content - assertions on demo content belong to
  * docs/market/demo-drehbuch.md's manually verified drehbuch, not to a test that runs in CI against a
- * corpus that is explicitly allowed to keep evolving (docs/features/demo-instance.md, "Grund ist
- * Kopplung"). The later scenarios each cover one more piece of the stack the same way (a second
- * identity provider, the S3-fed library, a direct link to a chat surviving the provider sign-in)
- * without pinning corpus wording either.
+ * corpus that is explicitly allowed to keep evolving (demo/README.md). The later scenarios each
+ * cover one more piece of the stack the same way (a second identity provider, the S3-fed library, a
+ * direct link to a chat surviving the provider sign-in) without pinning corpus wording either.
  */
 
 const DEMO_USERNAME = 'maria.weber'
@@ -149,7 +148,7 @@ test.describe('Demo-Smoke (#232)', () => {
     await startFreshChat(page)
     // "Gebührenfrage" from docs/market/demo-drehbuch.md, question 1 - guaranteed to have an
     // answer in the corpus (demo/generator, #711) and readable by every fach account, Maria included
-    // (docs/features/demo-instance.md, "Nutzer, Spaces und Berechtigungen"). The concrete wording
+    // (demo/README.md). The concrete wording
     // is symbolic with ai-stub, though: every input gets the same embedding vector (see
     // e2e/README.md, "KI-Stub statt echtem Modell"), so which chunks reach this answer is decided
     // by the permission filter, never by relevance to this specific question - this test asserts

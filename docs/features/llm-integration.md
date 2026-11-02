@@ -99,7 +99,7 @@ Anwendungsänderung anbinden lassen.
 
 Was bewusst **nicht** stattfindet: eine Empfehlung bestimmter Modelle oder Anbieter durch das Produkt.
 Welche Modelle geeignet und zulässig sind, entscheidet die Behörde; OPAA liefert dafür die Verwaltung,
-die Vorgaben und die Messbarkeit (siehe [Suchqualität](./search-quality-evaluation.md)).
+die Vorgaben und die Messbarkeit (siehe [Suchqualität](../decisions/0011-search-quality-evaluation-harness.md)).
 
 ### Eigene Modelle zuerst
 
@@ -357,7 +357,7 @@ Der Grund steht bereits unter [Sofortige Wirkung](#sofortige-wirkung): Ein Wechs
 Einbettungsmodells macht alle vorhandenen Vektoren unvergleichbar und erzwingt eine vollständige
 Neuindizierung. Eine Auswahlliste, die eine Wissensbasis unbrauchbar macht, sobald jemand sie versehentlich
 verstellt, ist keine Erleichterung, sondern eine Falle. Der Wechsel bleibt deshalb ein geplanter Vorgang
-mit Probeeinbettung, Vorschau und Bestätigung: [Wechsel des Embedding-Modells](./embedding-model-change.md)
+mit Probeeinbettung, Vorschau und Bestätigung: [Wechsel des Embedding-Modells](../decisions/0061-wechsel-des-embedding-modells.md)
 (ADR-0061).
 
 Die Anzeige entfällt trotzdem nicht. Ohne sie entstünde der Eindruck, OPAA arbeite mit genau einem Modell,
@@ -646,13 +646,13 @@ Der Aufruf wird aus sechs Teilen zusammengesetzt:
    Zitiermarken im Text werden als Text kenntlich gemacht (siehe [Untergeschobene Anweisungen](#untergeschobene-anweisungen-aus-dokumenten)).
 3. **Der bisherige Gesprächsverlauf**, soweit er in die Kontextgrenze passt. **(gebaut)** Zielbild
    (Epic #1482): das Gesprächsfenster ohne Zitiermarken früherer Antworten, siehe
-   [conversation-memory.md](./conversation-memory.md).
+   [ADR-0031](../decisions/0031-gespraechsgedaechtnis.md).
 4. **Die Frage.**
 5. **Die Gesprächsnotiz** — die Angaben der Person aus diesem Chat, als Block **im Systemvorspann**
    vor dem Gesprächsverlauf, ausdrücklich als „kein Beleg, keine Quelle" gekennzeichnet. Die Antwort
    bekommt **alle** Punkte; die Teilfragen-Zerlegung sieht nur die Rahmenangaben. Ohne Punkt entfällt
    der Block. **(gebaut, #1487; Spezifikation in
-   [conversation-memory.md](./conversation-memory.md))**
+   [ADR-0031](../decisions/0031-gespraechsgedaechtnis.md))**
 6. **Die Anweisung des Space** — eine von der Space-Rolle `ADMIN` hinterlegte, für alle Mitglieder
    lesbare Vorgabe, als eigener Block **im Systemvorspann** direkt nach den festen Regeln und vor
    der Gesprächsnotiz. Ihre Kopfzeile verweigert ihr den Rang einer Quelle und stellt die Belegregeln
@@ -816,7 +816,7 @@ dort beschrieben.
   Modelle außerhalb des Hauses, Verwahrung der Zugangsdaten.
 - **[Deployment und Infrastruktur](./deployment-infrastructure.md)** — Betrieb lokaler Modelle,
   Rechenleistung, Netzwege und der Betrieb ohne Netzanbindung.
-- **[Suchqualität messbar machen](./search-quality-evaluation.md)** — jeder Modellwechsel ist ein
+- **[Suchqualität messbar machen](../decisions/0011-search-quality-evaluation-harness.md)** — jeder Modellwechsel ist ein
   Eingriff mit Regressionsrisiko und wird gegen dieselben Referenzfälle gemessen.
 - **[ADR-0002](../decisions/0002-mvp-technology-stack.md)** — die gewählte Technologiebasis und die
   Abstraktion, über die Modelle angebunden werden.

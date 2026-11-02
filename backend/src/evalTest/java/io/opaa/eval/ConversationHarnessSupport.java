@@ -23,9 +23,9 @@ import org.slf4j.Logger;
 import org.springframework.ai.chat.memory.ChatMemory;
 
 /**
- * The opt-in multi-turn step of a harness run (docs/features/conversation-memory.md, "Messung"), in
- * one place instead of copied into each domain harness - the same split {@link
- * PipelineHarnessSupport} makes for the single-question pipeline path.
+ * The opt-in multi-turn step of a harness run (ADR-0031), in one place instead of copied into each
+ * domain harness - the same split {@link PipelineHarnessSupport} makes for the single-question
+ * pipeline path.
  *
  * <p>Runs at the very end of a harness run, on the corpus that run has already indexed and
  * manifest-verified: the multi-turn cases cost a second pass of queries, never a second indexing

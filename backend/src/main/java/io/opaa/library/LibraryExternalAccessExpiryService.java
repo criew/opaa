@@ -20,9 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Lets an expired Freigabe für Fremdzugänge stop taking effect without anyone acting
- * (docs/features/external-access.md): the mandatory Befristung is the one measure that keeps the
- * Bestand of releases from ratcheting upwards, and it only is one if nobody has to remember it.
+ * Lets an expired Freigabe für Fremdzugänge stop taking effect without anyone acting (ADR-0035):
+ * the mandatory Befristung is the one measure that keeps the Bestand of releases from ratcheting
+ * upwards, and it only is one if nobody has to remember it.
  *
  * <p>Writes both halves the specification requires, the way {@code
  * KnowledgeLibraryService#deleteLibrary} does rather than through {@link LibraryChanged}: the

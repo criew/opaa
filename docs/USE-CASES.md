@@ -152,7 +152,7 @@ Checkliste hat 60 Punkte, die Akte 200 Seiten in gemischten Formaten.
    **Prüfvermerk-Entwurf** erzeugen.
 5. Das Feedback des Prüfers fließt in die Qualitätsschleife: Der Agent wird gegen Referenzfälle
    nachgemessen, bevor eine neue Version freigegeben wird
-   (siehe [features/search-quality-evaluation.md](./features/search-quality-evaluation.md)).
+   (siehe [ADR-0011](./decisions/0011-search-quality-evaluation-harness.md)).
 
 **Themenbereiche:** A (Multi-Format, Belegvalidierung, Rückmeldung und Messbarkeit der Antwortqualität) · D
 (Agent, Grenzen, Prüfstand vor der Freigabe) · G (revisionssicheres Protokoll — bei Prüfungshandlungen
@@ -472,7 +472,7 @@ der Wert abstrakt, ohne die zweite bleibt er unzulässig.
 - [ ] Zwei bis drei Fälle mit Fachpraktikern gegenprüfen; Kämmerei und Rechtsbehelfsstelle sind die
       realistischsten Einstiegspunkte.
 - [ ] Referenzfragen für die Messung der Suchqualität aus den Fällen 1, 2 und 4 ableiten — siehe
-      [features/search-quality-evaluation.md](./features/search-quality-evaluation.md).
+      [ADR-0011](./decisions/0011-search-quality-evaluation-harness.md).
 
 ---
 

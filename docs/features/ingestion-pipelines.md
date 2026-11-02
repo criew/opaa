@@ -2002,7 +2002,7 @@ Hier wird nur der **Übergabepunkt** definiert:
   typspezifischen Chunk-Größen misst und die Baseline führt.
 - **[Wissensquellen und Konnektoren](./knowledge-sources.md)** — liefert die Dateien; die
   Zulassungsliste gilt für alle dateibasierten Aufnahmewege gleichermaßen.
-- **[Suchqualität messbar machen](./search-quality-evaluation.md)**,
+- **[Suchqualität messbar machen](../decisions/0011-search-quality-evaluation-harness.md)**,
   [ADR-0010](../decisions/0010-ein-chunk-invariante-evaluierungskorpus.md),
   [ADR-0011](../decisions/0011-search-quality-evaluation-harness.md),
   [ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md),

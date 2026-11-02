@@ -13,8 +13,7 @@
 | **Sampling** | Keins — der vollständige Datensatz wird verwendet |
 
 Ein Quellenhinweis wird geführt, obwohl CC0-1.0 ihn nicht verlangt — Nachvollziehbarkeit gehört
-zum Charakter dieses Korpus (siehe `docs/features/search-quality-evaluation.md`,
-Abschnitt „Lizenz-Rahmen").
+zum Charakter dieses Korpus (siehe ADR-0011).
 
 ## Wie diese Dateien entstanden sind
 

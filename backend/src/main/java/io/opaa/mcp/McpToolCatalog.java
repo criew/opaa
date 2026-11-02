@@ -10,8 +10,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 /**
- * The three tools, and the descriptions a foreign model decides by
- * (docs/features/external-access.md, "Die Beschreibungen entstehen je Anfrage neu").
+ * The three tools, and the descriptions a foreign model decides by (ADR-0035).
  *
  * <p>The descriptions are built <b>per request</b> from the caller's effective view, never from the
  * installation's holdings: "Sucht in Wissensbibliotheken" does not answer the question the model

@@ -791,7 +791,7 @@ Abschnitt nennt seine Quelle mit Pfad und Commit.
 Annahmen und Grenzen:
 
 - **Antwortqualität sind Referenzwerte.** Je Stand sind es die committeten Baselines der
-  [Retrieval-Regression](features/search-quality-evaluation.md), also der zuletzt angenommene Messlauf
+  [Retrieval-Regression](../eval/README.md), also der zuletzt angenommene Messlauf
   mit seinem Datum, nicht ein Lauf auf dem Release-Commit. Die Ergebnisse der einzelnen Läufe liegen
   nur 90 Tage als Artefakt am Workflow-Lauf; die Datei sagt deshalb ausdrücklich „Messlauf auf dem
   Commit dieser Version: nicht gemessen“. Einen Wert je Release gäbe erst ein Messbericht im

@@ -173,13 +173,12 @@ paths:
       operationId: searchKnowledge
       tags: [search]
       summary: >
-        Hits without a generated answer (docs/features/external-access.md, "Was ein
-        externes KI-Werkzeug erreicht"). Runs the same retrieval the answer of POST /api/v1/query is built
-        from - sub-questions, vector and full-text search, fusion, reranking and the permission
-        filter inside the search itself - and returns its passages instead of an answer. No chat
-        model is asked to generate anything, and nothing is persisted. Open to every signed-in
-        person; it does not hang on the external-access switch, which is the emergency stop of the
-        external-access channel, not of this endpoint.
+        Hits without a generated answer (ADR-0035). Runs the same retrieval the answer of POST
+        /api/v1/query is built from - sub-questions, vector and full-text search, fusion, reranking
+        and the permission filter inside the search itself - and returns its passages instead of an
+        answer. No chat model is asked to generate anything, and nothing is persisted. Open to every
+        signed-in person; it does not hang on the external-access switch, which is the emergency
+        stop of the external-access channel, not of this endpoint.
       description: >
         No chat model generates anything here, but the retrieval itself calls the configured AI
         provider on the request thread: every search query is embedded before it can be compared

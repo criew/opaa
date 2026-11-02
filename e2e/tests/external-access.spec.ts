@@ -28,7 +28,7 @@ import {
 
 /**
  * Externe KI-Werkzeuge über den vollen Stack (test(e2e) #1723, Epic #1715,
- * docs/features/external-access.md): der Weg von der Freigabe über das Token bis zum Treffer - und
+ * ADR-0035): der Weg von der Freigabe über das Token bis zum Treffer - und
  * die Gegenprobe, jeden der vier Faktoren einzeln entzogen.
  *
  * Die effektive Sicht eines Tokens ist die Schnittmenge aus vier Dingen: Schalter der Installation,

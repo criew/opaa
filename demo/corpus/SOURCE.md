@@ -66,8 +66,7 @@ Behörden (siehe `rheinfurt_text.py::strip_external_links`).
 | [RSS-Feed Stadt Düsseldorf](https://www.duesseldorf.de/rss-feed) | keine offene Lizenz | Nur Formatvorlage für die RSS-2.0-Feedstruktur. Kein Text übernommen |
 | Kommunale Satzungen (Gebühren-, Straßenreinigungssatzung beliebiger deutscher Städte) | gemeinfrei (§ 5 Abs. 1 UrhG) | Nur Strukturvorlage (§§-Gliederung, Gebührenverzeichnis als Anlage) für die 19 synthetischen Satzungen Rheinfurts. Kein Text übernommen |
 
-Details und Begründung der Quellenauswahl: [`docs/features/demo-instance.md`](../../docs/features/demo-instance.md),
-Abschnitt „Quellen und Lizenzen" (Recherche Issue #709).
+Details und Begründung der Quellenauswahl: Recherche in Issue #709.
 
 ## Bibliothek „Formattest auf S3" (#1519)
 

@@ -2,8 +2,8 @@ package io.opaa.api.types;
 
 /**
  * Whether a {@code KnowledgeLibrary} may be used through a Fremdzugang, and - where it may not -
- * why not. See docs/features/external-access.md#die-freigabe-der-bibliothek. The release is a reach
- * field and is historised in {@code asset_visibility_history}.
+ * why not. See ADR-0035. The release is a reach field and is historised in {@code
+ * asset_visibility_history}.
  *
  * <ul>
  *   <li>{@link #NEVER_SET} - the shipped default; nobody has ever released this library.

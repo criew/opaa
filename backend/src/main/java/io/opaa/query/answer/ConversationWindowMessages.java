@@ -8,9 +8,8 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 
 /**
- * The two entrances into the conversation window, in one place
- * (docs/features/conversation-memory.md, "Bauteil 1"): {@link #answer} for the answer just
- * generated, {@link #reloaded} for the persisted history read back on a cache miss.
+ * The two entrances into the conversation window, in one place (ADR-0031): {@link #answer} for the
+ * answer just generated, {@link #reloaded} for the persisted history read back on a cache miss.
  *
  * <p>Both normalize identically - answers lose their citation markers, questions are the person's
  * own wording and stay untouched, and an answer that is nothing but markers yields no window

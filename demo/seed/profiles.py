@@ -1,4 +1,4 @@
-"""The two data profiles the seed mechanism knows (docs/features/demo-instance.md).
+"""The two data profiles the seed mechanism knows (demo/README.md).
 
 "Geteilt sind die Daten, nicht die Nutzerbereitstellung": both profiles describe the same kind of
 data (users, spaces, libraries, VIEWER grants, upload documents, source configurations) and are
@@ -7,7 +7,7 @@ AuthProvider (auth.py) - a profile here only ever names a user by a stable key p
 attributes (subject/username/email/password) that AuthProvider needs, never how the session is
 obtained.
 
-- "demo": the rich, evolving Rheinfurt corpus from docs/features/demo-instance.md. Authenticates
+- "demo": the rich, evolving Rheinfurt corpus from demo/README.md. Authenticates
   via Keycloak (see keycloak/realm-export.json).
 - "e2e": the minimal, frozen profile for the E2E docker-compose stack (e2e/docker-compose.e2e.yml).
   Authenticates via the dev-auth header against the "dev-admin"/"dev-user"/"dev-outsider"/

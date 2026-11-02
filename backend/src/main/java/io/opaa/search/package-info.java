@@ -1,9 +1,9 @@
 /**
- * The reading path without generation (ADR-0035, docs/features/external-access.md, "Was ein
- * externes KI-Werkzeug erreicht"): {@link io.opaa.search.SearchService} answers a question with the
- * retrieved passages instead of an answer, {@link io.opaa.search.PassageFetchService} hands out the
- * text behind one of them - the passage with its neighbours by default, the whole document only on
- * explicit request and only up to a character cap.
+ * The reading path without generation (ADR-0035): {@link io.opaa.search.SearchService} answers a
+ * question with the retrieved passages instead of an answer, {@link
+ * io.opaa.search.PassageFetchService} hands out the text behind one of them - the passage with its
+ * neighbours by default, the whole document only on explicit request and only up to a character
+ * cap.
  *
  * <p>Neither of them ranks anything itself: both go through {@code
  * io.opaa.retrieval.KnowledgeRetrieval}, the same entrance {@code POST /api/v1/query} uses, so

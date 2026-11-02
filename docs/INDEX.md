@@ -49,7 +49,7 @@ Spezifikation — oder zwei, wo der Bereich zwei Fragen beantwortet.
 ### A · Wissensschicht & Retrieval
 
 **[`features/data-indexing-rag.md`](./features/data-indexing-rag.md)** ·
-**[`features/search-quality-evaluation.md`](./features/search-quality-evaluation.md)**
+**[ADR-0065](./decisions/0065-hybride-suche-reranking-und-diagnose.md)**
 
 Belegvalidierung, Konfidenz und Quellenbindung · hybride Suche mit Reranking · erklärbares Chunking ·
 Dokumentenverarbeitung von der Extraktion bis zur Vektorablage · Messbarkeit der Suchqualität gegen ein
@@ -117,12 +117,6 @@ Sitzungskosten · Auswertung des KI-Rollouts, durchgehend aggregiert und ohne Pe
 Web-Oberfläche mit Chat, Fundstellen und Dokumentenübersicht · REST-API für eigene Anbindungen · Anbindung
 an self-hosted Team-Chats · einheitliche Anmeldung und Rechte über alle Kanäle.
 
-**[`features/external-access.md`](./features/external-access.md)**
-
-Externe KI-Werkzeuge · persönliche Zugangstokens nur mit Lese- und Suchrecht ·
-Freigabe je Wissensbibliothek und installationsweiter Schalter, beides standardmäßig aus · MCP-Server
-über Streamable HTTP mit `search`, `fetch` und `list_libraries` · Kontingent je Token · die einzelne
-Abfrage bleibt unprotokolliert.
 
 ### J · Betrieb & Deployment
 
@@ -219,9 +213,6 @@ Stufenvorschlag je Release, Muster-Dienstvereinbarung mit statischen Anlagen.
   Befehl, Nutzerkonten mit Anmeldedaten, öffentliche Instanz, Korpus-Aktualisierung, Seed-Mechanismus
 - **[`market/demo-drehbuch.md`](./market/demo-drehbuch.md)** — ausformuliertes Vorführ-Drehbuch mit
   acht Fragen und acht Vorführschritten
-- **[`features/demo-instance.md`](./features/demo-instance.md)** — Konzept: Demo-Instanz „Stadt
-  Rheinfurt", fiktiver Verwaltungskorpus, Bibliotheken je Konnektortyp, Demo-Nutzer mit
-  Berechtigungsgrenze, Seed-Mechanismus
 
 ### Gestaltung
 

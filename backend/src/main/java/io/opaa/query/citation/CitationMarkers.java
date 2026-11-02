@@ -10,8 +10,8 @@ import java.util.stream.Collectors;
 
 /**
  * Removes citation markers from a text: all of them on the way into the conversation window
- * (docs/features/conversation-memory.md, "Bauteil 1"), only the malformed ones before an answer is
- * evaluated and stored ({@link CitationMarkerRepair}).
+ * (ADR-0031), only the malformed ones before an answer is evaluated and stored ({@link
+ * CitationMarkerRepair}).
  *
  * <p><b>Only the marker and the whitespace it sat in.</b> The rest of the text comes back character
  * for character: the indentation of a YAML block, the nesting of a list, the two trailing spaces of

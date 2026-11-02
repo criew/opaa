@@ -38,10 +38,9 @@ public record ConversationBaseline(
    * The values that define what the multi-turn path measured, as opposed to how well it scored.
    *
    * <p>Everything {@link PipelineBaseline.FixedPoints} pins ({@code pipeline}, unchanged and reused
-   * rather than copied field by field) plus the three conversation-memory dimensions of
-   * docs/features/conversation-memory.md - window width, search window, note cap. Each of them
-   * moves what the decomposition sees; a run under a different one measures something else, not
-   * something worse.
+   * rather than copied field by field) plus the three conversation-memory dimensions of ADR-0031 -
+   * window width, search window, note cap. Each of them moves what the decomposition sees; a run
+   * under a different one measures something else, not something worse.
    *
    * <p>{@code pipeline.goldenDatasetFile}/{@code goldenDatasetSha256}/{@code goldenCaseCount}
    * describe the multi-turn dataset here; {@code turnCount} is the second half of its size, since a
@@ -97,7 +96,7 @@ public record ConversationBaseline(
               + ". The multi-turn path resolves references through the sub-question decomposition; "
               + "without it there is nothing to resolve a follow-up question against, and the "
               + "committed numbers would not describe what this path measures "
-              + "(docs/features/conversation-memory.md, \"Messung\").");
+              + "(ADR-0031).");
     }
     PipelineGroupInvariants.validateGroups(baseline.groups(), file, "Conversation baseline");
   }

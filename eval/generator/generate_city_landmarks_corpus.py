@@ -10,7 +10,7 @@ the `comic-characters` domain, this domain deliberately targets documents large
 enough to split into multiple chunks at the application's default `chunk-size` (see
 docs/decisions/0010-ein-chunk-invariante-evaluierungskorpus.md, Entscheidung 3).
 
-Design goals (see docs/features/search-quality-evaluation.md and ADR-0011):
+Design goals (see ADR-0011):
 
 - No live network access: the script reads only the frozen files under `frozen/`, verified
   against the SHA-256 values recorded in `frozen/SOURCE.md` before anything is processed.

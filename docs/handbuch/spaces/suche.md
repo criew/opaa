@@ -943,12 +943,14 @@ des ersten Auftretens im Antwortkontext:
 | Quelle | Quellentyp und Link zum Dokument bzw. zur Seite in der Quelle, Indexierungszeitpunkt |
 | „Stand vom …" | die Bibliothek des Dokuments wurde beim Antworten nicht aktualisiert: gesperrt, Verbindung getrennt oder Zugang entfernt. Das Datum ist ihr letzter erfolgreicher Lauf, nicht der Indexierungszeitpunkt des Dokuments; dazu stehen der Grund und die zuständige Stelle (Systemverwaltung bei einer Sperre, sonst die Verwaltenden der Bibliothek). Siehe Kapitel [Zugänge](../arbeitsmittel/zugaenge.md) |
 
-Die Fundstellen stehen im Belegfenster; unter der Antwort steht nur „Belege anzeigen" mit der
-Zahl der zitierten Stellen und der weiteren geprüften, nicht zitierten Dokumente. Fährt man mit der Maus über eine
+Die Fundstellen stehen im Belegfenster; unter der Antwort steht nur die Schaltfläche dorthin mit der
+Zahl der zitierten Stellen und der weiteren geprüften, nicht zitierten Dokumente. Sie trägt den
+Belegstand der Antwort (siehe unten), bei Antworten ohne Belegstand „Belege anzeigen". Fährt man mit der Maus über eine
 Fußnote im Antworttext, nennt ein Tooltip Dokument und Fundort; ein Klick öffnet das Belegfenster
 an der zugehörigen Fundstelle und markiert sie dort.
 
 Das Belegfenster heißt „Belege dieser Antwort" und hat oben nur das Suchfeld „In Belegen suchen".
+Hat die Antwort ungedeckte Teilfragen, nennt ein Block „Ohne Fundstelle" darüber ihren Wortlaut.
 Es öffnet mit den zitierten Dokumenten in der Reihenfolge ihrer Fußnoten; der Link **„Nicht
 zitierte anzeigen"** unter der Liste blendet die geprüften, nicht zitierten darunter ein, ein
 zweiter Klick wieder aus. Bei jedem Öffnen sind sie wieder ausgeblendet. Die Suche durchsucht Titel
@@ -1010,21 +1012,24 @@ Antworten wieder an die Stelle, sobald die Bibliothek über den
 [Pipeline-Nachzug](../arbeitsmittel/wissensbibliotheken/README.md#72-pipeline-versionen-und-nachzug)
 neu aufbereitet ist; eine ältere Antwort behält ihren Stand.
 
-**Belegstand.** Über dem Fuß jeder Antwort steht ihr Belegstand: Symbol, Stufe und ein Satz, was
-sie von der nächsthöheren Stufe trennt, etwa „Teilweise belegt · 1 Beleg nicht bestätigt". Er ist
+**Belegstand.** Im Fuß jeder Antwort steht ihr Belegstand: Symbol und Stufe auf der Schaltfläche,
+die das Belegfenster öffnet, daneben vor der Zahl der Stellen der Grund, der die Antwort von der
+nächsthöheren Stufe trennt, etwa „Teilweise belegt → · 1 Beleg nicht bestätigt · 2 Stellen in
+1 Dokument". Er ist
 keine Zahl und keine Aussage darüber, ob die Antwort stimmt, sondern darüber, worauf sie sich stützt,
 und folgt fest aus den beiden Prüfungen oben und den Teilfragen der Suche (Stufe 3); Ähnlichkeitswerte
 und eine Selbsteinschätzung des Modells gehen nicht ein.
 
-| Stufe | Wann | Satz, zum Beispiel |
+| Stufe | Wann | Grund, zum Beispiel |
 |---|---|---|
-| „Belegt" | mindestens ein bestätigter Beleg, kein unbestätigter, jede Teilfrage durch einen bestätigten Beleg gedeckt, Antwort vollständig | „alle Belege bestätigt" |
-| „Teilweise belegt" | mindestens ein bestätigter Beleg, aber auch ein unbestätigter, eine Teilfrage ohne bestätigten Beleg oder eine abgebrochene Antwort | „1 Beleg nicht bestätigt", „zur Teilfrage ‚Gültigkeit Anwohnerparkausweis' keine Fundstelle", „Antwort abgebrochen" |
-| „Nicht belegt" | kein bestätigter Beleg | „keine Fundstelle im durchsuchten Bereich · vor Verwendung prüfen" |
+| „Belegt" | mindestens ein bestätigter Beleg, kein unbestätigter, jede Teilfrage durch einen bestätigten Beleg gedeckt, Antwort vollständig | keiner, nur die Zahl der Stellen |
+| „Teilweise belegt" | mindestens ein bestätigter Beleg, aber auch ein unbestätigter, eine Teilfrage ohne bestätigten Beleg oder eine abgebrochene Antwort | „1 Beleg nicht bestätigt", „1 Teilfrage ohne Fundstelle", „Antwort abgebrochen" |
+| „Nicht belegt" | kein bestätigter Beleg | „7 geprüft, keine zitiert", „kein Beleg bestätigt", „keine Fundstelle im durchsuchten Bereich" |
 
 Eine Teilfrage gilt als gedeckt, wenn ein bestätigter Beleg auf ein Dokument zeigt, das die Suche
 für diese Teilfrage gefunden und die Fusion (Stufe 7) ausgewählt hat; ein Dokument, das mehreren
-Teilfragen diente, deckt alle. Eine Nachricht ohne Suchbedarf („Danke") und eine leere
+Teilfragen diente, deckt alle. Ungedeckte Teilfragen werden im Fuß nur gezählt; ihren Wortlaut
+nennt der Block „Ohne Fundstelle" im Belegfenster. Eine Nachricht ohne Suchbedarf („Danke") und eine leere
 Antwort bekommen keinen Belegstand. Die Stufe ist immer als Wort lesbar, die Farbe des Symbols
 unterstreicht sie nur. Der Belegstand wird mit der Antwort gespeichert und zeigt beim Wiederöffnen
 eines Chats denselben Stand wie bei der Erzeugung; Antworten von vor seiner Einführung tragen keinen.

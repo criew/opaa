@@ -29,7 +29,7 @@ const uncitedSource = {
 }
 
 describe('MessageBubble', () => {
-  it('shows the Belegstand under an answer as word and reason, never as colour alone', () => {
+  it('shows the Belegstand of an answer without Belege as word and reason, never as colour alone', () => {
     render(
       <MessageBubble
         message={{
@@ -54,6 +54,69 @@ describe('MessageBubble', () => {
     const line = screen.getByTestId('answer-evidence')
     expect(line).toHaveTextContent('Belegstand: Teilweise belegt · 1 Beleg nicht bestätigt')
     expect(line).toHaveAttribute('data-level', 'PARTIALLY_SUPPORTED')
+  })
+
+  it('folds the Belegstand into the button to the Belegfenster, reason first in the count line', async () => {
+    const user = userEvent.setup()
+    render(
+      <MessageBubble
+        message={{
+          ...twoCitedMessage(),
+          evidence: {
+            level: 'PARTIALLY_SUPPORTED',
+            confirmedPassages: 2,
+            confirmedDocuments: 2,
+            unconfirmedCitations: 0,
+            uncoveredSubQueries: ['Gültigkeitsdauer Anwohnerparkausweis'],
+            truncated: false,
+            knowledgeSearched: true,
+            passagesFound: true,
+          },
+        }}
+      />,
+    )
+
+    const button = screen.getByRole('button', {
+      name: 'Belegstand: Teilweise belegt – Belege anzeigen',
+    })
+    expect(button).toHaveAttribute('data-level', 'PARTIALLY_SUPPORTED')
+    expect(screen.getAllByTestId('answer-evidence')).toHaveLength(1)
+    expect(screen.getByTestId('evidence-summary')).toHaveTextContent(
+      '1 Teilfrage ohne Fundstelle · 2 Stellen in 2 Dokumenten · 1 weitere geprüft',
+    )
+    expect(screen.queryByText(/Gültigkeitsdauer/)).not.toBeInTheDocument()
+
+    await user.click(button)
+    expect(await screen.findByTestId('uncovered-sub-queries')).toHaveTextContent(
+      'Ohne FundstelleGültigkeitsdauer Anwohnerparkausweis',
+    )
+  })
+
+  it.each([
+    ['SUPPORTED', 'Belegt', '2 Stellen in 2 Dokumenten · 1 weitere geprüft'],
+    ['UNSUPPORTED', 'Nicht belegt', '2 Stellen in 2 Dokumenten · 1 weitere geprüft'],
+  ] as const)('adds no reason where the count line explains %s', (level, label, summary) => {
+    render(
+      <MessageBubble
+        message={{
+          ...twoCitedMessage(),
+          evidence: {
+            level,
+            confirmedPassages: 2,
+            confirmedDocuments: 2,
+            unconfirmedCitations: 0,
+            uncoveredSubQueries: [],
+            truncated: false,
+            knowledgeSearched: true,
+            passagesFound: true,
+          },
+        }}
+      />,
+    )
+    expect(
+      screen.getByRole('button', { name: `Belegstand: ${label} – Belege anzeigen` }),
+    ).toHaveTextContent(label)
+    expect(screen.getByTestId('evidence-summary').textContent).toBe(summary)
   })
 
   it('shows no Belegstand where none was assessed', () => {

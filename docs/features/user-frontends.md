@@ -39,7 +39,7 @@ Reihenfolge sie entstehen.
    Erweiterung und entsprechend hoher Begründungslast.
 7. **Externe KI-Werkzeuge erreichen OPAA über einen eigenen, dreifach freigegebenen Kanal** —
    Zugangstokens und ein MCP-Server, beides standardmäßig aus. Er ist kein zusätzliches Recht,
-   sondern ein Ausschnitt bestehender Rechte; siehe [external-access.md](./external-access.md).
+   sondern ein Ausschnitt bestehender Rechte; siehe [ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md).
 
 ---
 
@@ -53,12 +53,12 @@ der alle Fähigkeiten vollständig sichtbar sind, und der Maßstab für alles We
 | Bereich | Zweck | Heute gebaut |
 |---|---|---|
 | **Fragen und Antworten** | Frage stellen, Antwort mit Fundstellen erhalten, Relevanz und Trefferzahl je Quelle sehen, erkennen, welche Quelle tatsächlich zitiert wurde | ja |
-| **Gesprächsverlauf** | Rückfragen im laufenden Gespräch, die den bisherigen Verlauf berücksichtigen | ja — Gespräche liegen persistent in genau einem Arbeitsraum und überleben ein Neuladen der Seite (#525/#527). Die Kopfzeile des Chats trägt ab der dritten abgeschlossenen Runde die Schaltfläche „Gesprächsnotiz · n“: ein aufklappbares Panel mit den Angaben, die OPAA aus den eigenen Nachrichten dieses Chats festgehalten hat, jede einzeln entfernbar (#1488, [conversation-memory.md](./conversation-memory.md)) |
+| **Gesprächsverlauf** | Rückfragen im laufenden Gespräch, die den bisherigen Verlauf berücksichtigen | ja — Gespräche liegen persistent in genau einem Arbeitsraum und überleben ein Neuladen der Seite (#525/#527). Die Kopfzeile des Chats trägt ab der dritten abgeschlossenen Runde die Schaltfläche „Gesprächsnotiz · n“: ein aufklappbares Panel mit den Angaben, die OPAA aus den eigenen Nachrichten dieses Chats festgehalten hat, jede einzeln entfernbar (#1488, [ADR-0031](../decisions/0031-gespraechsgedaechtnis.md)) |
 | **Suchfilter** | den Suchbereich eines Gesprächs ausschließlich über die Chip-Leiste am Eingabefeld steuern (Spezial-Chip @Space-Wissen, konkrete @-Referenzen auf zugeordnete Bibliotheken, oder eine geleerte Leiste), nicht über eine Space-Auswahl oder einen separaten Schalter; nie über das hinaus, was dem Arbeitsraum zugeordnet ist | ✅ — die Space-Auswahl ist entfernt; Chip-Leiste mit „@Space-Wissen", @-Autocomplete aus den zugeordneten, lesbaren Bibliotheken und sticky Chips sind gebaut und werden am persistierten Gespräch gespeichert (siehe unten); ein Arbeitsraum ohne Wissen zeigt den Hinweis mit Direktlink zur Zuordnung |
 | **Arbeitsräume** | Chats und Artefakte eines Themas, Entwurf und Ablage getrennt (siehe [spaces-and-assets.md](./spaces-and-assets.md)) | teilweise — Übersicht, Mitglieder, Rollen, Eigentumsübergabe und die Gesprächsliste je Arbeitsraum (anlegen, umbenennen, löschen) sind vorhanden |
 | **Wissen** | Dokumente einer Wissensbibliothek einsehen, hochladen, Indizierungsstand erkennen | ja — Bibliotheksdetailseite mit Bestandsdarstellung, Upload/Löschen für Upload-Bibliotheken und Indizierungsstand für Konnektor-Bibliotheken |
 | **Katalog** | **ein** Einstieg der Hauptnavigation für alle Asset-Typen (Wissen, Prompts, später Skills und Agenten): finden, anlegen, öffnen, freigeben, als Favorit markieren und „In Space verwenden" — nur Kacheln, nur Lesbares, eine Filterzeile aus Suche, Typ und Favoriten, feste Reihenfolge (Favoriten zuerst, dann Name); „Neuer Katalogeintrag" beginnt mit der Typwahl als Kacheln mit Icon ([spaces-and-assets.md](./spaces-and-assets.md#der-katalog), [ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)) | teilweise — gebaut ist der eine Einstieg „Katalog" (`/catalog`) nur mit kompakten Kacheln (Typ, Welt-Symbol bei Freigabe an alle, Umfang, Spaces, zuständige Stelle mit Symbol, „Aktualisiert am" oder Zustand; die eigene Rolle nur auf der Detailseite), der Filterzeile Suche → Typ → Favoriten und fester Reihenfolge (#2129), dazu die Typ-Registry und „Neuer Katalogeintrag" mit Typwahl als Kachelauswahl (#2093, #2094); `/libraries` und `/prompts` leiten auf den Katalog mit Typfilter weiter, und der Katalog zeigt nur lesbare Einträge (#2092). Favoriten sind gebaut: Stern an der Kachel als eigenes Bedienelement neben dem gestreckten Link, Filter „Favoriten“, eigene Favoriten zuerst (#2095). Die Detailseiten tragen denselben Freigabeabschnitt (#1902). Prompts werden in einem Editor mit Variablentabelle, Prüfung und Vorschau gepflegt und im Chat per `/befehl` mit Variablenformular eingesetzt (#1903). „In Space verwenden" steht im Menü „⋯" jeder Kachel und auf den Detailseiten. Beide Detailseiten haben denselben Kopf mit Stern und „⋯" und den Reiter „Zuordnungen"; die Prompt-Bibliothek hat kein „Zurück" und keinen Reiter „Verwaltung" mehr (#2208). Agenten sind Zielbild |
-| **Rückmeldung** | Antworten und Treffer bewerten; die Rückmeldung fließt in die Suchqualität ein (siehe [search-quality-evaluation.md](./search-quality-evaluation.md)) | nein — Zielbild (siehe unten) |
+| **Rückmeldung** | Antworten und Treffer bewerten; die Rückmeldung fließt in die Suchqualität ein (siehe [ADR-0011](../decisions/0011-search-quality-evaluation-harness.md)) | nein — Zielbild (siehe unten) |
 | **Systemverwaltung** | Gruppen und Verzeichnisabgleich, Rollen, Auslösen und Stand der Indizierung | teilweise — Gruppen, Verzeichnisabgleich, Rollen und Indizierung sind vorhanden; Modellvorgaben und Protokolleinsicht sind Zielbild (siehe [access-control.md](./access-control.md) und [llm-integration.md](./llm-integration.md)) |
 | **Persönliche Einstellungen** | Darstellung, später eigene Zugänge zur Schnittstelle | teilweise — nur die Darstellung; eine Verwaltung eigener API-Zugänge gibt es nicht |
 
@@ -114,7 +114,7 @@ statt still herunterzuladen, jedes andere Format zeigt beim Download eine Snackb
 Oberflächen teilten sich dafür in `MessageBubble.tsx` eine einzige `useDocumentPreview()`-Instanz;
 Dialog und Snackbar hängen dadurch nicht am Lebenszyklus des Belegfensters, das seine Kindelemente
 beim Schließen abbaut. Seit #1449 entfällt der Fundstellenblock unter der Antwort: Dort steht nur
-noch „Belege anzeigen" mit einer Zählzeile, alle Fundstellen stehen im Belegfenster
+noch „Belege anzeigen" (mit Belegstand: dessen Stufe, siehe #3491) mit einer Zählzeile, alle Fundstellen stehen im Belegfenster
 (`SourceEvidenceDrawer.tsx`), und ein Klick auf eine Fußnote öffnet es an der zugehörigen
 Fundstelle und markiert sie dort. Seit #3259 öffnet das Belegfenster mit den zitierten Belegen; die
 geprüften, nicht zitierten blendet der Link „Nicht zitierte anzeigen" (Disclosure-Muster mit fester
@@ -241,7 +241,7 @@ bis ein Konzept für Nutzerbewertungen existiert. Alles Weitere in diesem Abschn
    gelieferten Fundstellen und die Bewertung — nicht, wer bewertet hat.
 2. **Sie fließt in die Suchqualitäts-Evaluierung ein.** Negativ bewertete Fragen sind die besten
    Kandidaten für den Golden-Datensatz, gegen den Änderungen am Abruf geprüft werden (siehe
-   [search-quality-evaluation.md](./search-quality-evaluation.md)).
+   [ADR-0011](../decisions/0011-search-quality-evaluation-harness.md)).
 3. **Sie zeigt der Systemverwaltung Muster, keine Fälle.** Häufungen — eine Wissensbibliothek mit
    auffällig vielen Fehltreffern, ein Bestand, der veraltet ist — sind der eigentliche Ertrag.
 4. **Sie verändert keine Rechte und kein Ranking im laufenden Betrieb.** Eine Rückmeldung, die
@@ -286,7 +286,7 @@ bräuchte, würde eine zweite Rechteprüfung und eine zweite Fehlerbehandlung er
   Suche noch für den Abruf und auch nicht für eine Kontingentablehnung —, und eine Regressionsprüfung
   hält das fest. Ein Abruf ist damit nicht weniger protokolliert als die Abfrage, aus der er
   hervorgeht; ein Nachweis der tatsächlich abgerufenen Fundstellen wird bewusst nicht geführt (siehe
-  [external-access.md](./external-access.md)).
+  [ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md)).
 - **Grenzen.** Anfragekontingente schützen den Betrieb und begrenzen den Modellverbrauch.
 
 ### Was die Schnittstelle anbietet
@@ -344,7 +344,7 @@ Zweck, nicht nach Pfad.
 eigenen Uploads, ein Endpunkt für Rückmeldungen sowie Sammelverarbeitung mehrerer Fragen in einem
 Aufruf. Drei der damals genannten Lücken sind inzwischen geschlossen: das **Hochladen von
 Dokumenten** (`POST /api/v1/libraries/{libraryId}/documents`) sowie — mit dem Zugriffsweg für externe KI-Werkzeuge
-([external-access.md](./external-access.md), #1720) — der **eigene Such-Endpunkt** neben der Abfrage
+([ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md), #1720) — der **eigene Such-Endpunkt** neben der Abfrage
 (`POST /api/v1/search`, Treffer ohne erzeugte Antwort) und das **Abrufen eines einzelnen Dokuments**
 (`GET /api/v1/search/hits/{hitId}`); beide stehen jeder angemeldeten Person offen, nicht nur einem
 Zugangstoken. Ersatzlos entfallen sind die Endpunkte zum
@@ -376,7 +376,7 @@ Wissensbibliothek erteilt, nicht am einzelnen Dokument — das Modell dahinter i
   stehen in [konfiguration.md](../handbuch/betrieb/konfiguration.md). Ein überschrittenes Kontingent führt zu einer klaren
   Ablehnung, nicht zu einer langsamen Antwort.
 
-**Entschieden und in Arbeit** (18.09.2026, [external-access.md](./external-access.md)): persönliche
+**Entschieden und in Arbeit** (18.09.2026, [ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md)): persönliche
 **Zugangstokens** für externe KI-Werkzeuge, installationsweit abschaltbar, je Bibliothek freizugeben,
 mit Pflicht-Ablauf und Kontingent je Token. Sie lösen die ersten beiden Zielbildpunkte für den
 Personen-Fall ein; **Service-Accounts als eigene Identität ohne Person bleiben Zielbild.**
@@ -509,7 +509,7 @@ Sicherheitsgrenze des Systems.
   Entwurf und Ablage, die jeder Kanal abbilden muss
 - **[access-control.md](./access-control.md)** — Identität, Rollen und rechtebewusste Suche, an die
   jeder Kanal gebunden ist
-- **[external-access.md](./external-access.md)** — Zugangstokens und MCP-Server: der Kanal für
+- **[ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md)** — Zugangstokens und MCP-Server: der Kanal für
   externe KI-Werkzeuge, mit eigener Freigabe je Bibliothek und eigenem Installationsschalter
 - **[data-indexing-rag.md](./data-indexing-rag.md)** — Herkunft der Antworten und ihrer Fundstellen
 - **[llm-integration.md](./llm-integration.md)** — Modellvorgaben, die in jedem Kanal gelten

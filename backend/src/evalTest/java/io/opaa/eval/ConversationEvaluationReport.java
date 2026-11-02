@@ -5,10 +5,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Machine-readable report of the multi-turn measurement path (issue #1484,
- * docs/features/conversation-memory.md, "Messung"): every case run turn by turn through the same
- * chain a real request takes, with the conversation window of each turn built from the preceding
- * scripted turns.
+ * Machine-readable report of the multi-turn measurement path (ADR-0031): every case run turn by
+ * turn through the same chain a real request takes, with the conversation window of each turn built
+ * from the preceding scripted turns.
  *
  * <p><b>A separate type and a separate file, like the pipeline path itself.</b> The single-question
  * path measures standalone questions and this one measures turns of a conversation; a shared report
@@ -231,11 +230,10 @@ public record ConversationEvaluationReport(
       List<String> bledDocuments) {}
 
   /**
-   * The Bleed count of docs/features/conversation-memory.md: in the turn in which a {@code
-   * topic_switch} case changes topic, how many documents of the <b>previous</b> topic still stood
-   * in the window. A change turn is one whose expected documents are disjoint from every earlier
-   * turn's - determined from the dataset, not from a detector, because the specification
-   * deliberately has none.
+   * The Bleed count of ADR-0031: in the turn in which a {@code topic_switch} case changes topic,
+   * how many documents of the <b>previous</b> topic still stood in the window. A change turn is one
+   * whose expected documents are disjoint from every earlier turn's - determined from the dataset,
+   * not from a detector, because the specification deliberately has none.
    */
   public record TopicBleedAudit(
       int switchTurns,

@@ -2,7 +2,7 @@ name: Demo-Smoke
 
 # Not a Required Check and, like .github/workflows/e2e.yml, not run on pull requests:
 # indexing the full Rheinfurt corpus (~150-300 documents across six connector-fed libraries plus
-# 26 uploads, docs/features/demo-instance.md) takes noticeably longer than the "e2e" data profile
+# 26 uploads, demo/README.md) takes noticeably longer than the "e2e" data profile
 # that e2e.yml's own run covers, and this workflow's only job is to catch regressions in the
 # "demo" Compose profile/seed themselves (Issue #232), not to gate every PR on that extra time.
 # Nightly via schedule (same post-merge QA reasoning as e2e.yml) plus workflow_dispatch, so it can

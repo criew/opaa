@@ -33,7 +33,7 @@ RAW_SOURCE_DIR = GENERATOR_DIR / "raw-source" / "lhm-dienstleistungen"
 #
 # Selection rationale: a curated subset of the ~740 service descriptions,
 # chosen to match the two HTTP_DIRECTORY libraries from
-# docs/features/demo-instance.md ("Leistungen Meldewesen & Ausweise" and
+# demo/README.md ("Leistungen Meldewesen & Ausweise" and
 # "Leistungen Kfz-Zulassung"). Curated by topic, not sampled, so the resulting
 # library reads like a coherent Bürgerbüro catalogue rather than a random cut
 # of the full corpus.

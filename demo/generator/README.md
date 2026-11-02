@@ -1,7 +1,7 @@
 # Korpus-Generator: Stadt Rheinfurt
 
 Erzeugt den Demo-Korpus unter `demo/corpus/` für die fiktive Stadt Rheinfurt (siehe
-[`docs/features/demo-instance.md`](../../docs/features/demo-instance.md), Epic #708, Issue #711).
+[`demo/README.md`](../README.md), Epic #708, Issue #711).
 
 Dieses Werkzeug liegt wie `eval/generator/` bewusst **außerhalb** des Gradle-Builds und der CI. Es
 läuft nie automatisch, sondern nur, wenn der Demo-Korpus bewusst neu erzeugt werden soll — die
@@ -299,7 +299,7 @@ solcher Paare innerhalb eines Dokuments. Ein einzelner Faktor kann das nicht.
 
 - Zur Fischereierlaubnis findet sich in keiner der sieben Bibliotheken irgendein Dokument — bewusst
   so belassen, damit die Drehbuchfrage „Wie beantrage ich in Rheinfurt eine Fischereierlaubnis?"
-  aus `docs/features/demo-instance.md` unbeantwortbar bleibt.
+  aus dem [Drehbuch](../../docs/market/demo-drehbuch.md) unbeantwortbar bleibt.
 - Keine echte Münchner Straße, kein echter Stadtbezirk, keine echte Postleitzahl und keine echte
   Bankverbindung überlebt die Umschreibung — geprüft durch den Abschluss-Assert in `validation.py`
   (PR #717 Review). Vollständige Zuordnungstabelle: `rheinfurt_text.py`,

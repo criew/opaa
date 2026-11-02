@@ -11,7 +11,7 @@
 > [ADR-0011](../decisions/0011-search-quality-evaluation-harness.md) (Aufbau, Korpusablage,
 > Einbettungsmodell), [ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md) (Messvertrag),
 > [ADR-0013](../decisions/0013-fehlerkriterium-retrieval-regression.md) (Fehlerkriterium). Was
-> heute gebaut ist, beschreibt [`search-quality-evaluation.md`](./search-quality-evaluation.md) und
+> heute gebaut ist, beschreibt [ADR-0011](../decisions/0011-search-quality-evaluation-harness.md) und
 > [`eval/README.md`](../../eval/README.md); dieses Dokument wiederholt das nicht, sondern baut darauf
 > auf.
 
@@ -506,7 +506,7 @@ Drei Milderungen, keine Lösungen:
    echte Anfragen liefert, wird eine Stichprobe davon zur eigenen Fallgruppe der Domäne — mit
    anonymisierten, gegen den Eval-Korpus umformulierten Fragen. Der billigste Zulieferer dafür wäre
    ein Feedback-Kanal in der Oberfläche („war das hilfreich?"), bereits als offener Punkt in
-   [`search-quality-evaluation.md`](./search-quality-evaluation.md#offene-fragen--zukünftige-erweiterungen)
+   [ADR-0011](../decisions/0011-search-quality-evaluation-harness.md)
    vermerkt. Bis dahin ist jede Aussage dieses Benchmarks eine Aussage über konstruierte Fragen, und
    Berichte sollten das so benennen.
 
@@ -838,7 +838,7 @@ Korpusdokumente einen Fall der Klasse `literal_term_weak_embedding` aus dem Top-
 > (`conversations` in `.github/workflows/retrieval-regression.yml`); an den Job der
 > Einzelfragen-Domänen angehängt sprengten sie dessen Budget (ADR-0012, Entscheidung 49). Schema,
 > Harness-Simulation des Gedächtnisses und Reihenfolge der Messung stehen in
-> [conversation-memory.md, Abschnitt „Messung"](./conversation-memory.md#messung).
+> [ADR-0031](../decisions/0031-gespraechsgedaechtnis.md).
 >
 > **Umsetzungsstand je Klasse nach der Nachmessung vom 2026-09-12** (Median aus drei Läufen,
 > CPU-Testcontainer; Vorher = Referenzlauf vom 2026-09-11 ohne Suchfenster und ohne Notiz).
@@ -944,7 +944,7 @@ Generationsharness (Relevanz-/Faktentreue-Evaluatoren) existiert.
 Die bestehenden Regeln für Golden-Fälle gelten unverändert und werden hier nicht wiederholt:
 Treffermengen zwischen 2 und 15 Dokumenten bei Mengenfragen, Sentinel-Ausschluss vor Bestimmung der
 Treffermenge, manuelle Kuratierung vor Aufnahme in die Baseline (siehe
-[`search-quality-evaluation.md`](./search-quality-evaluation.md#golden-dataset)). Ergänzend:
+[ADR-0011](../decisions/0011-search-quality-evaluation-harness.md)). Ergänzend:
 
 - Jeder Fall trägt seine Klasse als `category`, damit der Bericht je Klasse auswertet. Eine
   Verbesserung, die nur im Gesamtmittel sichtbar ist, sagt über den adressierten Fehler nichts.
@@ -1120,7 +1120,7 @@ Eintrittsbedingung aus Abschnitt 6 für die Roadmap-Phase 1 tatsächlich prüfba
 
 ## Integrationspunkte
 
-- [`search-quality-evaluation.md`](./search-quality-evaluation.md) — der bestehende Harness; diese
+- [ADR-0011](../decisions/0011-search-quality-evaluation-harness.md) — der bestehende Harness; diese
   Spezifikation erweitert ihn, ersetzt ihn nicht.
 - [ADR-0065](../decisions/0065-hybride-suche-reranking-und-diagnose.md) — die Pipeline, durch die der neue Messpfad
   läuft; die Stufen sind dort benannt, ihre Parameter stehen im Code.
@@ -1129,7 +1129,7 @@ Eintrittsbedingung aus Abschnitt 6 für die Roadmap-Phase 1 tatsächlich prüfba
 - [ADR-0065](../decisions/0065-hybride-suche-reranking-und-diagnose.md) — der erste Abnehmer dieses Benchmarks: Dort stehen
   die Eintrittsbedingungen der Eskalationsstufen mitsamt Schwellenwert und das Arbeitspaket
   „Latenz-/Hardwareprofil", das die hier ausgeklammerte Laufzeitmessung trägt.
-- [`demo-instance.md`](./demo-instance.md) und `demo/generator/` — Vorbild für den
+- [demo/README.md](../../demo/README.md) und `demo/generator/` — Vorbild für den
   Verwaltungskorpus-Generator, ausdrücklich ohne Kopplung der erzeugten Dateien.
 - [`eval/README.md`](../../eval/README.md), [`eval/golden/README.md`](../../eval/golden/README.md),
   [`eval/baseline/README.md`](../../eval/baseline/README.md) — Betriebswissen zu Läufen, Datasets und
@@ -1156,7 +1156,7 @@ Bewusst **nicht** Gegenstand dieses Vorhabens:
   kein Python-Sidecar, solange nur Retrieval gemessen wird. Dieses Vorhaben misst ausschließlich
   Retrieval — es endet vor der Antwortgenerierung — und ändert an dieser Voraussetzung nichts.
 - **Antwortqualität.** Faithfulness, Answer Relevancy und die Spring-AI-Evaluatoren bleiben Phase 4
-  aus `search-quality-evaluation.md`.
+  aus ADR-0011.
 - **Rechtefilterung als Messgegenstand.** Abgedeckt durch Backend-Integrationstests, siehe
   [Abschnitt 1](#1-messpfad-durch-die-produktive-pipeline).
 - **Latenz- und Kostenmessung.** Reranking und Hybrid-Suche haben ein Laufzeitbudget, das über ihren

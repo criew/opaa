@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14
+Akzeptiert · zuletzt geändert 2026-11-02
 
 ## Kontext
 
@@ -15,7 +15,7 @@ im Kontext sind), **harte Vergessensgrenze** (eine Rahmenangabe aus Runde 1 ist 
 Der Folgefragen-Pfad war ungemessen. Bindend aus [ADR-0014](0014-produktausrichtung-oeffentliche-verwaltung.md)
 und [security-and-compliance.md](../features/security-and-compliance.md#mitbestimmungsfähigkeit):
 kein personenbezogener Auswertungspfad, und was eine Antwort beeinflusst, muss für die Person
-nachvollziehbar sein. Spezifikation: [conversation-memory.md](../features/conversation-memory.md).
+nachvollziehbar sein. Das Verhalten beschreibt das Handbuch ([Suche](../handbuch/spaces/suche.md)).
 
 ## Entscheidung
 

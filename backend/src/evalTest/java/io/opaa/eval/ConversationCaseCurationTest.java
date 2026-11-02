@@ -51,7 +51,7 @@ class ConversationCaseCurationTest {
         ConversationCaseCuration.validate(cases, DOMAIN, corpusFileNames());
     assertThat(violations)
         .as(
-            "eval/golden/%s violates curation rules of docs/features/conversation-memory.md: %s",
+            "eval/golden/%s violates curation rules of ADR-0031: %s",
             EvalDomainConfig.VERWALTUNG.conversationDatasetFileName(), violations)
         .isEmpty();
   }

@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-27 · ergänzt ADR-0060 (Entscheidung 10) und ADR-0053 (Entscheidung 8)
+Akzeptiert · zuletzt geändert 2026-11-02 · ergänzt ADR-0060 (Entscheidung 10) und ADR-0053 (Entscheidung 8)
 
 ## Kontext
 
@@ -25,8 +25,8 @@ prüft den Stand der Spalten nicht gegen das Modell, mit dem sie die Frage einge
 Ein Wechsel nur des Endpunkts, etwa auf einen Ersatzserver bei einem Ausfall, ist heute ebenfalls
 ein Datenbankeingriff. Eine Installation darf ihr Embedding-Modell überspringen (ADR-0060,
 Entscheidung 6); dann gibt es weder Modellzeile noch Vektortabelle noch Index-Datensatz, und der
-Wechsel, der alle drei voraussetzt, greift nicht. Issue #3214, Spezifikation: [Wechsel des
-Embedding-Modells](../features/embedding-model-change.md).
+Wechsel, der alle drei voraussetzt, greift nicht. Issue #3214; das Verhalten beschreibt das Handbuch
+([Modelle](../handbuch/betrieb/modelle.md)).
 
 ## Entscheidung
 

@@ -343,7 +343,7 @@ Sie wirkt aber erst, **nachdem** sie gesetzt wurde:
   Gruppengrößen-Schwelle für Grants (eine frühere Fassung dieses Abschnitts sah eine solche Schwelle
   vor; sie entfällt ersatzlos, mit derselben Begründung wie die gestrichene Größenschwelle bei Grants
   im Allgemeinen, siehe [spaces-and-assets.md](./spaces-and-assets.md#freigabe-an-eine-gruppe-braucht-keine-zustimmung)),
-  ohne die Freigabe für externe KI-Werkzeuge ([external-access.md](./external-access.md#die-freigabe-der-bibliothek)
+  ohne die Freigabe für externe KI-Werkzeuge ([ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md)
   hält fest, warum diese trotz einer früheren, anderslautenden Absicht außen vor bleibt), und ohne
   erteilte Rechte an **Personen und Gruppen** — ein bestehender Grant an eine benannte Person oder
   Gruppe bleibt auch nach dem Senken der Obergrenze bestehen und muss gesondert zurückgenommen
@@ -411,7 +411,7 @@ Benutzer authentifizieren sich über:
 - **API-Tokens** — persönliche Zugangstokens für programmatischen Zugang und für externe KI-Werkzeuge
   über den MCP-Server; entschieden am 18.09.2026, noch nicht gebaut. Nur lesend, mit Pflicht-Ablauf,
   installationsweit abschaltbar und nur für Bibliotheken, die dafür ausdrücklich freigegeben sind —
-  siehe [external-access.md](./external-access.md)
+  siehe [ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md)
 
 **Empfohlen ist die SSO-Anbindung an das im Haus vorhandene Identitätsmanagement.** Sie ist nicht nur
 bequemer, sondern die Voraussetzung dafür, dass der Kontenlebenszyklus überhaupt an einer Stelle geführt
@@ -1780,7 +1780,7 @@ Netzbereiche (organisationsweite Vorgabe):
 ```
 
 **Die Einschränkung für maschinelle Zugänge gilt dem Kanal, nicht dem einzelnen Token**
-(Entscheidung vom 18.09.2026, siehe [external-access.md](./external-access.md#der-schalter-der-installation)).
+(Entscheidung vom 18.09.2026, siehe [ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md)).
 Eine CIDR je Token ist für einen Arbeitsplatzclient hinter wechselnden Adressen unbrauchbar und wäre
 zugleich ein Anwesenheitsmerkmal: Gesetzt, scheitert jeder Aufruf aus der Heimarbeit, und die
 Abweisung entsteht als Ereignis irgendwo im Betrieb. Mit den **Service-Accounts** kommt sie je
@@ -1853,7 +1853,7 @@ Mail aus, weil sie sonst ein Belästigungskanal für jeden wäre, der eine Adres
 > Auswahl dieses Kanals, so wie die Zuordnung die eines Space ist
 > ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)). **Service-Accounts
 > als eigene Identität ohne Person bleiben Zielbild** und sind in
-> dieser Stufe nicht enthalten. Einzelheiten: [external-access.md](./external-access.md).
+> dieser Stufe nicht enthalten. Einzelheiten: [ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md).
 
 Das Zielbild, auf das die erste Stufe zuläuft:
 
@@ -1957,7 +1957,7 @@ automatisch greift.
   [data-indexing-rag.md](./data-indexing-rag.md)
 - **RAG-Engine:** Filter über die lesbaren Bibliotheken des Nutzers, als Teil der Vektorsuche
 - **Externe KI-Werkzeuge:** Zugangstokens und MCP-Server als Ausschnitt bestehender Leserechte, mit eigener
-  Freigabe je Bibliothek → [external-access.md](./external-access.md)
+  Freigabe je Bibliothek → [ADR-0035](../decisions/0035-fremdzugaenge-mcp-server-und-zugangstokens.md)
 - **Modelle:** zentrale Vorgaben gelten je Organisation → [llm-integration.md](./llm-integration.md)
 - **Sicherheit und Nachweis:** jede Rechte- und Kontenänderung erzeugt einen Protokolleintrag →
   [security-and-compliance.md](./security-and-compliance.md)
