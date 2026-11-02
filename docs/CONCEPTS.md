@@ -963,7 +963,7 @@ Schulung außerhalb des eigenen Hauses — unter der Bedingung, dass dort keine 
   Infrastruktur bereit, gefüllt mit synthetischen Vorgängen. Für den Wirkbetrieb wandert dieselbe
   Installation anschließend ins Rechenzentrum des Landes.
 
-Siehe [Betrieb & Deployment](ROADMAP.md).
+Siehe [ADR-0014, Entscheidung 7](decisions/0014-produktausrichtung-oeffentliche-verwaltung.md#7-kein-cloud-betriebsmodell-kein-betreuter-dienst).
 
 ---
 

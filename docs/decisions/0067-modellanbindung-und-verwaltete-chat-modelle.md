@@ -23,9 +23,7 @@ Gebaut wurde das in Epic #755 und #762. Die Betriebssicht steht im Handbuch unte
 
 Alle Modellrollen werden ausschließlich über die OpenAI-kompatible Schnittstelle angebunden. Einen
 eigenen Anbieter-Typ für Ollama gibt es nicht; Ollama wird über seinen Pfad `/v1` eingetragen wie vLLM,
-LiteLLM oder Azure. Ein Weg heißt ein Codepfad, ein Verbindungstest und ein Fehlerbild. Die
-Voreinstellung der Basis-Adresse zeigt auf einen lokal betriebenen Ollama-Server, nicht nach außen.
-Ein ausdrücklich leer gesetzter Wert bricht den Start ab.
+LiteLLM oder Azure. Ein Weg heißt ein Codepfad, ein Verbindungstest und ein Fehlerbild.
 
 ### 2. Zugangsschlüssel optional
 
@@ -36,7 +34,7 @@ ausgegeben (nur `apiKeySet`) und nur an denselben Ursprung gesendet, für den er
 ### 3. Keine Anmeldedaten in der Basis-Adresse
 
 Eine Adresse wie `https://benutzer:geheim@host/v1` wird für alle Modellrollen abgelehnt, beim
-Anlegen, Ändern, Verbindungstest, bei der Übernahme aus der Umgebung und beim Start. Die Basis-Adresse
+Anlegen, Ändern, Verbindungstest, in der Installation und beim Start im Modus `dev`. Die Basis-Adresse
 gilt als geheimnisfrei und wird wörtlich in Datenbank, Revisionsprotokoll, API-Antwort und Log
 weitergereicht. Abgelehnt statt still entfernt, weil ein stilles Entfernen die Absicht der Person
 wortlos zurücknähme; die Fehlermeldung wiederholt den beanstandeten Anteil nicht.
@@ -50,10 +48,12 @@ Modell verworfen, damit eine zurückgerollte Änderung nicht wirkt. Ohne aktives
 erreichbarem Modell gibt es eine verständliche Fehlermeldung, nie ein stilles Ausweichen auf ein
 anderes Modell. Jede Änderung wird protokolliert.
 
-### 5. Datenbank führend, einmalige Übernahme
+### 5. Chat-Modelle nur in der Datenbank
 
-Beim ersten Start ohne hinterlegtes Chat-Modell wird die vorhandene Umgebungskonfiguration als aktives
-Modell übernommen. Danach wertet OPAA die Umgebungsvariablen für das Chat-Modell nicht mehr aus. Zwei
+Chat-Modelle stehen nur in `llm_models`. Das erste legt die Installation an
+([ADR-0060](0060-schlanke-konfiguration-und-einrichtungsassistent.md), Entscheidung 10), im Modus
+`dev` die Selbstinstallation aus `OPAA_OPENAI_BASE_URL`. Frühere Umgebungsvariablen für das
+Chat-Modell meldet der Start als entfallen und wertet sie nicht aus. Zwei
 Orte für dieselbe Entscheidung wären schlechter als jeder einzeln, weil bei abweichenden Werten
 niemand mehr sagen kann, welcher gilt.
 

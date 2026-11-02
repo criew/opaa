@@ -87,12 +87,10 @@ startet ohne zusätzliche Konfiguration. Eine technische Sperre gegen Modellaufr
 festgelegter Netzbereiche wird nicht gebaut; die Zusicherung „keine Daten an ein Modell außerhalb des
 Hauses“ ruht auf der Konfiguration, die nachgewiesen und deren Netzweg außerhalb von OPAA abgesichert
 wird. Eine spätere Durchsetzung hängt an den zentralen Modellvorgaben (Themenbereich E, Phase 1).
-Die Basis-Adresse der openai-kompatiblen Schnittstelle hat keine Voreinstellung, weder die
-gemeinsame noch die abgeleiteten für Chat und Einbettung: Wer diesen Anbieter wählt, gibt sie an,
-sonst bricht der Start mit einer Meldung ab, die die fehlende Variable benennt
-(`OpenAiBaseUrlGuard`). Grund: Eine Sperre ohne die Modellvorgaben, an die sie gehört, wäre eine
-zweite Wahrheit neben der Konfiguration; und ein im Haus betriebener „openai-kompatibler“ Server darf
-nicht stillschweigend ein Ziel außerhalb des Hauses erben. Siehe
+Die Modelladressen legt die Installation fest und die Modellverwaltung ändert sie; eine geerbte
+Voreinstellung nach außen gibt es nicht. Grund: Eine Sperre ohne die Modellvorgaben, an die sie
+gehört, wäre eine zweite Wahrheit neben der Konfiguration; und ein im Haus betriebener
+„openai-kompatibler“ Server darf nicht stillschweigend ein Ziel außerhalb des Hauses erben. Siehe
 [ADR-0067](0067-modellanbindung-und-verwaltete-chat-modelle.md).
 
 ### 9. Assistent für Bürgerinnen und Bürger bleibt Ausblick

@@ -38,18 +38,23 @@ Jede manuelle Setzung, Änderung und Löschung eines
 Ereignis `DOCUMENT_METADATA_CHANGED`. Je Bibliothek:
 
 1. Ereignisse ab dem Wiederherstellungspunkt lesen: Objekttyp `KNOWLEDGE_LIBRARY`, Objekt-ID der
-   Bibliothek, über `GET /api/v1/audit/events/by-object?objectType=KNOWLEDGE_LIBRARY&objectId=…&from=…`
-   (mit Begründung, der Zugriff wird protokolliert) oder per SQL auf `audit_log`.
+   Bibliothek, über
+   `GET /api/v1/audit/events/by-object?objectType=KNOWLEDGE_LIBRARY&objectId=…&from=…&to=…&reason=…`
+   (Rolle `AUDITOR`, höchstens 92 Tage je Abfrage, der Zugriff wird protokolliert) oder per SQL auf
+   `audit_log`.
 2. In Aufzeichnungsreihenfolge (`recorded_at`, dann `event_id`) den letzten Zustand je Dokument und
    Feld bestimmen. `after` trägt den Zielzustand (`documentId`, `fieldKey`, `state` `SET` mit `value`
-   und gegebenenfalls `datePrecision`, oder `EMPTY`); `before` dient nur zur Plausibilisierung.
+   und gegebenenfalls `datePrecision`, `NOT_DETERMINABLE` oder `EMPTY`); `before` dient nur zur
+   Plausibilisierung.
 3. Anwenden über die Korrektur-API
-   `PUT /api/v1/libraries/{libraryId}/documents/{documentId}/metadata/{fieldKey}` bei `SET`, `DELETE`
-   bei `EMPTY`, als Person mit Bearbeitungsrecht. Der Abgleich erzeugt so selbst Ereignisse.
+   `PUT /api/v1/libraries/{libraryId}/documents/{documentId}/metadata/{fieldKey}` bei `SET` und
+   `NOT_DETERMINABLE` (dann ohne Wert), `DELETE` bei `EMPTY`, als Person mit Bearbeitungsrecht. Der Abgleich erzeugt so selbst Ereignisse.
    Dokumente, die es nach der Rücksicherung nicht mehr gibt, werden übersprungen.
 
 Direkte `INSERT`s in `document_metadata_values` sind kein Ersatz: Sie ziehen die Chunk-Schlüssel nicht
-nach und hinterlassen kein Ereignis.
+nach und hinterlassen kein Ereignis. Bei [privaten Bibliotheken](../arbeitsmittel/wissensbibliotheken/private-bibliotheken.md)
+nennt das Ereignis nur Feld und Zustand, nicht den Wert; dort zeigt der Abgleich nur, welche Felder
+die Person neu setzen muss.
 
 ## Wiederherstellungsprobe
 

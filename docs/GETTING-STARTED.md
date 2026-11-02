@@ -55,11 +55,10 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 1. [CONCEPTS.md](./CONCEPTS.md) — Abschnitte **Betrieb**, **Modelle und zentrale Steuerung**,
    **Retrieval und Belegbarkeit**
 2. [VISION.md](./VISION.md) — Abschnitt „Systemüberblick"
-3. [Roadmap](ROADMAP.md) — **vertieft**;
-   ergänzend [betrieb.md](handbuch/betrieb/README.md) mit [docker-compose.md](handbuch/betrieb/docker-compose.md) und [kubernetes.md](handbuch/betrieb/kubernetes.md) für
-   die vorhandene Installation
-4. [Roadmap](ROADMAP.md) — Modellverwaltung, Modell-Policy als
-   Obergrenze, lokal betriebene Modelle
+3. [Betrieb](handbuch/betrieb/README.md) mit [docker-compose.md](handbuch/betrieb/docker-compose.md) und [kubernetes.md](handbuch/betrieb/kubernetes.md) — **vertieft**;
+   Ziele in der [Roadmap](ROADMAP.md)
+4. [Modelle](handbuch/betrieb/modelle.md) und [ADR-0067](decisions/0067-modellanbindung-und-verwaltete-chat-modelle.md) —
+   Modellverwaltung, lokal betriebene Modelle; Modell-Policy als Obergrenze in der [Roadmap](ROADMAP.md)
 5. [`features/access-control.md`](./features/access-control.md) — Anmeldung, Kontenlebenszyklus, Mandanten
 6. [Roadmap](./ROADMAP.md) — Metriken, Grenzen,
    Kostentransparenz
@@ -97,8 +96,8 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 4. [`features/access-control.md`](./features/access-control.md) — Kontenlebenszyklus, Mandantengrenze
 5. [Roadmap](./ROADMAP.md) — was ausgewertet wird
    und in welcher Aggregation
-6. [Roadmap](ROADMAP.md) — Verschlüsselung,
-   Netztrennung, Sicherung
+6. [Netz und Sicherheit](handbuch/betrieb/netz-und-sicherheit.md) und
+   [Sicherung](handbuch/betrieb/sicherung-und-wiederherstellung.md) — Verschlüsselung, Netztrennung, Sicherung
 7. [Gesamtstand](./fortschritt/gesamtstand.md) — was zu Bereich **G** gebaut ist und was noch fehlt,
    offen benannt
 

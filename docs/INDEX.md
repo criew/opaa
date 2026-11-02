@@ -121,9 +121,8 @@ an self-hosted Team-Chats · einheitliche Anmeldung und Rechte über alle Kanäl
 
 ### J · Betrieb & Deployment
 
-**[Roadmap](./ROADMAP.md)** ·
-ergänzend **[`handbuch/betrieb/README.md`](handbuch/betrieb/README.md)** und
-**[`handbuch/betrieb/kubernetes.md`](handbuch/betrieb/kubernetes.md)**
+**[`handbuch/betrieb/README.md`](handbuch/betrieb/README.md)** ·
+**[`handbuch/betrieb/kubernetes.md`](handbuch/betrieb/kubernetes.md)** · **[Roadmap](./ROADMAP.md)**
 
 Docker Compose · Kubernetes mit Hochverfügbarkeit · Betrieb ohne Netzanbindung · mandantenfähiger Betrieb
 durch Rechenzentren · Konfiguration, Sicherung, Aktualisierung.
