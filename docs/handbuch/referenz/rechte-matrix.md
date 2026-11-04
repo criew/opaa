@@ -22,7 +22,7 @@ Wer welche Tätigkeit darf, auf einen Blick. „—“ heißt: keine Voraussetzu
 
 | Tätigkeit | Systemrolle | Rolle am Objekt | Anlegerecht oder Schalter | Ab Werk |
 |---|---|---|---|---|
-| [Teilen und für KI-Werkzeuge freigeben](../benutzer/arbeitsmittel-teilen.md) | — | *Verwalter*; übergeben *Eigentümer* | — | wer angelegt hat |
+| [Bibliothek teilen und für KI-Werkzeuge freigeben](../benutzer/arbeitsmittel-teilen.md) | — | *Verwalter*; übergeben *Eigentümer* | — | wer angelegt hat |
 | [Bibliothek aktuell halten](../benutzer/bibliothek-aktuell-halten.md) | — | indizieren, hochladen ab *Bearbeiter*; Zeitplan, Verbindung ab *Verwalter* | — | wer angelegt hat |
 | [Metadaten pflegen](../benutzer/metadaten-pflegen.md) | — | Werte ab *Bearbeiter*; Felder ab *Verwalter* | — | wer angelegt hat |
 | [Für KI-Werkzeuge freigeben](../benutzer/arbeitsmittel-teilen.md#für-externe-ki-werkzeuge-freigeben) | oder Systemverwaltung | *Verwalter* | externe KI-Werkzeuge an | aus |

@@ -37,7 +37,7 @@ eine Aufgabe eine Rolle braucht, nennt die Seite sie oben.
 
 | Aufgabe | Seite |
 |---|---|
-| Für andere oder für OpenCode und Co. öffnen, übergeben | [Teilen und für KI-Werkzeuge freigeben](arbeitsmittel-teilen.md) |
+| Für andere oder für OpenCode und Co. öffnen, übergeben | [Bibliothek teilen und für KI-Werkzeuge freigeben](arbeitsmittel-teilen.md) |
 | Zeitplan, Läufe, Meldungen | [Bibliothek aktuell halten](bibliothek-aktuell-halten.md) |
 | Titel, Dokumentart, eigene Felder | [Metadaten pflegen](metadaten-pflegen.md) |
 

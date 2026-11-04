@@ -1,4 +1,4 @@
-# Teilen und für KI-Werkzeuge freigeben
+# Bibliothek teilen und für KI-Werkzeuge freigeben
 
 > **Wer:** *Verwalter* oder *Eigentümer* der Bibliothek, übergeben nur der *Eigentümer*.
 
@@ -12,7 +12,7 @@ Andere Personen oder Gruppen lesen oder pflegen danach Ihre Wissens- oder Prompt
 |---|---|
 | Leser | lesen, durchsuchen, nutzen |
 | Bearbeiter | Dokumente hochladen und löschen, Läufe anstoßen, Metadaten setzen, Prompts schreiben |
-| Verwalter | Name, Rechte, Quellverbindung, Freigabe für externe KI-Werkzeuge |
+| Verwalter | Name, Rechte, Quellverbindung, Freigabe für externe KI-Werkzeuge (nur Wissensbibliothek) |
 | Eigentümer | löschen und das Eigentum übergeben |
 
 „Alle Konten“ erhalten höchstens *Bearbeiter*.
@@ -25,7 +25,7 @@ Weggang einzelner Personen.
 
 ## Für externe KI-Werkzeuge freigeben
 
-Wer die Bibliothek lesen darf, kann sie danach in ein [Zugangstoken](zugangstoken.md) aufnehmen und
+Nur Wissensbibliotheken: Wer sie lesen darf, kann sie danach in ein [Zugangstoken](zugangstoken.md) aufnehmen und
 aus Werkzeugen wie OpenCode durchsuchen. Fundstellen verlassen damit OPAA und werden im fremden
 Werkzeug mit dessen Modell weiterverarbeitet. Das geht erst, wenn die Systemverwaltung externe
 KI-Werkzeuge eingeschaltet hat, und braucht die Rolle *Verwalter*.
