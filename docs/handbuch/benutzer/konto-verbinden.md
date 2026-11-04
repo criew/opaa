@@ -1,9 +1,11 @@
 # Konto verbinden
 
-Sie hinterlegen Ihre eigenen Zugangsdaten für einen Anbieter. OPAA nutzt sie nur für Ihre
-[privaten Bibliotheken](private-bibliothek.md). Das Verbinden ist freiwillig; ohne verbundenes Konto
-fehlt Ihnen nichts sonst. Verbinden lässt sich nur, was die Systemverwaltung als Zugang für
-Personen freigegeben hat.
+**Ziel:** Ihre eigenen Zugangsdaten für einen Anbieter sind hinterlegt.
+{: .kopf }
+
+OPAA nutzt sie nur für Ihre [privaten Bibliotheken](private-bibliothek.md). Das Verbinden ist
+freiwillig. Verbinden lässt sich nur, was die Systemverwaltung als Zugang für Personen freigegeben
+hat.
 
 1. „Einstellungen“, dann „Verbundene Konten“ öffnen.
 2. Unter **„Weitere Zugänge“** den Zugang wählen.

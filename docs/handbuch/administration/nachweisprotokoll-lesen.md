@@ -1,6 +1,10 @@
 # Nachweisprotokoll lesen
 
-> **Wer:** Revision, über die Programmierschnittstelle.
+**Ziel:** Sie können belegen, wer wann Rechte vergeben, Einstellungen geändert oder Konten gesperrt hat.
+{: .kopf }
+
+**Wer:** Revision, über die Programmierschnittstelle
+{: .kopf }
 
 Das Nachweisprotokoll hält fest, **dass** jemand etwas getan hat: Rechte vergeben, Einstellungen
 geändert, Konten gesperrt, Auskünfte abgerufen. Personen stehen darin als Pseudonym.

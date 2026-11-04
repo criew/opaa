@@ -1,9 +1,12 @@
 # Datenschutz einstellen
 
-> **Wer:** Systemverwaltung, „Administration → Datenschutz“.
+**Ziel:** Fristen und Schalter für Daten von Personen entsprechen den Vorgaben des Hauses.
+{: .kopf }
 
-Die Seite bündelt die Fristen und Schalter, die Daten von Personen betreffen. Jede Änderung wirkt
-ohne Neustart auf allen Instanzen und steht mit altem und neuem Wert im Nachweisprotokoll.
+**Wer:** Systemverwaltung, „Administration → Datenschutz“
+{: .kopf }
+
+Jede Änderung wirkt ohne Neustart auf allen Instanzen und steht mit altem und neuem Wert im Nachweisprotokoll.
 
 | Abschnitt | Was er regelt | Ab Werk |
 |---|---|---|

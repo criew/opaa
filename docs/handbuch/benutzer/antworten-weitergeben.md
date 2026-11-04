@@ -1,6 +1,7 @@
 # Antworten weitergeben
 
-Sie übernehmen eine Antwort in ein eigenes Dokument oder sichern einen ganzen Chat als Datei.
+**Ziel:** Eine Antwort steht in Ihrem Dokument, oder ein ganzer Chat ist als Datei gesichert.
+{: .kopf }
 
 ## Antwort kopieren
 
@@ -15,5 +16,4 @@ Kopierte Antworten enthalten einen KI-Vermerk mit Datum.
 1. In der Chatliste das Menü des Chats öffnen.
 2. „Exportieren als Markdown“ oder „Exportieren als PDF“ wählen.
 
-Die Datei enthält alle Fragen und Antworten mit ihren Belegen und denselben KI-Vermerk. Exportieren
-kann nur, wer den Chat führt.
+Die Datei enthält alle Fragen und Antworten mit ihren Belegen und denselben KI-Vermerk.

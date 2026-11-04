@@ -1,9 +1,12 @@
 # Ausscheiden und Nachfolge regeln
 
-> **Wer:** Systemverwaltung, „Administration → Ohne Zuständigkeit“.
+**Ziel:** Bibliotheken, Spaces und Gruppen ausscheidender Personen haben wieder eine Zuständigkeit.
+{: .kopf }
 
-Scheidet eine Person aus oder wird ein Referat aufgelöst, sollen Bibliotheken, Spaces und Gruppen
-nicht verwaist liegen bleiben. Dafür gibt es die **Übertragung**: eine Handlung statt Arbeit Objekt
+**Wer:** Systemverwaltung, „Administration → Ohne Zuständigkeit“
+{: .kopf }
+
+Scheidet eine Person aus oder wird ein Referat aufgelöst, hilft die **Übertragung**: eine Handlung statt Arbeit Objekt
 für Objekt.
 
 ## Wenn niemand mehr zuständig ist
@@ -48,6 +51,6 @@ darüber in Schritten.
 **Gut zu wissen:**
 
 - Für ein einzelnes Arbeitsmittel genügt „Übergeben“ im Reiter „Freigaben“
-  ([Arbeitsmittel teilen](../benutzer/arbeitsmittel-teilen.md#eigentum-übergeben)).
+  ([Eigentum übergeben](../benutzer/arbeitsmittel-teilen.md#eigentum-übergeben)).
 - Eine Übertragung läuft nie automatisch, auch nicht nach einer Reorganisation im Verzeichnis.
 - Vorschau und Übertragung stehen im Nachweisprotokoll, auch eine Vorschau, die niemand ausführt.

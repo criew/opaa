@@ -1,8 +1,10 @@
 # Space-Einstellungen
 
-> **Wer:** *Administrator* oder Eigentümer des Space; archivieren und löschen der Eigentümer oder die Systemverwaltung.
+**Ziel:** Name, Anweisung an das Modell und Aufräumen des Space sind eingestellt, oder der Space ist archiviert oder gelöscht.
+{: .kopf }
 
-Name, Anweisung an das Modell und Aufräumen des Space, bis hin zum Archivieren oder Löschen.
+**Wer:** *Administrator* oder Eigentümer des Space; archivieren und löschen der Eigentümer oder die Systemverwaltung
+{: .kopf }
 
 1. Das Zahnrad neben dem Namen des Space öffnen, Reiter „Stammdaten“.
 2. Name und Beschreibung ändern.

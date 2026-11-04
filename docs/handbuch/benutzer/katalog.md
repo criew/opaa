@@ -1,6 +1,10 @@
 # Katalog nutzen
 
-Sie finden Wissens- und Prompt-Bibliotheken und stellen sie einem Space bereit. Zuordnen darf, wer im Space *Kurator* oder *Administrator* ist.
+**Ziel:** Die passenden Wissens- und Prompt-Bibliotheken stehen Ihrem Space bereit.
+{: .kopf }
+
+**Wer:** suchen jedes Konto, einem Space zuordnen *Kurator* oder *Administrator* des Space
+{: .kopf }
 
 **Arbeitsmittel** ist der Oberbegriff für alles, was angelegt, geteilt und einem Space zugeordnet
 wird: Wissensbibliotheken, in denen Fragen suchen, und Prompt-Bibliotheken mit Formulierungshilfen.
@@ -33,10 +37,7 @@ Gelöst wird eine Zuordnung im Reiter „Zuordnungen“ über „Aus Space löse
 Arbeitsmittels oder von Kuratoren und Administratoren des Space. Private Spaces, zu denen Sie nicht
 gehören, zählt der Reiter nur („+ 2 weitere Spaces, die Sie nicht sehen dürfen“).
 
-## Arbeitsmittel anlegen
-
-„Neuer Katalogeintrag“ oben rechts fragt „Was möchten Sie anlegen?“ und bietet die Arten an, für die
-Sie ein Anlegerecht haben. Weiter geht es auf [Bibliothek anlegen](bibliothek-anlegen.md) oder
+Neue Arbeitsmittel legt „Neuer Katalogeintrag“ oben rechts an: [Wissensbibliothek anlegen](bibliothek-anlegen.md),
 [Prompt-Bibliothek anlegen](prompt-bibliothek-anlegen.md).
 
 **Gut zu wissen:**

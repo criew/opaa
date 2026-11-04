@@ -1,6 +1,7 @@
-# Bibliothek anlegen
+# Wissensbibliothek anlegen
 
-Sie haben danach eine Wissensbibliothek, deren Dokumente in Ihren Spaces durchsucht werden.
+**Ziel:** Eine Wissensbibliothek, deren Dokumente in Ihren Spaces durchsucht werden.
+{: .kopf }
 
 **Upload oder Quelle?** Eine **Upload-Bibliothek** nimmt Dateien auf, die Sie hochladen. Eine
 **Konnektorbibliothek** liest eine Quelle wie Confluence oder einen S3-Speicher und hält sich nach
