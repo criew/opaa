@@ -211,20 +211,7 @@ export default function LoginPage() {
         </Alert>
       )}
 
-      {/* If the form is switched on, it comes first - it is the path this
-         installation has set up for its own accounts; the directory services follow. */}
-      {hasLocalForm && (
-        <LocalSignInForm
-          title="Konto dieser Installation"
-          description="Melden Sie sich mit Ihrer E-Mail-Adresse und Ihrem Passwort an."
-          showPasswordReset={localAccounts.passwordResetEnabled}
-          showSelfRegistration={localAccounts.selfRegistrationEnabled}
-          disabled={isLoading}
-        />
-      )}
-
-      {hasChoice && hasLocalForm && <Divider sx={{ my: 3 }} />}
-
+      {/* The providers come first - most people of an installation sign in there. */}
       {hasChoice && (
         <Box component="section" role="group" aria-labelledby="login-choice-title">
           <SectionEyebrow id="login-choice-title">Identitätsanbieter</SectionEyebrow>
@@ -239,9 +226,8 @@ export default function LoginPage() {
                 key={provider.id}
                 provider={provider}
                 isSuggested={provider.id === suggested?.id}
-                // A page has one primary button (guidelines 5.1): if the form comes
-                // first, it belongs to its „Anmelden"; the services then all stay secondary.
-                emphasised={!hasLocalForm && provider.id === suggested?.id}
+                // A page has one primary button (guidelines 5.1): the suggested provider's.
+                emphasised={provider.id === suggested?.id}
                 showsLastUsed={providers.length > 1 && provider.id === lastUsedId}
                 isSigningIn={isSigningIn}
                 disabled={isBusy}
@@ -250,6 +236,21 @@ export default function LoginPage() {
             ))}
           </Stack>
         </Box>
+      )}
+
+      {hasChoice && hasLocalForm && <Divider sx={{ my: 3 }} />}
+
+      {/* The installation's own accounts follow the providers; below them the form's
+         „Anmelden" stays secondary, as the page has only one primary button. */}
+      {hasLocalForm && (
+        <LocalSignInForm
+          title="Konto dieser Installation"
+          description="Melden Sie sich mit Ihrer E-Mail-Adresse und Ihrem Passwort an."
+          showPasswordReset={localAccounts.passwordResetEnabled}
+          showSelfRegistration={localAccounts.selfRegistrationEnabled}
+          disabled={isLoading}
+          emphasised={!hasChoice}
+        />
       )}
 
       <Divider sx={{ my: 3 }} />

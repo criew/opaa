@@ -1008,7 +1008,7 @@ es gelten keine Verfügbarkeits- oder Datenerhaltungsgarantien. Seit dem 21.08.2
 wurde der Stack per Reset neu aufgesetzt (frische Datenbank, frischer Keycloak-Realm-Import mit den
 Demo-Konten) und mit dem Rheinfurt-Korpus samt Seed-Profil `demo` befüllt.
 
-- **Betreiber:** Der Maintainer (`criew`), auf privater VPS-Infrastruktur außerhalb dieses
+- **Betreiber:** Der Maintainer, auf privater VPS-Infrastruktur außerhalb dieses
   Repositorys.
 - **Frühere Adresse:** Bis zum Umzug auf `opaa.io` lief die Instanz unter `opaa.ewerlin.com`;
   diese Adresse leitet dauerhaft (301) auf `https://demo.opaa.io` weiter.
