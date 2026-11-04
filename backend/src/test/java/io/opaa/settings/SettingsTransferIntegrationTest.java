@@ -699,6 +699,21 @@ class SettingsTransferIntegrationTest {
   }
 
   /**
+   * An export of an earlier version still names the removed colour scheme default; it is ignored.
+   */
+  @Test
+  void aRetiredKeyOfAnEarlierExportIsIgnored() throws Exception {
+    String body =
+        """
+        {"format": "opaa-settings", "formatVersion": 1, "sections": {
+          "branding": {"defaultColorScheme": "DARK"}}}
+        """;
+
+    send(IMPORT, body).andExpect(status().isOk()).andExpect(jsonPath("$.changes").isEmpty());
+    assertThat(auditEntries()).isEmpty();
+  }
+
+  /**
    * Regression guard: a stored mail password never goes to another server, account or encryption
    * than it was entered for; changing them without a new password is refused, by import and form.
    */

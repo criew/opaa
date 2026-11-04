@@ -1,7 +1,5 @@
 package io.opaa.branding;
 
-import io.opaa.api.types.ColorScheme;
-
 /**
  * The OPAA standard every unconfigured branding field falls back to. Kept in one place, and
  * resolved per field rather than per row: an operator who only replaces the logo keeps the standard
@@ -35,8 +33,6 @@ public final class BrandingDefaults {
           + "Prüfen Sie wichtige Angaben anhand der Belege.";
 
   public static final String PRIMARY_COLOR = "#1292EE";
-
-  public static final ColorScheme COLOR_SCHEME = ColorScheme.SYSTEM;
 
   private BrandingDefaults() {}
 }

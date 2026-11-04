@@ -88,7 +88,6 @@ describe('LoginPage', () => {
         aiNotice: 'Hinweis der Behörde',
         aiNoticeDefault: 'Standardhinweis',
         primaryColor: '#0B6FBC',
-        defaultColorScheme: 'LIGHT',
         logoUrl: '/api/v1/branding/logo?v=abc123',
       },
     })

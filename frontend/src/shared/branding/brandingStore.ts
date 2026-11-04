@@ -44,7 +44,6 @@ export const OPAA_BRANDING: BrandingResponse = {
   aiNotice: AI_NOTICE_DEFAULT,
   aiNoticeDefault: AI_NOTICE_DEFAULT,
   primaryColor: '#1292EE',
-  defaultColorScheme: 'SYSTEM',
 }
 
 interface BrandingState {

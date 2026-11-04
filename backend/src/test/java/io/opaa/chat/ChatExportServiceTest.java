@@ -7,7 +7,6 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.ChatNoteItemKind;
 import io.opaa.api.types.ChatRole;
-import io.opaa.api.types.ColorScheme;
 import io.opaa.branding.BrandingSettingsService;
 import io.opaa.branding.EffectiveBranding;
 import io.opaa.common.NotFoundException;
@@ -46,7 +45,6 @@ class ChatExportServiceTest {
                 "Claim",
                 "Antworten werden\nvon einer KI erzeugt.",
                 "#004b87",
-                ColorScheme.LIGHT,
                 Map.of()));
   }
 
@@ -118,12 +116,7 @@ class ChatExportServiceTest {
     when(branding.currentBranding())
         .thenReturn(
             new EffectiveBranding(
-                "Amt‏ 12󠁉󠁇",
-                "Claim",
-                "Hinweis‎ (1)؜‮ geprüft⁧.",
-                "#004b87",
-                ColorScheme.LIGHT,
-                Map.of()));
+                "Amt‏ 12󠁉󠁇", "Claim", "Hinweis‎ (1)؜‮ geprüft⁧.", "#004b87", Map.of()));
     UUID chatId = UUID.randomUUID();
     when(chatService.getChat(chatId, userId)).thenReturn(conversation("Vermerk", List.of()));
 

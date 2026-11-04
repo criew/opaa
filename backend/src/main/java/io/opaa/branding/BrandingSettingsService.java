@@ -3,7 +3,6 @@ package io.opaa.branding;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
-import io.opaa.api.types.ColorScheme;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.audit.AuditPayloadKeys;
@@ -26,8 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Reads and changes the single, system-wide branding configuration (docs/design/guidelines.md#7) -
- * product name, claim, accent colour, default colour scheme and the operator's three images (app
- * logo, sign-in logo, sign-in background).
+ * product name, claim, accent colour and the operator's three images (app logo, sign-in logo,
+ * sign-in background).
  *
  * <p><b>Reading never fails for want of configuration.</b> {@link #currentBranding()} resolves each
  * field individually against {@link BrandingDefaults}, so a deployment that has configured nothing
@@ -126,10 +125,9 @@ public class BrandingSettingsService implements AuditPayloadKeys {
       String productName,
       String claim,
       String aiNotice,
-      String primaryColor,
-      ColorScheme defaultColorScheme) {
+      String primaryColor) {
     return replace(
-        validated(productName, claim, aiNotice, primaryColor, defaultColorScheme),
+        validated(productName, claim, aiNotice, primaryColor),
         (before, after) -> recordChange(organizationId, actorUserId, before, after));
   }
 
@@ -144,24 +142,18 @@ public class BrandingSettingsService implements AuditPayloadKeys {
       String productName,
       String claim,
       String aiNotice,
-      String primaryColor,
-      ColorScheme defaultColorScheme) {
+      String primaryColor) {
     return replace(
-        validated(productName, claim, aiNotice, primaryColor, defaultColorScheme),
+        validated(productName, claim, aiNotice, primaryColor),
         (before, after) ->
             auditEventRecorder.recordSystemProcessAction(
                 changeEvent(organizationId, before, after).actorRef(systemActor).build()));
   }
 
   private static BrandingSettingsRules.Values validated(
-      String productName,
-      String claim,
-      String aiNotice,
-      String primaryColor,
-      ColorScheme defaultColorScheme) {
+      String productName, String claim, String aiNotice, String primaryColor) {
     BrandingSettingsRules.Checked checked =
-        BrandingSettingsRules.check(
-            "", productName, claim, aiNotice, primaryColor, defaultColorScheme);
+        BrandingSettingsRules.check("", productName, claim, aiNotice, primaryColor);
     if (!checked.errors().isEmpty()) {
       throw new ValidationException(checked.errors().getFirst().message());
     }
@@ -176,17 +168,12 @@ public class BrandingSettingsService implements AuditPayloadKeys {
     if (Objects.equals(settings.getProductName(), values.productName())
         && Objects.equals(settings.getClaim(), values.claim())
         && Objects.equals(settings.getAiNotice(), values.aiNotice())
-        && Objects.equals(settings.getPrimaryColor(), values.primaryColor())
-        && settings.getDefaultColorScheme() == values.defaultColorScheme()) {
+        && Objects.equals(settings.getPrimaryColor(), values.primaryColor())) {
       return resolve(settings);
     }
     Map<String, Object> before = auditState(resolve(settings));
     settings.replaceSettings(
-        values.productName(),
-        values.claim(),
-        values.aiNotice(),
-        values.primaryColor(),
-        values.defaultColorScheme());
+        values.productName(), values.claim(), values.aiNotice(), values.primaryColor());
     repository.save(settings);
 
     EffectiveBranding after = resolve(settings);
@@ -252,7 +239,6 @@ public class BrandingSettingsService implements AuditPayloadKeys {
             settings.getClaim(),
             settings.getAiNotice(),
             settings.getPrimaryColor(),
-            settings.getDefaultColorScheme(),
             logo.contentType(),
             logo.version(),
             logo.updatedAt(),
@@ -274,7 +260,6 @@ public class BrandingSettingsService implements AuditPayloadKeys {
         BrandingSettingsRules.readable(stored.claim()),
         BrandingSettingsRules.readable(stored.aiNotice()),
         stored.primaryColor(),
-        stored.defaultColorScheme(),
         stored.logoContentType(),
         stored.logoVersion(),
         stored.logoUpdatedAt(),
@@ -304,7 +289,6 @@ public class BrandingSettingsService implements AuditPayloadKeys {
         Optional.ofNullable(stored.claim()).orElse(BrandingDefaults.CLAIM),
         Optional.ofNullable(stored.aiNotice()).orElse(BrandingDefaults.AI_NOTICE),
         Optional.ofNullable(stored.primaryColor()).orElse(BrandingDefaults.PRIMARY_COLOR),
-        Optional.ofNullable(stored.defaultColorScheme()).orElse(BrandingDefaults.COLOR_SCHEME),
         images);
   }
 
@@ -338,7 +322,6 @@ public class BrandingSettingsService implements AuditPayloadKeys {
     state.put("claim", branding.claim());
     state.put("aiNotice", branding.aiNotice());
     state.put("primaryColor", branding.primaryColor());
-    state.put("defaultColorScheme", branding.defaultColorScheme().name());
     for (BrandingImageKind kind : BrandingImageKind.values()) {
       Optional<EffectiveBranding.ImageMetadata> image = branding.image(kind);
       state.put(

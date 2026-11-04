@@ -27,7 +27,6 @@ describe('brandingStore', () => {
           productName: 'Landesamt-Assistent',
           claim: 'Kurz und klar',
           primaryColor: '#0B6FBC',
-          defaultColorScheme: 'DARK',
           logoUrl: '/api/v1/branding/logo?v=abc123',
         }),
       ),
@@ -37,7 +36,6 @@ describe('brandingStore', () => {
 
     const { branding, isLoaded } = useBrandingStore.getState()
     expect(branding.productName).toBe('Landesamt-Assistent')
-    expect(branding.defaultColorScheme).toBe('DARK')
     expect(branding.logoUrl).toBe('/api/v1/branding/logo?v=abc123')
     expect(isLoaded).toBe(true)
   })

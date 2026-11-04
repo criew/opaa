@@ -1474,7 +1474,6 @@ describe('InstallationPage', () => {
           primaryColor: null,
         },
       })
-      expect(brandingOf()?.branding?.defaultColorScheme).toBeUndefined()
       expect(screen.getByText(/Das Branding wird übernommen/)).toBeInTheDocument()
     })
 

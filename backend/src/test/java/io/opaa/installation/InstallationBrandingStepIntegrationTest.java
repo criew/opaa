@@ -38,8 +38,7 @@ class InstallationBrandingStepIntegrationTest {
   private static final String BASE = "/api/v1/installation";
   private static final String BRANDING =
       "{\"productName\":\" Landesamt-Assistent \",\"claim\":\"Fragen. Belegen.\","
-          + "\"aiNotice\":\"Antworten stammen von einer KI.\",\"primaryColor\":\"#7A3E9D\","
-          + "\"defaultColorScheme\":\"DARK\"}";
+          + "\"aiNotice\":\"Antworten stammen von einer KI.\",\"primaryColor\":\"#7A3E9D\"}";
 
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbc;
@@ -122,7 +121,6 @@ class InstallationBrandingStepIntegrationTest {
     assertThat(effective.claim()).isEqualTo("Fragen. Belegen.");
     assertThat(effective.aiNotice()).isEqualTo("Antworten stammen von einer KI.");
     assertThat(effective.primaryColor()).isEqualTo("#7A3E9D");
-    assertThat(effective.defaultColorScheme().name()).isEqualTo("DARK");
     assertThat(auditTypes()).contains("BRANDING_SETTINGS_CHANGED");
     assertThat(auditAfter("BRANDING_SETTINGS_CHANGED")).contains("Landesamt-Assistent");
     assertThat(auditAfter("INSTALLATION_STEP_SAVED"))
@@ -138,22 +136,6 @@ class InstallationBrandingStepIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.branding.productName").doesNotExist())
         .andExpect(jsonPath("$.branding.aiNotice").doesNotExist());
-    mockMvc
-        .perform(authorized(post(BASE + "/steps/BRANDING/check")))
-        .andExpect(jsonPath("$.checked").value(true));
-
-    mockMvc.perform(authorized(post(BASE + "/complete"))).andExpect(status().isOk());
-
-    assertThat(storedBranding()).containsOnlyNulls();
-    assertThat(auditTypes()).doesNotContain("BRANDING_SETTINGS_CHANGED");
-  }
-
-  @Test
-  void onlyTheSystemColorSchemeWritesAndRecordsNothing() throws Exception {
-    completeMandatorySteps();
-    saveBranding("{\"defaultColorScheme\":\"SYSTEM\"}")
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.branding.defaultColorScheme").doesNotExist());
     mockMvc
         .perform(authorized(post(BASE + "/steps/BRANDING/check")))
         .andExpect(jsonPath("$.checked").value(true));

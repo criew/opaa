@@ -325,8 +325,7 @@ Prüfungen, alles oder nichts.
   },
   "branding": {
     "productName": "Landesamt-Assistent",
-    "primaryColor": "#7A3E9D",
-    "defaultColorScheme": "SYSTEM"
+    "primaryColor": "#7A3E9D"
   }
 }
 ```
@@ -366,8 +365,8 @@ Prüfungen, alles oder nichts.
   im Log, die Datei gilt trotzdem.
 - **Branding:** Ohne den Abschnitt `branding` gilt der OPAA-Standard. Mit ihm prüft OPAA die Angaben
   wie die Branding-Verwaltung; jedes Feld ist optional (`productName`, `claim`, `aiNotice`,
-  `primaryColor`, `defaultColorScheme`), ein fehlendes oder leeres gilt als Standard. Bilder nimmt
-  die Antwortdatei nicht an.
+  `primaryColor`), ein fehlendes oder leeres gilt als Standard. Bilder nimmt die Antwortdatei nicht
+  an; ein `defaultColorScheme` älterer Dateien wird übergangen.
 - Angaben späterer Schritte (`outboundProxy`) wertet diese Version nicht aus.
 - Ohne `maxInputTokens` gilt eine Eingabegrenze von 2.048 Tokens
   ([Eingabegrenze des Embedding-Modells](modell-endpunkte.md#eingabegrenze-des-embedding-modells)).

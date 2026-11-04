@@ -1,6 +1,5 @@
 package io.opaa.installation;
 
-import io.opaa.api.types.ColorScheme;
 import io.opaa.api.types.MailEncryption;
 import java.math.BigDecimal;
 import java.util.List;
@@ -56,12 +55,7 @@ public record InstallationOverview(boolean pending, boolean completable, List<St
       implements SavedValues {}
 
   /** The branding as saved; {@code null} in a field means the OPAA default. */
-  public record Branding(
-      String productName,
-      String claim,
-      String aiNotice,
-      String primaryColor,
-      ColorScheme defaultColorScheme)
+  public record Branding(String productName, String claim, String aiNotice, String primaryColor)
       implements SavedValues {}
 
   /** {@code dimensions} is the vector size of the last successful probe embedding, else null. */

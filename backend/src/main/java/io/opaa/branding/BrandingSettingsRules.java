@@ -1,6 +1,5 @@
 package io.opaa.branding;
 
-import io.opaa.api.types.ColorScheme;
 import io.opaa.common.FieldValidationException.FieldError;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,10 +7,10 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 /**
- * The rules of the four text fields and the colour scheme of the branding, shared by the
- * administration ({@link BrandingSettingsService}) and the installation, so both refuse the same
- * values with the same German sentences and store the same normalised form. Each caller decides how
- * a problem reaches its API; the rules themselves only find it.
+ * The rules of the four text fields of the branding, shared by the administration ({@link
+ * BrandingSettingsService}) and the installation, so both refuse the same values with the same
+ * German sentences and store the same normalised form. Each caller decides how a problem reaches
+ * its API; the rules themselves only find it.
  */
 public final class BrandingSettingsRules {
 
@@ -52,12 +51,7 @@ public final class BrandingSettingsRules {
    * The values as stored: trimmed, {@code null} for "the OPAA default applies" in every field, the
    * notice {@code null} also when it equals the standard text.
    */
-  public record Values(
-      String productName,
-      String claim,
-      String aiNotice,
-      String primaryColor,
-      ColorScheme defaultColorScheme) {}
+  public record Values(String productName, String claim, String aiNotice, String primaryColor) {}
 
   /** The normalised values and every problem found, in the order of the fields. */
   public record Checked(Values values, List<FieldError> errors) {
@@ -73,12 +67,7 @@ public final class BrandingSettingsRules {
    * problem is {@code null} in the returned values.
    */
   public static Checked check(
-      String prefix,
-      String productName,
-      String claim,
-      String aiNotice,
-      String primaryColor,
-      ColorScheme defaultColorScheme) {
+      String prefix, String productName, String claim, String aiNotice, String primaryColor) {
     List<FieldError> errors = new ArrayList<>();
     String name =
         text(
@@ -91,7 +80,7 @@ public final class BrandingSettingsRules {
         text(errors, prefix + "claim", claim, BrandingDefaults.MAX_CLAIM_LENGTH, "Der Claim");
     String notice = notice(errors, prefix + "aiNotice", aiNotice);
     String color = color(errors, prefix + "primaryColor", primaryColor);
-    return new Checked(new Values(name, validClaim, notice, color, defaultColorScheme), errors);
+    return new Checked(new Values(name, validClaim, notice, color), errors);
   }
 
   /**

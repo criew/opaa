@@ -1,6 +1,5 @@
 package io.opaa.branding;
 
-import io.opaa.api.types.ColorScheme;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
@@ -21,7 +20,6 @@ public record EffectiveBranding(
     String claim,
     String aiNotice,
     String primaryColor,
-    ColorScheme defaultColorScheme,
     Map<BrandingImageKind, ImageMetadata> images) {
 
   public EffectiveBranding {

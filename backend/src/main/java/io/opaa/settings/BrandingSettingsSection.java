@@ -1,6 +1,5 @@
 package io.opaa.settings;
 
-import io.opaa.api.types.ColorScheme;
 import io.opaa.auth.CurrentUser;
 import io.opaa.branding.BrandingSettingsService;
 import io.opaa.branding.BrandingSettingsView;
@@ -10,8 +9,8 @@ import java.util.Set;
 import org.springframework.stereotype.Component;
 
 /**
- * The texts, colour and colour scheme of the branding as stored, {@code null} for the OPAA default.
- * The three images are no part of the document: they are files, maintained where they are shown.
+ * The texts and accent colour of the branding as stored, {@code null} for the OPAA default. The
+ * three images are no part of the document: they are files, maintained where they are shown.
  */
 @Component
 class BrandingSettingsSection implements SettingsSection {
@@ -47,9 +46,12 @@ class BrandingSettingsSection implements SettingsSection {
         "aiNotice",
         "Hinweis zur KI-Nutzung",
         "primaryColor",
-        "Akzentfarbe",
-        "defaultColorScheme",
-        "Farbschema-Vorgabe");
+        "Akzentfarbe");
+  }
+
+  @Override
+  public Set<String> retiredKeys() {
+    return Set.of("defaultColorScheme");
   }
 
   @Override
@@ -60,9 +62,6 @@ class BrandingSettingsSection implements SettingsSection {
     values.put("claim", stored.claim());
     values.put("aiNotice", stored.aiNotice());
     values.put("primaryColor", stored.primaryColor());
-    values.put(
-        "defaultColorScheme",
-        stored.defaultColorScheme() == null ? null : stored.defaultColorScheme().name());
     return values;
   }
 
@@ -74,7 +73,6 @@ class BrandingSettingsSection implements SettingsSection {
         values.optionalString("productName"),
         values.optionalString("claim"),
         values.optionalString("aiNotice"),
-        values.optionalString("primaryColor"),
-        values.optionalEnum("defaultColorScheme", ColorScheme.class));
+        values.optionalString("primaryColor"));
   }
 }

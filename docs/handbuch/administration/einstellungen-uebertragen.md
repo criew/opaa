@@ -28,7 +28,7 @@ geteilter Bibliotheken gilt die Obergrenze des Betriebs allein.
 | Aufbewahrungsfristen | Protokoll, Rechtehistorie, Diagnoseprotokoll, Verbindungsprotokoll |
 | Fristen der Chats | Archivieren und Löschen der Chat-Bereinigung in Spaces, Schalter und Frist der Löschung nach einer Sperre, je `null` für die Werkseinstellung |
 | Anlassbezogene Klärungen | Löschfrist in Kalenderjahren oder `null` für die Werkseinstellung |
-| Branding | Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe, Farbschema-Vorgabe |
+| Branding | Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe |
 | E-Mail-Versand | Schalter, Mailserver, Port, Zugangsname, Verschlüsselung, Absender |
 | E-Mail-Vorlagen | je Vorlage die eigene Fassung mit Betreff und Text oder `null` für den ausgelieferten Text |
 | Lokale Benutzerverwaltung | Selbstregistrierung, Passwortregeln, Fristen der Links und Konten |

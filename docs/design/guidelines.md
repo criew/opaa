@@ -978,7 +978,7 @@ englisch (Projektsprache, siehe AGENTS.md).
 
 ## 7 · Branding-Überschreibbarkeit
 
-Von Anfang an gilt: **Produktname, Claim, Logo, Akzentfarbe und Farbschema-Vorgabe sind
+Von Anfang an gilt: **Produktname, Claim, Logo und Akzentfarbe sind
 Konfiguration**, nicht Code (Issues #582/#583). Daraus folgt für jede Komponente:
 
 - Name, Claim und Logo werden nie hart eingebettet, sondern aus der Branding-Quelle bezogen

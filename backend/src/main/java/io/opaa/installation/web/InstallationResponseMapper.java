@@ -88,7 +88,6 @@ final class InstallationResponseMapper {
         view.setClaim(branding.claim());
         view.setAiNotice(branding.aiNotice());
         view.setPrimaryColor(branding.primaryColor());
-        view.setDefaultColorScheme(branding.defaultColorScheme());
         response.setBranding(view);
       }
     }

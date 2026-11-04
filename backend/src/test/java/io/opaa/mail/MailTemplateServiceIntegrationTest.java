@@ -57,7 +57,7 @@ class MailTemplateServiceIntegrationTest {
   @AfterEach
   void tearDown() {
     jdbcTemplate.update("DELETE FROM mail_templates WHERE updated_by = ?", userId);
-    brandingSettingsService.updateBranding(organizationId, userId, null, null, null, null, null);
+    brandingSettingsService.updateBranding(organizationId, userId, null, null, null, null);
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     userRepository.deleteById(userId);
     organizationRepository.deleteById(organizationId);
@@ -249,7 +249,7 @@ class MailTemplateServiceIntegrationTest {
   @Test
   void theProductNameComesFromTheBrandingWithoutAnyCallerPassingIt() {
     brandingSettingsService.updateBranding(
-        organizationId, userId, "Landesamt-Assistent", null, null, "#7A1FA2", null);
+        organizationId, userId, "Landesamt-Assistent", null, null, "#7A1FA2");
 
     RenderedMail rendered =
         templateService.render(

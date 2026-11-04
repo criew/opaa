@@ -1,7 +1,6 @@
 package io.opaa.installation;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import io.opaa.api.types.ColorScheme;
 import io.opaa.api.types.MailEncryption;
 import io.opaa.common.ValidationException;
 import java.io.IOException;
@@ -93,12 +92,7 @@ record AnswerFile(
 
   /** The branding without its images; no secret, so it stands in the file as it is. */
   @JsonIgnoreProperties(ignoreUnknown = true)
-  record Branding(
-      String productName,
-      String claim,
-      String aiNotice,
-      String primaryColor,
-      ColorScheme defaultColorScheme) {}
+  record Branding(String productName, String claim, String aiNotice, String primaryColor) {}
 
   /** Reads and parses the file; the message of a failure names the file, never its content. */
   static AnswerFile read(Path file, JsonMapper json) {
@@ -199,8 +193,7 @@ record AnswerFile(
               branding.productName(),
               branding.claim(),
               branding.aiNotice(),
-              branding.primaryColor(),
-              branding.defaultColorScheme()));
+              branding.primaryColor()));
     }
     return List.copyOf(steps);
   }

@@ -3,7 +3,6 @@ package io.opaa.branding;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
-import io.opaa.api.types.ColorScheme;
 import io.opaa.common.FieldValidationException.FieldError;
 import org.junit.jupiter.api.Test;
 
@@ -18,29 +17,24 @@ class BrandingSettingsRulesTest {
   void blankFieldsAndTheStandardNoticeFollowTheDefault() {
     BrandingSettingsRules.Checked checked =
         BrandingSettingsRules.check(
-            "branding.", "  ", "", " " + BrandingDefaults.AI_NOTICE + "\u200B", " ", null);
+            "branding.", "  ", "", " " + BrandingDefaults.AI_NOTICE + "\u200B", " ");
 
     assertThat(checked.errors()).isEmpty();
     assertThat(checked.values())
-        .isEqualTo(new BrandingSettingsRules.Values(null, null, null, null, null));
+        .isEqualTo(new BrandingSettingsRules.Values(null, null, null, null));
   }
 
   @Test
   void valuesAreTrimmedAndKept() {
     BrandingSettingsRules.Checked checked =
         BrandingSettingsRules.check(
-            "",
-            " Landesamt-Assistent ",
-            " Fragen. ",
-            " Eigener Hinweis. ",
-            " #7A3E9D ",
-            ColorScheme.DARK);
+            "", " Landesamt-Assistent ", " Fragen. ", " Eigener Hinweis. ", " #7A3E9D ");
 
     assertThat(checked.errors()).isEmpty();
     assertThat(checked.values())
         .isEqualTo(
             new BrandingSettingsRules.Values(
-                "Landesamt-Assistent", "Fragen.", "Eigener Hinweis.", "#7A3E9D", ColorScheme.DARK));
+                "Landesamt-Assistent", "Fragen.", "Eigener Hinweis.", "#7A3E9D"));
   }
 
   @Test
@@ -51,8 +45,7 @@ class BrandingSettingsRulesTest {
             "x".repeat(BrandingDefaults.MAX_PRODUCT_NAME_LENGTH + 1),
             "Zei\u0007le",
             "Erste Zeile\u2028zweite Zeile",
-            "blau",
-            null);
+            "blau");
 
     assertThat(checked.errors())
         .extracting(FieldError::field, FieldError::code)
@@ -74,7 +67,7 @@ class BrandingSettingsRulesTest {
   @Test
   void aNoticeWithoutAVisibleCharacterCannotSwitchTheNoticeOff() {
     BrandingSettingsRules.Checked checked =
-        BrandingSettingsRules.check("", null, null, "\u00A0\u200B\u3000", null, null);
+        BrandingSettingsRules.check("", null, null, "\u00A0\u200B\u3000", null);
 
     assertThat(checked.errors()).isEmpty();
     assertThat(checked.values().aiNotice()).isNull();
@@ -84,7 +77,7 @@ class BrandingSettingsRulesTest {
   void aProductNameOrClaimWithoutAVisibleCharacterFollowsTheDefault() {
     for (String invisible : new String[] {"\u00A0", "\u200B", "\u00A0\u200B\u3000", "\uFE0F"}) {
       BrandingSettingsRules.Checked checked =
-          BrandingSettingsRules.check("", invisible, invisible, null, null, null);
+          BrandingSettingsRules.check("", invisible, invisible, null, null);
 
       assertThat(checked.errors())
           .as("value %s", invisible.codePoints().boxed().toList())
@@ -98,7 +91,7 @@ class BrandingSettingsRulesTest {
   void invisibleCharactersAtTheEdgesOfAProductNameAreNotStored() {
     BrandingSettingsRules.Checked checked =
         BrandingSettingsRules.check(
-            "", "\u200B\u00A0Landesamt\u00A0", "\u3000Fragen.\u200B", null, null, null);
+            "", "\u200B\u00A0Landesamt\u00A0", "\u3000Fragen.\u200B", null, null);
 
     assertThat(checked.errors()).isEmpty();
     assertThat(checked.values().productName()).isEqualTo("Landesamt");
@@ -112,7 +105,7 @@ class BrandingSettingsRulesTest {
           "Amt \u202Eredaeh", "\u202EAmt", "Amt\u202E", "Amt \u2066x\u2069", "\u202E"
         }) {
       BrandingSettingsRules.Checked checked =
-          BrandingSettingsRules.check("branding.", reordering, reordering, null, null, null);
+          BrandingSettingsRules.check("branding.", reordering, reordering, null, null);
 
       assertThat(checked.errors())
           .as("value %s", reordering.codePoints().boxed().toList())
@@ -132,7 +125,7 @@ class BrandingSettingsRulesTest {
   @Test
   void aBidiControlAtTheEdgeOfTheNoticeIsRejectedRatherThanCut() {
     BrandingSettingsRules.Checked checked =
-        BrandingSettingsRules.check("", null, null, "\u202EEigener Hinweis", null, null);
+        BrandingSettingsRules.check("", null, null, "\u202EEigener Hinweis", null);
 
     assertThat(checked.errors()).extracting(FieldError::field).containsExactly("aiNotice");
   }
@@ -146,7 +139,7 @@ class BrandingSettingsRulesTest {
           "OPAA󠁉󠁇󠁎", "󠁉󠁇", "OPAA 🏴󠁧󠁢󠁳", "OPAA 🏴󠁉󠁇󠁎󠁏󠁒󠁅" + "󠀠󠁁󠁌󠁌󠁿", "OPAA 󠁿"
         }) {
       BrandingSettingsRules.Checked checked =
-          BrandingSettingsRules.check("", smuggling, smuggling, smuggling, null, null);
+          BrandingSettingsRules.check("", smuggling, smuggling, smuggling, null);
 
       assertThat(checked.errors())
           .as("value %s", smuggling.codePoints().boxed().toList())
@@ -162,7 +155,7 @@ class BrandingSettingsRulesTest {
   void aSubdivisionFlagKeepsItsTagSequence() {
     BrandingSettingsRules.Checked checked =
         BrandingSettingsRules.check(
-            "", "Amt " + FLAG_SCOTLAND, FLAG_SCOTLAND + " Fragen", null, null, null);
+            "", "Amt " + FLAG_SCOTLAND, FLAG_SCOTLAND + " Fragen", null, null);
 
     assertThat(checked.errors()).isEmpty();
     assertThat(checked.values().productName()).isEqualTo("Amt " + FLAG_SCOTLAND);
@@ -173,11 +166,11 @@ class BrandingSettingsRulesTest {
   void fillerSymbolsAndMarksWithoutABaseAreNotVisible() {
     for (String filler : new String[] {"𝅙", "𖿤", " 𝅙 "}) {
       BrandingSettingsRules.Checked checked =
-          BrandingSettingsRules.check("", filler, filler, filler, null, null);
+          BrandingSettingsRules.check("", filler, filler, filler, null);
 
       assertThat(checked.errors()).as("value %s", filler.codePoints().boxed().toList()).isEmpty();
       assertThat(checked.values())
-          .isEqualTo(new BrandingSettingsRules.Values(null, null, null, null, null));
+          .isEqualTo(new BrandingSettingsRules.Values(null, null, null, null));
     }
   }
 
@@ -186,7 +179,7 @@ class BrandingSettingsRulesTest {
     for (String broken :
         new String[] {"OPAA͸", "͸", "OPAA￿", "OPAA\uD800", "\uDC00OPAA", "́OPAA", "́"}) {
       BrandingSettingsRules.Checked checked =
-          BrandingSettingsRules.check("", broken, broken, broken, null, null);
+          BrandingSettingsRules.check("", broken, broken, broken, null);
 
       assertThat(checked.errors())
           .as("value %s", broken.codePoints().boxed().toList())
@@ -217,9 +210,9 @@ class BrandingSettingsRulesTest {
     String vietnamese = "Việt Nam";
 
     BrandingSettingsRules.Checked accepted =
-        BrandingSettingsRules.check("", five, burmese, vietnamese, null, null);
+        BrandingSettingsRules.check("", five, burmese, vietnamese, null);
     BrandingSettingsRules.Checked refused =
-        BrandingSettingsRules.check("", six, "क" + "़ँ".repeat(3), null, null, null);
+        BrandingSettingsRules.check("", six, "क" + "़ँ".repeat(3), null, null);
 
     assertThat(accepted.errors()).isEmpty();
     assertThat(accepted.values().productName()).isEqualTo(five);
@@ -232,7 +225,7 @@ class BrandingSettingsRulesTest {
   @Test
   void controlCharactersAtTheEdgesAreCutLikeBlanks() {
     BrandingSettingsRules.Checked checked =
-        BrandingSettingsRules.check("", "\nOPAA\n", "\tFragen.\r\n", null, null, null);
+        BrandingSettingsRules.check("", "\nOPAA\n", "\tFragen.\r\n", null, null);
 
     assertThat(checked.errors()).isEmpty();
     assertThat(checked.values().productName()).isEqualTo("OPAA");
