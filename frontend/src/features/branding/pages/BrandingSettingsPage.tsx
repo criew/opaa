@@ -212,7 +212,7 @@ export default function BrandingSettingsPage() {
         <AreaPageHeader
           icon={PaletteOutlinedIcon}
           title="Branding"
-          description="Produktname, Claim, Logo, und Akzentfarbe Ihres Hauses, sofort für alle wirksam. Ein leeres Feld stellt den OPAA-Standard wieder her."
+          description="Produktname, Claim, Logo und Akzentfarbe Ihres Hauses, sofort für alle wirksam. Ein leeres Feld stellt den OPAA-Standard wieder her."
         />
 
         {storeError && (

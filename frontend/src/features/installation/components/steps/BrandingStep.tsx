@@ -75,7 +75,7 @@ export default function BrandingStep({ step, submit, onBack, onSkip }: BrandingS
       laterUnder={STEP_INFO.BRANDING.laterUnder}
       description={
         <>
-          Name, Claim, Hinweis zur KI-Nutzung, und Akzentfarbe Ihres Hauses. Der Schritt ist
+          Name, Claim, Hinweis zur KI-Nutzung und Akzentfarbe Ihres Hauses. Der Schritt ist
           optional: Was leer bleibt oder übersprungen wird, zeigt den OPAA-Standard, und alles lässt
           sich später unter „Administration → Branding“ ändern. Logo, Logo der Anmeldeseite und
           Hintergrundbild lädt die Systemverwaltung erst dort hoch; der Assistent nimmt keine Bilder
