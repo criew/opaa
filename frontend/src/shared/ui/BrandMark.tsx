@@ -2,6 +2,7 @@ import { useId } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { useBrandingStore } from '../branding/brandingStore'
+import { deriveAccentSurface } from '../utils/contrast'
 
 interface BrandMarkProps {
   /** Rendered height of the logo in pixels; the width follows the image's own aspect ratio. */
@@ -32,8 +33,8 @@ interface BrandMarkProps {
  *
  * Renders the product name as text next to the logo rather than relying on the logo to carry it:
  * an operator's logo is frequently a wordless emblem, and the name is what a screen reader user and
- * a narrow viewport both need. Where no logo is configured, the name alone is the mark - that is
- * what the OPAA standard looks like.
+ * a narrow viewport both need. Where no logo is configured, the OPAA standard mark stands next to
+ * the name.
  */
 export default function BrandMark({
   logoHeight = 28,
@@ -78,8 +79,8 @@ export default function BrandMark({
           />
         ) : (
           // The OPAA standard mark "Fundstelle": an answer bubble of text lines with a verified badge.
-          // Bubble in the surrounding text colour, badge in the accent; lines and the badge ring are
-          // cut out by a mask, so the mark reads on navy, white and dark grounds alike.
+          // Bubble in the surrounding text colour, badge on the accent surface (white at 4.5:1);
+          // lines and badge ring are cut out by a mask, so the mark reads on any ground.
           <Box
             component="svg"
             viewBox="0 0 64 64"
@@ -101,7 +102,7 @@ export default function BrandMark({
               cx={47}
               cy={45}
               r={13}
-              sx={{ fill: (t) => t.palette.primary.main }}
+              sx={{ fill: (t) => deriveAccentSurface(t.palette.primary.main) }}
             />
             <path
               d="M41 45.5l4.2 4.2 7.8-8.4"

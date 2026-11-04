@@ -130,4 +130,23 @@ describe('BrandMark', () => {
     expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
     expect(document.querySelector('svg')).toBeInTheDocument()
   })
+
+  // Two marks on one page (rail and mobile header) must not share a mask id, or the second one
+  // would cut its lines with the first one's mask.
+  it('gives every standard mark its own mask id', () => {
+    renderMark(
+      <>
+        <BrandMark />
+        <BrandMark logoOnly />
+      </>,
+    )
+
+    const ids = Array.from(document.querySelectorAll('mask')).map((m) => m.id)
+    expect(ids).toHaveLength(2)
+    expect(new Set(ids).size).toBe(2)
+    document.querySelectorAll('path[mask]').forEach((path) => {
+      const ref = path.getAttribute('mask')?.match(/^url\(#(.+)\)$/)?.[1]
+      expect(ids).toContain(ref)
+    })
+  })
 })

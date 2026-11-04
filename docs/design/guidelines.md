@@ -48,13 +48,13 @@ aufgezählt.
 
 **Navy** — Struktur- und Textfarbe:
 
-| Name     | Wert      | Verwendung                            |
-| -------- | --------- | ------------------------------------- |
-| Navy     | `#012142` | Primärtext (hell), dunkle Grundfläche |
-| Navy-900 | `#00152D` | Überlagerungen, tiefste Fläche        |
-| Navy-700 | `#02305E` | erhöhte Fläche im dunklen Schema      |
-| Navy-600 | `#034079` | gedämpfte Fläche im dunklen Schema    |
-| Navy-500 | `#055396` | Grenzfälle, Diagramme                 |
+| Name     | Wert      | Verwendung                                          |
+| -------- | --------- | --------------------------------------------------- |
+| Navy     | `#012142` | Primärtext (hell), dunkle Grundfläche               |
+| Navy-900 | `#00152D` | Überlagerungen, tiefste Fläche                      |
+| Navy-700 | `#02305E` | erhöhte Fläche im dunklen Schema                    |
+| Navy-600 | `#034079` | gedämpfte Fläche im dunklen Schema                  |
+| Navy-500 | `#055396` | Grenzfälle, Diagramme                               |
 
 **Grau** (kühl, auf Navy abgestimmt): `#E6EBF1` (100), `#CBD4DF` (200), `#A4B1C1` (300),
 `#778797` (400), `#556473` (500), `#3B4958` (600), `#26323F` (700), `#162231` (800).
@@ -274,14 +274,14 @@ Gruppen deutlich getrennt (24–48).
 
 ### 4.2 Radien
 
-| Stufe  | Wert      | Verwendung                              |
-| ------ | --------- | --------------------------------------- |
-| xs     | 4 px      | kleine Chips, Tastenkürzel              |
-| sm     | 6 px      | Schaltflächen, Menüeinträge (#658)      |
-| **md** | **10 px** | **Standard: Karten, Eingaben, Dialoge** |
-| lg     | 16 px     | große Karten, Nachrichtenblasen         |
-| xl     | 24 px     | Bühnenflächen                           |
-| pill   | 999 px    | Rollen- und Statuschips                 |
+| Stufe  | Wert      | Verwendung                                    |
+| ------ | --------- | --------------------------------------------- |
+| xs     | 4 px      | kleine Chips, Tastenkürzel                    |
+| sm     | 6 px      | Schaltflächen, Menüeinträge (#658) |
+| **md** | **10 px** | **Standard: Karten, Eingaben, Dialoge**       |
+| lg     | 16 px     | große Karten, Nachrichtenblasen               |
+| xl     | 24 px     | Bühnenflächen                                 |
+| pill   | 999 px    | Rollen- und Statuschips                       |
 
 ### 4.3 Ebenen: Rahmen statt Schatten
 
@@ -712,8 +712,7 @@ Der Mechanismus ist derselbe wie bei den Benachrichtigungen: `confirmAction(opti
 AppShell. Der Aufruf bleibt dadurch so kurz wie der ersetzte:
 
 ```ts
-if (!(await confirmAction({ question, consequence, confirmLabel, tone })))
-  return;
+if (!(await confirmAction({ question, consequence, confirmLabel, tone }))) return
 ```
 
 **Aufbau.** Die **Folge ist der Hauptinhalt**, nicht die Frage. Die Frage steht als Titel darüber
@@ -726,11 +725,11 @@ zusagt.
 
 **Drei Töne**, mehr nicht:
 
-| Ton       | Wofür                                                | Kante   | Vorgabefokus  |
-| --------- | ---------------------------------------------------- | ------- | ------------- |
-| `danger`  | unwiderruflich: löschen, Zugang entziehen            | Gefahr  | **Abbrechen** |
-| `caution` | folgenreich, aber umkehrbar: abschalten, einschalten | Warnung | die Handlung  |
-| `neutral` | Eingaben verwerfen, Zuordnung lösen                  | Rahmen  | die Handlung  |
+| Ton | Wofür | Kante | Vorgabefokus |
+| --- | --- | --- | --- |
+| `danger` | unwiderruflich: löschen, Zugang entziehen | Gefahr | **Abbrechen** |
+| `caution` | folgenreich, aber umkehrbar: abschalten, einschalten | Warnung | die Handlung |
+| `neutral` | Eingaben verwerfen, Zuordnung lösen | Rahmen | die Handlung |
 
 Bei `danger` liegt der Fokus bewusst auf „Abbrechen": Ein Enter aus dem Reflex heraus bricht dann
 ab, statt zu löschen.
@@ -751,20 +750,20 @@ kostet jeden Vorgang einen Klick.
 ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md), Entscheidung 1).
 Es gibt drei Mengenarten:
 
-| Mengenart                                                                 | Darstellung                                | Beispiele                                                  |
-| ------------------------------------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------- |
-| **Geschlossene Artenmenge** — Arten mit eigenem Icon                      | Kacheln mit Icon                           | Asset-Art, Quellart                                        |
-| **Assets** — eigene Objekte aus dem Katalog                               | Asset-Kacheln (5.4) mit Filterzeile        | Zuordnung zu einem Space, Bibliotheken eines Zugangstokens |
-| **Fremde Objekte aus einer Quelle** — was ein angebundenes System liefert | Liste oder Baum mit Suche, **nie Kacheln** | Sites, Spaces, Buckets, Ordner                             |
+| Mengenart | Darstellung | Beispiele |
+| --- | --- | --- |
+| **Geschlossene Artenmenge** — Arten mit eigenem Icon | Kacheln mit Icon | Asset-Art, Quellart |
+| **Assets** — eigene Objekte aus dem Katalog | Asset-Kacheln (5.4) mit Filterzeile | Zuordnung zu einem Space, Bibliotheken eines Zugangstokens |
+| **Fremde Objekte aus einer Quelle** — was ein angebundenes System liefert | Liste oder Baum mit Suche, **nie Kacheln** | Sites, Spaces, Buckets, Ordner |
 
 Die Wahlen im Einzelnen:
 
-| Wahl                                                         | Mengenart      | Auswahl  | Wo                                                                                  |
-| ------------------------------------------------------------ | -------------- | -------- | ----------------------------------------------------------------------------------- |
-| **Asset-Art** beim Anlegen                                   | Arten          | einfach  | erster Schritt von „Neuer Katalogeintrag" im Katalog; nur Arten mit Anlegerecht     |
-| **Quellart** einer Wissensbibliothek                         | Arten          | einfach  | Assistent „Neue Wissensbibliothek"                                                  |
-| **Zuordnung** von Assets zu einem Space                      | Assets         | mehrfach | Space-Assistent, Space-Einstellungen, „In Space verwenden"                          |
-| **Bibliotheken eines Zugangstokens**                         | Assets         | mehrfach | Ausstellung eines Zugangstokens für externe KI-Werkzeuge                            |
+| Wahl | Mengenart | Auswahl | Wo |
+| --- | --- | --- | --- |
+| **Asset-Art** beim Anlegen | Arten | einfach | erster Schritt von „Neuer Katalogeintrag" im Katalog; nur Arten mit Anlegerecht |
+| **Quellart** einer Wissensbibliothek | Arten | einfach | Assistent „Neue Wissensbibliothek" |
+| **Zuordnung** von Assets zu einem Space | Assets | mehrfach | Space-Assistent, Space-Einstellungen, „In Space verwenden" |
+| **Bibliotheken eines Zugangstokens** | Assets | mehrfach | Ausstellung eines Zugangstokens für externe KI-Werkzeuge |
 | **Umfang** einer Bibliothek (Sites, Spaces, Buckets, Ordner) | fremde Objekte | mehrfach | Quellteil des Assistenten „Neue Wissensbibliothek" und der Bibliothekseinstellungen |
 
 Weitere Wahlen dieser Art folgen dem Muster ohne eigene Entscheidung. Ein **Dropdown** bleibt
@@ -942,34 +941,34 @@ und sagt nur, was einen wahrscheinlichen Fehler verhindert oder wo man einen Wer
 
 Verbindliche Begriffe:
 
-| Begriff                   | Bedeutung / Regel                                                                                                                                                                                                                          |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Space**                 | Arbeitsraum mit Datenquellen, Chats, Mitgliedern. Bleibt unübersetzt.                                                                                                                                                                      |
-| **Chat**                  | in sich geschlossene Unterhaltung in einem Space; benennbar                                                                                                                                                                                |
-| **Wissensbibliothek**     | benannter Wissensbestand; kurz „Bibliothek", im Fließtext auch „Bestand"                                                                                                                                                                   |
-| **Datenquellen**          | die einem Space zugeordneten Bibliotheken                                                                                                                                                                                                  |
-| **Katalog**               | der eine Einstieg für alle Assets (Wissen, Prompts, später Skills und Agenten); zeigt nur Lesbares, nur als Kacheln                                                                                                                        |
-| **Zuordnung / zuordnen**  | ein Asset einem Space bereitstellen; die harte Grenze dessen, was der Space im Chat nutzt. Nicht „assoziieren" in Nutzertexten                                                                                                             |
-| **Favorit**               | persönliche Markierung an einem Asset, nur für die Person selbst sichtbar                                                                                                                                                                  |
-| **@Space-Wissen**         | der vorbelegte Chip am Eingabefeld: das dem Space zugeordnete, für die Person lesbare Wissen                                                                                                                                               |
-| **Sichtbarkeit**          | öffentlich (an alle Konten freigegeben) · geschlossen; Beschriftung in der Oberfläche siehe 5.5                                                                                                                                            |
-| **Herkunft**              | woher eine Bibliothek ihre Dokumente bezieht (Upload, Dateisystem, Webverzeichnis, RSS-Feed, Confluence, S3-Objektspeicher)                                                                                                                |
-| **Verbindung**            | die Anbindung einer Bibliothek an ihre Quelle: Adresse und Anmeldung, selbst eingetragen oder über einen Zugang; bei jeder Quellart derselbe Begriff                                                                                       |
+| Begriff                   | Bedeutung / Regel                                                                            |
+| ------------------------- | -------------------------------------------------------------------------------------------- |
+| **Space**                 | Arbeitsraum mit Datenquellen, Chats, Mitgliedern. Bleibt unübersetzt.                        |
+| **Chat**                  | in sich geschlossene Unterhaltung in einem Space; benennbar                                  |
+| **Wissensbibliothek**     | benannter Wissensbestand; kurz „Bibliothek", im Fließtext auch „Bestand"                     |
+| **Datenquellen**          | die einem Space zugeordneten Bibliotheken                                                    |
+| **Katalog**               | der eine Einstieg für alle Assets (Wissen, Prompts, später Skills und Agenten); zeigt nur Lesbares, nur als Kacheln |
+| **Zuordnung / zuordnen**  | ein Asset einem Space bereitstellen; die harte Grenze dessen, was der Space im Chat nutzt. Nicht „assoziieren" in Nutzertexten |
+| **Favorit**               | persönliche Markierung an einem Asset, nur für die Person selbst sichtbar                    |
+| **@Space-Wissen**         | der vorbelegte Chip am Eingabefeld: das dem Space zugeordnete, für die Person lesbare Wissen |
+| **Sichtbarkeit**          | öffentlich (an alle Konten freigegeben) · geschlossen; Beschriftung in der Oberfläche siehe 5.5 |
+| **Herkunft**              | woher eine Bibliothek ihre Dokumente bezieht (Upload, Dateisystem, Webverzeichnis, RSS-Feed, Confluence, S3-Objektspeicher) |
+| **Verbindung**            | die Anbindung einer Bibliothek an ihre Quelle: Adresse und Anmeldung, selbst eingetragen oder über einen Zugang; bei jeder Quellart derselbe Begriff |
 | **Zugang**                | eine von der Systemverwaltung angelegte und freigegebene, benannte Anbindung an ein Quellsystem (etwa „Microsoft 365 Rheinfurt"), die man beim Anlegen einer Bibliothek nur noch auswählt ([Glossar](../handbuch/nachschlagen/glossar.md)) |
-| **Umfang**                | was eine Bibliothek aus ihrer Quelle aufnimmt (Sites, Spaces, Buckets, Ordner; Auswahl nach 5.11)                                                                                                                                          |
-| **Zeitplan**              | wann eine Bibliothek ihre Quelle erneut liest                                                                                                                                                                                              |
-| **Gesetzt · Ersetzen**    | Anzeige eines hinterlegten Geheimnisses: „Gesetzt" statt des Werts, daneben die Aktion „Ersetzen"; nie zurückgespiegelt                                                                                                                    |
-| **Geltungsbereich**       | ein Eintrag im Umfang einer S3-Bibliothek: ein Bucket mit optionalem Präfix; eine Bibliothek hat einen bis fünfzig, die sich nicht überschneiden                                                                                           |
-| **Endpoint**              | Herstellerbegriff: die Adresse eines S3-Objektspeichers (`https://host[:port]`, ohne Pfad)                                                                                                                                                 |
-| **Rolle**                 | Leser · Bearbeiter · Verwalter · Eigentümer                                                                                                                                                                                                |
-| **Fundstellen**           | die Stellen in Dokumenten, auf die sich eine Antwort stützt                                                                                                                                                                                |
-| **Belege / Belegfenster** | alle Fundstellen einer Antwort in der seitlichen Leiste                                                                                                                                                                                    |
-| **Systemverwaltung**      | Admin-Bereich und -Rolle                                                                                                                                                                                                                   |
-| **Anmeldung / Kennung**   | nie „Login"/„Username" in Nutzertexten                                                                                                                                                                                                     |
-| **Kontozustand**          | Eingeladen · Aktiv · Gesperrt · Abgelaufen — als Punkt **und** Wort, nie als farbiger Chip; die Sperre nennt ihren Grund in Klammern (Verwalter · Fehlversuche · Inaktivität)                                                              |
-| **Anlagegrund**           | der dienstliche Anlass eines lokalen Kontos; Pflichtangabe, für die betroffene Person einsehbar                                                                                                                                            |
-| **Aktivität**             | nie · länger als 90 Tage nicht · aktiv — nur diese Klassen, nie ein Zeitstempel und nie ein Sortierkriterium                                                                                                                               |
-| Claim                     | „Fragen. Belegen. Entscheiden."                                                                                                                                                                                                            |
+| **Umfang**                | was eine Bibliothek aus ihrer Quelle aufnimmt (Sites, Spaces, Buckets, Ordner; Auswahl nach 5.11) |
+| **Zeitplan**              | wann eine Bibliothek ihre Quelle erneut liest                                                |
+| **Gesetzt · Ersetzen**    | Anzeige eines hinterlegten Geheimnisses: „Gesetzt" statt des Werts, daneben die Aktion „Ersetzen"; nie zurückgespiegelt |
+| **Geltungsbereich**       | ein Eintrag im Umfang einer S3-Bibliothek: ein Bucket mit optionalem Präfix; eine Bibliothek hat einen bis fünfzig, die sich nicht überschneiden |
+| **Endpoint**              | Herstellerbegriff: die Adresse eines S3-Objektspeichers (`https://host[:port]`, ohne Pfad) |
+| **Rolle**                 | Leser · Bearbeiter · Verwalter · Eigentümer                                                  |
+| **Fundstellen**           | die Stellen in Dokumenten, auf die sich eine Antwort stützt                                  |
+| **Belege / Belegfenster** | alle Fundstellen einer Antwort in der seitlichen Leiste                                      |
+| **Systemverwaltung**      | Admin-Bereich und -Rolle                                                                     |
+| **Anmeldung / Kennung**   | nie „Login"/„Username" in Nutzertexten                                                       |
+| **Kontozustand**          | Eingeladen · Aktiv · Gesperrt · Abgelaufen — als Punkt **und** Wort, nie als farbiger Chip; die Sperre nennt ihren Grund in Klammern (Verwalter · Fehlversuche · Inaktivität) |
+| **Anlagegrund**           | der dienstliche Anlass eines lokalen Kontos; Pflichtangabe, für die betroffene Person einsehbar |
+| **Aktivität**             | nie · länger als 90 Tage nicht · aktiv — nur diese Klassen, nie ein Zeitstempel und nie ein Sortierkriterium |
+| Claim                     | „Fragen. Belegen. Entscheiden."                                                              |
 
 Nicht verwendet werden: „Workspace", „Library", „Datei-Upload" (stattdessen „Upload"),
 „User", englische Mischformen in Nutzertexten. Technische Enum-Werte und API-Felder bleiben
@@ -992,33 +991,35 @@ Konfiguration**, nicht Code (Issues #582/#583). Daraus folgt für jede Komponent
 - Die Kontrastprüfung der konfigurierten Farbe warnt, blockiert aber nicht (#583); sie prüft
   die Beschriftung gegen die tatsächlich abgeleitete Fläche.
 
-### Das OPAA-Standardlogo
+### 7.1 Das OPAA-Standardlogo
 
 Das Logo heißt **Fundstelle**: eine Antwort-Sprechblase aus Textzeilen mit einem Prüfsiegel. Die
 Sprechblase steht für den Assistenten, der antwortet und handelt, die Zeilen für das Wissen des
 Hauses, das Siegel mit Haken für den geprüften Beleg. Es ist der Fallback, solange ein Betreiber kein
 eigenes Logo konfiguriert.
 
-| Bestandteil | Farbe                                                       |
-| ----------- | ----------------------------------------------------------- |
-| Sprechblase | Textfarbe der Fläche: Navy auf Hell, Weiß auf Navy          |
-| Siegel      | Blau-500 `#1292EE` (in der App: `accent` des Schemas)       |
-| Haken       | Weiß                                                        |
-| Wortmarke   | „OPAA“ in Quicksand 700, Laufweite 0,02 em, Farbe der Blase |
+| Bestandteil | Farbe                                                                       |
+| ----------- | --------------------------------------------------------------------------- |
+| Sprechblase | Textfarbe der Fläche: Navy auf Hell, Weiß auf Navy                          |
+| Siegel      | Dateien: Blau-500 `#1292EE`; in der App die Akzentfläche (`accent-surface`) |
+| Haken       | Weiß                                                                        |
+| Wortmarke   | „OPAA“ in Quicksand 700, Laufweite 0,02 em, Farbe der Sprechblase           |
 
 - Zeilen und der Ring um das Siegel sind ausgespart, nicht weiß gefüllt; das Logo liegt deshalb auf
   jeder Fläche, ohne dass eine Kachel dahinter nötig ist.
-- **Icon-Fassung** (Favicon, App-Icon, Handbuch): Navy-Kachel mit Radius 14/64, darin die Marke in
-  Weiß auf 72 % der Fläche. Ab 32 px und kleiner wird immer die Icon-Fassung verwendet.
-- Mindestgröße der freien Marke 16 px, der Wortmarke 24 px Höhe. Schutzraum ringsum ein Viertel der
-  Markenhöhe.
-- Nicht verzerren, nicht drehen, keine Schatten oder Verläufe, Siegel nie in einer anderen Farbe als
-  Akzentblau.
+- In der App folgt das Siegel der Akzentfläche, weil sie Weiß mit 4,5:1 trägt; bei konfigurierter
+  Akzentfarbe nimmt es also die abgeleitete Hausfarbe an.
+- **Icon-Fassung** für Favicon, App- und Touch-Icon und Handbuch: Navy-Kachel, darin die Marke in
+  Weiß auf 72 % der Fläche. Das SVG hat Radius 14/64; die Raster-PNGs sind vollflächig ohne Rundung,
+  weil Betriebssysteme Icons selbst maskieren.
+- In der Oberfläche steht die freie Marke ohne Kachel, ab 16 px. Die Wortmarke ab 24 px Höhe.
+  Schutzraum ringsum ein Viertel der Markenhöhe.
+- Nicht verzerren, nicht drehen, keine Schatten oder Verläufe.
 
 Die Quelldateien liegen in [`logo/`](./logo/): `opaa-mark.svg` und `opaa-logo.svg` (für helle
 Flächen), `-hell`-Fassungen für dunkle Flächen, `opaa-icon.svg` sowie die Icon-Raster in 32, 180, 192
-und 512 px. Die App zeichnet die Marke in `BrandMark` selbst, damit Siegel und Blase den Farbrollen
-des Schemas folgen.
+und 512 px. Die App zeichnet die Marke in `BrandMark` selbst, damit Sprechblase und Siegel den
+Farbrollen des Schemas folgen.
 
 ---
 
