@@ -1,0 +1,66 @@
+/* OPAA color scheme for the handbook: token values from docs/design/guidelines.md (light and dark).
+   Fonts per guidelines 3.1 (Quicksand, JetBrains Mono) are served from assets/fonts/ (OFL, licence
+   files beside them), so the site makes no request to third-party hosts. */
+@font-face{font-family:"Quicksand";font-style:normal;font-weight:300 700;font-display:swap;src:url(fonts/quicksand-latin.woff2) format("woff2")}
+@font-face{font-family:"JetBrains Mono";font-style:normal;font-weight:100 800;font-display:swap;src:url(fonts/jetbrains-mono-latin.woff2) format("woff2")}
+
+:root{
+  --md-text-font:"Quicksand","Inter",system-ui,sans-serif;
+  --md-code-font:"JetBrains Mono",ui-monospace,monospace;
+}
+
+[data-md-color-primary=custom]{
+  --md-primary-fg-color:#012142;
+  --md-primary-fg-color--light:#02305E;
+  --md-primary-fg-color--dark:#00152D;
+  --md-primary-bg-color:#FFFFFF;
+  --md-primary-bg-color--light:rgba(255,255,255,.75);
+}
+[data-md-color-accent=custom]{
+  --md-accent-fg-color:#0B6FBC;
+  --md-accent-fg-color--transparent:rgba(11,111,188,.12);
+  --md-accent-bg-color:#FFFFFF;
+  --md-accent-bg-color--light:rgba(255,255,255,.75);
+}
+
+[data-md-color-scheme=default]{
+  --md-default-fg-color:#012142;
+  --md-default-fg-color--light:#3B4958;
+  --md-default-fg-color--lighter:#556473;
+  --md-default-fg-color--lightest:#E6EBF1;
+  --md-default-bg-color:#FFFFFF;
+  --md-typeset-color:#012142;
+  --md-typeset-a-color:#0B6FBC;
+  --md-code-bg-color:#EEF2F7;
+  --md-code-fg-color:#012142;
+  --md-typeset-table-color:#CBD4DF;
+  --md-typeset-kbd-color:#F6F8FB;
+  --md-admonition-bg-color:#F6F8FB;
+  --md-footer-bg-color:#012142;
+  --md-footer-bg-color--dark:#00152D;
+}
+
+[data-md-color-scheme=slate]{
+  --md-default-fg-color:#DEDEDE;
+  --md-default-fg-color--light:#9E9E9E;
+  --md-default-fg-color--lighter:#8A8A8A;
+  --md-default-fg-color--lightest:#252525;
+  --md-default-bg-color:#09090B;
+  --md-typeset-color:#DEDEDE;
+  --md-typeset-a-color:#1292EE;
+  --md-accent-fg-color:#1292EE;
+  --md-accent-fg-color--transparent:rgba(18,146,238,.14);
+  --md-code-bg-color:#1F1F1F;
+  --md-code-fg-color:#DEDEDE;
+  --md-typeset-table-color:#333333;
+  --md-admonition-bg-color:#171717;
+  --md-footer-bg-color:#00152D;
+  --md-footer-bg-color--dark:#09090B;
+}
+
+.md-typeset h1,.md-typeset h2{font-weight:700;color:var(--md-default-fg-color)}
+.md-typeset h3,.md-typeset h4{font-weight:600}
+.md-typeset{font-size:.85rem;font-weight:500}
+.md-typeset strong{font-weight:700}
+.md-header__button.md-logo img{height:1.4rem}
+.md-typeset blockquote{border-left-color:var(--md-accent-fg-color);color:var(--md-default-fg-color--light)}

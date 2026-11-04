@@ -11,6 +11,9 @@ exclude_docs: |
 theme:
   name: material
   language: de
+  font: false
+  logo: assets/opaa-mark.svg
+  favicon: assets/opaa-mark.svg
   features:
     - navigation.sections
     - navigation.indexes
@@ -20,16 +23,22 @@ theme:
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
+      primary: custom
+      accent: custom
       toggle:
         icon: material/brightness-4
         name: Dunkles Farbschema
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
+      primary: custom
+      accent: custom
       toggle:
         icon: material/brightness-7
         name: Helles Farbschema
 extra:
   homepage: https://opaa.io/
+extra_css:
+  - assets/opaa.css
 plugins:
   - search:
       lang: de
