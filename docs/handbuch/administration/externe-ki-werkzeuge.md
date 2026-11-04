@@ -1,6 +1,10 @@
 # Externe KI-Werkzeuge zulassen
 
-> **Wer:** Systemverwaltung, „Administration → Anbindungen“, Reiter „Externe KI-Werkzeuge“.
+**Ziel:** Personen durchsuchen freigegebene Bibliotheken aus Werkzeugen wie OpenCode, kontrolliert und befristet.
+{: .kopf }
+
+**Wer:** Systemverwaltung, „Administration → Anbindungen“, Reiter „Externe KI-Werkzeuge“
+{: .kopf }
 
 Werkzeuge wie OpenCode holen sich mit einem Zugangstoken Fundstellen aus
 freigegebenen Bibliotheken. Ein Token kann nie mehr als seine Person: Jeder Aufruf sieht nur, was sie

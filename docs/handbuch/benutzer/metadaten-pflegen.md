@@ -1,8 +1,10 @@
 # Metadaten pflegen
 
-> **Wer:** Werte ab *Bearbeiter*, eigene Felder ab *Verwalter*.
+**Ziel:** Die Suche filtert zuverlässig, etwa „nur Dienstanweisungen“ oder „Stand nach 2024“.
+{: .kopf }
 
-Die Suche filtert danach zuverlässig, etwa „nur Dienstanweisungen“ oder „Stand nach 2024“.
+**Wer:** Werte ab *Bearbeiter*, eigene Felder ab *Verwalter*
+{: .kopf }
 
 Jedes Dokument trägt **Titel**, **Dokumentart** und **Datum/Stand**. OPAA füllt sie selbst, nach
 der Regel **lieber leer als geraten**: Ein Dokument ohne Wert schließt kein Filter aus.

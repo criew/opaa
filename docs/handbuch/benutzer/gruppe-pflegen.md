@@ -1,9 +1,10 @@
 # Interne Gruppe pflegen
 
-> **Wer:** *Verantwortliche* der Gruppe und die Systemverwaltung; anlegen nur mit Anlegerecht.
+**Ziel:** Eine Gruppe wie „Projekt Bauleitplanung“ mit den richtigen Mitgliedern, nutzbar für Freigaben und Spaces.
+{: .kopf }
 
-Sie führen eine Gruppe wie „Projekt Bauleitplanung“, der andere Bibliotheken freigeben und die sie
-in Spaces aufnehmen.
+**Wer:** *Verantwortliche* der Gruppe und die Systemverwaltung; anlegen nur mit Anlegerecht
+{: .kopf }
 
 1. „Einstellungen“, „Meine Gruppen“, „Gruppe anlegen“.
 2. Name eintragen und **„Zur Verwendung freigegeben“** einschalten; erst dann finden andere die

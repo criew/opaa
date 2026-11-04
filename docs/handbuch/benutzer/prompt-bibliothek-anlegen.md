@@ -1,6 +1,7 @@
 # Prompt-Bibliothek anlegen
 
-Sie sammeln Formulierungshilfen an einer Stelle, die Sie selbst oder Ihr Referat im Chat einsetzen.
+**Ziel:** Formulierungshilfen an einer Stelle, die Sie oder Ihr Referat im Chat einsetzen.
+{: .kopf }
 
 1. Im [Katalog](katalog.md) „Neuer Katalogeintrag“, dann „Prompts“ und „Weiter“.
 2. **Stammdaten:** Name und Beschreibung.

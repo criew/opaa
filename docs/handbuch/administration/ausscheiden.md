@@ -1,9 +1,12 @@
 # Ausscheiden und Nachfolge regeln
 
-> **Wer:** Systemverwaltung, „Administration → Ohne Zuständigkeit“.
+**Ziel:** Bibliotheken, Spaces und Gruppen ausscheidender Personen haben wieder eine Zuständigkeit.
+{: .kopf }
 
-Scheidet eine Person aus oder wird ein Referat aufgelöst, sollen Bibliotheken, Spaces und Gruppen
-nicht verwaist liegen bleiben. Dafür gibt es die **Übertragung**: eine Handlung statt Arbeit Objekt
+**Wer:** Systemverwaltung, „Administration → Ohne Zuständigkeit“
+{: .kopf }
+
+Scheidet eine Person aus oder wird ein Referat aufgelöst, hilft die **Übertragung**: eine Handlung statt Arbeit Objekt
 für Objekt.
 
 ## Wenn niemand mehr zuständig ist

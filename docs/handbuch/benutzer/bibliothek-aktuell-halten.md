@@ -1,8 +1,10 @@
 # Bibliothek aktuell halten
 
-> **Wer:** Indizieren und Dokumente ab *Bearbeiter*, Zeitplan und Verbindung ab *Verwalter*.
+**Ziel:** Die Suche findet den aktuellen Stand der Quelle.
+{: .kopf }
 
-Die Suche findet danach den aktuellen Stand der Quelle.
+**Wer:** Indizieren und Dokumente ab *Bearbeiter*, Zeitplan und Verbindung ab *Verwalter*
+{: .kopf }
 
 ## Zeitplan setzen
 

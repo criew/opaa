@@ -51,7 +51,7 @@ Jede Quelle von Confluence bis SharePoint mit Einrichtung und Grenzen: [Konnekto
 |---|---|
 | Eigenes Konto beim Anbieter verbinden | [Konto verbinden](konto-verbinden.md) |
 | Eigene Ablage beim Anbieter durchsuchen | [Private Bibliothek anlegen](private-bibliothek.md) |
-| Externes KI-Werkzeug anschließen | [Zugangstoken anlegen](zugangstoken.md) und [KI-Werkzeug einrichten](ki-werkzeug-einrichten.md) |
+| Externes KI-Werkzeug anschließen | [KI-Werkzeug einrichten](ki-werkzeug-einrichten.md) |
 | Eigene Gruppe führen | [Interne Gruppe pflegen](gruppe-pflegen.md) |
 | Wer hat warum Zugriff? | [Zugriffsberechtigung nachvollziehen](zugriff-nachvollziehen.md) |
 | Passwort ändern, eigene Daten herunterladen | [Eigene Daten herunterladen](meine-daten.md) |

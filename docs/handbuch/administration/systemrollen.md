@@ -1,6 +1,10 @@
 # Systemrollen vergeben
 
-> **Wer:** Systemverwaltung; die Rolle *Revision* bestätigt eine Person der Revision.
+**Ziel:** Jede Person hat die passende Rolle für die ganze Installation.
+{: .kopf }
+
+**Wer:** Systemverwaltung; die Rolle *Revision* bestätigt eine Person der Revision
+{: .kopf }
 
 Eine Systemrolle gilt für die ganze Installation. Was ein Konto an einer Bibliothek oder in einem
 Space darf, regeln die Rollen dort.

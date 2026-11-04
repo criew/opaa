@@ -1,6 +1,7 @@
 # Erste Schritte
 
-OPAA in drei Begriffen: Space, Chat, Katalog.
+**Ziel:** Sie kennen die drei Begriffe, mit denen OPAA arbeitet: Space, Chat und Katalog.
+{: .kopf }
 
 **Gearbeitet wird in Spaces.** Ein Space bündelt die Chats einer Gruppe und die Arbeitsmittel, mit
 denen sie arbeitet, etwa Wissensbibliotheken und Prompts. Links in der Seitenleiste stehen oben

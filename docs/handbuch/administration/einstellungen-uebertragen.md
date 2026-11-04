@@ -1,6 +1,10 @@
 # Einstellungen übertragen
 
-> **Wer:** Systemverwaltung, „Administration → Einstellungen übertragen“.
+**Ziel:** Eine Installation übernimmt die Verwaltungseinstellungen einer anderen in einem Schritt.
+{: .kopf }
+
+**Wer:** Systemverwaltung, „Administration → Einstellungen übertragen“
+{: .kopf }
 
 Die Einstellungen der Verwaltung liegen in der Datenbank, nicht in der Konfiguration. Wer eine
 Testinstallation mit der Produktion vergleichen oder eine neue Installation wie eine bestehende

@@ -1,6 +1,7 @@
 # Konnektor: Feed
 
-> **Wer:** anlegen mit Anlegerecht für Quellart oder Zugang (ab Werk jedes Konto), ändern ab *Verwalter*.
+**Wer:** anlegen mit Anlegerecht für Quellart oder Zugang (ab Werk jedes Konto), ändern ab *Verwalter*
+{: .kopf }
 
 ## 1. Was der Konnektor ist
 

@@ -1,6 +1,10 @@
 # Katalog nutzen
 
-Sie finden Wissens- und Prompt-Bibliotheken und stellen sie einem Space bereit. Zuordnen darf, wer im Space *Kurator* oder *Administrator* ist.
+**Ziel:** Die passenden Wissens- und Prompt-Bibliotheken stehen Ihrem Space bereit.
+{: .kopf }
+
+**Wer:** suchen jedes Konto, einem Space zuordnen *Kurator* oder *Administrator* des Space
+{: .kopf }
 
 **Arbeitsmittel** ist der Oberbegriff für alles, was angelegt, geteilt und einem Space zugeordnet
 wird: Wissensbibliotheken, in denen Fragen suchen, und Prompt-Bibliotheken mit Formulierungshilfen.

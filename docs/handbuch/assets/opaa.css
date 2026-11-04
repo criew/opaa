@@ -64,3 +64,10 @@
 .md-typeset strong{font-weight:700}
 .md-header__button.md-logo img{height:1.4rem}
 .md-typeset blockquote{border-left-color:var(--md-accent-fg-color);color:var(--md-default-fg-color--light)}
+
+/* Page head under the title: "Ziel" and "Wer" as quiet label rows with a thin rule on the left.
+   Markdown: one paragraph per row, each followed by "{: .kopf }". */
+.md-typeset p.kopf{margin:0;padding:.1rem 0 .1rem 3.8rem;border-left:2px solid var(--md-typeset-table-color);font-size:.72rem;line-height:1.5}
+.md-typeset p.kopf>strong:first-child{display:inline-block;width:3rem;margin-left:-3rem;font-size:.65rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--md-default-fg-color--light)}
+.md-typeset p.kopf:not(.kopf+.kopf){padding-top:.25rem}
+.md-typeset p.kopf:not(:has(+.kopf)){padding-bottom:.25rem;margin-bottom:1.2rem}
