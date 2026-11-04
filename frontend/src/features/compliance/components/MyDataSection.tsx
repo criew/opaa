@@ -28,7 +28,6 @@ import {
   abortedText,
   blockedText,
   completedText,
-  dailyLimitText,
   formatMoment,
 } from '../utils/selfDisclosureMessages'
 
@@ -304,15 +303,12 @@ export default function MyDataSection() {
   return (
     <Box sx={{ maxWidth: 640 }}>
       <Typography sx={{ fontSize: 13.5, mb: 1.5 }}>
-        Sie können die zu Ihnen in {productName} gespeicherten Daten herunterladen: Konto, Chats,
-        Rechte, Gruppen, Spaces, Benachrichtigungen, Protokolleinträge über Sie und weitere. Sie
-        erhalten eine ZIP-Datei mit einer lesbaren Übersicht und maschinenlesbaren Dateien.
+        Laden Sie die zu Ihnen in {productName} gespeicherten Daten als ZIP-Datei herunter: Konto,
+        Chats, Rechte, Gruppen, Spaces und weitere, lesbar und maschinenlesbar.
       </Typography>
       <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 1.5 }}>
-        Nicht enthalten sind Inhalte von Dokumenten und Originaldateien, Sicherungen, das technische
-        Log des Betriebs und Inhalte anlassbezogener Klärungen über Sie; Auskunft darüber gibt die
-        oder der Datenschutzbeauftragte. Die Selbstauskunft ersetzt keinen Auskunftsantrag: Sie
-        können die Auskunft weiterhin bei Ihrer Behörde beantragen.
+        Nicht enthalten sind Dokumentinhalte, Sicherungen, das Betriebslog und anlassbezogene
+        Klärungen; darüber gibt die oder der Datenschutzbeauftragte Auskunft.
       </Typography>
       <Typography sx={{ fontSize: 13.5, fontWeight: 600, mb: 2.5 }}>
         {PERSONAL_ONLY_NOTICE}
@@ -338,11 +334,9 @@ export default function MyDataSection() {
         </Typography>
       ) : (
         <>
-          {status && (
+          {status?.lastCompletedAt && (
             <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1.5 }}>
-              {dailyLimitText(status.dailyLimit)} Vor dem Download bestätigen Sie Ihre Anmeldung.
-              {status.lastCompletedAt &&
-                ` Zuletzt vollständig heruntergeladen: ${formatMoment(status.lastCompletedAt)}.`}
+              Zuletzt vollständig heruntergeladen: {formatMoment(status.lastCompletedAt)}.
             </Typography>
           )}
           <BusyButton

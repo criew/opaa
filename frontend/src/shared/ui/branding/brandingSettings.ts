@@ -1,4 +1,3 @@
-import type { ColorScheme } from '@/shared/api/types'
 import { OPAA_BRANDING } from '@/shared/branding/brandingStore'
 
 /**
@@ -21,7 +20,6 @@ export const BRANDING_LABELS = {
   aiNotice: 'Hinweis zur KI-Nutzung',
   primaryColor: 'Primärfarbe',
   colorPicker: 'Auswählen',
-  colorScheme: 'Farbschema-Vorgabe',
   preview: 'Vorschau',
 } as const
 
@@ -36,9 +34,6 @@ export const BRANDING_TEXTS = {
   primaryColorHint: 'Akzentfarbe für Schaltflächen, Verweise und Fokusrahmen.',
   primaryColorInvalid:
     'Bitte einen sechsstelligen Hex-Wert mit führendem „#“ angeben, zum Beispiel #1292EE.',
-  colorSchemeHint:
-    'Gilt für alle, die in ihren eigenen Einstellungen noch nichts gewählt haben. Eine ' +
-    'persönliche Wahl bleibt unberührt.',
   previewHint:
     'So wirkt die Einstellung in beiden Farbschemata — beide sind gleichermaßen verbindlich.',
   contrastTitle: 'Kontrast unterschritten',
@@ -46,12 +41,6 @@ export const BRANDING_TEXTS = {
     'Die gewählte Farbe erreicht den empfohlenen Kontrast nicht überall. Sie können ' +
     'trotzdem speichern — die Entscheidung liegt bei Ihrem Haus.',
 } as const
-
-export const BRANDING_COLOR_SCHEME_OPTIONS: ReadonlyArray<{ value: ColorScheme; label: string }> = [
-  { value: 'LIGHT', label: 'Hell' },
-  { value: 'SYSTEM', label: 'System' },
-  { value: 'DARK', label: 'Dunkel' },
-]
 
 /** Line breaks become spaces as they are typed or pasted: the backend refuses them. */
 export function singleLineNotice(value: string): string {

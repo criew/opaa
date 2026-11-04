@@ -4,7 +4,8 @@ Sie ändern Ihr Passwort und laden herunter, was OPAA über Sie gespeichert hat.
 
 ## Passwort ändern
 
-1. „Einstellungen“ öffnen, „Passwort ändern“ wählen.
+1. „Einstellungen“ öffnen, unter „Ihr Konto“ bei „Passwort“ auf „Ändern“ klicken. Das gibt es nur bei
+   einem Konto dieser Installation; bei Anmeldung über einen Identitätsanbieter ändern Sie es dort.
 2. Aktuelles und neues Passwort eingeben.
 
 Ihre Sitzung bleibt bestehen; alle anderen Sitzungen und Ihre [Zugangstokens](zugangstoken.md)

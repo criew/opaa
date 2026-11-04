@@ -72,7 +72,7 @@ describe('BrandingSettingsPage', () => {
 
     renderWithProviders(<BrandingSettingsPage />, { withRouter: true })
 
-    for (const name of ['Farbschema-Vorgabe', 'Logo', 'Vorschau']) {
+    for (const name of ['Logo', 'Vorschau']) {
       expect(screen.getByRole('heading', { level: 2, name })).toBeInTheDocument()
     }
   })
