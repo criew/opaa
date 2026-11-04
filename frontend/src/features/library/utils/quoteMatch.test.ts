@@ -73,6 +73,7 @@ describe('markedItems', () => {
       'Führungszeugnis',
       ' ',
       '15 Euro',
+      'Diese Satzung ist Teil des synthetischen Demo-Korpus.',
     ]
     expect(
       markedItems(
