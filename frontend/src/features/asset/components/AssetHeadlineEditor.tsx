@@ -1,4 +1,4 @@
-import { useCallback, useState, type FormEvent, type ReactNode } from 'react'
+import { useCallback, useState, type FormEvent } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -32,12 +32,9 @@ export interface AssetHeadlineProps {
 export default function AssetHeadline({
   name,
   description,
-  badges,
 }: {
   name: string
   description?: string | null
-  /** Badges on the heading's baseline - role, source type, administrative bypass. */
-  badges?: ReactNode
 }) {
   return (
     <Box sx={{ minWidth: 0 }}>
@@ -69,7 +66,6 @@ export default function AssetHeadline({
             }}
           />
         </Box>
-        {badges}
       </Stack>
       {/* one line, kept even when empty: the figures below never move */}
       <Typography

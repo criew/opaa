@@ -105,7 +105,8 @@ export default function LibraryExternalAccessSection({
   }, [libraryId])
 
   if (!access) {
-    return null
+    // a failed load is named, never swallowed; a missing field (below the manager role) shows nothing
+    return error ? <Alert severity="error">{error}</Alert> : null
   }
 
   const released = access.state === 'ACTIVE'
@@ -168,11 +169,6 @@ export default function LibraryExternalAccessSection({
         </TextAction>
       }
     >
-      {error && (
-        <Alert severity="error" onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
       <Dialog open={open} onClose={() => !saving && setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Externer Zugang</DialogTitle>
         <DialogContent>
