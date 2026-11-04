@@ -1,10 +1,6 @@
 # Konnektor: Nextcloud
 
-> **Wer darf das:** anlegen, wer „Konnektorbibliotheken anlegen“ für diese Quellart oder ihren
-> Zugang hat; ab Werk nur die Systemverwaltung, bis sie die Quellart oder einen Zugang freigibt.
-> Quelle, Umfang und Zeitplan ändert danach, wer an der Bibliothek *Verwalter* oder *Eigentümer* ist.
-> Eine [private Bibliothek](../../arbeiten/private-bibliothek.md) über ein verbundenes Konto hat
-> keine Rollen; sie gehört allein ihrer Besitzerin.
+> **Wer:** anlegen erst nach Freigabe durch die Systemverwaltung; ändern ab *Verwalter*.
 
 ## 1. Was der Konnektor ist
 

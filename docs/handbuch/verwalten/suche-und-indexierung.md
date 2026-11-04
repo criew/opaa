@@ -1,10 +1,6 @@
 # Suche und Indexierung überwachen
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** die Systemverwaltung, unter „Administration → Suche & Indexierung“. Die Diagnose
-> im Namen einer Person braucht zusätzlich die Befugnis „Sicht als“: einzeln erteilt, höchstens
-> zwölf Monate gültig, nie aus einer Rolle.
+> **Wer:** Systemverwaltung, „Administration → Suche & Indexierung“.
 
 Die Seite zeigt und diagnostiziert, stellt aber nichts ein. Sie beantwortet die häufigste Frage im
 Betrieb: Warum findet jemand ein Dokument nicht?
@@ -15,7 +11,7 @@ Betrieb: Warum findet jemand ein Dokument nicht?
 | „Indexstatus“ | je Bibliothek Dokumente, Chunks, letzter Lauf, Rückstand, „Nachzug ausstehend“, Stand der Kernfelder; private Bibliotheken nur als eine Zeile ohne Namen |
 | „Diagnose“ | eine Testfrage durch die echte Suche, Stufe für Stufe |
 
-## Ein fehlendes Dokument finden
+## Fehlendes Dokument finden
 
 1. Reiter „Diagnose“, „Testfrage“ eintragen.
 2. Unter „Sicht als“ den Rechtekontext wählen: „Eigener Rechtekontext“, ein Rechteprofil (eine
@@ -34,7 +30,7 @@ wie die Mindestgruppengröße vorgibt, und steht im Protokoll. „Sicht als“ i
 jedem Lauf eine Begründung, und jede Bibliothek ist ab Werk für diese Sicht gesperrt, bis ihre
 Verwaltenden sie lösen. Die betroffene Person sieht die Einträge zu sich.
 
-## Den Bestand nachziehen
+## Bestand nachziehen
 
 Im Indexstatus startet „Kernfelder nachrüsten“ den **Bestandslauf** je Bibliothek: Er ermittelt
 Titel, Dokumentart und Datum für ältere oder nach einem Update veraltete Dokumente neu, ohne neu

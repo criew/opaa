@@ -3,10 +3,11 @@
 # except AGENTS.md and CLAUDE.md, found by directory walk, so a new page is checked without a list:
 # - no reference out of the handbook to decision records: no "ADR-<digits>", no "docs/decisions",
 #   no link into the repository on GitHub (blob/tree); old pages lose their issue links on the move
-# - every page under arbeiten/, pflegen/ and verwalten/ except a folder's README.md carries the
-#   "Wer darf das" box (a blockquote line starting "> **Wer darf das:**") within its first ten lines and has at
-#   most 80 lines; connector pages under pflegen/konnektoren/ and pages under verwalten/ need the
-#   box but have no length limit
+# - every page under pflegen/ and verwalten/ except a folder's README.md carries the one-line
+#   "Wer" box (a line starting "> **Wer:**") within its first five lines, followed by no further
+#   blockquote line; pages under arbeiten/ carry none (they apply to every account)
+# - every page under arbeiten/ and pflegen/ except a folder's README.md has at most 80 lines;
+#   connector pages under pflegen/konnektoren/ and pages under verwalten/ have no length limit
 # Links inside the handbook are checked by the strict MkDocs build (mkdocs.yml).
 # Errors fail the run (exit 1).
 set -euo pipefail
@@ -33,10 +34,24 @@ while IFS= read -r -d '' file; do
     *) continue ;;
   esac
 
-  if ! head -n 10 "$file" | grep -qE '^> \*\*Wer darf das:\*\*'; then
-    echo "::error file=$file,line=1::Missing \"Wer darf das\" box: a line \"> **Wer darf das:** ...\" within the first ten lines names the role or capability and what ships by default."
-    errors=$((errors + 1))
-  fi
+  case "$rel" in
+    arbeiten/*)
+      if grep -qE '^> \*\*Wer( darf das)?:\*\*' "$file"; then
+        echo "::error file=$file,line=1::Pages under arbeiten/ carry no \"Wer\" box: they apply to every account; state a real precondition as a sentence."
+        errors=$((errors + 1))
+      fi
+      ;;
+    *)
+      box=$(head -n 5 "$file" | grep -nE '^> \*\*Wer:\*\*' | head -n 1 | cut -d: -f1 || true)
+      if [ -z "$box" ]; then
+        echo "::error file=$file,line=1::Missing \"Wer\" line: a single line \"> **Wer:** ...\" within the first five lines names the role or capability."
+        errors=$((errors + 1))
+      elif sed -n "$((box + 1))p" "$file" | grep -q '^>'; then
+        echo "::error file=$file,line=$((box + 1))::The \"Wer\" box is one line; details belong in the Rechte-Matrix."
+        errors=$((errors + 1))
+      fi
+      ;;
+  esac
   lines=$(wc -l <"$file")
   case "$rel" in
     pflegen/konnektoren/* | verwalten/*) lines=0 ;;

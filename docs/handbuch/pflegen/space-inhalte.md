@@ -1,9 +1,6 @@
 # Inhalte eines Space zuordnen
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** Rolle *Kurator* oder *Administrator* im Space oder sein Eigentümer, und nur für
-> Arbeitsmittel, die Sie selbst lesen dürfen. Ab Werk hat das, wer den Space angelegt hat.
+> **Wer:** *Kurator*, *Administrator* oder Eigentümer des Space.
 
 Die Chats des Space suchen danach in den gewählten Bibliotheken und bieten die gewählten Prompts an.
 

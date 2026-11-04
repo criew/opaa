@@ -1,10 +1,6 @@
-# Ein Arbeitsmittel teilen
+# Arbeitsmittel teilen
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** Rolle *Verwalter* oder *Eigentümer* an der Bibliothek, übergeben nur als
-> *Eigentümer*. Ab Werk hat das, wer sie angelegt hat; bei einer Gruppe als Eigentümerin deren
-> Mitglieder als *Verwalter*.
+> **Wer:** *Verwalter* oder *Eigentümer* der Bibliothek, übergeben nur der *Eigentümer*.
 
 Andere Personen oder Gruppen lesen oder pflegen danach Ihre Wissens- oder Prompt-Bibliothek.
 
@@ -30,7 +26,7 @@ sperren; dann weist OPAA sie mit Verweis auf diese Obergrenze ab.
 selbst erreicht, reicht nie weiter als Ihre eigene Rolle: Eine befristete Verwaltung verlängern Sie
 damit nicht.
 
-## Das Eigentum übergeben
+## Eigentum übergeben
 
 Unter „Eigentümer“ „Übergeben“ wählen, Person oder Gruppe suchen, bestätigen. Das wirkt sofort,
 und **Sie verlieren Ihre eigene Rolle**, wenn sie Ihnen nicht gesondert erteilt ist.

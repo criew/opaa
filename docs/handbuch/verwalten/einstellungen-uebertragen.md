@@ -1,8 +1,6 @@
 # Einstellungen übertragen
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** die Systemverwaltung, unter „Administration → Einstellungen übertragen“.
+> **Wer:** Systemverwaltung, „Administration → Einstellungen übertragen“.
 
 Die Einstellungen der Verwaltung liegen in der Datenbank, nicht in der Konfiguration. Wer eine
 Testinstallation mit der Produktion vergleichen oder eine neue Installation wie eine bestehende

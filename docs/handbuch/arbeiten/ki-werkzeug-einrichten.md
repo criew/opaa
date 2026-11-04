@@ -1,10 +1,4 @@
-# Ein KI-Werkzeug einrichten
-
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** wer ein gültiges [Zugangstoken](zugangstoken.md) hat und an einem Arbeitsplatz
-> in den zugelassenen Netzbereichen sitzt. Ab Werk sind externe KI-Werkzeuge abgeschaltet; die
-> Systemverwaltung schaltet sie ein.
+# KI-Werkzeug einrichten
 
 Ihr KI-Werkzeug sucht danach über den MCP-Server von OPAA in Ihren Bibliotheken. Sie brauchen zwei
 Angaben: die Adresse `https://<host>/mcp` und den Tokenwert. Der Dialog nach dem Erzeugen des Tokens

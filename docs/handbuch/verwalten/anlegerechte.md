@@ -1,9 +1,6 @@
 # Anlegerechte vergeben
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** die Systemverwaltung, unter „Administration → Anlegerechte“. Was ab Werk gilt,
-> steht in der Tabelle.
+> **Wer:** Systemverwaltung, „Administration → Anlegerechte“.
 
 Ein Anlegerecht entscheidet, wer etwas **anlegen** darf. Es öffnet nie einen Inhalt. Vergeben wird
 es an eine Person, eine Gruppe oder an „Alle Konten“.
@@ -42,4 +39,4 @@ und Gruppen bleiben. Wer das nicht nach jeder Neuanlage prüfen will, schränkt 
 - Wem ein Anlegerecht fehlt, dem zeigt der Katalog die Art unter „Neuer Katalogeintrag“ gar nicht.
 - Vergabe und Entzug stehen im Nachweisprotokoll und mit Zeitraum in der Rechtehistorie.
 - Den Stand ab Werk vor der Einführung bewusst bestätigen oder ändern
-  ([Die Einführung vorbereiten](einfuehrung.md)).
+  ([Einführung vorbereiten](einfuehrung.md)).

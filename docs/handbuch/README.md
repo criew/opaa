@@ -11,7 +11,7 @@ erwartet läuft. Es beschreibt den gebauten Ist-Stand, nicht Zielbilder.
 | **Jedes Konto** | fragt, prüft Belege, führt Chats, legt Spaces und eigene Bibliotheken an | [Arbeiten](arbeiten/README.md), zuerst [Erste Schritte](arbeiten/erste-schritte.md) |
 | **Wer pflegt** | teilt Bibliotheken, bindet Quellen an, pflegt Metadaten, Spaces und Gruppen | [Pflegen](pflegen/README.md) |
 | **Betrieb** | installiert, aktualisiert, sichert, überwacht; konfiguriert Modelle und Grenzwerte; geht Störungen nach | [Betriebsübersicht](betreiben/README.md), dann [Docker Compose](betreiben/docker-compose.md) oder [Kubernetes](betreiben/kubernetes.md), [Netz und Sicherheit](betreiben/netz-und-sicherheit.md), [Modelle betreiben](betreiben/modell-endpunkte.md), [Authentifizierung](betreiben/authentifizierung.md); danach [Wie die Indexierung arbeitet](nachschlagen/wie-indexierung-arbeitet.md) und [Wie die Suche arbeitet](nachschlagen/wie-die-suche-arbeitet.md) |
-| **Systemverwaltung** | verwaltet Konten, Gruppen, Anlegerechte, Zugänge, Modelle und Fristen, geht fehlenden Treffern nach | [Verwalten](verwalten/README.md), zuerst [Die Einführung vorbereiten](verwalten/einfuehrung.md) |
+| **Systemverwaltung** | verwaltet Konten, Gruppen, Anlegerechte, Zugänge, Modelle und Fristen, geht fehlenden Treffern nach | [Verwalten](verwalten/README.md), zuerst [Einführung vorbereiten](verwalten/einfuehrung.md) |
 | **Revision** | erstellt Stichtagsauskünfte, liest Nachweis- und Verbindungsprotokoll | [Verwalten](verwalten/README.md#prüfen) |
 
 Wer das Handbuch liest, braucht das Repository nicht.
@@ -65,9 +65,9 @@ verweisen dürfen. Die Ordner folgen dem Baum.
 
 - **Arbeiten**
   - [Arbeiten](arbeiten/README.md) — was jedes Konto ab Werk kann, eine Seite je Aufgabe: erste
-    Schritte, fragen, anhängen und diktieren, Belege prüfen, Antworten weitergeben, Chats, Katalog,
-    Space anlegen, Bibliothek und private Bibliothek anlegen, Konto verbinden, Prompts,
-    Zugangstoken und KI-Werkzeug, Meine Daten
+    Schritte, fragen, Belege prüfen, anhängen und Spracheingabe, Prompts, Antworten weitergeben,
+    Chats, Katalog, Space und Bibliotheken anlegen, Konto verbinden, Zugangstoken und KI-Werkzeug,
+    Meine Daten
 - **Pflegen**
   - [Pflegen](pflegen/README.md) — eine Seite je Aufgabe für alle mit einer Rolle an Bibliothek,
     Space oder Gruppe: teilen, aktuell halten, Metadaten, für KI-Werkzeuge freigeben, Space-Inhalte,
@@ -132,26 +132,26 @@ verweisen dürfen. Die Ordner folgen dem Baum.
 
 | Anlass | Reihenfolge |
 |---|---|
-| Erste Installation | [Betriebsübersicht](betreiben/README.md) → [Docker Compose](betreiben/docker-compose.md): „Schnellstart" → [Installation](betreiben/installation.md) → [Authentifizierung](betreiben/authentifizierung.md): „Erststart und Systemverwalter-Konto" → [Netz und Sicherheit](betreiben/netz-und-sicherheit.md): „Härtung für erreichbare Deployments" → [Eine Bibliothek anlegen](arbeiten/bibliothek-anlegen.md) |
+| Erste Installation | [Betriebsübersicht](betreiben/README.md) → [Docker Compose](betreiben/docker-compose.md): „Schnellstart" → [Installation](betreiben/installation.md) → [Authentifizierung](betreiben/authentifizierung.md): „Erststart und Systemverwalter-Konto" → [Netz und Sicherheit](betreiben/netz-und-sicherheit.md): „Härtung für erreichbare Deployments" → [Bibliothek anlegen](arbeiten/bibliothek-anlegen.md) |
 | Erste Installation unter Kubernetes | [Kubernetes](betreiben/kubernetes.md): „Voraussetzungen", „Installation", „Netz und Sicherheit" → [Authentifizierung](betreiben/authentifizierung.md): „Erststart und Systemverwalter-Konto" |
 | OPAA unter Kubernetes vorführen | [Kubernetes](betreiben/kubernetes.md): „Erprobung mit dem Beispiel-Setup" |
 | Konten anlegen oder entziehen | [Lokale Konten verwalten](verwalten/konten.md) → [E-Mail-Versand](verwalten/e-mail.md), falls Einladungen per Mail gehen |
 | Niemand kommt mehr herein | [Authentifizierung](betreiben/authentifizierung.md): „Notfallprozedur: wieder hereinkommen" → [Lokale Konten verwalten](verwalten/konten.md) |
-| Einen Space für ein Team einrichten | [Einen Space anlegen](arbeiten/space-anlegen.md) → [Mitglieder verwalten](pflegen/space-mitglieder.md) → [Inhalte zuordnen](pflegen/space-inhalte.md) |
-| Rechte vergeben, Gruppen nutzen | [Ein Arbeitsmittel teilen](pflegen/arbeitsmittel-teilen.md) → [Gruppen](verwalten/gruppen.md) → [Rechte-Matrix](nachschlagen/rechte-matrix.md) |
+| Space für ein Team einrichten | [Space anlegen](arbeiten/space-anlegen.md) → [Mitglieder verwalten](pflegen/space-mitglieder.md) → [Inhalte zuordnen](pflegen/space-inhalte.md) |
+| Rechte vergeben, Gruppen nutzen | [Arbeitsmittel teilen](pflegen/arbeitsmittel-teilen.md) → [Gruppen](verwalten/gruppen.md) → [Rechte-Matrix](nachschlagen/rechte-matrix.md) |
 | Eine Person scheidet aus, ein Referat wird aufgelöst | [Ausscheiden und Nachfolge regeln](verwalten/ausscheiden.md) |
-| „Wer durfte das am 3. März lesen?" | [Eine Stichtagsauskunft erstellen](verwalten/stichtagsauskunft.md) |
-| Eine neue Quelle anschließen | [Konnektoren](pflegen/konnektoren/README.md) → Kapitel des Konnektors → bei Bedarf [Zugänge einrichten](verwalten/zugaenge.md) |
-| Dokumente fehlen oder sind veraltet | [Eine Bibliothek aktuell halten](pflegen/bibliothek-aktuell-halten.md) → [Wie die Indexierung arbeitet](nachschlagen/wie-indexierung-arbeitet.md): „Laufprotokoll“ → Kapitel des Formats |
+| „Wer durfte das am 3. März lesen?" | [Stichtagsauskunft erstellen](verwalten/stichtagsauskunft.md) |
+| Neue Quelle anschließen | [Konnektoren](pflegen/konnektoren/README.md) → Kapitel des Konnektors → bei Bedarf [Zugänge einrichten](verwalten/zugaenge.md) |
+| Dokumente fehlen oder sind veraltet | [Bibliothek aktuell halten](pflegen/bibliothek-aktuell-halten.md) → [Wie die Indexierung arbeitet](nachschlagen/wie-indexierung-arbeitet.md): „Laufprotokoll“ → Kapitel des Formats |
 | Eine Antwort ist schlecht | [Suche und Indexierung überwachen](verwalten/suche-und-indexierung.md) → [Wie die Suche arbeitet](nachschlagen/wie-die-suche-arbeitet.md): „Wenn etwas nicht gefunden wird“ → je nach Befund [Indexierung](nachschlagen/wie-indexierung-arbeitet.md) oder [Metadaten](nachschlagen/metadaten.md) |
-| Ein Update steht an | [Aktualisierung](betreiben/aktualisierung.md) → [Docker Compose](betreiben/docker-compose.md) bzw. [Kubernetes](betreiben/kubernetes.md): „Aktualisierung …" |
+| Update steht an | [Aktualisierung](betreiben/aktualisierung.md) → [Docker Compose](betreiben/docker-compose.md) bzw. [Kubernetes](betreiben/kubernetes.md): „Aktualisierung …" |
 | Mehrere Backend-Instanzen planen oder einrichten | [Mehrere Backend-Instanzen](betreiben/mehrere-instanzen.md) → [Docker Compose](betreiben/docker-compose.md) bzw. [Kubernetes](betreiben/kubernetes.md): „Mehrere Backend-Instanzen" → [Datenbank](betreiben/datenbank.md): „Verbindungen bei mehreren Instanzen" |
-| Formulierungshilfen für ein Referat bereitstellen | [Eine Prompt-Bibliothek anlegen](arbeiten/prompt-bibliothek-anlegen.md) → [Inhalte zuordnen](pflegen/space-inhalte.md) |
-| Ein externes KI-Werkzeug anschließen | [Externe KI-Werkzeuge zulassen](verwalten/externe-ki-werkzeuge.md) → [Ein Zugangstoken anlegen](arbeiten/zugangstoken.md) |
+| Formulierungshilfen für ein Referat bereitstellen | [Prompt-Bibliothek anlegen](arbeiten/prompt-bibliothek-anlegen.md) → [Inhalte zuordnen](pflegen/space-inhalte.md) |
+| Externes KI-Werkzeug anschließen | [Externe KI-Werkzeuge zulassen](verwalten/externe-ki-werkzeuge.md) → [Zugangstoken anlegen](arbeiten/zugangstoken.md) |
 | Originalablage wählen, sichern oder umstellen | [Originalablage](betreiben/originalablage.md) |
 | Sichern und wiederherstellen | [Sicherung und Wiederherstellung](betreiben/sicherung-und-wiederherstellung.md) → Kapitel des Betriebswegs → [Authentifizierung](betreiben/authentifizierung.md): „Nacharbeit nach einer Rücksicherung" |
-| Ein Modell anbinden oder wechseln | [Modelle verwalten](verwalten/modelle.md) → [Modelle betreiben](betreiben/modell-endpunkte.md) |
-| Einen Identitätsanbieter anbinden | [Authentifizierung](betreiben/authentifizierung.md): „OIDC (Keycloak)" → [Gruppen](verwalten/gruppen.md#woher-gruppen-kommen) |
+| Modell anbinden oder wechseln | [Modelle verwalten](verwalten/modelle.md) → [Modelle betreiben](betreiben/modell-endpunkte.md) |
+| Identitätsanbieter anbinden | [Authentifizierung](betreiben/authentifizierung.md): „OIDC (Keycloak)" → [Gruppen](verwalten/gruppen.md#woher-gruppen-kommen) |
 | Eine Grenze greift, etwa `429` oder eine zu große Datei | [Konfiguration](nachschlagen/konfiguration.md): „Grenzwerte im Überblick" |
 | Datenschutz, Personalrat oder Informationssicherheit fragen, welche Daten anfallen und wohin sie gehen | [Nachvollziehbarkeit](betreiben/nachvollziehbarkeit.md) |
 | Beschaffung oder Informationssicherheit fragen nach Sicherheitsupdates, SBOM, Provenance oder Lizenz | [Releases und Nachweise](betreiben/releases-und-nachweise.md) |

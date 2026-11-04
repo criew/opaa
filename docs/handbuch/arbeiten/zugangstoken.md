@@ -1,14 +1,9 @@
-# Ein Zugangstoken anlegen
-
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** jedes Konto, sobald die Systemverwaltung externe KI-Werkzeuge eingeschaltet hat.
-> Wählbar sind nur Bibliotheken, die Sie lesen dürfen und die für externe KI-Werkzeuge freigegeben
-> sind.
+# Zugangstoken anlegen
 
 Ein externes KI-Werkzeug, etwa Claude Code oder Copilot, holt sich danach Fundstellen aus Ihren
 Bibliotheken. Es bekommt nur Fundstellen, keine Antworten von OPAA, und nie mehr, als Sie selbst
-lesen dürfen.
+lesen dürfen. Den Menüpunkt gibt es erst, wenn die Systemverwaltung externe KI-Werkzeuge
+eingeschaltet hat.
 
 1. „Einstellungen“, dann „Zugangstokens“ öffnen und „Token erzeugen“ wählen.
 2. **Name:** den Zweck, etwa „Claude Code auf dem Dienstrechner“. Daran erkennen Sie später, was Sie
@@ -18,7 +13,7 @@ lesen dürfen.
 4. **Ablauf:** ein Datum, höchstens so weit wie die Installation zulässt.
 5. Erzeugen. Liegt Ihre Anmeldung länger zurück, fragt OPAA erst nach Passwort oder Anmeldung.
 6. **Den Wert sofort übernehmen.** Er wird genau einmal angezeigt, zusammen mit fertigen
-   Ausschnitten für die Einrichtung ([Ein KI-Werkzeug einrichten](ki-werkzeug-einrichten.md)).
+   Ausschnitten für die Einrichtung ([KI-Werkzeug einrichten](ki-werkzeug-einrichten.md)).
 
 Danach steht das Token in Ihrer Liste mit Bibliotheken, Zustand, Ablauf und „zuletzt benutzt“
 (nur das Datum).

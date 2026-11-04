@@ -555,7 +555,7 @@ steht im Kapitel [Benutzerverwaltung](../verwalten/konten.md). Für den Betrieb 
   Selbstregistrierung (beide erzeugen Konten außerhalb des Verzeichnisses), der Auszug für die
   Personalvertretung mit der geschlossenen Liste der Nachweisereignisse und eine jährliche Vorlage
   dieses Auszugs zusätzlich zur vierteljährlichen Kontenprüfung
-  ([Benutzerverwaltung](../verwalten/konten.md#die-liste-prüfen)).
+  ([Benutzerverwaltung](../verwalten/konten.md#liste-prüfen)).
 - **Einladungen und Rücksetzlinks brauchen Mail und eine öffentliche Adresse**
   (`OPAA_PUBLIC_BASE_URL`, [E-Mail-Versand](../verwalten/e-mail.md)). Ohne beides zeigt OPAA den Link zur Übergabe
   an, und „Passwort vergessen" und Selbstregistrierung lassen sich nicht einschalten.
@@ -764,7 +764,7 @@ ganze Haus. Die aufgelöste Client-Adresse zeigt der Diagnose-Endpunkt
 
 Beabsichtigt: Unbekannte Adresse, falsches Passwort, gesperrtes, abgelaufenes und noch nicht
 bestätigtes Konto beantwortet OPAA **gleich**. Den Zustand eines Kontos zeigt die Kontenliste
-([Benutzerverwaltung](../verwalten/konten.md#die-liste-prüfen)). Wird eine Person
+([Benutzerverwaltung](../verwalten/konten.md#liste-prüfen)). Wird eine Person
 nach der Anmeldung sofort auf „Passwort ändern" geführt, ist ein Wechsel erzwungen; die Seite nennt den
 Anlass.
 

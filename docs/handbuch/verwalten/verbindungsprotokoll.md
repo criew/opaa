@@ -1,9 +1,6 @@
-# Das Verbindungsprotokoll lesen
+# Verbindungsprotokoll lesen
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** nur die Revision, unter „Revision → Verbindungsprotokoll“. Die Systemverwaltung
-> stellt nur die Aufbewahrung ein und liest es nicht.
+> **Wer:** Revision, „Revision → Verbindungsprotokoll“.
 
 Das Protokoll hält fest, wann Personen ein Konto bei einer Quelle verbunden, neu verbunden oder
 getrennt haben, wann eine Verbindung ablief und wann eine Handlung am Zugang sie beendet hat.

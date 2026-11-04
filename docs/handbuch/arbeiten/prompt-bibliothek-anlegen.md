@@ -1,9 +1,4 @@
-# Eine Prompt-Bibliothek anlegen
-
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** wer das Anlegerecht „Prompt-Bibliotheken anlegen“ hat; ab Werk jedes Konto.
-> Prompts schreiben darf danach, wer an der Bibliothek mindestens *Bearbeiter* ist.
+# Prompt-Bibliothek anlegen
 
 Sie sammeln Formulierungshilfen an einer Stelle, die Sie selbst oder Ihr Referat im Chat einsetzen.
 
@@ -14,7 +9,7 @@ Sie sammeln Formulierungshilfen an einer Stelle, die Sie selbst oder Ihr Referat
 4. **Rechte:** auf Wunsch Rollen für Personen und Gruppen vormerken.
 5. Anlegen. Danach im Reiter „Prompts“ „Neuer Prompt“ wählen.
 
-## Einen Prompt schreiben
+## Prompt schreiben
 
 | Feld | Inhalt |
 |---|---|
@@ -34,7 +29,7 @@ Zeichen; Titel 255, Beschreibung 2000, Text 8000 Zeichen; höchstens 20 Variable
 doppelten Klammern, etwa `{{akten zeichen}}`, lehnt es ab.
 
 **Damit andere den Prompt nutzen**, braucht es zwei Dinge: ein Leserecht an der Bibliothek (Reiter
-„Freigaben“) und die Zuordnung zu ihrem Space ([Den Katalog nutzen](katalog.md#in-einem-space-verwenden)).
+„Freigaben“) und die Zuordnung zu ihrem Space ([Katalog nutzen](katalog.md#in-einem-space-verwenden)).
 
 **Rollen an der Bibliothek:**
 

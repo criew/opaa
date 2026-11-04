@@ -1,9 +1,6 @@
-# Eine Stichtagsauskunft erstellen
+# Stichtagsauskunft erstellen
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** nur die Revision, unter „Revision → Stichtagsauskunft“. Ab Werk hat niemand
-> die Rolle *Revision*.
+> **Wer:** Revision, „Revision → Stichtagsauskunft“.
 
 Die Auskunft beantwortet eine Frage: **Wer durfte dieses Objekt an diesen Tagen lesen?**
 

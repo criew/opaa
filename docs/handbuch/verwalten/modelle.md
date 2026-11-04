@@ -1,9 +1,6 @@
 # Modelle verwalten
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** die Systemverwaltung, unter „Administration → Modelle“. Ab Werk setzt die
-> Installation Chat- und Embedding-Modell; Reranking und Spracheingabe sind aus.
+> **Wer:** Systemverwaltung, „Administration → Modelle“.
 
 OPAA bringt kein Sprachmodell mit, sondern ruft Modelle an Endpunkten auf, die das Haus festlegt.
 Welche Adressen erlaubt sind und wie ein Modellserver betrieben wird, regelt der Betrieb
@@ -16,7 +13,7 @@ Welche Adressen erlaubt sind und wie ein Modellserver betrieben wird, regelt der
 | „Reranking“ | ordnet Treffer neu, optional | jederzeit |
 | „Spracheingabe“ | wandelt Diktat in Text, optional | jederzeit |
 
-## Ein Chat-Modell anlegen und aktivieren
+## Chat-Modell anlegen und aktivieren
 
 1. „Neues Modell“, „Basis-Adresse“ eintragen oder eine Vorlage wählen (Ollama, OpenAI, Anthropic).
 2. „Modelle abrufen“ und die Kennung wählen; eine Kennung lässt sich auch von Hand eintragen.
@@ -29,7 +26,7 @@ Welche Adressen erlaubt sind und wie ein Modellserver betrieben wird, regelt der
 in Sekunden um. Ein Modell bei einem anderen Anbieter schickt Fragen und Textausschnitte an einen
 anderen Empfänger; das klärt das Haus vorher mit Datenschutz und Personalvertretung.
 
-## Das Embedding-Modell wechseln
+## Embedding-Modell wechseln
 
 Reiter „Einbettung“, „Modell wechseln oder Endpunkt ändern“:
 
@@ -46,7 +43,7 @@ Reiter „Einbettung“, „Modell wechseln oder Endpunkt ändern“:
 Je ein Reiter mit Schalter, Basis-Adresse, Modell-Kennung und Schlüssel, bei der Spracheingabe auch
 die Sprache. „Verbindung testen“ prüft, ohne zu speichern. Fehlt der Betriebsschalter für die
 Spracheingabe, lässt sie sich nur vorbereiten. Die Spracheingabe verarbeitet Stimmen; sie gehört vor
-dem Einschalten mit der Personalvertretung geklärt ([Die Einführung vorbereiten](einfuehrung.md)).
+dem Einschalten mit der Personalvertretung geklärt ([Einführung vorbereiten](einfuehrung.md)).
 
 **Gut zu wissen:**
 

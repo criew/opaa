@@ -1,10 +1,5 @@
 # Eigene Daten herunterladen
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** jedes Konto für sich selbst. Passwort ändern nur ein lokales Konto; ein Konto
-> eines Identitätsanbieters ändert sein Passwort dort.
-
 Sie ändern Ihr Passwort und laden herunter, was OPAA über Sie gespeichert hat.
 
 ## Passwort ändern

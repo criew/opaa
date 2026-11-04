@@ -1,10 +1,6 @@
-# Eine interne Gruppe pflegen
+# Interne Gruppe pflegen
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** anlegen, wer das Anlegerecht „Interne Gruppen anlegen“ hat; ab Werk niemand
-> außer der Systemverwaltung. Pflegen dürfen die benannten *Verantwortlichen* einer Gruppe und die
-> Systemverwaltung.
+> **Wer:** *Verantwortliche* der Gruppe und die Systemverwaltung; anlegen nur mit Anlegerecht.
 
 Sie führen eine Gruppe wie „Projekt Bauleitplanung“, der andere dann Bibliotheken freigeben und die
 sie in Spaces aufnehmen.

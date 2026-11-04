@@ -1,11 +1,6 @@
 # Nachvollziehen, wer warum Zugriff hat
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** den eigenen Weg sieht jede Person mit Zugriff. Den Weg anderer in einem Space
-> sehen dessen *Administratoren* und sein Eigentümer. Die Mitglieder einer Gruppe sieht, wer am
-> Objekt Freigaben verwaltet (ab *Verwalter*; im Space *Administrator* oder Eigentümer), nur bei einer
-> zur Verwendung freigegebenen und nie bei einer geschützten Gruppe.
+> **Wer:** den eigenen Zugriff jede Person, den anderer *Administratoren* und Eigentümer des Space.
 
 ## Der eigene Weg
 
@@ -46,4 +41,4 @@ ab, steht das mit der Zahl der Mitglieder im Nachweisprotokoll.
 - Wer an einem vergangenen Tag Zugriff hatte, beantwortet die
   [Stichtagsauskunft](../verwalten/stichtagsauskunft.md) der Revision.
 - Warum eine Antwort ein Dokument nicht nennt, klärt die Systemverwaltung mit der
-  [Suchdiagnose](../verwalten/suche-und-indexierung.md#ein-fehlendes-dokument-finden).
+  [Suchdiagnose](../verwalten/suche-und-indexierung.md#fehlendes-dokument-finden).

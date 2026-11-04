@@ -1,9 +1,6 @@
 # Mitglieder eines Space verwalten
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** Rolle *Administrator* im Space oder sein Eigentümer. Ab Werk hat das, wer den
-> Space angelegt hat.
+> **Wer:** *Administrator* oder Eigentümer des Space.
 
 Sie nehmen Personen und Gruppen auf, vergeben Rollen und übergeben den Space.
 
@@ -21,7 +18,7 @@ Sie nehmen Personen und Gruppen auf, vergeben Rollen und übergeben den Space.
 sofort. Hat jemand mehrere Wege in den Space, gilt die stärkste Rolle. „Warum hat … Zugriff?“ im
 Menü der Zeile zeigt den Weg.
 
-## Den Eigentümer wechseln
+## Eigentümer wechseln
 
 Im Menü „⋯“ eines Administrator-Mitglieds „Zum Eigentümer machen“ wählen. Das darf jedes
 Administrator-Mitglied, das eine Person ist, auch für sich selbst. Das neue Konto muss aktiv sein.

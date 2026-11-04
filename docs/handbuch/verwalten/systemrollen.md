@@ -1,9 +1,6 @@
 # Systemrollen vergeben
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** die Systemverwaltung beantragt und vergibt; die Rolle *Revision* bestätigt erst
-> eine Person der Revision. Ab Werk hat jedes neue Konto die Rolle *Nutzer*.
+> **Wer:** Systemverwaltung; die Rolle *Revision* bestätigt eine Person der Revision.
 
 Eine Systemrolle gilt für die ganze Installation. Was ein Konto an einer Bibliothek oder in einem
 Space darf, regeln die Rollen dort.

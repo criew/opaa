@@ -1,8 +1,6 @@
 # Konnektor: Verzeichnis im Dateisystem
 
-> **Wer darf das:** anlegen, wer „Konnektorbibliotheken anlegen“ für die Quellart Dateisystem hat;
-> ab Werk jedes Konto, sobald der Betrieb Basisverzeichnisse freigegeben hat (ab Werk keine).
-> Quelle, Umfang und Zeitplan ändert danach, wer an der Bibliothek *Verwalter* oder *Eigentümer* ist.
+> **Wer:** anlegen mit Anlegerecht, sobald der Betrieb Basisverzeichnisse freigibt; ändern ab *Verwalter*.
 
 ## 1. Was der Konnektor ist
 

@@ -1,10 +1,6 @@
 # Für externe KI-Werkzeuge freigeben
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** Rolle *Verwalter* an der Wissensbibliothek und die Systemverwaltung. Ab Werk ist
-> die Freigabe aus, und externe KI-Werkzeuge sind für die ganze Installation abgeschaltet, bis die
-> Systemverwaltung sie einschaltet. *Verwalter* ist ab Werk, wer die Bibliothek angelegt hat.
+> **Wer:** *Verwalter* der Bibliothek, sobald die Systemverwaltung externe KI-Werkzeuge eingeschaltet hat.
 
 Wer die Bibliothek lesen darf, kann sie danach in ein [Zugangstoken](../arbeiten/zugangstoken.md)
 aufnehmen und aus Werkzeugen wie Claude Code oder Copilot durchsuchen. Fundstellen verlassen damit

@@ -1,14 +1,11 @@
-# Eine Bibliothek aktuell halten
+# Bibliothek aktuell halten
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** „Jetzt indizieren“, Dokumente hochladen und löschen ab der Rolle *Bearbeiter*;
-> Zeitplan, Verbindung und Laufprotokoll ab *Verwalter*. Ab Werk hat beides, wer die Bibliothek angelegt hat.
+> **Wer:** Indizieren und Dokumente ab *Bearbeiter*, Zeitplan und Verbindung ab *Verwalter*.
 
 Sie sorgen dafür, dass die Suche den aktuellen Stand der Quelle findet, und beheben, was einen Lauf
 aufhält.
 
-## Den Zeitplan setzen
+## Zeitplan setzen
 
 1. Reiter „Quelle“, Zeile „Zeitplan“, „Ändern“.
 2. Stufe wählen: aus, stündlich, täglich mit Uhrzeit oder wöchentlich mit Wochentag und Uhrzeit.
@@ -26,7 +23,7 @@ Reiter „Quelle“, als Bearbeiter im Menü „Weitere Aktionen“. Je Biblioth
 Ohne angebundene Quelle laden Sie Dokumente im Reiter „Dokumente“ hoch und löschen sie dort. Mit
 Quelle gibt es kein Löschen einzelner Dokumente; was in der Quelle fehlt, entfernt der Abgleich.
 
-## Den Zustand lesen
+## Zustand lesen
 
 Der Kopf zeigt ein Wort, etwa „Aktuell · 23.10.2026“, „Läuft · 40 %“ oder „Teilweise
 fehlgeschlagen · 3 Fehler“. Als Verwalter führt ein Klick zur Ursache; unter „Läufe“ im Reiter „Quelle“ klappt

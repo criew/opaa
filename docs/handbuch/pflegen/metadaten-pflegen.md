@@ -1,9 +1,6 @@
 # Metadaten pflegen
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** Werte setzen ab der Rolle *Bearbeiter* an der Bibliothek, eigene Felder anlegen
-> ab *Verwalter*. Ab Werk hat beides, wer die Bibliothek angelegt hat.
+> **Wer:** Werte ab *Bearbeiter*, eigene Felder ab *Verwalter*.
 
 Die Suche filtert danach zuverlässig, etwa „nur Dienstanweisungen“ oder „Stand nach 2024“.
 
@@ -21,7 +18,7 @@ schließt kein Filter aus.
 Lässt sich ein Wert nicht bestimmen, „Kein Wert ermittelbar“ wählen; das Feld zählt dann nicht mehr
 als offen.
 
-## Ein eigenes Feld anlegen
+## Eigenes Feld anlegen
 
 1. Reiter „Metadaten“, Abschnitt „Felder“, „Feld anlegen“.
 2. „Feldschlüssel“, „Feldname“ und „Typ“ wählen: **Auswahl** (Werteliste), **Datum** oder

@@ -1,10 +1,6 @@
-# Das Nachweisprotokoll lesen
+# Nachweisprotokoll lesen
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** nur die Revision. Die Abfragen laufen heute über die Programmierschnittstelle,
-> eine eigene Seite gibt es noch nicht. Eine anlassbezogene Klärung gibt eine **zweite** Person der
-> Revision frei.
+> **Wer:** Revision, über die Programmierschnittstelle.
 
 Das Nachweisprotokoll hält fest, **dass** jemand etwas getan hat: Rechte vergeben, Einstellungen
 geändert, Konten gesperrt, Auskünfte abgerufen. Personen stehen darin als Pseudonym.

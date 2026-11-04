@@ -1,9 +1,6 @@
 # Lokale Konten verwalten
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** die Systemverwaltung, unter „Administration → Benutzer“. Ab Werk ist die lokale
-> Benutzerverwaltung nach Abschluss der Installation eingeschaltet.
+> **Wer:** Systemverwaltung, „Administration → Benutzer“.
 
 Lokale Konten führt OPAA selbst. Sie werden gebraucht, solange kein Identitätsanbieter angebunden
 ist, und immer für das Notanker-Konto der Systemverwaltung. Konten eines Identitätsanbieters stehen
@@ -15,7 +12,7 @@ in derselben Liste, ihren Lebenszyklus führt aber der Anbieter; hier lässt sic
 im Haus automatisch entzieht. Abgeschaltet melden sich nur noch lokale Systemverwalter an, über
 `/login/system`.
 
-## Ein Konto anlegen
+## Konto anlegen
 
 1. Reiter „Konten“, „Konto anlegen“.
 2. E-Mail-Adresse, Anzeigename und Rolle eintragen.
@@ -49,7 +46,7 @@ Person der Systemverwaltung „Anhaltung beantragen“ mit Zweck und Begründung
 **zweite** Person gibt frei. Gelöschte Chats kommen über die Oberfläche nicht zurück. Frist und
 Schalter stehen unter [Datenschutz](datenschutz.md).
 
-## Die Liste prüfen
+## Liste prüfen
 
 Die Filter „ohne Ablaufdatum“, „länger nicht genutzt“ und „offene Einladungen“ zeigen die Konten,
 an denen eine Entscheidung fällig ist. Ein Hinweis neben „Konto anlegen“ nennt die Zahlen, einmal

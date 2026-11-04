@@ -1,9 +1,6 @@
 # Konnektor: SharePoint
 
-> **Wer darf das:** anlegen, wer „Konnektorbibliotheken anlegen“ für den Zugang hat. Ein Zugang ist
-> Pflicht; ab Werk gibt es keinen, und ein neu angelegter ist nur für die Systemverwaltung frei, bis
-> sie ihn freigibt.
-> Quelle, Umfang und Zeitplan ändert danach, wer an der Bibliothek *Verwalter* oder *Eigentümer* ist.
+> **Wer:** anlegen mit Anlegerecht für einen Zugang, den die Systemverwaltung freigibt; ändern ab *Verwalter*.
 
 ## 1. Was der Konnektor ist
 

@@ -1,10 +1,6 @@
 # Externe KI-Werkzeuge zulassen
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** die Systemverwaltung, unter „Administration → Anbindungen“, Reiter „Externe
-> KI-Werkzeuge“. Ab Werk ist der Kanal aus; der Betrieb kann ihn ganz abschalten, dann fehlt der
-> Reiter.
+> **Wer:** Systemverwaltung, „Administration → Anbindungen“, Reiter „Externe KI-Werkzeuge“.
 
 Werkzeuge wie Claude Code oder Copilot holen sich mit einem Zugangstoken Fundstellen aus
 freigegebenen Bibliotheken. Ein Token kann nie mehr als seine Person: Jeder Aufruf sieht nur, was sie

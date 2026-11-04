@@ -1,7 +1,6 @@
 # E-Mail-Versand (SMTP)
 
-> **Wer darf das:** Mailserver und Vorlagen die Systemverwaltung, unter „Administration → E-Mail“;
-> die öffentliche Adresse der Betrieb. Ab Werk ist der Versand aus.
+> **Wer:** Systemverwaltung, „Administration → E-Mail“.
 
 OPAA versendet E-Mails über einen SMTP-Server, den ein Systemverwalter in der Anwendung einträgt.
 Ohne diese Einstellung versendet OPAA nichts — und meldet das als Ergebnis, statt einen Vorgang

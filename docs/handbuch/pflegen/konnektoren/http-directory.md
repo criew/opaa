@@ -1,9 +1,6 @@
 # Konnektor: Webverzeichnis
 
-> **Wer darf das:** anlegen, wer „Konnektorbibliotheken anlegen“ für die Quellart (eigene Adresse)
-> oder für den gewählten Zugang hat. Ab Werk ist die Quellart für jedes Konto frei; ein neu
-> angelegter Zugang erst nach Freigabe durch die Systemverwaltung.
-> Quelle, Umfang und Zeitplan ändert danach, wer an der Bibliothek *Verwalter* oder *Eigentümer* ist.
+> **Wer:** anlegen mit Anlegerecht für Quellart oder Zugang (ab Werk jedes Konto), ändern ab *Verwalter*.
 
 ## 1. Was der Konnektor ist
 

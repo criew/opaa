@@ -33,7 +33,7 @@ Ein Update **gefährdet den Index nicht** und verlangt **keine Neuindizierung**.
   Release-Notizen ankündigen ([Docker Compose](docker-compose.md#neu-aufsetzen-statt-aktualisieren)).
 - Ändert sich die Verarbeitung eines Formats, bleiben alte Chunks durchsuchbar;
   „Suche & Indexierung“ zeigt „Nachzug ausstehend“, und ein
-  [Nachzug](../verwalten/suche-und-indexierung.md#den-bestand-nachziehen) bringt sie auf den neuen Stand.
+  [Nachzug](../verwalten/suche-und-indexierung.md#bestand-nachziehen) bringt sie auf den neuen Stand.
 - Ein Update wechselt das Embedding-Modell nie; das Modell steht in der Datenbank und wechselt nur
   in der Modellverwaltung ([Modell wechseln](modell-endpunkte.md#modell-wechseln)).
 - **Kein Rollback während eines Wechsels des Embedding-Modells.** Läuft eine Neueinbettung nach

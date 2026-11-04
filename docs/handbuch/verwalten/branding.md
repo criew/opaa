@@ -1,7 +1,6 @@
 # Branding
 
-> **Wer darf das:** die Systemverwaltung, unter „Administration → Allgemein & Branding“. Ab Werk
-> gelten Name, Farben und Bilder von OPAA.
+> **Wer:** Systemverwaltung, „Administration → Allgemein & Branding“.
 
 Produktname, Claim, Hinweis zur KI-Nutzung, Akzentfarbe, Farbschema-Vorgabe und drei Bilder gehören
 der Installation, nicht dem Programm. Gepflegt werden sie unter **Administration → Allgemein & Branding**, von

@@ -290,7 +290,7 @@ flowchart LR
 
 Auch den Termin einer Wissensbibliothek verbucht die Datenbank: Eine Bibliothek startet ihren
 geplanten Lauf nur einmal, gleich wie viele Instanzen gleichzeitig nachsehen
-([Zeitplan](../pflegen/bibliothek-aktuell-halten.md#den-zeitplan-setzen)).
+([Zeitplan](../pflegen/bibliothek-aktuell-halten.md#zeitplan-setzen)).
 
 ## Wenn eine Instanz ausfällt
 

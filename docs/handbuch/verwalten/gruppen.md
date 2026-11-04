@@ -1,9 +1,6 @@
 # Gruppen verwalten
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** die Systemverwaltung, unter „Administration → Gruppen“. Interne Gruppen pflegen
-> daneben ihre *Verantwortlichen* ([Eine interne Gruppe pflegen](../pflegen/gruppe-pflegen.md)).
+> **Wer:** Systemverwaltung, „Administration → Gruppen“.
 
 Rechte an Gruppen statt an Personen zu geben hält sie aktuell: Wer morgen in „Referat 50“ kommt,
 liest ab dann, wer geht, verliert es mit der Mitgliedschaft. Gruppen verschachteln nicht; eine

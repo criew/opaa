@@ -204,7 +204,7 @@ seinen Vektor.
 **Ändert ein Update die Bildung des Volltextindex**, liegen die betroffenen Einträge in einer älteren
 Fassung, und die Seite „Suche & Indexierung" weist die Bibliotheken mit **Nachzug ausstehend** aus.
 Der Pfad findet diese Einträge weiter, ihnen fehlen nur die Lexeme der neuen Fassung. Nachgezogen wird
-über den [Pipeline-Nachzug](../verwalten/suche-und-indexierung.md#den-bestand-nachziehen)
+über den [Pipeline-Nachzug](../verwalten/suche-und-indexierung.md#bestand-nachziehen)
 (`POST /api/v1/admin/indexing/pipeline-reindex`, eine Oberfläche dafür gibt es noch nicht); er erfasst
 solche Abschnitte auch dann, wenn sich an der Aufbereitung des Dokuments sonst nichts geändert hat.
 Ein Update, das ihn nötig macht, nennen die Notizen des Release.

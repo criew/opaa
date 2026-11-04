@@ -1,6 +1,6 @@
 # Rechte-Matrix
 
-Wer welche Tätigkeit darf, auf einen Blick. Die Einzelheiten stehen im Kasten „Wer darf das“ der
+Wer welche Tätigkeit darf, auf einen Blick. Die Einzelheiten stehen im Kasten „Wer“ der
 verlinkten Seite. „—“ heißt: keine Voraussetzung in dieser Spalte.
 
 ## Arbeiten
@@ -8,29 +8,29 @@ verlinkten Seite. „—“ heißt: keine Voraussetzung in dieser Spalte.
 | Tätigkeit | Systemrolle | Rolle am Objekt | Anlegerecht oder Schalter | Ab Werk |
 |---|---|---|---|---|
 | [Fragen stellen](../arbeiten/fragen-stellen.md), [Prompts verwenden](../arbeiten/prompts-verwenden.md), [Chats verwalten](../arbeiten/chats.md) | — | Mitglied im Space, Leserecht an der Bibliothek | — | jedes Konto im eigenen Space |
-| [Dateien anhängen und diktieren](../arbeiten/anhaengen-und-diktieren.md) | — | Mitglied im Space | Spracheingabe eingerichtet | Anhänge an, Diktat aus |
+| [Dateien anhängen und Spracheingabe](../arbeiten/anhaengen-und-diktieren.md) | — | Mitglied im Space | Spracheingabe eingerichtet | Anhänge an, Diktat aus |
 | [Antworten weitergeben](../arbeiten/antworten-weitergeben.md), [Belege prüfen](../arbeiten/belege-pruefen.md) | — | wer den Chat führt | — | ja |
-| [Den Katalog nutzen](../arbeiten/katalog.md) | — | Leserecht; zuordnen als *Kurator* | — | ja |
-| [Eine Bibliothek anlegen](../arbeiten/bibliothek-anlegen.md) | — | — | „Bibliotheken für Uploads anlegen“, „Konnektorbibliotheken anlegen“ | Upload und fünf Quellarten für alle |
-| [Eine Prompt-Bibliothek anlegen](../arbeiten/prompt-bibliothek-anlegen.md) | — | Prompts schreiben ab *Bearbeiter* | „Prompt-Bibliotheken anlegen“ | jedes Konto |
-| [Einen Space anlegen](../arbeiten/space-anlegen.md) | — | — | „Spaces anlegen“ | jedes Konto |
-| [Ein Konto verbinden](../arbeiten/konto-verbinden.md) | — | — | Zugang für Personen freigegeben | kein Zugang |
-| [Eine private Bibliothek anlegen](../arbeiten/private-bibliothek.md) | — | verbundenes Konto | Anlegerecht für den Zugang | kein Zugang |
-| [Ein Zugangstoken anlegen](../arbeiten/zugangstoken.md), [Ein KI-Werkzeug einrichten](../arbeiten/ki-werkzeug-einrichten.md) | — | Leserecht, Bibliothek freigegeben | externe KI-Werkzeuge an | aus |
+| [Katalog nutzen](../arbeiten/katalog.md) | — | Leserecht; zuordnen als *Kurator* | — | ja |
+| [Bibliothek anlegen](../arbeiten/bibliothek-anlegen.md) | — | — | „Bibliotheken für Uploads anlegen“, „Konnektorbibliotheken anlegen“ | Upload und fünf Quellarten für alle |
+| [Prompt-Bibliothek anlegen](../arbeiten/prompt-bibliothek-anlegen.md) | — | Prompts schreiben ab *Bearbeiter* | „Prompt-Bibliotheken anlegen“ | jedes Konto |
+| [Space anlegen](../arbeiten/space-anlegen.md) | — | — | „Spaces anlegen“ | jedes Konto |
+| [Konto verbinden](../arbeiten/konto-verbinden.md) | — | — | Zugang für Personen freigegeben | kein Zugang |
+| [Private Bibliothek anlegen](../arbeiten/private-bibliothek.md) | — | verbundenes Konto | Anlegerecht für den Zugang | kein Zugang |
+| [Zugangstoken anlegen](../arbeiten/zugangstoken.md), [KI-Werkzeug einrichten](../arbeiten/ki-werkzeug-einrichten.md) | — | Leserecht, Bibliothek freigegeben | externe KI-Werkzeuge an | aus |
 | [Eigene Daten herunterladen](../arbeiten/meine-daten.md) | — | — | Selbstauskunft an | an |
 
 ## Pflegen
 
 | Tätigkeit | Systemrolle | Rolle am Objekt | Anlegerecht oder Schalter | Ab Werk |
 |---|---|---|---|---|
-| [Ein Arbeitsmittel teilen](../pflegen/arbeitsmittel-teilen.md) | — | *Verwalter*; übergeben *Eigentümer* | — | wer angelegt hat |
-| [Eine Bibliothek aktuell halten](../pflegen/bibliothek-aktuell-halten.md) | — | indizieren, hochladen ab *Bearbeiter*; Zeitplan, Verbindung ab *Verwalter* | — | wer angelegt hat |
+| [Arbeitsmittel teilen](../pflegen/arbeitsmittel-teilen.md) | — | *Verwalter*; übergeben *Eigentümer* | — | wer angelegt hat |
+| [Bibliothek aktuell halten](../pflegen/bibliothek-aktuell-halten.md) | — | indizieren, hochladen ab *Bearbeiter*; Zeitplan, Verbindung ab *Verwalter* | — | wer angelegt hat |
 | [Metadaten pflegen](../pflegen/metadaten-pflegen.md) | — | Werte ab *Bearbeiter*; Felder ab *Verwalter* | — | wer angelegt hat |
 | [Für externe KI-Werkzeuge freigeben](../pflegen/fuer-ki-werkzeuge-freigeben.md) | oder Systemverwaltung | *Verwalter* | externe KI-Werkzeuge an | aus |
 | [Inhalte eines Space zuordnen](../pflegen/space-inhalte.md) | — | *Kurator*, *Administrator* oder Eigentümer, plus Leserecht | — | wer angelegt hat |
 | [Mitglieder eines Space verwalten](../pflegen/space-mitglieder.md) | — | *Administrator* oder Eigentümer | — | wer angelegt hat |
-| [Einen Space einstellen](../pflegen/space-einstellungen.md) | archivieren, löschen auch Systemverwaltung | *Administrator*; archivieren, löschen Eigentümer | — | wer angelegt hat |
-| [Eine interne Gruppe pflegen](../pflegen/gruppe-pflegen.md) | oder Systemverwaltung | *Verantwortliche* | „Interne Gruppen anlegen“ | nur Systemverwaltung |
+| [Space einstellen](../pflegen/space-einstellungen.md) | archivieren, löschen auch Systemverwaltung | *Administrator*; archivieren, löschen Eigentümer | — | wer angelegt hat |
+| [Interne Gruppe pflegen](../pflegen/gruppe-pflegen.md) | oder Systemverwaltung | *Verantwortliche* | „Interne Gruppen anlegen“ | nur Systemverwaltung |
 | [Zugriff nachvollziehen](../pflegen/zugriff-nachvollziehen.md) | — | eigener Weg: Zugriff; andere: *Administrator* oder Eigentümer im Space; Gruppenmitglieder ab *Verwalter* | — | ja |
 
 ## Verwalten

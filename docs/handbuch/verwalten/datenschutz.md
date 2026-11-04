@@ -1,9 +1,6 @@
 # Datenschutz einstellen
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** die Systemverwaltung, unter „Administration → Datenschutz“. Ab Werk gelten die
-> Werkseinstellungen in der Tabelle.
+> **Wer:** Systemverwaltung, „Administration → Datenschutz“.
 
 Die Seite bündelt die Fristen und Schalter, die Daten von Personen betreffen. Jede Änderung wirkt
 ohne Neustart auf allen Instanzen und steht mit altem und neuem Wert im Nachweisprotokoll.

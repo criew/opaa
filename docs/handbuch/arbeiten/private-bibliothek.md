@@ -1,13 +1,7 @@
-# Eine private Bibliothek anlegen
-
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** wer auf einem Zugang für Personen ein [Konto verbunden](konto-verbinden.md) hat
-> und das Anlegerecht für diesen Zugang. Ab Werk ist kein Zugang für Personen eingerichtet; das
-> tut die Systemverwaltung.
+# Private Bibliothek anlegen
 
 Sie durchsuchen im Chat, was Sie beim Anbieter selbst sehen, etwa Ihre Nextcloud oder Ihr OneDrive.
-Außer Ihnen liest niemand diese Bibliothek, auch die Systemverwaltung nicht.
+Außer Ihnen liest niemand diese Bibliothek, auch die Systemverwaltung nicht. Voraussetzung ist ein [verbundenes Konto](konto-verbinden.md).
 
 1. Im [Katalog](katalog.md) „Neuer Katalogeintrag“, dann „Wissen“ und die Quellart wählen.
 2. In der Zeile „Verbindung“ den Zugang mit dem Zusatz **„· privat“** wählen. Der Hinweis „nur für

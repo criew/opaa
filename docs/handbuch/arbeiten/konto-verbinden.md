@@ -1,14 +1,9 @@
-# Ein Konto verbinden
-
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** jedes Konto, auf Zugängen für Personen, die die Systemverwaltung für Sie
-> freigegeben hat; ab Werk gibt es keinen. Von den mitgelieferten Quellen bieten das Nextcloud und
-> OneDrive.
+# Konto verbinden
 
 Sie hinterlegen Ihre eigenen Zugangsdaten für einen Anbieter. OPAA nutzt sie nur für Ihre
 [privaten Bibliotheken](private-bibliothek.md). Das Verbinden ist freiwillig; ohne verbundenes Konto
-fehlt Ihnen nichts sonst.
+fehlt Ihnen nichts sonst. Verbinden lässt sich nur, was die Systemverwaltung als Zugang für
+Personen freigegeben hat.
 
 1. „Einstellungen“, dann „Verbundene Konten“ öffnen.
 2. Unter **„Weitere Zugänge“** den Zugang wählen.

@@ -1,9 +1,6 @@
 # Zugänge einrichten
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** die Systemverwaltung, unter „Administration → Anbindungen“. Ab Werk gibt es
-> keinen Zugang; ein neuer ist nur für die Systemverwaltung nutzbar, bis sie ihn freigibt.
+> **Wer:** Systemverwaltung, „Administration → Anbindungen“.
 
 Ein **Zugang** legt einmal fest, wo eine Quelle liegt und wie OPAA sich dort anmeldet. Wer eine
 Bibliothek anlegt, wählt ihn nur noch aus.
@@ -28,7 +25,7 @@ können Personen [ein eigenes Konto verbinden](../arbeiten/konto-verbinden.md).
 
 Lehnt der Anbieter einen Schlüssel des Zugangs ab, zeigen alle Bibliotheken darauf „Abgelaufen“.
 
-## Einen Zugang anlegen
+## Zugang anlegen
 
 1. Reiter „Zugänge“, „Neuer Zugang“, Quellart wählen.
 2. Name, Server-Adresse, Anmeldeart und Vorgaben eintragen, bei einer App-Registrierung Client-ID,
@@ -43,7 +40,7 @@ Die Übersicht zeigt je Zugang, ob etwas zu tun ist: „Anmeldung abgelehnt“, 
 Client-Secret (14 Tage vorher kommt eine Benachrichtigung), viele abgelaufene verbundene Konten oder
 „Noch für niemanden freigegeben“.
 
-## Einen Zugang pflegen
+## Zugang pflegen
 
 | Anlass | Folge für die Bibliotheken darauf |
 |---|---|
@@ -89,4 +86,4 @@ die Aufbewahrung des Verbindungsprotokolls. Ohne eigenen Wert gilt die Werkseins
 - Geheimnisse liegen verschlüsselt und erscheinen in keiner Antwort und keinem Protokoll.
 - Ein Client-Secret geht nie an eine neue Adresse; bei geändertem Token-Endpunkt neu eintragen.
 - Läuft die Verbindung einer Bibliothek nicht, nennt ihr Reiter „Quelle“, wer es beheben kann
-  ([Eine Bibliothek aktuell halten](../pflegen/bibliothek-aktuell-halten.md)).
+  ([Bibliothek aktuell halten](../pflegen/bibliothek-aktuell-halten.md)).

@@ -686,7 +686,7 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 | `features.metadata.enabled` | `true` | `OPAA_FEATURES_METADATA_ENABLED` | Schalter für die Metadaten von Dokumenten und Bibliotheken; `false` lässt nur den Titel eines Dokuments übrig |
 | `features.speechInput.enabled` | `true` | `OPAA_FEATURES_SPEECH_INPUT_ENABLED` | `false` schaltet die Spracheingabe im Chat ab, auch mit eingetragenem Transkriptionsdienst |
 | `features.externalAccess.enabled` | `true` | `OPAA_FEATURES_EXTERNAL_ACCESS_ENABLED` | `false` schaltet den Zugriff externer KI-Werkzeuge samt MCP-Server unter `/mcp` ab (siehe [Externe KI-Werkzeuge](../nachschlagen/konfiguration.md#funktionen-abschalten)); an, öffnet erst der Schalter der Verwaltung den Kanal |
-| `features.chatUpload.enabled` | `true` | `OPAA_FEATURES_CHAT_UPLOAD_ENABLED` | `false` schaltet Dateianhänge im Chat und „Meine Uploads“ ab (siehe [Anhängen und diktieren](../arbeiten/anhaengen-und-diktieren.md)) |
+| `features.chatUpload.enabled` | `true` | `OPAA_FEATURES_CHAT_UPLOAD_ENABLED` | `false` schaltet Dateianhänge im Chat und „Meine Uploads“ ab (siehe [Dateien anhängen und Spracheingabe](../arbeiten/anhaengen-und-diktieren.md)) |
 
 Ein Schalter setzt die Variable `OPAA_FEATURES_<NAME>_ENABLED`, der Name in Großbuchstaben mit
 Unterstrichen. Wie überall lehnt `values.schema.json` einen unbekannten Namen ab, etwa einen

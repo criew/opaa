@@ -1,9 +1,6 @@
-# Die Einführung vorbereiten
+# Einführung vorbereiten
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** die Systemverwaltung, zusammen mit Datenschutz und Personalvertretung. Ab Werk
-> ist vieles zurückhaltend eingestellt; prüfen Sie trotzdem jeden Wert.
+> **Wer:** Systemverwaltung, mit Datenschutz und Personalvertretung.
 
 Diese Liste gehört vor den ersten Tag mit echten Personen, nicht danach.
 

@@ -1,9 +1,6 @@
 # Anmeldung einstellen
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** die Systemverwaltung, unter „Administration → Benutzer“, Reiter „Einstellungen“,
-> Karte „Lokale Anmeldung“. Ab Werk ist die Selbstregistrierung aus.
+> **Wer:** Systemverwaltung, „Administration → Benutzer“, Reiter „Einstellungen“.
 
 Die Karte legt fest, was für alle lokalen Konten gilt. Jede Änderung wirkt ab der nächsten Anwendung,
 nicht rückwirkend auf bestehende Passwörter, und steht im Nachweisprotokoll. Identitätsanbieter und
@@ -37,7 +34,7 @@ und Passwort setzt die Person erst über den Bestätigungslink; bis dahin ist da
 anmeldefähig. Eine schon belegte Adresse ergibt kein zweites Konto, und die Antwort verrät das nicht.
 
 Die Selbstregistrierung gehört vor dem Einschalten mit der Personalvertretung geklärt
-([Die Einführung vorbereiten](einfuehrung.md)).
+([Einführung vorbereiten](einfuehrung.md)).
 
 **Gut zu wissen:**
 

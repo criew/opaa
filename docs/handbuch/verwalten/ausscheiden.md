@@ -1,10 +1,6 @@
 # Ausscheiden und Nachfolge regeln
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** die Systemverwaltung, unter „Administration → Ohne Zuständigkeit“ und
-> „Administration → Gruppen“. Eigenes Eigentum und eigene Verantwortung gibt jede Person selbst ab,
-> unter „Einstellungen → Meine Gruppen“.
+> **Wer:** Systemverwaltung, „Administration → Ohne Zuständigkeit“.
 
 Scheidet eine Person aus oder wird ein Referat aufgelöst, sollen Bibliotheken, Spaces und Gruppen
 nicht verwaist liegen bleiben. Dafür gibt es die **Übertragung**: eine Handlung statt Arbeit Objekt
@@ -52,6 +48,6 @@ darüber in Schritten.
 **Gut zu wissen:**
 
 - Für ein einzelnes Arbeitsmittel genügt „Übergeben“ im Reiter „Freigaben“
-  ([Ein Arbeitsmittel teilen](../pflegen/arbeitsmittel-teilen.md#das-eigentum-übergeben)).
+  ([Arbeitsmittel teilen](../pflegen/arbeitsmittel-teilen.md#eigentum-übergeben)).
 - Eine Übertragung läuft nie automatisch, auch nicht nach einer Reorganisation im Verzeichnis.
 - Vorschau und Übertragung stehen im Nachweisprotokoll, auch eine Vorschau, die niemand ausführt.

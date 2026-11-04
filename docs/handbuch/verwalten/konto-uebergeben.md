@@ -1,8 +1,6 @@
-# Ein Konto an einen Identitätsanbieter übergeben
+# Konto an Identitätsanbieter übergeben
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** die Systemverwaltung stößt an, einlösen kann nur die betroffene Person.
+> **Wer:** Systemverwaltung stößt an, die betroffene Person löst ein.
 
 Stellt ein Haus von lokalen Konten auf einen Identitätsanbieter um, nimmt die Übergabe Spaces,
 Mitgliedschaften und Rolle mit. Danach meldet sich die Person nur noch über den Anbieter an.

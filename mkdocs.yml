@@ -49,8 +49,115 @@ markdown_extensions:
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
 validation:
+  nav:
+    omitted_files: warn
   links:
     not_found: warn
     absolute_links: warn
     unrecognized_links: warn
     anchors: warn
+# Reading order instead of alphabetical folder order; a new page needs an entry here, the strict
+# build fails on pages missing from the navigation.
+nav:
+  - README.md
+  - Arbeiten:
+      - arbeiten/README.md
+      - arbeiten/erste-schritte.md
+      - arbeiten/fragen-stellen.md
+      - arbeiten/belege-pruefen.md
+      - arbeiten/anhaengen-und-diktieren.md
+      - arbeiten/prompts-verwenden.md
+      - arbeiten/antworten-weitergeben.md
+      - arbeiten/chats.md
+      - arbeiten/katalog.md
+      - arbeiten/space-anlegen.md
+      - arbeiten/bibliothek-anlegen.md
+      - arbeiten/prompt-bibliothek-anlegen.md
+      - arbeiten/konto-verbinden.md
+      - arbeiten/private-bibliothek.md
+      - arbeiten/zugangstoken.md
+      - arbeiten/ki-werkzeug-einrichten.md
+      - arbeiten/meine-daten.md
+  - Pflegen:
+      - pflegen/README.md
+      - pflegen/space-inhalte.md
+      - pflegen/space-mitglieder.md
+      - pflegen/space-einstellungen.md
+      - pflegen/arbeitsmittel-teilen.md
+      - pflegen/bibliothek-aktuell-halten.md
+      - pflegen/metadaten-pflegen.md
+      - Konnektoren:
+          - pflegen/konnektoren/README.md
+          - pflegen/konnektoren/filesystem.md
+          - pflegen/konnektoren/http-directory.md
+          - pflegen/konnektoren/rss-feed.md
+          - pflegen/konnektoren/confluence.md
+          - pflegen/konnektoren/s3.md
+          - pflegen/konnektoren/smb.md
+          - pflegen/konnektoren/sharepoint.md
+          - pflegen/konnektoren/onedrive.md
+          - pflegen/konnektoren/google-drive.md
+          - pflegen/konnektoren/nextcloud.md
+          - pflegen/konnektoren/dropbox.md
+      - pflegen/fuer-ki-werkzeuge-freigeben.md
+      - pflegen/gruppe-pflegen.md
+      - pflegen/zugriff-nachvollziehen.md
+  - Verwalten:
+      - verwalten/README.md
+      - verwalten/einfuehrung.md
+      - verwalten/branding.md
+      - verwalten/konten.md
+      - verwalten/anmeldung-einstellen.md
+      - verwalten/konto-uebergeben.md
+      - verwalten/systemrollen.md
+      - verwalten/gruppen.md
+      - verwalten/anlegerechte.md
+      - verwalten/ausscheiden.md
+      - verwalten/zugaenge.md
+      - verwalten/modelle.md
+      - verwalten/suche-und-indexierung.md
+      - verwalten/externe-ki-werkzeuge.md
+      - verwalten/datenschutz.md
+      - verwalten/e-mail.md
+      - verwalten/einstellungen-uebertragen.md
+      - verwalten/stichtagsauskunft.md
+      - verwalten/nachweisprotokoll-lesen.md
+      - verwalten/verbindungsprotokoll.md
+  - Betreiben:
+      - betreiben/README.md
+      - betreiben/installation.md
+      - betreiben/docker-compose.md
+      - betreiben/kubernetes.md
+      - betreiben/authentifizierung.md
+      - betreiben/modell-endpunkte.md
+      - betreiben/netz-und-sicherheit.md
+      - betreiben/datenbank.md
+      - betreiben/originalablage.md
+      - betreiben/mehrere-instanzen.md
+      - betreiben/images-und-laufzeit.md
+      - betreiben/aktualisierung.md
+      - betreiben/sicherung-und-wiederherstellung.md
+      - betreiben/ueberwachung-und-fehlerbehebung.md
+      - betreiben/nachvollziehbarkeit.md
+      - betreiben/releases-und-nachweise.md
+  - Nachschlagen:
+      - nachschlagen/README.md
+      - nachschlagen/rechte-matrix.md
+      - nachschlagen/glossar.md
+      - nachschlagen/konfiguration.md
+      - Formate:
+          - nachschlagen/formate/README.md
+          - nachschlagen/formate/pdf.md
+          - nachschlagen/formate/docx.md
+          - nachschlagen/formate/odt.md
+          - nachschlagen/formate/pptx.md
+          - nachschlagen/formate/odp.md
+          - nachschlagen/formate/tabular.md
+          - nachschlagen/formate/html.md
+          - nachschlagen/formate/markdown.md
+          - nachschlagen/formate/mail.md
+          - nachschlagen/formate/confluence.md
+          - nachschlagen/formate/fallback.md
+      - nachschlagen/metadaten.md
+      - nachschlagen/wie-indexierung-arbeitet.md
+      - nachschlagen/wie-die-suche-arbeitet.md

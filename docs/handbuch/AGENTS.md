@@ -18,18 +18,21 @@ Rolle an einem Objekt oder eine Fähigkeit. Daraus folgen fünf Ordner:
 | `nachschlagen/` | alle | Rechte-Matrix, Konfigurationsreferenz, Formate (`nachschlagen/formate/`), Suche im Überblick, Glossar |
 
 Jeder Ordner hat eine `README.md` mit der Liste seiner Seiten. Den Gesamtbaum führt
-`README.md`, Abschnitt „Aufbau des Handbuchs“; eine neue Seite bekommt dort ihren Platz.
+`README.md`, Abschnitt „Aufbau des Handbuchs“. Die Reihenfolge der Website legt die Navigationsliste
+`nav` in `mkdocs.yml` fest: Kapitel in der Folge Arbeiten, Pflegen, Verwalten, Betreiben,
+Nachschlagen, Seiten in der Folge, in der man sie braucht, nicht alphabetisch. Eine neue Seite
+bekommt in beiden ihren Platz; fehlt sie in `nav`, bricht der strikte Build ab.
 
 ## Seiten in `arbeiten/` und `pflegen/`
 
-Eine Seite ist eine Aufgabe. Der Titel ist die Aufgabe als Verb („Eine Bibliothek teilen“), nicht
-das Thema. Jede Seite hat diese Form:
+Eine Seite ist eine Aufgabe. Der Titel ist die Aufgabe als Verb ohne Artikel („Bibliothek teilen“,
+nicht „Eine Bibliothek teilen“), nicht das Thema. Dasselbe gilt für Zwischenüberschriften und
+Linktexte. Jede Seite hat diese Form:
 
 ```markdown
-# Eine Bibliothek teilen
+# Bibliothek teilen
 
-> **Wer darf das:** Rolle *Verwalter* oder *Eigentümer* an der Bibliothek.
-> Ab Werk hat das, wer die Bibliothek angelegt hat.
+> **Wer:** *Verwalter* oder *Eigentümer* der Bibliothek.
 
 Ein Satz, was man danach hat.
 
@@ -40,13 +43,16 @@ Ein Satz, was man danach hat.
 **Gut zu wissen:** höchstens drei Punkte.
 ```
 
-- **Wer-darf-das-Kasten:** nennt Systemrolle, Rolle am Objekt oder Fähigkeit und die Auslieferung
-  ab Werk. So bleibt die Seite richtig, wenn ein Haus Fähigkeiten anders verteilt. Dieselbe Angabe
-  steht in der Rechte-Matrix (`nachschlagen/rechte-matrix.md`); beide ändern sich zusammen.
-- **Höchstens 80 Zeilen.** Was nicht passt, ist eine zweite Aufgabe und bekommt eine eigene Seite.
-- `.github/scripts/check_handbuch.sh` prüft Kasten und Länge in der CI. Ausgenommen sind die
-  `README.md` der Ordner; die Seiten unter `pflegen/konnektoren/` und `verwalten/` brauchen den
-  Kasten, aber keine feste Länge.
+- **Wer-Zeile:** nur in `pflegen/` und `verwalten/`, genau eine Zeile: Rolle am Objekt,
+  Systemrolle oder Fähigkeit, in der Verwaltung mit Menüpfad. Einzelheiten und die Auslieferung ab
+  Werk stehen in der Rechte-Matrix (`nachschlagen/rechte-matrix.md`). Seiten in `arbeiten/` haben
+  keine Wer-Zeile, denn sie gelten für jedes Konto; eine echte Voraussetzung steht als ein Satz im
+  Text.
+- **Höchstens 80 Zeilen**, besser deutlich weniger. Was nicht passt, ist eine zweite Aufgabe und
+  bekommt eine eigene Seite.
+- `.github/scripts/check_handbuch.sh` prüft Wer-Zeile und Länge in der CI. Ausgenommen sind die
+  `README.md` der Ordner; die Seiten unter `pflegen/konnektoren/` und `verwalten/` haben keine feste
+  Länge.
 
 `verwalten/` folgt derselben Form ohne feste Länge, knapp gehalten. `betreiben/` und
 `nachschlagen/` sind Referenz und dürfen lang sein, ohne Inhalte doppelt zu führen: Was Compose und
@@ -55,7 +61,7 @@ Kubernetes gemeinsam haben, steht einmal.
 ## Aufbau der Konnektor-Seiten
 
 Jede Seite unter `pflegen/konnektoren/`
-hat oben den Wer-darf-das-Kasten und dann dieselben Abschnitte in dieser Reihenfolge, nummeriert
+hat oben die Wer-Zeile und dann dieselben Abschnitte in dieser Reihenfolge, nummeriert
 von 1 an. Ein Abschnitt, der nicht zutrifft, entfällt; die Nummern folgen lückenlos.
 
 1. **Was der Konnektor ist** — welches System, über welche Schnittstelle (mit Version, wo bekannt),
@@ -103,8 +109,9 @@ Format-Seiten unter `nachschlagen/formate/` folgen ihrem bisherigen gemeinsamen 
 
 - **Vom Zweck her erklären**, am besten mit einem Beispiel, bevor Einzelheiten kommen.
 - **Bedienung statt Umsetzung**: keine Klassen-, Tabellen- oder API-Namen im Fließtext.
-- **Knapp.** Keine Feld-für-Feld-Listen und keine Regeln für jeden Randfall; die typischen
-  Anlässe beschreiben.
+- **Knapp.** Keine Feld-für-Feld-Listen, keine Regeln für jeden Randfall, keine Zeitwerte und
+  Grenzen, die nur die Konfiguration betreffen; die typischen Anlässe beschreiben. Lieber einen
+  Satz weniger.
 - **Keine Abschnitte** „Nicht gebaut“, „Was es hier nicht gibt“, „Weiterführende Kapitel“, „API“
   und keine eigenen „Konfiguration“-Abschnitte: Ziele stehen in der Roadmap, Variablen in der
   Konfigurationsreferenz, eine Seite nennt nur den Parameternamen.
@@ -124,8 +131,6 @@ Format-Seiten unter `nachschlagen/formate/` folgen ihrem bisherigen gemeinsamen 
 - **Deutsch, Ist-Stand, keine Entstehungsgeschichte.**
 - **Konfigurierbare Werte stehen nur in der Konfigurationsreferenz**; Fließtext nennt
   Parameternamen.
-- **„Entwurf“** am Seitenanfang trägt eine neue oder grundlegend geänderte Seite: gegen den Code
-  geprüft, vom Maintainer noch nicht abgenommen. Abgenommene Seiten tragen keinen Vermerk.
 - **Seiten werden mit dem Code gepflegt**, im selben Pull Request wie die Verhaltensänderung.
 - **Verschieben oder Umbenennen** zieht alle Verweise im Repo nach, auch Code-Kommentare,
   `AGENTS.md`-Dateien und Leser wie `demo/generator/generate_corpus.py` (liest die Übersicht der

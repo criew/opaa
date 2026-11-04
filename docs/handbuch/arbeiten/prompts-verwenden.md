@@ -1,10 +1,5 @@
 # Prompts verwenden
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** jedes Mitglied eines Space, für Prompts aus Prompt-Bibliotheken, die dem Space
-> zugeordnet sind und die Sie lesen dürfen.
-
 Sie setzen eine wiederkehrende Formulierung, etwa „Anhörung nach Hausstandard“, mit wenigen
 Angaben in den Chat ein.
 
@@ -21,6 +16,6 @@ steht der Titel an der Frage.
 **Gut zu wissen:**
 
 - „Diesem Space sind keine Prompts zugeordnet“: Wer den Space kuratiert, kann eine
-  Prompt-Bibliothek zuordnen ([Den Katalog nutzen](katalog.md#in-einem-space-verwenden)).
+  Prompt-Bibliothek zuordnen ([Katalog nutzen](katalog.md#in-einem-space-verwenden)).
 - Für Suche und Antwort macht ein Prompt keinen Unterschied; er ist nur Text.
 - Wer welchen Prompt wie oft nutzt, wird weder protokolliert noch gezählt.

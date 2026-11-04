@@ -1,10 +1,6 @@
-# Einen Space einstellen, archivieren oder löschen
+# Space einstellen, archivieren oder löschen
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** Stammdaten und Anweisung ändert die Rolle *Administrator* im Space oder sein
-> Eigentümer; archivieren und löschen der Eigentümer und die Systemverwaltung. Ab Werk ist das, wer
-> den Space angelegt hat.
+> **Wer:** *Administrator* oder Eigentümer des Space; archivieren und löschen nur der Eigentümer.
 
 Sie geben dem Space einen klaren Namen, eine Anweisung an das Modell und räumen ihn am Ende auf.
 

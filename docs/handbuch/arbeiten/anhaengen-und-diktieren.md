@@ -1,47 +1,22 @@
-# Dateien anhängen und diktieren
+# Dateien anhängen und Spracheingabe
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** jedes Mitglied eines Space. Anhänge sind ab Werk an, die Spracheingabe braucht
-> einen Transkriptionsdienst, den die Installation einrichtet. Fehlt Büroklammer oder Mikrofon,
-> ist die Funktion abgeschaltet.
-
-Sie bringen ein Dokument mit, das in keiner Bibliothek liegt, oder sprechen die Frage statt sie zu
+Sie bringen ein Dokument mit, das in keiner Bibliothek liegt, oder sprechen die Frage, statt sie zu
 tippen.
 
-## Eine Datei anhängen
+## Datei anhängen
 
-1. Die Datei auf das Eingabefeld ziehen, über die **Büroklammer** („Dateien anhängen“) wählen oder
-   aus der Zwischenablage einfügen.
-2. Warten, bis der Chip über dem Feld die Größe zeigt statt „wird hochgeladen“ oder „wird gelesen“.
-3. Die Frage stellen, etwa „Fasse den Bescheid zusammen“.
+Die Datei auf das Eingabefeld ziehen oder über die **Büroklammer** wählen. Sie hängt dann am Chat:
+Jede Frage darin kann sich auf sie stützen, und sie wird wie ein Dokument aus einer Bibliothek
+belegt. Anhänge sieht nur, wer sie hochgeladen hat; sie werden mit dem Chat gelöscht.
 
-Der Anhang gilt ab der ersten Frage für den ganzen Chat und wird wie ein Dokument aus einer
-Bibliothek belegt; im Belegfenster trägt er die Marke „Anhang“. Er wird mit dem Chat gelöscht.
-Anhänge sieht nur, wer sie hochgeladen hat.
+Alle eigenen Anhänge stehen unter „Ihre Einstellungen“, Bereich „Meine Uploads“. Dort lassen sie
+sich auch in eine Bibliothek übernehmen.
 
-**Meine Uploads.** Unter „Ihre Einstellungen“, Bereich „Meine Uploads“, stehen alle Ihre Anhänge
-mit Chat und Frist. Dort laden Sie sie herunter, löschen sie oder legen mit „In Bibliothek
-übernehmen“ eine Kopie in eine Bibliothek, in die Sie hochladen dürfen. Die Kopie folgt dann den
-Rechten der Bibliothek.
+## Spracheingabe
 
-Es gelten dieselben [Formate](../nachschlagen/formate/README.md), Größengrenze
-und Virenprüfung wie beim Hochladen in eine Bibliothek. Die Zahl der Anhänge je Frage und je Chat ist
-begrenzt.
+1. Das **Mikrofon** neben „Senden“ wählen und die Frage sprechen.
+2. „Aufnahme beenden“ wählen. Der Text steht im Eingabefeld.
+3. Prüfen und selbst senden. **Gesendet wird nie automatisch.**
 
-## Eine Frage diktieren
-
-1. Das **Mikrofon** neben „Senden“ wählen („Spracheingabe starten“). Beim ersten Mal fragt der
-   Browser nach dem Mikrofon.
-2. Die Frage sprechen.
-3. „Aufnahme beenden“ wählen. Der erkannte Text steht danach im Eingabefeld.
-4. Prüfen, korrigieren und selbst senden. **Gesendet wird nie automatisch.**
-
-„Aufnahme verwerfen“ bricht ab, ohne etwas zu übertragen. Nach zwei Minuten oder 15 Sekunden Stille
-endet die Aufnahme von selbst.
-
-**Gut zu wissen:**
-
-- Die Aufnahme wird nicht gespeichert, nur die Frage, die Sie senden.
-- Im Mehrpersonenbüro hören andere mit, und das Mikrofon nimmt auch fremde Stimmen auf.
-- Tippen ist gleichwertig; niemand kann das Diktieren vorschreiben.
+Die Aufnahme wird nicht gespeichert. Fehlen Büroklammer oder Mikrofon, hat die Installation die
+Funktion nicht eingeschaltet.

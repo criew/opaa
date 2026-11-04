@@ -1,10 +1,6 @@
 # Konnektor: OneDrive
 
-> **Entwurf** — gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
-
-> **Wer darf das:** wer auf einem Zugang für Personen ein [Microsoft-Konto verbunden](../../arbeiten/konto-verbinden.md)
-> hat und das Anlegerecht für diesen Zugang. Ab Werk gibt es keinen solchen Zugang; die
-> Systemverwaltung richtet ihn ein. Eine OneDrive-Bibliothek ist immer [privat](../../arbeiten/private-bibliothek.md).
+> **Wer:** jedes Konto mit [verbundenem Microsoft-Konto](../../arbeiten/konto-verbinden.md); die Bibliothek ist immer privat.
 
 ## 1. Was der Konnektor ist
 
