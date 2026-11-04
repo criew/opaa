@@ -77,7 +77,7 @@ export default function LocalUserChatCleanupSection({ user }: LocalUserChatClean
       return true
     } catch (err) {
       notify(localUserErrorMessage(err, 'Die Änderung ist fehlgeschlagen.'), 'error')
-      // a request withdrawn or filed anew in between shows up instead of the stale one
+      // after any refusal the section shows the state as stored, e.g. a request filed anew
       getLocalUserChatCleanup(user.id)
         .then(setState)
         .catch(() => undefined)

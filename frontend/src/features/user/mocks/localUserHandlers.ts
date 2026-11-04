@@ -481,6 +481,12 @@ export const localUserHandlers = [
           'Der Antrag hat sich geändert. Bitte den aktuellen Antrag prüfen und erneut freigeben',
         )
       }
+      if (Date.now() - Date.parse(pending.requestedAt) >= 14 * 86_400_000) {
+        return conflict(
+          'HOLD_REQUEST_EXPIRED',
+          'Der Antrag ist abgelaufen und kann nicht mehr freigegeben werden',
+        )
+      }
       mockChatCleanupRequests.delete(user.id)
       const now = new Date()
       const until = new Date(now.getTime() + MOCK_CHAT_CLEANUP_HOLD_MAX_DAYS * 86_400_000)

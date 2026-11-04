@@ -124,7 +124,7 @@ class LocalUserChatCleanupControllerTest {
   void requestApproveRejectAndResumeAnswerWithTheNewState() throws Exception {
     Instant since = Instant.parse("2026-10-01T08:00:00Z");
     Instant until = Instant.parse("2027-03-30T08:00:00Z");
-    Instant requested = Instant.parse("2026-10-31T08:00:00Z");
+    Instant requested = Instant.parse("2026-10-31T08:00:00.123456Z");
     LockedAccountChatCleanup.PendingRequest mine =
         new LockedAccountChatCleanup.PendingRequest(
             ChatCleanupHoldPurpose.DATA_SUBJECT_REQUEST, REASON, requested, adminId, false);
@@ -158,7 +158,7 @@ class LocalUserChatCleanupControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.pendingRequest.purpose").value("DATA_SUBJECT_REQUEST"))
         .andExpect(jsonPath("$.pendingRequest.reason").value(REASON))
-        .andExpect(jsonPath("$.pendingRequest.requestedAt").value("2026-10-31T08:00:00Z"))
+        .andExpect(jsonPath("$.pendingRequest.requestedAt").value("2026-10-31T08:00:00.123456Z"))
         .andExpect(jsonPath("$.pendingRequest.requestedByMe").value(true))
         .andExpect(jsonPath("$.pendingRequest.extension").value(false));
     mockMvc
@@ -166,7 +166,7 @@ class LocalUserChatCleanupControllerTest {
             post(path + "/hold-request/approve")
                 .with(asAdmin())
                 .contentType(JSON)
-                .content("{\"requestedAt\":\"2026-10-31T08:00:00Z\"}"))
+                .content("{\"requestedAt\":\"2026-10-31T08:00:00.123456Z\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value("HELD"))
         .andExpect(jsonPath("$.hold.purpose").value("DATA_SUBJECT_REQUEST"))
