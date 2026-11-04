@@ -125,7 +125,7 @@ export default function GlobalRail() {
         sx={{
           width: RAIL_WIDTH,
           flexShrink: 0,
-          height: '100vh',
+          height: '100dvh',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
