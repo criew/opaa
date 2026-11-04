@@ -10,8 +10,7 @@ import java.time.Instant;
  * The single, system-wide branding configuration row (docs/design/guidelines.md#7) - a singleton,
  * not one row per organization, for the same reason {@link io.opaa.audit.AuditRetentionSettings} is
  * one: OPAA is deployed once per Behörde (ADR-0015), and "das Branding" is what that one deployment
- * looks like. The column {@code default_color_scheme} is no longer mapped; light or dark is each
- * person's own choice.
+ * looks like.
  *
  * <p><b>Every field is nullable, and that is the point.</b> {@code null} means "never configured",
  * not "empty", and {@link BrandingSettingsService} resolves it to the {@link BrandingDefaults OPAA

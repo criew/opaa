@@ -496,7 +496,7 @@ class BrandingSettingsServiceIntegrationTest {
   private void resetBrandingRow() {
     jdbcTemplate.update(
         "UPDATE branding_settings SET product_name = NULL, claim = NULL, ai_notice = NULL, primary_color = NULL,"
-            + " default_color_scheme = NULL, logo_content = NULL, logo_content_type = NULL,"
+            + " logo_content = NULL, logo_content_type = NULL,"
             + " logo_version = NULL, logo_updated_at = NULL, login_logo_content = NULL,"
             + " login_logo_content_type = NULL, login_logo_version = NULL,"
             + " login_logo_updated_at = NULL, login_background_content = NULL,"
