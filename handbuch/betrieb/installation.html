@@ -4353,8 +4353,7 @@ Prüfungen, alles oder nichts.</p>
 <span class="w">  </span><span class="p">},</span>
 <span class="w">  </span><span class="nt">"branding"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">"productName"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Landesamt-Assistent"</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">"primaryColor"</span><span class="p">:</span><span class="w"> </span><span class="s2">"#7A3E9D"</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">"defaultColorScheme"</span><span class="p">:</span><span class="w"> </span><span class="s2">"SYSTEM"</span>
+<span class="w">    </span><span class="nt">"primaryColor"</span><span class="p">:</span><span class="w"> </span><span class="s2">"#7A3E9D"</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
@@ -4394,8 +4393,8 @@ Prüfungen, alles oder nichts.</p>
   im Log, die Datei gilt trotzdem.</li>
 <li><strong>Branding:</strong> Ohne den Abschnitt <code>branding</code> gilt der OPAA-Standard. Mit ihm prüft OPAA die Angaben
   wie die Branding-Verwaltung; jedes Feld ist optional (<code>productName</code>, <code>claim</code>, <code>aiNotice</code>,
-  <code>primaryColor</code>, <code>defaultColorScheme</code>), ein fehlendes oder leeres gilt als Standard. Bilder nimmt
-  die Antwortdatei nicht an.</li>
+  <code>primaryColor</code>), ein fehlendes oder leeres gilt als Standard. Bilder nimmt die Antwortdatei nicht
+  an; ein <code>defaultColorScheme</code> älterer Dateien wird übergangen.</li>
 <li>Angaben späterer Schritte (<code>outboundProxy</code>) wertet diese Version nicht aus.</li>
 <li>Ohne <code>maxInputTokens</code> gilt eine Eingabegrenze von 2.048 Tokens
   (<a href="modell-endpunkte.html#eingabegrenze-des-embedding-modells">Eingabegrenze des Embedding-Modells</a>).</li>
