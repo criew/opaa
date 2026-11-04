@@ -42,5 +42,7 @@ Andere MCP-fähige Werkzeuge brauchen dieselben Angaben: Adresse `https://<host>
 
 - Der Tokenwert gehört in keine Datei, die in eine Versionsverwaltung wandert.
 - Ein neues Passwort beendet alle Ihre Tokens.
+- Jedes neue Token meldet OPAA per Mail. Nicht selbst erzeugt? Widerrufen und die Systemverwaltung
+  informieren.
 - Verbindet nichts, fehlt meist die Freigabe der Bibliothek, ein gültiges Token oder ein
   zugelassener Netzbereich.

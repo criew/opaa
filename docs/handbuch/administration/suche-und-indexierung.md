@@ -1,6 +1,6 @@
 # Suche und Indexierung überwachen
 
-**Ziel:** Geklärt, warum jemand ein Dokument nicht findet.
+**Ziel:** Sie wissen, warum jemand ein Dokument nicht findet.
 {: .kopf }
 
 **Wer:** Systemverwaltung, „Administration → Suche & Indexierung“

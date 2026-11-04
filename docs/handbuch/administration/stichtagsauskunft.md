@@ -1,6 +1,6 @@
 # Stichtagsauskunft erstellen
 
-**Ziel:** Belegt, wer ein Objekt an bestimmten Tagen lesen durfte.
+**Ziel:** Sie können belegen, wer ein Objekt an bestimmten Tagen lesen durfte.
 {: .kopf }
 
 **Wer:** Revision, „Revision → Stichtagsauskunft“

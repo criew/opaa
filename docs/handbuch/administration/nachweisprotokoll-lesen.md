@@ -1,6 +1,6 @@
 # Nachweisprotokoll lesen
 
-**Ziel:** Belegt, wer wann Rechte vergeben, Einstellungen geändert oder Konten gesperrt hat.
+**Ziel:** Sie können belegen, wer wann Rechte vergeben, Einstellungen geändert oder Konten gesperrt hat.
 {: .kopf }
 
 **Wer:** Revision, über die Programmierschnittstelle

@@ -1,6 +1,6 @@
 # Bibliothek teilen und für KI-Werkzeuge freigeben
 
-**Ziel:** Andere Personen oder Gruppen lesen oder pflegen Ihre Bibliothek.
+**Ziel:** Andere Personen, Gruppen oder KI-Werkzeuge nutzen Ihre Bibliothek.
 {: .kopf }
 
 **Wer:** *Verwalter* oder *Eigentümer* der Bibliothek, übergeben nur der *Eigentümer*

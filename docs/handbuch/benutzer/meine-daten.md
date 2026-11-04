@@ -1,4 +1,4 @@
-# Eigene Daten herunterladen
+# Passwort ändern und Daten herunterladen
 
 **Ziel:** Eine ZIP-Datei mit allem, was OPAA über Sie gespeichert hat, oder ein neues Passwort.
 {: .kopf }
@@ -14,7 +14,7 @@ Passwort dort.
 Alle anderen Sitzungen und Ihre [Zugangstokens](ki-werkzeug-einrichten.md#token-anlegen) enden.
 Vergessen? „Passwort vergessen“ auf der Anmeldeseite, sonst hilft die Systemverwaltung.
 
-## Eigene Daten herunterladen
+## Passwort ändern und Daten herunterladen
 
 1. „Einstellungen“, „Meine Daten“, „Daten herunterladen“.
 2. Die Anmeldung bestätigen.
@@ -27,4 +27,5 @@ Datenschutzbeauftragte Auskunft.
 **Gut zu wissen:**
 
 - Die Auskunft ist nur für Sie. Niemand darf verlangen, dass Sie sie vorlegen.
-- Jeden Start meldet OPAA Ihnen, damit ein fremder auffällt.
+- Niemand sonst kann Ihre Auskunft auslösen, auch die Systemverwaltung nicht.
+- Jeden Start meldet OPAA Ihnen, damit ein Start auffällt, den Sie nicht selbst ausgelöst haben.

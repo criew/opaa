@@ -1,6 +1,6 @@
 # Interne Gruppe pflegen
 
-**Ziel:** Eine Gruppe wie „Projekt Bauleitplanung“, der andere Bibliotheken freigeben und die sie in Spaces aufnehmen.
+**Ziel:** Eine Gruppe wie „Projekt Bauleitplanung“ mit den richtigen Mitgliedern, nutzbar für Freigaben und Spaces.
 {: .kopf }
 
 **Wer:** *Verantwortliche* der Gruppe und die Systemverwaltung; anlegen nur mit Anlegerecht

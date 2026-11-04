@@ -4,8 +4,9 @@
 # - no reference out of the handbook to decision records: no "ADR-<digits>", no "docs/decisions",
 #   no link into the repository on GitHub (blob/tree); old pages lose their issue links on the move
 # - the page head under the title: a "Ziel" row and a "Wer" row, each a single line "**Ziel:** ..."
-#   or "**Wer:** ..." followed by "{: .kopf }", within the first eight lines; every page under
-#   administration/ and benutzer/ except the connector pages needs "Ziel", pages under
+#   or "**Wer:** ..." followed by "{: .kopf }", "Ziel" on line 3 directly under the title, "Wer"
+#   after it; every page under administration/ and benutzer/ except the connector pages needs
+#   "Ziel", pages under
 #   administration/ and the connector pages need "Wer", other pages under benutzer/ carry "Wer"
 #   only where the task needs a role at the object
 # - every page under benutzer/ except a folder's README.md and the connector pages has at most
@@ -41,11 +42,22 @@ while IFS= read -r -d '' file; do
     errors=$((errors + 1))
   fi
   head8=$(head -n 8 "$file")
+  ziel_row=""
   for label in Ziel Wer; do
     row=$(grep -nE "^\*\*${label}:\*\* " <<<"$head8" | head -n 1 | cut -d: -f1 || true)
     if [ -n "$row" ]; then
-      if ! sed -n "$((row + 1))p" "$file" | grep -qxF '{: .kopf }'; then
+      if [ "$(sed -n "$((row + 1))p" "$file")" != '{: .kopf }' ]; then
         echo "::error file=$file,line=$row::The \"$label\" row is one line followed by \"{: .kopf }\"."
+        errors=$((errors + 1))
+      fi
+      if [ "$label" = Ziel ]; then
+        ziel_row=$row
+        if [ "$row" != 3 ]; then
+          echo "::error file=$file,line=$row::The \"Ziel\" row comes directly under the title, on line 3."
+          errors=$((errors + 1))
+        fi
+      elif [ -n "$ziel_row" ] && [ "$row" != $((ziel_row + 3)) ]; then
+        echo "::error file=$file,line=$row::The \"Wer\" row follows the \"Ziel\" row after one blank line."
         errors=$((errors + 1))
       fi
       continue
