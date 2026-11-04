@@ -12,8 +12,8 @@ theme:
   name: material
   language: de
   font: false
-  logo: assets/opaa-mark.svg
-  favicon: assets/opaa-mark.svg
+  logo: assets/opaa-mark-hell.svg
+  favicon: assets/opaa-icon.svg
   features:
     - navigation.sections
     - navigation.indexes

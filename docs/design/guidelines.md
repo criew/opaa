@@ -991,6 +991,36 @@ Konfiguration**, nicht Code (Issues #582/#583). Daraus folgt für jede Komponent
 - Die Kontrastprüfung der konfigurierten Farbe warnt, blockiert aber nicht (#583); sie prüft
   die Beschriftung gegen die tatsächlich abgeleitete Fläche.
 
+### 7.1 Das OPAA-Standardlogo
+
+Das Logo heißt **Fundstelle**: eine Antwort-Sprechblase aus Textzeilen mit einem Prüfsiegel. Die
+Sprechblase steht für den Assistenten, der antwortet und handelt, die Zeilen für das Wissen des
+Hauses, das Siegel mit Haken für den geprüften Beleg. Es ist der Fallback, solange ein Betreiber kein
+eigenes Logo konfiguriert.
+
+| Bestandteil | Farbe                                                                       |
+| ----------- | --------------------------------------------------------------------------- |
+| Sprechblase | Textfarbe der Fläche: Navy auf Hell, Weiß auf Navy                          |
+| Siegel      | Dateien: Blau-500 `#1292EE`; in der App die Akzentfläche (`accent-surface`) |
+| Haken       | Weiß                                                                        |
+| Wortmarke   | „OPAA“ in Quicksand 700, Laufweite 0,02 em, Farbe der Sprechblase           |
+
+- Zeilen und der Ring um das Siegel sind ausgespart, nicht weiß gefüllt; das Logo liegt deshalb auf
+  jeder Fläche, ohne dass eine Kachel dahinter nötig ist.
+- In der App folgt das Siegel der Akzentfläche, weil sie Weiß mit 4,5:1 trägt; bei konfigurierter
+  Akzentfarbe nimmt es also die abgeleitete Hausfarbe an.
+- **Icon-Fassung** für Favicon, App- und Touch-Icon: Navy-Kachel, darin die Marke in
+  Weiß auf 72 % der Fläche. Das SVG hat Radius 14/64; die Raster-PNGs sind vollflächig ohne Rundung,
+  weil Betriebssysteme Icons selbst maskieren.
+- In der Oberfläche steht die freie Marke ohne Kachel, ab 16 px. Die Wortmarke ab 24 px Höhe.
+  Schutzraum ringsum ein Viertel der Markenhöhe.
+- Nicht verzerren, nicht drehen, keine Schatten oder Verläufe.
+
+Die Quelldateien liegen in [`logo/`](./logo/): `opaa-mark.svg` und `opaa-logo.svg` (für helle
+Flächen), `-hell`-Fassungen für dunkle Flächen, `opaa-icon.svg` sowie die Icon-Raster in 32, 180, 192
+und 512 px. Die App zeichnet die Marke in `BrandMark` selbst, damit Sprechblase und Siegel den
+Farbrollen des Schemas folgen.
+
 ---
 
 ## 8 · Geltung und Pflege
