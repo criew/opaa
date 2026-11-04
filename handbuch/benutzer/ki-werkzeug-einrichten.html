@@ -9,7 +9,7 @@
       
       
       
-        <link rel="prev" href="zugangstoken.html">
+        <link rel="prev" href="private-bibliothek.html">
       
       
         <link rel="next" href="gruppe-pflegen.html">
@@ -1498,8 +1498,6 @@
       
         
       
-        
-      
     
     
     
@@ -1602,34 +1600,6 @@
                 
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="zugangstoken.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Zugangstoken anlegen
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
     
   
   
@@ -1641,6 +1611,24 @@
       
         
       
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    KI-Werkzeug einrichten
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
       
       <a href="ki-werkzeug-einrichten.html" class="md-nav__link md-nav__link--active">
         
@@ -1658,6 +1646,47 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Inhaltsverzeichnis">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Inhaltsverzeichnis
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#token-anlegen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token anlegen
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#beispiel-opencode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Beispiel OpenCode
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -1734,7 +1763,7 @@
   <span class="md-ellipsis">
     
   
-    Eigene Daten herunterladen
+    Passwort ändern und Daten herunterladen
   
 
     
@@ -3761,6 +3790,36 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Inhaltsverzeichnis
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#token-anlegen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token anlegen
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#beispiel-opencode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Beispiel OpenCode
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -3777,12 +3836,22 @@
 
 
 <h1 id="ki-werkzeug-einrichten">KI-Werkzeug einrichten<a class="headerlink" href="#ki-werkzeug-einrichten" title="Permanent link">&para;</a></h1>
-<p>Ihr KI-Werkzeug sucht danach über den MCP-Server von OPAA in Ihren Bibliotheken. Sie brauchen zwei
-Angaben: die Adresse <code>https://&lt;host&gt;/mcp</code> und den Wert Ihres <a href="zugangstoken.html">Zugangstokens</a>. Der
-Dialog nach dem Erzeugen des Tokens zeigt fertige Ausschnitte für einige Werkzeuge, schon mit der
-Adresse Ihrer Installation.</p>
-<p><strong>OpenCode</strong>, in <code>~/.config/opencode/opencode.json</code>, mit dem Tokenwert in der Umgebungsvariablen
-<code>OPAA_TOKEN</code>:</p>
+<p class="kopf"><strong>Ziel:</strong> Ein KI-Werkzeug wie OpenCode durchsucht Ihre Bibliotheken über OPAA.</p>
+<p>Das Werkzeug bekommt nur Fundstellen und nie mehr, als Sie selbst lesen dürfen. Voraussetzung: Die
+Systemverwaltung hat externe KI-Werkzeuge eingeschaltet, und die Bibliothek ist
+<a href="arbeitsmittel-teilen.html#für-externe-ki-werkzeuge-freigeben">dafür freigegeben</a>.</p>
+<h2 id="token-anlegen">Token anlegen<a class="headerlink" href="#token-anlegen" title="Permanent link">&para;</a></h2>
+<ol>
+<li>„Einstellungen“, „Zugangstokens“, „Token erzeugen“.</li>
+<li>Name (etwa „OpenCode auf dem Dienstrechner“), Bibliotheken und Ablauf wählen. Die Bibliotheken
+   lassen sich später nicht ändern.</li>
+<li>Erzeugen und <strong>den Wert sofort kopieren</strong>. Er wird nur einmal angezeigt, zusammen mit fertigen
+   Ausschnitten für einige Werkzeuge.</li>
+</ol>
+<p>Widerrufen geht in derselben Liste und wirkt sofort. Ein verlorener Wert lässt sich nicht wieder
+anzeigen: neues Token erzeugen, altes widerrufen.</p>
+<h2 id="beispiel-opencode">Beispiel OpenCode<a class="headerlink" href="#beispiel-opencode" title="Permanent link">&para;</a></h2>
+<p>In <code>~/.config/opencode/opencode.json</code>, den Tokenwert in der Umgebungsvariablen <code>OPAA_TOKEN</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">"mcp"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nt">"opaa"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -3794,19 +3863,16 @@ Adresse Ihrer Installation.</p>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<p><code>"oauth": false</code> sorgt dafür, dass OpenCode bei einem abgelaufenen Token den Grund nennt, statt eine
-Anmeldung zu versuchen.</p>
-<p><strong>Andere MCP-fähige Werkzeuge</strong> brauchen dieselben zwei Angaben: Adresse als HTTP-Server und den
-Kopf <code>Authorization: Bearer &lt;Tokenwert&gt;</code>.</p>
-<p><strong>Eigenes Skript:</strong> dieselbe Suche als REST-Aufruf mit demselben Kopf:</p>
-<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>https://&lt;host&gt;/api/v1/search<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer opaa_pat_…"</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span>-d<span class="w"> </span><span class="s1">'{"question":"Fristen bei der Anhörung"}'</span>
-</code></pre></div>
+<p>Andere MCP-fähige Werkzeuge brauchen dieselben Angaben: Adresse <code>https://&lt;host&gt;/mcp</code> und den Kopf
+<code>Authorization: Bearer &lt;Tokenwert&gt;</code>.</p>
 <p><strong>Gut zu wissen:</strong></p>
 <ul>
-<li>Den Tokenwert nie in eine Projektdatei schreiben, die in die Versionsverwaltung wandert.</li>
-<li>Verbindet nichts, fehlt meist eine Voraussetzung: Kanal eingeschaltet, Bibliothek freigegeben,
-  Token gültig, Netzbereich zugelassen.</li>
+<li>Der Tokenwert gehört in keine Datei, die in eine Versionsverwaltung wandert.</li>
+<li>Ein neues Passwort beendet alle Ihre Tokens.</li>
+<li>Jedes neue Token meldet OPAA per Mail. Nicht selbst erzeugt? Widerrufen und die Systemverwaltung
+  informieren.</li>
+<li>Verbindet nichts, fehlt meist die Freigabe der Bibliothek, ein gültiges Token oder ein
+  zugelassener Netzbereich.</li>
 </ul>
 
 
