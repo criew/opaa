@@ -343,7 +343,7 @@ export default function PromptLibraryDetailPage() {
           headline={{
             idPrefix: 'prompt-library-detail',
             nameLabel: 'Name der Prompt-Bibliothek',
-            editLabel: 'Name und Beschreibung bearbeiten',
+            editLabel: 'Name und Beschreibung ändern',
             canEdit: canManage,
             onSave: saveHeadline,
           }}
@@ -357,9 +357,6 @@ export default function PromptLibraryDetailPage() {
           updatedAt={library.updatedAt}
           favorite={catalog.entry?.favorite}
           onFavoriteChange={catalog.setFavorite}
-          mayUseInSpace={mayUseInSpace}
-          reachFrozen={Boolean(library.succession)}
-          onAssociated={associationsChanged}
           onDelete={canDelete ? () => void handleDelete() : undefined}
           // ADR-0036, Entscheidung 6: state and addressee for every reader - no date, no former
           // owner, no reason.
@@ -408,7 +405,7 @@ export default function PromptLibraryDetailPage() {
                   mayUseInSpace={mayUseInSpace}
                   reachFrozen={Boolean(library.succession)}
                   refreshToken={associationsVersion}
-                  onChanged={() => catalog.reload()}
+                  onChanged={associationsChanged}
                 />
               )
             }

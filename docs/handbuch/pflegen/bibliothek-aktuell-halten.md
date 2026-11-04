@@ -19,9 +19,9 @@ Die Uhrzeit gilt in der Zeitzone des Servers.
 
 ## Sofort aktualisieren
 
-„Jetzt indizieren“ im Kopf der Detailseite startet einen Lauf. Wo die Quelle es kennt, liest
-„Vollabgleich starten“ alles neu und erkennt dabei auch Gelöschtes: als Verwalter über den Läufen im
-Reiter „Quelle“, als Bearbeiter im Menü „Weitere Aktionen“. Je Bibliothek läuft höchstens ein Lauf.
+„Jetzt indizieren“ startet einen Lauf. Es steht als Verwalter über den Läufen im Reiter „Quelle“,
+als Bearbeiter im Menü „Weitere Aktionen“. Daneben liest „Vollabgleich starten“ alles neu und erkennt
+dabei auch Gelöschtes, wo die Quelle es kennt. Je Bibliothek läuft höchstens ein Lauf.
 
 Ohne angebundene Quelle laden Sie Dokumente im Reiter „Dokumente“ hoch und löschen sie dort. Mit
 Quelle gibt es kein Löschen einzelner Dokumente; was in der Quelle fehlt, entfernt der Abgleich.

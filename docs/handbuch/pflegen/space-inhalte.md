@@ -12,7 +12,8 @@ Die Chats des Space suchen danach in den gewählten Bibliotheken und bieten die 
 3. Eine Kachel anhaken: Die Zuordnung wirkt sofort. Abhaken löst sie, die Meldung bietet
    „Rückgängig“ an.
 
-Oder aus dem [Katalog](../arbeiten/katalog.md#in-einem-space-verwenden) über „In Space verwenden“.
+Oder von der Detailseite des Arbeitsmittels, Reiter „Zuordnungen“, über
+[„In Space verwenden“](../arbeiten/katalog.md#in-einem-space-verwenden).
 
 **Eine Zuordnung gibt niemandem ein Leserecht.** Mitglieder ohne Leserecht sehen das Arbeitsmittel
 im Space nicht, und ihre Fragen suchen nicht darin. Die Eigentümerin des Arbeitsmittels erfährt

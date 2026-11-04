@@ -5,6 +5,7 @@ import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import type {
   ConnectionProfileRef,
@@ -15,7 +16,7 @@ import type {
   SourceBlock,
 } from '@/shared/api/types'
 import { formatCalendarDay } from '@/shared/utils/labels'
-import DetailSection from '@/shared/ui/DetailSection'
+import DetailSection, { TextAction } from '@/shared/ui/DetailSection'
 import LibraryRunList, { type RunningProgress } from './LibraryRunList'
 import LibraryLiveUpdateRow from './LibraryLiveUpdateRow'
 import { formatDay, runWord } from './libraryState'
@@ -72,6 +73,10 @@ export interface LibrarySourceSectionProps {
   unlistedScopeKeys?: string[]
   /** Starts a full reconciliation; absent where the source has none or the caller may not. */
   onFullSync?: () => void
+  /** Reads the source's changes now; absent where the caller may not trigger a run. */
+  onIndex?: () => void
+  /** What an index run and a full reconciliation each read, shown as the „Läufe"-head's tooltip. */
+  indexHint?: string
   /** Polling the running run gave up; the last known state stays. */
   statusUnknown?: boolean
 }
@@ -91,6 +96,8 @@ export default function LibrarySourceSection({
   running = null,
   unlistedScopeKeys = NO_KEYS,
   onFullSync,
+  onIndex,
+  indexHint,
   statusUnknown = false,
 }: LibrarySourceSectionProps) {
   const [searchParams] = useSearchParams()
@@ -361,16 +368,28 @@ export default function LibrarySourceSection({
           title="Läufe"
           id="library-runs"
           action={
-            // a status that could not be fetched is retried at the head's state word
-            onFullSync && !erasing && runs.length > 0 && !statusUnknown ? (
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={onFullSync}
-                disabled={running !== null}
-              >
-                Vollabgleich starten
-              </Button>
+            // „Jetzt indizieren" is the ordinary maintenance action, the schedule does the rest;
+            // „Vollabgleich starten" reads everything anew. Both are text actions at the head's
+            // right edge (guidelines 5.1), the tooltip says what each one reads. A status that
+            // could not be fetched is retried at the head's state word, so the full sync waits.
+            (onIndex || onFullSync) && !erasing ? (
+              <Stack direction="row" spacing={2} sx={{ alignItems: 'baseline' }}>
+                {onIndex && (
+                  // the span keeps the tooltip on a disabled action (while a run runs)
+                  <Tooltip title={indexHint ?? ''} describeChild>
+                    <span>
+                      <TextAction onClick={onIndex} disabled={running !== null || statusUnknown}>
+                        Jetzt indizieren
+                      </TextAction>
+                    </span>
+                  </Tooltip>
+                )}
+                {onFullSync && runs.length > 0 && !statusUnknown && (
+                  <TextAction onClick={onFullSync} disabled={running !== null}>
+                    Vollabgleich starten
+                  </TextAction>
+                )}
+              </Stack>
             ) : undefined
           }
         >

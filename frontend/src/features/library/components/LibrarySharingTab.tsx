@@ -63,28 +63,28 @@ export default function LibrarySharingTab({
         </Box>
 
         {sections && (
-          <>
-            <AssetGrantsSection
-              assetType="KNOWLEDGE_LIBRARY"
-              assetId={library.id}
-              capControl={
-                shareCapVisible ? (
-                  <ShareCapSwitch
-                    label="Freigabe an Alle erlaubt"
-                    description="Legt fest, ob diese Konnektorbibliothek überhaupt an alle Konten freigegeben werden darf. Wird die Erlaubnis entzogen, wird eine bereits bestehende Freigabe sofort zurückgenommen."
-                    checked={details?.allAccountsGrantAllowed ?? true}
-                    onSave={onSaveShareCap}
-                  />
-                ) : null
-              }
-            />
-
-            {externalAccessEnabled && <LibraryExternalAccessSection libraryId={libraryId} />}
-          </>
+          <AssetGrantsSection
+            assetType="KNOWLEDGE_LIBRARY"
+            assetId={library.id}
+            capControl={
+              shareCapVisible ? (
+                <ShareCapSwitch
+                  label="Freigabe an Alle erlaubt"
+                  description="Legt fest, ob diese Konnektorbibliothek überhaupt an alle Konten freigegeben werden darf. Wird die Erlaubnis entzogen, wird eine bereits bestehende Freigabe sofort zurückgenommen."
+                  checked={details?.allAccountsGrantAllowed ?? true}
+                  onSave={onSaveShareCap}
+                />
+              ) : null
+            }
+          />
         )}
 
-        {/* the single values close the tab as rows of the Reiter „Quelle“ under one line */}
+        {/* the single values close the tab as rows of the Reiter „Quelle“ under one line:
+           external access, diagnostics lock and derivation */}
         <Box sx={{ borderTop: sections ? 1 : 0, borderColor: 'divider' }}>
+          {sections && externalAccessEnabled && (
+            <LibraryExternalAccessSection libraryId={libraryId} />
+          )}
           {/* every reader sees the lock; only the responsible body gets the text action */}
           {details && (
             <DiagnosticsLockControl

@@ -6,7 +6,7 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import StateDot from '@/shared/ui/StateDot'
 import ListSearch from '@/shared/ui/ListSearch'
-import RowMenu from '@/shared/ui/RowMenu'
+import { TextAction } from '@/shared/ui/DetailSection'
 import type {
   AssetSpaceAssociationListResponse,
   AssetSpaceAssociationResponse,
@@ -219,16 +219,13 @@ export default function AssetSpacesList({
                     )}
                   </Box>
                   {mayDetach(association.spaceId) && (
-                    <RowMenu
-                      name={association.spaceName}
-                      items={[
-                        {
-                          label: 'Aus Space lösen',
-                          onClick: () =>
-                            void handleDetach(association.spaceId, association.spaceName),
-                        },
-                      ]}
-                    />
+                    <TextAction
+                      onClick={() => void handleDetach(association.spaceId, association.spaceName)}
+                      context={`Zuordnung zum Space „${association.spaceName}“`}
+                      sx={{ flex: 'none' }}
+                    >
+                      Lösen
+                    </TextAction>
                   )}
                 </Box>
               )

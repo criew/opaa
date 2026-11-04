@@ -28,13 +28,14 @@ Reiter für den Inhalt, für „Freigaben“ mit der Zeile „Herleitung“ („
 
 ## In einem Space verwenden
 
-1. Im Menü „⋯“ der Kachel oder der Detailansicht „In Space verwenden“ wählen.
-2. Einen der angebotenen Spaces anklicken. Die Zuordnung wirkt sofort.
+1. Die Detailansicht öffnen, Reiter „Zuordnungen“, rechts „In Space verwenden“.
+2. Im Suchfeld einen Space wählen (angeboten werden nur Spaces, die Sie kuratieren) und „Verwenden“.
+   Die Zuordnung wirkt sofort.
 
-Oder „Neuen Space damit anlegen“: Der [Space-Assistent](space-anlegen.md) öffnet mit dem
-Arbeitsmittel als gewähltem Inhalt.
+Oder „Neuen Space anlegen“: Der [Space-Assistent](space-anlegen.md) öffnet mit dem Arbeitsmittel als
+gewähltem Inhalt. Die Katalogkachel selbst bietet keine Zuordnung mehr an; sie liest und favorisiert.
 
-Gelöst wird eine Zuordnung im Reiter „Zuordnungen“ über „Aus Space lösen“, von der Verwaltung des
+Gelöst wird eine Zuordnung im selben Reiter über „Lösen“, von der Verwaltung des
 Arbeitsmittels oder von Kuratoren und Administratoren des Space. Private Spaces, zu denen Sie nicht
 gehören, zählt der Reiter nur („+ 2 weitere Spaces, die Sie nicht sehen dürfen“).
 

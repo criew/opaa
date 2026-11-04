@@ -13,7 +13,7 @@ function renderHeader(overrides: Partial<AssetDetailHeaderProps> = {}) {
     headline: {
       idPrefix: 'library-detail',
       nameLabel: 'Name der Bibliothek',
-      editLabel: 'Name und Beschreibung bearbeiten',
+      editLabel: 'Name und Beschreibung ändern',
       canEdit: false,
       onSave: vi.fn(async () => {}),
     },
@@ -21,7 +21,6 @@ function renderHeader(overrides: Partial<AssetDetailHeaderProps> = {}) {
     spaceCount: 2,
     spaceHref: '?tab=zuordnungen',
     responsible: { label: 'Bauamt', group: true },
-    mayUseInSpace: false,
     status: <span>Abgeschlossen</span>,
     ...overrides,
   }
