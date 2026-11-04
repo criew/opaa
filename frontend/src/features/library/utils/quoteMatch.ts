@@ -2,7 +2,8 @@
  * Finds a chunk's anchor quotes in the text items of a rendered page (a PDF text layer) and names
  * the items to mark. Text on both sides is compared case-insensitively and without any whitespace:
  * a text layer splits lines, words and even single words (at a font change) into separate items,
- * so neither the spaces between items nor those inside them can be trusted.
+ * so neither the spaces between items nor those inside them can be trusted. The `|` the index
+ * joins table cells with is dropped as well - a text layer has no such separator.
  */
 
 /** The marked items of one page, `[first, last]` inclusive, or `null` when nothing matched. */
@@ -20,7 +21,7 @@ export interface PageRole {
 const FALLBACK_PROBE_LENGTH = 24
 
 export function normalizedText(text: string): string {
-  return text.replace(/\s+/g, '').toLowerCase()
+  return text.replace(/[\s|]+/g, '').toLowerCase()
 }
 
 interface JoinedItems {
@@ -86,9 +87,9 @@ export function containsQuote(items: readonly string[], quote: string): boolean 
 
 /**
  * The items of a page to mark for a passage quoted by `quoteStart`/`quoteEnd`. A page
- * in the middle of a passage is marked whole; the start or end page from or to its quote. A quote
- * that is not found on its page leaves the page unmarked, so a viewer can say so instead of marking
- * the wrong text.
+ * in the middle of a passage is marked whole; the start or end page from or to its quote. A start
+ * quote that is not found leaves the page unmarked, so a viewer can say so instead of marking the
+ * wrong text; a missing end quote on the start page marks from the start to the end of the page.
  */
 export function markedItems(
   items: readonly string[],
@@ -118,7 +119,9 @@ export function markedItems(
       const end = findEnd(text, quoteEnd, role.startsHere ? from : 0)
       if (end >= 0) {
         to = end
-      } else if (!role.startsHere) {
+      } else if (role.startsHere) {
+        to = text.length
+      } else {
         return null
       }
     } else if (!role.startsHere) {
