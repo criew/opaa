@@ -9,8 +9,9 @@ zeigen, dass die elf Themenbereiche zusammen einen Arbeitstag tragen und nicht e
 
 **Aufbau je Fall:** Perspektive · Situation heute · Ablauf mit OPAA · genutzte Themenbereiche ·
 Verteilungs-Effekt (was daraus ein teilbares KI-Asset macht) · Phase. Die Bezeichnungen der Themenbereiche
-A–K und der Phasen 1–4 stammen aus [VISION.md](./VISION.md); die Begriffe *Space*, *Asset*,
-*Wissensbibliothek* und *Verteilungsstufe* sind im [Glossar](handbuch/referenz/glossar.md) definiert.
+A–K und der Phasen 1–4 stammen aus [VISION.md](./VISION.md); die Begriffe *Space* und
+*Wissensbibliothek* sind im [Glossar](handbuch/referenz/glossar.md) erklärt, *Asset* und *Verteilungsstufe* in
+[VISION.md](./VISION.md) (Leitprinzip Verteilbarkeit, Bereich C).
 
 **Querschnittsrahmen Finanzverwaltung:** Das **Steuergeheimnis (§ 30 AO)** verbietet praktisch jede
 Verarbeitung von Steuerdaten in fremden Clouds. Alle Fälle hier setzen deshalb lokal betriebene Modelle,

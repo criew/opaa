@@ -7,7 +7,7 @@ Die Dokumentation ist nach fünf Achsen sortiert — jedes Dokument gehört zu g
 
 | Achse | Ort | Frage, die sie beantwortet |
 |---|---|---|
-| **Vision & Plan** | [VISION.md](./VISION.md), [ROADMAP.md](./ROADMAP.md), [USE-CASES.md](./USE-CASES.md) | Wohin soll es gehen, in welchen Begriffen? |
+| **Vision & Plan** | [VISION.md](./VISION.md), [ROADMAP.md](./ROADMAP.md), [USE-CASES.md](./USE-CASES.md) | Wohin soll es gehen? |
 | **Spezifikation** | im Epic (GitHub), offene Ziele in der [Roadmap](./ROADMAP.md) | Wie soll sich ein Bereich im Zielbild verhalten? |
 | **Entscheidungen** | [`decisions/`](./decisions/) | Was wurde verbindlich entschieden, und warum? |
 | **Stand & Nachweis** | [`fortschritt/`](./fortschritt/) | Was ist heute tatsächlich gebaut — belegt? |
@@ -294,7 +294,7 @@ Den tatsächlichen Stand führt der [Gesamtstand](./fortschritt/gesamtstand.md).
 
 **Was bedeutet „C5-fähig"?**
 → Auf die Prüfung des Betreibers ausgelegt, ausdrücklich **nicht** zertifiziert. Siehe
-[VISION.md](./VISION.md), Häufige Fragen
+[VISION.md](./VISION.md#häufige-fragen), Häufige Fragen
 
 **Was heißt das für die Personalvertretung?**
 → [ADR-0068](./decisions/0068-mitbestimmungsfaehigkeit.md) und
