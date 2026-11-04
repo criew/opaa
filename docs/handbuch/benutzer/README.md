@@ -25,18 +25,25 @@ eine Aufgabe eine Rolle braucht, nennt die Seite sie oben.
 | Mitglieder, Rollen, Eigentümer | [Mitglieder eines Space verwalten](space-mitglieder.md) |
 | Name, Anweisung, Archivieren, Löschen | [Space-Einstellungen](space-einstellungen.md) |
 
-## Bibliotheken
+## Katalog
 
 | Aufgabe | Seite |
 |---|---|
 | Arbeitsmittel finden und einem Space zuordnen | [Katalog nutzen](katalog.md) |
-| Eigene Dokumente durchsuchbar machen | [Bibliothek anlegen](bibliothek-anlegen.md) |
+| Eigene Dokumente durchsuchbar machen | [Wissensbibliothek anlegen](bibliothek-anlegen.md) |
 | Eigene Prompts schreiben | [Prompt-Bibliothek anlegen](prompt-bibliothek-anlegen.md) |
-| Für andere öffnen oder übergeben | [Arbeitsmittel teilen](arbeitsmittel-teilen.md) |
+
+## Bibliothek pflegen
+
+| Aufgabe | Seite |
+|---|---|
+| Für andere oder für OpenCode und Co. öffnen, übergeben | [Bibliothek teilen und für KI-Werkzeuge freigeben](arbeitsmittel-teilen.md) |
 | Zeitplan, Läufe, Meldungen | [Bibliothek aktuell halten](bibliothek-aktuell-halten.md) |
 | Titel, Dokumentart, eigene Felder | [Metadaten pflegen](metadaten-pflegen.md) |
-| Quelle anbinden | [Konnektoren](konnektoren/README.md) |
-| Für OpenCode und Co. öffnen | [Für externe KI-Werkzeuge freigeben](fuer-ki-werkzeuge-freigeben.md) |
+
+## Quellen anbinden
+
+Jede Quelle von Confluence bis SharePoint mit Einrichtung und Grenzen: [Konnektoren](konnektoren/README.md).
 
 ## Konto und Zugriff
 

@@ -10,7 +10,7 @@ Wer welche Tätigkeit darf, auf einen Blick. „—“ heißt: keine Voraussetzu
 | [Dateien anhängen und Spracheingabe](../benutzer/anhaengen-und-diktieren.md) | — | Mitglied im Space | Spracheingabe eingerichtet | Anhänge an, Diktat aus |
 | [Antworten weitergeben](../benutzer/antworten-weitergeben.md), [Belege prüfen](../benutzer/belege-pruefen.md) | — | wer den Chat führt | — | ja |
 | [Katalog nutzen](../benutzer/katalog.md) | — | Leserecht; zuordnen als *Kurator* | — | ja |
-| [Bibliothek anlegen](../benutzer/bibliothek-anlegen.md) | — | — | „Bibliotheken für Uploads anlegen“, „Konnektorbibliotheken anlegen“ | Upload und fünf Quellarten für alle |
+| [Wissensbibliothek anlegen](../benutzer/bibliothek-anlegen.md) | — | — | „Bibliotheken für Uploads anlegen“, „Konnektorbibliotheken anlegen“ | Upload und fünf Quellarten für alle |
 | [Prompt-Bibliothek anlegen](../benutzer/prompt-bibliothek-anlegen.md) | — | Prompts schreiben ab *Bearbeiter* | „Prompt-Bibliotheken anlegen“ | jedes Konto |
 | [Space anlegen](../benutzer/space-anlegen.md) | — | — | „Spaces anlegen“ | jedes Konto |
 | [Konto verbinden](../benutzer/konto-verbinden.md) | — | — | Zugang für Personen freigegeben | kein Zugang |
@@ -22,10 +22,10 @@ Wer welche Tätigkeit darf, auf einen Blick. „—“ heißt: keine Voraussetzu
 
 | Tätigkeit | Systemrolle | Rolle am Objekt | Anlegerecht oder Schalter | Ab Werk |
 |---|---|---|---|---|
-| [Arbeitsmittel teilen](../benutzer/arbeitsmittel-teilen.md) | — | *Verwalter*; übergeben *Eigentümer* | — | wer angelegt hat |
+| [Bibliothek teilen und für KI-Werkzeuge freigeben](../benutzer/arbeitsmittel-teilen.md) | — | *Verwalter*; übergeben *Eigentümer* | — | wer angelegt hat |
 | [Bibliothek aktuell halten](../benutzer/bibliothek-aktuell-halten.md) | — | indizieren, hochladen ab *Bearbeiter*; Zeitplan, Verbindung ab *Verwalter* | — | wer angelegt hat |
 | [Metadaten pflegen](../benutzer/metadaten-pflegen.md) | — | Werte ab *Bearbeiter*; Felder ab *Verwalter* | — | wer angelegt hat |
-| [Für externe KI-Werkzeuge freigeben](../benutzer/fuer-ki-werkzeuge-freigeben.md) | oder Systemverwaltung | *Verwalter* | externe KI-Werkzeuge an | aus |
+| [Für KI-Werkzeuge freigeben](../benutzer/arbeitsmittel-teilen.md#für-externe-ki-werkzeuge-freigeben) | oder Systemverwaltung | *Verwalter* | externe KI-Werkzeuge an | aus |
 | [Inhalte eines Space zuordnen](../benutzer/space-inhalte.md) | — | *Kurator*, *Administrator* oder Eigentümer, plus Leserecht | — | wer angelegt hat |
 | [Mitglieder eines Space verwalten](../benutzer/space-mitglieder.md) | — | *Administrator* oder Eigentümer | — | wer angelegt hat |
 | [Space einstellen](../benutzer/space-einstellungen.md) | archivieren, löschen auch Systemverwaltung | *Administrator*; archivieren, löschen Eigentümer | — | wer angelegt hat |

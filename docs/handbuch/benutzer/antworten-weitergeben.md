@@ -15,5 +15,4 @@ Kopierte Antworten enthalten einen KI-Vermerk mit Datum.
 1. In der Chatliste das Menü des Chats öffnen.
 2. „Exportieren als Markdown“ oder „Exportieren als PDF“ wählen.
 
-Die Datei enthält alle Fragen und Antworten mit ihren Belegen und denselben KI-Vermerk. Exportieren
-kann nur, wer den Chat führt.
+Die Datei enthält alle Fragen und Antworten mit ihren Belegen und denselben KI-Vermerk.

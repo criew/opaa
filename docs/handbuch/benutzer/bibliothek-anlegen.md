@@ -1,4 +1,4 @@
-# Bibliothek anlegen
+# Wissensbibliothek anlegen
 
 Sie haben danach eine Wissensbibliothek, deren Dokumente in Ihren Spaces durchsucht werden.
 

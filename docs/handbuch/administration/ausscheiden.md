@@ -48,6 +48,6 @@ darüber in Schritten.
 **Gut zu wissen:**
 
 - Für ein einzelnes Arbeitsmittel genügt „Übergeben“ im Reiter „Freigaben“
-  ([Arbeitsmittel teilen](../benutzer/arbeitsmittel-teilen.md#eigentum-übergeben)).
+  ([Eigentum übergeben](../benutzer/arbeitsmittel-teilen.md#eigentum-übergeben)).
 - Eine Übertragung läuft nie automatisch, auch nicht nach einer Reorganisation im Verzeichnis.
 - Vorschau und Übertragung stehen im Nachweisprotokoll, auch eine Vorschau, die niemand ausführt.
