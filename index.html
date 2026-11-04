@@ -2,729 +2,381 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OPAA — souveräne, quelloffene KI-Plattform für die öffentliche Verwaltung</title>
-<meta name="description" content="OPAA macht das Wissen Ihres Hauses belegbar befragbar, lässt Agenten wiederkehrende Aufgaben übernehmen und verteilt beides über die ganze Organisation — im eigenen Rechenzentrum, quelloffen unter AGPL-3.0.">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OPAA – souveräner KI-Assistent für die öffentliche Verwaltung</title>
+<meta name="description" content="OPAA durchsucht die Bestände Ihres Hauses und antwortet mit geprüften Fundstellen, im eigenen Rechenzentrum, auch ohne Netzanbindung. Quelloffen unter AGPL-3.0.">
+<link rel="canonical" href="https://opaa.io/">
+<link rel="preload" href="fonts/quicksand-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/source-sans-3-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  html {
-    scroll-behavior: smooth;
-  }
-
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    background: #0d1117;
-    color: #e6edf3;
-    line-height: 1.6;
-  }
-
-  /* === NAV === */
-  .nav {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 100;
-    background: rgba(13, 17, 23, 0.85);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid #21262d;
-  }
-
-  .nav-inner {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 0 24px;
-    height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .logo-area {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    text-decoration: none;
-  }
-
-  .logo-icon {
-    width: 36px;
-    height: 36px;
-    background: linear-gradient(135deg, #137fec 0%, #0ea5e9 100%);
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 900;
-    font-size: 17px;
-    color: white;
-  }
-
-  .logo-text {
-    font-size: 24px;
-    font-weight: 800;
-    letter-spacing: -1px;
-    background: linear-gradient(135deg, #137fec, #38bdf8);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
-  .nav-links {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .nav-link {
-    color: #8b949e;
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 500;
-    padding: 8px 14px;
-    border-radius: 8px;
-    transition: color 0.2s, background 0.2s;
-  }
-
-  .nav-link:hover {
-    color: #e6edf3;
-    background: rgba(255,255,255,0.06);
-  }
-
-  .nav-link svg {
-    width: 18px;
-    height: 18px;
-    vertical-align: middle;
-    margin-right: 4px;
-  }
-
-  /* === MOBILE NAV === */
-  .nav-hamburger {
-    display: none;
-    background: none;
-    border: none;
-    color: #8b949e;
-    cursor: pointer;
-    padding: 8px;
-  }
-
-  .nav-hamburger svg {
-    width: 24px;
-    height: 24px;
-  }
-
-  /* === SECTIONS === */
-  .section {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 0 24px;
-  }
-
-  /* === HERO === */
-  .hero {
-    padding-top: 120px;
-    padding-bottom: 64px;
-    text-align: center;
-  }
-
-  .hero-badge {
-    display: inline-block;
-    background: rgba(19, 127, 236, 0.15);
-    border: 1px solid rgba(19, 127, 236, 0.3);
-    color: #58a6ff;
-    font-size: 12px;
-    font-weight: 600;
-    padding: 6px 16px;
-    border-radius: 20px;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    margin-bottom: 24px;
-  }
-
-  .hero h1 {
-    font-size: clamp(32px, 5vw, 52px);
-    font-weight: 800;
-    letter-spacing: -1.5px;
-    line-height: 1.15;
-    margin-bottom: 20px;
-  }
-
-  .hero h1 .accent {
-    background: linear-gradient(135deg, #137fec, #38bdf8);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
-  .hero p {
-    font-size: 18px;
-    color: #8b949e;
-    max-width: 640px;
-    margin: 0 auto 32px;
-    line-height: 1.7;
-  }
-
-  .hero-buttons {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 24px;
-    border-radius: 10px;
-    font-family: inherit;
-    font-size: 15px;
-    font-weight: 600;
-    text-decoration: none;
-    transition: transform 0.15s, box-shadow 0.15s;
-    cursor: pointer;
-    border: none;
-  }
-
-  .btn:hover {
-    transform: translateY(-1px);
-  }
-
-  .btn-primary {
-    background: linear-gradient(135deg, #137fec 0%, #0ea5e9 100%);
-    color: white;
-    box-shadow: 0 4px 16px rgba(19, 127, 236, 0.3);
-  }
-
-  .btn-primary:hover {
-    box-shadow: 0 6px 24px rgba(19, 127, 236, 0.4);
-  }
-
-  .btn-secondary {
-    background: #21262d;
-    color: #c9d1d9;
-    border: 1px solid #30363d;
-  }
-
-  .btn-secondary:hover {
-    background: #30363d;
-    color: #e6edf3;
-  }
-
-  .btn svg {
-    width: 18px;
-    height: 18px;
-  }
-
-  /* === SCREENSHOTS === */
-  .screenshots {
-    padding: 48px 0 64px;
-  }
-
-  .screenshots-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
-  }
-
-  .screenshot-card {
-    background: #161b22;
-    border: 1px solid #21262d;
-    border-radius: 14px;
-    overflow: hidden;
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
-
-  .screenshot-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
-  }
-
-  .screenshot-card img {
-    width: 100%;
-    height: auto;
-    display: block;
-    border-bottom: 1px solid #21262d;
-  }
-
-  .screenshot-info {
-    padding: 16px 20px;
-  }
-
-  .screenshot-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    display: inline-block;
-    margin-right: 8px;
-    vertical-align: middle;
-  }
-
-  .dot-blue { background: #137fec; }
-  .dot-green { background: #2ea043; }
-
-  .screenshot-info h3 {
-    font-size: 16px;
-    font-weight: 600;
-    color: #c9d1d9;
-    display: inline;
-    vertical-align: middle;
-  }
-
-  .screenshot-info p {
-    font-size: 13px;
-    color: #6e7681;
-    margin-top: 6px;
-    line-height: 1.5;
-  }
-
-  /* === FEATURES === */
-  .features {
-    padding: 64px 0;
-  }
-
-  .section-title {
-    text-align: center;
-    margin-bottom: 48px;
-  }
-
-  .section-title h2 {
-    font-size: 28px;
-    font-weight: 800;
-    letter-spacing: -0.5px;
-    margin-bottom: 8px;
-  }
-
-  .section-title p {
-    color: #8b949e;
-    font-size: 16px;
-  }
-
-  .features-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 16px;
-  }
-
-  .feature-card {
-    background: linear-gradient(135deg, rgba(19, 127, 236, 0.06) 0%, rgba(14, 165, 233, 0.03) 100%);
-    border: 1px solid #21262d;
-    border-radius: 14px;
-    padding: 24px 16px;
-    text-align: center;
-    transition: border-color 0.2s, transform 0.2s;
-  }
-
-  .feature-card:hover {
-    border-color: rgba(19, 127, 236, 0.3);
-    transform: translateY(-2px);
-  }
-
-  .feature-icon {
-    width: 48px;
-    height: 48px;
-    margin: 0 auto 14px;
-    background: rgba(19, 127, 236, 0.12);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-  }
-
-  .feature-card h3 {
-    font-size: 14px;
-    font-weight: 700;
-    margin-bottom: 6px;
-  }
-
-  .feature-card p {
-    font-size: 12px;
-    color: #8b949e;
-    line-height: 1.5;
-  }
-
-  /* === COMPARISON === */
-  .comparison {
-    padding: 64px 0;
-  }
-
-  .comp-wrapper {
-    background: #161b22;
-    border: 1px solid #21262d;
-    border-radius: 14px;
-    padding: 32px;
-    overflow-x: auto;
-  }
-
-  .comp-table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-
-  .comp-table th, .comp-table td {
-    padding: 12px 16px;
-    font-size: 14px;
-    text-align: left;
-    border-bottom: 1px solid #21262d;
-  }
-
-  .comp-table th {
-    font-weight: 700;
-    color: #c9d1d9;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .comp-table th:first-child { width: 25%; }
-  .comp-table th:nth-child(2) { color: #58a6ff; }
-
-  .comp-table td { color: #8b949e; }
-  .comp-table td:nth-child(2) { color: #c9d1d9; font-weight: 500; }
-
-  .comp-table tr:last-child td { border-bottom: none; }
-
-  .check { color: #2ea043; font-weight: 700; }
-  .cross { color: #6e7681; }
-
-  .comp-note {
-    margin-top: 20px;
-    text-align: center;
-    font-size: 13px;
-    color: #6e7681;
-  }
-
-  /* === FOOTER === */
-  .footer {
-    border-top: 1px solid #21262d;
-    padding: 32px 0;
-    margin-top: 48px;
-  }
-
-  .footer-inner {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 16px;
-  }
-
-  .tech-stack {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .tech-tag {
-    background: #21262d;
-    color: #8b949e;
-    font-size: 12px;
-    font-weight: 500;
-    padding: 5px 10px;
-    border-radius: 6px;
-  }
-
-  .footer-right {
-    text-align: right;
-  }
-
-  .footer-right a {
-    color: #58a6ff;
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 600;
-  }
-
-  .footer-right a:hover { text-decoration: underline; }
-
-  .footer-links {
-    margin-top: 4px;
-    font-size: 13px;
-    color: #6e7681;
-  }
-
-  .footer-license {
-    font-size: 12px;
-    color: #6e7681;
-    margin-top: 4px;
-  }
-
-  /* === RESPONSIVE === */
-  @media (max-width: 900px) {
-    .features-grid {
-      grid-template-columns: repeat(3, 1fr);
-    }
-  }
-
-  @media (max-width: 768px) {
-    .nav-links .nav-link {
-      display: none;
-    }
-
-    .nav-hamburger {
-      display: block;
-    }
-
-    .nav-links.open .nav-link {
-      display: block;
-    }
-
-    .nav-links.open {
-      position: absolute;
-      top: 64px;
-      left: 0;
-      right: 0;
-      background: rgba(13, 17, 23, 0.95);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid #21262d;
-      padding: 16px 24px;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .screenshots-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .features-grid {
-      grid-template-columns: repeat(2, 1fr);
-    }
-
-    .comp-wrapper {
-      padding: 16px;
-    }
-
-    .footer-inner {
-      flex-direction: column;
-      text-align: center;
-    }
-
-    .footer-right {
-      text-align: center;
-    }
-
-    .tech-stack {
-      justify-content: center;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .features-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .hero h1 {
-      font-size: 28px;
-    }
-
-    .hero p {
-      font-size: 15px;
-    }
-  }
+/* Fonts are served from this origin (OFL, see fonts/): no request leaves the page except to opaa.io. */
+@font-face{font-family:'Quicksand';font-style:normal;font-weight:300 700;font-display:swap;src:url(fonts/quicksand-latin.woff2) format('woff2')}
+@font-face{font-family:'Source Sans 3';font-style:normal;font-weight:200 900;font-display:swap;src:url(fonts/source-sans-3-latin.woff2) format('woff2')}
+/* Layout: schmale Lesespalte (1120px), helle Fläche mit feinem Raster, schwebende Pill-Navigation, Produkt-Screenshots als große Karten. Farben aus den OPAA-Gestaltungsleitlinien (Navy, Blau-700, Off-White). */
+:root{
+  --bg:#FFFFFF; --bg-2:#F6F8FB; --bg-3:#EEF2F7; --grid:rgba(1,33,66,.055);
+  --fg:#012142; --fg-2:#3B4958; --fg-3:#556473; --line:#CBD4DF;
+  --accent:#0B6FBC; --accent-2:#1292EE; --accent-soft:#E7F4FE; --navy:#012142; --ok:#11774F; --warn:#8F5A00;
+  --display:'Quicksand','Inter',system-ui,sans-serif; --body:'Source Sans 3','Segoe UI',system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+img{max-width:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:17px;line-height:1.55;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:44px 44px}
+a{color:var(--accent)}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:clamp(34px,5.2vw,58px);line-height:1.08;font-weight:700}
+h2{font-size:clamp(26px,3.4vw,38px);line-height:1.15;font-weight:700}
+h3{font-size:19px;font-weight:700;line-height:1.3}
+p{margin:0}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.eyebrow{font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.lead{font-size:clamp(18px,2vw,21px);color:var(--fg-2);max-width:40em}
+.muted{color:var(--fg-3)}
+.small{font-size:14px}
+
+/* Beta-Banner */
+.beta{background:var(--navy);color:#fff;font-size:14px}
+.beta .wrap{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding-block:8px}
+.beta .tag{font-family:var(--display);font-weight:700;font-size:11px;letter-spacing:.14em;background:#F5B83D;color:var(--navy);padding:3px 8px;border-radius:999px}
+.beta a{color:#fff}
+
+/* Navigation */
+.navbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;padding-top:14px}
+.pill{background:rgba(255,255,255,.92);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:999px;box-shadow:0 6px 24px rgba(1,33,66,.08);
+  display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px 8px 14px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--fg)}
+.mark{width:32px;height:32px;border-radius:9px;background:var(--navy);display:grid;place-items:center}
+.brand b{font-family:var(--display);font-size:20px;font-weight:700;letter-spacing:.02em}
+.brand .b{font-size:10px;font-weight:700;letter-spacing:.12em;background:var(--bg-3);color:var(--fg-3);padding:3px 7px;border-radius:999px;font-family:var(--display)}
+.links{display:flex;gap:4px;align-items:center}
+.links a{text-decoration:none;color:var(--fg-2);font-weight:600;padding:8px 12px;border-radius:999px;font-size:15px}
+.links a:hover{background:var(--bg-3);color:var(--fg)}
+.btn{display:inline-flex;align-items:center;gap:8px;text-decoration:none;font-family:var(--display);font-weight:700;font-size:15px;padding:11px 18px;border-radius:999px;border:1px solid transparent}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#085B9C}
+.btn-ghost{background:#fff;color:var(--fg);border-color:var(--line)}
+.btn-ghost:hover{background:var(--bg-2)}
+@media (max-width:760px){.pill{flex-wrap:wrap;border-radius:22px;padding:8px 10px}.links{order:3;width:100%;justify-content:center;border-top:1px solid var(--line);margin-top:6px;padding-top:6px}.links a{padding:6px 10px;font-size:14px}}
+
+/* Hero */
+.hero{padding-block:72px 40px;text-align:center}
+.hero .inner{display:grid;gap:22px;justify-items:center}
+.hero h1 span{color:var(--accent)}
+.ctas{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.facts{display:flex;gap:8px 22px;flex-wrap:wrap;justify-content:center;font-size:14px;color:var(--fg-3)}
+.facts span::before{content:"✓ " / "";color:var(--ok);font-weight:700}
+
+/* Browserrahmen */
+.shot{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 30px 60px -30px rgba(1,33,66,.35),0 2px 6px rgba(1,33,66,.06);overflow:hidden}
+.shot .bar{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--bg-2);border-bottom:1px solid var(--line)}
+.shot .bar i{width:10px;height:10px;border-radius:50%;background:var(--line);display:inline-block}
+.shot .bar .url{margin-left:8px;flex:1;background:#fff;border:1px solid var(--line);border-radius:6px;font-size:12px;color:var(--fg-3);padding:3px 10px;text-align:left;font-family:ui-monospace,monospace}
+.shot img{display:block;width:100%;height:auto}
+.hero .shot{margin-top:28px;max-width:860px;width:100%}
+.callouts{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+.callout{font-size:13px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:5px 12px;color:var(--fg-2)}
+.callout b{color:var(--accent)}
+
+/* Abschnitte */
+section{padding-block:64px}
+.head{display:grid;gap:10px;max-width:46em;margin-bottom:36px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;display:grid;gap:10px;align-content:start;min-width:0}
+.card .ico{width:40px;height:40px;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}
+.card p{color:var(--fg-2);font-size:15.5px}
+.card .k{font-size:13px;color:var(--fg-3)}
+
+/* Quellen-Diagramm */
+.diagram{overflow-x:auto}
+.diagram svg{display:block;width:100%;max-width:100%;height:auto;font-family:'Source Sans 3','Segoe UI',Arial,sans-serif}
+.diagram svg text{paint-order:stroke}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+@media (max-width:820px){.two{grid-template-columns:1fr}}
+.cap{font-size:14px;color:var(--fg-3);margin-top:10px}
+
+/* Unterschiede */
+.diff{display:grid;gap:0;border-top:1px solid var(--line)}
+.diff div{display:grid;grid-template-columns:minmax(180px,.9fr) 2fr;gap:12px 28px;padding:18px 0;border-bottom:1px solid var(--line)}
+.diff h3{font-size:17px}
+.diff p{color:var(--fg-2);font-size:16px}
+@media (max-width:640px){.diff div{grid-template-columns:1fr}}
+
+/* Getting started */
+.start{background:var(--navy);color:#fff;border-radius:22px;padding:40px clamp(20px,4vw,48px);display:grid;grid-template-columns:1.1fr 1fr;gap:32px;align-items:center}
+.start h2{color:#fff}
+.start p{color:#C6E3FC}
+.start .btn-primary{background:#fff;color:var(--navy)}
+.start .btn-primary:hover{background:#E7F4FE}
+.start ol{margin:0;padding-left:20px;display:grid;gap:10px;color:#fff}
+.start code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13.5px;background:rgba(255,255,255,.1);padding:2px 7px;border-radius:6px;word-break:break-all}
+.start .more{display:flex;gap:6px 18px;flex-wrap:wrap;font-size:14px}
+.start .more a{color:#9BCEFA}
+@media (max-width:820px){.start{grid-template-columns:1fr}}
+
+footer{padding-block:36px 48px;font-size:14px;color:var(--fg-3)}
+footer .wrap{display:flex;justify-content:space-between;gap:12px 24px;flex-wrap:wrap}
+footer a{color:var(--fg-2);text-decoration:none;margin-right:18px}
+a:focus-visible,.btn:focus-visible{outline:3px solid var(--accent-2);outline-offset:2px}
+@media (prefers-reduced-motion:no-preference){.shot{transition:transform .3s}.shot:hover{transform:translateY(-2px)}}
 </style>
 </head>
 <body>
 
-<!-- NAV -->
-<nav class="nav">
-  <div class="nav-inner">
-    <a href="#" class="logo-area">
-      <div class="logo-icon">O</div>
-      <div class="logo-text">OPAA</div>
-    </a>
-    <div class="nav-links" id="navLinks">
-      <a class="nav-link" href="https://demo.opaa.io" target="_blank">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-        <span>Demo</span>
-      </a>
-      <a class="nav-link" href="https://github.com/criew/opaa" target="_blank">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-        GitHub
-      </a>
+<div class="beta">
+  <div class="wrap">
+    <span class="tag">BETA</span>
+    <span>OPAA ist im Aufbau und noch nicht final freigegeben. Fragen und Pilotinteresse: <a href="mailto:info@opaa.io">info@opaa.io</a></span>
+  </div>
+</div>
+
+<div class="navbar"><div class="wrap">
+  <nav class="pill" aria-label="Hauptnavigation">
+    <a class="brand" href="#"><span class="mark" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12.5h5"/></svg></span><b>OPAA</b><span class="b">BETA</span></a>
+    <div class="links">
+      <a href="https://opaa.io/handbuch/">Handbuch</a>
+      <a href="https://demo.opaa.io">Demo</a>
+      <a href="https://github.com/criew/opaa">GitHub</a>
     </div>
-    <button class="nav-hamburger" onclick="document.getElementById('navLinks').classList.toggle('open')" aria-label="Menu">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-    </button>
-  </div>
-</nav>
+    <a class="btn btn-primary" href="https://opaa.io/handbuch/betreiben/installation.html">Selbst installieren</a>
+  </nav>
+</div></div>
 
-<!-- HERO -->
-<section class="hero section">
-  <div class="hero-badge">Quelloffen &bull; Betrieb im eigenen Haus &bull; AGPL-3.0</div>
-  <h1>
-    <span>Antworten mit Fundstelle.</span><br>
-    <span class="accent">KI, die im ganzen Haus ankommt.</span>
-  </h1>
-  <p>
-    OPAA ist die quelloffene KI-Plattform für die öffentliche Verwaltung: Sie macht das Wissen Ihres Hauses
-    belegbar befragbar, lässt Agenten wiederkehrende Aufgaben übernehmen und verteilt beides über die ganze
-    Organisation — im eigenen Rechenzentrum, ohne dass Daten das Haus verlassen.
-  </p>
-  <div class="hero-buttons">
-    <a class="btn btn-primary" href="https://demo.opaa.io" target="_blank">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-      <span>Demo ansehen</span>
-    </a>
-    <a class="btn btn-secondary" href="https://github.com/criew/opaa" target="_blank">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-      GitHub
-    </a>
+<header class="hero"><div class="wrap inner">
+  <span class="eyebrow">Quelloffen · AGPL-3.0 · für die öffentliche Verwaltung</span>
+  <h1>Fragen. Belegen. <span>Entscheiden.</span></h1>
+  <p class="lead">OPAA ist der souveräne KI-Assistent für die öffentliche Verwaltung. Durchsuchen Sie die Bestände Ihres Hauses, mit geprüften Fundstellen, im eigenen Rechenzentrum, auch ohne Netzanbindung.</p>
+  <div class="ctas">
+    <a class="btn btn-primary" href="https://demo.opaa.io">Demo ansehen</a>
+    <a class="btn btn-ghost" href="https://opaa.io/handbuch/betreiben/installation.html">Getting Started</a>
   </div>
-</section>
+  <div class="facts"><span>Lokale Modelle</span><span>Rechte in der Suche</span><span>Jeder Beleg geprüft</span><span>Betrieb auch air-gapped</span></div>
+  <figure class="shot" style="margin-bottom:0">
+    <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">demo.opaa.io · Space „Meldewesen &amp; Ausweise“</span></div>
+    <img src="img/antwort.png" fetchpriority="high" width="2880" height="1800" alt="OPAA-Chat: Auf die Frage nach den Kosten eines Personalausweises für eine 22-Jährige antwortet OPAA mit 26,20 Euro und Fußnote 1, darunter der Status „Belegt“.">
+  </figure>
+  <div class="callouts">
+    <span class="callout"><b>Frage</b> in Umgangssprache</span>
+    <span class="callout"><b>Antwort</b> mit Fußnote je Aussage</span>
+    <span class="callout"><b>„Belegt“</b> nach Prüfung gegen die Fundstellen</span>
+  </div>
+</div></header>
 
-<!-- SCREENSHOTS -->
-<section class="screenshots section">
-  <div class="screenshots-grid">
-    <div class="screenshot-card">
-      <img src="img/chat-interface.png" alt="Antwort mit Fundstelle in der Weboberfläche">
-      <div class="screenshot-info">
-        <span class="screenshot-dot dot-blue"></span>
-        <h3>Antwort mit Fundstelle</h3>
-        <p>
-          Die Frage in Umgangssprache, die Antwort mit Fundstelle und Vertraulichkeitsstufe — mit einem Klick
-          zur Textstelle im Originaldokument.
-        </p>
+<section id="kern"><div class="wrap">
+  <div class="head">
+    <span class="eyebrow">Vier Dinge, auf die es ankommt</span>
+    <h2>Gebaut für die Verwaltung</h2>
+  </div>
+  <div class="cards">
+    <article class="card">
+      <span class="ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg></span>
+      <h3>Souverän, bis hin zu air-gapped</h3>
+      <p>Daten verlassen das Haus nicht. Modelle laufen auf eigener Hardware, ein Offline-Bündel bringt OPAA in Netze ohne Internet.</p>
+      <span class="k">Docker Compose · Kubernetes · Offline-Bündel</span>
+    </article>
+    <article class="card">
+      <span class="ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></span>
+      <h3>Alle Bestände des Hauses</h3>
+      <p>Netzlaufwerk, SharePoint, Confluence, Nextcloud, Web und RSS werden zu Bibliotheken, die sich selbst aktuell halten.</p>
+      <span class="k">11 Konnektoren · PDF, Office, Markdown, CSV</span>
+    </article>
+    <article class="card">
+      <span class="ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><rect x="15" y="11" width="7" height="6" rx="1.2"/><path d="M16.5 11V9.5a2 2 0 0 1 4 0V11"/></svg></span>
+      <h3>Rechte sitzen in der Suche</h3>
+      <p>Gruppen aus dem Verzeichnisdienst, Rollen je Space und Bibliothek. Eine Antwort enthält nur, was die fragende Person lesen darf.</p>
+      <span class="k">Dieselbe Frage, zwei Konten, zwei belegte Antworten</span>
+    </article>
+    <article class="card">
+      <span class="ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/><path d="M9 13l2 2 4-4"/></svg></span>
+      <h3>Belege geprüft, nicht nur verlinkt</h3>
+      <p>Jede Aussage trägt eine Fußnote, jeder Beleg wird gegen die Fundstellen geprüft. Was nicht belegbar ist, wird nicht behauptet.</p>
+      <span class="k">Ein Klick führt zur markierten Stelle im Dokument</span>
+    </article>
+  </div>
+</div></section>
+
+<section id="quellen" style="background:var(--bg-2);border-block:1px solid var(--line)"><div class="wrap">
+  <div class="head">
+    <span class="eyebrow">Wissensquellen</span>
+    <h2>Eine Frage, alle Bestände</h2>
+    <p class="lead">OPAA sucht in den Bibliotheken, die dem Space zugeordnet und für die fragende Person lesbar sind.</p>
+  </div>
+  <div class="diagram">
+  <svg viewBox="0 0 1100 520" role="img" aria-labelledby="dg-title">
+    <title id="dg-title">Diagramm: Browser mit Chat, verbunden über OPAA mit fünf Quellarten</title>
+    <defs>
+      <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5 0 10z" fill="#0B6FBC"/></marker>
+    </defs>
+    <!-- Browser mit Chat -->
+    <g transform="translate(20 130)">
+      <rect x="0" y="0" width="330" height="250" rx="14" fill="#fff" stroke="#CBD4DF"/>
+      <rect x="0" y="0" width="330" height="30" rx="14" fill="#F6F8FB"/><rect x="0" y="16" width="330" height="14" fill="#F6F8FB"/>
+      <circle cx="18" cy="15" r="4" fill="#CBD4DF"/><circle cx="32" cy="15" r="4" fill="#CBD4DF"/><circle cx="46" cy="15" r="4" fill="#CBD4DF"/>
+      <text x="165" y="20" font-size="11" fill="#556473" text-anchor="middle">opaa.stadt-rheinfurt.example</text>
+      <rect x="18" y="48" width="294" height="34" rx="10" fill="#E7F4FE"/>
+      <text x="30" y="70" font-size="13" fill="#012142" textLength="270" lengthAdjust="spacingAndGlyphs">Was kostet ein Personalausweis für eine 22-Jährige?</text>
+      <text x="18" y="112" font-size="13" fill="#012142">Für eine 22-Jährige beträgt die Gebühr</text>
+      <text x="18" y="132" font-size="13" fill="#012142"><tspan font-weight="700">26,20 Euro</tspan> (unter 24 Jahren). <tspan fill="#0B6FBC" font-size="10" baseline-shift="super">1</tspan></text>
+      <rect x="18" y="150" width="84" height="22" rx="11" fill="#fff" stroke="#CBD4DF"/>
+      <circle cx="31" cy="161" r="5" fill="none" stroke="#11774F" stroke-width="1.6"/><path d="M28.5 161l2 2 3.5-4" fill="none" stroke="#11774F" stroke-width="1.6"/>
+      <text x="40" y="165" font-size="12" font-weight="600" fill="#012142">Belegt</text>
+      <text x="110" y="165" font-size="11" fill="#556473">1 Stelle in 1 Dokument</text>
+      <rect x="18" y="200" width="294" height="32" rx="8" fill="#fff" stroke="#0B6FBC"/>
+      <text x="30" y="221" font-size="12" fill="#556473">Nachricht eingeben … @ für Quellen</text>
+    </g>
+    <text x="185" y="110" font-size="13" font-weight="700" fill="#012142" text-anchor="middle" font-family="Quicksand, sans-serif">Sachbearbeiterin Meldewesen</text>
+
+    <!-- OPAA -->
+    <g transform="translate(470 195)">
+      <rect x="0" y="0" width="160" height="120" rx="16" fill="#012142"/>
+      <rect x="56" y="18" width="48" height="48" rx="12" fill="#fff" opacity=".12"/>
+      <path d="M68 30h24v16H76l-6 6z" fill="none" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M73 36h12M73 41h7" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+      <text x="80" y="90" font-size="16" font-weight="700" fill="#fff" text-anchor="middle" font-family="Quicksand, sans-serif">OPAA</text>
+      <text x="80" y="107" font-size="11" fill="#9BCEFA" text-anchor="middle">Suche · Rechte · Belegprüfung</text>
+    </g>
+    <!-- Pfeile Browser <-> OPAA -->
+    <path d="M350 245 H468" stroke="#0B6FBC" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+    <path d="M468 268 H352" stroke="#0B6FBC" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+    <text x="409" y="236" font-size="11" fill="#556473" text-anchor="middle">Frage</text>
+    <text x="409" y="286" font-size="11" fill="#556473" text-anchor="middle">belegte Antwort</text>
+
+    <!-- Quellen -->
+    <g font-size="12" fill="#3B4958">
+      <g transform="translate(740 20)">
+        <rect width="340" height="78" rx="12" fill="#fff" stroke="#CBD4DF"/>
+        <rect x="14" y="19" width="40" height="40" rx="10" fill="#E7F4FE"/>
+        <path d="M24 31h20v16H24z M24 36h20" fill="none" stroke="#0B6FBC" stroke-width="1.8"/>
+        <text x="68" y="34" font-size="14" font-weight="700" fill="#012142" font-family="Quicksand, sans-serif">Netzlaufwerk (SMB)</text>
+        <text x="68" y="54">Dienstanweisungen, BMF-Schreiben,</text><text x="68" y="69">Verfügungen</text>
+      </g>
+      <g transform="translate(740 118)">
+        <rect width="340" height="78" rx="12" fill="#fff" stroke="#CBD4DF"/>
+        <rect x="14" y="19" width="40" height="40" rx="10" fill="#E7F4FE"/>
+        <path d="M26 31h16M26 37h16M26 43h10" stroke="#0B6FBC" stroke-width="1.8" stroke-linecap="round"/>
+        <text x="68" y="34" font-size="14" font-weight="700" fill="#012142" font-family="Quicksand, sans-serif">Confluence</text>
+        <text x="68" y="54">Sitzungsprotokolle, Dienstbesprechungen,</text><text x="68" y="69">interne FAQ</text>
+      </g>
+      <g transform="translate(740 216)">
+        <rect width="340" height="78" rx="12" fill="#fff" stroke="#CBD4DF"/>
+        <rect x="14" y="19" width="40" height="40" rx="10" fill="#E7F4FE"/>
+        <circle cx="29" cy="45" r="2.4" fill="#0B6FBC"/><path d="M27 37a9 9 0 0 1 9 9M27 31a15 15 0 0 1 15 15" fill="none" stroke="#0B6FBC" stroke-width="1.8" stroke-linecap="round"/>
+        <text x="68" y="34" font-size="14" font-weight="700" fill="#012142" font-family="Quicksand, sans-serif">RSS und Web</text>
+        <text x="68" y="54">Amtsblatt, Verwaltungsvorschriften,</text><text x="68" y="69">Pressemitteilungen</text>
+      </g>
+      <g transform="translate(740 314)">
+        <rect width="340" height="78" rx="12" fill="#fff" stroke="#CBD4DF"/>
+        <rect x="14" y="19" width="40" height="40" rx="10" fill="#E7F4FE"/>
+        <path d="M27 45h14a5 5 0 0 0 0-10 7 7 0 0 0-13-2 5 5 0 0 0-1 12z" fill="none" stroke="#0B6FBC" stroke-width="1.8" stroke-linejoin="round"/>
+        <text x="68" y="34" font-size="14" font-weight="700" fill="#012142" font-family="Quicksand, sans-serif">Nextcloud, SharePoint</text>
+        <text x="68" y="54">Haushaltsplan, Ratsinformationen,</text><text x="68" y="69">Satzungen und Gebührenordnungen</text>
+      </g>
+      <g transform="translate(740 412)">
+        <rect width="340" height="78" rx="12" fill="#fff" stroke="#CBD4DF"/>
+        <rect x="14" y="19" width="40" height="40" rx="10" fill="#E7F4FE"/>
+        <path d="M34 47V32M28 38l6-6 6 6M26 48h16" fill="none" stroke="#0B6FBC" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="68" y="34" font-size="14" font-weight="700" fill="#012142" font-family="Quicksand, sans-serif">Upload</text>
+        <text x="68" y="54">Einzelne Dokumente: PDF, DOCX,</text><text x="68" y="69">XLSX, PPTX, Markdown</text>
+      </g>
+    </g>
+    <!-- Verbindungen OPAA -> Quellen -->
+    <g stroke="#0B6FBC" stroke-width="1.6" fill="none" opacity=".75">
+      <path d="M630 255 C690 255 690 59 738 59"/>
+      <path d="M630 255 C690 255 690 157 738 157"/>
+      <path d="M630 255 C690 255 690 255 738 255"/>
+      <path d="M630 255 C690 255 690 353 738 353"/>
+      <path d="M630 255 C690 255 690 451 738 451"/>
+    </g>
+  </svg>
+  </div>
+  <div class="two" style="margin-top:36px">
+    <figure class="shot" style="margin:0">
+      <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">demo.opaa.io/catalog</span></div>
+      <img src="img/katalog.png" loading="lazy" decoding="async" width="2880" height="1800" alt="Katalog der Demo: Kacheln für Interne Dienstanweisungen, Leistungen Meldewesen, Satzungen, Fachamt-Laufwerk (SMB), Rathaus-Cloud (Nextcloud), Pressemitteilungen (RSS) und weitere.">
+    </figure>
+    <div style="display:grid;gap:12px;align-content:center">
+      <h3>Der Katalog zeigt, was angebunden ist</h3>
+      <p class="muted">Jede Wissensbibliothek nennt Quelle, Umfang und Zuständige. Die Demo „Stadt Rheinfurt“ verbindet ein Fachamt-Laufwerk (SMB), eine Rathaus-Cloud (Nextcloud), Ratsinformationen, Pressemitteilungen per RSS und Textbausteine als Prompt-Bibliothek.</p>
+      <p class="muted">Ein Space bekommt genau die Bibliotheken zugeordnet, die er braucht. Was nicht zugeordnet oder nicht lesbar ist, taucht in keiner Antwort auf.</p>
+    </div>
+  </div>
+</div></section>
+
+<section id="belege"><div class="wrap">
+  <div class="head">
+    <span class="eyebrow">Belegbarkeit</span>
+    <h2>Vom Satz zur Fundstelle in einem Klick</h2>
+    <p class="lead">Belege lassen sich direkt im Dokument prüfen, die Fundstelle ist markiert.</p>
+  </div>
+  <div class="two">
+    <figure class="shot" style="margin:0">
+      <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">Belege dieser Antwort</span></div>
+      <img src="img/belege.png" loading="lazy" decoding="async" width="2880" height="1800" alt="Belegfenster rechts: Fußnote 1 verweist auf 01_verwaltungsgebuehrensatzung.pdf, Seite 1, die Fußnoten 2 bis 4 auf die Dienstanweisung zur Gebührenbefreiung.">
+    </figure>
+    <figure class="shot" style="margin:0">
+      <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span class="url">Dokument öffnen · Fundstelle markiert</span></div>
+      <img src="img/dokument.png" loading="lazy" decoding="async" width="2880" height="1800" alt="Die Dienstanweisung zur Gebührenbefreiung als docx geöffnet, nur der Abschnitt Anerkannte Nachweise ist markiert.">
+    </figure>
+  </div>
+</div></section>
+
+<section id="starterpaket" style="background:var(--bg-2);border-block:1px solid var(--line)"><div class="wrap">
+  <div class="head">
+    <span class="eyebrow">Behörden-Starterpaket</span>
+    <h2>Die Unterlagen liegen bei</h2>
+    <p class="lead">Vorlagen für die Einführung, dazu Faktenblätter aus dem Programmcode je Release.</p>
+  </div>
+  <div class="cards">
+    <article class="card"><h3>Datenschutz</h3><p>DSFA, Verarbeitungsverzeichnis, Löschkonzept, TOM.</p></article>
+    <article class="card"><h3>Mitbestimmung</h3><p>Muster-Dienstvereinbarung, Informationsmappe Personalrat.</p></article>
+    <article class="card"><h3>Informationssicherheit</h3><p>Grundschutz-Modellierung, Sicherheitsnachweise, CRA, NIS2.</p></article>
+    <article class="card"><h3>KI-Verordnung</h3><p>Einstufungshilfe, Nutzungsrichtlinie, Schulung.</p></article>
+  </div>
+  <p class="cap" style="margin-top:18px">Vorlagen, keine Rechtsberatung. Alle Unterlagen unter <a href="https://github.com/criew/opaa/tree/main/docs/behoerden">docs/behoerden</a>.</p>
+</div></section>
+
+<section id="anders"><div class="wrap">
+  <div class="head">
+    <span class="eyebrow">Abgrenzung</span>
+    <h2>Was OPAA anders macht</h2>
+  </div>
+  <div class="diff">
+    <div><h3>Rechte, Protokoll, Mandanten im Kern</h3><p>Quelloffen, an keine Bezahlstufe gebunden.</p></div>
+    <div><h3>Keine Mindestgröße</h3><p>Dieselbe Software für 40 wie für 4.000 Beschäftigte, auch ohne Netzanbindung.</p></div>
+    <div><h3>Auswertung nur aggregiert</h3><p>Kein personenbezogener Auswertungspfad, keine Ranglisten.</p></div>
+    <div><h3>Belege geprüft, nicht nur verlinkt</h3><p>Die Antwort stammt nachweislich aus der zitierten Stelle.</p></div>
+    <div><h3>Barrierefrei gebaut</h3><p>Nach BITV, in jedem Build automatisiert geprüft.</p></div>
+  </div>
+</div></section>
+
+<section id="start"><div class="wrap">
+  <div class="start">
+    <div style="display:grid;gap:16px">
+      <span class="eyebrow" style="color:#9BCEFA">Getting Started</span>
+      <h2>Selbst installieren</h2>
+      <p>Docker Compose oder Kubernetes, Einrichtung im Browser.</p>
+      <div><a class="btn btn-primary" href="https://opaa.io/handbuch/betreiben/installation.html">Zur Installationsanleitung</a></div>
+      <div class="more">
+        <a href="https://opaa.io/handbuch/betreiben/docker-compose.html">Docker Compose</a>
+        <a href="https://opaa.io/handbuch/betreiben/kubernetes.html">Kubernetes</a>
+        <a href="https://opaa.io/handbuch/betreiben/images-und-laufzeit.html">Offline-Bündel</a>
+        <a href="https://opaa.io/handbuch/">Handbuch</a>
       </div>
     </div>
-    <div class="screenshot-card">
-      <img src="img/document-browser.png" alt="Übersicht der Wissensbestände in der Weboberfläche">
-      <div class="screenshot-info">
-        <span class="screenshot-dot dot-green"></span>
-        <h3>Wissensbibliotheken im Blick</h3>
-        <p>
-          Die Bestände eines Hauses an einer Stelle, jeder mit eigenen Rechten — durchsucht wird nur, was die
-          fragende Person lesen darf.
-        </p>
-      </div>
-    </div>
+    <ol>
+      <li>Repository holen, <code>.env.docker</code> anlegen</li>
+      <li><code>docker compose up</code></li>
+      <li>Einrichtungs-Assistent im Browser: Konto, Anmeldung, Modelle</li>
+      <li>Bibliothek anlegen, Space zuordnen, fragen</li>
+    </ol>
   </div>
-</section>
+</div></section>
 
-<!-- FEATURES -->
-<section class="features section">
-  <div class="section-title">
-    <h2>Warum OPAA?</h2>
-    <p>Wissen, das belegt ist &middot; Agenten, die Aufgaben übernehmen &middot; KI, die alle erreicht</p>
-  </div>
-  <div class="features-grid">
-    <div class="feature-card">
-      <div class="feature-icon">&#x1f512;</div>
-      <h3>Im eigenen Haus</h3>
-      <p>
-        Betrieb im eigenen Rechenzentrum, bis hin zu Installationen ohne Netzanbindung. Die Daten bleiben,
-        wo sie hingehören.
-      </p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">&#x1f4d6;</div>
-      <h3>Jede Aussage belegt</h3>
-      <p>
-        Die Fundstelle steht in der Antwort. Wo es haftungskritisch wird, ergeht ohne Beleg keine Antwort —
-        lieber „nicht feststellbar".
-      </p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">&#x1f501;</div>
-      <h3>Verteilbar statt einmalig</h3>
-      <p>
-        Agenten, Prompt-Bibliotheken und Wissensbibliotheken sind teilbare Assets. Die gute Arbeitsweise
-        einer Abteilung wird zum Standard aller.
-      </p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">&#x1f50c;</div>
-      <h3>Eigene Modelle</h3>
-      <p>
-        Eigene, lokal betriebene Modelle zuerst — zentral vorgegeben und an einer Stelle austauschbar, ohne
-        dass Fachbereiche etwas anfassen.
-      </p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">&#x26a1;</div>
-      <h3>Quelloffen</h3>
-      <p>
-        AGPL-3.0, der vollständige Funktionsumfang ist quelloffen. Prüfbar statt zugesichert; Entwicklung im
-        Offenen.
-      </p>
-    </div>
-  </div>
-</section>
-
-<!-- COMPARISON -->
-<section class="comparison section">
-  <div class="section-title">
-    <h2>Was in einer Behörde zählt</h2>
-    <p>Sechs Fragen, an denen sich in einem Haus entscheidet, ob KI überhaupt eingesetzt werden darf.</p>
-  </div>
-  <div class="comp-wrapper">
-    <table class="comp-table">
-      <thead>
-        <tr>
-          <th></th>
-          <th>OPAA</th>
-          <th>Gehostete KI-Dienste</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>Datenhoheit</td>
-          <td><span class="check">&#x2713;</span> Betrieb im eigenen Rechenzentrum, bis hin zu Installationen ohne Netzanbindung</td>
-          <td><span class="cross">&#x2717;</span> Verarbeitung beim Betreiber des Dienstes; Datenhoheit ist eine Zusage, keine Eigenschaft</td>
-        </tr>
-        <tr>
-          <td>Eigene Modelle</td>
-          <td><span class="check">&#x2713;</span> Eigene, lokal betriebene Modelle zuerst; zentral vorgegeben und an einer Stelle austauschbar</td>
-          <td><span class="cross">&#x2717;</span> Welches Modell rechnet, entscheidet der Dienst — auch wenn er es wechselt</td>
-        </tr>
-        <tr>
-          <td>Belegpflicht</td>
-          <td><span class="check">&#x2713;</span> Jede Aussage mit Fundstelle; für haftungskritische Zusammenhänge schaltbar auf „ohne Beleg keine Antwort"</td>
-          <td><span class="cross">&#x2717;</span> Quellenangaben, wo vorhanden, sind eine Beigabe der Antwort und nicht erzwingbar</td>
-        </tr>
-        <tr>
-          <td>Nachweis gegenüber Prüfern</td>
-          <td><span class="check">&#x2713;</span> Revisionssicheres Protokoll im eigenen Haus; darauf ausgelegt, dass ein Betreiber die Prüfung mit OPAA im Prüfumfang besteht</td>
-          <td><span class="cross">&#x2717;</span> Nachweisbar ist, was der Dienst herausgibt — der Prüfpfad endet an der Systemgrenze</td>
-        </tr>
-        <tr>
-          <td>Mitbestimmung</td>
-          <td><span class="check">&#x2713;</span> Kein personenbezogener Auswertungspfad, keine Ranglisten, Sichtbarkeit als Handlung; die Dienstvereinbarung wird zur Konfigurationsaufgabe</td>
-          <td><span class="cross">&#x2717;</span> Welche personenbezogenen Auswertungen möglich sind, legt der Dienst fest und kann es ändern</td>
-        </tr>
-        <tr>
-          <td>Offenheit</td>
-          <td><span class="check">&#x2713;</span> AGPL-3.0, vollständiger Funktionsumfang quelloffen und damit prüfbar</td>
-          <td><span class="cross">&#x2717;</span> Das Verhalten ist zugesichert, nicht nachlesbar</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-  <p class="comp-note">
-    OPAA ist im Aufbau. Diese Seite beschreibt das Zielbild; den Umsetzungsstand führt das Repository.
-  </p>
-</section>
-
-<!-- FOOTER -->
-<footer class="footer">
-  <div class="section footer-inner">
-    <div class="tech-stack">
-      <span class="tech-tag">React 19</span>
-      <span class="tech-tag">TypeScript</span>
-      <span class="tech-tag">Java 21</span>
-      <span class="tech-tag">Spring Boot</span>
-      <span class="tech-tag">Spring AI</span>
-      <span class="tech-tag">PostgreSQL + pgvector</span>
-      <span class="tech-tag">Docker</span>
-    </div>
-    <div class="footer-right">
-      <a href="https://github.com/criew/opaa" target="_blank">github.com/criew/opaa</a>
-      <div class="footer-links">
-        <a href="https://demo.opaa.io" target="_blank">Testinstallation</a>
-      </div>
-      <div class="footer-license">AGPL-3.0 &bull; quelloffen</div>
-    </div>
-  </div>
-</footer>
-
+<footer><div class="wrap">
+  <div><a href="https://opaa.io/handbuch/">Handbuch</a><a href="https://demo.opaa.io">Demo</a><a href="https://github.com/criew/opaa">GitHub</a><a href="https://github.com/criew/opaa/blob/main/LICENSE">Lizenz AGPL-3.0</a><a href="mailto:info@opaa.io">Kontakt: info@opaa.io</a></div>
+  <div>OPAA · Open Project AI Assistant · Entwicklung im Offenen</div>
+</div></footer>
 </body>
 </html>
