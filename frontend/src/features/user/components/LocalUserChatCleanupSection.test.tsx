@@ -92,6 +92,36 @@ describe('LocalUserChatCleanupSection', () => {
     expect(await screen.findByText(/frühestens am 23\.10\.2027 gelöscht/)).toBeInTheDocument()
   })
 
+  it('does not approve a request replaced after it was shown, and shows the new one', async () => {
+    mockChatCleanupRequests.set('local-user-vogt', {
+      purpose: 'DATA_SUBJECT_REQUEST',
+      reason: REASON,
+      requestedAt: '2026-10-30T08:00:00Z',
+      byMe: false,
+    })
+    const user = userEvent.setup()
+    renderWithProviders(<LocalUserChatCleanupSection user={fixture('local-user-vogt')} />)
+    const approve = await screen.findByRole('button', { name: 'Freigeben' })
+    // withdrawn and filed anew while the page was open
+    mockChatCleanupRequests.set('local-user-vogt', {
+      purpose: 'SECURITY_INCIDENT_EVIDENCE',
+      reason: `${REASON}, erweitert`,
+      requestedAt: '2026-10-30T09:00:00Z',
+      byMe: false,
+    })
+
+    await user.click(approve)
+
+    const pending = await screen.findByTestId('chat-cleanup-pending')
+    expect(
+      await within(pending).findByText(
+        `Zweck: ${CHAT_CLEANUP_HOLD_PURPOSE_LABEL.SECURITY_INCIDENT_EVIDENCE}`,
+      ),
+    ).toBeVisible()
+    expect(screen.queryByTestId('chat-cleanup-hold')).not.toBeInTheDocument()
+    expect(mockChatCleanupHolds.has('local-user-vogt')).toBe(false)
+  })
+
   it('lets a second administrator reject a request', async () => {
     mockChatCleanupRequests.set('local-user-vogt', {
       purpose: 'SECURITY_INCIDENT_EVIDENCE',

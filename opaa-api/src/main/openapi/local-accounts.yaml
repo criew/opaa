@@ -608,6 +608,16 @@ paths:
         and heldUntil of the running hold and keeps heldSince. Audited as
         LOCKED_ACCOUNT_CHAT_CLEANUP_HELD, or LOCKED_ACCOUNT_CHAT_CLEANUP_HOLD_EXTENDED for an
         extension, with purpose and heldUntil. 404 as for the read, and when no request is pending.
+        The body names the request the approving administrator saw by its requestedAt; 409 with
+        code HOLD_REQUEST_CHANGED when the pending request is another one (withdrawn and filed
+        anew in between), and 409 with code HOLD_REQUEST_EXPIRED when it is older than the 14 days
+        a request stays valid.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocalUserChatCleanupHoldApproval"
       responses:
         "200":
           description: The deletion state after the approval
@@ -621,6 +631,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /api/v1/admin/local-auth-settings:
     get:
@@ -1172,6 +1184,17 @@ components:
           minLength: 10
           maxLength: 1000
           description: The documented occasion required alongside the closed purpose.
+
+    LocalUserChatCleanupHoldApproval:
+      type: object
+      required: [requestedAt]
+      properties:
+        requestedAt:
+          type: string
+          format: date-time
+          description: >
+            The requestedAt of the pending request as the approving administrator saw it; the
+            approval applies only to that very request.
 
     LocalUserChatCleanupHold:
       type: object

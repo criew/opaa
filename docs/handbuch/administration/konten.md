@@ -43,7 +43,9 @@ regelt [Ausscheiden und Nachfolge](ausscheiden.md).
 allen Spaces. Das Datum steht im Dialog „Bearbeiten“ unter „Chats nach der Sperre“. Entsperren
 beendet die Frist. Muss etwas aufgehoben werden, etwa auf behördliche Anordnung, beantragt eine
 Person der Systemverwaltung „Anhaltung beantragen“ mit Zweck und Begründung, und erst eine
-**zweite** Person gibt frei. Gelöschte Chats kommen über die Oberfläche nicht zurück. Frist und
+**zweite** Person gibt frei. Die Freigabe gilt genau dem angezeigten Antrag: Wurde er inzwischen
+zurückgezogen und neu gestellt oder ist er älter als 14 Tage, lehnt OPAA sie ab und zeigt den
+aktuellen Stand. Gelöschte Chats kommen über die Oberfläche nicht zurück. Frist und
 Schalter stehen unter [Datenschutz](datenschutz.md).
 
 ## Liste prüfen

@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw'
 import type {
   LocalAuthSettingsUpdateRequest,
+  LocalUserChatCleanupHoldApproval,
   LocalUserChatCleanupHoldRequest,
   LocalUserChatCleanupResponse,
   LocalUserCreateRequest,
@@ -463,25 +464,35 @@ export const localUserHandlers = [
     },
   ),
 
-  http.post('/api/v1/admin/local-users/:id/chat-cleanup/hold-request/approve', ({ params }) => {
-    const user = find(String(params.id))
-    if (!user) return notFound()
-    const pending = mockChatCleanupRequests.get(user.id)
-    if (!pending) return notFound()
-    if (pending.byMe) {
-      return HttpResponse.json({ message: 'Selbstfreigabe ist nicht zulässig' }, { status: 400 })
-    }
-    mockChatCleanupRequests.delete(user.id)
-    const now = new Date()
-    const until = new Date(now.getTime() + MOCK_CHAT_CLEANUP_HOLD_MAX_DAYS * 86_400_000)
-    mockChatCleanupHolds.set(user.id, {
-      purpose: pending.purpose,
-      reason: pending.reason,
-      heldSince: mockChatCleanupHolds.get(user.id)?.heldSince ?? now.toISOString(),
-      heldUntil: until.toISOString(),
-    })
-    return HttpResponse.json(chatCleanupOf(user))
-  }),
+  http.post(
+    '/api/v1/admin/local-users/:id/chat-cleanup/hold-request/approve',
+    async ({ params, request }) => {
+      const user = find(String(params.id))
+      if (!user) return notFound()
+      const pending = mockChatCleanupRequests.get(user.id)
+      if (!pending) return notFound()
+      if (pending.byMe) {
+        return HttpResponse.json({ message: 'Selbstfreigabe ist nicht zulässig' }, { status: 400 })
+      }
+      const body = (await request.json()) as LocalUserChatCleanupHoldApproval
+      if (body.requestedAt !== pending.requestedAt) {
+        return conflict(
+          'HOLD_REQUEST_CHANGED',
+          'Der Antrag hat sich geändert. Bitte den aktuellen Antrag prüfen und erneut freigeben',
+        )
+      }
+      mockChatCleanupRequests.delete(user.id)
+      const now = new Date()
+      const until = new Date(now.getTime() + MOCK_CHAT_CLEANUP_HOLD_MAX_DAYS * 86_400_000)
+      mockChatCleanupHolds.set(user.id, {
+        purpose: pending.purpose,
+        reason: pending.reason,
+        heldSince: mockChatCleanupHolds.get(user.id)?.heldSince ?? now.toISOString(),
+        heldUntil: until.toISOString(),
+      })
+      return HttpResponse.json(chatCleanupOf(user))
+    },
+  ),
 
   http.delete('/api/v1/admin/local-users/:id/chat-cleanup/hold-request', ({ params }) => {
     const user = find(String(params.id))

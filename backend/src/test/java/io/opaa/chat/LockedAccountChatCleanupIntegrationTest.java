@@ -303,10 +303,12 @@ class LockedAccountChatCleanupIntegrationTest {
     cleanupService.requestHold(
         actor(requester), person, ChatCleanupHoldPurpose.SECURITY_INCIDENT_EVIDENCE, REASON);
 
-    assertThatThrownBy(() -> cleanupService.approveHold(actor(requester), person))
+    assertThatThrownBy(
+            () -> cleanupService.approveHold(actor(requester), person, requestedAt(person)))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Selbstfreigabe");
-    LockedAccountChatCleanup held = cleanupService.approveHold(actor(approver), person);
+    LockedAccountChatCleanup held =
+        cleanupService.approveHold(actor(approver), person, requestedAt(person));
 
     assertThat(held.status()).isEqualTo(ChatCleanupAfterLockStatus.HELD);
     assertThat(held.pendingRequest()).isNull();
@@ -357,8 +359,47 @@ class LockedAccountChatCleanupIntegrationTest {
                     ChatCleanupHoldPurpose.DATA_SUBJECT_REQUEST,
                     REASON))
         .isInstanceOf(ConflictException.class);
-    assertThatThrownBy(() -> cleanupService.approveHold(actor(admin()), localAccount()))
+    assertThatThrownBy(() -> cleanupService.approveHold(actor(admin()), localAccount(), now))
         .isInstanceOf(NotFoundException.class);
+  }
+
+  @Test
+  void anApprovalAppliesOnlyToTheRequestTheApproverSaw() {
+    UUID requester = admin();
+    UUID approver = admin();
+    UUID person = localAccount();
+    cleanupService.requestHold(
+        actor(requester), person, ChatCleanupHoldPurpose.DATA_SUBJECT_REQUEST, REASON);
+    Instant seen = requestedAt(person);
+    cleanupService.rejectHold(actor(requester), person);
+    cleanupService.requestHold(
+        actor(requester), person, ChatCleanupHoldPurpose.SECURITY_INCIDENT_EVIDENCE, REASON + "!");
+
+    assertThatThrownBy(() -> cleanupService.approveHold(actor(approver), person, seen))
+        .isInstanceOf(ConflictException.class)
+        .extracting(e -> ((ConflictException) e).getCode())
+        .isEqualTo("HOLD_REQUEST_CHANGED");
+    assertThat(store.findHold(person)).isEmpty();
+    assertThat(cleanupService.stateOf(organizationId, person).pendingRequest().purpose())
+        .isEqualTo(ChatCleanupHoldPurpose.SECURITY_INCIDENT_EVIDENCE);
+  }
+
+  @Test
+  void aRequestOlderThanItsValidityIsNotApproved() {
+    UUID person = localAccount();
+    cleanupService.requestHold(
+        actor(admin()), person, ChatCleanupHoldPurpose.DATA_SUBJECT_REQUEST, REASON);
+    jdbc.update(
+        "UPDATE chat_cleanup_hold_requests SET requested_at = ? WHERE user_id = ?",
+        Timestamp.from(now.minus(DAY.multipliedBy(15))),
+        person);
+
+    assertThatThrownBy(
+            () -> cleanupService.approveHold(actor(admin()), person, requestedAt(person)))
+        .isInstanceOf(ConflictException.class)
+        .extracting(e -> ((ConflictException) e).getCode())
+        .isEqualTo("HOLD_REQUEST_EXPIRED");
+    assertThat(store.findHold(person)).isEmpty();
   }
 
   @Test
@@ -392,7 +433,8 @@ class LockedAccountChatCleanupIntegrationTest {
             actor(second), person, ChatCleanupHoldPurpose.AUTHORITY_OR_COURT_ORDER, REASON + "!");
     assertThat(requested.pendingRequest().extension()).isTrue();
     assertThat(requested.hold().heldUntil()).isBefore(now.plus(DAY.multipliedBy(4)));
-    LockedAccountChatCleanup extended = cleanupService.approveHold(actor(first), person);
+    LockedAccountChatCleanup extended =
+        cleanupService.approveHold(actor(first), person, requestedAt(person));
 
     assertThat(extended.hold().heldSince()).isEqualTo(held.hold().heldSince());
     assertThat(extended.hold().heldUntil()).isAfter(now.plus(DAY.multipliedBy(179)));
@@ -772,7 +814,12 @@ class LockedAccountChatCleanupIntegrationTest {
   private LockedAccountChatCleanup approvedHold(UUID person, UUID requester, UUID approver) {
     cleanupService.requestHold(
         actor(requester), person, ChatCleanupHoldPurpose.AUTHORITY_OR_COURT_ORDER, REASON);
-    return cleanupService.approveHold(actor(approver), person);
+    return cleanupService.approveHold(actor(approver), person, requestedAt(person));
+  }
+
+  /** The requestedAt of the pending request of {@code person}, as the single view shows it. */
+  private Instant requestedAt(UUID person) {
+    return cleanupService.stateOf(organizationId, person).pendingRequest().requestedAt();
   }
 
   private void setHeldUntil(UUID person, Instant heldUntil) {

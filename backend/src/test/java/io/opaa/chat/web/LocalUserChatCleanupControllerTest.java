@@ -89,7 +89,11 @@ class LocalUserChatCleanupControllerTest {
         .perform(post(path + "/hold-request").with(asUser()).contentType(JSON).content(BODY))
         .andExpect(status().isForbidden());
     mockMvc
-        .perform(post(path + "/hold-request/approve").with(asUser()))
+        .perform(
+            post(path + "/hold-request/approve")
+                .with(asUser())
+                .contentType(JSON)
+                .content("{\"requestedAt\":\"2026-10-31T08:00:00Z\"}"))
         .andExpect(status().isForbidden());
     mockMvc
         .perform(delete(path + "/hold-request").with(asUser()))
@@ -129,7 +133,7 @@ class LocalUserChatCleanupControllerTest {
         .thenReturn(
             new LockedAccountChatCleanup(
                 ChatCleanupAfterLockStatus.SCHEDULED, false, 365, 180, null, null, mine));
-    when(cleanupService.approveHold(any(), eq(accountId)))
+    when(cleanupService.approveHold(any(), eq(accountId), eq(requested)))
         .thenReturn(
             new LockedAccountChatCleanup(
                 ChatCleanupAfterLockStatus.HELD,
@@ -158,7 +162,11 @@ class LocalUserChatCleanupControllerTest {
         .andExpect(jsonPath("$.pendingRequest.requestedByMe").value(true))
         .andExpect(jsonPath("$.pendingRequest.extension").value(false));
     mockMvc
-        .perform(post(path + "/hold-request/approve").with(asAdmin()))
+        .perform(
+            post(path + "/hold-request/approve")
+                .with(asAdmin())
+                .contentType(JSON)
+                .content("{\"requestedAt\":\"2026-10-31T08:00:00Z\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value("HELD"))
         .andExpect(jsonPath("$.hold.purpose").value("DATA_SUBJECT_REQUEST"))
