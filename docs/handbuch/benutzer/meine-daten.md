@@ -14,7 +14,7 @@ Passwort dort.
 Alle anderen Sitzungen und Ihre [Zugangstokens](ki-werkzeug-einrichten.md#token-anlegen) enden.
 Vergessen? „Passwort vergessen“ auf der Anmeldeseite, sonst hilft die Systemverwaltung.
 
-## Passwort ändern und Daten herunterladen
+## Eigene Daten herunterladen
 
 1. „Einstellungen“, „Meine Daten“, „Daten herunterladen“.
 2. Die Anmeldung bestätigen.
