@@ -16,6 +16,7 @@ import {
   mcpSearch,
   mcpTool,
   mcpTools,
+  externalAccessRow,
   openLibraryAccessDialog,
   readChannelSettings,
   restoreChannelSettings,
@@ -189,7 +190,7 @@ test.describe.serial('Externe KI-Werkzeuge', () => {
     await setLibraryReleaseInDialog(personPage, true, 30)
     // Die Zahl, die der Bibliotheksverantwortung als einziger Anhalt bleibt - eine Zahl, keine
     // Namen. Vor dem ersten Token ist sie null.
-    await expect(personPage.getByText('Derzeit in 0 Zugangstokens enthalten.')).toBeVisible()
+    await expect(externalAccessRow(personPage)).toContainText('noch in keinem Zugangstoken')
     await closeLibraryAccessDialog(personPage)
 
     const personApi = await apiAs(PERSON)
@@ -561,12 +562,12 @@ async function shareWithPerson(adminPage: Page, libraryName: string) {
   await gotoLibraries(adminPage)
   await gotoLibraryDetail(adminPage, libraryName)
   await adminPage.getByRole('tab', { name: 'Freigaben' }).click()
-  await adminPage.getByRole('button', { name: 'Freigeben' }).click()
+  await adminPage.getByRole('button', { name: 'Freigeben', exact: true }).click()
   const personInput = adminPage.getByRole('combobox', { name: 'Person oder Gruppe suchen' })
   await personInput.click()
   await personInput.fill('Format')
   await adminPage.getByRole('option', { name: new RegExp(PERSON_DISPLAY_NAME) }).click()
-  await adminPage.getByRole('button', { name: 'Freigeben' }).last().click()
+  await adminPage.getByRole('button', { name: 'Freigeben', exact: true }).last().click()
   await expect(adminPage.getByText(PERSON_DISPLAY_NAME).first()).toBeVisible()
   await closeLibraryAccessDialog(adminPage)
 }

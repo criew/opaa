@@ -398,7 +398,7 @@ export async function shareLibraryWithPerson(
   await gotoLibraryDetail(adminPage, libraryName)
   // Der Abschnitt „Berechtigungen" steht als Liste im Reiter „Freigaben".
   await adminPage.getByRole('tab', { name: 'Freigaben' }).click()
-  await adminPage.getByRole('button', { name: 'Freigeben' }).click()
+  await adminPage.getByRole('button', { name: 'Freigeben', exact: true }).click()
   // Not getByLabel: once the Autocomplete's listbox is open, its aria-labelledby also points back
   // at the field, so getByLabel resolves to both the input and the listbox.
   // getByRole('combobox', ...) only ever matches the input itself.
@@ -406,6 +406,6 @@ export async function shareLibraryWithPerson(
   await personInput.click()
   await personInput.fill(personQuery)
   await adminPage.getByRole('option', { name: personOption }).click()
-  await adminPage.getByRole('button', { name: 'Freigeben' }).last().click()
+  await adminPage.getByRole('button', { name: 'Freigeben', exact: true }).last().click()
   await expect(adminPage.getByText(personOption)).toBeVisible()
 }
