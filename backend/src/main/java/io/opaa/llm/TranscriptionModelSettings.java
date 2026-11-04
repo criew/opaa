@@ -8,7 +8,8 @@ import java.time.Instant;
 
 /**
  * The single row of {@code transcription_model} (ADR-0060, Entscheidung 10), built like {@link
- * RerankModelSettings}; {@link #language} {@code null} lets the model detect the language.
+ * RerankModelSettings}; {@link #language} {@code null} lets the model detect the language, {@link
+ * #vocabulary} {@code null} sends no installation-wide prompt.
  */
 @Entity
 @Table(name = "transcription_model")
@@ -33,6 +34,9 @@ public class TranscriptionModelSettings {
   @Column(name = "language", length = 8)
   private String language;
 
+  @Column(name = "vocabulary", length = TranscriptionVocabulary.MAX_LENGTH)
+  private String vocabulary;
+
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
@@ -49,12 +53,14 @@ public class TranscriptionModelSettings {
       String modelIdentifier,
       String apiKeyCiphertext,
       String language,
+      String vocabulary,
       Instant now) {
     this.enabled = enabled;
     this.baseUrl = baseUrl;
     this.modelIdentifier = modelIdentifier;
     this.apiKeyCiphertext = apiKeyCiphertext;
     this.language = language;
+    this.vocabulary = vocabulary;
     this.updatedAt = now;
   }
 
@@ -76,6 +82,11 @@ public class TranscriptionModelSettings {
 
   public String getLanguage() {
     return language;
+  }
+
+  /** The installation's vocabulary list; {@code null} when none is stored. */
+  public String getVocabulary() {
+    return vocabulary;
   }
 
   public Instant getUpdatedAt() {

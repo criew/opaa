@@ -6,17 +6,23 @@ import java.util.regex.Pattern;
 /**
  * The transcription model role as the administration stored it (ADR-0060, Entscheidung 10), built
  * like {@link RerankEndpoint}, with the language passed to the model: an ISO-639-1 code, empty to
- * let the model detect it. {@link #toString()} never names the key or userinfo of the address.
+ * let the model detect it, and the installation's vocabulary list, empty for none. {@link
+ * #toString()} never names the key or userinfo of the address, nor the vocabulary.
  */
 public record TranscriptionEndpoint(
-    boolean enabled, String baseUrl, String model, String apiKey, String language) {
+    boolean enabled,
+    String baseUrl,
+    String model,
+    String apiKey,
+    String language,
+    String vocabulary) {
 
   /** The language of the factory default. */
   public static final String DEFAULT_LANGUAGE = "de";
 
   /** The factory default: off, unbound, German. */
   public static final TranscriptionEndpoint FACTORY_DEFAULT =
-      new TranscriptionEndpoint(false, "", "", "", DEFAULT_LANGUAGE);
+      new TranscriptionEndpoint(false, "", "", "", DEFAULT_LANGUAGE, "");
 
   /** The message of a language {@link #isValidLanguage} refuses. */
   public static final String LANGUAGE_RULE =
@@ -42,6 +48,13 @@ public record TranscriptionEndpoint(
     model = model == null ? "" : model.strip();
     apiKey = apiKey == null ? "" : apiKey.strip();
     language = language == null ? "" : language.strip();
+    vocabulary = vocabulary == null ? "" : vocabulary.strip();
+  }
+
+  /** An endpoint without an installation-wide vocabulary list. */
+  public TranscriptionEndpoint(
+      boolean enabled, String baseUrl, String model, String apiKey, String language) {
+    this(enabled, baseUrl, model, apiKey, language, "");
   }
 
   /** Whether both endpoint fields are present. */

@@ -41,7 +41,7 @@ class TranscriptionClientTest {
   private record Call(TranscriptionEndpoint endpoint, Duration timeout) {}
 
   private String transcribe(Call call, byte[] audio, TranscriptionAudioFormat format) {
-    return client.transcribe(call.endpoint(), call.timeout(), audio, format);
+    return client.transcribe(call.endpoint(), call.timeout(), audio, format, null);
   }
 
   private ProbeFailure probe(Call call) {
@@ -135,6 +135,34 @@ class TranscriptionClientTest {
             name ->
                 List.of("authorization", "content-type", "content-length", "host", "user-agent")
                     .contains(name));
+  }
+
+  @Test
+  void sendsTheVocabularyAsPrompt() {
+    AtomicReference<Captured> captured = new AtomicReference<>();
+    respond("/v1/audio/transcriptions", 200, "{\"text\":\"x\"}", captured);
+    Call call = properties();
+
+    client.transcribe(
+        call.endpoint(),
+        call.timeout(),
+        AUDIO,
+        TranscriptionAudioFormat.WEBM,
+        "Einspruchsfrist, AO, BZSt");
+
+    assertThat(captured.get().body())
+        .contains("name=\"prompt\"\r\n\r\nEinspruchsfrist, AO, BZSt\r\n");
+  }
+
+  @Test
+  void sendsNoPromptWithoutVocabulary() {
+    AtomicReference<Captured> captured = new AtomicReference<>();
+    respond("/v1/audio/transcriptions", 200, "{\"text\":\"x\"}", captured);
+    Call call = properties();
+
+    client.transcribe(call.endpoint(), call.timeout(), AUDIO, TranscriptionAudioFormat.WEBM, " ");
+
+    assertThat(captured.get().body()).doesNotContain("name=\"prompt\"");
   }
 
   @Test

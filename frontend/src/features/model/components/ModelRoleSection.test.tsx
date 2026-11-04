@@ -33,6 +33,28 @@ describe('ModelRoleSection', () => {
     expect(await screen.findByText('Zustand: Ausgeschaltet.')).toBeInTheDocument()
     expect(screen.getByRole('switch', { name: 'Reranking einschalten' })).not.toBeChecked()
     expect(screen.queryByLabelText('Sprache')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Begriffsliste')).not.toBeInTheDocument()
+  })
+
+  it('saves the vocabulary list of the transcription role', async () => {
+    const user = userEvent.setup()
+    const sent: Record<string, unknown>[] = []
+    server.use(
+      http.put('/api/v1/admin/models/transcription', async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>
+        sent.push(body)
+        return HttpResponse.json({ ...factoryTranscriptionModel(), vocabulary: body.vocabulary })
+      }),
+    )
+    renderWithProviders(<ModelRoleSection kind="transcription" />)
+
+    await user.type(await screen.findByLabelText('Begriffsliste'), '  AO, BZSt ')
+    expect(screen.getByText(/8 \/ 500 Zeichen/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0]).toMatchObject({ vocabulary: 'AO, BZSt' })
+    expect(await screen.findByLabelText('Begriffsliste')).toHaveValue('AO, BZSt')
   })
 
   it('saves switch, endpoint and key and keeps a stored key untouched afterwards', async () => {

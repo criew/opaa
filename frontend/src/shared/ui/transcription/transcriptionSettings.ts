@@ -10,6 +10,9 @@ export const TRANSCRIPTION_TEXTS = {
   languageHint: 'Kürzel aus zwei Buchstaben, etwa de; leer erkennt das Modell die Sprache selbst.',
   languageRule:
     'Die Sprache ist ein Kürzel aus zwei Buchstaben nach ISO 639-1, etwa de oder en; leer erkennt das Modell die Sprache selbst.',
+  vocabularyLabel: 'Begriffsliste',
+  vocabularyHint:
+    'Fachbegriffe, Namen und Abkürzungen, kommagetrennt oder als Beispielsatz. Das Modell erkennt sie damit zuverlässiger.',
 } as const
 
 const LANGUAGE_CODE = /^[a-z]{2}$/
@@ -20,4 +23,12 @@ export function transcriptionLanguageError(value: string): string | undefined {
   return language === '' || LANGUAGE_CODE.test(language)
     ? undefined
     : TRANSCRIPTION_TEXTS.languageRule
+}
+
+/** The longest vocabulary list in characters; the backend applies the same cap. */
+export const VOCABULARY_MAX_LENGTH = 500
+
+/** Whether a list exceeds the cap; a form does not send it then. */
+export function isVocabularyTooLong(value: string): boolean {
+  return value.trim().length > VOCABULARY_MAX_LENGTH
 }

@@ -25,7 +25,7 @@ import { OwnExternalAccessTokensSection } from '@/features/external-access'
 import { MyGroupsSection } from '@/features/group'
 import { ConnectedAccountsSection } from '@/features/connection'
 import { MyDataSection } from '@/features/compliance'
-import { MyChatAttachmentsSection } from '@/features/chat'
+import { MyChatAttachmentsSection, TranscriptionVocabularySection } from '@/features/chat'
 
 export type SettingsTab = 'general' | 'groups' | 'tokens' | 'accounts' | 'uploads' | 'data'
 
@@ -222,6 +222,8 @@ export default function SettingsPage() {
                     Dunkel
                   </ToggleButton>
                 </ToggleButtonGroup>
+
+                <TranscriptionVocabularySection />
               </>
             )
           }

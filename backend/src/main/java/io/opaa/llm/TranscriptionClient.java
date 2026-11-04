@@ -28,14 +28,15 @@ import tools.jackson.databind.ObjectMapper;
 
 /**
  * Talks to an OpenAI-compatible transcription endpoint: {@code POST {baseUrl}/audio/transcriptions}
- * with the multipart fields {@code file}, {@code model}, {@code language} and {@code
- * response_format=json}, and {@code GET {baseUrl}/models} as the probe - free of charge on every
- * provider, unlike a probe with test audio.
+ * with the multipart fields {@code file}, {@code model}, {@code language}, {@code prompt} (only
+ * when a vocabulary list is given) and {@code response_format=json}, and {@code GET
+ * {baseUrl}/models} as the probe - free of charge on every provider, unlike a probe with test
+ * audio.
  *
- * <p><b>Nothing about the person or the content leaves this class except the audio itself.</b> The
- * request carries no user field and no header naming an account or an address. No exception
- * message, and no cause attached to one, contains audio, recognised text or the endpoint's response
- * body; every message is technical English for the role's diagnostic.
+ * <p><b>Nothing about the person or the content leaves this class except the audio and the
+ * vocabulary prompt.</b> The request carries no user field and no header naming an account or an
+ * address. No exception message, and no cause attached to one, contains audio, recognised text or
+ * the endpoint's response body; every message is technical English for the role's diagnostic.
  *
  * <p>The whole call - connect, headers and body - runs within {@link
  * TranscriptionProperties#timeout()}; the response is read bounded. Uses the JDK client like {@link
@@ -107,7 +108,7 @@ public class TranscriptionClient {
   public record ProbeFailure(String message, boolean timedOut) {}
 
   /**
-   * Transcribes one recording.
+   * Transcribes one recording; {@code prompt} {@code null} or blank sends no prompt field.
    *
    * @return the recognised text, trimmed.
    * @throws TranscriptionUnavailableException when the endpoint is unreachable, refuses the call or
@@ -117,13 +118,14 @@ public class TranscriptionClient {
       TranscriptionEndpoint endpoint,
       Duration timeout,
       byte[] audio,
-      TranscriptionAudioFormat format) {
+      TranscriptionAudioFormat format,
+      String prompt) {
     URI uri = endpointUri(endpoint.baseUrl(), "/audio/transcriptions");
     String boundary = "opaa-" + UUID.randomUUID();
     HttpRequest.Builder request =
         HttpRequest.newBuilder(uri)
             .header("Content-Type", "multipart/form-data; boundary=" + boundary)
-            .POST(multipartBody(boundary, endpoint, audio, format));
+            .POST(multipartBody(boundary, endpoint, audio, format, prompt));
     authorize(request, endpoint);
     byte[] body = withinDeadline(timeout, () -> send(request.build()));
     return parseText(body);
@@ -195,11 +197,15 @@ public class TranscriptionClient {
       String boundary,
       TranscriptionEndpoint endpoint,
       byte[] audio,
-      TranscriptionAudioFormat format) {
+      TranscriptionAudioFormat format,
+      String prompt) {
     ByteArrayOutputStream out = new ByteArrayOutputStream(1024);
     field(out, boundary, "model", endpoint.model());
     if (!endpoint.language().isEmpty()) {
       field(out, boundary, "language", endpoint.language());
+    }
+    if (prompt != null && !prompt.isBlank()) {
+      field(out, boundary, "prompt", prompt);
     }
     field(out, boundary, "response_format", "json");
     ascii(

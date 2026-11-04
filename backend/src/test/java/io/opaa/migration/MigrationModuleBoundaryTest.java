@@ -153,6 +153,7 @@ class MigrationModuleBoundaryTest extends AbstractMigrationTest {
                   "embedding_model_previous",
                   "rerank_model",
                   "transcription_model",
+                  "transcription_vocabularies",
                   "private_storage_quota_settings",
                   "shared_library_quota_settings",
                   "full_sync_rhythm_settings",

@@ -47,6 +47,7 @@ datenkatalog#space-membership-history
 datenkatalog#spaces
 datenkatalog#succession
 datenkatalog#tabellen-ohne-personenbezug
+datenkatalog#transcription-vocabularies
 protokollereignisse
 protokollereignisse#account-deactivated
 protokollereignisse#account-reauthentication-forced

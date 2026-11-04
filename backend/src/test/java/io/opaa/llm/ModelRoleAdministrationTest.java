@@ -57,7 +57,8 @@ class ModelRoleAdministrationTest {
                     "http://8.8.8.8/v1",
                     "whisper",
                     null,
-                    "de"))
+                    "de",
+                    null))
         .isInstanceOf(FieldValidationException.class)
         .satisfies(
             e ->
@@ -74,12 +75,64 @@ class ModelRoleAdministrationTest {
 
     ModelRoleAdministration.TranscriptionModelView view =
         administration.changeTranscription(
-            UUID.randomUUID(), UUID.randomUUID(), false, "http://8.8.8.8/v1", "whisper", null, "");
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            false,
+            "http://8.8.8.8/v1",
+            "whisper",
+            null,
+            "",
+            null);
 
     assertThat(view.speechInputAvailable()).isFalse();
     assertThat(view.language()).isEmpty();
     assertThat(view.status().state()).isEqualTo(TranscriptionRoleState.DISABLED);
     verify(transcriptionRows).save(any());
+  }
+
+  @Test
+  void theVocabularyIsStoredStrippedAndAudited() {
+    ModelRoleAdministration administration = administration(true, new MockEnvironment());
+    ArgumentCaptor<AuditEvent> event = ArgumentCaptor.forClass(AuditEvent.class);
+
+    ModelRoleAdministration.TranscriptionModelView view =
+        administration.changeTranscription(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            false,
+            "http://8.8.8.8/v1",
+            "whisper",
+            null,
+            "de",
+            "  AO, BZSt ");
+
+    assertThat(view.vocabulary()).isEqualTo("AO, BZSt");
+    verify(audit).recordUserAction(event.capture());
+    assertThat(event.getValue().after()).containsEntry("vocabulary", "AO, BZSt");
+  }
+
+  @Test
+  void aVocabularyOverTheCapIsRefused() {
+    ModelRoleAdministration administration = administration(true, new MockEnvironment());
+
+    assertThatThrownBy(
+            () ->
+                administration.changeTranscription(
+                    UUID.randomUUID(),
+                    UUID.randomUUID(),
+                    false,
+                    "http://8.8.8.8/v1",
+                    "whisper",
+                    null,
+                    "de",
+                    "x".repeat(TranscriptionVocabulary.MAX_LENGTH + 1)))
+        .isInstanceOf(FieldValidationException.class)
+        .satisfies(
+            e ->
+                assertThat(((FieldValidationException) e).fieldErrors())
+                    .extracting(FieldValidationException.FieldError::field)
+                    .containsExactly("transcription.vocabulary"));
+    verify(transcriptionRows, never()).save(any());
   }
 
   @Test
@@ -227,7 +280,8 @@ class ModelRoleAdministrationTest {
         "http://speaches:8000/v1#token=geheim",
         "whisper",
         null,
-        "de");
+        "de",
+        null);
 
     ArgumentCaptor<AuditEvent> rerank = ArgumentCaptor.forClass(AuditEvent.class);
     verify(audit).recordSystemProcessAction(rerank.capture());
