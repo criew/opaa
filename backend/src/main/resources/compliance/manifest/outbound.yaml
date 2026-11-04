@@ -70,8 +70,8 @@ dataFlows:
       im Installationsassistenten der Endpunkt, den die einrichtende Person angibt
     data: >-
       Die Sprachaufnahme einer Person, dazu als Prompt die Begriffsliste der Installation und die
-      persönliche Begriffsliste der Person, soweit hinterlegt; Statusprüfung, Verbindungstest und die Prüfung im Assistenten
-      fragen nur die Modellliste ab
+      persönliche Begriffsliste der Person, soweit hinterlegt; Statusprüfung, Verbindungstest und
+      die Prüfung im Assistenten fragen nur die Modellliste ab
     trigger: >-
       Spracheingabe im Chat, Statusprüfung, Verbindungstest in der Modellverwaltung; im
       Installationsassistenten die Prüfung des Schritts Transkriptionsmodell, nur mit dem

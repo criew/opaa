@@ -14,7 +14,10 @@ import type {
   TranscriptionModelSettingsResponse,
 } from '@/shared/api/types'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
-import { TRANSCRIPTION_TEXTS } from '@/shared/ui/transcription/transcriptionSettings'
+import {
+  isVocabularyTooLong,
+  TRANSCRIPTION_TEXTS,
+} from '@/shared/ui/transcription/transcriptionSettings'
 import VocabularyField from '@/shared/ui/transcription/VocabularyField'
 import { notify } from '@/shared/stores/notificationStore'
 import { MODEL_ROLE_TEXTS, type ModelRoleKind } from '@/shared/ui/modelDiscovery/modelRoleTexts'
@@ -88,8 +91,9 @@ function load(kind: ModelRoleKind): Promise<RoleSettings> {
 
 /**
  * The rerank or the transcription model role in one form: switch, endpoint, key and — for
- * dictation — language and the installation's vocabulary list, with a connection test and the role's last known state. The key is
- * write-only, as for the chat models: an untouched field keeps it, „entfernen" removes it.
+ * dictation — language and the installation's vocabulary list, with a connection test and the
+ * role's last known state. The key is write-only, as for the chat models: an untouched field
+ * keeps it, „entfernen" removes it.
  */
 export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
   const texts = TEXTS[kind]
@@ -358,6 +362,7 @@ export default function ModelRoleSection({ kind }: { kind: ModelRoleKind }) {
             variant="contained"
             busy={saving}
             busyAnnouncement="Wird gespeichert"
+            disabled={kind === 'transcription' && isVocabularyTooLong(vocabulary)}
             onClick={() => void handleSave()}
           >
             Speichern

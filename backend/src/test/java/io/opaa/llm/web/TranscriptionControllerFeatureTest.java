@@ -20,11 +20,16 @@ class TranscriptionControllerFeatureTest {
           .withBean(
               PersonalTranscriptionVocabularyService.class,
               () -> mock(PersonalTranscriptionVocabularyService.class))
-          .withUserConfiguration(TranscriptionController.class);
+          .withUserConfiguration(
+              TranscriptionController.class, TranscriptionVocabularyController.class);
 
   @Test
   void theControllerIsRegisteredWithoutConfiguration() {
-    runner.run(context -> assertThat(context).hasSingleBean(TranscriptionController.class));
+    runner.run(
+        context ->
+            assertThat(context)
+                .hasSingleBean(TranscriptionController.class)
+                .hasSingleBean(TranscriptionVocabularyController.class));
   }
 
   @Test
@@ -33,6 +38,9 @@ class TranscriptionControllerFeatureTest {
         .withPropertyValues("opaa.features.speech-input.enabled=false")
         .run(
             context ->
-                assertThat(context).hasNotFailed().doesNotHaveBean(TranscriptionController.class));
+                assertThat(context)
+                    .hasNotFailed()
+                    .doesNotHaveBean(TranscriptionController.class)
+                    .doesNotHaveBean(TranscriptionVocabularyController.class));
   }
 }

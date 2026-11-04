@@ -42,7 +42,8 @@ public class PersonalTranscriptionVocabularyService {
   public String replace(UUID userId, UUID organizationId, String vocabulary) {
     String normalised = TranscriptionVocabulary.normalised(vocabulary);
     if (!TranscriptionVocabulary.isValid(normalised)) {
-      throw FieldValidationException.of("vocabulary", "INVALID", TranscriptionVocabulary.RULE);
+      throw FieldValidationException.of(
+          "vocabulary", ModelEndpointRules.INVALID, TranscriptionVocabulary.RULE);
     }
     PersonalTranscriptionVocabulary existing =
         rows.findByUserIdAndOrganizationId(userId, organizationId).orElse(null);

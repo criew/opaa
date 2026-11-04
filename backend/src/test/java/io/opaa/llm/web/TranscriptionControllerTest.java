@@ -36,6 +36,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -92,6 +93,7 @@ class TranscriptionControllerTest {
   private final AtomicInteger upstreamStatus = new AtomicInteger(200);
   private volatile String upstreamBody = "{\"text\":\"" + RECOGNISED + "\"}";
   private final AtomicInteger transcriptionCalls = new AtomicInteger();
+  private final AtomicReference<String> upstreamRequest = new AtomicReference<>();
   private volatile boolean upstreamStalls;
   private int maxConcurrent = 4;
   private TranscriptionModelRole role;
@@ -107,7 +109,8 @@ class TranscriptionControllerTest {
         "/v1/audio/transcriptions",
         exchange -> {
           transcriptionCalls.incrementAndGet();
-          exchange.getRequestBody().readAllBytes();
+          upstreamRequest.set(
+              new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
           if (upstreamStalls) {
             try {
               Thread.sleep(3_000);
@@ -278,6 +281,22 @@ class TranscriptionControllerTest {
                 .createTranscription(rawBodyOnly, CALLER)
                 .getText())
         .isEqualTo(RECOGNISED);
+  }
+
+  @Test
+  void theCallersOwnVocabularyGoesAlongAsPrompt() throws Exception {
+    TranscriptionController controller = controller(true, Duration.ofSeconds(5));
+    Mockito.when(vocabularies.vocabularyOf(CALLER.id(), CALLER.organizationId()))
+        .thenReturn("Grundsteuermessbescheid für Äöü");
+    MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/transcriptions");
+    request.setContentType("audio/webm;codecs=opus");
+    request.setContent(AUDIO);
+
+    controller.createTranscription(request, CALLER);
+
+    Mockito.verify(vocabularies).vocabularyOf(CALLER.id(), CALLER.organizationId());
+    assertThat(upstreamRequest.get())
+        .contains("name=\"prompt\"\r\n\r\nGrundsteuermessbescheid für Äöü\r\n");
   }
 
   @Test

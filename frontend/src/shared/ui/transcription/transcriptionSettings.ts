@@ -24,3 +24,11 @@ export function transcriptionLanguageError(value: string): string | undefined {
     ? undefined
     : TRANSCRIPTION_TEXTS.languageRule
 }
+
+/** The longest vocabulary list in characters; the backend applies the same cap. */
+export const VOCABULARY_MAX_LENGTH = 500
+
+/** Whether a list exceeds the cap; a form does not send it then. */
+export function isVocabularyTooLong(value: string): boolean {
+  return value.trim().length > VOCABULARY_MAX_LENGTH
+}

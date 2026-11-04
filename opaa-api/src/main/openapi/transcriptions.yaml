@@ -30,7 +30,8 @@ paths:
         not multipart, so the clip is read straight into memory and never buffered to disk. It is
         passed on to the transcription endpoint (OpenAI-compatible POST
         {baseUrl}/audio/transcriptions) and answered as text; neither the audio nor the text is
-        stored or logged. Depends on the transcription endpoint: 503 while the role is not usable,
+        stored or logged. The installation's and the caller's vocabulary lists go along as prompt,
+        the caller's last; without a list no prompt is sent. Depends on the transcription endpoint: 503 while the role is not usable,
         502 when the endpoint fails or answers unreadably. Not reachable while the feature
         speech-input is switched off.
       requestBody:

@@ -5,14 +5,14 @@ import { renderWithProviders } from '@/test/test-utils'
 import { mockTranscriptionVocabulary } from '../mocks/transcriptionHandlers'
 import TranscriptionVocabularySection from './TranscriptionVocabularySection'
 
-const availability = vi.hoisted(() => ({ value: true }))
-vi.mock('../hooks/useTranscriptionAvailability', () => ({
-  useTranscriptionAvailability: () => availability.value,
+const feature = vi.hoisted(() => ({ enabled: true }))
+vi.mock('@/shared/session/useFeatureEnabled', () => ({
+  useFeatureEnabled: () => feature.enabled,
 }))
 
 describe('TranscriptionVocabularySection', () => {
   beforeEach(() => {
-    availability.value = true
+    feature.enabled = true
     mockTranscriptionVocabulary.value = 'Referat Z 4'
   })
 
@@ -20,8 +20,8 @@ describe('TranscriptionVocabularySection', () => {
     mockTranscriptionVocabulary.value = ''
   })
 
-  it('is not shown where dictation is not offered', () => {
-    availability.value = false
+  it('is not shown while the operation has switched off speech input', () => {
+    feature.enabled = false
     renderWithProviders(<TranscriptionVocabularySection />)
 
     expect(screen.queryByText('Spracheingabe')).not.toBeInTheDocument()
@@ -42,7 +42,7 @@ describe('TranscriptionVocabularySection', () => {
     expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled()
   })
 
-  it('shows the refusal of a list over the cap at the field', async () => {
+  it('does not send a list over the cap', async () => {
     const user = userEvent.setup()
     renderWithProviders(<TranscriptionVocabularySection />)
 
@@ -53,10 +53,6 @@ describe('TranscriptionVocabularySection', () => {
     await user.paste('x'.repeat(501))
 
     expect(screen.getByText(/Höchstens 500 Zeichen/)).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Speichern' }))
-    expect(
-      await screen.findByText('Die Begriffsliste umfasst höchstens 500 Zeichen.'),
-    ).toBeInTheDocument()
-    expect(mockTranscriptionVocabulary.value).toBe('Referat Z 4')
+    expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled()
   })
 })

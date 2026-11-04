@@ -1,8 +1,9 @@
 import TextField from '@mui/material/TextField'
-import { TRANSCRIPTION_TEXTS } from './transcriptionSettings'
-
-/** The longest vocabulary list in characters; the backend applies the same cap. */
-export const VOCABULARY_MAX_LENGTH = 500
+import {
+  isVocabularyTooLong,
+  TRANSCRIPTION_TEXTS,
+  VOCABULARY_MAX_LENGTH,
+} from './transcriptionSettings'
 
 interface VocabularyFieldProps {
   id: string
@@ -12,6 +13,7 @@ interface VocabularyFieldProps {
   error?: string
   /** A sentence after the general hint, for where the list applies. */
   hint?: string
+  disabled?: boolean
 }
 
 /**
@@ -24,8 +26,9 @@ export default function VocabularyField({
   onChange,
   error,
   hint,
+  disabled,
 }: VocabularyFieldProps) {
-  const over = value.trim().length > VOCABULARY_MAX_LENGTH
+  const over = isVocabularyTooLong(value)
   const counter = `${value.trim().length} / ${VOCABULARY_MAX_LENGTH} Zeichen`
   const helper =
     error ??
@@ -46,6 +49,7 @@ export default function VocabularyField({
       maxRows={6}
       size="small"
       fullWidth
+      disabled={disabled}
     />
   )
 }

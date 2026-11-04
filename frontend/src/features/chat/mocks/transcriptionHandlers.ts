@@ -31,9 +31,9 @@ export const transcriptionHandlers = [
     const body = (await request.json()) as { vocabulary: string }
     const vocabulary = body.vocabulary.trim()
     if (vocabulary.length > 500) {
-      const message = 'Die Begriffsliste umfasst höchstens 500 Zeichen.'
+      // Like the backend: bean validation refuses the request without field errors.
       return HttpResponse.json(
-        { error: message, fieldErrors: [{ field: 'vocabulary', message }] },
+        { error: 'vocabulary: size must be between 0 and 500' },
         { status: 400 },
       )
     }

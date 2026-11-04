@@ -6,21 +6,22 @@ import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
 import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import SectionHead from '@/shared/ui/SectionHead'
+import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
+import { isVocabularyTooLong } from '@/shared/ui/transcription/transcriptionSettings'
 import VocabularyField from '@/shared/ui/transcription/VocabularyField'
 import {
   getMyTranscriptionVocabulary,
   updateMyTranscriptionVocabulary,
 } from '../api/transcriptionApi'
-import { useTranscriptionAvailability } from '../hooks/useTranscriptionAvailability'
 
 /**
- * The person's own vocabulary list for dictation, in „Ihre Einstellungen“. Shown only where the
- * microphone is offered; the list is the person's alone and goes with every dictation after the
- * installation's list.
+ * The person's own vocabulary list for dictation, in „Ihre Einstellungen“. Shown whenever the
+ * operation offers speech input, also while the endpoint is down, so the person can always see and
+ * clear the list; it is hers alone and goes with every dictation after the installation's list.
  */
 export default function TranscriptionVocabularySection() {
-  const available = useTranscriptionAvailability()
-  if (!available) return null
+  const featureEnabled = useFeatureEnabled('speechInput')
+  if (!featureEnabled) return null
   return <VocabularyForm />
 }
 
@@ -64,8 +65,8 @@ function VocabularyForm() {
   }
 
   return (
-    <Box component="section" sx={{ mt: 5 }}>
-      <SectionHead>Spracheingabe</SectionHead>
+    <Box component="section" aria-labelledby="settings-transcription-head" sx={{ mt: 5 }}>
+      <SectionHead id="settings-transcription-head">Spracheingabe</SectionHead>
       <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 2 }}>
         Begriffe aus Ihrer Arbeit, etwa Namen, Aktenzeichen oder Abkürzungen, erkennt die
         Spracheingabe mit dieser Liste besser. Nur Sie sehen sie.
@@ -79,13 +80,14 @@ function VocabularyForm() {
             value={value}
             onChange={setValue}
             error={fieldError}
+            disabled={stored === null}
           />
           <Box sx={{ mt: 1.5 }}>
             <BusyButton
               variant="outlined"
               busy={saving}
               busyAnnouncement="Wird gespeichert"
-              disabled={stored === null || value.trim() === stored}
+              disabled={stored === null || value.trim() === stored || isVocabularyTooLong(value)}
               onClick={() => void handleSave()}
             >
               Speichern
