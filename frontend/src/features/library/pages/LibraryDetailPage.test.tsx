@@ -479,47 +479,55 @@ describe('LibraryDetailPage', () => {
       expect(await screen.findByRole('tab', { selected: true })).toHaveTextContent('Dokumente')
     })
 
-    it('edits name and description in the head and discards the draft on Escape', async () => {
+    // Name and description change through the head's „⋯" (ADR-0039: one surface, one way).
+    async function openHeadlineDialog(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(await screen.findByRole('button', { name: /weitere aktionen/i }))
+      await user.click(
+        await screen.findByRole('menuitem', { name: 'Name und Beschreibung ändern' }),
+      )
+      return screen.findByRole('dialog', { name: 'Name und Beschreibung ändern' })
+    }
+
+    it('edits name and description from the „⋯" and discards the draft on Escape', async () => {
       setLibraryState(managerLibrary, detailsOf(managerLibrary))
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
       const user = userEvent.setup()
 
-      await user.click(await screen.findByRole('button', { name: /name und beschreibung/i }))
+      await openHeadlineDialog(user)
       const nameField = await screen.findByLabelText(/name der bibliothek/i)
       expect(nameField).toHaveFocus()
       await user.type(nameField, ' (Entwurf)')
       await user.keyboard('{Escape}')
 
-      expect(screen.queryByLabelText(/name der bibliothek/i)).not.toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
       expect(mockUpdateLibrary).not.toHaveBeenCalled()
-      // accessibility.md 2.1: focus returns to the triggering element, otherwise the
-      // next tab key starts again at the very top of the page.
-      expect(screen.getByRole('button', { name: /name und beschreibung/i })).toHaveFocus()
+      // accessibility.md 2.1: focus returns to the „⋯" that opened the dialog.
+      expect(screen.getByRole('button', { name: /weitere aktionen/i })).toHaveFocus()
     })
 
-    it('returns the focus to the pencil after Abbrechen and after a successful save', async () => {
+    it('returns the focus to the „⋯" after Abbrechen and after a successful save', async () => {
       setLibraryState(managerLibrary, detailsOf(managerLibrary))
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
       const user = userEvent.setup()
-      const pencil = () => screen.getByRole('button', { name: /name und beschreibung/i })
+      const trigger = () => screen.getByRole('button', { name: /weitere aktionen/i })
 
-      await user.click(await screen.findByRole('button', { name: /name und beschreibung/i }))
+      await openHeadlineDialog(user)
       await user.click(screen.getByRole('button', { name: 'Abbrechen' }))
-      expect(pencil()).toHaveFocus()
+      await waitFor(() => expect(trigger()).toHaveFocus())
 
-      await user.click(pencil())
+      await openHeadlineDialog(user)
       await user.click(screen.getByRole('button', { name: /^speichern$/i }))
       await waitFor(() => expect(mockUpdateLibrary).toHaveBeenCalled())
-      await waitFor(() => expect(pencil()).toHaveFocus())
+      await waitFor(() => expect(trigger()).toHaveFocus())
     }, 15000)
 
-    it('shows a rejected head save in the head itself, keeping the draft and taking the focus', async () => {
+    it('shows a rejected head save in the dialog, keeping the draft and taking the focus', async () => {
       setLibraryState(managerLibrary, detailsOf(managerLibrary))
       mockUpdateLibrary.mockRejectedValueOnce(new Error('Name bereits vergeben'))
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
       const user = userEvent.setup()
 
-      await user.click(await screen.findByRole('button', { name: /name und beschreibung/i }))
+      await openHeadlineDialog(user)
       await user.click(await screen.findByRole('button', { name: /^speichern$/i }))
 
       const alert = await screen.findByRole('alert')
@@ -536,16 +544,10 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
     expect(await screen.findByText(/87 Dokumente/i)).toBeInTheDocument()
+    // No headline change, no deletion, and nothing else in the head for a reader: no „⋯" at all.
+    // Associating runs through the Reiter „Zuordnungen", no longer the head.
     expect(screen.queryByRole('button', { name: /name und beschreibung/i })).not.toBeInTheDocument()
-    // „⋯" carries „In Space verwenden" for every reading role, but not the deletion.
-    const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: /weitere aktionen/i }))
-    const menu = await screen.findByRole('menu')
-    expect(
-      within(menu)
-        .getAllByRole('menuitem')
-        .map((item) => item.textContent),
-    ).toEqual(['In Space verwenden'])
+    expect(screen.queryByRole('button', { name: /weitere aktionen/i })).not.toBeInTheDocument()
   })
 
   it('shows storage quota usage for a MANAGER but not for a VIEWER whose response omits it', async () => {
@@ -576,12 +578,12 @@ describe('LibraryDetailPage', () => {
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-    expect(
-      await screen.findByRole('button', { name: /name und beschreibung/i }),
-    ).toBeInTheDocument()
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: /weitere aktionen/i }))
+    await user.click(await screen.findByRole('button', { name: /weitere aktionen/i }))
     const menu = await screen.findByRole('menu')
+    expect(
+      within(menu).getByRole('menuitem', { name: 'Name und Beschreibung ändern' }),
+    ).toBeInTheDocument()
     expect(within(menu).queryByRole('menuitem', { name: 'Löschen' })).not.toBeInTheDocument()
   })
 
@@ -615,11 +617,11 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
     const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: /weitere aktionen/i }))
     expect(
-      await screen.findByRole('button', { name: /name und beschreibung/i }),
+      await screen.findByRole('menuitem', { name: 'Name und Beschreibung ändern' }),
     ).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /weitere aktionen/i }))
-    expect(await screen.findByRole('menuitem', { name: 'Löschen' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Löschen' })).toBeInTheDocument()
     expect(screen.getByText('administrativ')).toBeInTheDocument()
   })
 
@@ -630,7 +632,8 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
 
-    await user.click(await screen.findByRole('button', { name: /name und beschreibung/i }))
+    await user.click(await screen.findByRole('button', { name: /weitere aktionen/i }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Name und Beschreibung ändern' }))
     const nameField = await screen.findByLabelText(/name der bibliothek/i)
     await user.clear(nameField)
     await user.type(nameField, 'Rechtsquellen Soziales (neu)')
@@ -1570,19 +1573,20 @@ describe('LibraryDetailPage', () => {
     )
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
-    // the full reconciliation is the action of the section „Läufe“, „Jetzt indizieren“ stays in
-    // the head
+    // „Jetzt indizieren“ and „Vollabgleich starten“ are both text actions of the section „Läufe“;
+    // the head no longer carries „Jetzt indizieren“
+    expect(screen.queryByRole('button', { name: 'Jetzt indizieren' })).not.toBeInTheDocument()
     await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
     const runsSection = await screen.findByRole('region', { name: 'Läufe' })
     await user.click(
       await within(runsSection).findByRole('button', { name: 'Vollabgleich starten' }),
     )
     expect(mockTrigger).toHaveBeenCalledWith(ownerLibrary.id, 'CONFLUENCE', 'FULL')
-    await user.click(screen.getByRole('button', { name: 'Jetzt indizieren' }))
+    await user.click(within(runsSection).getByRole('button', { name: 'Jetzt indizieren' }))
     expect(mockTrigger).toHaveBeenLastCalledWith(ownerLibrary.id, 'CONFLUENCE')
-    // no help text on what „Jetzt indizieren“ reads; the two kinds of run are its tooltip
+    // no help text on what „Jetzt indizieren“ reads; the two kinds of run are the head's tooltip
     expect(screen.queryByText(/in der Regel nur Änderungen seit dem letzten Lauf/)).toBeNull()
-    await user.hover(screen.getByRole('button', { name: 'Jetzt indizieren' }))
+    await user.hover(within(runsSection).getByRole('button', { name: 'Jetzt indizieren' }))
     expect(await screen.findByRole('tooltip')).toHaveTextContent(
       '„Jetzt indizieren“ liest Änderungen, „Vollabgleich starten“ alle Spaces neu.',
     )
@@ -1593,15 +1597,16 @@ describe('LibraryDetailPage', () => {
       detailsOf(ownerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-    await screen.findByRole('button', { name: 'Jetzt indizieren' })
     await user.click(await screen.findByRole('tab', { name: 'Quelle' }))
-    await screen.findByRole('region', { name: 'Läufe' })
-    await screen.findByRole('list', { name: 'Läufe' })
-    expect(screen.queryByRole('button', { name: 'Vollabgleich starten' })).not.toBeInTheDocument()
-    await user.click(
-      screen.getByRole('button', { name: 'Weitere Aktionen für „Rechtsquellen Soziales“' }),
-    )
-    expect(screen.queryByRole('menuitem', { name: 'Vollabgleich starten' })).toBeNull()
+    const runsFilesystem = await screen.findByRole('region', { name: 'Läufe' })
+    await within(runsFilesystem).findByRole('list', { name: 'Läufe' })
+    // a source without a full reconciliation keeps „Jetzt indizieren“ alone
+    expect(
+      within(runsFilesystem).getByRole('button', { name: 'Jetzt indizieren' }),
+    ).toBeInTheDocument()
+    expect(
+      within(runsFilesystem).queryByRole('button', { name: 'Vollabgleich starten' }),
+    ).not.toBeInTheDocument()
   }, 15000)
 
   it('offers a full reconciliation to an EDITOR in „⋯“, who sees no runs', async () => {

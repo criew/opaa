@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-11-02 · ändert [ADR-0037](0037-reichweite-als-freigabe-an-alle.md)
+Akzeptiert · zuletzt geändert 2026-11-04 · ändert [ADR-0037](0037-reichweite-als-freigabe-an-alle.md)
 (Entscheidung 4 und die `listed`-Teile von 5, 6, 7 und 9),
 [ADR-0036](0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) (Entscheidung 9, Begründung) und
 [ADR-0035](0035-fremdzugaenge-mcp-server-und-zugangstokens.md) (Entscheidung 5, Gleichheitszusage)
@@ -82,9 +82,10 @@ lesbar ist, serverseitig durchgesetzt (`SpaceAssetAssociationService`):
   jedes Mitglied sieht nur die für es lesbaren Zuordnungen. Sie wird nicht historisiert; was ein Chat
   durchsucht hat, wird nicht protokolliert.
 - Ausgleich für die Kuratierungslast: Der Space-Assistent ordnet aus derselben Kachelliste zu (Schritt
-  überspringbar); „In Space verwenden" liegt im Menü der Kachel und auf der Detailseite; die
-  Benachrichtigung der Eigentümer bei Zuordnung zu einem gemischten Space (ADR-0019) gilt für alle Typen
-  und wird gebündelt.
+  überspringbar); „In Space verwenden" liegt auf der Detailseite im Reiter „Zuordnungen", wo der Weg in
+  einen Space und die bestehenden Zuordnungen an einer Stelle stehen — nicht im Kachelmenü des Katalogs,
+  das nur liest und favorisiert; die Benachrichtigung der Eigentümer bei Zuordnung zu einem gemischten
+  Space (ADR-0019) gilt für alle Typen und wird gebündelt.
 
 ### 5. Fremdzugang und Suche ohne Space bleiben bei ihrer eigenen Auswahl
 

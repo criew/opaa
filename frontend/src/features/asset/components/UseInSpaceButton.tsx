@@ -1,17 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import Alert from '@mui/material/Alert'
+import Autocomplete from '@mui/material/Autocomplete'
+import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Dialog from '@mui/material/Dialog'
-import DialogActions from '@mui/material/DialogActions'
-import DialogContent from '@mui/material/DialogContent'
-import DialogTitle from '@mui/material/DialogTitle'
-import List from '@mui/material/List'
-import ListItem from '@mui/material/ListItem'
-import ListItemButton from '@mui/material/ListItemButton'
-import ListItemText from '@mui/material/ListItemText'
+import Link from '@mui/material/Link'
+import Stack from '@mui/material/Stack'
+import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import AddIcon from '@mui/icons-material/Add'
 import type { AssetType, SpaceListResponse } from '@/shared/api/types'
 import { associateSpaceAsset, getAssetSpaceAssociations } from '../api/assetApi'
 import { notify } from '@/shared/stores/notificationStore'
@@ -19,22 +15,19 @@ import { successionAwareMessage } from '@/features/succession'
 import type { SpaceCreateLocationState } from './assetPick'
 import { useSpaceListLoader } from './spaceListContext'
 
-interface UseInSpaceTarget {
+interface UseInSpaceInlineProps {
   assetType: AssetType
   assetId: string
   name: string
   /**
    * The reach is frozen by an open succession (ADR-0036/6): every new association is refused, so
-   * every entry is locked and the dialog names why.
+   * the field is locked and the form names why.
    */
   reachFrozen?: boolean
   /** Called after an association was created, e.g. to reload counts and lists. */
   onAssociated?: () => void
-}
-
-interface UseInSpaceDialogProps extends UseInSpaceTarget {
-  open: boolean
-  onClose: () => void
+  /** Closes the form again (on „Abbrechen" and after a successful association). */
+  onDone: () => void
 }
 
 /** The spaces in which the person may associate: CURATOR or ADMIN, and not archived. */
@@ -45,27 +38,26 @@ function curatedSpaces(spaces: SpaceListResponse[]): SpaceListResponse[] {
 }
 
 /**
- * The choice behind "In Space verwenden" (ADR-0039, Entscheidung 4): the spaces the person curates,
- * one click associates - or starts a new space with the asset already chosen.
+ * The form behind „In Space verwenden" (ADR-0039, Entscheidung 4), inline below the section head
+ * like „Freigeben": a search over the spaces the person curates and not yet holding the asset, a
+ * „Verwenden" button, and „Neuen Space anlegen" that starts a space with the asset already chosen.
  */
-export function UseInSpaceDialog({
+export function UseInSpaceInline({
   assetType,
   assetId,
   name,
   reachFrozen = false,
-  open,
-  onClose,
   onAssociated,
-}: UseInSpaceDialogProps) {
+  onDone,
+}: UseInSpaceInlineProps) {
   const navigate = useNavigate()
   const loadSpaces = useSpaceListLoader()
   const [spaces, setSpaces] = useState<SpaceListResponse[] | null>(null)
-  const [associated, setAssociated] = useState<Set<string>>(new Set())
+  const [selected, setSelected] = useState<SpaceListResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    if (!open) return
     let cancelled = false
     void Promise.all([
       loadSpaces(),
@@ -73,8 +65,10 @@ export function UseInSpaceDialog({
     ])
       .then(([list, links]) => {
         if (cancelled) return
-        setSpaces(curatedSpaces(list))
-        setAssociated(new Set(links.items.map((item) => item.spaceId)))
+        const associated = new Set(links.items.map((item) => item.spaceId))
+        // Already associated spaces are not offered - the association is the hard border, so a
+        // second one carries no meaning.
+        setSpaces(curatedSpaces(list).filter((space) => !associated.has(space.id)))
       })
       .catch((err) => {
         if (cancelled) return
@@ -84,23 +78,17 @@ export function UseInSpaceDialog({
     return () => {
       cancelled = true
     }
-  }, [open, assetType, assetId, loadSpaces])
+  }, [assetType, assetId, loadSpaces])
 
-  /** Closes and forgets the loaded choice, so the next opening starts from "wird geladen". */
-  function close() {
-    setSpaces(null)
-    setError(null)
-    onClose()
-  }
-
-  async function associate(space: SpaceListResponse) {
+  async function associate() {
+    if (!selected) return
     setBusy(true)
     setError(null)
     try {
-      await associateSpaceAsset(space.id, assetType, assetId)
-      notify(`„${name}“ ist jetzt im Space „${space.name}“ zugeordnet.`, 'success')
+      await associateSpaceAsset(selected.id, assetType, assetId)
+      notify(`„${name}“ ist jetzt im Space „${selected.name}“ zugeordnet.`, 'success')
       onAssociated?.()
-      close()
+      onDone()
     } catch (err) {
       setError(successionAwareMessage(err, 'Zuordnung fehlgeschlagen'))
     } finally {
@@ -110,86 +98,75 @@ export function UseInSpaceDialog({
 
   function startNewSpace() {
     const state: SpaceCreateLocationState = { preselect: { assetType, assetId, name } }
-    close()
     navigate('/spaces/new', { state })
   }
 
-  const titleId = `use-in-space-${assetId}`
-  const reasonId = `${titleId}-reason`
-  // Locked entries stay focusable, so the reason they are described by can be heard (5.11).
-  const lockedProps = reachFrozen
-    ? {
-        'aria-disabled': true,
-        'aria-describedby': reasonId,
-        sx: { cursor: 'not-allowed', '& > *': { opacity: 0.6 } },
-      }
-    : {}
+  if (spaces === null) {
+    return (
+      <Box sx={{ mb: 3, pb: 3, borderBottom: 1, borderColor: 'divider' }}>
+        <Typography sx={{ color: 'text.secondary', fontSize: 13.5 }}>
+          Spaces werden geladen …
+        </Typography>
+      </Box>
+    )
+  }
+
   return (
-    <Dialog open={open} onClose={close} aria-labelledby={titleId} fullWidth>
-      <DialogTitle id={titleId}>„{name}“ in Space verwenden</DialogTitle>
-      <DialogContent>
-        {error && (
-          <Alert severity="error" sx={{ mb: 1.5 }}>
-            {error}
-          </Alert>
-        )}
-        {spaces === null ? (
-          <Typography sx={{ color: 'text.secondary' }}>Spaces werden geladen …</Typography>
+    <Box sx={{ mb: 3, pb: 3, borderBottom: 1, borderColor: 'divider' }}>
+      <Stack spacing={1.5} sx={{ mt: 1 }}>
+        {error && <Alert severity="error">{error}</Alert>}
+        {reachFrozen ? (
+          // Never dimmed: it holds the text contrast (2.4) and says why nothing can be chosen.
+          <Typography sx={{ color: 'warning.main', fontSize: 13.5 }}>
+            Solange die Nachfolge offen ist, lässt sich „{name}“ nicht neu zuordnen.
+          </Typography>
         ) : (
           <>
-            {/* Outside the locked entries and never dimmed: it holds the text contrast (2.4). */}
-            {reachFrozen && (
-              <Typography id={reasonId} sx={{ color: 'warning.main', fontSize: 13.5, mb: 1 }}>
-                Solange die Nachfolge offen ist, lässt sich „{name}“ nicht neu zuordnen.
-              </Typography>
-            )}
-            {spaces.length === 0 && (
-              <Typography sx={{ color: 'text.secondary', mb: 1 }}>
-                {/* A new space is locked as well while the reach is frozen; no pointer to it. */}
-                {reachFrozen
-                  ? 'Sie kuratieren noch keinen Space.'
-                  : 'Sie kuratieren noch keinen Space. Legen Sie einen neuen an.'}
-              </Typography>
-            )}
-            <List aria-label="Spaces, die Sie kuratieren" sx={{ py: 0 }}>
-              {spaces.map((space) => {
-                const already = associated.has(space.id)
-                return (
-                  <ListItem key={space.id} disablePadding>
-                    <ListItemButton
-                      disabled={busy || already}
-                      {...(already ? {} : lockedProps)}
-                      onClick={() => {
-                        if (!reachFrozen) void associate(space)
-                      }}
-                    >
-                      <ListItemText
-                        primary={space.name}
-                        secondary={already ? 'Bereits zugeordnet' : undefined}
-                      />
-                    </ListItemButton>
-                  </ListItem>
-                )
-              })}
-              <ListItem disablePadding>
-                <ListItemButton
-                  disabled={busy}
-                  {...lockedProps}
-                  onClick={() => {
-                    if (!reachFrozen) startNewSpace()
-                  }}
-                >
-                  <AddIcon aria-hidden sx={{ mr: 1.5, color: 'text.secondary' }} />
-                  <ListItemText primary="Neuen Space damit anlegen" />
-                </ListItemButton>
-              </ListItem>
-            </List>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1.5}
+              sx={{ alignItems: { sm: 'center' } }}
+            >
+              <Autocomplete
+                sx={{ flex: 1, minWidth: 0 }}
+                options={spaces}
+                value={selected}
+                onChange={(_event, next) => setSelected(next)}
+                getOptionLabel={(space) => space.name}
+                isOptionEqualToValue={(a, b) => a.id === b.id}
+                disabled={busy}
+                noOptionsText="Kein kuratierter Space gefunden"
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    size="small"
+                    label="Space suchen"
+                    placeholder="Name enthält …"
+                  />
+                )}
+              />
+              <Button
+                variant="contained"
+                onClick={() => void associate()}
+                disabled={busy || !selected}
+              >
+                {busy ? 'Wird zugeordnet …' : 'Verwenden'}
+              </Button>
+            </Stack>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              Angeboten werden nur Spaces, die Sie kuratieren und die „{name}“ noch nicht enthalten.{' '}
+              <Link component="button" type="button" onClick={startNewSpace}>
+                Neuen Space anlegen
+              </Link>
+            </Typography>
           </>
         )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={close}>Abbrechen</Button>
-      </DialogActions>
-    </Dialog>
+        <Box>
+          <Button size="small" onClick={onDone} disabled={busy}>
+            Abbrechen
+          </Button>
+        </Box>
+      </Stack>
+    </Box>
   )
 }

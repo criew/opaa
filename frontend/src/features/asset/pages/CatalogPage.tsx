@@ -12,41 +12,16 @@ import {
   useActiveAssetTypes,
 } from '../../../shared/assetTypes'
 import OverviewPage from '@/shared/ui/overview/OverviewPage'
-import RowMenu from '@/shared/ui/RowMenu'
 import AssetTile from '../components/AssetTile'
 import { tileFromCatalogEntry } from '../components/assetTileData'
-import { UseInSpaceDialog } from '../components/UseInSpaceButton'
 import AssetFilterBar from '../components/AssetFilterBar'
 import { CATALOG_NEW_ROUTE } from '@/shared/routes'
 
 /** Long enough to let a word be typed out before the server is asked. */
 const SEARCH_DELAY_MS = 300
 
-/**
- * "⋯": the card's further actions in a menu beside the star - like the star its own tab stop above
- * the card's stretched link, never inside it.
- */
-function MoreActions({ entry }: { entry: CatalogEntryResponse }) {
-  const [useInSpace, setUseInSpace] = useState(false)
-  return (
-    <>
-      <RowMenu
-        name={entry.name}
-        triggerSx={{ position: 'relative', zIndex: 1, m: -0.75, ml: 0.25 }}
-        items={[{ label: 'In Space verwenden', onClick: () => setUseInSpace(true) }]}
-      />
-      <UseInSpaceDialog
-        assetType={entry.assetType}
-        assetId={entry.assetId}
-        name={entry.name}
-        reachFrozen={Boolean(entry.succession)}
-        open={useInSpace}
-        onClose={() => setUseInSpace(false)}
-      />
-    </>
-  )
-}
-
+// The way into a space runs through the space itself (Inhalte, Space-Assistent) and the asset's
+// Reiter „Zuordnungen" (ADR-0039, Entscheidung 4); the catalog card only reads and favours.
 function CatalogCard({ entry, to }: { entry: CatalogEntryResponse; to: string }) {
   const setFavorite = useCatalogStore((s) => s.setFavorite)
   return (
@@ -54,7 +29,6 @@ function CatalogCard({ entry, to }: { entry: CatalogEntryResponse; to: string })
       tile={tileFromCatalogEntry(entry)}
       mode={{ kind: 'link', to }}
       onFavoriteChange={(favorite) => setFavorite(entry, favorite)}
-      actions={<MoreActions entry={entry} />}
     />
   )
 }

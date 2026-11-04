@@ -251,7 +251,7 @@ describe('LibraryDetailPage – private Bibliothek: Sofort löschen (#2165)', ()
       screen.queryByRole('button', { name: 'Weitere Aktionen für „Meine Ablage“' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'Name und Beschreibung bearbeiten' }),
+      screen.queryByRole('button', { name: 'Name und Beschreibung ändern' }),
     ).not.toBeInTheDocument()
     expect(screen.queryByText(/nur Leserechte/)).not.toBeInTheDocument()
   })

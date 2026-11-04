@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactElement } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -95,12 +95,14 @@ describe('AssetSpacesList (#1939, #2208)', () => {
     expect(screen.getByText(/^zugeordnet am 02\.10\.2026 von Thomas Klein/)).toBeInTheDocument()
     expect(screen.getByText('nicht für alle Mitglieder lesbar')).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'Weitere Aktionen für „Disziplinarverfahren 2026“' }),
+      screen.getByRole('button', {
+        name: /^Lösen\s?Zuordnung zum Space „Disziplinarverfahren 2026“/,
+      }),
     ).toBeInTheDocument()
   })
 
   // Whoever curates the space may detach - even without managing the library.
-  it('lets a curator of the space detach it through the row menu, and only that row', async () => {
+  it('lets a curator of the space detach it through the row action, and only that row', async () => {
     mockGetSpaces.mockResolvedValue([
       spaceWithRole('space-curated', 'CURATOR'),
       spaceWithRole('space-member', 'MEMBER'),
@@ -123,17 +125,15 @@ describe('AssetSpacesList (#1939, #2208)', () => {
     )
     const user = userEvent.setup()
 
-    const rowMenu = await screen.findByRole('button', {
-      name: 'Weitere Aktionen für „Infotheke Bürgerbüro“',
+    const detach = await screen.findByRole('button', {
+      name: /^Lösen\s?Zuordnung zum Space „Infotheke Bürgerbüro“/,
     })
     expect(mockGetSpaces).toHaveBeenCalledTimes(1)
     expect(
-      screen.queryByRole('button', { name: 'Weitere Aktionen für „Dienstbesprechung Bürgerbüro“' }),
+      screen.queryByRole('button', { name: /„Dienstbesprechung Bürgerbüro“/ }),
     ).not.toBeInTheDocument()
 
-    await user.click(rowMenu)
-    const menu = await screen.findByRole('menu')
-    await user.click(within(menu).getByRole('menuitem', { name: 'Aus Space lösen' }))
+    await user.click(detach)
     await answerConfirm(user, 'Zuordnung zum Space „Infotheke Bürgerbüro“ lösen?', 'Lösen')
 
     await waitFor(() =>

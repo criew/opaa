@@ -11,11 +11,10 @@ import type { AssetType } from '@/shared/api/types'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import RowMenu from '@/shared/ui/RowMenu'
 import { focusRingOffsetPx, focusRingWidthPx } from '@/shared/theme/tokens'
-import AssetHeadlineEditor, { type AssetHeadlineEditorProps } from './AssetHeadlineEditor'
+import AssetHeadline, { EditHeadlineDialog, type AssetHeadlineProps } from './AssetHeadlineEditor'
 import { FavoriteToggle, PublicMark, TypeBadge } from './assetMarks'
 import { spreadLabel } from './assetTileData'
 import { assetTypeDefinition } from '../../../shared/assetTypes'
-import { UseInSpaceDialog } from './UseInSpaceButton'
 
 export interface AssetDetailHeaderProps {
   assetType: AssetType
@@ -28,7 +27,7 @@ export interface AssetDetailHeaderProps {
   badges?: ReactNode
   /** The role shown comes from the system administration's bypass, not from an own grant. */
   administrative?: boolean
-  headline: Omit<AssetHeadlineEditorProps, 'name' | 'description' | 'badges'>
+  headline: AssetHeadlineProps
   /** What the asset holds, in the words of its type ("12 Prompts"). */
   extent: string
   /** Figures only this type has, after the extent - e.g. storage. */
@@ -46,11 +45,6 @@ export interface AssetDetailHeaderProps {
   /** The caller's own mark; without it, or without `onFavoriteChange`, no star. */
   favorite?: boolean
   onFavoriteChange?: (favorite: boolean) => Promise<void>
-  /** Offers „In Space verwenden" in „⋯". */
-  mayUseInSpace: boolean
-  /** An open succession freezes the reach: „In Space verwenden" offers nothing to choose. */
-  reachFrozen?: boolean
-  onAssociated?: () => void
   /** Offers „Löschen" in „⋯"; absent without the right to delete. */
   onDelete?: () => void
   /** The menu entry's wording where deleting means more, e.g. „Sofort löschen"; default „Löschen". */
@@ -59,7 +53,7 @@ export interface AssetDetailHeaderProps {
   deleteDisabled?: boolean
   /** Further controls left of the star, e.g. starting an indexing run. */
   actions?: ReactNode
-  /** Further actions of the „…“ menu, above „In Space verwenden“. */
+  /** Further actions of the „…“ menu, above „Name und Beschreibung ändern“. */
   menuItems?: Array<{ label: string; onClick: () => void; disabled?: boolean }>
   /** Right under name and description, e.g. the succession state. */
   note?: ReactNode
@@ -125,66 +119,37 @@ const FIGURE_SEPARATOR = {
   color: 'text.disabled',
 } as const
 
-/** „⋯": „In Space verwenden" for whoever may use it, „Löschen" last and only with the right. */
+/** „⋯": the type's own entries, then „Name und Beschreibung ändern", then „Löschen" last. */
 function MoreActions({
-  assetType,
-  assetId,
   name,
-  mayUseInSpace,
-  reachFrozen,
-  onAssociated,
   onDelete,
   deleteLabel = 'Löschen',
   deleteDisabled = false,
   menuItems,
 }: Pick<
   AssetDetailHeaderProps,
-  | 'menuItems'
-  | 'assetType'
-  | 'assetId'
-  | 'name'
-  | 'mayUseInSpace'
-  | 'reachFrozen'
-  | 'onAssociated'
-  | 'onDelete'
-  | 'deleteLabel'
-  | 'deleteDisabled'
+  'menuItems' | 'name' | 'onDelete' | 'deleteLabel' | 'deleteDisabled'
 >) {
-  const [useInSpace, setUseInSpace] = useState(false)
-  if (!mayUseInSpace && !onDelete && !menuItems?.length) return null
+  if (!onDelete && !menuItems?.length) return null
   return (
-    <>
-      <RowMenu
-        name={name}
-        items={[
-          ...(menuItems ?? []),
-          mayUseInSpace && { label: 'In Space verwenden', onClick: () => setUseInSpace(true) },
-          onDelete && {
-            label: deleteLabel,
-            onClick: onDelete,
-            danger: true,
-            disabled: deleteDisabled,
-          },
-        ]}
-      />
-      {mayUseInSpace && (
-        <UseInSpaceDialog
-          assetType={assetType}
-          assetId={assetId}
-          name={name}
-          reachFrozen={reachFrozen}
-          open={useInSpace}
-          onClose={() => setUseInSpace(false)}
-          onAssociated={onAssociated}
-        />
-      )}
-    </>
+    <RowMenu
+      name={name}
+      items={[
+        ...(menuItems ?? []),
+        onDelete && {
+          label: deleteLabel,
+          onClick: onDelete,
+          danger: true,
+          disabled: deleteDisabled,
+        },
+      ]}
+    />
   )
 }
 
 /**
  * The head of every asset detail page: type, reach and role on one line with star and
- * „⋯" at its end, name and description editable behind the pencil, and the figures the catalog
+ * „⋯" at its end, name and description changed through that „⋯", and the figures the catalog
  * tile shows - extent, spread, responsibility, last change. The type's own figures and states
  * come in through slots, so every type keeps the same order.
  */
@@ -207,9 +172,6 @@ export default function AssetDetailHeader({
   status,
   favorite,
   onFavoriteChange,
-  mayUseInSpace,
-  reachFrozen,
-  onAssociated,
   onDelete,
   deleteLabel,
   deleteDisabled,
@@ -222,7 +184,13 @@ export default function AssetDetailHeader({
   // below 600 px a head with a state shows one line - the state and a toggle - and its figures
   // only on request
   const [figuresOpen, setFiguresOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const compact = Boolean(status)
+  // „Name und Beschreibung ändern" leads the type's own entries in the „⋯" (ADR-0039: one way)
+  const headlineItem = headline.canEdit
+    ? { label: headline.editLabel, onClick: () => setEditOpen(true) }
+    : null
+  const mergedMenuItems = [...(headlineItem ? [headlineItem] : []), ...(menuItems ?? [])]
   return (
     <Box
       component="header"
@@ -281,30 +249,33 @@ export default function AssetDetailHeader({
             <FavoriteToggle name={name} favorite={favorite} onChange={onFavoriteChange} />
           )}
           <MoreActions
-            assetType={assetType}
-            assetId={assetId}
             name={name}
-            mayUseInSpace={mayUseInSpace}
-            reachFrozen={reachFrozen}
-            onAssociated={onAssociated}
             onDelete={onDelete}
             deleteLabel={deleteLabel}
             deleteDisabled={deleteDisabled}
-            menuItems={menuItems}
+            menuItems={mergedMenuItems}
           />
         </Stack>
       </Stack>
 
       <Box sx={{ position: 'relative' }}>
-        <AssetHeadlineEditor
-          // A fresh editor per asset, so a draft never survives a change of asset.
-          key={`headline-${assetId}`}
-          name={name}
-          description={description}
-          {...headline}
-        />
+        <AssetHeadline name={name} description={description} />
         {note && <Box sx={{ maxWidth: 640 }}>{note}</Box>}
       </Box>
+      {headline.canEdit && (
+        <EditHeadlineDialog
+          // A fresh draft per asset, so an edit never survives a change of asset.
+          key={`headline-${assetId}`}
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          name={name}
+          description={description}
+          idPrefix={headline.idPrefix}
+          nameLabel={headline.nameLabel}
+          editLabel={headline.editLabel}
+          onSave={headline.onSave}
+        />
+      )}
 
       {/* one line at 1280 px; below 600 px the state alone on one line with a toggle, the
           figures below it on request - every figure kept whole, no line starts or ends on a

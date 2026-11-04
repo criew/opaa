@@ -14,14 +14,13 @@ function renderHeader(overrides: Partial<AssetDetailHeaderProps> = {}) {
     headline: {
       idPrefix: 'prompt-library-detail',
       nameLabel: 'Name der Prompt-Bibliothek',
-      editLabel: 'Name und Beschreibung bearbeiten',
+      editLabel: 'Name und Beschreibung ändern',
       canEdit: false,
       onSave: vi.fn(async () => {}),
     },
     extent: '12 Prompts',
     responsible: { label: 'Bürgerbüro', group: true },
     updatedAt: '2026-10-03T10:00:00Z',
-    mayUseInSpace: false,
     ...overrides,
   }
   return renderWithProviders(<AssetDetailHeader {...props} />, { withRouter: true })
@@ -117,9 +116,17 @@ describe('AssetDetailHeader (#2208)', () => {
     expect(screen.queryByRole('button', { name: /favorit/i })).not.toBeInTheDocument()
   })
 
-  it('offers „In Space verwenden" and, with the right, „Löschen" behind a separator in „⋯"', async () => {
+  const editableHeadline = {
+    idPrefix: 'prompt-library-detail',
+    nameLabel: 'Name der Prompt-Bibliothek',
+    editLabel: 'Name und Beschreibung ändern',
+    canEdit: true,
+    onSave: vi.fn(async () => {}),
+  }
+
+  it('offers „Name und Beschreibung ändern" and, with the right, „Löschen" behind a separator in „⋯"', async () => {
     const onDelete = vi.fn()
-    renderHeader({ mayUseInSpace: true, onDelete })
+    renderHeader({ headline: editableHeadline, onDelete })
     const user = userEvent.setup()
 
     await user.click(
@@ -127,29 +134,33 @@ describe('AssetDetailHeader (#2208)', () => {
     )
     const menu = await screen.findByRole('menu')
     const items = within(menu).getAllByRole('menuitem')
-    expect(items.map((item) => item.textContent)).toEqual(['In Space verwenden', 'Löschen'])
+    expect(items.map((item) => item.textContent)).toEqual([
+      'Name und Beschreibung ändern',
+      'Löschen',
+    ])
     expect(within(menu).getByRole('separator')).toBeInTheDocument()
 
     await user.click(within(menu).getByRole('menuitem', { name: 'Löschen' }))
     expect(onDelete).toHaveBeenCalledTimes(1)
   })
 
-  it('opens the catalog dialog from „In Space verwenden" in the menu', async () => {
-    renderHeader({ mayUseInSpace: true })
+  it('opens the edit dialog from „Name und Beschreibung ändern" in the menu', async () => {
+    renderHeader({ headline: editableHeadline })
     const user = userEvent.setup()
 
     await user.click(
       screen.getByRole('button', { name: 'Weitere Aktionen für „Textbausteine Bürgerbüro“' }),
     )
-    await user.click(await screen.findByRole('menuitem', { name: 'In Space verwenden' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Name und Beschreibung ändern' }))
 
+    const dialog = await screen.findByRole('dialog', { name: 'Name und Beschreibung ändern' })
     expect(
-      await screen.findByRole('dialog', { name: '„Textbausteine Bürgerbüro“ in Space verwenden' }),
+      within(dialog).getByRole('textbox', { name: 'Name der Prompt-Bibliothek' }),
     ).toBeInTheDocument()
   })
 
-  it('offers no „Löschen" without the right to delete', async () => {
-    renderHeader({ mayUseInSpace: true })
+  it('offers the edit entry alone without the right to delete', async () => {
+    renderHeader({ headline: editableHeadline })
     const user = userEvent.setup()
 
     await user.click(
@@ -160,20 +171,22 @@ describe('AssetDetailHeader (#2208)', () => {
       within(menu)
         .getAllByRole('menuitem')
         .map((item) => item.textContent),
-    ).toEqual(['In Space verwenden'])
+    ).toEqual(['Name und Beschreibung ändern'])
   })
 
   it('shows no „⋯" when it would stay empty', () => {
-    renderHeader({ mayUseInSpace: false })
+    renderHeader()
 
     expect(
       screen.queryByRole('button', { name: 'Weitere Aktionen für „Textbausteine Bürgerbüro“' }),
     ).not.toBeInTheDocument()
   })
 
-  it('has no big „In Space verwenden" button in the head', () => {
-    renderHeader({ mayUseInSpace: true })
+  it('carries no pencil to edit name and description in the head', () => {
+    renderHeader({ headline: editableHeadline })
 
-    expect(screen.queryByRole('button', { name: /in space verwenden/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Name und Beschreibung ändern' }),
+    ).not.toBeInTheDocument()
   })
 })

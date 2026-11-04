@@ -387,32 +387,19 @@ describe('CatalogPage (ADR-0039)', () => {
     )
   })
 
-  it('offers "In Space verwenden" in a menu beside the star, never inside the link', async () => {
-    const user = userEvent.setup()
+  // The way into a space runs through the space itself and the asset's Reiter „Zuordnungen"
+  // (ADR-0039, Entscheidung 4): the catalog card only reads and favours, no „⋯".
+  it('carries no „⋯" and no „In Space verwenden" on a catalog card', async () => {
     renderCatalog()
     const link = await screen.findByRole('link', { name: 'Formulierungshilfen Referat 50' })
     const card = cardOf(link)
 
     expect(
-      within(card).queryByRole('button', { name: /in Space verwenden/ }),
+      within(card).queryByRole('button', { name: /in Space verwenden/i }),
     ).not.toBeInTheDocument()
-    const more = within(card).getByRole('button', {
-      name: 'Weitere Aktionen für „Formulierungshilfen Referat 50“',
-    })
-    expect(within(link).queryByRole('button')).not.toBeInTheDocument()
-    expect(more).toHaveAttribute('aria-haspopup', 'menu')
-
-    more.focus()
-    await user.keyboard('{Enter}')
-    const item = await screen.findByRole('menuitem', { name: 'In Space verwenden' })
-    await user.click(item)
-
-    const dialog = await screen.findByRole('dialog', {
-      name: '„Formulierungshilfen Referat 50“ in Space verwenden',
-    })
     expect(
-      await within(dialog).findByRole('button', { name: 'Neuen Space damit anlegen' }),
-    ).toBeInTheDocument()
+      within(card).queryByRole('button', { name: /weitere aktionen/i }),
+    ).not.toBeInTheDocument()
   })
 
   it('offers no visibility, no group filter and no sort - search, type, favorites in one row', async () => {

@@ -216,7 +216,7 @@ describe('Detailseite einer Prompt-Bibliothek (#2208)', () => {
     expect(screen.queryByText(/zurück zum katalog/i)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Neuer Prompt' })).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'Name und Beschreibung bearbeiten' }),
+      screen.queryByRole('button', { name: 'Name und Beschreibung ändern' }),
     ).not.toBeInTheDocument()
     // No section heading repeats the tab name.
     expect(screen.queryByRole('heading', { name: 'Prompts' })).not.toBeInTheDocument()
@@ -267,7 +267,7 @@ describe('Detailseite einer Prompt-Bibliothek (#2208)', () => {
     )
   })
 
-  it('bearbeitet Name und Beschreibung über den Stift im Kopf', async () => {
+  it('bearbeitet Name und Beschreibung über „Name und Beschreibung ändern“ im „⋯“', async () => {
     const puts: unknown[] = []
     server.events.on('request:start', async ({ request }) => {
       const path = new URL(request.url).pathname
@@ -282,8 +282,11 @@ describe('Detailseite einer Prompt-Bibliothek (#2208)', () => {
     renderDetail('/prompts/prompt-library-referat-50')
 
     await user.click(
-      await screen.findByRole('button', { name: 'Name und Beschreibung bearbeiten' }),
+      await screen.findByRole('button', {
+        name: 'Weitere Aktionen für „Formulierungshilfen Referat 50“',
+      }),
     )
+    await user.click(await screen.findByRole('menuitem', { name: 'Name und Beschreibung ändern' }))
     const nameField = screen.getByLabelText('Name der Prompt-Bibliothek')
     await user.clear(nameField)
     await user.type(nameField, 'Textbausteine Bürgerbüro')
@@ -321,7 +324,7 @@ describe('Detailseite einer Prompt-Bibliothek (#2208)', () => {
     ).toBeInTheDocument()
   })
 
-  it('bietet „In Space verwenden“ im Menü und im Reiter „Zuordnungen“, Löschen nur dem Eigentümer', async () => {
+  it('bietet „In Space verwenden“ nur im Reiter „Zuordnungen“, der Kopf nur die Namensänderung', async () => {
     const user = userEvent.setup()
     renderDetail('/prompts/prompt-library-referat-50/zuordnungen')
 
@@ -332,6 +335,8 @@ describe('Detailseite einer Prompt-Bibliothek (#2208)', () => {
     expect(await screen.findByRole('button', { name: 'In Space verwenden' })).toBeInTheDocument()
     expect(await screen.findByText('Engineering')).toBeInTheDocument()
 
+    // „In Space verwenden" lives only in the tab now; the head's „⋯" offers the name change,
+    // and „Löschen" only to the owner (this role is not one).
     await user.click(
       screen.getByRole('button', { name: 'Weitere Aktionen für „Formulierungshilfen Referat 50“' }),
     )
@@ -340,7 +345,7 @@ describe('Detailseite einer Prompt-Bibliothek (#2208)', () => {
       within(menu)
         .getAllByRole('menuitem')
         .map((item) => item.textContent),
-    ).toEqual(['In Space verwenden'])
+    ).toEqual(['Name und Beschreibung ändern'])
   })
 
   it('führt einen Eigentümer über „Löschen“ im Menü zurück in den Katalog', async () => {

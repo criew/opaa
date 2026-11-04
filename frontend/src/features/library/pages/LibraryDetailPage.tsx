@@ -5,7 +5,6 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
-import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import type { IndexingRunResponse } from '@/shared/api/types'
 import { confluenceSettingsOf } from '../utils/confluenceSource'
@@ -392,7 +391,7 @@ export default function LibraryDetailPage() {
           headline={{
             idPrefix: 'library-detail',
             nameLabel: 'Name der Bibliothek',
-            editLabel: 'Name und Beschreibung bearbeiten',
+            editLabel: 'Name und Beschreibung ändern',
             canEdit: mayChange,
             onSave: saveHeadline,
           }}
@@ -448,18 +447,24 @@ export default function LibraryDetailPage() {
               />
             )
           }
-          // the runs with their own „Vollabgleich starten“ are the managers'; whoever else may
-          // start a run finds the full reconciliation here
+          // the runs with their own „Jetzt indizieren“ and „Vollabgleich starten“ are the
+          // managers'; whoever else may start a run but has no Reiter „Quelle“ finds both here
           menuItems={
-            fullSync && !canEdit
-              ? [{ label: 'Vollabgleich starten', onClick: fullSync, disabled: isRunning }]
+            connectorSourceType && mayManageDocuments && !canEdit
+              ? [
+                  {
+                    label: 'Jetzt indizieren',
+                    onClick: () => void triggerIndexing(libraryId, connectorSourceType),
+                    disabled: isRunning,
+                  },
+                  ...(fullSync
+                    ? [{ label: 'Vollabgleich starten', onClick: fullSync, disabled: isRunning }]
+                    : []),
+                ]
               : undefined
           }
           favorite={catalog.entry?.favorite}
           onFavoriteChange={catalog.setFavorite}
-          mayUseInSpace={mayUseInSpace}
-          reachFrozen={Boolean(details?.succession ?? library.succession)}
-          onAssociated={associationsChanged}
           onDelete={
             !canDelete || erasing
               ? undefined
@@ -470,24 +475,9 @@ export default function LibraryDetailPage() {
           deleteLabel={privateLibrary ? 'Sofort löschen' : undefined}
           deleteDisabled={eraseBusy}
           actions={
-            connectorSourceType && mayManageDocuments ? (
-              // one primary action per surface: the rows of the Reiter „Quelle" save with theirs;
-              // while a run runs, its progress is the state, not a second text on the button
-              // what a run reads, where a source has two kinds of run; the span keeps the tooltip
-              // on a disabled button
-              <Tooltip title={connectorConfiguration?.runsHint ?? ''} describeChild>
-                <span>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={() => void triggerIndexing(libraryId, connectorSourceType)}
-                    disabled={isRunning}
-                  >
-                    Jetzt indizieren
-                  </Button>
-                </span>
-              </Tooltip>
-            ) : isUploadLibrary && mayManageDocuments ? (
+            // a connector library's „Jetzt indizieren" lives in the Reiter „Quelle", Abschnitt
+            // „Läufe" (and in the „⋯" for whoever has no such tab) - the head keeps only the state
+            isUploadLibrary && mayManageDocuments ? (
               <>
                 <Button
                   variant="outlined"
@@ -615,6 +605,12 @@ export default function LibraryDetailPage() {
                 unlistedScopeKeys={run.unlistedScopeKeys}
                 statusUnknown={isRunning && run.statusUnknown}
                 onFullSync={fullSync}
+                onIndex={
+                  connectorSourceType && mayManageDocuments
+                    ? () => void triggerIndexing(libraryId, connectorSourceType)
+                    : undefined
+                }
+                indexHint={connectorConfiguration?.runsHint ?? undefined}
               />
             ) : (
               <Typography sx={{ color: 'text.secondary' }}>
@@ -681,7 +677,7 @@ export default function LibraryDetailPage() {
               mayUseInSpace={mayUseInSpace}
               reachFrozen={Boolean(details?.succession ?? library.succession)}
               refreshToken={associationsVersion}
-              onChanged={() => catalog.reload()}
+              onChanged={associationsChanged}
             />
           )}
         </Box>
